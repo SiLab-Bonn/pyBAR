@@ -1,5 +1,7 @@
 import time
 
+#import usb.core
+
 from SiLibUSB import SiUSBDevice
 
 from fei4.register import FEI4Register
@@ -16,9 +18,15 @@ bit_file = r'C:\Users\Jens\Desktop\ModularReadoutSystem\device\trunk\MIO\FPGA\FE
 
 
 class ScanBase(object):
-    def __init__(self, config_file, bit_file = None):
-        self.device = None
-        self.device = SiUSBDevice()
+    def __init__(self, config_file, bit_file = None, device = None):
+        if device is not None:
+            #if isinstance(device, usb.core.Device):
+            if isinstance(device, SiUSBDevice):
+                self.device = device
+            else:
+                raise TypeError('Device has wrong type')
+        else:
+            self.device = SiUSBDevice()
         if bit_file != None:
             print 'Programming FPGA...'
             self.device.DownloadXilinx(bit_file)
@@ -44,5 +52,8 @@ class ScanBase(object):
         print 'Reset SRAM FIFO...'
         self.readout_utils.reset_sram_fifo()
         print 'Done!'
+        
+    def start(self):
+        raise NotImplementedError()
         
                 

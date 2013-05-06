@@ -16,6 +16,8 @@ from utils.utils import get_iso_time
 
 from utils.utils import get_all_from_queue
 
+from analysis.data_struct import MetaTable
+
 from scan.scan import ScanBase
 
 chip_flavor = 'fei4a'
@@ -38,13 +40,6 @@ if __name__ == "__main__":
     #scan_parameter = 'Vthin_AltFine'
     #scan_paramter_value = scan.register.get_global_register_value(scan_parameter)
     
-    class MetaTable(tb.IsDescription):
-        start_index = tb.UInt32Col(pos=0)
-        stop_index = tb.UInt32Col(pos=1)
-        length = tb.UInt32Col(pos=2)
-        timestamp = tb.Time64Col(pos=3)
-        error = tb.UInt32Col(pos=4)
-    
     filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
     filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=True)
     with tb.openFile('ext_trigger_scan.h5', mode = 'w', title = 'test file') as file_h5:
@@ -53,6 +48,7 @@ if __name__ == "__main__":
         
         lvl1_command = scan.register.get_commands("lv1")[0]
         scan.register_utils.set_command(lvl1_command)
+        scan.readout_utils.set_tlu_mode(mode = 1)
         scan.readout_utils.set_ext_cmd_start(True)
             
         consecutive_lvl1 = scan.register.get_global_register_value("Trig_Count")
@@ -130,7 +126,10 @@ if __name__ == "__main__":
         #            unknown_count += 1
         #            print 'unknown:', unknown_count
         
-    
+ 
     print 'Stopping readout thread...'
     scan.readout.stop()
     print 'Done!'
+    
+    print 'Data remaining in memory:', scan.readout.get_fifo_size()
+    print 'Lost data count:', scan.readout.get_lost_data_count()
