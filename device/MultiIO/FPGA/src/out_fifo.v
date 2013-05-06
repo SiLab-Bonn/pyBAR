@@ -12,32 +12,32 @@ endmodule
 
 module out_fifo
 (
-  BUS_CLK,
-  BUS_CLK270,  
-  BUS_RST,                  
-  BUS_ADD,                    
-  BUS_DATA_IN,                    
-  BUS_RD,                    
-  BUS_WR,                    
-  BUS_DATA_OUT,  
-  
-  SRAM_A,
-  SRAM_IO,
-  SRAM_BHE_B,
-  SRAM_BLE_B,
-  SRAM_CE1_B,
-  SRAM_OE_B,
-  SRAM_WE_B,
+    BUS_CLK,
+    BUS_CLK270,
+    BUS_RST,
+    BUS_ADD,
+    BUS_DATA_IN,
+    BUS_RD,
+    BUS_WR,
+    BUS_DATA_OUT,
     
-  USB_READ,
-  USB_DATA,
-  
-  FIFO_READ_NEXT_OUT,
-  FIFO_EMPTY_IN,
-  FIFO_DATA,
-
-  FIFO_NOT_EMPTY,
-  FIFO_READ_ERROR
+    SRAM_A,
+    SRAM_IO,
+    SRAM_BHE_B,
+    SRAM_BLE_B,
+    SRAM_CE1_B,
+    SRAM_OE_B,
+    SRAM_WE_B,
+    
+    USB_READ,
+    USB_DATA,
+    
+    FIFO_READ_NEXT_OUT,
+    FIFO_EMPTY_IN,
+    FIFO_DATA,
+    
+    FIFO_NOT_EMPTY,
+    FIFO_READ_ERROR
 ); 
 
 parameter OUT_LINES = 1;
@@ -152,9 +152,11 @@ assign USB_DATA = byte_to_read ?  sram_data_read[7:0] : sram_data_read[15:8] ;
 
 always@(posedge BUS_CLK) begin
     if(RST)
-        CONF_READ_ERROR <=0;
+        CONF_READ_ERROR <= 0;
     else if(empty && USB_READ && CONF_READ_ERROR != 8'hff)
         CONF_READ_ERROR <= CONF_READ_ERROR +1;
+    else
+        CONF_READ_ERROR <= CONF_READ_ERROR;
 end      
 ///
           
