@@ -33,4 +33,18 @@ class ReadoutUtils(object):
         else:
             reg &= ~0x08
         self.device.WriteExternal(address = 0+2, data = [reg])
+        
+        
+    def set_tlu_mode(self, mode, trrigger_data_msb_first = False, trigger_data_delay = 0, tlu_trigger_clock_cycles = 32, tlu_trigger_low_timeout = 0):
+        #array = self.device.ReadExternal(address = 0x8200, size = 4)
+        #reg = struct.unpack(4*'B', array)
+        reg_1 = (mode&0x03)
+        if trrigger_data_msb_first:
+            reg_1 |= 0x02
+        else:
+            reg_1 &= ~0x02
+        reg_1 = ((trigger_data_delay&0x0f)<<4)|(reg_1&0x0f)
+        reg_2 = tlu_trigger_clock_cycles
+        reg_3 = tlu_trigger_low_timeout
+        self.device.WriteExternal(address = 0x8200+1, data = [reg_1, reg_2, reg_3])
 

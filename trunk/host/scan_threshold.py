@@ -1,4 +1,3 @@
-from plotting.plotting import plot_occupancy, save_occupancy
 import pprint
 import time
 import struct
@@ -13,10 +12,12 @@ from daq.readout import Readout
 
 from utils.utils import get_all_from_queue
 
+from analysis.data_struct import MetaTable
+
 from scan.scan import ScanBase
 
 
-chip_flavor = 'fei4b'
+chip_flavor = 'fei4a'
 config_file = 'C:\Users\Jens\Desktop\Python\python_projects\etherpixcontrol\std_cfg_'+chip_flavor+'.cfg'
 bit_file = r'C:\Users\Jens\Desktop\ModularReadoutSystem\device\trunk\MIO\FPGA\FEI4\ise\top.bit'
 
@@ -37,12 +38,7 @@ if __name__ == "__main__":
     scan_parameter = 'PlsrDAC'
     scan_paramter_value_range = range(0, 100, 1)
     
-    class MetaTable(tb.IsDescription):
-        start_index = tb.UInt32Col(pos=0)
-        stop_index = tb.UInt32Col(pos=1)
-        length = tb.UInt32Col(pos=2)
-        timestamp = tb.Time64Col(pos=3)
-        error = tb.UInt32Col(pos=4)
+    
         
 #    class ScanParameters(tb.IsDescription):
 #        scan_parameter = tb.UInt32Col(pos=0)
