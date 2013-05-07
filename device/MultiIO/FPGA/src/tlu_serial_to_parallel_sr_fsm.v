@@ -211,8 +211,8 @@ always @ (posedge CLK or posedge RESET)
                     
                     SEND_TLU_DATA_RECEIVED:
                     begin
-                        TLU_DATA <= TLU_DATA;
-                        TLU_DATA_SAVE_SIGNAL <= 1'b1;
+                        TLU_DATA <= 31'b000_0000_0000_0000_0000_0000_0000_0000;
+                        TLU_DATA_SAVE_SIGNAL <= 1'b0;
                         TLU_DATA_SAVE_FLAG <= 1'b0;
                         TLU_CLOCK_ENABLE <= 1'b0;
                         counter_tlu_clock <= 8'b0000_0000;

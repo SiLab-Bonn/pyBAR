@@ -6,6 +6,8 @@
  * TLU controller supporting EUDET TLU 0.1/0.2
  */
  
+ `default_nettype none
+ 
  module tlu_controller (
     input wire                  BUS_CLK,
     input wire                  BUS_RST,
@@ -23,9 +25,10 @@
     input wire                  LEMO_TRIGGER,
     input wire                  RJ45_RESET,
     input wire                  LEMO_RESET,
-    output wire                  RJ45_ENABLED,
+    output reg                  RJ45_ENABLED,
     output wire                 TLU_BUSY,
     output wire                 TLU_CLOCK,
+    output wire                 TLU_RESET_FLAG,
     
     input wire                  CMD_READY,
     output wire                 CMD_EXT_START_FLAG,
@@ -33,7 +36,8 @@
     
     output wire                 TLU_DATA_SAVE_SIGNAL,
     output wire                 TLU_DATA_SAVE_FLAG,
-    input wire                  TLU_DATA_SAVED_FLAG,
+    // FIXME: temporary assigned internally to make TLU running
+    //input wire                  TLU_DATA_SAVED_FLAG,
     output wire     [30:0]      TLU_DATA,              // TLU trigger parallel data
     output wire                 TLU_TRIGGER_ABORT,
     
@@ -139,24 +143,41 @@ end
 //assign some_value = {status_regs[x][y]}; // single bit
 //assign some_value = {status_regs[x][y:z]}; // multiple bits
 
+// FIXME: temporary assigned here to make TLU running
+reg TLU_DATA_SAVED_FLAG;
 always @ (posedge BUS_CLK)
 begin
     if (RST)
+    begin
         CURRENT_TRIGGER_NUMBER <= 32'b0;
-    else if (TLU_DATA_SAVE_FLAG)
-        CURRENT_TRIGGER_NUMBER <= {1'b0, TLU_DATA};
+        TLU_DATA_SAVED_FLAG <= 1'b0;
+    end
     else
-        CURRENT_TRIGGER_NUMBER <= CURRENT_TRIGGER_NUMBER;
+    begin
+        if (TLU_DATA_SAVE_FLAG)
+        begin
+            CURRENT_TRIGGER_NUMBER <= {1'b0, TLU_DATA};
+            TLU_DATA_SAVED_FLAG <= 1'b1;
+        end
+        else
+        begin
+            CURRENT_TRIGGER_NUMBER <= CURRENT_TRIGGER_NUMBER;
+            TLU_DATA_SAVED_FLAG <= 1'b0;
+        end
+    end
 end
 
 always @ (posedge BUS_CLK)
 begin
     if (RST)
         CURRENT_TRIGGER_NUMBER_BUF <= 32'b0;
-    else if (BUS_ADD == 4)
-        CURRENT_TRIGGER_NUMBER_BUF <= CURRENT_TRIGGER_NUMBER;
     else
-        CURRENT_TRIGGER_NUMBER_BUF <= CURRENT_TRIGGER_NUMBER_BUF;
+    begin
+        if (BUS_ADD == 4)
+            CURRENT_TRIGGER_NUMBER_BUF <= CURRENT_TRIGGER_NUMBER;
+        else
+            CURRENT_TRIGGER_NUMBER_BUF <= CURRENT_TRIGGER_NUMBER_BUF;
+    end
 end
 
 wire                TLU_CLOCK_ENABLE;
@@ -188,24 +209,21 @@ OFDDRCPE OFDDRCPE_TRIGGER_CLOCK (
     .Q(TLU_CLOCK)
 );
 
+// Trigger input port select
+always @ (*)
+begin
+    if (RST)
+        RJ45_ENABLED = 1'b0;
+    else
+    begin
+        if ((RJ45_TRIGGER && RJ45_RESET && !RJ45_ENABLED) || TLU_MODE == 2'b00)
+            RJ45_ENABLED = 1'b0;
+        else
+            RJ45_ENABLED = 1'b1;
+    end
+end
 
-assign RJ45_ENABLED = TLU_MODE[0];
-// Trigger input
-//reg RJ45_ENABLED;
-// always @ (*)
-// begin
-    // RJ45_ENABLED = 1'b0;
-    // if (RST)
-        // RJ45_ENABLED = 1'b0;
-    // else
-    // begin
-        // if ((RJ45_TRIGGER && RJ45_RESET && !RJ45_ENABLED) || TLU_MODE == 2'b00)
-            // RJ45_ENABLED = 1'b0;
-        // else
-            // RJ45_ENABLED = 1'b1;
-    // end
-// end
-
+wire TLU_TRIGGER, TLU_RESET;
 assign TLU_TRIGGER = (RJ45_ENABLED == 1'b1) ? RJ45_TRIGGER : LEMO_TRIGGER; // RJ45 inputs tied to 1 if no connector is plugged in
 assign TLU_RESET = (RJ45_ENABLED == 1'b1) ? RJ45_RESET : LEMO_RESET; // RJ45 inputs tied to 1 if no connector is plugged in
 
@@ -229,6 +247,13 @@ always @ (posedge CLK_160)
 
 assign TLU_TRIGGER_FLAG_160 = ~TLU_TRIGGER_160_FF && TLU_TRIGGER_160;
 
+wire TLU_TRIGGER_DISABLE_CLK_160;
+three_stage_synchronizer three_stage_tlu_trigger_disable_synchronizer_40 (
+    .CLK(CLK_160),
+    .IN(TLU_TRIGGER_DISABLE),
+    .OUT(TLU_TRIGGER_DISABLE_CLK_160)
+);
+
 task_domain_crossing tlu_trigger_flag_domain_crossing (
     .CLK_A(CLK_160),
     .CLK_B(CLK_40),
@@ -238,7 +263,7 @@ task_domain_crossing tlu_trigger_flag_domain_crossing (
     .BUSY_CLK_B(),
     .TASK_DONE_CLK_A(),
     .TASK_DONE_CLK_B(TLU_TRIGGER_DONE_40),
-    .DISABLE_CLK_A(TLU_TRIGGER_DISABLE)
+    .DISABLE_CLK_A(TLU_TRIGGER_DISABLE_CLK_160)
 );
 
 three_stage_synchronizer tlu_trigger_busy_synchronizer (
@@ -247,6 +272,7 @@ three_stage_synchronizer tlu_trigger_busy_synchronizer (
     .OUT(TLU_TRIGGER_BUSY_40)
 );
 
+wire TLU_RESET_160;
 three_stage_synchronizer three_tlu_reset_synchronizer (
     .CLK(CLK_160),
     .IN(TLU_RESET),
@@ -265,9 +291,10 @@ flag_domain_crossing tlu_reset_flag_domain_crossing (
     .CLK_A(CLK_160),
     .CLK_B(CLK_40),
     .FLAG_IN_CLK_A(TLU_RESET_FLAG_160),
-    .FLAG_OUT_CLK_B(TLU_RESET_FLAG_40)
+    .FLAG_OUT_CLK_B(TLU_RESET_FLAG)
 );
 
+wire [7:0] TLU_TRIGGER_LOW_TIME_OUT_CLK_40;
 three_stage_synchronizer #(
     .WIDTH(8)
 ) tlu_trigger_low_timeout_sync (
@@ -276,6 +303,7 @@ three_stage_synchronizer #(
     .OUT(TLU_TRIGGER_LOW_TIME_OUT_CLK_40)
 );
 
+wire [1:0] TLU_MODE_CLK_40;
 three_stage_synchronizer #(
     .WIDTH(2)
 ) tlu_mode_sync (
@@ -283,7 +311,6 @@ three_stage_synchronizer #(
     .IN(TLU_MODE),
     .OUT(TLU_MODE_CLK_40)
 );
-
 
 tlu_controller_fsm tlu_controller_fsm_module (
     .RESET(RST),
@@ -315,7 +342,7 @@ tlu_controller_fsm tlu_controller_fsm_module (
 );
 
 
-
+wire TLU_DATA_RECEIVED_FLAG_CLK_5;
 task_domain_crossing tlu_trigger_data_flag_domain_crossing (
     .CLK_A(CLK_40),
     .CLK_B(CLK_5),
@@ -328,6 +355,7 @@ task_domain_crossing tlu_trigger_data_flag_domain_crossing (
     .DISABLE_CLK_A(1'b0)
 );
 
+wire [7:0] TLU_TRIGGER_CLOCK_CYCLES_CLK_5;
 three_stage_synchronizer #(
     .WIDTH(8)
 ) tlu_trigger_clock_cycles_sync (
@@ -336,6 +364,7 @@ three_stage_synchronizer #(
     .OUT(TLU_TRIGGER_CLOCK_CYCLES_CLK_5)
 );
 
+wire [3:0] TLU_TRIGGER_DATA_DELAY_CLK_5;
 three_stage_synchronizer #(
     .WIDTH(4)
 ) tlu_trigger_data_delay_sync (
@@ -344,14 +373,16 @@ three_stage_synchronizer #(
     .OUT(TLU_TRIGGER_DATA_DELAY_CLK_5)
 );
 
+wire TLU_TRIGGER_DATA_MSB_FIRST_CLK_5;
 three_stage_synchronizer tlu_trigger_data_msb_first_sync (
     .CLK(CLK_5),
     .IN(TLU_TRIGGER_DATA_MSB_FIRST),
     .OUT(TLU_TRIGGER_DATA_MSB_FIRST_CLK_5)
 );
 
+wire TLU_TRIGGER_CLK_5;
 three_stage_synchronizer tlu_trigger_sync (
-    .CLK(CLK_5),
+    .CLK(~CLK_5),
     .IN(TLU_TRIGGER),
     .OUT(TLU_TRIGGER_CLK_5)
 );
@@ -375,22 +406,6 @@ tlu_serial_to_parallel_fsm tlu_serial_to_parallel_fsm_module (
     .TLU_DATA_SAVED_FLAG(TLU_DATA_SAVED_FLAG_CLK_5)
 );
 
-// ********** synchronize outputs **********
-//reg [30:0] tlu_data_buf;
-//always @ (posedge XCK or posedge RESET)
-//    begin
-//        if (RESET == 1'b1)
-//            begin
-//                TLU_DATA <= 31'b000_0000_0000_0000_0000_0000_0000_0000;
-//                tlu_data_buf <= 31'b000_0000_0000_0000_0000_0000_0000_0000;
-//            end
-//        else
-//            begin
-//                tlu_data_buf <= TLU_DATA_CLK_5;
-//                TLU_DATA <= tlu_data_buf;
-//            end
-//    end
-
 three_stage_synchronizer #(
     .WIDTH(31)
 ) tlu_data_sync (
@@ -399,32 +414,22 @@ three_stage_synchronizer #(
     .OUT(TLU_DATA)
 );
 
-three_stage_synchronizer tlu_parallel_data_signal_sync (
+three_stage_synchronizer tlu_data_signal_sync (
     .CLK(BUS_CLK),
     .IN(TLU_DATA_SAVE_SIGNAL_CLK_5),
     .OUT(TLU_DATA_SAVE_SIGNAL)
 );
 
-
 task_domain_crossing tlu_trigger_data_save_flag_domain_crossing (
     .CLK_A(CLK_5),
     .CLK_B(BUS_CLK),
     .FLAG_IN_CLK_A(TLU_DATA_SAVE_FLAG_CLK_5),
-    .FLAG_OUT_CLK_B(), //TLU_DATA_SAVE_FLAG),
+    .FLAG_OUT_CLK_B(TLU_DATA_SAVE_FLAG),
     .BUSY_CLK_A(),
     .BUSY_CLK_B(),
-    .TASK_DONE_CLK_A(), //TLU_DATA_SAVED_FLAG_CLK_5),
-    .TASK_DONE_CLK_B(TLU_DATA_SAVED_FLAG)
+    .TASK_DONE_CLK_A(TLU_DATA_SAVED_FLAG_CLK_5),
+    .TASK_DONE_CLK_B(TLU_DATA_SAVED_FLAG),
+    .DISABLE_CLK_A(1'b0)
 );
-
-// FIXME: temporary assignment to make TLU running
-assign TLU_DATA_SAVED_FLAG_CLK_5 = 1'b1;
-flag_domain_crossing tlu_data_save_flag_domain_crossing (
-    .CLK_A(CLK_5),
-    .CLK_B(BUS_CLK),
-    .FLAG_IN_CLK_A(TLU_DATA_SAVE_FLAG_CLK_5),
-    .FLAG_OUT_CLK_B(TLU_DATA_SAVE_FLAG)
-);
-
 
 endmodule

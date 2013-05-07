@@ -28,6 +28,7 @@ module clk_gen(
     output LOCKED
     );
 
+	wire GND_BIT;
    assign GND_BIT = 0;
 	
 	wire CLKFX_BUF, CLKOUTFX, CLKDV, CLKDV_BUF;

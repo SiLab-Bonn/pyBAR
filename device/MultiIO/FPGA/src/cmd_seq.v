@@ -1,3 +1,4 @@
+`default_nettype none
 
 module cmd_seq
 (
@@ -277,8 +278,11 @@ assign CMD_CLK_OUT = CMD_CLK_IN;
 
 // reeady sync 
 reg ready_sync_in;
-always @ (posedge CMD_CLK_IN) 
-    ready_sync_in <= (state == WAIT);
+always @ (posedge CMD_CLK_IN)
+    if (state == WAIT)
+        ready_sync_in <= 1'b1;
+    else
+        ready_sync_in <= 1'b0;
 
 // reg ready_sync_ff, ready_sync;
 // always @(posedge BUS_CLK) begin
