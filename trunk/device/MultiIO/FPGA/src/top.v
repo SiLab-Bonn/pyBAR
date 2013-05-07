@@ -1,6 +1,5 @@
 `timescale 1ps / 1ps
 `default_nettype none
- //`default_nettype none
 
 module top (
     
@@ -301,7 +300,7 @@ tlu_controller tlu_controller_module (
     
     .CLK_160(CLK_160),
     .CLK_40(CLK_40),
-    .CLK_5(CLK_40),
+    .CLK_5(CLK_5),
     
     .RJ45_TRIGGER(RJ45_TRIGGER),
     .LEMO_TRIGGER(LEMO_TRIGGER),
@@ -310,6 +309,7 @@ tlu_controller tlu_controller_module (
     .RJ45_ENABLED(RJ45_ENABLED),
     .TLU_BUSY(TLU_BUSY),
     .TLU_CLOCK(TLU_CLOCK),
+    .TLU_RESET_FLAG(),
     
     .CMD_READY(CMD_READY),
     .CMD_EXT_START_FLAG(CMD_EXT_START_FLAG),
@@ -317,7 +317,8 @@ tlu_controller tlu_controller_module (
     
     .TLU_DATA_SAVE_SIGNAL(TLU_DATA_SAVE_SIGNAL),
     .TLU_DATA_SAVE_FLAG(TLU_DATA_SAVE_FLAG),
-    .TLU_DATA_SAVED_FLAG(TLU_DATA_SAVED_FLAG),
+    // FIXME: temporary assigned internally to make TLU running
+    //.TLU_DATA_SAVED_FLAG(TLU_DATA_SAVED_FLAG),
     .TLU_DATA(TLU_DATA),
     .TLU_TRIGGER_ABORT(),
 
@@ -325,7 +326,7 @@ tlu_controller tlu_controller_module (
 );
 
 
-`ifdef SYNTHESIS
+`ifdef SYNTHESIS_NOT
 wire [35:0] control_bus;
 chipscope_icon ichipscope_icon
 (

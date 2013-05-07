@@ -1,5 +1,6 @@
-
 // controller FSM for TLU communication
+
+`default_nettype none
 
 module tlu_controller_fsm (
     input wire          RESET,
@@ -41,11 +42,10 @@ parameter   [2:0]
     SEND_COMMAND                     = 4'b0001,
     WAIT_FOR_TRIGGER_LOW             = 4'b0010, // busy high, wait for trigger going low
     RECEIVE_TRIGGER_DATA             = 4'b0011, // enable CCK to clock out TLU trigger number
-    PARALLEL_DATA                    = 4'b0100, // latch SR into 32-bit register
-    WAIT_FOR_TLU_DATA                = 4'b0101, // busy high, wait for readout FSM to save TLU trigger number
-    WAIT_FOR_CMD                     = 4'b0110, // wait for CMD FSM to be ready
-    SEND_TLU_TRIGGER_DONE            = 4'b0111,
-    WAIT_FOR_TLU_TRIGGER_BUSY_LOW    = 4'b1000;
+    WAIT_FOR_TLU_DATA                = 4'b0100, // busy high, wait for readout FSM to save TLU trigger number
+    WAIT_FOR_CMD                     = 4'b0101, // wait for CMD FSM to be ready
+    SEND_TLU_TRIGGER_DONE            = 4'b0110,
+    WAIT_FOR_TLU_TRIGGER_BUSY_LOW    = 4'b0111;
 
 // sequential always block, non-blocking assignments
 always @ (posedge CLK or posedge RESET)
@@ -55,25 +55,25 @@ always @ (posedge CLK or posedge RESET)
     end
 
 // combinational always block, blocking assignments
-always @ (state or TLU_MODE or TLU_DATA_RECEIVED_FLAG or counter_trigger_low_time_out or CMD_READY or CMD_EXT_START_ENABLE or TLU_TRIGGER or TLU_TRIGGER_FLAG)
+always @ (state or TLU_MODE or TLU_DATA_RECEIVED_FLAG or counter_trigger_low_time_out or CMD_READY or CMD_EXT_START_ENABLE or TLU_TRIGGER or TLU_TRIGGER_FLAG or TLU_TRIGGER_BUSY or TLU_TRIGGER_ABORT)
     begin
         case (state)
 
             IDLE:
             begin
-                if ((CMD_READY == 1'b1) && (CMD_EXT_START_ENABLE == 1'b1) && (TLU_TRIGGER_FLAG == 1'b1)) next = SEND_COMMAND;
+                if ((CMD_READY == 1'b1) && (CMD_EXT_START_ENABLE == 1'b1) && (TLU_TRIGGER_FLAG == 1'b1)) next = SEND_COMMAND; // (CMD_READY == 1'b1) && 
                 else next = IDLE;
             end
 
             SEND_COMMAND:
             begin
-                if ((TLU_MODE == 2'b00) || (TLU_MODE == 2'b01)) next = WAIT_FOR_CMD; // FIXME: next state WAIT_FOR_TLU_DATA or WAIT_FOR_CMD
+                if ((TLU_MODE == 2'b00) || (TLU_MODE == 2'b01)) next = WAIT_FOR_CMD;
                 else next = WAIT_FOR_TRIGGER_LOW;
             end
 
             WAIT_FOR_TRIGGER_LOW:
             begin
-                if (TLU_TRIGGER_ABORT == 1'b1) next = WAIT_FOR_CMD;
+                if (TLU_TRIGGER_ABORT == 1'b1) next = IDLE;
                 else if ((TLU_MODE == 2'b10) && (TLU_TRIGGER == 1'b0)) next = WAIT_FOR_TLU_DATA; // FIXME: next state WAIT_FOR_TLU_DATA or WAIT_FOR_CMD
                 else if ((TLU_MODE == 2'b11) && (TLU_TRIGGER == 1'b0)) next = RECEIVE_TRIGGER_DATA;
                 else next = WAIT_FOR_TRIGGER_LOW;
@@ -163,15 +163,21 @@ always @ (posedge CLK or posedge RESET)
                                 TLU_ASSERT_VETO <= 1'b0;
                                 TLU_DEASSERT_VETO <= 1'b1;
                             end
-                        TLU_BUSY <= 1'b0;
+                        //TLU_BUSY <= 1'b0;
                         counter_trigger_low_time_out <= 8'b0000_0000;
                         TLU_TRIGGER_ABORT <= 1'b0;
                         TLU_TRIGGER_DONE <= 1'b0;
                         CMD_EXT_START_FLAG <= 1'b0;
-						if ((CMD_READY == 1'b1) && (CMD_EXT_START_ENABLE == 1'b1))
+                        if ((CMD_READY == 1'b1) && (CMD_EXT_START_ENABLE == 1'b1))
+                        begin
                             TLU_TRIGGER_DISABLE <= 1'b0;
+                            TLU_BUSY <= 1'b0; // FIXME: hack to make first trigger get accepted
+                        end
                         else
-                           TLU_TRIGGER_DISABLE <= 1'b1;
+                        begin
+                           TLU_TRIGGER_DISABLE <= 1'b1; // FIXME: hack to make first trigger get accepted
+                           TLU_BUSY <= 1'b1;
+                        end
                     end
                     
                     SEND_COMMAND:
