@@ -1,4 +1,5 @@
 `timescale 1ps / 1ps
+`default_nettype none
  //`default_nettype none
 
 module top (
@@ -48,6 +49,7 @@ module top (
     //input wire FPGA_BUTTON // switch S2 on MultiIO board, active low
 );
 
+wire BUS_RST;
 wire BUS_CLK;
 wire BUS_CLK270;
 wire CLK_40;
@@ -99,11 +101,13 @@ assign TX[1] = TLU_BUSY; // in TLU handshake mode TLU_BUSY signal; also connecte
 assign TX[2] = 1'b0;
 
 // LED
-parameter VERSION = 31; // all on: 31
+parameter VERSION = 1; // all on: 31
 
 wire RX_READY;
 wire FIFO_NOT_EMPTY; // raised, when attempting to write to FIFO when it is full
 wire FIFO_READ_ERROR; // raised, when attempting to read from FIFO when it is empty
+
+wire SHOW_VERSION;
 
 SRLC16E # (
     .INIT(16'hF000) // in seconds, MSB shifted first
@@ -291,13 +295,13 @@ tlu_controller tlu_controller_module (
     .BUS_RST(BUS_RST),
     .BUS_ADD(TLU_ADD),
     .BUS_DATA_IN(BUS_DATA_IN),
-    .BUS_RD(TLU_BUS_RD),
-    .BUS_WR(TLU_BUS_WR),
+    .BUS_RD(TLU_RD),
+    .BUS_WR(TLU_WR),
     .BUS_DATA_OUT(TLU_BUS_DATA_OUT),
     
     .CLK_160(CLK_160),
     .CLK_40(CLK_40),
-    .CLK_5(CLK_5),
+    .CLK_5(CLK_40),
     
     .RJ45_TRIGGER(RJ45_TRIGGER),
     .LEMO_TRIGGER(LEMO_TRIGGER),
@@ -332,7 +336,7 @@ chipscope_ila ichipscope_ila
 (
     .CONTROL(control_bus),
     .CLK(BUS_CLK), 
-    .TRIG0({FMODE, FSTROBE, FREAD, TLU_ADD[7:0], BUS_DATA_IN, TLU_BUS_DATA_OUT, TLU_BUS_WR, TLU_BUS_RD})
+    .TRIG0({ADD_REAL, BUS_DATA_IN, TLU_WR, TLU_RD, WR_B, RD_B})
     //.CLK(CLK_160), 
     //.TRIG0({FMODE, FSTROBE, FREAD, CMD_BUS_WR, RX_BUS_WR, FIFO_WR, BUS_DATA_IN, FE_RX ,WR_B, RD_B})
         
