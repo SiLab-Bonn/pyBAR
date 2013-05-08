@@ -10,7 +10,6 @@ module tlu_serial_to_parallel_fsm (
     input wire          TLU_RECEIVE_DATA_FLAG,
     output reg          TLU_CLOCK_ENABLE,
     output reg          TLU_DATA_RECEIVED_FLAG,
-    input wire  [2:0]   TLU_TRIGGER_DATA_CLOCK_CYCLES,
 
     output reg  [31:0]  TLU_DATA,
     output reg          TLU_DATA_SAVE_SIGNAL,
@@ -19,7 +18,7 @@ module tlu_serial_to_parallel_fsm (
 
 );
 
-integer n;
+integer n; // for for-loop (reversing TLU data)
 
 reg     [31:0]      tlu_data_sr;
 
@@ -33,9 +32,9 @@ end
 reg [2:0] state;
 reg [2:0] next;
 
-reg [4:0] counter_tlu_clock;
-reg [3:0] counter_sr_wait_cycles;
-reg [2:0] latch_data_counter;
+reg     [4:0]   counter_tlu_clock;
+reg     [3:0]   counter_sr_wait_cycles;
+reg     [31:0]  tlu_data_sr_reversed;
 
 parameter   [2:0]
     IDLE                        = 3'b000, // idle state
@@ -53,7 +52,7 @@ always @ (posedge CLK or posedge RESET)
         else                state <= next;
     end
 
-always @ (state or TLU_RECEIVE_DATA_FLAG or TLU_DATA_SAVED_FLAG or TLU_TRIGGER_CLOCK_CYCLES or counter_tlu_clock or counter_sr_wait_cycles or TLU_TRIGGER_DATA_DELAY or latch_data_counter or TLU_TRIGGER_DATA_CLOCK_CYCLES)
+always @ (state or TLU_RECEIVE_DATA_FLAG or TLU_DATA_SAVED_FLAG or TLU_TRIGGER_CLOCK_CYCLES or counter_tlu_clock or counter_sr_wait_cycles or TLU_TRIGGER_DATA_DELAY)
     begin
         case (state)
             IDLE:
@@ -70,24 +69,18 @@ always @ (state or TLU_RECEIVE_DATA_FLAG or TLU_DATA_SAVED_FLAG or TLU_TRIGGER_C
 
             WAIT_BEFORE_LATCH:
             begin
-                if (counter_sr_wait_cycles == TLU_TRIGGER_DATA_DELAY + 5) next = LATCH_DATA; // 4 clock cycles is minimum delay
+                if (counter_sr_wait_cycles == TLU_TRIGGER_DATA_DELAY + 4) next = LATCH_DATA; // 4 clock cycles is minimum delay
                 else next = WAIT_BEFORE_LATCH;
             end
 
             LATCH_DATA:
             begin
-                if (TLU_TRIGGER_DATA_CLOCK_CYCLES == 3'b000)
-                    next = SEND_DATA_SAVE;
-                else
-                    next = SEND_TLU_DATA;
+                next = SEND_TLU_DATA;
             end
             
             SEND_TLU_DATA:
             begin
-                if (latch_data_counter == TLU_TRIGGER_DATA_CLOCK_CYCLES)
-                    next = SEND_DATA_SAVE; // send TLU data n clock cycles in advance
-                else
-                    next = SEND_TLU_DATA;
+                next = SEND_DATA_SAVE;
             end
             
             SEND_DATA_SAVE:
@@ -119,54 +112,55 @@ always @ (posedge CLK or posedge RESET)
         if (RESET) // get D-FF
             begin
                 TLU_DATA <= 32'b0000_0000_0000_0000_0000_0000_0000_0000;
+                tlu_data_sr_reversed <= 32'b0000_0000_0000_0000_0000_0000_0000_0000;
                 TLU_DATA_SAVE_SIGNAL <= 1'b0;
                 TLU_DATA_SAVE_FLAG <= 1'b0;
                 TLU_CLOCK_ENABLE <= 1'b0;
                 counter_tlu_clock <= 5'b0_0000;
                 counter_sr_wait_cycles <= 8'b0000_0000;
                 TLU_DATA_RECEIVED_FLAG <= 1'b0;
-                latch_data_counter <= 3'b000;
             end
         else
             begin
 
                 TLU_DATA <= 32'b0000_0000_0000_0000_0000_0000_0000_0000;
+                tlu_data_sr_reversed <= 32'b0000_0000_0000_0000_0000_0000_0000_0000;
                 TLU_DATA_SAVE_SIGNAL <= 1'b0;
                 TLU_DATA_SAVE_FLAG <= 1'b0;
                 TLU_CLOCK_ENABLE <= 1'b0;
                 counter_tlu_clock <= 5'b0_0000;
                 counter_sr_wait_cycles <= 8'b0000_0000;
                 TLU_DATA_RECEIVED_FLAG <= 1'b0;
-                latch_data_counter <= 3'b000;
 
                 case (next)
                     IDLE:
                     begin
                         TLU_DATA <= 32'b0000_0000_0000_0000_0000_0000_0000_0000;
+                        tlu_data_sr_reversed <= 32'b0000_0000_0000_0000_0000_0000_0000_0000;
                         TLU_DATA_SAVE_SIGNAL <= 1'b0;
                         TLU_DATA_SAVE_FLAG <= 1'b0;
                         TLU_CLOCK_ENABLE <= 1'b0;
                         counter_tlu_clock <= 5'b0_0000;
                         counter_sr_wait_cycles <= 8'b0000_0000;
                         TLU_DATA_RECEIVED_FLAG <= 1'b0;
-                        latch_data_counter <= 3'b000;
                     end
 
                     SEND_TLU_CLOCK:
                     begin
                         TLU_DATA <= 32'b0000_0000_0000_0000_0000_0000_0000_0000;
+                        tlu_data_sr_reversed <= 32'b0000_0000_0000_0000_0000_0000_0000_0000;
                         TLU_DATA_SAVE_SIGNAL <= 1'b0;
                         TLU_DATA_SAVE_FLAG <= 1'b0;
                         TLU_CLOCK_ENABLE <= 1'b1;
                         counter_tlu_clock <= counter_tlu_clock + 1;
                         counter_sr_wait_cycles <= 8'b0000_0000;
                         TLU_DATA_RECEIVED_FLAG <= 1'b0;
-                        latch_data_counter <= 3'b000;
                     end
 
                     WAIT_BEFORE_LATCH:
                     begin
                         TLU_DATA <= 32'b0000_0000_0000_0000_0000_0000_0000_0000;
+                        tlu_data_sr_reversed <= 32'b0000_0000_0000_0000_0000_0000_0000_0000;
                         TLU_DATA_SAVE_SIGNAL <= 1'b0;
                         TLU_DATA_SAVE_FLAG <= 1'b0;
                         TLU_CLOCK_ENABLE <= 1'b0;
@@ -176,20 +170,20 @@ always @ (posedge CLK or posedge RESET)
                         else
                             counter_sr_wait_cycles <= counter_sr_wait_cycles;
                         TLU_DATA_RECEIVED_FLAG <= 1'b0;
-                        latch_data_counter <= 3'b000;
                     end
 
                     LATCH_DATA:
                     begin
+                        TLU_DATA <= 32'b0000_0000_0000_0000_0000_0000_0000_0000;
                         if (TLU_TRIGGER_DATA_MSB_FIRST == 1'b1)
-                                TLU_DATA <= tlu_data_sr[31:0];
+                                tlu_data_sr_reversed <= tlu_data_sr[31:0];
                         else
                         begin
                             for ( n=0 ; n < 32 ; n=n+1 )
                             begin
-                                TLU_DATA[n] <= tlu_data_sr[31-n]; // reverse bit order
+                                tlu_data_sr_reversed[n] <= tlu_data_sr[31-n]; // reverse bit order
                             end
-                            //TLU_DATA <= {tlu_data_sr[0], tlu_data_sr[1], tlu_data_sr[2], tlu_data_sr[3], tlu_data_sr[4], tlu_data_sr[5], tlu_data_sr[6], tlu_data_sr[7], tlu_data_sr[8], tlu_data_sr[9], tlu_data_sr[10], tlu_data_sr[11], tlu_data_sr[12], tlu_data_sr[13], tlu_data_sr[14], tlu_data_sr[15], tlu_data_sr[16], tlu_data_sr[17], tlu_data_sr[18], tlu_data_sr[19], tlu_data_sr[20], tlu_data_sr[21], tlu_data_sr[22], tlu_data_sr[23], tlu_data_sr[24], tlu_data_sr[25], tlu_data_sr[26], tlu_data_sr[27], tlu_data_sr[28], tlu_data_sr[29], tlu_data_sr[30], tlu_data_sr[31]};
+                            //tlu_data_sr_reversed <= {tlu_data_sr[0], tlu_data_sr[1], tlu_data_sr[2], tlu_data_sr[3], tlu_data_sr[4], tlu_data_sr[5], tlu_data_sr[6], tlu_data_sr[7], tlu_data_sr[8], tlu_data_sr[9], tlu_data_sr[10], tlu_data_sr[11], tlu_data_sr[12], tlu_data_sr[13], tlu_data_sr[14], tlu_data_sr[15], tlu_data_sr[16], tlu_data_sr[17], tlu_data_sr[18], tlu_data_sr[19], tlu_data_sr[20], tlu_data_sr[21], tlu_data_sr[22], tlu_data_sr[23], tlu_data_sr[24], tlu_data_sr[25], tlu_data_sr[26], tlu_data_sr[27], tlu_data_sr[28], tlu_data_sr[29], tlu_data_sr[30], tlu_data_sr[31]};
                         end
                         TLU_DATA_SAVE_SIGNAL <= 1'b0;
                         TLU_DATA_SAVE_FLAG <= 1'b0;
@@ -197,55 +191,65 @@ always @ (posedge CLK or posedge RESET)
                         counter_tlu_clock <= 5'b0_0000;
                         counter_sr_wait_cycles <= 8'b0000_0000;
                         TLU_DATA_RECEIVED_FLAG <= 1'b0;
-                        latch_data_counter <= 3'b000;
                     end
 
                     SEND_TLU_DATA:
                     begin
-                        TLU_DATA <= TLU_DATA;
+                        if (TLU_TRIGGER_CLOCK_CYCLES == 5'b0_0000)
+                            TLU_DATA <= tlu_data_sr_reversed;
+                        else
+                        begin
+                            for ( n=0 ; n < 32 ; n=n+1 )
+                            begin
+                                if (n >= TLU_TRIGGER_CLOCK_CYCLES-1)
+                                    TLU_DATA[n] <= 1'b0;
+                                else
+                                    TLU_DATA[n] <= tlu_data_sr_reversed[32-TLU_TRIGGER_CLOCK_CYCLES+1+n];
+                            end
+                        end
+                        tlu_data_sr_reversed <= 32'b0000_0000_0000_0000_0000_0000_0000_0000;
                         TLU_DATA_SAVE_SIGNAL <= 1'b0;
                         TLU_DATA_SAVE_FLAG <= 1'b0;
                         TLU_CLOCK_ENABLE <= 1'b0;
                         counter_tlu_clock <= 5'b0_0000;
                         counter_sr_wait_cycles <= 8'b0000_0000;
                         TLU_DATA_RECEIVED_FLAG <= 1'b0;
-                        latch_data_counter <= latch_data_counter + 1;
                     end
                     
                     SEND_DATA_SAVE:
                     begin
                         TLU_DATA <= TLU_DATA;
+                        tlu_data_sr_reversed <= 32'b0000_0000_0000_0000_0000_0000_0000_0000;
                         TLU_DATA_SAVE_SIGNAL <= 1'b1;
                         TLU_DATA_SAVE_FLAG <= 1'b1;
                         TLU_CLOCK_ENABLE <= 1'b0;
                         counter_tlu_clock <= 5'b0_0000;
                         counter_sr_wait_cycles <= 8'b0000_0000;
                         TLU_DATA_RECEIVED_FLAG <= 1'b0;
-                        latch_data_counter <= 3'b000;
                     end
 
                     WAIT_FOR_SAVE:
                     begin
                         TLU_DATA <= TLU_DATA;
+                        tlu_data_sr_reversed <= 32'b0000_0000_0000_0000_0000_0000_0000_0000;
                         TLU_DATA_SAVE_SIGNAL <= 1'b1;
                         TLU_DATA_SAVE_FLAG <= 1'b0;
                         TLU_CLOCK_ENABLE <= 1'b0;
                         counter_tlu_clock <= 5'b0_0000;
                         counter_sr_wait_cycles <= 8'b0000_0000;
                         TLU_DATA_RECEIVED_FLAG <= 1'b0;
-                        latch_data_counter <= 3'b000;
                     end
                     
                     SEND_TLU_DATA_RECEIVED:
                     begin
                         TLU_DATA <= 32'b0000_0000_0000_0000_0000_0000_0000_0000;
+                        tlu_data_sr_reversed <= 32'b0000_0000_0000_0000_0000_0000_0000_0000;
                         TLU_DATA_SAVE_SIGNAL <= 1'b0;
                         TLU_DATA_SAVE_FLAG <= 1'b0;
                         TLU_CLOCK_ENABLE <= 1'b0;
                         counter_tlu_clock <= 5'b0_0000;
                         counter_sr_wait_cycles <= 8'b0000_0000;
                         TLU_DATA_RECEIVED_FLAG <= 1'b1;
-                        latch_data_counter <= 3'b000;
                     end
                 
                 endcase

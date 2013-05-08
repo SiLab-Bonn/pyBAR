@@ -63,8 +63,8 @@ wire [3:0] TLU_TRIGGER_DATA_DELAY;
 assign TLU_TRIGGER_DATA_DELAY = status_regs[1][7:4];
 wire [4:0] TLU_TRIGGER_CLOCK_CYCLES;
 assign TLU_TRIGGER_CLOCK_CYCLES = status_regs[2][4:0];
-wire [2:0] TLU_TRIGGER_DATA_CLOCK_CYCLES;
-assign TLU_TRIGGER_DATA_CLOCK_CYCLES = status_regs[2][7:5];
+wire [2:0] reg_2_spare;
+assign reg_2_spare = status_regs[2][7:5];
 wire [7:0] TLU_TRIGGER_LOW_TIME_OUT;
 assign TLU_TRIGGER_LOW_TIME_OUT = status_regs[3];
 
@@ -198,10 +198,13 @@ wire                TLU_TRIGGER_BUSY_CLK_40;
 wire                TLU_TRIGGER_BUSY_CLK_160;
 wire                TLU_TRIGGER_DONE_CLK_40;
 
+reg tlu_clock_enable_negedge;
+always @ (negedge CLK_5)
+    tlu_clock_enable_negedge <= TLU_CLOCK_ENABLE;
 
 // TLU clock
 OFDDRCPE OFDDRCPE_TRIGGER_CLOCK (
-    .CE(TLU_CLOCK_ENABLE), 
+    .CE((TLU_TRIGGER_CLOCK_INVERT==1'b1)? TLU_CLOCK_ENABLE : tlu_clock_enable_negedge),
     .C0(CLK_5),
     .C1(~CLK_5),
     .D0((TLU_TRIGGER_CLOCK_INVERT==1'b1)? 1'b0 : 1'b1), // normal: 1'b0
@@ -375,15 +378,6 @@ three_stage_synchronizer #(
     .OUT(TLU_TRIGGER_DATA_DELAY_CLK_5)
 );
 
-wire [3:0] TLU_TRIGGER_DATA_CLOCK_CYCLES_CLK_5;
-three_stage_synchronizer #(
-    .WIDTH(3)
-) tlu_trigger_data_clock_cycles_sync (
-    .CLK(CLK_5),
-    .IN(TLU_TRIGGER_DATA_CLOCK_CYCLES),
-    .OUT(TLU_TRIGGER_DATA_CLOCK_CYCLES_CLK_5)
-);
-
 wire TLU_TRIGGER_DATA_MSB_FIRST_CLK_5;
 three_stage_synchronizer tlu_trigger_data_msb_first_sync (
     .CLK(CLK_5),
@@ -410,7 +404,6 @@ tlu_serial_to_parallel_fsm tlu_serial_to_parallel_fsm_module (
     .TLU_RECEIVE_DATA_FLAG(TLU_RECEIVE_DATA_FLAG_CLK_5),
     .TLU_CLOCK_ENABLE(TLU_CLOCK_ENABLE),
     .TLU_DATA_RECEIVED_FLAG(TLU_DATA_RECEIVED_FLAG_CLK_5),
-    .TLU_TRIGGER_DATA_CLOCK_CYCLES(TLU_TRIGGER_DATA_CLOCK_CYCLES_CLK_5),
     
     .TLU_DATA(TLU_DATA_CLK_5),
     .TLU_DATA_SAVE_SIGNAL(TLU_DATA_SAVE_SIGNAL_CLK_5),
