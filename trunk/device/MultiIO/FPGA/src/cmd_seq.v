@@ -85,10 +85,7 @@ three_stage_synchronizer conf_ena_ext_start_sync (
 
 (* RAM_STYLE="{AUTO | BLOCK |  BLOCK_POWER1 | BLOCK_POWER2}" *)
 reg [7:0] cmd_mem [2047:0];
-always @(posedge BUS_CLK) begin
-    if (BUS_WR && BUS_ADD >= 8)
-        cmd_mem[BUS_ADD[10:0]-8] <= BUS_DATA_IN;
-    
+always @ (negedge BUS_CLK) begin
     if(BUS_ADD == 1)
         BUS_DATA_OUT <= {7'b0, CONF_FINISH};
     else if(BUS_ADD < 8)
@@ -97,6 +94,11 @@ always @(posedge BUS_CLK) begin
         BUS_DATA_OUT <= cmd_mem[BUS_ADD[10:0]-8];
 end
 
+always @ (posedge BUS_CLK) begin
+    if (BUS_WR && BUS_ADD >= 8)
+        cmd_mem[BUS_ADD[10:0]-8] <= BUS_DATA_IN;
+end
+        
 reg [7:0] CMD_MEM_DATA;
 reg [10:0] CMD_MEM_ADD;
 always @(posedge CMD_CLK_IN)

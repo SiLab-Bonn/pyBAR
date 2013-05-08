@@ -91,9 +91,9 @@ wire            TLU_DATA_SAVE_SIGNAL;   // TLU trigger parallel data flag synchr
 wire            TLU_DATA_SAVE_FLAG;
 wire            TLU_DATA_SAVED_FLAG;
 wire    [31:0]  TLU_DATA_WITH_HEADER;   // TLU trigger parallel data synchronized to XCK
-wire    [30:0]  TLU_DATA;
+wire    [31:0]  TLU_DATA;
 
-assign TLU_DATA_WITH_HEADER = {1'b1, TLU_DATA};
+assign TLU_DATA_WITH_HEADER = {1'b1, TLU_DATA[30:0]}; // MSB always 1 to identify TLU trigger number
 
 assign TX[0] = TLU_CLOCK; // trigger clock; also connected to RJ45 output
 assign TX[1] = TLU_BUSY; // in TLU handshake mode TLU_BUSY signal; also connected to RJ45 output
