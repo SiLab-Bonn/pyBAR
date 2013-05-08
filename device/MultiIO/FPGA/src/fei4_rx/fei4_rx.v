@@ -20,23 +20,23 @@ module fei4_rx
     input BUS_RD
 ); 
 
-  // 0 - soft reset
-  // 1 - status
-  // 2-3 fifo size
-  // 4 - code_err_cnt
-  // 5 - lost_err_cnt
-  
-  wire SOFT_RST;
-  assign SOFT_RST = (BUS_ADD==0 && BUS_WR);
-  
-  wire [15:0] fifo_size;
-  wire [7:0] code_err_cnt, lost_err_cnt;
-  wire phase_align_error;
-  wire [7:0] eye_size, search_size;
-  
-  always@(*) begin
+// 0 - soft reset
+// 1 - status
+// 2-3 fifo size
+// 4 - code_err_cnt
+// 5 - lost_err_cnt
+
+wire SOFT_RST;
+assign SOFT_RST = (BUS_ADD==0 && BUS_WR);
+
+wire [15:0] fifo_size;
+wire [7:0] code_err_cnt, lost_err_cnt;
+wire phase_align_error;
+wire [7:0] eye_size, search_size;
+
+always @ (negedge BUS_CLK) begin //(*) begin
     BUS_DATA_OUT = 0;
-  
+
     if(BUS_ADD == 1)
         BUS_DATA_OUT = {6'b0, phase_align_error, RX_READY};
     else if(BUS_ADD == 2)
@@ -49,20 +49,32 @@ module fei4_rx
         BUS_DATA_OUT = lost_err_cnt;
     else if(BUS_ADD == 6)
         BUS_DATA_OUT = eye_size;
-	 else if(BUS_ADD == 7)
+    else if(BUS_ADD == 7)
         BUS_DATA_OUT = search_size;
-  end
-  
-  wire RST;
-  assign RST = BUS_RST | SOFT_RST; 
-  
-  wire ready_rec;
-  assign RX_READY = ready_rec && code_err_cnt == 0;
-  
-  receiver_logic ireceiver_logic ( 
-                                  .bus_reset(RST), .ioclk(RX_CLK), .bus_clk(BUS_CLK), .read(FIFO_READ), .data(FIFO_DATA), .empty(FIFO_EMPTY), 
-                                  .ready(ready_rec), .rx(RX_DATA), .lost_err_cnt(lost_err_cnt), .code_err_cnt(code_err_cnt), .fifo_size(fifo_size), 
-                                  .phase_align_error(phase_align_error), .eye_size(eye_size), .search_size(search_size));
+end
+
+wire RST;
+assign RST = BUS_RST | SOFT_RST; 
+
+wire ready_rec;
+assign RX_READY = ready_rec && code_err_cnt == 0;
+
+receiver_logic ireceiver_logic ( 
+    .bus_reset(RST),
+    .ioclk(RX_CLK),
+    .bus_clk(BUS_CLK),
+    .read(FIFO_READ),
+    .data(FIFO_DATA),
+    .empty(FIFO_EMPTY),
+    .ready(ready_rec),
+    .rx(RX_DATA),
+    .lost_err_cnt(lost_err_cnt),
+    .code_err_cnt(code_err_cnt),
+    .fifo_size(fifo_size),
+    .phase_align_error(phase_align_error),
+    .eye_size(eye_size),
+    .search_size(search_size)
+);
                                   
 
 endmodule

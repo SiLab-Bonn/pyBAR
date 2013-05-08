@@ -75,7 +75,7 @@ reg [20:0] CONF_SIZE; //1 - 2 -3
 reg [7:0] CONF_READ_ERROR;
 
 
-always@(*) begin
+always @ (negedge BUS_CLK) begin //(*) begin
     BUS_DATA_OUT = 0;
     
     if(BUS_ADD == 1)

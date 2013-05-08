@@ -53,7 +53,7 @@ TIMESPEC TS_FALSE_BUS_WCLK = FROM "tn_BUS_CLK" TO "tn_RX_WCLK" TIG;
 
 
 # ------ Overrride clock placement problems with ISE 11.x ----------
-#NET "FCKR" CLOCK_DEDICATED_ROUTE = FALSE;
+#NET "FCKR"     CLOCK_DEDICATED_ROUTE = FALSE;
 #NET "XCKR"     CLOCK_DEDICATED_ROUTE = FALSE;
 # ------ USB-Interface ---------------------------------------------
 
