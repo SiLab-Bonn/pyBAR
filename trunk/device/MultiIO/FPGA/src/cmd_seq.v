@@ -15,7 +15,8 @@ module cmd_seq
     CMD_EXT_START_FLAG,
     CMD_EXT_START_ENABLE,
     CMD_DATA,
-    CMD_READY
+    CMD_READY,
+    CMD_READY_FLAG
 ); 
 
 
@@ -36,6 +37,7 @@ output CMD_EXT_START_ENABLE;
 output CMD_DATA;
 output CMD_CLK_OUT;
 output CMD_READY;
+output CMD_READY_FLAG;
 
 
 wire SOFT_RST; //0
@@ -278,7 +280,7 @@ assign CMD_DATA = CONF_EN_NEGEDGE_DATA ? cmd_data_neg : cmd_data_pos;
 //BUFGCE BUFGCE_inst ( .O(CMD_CLK_OUT),  .CE(CONF_EN_CLOCK_GATE && ), .I(CMD_CLK_IN) );
 assign CMD_CLK_OUT = CMD_CLK_IN;
 
-// reeady sync 
+// ready sync 
 reg ready_sync_in;
 always @ (posedge CMD_CLK_IN)
     if (state == WAIT)
@@ -286,11 +288,10 @@ always @ (posedge CMD_CLK_IN)
     else
         ready_sync_in <= 1'b0;
 
-// reg ready_sync_ff, ready_sync;
-// always @(posedge BUS_CLK) begin
-    // ready_sync_ff <= ready_sync_in;
-    // ready_sync <= ready_sync_ff;
-// end
+reg ready_sync_in_ff;
+always @(posedge CMD_CLK_IN) begin
+    ready_sync_in_ff <= ready_sync_in;
+end
 
 wire ready_sync;
 three_stage_synchronizer ready_signal_sync (
@@ -301,6 +302,7 @@ three_stage_synchronizer ready_signal_sync (
 
 assign CONF_FINISH = ready_sync;
 assign CMD_READY = ready_sync_in;
+assign CMD_READY_FLAG = ~ready_sync_in_ff & ready_sync_in;
   
     
 endmodule
