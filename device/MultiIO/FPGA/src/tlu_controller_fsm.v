@@ -22,8 +22,7 @@ module tlu_controller_fsm (
     output reg          TLU_RECEIVE_DATA_FLAG,
     input wire          TLU_DATA_RECEIVED_FLAG,
     input wire  [7:0]   TLU_TRIGGER_LOW_TIME_OUT,
-    output reg          TLU_TRIGGER_ABORT,
-    output reg          TLU_TRIGGER_DISABLE,
+    output reg          TLU_TRIGGER_ERROR,
     
     input wire          FIFO_NEAR_FULL
     
@@ -55,7 +54,7 @@ always @ (posedge CLK or posedge RESET)
     end
 
 // combinational always block, blocking assignments
-always @ (state or TLU_MODE or TLU_DATA_RECEIVED_FLAG or counter_trigger_low_time_out or CMD_READY or CMD_EXT_START_ENABLE or TLU_TRIGGER or TLU_TRIGGER_FLAG or TLU_TRIGGER_BUSY or TLU_TRIGGER_ABORT)
+always @ (state or TLU_MODE or TLU_DATA_RECEIVED_FLAG or counter_trigger_low_time_out or CMD_READY or CMD_EXT_START_ENABLE or TLU_TRIGGER or TLU_TRIGGER_FLAG or TLU_TRIGGER_BUSY or TLU_TRIGGER_ERROR)
     begin
         case (state)
 
@@ -73,7 +72,7 @@ always @ (state or TLU_MODE or TLU_DATA_RECEIVED_FLAG or counter_trigger_low_tim
 
             WAIT_FOR_TRIGGER_LOW:
             begin
-                if (TLU_TRIGGER_ABORT == 1'b1) next = IDLE;
+                if (TLU_TRIGGER_ERROR == 1'b1) next = IDLE;
                 else if ((TLU_MODE == 2'b10) && (TLU_TRIGGER == 1'b0)) next = WAIT_FOR_TLU_DATA; // FIXME: next state WAIT_FOR_TLU_DATA or WAIT_FOR_CMD
                 else if ((TLU_MODE == 2'b11) && (TLU_TRIGGER == 1'b0)) next = RECEIVE_TRIGGER_DATA;
                 else next = WAIT_FOR_TRIGGER_LOW;
@@ -129,10 +128,9 @@ always @ (posedge CLK or posedge RESET)
                 TLU_DEASSERT_VETO <= 1'b0;
                 TLU_BUSY <= 1'b0;
                 counter_trigger_low_time_out <= 8'b0000_0000;
-                TLU_TRIGGER_ABORT <= 1'b0;
+                TLU_TRIGGER_ERROR <= 1'b0;
                 TLU_TRIGGER_DONE <= 1'b1;
                 CMD_EXT_START_FLAG <= 1'b0;
-                TLU_TRIGGER_DISABLE <= 1'b0;
                 
             end
         else
@@ -143,10 +141,9 @@ always @ (posedge CLK or posedge RESET)
                 TLU_DEASSERT_VETO <= 1'b0;
                 TLU_BUSY <= 1'b0;
                 counter_trigger_low_time_out <= 8'b0000_0000;
-                TLU_TRIGGER_ABORT <= 1'b0;
+                TLU_TRIGGER_ERROR <= 1'b0;
                 TLU_TRIGGER_DONE <= 1'b0;
                 CMD_EXT_START_FLAG <= 1'b0;
-                TLU_TRIGGER_DISABLE <= 1'b0;
 
                 case (next)
 
@@ -165,19 +162,13 @@ always @ (posedge CLK or posedge RESET)
                             end
                         //TLU_BUSY <= 1'b0;
                         counter_trigger_low_time_out <= 8'b0000_0000;
-                        TLU_TRIGGER_ABORT <= 1'b0;
+                        TLU_TRIGGER_ERROR <= 1'b0;
                         TLU_TRIGGER_DONE <= 1'b0;
                         CMD_EXT_START_FLAG <= 1'b0;
-                        if ((CMD_READY == 1'b1) && (CMD_EXT_START_ENABLE == 1'b1))
-                        begin
-                            TLU_TRIGGER_DISABLE <= 1'b0;
+                        if (((CMD_READY == 1'b1) && (CMD_EXT_START_ENABLE == 1'b1)) || TLU_TRIGGER_BUSY == 1'b1)
                             TLU_BUSY <= 1'b0; // FIXME: hack to make first trigger get accepted
-                        end
                         else
-                        begin
-                           TLU_TRIGGER_DISABLE <= 1'b1; // FIXME: hack to make first trigger get accepted
-                           TLU_BUSY <= 1'b1;
-                        end
+                            TLU_BUSY <= 1'b1;
                     end
                     
                     SEND_COMMAND:
@@ -187,10 +178,9 @@ always @ (posedge CLK or posedge RESET)
                         TLU_DEASSERT_VETO <= 1'b0;
                         TLU_BUSY <= 1'b1;
                         counter_trigger_low_time_out <= 8'b0000_0000;
-                        TLU_TRIGGER_ABORT <= 1'b0;
+                        TLU_TRIGGER_ERROR <= 1'b0;
                         TLU_TRIGGER_DONE <= 1'b0;
                         CMD_EXT_START_FLAG <= 1'b1;
-                        TLU_TRIGGER_DISABLE <= 1'b0;
                     end
                     
                     WAIT_FOR_TRIGGER_LOW:
@@ -204,12 +194,16 @@ always @ (posedge CLK or posedge RESET)
                         else
                             counter_trigger_low_time_out <= counter_trigger_low_time_out;
                         if ((counter_trigger_low_time_out >= TLU_TRIGGER_LOW_TIME_OUT) && (TLU_TRIGGER_LOW_TIME_OUT != 8'b0000_0000))
-                            TLU_TRIGGER_ABORT <= 1'b1;
+                        begin
+                            TLU_TRIGGER_ERROR <= 1'b1;
+                            TLU_TRIGGER_DONE <= 1'b1; // send done flag to reset trigger task domain crossing
+                        end
                         else
-                            TLU_TRIGGER_ABORT <= 1'b0;
-                        TLU_TRIGGER_DONE <= 1'b0;
+                        begin
+                            TLU_TRIGGER_ERROR <= 1'b0;
+                            TLU_TRIGGER_DONE <= 1'b0;
+                        end
                         CMD_EXT_START_FLAG <= 1'b0;
-                        TLU_TRIGGER_DISABLE <= 1'b0;
                     end
 
                     RECEIVE_TRIGGER_DATA:
@@ -219,10 +213,9 @@ always @ (posedge CLK or posedge RESET)
                         TLU_DEASSERT_VETO <= 1'b0;
                         TLU_BUSY <= 1'b1;
                         counter_trigger_low_time_out <= 8'b0000_0000;
-                        TLU_TRIGGER_ABORT <= 1'b0;
+                        TLU_TRIGGER_ERROR <= 1'b0;
                         TLU_TRIGGER_DONE <= 1'b0;
                         CMD_EXT_START_FLAG <= 1'b0;
-                        TLU_TRIGGER_DISABLE <= 1'b0;
                     end
 
                     WAIT_FOR_TLU_DATA:
@@ -232,10 +225,9 @@ always @ (posedge CLK or posedge RESET)
                         TLU_DEASSERT_VETO <= 1'b0;
                         TLU_BUSY <= 1'b1;
                         counter_trigger_low_time_out <= 8'b0000_0000;
-                        TLU_TRIGGER_ABORT <= 1'b0;
+                        TLU_TRIGGER_ERROR <= 1'b0;
                         TLU_TRIGGER_DONE <= 1'b0;
                         CMD_EXT_START_FLAG <= 1'b0;
-                        TLU_TRIGGER_DISABLE <= 1'b0;
                     end
 
                     WAIT_FOR_CMD:
@@ -245,10 +237,9 @@ always @ (posedge CLK or posedge RESET)
                         TLU_DEASSERT_VETO <= 1'b0;
                         TLU_BUSY <= 1'b1;
                         counter_trigger_low_time_out <= 8'b0000_0000;
-                        TLU_TRIGGER_ABORT <= 1'b0;
+                        TLU_TRIGGER_ERROR <= 1'b0;
                         TLU_TRIGGER_DONE <= 1'b0;
                         CMD_EXT_START_FLAG <= 1'b0;
-                        TLU_TRIGGER_DISABLE <= 1'b0;
                     end
                     
                     SEND_TLU_TRIGGER_DONE:
@@ -258,10 +249,9 @@ always @ (posedge CLK or posedge RESET)
                         TLU_DEASSERT_VETO <= 1'b0;
                         TLU_BUSY <= 1'b1;
                         counter_trigger_low_time_out <= 8'b0000_0000;
-                        TLU_TRIGGER_ABORT <= 1'b0;
+                        TLU_TRIGGER_ERROR <= 1'b0;
                         TLU_TRIGGER_DONE <= 1'b1;
                         CMD_EXT_START_FLAG <= 1'b0;
-                        TLU_TRIGGER_DISABLE <= 1'b0;
                     end
 
                     WAIT_FOR_TLU_TRIGGER_BUSY_LOW:
@@ -271,10 +261,9 @@ always @ (posedge CLK or posedge RESET)
                         TLU_DEASSERT_VETO <= 1'b0;
                         TLU_BUSY <= 1'b1;
                         counter_trigger_low_time_out <= 8'b0000_0000;
-                        TLU_TRIGGER_ABORT <= 1'b0;
+                        TLU_TRIGGER_ERROR <= 1'b0;
                         TLU_TRIGGER_DONE <= 1'b0;
                         CMD_EXT_START_FLAG <= 1'b0;
-                        TLU_TRIGGER_DISABLE <= 1'b0;
                     end
 
 

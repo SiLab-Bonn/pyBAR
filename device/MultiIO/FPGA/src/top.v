@@ -53,7 +53,7 @@ wire BUS_CLK;
 wire BUS_CLK270;
 wire CLK_40;
 wire CLK_160;
-wire CLK_5;
+wire TLU_CLK;
 wire CLK_LOCKED;
 
 assign POWER_EN_VD1 = 1'b1;
@@ -85,15 +85,7 @@ assign LEMO_RESET = LEMO_RX[1];
 wire            RJ45_ENABLED;
 wire            TLU_BUSY;                   // busy signal to TLU to deassert trigger
 wire            TLU_CLOCK;
-wire            CMD_READY;
-
-wire            TLU_DATA_SAVE_SIGNAL;   // TLU trigger parallel data flag synchronized to XCK
-wire            TLU_DATA_SAVE_FLAG;
-wire            TLU_DATA_SAVED_FLAG;
-wire    [31:0]  TLU_DATA_WITH_HEADER;   // TLU trigger parallel data synchronized to XCK
-wire    [31:0]  TLU_DATA;
-
-assign TLU_DATA_WITH_HEADER = {1'b1, TLU_DATA[30:0]}; // MSB always 1 to identify TLU trigger number
+wire            CMD_READY, CMD_READY_FLAG;
 
 assign TX[0] = TLU_CLOCK; // trigger clock; also connected to RJ45 output
 assign TX[1] = TLU_BUSY; // in TLU handshake mode TLU_BUSY signal; also connected to RJ45 output
@@ -137,7 +129,7 @@ clk_gen iclkgen(
     .CLKINBUF270(BUS_CLK270),
     .CLKOUT160(CLK_160),
     .CLKOUT40(CLK_40),
-    .CLKOUT5(CLK_5),
+    .CLKOUT5(TLU_CLK),
     .LOCKED(CLK_LOCKED)
 );
 
@@ -228,36 +220,42 @@ cmd_seq icmd
     .CMD_EXT_START_FLAG(CMD_EXT_START_FLAG),
     .CMD_EXT_START_ENABLE(CMD_EXT_START_ENABLE),
     .CMD_DATA(CMD_DATA),
-    .CMD_READY(CMD_READY)
-); 
-
-
-wire FIFO_READ, FIFO_EMPTY;
-wire [31:0] FIFO_DATA;
-assign FIFO_DATA[31:24] = 8'b0;
-
-fei4_rx ifei4_rx(
-    .RX_CLK(CLK_160),
-    .RX_CLK_LOCKED(CLK_LOCKED),
-    .RX_DATA(FE_RX),
-    
-    .RX_READY(RX_READY),
-     
-    .FIFO_READ(FIFO_READ),
-    .FIFO_EMPTY(FIFO_EMPTY),
-    .FIFO_DATA(FIFO_DATA[23:0]),
-     
-    .BUS_CLK(BUS_CLK),
-    .BUS_ADD(RX_ADD),
-    .BUS_DATA_IN(BUS_DATA_IN),
-    .BUS_DATA_OUT(RX_BUS_DATA_OUT),
-    .BUS_RST(BUS_RST),
-    .BUS_WR(RX_BUS_WR),
-    .BUS_RD(RX_BUS_RD)
+    .CMD_READY(CMD_READY),
+    .CMD_READY_FLAG(CMD_READY_FLAG)
 );
+
+wire            FIFO_READ;
+wire            FIFO_EMPTY;
+wire    [31:0]  FIFO_DATA;
+
+wire            FE_FIFO_READ;
+wire            FE_FIFO_EMPTY;
+wire    [31:0]  FE_FIFO_DATA;
+
+wire            TLU_FIFO_READ;
+wire            TLU_FIFO_EMPTY;
+wire    [31:0]  TLU_FIFO_DATA;
+
+// FIFO
+reg TLU_FIFO_ACCESS;
+always @ (posedge BUS_CLK)
+begin
+    if (TLU_BUSY == 1'b1 && FE_FIFO_EMPTY == 1'b1)
+        TLU_FIFO_ACCESS <= 1'b1;
+    else if (TLU_BUSY == 1'b0)
+        TLU_FIFO_ACCESS <= 1'b0;
+    else
+        TLU_FIFO_ACCESS <= TLU_FIFO_ACCESS;
+end
+        
+assign FE_FIFO_READ = (TLU_FIFO_ACCESS == 1'b0) ? FIFO_READ : 1'b0;
+assign TLU_FIFO_READ = (TLU_FIFO_ACCESS == 1'b1) ? FIFO_READ : 1'b0;
+assign FIFO_EMPTY = (TLU_FIFO_ACCESS == 1'b1) ? TLU_FIFO_EMPTY : FE_FIFO_EMPTY;
+assign FIFO_DATA = (TLU_FIFO_ACCESS == 1'b1) ? TLU_FIFO_DATA : FE_FIFO_DATA;
 
 wire USB_READ;
 assign USB_READ = FREAD && FSTROBE;
+
 out_fifo iout_fifo
 (
     .BUS_CLK(BUS_CLK),
@@ -288,6 +286,39 @@ out_fifo iout_fifo
     .FIFO_READ_ERROR(FIFO_READ_ERROR)
 );
 
+// FIXME temp assignment
+// assign FE_FIFO_READ = FIFO_READ;
+// assign FIFO_EMPTY = FE_FIFO_EMPTY;
+// assign FIFO_DATA = FE_FIFO_DATA;
+
+fei4_rx ifei4_rx(
+    .RX_CLK(CLK_160),
+    .RX_CLK_LOCKED(CLK_LOCKED),
+    .RX_DATA(FE_RX),
+    
+    .RX_READY(RX_READY),
+     
+    .FIFO_READ(FE_FIFO_READ),
+    .FIFO_EMPTY(FE_FIFO_EMPTY),
+    .FIFO_DATA(FE_FIFO_DATA),
+     
+    .BUS_CLK(BUS_CLK),
+    .BUS_ADD(RX_ADD),
+    .BUS_DATA_IN(BUS_DATA_IN),
+    .BUS_DATA_OUT(RX_BUS_DATA_OUT),
+    .BUS_RST(BUS_RST),
+    .BUS_WR(RX_BUS_WR),
+    .BUS_RD(RX_BUS_RD)
+);
+
+// assign TLU_FIFO_READ = FIFO_READ;
+// assign FIFO_EMPTY = TLU_FIFO_EMPTY;
+// assign FIFO_DATA = TLU_FIFO_DATA;
+
+wire            TLU_DATA_SAVE_SIGNAL;
+wire            TLU_DATA_SAVE_FLAG;
+wire            TLU_DATA_SAVED_FLAG;
+wire    [31:0]  TLU_DATA;
 
 tlu_controller tlu_controller_module (
     .BUS_CLK(BUS_CLK),
@@ -298,9 +329,13 @@ tlu_controller tlu_controller_module (
     .BUS_WR(TLU_WR),
     .BUS_DATA_OUT(TLU_BUS_DATA_OUT),
     
-    .CLK_160(CLK_160),
-    .CLK_40(CLK_40),
-    .CLK_5(CLK_5),
+    .FCLK(CLK_160),
+    .CMD_CLK(CLK_40),
+    .TLU_CLK(TLU_CLK), // FIXME: TLU_CLK
+    
+    .FIFO_READ(TLU_FIFO_READ),
+    .FIFO_EMPTY(TLU_FIFO_EMPTY),
+    .FIFO_DATA(TLU_FIFO_DATA),
     
     .RJ45_TRIGGER(RJ45_TRIGGER),
     .LEMO_TRIGGER(LEMO_TRIGGER),
@@ -309,7 +344,7 @@ tlu_controller tlu_controller_module (
     .RJ45_ENABLED(RJ45_ENABLED),
     .TLU_BUSY(TLU_BUSY),
     .TLU_CLOCK(TLU_CLOCK),
-    .TLU_RESET_FLAG(),
+    //.TLU_RESET_FLAG(),
     
     .CMD_READY(CMD_READY),
     .CMD_EXT_START_FLAG(CMD_EXT_START_FLAG),
@@ -320,28 +355,28 @@ tlu_controller tlu_controller_module (
     // FIXME: temporary assigned internally to make TLU running
     //.TLU_DATA_SAVED_FLAG(TLU_DATA_SAVED_FLAG),
     .TLU_DATA(TLU_DATA),
-    .TLU_TRIGGER_ABORT(),
+    .TLU_TRIGGER_ERROR(),
 
     .FIFO_NEAR_FULL(1'b0)
 );
 
-
+// Chipscope
 `ifdef SYNTHESIS_NOT
+//`ifdef SYNTHESIS
 wire [35:0] control_bus;
 chipscope_icon ichipscope_icon
 (
     .CONTROL0(control_bus)
-); 
+);
 
-chipscope_ila ichipscope_ila 
+chipscope_ila ichipscope_ila
 (
     .CONTROL(control_bus),
-    .CLK(BUS_CLK), 
-    .TRIG0({ADD_REAL, BUS_DATA_IN, TLU_WR, TLU_RD, WR_B, RD_B})
-    //.CLK(CLK_160), 
+    .CLK(CLK_160),
+    .TRIG0({FIFO_DATA[22:0], TLU_DATA_SAVE_FLAG, TLU_BUSY, TLU_FIFO_EMPTY, TLU_FIFO_READ, FE_FIFO_EMPTY, FE_FIFO_READ, TLU_FIFO_ACCESS, FIFO_EMPTY, FIFO_READ})
+    //.CLK(CLK_160),
     //.TRIG0({FMODE, FSTROBE, FREAD, CMD_BUS_WR, RX_BUS_WR, FIFO_WR, BUS_DATA_IN, FE_RX ,WR_B, RD_B})
-        
-); 
+);
 `endif
 
 

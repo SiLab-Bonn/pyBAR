@@ -9,7 +9,7 @@ module fei4_rx
      
     input FIFO_READ,
     output FIFO_EMPTY,
-    output [23:0] FIFO_DATA,
+    output [31:0] FIFO_DATA,
 
     input BUS_CLK,
     input [15:0] BUS_ADD,
@@ -18,7 +18,10 @@ module fei4_rx
     input BUS_RST,
     input BUS_WR,
     input BUS_RD
-); 
+);
+
+wire [23:0] FE_DATA;
+assign FIFO_DATA = {8'b0000_0000, FE_DATA};
 
 // 0 - soft reset
 // 1 - status
@@ -64,7 +67,7 @@ receiver_logic ireceiver_logic (
     .ioclk(RX_CLK),
     .bus_clk(BUS_CLK),
     .read(FIFO_READ),
-    .data(FIFO_DATA),
+    .data(FE_DATA),
     .empty(FIFO_EMPTY),
     .ready(ready_rec),
     .rx(RX_DATA),
