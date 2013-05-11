@@ -12,7 +12,7 @@ module top (
     input wire WR_B,
     
     //high speed
-    inout wire [7:0] FD,
+    inout wire [7:0] FDATA,
     input wire FREAD,
     input wire FSTROBE,
     input wire FMODE,
@@ -55,6 +55,11 @@ wire CLK_40;
 wire CLK_160;
 wire TLU_CLK;
 wire CLK_LOCKED;
+
+wire            TLU_DATA_SAVE_SIGNAL;
+wire            TLU_DATA_SAVE_FLAG;
+wire            TLU_DATA_SAVED_FLAG;
+wire    [31:0]  TLU_DATA;
 
 assign POWER_EN_VD1 = 1'b1;
 assign DEBUG_D = 16'ha5a5;
@@ -237,21 +242,23 @@ wire            TLU_FIFO_EMPTY;
 wire    [31:0]  TLU_FIFO_DATA;
 
 // FIFO
+wire TLU_TRIGGER_ACCEPTED;
 reg TLU_FIFO_ACCESS;
 always @ (posedge BUS_CLK)
 begin
-    if (TLU_BUSY == 1'b1 && FE_FIFO_EMPTY == 1'b1)
+    if (TLU_DATA_SAVE_SIGNAL == 1'b1 && FE_FIFO_EMPTY == 1'b1)
         TLU_FIFO_ACCESS <= 1'b1;
-    else if (TLU_BUSY == 1'b0)
+    else if (TLU_DATA_SAVE_SIGNAL == 1'b0)
         TLU_FIFO_ACCESS <= 1'b0;
     else
         TLU_FIFO_ACCESS <= TLU_FIFO_ACCESS;
 end
-        
+
 assign FE_FIFO_READ = (TLU_FIFO_ACCESS == 1'b0) ? FIFO_READ : 1'b0;
 assign TLU_FIFO_READ = (TLU_FIFO_ACCESS == 1'b1) ? FIFO_READ : 1'b0;
 assign FIFO_EMPTY = (TLU_FIFO_ACCESS == 1'b1) ? TLU_FIFO_EMPTY : FE_FIFO_EMPTY;
 assign FIFO_DATA = (TLU_FIFO_ACCESS == 1'b1) ? TLU_FIFO_DATA : FE_FIFO_DATA;
+
 
 wire USB_READ;
 assign USB_READ = FREAD && FSTROBE;
@@ -276,7 +283,7 @@ out_fifo iout_fifo
     .SRAM_WE_B(SRAM_WE_B),
     
     .USB_READ(USB_READ),
-    .USB_DATA(FD),
+    .USB_DATA(FDATA),
     
     .FIFO_READ_NEXT_OUT(FIFO_READ),
     .FIFO_EMPTY_IN(FIFO_EMPTY),
@@ -315,11 +322,6 @@ fei4_rx ifei4_rx(
 // assign FIFO_EMPTY = TLU_FIFO_EMPTY;
 // assign FIFO_DATA = TLU_FIFO_DATA;
 
-wire            TLU_DATA_SAVE_SIGNAL;
-wire            TLU_DATA_SAVE_FLAG;
-wire            TLU_DATA_SAVED_FLAG;
-wire    [31:0]  TLU_DATA;
-
 tlu_controller tlu_controller_module (
     .BUS_CLK(BUS_CLK),
     .BUS_RST(BUS_RST),
@@ -329,9 +331,8 @@ tlu_controller tlu_controller_module (
     .BUS_WR(TLU_WR),
     .BUS_DATA_OUT(TLU_BUS_DATA_OUT),
     
-    .FCLK(CLK_160),
     .CMD_CLK(CLK_40),
-    .TLU_CLK(TLU_CLK), // FIXME: TLU_CLK
+    .TLU_CLK(CLK_40), // FIXME: TLU_CLK
     
     .FIFO_READ(TLU_FIFO_READ),
     .FIFO_EMPTY(TLU_FIFO_EMPTY),
@@ -355,14 +356,16 @@ tlu_controller tlu_controller_module (
     // FIXME: temporary assigned internally to make TLU running
     //.TLU_DATA_SAVED_FLAG(TLU_DATA_SAVED_FLAG),
     .TLU_DATA(TLU_DATA),
-    .TLU_TRIGGER_ERROR(),
+    .TLU_TRIGGER_LOW_TIMEOUT_ERROR(),
+    .TLU_TRIGGER_ACCEPT_ERROR(),
+    .TLU_TRIGGER_ACCEPTED(TLU_TRIGGER_ACCEPTED),
 
     .FIFO_NEAR_FULL(1'b0)
 );
 
 // Chipscope
-`ifdef SYNTHESIS_NOT
-//`ifdef SYNTHESIS
+//`ifdef SYNTHESIS_NOT
+`ifdef SYNTHESIS
 wire [35:0] control_bus;
 chipscope_icon ichipscope_icon
 (

@@ -17,7 +17,6 @@
     input wire                  BUS_WR,
     output reg      [7:0]       BUS_DATA_OUT,
     
-    input wire                  FCLK,
     input wire                  CMD_CLK,
     input wire                  TLU_CLK,
     
@@ -43,7 +42,9 @@
     // FIXME: temporary assigned internally to make TLU running
     //input wire                  TLU_DATA_SAVED_FLAG,
     output wire     [31:0]      TLU_DATA,              // TLU trigger parallel data
-    output wire                 TLU_TRIGGER_ERROR,
+    output wire                 TLU_TRIGGER_LOW_TIMEOUT_ERROR,
+    output wire                 TLU_TRIGGER_ACCEPT_ERROR,
+    output wire                 TLU_TRIGGER_ACCEPTED,
     
     input wire                  FIFO_NEAR_FULL
 );
@@ -54,8 +55,12 @@ wire TLU_DATA_SAVE_SIGNAL_BUS_CLK;
 assign TLU_DATA_SAVE_SIGNAL = TLU_DATA_SAVE_SIGNAL_BUS_CLK;
 wire TLU_DATA_SAVE_FLAG_BUS_CLK;
 assign TLU_DATA_SAVE_FLAG = TLU_DATA_SAVE_FLAG_BUS_CLK;
-wire TLU_TRIGGER_ERROR_BUS_CLK;
-assign TLU_TRIGGER_ERROR = TLU_TRIGGER_ERROR_BUS_CLK;
+wire TLU_TRIGGER_LOW_TIMEOUT_ERROR_BUS_CLK;
+assign TLU_TRIGGER_LOW_TIMEOUT_ERROR = TLU_TRIGGER_LOW_TIMEOUT_ERROR_BUS_CLK;
+wire TLU_TRIGGER_ACCEPT_ERROR_BUS_CLK;
+assign TLU_TRIGGER_ACCEPT_ERROR = TLU_TRIGGER_ACCEPT_ERROR_BUS_CLK;
+wire TLU_TRIGGER_ACCEPTED_BUS_CLK;
+assign TLU_TRIGGER_ACCEPTED = TLU_TRIGGER_ACCEPTED_BUS_CLK;
 
 //wire TLU_DATA_SAVED_FLAG_BUS_CLK;
 //assign TLU_DATA_SAVED_FLAG_BUS_CLK = TLU_DATA_SAVED_FLAG;
@@ -109,7 +114,7 @@ reg [31:0] CURRENT_TRIGGER_NUMBER_BUF;
 
 always @ (negedge BUS_CLK)
 begin
-    BUS_DATA_OUT <= 0;
+    //BUS_DATA_OUT <= 0;
 	 
     if (BUS_ADD == 4)
         BUS_DATA_OUT <= CURRENT_TRIGGER_NUMBER_BUF[7:0];
@@ -121,6 +126,8 @@ begin
         BUS_DATA_OUT <= CURRENT_TRIGGER_NUMBER_BUF[31:24];
     else if(BUS_ADD < 4)
         BUS_DATA_OUT <= status_regs[BUS_ADD[2:0]]; // BUG AR 20391: use synchronous logic
+    else
+        BUS_DATA_OUT <= 0;
 end
 
 //always @(*)
@@ -210,9 +217,9 @@ wire                TLU_DATA_SAVE_SIGNAL_TLU_CLK;
 wire                TLU_DATA_SAVED_FLAG_TLU_CLK;
 wire                TLU_DATA_SAVE_FLAG_TLU_CLK;
 wire                TLU_TRIGGER_FLAG_BUS_CLK;
-wire                TLU_TRIGGER_BUSY_BUS_CLK;
-wire                TLU_TRIGGER_BUSY_FCLK;
-wire                TLU_TRIGGER_DONE_BUS_CLK;
+wire                TLU_RESET_FLAG_BUS_CLK;
+//wire                TLU_TRIGGER_BUSY_BUS_CLK;
+//wire                TLU_TRIGGER_DONE_BUS_CLK;
 
 reg tlu_clock_enable_negedge;
 always @ (negedge TLU_CLK)
@@ -231,82 +238,60 @@ OFDDRCPE OFDDRCPE_TRIGGER_CLOCK (
 );
 
 // Trigger input port select
-always @ (*)
+wire RJ45_TRIGGER_BUS_CLK, LEMO_TRIGGER_BUS_CLK, RJ45_RESET_BUS_CLK, LEMO_RESET_BUS_CLK;
+
+always @ (posedge BUS_CLK)
 begin
     if (RST)
-        RJ45_ENABLED = 1'b0;
+        RJ45_ENABLED <= 1'b0;
     else
     begin
-        if ((RJ45_TRIGGER && RJ45_RESET && !RJ45_ENABLED) || TLU_MODE == 2'b00)
-            RJ45_ENABLED = 1'b0;
+        if ((RJ45_TRIGGER_BUS_CLK && RJ45_RESET_BUS_CLK && !RJ45_ENABLED) || TLU_MODE == 2'b00)
+            RJ45_ENABLED <= 1'b0;
         else
-            RJ45_ENABLED = 1'b1;
+            RJ45_ENABLED <= 1'b1;
     end
 end
 
-wire TLU_TRIGGER, TLU_RESET;
-assign TLU_TRIGGER = (RJ45_ENABLED == 1'b1) ? RJ45_TRIGGER : LEMO_TRIGGER; // RJ45 inputs tied to 1 if no connector is plugged in
-assign TLU_RESET = (RJ45_ENABLED == 1'b1) ? RJ45_RESET : LEMO_RESET; // RJ45 inputs tied to 1 if no connector is plugged in
-
-wire TLU_TRIGGER_FCLK, TLU_TRIGGER_FLAG_FCLK, TLU_TRIGGER_BUS_CLK;
-reg TLU_TRIGGER_FCLK_FF;
-
-three_stage_synchronizer three_stage_tlu_trigger_synchronizer_FCLK (
-    .CLK(FCLK),
-    .IN(TLU_TRIGGER),
-    .OUT(TLU_TRIGGER_FCLK)
-);
-
-three_stage_synchronizer three_stage_tlu_trigger_synchronizer_BUS_CLK (
+three_stage_synchronizer three_stage_rj45_trigger_synchronizer_bus_clk (
     .CLK(BUS_CLK),
-    .IN(TLU_TRIGGER),
-    .OUT(TLU_TRIGGER_BUS_CLK)
+    .IN(RJ45_TRIGGER),
+    .OUT(RJ45_TRIGGER_BUS_CLK)
 );
 
-always @ (posedge FCLK)
-    TLU_TRIGGER_FCLK_FF <= TLU_TRIGGER_FCLK;
-
-assign TLU_TRIGGER_FLAG_FCLK = ~TLU_TRIGGER_FCLK_FF && TLU_TRIGGER_FCLK;
-
-task_domain_crossing tlu_trigger_flag_domain_crossing (
-    .CLK_A(FCLK),
-    .CLK_B(BUS_CLK),
-    .FLAG_IN_CLK_A(TLU_TRIGGER_FLAG_FCLK),
-    .FLAG_OUT_CLK_B(TLU_TRIGGER_FLAG_BUS_CLK),
-    .BUSY_CLK_A(TLU_TRIGGER_BUSY_FCLK),
-    .BUSY_CLK_B(),
-    .TASK_DONE_CLK_A(),
-    .TASK_DONE_CLK_B(TLU_TRIGGER_DONE_BUS_CLK)
-);
-
-three_stage_synchronizer tlu_trigger_busy_synchronizer (
+three_stage_synchronizer three_stage_lemo_trigger_synchronizer_bus_clk (
     .CLK(BUS_CLK),
-    .IN(TLU_TRIGGER_BUSY_FCLK),
-    .OUT(TLU_TRIGGER_BUSY_BUS_CLK)
+    .IN(LEMO_TRIGGER),
+    .OUT(LEMO_TRIGGER_BUS_CLK)
 );
 
-wire TLU_RESET_FCLK;
-three_stage_synchronizer three_tlu_reset_synchronizer (
-    .CLK(FCLK),
-    .IN(TLU_RESET),
-    .OUT(TLU_RESET_FCLK)
+three_stage_synchronizer three_stage_rj45_reset_synchronizer_bus_clk (
+    .CLK(BUS_CLK),
+    .IN(RJ45_RESET),
+    .OUT(RJ45_RESET_BUS_CLK)
 );
 
-reg TLU_RESET_FCLK_FF;
-wire TLU_RESET_FLAG_FCLK;
-
-always @ (posedge FCLK)
-    TLU_RESET_FCLK_FF <= TLU_RESET_FCLK;
-
-assign TLU_RESET_FLAG_FCLK = ~TLU_RESET_FCLK_FF && TLU_RESET_FCLK;
-
-wire TLU_RESET_FLAG_BUS_CLK;
-flag_domain_crossing tlu_reset_flag_domain_crossing (
-    .CLK_A(FCLK),
-    .CLK_B(BUS_CLK),
-    .FLAG_IN_CLK_A(TLU_RESET_FLAG_FCLK),
-    .FLAG_OUT_CLK_B(TLU_RESET_FLAG_BUS_CLK)
+three_stage_synchronizer three_stage_lemo_reset_synchronizer_bus_clk (
+    .CLK(BUS_CLK),
+    .IN(LEMO_RESET),
+    .OUT(LEMO_RESET_BUS_CLK)
 );
+
+wire TLU_TRIGGER_BUS_CLK, TLU_RESET_BUS_CLK;
+assign TLU_TRIGGER_BUS_CLK = (RJ45_ENABLED == 1'b1) ? RJ45_TRIGGER_BUS_CLK : LEMO_TRIGGER_BUS_CLK; // RJ45 inputs tied to 1 if no connector is plugged in
+assign TLU_RESET_BUS_CLK = (RJ45_ENABLED == 1'b1) ? RJ45_RESET_BUS_CLK : LEMO_RESET_BUS_CLK; // RJ45 inputs tied to 1 if no connector is plugged in
+
+reg TLU_TRIGGER_BUS_CLK_FF;
+always @ (posedge BUS_CLK)
+    TLU_TRIGGER_BUS_CLK_FF <= TLU_TRIGGER_BUS_CLK;
+
+assign TLU_TRIGGER_FLAG_BUS_CLK = ~TLU_TRIGGER_BUS_CLK_FF && TLU_TRIGGER_BUS_CLK;
+
+reg TLU_RESET_BUS_CLK_FF;
+always @ (posedge BUS_CLK)
+    TLU_RESET_BUS_CLK_FF <= TLU_RESET_BUS_CLK;
+
+assign TLU_RESET_FLAG_BUS_CLK = ~TLU_RESET_BUS_CLK_FF && TLU_RESET_BUS_CLK;
 
 wire CMD_READY_BUS_CLK;
 three_stage_synchronizer three_stage_cmd_ready_synchronizer (
@@ -340,8 +325,8 @@ tlu_controller_fsm tlu_controller_fsm_module (
     
     .TLU_TRIGGER(TLU_TRIGGER_BUS_CLK),
     .TLU_TRIGGER_FLAG(TLU_TRIGGER_FLAG_BUS_CLK),
-    .TLU_TRIGGER_BUSY(TLU_TRIGGER_BUSY_BUS_CLK),
-    .TLU_TRIGGER_DONE(TLU_TRIGGER_DONE_BUS_CLK),
+    // .TLU_TRIGGER_BUSY(TLU_TRIGGER_BUSY_BUS_CLK),
+    // .TLU_TRIGGER_DONE(TLU_TRIGGER_DONE_BUS_CLK),
     
     .TLU_MODE(TLU_MODE), // from register
     .TLU_BUSY(TLU_BUSY),
@@ -350,7 +335,9 @@ tlu_controller_fsm tlu_controller_fsm_module (
     .TLU_RECEIVE_DATA_FLAG(TLU_RECEIVE_DATA_FLAG_BUS_CLK),
     .TLU_DATA_RECEIVED_FLAG(TLU_DATA_RECEIVED_FLAG_BUS_CLK),
     .TLU_TRIGGER_LOW_TIME_OUT(TLU_TRIGGER_LOW_TIME_OUT), // from register
-    .TLU_TRIGGER_ERROR(TLU_TRIGGER_ERROR_BUS_CLK),
+    .TLU_TRIGGER_LOW_TIMEOUT_ERROR(TLU_TRIGGER_LOW_TIMEOUT_ERROR_BUS_CLK),
+    .TLU_TRIGGER_ACCEPT_ERROR(TLU_TRIGGER_ACCEPT_ERROR_BUS_CLK),
+    .TLU_TRIGGER_ACCEPTED(TLU_TRIGGER_ACCEPTED_BUS_CLK),
     
     .FIFO_NEAR_FULL(FIFO_NEAR_FULL)
     
@@ -399,7 +386,7 @@ three_stage_synchronizer tlu_trigger_data_msb_first_sync (
 wire TLU_TRIGGER_TLU_CLK;
 three_stage_synchronizer tlu_trigger_sync (
     .CLK(TLU_CLK),
-    .IN(TLU_TRIGGER),
+    .IN(RJ45_TRIGGER), // take TLU trigger number only from RJ45
     .OUT(TLU_TRIGGER_TLU_CLK)
 );
 
@@ -448,7 +435,7 @@ task_domain_crossing tlu_trigger_data_save_flag_domain_crossing (
 );
 
 // FIFO
-//assign FIFO_DATA = {1'b1, TLU_DATA_BUS_CLK[30:0]};
+//assign FIFO_DATA = {1'b1, TLU_TRIGGER_ACCEPT_ERROR, TLU_TRIGGER_LOW_TIMEOUT_ERROR, 14'b0, TLU_DATA_BUS_CLK[14:0]};
 //do something with FIFO_READ
 //assign FIFO_EMPTY = 1'b1;
 
@@ -466,7 +453,7 @@ begin
     begin
         if (TLU_DATA_SAVE_FLAG_BUS_CLK == 1'b1)
         begin
-            FIFO_DATA <= {1'b1, TLU_DATA_BUS_CLK[30:0]};
+            FIFO_DATA <= {1'b1, TLU_TRIGGER_ACCEPT_ERROR, TLU_TRIGGER_LOW_TIMEOUT_ERROR, 14'b0, TLU_DATA_BUS_CLK[14:0]}; // header, 16-bit error code, 15-bit TLU trigger number 
         end
         else if (FIFO_READ == 1'b1)
         begin
