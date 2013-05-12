@@ -1,8 +1,8 @@
 1. define environment variables:
 	- remeber to use the short form representation for your paths (program files = progra~1). Otherwise Visual Studio has issues
-	- HDF5 variable should be set to the installation subdirectory mentioning your version (like c:\progra~1\HDF_Group\HDF5\1.8.10)
-	- BLOSCvariable should be set to the directory with the BLOSC files (like C:\progra~1\HDF_Group\blosc-1.1.5)
+	- HDF5 environment variable should be set to the installation subdirectory mentioning your version (like c:\progra~1\HDF_Group\HDF5\1.8.10)
+	- BLOSC environment variable should be set to the directory with the BLOSC files (like C:\progra~1\HDF_Group\blosc-1.1.5)
 
 2. create a bin directory in the folder %BLOSC% and give access to the Visual Studio user to write into it. (right mouse click-->properties--> security...)
 3. open the solution and compile, only the release configuration writes into the BLOSC folder and has the appropriate compiler flags (SSE2) set
-4. you might need to set the correct path for the header/cpp files
+4. you might need to set the correct path for the header/cpp files, current visual studio bug

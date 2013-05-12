@@ -4,6 +4,9 @@ Microsoft Visual Studio Solution File, Format Version 11.00
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BLOSC", "BLOSC\BLOSC.vcxproj", "{DCB6BFB3-1044-46C4-8AC2-1E1738F5750A}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RawDataConverter", "RawDataConverter\RawDataConverter.vcxproj", "{0412B9AC-9A02-40CF-977B-F2247B613B73}"
+	ProjectSection(ProjectDependencies) = postProject
+		{DCB6BFB3-1044-46C4-8AC2-1E1738F5750A} = {DCB6BFB3-1044-46C4-8AC2-1E1738F5750A}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
