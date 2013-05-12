@@ -24,16 +24,16 @@
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\..\..\..\HDF5\blosc-1.1.5\hdf5\blosc_filter.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Interpret.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="defines.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Occupancy.h">
+    <ClInclude Include="Histogram.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Converter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -44,13 +44,13 @@
     <ClCompile Include="RawDataConverter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\..\..\..\HDF5\blosc-1.1.5\hdf5\blosc_filter.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Interpret.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Occupancy.cpp">
+    <ClCompile Include="Histogram.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Converter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
