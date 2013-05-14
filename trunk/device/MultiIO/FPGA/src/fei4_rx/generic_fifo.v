@@ -1,5 +1,14 @@
-module gerneric_fifo ( clk, reset, write, read, data_in, 
-                       full, empty, data_out, size);
+module gerneric_fifo (
+    clk,
+    reset,
+    write,
+    read,
+    data_in,
+    full,
+    empty,
+    data_out,
+    size
+);
 
 parameter DATA_SIZE = 32;
 parameter DEPTH = 8;
@@ -52,24 +61,22 @@ always@(posedge clk)
     else
         empty <= empty_loc;
 
-    
 assign empty_loc = (wr_pointer == rd_ponter);
 assign full = ((wr_pointer==(DEPTH-1) && rd_ponter==0) ||  (wr_pointer!=(DEPTH-1) && wr_pointer+1 == rd_ponter) );
 
 always@(posedge clk)
     if(write && !full)
         mem[wr_pointer] <= data_in;
-    
+
 always@(posedge clk)
     //if(read && !empty)
         data_out <= mem[rd_ponter];
-        
+
 always @ (*) begin
     if(wr_pointer >= rd_ponter)
         size = wr_pointer - rd_ponter;
     else
         size = wr_pointer + (DEPTH-rd_ponter); 
-end		
+end
 
-        
 endmodule
