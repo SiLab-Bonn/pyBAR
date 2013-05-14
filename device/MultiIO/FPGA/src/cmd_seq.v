@@ -1,7 +1,9 @@
 `default_nettype none
 
 module cmd_seq
-(
+#(
+    parameter CMD_MEM_SIZE = 2048
+) (
     BUS_CLK,
     BUS_RST,
     BUS_ADD,
@@ -17,7 +19,7 @@ module cmd_seq
     CMD_DATA,
     CMD_READY,
     CMD_READY_FLAG
-); 
+);
 
 
 
@@ -84,20 +86,21 @@ three_stage_synchronizer conf_ena_ext_start_sync (
     .OUT(CMD_EXT_START_ENABLE)
 );
 
-
-(* RAM_STYLE="{AUTO | BLOCK |  BLOCK_POWER1 | BLOCK_POWER2}" *)
-reg [7:0] cmd_mem [2047:0];
+(* RAM_STYLE="{AUTO | BLOCK |  BLOCK_POWER1}" *) // | BLOCK_POWER2}" *)
+reg [7:0] cmd_mem [CMD_MEM_SIZE-1:0];
 always @ (negedge BUS_CLK) begin
     if(BUS_ADD == 1)
         BUS_DATA_OUT <= {7'b0, CONF_FINISH};
     else if(BUS_ADD < 8)
         BUS_DATA_OUT <= status_regs[BUS_ADD[2:0]];
-    else
+    else if(BUS_ADD < CMD_MEM_SIZE) // FIXME: BUS_ADD < CMD_MEM_SIZE+8
         BUS_DATA_OUT <= cmd_mem[BUS_ADD[10:0]-8];
+    else
+        BUS_DATA_OUT <= 8'b0;
 end
 
 always @ (posedge BUS_CLK) begin
-    if (BUS_WR && BUS_ADD >= 8)
+    if (BUS_WR && BUS_ADD >= 8)  // FIXME: BUS_ADD < CMD_MEM_SIZE+8
         cmd_mem[BUS_ADD[10:0]-8] <= BUS_DATA_IN;
 end
         
@@ -303,6 +306,5 @@ three_stage_synchronizer ready_signal_sync (
 assign CONF_FINISH = ready_sync;
 assign CMD_READY = ready_sync_in;
 assign CMD_READY_FLAG = ~ready_sync_in_ff & ready_sync_in;
-  
-    
+
 endmodule

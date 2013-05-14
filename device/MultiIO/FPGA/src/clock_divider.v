@@ -1,5 +1,5 @@
 
-// clock devider generating clock and clock enable 
+// clock divider generating clock and clock enable 
 
 module clock_divider
 #(
@@ -8,29 +8,29 @@ module clock_divider
 (
     input wire		CLK,
 	input wire		RESET,
-	output reg		CE_1HZ, // for sequential logic driven by CLK
-	output reg		CLK_1HZ // only for combinatorial logic, do not waste bufg
+	output reg		CE, // for sequential logic driven by CLK
+	output reg		CLOCK // only for combinatorial logic, does not waste bufg
 );
 
 integer counter_ce;
 integer counter_clk;
 
-// 1Hz clock enable
+// clock enable
 always @ (posedge CLK or posedge RESET)
 	begin
 		if (RESET == 1'b1)
 			begin
-				CE_1HZ <= 1'b0;
+				CE <= 1'b0;
 			end
 		else
 			begin
 				if (counter_ce == 0)
 					begin
-						CE_1HZ <= 1'b1;
+						CE <= 1'b1;
 					end
 				else
 					begin
-						CE_1HZ <= 1'b0;
+						CE <= 1'b0;
 					end
 			end
 	end
@@ -50,22 +50,22 @@ always @ (posedge CLK or posedge RESET)
 			end
 	end
 
-// 1Hz clock
+// clock
 always @ (posedge CLK or posedge RESET)
 	begin
 		if (RESET == 1'b1)
 			begin
-				CLK_1HZ <= 1'b0;
+				CLOCK <= 1'b0;
 			end
 		else
 			begin
 				if (counter_clk == 0)
 					begin
-						CLK_1HZ <= ~CLK_1HZ;
+						CLOCK <= ~CLOCK;
 					end
 				else
 					begin
-						CLK_1HZ <= CLK_1HZ;
+						CLOCK <= CLOCK;
 					end
 			end
 	end
