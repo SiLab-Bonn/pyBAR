@@ -17,8 +17,7 @@ module cmd_seq
     CMD_EXT_START_FLAG,
     CMD_EXT_START_ENABLE,
     CMD_DATA,
-    CMD_READY,
-    CMD_READY_FLAG
+    CMD_READY
 );
 
 
@@ -39,7 +38,6 @@ output CMD_EXT_START_ENABLE;
 output CMD_DATA;
 output CMD_CLK_OUT;
 output CMD_READY;
-output CMD_READY_FLAG;
 
 
 wire SOFT_RST; //0
@@ -291,11 +289,6 @@ always @ (posedge CMD_CLK_IN)
     else
         ready_sync_in <= 1'b0;
 
-reg ready_sync_in_ff;
-always @(posedge CMD_CLK_IN) begin
-    ready_sync_in_ff <= ready_sync_in;
-end
-
 wire ready_sync;
 three_stage_synchronizer ready_signal_sync (
     .CLK(BUS_CLK),
@@ -303,8 +296,7 @@ three_stage_synchronizer ready_signal_sync (
     .OUT(ready_sync)
 );
 
-assign CONF_FINISH = ready_sync;
+assign CONF_FINISH = ready_sync; // for register
 assign CMD_READY = ready_sync_in;
-assign CMD_READY_FLAG = ~ready_sync_in_ff & ready_sync_in;
 
 endmodule

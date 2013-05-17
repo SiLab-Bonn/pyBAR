@@ -28,6 +28,7 @@ module tlu_controller_fsm
     input wire      [4:0]       TLU_TRIGGER_CLOCK_CYCLES,
     input wire      [3:0]       TLU_TRIGGER_DATA_DELAY,
     input wire                  TLU_TRIGGER_DATA_MSB_FIRST,
+    input wire                  TLU_DISABLE_VETO,
 
     output reg                  TLU_BUSY,
     output reg                  TLU_CLOCK_ENABLE,
@@ -170,7 +171,7 @@ begin
                 FIFO_EMPTY <= 1'b1;
                 TLU_DATA <= 32'b0000_0000_0000_0000_0000_0000_0000_0000;
                 TLU_DATA_READY_FLAG <= 1'b0;
-                if ((CMD_EXT_START_ENABLE == 1'b0) || (FIFO_NEAR_FULL == 1'b1))
+                if ((CMD_EXT_START_ENABLE == 1'b0) || (FIFO_NEAR_FULL == 1'b1 && TLU_DISABLE_VETO == 1'b0))
                     TLU_ASSERT_VETO <= 1'b1;
                 else
                     TLU_ASSERT_VETO <= 1'b0;
@@ -334,7 +335,7 @@ begin
                     end
                 end
                 TLU_DATA_READY_FLAG <= 1'b1;
-                if ((CMD_EXT_START_ENABLE == 1'b0) || (FIFO_NEAR_FULL == 1'b1))
+                if ((CMD_EXT_START_ENABLE == 1'b0) || (FIFO_NEAR_FULL == 1'b1 && TLU_DISABLE_VETO == 1'b0))
                     TLU_ASSERT_VETO <= 1'b1;
                 else
                     TLU_ASSERT_VETO <= 1'b0;
@@ -353,7 +354,7 @@ begin
                 FIFO_EMPTY <= FIFO_EMPTY;
                 TLU_DATA <= TLU_DATA;
                 TLU_DATA_READY_FLAG <= 1'b0;
-                if ((CMD_EXT_START_ENABLE == 1'b0) || (FIFO_NEAR_FULL == 1'b1))
+                if ((CMD_EXT_START_ENABLE == 1'b0) || (FIFO_NEAR_FULL == 1'b1 && TLU_DISABLE_VETO == 1'b0))
                     TLU_ASSERT_VETO <= 1'b1;
                 else // de-assert TLU VETO here
                     TLU_ASSERT_VETO <= 1'b0;
