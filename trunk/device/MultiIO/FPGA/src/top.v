@@ -55,11 +55,6 @@ wire CLK_40;
 wire CLK_160;
 wire CLK_LOCKED;
 
-wire            TLU_DATA_SAVE_SIGNAL;
-wire            TLU_DATA_SAVE_FLAG;
-wire            TLU_DATA_SAVED_FLAG;
-wire    [31:0]  TLU_DATA;
-
 assign POWER_EN_VD1 = 1'b1;
 assign DEBUG_D = 16'ha5a5;
 
@@ -89,7 +84,7 @@ assign LEMO_RESET = LEMO_RX[1];
 wire            RJ45_ENABLED;
 wire            TLU_BUSY;                   // busy signal to TLU to deassert trigger
 wire            TLU_CLOCK;
-wire            CMD_READY, CMD_READY_FLAG;
+wire            CMD_READY;
 
 assign TX[0] = TLU_CLOCK; // trigger clock; also connected to RJ45 output
 assign TX[1] = TLU_BUSY; // in TLU handshake mode TLU_BUSY signal; also connected to RJ45 output
@@ -106,7 +101,7 @@ wire RX_FIFO_FULL; // raised, when RX FIFO full
 reg FIFO_NEAR_FULL;
 always @ (posedge BUS_CLK)
 begin
-    if (FIFO_FULL == 1'b1 || RX_FIFO_FULL == 1'b1 || RX_READY == 1'b0)
+    if (RX_READY == 1'b0 || FIFO_FULL == 1'b1 || RX_FIFO_FULL == 1'b1)
         FIFO_NEAR_FULL <= 1'b1;
     else
         FIFO_NEAR_FULL <= 1'b0;
@@ -234,8 +229,7 @@ cmd_seq icmd
     .CMD_EXT_START_FLAG(CMD_EXT_START_FLAG),
     .CMD_EXT_START_ENABLE(CMD_EXT_START_ENABLE),
     .CMD_DATA(CMD_DATA),
-    .CMD_READY(CMD_READY),
-    .CMD_READY_FLAG(CMD_READY_FLAG)
+    .CMD_READY(CMD_READY)
 );
 
 wire            FIFO_READ;
@@ -368,8 +362,8 @@ tlu_controller #(
 );
 
 // Chipscope
-//`ifdef SYNTHESIS_NOT
-`ifdef SYNTHESIS
+`ifdef SYNTHESIS_NOT
+//`ifdef SYNTHESIS
 wire [35:0] control_bus;
 chipscope_icon ichipscope_icon
 (

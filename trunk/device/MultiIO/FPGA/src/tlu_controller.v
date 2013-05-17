@@ -51,21 +51,23 @@ assign SOFT_RST = (BUS_ADD==0 && BUS_WR);
 wire RST;
 assign RST = BUS_RST || SOFT_RST;
 
-reg [7:0] status_regs[7:0];
+reg [7:0] status_regs[15:0];
 
 // reg 0 for SOFT_RST
 wire [1:0] TLU_MODE; // 2'b00 - RJ45 disabled, 2'b01 - TLU no handshake, 2'b10 - TLU simple handshake, 2'b11 - TLU trigger data handshake
 assign TLU_MODE = status_regs[1][1:0];
 wire TLU_TRIGGER_DATA_MSB_FIRST; // set endianness of TLU number
 assign TLU_TRIGGER_DATA_MSB_FIRST = status_regs[1][2];
-wire reg_1_spare;
-assign reg_1_spare = status_regs[1][3];
+wire TLU_DISABLE_VETO;
+assign TLU_DISABLE_VETO = status_regs[1][3];
 wire [3:0] TLU_TRIGGER_DATA_DELAY;
 assign TLU_TRIGGER_DATA_DELAY = status_regs[1][7:4];
 wire [4:0] TLU_TRIGGER_CLOCK_CYCLES;
 assign TLU_TRIGGER_CLOCK_CYCLES = status_regs[2][4:0];
-wire [2:0] reg_2_spare;
-assign reg_2_spare = status_regs[2][7:5];
+wire TLU_ENABLE_RESET;
+assign TLU_ENABLE_RESET = status_regs[2][5];
+wire [1:0] reg_2_spare;
+assign reg_2_spare = status_regs[2][7:6];
 wire [7:0] TLU_TRIGGER_LOW_TIME_OUT;
 assign TLU_TRIGGER_LOW_TIME_OUT = status_regs[3];
 
@@ -77,18 +79,28 @@ begin
         status_regs[1] <= 8'b0000_0000;
         status_regs[2] <= 8'd0; // 0: 32 clock cycles
         status_regs[3] <= 8'd0;
-        status_regs[4] <= 0;
+        status_regs[4] <= 0; // set TLU trigger number
         status_regs[5] <= 0;
         status_regs[6] <= 0;
         status_regs[7] <= 0;
+        status_regs[8] <= 0; // set trigger number
+        status_regs[9] <= 0;
+        status_regs[10] <= 0;
+        status_regs[11] <= 0;
+        status_regs[12] <= 0; // set trigger number
+        status_regs[13] <= 0;
+        status_regs[14] <= 0;
+        status_regs[15] <= 0;
     end
-    else if(BUS_WR && BUS_ADD < 8)
+    else if(BUS_WR && BUS_ADD < 16)
     begin
-        status_regs[BUS_ADD[2:0]] <= BUS_DATA_IN;
+        status_regs[BUS_ADD[3:0]] <= BUS_DATA_IN;
     end
 end
 
 // read reg
+reg [31:0] CURRENT_TLU_TRIGGER_NUMBER;
+reg [31:0] CURRENT_TLU_TRIGGER_NUMBER_BUF;
 reg [31:0] CURRENT_TRIGGER_NUMBER;
 reg [31:0] CURRENT_TRIGGER_NUMBER_BUF;
 
@@ -97,15 +109,23 @@ begin
     //BUS_DATA_OUT <= 0;
 	 
     if (BUS_ADD == 4)
-        BUS_DATA_OUT <= CURRENT_TRIGGER_NUMBER_BUF[7:0];
+        BUS_DATA_OUT <= CURRENT_TLU_TRIGGER_NUMBER_BUF[7:0];
     else if (BUS_ADD == 5)
-        BUS_DATA_OUT <= CURRENT_TRIGGER_NUMBER_BUF[15:8];
+        BUS_DATA_OUT <= CURRENT_TLU_TRIGGER_NUMBER_BUF[15:8];
     else if (BUS_ADD == 6)
-        BUS_DATA_OUT <= CURRENT_TRIGGER_NUMBER_BUF[23:16];
+        BUS_DATA_OUT <= CURRENT_TLU_TRIGGER_NUMBER_BUF[23:16];
     else if (BUS_ADD == 7)
+        BUS_DATA_OUT <= CURRENT_TLU_TRIGGER_NUMBER_BUF[31:24];
+    else if (BUS_ADD == 8)
+        BUS_DATA_OUT <= CURRENT_TRIGGER_NUMBER_BUF[7:0];
+    else if (BUS_ADD == 9)
+        BUS_DATA_OUT <= CURRENT_TRIGGER_NUMBER_BUF[15:8];
+    else if (BUS_ADD == 10)
+        BUS_DATA_OUT <= CURRENT_TRIGGER_NUMBER_BUF[23:16];
+    else if (BUS_ADD == 11)
         BUS_DATA_OUT <= CURRENT_TRIGGER_NUMBER_BUF[31:24];
     else if(BUS_ADD < 4)
-        BUS_DATA_OUT <= status_regs[BUS_ADD[2:0]]; // BUG AR 20391: use synchronous logic
+        BUS_DATA_OUT <= status_regs[BUS_ADD[3:0]]; // BUG AR 20391: use synchronous logic
     else
         BUS_DATA_OUT <= 0;
 end
@@ -115,13 +135,13 @@ end
 //    BUS_DATA_OUT = 0;
 //	 
 //    if (BUS_ADD == 4)
-//        BUS_DATA_OUT = CURRENT_TRIGGER_NUMBER_BUF[7:0];
+//        BUS_DATA_OUT = CURRENT_TLU_TRIGGER_NUMBER_BUF[7:0];
 //    else if (BUS_ADD == 5)
-//        BUS_DATA_OUT = CURRENT_TRIGGER_NUMBER_BUF[15:8];
+//        BUS_DATA_OUT = CURRENT_TLU_TRIGGER_NUMBER_BUF[15:8];
 //    else if (BUS_ADD == 6)
-//        BUS_DATA_OUT = CURRENT_TRIGGER_NUMBER_BUF[23:16];
+//        BUS_DATA_OUT = CURRENT_TLU_TRIGGER_NUMBER_BUF[23:16];
 //    else if (BUS_ADD == 7)
-//        BUS_DATA_OUT = CURRENT_TRIGGER_NUMBER_BUF[31:24];
+//        BUS_DATA_OUT = CURRENT_TLU_TRIGGER_NUMBER_BUF[31:24];
 //    else if(BUS_ADD < 4)
 //        BUS_DATA_OUT = status_regs[BUS_ADD[2:0]]; // BUG AR 20391
 //    
@@ -148,39 +168,8 @@ end
 //assign some_value = {status_regs[x][y]}; // single bit
 //assign some_value = {status_regs[x][y:z]}; // multiple bits
 
-wire TLU_DATA_READY_FLAG;
-always @ (posedge BUS_CLK)
-begin
-    if (RST)
-        CURRENT_TRIGGER_NUMBER <= 32'b0;
-    else
-    begin
-        if (TLU_DATA_READY_FLAG == 1'b1)
-            CURRENT_TRIGGER_NUMBER <= TLU_DATA[31:0];
-        else
-            CURRENT_TRIGGER_NUMBER <= CURRENT_TRIGGER_NUMBER;
-    end
-end
-
-always @ (posedge BUS_CLK)
-begin
-    if (RST)
-        CURRENT_TRIGGER_NUMBER_BUF <= 32'b0;
-    else
-    begin
-        if (BUS_ADD == 4)
-            CURRENT_TRIGGER_NUMBER_BUF <= CURRENT_TRIGGER_NUMBER;
-        else
-            CURRENT_TRIGGER_NUMBER_BUF <= CURRENT_TRIGGER_NUMBER_BUF;
-    end
-end
-
 wire                TLU_CLOCK_ENABLE;
 wire                TLU_ASSERT_VETO;
-wire                TLU_RECEIVE_DATA_FLAG_BUS_CLK;
-wire                TLU_RECEIVE_DATA_FLAG_TLU_CLK;
-wire                TLU_DATA_RECEIVED_FLAG_BUS_CLK;
-
 wire    [30:0]      TLU_DATA_TLU_CLK;
 wire                TLU_DATA_SAVE_SIGNAL_TLU_CLK;
 wire                TLU_DATA_SAVED_FLAG_TLU_CLK;
@@ -309,6 +298,70 @@ always @ (posedge BUS_CLK)
 
 assign TLU_RESET_FLAG_BUS_CLK = ~TLU_RESET_BUS_CLK_FF && TLU_RESET_BUS_CLK;
 
+// writing current TLU trigger number to register
+wire TLU_DATA_READY_FLAG;
+always @ (posedge BUS_CLK)
+begin
+    if (RST)
+        CURRENT_TLU_TRIGGER_NUMBER <= 32'b0;
+    else
+    begin
+        if (TLU_DATA_READY_FLAG == 1'b1)
+            CURRENT_TLU_TRIGGER_NUMBER <= TLU_DATA[31:0];
+        else
+            CURRENT_TLU_TRIGGER_NUMBER <= CURRENT_TLU_TRIGGER_NUMBER;
+    end
+end
+
+always @ (posedge BUS_CLK)
+begin
+    if (RST)
+        CURRENT_TLU_TRIGGER_NUMBER_BUF <= 32'b0;
+    else
+    begin
+        if (BUS_ADD == 4)
+            CURRENT_TLU_TRIGGER_NUMBER_BUF <= CURRENT_TLU_TRIGGER_NUMBER;
+        else
+            CURRENT_TLU_TRIGGER_NUMBER_BUF <= CURRENT_TLU_TRIGGER_NUMBER_BUF;
+    end
+end
+
+// writing current trigger number (not TLU) to register
+reg CMD_EXT_START_ENABLE_BUS_CLK_FF;
+always @ (posedge BUS_CLK)
+    CMD_EXT_START_ENABLE_BUS_CLK_FF <= CMD_EXT_START_ENABLE_BUS_CLK;
+
+wire CMD_EXT_START_ENABLE_FLAG_BUS_CLK;
+assign CMD_EXT_START_ENABLE_FLAG_BUS_CLK = ~CMD_EXT_START_ENABLE_BUS_CLK_FF & CMD_EXT_START_ENABLE_BUS_CLK;
+
+always @ (posedge BUS_CLK)
+begin
+    if (RST || (TLU_RESET_FLAG_BUS_CLK == 1'b1 && TLU_ENABLE_RESET == 1'b1))
+        CURRENT_TRIGGER_NUMBER <= 32'b0;
+    else
+    begin
+        if (CMD_EXT_START_FLAG_BUS_CLK == 1'b1)
+            CURRENT_TRIGGER_NUMBER <= CURRENT_TRIGGER_NUMBER + 1;
+        else if (CMD_EXT_START_ENABLE_FLAG_BUS_CLK == 1'b1)
+            CURRENT_TRIGGER_NUMBER <= 32'b0;
+        else
+            CURRENT_TRIGGER_NUMBER <= CURRENT_TRIGGER_NUMBER;
+    end
+end
+
+always @ (posedge BUS_CLK)
+begin
+    if (RST)
+        CURRENT_TRIGGER_NUMBER_BUF <= 32'b0;
+    else
+    begin
+        if (BUS_ADD == 8)
+            CURRENT_TRIGGER_NUMBER_BUF <= CURRENT_TRIGGER_NUMBER;
+        else
+            CURRENT_TRIGGER_NUMBER_BUF <= CURRENT_TRIGGER_NUMBER_BUF;
+    end
+end
+
 // fucking FSM
 tlu_controller_fsm #(
     .DIVISOR(DIVISOR)
@@ -335,6 +388,7 @@ tlu_controller_fsm #(
     .TLU_TRIGGER_CLOCK_CYCLES(TLU_TRIGGER_CLOCK_CYCLES),
     .TLU_TRIGGER_DATA_DELAY(TLU_TRIGGER_DATA_DELAY),
     .TLU_TRIGGER_DATA_MSB_FIRST(TLU_TRIGGER_DATA_MSB_FIRST),
+    .TLU_DISABLE_VETO(TLU_DISABLE_VETO),
     
     .TLU_BUSY(TLU_BUSY),
     .TLU_CLOCK_ENABLE(TLU_CLOCK_ENABLE),
