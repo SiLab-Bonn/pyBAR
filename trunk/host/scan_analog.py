@@ -3,45 +3,49 @@ import pprint
 import time
 import struct
 import itertools
+import logging
 
+import tables as tb
 import BitVector
 
+from analysis.data_struct import MetaTable
 from fei4.output import FEI4Record
 from daq.readout import Readout
 
-from utils.utils import get_all_from_queue
+from utils.utils import get_all_from_queue, split_seq
 
 from scan.scan import ScanBase
 
-
-chip_flavor = 'fei4a'
-config_file = 'C:\Users\Jens\Desktop\Python\python_projects\etherpixcontrol\std_cfg_'+chip_flavor+'.cfg'
-bit_file = r'C:\Users\Jens\Desktop\ModularReadoutSystem\device\trunk\MIO\FPGA\FEI4\ise\top.bit'
-
 class AnalogScan(ScanBase):
-    def __init__(self, config_file, bit_file, device):
-        super(AnalogScan, self).__init__(config_file, bit_file, device)
+    def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "ext_trigger_scan", outdir = ""):
+        super(AnalogScan, self).__init__(config_file, definition_file, bit_file, device, scan_identifier, outdir)
         
-    def start(self):
+    def start(self, configure = True):
+        super(AnalogScan, self).start(configure)
+        
+        self.lock.acquire()
+        
         print 'Start readout thread...'
-        self.readout.set_filter(self.readout.data_record_filter)
+        #self.readout.set_filter(self.readout.data_record_filter)
         self.readout.start()
         print 'Done!'
         
         
         commands = []
-        self.register.set_global_register_value("PlsrDAC", 200)
+        self.register.set_global_register_value("PlsrDAC", 100)
         commands.extend(self.register.get_commands("wrregister", name = ["PlsrDAC"]))
         self.register_utils.send_commands(commands)
         
-        import cProfile
-        pr = cProfile.Profile()
+        #import cProfile
+        #pr = cProfile.Profile()
+        mask = 6
         repeat = 100
-        cal_lvl1_command = self.register.get_commands("cal")[0]+BitVector.BitVector(size = 40)+self.register.get_commands("lv1")[0]+BitVector.BitVector(size = 1000)
-        pr.enable()
-        self.scan_utils.base_scan(cal_lvl1_command, repeat = repeat, mask = 6, dcs = [], same_mask_for_all_dc = True, hardware_repeat = False, digital_injection = False, read_function = None)#self.readout.read_once)
-        pr.disable()
-        pr.print_stats('cumulative')
+        wait_cycles = 336*2/mask*24/4*3
+        cal_lvl1_command = self.register.get_commands("cal")[0]+BitVector.BitVector(size = 40)+self.register.get_commands("lv1")[0]+BitVector.BitVector(size = wait_cycles)
+        #pr.enable()
+        self.scan_utils.base_scan(cal_lvl1_command, repeat = repeat, mask = mask, dcs = [], same_mask_for_all_dc = True, hardware_repeat = True, digital_injection = False, read_function = None)#self.readout.read_once)
+        #pr.disable()
+        #pr.print_stats('cumulative')
         
         q_size = -1
         while self.readout.data_queue.qsize() != q_size:
@@ -57,12 +61,44 @@ class AnalogScan(ScanBase):
             for item in data_words:
                 yield ((item & 0x1FF00)>>8), ((item & 0xFE0000)>>17)
         
-        data_q = get_all_from_queue(self.readout.data_queue)
+        #data_q = get_all_from_queue(self.readout.data_queue)
+        data_q = list(get_all_from_queue(self.readout.data_queue)) # make list, otherwise itertools will use data
         data_words = itertools.chain(*(data_dict['raw_data'] for data_dict in data_q))
         print 'got all from queue'
         
     #    with open('raw_data_digital_self.raw', 'w') as f:
     #        f.writelines([str(word)+'\n' for word in data_words])
+    
+        total_words = 0
+        
+        filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
+        filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
+        with tb.openFile(self.scan_data_path+".h5", mode = "w", title = "test file") as file_h5:
+            raw_data_earray_h5 = file_h5.createEArray(file_h5.root, name = 'raw_data', atom = tb.UIntAtom(), shape = (0,), title = 'raw_data', filters = filter_raw_data)
+            meta_data_table_h5 = file_h5.createTable(file_h5.root, name = 'meta_data', description = MetaTable, title = 'meta_data', filters = filter_tables)
+            
+            row_meta = meta_data_table_h5.row
+                        
+            #data_q = list(get_all_from_queue(scan.readout.data_queue))
+            for item in data_q:
+                raw_data = item['raw_data']
+#                for word in raw_data:
+#                    print FEI4Record(word, 'fei4a')
+                len_raw_data = len(raw_data)
+                for data in split_seq(raw_data, 50000):
+                    #print len(data)
+                    raw_data_earray_h5.append(data)
+                    raw_data_earray_h5.flush()
+#                     raw_data_earray_h5.append(raw_data)
+#                     raw_data_earray_h5.flush()
+                row_meta['timestamp'] = item['timestamp']
+                row_meta['error'] = item['error']
+                row_meta['length'] = len_raw_data
+                row_meta['start_index'] = total_words
+                total_words += len_raw_data
+                row_meta['stop_index'] = total_words
+                row_meta.append()
+                meta_data_table_h5.flush()
         
         print 'Stopping readout thread...'
         self.readout.stop()
@@ -71,7 +107,12 @@ class AnalogScan(ScanBase):
         print 'Data remaining in memory:', self.readout.get_fifo_size()
         print 'Lost data count:', self.readout.get_lost_data_count()
         
-        plot_occupancy(*zip(*get_cols_rows(data_words)), max_occ = repeat*2)
+        #cols, rows = zip(*get_cols_rows(data_words))
+        #plot_occupancy(cols, rows, max_occ = repeat*2)
+        
+        plot_occupancy(*zip(*get_cols_rows(data_words)), max_occ = repeat*2, filename = self.scan_data_path+".pdf")
+        
+        self.lock.release()
     
     #    set nan to special value
     #    masked_array = np.ma.array (a, mask=np.isnan(a))
@@ -81,8 +122,16 @@ class AnalogScan(ScanBase):
         
         
 if __name__ == "__main__":
-    scan = AnalogScan(config_file, bit_file)
+    chip_flavor = 'fei4a'
+    config_file = r'C:\Users\silab\Dropbox\pyats\trunk\host\config\fei4default\configs\std_cfg_'+chip_flavor+'_simple.cfg'
+    bit_file = r'C:\Users\silab\Dropbox\pyats\trunk\device\MultiIO\FPGA\ise\top.bit'
+    scan_identifier = "analog_scan"
+    outdir = r"C:\Users\silab\Desktop\Data\analog_scan"
+    
+#     chip_flavor = 'fei4a'
+#     config_file = r'C:\Users\silab\Dropbox\pyats\trunk\host\config\Testbeam\SCC50_planar\SCC50_planar_pYATS.cfg'
+#     bit_file = r'C:\Users\silab\Dropbox\pyats\trunk\device\MultiIO\FPGA\ise\top.bit'
+    
+    scan = AnalogScan(config_file, bit_file = bit_file, scan_identifier = scan_identifier, outdir = outdir)
     
     scan.start()
-
-    

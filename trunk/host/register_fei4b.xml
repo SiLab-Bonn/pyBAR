@@ -78,7 +78,7 @@
             <register name="Colpr_Addr" address="22" bitlength="6" offset="2" littleendian="1" description="" />
             <register name="Colpr_Mode" address="22" bitlength="2" offset="8" littleendian="1" description="" />
             <register name="spare_22_1" address="22" bitlength="6" offset="10" readonly="1" description="" />
-            <register name="DisableColumnCnfg" address="23" bitlength="40" description="" />
+            <register name="DisableColumnCnfg" address="23" bitlength="40" littleendian="1" description="Disables digital double columns." />
             <register name="Trig_Lat" address="25" bitlength="8" offset="8" description="" />
             <register name="HitDiscCnfg" address="26" bitlength="2" description="" />
             <register name="StopModeCnfg" address="26" bitlength="1" offset="2" description="" />

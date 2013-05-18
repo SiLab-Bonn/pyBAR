@@ -1,6 +1,6 @@
 from scan.scan import ScanBase
 
-chip_flavor = 'fei4b'
+chip_flavor = 'fei4a'
 config_file = r'C:\Users\Jens\Desktop\Python\python_workspace\test\source\config\fei4default\configs\std_cfg_'+chip_flavor+'.cfg'
 bit_file = r'C:\Users\Jens\Desktop\ModularReadoutSystem\device\trunk\MIO\FPGA\FEI4\ise\top.bit'
 
