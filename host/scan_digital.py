@@ -14,13 +14,13 @@ from utils.utils import get_all_from_queue
 from scan.scan import ScanBase
 
 
-chip_flavor = 'fei4b'
+chip_flavor = 'fei4a'
 config_file = 'C:\Users\Jens\Desktop\Python\python_projects\etherpixcontrol\std_cfg_'+chip_flavor+'.cfg'
 bit_file = r'C:\Users\Jens\Desktop\ModularReadoutSystem\device\trunk\MIO\FPGA\FEI4\ise\top.bit'
 
 class DigitalScan(ScanBase):
-    def __init__(self, config_file, bit_file):
-        super(DigitalScan, self).__init__(config_file, bit_file)
+    def __init__(self, config_file, definition_file = None, bit_file = None, device = None):
+        super(DigitalScan, self).__init__(config_file, definition_file, bit_file, device)
         
 if __name__ == "__main__":
     scan = DigitalScan(config_file, bit_file)
