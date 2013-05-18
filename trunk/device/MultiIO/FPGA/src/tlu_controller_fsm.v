@@ -29,6 +29,7 @@ module tlu_controller_fsm
     input wire      [3:0]       TLU_TRIGGER_DATA_DELAY,
     input wire                  TLU_TRIGGER_DATA_MSB_FIRST,
     input wire                  TLU_DISABLE_VETO,
+    input wire                  EXT_VETO,
 
     output reg                  TLU_BUSY,
     output reg                  TLU_CLOCK_ENABLE,
@@ -78,13 +79,13 @@ begin
 end
 
 // combinational always block, blocking assignments
-always @ (state or CMD_READY or CMD_EXT_START_ENABLE or TLU_TRIGGER_FLAG or TLU_TRIGGER or TLU_MODE or TLU_TRIGGER_LOW_TIMEOUT_ERROR or counter_tlu_clock or TLU_TRIGGER_CLOCK_CYCLES or counter_sr_wait_cycles or TLU_TRIGGER_DATA_DELAY or FIFO_READ) //or TLU_TRIGGER_BUSY)
+always @ (state or CMD_READY or CMD_EXT_START_ENABLE or TLU_TRIGGER_FLAG or TLU_TRIGGER or TLU_MODE or TLU_TRIGGER_LOW_TIMEOUT_ERROR or counter_tlu_clock or TLU_TRIGGER_CLOCK_CYCLES or counter_sr_wait_cycles or TLU_TRIGGER_DATA_DELAY or FIFO_READ or EXT_VETO) //or TLU_TRIGGER_BUSY)
 begin
     case (state)
     
         IDLE:
         begin
-            if ((CMD_READY == 1'b1) && (CMD_EXT_START_ENABLE == 1'b1) && ((TLU_TRIGGER_FLAG == 1'b1) /*|| ((TLU_TRIGGER == 1'b1) && (TLU_MODE == 2'b11 || TLU_MODE == 2'b10))*/)) next = SEND_COMMAND_WAIT_FOR_TRIGGER_LOW;
+            if ((CMD_READY == 1'b1) && (CMD_EXT_START_ENABLE == 1'b1) && ((TLU_TRIGGER_FLAG == 1'b1) /*|| ((TLU_TRIGGER == 1'b1) && (TLU_MODE == 2'b11 || TLU_MODE == 2'b10))*/) && EXT_VETO == 1'b0) next = SEND_COMMAND_WAIT_FOR_TRIGGER_LOW;
             else next = IDLE;
         end
         

@@ -35,6 +35,8 @@
     output wire                 TLU_BUSY,
     output reg                  TLU_CLOCK,
     
+    input wire                  EXT_VETO,
+    
     input wire                  CMD_READY,
     output wire                 CMD_EXT_START_FLAG,
     input wire                  CMD_EXT_START_ENABLE,
@@ -170,14 +172,8 @@ end
 
 wire                TLU_CLOCK_ENABLE;
 wire                TLU_ASSERT_VETO;
-wire    [30:0]      TLU_DATA_TLU_CLK;
-wire                TLU_DATA_SAVE_SIGNAL_TLU_CLK;
-wire                TLU_DATA_SAVED_FLAG_TLU_CLK;
-wire                TLU_DATA_SAVE_FLAG_TLU_CLK;
 wire                TLU_TRIGGER_FLAG_BUS_CLK;
 wire                TLU_RESET_FLAG_BUS_CLK;
-//wire                TLU_TRIGGER_BUSY_BUS_CLK;
-//wire                TLU_TRIGGER_DONE_BUS_CLK;
 
 // Register sync
 // nothing to do here
@@ -241,7 +237,7 @@ begin
 end
 
 // Trigger sync
-wire RJ45_TRIGGER_BUS_CLK, LEMO_TRIGGER_BUS_CLK, RJ45_RESET_BUS_CLK, LEMO_RESET_BUS_CLK;
+wire RJ45_TRIGGER_BUS_CLK, LEMO_TRIGGER_BUS_CLK, RJ45_RESET_BUS_CLK, LEMO_RESET_BUS_CLK, EXT_VETO_BUS_CLK;
 three_stage_synchronizer three_stage_rj45_trigger_synchronizer_bus_clk (
     .CLK(BUS_CLK),
     .IN(RJ45_TRIGGER),
@@ -264,6 +260,12 @@ three_stage_synchronizer three_stage_lemo_reset_synchronizer_bus_clk (
     .CLK(BUS_CLK),
     .IN(LEMO_RESET),
     .OUT(LEMO_RESET_BUS_CLK)
+);
+
+three_stage_synchronizer three_stage_lemo_ext_veto_synchronizer_bus_clk (
+    .CLK(BUS_CLK),
+    .IN(EXT_VETO),
+    .OUT(EXT_VETO_BUS_CLK)
 );
 
 // Trigger input port select
@@ -389,6 +391,7 @@ tlu_controller_fsm #(
     .TLU_TRIGGER_DATA_DELAY(TLU_TRIGGER_DATA_DELAY),
     .TLU_TRIGGER_DATA_MSB_FIRST(TLU_TRIGGER_DATA_MSB_FIRST),
     .TLU_DISABLE_VETO(TLU_DISABLE_VETO),
+    .EXT_VETO(EXT_VETO_BUS_CLK),
     
     .TLU_BUSY(TLU_BUSY),
     .TLU_CLOCK_ENABLE(TLU_CLOCK_ENABLE),
