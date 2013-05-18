@@ -36,8 +36,8 @@ module top (
         
     input FE_RX,
     
-    input wire [3:0] LEMO_RX,
-    output wire [3:0] TX, // TX[0] == RJ45 trigger clock output, TX[1] == RJ45 busy output
+    input wire [2:0] LEMO_RX,
+    output wire [2:0] TX, // TX[0] == RJ45 trigger clock output, TX[1] == RJ45 busy output
     input wire RJ45_RESET,
     input wire RJ45_TRIGGER,
     
@@ -75,10 +75,10 @@ clock_divider #(
 wire CMD_EXT_START_FLAG;
 wire CMD_EXT_START_ENABLE;
 
-wire LEMO_TRIGGER, LEMO_RESET;
+wire LEMO_TRIGGER, LEMO_RESET, EXT_VETO;
 assign LEMO_TRIGGER = LEMO_RX[0];
 assign LEMO_RESET = LEMO_RX[1];
-//assign ... = LEMO_RX[2];
+assign EXT_VETO = LEMO_RX[2];
 
 // TLU
 wire            RJ45_ENABLED;
@@ -353,6 +353,8 @@ tlu_controller #(
     .RJ45_ENABLED(RJ45_ENABLED),
     .TLU_BUSY(TLU_BUSY),
     .TLU_CLOCK(TLU_CLOCK),
+    
+    .EXT_VETO(EXT_VETO),
     
     .CMD_READY(CMD_READY),
     .CMD_EXT_START_FLAG(CMD_EXT_START_FLAG),
