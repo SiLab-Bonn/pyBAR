@@ -29,13 +29,14 @@ class FEI4GlobalRegister(object):
         self.offset = int(offset)
         self.bitlength = int(bitlength)
         self.addresses = range(self.address, self.address + (self.offset+self.bitlength+16-1)/16)
-        self.littleendian = bool(littleendian)
+        self.littleendian = bool(int(littleendian))
         self.register_littleendian = bool(register_littleendian)
-        self.value = long(value)  # value is decimal string or number or BitVector
+        self.value = long(str(value), 0)  # value is decimal string or number or BitVector
         if self.value >= 2**self.bitlength or self.value < 0:
             raise Exception("Value exceeds limits")
         self.readonly = bool(readonly)
         self.description = str(description)
+        self.not_set = True
         
     def __repr__(self):
         return repr((self.name,
@@ -48,7 +49,8 @@ class FEI4GlobalRegister(object):
                      self.register_littleendian,
                      self.value,
                      self.readonly,
-                     self.description))
+                     self.description,
+                     self.not_set))
         
     def __add__(self, other):
         """add: self + other
@@ -126,7 +128,7 @@ class FEI4PixelRegister(object): # TODO
         self.bitlength = int(bitlength)
         if self.bitlength > 8:
             raise Exception(name+"max. uint8 supported") # numpy array dtype is uint8
-        self.littleendian = bool(littleendian)
+        self.littleendian = bool(int(littleendian))
         dimension = (80,336)
         self.value = np.zeros(dimension, dtype = np.uint8)
         try: # value is decimal string or number or array
@@ -139,6 +141,7 @@ class FEI4PixelRegister(object): # TODO
                 raise ValueError('Value exceeds limits')
         
         self.description = str(description)
+        self.not_set = True
         
     def __repr__(self):
         return repr((self.name,
@@ -147,7 +150,8 @@ class FEI4PixelRegister(object): # TODO
                      self.bitlength,
                      self.littleendian,
                      self.value,
-                     self.description))
+                     self.description,
+                     self.not_set))
 
 class FEI4Command(object):
     def __init__(self,
@@ -194,12 +198,13 @@ class FEI4Handler(xml.sax.ContentHandler): # TODO separate handlers
             self.lvl1_command.append(FEI4Command(**attrs))
 
 class FEI4Register(object):
-    def __init__(self, configuration_file = None):
+    def __init__(self, configuration_file = None, definition_file = None):
         self.global_registers = {}
         self.pixel_registers = {}
         self.lvl1_command = {}
 
         self.configuration_file = configuration_file
+        self.definition_file = definition_file
         self.chip_id = 8 # This 4-bit field always exists and is the chip ID. The three least significant bits define the chip address and are compared with the geographical address of the chip (selected via wire bonding), while the most significant one, if set, means that the command is broadcasted to all FE chips receiving the data stream.
         self.chip_flavor = None
         self.chip_flavors = ['fei4a', 'fei4b']
@@ -229,12 +234,16 @@ class FEI4Register(object):
         parser = xml.sax.make_parser()
         handler = FEI4Handler()
         parser.setContentHandler(handler)
-        if self.is_chip_flavor("fei4a"):
-            parser.parse("register_fei4a.xml")
-        elif self.is_chip_flavor("fei4b"):
-            parser.parse("register_fei4b.xml")
+        
+        if self.definition_file is None:
+            if self.is_chip_flavor("fei4a"):
+                parser.parse("register_fei4a.xml")
+            elif self.is_chip_flavor("fei4b"):
+                parser.parse("register_fei4b.xml")
+            else:
+                raise ValueError("No chip flavor assigned")
         else:
-            raise ValueError("No chip flavor assigned")
+            parser.parse(self.definition_file)
         
         self.global_registers = handler.global_registers
         self.pixel_registers = handler.pixel_registers
@@ -246,7 +255,7 @@ class FEI4Register(object):
     def parse_chip_parameters(self):
         #print "load cfg"
         with open(self.configuration_file, 'r') as f:
-            for line in  f.readlines():
+            for line in f.readlines():
                 key_value = re.split("\s+|[\s]*=[\s]*", line)
                 if (key_value[0].lower() == "flavour" or key_value[0].lower() == "flavor" or key_value[0].translate(None, '_-').lower() == "chipflavour" or key_value[0].translate(None, '_-').lower() == "chipflavor"):
                     if key_value[1].translate(None, '_-').lower() == "fei4a":
@@ -271,15 +280,39 @@ class FEI4Register(object):
 
     def parse_chip_config(self):
         #print "load cfg"
+        all_config_keys = []
+        all_config_keys_lower = []
         with open(self.configuration_file, 'r') as f:
             for line in f.readlines():
                 key_value = re.split("\s+|[\s]*=[\s]*", line)
                 if len(key_value)>0 and ((len(key_value[0])>0 and key_value[0][0] == '#') or key_value[0] == ''): # ignore line if empty line or starts with '#'
                     #print key_value
                     continue
-                self.set_global_register_value(key_value[0], key_value[1], ignore_no_match = True)
-                self.set_pixel_register_value(key_value[0], key_value[1], ignore_no_match = True)
-                #print key_value
+                elif (key_value[0].lower() == "flavour" or key_value[0].lower() == "flavor" or key_value[0].translate(None, '_-').lower() == "chipflavour" or key_value[0].translate(None, '_-').lower() == "chipflavor"):
+                    continue
+                elif key_value[0].translate(None, '_-').lower() == "chipid":
+                    continue
+                else:
+                    self.set_global_register_value(key_value[0], key_value[1], ignore_no_match = True)
+                    self.set_pixel_register_value(key_value[0], key_value[1], ignore_no_match = True)
+                    
+                    all_config_keys.append(key_value[0])
+                    all_config_keys_lower.append(key_value[0].lower())
+        
+        all_config_keys_dict = dict(zip(all_config_keys_lower, all_config_keys))
+        pixel_not_configured = []
+        pixel_not_configured.extend([x for x in self.pixel_registers if (x.not_set == True and x.readonly == False)])
+        global_not_configured = []
+        global_not_configured.extend([x for x in self.global_registers if (x.not_set == True and x.readonly == False)])
+        if len(global_not_configured) != 0:
+            raise ValueError("Following global register(s) not configured: {}".format(', '.join('\''+reg.full_name+'\'' for reg in global_not_configured)))
+        if len(pixel_not_configured) != 0:
+            raise ValueError("Following pixel register(s) not configured: {}".format(', '.join('\''+reg.full_name+'\'' for reg in pixel_not_configured)))
+        all_known_regs = []
+        all_known_regs.extend([x.name for x in self.pixel_registers])
+        all_known_regs.extend([x.name for x in self.global_registers if x.readonly == False])
+        print "Found following unknown register(s): {}".format(', '.join('\''+all_config_keys_dict[reg]+'\'' for reg in set.difference(set(all_config_keys_dict.iterkeys()), all_known_regs)))
+        
             
     def parse_pixel_mask_config(self, filename):
         dimension = (80,336)
@@ -305,7 +338,7 @@ class FEI4Register(object):
                 row += 1
             if row != 336:
                 raise ValueError('Dimension of row')
-        #print mask
+        #print filename, mask
         return mask
    
     def parse_pixel_dac_config(self, filename):
@@ -356,10 +389,11 @@ class FEI4Register(object):
             raise ValueError('Found more than one matching register')
         for reg in regs:
             old_value = reg.value
-            value = long(value) # value is decimal string or number or BitVector
+            value = long(str(value), 0) # value is decimal string or number or BitVector
             if value >= 2**reg.bitlength or value < 0:
                 raise ValueError('Value exceeds limits')
             reg.value = value
+            reg.not_set = False
             return old_value
         
     def get_global_register_value(self, name):
@@ -384,14 +418,14 @@ class FEI4Register(object):
                 #reg.value.fill(value)
             except ValueError: # value is path to pixel config
                 if reg.bitlength == 1:
-                    value = self.parse_pixel_mask_config(value)
+                    reg.value = self.parse_pixel_mask_config(value)
                 else:
-                    value = self.parse_pixel_dac_config(value)
+                    reg.value = self.parse_pixel_dac_config(value)
             finally:
                 if (reg.value >= 2**reg.bitlength).any() or (reg.value < 0).any():
                     reg.value = old_value.copy()
-                    raise ValueError('Value exceeds limits')
-
+                    raise ValueError("Value exceeds limits: "+reg.full_name)
+            reg.not_set = False
             return old_value
 
     def get_pixel_register_value(self, name):
@@ -453,20 +487,20 @@ class FEI4Register(object):
             for register_object in register_objects:
                 pxstrobe = register_object.pxstrobe
                 bitlength = register_object.bitlength
-                for pxstrobe_bit_no in range(bitlength) if (register_object.littleendian == False) else reversed(range(bitlength)):
+                for bit_no, pxstrobe_bit_no in (enumerate(range(bitlength)) if (register_object.littleendian == False) else enumerate(reversed(range(bitlength)))):
                     do_latch = True
                     try:
-                        self.set_global_register_value("Pixel_Strobes", 2**(pxstrobe+pxstrobe_bit_no))
-                        #print register_object.name
-                        #print "bit_no", bit_no
-                        #print "pxstrobes", 2**(pxstrobe+pxstrobe_bit_no)
+                        self.set_global_register_value("Pixel_Strobes", 2**(pxstrobe+bit_no))
+#                         print register_object.name
+#                         print "reg bit no", pxstrobe_bit_no
+#                         print "pxstrobes reg", 2**(pxstrobe+bit_no)
                         
                     except TypeError:
                         self.set_global_register_value("Pixel_Strobes", 0) # no latch
                         do_latch = False
-                        #print register_object.name
-                        #print "bit_no", bit_no
-                        #print "pxstrobes", 0
+#                         print register_object.name
+#                         print "bit_no", bit_no
+#                         print "pxstrobes", 0
                         
                     if do_latch == True:
                         self.set_global_register_value("Latch_En", 1)
@@ -477,6 +511,7 @@ class FEI4Register(object):
                         self.set_global_register_value("Colpr_Addr", dc_no)
                         commands.extend(self.get_commands("wrregister", name = ["Colpr_Addr"]))
                         register_bitset = self.get_pixel_register_bitset(register_object, pxstrobe_bit_no, dc_no)
+                        #if dc_no == 0: print dc_no, register_bitset
                         #print "dc_no", dc_no
                         #print register_bitset
                         commands.extend([self.build_command(command_name, pixeldata = register_bitset, chipid = self.chip_id, **keywords)])

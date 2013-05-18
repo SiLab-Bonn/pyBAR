@@ -4,7 +4,7 @@ import Queue
 import math
 #import array
 import collections
-#import itertools
+import itertools
 import pprint
 import array
 
@@ -116,13 +116,13 @@ def convert_to_int(n):
     try:
         return int(n)
     except ValueError:
-        return 0
+        return None
 
 def convert_to_float(n):
     try:
         return float(n)
     except ValueError:
-        return 0
+        return None
 
 def find_key(dictionary, val):
     return [k for k, v in dictionary.iteritems() if v == val][0]
@@ -258,6 +258,13 @@ def get_float_time():
     t2 = datetime.datetime.fromtimestamp(t1)
     return time.mktime(t2.timetuple())+1e-6*t2.microsecond
 
+def split_seq(iterable, size):
+    it = iter(iterable)
+    item = list(itertools.islice(it, size))
+    while item:
+        yield item
+        item = list(itertools.islice(it, size))
+ 
     
 #-----------------------------------------------------------------
 if __name__ == "__main__":
