@@ -3,6 +3,7 @@ import array
 import math
 import time
 import numpy as np
+import re
 
 from bitstring import BitArray
 #import BitVector
@@ -413,3 +414,19 @@ class FEI4RegisterUtils(object):
             mask[col, row] = value
         return mask
     
+def parse_key_value(filename, key, deletechars = ''):
+    with open(filename, 'r') as f:
+        return parse_key_value_from_file(f, key, deletechars)
+            
+def parse_key_value_from_file(f, key, deletechars = ''):
+    for line in f.readlines():
+        key_value = re.split("\s+|[\s]*=[\s]*", line)
+        if (key_value[0].translate(None, deletechars).lower() == key.translate(None, deletechars).lower()):
+            if len(key_value) > 1:
+                print key_value
+                print len(key_value)
+                return key_value[0].translate(None, deletechars).lower(), key_value[1].translate(None, deletechars).lower()
+            else:
+                raise ValueError('Value not found')
+        else:
+            return None

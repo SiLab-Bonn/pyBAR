@@ -4,12 +4,12 @@ import time
 from threading import Thread, Event
 from Queue import Queue
 #from multiprocessing import Process as Thread
-#from multiprocessing import Event as Event 
-#from multiprocessing import Queue as Queue
+#from multiprocessing import Event
+#from multiprocessing import Queue
 
 from utils.utils import get_float_time
 
-from SiLibUSB import SiUSBDevice
+from pySiLibUSB.SiLibUSB import SiUSBDevice
 
 class Readout(object):
     def __init__(self, device, data_filter = None):
@@ -74,9 +74,11 @@ class Readout(object):
         # TODO: check fifo status (overflow) and check rx status (sync) once in a while
 
         fifo_size = self.get_fifo_size()
+        #fifo_size, code_err_cnt, lost_data_cnt = self.get_fifo_size_8b10b_code_error_count_lost_data_count()
         #print 'SRAM FIFO SIZE: ' + str(fifo_size)
         if fifo_size%2 == 1: # sometimes a read happens during writing, but we want to have a multiplicity of 32 bits
             fifo_size-=1
+            #print "FIFO size odd"
         if fifo_size > 0:
             fifo_data = self.device.FastBlockRead(4*fifo_size/2)
             #print 'fifo raw data:', fifo_data
@@ -101,12 +103,19 @@ class Readout(object):
     def get_fifo_size(self):
         retfifo = self.device.ReadExternal(address = 0x8101, size = 3)
         return struct.unpack('I', retfifo.tostring() + '\x00' )[0] # TODO optimize, remove tostring() ?
-            
-    def get_lost_data_count(self):
-        return self.device.ReadExternal(address = 0x8005, size = 1)[0]
-    
+
     def get_8b10b_code_error_count(self):
         return self.device.ReadExternal(address = 0x8004, size = 1)[0]
+
+    def get_lost_data_count(self):
+        return self.device.ReadExternal(address = 0x8005, size = 1)[0]
+
+    def get_fifo_size_8b10b_code_error_count_lost_data_count(self):
+        retfifo = self.device.ReadExternal(address = 0x8101, size = 5)
+        fifo_size = struct.unpack('I', retfifo[0:2].tostring() + '\x00' )[0]
+        code_error_cnt = struct.unpack('B', retfifo[3])[0]
+        lost_data_cnt = struct.unpack('B', retfifo[4])[0]
+        return fifo_size, code_error_cnt, lost_data_cnt
 
     def no_filter(self, words):
         for word in words:
@@ -121,5 +130,10 @@ class Readout(object):
         for word in words:
             header = struct.unpack(4*'B', struct.pack('I', word))[2]
             if header == 233:
+                yield word
+                
+    def tlu_data_filter(self, words):
+        for word in words:
+            if 0x80000000 == word & 0x80000000:
                 yield word
             
