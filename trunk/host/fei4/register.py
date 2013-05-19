@@ -6,7 +6,7 @@ import numpy as np
 import itertools
 import string
 
-from utils.utils import string_is_binary, flatten_iterable, iterable
+from utils.utils import string_is_binary, flatten_iterable, iterable, str2bool
 
 class FEI4GlobalRegister(object):
     """Object with named attributes
@@ -29,8 +29,8 @@ class FEI4GlobalRegister(object):
         self.offset = int(offset)
         self.bitlength = int(bitlength)
         self.addresses = range(self.address, self.address + (self.offset+self.bitlength+16-1)/16)
-        self.littleendian = bool(int(littleendian))
-        self.register_littleendian = bool(register_littleendian)
+        self.littleendian = str2bool(littleendian)
+        self.register_littleendian = str2bool(register_littleendian)
         self.value = long(str(value), 0)  # value is decimal string or number or BitVector
         if self.value >= 2**self.bitlength or self.value < 0:
             raise Exception("Value exceeds limits")
@@ -128,7 +128,7 @@ class FEI4PixelRegister(object): # TODO
         self.bitlength = int(bitlength)
         if self.bitlength > 8:
             raise Exception(name+"max. uint8 supported") # numpy array dtype is uint8
-        self.littleendian = bool(int(littleendian))
+        self.littleendian = str2bool(littleendian)
         dimension = (80,336)
         self.value = np.zeros(dimension, dtype = np.uint8)
         try: # value is decimal string or number or array
@@ -285,7 +285,7 @@ class FEI4Register(object):
         with open(self.configuration_file, 'r') as f:
             for line in f.readlines():
                 key_value = re.split("\s+|[\s]*=[\s]*", line)
-                if len(key_value)>0 and ((len(key_value[0])>0 and key_value[0][0] == '#') or key_value[0] == ''): # ignore line if empty line or starts with '#'
+                if len(key_value)>0 and ((len(key_value[0])>0 and key_value[0][0] == '#') or key_value[0] == '' or key_value[1] == ''): # ignore line if empty line or starts with '#'
                     #print key_value
                     continue
                 elif (key_value[0].lower() == "flavour" or key_value[0].lower() == "flavor" or key_value[0].translate(None, '_-').lower() == "chipflavour" or key_value[0].translate(None, '_-').lower() == "chipflavor"):

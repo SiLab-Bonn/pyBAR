@@ -264,7 +264,12 @@ def split_seq(iterable, size):
     while item:
         yield item
         item = list(itertools.islice(it, size))
- 
+
+def str2bool(value):
+    try:
+        return value.lower() in ("yes", "true", "t", "1")
+    except AttributeError:
+        return bool(value) # no string
     
 #-----------------------------------------------------------------
 if __name__ == "__main__":
