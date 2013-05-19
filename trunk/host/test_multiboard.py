@@ -38,25 +38,25 @@ dut_5 = {"device_identifier" : "216", "scan_identifier" : "BOARD_ID_216_SCC_45_D
 
 device_config = {
                  #"132" : dut_0,
-                 "207" : dut_1_HT,
-                 "214" : dut_2_HT,
+                 "207" : dut_1,
+                 "214" : dut_2,
                  #"201" : dut_3,
                  #"213" : dut_4,
                  #"%5%" : dut_5 # alias 216
 }
 
 logging.info('Starting multi-board scan...')
-
-for number, dev in enumerate(devices):
+init_number = 0
+for dev in devices:
     device_id = dev.GetBoardId()
     
     if device_id in device_config.iterkeys():
-        
+        init_number += 1
         config_file = device_config[device_id]["config_file"]
         dev.device_identifier = device_config[device_id]["device_identifier"]
         scan_identifier = device_config[device_id]["scan_identifier"]
     
-        logging.info("Initialize board number "+str(number)+" with ID "+device_id+" (device identifier: "+dev.identifier+", scan identifier: "+scan_identifier+")")
+        logging.info("Initialize board number "+init_number+" with ID "+device_id+" (device identifier: "+dev.identifier+", scan identifier: "+scan_identifier+")")
         # Analog scan
         #scan = scan_analog.AnalogScan(config_file = config_file, bit_file = bit_file, device = dev, scan_identifier = scan_identifier, outdir = outdir)
          
@@ -85,8 +85,10 @@ for number, dev in enumerate(devices):
         #thread.start()
         threads.append(thread)
         scans.append(scan)
+    else:
+        logging.info("Board with ID "+device_id+" not initialized.")
 
-logging.info('All ' + r"str(len(set.intersection(set([ if device_id in device_config.iterkeys()]), device_config.iterkeys())))" + ' boards initialized. Starting scan...')
+logging.info(str(init_number) + ' board(s) initialized. Starting scan...')
 for thread in threads:
     #thread.setDaemon(True)
     thread.start()
