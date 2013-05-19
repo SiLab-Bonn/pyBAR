@@ -56,7 +56,7 @@ for dev in devices:
         dev.device_identifier = device_config[device_id]["device_identifier"]
         scan_identifier = device_config[device_id]["scan_identifier"]
     
-        logging.info("Initialize board number "+init_number+" with ID "+device_id+" (device identifier: "+dev.identifier+", scan identifier: "+scan_identifier+")")
+        logging.info("Initialize board number "+str(init_number)+" with ID "+device_id+" (device identifier: "+dev.identifier+", scan identifier: "+scan_identifier+")")
         # Analog scan
         #scan = scan_analog.AnalogScan(config_file = config_file, bit_file = bit_file, device = dev, scan_identifier = scan_identifier, outdir = outdir)
          
