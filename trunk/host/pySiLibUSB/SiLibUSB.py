@@ -101,7 +101,7 @@ class SiUSBDevice(object):
         self.lock = RLock()
         
         if identifier == None:
-            self.identifier = "BOARD_ID_"+self.GetBoardId()
+            self.identifier = self.GetBoardId()
         else:
             self.identifier = identifier
         

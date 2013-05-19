@@ -6,15 +6,20 @@ import time
 class ReadoutUtils(object):
     def __init__(self, device):
         self.device = device
-    
-    def reset_rx(self):
-        while True:
+        
+    def read_rx_status(self):
+        status = self.device.ReadExternal(address = 0x8000, size = 8)
+        return True if struct.unpack(8*'B', status)[1] == 1 else False
+                                                
+    def reset_rx(self, iterations = 10):
+        for _ in range(iterations):
             self.device.WriteExternal(address = 0x8000, data = [0])
             time.sleep(0.1)
             status = self.device.ReadExternal(address = 0x8000, size = 8)
             sync = struct.unpack(8*'B', status)[1]
             if sync == 1:
-                break
+                return True
+        return False
             
     def reset_sram_fifo(self):
         self.device.WriteExternal(address = 0x8100, data = [0])

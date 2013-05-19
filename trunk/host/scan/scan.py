@@ -16,11 +16,7 @@ from daq.readout_utils import ReadoutUtils
 from daq.readout import Readout
 from utils.utils import convert_to_int
 
-
-chip_flavor = 'fei4a'
-config_file = 'C:\Users\Jens\Desktop\Python\python_projects\etherpixcontrol\std_cfg_'+chip_flavor+'.cfg'
-bit_file = r'C:\Users\Jens\Desktop\ModularReadoutSystem\device\trunk\MIO\FPGA\FEI4\ise\top.bit'
-
+logging.basicConfig(level=logging.INFO, format = "%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 class ScanBase(object):
     def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "base_scan", outdir = None):
@@ -32,13 +28,13 @@ class ScanBase(object):
                 raise TypeError('Device has wrong type')
         else:
             self.device = SiUSBDevice()
-        print 'Found USB board with ID', self.device.GetBoardId()
+        logging.info('Found USB board with ID %s', self.device.identifier)
         if bit_file != None:
-            print 'Programming FPGA...'
-            print bit_file
+            logging.info('Programming FPGA...')
+            logging.info('FPGA bit file: %s', bit_file)
             self.device.DownloadXilinx(bit_file)
             time.sleep(1)
-            print 'Done!'
+            logging.info('Done!')
             
         self.readout = Readout(self.device)
         self.readout_utils = ReadoutUtils(self.device)
@@ -61,10 +57,10 @@ class ScanBase(object):
         self.stop_thread_event.set()
         
     def configure(self):
-        print 'Configure FE...'
+        logging.info('Configure FE...')
         #scan.register.load_configuration_file(config_file)
         self.register_utils.configure_all(same_mask_for_all_dc = False)
-        print 'Done!'
+        logging.info('Done!')
         
     def start(self, configure = True):
         self.stop_thread_event.clear()
@@ -87,13 +83,13 @@ class ScanBase(object):
         if configure:
             self.configure()
 
-        print 'Reset Rx...'
+        logging.info('Reset Rx...')
         self.readout_utils.reset_rx()
-        print 'Done!'
+        logging.info('Done!')
         
-        print 'Reset SRAM FIFO...'
+        logging.info('Reset SRAM FIFO...')
         self.readout_utils.reset_sram_fifo()
-        print 'Done!'
+        logging.info('Done!')
         
     def worker(self):
         pass

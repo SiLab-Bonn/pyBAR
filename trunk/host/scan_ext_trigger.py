@@ -4,6 +4,7 @@ import time
 import datetime
 import logging
 from collections import deque
+import math
 
 import numpy as np
 #import pandas as pd
@@ -23,6 +24,8 @@ from analysis.data_struct import MetaTable
 
 from scan.scan import ScanBase
 
+logging.basicConfig(level=logging.INFO, format = "%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
+
 class ExtTriggerScan(ScanBase):
     def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "ext_trigger_scan", outdir = None):
         super(ExtTriggerScan, self).__init__(config_file, definition_file, bit_file, device, scan_identifier, outdir)
@@ -30,10 +33,10 @@ class ExtTriggerScan(ScanBase):
     def start(self, configure = True):
         super(ExtTriggerScan, self).start(configure)
         
-        print self.scan_identifier, 'Start readout thread...'
+        logging.info('Start readout thread...')
         #self.readout.set_filter(self.readout.tlu_data_filter)
         self.readout.start()
-        print self.scan_identifier, 'Done!'
+        logging.info('Done!')
         
         #scan_parameter = 'Vthin_AltFine'
         #scan_paramter_value = self.register.get_global_register_value(scan_parameter)
@@ -46,7 +49,7 @@ class ExtTriggerScan(ScanBase):
             
             lvl1_command = BitVector.BitVector(size = 24)+self.register.get_commands("lv1")[0]#+BitVector.BitVector(size = 10000)
             self.register_utils.set_command(lvl1_command)
-            self.readout_utils.set_tlu_mode(mode = 3, disable_veto = False, enable_reset = False, tlu_trigger_clock_cycles = 16, trigger_data_delay = 2, tlu_trigger_low_timeout = 255)
+            self.readout_utils.set_tlu_mode(mode = 3, disable_veto = False, enable_reset = False, tlu_trigger_clock_cycles = 16, trigger_data_delay = 4, tlu_trigger_low_timeout = 255)
             self.readout_utils.set_ext_cmd_start(True)
                 
             consecutive_lvl1 = self.register.get_global_register_value("Trig_Count")
@@ -56,52 +59,85 @@ class ExtTriggerScan(ScanBase):
             row_meta = meta_data_table_h5.row
             
             total_words = 0
-            
             wait_for_first_trigger = True
             
-            saw_no_data_at_time = time.time()
-            saw_data_at_time = time.time()
-            timeout_no_data = 10 # secs
+            
+            timeout_no_data = 600 # secs
+            max_triggers = 6000000
+            schow_trigger_message_at = 10**(int(math.ceil(math.log10(max_triggers)))-1)
+            last_iteration = time.time()
+            saw_no_data_at_time = last_iteration
+            saw_data_at_time = last_iteration
+            scan_start_time = last_iteration
+            no_data_at_time = last_iteration
+            time_from_last_iteration = 0
+            scan_timeout = 1200
+            scan_stop_time = scan_start_time + scan_timeout
             #data_q = []
             data_q = deque()
             raw_data_q = deque()
-            
+            current_trigger_number = 0
+            last_trigger_number = 0
             while self.stop_thread_event.wait(0.05) or not self.stop_thread_event.is_set():
                 if self.stop_thread_event.is_set():
                     break
-#                 lost_data = self.readout.get_lost_data_count()
-#                 if lost_data != 0:
-#                     print 'Lost data count:', lost_data
-
-                #print 'FIFO fill level:', (float(fifo_size)/2**20)*100
-                #print 'Trigger number:', bin(current_trigger_number)
+                
+#                 if logger.isEnabledFor(logging.DEBUG):
+#                     lost_data = self.readout.get_lost_data_count()
+#                     if lost_data != 0:
+#                         logging.debug('Lost data count: %d', lost_data)
+#                         logging.debug('FIFO fill level: %4f', (float(fifo_size)/2**20)*100)
+#                         logging.debug('Collected triggers: %d', self.readout_utils.get_trigger_number())
+                
+                current_trigger_number = self.readout_utils.get_trigger_number()
+                if (current_trigger_number%schow_trigger_message_at < last_trigger_number%schow_trigger_message_at):
+                    logging.info('Collected triggers: %d', current_trigger_number)
+                last_trigger_number = current_trigger_number
+                if max_triggers is not None and current_trigger_number > max_triggers:
+                    logging.info('Reached maximum triggers. Stopping Scan...')
+                    self.stop_thread_event.set()
+                if scan_start_time is not None and time.time() > scan_stop_time:
+                    logging.info('Reached maximum scan time. Stopping Scan...')
+                    self.stop_thread_event.set()
+                if not self.readout_utils.read_rx_status():
+                    logging.info('Lost data sync. Starting synchronization...')
+                    self.readout_utils.set_ext_cmd_start(False)
+                    if not self.readout_utils.reset_rx(1000):
+                        logging.info('Failed. Stopping scan...')
+                        self.stop_thread_event.set()
+                    else:
+                        logging.info('Done!')
+                        self.readout_utils.set_ext_cmd_start(True)
+                        
+                    
 
                 data_q.extend(list(get_all_from_queue(self.readout.data_queue))) # use list, it is faster
-                
+                time_from_last_iteration = time.time() - last_iteration
+                last_iteration = time.time()
                 while True:
                     try:
                         item = data_q.pop()
                     except IndexError:
+                        no_data_at_time = last_iteration
                         if wait_for_first_trigger == False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
-                            print self.scan_identifier, 'Done!'
-                            print self.scan_identifier, 'Total amount of triggers collected:', self.readout_utils.get_trigger_number()
-                            self.readout_utils.set_tlu_mode(mode = 0)
+                            logging.info('Reached no data timeout. Stopping Scan...')
                             self.stop_thread_event.set()
                         elif wait_for_first_trigger == False:
-                            saw_no_data_at_time = time.time()
+                            saw_no_data_at_time = no_data_at_time
+                        
+                        if no_data_at_time > (saw_data_at_time + 10):
+                            scan_stop_time += time_from_last_iteration
                               
                         break # jump out while loop
                     
-                    saw_data_at_time = time.time()
+                    saw_data_at_time = last_iteration
                     
                     if wait_for_first_trigger == True:
-                        print self.scan_identifier, 'Taking data...'
+                        logging.info('Taking data...')
                         wait_for_first_trigger = False
 
                     raw_data = item['raw_data']
-#                         for word in raw_data:
-#                             print FEI4Record(word, 'fei4a')
-                    len_raw_data = len(raw_data) 
+                    len_raw_data = len(raw_data)
                     #for data in split_seq(raw_data, append_size):
                     raw_data_q.extend(split_seq(raw_data, append_size))
                     while True:
@@ -119,22 +155,29 @@ class ExtTriggerScan(ScanBase):
                     row_meta['stop_index'] = total_words
                     row_meta.append()
                     meta_data_table_h5.flush()
+                
+            self.readout_utils.set_ext_cmd_start(False)
+            self.readout_utils.set_tlu_mode(mode = 0)
+            
+            logging.info('Total amount of triggers collected: %d', self.readout_utils.get_trigger_number())
+                
         
         self.stop_thread_event.set()
      
-        print self.scan_identifier, 'Stopping readout thread...'
+        logging.info('Stopping readout thread...')
         self.readout.stop()
-        print self.scan_identifier, 'Done!'
+        logging.info('Done!')
         
-        print self.scan_identifier, 'Data remaining in memory:', self.readout.get_fifo_size()
-        print self.scan_identifier, 'Lost data count:', self.readout.get_lost_data_count()
+        logging.info('Data remaining in memory: %d', self.readout.get_fifo_size())
+        logging.info('Lost data count: %d', self.readout.get_lost_data_count())
 
         
 if __name__ == "__main__":
     chip_flavor = 'fei4a'
     config_file = r'C:\Users\silab\Dropbox\pyats\trunk\host\config\fei4default\configs\std_cfg_'+chip_flavor+'_simple.cfg'
-    bit_file = r'C:\Users\silab\Dropbox\pyats\trunk\device\MultiIO\FPGA\ise\top.bit'
+    #bit_file = r'C:\Users\silab\Dropbox\pyats\trunk\device\MultiIO\FPGA\ise\top.bit'
+    bit_file = r'C:\Users\silab\Dropbox\pyats\trunk\host\config\FPGA\top.bit'
     
-    scan = ExtTriggerScan(config_file, bit_file)
+    scan = ExtTriggerScan(config_file = config_file, bit_file = bit_file)
     
     scan.start()
