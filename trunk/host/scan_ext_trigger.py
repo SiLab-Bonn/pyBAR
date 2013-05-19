@@ -55,6 +55,8 @@ class ExtTriggerScan(ScanBase):
             
             row_meta = meta_data_table_h5.row
             
+            total_words = 0
+            
             wait_for_first_trigger = True
             
             saw_no_data_at_time = time.time()
