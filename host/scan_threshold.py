@@ -19,7 +19,7 @@ from analysis.data_struct import MetaTable
 from scan.scan import ScanBase
 
 class ThresholdScan(ScanBase):
-    def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "", outdir = ""):
+    def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "", outdir = None):
         super(ThresholdScan, self).__init__(config_file, definition_file, bit_file, device, scan_identifier, outdir)
         
     def start(self, configure = True):
@@ -33,7 +33,7 @@ class ThresholdScan(ScanBase):
         data_words_lists = []
         
         scan_parameter = 'PlsrDAC'
-        scan_paramter_value_range = range(200, 401, 5)
+        scan_paramter_value_range = range(0, 201, 5)
         
         
             

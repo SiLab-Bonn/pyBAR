@@ -23,7 +23,7 @@ bit_file = r'C:\Users\Jens\Desktop\ModularReadoutSystem\device\trunk\MIO\FPGA\FE
 
 
 class ScanBase(object):
-    def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "base_scan", outdir = ""):
+    def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "base_scan", outdir = None):
         if device is not None:
             #if isinstance(device, usb.core.Device):
             if isinstance(device, SiUSBDevice):
@@ -47,7 +47,10 @@ class ScanBase(object):
         self.register_utils = FEI4RegisterUtils(self.device, self.readout_utils, self.register)
         self.scan_utils = FEI4ScanUtils(self.register, self.register_utils)
         
-        self.outdir = outdir
+        if outdir == None:
+            self.outdir = os.getcwd()
+        else:
+            self.outdir = outdir
         self.scan_identifier = scan_identifier
         self.scan_number = None
         self.scan_data_path = None

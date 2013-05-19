@@ -17,7 +17,7 @@ from utils.utils import get_all_from_queue, split_seq
 from scan.scan import ScanBase
 
 class AnalogScan(ScanBase):
-    def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "ext_trigger_scan", outdir = ""):
+    def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "analog_scan", outdir = None):
         super(AnalogScan, self).__init__(config_file, definition_file, bit_file, device, scan_identifier, outdir)
         
     def start(self, configure = True):
