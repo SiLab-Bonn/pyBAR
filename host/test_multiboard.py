@@ -10,14 +10,15 @@ import scan_analog
 import scan_threshold
 import scan_ext_trigger
 
-logging.basicConfig(level=logging.DEBUG, format='(%(threadName)-10s) %(message)s')
+logging.basicConfig(level=logging.DEBUG, format = "%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 chip_flavor = 'fei4a'
 #config_file = r'C:\Users\silab\Dropbox\pyats\trunk\host\config\fei4default\configs\std_cfg_'+chip_flavor+'_simple.cfg'
-bit_file = r'C:\Users\silab\Dropbox\pyats\trunk\device\MultiIO\FPGA\ise\top.bit'
+#bit_file = r'C:\Users\silab\Dropbox\pyats\trunk\device\MultiIO\FPGA\ise\top.bit'
+bit_file = r'C:\Users\silab\Dropbox\pyats\trunk\host\config\FPGA\top.bit'
 
-devices = GetUSBBoards()
-print "Found", len(devices), "board(s) with device ID: {}".format(', '.join('\''+dev.GetBoardId()+'\'' for dev in devices))
+devices = {dev: dev.GetBoardId() for dev in GetUSBBoards()}
+logging.info("Found %d board(s) with device ID: {}".format(', '.join('\''+dev.GetBoardId()+'\'' for dev in devices)), len(devices))
 threads = []
 scans = []
 
@@ -47,8 +48,9 @@ device_config = {
 
 logging.info('Starting multi-board scan...')
 init_number = 0
-for dev in devices:
-    device_id = dev.GetBoardId()
+for dev in devices.iterkeys():
+    #device_id = dev.GetBoardId()
+    device_id = devices[dev]
     
     if device_id in device_config.iterkeys():
         init_number += 1
@@ -56,7 +58,7 @@ for dev in devices:
         dev.device_identifier = device_config[device_id]["device_identifier"]
         scan_identifier = device_config[device_id]["scan_identifier"]
     
-        logging.info("Initialize board number "+str(init_number)+" with ID "+device_id+" (device identifier: "+dev.identifier+", scan identifier: "+scan_identifier+")")
+        logging.info("Initialize board number %d with ID %s (device identifier: %s, scan identifier: %s)", init_number, device_id, dev.identifier, scan_identifier)
         # Analog scan
         #scan = scan_analog.AnalogScan(config_file = config_file, bit_file = bit_file, device = dev, scan_identifier = scan_identifier, outdir = outdir)
          
@@ -72,8 +74,7 @@ for dev in devices:
         
         # test function
     #     def test_func(device):
-    #         #logging.info("Thread of board with ID"+device.GetBoardId())
-    #         print "Thread of board with ID", device.GetBoardId()
+    #         logging.info("Thread of board with ID"+device.GetBoardId())
     #     thread = Thread(name = dev.identifier, target = test_func, kwargs = {"device" : dev})   
         
     
@@ -86,14 +87,14 @@ for dev in devices:
         threads.append(thread)
         scans.append(scan)
     else:
-        logging.info("Board with ID "+device_id+" not initialized.")
+       logging.info("Board with ID %s not initialized.", device_id)
 
-logging.info(str(init_number) + ' board(s) initialized. Starting scan...')
+logging.info('%d board(s) initialized. Starting scan...', init_number)
 for thread in threads:
     #thread.setDaemon(True)
     thread.start()
 
-stop_threads = False    
+stop_threads = False
 while 1:
     if stop_threads == True:
         break
@@ -101,7 +102,7 @@ while 1:
         if not thread.is_alive():
             stop_threads = True
             scan = scans[number]
-            print scan.scan_identifier, "has stopped."
+            logging.info("%s has stopped.", scan.scan_identifier)
             break
     time.sleep(1)
 
@@ -109,9 +110,12 @@ for number, thread in enumerate(threads):
     if thread.is_alive():
         scan = scans[number]
         scan.stop_thread_event.set()
-        print "Stopping scan thread(s)", scan.scan_identifier+"..."
+        logging.info("Stopping scan thread(s) %s...", scan.scan_identifier)
 
 for thread in threads:
     thread.join()
-    
+
+threads = []
+scans = []
+
 logging.info('Done!')

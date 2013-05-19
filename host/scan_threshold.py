@@ -33,7 +33,7 @@ class ThresholdScan(ScanBase):
         data_words_lists = []
         
         scan_parameter = 'PlsrDAC'
-        scan_paramter_value_range = range(0, 201, 5)
+        scan_paramter_value_range = range(200, 601, 4)
         
         
             
@@ -68,7 +68,7 @@ class ThresholdScan(ScanBase):
                 
                 #import cProfile
                 #pr = cProfile.Profile()
-                mask = 3
+                mask = 6
                 repeat = 100
                 wait_cycles = 336*2/mask*24/4*3
                 cal_lvl1_command = self.register.get_commands("cal")[0]+BitVector.BitVector(size = 40)+self.register.get_commands("lv1")[0]+BitVector.BitVector(size = wait_cycles)
@@ -157,7 +157,7 @@ if __name__ == "__main__":
     config_file = r'C:\Users\silab\Dropbox\pyats\trunk\host\config\fei4default\configs\std_cfg_'+chip_flavor+'_simple.cfg'
     bit_file = r'C:\Users\silab\Dropbox\pyats\trunk\device\MultiIO\FPGA\ise\top.bit'
     
-    scan = ThresholdScan(config_file, bit_file = bit_file)
+    scan = ThresholdScan(config_file = config_file, bit_file = bit_file)
     
     scan.start()
     
