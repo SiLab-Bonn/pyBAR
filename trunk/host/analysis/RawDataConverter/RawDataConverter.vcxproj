@@ -64,16 +64,16 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
-      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(BLOSC)/hdf5;$(HDF5)/include;$(HDF5)/include/cpp;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>./blosc;$(HDF5)/include;$(HDF5)/include/cpp;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>$(HDF5)/lib/hdf5dll.lib;$(HDF5)/lib/hdf5_cppdll.lib;$(BLOSC)/bin/Release/blosc.obj;$(BLOSC)/bin/Release/blosclz.obj;$(BLOSC)/bin/Release/shuffle.obj;$(BLOSC)/bin/Release/blosc_filter.obj;$(HDF5)/lib/hdf5_hldll.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(HDF5)/lib/hdf5dll.lib;$(HDF5)/lib/hdf5_cppdll.lib;$(HDF5)/lib/hdf5_hldll.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -84,7 +84,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>./blosc;$(PYTHON_INCLUDE);$(HDF5)/include/cpp;$(HDF5)/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>./blosc;$(HDF5)/include/cpp;$(HDF5)/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
     </ClCompile>
     <Link>
@@ -92,7 +92,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>$(HDF5)/lib/hdf5dll.lib;$(HDF5)/lib/hdf5_cppdll.lib;$(HDF5)/lib/hdf5_hldll.lib;$(PYTHON_LIB);%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(HDF5)/lib/hdf5dll.lib;$(HDF5)/lib/hdf5_cppdll.lib;$(HDF5)/lib/hdf5_hldll.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <Profile>true</Profile>
     </Link>
   </ItemDefinitionGroup>
@@ -158,6 +158,7 @@ $(SWIG)\swig.exe -c++ -python Converter.i</Command>
     <ClCompile Include="Converter.cpp" />
     <ClCompile Include="Converter_wrap.cxx">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Histogram.cpp" />
     <ClCompile Include="Interpret.cpp" />
