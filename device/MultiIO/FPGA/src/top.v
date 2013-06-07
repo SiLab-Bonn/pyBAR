@@ -33,17 +33,35 @@ module top (
     output wire SRAM_CE1_B,
     output wire SRAM_OE_B,
     output wire SRAM_WE_B,
-        
-    input FE_RX,
     
     input wire [2:0] LEMO_RX,
     output wire [2:0] TX, // TX[0] == RJ45 trigger clock output, TX[1] == RJ45 busy output
     input wire RJ45_RESET,
     input wire RJ45_TRIGGER,
     
-    output CMD_CLK,
-    output CMD_DATA,
-    output POWER_EN_VD1
+    output wire CMD_CLK,
+    output wire CMD_DATA,
+    output wire EN_V1, // EN_VA1 on SCC, EN_VDD1 on BIC
+    output wire EN_V2, // EN_VA2 on SCC, EN_VDD2 on BIC
+    output wire EN_V3, // EN_VD2 on SCC, EN_VDD3 on BIC
+    output wire EN_V4, // EN_VD1 on SCC, EN_VDD4 on BIC
+    
+    input wire DOBOUT1, // BIC only
+    input wire DOBOUT2, // BIC only
+    input wire DOBOUT3, // BIC only
+    input wire DOBOUT4, // DO on SCC
+    
+    // Over Current Protection (BIC only)
+    input wire OC1,
+    input wire OC2,
+    input wire OC3,
+    input wire OC4,
+    
+    // Select (SEL) LED (BIC only)
+    output wire SEL1,
+    output wire SEL2,
+    output wire SEL3,
+    output wire SEL4
     
     //input wire FPGA_BUTTON // switch S2 on MultiIO board, active low
 );
@@ -55,7 +73,16 @@ wire CLK_40;
 wire CLK_160;
 wire CLK_LOCKED;
 
-assign POWER_EN_VD1 = 1'b1;
+assign EN_V1 = 1'b1;
+assign EN_V2 = 1'b1;
+assign EN_V3 = 1'b1;
+assign EN_V4 = 1'b1;
+
+assign SEL1 = 1'b1;
+assign SEL2 = 1'b1;
+assign SEL3 = 1'b1;
+assign SEL4 = 1'b1;
+
 assign DEBUG_D = 16'ha5a5;
 
 // 1Hz CLK
@@ -306,7 +333,7 @@ out_fifo iout_fifo
 fei4_rx ifei4_rx(
     .RX_CLK(CLK_160),
     .RX_CLK_LOCKED(CLK_LOCKED),
-    .RX_DATA(FE_RX),
+    .RX_DATA(DOBOUT4),
     
     .RX_READY(RX_READY),
      
@@ -378,7 +405,7 @@ chipscope_ila ichipscope_ila
     .CLK(CLK_160),
     .TRIG0({FIFO_DATA[23:0], TLU_BUSY, TLU_FIFO_EMPTY, TLU_FIFO_READ, FE_FIFO_EMPTY, FE_FIFO_READ, TLU_FIFO_ACCESS, FIFO_EMPTY, FIFO_READ})
     //.CLK(CLK_160),
-    //.TRIG0({FMODE, FSTROBE, FREAD, CMD_BUS_WR, RX_BUS_WR, FIFO_WR, BUS_DATA_IN, FE_RX ,WR_B, RD_B})
+    //.TRIG0({FMODE, FSTROBE, FREAD, CMD_BUS_WR, RX_BUS_WR, FIFO_WR, BUS_DATA_IN, DOBOUT4 ,WR_B, RD_B})
 );
 `endif
 
