@@ -126,6 +126,14 @@ begin
         BUS_DATA_OUT <= CURRENT_TRIGGER_NUMBER_BUF[23:16];
     else if (BUS_ADD == 11)
         BUS_DATA_OUT <= CURRENT_TRIGGER_NUMBER_BUF[31:24];
+    else if (BUS_ADD == 12)
+        BUS_DATA_OUT <= 8'b0;
+    else if (BUS_ADD == 13)
+        BUS_DATA_OUT <= 8'b0;
+    else if (BUS_ADD == 14)
+        BUS_DATA_OUT <= 8'b0;
+    else if (BUS_ADD == 15)
+        BUS_DATA_OUT <= 8'b0;
     else if(BUS_ADD < 4)
         BUS_DATA_OUT <= status_regs[BUS_ADD[3:0]]; // BUG AR 20391: use synchronous logic
     else
@@ -291,14 +299,14 @@ reg TLU_TRIGGER_BUS_CLK_FF;
 always @ (posedge BUS_CLK)
     TLU_TRIGGER_BUS_CLK_FF <= TLU_TRIGGER_BUS_CLK;
 
-assign TLU_TRIGGER_FLAG_BUS_CLK = ~TLU_TRIGGER_BUS_CLK_FF && TLU_TRIGGER_BUS_CLK;
+assign TLU_TRIGGER_FLAG_BUS_CLK = ~TLU_TRIGGER_BUS_CLK_FF & TLU_TRIGGER_BUS_CLK;
 
 // Reset flag
 reg TLU_RESET_BUS_CLK_FF;
 always @ (posedge BUS_CLK)
     TLU_RESET_BUS_CLK_FF <= TLU_RESET_BUS_CLK;
 
-assign TLU_RESET_FLAG_BUS_CLK = ~TLU_RESET_BUS_CLK_FF && TLU_RESET_BUS_CLK;
+assign TLU_RESET_FLAG_BUS_CLK = ~TLU_RESET_BUS_CLK_FF & TLU_RESET_BUS_CLK;
 
 // writing current TLU trigger number to register
 wire TLU_DATA_READY_FLAG;
@@ -382,7 +390,7 @@ tlu_controller_fsm #(
     .CMD_EXT_START_FLAG(CMD_EXT_START_FLAG_BUS_CLK),
     .CMD_EXT_START_ENABLE(CMD_EXT_START_ENABLE_BUS_CLK),
     
-    .TLU_TRIGGER(TLU_TRIGGER_BUS_CLK),
+    .TLU_TRIGGER(TLU_TRIGGER_BUS_CLK_FF),
     .TLU_TRIGGER_FLAG(TLU_TRIGGER_FLAG_BUS_CLK),
     
     .TLU_MODE(TLU_MODE),
@@ -402,5 +410,22 @@ tlu_controller_fsm #(
     
     .FIFO_NEAR_FULL(FIFO_NEAR_FULL)
 );
+
+// Chipscope
+`ifdef SYNTHESIS_NOT
+//`ifdef SYNTHESIS
+wire [35:0] control_bus;
+chipscope_icon ichipscope_icon
+(
+    .CONTROL0(control_bus)
+);
+
+chipscope_ila ichipscope_ila
+(
+    .CONTROL(control_bus),
+    .CLK(BUS_CLK),
+    .TRIG0({TLU_MODE,BUS_DATA_IN,BUS_ADD,BUS_RD,BUS_WR, BUS_CLK ,RST})
+);
+`endif
 
 endmodule
