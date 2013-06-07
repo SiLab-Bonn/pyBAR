@@ -2,8 +2,8 @@
 vlib work
 set XILINX   $env(XILINX)
 
-vmap unisims_ver $XILINX/verilog/questasim/10.1c/lin64/unisims_ver
-vmap simprims_ver $XILINX/verilog/questasim/10.1c/lin64/simprims_ver 
+#vmap unisims_ver $XILINX/verilog/questasim/10.1c/lin64/unisims_ver
+#vmap simprims_ver $XILINX/verilog/questasim/10.1c/lin64/simprims_ver 
 vlog $XILINX/verilog/src/glbl.v
 
 vlog ../src/fei4_rx/*.v
