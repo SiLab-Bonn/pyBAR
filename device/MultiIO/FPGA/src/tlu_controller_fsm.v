@@ -85,7 +85,7 @@ begin
     
         IDLE:
         begin
-            if ((CMD_READY == 1'b1) && (CMD_EXT_START_ENABLE == 1'b1) && ((TLU_TRIGGER_FLAG == 1'b1) /*|| ((TLU_TRIGGER == 1'b1) && (TLU_MODE == 2'b11 || TLU_MODE == 2'b10))*/) && EXT_VETO == 1'b0) next = SEND_COMMAND_WAIT_FOR_TRIGGER_LOW;
+            if ((CMD_READY == 1'b1) && (CMD_EXT_START_ENABLE == 1'b1) && ((TLU_TRIGGER_FLAG == 1'b1) || ((TLU_TRIGGER == 1'b1) && (TLU_MODE == 2'b11 || TLU_MODE == 2'b10))) && EXT_VETO == 1'b0) next = SEND_COMMAND_WAIT_FOR_TRIGGER_LOW;
             else next = IDLE;
         end
         
@@ -176,16 +176,17 @@ begin
                     TLU_ASSERT_VETO <= 1'b1;
                 else
                     TLU_ASSERT_VETO <= 1'b0;
-                if (CMD_EXT_START_ENABLE == 1'b0)
-                    TLU_BUSY <= 1'b1; // FIXME: temporary fix for accepting first TLU trigger
-                else
-                    TLU_BUSY <= 1'b0;
+                // if (CMD_EXT_START_ENABLE == 1'b0)
+                    // TLU_BUSY <= 1'b1; // FIXME: temporary fix for accepting first TLU trigger
+                // else
+                    // TLU_BUSY <= 1'b0;
+                TLU_BUSY <= 1'b0;
                 TLU_CLOCK_ENABLE <= 1'b0;
                 counter_trigger_low_time_out <= 8'b0;
                 counter_tlu_clock <= 0;
                 counter_sr_wait_cycles <= 0;
                 TLU_TRIGGER_LOW_TIMEOUT_ERROR <= 1'b0;
-                if (TLU_TRIGGER == 1'b1 && TLU_TRIGGER_FLAG == 1'b0)
+                if (TLU_TRIGGER == 1'b1)
                     TLU_TRIGGER_ACCEPT_ERROR <= 1'b1;
                 else
                     TLU_TRIGGER_ACCEPT_ERROR <= 1'b0;
@@ -372,5 +373,24 @@ begin
         endcase
     end
 end
+
+// Chipscope
+`ifdef SYNTHESIS_NOT
+//`ifdef SYNTHESIS
+wire [35:0] control_bus;
+chipscope_icon ichipscope_icon
+(
+    .CONTROL0(control_bus)
+);
+
+chipscope_ila ichipscope_ila
+(
+    .CONTROL(control_bus),
+    .CLK(CLK),
+    .TRIG0({CMD_EXT_START_ENABLE, TLU_DATA_READY_FLAG, CMD_EXT_START_FLAG, TLU_CLOCK_ENABLE, TLU_ASSERT_VETO, TLU_BUSY, CMD_READY, FIFO_NEAR_FULL, TLU_TRIGGER_ACCEPT_ERROR, TLU_TRIGGER_LOW_TIMEOUT_ERROR, TLU_TRIGGER_FLAG, TLU_TRIGGER, TLU_MODE, state})
+    //.CLK(CLK_160),
+    //.TRIG0({FMODE, FSTROBE, FREAD, CMD_BUS_WR, RX_BUS_WR, FIFO_WR, BUS_DATA_IN, FE_RX ,WR_B, RD_B})
+);
+`endif
 
 endmodule

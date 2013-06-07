@@ -20,8 +20,6 @@ module cmd_seq
     CMD_READY
 );
 
-
-
 parameter OUT_LINES = 1;
 
 input                       BUS_CLK;
@@ -263,8 +261,6 @@ always @ (posedge CMD_CLK_IN) begin
             send_word[7:0] <= {send_word[6:0],send_word[0]};
     end
 end
-
-
 
 reg cmd_data_neg;
 reg cmd_data_pos;
