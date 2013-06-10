@@ -10,5 +10,5 @@ Windows installer instructions:
 
 4. open the solution (with VS 2010 and above(?)) and compile.
    Release/debug build will build the c++ versions in release/debug mode. Only the release configuration compiles BLOSC with the appropriate compiler optimizations (SSE2).
-   PythonModule run config will create the PythonModule via SWAG. You can test it by running 'python test.py' from the console. The module is called _Converter.pyd and is
+   PythonModule run config will create the PythonModule via SWAG. You can test it by running 'python test.py' from the console. The output is called _Converter.pyd and is
    a dll.

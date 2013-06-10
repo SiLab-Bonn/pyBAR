@@ -22,16 +22,7 @@ int main(int argc, char* argv[])
     tOutputFileName = tInputFileName;
     tOutputFileName.insert(tInputFileName.size()-3,"_out");
    }
-   converter.setDebugOutput(true);
-   try{
-     converter.loadHDF5file(tInputFileName);
-   }
-   catch(H5::FileIException error){
-     std::cout<<"EXEPTION File I/O error: "<<error.getCDetailMsg()<<" in "<<error.getCFuncName()<<"\n";
-     //error.printError();
-     system("pause");
-     return -1;
-   }
+   converter.setDebugOutput(false);
 
    try{
      converter.setNbCIDs(16);
@@ -43,7 +34,9 @@ int main(int argc, char* argv[])
      converter.createParameterData(false);
      converter.createErrorHist(true);
      converter.createServiceRecordHist(true);
-     converter.createOccupancyHists(true);
+     converter.createOccupancyHist(true);
+     converter.createRelBcidHist(true);
+     converter.createTotHist(true);
      converter.createThresholdHists(false);
 
      converter.setWarningOutput(false);
@@ -52,7 +45,7 @@ int main(int argc, char* argv[])
 
      //converter.printOptions();
    
-     converter.convertTable();
+     converter.convertTable(tInputFileName);
 
      converter.printSummary();
    }
@@ -95,12 +88,14 @@ int main(int argc, char* argv[])
    {
       std::cout<<"EXEPTION: allocation error\n";
       std::cout<<ba.what()<<std::endl;
+      system("pause");
       return -1;
    }
    catch(std::exception& error) //catch failure caused by the standard library
    {
       std::cout<<"EXEPTION: Standart library exception\n";
       std::cout<<error.what()<<std::endl;
+      system("pause");
       return -1;
    }
    catch(int e) //catch failure caused by the interpreter
@@ -143,9 +138,16 @@ int main(int argc, char* argv[])
         case 23:
           std::cout<<"Parameter<->Event correlation failed\n";
           break;
+        case 24:
+          std::cout<<"Tot value out of bounds\n";
+          break;
+        case 25:
+          std::cout<<"relative BCID value out of bounds\n";
+          break;
         default:
           std::cout<<"unknown exception\n";
       }
+      system("pause");
       return -1;
    }
    catch (...){
