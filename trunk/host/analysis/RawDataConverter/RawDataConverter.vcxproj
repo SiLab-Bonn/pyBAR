@@ -51,7 +51,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LinkIncremental>true</LinkIncremental>
+    <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -69,6 +69,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>./blosc;$(HDF5)/include;$(HDF5)/include/cpp;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -124,30 +125,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <CustomBuild Include="..\RawDataConverterWrapper\Converter.i">
-      <FileType>Document</FileType>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(InputName)_wrap.cxx;%(Outputs)</Outputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='PythonModule|Win32'">$(InputName)_wrap.cxx;%(Outputs)</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">echo Neccessary environment variables: 
-echo PYTHON_INCLUDE: %PYTHON_INCLUDE%
-echo PYTHON_LIB: %PYTHON_LIB%
-echo Creating wrapper from interface file:
-echo on
-$(SWIG)\swig.exe -c++ -python C:\Users\DavidLP\DOCUME~1\VISUAL~2\Projects\BLOSC\RAWDAT~1\Converter.i</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='PythonModule|Win32'">echo Neccessary environment variables: 
-echo PYTHON_INCLUDE: %PYTHON_INCLUDE%
-echo PYTHON_LIB: %PYTHON_LIB%
-echo Creating wrapper from interface file:
-echo on
-$(SWIG)\swig.exe -c++ -python Converter.i</Command>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-      </Message>
-      <Message Condition="'$(Configuration)|$(Platform)'=='PythonModule|Win32'">
-      </Message>
+    <None Include="Converter.i">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-    </CustomBuild>
-    <None Include="ReadMe.txt" />
+    </None>
+    <None Include="HOWTO.txt" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Basis.cpp" />
@@ -162,7 +144,9 @@ $(SWIG)\swig.exe -c++ -python Converter.i</Command>
     </ClCompile>
     <ClCompile Include="Histogram.cpp" />
     <ClCompile Include="Interpret.cpp" />
-    <ClCompile Include="RawDataConverter.cpp" />
+    <ClCompile Include="RawDataConverter.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='PythonModule|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Basis.h" />

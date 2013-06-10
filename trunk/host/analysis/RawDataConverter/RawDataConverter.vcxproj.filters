@@ -15,7 +15,8 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="ReadMe.txt" />
+    <None Include="Converter.i" />
+    <None Include="HOWTO.txt" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="RawDataConverter.cpp">
@@ -77,8 +78,5 @@
     <ClInclude Include="blosc\shuffle.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <CustomBuild Include="..\RawDataConverterWrapper\Converter.i" />
   </ItemGroup>
 </Project>

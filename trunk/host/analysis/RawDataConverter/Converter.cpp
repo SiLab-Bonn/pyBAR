@@ -15,166 +15,19 @@ Converter::Converter(void):
 
 Converter::~Converter(void)
 {
-  if(_inFile != 0){
-    _inFile->close();
-    delete _inFile;
-  }
-  if(_outFile != 0){
-    _outFile->close();
-    delete _outFile;
-  }
+  closeInFile();
+  closeOutFile();
   delete _hitInfoBuffer;
   delete _metaInfoBuffer;
   delete _parameterInfoBuffer;
 }
 
-void Converter::setStandardSettings()
-{
-  _groupName = "/";
-  _outputFileName = "out.h5";
-  _inFileName = "not set";
-  _tableNameHits = "Hits";
-  _tableNameMeta = "MetaData";
-  _occHistName = "HistOcc";
-  _parHistName = "Parameter";
-  _threshHistName = "HistThreshold";
-  _noiseHistName = "HistNoise";
-  _errorHistName = "HistErrors";
-  _sRhistName = "HistServiceRecords";
-  _rawDataSetName = "raw_data";
-  _metaDataSetName = "meta_data";
-  _parDataSetName = "scan_parameters";
-  _metaMemberNames.resize(NFIELDSMETA);
-  _metaMemberNames[0] = "start_index";
-  _metaMemberNames[1] = "stop_index";
-  _metaMemberNames[2] = "length";
-  _metaMemberNames[3] = "timestamp";
-  _metaMemberNames[4] = "error";
-  _createOutFile = false;
-  _createHitsTable = false;
-  _createMetaData = false;
-  _createParData = false;
-  _createOccHist = false;
-  _createTriggerErrorHist = false;
-  _createErrorHist = false;
-  _createSRhist = false;
-  setHDF5ExeptionOutput(false);
-  _NparInfoBuffer = 0;
-}
-
-void Converter::loadHDF5file(const std::string& FileName)
-{
-  debug("loadHDF5file: "+FileName);
-  _inFile = new H5::H5File(FileName, H5F_ACC_RDONLY); //open the file H5FILE_NAME with read only atribute
-  _inFileName = FileName;
-}
-
-void Converter::setGroupName(const std::string& GroupName)
-{
-  _groupName = GroupName;
-}
-
-void Converter::setRawDataSetName(const std::string& RawDataSetName)
-{
-  _rawDataSetName = RawDataSetName;
-}
-
-void Converter::setMetaDataSetName(const std::string& MetaDataSetName)
-{
-  _metaDataSetName = MetaDataSetName;
-}
-
-void Converter::setParDataSetName(const std::string& ParDataSetName)
-{
-  _parDataSetName = ParDataSetName;
-}
-
-void Converter::setOutFileName(const std::string& OutputFileName)
-{
-  _outputFileName = OutputFileName;
-}
-
-void Converter::setHitTableName(const std::string& TableName)
-{
-  _tableNameHits = TableName;
-}
-
-void Converter::setMetaTableName(const std::string& MetaTableName)
-{
-  _tableNameMeta = MetaTableName;
-}
-
-void Converter::setOccHistName(const std::string& OccHistName)
-{
-  _occHistName = OccHistName;
-}
-
-void Converter::setTriggerErrorHistName(const std::string& TriggerErrorHistName)
-{
-  _triggerErrorHistName = TriggerErrorHistName;
-}
-
-void Converter::setErrorHistName(const std::string& ErrorHistName)
-{
-  _errorHistName = ErrorHistName;
-}
-
-void Converter::setServiceRecordHistName(const std::string& ServiceRecordHistName)
-{
-  _sRhistName = ServiceRecordHistName;
-}
-
-void Converter::createOccupancyHists(bool CreateOccHist)
-{
-  _createOccHist = CreateOccHist;
-  _createOutFile = _createOutFile || _createOccHist;
-}
-
-void Converter::createThresholdHists(bool CreateThresholdHists)
-{
-  _createThresholdHists = CreateThresholdHists;
-  _createOutFile = _createOutFile || _createThresholdHists;
-}
-
-void Converter::createHitsTable(bool CreateHitsTable)
-{
-  _createHitsTable = CreateHitsTable;
-  _createOutFile = _createOutFile || _createHitsTable;
-}
-
-void Converter::createParameterData(bool CreateParameterData)
-{
-  _createParData = CreateParameterData;
-  _createOutFile = _createOutFile || _createParData;
-}
-
-void Converter::createMetaData(bool CreateMetaData)
-{
-  _createMetaData = CreateMetaData;
-  _createOutFile = _createOutFile || _createMetaData;
-}
-
-void Converter::createTriggerErrorHist(bool CreateTriggerErrorHist)
-{
-  _createTriggerErrorHist = CreateTriggerErrorHist;
-  _createOutFile = _createOutFile || _createTriggerErrorHist;
-}
-
-void Converter::createErrorHist(bool CreateErrorHist)
-{
-  _createErrorHist = CreateErrorHist;
-  _createOutFile = _createOutFile || _createErrorHist;
-}
-
-void Converter::createServiceRecordHist(bool CreateServiceRecordHist)
-{
-  _createSRhist = CreateServiceRecordHist;
-  _createOutFile = _createOutFile || _createSRhist;
-}
-
-void Converter::convertTable()
+bool Converter::convertTable(const std::string& FileName)
 {
     clock_t tBeginTime = clock();
+
+    if(!loadHDF5file(FileName))
+      return false; 
 
     char* version = 0;
     char* date = 0;
@@ -220,7 +73,7 @@ void Converter::convertTable()
       throw 4;
 
     if(!_createHitsTable && !_createMetaData && !_createOccHist && !_createThresholdHists) //only this data needs a raw data interpretation
-      return;
+      return true;
 
     _interpret.setMetaWordIndex((unsigned int&) tNrecordsMeta, _metaInfoBuffer);  //set the meta data array (word index, time stamp,... per readout)
     
@@ -309,7 +162,7 @@ void Converter::convertTable()
     unsigned int tNhits = 0;                                    //numbers of hits
     HitInfo* tHitInfo = 0;                                      //interpreted hit data array pointer
     if(!_interpret.interpretRawData(dataChunks, (int) chunkLength)) //interret the raw data
-      return;
+      return false;
     _interpret.getHits(tNhits, tHitInfo);                       //get the result array
     _interpret.getMetaEventIndex(rEventNumberIndex, rEventNumber); //get the event number per read out
 
@@ -357,7 +210,7 @@ void Converter::convertTable()
       dataSpace.selectHyperslab(H5S_SELECT_SET, &chunkLength, &tOffset);
       dataSetRaw.read(dataChunks, H5::PredType::NATIVE_UINT, memorySpace, dataSpace);
       if (!_interpret.interpretRawData(dataChunks,  (int) chunkLength))
-        return;
+        return false;
       _interpret.getHits(tNhits, tHitInfo);
       _interpret.getMetaEventIndex(rEventNumberIndex, rEventNumber);
       if(_createOccHist){
@@ -380,7 +233,7 @@ void Converter::convertTable()
       dataSpace.selectHyperslab(H5S_SELECT_SET, &tRemainingWords, &tOffset);
       dataSetRaw.read(dataLastChunk, H5::PredType::NATIVE_UINT, memorySpaceLastChunk, dataSpace);
       if (!_interpret.interpretRawData(dataLastChunk,  (int) tRemainingWords))
-        return;
+        return false;
       _interpret.getHits(tNhits, tHitInfo);
       _interpret.getMetaEventIndex(rEventNumberIndex, rEventNumber);
       if(_createOccHist){
@@ -407,6 +260,188 @@ void Converter::convertTable()
     //clean up
     if(dataChunks != 0)
       delete dataChunks;
+    closeInFile();
+    closeOutFile();
+    return true;
+}
+
+void Converter::setStandardSettings()
+{
+  _groupName = "/";
+  _outputFileName = "out.h5";
+  _inFileName = "not set";
+  _tableNameHits = "Hits";
+  _tableNameMeta = "MetaData";
+  _occHistName = "HistOcc";
+  _parHistName = "Parameter";
+  _threshHistName = "HistThreshold";
+  _noiseHistName = "HistNoise";
+  _errorHistName = "HistErrors";
+  _sRhistName = "HistServiceRecords";
+  _rawDataSetName = "raw_data";
+  _metaDataSetName = "meta_data";
+  _parDataSetName = "scan_parameters";
+  _relBcidHistName = "HistRelBCID";
+  _totHistName = "HistTot";
+  _metaMemberNames.resize(NFIELDSMETA);
+  _metaMemberNames[0] = "start_index";
+  _metaMemberNames[1] = "stop_index";
+  _metaMemberNames[2] = "length";
+  _metaMemberNames[3] = "timestamp";
+  _metaMemberNames[4] = "error";
+  _createOutFile = false;
+  _createHitsTable = false;
+  _createMetaData = false;
+  _createParData = false;
+  _createOccHist = false;
+  _createTriggerErrorHist = false;
+  _createErrorHist = false;
+  _createSRhist = false;
+  _createRelBcidHist = false;
+  _createTotHist = false;
+  setHDF5ExeptionOutput(false);
+  _NparInfoBuffer = 0;
+}
+
+bool Converter::loadHDF5file(const std::string& FileName)
+{
+  if(!fileExists(FileName)){
+    warning("loadHDF5file: Cannot find "+FileName);
+    return false;
+  }
+  debug("loadHDF5file: "+FileName);
+  closeInFile();
+  _inFile = new H5::H5File(FileName, H5F_ACC_RDONLY); //open the file H5FILE_NAME with read only atribute
+  _inFileName = FileName;
+  return true;
+}
+
+void Converter::setGroupName(const std::string& GroupName)
+{
+  _groupName = GroupName;
+}
+
+void Converter::setRawDataSetName(const std::string& RawDataSetName)
+{
+  _rawDataSetName = RawDataSetName;
+}
+
+void Converter::setMetaDataSetName(const std::string& MetaDataSetName)
+{
+  _metaDataSetName = MetaDataSetName;
+}
+
+void Converter::setParDataSetName(const std::string& ParDataSetName)
+{
+  _parDataSetName = ParDataSetName;
+}
+
+void Converter::setOutFileName(const std::string& OutputFileName)
+{
+  _outputFileName = OutputFileName;
+}
+
+void Converter::setHitTableName(const std::string& TableName)
+{
+  _tableNameHits = TableName;
+}
+
+void Converter::setMetaTableName(const std::string& MetaTableName)
+{
+  _tableNameMeta = MetaTableName;
+}
+
+void Converter::setOccHistName(const std::string& OccHistName)
+{
+  _occHistName = OccHistName;
+}
+
+void Converter::setRelBcidHistName(const std::string& RelBcidHistName)
+{
+  _relBcidHistName = RelBcidHistName;
+}
+
+void Converter::setTotHistName(const std::string& TotHistName)
+{
+  _totHistName = TotHistName;
+}
+
+void Converter::setTriggerErrorHistName(const std::string& TriggerErrorHistName)
+{
+  _triggerErrorHistName = TriggerErrorHistName;
+}
+
+void Converter::setErrorHistName(const std::string& ErrorHistName)
+{
+  _errorHistName = ErrorHistName;
+}
+
+void Converter::setServiceRecordHistName(const std::string& ServiceRecordHistName)
+{
+  _sRhistName = ServiceRecordHistName;
+}
+
+void Converter::createTotHist(bool CreateTotHist)
+{
+  _createTotHist = CreateTotHist;
+  _createOutFile = _createOutFile || _createTotHist;
+  _histogram.createTotHist();
+}
+
+void Converter::createRelBcidHist(bool CreateRelBcidHist)
+{
+  _createRelBcidHist = CreateRelBcidHist;
+  _createOutFile = _createOutFile || _createRelBcidHist;
+  _histogram.createRelBCIDHist();
+}
+
+void Converter::createOccupancyHist(bool CreateOccHist)
+{
+  _createOccHist = CreateOccHist;
+  _createOutFile = _createOutFile || _createOccHist;
+  _histogram.createOccupancyHist();
+}
+
+void Converter::createThresholdHists(bool CreateThresholdHists)
+{
+  _createThresholdHists = CreateThresholdHists;
+  _createOutFile = _createOutFile || _createThresholdHists;
+}
+
+void Converter::createHitsTable(bool CreateHitsTable)
+{
+  _createHitsTable = CreateHitsTable;
+  _createOutFile = _createOutFile || _createHitsTable;
+}
+
+void Converter::createParameterData(bool CreateParameterData)
+{
+  _createParData = CreateParameterData;
+  _createOutFile = _createOutFile || _createParData;
+}
+
+void Converter::createMetaData(bool CreateMetaData)
+{
+  _createMetaData = CreateMetaData;
+  _createOutFile = _createOutFile || _createMetaData;
+}
+
+void Converter::createTriggerErrorHist(bool CreateTriggerErrorHist)
+{
+  _createTriggerErrorHist = CreateTriggerErrorHist;
+  _createOutFile = _createOutFile || _createTriggerErrorHist;
+}
+
+void Converter::createErrorHist(bool CreateErrorHist)
+{
+  _createErrorHist = CreateErrorHist;
+  _createOutFile = _createOutFile || _createErrorHist;
+}
+
+void Converter::createServiceRecordHist(bool CreateServiceRecordHist)
+{
+  _createSRhist = CreateServiceRecordHist;
+  _createOutFile = _createOutFile || _createSRhist;
 }
 
 void Converter::printDataType(H5T_class_t rTypeClass)
@@ -707,6 +742,10 @@ void Converter::saveAdditionalData()
     writeOccupancyHist();
   if(_createThresholdHists)
     writeThresholdHists();
+  if(_createTotHist)
+    writeTotHist();
+  if(_createRelBcidHist)
+    writeRelBcidHist();
   if(_createTriggerErrorHist)
     writeTriggerErrorHist();
   if(_createErrorHist)
@@ -788,6 +827,54 @@ void Converter::writeThresholdHists()
   fspace1.selectHyperslab(H5S_SELECT_SET, chunk_dims, offset);
   tDatasetMu.write(&tMu, H5::PredType::NATIVE_DOUBLE, mspace2, fspace1);
   tDatasetSigma.write(&tSigma, H5::PredType::NATIVE_DOUBLE, mspace2, fspace1);
+}
+
+void Converter::writeTotHist()
+{
+  if (!_createOutFile)
+    return;
+  unsigned long* tTotHist = 0;
+  _histogram.getTotHist(tTotHist);
+  const unsigned int tNdim = 1;       //dimensions of output array
+  hsize_t dims[tNdim] = {16};  // dataset dimensions at creation
+  H5::DataSpace tMemorySpaceDataSet(tNdim, dims);
+  H5::DSetCreatPropList propertyListOut;
+  hsize_t chunk_dims[tNdim]={16};
+  propertyListOut.setChunk(tNdim, chunk_dims);
+  unsigned int i = 0;
+  propertyListOut.setFillValue(H5::PredType::NATIVE_ULONG, &i);
+  //propertyListOut.setFilter(FILTER_BLOSC);
+  H5::DataSet tDataset = _outFile->createDataSet(_totHistName.c_str(), H5::PredType::NATIVE_ULONG, tMemorySpaceDataSet, propertyListOut);
+  H5::DataSpace fspace1 = tDataset.getSpace();
+  H5::DataSpace mspace2(tNdim, chunk_dims);
+  hsize_t offset[tNdim];
+  offset[0] = 0;
+  fspace1.selectHyperslab(H5S_SELECT_SET, chunk_dims, offset);
+  tDataset.write(tTotHist, H5::PredType::NATIVE_ULONG, mspace2, fspace1);
+}
+
+void Converter::writeRelBcidHist()
+{
+  if (!_createOutFile)
+    return;
+  unsigned long* tRelBcidHist = 0;
+  _histogram.getRelBcidHist(tRelBcidHist);
+  const unsigned int tNdim = 1;       //dimensions of output array
+  hsize_t dims[tNdim] = {16};  // dataset dimensions at creation
+  H5::DataSpace tMemorySpaceDataSet(tNdim, dims);
+  H5::DSetCreatPropList propertyListOut;
+  hsize_t chunk_dims[tNdim] = {16};
+  propertyListOut.setChunk(tNdim, chunk_dims);
+  unsigned int i = 0;
+  propertyListOut.setFillValue(H5::PredType::NATIVE_ULONG, &i);
+  //propertyListOut.setFilter(FILTER_BLOSC);
+  H5::DataSet tDataset = _outFile->createDataSet(_relBcidHistName.c_str(), H5::PredType::NATIVE_ULONG, tMemorySpaceDataSet, propertyListOut);
+  H5::DataSpace fspace1 = tDataset.getSpace();
+  H5::DataSpace mspace2(tNdim, chunk_dims);
+  hsize_t offset[tNdim];
+  offset[0] = 0;
+  fspace1.selectHyperslab(H5S_SELECT_SET, chunk_dims, offset);
+  tDataset.write(tRelBcidHist, H5::PredType::NATIVE_ULONG, mspace2, fspace1);
 }
 
 void Converter::writeMetaData()
@@ -886,6 +973,8 @@ void Converter::writeTriggerErrorHist()
 
   _interpret.getTriggerErrorCounters(tNtriggerErrorHist, tTriggerErrorHist);
 
+
+
   const unsigned int tNdim = 1;               //dimensions of output array
 
   hsize_t dims[tNdim] = {tNtriggerErrorHist};  // dataset dimensions at creation
@@ -973,37 +1062,36 @@ void Converter::setMaxTot(unsigned int rMaxTot)
   _interpret.setMaxTot(rMaxTot);
 }
 
+void Converter::setErrorOutput(bool Toggle)
+{
+	Basis::setErrorOutput(Toggle);
+	_interpret.setErrorOutput(Toggle);
+	_histogram.setErrorOutput(Toggle);
+}
+void Converter::setWarningOutput(bool Toggle)
+{
+	Basis::setWarningOutput(Toggle);
+	_interpret.setWarningOutput(Toggle);
+	_histogram.setWarningOutput(Toggle);
+}
+void Converter::setInfoOutput(bool Toggle)
+{
+	Basis::setInfoOutput(Toggle);
+	_interpret.setInfoOutput(Toggle);
+	_histogram.setInfoOutput(Toggle);
+}
+void Converter::setDebugOutput(bool Toggle)
+{
+	Basis::setDebugOutput(Toggle);
+	_interpret.setDebugOutput(Toggle);
+	_histogram.setDebugOutput(Toggle);
+}
 
-void Converter::setErrorOutput(bool pToggle)
+void Converter::setBugReport(bool Toggle)
 {
-	Basis::setErrorOutput(pToggle);
-	_interpret.setErrorOutput(pToggle);
-	_histogram.setErrorOutput(pToggle);
-}
-void Converter::setWarningOutput(bool pToggle)
-{
-	Basis::setWarningOutput(pToggle);
-	_interpret.setWarningOutput(pToggle);
-	_histogram.setWarningOutput(pToggle);
-}
-void Converter::setInfoOutput(bool pToggle)
-{
-	Basis::setInfoOutput(pToggle);
-	_interpret.setInfoOutput(pToggle);
-	_histogram.setInfoOutput(pToggle);
-}
-void Converter::setDebugOutput(bool pToggle)
-{
-	Basis::setDebugOutput(pToggle);
-	_interpret.setDebugOutput(pToggle);
-	_histogram.setDebugOutput(pToggle);
-}
-
-void Converter::setBugReport(bool pToggle)
-{
-	Basis::setBugReport(pToggle);
-	_interpret.setBugReport(pToggle);
-	_histogram.setBugReport(pToggle);
+	Basis::setBugReport(Toggle);
+	_interpret.setBugReport(Toggle);
+	_histogram.setBugReport(Toggle);
 }
 
 void Converter::setHDF5ExeptionOutput(bool pToggle)
@@ -1014,6 +1102,22 @@ void Converter::setHDF5ExeptionOutput(bool pToggle)
     H5::Exception::dontPrint();
 }
 
+void Converter::closeInFile()
+{
+  if(_inFile != 0){
+    _inFile->close();
+    delete _inFile;
+  }
+  _inFile = 0;
+}
 
+void Converter::closeOutFile()
+{
+  if(_outFile != 0){
+    _outFile->close();
+    delete _outFile;
+  }
+  _outFile = 0;
+}
 
 

@@ -131,7 +131,7 @@ bool Basis::isFinite(double pValue)
 	return !isInf(pValue) &&  !isNan(pValue);
 }
 
-bool Basis::fileExists(std::string& pFileName)
+bool Basis::fileExists(const std::string& pFileName)
 {
 	std::ifstream tFile(pFileName.c_str());
 	return (tFile != 0);

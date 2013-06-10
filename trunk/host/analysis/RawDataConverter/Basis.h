@@ -22,7 +22,7 @@ public:
 	void setSourceFileName(std::string pSourceFileName);//sets the name of every raw data converter class for info output
 
 	//helper functions
-	bool fileExists(std::string& pFileName);			    //check if a file exists
+	bool fileExists(const std::string& pFileName);		//check if a file exists
 	double StrToDouble(std::string const& pValue);		//converts a std::string to a double
 	int StrToInt(std::string const& pValue);			    //converts a std::string to a int
 	std::string IntToStr(unsigned int const& pValue);	//converts a int to a std::string
