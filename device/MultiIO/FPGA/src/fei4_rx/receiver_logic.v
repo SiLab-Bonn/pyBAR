@@ -25,7 +25,7 @@ output [15:0] fifo_size;
 output phase_align_error;
 output [7:0] eye_size, search_size;
 
-//generete sync long reset
+//generate sync long reset
 wire reset_rec_sync;
 reg [5:0] rst_cnt;
 always@(posedge bus_clk) begin
@@ -54,8 +54,10 @@ wire [9:0] data_8b10b;
 rec_sync irec_sync (
     .pll_rst(bus_reset),
     .reset(reset_rec_sync),
-    .datain(rx), .wclk(wclk),
-    .ioclk(ioclk), .ready(ready),
+    .datain(rx),
+    .wclk(wclk),
+    .ioclk(ioclk),
+    .ready(ready),
     .data(data_8b10b),
     .phase_align_error(phase_align_error),
     .eye_size(eye_size),
