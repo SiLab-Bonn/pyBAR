@@ -26,6 +26,7 @@ int main(int argc, char* argv[])
 
    try{
      converter.setNbCIDs(16);
+     converter.setMaxTot(13);
      converter.setFEi4B(false);
      converter.setOutFileName(tOutputFileName);
 

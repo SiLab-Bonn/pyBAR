@@ -15,7 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Converter.i" />
     <None Include="HOWTO.txt" />
   </ItemGroup>
   <ItemGroup>
@@ -78,5 +77,8 @@
     <ClInclude Include="blosc\shuffle.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="converter.i" />
   </ItemGroup>
 </Project>
