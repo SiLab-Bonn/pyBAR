@@ -1,29 +1,33 @@
-# file: TestPythonModule.py
-# Test various properties of classes defined in separate modules
-
-print "Testing the %import directive"
-import Converter
-print "Creating converter object"
-Converter = Converter.Converter()
+# test the converter class
+import converter
+print "Creating converter object... ",
+Converter = converter.Converter()
+print "successfull"
 # Try calling some methods
-print "Testing some methods"
-print "",
+print "Testing conversion methods... ",
 Converter.setWarningOutput(False);
 Converter.setDebugOutput(False)
 Converter.setInfoOutput(False)
-Converter.loadHDF5file('in.h5')
+Converter.setMaxTot(13)
 Converter.setNbCIDs(16)
 Converter.setFEi4B(False)
 Converter.setOutFileName('out.h5')
 Converter.createHitsTable(False)
 Converter.createMetaData(True)
-Converter.createParameterData(False)
 Converter.createErrorHist(True)
 Converter.createServiceRecordHist(True)
-Converter.createOccupancyHists(True)
+Converter.createOccupancyHist(True)
+Converter.createRelBcidHist(True);
+Converter.createTotHist(True);
 Converter.createThresholdHists(False)
+Converter.createParameterData(False)
 #Converter.printOptions()
-Converter.convertTable()
-Converter.printSummary()
+print "successfull"
+print "Testing conversion... ",
+if(Converter.convertTable('in.h5')):
+    print "successfull"
+    #Converter.printSummary()
+else:
+    print "failed"
 
 

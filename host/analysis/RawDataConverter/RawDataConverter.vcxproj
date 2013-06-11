@@ -59,7 +59,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='PythonModule|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <TargetExt>.pyd</TargetExt>
-    <TargetName>_Converter</TargetName>
+    <TargetName>_converter</TargetName>
     <OutDir>$(ProjectDir)$(Configuration)\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -121,14 +121,22 @@
       </OptimizeReferences>
       <AdditionalDependencies>$(HDF5)/lib/hdf5dll.lib;$(HDF5)/lib/hdf5_cppdll.lib;$(HDF5)/lib/hdf5_hldll.lib;$(PYTHON_LIB);%(AdditionalDependencies)</AdditionalDependencies>
       <Profile>false</Profile>
-      <OutputFile>_Converter.pyd</OutputFile>
+      <OutputFile>_converter.pyd</OutputFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <None Include="Converter.i">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    <CustomBuild Include="converter.i">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='PythonModule|Win32'">echo Neccessary environment variables: 
+echo PYTHON_INCLUDE: %PYTHON_INCLUDE%
+echo PYTHON_LIB: %PYTHON_LIB%
+echo Creating wrapper from interface file:
+echo on
+$(SWIG)\swig.exe -c++ -python Converter.i</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='PythonModule|Win32'">$(InputName)_wrap.cxx;%(Outputs)</Outputs>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-    </None>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </CustomBuild>
     <None Include="HOWTO.txt" />
   </ItemGroup>
   <ItemGroup>
