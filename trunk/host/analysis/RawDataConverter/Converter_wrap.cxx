@@ -2976,16 +2976,16 @@ static swig_module_info swig_module = {swig_types, 2, 0, 0, 0, 0};
 #endif
 
 /*-----------------------------------------------
-              @(target):= _Converter.so
+              @(target):= _converter.so
   ------------------------------------------------*/
 #if PY_VERSION_HEX >= 0x03000000
-#  define SWIG_init    PyInit__Converter
+#  define SWIG_init    PyInit__converter
 
 #else
-#  define SWIG_init    init_Converter
+#  define SWIG_init    init_converter
 
 #endif
-#define SWIG_name    "_Converter"
+#define SWIG_name    "_converter"
 
 #define SWIGVERSION 0x020009 
 #define SWIG_VERSION SWIGVERSION
@@ -3439,7 +3439,7 @@ fail:
 }
 
 
-SWIGINTERN PyObject *_wrap_Converter_loadHDF5file(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+SWIGINTERN PyObject *_wrap_Converter_convertTable(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   Converter *arg1 = (Converter *) 0 ;
   std::string *arg2 = 0 ;
@@ -3448,51 +3448,31 @@ SWIGINTERN PyObject *_wrap_Converter_loadHDF5file(PyObject *SWIGUNUSEDPARM(self)
   int res2 = SWIG_OLDOBJ ;
   PyObject * obj0 = 0 ;
   PyObject * obj1 = 0 ;
+  bool result;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:Converter_loadHDF5file",&obj0,&obj1)) SWIG_fail;
+  if (!PyArg_ParseTuple(args,(char *)"OO:Converter_convertTable",&obj0,&obj1)) SWIG_fail;
   res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_Converter, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "Converter_loadHDF5file" "', argument " "1"" of type '" "Converter *""'"); 
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "Converter_convertTable" "', argument " "1"" of type '" "Converter *""'"); 
   }
   arg1 = reinterpret_cast< Converter * >(argp1);
   {
     std::string *ptr = (std::string *)0;
     res2 = SWIG_AsPtr_std_string(obj1, &ptr);
     if (!SWIG_IsOK(res2)) {
-      SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "Converter_loadHDF5file" "', argument " "2"" of type '" "std::string const &""'"); 
+      SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "Converter_convertTable" "', argument " "2"" of type '" "std::string const &""'"); 
     }
     if (!ptr) {
-      SWIG_exception_fail(SWIG_ValueError, "invalid null reference " "in method '" "Converter_loadHDF5file" "', argument " "2"" of type '" "std::string const &""'"); 
+      SWIG_exception_fail(SWIG_ValueError, "invalid null reference " "in method '" "Converter_convertTable" "', argument " "2"" of type '" "std::string const &""'"); 
     }
     arg2 = ptr;
   }
-  (arg1)->loadHDF5file((std::string const &)*arg2);
-  resultobj = SWIG_Py_Void();
+  result = (bool)(arg1)->convertTable((std::string const &)*arg2);
+  resultobj = SWIG_From_bool(static_cast< bool >(result));
   if (SWIG_IsNewObj(res2)) delete arg2;
   return resultobj;
 fail:
   if (SWIG_IsNewObj(res2)) delete arg2;
-  return NULL;
-}
-
-
-SWIGINTERN PyObject *_wrap_Converter_convertTable(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
-  Converter *arg1 = (Converter *) 0 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  PyObject * obj0 = 0 ;
-  
-  if (!PyArg_ParseTuple(args,(char *)"O:Converter_convertTable",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_Converter, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "Converter_convertTable" "', argument " "1"" of type '" "Converter *""'"); 
-  }
-  arg1 = reinterpret_cast< Converter * >(argp1);
-  (arg1)->convertTable();
-  resultobj = SWIG_Py_Void();
-  return resultobj;
-fail:
   return NULL;
 }
 
@@ -3756,80 +3736,6 @@ fail:
 }
 
 
-SWIGINTERN PyObject *_wrap_Converter_setOccHistName(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
-  Converter *arg1 = (Converter *) 0 ;
-  std::string *arg2 = 0 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  int res2 = SWIG_OLDOBJ ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  
-  if (!PyArg_ParseTuple(args,(char *)"OO:Converter_setOccHistName",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_Converter, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "Converter_setOccHistName" "', argument " "1"" of type '" "Converter *""'"); 
-  }
-  arg1 = reinterpret_cast< Converter * >(argp1);
-  {
-    std::string *ptr = (std::string *)0;
-    res2 = SWIG_AsPtr_std_string(obj1, &ptr);
-    if (!SWIG_IsOK(res2)) {
-      SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "Converter_setOccHistName" "', argument " "2"" of type '" "std::string const &""'"); 
-    }
-    if (!ptr) {
-      SWIG_exception_fail(SWIG_ValueError, "invalid null reference " "in method '" "Converter_setOccHistName" "', argument " "2"" of type '" "std::string const &""'"); 
-    }
-    arg2 = ptr;
-  }
-  (arg1)->setOccHistName((std::string const &)*arg2);
-  resultobj = SWIG_Py_Void();
-  if (SWIG_IsNewObj(res2)) delete arg2;
-  return resultobj;
-fail:
-  if (SWIG_IsNewObj(res2)) delete arg2;
-  return NULL;
-}
-
-
-SWIGINTERN PyObject *_wrap_Converter_setTriggerErrorHistName(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
-  Converter *arg1 = (Converter *) 0 ;
-  std::string *arg2 = 0 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  int res2 = SWIG_OLDOBJ ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  
-  if (!PyArg_ParseTuple(args,(char *)"OO:Converter_setTriggerErrorHistName",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_Converter, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "Converter_setTriggerErrorHistName" "', argument " "1"" of type '" "Converter *""'"); 
-  }
-  arg1 = reinterpret_cast< Converter * >(argp1);
-  {
-    std::string *ptr = (std::string *)0;
-    res2 = SWIG_AsPtr_std_string(obj1, &ptr);
-    if (!SWIG_IsOK(res2)) {
-      SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "Converter_setTriggerErrorHistName" "', argument " "2"" of type '" "std::string const &""'"); 
-    }
-    if (!ptr) {
-      SWIG_exception_fail(SWIG_ValueError, "invalid null reference " "in method '" "Converter_setTriggerErrorHistName" "', argument " "2"" of type '" "std::string const &""'"); 
-    }
-    arg2 = ptr;
-  }
-  (arg1)->setTriggerErrorHistName((std::string const &)*arg2);
-  resultobj = SWIG_Py_Void();
-  if (SWIG_IsNewObj(res2)) delete arg2;
-  return resultobj;
-fail:
-  if (SWIG_IsNewObj(res2)) delete arg2;
-  return NULL;
-}
-
-
 SWIGINTERN PyObject *_wrap_Converter_setErrorHistName(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   Converter *arg1 = (Converter *) 0 ;
@@ -3895,6 +3801,154 @@ SWIGINTERN PyObject *_wrap_Converter_setServiceRecordHistName(PyObject *SWIGUNUS
     arg2 = ptr;
   }
   (arg1)->setServiceRecordHistName((std::string const &)*arg2);
+  resultobj = SWIG_Py_Void();
+  if (SWIG_IsNewObj(res2)) delete arg2;
+  return resultobj;
+fail:
+  if (SWIG_IsNewObj(res2)) delete arg2;
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_Converter_setTriggerErrorHistName(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  Converter *arg1 = (Converter *) 0 ;
+  std::string *arg2 = 0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  int res2 = SWIG_OLDOBJ ;
+  PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
+  
+  if (!PyArg_ParseTuple(args,(char *)"OO:Converter_setTriggerErrorHistName",&obj0,&obj1)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_Converter, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "Converter_setTriggerErrorHistName" "', argument " "1"" of type '" "Converter *""'"); 
+  }
+  arg1 = reinterpret_cast< Converter * >(argp1);
+  {
+    std::string *ptr = (std::string *)0;
+    res2 = SWIG_AsPtr_std_string(obj1, &ptr);
+    if (!SWIG_IsOK(res2)) {
+      SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "Converter_setTriggerErrorHistName" "', argument " "2"" of type '" "std::string const &""'"); 
+    }
+    if (!ptr) {
+      SWIG_exception_fail(SWIG_ValueError, "invalid null reference " "in method '" "Converter_setTriggerErrorHistName" "', argument " "2"" of type '" "std::string const &""'"); 
+    }
+    arg2 = ptr;
+  }
+  (arg1)->setTriggerErrorHistName((std::string const &)*arg2);
+  resultobj = SWIG_Py_Void();
+  if (SWIG_IsNewObj(res2)) delete arg2;
+  return resultobj;
+fail:
+  if (SWIG_IsNewObj(res2)) delete arg2;
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_Converter_setOccHistName(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  Converter *arg1 = (Converter *) 0 ;
+  std::string *arg2 = 0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  int res2 = SWIG_OLDOBJ ;
+  PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
+  
+  if (!PyArg_ParseTuple(args,(char *)"OO:Converter_setOccHistName",&obj0,&obj1)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_Converter, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "Converter_setOccHistName" "', argument " "1"" of type '" "Converter *""'"); 
+  }
+  arg1 = reinterpret_cast< Converter * >(argp1);
+  {
+    std::string *ptr = (std::string *)0;
+    res2 = SWIG_AsPtr_std_string(obj1, &ptr);
+    if (!SWIG_IsOK(res2)) {
+      SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "Converter_setOccHistName" "', argument " "2"" of type '" "std::string const &""'"); 
+    }
+    if (!ptr) {
+      SWIG_exception_fail(SWIG_ValueError, "invalid null reference " "in method '" "Converter_setOccHistName" "', argument " "2"" of type '" "std::string const &""'"); 
+    }
+    arg2 = ptr;
+  }
+  (arg1)->setOccHistName((std::string const &)*arg2);
+  resultobj = SWIG_Py_Void();
+  if (SWIG_IsNewObj(res2)) delete arg2;
+  return resultobj;
+fail:
+  if (SWIG_IsNewObj(res2)) delete arg2;
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_Converter_setRelBcidHistName(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  Converter *arg1 = (Converter *) 0 ;
+  std::string *arg2 = 0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  int res2 = SWIG_OLDOBJ ;
+  PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
+  
+  if (!PyArg_ParseTuple(args,(char *)"OO:Converter_setRelBcidHistName",&obj0,&obj1)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_Converter, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "Converter_setRelBcidHistName" "', argument " "1"" of type '" "Converter *""'"); 
+  }
+  arg1 = reinterpret_cast< Converter * >(argp1);
+  {
+    std::string *ptr = (std::string *)0;
+    res2 = SWIG_AsPtr_std_string(obj1, &ptr);
+    if (!SWIG_IsOK(res2)) {
+      SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "Converter_setRelBcidHistName" "', argument " "2"" of type '" "std::string const &""'"); 
+    }
+    if (!ptr) {
+      SWIG_exception_fail(SWIG_ValueError, "invalid null reference " "in method '" "Converter_setRelBcidHistName" "', argument " "2"" of type '" "std::string const &""'"); 
+    }
+    arg2 = ptr;
+  }
+  (arg1)->setRelBcidHistName((std::string const &)*arg2);
+  resultobj = SWIG_Py_Void();
+  if (SWIG_IsNewObj(res2)) delete arg2;
+  return resultobj;
+fail:
+  if (SWIG_IsNewObj(res2)) delete arg2;
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_Converter_setTotHistName(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  Converter *arg1 = (Converter *) 0 ;
+  std::string *arg2 = 0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  int res2 = SWIG_OLDOBJ ;
+  PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
+  
+  if (!PyArg_ParseTuple(args,(char *)"OO:Converter_setTotHistName",&obj0,&obj1)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_Converter, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "Converter_setTotHistName" "', argument " "1"" of type '" "Converter *""'"); 
+  }
+  arg1 = reinterpret_cast< Converter * >(argp1);
+  {
+    std::string *ptr = (std::string *)0;
+    res2 = SWIG_AsPtr_std_string(obj1, &ptr);
+    if (!SWIG_IsOK(res2)) {
+      SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "Converter_setTotHistName" "', argument " "2"" of type '" "std::string const &""'"); 
+    }
+    if (!ptr) {
+      SWIG_exception_fail(SWIG_ValueError, "invalid null reference " "in method '" "Converter_setTotHistName" "', argument " "2"" of type '" "std::string const &""'"); 
+    }
+    arg2 = ptr;
+  }
+  (arg1)->setTotHistName((std::string const &)*arg2);
   resultobj = SWIG_Py_Void();
   if (SWIG_IsNewObj(res2)) delete arg2;
   return resultobj;
@@ -4189,291 +4243,6 @@ fail:
 }
 
 
-SWIGINTERN PyObject *_wrap_Converter_createOccupancyHists__SWIG_0(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
-  Converter *arg1 = (Converter *) 0 ;
-  bool arg2 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  bool val2 ;
-  int ecode2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  
-  if (!PyArg_ParseTuple(args,(char *)"OO:Converter_createOccupancyHists",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_Converter, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "Converter_createOccupancyHists" "', argument " "1"" of type '" "Converter *""'"); 
-  }
-  arg1 = reinterpret_cast< Converter * >(argp1);
-  ecode2 = SWIG_AsVal_bool(obj1, &val2);
-  if (!SWIG_IsOK(ecode2)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "Converter_createOccupancyHists" "', argument " "2"" of type '" "bool""'");
-  } 
-  arg2 = static_cast< bool >(val2);
-  (arg1)->createOccupancyHists(arg2);
-  resultobj = SWIG_Py_Void();
-  return resultobj;
-fail:
-  return NULL;
-}
-
-
-SWIGINTERN PyObject *_wrap_Converter_createOccupancyHists__SWIG_1(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
-  Converter *arg1 = (Converter *) 0 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  PyObject * obj0 = 0 ;
-  
-  if (!PyArg_ParseTuple(args,(char *)"O:Converter_createOccupancyHists",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_Converter, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "Converter_createOccupancyHists" "', argument " "1"" of type '" "Converter *""'"); 
-  }
-  arg1 = reinterpret_cast< Converter * >(argp1);
-  (arg1)->createOccupancyHists();
-  resultobj = SWIG_Py_Void();
-  return resultobj;
-fail:
-  return NULL;
-}
-
-
-SWIGINTERN PyObject *_wrap_Converter_createOccupancyHists(PyObject *self, PyObject *args) {
-  int argc;
-  PyObject *argv[3];
-  int ii;
-  
-  if (!PyTuple_Check(args)) SWIG_fail;
-  argc = args ? (int)PyObject_Length(args) : 0;
-  for (ii = 0; (ii < 2) && (ii < argc); ii++) {
-    argv[ii] = PyTuple_GET_ITEM(args,ii);
-  }
-  if (argc == 1) {
-    int _v;
-    void *vptr = 0;
-    int res = SWIG_ConvertPtr(argv[0], &vptr, SWIGTYPE_p_Converter, 0);
-    _v = SWIG_CheckState(res);
-    if (_v) {
-      return _wrap_Converter_createOccupancyHists__SWIG_1(self, args);
-    }
-  }
-  if (argc == 2) {
-    int _v;
-    void *vptr = 0;
-    int res = SWIG_ConvertPtr(argv[0], &vptr, SWIGTYPE_p_Converter, 0);
-    _v = SWIG_CheckState(res);
-    if (_v) {
-      {
-        int res = SWIG_AsVal_bool(argv[1], NULL);
-        _v = SWIG_CheckState(res);
-      }
-      if (_v) {
-        return _wrap_Converter_createOccupancyHists__SWIG_0(self, args);
-      }
-    }
-  }
-  
-fail:
-  SWIG_SetErrorMsg(PyExc_NotImplementedError,"Wrong number or type of arguments for overloaded function 'Converter_createOccupancyHists'.\n"
-    "  Possible C/C++ prototypes are:\n"
-    "    Converter::createOccupancyHists(bool)\n"
-    "    Converter::createOccupancyHists()\n");
-  return 0;
-}
-
-
-SWIGINTERN PyObject *_wrap_Converter_createThresholdHists__SWIG_0(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
-  Converter *arg1 = (Converter *) 0 ;
-  bool arg2 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  bool val2 ;
-  int ecode2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  
-  if (!PyArg_ParseTuple(args,(char *)"OO:Converter_createThresholdHists",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_Converter, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "Converter_createThresholdHists" "', argument " "1"" of type '" "Converter *""'"); 
-  }
-  arg1 = reinterpret_cast< Converter * >(argp1);
-  ecode2 = SWIG_AsVal_bool(obj1, &val2);
-  if (!SWIG_IsOK(ecode2)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "Converter_createThresholdHists" "', argument " "2"" of type '" "bool""'");
-  } 
-  arg2 = static_cast< bool >(val2);
-  (arg1)->createThresholdHists(arg2);
-  resultobj = SWIG_Py_Void();
-  return resultobj;
-fail:
-  return NULL;
-}
-
-
-SWIGINTERN PyObject *_wrap_Converter_createThresholdHists__SWIG_1(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
-  Converter *arg1 = (Converter *) 0 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  PyObject * obj0 = 0 ;
-  
-  if (!PyArg_ParseTuple(args,(char *)"O:Converter_createThresholdHists",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_Converter, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "Converter_createThresholdHists" "', argument " "1"" of type '" "Converter *""'"); 
-  }
-  arg1 = reinterpret_cast< Converter * >(argp1);
-  (arg1)->createThresholdHists();
-  resultobj = SWIG_Py_Void();
-  return resultobj;
-fail:
-  return NULL;
-}
-
-
-SWIGINTERN PyObject *_wrap_Converter_createThresholdHists(PyObject *self, PyObject *args) {
-  int argc;
-  PyObject *argv[3];
-  int ii;
-  
-  if (!PyTuple_Check(args)) SWIG_fail;
-  argc = args ? (int)PyObject_Length(args) : 0;
-  for (ii = 0; (ii < 2) && (ii < argc); ii++) {
-    argv[ii] = PyTuple_GET_ITEM(args,ii);
-  }
-  if (argc == 1) {
-    int _v;
-    void *vptr = 0;
-    int res = SWIG_ConvertPtr(argv[0], &vptr, SWIGTYPE_p_Converter, 0);
-    _v = SWIG_CheckState(res);
-    if (_v) {
-      return _wrap_Converter_createThresholdHists__SWIG_1(self, args);
-    }
-  }
-  if (argc == 2) {
-    int _v;
-    void *vptr = 0;
-    int res = SWIG_ConvertPtr(argv[0], &vptr, SWIGTYPE_p_Converter, 0);
-    _v = SWIG_CheckState(res);
-    if (_v) {
-      {
-        int res = SWIG_AsVal_bool(argv[1], NULL);
-        _v = SWIG_CheckState(res);
-      }
-      if (_v) {
-        return _wrap_Converter_createThresholdHists__SWIG_0(self, args);
-      }
-    }
-  }
-  
-fail:
-  SWIG_SetErrorMsg(PyExc_NotImplementedError,"Wrong number or type of arguments for overloaded function 'Converter_createThresholdHists'.\n"
-    "  Possible C/C++ prototypes are:\n"
-    "    Converter::createThresholdHists(bool)\n"
-    "    Converter::createThresholdHists()\n");
-  return 0;
-}
-
-
-SWIGINTERN PyObject *_wrap_Converter_createTriggerErrorHist__SWIG_0(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
-  Converter *arg1 = (Converter *) 0 ;
-  bool arg2 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  bool val2 ;
-  int ecode2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  
-  if (!PyArg_ParseTuple(args,(char *)"OO:Converter_createTriggerErrorHist",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_Converter, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "Converter_createTriggerErrorHist" "', argument " "1"" of type '" "Converter *""'"); 
-  }
-  arg1 = reinterpret_cast< Converter * >(argp1);
-  ecode2 = SWIG_AsVal_bool(obj1, &val2);
-  if (!SWIG_IsOK(ecode2)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "Converter_createTriggerErrorHist" "', argument " "2"" of type '" "bool""'");
-  } 
-  arg2 = static_cast< bool >(val2);
-  (arg1)->createTriggerErrorHist(arg2);
-  resultobj = SWIG_Py_Void();
-  return resultobj;
-fail:
-  return NULL;
-}
-
-
-SWIGINTERN PyObject *_wrap_Converter_createTriggerErrorHist__SWIG_1(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
-  Converter *arg1 = (Converter *) 0 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  PyObject * obj0 = 0 ;
-  
-  if (!PyArg_ParseTuple(args,(char *)"O:Converter_createTriggerErrorHist",&obj0)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_Converter, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "Converter_createTriggerErrorHist" "', argument " "1"" of type '" "Converter *""'"); 
-  }
-  arg1 = reinterpret_cast< Converter * >(argp1);
-  (arg1)->createTriggerErrorHist();
-  resultobj = SWIG_Py_Void();
-  return resultobj;
-fail:
-  return NULL;
-}
-
-
-SWIGINTERN PyObject *_wrap_Converter_createTriggerErrorHist(PyObject *self, PyObject *args) {
-  int argc;
-  PyObject *argv[3];
-  int ii;
-  
-  if (!PyTuple_Check(args)) SWIG_fail;
-  argc = args ? (int)PyObject_Length(args) : 0;
-  for (ii = 0; (ii < 2) && (ii < argc); ii++) {
-    argv[ii] = PyTuple_GET_ITEM(args,ii);
-  }
-  if (argc == 1) {
-    int _v;
-    void *vptr = 0;
-    int res = SWIG_ConvertPtr(argv[0], &vptr, SWIGTYPE_p_Converter, 0);
-    _v = SWIG_CheckState(res);
-    if (_v) {
-      return _wrap_Converter_createTriggerErrorHist__SWIG_1(self, args);
-    }
-  }
-  if (argc == 2) {
-    int _v;
-    void *vptr = 0;
-    int res = SWIG_ConvertPtr(argv[0], &vptr, SWIGTYPE_p_Converter, 0);
-    _v = SWIG_CheckState(res);
-    if (_v) {
-      {
-        int res = SWIG_AsVal_bool(argv[1], NULL);
-        _v = SWIG_CheckState(res);
-      }
-      if (_v) {
-        return _wrap_Converter_createTriggerErrorHist__SWIG_0(self, args);
-      }
-    }
-  }
-  
-fail:
-  SWIG_SetErrorMsg(PyExc_NotImplementedError,"Wrong number or type of arguments for overloaded function 'Converter_createTriggerErrorHist'.\n"
-    "  Possible C/C++ prototypes are:\n"
-    "    Converter::createTriggerErrorHist(bool)\n"
-    "    Converter::createTriggerErrorHist()\n");
-  return 0;
-}
-
-
 SWIGINTERN PyObject *_wrap_Converter_createErrorHist__SWIG_0(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   Converter *arg1 = (Converter *) 0 ;
@@ -4660,6 +4429,481 @@ fail:
     "  Possible C/C++ prototypes are:\n"
     "    Converter::createServiceRecordHist(bool)\n"
     "    Converter::createServiceRecordHist()\n");
+  return 0;
+}
+
+
+SWIGINTERN PyObject *_wrap_Converter_createTriggerErrorHist__SWIG_0(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  Converter *arg1 = (Converter *) 0 ;
+  bool arg2 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  bool val2 ;
+  int ecode2 = 0 ;
+  PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
+  
+  if (!PyArg_ParseTuple(args,(char *)"OO:Converter_createTriggerErrorHist",&obj0,&obj1)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_Converter, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "Converter_createTriggerErrorHist" "', argument " "1"" of type '" "Converter *""'"); 
+  }
+  arg1 = reinterpret_cast< Converter * >(argp1);
+  ecode2 = SWIG_AsVal_bool(obj1, &val2);
+  if (!SWIG_IsOK(ecode2)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "Converter_createTriggerErrorHist" "', argument " "2"" of type '" "bool""'");
+  } 
+  arg2 = static_cast< bool >(val2);
+  (arg1)->createTriggerErrorHist(arg2);
+  resultobj = SWIG_Py_Void();
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_Converter_createTriggerErrorHist__SWIG_1(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  Converter *arg1 = (Converter *) 0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  PyObject * obj0 = 0 ;
+  
+  if (!PyArg_ParseTuple(args,(char *)"O:Converter_createTriggerErrorHist",&obj0)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_Converter, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "Converter_createTriggerErrorHist" "', argument " "1"" of type '" "Converter *""'"); 
+  }
+  arg1 = reinterpret_cast< Converter * >(argp1);
+  (arg1)->createTriggerErrorHist();
+  resultobj = SWIG_Py_Void();
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_Converter_createTriggerErrorHist(PyObject *self, PyObject *args) {
+  int argc;
+  PyObject *argv[3];
+  int ii;
+  
+  if (!PyTuple_Check(args)) SWIG_fail;
+  argc = args ? (int)PyObject_Length(args) : 0;
+  for (ii = 0; (ii < 2) && (ii < argc); ii++) {
+    argv[ii] = PyTuple_GET_ITEM(args,ii);
+  }
+  if (argc == 1) {
+    int _v;
+    void *vptr = 0;
+    int res = SWIG_ConvertPtr(argv[0], &vptr, SWIGTYPE_p_Converter, 0);
+    _v = SWIG_CheckState(res);
+    if (_v) {
+      return _wrap_Converter_createTriggerErrorHist__SWIG_1(self, args);
+    }
+  }
+  if (argc == 2) {
+    int _v;
+    void *vptr = 0;
+    int res = SWIG_ConvertPtr(argv[0], &vptr, SWIGTYPE_p_Converter, 0);
+    _v = SWIG_CheckState(res);
+    if (_v) {
+      {
+        int res = SWIG_AsVal_bool(argv[1], NULL);
+        _v = SWIG_CheckState(res);
+      }
+      if (_v) {
+        return _wrap_Converter_createTriggerErrorHist__SWIG_0(self, args);
+      }
+    }
+  }
+  
+fail:
+  SWIG_SetErrorMsg(PyExc_NotImplementedError,"Wrong number or type of arguments for overloaded function 'Converter_createTriggerErrorHist'.\n"
+    "  Possible C/C++ prototypes are:\n"
+    "    Converter::createTriggerErrorHist(bool)\n"
+    "    Converter::createTriggerErrorHist()\n");
+  return 0;
+}
+
+
+SWIGINTERN PyObject *_wrap_Converter_createOccupancyHist__SWIG_0(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  Converter *arg1 = (Converter *) 0 ;
+  bool arg2 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  bool val2 ;
+  int ecode2 = 0 ;
+  PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
+  
+  if (!PyArg_ParseTuple(args,(char *)"OO:Converter_createOccupancyHist",&obj0,&obj1)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_Converter, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "Converter_createOccupancyHist" "', argument " "1"" of type '" "Converter *""'"); 
+  }
+  arg1 = reinterpret_cast< Converter * >(argp1);
+  ecode2 = SWIG_AsVal_bool(obj1, &val2);
+  if (!SWIG_IsOK(ecode2)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "Converter_createOccupancyHist" "', argument " "2"" of type '" "bool""'");
+  } 
+  arg2 = static_cast< bool >(val2);
+  (arg1)->createOccupancyHist(arg2);
+  resultobj = SWIG_Py_Void();
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_Converter_createOccupancyHist__SWIG_1(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  Converter *arg1 = (Converter *) 0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  PyObject * obj0 = 0 ;
+  
+  if (!PyArg_ParseTuple(args,(char *)"O:Converter_createOccupancyHist",&obj0)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_Converter, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "Converter_createOccupancyHist" "', argument " "1"" of type '" "Converter *""'"); 
+  }
+  arg1 = reinterpret_cast< Converter * >(argp1);
+  (arg1)->createOccupancyHist();
+  resultobj = SWIG_Py_Void();
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_Converter_createOccupancyHist(PyObject *self, PyObject *args) {
+  int argc;
+  PyObject *argv[3];
+  int ii;
+  
+  if (!PyTuple_Check(args)) SWIG_fail;
+  argc = args ? (int)PyObject_Length(args) : 0;
+  for (ii = 0; (ii < 2) && (ii < argc); ii++) {
+    argv[ii] = PyTuple_GET_ITEM(args,ii);
+  }
+  if (argc == 1) {
+    int _v;
+    void *vptr = 0;
+    int res = SWIG_ConvertPtr(argv[0], &vptr, SWIGTYPE_p_Converter, 0);
+    _v = SWIG_CheckState(res);
+    if (_v) {
+      return _wrap_Converter_createOccupancyHist__SWIG_1(self, args);
+    }
+  }
+  if (argc == 2) {
+    int _v;
+    void *vptr = 0;
+    int res = SWIG_ConvertPtr(argv[0], &vptr, SWIGTYPE_p_Converter, 0);
+    _v = SWIG_CheckState(res);
+    if (_v) {
+      {
+        int res = SWIG_AsVal_bool(argv[1], NULL);
+        _v = SWIG_CheckState(res);
+      }
+      if (_v) {
+        return _wrap_Converter_createOccupancyHist__SWIG_0(self, args);
+      }
+    }
+  }
+  
+fail:
+  SWIG_SetErrorMsg(PyExc_NotImplementedError,"Wrong number or type of arguments for overloaded function 'Converter_createOccupancyHist'.\n"
+    "  Possible C/C++ prototypes are:\n"
+    "    Converter::createOccupancyHist(bool)\n"
+    "    Converter::createOccupancyHist()\n");
+  return 0;
+}
+
+
+SWIGINTERN PyObject *_wrap_Converter_createRelBcidHist__SWIG_0(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  Converter *arg1 = (Converter *) 0 ;
+  bool arg2 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  bool val2 ;
+  int ecode2 = 0 ;
+  PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
+  
+  if (!PyArg_ParseTuple(args,(char *)"OO:Converter_createRelBcidHist",&obj0,&obj1)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_Converter, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "Converter_createRelBcidHist" "', argument " "1"" of type '" "Converter *""'"); 
+  }
+  arg1 = reinterpret_cast< Converter * >(argp1);
+  ecode2 = SWIG_AsVal_bool(obj1, &val2);
+  if (!SWIG_IsOK(ecode2)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "Converter_createRelBcidHist" "', argument " "2"" of type '" "bool""'");
+  } 
+  arg2 = static_cast< bool >(val2);
+  (arg1)->createRelBcidHist(arg2);
+  resultobj = SWIG_Py_Void();
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_Converter_createRelBcidHist__SWIG_1(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  Converter *arg1 = (Converter *) 0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  PyObject * obj0 = 0 ;
+  
+  if (!PyArg_ParseTuple(args,(char *)"O:Converter_createRelBcidHist",&obj0)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_Converter, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "Converter_createRelBcidHist" "', argument " "1"" of type '" "Converter *""'"); 
+  }
+  arg1 = reinterpret_cast< Converter * >(argp1);
+  (arg1)->createRelBcidHist();
+  resultobj = SWIG_Py_Void();
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_Converter_createRelBcidHist(PyObject *self, PyObject *args) {
+  int argc;
+  PyObject *argv[3];
+  int ii;
+  
+  if (!PyTuple_Check(args)) SWIG_fail;
+  argc = args ? (int)PyObject_Length(args) : 0;
+  for (ii = 0; (ii < 2) && (ii < argc); ii++) {
+    argv[ii] = PyTuple_GET_ITEM(args,ii);
+  }
+  if (argc == 1) {
+    int _v;
+    void *vptr = 0;
+    int res = SWIG_ConvertPtr(argv[0], &vptr, SWIGTYPE_p_Converter, 0);
+    _v = SWIG_CheckState(res);
+    if (_v) {
+      return _wrap_Converter_createRelBcidHist__SWIG_1(self, args);
+    }
+  }
+  if (argc == 2) {
+    int _v;
+    void *vptr = 0;
+    int res = SWIG_ConvertPtr(argv[0], &vptr, SWIGTYPE_p_Converter, 0);
+    _v = SWIG_CheckState(res);
+    if (_v) {
+      {
+        int res = SWIG_AsVal_bool(argv[1], NULL);
+        _v = SWIG_CheckState(res);
+      }
+      if (_v) {
+        return _wrap_Converter_createRelBcidHist__SWIG_0(self, args);
+      }
+    }
+  }
+  
+fail:
+  SWIG_SetErrorMsg(PyExc_NotImplementedError,"Wrong number or type of arguments for overloaded function 'Converter_createRelBcidHist'.\n"
+    "  Possible C/C++ prototypes are:\n"
+    "    Converter::createRelBcidHist(bool)\n"
+    "    Converter::createRelBcidHist()\n");
+  return 0;
+}
+
+
+SWIGINTERN PyObject *_wrap_Converter_createTotHist__SWIG_0(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  Converter *arg1 = (Converter *) 0 ;
+  bool arg2 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  bool val2 ;
+  int ecode2 = 0 ;
+  PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
+  
+  if (!PyArg_ParseTuple(args,(char *)"OO:Converter_createTotHist",&obj0,&obj1)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_Converter, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "Converter_createTotHist" "', argument " "1"" of type '" "Converter *""'"); 
+  }
+  arg1 = reinterpret_cast< Converter * >(argp1);
+  ecode2 = SWIG_AsVal_bool(obj1, &val2);
+  if (!SWIG_IsOK(ecode2)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "Converter_createTotHist" "', argument " "2"" of type '" "bool""'");
+  } 
+  arg2 = static_cast< bool >(val2);
+  (arg1)->createTotHist(arg2);
+  resultobj = SWIG_Py_Void();
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_Converter_createTotHist__SWIG_1(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  Converter *arg1 = (Converter *) 0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  PyObject * obj0 = 0 ;
+  
+  if (!PyArg_ParseTuple(args,(char *)"O:Converter_createTotHist",&obj0)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_Converter, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "Converter_createTotHist" "', argument " "1"" of type '" "Converter *""'"); 
+  }
+  arg1 = reinterpret_cast< Converter * >(argp1);
+  (arg1)->createTotHist();
+  resultobj = SWIG_Py_Void();
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_Converter_createTotHist(PyObject *self, PyObject *args) {
+  int argc;
+  PyObject *argv[3];
+  int ii;
+  
+  if (!PyTuple_Check(args)) SWIG_fail;
+  argc = args ? (int)PyObject_Length(args) : 0;
+  for (ii = 0; (ii < 2) && (ii < argc); ii++) {
+    argv[ii] = PyTuple_GET_ITEM(args,ii);
+  }
+  if (argc == 1) {
+    int _v;
+    void *vptr = 0;
+    int res = SWIG_ConvertPtr(argv[0], &vptr, SWIGTYPE_p_Converter, 0);
+    _v = SWIG_CheckState(res);
+    if (_v) {
+      return _wrap_Converter_createTotHist__SWIG_1(self, args);
+    }
+  }
+  if (argc == 2) {
+    int _v;
+    void *vptr = 0;
+    int res = SWIG_ConvertPtr(argv[0], &vptr, SWIGTYPE_p_Converter, 0);
+    _v = SWIG_CheckState(res);
+    if (_v) {
+      {
+        int res = SWIG_AsVal_bool(argv[1], NULL);
+        _v = SWIG_CheckState(res);
+      }
+      if (_v) {
+        return _wrap_Converter_createTotHist__SWIG_0(self, args);
+      }
+    }
+  }
+  
+fail:
+  SWIG_SetErrorMsg(PyExc_NotImplementedError,"Wrong number or type of arguments for overloaded function 'Converter_createTotHist'.\n"
+    "  Possible C/C++ prototypes are:\n"
+    "    Converter::createTotHist(bool)\n"
+    "    Converter::createTotHist()\n");
+  return 0;
+}
+
+
+SWIGINTERN PyObject *_wrap_Converter_createThresholdHists__SWIG_0(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  Converter *arg1 = (Converter *) 0 ;
+  bool arg2 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  bool val2 ;
+  int ecode2 = 0 ;
+  PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
+  
+  if (!PyArg_ParseTuple(args,(char *)"OO:Converter_createThresholdHists",&obj0,&obj1)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_Converter, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "Converter_createThresholdHists" "', argument " "1"" of type '" "Converter *""'"); 
+  }
+  arg1 = reinterpret_cast< Converter * >(argp1);
+  ecode2 = SWIG_AsVal_bool(obj1, &val2);
+  if (!SWIG_IsOK(ecode2)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "Converter_createThresholdHists" "', argument " "2"" of type '" "bool""'");
+  } 
+  arg2 = static_cast< bool >(val2);
+  (arg1)->createThresholdHists(arg2);
+  resultobj = SWIG_Py_Void();
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_Converter_createThresholdHists__SWIG_1(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  Converter *arg1 = (Converter *) 0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  PyObject * obj0 = 0 ;
+  
+  if (!PyArg_ParseTuple(args,(char *)"O:Converter_createThresholdHists",&obj0)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_Converter, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "Converter_createThresholdHists" "', argument " "1"" of type '" "Converter *""'"); 
+  }
+  arg1 = reinterpret_cast< Converter * >(argp1);
+  (arg1)->createThresholdHists();
+  resultobj = SWIG_Py_Void();
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_Converter_createThresholdHists(PyObject *self, PyObject *args) {
+  int argc;
+  PyObject *argv[3];
+  int ii;
+  
+  if (!PyTuple_Check(args)) SWIG_fail;
+  argc = args ? (int)PyObject_Length(args) : 0;
+  for (ii = 0; (ii < 2) && (ii < argc); ii++) {
+    argv[ii] = PyTuple_GET_ITEM(args,ii);
+  }
+  if (argc == 1) {
+    int _v;
+    void *vptr = 0;
+    int res = SWIG_ConvertPtr(argv[0], &vptr, SWIGTYPE_p_Converter, 0);
+    _v = SWIG_CheckState(res);
+    if (_v) {
+      return _wrap_Converter_createThresholdHists__SWIG_1(self, args);
+    }
+  }
+  if (argc == 2) {
+    int _v;
+    void *vptr = 0;
+    int res = SWIG_ConvertPtr(argv[0], &vptr, SWIGTYPE_p_Converter, 0);
+    _v = SWIG_CheckState(res);
+    if (_v) {
+      {
+        int res = SWIG_AsVal_bool(argv[1], NULL);
+        _v = SWIG_CheckState(res);
+      }
+      if (_v) {
+        return _wrap_Converter_createThresholdHists__SWIG_0(self, args);
+      }
+    }
+  }
+  
+fail:
+  SWIG_SetErrorMsg(PyExc_NotImplementedError,"Wrong number or type of arguments for overloaded function 'Converter_createThresholdHists'.\n"
+    "  Possible C/C++ prototypes are:\n"
+    "    Converter::createThresholdHists(bool)\n"
+    "    Converter::createThresholdHists()\n");
   return 0;
 }
 
@@ -5463,7 +5707,6 @@ static PyMethodDef SwigMethods[] = {
 	 { (char *)"SWIG_PyInstanceMethod_New", (PyCFunction)SWIG_PyInstanceMethod_New, METH_O, NULL},
 	 { (char *)"new_Converter", _wrap_new_Converter, METH_VARARGS, NULL},
 	 { (char *)"delete_Converter", _wrap_delete_Converter, METH_VARARGS, NULL},
-	 { (char *)"Converter_loadHDF5file", _wrap_Converter_loadHDF5file, METH_VARARGS, NULL},
 	 { (char *)"Converter_convertTable", _wrap_Converter_convertTable, METH_VARARGS, NULL},
 	 { (char *)"Converter_setGroupName", _wrap_Converter_setGroupName, METH_VARARGS, NULL},
 	 { (char *)"Converter_setRawDataSetName", _wrap_Converter_setRawDataSetName, METH_VARARGS, NULL},
@@ -5472,18 +5715,22 @@ static PyMethodDef SwigMethods[] = {
 	 { (char *)"Converter_setOutFileName", _wrap_Converter_setOutFileName, METH_VARARGS, NULL},
 	 { (char *)"Converter_setHitTableName", _wrap_Converter_setHitTableName, METH_VARARGS, NULL},
 	 { (char *)"Converter_setMetaTableName", _wrap_Converter_setMetaTableName, METH_VARARGS, NULL},
-	 { (char *)"Converter_setOccHistName", _wrap_Converter_setOccHistName, METH_VARARGS, NULL},
-	 { (char *)"Converter_setTriggerErrorHistName", _wrap_Converter_setTriggerErrorHistName, METH_VARARGS, NULL},
 	 { (char *)"Converter_setErrorHistName", _wrap_Converter_setErrorHistName, METH_VARARGS, NULL},
 	 { (char *)"Converter_setServiceRecordHistName", _wrap_Converter_setServiceRecordHistName, METH_VARARGS, NULL},
+	 { (char *)"Converter_setTriggerErrorHistName", _wrap_Converter_setTriggerErrorHistName, METH_VARARGS, NULL},
+	 { (char *)"Converter_setOccHistName", _wrap_Converter_setOccHistName, METH_VARARGS, NULL},
+	 { (char *)"Converter_setRelBcidHistName", _wrap_Converter_setRelBcidHistName, METH_VARARGS, NULL},
+	 { (char *)"Converter_setTotHistName", _wrap_Converter_setTotHistName, METH_VARARGS, NULL},
 	 { (char *)"Converter_createHitsTable", _wrap_Converter_createHitsTable, METH_VARARGS, NULL},
 	 { (char *)"Converter_createMetaData", _wrap_Converter_createMetaData, METH_VARARGS, NULL},
 	 { (char *)"Converter_createParameterData", _wrap_Converter_createParameterData, METH_VARARGS, NULL},
-	 { (char *)"Converter_createOccupancyHists", _wrap_Converter_createOccupancyHists, METH_VARARGS, NULL},
-	 { (char *)"Converter_createThresholdHists", _wrap_Converter_createThresholdHists, METH_VARARGS, NULL},
-	 { (char *)"Converter_createTriggerErrorHist", _wrap_Converter_createTriggerErrorHist, METH_VARARGS, NULL},
 	 { (char *)"Converter_createErrorHist", _wrap_Converter_createErrorHist, METH_VARARGS, NULL},
 	 { (char *)"Converter_createServiceRecordHist", _wrap_Converter_createServiceRecordHist, METH_VARARGS, NULL},
+	 { (char *)"Converter_createTriggerErrorHist", _wrap_Converter_createTriggerErrorHist, METH_VARARGS, NULL},
+	 { (char *)"Converter_createOccupancyHist", _wrap_Converter_createOccupancyHist, METH_VARARGS, NULL},
+	 { (char *)"Converter_createRelBcidHist", _wrap_Converter_createRelBcidHist, METH_VARARGS, NULL},
+	 { (char *)"Converter_createTotHist", _wrap_Converter_createTotHist, METH_VARARGS, NULL},
+	 { (char *)"Converter_createThresholdHists", _wrap_Converter_createThresholdHists, METH_VARARGS, NULL},
 	 { (char *)"Converter_setFEi4B", _wrap_Converter_setFEi4B, METH_VARARGS, NULL},
 	 { (char *)"Converter_setNbCIDs", _wrap_Converter_setNbCIDs, METH_VARARGS, NULL},
 	 { (char *)"Converter_setMaxTot", _wrap_Converter_setMaxTot, METH_VARARGS, NULL},

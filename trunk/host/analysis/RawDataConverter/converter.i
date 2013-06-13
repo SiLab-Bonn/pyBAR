@@ -12,7 +12,7 @@
 // extern char *get_time();
 %include "std_string.i"
 
-%module Converter
+%module converter
 %{
   #include "Converter.h"
 %}
