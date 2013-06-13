@@ -198,11 +198,13 @@ bool Converter::convertTable(const std::string& FileName)
       throw 5;
 
     unsigned int tLastProgress = 0;
-    std::cout<<"Converting... ";
+
+    if(Basis::infoSet())
+      std::cout<<"Converting... ";
 
     //read remaining chunks of the raw data table and store to file
     for(hsize_t i = 1; i<tDimsLength/chunkLength;++i){
-      if((int)(i*100/(tDimsLength/chunkLength)) > tLastProgress && (int)(i*100/(tDimsLength/chunkLength))%5 == 0){
+      if(Basis::infoSet() && (int)(i*100/(tDimsLength/chunkLength)) > tLastProgress && (int)(i*100/(tDimsLength/chunkLength))%5 == 0){
         std::cout<<i*100/(tDimsLength/chunkLength)<<" ";
         tLastProgress = (int)(i*100/(tDimsLength/chunkLength));
       }
@@ -250,7 +252,8 @@ bool Converter::convertTable(const std::string& FileName)
 
     saveAdditionalData();
 
-    std::cout<<"100\n";
+    if(Basis::infoSet())
+      std::cout<<"100\n";
 
     _runTime = clock() - tBeginTime;
 
@@ -277,6 +280,7 @@ void Converter::setStandardSettings()
   _threshHistName = "HistThreshold";
   _noiseHistName = "HistNoise";
   _errorHistName = "HistErrors";
+  _triggerErrorHistName = "HistTrgError";
   _sRhistName = "HistServiceRecords";
   _rawDataSetName = "raw_data";
   _metaDataSetName = "meta_data";
@@ -972,8 +976,6 @@ void Converter::writeTriggerErrorHist()
   unsigned long* tTriggerErrorHist = 0;
 
   _interpret.getTriggerErrorCounters(tNtriggerErrorHist, tTriggerErrorHist);
-
-
 
   const unsigned int tNdim = 1;               //dimensions of output array
 

@@ -34,6 +34,7 @@ int main(int argc, char* argv[])
      converter.createMetaData(true);
      converter.createParameterData(false);
      converter.createErrorHist(true);
+     converter.createTriggerErrorHist(true);
      converter.createServiceRecordHist(true);
      converter.createOccupancyHist(true);
      converter.createRelBcidHist(true);
