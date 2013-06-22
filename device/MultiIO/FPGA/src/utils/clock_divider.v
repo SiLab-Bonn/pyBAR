@@ -13,7 +13,11 @@ module clock_divider
 );
 
 integer counter_ce;
+initial counter_ce = 0;
 integer counter_clk;
+initial counter_clk = 0;
+initial CLOCK = 1'b0;
+initial CE = 1'b0;
 
 // clock enable
 always @ (posedge CLK or posedge RESET)

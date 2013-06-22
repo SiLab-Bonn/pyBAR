@@ -14,6 +14,8 @@ module task_domain_crossing(
 );
 
 reg FLAG_TOGGLE_CLK_A, FLAG_TOGGLE_CLK_B, BUSY_HOLD_CLK_B;
+initial     FLAG_TOGGLE_CLK_A = 0;
+initial     FLAG_TOGGLE_CLK_B = 0;
 reg [2:0] SYNC_CLK_B, SYNC_CLK_A;
 
 always @(posedge CLK_A) if(FLAG_IN_CLK_A & ~BUSY_CLK_A) FLAG_TOGGLE_CLK_A <= ~FLAG_TOGGLE_CLK_A;
