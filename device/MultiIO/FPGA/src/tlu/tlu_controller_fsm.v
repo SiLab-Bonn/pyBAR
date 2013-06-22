@@ -1,5 +1,6 @@
 // controller FSM for TLU communication
 
+`timescale 1 ps / 1ps
 `default_nettype none
 
 module tlu_controller_fsm
@@ -72,7 +73,7 @@ parameter   [2:0]
     WAIT_FOR_TLU_DATA_SAVED_CMD_READY   = 3'b101;
 
 // sequential always block, non-blocking assignments
-always @ (posedge CLK or posedge RESET)
+always @ (posedge CLK)
 begin
     if (RESET)  state <= IDLE; // get D-FF for state
     else        state <= next;
@@ -134,7 +135,7 @@ begin
 end
 
 // sequential always block, non-blocking assignments, registered outputs
-always @ (posedge CLK or posedge RESET)
+always @ (posedge CLK)
 begin
     if (RESET) // get D-FF
     begin
