@@ -11,6 +11,7 @@ module flag_domain_crossing(
 
 
 reg         FLAG_TOGGLE_CLK_A;
+initial     FLAG_TOGGLE_CLK_A = 0;
 reg [2:0]   SYNC_CLK_B;
 
 always @ (posedge CLK_A)
