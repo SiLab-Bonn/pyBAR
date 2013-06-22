@@ -1,60 +1,88 @@
+`timescale 1 ps / 1ps
 `default_nettype none
 
 module cmd_seq
 #(
-    parameter CMD_MEM_SIZE = 2048
+    parameter                   CMD_MEM_SIZE = 2048
 ) (
-    BUS_CLK,
-    BUS_RST,
-    BUS_ADD,
-    BUS_DATA_IN,
-    BUS_RD,
-    BUS_WR,
-    BUS_DATA_OUT,
+    input wire                  BUS_CLK,
+    input wire                  BUS_RST,
+    input wire [15:0]           BUS_ADD,
+    input wire [7:0]            BUS_DATA_IN,
+    input wire                  BUS_RD,
+    input wire                  BUS_WR,
+    output reg [7:0]            BUS_DATA_OUT,
     
-    CMD_CLK_OUT,
-    CMD_CLK_IN,
-    CMD_EXT_START_FLAG,
-    CMD_EXT_START_ENABLE,
-    CMD_DATA,
-    CMD_READY
+    output wire                 CMD_CLK_OUT,
+    input wire                  CMD_CLK_IN,
+    input wire                  CMD_EXT_START_FLAG,
+    output wire                 CMD_EXT_START_ENABLE,
+    output wire                 CMD_DATA,
+    output wire                 CMD_READY
 );
 
-parameter OUT_LINES = 1;
-
-input                       BUS_CLK;
-input                       BUS_RST;
-input      [15:0]           BUS_ADD;
-input      [7:0]            BUS_DATA_IN;
-input                       BUS_RD;
-input                       BUS_WR;
-output reg [7:0]            BUS_DATA_OUT;
-
-input CMD_CLK_IN;
-input CMD_EXT_START_FLAG;
-output CMD_EXT_START_ENABLE;
-output CMD_DATA;
-output CMD_CLK_OUT;
-output CMD_READY;
-
-
 wire SOFT_RST; //0
-wire START, CONF_FINISH; //1
-wire CONF_EN_EXT_START, CONF_EN_CLOCK_GATE, CONF_EN_NEGEDGE_DATA; //, CONF_EN_EXT_NEGEDGE; //2
+assign SOFT_RST = (BUS_ADD==0 && BUS_WR);
+
+// reset sync
+// when write to addr = 0 then reset
+reg RST_FF, RST_FF2, BUS_RST_FF, BUS_RST_FF2;
+always @(posedge BUS_CLK) begin
+    RST_FF <= SOFT_RST;
+    RST_FF2 <= RST_FF;
+    BUS_RST_FF <= BUS_RST;
+    BUS_RST_FF2 <= BUS_RST_FF;
+end
+
+wire SOFT_RST_FLAG;
+assign SOFT_RST_FLAG = ~RST_FF2 & RST_FF;
+wire BUS_RST_FLAG;
+assign BUS_RST_FLAG = BUS_RST_FF2 & ~BUS_RST_FF; // trailing edge
+wire RST;
+assign RST = BUS_RST_FLAG | SOFT_RST_FLAG;
+
+wire RST_CMD_CLK;
+flag_domain_crossing cmd_rst_flag_domain_crossing (
+    .CLK_A(BUS_CLK),
+    .CLK_B(CMD_CLK_IN),
+    .FLAG_IN_CLK_A(RST),
+    .FLAG_OUT_CLK_B(RST_CMD_CLK)
+);
+
+wire START; //1
+assign START = (BUS_ADD==1 && BUS_WR);
+
+// start sync
+// when write to addr = 1 then send command
+reg START_FF, START_FF2;
+always @(posedge BUS_CLK) begin
+    START_FF <= START;
+    START_FF2 <= START_FF;
+end
+
+wire START_FLAG;
+assign START_FLAG = ~START_FF2 & START_FF;
+
+wire start_sync;
+flag_domain_crossing cmd_start_flag_domain_crossing (
+    .CLK_A(BUS_CLK),
+    .CLK_B(CMD_CLK_IN),
+    .FLAG_IN_CLK_A(START_FLAG),
+    .FLAG_OUT_CLK_B(start_sync)
+);
+
+wire CONF_FINISH; //1
+wire CONF_EN_EXT_START, CONF_DIS_CLOCK_GATE, CONF_EN_NEGEDGE_DATA; //, CONF_EN_EXT_NEGEDGE; //2
 wire [15:0] CONF_CMD_SIZE; //3 - 4
 wire [15:0] CONF_REPEAT_COUNT; //5 - 6
 
 reg [7:0] status_regs[7:0];
 
-wire RST;
-assign RST = BUS_RST || SOFT_RST;
-
-
 always @(posedge BUS_CLK) begin
     if(RST) begin
         status_regs[0] <= 0;
         status_regs[1] <= 0;
-        status_regs[2] <= 8'b0000_0010; //invert clock out
+        status_regs[2] <= 8'b0000_0000; //invert clock out
         status_regs[3] <= 0;
         status_regs[4] <= 0;
         status_regs[5] <= 8'd1; //repeat once
@@ -65,14 +93,12 @@ always @(posedge BUS_CLK) begin
         status_regs[BUS_ADD[2:0]] <= BUS_DATA_IN;
 end
 
-assign SOFT_RST = (BUS_ADD==0 && BUS_WR);
-assign START = (BUS_ADD==1 && BUS_WR);
 
 assign CONF_CMD_SIZE = {status_regs[4], status_regs[3]};
 assign CONF_REPEAT_COUNT = {status_regs[6], status_regs[5]};
 
 //assign CONF_EN_EXT_NEGEDGE = status_regs[2][3];
-assign CONF_EN_CLOCK_GATE = status_regs[2][2]; // no clock domain crossing needed
+assign CONF_DIS_CLOCK_GATE = status_regs[2][2]; // no clock domain crossing needed
 assign CONF_EN_NEGEDGE_DATA = status_regs[2][1]; // no clock domain crossing needed
 assign CONF_EN_EXT_START = status_regs[2][0];
 
@@ -82,7 +108,7 @@ three_stage_synchronizer conf_ena_ext_start_sync (
     .OUT(CMD_EXT_START_ENABLE)
 );
 
-(* RAM_STYLE="{AUTO | BLOCK |  BLOCK_POWER1}" *) // | BLOCK_POWER2}" *)
+(* RAM_STYLE="{AUTO | BLOCK | BLOCK_POWER1 | BLOCK_POWER2}" *)
 reg [7:0] cmd_mem [CMD_MEM_SIZE-1:0];
 always @ (negedge BUS_CLK) begin
     if(BUS_ADD == 1)
@@ -105,83 +131,6 @@ reg [10:0] CMD_MEM_ADD;
 always @(posedge CMD_CLK_IN)
     CMD_MEM_DATA <= cmd_mem[CMD_MEM_ADD];
 
-// start sync
-// when wite to addr = 1 then send command
-
-// reg [3:0] write_start;
-// always@(posedge BUS_CLK) begin
-    // if(RST)
-        // write_start <= 0;
-    // else if(START)
-        // write_start <= 5'd4;
-    // else if(write_start != 5'd3)
-        // write_start <= write_start +1;
-// end
-
-// reg bus_start_sync, start_sync_ff, start_sync_ff2, start_sync_ff3;
-// wire start_sync;
-// always @(posedge BUS_CLK) 
-    // bus_start_sync <= write_start[3];
-
-// always @(posedge CMD_CLK_IN) begin
-    // start_sync_ff <= bus_start_sync;
-    // start_sync_ff2 <= start_sync_ff;
-    // start_sync_ff3 <= start_sync_ff2;
-// end
-
-// assign start_sync = ~start_sync_ff3 && start_sync_ff2;
-
-reg START_FF;
-always @(posedge BUS_CLK)
-    START_FF <= START;
-
-wire START_FLAG;
-assign START_FLAG = ~START_FF & START;
-
-wire start_sync;
-flag_domain_crossing cmd_start_flag_domain_crossing (
-    .CLK_A(BUS_CLK),
-    .CLK_B(CMD_CLK_IN),
-    .FLAG_IN_CLK_A(START_FLAG),
-    .FLAG_OUT_CLK_B(start_sync)
-);
-
-
-// reset sync
-
-// reg [3:0] write_reset;
-// always@(posedge BUS_CLK) begin
-    // if(RST)
-        // write_reset <= 5'd4;
-    // else if(write_reset != 5'd3)
-        // write_reset <= write_reset +1;
-// end
-
-// reg bus_reset_sync, rst_sync_ff, reset_sync;
-// always @(posedge BUS_CLK) 
-    // bus_reset_sync <= write_reset[3];
-
-// always @(posedge CMD_CLK_IN) begin
-    // rst_sync_ff <= bus_reset_sync;
-    // reset_sync <= rst_sync_ff;
-// end
-
-reg RST_FF;
-always @(posedge BUS_CLK)
-    RST_FF <= RST;
-
-wire RST_FLAG;
-assign RST_FLAG = ~RST_FF & RST;
-
-wire reset_sync;
-flag_domain_crossing cmd_rst_flag_domain_crossing (
-    .CLK_A(BUS_CLK),
-    .CLK_B(CMD_CLK_IN),
-    .FLAG_IN_CLK_A(RST_FLAG),
-    .FLAG_OUT_CLK_B(reset_sync)
-);
-
-
 wire ext_send_cmd;
 assign ext_send_cmd = (CMD_EXT_START_FLAG & CMD_EXT_START_ENABLE);
 wire send_cmd;
@@ -194,7 +143,7 @@ reg [15:0] repeat_cnt;
 reg [2:0] state, next_state;
 
 always @ (posedge CMD_CLK_IN)
-    if (reset_sync)
+    if (RST_CMD_CLK)
       state <= WAIT;
     else
       state <= next_state;
@@ -212,10 +161,9 @@ always @ (*) begin
         default : next_state = WAIT;
     endcase
 end
-  
 
 always @ (posedge CMD_CLK_IN) begin
-    if (reset_sync)
+    if (RST_CMD_CLK)
         cnt <= 0;
     else if(state != next_state)
         cnt <= 0;
@@ -226,12 +174,11 @@ always @ (posedge CMD_CLK_IN) begin
 end
 
 always @ (posedge CMD_CLK_IN) begin
-    if (send_cmd || reset_sync)
+    if (send_cmd || RST_CMD_CLK)
         repeat_cnt <= 1;
     else if(state == SEND && cnt == CONF_CMD_SIZE && repeat_cnt != 16'hffff)
         repeat_cnt <= repeat_cnt + 1;
 end
-
 
 always @ (*) begin
     if(state != next_state && next_state == SEND)
@@ -248,11 +195,11 @@ end
 reg [7:0] send_word;
 
 always @ (posedge CMD_CLK_IN) begin
-    if(reset_sync)
+    if(RST_CMD_CLK)
         send_word <= 0;
     else if(state == SEND) begin
         if(next_state == WAIT)
-            send_word <= 0; //this is streange -> bug of FEI4 ?
+            send_word <= 0; //this is strange -> bug of FEI4 ?
         else if(cnt == CONF_CMD_SIZE)
             send_word <= CMD_MEM_DATA;
         else if(cnt %8 == 0)
@@ -273,9 +220,23 @@ cmd_data_pos <= send_word[7];
 //assign CMD_DATA =  send_word[7];
 assign CMD_DATA = CONF_EN_NEGEDGE_DATA ? cmd_data_neg : cmd_data_pos;
 
-//assign CMD_CLK_OUT = CONF_EN_NEGEDGE_DATA ? ~CMD_CLK_IN : CMD_CLK_IN; //TODO: enable/inverse (this should be some clock with 180 from DCM!)
-//BUFGCE BUFGCE_inst ( .O(CMD_CLK_OUT),  .CE(CONF_EN_CLOCK_GATE && ), .I(CMD_CLK_IN) );
-assign CMD_CLK_OUT = CMD_CLK_IN;
+assign CMD_CLK_OUT = CMD_CLK_IN; // TODO: CONF_DIS_CLOCK_GATE
+// wire CMD_CLK_INV_IN;
+// INV CMD_CLK_INV_INST (
+    // .I(CMD_CLK_IN),
+    // .O(CMD_CLK_INV_IN)
+// );
+
+// OFDDRCPE CMD_CLK_FORWARDING_INST (
+    // .CE(1'b1),
+    // .CLR(CONF_DIS_CLOCK_GATE),
+    // .C0(CMD_CLK_IN),
+    // .C1(CMD_CLK_INV_IN),
+    // .D0(1'b0),
+    // .D1(1'b1),
+    // .PRE(1'b0),
+    // .Q(CMD_CLK_OUT)
+// );
 
 // ready sync 
 reg ready_sync_in;
