@@ -1,107 +1,153 @@
-
 `timescale 1ps/1ps
+`default_nettype none
 
-module rec_sync (
-    pll_rst,
-    reset,
-    datain,
-    wclk, ioclk,
-    ready, data, 
-    phase_align_error, eye_size, search_size, pll_lck
+module rec_sync
+#(
+    parameter                       DSIZE = 10
+)
+(
+    input wire                      reset,
+    input wire                      datain,
+    output reg      [DSIZE-1:0]     data,
+    input wire                      WCLK,
+    input wire                      FCLK,
+    output reg                      rec_sync_ready,
+    input wire                      decoder_err
 );
 
-parameter DSIZE = 10;
-
-input pll_rst, reset;
-input datain;
-input ioclk;
-output wclk;
-output ready;
-output [DSIZE-1:0] data;
-output phase_align_error, pll_lck;
-output [7:0] eye_size, search_size;
-
-wire bitslip, pa_ready, pll_lock;
-phase_align #(
-    .DSIZE(DSIZE)
-    ) iphase_align (
-    .PLL_RST(pll_rst),
-    .DATA_IN(datain),
-    .DATA_OUT(data),
-    .IO_CLK(ioclk),
-    .RESET(reset),
-    .WCLK(wclk),
-    .BITSLIP(bitslip),
-    .ERROR(phase_align_error),
-    .READY(pa_ready),
-    .EYE_SIZE(eye_size),
-    .SEARCH_SIZE(search_size),
-    .lck(pll_lck)
+wire BITSLIP_FLAG, BITSLIP_FLAG_FCLK;
+flag_domain_crossing bitslip_flag_domain_crossing_inst (
+    .CLK_A(WCLK),
+    .CLK_B(FCLK),
+    .FLAG_IN_CLK_A(BITSLIP_FLAG),
+    .FLAG_OUT_CLK_B(BITSLIP_FLAG_FCLK)
 );
 
-wire RST;
-assign RST = reset | !pll_lck;
+reg [DSIZE-1:0] shift_reg;
+always@(posedge FCLK)
+    shift_reg <= {shift_reg[DSIZE-2:0], datain};
+
+reg [DSIZE-1:0] bitslip_cnt;
+initial bitslip_cnt = 1;
+always@(posedge FCLK)
+    if(BITSLIP_FLAG_FCLK)
+        bitslip_cnt <= {bitslip_cnt[DSIZE-3:0],bitslip_cnt[DSIZE-1:DSIZE-2]};
+    else
+        bitslip_cnt <= {bitslip_cnt[DSIZE-2:0],bitslip_cnt[DSIZE-1]};
+
+reg [DSIZE-1:0] fdataout;
+always@(posedge FCLK)
+    if(bitslip_cnt[0])
+        fdataout <= shift_reg;
+    else
+        fdataout <= fdataout;
+
+reg [DSIZE-1:0] old_data;        
+always@(posedge WCLK) begin
+    data <= fdataout;
+    old_data <= data;
+end
 
 integer wait_cnt;
-reg [1:0] state, next_state;
+reg [2:0] state, next_state;
 
-localparam START  = 0, WAIT = 1, CHECK = 2, READY = 3;
+localparam      START  = 0,
+                WAIT = 1,
+                CHECK = 2,
+                BITSHIFT = 3,
+                IDLE = 4;
 
-localparam   K28_1P = 10'b00_1111_1001,
-             K28_1N = 10'b11_0000_0110;
+localparam      K28_1P = 10'b00_1111_1001,
+                K28_1N = 10'b11_0000_0110;         
 
-//always @ (posedge wclk_bufg)
-always @ (posedge wclk)
-  begin : FSM_SEQ
-    if (RST) begin
-      state <= START;
-    end else begin
-      state <=   next_state;
-    end
- end
+always @ (posedge WCLK) begin
+    if (reset)  state <= START;
+    else        state <= next_state;
+end
 
-// this maybe can be simplified (only PAHSE0 and PHASE1)
-always @ (*) begin
-    next_state = state;
+always @ (state or data or old_data or wait_cnt or decoder_err) begin
     
     case(state)
-        START : 
-            if(pa_ready)
-                next_state = WAIT;
-            else
-                next_state = START;
-
+        START:
+            next_state = WAIT;
+        
         WAIT:
-            if(wait_cnt > 7)
+            if (wait_cnt == 2)
                 next_state = CHECK;
             else
                 next_state = WAIT;
 
-        CHECK: 
-            if(data == K28_1P || data == K28_1N)
-                next_state = READY;
+        CHECK:
+            if ((data == K28_1P && old_data == K28_1N) || (data == K28_1N && old_data == K28_1P)) // (data == K28_1P || data == K28_1N)
+                next_state = IDLE;
             else
-                next_state = START;
-
-        READY:
-            next_state = READY;
+                next_state = BITSHIFT;
             
+        BITSHIFT:
+            next_state = WAIT;
+        
+        IDLE:
+            if(decoder_err==1'b1)
+                next_state = WAIT;
+            else
+                next_state = IDLE;
+        
         default : next_state = START;
     endcase
 end
 
-always @ (posedge wclk) begin
-    if (RST || state==START )
+assign BITSLIP_FLAG = (state==CHECK && next_state==BITSHIFT);
+//assign rec_sync_ready = (state==IDLE);
+
+always @ (posedge WCLK)
+begin
+    if (reset) // get D-FF
+    begin
+        rec_sync_ready <= 1'b0;
         wait_cnt <= 0;
-    else if(state==WAIT)
-        wait_cnt <=  wait_cnt +1;
+    end
     else
+    begin
+        rec_sync_ready <= rec_sync_ready;
         wait_cnt <= 0;
+
+        case (next_state)
+
+            START:
+            begin
+                rec_sync_ready <= 1'b0;
+            end
+        
+            WAIT:
+            begin
+                if(decoder_err==1'b1)
+                    rec_sync_ready <= 1'b0;
+                else
+                    rec_sync_ready <= 1'b1;
+                wait_cnt <= wait_cnt+1;
+            end
+
+            CHECK:
+            begin
+                wait_cnt <= wait_cnt+1;
+            end
+            
+            BITSHIFT:
+            begin
+                rec_sync_ready <= 1'b0;
+            end
+            
+            IDLE:
+            begin
+                if(decoder_err==1'b1)
+                    rec_sync_ready <= 1'b0;
+                else
+                    rec_sync_ready <= 1'b1;
+            end
+        
+        endcase
+    end
 end
-
-assign bitslip = (state==CHECK && next_state==START);
-assign ready = (state==READY);
-
 
 `ifdef SYNTHESIS_NOT
 wire [35:0] control_bus;
@@ -113,8 +159,8 @@ chipscope_icon ichipscope_icon
 chipscope_ila ichipscope_ila 
 (
     .CONTROL(control_bus),
-    .CLK(wclk), 
-    .TRIG0({lck, eye_size, phase_align_error, data, bitslip, state, pa_ready, reset, pll_rst}) 
+    .CLK(WCLK), 
+    .TRIG0({lck, eye_size, REC_SYNC_ERROR, data, BITSLIP_FLAG, state, pa_ready_flag, reset, pll_rst}) 
 );
 `endif
 

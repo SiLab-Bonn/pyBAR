@@ -10,18 +10,18 @@ module gerneric_fifo (
     size
 );
 
-parameter DATA_SIZE = 32;
+parameter DSIZE = 32;
 parameter DEPTH = 8;
-input clk, reset, write, read;
-input [DATA_SIZE-1:0] data_in;
+input wire clk, reset, write, read;
+input wire [DSIZE-1:0] data_in;
 
-output full, empty;
-reg empty;
+output wire full;
+output reg empty;
 
-output reg [DATA_SIZE-1:0] data_out;
+output reg [DSIZE-1:0] data_out;
 
 
-reg [DATA_SIZE:0] mem [DEPTH-1:0];   
+reg [DSIZE:0] mem [DEPTH-1:0];   
 
 localparam POINTER_SIZE = 16;
 
