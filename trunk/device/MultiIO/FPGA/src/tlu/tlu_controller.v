@@ -6,10 +6,11 @@
  * TLU controller supporting EUDET TLU 0.1/0.2
  */
  
- `default_nettype none
+`timescale 1 ps / 1ps
+`default_nettype none
  
  module tlu_controller
- #(
+#(
     parameter                   DIVISOR = 12
 )
 (
@@ -50,8 +51,23 @@ wire [31:0] TLU_DATA;
 // Registers
 wire SOFT_RST; //Address: 0
 assign SOFT_RST = (BUS_ADD==0 && BUS_WR);
+
+// reset sync
+// when write to addr = 0 then reset
+reg RST_FF, RST_FF2, BUS_RST_FF, BUS_RST_FF2;
+always @(posedge BUS_CLK) begin
+    RST_FF <= SOFT_RST;
+    RST_FF2 <= RST_FF;
+    BUS_RST_FF <= BUS_RST;
+    BUS_RST_FF2 <= BUS_RST_FF;
+end
+
+wire SOFT_RST_FLAG;
+assign SOFT_RST_FLAG = ~RST_FF2 & RST_FF;
+wire BUS_RST_FLAG;
+assign BUS_RST_FLAG = BUS_RST_FF2 & ~BUS_RST_FF; // trailing edge
 wire RST;
-assign RST = BUS_RST || SOFT_RST;
+assign RST = BUS_RST_FLAG | SOFT_RST_FLAG;
 
 reg [7:0] status_regs[15:0];
 
@@ -375,7 +391,7 @@ end
 // fucking FSM
 tlu_controller_fsm #(
     .DIVISOR(DIVISOR)
-) tlu_controller_fsm_module (
+) tlu_controller_fsm_inst (
     .RESET(RST),
     .CLK(BUS_CLK),
     
