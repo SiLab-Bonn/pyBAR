@@ -3,7 +3,7 @@
 
 module top (
     
-    input wire FCLK_IN, 
+    input wire FCLK_IN, // 48MHz
     
     //full speed 
     inout wire [7:0] DATA,
@@ -17,8 +17,11 @@ module top (
     input wire FSTROBE,
     input wire FMODE,
 
-    //debug
+    //debug ports
     output wire [15:0] DEBUG_D,
+    output wire [10:0] MULTI_IO, // Pin 1-11, 12: not connected, 13, 15: DGND, 14, 16: VCC_3.3V
+    
+    //LED
     output wire LED1,
     output wire LED2,
     output wire LED3,
@@ -70,7 +73,9 @@ wire BUS_RST;
 wire BUS_CLK;
 wire BUS_CLK270;
 wire CLK_40;
-wire CLK_160;
+wire RX_CLK;
+wire RX_CLK90;
+wire DATA_CLK;
 wire CLK_LOCKED;
 
 assign EN_V1 = 1'b1;
@@ -83,6 +88,8 @@ assign SEL2 = 1'b1;
 assign SEL3 = 1'b1;
 assign SEL4 = 1'b1;
 
+wire [10:0] fei4_rx_d;
+assign MULTI_IO = fei4_rx_d;//11'b000_0000_0000;
 assign DEBUG_D = 16'ha5a5;
 
 // 1Hz CLK
@@ -118,9 +125,9 @@ assign TX[1] = TLU_BUSY; // in TLU handshake mode TLU_BUSY signal; also connecte
 assign TX[2] = (RJ45_ENABLED == 1'b1) ? RJ45_TRIGGER : LEMO_TRIGGER;
 
 // LED
-parameter VERSION = 1; // all on: 31
+parameter VERSION = 3; // all on: 31
 
-wire RX_READY;
+wire RX_READY, RX_ERR;
 wire FIFO_NOT_EMPTY; // raised, when SRAM FIFO is not empty
 wire FIFO_FULL; // raised, when SRAM FIFO is full
 wire FIFO_READ_ERROR; // raised, when attempting to read from SRAM FIFO when it is empty
@@ -152,7 +159,7 @@ SRLC16E # (
 
 // LED assignments
 assign LED1 = SHOW_VERSION? VERSION[0] : CLK_1HZ & CLK_LOCKED;
-assign LED2 = SHOW_VERSION? VERSION[1] : RX_READY;
+assign LED2 = SHOW_VERSION? VERSION[1] : RX_READY & (CLK_1HZ | ~RX_ERR); // blink when RX_ERR, off when no RX_READY, on when everything is OK
 assign LED3 = SHOW_VERSION? VERSION[2] : (FIFO_FULL == 1'b1 || RX_FIFO_FULL == 1'b1);
 assign LED4 = SHOW_VERSION? VERSION[3] : FIFO_READ_ERROR;
 assign LED5 = SHOW_VERSION? VERSION[4] : RJ45_ENABLED;
@@ -160,13 +167,18 @@ assign LED5 = SHOW_VERSION? VERSION[4] : RJ45_ENABLED;
 reset_gen ireset_gen(.CLK(BUS_CLK), .RST(BUS_RST));
 
 clk_gen iclkgen(
-    .CLKIN(FCLK_IN),
-    .CLKINBUF(BUS_CLK),
-    .CLKINBUF270(BUS_CLK270),
-    .CLKOUT160(CLK_160),
-    .CLKOUT40(CLK_40),
-    .CLKOUT5(),
-    .LOCKED(CLK_LOCKED)
+    .U1_CLKIN_IN(FCLK_IN), 
+    .U1_RST_IN(1'b0),  
+    .U1_CLKIN_IBUFG_OUT(), 
+    .U1_CLK0_OUT(BUS_CLK), 
+    .U1_CLK270_OUT(BUS_CLK270), 
+    .U1_STATUS_OUT(), 
+    .U2_CLKFX_OUT(CLK_40),
+    .U2_CLKDV_OUT(DATA_CLK),
+    .U2_CLK0_OUT(RX_CLK), 
+    .U2_CLK90_OUT(RX_CLK90),
+    .U2_LOCKED_OUT(CLK_LOCKED),
+    .U2_STATUS_OUT()
 );
 
 wire [7:0] BUS_DATA_IN;
@@ -236,7 +248,6 @@ always@ (*) begin
         TLU_ADD = ADD_REAL-16'h8200;
         DATA_OUT = TLU_BUS_DATA_OUT;
     end
-    
 end
 
 assign DATA = ~RD_B ? DATA_OUT : 8'bzzzz_zzzz;
@@ -273,6 +284,7 @@ wire    [31:0]  TLU_FIFO_DATA;
 
 // FIFO
 reg TLU_FIFO_ACCESS;
+initial TLU_FIFO_ACCESS = 1'b0;
 always @ (posedge BUS_CLK)
 begin
     if (TLU_FIFO_ACCESS == 1'b0 && TLU_FIFO_EMPTY == 1'b1) // default
@@ -292,7 +304,7 @@ assign FIFO_DATA = (TLU_FIFO_ACCESS == 1'b1) ? TLU_FIFO_DATA : FE_FIFO_DATA;
 
 
 wire USB_READ;
-assign USB_READ = FREAD && FSTROBE;
+assign USB_READ = FREAD & FSTROBE;
 
 out_fifo iout_fifo
 (
@@ -325,17 +337,21 @@ out_fifo iout_fifo
     .FIFO_READ_ERROR(FIFO_READ_ERROR)
 );
 
-// FIXME temp assignment
-// assign FE_FIFO_READ = FIFO_READ;
-// assign FIFO_EMPTY = FE_FIFO_EMPTY;
-// assign FIFO_DATA = FE_FIFO_DATA;
+parameter DSIZE = 10;
+//parameter CLKIN_PERIOD = 6.250;
 
-fei4_rx ifei4_rx(
-    .RX_CLK(CLK_160),
+fei4_rx #(
+    .DSIZE(DSIZE)
+//    .CLKIN_PERIOD(CLKIN_PERIOD)
+) ifei4_rx (
+    .RX_CLK(RX_CLK),
+    .RX_CLK90(RX_CLK90),
+    .DATA_CLK(DATA_CLK),
     .RX_CLK_LOCKED(CLK_LOCKED),
     .RX_DATA(DOBOUT4),
     
     .RX_READY(RX_READY),
+    .RX_ERR(RX_ERR),
      
     .FIFO_READ(FE_FIFO_READ),
     .FIFO_EMPTY(FE_FIFO_EMPTY),
@@ -349,12 +365,10 @@ fei4_rx ifei4_rx(
     .BUS_DATA_OUT(RX_BUS_DATA_OUT),
     .BUS_RST(BUS_RST),
     .BUS_WR(RX_BUS_WR),
-    .BUS_RD(RX_BUS_RD)
+    .BUS_RD(RX_BUS_RD),
+    
+    .fei4_rx_d(fei4_rx_d)
 );
-
-// assign TLU_FIFO_READ = FIFO_READ;
-// assign FIFO_EMPTY = TLU_FIFO_EMPTY;
-// assign FIFO_DATA = TLU_FIFO_DATA;
 
 tlu_controller #(
     .DIVISOR(12)
