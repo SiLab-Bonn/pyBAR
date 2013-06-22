@@ -1,10 +1,12 @@
+`timescale 1 ps / 1ps
+`default_nettype none
+
 module CG_MOD_neg (
-    ck_in,
-    enable, 
-    ck_out
+    input wire      ck_in,
+    input wire      enable,
+    output wire     ck_out
 );
-input ck_in,enable;
-output ck_out;
+
 reg enl;
 
 always @ (ck_in or enable)
@@ -12,72 +14,62 @@ if (ck_in)
     enl = enable;
 
 assign ck_out = ck_in | ~enl;
+
 endmodule
 
+
 module out_fifo (
-    BUS_CLK,
-    BUS_CLK270,
-    BUS_RST,
-    BUS_ADD,
-    BUS_DATA_IN,
-    BUS_RD,
-    BUS_WR,
-    BUS_DATA_OUT,
+    input wire                  BUS_CLK,
+    input wire                  BUS_CLK270,
+    input wire                  BUS_RST,
+    input wire [15:0]           BUS_ADD,
+    input wire [7:0]            BUS_DATA_IN,
+    input wire                  BUS_RD,
+    input wire                  BUS_WR,
+    output reg [7:0]            BUS_DATA_OUT,
     
-    SRAM_A,
-    SRAM_IO,
-    SRAM_BHE_B,
-    SRAM_BLE_B,
-    SRAM_CE1_B,
-    SRAM_OE_B,
-    SRAM_WE_B,
+    output wire [19:0]          SRAM_A,
+    inout wire [15:0]           SRAM_IO,
+    output wire                 SRAM_BHE_B,
+    output wire                 SRAM_BLE_B,
+    output wire                 SRAM_CE1_B,
+    output wire                 SRAM_OE_B,
+    output wire                 SRAM_WE_B,
     
-    USB_READ,
-    USB_DATA,
+    input wire                  USB_READ,
+    output wire [7:0]           USB_DATA,
     
-    FIFO_READ_NEXT_OUT,
-    FIFO_EMPTY_IN,
-    FIFO_DATA,
+    output reg                  FIFO_READ_NEXT_OUT,
+    input wire                  FIFO_EMPTY_IN,
+    input wire [31:0]           FIFO_DATA,
     
-    FIFO_NOT_EMPTY,
-    FIFO_FULL,
-    FIFO_READ_ERROR
+    output wire                 FIFO_NOT_EMPTY,
+    output wire                 FIFO_FULL,
+    output wire                 FIFO_READ_ERROR
 );
 
-parameter OUT_LINES = 1;
+wire SOFT_RST; // 0
+assign SOFT_RST = (BUS_ADD==0 && BUS_WR);
 
-input                       BUS_CLK;
-input                       BUS_CLK270;
-input                       BUS_RST;
-input       [15:0]          BUS_ADD;
-input       [7:0]           BUS_DATA_IN;
-input                       BUS_RD;
-input                       BUS_WR;
-output reg  [7:0]           BUS_DATA_OUT;
+// reset sync
+// when write to addr = 0 then reset
+reg RST_FF, RST_FF2, BUS_RST_FF, BUS_RST_FF2;
+always @(posedge BUS_CLK) begin
+    RST_FF <= SOFT_RST;
+    RST_FF2 <= RST_FF;
+    BUS_RST_FF <= BUS_RST;
+    BUS_RST_FF2 <= BUS_RST_FF;
+end
 
+wire SOFT_RST_FLAG;
+assign SOFT_RST_FLAG = ~RST_FF2 & RST_FF;
+wire BUS_RST_FLAG;
+assign BUS_RST_FLAG = BUS_RST_FF2 & ~BUS_RST_FF; // trailing edge
+wire RST;
+assign RST = BUS_RST_FLAG | SOFT_RST_FLAG;
 
-output wire [19:0] SRAM_A;
-inout wire [15:0] SRAM_IO;
-output wire SRAM_BHE_B;
-output wire SRAM_BLE_B;
-output wire SRAM_CE1_B;
-output wire SRAM_OE_B;
-output wire SRAM_WE_B;
-
-input USB_READ;
-output [7:0] USB_DATA;
-
-output reg FIFO_READ_NEXT_OUT;
-input FIFO_EMPTY_IN;
-input [31:0] FIFO_DATA;
-output FIFO_NOT_EMPTY;
-output FIFO_FULL;
-output FIFO_READ_ERROR;
-
-wire SOFT_RST; //0
-reg [20:0] CONF_SIZE; //1 - 2 - 3
+reg [20:0] CONF_SIZE; // 1 - 2 - 3
 reg [7:0] CONF_READ_ERROR;
-
 
 always @ (negedge BUS_CLK) begin //(*) begin
     //BUS_DATA_OUT = 0;
@@ -93,11 +85,6 @@ always @ (negedge BUS_CLK) begin //(*) begin
     else
         BUS_DATA_OUT <= 0;
 end
-
-assign SOFT_RST = (BUS_ADD==0 && BUS_WR);  
-
-wire RST;
-assign RST = BUS_RST | SOFT_RST;
 
 wire empty, full;
 reg [19:0] rd_ponter, next_rd_ponter, wr_pointer, next_wr_pointer;
