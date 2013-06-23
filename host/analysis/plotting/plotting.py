@@ -41,6 +41,7 @@ def ceil_mod(number, mod):
     return number
 
 def plot_threshold(threshold_hist, v_cal = 53, plot_range = (1500,2500), filename = None):
+    plt.clf()
     H=np.empty(shape=(336,80),dtype=threshold_hist.dtype)
     H[:]=threshold_hist[:,:]
     H=H*v_cal
@@ -57,6 +58,7 @@ def plot_threshold(threshold_hist, v_cal = 53, plot_range = (1500,2500), filenam
         plt.savefig(filename)
         
 def plot_noise(noise_hist, v_cal = 53, plot_range = (1500,2500), filename = None):
+    plt.clf()
     H=np.empty(shape=(336,80),dtype=noise_hist.dtype)
     H[:]=noise_hist[:,:]
     H=H*v_cal
@@ -73,6 +75,7 @@ def plot_noise(noise_hist, v_cal = 53, plot_range = (1500,2500), filename = None
         plt.savefig(filename)
         
 def plot_relative_bcid(relative_bcid_hist, filename = None):
+    plt.clf()
     plt.bar(range(10,16), relative_bcid_hist[:], color='r', align = 'center') #bug: https://github.com/matplotlib/matplotlib/issues/1882, log = True)
     plt.xlabel('relative BCID [25 ns]')
     plt.ylabel('#')
@@ -87,6 +90,7 @@ def plot_relative_bcid(relative_bcid_hist, filename = None):
         plt.savefig(filename)
         
 def plot_tot(tot_hist, filename = None):
+    plt.clf()
     plt.bar(range(0,16), tot_hist[:], color='b', align = 'center')
     plt.xlabel('TOT [25 ns]')
     plt.ylabel('#')
@@ -100,7 +104,7 @@ def plot_tot(tot_hist, filename = None):
         plt.savefig(filename)
         
 def plot_event_errors(error_hist, filename = None):
-    print error_hist[:]
+    plt.clf()
     plt.bar(range(0,8), error_hist[:], color='r', align = 'center', label="Error code")
     plt.xlabel('')
     plt.ylabel('#')
@@ -108,7 +112,7 @@ def plot_event_errors(error_hist, filename = None):
     fig = plt.figure(1)  
     fig.patch.set_facecolor('white')
     plt.grid(True)
-    plt.xticks(range(0,8), ('SR\noccured', 'No\ntrigger', 'LVL1ID\nnot const.', 'BCID\nerror', 'unknown\nword', 'BCID\njump', 'trigger\nerror', 'not\nused') )
+    plt.xticks(range(0,8), ('SR\noccured', 'No\ntrigger', 'LVL1ID\nnot const.', '#BCID\nwrong', 'unknown\nword', 'BCID\njump', 'trigger\nerror', 'not\nused') )
     #plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
     if filename is None:
         plt.show()
@@ -116,6 +120,7 @@ def plot_event_errors(error_hist, filename = None):
         plt.savefig(filename)
         
 def plot_trigger_errors(trigger_error_hist, filename = None):
+    plt.clf()
     plt.bar(range(0,8), trigger_error_hist[:], color='r', align = 'center', label="Error code")
     plt.xlabel('')
     plt.ylabel('#')
@@ -131,7 +136,7 @@ def plot_trigger_errors(trigger_error_hist, filename = None):
         plt.savefig(filename)
         
 def plot_service_records(service_record_hist, filename = None):
-    print service_record_hist[:]
+    plt.clf()
     plt.bar(range(0,32), service_record_hist[:], color='r', align = 'center', label="Error code")
     plt.xlabel('service record code')
     plt.ylabel('#')
@@ -146,6 +151,7 @@ def plot_service_records(service_record_hist, filename = None):
         plt.savefig(filename)
         
 def plot_threshold_2d(threshold_hist, v_cal = 53, plot_range = (1500,2500),  max_occ = None, filename = None):
+    plt.clf()
     H=np.empty(shape=(336,80),dtype=threshold_hist.dtype)
     H[:]=threshold_hist[:,:]
     H=H*v_cal
@@ -162,6 +168,7 @@ def plot_threshold_2d(threshold_hist, v_cal = 53, plot_range = (1500,2500),  max
     plt.show()
 
 def plot_correlations(filenames, limit = None):
+    plt.clf()
     DataFrame = pd.DataFrame();
     index = 0
     for fileName in filenames:
@@ -216,6 +223,36 @@ def plotOccupancy(occupancy_hist, median = False, max_occ = None, filename = Non
     plt.xlabel('Column')
     plt.ylabel('Row')
     plt.colorbar(boundaries = bounds, cmap = cmap, norm = norm)
+    if filename is None:
+        plt.show()
+    else:
+        plt.savefig(filename)
+        
+def plot_pixel_mask(mask, maskname, filename = None):
+    plt.clf()
+    extent = [0.5, 80.5, 336.5, 0.5]
+    plt.imshow(mask, interpolation='nearest', aspect="auto", extent=extent) # for monitoring
+    plt.title(maskname+" mask")
+    plt.xlabel('Column')
+    plt.ylabel('Row')
+    #plt.colorbar(boundaries = bounds, cmap = cmap, norm = norm)
+    if filename is None:
+        plt.show()
+    else:
+        plt.savefig(filename)
+        
+def plot_pixel_dac_config(dacconfig, dacname, filename = None):
+    plt.clf()
+    extent = [0.5, 80.5, 336.5, 0.5]
+    cmap = cm.get_cmap('hot')
+    ceil_number = ceil_mod(int(dacconfig.max()),1)
+    bounds = range(0, ceil_number+1, ceil_number/255)
+    norm = colors.BoundaryNorm(bounds, cmap.N)
+    plt.imshow(dacconfig, interpolation='nearest', aspect="auto", cmap = cmap, norm = norm, extent=extent)
+    plt.title(dacname+" distribution")
+    plt.xlabel('Column')
+    plt.ylabel('Row')
+    #plt.colorbar(boundaries = bounds, cmap = cmap, norm = norm)
     if filename is None:
         plt.show()
     else:
