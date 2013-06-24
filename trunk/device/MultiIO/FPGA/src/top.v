@@ -341,8 +341,8 @@ parameter DSIZE = 10;
 //parameter CLKIN_PERIOD = 6.250;
 
 fei4_rx #(
-    .DSIZE(DSIZE)
-//    .CLKIN_PERIOD(CLKIN_PERIOD)
+    .DSIZE(DSIZE),
+    .DATA_IDENTIFIER(1)
 ) ifei4_rx (
     .RX_CLK(RX_CLK),
     .RX_CLK90(RX_CLK90),
