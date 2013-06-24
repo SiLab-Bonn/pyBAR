@@ -4,7 +4,7 @@
 module fei4_rx
 #(
     parameter           DSIZE = 10,
-    parameter           CLKIN_PERIOD = 6.250
+    parameter           DATA_IDENTIFIER = 0
 )
 (
     input wire RX_CLK,
@@ -87,7 +87,9 @@ always @ (negedge BUS_CLK) begin //(*) begin
 end
 
 wire [23:0] FE_DATA;
-assign FIFO_DATA = {8'b0000_0000, FE_DATA};
+wire [7:0] DATA_HEADER;
+assign DATA_HEADER = DATA_IDENTIFIER;
+assign FIFO_DATA = {DATA_HEADER, FE_DATA};
 
 receiver_logic #(
     .DSIZE(DSIZE)
