@@ -38,18 +38,18 @@ module clk_gen    (U1_CLKIN_IN,
                    U2_LOCKED_OUT, 
                    U2_STATUS_OUT);
 
-    input U1_CLKIN_IN;
-    input U1_RST_IN;
-   output U2_CLKFX_OUT;
-   output U1_CLKIN_IBUFG_OUT;
-   output U1_CLK0_OUT;
-   output U1_CLK270_OUT;
-   output [7:0] U1_STATUS_OUT;
-   output U2_CLKDV_OUT;
-   output U2_CLK0_OUT;
-   output U2_CLK90_OUT;
-   output U2_LOCKED_OUT;
-   output [7:0] U2_STATUS_OUT;
+    input wire U1_CLKIN_IN;
+    input wire U1_RST_IN;
+   output wire U2_CLKFX_OUT;
+   output wire U1_CLKIN_IBUFG_OUT;
+   output wire U1_CLK0_OUT;
+   output wire U1_CLK270_OUT;
+   output wire [7:0] U1_STATUS_OUT;
+   output wire U2_CLKDV_OUT;
+   output wire U2_CLK0_OUT;
+   output wire U2_CLK90_OUT;
+   output wire U2_LOCKED_OUT;
+   output wire [7:0] U2_STATUS_OUT;
    
    wire GND_BIT;
    wire U1_CLKIN_IBUFG;
