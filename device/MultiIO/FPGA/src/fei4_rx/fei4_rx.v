@@ -27,9 +27,7 @@ module fei4_rx
     output reg [7:0] BUS_DATA_OUT,
     input wire BUS_RST,
     input wire BUS_WR,
-    input wire BUS_RD,
-    
-    output wire [10:0] fei4_rx_d
+    input wire BUS_RD
 );
 
 // 0 - soft reset
@@ -107,8 +105,7 @@ receiver_logic #(
     .rec_sync_ready(ready_rec),
     .lost_err_cnt(lost_err_cnt),
     .decoder_err_cnt(decoder_err_cnt),
-    .fifo_size(fifo_size),
-    .fei4_rx_d(fei4_rx_d)
+    .fifo_size(fifo_size)
 );
 
 //assign fei4_rx_d = {11'b0};

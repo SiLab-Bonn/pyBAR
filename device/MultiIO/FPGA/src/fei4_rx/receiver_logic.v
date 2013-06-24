@@ -19,9 +19,7 @@ module receiver_logic
     output wire             rec_sync_ready,
     output reg  [7:0]       lost_err_cnt,
     output reg  [7:0]       decoder_err_cnt,
-    output wire [15:0]      fifo_size,
-    
-    output wire [10:0]      fei4_rx_d
+    output wire [15:0]      fifo_size
 );
 
 wire RESET_WCLK;
@@ -244,7 +242,5 @@ chipscope_ila ichipscope_ila
     .TRIG0({dec_k, dec_data, data_to_dec, rec_sync_ready, 1'b0, USEAOUT, USEBOUT, USECOUT, USEDOUT, RX_DATA_SYNC, RX_DATA})
 );
 `endif
-
-assign fei4_rx_d = {rec_sync_ready, decoder_err , disp_err, code_err, 1'b0, USEAOUT, USEBOUT, USECOUT, USEDOUT, RX_DATA_SYNC , RX_DATA};
 
 endmodule
