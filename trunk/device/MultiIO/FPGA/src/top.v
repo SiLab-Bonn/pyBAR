@@ -88,14 +88,12 @@ assign SEL2 = 1'b1;
 assign SEL3 = 1'b1;
 assign SEL4 = 1'b1;
 
-wire [10:0] fei4_rx_d;
-assign MULTI_IO = fei4_rx_d;//11'b000_0000_0000;
+assign MULTI_IO = 11'b000_0000_0000;
 assign DEBUG_D = 16'ha5a5;
 
 // 1Hz CLK
 wire CE_1HZ; // use for sequential logic
 wire CLK_1HZ; // don't connect to clock input, only combinatorial logic
-
 clock_divider #(
     .DIVISOR(40000000)
 ) clock_divisor_40MHz_to_1Hz (
@@ -103,6 +101,16 @@ clock_divider #(
     .RESET(1'b0),
     .CE(CE_1HZ),
     .CLOCK(CLK_1HZ)
+);
+
+wire CLK_2HZ;
+clock_divider #(
+    .DIVISOR(20000000)
+) clock_divisor_40MHz_to_2Hz (
+    .CLK(CLK_40),
+    .RESET(1'b0),
+    .CE(),
+    .CLOCK(CLK_2HZ)
 );
 
 // Trigger
@@ -127,11 +135,13 @@ assign TX[2] = (RJ45_ENABLED == 1'b1) ? RJ45_TRIGGER : LEMO_TRIGGER;
 // LED
 parameter VERSION = 3; // all on: 31
 
-wire RX_READY, RX_ERR;
+wire RX_READY, RX_READY_4, RX_ERR_4, RX_READY_3, RX_ERR_3, RX_READY_2, RX_ERR_2, RX_READY_1, RX_ERR_1;
+assign RX_READY = RX_READY_4 | RX_READY_3 | RX_READY_2 | RX_READY_1;
 wire FIFO_NOT_EMPTY; // raised, when SRAM FIFO is not empty
 wire FIFO_FULL; // raised, when SRAM FIFO is full
 wire FIFO_READ_ERROR; // raised, when attempting to read from SRAM FIFO when it is empty
-wire RX_FIFO_FULL; // raised, when RX FIFO full
+wire RX_FIFO_FULL, RX_FIFO_FULL_4, RX_FIFO_FULL_3, RX_FIFO_FULL_2, RX_FIFO_FULL_1; // raised, when RX FIFO full
+assign RX_FIFO_FULL = RX_FIFO_FULL_4 | RX_FIFO_FULL_3 | RX_FIFO_FULL_2 | RX_FIFO_FULL_1;
 reg FIFO_NEAR_FULL;
 always @ (posedge BUS_CLK)
 begin
@@ -158,11 +168,11 @@ SRLC16E # (
 );
 
 // LED assignments
-assign LED1 = SHOW_VERSION? VERSION[0] : CLK_1HZ & CLK_LOCKED;
-assign LED2 = SHOW_VERSION? VERSION[1] : RX_READY & (CLK_1HZ | ~RX_ERR); // blink when RX_ERR, off when no RX_READY, on when everything is OK
-assign LED3 = SHOW_VERSION? VERSION[2] : (FIFO_FULL == 1'b1 || RX_FIFO_FULL == 1'b1);
-assign LED4 = SHOW_VERSION? VERSION[3] : FIFO_READ_ERROR;
-assign LED5 = SHOW_VERSION? VERSION[4] : RJ45_ENABLED;
+assign LED1 = SHOW_VERSION? VERSION[0] : RJ45_ENABLED? (CLK_2HZ & CLK_LOCKED) : (CLK_1HZ & CLK_LOCKED);
+assign LED2 = SHOW_VERSION? VERSION[1] : RX_READY_1 & (CLK_1HZ | ~RX_ERR_1); // blink when RX_ERR, off when no RX_READY, on when everything is OK
+assign LED3 = SHOW_VERSION? VERSION[2] : RX_READY_2 & (CLK_1HZ | ~RX_ERR_2);//(FIFO_FULL == 1'b1 || RX_FIFO_FULL == 1'b1);
+assign LED4 = SHOW_VERSION? VERSION[3] : RX_READY_3 & (CLK_1HZ | ~RX_ERR_3);//FIFO_READ_ERROR;
+assign LED5 = SHOW_VERSION? VERSION[4] : RX_READY_4 & (CLK_1HZ | ~RX_ERR_4);//RJ45_ENABLED;
 
 reset_gen ireset_gen(.CLK(BUS_CLK), .RST(BUS_RST));
 
@@ -190,9 +200,21 @@ reg [15:0] CMD_ADD;
 wire [7:0] CMD_BUS_DATA_OUT;
 reg CMD_BUS_RD, CMD_BUS_WR;
 
-reg [15:0] RX_ADD;
-wire [7:0] RX_BUS_DATA_OUT;
-reg RX_BUS_RD, RX_BUS_WR;
+reg [15:0] RX_ADD_4;
+wire [7:0] RX_BUS_DATA_OUT_4;
+reg RX_BUS_RD_4, RX_BUS_WR_4;
+
+reg [15:0] RX_ADD_3;
+wire [7:0] RX_BUS_DATA_OUT_3;
+reg RX_BUS_RD_3, RX_BUS_WR_3;
+
+reg [15:0] RX_ADD_2;
+wire [7:0] RX_BUS_DATA_OUT_2;
+reg RX_BUS_RD_2, RX_BUS_WR_2;
+
+reg [15:0] RX_ADD_1;
+wire [7:0] RX_BUS_DATA_OUT_1;
+reg RX_BUS_RD_1, RX_BUS_WR_1;
 
 reg [15:0] FIFO_ADD;
 wire [7:0] FIFO_BUS_DATA_OUT;
@@ -212,9 +234,21 @@ always@ (*) begin
     CMD_BUS_RD = 0;
     CMD_BUS_WR = 0;
     
-    RX_BUS_RD = 0;
-    RX_BUS_WR = 0;
-    RX_ADD = 0;
+    RX_BUS_RD_4 = 0;
+    RX_BUS_WR_4 = 0;
+    RX_ADD_4 = 0;
+    
+    RX_BUS_RD_3 = 0;
+    RX_BUS_WR_3 = 0;
+    RX_ADD_3 = 0;
+    
+    RX_BUS_RD_2 = 0;
+    RX_BUS_WR_2 = 0;
+    RX_ADD_2 = 0;
+    
+    RX_BUS_RD_1 = 0;
+    RX_BUS_WR_1 = 0;
+    RX_ADD_1 = 0;
     
     FIFO_ADD = 0;
     FIFO_RD = 0;
@@ -230,12 +264,12 @@ always@ (*) begin
         CMD_ADD = ADD_REAL;
         DATA_OUT = CMD_BUS_DATA_OUT;
     end
-    else if( ADD_REAL < 16'h8100 ) begin
-        RX_BUS_RD = ~RD_B;
-        RX_BUS_WR = ~WR_B;
-        RX_ADD = ADD_REAL-16'h8000;
-        DATA_OUT = RX_BUS_DATA_OUT;
-    end
+    // else if( ADD_REAL < 16'h8100 ) begin
+        // RX_BUS_RD = ~RD_B;
+        // RX_BUS_WR = ~WR_B;
+        // RX_ADD = ADD_REAL-16'h8000;
+        // DATA_OUT = RX_BUS_DATA_OUT;
+    // end
     else if( ADD_REAL < 16'h8200 ) begin
         FIFO_RD = ~RD_B;
         FIFO_WR = ~WR_B;
@@ -247,6 +281,30 @@ always@ (*) begin
         TLU_WR = ~WR_B;
         TLU_ADD = ADD_REAL-16'h8200;
         DATA_OUT = TLU_BUS_DATA_OUT;
+    end
+    else if( ADD_REAL < 16'h8400 ) begin
+        RX_BUS_RD_4 = ~RD_B;
+        RX_BUS_WR_4 = ~WR_B;
+        RX_ADD_4 = ADD_REAL-16'h8300;
+        DATA_OUT = RX_BUS_DATA_OUT_4;
+    end
+    else if( ADD_REAL < 16'h8500 ) begin
+        RX_BUS_RD_3 = ~RD_B;
+        RX_BUS_WR_3 = ~WR_B;
+        RX_ADD_3 = ADD_REAL-16'h8400;
+        DATA_OUT = RX_BUS_DATA_OUT_3;
+    end
+    else if( ADD_REAL < 16'h8600 ) begin
+        RX_BUS_RD_2 = ~RD_B;
+        RX_BUS_WR_2 = ~WR_B;
+        RX_ADD_2 = ADD_REAL-16'h8500;
+        DATA_OUT = RX_BUS_DATA_OUT_2;
+    end
+    else if( ADD_REAL < 16'h8700 ) begin
+        RX_BUS_RD_1 = ~RD_B;
+        RX_BUS_WR_1 = ~WR_B;
+        RX_ADD_1 = ADD_REAL-16'h8600;
+        DATA_OUT = RX_BUS_DATA_OUT_1;
     end
 end
 
@@ -274,34 +332,63 @@ wire            FIFO_READ;
 wire            FIFO_EMPTY;
 wire    [31:0]  FIFO_DATA;
 
-wire            FE_FIFO_READ;
-wire            FE_FIFO_EMPTY;
-wire    [31:0]  FE_FIFO_DATA;
+wire            FE_FIFO_READ_4;
+wire            FE_FIFO_EMPTY_4;
+wire    [31:0]  FE_FIFO_DATA_4;
+
+wire            FE_FIFO_READ_3;
+wire            FE_FIFO_EMPTY_3;
+wire    [31:0]  FE_FIFO_DATA_3;
+
+wire            FE_FIFO_READ_2;
+wire            FE_FIFO_EMPTY_2;
+wire    [31:0]  FE_FIFO_DATA_2;
+
+wire            FE_FIFO_READ_1;
+wire            FE_FIFO_EMPTY_1;
+wire    [31:0]  FE_FIFO_DATA_1;
 
 wire            TLU_FIFO_READ;
 wire            TLU_FIFO_EMPTY;
 wire    [31:0]  TLU_FIFO_DATA;
 
 // FIFO
-reg TLU_FIFO_ACCESS;
-initial TLU_FIFO_ACCESS = 1'b0;
-always @ (posedge BUS_CLK)
-begin
-    if (TLU_FIFO_ACCESS == 1'b0 && TLU_FIFO_EMPTY == 1'b1) // default
-        TLU_FIFO_ACCESS <= 1'b0;
-    else if (TLU_FIFO_ACCESS == 1'b1 && TLU_FIFO_READ == 1'b1) // de-assert after successful writing
-        TLU_FIFO_ACCESS <= 1'b0;
-    else if (TLU_FIFO_EMPTY == 1'b0 && (FE_FIFO_EMPTY == 1'b1 || FE_FIFO_READ == 1'b1)) // assert if bus is free or directly after FE FIFO access
-        TLU_FIFO_ACCESS <= 1'b1;
-    else
-        TLU_FIFO_ACCESS <= TLU_FIFO_ACCESS;
-end
+// reg TLU_FIFO_ACCESS;
+// initial TLU_FIFO_ACCESS = 1'b0;
+// always @ (posedge BUS_CLK)
+// begin
+    // if (TLU_FIFO_ACCESS == 1'b0 && TLU_FIFO_EMPTY == 1'b1) // default
+        // TLU_FIFO_ACCESS <= 1'b0;
+    // else if (TLU_FIFO_ACCESS == 1'b1 && TLU_FIFO_READ == 1'b1) // de-assert after successful writing
+        // TLU_FIFO_ACCESS <= 1'b0;
+    // else if (TLU_FIFO_EMPTY == 1'b0 && (FE_FIFO_EMPTY == 1'b1 || FE_FIFO_READ == 1'b1)) // assert if bus is free or directly after FE FIFO access
+        // TLU_FIFO_ACCESS <= 1'b1;
+    // else
+        // TLU_FIFO_ACCESS <= TLU_FIFO_ACCESS;
+// end
 
-assign FE_FIFO_READ = (TLU_FIFO_ACCESS == 1'b0) ? FIFO_READ : 1'b0;
-assign TLU_FIFO_READ = (TLU_FIFO_ACCESS == 1'b1) ? FIFO_READ : 1'b0;
-assign FIFO_EMPTY = (TLU_FIFO_ACCESS == 1'b1) ? TLU_FIFO_EMPTY : FE_FIFO_EMPTY;
-assign FIFO_DATA = (TLU_FIFO_ACCESS == 1'b1) ? TLU_FIFO_DATA : FE_FIFO_DATA;
+// assign FE_FIFO_READ = (TLU_FIFO_ACCESS == 1'b0) ? FIFO_READ : 1'b0;
+// assign TLU_FIFO_READ = (TLU_FIFO_ACCESS == 1'b1) ? FIFO_READ : 1'b0;
+// assign FIFO_EMPTY = (TLU_FIFO_ACCESS == 1'b1) ? TLU_FIFO_EMPTY : FE_FIFO_EMPTY;
+// assign FIFO_DATA = (TLU_FIFO_ACCESS == 1'b1) ? TLU_FIFO_DATA : FE_FIFO_DATA;
 
+wire [3:0] FE_FIFO_REQ;
+assign FE_FIFO_REQ = {~FE_FIFO_EMPTY_1, ~FE_FIFO_EMPTY_2, ~FE_FIFO_EMPTY_3, ~FE_FIFO_EMPTY_4};
+wire TLU_FIFO_REQ;
+assign TLU_FIFO_REQ = ~TLU_FIFO_EMPTY;
+wire [4:0] FIFO_READ_SEL;
+
+assign {FE_FIFO_READ_1, FE_FIFO_READ_2, FE_FIFO_READ_3, FE_FIFO_READ_4, TLU_FIFO_READ} = (FIFO_READ_SEL & ({5{FIFO_READ}}));
+assign FIFO_EMPTY = ~((FIFO_READ_SEL & {FE_FIFO_REQ, TLU_FIFO_REQ}) != 5'b0_0000);
+assign FIFO_DATA = (({32{FIFO_READ_SEL[4]}} & FE_FIFO_DATA_1) | ({32{FIFO_READ_SEL[3]}} & FE_FIFO_DATA_2) | ({32{FIFO_READ_SEL[2]}} & FE_FIFO_DATA_3) | ({32{FIFO_READ_SEL[1]}} & FE_FIFO_DATA_4) | ({32{FIFO_READ_SEL[0]}} & TLU_FIFO_DATA));
+
+arbiter #(
+    .WIDTH(5)
+) arbiter_inst (
+    .req({FE_FIFO_REQ, TLU_FIFO_REQ}),
+    .grant(FIFO_READ_SEL),
+    .base(5'b0_0001)//TLU_FIFO_ACCESS? 5'b0_0001 : 5'b0_0010
+);
 
 wire USB_READ;
 assign USB_READ = FREAD & FSTROBE;
@@ -342,32 +429,114 @@ parameter DSIZE = 10;
 
 fei4_rx #(
     .DSIZE(DSIZE),
-    .DATA_IDENTIFIER(1)
-) ifei4_rx (
+    .DATA_IDENTIFIER(4)
+) ifei4_rx_4 (
     .RX_CLK(RX_CLK),
     .RX_CLK90(RX_CLK90),
     .DATA_CLK(DATA_CLK),
     .RX_CLK_LOCKED(CLK_LOCKED),
     .RX_DATA(DOBOUT4),
     
-    .RX_READY(RX_READY),
-    .RX_ERR(RX_ERR),
+    .RX_READY(RX_READY_4),
+    .RX_ERR(RX_ERR_4),
      
-    .FIFO_READ(FE_FIFO_READ),
-    .FIFO_EMPTY(FE_FIFO_EMPTY),
-    .FIFO_DATA(FE_FIFO_DATA),
+    .FIFO_READ(FE_FIFO_READ_4),
+    .FIFO_EMPTY(FE_FIFO_EMPTY_4),
+    .FIFO_DATA(FE_FIFO_DATA_4),
     
-    .RX_FIFO_FULL(RX_FIFO_FULL),
+    .RX_FIFO_FULL(RX_FIFO_FULL_4),
      
     .BUS_CLK(BUS_CLK),
-    .BUS_ADD(RX_ADD),
+    .BUS_ADD(RX_ADD_4),
     .BUS_DATA_IN(BUS_DATA_IN),
-    .BUS_DATA_OUT(RX_BUS_DATA_OUT),
+    .BUS_DATA_OUT(RX_BUS_DATA_OUT_4),
     .BUS_RST(BUS_RST),
-    .BUS_WR(RX_BUS_WR),
-    .BUS_RD(RX_BUS_RD),
+    .BUS_WR(RX_BUS_WR_4),
+    .BUS_RD(RX_BUS_RD_4)
+);
+
+fei4_rx #(
+    .DSIZE(DSIZE),
+    .DATA_IDENTIFIER(3)
+) ifei4_rx_3 (
+    .RX_CLK(RX_CLK),
+    .RX_CLK90(RX_CLK90),
+    .DATA_CLK(DATA_CLK),
+    .RX_CLK_LOCKED(CLK_LOCKED),
+    .RX_DATA(DOBOUT3),
     
-    .fei4_rx_d(fei4_rx_d)
+    .RX_READY(RX_READY_3),
+    .RX_ERR(RX_ERR_3),
+     
+    .FIFO_READ(FE_FIFO_READ_3),
+    .FIFO_EMPTY(FE_FIFO_EMPTY_3),
+    .FIFO_DATA(FE_FIFO_DATA_3),
+    
+    .RX_FIFO_FULL(RX_FIFO_FULL_3),
+     
+    .BUS_CLK(BUS_CLK),
+    .BUS_ADD(RX_ADD_3),
+    .BUS_DATA_IN(BUS_DATA_IN),
+    .BUS_DATA_OUT(RX_BUS_DATA_OUT_3),
+    .BUS_RST(BUS_RST),
+    .BUS_WR(RX_BUS_WR_3),
+    .BUS_RD(RX_BUS_RD_3)
+);
+
+fei4_rx #(
+    .DSIZE(DSIZE),
+    .DATA_IDENTIFIER(2)
+) ifei4_rx_2 (
+    .RX_CLK(RX_CLK),
+    .RX_CLK90(RX_CLK90),
+    .DATA_CLK(DATA_CLK),
+    .RX_CLK_LOCKED(CLK_LOCKED),
+    .RX_DATA(DOBOUT2),
+    
+    .RX_READY(RX_READY_2),
+    .RX_ERR(RX_ERR_2),
+     
+    .FIFO_READ(FE_FIFO_READ_2),
+    .FIFO_EMPTY(FE_FIFO_EMPTY_2),
+    .FIFO_DATA(FE_FIFO_DATA_2),
+    
+    .RX_FIFO_FULL(RX_FIFO_FULL_2),
+     
+    .BUS_CLK(BUS_CLK),
+    .BUS_ADD(RX_ADD_2),
+    .BUS_DATA_IN(BUS_DATA_IN),
+    .BUS_DATA_OUT(RX_BUS_DATA_OUT_2),
+    .BUS_RST(BUS_RST),
+    .BUS_WR(RX_BUS_WR_2),
+    .BUS_RD(RX_BUS_RD_2)
+);
+
+fei4_rx #(
+    .DSIZE(DSIZE),
+    .DATA_IDENTIFIER(1)
+) ifei4_rx_1 (
+    .RX_CLK(RX_CLK),
+    .RX_CLK90(RX_CLK90),
+    .DATA_CLK(DATA_CLK),
+    .RX_CLK_LOCKED(CLK_LOCKED),
+    .RX_DATA(DOBOUT1),
+    
+    .RX_READY(RX_READY_1),
+    .RX_ERR(RX_ERR_1),
+     
+    .FIFO_READ(FE_FIFO_READ_1),
+    .FIFO_EMPTY(FE_FIFO_EMPTY_1),
+    .FIFO_DATA(FE_FIFO_DATA_1),
+    
+    .RX_FIFO_FULL(RX_FIFO_FULL_1),
+     
+    .BUS_CLK(BUS_CLK),
+    .BUS_ADD(RX_ADD_1),
+    .BUS_DATA_IN(BUS_DATA_IN),
+    .BUS_DATA_OUT(RX_BUS_DATA_OUT_1),
+    .BUS_RST(BUS_RST),
+    .BUS_WR(RX_BUS_WR_1),
+    .BUS_RD(RX_BUS_RD_1)
 );
 
 tlu_controller #(
