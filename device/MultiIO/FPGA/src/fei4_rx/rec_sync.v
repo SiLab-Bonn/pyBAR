@@ -78,7 +78,7 @@ always @ (state or data or old_data or wait_cnt or decoder_err) begin
                 next_state = WAIT;
 
         CHECK:
-            if ((data == K28_1P && old_data == K28_1N) || (data == K28_1N && old_data == K28_1P)) // (data == K28_1P || data == K28_1N)
+            if (decoder_err == 1'b0)//(data == K28_1P && old_data == K28_1N) || (data == K28_1N && old_data == K28_1P))
                 next_state = IDLE;
             else
                 next_state = BITSHIFT;
