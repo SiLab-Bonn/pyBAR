@@ -3,12 +3,13 @@ Windows installer instructions:
 2. install SWAG for windows
 3. define environment variables:
 	- remeber to use the short form representation for your paths (program files = progra~1). Otherwise Visual Studio has issues (well known bug...)
-	- %HDF5% environment variable should be set (without %) to the installation subdirectory mentioning your version (like c:\progra~1\HDF_Group\HDF5\1.8.10)
+	- %HDF5% environment variable should be set (all without %...) to the installation subdirectory mentioning your version (like c:\progra~1\HDF_Group\HDF5\1.8.10)
 	- %PYTHON_INCLUDE% to your python installation include directory
 	- %PYTHON_LIB% to your python installation lib library
 	- %SWIG% to your SWIG installation directory
 
 4. open the solution (with VS 2010 and above(?)) and compile.
    Release/debug build will build the c++ versions in release/debug mode. Only the release configuration compiles BLOSC with the appropriate compiler optimizations (SSE2).
-   PythonModule run config will create the PythonModule via SWAG. You can test it by running 'python test.py' from the console. The output is called _Converter.pyd and is
-   a dll.
+   PythonModule run config will create the PythonModule via SWAG. The output is called _Converter.pyd and is
+   a dll. You can test it by running 'python test.py' from the console. If you want to use the converter from another directory you have to import it first in the python script.
+   Otherwise import error is thrown. The reason is unknown (python feature, bug)
