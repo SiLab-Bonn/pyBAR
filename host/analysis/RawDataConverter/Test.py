@@ -29,5 +29,5 @@ if(Converter.convertTable('in.h5')):
     #Converter.printSummary()
 else:
     print "failed"
-
+raw_input("Press Enter to continue...")
 
