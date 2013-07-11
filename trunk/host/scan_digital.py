@@ -21,7 +21,7 @@ class DigitalScan(ScanBase):
         super(DigitalScan, self).start(configure)
         
         print 'Start readout thread...'
-        self.readout.set_filter(self.readout.data_record_filter)
+        #self.readout.set_filter(self.readout.data_record_filter)
         self.readout.start()
         print 'Done!'
         
@@ -73,10 +73,11 @@ class DigitalScan(ScanBase):
 
 if __name__ == "__main__":
     chip_flavor = 'fei4a'
-    config_file = r'C:\Users\silab\Dropbox\pyats\trunk\host\config\fei4default\configs\std_cfg_'+chip_flavor+'_simple.cfg'
-    bit_file = r'C:\Users\silab\Dropbox\pyats\trunk\device\MultiIO\FPGA\ise\top.bit'
-    scan_identifier = "analog_scan"
-    outdir = r"C:\Users\silab\Desktop\Data\analog_scan"
+    config_file = r'C:\Users\Jens\Dropbox\pyats\trunk\host\config\fei4default\configs\std_cfg_'+chip_flavor+'_simple.cfg'
+    #bit_file = r'C:\Users\Jens\Dropbox\pyats\trunk\host\config\FPGA\top.bit'
+    bit_file = r'C:\Users\Jens\Dropbox\pyats\trunk\device\MultiIO\FPGA\ise\top.bit'
+    scan_identifier = "digital_scan"
+    outdir = r"C:\Users\Jens\Desktop\Data\digital_scan"
     
     scan = DigitalScan(config_file = config_file, bit_file = bit_file)
     
