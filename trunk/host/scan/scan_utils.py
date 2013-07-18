@@ -14,7 +14,7 @@ class FEI4ScanUtils(object):
         self.register = register
         self.register_utils = register_utils
     
-    def base_scan(self, command, repeat = 100, mask = 6, steps = None, dcs = None, hardware_repeat = False, same_mask_for_all_dc = False, read_function = None, digital_injection = False, enable_c_high = True, enable_c_low = True, shift_masks = ["Enable"]):
+    def base_scan(self, command, repeat = 100, mask = 6, steps = None, dcs = None, hardware_repeat = False, same_mask_for_all_dc = False, read_function = None, digital_injection = False, enable_c_high = None, enable_c_low = None, shift_masks = ["Enable", "C_High", "C_Low"]):
         if not isinstance(command, BitVector.BitVector):
             raise TypeError
         
@@ -33,8 +33,7 @@ class FEI4ScanUtils(object):
         
         # preparing for scan
         commands = []
-        self.register.set_pixel_register_value("C_High", 1 if enable_c_high else 0)
-        self.register.set_pixel_register_value("C_Low", 1 if enable_c_low else 0)
+        commands.extend(conf_mode_command)
         if digital_injection == True:
             #self.register.set_global_register_value("CalEn", 1) # for GlobalPulse instead Cal-Command
             self.register.set_global_register_value("DIGHITIN_SEL", 1)
@@ -42,7 +41,12 @@ class FEI4ScanUtils(object):
             self.register.set_global_register_value("DIGHITIN_SEL", 0)
             self.register.set_pixel_register_value("EnableDigInj", 0)
         commands.extend(self.register.get_commands("wrregister", name = ["DIGHITIN_SEL"]))
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc = True, name = ["C_High", "C_Low"]))
+        if(enable_c_high != None):
+            self.register.set_pixel_register_value("C_High", 1 if enable_c_high else 0)
+            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc = True, name = ["C_High"]))
+        if(enable_c_low != None):
+            self.register.set_pixel_register_value("C_Low", 1 if enable_c_low else 0)
+            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc = True, name = ["C_Low"]))
         self.register_utils.send_commands(commands)
             
         for mask_step in mask_steps:# range(steps):
