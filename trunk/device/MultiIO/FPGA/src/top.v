@@ -113,10 +113,6 @@ clock_divider #(
     .CLOCK(CLK_2HZ)
 );
 
-// Trigger
-wire CMD_EXT_START_FLAG;
-wire CMD_EXT_START_ENABLE;
-
 wire LEMO_TRIGGER, LEMO_RESET, EXT_VETO;
 assign LEMO_TRIGGER = LEMO_RX[0];
 assign LEMO_RESET = LEMO_RX[1];
@@ -124,12 +120,17 @@ assign EXT_VETO = LEMO_RX[2];
 
 // TLU
 wire            RJ45_ENABLED;
-wire            TLU_BUSY;                   // busy signal to TLU to deassert trigger
+wire            TLU_BUSY;               // busy signal to TLU to deassert trigger
 wire            TLU_CLOCK;
-wire            CMD_READY;
+
+// CMD
+wire            CMD_EXT_START_FLAG;     // to CMD FSM
+wire            CMD_EXT_START_ENABLE;   // from CMD FSM
+wire            CMD_READY;              // to TLU FSM
+wire            CMD_START_FLAG;         // for triggering external devices
 
 assign TX[0] = TLU_CLOCK; // trigger clock; also connected to RJ45 output
-assign TX[1] = TLU_BUSY | ~CMD_READY; // TLU_BUSY signal; also connected to RJ45 output. Asserted when TLU FSM has accepted a trigger or when CMD FSM is busy. 
+assign TX[1] = TLU_BUSY | (CMD_START_FLAG & ~CMD_EXT_START_ENABLE); // TLU_BUSY signal; also connected to RJ45 output. Asserted when TLU FSM has accepted a trigger or when CMD FSM is busy. 
 assign TX[2] = (RJ45_ENABLED == 1'b1) ? RJ45_TRIGGER : LEMO_TRIGGER;
 
 // LED
@@ -325,7 +326,8 @@ cmd_seq icmd
     .CMD_EXT_START_FLAG(CMD_EXT_START_FLAG),
     .CMD_EXT_START_ENABLE(CMD_EXT_START_ENABLE),
     .CMD_DATA(CMD_DATA),
-    .CMD_READY(CMD_READY)
+    .CMD_READY(CMD_READY),
+    .CMD_START_FLAG(CMD_START_FLAG)
 );
 
 wire            FIFO_READ;
