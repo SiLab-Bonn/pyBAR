@@ -424,12 +424,11 @@ NET "*DOBOUT4_IBUF" MAXSKEW = 500 pS ;
 NET "*DOBOUT3_IBUF" MAXSKEW = 500 pS ;
 NET "*DOBOUT2_IBUF" MAXSKEW = 500 pS ;
 NET "*DOBOUT1_IBUF" MAXSKEW = 500 pS ;
-#NET "*DOBOUT4_IBUF" MAXDELAY = 1000 pS ;
-#TIMESPEC ts_sync_4 = FROM FFS(*bz(0):*cz(0):*cz(1):*dz(0):*dz(1):*dz2) TO FFS = 420 MHz;
-#TIMESPEC ts_sync_4 = FROM FFS(*bz(0):*cz(0):*cz(1):*dz(0):*dz(1):*dz2) TO FFS = 320 MHz;
+#INST "ifei4_rx/ireceiver_logic/sync_master_inst" RLOC_ORIGIN = "X2Y3";
+#TIMESPEC ts_sync = FROM FFS(*bz(0):*cz(0):*cz(1):*dz(0):*dz(1):*dz2) TO FFS = 420 MHz;
 TIMESPEC ts_sync_4 = FROM FFS(ifei4_rx_4/ireceiver_logic/sync_master_inst/bz(0):ifei4_rx_4/ireceiver_logic/sync_master_inst/cz(0):ifei4_rx_4/ireceiver_logic/sync_master_inst/cz(1):ifei4_rx_4/ireceiver_logic/sync_master_inst/dz(0):ifei4_rx_4/ireceiver_logic/sync_master_inst/dz(1):ifei4_rx_4/ireceiver_logic/sync_master_inst/dz2) TO FFS = 320 MHz;
 TIMESPEC ts_sync_3 = FROM FFS(ifei4_rx_3/ireceiver_logic/sync_master_inst/bz(0):ifei4_rx_3/ireceiver_logic/sync_master_inst/cz(0):ifei4_rx_3/ireceiver_logic/sync_master_inst/cz(1):ifei4_rx_3/ireceiver_logic/sync_master_inst/dz(0):ifei4_rx_3/ireceiver_logic/sync_master_inst/dz(1):ifei4_rx_3/ireceiver_logic/sync_master_inst/dz2) TO FFS = 320 MHz;
 TIMESPEC ts_sync_2 = FROM FFS(ifei4_rx_2/ireceiver_logic/sync_master_inst/bz(0):ifei4_rx_2/ireceiver_logic/sync_master_inst/cz(0):ifei4_rx_2/ireceiver_logic/sync_master_inst/cz(1):ifei4_rx_2/ireceiver_logic/sync_master_inst/dz(0):ifei4_rx_2/ireceiver_logic/sync_master_inst/dz(1):ifei4_rx_2/ireceiver_logic/sync_master_inst/dz2) TO FFS = 320 MHz;
 TIMESPEC ts_sync_1 = FROM FFS(ifei4_rx_1/ireceiver_logic/sync_master_inst/bz(0):ifei4_rx_1/ireceiver_logic/sync_master_inst/cz(0):ifei4_rx_1/ireceiver_logic/sync_master_inst/cz(1):ifei4_rx_1/ireceiver_logic/sync_master_inst/dz(0):ifei4_rx_1/ireceiver_logic/sync_master_inst/dz(1):ifei4_rx_1/ireceiver_logic/sync_master_inst/dz2) TO FFS = 320 MHz;
-#INST "ifei4_rx/ireceiver_logic/sync_master_inst" RLOC_ORIGIN = "X2Y3";
+
 

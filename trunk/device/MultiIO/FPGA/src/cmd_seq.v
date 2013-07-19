@@ -18,7 +18,7 @@ module cmd_seq
     input wire                  CMD_EXT_START_FLAG,
     output wire                 CMD_EXT_START_ENABLE,
     output wire                 CMD_DATA,
-    output wire                 CMD_READY
+    output reg                  CMD_READY
 );
 
 wire SOFT_RST; //0
@@ -238,22 +238,18 @@ assign CMD_CLK_OUT = CMD_CLK_IN; // TODO: CONF_DIS_CLOCK_GATE
     // .Q(CMD_CLK_OUT)
 // );
 
-// ready sync 
-reg ready_sync_in;
+// ready signal
 always @ (posedge CMD_CLK_IN)
     if (state == WAIT)
-        ready_sync_in <= 1'b1;
+        CMD_READY <= 1'b1;
     else
-        ready_sync_in <= 1'b0;
+        CMD_READY <= 1'b0;
 
-wire ready_sync;
+// ready sync 
 three_stage_synchronizer ready_signal_sync (
     .CLK(BUS_CLK),
-    .IN(ready_sync_in),
-    .OUT(ready_sync)
+    .IN(CMD_READY),
+    .OUT(CONF_FINISH)
 );
-
-assign CONF_FINISH = ready_sync; // for register
-assign CMD_READY = ready_sync_in;
 
 endmodule
