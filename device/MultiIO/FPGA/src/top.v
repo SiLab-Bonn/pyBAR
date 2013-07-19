@@ -129,7 +129,7 @@ wire            TLU_CLOCK;
 wire            CMD_READY;
 
 assign TX[0] = TLU_CLOCK; // trigger clock; also connected to RJ45 output
-assign TX[1] = TLU_BUSY; // in TLU handshake mode TLU_BUSY signal; also connected to RJ45 output
+assign TX[1] = TLU_BUSY | ~CMD_READY; // TLU_BUSY signal; also connected to RJ45 output. Asserted when TLU FSM has accepted a trigger or when CMD FSM is busy. 
 assign TX[2] = (RJ45_ENABLED == 1'b1) ? RJ45_TRIGGER : LEMO_TRIGGER;
 
 // LED
