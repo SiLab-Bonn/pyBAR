@@ -18,7 +18,8 @@ module cmd_seq
     input wire                  CMD_EXT_START_FLAG,
     output wire                 CMD_EXT_START_ENABLE,
     output wire                 CMD_DATA,
-    output reg                  CMD_READY
+    output reg                  CMD_READY,
+    output reg                  CMD_START_FLAG
 );
 
 wire SOFT_RST; //0
@@ -238,6 +239,13 @@ assign CMD_CLK_OUT = CMD_CLK_IN; // TODO: CONF_DIS_CLOCK_GATE
     // .Q(CMD_CLK_OUT)
 // );
 
+// command start flag
+always @ (posedge CMD_CLK_IN)
+    if (state == WAIT && next_state == SEND)
+        CMD_START_FLAG <= 1'b1;
+    else
+        CMD_START_FLAG <= 1'b0;
+
 // ready signal
 always @ (posedge CMD_CLK_IN)
     if (state == WAIT)
@@ -245,7 +253,7 @@ always @ (posedge CMD_CLK_IN)
     else
         CMD_READY <= 1'b0;
 
-// ready sync 
+// ready readout sync 
 three_stage_synchronizer ready_signal_sync (
     .CLK(BUS_CLK),
     .IN(CMD_READY),
