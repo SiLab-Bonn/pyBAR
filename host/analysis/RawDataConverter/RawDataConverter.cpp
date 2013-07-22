@@ -13,8 +13,8 @@ int main(int argc, char* argv[])
 {
    Converter converter;
 
-   std::string tInputFileName = "in.h5";
-   std::string tOutputFileName = "out.h5";
+   std::string tInputFileName = "C:\\data\\in.h5";
+   std::string tOutputFileName = "C:\\data\\out.h5";
 
    //drag and drop on executable
    if(argc>1){
@@ -22,34 +22,36 @@ int main(int argc, char* argv[])
     tOutputFileName = tInputFileName;
     tOutputFileName.insert(tInputFileName.size()-3,"_out");
    }
-   converter.setDebugOutput(false);
 
    try{
      converter.setNbCIDs(16);
      converter.setMaxTot(13);
-     converter.setFEi4B(false);
+     converter.setFEi4B(true);
+
      converter.setOutFileName(tOutputFileName);
 
-     converter.createHitsTable(false);
      converter.createMetaData(true);
-     converter.createParameterData(false);
      converter.createErrorHist(true);
      converter.createTriggerErrorHist(true);
      converter.createServiceRecordHist(true);
      converter.createOccupancyHist(true);
      converter.createRelBcidHist(true);
      converter.createTotHist(true);
+     converter.createHitsTable(true);
+     converter.createParameterData(false);
      converter.createThresholdHists(false);
 
      converter.setWarningOutput(false);
      converter.setDebugOutput(false);
-     converter.setInfoOutput(false);
+     converter.setInfoOutput(true);
 
      //converter.printOptions();
+     //converter.setDebugEvents(0,1);
    
      converter.convertTable(tInputFileName);
 
      converter.printSummary();
+     //converter.printOptions();
    }
    catch(H5::FileIException error) //catch failure caused by the H5File operations
    {

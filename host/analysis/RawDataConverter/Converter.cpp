@@ -117,7 +117,6 @@ bool Converter::convertTable(const std::string& FileName)
     info("dimsLength/chunkLength "+IntToStr((unsigned int) (tDimsLength/chunkLength)));
 
     //reset the interpreter values
-    _interpret.resetEventVariables();
     _interpret.resetCounters();
 
     //create output file
@@ -161,10 +160,12 @@ bool Converter::convertTable(const std::string& FileName)
     //interpret the first chunk
     unsigned int tNhits = 0;                                    //numbers of hits
     HitInfo* tHitInfo = 0;                                      //interpreted hit data array pointer
-    if(!_interpret.interpretRawData(dataChunks, (int) chunkLength)) //interret the raw data
+    if(!_interpret.interpretRawData(dataChunks, (int) chunkLength)) //interpret the raw data
       return false;
-    _interpret.getHits(tNhits, tHitInfo);                       //get the result array
-    _interpret.getMetaEventIndex(rEventNumberIndex, rEventNumber); //get the event number per read out
+    for(unsigned int iFe = 0; iFe < _interpret.getNfe(); ++iFe){
+      _interpret.getHits(_interpret.getFeIndex(iFe), tNhits, tHitInfo); //get the result array
+      _interpret.getMetaEventIndex(rEventNumberIndex, rEventNumber); //get the event number per read out
+    }
 
     //histogram data
     if(_createOccHist){
@@ -213,22 +214,24 @@ bool Converter::convertTable(const std::string& FileName)
       dataSetRaw.read(dataChunks, H5::PredType::NATIVE_UINT, memorySpace, dataSpace);
       if (!_interpret.interpretRawData(dataChunks,  (int) chunkLength))
         return false;
-      _interpret.getHits(tNhits, tHitInfo);
-      _interpret.getMetaEventIndex(rEventNumberIndex, rEventNumber);
-      if(_createOccHist){
-        _histogram.addMetaEventIndex(rEventNumberIndex, rEventNumber);
-        _histogram.addHits(tNhits, tHitInfo);  //hit histogramming
-      }
-      if (_createHitsTable){
-        status = H5TBappend_records(_outFile->getId(), _tableNameHits.c_str(), tNhits, Hit_size, Hit_offset, Hit_sizes, tHitInfo);
-        if(status<0)
-          throw 5;
+      for(unsigned int iFe = 0; iFe < _interpret.getNfe(); ++iFe){
+        _interpret.getHits(_interpret.getFeIndex(iFe), tNhits, tHitInfo);
+        _interpret.getMetaEventIndex(rEventNumberIndex, rEventNumber);
+        if(_createOccHist){
+          _histogram.addMetaEventIndex(rEventNumberIndex, rEventNumber);
+          _histogram.addHits(tNhits, tHitInfo);  //hit histogramming
+        }
+        if (_createHitsTable){
+          status = H5TBappend_records(_outFile->getId(), _tableNameHits.c_str(), tNhits, Hit_size, Hit_offset, Hit_sizes, tHitInfo);
+          if(status<0)
+            throw 5;
+        }
       }
     }
 
     //create memory space with the chunk dimension of the last smaller chunk
     hsize_t tRemainingWords = tDimsLength-tDimsLength/chunkLength*chunkLength;  //because Nwords%chunksize != 0: the last chunk has to be treated differently
-    if(tRemainingWords > 0){ //only read additional chuk if data words are not read so far
+    if(tRemainingWords > 0){ //only read additional chunk if data words are not read so far
       H5::DataSpace memorySpaceLastChunk(NdimChunk, &tRemainingWords, NULL); //define new memory space
       unsigned int* dataLastChunk = new unsigned int[(unsigned int) tRemainingWords];
       tOffset = chunkLength*(tDimsLength/chunkLength);
@@ -236,16 +239,18 @@ bool Converter::convertTable(const std::string& FileName)
       dataSetRaw.read(dataLastChunk, H5::PredType::NATIVE_UINT, memorySpaceLastChunk, dataSpace);
       if (!_interpret.interpretRawData(dataLastChunk,  (int) tRemainingWords))
         return false;
-      _interpret.getHits(tNhits, tHitInfo);
-      _interpret.getMetaEventIndex(rEventNumberIndex, rEventNumber);
-      if(_createOccHist){
-        _histogram.addMetaEventIndex(rEventNumberIndex, rEventNumber);
-        _histogram.addHits(tNhits, tHitInfo);  //hit histogramming
-      }
-      if (_createHitsTable){
-        status = H5TBappend_records(_outFile->getId(), _tableNameHits.c_str(), tNhits, Hit_size, Hit_offset, Hit_sizes, tHitInfo);
-        if(status<0)
-          throw 5;
+      for(unsigned int iFe = 0; iFe < _interpret.getNfe(); ++iFe){
+        _interpret.getHits(_interpret.getFeIndex(iFe), tNhits, tHitInfo);
+        _interpret.getMetaEventIndex(rEventNumberIndex, rEventNumber);
+        if(_createOccHist){
+          _histogram.addMetaEventIndex(rEventNumberIndex, rEventNumber);
+          _histogram.addHits(tNhits, tHitInfo);  //hit histogramming
+        }
+        if (_createHitsTable){
+          status = H5TBappend_records(_outFile->getId(), _tableNameHits.c_str(), tNhits, Hit_size, Hit_offset, Hit_sizes, tHitInfo);
+          if(status<0)
+            throw 5;
+        }
       }
       delete dataLastChunk;
     }
@@ -590,7 +595,10 @@ void Converter::exportSummary()
 
   tFileName = tFileName.substr(tFileName.find_last_of("\\")+1, tFileName.size()-tFileName.find_last_of("\\"));
 
-  tBuffer<<"\n"<<tFileName<<"\t"<<_interpret.getNevents()<<"\t"<<_interpret.getNemptyEvents()<<"\t"<<_interpret.getNunknownWords()<<"\t"<<_interpret.getNtriggers()<<"\t"<<_interpret.getNhits()<<"\t"<<_interpret.getNtriggerNotInc()<<"\t"<<_interpret.getNtriggerNotOne()<<"\n";
+  for(unsigned int iFe=0; iFe<_interpret.getNfe(); ++iFe){
+    unsigned int tFeIndex = _interpret.getFeIndex(iFe);
+    tBuffer<<"\n"<<iFe<<"\t"<<tFileName<<"\t"<<_interpret.getNevents(tFeIndex)<<"\t"<<_interpret.getNemptyEvents(tFeIndex)<<"\t"<<_interpret.getNunknownWords()<<"\t"<<_interpret.getNtriggers()<<"\t"<<_interpret.getNhits(tFeIndex)<<"\t"<<_interpret.getNtriggerNotInc(tFeIndex)<<"\t"<<_interpret.getNtriggerNotOne(tFeIndex)<<"\n";
+  }
 
   tOutfile<<tBuffer.str();
   tOutfile.close();
@@ -598,15 +606,16 @@ void Converter::exportSummary()
 
 void Converter::printSummary()
 {
-  std::cout<<"\n\n##### Interpreter summary ";
-  if(_interpret.getFEI4B())
-    std::cout<<"FE-I4B #####\n"<<_interpret.getFEI4B()<<"\n";
-  else
-    std::cout<<"FE-I4A #####\n";
-
+  std::cout<<"\n\n##### Interpreter summary for "<<_interpret.getNfe()<<" FEs\n";
   _interpret.printSummary();
-  std::cout<<"\nFirst 10 hits of the last chunk\n";
-  _interpret.printHits(10);
+  for(unsigned int iFE = 0; iFE < _interpret.getNfe(); ++iFE){
+    if(_interpret.getFEI4B(_interpret.getFeIndex(iFE)))
+      std::cout<<"FE "<<_interpret.getFeIndex(iFE)<<": FE-I4B #####\n";
+    else
+      std::cout<<"FE "<<_interpret.getFeIndex(iFE)<<": FE-I4A #####\n";
+    std::cout<<"First 10 hits of the last chunk\n";
+    _interpret.printHits(_interpret.getFeIndex(iFE), 10);
+  }
 
   std::cout<<"\nEvent numbers at first/last 5 read outs\n";
   std::cout<<"#read out\tEventNumber\n";
@@ -621,8 +630,6 @@ void Converter::printSummary()
   for(unsigned int i = tEventNumberIndex-5; i<tEventNumberIndex; ++i)
     if(i<tEventNumberIndex)
       std::cout<<i<<"\t"<<tEventNumber[i]<<"\n";
-
-  _histogram.test();
     
   double elapsed_secs = double(_runTime) / CLOCKS_PER_SEC;
   std::cout<<"\nRuntime "<<elapsed_secs<<" seconds\n";
@@ -662,6 +669,8 @@ void Converter::printOptions()
   std::cout<<"_createErrorHist "<<_createErrorHist<<"\n";
   std::cout<<"_createSRhist "<<_createSRhist<<"\n";
   std::cout<<"_NparInfoBuffer "<<_NparInfoBuffer<<"\n";
+
+  _interpret.printOptions();
 }
 
 //TODO: bring this helper functions to work
@@ -943,28 +952,28 @@ void Converter::writeErrorHist()
   if (!_createOutFile)
     return;
 
-  unsigned int tNerrorHist = 0;
-  unsigned long* terrorHistCounter = 0;
-
-  _interpret.getErrorCounters(tNerrorHist, terrorHistCounter);
-
-  const unsigned int tNdim = 1;       //dimensions of output array
-
-  hsize_t dims[tNdim] = {tNerrorHist};  // dataset dimensions at creation
-  H5::DataSpace tMemorySpaceDataSet(tNdim, dims);
-  H5::DSetCreatPropList propertyListOut;
-  hsize_t chunk_dims[tNdim]={tNerrorHist};
-  propertyListOut.setChunk(tNdim, chunk_dims);
-  unsigned int i = 0;
-  propertyListOut.setFillValue(H5::PredType::NATIVE_ULONG, &i);
-  //propertyListOut.setFilter(FILTER_BLOSC);
-  H5::DataSet tDataset = _outFile->createDataSet(_errorHistName.c_str(), H5::PredType::NATIVE_ULONG, tMemorySpaceDataSet, propertyListOut);
-  H5::DataSpace fspace1 = tDataset.getSpace();
-  H5::DataSpace mspace2(tNdim, chunk_dims);
-  hsize_t offset[tNdim];
-  offset[0] = 0;
-  fspace1.selectHyperslab(H5S_SELECT_SET, chunk_dims, offset);
-  tDataset.write(terrorHistCounter, H5::PredType::NATIVE_ULONG, mspace2, fspace1);
+  for(unsigned int iFe = 0; iFe < _interpret.getNfe(); ++iFe){
+    unsigned int tNerrorHist = 0;
+    unsigned long* terrorHistCounter = 0;
+    unsigned int tFeIndex = _interpret.getFeIndex(iFe);
+    _interpret.getErrorCounters(tFeIndex, tNerrorHist, terrorHistCounter);
+    const unsigned int tNdim = 1;       //dimensions of output array
+    hsize_t dims[tNdim] = {tNerrorHist};  // dataset dimensions at creation
+    H5::DataSpace tMemorySpaceDataSet(tNdim, dims);
+    H5::DSetCreatPropList propertyListOut;
+    hsize_t chunk_dims[tNdim]={tNerrorHist};
+    propertyListOut.setChunk(tNdim, chunk_dims);
+    unsigned int i = 0;
+    propertyListOut.setFillValue(H5::PredType::NATIVE_ULONG, &i);
+    //propertyListOut.setFilter(FILTER_BLOSC);
+    H5::DataSet tDataset = _outFile->createDataSet((_errorHistName+"_FE"+IntToStr(tFeIndex)).c_str(), H5::PredType::NATIVE_ULONG, tMemorySpaceDataSet, propertyListOut);
+    H5::DataSpace fspace1 = tDataset.getSpace();
+    H5::DataSpace mspace2(tNdim, chunk_dims);
+    hsize_t offset[tNdim];
+    offset[0] = 0;
+    fspace1.selectHyperslab(H5S_SELECT_SET, chunk_dims, offset);
+    tDataset.write(terrorHistCounter, H5::PredType::NATIVE_ULONG, mspace2, fspace1);
+  }
 }
 
 void Converter::writeTriggerErrorHist()
@@ -972,28 +981,28 @@ void Converter::writeTriggerErrorHist()
   if (!_createOutFile)
     return;
 
-  unsigned int tNtriggerErrorHist = 0;
-  unsigned long* tTriggerErrorHist = 0;
-
-  _interpret.getTriggerErrorCounters(tNtriggerErrorHist, tTriggerErrorHist);
-
-  const unsigned int tNdim = 1;               //dimensions of output array
-
-  hsize_t dims[tNdim] = {tNtriggerErrorHist};  // dataset dimensions at creation
-  H5::DataSpace tMemorySpaceDataSet(tNdim, dims);
-  H5::DSetCreatPropList propertyListOut;
-  hsize_t chunk_dims[tNdim]={tNtriggerErrorHist};
-  propertyListOut.setChunk(tNdim, chunk_dims);
-  unsigned int i = 0;
-  propertyListOut.setFillValue(H5::PredType::NATIVE_ULONG, &i);
-  //propertyListOut.setFilter(FILTER_BLOSC);
-  H5::DataSet tDataset = _outFile->createDataSet(_triggerErrorHistName.c_str(), H5::PredType::NATIVE_ULONG, tMemorySpaceDataSet, propertyListOut);
-  H5::DataSpace fspace1 = tDataset.getSpace();
-  H5::DataSpace mspace2(tNdim, chunk_dims);
-  hsize_t offset[tNdim];
-  offset[0] = 0;
-  fspace1.selectHyperslab(H5S_SELECT_SET, chunk_dims, offset);
-  tDataset.write(tTriggerErrorHist, H5::PredType::NATIVE_ULONG, mspace2, fspace1);
+  for(unsigned int iFe = 0; iFe < _interpret.getNfe(); ++iFe){
+    unsigned int tNtriggerErrorHist = 0;
+    unsigned long* tTriggerErrorHist = 0;
+    unsigned int tFeIndex = _interpret.getFeIndex(iFe);
+    _interpret.getTriggerErrorCounters(tFeIndex, tNtriggerErrorHist, tTriggerErrorHist);
+    const unsigned int tNdim = 1;               //dimensions of output array
+    hsize_t dims[tNdim] = {tNtriggerErrorHist};  // dataset dimensions at creation
+    H5::DataSpace tMemorySpaceDataSet(tNdim, dims);
+    H5::DSetCreatPropList propertyListOut;
+    hsize_t chunk_dims[tNdim]={tNtriggerErrorHist};
+    propertyListOut.setChunk(tNdim, chunk_dims);
+    unsigned int i = 0;
+    propertyListOut.setFillValue(H5::PredType::NATIVE_ULONG, &i);
+    //propertyListOut.setFilter(FILTER_BLOSC);
+    H5::DataSet tDataset = _outFile->createDataSet((_triggerErrorHistName+"_FE"+IntToStr(tFeIndex)).c_str(), H5::PredType::NATIVE_ULONG, tMemorySpaceDataSet, propertyListOut);
+    H5::DataSpace fspace1 = tDataset.getSpace();
+    H5::DataSpace mspace2(tNdim, chunk_dims);
+    hsize_t offset[tNdim];
+    offset[0] = 0;
+    fspace1.selectHyperslab(H5S_SELECT_SET, chunk_dims, offset);
+    tDataset.write(tTriggerErrorHist, H5::PredType::NATIVE_ULONG, mspace2, fspace1);
+  }
 }
 
 void Converter::writeServiceRecordHists()
@@ -1001,28 +1010,28 @@ void Converter::writeServiceRecordHists()
   if (!_createOutFile)
     return;
 
-  unsigned int tNserviceRecords = 0;
-  unsigned long* tSercieRecordCounter = 0;
-
-  _interpret.getServiceRecordsCounters(tNserviceRecords, tSercieRecordCounter);
-
-  const unsigned int tNdim = 1;       //dimensions of output array
-
-  hsize_t dims[tNdim] = {tNserviceRecords};  // dataset dimensions at creation
-  H5::DataSpace tMemorySpaceDataSet(tNdim, dims);
-  H5::DSetCreatPropList propertyListOut;
-  hsize_t chunk_dims[tNdim]={tNserviceRecords};
-  propertyListOut.setChunk(tNdim, chunk_dims);
-  unsigned int i = 0;
-  propertyListOut.setFillValue(H5::PredType::NATIVE_ULONG, &i);
-  propertyListOut.setFilter(FILTER_BLOSC);
-  H5::DataSet tDataset = _outFile->createDataSet(_sRhistName.c_str(), H5::PredType::NATIVE_ULONG, tMemorySpaceDataSet, propertyListOut);
-  H5::DataSpace fspace1 = tDataset.getSpace();
-  H5::DataSpace mspace2(tNdim, chunk_dims);
-  hsize_t offset[tNdim];
-  offset[0] = 0;
-  fspace1.selectHyperslab(H5S_SELECT_SET, chunk_dims, offset);
-  tDataset.write(tSercieRecordCounter, H5::PredType::NATIVE_ULONG, mspace2, fspace1);
+  for(unsigned int iFe = 0; iFe < _interpret.getNfe(); ++iFe){
+    unsigned int tNserviceRecords = 0;
+    unsigned long* tSercieRecordCounter = 0;
+    unsigned int tFeIndex = _interpret.getFeIndex(iFe);
+    _interpret.getServiceRecordsCounters(tFeIndex, tNserviceRecords, tSercieRecordCounter);
+    const unsigned int tNdim = 1;       //dimensions of output array
+    hsize_t dims[tNdim] = {tNserviceRecords};  // dataset dimensions at creation
+    H5::DataSpace tMemorySpaceDataSet(tNdim, dims);
+    H5::DSetCreatPropList propertyListOut;
+    hsize_t chunk_dims[tNdim]={tNserviceRecords};
+    propertyListOut.setChunk(tNdim, chunk_dims);
+    unsigned int i = 0;
+    propertyListOut.setFillValue(H5::PredType::NATIVE_ULONG, &i);
+    propertyListOut.setFilter(FILTER_BLOSC);
+    H5::DataSet tDataset = _outFile->createDataSet((_sRhistName+"_FE"+IntToStr(tFeIndex)).c_str(), H5::PredType::NATIVE_ULONG, tMemorySpaceDataSet, propertyListOut);
+    H5::DataSpace fspace1 = tDataset.getSpace();
+    H5::DataSpace mspace2(tNdim, chunk_dims);
+    hsize_t offset[tNdim];
+    offset[0] = 0;
+    fspace1.selectHyperslab(H5S_SELECT_SET, chunk_dims, offset);
+    tDataset.write(tSercieRecordCounter, H5::PredType::NATIVE_ULONG, mspace2, fspace1);
+  }
 }
 
 void Converter::extractParameterData(H5::Group& rGroup, hsize_t& rNfields, hsize_t& rNrecordsPar)
@@ -1049,19 +1058,19 @@ void Converter::extractParameterData(H5::Group& rGroup, hsize_t& rNfields, hsize
   }
 }
 
-void Converter::setFEi4B(bool pFEi4B)
+void Converter::setFEi4B(bool pFEi4B, const unsigned int pFEindex)
 {
-  _interpret.setFEI4B(pFEi4B);
+  _interpret.setFEI4B(pFEi4B, pFEindex);
 }
 
-void Converter::setNbCIDs(unsigned int NbCIDs)
+void Converter::setNbCIDs(unsigned int NbCIDs, const unsigned int pFEindex)
 {
-  _interpret.setNbCIDs(NbCIDs);
+  _interpret.setNbCIDs(NbCIDs, pFEindex);
 }
 
-void Converter::setMaxTot(unsigned int rMaxTot)
+void Converter::setMaxTot(unsigned int rMaxTot, const unsigned int pFEindex)
 {
-  _interpret.setMaxTot(rMaxTot);
+  _interpret.setMaxTot(rMaxTot, pFEindex);
 }
 
 void Converter::setErrorOutput(bool Toggle)
@@ -1103,6 +1112,12 @@ void Converter::setHDF5ExeptionOutput(bool pToggle)
   else
     H5::Exception::dontPrint();
 }
+
+void Converter::setDebugEvents(const unsigned long& rStartEvent, const unsigned long& rStopEvent, const bool& debugEvents)
+{
+  _interpret.debugEvents(rStartEvent, rStopEvent, debugEvents);
+}
+
 
 void Converter::closeInFile()
 {
