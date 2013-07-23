@@ -111,6 +111,11 @@ bool Converter::convertTable(const std::string& FileName)
     info(std::string("Data set chunk dimension: ")+IntToStr((unsigned int) NdimChunk));
     info(std::string("Data set chunk 1. dim. length: ")+IntToStr((unsigned int) chunkLength));
 
+    if(tDimsLength < chunkLength){
+      chunkLength = tDimsLength;
+      info(std::string("Data space length < chunk length, setting chunk length to space length"));
+    }
+
     //create memory space with the chunk dimesions
     H5::DataSpace memorySpace(NdimChunk, &chunkLength, NULL); //define new memory space
     dataChunks = new unsigned int[(unsigned int) chunkLength];
