@@ -150,8 +150,8 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
         _nServiceRecords[tFEindex]++;
 		}
 		else if (getHitsfromDataRecord(tFEindex, tActualWord, tActualCol1, tActualRow1, tActualTot1, tActualCol2, tActualRow2, tActualTot2)){	//data word is data record if true is returned
-        tNdataRecord[tFEindex]++;										  //increase data record counter for this event
-			  _nDataRecords[tFEindex]++;									  //increase total data record counter
+        tNdataRecord[tFEindex]++;						//increase data record counter for this event
+			  _nDataRecords[tFEindex]++;					//increase total data record counter
 			  if(tActualTot1 >= 0)								//add hit if hit info is reasonable (TOT1 >= 0)
           addHit(tFEindex, tDbCID[tFEindex], tActualLVL1ID, tActualCol1, tActualRow1, tActualTot1, tActualBCID);
 			  if(tActualTot2 >= 0)								//add hit if hit info is reasonable and set (TOT2 >= 0)
@@ -164,7 +164,7 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
         addEventErrorCode(tFEindex, __UNKNOWN_WORD);
         _nUnknownWords++;
         if(Basis::warningSet())
-				  warning("interpretRawData: "+IntToStr(_nDataWords)+" FE"+IntToStr(tFEindex)+" UNKNOWN WORD "+IntToStr(tActualWord)+" AT "+IntToStr(_nEvents[tFEindex]));
+				  warning("interpretRawData: WORD "+IntToStr(_nDataWords)+" FE"+IntToStr(tFEindex)+" UNKNOWN WORD "+IntToStr(tActualWord)+" AT EVENT "+IntToStr(_nEvents[tFEindex]));
         if (Basis::debugSet())
           printInterpretedWords(pDataWords, pNdataWords, iWord-10, iWord+250);
       }
@@ -399,7 +399,7 @@ void Interpret::addHit(const unsigned int& pNfE, const unsigned char& pRelBCID, 
   }
   else{
     if(Basis::errorSet())
-      error("addHit: tHitBufferIndex = "+IntToStr(tHitBufferIndex[pNfE]), __LINE__);
+      error("storeHit: Hit buffer overflow (>"+IntToStr(tHitBufferIndex[pNfE])+" hits requested", __LINE__);
     throw 12;
   }
 }
@@ -414,7 +414,7 @@ void Interpret::storeHit(const unsigned int& pNfE, HitInfo& rHit)
   }
   else{
     if(Basis::errorSet())
-      error("storeHit: _hitIndex = "+IntToStr(_hitIndex[pNfE]), __LINE__);
+      error("storeHit: Hit array overflow (>"+IntToStr(_hitIndex[pNfE])+" hits requested", __LINE__);
     throw 11;
   }
 }
@@ -538,11 +538,11 @@ bool Interpret::getHitsfromDataRecord(const unsigned int& pNfE, const unsigned i
 	if (DATA_RECORD_MACRO(pSRAMWORD)){	//SRAM word is data record
 		//check if the hit values are reasonable
 		if ((DATA_RECORD_TOT1_MACRO(pSRAMWORD) == 0xF) || (DATA_RECORD_COLUMN1_MACRO(pSRAMWORD) < RAW_DATA_MIN_COLUMN) || (DATA_RECORD_COLUMN1_MACRO(pSRAMWORD) > RAW_DATA_MAX_COLUMN) || (DATA_RECORD_ROW1_MACRO(pSRAMWORD) < RAW_DATA_MIN_ROW) || (DATA_RECORD_ROW1_MACRO(pSRAMWORD) > RAW_DATA_MAX_ROW)){
-      warning(std::string("getHitsfromDataRecord: data record values (1. Hit) out of bounds"));
+      warning(std::string("getHitsfromDataRecord: data record values (1. Hit,col/row/tot = "+IntToStr(DATA_RECORD_COLUMN1_MACRO(pSRAMWORD))+std::string("/")+IntToStr(DATA_RECORD_ROW1_MACRO(pSRAMWORD))+std::string("/")+IntToStr(DATA_RECORD_TOT1_MACRO(pSRAMWORD))+std::string(") out of bounds")));
 			return false;			
 		}
     if ((DATA_RECORD_TOT2_MACRO(pSRAMWORD) != 0xF) && ((DATA_RECORD_COLUMN2_MACRO(pSRAMWORD) < RAW_DATA_MIN_COLUMN) || (DATA_RECORD_COLUMN2_MACRO(pSRAMWORD) > RAW_DATA_MAX_COLUMN) || (DATA_RECORD_ROW2_MACRO(pSRAMWORD) < RAW_DATA_MIN_ROW) || (DATA_RECORD_ROW2_MACRO(pSRAMWORD) > RAW_DATA_MAX_ROW))){
-      warning(std::string("getHitsfromDataRecord: data record values (2. Hit) out of bounds"));
+      warning(std::string("getHitsfromDataRecord: data record values (2. Hit),col/row/tot = "+IntToStr(DATA_RECORD_COLUMN2_MACRO(pSRAMWORD))+std::string("/")+IntToStr(DATA_RECORD_ROW2_MACRO(pSRAMWORD))+std::string("/")+IntToStr(DATA_RECORD_TOT2_MACRO(pSRAMWORD))+std::string(") out of bounds")));
 			return false;	
     }
 
