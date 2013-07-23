@@ -92,7 +92,37 @@ class FEI4RegisterUtils(object):
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc = same_mask_for_all_dc, name = ["EnableDigInj"])) # write EnableDigInj last
         commands.extend(self.register.get_commands("runmode"))
         self.send_commands(commands)
-            
+        
+    def read_service_records(self):
+        commands = []
+        commands.extend(self.register.get_commands("confmode"))
+        self.send_commands(commands)
+        self.readout_utils.reset_sram_fifo()
+        commands = []
+        self.register.set_global_register_value('ReadErrorReq', 1)
+        commands.extend(self.register.get_commands("wrregister", name = ['ReadErrorReq']))
+        commands.extend(self.register.get_commands("globalpulse", width = 0))
+        self.register.set_global_register_value('ReadErrorReq', 0)
+        commands.extend(self.register.get_commands("wrregister", name = ['ReadErrorReq']))
+        self.send_commands(commands)
+        
+        retfifo = self.device.ReadExternal(address = 0x8100, size = 8)
+        size = struct.unpack('I', retfifo[1:4].tostring() + '\x00' )[0]
+        fifo_data = self.device.FastBlockRead(4*size/2)
+        data = struct.unpack('>'+size/2*'I', fifo_data)
+        
+        read_records = []
+        for word in enumerate(data):
+            fei4_data = FEI4Record(word, self.register.chip_flavor)
+            if fei4_data == 'SR':
+                print fei4_data
+                read_records.append(fei4_data)
+                    
+        commands = []
+        commands.extend(self.register.get_commands("runmode"))
+        self.send_commands(commands)
+        return read_records
+        
     def read_chip_sn(self):
         commands = []
         commands.extend(self.register.get_commands("confmode"))
