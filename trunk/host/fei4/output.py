@@ -7,7 +7,7 @@ class FEI4Record(object):
     """
     
     def __init__(self, rawdata, chip_flavor):
-        self.record_rawdata = int(rawdata)
+        self.record_rawdata = int(rawdata) & 0x00FFFFFF
         self.chip_flavor = str(chip_flavor).lower()
         self.chip_flavors = ['fei4a', 'fei4b']
         if self.chip_flavor not in self.chip_flavors:
