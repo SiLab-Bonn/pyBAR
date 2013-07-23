@@ -126,7 +126,7 @@
             <register name="ExtDigCalSW" address="31" bitlength="1" offset="5" description="" />
             <register name="PlsrDelay" address="31" bitlength="6" offset="6" littleendian="1" description="" />
             <register name="PlsrPwr" address="31" bitlength="1" offset="12" description="" />
-            <register name="PlsrRiseUpTau" address="31" bitlength="3" offset="13" description="bigendian?" />
+            <register name="PlsrRiseUpTau" address="31" bitlength="3" offset="13" description="bigendian" />
             <register name="SELB" address="32" bitlength="40" register_littleendian="1" description="" />
             <register name="spare_34_0" address="34" bitlength="3" offset="8" readonly="1" register_littleendian="1" description="" />
             <register name="PrmpVbpMsbEn" address="34" bitlength="1" offset="11" register_littleendian="1" description="Enables bit 7 of PrmpVbp" />
