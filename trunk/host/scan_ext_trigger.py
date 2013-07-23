@@ -16,8 +16,6 @@ import BitVector
 from daq.readout import Readout
 from utils.utils import get_iso_time
 
-from threading import Lock
-
 from utils.utils import get_all_from_queue, split_seq
 
 from analysis.data_struct import MetaTable
@@ -62,16 +60,16 @@ class ExtTriggerScan(ScanBase):
             wait_for_first_trigger = True
             
             
-            timeout_no_data = 600 # secs
+            timeout_no_data = 60 # secs
             max_triggers = 6000000
-            schow_trigger_message_at = 10**(int(math.ceil(math.log10(max_triggers)))-1)
+            scan_timeout = 1200
+            show_trigger_message_at = 10**(int(math.ceil(math.log10(max_triggers)))-1)
             last_iteration = time.time()
             saw_no_data_at_time = last_iteration
             saw_data_at_time = last_iteration
             scan_start_time = last_iteration
             no_data_at_time = last_iteration
             time_from_last_iteration = 0
-            scan_timeout = 1200
             scan_stop_time = scan_start_time + scan_timeout
             #data_q = []
             data_q = deque()
@@ -90,26 +88,32 @@ class ExtTriggerScan(ScanBase):
 #                         logging.debug('Collected triggers: %d', self.readout_utils.get_trigger_number())
                 
                 current_trigger_number = self.readout_utils.get_trigger_number()
-                if (current_trigger_number%schow_trigger_message_at < last_trigger_number%schow_trigger_message_at):
+                if (current_trigger_number%show_trigger_message_at < last_trigger_number%show_trigger_message_at):
                     logging.info('Collected triggers: %d', current_trigger_number)
                 last_trigger_number = current_trigger_number
-                if max_triggers is not None and current_trigger_number > max_triggers:
+                if max_triggers is not None and current_trigger_number >= max_triggers:
                     logging.info('Reached maximum triggers. Stopping Scan...')
                     self.stop_thread_event.set()
                 if scan_start_time is not None and time.time() > scan_stop_time:
                     logging.info('Reached maximum scan time. Stopping Scan...')
                     self.stop_thread_event.set()
-                if not self.readout_utils.read_rx_status():
-                    logging.info('Lost data sync. Starting synchronization...')
-                    self.readout_utils.set_ext_cmd_start(False)
-                    if not self.readout_utils.reset_rx(1000):
-                        logging.info('Failed. Stopping scan...')
-                        self.stop_thread_event.set()
-                    else:
-                        logging.info('Done!')
-                        self.readout_utils.set_ext_cmd_start(True)
+                # TODO: read 8b10b decoder err cnt
+#                 if not self.readout_utils.read_rx_status():
+#                     logging.info('Lost data sync. Starting synchronization...')
+#                     self.readout_utils.set_ext_cmd_start(False)
+#                     if not self.readout_utils.reset_rx(1000):
+#                         logging.info('Failed. Stopping scan...')
+#                         self.stop_thread_event.set()
+#                     else:
+#                         logging.info('Done!')
+#                         self.readout_utils.set_ext_cmd_start(True)
                         
-                    
+                if self.stop_thread_event.is_set():
+                    q_size = -1
+                    while self.readout.data_queue.qsize() != q_size or self.readout.get_fifo_size() != 0:
+                        time.sleep(0.5)
+                        q_size = self.readout.data_queue.qsize()
+                    print 'Items in queue:', q_size
 
                 data_q.extend(list(get_all_from_queue(self.readout.data_queue))) # use list, it is faster
                 time_from_last_iteration = time.time() - last_iteration
@@ -145,16 +149,20 @@ class ExtTriggerScan(ScanBase):
                             data = raw_data_q.pop()
                         except IndexError:
                             break
+                        self.lock.acquire()
                         raw_data_earray_h5.append(data)
                         raw_data_earray_h5.flush()
+                        self.lock.release()
                     row_meta['timestamp'] = item['timestamp']
                     row_meta['error'] = item['error']
                     row_meta['length'] = len_raw_data
                     row_meta['start_index'] = total_words
                     total_words += len_raw_data
                     row_meta['stop_index'] = total_words
+                    self.lock.acquire()
                     row_meta.append()
                     meta_data_table_h5.flush()
+                    self.lock.release()
                 
             self.readout_utils.set_ext_cmd_start(False)
             self.readout_utils.set_tlu_mode(mode = 0)
