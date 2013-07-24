@@ -71,6 +71,13 @@ class FEI4RegisterUtils(object):
             while not self.device.ReadExternal(address = 0+1, size = 1)[0]&0x01:
                 #print 'waiting'
                 pass
+  
+    def global_reset(self):
+        commands = []
+        commands.extend(self.register.get_commands("confmode"))
+        commands.extend(self.register.get_commands("globalreset"))
+        commands.extend(self.register.get_commands("runmode"))
+        self.send_commands(commands)
         
     def configure_all(self, same_mask_for_all_dc = False):
         self.configure_global()
@@ -112,10 +119,9 @@ class FEI4RegisterUtils(object):
         data = struct.unpack('>'+size/2*'I', fifo_data)
         
         read_records = []
-        for word in enumerate(data):
+        for word in data:
             fei4_data = FEI4Record(word, self.register.chip_flavor)
             if fei4_data == 'SR':
-                print fei4_data
                 read_records.append(fei4_data)
                     
         commands = []
