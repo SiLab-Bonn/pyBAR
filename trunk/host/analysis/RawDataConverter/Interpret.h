@@ -19,7 +19,7 @@ public:
 
   //main functions
   bool interpretRawData(unsigned int* pDataWords, const unsigned int& pNdataWords);       //starts to interpret the actual raw data pDataWords and saves result to _hitInfo
-  void setMetaWordIndex(const unsigned int& tLength, MetaInfo* &rMetaInfo);               //sets the meta word index for word number/readout info correlation
+  bool setMetaWordIndex(const unsigned int& tLength, MetaInfo* &rMetaInfo);               //sets the meta word index for word number/readout info correlation
   void getMetaEventIndex(unsigned int& rEventNumberIndex, unsigned long*& rEventNumber);  //returns the meta event index filled upto the actual interpreted hits
   void getHits(const unsigned int& pFEindex, unsigned int &rNhits, HitInfo* &rHitInfo);   //returns the actual interpreted hits
 
