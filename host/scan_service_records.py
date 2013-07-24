@@ -1,4 +1,5 @@
 """ Reads the actual service records. The FPGA/Fe will not be configured in this scan. Thus they have to be configured already.
+
 """
 from scan.scan import ScanBase
 
@@ -10,9 +11,7 @@ class ServiceRecordScan(ScanBase):
         super(ServiceRecordScan, self).start(configure)
         
         print 'Reading Service Records'
-        service_records = scan.register_utils.read_service_records()
-        print 'Done!'
-        for service_record in service_records:
+        for service_record in scan.register_utils.read_service_records():
             print service_record               
 if __name__ == "__main__":
     chip_flavor = 'fei4b'
