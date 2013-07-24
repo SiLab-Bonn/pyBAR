@@ -75,7 +75,8 @@ bool Converter::convertTable(const std::string& FileName)
     if(!_createHitsTable && !_createMetaData && !_createOccHist && !_createThresholdHists) //only this data needs a raw data interpretation
       return true;
 
-    _interpret.setMetaWordIndex((unsigned int&) tNrecordsMeta, _metaInfoBuffer);  //set the meta data array (word index, time stamp,... per readout)
+    if(!_interpret.setMetaWordIndex((unsigned int&) tNrecordsMeta, _metaInfoBuffer))  //set the meta data array (word index, time stamp,... per readout)
+      return false;
     
     unsigned int rEventNumberIndex = 0;
     unsigned long* rEventNumber = 0;

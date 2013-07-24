@@ -189,9 +189,13 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 	return true;
 }
 
-void Interpret::setMetaWordIndex(const unsigned int& tLength, MetaInfo* &rMetaInfo)
+bool Interpret::setMetaWordIndex(const unsigned int& tLength, MetaInfo* &rMetaInfo)
 {
   _metaInfo = rMetaInfo;
+  if(tLength == 0){
+    error(std::string("setMetaWordIndex: data is empty"));
+    return false;
+  }
   //sanity check
   for(unsigned int i = 0; i < tLength-1; ++i){
     if(_metaInfo[i].startIndex + _metaInfo[i].length != _metaInfo[i].stopIndex)
@@ -207,6 +211,7 @@ void Interpret::setMetaWordIndex(const unsigned int& tLength, MetaInfo* &rMetaIn
   for(unsigned int i= 0; i<_metaEventIndexLength; ++i)
     _metaEventIndex[i] = 0;
   _metaDataSet = true;
+  return true;
 }
 
 void Interpret::getMetaEventIndex(unsigned int& rEventNumberIndex, unsigned long*& rEventNumber)
@@ -398,9 +403,11 @@ void Interpret::addHit(const unsigned int& pNfE, const unsigned char& pRelBCID, 
     tHitBufferIndex[pNfE]++;
   }
   else{
-    if(Basis::errorSet())
-      error("storeHit: Hit buffer overflow (>"+IntToStr(tHitBufferIndex[pNfE])+" hits requested", __LINE__);
-    throw 12;
+    addEventErrorCode(pNfE, __TRUNC_EVENT); //too many hits in the event, abort this event, add truncated flac
+    addEvent(pNfE); 
+    if(Basis::warningSet())
+      warning("storeHit: Hit buffer overflow (>"+IntToStr(tHitBufferIndex[pNfE])+" prevented by splitting events)", __LINE__);
+    //throw 12;
   }
 }
 

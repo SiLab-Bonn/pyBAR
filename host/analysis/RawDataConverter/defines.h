@@ -46,7 +46,7 @@ typedef struct ParInfo{
 #define __MAXTLUTRGNUMBER 32767       //maximum trigger logic unit trigger number (32-bit)
 
 //event error codes
-#define __N_ERROR_CODES 8             //number of event error codes
+#define __N_ERROR_CODES 16            //number of event error codes
 #define __NO_ERROR 0                  //no error
 #define __HAS_SR 1                    //the event has service records
 #define __NO_TRG_WORD 2               //the event has no trigger word, is ok for not external triggering
@@ -55,6 +55,7 @@ typedef struct ParInfo{
 #define __UNKNOWN_WORD 16             //event has unknown words
 #define __BCID_JUMP 32                //BCID jumps, but LVL1ID is constant and data is externally triggered
 #define __TRG_ERROR 64                //a trigger error occured
+#define __TRUNC_EVENT 128             //Event had to many hits (>__MAXHITBUFFERSIZE) and was therefore truncated
 
 //trigger error codes
 #define __TRG_N_ERROR_CODES 8         //number of trigger error codes
