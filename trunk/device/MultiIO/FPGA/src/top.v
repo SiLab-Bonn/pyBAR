@@ -363,26 +363,6 @@ wire            TLU_FIFO_READ;
 wire            TLU_FIFO_EMPTY;
 wire    [31:0]  TLU_FIFO_DATA;
 
-// FIFO
-// reg TLU_FIFO_ACCESS;
-// initial TLU_FIFO_ACCESS = 1'b0;
-// always @ (posedge BUS_CLK)
-// begin
-    // if (TLU_FIFO_ACCESS == 1'b0 && TLU_FIFO_EMPTY == 1'b1) // default
-        // TLU_FIFO_ACCESS <= 1'b0;
-    // else if (TLU_FIFO_ACCESS == 1'b1 && TLU_FIFO_READ == 1'b1) // de-assert after successful writing
-        // TLU_FIFO_ACCESS <= 1'b0;
-    // else if (TLU_FIFO_EMPTY == 1'b0 && (FE_FIFO_EMPTY == 1'b1 || FE_FIFO_READ == 1'b1)) // assert if bus is free or directly after FE FIFO access
-        // TLU_FIFO_ACCESS <= 1'b1;
-    // else
-        // TLU_FIFO_ACCESS <= TLU_FIFO_ACCESS;
-// end
-
-// assign FE_FIFO_READ = (TLU_FIFO_ACCESS == 1'b0) ? FIFO_READ : 1'b0;
-// assign TLU_FIFO_READ = (TLU_FIFO_ACCESS == 1'b1) ? FIFO_READ : 1'b0;
-// assign FIFO_EMPTY = (TLU_FIFO_ACCESS == 1'b1) ? TLU_FIFO_EMPTY : FE_FIFO_EMPTY;
-// assign FIFO_DATA = (TLU_FIFO_ACCESS == 1'b1) ? TLU_FIFO_DATA : FE_FIFO_DATA;
-
 wire [3:0] FE_FIFO_REQ;
 assign FE_FIFO_REQ = {~FE_FIFO_EMPTY_1, ~FE_FIFO_EMPTY_2, ~FE_FIFO_EMPTY_3, ~FE_FIFO_EMPTY_4};
 wire TLU_FIFO_REQ;
@@ -398,7 +378,7 @@ arbiter #(
 ) arbiter_inst (
     .req({FE_FIFO_REQ, TLU_FIFO_REQ}),
     .grant(FIFO_READ_SEL),
-    .base(5'b0_0001)//TLU_FIFO_ACCESS? 5'b0_0001 : 5'b0_0010
+    .base(5'b0_0001) // one hot, TLU has highest priority followed by higher indexed requests
 );
 
 wire USB_READ;
