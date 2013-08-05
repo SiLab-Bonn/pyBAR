@@ -73,7 +73,7 @@ flag_domain_crossing cmd_start_flag_domain_crossing (
 );
 
 wire CONF_FINISH; //1
-wire CONF_EN_EXT_START, CONF_DIS_CLOCK_GATE, CONF_EN_NEGEDGE_DATA; //, CONF_EN_EXT_NEGEDGE; //2
+wire CONF_EN_EXT_START, CONF_DIS_CLOCK_GATE, CONF_EN_NEGEDGE_DATA, CONF_DIS_CMD_PULSE; //2
 wire [15:0] CONF_CMD_SIZE; //3 - 4
 wire [15:0] CONF_REPEAT_COUNT; //5 - 6
 
@@ -83,7 +83,7 @@ always @(posedge BUS_CLK) begin
     if(RST) begin
         status_regs[0] <= 0;
         status_regs[1] <= 0;
-        status_regs[2] <= 8'b0000_0000; //invert clock out
+        status_regs[2] <= 8'b0000_0000;
         status_regs[3] <= 0;
         status_regs[4] <= 0;
         status_regs[5] <= 8'd1; //repeat once
@@ -98,12 +98,19 @@ end
 assign CONF_CMD_SIZE = {status_regs[4], status_regs[3]};
 assign CONF_REPEAT_COUNT = {status_regs[6], status_regs[5]};
 
-//assign CONF_EN_EXT_NEGEDGE = status_regs[2][3];
+assign CONF_DIS_CMD_PULSE = status_regs[2][3];
 assign CONF_DIS_CLOCK_GATE = status_regs[2][2]; // no clock domain crossing needed
 assign CONF_EN_NEGEDGE_DATA = status_regs[2][1]; // no clock domain crossing needed
 assign CONF_EN_EXT_START = status_regs[2][0];
 
-three_stage_synchronizer conf_ena_ext_start_sync (
+wire CONF_DIS_CMD_PULSE_CMD_CLK;
+three_stage_synchronizer conf_dis_cmd_pulse_sync (
+    .CLK(CMD_CLK_IN),
+    .IN(CONF_DIS_CMD_PULSE),
+    .OUT(CONF_DIS_CMD_PULSE_CMD_CLK)
+);
+
+three_stage_synchronizer conf_en_ext_start_sync (
     .CLK(CMD_CLK_IN),
     .IN(CONF_EN_EXT_START),
     .OUT(CMD_EXT_START_ENABLE)
@@ -200,13 +207,13 @@ always @ (posedge CMD_CLK_IN) begin
         send_word <= 0;
     else if(state == SEND) begin
         if(next_state == WAIT)
-            send_word <= 0; //this is strange -> bug of FEI4 ?
+            send_word <= 0; // by default set to output to zero (this is strange -> bug of FEI4?)
         else if(cnt == CONF_CMD_SIZE)
             send_word <= CMD_MEM_DATA;
         else if(cnt %8 == 0)
             send_word <= CMD_MEM_DATA;
         else
-            send_word[7:0] <= {send_word[6:0],send_word[0]};
+            send_word[7:0] <= {send_word[6:0], 1'b0};
     end
 end
 
@@ -241,7 +248,7 @@ assign CMD_CLK_OUT = CMD_CLK_IN; // TODO: CONF_DIS_CLOCK_GATE
 
 // command start flag
 always @ (posedge CMD_CLK_IN)
-    if (state == WAIT && next_state == SEND)
+    if (state == SEND && cnt == 1 && CONF_DIS_CMD_PULSE_CMD_CLK == 1'b0)
         CMD_START_FLAG <= 1'b1;
     else
         CMD_START_FLAG <= 1'b0;

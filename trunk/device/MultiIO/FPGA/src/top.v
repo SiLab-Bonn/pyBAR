@@ -128,10 +128,10 @@ wire            CMD_EXT_START_FLAG;     // to CMD FSM
 wire            CMD_EXT_START_ENABLE;   // from CMD FSM
 wire            CMD_READY;              // to TLU FSM
 wire            CMD_START_FLAG;         // for triggering external devices
-reg             CMD_CAL;                // when CAL command is send
+//reg             CMD_CAL;                // when CAL command is send
 
 assign TX[0] = TLU_CLOCK; // trigger clock; also connected to RJ45 output
-assign TX[1] = TLU_BUSY | (CMD_CAL & ~CMD_EXT_START_ENABLE); // TLU_BUSY signal; also connected to RJ45 output. Asserted when TLU FSM has accepted a trigger or when CMD FSM is busy. 
+assign TX[1] = TLU_BUSY | (CMD_START_FLAG/*CMD_CAL*/ & ~CMD_EXT_START_ENABLE); // TLU_BUSY signal; also connected to RJ45 output. Asserted when TLU FSM has accepted a trigger or when CMD FSM is busy. 
 assign TX[2] = (RJ45_ENABLED == 1'b1) ? RJ45_TRIGGER : LEMO_TRIGGER;
 
 // LED
@@ -332,13 +332,12 @@ cmd_seq icmd
 );
 
 //Recognize CAL command for external device triggering
-reg [8:0] cmd_rx_reg;
-always@(posedge CMD_CLK)
-    cmd_rx_reg[8:0] <= {cmd_rx_reg[7:0],CMD_DATA};
-
-always@(posedge CMD_CLK)
-    CMD_CAL <= (cmd_rx_reg == 9'b101100100);
-
+//reg [8:0] cmd_rx_reg;
+//always@(posedge CMD_CLK)
+//    cmd_rx_reg[8:0] <= {cmd_rx_reg[7:0],CMD_DATA};
+//
+//always@(posedge CMD_CLK)
+//    CMD_CAL <= (cmd_rx_reg == 9'b101100100);
 
 wire            FIFO_READ;
 wire            FIFO_EMPTY;
@@ -598,7 +597,7 @@ chipscope_ila ichipscope_ila
 (
     .CONTROL(control_bus),
     .CLK(CLK_160),
-    .TRIG0({FIFO_DATA[23:0], TLU_BUSY, TLU_FIFO_EMPTY, TLU_FIFO_READ, FE_FIFO_EMPTY, FE_FIFO_READ, TLU_FIFO_ACCESS, FIFO_EMPTY, FIFO_READ})
+    .TRIG0({FIFO_DATA[23:0], TLU_BUSY, TLU_FIFO_EMPTY, TLU_FIFO_READ, FE_FIFO_EMPTY, FE_FIFO_READ, FIFO_EMPTY, FIFO_READ})
     //.CLK(CLK_160),
     //.TRIG0({FMODE, FSTROBE, FREAD, CMD_BUS_WR, RX_BUS_WR, FIFO_WR, BUS_DATA_IN, DOBOUT4 ,WR_B, RD_B})
 );
