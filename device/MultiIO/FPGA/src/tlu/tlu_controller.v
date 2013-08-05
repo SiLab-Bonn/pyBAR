@@ -86,8 +86,10 @@ wire [4:0] TLU_TRIGGER_CLOCK_CYCLES;
 assign TLU_TRIGGER_CLOCK_CYCLES = status_regs[2][4:0];
 wire TLU_ENABLE_RESET;
 assign TLU_ENABLE_RESET = status_regs[2][5];
+wire [1:0] TLU_INVERT_LEMO_TRIGGER;
+assign TLU_INVERT_LEMO_TRIGGER = status_regs[2][6];
 wire [1:0] reg_2_spare;
-assign reg_2_spare = status_regs[2][7:6];
+assign reg_2_spare = status_regs[2][7];
 wire [7:0] TLU_TRIGGER_LOW_TIME_OUT;
 assign TLU_TRIGGER_LOW_TIME_OUT = status_regs[3];
 
@@ -264,6 +266,10 @@ end
 
 // Trigger sync
 wire RJ45_TRIGGER_BUS_CLK, LEMO_TRIGGER_BUS_CLK, RJ45_RESET_BUS_CLK, LEMO_RESET_BUS_CLK, EXT_VETO_BUS_CLK;
+
+wire LEMO_TRIGGER_MOD;
+assign LEMO_TRIGGER_MOD = TLU_INVERT_LEMO_TRIGGER ? ~LEMO_TRIGGER : LEMO_TRIGGER;
+
 three_stage_synchronizer three_stage_rj45_trigger_synchronizer_bus_clk (
     .CLK(BUS_CLK),
     .IN(RJ45_TRIGGER),
@@ -272,7 +278,7 @@ three_stage_synchronizer three_stage_rj45_trigger_synchronizer_bus_clk (
 
 three_stage_synchronizer three_stage_lemo_trigger_synchronizer_bus_clk (
     .CLK(BUS_CLK),
-    .IN(LEMO_TRIGGER),
+    .IN(LEMO_TRIGGER_MOD),
     .OUT(LEMO_TRIGGER_BUS_CLK)
 );
 
