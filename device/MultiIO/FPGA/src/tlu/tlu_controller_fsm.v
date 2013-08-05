@@ -14,6 +14,8 @@ module tlu_controller_fsm
     output reg                  FIFO_EMPTY,
     output wire     [31:0]      FIFO_DATA,
     
+    output reg                  FIFO_PREEMPT_REQ,
+    
     output reg      [31:0]      TLU_DATA,
     output reg                  TLU_DATA_READY_FLAG,
     
@@ -139,6 +141,7 @@ always @ (posedge CLK)
 begin
     if (RESET) // get D-FF
     begin
+        FIFO_PREEMPT_REQ <= 1'b0;
         FIFO_EMPTY <= 1'b1;
         TLU_DATA <= 32'b0000_0000_0000_0000_0000_0000_0000_0000;
         TLU_ASSERT_VETO <= 1'b0;
@@ -153,6 +156,7 @@ begin
     end
     else
     begin
+        FIFO_PREEMPT_REQ <= 1'b0;
         FIFO_EMPTY <= 1'b1;
         TLU_DATA <= 32'b0000_0000_0000_0000_0000_0000_0000_0000;
         TLU_DATA_READY_FLAG <= 1'b0;
@@ -170,6 +174,7 @@ begin
 
             IDLE:
             begin
+                FIFO_PREEMPT_REQ <= 1'b0;
                 FIFO_EMPTY <= 1'b1;
                 TLU_DATA <= 32'b0000_0000_0000_0000_0000_0000_0000_0000;
                 TLU_DATA_READY_FLAG <= 1'b0;
@@ -196,6 +201,10 @@ begin
             
             SEND_COMMAND_WAIT_FOR_TRIGGER_LOW:
             begin
+                if (TLU_MODE == 2'b11)
+                    FIFO_PREEMPT_REQ <= 1'b1;
+                else
+                    FIFO_PREEMPT_REQ <= 1'b0;
                 FIFO_EMPTY <= 1'b1;
                 TLU_DATA <= 32'b0000_0000_0000_0000_0000_0000_0000_0000;
                 TLU_DATA_READY_FLAG <= 1'b0;
@@ -218,6 +227,7 @@ begin
 
             SEND_TLU_CLOCK:
             begin
+                FIFO_PREEMPT_REQ <= FIFO_PREEMPT_REQ;
                 FIFO_EMPTY <= 1'b1;
                 TLU_DATA <= 32'b0000_0000_0000_0000_0000_0000_0000_0000;
                 TLU_DATA_READY_FLAG <= 1'b0;
@@ -234,6 +244,7 @@ begin
 
             WAIT_BEFORE_LATCH:
             begin
+                FIFO_PREEMPT_REQ <= FIFO_PREEMPT_REQ;
                 FIFO_EMPTY <= 1'b1;
                 TLU_DATA <= 32'b0000_0000_0000_0000_0000_0000_0000_0000;
                 TLU_DATA_READY_FLAG <= 1'b0;
@@ -250,6 +261,7 @@ begin
 
             LATCH_DATA:
             begin
+                FIFO_PREEMPT_REQ <= FIFO_PREEMPT_REQ;
                 FIFO_EMPTY <= 1'b0;
                 // if (TLU_TRIGGER_CLOCK_CYCLES == 5'b0_0000) // 0 results in 32 clock cycles
                 // begin
@@ -354,6 +366,7 @@ begin
 
             WAIT_FOR_TLU_DATA_SAVED_CMD_READY:
             begin
+                FIFO_PREEMPT_REQ <= 1'b0;
                 if (FIFO_READ == 1'b1)
                     FIFO_EMPTY <= 1'b1;
                 else

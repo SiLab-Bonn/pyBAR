@@ -28,6 +28,8 @@
     output wire                 FIFO_EMPTY,
     output wire     [31:0]      FIFO_DATA,
     
+    output wire                 FIFO_PREEMPT_REQ,
+    
     input wire                  RJ45_TRIGGER,
     input wire                  LEMO_TRIGGER,
     input wire                  RJ45_RESET,
@@ -398,6 +400,8 @@ tlu_controller_fsm #(
     .FIFO_READ(FIFO_READ),
     .FIFO_EMPTY(FIFO_EMPTY),
     .FIFO_DATA(FIFO_DATA),
+    
+    .FIFO_PREEMPT_REQ(FIFO_PREEMPT_REQ),
     
     .TLU_DATA(TLU_DATA),
     .TLU_DATA_READY_FLAG(TLU_DATA_READY_FLAG),
