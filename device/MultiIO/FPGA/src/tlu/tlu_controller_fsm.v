@@ -121,7 +121,7 @@ begin
         
         WAIT_FOR_TLU_DATA_SAVED_CMD_READY:
         begin
-            if (((FIFO_READ == 1'b1) || (TLU_MODE != 2'b11)) && (CMD_READY == 1'b1)) next = IDLE;
+            if ((FIFO_EMPTY == 1'b1) && (CMD_READY == 1'b1)) next = IDLE;
             else next = WAIT_FOR_TLU_DATA_SAVED_CMD_READY;
         end
         
@@ -354,7 +354,10 @@ begin
 
             WAIT_FOR_TLU_DATA_SAVED_CMD_READY:
             begin
-                FIFO_EMPTY <= FIFO_EMPTY;
+                if (FIFO_READ == 1'b1)
+                    FIFO_EMPTY <= 1'b1;
+                else
+                    FIFO_EMPTY <= FIFO_EMPTY;
                 TLU_DATA <= TLU_DATA;
                 TLU_DATA_READY_FLAG <= 1'b0;
                 if ((CMD_EXT_START_ENABLE == 1'b0) || (FIFO_NEAR_FULL == 1'b1 && TLU_DISABLE_VETO == 1'b0))
