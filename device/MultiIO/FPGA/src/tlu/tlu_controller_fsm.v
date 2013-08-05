@@ -82,7 +82,7 @@ begin
 end
 
 // combinational always block, blocking assignments
-always @ (state or CMD_READY or CMD_EXT_START_ENABLE or TLU_TRIGGER_FLAG or TLU_TRIGGER or TLU_MODE or TLU_TRIGGER_LOW_TIMEOUT_ERROR or counter_tlu_clock or TLU_TRIGGER_CLOCK_CYCLES or counter_sr_wait_cycles or TLU_TRIGGER_DATA_DELAY or FIFO_READ or EXT_VETO) //or TLU_TRIGGER_BUSY)
+always @ (state or CMD_READY or CMD_EXT_START_ENABLE or TLU_TRIGGER_FLAG or TLU_TRIGGER or TLU_MODE or TLU_TRIGGER_LOW_TIMEOUT_ERROR or counter_tlu_clock or TLU_TRIGGER_CLOCK_CYCLES or counter_sr_wait_cycles or TLU_TRIGGER_DATA_DELAY or FIFO_EMPTY or EXT_VETO) //or TLU_TRIGGER_BUSY)
 begin
     case (state)
     
