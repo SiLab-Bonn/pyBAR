@@ -18,7 +18,12 @@ assign ck_out = ck_in | ~enl;
 endmodule
 
 
-module out_fifo (
+module out_fifo
+#(
+    parameter                   DEPTH = 21'h10_0000,
+    parameter                   FIFO_ALMOST_FULL_THRESHOLD = 95, // in percent
+    parameter                   FIFO_ALMOST_EMPTY_THRESHOLD = 5 // in percent
+) (
     input wire                  BUS_CLK,
     input wire                  BUS_CLK270,
     input wire                  BUS_RST,
@@ -45,14 +50,16 @@ module out_fifo (
     
     output wire                 FIFO_NOT_EMPTY,
     output wire                 FIFO_FULL,
+    output reg                  FIFO_NEAR_FULL,
     output wire                 FIFO_READ_ERROR
 );
 
-wire SOFT_RST; // 0
+// Registers
+wire SOFT_RST; // Address: 0
 assign SOFT_RST = (BUS_ADD==0 && BUS_WR);
 
 // reset sync
-// when write to addr = 0 then reset
+// when writing to addr = 0 then reset
 reg RST_FF, RST_FF2, BUS_RST_FF, BUS_RST_FF2;
 always @(posedge BUS_CLK) begin
     RST_FF <= SOFT_RST;
@@ -68,6 +75,34 @@ assign BUS_RST_FLAG = BUS_RST_FF2 & ~BUS_RST_FF; // trailing edge
 wire RST;
 assign RST = BUS_RST_FLAG | SOFT_RST_FLAG;
 
+reg [7:0] status_regs[7:0];
+
+// reg 0 for SOFT_RST
+wire [7:0] FIFO_ALMOST_FULL_VALUE;
+assign FIFO_ALMOST_FULL_VALUE = status_regs[1];
+wire [7:0] FIFO_ALMOST_EMPTY_VALUE;
+assign FIFO_ALMOST_EMPTY_VALUE = status_regs[2];
+
+always @(posedge BUS_CLK)
+begin
+    if(RST)
+    begin
+        status_regs[0] <= 0;
+        status_regs[1] <= 255*FIFO_ALMOST_FULL_THRESHOLD/100;
+        status_regs[2] <= 255*FIFO_ALMOST_EMPTY_THRESHOLD/100;
+        status_regs[3] <= 8'b0;
+        status_regs[4] <= 8'b0;
+        status_regs[5] <= 8'b0;
+        status_regs[6] <= 8'b0;
+        status_regs[7] <= 8'b0;
+    end
+    else if(BUS_WR && BUS_ADD < 8)
+    begin
+        status_regs[BUS_ADD[2:0]] <= BUS_DATA_IN;
+    end
+end
+
+// read reg
 reg [20:0] CONF_SIZE; // 1 - 2 - 3
 reg [7:0] CONF_READ_ERROR;
 
@@ -179,9 +214,6 @@ assign SRAM_BLE_B = 0;
 assign SRAM_CE1_B = 0;
 assign SRAM_OE_B = !read_sram;
 
-
-parameter DEPTH = 21'h10_0000;
-
 always @ (*) begin
      if(rd_ponter == DEPTH-1)
         next_rd_ponter = 0;
@@ -239,5 +271,13 @@ assign FIFO_NOT_EMPTY = !empty;
 assign FIFO_FULL = full;
 assign FIFO_READ_ERROR = (CONF_READ_ERROR != 0);
 
+always @(posedge BUS_CLK) begin
+    if(RST)
+        FIFO_NEAR_FULL <= 1'b0;
+    else if (((((FIFO_ALMOST_FULL_VALUE+1)*DEPTH)>>8) <= CONF_SIZE) || (FIFO_ALMOST_FULL_VALUE == 8'b0 && CONF_SIZE >= 0))
+        FIFO_NEAR_FULL <= 1'b1;
+    else if ((((FIFO_ALMOST_EMPTY_VALUE+1)*DEPTH)>>8) >= CONF_SIZE && FIFO_ALMOST_EMPTY_VALUE != 8'b0) || CONF_SIZE == 21'b0)
+        FIFO_NEAR_FULL <= 1'b0;
+end
 
 endmodule
