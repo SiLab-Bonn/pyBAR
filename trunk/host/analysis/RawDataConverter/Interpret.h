@@ -20,7 +20,7 @@ public:
   //main functions
   bool interpretRawData(unsigned int* pDataWords, const unsigned int& pNdataWords);       //starts to interpret the actual raw data pDataWords and saves result to _hitInfo
   bool setMetaWordIndex(const unsigned int& tLength, MetaInfo* &rMetaInfo);               //sets the meta word index for word number/readout info correlation
-  void getMetaEventIndex(unsigned int& rEventNumberIndex, unsigned long*& rEventNumber);  //returns the meta event index filled upto the actual interpreted hits
+  void getMetaEventIndex(const unsigned int& pFEindex, unsigned int& rEventNumberIndex, unsigned long*& rEventNumber);  //returns the meta event index filled up to the actual interpreted hits
   void getHits(const unsigned int& pFEindex, unsigned int &rNhits, HitInfo* &rHitInfo);   //returns the actual interpreted hits
 
   //initializers, should be called before first call of interpretRawData() with new data file
@@ -61,7 +61,7 @@ private:
   void storeHit(const unsigned int& pNfE, HitInfo& rHit);	//stores the hit into the output hit array _hitInfo
   void addEvent(const unsigned int& pNfE);                //increases the event counter, adds the actual hits/error/SR codes
   void storeEventHits(const unsigned int& pNfE);          //adds the hits of the actual event to _hitInfo
-  void correlateMetaWordIndex(const unsigned long& pEventNumer, const unsigned long& pDataWordIndex);  //writes the event number for the meta data
+  void correlateMetaWordIndex(const unsigned int& pNfE, const unsigned long& pEventNumer, const unsigned long& pDataWordIndex);  //writes the event number for the meta data
   void resetEventVariables(const unsigned int& pFEindex);	//resets event variables before starting new event
   bool isNewFeIndex(const unsigned int& pFEindex);  //returns true if the Fe index is unknown
   void setOptionsNewFe(const unsigned int& pFEindex); //is called when a new FE is detected and sets the options to the std. values if they are not set already
@@ -87,7 +87,8 @@ private:
   void allocateHitBufferArray(const unsigned int& pIfE);
   void deleteHitBufferArray();
 
-  void allocateMetaEventIndexArray();
+  void allocateMetaEventIndexArray(const unsigned int& pIfE);
+  void resetMetaEventIndexArray(const unsigned int pIfE = 0); //reset to all entries = 0
   void deleteMetaEventIndexArray();
 
   void allocateTriggerErrorCounterArray(const unsigned int& pIfE);
@@ -155,10 +156,12 @@ private:
   //meta data infos in/out
   MetaInfo* _metaInfo;                      //pointer to the meta info, meta data infos in
   bool _metaDataSet;                        //true if meta data is available
-  unsigned long _lastMetaIndexNotSet;       //the last meta index that is not set
-  unsigned long _lastWordIndexSet;          //the last word index used for the event calculation
-  unsigned long* _metaEventIndex;           //pointer to the array that holds the event number for every read out (meta_data row), meta data infos out
+
   unsigned int _metaEventIndexLength;       //length of event number array
+  std::map<unsigned int, unsigned long> _lastWordIndexSet;          //the last word index used for the event calculation
+  std::map<unsigned int, unsigned long> _lastMetaIndexNotSet;       //the last meta index that is not set for the selected FE, counter for array look up speed up
+  std::map<unsigned int, unsigned long*> _metaEventIndex; //pointer for each FE to the array that holds the event number for every read out (meta_data row), meta data infos out
+  
 
   //counter histograms for each Fe
   std::map<unsigned int, unsigned long*> _triggerErrorCounter;      //trigger error histogram
