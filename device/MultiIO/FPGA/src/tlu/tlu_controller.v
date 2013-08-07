@@ -47,15 +47,12 @@
     input wire                  FIFO_NEAR_FULL
 );
 
-wire [31:0] TLU_DATA;
-
-
 // Registers
-wire SOFT_RST; //Address: 0
+wire SOFT_RST; // Address: 0
 assign SOFT_RST = (BUS_ADD==0 && BUS_WR);
 
 // reset sync
-// when write to addr = 0 then reset
+// when writing to addr = 0 then reset
 reg RST_FF, RST_FF2, BUS_RST_FF, BUS_RST_FF2;
 always @(posedge BUS_CLK) begin
     RST_FF <= SOFT_RST;
@@ -334,6 +331,7 @@ assign TLU_RESET_FLAG_BUS_CLK = ~TLU_RESET_BUS_CLK_FF & TLU_RESET_BUS_CLK;
 
 // writing current TLU trigger number to register
 wire TLU_DATA_READY_FLAG;
+wire [31:0] TLU_DATA;
 always @ (posedge BUS_CLK)
 begin
     if (RST)
