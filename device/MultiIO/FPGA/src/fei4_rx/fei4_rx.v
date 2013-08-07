@@ -13,7 +13,8 @@ module fei4_rx
     input wire RX_CLK_LOCKED,
     input wire RX_DATA,
     output wire RX_READY,
-    output wire RX_ERR,
+    output wire RX_8B10B_DECODER_ERR,
+    output wire RX_FIFO_OVERFLOW_ERR,
      
     input wire FIFO_READ,
     output wire FIFO_EMPTY,
@@ -61,7 +62,8 @@ wire [15:0] fifo_size;
 wire [7:0] decoder_err_cnt, lost_err_cnt;
 
 assign RX_READY = (ready_rec==1'b1);
-assign RX_ERR = (decoder_err_cnt!=8'b0);
+assign RX_8B10B_DECODER_ERR = (decoder_err_cnt!=8'b0);
+assign RX_FIFO_OVERFLOW_ERR = (lost_err_cnt!=8'b0);
 
 always @ (negedge BUS_CLK) begin //(*) begin
     //BUS_DATA_OUT = 0;
