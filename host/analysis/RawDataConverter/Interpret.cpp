@@ -5,10 +5,9 @@ Interpret::Interpret(void)
   setSourceFileName("Interpret");
   _metaDataSet = false;
   _debugEvents = false;
-  _lastMetaIndexNotSet = 0;
-  _lastWordIndexSet = 0;
+  //_lastMetaIndexNotSet[0] = 0;
+  //_lastWordIndexSet[0] = 0;
   _metaEventIndexLength = 0;
-  _metaEventIndex = 0;
   _NbCID[0] = 16;
   _maxTot[0] = 13;
   _fEI4B[0] = false;
@@ -55,12 +54,11 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 		tActualTot1 = -1;												          //TOT1 value stays negative if it can not be set properly in getHitsfromDataRecord()
 		tActualTot2 = -1;												          //TOT2 value stays negative if it can not be set properly in getHitsfromDataRecord() 
 
-    correlateMetaWordIndex(_nEvents[tFEindex], _nDataWords);
-
-    _nDataWords++;
-
     if(isNewFeIndex(tFEindex))
       setOptionsNewFe(tFEindex);
+
+    correlateMetaWordIndex(tFEindex, _nEvents[tFEindex], _nDataWords);
+    _nDataWords++;
 
     if(_debugEvents){                                 //show debug output for selected events
       if(_nEvents[tFEindex] >= _startDebugEvent && _nEvents[tFEindex] <= _stopDebugEvent)
@@ -144,7 +142,8 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
       _lastTriggerNumber[tFEindex] = tTriggerNumber[tFEindex];
 		}
     else if (getInfoFromServiceRecord(tActualWord, tActualSRcode, tActualSRcounter)){ //data word is service record
-        info(IntToStr(_nDataWords)+" FE"+IntToStr(tFEindex)+" SR "+IntToStr(tActualSRcode));
+        if(Basis::debugSet())
+          debug(IntToStr(_nDataWords)+" FE"+IntToStr(tFEindex)+" SR "+IntToStr(tActualSRcode));
         addServiceRecord(tFEindex, tActualSRcode);
         addEventErrorCode(tFEindex, __HAS_SR);
         _nServiceRecords[tFEindex]++;
@@ -207,17 +206,14 @@ bool Interpret::setMetaWordIndex(const unsigned int& tLength, MetaInfo* &rMetaIn
     throw 10;
 
   _metaEventIndexLength = tLength;
-  allocateMetaEventIndexArray();
-  for(unsigned int i= 0; i<_metaEventIndexLength; ++i)
-    _metaEventIndex[i] = 0;
   _metaDataSet = true;
   return true;
 }
 
-void Interpret::getMetaEventIndex(unsigned int& rEventNumberIndex, unsigned long*& rEventNumber)
+void Interpret::getMetaEventIndex(const unsigned int& pFEindex, unsigned int& rEventNumberIndex, unsigned long*& rEventNumber)
 {
   rEventNumberIndex = _metaEventIndexLength;
-  rEventNumber = _metaEventIndex;
+  rEventNumber = _metaEventIndex[pFEindex];
 }
 
 void Interpret::getHits(const unsigned int& pFEindex, unsigned int &rNhits, HitInfo* &rHitInfo)
@@ -389,17 +385,33 @@ void Interpret::addHit(const unsigned int& pNfE, const unsigned char& pRelBCID, 
   unsigned int ttHitBufferIndex = tHitBufferIndex[pNfE];
     
   if(ttHitBufferIndex < __MAXHITBUFFERSIZE){
-    _hitBuffer[pNfE][ttHitBufferIndex].eventNumber = _nEvents[pNfE];
-    _hitBuffer[pNfE][ttHitBufferIndex].triggerNumber = tTriggerNumber[pNfE];
-    _hitBuffer[pNfE][ttHitBufferIndex].relativeBCID = pRelBCID;
-    _hitBuffer[pNfE][ttHitBufferIndex].LVLID = pLVLID;
-    _hitBuffer[pNfE][ttHitBufferIndex].column = pColumn;
-    _hitBuffer[pNfE][ttHitBufferIndex].row = pRow;
-    _hitBuffer[pNfE][ttHitBufferIndex].tot = pTot;
-    _hitBuffer[pNfE][ttHitBufferIndex].BCID = pBCID;
-    _hitBuffer[pNfE][ttHitBufferIndex].serviceRecord = tServiceRecord[pNfE];
-    _hitBuffer[pNfE][ttHitBufferIndex].triggerStatus = tTriggerError[pNfE];
-    _hitBuffer[pNfE][ttHitBufferIndex].eventStatus = tErrorCode[pNfE];
+
+    //c++11 only: _hitBuffer[pNfE][ttHitBufferIndex] = {_nEvents[pNfE], tTriggerNumber[pNfE], pRelBCID, pLVLID, pColumn, pRow, pTot, pBCID, tServiceRecord[pNfE], tTriggerError[pNfE], tErrorCode[pNfE]};
+
+    HitInfo* tHitInfo = &_hitBuffer[pNfE][ttHitBufferIndex]; //code speed up, do map lookup only once
+    (*tHitInfo).eventNumber = _nEvents[pNfE];
+    (*tHitInfo).triggerNumber = tTriggerNumber[pNfE];
+    (*tHitInfo).relativeBCID = pRelBCID;
+    (*tHitInfo).LVLID = pLVLID;
+    (*tHitInfo).column = pColumn;
+    (*tHitInfo).row = pRow;
+    (*tHitInfo).tot = pTot;
+    (*tHitInfo).BCID = pBCID;
+    (*tHitInfo).serviceRecord = tServiceRecord[pNfE];
+    (*tHitInfo).triggerStatus = tTriggerError[pNfE];
+    (*tHitInfo).eventStatus = tErrorCode[pNfE];
+
+    //_hitBuffer[pNfE][ttHitBufferIndex].eventNumber = _nEvents[pNfE];
+    //_hitBuffer[pNfE][ttHitBufferIndex].triggerNumber = tTriggerNumber[pNfE];
+    //_hitBuffer[pNfE][ttHitBufferIndex].relativeBCID = pRelBCID;
+    //_hitBuffer[pNfE][ttHitBufferIndex].LVLID = pLVLID;
+    //_hitBuffer[pNfE][ttHitBufferIndex].column = pColumn;
+    //_hitBuffer[pNfE][ttHitBufferIndex].row = pRow;
+    //_hitBuffer[pNfE][ttHitBufferIndex].tot = pTot;
+    //_hitBuffer[pNfE][ttHitBufferIndex].BCID = pBCID;
+    //_hitBuffer[pNfE][ttHitBufferIndex].serviceRecord = tServiceRecord[pNfE];
+    //_hitBuffer[pNfE][ttHitBufferIndex].triggerStatus = tTriggerError[pNfE];
+    //_hitBuffer[pNfE][ttHitBufferIndex].eventStatus = tErrorCode[pNfE];
     tHitBufferIndex[pNfE]++;
   }
   else{
@@ -454,19 +466,20 @@ void Interpret::addEvent(const unsigned int& pNfE)
 void Interpret::storeEventHits(const unsigned int& pNfE)
 {
   for (unsigned int i = 0; i<tHitBufferIndex[pNfE]; ++i){
-    _hitBuffer[pNfE][i].triggerNumber = tTriggerNumber[pNfE]; //not needed if trigger number is at the beginning
-    _hitBuffer[pNfE][i].triggerStatus = tTriggerError[pNfE];
-    _hitBuffer[pNfE][i].eventStatus = tErrorCode[pNfE];
-    storeHit(pNfE, _hitBuffer[pNfE][i]);
+    HitInfo* tHitInfo = &_hitBuffer[pNfE][i]; //code speed up, do map lookup only once
+    (*tHitInfo).triggerNumber = tTriggerNumber[pNfE]; //not needed if trigger number is at the beginning
+    (*tHitInfo).triggerStatus = tTriggerError[pNfE];
+    (*tHitInfo).eventStatus = tErrorCode[pNfE];
+    storeHit(pNfE, *tHitInfo);
   }
 }
 
-void Interpret::correlateMetaWordIndex(const unsigned long& pEventNumer, const unsigned long& pDataWordIndex)
+void Interpret::correlateMetaWordIndex(const unsigned int& pNfE, const unsigned long& pEventNumer, const unsigned long& pDataWordIndex)
 {
-  if(_metaDataSet && pDataWordIndex == _lastWordIndexSet){
-     _metaEventIndex[_lastMetaIndexNotSet] = pEventNumer;
-     _lastWordIndexSet = _metaInfo[_lastMetaIndexNotSet].stopIndex;
-     _lastMetaIndexNotSet++;
+  if(_metaDataSet && pDataWordIndex >= _lastWordIndexSet[pNfE]){
+     _metaEventIndex[pNfE][_lastMetaIndexNotSet[pNfE]] = pEventNumer;
+     _lastWordIndexSet[pNfE] = _metaInfo[_lastMetaIndexNotSet[pNfE]].stopIndex;
+     _lastMetaIndexNotSet[pNfE]++;
   }
 }
 
@@ -507,6 +520,13 @@ void Interpret::setOptionsNewFe(const unsigned int& pFEindex)
   resetErrorCounterArray(pFEindex);
   allocateServiceRecordCounterArray(pFEindex);
   resetServiceRecordCounterArray(pFEindex);
+
+  if(_metaDataSet){
+    _lastMetaIndexNotSet[pFEindex] = 0;
+    _lastWordIndexSet[pFEindex] = 0;
+    allocateMetaEventIndexArray(pFEindex);
+    resetMetaEventIndexArray(pFEindex);
+  }
 
   resetTriggerErrorCounterArray();
   if (_NbCID.find(pFEindex) == _NbCID.end())    //set std. value if option is not set
@@ -675,18 +695,31 @@ void Interpret::deleteHitBufferArray()
   }
 }
 
-void Interpret::allocateMetaEventIndexArray()
+void Interpret::allocateMetaEventIndexArray(const unsigned int& pIfE)
 {
-  debug(std::string("allocateMetaEventIndexArray"));
-  _metaEventIndex = new unsigned long[_metaEventIndexLength];
+  debug(std::string("allocateMetaEventIndexArray for FE ")+IntToStr(pIfE));
+  _metaEventIndex[pIfE] = new unsigned long[_metaEventIndexLength];
+}
+
+void Interpret::resetMetaEventIndexArray(const unsigned int pIfE)
+{
+  if(pIfE == 0) // reset all histograms
+    for(std::map<unsigned int, unsigned long*>::iterator it = _metaEventIndex.begin(); it != _metaEventIndex.end(); ++it)
+      for(unsigned int i = 0; i<_metaEventIndexLength; ++i)
+        it->second[i] = 0;
+  else
+    for(unsigned int iCode = 0; iCode < _metaEventIndexLength; ++iCode)
+      _metaEventIndex[pIfE][iCode] = 0;
 }
 
 void Interpret::deleteMetaEventIndexArray()
 {
-  if (_metaEventIndex == 0)
-    return;
-  delete[] _metaEventIndex;
-  _metaEventIndex = 0;
+  for(std::map<unsigned int, unsigned long*>::iterator it = _metaEventIndex.begin(); it != _metaEventIndex.end(); ++it){
+    if (it->second != 0){
+      delete[] it->second;
+      it->second = 0;
+    }
+  }
 }
 
 void Interpret::allocateTriggerErrorCounterArray(const unsigned int& pIfE)
