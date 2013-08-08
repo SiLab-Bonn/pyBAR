@@ -5,11 +5,13 @@ import tables as tb
 import BitVector
 
 from analysis.data_struct import MetaTable
+
 from utils.utils import get_all_from_queue, split_seq
+
 from scan.scan import ScanBase
 
 class DigitalScan(ScanBase):
-    def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "digital_scan", outdir = None):
+    def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "scan_digital", outdir = None):
         super(DigitalScan, self).__init__(config_file, definition_file, bit_file, device, scan_identifier, outdir)
         
     def start(self, configure = True):
@@ -70,17 +72,9 @@ class DigitalScan(ScanBase):
         print 'Data remaining in memory:', self.readout.get_fifo_size()
         print 'Lost data count:', self.readout.get_lost_data_count()
         
-        plot_occupancy(*zip(*get_cols_rows(data_words)), max_occ = repeat*2, filename = None)
+        plot_occupancy(*zip(*get_cols_rows(data_words)), max_occ = repeat*2, filename = self.scan_data_path+".pdf")
 
 if __name__ == "__main__":
-    chip_flavor = 'fei4b'
-    config_file = r'C:\pyats\trunk\host\config\fei4default\configs\std_cfg_'+chip_flavor+'.cfg'
-    bit_file = r'C:\pyats\trunk\host\config\FPGA\top.bit'
-    scan_identifier = "digital_scan"
-    outdir = r"C:\data\digital_scan"
-    
-    scan = DigitalScan(config_file = config_file, bit_file = bit_file, scan_identifier = scan_identifier, outdir = outdir)
-    
+    import scan_configuration
+    scan = DigitalScan(scan_configuration.config_file, bit_file = scan_configuration.bit_file, outdir = scan_configuration.outdir)
     scan.start()
-    
-    
