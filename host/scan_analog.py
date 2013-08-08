@@ -9,21 +9,17 @@ import tables as tb
 import BitVector
 
 from analysis.data_struct import MetaTable
-from fei4.output import FEI4Record
-from daq.readout import Readout
 
 from utils.utils import get_all_from_queue, split_seq
 
 from scan.scan import ScanBase
 
 class AnalogScan(ScanBase):
-    def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "analog_scan", outdir = None):
+    def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "scan_analog", outdir = None):
         super(AnalogScan, self).__init__(config_file, definition_file, bit_file, device, scan_identifier, outdir)
         
     def start(self, configure = True):
         super(AnalogScan, self).start(configure)
-        
-        self.lock.acquire()
         
         print 'Start readout thread...'
         #self.readout.set_filter(self.readout.data_record_filter)
@@ -112,7 +108,6 @@ class AnalogScan(ScanBase):
         
         plot_occupancy(*zip(*get_cols_rows(data_words)), max_occ = repeat*2, filename = self.scan_data_path+".pdf")
         
-        self.lock.release()
     
     #    set nan to special value
     #    masked_array = np.ma.array (a, mask=np.isnan(a))
@@ -122,16 +117,6 @@ class AnalogScan(ScanBase):
         
         
 if __name__ == "__main__":
-    chip_flavor = 'fei4a'
-    config_file = r'C:\Users\silab\Dropbox\pyats\trunk\host\config\fei4default\configs\std_cfg_'+chip_flavor+'_simple.cfg'
-    bit_file = r'C:\Users\silab\Dropbox\pyats\trunk\device\MultiIO\FPGA\ise\top.bit'
-    scan_identifier = "analog_scan"
-    outdir = r"C:\Users\silab\Desktop\Data\analog_scan"
-    
-#     chip_flavor = 'fei4a'
-#     config_file = r'C:\Users\silab\Dropbox\pyats\trunk\host\config\Testbeam\SCC50_planar\SCC50_planar_pYATS.cfg'
-#     bit_file = r'C:\Users\silab\Dropbox\pyats\trunk\device\MultiIO\FPGA\ise\top.bit'
-    
-    scan = AnalogScan(config_file, bit_file = bit_file, scan_identifier = scan_identifier, outdir = outdir)
-    
+    import scan_configuration
+    scan = AnalogScan(scan_configuration.config_file, bit_file = scan_configuration.bit_file, outdir = scan_configuration.outdir)
     scan.start()
