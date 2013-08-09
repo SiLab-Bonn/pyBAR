@@ -75,7 +75,8 @@ bool Converter::convertTable(const std::string& FileName)
     if(!_createHitsTable && !_createMetaData && !_createOccHist && !_createThresholdHists) //only this data needs a raw data interpretation
       return true;
 
-    _interpret.setMetaWordIndex((unsigned int&) tNrecordsMeta, _metaInfoBuffer);  //set the meta data array (word index, time stamp,... per readout)
+    if(!_interpret.setMetaWordIndex((unsigned int&) tNrecordsMeta, _metaInfoBuffer))  //set the meta data array (word index, time stamp,... per readout)
+      return false;
     
     unsigned int rEventNumberIndex = 0;
     unsigned long* rEventNumber = 0;
@@ -110,6 +111,11 @@ bool Converter::convertTable(const std::string& FileName)
     int NdimChunk = propertyList.getChunk(1, &chunkLength); //length of the chunk, only one dimension
     info(std::string("Data set chunk dimension: ")+IntToStr((unsigned int) NdimChunk));
     info(std::string("Data set chunk 1. dim. length: ")+IntToStr((unsigned int) chunkLength));
+
+    if(tDimsLength < chunkLength){
+      chunkLength = tDimsLength;
+      info(std::string("Data space length < chunk length, setting chunk length to space length"));
+    }
 
     //create memory space with the chunk dimesions
     H5::DataSpace memorySpace(NdimChunk, &chunkLength, NULL); //define new memory space
@@ -161,9 +167,9 @@ bool Converter::convertTable(const std::string& FileName)
     //interpret the first chunk
     unsigned int tNhits = 0;                                    //numbers of hits
     HitInfo* tHitInfo = 0;                                      //interpreted hit data array pointer
-    if(!_interpret.interpretRawData(dataChunks, (int) chunkLength)) //interret the raw data
+    if(!_interpret.interpretRawData(dataChunks, (int) chunkLength)) //interpret the raw data
       return false;
-    _interpret.getHits(tNhits, tHitInfo);                       //get the result array
+    _interpret.getHits(tNhits, tHitInfo); //get the result array
     _interpret.getMetaEventIndex(rEventNumberIndex, rEventNumber); //get the event number per read out
 
     //histogram data
@@ -228,7 +234,7 @@ bool Converter::convertTable(const std::string& FileName)
 
     //create memory space with the chunk dimension of the last smaller chunk
     hsize_t tRemainingWords = tDimsLength-tDimsLength/chunkLength*chunkLength;  //because Nwords%chunksize != 0: the last chunk has to be treated differently
-    if(tRemainingWords > 0){ //only read additional chuk if data words are not read so far
+    if(tRemainingWords > 0){ //only read additional chunk if data words are not read so far
       H5::DataSpace memorySpaceLastChunk(NdimChunk, &tRemainingWords, NULL); //define new memory space
       unsigned int* dataLastChunk = new unsigned int[(unsigned int) tRemainingWords];
       tOffset = chunkLength*(tDimsLength/chunkLength);
@@ -621,8 +627,6 @@ void Converter::printSummary()
   for(unsigned int i = tEventNumberIndex-5; i<tEventNumberIndex; ++i)
     if(i<tEventNumberIndex)
       std::cout<<i<<"\t"<<tEventNumber[i]<<"\n";
-
-  _histogram.test();
     
   double elapsed_secs = double(_runTime) / CLOCKS_PER_SEC;
   std::cout<<"\nRuntime "<<elapsed_secs<<" seconds\n";
@@ -662,6 +666,8 @@ void Converter::printOptions()
   std::cout<<"_createErrorHist "<<_createErrorHist<<"\n";
   std::cout<<"_createSRhist "<<_createSRhist<<"\n";
   std::cout<<"_NparInfoBuffer "<<_NparInfoBuffer<<"\n";
+  
+  ///_interpret.printOptions();
 }
 
 //TODO: bring this helper functions to work
@@ -1102,6 +1108,11 @@ void Converter::setHDF5ExeptionOutput(bool pToggle)
     ;//H5::Exception::Print();//FIXME
   else
     H5::Exception::dontPrint();
+}
+
+void Converter::setDebugEvents(const unsigned long& rStartEvent, const unsigned long& rStopEvent, const bool& debugEvents)
+{
+  _interpret.debugEvents(rStartEvent, rStopEvent, debugEvents);
 }
 
 void Converter::closeInFile()
