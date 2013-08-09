@@ -137,7 +137,14 @@ $(SWIG)\swig.exe -c++ -python Converter.i</Command>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
     </CustomBuild>
-    <None Include="HOWTO.txt" />
+    <CustomBuild Include="HOWTO.txt">
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">echo HDF5: %HDF5% </Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Neccessary environment variables:</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Dummy.txt</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">echo HDF5: %HDF5% </Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Neccessary environment variables:</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Dummy.txt</Outputs>
+    </CustomBuild>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Basis.cpp" />
