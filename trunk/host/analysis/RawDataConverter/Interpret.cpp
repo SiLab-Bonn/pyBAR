@@ -188,9 +188,13 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 	return true;
 }
 
-void Interpret::setMetaWordIndex(const unsigned int& tLength, MetaInfo* &rMetaInfo)
+bool Interpret::setMetaWordIndex(const unsigned int& tLength, MetaInfo* &rMetaInfo)
 {
   _metaInfo = rMetaInfo;
+  if(tLength == 0){
+    error(std::string("setMetaWordIndex: data is empty"));
+    return false;
+  }
   //sanity check
   for(unsigned int i = 0; i < tLength-1; ++i){
     if(_metaInfo[i].startIndex + _metaInfo[i].length != _metaInfo[i].stopIndex)
@@ -203,8 +207,7 @@ void Interpret::setMetaWordIndex(const unsigned int& tLength, MetaInfo* &rMetaIn
 
   _metaEventIndexLength = tLength;
   allocateMetaEventIndexArray();
-  for(unsigned int i= 0; i<_metaEventIndexLength; ++i)
-    _metaEventIndex[i] = 0;
+  resetMetaEventIndexArray();
   _metaDataSet = true;
 }
 
@@ -362,9 +365,11 @@ void Interpret::addHit(const unsigned char& pRelBCID, const unsigned short int& 
     tHitBufferIndex++;
   }
   else{
-    if(Basis::errorSet())
-      error("addHit: tHitBufferIndex = "+IntToStr(tHitBufferIndex), __LINE__);
-    throw 12;
+    addEventErrorCode(__TRUNC_EVENT); //too many hits in the event, abort this event, add truncated flac
+    addEvent(); 
+    if(Basis::warningSet())
+      warning(std::string("storeHit: Hit buffer overflow prevented by splitting events)"), __LINE__);
+    //throw 12;
   }
 }
 
@@ -401,8 +406,8 @@ void Interpret::addEvent()
   }
   if(tTriggerWord == 0){
     addEventErrorCode(__NO_TRG_WORD);
-    if(Basis::infoSet())
-      info(std::string("addEvent: no trigger word"));
+    if(Basis::debugSet())
+      debug(std::string("addEvent: no trigger word"));
   }
   if(tTriggerWord > 1){
     addTriggerErrorCode(__TRG_NUMBER_MORE_ONE);
@@ -510,7 +515,7 @@ bool Interpret::isTriggerWord(const unsigned int& pSRAMWORD)
 
 bool Interpret::isOtherWord(const unsigned int& pSRAMWORD)
 {
-	if (EMPTY_RECORD_MACRO(pSRAMWORD) || ADDRESS_RECORD_MACRO(pSRAMWORD) || VALUE_RECORD_MACRO(pSRAMWORD))
+	if (ADDRESS_RECORD_MACRO(pSRAMWORD) || VALUE_RECORD_MACRO(pSRAMWORD))
 		return true;
 	return false;
 }
@@ -593,6 +598,13 @@ void Interpret::allocateMetaEventIndexArray()
 {
   _metaEventIndex = new unsigned long[_metaEventIndexLength];
 }
+
+void Interpret::resetMetaEventIndexArray()
+{
+  for(unsigned int i = 0; i < _metaEventIndexLength; ++i)
+    _metaEventIndex[i] = 0;
+}
+
 
 void Interpret::deleteMetaEventIndexArray()
 {
