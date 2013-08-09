@@ -209,6 +209,7 @@ bool Interpret::setMetaWordIndex(const unsigned int& tLength, MetaInfo* &rMetaIn
   allocateMetaEventIndexArray();
   resetMetaEventIndexArray();
   _metaDataSet = true;
+  return true;
 }
 
 void Interpret::getMetaEventIndex(unsigned int& rEventNumberIndex, unsigned long*& rEventNumber)

@@ -132,7 +132,7 @@ echo PYTHON_INCLUDE: %PYTHON_INCLUDE%
 echo PYTHON_LIB: %PYTHON_LIB%
 echo Creating wrapper from interface file:
 echo on
-$(SWIG)\swig.exe -c++ -python Converter.i</Command>
+$(SWIG)\swig.exe -c++ -python converter.i</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='PythonModule|Win32'">$(InputName)_wrap.cxx;%(Outputs)</Outputs>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
