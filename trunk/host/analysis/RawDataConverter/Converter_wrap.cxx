@@ -5633,6 +5633,250 @@ fail:
 }
 
 
+SWIGINTERN PyObject *_wrap_Converter_setDebugEvents__SWIG_0(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  Converter *arg1 = (Converter *) 0 ;
+  unsigned long *arg2 = 0 ;
+  unsigned long *arg3 = 0 ;
+  bool *arg4 = 0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  unsigned long temp2 ;
+  unsigned long val2 ;
+  int ecode2 = 0 ;
+  unsigned long temp3 ;
+  unsigned long val3 ;
+  int ecode3 = 0 ;
+  bool temp4 ;
+  bool val4 ;
+  int ecode4 = 0 ;
+  PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
+  PyObject * obj2 = 0 ;
+  PyObject * obj3 = 0 ;
+  
+  if (!PyArg_ParseTuple(args,(char *)"OOOO:Converter_setDebugEvents",&obj0,&obj1,&obj2,&obj3)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_Converter, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "Converter_setDebugEvents" "', argument " "1"" of type '" "Converter *""'"); 
+  }
+  arg1 = reinterpret_cast< Converter * >(argp1);
+  ecode2 = SWIG_AsVal_unsigned_SS_long(obj1, &val2);
+  if (!SWIG_IsOK(ecode2)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "Converter_setDebugEvents" "', argument " "2"" of type '" "unsigned long""'");
+  } 
+  temp2 = static_cast< unsigned long >(val2);
+  arg2 = &temp2;
+  ecode3 = SWIG_AsVal_unsigned_SS_long(obj2, &val3);
+  if (!SWIG_IsOK(ecode3)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode3), "in method '" "Converter_setDebugEvents" "', argument " "3"" of type '" "unsigned long""'");
+  } 
+  temp3 = static_cast< unsigned long >(val3);
+  arg3 = &temp3;
+  ecode4 = SWIG_AsVal_bool(obj3, &val4);
+  if (!SWIG_IsOK(ecode4)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode4), "in method '" "Converter_setDebugEvents" "', argument " "4"" of type '" "bool""'");
+  } 
+  temp4 = static_cast< bool >(val4);
+  arg4 = &temp4;
+  (arg1)->setDebugEvents((unsigned long const &)*arg2,(unsigned long const &)*arg3,(bool const &)*arg4);
+  resultobj = SWIG_Py_Void();
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_Converter_setDebugEvents__SWIG_1(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  Converter *arg1 = (Converter *) 0 ;
+  unsigned long *arg2 = 0 ;
+  unsigned long *arg3 = 0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  unsigned long temp2 ;
+  unsigned long val2 ;
+  int ecode2 = 0 ;
+  unsigned long temp3 ;
+  unsigned long val3 ;
+  int ecode3 = 0 ;
+  PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
+  PyObject * obj2 = 0 ;
+  
+  if (!PyArg_ParseTuple(args,(char *)"OOO:Converter_setDebugEvents",&obj0,&obj1,&obj2)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_Converter, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "Converter_setDebugEvents" "', argument " "1"" of type '" "Converter *""'"); 
+  }
+  arg1 = reinterpret_cast< Converter * >(argp1);
+  ecode2 = SWIG_AsVal_unsigned_SS_long(obj1, &val2);
+  if (!SWIG_IsOK(ecode2)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "Converter_setDebugEvents" "', argument " "2"" of type '" "unsigned long""'");
+  } 
+  temp2 = static_cast< unsigned long >(val2);
+  arg2 = &temp2;
+  ecode3 = SWIG_AsVal_unsigned_SS_long(obj2, &val3);
+  if (!SWIG_IsOK(ecode3)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode3), "in method '" "Converter_setDebugEvents" "', argument " "3"" of type '" "unsigned long""'");
+  } 
+  temp3 = static_cast< unsigned long >(val3);
+  arg3 = &temp3;
+  (arg1)->setDebugEvents((unsigned long const &)*arg2,(unsigned long const &)*arg3);
+  resultobj = SWIG_Py_Void();
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_Converter_setDebugEvents__SWIG_2(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  Converter *arg1 = (Converter *) 0 ;
+  unsigned long *arg2 = 0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  unsigned long temp2 ;
+  unsigned long val2 ;
+  int ecode2 = 0 ;
+  PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
+  
+  if (!PyArg_ParseTuple(args,(char *)"OO:Converter_setDebugEvents",&obj0,&obj1)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_Converter, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "Converter_setDebugEvents" "', argument " "1"" of type '" "Converter *""'"); 
+  }
+  arg1 = reinterpret_cast< Converter * >(argp1);
+  ecode2 = SWIG_AsVal_unsigned_SS_long(obj1, &val2);
+  if (!SWIG_IsOK(ecode2)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "Converter_setDebugEvents" "', argument " "2"" of type '" "unsigned long""'");
+  } 
+  temp2 = static_cast< unsigned long >(val2);
+  arg2 = &temp2;
+  (arg1)->setDebugEvents((unsigned long const &)*arg2);
+  resultobj = SWIG_Py_Void();
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_Converter_setDebugEvents__SWIG_3(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  Converter *arg1 = (Converter *) 0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  PyObject * obj0 = 0 ;
+  
+  if (!PyArg_ParseTuple(args,(char *)"O:Converter_setDebugEvents",&obj0)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_Converter, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "Converter_setDebugEvents" "', argument " "1"" of type '" "Converter *""'"); 
+  }
+  arg1 = reinterpret_cast< Converter * >(argp1);
+  (arg1)->setDebugEvents();
+  resultobj = SWIG_Py_Void();
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_Converter_setDebugEvents(PyObject *self, PyObject *args) {
+  int argc;
+  PyObject *argv[5];
+  int ii;
+  
+  if (!PyTuple_Check(args)) SWIG_fail;
+  argc = args ? (int)PyObject_Length(args) : 0;
+  for (ii = 0; (ii < 4) && (ii < argc); ii++) {
+    argv[ii] = PyTuple_GET_ITEM(args,ii);
+  }
+  if (argc == 1) {
+    int _v;
+    void *vptr = 0;
+    int res = SWIG_ConvertPtr(argv[0], &vptr, SWIGTYPE_p_Converter, 0);
+    _v = SWIG_CheckState(res);
+    if (_v) {
+      return _wrap_Converter_setDebugEvents__SWIG_3(self, args);
+    }
+  }
+  if (argc == 2) {
+    int _v;
+    void *vptr = 0;
+    int res = SWIG_ConvertPtr(argv[0], &vptr, SWIGTYPE_p_Converter, 0);
+    _v = SWIG_CheckState(res);
+    if (_v) {
+      {
+        int res = SWIG_AsVal_unsigned_SS_long(argv[1], NULL);
+        _v = SWIG_CheckState(res);
+      }
+      if (_v) {
+        return _wrap_Converter_setDebugEvents__SWIG_2(self, args);
+      }
+    }
+  }
+  if (argc == 3) {
+    int _v;
+    void *vptr = 0;
+    int res = SWIG_ConvertPtr(argv[0], &vptr, SWIGTYPE_p_Converter, 0);
+    _v = SWIG_CheckState(res);
+    if (_v) {
+      {
+        int res = SWIG_AsVal_unsigned_SS_long(argv[1], NULL);
+        _v = SWIG_CheckState(res);
+      }
+      if (_v) {
+        {
+          int res = SWIG_AsVal_unsigned_SS_long(argv[2], NULL);
+          _v = SWIG_CheckState(res);
+        }
+        if (_v) {
+          return _wrap_Converter_setDebugEvents__SWIG_1(self, args);
+        }
+      }
+    }
+  }
+  if (argc == 4) {
+    int _v;
+    void *vptr = 0;
+    int res = SWIG_ConvertPtr(argv[0], &vptr, SWIGTYPE_p_Converter, 0);
+    _v = SWIG_CheckState(res);
+    if (_v) {
+      {
+        int res = SWIG_AsVal_unsigned_SS_long(argv[1], NULL);
+        _v = SWIG_CheckState(res);
+      }
+      if (_v) {
+        {
+          int res = SWIG_AsVal_unsigned_SS_long(argv[2], NULL);
+          _v = SWIG_CheckState(res);
+        }
+        if (_v) {
+          {
+            int res = SWIG_AsVal_bool(argv[3], NULL);
+            _v = SWIG_CheckState(res);
+          }
+          if (_v) {
+            return _wrap_Converter_setDebugEvents__SWIG_0(self, args);
+          }
+        }
+      }
+    }
+  }
+  
+fail:
+  SWIG_SetErrorMsg(PyExc_NotImplementedError,"Wrong number or type of arguments for overloaded function 'Converter_setDebugEvents'.\n"
+    "  Possible C/C++ prototypes are:\n"
+    "    Converter::setDebugEvents(unsigned long const &,unsigned long const &,bool const &)\n"
+    "    Converter::setDebugEvents(unsigned long const &,unsigned long const &)\n"
+    "    Converter::setDebugEvents(unsigned long const &)\n"
+    "    Converter::setDebugEvents()\n");
+  return 0;
+}
+
+
 SWIGINTERN PyObject *_wrap_Converter_exportSummary(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   Converter *arg1 = (Converter *) 0 ;
@@ -5740,6 +5984,7 @@ static PyMethodDef SwigMethods[] = {
 	 { (char *)"Converter_setDebugOutput", _wrap_Converter_setDebugOutput, METH_VARARGS, NULL},
 	 { (char *)"Converter_setBugReport", _wrap_Converter_setBugReport, METH_VARARGS, NULL},
 	 { (char *)"Converter_setHDF5ExeptionOutput", _wrap_Converter_setHDF5ExeptionOutput, METH_VARARGS, NULL},
+	 { (char *)"Converter_setDebugEvents", _wrap_Converter_setDebugEvents, METH_VARARGS, NULL},
 	 { (char *)"Converter_exportSummary", _wrap_Converter_exportSummary, METH_VARARGS, NULL},
 	 { (char *)"Converter_printSummary", _wrap_Converter_printSummary, METH_VARARGS, NULL},
 	 { (char *)"Converter_printOptions", _wrap_Converter_printOptions, METH_VARARGS, NULL},
