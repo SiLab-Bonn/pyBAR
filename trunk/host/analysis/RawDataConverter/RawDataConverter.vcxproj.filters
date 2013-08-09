@@ -15,6 +15,9 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <None Include="HOWTO.txt" />
+  </ItemGroup>
+  <ItemGroup>
     <ClCompile Include="RawDataConverter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -77,6 +80,5 @@
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="converter.i" />
-    <CustomBuild Include="HOWTO.txt" />
   </ItemGroup>
 </Project>

@@ -60,7 +60,7 @@
     <LinkIncremental>false</LinkIncremental>
     <TargetExt>.pyd</TargetExt>
     <TargetName>_converter</TargetName>
-    <OutDir>$(ProjectDir)\</OutDir>
+    <OutDir>$(ProjectDir)$(Configuration)\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -70,8 +70,6 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>./blosc;$(HDF5)/include;$(HDF5)/include/cpp;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -89,7 +87,6 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>./blosc;$(HDF5)/include/cpp;$(HDF5)/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
-      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -130,8 +127,7 @@
   <ItemGroup>
     <CustomBuild Include="converter.i">
       <FileType>Document</FileType>
-      <Command Condition="'$(Configuration)|$(Platform)'=='PythonModule|Win32'">echo Neccessary environment variables:
-echo HDF5: %HDF5% 
+      <Command Condition="'$(Configuration)|$(Platform)'=='PythonModule|Win32'">echo Neccessary environment variables: 
 echo PYTHON_INCLUDE: %PYTHON_INCLUDE%
 echo PYTHON_LIB: %PYTHON_LIB%
 echo Creating wrapper from interface file:
@@ -141,16 +137,7 @@ $(SWIG)\swig.exe -c++ -python Converter.i</Command>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
     </CustomBuild>
-    <CustomBuild Include="HOWTO.txt">
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">echo HDF5: %HDF5% </Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-echo HDF5: %HDF5% </Command>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='PythonModule|Win32'">true</ExcludedFromBuild>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Dummy.txt</Outputs>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Neccessary environment variables:</Message>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Neccessary environment variables:</Message>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Dummy.txt</Outputs>
-    </CustomBuild>
+    <None Include="HOWTO.txt" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Basis.cpp" />

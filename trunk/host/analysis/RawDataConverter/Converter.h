@@ -66,9 +66,9 @@ public:
   void createTotHist(bool CreateTotHist = true);
   void createThresholdHists(bool CreateThresholdHists = true);
   
-  void setFEi4B(bool FEi4B = true, const unsigned int pFEindex = 0);
-  void setNbCIDs(unsigned int NbCIDs, const unsigned int pFEindex = 0);
-  void setMaxTot(unsigned int rMaxTot, const unsigned int pFEindex = 0);
+  void setFEi4B(bool FEi4B = true);
+  void setNbCIDs(unsigned int NbCIDs);
+  void setMaxTot(unsigned int MaxTot);
 
   //info options
   void setErrorOutput(bool Toggle = true);								//set to see errors output, standard setting: on
@@ -77,7 +77,6 @@ public:
 	void setDebugOutput(bool Toggle = true);								//set to see debug output, standard setting: off
 	void setBugReport(bool Toggle = true);									//set to create Bug report, standard setting: off
   void setHDF5ExeptionOutput(bool Toggle = true);         //set to see HDF5 errors
-  void setDebugEvents(const unsigned long& rStartEvent = 0, const unsigned long& rStopEvent = 0, const bool& debugEvents = true);
 
   // info outputs
   void exportSummary();
@@ -137,7 +136,6 @@ private:
 
   ParInfo* _parameterInfoBuffer;  //pointer to the parameter buffer
   MetaInfo* _metaInfoBuffer;      //pointer to the meta buffer
-
   HitInfo* _hitInfoBuffer;        //pointer to the ouput hit info buffer
 
   hsize_t _NparInfoBuffer;        //entries in the parameter info buffer

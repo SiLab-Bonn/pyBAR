@@ -76,12 +76,11 @@ void Basis::info(std::string& pText, int pLine)
 
 void Basis::warning(std::string& pText, int pLine)
 {
-  if(_warning){
 		std::stringstream tOutString;
 		if (pLine == -1)
-			tOutString<<"WARNING "<<_sourceFileName<<"::"<<pText;
+			tOutString<<"WARING "<<_sourceFileName<<"::"<<pText;
 		else
-			tOutString<<"WARNING "<<_sourceFileName<<"("<<pLine<<")::"<<pText;
+			tOutString<<"WARING "<<_sourceFileName<<"("<<pLine<<")::"<<pText;
 		std::cout<<tOutString.str()<<"\n";
 		if (_debugReport){
 			std::ofstream tBugReport;
@@ -89,7 +88,6 @@ void Basis::warning(std::string& pText, int pLine)
 			tBugReport<<tOutString.str()<<std::endl;
 			tBugReport.close();
 		}
-  }
 }
 
 void Basis::error(std::string& pText, int pLine)

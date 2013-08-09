@@ -19,7 +19,6 @@ public:
   void getTotHist(unsigned long*& rTotHist);           //returns the tot histogram for all hits
   void getRelBcidHist(unsigned long*& rRelBcidHist);   //returns the relative BCID histogram for all hits
 
-  void setNfE(const unsigned int& rNfEs){_nFEs = rNfEs;};         //sets the number of FE read out
   void createOccupancyHist(bool CreateOccHist = true);
   void createRelBCIDHist(bool CreateRelBCIDHist = true);
   void createTotHist(bool CreateTotHist = true);
@@ -70,8 +69,6 @@ private:
   std::vector<unsigned int> _parameterValues; //different parameter values used in ParInfo
 
   bool _createOccHist, _createRelBCIDhist, _createTotHist;
-
-  unsigned int _nFEs;            //number of FE read out
   
   ParInfo* _parInfo;
 };
