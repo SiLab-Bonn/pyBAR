@@ -11,78 +11,6 @@
 #define __DEBUG false
 #define __DEBUG2 false
 
-//DUT and TLU defines
-#define __BCIDCOUNTERSIZE_FEI4A 256	  //BCID counter for FEI4A has 8 bit
-#define __BCIDCOUNTERSIZE_FEI4B 1024  //BCID counter for FEI4B has 10 bit
-#define __NSERVICERECORDS 32          //# of different service records
-#define __MAXARRAYSIZE 32768          //maximum buffer array size for the output hit array (has to be bigger than hits in one chunk)
-#define __MAXHITBUFFERSIZE 30000      //maximum buffer array size for the hit buffer array (has to be bigger than hits in one event)
-#define __MAXTLUTRGNUMBER 32767       //maximum trigger logic unit trigger number (32-bit)
-
-//event error codes
-#define __N_ERROR_CODES 8             //number of event error codes
-#define __NO_ERROR 0                  //no error
-#define __HAS_SR 1                    //the event has service records
-#define __NO_TRG_WORD 2               //the event has no trigger word, is ok for not external triggering
-#define __NON_CONST_LVL1ID 4          //LVL1ID changes in one event, is ok for self triggering
-#define __EVENT_INCOMPLETE 8          //BCID not increasing by 1, most likely BCID missing (incomplete data transmission)
-#define __UNKNOWN_WORD 16             //event has unknown words
-#define __BCID_JUMP 32                //BCID jumps, but LVL1ID is constant and data is externally triggered
-#define __TRG_ERROR 64                //a trigger error occured
-
-//trigger error codes
-#define __TRG_N_ERROR_CODES 8         //number of trigger error codes
-#define __TRG_NO_ERROR 0              //no trigger error
-#define __TRG_NUMBER_INC_ERROR 1      //two consecutive triggern numbers are not increasing by exactly one (counter overflow case considered correctly)
-#define __TRG_NUMBER_MORE_ONE 2       //more than one trigger per event
-#define __TRG_ERROR_TRG_ACCEPT 4      //TLU error
-#define __TRG_ERROR_LOW_TIMEOUT 8     //TLU error
-
-//trigger word macros
-//#define TRIGGER_WORD_HEADER_MASK_NEW 0x00000000 //first bit 1 means trigger word
-#define TRIGGER_WORD_HEADER_MASK_NEW 0x80000000   //first bit 1 means trigger word
-#define TRIGGER_NUMBER_MASK_NEW		0x0000FFFF      //trigger number is in the low word
-#define TRIGGER_ERROR_TRG_ACCEPT		0x40000000    //trigger accept error
-#define TRIGGER_ERROR_LOW_TIMEOUT		0x20000000    //TLU not deassert trigger signal
-#define TRIGGER_WORD_MACRO_NEW(X)			(((TRIGGER_WORD_HEADER_MASK_NEW & X) == TRIGGER_WORD_HEADER_MASK_NEW) ? true : false) //true if data word is trigger word
-#define TRIGGER_NUMBER_MACRO_NEW(X)	(TRIGGER_NUMBER_MASK_NEW & X)                                                           //calculates the trigger number from a trigger word
-
-//structure to store the hits
-typedef struct HitInfo{
-  unsigned long eventNumber;  //event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
-  unsigned int triggerNumber; //external trigger number for read out system
-  unsigned char relativeBCID; //relative BCID value (unsigned char: 0 to 255)
-  unsigned short int LVLID;   //LVL1ID (unsigned short int: 0 to 65.535)
-  unsigned char column;       //column value (unsigned char: 0 to 255)
-  unsigned short int row;     //row value (unsigned short int: 0 to 65.535)
-  unsigned char tot;          //tot value (unsigned char: 0 to 255)
-  unsigned short int BCID;    //absolute BCID value (unsigned short int: 0 to 65.535)
-  unsigned char triggerStatus;//event service records
-  unsigned int serviceRecord; //event service records
-  unsigned char eventStatus;  //event status value (unsigned char: 0 to 255)
-} HitInfo;
-
-//structure for the input meta data
-typedef struct MetaInfo{
-  unsigned int startIndex;    //start index for this read out
-  unsigned int stopIndex;     //stop index for this read out (exclusive!)
-  unsigned int length;        //number of data word in this read out
-  double timeStamp;           //time stamp of the readout         
-  unsigned int errorCode;     //error code for the read out (0: no error)
-} MetaInfo;
-
-//structure for the output meta data
-typedef struct MetaInfoOut{
-  unsigned long eventIndex;   //event number of the read out
-  double timeStamp;           //time stamp of the readout         
-  unsigned int errorCode;     //error code for the read out (0: no error)
-} MetaInfoOut;
-
-//structure to read the parameter information table
-typedef struct ParInfo{
-  unsigned int pulserDAC;     //pulser DAC setting
-} ParInfo;
-
 class Interpret: public Basis
 {
 public:
@@ -91,7 +19,7 @@ public:
 
   //main functions
   bool interpretRawData(unsigned int* pDataWords, const unsigned int& pNdataWords); //starts to interpret the actual raw data pDataWords and saves result to _hitInfo
-  void setMetaWordIndex(const unsigned int& tLength, MetaInfo* &rMetaInfo);         //sets the meta word index for word number/event correlation
+  bool setMetaWordIndex(const unsigned int& tLength, MetaInfo* &rMetaInfo);         //sets the meta word index for word number/event correlation
   void getMetaEventIndex(unsigned int& rEventNumberIndex, unsigned long*& rEventNumber);  //returns the meta event index filled upto the actual interpreted hits
   void getHits(unsigned int &rNhits, HitInfo* &rHitInfo);   //returns the actual interpreted hits
 
@@ -151,6 +79,7 @@ private:
   void allocateHitBufferArray();
   void deleteHitBufferArray();
   void allocateMetaEventIndexArray();
+  void resetMetaEventIndexArray();
   void deleteMetaEventIndexArray();
   void allocateTriggerErrorCounterArray();
   void resetTriggerErrorCounterArray();
