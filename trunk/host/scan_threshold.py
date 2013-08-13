@@ -9,9 +9,6 @@ import numpy as np
 import tables as tb
 import BitVector
 
-from fei4.output import FEI4Record
-from daq.readout import Readout
-
 from utils.utils import get_all_from_queue, split_seq
 
 from analysis.data_struct import MetaTable
@@ -19,7 +16,7 @@ from analysis.data_struct import MetaTable
 from scan.scan import ScanBase
 
 class ThresholdScan(ScanBase):
-    def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "", outdir = None):
+    def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "scan_threshold", outdir = None):
         super(ThresholdScan, self).__init__(config_file, definition_file, bit_file, device, scan_identifier, outdir)
         
     def start(self, configure = True):
@@ -30,10 +27,10 @@ class ThresholdScan(ScanBase):
         self.readout.start()
         print 'Done!'
         
-        data_words_lists = []
+        #data_words_lists = []
         
         scan_parameter = 'PlsrDAC'
-        scan_paramter_value_range = range(200, 601, 4)
+        scan_paramter_value_range = range(0, 100, 1)
         
         
             
@@ -132,11 +129,11 @@ class ThresholdScan(ScanBase):
         
         def get_cols_rows(data_words):
             for item in data_words:
-                yield ((item & 0xFE0000)>>17)-1, ((item & 0x1FF00)>>8)-1
+                yield ((item & 0xFE0000)>>17), ((item & 0x1FF00)>>8)
                 
         def get_rows_cols(data_words):
             for item in data_words:
-                yield ((item & 0x1FF00)>>8)-1, ((item & 0xFE0000)>>17)-1
+                yield ((item & 0x1FF00)>>8), ((item & 0xFE0000)>>17)
          
         #    occupancy_plots = []
         #    for data_word_list in data_words_lists:
@@ -153,11 +150,6 @@ class ThresholdScan(ScanBase):
         #        print occupancy_plot[11][80]
         
 if __name__ == "__main__":
-    chip_flavor = 'fei4a'
-    config_file = r'C:\Users\silab\Dropbox\pyats\trunk\host\config\fei4default\configs\std_cfg_'+chip_flavor+'_simple.cfg'
-    bit_file = r'C:\Users\silab\Dropbox\pyats\trunk\device\MultiIO\FPGA\ise\top.bit'
-    
-    scan = ThresholdScan(config_file = config_file, bit_file = bit_file)
-    
+    import scan_configuration
+    scan = ThresholdScan(scan_configuration.config_file, bit_file = scan_configuration.bit_file, outdir = scan_configuration.outdir)
     scan.start()
-    
