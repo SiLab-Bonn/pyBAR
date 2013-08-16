@@ -1,7 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.mlab as mlab
+from scipy.optimize import curve_fit
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 import pandas as pd
 import itertools
+import tables as tb
 from matplotlib import colors, cm, legend
 
 def make_occupancy(cols, rows, max_occ = None):
@@ -11,7 +15,7 @@ def make_occupancy(cols, rows, max_occ = None):
     extent = [yedges[0]-0.5, yedges[-1]+0.5, xedges[-1]+0.5, xedges[0]-0.5]
     #plt.pcolor(H)
     cmap = cm.get_cmap('hot', 20)
-    ceil_number = ceil_mod(int(H.max()) if max_occ == None else max_occ, 10) 
+    ceil_number = ceil_mod(int(H.max()) if max_occ == None else max_occ, 10)
     bounds = range(0, ceil_number+1, ceil_number/10)
     norm = colors.BoundaryNorm(bounds, cmap.N)
     plt.imshow(H, interpolation='nearest', aspect="auto", cmap = cmap, norm = norm, extent=extent) # for monitoring
@@ -20,17 +24,20 @@ def make_occupancy(cols, rows, max_occ = None):
     plt.ylabel('Row')
     plt.colorbar(boundaries = bounds, cmap = cmap, norm = norm, ticks = bounds)
 
-def plot_occupancy(cols, rows, max_occ = None, filename = None):
+def plot_occupancy(cols, rows = None, max_occ = None, filename = None):
+    if(rows == None):
+        cols = 0
+        rows = 0
     make_occupancy(cols, rows, max_occ)
     if filename is None:
         plt.show()
     else:
         plt.savefig(filename)
-    
+
 def save_occupancy(filename, cols, rows, max_occ = None):
     make_occupancy(cols, rows, max_occ)
     plt.savefig(filename)
-    
+
 def ceil_mod(number, mod):
     #print number
     while True:
@@ -56,7 +63,7 @@ def plot_threshold(threshold_hist, v_cal = 53, plot_range = (1500,2500), filenam
         plt.show()
     else:
         plt.savefig(filename)
-        
+
 def plot_noise(noise_hist, v_cal = 53, plot_range = (1500,2500), filename = None):
     plt.clf()
     H=np.empty(shape=(336,80),dtype=noise_hist.dtype)
@@ -73,59 +80,61 @@ def plot_noise(noise_hist, v_cal = 53, plot_range = (1500,2500), filename = None
         plt.show()
     else:
         plt.savefig(filename)
-        
+
 def plot_relative_bcid(relative_bcid_hist, filename = None):
     plt.clf()
-    plt.bar(range(10,16), relative_bcid_hist[:], color='r', align = 'center') #bug: https://github.com/matplotlib/matplotlib/issues/1882, log = True)
+    plt.bar(range(0,16), relative_bcid_hist[:], color='r', align = 'center') #bug: https://github.com/matplotlib/matplotlib/issues/1882, log = True)
     plt.xlabel('relative BCID [25 ns]')
     plt.ylabel('#')
     plt.yscale('log')
     plt.title('Relative BCID (former LVL1ID)')
-    fig = plt.figure(1)  
+    plt.xlim((0, 16))
+    fig = plt.figure(1)
     fig.patch.set_facecolor('white')
     plt.grid(True)
     if filename is None:
         plt.show()
     else:
         plt.savefig(filename)
-        
+
 def plot_tot(tot_hist, filename = None):
     plt.clf()
     plt.bar(range(0,16), tot_hist[:], color='b', align = 'center')
+    plt.xlim((0, 15))
     plt.xlabel('TOT [25 ns]')
     plt.ylabel('#')
     plt.title('Time over threshold distribution (TOT code)')
-    fig = plt.figure(1)  
+    fig = plt.figure(1)
     fig.patch.set_facecolor('white')
     plt.grid(True)
     if filename is None:
         plt.show()
     else:
         plt.savefig(filename)
-        
+
 def plot_event_errors(error_hist, filename = None):
     plt.clf()
-    plt.bar(range(0,8), error_hist[:], color='r', align = 'center', label="Error code")
+    plt.bar(range(0,len(error_hist[:])), error_hist[:], color='r', align = 'center', label="Error code")
     plt.xlabel('')
     plt.ylabel('#')
     plt.title('Event errors')
-    fig = plt.figure(1)  
+    fig = plt.figure(1)
     fig.patch.set_facecolor('white')
     plt.grid(True)
-    plt.xticks(range(0,8), ('SR\noccured', 'No\ntrigger', 'LVL1ID\nnot const.', '#BCID\nwrong', 'unknown\nword', 'BCID\njump', 'trigger\nerror', 'not\nused') )
+    plt.xticks(range(0,8), ('SR\noccured', 'No\ntrigger', 'LVL1ID\nnot const.', '#BCID\nwrong', 'unknown\nword', 'BCID\njump', 'trigger\nerror', 'truncated') )
     #plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
     if filename is None:
         plt.show()
     else:
         plt.savefig(filename)
-        
+
 def plot_trigger_errors(trigger_error_hist, filename = None):
     plt.clf()
     plt.bar(range(0,8), trigger_error_hist[:], color='r', align = 'center', label="Error code")
     plt.xlabel('')
     plt.ylabel('#')
     plt.title('Trigger errors')
-    fig = plt.figure(1)  
+    fig = plt.figure(1)
     fig.patch.set_facecolor('white')
     plt.grid(True)
     plt.xticks(range(0,8), ('increase\nerror', 'more than\none trg.', 'TLU\naccept', 'TLU\ntime out', 'not\nused', 'not\nused', 'not\nused', 'not\nused') )
@@ -134,14 +143,15 @@ def plot_trigger_errors(trigger_error_hist, filename = None):
         plt.show()
     else:
         plt.savefig(filename)
-        
+
 def plot_service_records(service_record_hist, filename = None):
     plt.clf()
     plt.bar(range(0,32), service_record_hist[:], color='r', align = 'center', label="Error code")
+    plt.xlim((0, 31))
     plt.xlabel('service record code')
     plt.ylabel('#')
-    plt.title('Service records')
-    fig = plt.figure(1)  
+    plt.title('Service records ('+str(sum(service_record_hist[:]))+' entries)')
+    fig = plt.figure(1)
     fig.patch.set_facecolor('white')
     plt.grid(True)
     #plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
@@ -149,7 +159,7 @@ def plot_service_records(service_record_hist, filename = None):
         plt.show()
     else:
         plt.savefig(filename)
-        
+
 def plot_threshold_2d(threshold_hist, v_cal = 53, plot_range = (1500,2500),  max_occ = None, filename = None):
     plt.clf()
     H=np.empty(shape=(336,80),dtype=threshold_hist.dtype)
@@ -157,7 +167,7 @@ def plot_threshold_2d(threshold_hist, v_cal = 53, plot_range = (1500,2500),  max
     H=H*v_cal
     extent = [0.5, 80.5, 336.5, 0.5]
     cmap = cm.get_cmap('hot', 200)
-    ceil_number = ceil_mod(int(H.max()) if max_occ == None else max_occ, 10) 
+    ceil_number = ceil_mod(int(H.max()) if max_occ == None else max_occ, 10)
     bounds = range(0, ceil_number+1, ceil_number/10)
     norm = colors.BoundaryNorm(bounds, cmap.N)
     plt.imshow(H, interpolation='nearest', aspect="auto", cmap = cmap, norm = norm, extent=extent) # for monitoring
@@ -204,22 +214,31 @@ def plot_correlations(filenames, limit = None):
             plt.savefig(colName[0]+'_'+colName[1]+'.pdf')
 #             print 'store as ', fileNames[int(index/2)]
             index+=1
-            
+
 def plotOccupancy(occupancy_hist, median = False, max_occ = None, filename = None):
     plt.clf()
     H=np.empty(shape=(336,80),dtype=occupancy_hist.dtype)
-    H[:]=occupancy_hist[:,:,0]
+    H = occupancy_hist
     #print H[2, 2]
     extent = [0.5, 80.5, 336.5, 0.5]
-    cmap = cm.get_cmap('hot')    
+    #     cmap = cm.get_cmap('copper_r')
+    cmap = cm.get_cmap('PuBu', 10)
     if median:
-        ceil_number = ceil_mod(int(np.median(H[H>0])*2) if max_occ == None else max_occ, 255)
+        ceil_number = ceil_mod(int(np.median(H[H>0])*2) if max_occ == None else max_occ, 10)
     else:
-        ceil_number = ceil_mod(int(H.max()) if max_occ == None else max_occ, 255)
-    bounds = range(0, ceil_number+1, ceil_number/255)
+        ceil_number = ceil_mod(int(H.max()) if max_occ == None else max_occ, 10)
+    #         ceil_number = ceil_mod(int(H.max()) if max_occ == None else max_occ, 255)
+    
+    if(ceil_number<10):
+        ceil_number = 10
+    bounds = range(0, ceil_number+1, ceil_number/10)
     norm = colors.BoundaryNorm(bounds, cmap.N)
+    #     if (ceil_number<255):
+    #         ceil_number = 255
+    #     bounds = range(0, ceil_number+1, 255/ceil_number)
+    #     norm = colors.BoundaryNorm(bounds, cmap.N)
     plt.imshow(H, interpolation='nearest', aspect="auto", cmap = cmap, norm = norm, extent=extent) # for monitoring
-    plt.title('Occupancy')
+    plt.title('Occupancy ('+str(sum(sum(H)))+' entries)')
     plt.xlabel('Column')
     plt.ylabel('Row')
     plt.colorbar(boundaries = bounds, cmap = cmap, norm = norm)
@@ -227,7 +246,7 @@ def plotOccupancy(occupancy_hist, median = False, max_occ = None, filename = Non
         plt.show()
     else:
         plt.savefig(filename)
-        
+
 def plot_pixel_mask(mask, maskname, filename = None):
     plt.clf()
     extent = [0.5, 80.5, 336.5, 0.5]
@@ -235,12 +254,12 @@ def plot_pixel_mask(mask, maskname, filename = None):
     plt.title(maskname+" mask")
     plt.xlabel('Column')
     plt.ylabel('Row')
-    #plt.colorbar(boundaries = bounds, cmap = cmap, norm = norm)
+    plt.colorbar(boundaries = bounds, cmap = cmap, norm = norm)
     if filename is None:
         plt.show()
     else:
         plt.savefig(filename)
-        
+
 def plot_pixel_dac_config(dacconfig, dacname, filename = None):
     plt.clf()
     extent = [0.5, 80.5, 336.5, 0.5]
@@ -252,8 +271,154 @@ def plot_pixel_dac_config(dacconfig, dacname, filename = None):
     plt.title(dacname+" distribution")
     plt.xlabel('Column')
     plt.ylabel('Row')
-    #plt.colorbar(boundaries = bounds, cmap = cmap, norm = norm)
+    plt.colorbar(boundaries = bounds, cmap = cmap, norm = norm)
     if filename is None:
         plt.show()
     else:
         plt.savefig(filename)
+
+def create_2d_pixel_hist(hist2d, title = None, x_axis_title = None, y_axis_title = None, z_max = None):
+    H=np.empty(shape=(336,80),dtype=hist2d.dtype)
+    H[:]=hist2d[:,:]
+    extent = [0.5, 80.5, 336.5, 0.5]
+    cmap = cm.get_cmap('hot', 200)
+    ceil_number = ceil_mod(int(H.max()) if z_max == None else z_max, 10) 
+    bounds = range(0, ceil_number+1, ceil_number/10)
+    norm = colors.BoundaryNorm(bounds, cmap.N)
+    plt.imshow(H, interpolation='nearest', aspect="auto", cmap = cmap, norm = norm, extent=extent) # for monitoring
+    if title != None:
+        plt.title(title)
+    if x_axis_title != None:
+        plt.xlabel(x_axis_title)
+    if y_axis_title != None:
+        plt.ylabel(y_axis_title)
+
+    ax = plt.subplot(311)
+    divider = make_axes_locatable(ax)
+    ax = plt.subplot(311)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    cbar = plt.colorbar(boundaries = bounds, cmap = cmap, norm = norm, ticks = bounds, cax = cax)
+
+
+def create_1d_hist(hist, title = None, x_axis_title = None, y_axis_title = None, bins = 100):
+    n,bins,patches = plt.hist(x = hist.ravel(), bins = bins)
+    if title != None:
+        plt.title(title)
+    if x_axis_title != None:
+        plt.xlabel(x_axis_title)
+    if y_axis_title != None:
+        plt.ylabel(y_axis_title)
+
+    bin_centres = (bins[:-1] + bins[1:])/2
+
+    def gauss(x, *p):
+        A, mu, sigma = p
+        return A*numpy.exp(-(x-mu)**2/(2.*sigma**2))
+    # p0 is the initial guess for the fitting coefficients (A, mu and sigma above)
+    p0 = np.array([3500., 200., 10.])
+    coeff, var_matrix = curve_fit(gauss, bin_centres, n, p0=p0)
+    hist_fit = gauss(bin_centres, *coeff)
+    plt.plot(bin_centres, hist_fit, "r--", label='Gaus fit')
+    plt.ylim([0, plt.ylim()[1]*1.05])
+    ax = plt.subplot(312)
+
+    if(len(bins)%2==1):
+        median = bins[int(len(bins)/2)+1]
+    else:
+        median = (bins[int(len(bins)/2)] + bins[int(len(bins)/2)+1])/2
+
+    mean = 0
+    for i in range(0, len(hist.ravel())):
+        mean += hist.ravel()[i]
+    mean = mean/len(hist.ravel())
+
+    rms = 0
+    for i in range(0, len(hist.ravel())):
+        rms += (hist.ravel()[i])**2
+    rms = rms/len(hist.ravel())
+
+    chi2 = 0
+    for i in range(0, len(n)):
+        chi2 += (n[i] - gauss(bins[i], *coeff))**2
+
+    plt.xlim([0, mean*2])
+    textright = '$\mu=%.2f$\n$\sigma=%.2f$\n$\chi2=%.2f$'%(coeff[1], coeff[2], chi2)
+    #props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+    ax.text(0.85, 0.9, textright, transform=ax.transAxes, fontsize=8,
+            verticalalignment='top')#, bbox=props)
+    textleft = '$\mathrm{RMS}=%.2f$\n$\mathrm{mean}=%.2f$\n$\mathrm{median}=%.2f$'%(rms, mean, median)
+    #props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+    ax.text(0.1, 0.9, textleft, transform=ax.transAxes, fontsize=8,
+            verticalalignment='top')#, bbox=props)
+
+def create_pixel_scatter_plot(hist, title = None, x_axis_title = None, y_axis_title = None):
+    scatter_y = np.empty(shape=(336*80),dtype=hist.dtype)
+    scatter_y_mean = np.zeros(shape=(80),dtype=np.float32)
+    for col in range(80):
+        column_mean = 0
+        for row in range(336):
+            scatter_y[row + col*336] = hist[row,col]
+            column_mean += hist[row,col]
+        scatter_y_mean[col] = column_mean/336.
+    plt.scatter(range(80*336),  scatter_y, marker='o', s = 0.8)
+    p1, = plt.plot(range(336/2,80*336+336/2,336), scatter_y_mean, linewidth=2.0)
+    plt.legend([p1], ["column mean"], prop={'size':6})
+    plt.xlim(0,26880)
+    plt.ylim(min(scatter_y),max(scatter_y))
+    if title != None:
+        plt.title(title)
+    if x_axis_title != None:
+        plt.xlabel(x_axis_title)
+    if y_axis_title != None:
+        plt.ylabel(y_axis_title)
+
+def plotThreeWay(hist, title, x_axis_title = None, y_axis_title = None, filename = None, label = "#"):   #the famous 3 way plot (enhanced)
+    mean = np.mean(hist)
+
+    plt.clf()
+    fig = plt.figure(num=None, figsize=(8, 6), dpi=80, facecolor='w', edgecolor='k')
+    plt.figure(num=None, figsize=(8, 6), dpi=80, facecolor='w', edgecolor='k')
+    plt.subplot(311)
+    create_2d_pixel_hist(hist, title = title, x_axis_title = "column", y_axis_title = "row", z_max = 2*mean)
+    plt.subplot(312)
+    create_1d_hist(hist, bins = 30, x_axis_title = label, y_axis_title = "#")
+    plt.subplot(313)
+    create_pixel_scatter_plot(hist, x_axis_title = "channel = row + column*336", y_axis_title = label)
+    
+    #fig = plt.figure()
+    #fig.patch.set_facecolor('white')
+    plt.tight_layout()
+    #plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+
+    if filename is None:
+        plt.show()
+    else:
+        plt.savefig(filename)
+
+def plotTDACcfg(in_file_name, filename = None):
+    plt.clf()
+    array = []
+    for line in open(in_file_name, 'r'):
+        if(line[0] != "#"): #skip comments
+            line = filter(None, line.split(" ")) #create array from the line and delete empty entries
+            line = line[:-1] #remove new line character
+            print line
+
+
+with tb.openFile('out.h5', 'r') as in_file:
+    H=np.empty(shape=(336,80),dtype=in_file.root.HistOcc.dtype)
+    H[:]=in_file.root.HistOcc[:,:, 0]
+    #print H
+    plotThreeWay(hist = H, title = "Test", filename = "plotting/plot.pdf", label = "noise[e]")
+
+#     fig.patch.set_facecolor('white')
+#     if filename is None:
+#         plt.show()
+#     else:
+#         plt.savefig(filename)
+
+# import tables as tbx
+# with tb.openFile("out.h5", 'r') as in_file:
+#create_pixel_scatter_plot(in_file.root.HistOcc[:,:,0])
+#     plotThreeWay(in_file.root.HistOcc[:,:,0], title = "Test", x_axis_title = "occupancy", y_axis_title ="#")
+# plotTDACcfg("TDAC.dat")
