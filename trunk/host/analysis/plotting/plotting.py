@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.mlab as mlab
 from scipy.optimize import curve_fit
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import pandas as pd
@@ -15,7 +14,7 @@ def make_occupancy(cols, rows, max_occ = None):
     extent = [yedges[0]-0.5, yedges[-1]+0.5, xedges[-1]+0.5, xedges[0]-0.5]
     #plt.pcolor(H)
     cmap = cm.get_cmap('hot', 20)
-    ceil_number = ceil_mod(int(H.max()) if max_occ == None else max_occ, 10)
+    ceil_number = ceil_mod(H.max() if max_occ == None else max_occ, 10)
     bounds = range(0, ceil_number+1, ceil_number/10)
     norm = colors.BoundaryNorm(bounds, cmap.N)
     plt.imshow(H, interpolation='nearest', aspect="auto", cmap = cmap, norm = norm, extent=extent) # for monitoring
@@ -39,7 +38,8 @@ def save_occupancy(filename, cols, rows, max_occ = None):
     plt.savefig(filename)
 
 def ceil_mod(number, mod):
-    #print number
+    number = int(number)
+    mod = int(mod)
     while True:
         if number%mod == 0:
             break
@@ -167,7 +167,7 @@ def plot_threshold_2d(threshold_hist, v_cal = 53, plot_range = (1500,2500),  max
     H=H*v_cal
     extent = [0.5, 80.5, 336.5, 0.5]
     cmap = cm.get_cmap('hot', 200)
-    ceil_number = ceil_mod(int(H.max()) if max_occ == None else max_occ, 10)
+    ceil_number = ceil_mod(H.max() if max_occ == None else max_occ, 10)
     bounds = range(0, ceil_number+1, ceil_number/10)
     norm = colors.BoundaryNorm(bounds, cmap.N)
     plt.imshow(H, interpolation='nearest', aspect="auto", cmap = cmap, norm = norm, extent=extent) # for monitoring
@@ -224,9 +224,9 @@ def plotOccupancy(occupancy_hist, median = False, max_occ = None, filename = Non
     #     cmap = cm.get_cmap('copper_r')
     cmap = cm.get_cmap('PuBu', 10)
     if median:
-        ceil_number = ceil_mod(int(np.median(H[H>0])*2) if max_occ == None else max_occ, 10)
+        ceil_number = ceil_mod(np.median(H[H>0]*2) if max_occ == None else max_occ, 10)
     else:
-        ceil_number = ceil_mod(int(H.max()) if max_occ == None else max_occ, 10)
+        ceil_number = ceil_mod(H.max() if max_occ == None else max_occ, 10)
     #         ceil_number = ceil_mod(int(H.max()) if max_occ == None else max_occ, 255)
     
     if(ceil_number<10):
@@ -264,7 +264,7 @@ def plot_pixel_dac_config(dacconfig, dacname, filename = None):
     plt.clf()
     extent = [0.5, 80.5, 336.5, 0.5]
     cmap = cm.get_cmap('hot')
-    ceil_number = ceil_mod(int(dacconfig.max()),1)
+    ceil_number = ceil_mod(dacconfig.max(),1)
     bounds = range(0, ceil_number+1, ceil_number/255)
     norm = colors.BoundaryNorm(bounds, cmap.N)
     plt.imshow(dacconfig, interpolation='nearest', aspect="auto", cmap = cmap, norm = norm, extent=extent)
@@ -282,7 +282,9 @@ def create_2d_pixel_hist(hist2d, title = None, x_axis_title = None, y_axis_title
     H[:]=hist2d[:,:]
     extent = [0.5, 80.5, 336.5, 0.5]
     cmap = cm.get_cmap('hot', 200)
-    ceil_number = ceil_mod(int(H.max()) if z_max == None else z_max, 10) 
+    #ceil_number = np.max(hist2d) if z_max == None else z_max
+    ceil_number = ceil_mod(H.max() if z_max == None else z_max, 10)
+    #ceil_number = np.max(hist2d)
     bounds = range(0, ceil_number+1, ceil_number/10)
     norm = colors.BoundaryNorm(bounds, cmap.N)
     plt.imshow(H, interpolation='nearest', aspect="auto", cmap = cmap, norm = norm, extent=extent) # for monitoring
@@ -292,12 +294,11 @@ def create_2d_pixel_hist(hist2d, title = None, x_axis_title = None, y_axis_title
         plt.xlabel(x_axis_title)
     if y_axis_title != None:
         plt.ylabel(y_axis_title)
-
     ax = plt.subplot(311)
     divider = make_axes_locatable(ax)
     ax = plt.subplot(311)
     cax = divider.append_axes("right", size="5%", pad=0.05)
-    cbar = plt.colorbar(boundaries = bounds, cmap = cmap, norm = norm, ticks = bounds, cax = cax)
+    plt.colorbar(boundaries = bounds, cmap = cmap, norm = norm, ticks = bounds, cax = cax)
 
 
 def create_1d_hist(hist, title = None, x_axis_title = None, y_axis_title = None, bins = 100):
@@ -313,7 +314,7 @@ def create_1d_hist(hist, title = None, x_axis_title = None, y_axis_title = None,
 
     def gauss(x, *p):
         A, mu, sigma = p
-        return A*numpy.exp(-(x-mu)**2/(2.*sigma**2))
+        return A*np.exp(-(x-mu)**2/(2.*sigma**2))
     # p0 is the initial guess for the fitting coefficients (A, mu and sigma above)
     p0 = np.array([3500., 200., 10.])
     coeff, var_matrix = curve_fit(gauss, bin_centres, n, p0=p0)
@@ -374,9 +375,7 @@ def create_pixel_scatter_plot(hist, title = None, x_axis_title = None, y_axis_ti
 
 def plotThreeWay(hist, title, x_axis_title = None, y_axis_title = None, filename = None, label = "#"):   #the famous 3 way plot (enhanced)
     mean = np.mean(hist)
-
     plt.clf()
-    fig = plt.figure(num=None, figsize=(8, 6), dpi=80, facecolor='w', edgecolor='k')
     plt.figure(num=None, figsize=(8, 6), dpi=80, facecolor='w', edgecolor='k')
     plt.subplot(311)
     create_2d_pixel_hist(hist, title = title, x_axis_title = "column", y_axis_title = "row", z_max = 2*mean)
@@ -404,13 +403,12 @@ def plotTDACcfg(in_file_name, filename = None):
             line = line[:-1] #remove new line character
             print line
 
-
-with tb.openFile('out.h5', 'r') as in_file:
-    H=np.empty(shape=(336,80),dtype=in_file.root.HistOcc.dtype)
-    H[:]=in_file.root.HistOcc[:,:, 0]
-    #print H
-    plotThreeWay(hist = H, title = "Test", filename = "plotting/plot.pdf", label = "noise[e]")
-
+if __name__ == "__main__":
+    print 'test'
+    with tb.openFile('out.h5', 'r') as in_file:
+        H=np.empty(shape=(336,80),dtype=in_file.root.HistOcc.dtype)
+        H[:]=in_file.root.HistOcc[:,:, 0]
+        plotThreeWay(hist = H, title = "Test", filename = "out.pdf", label = "noise[e]")
 #     fig.patch.set_facecolor('white')
 #     if filename is None:
 #         plt.show()
