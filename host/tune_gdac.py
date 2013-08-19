@@ -23,6 +23,10 @@ class GdacTune(ScanBase):
         self.setGdacTuneBits()
         self.setTargetThreshold()
         self.setNinjections()
+        self.setAbortPrecision()
+        
+    def setAbortPrecision(self, delta_occupancy = 2):
+        self.abort_precision = delta_occupancy    
         
     def setTargetThreshold(self, PlsrDAC = 30):
         commands = []
@@ -57,11 +61,11 @@ class GdacTune(ScanBase):
         super(GdacTune, self).start(configure)
         
         def get_cols_rows(data_words):
-            for item in data_words:
+            for item in self.readout.data_record_filter(data_words):
                 yield ((item & 0xFE0000)>>17), ((item & 0x1FF00)>>8)
                 
         def get_rows_cols(data_words):
-            for item in data_words:
+            for item in self.readout.data_record_filter(data_words):
                 yield ((item & 0x1FF00)>>8), ((item & 0xFE0000)>>17)
         
         print 'Start readout thread...'
@@ -161,24 +165,28 @@ class GdacTune(ScanBase):
                 
                 OccupancyArray, _, _ = np.histogram2d(*zip(*get_cols_rows(data_words)), bins = (80, 336), range = [[1,80], [1,336]])
                 OccArraySelPixel = OccupancyArray[select_mask_array>0]  #take only selected pixel
+                median_occupancy = np.median(OccArraySelPixel)
                    
-                if(gdac_bit>0 and np.median(OccArraySelPixel) < self.Ninjections/2):
-                    print "median =",np.median(OccArraySelPixel),"<",self.Ninjections/2,"set bit",gdac_bit,"= 0"
+                if(gdac_bit>0 and median_occupancy < self.Ninjections/2):
+                    print "median =",median_occupancy,"<",self.Ninjections/2,"set bit",gdac_bit,"= 0"
                     self.setGdacBit(gdac_bit, bit_value = 0)
                     
                 if(gdac_bit == 0):
                     if not(addedAdditionalLastBitScan):  #scan bit = 0 with the correct value again
                         addedAdditionalLastBitScan=True
-                        lastBitResult = np.median(OccArraySelPixel)
+                        lastBitResult = median_occupancy
                         self.GdacTuneBits.append(0) #bit 0 has to be scanned twice
                         print "scan bit 0 now with value 0"
                     else:
-                        print "scanned bit 0 = 0 with",np.median(OccArraySelPixel)," instead of ",lastBitResult
-                        if(abs(np.median(OccArraySelPixel)-self.Ninjections/2)>abs(lastBitResult-self.Ninjections/2)): #if bit 0 = 0 is worse than bit 0 = 1, so go back
+                        print "scanned bit 0 = 0 with",median_occupancy," instead of ",lastBitResult
+                        if(abs(median_occupancy-self.Ninjections/2)>abs(lastBitResult-self.Ninjections/2)): #if bit 0 = 0 is worse than bit 0 = 1, so go back
                             self.setGdacBit(gdac_bit, bit_value = 1)
                             print "set bit 0 = 1"   
 
                 #plot_occupancy(*zip(*get_cols_rows(data_words)), max_occ = repeat*2, filename = None)#self.scan_data_path+".pdf")
+                if(abs(median_occupancy-self.Ninjections/2) < self.abort_precision): #abort if good value already found to save time
+                    print 'good result already achieved, skipping missing bits'
+                    break
             
             print 'Tuned GDAC to: Vthin_AltCoarse/Vthin_AltFine', self.register.get_global_register_value("Vthin_AltCoarse"),"/", self.register.get_global_register_value("Vthin_AltFine")       
             print 'Stopping readout thread...'
@@ -189,6 +197,7 @@ if __name__ == "__main__":
     import scan_configuration
     scan = GdacTune(scan_configuration.config_file, bit_file = scan_configuration.bit_file, outdir = scan_configuration.outdir)
     scan.setTargetThreshold(PlsrDAC = 40)
+    scan.setAbortPrecision(delta_occupancy = 2)
     scan.setGdacTuneBits(range(7,-1,-1))
     scan.start()
 

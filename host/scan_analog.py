@@ -9,7 +9,6 @@ import tables as tb
 import BitVector
 
 from analysis.data_struct import MetaTable
-
 from utils.utils import get_all_from_queue, split_seq
 
 from scan.scan import ScanBase
@@ -28,7 +27,7 @@ class AnalogScan(ScanBase):
         
         
         commands = []
-        self.register.set_global_register_value("PlsrDAC", 100)
+        self.register.set_global_register_value("PlsrDAC", 40)
         commands.extend(self.register.get_commands("wrregister", name = ["PlsrDAC"]))
         self.register_utils.send_commands(commands)
         
@@ -50,11 +49,11 @@ class AnalogScan(ScanBase):
         print 'Items in queue:', q_size
               
         def get_cols_rows(data_words):
-            for item in data_words:
+            for item in self.readout.data_record_filter(data_words):
                 yield ((item & 0xFE0000)>>17), ((item & 0x1FF00)>>8)
                 
         def get_rows_cols(data_words):
-            for item in data_words:
+            for item in self.readout.data_record_filter(data_words):
                 yield ((item & 0x1FF00)>>8), ((item & 0xFE0000)>>17)
         
         #data_q = get_all_from_queue(self.readout.data_queue)
@@ -106,7 +105,7 @@ class AnalogScan(ScanBase):
         #cols, rows = zip(*get_cols_rows(data_words))
         #plot_occupancy(cols, rows, max_occ = repeat*2)
         
-        plot_occupancy(*zip(*get_cols_rows(data_words)), max_occ = repeat*2, filename = self.scan_data_path+".pdf")
+        plot_occupancy(*zip(*get_cols_rows(data_words)), max_occ = repeat*2, filename = None)
         
     
     #    set nan to special value
