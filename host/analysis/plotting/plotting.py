@@ -5,6 +5,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import pandas as pd
 import itertools
 import tables as tb
+from math import sqrt
 from matplotlib import colors, cm, legend
 
 def make_occupancy(cols, rows, max_occ = None):
@@ -295,14 +296,24 @@ def create_2d_pixel_hist(hist2d, title = None, x_axis_title = None, y_axis_title
     if y_axis_title != None:
         plt.ylabel(y_axis_title)
     ax = plt.subplot(311)
+#     ax = plt.plot()
     divider = make_axes_locatable(ax)
+#     ax = plt.plot()
     ax = plt.subplot(311)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(boundaries = bounds, cmap = cmap, norm = norm, ticks = bounds, cax = cax)
 
 
 def create_1d_hist(hist, title = None, x_axis_title = None, y_axis_title = None, bins = 100):
-    n,bins,patches = plt.hist(x = hist.ravel(), bins = bins)
+    median = np.median(hist)
+    mean = np.mean(a = hist)
+    rms = 0
+    for i in range(0, len(hist.ravel())):
+        rms += (hist.ravel()[i]-mean)**2
+    rms = sqrt(rms/len(hist.ravel()))
+    
+    hist,bins,_ = plt.hist(x = hist.ravel(), bins = bins)   #rebin to 1 d hist
+   
     if title != None:
         plt.title(title)
     if x_axis_title != None:
@@ -311,46 +322,34 @@ def create_1d_hist(hist, title = None, x_axis_title = None, y_axis_title = None,
         plt.ylabel(y_axis_title)
 
     bin_centres = (bins[:-1] + bins[1:])/2
+    amplitude = np.amax(hist)    
+    print amplitude
 
     def gauss(x, *p):
         A, mu, sigma = p
         return A*np.exp(-(x-mu)**2/(2.*sigma**2))
-    # p0 is the initial guess for the fitting coefficients (A, mu and sigma above)
-    p0 = np.array([3500., 200., 10.])
-    coeff, var_matrix = curve_fit(gauss, bin_centres, n, p0=p0)
-    hist_fit = gauss(bin_centres, *coeff)
-    plt.plot(bin_centres, hist_fit, "r--", label='Gaus fit')
-    plt.ylim([0, plt.ylim()[1]*1.05])
+    
+    p0 = np.array([amplitude, mean, rms])# p0 is the initial guess for the fitting coefficients (A, mu and sigma above)
     ax = plt.subplot(312)
-
-    if(len(bins)%2==1):
-        median = bins[int(len(bins)/2)+1]
-    else:
-        median = (bins[int(len(bins)/2)] + bins[int(len(bins)/2)+1])/2
-
-    mean = 0
-    for i in range(0, len(hist.ravel())):
-        mean += hist.ravel()[i]
-    mean = mean/len(hist.ravel())
-
-    rms = 0
-    for i in range(0, len(hist.ravel())):
-        rms += (hist.ravel()[i])**2
-    rms = rms/len(hist.ravel())
-
-    chi2 = 0
-    for i in range(0, len(n)):
-        chi2 += (n[i] - gauss(bins[i], *coeff))**2
-
-    plt.xlim([0, mean*2])
-    textright = '$\mu=%.2f$\n$\sigma=%.2f$\n$\chi2=%.2f$'%(coeff[1], coeff[2], chi2)
-    #props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
-    ax.text(0.85, 0.9, textright, transform=ax.transAxes, fontsize=8,
-            verticalalignment='top')#, bbox=props)
-    textleft = '$\mathrm{RMS}=%.2f$\n$\mathrm{mean}=%.2f$\n$\mathrm{median}=%.2f$'%(rms, mean, median)
-    #props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
-    ax.text(0.1, 0.9, textleft, transform=ax.transAxes, fontsize=8,
-            verticalalignment='top')#, bbox=props)
+    try:
+        coeff, _ = curve_fit(gauss, bin_centres, hist, p0=p0)
+        hist_fit = gauss(bin_centres, *coeff)
+        plt.plot(bin_centres, hist_fit, "r--", label='Gaus fit')
+        chi2 = 0
+        for i in range(0, len(hist)):
+            chi2 += (hist[i] - gauss(bins[i], *coeff))**2
+        textright = '$\mu=%.2f$\n$\sigma=%.2f$\n$\chi2=%.2f$'%(coeff[1], coeff[2], chi2)
+        props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+        ax.text(0.85, 0.9, textright, transform=ax.transAxes, fontsize=8,
+        verticalalignment='top', bbox=props)
+    except RuntimeError:
+        print("Fit failed, do not plot fit")
+        
+    plt.ylim([0, plt.ylim()[1]*1.05])
+    plt.xlim([0, np.amax(bins)])  
+    textleft = '$\mathrm{mean}=%.2f$\n$\mathrm{RMS}=%.2f$\n$\mathrm{median}=%.2f$'%(mean, rms, median)
+    props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+    ax.text(0.1, 0.9, textleft, transform=ax.transAxes, fontsize=8, verticalalignment='top', bbox=props)
 
 def create_pixel_scatter_plot(hist, title = None, x_axis_title = None, y_axis_title = None):
     scatter_y = np.empty(shape=(336*80),dtype=hist.dtype)
@@ -365,7 +364,7 @@ def create_pixel_scatter_plot(hist, title = None, x_axis_title = None, y_axis_ti
     p1, = plt.plot(range(336/2,80*336+336/2,336), scatter_y_mean, linewidth=2.0)
     plt.legend([p1], ["column mean"], prop={'size':6})
     plt.xlim(0,26880)
-    plt.ylim(min(scatter_y),max(scatter_y))
+    plt.ylim(1.1*min(scatter_y) if(min(scatter_y) < 0) else 0 ,1.1*max(scatter_y))
     if title != None:
         plt.title(title)
     if x_axis_title != None:
@@ -373,21 +372,17 @@ def create_pixel_scatter_plot(hist, title = None, x_axis_title = None, y_axis_ti
     if y_axis_title != None:
         plt.ylabel(y_axis_title)
 
-def plotThreeWay(hist, title, x_axis_title = None, y_axis_title = None, filename = None, label = "#"):   #the famous 3 way plot (enhanced)
+def plotThreeWay(hist, title, x_axis_title = None, y_axis_title = None, filename = None, label = "label not set"):   #the famous 3 way plot (enhanced)
     mean = np.mean(hist)
-    plt.clf()
-    plt.figure(num=None, figsize=(8, 6), dpi=80, facecolor='w', edgecolor='k')
+    fig = plt.figure()
+    fig.patch.set_facecolor('white')
     plt.subplot(311)
     create_2d_pixel_hist(hist, title = title, x_axis_title = "column", y_axis_title = "row", z_max = 2*mean)
     plt.subplot(312)
-    create_1d_hist(hist, bins = 30, x_axis_title = label, y_axis_title = "#")
+    create_1d_hist(hist, bins = 100, x_axis_title = label, y_axis_title = "#")
     plt.subplot(313)
     create_pixel_scatter_plot(hist, x_axis_title = "channel = row + column*336", y_axis_title = label)
-    
-    #fig = plt.figure()
-    #fig.patch.set_facecolor('white')
     plt.tight_layout()
-    #plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
 
     if filename is None:
         plt.show()
@@ -404,11 +399,12 @@ def plotTDACcfg(in_file_name, filename = None):
             print line
 
 if __name__ == "__main__":
-    print 'test'
     with tb.openFile('out.h5', 'r') as in_file:
         H=np.empty(shape=(336,80),dtype=in_file.root.HistOcc.dtype)
-        H[:]=in_file.root.HistOcc[:,:, 0]
-        plotThreeWay(hist = H, title = "Test", filename = "out.pdf", label = "noise[e]")
+        H[:]=in_file.root.HistThreshold[:,:]
+        
+        #plotThreeWay(hist = in_file.root.HistOcc[:,:,70], title = "Occupancy", filename = "Occupancy.pdf", label = "noise[e]")
+        plotThreeWay(hist = in_file.root.HistThreshold[:,:], title = "Threshold", filename = "Threshold.pdf", label = "noise[e]")
 #     fig.patch.set_facecolor('white')
 #     if filename is None:
 #         plt.show()
