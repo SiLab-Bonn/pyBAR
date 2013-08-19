@@ -1,6 +1,6 @@
 """ Script to tune the Tdac to the threshold value given in PlsrDAC. Binary search algorithm. Bit 0 is always scanned twice with value 1 and 0.
 """
-from analysis.plotting.plotting import plot_occupancy, create_2d_pixel_hist, plot_pixel_dac_config, plotOccupancy
+from analysis.plotting.plotting import plot_occupancy, create_2d_pixel_hist, plot_pixel_dac_config, plotThreeWay
 import time
 import itertools
 import matplotlib.pyplot as plt
@@ -16,9 +16,9 @@ from collections import deque
 
 from scan.scan import ScanBase
 
-class TdacTune(ScanBase):
+class FdacTune(ScanBase):
     def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "tune_Tdac", outdir = None):
-        super(TdacTune, self).__init__(config_file, definition_file, bit_file, device, scan_identifier, outdir)
+        super(FdacTune, self).__init__(config_file, definition_file, bit_file, device, scan_identifier, outdir)
         self.setTdacTuneBits()
         self.setTargetThreshold()
         self.setNinjections()
@@ -47,14 +47,14 @@ class TdacTune(ScanBase):
         self.Ninjections = Ninjections
         
     def start(self, configure = True):
-        super(TdacTune, self).start(configure)
+        super(FdacTune, self).start(configure)
         
         def get_cols_rows(data_words):
-            for item in data_words:
+            for item in self.readout.data_record_filter(data_words):
                 yield ((item & 0xFE0000)>>17), ((item & 0x1FF00)>>8)
                 
         def get_rows_cols(data_words):
-            for item in data_words:
+            for item in self.readout.data_record_filter(data_words):
                 yield ((item & 0x1FF00)>>8), ((item & 0xFE0000)>>17)
         
         print 'Start readout thread...'
@@ -95,7 +95,7 @@ class TdacTune(ScanBase):
                 else:
                     self.setTdacBit(Tdac_bit, bit_value=0)
                 scan_paramter_value = index
-                print 'Tdac setting: bit ',index
+                print 'Tdac setting: bit ',Tdac_bit
                           
                 repeat = self.Ninjections
                 wait_cycles = 336*2/mask*24/4*3
@@ -111,7 +111,6 @@ class TdacTune(ScanBase):
 
                 data_q.extend(list(get_all_from_queue(self.readout.data_queue))) # use list, it is faster
                 data_words = itertools.chain(*(data_dict['raw_data'] for data_dict in data_q))
-                data_words2 = itertools.chain(*(data_dict['raw_data'] for data_dict in data_q))
                             
                 while True:
                     try:
@@ -145,6 +144,7 @@ class TdacTune(ScanBase):
                 print 'Lost data count:', self.readout.get_lost_data_count()
                 
                 OccupancyArray, _, _ = np.histogram2d(*zip(*get_cols_rows(data_words)), bins = (80, 336), range = [[1,80], [1,336]])
+                plotThreeWay(hist = OccupancyArray.transpose(), title = "Occupancy")
                 
                 tdac_mask=self.register.get_pixel_register_value("TDAC")
                 if(Tdac_bit>0):
@@ -158,14 +158,11 @@ class TdacTune(ScanBase):
                         self.TdacTuneBits.append(0) #bit 0 has to be scanned twice
                         print "scan bit 0 now with value 0"
                     else:
-                        print "scanned bit 0 = 0 with",OccupancyArray," instead of ",lastBitResult
-                        tdac_mask[abs(OccupancyArray-self.Ninjections/2)>abs(lastBitResult-self.Ninjections/2)] = tdac_mask[abs(OccupancyArray-self.Ninjections/2)>abs(lastBitResult-self.Ninjections/2)]|(1<<Tdac_bit)  
-
-                #plot_occupancy(*zip(*get_cols_rows(data_words2)), max_occ = repeat*2, filename = None)#self.scan_data_path+".pdf")
+                        print "scanned bit 0 = 0"
+                        tdac_mask[abs(OccupancyArray-self.Ninjections/2)>abs(lastBitResult-self.Ninjections/2)] = tdac_mask[abs(OccupancyArray-self.Ninjections/2)>abs(lastBitResult-self.Ninjections/2)]|(1<<Tdac_bit)
+                        OccupancyArray[abs(OccupancyArray-self.Ninjections/2)>abs(lastBitResult-self.Ninjections/2)] = lastBitResult[abs(OccupancyArray-self.Ninjections/2)>abs(lastBitResult-self.Ninjections/2)]   
             
-            np.set_printoptions(threshold=np.nan)
-            print self.register.get_pixel_register_value("TDAC")
-            #plotOccupancy(scan.register.get_pixel_register_value("TDAC").transpose())
+            plotThreeWay(hist = OccupancyArray.transpose(), title = "Occupancy final")
             print "Tuned Tdac!"
             print 'Stopping readout thread...'
             self.readout.stop()
@@ -173,8 +170,8 @@ class TdacTune(ScanBase):
         
 if __name__ == "__main__":
     import scan_configuration
-    scan = TdacTune(scan_configuration.config_file, bit_file = scan_configuration.bit_file, outdir = scan_configuration.outdir)
-    #scan = TdacTune(scan_configuration.config_file, bit_file = None, outdir = scan_configuration.outdir)
+    scan = FdacTune(scan_configuration.config_file, bit_file = scan_configuration.bit_file, outdir = scan_configuration.outdir)
+    #scan = FdacTune(scan_configuration.config_file, bit_file = None, outdir = scan_configuration.outdir)
     scan.setTargetThreshold(PlsrDAC = 40)
     scan.setTdacTuneBits(range(4,-1,-1))
     scan.start()

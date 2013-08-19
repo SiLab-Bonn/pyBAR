@@ -24,6 +24,7 @@ class FeedbackTune(ScanBase):
         self.setTargetCharge()
         self.setTargetTot()
         self.setNinjections()
+        self.setAbortPrecision()
         
     def setTargetCharge(self, PlsrDAC = 30):
         commands = []
@@ -34,6 +35,9 @@ class FeedbackTune(ScanBase):
         
     def setTargetTot(self, Tot = 5):
         self.TargetTot = Tot
+        
+    def setAbortPrecision(self, delta_tot = 0.1):
+        self.abort_precision = delta_tot
         
     def setPrmpVbpfBit(self, bit_position, bit_value = 1):
         commands = []
@@ -55,17 +59,16 @@ class FeedbackTune(ScanBase):
         super(FeedbackTune, self).start(configure)
         
         def get_cols_rows(data_words):
-            for item in data_words:
+            for item in self.readout.data_record_filter(data_words):
                 yield ((item & 0xFE0000)>>17), ((item & 0x1FF00)>>8)
                 
         def get_rows_cols(data_words):
-            for item in data_words:
+            for item in self.readout.data_record_filter(data_words):
                 yield ((item & 0x1FF00)>>8), ((item & 0xFE0000)>>17)
                 
         def get_tot(data_words):
-            for item in data_words:
-                if((item & 0x00FF0000) != 0xE90000):
-                    yield ((item & 0x000F0)>>4)
+            for item in self.readout.data_record_filter(data_words):
+                yield ((item & 0x000F0)>>4)
         
         print 'Start readout thread...'
         self.readout.start()
@@ -154,26 +157,31 @@ class FeedbackTune(ScanBase):
                 print 'Lost data count:', self.readout.get_lost_data_count()
                 
                 tots = [tot for tot in get_tot(data_words)]
-                print "TOT mean =", np.mean(tots)
+                mean_tot=np.mean(tots)
+                print "TOT mean =", mean_tot
                    
-                if(PrmpVbpf_bit>0 and np.mean(tots) < self.TargetTot):
-                    print "mean =",np.mean(tots),"<",self.TargetTot,"TOT, set bit",PrmpVbpf_bit,"= 0"
+                if(PrmpVbpf_bit>0 and mean_tot < self.TargetTot):
+                    print "mean =",mean_tot,"<",self.TargetTot,"TOT, set bit",PrmpVbpf_bit,"= 0"
                     self.setPrmpVbpfBit(PrmpVbpf_bit, bit_value = 0)
                       
                 if(PrmpVbpf_bit == 0):
                     if not(addedAdditionalLastBitScan):  #scan bit = 0 with the correct value again
                         addedAdditionalLastBitScan=True
-                        lastBitResult = np.mean(tots)
+                        lastBitResult = mean_tot
                         self.FeedbackTuneBits.append(0) #bit 0 has to be scanned twice
                         print "scan bit 0 now with value 0"
                     else:
-                        print "scanned bit 0 = 0 with",np.mean(tots)," instead of ",lastBitResult
-                        if(abs(np.mean(tots)-self.TargetTot)>abs(lastBitResult-self.TargetTot)): #if bit 0 = 0 is worse than bit 0 = 1, so go back
+                        print "scanned bit 0 = 0 with",mean_tot," instead of ",lastBitResult
+                        if(abs(mean_tot-self.TargetTot)>abs(lastBitResult-self.TargetTot)): #if bit 0 = 0 is worse than bit 0 = 1, so go back
                             self.setPrmpVbpfBit(PrmpVbpf_bit, bit_value = 1)
                             print "set bit 0 = 1"   
 
-#                 TotArray, _ = np.histogram(a = tots, range = (0,16), bins = 16)
-#                 plot_tot(tot_hist = TotArray, filename = None)#self.scan_data_path+".pdf")
+                TotArray, _ = np.histogram(a = tots, range = (0,16), bins = 16)
+                plot_tot(tot_hist = TotArray, filename = None)#self.scan_data_path+".pdf")
+                
+                if(abs(mean_tot-self.TargetTot) < self.abort_precision): #abort if good value already found to save time
+                    print 'good result already achieved, skipping missing bits'
+                    break
             
             print 'Tuned PrmpVbpf to: ',self.register.get_global_register_value("PrmpVbpf")    
             print 'Stopping readout thread...'
@@ -184,7 +192,8 @@ if __name__ == "__main__":
     import scan_configuration
     scan = FeedbackTune(scan_configuration.config_file, bit_file = scan_configuration.bit_file, outdir = scan_configuration.outdir)
     scan.setTargetCharge(PlsrDAC = 200)
-    scan.setTargetTot(Tot = 3)
+    scan.setTargetTot(Tot = 5)
+    scan.setAbortPrecision(delta_tot = 0.1)
     scan.setFeedbackTuneBits(range(7,-1,-1))
     scan.start()
 
