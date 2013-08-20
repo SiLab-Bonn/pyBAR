@@ -1,6 +1,7 @@
 import BitVector
 import xml.sax
 import re
+import os
 #import pprint
 import numpy as np
 import itertools
@@ -221,13 +222,79 @@ class FEI4Register(object):
         else:
             raise ValueError("Can't detect chip flavor")
     
-    def load_configuration_file(self, configuration_file):
-        self.configuration_file = configuration_file
+    def load_configuration_file(self, configuration_file= None):
+        if configuration_file is not None:
+            self.configuration_file = configuration_file
         if self.configuration_file is not None:
-            print "Configuration File:", self.configuration_file
+            print "Loading configuration file:", self.configuration_file
             self.parse_chip_parameters() # get flavor, chip ID
             self.parse_register_config()
             self.parse_chip_config()
+        else:
+            print "No configuration file specified."
+            
+    def save_configuration(self, name, configuration_path = None):
+        
+        if configuration_path is None:
+            if self.configuration_file is not None:
+                config_path, config_file_name = os.path.split(self.configuration_file)
+                base_config_path = os.path.dirname(config_path)
+                #base_config_file_name, extension = os.path.splitext(config_file_name)
+            else:
+                print "No configuration file specified."
+                return
+        else:
+            base_config_path = configuration_path
+        base_config_file_name = name
+        
+        pixel_reg_dict = {}
+        
+        for path in ["configs", "tdacs", "fdacs", "masks"]:
+            config_path = os.path.join(base_config_path, path)
+            if not os.path.exists(config_path):
+                os.makedirs(config_path)
+            if  path == "configs":
+                self.configuration_file = os.path.join(config_path, base_config_file_name+".cfg")
+                try:
+                    os.remove(self.configuration_file)
+                except OSError:
+                    pass
+                print "Saving configuration file:", self.configuration_file
+                self.write_chip_paramters()
+                self.write_chip_config()
+            elif path == "tdacs":
+                dac = self.get_pixel_register_objects(name = "TDAC")[0]
+                dac_config_path = os.path.join(config_path, "_".join([dac.name, base_config_file_name])+".dat")
+                self.write_pixel_dac_config(dac_config_path, dac.value)
+                pixel_reg_dict[dac.full_name] = dac_config_path
+            elif path == "fdacs":
+                dac = self.get_pixel_register_objects(name = "FDAC")[0]
+                dac_config_path = os.path.join(config_path, "_".join([dac.name, base_config_file_name])+".dat")
+                self.write_pixel_dac_config(dac_config_path, dac.value)
+                pixel_reg_dict[dac.full_name] = dac_config_path
+            elif path == "masks":
+                masks = self.get_pixel_register_objects(bitlength = 1)
+                for mask in masks:
+                    dac_config_path = os.path.join(config_path, "_".join([mask.name, base_config_file_name])+".dat")
+                    self.write_pixel_mask_config(dac_config_path, mask.value)
+                    pixel_reg_dict[mask.full_name] = dac_config_path
+                    
+        with open(self.configuration_file, 'a') as f:
+            lines = []
+            lines.append("# Pixel Registers\n")
+            for key in sorted(pixel_reg_dict):
+                lines.append('%s %s\n' % (key, pixel_reg_dict[key]))
+            lines.append("\n")
+            f.writelines(lines)
+            
+            lines = []
+            lines.append("# Calibration Parameters\n")
+            lines.append('C_Inj_Low %f\n' % 0.0) # TODO:
+            lines.append('C_Inj_High %f\n' % 0.0) # TODO:
+            lines.append('Vcal_Coeff_0 %f\n' % 0.0) # TODO:
+            lines.append('Vcal_Coeff_1 %f\n' % 0.0) # TODO:
+            lines.append("\n")
+            f.writelines(lines)
 
     def parse_register_config(self):
         #print "parse xml"
@@ -277,6 +344,22 @@ class FEI4Register(object):
                 
             print "Flavor:", self.chip_flavor
             print "Chip ID:", self.chip_id
+            
+    def write_chip_paramters(self):
+#         lines = []
+#         search = ["flavour", "chip-flavour", "chip_flavour", "flavor", "chip-flavor", "chip_flavor", "chipid", "chip-id", "chip_id", "Parameters"]
+#         with open(self.configuration_file, 'r') as f:
+#             for line in f.readlines():
+#                 line_split = line.split()
+#                 if not any(x.lower() in line_split.lower() for x in search):
+#                     lines.append(line)
+        with open(self.configuration_file, 'a') as f:
+            lines = []
+            lines.append("# Chip Parameters" + "\n")
+            lines.append('Flavor %s\n' % self.chip_flavor.upper())
+            lines.append('Chip_ID %d\n' % self.chip_id)
+            lines.append("\n")
+            f.writelines(lines) 
 
     def parse_chip_config(self):
         #print "load cfg"
@@ -313,6 +396,15 @@ class FEI4Register(object):
         all_known_regs.extend([x.name for x in self.global_registers if x.readonly == False])
         print "Found following unknown register(s): {}".format(', '.join('\''+all_config_keys_dict[reg]+'\'' for reg in set.difference(set(all_config_keys_dict.iterkeys()), all_known_regs)))
         
+    def write_chip_config(self):
+        with open(self.configuration_file, 'a') as f:
+            lines = []
+            lines.append("# Global Registers\n")
+            reg_dict = {register.full_name: register.value for register in self.get_global_register_objects(readonly = False)}
+            for key in sorted(reg_dict):
+                lines.append('%s %d\n' % (key, reg_dict[key]))
+            lines.append("\n")
+            f.writelines(lines) 
             
     def parse_pixel_mask_config(self, filename):
         dimension = (80,336)
@@ -340,6 +432,14 @@ class FEI4Register(object):
                 raise ValueError('Dimension of row')
         #print filename, mask
         return mask
+    
+    def write_pixel_mask_config(self, filename, value):
+        with open(filename, 'w') as f:
+            seq = []
+            seq.append("###  1     6     11    16     21    26     31    36     41    46     51    56     61    66     71    76\n")
+            seq.append("\n".join([(repr(row+1).rjust(3)+"  ")+"  ".join(["-".join(["".join([repr(value[col,row]) for col in range(col_fine, col_fine+5)]) for col_fine in range(col_coarse, col_coarse+10, 5)]) for col_coarse in range(0, 80, 10)]) for row in range(336)]))
+            seq.append("\n")
+            f.writelines(seq)
    
     def parse_pixel_dac_config(self, filename):
         dimension = (80,336)
@@ -370,6 +470,15 @@ class FEI4Register(object):
                 raise ValueError('Dimension of row')
         #print mask
         return mask
+    
+    def write_pixel_dac_config(self, filename, value):
+        with open(filename, 'w') as f:
+            seq = []            
+            seq.append("###    1  2  3  4  5  6  7  8  9 10   11 12 13 14 15 16 17 18 19 20   21 22 23 24 25 26 27 28 29 30   31 32 33 34 35 36 37 38 39 40\n")
+            seq.append("###   41 42 43 44 45 46 47 48 49 50   51 52 53 54 55 56 57 58 59 60   61 62 63 64 65 66 67 68 69 70   71 72 73 74 75 76 77 78 79 80\n")
+            seq.append("\n".join(["\n".join([((repr(row+1).rjust(3)+("a" if col_coarse==0 else "b")+"  ")+"   ".join([" ".join([repr(value[col,row]).rjust(2) for col in range(col_fine, col_fine+10)]) for col_fine in range(col_coarse, col_coarse+40, 10)])) for col_coarse in range(0,80,40)]) for row in range(336)]))
+            seq.append("\n")
+            f.writelines(seq)
         
     """    
     TODO:
@@ -438,6 +547,10 @@ class FEI4Register(object):
             return reg.value.copy()
         
     def set_pixel_register_mask(self, name, value, col, row):
+        self.register.set_pixel_register_value("C_Low", value)
+        value[self.column_spinBox.value()-1, self.row_spinBox.value()-1] = 1
+        
+    def get_pixel_register_mask(self, name, value, col, row):
         self.register.set_pixel_register_value("C_Low", value)
         value[self.column_spinBox.value()-1, self.row_spinBox.value()-1] = 1
 
@@ -753,7 +866,7 @@ class FEI4Register(object):
     def get_pixel_register_objects(self, do_sort = True, **keywords):
         """Generate register objects (list) from register name list
         
-        Usage: get_pixel_register_objects(name = ["Amp2Vbn", "GateHitOr", "DisableColumnCnfg"], address = [2, 3])
+        Usage: get_pixel_register_objects(name = ["TDAC"], address = [2, 3])
         Receives: keyword lists of register names, addresses,... for making cuts
         Returns: list of register objects
         
@@ -765,8 +878,11 @@ class FEI4Register(object):
                 keyword_values = [x.lower() for x in keyword_values]
             except AttributeError:
                 pass
-            register_objects.extend(itertools.ifilter(lambda pixel_register: set.intersection(set(iterable(getattr(pixel_register, keyword))), keyword_values) , self.pixel_registers))
-        return register_objects
+            register_objects.extend(itertools.ifilter(lambda pixel_register: set.intersection(set(iterable(getattr(pixel_register, keyword))), keyword_values), self.pixel_registers))
+        if do_sort:
+            return sorted(register_objects)
+        else:
+            return register_objects
             
 #        register_objects = []
 #        for keyword in keywords.keys():
