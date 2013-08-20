@@ -38,5 +38,5 @@ class DefaultScan(ScanBase):
         
 if __name__ == "__main__":
     import scan_configuration
-    scan = DefaultScan(scan_configuration.config_file, bit_file = scan_configuration.bit_file, outdir = scan_configuration.outdir)
+    scan = DefaultScan(config_file = scan_configuration.config_file, bit_file = scan_configuration.bit_file, outdir = scan_configuration.outdir)
     scan.start()
