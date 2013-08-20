@@ -117,5 +117,5 @@ class AnalogScan(ScanBase):
         
 if __name__ == "__main__":
     import scan_configuration
-    scan = AnalogScan(scan_configuration.config_file, bit_file = scan_configuration.bit_file, outdir = scan_configuration.outdir)
+    scan = AnalogScan(config_file = scan_configuration.config_file, bit_file = scan_configuration.bit_file, outdir = scan_configuration.outdir)
     scan.start()
