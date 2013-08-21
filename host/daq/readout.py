@@ -9,7 +9,7 @@ from Queue import Queue
 
 from utils.utils import get_float_time
 
-from pySiLibUSB.SiLibUSB import SiUSBDevice
+from SiLibUSB import SiUSBDevice
 
 class Readout(object):
     def __init__(self, device, data_filter = None):
@@ -102,7 +102,7 @@ class Readout(object):
             
     def get_fifo_size(self):
         retfifo = self.device.ReadExternal(address = 0x8101, size = 3)
-        return struct.unpack('I', retfifo.tostring() + '\x00' )[0] # TODO optimize, remove tostring() ?
+        return struct.unpack('I', retfifo.tostring() + '\x00' )[0] # TODO: optimize, remove tostring() ?
 
     def get_8b10b_code_error_count(self):
         return self.device.ReadExternal(address = 0x8004, size = 1)[0]

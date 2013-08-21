@@ -6,7 +6,7 @@ import logging
 
 from threading import Event, Lock
 
-from pySiLibUSB.SiLibUSB import SiUSBDevice
+from SiLibUSB import SiUSBDevice
 
 from fei4.register import FEI4Register
 from fei4.register_utils import FEI4RegisterUtils
