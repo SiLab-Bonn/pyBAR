@@ -482,10 +482,10 @@ class FEI4Register(object):
         
     """    
     TODO:
-    for the following funtions use 
+    for the following functions use 
     filter(function, iterable).
     
-    Make new generic funtion that uses filter.
+    Make new generic function that uses filter.
     
     Use next(iterator[, default]).
     """
@@ -545,14 +545,6 @@ class FEI4Register(object):
             raise ValueError('Found more than one matching register')
         for reg in regs:
             return reg.value.copy()
-        
-    def set_pixel_register_mask(self, name, value, col, row):
-        self.register.set_pixel_register_value("C_Low", value)
-        value[self.column_spinBox.value()-1, self.row_spinBox.value()-1] = 1
-        
-    def get_pixel_register_mask(self, name, value, col, row):
-        self.register.set_pixel_register_value("C_Low", value)
-        value[self.column_spinBox.value()-1, self.row_spinBox.value()-1] = 1
 
     def get_commands(self, command_name, same_mask_for_all_dc = False, **keywords):
         """get lvl1_command from command name and keyword arguments
