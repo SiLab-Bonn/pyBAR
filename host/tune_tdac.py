@@ -16,12 +16,15 @@ from collections import deque
 
 from scan.scan import ScanBase
 
-class FdacTune(ScanBase):
+class TdacTune(ScanBase):
     def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "tune_Tdac", outdir = None):
-        super(FdacTune, self).__init__(config_file, definition_file, bit_file, device, scan_identifier, outdir)
+        super(TdacTune, self).__init__(config_file, definition_file, bit_file, device, scan_identifier, outdir)
         self.setTdacTuneBits()
         self.setTargetThreshold()
         self.setNinjections()
+        
+    def saveTdacConfig(self):
+        self.register.save_configuration()
         
     def setTargetThreshold(self, PlsrDAC = 30):
         commands = []
@@ -40,14 +43,24 @@ class FdacTune(ScanBase):
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc = False, name = ["TDAC"]))
         self.register_utils.send_commands(commands)
         
-    def setTdacTuneBits(self, TdacTuneBits = range(7,-1,-1)):
+    def setStartTdac(self):
+        commands = []
+        start_tdac_setting = self.register.get_pixel_register_value("TDAC")
+        for bit_position in self.TdacTuneBits: #reset all TDAC bits, FIXME: speed up
+            start_tdac_setting = start_tdac_setting&~(1<<bit_position)
+        self.register.set_pixel_register_value("TDAC",start_tdac_setting)
+        commands.extend(self.register.get_commands("confmode"))
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc = True, name = ["TDAC"]))
+        self.register_utils.send_commands(commands)
+        
+    def setTdacTuneBits(self, TdacTuneBits = range(4,-1,-1)):
         self.TdacTuneBits = TdacTuneBits
         
     def setNinjections(self, Ninjections = 100):
         self.Ninjections = Ninjections
         
     def start(self, configure = True):
-        super(FdacTune, self).start(configure)
+        super(TdacTune, self).start(configure)
         
         def get_cols_rows(data_words):
             for item in self.readout.data_record_filter(data_words):
@@ -61,15 +74,14 @@ class FdacTune(ScanBase):
         self.readout.start()
         print 'Done!'
         
-        for Tdac_bit in self.TdacTuneBits: #reset all TDAC bits, FIXME: speed up
-            self.setTdacBit(Tdac_bit, bit_value = 0)
-            
         addedAdditionalLastBitScan = False
         lastBitResult = np.zeros(shape = self.register.get_pixel_register_value("TDAC").shape, dtype = self.register.get_pixel_register_value("TDAC").dtype)
         
         scan_parameter = 'Tdac'
         scan_param_descr = {scan_parameter:tb.UInt32Col(pos=0)}
         
+        self.setStartTdac();
+       
         mask = 3
         steps = []
                
@@ -88,6 +100,8 @@ class FdacTune(ScanBase):
             
             row_meta = meta_data_table_h5.row
             row_scan_param = scan_param_table_h5.row
+            
+            tdac_mask = []
             
             for index, Tdac_bit in enumerate(self.TdacTuneBits):
                 if(not addedAdditionalLastBitScan):
@@ -144,7 +158,7 @@ class FdacTune(ScanBase):
                 print 'Lost data count:', self.readout.get_lost_data_count()
                 
                 OccupancyArray, _, _ = np.histogram2d(*zip(*get_cols_rows(data_words)), bins = (80, 336), range = [[1,80], [1,336]])
-                plotThreeWay(hist = OccupancyArray.transpose(), title = "Occupancy")
+#                 plotThreeWay(hist = OccupancyArray.transpose(), title = "Occupancy")
                 
                 tdac_mask=self.register.get_pixel_register_value("TDAC")
                 if(Tdac_bit>0):
@@ -162,16 +176,19 @@ class FdacTune(ScanBase):
                         tdac_mask[abs(OccupancyArray-self.Ninjections/2)>abs(lastBitResult-self.Ninjections/2)] = tdac_mask[abs(OccupancyArray-self.Ninjections/2)>abs(lastBitResult-self.Ninjections/2)]|(1<<Tdac_bit)
                         OccupancyArray[abs(OccupancyArray-self.Ninjections/2)>abs(lastBitResult-self.Ninjections/2)] = lastBitResult[abs(OccupancyArray-self.Ninjections/2)>abs(lastBitResult-self.Ninjections/2)]   
             
+            self.register.set_pixel_register_value("TDAC", tdac_mask)
             plotThreeWay(hist = OccupancyArray.transpose(), title = "Occupancy final")
+#             plotThreeWay(hist = self.register.get_pixel_register_value("TDAC").transpose(), title = "TDAC distribution final")
             print "Tuned Tdac!"
             print 'Stopping readout thread...'
             self.readout.stop()
-            print 'Done!'      
+            print 'Done!'
+            return OccupancyArray   
         
 if __name__ == "__main__":
     import scan_configuration
-    scan = FdacTune(scan_configuration.config_file, bit_file = scan_configuration.bit_file, outdir = scan_configuration.outdir)
-    #scan = FdacTune(scan_configuration.config_file, bit_file = None, outdir = scan_configuration.outdir)
+    scan = TdacTune(scan_configuration.config_file, bit_file = scan_configuration.bit_file, outdir = scan_configuration.outdir)
+    scan.setNinjections(100) 
     scan.setTargetThreshold(PlsrDAC = 40)
     scan.setTdacTuneBits(range(4,-1,-1))
     scan.start()
