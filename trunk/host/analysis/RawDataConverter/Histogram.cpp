@@ -86,11 +86,11 @@ unsigned int Histogram::getEventParameter(unsigned long& rEventNumber)
   for(unsigned int i=_lastMetaEventIndex; i<_nMetaEventIndexLength-1; ++i){
     if(_metaEventIndex[i+1] > rEventNumber || _metaEventIndex[i+1] < _metaEventIndex[i]){ // second case: meta event data not set yet (std value = 0), event number has to increase
       _lastMetaEventIndex = i;
-      return _parInfo[i].pulserDAC;
+      return _parInfo[i].scanParameter;
     }
   }
   if(_metaEventIndex[_nMetaEventIndexLength-1] <= rEventNumber) //last read outs
-    return _parInfo[_nMetaEventIndexLength-1].pulserDAC;
+    return _parInfo[_nMetaEventIndexLength-1].scanParameter;
   error("getEventParameter: Correlation issues at event "+IntToStr(rEventNumber)+"\n_metaEventIndex[_nMetaEventIndexLength-1] "+IntToStr(_metaEventIndex[_nMetaEventIndexLength-1])+"\n_lastMetaEventIndex "+IntToStr(_lastMetaEventIndex));
   throw 23;
   return 0;
@@ -113,7 +113,7 @@ void Histogram::addScanParameter(const unsigned int& rNparInfoLength, ParInfo*& 
   allocateOccupancyArray();
   resetOccupancyArray();
   //for(unsigned int i=0; i<11; ++i)
-  //   std::cout<<"read out "<<i<<"\t"<<_parInfo[i].pulserDAC<<"\n";
+  //   std::cout<<"read out "<<i<<"\t"<<_parInfo[i].scanParameter<<"\n";
 }
 
 void Histogram::addMetaEventIndex(const unsigned int& rNmetaEventIndexLength, unsigned long*& rMetaEventIndex)
@@ -194,9 +194,9 @@ void Histogram::test()
     std::cout<<"event "<<i<<"\t"<<getEventParameter((unsigned long&)i)<<"\n";
   }*/
  /* for(unsigned int i = 1; i<_nParInfoLength; ++i)
-    if(_metaEventIndex[i-1] > _metaEventIndex[i] || _parInfo[i-1].pulserDAC > _parInfo[i].pulserDAC){
-      std::cout<<i<<"AAAAAAAAAAAAAAA\t"<<_metaEventIndex[i]<<"\t"<<_parInfo[i].pulserDAC<<"\n";
-      std::cout<<i-1<<"AAAAAAAAAAAAAAA\t"<<_metaEventIndex[i-1]<<"\t"<<_parInfo[i-1].pulserDAC<<"\n";
+    if(_metaEventIndex[i-1] > _metaEventIndex[i] || _parInfo[i-1].scanParameter > _parInfo[i].scanParameter){
+      std::cout<<i<<"AAAAAAAAAAAAAAA\t"<<_metaEventIndex[i]<<"\t"<<_parInfo[i].scanParameter<<"\n";
+      std::cout<<i-1<<"AAAAAAAAAAAAAAA\t"<<_metaEventIndex[i-1]<<"\t"<<_parInfo[i-1].scanParameter<<"\n";
     }*/
 
   //unsigned int q_min = getMinParameter();
@@ -244,7 +244,7 @@ void Histogram::setParameterLimits()
   std::vector<unsigned int> tParameterValues;
 
   for(unsigned int i = 0; i < _nParInfoLength; ++i)
-    tParameterValues.push_back(_parInfo[i].pulserDAC);
+    tParameterValues.push_back(_parInfo[i].scanParameter);
 
   std::sort(tParameterValues.begin(), tParameterValues.end());  //sort from lowest to highest value
   std::set<int> tSet(tParameterValues.begin(), tParameterValues.end());

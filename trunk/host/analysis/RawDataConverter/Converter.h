@@ -76,7 +76,7 @@ public:
 	void setInfoOutput(bool Toggle = true);								  //set to see infos output, standard setting: off
 	void setDebugOutput(bool Toggle = true);								//set to see debug output, standard setting: off
 	void setBugReport(bool Toggle = true);									//set to create Bug report, standard setting: off
-  	void setHDF5ExeptionOutput(bool Toggle = true);         //set to see HDF5 errors
+  void setHDF5ExeptionOutput(bool Toggle = true);         //set to see HDF5 errors
 	void setDebugEvents(const unsigned long& rStartEvent = 0, const unsigned long& rStopEvent = 0, const bool& debugEvents = true);
 
   // info outputs
