@@ -1,7 +1,7 @@
 """ Script to tune the GDAC to the threshold value given in PlsrDAC. Binary search algorithm. Bit 0 is always scanned twice with value 1 and 0.
     Only the pixels used in the analog injection are taken into account.
 """
-from analysis.plotting.plotting import plot_occupancy
+from analysis.plotting.plotting import plot_occupancy, plotThreeWay
 import time
 import itertools
 import matplotlib.pyplot as plt
@@ -82,16 +82,32 @@ class GdacTune(ScanBase):
         scan_param_descr = {scan_parameter:tb.UInt32Col(pos=0)}
         
         steps = [0]
-        mask = 3      
+        mask = 3
         
-        #calculate selected pixels
-        select_mask_array=np.zeros(shape=(80,336),dtype=np.uint8)    
+        def bitsSet(int_type):
+            int_type = int(int_type)
+            count = 0
+            position = 0
+            bitsSet = []
+            while(int_type):
+                if(int_type&1):
+                    bitsSet.append(position)
+                position += 1
+                int_type = int_type>>1
+                count += 1
+            return bitsSet 
+        
+        #calculate selected pixels from the mask and the disabled columns
+        select_mask_array=np.zeros(shape=(80,336),dtype=np.uint8)
         if steps == None or steps == []:
             mask_steps = range(mask)
         else:
-            mask_steps = steps   
-        for mask_step in mask_steps:    
+            mask_steps = steps
+        for mask_step in mask_steps:
             select_mask_array += self.register_utils.make_pixel_mask(mask = mask, row_offset = mask_step)
+        for column in bitsSet(self.register.get_global_register_value("DisableColumnCnfg")):
+            print 'deselect columns',column
+            select_mask_array[column,:] = 0
         
         data_q = deque()
         raw_data_q = deque()
@@ -166,6 +182,7 @@ class GdacTune(ScanBase):
                 OccupancyArray, _, _ = np.histogram2d(*zip(*get_cols_rows(data_words)), bins = (80, 336), range = [[1,80], [1,336]])
                 OccArraySelPixel = OccupancyArray[select_mask_array>0]  #take only selected pixel
                 median_occupancy = np.median(OccArraySelPixel)
+#                 plotThreeWay(OccupancyArray.transpose(), title = "Occupancy (GDAC tuning bit "+str(gdac_bit)+")", label = 'Occupancy', filename = None)#self.scan_data_path+".pdf")
                    
                 if(gdac_bit>0 and median_occupancy < self.Ninjections/2):
                     print "median =",median_occupancy,"<",self.Ninjections/2,"set bit",gdac_bit,"= 0"
@@ -174,16 +191,20 @@ class GdacTune(ScanBase):
                 if(gdac_bit == 0):
                     if not(addedAdditionalLastBitScan):  #scan bit = 0 with the correct value again
                         addedAdditionalLastBitScan=True
-                        lastBitResult = median_occupancy
+                        lastBitResult = OccupancyArray
                         self.GdacTuneBits.append(0) #bit 0 has to be scanned twice
                         print "scan bit 0 now with value 0"
                     else:
-                        print "scanned bit 0 = 0 with",median_occupancy," instead of ",lastBitResult
-                        if(abs(median_occupancy-self.Ninjections/2)>abs(lastBitResult-self.Ninjections/2)): #if bit 0 = 0 is worse than bit 0 = 1, so go back
+                        lastBitResultMedian = np.median(lastBitResult[select_mask_array>0])
+                        print "scanned bit 0 = 0 with",median_occupancy," instead of ",lastBitResultMedian
+                        if(abs(median_occupancy-self.Ninjections/2)>abs(lastBitResultMedian-self.Ninjections/2)): #if bit 0 = 0 is worse than bit 0 = 1, so go back
                             self.setGdacBit(gdac_bit, bit_value = 1)
-                            print "set bit 0 = 1"   
+                            print "set bit 0 = 1"
+#                             plotThreeWay(lastBitResult.transpose(), title = "Occupancy (GDAC tuning bit 0 = 1)", label = 'Occupancy', filename = None)#self.scan_data_path+".pdf") 
+#                         else:
+#                             plotThreeWay(OccupancyArray.transpose(), title = "Occupancy (GDAC tuning bit 0 = 0)", label = 'Occupancy', filename = None)#self.scan_data_path+".pdf") 
 
-                #plot_occupancy(*zip(*get_cols_rows(data_words)), max_occ = repeat*2, filename = None)#self.scan_data_path+".pdf")
+#                 plot_occupancy(*zip(*get_cols_rows(data_words)), max_occ = repeat*2, filename = None)#self.scan_data_path+".pdf")
                 if(abs(median_occupancy-self.Ninjections/2) < self.abort_precision): #abort if good value already found to save time
                     print 'good result already achieved, skipping missing bits'
                     break
@@ -191,7 +212,8 @@ class GdacTune(ScanBase):
             print 'Tuned GDAC to: Vthin_AltCoarse/Vthin_AltFine', self.register.get_global_register_value("Vthin_AltCoarse"),"/", self.register.get_global_register_value("Vthin_AltFine")       
             print 'Stopping readout thread...'
             self.readout.stop()
-            print 'Done!'      
+            print 'Done!'
+            return self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine")            
         
 if __name__ == "__main__":
     import scan_configuration
@@ -199,6 +221,6 @@ if __name__ == "__main__":
     scan.setTargetThreshold(PlsrDAC = 40)
     scan.setAbortPrecision(delta_occupancy = 2)
     scan.setGdacTuneBits(range(7,-1,-1))
+    scan.setNinjections(Ninjections = 50)
     scan.start()
-
     
