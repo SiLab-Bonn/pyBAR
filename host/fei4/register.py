@@ -295,6 +295,8 @@ class FEI4Register(object):
             lines.append('Vcal_Coeff_1 %f\n' % 0.0) # TODO:
             lines.append("\n")
             f.writelines(lines)
+            
+        return self.configuration_file
 
     def parse_register_config(self):
         #print "parse xml"
@@ -545,6 +547,7 @@ class FEI4Register(object):
             raise ValueError('Found more than one matching register')
         for reg in regs:
             return reg.value.copy()
+
 
     def get_commands(self, command_name, same_mask_for_all_dc = False, **keywords):
         """get lvl1_command from command name and keyword arguments
