@@ -123,7 +123,7 @@ class Readout(object):
             
     def data_record_filter(self, words):
         for word in words:
-            if word >= 131328 and word <= 10572030:
+            if (word & 0x00FFFFFF) >= 131328 and (word & 0x00FFFFFF) <= 10572030:
                 yield word
         
     def data_header_filter(self, words):
