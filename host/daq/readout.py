@@ -30,6 +30,7 @@ class Readout(object):
         self.data_queue = Queue()
         self.stop_thread_event = Event()
         self.stop_thread_event.set()
+        self.readout_interval = 0.05
     
     def start(self):
         self.data_queue.empty()
@@ -37,21 +38,42 @@ class Readout(object):
         self.worker_thread = Thread(target=self.worker)
         self.worker_thread.start()
     
-    def stop(self):
+    def stop(self, wait_for_data_timeout = 10):
+        if wait_for_data_timeout > 0:
+            wait_timeout_event = Event()
+            wait_timeout_event.clear()
+                
+            def set_timeout_event(timeout_event, timeout):
+                timeout_event.wait(timeout)
+                timeout_event.set()
+            
+            timeout_thread = Thread(target=set_timeout_event, args=[wait_timeout_event, wait_for_data_timeout])
+            timeout_thread.start()
+            
+            fifo_size = self.get_sram_fifo_size()
+            old_fifo_size = -1
+            while not wait_timeout_event.wait(1.5*self.readout_interval) and (old_fifo_size != fifo_size or fifo_size != 0):
+                print fifo_size, old_fifo_size
+                old_fifo_size = fifo_size
+                fifo_size = self.get_sram_fifo_size()
+            print "join"
+            wait_timeout_event.set()
+            timeout_thread.join()
+            print "end of join"
         self.stop_thread_event.set()
         if self.worker_thread != None:
             self.worker_thread.join()
             self.worker_thread = None
+        print 'Data queue size:', self.data_queue.qsize()
+        print 'SRAM FIFO size:', self.get_sram_fifo_size()
+        print 'RX FIFO discard counter:', self.get_rx_fifo_discard_count()
     
     def worker(self):
         '''Reading thread to continuously reading SRAM
         
         Worker thread function uses read_once()
         ''' 
-        while self.stop_thread_event.wait(0.05) or not self.stop_thread_event.is_set(): # TODO: this is probably what you need to reduce processor cycles
-            if self.stop_thread_event.is_set():
-                break
-#        while not self.stop_thread_event.is_set():
+        while not self.stop_thread_event.wait(self.readout_interval): # TODO: this is probably what you need to reduce processor cycles
             try:
                 self.device.lock.acquire()
                 #print 'read from thread' 
@@ -73,9 +95,7 @@ class Readout(object):
         '''
         # TODO: check fifo status (overflow) and check rx status (sync) once in a while
 
-        fifo_size = self.get_fifo_size()
-        #fifo_size, code_err_cnt, lost_data_cnt = self.get_fifo_size_8b10b_code_error_count_lost_data_count()
-        #print 'SRAM FIFO SIZE: ' + str(fifo_size)
+        fifo_size = self.get_sram_fifo_size()
         if fifo_size%2 == 1: # sometimes a read happens during writing, but we want to have a multiplicity of 32 bits
             fifo_size-=1
             #print "FIFO size odd"
@@ -100,22 +120,22 @@ class Readout(object):
             else:
                 raise ValueError('Filter object is not callable')
             
-    def get_fifo_size(self):
+    def get_sram_fifo_size(self):
         retfifo = self.device.ReadExternal(address = 0x8101, size = 3)
         return struct.unpack('I', retfifo.tostring() + '\x00' )[0] # TODO: optimize, remove tostring() ?
 
     def get_8b10b_code_error_count(self):
-        return self.device.ReadExternal(address = 0x8004, size = 1)[0]
+        value = {}
+        for idx, addr in enumerate(range(0x8604, 0x8204, -0x0100)):
+            value["Channel "+str(idx+1)] = self.device.ReadExternal(address = addr, size = 1)[0]
+        return value
+        return self.device.ReadExternal(address = addr, size = 1)[0]
 
-    def get_lost_data_count(self):
-        return self.device.ReadExternal(address = 0x8005, size = 1)[0]
-
-    def get_fifo_size_8b10b_code_error_count_lost_data_count(self):
-        retfifo = self.device.ReadExternal(address = 0x8101, size = 5)
-        fifo_size = struct.unpack('I', retfifo[0:2].tostring() + '\x00' )[0]
-        code_error_cnt = struct.unpack('B', retfifo[3])[0]
-        lost_data_cnt = struct.unpack('B', retfifo[4])[0]
-        return fifo_size, code_error_cnt, lost_data_cnt
+    def get_rx_fifo_discard_count(self):
+        value = {}
+        for idx, addr in enumerate(range(0x8605, 0x8205, -0x0100)):
+            value["Channel "+str(idx+1)] = self.device.ReadExternal(address = addr, size = 1)[0]
+        return value
 
     def no_filter(self, words):
         for word in words:

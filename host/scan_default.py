@@ -1,11 +1,3 @@
-from analysis.plotting.plotting import plot_occupancy
-
-import logging
-
-import BitVector
-
-from fei4.output import FEI4Record
-
 from scan.scan import ScanBase
 
 class DefaultScan(ScanBase):
@@ -15,7 +7,7 @@ class DefaultScan(ScanBase):
     def start(self, configure = True):
         super(DefaultScan, self).start(configure)
         
-        print 'Start readout thread...'
+        print 'Starting readout thread...'
         #self.readout.set_filter(self.readout.data_record_filter)
         self.readout.start()
         print 'Done!'
@@ -31,10 +23,6 @@ class DefaultScan(ScanBase):
         print 'Stopping readout thread...'
         self.readout.stop()
         print 'Done!'
-         
-        print 'Data remaining in memory:', self.readout.get_fifo_size()
-        print 'Lost data count:', self.readout.get_lost_data_count()
-        
         
 if __name__ == "__main__":
     import scan_configuration
