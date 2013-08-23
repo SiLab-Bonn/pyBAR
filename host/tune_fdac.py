@@ -48,6 +48,16 @@ class FdacTune(ScanBase):
     def setFdacTuneBits(self, FdacTuneBits = range(7,-1,-1)):
         self.FdacTuneBits = FdacTuneBits
         
+    def setStartFdac(self):
+        commands = []
+        start_fdac_setting = self.register.get_pixel_register_value("FDAC")
+        for bit_position in self.FdacTuneBits: #reset all TDAC bits, FIXME: speed up
+            start_fdac_setting = start_fdac_setting&~(1<<bit_position)
+        self.register.set_pixel_register_value("FDAC",start_fdac_setting)
+        commands.extend(self.register.get_commands("confmode"))
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc = True, name = ["FDAC"]))
+        self.register_utils.send_commands(commands)
+        
     def setNinjections(self, Ninjections = 20):
         self.Ninjections = Ninjections
         
@@ -76,8 +86,7 @@ class FdacTune(ScanBase):
         self.readout.start()
         print 'Done!'
         
-        for Fdac_bit in self.FdacTuneBits: #reset all Fdac bits, FIXME: speed up
-            self.setFdacBit(Fdac_bit, bit_value = 0)
+        self.setStartFdac()
             
         addedAdditionalLastBitScan = False
         lastBitResult = np.zeros(shape = self.register.get_pixel_register_value("Fdac").shape, dtype = self.register.get_pixel_register_value("Fdac").dtype)
@@ -162,7 +171,7 @@ class FdacTune(ScanBase):
 
                 TotArray = np.histogramdd(np.array(list(get_cols_rows_tot(data_words))), bins = (80, 336, 16), range = [[1,80], [1,336], [0,15]])[0]
                 TotAvrArray = np.average(TotArray,axis = 2, weights=range(0,16))*sum(range(0,16))/self.Ninjections
-#                 plotThreeWay(hist = TotAvrArray.transpose(), title = "TOT average")
+                #plotThreeWay(hist = TotAvrArray.transpose(), title = "TOT mean", label = 'mean TOT', filename = None)
                 
                 Fdac_mask=self.register.get_pixel_register_value("Fdac")
                 if(Fdac_bit>0):
@@ -186,14 +195,15 @@ class FdacTune(ScanBase):
             print "Tuned Fdac!"
             print 'Stopping readout thread...'
             self.readout.stop()
-            print 'Done!'      
+            print 'Done!'
+            return TotAvrArray      
         
 if __name__ == "__main__":
     import scan_configuration
     #scan = FdacTune(scan_configuration.config_file, bit_file = scan_configuration.bit_file, outdir = scan_configuration.outdir)
     scan = FdacTune(scan_configuration.config_file, bit_file = None, outdir = scan_configuration.outdir)
-    scan.setTargetCharge(PlsrDAC = 200)
-    scan.setNinjections(30)
+    scan.setTargetCharge(PlsrDAC = 300)
     scan.setTargetTot(Tot = 5)
+    scan.setNinjections(30)
     scan.setFdacTuneBits(range(3,-1,-1))
     scan.start()
