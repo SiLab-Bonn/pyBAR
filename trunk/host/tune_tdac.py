@@ -178,11 +178,9 @@ class TdacTune(ScanBase):
             return OccupancyArray
         
 if __name__ == "__main__":
-    import scan_configuration
-    scan = TdacTune(config_file = scan_configuration.config_file, bit_file = scan_configuration.bit_file, outdir = scan_configuration.outdir)
+    import configuration
+    scan = TdacTune(config_file = configuration.config_file, bit_file = configuration.bit_file, outdir = configuration.outdir)
     scan.setNinjections(100) 
     scan.setTargetThreshold(PlsrDAC = 40)
     scan.setTdacTuneBits(range(4,-1,-1))
     scan.start()
-
-    

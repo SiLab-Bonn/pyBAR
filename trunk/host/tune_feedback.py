@@ -182,12 +182,10 @@ class FeedbackTune(ScanBase):
             return self.register.get_global_register_value("PrmpVbpf")
         
 if __name__ == "__main__":
-    import scan_configuration
-    scan = FeedbackTune(config_file = scan_configuration.config_file, bit_file = scan_configuration.bit_file, outdir = scan_configuration.outdir)
+    import configuration
+    scan = FeedbackTune(config_file = configuration.config_file, bit_file = configuration.bit_file, outdir = configuration.outdir)
     scan.setTargetCharge(PlsrDAC = 250)
     scan.setTargetTot(Tot = 5)
     scan.setAbortPrecision(delta_tot = 0.1)
     scan.setFeedbackTuneBits(range(7,-1,-1))
     scan.start()
-
-    

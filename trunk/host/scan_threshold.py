@@ -133,7 +133,7 @@ class ThresholdScan(ScanBase):
         #        print occupancy_plot[11][80]
         
 if __name__ == "__main__":
-    import scan_configuration
-    scan = ThresholdScan(config_file = scan_configuration.config_file, bit_file = scan_configuration.bit_file, outdir = scan_configuration.outdir)
+    import configuration
+    scan = ThresholdScan(config_file = configuration.config_file, bit_file = configuration.bit_file, outdir = configuration.outdir)
     scan.start()
 

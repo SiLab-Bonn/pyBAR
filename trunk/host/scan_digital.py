@@ -66,7 +66,7 @@ class DigitalScan(ScanBase):
         plot_occupancy(*zip(*get_cols_rows(data_words)), max_occ = repeat*2, filename = self.scan_data_path+".pdf")
 
 if __name__ == "__main__":
-    import scan_configuration
-    scan = DigitalScan(config_file = scan_configuration.config_file, bit_file = scan_configuration.bit_file, outdir = scan_configuration.outdir)
+    import configuration
+    scan = DigitalScan(config_file = configuration.config_file, bit_file = configuration.bit_file, outdir = configuration.outdir)
     scan.start()
 
