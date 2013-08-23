@@ -24,11 +24,15 @@ def make_occupancy(cols, rows, max_occ = None):
     plt.ylabel('Row')
     plt.colorbar(boundaries = bounds, cmap = cmap, norm = norm, ticks = bounds)
 
-def plot_occupancy(cols, rows = None, max_occ = None, filename = None):
+def plot_occupancy(cols, rows = None, max_occ = None, filename = None, title = None):
     if(rows == None):
         cols = 0
         rows = 0
     make_occupancy(cols, rows, max_occ)
+    if(title != 0):
+        plt.title(title)
+    fig = plt.figure(1)
+    fig.patch.set_facecolor('white')
     if filename is None:
         plt.show()
     else:
@@ -304,7 +308,7 @@ def create_2d_pixel_hist(hist2d, title = None, x_axis_title = None, y_axis_title
     plt.colorbar(boundaries = bounds, cmap = cmap, norm = norm, ticks = bounds, cax = cax)
 
 
-def create_1d_hist(hist, title = None, x_axis_title = None, y_axis_title = None, bins = 100):
+def create_1d_hist(hist, title = None, x_axis_title = None, y_axis_title = None, bins = None, x_max = None):
     median = np.median(hist)
     mean = np.mean(a = hist)
     rms = 0
@@ -312,7 +316,7 @@ def create_1d_hist(hist, title = None, x_axis_title = None, y_axis_title = None,
         rms += (hist.ravel()[i]-mean)**2
     rms = sqrt(rms/len(hist.ravel()))
     
-    hist,bins,_ = plt.hist(x = hist.ravel(), bins = bins)   #rebin to 1 d hist
+    hist,bins,_ = plt.hist(x = hist.ravel(), bins = 100 if bins == None else bins)   #rebin to 1 d hist
    
     if title != None:
         plt.title(title)
@@ -323,7 +327,6 @@ def create_1d_hist(hist, title = None, x_axis_title = None, y_axis_title = None,
 
     bin_centres = (bins[:-1] + bins[1:])/2
     amplitude = np.amax(hist)    
-    print amplitude
 
     def gauss(x, *p):
         A, mu, sigma = p
@@ -346,12 +349,12 @@ def create_1d_hist(hist, title = None, x_axis_title = None, y_axis_title = None,
         print("Fit failed, do not plot fit")
         
     plt.ylim([0, plt.ylim()[1]*1.05])
-    plt.xlim([0, np.amax(bins)])  
+    plt.xlim([0, np.amax(bins) if x_max == None else x_max])  
     textleft = '$\mathrm{mean}=%.2f$\n$\mathrm{RMS}=%.2f$\n$\mathrm{median}=%.2f$'%(mean, rms, median)
     props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
     ax.text(0.1, 0.9, textleft, transform=ax.transAxes, fontsize=8, verticalalignment='top', bbox=props)
 
-def create_pixel_scatter_plot(hist, title = None, x_axis_title = None, y_axis_title = None):
+def create_pixel_scatter_plot(hist, title = None, x_axis_title = None, y_axis_title = None, y_max = None):
     scatter_y = np.empty(shape=(336*80),dtype=hist.dtype)
     scatter_y_mean = np.zeros(shape=(80),dtype=np.float32)
     for col in range(80):
@@ -361,10 +364,11 @@ def create_pixel_scatter_plot(hist, title = None, x_axis_title = None, y_axis_ti
             column_mean += hist[row,col]
         scatter_y_mean[col] = column_mean/336.
     plt.scatter(range(80*336),  scatter_y, marker='o', s = 0.8)
-    p1, = plt.plot(range(336/2,80*336+336/2,336), scatter_y_mean, linewidth=2.0)
+    p1, = plt.plot(range(336/2,80*336+336/2,336), scatter_y_mean, 'o')
+    plt.plot(range(336/2,80*336+336/2,336), scatter_y_mean, linewidth=2.0)
     plt.legend([p1], ["column mean"], prop={'size':6})
     plt.xlim(0,26880)
-    plt.ylim(1.1*min(scatter_y) if(min(scatter_y) < 0) else 0 ,1.1*max(scatter_y))
+    plt.ylim(1.1*min(scatter_y) if(min(scatter_y) < 0) else 0 ,1.1*max(scatter_y) if y_max == None else y_max)
     if title != None:
         plt.title(title)
     if x_axis_title != None:
@@ -372,16 +376,16 @@ def create_pixel_scatter_plot(hist, title = None, x_axis_title = None, y_axis_ti
     if y_axis_title != None:
         plt.ylabel(y_axis_title)
 
-def plotThreeWay(hist, title, x_axis_title = None, y_axis_title = None, filename = None, label = "label not set"):   #the famous 3 way plot (enhanced)
+def plotThreeWay(hist, title, x_axis_title = None, y_axis_title = None, filename = None, label = "label not set", maximum = None, bins = None):   #the famous 3 way plot (enhanced)
     mean = np.mean(hist)
     fig = plt.figure()
     fig.patch.set_facecolor('white')
     plt.subplot(311)
-    create_2d_pixel_hist(hist, title = title, x_axis_title = "column", y_axis_title = "row", z_max = 2*mean)
+    create_2d_pixel_hist(hist, title = title, x_axis_title = "column", y_axis_title = "row", z_max = 2*mean if maximum == None else maximum)
     plt.subplot(312)
-    create_1d_hist(hist, bins = 100, x_axis_title = label, y_axis_title = "#")
+    create_1d_hist(hist, bins = bins, x_axis_title = label, y_axis_title = "#", x_max = maximum)
     plt.subplot(313)
-    create_pixel_scatter_plot(hist, x_axis_title = "channel = row + column*336", y_axis_title = label)
+    create_pixel_scatter_plot(hist, x_axis_title = "channel = row + column*336", y_axis_title = label, y_max = maximum)
     plt.tight_layout()
 
     if filename is None:
