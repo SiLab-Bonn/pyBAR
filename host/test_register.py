@@ -21,6 +21,6 @@ class TestRegisters(ScanBase):
         print 'Done!'
 
 if __name__ == "__main__":
-    import scan_configuration
-    scan = TestRegisters(config_file = scan_configuration.config_file, bit_file = scan_configuration.bit_file, outdir = scan_configuration.outdir)
+    import configuration
+    scan = TestRegisters(config_file = configuration.config_file, bit_file = configuration.bit_file, outdir = configuration.outdir)
     scan.start()

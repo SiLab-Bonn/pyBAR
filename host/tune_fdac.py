@@ -191,9 +191,9 @@ class FdacTune(ScanBase):
             return TotAvrArray
         
 if __name__ == "__main__":
-    import scan_configuration
-    #scan = FdacTune(scan_configuration.config_file, bit_file = scan_configuration.bit_file, outdir = scan_configuration.outdir)
-    scan = FdacTune(config_file = scan_configuration.config_file, bit_file = None, outdir = scan_configuration.outdir)
+    import configuration
+    #scan = FdacTune(configuration.config_file, bit_file = configuration.bit_file, outdir = configuration.outdir)
+    scan = FdacTune(config_file = configuration.config_file, bit_file = None, outdir = configuration.outdir)
     scan.setTargetCharge(PlsrDAC = 300)
     scan.setTargetTot(Tot = 5)
     scan.setNinjections(30)

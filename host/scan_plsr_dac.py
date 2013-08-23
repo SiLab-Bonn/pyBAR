@@ -78,6 +78,6 @@ class PlsrDacScan(ScanBase):
         self.lock.release()      
         
 if __name__ == "__main__":
-    import scan_configuration
-    scan = PlsrDacScan(config_file = scan_configuration.config_file, bit_file = scan_configuration.bit_file, outdir = scan_configuration.outdir)
+    import configuration
+    scan = PlsrDacScan(config_file = configuration.config_file, bit_file = configuration.bit_file, outdir = configuration.outdir)
     scan.start(configure = True)

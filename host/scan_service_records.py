@@ -15,6 +15,6 @@ class ServiceRecordScan(ScanBase):
             print service_record
        
 if __name__ == "__main__":
-    import scan_configuration    
-    scan = ServiceRecordScan(config_file = scan_configuration.config_file, bit_file = None, outdir = scan_configuration.outdir)
+    import configuration
+    scan = ServiceRecordScan(config_file = configuration.config_file, bit_file = None, outdir = configuration.outdir)
     scan.start(configure = False)

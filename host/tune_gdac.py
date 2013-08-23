@@ -208,11 +208,10 @@ class GdacTune(ScanBase):
             return self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine")
         
 if __name__ == "__main__":
-    import scan_configuration
-    scan = GdacTune(config_file = scan_configuration.config_file, bit_file = scan_configuration.bit_file, outdir = scan_configuration.outdir)
+    import configuration
+    scan = GdacTune(config_file = configuration.config_file, bit_file = configuration.bit_file, outdir = configuration.outdir)
     scan.setTargetThreshold(PlsrDAC = 40)
     scan.setAbortPrecision(delta_occupancy = 2)
     scan.setGdacTuneBits(range(7,-1,-1))
     scan.setNinjections(Ninjections = 50)
     scan.start()
-    
