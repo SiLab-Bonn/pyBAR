@@ -34,7 +34,7 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 {
   if(Basis::debugSet()){
     std::stringstream tDebug;
-    tDebug<<"interpretRawData with "<<pNdataWords<<" words";
+    tDebug<<"interpretRawData with "<<pNdataWords<<" words at total word "<<_nDataWords;
     debug(tDebug.str());
   }
   _hitIndex = 0;
@@ -105,18 +105,6 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
       if (Basis::debugSet())
         debug(std::string(" ")+IntToStr(_nDataWords)+" DH LVL1ID/BCID "+IntToStr(tActualLVL1ID)+"/"+IntToStr(tActualBCID)+"\t"+IntToStr(_nEvents));
 		}
-		else if (isDataRecord(tActualWord)){	//data word is data record if true is returned
-			if (getHitsfromDataRecord(tActualWord, tActualCol1, tActualRow1, tActualTot1, tActualCol2, tActualRow2, tActualTot2)){
-        tNdataRecord++;										  //increase data record counter for this event
-			  _nDataRecords++;									  //increase total data record counter
-			  if(tActualTot1 >= 0)								//add hit if hit info is reasonable (TOT1 >= 0)
-          addHit(tDbCID, tActualLVL1ID, tActualCol1, tActualRow1, tActualTot1, tActualBCID);
-			  if(tActualTot2 >= 0)								//add hit if hit info is reasonable and set (TOT2 >= 0)
-          addHit(tDbCID, tActualLVL1ID, tActualCol2, tActualRow2, tActualTot2, tActualBCID);
-        if (Basis::debugSet()) 
-          debug(std::string(" ")+IntToStr(_nDataWords)+" DR COL1/ROW1/TOT1  COL2/ROW2/TOT2 "+IntToStr(tActualCol1)+"/"+IntToStr(tActualRow1)+"/"+IntToStr(tActualTot1)+"  "+IntToStr(tActualCol2)+"/"+IntToStr(tActualRow2)+"/"+IntToStr(tActualTot2)+" rBCID "+IntToStr(tDbCID)+"\t"+IntToStr(_nEvents));
-      }		
-    }
     else if (isTriggerWord(tActualWord)){ //data word is trigger word, is first word of the event data if external trigger is present
 			_nTriggers++;										    //increase the total trigger number counter
       if (tNdataHeader > _NbCID-1){	      //special case: first word is trigger word
@@ -158,6 +146,18 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
         addEventErrorCode(__HAS_SR);
         _nServiceRecords++;
 		}
+    else if (isDataRecord(tActualWord)){	//data word is data record if true is returned
+			if (getHitsfromDataRecord(tActualWord, tActualCol1, tActualRow1, tActualTot1, tActualCol2, tActualRow2, tActualTot2)){
+        tNdataRecord++;										  //increase data record counter for this event
+			  _nDataRecords++;									  //increase total data record counter
+			  if(tActualTot1 >= 0)								//add hit if hit info is reasonable (TOT1 >= 0)
+          addHit(tDbCID, tActualLVL1ID, tActualCol1, tActualRow1, tActualTot1, tActualBCID);
+			  if(tActualTot2 >= 0)								//add hit if hit info is reasonable and set (TOT2 >= 0)
+          addHit(tDbCID, tActualLVL1ID, tActualCol2, tActualRow2, tActualTot2, tActualBCID);
+        if (Basis::debugSet()) 
+          debug(std::string(" ")+IntToStr(_nDataWords)+" DR COL1/ROW1/TOT1  COL2/ROW2/TOT2 "+IntToStr(tActualCol1)+"/"+IntToStr(tActualRow1)+"/"+IntToStr(tActualTot1)+"  "+IntToStr(tActualCol2)+"/"+IntToStr(tActualRow2)+"/"+IntToStr(tActualTot2)+" rBCID "+IntToStr(tDbCID)+"\t"+IntToStr(_nEvents));
+      }		
+    }
 		else{
 			if (!isOtherWord(tActualWord)){			//other for hit interpreting uninteressting data, else data word unknown
         addEventErrorCode(__UNKNOWN_WORD);
@@ -514,6 +514,26 @@ bool Interpret::isTriggerWord(const unsigned int& pSRAMWORD)
 	return false;
 }
 
+bool Interpret::isAddressRecord(const unsigned int& pSRAMWORD, unsigned int& rAddress, bool& isShiftRegister)
+{
+	if (ADDRESS_RECORD_MACRO(pSRAMWORD)){
+    if(ADDRESS_RECORD_TYPE_SET_MACRO(pSRAMWORD))
+      isShiftRegister = true;
+    rAddress = ADDRESS_RECORD_ADDRESS_MACRO(pSRAMWORD);
+		return true;
+  }
+	return false;
+}
+
+bool Interpret::isValueRecord(const unsigned int& pSRAMWORD, unsigned int& rValue)
+{
+	if (VALUE_RECORD_MACRO(pSRAMWORD)){
+    rValue = VALUE_RECORD_VALUE_MACRO(pSRAMWORD);
+		return true;
+  }
+	return false;
+}
+
 bool Interpret::isOtherWord(const unsigned int& pSRAMWORD)
 {
 	if (ADDRESS_RECORD_MACRO(pSRAMWORD) || VALUE_RECORD_MACRO(pSRAMWORD))
@@ -695,16 +715,27 @@ void Interpret::printInterpretedWords(unsigned int* pDataWords, const unsigned i
     int ttot2 = 0;
     unsigned int tActualSRcode = 0;
     unsigned int tActualSRcounter = 0;
+    unsigned int tActualValueRecord = 0;
+    unsigned int tActualAddressRecord = 0;
+    bool tActualAddressRecordType = 0;
+    std::cout<<iWord;
     if(getTimefromDataHeader(tActualWord, tLVL1, tBCID))
-      std::cout<<iWord<<" DH "<<tBCID<<" "<<tLVL1<<"\t";
-    else if(getHitsfromDataRecord(tActualWord,tcol, trow, ttot,tcol2, trow2, ttot2))
-      std::cout<<iWord<<" DR     "<<tcol<<" "<<trow<<" "<<ttot<<" "<<tcol2<<" "<<trow2<<"  "<<ttot2<<"\t";
+      std::cout<<" DH "<<tBCID<<" "<<tLVL1<<"\t";
+    else if(isDataRecord(tActualWord) && getHitsfromDataRecord(tActualWord,tcol, trow, ttot,tcol2, trow2, ttot2))
+      std::cout<<" DR     "<<tcol<<" "<<trow<<" "<<ttot<<" "<<tcol2<<" "<<trow2<<"  "<<ttot2<<"\t";
     else if(isTriggerWord(tActualWord))
-      std::cout<<iWord<<" TRIGGER "<<TRIGGER_NUMBER_MACRO_NEW(tActualWord);
+      std::cout<<" TRIGGER "<<TRIGGER_NUMBER_MACRO_NEW(tActualWord);
     else if(getInfoFromServiceRecord(tActualWord, tActualSRcode, tActualSRcounter))
-      std::cout<<iWord<<" SR "<<tActualSRcode;
-    else if(!isOtherWord(tActualWord))	
-      std::cout<<iWord<<"\tUNKNOWN "<<tActualWord;
+      std::cout<<" SR "<<tActualSRcode;
+    else if(isAddressRecord(tActualWord,tActualAddressRecord, tActualAddressRecordType))
+      if(tActualAddressRecordType)
+        std::cout<<" AR SHIFT REG "<<tActualAddressRecord;
+      else
+        std::cout<<" AR GLOBAL REG "<<tActualAddressRecord;
+    else if(isValueRecord(tActualWord,tActualValueRecord))	
+      std::cout<<" VR "<<tActualValueRecord;
+    else
+      std::cout<<" UNKNOWN "<<tActualWord;
     std::cout<<"\n";
   }
 }

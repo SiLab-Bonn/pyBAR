@@ -697,8 +697,8 @@ void Converter::printOptions()
 //{
 //  _parameterInfoBuffer = new ParInfo[(unsigned int) pNparRecords];
 //  rSize = sizeof(ParInfo);
-//  rOffset = HOFFSET(ParInfo, pulserDAC);
-//  rSizes = sizeof(_parameterInfoBuffer[0].pulserDAC);
+//  rOffset = HOFFSET(ParInfo, scanParameter);
+//  rSizes = sizeof(_parameterInfoBuffer[0].scanParameter);
 //}
 //
 //void Converter::createMetaInfoBuffer(unsigned int& pNmetaRecords, size_t& rSize, size_t& rOffset, size_t& rSizes)
@@ -1039,8 +1039,8 @@ void Converter::extractParameterData(H5::Group& rGroup, hsize_t& rNfields, hsize
       //read parameter array from table
       _parameterInfoBuffer = new ParInfo[(unsigned int) rNrecordsPar];
       size_t Par_size = sizeof(ParInfo);
-      size_t Par_offset[NFIELDSPAR] = {HOFFSET(ParInfo, pulserDAC)};
-      size_t Par_sizes[NFIELDSPAR] = {sizeof(_parameterInfoBuffer[0].pulserDAC)};
+      size_t Par_offset[NFIELDSPAR] = {HOFFSET(ParInfo, scanParameter)};
+      size_t Par_sizes[NFIELDSPAR] = {sizeof(_parameterInfoBuffer[0].scanParameter)};
       H5TBread_records(_inFile->getId(), _parDataSetName.c_str(), 0, rNrecordsPar, Par_size, Par_offset, Par_sizes, _parameterInfoBuffer);
       _histogram.addScanParameter((unsigned int&) rNrecordsPar, _parameterInfoBuffer); //set the parameter array (plsr DAC value per readout)
       printTableInfo(rGroup.getId(), _parDataSetName.c_str());

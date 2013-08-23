@@ -34,7 +34,7 @@ typedef struct MetaInfoOut{
 
 //structure to read the parameter information table
 typedef struct ParInfo{
-  unsigned int pulserDAC;     //pulser DAC setting
+  unsigned int scanParameter;     //parameter setting
 } ParInfo;
 
 //DUT and TLU defines
