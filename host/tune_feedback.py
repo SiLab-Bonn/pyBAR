@@ -176,8 +176,8 @@ class FeedbackTune(ScanBase):
                             self.setPrmpVbpfBit(PrmpVbpf_bit, bit_value = 1)
                             print "set bit 0 = 1"   
 
-                TotArray, _ = np.histogram(a = tots, range = (0,16), bins = 16)
-                plot_tot(tot_hist = TotArray, filename = None)#self.scan_data_path+".pdf")
+#                 TotArray, _ = np.histogram(a = tots, range = (0,16), bins = 16)
+#                 plot_tot(tot_hist = TotArray, filename = None)#self.scan_data_path+".pdf")
                 
                 if(abs(mean_tot-self.TargetTot) < self.abort_precision): #abort if good value already found to save time
                     print 'good result already achieved, skipping missing bits'
@@ -186,12 +186,13 @@ class FeedbackTune(ScanBase):
             print 'Tuned PrmpVbpf to: ',self.register.get_global_register_value("PrmpVbpf")    
             print 'Stopping readout thread...'
             self.readout.stop()
-            print 'Done!'      
+            print 'Done!'
+            return self.register.get_global_register_value("PrmpVbpf")    
         
 if __name__ == "__main__":
     import scan_configuration
     scan = FeedbackTune(scan_configuration.config_file, bit_file = scan_configuration.bit_file, outdir = scan_configuration.outdir)
-    scan.setTargetCharge(PlsrDAC = 200)
+    scan.setTargetCharge(PlsrDAC = 250)
     scan.setTargetTot(Tot = 5)
     scan.setAbortPrecision(delta_tot = 0.1)
     scan.setFeedbackTuneBits(range(7,-1,-1))
