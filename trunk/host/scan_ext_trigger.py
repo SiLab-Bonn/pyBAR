@@ -25,14 +25,13 @@ from scan.scan import ScanBase
 logging.basicConfig(level=logging.INFO, format = "%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 class ExtTriggerScan(ScanBase):
-    def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "ext_trigger_scan", outdir = None):
+    def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "scan_ext_trigger", outdir = None):
         super(ExtTriggerScan, self).__init__(config_file, definition_file, bit_file, device, scan_identifier, outdir)
         
     def start(self, configure = True):
         super(ExtTriggerScan, self).start(configure)
         
-        logging.info('Start readout thread...')
-        #self.readout.set_filter(self.readout.tlu_data_filter)
+        logging.info('Starting readout thread...')
         self.readout.start()
         logging.info('Done!')
         
@@ -76,9 +75,7 @@ class ExtTriggerScan(ScanBase):
             raw_data_q = deque()
             current_trigger_number = 0
             last_trigger_number = 0
-            while self.stop_thread_event.wait(0.05) or not self.stop_thread_event.is_set():
-                if self.stop_thread_event.is_set():
-                    break
+            while not self.stop_thread_event.wait(0.05):
                 
 #                 if logger.isEnabledFor(logging.DEBUG):
 #                     lost_data = self.readout.get_lost_data_count()
@@ -175,17 +172,9 @@ class ExtTriggerScan(ScanBase):
         logging.info('Stopping readout thread...')
         self.readout.stop()
         logging.info('Done!')
-        
-        logging.info('Data remaining in memory: %d', self.readout.get_fifo_size())
-        logging.info('Lost data count: %d', self.readout.get_lost_data_count())
 
         
 if __name__ == "__main__":
-    chip_flavor = 'fei4a'
-    config_file = r'C:\Users\silab\Dropbox\pyats\trunk\host\config\fei4default\configs\std_cfg_'+chip_flavor+'_simple.cfg'
-    #bit_file = r'C:\Users\silab\Dropbox\pyats\trunk\device\MultiIO\FPGA\ise\top.bit'
-    bit_file = r'C:\Users\silab\Dropbox\pyats\trunk\host\config\FPGA\top.bit'
-    
-    scan = ExtTriggerScan(config_file = config_file, bit_file = bit_file)
-    
+    import scan_configuration
+    scan = ExtTriggerScan(config_file = scan_configuration.config_file, bit_file = scan_configuration.bit_file, outdir = scan_configuration.outdir)
     scan.start()

@@ -20,8 +20,7 @@ class AnalogScan(ScanBase):
     def start(self, configure = True):
         super(AnalogScan, self).start(configure)
         
-        print 'Start readout thread...'
-        #self.readout.set_filter(self.readout.data_record_filter)
+        print 'Starting readout thread...'
         self.readout.start()
         print 'Done!'
         
@@ -42,11 +41,9 @@ class AnalogScan(ScanBase):
         #pr.disable()
         #pr.print_stats('cumulative')
         
-        q_size = -1
-        while self.readout.data_queue.qsize() != q_size:
-            time.sleep(0.5)
-            q_size = self.readout.data_queue.qsize()
-        print 'Items in queue:', q_size
+        print 'Stopping readout thread...'
+        self.readout.stop()
+        print 'Done!'
               
         def get_cols_rows(data_words):
             for item in self.readout.data_record_filter(data_words):
@@ -94,13 +91,6 @@ class AnalogScan(ScanBase):
                 row_meta['stop_index'] = total_words
                 row_meta.append()
                 meta_data_table_h5.flush()
-        
-        print 'Stopping readout thread...'
-        self.readout.stop()
-        print 'Done!'
-         
-        print 'Data remaining in memory:', self.readout.get_fifo_size()
-        print 'Lost data count:', self.readout.get_lost_data_count()
         
         #cols, rows = zip(*get_cols_rows(data_words))
         #plot_occupancy(cols, rows, max_occ = repeat*2)

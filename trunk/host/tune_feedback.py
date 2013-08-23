@@ -70,10 +70,6 @@ class FeedbackTune(ScanBase):
             for item in self.readout.data_record_filter(data_words):
                 yield ((item & 0x000F0)>>4)
         
-        print 'Start readout thread...'
-        self.readout.start()
-        print 'Done!'
-        
         for PrmpVbpf_bit in self.FeedbackTuneBits: #reset all GDAC bits
             self.setPrmpVbpfBit(PrmpVbpf_bit, bit_value = 0)
             
@@ -103,6 +99,10 @@ class FeedbackTune(ScanBase):
             row_scan_param = scan_param_table_h5.row
             
             for PrmpVbpf_bit in self.FeedbackTuneBits:
+                print 'Starting readout thread...'
+                self.readout.start()
+                print 'Done!'
+                
                 if(not addedAdditionalLastBitScan):
                     self.setPrmpVbpfBit(PrmpVbpf_bit)
                 else:
@@ -116,11 +116,9 @@ class FeedbackTune(ScanBase):
                 cal_lvl1_command = self.register.get_commands("cal")[0]+BitVector.BitVector(size = 40)+self.register.get_commands("lv1")[0]+BitVector.BitVector(size = wait_cycles)
                 self.scan_utils.base_scan(cal_lvl1_command, repeat = repeat, mask = mask, steps = steps, dcs = [], same_mask_for_all_dc = True, hardware_repeat = True, digital_injection = False, read_function = None)#self.readout.read_once)
                 
-                q_size = -1
-                while self.readout.data_queue.qsize() != q_size:
-                    time.sleep(0.5)
-                    q_size = self.readout.data_queue.qsize()
-                print 'Items in queue:', q_size
+                print 'Stopping readout thread...'
+                self.readout.stop()
+                print 'Done!'
 
                 data_q.extend(list(get_all_from_queue(self.readout.data_queue))) # use list, it is faster
                 data_words = itertools.chain(*(data_dict['raw_data'] for data_dict in data_q))
@@ -153,9 +151,6 @@ class FeedbackTune(ScanBase):
                     row_scan_param.append()
                     scan_param_table_h5.flush()
                 
-                print 'Data remaining in memory:', self.readout.get_fifo_size()
-                print 'Lost data count:', self.readout.get_lost_data_count()
-                
                 tots = [tot for tot in get_tot(data_words)]
                 mean_tot=np.mean(tots)
                 print "TOT mean =", mean_tot
@@ -183,15 +178,12 @@ class FeedbackTune(ScanBase):
                     print 'good result already achieved, skipping missing bits'
                     break
             
-            print 'Tuned PrmpVbpf to: ',self.register.get_global_register_value("PrmpVbpf")    
-            print 'Stopping readout thread...'
-            self.readout.stop()
-            print 'Done!'
-            return self.register.get_global_register_value("PrmpVbpf")    
+            print 'Tuned PrmpVbpf to: ',self.register.get_global_register_value("PrmpVbpf")
+            return self.register.get_global_register_value("PrmpVbpf")
         
 if __name__ == "__main__":
     import scan_configuration
-    scan = FeedbackTune(scan_configuration.config_file, bit_file = scan_configuration.bit_file, outdir = scan_configuration.outdir)
+    scan = FeedbackTune(config_file = scan_configuration.config_file, bit_file = scan_configuration.bit_file, outdir = scan_configuration.outdir)
     scan.setTargetCharge(PlsrDAC = 250)
     scan.setTargetTot(Tot = 5)
     scan.setAbortPrecision(delta_tot = 0.1)

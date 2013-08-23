@@ -22,26 +22,16 @@ class ThresholdScan(ScanBase):
     def start(self, configure = True):
         super(ThresholdScan, self).start(configure)
         
-        print 'Start readout thread...'
-        #self.readout.set_filter(self.readout.data_record_filter)
-        self.readout.start()
-        print 'Done!'
-        
-        #data_words_lists = []
-        
         scan_parameter = 'PlsrDAC'
         scan_paramter_value_range = range(0, 100, 1)
         
-        
-            
         #    class ScanParameters(tb.IsDescription):
         #        scan_parameter = tb.UInt32Col(pos=0)
-            
         scan_param_descr = {scan_parameter:tb.UInt32Col(pos=0)}
         
         data_q = deque()
         raw_data_q = deque()
-            
+        
         total_words = 0
         append_size = 50000
         filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
@@ -55,6 +45,9 @@ class ThresholdScan(ScanBase):
             row_scan_param = scan_param_table_h5.row
                 
             for scan_paramter_value in scan_paramter_value_range:
+                print 'Starting readout thread...'
+                self.readout.start()
+                print 'Done!'
                 
                 print 'Scan step:', scan_parameter, scan_paramter_value
                 
@@ -74,11 +67,9 @@ class ThresholdScan(ScanBase):
                 #pr.disable()
                 #pr.print_stats('cumulative')
                 
-                q_size = -1
-                while self.readout.data_queue.qsize() != q_size:
-                    time.sleep(0.5)
-                    q_size = self.readout.data_queue.qsize()
-                print 'Items in queue:', q_size
+                print 'Stopping readout thread...'
+                self.readout.stop()
+                print 'Done!'
         
         #            data_q = get_all_from_queue(self.readout.data_queue)
         #            print 'got all from queue'
@@ -118,14 +109,6 @@ class ThresholdScan(ScanBase):
                     row_scan_param[scan_parameter] = scan_paramter_value
                     row_scan_param.append()
                     scan_param_table_h5.flush()
-                
-                print 'Data remaining in memory:', self.readout.get_fifo_size()
-                print 'Lost data count:', self.readout.get_lost_data_count()
-            
-            
-            print 'Stopping readout thread...'
-            self.readout.stop()
-            print 'Done!'
         
         def get_cols_rows(data_words):
             for item in self.readout.data_record_filter(data_words):
