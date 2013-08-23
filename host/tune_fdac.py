@@ -82,10 +82,6 @@ class FdacTune(ScanBase):
             for item in self.readout.data_record_filter(data_words):
                 yield ((item & 0x1FF00)>>8), ((item & 0xFE0000)>>17)
         
-        print 'Start readout thread...'
-        self.readout.start()
-        print 'Done!'
-        
         self.setStartFdac()
             
         addedAdditionalLastBitScan = False
@@ -116,6 +112,10 @@ class FdacTune(ScanBase):
             Fdac_mask = []
             
             for index, Fdac_bit in enumerate(self.FdacTuneBits):
+                print 'Starting readout thread...'
+                self.readout.start()
+                print 'Done!'
+                
                 if(not addedAdditionalLastBitScan):
                     self.setFdacBit(Fdac_bit)
                 else:
@@ -129,11 +129,9 @@ class FdacTune(ScanBase):
                 cal_lvl1_command = self.register.get_commands("cal")[0]+BitVector.BitVector(size = 40)+self.register.get_commands("lv1")[0]+BitVector.BitVector(size = wait_cycles)
                 self.scan_utils.base_scan(cal_lvl1_command, repeat = repeat, mask = mask, steps = steps, dcs = [], same_mask_for_all_dc = True, hardware_repeat = True, digital_injection = False, read_function = None)#self.readout.read_once)
                 
-                q_size = -1
-                while self.readout.data_queue.qsize() != q_size:
-                    time.sleep(0.5)
-                    q_size = self.readout.data_queue.qsize()
-                print 'Items in queue:', q_size
+                print 'Stopping readout thread...'
+                self.readout.stop()
+                print 'Done!'
 
                 data_q.extend(list(get_all_from_queue(self.readout.data_queue))) # use list, it is faster
                 data_words = itertools.chain(*(data_dict['raw_data'] for data_dict in data_q))
@@ -165,9 +163,6 @@ class FdacTune(ScanBase):
                     row_scan_param[scan_parameter] = scan_paramter_value
                     row_scan_param.append()
                     scan_param_table_h5.flush()
-                
-                print 'Data remaining in memory:', self.readout.get_fifo_size()
-                print 'Lost data count:', self.readout.get_lost_data_count()
 
                 TotArray = np.histogramdd(np.array(list(get_cols_rows_tot(data_words))), bins = (80, 336, 16), range = [[1,80], [1,336], [0,15]])[0]
                 TotAvrArray = np.average(TotArray,axis = 2, weights=range(0,16))*sum(range(0,16))/self.Ninjections
@@ -193,15 +188,12 @@ class FdacTune(ScanBase):
 #             plotThreeWay(hist = TotAvrArray.transpose(), title = "TOT average final")
 #             plotThreeWay(hist = self.register.get_pixel_register_value("FDAC").transpose(), title = "FDAC distribution final")
             print "Tuned Fdac!"
-            print 'Stopping readout thread...'
-            self.readout.stop()
-            print 'Done!'
-            return TotAvrArray      
+            return TotAvrArray
         
 if __name__ == "__main__":
     import scan_configuration
     #scan = FdacTune(scan_configuration.config_file, bit_file = scan_configuration.bit_file, outdir = scan_configuration.outdir)
-    scan = FdacTune(scan_configuration.config_file, bit_file = None, outdir = scan_configuration.outdir)
+    scan = FdacTune(config_file = scan_configuration.config_file, bit_file = None, outdir = scan_configuration.outdir)
     scan.setTargetCharge(PlsrDAC = 300)
     scan.setTargetTot(Tot = 5)
     scan.setNinjections(30)

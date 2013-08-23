@@ -1,4 +1,4 @@
-""" Reads the actual service records. The FPGA/Fe will not be configured in this scan. Thus they have to be configured already.
+"""Reads the actual service records. The FPGA/FE will not be configured in this scan. It has to be already configured.
 
 """
 from scan.scan import ScanBase
@@ -10,16 +10,11 @@ class ServiceRecordScan(ScanBase):
     def start(self, configure = True):
         super(ServiceRecordScan, self).start(configure)
         
-        print 'Reading Service Records'
+        print 'Reading Service Records...'
         for service_record in scan.register_utils.read_service_records():
-            print service_record               
+            print service_record
+       
 if __name__ == "__main__":
-    chip_flavor = 'fei4b'
-    config_file = r'C:\pyats\trunk\host\config\fei4default\configs\std_cfg_'+chip_flavor+'.cfg'
-    bit_file = r'C:\pyats\trunk\host\config\FPGA\top.bit'
-    scan_identifier = "service_record_scan"
-    outdir = r"C:\data\service_record_scan"
-    
-    scan = ServiceRecordScan(config_file, bit_file = None, scan_identifier = scan_identifier, outdir = outdir)
-    
+    import scan_configuration    
+    scan = ServiceRecordScan(config_file = scan_configuration.config_file, bit_file = None, outdir = scan_configuration.outdir)
     scan.start(configure = False)

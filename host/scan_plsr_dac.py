@@ -9,7 +9,7 @@ from utils.utils import get_all_from_queue, split_seq
 from scan.scan import ScanBase
 
 class PlsrDacScan(ScanBase):
-    def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "plsr_dac_scan", outdir = None):
+    def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "scan_plsr_dac", outdir = None):
         super(PlsrDacScan, self).__init__(config_file, definition_file, bit_file, device, scan_identifier, outdir)
         
     def start(self, configure = True):
@@ -17,8 +17,7 @@ class PlsrDacScan(ScanBase):
         
         self.lock.acquire()
         
-        print 'Start readout thread...'
-        #self.readout.set_filter(self.readout.data_record_filter)
+        print 'Starting readout thread...'
         self.readout.start()
         print 'Done!'
         
@@ -33,11 +32,9 @@ class PlsrDacScan(ScanBase):
         cal_lvl1_command = self.register.get_commands("cal")[0]+BitVector.BitVector(size = 40)+self.register.get_commands("lv1")[0]+BitVector.BitVector(size = wait_cycles)
         self.scan_utils.base_scan(cal_lvl1_command, repeat = repeat, mask = mask, steps = [], dcs = range(2,38), same_mask_for_all_dc = True, hardware_repeat = True, digital_injection = False, enable_c_high = None, enable_c_low = None, read_function = None)
         
-        q_size = -1
-        while self.readout.data_queue.qsize() != q_size:
-            time.sleep(0.5)
-            q_size = self.readout.data_queue.qsize()
-        print 'Items in queue:', q_size
+        print 'Stopping readout thread...'
+        self.readout.stop()
+        print 'Done!'
               
         def get_cols_rows(data_words):
             for item in data_words:
@@ -76,23 +73,11 @@ class PlsrDacScan(ScanBase):
                 row_meta.append()
                 meta_data_table_h5.flush()
         
-        print 'Stopping readout thread...'
-        self.readout.stop()
-        print 'Done!'
-         
-        print 'Data remaining in memory:', self.readout.get_fifo_size()
-        print 'Lost data count:', self.readout.get_lost_data_count()
-        
         plot_occupancy(*zip(*get_cols_rows(data_words)), max_occ = repeat*2)
         
         self.lock.release()      
         
 if __name__ == "__main__":
-    chip_flavor = 'fei4b'
-    config_file = r'C:\pyats\trunk\host\config\fei4default\configs\plsr_cfg_'+chip_flavor+'.cfg'
-    bit_file = r'C:\pyats\trunk\host\config\FPGA\top.bit'
-    scan_identifier = "plsr_dac_scan"
-    outdir = r"C:\data\PlsrDacScan"
-    
-    scan = PlsrDacScan(config_file, bit_file = bit_file, scan_identifier = scan_identifier, outdir = outdir)
+    import scan_configuration
+    scan = PlsrDacScan(config_file = scan_configuration.config_file, bit_file = scan_configuration.bit_file, outdir = scan_configuration.outdir)
     scan.start(configure = True)

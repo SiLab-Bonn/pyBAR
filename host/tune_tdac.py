@@ -70,10 +70,6 @@ class TdacTune(ScanBase):
             for item in self.readout.data_record_filter(data_words):
                 yield ((item & 0x1FF00)>>8), ((item & 0xFE0000)>>17)
         
-        print 'Start readout thread...'
-        self.readout.start()
-        print 'Done!'
-        
         addedAdditionalLastBitScan = False
         lastBitResult = np.zeros(shape = self.register.get_pixel_register_value("TDAC").shape, dtype = self.register.get_pixel_register_value("TDAC").dtype)
         
@@ -104,6 +100,10 @@ class TdacTune(ScanBase):
             tdac_mask = []
             
             for index, Tdac_bit in enumerate(self.TdacTuneBits):
+                print 'Starting readout thread...'
+                self.readout.start()
+                print 'Done!'
+                
                 if(not addedAdditionalLastBitScan):
                     self.setTdacBit(Tdac_bit)
                 else:
@@ -117,11 +117,9 @@ class TdacTune(ScanBase):
                 cal_lvl1_command = self.register.get_commands("cal")[0]+BitVector.BitVector(size = 40)+self.register.get_commands("lv1")[0]+BitVector.BitVector(size = wait_cycles)
                 self.scan_utils.base_scan(cal_lvl1_command, repeat = repeat, mask = mask, steps = steps, dcs = [], same_mask_for_all_dc = True, hardware_repeat = True, digital_injection = False, read_function = None)#self.readout.read_once)
                 
-                q_size = -1
-                while self.readout.data_queue.qsize() != q_size:
-                    time.sleep(0.5)
-                    q_size = self.readout.data_queue.qsize()
-                print 'Items in queue:', q_size
+                print 'Stopping readout thread...'
+                self.readout.stop()
+                print 'Done!'
 
                 data_q.extend(list(get_all_from_queue(self.readout.data_queue))) # use list, it is faster
                 data_words = itertools.chain(*(data_dict['raw_data'] for data_dict in data_q))
@@ -154,9 +152,6 @@ class TdacTune(ScanBase):
                     row_scan_param.append()
                     scan_param_table_h5.flush()
                 
-                print 'Data remaining in memory:', self.readout.get_fifo_size()
-                print 'Lost data count:', self.readout.get_lost_data_count()
-                
                 OccupancyArray, _, _ = np.histogram2d(*zip(*get_cols_rows(data_words)), bins = (80, 336), range = [[1,80], [1,336]])
 #                 plotThreeWay(hist = OccupancyArray.transpose(), title = "Occupancy")
                 
@@ -180,14 +175,11 @@ class TdacTune(ScanBase):
             plotThreeWay(hist = OccupancyArray.transpose(), title = "Occupancy final")
 #             plotThreeWay(hist = self.register.get_pixel_register_value("TDAC").transpose(), title = "TDAC distribution final")
             print "Tuned Tdac!"
-            print 'Stopping readout thread...'
-            self.readout.stop()
-            print 'Done!'
-            return OccupancyArray   
+            return OccupancyArray
         
 if __name__ == "__main__":
     import scan_configuration
-    scan = TdacTune(scan_configuration.config_file, bit_file = scan_configuration.bit_file, outdir = scan_configuration.outdir)
+    scan = TdacTune(config_file = scan_configuration.config_file, bit_file = scan_configuration.bit_file, outdir = scan_configuration.outdir)
     scan.setNinjections(100) 
     scan.setTargetThreshold(PlsrDAC = 40)
     scan.setTdacTuneBits(range(4,-1,-1))

@@ -11,7 +11,7 @@ from utils.utils import get_all_from_queue, split_seq
 from scan.scan import ScanBase
 
 class ExtInjScan(ScanBase):
-    def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "ext_inj_scan", outdir = None):
+    def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "scan_ext_inj", outdir = None):
         super(ExtInjScan, self).__init__(config_file, definition_file, bit_file, device, scan_identifier, outdir)
         
     def start(self, configure = True):
@@ -19,7 +19,7 @@ class ExtInjScan(ScanBase):
         
         self.lock.acquire()
         
-        print 'Start readout thread...'
+        print 'Starting readout thread...'
         self.readout.start()
         print 'Done!'
         
@@ -29,11 +29,9 @@ class ExtInjScan(ScanBase):
         cal_lvl1_command = self.register.get_commands("cal")[0]+BitVector.BitVector(size = 40)+self.register.get_commands("lv1")[0]+BitVector.BitVector(size = wait_cycles)
         self.scan_utils.base_scan(cal_lvl1_command, repeat = repeat, mask = mask, steps = [], dcs = [], same_mask_for_all_dc = True, hardware_repeat = True, digital_injection = False, read_function = None)#self.readout.read_once)
 
-        q_size = -1
-        while self.readout.data_queue.qsize() != q_size:
-            time.sleep(0.5)
-            q_size = self.readout.data_queue.qsize()
-        print 'Items in queue:', q_size
+        print 'Stopping readout thread...'
+        self.readout.stop()
+        print 'Done!'
               
         def get_cols_rows(data_words):
             for item in data_words:
@@ -70,22 +68,9 @@ class ExtInjScan(ScanBase):
                 row_meta.append()
                 meta_data_table_h5.flush()
         
-        print 'Stopping readout thread...'
-        self.readout.stop()
-        print 'Done!'
-         
-        print 'Data remaining in memory:', self.readout.get_fifo_size()
-        print 'Lost data count:', self.readout.get_lost_data_count()
-        
         self.lock.release()
 
 if __name__ == "__main__":
-    chip_flavor = 'fei4b'
-    config_file = r'C:\pyats\trunk\host\config\fei4default\configs\ext_inj_cfg_'+chip_flavor+'.cfg'
-    bit_file = r'C:\pyats\trunk\host\config\FPGA\top_trg.bit'   # bit file that sends a trigger pulser for each cal command
-    scan_identifier = "ext_inj_scan"
-    outdir = r"C:\data\ExtInjScan"
-    
-    scan = ExtInjScan(config_file, bit_file = bit_file, scan_identifier = scan_identifier, outdir = outdir)
-    
-    scan.start(configure = True)
+    import scan_configuration
+    scan = ExtInjScan(config_file = scan_configuration.config_file, bit_file = scan_configuration.bit_file, outdir = scan_configuration.outdir)
+    scan.start()

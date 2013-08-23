@@ -17,7 +17,7 @@ class DigitalScan(ScanBase):
     def start(self, configure = True):
         super(DigitalScan, self).start(configure)
         
-        print 'Start readout thread...'
+        print 'Starting readout thread...'
         self.readout.start()
         print 'Done!'
         
@@ -25,11 +25,9 @@ class DigitalScan(ScanBase):
         cal_lvl1_command = self.register.get_commands("cal")[0]+BitVector.BitVector(size = 35)+self.register.get_commands("lv1")[0]+BitVector.BitVector(size = 1000)
         self.scan_utils.base_scan(cal_lvl1_command, repeat = repeat, mask = 6, steps = [], dcs = [], same_mask_for_all_dc = True, hardware_repeat = True, enable_c_high = False, enable_c_low = False, digital_injection = True, read_function = None)
         
-        q_size = -1
-        while self.readout.data_queue.qsize() != q_size:
-            time.sleep(0.5)
-            q_size = self.readout.data_queue.qsize()
-        print 'Items in queue:', q_size
+        print 'Stopping readout thread...'
+        self.readout.stop()
+        print 'Done!'
               
         def get_cols_rows(data_words):
             for item in self.readout.data_record_filter(data_words):
@@ -64,13 +62,6 @@ class DigitalScan(ScanBase):
                 row_meta['stop_index'] = total_words
                 row_meta.append()
                 meta_data_table_h5.flush()
-        
-        print 'Stopping readout thread...'
-        self.readout.stop()
-        print 'Done!'
-         
-        print 'Data remaining in memory:', self.readout.get_fifo_size()
-        print 'Lost data count:', self.readout.get_lost_data_count()
         
         plot_occupancy(*zip(*get_cols_rows(data_words)), max_occ = repeat*2, filename = self.scan_data_path+".pdf")
 
