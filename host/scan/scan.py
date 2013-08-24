@@ -84,11 +84,11 @@ class ScanBase(object):
             self.configure()
 
         logging.info('Reset Rx...')
-        self.readout_utils.reset_rx()
+        self.readout.reset_rx()
         logging.info('Done!')
         
         logging.info('Reset SRAM FIFO...')
-        self.readout_utils.reset_sram_fifo()
+        self.readout.reset_sram_fifo()
         logging.info('Done!')
         
     def worker(self):
