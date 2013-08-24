@@ -1,7 +1,7 @@
 import struct
 import itertools
 import time
-from threading import Thread, Event
+from threading import Thread, Event, Timer
 from Queue import Queue
 #from multiprocessing import Process as Thread
 #from multiprocessing import Event
@@ -31,6 +31,8 @@ class Readout(object):
         self.stop_thread_event = Event()
         self.stop_thread_event.set()
         self.readout_interval = 0.05
+        self.tx_base_address = dict([(idx, addr) for idx, addr in enumerate(range(0x8600, 0x8200, -0x0100))])
+        self.sram_base_address = dict([(idx, addr) for idx, addr in enumerate(range(0x8100, 0x8200, 0x0100))])
     
     def start(self):
         self.data_queue.empty()
@@ -38,14 +40,14 @@ class Readout(object):
         self.worker_thread = Thread(target=self.worker)
         self.worker_thread.start()
     
-    def stop(self, wait_for_data_timeout = 10):
+    def stop(self, wait_for_data_timeout = 10.0):
         if wait_for_data_timeout > 0:
             wait_timeout_event = Event()
             wait_timeout_event.clear()
                 
             def set_timeout_event(timeout_event, timeout):
-                timeout_event.wait(timeout)
-                timeout_event.set()
+                timer = Timer(timeout, timeout_event.set)
+                timer.start()
             
             timeout_thread = Thread(target=set_timeout_event, args=[wait_timeout_event, wait_for_data_timeout])
             timeout_thread.start()
@@ -53,13 +55,13 @@ class Readout(object):
             fifo_size = self.get_sram_fifo_size()
             old_fifo_size = -1
             while not wait_timeout_event.wait(1.5*self.readout_interval) and (old_fifo_size != fifo_size or fifo_size != 0):
-                print fifo_size, old_fifo_size
                 old_fifo_size = fifo_size
                 fifo_size = self.get_sram_fifo_size()
-            print "join"
-            wait_timeout_event.set()
+            if wait_timeout_event.is_set():
+                print 'Timeout after %.1f second(s). Stopping data taking.' % wait_for_data_timeout
+            else:
+                wait_timeout_event.set()
             timeout_thread.join()
-            print "end of join"
         self.stop_thread_event.set()
         if self.worker_thread != None:
             self.worker_thread.join()
@@ -67,6 +69,7 @@ class Readout(object):
         print 'Data queue size:', self.data_queue.qsize()
         print 'SRAM FIFO size:', self.get_sram_fifo_size()
         print 'RX FIFO discard counter:', self.get_rx_fifo_discard_count()
+        print 'RX FIFO 8b10b error counter:', self.get_rx_8b10b_error_count()
     
     def worker(self):
         '''Reading thread to continuously reading SRAM
@@ -121,21 +124,18 @@ class Readout(object):
                 raise ValueError('Filter object is not callable')
             
     def get_sram_fifo_size(self):
-        retfifo = self.device.ReadExternal(address = 0x8101, size = 3)
+        retfifo = self.device.ReadExternal(address = self.sram_base_address[0]+1, size = 3)
         return struct.unpack('I', retfifo.tostring() + '\x00' )[0] # TODO: optimize, remove tostring() ?
 
-    def get_8b10b_code_error_count(self):
-        value = {}
-        for idx, addr in enumerate(range(0x8604, 0x8204, -0x0100)):
-            value["Channel "+str(idx+1)] = self.device.ReadExternal(address = addr, size = 1)[0]
-        return value
-        return self.device.ReadExternal(address = addr, size = 1)[0]
+    def get_rx_8b10b_error_count(self, index = None):
+        if index == None:
+            index = self.tx_base_address.iterkeys()
+        return map(lambda i:self.device.ReadExternal(address = self.tx_base_address[i]+4, size = 1)[0], index)
 
-    def get_rx_fifo_discard_count(self):
-        value = {}
-        for idx, addr in enumerate(range(0x8605, 0x8205, -0x0100)):
-            value["Channel "+str(idx+1)] = self.device.ReadExternal(address = addr, size = 1)[0]
-        return value
+    def get_rx_fifo_discard_count(self, index = None):
+        if index == None:
+            index = self.tx_base_address.iterkeys()
+        return map(lambda i:self.device.ReadExternal(address = self.tx_base_address[i]+5, size = 1)[0], index)
 
     def no_filter(self, words):
         for word in words:
