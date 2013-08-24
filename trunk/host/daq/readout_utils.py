@@ -7,29 +7,6 @@ class ReadoutUtils(object):
     def __init__(self, device):
         self.device = device
         
-        self.sram_address = 0x8100
-        self.rx_address = range(0x8300, 0x8700, 0x0100)
-        
-    def read_rx_status(self, rx_address = None):
-        if rx_address == None:
-            rx_address = self.rx_address
-        for addr in rx_address:
-            status = self.device.ReadExternal(address = addr, size = 8)
-            yield True if struct.unpack(8*'B', status)[1] == 1 else False
-                                                
-    def reset_rx(self, rx_address = None):
-        if rx_address == None:
-            rx_address = self.rx_address
-        for addr in rx_address:
-            self.device.WriteExternal(address = addr, data = [0])
-        time.sleep(0.1)
-        return self.read_rx_status(rx_address)
-            
-    def reset_sram_fifo(self):
-        self.device.WriteExternal(address = self.sram_address, data = [0])
-        time.sleep(0.1) # TODO: read status value
-        #print self.device.ReadExternal(address = 0x8100, size = 8)
-        
     def set_ext_cmd_start(self, enable, neg_edge = False):
         array = self.device.ReadExternal(address = 0+2, size = 1)
         reg = struct.unpack('B', array)[0]

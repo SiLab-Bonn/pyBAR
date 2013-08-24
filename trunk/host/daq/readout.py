@@ -31,7 +31,7 @@ class Readout(object):
         self.stop_thread_event = Event()
         self.stop_thread_event.set()
         self.readout_interval = 0.05
-        self.tx_base_address = dict([(idx, addr) for idx, addr in enumerate(range(0x8600, 0x8200, -0x0100))])
+        self.rx_base_address = dict([(idx, addr) for idx, addr in enumerate(range(0x8600, 0x8200, -0x0100))])
         self.sram_base_address = dict([(idx, addr) for idx, addr in enumerate(range(0x8100, 0x8200, 0x0100))])
     
     def start(self):
@@ -68,6 +68,7 @@ class Readout(object):
             self.worker_thread = None
         print 'Data queue size:', self.data_queue.qsize()
         print 'SRAM FIFO size:', self.get_sram_fifo_size()
+        print 'RX FIFO sync status:', self.get_rx_sync_status()
         print 'RX FIFO discard counter:', self.get_rx_fifo_discard_count()
         print 'RX FIFO 8b10b error counter:', self.get_rx_8b10b_error_count()
     
@@ -122,20 +123,36 @@ class Readout(object):
                 self.data_filter = data_filter
             else:
                 raise ValueError('Filter object is not callable')
-            
+
+    def reset_sram_fifo(self):
+        self.device.WriteExternal(address = self.sram_base_address[0], data = [0])
+        if self.get_sram_fifo_size() != 0:
+            print "Warning: SRAM FIFO size not zero!"
+        
     def get_sram_fifo_size(self):
         retfifo = self.device.ReadExternal(address = self.sram_base_address[0]+1, size = 3)
         return struct.unpack('I', retfifo.tostring() + '\x00' )[0] # TODO: optimize, remove tostring() ?
+                                                
+    def reset_rx(self, index = None):
+        if index == None:
+            index = self.rx_base_address.iterkeys()
+        filter(lambda i: self.device.WriteExternal(address = self.rx_base_address[i], data = [0]), index)
+    # since WriteExternal returns nothing, filter returns empty list
+
+    def get_rx_sync_status(self, index = None):
+        if index == None:
+            index = self.rx_base_address.iterkeys()
+        return map(lambda i: True if (self.device.ReadExternal(address = self.rx_base_address[i]+1, size = 1)[0])&0x1 == 1 else False, index)
 
     def get_rx_8b10b_error_count(self, index = None):
         if index == None:
-            index = self.tx_base_address.iterkeys()
-        return map(lambda i:self.device.ReadExternal(address = self.tx_base_address[i]+4, size = 1)[0], index)
+            index = self.rx_base_address.iterkeys()
+        return map(lambda i: self.device.ReadExternal(address = self.rx_base_address[i]+4, size = 1)[0], index)
 
     def get_rx_fifo_discard_count(self, index = None):
         if index == None:
-            index = self.tx_base_address.iterkeys()
-        return map(lambda i:self.device.ReadExternal(address = self.tx_base_address[i]+5, size = 1)[0], index)
+            index = self.rx_base_address.iterkeys()
+        return map(lambda i: self.device.ReadExternal(address = self.rx_base_address[i]+5, size = 1)[0], index)
 
     def no_filter(self, words):
         for word in words:
