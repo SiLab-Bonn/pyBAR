@@ -39,7 +39,7 @@ class DigitalScan(ScanBase):
         
         data_q = list(get_all_from_queue(self.readout.data_queue)) # make list, otherwise itertools will use data
         data_words = itertools.chain(*(data_dict['raw_data'] for data_dict in data_q))
-        print 'got all from queue'
+        #print 'got all from queue'
     
         total_words = 0     
         filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
