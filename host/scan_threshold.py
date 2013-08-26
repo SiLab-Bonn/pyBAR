@@ -45,9 +45,7 @@ class ThresholdScan(ScanBase):
             row_scan_param = scan_param_table_h5.row
                 
             for scan_paramter_value in scan_paramter_value_range:
-                print 'Starting readout thread...'
                 self.readout.start()
-                print 'Done!'
                 
                 print 'Scan step:', scan_parameter, scan_paramter_value
                 
@@ -67,9 +65,7 @@ class ThresholdScan(ScanBase):
                 #pr.disable()
                 #pr.print_stats('cumulative')
                 
-                print 'Stopping readout thread...'
                 self.readout.stop()
-                print 'Done!'
         
         #            data_q = get_all_from_queue(self.readout.data_queue)
         #            print 'got all from queue'

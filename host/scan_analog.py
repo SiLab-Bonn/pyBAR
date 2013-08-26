@@ -20,10 +20,7 @@ class AnalogScan(ScanBase):
     def start(self, configure = True):
         super(AnalogScan, self).start(configure)
         
-        print 'Starting readout thread...'
         self.readout.start()
-        print 'Done!'
-        
         
         commands = []
         self.register.set_global_register_value("PlsrDAC", 40)
@@ -41,9 +38,7 @@ class AnalogScan(ScanBase):
         #pr.disable()
         #pr.print_stats('cumulative')
         
-        print 'Stopping readout thread...'
         self.readout.stop()
-        print 'Done!'
         
         #data_q = get_all_from_queue(self.readout.data_queue)
         data_q = list(get_all_from_queue(self.readout.data_queue)) # make list, otherwise itertools will use data

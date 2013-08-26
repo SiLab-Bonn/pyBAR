@@ -92,9 +92,7 @@ class TdacTune(ScanBase):
             tdac_mask = []
             
             for index, Tdac_bit in enumerate(self.TdacTuneBits):
-                print 'Starting readout thread...'
                 self.readout.start()
-                print 'Done!'
                 
                 if(not addedAdditionalLastBitScan):
                     self.setTdacBit(Tdac_bit)
@@ -109,9 +107,7 @@ class TdacTune(ScanBase):
                 cal_lvl1_command = self.register.get_commands("cal")[0]+BitVector.BitVector(size = 40)+self.register.get_commands("lv1")[0]+BitVector.BitVector(size = wait_cycles)
                 self.scan_utils.base_scan(cal_lvl1_command, repeat = repeat, mask = mask, steps = steps, dcs = [], same_mask_for_all_dc = True, hardware_repeat = True, digital_injection = False, read_function = None)#self.readout.read_once)
                 
-                print 'Stopping readout thread...'
                 self.readout.stop()
-                print 'Done!'
 
                 data_q.extend(list(get_all_from_queue(self.readout.data_queue))) # use list, it is faster
                 data_words = itertools.chain(*(data_dict['raw_data'] for data_dict in data_q))
