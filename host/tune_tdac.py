@@ -62,14 +62,6 @@ class TdacTune(ScanBase):
     def start(self, configure = True):
         super(TdacTune, self).start(configure)
         
-        def get_cols_rows(data_words):
-            for item in self.readout.data_record_filter(data_words):
-                yield ((item & 0xFE0000)>>17), ((item & 0x1FF00)>>8)
-                
-        def get_rows_cols(data_words):
-            for item in self.readout.data_record_filter(data_words):
-                yield ((item & 0x1FF00)>>8), ((item & 0xFE0000)>>17)
-        
         addedAdditionalLastBitScan = False
         lastBitResult = np.zeros(shape = self.register.get_pixel_register_value("TDAC").shape, dtype = self.register.get_pixel_register_value("TDAC").dtype)
         
@@ -152,7 +144,7 @@ class TdacTune(ScanBase):
                     row_scan_param.append()
                     scan_param_table_h5.flush()
                 
-                OccupancyArray, _, _ = np.histogram2d(*zip(*get_cols_rows(data_words)), bins = (80, 336), range = [[1,80], [1,336]])
+                OccupancyArray, _, _ = np.histogram2d(*zip(*self.readout.get_col_row(data_words)), bins = (80, 336), range = [[1,80], [1,336]])
 #                 plotThreeWay(hist = OccupancyArray.transpose(), title = "Occupancy")
                 
                 tdac_mask=self.register.get_pixel_register_value("TDAC")

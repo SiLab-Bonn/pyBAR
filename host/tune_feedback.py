@@ -57,19 +57,7 @@ class FeedbackTune(ScanBase):
         
     def start(self, configure = True):
         super(FeedbackTune, self).start(configure)
-        
-        def get_cols_rows(data_words):
-            for item in self.readout.data_record_filter(data_words):
-                yield ((item & 0xFE0000)>>17), ((item & 0x1FF00)>>8)
-                
-        def get_rows_cols(data_words):
-            for item in self.readout.data_record_filter(data_words):
-                yield ((item & 0x1FF00)>>8), ((item & 0xFE0000)>>17)
-                
-        def get_tot(data_words):
-            for item in self.readout.data_record_filter(data_words):
-                yield ((item & 0x000F0)>>4)
-        
+
         for PrmpVbpf_bit in self.FeedbackTuneBits: #reset all GDAC bits
             self.setPrmpVbpfBit(PrmpVbpf_bit, bit_value = 0)
             
@@ -151,7 +139,7 @@ class FeedbackTune(ScanBase):
                     row_scan_param.append()
                     scan_param_table_h5.flush()
                 
-                tots = [tot for tot in get_tot(data_words)]
+                tots = [tot for tot in self.readout.get_tot(data_words)]
                 mean_tot=np.mean(tots)
                 print "TOT mean =", mean_tot
                    
