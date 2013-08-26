@@ -17,19 +17,15 @@ class DigitalScan(ScanBase):
     def start(self, configure = True):
         super(DigitalScan, self).start(configure)
         
-        print 'Starting readout thread...'
         self.readout.start()
-        print 'Done!'
         
         repeat = 100
         cal_lvl1_command = self.register.get_commands("cal")[0]+BitVector.BitVector(size = 35)+self.register.get_commands("lv1")[0]+BitVector.BitVector(size = 1000)
         self.scan_utils.base_scan(cal_lvl1_command, repeat = repeat, mask = 6, steps = [], dcs = [], same_mask_for_all_dc = True, hardware_repeat = True, enable_c_high = False, enable_c_low = False, digital_injection = True, read_function = None)
         
-        print 'Stopping readout thread...'
         self.readout.stop()
-        print 'Done!'
         
-        data_q = list(get_all_from_queue(self.readout.data_queue)) # make list, otherwise itertools will use data
+        data_q = list(get_all_from_queue(self.readout.data_queue)) # make list, otherwise itertools will destroy generator object
         data_words = itertools.chain(*(data_dict['raw_data'] for data_dict in data_q))
         #print 'got all from queue'
     
