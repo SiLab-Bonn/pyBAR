@@ -49,10 +49,10 @@ module top (
     output wire EN_V3, // EN_VD2 on SCC, EN_VDD3 on BIC
     output wire EN_V4, // EN_VD1 on SCC, EN_VDD4 on BIC
     
-    input wire DOBOUT1, // BIC only
-    input wire DOBOUT2, // BIC only
-    input wire DOBOUT3, // BIC only
-    input wire DOBOUT4, // DO on SCC
+    input wire DOBOUT1, // BIC only, Ch1
+    input wire DOBOUT2, // BIC only, Ch2
+    input wire DOBOUT3, // BIC only, Ch3
+    input wire DOBOUT4, // DO on SCC, Ch4 on BIC
     
     // Over Current Protection (BIC only)
     input wire OC1,
