@@ -60,14 +60,6 @@ class GdacTune(ScanBase):
     def start(self, configure = True):
         super(GdacTune, self).start(configure)
         
-        def get_cols_rows(data_words):
-            for item in self.readout.data_record_filter(data_words):
-                yield ((item & 0xFE0000)>>17), ((item & 0x1FF00)>>8)
-                
-        def get_rows_cols(data_words):
-            for item in self.readout.data_record_filter(data_words):
-                yield ((item & 0x1FF00)>>8), ((item & 0xFE0000)>>17)
-        
         for gdac_bit in self.GdacTuneBits: #reset all GDAC bits
             self.setGdacBit(gdac_bit, bit_value = 0)
             
@@ -174,7 +166,7 @@ class GdacTune(ScanBase):
                     row_scan_param.append()
                     scan_param_table_h5.flush()
                 
-                OccupancyArray, _, _ = np.histogram2d(*zip(*get_cols_rows(data_words)), bins = (80, 336), range = [[1,80], [1,336]])
+                OccupancyArray, _, _ = np.histogram2d(*zip(*self.readout.get_col_row(data_words)), bins = (80, 336), range = [[1,80], [1,336]])
                 OccArraySelPixel = OccupancyArray[select_mask_array>0]  #take only selected pixel
                 median_occupancy = np.median(OccArraySelPixel)
 #                 plotThreeWay(OccupancyArray.transpose(), title = "Occupancy (GDAC tuning bit "+str(gdac_bit)+")", label = 'Occupancy', filename = None)#self.scan_data_path+".pdf")
@@ -199,7 +191,7 @@ class GdacTune(ScanBase):
 #                         else:
 #                             plotThreeWay(OccupancyArray.transpose(), title = "Occupancy (GDAC tuning bit 0 = 0)", label = 'Occupancy', filename = None)#self.scan_data_path+".pdf") 
 
-#                 plot_occupancy(*zip(*get_cols_rows(data_words)), max_occ = repeat*2, filename = None)#self.scan_data_path+".pdf")
+#                 plot_occupancy(*zip(*self.readout.get_col_row(data_words)), max_occ = repeat*2, filename = None)#self.scan_data_path+".pdf")
                 if(abs(median_occupancy-self.Ninjections/2) < self.abort_precision): #abort if good value already found to save time
                     print 'good result already achieved, skipping missing bits'
                     break

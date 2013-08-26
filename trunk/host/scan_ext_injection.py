@@ -32,18 +32,10 @@ class ExtInjScan(ScanBase):
         print 'Stopping readout thread...'
         self.readout.stop()
         print 'Done!'
-              
-        def get_cols_rows(data_words):
-            for item in data_words:
-                yield ((item & 0xFE0000)>>17), ((item & 0x1FF00)>>8)
-                
-        def get_rows_cols(data_words):
-            for item in data_words:
-                yield ((item & 0x1FF00)>>8), ((item & 0xFE0000)>>17)
         
         data_q = list(get_all_from_queue(self.readout.data_queue))
         print 'got all from queue'
-    
+        
         total_words = 0
         
         filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)

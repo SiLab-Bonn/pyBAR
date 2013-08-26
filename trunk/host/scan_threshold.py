@@ -109,23 +109,15 @@ class ThresholdScan(ScanBase):
                     row_scan_param[scan_parameter] = scan_paramter_value
                     row_scan_param.append()
                     scan_param_table_h5.flush()
-        
-        def get_cols_rows(data_words):
-            for item in self.readout.data_record_filter(data_words):
-                yield ((item & 0xFE0000)>>17), ((item & 0x1FF00)>>8)
-                
-        def get_rows_cols(data_words):
-            for item in self.readout.data_record_filter(data_words):
-                yield ((item & 0x1FF00)>>8), ((item & 0xFE0000)>>17)
          
         #    occupancy_plots = []
         #    for data_word_list in data_words_lists:
-        #        #save_occupancy('scan_'+str(scan_paramter_value)+'.png', *zip(*get_cols_rows(data_words[scan_paramter_value])), max_occ = repeat*2)
-        #        #print str(scan_paramter_value), len(list(get_cols_rows(data_words[scan_paramter_value])))
+        #        #save_occupancy('scan_'+str(scan_paramter_value)+'.png', *zip(*self.readout.get_col_row(data_words[scan_paramter_value])), max_occ = repeat*2)
+        #        #print str(scan_paramter_value), len(list(self.readout.get_col_row(data_words[scan_paramter_value])))
         #        dimension = (80,336)
         #        occupancy_plot = np.zeros(dimension, dtype = np.uint8)
-        #        #print list(zip(*get_cols_rows(data_word_list)))[0]
-        #        for col, row in zip(*zip(*get_cols_rows(data_word_list))):
+        #        #print list(zip(*self.readout.get_col_row(data_word_list)))[0]
+        #        for col, row in zip(*zip(*self.readout.get_col_row(data_word_list))):
         #            occupancy_plot[col][row] += 1
         #        occupancy_plots.append(occupancy_plot)
         #        
@@ -136,4 +128,3 @@ if __name__ == "__main__":
     import configuration
     scan = ThresholdScan(config_file = configuration.config_file, bit_file = configuration.bit_file, outdir = configuration.outdir)
     scan.start()
-

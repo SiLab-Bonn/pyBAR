@@ -171,6 +171,25 @@ class Readout(object):
                 
     def tlu_data_filter(self, words):
         for word in words:
-            if 0x80000000 == word & 0x80000000:
+            if 0x80000000 == (word & 0x80000000):
                 yield word
+                
+    def get_col_row(self, words):
+        for item in self.data_record_filter(words):
+            yield ((item & 0xFE0000)>>17), ((item & 0x1FF00)>>8)
             
+    def get_row_col(self, words):
+        for item in self.data_record_filter(words):
+            yield ((item & 0x1FF00)>>8), ((item & 0xFE0000)>>17)
+            
+    def get_col_row_tot(self, words):
+        for item in self.data_record_filter(words):
+            yield ((item & 0xFE0000)>>17), ((item & 0x1FF00)>>8), ((item & 0x000F0)>>4) # col, row, ToT1
+            if (item & 0x0000F) != 15:
+                yield ((item & 0xFE0000)>>17), ((item & 0x1FF00)>>8)+1, (item & 0x0000F) # col, row+1, ToT2
+                
+    def get_tot(self, data):
+        for item in self.data_record_filter(data):
+            yield ((item & 0x000F0)>>4) # ToT1
+            if (item & 0x0000F) != 15:
+                yield (item & 0x0000F) # ToT2

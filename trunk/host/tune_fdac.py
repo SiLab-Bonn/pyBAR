@@ -64,24 +64,6 @@ class FdacTune(ScanBase):
     def start(self, configure = True):
         super(FdacTune, self).start(configure)
         
-        def get_cols_rows(data_words):
-            for item in self.readout.data_record_filter(data_words):
-                yield ((item & 0xFE0000)>>17), ((item & 0x1FF00)>>8)
-                
-        def get_cols_rows_tot(data_words):
-            for item in self.readout.data_record_filter(data_words):
-                yield [((item & 0xFE0000)>>17), ((item & 0x1FF00)>>8), ((item & 0x000F0)>>4)]
-        
-        def get_cols_rows_tot_test(data_words):
-            ret = [] 
-            for item in self.readout.data_record_filter(data_words):
-                ret.append((((item & 0xFE0000)>>17), ((item & 0x1FF00)>>8), ((item & 0x000F0)>>4)))
-            return ret
-                
-        def get_rows_cols(data_words):
-            for item in self.readout.data_record_filter(data_words):
-                yield ((item & 0x1FF00)>>8), ((item & 0xFE0000)>>17)
-        
         self.setStartFdac()
             
         addedAdditionalLastBitScan = False
@@ -164,7 +146,7 @@ class FdacTune(ScanBase):
                     row_scan_param.append()
                     scan_param_table_h5.flush()
 
-                TotArray = np.histogramdd(np.array(list(get_cols_rows_tot(data_words))), bins = (80, 336, 16), range = [[1,80], [1,336], [0,15]])[0]
+                TotArray = np.histogramdd(np.array(list(self.readout.get_col_row_tot(data_words))), bins = (80, 336, 16), range = [[1,80], [1,336], [0,15]])[0]
                 TotAvrArray = np.average(TotArray,axis = 2, weights=range(0,16))*sum(range(0,16))/self.Ninjections
                 #plotThreeWay(hist = TotAvrArray.transpose(), title = "TOT mean", label = 'mean TOT', filename = None)
                 
