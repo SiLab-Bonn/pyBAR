@@ -1,3 +1,4 @@
+import logging
 import struct
 import itertools
 import time
@@ -10,6 +11,8 @@ from Queue import Queue
 from utils.utils import get_float_time
 
 from SiLibUSB import SiUSBDevice
+
+logging.basicConfig(level=logging.INFO, format = "%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 class Readout(object):
     def __init__(self, device, data_filter = None):
@@ -34,10 +37,16 @@ class Readout(object):
         self.rx_base_address = dict([(idx, addr) for idx, addr in enumerate(range(0x8600, 0x8200, -0x0100))])
         self.sram_base_address = dict([(idx, addr) for idx, addr in enumerate(range(0x8100, 0x8200, 0x0100))])
     
-    def start(self):
-        self.data_queue.empty()
+    def start(self, reset_rx = False, empty_data_queue = True, reset_sram_fifo = True):
+        if reset_rx:
+            self.reset_rx()
+        if empty_data_queue:
+            self.data_queue.empty()
+        if reset_sram_fifo:
+            self.reset_sram_fifo()
         self.stop_thread_event.clear()
         self.worker_thread = Thread(target=self.worker)
+        logging.info('Starting readout')
         self.worker_thread.start()
     
     def stop(self, wait_for_data_timeout = 10.0):
@@ -58,19 +67,23 @@ class Readout(object):
                 old_fifo_size = fifo_size
                 fifo_size = self.get_sram_fifo_size()
             if wait_timeout_event.is_set():
-                print 'Timeout after %.1f second(s). Stopping data taking.' % wait_for_data_timeout
+                logging.warning('Waiting for empty SRAM FIFO: timeout after %.1f second(s)' % wait_for_data_timeout)
             else:
                 wait_timeout_event.set()
             timeout_thread.join()
+        logging.info('Stopping readout')
         self.stop_thread_event.set()
         if self.worker_thread != None:
             self.worker_thread.join()
             self.worker_thread = None
-        print 'Data queue size:', self.data_queue.qsize()
-        print 'SRAM FIFO size:', self.get_sram_fifo_size()
-        print 'RX FIFO sync status:', self.get_rx_sync_status()
-        print 'RX FIFO discard counter:', self.get_rx_fifo_discard_count()
-        print 'RX FIFO 8b10b error counter:', self.get_rx_8b10b_error_count()
+        self.print_readout_status()
+            
+    def print_readout_status(self):
+        logging.info('Data queue size: %d' % self.data_queue.qsize())
+        logging.info('SRAM FIFO size: %d' % self.get_sram_fifo_size())
+        logging.info('RX FIFO sync status:         %s', " | ".join(["OK".rjust(3) if status == True else "BAD".rjust(3) for status in self.get_rx_sync_status()]))
+        logging.info('RX FIFO discard counter:     %s', " | ".join([repr(count).rjust(3) for count in self.get_rx_fifo_discard_count()]))
+        logging.info('RX FIFO 8b10b error counter: %s', " | ".join([repr(count).rjust(3) for count in self.get_rx_8b10b_error_count()]))
     
     def worker(self):
         '''Reading thread to continuously reading SRAM
@@ -108,9 +121,7 @@ class Readout(object):
             #print 'fifo raw data:', fifo_data
             data_words = struct.unpack('>'+fifo_size/2*'I', fifo_data)
             #print 'raw data words:', data_words
-            
-            #filtered_data_words = [i for i in data_words if self.filter]
-            
+            #self.filtered_data_words = [i for i in data_words if self.filter]
             self.filtered_data_words = self.data_filter(data_words)
             for filterd_data_word in self.filtered_data_words: 
                 yield filterd_data_word
@@ -125,15 +136,17 @@ class Readout(object):
                 raise ValueError('Filter object is not callable')
 
     def reset_sram_fifo(self):
+        logging.info('Resetting SRAM FIFO')
         self.device.WriteExternal(address = self.sram_base_address[0], data = [0])
         if self.get_sram_fifo_size() != 0:
-            print "Warning: SRAM FIFO size not zero!"
+            logging.warning('SRAM FIFO size not zero')
         
     def get_sram_fifo_size(self):
         retfifo = self.device.ReadExternal(address = self.sram_base_address[0]+1, size = 3)
         return struct.unpack('I', retfifo.tostring() + '\x00' )[0] # TODO: optimize, remove tostring() ?
                                                 
     def reset_rx(self, index = None):
+        logging.info('Resetting RX')
         if index == None:
             index = self.rx_base_address.iterkeys()
         filter(lambda i: self.device.WriteExternal(address = self.rx_base_address[i], data = [0]), index)

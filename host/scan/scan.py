@@ -30,11 +30,9 @@ class ScanBase(object):
             self.device = SiUSBDevice()
         logging.info('Found USB board with ID %s', self.device.identifier)
         if bit_file != None:
-            logging.info('Programming FPGA...')
-            logging.info('FPGA bit file: %s', bit_file)
+            logging.info('Programming FPGA: %s' % bit_file)
             self.device.DownloadXilinx(bit_file)
             time.sleep(1)
-            logging.info('Done!')
             
         self.readout = Readout(self.device)
         self.readout_utils = ReadoutUtils(self.device)
@@ -57,10 +55,9 @@ class ScanBase(object):
         self.stop_thread_event.set()
         
     def configure(self):
-        logging.info('Configure FE...')
+        logging.info('Configuring FE')
         #scan.register.load_configuration_file(config_file)
         self.register_utils.configure_all(same_mask_for_all_dc = False)
-        logging.info('Done!')
         
     def start(self, configure = True):
         self.stop_thread_event.clear()
@@ -80,16 +77,14 @@ class ScanBase(object):
         self.scan_data_path = os.path.join(self.outdir, self.scan_identifier+"_"+str(self.scan_number))
         self.lock.release()
         
+        logging.info('Starting scan %s with ID %d (%s)' % (self.scan_identifier, self.scan_number, self.outdir))
+        
         if configure:
             self.configure()
 
-        logging.info('Reset Rx...')
         self.readout.reset_rx()
-        logging.info('Done!')
-        
-        logging.info('Reset SRAM FIFO...')
-        self.readout.reset_sram_fifo()
-        logging.info('Done!')
+#        self.readout.reset_sram_fifo()
+        self.readout.print_readout_status()
         
     def worker(self):
         pass
