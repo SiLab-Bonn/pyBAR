@@ -17,8 +17,8 @@ from collections import deque
 from scan.scan import ScanBase
 
 class TdacTune(ScanBase):
-    def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "tune_Tdac", outdir = None):
-        super(TdacTune, self).__init__(config_file, definition_file, bit_file, device, scan_identifier, outdir)
+    def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "tune_tdac", scan_data_path = None):
+        super(TdacTune, self).__init__(config_file = config_file, definition_file = definition_file, bit_file = bit_file, device = device, scan_identifier = scan_identifier, scan_data_path = scan_data_path)
         self.setTdacTuneBits()
         self.setTargetThreshold()
         self.setNinjections()
@@ -80,8 +80,8 @@ class TdacTune(ScanBase):
         append_size = 50000
         filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
         filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
-        print "Out file",self.scan_data_path+".h5"
-        with tb.openFile(self.scan_data_path+".h5", mode = 'w', title = 'first data') as file_h5:
+        print "Out file",self.scan_data_filename+".h5"
+        with tb.openFile(self.scan_data_filename+".h5", mode = 'w', title = 'first data') as file_h5:
             raw_data_earray_h5 = file_h5.createEArray(file_h5.root, name = 'raw_data', atom = tb.UIntAtom(), shape = (0,), title = 'raw_data', filters = filter_raw_data, expectedrows = append_size)
             meta_data_table_h5 = file_h5.createTable(file_h5.root, name = 'meta_data', description = MetaTable, title = 'meta_data', filters = filter_tables, expectedrows = 10)
             scan_param_table_h5 = file_h5.createTable(file_h5.root, name = 'scan_parameters', description = scan_param_descr, title = 'scan_parameters', filters = filter_tables, expectedrows = 10)
@@ -167,7 +167,7 @@ class TdacTune(ScanBase):
         
 if __name__ == "__main__":
     import configuration
-    scan = TdacTune(config_file = configuration.config_file, bit_file = configuration.bit_file, outdir = configuration.outdir)
+    scan = TdacTune(config_file = configuration.config_file, bit_file = configuration.bit_file, scan_data_path = configuration.scan_data_path)
     scan.setNinjections(100) 
     scan.setTargetThreshold(PlsrDAC = 40)
     scan.setTdacTuneBits(range(4,-1,-1))

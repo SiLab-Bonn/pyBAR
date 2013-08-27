@@ -11,8 +11,8 @@ from utils.utils import get_all_from_queue, split_seq
 from scan.scan import ScanBase
 
 class ExtInjScan(ScanBase):
-    def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "scan_ext_inj", outdir = None):
-        super(ExtInjScan, self).__init__(config_file, definition_file, bit_file, device, scan_identifier, outdir)
+    def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "scan_ext_inj", scan_data_path = None):
+        super(ExtInjScan, self).__init__(config_file = config_file, definition_file = definition_file, bit_file = bit_file, device = device, scan_identifier = scan_identifier, scan_data_path = scan_data_path)
         
     def start(self, configure = True):
         super(ExtInjScan, self).start(configure)
@@ -40,7 +40,7 @@ class ExtInjScan(ScanBase):
         
         filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
         filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
-        with tb.openFile(self.scan_data_path+".h5", mode = "w", title = "test file") as file_h5:
+        with tb.openFile(self.scan_data_filename+".h5", mode = "w", title = "test file") as file_h5:
             raw_data_earray_h5 = file_h5.createEArray(file_h5.root, name = 'raw_data', atom = tb.UIntAtom(), shape = (0,), title = 'raw_data', filters = filter_raw_data)
             meta_data_table_h5 = file_h5.createTable(file_h5.root, name = 'meta_data', description = MetaTable, title = 'meta_data', filters = filter_tables)
             
@@ -64,5 +64,5 @@ class ExtInjScan(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = ExtInjScan(config_file = configuration.config_file, bit_file = configuration.bit_file, outdir = configuration.outdir)
+    scan = ExtInjScan(config_file = configuration.config_file, bit_file = configuration.bit_file, scan_data_path = configuration.scan_data_path)
     scan.start()

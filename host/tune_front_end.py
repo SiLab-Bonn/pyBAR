@@ -23,9 +23,9 @@ iterations = 0 #set 1..5, 0 is threshold tuning only
       
 if __name__ == "__main__":
     startTime = datetime.now()
-    GdacTuneScan = GdacTune(config_file = configuration.config_file, bit_file = configuration.bit_file, outdir = configuration.outdir)
+    GdacTuneScan = GdacTune(config_file = configuration.config_file, bit_file = configuration.bit_file, scan_data_path = configuration.scan_data_path)
     GdacTuneScan.setTargetThreshold(target_threshold) 
-    FeedbackTuneScan = FeedbackTune(config_file = configuration.config_file, bit_file = None, outdir = configuration.outdir, device = GdacTuneScan.device)
+    FeedbackTuneScan = FeedbackTune(config_file = configuration.config_file, bit_file = None, scan_data_path = configuration.scan_data_path, device = GdacTuneScan.device)
     FeedbackTuneScan.setTargetCharge(target_charge)
     FeedbackTuneScan.setTargetTot(target_tot)
     
@@ -49,9 +49,9 @@ if __name__ == "__main__":
     
     new_config = GdacTuneScan.register.save_configuration(name = "tuning_"+str(target_threshold)+"PlsrDac_"+str(target_tot)+"TOTat"+str(target_charge)+"PlsrDac")
        
-    tdac_tune_scan = TdacTune(config_file = new_config, bit_file = None, outdir = configuration.outdir, device = GdacTuneScan.device)
+    tdac_tune_scan = TdacTune(config_file = new_config, bit_file = None, scan_data_path = configuration.scan_data_path, device = GdacTuneScan.device)
     tdac_tune_scan.setTargetThreshold(target_threshold)
-    fdac_tune_scan = FdacTune(config_file = new_config, bit_file = None, outdir = configuration.outdir, device = GdacTuneScan.device)
+    fdac_tune_scan = FdacTune(config_file = new_config, bit_file = None, scan_data_path = configuration.scan_data_path, device = GdacTuneScan.device)
     fdac_tune_scan.setTargetCharge(target_charge)
     fdac_tune_scan.setTargetTot(target_tot)
     
@@ -70,10 +70,10 @@ if __name__ == "__main__":
 
     tdac_tune_scan.register.save_configuration(name = "tuning_"+str(target_threshold)+"PlsrDac_"+str(target_tot)+"TOTat"+str(target_charge)+"PlsrDac")
     
-    plotThreeWay(hist = tdac_tune_scan.register.get_pixel_register_value("TDAC").transpose(), title = "TDAC distribution final", label = 'TDAC', filename = configuration.outdir+"\TDAC_map.pdf")
-    plotThreeWay(hist = tdac_occ.transpose(), title = "Occupancy final", label = 'Occupancy', filename = configuration.outdir+"\occupancy_map.pdf")
+    plotThreeWay(hist = tdac_tune_scan.register.get_pixel_register_value("TDAC").transpose(), title = "TDAC distribution final", label = 'TDAC', filename = configuration.scan_data_path+"\TDAC_map.pdf")
+    plotThreeWay(hist = tdac_occ.transpose(), title = "Occupancy final", label = 'Occupancy', filename = configuration.scan_data_path+"\occupancy_map.pdf")
     if(iterations > 0):
-        plotThreeWay(hist = fdac_tune_scan.register.get_pixel_register_value("FDAC").transpose(), title = "FDAC distribution final", label = 'FDAC', filename = configuration.outdir+"\FDAC_map.pdf")
-        plotThreeWay(hist = fdac_mean_tot.transpose(), title = "TOT mean final", label = 'mean TOT', filename = configuration.outdir+"\mean_tot_map.pdf")
+        plotThreeWay(hist = fdac_tune_scan.register.get_pixel_register_value("FDAC").transpose(), title = "FDAC distribution final", label = 'FDAC', filename = configuration.scan_data_path+"\FDAC_map.pdf")
+        plotThreeWay(hist = fdac_mean_tot.transpose(), title = "TOT mean final", label = 'mean TOT', filename = configuration.scan_data_path+"\mean_tot_map.pdf")
     
     print(datetime.now()-startTime)

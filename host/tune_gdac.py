@@ -18,8 +18,8 @@ from collections import deque
 from scan.scan import ScanBase
 
 class GdacTune(ScanBase):
-    def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "tune_gdac", outdir = None):
-        super(GdacTune, self).__init__(config_file, definition_file, bit_file, device, scan_identifier, outdir)
+    def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "tune_gdac", scan_data_path = None):
+        super(GdacTune, self).__init__(config_file = config_file, definition_file = definition_file, bit_file = bit_file, device = device, scan_identifier = scan_identifier, scan_data_path = scan_data_path)
         self.setGdacTuneBits()
         self.setTargetThreshold()
         self.setNinjections()
@@ -104,8 +104,8 @@ class GdacTune(ScanBase):
         append_size = 50000
         filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
         filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
-        print "Out file",self.scan_data_path+".h5"
-        with tb.openFile(self.scan_data_path+".h5", mode = 'w', title = 'first data') as file_h5:
+        print "Out file",self.scan_data_filename+".h5"
+        with tb.openFile(self.scan_data_filename+".h5", mode = 'w', title = 'first data') as file_h5:
             raw_data_earray_h5 = file_h5.createEArray(file_h5.root, name = 'raw_data', atom = tb.UIntAtom(), shape = (0,), title = 'raw_data', filters = filter_raw_data, expectedrows = append_size)
             meta_data_table_h5 = file_h5.createTable(file_h5.root, name = 'meta_data', description = MetaTable, title = 'meta_data', filters = filter_tables, expectedrows = 10)
             scan_param_table_h5 = file_h5.createTable(file_h5.root, name = 'scan_parameters', description = scan_param_descr, title = 'scan_parameters', filters = filter_tables, expectedrows = 10)
@@ -165,7 +165,7 @@ class GdacTune(ScanBase):
                 OccupancyArray, _, _ = np.histogram2d(*zip(*self.readout.get_col_row(data_words)), bins = (80, 336), range = [[1,80], [1,336]])
                 OccArraySelPixel = OccupancyArray[select_mask_array>0]  #take only selected pixel
                 median_occupancy = np.median(OccArraySelPixel)
-#                 plotThreeWay(OccupancyArray.transpose(), title = "Occupancy (GDAC tuning bit "+str(gdac_bit)+")", label = 'Occupancy', filename = None)#self.scan_data_path+".pdf")
+#                 plotThreeWay(OccupancyArray.transpose(), title = "Occupancy (GDAC tuning bit "+str(gdac_bit)+")", label = 'Occupancy', filename = None)#self.scan_data_filename+".pdf")
                    
                 if(gdac_bit>0 and median_occupancy < self.Ninjections/2):
                     print "median =",median_occupancy,"<",self.Ninjections/2,"set bit",gdac_bit,"= 0"
@@ -183,11 +183,11 @@ class GdacTune(ScanBase):
                         if(abs(median_occupancy-self.Ninjections/2)>abs(lastBitResultMedian-self.Ninjections/2)): #if bit 0 = 0 is worse than bit 0 = 1, so go back
                             self.setGdacBit(gdac_bit, bit_value = 1)
                             print "set bit 0 = 1"
-#                             plotThreeWay(lastBitResult.transpose(), title = "Occupancy (GDAC tuning bit 0 = 1)", label = 'Occupancy', filename = None)#self.scan_data_path+".pdf") 
+#                             plotThreeWay(lastBitResult.transpose(), title = "Occupancy (GDAC tuning bit 0 = 1)", label = 'Occupancy', filename = None)#self.scan_data_filename+".pdf") 
 #                         else:
-#                             plotThreeWay(OccupancyArray.transpose(), title = "Occupancy (GDAC tuning bit 0 = 0)", label = 'Occupancy', filename = None)#self.scan_data_path+".pdf") 
+#                             plotThreeWay(OccupancyArray.transpose(), title = "Occupancy (GDAC tuning bit 0 = 0)", label = 'Occupancy', filename = None)#self.scan_data_filename+".pdf") 
 
-#                 plot_occupancy(*zip(*self.readout.get_col_row(data_words)), max_occ = repeat*2, filename = None)#self.scan_data_path+".pdf")
+#                 plot_occupancy(*zip(*self.readout.get_col_row(data_words)), max_occ = repeat*2, filename = None)#self.scan_data_filename+".pdf")
                 if(abs(median_occupancy-self.Ninjections/2) < self.abort_precision): #abort if good value already found to save time
                     print 'good result already achieved, skipping missing bits'
                     break
@@ -197,7 +197,7 @@ class GdacTune(ScanBase):
         
 if __name__ == "__main__":
     import configuration
-    scan = GdacTune(config_file = configuration.config_file, bit_file = configuration.bit_file, outdir = configuration.outdir)
+    scan = GdacTune(config_file = configuration.config_file, bit_file = configuration.bit_file, scan_data_path = configuration.scan_data_path)
     scan.setTargetThreshold(PlsrDAC = 40)
     scan.setAbortPrecision(delta_occupancy = 2)
     scan.setGdacTuneBits(range(7,-1,-1))
