@@ -54,27 +54,14 @@ class ThresholdScan(ScanBase):
                 commands.extend(self.register.get_commands("wrregister", name = [scan_parameter]))
                 self.register_utils.send_commands(commands)
                 
-                #import cProfile
-                #pr = cProfile.Profile()
                 mask = 6
                 repeat = 100
                 wait_cycles = 336*2/mask*24/4*3
                 cal_lvl1_command = self.register.get_commands("cal")[0]+BitVector.BitVector(size = 40)+self.register.get_commands("lv1")[0]+BitVector.BitVector(size = wait_cycles)
-                #pr.enable()
                 self.scan_utils.base_scan(cal_lvl1_command, repeat = repeat, mask = mask, steps = [], dcs = [], same_mask_for_all_dc = True, hardware_repeat = True, digital_injection = False, read_function = None)#self.readout.read_once)
-                #pr.disable()
-                #pr.print_stats('cumulative')
                 
                 self.readout.stop()
-        
-        #            data_q = get_all_from_queue(self.readout.data_queue)
-        #            print 'got all from queue'
-        #            
-        #            data_list = list(itertools.chain(*data_q))
-        #            print 'length data list:', len(data_list)
-        
-#                 data_q = list(get_all_from_queue(self.readout.data_queue))
-#                 for item in data_q:
+                
                 data_q.extend(list(get_all_from_queue(self.readout.data_queue))) # use list, it is faster
                 while True:
                     try:
@@ -83,8 +70,6 @@ class ThresholdScan(ScanBase):
                         break # jump out while loop
                     
                     raw_data = item['raw_data']
-        #                for word in raw_data:
-        #                    print FEI4Record(word, 'fei4a')
                     len_raw_data = len(raw_data)
                     raw_data_q.extend(split_seq(raw_data, append_size))
                     while True:
