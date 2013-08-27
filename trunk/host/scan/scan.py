@@ -19,7 +19,7 @@ from utils.utils import convert_to_int
 logging.basicConfig(level=logging.INFO, format = "%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 class ScanBase(object):
-    def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "base_scan", outdir = None):
+    def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "base_scan", scan_data_path = None):
         if device is not None:
             #if isinstance(device, usb.core.Device):
             if isinstance(device, SiUSBDevice):
@@ -41,13 +41,13 @@ class ScanBase(object):
         self.register_utils = FEI4RegisterUtils(self.device, self.readout_utils, self.register)
         self.scan_utils = FEI4ScanUtils(self.register, self.register_utils)
         
-        if outdir == None:
-            self.outdir = os.getcwd()
+        if scan_data_path == None:
+            self.scan_data_path = os.getcwd()
         else:
-            self.outdir = outdir
-        self.scan_identifier = scan_identifier
+            self.scan_data_path = scan_data_path
+        self.scan_identifier = scan_identifier.lstrip('/\\') # remove leading slashes, prevent problems with os.path.join
         self.scan_number = None
-        self.scan_data_path = None
+        self.scan_data_filename = None
         
         self.lock = Lock()
         
@@ -63,10 +63,10 @@ class ScanBase(object):
         self.stop_thread_event.clear()
         
         self.lock.acquire()
-        if not os.path.exists(self.outdir):
-            os.makedirs(self.outdir)
+        if not os.path.exists(self.scan_data_path):
+            os.makedirs(self.scan_data_path)
         
-        with open(os.path.join(self.outdir, self.scan_identifier+".cfg"), "a+") as f:
+        with open(os.path.join(self.scan_data_path, self.scan_identifier+".cfg"), "a+") as f:
             scan_numbers = [int(number) for number in f.readlines() if convert_to_int(number) != None]
             if len(scan_numbers) == 0:
                 self.scan_number = 0
@@ -74,10 +74,10 @@ class ScanBase(object):
                 self.scan_number = max(scan_numbers)+1
             f.write(str(self.scan_number)+'\n')
         
-        self.scan_data_path = os.path.join(self.outdir, self.scan_identifier+"_"+str(self.scan_number))
+        self.scan_data_filename = os.path.join(self.scan_data_path, self.scan_identifier+"_"+str(self.scan_number))
         self.lock.release()
         
-        logging.info('Starting scan %s with ID %d (%s)' % (self.scan_identifier, self.scan_number, self.outdir))
+        logging.info('Starting scan %s with ID %d (output path: %s)' % (self.scan_identifier, self.scan_number, self.scan_data_path))
         
         if configure:
             self.configure()

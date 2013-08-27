@@ -18,8 +18,8 @@ from collections import deque
 from scan.scan import ScanBase
 
 class FeedbackTune(ScanBase):
-    def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "tune_feedback", outdir = None):
-        super(FeedbackTune, self).__init__(config_file, definition_file, bit_file, device, scan_identifier, outdir)
+    def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "tune_feedback", scan_data_path = None):
+        super(FeedbackTune, self).__init__(config_file = config_file, definition_file = definition_file, bit_file = bit_file, device = device, scan_identifier = scan_identifier, scan_data_path = scan_data_path)
         self.setFeedbackTuneBits()
         self.setTargetCharge()
         self.setTargetTot()
@@ -77,8 +77,8 @@ class FeedbackTune(ScanBase):
         append_size = 50000
         filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
         filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
-        print "Out file",self.scan_data_path+".h5"
-        with tb.openFile(self.scan_data_path+".h5", mode = 'w', title = 'first data') as file_h5:
+        print "Out file",self.scan_data_filename+".h5"
+        with tb.openFile(self.scan_data_filename+".h5", mode = 'w', title = 'first data') as file_h5:
             raw_data_earray_h5 = file_h5.createEArray(file_h5.root, name = 'raw_data', atom = tb.UIntAtom(), shape = (0,), title = 'raw_data', filters = filter_raw_data, expectedrows = append_size)
             meta_data_table_h5 = file_h5.createTable(file_h5.root, name = 'meta_data', description = MetaTable, title = 'meta_data', filters = filter_tables, expectedrows = 10)
             scan_param_table_h5 = file_h5.createTable(file_h5.root, name = 'scan_parameters', description = scan_param_descr, title = 'scan_parameters', filters = filter_tables, expectedrows = 10)
@@ -156,7 +156,7 @@ class FeedbackTune(ScanBase):
                             print "set bit 0 = 1"   
 
 #                 TotArray, _ = np.histogram(a = tots, range = (0,16), bins = 16)
-#                 plot_tot(tot_hist = TotArray, filename = None)#self.scan_data_path+".pdf")
+#                 plot_tot(tot_hist = TotArray, filename = None)#self.scan_data_filename+".pdf")
                 
                 if(abs(mean_tot-self.TargetTot) < self.abort_precision): #abort if good value already found to save time
                     print 'good result already achieved, skipping missing bits'
@@ -167,7 +167,7 @@ class FeedbackTune(ScanBase):
         
 if __name__ == "__main__":
     import configuration
-    scan = FeedbackTune(config_file = configuration.config_file, bit_file = configuration.bit_file, outdir = configuration.outdir)
+    scan = FeedbackTune(config_file = configuration.config_file, bit_file = configuration.bit_file, scan_data_path = configuration.scan_data_path)
     scan.setTargetCharge(PlsrDAC = 250)
     scan.setTargetTot(Tot = 5)
     scan.setAbortPrecision(delta_tot = 0.1)
