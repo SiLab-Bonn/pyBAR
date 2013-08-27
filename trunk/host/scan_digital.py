@@ -19,23 +19,23 @@ class DigitalScan(ScanBase):
         
         self.readout.start()
         
+        mask = 6
         repeat = 100
-        cal_lvl1_command = self.register.get_commands("cal")[0]+BitVector.BitVector(size = 35)+self.register.get_commands("lv1")[0]+BitVector.BitVector(size = 1000)
-        self.scan_utils.base_scan(cal_lvl1_command, repeat = repeat, mask = 6, steps = [], dcs = [], same_mask_for_all_dc = True, hardware_repeat = True, enable_c_high = False, enable_c_low = False, digital_injection = True, read_function = None)
+        wait_cycles = 336*2/mask*24/4*3
+        cal_lvl1_command = self.register.get_commands("cal")[0]+BitVector.BitVector(size = 35)+self.register.get_commands("lv1")[0]+BitVector.BitVector(size = wait_cycles)
+        self.scan_utils.base_scan(cal_lvl1_command, repeat = repeat, mask = mask, steps = [], dcs = [], same_mask_for_all_dc = True, hardware_repeat = True, enable_c_high = False, enable_c_low = False, digital_injection = True, read_function = None)
         
         self.readout.stop()
         
-        data_q = list(get_all_from_queue(self.readout.data_queue)) # make list, otherwise itertools will destroy generator object
+        data_q = list(get_all_from_queue(self.readout.data_queue))
         data_words = itertools.chain(*(data_dict['raw_data'] for data_dict in data_q))
-        #print 'got all from queue'
-    
         total_words = 0
         filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
         filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
         with tb.openFile(self.scan_data_filename+".h5", mode = "w", title = "test file") as file_h5:
             raw_data_earray_h5 = file_h5.createEArray(file_h5.root, name = 'raw_data', atom = tb.UIntAtom(), shape = (0,), title = 'raw_data', filters = filter_raw_data)
-            meta_data_table_h5 = file_h5.createTable(file_h5.root, name = 'meta_data', description = MetaTable, title = 'meta_data', filters = filter_tables)           
-            row_meta = meta_data_table_h5.row                   
+            meta_data_table_h5 = file_h5.createTable(file_h5.root, name = 'meta_data', description = MetaTable, title = 'meta_data', filters = filter_tables)
+            row_meta = meta_data_table_h5.row
             for item in data_q:
                 raw_data = item['raw_data']
                 len_raw_data = len(raw_data)
@@ -57,4 +57,3 @@ if __name__ == "__main__":
     import configuration
     scan = DigitalScan(config_file = configuration.config_file, bit_file = configuration.bit_file, scan_data_path = configuration.scan_data_path)
     scan.start()
-

@@ -9,6 +9,14 @@ class DefaultScan(ScanBase):
         
         self.readout.start()
         
+        # the following code shows how to profile your code
+#         import cProfile
+#         pr = cProfile.Profile()
+#         pr.enable()
+        # ***put your code to profile here***
+#         pr.disable()
+#         pr.print_stats('cumulative')
+        
         ######################################################################################
         #                                                                                    #
         #                                 Put your code here!                                #
