@@ -38,6 +38,8 @@ class Readout(object):
         self.sram_base_address = dict([(idx, addr) for idx, addr in enumerate(range(0x8100, 0x8200, 0x0100))])
     
     def start(self, reset_rx = False, empty_data_queue = True, reset_sram_fifo = True):
+        if self.worker_thread != None:
+            raise RuntimeError('Thread is not None')
         if reset_rx:
             self.reset_rx()
         if empty_data_queue:
@@ -49,35 +51,35 @@ class Readout(object):
         logging.info('Starting readout')
         self.worker_thread.start()
     
-    def stop(self, wait_for_data_timeout = 10.0):
-        if wait_for_data_timeout > 0:
-            wait_timeout_event = Event()
-            wait_timeout_event.clear()
-                
+    def stop(self, timeout = 10.0):
+        if self.worker_thread == None:
+            raise RuntimeError('Thread is None')
+        if timeout > 0:
+            timeout_event = Event()
+            timeout_event.clear()
+            
             def set_timeout_event(timeout_event, timeout):
                 timer = Timer(timeout, timeout_event.set)
                 timer.start()
             
-            timeout_thread = Thread(target=set_timeout_event, args=[wait_timeout_event, wait_for_data_timeout])
+            timeout_thread = Thread(target=set_timeout_event, args=[timeout_event, timeout])
             timeout_thread.start()
             
             fifo_size = self.get_sram_fifo_size()
             old_fifo_size = -1
-            while not wait_timeout_event.wait(1.5*self.readout_interval) and (old_fifo_size != fifo_size or fifo_size != 0):
+            while (old_fifo_size != fifo_size or fifo_size != 0) and not timeout_event.wait(1.5*self.readout_interval):
                 old_fifo_size = fifo_size
                 fifo_size = self.get_sram_fifo_size()
-            if wait_timeout_event.is_set():
-                logging.warning('Waiting for empty SRAM FIFO: timeout after %.1f second(s)' % wait_for_data_timeout)
+            if timeout_event.is_set():
+                logging.warning('Waiting for empty SRAM FIFO: timeout after %.1f second(s)' % timeout)
             else:
-                wait_timeout_event.set()
+                timeout_event.set()
             timeout_thread.join()
-        logging.info('Stopping readout')
         self.stop_thread_event.set()
-        if self.worker_thread != None:
-            self.worker_thread.join()
-            self.worker_thread = None
-        self.print_readout_status()
-            
+        self.worker_thread.join()
+        self.worker_thread = None
+        logging.info('Stopped readout')
+    
     def print_readout_status(self):
         logging.info('Data queue size: %d' % self.data_queue.qsize())
         logging.info('SRAM FIFO size: %d' % self.get_sram_fifo_size())
