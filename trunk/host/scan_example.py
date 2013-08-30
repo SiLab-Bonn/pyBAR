@@ -1,0 +1,77 @@
+from scan.scan import ScanBase
+
+import time
+from datetime import datetime
+
+import logging
+logging.basicConfig(level=logging.INFO, format = "%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
+
+# inherit from ScanBase class
+class ExampleScan(ScanBase):
+    def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "scan_example", scan_data_path = None):
+        # inherit from ScanBase.__init__() 
+        super(ExampleScan, self).__init__(config_file = config_file, definition_file = definition_file, bit_file = bit_file, device = device, scan_identifier = scan_identifier, scan_data_path = scan_data_path)
+        
+        # a public instance variable
+        self.some_public_variable = 123
+        
+        # a "private" instance variable (They don't exist in Python. However, there is a convention that is followed by most Python code: a name prefixed with an underscore should be treated as a non-public part of the API)
+        self._some_private_variable = 123
+        
+        # a name mangled instance variable (Any identifier of the form __spam (at least two leading underscores, at most one trailing underscore) is textually replaced with _classname__spam, where classname is the current class name with leading underscore(s) stripped)
+        self.__some_name_mangling_variable = 123
+        
+        
+        
+# example code: how to define a function/method object
+    def some_function(self, text):
+        print text  
+        
+    def scan(self, some_keyword_paramter = "parameter was not set", **kwargs):
+        
+        ######################################################################################
+        #                                                                                    #
+        #                                 Put your code here!                                #
+        #                                                                                    #
+        ######################################################################################
+        
+        # example code: how to start readout
+        self.readout.start()
+        
+        # example code: how to profile your code
+        import cProfile
+        pr = cProfile.Profile()
+        pr.enable()
+        # ***put your code to profile here***
+        pr.disable()
+        pr.print_stats('cumulative')
+
+        # example code: how to set function arguments
+        print some_keyword_paramter
+        
+        # example code: how to set function keyword arguments
+        print kwargs["some_other_keyword_paramter"]
+        
+        # example code: how to call function abject from a thread
+        self.some_function("this is some text")
+
+        # example code: how to abort a scan loop        
+        start_time = datetime.now()
+        some_parameter = True
+        while some_parameter and not self.stop_thread_event.is_set():
+            print(datetime.now()-start_time)
+            time.sleep(1)
+
+        # example code: how to start readout
+        self.readout.stop()
+        
+        # example code: how to use logger
+        logging.info('thread ends here after %.1f seconds' % (datetime.now()-start_time).total_seconds())
+
+if __name__ == "__main__":
+    import configuration
+    scan = ExampleScan(config_file = configuration.config_file, bit_file = configuration.bit_file, scan_data_path = configuration.scan_data_path)
+    # when use_thread is true (scan() runs in a thread), start() is non-blocking, otherwise blocking.
+    scan.start(use_thread=True, some_keyword_paramter = "parameter was set", some_other_keyword_paramter = "parameter was set")
+    # when use_thread is true (scan() runs in a thread), stop() is blocking until timeout is reached (if timeout is None, wait for scan has completed), otherwise non-blocking. 
+    scan.stop(timeout=5)

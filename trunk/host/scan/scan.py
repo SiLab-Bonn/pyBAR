@@ -4,7 +4,7 @@ import logging
 
 #import usb.core
 
-from threading import Event, Lock
+from threading import Thread, Event, Lock, Timer
 
 from SiLibUSB import SiUSBDevice
 
@@ -51,17 +51,20 @@ class ScanBase(object):
         
         self.lock = Lock()
         
+        self.worker_thread = None
         self.stop_thread_event = Event()
         self.stop_thread_event.set()
+        self.use_thread = None
         
     def configure(self):
         logging.info('Configuring FE')
         #scan.register.load_configuration_file(config_file)
         self.register_utils.configure_all(same_mask_for_all_dc = False)
         
-    def start(self, configure = True):
-        self.stop_thread_event.clear()
-        
+    def start(self, configure = True, use_thread = False, **kwargs): # TODO: in Python 3 use def func(a,b,*args,kw1=None,**kwargs)
+        self.use_thread = use_thread
+        if self.worker_thread != None:
+            raise RuntimeError('Thread is not None')
         self.lock.acquire()
         if not os.path.exists(self.scan_data_path):
             os.makedirs(self.scan_data_path)
@@ -77,8 +80,6 @@ class ScanBase(object):
         self.scan_data_filename = os.path.join(self.scan_data_path, self.scan_identifier+"_"+str(self.scan_number))
         self.lock.release()
         
-        logging.info('Starting scan %s with ID %d (output path: %s)' % (self.scan_identifier, self.scan_number, self.scan_data_path))
-        
         if configure:
             self.configure()
 
@@ -86,8 +87,50 @@ class ScanBase(object):
 #        self.readout.reset_sram_fifo()
         self.readout.print_readout_status()
         
-    def worker(self):
-        pass
+        self.stop_thread_event.clear()
+        
+        logging.info('Starting scan %s with ID %d (output path: %s)' % (self.scan_identifier, self.scan_number, self.scan_data_path))
+        if use_thread:
+            self.worker_thread = Thread(target=self.scan, name='%s with ID %d' % (self.scan_identifier, self.scan_number), kwargs=kwargs)#, args=kwargs)
+            self.worker_thread.start()
+        else:
+            self.scan(**kwargs)
+ 
+    def stop(self, timeout = None):
+        scan_completed = True
+        if (self.worker_thread is not None) ^ self.use_thread:
+            if self.worker_thread is None:
+                raise RuntimeError('Thread is None')
+            else:
+                raise RuntimeError('Thread is not None')
+        if self.worker_thread is not None:
+            if timeout > 0:
+                wait_timeout_event = Event()
+                wait_timeout_event.clear()
+                    
+                def set_timeout_event(timeout_event, timeout):
+                    timer = Timer(timeout, timeout_event.set)
+                    timer.start()
+                
+                timeout_thread = Thread(target=set_timeout_event, args=[wait_timeout_event, timeout])
+                timeout_thread.start()
+                
+                while self.worker_thread.is_alive() and not wait_timeout_event.wait(1):
+                    pass
+                if wait_timeout_event.is_set():
+                    logging.warning('Scan timeout after %.1f second(s)' % timeout)
+                    scan_completed = False
+                else:
+                    wait_timeout_event.set()
+                timeout_thread.join()
+            self.stop_thread_event.set()
+            self.worker_thread.join()
+            self.worker_thread = None
+            self.use_thread = None
+        logging.info('Stopped scan %s with ID %d' % (self.scan_identifier, self.scan_number))
+        self.readout.print_readout_status()
+        
+        return scan_completed
     
-    def scan(self):
-        pass
+    def scan(self, **kwargs):
+        raise NotImplementedError('Scan not implemented')
