@@ -51,7 +51,7 @@ class ScanBase(object):
         
         self.lock = Lock()
         
-        self.worker_thread = None
+        self.scan_thread = None
         self.stop_thread_event = Event()
         self.stop_thread_event.set()
         self.use_thread = None
@@ -63,7 +63,7 @@ class ScanBase(object):
         
     def start(self, configure = True, use_thread = False, **kwargs): # TODO: in Python 3 use def func(a,b,*args,kw1=None,**kwargs)
         self.use_thread = use_thread
-        if self.worker_thread != None:
+        if self.scan_thread != None:
             raise RuntimeError('Thread is not None')
         self.lock.acquire()
         if not os.path.exists(self.scan_data_path):
@@ -91,19 +91,19 @@ class ScanBase(object):
         
         logging.info('Starting scan %s with ID %d (output path: %s)' % (self.scan_identifier, self.scan_number, self.scan_data_path))
         if use_thread:
-            self.worker_thread = Thread(target=self.scan, name='%s with ID %d' % (self.scan_identifier, self.scan_number), kwargs=kwargs)#, args=kwargs)
-            self.worker_thread.start()
+            self.scan_thread = Thread(target=self.scan, name='%s with ID %d' % (self.scan_identifier, self.scan_number), kwargs=kwargs)#, args=kwargs)
+            self.scan_thread.start()
         else:
             self.scan(**kwargs)
  
     def stop(self, timeout = None):
         scan_completed = True
-        if (self.worker_thread is not None) ^ self.use_thread:
-            if self.worker_thread is None:
+        if (self.scan_thread is not None) ^ self.use_thread:
+            if self.scan_thread is None:
                 raise RuntimeError('Thread is None')
             else:
                 raise RuntimeError('Thread is not None')
-        if self.worker_thread is not None:
+        if self.scan_thread is not None:
             if timeout > 0:
                 wait_timeout_event = Event()
                 wait_timeout_event.clear()
@@ -115,7 +115,7 @@ class ScanBase(object):
                 timeout_thread = Thread(target=set_timeout_event, args=[wait_timeout_event, timeout])
                 timeout_thread.start()
                 
-                while self.worker_thread.is_alive() and not wait_timeout_event.wait(1):
+                while self.scan_thread.is_alive() and not wait_timeout_event.wait(1):
                     pass
                 if wait_timeout_event.is_set():
                     logging.warning('Scan timeout after %.1f second(s)' % timeout)
@@ -124,8 +124,8 @@ class ScanBase(object):
                     wait_timeout_event.set()
                 timeout_thread.join()
             self.stop_thread_event.set()
-            self.worker_thread.join()
-            self.worker_thread = None
+            self.scan_thread.join()
+            self.scan_thread = None
             self.use_thread = None
         logging.info('Stopped scan %s with ID %d' % (self.scan_identifier, self.scan_number))
         self.readout.print_readout_status()
