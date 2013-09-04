@@ -26,7 +26,7 @@ class FEI4GlobalRegister(object):
                  description = ""):
         self.name = str(name).lower()
         self.full_name = str(name)
-        self.address = int(address)
+        self.address = int(address) # int() defaults to base 10 when base is not set
         self.offset = int(offset)
         self.bitlength = int(bitlength)
         self.addresses = range(self.address, self.address + (self.offset+self.bitlength+16-1)/16)
