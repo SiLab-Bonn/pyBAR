@@ -35,7 +35,7 @@ class FEI4GlobalRegister(object):
         self.value = long(str(value), 0)  # value is decimal string or number or BitVector
         if self.value >= 2**self.bitlength or self.value < 0:
             raise Exception("Value exceeds limits")
-        self.readonly = bool(readonly)
+        self.readonly = str2bool(readonly)
         self.description = str(description)
         self.not_set = True
         
@@ -549,7 +549,7 @@ class FEI4Register(object):
             return reg.value.copy()
 
 
-    def get_commands(self, command_name, same_mask_for_all_dc = False, **keywords):
+    def get_commands(self, command_name, same_mask_for_all_dc = False, **kwargs):
         """get lvl1_command from command name and keyword arguments
         
         wrapper for build_commands()
@@ -560,19 +560,19 @@ class FEI4Register(object):
         
         if command_name.lower() == "wrregister":
             #print "wrregister"
-            register_addresses = self.get_global_register_attributes("addresses", **keywords)
+            register_addresses = self.get_global_register_attributes("addresses", **kwargs)
             register_bitsets = self.get_global_register_bitsets(register_addresses)
             #print register_addresses
-            commands.extend([self.build_command(command_name, address = register_address, globaldata = register_bitset, chipid = self.chip_id, **keywords) for register_address, register_bitset in zip(register_addresses, register_bitsets)])
+            commands.extend([self.build_command(command_name, address = register_address, globaldata = register_bitset, chipid = self.chip_id, **kwargs) for register_address, register_bitset in zip(register_addresses, register_bitsets)])
         
         elif command_name.lower() == "rdregister":
             #print "rdregister"
-            register_addresses = self.get_global_register_attributes('addresses', **keywords)
+            register_addresses = self.get_global_register_attributes('addresses', **kwargs)
             commands.extend([self.build_command(command_name, address = register_address, chipid = self.chip_id) for register_address in register_addresses])
 
         elif command_name.lower() == "wrfrontend":
             #print "wrfrontend"
-            register_objects = self.get_pixel_register_objects(False, **keywords)
+            register_objects = self.get_pixel_register_objects(False, **kwargs)
             #pprint.pprint(register_objects)
             self.set_global_register_value("S0", 0)
             self.set_global_register_value("S1", 0)
@@ -622,7 +622,7 @@ class FEI4Register(object):
                         #if dc_no == 0: print dc_no, register_bitset
                         #print "dc_no", dc_no
                         #print register_bitset
-                        commands.extend([self.build_command(command_name, pixeldata = register_bitset, chipid = self.chip_id, **keywords)])
+                        commands.extend([self.build_command(command_name, pixeldata = register_bitset, chipid = self.chip_id, **kwargs)])
                         if do_latch == True:
                             #self.set_global_register_value("Latch_En", 1)
                             #lvl1_command.extend(self.get_commands("wrregister", name = ["Latch_En"]))
@@ -637,11 +637,11 @@ class FEI4Register(object):
                             
         else:
             #print command_name.lower()
-            commands.append(self.build_command(command_name, chipid = self.chip_id, **keywords))
+            commands.append(self.build_command(command_name, chipid = self.chip_id, **kwargs))
         #pprint.pprint(lvl1_command)
         return commands
         
-    def build_command(self, command_name, **keywords):
+    def build_command(self, command_name, **kwargs):
         """build command from command_name and keyword values
         
         Usage:
@@ -667,11 +667,11 @@ class FEI4Register(object):
                     if string_is_binary(command_part_object.bitstream):
                         command_bitvector += BitVector.BitVector(bitstring = command_part_object.bitstream)
                     else:
-                        command_bitvector += self.build_command(part, **keywords)
+                        command_bitvector += self.build_command(part, **kwargs)
                 elif command_part_object and len(command_part_object.bitstream) == 0: # Command parts with any content of defined length, e.g. ChipID, Address, ...
                     value = None
-                    if part in keywords.keys():
-                        value = keywords[part]
+                    if part in kwargs.keys():
+                        value = kwargs[part]
                     try:
                         command_bitvector += value
                     except AttributeError:
@@ -683,8 +683,8 @@ class FEI4Register(object):
                             raise Exception("unknown type")
                 elif string_is_binary(part):
                     command_bitvector += BitVector.BitVector(bitstring = part)
-                #elif part in keywords.keys():
-                #    command_bitvector += keywords[command_name]
+                #elif part in kwargs.keys():
+                #    command_bitvector += kwargs[command_name]
             if command_bitvector.length() != command_object.bitlength:
                 raise Exception("command has wrong length")
         if command_bitvector.length() == 0:
@@ -709,28 +709,28 @@ class FEI4Register(object):
         except AttributeError:
             pass
 
-    def get_global_register_attributes(self, register_attribute, do_sort = True, **keywords):
+    def get_global_register_attributes(self, register_attribute, do_sort = True, **kwargs):
         """Calculating register numbers from register names.
         
         Usage: get_global_register_attributes("attribute_name", name = [regname_1, regname_2, ...], addresses = 2)
-        Receives: attribute name to be returned, dictionaries (keywords) of register attributes and values for making cuts
+        Receives: attribute name to be returned, dictionaries (kwargs) of register attributes and values for making cuts
         Returns: list of attribute values that matches dictionaries of attributes
         
         """
         register_attribute_list = []
-        for keyword in keywords.keys():
+        for keyword in kwargs.keys():
             # make keyword value list
             import collections
             
             # make keyword values iterable
-            if not isinstance(keywords[keyword], collections.Iterable):
-                keywords[keyword] = iterable(keywords[keyword])
+            if not isinstance(kwargs[keyword], collections.Iterable):
+                kwargs[keyword] = iterable(kwargs[keyword])
 
             # lowercase letters for string keyword values
             try:
-                keyword_values = [x.lower() for x in iterable(keywords[keyword])]
+                keyword_values = [x.lower() for x in iterable(kwargs[keyword])]
             except AttributeError:
-                keyword_values = keywords[keyword]
+                keyword_values = kwargs[keyword]
             try:
                 register_attribute_list.extend([getattr(x, register_attribute) for x in self.global_registers if set(iterable(getattr(x, keyword))).intersection(keyword_values)])
             except AttributeError:
@@ -740,7 +740,7 @@ class FEI4Register(object):
         else:
             return flatten_iterable(register_attribute_list)
         
-    def get_global_register_objects(self, do_sort = True, **keywords):
+    def get_global_register_objects(self, do_sort = True, **kwargs):
         """Generate register objects (list) from register name list
         
         Usage: get_global_register_objects(name = ["Amp2Vbn", "GateHitOr", "DisableColumnCnfg"], address = [2, 3])
@@ -749,19 +749,19 @@ class FEI4Register(object):
         
         """
         register_objects = []
-        for keyword in keywords.keys():
+        for keyword in kwargs.keys():
             # make keyword value list
             import collections
             
             # make keyword values iterable
-            if not isinstance(keywords[keyword], collections.Iterable):
-                keywords[keyword] = iterable(keywords[keyword])
+            if not isinstance(kwargs[keyword], collections.Iterable):
+                kwargs[keyword] = iterable(kwargs[keyword])
 
             # lowercase letters for string keyword values
             try:
-                keyword_values = [x.lower() for x in iterable(keywords[keyword])]
+                keyword_values = [x.lower() for x in iterable(kwargs[keyword])]
             except AttributeError:
-                keyword_values = keywords[keyword]
+                keyword_values = kwargs[keyword]
             try:
                 register_objects.extend([x for x in self.global_registers if set(iterable(getattr(x, keyword))).intersection(keyword_values)]) # any(set([False]).intersection([False])) returns False
             except AttributeError:
@@ -799,7 +799,7 @@ class FEI4Register(object):
             register_bitsets.append(register_bitset.reverse() if register_littleendian else register_bitset)
         return register_bitsets
 
-    def get_command_objects(self, **keywords):
+    def get_command_objects(self, **kwargs):
         """Generate register objects (list) from register name list
         
         Usage: get_global_register_objects(name = ["Amp2Vbn", "GateHitOr", "DisableColumnCnfg"], address = [2, 3])
@@ -808,47 +808,47 @@ class FEI4Register(object):
         
         """
         command_objects = []
-        for keyword in keywords.keys():
+        for keyword in kwargs.keys():
             # make keyword value list
             import collections
             
             # make keyword values iterable
-            if not isinstance(keywords[keyword], collections.Iterable):
-                keywords[keyword] = iterable(keywords[keyword])
+            if not isinstance(kwargs[keyword], collections.Iterable):
+                kwargs[keyword] = iterable(kwargs[keyword])
 
             # lowercase letters for string keyword values
             try:
-                keyword_values = [x.lower() for x in iterable(keywords[keyword])]
+                keyword_values = [x.lower() for x in iterable(kwargs[keyword])]
             except AttributeError:
-                keyword_values = keywords[keyword]
+                keyword_values = kwargs[keyword]
             try:
                 command_objects.extend([x for x in self.lvl1_command if set(iterable(getattr(x, keyword))).intersection(keyword_values)])
             except AttributeError:
                 pass
         return command_objects
 
-    def get_pixel_register_attributes(self, register_attribute, do_sort = True, **keywords):
+    def get_pixel_register_attributes(self, register_attribute, do_sort = True, **kwargs):
         """Calculating register numbers from register names.
         
         Usage: get_pixel_register_attributes("attribute_name", name = [regname_1, regname_2, ...], addresses = 2)
-        Receives: attribute name to be returned, dictionaries (keywords) of register attributes and values for making cuts
+        Receives: attribute name to be returned, dictionaries (kwargs) of register attributes and values for making cuts
         Returns: list of attribute values that matches dictionaries of attributes
         
         """
         register_attribute_list = []
-        for keyword in keywords.keys():
+        for keyword in kwargs.keys():
             # make keyword value list
             import collections
             
             # make keyword values iterable
-            if not isinstance(keywords[keyword], collections.Iterable):
-                keywords[keyword] = iterable(keywords[keyword])
+            if not isinstance(kwargs[keyword], collections.Iterable):
+                kwargs[keyword] = iterable(kwargs[keyword])
 
             # lowercase letters for string keyword values
             try:
-                keyword_values = [x.lower() for x in iterable(keywords[keyword])]
+                keyword_values = [x.lower() for x in iterable(kwargs[keyword])]
             except AttributeError:
-                keyword_values = keywords[keyword]
+                keyword_values = kwargs[keyword]
             try:
                 register_attribute_list.extend([getattr(x, register_attribute) for x in self.pixel_registers if set(iterable(getattr(x, keyword))).intersection(keyword_values)])
             except AttributeError:
@@ -858,7 +858,7 @@ class FEI4Register(object):
         else:
             return flatten_iterable(register_attribute_list)
         
-    def get_pixel_register_objects(self, do_sort = True, **keywords):
+    def get_pixel_register_objects(self, do_sort = True, **kwargs):
         """Generate register objects (list) from register name list
         
         Usage: get_pixel_register_objects(name = ["TDAC"], address = [2, 3])
@@ -867,8 +867,8 @@ class FEI4Register(object):
         
         """
         register_objects = []
-        for keyword in keywords.keys():
-            keyword_values = iterable(keywords[keyword])
+        for keyword in kwargs.keys():
+            keyword_values = iterable(kwargs[keyword])
             try:
                 keyword_values = [x.lower() for x in keyword_values]
             except AttributeError:
@@ -880,19 +880,19 @@ class FEI4Register(object):
             return register_objects
             
 #        register_objects = []
-#        for keyword in keywords.keys():
+#        for keyword in kwargs.keys():
 #            # make keyword value list
 #            import collections
 #            
 #            # make keyword values iterable
-#            if not isinstance(keywords[keyword], collections.Iterable):
-#                keywords[keyword] = iterable(keywords[keyword])
+#            if not isinstance(kwargs[keyword], collections.Iterable):
+#                kwargs[keyword] = iterable(kwargs[keyword])
 #
 #            # lowercase letters for string keyword values
 #            try:
-#                keyword_values = [x.lower() for x in iterable(keywords[keyword])]
+#                keyword_values = [x.lower() for x in iterable(kwargs[keyword])]
 #            except AttributeError:
-#                keyword_values = keywords[keyword]
+#                keyword_values = kwargs[keyword]
 #            try:
 #                register_objects.extend([x for x in self.pixel_registers if set(iterable(getattr(x, keyword))).intersection(keyword_values)]) # any(set([False]).intersection([False])) returns False
 #            except AttributeError:

@@ -267,9 +267,13 @@ def split_seq(iterable, size):
 
 def str2bool(value):
     try:
-        return value.lower() in ("yes", "true", "t", "1")
-    except AttributeError:
-        return bool(value) # no string
+        if value.lower() in ("yes", "y", "true", "t", "1"):
+            return True
+        elif value.lower() in ("no", "n", "false", "f", "0"):
+            return False
+        raise ValueError('Cannot convert to boolean: unknown string %s' % value)
+    except AttributeError: # not a string
+        return bool(value)
     
 #-----------------------------------------------------------------
 if __name__ == "__main__":
