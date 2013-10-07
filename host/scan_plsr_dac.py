@@ -22,8 +22,10 @@ class PlsrDacScan(ScanBase):
         print 'Done!'
         
         commands = []
+        commands.extend(self.register.get_commands("confmode"))
         self.register.set_global_register_value("PlsrDAC", 40)
         commands.extend(self.register.get_commands("wrregister", name = ["PlsrDAC"]))
+        commands.extend(self.register.get_commands("runmode"))
         self.register_utils.send_commands(commands)
         
         mask = 6
@@ -35,6 +37,15 @@ class PlsrDacScan(ScanBase):
         print 'Stopping readout thread...'
         self.readout.stop()
         print 'Done!'
+
+        def get_cols_rows(data_words):
+            for item in self.readout.data_record_filter(data_words):
+                yield ((item & 0xFE0000)>>17), ((item & 0x1FF00)>>8)
+                
+        def get_rows_cols(data_words):
+            for item in self.readout.data_record_filter(data_words):
+                yield ((item & 0x1FF00)>>8), ((item & 0xFE0000)>>17)
+
         
         data_q = list(get_all_from_queue(self.readout.data_queue)) # make list, otherwise itertools will use data
         data_words = itertools.chain(*(data_dict['raw_data'] for data_dict in data_q))
@@ -70,6 +81,5 @@ class PlsrDacScan(ScanBase):
         self.lock.release()
         
 if __name__ == "__main__":
-    import configuration
     scan = PlsrDacScan(config_file = configuration.config_file, bit_file = configuration.bit_file, scan_data_path = configuration.scan_data_path)
     scan.start(configure = True)
