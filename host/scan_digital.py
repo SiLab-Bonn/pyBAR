@@ -14,9 +14,7 @@ class DigitalScan(ScanBase):
     def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "scan_digital", scan_data_path = None):
         super(DigitalScan, self).__init__(config_file = config_file, definition_file = definition_file, bit_file = bit_file, device = device, scan_identifier = scan_identifier, scan_data_path = scan_data_path)
         
-    def start(self, configure = True):
-        super(DigitalScan, self).start(configure)
-        
+    def scan(self, configure = True):        
         self.readout.start()
         
         mask = 6
@@ -56,4 +54,5 @@ class DigitalScan(ScanBase):
 if __name__ == "__main__":
     import configuration
     scan = DigitalScan(config_file = configuration.config_file, bit_file = configuration.bit_file, scan_data_path = configuration.scan_data_path)
-    scan.start()
+    scan.start(use_thread = False)
+    scan.stop()
