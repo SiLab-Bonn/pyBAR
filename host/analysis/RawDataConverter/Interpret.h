@@ -48,6 +48,7 @@ public:
 
   //print functions for info output
   void printSummary();                                      //print the interpreter summary with all global counter values (#hits, #data records,...)
+  void printStatus();                                      //print the interpreter options and counter values (#hits, #data records,...)
   void printHits(const unsigned int& pNhits = 100);			    //prints the hits stored in the array
   void debugEvents(const unsigned long& rStartEvent = 0, const unsigned long& rStopEvent = 0, const bool& debugEvents = true);
 
