@@ -330,6 +330,46 @@ void Interpret::printSummary()
       std::cout<<"\t"<<i<<"\t"<<_serviceRecordCounter[i]<<"\n";
 }
 
+void Interpret::printStatus() {
+	std::cout << "config variables\n";
+	std::cout << "_NbCID "<<_NbCID<<"\n";
+	std::cout << "_maxTot "<<_maxTot<<"\n";
+	std::cout << "_fEI4B "<<_fEI4B<<"\n";
+	std::cout << "_debugEvents "<<_debugEvents<<"\n";
+	std::cout << "_startDebugEvent "<<_startDebugEvent<<"\n";
+	std::cout << "_stopDebugEvent "<<_stopDebugEvent<<"\n";
+
+	std::cout << "one event variables\n";
+	std::cout << "tNdataHeader "<<tNdataHeader<<"\n";
+	std::cout << "tNdataRecord "<<tNdataRecord<<"\n";
+	std::cout << "tStartBCID "<<tStartBCID<<"\n";
+	std::cout << "tStartLVL1ID "<<tStartLVL1ID<<"\n";
+	std::cout << "tDbCID "<<tDbCID<<"\n";
+	std::cout << "tTriggerError "<<tTriggerError<<"\n";
+	std::cout << "tErrorCode "<<tErrorCode<<"\n";
+	std::cout << "tServiceRecord "<<tServiceRecord<<"\n";
+	std::cout << "tTriggerNumber "<<tTriggerNumber<<"\n";
+	std::cout << "tTotalHits "<<tTotalHits<<"\n";
+	std::cout << "tLVL1IDisConst "<<tLVL1IDisConst<<"\n";
+	std::cout << "tBCIDerror "<<tBCIDerror<<"\n";
+	std::cout << "tTriggerWord "<<tTriggerWord<<"\n";
+	std::cout << "_lastTriggerNumber "<<_lastTriggerNumber<<"\n";
+
+	std::cout << "counters/flags for the total raw data processing\n";
+	std::cout << "_nTriggers "<<_nTriggers<<"\n";
+	std::cout << "_nEvents "<<_nEvents<<"\n";
+	std::cout << "_nMaxHitsPerEvent "<<_nMaxHitsPerEvent<<"\n";
+	std::cout << "_nEmptyEvents "<<_nEmptyEvents<<"\n";
+	std::cout << "_nIncompleteEvents "<<_nIncompleteEvents<<"\n";
+	std::cout << "_nUnknownWords "<<_nUnknownWords<<"\n";
+	std::cout << "_nServiceRecords "<<_nServiceRecords<<"\n";
+	std::cout << "_nDataRecords "<<_nDataRecords<<"\n";
+	std::cout << "_nDataHeaders "<<_nDataHeaders<<"\n";
+	std::cout << "_nHits "<<_nHits<<"\n";
+	std::cout << "_nDataWords "<<_nDataWords<<"\n";
+	std::cout << "_firstTriggerNrSet "<<_firstTriggerNrSet<<"\n";
+}
+
 void Interpret::printHits(const unsigned int& pNhits)
 {
   if(pNhits>__MAXARRAYSIZE)
