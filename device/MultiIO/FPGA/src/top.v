@@ -1,3 +1,13 @@
+/**
+ * ------------------------------------------------------------
+ * Copyright (c) SILAB , Physics Institute of Bonn University
+ * ------------------------------------------------------------
+ *
+ * SVN revision information:
+ *  $Rev::                       $:
+ *  $Author::                    $:
+ *  $Date::                      $:
+ */
 `timescale 1ps / 1ps
 `default_nettype none
 
@@ -6,7 +16,7 @@ module top (
     input wire FCLK_IN, // 48MHz
     
     //full speed 
-    inout wire [7:0] DATA,
+    inout wire [7:0] BUS_DATA,
     input wire [15:0] ADD,
     input wire RD_B,
     input wire WR_B,
@@ -49,10 +59,7 @@ module top (
     output wire EN_V3, // EN_VD2 on SCC, EN_VDD3 on BIC
     output wire EN_V4, // EN_VD1 on SCC, EN_VDD4 on BIC
     
-    input wire DOBOUT1, // BIC only, Ch1
-    input wire DOBOUT2, // BIC only, Ch2
-    input wire DOBOUT3, // BIC only, Ch3
-    input wire DOBOUT4, // DO on SCC, Ch4 on BIC
+    input wire [3:0] DOBOUT, // BIC only, 0 - Ch1, 1 - Ch2, 2 - Ch3, 3 - DO on SCC, Ch4 on BIC
     
     // Over Current Protection (BIC only)
     input wire OC1,
@@ -91,27 +98,6 @@ assign SEL4 = 1'b1;
 assign MULTI_IO = 11'b000_0000_0000;
 assign DEBUG_D = 16'ha5a5;
 
-// 1Hz CLK
-wire CE_1HZ; // use for sequential logic
-wire CLK_1HZ; // don't connect to clock input, only combinatorial logic
-clock_divider #(
-    .DIVISOR(40000000)
-) clock_divisor_40MHz_to_1Hz (
-    .CLK(CLK_40),
-    .RESET(1'b0),
-    .CE(CE_1HZ),
-    .CLOCK(CLK_1HZ)
-);
-
-wire CLK_2HZ;
-clock_divider #(
-    .DIVISOR(20000000)
-) clock_divisor_40MHz_to_2Hz (
-    .CLK(CLK_40),
-    .RESET(1'b0),
-    .CE(),
-    .CLOCK(CLK_2HZ)
-);
 
 wire LEMO_TRIGGER, LEMO_RESET, EXT_VETO;
 assign LEMO_TRIGGER = LEMO_RX[0];
@@ -134,45 +120,8 @@ assign TX[0] = TLU_CLOCK; // trigger clock; also connected to RJ45 output
 assign TX[1] = TLU_BUSY | (CMD_START_FLAG/*CMD_CAL*/ & ~CMD_EXT_START_ENABLE); // TLU_BUSY signal; also connected to RJ45 output. Asserted when TLU FSM has accepted a trigger or when CMD FSM is busy. 
 assign TX[2] = (RJ45_ENABLED == 1'b1) ? RJ45_TRIGGER : LEMO_TRIGGER;
 
-// LED
-parameter VERSION = 3; // all on: 31
 
-wire RX_READY_4, RX_8B10B_DECODER_ERR_4, RX_FIFO_OVERFLOW_ERR_4, RX_FIFO_FULL_4;
-wire RX_READY_3, RX_8B10B_DECODER_ERR_3, RX_FIFO_OVERFLOW_ERR_3, RX_FIFO_FULL_3;
-wire RX_READY_2, RX_8B10B_DECODER_ERR_2, RX_FIFO_OVERFLOW_ERR_2, RX_FIFO_FULL_2;
-wire RX_READY_1, RX_8B10B_DECODER_ERR_1, RX_FIFO_OVERFLOW_ERR_1, RX_FIFO_FULL_1;
-wire FIFO_NOT_EMPTY; // raised, when SRAM FIFO is not empty
-wire FIFO_FULL, FIFO_NEAR_FULL; // raised, when SRAM FIFO is full / near full
-wire FIFO_READ_ERROR; // raised, when attempting to read from SRAM FIFO when it is empty
-//wire RX_FIFO_FULL;
-//assign RX_FIFO_FULL = RX_FIFO_FULL_4 | RX_FIFO_FULL_3 | RX_FIFO_FULL_2 | RX_FIFO_FULL_1;
-//wire RX_READY;
-//assign RX_READY = RX_READY_4 | RX_READY_3 | RX_READY_2 | RX_READY_1;
-
-
-wire SHOW_VERSION;
-
-SRLC16E # (
-    .INIT(16'hF000) // in seconds, MSB shifted first
-) SRLC16E_LED (
-    .Q(SHOW_VERSION),
-    .Q15(),
-    .A0(1'b1),
-    .A1(1'b1),
-    .A2(1'b1),
-    .A3(1'b1),
-    .CE(CE_1HZ),
-    .CLK(CLK_40),
-    .D(1'b0)
-);
-
-// LED assignments
-assign LED1 = SHOW_VERSION? VERSION[0] : (((RJ45_ENABLED? CLK_2HZ : CLK_1HZ) | FIFO_FULL) & CLK_LOCKED);
-assign LED2 = SHOW_VERSION? VERSION[1] : RX_READY_1 & ((RX_8B10B_DECODER_ERR_1? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR_1 | RX_FIFO_FULL_1);
-assign LED3 = SHOW_VERSION? VERSION[2] : RX_READY_2 & ((RX_8B10B_DECODER_ERR_2? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR_2 | RX_FIFO_FULL_2);
-assign LED4 = SHOW_VERSION? VERSION[3] : RX_READY_3 & ((RX_8B10B_DECODER_ERR_3? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR_3 | RX_FIFO_FULL_3);
-assign LED5 = SHOW_VERSION? VERSION[4] : RX_READY_4 & ((RX_8B10B_DECODER_ERR_4? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR_4 | RX_FIFO_FULL_4);
-
+// ------- RESRT/CLOCK  ------- //
 reset_gen ireset_gen(.CLK(BUS_CLK), .RST(BUS_RST));
 
 clk_gen iclkgen(
@@ -190,134 +139,82 @@ clk_gen iclkgen(
     .U2_STATUS_OUT()
 );
 
-wire [7:0] BUS_DATA_IN;
-assign BUS_DATA_IN = DATA;
+// 1Hz CLK
+wire CE_1HZ; // use for sequential logic
+wire CLK_1HZ; // don't connect to clock input, only combinatorial logic
+clock_divider #(
+    .DIVISOR(40000000)
+) clock_divisor_40MHz_to_1Hz (
+    .CLK(CLK_40),
+    .RESET(1'b0),
+    .CE(CE_1HZ),
+    .CLOCK(CLK_1HZ)
+);
 
-reg [7:0] DATA_OUT;
+wire CLK_2HZ;
+clock_divider #(
+    .DIVISOR(20000000)
+) clock_divisor_40MHz_to_2Hz (
+    .CLK(CLK_40),
+    .RESET(1'b0),
+    .CE(),
+    .CLOCK(CLK_2HZ)
+);
 
-reg [15:0] CMD_ADD;
-wire [7:0] CMD_BUS_DATA_OUT;
-reg CMD_BUS_RD, CMD_BUS_WR;
 
-reg [15:0] RX_ADD_4;
-wire [7:0] RX_BUS_DATA_OUT_4;
-reg RX_BUS_RD_4, RX_BUS_WR_4;
+// -------  MODULE ADREESSES  ------- //
+localparam CMD_BASEADDR = 16'h0000;
+localparam CMD_HIGHADDR = 16'h8000-1;
 
-reg [15:0] RX_ADD_3;
-wire [7:0] RX_BUS_DATA_OUT_3;
-reg RX_BUS_RD_3, RX_BUS_WR_3;
+localparam FIFO_BASEADDR = 16'h8100; 
+localparam FIFO_HIGHADDR = 16'h8200-1;
 
-reg [15:0] RX_ADD_2;
-wire [7:0] RX_BUS_DATA_OUT_2;
-reg RX_BUS_RD_2, RX_BUS_WR_2;
+localparam TLU_BASEADDR = 16'h8200; 
+localparam TLU_HIGHADDR = 16'h8300-1;
 
-reg [15:0] RX_ADD_1;
-wire [7:0] RX_BUS_DATA_OUT_1;
-reg RX_BUS_RD_1, RX_BUS_WR_1;
+localparam RX4_BASEADDR = 16'h8300; 
+localparam RX4_HIGHADDR = 16'h8400-1;
 
-reg [15:0] FIFO_ADD;
-wire [7:0] FIFO_BUS_DATA_OUT;
-reg FIFO_RD, FIFO_WR;
+localparam RX3_BASEADDR = 16'h8400; 
+localparam RX3_HIGHADDR = 16'h8500-1;
 
-reg [15:0] TLU_ADD;
-wire [7:0] TLU_BUS_DATA_OUT;
-reg TLU_RD, TLU_WR;
+localparam RX2_BASEADDR = 16'h8500; 
+localparam RX2_HIGHADDR = 16'h8600-1;
 
-wire [15:0] ADD_REAL;
-assign ADD_REAL = ADD - 16'h4000;
+localparam RX1_BASEADDR = 16'h8600; 
+localparam RX1_HIGHADDR = 16'h8700-1;
 
-always@ (*) begin
-    DATA_OUT = 0;
-    
-    CMD_ADD = 0;
-    CMD_BUS_RD = 0;
-    CMD_BUS_WR = 0;
-    
-    RX_BUS_RD_4 = 0;
-    RX_BUS_WR_4 = 0;
-    RX_ADD_4 = 0;
-    
-    RX_BUS_RD_3 = 0;
-    RX_BUS_WR_3 = 0;
-    RX_ADD_3 = 0;
-    
-    RX_BUS_RD_2 = 0;
-    RX_BUS_WR_2 = 0;
-    RX_ADD_2 = 0;
-    
-    RX_BUS_RD_1 = 0;
-    RX_BUS_WR_1 = 0;
-    RX_ADD_1 = 0;
-    
-    FIFO_ADD = 0;
-    FIFO_RD = 0;
-    FIFO_WR = 0;
-    
-    TLU_ADD = 0;
-    TLU_RD = 0;
-    TLU_WR = 0;
-    
-    if( ADD_REAL < 16'h8000 ) begin
-        CMD_BUS_RD = ~RD_B;
-        CMD_BUS_WR = ~WR_B;
-        CMD_ADD = ADD_REAL;
-        DATA_OUT = CMD_BUS_DATA_OUT;
-    end
-    // else if( ADD_REAL < 16'h8100 ) begin
-        // RX_BUS_RD = ~RD_B;
-        // RX_BUS_WR = ~WR_B;
-        // RX_ADD = ADD_REAL-16'h8000;
-        // DATA_OUT = RX_BUS_DATA_OUT;
-    // end
-    else if( ADD_REAL < 16'h8200 ) begin
-        FIFO_RD = ~RD_B;
-        FIFO_WR = ~WR_B;
-        FIFO_ADD = ADD_REAL-16'h8100;
-        DATA_OUT = FIFO_BUS_DATA_OUT;
-    end
-    else if( ADD_REAL < 16'h8300 ) begin
-        TLU_RD = ~RD_B;
-        TLU_WR = ~WR_B;
-        TLU_ADD = ADD_REAL-16'h8200;
-        DATA_OUT = TLU_BUS_DATA_OUT;
-    end
-    else if( ADD_REAL < 16'h8400 ) begin
-        RX_BUS_RD_4 = ~RD_B;
-        RX_BUS_WR_4 = ~WR_B;
-        RX_ADD_4 = ADD_REAL-16'h8300;
-        DATA_OUT = RX_BUS_DATA_OUT_4;
-    end
-    else if( ADD_REAL < 16'h8500 ) begin
-        RX_BUS_RD_3 = ~RD_B;
-        RX_BUS_WR_3 = ~WR_B;
-        RX_ADD_3 = ADD_REAL-16'h8400;
-        DATA_OUT = RX_BUS_DATA_OUT_3;
-    end
-    else if( ADD_REAL < 16'h8600 ) begin
-        RX_BUS_RD_2 = ~RD_B;
-        RX_BUS_WR_2 = ~WR_B;
-        RX_ADD_2 = ADD_REAL-16'h8500;
-        DATA_OUT = RX_BUS_DATA_OUT_2;
-    end
-    else if( ADD_REAL < 16'h8700 ) begin
-        RX_BUS_RD_1 = ~RD_B;
-        RX_BUS_WR_1 = ~WR_B;
-        RX_ADD_1 = ADD_REAL-16'h8600;
-        DATA_OUT = RX_BUS_DATA_OUT_1;
-    end
-end
+localparam GPIO_BASEADDR = 16'h9000;                    
+localparam GPIO_HIGHADDR = GPIO_BASEADDR + 15;       
 
-assign DATA = ~RD_B ? DATA_OUT : 8'bzzzz_zzzz;
 
-cmd_seq icmd
+// -------  BUS SYGNALING  ------- //
+wire [15:0] BUS_ADD;
+assign BUS_ADD = ADD - 16'h4000;
+wire BUS_RD, BUS_WR;
+assign BUS_RD = ~RD_B;
+assign BUS_WR = ~WR_B;
+
+
+// -------  USER MODULES  ------- //
+
+wire FIFO_NOT_EMPTY; // raised, when SRAM FIFO is not empty
+wire FIFO_FULL, FIFO_NEAR_FULL; // raised, when SRAM FIFO is full / near full
+wire FIFO_READ_ERROR; // raised, when attempting to read from SRAM FIFO when it is empty
+
+
+cmd_seq 
+#( 
+    .BASEADDR(CMD_BASEADDR), 
+    .HIGHADDR(CMD_HIGHADDR)
+)  icmd
 (
     .BUS_CLK(BUS_CLK),
     .BUS_RST(BUS_RST),
-    .BUS_ADD(CMD_ADD),
-    .BUS_DATA_IN(BUS_DATA_IN),
-    .BUS_RD(CMD_BUS_RD),
-    .BUS_WR(CMD_BUS_WR),
-    .BUS_DATA_OUT(CMD_BUS_DATA_OUT),
+    .BUS_ADD(BUS_ADD),
+    .BUS_DATA(BUS_DATA),
+    .BUS_RD(BUS_RD),
+    .BUS_WR(BUS_WR),
     
     .CMD_CLK_OUT(CMD_CLK),
     .CMD_CLK_IN(CLK_40),
@@ -336,213 +233,69 @@ cmd_seq icmd
 //always@(posedge CMD_CLK)
 //    CMD_CAL <= (cmd_rx_reg == 9'b101100100);
 
-wire            FIFO_READ;
-wire            FIFO_EMPTY;
-wire    [31:0]  FIFO_DATA;
-
-wire            FE_FIFO_READ_4;
-wire            FE_FIFO_EMPTY_4;
-wire    [31:0]  FE_FIFO_DATA_4;
-
-wire            FE_FIFO_READ_3;
-wire            FE_FIFO_EMPTY_3;
-wire    [31:0]  FE_FIFO_DATA_3;
-
-wire            FE_FIFO_READ_2;
-wire            FE_FIFO_EMPTY_2;
-wire    [31:0]  FE_FIFO_DATA_2;
-
-wire            FE_FIFO_READ_1;
-wire            FE_FIFO_EMPTY_1;
-wire    [31:0]  FE_FIFO_DATA_1;
-
-wire            TLU_FIFO_READ;
-wire            TLU_FIFO_EMPTY;
-wire    [31:0]  TLU_FIFO_DATA;
-
-wire TLU_FIFO_PEEMPT_REQ;
-wire TLU_FIFO_REQ;
-assign TLU_FIFO_REQ = ~TLU_FIFO_EMPTY;
-wire [3:0] FE_FIFO_REQ;
-assign FE_FIFO_REQ = TLU_FIFO_PEEMPT_REQ? 4'b0000 : {~FE_FIFO_EMPTY_1, ~FE_FIFO_EMPTY_2, ~FE_FIFO_EMPTY_3, ~FE_FIFO_EMPTY_4};
-wire [4:0] FIFO_READ_SEL;
-
-assign {FE_FIFO_READ_1, FE_FIFO_READ_2, FE_FIFO_READ_3, FE_FIFO_READ_4, TLU_FIFO_READ} = (FIFO_READ_SEL & ({5{FIFO_READ}}));
-assign FIFO_EMPTY = ~((FIFO_READ_SEL & {FE_FIFO_REQ, TLU_FIFO_REQ}) != 5'b0_0000);
-assign FIFO_DATA = (({32{FIFO_READ_SEL[4]}} & FE_FIFO_DATA_1) | ({32{FIFO_READ_SEL[3]}} & FE_FIFO_DATA_2) | ({32{FIFO_READ_SEL[2]}} & FE_FIFO_DATA_3) | ({32{FIFO_READ_SEL[1]}} & FE_FIFO_DATA_4) | ({32{FIFO_READ_SEL[0]}} & TLU_FIFO_DATA));
-
-arbiter #(
-    .WIDTH(5)
-) arbiter_inst (
-    .req({FE_FIFO_REQ, TLU_FIFO_REQ}),
-    .grant(FIFO_READ_SEL),
-    .base(5'b0_0001) // one hot, TLU has highest priority followed by higher indexed requests
-);
-
-wire USB_READ;
-assign USB_READ = FREAD & FSTROBE;
-
-out_fifo iout_fifo
-(
-    .BUS_CLK(BUS_CLK),
-    .BUS_CLK270(BUS_CLK270),
-    .BUS_RST(BUS_RST),
-    .BUS_ADD(FIFO_ADD),
-    .BUS_DATA_IN(BUS_DATA_IN),
-    .BUS_RD(FIFO_RD),
-    .BUS_WR(FIFO_WR),
-    .BUS_DATA_OUT(FIFO_BUS_DATA_OUT),
-    
-    .SRAM_A(SRAM_A),
-    .SRAM_IO(SRAM_IO),
-    .SRAM_BHE_B(SRAM_BHE_B),
-    .SRAM_BLE_B(SRAM_BLE_B),
-    .SRAM_CE1_B(SRAM_CE1_B),
-    .SRAM_OE_B(SRAM_OE_B),
-    .SRAM_WE_B(SRAM_WE_B),
-    
-    .USB_READ(USB_READ),
-    .USB_DATA(FDATA),
-    
-    .FIFO_READ_NEXT_OUT(FIFO_READ),
-    .FIFO_EMPTY_IN(FIFO_EMPTY),
-    .FIFO_DATA(FIFO_DATA),
-    
-    .FIFO_NOT_EMPTY(FIFO_NOT_EMPTY),
-    .FIFO_FULL(FIFO_FULL),
-    .FIFO_NEAR_FULL(FIFO_NEAR_FULL),
-    .FIFO_READ_ERROR(FIFO_READ_ERROR)
-);
-
 parameter DSIZE = 10;
 //parameter CLKIN_PERIOD = 6.250;
 
-fei4_rx #(
-    .DSIZE(DSIZE),
-    .DATA_IDENTIFIER(4)
-) ifei4_rx_4 (
-    .RX_CLK(RX_CLK),
-    .RX_CLK90(RX_CLK90),
-    .DATA_CLK(DATA_CLK),
-    .RX_CLK_LOCKED(CLK_LOCKED),
-    .RX_DATA(DOBOUT4),
-    
-    .RX_READY(RX_READY_4),
-    .RX_8B10B_DECODER_ERR(RX_8B10B_DECODER_ERR_4),
-    .RX_FIFO_OVERFLOW_ERR(RX_FIFO_OVERFLOW_ERR_4),
-     
-    .FIFO_READ(FE_FIFO_READ_4),
-    .FIFO_EMPTY(FE_FIFO_EMPTY_4),
-    .FIFO_DATA(FE_FIFO_DATA_4),
-    
-    .RX_FIFO_FULL(RX_FIFO_FULL_4),
-     
-    .BUS_CLK(BUS_CLK),
-    .BUS_ADD(RX_ADD_4),
-    .BUS_DATA_IN(BUS_DATA_IN),
-    .BUS_DATA_OUT(RX_BUS_DATA_OUT_4),
-    .BUS_RST(BUS_RST),
-    .BUS_WR(RX_BUS_WR_4),
-    .BUS_RD(RX_BUS_RD_4)
-);
+wire [3:0] RX_READY, RX_8B10B_DECODER_ERR, RX_FIFO_OVERFLOW_ERR, RX_FIFO_FULL;
+wire [3:0] FE_FIFO_READ;
+wire [3:0] FE_FIFO_EMPTY;
+wire [31:0] FE_FIFO_DATA [3:0];
 
-fei4_rx #(
-    .DSIZE(DSIZE),
-    .DATA_IDENTIFIER(3)
-) ifei4_rx_3 (
-    .RX_CLK(RX_CLK),
-    .RX_CLK90(RX_CLK90),
-    .DATA_CLK(DATA_CLK),
-    .RX_CLK_LOCKED(CLK_LOCKED),
-    .RX_DATA(DOBOUT3),
-    
-    .RX_READY(RX_READY_3),
-    .RX_8B10B_DECODER_ERR(RX_8B10B_DECODER_ERR_3),
-    .RX_FIFO_OVERFLOW_ERR(RX_FIFO_OVERFLOW_ERR_3),
-     
-    .FIFO_READ(FE_FIFO_READ_3),
-    .FIFO_EMPTY(FE_FIFO_EMPTY_3),
-    .FIFO_DATA(FE_FIFO_DATA_3),
-    
-    .RX_FIFO_FULL(RX_FIFO_FULL_3),
-     
-    .BUS_CLK(BUS_CLK),
-    .BUS_ADD(RX_ADD_3),
-    .BUS_DATA_IN(BUS_DATA_IN),
-    .BUS_DATA_OUT(RX_BUS_DATA_OUT_3),
-    .BUS_RST(BUS_RST),
-    .BUS_WR(RX_BUS_WR_3),
-    .BUS_RD(RX_BUS_RD_3)
-);
+genvar i;
+generate
+  for (i = 0; i < 4; i = i + 1) begin: rx_gen
+    fei4_rx 
+    #(
+        .BASEADDR(RX1_BASEADDR-16'h0100*i),
+        .HIGHADDR(RX1_HIGHADDR-16'h0100*i),
+        .DSIZE(DSIZE), 
+        .DATA_IDENTIFIER(i+1)
+    ) ifei4_rx
+    (
+        .RX_CLK(RX_CLK),
+        .RX_CLK90(RX_CLK90),
+        .DATA_CLK(DATA_CLK),
+        .RX_CLK_LOCKED(CLK_LOCKED),
+        
+        .RX_DATA(DOBOUT[i]),
+        
+        .RX_READY(RX_READY[i]),
+        .RX_8B10B_DECODER_ERR(RX_8B10B_DECODER_ERR[i]),
+        .RX_FIFO_OVERFLOW_ERR(RX_FIFO_OVERFLOW_ERR[i]),
+         
+        .FIFO_READ(FE_FIFO_READ[i]),
+        .FIFO_EMPTY(FE_FIFO_EMPTY[i]),
+        .FIFO_DATA(FE_FIFO_DATA[i]),
+        
+        .RX_FIFO_FULL(RX_FIFO_FULL[i]),
+         
+        .BUS_CLK(BUS_CLK),
+        .BUS_RST(BUS_RST),
+        .BUS_ADD(BUS_ADD),
+        .BUS_DATA(BUS_DATA),
+        .BUS_RD(BUS_RD),
+        .BUS_WR(BUS_WR)
+    ); 
+  end
+endgenerate
 
-fei4_rx #(
-    .DSIZE(DSIZE),
-    .DATA_IDENTIFIER(2)
-) ifei4_rx_2 (
-    .RX_CLK(RX_CLK),
-    .RX_CLK90(RX_CLK90),
-    .DATA_CLK(DATA_CLK),
-    .RX_CLK_LOCKED(CLK_LOCKED),
-    .RX_DATA(DOBOUT2),
-    
-    .RX_READY(RX_READY_2),
-    .RX_8B10B_DECODER_ERR(RX_8B10B_DECODER_ERR_2),
-    .RX_FIFO_OVERFLOW_ERR(RX_FIFO_OVERFLOW_ERR_2),
-     
-    .FIFO_READ(FE_FIFO_READ_2),
-    .FIFO_EMPTY(FE_FIFO_EMPTY_2),
-    .FIFO_DATA(FE_FIFO_DATA_2),
-    
-    .RX_FIFO_FULL(RX_FIFO_FULL_2),
-     
-    .BUS_CLK(BUS_CLK),
-    .BUS_ADD(RX_ADD_2),
-    .BUS_DATA_IN(BUS_DATA_IN),
-    .BUS_DATA_OUT(RX_BUS_DATA_OUT_2),
-    .BUS_RST(BUS_RST),
-    .BUS_WR(RX_BUS_WR_2),
-    .BUS_RD(RX_BUS_RD_2)
-);
-
-fei4_rx #(
-    .DSIZE(DSIZE),
-    .DATA_IDENTIFIER(1)
-) ifei4_rx_1 (
-    .RX_CLK(RX_CLK),
-    .RX_CLK90(RX_CLK90),
-    .DATA_CLK(DATA_CLK),
-    .RX_CLK_LOCKED(CLK_LOCKED),
-    .RX_DATA(DOBOUT1),
-    
-    .RX_READY(RX_READY_1),
-    .RX_8B10B_DECODER_ERR(RX_8B10B_DECODER_ERR_1),
-    .RX_FIFO_OVERFLOW_ERR(RX_FIFO_OVERFLOW_ERR_1),
-     
-    .FIFO_READ(FE_FIFO_READ_1),
-    .FIFO_EMPTY(FE_FIFO_EMPTY_1),
-    .FIFO_DATA(FE_FIFO_DATA_1),
-    
-    .RX_FIFO_FULL(RX_FIFO_FULL_1),
-     
-    .BUS_CLK(BUS_CLK),
-    .BUS_ADD(RX_ADD_1),
-    .BUS_DATA_IN(BUS_DATA_IN),
-    .BUS_DATA_OUT(RX_BUS_DATA_OUT_1),
-    .BUS_RST(BUS_RST),
-    .BUS_WR(RX_BUS_WR_1),
-    .BUS_RD(RX_BUS_RD_1)
-);
+wire TLU_FIFO_READ;
+wire TLU_FIFO_EMPTY;
+wire [31:0] TLU_FIFO_DATA;
+wire TLU_FIFO_PEEMPT_REQ;
 
 tlu_controller #(
+    .BASEADDR(TLU_BASEADDR),
+    .HIGHADDR(TLU_HIGHADDR),
     .DIVISOR(12)
 ) tlu_controller_module (
+
     .BUS_CLK(BUS_CLK),
     .BUS_RST(BUS_RST),
-    .BUS_ADD(TLU_ADD),
-    .BUS_DATA_IN(BUS_DATA_IN),
-    .BUS_RD(TLU_RD),
-    .BUS_WR(TLU_WR),
-    .BUS_DATA_OUT(TLU_BUS_DATA_OUT),
+    .BUS_ADD(BUS_ADD),
+    .BUS_DATA(BUS_DATA),
+    .BUS_RD(BUS_RD),
+    .BUS_WR(BUS_WR),
     
     .CMD_CLK(CLK_40),
     
@@ -568,6 +321,96 @@ tlu_controller #(
 
     .FIFO_NEAR_FULL(FIFO_NEAR_FULL)
 );
+
+
+wire ARB_READY_OUT, ARB_WRITE_OUT;
+wire [31:0] ARB_DATA_OUT;
+wire [7:0] READ_GRANT;
+rrp_arbiter 
+#( 
+    .WIDTH(8), 
+    .PRIORITY(8'b1000_0000)
+) i_rrp_arbiter
+(
+    .RST(BUS_RST),
+    .CLK(BUS_CLK),
+
+    .WRITE_REQ({~TLU_FIFO_EMPTY, ~FE_FIFO_EMPTY, 3'b0}),
+    .HOLD_REQ({TLU_FIFO_PEEMPT_REQ, 7'b0}),
+    .DATA_IN({TLU_FIFO_DATA,FE_FIFO_DATA[3],FE_FIFO_DATA[2],FE_FIFO_DATA[1], FE_FIFO_DATA[0], {3{32'b0}} }),
+    .READ_GRANT(READ_GRANT),
+
+    .READY_OUT(ARB_READY_OUT),
+    .WRITE_OUT(ARB_WRITE_OUT),
+    .DATA_OUT(ARB_DATA_OUT)
+);
+assign TLU_FIFO_READ = READ_GRANT[7];
+assign FE_FIFO_READ = READ_GRANT[6:3];
+
+wire USB_READ;
+assign USB_READ = FREAD & FSTROBE;
+
+sram_fifo 
+#(
+    .BASEADDR(FIFO_BASEADDR), 
+    .HIGHADDR(FIFO_HIGHADDR)
+) i_out_fifo (
+    .BUS_CLK270(BUS_CLK270),
+    .BUS_CLK(BUS_CLK),
+    .BUS_RST(BUS_RST),
+    .BUS_ADD(BUS_ADD),
+    .BUS_DATA(BUS_DATA),
+    .BUS_RD(BUS_RD),
+    .BUS_WR(BUS_WR), 
+    
+    .SRAM_A(SRAM_A),
+    .SRAM_IO(SRAM_IO),
+    .SRAM_BHE_B(SRAM_BHE_B),
+    .SRAM_BLE_B(SRAM_BLE_B),
+    .SRAM_CE1_B(SRAM_CE1_B),
+    .SRAM_OE_B(SRAM_OE_B),
+    .SRAM_WE_B(SRAM_WE_B),
+    
+    .USB_READ(USB_READ),
+    .USB_DATA(FDATA),
+    
+    .FIFO_READ_NEXT_OUT(ARB_READY_OUT),
+    .FIFO_EMPTY_IN(!ARB_WRITE_OUT),
+    .FIFO_DATA(ARB_DATA_OUT),
+    
+    .FIFO_NOT_EMPTY(FIFO_NOT_EMPTY),
+    .FIFO_FULL(FIFO_FULL),
+    .FIFO_NEAR_FULL(FIFO_NEAR_FULL),
+    .FIFO_READ_ERROR(FIFO_READ_ERROR)
+);
+    
+// ------- LEDs  ------- //
+parameter VERSION = 3; // all on: 31
+wire SHOW_VERSION;
+
+
+SRLC16E # (
+    .INIT(16'hF000) // in seconds, MSB shifted first
+) SRLC16E_LED (
+    .Q(SHOW_VERSION),
+    .Q15(),
+    .A0(1'b1),
+    .A1(1'b1),
+    .A2(1'b1),
+    .A3(1'b1),
+    .CE(CE_1HZ),
+    .CLK(CLK_40),
+    .D(1'b0)
+);
+
+// LED assignments
+assign LED1 = SHOW_VERSION? VERSION[0] : (((RJ45_ENABLED? CLK_2HZ : CLK_1HZ) | FIFO_FULL) & CLK_LOCKED);
+assign LED2 = SHOW_VERSION? VERSION[1] : RX_READY[0] & ((RX_8B10B_DECODER_ERR[0]? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[0] | RX_FIFO_FULL[0]);
+assign LED3 = SHOW_VERSION? VERSION[2] : RX_READY[1] & ((RX_8B10B_DECODER_ERR[1]? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[1] | RX_FIFO_FULL[1]);
+assign LED4 = SHOW_VERSION? VERSION[3] : RX_READY[2] & ((RX_8B10B_DECODER_ERR[2]? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[2] | RX_FIFO_FULL[2]);
+assign LED5 = SHOW_VERSION? VERSION[4] : RX_READY[3] & ((RX_8B10B_DECODER_ERR[3]? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[3] | RX_FIFO_FULL[3]);
+
+
 
 // Chipscope
 `ifdef SYNTHESIS_NOT
