@@ -37,7 +37,7 @@ cdef extern from "Interpret.h":
     cdef cppclass HitInfo:
         HitInfo()    
     cdef cppclass Interpret(Basis):
-        Interpret()
+        Interpret() except +
         void printStatus()
         void setErrorOutput(bool pToggle)
         void setWarningOutput(bool pToggle)
@@ -46,18 +46,18 @@ cdef extern from "Interpret.h":
     
         void setFEI4B(bool setFEI4B)
         
-        void setMetaWordIndex(const unsigned int& tLength, MetaInfo* &rMetaInfo)
-        void interpretRawData(unsigned int* pDataWords, const unsigned int& pNdataWords)
+        void setMetaWordIndex(const unsigned int& tLength, MetaInfo* &rMetaInfo) except +
+        void interpretRawData(unsigned int* pDataWords, const unsigned int& pNdataWords) except +
         void getMetaEventIndex(unsigned int& rEventNumberIndex, unsigned long*& rEventNumber)
         void getHits(unsigned int &rNhits, HitInfo* &rHitInfo)
+        void getServiceRecordsCounters(unsigned int &rNserviceRecords, unsigned long*& rServiceRecordsCounter)   #returns the total service record counter array
+        void getErrorCounters(unsigned int &rNerrorCounters, unsigned long*& rErrorCounter)                     #returns the total errors counter array
+        void getTriggerErrorCounters(unsigned int &rNTriggerErrorCounters, unsigned long*& rTriggerErrorCounter) #returns the total trigger errors counter array
         
         void resetEventVariables()
         void resetCounters()
-        
+
         void printSummary()
-        #void getSimple(unsigned int* pDataWords, const unsigned int& pNdataWords, unsigned int* pHits, unsigned int& pNhits)
-        #void getSimpleStruct(unsigned int &rNhits, HitInfo* &rHitInfo)
-        #void interpretSimple(const unsigned int& tLength, MetaInfo * rMetaInfo)
 
 cdef class PyDataInterpreter:
     cdef Interpret* thisptr      # hold a C++ instance which we're wrapping
@@ -74,12 +74,7 @@ cdef class PyDataInterpreter:
     def set_warning_output(self,toggle):
         self.thisptr.setWarningOutput(<bool> toggle)
     def set_error_output(self,toggle):
-        self.thisptr.setErrorOutput(<bool> toggle)             
-#     def get_simple(self, np.ndarray[np.uint32_t, ndim=1] dataIn):
-#         cdef unsigned int sizeOut = 0
-#         cdef np.ndarray[np.uint32_t, ndim=1, mode="c"] dataOut = np.empty_like(dataIn)        
-#         self.thisptr.getSimple(<unsigned int*> dataIn.data, <unsigned int> dataIn.shape[0], <unsigned int*> dataOut.data, sizeOut)       
-#         return dataOut, sizeOut
+        self.thisptr.setErrorOutput(<bool> toggle)
     def interpret_raw_data(self, np.ndarray[np.uint32_t, ndim=1] data):
         self.thisptr.interpretRawData(<unsigned int*> data.data, <unsigned int> data.shape[0])
         return data, data.shape[0]
@@ -89,6 +84,18 @@ cdef class PyDataInterpreter:
         return Nhits
     def set_meta_word_index(self, np.ndarray[numpy_meta_data, ndim=1] meta_data):
         self.thisptr.setMetaWordIndex(<unsigned int> meta_data.shape[0], <MetaInfo*&> meta_data.data)
+    def get_service_records_counters(self, np.ndarray[np.uint32_t, ndim=1] service_records_counters):
+        cdef unsigned int Ncounters = 0
+        self.thisptr.getServiceRecordsCounters(Ncounters, <unsigned long*&> service_records_counters.data)
+        return Ncounters
+    def get_error_counters(self, np.ndarray[np.uint32_t, ndim=1] error_counters):
+        cdef unsigned int NerrorCodes = 0
+        self.thisptr.getErrorCounters(NerrorCodes, <unsigned long*&> error_counters.data)
+        return NerrorCodes
+    def get_trigger_error_counters(self, np.ndarray[np.uint32_t, ndim=1] trigger_error_counters):
+        cdef unsigned int NtriggerErrorCodes = 0
+        self.thisptr.getTriggerErrorCounters(NtriggerErrorCodes, <unsigned long*&> trigger_error_counters.data)
+        return NtriggerErrorCodes
     def get_meta_event_index(self, np.ndarray[np.uint32_t, ndim=1] event_index):
         cdef unsigned int NreadOuts = 0
         self.thisptr.getMetaEventIndex(NreadOuts, <unsigned long*&> event_index.data)
