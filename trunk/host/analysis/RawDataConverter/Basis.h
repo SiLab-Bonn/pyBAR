@@ -12,6 +12,7 @@
 #include <sstream>
 #include <algorithm>
 #include <limits>
+#include <new>
 
 class Basis
 {
