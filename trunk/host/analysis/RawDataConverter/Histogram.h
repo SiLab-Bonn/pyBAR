@@ -30,6 +30,10 @@ public:
 
   void calculateThresholdScanArrays(double rMuArray[], double rSigmaArray[]); //takes the occupancy histograms for different parameters for the threshold arrays
 
+  unsigned int getMinParameter(); //returns the minimum parameter from _parInfo
+  unsigned int getMaxParameter(); //returns the maximum parameter from _parInfo
+  unsigned int getNparameters();  //returns the parameter range from _parInfo
+
   void test();
 
 private:
@@ -44,10 +48,6 @@ private:
   void deleteRelBcidArray();
 
   void setParameterLimits();      //sets _minParameterValue/_maxParameterValue from _parInfo
-
-  unsigned int getMinParameter(); //returns the minimum parameter from _parInfo
-  unsigned int getMaxParameter(); //returns the maximum parameter from _parInfo
-  unsigned int getNparameters();  //returns the parameter range from _parInfo
   
   unsigned int* _occupancy;       //2d hit histogram for each parameter (in total 3d, linearily sorted in memory via col, row, parameter)
   unsigned long* _tot;            //tot histogram
