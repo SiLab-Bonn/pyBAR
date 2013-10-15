@@ -1,6 +1,13 @@
-Windows installer instructions:
-1. install HDF5 for windows
-2. install SWAG for windows
+Cython Solution:
+The Cython solution just uses the Interpreter and Histogram class and creates Python Modules from their C++ code. 
+It is platform independent and allows Pytables Blosc compression in tables.
+1. make sure you have cython installed
+2. run setup.py with cython to build libraries (python.exe setup.py build_ext --inplace)
+3. test the modules with Test_Cython.py
+
+Depriciated SWIG solution to create a Python Module Converter from the C-code with Visual Studio, can also be used to debug/profile the code:
+1. install HDF5 1.8.11 for windows
+2. install SWIG for windows
 3. define environment variables:
 	- remeber to use the short form representation for your paths (program files = progra~1). Otherwise Visual Studio has issues (well known bug...)
 	- %HDF5% environment variable should be set (all without %...) to the installation subdirectory mentioning your version (like c:\progra~1\HDF_Group\HDF5\1.8.10)
@@ -10,6 +17,7 @@ Windows installer instructions:
 
 4. open the solution (with VS 2010 and above(?)) and compile.
    Release/debug build will build the c++ versions in release/debug mode. Only the release configuration compiles BLOSC with the appropriate compiler optimizations (SSE2).
-   PythonModule run config will create the PythonModule via SWAG. The output is called _Converter.pyd and is
-   a dll. You can test it by running 'python test.py' from the console. If you want to use the converter from another directory you have to import it first in the python script.
+   PythonModule run config will create the PythonModule via SWIG. The output is called _Converter.pyd and is a dll. 
+   You can test it by running 'python test.py' from the console. If you want to use the converter from another directory you have to import it first in the python script.
    Otherwise import error is thrown. The reason is unknown (python feature, bug)
+5. test the module with Test_Swig.py
