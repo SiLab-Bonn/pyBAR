@@ -198,12 +198,12 @@ bool Interpret::setMetaWordIndex(const unsigned int& tLength, MetaInfo* &rMetaIn
   //sanity check
   for(unsigned int i = 0; i < tLength-1; ++i){
     if(_metaInfo[i].startIndex + _metaInfo[i].length != _metaInfo[i].stopIndex)
-      throw 10;
+      throw std::out_of_range("meta word index out of range");
     if(_metaInfo[i].stopIndex != _metaInfo[i+1].startIndex)
-      throw 10;
+      throw std::out_of_range("meta word index out of range");
   }
   if(_metaInfo[tLength-1].startIndex + _metaInfo[tLength-1].length != _metaInfo[tLength-1].stopIndex)
-    throw 10;
+    throw std::out_of_range("meta word index out of range");
 
   _metaEventIndexLength = tLength;
   allocateMetaEventIndexArray();
@@ -434,7 +434,7 @@ void Interpret::storeHit(HitInfo& rHit)
   else{
     if(Basis::errorSet())
       error("storeHit: _hitIndex = "+IntToStr(_hitIndex), __LINE__);
-    throw 11;
+    throw std::out_of_range("hit index out of range");
   }
 }
 
@@ -631,24 +631,40 @@ void Interpret::addServiceRecord(const unsigned char& pSRcode)
 
 void Interpret::allocateHitInfoArray()
 {
-  _hitInfo = new HitInfo[__MAXARRAYSIZE];
+  try{
+    _hitInfo = new HitInfo[__MAXARRAYSIZE];
+  }
+  catch(std::bad_alloc& exception){
+    error(std::string("allocateHitInfoArray(): ")+std::string(exception.what()));
+  }
 }
 
 void Interpret::deleteHitInfoArray()
 {
-  if (_hitInfo == 0)
+  debug(std::string("deleteHitInfoArray()"));
+  if (_hitInfo == 0){
+	std::cout<<"IS ZERO"<<std::endl;
     return;
+  }
+  std::cout<<"IS NOT ZERO"<<std::endl;
   delete[] _hitInfo;
   _hitInfo = 0;
 }
 
 void Interpret::allocateHitBufferArray()
 {
-  _hitBuffer = new HitInfo[__MAXHITBUFFERSIZE];
+  debug(std::string("allocateHitBufferArray()"));
+  try{
+    _hitBuffer = new HitInfo[__MAXHITBUFFERSIZE];
+  }
+  catch(std::bad_alloc& exception){
+    error(std::string("allocateHitBufferArray(): ")+std::string(exception.what()));
+  }
 }
 
 void Interpret::deleteHitBufferArray()
 {
+  debug(std::string("deleteHitBufferArray()"));
   if (_hitBuffer == 0)
     return;
   delete[] _hitBuffer;
@@ -657,7 +673,13 @@ void Interpret::deleteHitBufferArray()
 
 void Interpret::allocateMetaEventIndexArray()
 {
-  _metaEventIndex = new unsigned long[_metaEventIndexLength];
+  debug(std::string("allocateMetaEventIndexArray()"));
+  try{
+    _metaEventIndex = new unsigned long[_metaEventIndexLength];
+  }
+  catch(std::bad_alloc& exception){
+    error(std::string("allocateMetaEventIndexArray(): ")+std::string(exception.what()));
+  }
 }
 
 void Interpret::resetMetaEventIndexArray()
@@ -669,6 +691,7 @@ void Interpret::resetMetaEventIndexArray()
 
 void Interpret::deleteMetaEventIndexArray()
 {
+  debug(std::string("deleteMetaEventIndexArray()"));
   if (_metaEventIndex == 0)
     return;
   delete[] _metaEventIndex;
@@ -677,7 +700,13 @@ void Interpret::deleteMetaEventIndexArray()
 
 void Interpret::allocateTriggerErrorCounterArray()
 {
-  _triggerErrorCounter = new unsigned long[__TRG_N_ERROR_CODES];
+  debug(std::string("allocateTriggerErrorCounterArray()"));
+  try{
+    _triggerErrorCounter = new unsigned long[__TRG_N_ERROR_CODES];
+  }
+  catch(std::bad_alloc& exception){
+    error(std::string("allocateTriggerErrorCounterArray(): ")+std::string(exception.what()));
+  }
 }
 
 void Interpret::resetTriggerErrorCounterArray()
@@ -688,6 +717,7 @@ void Interpret::resetTriggerErrorCounterArray()
 
 void Interpret::deleteTriggerErrorCounterArray()
 {
+  debug(std::string("deleteTriggerErrorCounterArray()"));
   if (_triggerErrorCounter == 0)
     return;
   delete[] _triggerErrorCounter;
@@ -696,7 +726,13 @@ void Interpret::deleteTriggerErrorCounterArray()
 
 void Interpret::allocateErrorCounterArray()
 {
-  _errorCounter = new unsigned long[__N_ERROR_CODES];
+  debug(std::string("allocateErrorCounterArray()"));
+  try{
+    _errorCounter = new unsigned long[__N_ERROR_CODES];
+  }
+  catch(std::bad_alloc& exception){
+    error(std::string("allocateErrorCounterArray(): ")+std::string(exception.what()));
+  }
 }
 
 void Interpret::resetErrorCounterArray()
@@ -707,6 +743,7 @@ void Interpret::resetErrorCounterArray()
 
 void Interpret::deleteErrorCounterArray()
 {
+  debug(std::string("deleteErrorCounterArray()"));
   if (_errorCounter == 0)
     return;
   delete[] _errorCounter;
@@ -715,7 +752,13 @@ void Interpret::deleteErrorCounterArray()
 
 void Interpret::allocateServiceRecordCounterArray()
 {
-  _serviceRecordCounter = new unsigned long[__NSERVICERECORDS];
+  debug(std::string("allocateServiceRecordCounterArray()"));
+  try{
+    _serviceRecordCounter = new unsigned long[__NSERVICERECORDS];
+  }
+  catch(std::bad_alloc& exception){
+    error(std::string("allocateServiceRecordCounterArray(): ")+std::string(exception.what()));
+  }
 }
 
 void Interpret::resetServiceRecordCounterArray()
@@ -726,6 +769,7 @@ void Interpret::resetServiceRecordCounterArray()
 
 void Interpret::deleteServiceRecordCounterArray()
 {
+  debug(std::string("deleteServiceRecordCounterArray()"));
   if (_serviceRecordCounter == 0)
     return;
   delete[] _serviceRecordCounter;
