@@ -321,7 +321,12 @@ bool Converter::loadHDF5file(const std::string& FileName)
   }
   debug("loadHDF5file: "+FileName);
   closeInFile();
-  _inFile = new H5::H5File(FileName, H5F_ACC_RDONLY); //open the file H5FILE_NAME with read only atribute
+  try{
+    _inFile = new H5::H5File(FileName, H5F_ACC_RDONLY); //open the file H5FILE_NAME with read only atribute
+  }
+  catch(...){
+    error(std::string("loadHDF5file: ")+FileName);
+  }
   _inFileName = FileName;
   return true;
 }
