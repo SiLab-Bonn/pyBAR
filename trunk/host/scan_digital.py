@@ -1,27 +1,25 @@
-from analysis.plotting.plotting import plot_occupancy
-import time
 import itertools
 import tables as tb
+import numpy as np
 import BitVector
 
 from analysis.data_struct import MetaTable
-
 from utils.utils import get_all_from_queue, split_seq
-
 from scan.scan import ScanBase
+
+import logging
+logging.basicConfig(level=logging.INFO, format = "%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 class DigitalScan(ScanBase):
     def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "scan_digital", scan_data_path = None):
         super(DigitalScan, self).__init__(config_file = config_file, definition_file = definition_file, bit_file = bit_file, device = device, scan_identifier = scan_identifier, scan_data_path = scan_data_path)
         
-    def scan(self, configure = True):        
+    def scan(self, configure = True, mask = 6, repeat = 100, steps = []):        
         self.readout.start()
         
-        mask = 6
-        repeat = 100
         wait_cycles = 336*2/mask*24/4*3
         cal_lvl1_command = self.register.get_commands("cal")[0]+BitVector.BitVector(size = 35)+self.register.get_commands("lv1")[0]+BitVector.BitVector(size = wait_cycles)
-        self.scan_utils.base_scan(cal_lvl1_command, repeat = repeat, mask = mask, steps = [], dcs = [], same_mask_for_all_dc = True, hardware_repeat = True, enable_c_high = False, enable_c_low = False, digital_injection = True, read_function = None)
+        self.scan_utils.base_scan(cal_lvl1_command, repeat = repeat, mask = mask, steps = steps, dcs = [], same_mask_for_all_dc = True, hardware_repeat = True, enable_c_high = False, enable_c_low = False, digital_injection = True, read_function = None)
         
         self.readout.stop()
         
@@ -49,10 +47,21 @@ class DigitalScan(ScanBase):
                 row_meta.append()
                 meta_data_table_h5.flush()
         
-        plot_occupancy(*zip(*self.readout.get_col_row(data_words)), max_occ = repeat*2, filename = self.scan_data_filename+".pdf")
-
 if __name__ == "__main__":
     import configuration
     scan = DigitalScan(config_file = configuration.config_file, bit_file = configuration.bit_file, scan_data_path = configuration.scan_data_path)
     scan.start(use_thread = False)
     scan.stop()
+    from analysis.analyze_raw_data import AnalyzeRawData
+    output_file = scan.scan_data_filename+"_interpreted.h5"
+    with AnalyzeRawData(input_file = scan.scan_data_filename+".h5", output_file = output_file) as analyze_raw_data:
+        analyze_raw_data.interpret_word_table(FEI4B = True if(configuration.chip_flavor == 'fei4b') else False)
+        import analysis.plotting.plotting as plotting
+        with tb.openFile(output_file, 'r') as in_file:
+            plotting.plot_event_errors(error_hist = in_file.root.HistErrorCounter, filename = scan.scan_data_filename+"_eventErrors.pdf")
+            plotting.plot_service_records(service_record_hist = in_file.root.HistServiceRecord, filename = scan.scan_data_filename+"_serviceRecords.pdf")
+            plotting.plot_trigger_errors(trigger_error_hist=in_file.root.HistTriggerErrorCounter, filename = scan.scan_data_filename+"_tiggerErrors.pdf")
+            plotting.plot_tot(tot_hist=in_file.root.HistTot, filename = scan.scan_data_filename+"_tot.pdf")
+            plotting.plot_relative_bcid(relative_bcid_hist = in_file.root.HistRelBcid, filename = scan.scan_data_filename+"_relativeBCID.pdf")
+            plotting.plotThreeWay(hist = in_file.root.HistOcc[:,:,0], title = "Occupancy", label = "occupancy", filename = scan.scan_data_filename+"_occupancy.pdf")
+
