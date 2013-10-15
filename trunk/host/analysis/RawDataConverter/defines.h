@@ -43,8 +43,8 @@ typedef struct ParInfo{
 #define __BCIDCOUNTERSIZE_FEI4A 256	  //BCID counter for FEI4A has 8 bit
 #define __BCIDCOUNTERSIZE_FEI4B 1024  //BCID counter for FEI4B has 10 bit
 #define __NSERVICERECORDS 32          //# of different service records
-#define __MAXARRAYSIZE 4000000         //maximum buffer array size for the output hit array (has to be bigger than hits in one chunk)
-#define __MAXHITBUFFERSIZE 8000000     //maximum buffer array size for the hit buffer array (has to be bigger than hits in one event)
+#define __MAXARRAYSIZE 2000000         //maximum buffer array size for the output hit array (has to be bigger than hits in one chunk)
+#define __MAXHITBUFFERSIZE 4000000     //maximum buffer array size for the hit buffer array (has to be bigger than hits in one event)
 #define __MAXTLUTRGNUMBER 32767       //maximum trigger logic unit trigger number (32-bit)
 
 //event error codes
