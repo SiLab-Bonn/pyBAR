@@ -45,15 +45,10 @@ hits = np.empty((MAXARRAYSIZE,), dtype=
                      ])
 
 filter_table = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
-with tb.openFile("K:\\test_in_big.h5", mode = "r", title = "test file") as in_file_h5:
-    filter_table = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
+with tb.openFile("K:\\test_in.h5", mode = "r", title = "test file") as in_file_h5:
     with tb.openFile("K:\\test_out.h5", mode = "w", title = "test file") as out_file_h5:
         hit_table = out_file_h5.createTable(out_file_h5.root, name = 'Hits', description = HitInfoTable, title = 'hit_data', filters = filter_table, chunkshape=(chunk/100,))
         meta_data = in_file_h5.root.meta_data[:]
-        try:
-            scan_parameters = in_file_h5.root.scan_parameters[:]
-        except tb.exceptions.NoSuchNodeError:
-            scan_parameters = None
 
         table_size = in_file_h5.root.raw_data.shape[0]
         meta_data_size = meta_data.shape[0]
@@ -74,10 +69,12 @@ with tb.openFile("K:\\test_in_big.h5", mode = "r", title = "test file") as in_fi
         myHistograming.create_tot_hist(True)
         myHistograming.create_rel_bcid_hist(True)
         
-        if(scan_parameters == None):
-            myHistograming.set_no_scan_parameter()
-        else:
+        try:
+            scan_parameters = in_file_h5.root.scan_parameters[:]
             myHistograming.add_scan_parameter(scan_parameters)
+        except tb.exceptions.NoSuchNodeError:
+            scan_parameters = None
+            myHistograming.set_no_scan_parameter()           
             
         meta_event_index = np.zeros((meta_data_size,), dtype=[('metaEventIndex', np.uint32)])
         
