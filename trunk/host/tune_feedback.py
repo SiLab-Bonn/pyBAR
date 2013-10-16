@@ -55,7 +55,7 @@ class FeedbackTune(ScanBase):
     def setNinjections(self, Ninjections = 100):
         self.Ninjections = Ninjections
         
-    def start(self, configure = True):
+    def scan(self, configure = True):
         super(FeedbackTune, self).start(configure)
 
         for PrmpVbpf_bit in self.FeedbackTuneBits: #reset all GDAC bits
@@ -172,4 +172,5 @@ if __name__ == "__main__":
     scan.setTargetTot(Tot = 5)
     scan.setAbortPrecision(delta_tot = 0.1)
     scan.setFeedbackTuneBits(range(7,-1,-1))
-    scan.start()
+    scan.start(use_thread = False)
+    scan.stop()

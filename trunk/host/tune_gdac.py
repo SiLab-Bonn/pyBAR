@@ -57,9 +57,7 @@ class GdacTune(ScanBase):
     def setNinjections(self, Ninjections = 100):
         self.Ninjections = Ninjections
         
-    def start(self, configure = True):
-        super(GdacTune, self).start(configure)
-        
+    def scan(self, configure = True):        
         for gdac_bit in self.GdacTuneBits: #reset all GDAC bits
             self.setGdacBit(gdac_bit, bit_value = 0)
             
@@ -202,4 +200,5 @@ if __name__ == "__main__":
     scan.setAbortPrecision(delta_occupancy = 2)
     scan.setGdacTuneBits(range(7,-1,-1))
     scan.setNinjections(Ninjections = 50)
-    scan.start()
+    scan.start(use_thread = False)
+    scan.stop()
