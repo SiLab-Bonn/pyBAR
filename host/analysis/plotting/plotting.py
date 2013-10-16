@@ -6,6 +6,7 @@ import pandas as pd
 import itertools
 import tables as tb
 from math import sqrt
+import re
 from matplotlib import colors, cm, legend
 
 def make_occupancy(cols, rows, max_occ = None):
@@ -29,7 +30,7 @@ def plot_occupancy(cols, rows = None, max_occ = None, filename = None, title = N
         cols = 0
         rows = 0
     make_occupancy(cols, rows, max_occ)
-    if(title != 0):
+    if(title != None):
         plt.title(title)
     fig = plt.figure(1)
     fig.patch.set_facecolor('white')
@@ -290,7 +291,7 @@ def create_2d_pixel_hist(hist2d, title = None, x_axis_title = None, y_axis_title
     #ceil_number = np.max(hist2d) if z_max == None else z_max
     ceil_number = ceil_mod(H.max() if z_max == None else z_max, 10)
     #ceil_number = np.max(hist2d)
-    bounds = range(0, ceil_number+1, ceil_number/10)
+    bounds = range(0, ceil_number+1, ceil_number/10 if ceil_number > 0 else 1)
     norm = colors.BoundaryNorm(bounds, cmap.N)
     plt.imshow(H, interpolation='nearest', aspect="auto", cmap = cmap, norm = norm, extent=extent) # for monitoring
     if title != None:
@@ -305,16 +306,24 @@ def create_2d_pixel_hist(hist2d, title = None, x_axis_title = None, y_axis_title
 #     ax = plt.plot()
     ax = plt.subplot(311)
     cax = divider.append_axes("right", size="5%", pad=0.05)
-    plt.colorbar(boundaries = bounds, cmap = cmap, norm = norm, ticks = bounds, cax = cax)
+    try:
+        plt.colorbar(boundaries = bounds, cmap = cmap, norm = norm, ticks = bounds, cax = cax)
+    except:
+        print 'error printing color bar'
 
 
-def create_1d_hist(hist, title = None, x_axis_title = None, y_axis_title = None, bins = None, x_max = None):
+def create_1d_hist(hist, title = None, x_axis_title = None, y_axis_title = None, bins = None, x_min = None, x_max = None):
     median = np.median(hist)
     mean = np.mean(a = hist)
     rms = 0
     for i in range(0, len(hist.ravel())):
         rms += (hist.ravel()[i]-mean)**2
     rms = sqrt(rms/len(hist.ravel()))
+    
+    if(x_min!=None):
+        hist = hist[hist>=x_min]
+    if(x_max!=None):
+        hist = hist[hist<=x_max]
     
     hist,bins,_ = plt.hist(x = hist.ravel(), bins = 100 if bins == None else bins)   #rebin to 1 d hist
    
@@ -349,12 +358,12 @@ def create_1d_hist(hist, title = None, x_axis_title = None, y_axis_title = None,
         print("Fit failed, do not plot fit")
         
     plt.ylim([0, plt.ylim()[1]*1.05])
-    plt.xlim([0, np.amax(bins) if x_max == None else x_max])  
+#     plt.xlim([np.amin(bins) if x_min == None else x_min, np.amax(bins) if x_max == None else x_max])  
     textleft = '$\mathrm{mean}=%.2f$\n$\mathrm{RMS}=%.2f$\n$\mathrm{median}=%.2f$'%(mean, rms, median)
     props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
     ax.text(0.1, 0.9, textleft, transform=ax.transAxes, fontsize=8, verticalalignment='top', bbox=props)
 
-def create_pixel_scatter_plot(hist, title = None, x_axis_title = None, y_axis_title = None, y_max = None):
+def create_pixel_scatter_plot(hist, title = None, x_axis_title = None, y_axis_title = None, y_min = None, y_max = None):
     scatter_y = np.empty(shape=(336*80),dtype=hist.dtype)
     scatter_y_mean = np.zeros(shape=(80),dtype=np.float32)
     for col in range(80):
@@ -368,7 +377,7 @@ def create_pixel_scatter_plot(hist, title = None, x_axis_title = None, y_axis_ti
     plt.plot(range(336/2,80*336+336/2,336), scatter_y_mean, linewidth=2.0)
     plt.legend([p1], ["column mean"], prop={'size':6})
     plt.xlim(0,26880)
-    plt.ylim(1.1*min(scatter_y) if(min(scatter_y) < 0) else 0 ,1.1*max(scatter_y) if y_max == None else y_max)
+    plt.ylim(1.1*min(scatter_y) if y_min == None else y_min ,1.1*max(scatter_y) if y_max == None else y_max)
     if title != None:
         plt.title(title)
     if x_axis_title != None:
@@ -376,16 +385,16 @@ def create_pixel_scatter_plot(hist, title = None, x_axis_title = None, y_axis_ti
     if y_axis_title != None:
         plt.ylabel(y_axis_title)
 
-def plotThreeWay(hist, title, x_axis_title = None, y_axis_title = None, filename = None, label = "label not set", maximum = None, bins = None):   #the famous 3 way plot (enhanced)
+def plotThreeWay(hist, title, filename = None, label = "label not set", minimum = None, maximum = None, bins = None):   #the famous 3 way plot (enhanced)
     mean = np.mean(hist)
     fig = plt.figure()
     fig.patch.set_facecolor('white')
     plt.subplot(311)
     create_2d_pixel_hist(hist, title = title, x_axis_title = "column", y_axis_title = "row", z_max = 2*mean if maximum == None else maximum)
     plt.subplot(312)
-    create_1d_hist(hist, bins = bins, x_axis_title = label, y_axis_title = "#", x_max = maximum)
+    create_1d_hist(hist, bins = bins, x_axis_title = label, y_axis_title = "#", x_min = minimum, x_max = maximum)
     plt.subplot(313)
-    create_pixel_scatter_plot(hist, x_axis_title = "channel = row + column*336", y_axis_title = label, y_max = maximum)
+    create_pixel_scatter_plot(hist, x_axis_title = "channel = row + column*336", y_axis_title = label, y_min = minimum, y_max = maximum)
     plt.tight_layout()
 
     if filename is None:
@@ -403,20 +412,19 @@ def plotTDACcfg(in_file_name, filename = None):
             print line
 
 if __name__ == "__main__":
-    with tb.openFile('out.h5', 'r') as in_file:
-        H=np.empty(shape=(336,80),dtype=in_file.root.HistOcc.dtype)
-        H[:]=in_file.root.HistThreshold[:,:]
-        
-        #plotThreeWay(hist = in_file.root.HistOcc[:,:,70], title = "Occupancy", filename = "Occupancy.pdf", label = "noise[e]")
-        plotThreeWay(hist = in_file.root.HistThreshold[:,:], title = "Threshold", filename = "Threshold.pdf", label = "noise[e]")
-#     fig.patch.set_facecolor('white')
-#     if filename is None:
-#         plt.show()
-#     else:
-#         plt.savefig(filename)
-
-# import tables as tbx
-# with tb.openFile("out.h5", 'r') as in_file:
-#create_pixel_scatter_plot(in_file.root.HistOcc[:,:,0])
-#     plotThreeWay(in_file.root.HistOcc[:,:,0], title = "Test", x_axis_title = "occupancy", y_axis_title ="#")
-# plotTDACcfg("TDAC.dat")
+    filename = "HitMap.txt"
+    with open(filename, 'r') as f:
+        H = np.empty(shape=(80,336))
+        for line in f.readlines():
+            values = re.split("\s", line)
+            col = int(values[0])
+            row = int(values[1])
+            hits = int(values[2])
+            #print str(col)
+            H[col,row] = hits
+    plotThreeWay(H.transpose(), title = 'Occupancy', label = 'occupancy', filename = 'SourceScanOccupancy.pdf')
+    
+#     with tb.openFile('out.h5', 'r') as in_file:
+#         H=np.empty(shape=(336,80),dtype=in_file.root.HistOcc.dtype)
+#         H[:]=in_file.root.HistThreshold[:,:]
+#         plotThreeWay(hist = in_file.root.HistThreshold[:,:], title = "Threshold", filename = "Threshold.pdf", label = "noise[e]")
