@@ -186,6 +186,8 @@ class AnalyzeRawData(object):
                 for iWord in range(0,table_size, self._chunk_size):
                     raw_data = in_file_h5.root.raw_data.read(iWord,iWord+self._chunk_size)
                     self.interpreter.interpret_raw_data(raw_data)
+                    if(iWord == range(0,table_size, self._chunk_size)[-1]): # store hits of the latest event
+                        self.interpreter.store_event_hits()
                     Nhits = self.interpreter.get_hits(hits)
                     if(scan_parameters != None):
                         nEventIndex = self.interpreter.get_meta_event_index(meta_event_index)
