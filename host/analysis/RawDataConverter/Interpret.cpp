@@ -78,7 +78,7 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 				tStartLVL1ID = tActualLVL1ID;
 			}
 			else{
-				tDbCID++;										                  //increase relative BCID counter [0:15]
+				tDbCID++;										        //increase relative BCID counter [0:15]
 				if(_fEI4B){
 					if(tStartBCID + tDbCID > __BCIDCOUNTERSIZE_FEI4B-1)	//BCID counter overflow for FEI4B (10 bit BCID counter)
 						tStartBCID = tStartBCID - __BCIDCOUNTERSIZE_FEI4B;
@@ -89,7 +89,7 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 				}
 
 				if(tStartBCID+tDbCID != tActualBCID){  //check if BCID is increasing by 1s in the event window, if not close actual event and create new event with actual data header
-					if(_firstTriggerNrSet && tActualLVL1ID == tStartLVL1ID) //happens sometimes, non inc. BCID, FE feature, only abort if no external trigger is used or the LVL1ID is not constant
+					if(tActualLVL1ID == tStartLVL1ID) //happens sometimes, non inc. BCID, FE feature, only abort the LVL1ID is not constant (if no external trigger is used or)
 						addEventErrorCode(__BCID_JUMP);
 					else{
 						tBCIDerror = true;					       //BCID number wrong, abort event and take actual data header for the first hit of the new event
@@ -124,8 +124,8 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 				addTriggerErrorCode(__TRG_NUMBER_INC_ERROR);
 				if (Basis::warningSet())
 					warning("interpretRawData: Trigger Number not increasing by 1 (old/new): "+IntToStr(_lastTriggerNumber)+"/"+IntToStr(tTriggerNumber));
-				if (Basis::debugSet())
-					printInterpretedWords(pDataWords, pNdataWords, iWord-10, iWord+250);
+//				if (Basis::debugSet())
+//					printInterpretedWords(pDataWords, pNdataWords, iWord-10, iWord+250);
 			}
 
 			if ((tTriggerNumber & TRIGGER_ERROR_TRG_ACCEPT) == TRIGGER_ERROR_TRG_ACCEPT){
@@ -142,6 +142,8 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 		}
 		else if (getInfoFromServiceRecord(tActualWord, tActualSRcode, tActualSRcounter)){ //data word is service record
 			info(IntToStr(_nDataWords)+" SR "+IntToStr(tActualSRcode));
+			if (Basis::debugSet())
+				debug(std::string(" ")+IntToStr(_nDataWords)+" SR "+IntToStr(tActualSRcode));
 			addServiceRecord(tActualSRcode);
 			addEventErrorCode(__HAS_SR);
 			_nServiceRecords++;
@@ -154,8 +156,11 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 					addHit(tDbCID, tActualLVL1ID, tActualCol1, tActualRow1, tActualTot1, tActualBCID);
 				if(tActualTot2 >= 0)								//add hit if hit info is reasonable and set (TOT2 >= 0)
 					addHit(tDbCID, tActualLVL1ID, tActualCol2, tActualRow2, tActualTot2, tActualBCID);
-				if (Basis::debugSet())
-					debug(std::string(" ")+IntToStr(_nDataWords)+" DR COL1/ROW1/TOT1  COL2/ROW2/TOT2 "+IntToStr(tActualCol1)+"/"+IntToStr(tActualRow1)+"/"+IntToStr(tActualTot1)+"  "+IntToStr(tActualCol2)+"/"+IntToStr(tActualRow2)+"/"+IntToStr(tActualTot2)+" rBCID "+IntToStr(tDbCID)+"\t"+IntToStr(_nEvents));
+				if (Basis::debugSet()){
+					std::stringstream tDebug;
+					tDebug<<" "<<_nDataWords<<" DR COL1/ROW1/TOT1  COL2/ROW2/TOT2 "<<tActualCol1<<"/"<<tActualRow1<<"/"<<tActualTot1<<"  "<<tActualCol2<<"/"<<tActualRow2<<"/"<<tActualTot2<<" rBCID "<<tDbCID<<"\t"<<_nEvents;
+					debug(tDebug.str());
+				}
 			}
 		}
 		else{
@@ -165,17 +170,22 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 				if(Basis::warningSet())
 					warning("interpretRawData: "+IntToStr(_nDataWords)+" UNKNOWN WORD "+IntToStr(tActualWord)+" AT "+IntToStr(_nEvents));
 				if (Basis::debugSet())
-					printInterpretedWords(pDataWords, pNdataWords, iWord-10, iWord+250);
+					debug(std::string(" ")+IntToStr(_nDataWords)+" UNKNOWN WORD "+IntToStr(tActualWord)+" AT "+IntToStr(_nEvents));
+//				if (Basis::debugSet())
+//					printInterpretedWords(pDataWords, pNdataWords, iWord-10, iWord+250);
 			}
-			else
+			else{
 				_nOtherWords++;
+				if (Basis::debugSet())
+					debug(std::string(" ")+IntToStr(_nDataWords)+" ADDRESS/VALUE RECORD\t"+IntToStr(_nEvents));
+			}
 		}
 
 		if (tBCIDerror){	//tBCIDerror is raised if BCID is not increasing by 1, most likely due to incomplete data transmission, so start new event, actual word is data header here
 			if(Basis::warningSet())
 				warning("interpretRawData "+IntToStr(_nDataWords)+" BCID ERROR, event "+IntToStr(_nEvents));
-			if (Basis::debugSet())
-				printInterpretedWords(pDataWords, pNdataWords, iWord-50, iWord+50);
+//			if (Basis::debugSet())
+//				printInterpretedWords(pDataWords, pNdataWords, iWord-50, iWord+50);
 			addEvent();
 			_nIncompleteEvents++;
 			getTimefromDataHeader(tActualWord, tActualLVL1ID, tStartBCID);
@@ -601,7 +611,7 @@ void Interpret::addEventErrorCode(const unsigned char& pErrorCode)
 {
 	if(Basis::debugSet()){
 		std::stringstream tDebug;
-		tDebug<<"addEventErrorCode: "<<(unsigned int) pErrorCode<<"\n";
+		tDebug<<"addEventErrorCode: "<<(unsigned int) pErrorCode;
 		debug(tDebug.str());
 	}
 	tErrorCode |= pErrorCode;
