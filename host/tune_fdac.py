@@ -61,7 +61,7 @@ class FdacTune(ScanBase):
     def setNinjections(self, Ninjections = 20):
         self.Ninjections = Ninjections
         
-    def start(self, configure = True):
+    def scan(self, configure = True):
         super(FdacTune, self).start(configure)
         
         self.setStartFdac()
@@ -144,7 +144,7 @@ class FdacTune(ScanBase):
 
                 TotArray = np.histogramdd(np.array(list(self.readout.get_col_row_tot(data_words))), bins = (80, 336, 16), range = [[1,80], [1,336], [0,15]])[0]
                 TotAvrArray = np.average(TotArray,axis = 2, weights=range(0,16))*sum(range(0,16))/self.Ninjections
-                #plotThreeWay(hist = TotAvrArray.transpose(), title = "TOT mean", label = 'mean TOT', filename = None)
+                plotThreeWay(hist = TotAvrArray.transpose(), title = "TOT mean", label = 'mean TOT', filename = None)
                 
                 Fdac_mask=self.register.get_pixel_register_value("Fdac")
                 if(Fdac_bit>0):
@@ -163,8 +163,8 @@ class FdacTune(ScanBase):
                         TotAvrArray[abs(TotAvrArray-self.TargetTot)>abs(lastBitResult-self.TargetTot)] = lastBitResult[abs(TotAvrArray-self.TargetTot)>abs(lastBitResult-self.TargetTot)] 
             
             self.register.set_pixel_register_value("Fdac", Fdac_mask)
-#             plotThreeWay(hist = TotAvrArray.transpose(), title = "TOT average final")
-#             plotThreeWay(hist = self.register.get_pixel_register_value("FDAC").transpose(), title = "FDAC distribution final")
+            plotThreeWay(hist = TotAvrArray.transpose(), title = "TOT average final")
+            plotThreeWay(hist = self.register.get_pixel_register_value("FDAC").transpose(), title = "FDAC distribution final")
             print "Tuned Fdac!"
             return TotAvrArray
         
@@ -172,8 +172,9 @@ if __name__ == "__main__":
     import configuration
     #scan = FdacTune(configuration.config_file, bit_file = configuration.bit_file, scan_data_path = configuration.scan_data_path)
     scan = FdacTune(config_file = configuration.config_file, bit_file = None, scan_data_path = configuration.scan_data_path)
-    scan.setTargetCharge(PlsrDAC = 300)
+    scan.setTargetCharge(PlsrDAC = 250)
     scan.setTargetTot(Tot = 5)
     scan.setNinjections(30)
     scan.setFdacTuneBits(range(3,-1,-1))
-    scan.start()
+    scan.start(use_thread = False)
+    scan.stop()
