@@ -58,6 +58,9 @@ cdef extern from "Interpret.h":
         void resetCounters()
 
         void printSummary()
+        void debugEvents(const unsigned long& rStartEvent, const unsigned long& rStopEvent, const bool& debugEvents)
+        
+        void storeEventHits()
 
 cdef class PyDataInterpreter:
     cdef Interpret* thisptr      # hold a C++ instance which we're wrapping
@@ -107,4 +110,8 @@ cdef class PyDataInterpreter:
     def print_summary(self):
         self.thisptr.printSummary()
     def set_FEI4B(self, setFEI4B):
-        self.thisptr.setFEI4B(<bool> setFEI4B)    
+        self.thisptr.setFEI4B(<bool> setFEI4B) 
+    def store_event_hits(self):
+        self.thisptr.storeEventHits()
+    def debug_events(self,start_event,stop_event,toggle = True):
+        self.thisptr.debugEvents(<const unsigned long&> start_event, <const unsigned long&> stop_event, <const bool&> toggle)

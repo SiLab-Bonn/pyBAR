@@ -33,6 +33,8 @@ public:
 	void setFEI4B(bool pIsFEI4B = true){_fEI4B = pIsFEI4B;};  //set the FE flavor to be able to read the raw data correctly
 	bool getFEI4B(){return _fEI4B;};                          //returns the FE flavor set
 
+	void storeEventHits();        //adds the hits of the actual event to _hitInfo
+
 	//get function to global counters
 	void getServiceRecordsCounters(unsigned int &rNserviceRecords, unsigned long*& rServiceRecordsCounter);   //returns the total service record counter array
 	void getErrorCounters(unsigned int &rNerrorCounters, unsigned long*& rErrorCounter);                      //returns the total errors counter array
@@ -56,7 +58,6 @@ private:
 	void addHit(const unsigned char& pRelBCID, const unsigned short int& pLVLID, const unsigned char& pColumn, const unsigned short int& pRow, const unsigned char& pTot, const unsigned short int& pBCID); //adds the hit to the event hits array _hitBuffer
 	void storeHit(HitInfo& rHit);	//stores the hit into the output hit array _hitInfo
 	void addEvent();              //increases the event counter, adds the actual hits/error/SR codes
-	void storeEventHits();        //adds the hits of the actual event to _hitInfo
 	void correlateMetaWordIndex(const unsigned long& pEventNumer, const unsigned long& pDataWordIndex);  //writes the event number for the meta data
 
 	//SRAM word check and interpreting methods
