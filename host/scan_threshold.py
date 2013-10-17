@@ -115,12 +115,4 @@ if __name__ == "__main__":
         analyze_raw_data.interpreter.set_warning_output(False)  # so far the data structure in a threshold scan was always bad, too many warnings given
         analyze_raw_data.interpret_word_table(FEI4B = True if(configuration.chip_flavor == 'fei4b') else False)
         analyze_raw_data.interpreter.print_summary()
-        import analysis.plotting.plotting as plotting
-        with tb.openFile(output_file, 'r') as in_file:
-            plotting.plot_event_errors(error_hist = in_file.root.HistErrorCounter, filename = scan.scan_data_filename+"_eventErrors.pdf")
-            plotting.plot_service_records(service_record_hist = in_file.root.HistServiceRecord, filename = scan.scan_data_filename+"_serviceRecords.pdf")
-            plotting.plot_trigger_errors(trigger_error_hist=in_file.root.HistTriggerErrorCounter, filename = scan.scan_data_filename+"_tiggerErrors.pdf")
-            plotting.plot_tot(tot_hist=in_file.root.HistTot, filename = scan.scan_data_filename+"_tot.pdf")
-            plotting.plot_relative_bcid(relative_bcid_hist = in_file.root.HistRelBcid, filename = scan.scan_data_filename+"_relativeBCID.pdf")
-            plotting.plotThreeWay(hist = in_file.root.HistThreshold[:,:], title = "Threshold", label = "threshold", filename = scan.scan_data_filename+"_threshold.pdf", bins = 100, minimum = 0, maximum = 100)
-            plotting.plotThreeWay(hist = in_file.root.HistNoise[:,:], title = "Noise", label = "noise", filename = scan.scan_data_filename+"_noise.pdf", bins = 100, minimum = 1, maximum = 10)
+        analyze_raw_data.plotHistograms(scan_data_filename = scan.scan_data_filename)
