@@ -14,6 +14,7 @@ class AnalyzeRawData(object):
         self.histograming = PyDataHistograming()
         self._input_file = input_file
         self._output_file = output_file
+        self.out_file_h5 = None
         self.set_standard_settings()
         
     def __enter__(self):
@@ -199,11 +200,11 @@ class AnalyzeRawData(object):
             
                 if (self._create_hit_table == True):
                     hit_table.flush()  
-                self.store_additional_data()
+                self._store_additional_data()
                 print '100 done'
         del hits     
         
-    def store_additional_data(self):
+    def _store_additional_data(self):
         if (self._create_meta_event_index):
             meta_data_size = self.meta_data.shape[0]
             meta_event_index = np.zeros((meta_data_size,), dtype=[('metaEventIndex', np.uint32)])
@@ -261,6 +262,24 @@ class AnalyzeRawData(object):
             threshold_hist_table[0:336, 0:80] = np.swapaxes(threshold_hist,0,1)
             noise_hist_table = self.out_file_h5.create_carray(self.out_file_h5.root, name = 'HistNoise', title = 'Noise Histogram', atom = tb.Atom.from_dtype(noise_hist.dtype), shape = (336,80), filters = self._filter_table)
             noise_hist_table[0:336, 0:80] = np.swapaxes(noise_hist,0,1)
+    
+    def plotHistograms(self, scan_data_filename = None):
+        with tb.openFile(self._output_file, mode = "r") as out_file_h5:
+            if (self._create_service_record_hist):
+                plotting.plot_service_records(service_record_hist = out_file_h5.root.HistServiceRecord, filename = scan_data_filename+"_serviceRecords.pdf")
+            if (self._create_error_hist):
+                plotting.plot_event_errors(error_hist = out_file_h5.root.HistErrorCounter, filename = scan_data_filename+"_eventErrors.pdf")
+            if (self._create_trigger_error_hist):
+                plotting.plot_trigger_errors(trigger_error_hist=out_file_h5.root.HistTriggerErrorCounter, filename = scan_data_filename+"_tiggerErrors.pdf") 
+            if (self._create_tot_hist):
+                plotting.plot_tot(tot_hist=out_file_h5.root.HistTot, filename = scan_data_filename+"_tot.pdf")
+            if (self._create_rel_bcid_hist):
+                plotting.plot_relative_bcid(relative_bcid_hist = out_file_h5.root.HistRelBcid, filename = scan_data_filename+"_relativeBCID.pdf")
+            if (self._create_occupancy_hist and not self._create_threshold_hists):
+                plotting.plotThreeWay(hist = out_file_h5.root.HistOcc[:,:,0], title = "Occupancy", label = "occupancy", filename = scan_data_filename+"_occupancy.pdf")
+            if (self._create_threshold_hists):
+                plotting.plotThreeWay(hist = out_file_h5.root.HistThreshold[:,:], title = "Threshold", label = "threshold", filename = scan_data_filename+"_threshold.pdf", bins = 100, minimum = 0, maximum = 100)
+                plotting.plotThreeWay(hist = out_file_h5.root.HistNoise[:,:], title = "Noise", label = "noise", filename = scan_data_filename+"_noise.pdf", bins = 100, minimum = 1, maximum = 10)
 
 if __name__ == "__main__":
     converter = AnalyzeRawData(input_file = 'K:\\test_in.h5', output_file = 'K:\\test_out.h5')
