@@ -78,9 +78,9 @@ void Basis::warning(std::string& pText, int pLine)
 {
 		std::stringstream tOutString;
 		if (pLine == -1)
-			tOutString<<"WARING "<<_sourceFileName<<"::"<<pText;
+			tOutString<<"WARNING "<<_sourceFileName<<"::"<<pText;
 		else
-			tOutString<<"WARING "<<_sourceFileName<<"("<<pLine<<")::"<<pText;
+			tOutString<<"WARNING "<<_sourceFileName<<"("<<pLine<<")::"<<pText;
 		std::cout<<tOutString.str()<<"\n";
 		if (_debugReport){
 			std::ofstream tBugReport;
