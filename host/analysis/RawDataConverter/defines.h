@@ -18,6 +18,34 @@ typedef struct HitInfo{
   unsigned char eventStatus;  //event status value (unsigned char: 0 to 255)
 } HitInfo;
 
+//structure to store the hits with cluster info
+typedef struct ClusterHitInfo{
+  unsigned long eventNumber;  //event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
+  unsigned int triggerNumber; //external trigger number for read out system
+  unsigned char relativeBCID; //relative BCID value (unsigned char: 0 to 255)
+  unsigned short int LVLID;   //LVL1ID (unsigned short int: 0 to 65.535)
+  unsigned char column;       //column value (unsigned char: 0 to 255)
+  unsigned short int row;     //row value (unsigned short int: 0 to 65.535)
+  unsigned char tot;          //tot value (unsigned char: 0 to 255)
+  unsigned short int BCID;    //absolute BCID value (unsigned short int: 0 to 65.535)
+  unsigned char triggerStatus;//event service records
+  unsigned int serviceRecord; //event service records
+  unsigned char eventStatus;  //event status value (unsigned char: 0 to 255)
+  unsigned short clusterID;	  //the cluster id of the hit
+  unsigned char isSeed;	  //flag to mark seed pixel
+} ClusterHitInfo;
+
+//structure to store the cluster
+typedef struct ClusterInfo{
+  unsigned long eventNumber;  //event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
+  unsigned short ID;	  	  //the cluster id of the cluster
+  unsigned short size; 		  //sum tot of all cluster hits
+  unsigned short Tot; 		  //sum tot of all cluster hits
+  unsigned char seed_column;  //column value (unsigned char: 0 to 255)
+  unsigned short int seed_row;//row value (unsigned short int: 0 to 65.535)
+  unsigned char eventStatus;  //event status value (unsigned char: 0 to 255)
+} ClusterInfo;
+
 //structure for the input meta data
 typedef struct MetaInfo{
   unsigned int startIndex;    //start index for this read out
@@ -155,5 +183,15 @@ typedef struct ParInfo{
 
 #define SERVICE_RECORD_LV1ID_MACRO_FEI4B(X)	((SERVICE_RECORD_LV1ID_MASK_FEI4B & X) >> 3) // data format changed in fE-I4B. Upper LV1IDs comming in seperate SR.
 #define SERVICE_RECORD_BCID_MACRO_FEI4B(X)	(SERVICE_RECORD_BCID_MASK_FEI4B & X) // data format changed in FE-I4B due to increased counter size, See DATA_HEADER_LV1ID_MASK_FEI4B also.
+
+//Clusterizer definitions
+#define __MAXBCID 16			//maximum possible BCID window width
+#define __MAXTOTBINS 32			//number of TOT bins for the cluster tot histogram (in TOT = [0:31])
+#define __MAXCHARGEBINS 4096	//number of charge bins for the cluster charge histogram (in PlsrDAC)
+#define __MAXCLUSTERHITSBINS 32	//number of for the cluster size (=# hits) histogram
+#define __MAXPOSXBINS 1000		//number of bins in x for the 2d hit position histogram
+#define __MAXPOSYBINS 1000		//number of bins in y for the 2d hit position histogram
+#define __PIXELSIZEX 250		//250 um
+#define __PIXELSIZEY 50			//50 um
 
 #endif // DEFINES_H
