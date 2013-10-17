@@ -1,6 +1,6 @@
 #pragma once
 //helper class to calculate histograms quickly
-#include "Interpret.h"
+#include "defines.h"
 #include "Basis.h"
 
 #include <vector>
