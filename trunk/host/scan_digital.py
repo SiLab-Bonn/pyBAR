@@ -49,19 +49,12 @@ class DigitalScan(ScanBase):
         
 if __name__ == "__main__":
     import configuration
-    scan = DigitalScan(config_file = configuration.config_file, bit_file = configuration.bit_file, scan_data_path = configuration.scan_data_path)
+    scan = DigitalScan(config_file = configuration.config_file, bit_file  = configuration.bit_file, scan_data_path = configuration.scan_data_path)
     scan.start(use_thread = False)
     scan.stop()
     from analysis.analyze_raw_data import AnalyzeRawData
     output_file = scan.scan_data_filename+"_interpreted.h5"
     with AnalyzeRawData(input_file = scan.scan_data_filename+".h5", output_file = output_file) as analyze_raw_data:
         analyze_raw_data.interpret_word_table(FEI4B = True if(configuration.chip_flavor == 'fei4b') else False)
-        import analysis.plotting.plotting as plotting
-        with tb.openFile(output_file, 'r') as in_file:
-            plotting.plot_event_errors(error_hist = in_file.root.HistErrorCounter, filename = scan.scan_data_filename+"_eventErrors.pdf")
-            plotting.plot_service_records(service_record_hist = in_file.root.HistServiceRecord, filename = scan.scan_data_filename+"_serviceRecords.pdf")
-            plotting.plot_trigger_errors(trigger_error_hist=in_file.root.HistTriggerErrorCounter, filename = scan.scan_data_filename+"_tiggerErrors.pdf")
-            plotting.plot_tot(tot_hist=in_file.root.HistTot, filename = scan.scan_data_filename+"_tot.pdf")
-            plotting.plot_relative_bcid(relative_bcid_hist = in_file.root.HistRelBcid, filename = scan.scan_data_filename+"_relativeBCID.pdf")
-            plotting.plotThreeWay(hist = in_file.root.HistOcc[:,:,0], title = "Occupancy", label = "occupancy", filename = scan.scan_data_filename+"_occupancy.pdf")
+        analyze_raw_data.plotHistograms(scan_data_filename = scan.scan_data_filename)
 
