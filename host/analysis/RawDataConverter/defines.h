@@ -41,6 +41,7 @@ typedef struct ClusterInfo{
   unsigned short ID;	  	  //the cluster id of the cluster
   unsigned short size; 		  //sum tot of all cluster hits
   unsigned short Tot; 		  //sum tot of all cluster hits
+  float charge; 		  	  //sum charge of all cluster hits
   unsigned char seed_column;  //column value (unsigned char: 0 to 255)
   unsigned short int seed_row;//row value (unsigned short int: 0 to 65.535)
   unsigned char eventStatus;  //event status value (unsigned char: 0 to 255)

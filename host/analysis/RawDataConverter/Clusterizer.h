@@ -47,6 +47,7 @@ public:
 	void setMinClusterHits(const unsigned int&  pMinNclusterHits);				//minimum hits per cluster allowed, otherwise cluster omitted
 	void setMaxClusterHits(const unsigned int&  pMaxNclusterHits);				//maximal hits per cluster allowed, otherwise cluster omitted
 	void setMaxClusterHitTot(const unsigned int&  pMaxClusterHitTot);			//maximal tot for a cluster hit, otherwise cluster omitted
+	void setLateHitTot(const unsigned int&  pLateHitTot);						//minimum tot a hit is considered to be late/small
 
 	void addHits(HitInfo*& rHitInfo, const unsigned int& rNhits);		//add hits to cluster, starts clustering, warning hits have to be aligned at events
 
@@ -55,7 +56,7 @@ public:
 	void test();
 
 private:
-	void addHit(const unsigned short& pHitIndex, const unsigned short& pCol, const unsigned short& pRow, const unsigned short& pRelBcid, const unsigned short& pTot, float pCharge = -1);	//add hit with column, row, relative BCID [0:15], tot, charge
+	void addHit(const unsigned int& pHitIndex);	//add hit with index pHitIndex of the input hit array
 	inline void searchNextHits(const unsigned short& pCol, const unsigned short& pRow, const unsigned short& pRelBcid);			//search for a hit next to the actual one in time (BCIDs) and space (col, row)
 	inline bool deleteHit(const unsigned short& pCol, const unsigned short& pRow, const unsigned short& pRelBcid);				//delete hit at position pCol,pRow from hit map, returns true if hit array is empty
 	inline bool hitExists(const unsigned short& pCol, const unsigned short& pRow, const unsigned short& pRelBcid);				//check if the hit exists
@@ -89,9 +90,9 @@ private:
 	unsigned long _clusterHits[__MAXCLUSTERHITSBINS];					//array containing the cluster number of hits for histogramming
 	unsigned long _clusterPosition[__MAXPOSXBINS][__MAXPOSYBINS];		//array containing the cluster x positions for histogramming
 
-	//hit map for one event
+	//data arrays for one event
 	short int _hitMap[RAW_DATA_MAX_COLUMN][RAW_DATA_MAX_ROW][__MAXBCID];//array containing the hits TOT value for max 16 BCIDs
-	short int _hitIndexMap[RAW_DATA_MAX_COLUMN][RAW_DATA_MAX_ROW][__MAXBCID];//array containing the hit indizes from the input hit array
+	unsigned int _hitIndexMap[RAW_DATA_MAX_COLUMN][RAW_DATA_MAX_ROW][__MAXBCID];//array containing the hit indizes from the input hit array
 	float _chargeMap[RAW_DATA_MAX_COLUMN][RAW_DATA_MAX_ROW][14];		//array containing the lookup charge values for each pixel and TOT
 
 	//cluster settings
@@ -102,6 +103,7 @@ private:
 	unsigned short _minClusterHits; 									//the minimum number of cluster hits allowed, if exeeded clustering aborted
 	unsigned short _maxClusterHits; 									//the maximum number of cluster hits allowed, if exeeded clustering aborted
 	unsigned int _runTime; 												//artificial value to represent the run time needed for clustering
+	unsigned int _lateHitTot;											//the tot value a hit is considered to be small (usually 14)
 
 	//actual clustering variables
 	unsigned int _nHits;												//number of hits for the actual event data to cluster
@@ -119,9 +121,9 @@ private:
 	unsigned short _actualClusterSeed_column;
 	unsigned short _actualClusterSeed_row;
 	unsigned short _actualClusterSeed_relbcid;
-	double _actualClusterX;												//temporary value holding the x position of the actual cluster
-	double _actualClusterY;												//temporary value holding the y position of the actual cluster
-	double _actualClusterCharge;										//temporary value holding the total charge value of the actual cluster
+	float _actualClusterX;												//temporary value holding the x position of the actual cluster
+	float _actualClusterY;												//temporary value holding the y position of the actual cluster
+	float _actualClusterCharge;											//temporary value holding the total charge value of the actual cluster
 
 	//actual event variables
 	unsigned long _actualEventNumber;  //event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
