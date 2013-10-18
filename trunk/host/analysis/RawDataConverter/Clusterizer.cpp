@@ -2,6 +2,7 @@
 
 Clusterizer::Clusterizer(void)
 {
+	setSourceFileName("Clusterizer");
 	_dx = 1;
 	_dy = 1;
 	_DbCID = 0;
@@ -21,6 +22,7 @@ Clusterizer::Clusterizer(void)
 	clearActualEventVariables();
 	_clusterHitInfo = 0;
 	_clusterInfo = 0;
+	_lateHitTot = 14;
 }
 
 Clusterizer::~Clusterizer(void)
@@ -81,6 +83,11 @@ void Clusterizer::setMaxClusterHitTot(const unsigned int& pMaxClusterHitTot)
 	_maxClusterHitTot = pMaxClusterHitTot;
 }
 
+void Clusterizer::setLateHitTot(const unsigned int&  pLateHitTot)
+{
+	_lateHitTot = pLateHitTot;
+}
+
 unsigned int Clusterizer::getNclusters()
 {
 	return _Nclusters;
@@ -88,15 +95,22 @@ unsigned int Clusterizer::getNclusters()
 
 void Clusterizer::addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
 {
-  debug(std::string("addHits()"));
+  if(Basis::debugSet())
+	  debug(std::string("addHits(...,rNhits=")+IntToStr(rNhits)+std::string(")"));
+
   _hitInfo = rHitInfo;
+  _Nclusters = 0;
+
+  if(rNhits>0 && _actualEventNumber != 0 && rHitInfo[0].eventNumber == _actualEventNumber)
+	  warning(std::string("addHits: hits not aligned at events, clusterizer will not work properly"));
+
   for(unsigned int i = 0; i<rNhits; i++){
 	  if(_actualEventNumber != rHitInfo[i].eventNumber){
 		  clusterize();
 		  clearActualEventVariables();
 	  }
 	  _actualEventNumber = rHitInfo[i].eventNumber;
-	  addHit(i, rHitInfo[i].column-1, rHitInfo[i].row-1, rHitInfo[i].relativeBCID, rHitInfo[i].tot);
+	  addHit(i);
   }
   //manually add remaining hit data
   clusterize();
@@ -175,35 +189,41 @@ void Clusterizer::test()
 }
 
 //private
-void Clusterizer::addHit(const unsigned short& pHitIndex, const unsigned short& pCol, const unsigned short& pRow, const unsigned short& pRelBcid, const unsigned short& pTot, float pCharge)
+void Clusterizer::addHit(const unsigned int& pHitIndex)
 {
 	debug(std::string("addHit"));
+	unsigned long tEvent = _hitInfo[pHitIndex].eventNumber;
+	unsigned short tCol = _hitInfo[pHitIndex].column-1;
+	unsigned short tRow = _hitInfo[pHitIndex].row-1;
+	unsigned short tRelBcid = _hitInfo[pHitIndex].relativeBCID;
+	unsigned short tTot = _hitInfo[pHitIndex].tot;
+	float tCharge = -1;
 
 	if(_nHits == 0)
-		_bCIDfirstHit = pRelBcid;
+		_bCIDfirstHit = tRelBcid;
 
-	if(pRelBcid > _bCIDlastHit)
-		_bCIDlastHit = pRelBcid;
+	if(tRelBcid > _bCIDlastHit)
+		_bCIDlastHit = tRelBcid;
 
-	if(pCol > _maxColHitPos)
-		_maxColHitPos = pCol;
-	if(pCol < _minColHitPos)
-		_minColHitPos = pCol;
-	if(pRow < _minRowHitPos)
-		_minRowHitPos = pRow;
-	if(pRow > _maxRowHitPos)
-		_maxRowHitPos = pRow;
+	if(tCol > _maxColHitPos)
+		_maxColHitPos = tCol;
+	if(tCol < _minColHitPos)
+		_minColHitPos = tCol;
+	if(tRow < _minRowHitPos)
+		_minRowHitPos = tRow;
+	if(tRow > _maxRowHitPos)
+		_maxRowHitPos = tRow;
 
-	if(_hitMap[pCol][pRow][pRelBcid] == -1){
-		_hitMap[pCol][pRow][pRelBcid] = pTot;
-		_hitIndexMap[pCol][pRow][pRelBcid] = pHitIndex;
+	if(_hitMap[tCol][tRow][tRelBcid] == -1){
+		_hitMap[tCol][tRow][tRelBcid] = tTot;
+		_hitIndexMap[tCol][tRow][tRelBcid] = pHitIndex;
 		_nHits++;
 	}
 	else
-		warning(std::string("addHit: attempt to add the same hit col/row/bcid=")+IntToStr(pCol)+std::string("/")+IntToStr(pRow)+std::string("/")+IntToStr(pRelBcid)+std::string(" again, ignored!"));
+		warning(std::string("addHit: event ")+IntToStr(tEvent)+std::string(", attempt to add the same hit col/row/rel.bcid=")+IntToStr(tCol)+std::string("/")+IntToStr(tRow)+std::string("/")+IntToStr(tRelBcid)+std::string(" again, ignored!"));
 
-	if (pCharge >= 0)
-		_chargeMap[pCol][pRow][pTot] = pCharge;
+	if (tCharge >= 0)
+		_chargeMap[tCol][tRow][tTot] = tCharge;
 
 	_clusterHitInfo[pHitIndex].eventNumber = _hitInfo[pHitIndex].eventNumber;
 	_clusterHitInfo[pHitIndex].triggerNumber = _hitInfo[pHitIndex].triggerNumber;
@@ -236,7 +256,7 @@ void Clusterizer::searchNextHits(const unsigned short& pCol, const unsigned shor
 
 	short int tTot = _hitMap[pCol][pRow][pRelBcid];
 
-	if (tTot > _actualClusterMaxTot){
+	if (tTot >= _actualClusterMaxTot && tTot < _lateHitTot){
 		_actualClusterSeed_column = pCol;
 		_actualClusterSeed_row = pRow;
 		_actualClusterSeed_relbcid = pRelBcid;
@@ -381,27 +401,27 @@ void Clusterizer::initHitMap()
 
 void Clusterizer::addClusterToResults()
 {
-	if(!_abortCluster){
-		//histogramming of the results
-		if(_actualClusterSize<__MAXCLUSTERHITSBINS)
-			_clusterHits[_actualClusterSize]++;
-		if(_actualClusterTot<__MAXTOTBINS && _actualClusterSize<__MAXCLUSTERHITSBINS){
-			_clusterTots[_actualClusterTot][0]++;	//cluster size = 0 contains all cluster sizes
-			_clusterTots[_actualClusterTot][_actualClusterSize]++;
-		}
-		if((int) _actualClusterCharge<__MAXCHARGEBINS && _actualClusterSize<__MAXCLUSTERHITSBINS){
-			_clusterCharges[(int) _actualClusterCharge][0]++;
-			_clusterCharges[(int) _actualClusterCharge][_actualClusterSize]++;
-		}
-		if(_actualClusterCharge > 0){	//avoid division by zero
-			_actualClusterX/=_actualClusterCharge;
-			_actualClusterY/=_actualClusterCharge;
-			int tActualClusterXbin = (int) (_actualClusterX/(__PIXELSIZEX*RAW_DATA_MAX_COLUMN) * __MAXPOSXBINS);
-			int tActualClusterYbin = (int) (_actualClusterY/(__PIXELSIZEY*RAW_DATA_MAX_ROW) * __MAXPOSYBINS);
-			if(tActualClusterXbin < __MAXPOSXBINS && tActualClusterYbin < __MAXPOSYBINS)
-				_clusterPosition[tActualClusterXbin][tActualClusterYbin]++;
-		}
-	}
+//	if(!_abortCluster){
+//		//histogramming of the results
+//		if(_actualClusterSize<__MAXCLUSTERHITSBINS)
+//			_clusterHits[_actualClusterSize]++;
+//		if(_actualClusterTot<__MAXTOTBINS && _actualClusterSize<__MAXCLUSTERHITSBINS){
+//			_clusterTots[_actualClusterTot][0]++;	//cluster size = 0 contains all cluster sizes
+//			_clusterTots[_actualClusterTot][_actualClusterSize]++;
+//		}
+//		if((int) _actualClusterCharge<__MAXCHARGEBINS && _actualClusterSize<__MAXCLUSTERHITSBINS){
+//			_clusterCharges[(int) _actualClusterCharge][0]++;
+//			_clusterCharges[(int) _actualClusterCharge][_actualClusterSize]++;
+//		}
+//		if(_actualClusterCharge > 0){	//avoid division by zero
+//			_actualClusterX/=_actualClusterCharge;
+//			_actualClusterY/=_actualClusterCharge;
+//			int tActualClusterXbin = (int) (_actualClusterX/(__PIXELSIZEX*RAW_DATA_MAX_COLUMN) * __MAXPOSXBINS);
+//			int tActualClusterYbin = (int) (_actualClusterY/(__PIXELSIZEY*RAW_DATA_MAX_ROW) * __MAXPOSYBINS);
+//			if(tActualClusterXbin < __MAXPOSXBINS && tActualClusterYbin < __MAXPOSYBINS)
+//				_clusterPosition[tActualClusterXbin][tActualClusterYbin]++;
+//		}
+//	}
 }
 
 void Clusterizer::clearHitMap()
@@ -497,6 +517,7 @@ void Clusterizer::addCluster()
 		_clusterInfo[_Nclusters].ID = _actualClusterID;
 		_clusterInfo[_Nclusters].size = _actualClusterSize;
 		_clusterInfo[_Nclusters].Tot = _actualClusterTot;
+		_clusterInfo[_Nclusters].charge = _actualClusterCharge;
 		_clusterInfo[_Nclusters].seed_column = _actualClusterSeed_column+1;
 		_clusterInfo[_Nclusters].seed_row = _actualClusterSeed_row+1;
 		_clusterInfo[_Nclusters].eventStatus = _actualEventStatus;
