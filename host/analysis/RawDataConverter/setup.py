@@ -18,3 +18,11 @@ setup(ext_modules = cythonize(
       ),
       include_dirs = [np.get_include()], 
       )
+
+setup(ext_modules = cythonize(
+       "data_clusterizer.pyx",            # our Cython source
+       sources=["Basis.cpp", "Clusterizer.cpp"],  # additional source file(s)
+       language="c++",             # generate C++ code
+      ),
+      include_dirs = [np.get_include()], 
+      )
