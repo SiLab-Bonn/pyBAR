@@ -295,7 +295,7 @@ unsigned int Histogram::getMinParameter()
  return _minParameterValue;
 }
 
-inline unsigned int Histogram::getNparameters()
+unsigned int Histogram::getNparameters()
 {
  return _NparameterValues;
 }
@@ -322,7 +322,7 @@ void Histogram::getRelBcidHist(unsigned long*& rRelBcidHist)
 void Histogram::calculateThresholdScanArrays(double rMuArray[], double rSigmaArray[])
 {
   debug(std::string("calculateThresholdScanArrays(...)"));
-  //quick algorithm from M. Mertens, phd thesis, Jülich 2010
+  //quick algorithm from M. Mertens, phd thesis, Jï¿½lich 2010
   if (_NparameterValues<2)  //a minimum number of different scans is needed
     return;
 
