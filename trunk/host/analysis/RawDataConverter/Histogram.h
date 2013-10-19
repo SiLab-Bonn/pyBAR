@@ -4,6 +4,7 @@
 #include "Basis.h"
 
 #include <vector>
+#include <cmath>
 #include <algorithm>
 #include <set>
 

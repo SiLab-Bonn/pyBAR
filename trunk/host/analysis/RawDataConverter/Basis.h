@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <limits>
 #include <new>
+#include <stdexcept>
 
 class Basis
 {
@@ -50,10 +51,10 @@ public:
 
 protected:
 	//output debug, infos, warning, errors
-	void debug(std::string& pText, int pLine = -1);		//writes the pText to the console, also reports the line pLine and the file where this function was called
-	void info(std::string& pText, int pLine = -1);		//writes the pText to the console, also reports the line pLine and the file where this function was called
-	void warning(std::string& pText, int pLine = -1);	//writes the pText to the console, also reports the line pLine and the file where this function was called
-	void error(std::string& pText, int pLine = -1);		//writes the pText to the console, also reports the line pLine and the file where this function was called
+	void debug(std::string pText, int pLine = -1);		//writes the pText to the console, also reports the line pLine and the file where this function was called
+	void info(std::string pText, int pLine = -1);		//writes the pText to the console, also reports the line pLine and the file where this function was called
+	void warning(std::string pText, int pLine = -1);	//writes the pText to the console, also reports the line pLine and the file where this function was called
+	void error(std::string pText, int pLine = -1);		//writes the pText to the console, also reports the line pLine and the file where this function was called
 
 private:
 	std::string _sourceFileName;						//the file name of the cxx file
