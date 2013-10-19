@@ -38,7 +38,7 @@ void Basis::setDebugOutput(bool pToggle)
 	_debug = pToggle;
 }
 
-void Basis::debug(std::string& pText, int pLine)
+void Basis::debug(std::string pText, int pLine)
 {
   if(_debug){
 	  std::stringstream tOutString;
@@ -56,7 +56,7 @@ void Basis::debug(std::string& pText, int pLine)
   }
 }
 
-void Basis::info(std::string& pText, int pLine)
+void Basis::info(std::string pText, int pLine)
 {
   if(_info){
 	  std::stringstream tOutString;
@@ -74,7 +74,7 @@ void Basis::info(std::string& pText, int pLine)
   }
 }
 
-void Basis::warning(std::string& pText, int pLine)
+void Basis::warning(std::string pText, int pLine)
 {
 		std::stringstream tOutString;
 		if (pLine == -1)
@@ -90,7 +90,7 @@ void Basis::warning(std::string& pText, int pLine)
 		}
 }
 
-void Basis::error(std::string& pText, int pLine)
+void Basis::error(std::string pText, int pLine)
 {
 	std::stringstream tOutString;
 	if (pLine == -1)
@@ -107,7 +107,7 @@ void Basis::error(std::string& pText, int pLine)
 }
 bool Basis::getStringSeparated(std::string pLine, std::string pSeparator, std::string& pLeft, std::string& pRight)
 {
-	int tFound = 0;
+	unsigned int tFound = 0;
 	tFound = pLine.find_first_of(pSeparator);
 	if(tFound != pLine.npos){ //abort if no seperator found
 		pLeft = pLine.substr(0, tFound);

@@ -46,40 +46,40 @@ void Clusterizer::setClusterInfoArray(ClusterInfo*& rClusterHitInfo, const unsig
 
 void Clusterizer::setXclusterDistance(const unsigned int& pDx)
 {
-	debug(std::string("setXclusterDistance: ")+IntToStr(pDx));
+	debug("setXclusterDistance: "+IntToStr(pDx));
 	if (pDx > 1 && pDx < RAW_DATA_MAX_COLUMN-1)
 		_dx = pDx;
 }
 
 void Clusterizer::setYclusterDistance(const unsigned int& pDy)
 {
-	debug(std::string("setYclusterDistance: ")+IntToStr(pDy));
+	debug("setYclusterDistance: "+IntToStr(pDy));
 	if (pDy > 1 && pDy < RAW_DATA_MAX_ROW-1)
 		_dy = pDy;
 }
 
 void Clusterizer::setBCIDclusterDistance(const unsigned int& pDbCID)
 {
-	debug(std::string("setBCIDclusterDistance: ")+IntToStr(pDbCID));
+	debug("setBCIDclusterDistance: "+IntToStr(pDbCID));
 	if (pDbCID < __MAXBCID-1)
 		_DbCID = pDbCID;
 }
 
 void Clusterizer::setMinClusterHits(const unsigned int& pMinNclusterHits)
 {
-	debug(std::string("setMinClusterHits: ")+IntToStr(pMinNclusterHits));
+	debug("setMinClusterHits: "+IntToStr(pMinNclusterHits));
 	_minClusterHits = pMinNclusterHits;
 }
 
 void Clusterizer::setMaxClusterHits(const unsigned int& pMaxNclusterHits)
 {
-	debug(std::string("setMaxClusterHits: ")+IntToStr(pMaxNclusterHits));
+	debug("setMaxClusterHits: "+IntToStr(pMaxNclusterHits));
 	_maxClusterHits = pMaxNclusterHits;
 }
 
 void Clusterizer::setMaxClusterHitTot(const unsigned int& pMaxClusterHitTot)
 {
-	debug(std::string("setMaxClusterHitTot: ")+IntToStr(pMaxClusterHitTot));
+	debug("setMaxClusterHitTot: "+IntToStr(pMaxClusterHitTot));
 	_maxClusterHitTot = pMaxClusterHitTot;
 }
 
@@ -96,13 +96,13 @@ unsigned int Clusterizer::getNclusters()
 void Clusterizer::addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
 {
   if(Basis::debugSet())
-	  debug(std::string("addHits(...,rNhits=")+IntToStr(rNhits)+std::string(")"));
+	  debug("addHits(...,rNhits="+IntToStr(rNhits)+")");
 
   _hitInfo = rHitInfo;
   _Nclusters = 0;
 
   if(rNhits>0 && _actualEventNumber != 0 && rHitInfo[0].eventNumber == _actualEventNumber)
-	  warning(std::string("addHits: hits not aligned at events, clusterizer will not work properly"));
+	  warning("addHits: hits not aligned at events, clusterizer will not work properly");
 
   for(unsigned int i = 0; i<rNhits; i++){
 	  if(_actualEventNumber != rHitInfo[i].eventNumber){
@@ -144,7 +144,7 @@ bool Clusterizer::clusterize()
 						_actualClusterID++;									//  increase the cluster id for this event
 					}
 					else
-						warning(std::string("clusterize: cluster size too small"));
+						warning("clusterize: cluster size too small");
 				}
 				if (_nHits == 0)											//saves a lot of average run time, the loop is aborted if every hit is in a cluster (_nHits == 0)
 					return true;
@@ -154,7 +154,7 @@ bool Clusterizer::clusterize()
 	if (_nHits == 0)
 		return true;
 
-	warning(std::string("Clusterizer::clusterize: NOT ALL HITS CLUSTERED!"));
+	warning("Clusterizer::clusterize: NOT ALL HITS CLUSTERED!");
 	showHits();
 	return false;
 }
@@ -191,7 +191,7 @@ void Clusterizer::test()
 //private
 void Clusterizer::addHit(const unsigned int& pHitIndex)
 {
-	debug(std::string("addHit"));
+	debug("addHit");
 	unsigned long tEvent = _hitInfo[pHitIndex].eventNumber;
 	unsigned short tCol = _hitInfo[pHitIndex].column-1;
 	unsigned short tRow = _hitInfo[pHitIndex].row-1;
@@ -220,7 +220,7 @@ void Clusterizer::addHit(const unsigned int& pHitIndex)
 		_nHits++;
 	}
 	else
-		warning(std::string("addHit: event ")+IntToStr(tEvent)+std::string(", attempt to add the same hit col/row/rel.bcid=")+IntToStr(tCol)+std::string("/")+IntToStr(tRow)+std::string("/")+IntToStr(tRelBcid)+std::string(" again, ignored!"));
+		warning("addHit: event "+IntToStr(tEvent)+", attempt to add the same hit col/row/rel.bcid="+IntToStr(tCol)+"/"+IntToStr(tRow)+"/"+IntToStr(tRelBcid)+" again, ignored!");
 
 	if (tCharge >= 0)
 		_chargeMap[tCol][tRow][tTot] = tCharge;
@@ -254,7 +254,7 @@ void Clusterizer::searchNextHits(const unsigned short& pCol, const unsigned shor
 
 	_actualClusterSize++;	//increase the total hits for this cluster value
 
-	short int tTot = _hitMap[pCol][pRow][pRelBcid];
+	short unsigned int tTot = _hitMap[pCol][pRow][pRelBcid];
 
 	if (tTot >= _actualClusterMaxTot && tTot < _lateHitTot){
 		_actualClusterSeed_column = pCol;
@@ -302,7 +302,7 @@ void Clusterizer::searchNextHits(const unsigned short& pCol, const unsigned shor
 	bool tHitUpLeft = false;
 
 	//search around the pixel in time and space
-	for(int iDbCID = _actualRelativeClusterBCID; iDbCID <= _actualRelativeClusterBCID +_DbCID && iDbCID <= _bCIDlastHit; ++iDbCID){	//loop over the BCID window width starting from the actual cluster BCID
+	for(unsigned int iDbCID = _actualRelativeClusterBCID; iDbCID <= _actualRelativeClusterBCID +_DbCID && iDbCID <= (unsigned int) _bCIDlastHit; ++iDbCID){	//loop over the BCID window width starting from the actual cluster BCID
 		for(int iDx = 1; iDx <= (int) _dx; ++iDx){									//loop over the the x range
 			for(int iDy = 1; iDy <= (int) _dy; ++iDy){								//loop over the the y range
 				_runTime++;
@@ -455,7 +455,7 @@ void Clusterizer::clearHitMap()
 
 void Clusterizer::clearClusterMaps()
 {
-	debug(std::string("clearClusterMaps"));
+	debug("clearClusterMaps");
 	for (unsigned int i = 0; i < __MAXCLUSTERHITSBINS; ++i)
 		_clusterHits[i] = 0;
 	for (unsigned int i = 0; i < __MAXTOTBINS; ++i){
@@ -495,7 +495,7 @@ void Clusterizer::clearActualEventVariables()
 
 void Clusterizer::showHits()
 {
-	debug(std::string("ShowHits"));
+	debug("ShowHits");
 	if(_nHits < 100){
 		for(int i = 0; i < RAW_DATA_MAX_COLUMN; ++i){
 			for(int j = 0; j < RAW_DATA_MAX_ROW; ++j){
