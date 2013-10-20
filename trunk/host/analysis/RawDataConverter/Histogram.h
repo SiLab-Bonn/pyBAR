@@ -6,6 +6,7 @@
 #include <vector>
 #include <cmath>
 #include <algorithm>
+#include <iterator>
 #include <set>
 
 #define __nMaxParameters 200
@@ -16,9 +17,9 @@ public:
   Histogram(void);
   ~Histogram(void);
 
-  void getOccupancy(unsigned int& rNparameterValues, unsigned int*& rOccupancy);  //returns the occupancy histogram for all hits
-  void getTotHist(unsigned long*& rTotHist);           //returns the tot histogram for all hits
-  void getRelBcidHist(unsigned long*& rRelBcidHist);   //returns the relative BCID histogram for all hits
+  void getOccupancy(unsigned int& rNparameterValues, unsigned int*& rOccupancy, bool copy = true);  //returns the occupancy histogram for all hits
+  void getTotHist(unsigned long*& rTotHist, bool copy = true);           //returns the tot histogram for all hits
+  void getRelBcidHist(unsigned long*& rRelBcidHist, bool copy = true);   //returns the relative BCID histogram for all hits
 
   void createOccupancyHist(bool CreateOccHist = true);
   void createRelBCIDHist(bool CreateRelBCIDHist = true);

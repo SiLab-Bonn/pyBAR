@@ -46,13 +46,19 @@ cdef extern from "Interpret.h":
     
         void setFEI4B(bool setFEI4B)
         
-        void setMetaWordIndex(const unsigned int& tLength, MetaInfo* &rMetaInfo) except +
+        void setHitsArray(HitInfo* &rHitInfo, const unsigned int &rSize)
+        
+        void setMetaData(MetaInfo* &rMetaInfo, const unsigned int& tLength) except +
+        void setMetaDataEventIndex(unsigned long*& rEventNumber, const unsigned int& rSize)
         void interpretRawData(unsigned int* pDataWords, const unsigned int& pNdataWords) except +
-        void getMetaEventIndex(unsigned int& rEventNumberIndex, unsigned long*& rEventNumber)
+#         void getMetaEventIndex(unsigned int& rEventNumberIndex, unsigned long*& rEventNumber)
         void getHits(unsigned int &rNhits, HitInfo* &rHitInfo)
-        void getServiceRecordsCounters(unsigned int &rNserviceRecords, unsigned long*& rServiceRecordsCounter)   #returns the total service record counter array
-        void getErrorCounters(unsigned int &rNerrorCounters, unsigned long*& rErrorCounter)                     #returns the total errors counter array
-        void getTriggerErrorCounters(unsigned int &rNTriggerErrorCounters, unsigned long*& rTriggerErrorCounter) #returns the total trigger errors counter array
+        
+        void getServiceRecordsCounters(unsigned long*& rServiceRecordsCounter, unsigned int& rNserviceRecords, bool copy)   #returns the total service record counter array
+        void getErrorCounters(unsigned long*& rErrorCounter, unsigned int& rNerrorCounters, bool copy)                    #returns the total errors counter array
+        void getTriggerErrorCounters(unsigned long*& rTriggerErrorCounter, unsigned int& rNTriggerErrorCounters, bool copy) #returns the total trigger errors counter array
+        unsigned int getNarrayHits()                 #returns the maximum index filled with hits in the hit array
+        unsigned long getNmetaDataEvent()   #returns the maximum index filled with event data infos
         
         void resetEventVariables()
         void resetCounters()
@@ -78,31 +84,35 @@ cdef class PyDataInterpreter:
         self.thisptr.setWarningOutput(<bool> toggle)
     def set_error_output(self,toggle):
         self.thisptr.setErrorOutput(<bool> toggle)
+    def set_hits_array(self, np.ndarray[numpy_hit_info, ndim=1] hit_info):
+        self.thisptr.setHitsArray(<HitInfo*&> hit_info.data, <const unsigned int&> hit_info.shape[0])
     def interpret_raw_data(self, np.ndarray[np.uint32_t, ndim=1] data):
         self.thisptr.interpretRawData(<unsigned int*> data.data, <unsigned int> data.shape[0])
         return data, data.shape[0]
-    def get_hits(self, np.ndarray[numpy_hit_info, ndim=1] hit_info):
-        cdef unsigned int Nhits = 0
-        self.thisptr.getHits(Nhits, <HitInfo*&> hit_info.data)
-        return Nhits
-    def set_meta_word_index(self, np.ndarray[numpy_meta_data, ndim=1] meta_data):
-        self.thisptr.setMetaWordIndex(<unsigned int> meta_data.shape[0], <MetaInfo*&> meta_data.data)
+    def set_meta_data(self, np.ndarray[numpy_meta_data, ndim=1] meta_data):
+        self.thisptr.setMetaData(<MetaInfo*&> meta_data.data, <const unsigned int&> meta_data.shape[0])     
+    def set_meta_event_data(self,np.ndarray[np.uint32_t, ndim=1] meta_data_event_index):
+        self.thisptr.setMetaDataEventIndex(<unsigned long*&> meta_data_event_index.data, <const unsigned int&> meta_data_event_index.shape[0]) 
     def get_service_records_counters(self, np.ndarray[np.uint32_t, ndim=1] service_records_counters):
         cdef unsigned int Ncounters = 0
-        self.thisptr.getServiceRecordsCounters(Ncounters, <unsigned long*&> service_records_counters.data)
+        self.thisptr.getServiceRecordsCounters(<unsigned long*&> service_records_counters.data, <unsigned int> Ncounters, <bool> True)
         return Ncounters
     def get_error_counters(self, np.ndarray[np.uint32_t, ndim=1] error_counters):
         cdef unsigned int NerrorCodes = 0
-        self.thisptr.getErrorCounters(NerrorCodes, <unsigned long*&> error_counters.data)
+        self.thisptr.getErrorCounters(<unsigned long*&> error_counters.data, NerrorCodes, <bool> True)
         return NerrorCodes
     def get_trigger_error_counters(self, np.ndarray[np.uint32_t, ndim=1] trigger_error_counters):
         cdef unsigned int NtriggerErrorCodes = 0
-        self.thisptr.getTriggerErrorCounters(NtriggerErrorCodes, <unsigned long*&> trigger_error_counters.data)
+        self.thisptr.getTriggerErrorCounters(<unsigned long*&> trigger_error_counters.data, NtriggerErrorCodes, <bool> True)
         return NtriggerErrorCodes
-    def get_meta_event_index(self, np.ndarray[np.uint32_t, ndim=1] event_index):
-        cdef unsigned int NreadOuts = 0
-        self.thisptr.getMetaEventIndex(NreadOuts, <unsigned long*&> event_index.data)
-        return NreadOuts
+    def get_n_array_hits(self):
+        return <unsigned int> self.thisptr.getNarrayHits()
+    def get_n_meta_data_event(self):
+        return <unsigned long> self.thisptr.getNmetaDataEvent()
+#     def get_meta_event_index(self, np.ndarray[np.uint32_t, ndim=1] event_index):
+#         cdef unsigned int NreadOuts = 0
+#         self.thisptr.getMetaEventIndex(NreadOuts, <unsigned long*&> event_index.data)
+#         return NreadOuts
     def reset_event_variables(self):
         self.thisptr.resetEventVariables()       
     def reset_counters(self):

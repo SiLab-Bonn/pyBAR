@@ -12,7 +12,6 @@ Interpret::Interpret(void)
 	_lastWordIndexSet = 0;
 	_metaEventIndexLength = 0;
 	_metaEventIndex = 0;
-	allocateHitInfoArray();
 	allocateHitBufferArray();
 	allocateTriggerErrorCounterArray();
 	allocateErrorCounterArray();
@@ -22,8 +21,6 @@ Interpret::Interpret(void)
 
 Interpret::~Interpret(void)
 {
-	deleteMetaEventIndexArray();
-	deleteHitInfoArray();
 	deleteHitBufferArray();
 	deleteTriggerErrorCounterArray();
 	deleteErrorCounterArray();
@@ -200,7 +197,7 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 	return true;
 }
 
-bool Interpret::setMetaWordIndex(const unsigned int& tLength, MetaInfo* &rMetaInfo)
+bool Interpret::setMetaData(MetaInfo* &rMetaInfo, const unsigned int& tLength)
 {
 	_metaInfo = rMetaInfo;
 	if(tLength == 0){
@@ -218,22 +215,20 @@ bool Interpret::setMetaWordIndex(const unsigned int& tLength, MetaInfo* &rMetaIn
 		throw std::out_of_range("meta word index out of range");
 
 	_metaEventIndexLength = tLength;
-	allocateMetaEventIndexArray();
-	resetMetaEventIndexArray();
 	_metaDataSet = true;
 	return true;
 }
 
-void Interpret::getMetaEventIndex(unsigned int& rEventNumberIndex, unsigned long*& rEventNumber)
+void Interpret::setHitsArray(HitInfo* &rHitInfo, const unsigned int &rSize)
 {
-	rEventNumberIndex = _metaEventIndexLength;
-	rEventNumber = _metaEventIndex;
+	_hitInfoSize = rSize;
+	_hitInfo = rHitInfo;
 }
 
-void Interpret::getHits(unsigned int &rNhits, HitInfo* &rHitInfo)
+void Interpret::setMetaDataEventIndex(unsigned long*& rEventNumber, const unsigned int& rSize)
 {
-	rHitInfo = _hitInfo;
-	rNhits = _hitIndex;
+	_metaEventIndex = rEventNumber;
+	_metaEventIndexLength = rSize;
 }
 
 void Interpret::resetCounters()
@@ -285,21 +280,36 @@ void Interpret::setMaxTot(const unsigned int& rMaxTot)
 	_maxTot = rMaxTot;
 }
 
-void Interpret::getServiceRecordsCounters(unsigned int& rNserviceRecords, unsigned long*& rServiceRecordsCounter)
+void Interpret::getServiceRecordsCounters(unsigned long*& rServiceRecordsCounter, unsigned int& rNserviceRecords, bool copy)
 {
-	rServiceRecordsCounter = _serviceRecordCounter;
+	debug(std::string("getServiceRecordsCounters(...)"));
+	if(copy)
+	 	std::copy(_serviceRecordCounter, _serviceRecordCounter+__NSERVICERECORDS, rServiceRecordsCounter);
+	else
+		rServiceRecordsCounter = _serviceRecordCounter;
+
 	rNserviceRecords = __NSERVICERECORDS;
 }
 
-void Interpret::getErrorCounters(unsigned int& rNerrorCounters, unsigned long*& rErrorCounter)
+void Interpret::getErrorCounters(unsigned long*& rErrorCounter, unsigned int& rNerrorCounters, bool copy)
 {
-	rErrorCounter = _errorCounter;
+	debug(std::string("getErrorCounters(...)"));
+	if(copy)
+		std::copy(_errorCounter, _errorCounter+__N_ERROR_CODES, rErrorCounter);
+	else
+		rErrorCounter = _errorCounter;
+
 	rNerrorCounters = __N_ERROR_CODES;
 }
 
-void Interpret::getTriggerErrorCounters(unsigned int& rNTriggerErrorCounters, unsigned long*& rTriggerErrorCounter)
+void Interpret::getTriggerErrorCounters(unsigned long*& rTriggerErrorCounter, unsigned int& rNTriggerErrorCounters, bool copy)
 {
-	rTriggerErrorCounter = _triggerErrorCounter;
+	debug(std::string("getTriggerErrorCounters(...)"));
+	if(copy)
+		std::copy(_triggerErrorCounter, _triggerErrorCounter+__TRG_N_ERROR_CODES, rTriggerErrorCounter);
+	else
+		rTriggerErrorCounter = _triggerErrorCounter;
+
 	rNTriggerErrorCounters = __TRG_N_ERROR_CODES;
 }
 
@@ -387,7 +397,7 @@ void Interpret::printStatus() {
 
 void Interpret::printHits(const unsigned int& pNhits)
 {
-	if(pNhits>__MAXARRAYSIZE)
+	if(pNhits>_hitInfoSize)
 		return;
 	std::cout<<"Event\tRelBCID\tTrigger\tLVL1ID\tCol\tRow\tTot\tBCID\tSR\tEventStatus\n";
 	for(unsigned int i = 0; i < pNhits; ++i)
@@ -425,25 +435,14 @@ void Interpret::addHit(const unsigned char& pRelBCID, const unsigned short int& 
 		addEvent();
 		if(Basis::warningSet())
 			warning(std::string("storeHit: Hit buffer overflow prevented by splitting events)"), __LINE__);
-		//throw 12;
 	}
 }
 
 void Interpret::storeHit(HitInfo& rHit)
 {
 	_nHits++;
-	if(_hitIndex < __MAXARRAYSIZE){
+	if(_hitIndex < _hitInfoSize){
 		_hitInfo[_hitIndex] = rHit;
-		//_hitInfo[_hitIndex].eventNumber = _nEvents;
-		//_hitInfo[_hitIndex].triggerNumber = tTriggerNumber;
-		//_hitInfo[_hitIndex].relativeBCID = pRelBCID;
-		//_hitInfo[_hitIndex].LVLID = pLVLID;
-		//_hitInfo[_hitIndex].column = pColumn;
-		//_hitInfo[_hitIndex].row = pRow;
-		//_hitInfo[_hitIndex].tot = pTot;
-		//_hitInfo[_hitIndex].BCID = pBCID;
-		//_hitInfo[_hitIndex].serviceRecord = tServiceRecord;
-		//_hitInfo[_hitIndex].eventStatus = tErrorCode;
 		_hitIndex++;
 	}
 	else{
@@ -644,27 +643,6 @@ void Interpret::addServiceRecord(const unsigned char& pSRcode)
 		_serviceRecordCounter[pSRcode]+=1;
 }
 
-void Interpret::allocateHitInfoArray()
-{
-	try{
-		_hitInfo = new HitInfo[__MAXARRAYSIZE];
-	}
-	catch(std::bad_alloc& exception){
-		error(std::string("allocateHitInfoArray(): ")+std::string(exception.what()));
-	}
-}
-
-void Interpret::deleteHitInfoArray()
-{
-	debug(std::string("deleteHitInfoArray()"));
-	if (_hitInfo == 0){
-		std::cout<<"IS ZERO"<<std::endl;
-		return;
-	}
-	delete[] _hitInfo;
-	_hitInfo = 0;
-}
-
 void Interpret::allocateHitBufferArray()
 {
 	debug(std::string("allocateHitBufferArray()"));
@@ -683,33 +661,6 @@ void Interpret::deleteHitBufferArray()
 		return;
 	delete[] _hitBuffer;
 	_hitBuffer = 0;
-}
-
-void Interpret::allocateMetaEventIndexArray()
-{
-	debug(std::string("allocateMetaEventIndexArray()"));
-	try{
-		_metaEventIndex = new unsigned long[_metaEventIndexLength];
-	}
-	catch(std::bad_alloc& exception){
-		error(std::string("allocateMetaEventIndexArray(): ")+std::string(exception.what()));
-	}
-}
-
-void Interpret::resetMetaEventIndexArray()
-{
-	for(unsigned int i = 0; i < _metaEventIndexLength; ++i)
-		_metaEventIndex[i] = 0;
-}
-
-
-void Interpret::deleteMetaEventIndexArray()
-{
-	debug(std::string("deleteMetaEventIndexArray()"));
-	if (_metaEventIndex == 0)
-		return;
-	delete[] _metaEventIndex;
-	_metaEventIndex = 0;
 }
 
 void Interpret::allocateTriggerErrorCounterArray()

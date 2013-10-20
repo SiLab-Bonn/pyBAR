@@ -300,22 +300,37 @@ unsigned int Histogram::getNparameters()
  return _NparameterValues;
 }
 
-void Histogram::getOccupancy(unsigned int& rNparameterValues, unsigned int*& rOccupancy)
+void Histogram::getOccupancy(unsigned int& rNparameterValues, unsigned int*& rOccupancy, bool copy)
 {
   debug(std::string("getOccupancy(...)"));
+  if(copy){
+	  unsigned long tArrayLength = (long)(RAW_DATA_MAX_COLUMN-1) + (long)(RAW_DATA_MAX_ROW-1) * (long)RAW_DATA_MAX_COLUMN + (long)(_NparameterValues-1) * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW+1;
+	  std::copy(_occupancy, _occupancy+tArrayLength, rOccupancy);
+  }
+  else
+	  rOccupancy = _occupancy;
+
   rNparameterValues = _NparameterValues;
-  rOccupancy = _occupancy;
 }
 
-void Histogram::getTotHist(unsigned long*& rTotHist)
+void Histogram::getTotHist(unsigned long*& rTotHist, bool copy)
 {
   debug(std::string("getTotHist(...)"));
+  if(copy)
+ 	  std::copy(_tot, _tot+16, rTotHist);
+  else
+	  rTotHist = _tot;
+
   rTotHist = _tot;
 }
 
-void Histogram::getRelBcidHist(unsigned long*& rRelBcidHist)
+void Histogram::getRelBcidHist(unsigned long*& rRelBcidHist, bool copy)
 {
   debug(std::string("getRelBcidHist(...)"));
+  if(copy)
+   	  std::copy(_relBcid, _relBcid+16, rRelBcidHist);
+ else
+	 rRelBcidHist = _relBcid;
   rRelBcidHist = _relBcid;
 }
 
