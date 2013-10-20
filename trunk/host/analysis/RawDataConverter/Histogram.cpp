@@ -22,6 +22,7 @@ Histogram::Histogram(void)
 
 Histogram::~Histogram(void)
 {
+	debug("~Histogram(void): destructor called");
   deleteOccupancyArray();
   deleteTotArray();
   deleteRelBcidArray();
@@ -46,9 +47,9 @@ void Histogram::createTotHist(bool CreateTotHist)
   resetTotArray();
 }
 
-void Histogram::addHits(const unsigned int& rNhits, HitInfo*& rHitInfo)
+void Histogram::addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
 {
-  debug(std::string("addHits()"));
+  debug("addHits()");
   for(unsigned int i = 0; i<rNhits; i++){
     unsigned short tColumnIndex = rHitInfo[i].column-1;
     if(tColumnIndex > RAW_DATA_MAX_COLUMN-1)
@@ -80,7 +81,7 @@ void Histogram::addHits(const unsigned int& rNhits, HitInfo*& rHitInfo)
   //std::cout<<"addHits done"<<std::endl;
 }
 
-unsigned int Histogram::getEventParameter(unsigned long& rEventNumber)
+unsigned int Histogram::getEventParameter(unsigned int& rEventNumber)
 {
   if(_parInfo == 0)
     return 0;
@@ -107,7 +108,7 @@ unsigned int Histogram::getParIndex(unsigned int& rEventParameter)
 
 void Histogram::addScanParameter(const unsigned int& rNparInfoLength, ParInfo*& rParInfo)
 {
-  debug(std::string("addScanParameter"));
+  debug("addScanParameter");
   _nParInfoLength = rNparInfoLength;
   _parInfo = rParInfo;
   setParameterLimits();
@@ -117,9 +118,9 @@ void Histogram::addScanParameter(const unsigned int& rNparInfoLength, ParInfo*& 
   //   std::cout<<"read out "<<i<<"\t"<<_parInfo[i].scanParameter<<"\n";
 }
 
-void Histogram::addMetaEventIndex(const unsigned int& rNmetaEventIndexLength, unsigned long*& rMetaEventIndex)
+void Histogram::addMetaEventIndex(const unsigned int& rNmetaEventIndexLength, unsigned int*& rMetaEventIndex)
 {
-  debug(std::string("addMetaEventIndex()"));
+  debug("addMetaEventIndex()");
   _nMetaEventIndexLength = rNmetaEventIndexLength;
   _metaEventIndex = rMetaEventIndex;
   //for(unsigned int i=0; i<15; ++i)
@@ -140,7 +141,7 @@ void Histogram::allocateOccupancyArray()
 
 void Histogram::deleteOccupancyArray()
 {
-  debug(std::string("deleteOccupancyArray()"));
+  debug("deleteOccupancyArray()");
   if (_occupancy != 0)
     delete _occupancy;
   _occupancy = 0;
@@ -148,7 +149,7 @@ void Histogram::deleteOccupancyArray()
 
 void Histogram::resetOccupancyArray()
 {
-  debug(std::string("resetOccupancyArray()"));
+  debug("resetOccupancyArray()");
   for (unsigned int i = 0; i < RAW_DATA_MAX_COLUMN; i++)
     for (unsigned int j = 0; j < RAW_DATA_MAX_ROW; j++)
       for(unsigned int k = 0; k < getNparameters();k++)
@@ -157,10 +158,10 @@ void Histogram::resetOccupancyArray()
 
 void Histogram::allocateTotArray()
 {
-  debug(std::string("allocateTotArray()"));
+  debug("allocateTotArray()");
   deleteTotArray();
   try{
-    _tot = new unsigned long[16];
+    _tot = new unsigned int[16];
   }
   catch(std::bad_alloc& exception){
     error(std::string("allocateTotArray: ")+std::string(exception.what()));
@@ -169,14 +170,14 @@ void Histogram::allocateTotArray()
 
 void Histogram::resetTotArray()
 {
-  debug(std::string("resetTotArray()"));
+  debug("resetTotArray()");
   for (unsigned int i = 0; i < 16; i++)
     _tot[(long)i] = 0;
 }
   
 void Histogram::deleteTotArray()
 {
-  debug(std::string("deleteTotArray()"));
+  debug("deleteTotArray()");
   if (_tot != 0)
     delete _tot;
   _tot = 0;
@@ -184,10 +185,10 @@ void Histogram::deleteTotArray()
 
 void Histogram::allocateRelBcidArray()
 {
-  debug(std::string("allocateRelBcidArray"));
+  debug("allocateRelBcidArray");
   deleteRelBcidArray();
   try{
-     _relBcid = new unsigned long[16];
+     _relBcid = new unsigned int[__MAXBCID];
   }
   catch(std::bad_alloc& exception){
     error(std::string("allocateRelBcidArray: ")+std::string(exception.what()));
@@ -196,14 +197,14 @@ void Histogram::allocateRelBcidArray()
 
 void Histogram::resetRelBcidArray()
 {
-  debug(std::string("resetRelBcidArray()"));
-  for (unsigned int i = 0; i < 16; i++)
+  debug("resetRelBcidArray()");
+  for (unsigned int i = 0; i < __MAXBCID; i++)
     _relBcid[(long)i] = 0;
 }
   
 void Histogram::deleteRelBcidArray()
 {
-  debug(std::string("deleteRelBcidArray"));
+  debug("deleteRelBcidArray");
   if (_relBcid != 0)
     delete _relBcid;
   _relBcid = 0;
@@ -211,10 +212,10 @@ void Histogram::deleteRelBcidArray()
 
 void Histogram::test()
 {
-  debug(std::string("test()"));
+  debug("test()");
   //std::cout<<"\n##########Histogram::test()########\n";
   /*for(unsigned int i = 0; i<1500; i += 10){
-    std::cout<<"event "<<i<<"\t"<<getEventParameter((unsigned long&)i)<<"\n";
+    std::cout<<"event "<<i<<"\t"<<getEventParameter((unsigned int&)i)<<"\n";
   }*/
  /* for(unsigned int i = 1; i<_nParInfoLength; ++i)
     if(_metaEventIndex[i-1] > _metaEventIndex[i] || _parInfo[i-1].scanParameter > _parInfo[i].scanParameter){
@@ -263,7 +264,7 @@ void Histogram::test()
 
 void Histogram::setParameterLimits()
 {
-  debug(std::string("setParameterLimits()"));
+  debug("setParameterLimits()");
   std::vector<unsigned int> tParameterValues;
 
   for(unsigned int i = 0; i < _nParInfoLength; ++i)
@@ -302,9 +303,9 @@ unsigned int Histogram::getNparameters()
 
 void Histogram::getOccupancy(unsigned int& rNparameterValues, unsigned int*& rOccupancy, bool copy)
 {
-  debug(std::string("getOccupancy(...)"));
+  debug("getOccupancy(...)");
   if(copy){
-	  unsigned long tArrayLength = (long)(RAW_DATA_MAX_COLUMN-1) + (long)(RAW_DATA_MAX_ROW-1) * (long)RAW_DATA_MAX_COLUMN + (long)(_NparameterValues-1) * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW+1;
+	  unsigned int tArrayLength = (long)(RAW_DATA_MAX_COLUMN-1) + (long)(RAW_DATA_MAX_ROW-1) * (long)RAW_DATA_MAX_COLUMN + (long)(_NparameterValues-1) * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW+1;
 	  std::copy(_occupancy, _occupancy+tArrayLength, rOccupancy);
   }
   else
@@ -313,30 +314,27 @@ void Histogram::getOccupancy(unsigned int& rNparameterValues, unsigned int*& rOc
   rNparameterValues = _NparameterValues;
 }
 
-void Histogram::getTotHist(unsigned long*& rTotHist, bool copy)
+void Histogram::getTotHist(unsigned int*& rTotHist, bool copy)
 {
-  debug(std::string("getTotHist(...)"));
+  debug("getTotHist(...)");
   if(copy)
  	  std::copy(_tot, _tot+16, rTotHist);
   else
 	  rTotHist = _tot;
-
-  rTotHist = _tot;
 }
 
-void Histogram::getRelBcidHist(unsigned long*& rRelBcidHist, bool copy)
+void Histogram::getRelBcidHist(unsigned int*& rRelBcidHist, bool copy)
 {
-  debug(std::string("getRelBcidHist(...)"));
+  debug("getRelBcidHist(...)");
   if(copy)
-   	  std::copy(_relBcid, _relBcid+16, rRelBcidHist);
- else
+   	  std::copy(_relBcid, _relBcid+__MAXBCID, rRelBcidHist);
+  else
 	 rRelBcidHist = _relBcid;
-  rRelBcidHist = _relBcid;
 }
 
 void Histogram::calculateThresholdScanArrays(double rMuArray[], double rSigmaArray[])
 {
-  debug(std::string("calculateThresholdScanArrays(...)"));
+  debug("calculateThresholdScanArrays(...)");
   //quick algorithm from M. Mertens, phd thesis, J�lich 2010
   if (_NparameterValues<2)  //a minimum number of different scans is needed
     return;
@@ -405,7 +403,7 @@ void Histogram::calculateThresholdScanArrays(double rMuArray[], double rSigmaArr
 
 void Histogram::setNoScanParameter()
 {
-  debug(std::string("setNoScanParameter()"));
+  debug("setNoScanParameter()");
   deleteOccupancyArray();
   _NparameterValues = 1;
   allocateOccupancyArray();

@@ -48,26 +48,26 @@ cdef extern from "Histogram.h":
         void setInfoOutput(bool pToggle)
         void setDebugOutput(bool pToggle)
         
-        void getOccupancy(unsigned int& rNparameterValues, unsigned int*& rOccupancy, bool copy)  #returns the occupancy histogram for all hits
-        void getTotHist(unsigned long*& rTotHist, bool copy)          #returns the tot histogram for all hits
-        void getRelBcidHist(unsigned long*& rRelBcidHist, bool copy)   #returns the relative BCID histogram for all hits
-        
         void createOccupancyHist(bool CreateOccHist)
         void createRelBCIDHist(bool CreateRelBCIDHist)
         void createTotHist(bool CreateTotHist)
         
-        void addHits(const unsigned int& rNhits, HitInfo*& rHitInfo) except +
+        void getOccupancy(unsigned int& rNparameterValues, unsigned int*& rOccupancy, bool copy)  #returns the occupancy histogram for all hits
+        void getTotHist(unsigned int*& rTotHist, bool copy)          #returns the tot histogram for all hits
+        void getRelBcidHist(unsigned int*& rRelBcidHist, bool copy)   #returns the relative BCID histogram for all hits    
+
+        void addHits(HitInfo*& rHitInfo, const unsigned int& rNhits) except +
         void addScanParameter(const unsigned int& rNparInfoLength, ParInfo*& rParInfo)  except +
         void setNoScanParameter()
-        void addMetaEventIndex(const unsigned int& rNmetaEventIndexLength, unsigned long*& rMetaEventIndex) except +
-        
+        void addMetaEventIndex(const unsigned int& rNmetaEventIndexLength, unsigned int*& rMetaEventIndex) except +
+       
         unsigned int getMinParameter() #returns the minimum parameter from _parInfo
         unsigned int getMaxParameter() #returns the maximum parameter from _parInfo
         unsigned int getNparameters()  #returns the parameter range from _parInfo
         
-        void test()
-        
         void calculateThresholdScanArrays(double rMuArray[], double rSigmaArray[]) #takes the occupancy histograms for different parameters for the threshold arrays
+         
+        void test()         
 
 cdef class PyDataHistograming:
     cdef Histogram* thisptr      # hold a C++ instance which we're wrapping
@@ -91,32 +91,34 @@ cdef class PyDataHistograming:
         self.thisptr.createRelBCIDHist(<bool> toggle)
     def create_tot_hist(self,toggle):
         self.thisptr.createTotHist(<bool> toggle)
-    def calculate_threshold_scan_arrays(self, np.ndarray[np.float64_t, ndim=1] threshold, np.ndarray[np.float64_t, ndim=1] noise):
-        self.thisptr.calculateThresholdScanArrays(<double*> threshold.data, <double*> noise.data)
+        
+    def get_occupancy(self, np.ndarray[np.uint32_t, ndim=1] occupancy, copy = True):
+        cdef unsigned int NparameterValues = 0
+        self.thisptr.getOccupancy(NparameterValues, <unsigned int*&> occupancy.data, <bool> copy)
+        return NparameterValues
+    def get_tot_hist(self, np.ndarray[np.uint32_t, ndim=1] tot_hist, copy = True):
+        self.thisptr.getTotHist(<unsigned int*&> tot_hist.data, <bool> copy)
+    def get_rel_bcid_hist(self, np.ndarray[np.uint32_t, ndim=1] rel_bcid_hist, copy = True):
+        self.thisptr.getRelBcidHist(<unsigned int*&> rel_bcid_hist.data, <bool> copy)
         
     def add_hits(self, np.ndarray[numpy_hit_info, ndim=1] hit_info, Nhits):
-        self.thisptr.addHits(<unsigned int> Nhits, <HitInfo*&> hit_info.data)
+        self.thisptr.addHits(<HitInfo*&> hit_info.data, <const unsigned int&> Nhits)
+    def add_scan_parameter(self, np.ndarray[numpy_par_info, ndim=1] parameter_info):
+        self.thisptr.addScanParameter(<const unsigned int&> parameter_info.shape[0], <ParInfo*&> parameter_info.data)
     def set_no_scan_parameter(self):
         self.thisptr.setNoScanParameter()
     def add_meta_event_index(self, np.ndarray[np.uint32_t, ndim=1] event_index, array_length):
-        self.thisptr.addMetaEventIndex(<unsigned int&> array_length, <unsigned long*&> event_index.data)
-    def add_scan_parameter(self, np.ndarray[numpy_par_info, ndim=1] parameter_info):
-        self.thisptr.addScanParameter(<const unsigned int&> parameter_info.shape[0], <ParInfo*&> parameter_info.data)
-        
-    def get_occupancy(self, np.ndarray[np.uint32_t, ndim=1] occupancy):
-        cdef unsigned int NparameterValues = 0
-        self.thisptr.getOccupancy(NparameterValues, <unsigned int*&> occupancy.data, <bool> True)
-        return NparameterValues
-    def get_tot_hist(self, np.ndarray[np.uint32_t, ndim=1] tot_hist):
-        self.thisptr.getTotHist(<unsigned long*&> tot_hist.data, <bool> True)
-    def get_rel_bcid_hist(self, np.ndarray[np.uint32_t, ndim=1] rel_bcid_hist):
-        self.thisptr.getRelBcidHist(<unsigned long*&> rel_bcid_hist.data, <bool> True)
+        self.thisptr.addMetaEventIndex(<unsigned int&> array_length, <unsigned int*&> event_index.data)
         
     def get_min_parameter(self):
         return <unsigned int> self.thisptr.getMinParameter()
     def get_max_parameter(self):
         return <unsigned int> self.thisptr.getMaxParameter()
-    def get_nparameters(self):
+    def get_n_parameters(self):
         return <unsigned int> self.thisptr.getNparameters()
+
+    def calculate_threshold_scan_arrays(self, np.ndarray[np.float64_t, ndim=1] threshold, np.ndarray[np.float64_t, ndim=1] noise):
+        self.thisptr.calculateThresholdScanArrays(<double*> threshold.data, <double*> noise.data)    
+
     def test(self):
         self.thisptr.test()

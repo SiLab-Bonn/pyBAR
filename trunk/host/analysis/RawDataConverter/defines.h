@@ -5,7 +5,7 @@
 
 //structure to store the hits
 typedef struct HitInfo{
-  unsigned long eventNumber;  //event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
+  unsigned int eventNumber;  //event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
   unsigned int triggerNumber; //external trigger number for read out system
   unsigned char relativeBCID; //relative BCID value (unsigned char: 0 to 255)
   unsigned short int LVLID;   //LVL1ID (unsigned short int: 0 to 65.535)
@@ -20,7 +20,7 @@ typedef struct HitInfo{
 
 //structure to store the hits with cluster info
 typedef struct ClusterHitInfo{
-  unsigned long eventNumber;  //event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
+  unsigned int eventNumber;  //event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
   unsigned int triggerNumber; //external trigger number for read out system
   unsigned char relativeBCID; //relative BCID value (unsigned char: 0 to 255)
   unsigned short int LVLID;   //LVL1ID (unsigned short int: 0 to 65.535)
@@ -37,7 +37,7 @@ typedef struct ClusterHitInfo{
 
 //structure to store the cluster
 typedef struct ClusterInfo{
-  unsigned long eventNumber;  //event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
+  unsigned int eventNumber;  //event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
   unsigned short ID;	  	  //the cluster id of the cluster
   unsigned short size; 		  //sum tot of all cluster hits
   unsigned short Tot; 		  //sum tot of all cluster hits
@@ -58,7 +58,7 @@ typedef struct MetaInfo{
 
 //structure for the output meta data
 typedef struct MetaInfoOut{
-  unsigned long eventIndex;   //event number of the read out
+  unsigned int eventIndex;   //event number of the read out
   double timeStamp;           //time stamp of the readout         
   unsigned int errorCode;     //error code for the read out (0: no error)
 } MetaInfoOut;
@@ -194,5 +194,7 @@ typedef struct ParInfo{
 #define __MAXPOSYBINS 1000		//number of bins in y for the 2d hit position histogram
 #define __PIXELSIZEX 250		//250 um
 #define __PIXELSIZEY 50			//50 um
+
+#define __MAXTOTLOOKUP 14
 
 #endif // DEFINES_H

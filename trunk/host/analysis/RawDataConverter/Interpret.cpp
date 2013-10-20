@@ -21,6 +21,7 @@ Interpret::Interpret(void)
 
 Interpret::~Interpret(void)
 {
+	debug("~Interpret(void): destructor called");
 	deleteHitBufferArray();
 	deleteTriggerErrorCounterArray();
 	deleteErrorCounterArray();
@@ -223,9 +224,10 @@ void Interpret::setHitsArray(HitInfo* &rHitInfo, const unsigned int &rSize)
 {
 	_hitInfoSize = rSize;
 	_hitInfo = rHitInfo;
+
 }
 
-void Interpret::setMetaDataEventIndex(unsigned long*& rEventNumber, const unsigned int& rSize)
+void Interpret::setMetaDataEventIndex(unsigned int*& rEventNumber, const unsigned int& rSize)
 {
 	_metaEventIndex = rEventNumber;
 	_metaEventIndexLength = rSize;
@@ -280,7 +282,7 @@ void Interpret::setMaxTot(const unsigned int& rMaxTot)
 	_maxTot = rMaxTot;
 }
 
-void Interpret::getServiceRecordsCounters(unsigned long*& rServiceRecordsCounter, unsigned int& rNserviceRecords, bool copy)
+void Interpret::getServiceRecordsCounters(unsigned int*& rServiceRecordsCounter, unsigned int& rNserviceRecords, bool copy)
 {
 	debug(std::string("getServiceRecordsCounters(...)"));
 	if(copy)
@@ -291,7 +293,7 @@ void Interpret::getServiceRecordsCounters(unsigned long*& rServiceRecordsCounter
 	rNserviceRecords = __NSERVICERECORDS;
 }
 
-void Interpret::getErrorCounters(unsigned long*& rErrorCounter, unsigned int& rNerrorCounters, bool copy)
+void Interpret::getErrorCounters(unsigned int*& rErrorCounter, unsigned int& rNerrorCounters, bool copy)
 {
 	debug(std::string("getErrorCounters(...)"));
 	if(copy)
@@ -302,7 +304,7 @@ void Interpret::getErrorCounters(unsigned long*& rErrorCounter, unsigned int& rN
 	rNerrorCounters = __N_ERROR_CODES;
 }
 
-void Interpret::getTriggerErrorCounters(unsigned long*& rTriggerErrorCounter, unsigned int& rNTriggerErrorCounters, bool copy)
+void Interpret::getTriggerErrorCounters(unsigned int*& rTriggerErrorCounter, unsigned int& rNTriggerErrorCounters, bool copy)
 {
 	debug(std::string("getTriggerErrorCounters(...)"));
 	if(copy)
@@ -313,7 +315,7 @@ void Interpret::getTriggerErrorCounters(unsigned long*& rTriggerErrorCounter, un
 	rNTriggerErrorCounters = __TRG_N_ERROR_CODES;
 }
 
-unsigned long Interpret::getNwords()
+unsigned int Interpret::getNwords()
 {
 	return _nDataWords;
 }
@@ -404,7 +406,7 @@ void Interpret::printHits(const unsigned int& pNhits)
 		std::cout<<_hitInfo[i].eventNumber<<"\t"<<(unsigned int) _hitInfo[i].relativeBCID<<"\t"<<(unsigned int) _hitInfo[i].triggerNumber<<"\t"<<_hitInfo[i].LVLID<<"\t"<<(unsigned int) _hitInfo[i].column<<"\t"<<_hitInfo[i].row<<"\t"<<(unsigned int) _hitInfo[i].tot<<"\t"<<_hitInfo[i].BCID<<"\t"<<(unsigned int) _hitInfo[i].serviceRecord<<"\t"<<(unsigned int) _hitInfo[i].eventStatus<<"\n";
 }
 
-void Interpret::debugEvents(const unsigned long& rStartEvent, const unsigned long& rStopEvent, const bool& debugEvents)
+void Interpret::debugEvents(const unsigned int& rStartEvent, const unsigned int& rStopEvent, const bool& debugEvents)
 {
 	_debugEvents = debugEvents;
 	_startDebugEvent = rStartEvent;
@@ -488,7 +490,7 @@ void Interpret::storeEventHits()
 	}
 }
 
-void Interpret::correlateMetaWordIndex(const unsigned long& pEventNumer, const unsigned long& pDataWordIndex)
+void Interpret::correlateMetaWordIndex(const unsigned int& pEventNumer, const unsigned int& pDataWordIndex)
 {
 	if(_metaDataSet && pDataWordIndex == _lastWordIndexSet){
 		_metaEventIndex[_lastMetaIndexNotSet] = pEventNumer;
@@ -667,7 +669,7 @@ void Interpret::allocateTriggerErrorCounterArray()
 {
 	debug(std::string("allocateTriggerErrorCounterArray()"));
 	try{
-		_triggerErrorCounter = new unsigned long[__TRG_N_ERROR_CODES];
+		_triggerErrorCounter = new unsigned int[__TRG_N_ERROR_CODES];
 	}
 	catch(std::bad_alloc& exception){
 		error(std::string("allocateTriggerErrorCounterArray(): ")+std::string(exception.what()));
@@ -693,7 +695,7 @@ void Interpret::allocateErrorCounterArray()
 {
 	debug(std::string("allocateErrorCounterArray()"));
 	try{
-		_errorCounter = new unsigned long[__N_ERROR_CODES];
+		_errorCounter = new unsigned int[__N_ERROR_CODES];
 	}
 	catch(std::bad_alloc& exception){
 		error(std::string("allocateErrorCounterArray(): ")+std::string(exception.what()));
@@ -719,7 +721,7 @@ void Interpret::allocateServiceRecordCounterArray()
 {
 	debug(std::string("allocateServiceRecordCounterArray()"));
 	try{
-		_serviceRecordCounter = new unsigned long[__NSERVICERECORDS];
+		_serviceRecordCounter = new unsigned int[__NSERVICERECORDS];
 	}
 	catch(std::bad_alloc& exception){
 		error(std::string("allocateServiceRecordCounterArray(): ")+std::string(exception.what()));
