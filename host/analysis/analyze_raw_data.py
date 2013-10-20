@@ -6,12 +6,14 @@ import data_struct
 from plotting import plotting
 from RawDataConverter.data_interpreter import PyDataInterpreter
 from RawDataConverter.data_histograming import PyDataHistograming
+from RawDataConverter.data_clusterizer import PyDataClusterizer
 
 class AnalyzeRawData(object):
     """A class to analyze FE-I4 raw data"""
     def __init__(self, input_file = None, output_file = None):
         self.interpreter = PyDataInterpreter()
         self.histograming = PyDataHistograming()
+        self.clusterizer = PyDataClusterizer()
         self._input_file = input_file
         self._output_file = output_file
         self.out_file_h5 = None
@@ -38,6 +40,8 @@ class AnalyzeRawData(object):
         self.create_error_hist = True
         self.create_service_record_hist = True
         self.create_threshold_hists = False
+        self.create_cluster_hit_table = False
+        self.create_cluster_table = True
         
     @property
     def chunk_size(self):
@@ -139,6 +143,22 @@ class AnalyzeRawData(object):
         """Set maximum TOT value that is considered to be a hit"""
         raise NotImplementedError, "Not implemented, ask David"
         self._max_tot_value = value
+        
+    @property
+    def create_cluster_hit_table(self):
+        return self._create_cluster_hit_table
+    @create_cluster_hit_table.setter
+    def create_cluster_hit_table(self, value):
+        self._create_cluster_hit_table = value
+        #self.clusterizer.create_cluster_hit_table(value) #TODO implement
+        
+    @property
+    def create_cluster_table(self):
+        return self._create_cluster_table
+    @create_cluster_table.setter
+    def create_cluster_table(self, value):
+        self._create_cluster_table = value
+        #self.clusterizer.create_cluster_table(value) #TODO implement
    
     def interpret_word_table(self, input_file = None, output_file = None, FEI4B = False):    
         if(input_file != None):
@@ -264,6 +284,72 @@ class AnalyzeRawData(object):
             threshold_hist_table[0:336, 0:80] = np.swapaxes(threshold_hist,0,1)
             noise_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name = 'HistNoise', title = 'Noise Histogram', atom = tb.Atom.from_dtype(noise_hist.dtype), shape = (336,80), filters = self._filter_table)
             noise_hist_table[0:336, 0:80] = np.swapaxes(noise_hist,0,1)
+            
+    def cluster_hit_table(self, input_file = None, output_file = None):    
+        if(input_file != None):
+            self._input_file = input_file
+            
+        if(output_file != None):
+            self._output_file = output_file
+            
+        cluster_hits = np.zeros((1.01*self._chunk_size,), dtype= 
+                [('eventNumber', np.uint32), 
+                 ('triggerNumber',np.uint32),
+                 ('relativeBCID',np.uint8),
+                 ('LVLID',np.uint16),
+                 ('column',np.uint8),
+                 ('row',np.uint16),
+                 ('tot',np.uint8),
+                 ('BCID',np.uint16),
+                 ('triggerStatus',np.uint8),
+                 ('serviceRecord',np.uint32),
+                 ('eventStatus',np.uint8),
+                 ('clusterID',np.uint16),
+                 ('isSeed',np.uint8)
+                 ])
+         
+        cluster = np.zeros((1.01*self._chunk_size,), dtype= 
+                [('eventNumber', np.uint32), 
+                 ('ID',np.uint16),
+                 ('size',np.uint16),
+                 ('Tot',np.uint16),
+                 ('Charge',np.float32),
+                 ('seed_column',np.uint8),
+                 ('seed_row',np.uint16),
+                 ('eventStatus',np.uint8)
+                 ])
+            
+        with tb.openFile(self._input_file, mode = "r") as in_file_h5:
+            with tb.openFile(self._output_file, mode = "w", title = "Clustered FE-I4 hits") as out_file_h5:
+                self.clusterizer.set_cluster_hit_info_array(cluster_hits)
+                self.clusterizer.set_cluster_info_array(cluster)
+                if(self._create_cluster_table):
+                    cluster_table = out_file_h5.create_table(out_file_h5.root, name = 'Cluster', description = data_struct.ClusterInfoTable, title = 'cluster_hit_data', filters = self._filter_table, expectedrows=self._chunk_size)
+                if(self._create_cluster_hit_table):
+                    cluster_hit_table = out_file_h5.create_table(out_file_h5.root, name = 'ClusterHits', description = data_struct.ClusterHitInfoTable, title = 'cluster_hit_data', filters = self._filter_table, expectedrows=self._chunk_size)
+                table_size = in_file_h5.root.Hits.shape[0]
+                last_event_start_index = 0
+                n_hits = 0  # number of hits in actual chunk
+                for iHit in range(0,table_size, self._chunk_size):
+                    offset = last_event_start_index-n_hits if iHit != 0 else 0 # reread last hits of last event of last chunk
+                    hits = in_file_h5.root.Hits.read(iHit+offset,iHit+self._chunk_size)
+                    n_hits = hits.shape[0] 
+                    
+                    #align hits at events, omit last event
+                    last_event = hits["event_number"][-1]
+                    last_event_start_index = np.where(hits["event_number"]==last_event)[0][0]
+                    
+                    #do not omit the last words of the last events of the last chunk
+                    if(iHit == range(0,table_size, self._chunk_size)[-1]):
+                        last_event_start_index = n_hits
+                     
+                    self.clusterizer.add_hits(hits[:last_event_start_index])
+                    
+                    if(self._create_cluster_hit_table):
+                        cluster_hit_table.append(cluster_hits[:last_event_start_index])
+                    if(self._create_cluster_table):
+                        cluster_table.append(cluster[:self.clusterizer.get_n_clusters()])
+                    print int(float(float(iHit)/float(table_size)*100.)),
     
     def plotHistograms(self, scan_data_filename = None):
         with tb.openFile(self._output_file, mode = "r") as out_file_h5:
