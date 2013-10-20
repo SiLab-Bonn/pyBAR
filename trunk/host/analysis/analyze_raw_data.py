@@ -15,6 +15,7 @@ class AnalyzeRawData(object):
         self._input_file = input_file
         self._output_file = output_file
         self.out_file_h5 = None
+        self.meta_event_index = None
         self.set_standard_settings()
         
     def __enter__(self):
@@ -180,19 +181,21 @@ class AnalyzeRawData(object):
                          
                 self.interpreter.reset_event_variables()
                 self.interpreter.reset_counters()
-                self.interpreter.set_meta_word_index(self.meta_data)                   
-                    
-                meta_event_index = np.zeros((meta_data_size,), dtype=[('metaEventIndex', np.uint32)])
+                self.interpreter.set_hits_array(hits)
+                self.interpreter.set_meta_data(self.meta_data)                   
+                  
+                self.meta_event_index = np.zeros((meta_data_size,), dtype=[('metaEventIndex', np.uint32)])
+                self.interpreter.set_meta_event_data(self.meta_event_index)
                 
                 for iWord in range(0,table_size, self._chunk_size):
                     raw_data = in_file_h5.root.raw_data.read(iWord,iWord+self._chunk_size)
                     self.interpreter.interpret_raw_data(raw_data)
                     if(iWord == range(0,table_size, self._chunk_size)[-1]): # store hits of the latest event
                         self.interpreter.store_event_hits()
-                    Nhits = self.interpreter.get_hits(hits)
+                    Nhits = self.interpreter.get_n_array_hits()
                     if(scan_parameters != None):
-                        nEventIndex = self.interpreter.get_meta_event_index(meta_event_index)
-                        self.histograming.add_meta_event_index(meta_event_index, nEventIndex)
+                        nEventIndex = self.interpreter.get_n_meta_data_event()
+                        self.histograming.add_meta_event_index(self.meta_event_index, nEventIndex)
                     self.histograming.add_hits(hits, Nhits)
                     if (self._create_hit_table == True):
                         hit_table.append(hits[:Nhits])
@@ -207,13 +210,12 @@ class AnalyzeRawData(object):
     def _store_additional_data(self):
         if (self._create_meta_event_index):
             meta_data_size = self.meta_data.shape[0]
-            meta_event_index = np.zeros((meta_data_size,), dtype=[('metaEventIndex', np.uint32)])
-            nEventIndex = self.interpreter.get_meta_event_index(meta_event_index)  
+            nEventIndex = self.interpreter.get_n_meta_data_event()  
             if (meta_data_size == nEventIndex):
                 meta_data_out_table = self.out_file_h5.createTable(self.out_file_h5.root, name = 'MetaData', description = data_struct.MetaInfoOutTable, title = 'MetaData', filters = self._filter_table)
                 entry = meta_data_out_table.row
                 for i in range(0,nEventIndex):
-                    entry['event_number'] = meta_event_index[i][0]   #event index
+                    entry['event_number'] = self.meta_event_index[i][0]   #event index
                     entry['time_stamp'] = self.meta_data[i][3]   #time stamp
                     entry['error_code'] = self.meta_data[i][4]   #error code
                     entry.append()
