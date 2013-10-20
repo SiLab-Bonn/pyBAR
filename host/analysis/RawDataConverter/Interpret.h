@@ -23,13 +23,13 @@ public:
 
 	//set arrays to be filled
 	void setHitsArray(HitInfo* &rHitInfo, const unsigned int &rSize);   //set the hit array to be filled
-	void setMetaDataEventIndex(unsigned long*& rEventNumber, const unsigned int& rSize);  //set the meta event index array to be filled
+	void setMetaDataEventIndex(unsigned int*& rEventNumber, const unsigned int& rSize);  //set the meta event index array to be filled
 
 	//array info get funnctions
 	unsigned int getNarrayHits(){return _hitIndex;};
-	unsigned long getNmetaDataEvent(){return _metaEventIndexLength;};
+	unsigned int getNmetaDataEvent(){return _metaEventIndexLength;};
 
-	//void getMetaEventIndex(unsigned int& rEventNumberIndex, unsigned long*& rEventNumber);  //returns the meta event index filled upto the actual interpreted hits
+	//void getMetaEventIndex(unsigned int& rEventNumberIndex, unsigned int*& rEventNumber);  //returns the meta event index filled upto the actual interpreted hits
 
 	//initializers, should be called before first call of interpretRawData() with new data file
 	void resetCounters();                                     //reset summary counters
@@ -44,29 +44,29 @@ public:
 	void storeEventHits();        //adds the hits of the actual event to _hitInfo
 
 	//get function to global counters
-	void getServiceRecordsCounters(unsigned long*& rServiceRecordsCounter, unsigned int &rNserviceRecords, bool copy = true);   //returns the total service record counter array
-	void getErrorCounters(unsigned long*& rErrorCounter, unsigned int &rNerrorCounters, bool copy = true);                      //returns the total errors counter array
-	void getTriggerErrorCounters(unsigned long*& rTriggerErrorCounter, unsigned int &rNTriggerErrorCounters, bool copy = true); //returns the total trigger errors counter array
-	unsigned long getNhits(){return _nHits;};                 //returns the total numbers of hits found (global counter)
-	unsigned long getNwords();                                //returns the total numbers of words analyzed (global counter)
-	unsigned long getNunknownWords(){return _nUnknownWords;}; //returns the total numbers of unknown words found (global counter)
-	unsigned long getNevents(){return _nEvents;};             //returns the total numbers of events analyzed (global counter)
-	unsigned long getNemptyEvents(){return _nEmptyEvents;};   //returns the total numbers of empty events found (global counter)
-	unsigned long getNtriggers(){return _nTriggers;};         //returns the total numbers of trigger found (global counter)
-	unsigned long getNtriggerNotInc(){return _triggerErrorCounter[1];}; //returns the total numbers of not increasing trigger (error histogram)
-	unsigned long getNtriggerNotOne(){return _errorCounter[1]+_triggerErrorCounter[2];}; //returns the total numbers of events with # trigger != 1 (from error histogram)
+	void getServiceRecordsCounters(unsigned int*& rServiceRecordsCounter, unsigned int &rNserviceRecords, bool copy = true);   //returns the total service record counter array
+	void getErrorCounters(unsigned int*& rErrorCounter, unsigned int &rNerrorCounters, bool copy = true);                      //returns the total errors counter array
+	void getTriggerErrorCounters(unsigned int*& rTriggerErrorCounter, unsigned int &rNTriggerErrorCounters, bool copy = true); //returns the total trigger errors counter array
+	unsigned int getNhits(){return _nHits;};                 //returns the total numbers of hits found (global counter)
+	unsigned int getNwords();                                //returns the total numbers of words analyzed (global counter)
+	unsigned int getNunknownWords(){return _nUnknownWords;}; //returns the total numbers of unknown words found (global counter)
+	unsigned int getNevents(){return _nEvents;};             //returns the total numbers of events analyzed (global counter)
+	unsigned int getNemptyEvents(){return _nEmptyEvents;};   //returns the total numbers of empty events found (global counter)
+	unsigned int getNtriggers(){return _nTriggers;};         //returns the total numbers of trigger found (global counter)
+	unsigned int getNtriggerNotInc(){return _triggerErrorCounter[1];}; //returns the total numbers of not increasing trigger (error histogram)
+	unsigned int getNtriggerNotOne(){return _errorCounter[1]+_triggerErrorCounter[2];}; //returns the total numbers of events with # trigger != 1 (from error histogram)
 
 	//print functions for info output
 	void printSummary();                                      //print the interpreter summary with all global counter values (#hits, #data records,...)
 	void printStatus();                                      //print the interpreter options and counter values (#hits, #data records,...)
 	void printHits(const unsigned int& pNhits = 100);			    //prints the hits stored in the array
-	void debugEvents(const unsigned long& rStartEvent = 0, const unsigned long& rStopEvent = 0, const bool& debugEvents = true);
+	void debugEvents(const unsigned int& rStartEvent = 0, const unsigned int& rStopEvent = 0, const bool& debugEvents = true);
 
 private:
 	void addHit(const unsigned char& pRelBCID, const unsigned short int& pLVLID, const unsigned char& pColumn, const unsigned short int& pRow, const unsigned char& pTot, const unsigned short int& pBCID); //adds the hit to the event hits array _hitBuffer
 	void storeHit(HitInfo& rHit);	//stores the hit into the output hit array _hitInfo
 	void addEvent();              //increases the event counter, adds the actual hits/error/SR codes
-	void correlateMetaWordIndex(const unsigned long& pEventNumer, const unsigned long& pDataWordIndex);  //writes the event number for the meta data
+	void correlateMetaWordIndex(const unsigned int& pEventNumer, const unsigned int& pDataWordIndex);  //writes the event number for the meta data
 
 	//SRAM word check and interpreting methods
 	bool getTimefromDataHeader(const unsigned int& pSRAMWORD, unsigned int& pLVL1ID, unsigned int& pBCID);	      //returns true if the SRAMword is a data header and if it is sets the BCID and LVL1
@@ -115,8 +115,8 @@ private:
 	unsigned int _maxTot; 									  //maximum Tot value considered to be a hit
 	bool _fEI4B;														  //set to true to distinguish between FE-I4B and FE-I4A
 	bool _debugEvents;                        //true if some events have to have debug output
-	unsigned long _startDebugEvent;           //start event number to have debug output
-	unsigned long _stopDebugEvent;            //stop event number to have debug output
+	unsigned int _startDebugEvent;           //start event number to have debug output
+	unsigned int _stopDebugEvent;            //stop event number to have debug output
 
 	//one event variables
 	unsigned int tNdataHeader;								//number of data header per event
@@ -135,31 +135,31 @@ private:
 	unsigned int _lastTriggerNumber;          //trigger number of last event
 
 	//counters/flags for the total raw data processing
-	unsigned long _nTriggers;								  //total number of trigger words found
-	unsigned long _nEvents;									  //total number of valid events counted
-	unsigned long _nMaxHitsPerEvent;					//number of the maximum hits per event
-	unsigned long _nEmptyEvents;				  		//number of events with no records
-	unsigned long _nIncompleteEvents;				  //number of events with incomplete data structure (# data header != _NbCID)
-	unsigned long _nUnknownWords;						  //number of unknowns words found
-	unsigned long _nOtherWords;							//Address or value records
-	unsigned long _nServiceRecords;						//total number of service records found
-	unsigned long _nDataRecords;							//total number of data records found
-	unsigned long _nDataHeaders;							//total number of data headers found
-	unsigned long _nHits;							        //total number of hits found
-	unsigned long _nDataWords;							  //total number of data words
+	unsigned int _nTriggers;								  //total number of trigger words found
+	unsigned int _nEvents;									  //total number of valid events counted
+	unsigned int _nMaxHitsPerEvent;					//number of the maximum hits per event
+	unsigned int _nEmptyEvents;				  		//number of events with no records
+	unsigned int _nIncompleteEvents;				  //number of events with incomplete data structure (# data header != _NbCID)
+	unsigned int _nUnknownWords;						  //number of unknowns words found
+	unsigned int _nOtherWords;							//Address or value records
+	unsigned int _nServiceRecords;						//total number of service records found
+	unsigned int _nDataRecords;							//total number of data records found
+	unsigned int _nDataHeaders;							//total number of data headers found
+	unsigned int _nHits;							        //total number of hits found
+	unsigned int _nDataWords;							  //total number of data words
 	bool _firstTriggerNrSet;                  //true if the first trigger was found
 
 	//meta data infos in/out
 	MetaInfo* _metaInfo;                      //pointer to the meta info, meta data infos in
 	bool _metaDataSet;                        //true if meta data is available
-	unsigned long _lastMetaIndexNotSet;       //the last meta index that is not set
-	unsigned long _lastWordIndexSet;          //the last word index used for the event calculation
-	unsigned long* _metaEventIndex;           //pointer to the array that holds the event number for every read out (meta_data row), meta data infos out
+	unsigned int _lastMetaIndexNotSet;       //the last meta index that is not set
+	unsigned int _lastWordIndexSet;          //the last word index used for the event calculation
+	unsigned int* _metaEventIndex;           //pointer to the array that holds the event number for every read out (meta_data row), meta data infos out
 	unsigned int _metaEventIndexLength;       //length of event number array
 
 	//counter histograms
-	unsigned long* _triggerErrorCounter;      //trigger error histogram
-	unsigned long* _errorCounter;             //error code histogram
-	unsigned long* _serviceRecordCounter;     //SR histogram
+	unsigned int* _triggerErrorCounter;      //trigger error histogram
+	unsigned int* _errorCounter;             //error code histogram
+	unsigned int* _serviceRecordCounter;     //SR histogram
 };
 

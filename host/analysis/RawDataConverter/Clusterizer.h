@@ -25,12 +25,11 @@
  */
 
 #pragma once
-#include "defines.h"
-#include "Basis.h"
 
-#include <vector>
-#include <algorithm>
-#include <set>
+//#include <set>
+
+#include "Basis.h"
+#include "defines.h"
 
 class Clusterizer: public Basis
 {
@@ -61,15 +60,24 @@ private:
 	inline bool deleteHit(const unsigned short& pCol, const unsigned short& pRow, const unsigned short& pRelBcid);				//delete hit at position pCol,pRow from hit map, returns true if hit array is empty
 	inline bool hitExists(const unsigned short& pCol, const unsigned short& pRow, const unsigned short& pRelBcid);				//check if the hit exists
 	void initChargeCalibMap();											//sets the calibration map to all entries = 0
-	void initHitMap();													//sets the hit map to no hit = all entries = -1
 	void addClusterToResults();											//adds the actual cluster data to the result arrays
 	bool clusterize();
 
-	void clearHitMap();													//reset the hit map
 	void clearClusterMaps();											//reset the cluster maps
 	void clearActualClusterData();
 	void clearActualEventVariables();
 	void showHits();													//shows the hit in the hit map for debugging
+
+	void allocateHitMap();
+	void initHitMap();													//sets the hit map to no hit = all entries = -1
+	void clearHitMap();
+	void deleteHitMap();
+
+	void allocateHitIndexMap();
+	void deleteHitIndexMap();
+
+	void allocateChargeMap();
+	void deleteChargeMap();
 
 	void addCluster();													//adds the actual cluster to the _clusterInfo array
 
@@ -85,15 +93,18 @@ private:
 	unsigned int _Nclusters;
 
 	//cluster results
-	unsigned long _clusterTots[__MAXTOTBINS][__MAXCLUSTERHITSBINS];		//array containing the cluster tots/cluster size for histogramming
-	unsigned long _clusterCharges[__MAXCHARGEBINS][__MAXCLUSTERHITSBINS];//array containing the cluster tots/cluster size for histogramming
-	unsigned long _clusterHits[__MAXCLUSTERHITSBINS];					//array containing the cluster number of hits for histogramming
-	unsigned long _clusterPosition[__MAXPOSXBINS][__MAXPOSYBINS];		//array containing the cluster x positions for histogramming
+//	unsigned int _clusterTots[__MAXTOTBINS][__MAXCLUSTERHITSBINS];		//array containing the cluster tots/cluster size for histogramming
+//	unsigned int _clusterCharges[__MAXCHARGEBINS][__MAXCLUSTERHITSBINS];//array containing the cluster tots/cluster size for histogramming
+//	unsigned int _clusterHits[__MAXCLUSTERHITSBINS];					//array containing the cluster number of hits for histogramming
+//	unsigned int _clusterPosition[__MAXPOSXBINS][__MAXPOSYBINS];		//array containing the cluster x positions for histogramming
 
 	//data arrays for one event
-	short int _hitMap[RAW_DATA_MAX_COLUMN][RAW_DATA_MAX_ROW][__MAXBCID];//array containing the hits TOT value for max 16 BCIDs
-	unsigned int _hitIndexMap[RAW_DATA_MAX_COLUMN][RAW_DATA_MAX_ROW][__MAXBCID];//array containing the hit indizes from the input hit array
-	float _chargeMap[RAW_DATA_MAX_COLUMN][RAW_DATA_MAX_ROW][14];		//array containing the lookup charge values for each pixel and TOT
+	short int* _hitMap;       											//2d hit histogram for each relative BCID (in total 3d, linearly sorted via col, row, rel. BCID)
+//	short int _hitMap[RAW_DATA_MAX_COLUMN][RAW_DATA_MAX_ROW][__MAXBCID];//array containing the hits TOT value for max 16 BCIDs
+//	unsigned int _hitIndexMap[RAW_DATA_MAX_COLUMN][RAW_DATA_MAX_ROW][__MAXBCID];//array containing the hit indices from the input hit array
+	unsigned int* _hitIndexMap;
+	float* _chargeMap;													//array containing the lookup charge values for each pixel and TOT
+//	float _chargeMap[RAW_DATA_MAX_COLUMN][RAW_DATA_MAX_ROW][14];		//array containing the lookup charge values for each pixel and TOT
 
 	//cluster settings
 	unsigned short _dx;													//max distance in x between two hits that they belong to a cluster
@@ -126,7 +137,7 @@ private:
 	float _actualClusterCharge;											//temporary value holding the total charge value of the actual cluster
 
 	//actual event variables
-	unsigned long _actualEventNumber;  //event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
+	unsigned int _actualEventNumber;  //event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
 	unsigned char _actualEventStatus;
 
 	bool _abortCluster;													//set to true if one cluster TOT hit exeeds _maxClusterHitTot, cluster is not added to the result array

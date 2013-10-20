@@ -196,7 +196,7 @@ class AnalyzeRawData(object):
                     if(scan_parameters != None):
                         nEventIndex = self.interpreter.get_n_meta_data_event()
                         self.histograming.add_meta_event_index(self.meta_event_index, nEventIndex)
-                    self.histograming.add_hits(hits, Nhits)
+                    self.histograming.add_hits(hits[:Nhits], Nhits)
                     if (self._create_hit_table == True):
                         hit_table.append(hits[:Nhits])
                     print int(float(float(iWord)/float(table_size)*100.)),
@@ -226,43 +226,43 @@ class AnalyzeRawData(object):
         if (self._create_service_record_hist):
             self.service_record_hist = np.zeros(32, dtype=np.uint32)    # IMPORTANT: has to be global to avoid deleting before c library is deleted 
             self.interpreter.get_service_records_counters(self.service_record_hist)
-            service_record_hist_table = self.out_file_h5.create_carray(self.out_file_h5.root, name = 'HistServiceRecord', title = 'Service Record Histogram', atom = tb.Atom.from_dtype(self.service_record_hist.dtype), shape = self.service_record_hist.shape, filters = self._filter_table)
+            service_record_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name = 'HistServiceRecord', title = 'Service Record Histogram', atom = tb.Atom.from_dtype(self.service_record_hist.dtype), shape = self.service_record_hist.shape, filters = self._filter_table)
             service_record_hist_table[:] = self.service_record_hist
         if (self._create_error_hist):
             self.error_counter_hist = np.zeros(16, dtype=np.uint32)
             self.interpreter.get_error_counters(self.error_counter_hist)
-            error_counter_hist_table = self.out_file_h5.create_carray(self.out_file_h5.root, name = 'HistErrorCounter', title = 'Error Counter Histogram', atom = tb.Atom.from_dtype(self.error_counter_hist.dtype), shape = self.error_counter_hist.shape, filters = self._filter_table)
+            error_counter_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name = 'HistErrorCounter', title = 'Error Counter Histogram', atom = tb.Atom.from_dtype(self.error_counter_hist.dtype), shape = self.error_counter_hist.shape, filters = self._filter_table)
             error_counter_hist_table[:] = self.error_counter_hist 
         if (self._create_trigger_error_hist):
             self.trigger_error_counter_hist = np.zeros(8, dtype=np.uint32)
             self.interpreter.get_trigger_error_counters(self.trigger_error_counter_hist)
-            trigger_error_counter_hist_table = self.out_file_h5.create_carray(self.out_file_h5.root, name = 'HistTriggerErrorCounter', title = 'Trigger Error Counter Histogram', atom = tb.Atom.from_dtype(self.trigger_error_counter_hist.dtype), shape = self.trigger_error_counter_hist.shape, filters = self._filter_table)
+            trigger_error_counter_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name = 'HistTriggerErrorCounter', title = 'Trigger Error Counter Histogram', atom = tb.Atom.from_dtype(self.trigger_error_counter_hist.dtype), shape = self.trigger_error_counter_hist.shape, filters = self._filter_table)
             trigger_error_counter_hist_table[:] = self.trigger_error_counter_hist
         if (self._create_tot_hist):
             self.tot_hist = np.zeros(16, dtype=np.uint32)
             self.histograming.get_tot_hist(self.tot_hist)
-            tot_hist_table = self.out_file_h5.create_carray(self.out_file_h5.root, name = 'HistTot', title = 'TOT Histogram', atom = tb.Atom.from_dtype(self.tot_hist.dtype), shape = self.tot_hist.shape, filters = self._filter_table)
+            tot_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name = 'HistTot', title = 'TOT Histogram', atom = tb.Atom.from_dtype(self.tot_hist.dtype), shape = self.tot_hist.shape, filters = self._filter_table)
             tot_hist_table[:] = self.tot_hist
         if (self._create_rel_bcid_hist):
             self.rel_bcid_hist = np.zeros(16, dtype=np.uint32)
             self.histograming.get_rel_bcid_hist(self.rel_bcid_hist)
-            rel_bcid_hist_table = self.out_file_h5.create_carray(self.out_file_h5.root, name = 'HistRelBcid', title = 'relative BCID Histogram', atom = tb.Atom.from_dtype(self.rel_bcid_hist.dtype), shape = self.rel_bcid_hist.shape, filters = self._filter_table)
+            rel_bcid_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name = 'HistRelBcid', title = 'relative BCID Histogram', atom = tb.Atom.from_dtype(self.rel_bcid_hist.dtype), shape = self.rel_bcid_hist.shape, filters = self._filter_table)
             rel_bcid_hist_table[:] = self.rel_bcid_hist
         if (self._create_occupancy_hist):
-            self.occupancy = np.zeros(80*336*self.histograming.get_nparameters(), dtype=np.uint32)  # create linear array as it is created in histogram class
+            self.occupancy = np.zeros(80*336*self.histograming.get_n_parameters(), dtype=np.uint32)  # create linear array as it is created in histogram class
             self.histograming.get_occupancy(self.occupancy)   
-            occupancy_array = np.reshape(a = self.occupancy.view(), newshape = (80,336,self.histograming.get_nparameters()), order='F')  # make linear array to 3d array (col,row,parameter)
-            occupancy_array_table = self.out_file_h5.create_carray(self.out_file_h5.root, name = 'HistOcc', title = 'Occupancy Histogram', atom = tb.Atom.from_dtype(self.occupancy.dtype), shape = (336,80,self.histograming.get_nparameters()), filters = self._filter_table)
-            occupancy_array_table[0:336, 0:80, 0:self.histograming.get_nparameters()] = np.swapaxes(occupancy_array, 0, 1) # swap axis col,row,parameter --> row, col,parameter
+            occupancy_array = np.reshape(a = self.occupancy.view(), newshape = (80,336,self.histograming.get_n_parameters()), order='F')  # make linear array to 3d array (col,row,parameter)
+            occupancy_array_table = self.out_file_h5.createCArray(self.out_file_h5.root, name = 'HistOcc', title = 'Occupancy Histogram', atom = tb.Atom.from_dtype(self.occupancy.dtype), shape = (336,80,self.histograming.get_n_parameters()), filters = self._filter_table)
+            occupancy_array_table[0:336, 0:80, 0:self.histograming.get_n_parameters()] = np.swapaxes(occupancy_array, 0, 1) # swap axis col,row,parameter --> row, col,parameter
         if (self._create_threshold_hists):
             self.threshold = np.zeros(80*336, dtype=np.float64)
             self.noise = np.zeros(80*336, dtype=np.float64)
             self.histograming.calculate_threshold_scan_arrays(self.threshold, self.noise)
             threshold_hist = np.reshape(a = self.threshold.view(), newshape = (80,336), order='F')
             noise_hist = np.reshape(a = self.noise.view(), newshape = (80,336), order='F')
-            threshold_hist_table = self.out_file_h5.create_carray(self.out_file_h5.root, name = 'HistThreshold', title = 'Threshold Histogram', atom = tb.Atom.from_dtype(threshold_hist.dtype), shape = (336,80), filters = self._filter_table)
+            threshold_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name = 'HistThreshold', title = 'Threshold Histogram', atom = tb.Atom.from_dtype(threshold_hist.dtype), shape = (336,80), filters = self._filter_table)
             threshold_hist_table[0:336, 0:80] = np.swapaxes(threshold_hist,0,1)
-            noise_hist_table = self.out_file_h5.create_carray(self.out_file_h5.root, name = 'HistNoise', title = 'Noise Histogram', atom = tb.Atom.from_dtype(noise_hist.dtype), shape = (336,80), filters = self._filter_table)
+            noise_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name = 'HistNoise', title = 'Noise Histogram', atom = tb.Atom.from_dtype(noise_hist.dtype), shape = (336,80), filters = self._filter_table)
             noise_hist_table[0:336, 0:80] = np.swapaxes(noise_hist,0,1)
     
     def plotHistograms(self, scan_data_filename = None):

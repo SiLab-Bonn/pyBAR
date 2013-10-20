@@ -23,7 +23,7 @@ cdef packed struct numpy_hit_info:
     np.uint8_t triggerStatus#event trigger status
     np.uint32_t serviceRecord #event service records
     np.uint8_t eventStatus #event status value (unsigned char: 0 to 255)
-    
+     
 cdef packed struct numpy_cluster_hit_info:
     np.uint32_t eventNumber  #event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
     np.uint32_t triggerNumber #external trigger number for read out system
@@ -38,7 +38,7 @@ cdef packed struct numpy_cluster_hit_info:
     np.uint8_t eventStatus #event status value (unsigned char: 0 to 255)
     np.uint16_t clusterID # the cluster id of the hit
     np.uint8_t isSeed # flag to mark seed pixel
-    
+     
 cdef packed struct numpy_cluster_info:
     np.uint32_t eventNumber # event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
     np.uint16_t ID # the cluster id of the cluster
@@ -50,8 +50,6 @@ cdef packed struct numpy_cluster_info:
     np.uint8_t eventStatus # event status value (unsigned char: 0 to 255)
           
 cdef extern from "Clusterizer.h":
-    cdef cppclass MetaInfo:
-        MetaInfo()
     cdef cppclass HitInfo:
         HitInfo()
     cdef cppclass ClusterHitInfo:
@@ -64,8 +62,9 @@ cdef extern from "Clusterizer.h":
         void setWarningOutput(bool pToggle)
         void setInfoOutput(bool pToggle)
         void setDebugOutput(bool pToggle)
-        
+         
         void addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
+         
         void setClusterHitInfoArray(ClusterHitInfo*& rClusterHitInfo, const unsigned int& rSize)
         void setClusterInfoArray(ClusterInfo*& rClusterHitInfo, const unsigned int& rSize)
         void setXclusterDistance(const unsigned int& pDx)
@@ -74,9 +73,9 @@ cdef extern from "Clusterizer.h":
         void setMinClusterHits(const unsigned int&  pMinNclusterHits)
         void setMaxClusterHits(const unsigned int&  pMaxNclusterHits)
         void setMaxClusterHitTot(const unsigned int&  pMaxClusterHitTot)  
-        
-        void clusterize()
-        
+#         
+        #void clusterize()
+#         
         unsigned int getNclusters()
         void test()
 
@@ -115,7 +114,7 @@ cdef class PyDataClusterizer:
         self.thisptr.setMaxClusterHits(<const unsigned int&> value)
     def set_max_cluster_hit_tot(self,value):
         self.thisptr.setMaxClusterHitTot(<const unsigned int&>  value)
-        
+         
     def get_n_clusters(self):
         return <unsigned int> self.thisptr.getNclusters()
     def test(self):
