@@ -3,7 +3,6 @@
 Clusterizer::Clusterizer(void)
 {
 	setSourceFileName("Clusterizer");
-	setDebugOutput(true);
 	_dx = 1;
 	_dy = 1;
 	_DbCID = 0;
