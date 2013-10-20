@@ -324,9 +324,9 @@ class AnalyzeRawData(object):
                 self.clusterizer.set_cluster_hit_info_array(cluster_hits)
                 self.clusterizer.set_cluster_info_array(cluster)
                 if(self._create_cluster_table):
-                    cluster_table = out_file_h5.create_table(out_file_h5.root, name = 'Cluster', description = data_struct.ClusterInfoTable, title = 'cluster_hit_data', filters = self._filter_table, expectedrows=self._chunk_size)
+                    cluster_table = out_file_h5.createTable(out_file_h5.root, name = 'Cluster', description = data_struct.ClusterInfoTable, title = 'cluster_hit_data', filters = self._filter_table, expectedrows=self._chunk_size)
                 if(self._create_cluster_hit_table):
-                    cluster_hit_table = out_file_h5.create_table(out_file_h5.root, name = 'ClusterHits', description = data_struct.ClusterHitInfoTable, title = 'cluster_hit_data', filters = self._filter_table, expectedrows=self._chunk_size)
+                    cluster_hit_table = out_file_h5.createTable(out_file_h5.root, name = 'ClusterHits', description = data_struct.ClusterHitInfoTable, title = 'cluster_hit_data', filters = self._filter_table, expectedrows=self._chunk_size)
                 table_size = in_file_h5.root.Hits.shape[0]
                 last_event_start_index = 0
                 n_hits = 0  # number of hits in actual chunk
