@@ -48,9 +48,9 @@ cdef extern from "Histogram.h":
         void setInfoOutput(bool pToggle)
         void setDebugOutput(bool pToggle)
         
-        void getOccupancy(unsigned int& rNparameterValues, unsigned int*& rOccupancy)  #returns the occupancy histogram for all hits
-        void getTotHist(unsigned long*& rTotHist)          #returns the tot histogram for all hits
-        void getRelBcidHist(unsigned long*& rRelBcidHist)   #returns the relative BCID histogram for all hits
+        void getOccupancy(unsigned int& rNparameterValues, unsigned int*& rOccupancy, bool copy)  #returns the occupancy histogram for all hits
+        void getTotHist(unsigned long*& rTotHist, bool copy)          #returns the tot histogram for all hits
+        void getRelBcidHist(unsigned long*& rRelBcidHist, bool copy)   #returns the relative BCID histogram for all hits
         
         void createOccupancyHist(bool CreateOccHist)
         void createRelBCIDHist(bool CreateRelBCIDHist)
@@ -105,12 +105,13 @@ cdef class PyDataHistograming:
         
     def get_occupancy(self, np.ndarray[np.uint32_t, ndim=1] occupancy):
         cdef unsigned int NparameterValues = 0
-        self.thisptr.getOccupancy(NparameterValues, <unsigned int*&> occupancy.data)
+        self.thisptr.getOccupancy(NparameterValues, <unsigned int*&> occupancy.data, <bool> True)
         return NparameterValues
     def get_tot_hist(self, np.ndarray[np.uint32_t, ndim=1] tot_hist):
-        self.thisptr.getTotHist(<unsigned long*&> tot_hist.data)
+        self.thisptr.getTotHist(<unsigned long*&> tot_hist.data, <bool> True)
     def get_rel_bcid_hist(self, np.ndarray[np.uint32_t, ndim=1] rel_bcid_hist):
-        self.thisptr.getRelBcidHist(<unsigned long*&> rel_bcid_hist.data)
+        self.thisptr.getRelBcidHist(<unsigned long*&> rel_bcid_hist.data, <bool> True)
+        
     def get_min_parameter(self):
         return <unsigned int> self.thisptr.getMinParameter()
     def get_max_parameter(self):
