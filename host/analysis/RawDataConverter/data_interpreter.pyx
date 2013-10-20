@@ -95,15 +95,15 @@ cdef class PyDataInterpreter:
         self.thisptr.setMetaDataEventIndex(<unsigned long*&> meta_data_event_index.data, <const unsigned int&> meta_data_event_index.shape[0]) 
     def get_service_records_counters(self, np.ndarray[np.uint32_t, ndim=1] service_records_counters):
         cdef unsigned int Ncounters = 0
-        self.thisptr.getServiceRecordsCounters(<unsigned long*&> service_records_counters.data, <unsigned int> Ncounters, <bool> True)
+        self.thisptr.getServiceRecordsCounters(<unsigned long*&> service_records_counters.data, <unsigned int&> Ncounters, <bool> True)
         return Ncounters
     def get_error_counters(self, np.ndarray[np.uint32_t, ndim=1] error_counters):
         cdef unsigned int NerrorCodes = 0
-        self.thisptr.getErrorCounters(<unsigned long*&> error_counters.data, NerrorCodes, <bool> True)
+        self.thisptr.getErrorCounters(<unsigned long*&> error_counters.data, <unsigned int&> NerrorCodes, <bool> True)
         return NerrorCodes
     def get_trigger_error_counters(self, np.ndarray[np.uint32_t, ndim=1] trigger_error_counters):
         cdef unsigned int NtriggerErrorCodes = 0
-        self.thisptr.getTriggerErrorCounters(<unsigned long*&> trigger_error_counters.data, NtriggerErrorCodes, <bool> True)
+        self.thisptr.getTriggerErrorCounters(<unsigned long*&> trigger_error_counters.data, <unsigned int&> NtriggerErrorCodes, <bool> True)
         return NtriggerErrorCodes
     def get_n_array_hits(self):
         return <unsigned int> self.thisptr.getNarrayHits()
