@@ -29,8 +29,6 @@ public:
 	unsigned int getNarrayHits(){return _hitIndex;};
 	unsigned int getNmetaDataEvent(){return _metaEventIndexLength;};
 
-	//void getMetaEventIndex(unsigned int& rEventNumberIndex, unsigned int*& rEventNumber);  //returns the meta event index filled upto the actual interpreted hits
-
 	//initializers, should be called before first call of interpretRawData() with new data file
 	void resetCounters();                                     //reset summary counters
 	void resetEventVariables();											          //resets event variables before starting new event
@@ -61,6 +59,8 @@ public:
 	void printStatus();                                      //print the interpreter options and counter values (#hits, #data records,...)
 	void printHits(const unsigned int& pNhits = 100);			    //prints the hits stored in the array
 	void debugEvents(const unsigned int& rStartEvent = 0, const unsigned int& rStopEvent = 0, const bool& debugEvents = true);
+
+	unsigned int getHitSize();								//return the size of one hit entry in the hit array, needed to check data in memory alignment
 
 private:
 	void addHit(const unsigned char& pRelBCID, const unsigned short int& pLVLID, const unsigned char& pColumn, const unsigned short int& pRow, const unsigned char& pTot, const unsigned short int& pBCID); //adds the hit to the event hits array _hitBuffer

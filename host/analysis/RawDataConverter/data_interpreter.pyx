@@ -67,6 +67,8 @@ cdef extern from "Interpret.h":
         void debugEvents(const unsigned int& rStartEvent, const unsigned int& rStopEvent, const bool& debugEvents)
         
         void storeEventHits()
+        
+        unsigned int getHitSize()
 
 cdef class PyDataInterpreter:
     cdef Interpret* thisptr      # hold a C++ instance which we're wrapping
@@ -125,3 +127,5 @@ cdef class PyDataInterpreter:
         self.thisptr.storeEventHits()
     def debug_events(self,start_event,stop_event,toggle = True):
         self.thisptr.debugEvents(<const unsigned int&> start_event, <const unsigned int&> stop_event, <const bool&> toggle)
+    def get_hit_size(self):
+        return <unsigned int> self.thisptr.getHitSize()

@@ -413,6 +413,11 @@ void Interpret::debugEvents(const unsigned int& rStartEvent, const unsigned int&
 	_stopDebugEvent = rStopEvent;
 }
 
+unsigned int Interpret::getHitSize()
+{
+	return sizeof(HitInfo);
+}
+
 //private
 
 void Interpret::addHit(const unsigned char& pRelBCID, const unsigned short int& pLVLID, const unsigned char& pColumn, const unsigned short int& pRow, const unsigned char& pTot, const unsigned short int& pBCID)	//add hit with event number, column, row, relative BCID [0:15], tot, trigger ID
