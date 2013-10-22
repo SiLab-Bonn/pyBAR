@@ -11,6 +11,8 @@ Clusterizer::Clusterizer(void)
 	_runTime = 0;
 	_nHits = 0;
 	_maxClusterHitTot = 13;
+	_createClusterHitInfoArray = false;
+	_createClusterInfoArray = true;
 	_minColHitPos = RAW_DATA_MAX_COLUMN-1;
 	_maxColHitPos = 0;
 	_minRowHitPos = RAW_DATA_MAX_ROW-1;
@@ -172,7 +174,6 @@ bool Clusterizer::clusterize()
 
 void Clusterizer::test()
 {
-	_clusterHitInfo[0].eventNumber = 666;
 	for(unsigned int i=0; i<_clusterHitInfoSize; ++i){
 		std::cout<<"_clusterHitInfo["<<i<<"].eventNumber "<<_clusterHitInfo[i].eventNumber<<"\n";
 		std::cout<<"_clusterHitInfo["<<i<<"].triggerNumber "<<_clusterHitInfo[i].triggerNumber<<"\n";
@@ -236,18 +237,20 @@ void Clusterizer::addHit(const unsigned int& pHitIndex)
 	if (tCharge >= 0)
 		_chargeMap[(long)tCol + (long)tRow * (long)RAW_DATA_MAX_COLUMN + (long)tTot * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] = tCharge;
 
-	_clusterHitInfo[pHitIndex].eventNumber = _hitInfo[pHitIndex].eventNumber;
-	_clusterHitInfo[pHitIndex].triggerNumber = _hitInfo[pHitIndex].triggerNumber;
-	_clusterHitInfo[pHitIndex].relativeBCID = _hitInfo[pHitIndex].relativeBCID;
-	_clusterHitInfo[pHitIndex].LVLID = _hitInfo[pHitIndex].LVLID;
-	_clusterHitInfo[pHitIndex].column = _hitInfo[pHitIndex].column;
-	_clusterHitInfo[pHitIndex].row = _hitInfo[pHitIndex].row;
-	_clusterHitInfo[pHitIndex].tot = _hitInfo[pHitIndex].tot;
-	_clusterHitInfo[pHitIndex].BCID = _hitInfo[pHitIndex].BCID;
-	_clusterHitInfo[pHitIndex].triggerStatus = _hitInfo[pHitIndex].triggerStatus;
-	_clusterHitInfo[pHitIndex].serviceRecord = _hitInfo[pHitIndex].serviceRecord;
-	_clusterHitInfo[pHitIndex].eventStatus = _hitInfo[pHitIndex].eventStatus;
-	_clusterHitInfo[pHitIndex].isSeed = 0;
+	if(_createClusterHitInfoArray){
+		_clusterHitInfo[pHitIndex].eventNumber = _hitInfo[pHitIndex].eventNumber;
+		_clusterHitInfo[pHitIndex].triggerNumber = _hitInfo[pHitIndex].triggerNumber;
+		_clusterHitInfo[pHitIndex].relativeBCID = _hitInfo[pHitIndex].relativeBCID;
+		_clusterHitInfo[pHitIndex].LVLID = _hitInfo[pHitIndex].LVLID;
+		_clusterHitInfo[pHitIndex].column = _hitInfo[pHitIndex].column;
+		_clusterHitInfo[pHitIndex].row = _hitInfo[pHitIndex].row;
+		_clusterHitInfo[pHitIndex].tot = _hitInfo[pHitIndex].tot;
+		_clusterHitInfo[pHitIndex].BCID = _hitInfo[pHitIndex].BCID;
+		_clusterHitInfo[pHitIndex].triggerStatus = _hitInfo[pHitIndex].triggerStatus;
+		_clusterHitInfo[pHitIndex].serviceRecord = _hitInfo[pHitIndex].serviceRecord;
+		_clusterHitInfo[pHitIndex].eventStatus = _hitInfo[pHitIndex].eventStatus;
+		_clusterHitInfo[pHitIndex].isSeed = 0;
+	}
 }
 
 void Clusterizer::searchNextHits(const unsigned short& pCol, const unsigned short& pRow, const unsigned short& pRelBcid)
@@ -274,10 +277,12 @@ void Clusterizer::searchNextHits(const unsigned short& pCol, const unsigned shor
 		_actualClusterMaxTot = tTot;
 	}
 
-	if(_hitIndexMap[(long)pCol + (long)pRow * (long)RAW_DATA_MAX_COLUMN + (long)pRelBcid * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] < _clusterHitInfoSize)
-		_clusterHitInfo[_hitIndexMap[(long)pCol + (long)pRow * (long)RAW_DATA_MAX_COLUMN + (long)pRelBcid * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW]].clusterID = _actualClusterID;
+	if(_hitIndexMap[(long)pCol + (long)pRow * (long)RAW_DATA_MAX_COLUMN + (long)pRelBcid * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] < _clusterHitInfoSize){
+		if(_createClusterHitInfoArray)
+			_clusterHitInfo[_hitIndexMap[(long)pCol + (long)pRow * (long)RAW_DATA_MAX_COLUMN + (long)pRelBcid * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW]].clusterID = _actualClusterID;
+	}
 	else
-		throw std::out_of_range("hit index is out of range");
+		throw std::out_of_range("Clusterizer: hit index is out of range");
 
 	if(tTot > (short int) _maxClusterHitTot)	//omit cluster with a hit tot higher than _maxClusterHitTot, clustering is not aborted to delete all hits from this cluster from the hit array
 		_abortCluster = true;
@@ -584,22 +589,26 @@ void Clusterizer::showHits()
 void Clusterizer::addCluster()
 {
 	if(_Nclusters < _clusterInfoSize){
-		_clusterInfo[_Nclusters].eventNumber = _actualEventNumber;
-		_clusterInfo[_Nclusters].ID = _actualClusterID;
-		_clusterInfo[_Nclusters].size = _actualClusterSize;
-		_clusterInfo[_Nclusters].Tot = _actualClusterTot;
-		_clusterInfo[_Nclusters].charge = _actualClusterCharge;
-		_clusterInfo[_Nclusters].seed_column = _actualClusterSeed_column+1;
-		_clusterInfo[_Nclusters].seed_row = _actualClusterSeed_row+1;
-		_clusterInfo[_Nclusters].eventStatus = _actualEventStatus;
+		if(_createClusterInfoArray){
+			_clusterInfo[_Nclusters].eventNumber = _actualEventNumber;
+			_clusterInfo[_Nclusters].ID = _actualClusterID;
+			_clusterInfo[_Nclusters].size = _actualClusterSize;
+			_clusterInfo[_Nclusters].Tot = _actualClusterTot;
+			_clusterInfo[_Nclusters].charge = _actualClusterCharge;
+			_clusterInfo[_Nclusters].seed_column = _actualClusterSeed_column+1;
+			_clusterInfo[_Nclusters].seed_row = _actualClusterSeed_row+1;
+			_clusterInfo[_Nclusters].eventStatus = _actualEventStatus;
+		}
 		_Nclusters++;
 	}
 	else
 		throw std::out_of_range("too many clusters attempt to be stored in cluster array");
 
 	//set seed
-	if(_hitIndexMap[(long)_actualClusterSeed_column + (long)_actualClusterSeed_row * (long)RAW_DATA_MAX_COLUMN + (long)_actualClusterSeed_relbcid * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] < _clusterHitInfoSize)
-		_clusterHitInfo[_hitIndexMap[(long)_actualClusterSeed_column + (long)_actualClusterSeed_row * (long)RAW_DATA_MAX_COLUMN + (long)_actualClusterSeed_relbcid * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW]].isSeed = 1;
+	if(_hitIndexMap[(long)_actualClusterSeed_column + (long)_actualClusterSeed_row * (long)RAW_DATA_MAX_COLUMN + (long)_actualClusterSeed_relbcid * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] < _clusterHitInfoSize){
+		if(_createClusterHitInfoArray)
+			_clusterHitInfo[_hitIndexMap[(long)_actualClusterSeed_column + (long)_actualClusterSeed_row * (long)RAW_DATA_MAX_COLUMN + (long)_actualClusterSeed_relbcid * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW]].isSeed = 1;
+	}
 	else
 		throw std::out_of_range("hit index is out of range");
 }
