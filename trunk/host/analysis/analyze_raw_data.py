@@ -1,6 +1,8 @@
 ''' Script to convert the raw data and to plot all histograms'''
 import tables as tb
 import numpy as np
+import logging
+logging.basicConfig(level=logging.INFO, format = "%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 import data_struct
 from plotting import plotting
@@ -182,7 +184,7 @@ class AnalyzeRawData(object):
                          ('serviceRecord',np.uint32),
                          ('eventStatus',np.uint8)
                          ])
-        print 'Interpreting:',
+        logging.info('Interpreting:')
         self._filter_table = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
         with tb.openFile(self._input_file, mode = "r") as in_file_h5:
             with tb.openFile(self._output_file, mode = "w", title = "Interpreted FE-I4 raw data") as self.out_file_h5:
@@ -219,12 +221,12 @@ class AnalyzeRawData(object):
                     self.histograming.add_hits(hits[:Nhits], Nhits)
                     if (self._create_hit_table == True):
                         hit_table.append(hits[:Nhits])
-                    print int(float(float(iWord)/float(table_size)*100.)),
+                    logging.info('%d %%' % int(float(float(iWord)/float(table_size)*100.)))
             
                 if (self._create_hit_table == True):
                     hit_table.flush()  
                 self._store_additional_data()
-                print '100 done'
+                logging.info('100 %')
         del hits     
         
     def _store_additional_data(self):
@@ -241,7 +243,7 @@ class AnalyzeRawData(object):
                     entry.append()
                 meta_data_out_table.flush()
             else:
-                print 'ERROR meta data analysis failed'
+                logging.error('meta data analysis failed')
         
         if (self._create_service_record_hist):
             self.service_record_hist = np.zeros(32, dtype=np.uint32)    # IMPORTANT: has to be global to avoid deleting before c library is deleted 
@@ -292,7 +294,7 @@ class AnalyzeRawData(object):
         if(output_file != None):
             self._output_file = output_file
             
-        cluster_hits = np.zeros((1.01*self._chunk_size,), dtype= 
+        cluster_hits = np.empty((2*self._chunk_size,), dtype= 
                 [('eventNumber', np.uint32), 
                  ('triggerNumber',np.uint32),
                  ('relativeBCID',np.uint8),
@@ -308,7 +310,7 @@ class AnalyzeRawData(object):
                  ('isSeed',np.uint8)
                  ])
          
-        cluster = np.zeros((1.01*self._chunk_size,), dtype= 
+        cluster = np.empty((2*self._chunk_size,), dtype= 
                 [('eventNumber', np.uint32), 
                  ('ID',np.uint16),
                  ('size',np.uint16),
@@ -330,6 +332,7 @@ class AnalyzeRawData(object):
                 table_size = in_file_h5.root.Hits.shape[0]
                 last_event_start_index = 0
                 n_hits = 0  # number of hits in actual chunk
+                logging.info('Clustering:')
                 for iHit in range(0,table_size, self._chunk_size):
                     offset = last_event_start_index-n_hits if iHit != 0 else 0 # reread last hits of last event of last chunk
                     hits = in_file_h5.root.Hits.read(iHit+offset,iHit+self._chunk_size)
@@ -349,7 +352,9 @@ class AnalyzeRawData(object):
                         cluster_hit_table.append(cluster_hits[:last_event_start_index])
                     if(self._create_cluster_table):
                         cluster_table.append(cluster[:self.clusterizer.get_n_clusters()])
-                    print int(float(float(iHit)/float(table_size)*100.)),
+                        
+                    logging.info('%d %%' % int(float(float(iHit)/float(table_size)*100.)))
+                logging.info('100 %')
     
     def plotHistograms(self, scan_data_filename = None):
         with tb.openFile(self._output_file, mode = "r") as out_file_h5:
