@@ -9,6 +9,9 @@ from math import sqrt
 import re
 from matplotlib import colors, cm, legend
 
+import logging
+logging.basicConfig(level=logging.INFO, format = "%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
+
 def make_occupancy(cols, rows, max_occ = None):
     plt.clf()
     H, xedges, yedges = np.histogram2d(rows, cols, bins = (336, 80), range = [[1,336], [1,80]])
@@ -223,9 +226,7 @@ def plot_correlations(filenames, limit = None):
 
 def plotOccupancy(occupancy_hist, median = False, max_occ = None, filename = None):
     plt.clf()
-    H=np.empty(shape=(336,80),dtype=occupancy_hist.dtype)
     H = occupancy_hist
-    #print H[2, 2]
     extent = [0.5, 80.5, 336.5, 0.5]
     #     cmap = cm.get_cmap('copper_r')
     cmap = cm.get_cmap('PuBu', 10)
@@ -309,7 +310,7 @@ def create_2d_pixel_hist(hist2d, title = None, x_axis_title = None, y_axis_title
     try:
         plt.colorbar(boundaries = bounds, cmap = cmap, norm = norm, ticks = bounds, cax = cax)
     except:
-        print 'error printing color bar'
+        logging.warning('create_2d_pixel_hist: error printing color bar')
 
 
 def create_1d_hist(hist, title = None, x_axis_title = None, y_axis_title = None, bins = None, x_min = None, x_max = None):
@@ -355,7 +356,7 @@ def create_1d_hist(hist, title = None, x_axis_title = None, y_axis_title = None,
         ax.text(0.85, 0.9, textright, transform=ax.transAxes, fontsize=8,
         verticalalignment='top', bbox=props)
     except RuntimeError:
-        print("Fit failed, do not plot fit")
+        logging.info('create_1d_hist: Fit failed, do not plot fit')
         
     plt.ylim([0, plt.ylim()[1]*1.05])
 #     plt.xlim([np.amin(bins) if x_min == None else x_min, np.amax(bins) if x_max == None else x_max])  
