@@ -64,6 +64,9 @@ cdef extern from "Clusterizer.h":
         void setDebugOutput(bool pToggle)
          
         void addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
+        
+        void createClusterHitInfoArray(bool toggle)
+        void createClusterInfoArray(bool toggle)
          
         void setClusterHitInfoArray(ClusterHitInfo*& rClusterHitInfo, const unsigned int& rSize)
         void setClusterInfoArray(ClusterInfo*& rClusterHitInfo, const unsigned int& rSize)
@@ -97,6 +100,11 @@ cdef class PyDataClusterizer:
         
     def add_hits(self, np.ndarray[numpy_hit_info, ndim=1] hit_info):
         self.thisptr.addHits(<HitInfo*&> hit_info.data, <unsigned int> hit_info.shape[0])
+        
+    def create_cluster_hit_info_array(self, value = True):
+        self.thisptr.createClusterHitInfoArray(<bool> value)
+    def create_cluster_info_array(self, value = True):
+        self.thisptr.createClusterInfoArray(<bool> value)
         
     def set_cluster_hit_info_array(self, np.ndarray[numpy_cluster_hit_info, ndim=1] cluster_hit_info):
         self.thisptr.setClusterHitInfoArray(<ClusterHitInfo*&> cluster_hit_info.data, <const unsigned int&> cluster_hit_info.shape[0])     

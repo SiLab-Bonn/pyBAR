@@ -26,8 +26,6 @@
 
 #pragma once
 
-//#include <set>
-
 #include "Basis.h"
 #include "defines.h"
 
@@ -36,6 +34,9 @@ class Clusterizer: public Basis
 public:
 	Clusterizer(void);
 	~Clusterizer(void);
+
+	void createClusterHitInfoArray(bool toggle = true){_createClusterHitInfoArray = toggle;};
+	void createClusterInfoArray(bool toggle = true){_createClusterInfoArray = toggle;};
 
 	void setClusterHitInfoArray(ClusterHitInfo*& rClusterHitInfo, const unsigned int& rSize);	//set pointer to the cluster hit array to be filled
 	void setClusterInfoArray(ClusterInfo*& rClusterHitInfo, const unsigned int& rSize);	//set pointer to the cluster array to be filled
@@ -115,6 +116,8 @@ private:
 	unsigned short _maxClusterHits; 									//the maximum number of cluster hits allowed, if exeeded clustering aborted
 	unsigned int _runTime; 												//artificial value to represent the run time needed for clustering
 	unsigned int _lateHitTot;											//the tot value a hit is considered to be small (usually 14)
+	bool _createClusterHitInfoArray;									//true if ClusterHitInfoArray has to be filled
+	bool _createClusterInfoArray;										//true if ClusterHitInfoArray has to be filled
 
 	//actual clustering variables
 	unsigned int _nHits;												//number of hits for the actual event data to cluster
