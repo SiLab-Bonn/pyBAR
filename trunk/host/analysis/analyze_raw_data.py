@@ -43,7 +43,7 @@ class AnalyzeRawData(object):
         self.create_service_record_hist = True
         self.create_threshold_hists = False
         self.create_cluster_hit_table = False
-        self.create_cluster_table = True
+        self.create_cluster_table = False
         
     @property
     def chunk_size(self):
@@ -152,7 +152,7 @@ class AnalyzeRawData(object):
     @create_cluster_hit_table.setter
     def create_cluster_hit_table(self, value):
         self._create_cluster_hit_table = value
-        #self.clusterizer.create_cluster_hit_table(value) #TODO implement
+        self.clusterizer.create_cluster_hit_info_array(value)
         
     @property
     def create_cluster_table(self):
@@ -160,7 +160,7 @@ class AnalyzeRawData(object):
     @create_cluster_table.setter
     def create_cluster_table(self, value):
         self._create_cluster_table = value
-        #self.clusterizer.create_cluster_table(value) #TODO implement
+        self.clusterizer.create_cluster_info_array(value)
    
     def interpret_word_table(self, input_file = None, output_file = None, FEI4B = False):    
         if(input_file != None):
@@ -184,12 +184,47 @@ class AnalyzeRawData(object):
                          ('serviceRecord',np.uint32),
                          ('eventStatus',np.uint8)
                          ])
+        
+        if(self.create_cluster_hit_table or self.create_cluster_table):
+            cluster_hits = np.empty((2*self._chunk_size,), dtype= 
+                [('eventNumber', np.uint32), 
+                 ('triggerNumber',np.uint32),
+                 ('relativeBCID',np.uint8),
+                 ('LVLID',np.uint16),
+                 ('column',np.uint8),
+                 ('row',np.uint16),
+                 ('tot',np.uint8),
+                 ('BCID',np.uint16),
+                 ('triggerStatus',np.uint8),
+                 ('serviceRecord',np.uint32),
+                 ('eventStatus',np.uint8),
+                 ('clusterID',np.uint16),
+                 ('isSeed',np.uint8)
+                 ])
+            cluster = np.empty((2*self._chunk_size,), dtype= 
+                    [('eventNumber', np.uint32), 
+                     ('ID',np.uint16),
+                     ('size',np.uint16),
+                     ('Tot',np.uint16),
+                     ('Charge',np.float32),
+                     ('seed_column',np.uint8),
+                     ('seed_row',np.uint16),
+                     ('eventStatus',np.uint8)
+                     ])
+            self.clusterizer.set_cluster_hit_info_array(cluster_hits)
+            self.clusterizer.set_cluster_info_array(cluster)
+        
+        
         logging.info('Interpreting:')
         self._filter_table = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
         with tb.openFile(self._input_file, mode = "r") as in_file_h5:
             with tb.openFile(self._output_file, mode = "w", title = "Interpreted FE-I4 raw data") as self.out_file_h5:
                 if (self._create_hit_table == True):
                     hit_table = self.out_file_h5.createTable(self.out_file_h5.root, name = 'Hits', description = data_struct.HitInfoTable, title = 'hit_data', filters = self._filter_table, chunkshape=(self._chunk_size/100,))
+                if(self._create_cluster_table):
+                    cluster_table = self.out_file_h5.createTable(self.out_file_h5.root, name = 'Cluster', description = data_struct.ClusterInfoTable, title = 'cluster_hit_data', filters = self._filter_table, expectedrows=self._chunk_size)
+                if(self._create_cluster_hit_table):
+                    cluster_hit_table = self.out_file_h5.createTable(self.out_file_h5.root, name = 'ClusterHits', description = data_struct.ClusterHitInfoTable, title = 'cluster_hit_data', filters = self._filter_table, expectedrows=self._chunk_size)
                 self.meta_data = in_file_h5.root.meta_data[:]
                 try:
                     scan_parameters = in_file_h5.root.scan_parameters[:]
@@ -219,6 +254,14 @@ class AnalyzeRawData(object):
                         nEventIndex = self.interpreter.get_n_meta_data_event()
                         self.histograming.add_meta_event_index(self.meta_event_index, nEventIndex)
                     self.histograming.add_hits(hits[:Nhits], Nhits)
+                    
+                    if(self.create_cluster_hit_table or self.create_cluster_table):
+                        self.clusterizer.add_hits(hits[:Nhits])
+                        if(self._create_cluster_hit_table):
+                            cluster_hit_table.append(cluster_hits[:Nhits])
+                        if(self._create_cluster_table):
+                            cluster_table.append(cluster[:self.clusterizer.get_n_clusters()])
+                        
                     if (self._create_hit_table == True):
                         hit_table.append(hits[:Nhits])
                     logging.info('%d %%' % int(float(float(iWord)/float(table_size)*100.)))
