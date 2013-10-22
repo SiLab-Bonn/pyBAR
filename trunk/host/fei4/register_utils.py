@@ -73,28 +73,43 @@ class FEI4RegisterUtils(object):
                 pass
   
     def global_reset(self):
+        '''FEI4 Global Reset
+        
+        Special function to do a global reset on FEI4. Sequence of commands has to be like this, otherwise FEI4 will be left in weird state.  
+        '''
         commands = []
         commands.extend(self.register.get_commands("confmode"))
+        #vthin_altfine, vthin_altcoarse = self.register.get_global_register_value("Vthin_AltFine"), self.register.get_global_register_value("Vthin_AltCoarse")
+        #self.register.set_global_register_value("Vthin_AltFine", 255)
+        #self.register.set_global_register_value("Vthin_AltCoarse", 255)
+        #commands.extend(self.register.get_commands("wrregister", name = ["Vthin_AltFine", "Vthin_AltCoarse"]))
         commands.extend(self.register.get_commands("globalreset"))
+        self.send_commands(commands)
+        time.sleep(0.1)
+        commands[:] = []
+        commands.extend(self.register.get_commands("confmode"))
+        #self.register.set_global_register_value("Vthin_AltFine", vthin_altfine)
+        #self.register.set_global_register_value("Vthin_AltCoarse", vthin_altcoarse)
+        #commands.extend(self.register.get_commands("wrregister", name = ["Vthin_AltFine", "Vthin_AltCoarse"]))
         commands.extend(self.register.get_commands("runmode"))
         self.send_commands(commands)
         
-    def configure_all(self, same_mask_for_all_dc = False):
+    def configure_all(self, same_mask_for_all_dc=False, do_global_rest=False):
+        if do_global_rest:
+            self.global_reset()
         self.configure_global()
         self.configure_pixel(same_mask_for_all_dc = same_mask_for_all_dc)
         
     def configure_global(self):
         commands = []
         commands.extend(self.register.get_commands("confmode"))
-        commands.extend(self.register.get_commands("globalreset"))
-        commands.extend(self.register.get_commands("wrregister", readonly = False))
+        commands.extend(self.register.get_commands("wrregister", readonly=False))
         commands.extend(self.register.get_commands("runmode"))
         self.send_commands(commands)
         
     def configure_pixel(self, same_mask_for_all_dc = False):
         commands = []
         commands.extend(self.register.get_commands("confmode"))
-        commands.extend(self.register.get_commands("globalreset"))
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc = same_mask_for_all_dc, name = ["Imon", "Enable", "c_high", "c_low", "TDAC", "FDAC"]))
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc = same_mask_for_all_dc, name = ["EnableDigInj"])) # write EnableDigInj last
         commands.extend(self.register.get_commands("runmode"))

@@ -59,7 +59,7 @@ class ScanBase(object):
     def configure(self):
         logging.info('Configuring FE')
         #scan.register.load_configuration_file(config_file)
-        self.register_utils.configure_all(same_mask_for_all_dc = False)
+        self.register_utils.configure_all(same_mask_for_all_dc=False, do_global_rest=True)
         
     def start(self, configure = True, use_thread = False, **kwargs): # TODO: in Python 3 use def func(a,b,*args,kw1=None,**kwargs)
         self.use_thread = use_thread
@@ -104,7 +104,7 @@ class ScanBase(object):
             else:
                 raise RuntimeError('Thread is not None')
         if self.scan_thread is not None:
-            if timeout > 0:
+            if timeout:
                 wait_timeout_event = Event()
                 wait_timeout_event.clear()
                     

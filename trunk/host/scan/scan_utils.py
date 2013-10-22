@@ -1,13 +1,15 @@
+import logging
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import colors, cm
-import pprint
 import time
 import struct
 
 import BitVector
 
 from utils.utils import get_all_from_queue
+
+logging.basicConfig(level=logging.INFO, format = "%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 class FEI4ScanUtils(object):
     def __init__(self, register, register_utils):
@@ -67,7 +69,7 @@ class FEI4ScanUtils(object):
 #             else:
 #                 commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc = True, name = ["EnableDigInj"]))
             self.register_utils.send_commands(commands)
-            print repeat, 'injection(s):', 'mask step', mask_step
+            logging.info('%d injection(s): mask step %d' % (repeat, mask_step))
             
             for dc in dc_steps:
                 commands = []
