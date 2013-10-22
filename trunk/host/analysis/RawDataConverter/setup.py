@@ -35,9 +35,12 @@ hits = np.empty((1,), dtype=
          ('eventStatus',np.uint8)
          ])
 
-from data_interpreter import PyDataInterpreter
-interpreter = PyDataInterpreter()
-if(interpreter.get_hit_size() != hits.itemsize):
-    print "STATUS: FAILED. Please report to pohl@physik.uni-bonn.de"
-else:
-    print "STATUS: SUCCESS!"
+try:
+    from data_interpreter import PyDataInterpreter
+    interpreter = PyDataInterpreter()
+    if(interpreter.get_hit_size() != hits.itemsize):
+        print "STATUS: FAILED. Please report to pohl@physik.uni-bonn.de"
+    else:
+        print "STATUS: SUCCESS!"
+except:
+    print "STATUS: FAILED (IMPORT)"
