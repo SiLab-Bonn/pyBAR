@@ -30,10 +30,17 @@ cdef packed struct numpy_hit_info:
     np.uint8_t triggerStatus#event trigger status
     np.uint32_t serviceRecord #event service records
     np.uint8_t eventStatus #event status value (unsigned char: 0 to 255)
+    
+cdef packed struct numpy_meta_word_data:
+    np.uint32_t eventNumber
+    np.uint32_t start_word_index
+    np.uint32_t stop__word_index
           
 cdef extern from "Interpret.h":
     cdef cppclass MetaInfo:
         MetaInfo()
+    cdef cppclass MetaWordInfoOut:
+        MetaWordInfoOut()
     cdef cppclass HitInfo:
         HitInfo()    
     cdef cppclass Interpret(Basis):
@@ -50,6 +57,8 @@ cdef extern from "Interpret.h":
         
         void setMetaData(MetaInfo* &rMetaInfo, const unsigned int& tLength) except +
         void setMetaDataEventIndex(unsigned int*& rEventNumber, const unsigned int& rSize)
+        void setMetaDataWordIndex(MetaWordInfoOut*& rWordNumber, const unsigned int& rSize)
+        
         void interpretRawData(unsigned int* pDataWords, const unsigned int& pNdataWords) except +
 #         void getMetaEventIndex(unsigned int& rEventNumberIndex, unsigned int*& rEventNumber)
         void getHits(unsigned int &rNhits, HitInfo* &rHitInfo)
@@ -59,14 +68,16 @@ cdef extern from "Interpret.h":
         void getTriggerErrorCounters(unsigned int*& rTriggerErrorCounter, unsigned int& rNTriggerErrorCounters, bool copy) #returns the total trigger errors counter array
         unsigned int getNarrayHits()                 #returns the maximum index filled with hits in the hit array
         unsigned int getNmetaDataEvent()   #returns the maximum index filled with event data infos
+        unsigned int getNmetaDataWord()
         
         void resetEventVariables()
         void resetCounters()
+        void createMetaDataWordIndex(bool CreateMetaDataWordIndex)
 
         void printSummary()
         void debugEvents(const unsigned int& rStartEvent, const unsigned int& rStopEvent, const bool& debugEvents)
         
-        void storeEventHits()
+        void addEvent()
         
         unsigned int getHitSize()
 
@@ -95,6 +106,8 @@ cdef class PyDataInterpreter:
         self.thisptr.setMetaData(<MetaInfo*&> meta_data.data, <const unsigned int&> meta_data.shape[0])     
     def set_meta_event_data(self,np.ndarray[np.uint32_t, ndim=1] meta_data_event_index):
         self.thisptr.setMetaDataEventIndex(<unsigned int*&> meta_data_event_index.data, <const unsigned int&> meta_data_event_index.shape[0]) 
+    def set_meta_data_word_index(self, np.ndarray[numpy_meta_word_data, ndim=1] meta_word_data):
+        self.thisptr.setMetaDataWordIndex(<MetaWordInfoOut*&> meta_word_data.data, <const unsigned int&>  meta_word_data.shape[0])
     def get_service_records_counters(self, np.ndarray[np.uint32_t, ndim=1] service_records_counters):
         cdef unsigned int Ncounters = 0
         self.thisptr.getServiceRecordsCounters(<unsigned int*&> service_records_counters.data, <unsigned int&> Ncounters, <bool> True)
@@ -109,6 +122,8 @@ cdef class PyDataInterpreter:
         return NtriggerErrorCodes
     def get_n_array_hits(self):
         return <unsigned int> self.thisptr.getNarrayHits()
+    def get_n_meta_data_word(self):
+        return <unsigned int> self.thisptr.getNmetaDataWord()
     def get_n_meta_data_event(self):
         return <unsigned int> self.thisptr.getNmetaDataEvent()
 #     def get_meta_event_index(self, np.ndarray[np.uint32_t, ndim=1] event_index):
@@ -118,13 +133,15 @@ cdef class PyDataInterpreter:
     def reset_event_variables(self):
         self.thisptr.resetEventVariables()       
     def reset_counters(self):
-        self.thisptr.resetCounters()      
+        self.thisptr.resetCounters()
+    def create_meta_data_word_index(self, value = True):
+        self.thisptr.createMetaDataWordIndex(<bool> value)
     def print_summary(self):
         self.thisptr.printSummary()
     def set_FEI4B(self, setFEI4B):
         self.thisptr.setFEI4B(<bool> setFEI4B) 
-    def store_event_hits(self):
-        self.thisptr.storeEventHits()
+    def store_event(self):
+        self.thisptr.addEvent()
     def debug_events(self,start_event,stop_event,toggle = True):
         self.thisptr.debugEvents(<const unsigned int&> start_event, <const unsigned int&> stop_event, <const bool&> toggle)
     def get_hit_size(self):
