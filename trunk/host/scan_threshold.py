@@ -15,13 +15,16 @@ from analysis.data_struct import MetaTable
 
 from scan.scan import ScanBase
 
+import logging
+logging.basicConfig(level=logging.INFO, format = "%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
+
 class ThresholdScan(ScanBase):
     def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "scan_threshold", scan_data_path = None):
         super(ThresholdScan, self).__init__(config_file = config_file, definition_file = definition_file, bit_file = bit_file, device = device, scan_identifier = scan_identifier, scan_data_path = scan_data_path)
         
     def scan(self, configure = True):        
         scan_parameter = 'PlsrDAC'
-        scan_paramter_value_range = range(0, 100, 1)
+        scan_paramter_value_range = range(0, 101, 1)
         
         #    class ScanParameters(tb.IsDescription):
         #        scan_parameter = tb.UInt32Col(pos=0)
@@ -45,9 +48,10 @@ class ThresholdScan(ScanBase):
             for scan_paramter_value in scan_paramter_value_range:
                 self.readout.start()
                 
-                print 'Scan step:', scan_parameter, scan_paramter_value
+                logging.info('Scan step: %s %d' % (scan_parameter, scan_paramter_value))
                 
                 commands = []
+                commands.extend(self.register.get_commands("confmode"))
                 self.register.set_global_register_value(scan_parameter, scan_paramter_value)
                 commands.extend(self.register.get_commands("wrregister", name = [scan_parameter]))
                 self.register_utils.send_commands(commands)
