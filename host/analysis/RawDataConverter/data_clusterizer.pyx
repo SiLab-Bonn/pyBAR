@@ -63,7 +63,7 @@ cdef extern from "Clusterizer.h":
         void setInfoOutput(bool pToggle)
         void setDebugOutput(bool pToggle)
          
-        void addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
+        void addHits(HitInfo*& rHitInfo, const unsigned int& rNhits) except +
         
         void createClusterHitInfoArray(bool toggle)
         void createClusterInfoArray(bool toggle)
@@ -75,13 +75,16 @@ cdef extern from "Clusterizer.h":
         void setBCIDclusterDistance(const unsigned int&  pDbCID)
         void setMinClusterHits(const unsigned int&  pMinNclusterHits)
         void setMaxClusterHits(const unsigned int&  pMaxNclusterHits)
-        void setMaxClusterHitTot(const unsigned int&  pMaxClusterHitTot)  
+        void setMaxClusterHitTot(const unsigned int&  pMaxClusterHitTot)
+        
+        void getClusterSizeHist(unsigned int& rNparameterValues, unsigned int*& rClusterSize, bool copy)
+        void getClusterTotHist(unsigned int& rNparameterValues, unsigned int*& rClusterTot, bool copy)
 #         
         #void clusterize()
 #         
         unsigned int getNclusters()
         void test()
-
+cdef unsigned int rNparameterValues
 cdef class PyDataClusterizer:
     cdef Clusterizer* thisptr      # hold a C++ instance which we're wrapping
     def __cinit__(self):
@@ -121,8 +124,15 @@ cdef class PyDataClusterizer:
     def set_max_cluster_hits(self,value):
         self.thisptr.setMaxClusterHits(<const unsigned int&> value)
     def set_max_cluster_hit_tot(self,value):
-        self.thisptr.setMaxClusterHitTot(<const unsigned int&>  value)
-         
+        self.thisptr.setMaxClusterHitTot(<const unsigned int&> value)
+        
+    def get_cluster_size_hist(self, np.ndarray[np.uint32_t, ndim=1] cluster_size_hist, value = True):
+        self.thisptr.getClusterSizeHist(<unsigned int&> rNparameterValues, <unsigned int*&> cluster_size_hist.data, <bool> value)
+        return rNparameterValues
+    def get_cluster_tot_hist(self, np.ndarray[np.uint32_t, ndim=1] cluster_tot_hist, value = True):
+        self.thisptr.getClusterTotHist(<unsigned int&> rNparameterValues, <unsigned int*&> cluster_tot_hist.data, <bool> value)
+        return rNparameterValues
+    
     def get_n_clusters(self):
         return <unsigned int> self.thisptr.getNclusters()
     def test(self):
