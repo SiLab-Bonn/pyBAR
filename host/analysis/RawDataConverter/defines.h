@@ -56,12 +56,18 @@ typedef struct MetaInfo{
   unsigned int errorCode;     //error code for the read out (0: no error)
 } MetaInfo;
 
-//structure for the output meta data
+//structures for the output meta data
 typedef struct MetaInfoOut{
   unsigned int eventIndex;   //event number of the read out
   double timeStamp;           //time stamp of the readout         
   unsigned int errorCode;     //error code for the read out (0: no error)
 } MetaInfoOut;
+
+typedef struct MetaWordInfoOut{
+  unsigned int eventIndex;   //event number
+  unsigned int startWordIdex;//start word index
+  unsigned int stopWordIdex; //stop word index
+} MetaWordInfoOut;
 
 //structure to read the parameter information table
 typedef struct ParInfo{
@@ -189,7 +195,7 @@ typedef struct ParInfo{
 #define __MAXBCID 16			//maximum possible BCID window width
 #define __MAXTOTBINS 32			//number of TOT bins for the cluster tot histogram (in TOT = [0:31])
 #define __MAXCHARGEBINS 4096	//number of charge bins for the cluster charge histogram (in PlsrDAC)
-#define __MAXCLUSTERHITSBINS 32	//number of for the cluster size (=# hits) histogram
+#define __MAXCLUSTERHITSBINS 1024	//number of for the cluster size (=# hits) histogram
 #define __MAXPOSXBINS 1000		//number of bins in x for the 2d hit position histogram
 #define __MAXPOSYBINS 1000		//number of bins in y for the 2d hit position histogram
 #define __PIXELSIZEX 250		//250 um
