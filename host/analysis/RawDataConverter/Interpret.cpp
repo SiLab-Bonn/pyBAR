@@ -12,6 +12,8 @@ Interpret::Interpret(void)
 	_lastWordIndexSet = 0;
 	_metaEventIndexLength = 0;
 	_metaEventIndex = 0;
+	_startWordIndex = 0;
+	_createMetaDataWordIndex = false;
 	allocateHitBufferArray();
 	allocateTriggerErrorCounterArray();
 	allocateErrorCounterArray();
@@ -36,18 +38,19 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 		debug(tDebug.str());
 	}
 	_hitIndex = 0;
+	_actualMetaWordIndex = 0;
 
 	//temporary variables set according to the actual SRAM word
-	unsigned int tActualLVL1ID = 0;							//LVL1ID of the actual data header
-	unsigned int tActualBCID = 0;								//BCID of the actual data header
-	unsigned int tActualSRcode = 0;							//Service record code of the actual service record
-	unsigned int tActualSRcounter = 0;					//Service record counter value of the actual service record
-	int tActualCol1 = 0;												//column position of the first hit in the actual data record
-	int tActualRow1 = 0;												//row position of the first hit in the actual data record
-	int tActualTot1 = -1;												//tot value of the first hit in the actual data record
-	int tActualCol2 = 0;												//column position of the second hit in the actual data record
-	int tActualRow2 = 0;												//row position of the second hit in the actual data record
-	int tActualTot2 = -1;												//tot value of the second hit in the actual data record
+	unsigned int tActualLVL1ID = 0;		//LVL1ID of the actual data header
+	unsigned int tActualBCID = 0;		//BCID of the actual data header
+	unsigned int tActualSRcode = 0;		//Service record code of the actual service record
+	unsigned int tActualSRcounter = 0;	//Service record counter value of the actual service record
+	int tActualCol1 = 0;				//column position of the first hit in the actual data record
+	int tActualRow1 = 0;				//row position of the first hit in the actual data record
+	int tActualTot1 = -1;				//tot value of the first hit in the actual data record
+	int tActualCol2 = 0;				//column position of the second hit in the actual data record
+	int tActualRow2 = 0;				//row position of the second hit in the actual data record
+	int tActualTot2 = -1;				//tot value of the second hit in the actual data record
 
 	int counter = 0;
 
@@ -71,7 +74,7 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 					_nEmptyEvents++;
 				addEvent();
 			}
-			if (tNdataHeader == 0){								          //set the BCID of the first data header
+			if (tNdataHeader == 0){								        //set the BCID of the first data header
 				tStartBCID = tActualBCID;
 				tStartLVL1ID = tActualLVL1ID;
 			}
@@ -174,8 +177,20 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 			}
 			else{
 				_nOtherWords++;
-				if (Basis::debugSet())
-					debug(std::string(" ")+IntToStr(_nDataWords)+" ADDRESS/VALUE RECORD\t"+IntToStr(_nEvents));
+				if (Basis::debugSet()){
+					unsigned int tAddress = 0;
+					bool isShiftRegister = false;
+					unsigned int tValue = 0;
+					if (isAddressRecord(tActualWord, tAddress, isShiftRegister)){
+						if(isShiftRegister)
+							debug(std::string(" ")+IntToStr(_nDataWords)+" ADDRESS RECORD SHIFT REG. "+IntToStr(tAddress)+" WORD "+IntToStr(tActualWord)+"\t"+IntToStr(_nEvents));
+						else
+							debug(std::string(" ")+IntToStr(_nDataWords)+" ADDRESS RECORD GLOBAL REG. "+IntToStr(tAddress)+" WORD "+IntToStr(tActualWord)+"\t"+IntToStr(_nEvents));
+					}
+					if(isValueRecord(tActualWord, tValue)){
+						debug(std::string(" ")+IntToStr(_nDataWords)+" VALUE RECORD "+IntToStr(tValue)+"\t"+IntToStr(_nEvents));
+					}
+				}
 			}
 		}
 
@@ -202,7 +217,7 @@ bool Interpret::setMetaData(MetaInfo* &rMetaInfo, const unsigned int& tLength)
 {
 	_metaInfo = rMetaInfo;
 	if(tLength == 0){
-		error(std::string("setMetaWordIndex: data is empty"));
+		warning(std::string("setMetaWordIndex: data is empty"));
 		return false;
 	}
 	//sanity check
@@ -222,15 +237,23 @@ bool Interpret::setMetaData(MetaInfo* &rMetaInfo, const unsigned int& tLength)
 
 void Interpret::setHitsArray(HitInfo* &rHitInfo, const unsigned int &rSize)
 {
+	debug("setHitsArray(...)");
 	_hitInfoSize = rSize;
 	_hitInfo = rHitInfo;
-
 }
 
 void Interpret::setMetaDataEventIndex(unsigned int*& rEventNumber, const unsigned int& rSize)
 {
+	debug("setMetaDataEventIndex(...)");
 	_metaEventIndex = rEventNumber;
 	_metaEventIndexLength = rSize;
+}
+
+void Interpret::setMetaDataWordIndex(MetaWordInfoOut*& rWordNumber, const unsigned int& rSize)
+{
+	debug("setMetaDataWordIndex(...)");
+	_metaWordIndex = rWordNumber;
+	_metaWordIndexLength = rSize;
 }
 
 void Interpret::resetCounters()
@@ -270,6 +293,12 @@ void Interpret::resetEventVariables()
 	tStartLVL1ID = 0;
 	tHitBufferIndex = 0;
 	tTotalHits = 0;
+}
+
+void Interpret::createMetaDataWordIndex(bool CreateMetaDataWordIndex)
+{
+	debug("createMetaDataWordIndex");
+	_createMetaDataWordIndex = CreateMetaDataWordIndex;
 }
 
 void Interpret::setNbCIDs(const unsigned int& NbCIDs)
@@ -481,6 +510,20 @@ void Interpret::addEvent()
 		_nMaxHitsPerEvent = tTotalHits;
 	histogramTriggerErrorCode();
 	histogramErrorCode();
+	if(_createMetaDataWordIndex){
+		if(_actualMetaWordIndex<_metaWordIndexLength){
+			_metaWordIndex[_actualMetaWordIndex].eventIndex =  _nEvents;
+			_metaWordIndex[_actualMetaWordIndex].startWordIdex = _startWordIndex;
+			_metaWordIndex[_actualMetaWordIndex].stopWordIdex = _nDataWords-1;
+			_startWordIndex = _nDataWords-1;
+			_actualMetaWordIndex++;
+		}
+		else{
+			std::stringstream tInfo;
+			tInfo<<"Interpret::addEvent(): meta word index array is too small "<<_actualMetaWordIndex<<">="<<_metaWordIndexLength;
+			throw std::out_of_range(tInfo.str());
+		}
+	}
 	_nEvents++;
 	resetEventVariables();
 }
@@ -617,7 +660,45 @@ void Interpret::addEventErrorCode(const unsigned char& pErrorCode)
 {
 	if(Basis::debugSet()){
 		std::stringstream tDebug;
-		tDebug<<"addEventErrorCode: "<<(unsigned int) pErrorCode;
+		tDebug<<"addEventErrorCode: "<<(unsigned int) pErrorCode<<" ";
+		switch((unsigned int) pErrorCode){
+			case __NO_ERROR:{
+				tDebug<<"NO ERROR";
+				break;
+			}
+			case __HAS_SR:{
+				tDebug<<"EVENT HAS SERVICE RECORD";
+				break;
+			}
+			case __NO_TRG_WORD:{
+				tDebug<<"EVENT HAS NO TRIGGER NUMBER";
+				break;
+			}
+			case __NON_CONST_LVL1ID:{
+				tDebug<<"EVENT HAS NON CONST LVL1ID";
+				break;
+			}
+			case __EVENT_INCOMPLETE:{
+				tDebug<<"EVENT HAS TOO LESS DATA HEADER";
+				break;
+			}
+			case __UNKNOWN_WORD:{
+				tDebug<<"EVENT HAS UNKNOWN WORDS";
+				break;
+			}
+			case __BCID_JUMP:{
+				tDebug<<"EVENT HAS WRONG BCID NUMBERS";
+				break;
+			}
+			case __TRG_ERROR:{
+				tDebug<<"EVENT HAS AN EXTERNAL TRIGGER ERROR";
+				break;
+			}
+			case __TRUNC_EVENT:{
+				tDebug<<"EVENT HAS TOO MANY HITS AND WAS TRUNCATED";
+				break;
+			}
+		}
 		debug(tDebug.str());
 	}
 	tErrorCode |= pErrorCode;
