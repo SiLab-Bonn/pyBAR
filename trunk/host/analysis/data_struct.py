@@ -22,10 +22,15 @@ class HitInfoTable(tb.IsDescription):
     service_record = tb.UInt32Col(pos=9)
     event_status = tb.UInt8Col(pos=10)
     
-class MetaInfoOutTable(tb.IsDescription):
+class MetaInfoEventTable(tb.IsDescription):
     event_number = tb.UInt32Col(pos=0)
     time_stamp = tb.Float64Col(pos=1)
     error_code = tb.UInt32Col(pos=2)
+    
+class MetaInfoWordTable(tb.IsDescription):
+    event_number = tb.UInt32Col(pos=0)
+    start_word_index = tb.UInt32Col(pos=1)
+    stop_word_index = tb.UInt32Col(pos=2)
     
 class ClusterHitInfoTable(tb.IsDescription):
     event_number = tb.UInt32Col(pos=0)
