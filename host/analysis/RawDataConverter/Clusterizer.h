@@ -26,6 +26,12 @@
 
 #pragma once
 
+#include <vector>
+#include <cmath>
+#include <algorithm>
+#include <iterator>
+#include <set>
+
 #include "Basis.h"
 #include "defines.h"
 
@@ -39,15 +45,20 @@ public:
 	void createClusterInfoArray(bool toggle = true){_createClusterInfoArray = toggle;};
 
 	void setClusterHitInfoArray(ClusterHitInfo*& rClusterHitInfo, const unsigned int& rSize);	//set pointer to the cluster hit array to be filled
-	void setClusterInfoArray(ClusterInfo*& rClusterHitInfo, const unsigned int& rSize);	//set pointer to the cluster array to be filled
+	void setClusterInfoArray(ClusterInfo*& rClusterHitInfo, const unsigned int& rSize);			//set pointer to the cluster array to be filled
 
-	void setXclusterDistance(const unsigned int& pDx);							//sets the x distance between two hits that they belong to one cluster
-	void setYclusterDistance(const unsigned int&  pDy);							//sets the x distance between two hits that they belong to one cluster
-	void setBCIDclusterDistance(const unsigned int&  pDbCID);					//sets the BCID depth between two hits that they belong to one cluster
-	void setMinClusterHits(const unsigned int&  pMinNclusterHits);				//minimum hits per cluster allowed, otherwise cluster omitted
-	void setMaxClusterHits(const unsigned int&  pMaxNclusterHits);				//maximal hits per cluster allowed, otherwise cluster omitted
-	void setMaxClusterHitTot(const unsigned int&  pMaxClusterHitTot);			//maximal tot for a cluster hit, otherwise cluster omitted
-	void setLateHitTot(const unsigned int&  pLateHitTot);						//minimum tot a hit is considered to be late/small
+	void getClusterSizeHist(unsigned int& rNparameterValues, unsigned int*& rClusterSize, bool copy = true);
+	void getClusterTotHist(unsigned int& rNparameterValues, unsigned int*& rClusterTot, bool copy = true);
+	void getClusterChargeHist(unsigned int& rNparameterValues, unsigned int*& rClusterCharge, bool copy = true);
+	void getClusterPositionHist(unsigned int& rNparameterValues, unsigned int*& rClusterPosition, bool copy = true);
+
+	void setXclusterDistance(const unsigned int& pDx);					//sets the x distance between two hits that they belong to one cluster
+	void setYclusterDistance(const unsigned int& pDy);					//sets the x distance between two hits that they belong to one cluster
+	void setBCIDclusterDistance(const unsigned int& pDbCID);			//sets the BCID depth between two hits that they belong to one cluster
+	void setMinClusterHits(const unsigned int&  pMinNclusterHits);		//minimum hits per cluster allowed, otherwise cluster omitted
+	void setMaxClusterHits(const unsigned int&  pMaxNclusterHits);		//maximal hits per cluster allowed, otherwise cluster omitted
+	void setMaxClusterHitTot(const unsigned int&  pMaxClusterHitTot);	//maximal tot for a cluster hit, otherwise cluster omitted
+	void setLateHitTot(const unsigned int&  pLateHitTot);				//minimum tot a hit is considered to be late/small
 
 	void addHits(HitInfo*& rHitInfo, const unsigned int& rNhits);		//add hits to cluster, starts clustering, warning hits have to be aligned at events
 
@@ -80,6 +91,10 @@ private:
 	void allocateChargeMap();
 	void deleteChargeMap();
 
+	void allocateResultHistograms();
+	void clearResultHistograms();
+	void deleteResultHistograms();
+
 	void addCluster();													//adds the actual cluster to the _clusterInfo array
 
 	//input data structure
@@ -94,18 +109,15 @@ private:
 	unsigned int _Nclusters;
 
 	//cluster results
-//	unsigned int _clusterTots[__MAXTOTBINS][__MAXCLUSTERHITSBINS];		//array containing the cluster tots/cluster size for histogramming
-//	unsigned int _clusterCharges[__MAXCHARGEBINS][__MAXCLUSTERHITSBINS];//array containing the cluster tots/cluster size for histogramming
-//	unsigned int _clusterHits[__MAXCLUSTERHITSBINS];					//array containing the cluster number of hits for histogramming
-//	unsigned int _clusterPosition[__MAXPOSXBINS][__MAXPOSYBINS];		//array containing the cluster x positions for histogramming
+	unsigned int* _clusterTots;		//array [__MAXTOTBINS][__MAXCLUSTERHITSBINS] containing the cluster tots/cluster size for histogramming
+	unsigned int* _clusterCharges;	//array [__MAXCHARGEBINS][__MAXCLUSTERHITSBINS] containing the cluster charge/cluster size for histogramming
+	unsigned int* _clusterHits;		//array [__MAXCLUSTERHITSBINS] containing the cluster number of hits for histogramming
+	unsigned int* _clusterPosition;	//array [__MAXPOSXBINS][__MAXPOSYBINS] containing the cluster x positions for histogramming
 
 	//data arrays for one event
 	short int* _hitMap;       											//2d hit histogram for each relative BCID (in total 3d, linearly sorted via col, row, rel. BCID)
-//	short int _hitMap[RAW_DATA_MAX_COLUMN][RAW_DATA_MAX_ROW][__MAXBCID];//array containing the hits TOT value for max 16 BCIDs
-//	unsigned int _hitIndexMap[RAW_DATA_MAX_COLUMN][RAW_DATA_MAX_ROW][__MAXBCID];//array containing the hit indices from the input hit array
 	unsigned int* _hitIndexMap;
 	float* _chargeMap;													//array containing the lookup charge values for each pixel and TOT
-//	float _chargeMap[RAW_DATA_MAX_COLUMN][RAW_DATA_MAX_ROW][14];		//array containing the lookup charge values for each pixel and TOT
 
 	//cluster settings
 	unsigned short _dx;													//max distance in x between two hits that they belong to a cluster

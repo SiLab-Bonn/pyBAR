@@ -23,13 +23,20 @@ Clusterizer::Clusterizer(void)
 	_hitMap = 0;
 	_hitIndexMap = 0;
 	_chargeMap = 0;
+	_clusterTots = 0;
+	_clusterCharges = 0;
+	_clusterHits = 0;
+	_clusterPosition = 0;
+
 	allocateHitMap();
 	allocateHitIndexMap();
 	allocateChargeMap();
 	initHitMap();
 	initChargeCalibMap();
 
-	clearClusterMaps();
+	allocateResultHistograms();
+
+	clearResultHistograms();
 	clearActualClusterData();
 	clearActualEventVariables();
 	_lateHitTot = 14;
@@ -41,6 +48,7 @@ Clusterizer::~Clusterizer(void)
 	deleteHitMap();
 	deleteHitIndexMap();
 	deleteChargeMap();
+	deleteResultHistograms();
 }
 
 void Clusterizer::setClusterHitInfoArray(ClusterHitInfo*& rClusterHitInfo, const unsigned int& rSize)
@@ -55,6 +63,68 @@ void Clusterizer::setClusterInfoArray(ClusterInfo*& rClusterHitInfo, const unsig
 	_clusterInfo = rClusterHitInfo;
 	_clusterInfoSize = rSize;
 	_Nclusters = 0;
+}
+
+void Clusterizer::getClusterSizeHist(unsigned int& rNparameterValues, unsigned int*& rClusterSize, bool copy)
+{
+  debug("getClusterSizeHist(...)");
+  if(copy){
+	  std::copy(_clusterHits, _clusterHits+__MAXCLUSTERHITSBINS, rClusterSize);
+  }
+  else
+	  rClusterSize = _clusterHits;
+
+  rNparameterValues = __MAXCLUSTERHITSBINS;
+}
+
+void Clusterizer::getClusterTotHist(unsigned int& rNparameterValues, unsigned int*& rClusterTot, bool copy)
+{
+	debug("getClusterTotHist(...)");
+	unsigned int tArrayLength = 0;
+	if(copy){
+//		unsigned int counter = 0;
+//		for(unsigned int iTot = 0; iTot<__MAXTOTBINS; ++iTot){
+//			for(unsigned int iClusterHit = 0; iClusterHit<__MAXCLUSTERHITSBINS; ++iClusterHit){
+////				if(_clusterTots[(long)iTot + (long)iClusterHit*(long)iTot] != 0){
+//					_clusterTots[(long)iTot + (long)iClusterHit*(long)__MAXTOTBINS] = counter++;
+////				}
+////				std::cout<<counter<<"\n";
+//			}
+//		}
+		tArrayLength = (long)(__MAXTOTBINS-1) + (long)(__MAXCLUSTERHITSBINS-1) * (long)__MAXTOTBINS +1;
+		std::copy(_clusterTots, _clusterTots+tArrayLength, rClusterTot);
+	}
+	else
+		rClusterTot = _clusterTots;
+
+	rNparameterValues = tArrayLength;
+}
+
+void Clusterizer::getClusterChargeHist(unsigned int& rNparameterValues, unsigned int*& rClusterCharge, bool copy)
+{
+	debug("getClusterChargeHist(...)");
+	unsigned int tArrayLength = 0;
+	if(copy){
+		tArrayLength = (long)(__MAXCHARGEBINS-1) + (long)(__MAXCLUSTERHITSBINS-1) * (long)__MAXCHARGEBINS +1;
+		std::copy(_clusterCharges, _clusterCharges+tArrayLength, rClusterCharge);
+	}
+	else
+		rClusterCharge = _clusterCharges;
+
+	rNparameterValues = tArrayLength;
+}
+void Clusterizer::getClusterPositionHist(unsigned int& rNparameterValues, unsigned int*& rClusterPosition, bool copy)
+{
+	debug("getClusterPositionHist(...)");
+	unsigned int tArrayLength = 0;
+	if(copy){
+		tArrayLength = (long)(__MAXPOSXBINS-1) + (long)(__MAXPOSYBINS-1) * (long)__MAXPOSXBINS +1;
+		std::copy(_clusterPosition, _clusterPosition+tArrayLength, rClusterPosition);
+	}
+	else
+		rClusterPosition = _clusterPosition;
+
+	rNparameterValues = tArrayLength;
 }
 
 void Clusterizer::setXclusterDistance(const unsigned int& pDx)
@@ -417,17 +487,21 @@ void Clusterizer::initHitMap()
 
 void Clusterizer::addClusterToResults()
 {
-//	if(!_abortCluster){
-//		//histogramming of the results
-//		if(_actualClusterSize<__MAXCLUSTERHITSBINS)
-//			_clusterHits[_actualClusterSize]++;
-//		if(_actualClusterTot<__MAXTOTBINS && _actualClusterSize<__MAXCLUSTERHITSBINS){
-//			_clusterTots[_actualClusterTot][0]++;	//cluster size = 0 contains all cluster sizes
-//			_clusterTots[_actualClusterTot][_actualClusterSize]++;
-//		}
+	if(!_abortCluster){
+		//histogramming of the results
+		if(_actualClusterSize<__MAXCLUSTERHITSBINS)
+			_clusterHits[_actualClusterSize]++;
+		else
+			throw std::out_of_range("Clusterizer::addClusterToResults: cluster size does not fit into cluster size histogram");
+		if(_actualClusterTot<__MAXTOTBINS && _actualClusterSize<__MAXCLUSTERHITSBINS){
+			_clusterTots[(long)(_actualClusterTot) + (long)_actualClusterSize*(long)__MAXTOTBINS]++;
+			_clusterTots[(long)_actualClusterTot]++;	//cluster size = 0 contains all cluster sizes
+		}
+		else
+			throw std::out_of_range("Clusterizer::addClusterToResults: cluster tot does not fit into cluster tot histogram");
 //		if((int) _actualClusterCharge<__MAXCHARGEBINS && _actualClusterSize<__MAXCLUSTERHITSBINS){
 //			_clusterCharges[(int) _actualClusterCharge][0]++;
-//			_clusterCharges[(int) _actualClusterCharge][_actualClusterSize]++;
+//			_clusterCharges[(int) _actualClusterCharge][_actualClusterSize]++;	//cluster size = 0 contains all cluster sizes
 //		}
 //		if(_actualClusterCharge > 0){	//avoid division by zero
 //			_actualClusterX/=_actualClusterCharge;
@@ -437,7 +511,7 @@ void Clusterizer::addClusterToResults()
 //			if(tActualClusterXbin < __MAXPOSXBINS && tActualClusterYbin < __MAXPOSYBINS)
 //				_clusterPosition[tActualClusterXbin][tActualClusterYbin]++;
 //		}
-//	}
+	}
 }
 
 void Clusterizer::allocateHitMap()
@@ -521,30 +595,60 @@ void Clusterizer::allocateChargeMap()
 	}
 }
 
+void Clusterizer::allocateResultHistograms()
+{
+	debug("allocateResultHistograms()");
+	deleteResultHistograms();
+	try{
+		_clusterTots = new unsigned int[(long)(__MAXTOTBINS-1) + ((long)__MAXCLUSTERHITSBINS-1)*(long)__MAXTOTBINS];
+		_clusterCharges = new unsigned int[(long)(__MAXCHARGEBINS-1) + ((long)__MAXCLUSTERHITSBINS-1)*(long)__MAXCHARGEBINS];
+		_clusterHits = new unsigned int[(long)__MAXCLUSTERHITSBINS];
+		_clusterPosition = new unsigned int[(long)(__MAXPOSXBINS-1) + ((long)__MAXPOSYBINS-1)*(long)__MAXPOSXBINS];
+	}
+	catch(std::bad_alloc& exception){
+		error(std::string("allocateResultHistograms: ")+std::string(exception.what()));
+	}
+}
+
+void Clusterizer::clearResultHistograms()
+{
+	debug("clearResultHistograms()");
+	for(unsigned int iTot = 0; iTot<__MAXTOTBINS; ++iTot)
+		for(unsigned int iClusterHit = 0; iClusterHit<__MAXCLUSTERHITSBINS; ++iClusterHit)
+			_clusterTots[(long)iTot + (long)iClusterHit*(long)__MAXTOTBINS] = 0;
+	for(unsigned int iCharge = 0; iCharge<__MAXCHARGEBINS; ++iCharge)
+		for(unsigned int iClusterHit = 0; iClusterHit<__MAXCLUSTERHITSBINS; ++iClusterHit)
+			_clusterCharges[(long)iCharge + (long)iClusterHit*(long)__MAXCLUSTERHITSBINS] = 0;
+	for(unsigned int iX = 0; iX<__MAXPOSXBINS; ++iX)
+			for(unsigned int iY = 0; iY<__MAXPOSYBINS; ++iY)
+				_clusterPosition[(long)iX + (long)iY*(long)__MAXPOSXBINS] = 0;
+	for(unsigned int iClusterHit = 0; iClusterHit<__MAXCLUSTERHITSBINS; ++iClusterHit)
+		_clusterHits[(long)iClusterHit] = 0;
+}
+
+void Clusterizer::deleteResultHistograms()
+{
+	debug(std::string("deleteResultHistograms()"));
+	if (_clusterTots != 0)
+		delete _clusterTots;
+	if (_clusterCharges != 0)
+		delete _clusterCharges;
+	if (_clusterHits != 0)
+		delete _clusterHits;
+	if (_clusterPosition != 0)
+		delete _clusterPosition;
+	_clusterTots = 0;
+	_clusterCharges = 0;
+	_clusterHits = 0;
+	_clusterPosition = 0;
+}
+
 void Clusterizer::deleteChargeMap()
 {
 	debug(std::string("deleteChargeMap()"));
 	if (_chargeMap != 0)
 		delete _chargeMap;
 	_chargeMap = 0;
-}
-
-void Clusterizer::clearClusterMaps()
-{
-	debug("clearClusterMaps");
-//	for (unsigned int i = 0; i < __MAXCLUSTERHITSBINS; ++i)
-//		_clusterHits[i] = 0;
-//	for (unsigned int i = 0; i < __MAXTOTBINS; ++i){
-//		for (unsigned int j = 0; j < __MAXCLUSTERHITSBINS; ++j)
-//			_clusterTots[i][j] = 0;
-//	}
-//	for (unsigned int i = 0; i < __MAXCHARGEBINS; ++i)
-//		for (unsigned int j = 0; j < __MAXCLUSTERHITSBINS; ++j)
-//			_clusterCharges[i][j] = 0;
-//	for (unsigned int i = 0; i < __MAXPOSXBINS; ++i){
-//		for (unsigned int j = 0; j < __MAXPOSYBINS; ++j)
-//			_clusterPosition[i][j] = 0;
-//	}
 }
 
 void Clusterizer::clearActualClusterData()
