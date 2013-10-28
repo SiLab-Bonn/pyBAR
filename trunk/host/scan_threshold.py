@@ -117,6 +117,6 @@ if __name__ == "__main__":
     with AnalyzeRawData(input_file = scan.scan_data_filename+".h5", output_file = output_file) as analyze_raw_data:
         analyze_raw_data.create_threshold_hists = True
         analyze_raw_data.interpreter.set_warning_output(False)  # so far the data structure in a threshold scan was always bad, too many warnings given
-        analyze_raw_data.interpret_word_table(FEI4B = True if(configuration.chip_flavor == 'fei4b') else False)
+        analyze_raw_data.interpret_word_table(FEI4B = scan.register.fei4b)
         analyze_raw_data.interpreter.print_summary()
         analyze_raw_data.plotHistograms(scan_data_filename = scan.scan_data_filename)

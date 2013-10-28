@@ -2,17 +2,27 @@ import logging
 import struct
 import itertools
 import time
+import os.path
 from threading import Thread, Event, Timer
 from Queue import Queue
+from collections import deque
 #from multiprocessing import Process as Thread
 #from multiprocessing import Event
 #from multiprocessing import Queue
 
+import numpy as np
+import numexpr as ne
+import tables as tb
+
 from utils.utils import get_float_time
+from utils.utils import get_all_from_queue, split_seq
+from analysis.data_struct import MetaTable
 
 from SiLibUSB import SiUSBDevice
 
 logging.basicConfig(level=logging.INFO, format = "%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
+
+data_dict_names = ["data", "timestamp", "error"]
 
 class Readout(object):
     def __init__(self, device, data_filter = None):
@@ -20,30 +30,22 @@ class Readout(object):
             self.device = device
         else:
             raise ValueError('Device object is not compatible')
-        if data_filter != None:
-            if hasattr(data_filter, '__call__'):
-                self.data_filter = data_filter
-            else:
-                raise ValueError('Filter object is not callable')
-        else:
-            self.data_filter = self.no_filter
-        #self.filtered_data_words = None
-        #self.data_words = None
         self.worker_thread = None
-        self.data_queue = Queue()
+        self.data = deque()
         self.stop_thread_event = Event()
         self.stop_thread_event.set()
         self.readout_interval = 0.05
         self.rx_base_address = dict([(idx, addr) for idx, addr in enumerate(range(0x8600, 0x8200, -0x0100))])
         self.sram_base_address = dict([(idx, addr) for idx, addr in enumerate(range(0x8100, 0x8200, 0x0100))])
     
-    def start(self, reset_rx = False, empty_data_queue = True, reset_sram_fifo = True):
+    def start(self, reset_rx=False, empty_data_queue=True, reset_sram_fifo=True, filename=None):
         if self.worker_thread != None:
             raise RuntimeError('Thread is not None')
         if reset_rx:
             self.reset_rx()
         if empty_data_queue:
-            self.data_queue.empty()
+            #self.data.empty()
+            self.data.clear()
         if reset_sram_fifo:
             self.reset_sram_fifo()
         self.stop_thread_event.clear()
@@ -51,10 +53,10 @@ class Readout(object):
         logging.info('Starting readout')
         self.worker_thread.start()
     
-    def stop(self, timeout = 10.0):
+    def stop(self, timeout=None):
         if self.worker_thread == None:
-            raise RuntimeError('Thread is None')
-        if timeout > 0:
+            raise RuntimeError('Thread is already None')
+        if timeout:
             timeout_event = Event()
             timeout_event.clear()
             
@@ -81,61 +83,61 @@ class Readout(object):
         logging.info('Stopped readout')
     
     def print_readout_status(self):
-        logging.info('Data queue size: %d' % self.data_queue.qsize())
+        logging.info('Data queue size: %d' % len(self.data))#.qsize())
         logging.info('SRAM FIFO size: %d' % self.get_sram_fifo_size())
-        logging.info('RX FIFO sync status:         %s', " | ".join(["OK".rjust(3) if status == True else "BAD".rjust(3) for status in self.get_rx_sync_status()]))
+        logging.info('Channel:                     %s', " | ".join([('CH%d' % channel).rjust(3) for channel in range(1, 5, 1)]))
+        logging.info('RX FIFO sync:                %s', " | ".join(["YES".rjust(3) if status == True else "NO".rjust(3) for status in self.get_rx_sync_status()]))
         logging.info('RX FIFO discard counter:     %s', " | ".join([repr(count).rjust(3) for count in self.get_rx_fifo_discard_count()]))
         logging.info('RX FIFO 8b10b error counter: %s', " | ".join([repr(count).rjust(3) for count in self.get_rx_8b10b_error_count()]))
     
     def worker(self):
         '''Reading thread to continuously reading SRAM
         
-        Worker thread function uses read_once()
+        Worker thread function that uses read_data_dict()
         ''' 
         while not self.stop_thread_event.wait(self.readout_interval): # TODO: this is probably what you need to reduce processor cycles
+            self.device.lock.acquire() 
             try:
-                self.device.lock.acquire()
-                #print 'read from thread' 
-                filtered_data_words = self.read_once()
-                self.device.lock.release()
-                #map(self.data_queue.put, filtered_data_words)
-                #itertools.imap(self.data_queue.put, filtered_data_words)
-                raw_data = list(filtered_data_words)
-                if len(raw_data)>0:
-                    self.data_queue.put({'timestamp':get_float_time(), 'raw_data':raw_data, 'error':0})
-            except Exception:
-                self.stop_thread_event.set()
+                data = self.read_data_dict()  
+            except Exception as e:
+                logging.error('Stopping readout: %s' % (e))
+                self.stop_thread_event.set() # stop readout on any occurring exception
                 continue
+            finally:
+                self.device.lock.release()
+            if data[data_dict_names[0]].shape[0]>0: # TODO: make it optional
+                self.data.append(data)#put({'timestamp':get_float_time(), 'raw_data':filtered_data_words, 'error':0})
                         
-    def read_once(self):
+    def read_data_dict(self, append=True):
         '''Read single to read SRAM once
         
         can be used without threading
         '''
-        # TODO: check fifo status (overflow) and check rx status (sync) once in a while
+        # TODO: check FIFO status (overflow) and check rx status (sync) once in a while
+
+        return {data_dict_names[0]:self.read_data(), data_dict_names[1]:get_float_time(), data_dict_names[2]:self.read_status()}
+    
+    def read_data(self):
+        '''Read SRAM
+        '''
+        # TODO: check FIFO status (overflow) and check rx status (sync) once in a while
 
         fifo_size = self.get_sram_fifo_size()
+        print fifo_size
         if fifo_size%2 == 1: # sometimes a read happens during writing, but we want to have a multiplicity of 32 bits
             fifo_size-=1
             #print "FIFO size odd"
         if fifo_size > 0:
-            fifo_data = self.device.FastBlockRead(4*fifo_size/2)
-            #print 'fifo raw data:', fifo_data
-            data_words = struct.unpack('>'+fifo_size/2*'I', fifo_data)
-            #print 'raw data words:', data_words
-            #self.filtered_data_words = [i for i in data_words if self.filter]
-            self.filtered_data_words = self.data_filter(data_words)
-            for filterd_data_word in self.filtered_data_words: 
-                yield filterd_data_word
-    
-    def set_filter(self, data_filter = None):
-        if data_filter == None:
-                self.data_filter = self.no_filter
+            # old style:
+            #fifo_data = self.device.FastBlockRead(4*fifo_size/2)
+            #data_words = struct.unpack('>'+fifo_size/2*'I', fifo_data)
+            return np.fromstring(self.device.FastBlockRead(4*fifo_size/2).tostring(), dtype=np.dtype('>u4'))
         else:
-            if hasattr(data_filter, '__call__'):
-                self.data_filter = data_filter
-            else:
-                raise ValueError('Filter object is not callable')
+            return np.array([], dtype=np.dtype('>u4')) # create empty array
+            #return np.empty(0, dtype=np.dtype('>u4')) # FIXME: faster?
+        
+    def read_status(self):
+        return 0
 
     def reset_sram_fifo(self):
         logging.info('Resetting SRAM FIFO')
@@ -145,14 +147,15 @@ class Readout(object):
         
     def get_sram_fifo_size(self):
         retfifo = self.device.ReadExternal(address = self.sram_base_address[0]+1, size = 3)
-        return struct.unpack('I', retfifo.tostring() + '\x00' )[0] # TODO: optimize, remove tostring() ?
+        retfifo.reverse() # FIXME: enable for new firmware
+        return struct.unpack('I', retfifo.tostring() + '\x00' )[0]
                                                 
     def reset_rx(self, index = None):
         logging.info('Resetting RX')
         if index == None:
             index = self.rx_base_address.iterkeys()
         filter(lambda i: self.device.WriteExternal(address = self.rx_base_address[i], data = [0]), index)
-    # since WriteExternal returns nothing, filter returns empty list
+        # since WriteExternal returns nothing, filter returns empty list
 
     def get_rx_sync_status(self, index = None):
         if index == None:
@@ -169,42 +172,140 @@ class Readout(object):
             index = self.rx_base_address.iterkeys()
         return map(lambda i: self.device.ReadExternal(address = self.rx_base_address[i]+5, size = 1)[0], index)
 
-    def no_filter(self, words):
-        for word in words:
-            yield word
-            
-    def data_record_filter(self, words):
-        for word in words:
-            if (word & 0x00FFFFFF) >= 131328 and (word & 0x00FFFFFF) <= 10572030:
-                yield word
+def data_dict_to_data_array(data_dict_lst):
+    return np.concatenate([item[data_dict_names[0]] for item in data_dict_lst])
+
+class ArrayFilter(object):
+    def __init__(self, filter_func):
+        self.filter_func = filter_func
         
-    def data_header_filter(self, words):
-        for word in words:
-            header = struct.unpack(4*'B', struct.pack('I', word))[2]
-            if header == 233:
-                yield word
-                
-    def tlu_data_filter(self, words):
-        for word in words:
-            if 0x80000000 == (word & 0x80000000):
-                yield word
-                
-    def get_col_row(self, words):
-        for item in self.data_record_filter(words):
-            yield ((item & 0xFE0000)>>17), ((item & 0x1FF00)>>8)
+    def filter_array(self, array):
+        return array[self.filter_func(array)]
+
+class ArrayConverter(object):
+    def __init__(self, converter_func):
+#         self.vfunc = np.vectorize(converter_func) # use numexpr.evaluate() or numpy.fromfunc()
+        self.func = converter_func
+        
+    def convert_array(self, array):
+        #return self.vfunc(array)
+        return self.func(array)
+
+class DataProcessor(object):
+    def __init__(self, filters=[], converters=[], names=[]):
+        self.data = []
+
+    def install_filter(self, data_list=None, data_filter=None, data_converter=None, name=None):
+        pass
+    
+    def remove_filter(self, name=None):
+        pass
+
+def interweave_array(a, b):
+    '''Interweave Arrays
+    
+    http://stackoverflow.com/questions/5347065/interweaving-two-numpy-arrays
+    '''
+    return np.vstack((a,b)).reshape((-1,),order='F')
+
+def is_data_from_channel(value, channel):
+    if channel>0:
+        return np.equal(np.right_shift(np.bitwise_and(value, 0x7F000000), 24), channel)
+    else:
+        raise ValueError('invalid channel number')
+    
+def is_data_record(value):
+    return np.logical_and(np.greater_equal(np.bitwise_and(value, 0x00FFFFFF), 131328), np.less_equal(np.bitwise_and(value, 0x00FFFFFF), 10572030))
+
+def is_data_header(value):
+    return np.equal(np.bitwise_and(value, 0x00FF0000), 15269888)
+                    
+def is_tlu_data(value):
+    return np.equal(np.bitwise_and(value, 0x80000000), 0x80000000)
+
+def get_col_row_tot_array_from_data_record_array(array):
+    def get_col_row_tot_1_array_from_data_record_array(value):
+        return np.right_shift(np.bitwise_and(value, 0x00FE0000), 17), np.right_shift(np.bitwise_and(value, 0x0001FF00), 8), np.right_shift(np.bitwise_and(value, 0x000000F0), 4)
+#         return (value & 0xFE0000)>>17, (value & 0x1FF00)>>8, (value & 0x0000F0)>>4 # numpy.vectorize()
+    
+    def get_col_row_tot_2_array_from_data_record_array(value):
+        return np.right_shift(np.bitwise_and(value, 0x00FE0000), 17), np.add(np.right_shift(np.bitwise_and(value, 0x0001FF00), 8), 1), np.bitwise_and(value, 0x0000000F)
+#         return (value & 0xFE0000)>>17, ((value & 0x1FF00)>>8)+1, (value & 0x0000F) # numpy.vectorize()
+
+    col_row_tot_1_array = np.column_stack(get_col_row_tot_1_array_from_data_record_array(array))
+    col_row_tot_2_array = np.column_stack(get_col_row_tot_2_array_from_data_record_array(array))
+#     print col_row_tot_1_array, col_row_tot_1_array.shape, col_row_tot_1_array.dtype
+#     print col_row_tot_2_array, col_row_tot_2_array.shape, col_row_tot_2_array.dtype
+    # interweave array here
+    col_row_tot_array = np.vstack((col_row_tot_1_array.T, col_row_tot_2_array.T)).reshape((3, -1),order='F').T
+#     print col_row_tot_array, col_row_tot_array.shape, col_row_tot_array.dtype
+    # remove ToT > 14 (late hit, no hit) from array, remove row > 336 in case we saw hit in row 336 (no double hit possible)
+    col_row_tot_array_filtered = col_row_tot_array[np.logical_and(col_row_tot_array[:,2]<14, col_row_tot_array[:,1]<=336)]
+#     print col_row_tot_array_filtered, col_row_tot_array_filtered.shape, col_row_tot_array_filtered.dtype
+    return col_row_tot_array_filtered[:,0], col_row_tot_array_filtered[:,1], col_row_tot_array_filtered[:,2] # column, row, ToT
+
+def get_col_row_array_from_data_record_array(array):
+    col, row, _ = get_col_row_tot_array_from_data_record_array(array)
+    return col, row
+ 
+def get_row_col_array_from_data_record_array(array):
+    col, row, _ = get_col_row_tot_array_from_data_record_array(array)
+    return row, col
+ 
+def get_tot_array_from_data_record_array(array):
+    _, _, tot = get_col_row_tot_array_from_data_record_array(array)
+    return tot
+
+def get_col_row_iterator_from_data_records(array): # generator
+    for item in np.nditer(array):#, flags=['multi_index']):
+        yield np.right_shift(np.bitwise_and(item, 0x00FE0000), 17), np.right_shift(np.bitwise_and(item, 0x0001FF00), 8)
+        if np.not_equal(np.bitwise_and(item, 0x0000000F), 15):
+            yield np.right_shift(np.bitwise_and(item, 0x00FE0000), 17), np.add(np.right_shift(np.bitwise_and(item, 0x0001FF00), 8), 1)
+        
+def get_row_col_iterator_from_data_records(array): # generator
+    for item in np.nditer(array, flags=['multi_index']):
+        yield np.right_shift(np.bitwise_and(item, 0x0001FF00), 8), np.right_shift(np.bitwise_and(item, 0x00FE0000), 17)
+        if np.not_equal(np.bitwise_and(item, 0x0000000F), 15):
+            yield np.add(np.right_shift(np.bitwise_and(item, 0x0001FF00), 8), 1), np.right_shift(np.bitwise_and(item, 0x00FE0000), 17)
+        
+def get_col_row_tot_iterator_from_data_records(array): # generator
+    for item in np.nditer(array, flags=['multi_index']):
+        yield np.right_shift(np.bitwise_and(item, 0x00FE0000), 17), np.right_shift(np.bitwise_and(item, 0x0001FF00), 8), np.right_shift(np.bitwise_and(item, 0x000000F0), 4) # col, row, ToT1
+        if np.not_equal(np.bitwise_and(item, 0x0000000F), 15):
+            yield np.right_shift(np.bitwise_and(item, 0x00FE0000), 17), np.add(np.right_shift(np.bitwise_and(item, 0x0001FF00), 8), 1), np.bitwise_and(item, 0x0000000F) # col, row+1, ToT2
             
-    def get_row_col(self, words):
-        for item in self.data_record_filter(words):
-            yield ((item & 0x1FF00)>>8), ((item & 0xFE0000)>>17)
+def get_tot_iterator_from_data_records(array): # generator
+    for item in np.nditer(array, flags=['multi_index']):
+        yield np.right_shift(np.bitwise_and(item, 0x000000F0), 4) # ToT1
+        if np.not_equal(np.bitwise_and(item, 0x0000000F), 15):
+            yield np.bitwise_and(item, 0x0000000F) # ToT2
             
-    def get_col_row_tot(self, words):
-        for item in self.data_record_filter(words):
-            yield ((item & 0xFE0000)>>17), ((item & 0x1FF00)>>8), ((item & 0x000F0)>>4) # col, row, ToT1
-            if (item & 0x0000F) != 15:
-                yield ((item & 0xFE0000)>>17), ((item & 0x1FF00)>>8)+1, (item & 0x0000F) # col, row+1, ToT2
-                
-    def get_tot(self, data):
-        for item in self.data_record_filter(data):
-            yield ((item & 0x000F0)>>4) # ToT1
-            if (item & 0x0000F) != 15:
-                yield (item & 0x0000F) # ToT2
+def save_raw_data(data_queue, filename, title="", mode = "w"): # mode="r+" to append data
+    if os.path.splitext(filename)[1].strip().lower() != ".h5":
+        filename = os.path.splitext(filename)[0]+".h5"
+    logging.info('Saving raw data: %s' % filename)
+    #raw_data = np.concatenate((data_dict['raw_data'] for data_dict in data))
+    total_words = 0
+    filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
+    filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
+    with tb.openFile(filename, mode = mode, title = "raw_data_file") as file_h5:
+        raw_data_earray_h5 = file_h5.createEArray(file_h5.root, name = 'raw_data', atom = tb.UIntAtom(), shape = (0,), title = 'raw_data', filters = filter_raw_data)
+        meta_data_table_h5 = file_h5.createTable(file_h5.root, name = 'meta_data', description = MetaTable, title = 'meta_data', filters = filter_tables)
+        row_meta = meta_data_table_h5.row
+        while True:
+            try:
+                item = data_queue.popleft()
+            except IndexError:
+                break
+            raw_data = item[data_dict_names[0]]
+            len_raw_data = raw_data.shape[0]
+            raw_data_earray_h5.append(raw_data)
+            row_meta['timestamp'] = item[data_dict_names[1]]
+            row_meta['error'] = item[data_dict_names[2]]
+            row_meta['length'] = len_raw_data
+            row_meta['start_index'] = total_words
+            total_words += len_raw_data
+            row_meta['stop_index'] = total_words
+            row_meta.append()
+        raw_data_earray_h5.flush()
+        meta_data_table_h5.flush()
