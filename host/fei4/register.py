@@ -578,9 +578,30 @@ class FEI4Register(object):
         implements FEI4 specific behavior
         
         """
+        
+        def calculalte_wait_cycles(mask_steps):
+            return 336*2/mask_steps*24/4*3 # good practice
+        
         commands = []
         
-        if command_name.lower() == "wrregister":
+        if command_name.lower() == "zeros":
+            if "length" in kwargs:
+                bv = BitVector.BitVector(size = kwargs["length"]) # all bits to zero
+            elif "mask_steps" in kwargs:
+                bv = BitVector.BitVector(size = calculalte_wait_cycles(kwargs["mask_steps"]))
+            else:
+                raise ValueError('cannot calculate length')
+            commands.append(bv)
+        elif command_name.lower() == "ones":
+            if "length" in kwargs:
+                bv = BitVector.BitVector(size = kwargs["length"]) # all bits to zero
+            elif "mask_steps" in kwargs:
+                bv = BitVector.BitVector(size = calculalte_wait_cycles(kwargs["mask_steps"]))
+            else:
+                raise ValueError('cannot calculate length')
+            bv.reset(1) # all bits to one
+            commands.append(bv)
+        elif command_name.lower() == "wrregister":
             #print "wrregister"
             register_addresses = self.get_global_register_attributes("addresses", **kwargs)
             register_bitsets = self.get_global_register_bitsets(register_addresses)

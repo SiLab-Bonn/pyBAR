@@ -1,5 +1,3 @@
-import BitVector
-
 from daq.readout import get_col_row_array_from_data_record_array, save_raw_data, ArrayConverter, ArrayFilter, data_dict_to_data_array, is_data_record
 from analysis.plotting.plotting import plot_occupancy
 
@@ -12,13 +10,11 @@ class ThresholdScan(ScanBase):
     def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "scan_threshold", scan_data_path = None):
         super(ThresholdScan, self).__init__(config_file = config_file, definition_file = definition_file, bit_file = bit_file, device = device, scan_identifier = scan_identifier, scan_data_path = scan_data_path)
         
-    def scan(self, configure = True):        
+    def scan(self, configure = True, mask = 3, repeat = 100, steps = []):
         scan_parameter = 'PlsrDAC'
         scan_paramter_value_range = range(0, 5, 1)
         
         for scan_paramter_value in scan_paramter_value_range:
-            self.readout.start()
-            
             logging.info('Scan step: %s %d' % (scan_parameter, scan_paramter_value))
             
             commands = []
@@ -27,10 +23,9 @@ class ThresholdScan(ScanBase):
             commands.extend(self.register.get_commands("wrregister", name = [scan_parameter]))
             self.register_utils.send_commands(commands)
             
-            mask = 3
-            repeat = 100
-            wait_cycles = 336*2/mask*24/4*3
-            cal_lvl1_command = self.register.get_commands("cal")[0]+BitVector.BitVector(size = 40)+self.register.get_commands("lv1")[0]+BitVector.BitVector(size = wait_cycles)
+            self.readout.start()
+            
+            cal_lvl1_command = self.register.get_commands("cal")[0]+self.register.get_commands("zeros", length=40)[0]+self.register.get_commands("lv1")[0]+self.register.get_commands("zeros", mask_steps=mask)[0]
             self.scan_utils.base_scan(cal_lvl1_command, repeat = repeat, mask = mask, steps = [], dcs = [], same_mask_for_all_dc = True, hardware_repeat = True, digital_injection = False, read_function = None)#self.readout.read_once)
             
             self.readout.stop(timeout=10)
