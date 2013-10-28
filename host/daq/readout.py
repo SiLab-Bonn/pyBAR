@@ -123,7 +123,6 @@ class Readout(object):
         # TODO: check FIFO status (overflow) and check rx status (sync) once in a while
 
         fifo_size = self.get_sram_fifo_size()
-        print fifo_size
         if fifo_size%2 == 1: # sometimes a read happens during writing, but we want to have a multiplicity of 32 bits
             fifo_size-=1
             #print "FIFO size odd"
@@ -280,26 +279,42 @@ def get_tot_iterator_from_data_records(array): # generator
         if np.not_equal(np.bitwise_and(item, 0x0000000F), 15):
             yield np.bitwise_and(item, 0x0000000F) # ToT2
             
-def save_raw_data(data_queue, filename, title="", mode = "w"): # mode="r+" to append data
+# TODO: add class that support with statement
+def save_raw_data(data_dequeue, filename, title="", mode = "a", scan_parameters={}): # mode="r+" to append data, file must exist, "w" to overwrite file, "a" to append data, if file does not exist it is created
     if os.path.splitext(filename)[1].strip().lower() != ".h5":
         filename = os.path.splitext(filename)[0]+".h5"
+#     if os.path.isfile(filename):
+#         logging.warning('File already exists: %s' % filename)
     logging.info('Saving raw data: %s' % filename)
+    scan_param_descr = dict([(key, tb.UInt32Col(pos=idx)) for idx, key in enumerate(dict.iterkeys(scan_parameters))])
     #raw_data = np.concatenate((data_dict['raw_data'] for data_dict in data))
-    total_words = 0
     filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
     filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
-    with tb.openFile(filename, mode = mode, title = "raw_data_file") as file_h5:
-        raw_data_earray_h5 = file_h5.createEArray(file_h5.root, name = 'raw_data', atom = tb.UIntAtom(), shape = (0,), title = 'raw_data', filters = filter_raw_data)
-        meta_data_table_h5 = file_h5.createTable(file_h5.root, name = 'meta_data', description = MetaTable, title = 'meta_data', filters = filter_tables)
-        row_meta = meta_data_table_h5.row
+    with tb.openFile(filename, mode = mode, title = title) as raw_data_file:
+        try:
+            raw_data_earray = raw_data_file.createEArray(raw_data_file.root, name = 'raw_data', atom = tb.UIntAtom(), shape = (0,), title = 'raw_data', filters = filter_raw_data) # expectedrows = ???
+        except tb.exceptions.NodeError:
+            raw_data_earray = raw_data_file.get_node(raw_data_file.root, name = 'raw_data')
+        try:
+            meta_data_table = raw_data_file.createTable(raw_data_file.root, name = 'meta_data', description = MetaTable, title = 'meta_data', filters = filter_tables)
+        except tb.exceptions.NodeError:
+            meta_data_table = raw_data_file.get_node(raw_data_file.root, name = 'meta_data')
+        row_meta = meta_data_table.row
+        if scan_parameters:
+            try:
+                scan_param_table = raw_data_file.createTable(raw_data_file.root, name = 'scan_parameters', description = scan_param_descr, title = 'scan_parameters', filters = filter_tables)
+            except tb.exceptions.NodeError:
+                scan_param_table = raw_data_file.get_node(raw_data_file.root, name = 'scan_parameters')
+            row_scan_param = scan_param_table.row
+        total_words = raw_data_earray.nrows # needed to calculate start_index and stop_index
         while True:
             try:
-                item = data_queue.popleft()
+                item = data_dequeue.popleft()
             except IndexError:
                 break
             raw_data = item[data_dict_names[0]]
             len_raw_data = raw_data.shape[0]
-            raw_data_earray_h5.append(raw_data)
+            raw_data_earray.append(raw_data)
             row_meta['timestamp'] = item[data_dict_names[1]]
             row_meta['error'] = item[data_dict_names[2]]
             row_meta['length'] = len_raw_data
@@ -307,5 +322,11 @@ def save_raw_data(data_queue, filename, title="", mode = "w"): # mode="r+" to ap
             total_words += len_raw_data
             row_meta['stop_index'] = total_words
             row_meta.append()
-        raw_data_earray_h5.flush()
-        meta_data_table_h5.flush()
+            if scan_parameters:
+                for key, value in dict.iteritems(scan_parameters):
+                    row_scan_param[key] = value
+                row_scan_param.append()
+        raw_data_earray.flush()
+        meta_data_table.flush()
+        if scan_parameters:
+            scan_param_table.flush()
