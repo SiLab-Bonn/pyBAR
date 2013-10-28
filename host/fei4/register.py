@@ -221,6 +221,28 @@ class FEI4Register(object):
                 return False
         else:
             raise ValueError("Can't detect chip flavor")
+
+    @property
+    def fei4a(self):
+        return True if self.chip_flavor=='fei4a' else False
+    
+    @fei4a.setter
+    def fei4a(self, value):
+        if value:
+            self.chip_flavor = 'fei4a'
+        else:
+            raise ValueError('unknown flavor')
+    
+    @property
+    def fei4b(self):
+        return True if self.chip_flavor=='fei4b' else False
+    
+    @fei4b.setter
+    def fei4b(self, value):
+        if value:
+            self.chip_flavor = 'fei4b'
+        else:
+            raise ValueError('unknown flavor')
     
     def load_configuration_file(self, configuration_file= None):
         if configuration_file is not None:
