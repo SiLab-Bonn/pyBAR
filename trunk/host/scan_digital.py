@@ -1,5 +1,3 @@
-import BitVector
-
 from daq.readout import get_col_row_array_from_data_record_array, save_raw_data, ArrayConverter, ArrayFilter, data_dict_to_data_array, is_data_record
 from analysis.plotting.plotting import plot_occupancy
 
@@ -12,11 +10,10 @@ class DigitalScan(ScanBase):
     def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "scan_digital", scan_data_path = None):
         super(DigitalScan, self).__init__(config_file = config_file, definition_file = definition_file, bit_file = bit_file, device = device, scan_identifier = scan_identifier, scan_data_path = scan_data_path)
         
-    def scan(self, configure = True, mask = 6, repeat = 100, steps = []):        
+    def scan(self, configure = True, mask = 6, repeat = 100, steps = []):
         self.readout.start()
         
-        wait_cycles = 336*2/mask*24/4*3
-        cal_lvl1_command = self.register.get_commands("cal")[0]+BitVector.BitVector(size = 35)+self.register.get_commands("lv1")[0]+BitVector.BitVector(size = wait_cycles)
+        cal_lvl1_command = self.register.get_commands("cal")[0]+self.register.get_commands("zeros", length=35)[0]+self.register.get_commands("lv1")[0]+self.register.get_commands("zeros", mask_steps=mask)[0]
         self.scan_utils.base_scan(cal_lvl1_command, repeat = repeat, mask = mask, steps = steps, dcs = [], same_mask_for_all_dc = True, hardware_repeat = True, enable_c_high = False, enable_c_low = False, digital_injection = True, read_function = None)
         
         self.readout.stop(timeout=10.0)
