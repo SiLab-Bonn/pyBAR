@@ -4,7 +4,6 @@ import itertools
 import time
 import os.path
 from threading import Thread, Event, Timer
-from Queue import Queue
 from collections import deque
 #from multiprocessing import Process as Thread
 #from multiprocessing import Event
@@ -22,7 +21,7 @@ from SiLibUSB import SiUSBDevice
 
 logging.basicConfig(level=logging.INFO, format = "%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
-data_dict_names = ["data", "timestamp", "error"]
+data_dict_names = ["data", "timestamp_start", "timestamp_stop", "error"]
 
 class Readout(object):
     def __init__(self, device, data_filter = None):
@@ -37,6 +36,8 @@ class Readout(object):
         self.readout_interval = 0.05
         self.rx_base_address = dict([(idx, addr) for idx, addr in enumerate(range(0x8600, 0x8200, -0x0100))])
         self.sram_base_address = dict([(idx, addr) for idx, addr in enumerate(range(0x8100, 0x8200, 0x0100))])
+        self.timestamp_start = get_float_time()
+        self.timestamp_stop = self.timestamp_start
     
     def start(self, reset_rx=False, empty_data_queue=True, reset_sram_fifo=True, filename=None):
         if self.worker_thread != None:
@@ -114,8 +115,9 @@ class Readout(object):
         can be used without threading
         '''
         # TODO: check FIFO status (overflow) and check rx status (sync) once in a while
-
-        return {data_dict_names[0]:self.read_data(), data_dict_names[1]:get_float_time(), data_dict_names[2]:self.read_status()}
+        self.timestamp_stop = get_float_time()
+        return {data_dict_names[0]:self.read_data(), data_dict_names[1]:self.timestamp_start, data_dict_names[2]:self.timestamp_start, data_dict_names[3]:self.read_status()}
+        self.timestamp_start = self.timestamp_stop 
     
     def read_data(self):
         '''Read SRAM
@@ -140,6 +142,7 @@ class Readout(object):
 
     def reset_sram_fifo(self):
         logging.info('Resetting SRAM FIFO')
+        self.timestamp_start = get_float_time()
         self.device.WriteExternal(address = self.sram_base_address[0], data = [0])
         if self.get_sram_fifo_size() != 0:
             logging.warning('SRAM FIFO size not zero')
@@ -171,34 +174,37 @@ class Readout(object):
             index = self.rx_base_address.iterkeys()
         return map(lambda i: self.device.ReadExternal(address = self.rx_base_address[i]+5, size = 1)[0], index)
 
-def data_dict_to_data_array(data_dict_lst):
-    return np.concatenate([item[data_dict_names[0]] for item in data_dict_lst])
-
-class ArrayFilter(object):
-    def __init__(self, filter_func):
-        self.filter_func = filter_func
-        
-    def filter_array(self, array):
-        return array[self.filter_func(array)]
-
 class ArrayConverter(object):
-    def __init__(self, converter_func):
-#         self.vfunc = np.vectorize(converter_func) # use numexpr.evaluate() or numpy.fromfunc()
-        self.func = converter_func
+    def __init__(self, filter_func=None, converter_func=None, array=None):
+        self.filter_func = filter_func
+        self.converter_func = converter_func
+        self.array = array
+        if self.array is not None:
+            self.process()
+        else:
+            self.data = None
         
-    def convert_array(self, array):
-        #return self.vfunc(array)
-        return self.func(array)
+    def process(self, array=None):
+        if array is not None:
+            self.data = array
+        elif self.array is not None:
+            self.data = self.array
+        else:
+            raise ValueError('no array available')
+        if self.filter_func is not None:
+            self.data = self.data[self.filter_func(self.data)]
+        if self.converter_func is not None:
+            self.data = self.converter_func(self.data)
+        return self
 
-class DataProcessor(object):
-    def __init__(self, filters=[], converters=[], names=[]):
-        self.data = []
-
-    def install_filter(self, data_list=None, data_filter=None, data_converter=None, name=None):
-        pass
-    
-    def remove_filter(self, name=None):
-        pass
+    @classmethod
+    def from_data_deque(cls, data_deque, filter_func=None, converter_func=None, clear_deque=False):
+        def concatenate_data_deque_to_array(data_deque):
+            return np.concatenate([item[data_dict_names[0]] for item in data_deque])
+        data_array = concatenate_data_deque_to_array(data_deque)
+        if clear_deque:
+            data_deque.clear()
+        return cls(filter_func, converter_func, data_array)
 
 def interweave_array(a, b):
     '''Interweave Arrays
@@ -239,7 +245,7 @@ def get_col_row_tot_array_from_data_record_array(array):
     col_row_tot_array = np.vstack((col_row_tot_1_array.T, col_row_tot_2_array.T)).reshape((3, -1),order='F').T
 #     print col_row_tot_array, col_row_tot_array.shape, col_row_tot_array.dtype
     # remove ToT > 14 (late hit, no hit) from array, remove row > 336 in case we saw hit in row 336 (no double hit possible)
-    col_row_tot_array_filtered = col_row_tot_array[np.logical_and(col_row_tot_array[:,2]<14, col_row_tot_array[:,1]<=336)]
+    col_row_tot_array_filtered = col_row_tot_array[col_row_tot_array[:,2]<14] #[np.logical_and(col_row_tot_array[:,2]<14, col_row_tot_array[:,1]<=336)]
 #     print col_row_tot_array_filtered, col_row_tot_array_filtered.shape, col_row_tot_array_filtered.dtype
     return col_row_tot_array_filtered[:,0], col_row_tot_array_filtered[:,1], col_row_tot_array_filtered[:,2] # column, row, ToT
 
@@ -315,8 +321,8 @@ def save_raw_data(data_dequeue, filename, title="", mode = "a", scan_parameters=
             raw_data = item[data_dict_names[0]]
             len_raw_data = raw_data.shape[0]
             raw_data_earray.append(raw_data)
-            row_meta['timestamp'] = item[data_dict_names[1]]
-            row_meta['error'] = item[data_dict_names[2]]
+            row_meta['timestamp'] = item[data_dict_names[1]] # TODO: support for timestamp_stop
+            row_meta['error'] = item[data_dict_names[3]]
             row_meta['length'] = len_raw_data
             row_meta['start_index'] = total_words
             total_words += len_raw_data
