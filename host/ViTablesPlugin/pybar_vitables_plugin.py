@@ -2,7 +2,7 @@
 #!/usr/bin/env python
 #       Author:  David-Leon Pohl - david-leon.pohl@cern.ch
 
-"""Plugin that provides plotting of data from the Python Bonn Atlas Readout System (PyBAR).
+"""Plugin that provides plotting of data from the Python Bonn Atlas Readout System (pyBAR).
 """
 
 __docformat__ = 'restructuredtext'
