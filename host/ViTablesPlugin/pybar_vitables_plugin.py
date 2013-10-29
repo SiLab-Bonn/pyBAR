@@ -7,7 +7,7 @@
 
 __docformat__ = 'restructuredtext'
 __version__ = '0.1'
-plugin_class = 'PyBAR'
+plugin_class = 'pyBAR'
 
 import os
 import re
