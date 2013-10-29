@@ -12,7 +12,7 @@ class ThresholdScan(ScanBase):
         
     def scan(self, configure = True, mask = 3, repeat = 100, steps = []):
         scan_parameter = 'PlsrDAC'
-        scan_paramter_value_range = range(0, 5, 1)
+        scan_paramter_value_range = range(0, 101, 1)
         
         for scan_paramter_value in scan_paramter_value_range:
             logging.info('Scan step: %s %d' % (scan_parameter, scan_paramter_value))
