@@ -252,7 +252,7 @@ def get_col_row_tot_array_from_data_record_array(array):
         col_row_tot_array_filtered = col_row_tot_array[col_row_tot_array[:,2]<14] #[np.logical_and(col_row_tot_array[:,2]<14, col_row_tot_array[:,1]<=336)]
 #         print col_row_tot_array_filtered, col_row_tot_array_filtered.shape, col_row_tot_array_filtered.dtype
     except IndexError:
-        logging.warning('Empty array')
+        logging.warning('Array is empty')
         return np.array([], dtype=np.dtype('>u4')), np.array([], dtype=np.dtype('>u4')), np.array([], dtype=np.dtype('>u4'))
     return col_row_tot_array_filtered[:,0], col_row_tot_array_filtered[:,1], col_row_tot_array_filtered[:,2] # column, row, ToT
 
@@ -293,12 +293,14 @@ def get_tot_iterator_from_data_records(array): # generator
             yield np.bitwise_and(item, 0x0000000F) # ToT2
             
 # TODO: add class that support with statement
-def save_raw_data(data_dequeue, filename, title="", mode = "a", scan_parameters={}): # mode="r+" to append data, file must exist, "w" to overwrite file, "a" to append data, if file does not exist it is created
+def save_raw_data(data_deque, filename, title="", mode = "a", scan_parameters={}): # mode="r+" to append data, file must exist, "w" to overwrite file, "a" to append data, if file does not exist it is created
     if os.path.splitext(filename)[1].strip().lower() != ".h5":
         filename = os.path.splitext(filename)[0]+".h5"
 #     if os.path.isfile(filename):
 #         logging.warning('File already exists: %s' % filename)
     logging.info('Saving raw data: %s' % filename)
+    if not data_deque:
+        logging.warning('Deque is empty')
     scan_param_descr = dict([(key, tb.UInt32Col(pos=idx)) for idx, key in enumerate(dict.iterkeys(scan_parameters))])
     #raw_data = np.concatenate((data_dict['raw_data'] for data_dict in data))
     filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
@@ -322,7 +324,7 @@ def save_raw_data(data_dequeue, filename, title="", mode = "a", scan_parameters=
         total_words = raw_data_earray.nrows # needed to calculate start_index and stop_index
         while True:
             try:
-                item = data_dequeue.popleft()
+                item = data_deque.popleft()
             except IndexError:
                 break
             raw_data = item[data_dict_names[0]]
