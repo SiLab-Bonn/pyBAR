@@ -180,11 +180,11 @@ class ArrayConverter(object):
         self.converter_func = converter_func
         self.array = array
         if self.array is not None:
-            self.process()
+            self.convert()
         else:
             self.data = None
         
-    def process(self, array=None):
+    def convert(self, array=None):
         if array is not None:
             self.data = array
         elif self.array is not None:
@@ -206,14 +206,15 @@ class ArrayConverter(object):
             data_deque.clear()
         return cls(filter_func, converter_func, data_array)
 
-def interweave_array(a, b):
-    '''Interweave Arrays
-    
-    http://stackoverflow.com/questions/5347065/interweaving-two-numpy-arrays
-    '''
-    return np.vstack((a,b)).reshape((-1,),order='F')
-
 def is_data_from_channel(value, channel):
+    '''Select data from channel
+    
+    Example:
+    f_ch3 = functoools.partial(is_data_from_channel, channel=3) # recommended
+    l_ch4 = lambda x: is_data_from_channel(x, channel=4)
+    
+    Note: trigger data not included
+    '''
     if channel>0:
         return np.equal(np.right_shift(np.bitwise_and(value, 0x7F000000), 24), channel)
     else:
@@ -225,7 +226,9 @@ def is_data_record(value):
 def is_data_header(value):
     return np.equal(np.bitwise_and(value, 0x00FF0000), 15269888)
                     
-def is_tlu_data(value):
+def is_trigger_data(value):
+    '''Select trigger data (trigger number)
+    '''
     return np.equal(np.bitwise_and(value, 0x80000000), 0x80000000)
 
 def get_col_row_tot_array_from_data_record_array(array):
@@ -242,11 +245,15 @@ def get_col_row_tot_array_from_data_record_array(array):
 #     print col_row_tot_1_array, col_row_tot_1_array.shape, col_row_tot_1_array.dtype
 #     print col_row_tot_2_array, col_row_tot_2_array.shape, col_row_tot_2_array.dtype
     # interweave array here
-    col_row_tot_array = np.vstack((col_row_tot_1_array.T, col_row_tot_2_array.T)).reshape((3, -1),order='F').T
+    col_row_tot_array = np.vstack((col_row_tot_1_array.T, col_row_tot_2_array.T)).reshape((3, -1),order='F').T # http://stackoverflow.com/questions/5347065/interweaving-two-numpy-arrays
 #     print col_row_tot_array, col_row_tot_array.shape, col_row_tot_array.dtype
     # remove ToT > 14 (late hit, no hit) from array, remove row > 336 in case we saw hit in row 336 (no double hit possible)
-    col_row_tot_array_filtered = col_row_tot_array[col_row_tot_array[:,2]<14] #[np.logical_and(col_row_tot_array[:,2]<14, col_row_tot_array[:,1]<=336)]
-#     print col_row_tot_array_filtered, col_row_tot_array_filtered.shape, col_row_tot_array_filtered.dtype
+    try:
+        col_row_tot_array_filtered = col_row_tot_array[col_row_tot_array[:,2]<14] #[np.logical_and(col_row_tot_array[:,2]<14, col_row_tot_array[:,1]<=336)]
+#         print col_row_tot_array_filtered, col_row_tot_array_filtered.shape, col_row_tot_array_filtered.dtype
+    except IndexError:
+        logging.warning('Empty array')
+        return np.array([], dtype=np.dtype('>u4')), np.array([], dtype=np.dtype('>u4')), np.array([], dtype=np.dtype('>u4'))
     return col_row_tot_array_filtered[:,0], col_row_tot_array_filtered[:,1], col_row_tot_array_filtered[:,2] # column, row, ToT
 
 def get_col_row_array_from_data_record_array(array):
