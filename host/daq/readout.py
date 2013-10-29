@@ -294,17 +294,17 @@ def save_raw_data(data_dequeue, filename, title="", mode = "a", scan_parameters=
         try:
             raw_data_earray = raw_data_file.createEArray(raw_data_file.root, name = 'raw_data', atom = tb.UIntAtom(), shape = (0,), title = 'raw_data', filters = filter_raw_data) # expectedrows = ???
         except tb.exceptions.NodeError:
-            raw_data_earray = raw_data_file.get_node(raw_data_file.root, name = 'raw_data')
+            raw_data_earray = raw_data_file.getNode(raw_data_file.root, name = 'raw_data')
         try:
             meta_data_table = raw_data_file.createTable(raw_data_file.root, name = 'meta_data', description = MetaTable, title = 'meta_data', filters = filter_tables)
         except tb.exceptions.NodeError:
-            meta_data_table = raw_data_file.get_node(raw_data_file.root, name = 'meta_data')
+            meta_data_table = raw_data_file.getNode(raw_data_file.root, name = 'meta_data')
         row_meta = meta_data_table.row
         if scan_parameters:
             try:
                 scan_param_table = raw_data_file.createTable(raw_data_file.root, name = 'scan_parameters', description = scan_param_descr, title = 'scan_parameters', filters = filter_tables)
             except tb.exceptions.NodeError:
-                scan_param_table = raw_data_file.get_node(raw_data_file.root, name = 'scan_parameters')
+                scan_param_table = raw_data_file.getNode(raw_data_file.root, name = 'scan_parameters')
             row_scan_param = scan_param_table.row
         total_words = raw_data_earray.nrows # needed to calculate start_index and stop_index
         while True:
