@@ -579,16 +579,15 @@ class FEI4Register(object):
         
         """
         
-        def calculalte_wait_cycles(mask_steps):
-            return 336*2/mask_steps*24/4*3 # good practice
-        
         commands = []
         
         if command_name.lower() == "zeros":
             if "length" in kwargs:
                 bv = BitVector.BitVector(size = kwargs["length"]) # all bits to zero
             elif "mask_steps" in kwargs:
-                bv = BitVector.BitVector(size = calculalte_wait_cycles(kwargs["mask_steps"]))
+                def calculate_wait_cycles(mask_steps):
+                    return int(336*2/mask_steps**(1/2)*24/4*3) # good practice
+                bv = BitVector.BitVector(size = calculate_wait_cycles(kwargs["mask_steps"]))
             else:
                 raise ValueError('cannot calculate length')
             commands.append(bv)
@@ -596,7 +595,7 @@ class FEI4Register(object):
             if "length" in kwargs:
                 bv = BitVector.BitVector(size = kwargs["length"]) # all bits to zero
             elif "mask_steps" in kwargs:
-                bv = BitVector.BitVector(size = calculalte_wait_cycles(kwargs["mask_steps"]))
+                bv = BitVector.BitVector(size = calculate_wait_cycles(kwargs["mask_steps"]))
             else:
                 raise ValueError('cannot calculate length')
             bv.reset(1) # all bits to one
