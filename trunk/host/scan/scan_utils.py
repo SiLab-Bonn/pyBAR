@@ -16,7 +16,7 @@ class FEI4ScanUtils(object):
         self.register = register
         self.register_utils = register_utils
     
-    def base_scan(self, command, repeat = 100, mask = 6, steps = None, dcs = None, hardware_repeat = False, same_mask_for_all_dc = False, read_function = None, digital_injection = False, enable_c_high = None, enable_c_low = None, shift_masks = ["Enable"]):
+    def base_scan(self, command, repeat = 100, mask = 6, steps = None, dcs = None, hardware_repeat = False, same_mask_for_all_dc = False, read_function = None, digital_injection = False, enable_c_high = None, enable_c_low = None, shift_masks = ["Enable", "C_High", "C_Low"]):
         if not isinstance(command, BitVector.BitVector):
             raise TypeError
         
