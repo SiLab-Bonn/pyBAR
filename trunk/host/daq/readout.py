@@ -208,11 +208,11 @@ class DataConverter(object):
         else:
             raise ValueError('no data available')
         if concatenate:
-            data_array = ArrayConverter.from_iterable(data, filter_func=self.filter_func, converter_func=self.converter_func).data
+            data_array = data_array_from_data_dict_iterable(data, filter_func=self.filter_func, converter_func=self.converter_func)
             self.data.append({data_deque_dict_names[0]:data_array, data_deque_dict_names[1]:data[0][data_deque_dict_names[1]], data_deque_dict_names[2]:data[-1][data_deque_dict_names[2]], data_deque_dict_names[3]:reduce(lambda x,y: x|y, [item[data_deque_dict_names[3]] for item in data])})
         else:
             for item in data:
-                data_array = ArrayConverter.from_iterable(list(item), filter_func=self.filter_func, converter_func=self.converter_func).data
+                data_array = data_array_from_data_dict_iterable((item,), filter_func=self.filter_func, converter_func=self.converter_func)
                 self.data.append({data_deque_dict_names[0]:data_array, data_deque_dict_names[1]:item[data_deque_dict_names[1]], data_deque_dict_names[2]:item[data_deque_dict_names[2]], data_deque_dict_names[3]:item[data_deque_dict_names[3]]})
         return self
 
@@ -228,7 +228,6 @@ def convert_data_array(array, filter_func=None, converter_func=None):
         array = converter_func(array)
     return array
 
-@timed
 def data_array_from_data_dict_iterable(data_dict_iterable, clear_deque=False):
     '''Convert data dictionary iterable (e.g. data deque)
     
