@@ -1,4 +1,4 @@
-from daq.readout import get_col_row_array_from_data_record_array, save_raw_data, ArrayConverter, is_data_record
+from daq.readout import get_col_row_array_from_data_record_array, save_raw_data_from_data_dict_iterable, convert_data_array, data_array_from_data_dict_iterable, is_data_record, is_data_from_channel
 from analysis.plotting.plotting import plot_occupancy
 
 from scan.scan import ScanBase
@@ -25,10 +25,10 @@ class AnalogScan(ScanBase):
         self.readout.stop(timeout=10.0)
         
         # plotting data
-        plot_occupancy(*ArrayConverter.from_data_deque(self.readout.data, filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array).data, max_occ = repeat*2, filename = self.scan_data_filename+".pdf")
+        plot_occupancy(*convert_data_array(data_array_from_data_dict_iterable(self.readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array), max_occ = repeat*2, filename = self.scan_data_filename+".pdf")
         
         # saving data
-        save_raw_data(self.readout.data, filename = self.scan_data_filename, title=self.scan_identifier)
+        save_raw_data_from_data_dict_iterable(self.readout.data, filename = self.scan_data_filename, title=self.scan_identifier)
 
 if __name__ == "__main__":
     import configuration
