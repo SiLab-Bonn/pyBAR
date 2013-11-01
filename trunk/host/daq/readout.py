@@ -349,6 +349,8 @@ def open_raw_data_file(filename, mode="w", title="", scan_parameters=[], **kwarg
             
 class RawDataFile(object):
     '''Saving raw data file from data dictionary iterable (e.g. data deque)
+    
+    TODO: Python 3.x support for contextlib.ContextDecorator
     '''
     def __init__(self, filename, mode="w", title="", scan_parameters=[], **kwargs): # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created):
         self.filename = filename
@@ -363,9 +365,8 @@ class RawDataFile(object):
     def __enter__(self):
         return self
 
-    def __exit__(self, *exc_info):
+    def __exit__(self):
         self.close()
-        return False  # do not hide exceptions
     
     def open(self, mode='w', title='', **kwargs):
         if os.path.splitext(self.filename)[1].strip().lower() != ".h5":
