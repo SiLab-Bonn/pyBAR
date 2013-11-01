@@ -1,7 +1,20 @@
+from functools import wraps
+from time import time
+
+def timed(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        start = time()
+        result = f(*args, **kwargs)
+        elapsed = time() - start
+        print "%s took %fs to finish" % (f.__name__, elapsed)
+        return result
+    return wrapper
+
+
 import logging
 import struct
 import itertools
-import time
 import os.path
 from threading import Thread, Event, Timer
 from collections import deque
@@ -21,10 +34,10 @@ from SiLibUSB import SiUSBDevice
 
 logging.basicConfig(level=logging.INFO, format = "%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
-data_dict_names = ["data", "timestamp_start", "timestamp_stop", "error"]
+data_deque_dict_names = ["data", "timestamp_start", "timestamp_stop", "error"]
 
 class Readout(object):
-    def __init__(self, device, data_filter = None):
+    def __init__(self, device):
         if isinstance(device, SiUSBDevice):
             self.device = device
         else:
@@ -106,7 +119,7 @@ class Readout(object):
                 continue
             finally:
                 self.device.lock.release()
-            if data[data_dict_names[0]].shape[0]>0: # TODO: make it optional
+            if data[data_deque_dict_names[0]].shape[0]>0: # TODO: make it optional
                 self.data.append(data)#put({'timestamp':get_float_time(), 'raw_data':filtered_data_words, 'error':0})
                         
     def read_data_dict(self, append=True):
@@ -116,7 +129,7 @@ class Readout(object):
         '''
         # TODO: check FIFO status (overflow) and check rx status (sync) once in a while
         self.timestamp_stop = get_float_time()
-        return {data_dict_names[0]:self.read_data(), data_dict_names[1]:self.timestamp_start, data_dict_names[2]:self.timestamp_start, data_dict_names[3]:self.read_status()}
+        return {data_deque_dict_names[0]:self.read_data(), data_deque_dict_names[1]:self.timestamp_start, data_deque_dict_names[2]:self.timestamp_start, data_deque_dict_names[3]:self.read_status()}
         self.timestamp_start = self.timestamp_stop 
     
     def read_data(self):
@@ -174,49 +187,84 @@ class Readout(object):
             index = self.rx_base_address.iterkeys()
         return map(lambda i: self.device.ReadExternal(address = self.rx_base_address[i]+5, size = 1)[0], index)
 
-class ArrayConverter(object):
-    def __init__(self, filter_func=None, converter_func=None, array=None):
+class DataConverter(object):
+    def __init__(self, filter_func=None, converter_func=None, data_deque=None):
         self.filter_func = filter_func
         self.converter_func = converter_func
-        self.array = array
-        if self.array is not None:
+        self.data_deque = data_deque
+        self.data = deque()
+        if self.data_deque is not None:
             self.convert()
-        else:
-            self.data = None
         
-    def convert(self, array=None):
-        if array is not None:
-            self.data = array
+    def convert(self, data_deque=None, clear_deque=False, concatenate=False):
+        if data_deque is not None:
+            data = list(data_deque)
+            if clear_deque:
+                data_deque.clear()
         elif self.array is not None:
-            self.data = self.array
+            data = list(self.data_deque)
+            if clear_deque:
+                self.data_deque.clear()
         else:
-            raise ValueError('no array available')
-        if self.filter_func is not None:
-            self.data = self.data[self.filter_func(self.data)]
-        if self.converter_func is not None:
-            self.data = self.converter_func(self.data)
+            raise ValueError('no data available')
+        if concatenate:
+            data_array = ArrayConverter.from_iterable(data, filter_func=self.filter_func, converter_func=self.converter_func).data
+            self.data.append({data_deque_dict_names[0]:data_array, data_deque_dict_names[1]:data[0][data_deque_dict_names[1]], data_deque_dict_names[2]:data[-1][data_deque_dict_names[2]], data_deque_dict_names[3]:reduce(lambda x,y: x|y, [item[data_deque_dict_names[3]] for item in data])})
+        else:
+            for item in data:
+                data_array = ArrayConverter.from_iterable(list(item), filter_func=self.filter_func, converter_func=self.converter_func).data
+                self.data.append({data_deque_dict_names[0]:data_array, data_deque_dict_names[1]:item[data_deque_dict_names[1]], data_deque_dict_names[2]:item[data_deque_dict_names[2]], data_deque_dict_names[3]:item[data_deque_dict_names[3]]})
         return self
 
-    @classmethod
-    def from_data_deque(cls, data_deque, filter_func=None, converter_func=None, clear_deque=False):
-        def concatenate_data_deque_to_array(data_deque):
-            return np.concatenate([item[data_dict_names[0]] for item in data_deque])
-        data_array = concatenate_data_deque_to_array(data_deque)
-        if clear_deque:
-            data_deque.clear()
-        return cls(filter_func, converter_func, data_array)
+def convert_data_array(array, filter_func=None, converter_func=None):
+    '''Filter and convert data array (numpy.ndarray)
+    
+    Returns:
+    array of specified dimension (converter_func) and content (filter_func)    
+    ''' 
+    if filter_func:
+        array = array[filter_func(array)]
+    if converter_func:
+        array = converter_func(array)
+    return array
 
-def is_data_from_channel(value, channel):
+@timed
+def data_array_from_data_dict_iterable(data_dict_iterable, clear_deque=False):
+    '''Convert data dictionary iterable (e.g. data deque)
+    
+    Returns:
+    data array (numpy.ndarray)
+    '''
+    try:
+        data_array = np.concatenate([item[data_deque_dict_names[0]] for item in data_dict_iterable])
+    except ValueError:
+        data_array = np.array([], dtype=np.dtype('>u4'))
+    if clear_deque:
+        data_dict_iterable.clear()
+    return data_array
+    
+def is_data_from_channel(channel): # function factory
     '''Select data from channel
     
-    Example:
-    f_ch3 = functoools.partial(is_data_from_channel, channel=3) # recommended
+    Usage:
+    # 1
+    is_data_from_channel_4 = is_data_from_channel(4)
+    data_from_channel_4 = data_array[is_data_from_channel_4(data_array)]
+    # 2
+    filter_func = np.logical_and(is_data_record, is_data_from_channel(3))
+    data_record_from_channel_3 = data_array[filter_func(data_array)]
+    
+    Similar to:
+    f_ch3 = functoools.partial(is_data_from_channel, channel=3)
     l_ch4 = lambda x: is_data_from_channel(x, channel=4)
     
     Note: trigger data not included
     '''
     if channel>0:
-        return np.equal(np.right_shift(np.bitwise_and(value, 0x7F000000), 24), channel)
+        def f(value):
+            return np.equal(np.right_shift(np.bitwise_and(value, 0x7F000000), 24), channel)
+        f.__name__ = "is_data_from_channel_"+str(channel) # or use inspect module: inspect.stack()[0][3]
+        return f
     else:
         raise ValueError('invalid channel number')
     
@@ -252,7 +300,7 @@ def get_col_row_tot_array_from_data_record_array(array):
         col_row_tot_array_filtered = col_row_tot_array[col_row_tot_array[:,2]<14] #[np.logical_and(col_row_tot_array[:,2]<14, col_row_tot_array[:,1]<=336)]
 #         print col_row_tot_array_filtered, col_row_tot_array_filtered.shape, col_row_tot_array_filtered.dtype
     except IndexError:
-        logging.warning('Array is empty')
+        #logging.warning('Array is empty')
         return np.array([], dtype=np.dtype('>u4')), np.array([], dtype=np.dtype('>u4')), np.array([], dtype=np.dtype('>u4'))
     return col_row_tot_array_filtered[:,0], col_row_tot_array_filtered[:,1], col_row_tot_array_filtered[:,2] # column, row, ToT
 
@@ -291,57 +339,125 @@ def get_tot_iterator_from_data_records(array): # generator
         yield np.right_shift(np.bitwise_and(item, 0x000000F0), 4) # ToT1
         if np.not_equal(np.bitwise_and(item, 0x0000000F), 15):
             yield np.bitwise_and(item, 0x0000000F) # ToT2
+
+def open_raw_data_file(filename, mode="w", title="", scan_parameters=[], **kwargs):
+    '''Mimics pytables.open_raw_data_file()/openFile()
+    
+    Returns:
+    RawDataFile Object
+    '''
+    return RawDataFile(filename=filename, mode =mode, title=title, scan_parameters=scan_parameters, **kwargs)
             
-# TODO: add class that support with statement
-def save_raw_data(data_deque, filename, title="", mode = "a", scan_parameters={}): # mode="r+" to append data, file must exist, "w" to overwrite file, "a" to append data, if file does not exist it is created
-    if os.path.splitext(filename)[1].strip().lower() != ".h5":
-        filename = os.path.splitext(filename)[0]+".h5"
-#     if os.path.isfile(filename):
-#         logging.warning('File already exists: %s' % filename)
-    logging.info('Saving raw data: %s' % filename)
-    if not data_deque:
-        logging.warning('Deque is empty')
-    scan_param_descr = dict([(key, tb.UInt32Col(pos=idx)) for idx, key in enumerate(dict.iterkeys(scan_parameters))])
-    #raw_data = np.concatenate((data_dict['raw_data'] for data_dict in data))
-    filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
-    filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
-    with tb.openFile(filename, mode = mode, title = title) as raw_data_file:
+class RawDataFile(object):
+    '''Saving raw data file from data dictionary iterable (e.g. data deque)
+    '''
+    def __init__(self, filename, mode="w", title="", scan_parameters=[], **kwargs): # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created):
+        self.filename = filename
+        self.scan_parameters = scan_parameters
+        self.raw_data_earray = None
+        self.meta_data_table = None
+        if self.scan_parameters:
+            self.scan_param_table = None
+        self.raw_data_file_h5 = None
+        self.open(mode, title)
+    
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc_info):
+        self.close()
+        return False  # do not hide exceptions
+    
+    def open(self, mode='w', title='', **kwargs):
+        if os.path.splitext(self.filename)[1].strip().lower() != ".h5":
+            self.filename = os.path.splitext(self.filename)[0]+".h5"
+        if os.path.isfile(self.filename) and mode in ('r+', 'a'):
+            logging.warning('Appending raw data: %s' % self.filename)
+        else:
+            logging.info('Saving raw data: %s' % self.filename)
+
+        filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
+        filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
+        self.raw_data_file_h5 = tb.openFile(self.filename, mode = mode, title = title, **kwargs)
         try:
-            raw_data_earray = raw_data_file.createEArray(raw_data_file.root, name = 'raw_data', atom = tb.UIntAtom(), shape = (0,), title = 'raw_data', filters = filter_raw_data) # expectedrows = ???
+            self.raw_data_earray = self.raw_data_file_h5.createEArray(self.raw_data_file_h5.root, name = 'raw_data', atom = tb.UIntAtom(), shape = (0,), title = 'raw_data', filters = filter_raw_data) # expectedrows = ???
         except tb.exceptions.NodeError:
-            raw_data_earray = raw_data_file.getNode(raw_data_file.root, name = 'raw_data')
+            self.raw_data_earray = self.raw_data_file_h5.getNode(self.raw_data_file_h5.root, name = 'raw_data')
         try:
-            meta_data_table = raw_data_file.createTable(raw_data_file.root, name = 'meta_data', description = MetaTable, title = 'meta_data', filters = filter_tables)
+            self.meta_data_table = self.raw_data_file_h5.createTable(self.raw_data_file_h5.root, name = 'meta_data', description = MetaTable, title = 'meta_data', filters = filter_tables)
         except tb.exceptions.NodeError:
-            meta_data_table = raw_data_file.getNode(raw_data_file.root, name = 'meta_data')
-        row_meta = meta_data_table.row
-        if scan_parameters:
+            self.meta_data_table = self.raw_data_file_h5.getNode(self.raw_data_file_h5.root, name = 'meta_data')
+        if self.scan_parameters:
             try:
-                scan_param_table = raw_data_file.createTable(raw_data_file.root, name = 'scan_parameters', description = scan_param_descr, title = 'scan_parameters', filters = filter_tables)
+                scan_param_descr = dict([(key, tb.UInt32Col(pos=idx)) for idx, key in enumerate(self.scan_parameters)])
+                self.scan_param_table = self.raw_data_file_h5.createTable(self.raw_data_file_h5.root, name = 'scan_parameters', description = scan_param_descr, title = 'scan_parameters', filters = filter_tables)
             except tb.exceptions.NodeError:
-                scan_param_table = raw_data_file.getNode(raw_data_file.root, name = 'scan_parameters')
-            row_scan_param = scan_param_table.row
-        total_words = raw_data_earray.nrows # needed to calculate start_index and stop_index
-        while True:
-            try:
-                item = data_deque.popleft()
-            except IndexError:
-                break
-            raw_data = item[data_dict_names[0]]
+                self.scan_param_table = self.raw_data_file_h5.getNode(self.raw_data_file_h5.root, name = 'scan_parameters')
+    
+    def close(self):
+        self.flush()
+        logging.info('Closing raw data file: %s' % self.filename)
+        self.raw_data_file_h5.close()
+            
+    def append(self, data_dict_iterable, scan_parameters={}, clear_deque=False, flush=True, **kwargs):
+#         if not data_dict_iterable:
+#             logging.warning('Iterable is empty')
+        row_meta = self.meta_data_table.row
+        if scan_parameters:
+            row_scan_param = self.scan_param_table.row
+        
+        total_words_before = self.raw_data_earray.nrows
+        
+        def append_item(item):
+            total_words = self.raw_data_earray.nrows
+            raw_data = item[data_deque_dict_names[0]]
             len_raw_data = raw_data.shape[0]
-            raw_data_earray.append(raw_data)
-            row_meta['timestamp'] = item[data_dict_names[1]] # TODO: support for timestamp_stop
-            row_meta['error'] = item[data_dict_names[3]]
+            self.raw_data_earray.append(raw_data)
+            row_meta['timestamp'] = item[data_deque_dict_names[1]] # TODO: support for timestamp_stop
+            row_meta['error'] = item[data_deque_dict_names[3]]
             row_meta['length'] = len_raw_data
             row_meta['start_index'] = total_words
             total_words += len_raw_data
             row_meta['stop_index'] = total_words
             row_meta.append()
-            if scan_parameters:
+            if self.scan_parameters:
                 for key, value in dict.iteritems(scan_parameters):
                     row_scan_param[key] = value
                 row_scan_param.append()
-        raw_data_earray.flush()
-        meta_data_table.flush()
-        if scan_parameters:
-            scan_param_table.flush()
+        
+#         if clear_deque:
+#             while True:
+#                 try:
+#                     item = data_dict_iterable.popleft()
+#                 except IndexError:
+#                     break
+#                 append_item(item)
+# 
+#         else:
+        for item in data_dict_iterable:
+            append_item(item)
+            
+        total_words_after = self.raw_data_earray.nrows
+        if total_words_after==total_words_before:
+            logging.info('Nothing to append: %s' % self.filename)
+            
+        if clear_deque:
+            data_dict_iterable.clear()
+            
+        if flush:
+            self.flush()
+                
+    def flush(self):
+        self.raw_data_earray.flush()
+        self.meta_data_table.flush()
+        if self.scan_parameters:
+            self.scan_param_table.flush()
+        
+            
+def save_raw_data_from_data_dict_iterable(data_deque, filename, mode='a', title='', scan_parameters={}, **kwargs): # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created
+    '''Writing raw data file from data dictionary iterable (e.g. data deque)
+    
+    If you need to write raw data once in a while this function may make it easy for you.
+    '''
+    with open_raw_data_file(filename, mode='a', title='', scan_parameters=list(dict.iterkeys(scan_parameters)), **kwargs) as raw_data_file:
+        raw_data_file.append(data_deque, scan_parameters=scan_parameters, **kwargs)

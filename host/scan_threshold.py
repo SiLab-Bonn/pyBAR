@@ -1,4 +1,4 @@
-from daq.readout import save_raw_data
+from daq.readout import open_raw_data_file
 
 from scan.scan import ScanBase
 
@@ -13,24 +13,26 @@ class ThresholdScan(ScanBase):
         scan_parameter = 'PlsrDAC'
         scan_paramter_value_range = range(0, 101, 1)
         
-        for scan_paramter_value in scan_paramter_value_range:
-            logging.info('Scan step: %s %d' % (scan_parameter, scan_paramter_value))
+        with open_raw_data_file(filename = self.scan_data_filename, title=self.scan_identifier, scan_parameters=[scan_parameter]) as raw_data_file:
             
-            commands = []
-            commands.extend(self.register.get_commands("confmode"))
-            self.register.set_global_register_value(scan_parameter, scan_paramter_value)
-            commands.extend(self.register.get_commands("wrregister", name = [scan_parameter]))
-            self.register_utils.send_commands(commands)
-            
-            self.readout.start()
-            
-            cal_lvl1_command = self.register.get_commands("cal")[0]+self.register.get_commands("zeros", length=40)[0]+self.register.get_commands("lv1")[0]+self.register.get_commands("zeros", mask_steps=mask)[0]
-            self.scan_utils.base_scan(cal_lvl1_command, repeat = repeat, mask = mask, steps = [], dcs = [], same_mask_for_all_dc = True, hardware_repeat = True, digital_injection = False, read_function = None)#self.readout.read_once)
-            
-            self.readout.stop(timeout=10)
-            
-            # saving data
-            save_raw_data(self.readout.data, filename = self.scan_data_filename, title=self.scan_identifier, scan_parameters={scan_parameter:scan_paramter_value})
+            for scan_paramter_value in scan_paramter_value_range:
+                logging.info('Scan step: %s %d' % (scan_parameter, scan_paramter_value))
+                
+                commands = []
+                commands.extend(self.register.get_commands("confmode"))
+                self.register.set_global_register_value(scan_parameter, scan_paramter_value)
+                commands.extend(self.register.get_commands("wrregister", name = [scan_parameter]))
+                self.register_utils.send_commands(commands)
+                
+                self.readout.start()
+                
+                cal_lvl1_command = self.register.get_commands("cal")[0]+self.register.get_commands("zeros", length=40)[0]+self.register.get_commands("lv1")[0]+self.register.get_commands("zeros", mask_steps=mask)[0]
+                self.scan_utils.base_scan(cal_lvl1_command, repeat = repeat, mask = mask, steps = [], dcs = [], same_mask_for_all_dc = True, hardware_repeat = True, digital_injection = False, read_function = None)#self.readout.read_once)
+                
+                self.readout.stop(timeout=10)
+                
+                # saving data
+                raw_data_file.append(self.readout.data, scan_parameters={scan_parameter:scan_paramter_value})
         
 if __name__ == "__main__":
     import configuration
