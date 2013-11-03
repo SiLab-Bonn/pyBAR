@@ -7,7 +7,7 @@
 
 __docformat__ = 'restructuredtext'
 __version__ = '0.1'
-plugin_class = 'pyBAR'
+plugin_class = 'PyBar'
 
 import os
 import re
@@ -268,14 +268,14 @@ def plotOccupancy(occupancy_hist, median = False, max_occ = None, filename = Non
     else:
         plt.savefig(filename)
 
-class PyBAR(QtCore.QObject):
-    """Plots the selected PyBAR data with PyBAR functions via Matlpotlib
+class PyBar(QtCore.QObject):
+    """Plots the selected pyBAR data with pyBAR functions via Matlpotlib
     """
 
     def __init__(self):
         """The class constructor.
         """
-        super(PyBAR, self).__init__()
+        super(PyBar, self).__init__()
 
         # Get a reference to the application instance
         self.vtapp = vitables.utils.getVTApp()
@@ -292,7 +292,7 @@ class PyBAR(QtCore.QObject):
 
 
     def addEntry(self):
-        """Add the `Plot PyBAR data`. entry to `Dataset` menu.
+        """Add the `Plot pyBAR data`. entry to `Dataset` menu.
         """
         export_icon = QtGui.QIcon()
         pixmap = QtGui.QPixmap(os.path.join(PLUGINSDIR, \
@@ -300,15 +300,15 @@ class PyBAR(QtCore.QObject):
         export_icon.addPixmap(pixmap, QtGui.QIcon.Normal, QtGui.QIcon.On)
 
         self.plot_action = QtGui.QAction(
-            translate('PlotPyBARdata', 
-                "Plot PyBAR data", 
-                "Plot PyBAR data"), 
+            translate('PlotpyBARdata', 
+                "Plot pyBAR data", 
+                "Plot pyBAR data"), 
             self, 
             shortcut=QtGui.QKeySequence.UnknownKey, triggered=self.plot, 
             icon=export_icon, 
-            statusTip=translate('PlotPyBARdata', 
-                "Plots the selected data set from PyBAR", 
-                "Status bar text for the Dataset -> Plot PyBAR data... action"))
+            statusTip=translate('PlotpyBARdata', 
+                "Plots the selected data set from pyBAR", 
+                "Status bar text for the Dataset -> Plot pyBAR data... action"))
 
         # Add the action to the Dataset menu
         menu = self.vtgui.dataset_menu
@@ -369,16 +369,16 @@ class PyBAR(QtCore.QObject):
         """
 
         # Text to be displayed
-        about_text = translate('PyBAR', 
+        about_text = translate('pyBAR', 
             """<qt>
-            <p>Plugin that plots the data aquired by the Python Bonn ATLAS Readout Framework (PyBAR).
+            <p>Plug-in that plots the data acquired by the Python Bonn ATLAS Readout Framework (pyBAR).
             </qt>""",
             'Text of an About plugin message box')
 
-        descr = dict(module_name='PyBAR', 
+        descr = dict(module_name='pyBAR', 
             folder=PLUGINSDIR, 
             version=__version__, 
-            plugin_name='PyBAR', 
+            plugin_name='pyBAR', 
             author='David-Leon Pohl <david-leon.pohl@cern.ch>', 
             descr=about_text)
 
