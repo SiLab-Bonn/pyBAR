@@ -269,7 +269,7 @@ def plotOccupancy(occupancy_hist, median = False, max_occ = None, filename = Non
         plt.savefig(filename)
 
 class PyBar(QtCore.QObject):
-    """Plots the selected pyBAR data with pyBAR functions via Matlpotlib
+    """Plots the selected pyBAR data with pyBAR functions via Matplotlib
     """
 
     def __init__(self):
@@ -355,14 +355,18 @@ class PyBar(QtCore.QObject):
         elif data_name=='HistRelBcid':
             plot_relative_bcid(leaf)
         elif data_name=='HistOcc':
-            plotThreeWay(hist=leaf[:,:,0], title = 'Occupancy', filename = None, label = "Occupacy", minimum = 0, bins = 100)
+            plotThreeWay(hist=leaf[:,:,0], title = 'Occupancy', filename = None, label = "occupancy", minimum = 0, bins = 100)
+        elif data_name=='HistThreshold':
+            plotThreeWay(hist=leaf[:,:], title = 'Threshold', filename = None, label = "threshold", minimum = 0, bins = 100)
+        elif data_name=='HistNoise':
+            plotThreeWay(hist=leaf[:,:], title = 'Noise', filename = None, label = "noise", minimum = 0, maximum = 10, bins = 100)
 #             plotOccupancy(leaf[:,:,0],max_occ = 100)
         elif data_name=='HistTriggerErrorCounter':
             plot_trigger_errors(leaf)
         elif data_name=='HistServiceRecord':
             plot_service_records(leaf)
         else:
-            print 'unknown data',data_name,'do not plot'
+            print 'unknown data - %s: do not plot' % data_name
 
     def helpAbout(self):
         """Brief description of the plugin.
