@@ -359,7 +359,7 @@ class PyBar(QtCore.QObject):
         elif data_name=='HistThreshold':
             plotThreeWay(hist=leaf[:,:], title = 'Threshold', filename = None, label = "threshold", minimum = 0, bins = 100)
         elif data_name=='HistNoise':
-            plotThreeWay(hist=leaf[:,:], title = 'Noise', filename = None, label = "noise", minimum = 0, maximum = 10, bins = 100)
+            plotThreeWay(hist=leaf[:,:], title = 'Noise', filename = None, label = "noise", minimum = 0, maximum = int(np.median(leaf)*2), bins = 100)
 #             plotOccupancy(leaf[:,:,0],max_occ = 100)
         elif data_name=='HistTriggerErrorCounter':
             plot_trigger_errors(leaf)
@@ -375,7 +375,7 @@ class PyBar(QtCore.QObject):
         # Text to be displayed
         about_text = translate('pyBAR', 
             """<qt>
-            <p>Plug-in that plots the data acquired by the Python Bonn ATLAS Readout Framework (pyBAR).
+            <p>Data plotting and histogramming plug-in for pyBAR.
             </qt>""",
             'Text of an About plugin message box')
 
@@ -383,7 +383,7 @@ class PyBar(QtCore.QObject):
             folder=PLUGINSDIR, 
             version=__version__, 
             plugin_name='pyBAR', 
-            author='David-Leon Pohl <david-leon.pohl@cern.ch>', 
+            author='David-Leon Pohl <david-leon.pohl@cern.ch>, Jens Janssen <janssen@physik.uni-bonn.de>', 
             descr=about_text)
 
         return descr
