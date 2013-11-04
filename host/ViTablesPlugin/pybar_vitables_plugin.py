@@ -301,13 +301,13 @@ class PyBar(QtCore.QObject):
 
         self.plot_action = QtGui.QAction(
             translate('PlotpyBARdata', 
-                "Plot pyBAR data", 
-                "Plot pyBAR data"), 
+                "Plot data with pyBAR...", 
+                "Plot data with pyBAR..."), 
             self, 
             shortcut=QtGui.QKeySequence.UnknownKey, triggered=self.plot, 
             icon=export_icon, 
             statusTip=translate('PlotpyBARdata', 
-                "Plots the selected data set from pyBAR", 
+                "Plotting of selected data with pyBAR", 
                 "Status bar text for the Dataset -> Plot pyBAR data... action"))
 
         # Add the action to the Dataset menu
@@ -357,9 +357,9 @@ class PyBar(QtCore.QObject):
         elif data_name=='HistOcc':
             plotThreeWay(hist=leaf[:,:,0], title = 'Occupancy', filename = None, label = "occupancy", minimum = 0, bins = 100)
         elif data_name=='HistThreshold':
-            plotThreeWay(hist=leaf[:,:], title = 'Threshold', filename = None, label = "threshold", minimum = 0, bins = 100)
+            plotThreeWay(hist=leaf[:,:], title = 'Threshold', filename = None, label = "threshold [PlsrDAC]", minimum = 0, bins = 100)
         elif data_name=='HistNoise':
-            plotThreeWay(hist=leaf[:,:], title = 'Noise', filename = None, label = "noise", minimum = 0, maximum = int(np.median(leaf)*2), bins = 100)
+            plotThreeWay(hist=leaf[:,:], title = 'Noise', filename = None, label = "noise [PlsrDAC]", minimum = 0, maximum = int(np.median(leaf)*2), bins = 100)
 #             plotOccupancy(leaf[:,:,0],max_occ = 100)
         elif data_name=='HistTriggerErrorCounter':
             plot_trigger_errors(leaf)

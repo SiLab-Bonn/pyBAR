@@ -490,8 +490,8 @@ class AnalyzeRawData(object):
         if (self._create_occupancy_hist and not self._create_threshold_hists):
             plotting.plotThreeWay(hist = out_file_h5.root.HistOcc[:,:,0] if out_file_h5 != None else self.occupancy_array[:,:,0], title = "Occupancy", label = "occupancy", filename = scan_data_filename+"_occupancy.pdf")
         if (self._create_threshold_hists):
-            plotting.plotThreeWay(hist = out_file_h5.root.HistThreshold[:,:] if out_file_h5 != None else self.threshold_hist, title = "Threshold", label = "threshold", filename = scan_data_filename+"_threshold.pdf", bins = 100, minimum = 0, maximum = 100)
-            plotting.plotThreeWay(hist = out_file_h5.root.HistNoise[:,:] if out_file_h5 != None else self.noise_hist, title = "Noise", label = "noise", filename = scan_data_filename+"_noise.pdf", bins = 100, minimum = 1, maximum = 10)
+            plotting.plotThreeWay(hist = out_file_h5.root.HistThreshold[:,:] if out_file_h5 != None else self.threshold_hist, title = "Threshold", label = "threshold [PlsrDAC]", filename = scan_data_filename+"_threshold.pdf", bins = 100, minimum = 0, maximum = 100)
+            plotting.plotThreeWay(hist = out_file_h5.root.HistNoise[:,:] if out_file_h5 != None else self.noise_hist, title = "Noise", label = "noise [PlsrDAC]", filename = scan_data_filename+"_noise.pdf", bins = 100, minimum = 0, maximum = 10)
         if(self._output_file != None):
             out_file_h5.close()
 
