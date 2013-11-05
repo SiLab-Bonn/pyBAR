@@ -221,9 +221,15 @@ def convert_data_array(array, filter_func=None, converter_func=None):
     
     Returns:
     array of specified dimension (converter_func) and content (filter_func)    
-    ''' 
+    '''
+#     if filter_func != None:
+#         if not hasattr(filter_func, '__call__'):
+#             raise ValueError('Filter is not callable')
     if filter_func:
         array = array[filter_func(array)]
+#     if converter_func != None:
+#         if not hasattr(converter_func, '__call__'):
+#             raise ValueError('Converter is not callable')
     if converter_func:
         array = converter_func(array)
     return array
@@ -232,7 +238,7 @@ def data_array_from_data_dict_iterable(data_dict_iterable, clear_deque=False):
     '''Convert data dictionary iterable (e.g. data deque)
     
     Returns:
-    data array (numpy.ndarray)
+    concatenated data array (numpy.ndarray)
     '''
     try:
         data_array = np.concatenate([item[data_deque_dict_names[0]] for item in data_dict_iterable])
@@ -242,8 +248,28 @@ def data_array_from_data_dict_iterable(data_dict_iterable, clear_deque=False):
         data_dict_iterable.clear()
     return data_array
     
-def is_data_from_channel(channel): # function factory
+def data_dict_list_from_data_dict_iterable(data_dict_iterable, filter_func=None, converter_func=None, concatenate=False, clear_deque=False): # TODO: implement concatenate
+    '''Convert data dictionary iterable (e.g. data deque)
+    
+    Returns:
+    data dictionary list of the form [{"data":converted_data, "timestamp_start":ts_start, "timestamp_stop":ts_stop, "error":error}, {...}, ...]
+    '''
+    data_dict_list = []
+    for item in data_dict_iterable:
+        data_dict_list.append({data_deque_dict_names[0]:convert_data_array(item[data_deque_dict_names[0]], filter_func=filter_func, converter_func=converter_func), data_deque_dict_names[1]:item[data_deque_dict_names[1]], data_deque_dict_names[2]:item[data_deque_dict_names[2]], data_deque_dict_names[3]:item[data_deque_dict_names[3]]})
+    if clear_deque:
+        data_dict_iterable.clear()
+    return data_dict_list
+
+def is_data_from_channel(channel=4): # function factory
     '''Select data from channel
+    
+    Parameters:
+    channel : int
+        Channel number (4 is default channel on Single Chip Card)
+    
+    Returns:
+    Function
     
     Usage:
     # 1
@@ -252,12 +278,15 @@ def is_data_from_channel(channel): # function factory
     # 2
     filter_func = np.logical_and(is_data_record, is_data_from_channel(3))
     data_record_from_channel_3 = data_array[filter_func(data_array)]
+    # 3
+    is_raw_data_from_channel_3 = is_data_from_channel(3)(raw_data)
     
     Similar to:
     f_ch3 = functoools.partial(is_data_from_channel, channel=3)
     l_ch4 = lambda x: is_data_from_channel(x, channel=4)
     
-    Note: trigger data not included
+    Note:
+    Trigger data not included
     '''
     if channel>0:
         def f(value):
@@ -268,7 +297,7 @@ def is_data_from_channel(channel): # function factory
         raise ValueError('invalid channel number')
     
 def is_data_record(value):
-    return np.logical_and(np.greater_equal(np.bitwise_and(value, 0x00FFFFFF), 131328), np.less_equal(np.bitwise_and(value, 0x00FFFFFF), 10572030))
+    return np.logical_and(np.logical_and(np.less_equal(np.bitwise_and(value, 0x00FE0000), 0x00A00000), np.less_equal(np.bitwise_and(value, 0x0001FF00), 0x00015000)), np.logical_and(np.not_equal(np.bitwise_and(value, 0x00FE0000), 0x00000000), np.not_equal(np.bitwise_and(value, 0x0001FF00), 0x00000000)))
 
 def is_data_header(value):
     return np.equal(np.bitwise_and(value, 0x00FF0000), 15269888)
@@ -306,7 +335,7 @@ def get_col_row_tot_array_from_data_record_array(array):
 def get_col_row_array_from_data_record_array(array):
     col, row, _ = get_col_row_tot_array_from_data_record_array(array)
     return col, row
- 
+
 def get_row_col_array_from_data_record_array(array):
     col, row, _ = get_col_row_tot_array_from_data_record_array(array)
     return row, col
@@ -340,7 +369,7 @@ def get_tot_iterator_from_data_records(array): # generator
             yield np.bitwise_and(item, 0x0000000F) # ToT2
 
 def open_raw_data_file(filename, mode="w", title="", scan_parameters=[], **kwargs):
-    '''Mimics pytables.open_raw_data_file()/openFile()
+    '''Mimics pytables.open_file()/openFile()
     
     Returns:
     RawDataFile Object
@@ -365,14 +394,15 @@ class RawDataFile(object):
     def __enter__(self):
         return self
 
-    def __exit__(self):
+    def __exit__(self, *exc_info):
         self.close()
+        return False # do not hide exceptions
     
     def open(self, mode='w', title='', **kwargs):
         if os.path.splitext(self.filename)[1].strip().lower() != ".h5":
             self.filename = os.path.splitext(self.filename)[0]+".h5"
         if os.path.isfile(self.filename) and mode in ('r+', 'a'):
-            logging.warning('Appending raw data: %s' % self.filename)
+            logging.info('Appending raw data: %s' % self.filename)
         else:
             logging.info('Saving raw data: %s' % self.filename)
 
@@ -454,10 +484,10 @@ class RawDataFile(object):
             self.scan_param_table.flush()
         
             
-def save_raw_data_from_data_dict_iterable(data_deque, filename, mode='a', title='', scan_parameters={}, **kwargs): # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created
+def save_raw_data_from_data_dict_iterable(data_dict_iterable, filename, mode='a', title='', scan_parameters={}, **kwargs): # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created
     '''Writing raw data file from data dictionary iterable (e.g. data deque)
     
     If you need to write raw data once in a while this function may make it easy for you.
     '''
     with open_raw_data_file(filename, mode='a', title='', scan_parameters=list(dict.iterkeys(scan_parameters)), **kwargs) as raw_data_file:
-        raw_data_file.append(data_deque, scan_parameters=scan_parameters, **kwargs)
+        raw_data_file.append(data_dict_iterable, scan_parameters=scan_parameters, **kwargs)
