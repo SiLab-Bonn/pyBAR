@@ -434,7 +434,29 @@ class FEI4RegisterUtils(object):
         
         return number_of_errors
     
-    def make_pixel_mask(self, default = 0, value = 1, mask = 6, column_offset = 0, row_offset = 0):
+    def make_pixel_mask(self, mask, default = 0, value = 1, column_offset = 0, row_offset = 0):
+        '''Generate pixel mask
+        
+        Parameters:
+        mask = int
+            Number of total mask steps. E.g. mask=3 means three steps to enable all pixels
+            
+        default = int
+            Value of pixels that are not selected by the mask.
+            
+        value = int
+            Value of pixels that are selected by the mask.
+            
+        column_offset = int
+            Shifts mask by given value to the right (higher columns)
+        
+        row_offset = int
+            Shifts mask by given value to the bottom (higher rows)
+            
+        Returns:
+        numpy.ndarray
+        
+        '''
         dimension = (80,336)
         #value = np.zeros(dimension, dtype = np.uint8)
         mask_array = np.empty(dimension, dtype = np.uint8)
@@ -449,7 +471,25 @@ class FEI4RegisterUtils(object):
         mask_array[even_columns, even_rows] = value
         return mask_array
         
-    def make_pixel_mask_from_col_row(self, column = [], row = [], default = 0, value = 1):
+    def make_pixel_mask_from_col_row(self, column, row, default = 0, value = 1):
+        '''Generate mask from column and row lists
+        
+        Paramaters:
+        column = iterable, int
+            List of colums values.
+            
+        row = iterable, int
+            List of row values.
+            
+        default = int
+            Value of pixels that are not selected by the mask.
+            
+        value = int
+            Value of pixels that are selected by the mask.
+        
+        Returns:
+        numpy.ndarray
+        '''
         # FE columns and rows start from 1
         col_array = np.array(column)-1
         row_array = np.array(row)-1
@@ -460,6 +500,37 @@ class FEI4RegisterUtils(object):
         mask = np.empty(dimension, dtype = np.uint8)
         mask.fill(default)
         mask[col_array, row_array] = value # advanced indexing
+        return mask
+    
+    def make_box_pixel_mask_from_col_row(self, column, row, default = 0, value = 1):
+        '''Generate box shaped mask from column and row lists. Takes the minimum and maximum value from each list.
+        
+        Paramaters:
+        column = iterable, int
+            List of colums values.
+            
+        row = iterable, int
+            List of row values.
+            
+        default = int
+            Value of pixels that are not selected by the mask.
+            
+        value = int
+            Value of pixels that are selected by the mask.
+        
+        Returns:
+        numpy.ndarray
+        '''
+        # FE columns and rows start from 1
+        col_array = np.array(column)-1
+        row_array = np.array(row)-1
+        if np.any(col_array>=80) or np.any(col_array<0) or np.any(row_array>=336) or np.any(col_array<0):
+            raise ValueError('Column and/or row out of range')
+        dimension = (80,336)
+        #value = np.zeros(dimension, dtype = np.uint8)
+        mask = np.empty(dimension, dtype = np.uint8)
+        mask.fill(default)
+        mask[col_array.min():col_array.max(), row_array.min():row_array.max()] = value # advanced indexing
         return mask
     
 def parse_key_value(filename, key, deletechars = ''):
