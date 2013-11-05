@@ -445,24 +445,21 @@ class FEI4RegisterUtils(object):
         odd_rows = range((0+row_offset)%mask, 336, mask)
         even_row_offset = (int(math.floor(mask/2)+row_offset))%mask
         even_rows = range(0+even_row_offset, 336, mask)
-        for row in odd_rows:
-            for col in odd_columns:
-                mask_array[col, row] = value
-        for row in even_rows:
-            for col in even_columns:
-                mask_array[col, row] = value
+        mask_array[odd_columns, odd_rows] = value # advanced indexing
+        mask_array[even_columns, even_rows] = value
         return mask_array
         
-    def make_pixel_mask_from_list(self, default = 0, value = 1, columns = [], rows = []):
+    def make_pixel_mask_from_col_row(self, column = [], row = [], default = 0, value = 1):
+        # FE columns and rows start from 1
+        col_array = np.array(column)-1
+        row_array = np.array(row)-1
+        if np.any(col_array>=80) or np.any(col_array<0) or np.any(row_array>=336) or np.any(col_array<0):
+            raise ValueError('Column and/or row out of range')
         dimension = (80,336)
         #value = np.zeros(dimension, dtype = np.uint8)
         mask = np.empty(dimension, dtype = np.uint8)
         mask.fill(default)
-        # FE columns and rows start from 1
-        columns = [col-1 for col in columns]
-        row = [row-1 for row in rows]
-        for col, row in zip(columns, rows):
-            mask[col, row] = value
+        mask[col_array, row_array] = value # advanced indexing
         return mask
     
 def parse_key_value(filename, key, deletechars = ''):

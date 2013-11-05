@@ -1,4 +1,4 @@
-import BitVector
+import BitVector # note: bitarray, bitstring, BitVector are packages with similar functionality
 import xml.sax
 import re
 import os
