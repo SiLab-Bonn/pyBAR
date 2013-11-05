@@ -438,21 +438,29 @@ class FEI4RegisterUtils(object):
         '''Generate pixel mask
         
         Parameters:
-        mask = int
+        mask : int
             Number of total mask steps. E.g. mask=3 means three steps to enable all pixels
-            
-        default = int
+        default : int
             Value of pixels that are not selected by the mask.
-            
-        value = int
+        value : int
             Value of pixels that are selected by the mask.
-            
-        column_offset = int
+        column_offset : int
             Shifts mask by given value to the right (higher columns)
-        
-        row_offset = int
+        row_offset : int
             Shifts mask by given value to the bottom (higher rows)
             
+        Example:
+        shift_mask = 'enable'
+        mask = 3 # three step mask
+        for mask_step in range(mask):
+            commands = []
+            commands.extend(self.register.get_commands("confmode"))
+            mask_array = self.register_utils.make_pixel_mask(mask = mask, row_offset = mask_step)
+            self.register.set_pixel_register_value(shift_mask, mask_array)
+            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc = True, name = shift_mask))
+            self.register_utils.send_commands(commands)
+            # do something here
+        
         Returns:
         numpy.ndarray
         
@@ -462,29 +470,28 @@ class FEI4RegisterUtils(object):
         mask_array = np.empty(dimension, dtype = np.uint8)
         mask_array.fill(default)
         # FE columns and rows start from 1
-        odd_columns = range((0+column_offset)%2, 80, 2)
-        even_columns = range((1+column_offset)%2, 80, 2)
-        odd_rows = range((0+row_offset)%mask, 336, mask)
+        odd_columns = np.arange((0+column_offset)%2, 80, 2)
+        even_columns = np.arange((1+column_offset)%2, 80, 2)
+        odd_rows = np.arange((0+row_offset)%mask, 336, mask)
         even_row_offset = (int(math.floor(mask/2)+row_offset))%mask
-        even_rows = range(0+even_row_offset, 336, mask)
-        mask_array[odd_columns, odd_rows] = value # advanced indexing
-        mask_array[even_columns, even_rows] = value
+        even_rows = np.arange(0+even_row_offset, 336, mask)
+        odd_col_row = cartesian((odd_columns, odd_rows)) # get any combination of column and row, no for loop needed
+        even_col_row = cartesian((even_columns, even_rows))
+        mask_array[odd_col_row[:,0], odd_col_row[:,1]] = value # advanced indexing
+        mask_array[even_col_row[:,0], even_col_row[:,1]] = value
         return mask_array
         
     def make_pixel_mask_from_col_row(self, column, row, default = 0, value = 1):
         '''Generate mask from column and row lists
         
         Paramaters:
-        column = iterable, int
+        column : iterable, int
             List of colums values.
-            
-        row = iterable, int
+        row : iterable, int
             List of row values.
-            
-        default = int
+        default : int
             Value of pixels that are not selected by the mask.
-            
-        value = int
+        value : int
             Value of pixels that are selected by the mask.
         
         Returns:
@@ -506,16 +513,13 @@ class FEI4RegisterUtils(object):
         '''Generate box shaped mask from column and row lists. Takes the minimum and maximum value from each list.
         
         Paramaters:
-        column = iterable, int
+        column : iterable, int
             List of colums values.
-            
-        row = iterable, int
+        row : iterable, int
             List of row values.
-            
-        default = int
+        default : int
             Value of pixels that are not selected by the mask.
-            
-        value = int
+        value : int
             Value of pixels that are selected by the mask.
         
         Returns:
@@ -532,6 +536,61 @@ class FEI4RegisterUtils(object):
         mask.fill(default)
         mask[col_array.min():col_array.max()+1, row_array.min():row_array.max()+1] = value # advanced indexing
         return mask
+    
+def cartesian(arrays, out=None):
+    """
+    Generate a cartesian product of input arrays.
+    Similar to itertools.combinations().
+
+    Parameters
+    ----------
+    arrays : list of array-like
+        1-D arrays to form the cartesian product of.
+    out : ndarray
+        Array to place the cartesian product in.
+
+    Returns
+    -------
+    out : ndarray
+        2-D array of shape (M, len(arrays)) containing cartesian products
+        formed of input arrays.
+
+    Examples
+    --------
+    >>> cartesian(([1, 2, 3], [4, 5], [6, 7]))
+    array([[1, 4, 6],
+           [1, 4, 7],
+           [1, 5, 6],
+           [1, 5, 7],
+           [2, 4, 6],
+           [2, 4, 7],
+           [2, 5, 6],
+           [2, 5, 7],
+           [3, 4, 6],
+           [3, 4, 7],
+           [3, 5, 6],
+           [3, 5, 7]])
+           
+    Note
+    ----
+    http://stackoverflow.com/questions/1208118/using-numpy-to-build-an-array-of-all-combinations-of-two-arrays
+
+    """
+
+    arrays = [np.asarray(x) for x in arrays]
+    dtype = arrays[0].dtype
+
+    n = np.prod([x.size for x in arrays])
+    if out is None:
+        out = np.zeros([n, len(arrays)], dtype=dtype)
+
+    m = n / arrays[0].size
+    out[:,0] = np.repeat(arrays[0], m)
+    if arrays[1:]:
+        cartesian(arrays[1:], out=out[0:m,1:])
+        for j in xrange(1, arrays[0].size):
+            out[j*m:(j+1)*m,1:] = out[0:m,1:]
+    return out
     
 def parse_key_value(filename, key, deletechars = ''):
     with open(filename, 'r') as f:
