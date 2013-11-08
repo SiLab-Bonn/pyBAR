@@ -82,7 +82,7 @@ class FEI4SelfTriggerScan(ScanBase):
                 time_from_last_iteration = time.time() - last_iteration
                 last_iteration = time.time()
                 try:
-                    raw_data_file.append((self.readout.data.popleft()))
+                    raw_data_file.append((self.readout.data.popleft(),))
                     logging.info('data words')
                 except IndexError:
                     logging.info('no data words')
