@@ -7,7 +7,7 @@ from collections import deque
 import math
 
 import numpy as np
-from scan.scan import ScanBase, set_event_when_keyboard_interrupt
+from scan.scan import ScanBase
 
 logging.basicConfig(level=logging.INFO, format = "%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
