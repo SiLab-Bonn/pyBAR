@@ -7,7 +7,7 @@ from collections import deque
 import math
 
 import numpy as np
-from scan.scan import ScanBase
+from scan.scan import ScanBase, set_event_when_keyboard_interrupt
 
 logging.basicConfig(level=logging.INFO, format = "%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
@@ -15,9 +15,10 @@ class FEI4SelfTriggerScan(ScanBase):
     def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "scan_ext_trigger", scan_data_path = None):
         super(FEI4SelfTriggerScan, self).__init__(config_file = config_file, definition_file = definition_file, bit_file = bit_file, device = device, scan_identifier = scan_identifier, scan_data_path = scan_data_path)
         
+    @set_event_when_keyboard_interrupt(lambda x: x.stop_thread_event)
     def scan(self, **kwargs):
-        col_span = [33,63]
-        row_span = [200,100]
+        col_span = [1,80]
+        row_span = [1,336]
         # generate ROI mask for Enable mask
         pixel_reg = "Enable"
         mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
@@ -77,13 +78,6 @@ class FEI4SelfTriggerScan(ScanBase):
 #                     else:
 #                         logging.info('Done!')
 #                         self.readout_utils.set_ext_cmd_start(True)
-                    
-            if self.stop_thread_event.is_set():
-                q_size = -1
-                while self.readout.data_queue.qsize() != q_size or self.readout.get_fifo_size() != 0:
-                    time.sleep(0.5)
-                    q_size = self.readout.data_queue.qsize()
-                print 'Items in queue:', q_size
 
             time_from_last_iteration = time.time() - last_iteration
             last_iteration = time.time()
@@ -91,6 +85,7 @@ class FEI4SelfTriggerScan(ScanBase):
                 item = self.readout.data.popleft()
                 logging.info('data words: %d' % item["data"].shape[0])
             except IndexError:
+                logging.info('no data words')
                 no_data_at_time = last_iteration
                 if wait_for_first_data == False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
                     logging.info('Reached no data timeout. Stopping Scan...')
