@@ -232,6 +232,7 @@ bool Interpret::setMetaData(MetaInfo* &rMetaInfo, const unsigned int& tLength)
 
 	_metaEventIndexLength = tLength;
 	_metaDataSet = true;
+
 	return true;
 }
 
@@ -541,9 +542,19 @@ void Interpret::storeEventHits()
 void Interpret::correlateMetaWordIndex(const unsigned int& pEventNumer, const unsigned int& pDataWordIndex)
 {
 	if(_metaDataSet && pDataWordIndex == _lastWordIndexSet){
+//		std::cout<<"_lastMetaIndexNotSet "<<_lastMetaIndexNotSet<<"\n";
 		_metaEventIndex[_lastMetaIndexNotSet] = pEventNumer;
 		_lastWordIndexSet = _metaInfo[_lastMetaIndexNotSet].stopIndex;
 		_lastMetaIndexNotSet++;
+		if(_metaInfo[_lastMetaIndexNotSet-1].length == 0 && _lastMetaIndexNotSet < _metaEventIndexLength){
+//			std::cout<<"correction needed\n";
+//			std::cout<<"correlateMetaWordIndex: pEventNumer "<<pEventNumer<<" _lastWordIndexSet "<<_lastWordIndexSet<<" _lastMetaIndexNotSet "<<_lastMetaIndexNotSet<<"\n";
+			_metaEventIndex[_lastMetaIndexNotSet] = pEventNumer;
+			_lastWordIndexSet = _metaInfo[_lastMetaIndexNotSet].stopIndex;
+			_lastMetaIndexNotSet++;
+//			std::cout<<"correlateMetaWordIndex: pEventNumer "<<pEventNumer<<" _lastWordIndexSet "<<_lastWordIndexSet<<" _lastMetaIndexNotSet "<<_lastMetaIndexNotSet<<"\n";
+//			std::cout<<" finished\n";
+		}
 	}
 }
 
