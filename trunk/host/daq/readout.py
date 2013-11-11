@@ -64,6 +64,7 @@ class Readout(object):
             self.reset_sram_fifo()
         self.stop_thread_event.clear()
         self.worker_thread = Thread(target=self.worker)
+        self.worker_thread.daemon = True
         logging.info('Starting readout')
         self.worker_thread.start()
     
@@ -97,12 +98,14 @@ class Readout(object):
         logging.info('Stopped readout')
     
     def print_readout_status(self):
+        sync_status = self.get_rx_sync_status()
         logging.info('Data queue size: %d' % len(self.data))#.qsize())
         logging.info('SRAM FIFO size: %d' % self.get_sram_fifo_size())
         logging.info('Channel:                     %s', " | ".join([('CH%d' % channel).rjust(3) for channel in range(1, 5, 1)]))
-        logging.info('RX FIFO sync:                %s', " | ".join(["YES".rjust(3) if status == True else "NO".rjust(3) for status in self.get_rx_sync_status()]))
+        logging.info('RX FIFO sync:                %s', " | ".join(["YES".rjust(3) if status == True else "NO".rjust(3) for status in sync_status]))
         logging.info('RX FIFO discard counter:     %s', " | ".join([repr(count).rjust(3) for count in self.get_rx_fifo_discard_count()]))
         logging.info('RX FIFO 8b10b error counter: %s', " | ".join([repr(count).rjust(3) for count in self.get_rx_8b10b_error_count()]))
+        return sync_status
     
     def worker(self):
         '''Reading thread to continuously reading SRAM
@@ -219,7 +222,17 @@ class DataConverter(object):
 def convert_data_array(array, filter_func=None, converter_func=None):
     '''Filter and convert data array (numpy.ndarray)
     
-    Returns:
+    Parameters
+    ----------
+    array : numpy.array
+        Raw data array.
+    filter_func : function
+        Function that takes array and returns true or false for each item in array.
+    converter_func : function
+        Function that takes array and returns an array or tuple of arrays.
+    
+    Returns
+    -------
     array of specified dimension (converter_func) and content (filter_func)    
     '''
 #     if filter_func != None:
@@ -237,7 +250,15 @@ def convert_data_array(array, filter_func=None, converter_func=None):
 def data_array_from_data_dict_iterable(data_dict_iterable, clear_deque=False):
     '''Convert data dictionary iterable (e.g. data deque)
     
-    Returns:
+    Parameters
+    ----------
+    data_dict_iterable : iterable
+        Iterable (e.g. list, deque, ...) where each element is a dict with following keys: "data", "timestamp_start", "timestamp_stop", "error"
+    clear_deque : bool
+        Clear deque when returning.
+    
+    Returns
+    -------
     concatenated data array (numpy.ndarray)
     '''
     try:
@@ -251,7 +272,21 @@ def data_array_from_data_dict_iterable(data_dict_iterable, clear_deque=False):
 def data_dict_list_from_data_dict_iterable(data_dict_iterable, filter_func=None, converter_func=None, concatenate=False, clear_deque=False): # TODO: implement concatenate
     '''Convert data dictionary iterable (e.g. data deque)
     
-    Returns:
+    Parameters
+    ----------
+    data_dict_iterable : iterable
+        Iterable (e.g. list, deque, ...) where each element is a dict with following keys: "data", "timestamp_start", "timestamp_stop", "error"
+    filter_func : function
+        Function that takes array and returns true or false for each item in array.
+    converter_func : function
+        Function that takes array and returns an array or tuple of arrays.
+    concatenate: bool
+        Concatenate input arrays. If true, returns single dict.
+    clear_deque : bool
+        Clear deque when returning.
+    
+    Returns
+    -------
     data dictionary list of the form [{"data":converted_data, "timestamp_start":ts_start, "timestamp_stop":ts_stop, "error":error}, {...}, ...]
     '''
     data_dict_list = []
@@ -297,9 +332,76 @@ def is_data_from_channel(channel=4): # function factory
         raise ValueError('invalid channel number')
     
 def logical_and(f1, f2): # function factory
+    '''Logical and from functions.
+    
+    Parameters
+    ----------
+    f1, f2 : function
+        Function that takes array and returns true or false for each item in array.
+        
+    Returns
+    -------
+    Function
+    
+    Examples
+    --------
+    filter_func=logical_and(is_data_record,is_data_from_channel(4)) # new filter function
+    filter_func(array) # array that has Data Records from channel 4
+    '''
     def f(value):
         return np.logical_and(f1(value), f2(value))
     f.__name__ = f1.__name__+"_and_"+f2.__name__
+    return f
+
+def logical_or(f1, f2): # function factory
+    '''Logical or from functions.
+    
+    Parameters
+    ----------
+    f1, f2 : function
+        Function that takes array and returns true or false for each item in array.
+        
+    Returns
+    -------
+    Function
+    '''
+    def f(value):
+        return np.logical_or(f1(value), f2(value))
+    f.__name__ = f1.__name__+"_or_"+f2.__name__
+    return f
+
+def logical_not(f): # function factory
+    '''Logical not from functions.
+    
+    Parameters
+    ----------
+    f1, f2 : function
+        Function that takes array and returns true or false for each item in array.
+        
+    Returns
+    -------
+    Function
+    '''
+    def f(value):
+        return np.logical_not(f(value))
+    f.__name__ = "not_"+f.__name__
+    return f
+
+def logical_xor(f1, f2): # function factory
+    '''Logical xor from functions.
+    
+    Parameters
+    ----------
+    f1, f2 : function
+        Function that takes array and returns true or false for each item in array.
+        
+    Returns
+    -------
+    Function
+    '''
+    def f(value):
+        return np.logical_xor(f1(value), f2(value))
+    f.__name__ = f1.__name__+"_xor_"+f2.__name__
     return f
     
 def is_data_record(value):
@@ -314,6 +416,17 @@ def is_trigger_data(value):
     return np.equal(np.bitwise_and(value, 0x80000000), 0x80000000)
 
 def get_col_row_tot_array_from_data_record_array(array):
+    '''Convert raw data array to column, row, and ToT array
+    
+    Parameters
+    ----------
+    array : numpy.array
+        Raw data array.
+    
+    Returns
+    -------
+    Tuple of arrays.
+    '''
     def get_col_row_tot_1_array_from_data_record_array(value):
         return np.right_shift(np.bitwise_and(value, 0x00FE0000), 17), np.right_shift(np.bitwise_and(value, 0x0001FF00), 8), np.right_shift(np.bitwise_and(value, 0x000000F0), 4)
 #         return (value & 0xFE0000)>>17, (value & 0x1FF00)>>8, (value & 0x0000F0)>>4 # numpy.vectorize()
