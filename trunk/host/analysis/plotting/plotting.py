@@ -254,6 +254,54 @@ def plotOccupancy(occupancy_hist, median = False, max_occ = None, filename = Non
     else:
         plt.savefig(filename)
 
+def plot_cluster_size(cluster_size_hist, filename = None):
+    plt.clf()
+    plt.bar(range(0,len(cluster_size_hist)), cluster_size_hist[:], color='r', align = 'center', label="Error code")
+#     print cluster_size_hist[:].nonzero()
+#     plt.xlim((0, 31))
+    plt.yscale('log')
+    plt.xlabel('cluster size')
+    plt.ylabel('#')
+    plt.title('Cluster size ('+str(sum(cluster_size_hist[:]))+' entries)')
+    fig = plt.figure(1)
+    fig.patch.set_facecolor('white')
+    plt.grid(True)
+    if filename is None:
+        plt.show()
+    else:
+        plt.savefig(filename)
+        
+def plot_cluster_tot_size(hist, median = False, max_occ = None, filename = None):
+    plt.clf()
+    H = hist[0:50,0:20]
+    cmap = cm.get_cmap('jet')
+    plt.imshow(H, aspect="auto", interpolation='nearest', cmap = cmap)#, norm = norm)#, extent=extent) # for monitoring
+    plt.title('Cluster size and cluster tot ('+str(sum(sum(H))/2)+' entries)')
+    plt.xlabel('cluster size')
+    plt.ylabel('cluster tot')
+    plt.colorbar(cmap = cmap)
+    plt.gca().invert_yaxis()
+    fig = plt.figure(1)
+    fig.patch.set_facecolor('white')
+    if filename is None:
+        plt.show()
+    else:
+        plt.savefig(filename)
+        
+def plot_cluster_tot(hist, median = False, max_occ = None, filename = None):
+    plt.clf()
+    plt.bar(range(0,len(hist[:,0])), hist[:,0], color='r', align = 'center', label="Error code")
+    plt.xlabel('cluster tot')
+    plt.ylabel('#')
+    plt.title('Cluster tot ('+str(sum(hist[:,0]))+' entries)')
+    fig = plt.figure(1)
+    fig.patch.set_facecolor('white')
+    plt.grid(True)
+    if filename is None:
+        plt.show()
+    else:
+        plt.savefig(filename)
+
 def plot_pixel_mask(mask, maskname, filename = None):
     plt.clf()
     extent = [0.5, 80.5, 336.5, 0.5]
@@ -310,7 +358,7 @@ def create_2d_pixel_hist(hist2d, title = None, x_axis_title = None, y_axis_title
     try:
         plt.colorbar(boundaries = bounds, cmap = cmap, norm = norm, ticks = bounds, cax = cax)
     except:
-        logging.warning('create_2d_pixel_hist: error printing color bar')
+        logging.info('create_2d_pixel_hist: error printing color bar')
 
 
 def create_1d_hist(hist, title = None, x_axis_title = None, y_axis_title = None, bins = None, x_min = None, x_max = None):
