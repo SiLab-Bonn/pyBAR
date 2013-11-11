@@ -6,7 +6,10 @@ import logging
 
 from threading import Thread, Event, Lock, Timer
 
-from SiLibUSB import SiUSBDevice
+from SiLibUSB import SiUSBDevice, __version__ as pysilibusb_version
+from distutils.version import StrictVersion as v
+if v(pysilibusb_version)<v('0.1.2'):
+    raise ImportError('Wrong pySiLibUsb version')
 
 from fei4.register import FEI4Register
 from fei4.register_utils import FEI4RegisterUtils
@@ -28,7 +31,7 @@ class ScanBase(object):
                 raise TypeError('Device has wrong type')
         else:
             self.device = SiUSBDevice()
-        logging.info('Found USB board with ID %s', self.device.identifier)
+        logging.info('Found USB board with ID %s', self.device.board_id)
         if bit_file != None:
             logging.info('Programming FPGA: %s' % bit_file)
             self.device.DownloadXilinx(bit_file)
@@ -64,7 +67,7 @@ class ScanBase(object):
     def start(self, configure = True, use_thread = False, **kwargs): # TODO: in Python 3 use def func(a,b,*args,kw1=None,**kwargs)
         self.use_thread = use_thread
         if self.scan_thread != None:
-            raise RuntimeError('Thread is not None')
+            raise RuntimeError('Scan thread is already running')
         self.lock.acquire()
         if not os.path.exists(self.scan_data_path):
             os.makedirs(self.scan_data_path)
@@ -85,13 +88,17 @@ class ScanBase(object):
 
         self.readout.reset_rx()
 #        self.readout.reset_sram_fifo()
-        self.readout.print_readout_status()
+        
+        if not any(self.readout.print_readout_status()):
+            logging.error('Stopping scan: no sync')
+            return
         
         self.stop_thread_event.clear()
         
         logging.info('Starting scan %s with ID %d (output path: %s)' % (self.scan_identifier, self.scan_number, self.scan_data_path))
         if use_thread:
             self.scan_thread = Thread(target=self.scan, name='%s with ID %d' % (self.scan_identifier, self.scan_number), kwargs=kwargs)#, args=kwargs)
+            self.scan_thread.daemon = True # Abruptly close thread when closing main thread. Resources may not be released properly.
             self.scan_thread.start()
         else:
             self.scan(**kwargs)
@@ -100,9 +107,10 @@ class ScanBase(object):
         scan_completed = True
         if (self.scan_thread is not None) ^ self.use_thread:
             if self.scan_thread is None:
-                raise RuntimeError('Thread is None')
+                logging.warning('Scan thread has already stopped')
+                #raise RuntimeError('Scan thread has already stopped')
             else:
-                raise RuntimeError('Thread is not None')
+                raise RuntimeError('Expected no scan thread')
         if self.scan_thread is not None:
             if timeout:
                 wait_timeout_event = Event()
@@ -126,11 +134,54 @@ class ScanBase(object):
             self.stop_thread_event.set()
             self.scan_thread.join()
             self.scan_thread = None
-            self.use_thread = None
+        self.use_thread = None
         logging.info('Stopped scan %s with ID %d' % (self.scan_identifier, self.scan_number))
         self.readout.print_readout_status()
         
+        self.device.dispose()
         return scan_completed
     
+    @property
+    def is_running(self):
+        return self.scan_thread.is_alive()
+    
     def scan(self, **kwargs):
-        raise NotImplementedError('Scan not implemented')
+        raise NotImplementedError('scan.scan() not implemented')
+    
+    def analyze(self, **kwargs):
+        raise NotImplementedError('scan.analyze() not implemented')
+    
+from functools import wraps
+def set_event_when_keyboard_interrupt(_lambda):
+    '''Decorator function that sets Threading.Event() when keyboard interrupt (Ctrl+c) was raised
+    
+    Parameters
+    ----------
+    _lambda : function
+        Lambda function that points to Threading.Event() object
+
+    Returns
+    -------
+    wrapper : function
+
+    Examples
+    --------
+    @set_event_when_keyboard_interrupt(lambda x: x.stop_thread_event)
+    def scan(self, **kwargs):
+        # some code
+        
+    Note
+    ----
+    Decorated functions cannot be derived.
+    '''
+    def wrapper(f):
+        @wraps(f)
+        def wrapped_f(self, *f_args, **f_kwargs):
+            try:
+                f(self, *f_args, **f_kwargs)
+            except KeyboardInterrupt:
+                #logging.info('Keyboard interrupt: setting %s' % _lambda(self).__name__)
+                print 'call set()'
+                _lambda(self).set()
+        return wrapped_f
+    return wrapper
