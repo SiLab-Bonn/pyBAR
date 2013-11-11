@@ -26,6 +26,7 @@ class AnalyzeRawData(object):
     def __exit__(self, type, value, traceback):
         del self.interpreter
         del self.histograming
+        del self.clusterizer
     
     def set_standard_settings(self):
         self.out_file_h5 = None
@@ -392,12 +393,12 @@ class AnalyzeRawData(object):
                 cluster_size_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name = 'HistClusterSize', title = 'Cluster Size Histogram', atom = tb.Atom.from_dtype(self.cluster_size_hist.dtype), shape = self.cluster_size_hist.shape, filters = self._filter_table)
                 cluster_size_hist_table[:] = self.cluster_size_hist
         if(self._create_cluster_tot_hist):
-            cluster_tot_hist = np.zeros(32*1024, dtype=np.uint32)  # create linear array as it is created in histogram class
+            cluster_tot_hist = np.zeros(128*1024, dtype=np.uint32)  # create linear array as it is created in histogram class
             self.clusterizer.get_cluster_tot_hist(cluster_tot_hist)   
-            self.cluster_tot_hist = np.reshape(a = cluster_tot_hist.view(), newshape = (32,1024), order='F')  # make linear array to 2d array (tot, cluster size)
+            self.cluster_tot_hist = np.reshape(a = cluster_tot_hist.view(), newshape = (128,1024), order='F')  # make linear array to 2d array (tot, cluster size)
             if (self._output_file != None):
-                cluster_tot_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name = 'HistClusterTot', title = 'Cluster Tot Histogram', atom = tb.Atom.from_dtype(self.cluster_tot_hist.dtype), shape = (32,1024), filters = self._filter_table)
-                cluster_tot_hist_table[:] =  self.cluster_tot_hist    
+                cluster_tot_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name = 'HistClusterTot', title = 'Cluster Tot Histogram', atom = tb.Atom.from_dtype(self.cluster_tot_hist.dtype), shape =  self.cluster_tot_hist.shape, filters = self._filter_table)
+                cluster_tot_hist_table[:] =  self.cluster_tot_hist   
             
     def cluster_hit_table(self, input_file = None, output_file = None):    
         if(input_file != None):
@@ -472,7 +473,7 @@ class AnalyzeRawData(object):
             if(self._output_file != None):
                 self.out_file_h5.close()
         
-    def plotHistograms(self, scan_data_filename = None):    # plots the histogram from output file if available otherwise from ram
+    def plot_histograms(self, scan_data_filename = None):    # plots the histogram from output file if available otherwise from ram
         if(self._output_file != None):
             out_file_h5 = tb.openFile(self._output_file, mode = "r")
         else:
@@ -492,6 +493,12 @@ class AnalyzeRawData(object):
         if (self._create_threshold_hists):
             plotting.plotThreeWay(hist = out_file_h5.root.HistThreshold[:,:] if out_file_h5 != None else self.threshold_hist, title = "Threshold", label = "threshold [PlsrDAC]", filename = scan_data_filename+"_threshold.pdf", bins = 100, minimum = 0, maximum = 100)
             plotting.plotThreeWay(hist = out_file_h5.root.HistNoise[:,:] if out_file_h5 != None else self.noise_hist, title = "Noise", label = "noise [PlsrDAC]", filename = scan_data_filename+"_noise.pdf", bins = 100, minimum = 0, maximum = 10)
+        if(self._create_cluster_size_hist):
+            plotting.plot_cluster_size(cluster_size_hist = out_file_h5.root.HistClusterSize if out_file_h5 != None else self.cluster_size_hist, filename = scan_data_filename+"_clusterSize.pdf")
+        if(self._create_cluster_tot_hist):
+            plotting.plot_cluster_tot(hist = out_file_h5.root.HistClusterTot if out_file_h5 != None else self.cluster_tot_hist, filename = scan_data_filename+"_clusterTot.pdf")  
+        if(self._create_cluster_tot_hist and self._create_cluster_size_hist):
+            plotting.plot_cluster_tot_size(hist = out_file_h5.root.HistClusterTot if out_file_h5 != None else self.cluster_tot_hist, filename = scan_data_filename+"_clusterSizeTot.pdf")
         if(self._output_file != None):
             out_file_h5.close()
 
