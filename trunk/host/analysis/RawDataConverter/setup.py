@@ -17,7 +17,7 @@ setup(name='RawDataInterpreter',
       url='https://silab-redmine.physik.uni-bonn.de/projects/pybar',
       ext_modules = cythonize(extensions),
       include_dirs = [np.get_include()],#
-      language="c++",
+      #language="c++",
       )
 
 #check compilation/installation
