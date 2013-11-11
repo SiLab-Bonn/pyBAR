@@ -296,6 +296,12 @@ def is_data_from_channel(channel=4): # function factory
     else:
         raise ValueError('invalid channel number')
     
+def logical_and(f1, f2): # function factory
+    def f(value):
+        return np.logical_and(f1(value), f2(value))
+    f.__name__ = f1.__name__+"_and_"+f2.__name__
+    return f
+    
 def is_data_record(value):
     return np.logical_and(np.logical_and(np.less_equal(np.bitwise_and(value, 0x00FE0000), 0x00A00000), np.less_equal(np.bitwise_and(value, 0x0001FF00), 0x00015000)), np.logical_and(np.not_equal(np.bitwise_and(value, 0x00FE0000), 0x00000000), np.not_equal(np.bitwise_and(value, 0x0001FF00), 0x00000000)))
 
