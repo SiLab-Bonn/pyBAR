@@ -4,6 +4,9 @@
 //pohl@physik.uni-bonn.de
 //Mar. 2012
 
+//#pragma warning(disable: 4800) //disable 'int' : forcing value to bool 'true' or 'false' (performance warning)
+#pragma warning(disable: 4996) //disable 'std::copy': Function call with parameters that may be unsafe, I know what I'm doing
+
 #include <string>
 #include <map>
 #include <vector>
