@@ -4,24 +4,34 @@ from daq.readout import FEI4Record
 import numpy as np
 from bitstring import BitArray
 
+import logging
+logging.basicConfig(level=logging.INFO, format = "%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
+
 class TestRegisters(ScanBase):
     def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "test_register", scan_data_path = None):
         super(TestRegisters, self).__init__(config_file = config_file, definition_file = definition_file, bit_file = bit_file, device = device, scan_identifier = scan_identifier, scan_data_path = scan_data_path)
 
     def scan(self, **kwargs):
-        number_of_errors = self.register_utils.test_global_register()
-        print 'Global Register Test: Found', number_of_errors, "error(s)"
+        number_of_errors = self.test_global_register()
+        logging.info('Global Register Test: Found %d error(s)' % number_of_errors)
         
-        number_of_errors = self.register_utils.test_pixel_register()
-        print 'Pixel Register Test: Found', number_of_errors, "error(s)"
+        number_of_errors = self.test_pixel_register()
+        logging.info('Pixel Register Test: Found %d error(s)' % number_of_errors)
         
-        sn = self.register_utils.read_chip_sn()
-        print "Chip S/N:", sn
+        sn = self.read_chip_sn()
+        logging.info('Chip S/N: %d' %sn)
         
     def read_chip_sn(self):
+        '''Reading Chip S/N
+        
+        Note
+        ----        
+        Bits [MSB-LSB] | [15]       | [14-6]       | [5-0]
+        Content        | reserved   | wafer number | chip number
+        '''
         commands = []
         commands.extend(self.register.get_commands("confmode"))
-        self.send_commands(commands)
+        self.register_utils.send_commands(commands)
         self.readout.reset_sram_fifo()
         if self.register.is_chip_flavor('fei4b'):
             commands = []
@@ -30,14 +40,14 @@ class TestRegisters(ScanBase):
             commands.extend(self.register.get_commands("globalpulse", width = 0))
             self.register.set_global_register_value('Efuse_Sense', 0)
             commands.extend(self.register.get_commands("wrregister", name = ['Efuse_Sense']))
-            self.send_commands(commands)
+            self.register_utils.send_commands(commands)
         commands = []
         self.register.set_global_register_value('Conf_AddrEnable', 1)
         commands.extend(self.register.get_commands("wrregister", name = ['Conf_AddrEnable']))
         chip_sn_address = self.register.get_global_register_attributes("addresses", name="Chip_SN")
         #print chip_sn_address
         commands.extend(self.register.get_commands("rdregister", addresses = chip_sn_address))
-        self.send_commands(commands)
+        self.register_utils.send_commands(commands)
 
         data = self.readout.read_data()
         
@@ -59,27 +69,24 @@ class TestRegisters(ScanBase):
             
         commands = []
         commands.extend(self.register.get_commands("runmode"))
-        self.send_commands(commands)
-        
-        # Bits [MSB-LSB] | [15]       | [14-6]       | [5-0]
-        # Content        | reserved   | wafer number | chip number
+        self.register_utils.send_commands(commands)
     
         return chip_sn
     
     def test_global_register(self):
-        self.configure_global()
+        self.register_utils.configure_global()
         commands = []
         commands.extend(self.register.get_commands("confmode"))
-        self.send_commands(commands)
+        self.register_utils.send_commands(commands)
         commands = []
         self.register.set_global_register_value('Conf_AddrEnable', 1)
         commands.extend(self.register.get_commands("wrregister", name = 'Conf_AddrEnable'))
         read_from_address = range(1,64)
-        self.send_commands(commands)
+        self.register_utils.send_commands(commands)
         self.readout.reset_sram_fifo()
         commands = []
         commands.extend(self.register.get_commands("rdregister", addresses = read_from_address))
-        self.send_commands(commands)
+        self.register_utils.send_commands(commands)
         
         data = self.readout.read_data()
         checked_address = []
@@ -97,26 +104,24 @@ class TestRegisters(ScanBase):
                     pass
                 else:
                     number_of_errors += 1
-                    print 'Register Test:', 'Address', fei4_data['address'], 'WRONG VALUE'
-                    print 'Read:', read_value, 'Expected:', set_value
-                    #raise Exception()
+                    logging.warning('Global Register Test: Wrong data for Global Register at address %d (read: %d, expected: %d)' % (fei4_data['address'], read_value, set_value))
     
         commands = []
         commands.extend(self.register.get_commands("runmode"))
-        self.send_commands(commands)
+        self.register_utils.send_commands(commands)
         not_read_registers = set.difference(set(read_from_address), checked_address)
         not_read_registers = list(not_read_registers)
         not_read_registers.sort()
         for address in not_read_registers:
-            print 'Register Test:', 'Address', address, 'ADDRESS NEVER OCCURRED'
+            logging.warning('Global Register Test: Data for Global Register at address %d missing' % address)
             number_of_errors += 1
         return number_of_errors
         
     def test_pixel_register(self):
-        self.configure_pixel()
+        self.register_utils.configure_pixel()
         commands = []
         commands.extend(self.register.get_commands("confmode"))
-        self.send_commands(commands)
+        self.register_utils.send_commands(commands)
         self.readout.reset_sram_fifo()
         
         commands = []
@@ -142,7 +147,7 @@ class TestRegisters(ScanBase):
         self.register.set_global_register_value("Pixel_Strobes", 0)
         
         commands.extend(self.register.get_commands("wrregister", name = ["Conf_AddrEnable", "S0", "S1", "SR_Clr", "CalEn", "DIGHITIN_SEL", "GateHitOr", "ReadSkipped", "ReadErrorReq", "StopClkPulse", "SR_Clock", "Efuse_Sense", "HITLD_IN", "Colpr_Mode", "Colpr_Addr", "Pixel_Strobes", "Latch_En"]))
-        self.send_commands(commands)
+        self.register_utils.send_commands(commands)
         
         register_objects = self.register.get_pixel_register_objects(True, name = ["EnableDigInj"]) # check EnableDigInj first, because it is not latched
         register_objects.extend(self.register.get_pixel_register_objects(True, name = ["Imon", "Enable", "C_High", "C_Low", "TDAC", "FDAC"]))
@@ -169,13 +174,13 @@ class TestRegisters(ScanBase):
                     #print "bit_no", bit_no
                     #print "pxstrobes", 0
                 commands.extend(self.register.get_commands("wrregister", name = ["Pixel_Strobes"]))
-                self.send_commands(commands)
+                self.register_utils.send_commands(commands)
                 
                 for dc_no in range(40):
                     commands = []
                     self.register.set_global_register_value("Colpr_Addr", dc_no)
                     commands.extend(self.register.get_commands("wrregister", name = ["Colpr_Addr"]))
-                    self.send_commands(commands)
+                    self.register_utils.send_commands(commands)
                     
                     if do_latch == True:
                         commands = []
@@ -184,13 +189,13 @@ class TestRegisters(ScanBase):
                         self.register.set_global_register_value("SR_Clock", 1)
                         commands.extend(self.register.get_commands("wrregister", name = ["S0", "S1", "SR_Clock"]))
                         commands.extend(self.register.get_commands("globalpulse", width = 0))
-                        self.send_commands(commands)
+                        self.register_utils.send_commands(commands)
                     commands = []
                     self.register.set_global_register_value("S0", 0)
                     self.register.set_global_register_value("S1", 0)
                     self.register.set_global_register_value("SR_Clock", 0)
                     commands.extend(self.register.get_commands("wrregister", name = ["S0", "S1", "SR_Clock"]))
-                    self.send_commands(commands)
+                    self.register_utils.send_commands(commands)
                     
                     register_bitset = self.register.get_pixel_register_bitset(register_object, pxstrobe_bit_no, dc_no)
 
@@ -203,15 +208,15 @@ class TestRegisters(ScanBase):
                         self.register.set_global_register_value("SR_Read", 0)
                         commands.extend(self.register.get_commands("wrregister", name = ["SR_Read"]))
                     #print commands[0]
-                    self.send_commands(commands)
+                    self.register_utils.send_commands(commands)
                     #time.sleep( 0.2 )
                     
                     data = self.readout.read_data()
                     if data.shape[0] == 0: # no data
                         if do_latch:
-                            print 'Register Test:', 'PxStrobes Bit', pxstrobe+pxstrobe_bit_no, 'DC', dc_no, 'MISSING DATA'
+                            logging.warning('Pixel Register Test: Missing data from PxStrobes Bit %d at DC %d' % (pxstrobe+pxstrobe_bit_no, dc_no))
                         else:
-                            print 'Register Test:', 'PxStrobes Bit', 'SR', 'DC', dc_no, 'MISSING DATA'
+                            logging.warning('Pixel Register Test: Missing data from PxStrobes Bit SR at DC %d' % dc_no)
                         number_of_errors += 1
                     else:
                         expected_addresses = range(15, 672, 16)
@@ -228,9 +233,9 @@ class TestRegisters(ScanBase):
                                 read_address = fei4_data['address']
                                 if read_address not in expected_addresses:
                                     if do_latch:
-                                        print 'Register Test:', 'PxStrobes Bit', pxstrobe+pxstrobe_bit_no, 'DC', dc_no, 'Address', read_address, 'WRONG ADDRESS'
+                                        logging.warning('Pixel Register Test: Wrong address for PxStrobes Bit %d at DC %d at address %d' % (pxstrobe+pxstrobe_bit_no, dc_no, read_address))
                                     else:
-                                        print 'Register Test:', 'PxStrobes Bit', 'SR', 'DC', dc_no, 'Address', read_address, 'WRONG ADDRESS'
+                                        logging.warning('Pixel Register Test: Wrong address for PxStrobes Bit SR at DC %d at address %d' % (dc_no, read_address))
                                     number_of_errors += 1
                                 else:
                                     if read_address not in seen_addresses:
@@ -245,17 +250,16 @@ class TestRegisters(ScanBase):
                                         else:
                                             number_of_errors += 1
                                             if do_latch:
-                                                print 'Register Test:', 'PxStrobes Bit', pxstrobe+pxstrobe_bit_no, 'DC', dc_no, 'Address', read_address, 'WRONG VALUE'
+                                                logging.warning('Pixel Register Test: Wrong value at PxStrobes Bit %d at DC %d at address %d (read: %d, expected: %d)' % (pxstrobe+pxstrobe_bit_no, dc_no, read_address, read_value, set_value))
                                             else:
-                                                print 'Register Test:', 'PxStrobes Bit', 'SR', 'DC', dc_no, 'Address', read_address, 'WRONG VALUE'
-                                            print 'Read:', read_value, 'Expected:', set_value
+                                                logging.warning('Pixel Register Test: Wrong value at PxStrobes Bit SR at DC %d at address %d (read: %d, expected: %d)' % (dc_no, read_address, read_value, set_value))
                                     else:
                                         seen_addresses[read_address] = seen_addresses[read_address]+1
                                         number_of_errors += 1
                                         if do_latch:
-                                            print 'Register Test:', 'PxStrobes Bit', pxstrobe+pxstrobe_bit_no, 'DC', dc_no, 'Address', read_address, 'ADDRESS APPEARED MORE THAN ONCE'
+                                            logging.warning('Pixel Register Test: Multiple data at PxStrobes Bit %d at DC %d at address %d' % (pxstrobe+pxstrobe_bit_no, dc_no, read_address))
                                         else:
-                                            print 'Register Test:', 'PxStrobes Bit', 'SR', 'DC', dc_no, 'Address', read_address, 'ADDRESS APPEARED MORE THAN ONCE'
+                                            logging.warning('Pixel Register Test: Multiple data at PxStrobes Bit SR at DC %d at address %d' % (dc_no, read_address))
 
                         not_read_addresses = set.difference(set(expected_addresses), seen_addresses.iterkeys())
                         not_read_addresses = list(not_read_addresses)
@@ -263,9 +267,9 @@ class TestRegisters(ScanBase):
                         for address in not_read_addresses:
                             number_of_errors += 1
                             if do_latch:
-                                print 'Register Test:', 'PxStrobes Bit', pxstrobe+pxstrobe_bit_no, 'DC', dc_no, 'Address', address, 'ADDRESS NEVER OCCURRED'
+                                logging.warning('Pixel Register Test: Missing data from PxStrobes Bit %d at DC %d at address %d' % (pxstrobe+pxstrobe_bit_no, dc_no, address))
                             else:
-                                print 'Register Test:', 'PxStrobes Bit', 'SR', 'DC', dc_no, 'Address', address, 'ADDRESS NEVER OCCURRED'
+                                logging.warning('Pixel Register Test: Missing data at PxStrobes Bit SR at DC %d at address %d' % (dc_no, address))
     
     #                        for word in data:
     #                            print FEI4Record(word, self.register.chip_flavor)
@@ -283,7 +287,7 @@ class TestRegisters(ScanBase):
         # fixes bug in FEI4 (B only?): reading GR doesn't work after latching pixel register
         commands.extend(self.register.get_commands("wrfrontend", name = ["EnableDigInj"]))
         commands.extend(self.register.get_commands("runmode"))
-        self.send_commands(commands)
+        self.register_utils.send_commands(commands)
         
         return number_of_errors
 

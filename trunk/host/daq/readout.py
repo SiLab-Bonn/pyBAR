@@ -29,6 +29,8 @@ import tables as tb
 from utils.utils import get_float_time
 from utils.utils import get_all_from_queue, split_seq
 from analysis.data_struct import MetaTable
+from bitstring import BitArray#, BitStream
+from collections import OrderedDict
 
 from SiLibUSB import SiUSBDevice
 
@@ -110,8 +112,9 @@ class Readout(object):
     def worker(self):
         '''Reading thread to continuously reading SRAM
         
-        Worker thread function that uses read_data_dict()
+        Worker thread function that uses read_data_dict() and appends data to self.data (deque)
         ''' 
+        # TODO: check FIFO status (overflow) and check rx status (sync) once in a while
         while not self.stop_thread_event.wait(self.readout_interval): # TODO: this is probably what you need to reduce processor cycles
             self.device.lock.acquire() 
             try:
@@ -125,18 +128,27 @@ class Readout(object):
             if data[data_deque_dict_names[0]].shape[0]>0: # TODO: make it optional
                 self.data.append(data)#put({'timestamp':get_float_time(), 'raw_data':filtered_data_words, 'error':0})
                         
-    def read_data_dict(self, append=True):
+    def read_data_dict(self):
         '''Read single to read SRAM once
         
-        can be used without threading
+        Can be used without threading.
+        
+        Returns
+        -------
+        dict with following keys: "data", "timestamp_start", "timestamp_stop", "error"
         '''
-        # TODO: check FIFO status (overflow) and check rx status (sync) once in a while
         self.timestamp_stop = get_float_time()
         return {data_deque_dict_names[0]:self.read_data(), data_deque_dict_names[1]:self.timestamp_start, data_deque_dict_names[2]:self.timestamp_start, data_deque_dict_names[3]:self.read_status()}
         self.timestamp_start = self.timestamp_stop 
     
     def read_data(self):
-        '''Read SRAM
+        '''Read SRAM data words (array of 32-bit uint data words)
+        
+        Can be used without threading
+        
+        Returns
+        -------
+        numpy.array
         '''
         # TODO: check FIFO status (overflow) and check rx status (sync) once in a while
 
@@ -403,17 +415,34 @@ def logical_xor(f1, f2): # function factory
         return np.logical_xor(f1(value), f2(value))
     f.__name__ = f1.__name__+"_xor_"+f2.__name__
     return f
-    
+
+def is_fe_record(value):
+    return not is_trigger_data(value) and not is_status_data(value) 
+
+def is_data_header(value):
+    return np.equal(np.bitwise_and(value, 0x00FF0000), 0b111010010000000000000000)
+
+def is_address_record(value):
+    return np.equal(np.bitwise_and(value, 0x00FF0000), 0b111010100000000000000000)
+
+def is_value_record(value):
+    return np.equal(np.bitwise_and(value, 0x00FF0000), 0b111011000000000000000000)
+
+def is_service_record(value):
+    return np.equal(np.bitwise_and(value, 0x00FF0000), 0b111011110000000000000000)
+
 def is_data_record(value):
     return np.logical_and(np.logical_and(np.less_equal(np.bitwise_and(value, 0x00FE0000), 0x00A00000), np.less_equal(np.bitwise_and(value, 0x0001FF00), 0x00015000)), np.logical_and(np.not_equal(np.bitwise_and(value, 0x00FE0000), 0x00000000), np.not_equal(np.bitwise_and(value, 0x0001FF00), 0x00000000)))
 
-def is_data_header(value):
-    return np.equal(np.bitwise_and(value, 0x00FF0000), 15269888)
+def is_status_data(value):
+    '''Select status data
+    '''
+    return np.equal(np.bitwise_and(value, 0xFF000000), 0x00000000)
                     
 def is_trigger_data(value):
     '''Select trigger data (trigger number)
     '''
-    return np.equal(np.bitwise_and(value, 0x80000000), 0x80000000)
+    return np.equal(np.bitwise_and(value, 0xFF000000), 0x80000000)
 
 def get_col_row_tot_array_from_data_record_array(array):
     '''Convert raw data array to column, row, and ToT array
@@ -462,6 +491,9 @@ def get_row_col_array_from_data_record_array(array):
 def get_tot_array_from_data_record_array(array):
     _, _, tot = get_col_row_tot_array_from_data_record_array(array)
     return tot
+
+def get_occupancy_mask_from_data_record_array(array, occupancy):
+    pass # TODO:
 
 def get_col_row_iterator_from_data_records(array): # generator
     for item in np.nditer(array):#, flags=['multi_index']):
@@ -610,3 +642,80 @@ def save_raw_data_from_data_dict_iterable(data_dict_iterable, filename, mode='a'
     '''
     with open_raw_data_file(filename, mode='a', title='', scan_parameters=list(dict.iterkeys(scan_parameters)), **kwargs) as raw_data_file:
         raw_data_file.append(data_dict_iterable, scan_parameters=scan_parameters, **kwargs)
+
+class FEI4Record(object):
+    """Record Object
+    
+    """
+    def __init__(self, data_word, chip_flavor):
+        self.record_rawdata = int(data_word) & 0x00FFFFFF
+        self.chip_flavor = str(chip_flavor).lower()
+        self.chip_flavors = ['fei4a', 'fei4b']
+        if self.chip_flavor not in self.chip_flavors:
+            raise KeyError('Chip flavor is not of type {}'.format(', '.join('\''+flav+'\'' for flav in self.chip_flavors)))
+        self.record_word = BitArray(uint=self.record_rawdata, length = 24)
+        self.record_dict = None
+        if is_data_header(self.record_rawdata):
+            self.record_type = "DH"
+            if self.chip_flavor == "fei4a":
+                self.record_dict = OrderedDict([('start',self.record_word[0:5].uint), ('header',self.record_word[5:8].uint), ('flag',self.record_word[8:9].uint), ('lvl1id',self.record_word[9:16].uint), ('bcid',self.record_word[16:24].uint)])
+            elif self.chip_flavor == "fei4b":
+                self.record_dict = OrderedDict([('start',self.record_word[0:5].uint), ('header',self.record_word[5:8].uint), ('flag',self.record_word[8:9].uint), ('lvl1id',self.record_word[9:14].uint), ('bcid',self.record_word[14:24].uint)])
+        elif is_address_record(self.record_rawdata):
+            self.record_type = "AR"
+            self.record_dict = OrderedDict([('start',self.record_word[0:5].uint), ('header',self.record_word[5:8].uint), ('type',self.record_word[8:9].uint), ('address',self.record_word[9:24].uint)])
+        elif is_value_record(self.record_rawdata):
+            self.record_type = "VR"
+            self.record_dict = OrderedDict([('start',self.record_word[0:5].uint), ('header',self.record_word[5:8].uint), ('value',self.record_word[8:24].uint)])
+        elif is_service_record(self.record_rawdata):
+            self.record_type = "SR"
+            if self.chip_flavor == "fei4a":
+                self.record_dict = OrderedDict([('start',self.record_word[0:5].uint), ('header',self.record_word[5:8].uint), ('code',self.record_word[8:14].uint), ('counter',self.record_word[14:24].uint)])
+            elif self.chip_flavor == "fei4b":
+                if self.record_word[8:14].uint == 14:
+                    self.record_dict = OrderedDict([('start',self.record_word[0:5].uint), ('header',self.record_word[5:8].uint), ('code',self.record_word[8:14].uint), ('lvl1id',self.record_word[14:21].uint), ('bcid',self.record_word[21:24].uint)])
+                elif self.record_word[8:14].uint == 15:
+                    self.record_dict = OrderedDict([('start',self.record_word[0:5].uint), ('header',self.record_word[5:8].uint), ('code',self.record_word[8:14].uint), ('skipped',self.record_word[14:24].uint)])
+                elif self.record_word[8:14].uint == 16:
+                    self.record_dict = OrderedDict([('start',self.record_word[0:5].uint), ('header',self.record_word[5:8].uint), ('code',self.record_word[8:14].uint), ('truncation flag',self.record_word[14:15].uint), ('truncation counter'.self.record_word[15:20].uint), ('l1req',self.record_word[20:24].uint)])
+                else:  
+                    self.record_dict = OrderedDict([('start',self.record_word[0:5].uint), ('header',self.record_word[5:8].uint), ('code',self.record_word[8:14].uint), ('counter',self.record_word[14:24].uint)])
+        elif is_data_record(self.record_rawdata):
+            self.record_type = "DR"
+            self.record_dict = OrderedDict([('column',self.record_word[0:7].uint), ('row',self.record_word[7:16].uint), ('tot1',self.record_word[16:20].uint), ('tot2',self.record_word[20:24].uint)])
+        else:
+            self.record_type = "UNKNOWN"
+            self.record_dict = OrderedDict([('unknown',self.record_word.uint)])
+#             raise ValueError('Unknown data word: '+str(self.record_word.uint))
+        
+    def __len__(self):
+        return len(self.record_dict)
+    
+    def __getitem__(self, key):
+        if not (isinstance(key, (int, long)) or isinstance(key, basestring)):
+            raise TypeError()
+        try:
+            return self.record_dict[key.lower()]
+        except TypeError:
+            return self.record_dict[self.record_dict.iterkeys()[int(key)]]
+    
+    def next(self):
+        return self.record_dict.iteritems().next()
+    
+    def __iter__(self):
+        return self.record_dict.iteritems()
+    
+    def __eq__(self, other):
+        try:
+            return self.record_type.lower() == other.lower()
+        except:
+            try:
+                return self.record_type == other.record_type
+            except:
+                return False
+            
+    def __str__(self):
+        return self.record_type + ' {}'.format(' '.join(key+':'+str(val) for key,val in self.record_dict.iteritems()))
+        
+    def __repr__(self):
+        return repr(self.__str__())
