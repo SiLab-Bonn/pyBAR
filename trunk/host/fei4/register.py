@@ -258,43 +258,48 @@ class FEI4Register(object):
     def save_configuration(self, name):
         configuration_path, filename = os.path.split(name)
         filename = os.path.splitext(filename)[0].strip()
-        if configuration_path is '':
+        if filename == '':
+            print "Unknown filename: nothing saved"
+            return
+        if configuration_path == '':
             if self.configuration_file is not None:
                 configuration_path, _ = os.path.split(self.configuration_file)
                 configuration_path = os.path.dirname(configuration_path)
                 #filename, extension = os.path.splitext(config_file_name)
             else:
-                print "No configuration file specified."
+                print "Unknown path: nothing saved"
                 return
-        
+        if os.path.split(configuration_path)[1] == 'configs':
+            configuration_path = os.path.split(configuration_path)[0]
+            
         pixel_reg_dict = {}
-        
         for path in ["configs", "tdacs", "fdacs", "masks"]:
-            if not os.path.exists(configuration_path):
-                os.makedirs(configuration_path)
+            configuration_file_path = os.path.join(configuration_path, path)
+            if not os.path.exists(configuration_file_path):
+                os.makedirs(configuration_file_path)
             if  path == "configs":
-                self.configuration_file = os.path.join(configuration_path, filename+".cfg")
-                try:
+                self.configuration_file = os.path.join(configuration_file_path, filename+".cfg")
+                if os.path.isfile(self.configuration_file):
+                    print "Overwriting configuration file:", self.configuration_file
                     os.remove(self.configuration_file)
-                except OSError:
-                    pass
-                print "Saving configuration file:", self.configuration_file
+                else:
+                    print "Saving configuration file:", self.configuration_file
                 self.write_chip_paramters()
                 self.write_chip_config()
             elif path == "tdacs":
                 dac = self.get_pixel_register_objects(name = "TDAC")[0]
-                dac_config_path = os.path.join(configuration_path, "_".join([dac.name, filename])+".dat")
+                dac_config_path = os.path.join(configuration_file_path, "_".join([dac.name, filename])+".dat")
                 self.write_pixel_dac_config(dac_config_path, dac.value)
                 pixel_reg_dict[dac.full_name] = dac_config_path
             elif path == "fdacs":
                 dac = self.get_pixel_register_objects(name = "FDAC")[0]
-                dac_config_path = os.path.join(configuration_path, "_".join([dac.name, filename])+".dat")
+                dac_config_path = os.path.join(configuration_file_path, "_".join([dac.name, filename])+".dat")
                 self.write_pixel_dac_config(dac_config_path, dac.value)
                 pixel_reg_dict[dac.full_name] = dac_config_path
             elif path == "masks":
                 masks = self.get_pixel_register_objects(bitlength = 1)
                 for mask in masks:
-                    dac_config_path = os.path.join(configuration_path, "_".join([mask.name, filename])+".dat")
+                    dac_config_path = os.path.join(configuration_file_path, "_".join([mask.name, filename])+".dat")
                     self.write_pixel_mask_config(dac_config_path, mask.value)
                     pixel_reg_dict[mask.full_name] = dac_config_path
                     
@@ -455,6 +460,8 @@ class FEI4Register(object):
         return mask
     
     def write_pixel_mask_config(self, filename, value):
+        if os.path.isfile(filename):
+            print "Overwriting configuration file:", filename
         with open(filename, 'w') as f:
             seq = []
             seq.append("###  1     6     11    16     21    26     31    36     41    46     51    56     61    66     71    76\n")
@@ -493,6 +500,8 @@ class FEI4Register(object):
         return mask
     
     def write_pixel_dac_config(self, filename, value):
+        if os.path.isfile(filename):
+            print "Overwriting configuration file:", filename
         with open(filename, 'w') as f:
             seq = []            
             seq.append("###    1  2  3  4  5  6  7  8  9 10   11 12 13 14 15 16 17 18 19 20   21 22 23 24 25 26 27 28 29 30   31 32 33 34 35 36 37 38 39 40\n")
