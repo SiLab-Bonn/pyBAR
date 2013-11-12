@@ -41,7 +41,7 @@ class ScanBase(object):
         self.readout_utils = ReadoutUtils(self.device)
 
         self.register = FEI4Register(config_file, definition_file = definition_file)
-        self.register_utils = FEI4RegisterUtils(self.device, self.readout_utils, self.register)
+        self.register_utils = FEI4RegisterUtils(self.device, self.readout, self.register)
         self.scan_utils = FEI4ScanUtils(self.register, self.register_utils)
         
         if scan_data_path == None:
