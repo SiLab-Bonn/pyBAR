@@ -255,28 +255,25 @@ class FEI4Register(object):
         else:
             print "No configuration file specified."
             
-    def save_configuration(self, name, configuration_path = None):
-        
-        if configuration_path is None:
+    def save_configuration(self, name):
+        configuration_path, filename = os.path.split(name)
+        filename = os.path.splitext(filename)[0].strip()
+        if configuration_path is '':
             if self.configuration_file is not None:
-                config_path, config_file_name = os.path.split(self.configuration_file)
-                base_config_path = os.path.dirname(config_path)
-                #base_config_file_name, extension = os.path.splitext(config_file_name)
+                configuration_path, _ = os.path.split(self.configuration_file)
+                configuration_path = os.path.dirname(configuration_path)
+                #filename, extension = os.path.splitext(config_file_name)
             else:
                 print "No configuration file specified."
                 return
-        else:
-            base_config_path = configuration_path
-        base_config_file_name = name
         
         pixel_reg_dict = {}
         
         for path in ["configs", "tdacs", "fdacs", "masks"]:
-            config_path = os.path.join(base_config_path, path)
-            if not os.path.exists(config_path):
-                os.makedirs(config_path)
+            if not os.path.exists(configuration_path):
+                os.makedirs(configuration_path)
             if  path == "configs":
-                self.configuration_file = os.path.join(config_path, base_config_file_name+".cfg")
+                self.configuration_file = os.path.join(configuration_path, filename+".cfg")
                 try:
                     os.remove(self.configuration_file)
                 except OSError:
@@ -286,18 +283,18 @@ class FEI4Register(object):
                 self.write_chip_config()
             elif path == "tdacs":
                 dac = self.get_pixel_register_objects(name = "TDAC")[0]
-                dac_config_path = os.path.join(config_path, "_".join([dac.name, base_config_file_name])+".dat")
+                dac_config_path = os.path.join(configuration_path, "_".join([dac.name, filename])+".dat")
                 self.write_pixel_dac_config(dac_config_path, dac.value)
                 pixel_reg_dict[dac.full_name] = dac_config_path
             elif path == "fdacs":
                 dac = self.get_pixel_register_objects(name = "FDAC")[0]
-                dac_config_path = os.path.join(config_path, "_".join([dac.name, base_config_file_name])+".dat")
+                dac_config_path = os.path.join(configuration_path, "_".join([dac.name, filename])+".dat")
                 self.write_pixel_dac_config(dac_config_path, dac.value)
                 pixel_reg_dict[dac.full_name] = dac_config_path
             elif path == "masks":
                 masks = self.get_pixel_register_objects(bitlength = 1)
                 for mask in masks:
-                    dac_config_path = os.path.join(config_path, "_".join([mask.name, base_config_file_name])+".dat")
+                    dac_config_path = os.path.join(configuration_path, "_".join([mask.name, filename])+".dat")
                     self.write_pixel_mask_config(dac_config_path, mask.value)
                     pixel_reg_dict[mask.full_name] = dac_config_path
                     
@@ -578,7 +575,7 @@ class FEI4Register(object):
         implements FEI4 specific behavior
         
         """
-        
+        # TODO: fix behavior when register name does not exist
         commands = []
         
         if command_name.lower() == "zeros":
