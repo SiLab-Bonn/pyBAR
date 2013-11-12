@@ -1,5 +1,4 @@
 from daq.readout import open_raw_data_file
-
 from scan.scan import ScanBase
 
 import logging
@@ -46,4 +45,4 @@ if __name__ == "__main__":
         analyze_raw_data.interpreter.set_warning_output(False)  # so far the data structure in a threshold scan was always bad, too many warnings given
         analyze_raw_data.interpret_word_table(FEI4B = scan.register.fei4b)
         analyze_raw_data.interpreter.print_summary()
-        analyze_raw_data.plotHistograms(scan_data_filename = scan.scan_data_filename)
+        analyze_raw_data.plot_histograms(scan_data_filename = scan.scan_data_filename)
