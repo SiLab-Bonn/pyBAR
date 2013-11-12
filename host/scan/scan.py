@@ -90,8 +90,9 @@ class ScanBase(object):
 #        self.readout.reset_sram_fifo()
         
         if not any(self.readout.print_readout_status()):
-            logging.error('Stopping scan: no sync')
-            return
+            raise NoSyncError('No data sync on any input channel')
+#             logging.error('Stopping scan: no sync')
+#             return
         
         self.stop_thread_event.clear()
         
@@ -150,6 +151,9 @@ class ScanBase(object):
     
     def analyze(self, **kwargs):
         raise NotImplementedError('scan.analyze() not implemented')
+
+class NoSyncError(Exception):
+    pass
     
 from functools import wraps
 def set_event_when_keyboard_interrupt(_lambda):
