@@ -256,6 +256,20 @@ class FEI4Register(object):
             print "No configuration file specified."
             
     def save_configuration(self, name):
+        '''Saving configuration files to specific location
+           
+        Parameters
+        ----------
+        name : string
+            Filename of the configuration file (any file name extension will be ignored).
+            Any path can be omitted. If path is not given, path will be taken from loaded configuration file.
+        
+        Returns
+        -------
+        self.configuration_file : string
+            Path to the main configuration file. 
+        '''
+        
         configuration_path, filename = os.path.split(name)
         filename = os.path.splitext(filename)[0].strip()
         if filename == '':
