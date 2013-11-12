@@ -40,6 +40,54 @@ def ceil_mod(number, mod):
     #print number
     return number
 
+def plot_cluster_size(hist, filename = None):
+    plt.clf()
+    plt.bar(range(0,len(hist)), hist[:], color='r', align = 'center', label="Error code")
+#     print cluster_size_hist[:].nonzero()
+#     plt.xlim((0, 31))
+    plt.yscale('log')
+    plt.xlabel('cluster size')
+    plt.ylabel('#')
+    plt.title('Cluster size ('+str(sum(hist[:]))+' entries)')
+    fig = plt.figure(1)
+    fig.patch.set_facecolor('white')
+    plt.grid(True)
+    if filename is None:
+        plt.show()
+    else:
+        plt.savefig(filename)
+        
+def plot_cluster_tot_size(hist, median = False, max_occ = None, filename = None):
+    plt.clf()
+    H = hist[0:50,0:20]
+    cmap = cm.get_cmap('jet')
+    plt.imshow(H, aspect="auto", interpolation='nearest', cmap = cmap)#, norm = norm)#, extent=extent) # for monitoring
+    plt.title('Cluster size and cluster tot ('+str(sum(sum(H))/2)+' entries)')
+    plt.xlabel('cluster size')
+    plt.ylabel('cluster tot')
+    plt.colorbar(cmap = cmap)
+    plt.gca().invert_yaxis()
+    fig = plt.figure(1)
+    fig.patch.set_facecolor('white')
+    if filename is None:
+        plt.show()
+    else:
+        plt.savefig(filename)
+        
+def plot_cluster_tot(hist, median = False, max_occ = None, filename = None):
+    plt.clf()
+    plt.bar(range(0,len(hist[:,0])), hist[:,0], color='r', align = 'center', label="Error code")
+    plt.xlabel('cluster tot')
+    plt.ylabel('#')
+    plt.title('Cluster tot ('+str(sum(hist[:,0]))+' entries)')
+    fig = plt.figure(1)
+    fig.patch.set_facecolor('white')
+    plt.grid(True)
+    if filename is None:
+        plt.show()
+    else:
+        plt.savefig(filename)
+
 def create_2d_pixel_hist(hist2d, title = None, x_axis_title = None, y_axis_title = None, z_max = None):
     H=np.empty(shape=(336,80),dtype=hist2d.dtype)
     H[:]=hist2d[:,:]
@@ -365,6 +413,11 @@ class PyBar(QtCore.QObject):
             plot_trigger_errors(leaf)
         elif data_name=='HistServiceRecord':
             plot_service_records(leaf)
+        elif data_name=='HistClusterTot':
+            plot_cluster_tot(hist = leaf)
+#             plot_cluster_tot_size(hist = leaf)
+        elif data_name=='HistClusterSize':
+            plot_cluster_size(hist = leaf)
         else:
             print 'unknown data - %s: do not plot' % data_name
 
