@@ -1,5 +1,6 @@
 from daq.readout import open_raw_data_file
 from scan.scan import ScanBase
+from analysis.analyze_raw_data import AnalyzeRawData
 
 import logging
 logging.basicConfig(level=logging.INFO, format = "%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
@@ -32,17 +33,18 @@ class ThresholdScan(ScanBase):
                 
                 # saving data
                 raw_data_file.append(self.readout.data, scan_parameters={scan_parameter:scan_paramter_value})
+                
+    def analyze(self):
+        with AnalyzeRawData(input_file = scan.scan_data_filename+".h5", output_file = output_file) as analyze_raw_data:
+            analyze_raw_data.create_threshold_hists = True
+            analyze_raw_data.interpreter.set_warning_output(False)  # so far the data structure in a threshold scan was always bad, too many warnings given
+            analyze_raw_data.interpret_word_table(FEI4B = scan.register.fei4b)
+            analyze_raw_data.interpreter.print_summary()
+            analyze_raw_data.plot_histograms(scan_data_filename = scan.scan_data_filename)
         
 if __name__ == "__main__":
     import configuration
     scan = ThresholdScan(config_file = configuration.config_file, bit_file = configuration.bit_file, scan_data_path = configuration.scan_data_path)
     scan.start(use_thread = False)
     scan.stop()
-    from analysis.analyze_raw_data import AnalyzeRawData
-    output_file = scan.scan_data_filename+"_interpreted.h5"
-    with AnalyzeRawData(input_file = scan.scan_data_filename+".h5", output_file = output_file) as analyze_raw_data:
-        analyze_raw_data.create_threshold_hists = True
-        analyze_raw_data.interpreter.set_warning_output(False)  # so far the data structure in a threshold scan was always bad, too many warnings given
-        analyze_raw_data.interpret_word_table(FEI4B = scan.register.fei4b)
-        analyze_raw_data.interpreter.print_summary()
-        analyze_raw_data.plot_histograms(scan_data_filename = scan.scan_data_filename)
+    scan.analyze()
