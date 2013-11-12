@@ -13,12 +13,12 @@ from daq.readout import open_raw_data_file
 logging.basicConfig(level=logging.INFO, format = "%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 class FEI4SelfTriggerScan(ScanBase):
-    def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "scan_ext_trigger", scan_data_path = None):
+    def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "scan_fei4_self_trigger", scan_data_path = None):
         super(FEI4SelfTriggerScan, self).__init__(config_file = config_file, definition_file = definition_file, bit_file = bit_file, device = device, scan_identifier = scan_identifier, scan_data_path = scan_data_path)
         
     def scan(self, **kwargs):
-        col_span = [1,80]
-        row_span = [1,336]
+        col_span = [1,80] # column range (from minimum to maximum value)
+        row_span = [1,336] # row range
         # generate ROI mask for Enable mask
         pixel_reg = "Enable"
         mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
@@ -29,8 +29,14 @@ class FEI4SelfTriggerScan(ScanBase):
         # generate ROI mask for Imon mask
         pixel_reg = "Imon"
         mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span, default=1, value=0)
-        commands.extend(self.register.get_commands("confmode"))
         self.register.set_pixel_register_value(pixel_reg, mask)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc = False, name = pixel_reg))
+        # disable C_inj mask
+        pixel_reg = "C_High"
+        self.register.set_pixel_register_value(pixel_reg, 0)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc = False, name = pixel_reg))
+        pixel_reg = "C_Low"
+        self.register.set_pixel_register_value(pixel_reg, 0)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc = False, name = pixel_reg))
         # enable GateHitOr that enables FE self-trigger mode
         self.register.set_global_register_value("GateHitOr", 1)
@@ -83,9 +89,9 @@ class FEI4SelfTriggerScan(ScanBase):
                 last_iteration = time.time()
                 try:
                     raw_data_file.append((self.readout.data.popleft(),))
-                    logging.info('data words')
+                    #logging.info('data words')
                 except IndexError:
-                    logging.info('no data words')
+                    #logging.info('no data words')
                     no_data_at_time = last_iteration
                     if wait_for_first_data == False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
                         logging.info('Reached no data timeout. Stopping Scan...')
