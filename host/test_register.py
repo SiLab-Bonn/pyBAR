@@ -74,6 +74,8 @@ class TestRegisters(ScanBase):
         return chip_sn
     
     def test_global_register(self):
+        '''Test Global Register
+        '''
         self.register_utils.configure_global()
         commands = []
         commands.extend(self.register.get_commands("confmode"))
@@ -118,6 +120,8 @@ class TestRegisters(ScanBase):
         return number_of_errors
         
     def test_pixel_register(self):
+        '''Test Pixel Register
+        '''
         self.register_utils.configure_pixel()
         commands = []
         commands.extend(self.register.get_commands("confmode"))
