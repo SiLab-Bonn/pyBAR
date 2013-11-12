@@ -1,41 +1,39 @@
 """ Script to tune the GDAC to the threshold value given in PlsrDAC. Binary search algorithm. Bit 0 is always scanned twice with value 1 and 0.
     Only the pixels used in the analog injection are taken into account.
 """
-from analysis.plotting.plotting import plot_occupancy, plotThreeWay
-import time
-import itertools
-import matplotlib.pyplot as plt
-
 import tables as tb
 import numpy as np
 import BitVector
+import logging
 
-from analysis.data_struct import MetaTable
-
-from utils.utils import get_all_from_queue, split_seq
-from collections import deque
-
+from daq.readout import open_raw_data_file, get_col_row_array_from_data_record_array, convert_data_array, data_array_from_data_dict_iterable, is_data_record, is_data_from_channel, logical_and
+from analysis.plotting.plotting import plotThreeWay
 from scan.scan import ScanBase
+
+logging.basicConfig(level=logging.INFO, format = "%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 class GdacTune(ScanBase):
     def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "tune_gdac", scan_data_path = None):
         super(GdacTune, self).__init__(config_file = config_file, definition_file = definition_file, bit_file = bit_file, device = device, scan_identifier = scan_identifier, scan_data_path = scan_data_path)
-        self.setGdacTuneBits()
-        self.setTargetThreshold()
-        self.setNinjections()
-        self.setAbortPrecision()
+        self.set_gdac_tune_bits()
+        self.set_target_threshold()
+        self.set_n_injections()
+        self.set_abort_precision()
         
-    def setAbortPrecision(self, delta_occupancy = 2):
+    def set_abort_precision(self, delta_occupancy = 2):
         self.abort_precision = delta_occupancy    
         
-    def setTargetThreshold(self, PlsrDAC = 30):
+    def set_target_threshold(self, PlsrDAC = 50):
+        self.target_threshold = PlsrDAC
+        
+    def write_target_threshold(self):
         commands = []
         commands.extend(self.register.get_commands("confmode"))
-        self.register.set_global_register_value("PlsrDAC", PlsrDAC)
+        self.register.set_global_register_value("PlsrDAC", self.target_threshold)
         commands.extend(self.register.get_commands("wrregister", name = "PlsrDAC"))
         self.register_utils.send_commands(commands)
         
-    def setGdacBit(self, bit_position, bit_value = 1):
+    def set_gdac_bit(self, bit_position, bit_value = 1):
         commands = []
         commands.extend(self.register.get_commands("confmode"))
         if(bit_position < 8):
@@ -51,37 +49,35 @@ class GdacTune(ScanBase):
         commands.extend(self.register.get_commands("wrregister", name = ["Vthin_AltFine", "Vthin_AltCoarse"]))
         self.register_utils.send_commands(commands)
         
-    def setGdacTuneBits(self, GdacTuneBits = range(7,-1,-1)):
+    def set_gdac_tune_bits(self, GdacTuneBits = range(7,-1,-1)):
         self.GdacTuneBits = GdacTuneBits
         
-    def setNinjections(self, Ninjections = 100):
+    def set_n_injections(self, Ninjections = 50):
         self.Ninjections = Ninjections
         
-    def scan(self, configure = True):        
+    def scan(self, configure = True):
+        self.write_target_threshold() 
         for gdac_bit in self.GdacTuneBits: #reset all GDAC bits
-            self.setGdacBit(gdac_bit, bit_value = 0)
+            self.set_gdac_bit(gdac_bit, bit_value = 0)
             
         addedAdditionalLastBitScan = False
         lastBitResult = self.Ninjections
-        
-        scan_parameter = 'GDAC'
-        scan_param_descr = {scan_parameter:tb.UInt32Col(pos=0)}
-        
+                
         steps = [0]
         mask = 3
         
-        def bitsSet(int_type):
+        def bits_set(int_type):
             int_type = int(int_type)
             count = 0
             position = 0
-            bitsSet = []
+            bits_set = []
             while(int_type):
                 if(int_type&1):
-                    bitsSet.append(position)
+                    bits_set.append(position)
                 position += 1
                 int_type = int_type>>1
                 count += 1
-            return bitsSet 
+            return bits_set 
         
         #calculate selected pixels from the mask and the disabled columns
         select_mask_array=np.zeros(shape=(80,336),dtype=np.uint8)
@@ -91,35 +87,25 @@ class GdacTune(ScanBase):
             mask_steps = steps
         for mask_step in mask_steps:
             select_mask_array += self.register_utils.make_pixel_mask(mask = mask, row_offset = mask_step)
-        for column in bitsSet(self.register.get_global_register_value("DisableColumnCnfg")):
-            print 'deselect columns',column
+        for column in bits_set(self.register.get_global_register_value("DisableColumnCnfg")):
+            logging.info('deselect double columns %d' % column)
             select_mask_array[column,:] = 0
         
-        data_q = deque()
-        raw_data_q = deque()
+        scan_parameter = 'GDAC'
+        scan_param_descr = {scan_parameter:tb.UInt32Col(pos=0)}
             
-        total_words = 0
-        append_size = 50000
-        filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
-        filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
-        print "Out file",self.scan_data_filename+".h5"
-        with tb.openFile(self.scan_data_filename+".h5", mode = 'w', title = 'first data') as file_h5:
-            raw_data_earray_h5 = file_h5.createEArray(file_h5.root, name = 'raw_data', atom = tb.UIntAtom(), shape = (0,), title = 'raw_data', filters = filter_raw_data, expectedrows = append_size)
-            meta_data_table_h5 = file_h5.createTable(file_h5.root, name = 'meta_data', description = MetaTable, title = 'meta_data', filters = filter_tables, expectedrows = 10)
-            scan_param_table_h5 = file_h5.createTable(file_h5.root, name = 'scan_parameters', description = scan_param_descr, title = 'scan_parameters', filters = filter_tables, expectedrows = 10)
-            
-            row_meta = meta_data_table_h5.row
-            row_scan_param = scan_param_table_h5.row
-            
-            for gdac_bit in self.GdacTuneBits:
-                self.readout.start()
+        with open_raw_data_file(filename = self.scan_data_filename, title=self.scan_identifier, scan_parameters=[scan_parameter]) as raw_data_file:  
+            for gdac_bit in self.GdacTuneBits:                
+                scan_paramter_value = (self.register.get_global_register_value("Vthin_AltCoarse")<<8) + self.register.get_global_register_value("Vthin_AltFine")
                 
                 if(not addedAdditionalLastBitScan):
-                    self.setGdacBit(gdac_bit)
+                    self.set_gdac_bit(gdac_bit)
+                    logging.info('GDAC setting: %d, bit %d = 1' % (scan_paramter_value,gdac_bit))
                 else:
-                    self.setGdacBit(gdac_bit, bit_value=0)
-                scan_paramter_value = (self.register.get_global_register_value("Vthin_AltCoarse")<<8) + self.register.get_global_register_value("Vthin_AltFine")
-                print 'GDAC setting:', scan_paramter_value," bit ",gdac_bit
+                    self.set_gdac_bit(gdac_bit, bit_value=0)
+                    logging.info('GDAC setting: %d, bit %d = 0' % (scan_paramter_value,gdac_bit))
+                    
+                self.readout.start()
                           
                 repeat = self.Ninjections
                 wait_cycles = 336*2/mask*24/4*3
@@ -128,77 +114,55 @@ class GdacTune(ScanBase):
                 self.scan_utils.base_scan(cal_lvl1_command, repeat = repeat, mask = mask, steps = steps, dcs = [], same_mask_for_all_dc = True, hardware_repeat = True, digital_injection = False, read_function = None)#self.readout.read_once)
                 
                 self.readout.stop()
-
-                data_q.extend(list(get_all_from_queue(self.readout.data_queue))) # use list, it is faster
-                data_words = itertools.chain(*(data_dict['raw_data'] for data_dict in data_q))
-                            
-                while True:
-                    try:
-                        item = data_q.pop()
-                    except IndexError:
-                        break # jump out while loop
-                    
-                    raw_data = item['raw_data']
-                    len_raw_data = len(raw_data)
-                    raw_data_q.extend(split_seq(raw_data, append_size))
-                    while True:
-                        try:
-                            data = raw_data_q.pop()
-                        except IndexError:
-                            break
-                        raw_data_earray_h5.append(data)
-                        raw_data_earray_h5.flush()
-                    row_meta['timestamp'] = item['timestamp']
-                    row_meta['error'] = item['error']
-                    row_meta['length'] = len_raw_data
-                    row_meta['start_index'] = total_words
-                    total_words += len_raw_data
-                    row_meta['stop_index'] = total_words
-                    row_meta.append()
-                    meta_data_table_h5.flush()
-                    row_scan_param[scan_parameter] = scan_paramter_value
-                    row_scan_param.append()
-                    scan_param_table_h5.flush()
                 
-                OccupancyArray, _, _ = np.histogram2d(*zip(*self.readout.get_col_row(data_words)), bins = (80, 336), range = [[1,80], [1,336]])
+                raw_data_file.append(self.readout.data, scan_parameters={scan_parameter:scan_paramter_value})
+                
+                OccupancyArray, _, _ = np.histogram2d(*convert_data_array(data_array_from_data_dict_iterable(self.readout.data), filter_func=logical_and(is_data_record, is_data_from_channel(4)), converter_func=get_col_row_array_from_data_record_array), bins = (80, 336), range = [[1,80], [1,336]])
                 OccArraySelPixel = OccupancyArray[select_mask_array>0]  #take only selected pixel
                 median_occupancy = np.median(OccArraySelPixel)
 #                 plotThreeWay(OccupancyArray.transpose(), title = "Occupancy (GDAC tuning bit "+str(gdac_bit)+")", label = 'Occupancy', filename = None)#self.scan_data_filename+".pdf")
                    
                 if(gdac_bit>0 and median_occupancy < self.Ninjections/2):
-                    print "median =",median_occupancy,"<",self.Ninjections/2,"set bit",gdac_bit,"= 0"
-                    self.setGdacBit(gdac_bit, bit_value = 0)
+                    logging.info('median = %f < %f, set bit %d = 0' % (median_occupancy,self.Ninjections/2,gdac_bit))
+                    self.set_gdac_bit(gdac_bit, bit_value = 0)
+                else:
+                    logging.info('median = %f > %f, leave bit %d = 1' % (median_occupancy,self.Ninjections/2,gdac_bit))
                     
                 if(gdac_bit == 0):
                     if not(addedAdditionalLastBitScan):  #scan bit = 0 with the correct value again
                         addedAdditionalLastBitScan=True
                         lastBitResult = OccupancyArray
                         self.GdacTuneBits.append(0) #bit 0 has to be scanned twice
-                        print "scan bit 0 now with value 0"
                     else:
                         lastBitResultMedian = np.median(lastBitResult[select_mask_array>0])
-                        print "scanned bit 0 = 0 with",median_occupancy," instead of ",lastBitResultMedian
+                        logging.info('scanned bit 0 = 0 with %f instead of %f' % (median_occupancy,lastBitResultMedian))
                         if(abs(median_occupancy-self.Ninjections/2)>abs(lastBitResultMedian-self.Ninjections/2)): #if bit 0 = 0 is worse than bit 0 = 1, so go back
-                            self.setGdacBit(gdac_bit, bit_value = 1)
-                            print "set bit 0 = 1"
-#                             plotThreeWay(lastBitResult.transpose(), title = "Occupancy (GDAC tuning bit 0 = 1)", label = 'Occupancy', filename = None)#self.scan_data_filename+".pdf") 
-#                         else:
-#                             plotThreeWay(OccupancyArray.transpose(), title = "Occupancy (GDAC tuning bit 0 = 0)", label = 'Occupancy', filename = None)#self.scan_data_filename+".pdf") 
+                            self.set_gdac_bit(gdac_bit, bit_value = 1)
+                            logging.info('set bit 0 = 1')
+                            OccupancyArray = lastBitResult
+                            OccArraySelPixel = OccupancyArray[select_mask_array>0]  #take only selected pixel
+                            median_occupancy = np.median(OccArraySelPixel)
+                        else:
+                            logging.info('set bit 0 = 0')
 
-#                 plot_occupancy(*zip(*self.readout.get_col_row(data_words)), max_occ = repeat*2, filename = None)#self.scan_data_filename+".pdf")
                 if(abs(median_occupancy-self.Ninjections/2) < self.abort_precision): #abort if good value already found to save time
-                    print 'good result already achieved, skipping missing bits'
+                    logging.info('good result already achieved (median - Ninj/2 < %f), skipping not varied bits' % self.abort_precision)
                     break
             
-            print 'Tuned GDAC to: Vthin_AltCoarse/Vthin_AltFine', self.register.get_global_register_value("Vthin_AltCoarse"),"/", self.register.get_global_register_value("Vthin_AltFine")       
-            return self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine")
+            if(abs(median_occupancy-self.Ninjections/2) > 2 * self.abort_precision):
+                logging.warning('Tuning of Vthin_AltCoarse/Vthin_AltFine failed. Difference = %f. Vthin_AltCoarse/Vthin_AltFine = %d/%d' % (abs(median_occupancy-self.Ninjections/2), self.register.get_global_register_value("Vthin_AltCoarse"),self.register.get_global_register_value("Vthin_AltFine")))
+            else:
+                logging.info('Tuned GDAC to Vthin_AltCoarse/Vthin_AltFine = %d/%d' % (self.register.get_global_register_value("Vthin_AltCoarse"),self.register.get_global_register_value("Vthin_AltFine")))
+                
+            plotThreeWay(OccupancyArray.transpose(), title = "Occupancy after GDAC tuning", label = 'Occupancy', filename = None)
         
 if __name__ == "__main__":
     import configuration
     scan = GdacTune(config_file = configuration.config_file, bit_file = configuration.bit_file, scan_data_path = configuration.scan_data_path)
-    scan.setTargetThreshold(PlsrDAC = 40)
-    scan.setAbortPrecision(delta_occupancy = 2)
-    scan.setGdacTuneBits(range(7,-1,-1))
-    scan.setNinjections(Ninjections = 50)
+    scan.set_target_threshold(PlsrDAC = 50)
+    scan.set_abort_precision(delta_occupancy = 2)
+    scan.set_gdac_tune_bits(range(7,-1,-1))
+    scan.set_n_injections(Ninjections = 50)
     scan.start(use_thread = False)
     scan.stop()
+    scan.register.save_configuration("SCC_unknown")#configuration.config_file)
