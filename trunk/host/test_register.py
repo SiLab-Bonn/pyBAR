@@ -158,7 +158,7 @@ class TestRegisters(ScanBase):
             #pprint.pprint(register_object)
             pxstrobe = register_object.pxstrobe
             bitlength = register_object.bitlength
-            for pxstrobe_bit_no in range(bitlength) if (register_object.littleendian == False) else reversed(range(bitlength)):
+            for pxstrobe_bit_no in range(bitlength):
                 do_latch = True
                 commands = []
                 try:
@@ -197,7 +197,7 @@ class TestRegisters(ScanBase):
                     commands.extend(self.register.get_commands("wrregister", name = ["S0", "S1", "SR_Clock"]))
                     self.register_utils.send_commands(commands)
                     
-                    register_bitset = self.register.get_pixel_register_bitset(register_object, pxstrobe_bit_no, dc_no)
+                    register_bitset = self.register.get_pixel_register_bitset(register_object, pxstrobe_bit_no if (register_object.littleendian == False) else register_object.bitlength-pxstrobe_bit_no-1, dc_no)
 
                     commands = []
                     if self.register.is_chip_flavor('fei4b'):
@@ -257,9 +257,9 @@ class TestRegisters(ScanBase):
                                         seen_addresses[read_address] = seen_addresses[read_address]+1
                                         number_of_errors += 1
                                         if do_latch:
-                                            logging.warning('Pixel Register Test: Multiple data at PxStrobes Bit %d at DC %d at address %d' % (pxstrobe+pxstrobe_bit_no, dc_no, read_address))
+                                            logging.warning('Pixel Register Test: Multiple occurrence of data for PxStrobes Bit %d at DC %d at address %d' % (pxstrobe+pxstrobe_bit_no, dc_no, read_address))
                                         else:
-                                            logging.warning('Pixel Register Test: Multiple data at PxStrobes Bit SR at DC %d at address %d' % (dc_no, read_address))
+                                            logging.warning('Pixel Register Test: Multiple occurrence of data for PxStrobes Bit SR at DC %d at address %d' % (dc_no, read_address))
 
                         not_read_addresses = set.difference(set(expected_addresses), seen_addresses.iterkeys())
                         not_read_addresses = list(not_read_addresses)
