@@ -1,107 +1,88 @@
 """ Script to tune the Fdac to the feedback current given as charge@TOT. Charge in PlsrDAC. Binary search algorithm. Bit 0 is always scanned twice with value 1 and 0.
     Pixel below threshold get TOT = 0.
 """
-from analysis.plotting.plotting import plot_occupancy, create_2d_pixel_hist, plot_pixel_dac_config, plotOccupancy, plotThreeWay
-import time
-import itertools
-import matplotlib.pyplot as plt
-
 import tables as tb
 import numpy as np
 import BitVector
+import logging
 
-from analysis.data_struct import MetaTable
-
-from utils.utils import get_all_from_queue, split_seq
-from collections import deque
-
+from daq.readout import open_raw_data_file, get_col_row_tot_array_from_data_record_array, convert_data_array, data_array_from_data_dict_iterable, is_data_record, is_data_from_channel, logical_and
+from analysis.plotting.plotting import plotThreeWay
 from scan.scan import ScanBase
 
 class FdacTune(ScanBase):
     def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "tune_fdac", scan_data_path = None):
         super(FdacTune, self).__init__(config_file = config_file, definition_file = definition_file, bit_file = bit_file, device = device, scan_identifier = scan_identifier, scan_data_path = scan_data_path)
-        self.setFdacTuneBits()
-        self.setTargetTot()
-        self.setTargetCharge()
-        self.setNinjections()
+        self.set_target_charge()
+        self.set_target_tot()
+        self.set_n_injections()
+        self.set_fdac_tune_bits()
         
-    def setTargetCharge(self, PlsrDAC = 30):
+    def set_target_charge(self, plsr_dac = 30):
+        self.target_charge = plsr_dac
+        
+    def write_target_charge(self):
         commands = []
         commands.extend(self.register.get_commands("confmode"))
-        self.register.set_global_register_value("PlsrDAC", PlsrDAC)
+        self.register.set_global_register_value("PlsrDAC", self.target_charge)
         commands.extend(self.register.get_commands("wrregister", name = "PlsrDAC"))
         self.register_utils.send_commands(commands)
         
-    def setTargetTot(self, Tot = 5):
-        self.TargetTot = Tot
+    def set_target_tot(self, tot = 5):
+        self.TargetTot = tot
         
-    def setFdacBit(self, bit_position, bit_value = 1):
-        commands = []
-        commands.extend(self.register.get_commands("confmode"))
+    def set_fdac_bit(self, bit_position, bit_value = 1):
         if(bit_value == 1):
             self.register.set_pixel_register_value("Fdac", self.register.get_pixel_register_value("Fdac")|(1<<bit_position))
         else:
             self.register.set_pixel_register_value("Fdac", self.register.get_pixel_register_value("Fdac")&~(1<<bit_position))      
+          
+    def write_fdac_config(self):
+        commands = []
+        commands.extend(self.register.get_commands("confmode"))
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc = False, name = ["Fdac"]))
+        commands.extend(self.register.get_commands("runmode"))
         self.register_utils.send_commands(commands)
         
-    def setFdacTuneBits(self, FdacTuneBits = range(7,-1,-1)):
+    def set_fdac_tune_bits(self, FdacTuneBits = range(3,-1,-1)):
         self.FdacTuneBits = FdacTuneBits
         
-    def setStartFdac(self):
-        commands = []
+    def set_start_fdac(self):
         start_fdac_setting = self.register.get_pixel_register_value("FDAC")
         for bit_position in self.FdacTuneBits: #reset all TDAC bits, FIXME: speed up
             start_fdac_setting = start_fdac_setting&~(1<<bit_position)
         self.register.set_pixel_register_value("FDAC",start_fdac_setting)
-        commands.extend(self.register.get_commands("confmode"))
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc = True, name = ["FDAC"]))
-        self.register_utils.send_commands(commands)
         
-    def setNinjections(self, Ninjections = 20):
+    def set_n_injections(self, Ninjections = 20):
         self.Ninjections = Ninjections
         
     def scan(self, configure = True):
-        super(FdacTune, self).start(configure)
-        
-        self.setStartFdac()
+        self.write_target_charge()      
+        self.set_start_fdac()
             
         addedAdditionalLastBitScan = False
         lastBitResult = np.zeros(shape = self.register.get_pixel_register_value("Fdac").shape, dtype = self.register.get_pixel_register_value("Fdac").dtype)
-        
-        scan_parameter = 'Fdac'
-        scan_param_descr = {scan_parameter:tb.UInt32Col(pos=0)}
-        
+                
         mask = 3
         steps = []
                
-        data_q = deque()
-        raw_data_q = deque()
-            
-        total_words = 0
-        append_size = 50000
-        filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
-        filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
-        print "Out file",self.scan_data_filename+".h5"
-        with tb.openFile(self.scan_data_filename+".h5", mode = 'w', title = 'first data') as file_h5:
-            raw_data_earray_h5 = file_h5.createEArray(file_h5.root, name = 'raw_data', atom = tb.UIntAtom(), shape = (0,), title = 'raw_data', filters = filter_raw_data, expectedrows = append_size)
-            meta_data_table_h5 = file_h5.createTable(file_h5.root, name = 'meta_data', description = MetaTable, title = 'meta_data', filters = filter_tables, expectedrows = 10)
-            scan_param_table_h5 = file_h5.createTable(file_h5.root, name = 'scan_parameters', description = scan_param_descr, title = 'scan_parameters', filters = filter_tables, expectedrows = 10)
-            
-            row_meta = meta_data_table_h5.row
-            row_scan_param = scan_param_table_h5.row
-            
+        scan_parameter = 'Fdac'
+        scan_param_descr = {scan_parameter:tb.UInt32Col(pos=0)}
+
+        with open_raw_data_file(filename = self.scan_data_filename, title=self.scan_identifier, scan_parameters=[scan_parameter]) as raw_data_file:            
             Fdac_mask = []
             
-            for index, Fdac_bit in enumerate(self.FdacTuneBits):
-                self.readout.start()
-                
+            for index, Fdac_bit in enumerate(self.FdacTuneBits):                
                 if(not addedAdditionalLastBitScan):
-                    self.setFdacBit(Fdac_bit)
+                    self.set_fdac_bit(Fdac_bit)
+                    logging.info('FDAC setting: bit %d = 1' % Fdac_bit)
                 else:
-                    self.setFdacBit(Fdac_bit, bit_value=0)
+                    self.set_fdac_bit(Fdac_bit, bit_value=0)
+                    logging.info('FDAC setting: bit %d = 0' % Fdac_bit)
+                    
+                self.write_fdac_config()
+                self.readout.start()
                 scan_paramter_value = index
-                print 'Fdac setting: bit ',Fdac_bit
                           
                 repeat = self.Ninjections
                 wait_cycles = 336*2/mask*24/4*3
@@ -111,41 +92,13 @@ class FdacTune(ScanBase):
                 
                 self.readout.stop()
 
-                data_q.extend(list(get_all_from_queue(self.readout.data_queue))) # use list, it is faster
-                data_words = itertools.chain(*(data_dict['raw_data'] for data_dict in data_q))
-                            
-                while True:
-                    try:
-                        item = data_q.pop()
-                    except IndexError:
-                        break # jump out while loop
-                    
-                    raw_data = item['raw_data']
-                    len_raw_data = len(raw_data)
-                    raw_data_q.extend(split_seq(raw_data, append_size))
-                    while True:
-                        try:
-                            data = raw_data_q.pop()
-                        except IndexError:
-                            break
-                        raw_data_earray_h5.append(data)
-                        raw_data_earray_h5.flush()
-                    row_meta['timestamp'] = item['timestamp']
-                    row_meta['error'] = item['error']
-                    row_meta['length'] = len_raw_data
-                    row_meta['start_index'] = total_words
-                    total_words += len_raw_data
-                    row_meta['stop_index'] = total_words
-                    row_meta.append()
-                    meta_data_table_h5.flush()
-                    row_scan_param[scan_parameter] = scan_paramter_value
-                    row_scan_param.append()
-                    scan_param_table_h5.flush()
+                raw_data_file.append(self.readout.data, scan_parameters={scan_parameter:scan_paramter_value})
 
-                TotArray = np.histogramdd(np.array(list(self.readout.get_col_row_tot(data_words))), bins = (80, 336, 16), range = [[1,80], [1,336], [0,15]])[0]
+                col_row_tot = np.column_stack(get_col_row_tot_array_from_data_record_array(convert_data_array(data_array_from_data_dict_iterable(self.readout.data), filter_func=logical_and(is_data_record, is_data_from_channel(4)))))
+                TotArray = np.histogramdd(col_row_tot, bins = (80, 336, 16), range = [[1,80], [1,336], [0,15]])[0]
                 TotAvrArray = np.average(TotArray,axis = 2, weights=range(0,16))*sum(range(0,16))/self.Ninjections
                 plotThreeWay(hist = TotAvrArray.transpose(), title = "TOT mean", label = 'mean TOT', filename = None)
-                
+            
                 Fdac_mask=self.register.get_pixel_register_value("Fdac")
                 if(Fdac_bit>0):
                     Fdac_mask[TotAvrArray<self.TargetTot] = Fdac_mask[TotAvrArray<self.TargetTot]&~(1<<Fdac_bit)
@@ -156,25 +109,23 @@ class FdacTune(ScanBase):
                         addedAdditionalLastBitScan=True
                         lastBitResult = TotAvrArray
                         self.FdacTuneBits.append(0) #bit 0 has to be scanned twice
-                        print "scan bit 0 now with value 0"
                     else:
-                        print "scanned bit 0 = 0"
                         Fdac_mask[abs(TotAvrArray-self.TargetTot)>abs(lastBitResult-self.TargetTot)] = Fdac_mask[abs(TotAvrArray-self.TargetTot)>abs(lastBitResult-self.TargetTot)]|(1<<Fdac_bit)
-                        TotAvrArray[abs(TotAvrArray-self.TargetTot)>abs(lastBitResult-self.TargetTot)] = lastBitResult[abs(TotAvrArray-self.TargetTot)>abs(lastBitResult-self.TargetTot)] 
+                        TotAvrArray[abs(TotAvrArray-self.TargetTot)>abs(lastBitResult-self.TargetTot)] = lastBitResult[abs(TotAvrArray-self.TargetTot)>abs(lastBitResult-self.TargetTot)]
             
             self.register.set_pixel_register_value("Fdac", Fdac_mask)
             plotThreeWay(hist = TotAvrArray.transpose(), title = "TOT average final")
             plotThreeWay(hist = self.register.get_pixel_register_value("FDAC").transpose(), title = "FDAC distribution final")
-            print "Tuned Fdac!"
-            return TotAvrArray
+            logging.info('Tuned Fdac!')
         
 if __name__ == "__main__":
     import configuration
     #scan = FdacTune(configuration.config_file, bit_file = configuration.bit_file, scan_data_path = configuration.scan_data_path)
     scan = FdacTune(config_file = configuration.config_file, bit_file = None, scan_data_path = configuration.scan_data_path)
-    scan.setTargetCharge(PlsrDAC = 250)
-    scan.setTargetTot(Tot = 5)
-    scan.setNinjections(30)
-    scan.setFdacTuneBits(range(3,-1,-1))
+    scan.set_target_charge(plsr_dac = 270)
+    scan.set_target_tot(tot = 5)
+    scan.set_n_injections(30)
+    scan.set_fdac_tune_bits(range(3,-1,-1))
     scan.start(use_thread = False)
     scan.stop()
+    scan.register.save_configuration(configuration.config_file)
