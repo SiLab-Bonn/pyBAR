@@ -53,11 +53,11 @@ private:
   unsigned int* _tot;            //tot histogram
   unsigned int* _relBcid;        //realative BCID histogram
 
-  unsigned int getEventParameter(unsigned int& rEventNumber);  //returns the event parameter from ParInfo for the given event number
-  unsigned int getParIndex(unsigned int& rEventParameter);      //returns the event index in _parameterValues
+  unsigned int getScanParameter(unsigned int& rEventNumber);  //returns the event parameter from ParInfo for the given event number
+  unsigned int getParIndex(unsigned int& rScanParameter);      //returns the event index in _parameterValues
 
   unsigned int _nMetaEventIndexLength;//length of the meta data event index array
-  unsigned int* _metaEventIndex;     //event index of meta data array
+  unsigned int* _metaEventIndex;      //event index of meta data array
   unsigned int _nParInfoLength;       //length of the parInfo array
   unsigned int _lastMetaEventIndex;   //for loop speed up
   
@@ -66,7 +66,7 @@ private:
 
   unsigned int _NparameterValues;     //needed for _occupancy histogram allocation
 
-  std::vector<unsigned int> _parameterValues; //different parameter values used in ParInfo
+  std::map<unsigned int, unsigned int> _parameterValues; //different parameter values used in ParInfo, key = parameter value, value = index
 
   bool _createOccHist, _createRelBCIDhist, _createTotHist;
   

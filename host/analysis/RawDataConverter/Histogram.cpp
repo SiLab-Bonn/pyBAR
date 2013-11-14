@@ -64,7 +64,7 @@ void Histogram::addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
     if(tRelBcid > 15)
       throw std::out_of_range("relative BCID index out of range");
 
-    unsigned int tEventParameter = getEventParameter(rHitInfo[i].eventNumber);
+    unsigned int tEventParameter = getScanParameter(rHitInfo[i].eventNumber);
     unsigned int tParIndex = getParIndex(tEventParameter);
 
     if(tParIndex < 0 || tParIndex > getNparameters()-1){
@@ -81,7 +81,7 @@ void Histogram::addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
   //std::cout<<"addHits done"<<std::endl;
 }
 
-unsigned int Histogram::getEventParameter(unsigned int& rEventNumber)
+unsigned int Histogram::getScanParameter(unsigned int& rEventNumber)
 {
   if(_parInfo == 0)
     return 0;
@@ -93,17 +93,14 @@ unsigned int Histogram::getEventParameter(unsigned int& rEventNumber)
   }
   if(_metaEventIndex[_nMetaEventIndexLength-1] <= rEventNumber) //last read outs
     return _parInfo[_nMetaEventIndexLength-1].scanParameter;
-  error("getEventParameter: Correlation issues at event "+IntToStr(rEventNumber)+"\n_metaEventIndex[_nMetaEventIndexLength-1] "+IntToStr(_metaEventIndex[_nMetaEventIndexLength-1])+"\n_lastMetaEventIndex "+IntToStr(_lastMetaEventIndex));
+  error("getScanParameter: Correlation issues at event "+IntToStr(rEventNumber)+"\n_metaEventIndex[_nMetaEventIndexLength-1] "+IntToStr(_metaEventIndex[_nMetaEventIndexLength-1])+"\n_lastMetaEventIndex "+IntToStr(_lastMetaEventIndex));
   throw std::logic_error("Event parameter correlation issues");
   return 0;
 }
 
-unsigned int Histogram::getParIndex(unsigned int& rEventParameter)
+unsigned int Histogram::getParIndex(unsigned int& rScanParameter)
 {
-  for(unsigned int i = 0; i<_parameterValues.size(); ++i)
-    if(_parameterValues[i] == rEventParameter) 
-      return i;
-  return 0;
+  return _parameterValues[rScanParameter];
 }
 
 void Histogram::addScanParameter(const unsigned int& rNparInfoLength, ParInfo*& rParInfo)
@@ -213,53 +210,7 @@ void Histogram::deleteRelBcidArray()
 void Histogram::test()
 {
   debug("test()");
-  //std::cout<<"\n##########Histogram::test()########\n";
-  /*for(unsigned int i = 0; i<1500; i += 10){
-    std::cout<<"event "<<i<<"\t"<<getEventParameter((unsigned int&)i)<<"\n";
-  }*/
- /* for(unsigned int i = 1; i<_nParInfoLength; ++i)
-    if(_metaEventIndex[i-1] > _metaEventIndex[i] || _parInfo[i-1].scanParameter > _parInfo[i].scanParameter){
-      std::cout<<i<<"AAAAAAAAAAAAAAA\t"<<_metaEventIndex[i]<<"\t"<<_parInfo[i].scanParameter<<"\n";
-      std::cout<<i-1<<"AAAAAAAAAAAAAAA\t"<<_metaEventIndex[i-1]<<"\t"<<_parInfo[i-1].scanParameter<<"\n";
-    }*/
-
-  //unsigned int q_min = getMinParameter();
-  //unsigned int q_max = getMaxParameter();
-  //unsigned int n = getNparameters();
-  //unsigned int A = 100;
-  //unsigned int d = (int) ( ((double) getMaxParameter() - (double) getMinParameter())/(n-1));
-
-  //std::cout<<"q_min "<<q_min;
-  //std::cout<<"\nq_max "<<q_max;
-  //std::cout<<"\nA "<<A;
-  //std::cout<<"\nd "<<d<<"\n";
-
-  for(unsigned int tColumnIndex=0; tColumnIndex<RAW_DATA_MAX_COLUMN; ++tColumnIndex){
-    for(unsigned int tRowIndex=0; tRowIndex<RAW_DATA_MAX_ROW; ++tRowIndex){
-      unsigned int M = 0;
-      for(unsigned int tParIndex=0; tParIndex<getNparameters(); ++tParIndex){
-    	  _occupancy[(long)tColumnIndex + (long)tRowIndex * (long)RAW_DATA_MAX_COLUMN + (long)tParIndex * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] = tColumnIndex*RAW_DATA_MAX_ROW + tRowIndex;
-    	  //std::cout<<tColumnIndex<<"/"<<tRowIndex<<"/"<<tParIndex<<" "<<(unsigned int) _occupancy[(long)tColumnIndex + (long)tRowIndex * (long)RAW_DATA_MAX_COLUMN + (long)tParIndex * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW]<<"\n";
-      }
-//      double threshold = (double) q_max - d*(double)M/(double)A;
-//      std::cout<<"threshold "<<threshold<<"\n";  //threshold
-//      unsigned int mu1 = 0;
-//      unsigned int mu2 = 0;
-//      for(unsigned int k=0; k<getNparameters(); ++k){
-//        if((double) k < threshold)
-//          mu1 += _occupancy[(long)i * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW + (long)j * (long)getNparameters() + (long)k];
-//        if((double) k > threshold)
-//          mu2 += (A-_occupancy[(long)i * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW + (long)j * (long)getNparameters() + (long)k]);
-//      }
-//      double noise = d*(double)(mu1+mu2)/(double)A*sqrt(3.141592653589893238462643383/2);
-//      std::cout<<noise<<"\t";
-      //std::cout<<d*(double)M/(double)A<<"other\n";
-      //std::cout<<d*(double) M/ (double) A;  //threshold
-    }
-  }
-  std::cout<<"\nHistogram::getMinParameter() "<<getMinParameter();
-  std::cout<<"\nHistogram::getMaxParameter() "<<getMaxParameter();
-  std::cout<<"\nHistogram::getNparameters() "<<getNparameters()<<"\n";
+  setParameterLimits();
 }
 
 void Histogram::setParameterLimits()
@@ -272,18 +223,14 @@ void Histogram::setParameterLimits()
 
   std::sort(tParameterValues.begin(), tParameterValues.end());  //sort from lowest to highest value
   std::set<int> tSet(tParameterValues.begin(), tParameterValues.end());
-  _parameterValues.assign(tSet.begin(), tSet.end() );
-  std::unique(_parameterValues.begin(), _parameterValues.end());  //remove all duplicates
+  tParameterValues.assign(tSet.begin(), tSet.end() );
 
-  //for(unsigned int i = 0; i<_parameterValues.size(); ++i)
-  //  std::cout<<_parameterValues[i]<<"\n";
-  
+  for(unsigned int i = 0; i < tParameterValues.size(); ++i)
+      _parameterValues[tParameterValues[i]] = i;
+
   _minParameterValue = tParameterValues.front();
   _maxParameterValue = tParameterValues.back();
   _NparameterValues = std::unique(tParameterValues.begin(), tParameterValues.end()) - tParameterValues.begin();
-  //std::cout<<" setting: _minParameterValue "<<_minParameterValue<<"\n";
-  //std::cout<<" setting: _maxParameterValue "<<_maxParameterValue<<"\n";
-  //std::cout<<" setting: _NparameterValues "<<_NparameterValues<<"\n";
 }
 
 unsigned int Histogram::getMaxParameter()
