@@ -24,6 +24,7 @@ import signal
 logging.basicConfig(level=logging.INFO, format = "%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 class ScanBase(object):
+    # TODO: implement callback for stop() & analyze()
     def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "base_scan", scan_data_path = None):
         if device is not None:
             #if isinstance(device, usb.core.Device):
@@ -119,30 +120,27 @@ class ScanBase(object):
             else:
                 raise RuntimeError('Thread is running where no thread was expected')
         if self.scan_thread is not None:
+            
+            def stop_thread():
+                logging.warning('Scan timeout after %.1f second(s)' % timeout)
+                self.stop_thread_event.set()
+                scan_completed = False
+                
+            timeout_timer = Timer(timeout, stop_thread) # could also use shed.scheduler() here
             if timeout:
-                wait_timeout_event = Event()
-                wait_timeout_event.clear()
-                    
-                timer = Timer(timeout, wait_timeout_event.set) # could also use shed.scheduler() here
-                timer.start()
-                try:
-                    while self.scan_thread.is_alive() and not wait_timeout_event.wait(1):
-                        pass
-                except IOError: # catching "IOError: [Errno4] Interrupted function call" because of wait_timeout_event.wait()
-                    logging.info('Pressed Ctrl-C. Stopping scan...')
-                    scan_completed = False
-                else:
-                    if wait_timeout_event.is_set():
-                        logging.warning('Scan timeout after %.1f second(s)' % timeout)
-                        scan_completed = False
-                    else:
-                        wait_timeout_event.set()
-                        scan_completed = True
-                finally:
-                    timer.cancel()
-                    signal.signal(signal.SIGINT, signal.SIG_DFL) # setting default handler
+                timeout_timer.start()
+            try:
+                while self.scan_thread.is_alive() and not self.stop_thread_event.wait(1):
+                    pass
+            except IOError: # catching "IOError: [Errno4] Interrupted function call" because of wait_timeout_event.wait()
+                logging.info('Pressed Ctrl-C. Stopping scan...')
+                scan_completed = False
+
+            timeout_timer.cancel()
+            signal.signal(signal.SIGINT, signal.SIG_DFL) # setting default handler
             self.stop_thread_event.set()
-            self.scan_thread.join()
+                
+            self.scan_thread.join() # SIGINT will be suppressed here
             self.scan_thread = None
         self.use_thread = None
         logging.info('Stopped scan %s with ID %d' % (self.scan_identifier, self.scan_number))
