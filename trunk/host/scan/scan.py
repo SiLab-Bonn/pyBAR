@@ -1,15 +1,15 @@
 import time
 import os
 import logging
-
-#import usb.core
+import re
 
 from threading import Thread, Event, Lock, Timer
 
+min_pysilibusb_version = '0.1.2'
 from SiLibUSB import SiUSBDevice, __version__ as pysilibusb_version
 from distutils.version import StrictVersion as v
-if v(pysilibusb_version)<v('0.1.2'):
-    raise ImportError('Wrong pySiLibUsb version')
+if v(pysilibusb_version)<v(min_pysilibusb_version):
+    raise ImportError('Wrong pySiLibUsb version (installed=%s, minimum expected=%s)' % (pysilibusb_version, min_pysilibusb_version))
 
 from fei4.register import FEI4Register
 from fei4.register_utils import FEI4RegisterUtils
@@ -26,6 +26,14 @@ logging.basicConfig(level=logging.INFO, format = "%(asctime)s [%(levelname)-8s] 
 class ScanBase(object):
     # TODO: implement callback for stop() & analyze()
     def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "base_scan", scan_data_path = None):
+        # fixing event handler: http://stackoverflow.com/questions/15457786/ctrl-c-crashes-python-after-importing-scipy-stats
+        if os.name=='nt':
+            import thread
+            def handler(signum, hook=thread.interrupt_main):
+                hook()
+                return True
+            import win32api
+            win32api.SetConsoleCtrlHandler(handler, 1)
         if device is not None:
             #if isinstance(device, usb.core.Device):
             if isinstance(device, SiUSBDevice):
@@ -54,6 +62,7 @@ class ScanBase(object):
         self.scan_identifier = scan_identifier.lstrip('/\\') # remove leading slashes, prevent problems with os.path.join
         self.scan_number = None
         self.scan_data_filename = None
+        self.scan_completed = False
         
         self.lock = Lock()
         
@@ -68,23 +77,12 @@ class ScanBase(object):
         self.register_utils.configure_all(same_mask_for_all_dc=False, do_global_rest=True)
         
     def start(self, configure = True, use_thread = False, **kwargs): # TODO: in Python 3 use def func(a,b,*args,kw1=None,**kwargs)
+        self.scan_completed = False
         self.use_thread = use_thread
         if self.scan_thread != None:
             raise RuntimeError('Scan thread is already running')
-        self.lock.acquire()
-        if not os.path.exists(self.scan_data_path):
-            os.makedirs(self.scan_data_path)
-        
-        with open(os.path.join(self.scan_data_path, self.scan_identifier+".cfg"), "a+") as f:
-            scan_numbers = [int(number) for number in f.readlines() if convert_to_int(number) != None]
-            if len(scan_numbers) == 0:
-                self.scan_number = 0
-            else:
-                self.scan_number = max(scan_numbers)+1
-            f.write(str(self.scan_number)+'\n')
-        
-        self.scan_data_filename = os.path.join(self.scan_data_path, self.scan_identifier+"_"+str(self.scan_number))
-        self.lock.release()
+
+        self.write_scan_number()
         
         if configure:
             self.configure()
@@ -110,8 +108,7 @@ class ScanBase(object):
             self.scan(**kwargs)
  
     def stop(self, timeout = None):
-        #signal.signal(signal.SIGINT, signal.SIG_DFL)
-        scan_completed = True
+        self.scan_completed = True
         if (self.scan_thread is not None) ^ self.use_thread:
             if self.scan_thread is None:
                 pass
@@ -124,7 +121,7 @@ class ScanBase(object):
             def stop_thread():
                 logging.warning('Scan timeout after %.1f second(s)' % timeout)
                 self.stop_thread_event.set()
-                scan_completed = False
+                self.scan_completed = False
                 
             timeout_timer = Timer(timeout, stop_thread) # could also use shed.scheduler() here
             if timeout:
@@ -133,8 +130,8 @@ class ScanBase(object):
                 while self.scan_thread.is_alive() and not self.stop_thread_event.wait(1):
                     pass
             except IOError: # catching "IOError: [Errno4] Interrupted function call" because of wait_timeout_event.wait()
-                logging.info('Pressed Ctrl-C. Stopping scan...')
-                scan_completed = False
+                logging.exception('Event handler problem?')
+                raise
 
             timeout_timer.cancel()
             signal.signal(signal.SIGINT, signal.SIG_DFL) # setting default handler
@@ -147,8 +144,43 @@ class ScanBase(object):
         self.readout.print_readout_status()
         
         self.device.dispose() # free USB resources
-        
-        return scan_completed
+        self.write_scan_status(self.scan_completed)
+        return self.scan_completed
+    
+    def write_scan_number(self):
+        scan_numbers = {}
+        self.lock.acquire()
+        if not os.path.exists(self.scan_data_path):
+            os.makedirs(self.scan_data_path)
+        with open(os.path.join(self.scan_data_path, self.scan_identifier+".cfg"), "r") as f:
+            for line in f.readlines():   
+                scan_number = int(re.findall(r'\d+\s', line)[0])
+                scan_numbers[scan_number] = line
+        if not scan_numbers:
+            self.scan_number = 0
+        else:
+            self.scan_number = max(dict.iterkeys(scan_numbers))+1
+        scan_numbers[self.scan_number] = str(self.scan_number)+'\n'
+        with open(os.path.join(self.scan_data_path, self.scan_identifier+".cfg"), "w") as f:
+            for value in dict.itervalues(scan_numbers):
+                f.write(value)
+        self.lock.release()
+        self.scan_data_filename = os.path.join(self.scan_data_path, self.scan_identifier+"_"+str(self.scan_number))
+    
+    def write_scan_status(self, finished = True):
+        scan_numbers = {}
+        self.lock.acquire()
+        with open(os.path.join(self.scan_data_path, self.scan_identifier+".cfg"), "r") as f:
+            for line in f.readlines():   
+                scan_number = int(re.findall(r'\d+\s', line)[0])
+                if scan_number != self.scan_number:
+                    scan_numbers[scan_number] = line
+                else:
+                    scan_numbers[scan_number] = line.strip()+(' SUCCESS\n' if finished else ' ABORTED\n') 
+        with open(os.path.join(self.scan_data_path, self.scan_identifier+".cfg"), "w") as f:
+            for value in dict.itervalues(scan_numbers):
+                f.write(value)
+        self.lock.release()
     
     @property
     def is_running(self):
@@ -162,6 +194,8 @@ class ScanBase(object):
     
     def signal_handler(self, signum, frame):
         signal.signal(signal.SIGINT, signal.SIG_DFL) # setting default handler... pressing Ctrl-C a second time will kill application
+        logging.info('Pressed Ctrl-C. Stopping scan...')
+        self.scan_completed = False
         self.stop_thread_event.set()
 
 class NoSyncError(Exception):
