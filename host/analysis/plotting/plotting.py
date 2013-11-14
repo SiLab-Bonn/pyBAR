@@ -8,6 +8,7 @@ import tables as tb
 from math import sqrt
 import re
 from matplotlib import colors, cm, legend
+from matplotlib.backends.backend_pdf import PdfPages
 
 import logging
 logging.basicConfig(level=logging.INFO, format = "%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
@@ -39,6 +40,8 @@ def plot_occupancy(cols, rows = None, max_occ = None, filename = None, title = N
     fig.patch.set_facecolor('white')
     if filename is None:
         plt.show()
+    elif type(filename) == PdfPages:
+        filename.savefig()
     else:
         plt.savefig(filename)
 
@@ -70,6 +73,8 @@ def plot_threshold(threshold_hist, v_cal = 53, plot_range = (1500,2500), filenam
     plt.grid(True)
     if filename is None:
         plt.show()
+    elif type(filename) == PdfPages:
+        filename.savefig()
     else:
         plt.savefig(filename)
 
@@ -87,6 +92,8 @@ def plot_noise(noise_hist, v_cal = 53, plot_range = (1500,2500), filename = None
     plt.grid(True)
     if filename is None:
         plt.show()
+    elif type(filename) == PdfPages:
+        filename.savefig()
     else:
         plt.savefig(filename)
 
@@ -103,6 +110,8 @@ def plot_relative_bcid(relative_bcid_hist, filename = None):
     plt.grid(True)
     if filename is None:
         plt.show()
+    elif type(filename) == PdfPages:
+        filename.savefig()
     else:
         plt.savefig(filename)
 
@@ -118,6 +127,8 @@ def plot_tot(tot_hist, filename = None):
     plt.grid(True)
     if filename is None:
         plt.show()
+    elif type(filename) == PdfPages:
+        filename.savefig()
     else:
         plt.savefig(filename)
 
@@ -134,6 +145,8 @@ def plot_event_errors(error_hist, filename = None):
     #plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
     if filename is None:
         plt.show()
+    elif type(filename) == PdfPages:
+        filename.savefig()
     else:
         plt.savefig(filename)
 
@@ -150,6 +163,8 @@ def plot_trigger_errors(trigger_error_hist, filename = None):
     #plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
     if filename is None:
         plt.show()
+    elif type(filename) == PdfPages:
+        filename.savefig()
     else:
         plt.savefig(filename)
 
@@ -166,6 +181,8 @@ def plot_service_records(service_record_hist, filename = None):
     #plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
     if filename is None:
         plt.show()
+    elif type(filename) == PdfPages:
+        filename.savefig()
     else:
         plt.savefig(filename)
 
@@ -251,6 +268,8 @@ def plotOccupancy(occupancy_hist, median = False, max_occ = None, filename = Non
     plt.colorbar(boundaries = bounds, cmap = cmap, norm = norm)
     if filename is None:
         plt.show()
+    elif type(filename) == PdfPages:
+        filename.savefig()
     else:
         plt.savefig(filename)
 
@@ -268,6 +287,8 @@ def plot_cluster_size(cluster_size_hist, filename = None):
     plt.grid(True)
     if filename is None:
         plt.show()
+    elif type(filename) == PdfPages:
+        filename.savefig()
     else:
         plt.savefig(filename)
         
@@ -285,6 +306,8 @@ def plot_cluster_tot_size(hist, median = False, max_occ = None, filename = None)
     fig.patch.set_facecolor('white')
     if filename is None:
         plt.show()
+    elif type(filename) == PdfPages:
+        filename.savefig()
     else:
         plt.savefig(filename)
         
@@ -299,6 +322,8 @@ def plot_cluster_tot(hist, median = False, max_occ = None, filename = None):
     plt.grid(True)
     if filename is None:
         plt.show()
+    elif type(filename) == PdfPages:
+        filename.savefig()
     else:
         plt.savefig(filename)
 
@@ -312,6 +337,8 @@ def plot_pixel_mask(mask, maskname, filename = None):
     plt.colorbar(boundaries = bounds, cmap = cmap, norm = norm)
     if filename is None:
         plt.show()
+    elif type(filename) == PdfPages:
+        filename.savefig()
     else:
         plt.savefig(filename)
 
@@ -329,6 +356,8 @@ def plot_pixel_dac_config(dacconfig, dacname, filename = None):
     plt.colorbar(boundaries = bounds, cmap = cmap, norm = norm)
     if filename is None:
         plt.show()
+    elif type(filename) == PdfPages:
+        filename.savefig()
     else:
         plt.savefig(filename)
 
@@ -358,7 +387,7 @@ def create_2d_pixel_hist(hist2d, title = None, x_axis_title = None, y_axis_title
     try:
         plt.colorbar(boundaries = bounds, cmap = cmap, norm = norm, ticks = bounds, cax = cax)
     except:
-        logging.info('create_2d_pixel_hist: error printing color bar')
+        logging.info('plotting.py create_2d_pixel_hist: error printing color bar')
 
 
 def create_1d_hist(hist, title = None, x_axis_title = None, y_axis_title = None, bins = None, x_min = None, x_max = None):
@@ -445,9 +474,10 @@ def plotThreeWay(hist, title, filename = None, label = "label not set", minimum 
     plt.subplot(313)
     create_pixel_scatter_plot(hist, x_axis_title = "channel = row + column*336", y_axis_title = label, y_min = minimum, y_max = maximum)
     plt.tight_layout()
-
     if filename is None:
         plt.show()
+    elif type(filename) == PdfPages:
+        filename.savefig()
     else:
         plt.savefig(filename)
 
