@@ -6,6 +6,7 @@ logging.basicConfig(level=logging.INFO, format = "%(asctime)s - %(name)s - [%(le
 
 import data_struct
 from plotting import plotting
+from matplotlib.backends.backend_pdf import PdfPages
 from RawDataConverter.data_interpreter import PyDataInterpreter
 from RawDataConverter.data_histograming import PyDataHistograming
 from RawDataConverter.data_clusterizer import PyDataClusterizer
@@ -477,30 +478,32 @@ class AnalyzeRawData(object):
         if(self._output_file != None):
             out_file_h5 = tb.openFile(self._output_file, mode = "r")
         else:
-            out_file_h5 = None
+            out_file_h5 = None     
+        output_pdf = PdfPages(scan_data_filename+'.pdf') 
         if (self._create_service_record_hist):
-            plotting.plot_service_records(service_record_hist = out_file_h5.root.HistServiceRecord if out_file_h5 != None else self.service_record_hist, filename = scan_data_filename+"_serviceRecords.pdf")
+            plotting.plot_service_records(service_record_hist = out_file_h5.root.HistServiceRecord if out_file_h5 != None else self.service_record_hist, filename = output_pdf)
         if (self._create_error_hist):
-            plotting.plot_event_errors(error_hist = out_file_h5.root.HistErrorCounter if out_file_h5 != None else self.error_counter_hist, filename = scan_data_filename+"_eventErrors.pdf")
+            plotting.plot_event_errors(error_hist = out_file_h5.root.HistErrorCounter if out_file_h5 != None else self.error_counter_hist, filename = output_pdf)
         if (self._create_trigger_error_hist):
-            plotting.plot_trigger_errors(trigger_error_hist=out_file_h5.root.HistTriggerErrorCounter if out_file_h5 != None else self.trigger_error_counter_hist, filename = scan_data_filename+"_tiggerErrors.pdf") 
+            plotting.plot_trigger_errors(trigger_error_hist=out_file_h5.root.HistTriggerErrorCounter if out_file_h5 != None else self.trigger_error_counter_hist, filename = output_pdf) 
         if (self._create_tot_hist):
-            plotting.plot_tot(tot_hist=out_file_h5.root.HistTot if out_file_h5 != None else self.tot_hist, filename = scan_data_filename+"_tot.pdf")
+            plotting.plot_tot(tot_hist=out_file_h5.root.HistTot if out_file_h5 != None else self.tot_hist, filename = output_pdf)
         if (self._create_rel_bcid_hist):
-            plotting.plot_relative_bcid(relative_bcid_hist = out_file_h5.root.HistRelBcid if out_file_h5 != None else self.rel_bcid_hist, filename = scan_data_filename+"_relativeBCID.pdf")
+            plotting.plot_relative_bcid(relative_bcid_hist = out_file_h5.root.HistRelBcid if out_file_h5 != None else self.rel_bcid_hist, filename = output_pdf)
         if (self._create_occupancy_hist and not self._create_threshold_hists):
-            plotting.plotThreeWay(hist = out_file_h5.root.HistOcc[:,:,0] if out_file_h5 != None else self.occupancy_array[:,:,0], title = "Occupancy", label = "occupancy", filename = scan_data_filename+"_occupancy.pdf")
+            plotting.plotThreeWay(hist = out_file_h5.root.HistOcc[:,:,0] if out_file_h5 != None else self.occupancy_array[:,:,0], title = "Occupancy", label = "occupancy", filename = output_pdf)
         if (self._create_threshold_hists):
-            plotting.plotThreeWay(hist = out_file_h5.root.HistThreshold[:,:] if out_file_h5 != None else self.threshold_hist, title = "Threshold", label = "threshold [PlsrDAC]", filename = scan_data_filename+"_threshold.pdf", bins = 100, minimum = 0, maximum = 100)
-            plotting.plotThreeWay(hist = out_file_h5.root.HistNoise[:,:] if out_file_h5 != None else self.noise_hist, title = "Noise", label = "noise [PlsrDAC]", filename = scan_data_filename+"_noise.pdf", bins = 100, minimum = 0, maximum = 10)
+            plotting.plotThreeWay(hist = out_file_h5.root.HistThreshold[:,:] if out_file_h5 != None else self.threshold_hist, title = "Threshold", label = "threshold [PlsrDAC]", filename = output_pdf, bins = 100, minimum = 0, maximum = 100)
+            plotting.plotThreeWay(hist = out_file_h5.root.HistNoise[:,:] if out_file_h5 != None else self.noise_hist, title = "Noise", label = "noise [PlsrDAC]", filename = output_pdf, bins = 100, minimum = 0, maximum = 10)
         if(self._create_cluster_size_hist):
-            plotting.plot_cluster_size(cluster_size_hist = out_file_h5.root.HistClusterSize if out_file_h5 != None else self.cluster_size_hist, filename = scan_data_filename+"_clusterSize.pdf")
+            plotting.plot_cluster_size(cluster_size_hist = out_file_h5.root.HistClusterSize if out_file_h5 != None else self.cluster_size_hist, filename = output_pdf)
         if(self._create_cluster_tot_hist):
-            plotting.plot_cluster_tot(hist = out_file_h5.root.HistClusterTot if out_file_h5 != None else self.cluster_tot_hist, filename = scan_data_filename+"_clusterTot.pdf")  
+            plotting.plot_cluster_tot(hist = out_file_h5.root.HistClusterTot if out_file_h5 != None else self.cluster_tot_hist, filename = output_pdf)  
         if(self._create_cluster_tot_hist and self._create_cluster_size_hist):
-            plotting.plot_cluster_tot_size(hist = out_file_h5.root.HistClusterTot if out_file_h5 != None else self.cluster_tot_hist, filename = scan_data_filename+"_clusterSizeTot.pdf")
+            plotting.plot_cluster_tot_size(hist = out_file_h5.root.HistClusterTot if out_file_h5 != None else self.cluster_tot_hist, filename = output_pdf)
         if(self._output_file != None):
-            out_file_h5.close()
+            out_file_h5.close()       
+        output_pdf.close()
 
 if __name__ == "__main__":
     converter = AnalyzeRawData(input_file = 'K:\\test_in.h5', output_file = 'K:\\test_out.h5')
