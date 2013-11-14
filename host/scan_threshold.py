@@ -15,7 +15,7 @@ class ThresholdScan(ScanBase):
         
         with open_raw_data_file(filename = self.scan_data_filename, title=self.scan_identifier, scan_parameters=[scan_parameter]) as raw_data_file:
             
-            for scan_paramter_value in scan_paramter_value_range:
+            for scan_paramter_value in scan_paramter_value_range and not self.stop_thread_event.is_set():
                 logging.info('Scan step: %s %d' % (scan_parameter, scan_paramter_value))
                 
                 commands = []
