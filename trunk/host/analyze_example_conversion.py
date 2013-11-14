@@ -2,9 +2,6 @@
     The first "with-statement" interprets the raw data and can cluster hits in the same analysis loop if activated. The second "with-statement" just clusters
     data from hits. This shows how to use the clusterizer afterwards if hit infos are already available. 
 """
-# from os.path import expanduser
-# home = expanduser("~")
-
 scan_name='scan_digital_0'
 
 chip_flavor = 'fei4a'
