@@ -69,7 +69,7 @@ class Readout(object):
     
     def stop(self, timeout=None):
         if self.worker_thread == None:
-            raise RuntimeError('Thread is already None')
+            raise RuntimeError('Readout thread not existing: use start() before stop()')
         if timeout:
             timeout_event = Event()
             timeout_event.clear()
