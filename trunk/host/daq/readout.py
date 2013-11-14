@@ -516,6 +516,11 @@ def open_raw_data_file(filename, mode="w", title="", scan_parameters=[], **kwarg
     
     Returns:
     RawDataFile Object
+    
+    Examples:
+    with open_raw_data_file(filename = self.scan_data_filename, title=self.scan_identifier, scan_parameters=[scan_parameter]) as raw_data_file:
+        # do something here
+        raw_data_file.append(self.readout.data, scan_parameters={scan_parameter:scan_paramter_value})
     '''
     return RawDataFile(filename=filename, mode =mode, title=title, scan_parameters=scan_parameters, **kwargs)
             
