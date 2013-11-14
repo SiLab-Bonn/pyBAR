@@ -1,5 +1,6 @@
-from daq.readout import open_raw_data_file
 from scan.scan import ScanBase
+from daq.readout import open_raw_data_file
+
 from analysis.analyze_raw_data import AnalyzeRawData
 
 import logging
@@ -48,6 +49,6 @@ class ThresholdScan(ScanBase):
 if __name__ == "__main__":
     import configuration
     scan = ThresholdScan(config_file = configuration.config_file, bit_file = configuration.bit_file, scan_data_path = configuration.scan_data_path)
-    scan.start(use_thread = False)
+    scan.start(use_thread = True)
     scan.stop()
     scan.analyze()
