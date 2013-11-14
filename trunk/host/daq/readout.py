@@ -11,7 +11,6 @@ def timed(f):
         return result
     return wrapper
 
-
 import logging
 import struct
 import itertools
@@ -23,13 +22,11 @@ from collections import deque
 #from multiprocessing import Queue
 
 import numpy as np
-import numexpr as ne
 import tables as tb
 
 from utils.utils import get_float_time
-from utils.utils import get_all_from_queue, split_seq
 from analysis.data_struct import MetaTable
-from bitstring import BitArray#, BitStream
+from bitstring import BitArray # TODO: bitarray.bitarray() (in Python3 use int.from_bytes() to convert bitarray to integer)
 from collections import OrderedDict
 
 from SiLibUSB import SiUSBDevice
@@ -77,23 +74,20 @@ class Readout(object):
             timeout_event = Event()
             timeout_event.clear()
             
-            def set_timeout_event(timeout_event, timeout):
-                timer = Timer(timeout, timeout_event.set)
-                timer.start()
-            
-            timeout_thread = Thread(target=set_timeout_event, args=[timeout_event, timeout])
-            timeout_thread.start()
+            timer = Timer(timeout, timeout_event.set)
+            timer.start()
             
             fifo_size = self.get_sram_fifo_size()
             old_fifo_size = -1
             while (old_fifo_size != fifo_size or fifo_size != 0) and not timeout_event.wait(1.5*self.readout_interval):
                 old_fifo_size = fifo_size
                 fifo_size = self.get_sram_fifo_size()
+            timer.cancel()
             if timeout_event.is_set():
                 logging.warning('Waiting for empty SRAM FIFO: timeout after %.1f second(s)' % timeout)
             else:
                 timeout_event.set()
-            timeout_thread.join()
+                
         self.stop_thread_event.set()
         self.worker_thread.join()
         self.worker_thread = None
