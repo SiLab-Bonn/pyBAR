@@ -2,6 +2,7 @@
 import tables as tb
 import numpy as np
 import logging
+from mahotas import _histogram
 logging.basicConfig(level=logging.INFO, format = "%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 import data_struct
@@ -490,8 +491,11 @@ class AnalyzeRawData(object):
             plotting.plot_tot(tot_hist=out_file_h5.root.HistTot if out_file_h5 != None else self.tot_hist, filename = output_pdf)
         if (self._create_rel_bcid_hist):
             plotting.plot_relative_bcid(relative_bcid_hist = out_file_h5.root.HistRelBcid if out_file_h5 != None else self.rel_bcid_hist, filename = output_pdf)
-        if (self._create_occupancy_hist and not self._create_threshold_hists):
-            plotting.plotThreeWay(hist = out_file_h5.root.HistOcc[:,:,0] if out_file_h5 != None else self.occupancy_array[:,:,0], title = "Occupancy", label = "occupancy", filename = output_pdf)
+        if (self._create_occupancy_hist):
+            if(self._create_threshold_hists):
+                plotting.plot_scurves(occupancy_hist = out_file_h5.root.HistOcc[:,:,:] if out_file_h5 != None else self.occupancy_array[:,:,:], filename = output_pdf, PlsrDAC = range(self.histograming.get_min_parameter(),self.histograming.get_max_parameter()+1))
+            else:
+                plotting.plotThreeWay(hist = out_file_h5.root.HistOcc[:,:,0] if out_file_h5 != None else self.occupancy_array[:,:,0], title = "Occupancy", label = "occupancy", filename = output_pdf)
         if (self._create_threshold_hists):
             plotting.plotThreeWay(hist = out_file_h5.root.HistThreshold[:,:] if out_file_h5 != None else self.threshold_hist, title = "Threshold", label = "threshold [PlsrDAC]", filename = output_pdf, bins = 100, minimum = 0, maximum = 100)
             plotting.plotThreeWay(hist = out_file_h5.root.HistNoise[:,:] if out_file_h5 != None else self.noise_hist, title = "Noise", label = "noise [PlsrDAC]", filename = output_pdf, bins = 100, minimum = 0, maximum = 10)
@@ -506,6 +510,9 @@ class AnalyzeRawData(object):
         output_pdf.close()
 
 if __name__ == "__main__":
-    converter = AnalyzeRawData(input_file = 'K:\\test_in.h5', output_file = 'K:\\test_out.h5')
-    converter.interpret_word_table()
-    converter.interpreter.print_summary()
+    input_file = ""
+    output_file = ""
+    output_file_plots = ""
+    with AnalyzeRawData(input_file = input_file, output_file = output_file) as analyze_raw_data:
+        analyze_raw_data.interpret_word_table(FEI4B = False)
+        analyze_raw_data.plot_histograms(scan_data_filename = output_file_plots)
