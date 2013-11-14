@@ -335,7 +335,8 @@ void Histogram::getRelBcidHist(unsigned int*& rRelBcidHist, bool copy)
 void Histogram::calculateThresholdScanArrays(double rMuArray[], double rSigmaArray[])
 {
   debug("calculateThresholdScanArrays(...)");
-  //quick algorithm from M. Mertens, phd thesis, J�lich 2010
+  //quick algorithm from M. Mertens, phd thesis, Juelich 2010
+
   if (_NparameterValues<2)  //a minimum number of different scans is needed
     return;
 
@@ -345,39 +346,18 @@ void Histogram::calculateThresholdScanArrays(double rMuArray[], double rSigmaArr
   unsigned int A = 100;
   unsigned int d = (int) ( ((double) getMaxParameter() - (double) getMinParameter())/(n-1));
 
-  //std::cout<<"q_min "<<q_min<<"\n";
-  //std::cout<<"q_max "<<q_max<<"\n";
-  //std::cout<<"n "<<n<<"\n";
-  //std::cout<<"A "<<A<<"\n";
-  //std::cout<<"d "<<d<<"\n";
-
   for(unsigned int i=0; i<RAW_DATA_MAX_COLUMN; ++i){
     for(unsigned int j=0; j<RAW_DATA_MAX_ROW; ++j){
       unsigned int M = 0;
       unsigned int tMinOccupancy = _occupancy[(long)i + (long)j * (long)RAW_DATA_MAX_COLUMN];
       unsigned int tMaxOccupancy = _occupancy[(long)i + (long)j * (long)RAW_DATA_MAX_COLUMN  + ((long)getNparameters()-1) * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW];
-      if(i == 3 && j == 15){
-        //std::cout<<"col/row "<<i<<"/"<<j<<"\n";
-        //std::cout<<"tMinOccupancy "<<tMinOccupancy<<"\n";
-        //std::cout<<"tMaxOccupancy "<<tMaxOccupancy<<"\n";
-        for(unsigned int k=0; k<getNparameters(); ++k)
-          std::cout<<_occupancy[(long)i + (long)j * (long)RAW_DATA_MAX_COLUMN  + (long)k * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW]<<"\t";
-      }
-      //if(tMinOccupancy != 0 || tMaxOccupancy != A){ //error check
-      //  //std::cout<<"col/row="<<i<<"/"<<j<<"\n";
-      //  rMuArray[i+j*RAW_DATA_MAX_COLUMN] = 0;
-      //  rSigmaArray[i+j*RAW_DATA_MAX_COLUMN] = 0;
-      //  continue;
-      //  //return;
-      //}
         
       for(unsigned int k=0; k<getNparameters(); ++k){
         M += _occupancy[(long)i + (long)j * (long)RAW_DATA_MAX_COLUMN  + (long)k * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW]; 
-        //std::cout<<_occupancy[(long)i + (long)j * (long)RAW_DATA_MAX_COLUMN  + (long)k * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW]<<"\t";
       }
       double threshold = (double) q_max - d*(double)M/(double)A;
       rMuArray[i+j*RAW_DATA_MAX_COLUMN] = threshold;
-      //std::cout<<"t "<<threshold<<"\tn ";  //threshold
+
       unsigned int mu1 = 0;
       unsigned int mu2 = 0;
       for(unsigned int k=0; k<getNparameters(); ++k){
@@ -388,15 +368,6 @@ void Histogram::calculateThresholdScanArrays(double rMuArray[], double rSigmaArr
       }
       double noise = d*(double)(mu1+mu2)/(double)A*sqrt(3.141592653589893238462643383/2);
       rSigmaArray[i+j*RAW_DATA_MAX_COLUMN] = noise;
-      //std::cout<<noise<<"\tM "<<M<<"\tmu1 "<<mu1<<"\tmu2 "<<mu2<<"\n";
-      //if(threshold<0){
-      //  for(unsigned int k=0; k<getNparameters(); ++k)
-      //    std::cout<<_occupancy[(long)i + (long)j * (long)RAW_DATA_MAX_COLUMN  + (long)k * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW]<<"\t";
-      //  //return;
-      //}
-      //std::cout<<d*(double)M/(double)A<<"other\n";
-      //std::cout<<d*(double) M/ (double) A;  //threshold
-      //std::cout<<"COL "<<i<<"\tROW "<<j<<"\t threshold "<<threshold<<"\tnoise "<<noise<<"\n";
     }
   }
 }
