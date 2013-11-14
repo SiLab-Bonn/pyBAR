@@ -272,6 +272,34 @@ def plotOccupancy(occupancy_hist, median = False, max_occ = None, filename = Non
         filename.savefig()
     else:
         plt.savefig(filename)
+        
+def plot_scurves(occupancy_hist, PlsrDAC = range(0,101), max_occ = 200, filename = None):
+    if len(occupancy_hist.shape) < 3:
+        logging.warning("plot_scurves: S-curve data most likely wrong")
+    y = occupancy_hist.reshape(-1)
+    x = []
+    n_pixel = len(y)/len(PlsrDAC)
+    for i in range(0,n_pixel):
+        x.extend(PlsrDAC)  
+    cmap = cm.get_cmap('jet', 200)
+    heatmap, xedges, yedges = np.histogram2d(y, x, range = [[0, max_occ], [PlsrDAC[0], PlsrDAC[-1]]], bins = (max_occ, len(PlsrDAC)))
+    plt.clf()
+    fig = plt.figure(1)
+    fig.patch.set_facecolor('white')
+    extent = [yedges[0]-0.5, yedges[-1]+0.5, xedges[-1]+0.5, xedges[0]-0.5]
+    norm = colors.LogNorm()
+    plt.imshow(heatmap, interpolation='nearest', aspect="auto", cmap = cmap, extent=extent, norm=norm)
+    plt.gca().invert_yaxis()
+    plt.colorbar()
+    plt.title('S-Curves for '+str(n_pixel)+' pixel')
+    plt.xlabel('PlsrDAC')
+    plt.ylabel('Occupancy')
+    if filename is None:
+        plt.show()
+    elif type(filename) == PdfPages:
+        filename.savefig()
+    else:
+        plt.savefig(filename)
 
 def plot_cluster_size(cluster_size_hist, filename = None):
     plt.clf()
