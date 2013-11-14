@@ -67,28 +67,26 @@ class Readout(object):
         logging.info('Starting readout')
         self.worker_thread.start()
     
-    def stop(self, timeout=None):
+    def stop(self, timeout=10):
         if self.worker_thread == None:
             raise RuntimeError('Readout thread not existing: use start() before stop()')
         if timeout:
-            timeout_event = Event()
-            timeout_event.clear()
+            def stop_thread():
+                logging.warning('Waiting for empty SRAM FIFO: timeout after %.1f second(s)' % timeout)
+                self.stop_thread_event.set()
             
-            timer = Timer(timeout, timeout_event.set)
-            timer.start()
+            timeout_timer = Timer(timeout, stop_thread)
+            timeout_timer.start()
             
             fifo_size = self.get_sram_fifo_size()
             old_fifo_size = -1
-            while (old_fifo_size != fifo_size or fifo_size != 0) and not timeout_event.wait(1.5*self.readout_interval):
+            while (old_fifo_size != fifo_size or fifo_size != 0) and self.worker_thread.is_alive() and not self.stop_thread_event.wait(1.5*self.readout_interval):
                 old_fifo_size = fifo_size
                 fifo_size = self.get_sram_fifo_size()
-            timer.cancel()
-            if timeout_event.is_set():
-                logging.warning('Waiting for empty SRAM FIFO: timeout after %.1f second(s)' % timeout)
-            else:
-                timeout_event.set()
                 
-        self.stop_thread_event.set()
+            timeout_timer.cancel()
+                
+        self.stop_thread_event.set() # stop thread when no timeout is set 
         self.worker_thread.join()
         self.worker_thread = None
         logging.info('Stopped readout')
