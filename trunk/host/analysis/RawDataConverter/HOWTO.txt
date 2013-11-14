@@ -2,4 +2,5 @@ Cython Solution:
 The Cython solution just uses the Interpreter/Histogram and CLusterizer class and creates Python Modules from their C++ code. 
 It is platform independent and allows Pytables Blosc compression in tables.
 1. make sure you have cython installed
-2. run setup.py with cython to build libraries (python.exe setup.py build_ext --inplace)
+2. run setup.py with cython to build libraries:
+   python.exe setup.py build_ext --inplace
