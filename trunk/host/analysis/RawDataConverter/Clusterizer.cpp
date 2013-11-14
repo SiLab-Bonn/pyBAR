@@ -340,19 +340,22 @@ void Clusterizer::searchNextHits(const unsigned short& pCol, const unsigned shor
 
 	short unsigned int tTot = _hitMap[(long)pCol + (long)pRow * (long)RAW_DATA_MAX_COLUMN + (long)pRelBcid * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW];
 
-	if (tTot >= _actualClusterMaxTot && tTot < _lateHitTot){
+	if (tTot >= _actualClusterMaxTot && tTot < _lateHitTot){	//seed finding
 		_actualClusterSeed_column = pCol;
 		_actualClusterSeed_row = pRow;
 		_actualClusterSeed_relbcid = pRelBcid;
 		_actualClusterMaxTot = tTot;
 	}
 
-	if(_hitIndexMap[(long)pCol + (long)pRow * (long)RAW_DATA_MAX_COLUMN + (long)pRelBcid * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] < _clusterHitInfoSize){
-		if(_createClusterHitInfoArray)
+	if(_createClusterHitInfoArray){
+		if( _hitIndexMap[(long)pCol + (long)pRow * (long)RAW_DATA_MAX_COLUMN + (long)pRelBcid * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] < _clusterHitInfoSize)
 			_clusterHitInfo[_hitIndexMap[(long)pCol + (long)pRow * (long)RAW_DATA_MAX_COLUMN + (long)pRelBcid * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW]].clusterID = _actualClusterID;
+		else{
+			std::stringstream tInfo;
+			tInfo<<"Clusterizer: searchNextHits(...): hit index "<<_hitIndexMap[(long)pCol + (long)pRow * (long)RAW_DATA_MAX_COLUMN + (long)pRelBcid * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW]<<" is out of range (0.."<<_clusterHitInfoSize<<")";
+			throw std::out_of_range(tInfo.str());
+		}
 	}
-	else
-		throw std::out_of_range("Clusterizer: hit index is out of range");
 
 	if(tTot > (short int) _maxClusterHitTot)	//omit cluster with a hit tot higher than _maxClusterHitTot, clustering is not aborted to delete all hits from this cluster from the hit array
 		_abortCluster = true;
@@ -362,8 +365,8 @@ void Clusterizer::searchNextHits(const unsigned short& pCol, const unsigned shor
 
 	_actualClusterTot+=tTot;		//add tot of the hit to the cluster tot
 	_actualClusterCharge+=_chargeMap[(long)pCol + (long)pRow * (long)RAW_DATA_MAX_COLUMN + (long)tTot * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW];	//add charge of the hit to the cluster tot
-	_actualClusterX+=((double) pCol+0.5) * __PIXELSIZEX * _chargeMap[(long)pCol + (long)pRow * (long)RAW_DATA_MAX_COLUMN + (long)tTot * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW];	//add x position of actual cluster weigthed by the charge
-	_actualClusterY+=((double) pRow+0.5) * __PIXELSIZEY * _chargeMap[(long)pCol + (long)pRow * (long)RAW_DATA_MAX_COLUMN + (long)tTot * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW];	//add y position of actual cluster weigthed by the charge
+	_actualClusterX+=((float) pCol+0.5) * (float) __PIXELSIZEX * _chargeMap[(long)pCol + (long)pRow * (long)RAW_DATA_MAX_COLUMN + (long)tTot * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW];	//add x position of actual cluster weigthed by the charge
+	_actualClusterY+=((float) pRow+0.5) * (float) __PIXELSIZEY * _chargeMap[(long)pCol + (long)pRow * (long)RAW_DATA_MAX_COLUMN + (long)tTot * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW];	//add y position of actual cluster weigthed by the charge
 
 	if(Basis::debugSet()){
 //		std::cout<<"Clusterizer::searchNextHits"<<std::endl;
@@ -497,8 +500,11 @@ void Clusterizer::addClusterToResults()
 			_clusterTots[(long)(_actualClusterTot) + (long)_actualClusterSize*(long)__MAXTOTBINS]++;
 			_clusterTots[(long)_actualClusterTot]++;	//cluster size = 0 contains all cluster sizes
 		}
-		else
-			throw std::out_of_range("Clusterizer::addClusterToResults: cluster tot does not fit into cluster tot histogram");
+		else{
+			std::stringstream tInfo;
+			tInfo<<"Clusterizer::addClusterToResults: cluster tot "<<_actualClusterTot<<" with cluster size "<<_actualClusterSize<<" does not fit into cluster tot histogram.";
+			throw std::out_of_range(tInfo.str());
+		}
 //		if((int) _actualClusterCharge<__MAXCHARGEBINS && _actualClusterSize<__MAXCLUSTERHITSBINS){
 //			_clusterCharges[(int) _actualClusterCharge][0]++;
 //			_clusterCharges[(int) _actualClusterCharge][_actualClusterSize]++;	//cluster size = 0 contains all cluster sizes
@@ -692,8 +698,8 @@ void Clusterizer::showHits()
 
 void Clusterizer::addCluster()
 {
-	if(_Nclusters < _clusterInfoSize){
-		if(_createClusterInfoArray){
+	if(_createClusterInfoArray){
+		if(_Nclusters < _clusterInfoSize){
 			_clusterInfo[_Nclusters].eventNumber = _actualEventNumber;
 			_clusterInfo[_Nclusters].ID = _actualClusterID;
 			_clusterInfo[_Nclusters].size = _actualClusterSize;
@@ -703,17 +709,18 @@ void Clusterizer::addCluster()
 			_clusterInfo[_Nclusters].seed_row = _actualClusterSeed_row+1;
 			_clusterInfo[_Nclusters].eventStatus = _actualEventStatus;
 		}
-		_Nclusters++;
+		else
+			throw std::out_of_range("too many clusters attempt to be stored in cluster array");
 	}
-	else
-		throw std::out_of_range("too many clusters attempt to be stored in cluster array");
+
+	_Nclusters++;
 
 	//set seed
-	if(_hitIndexMap[(long)_actualClusterSeed_column + (long)_actualClusterSeed_row * (long)RAW_DATA_MAX_COLUMN + (long)_actualClusterSeed_relbcid * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] < _clusterHitInfoSize){
-		if(_createClusterHitInfoArray)
-			_clusterHitInfo[_hitIndexMap[(long)_actualClusterSeed_column + (long)_actualClusterSeed_row * (long)RAW_DATA_MAX_COLUMN + (long)_actualClusterSeed_relbcid * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW]].isSeed = 1;
+	if(_createClusterHitInfoArray){
+		if(_hitIndexMap[(long)_actualClusterSeed_column + (long)_actualClusterSeed_row * (long)RAW_DATA_MAX_COLUMN + (long)_actualClusterSeed_relbcid * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] < _clusterHitInfoSize)
+		_clusterHitInfo[_hitIndexMap[(long)_actualClusterSeed_column + (long)_actualClusterSeed_row * (long)RAW_DATA_MAX_COLUMN + (long)_actualClusterSeed_relbcid * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW]].isSeed = 1;
+		else
+			throw std::out_of_range("Clusterizer: addCluster(): hit index is out of range");
 	}
-	else
-		throw std::out_of_range("hit index is out of range");
 }
 
