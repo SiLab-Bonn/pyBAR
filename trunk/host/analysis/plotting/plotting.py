@@ -36,7 +36,7 @@ def plot_occupancy(cols, rows = None, max_occ = None, filename = None, title = N
     make_occupancy(cols, rows, max_occ)
     if(title != None):
         plt.title(title)
-    fig = plt.figure(1)
+    fig = plt.figure()
     fig.patch.set_facecolor('white')
     if filename is None:
         plt.show()
@@ -99,14 +99,14 @@ def plot_noise(noise_hist, v_cal = 53, plot_range = (1500,2500), filename = None
 
 def plot_relative_bcid(relative_bcid_hist, filename = None):
     plt.clf()
+    fig = plt.figure()
+    fig.patch.set_facecolor('white')
     plt.bar(range(0,16), relative_bcid_hist[:], color='r', align = 'center') #bug: https://github.com/matplotlib/matplotlib/issues/1882, log = True)
     plt.xlabel('relative BCID [25 ns]')
     plt.ylabel('#')
     plt.yscale('log')
     plt.title('Relative BCID (former LVL1ID)')
     plt.xlim((0, 16))
-    fig = plt.figure(1)
-    fig.patch.set_facecolor('white')
     plt.grid(True)
     if filename is None:
         plt.show()
@@ -117,13 +117,13 @@ def plot_relative_bcid(relative_bcid_hist, filename = None):
 
 def plot_tot(tot_hist, filename = None):
     plt.clf()
+    fig = plt.figure()
+    fig.patch.set_facecolor('white')
     plt.bar(range(0,16), tot_hist[:], color='b', align = 'center')
     plt.xlim((0, 15))
     plt.xlabel('TOT [25 ns]')
     plt.ylabel('#')
     plt.title('Time over threshold distribution (TOT code)')
-    fig = plt.figure(1)
-    fig.patch.set_facecolor('white')
     plt.grid(True)
     if filename is None:
         plt.show()
@@ -134,12 +134,12 @@ def plot_tot(tot_hist, filename = None):
 
 def plot_event_errors(error_hist, filename = None):
     plt.clf()
+    fig = plt.figure()
+    fig.patch.set_facecolor('white')
     plt.bar(range(0,len(error_hist[:])), error_hist[:], color='r', align = 'center', label="Error code")
     plt.xlabel('')
     plt.ylabel('#')
     plt.title('Event errors')
-    fig = plt.figure(1)
-    fig.patch.set_facecolor('white')
     plt.grid(True)
     plt.xticks(range(0,8), ('SR\noccured', 'No\ntrigger', 'LVL1ID\nnot const.', '#BCID\nwrong', 'unknown\nword', 'BCID\njump', 'trigger\nerror', 'truncated') )
     #plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
@@ -152,12 +152,12 @@ def plot_event_errors(error_hist, filename = None):
 
 def plot_trigger_errors(trigger_error_hist, filename = None):
     plt.clf()
+    fig = plt.figure()
+    fig.patch.set_facecolor('white')
     plt.bar(range(0,8), trigger_error_hist[:], color='r', align = 'center', label="Error code")
     plt.xlabel('')
     plt.ylabel('#')
     plt.title('Trigger errors')
-    fig = plt.figure(1)
-    fig.patch.set_facecolor('white')
     plt.grid(True)
     plt.xticks(range(0,8), ('increase\nerror', 'more than\none trg.', 'TLU\naccept', 'TLU\ntime out', 'not\nused', 'not\nused', 'not\nused', 'not\nused') )
     #plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
@@ -170,13 +170,13 @@ def plot_trigger_errors(trigger_error_hist, filename = None):
 
 def plot_service_records(service_record_hist, filename = None):
     plt.clf()
+    fig = plt.figure()
+    fig.patch.set_facecolor('white')
     plt.bar(range(0,32), service_record_hist[:], color='r', align = 'center', label="Error code")
     plt.xlim((0, 31))
     plt.xlabel('service record code')
     plt.ylabel('#')
     plt.title('Service records ('+str(sum(service_record_hist[:]))+' entries)')
-    fig = plt.figure(1)
-    fig.patch.set_facecolor('white')
     plt.grid(True)
     #plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
     if filename is None:
@@ -284,7 +284,7 @@ def plot_scurves(occupancy_hist, PlsrDAC = range(0,101), max_occ = 200, filename
     cmap = cm.get_cmap('jet', 200)
     heatmap, xedges, yedges = np.histogram2d(y, x, range = [[0, max_occ], [PlsrDAC[0], PlsrDAC[-1]]], bins = (max_occ, len(PlsrDAC)))
     plt.clf()
-    fig = plt.figure(1)
+    fig = plt.figure()
     fig.patch.set_facecolor('white')
     extent = [yedges[0]-0.5, yedges[-1]+0.5, xedges[-1]+0.5, xedges[0]-0.5]
     norm = colors.LogNorm()
@@ -302,16 +302,17 @@ def plot_scurves(occupancy_hist, PlsrDAC = range(0,101), max_occ = 200, filename
         plt.savefig(filename)
 
 def plot_cluster_size(cluster_size_hist, filename = None):
+    print 'plot_cluster_size'
     plt.clf()
-    plt.bar(range(0,len(cluster_size_hist)), cluster_size_hist[:], color='r', align = 'center', label="Error code")
+    fig = plt.figure()
+    fig.patch.set_facecolor('white')
+    plt.bar(range(0,len(cluster_size_hist)), cluster_size_hist[:], color='r', align = 'center', label="Cluster size")
 #     print cluster_size_hist[:].nonzero()
 #     plt.xlim((0, 31))
     plt.yscale('log')
     plt.xlabel('cluster size')
     plt.ylabel('#')
     plt.title('Cluster size ('+str(sum(cluster_size_hist[:]))+' entries)')
-    fig = plt.figure(1)
-    fig.patch.set_facecolor('white')
     plt.grid(True)
     if filename is None:
         plt.show()
@@ -330,7 +331,7 @@ def plot_cluster_tot_size(hist, median = False, max_occ = None, filename = None)
     plt.ylabel('cluster tot')
     plt.colorbar(cmap = cmap)
     plt.gca().invert_yaxis()
-    fig = plt.figure(1)
+    fig = plt.figure()
     fig.patch.set_facecolor('white')
     if filename is None:
         plt.show()
@@ -341,12 +342,12 @@ def plot_cluster_tot_size(hist, median = False, max_occ = None, filename = None)
         
 def plot_cluster_tot(hist, median = False, max_occ = None, filename = None):
     plt.clf()
+    fig = plt.figure()
+    fig.patch.set_facecolor('white')
     plt.bar(range(0,len(hist[:,0])), hist[:,0], color='r', align = 'center', label="Error code")
     plt.xlabel('cluster tot')
     plt.ylabel('#')
     plt.title('Cluster tot ('+str(sum(hist[:,0]))+' entries)')
-    fig = plt.figure(1)
-    fig.patch.set_facecolor('white')
     plt.grid(True)
     if filename is None:
         plt.show()
