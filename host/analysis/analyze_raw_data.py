@@ -17,14 +17,18 @@ def fit_scurves_subset(pixel_subset_data, PlsrDAC):   #data of some pixels to fi
     def scurve(x, A, mu, sigma):
         return 0.5*A*erf((x-mu)/(np.sqrt(2)*sigma))+0.5*A   
     result = []
+    n_failed_pxel_fits = 0
     for iPixel in range(0,pixel_subset_data.shape[0]):
         try:
             popt, _ = curve_fit(scurve, PlsrDAC, pixel_subset_data[iPixel], p0 = [100, 50, 3])
         except RuntimeError:
-            logging.info('S-Curve fit failed for one pixel')
+            popt = [0,0,0]
+            n_failed_pxel_fits = n_failed_pxel_fits + 1  
         result.append(popt[1:3])
-        if(iPixel%1000 == 0):
-            logging.info('Fitting scurve: %d%%' % (iPixel*100./26880.))
+        if(iPixel%2000 == 0):
+            logging.info('Fitting S-curve: %d%%' % (iPixel*100./26880.))
+    logging.info('Fitting S-curve: 100%%')
+    logging.info('S-Curve fit failed for %d pixel' % n_failed_pxel_fits)
     return result
 
 class AnalyzeRawData(object):
@@ -338,7 +342,9 @@ class AnalyzeRawData(object):
                 hit_table.flush()
             logging.info('100 %')
             self._create_additional_data()
-        del hits     
+        del hits
+        if(self.out_file_h5 != None):
+            self.out_file_h5.close()     
         
     def _create_additional_data(self):
         logging.info('create chosen hit and event histograms')           
@@ -408,12 +414,12 @@ class AnalyzeRawData(object):
                 noise_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name = 'HistNoise', title = 'Noise Histogram', atom = tb.Atom.from_dtype(self.noise_hist.dtype), shape = (336,80), filters = self._filter_table)
                 noise_hist_table[0:336, 0:80] = self.noise_hist
         if (self._create_fitted_threshold_hists):
-            self.fit_scurves()
+            self.scurve_fit_results = self.fit_scurves()
             if (self._output_file != None):
-                threshold_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name = 'HistThreshold', title = 'Threshold Histogram', atom = tb.Atom.from_dtype(self.threshold_hist.dtype), shape = (336,80), filters = self._filter_table)
-                threshold_hist_table[0:336, 0:80] = self.threshold_hist
-                noise_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name = 'HistNoise', title = 'Noise Histogram', atom = tb.Atom.from_dtype(self.noise_hist.dtype), shape = (336,80), filters = self._filter_table)
-                noise_hist_table[0:336, 0:80] = self.noise_hist      
+                fitted_threshold_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name = 'HistThresholdFitted', title = 'Threshold Fitted Histogram', atom = tb.Atom.from_dtype(self.scurve_fit_results.dtype), shape = (336,80), filters = self._filter_table)
+                fitted_threshold_hist_table[0:336, 0:80] = self.scurve_fit_results[:,:,0]
+                fitted_noise_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name = 'HistNoiseFitted', title = 'Noise Fitted Histogram', atom = tb.Atom.from_dtype(self.scurve_fit_results.dtype), shape = (336,80), filters = self._filter_table)
+                fitted_noise_hist_table[0:336, 0:80] = self.scurve_fit_results[:,:,1]    
         
         self._create_additional_cluster_data()        
         
@@ -503,6 +509,8 @@ class AnalyzeRawData(object):
                 logging.info('%d %%' % int(float(float(iHit)/float(table_size)*100.)))
             logging.info('100 %')
             self._create_additional_cluster_data()
+            if(self.out_file_h5 != None):
+                self.out_file_h5.close()
         
     def plot_histograms(self, scan_data_filename = None):    # plots the histogram from output file if available otherwise from ram
         logging.info('plot chosen histograms')    
@@ -514,6 +522,9 @@ class AnalyzeRawData(object):
         if (self._create_threshold_hists):
             plotting.plotThreeWay(hist = out_file_h5.root.HistThreshold[:,:] if out_file_h5 != None else self.threshold_hist, title = "Threshold", label = "threshold [PlsrDAC]", filename = output_pdf, bins = 100, minimum = 0, maximum = 100)
             plotting.plotThreeWay(hist = out_file_h5.root.HistNoise[:,:] if out_file_h5 != None else self.noise_hist, title = "Noise", label = "noise [PlsrDAC]", filename = output_pdf, bins = 100, minimum = 0, maximum = 10)
+        if (self._create_fitted_threshold_hists):
+            plotting.plotThreeWay(hist = out_file_h5.root.HistThresholdFitted[:,:] if out_file_h5 != None else self.scurve_fit_results[:,:,0], title = "Threshold (from s-curve fit)", label = "threshold [PlsrDAC]", filename = output_pdf, bins = 100, minimum = 0, maximum = 100)
+            plotting.plotThreeWay(hist = out_file_h5.root.HistNoiseFitted[:,:] if out_file_h5 != None else self.scurve_fit_results[:,:,1], title = "Noise (from s-curve fit)", label = "noise [PlsrDAC]", filename = output_pdf, bins = 100, minimum = 0, maximum = 10)         
         if (self._create_occupancy_hist):
             if(self._create_threshold_hists):
                 plotting.plot_scurves(occupancy_hist = out_file_h5.root.HistOcc[:,:,:] if out_file_h5 != None else self.occupancy_array[:,:,:], filename = output_pdf, PlsrDAC = range(self.histograming.get_min_parameter(),self.histograming.get_max_parameter()+1))
@@ -541,13 +552,12 @@ class AnalyzeRawData(object):
         
     def fit_scurves(self, hit_table_file = None):
         if(hit_table_file == None and self._output_file != None): # assume that the data is there from an analysis run
-            hit_table_file = tb.openFile(self._output_file, mode = "r")  
+            hit_table_file = tb.openFile(self._output_file, mode = "r+")  
         occupancy_hist = hit_table_file.root.HistOcc[:,:,:] if hit_table_file != None else self.occupancy_array[:,:,:] # take data from RAM if no file is opended       
-        occupancy_hist = occupancy_hist.reshape(occupancy_hist.shape[0]*occupancy_hist.shape[1],occupancy_hist.shape[2])
-        print occupancy_hist[10]
-        print occupancy_hist.shape[0]
+        occupancy_hist_shaped = occupancy_hist.reshape(occupancy_hist.shape[0]*occupancy_hist.shape[1],occupancy_hist.shape[2])
+#         print occupancy_hist_shaped[10]
+#         print occupancy_hist_shaped.shape[0]
         PlsrDAC = range(0,101)
-        
 # TODO: use multiprocessing
 #         from multiprocessing import Process, cpu_count, Pool
 #         import os
@@ -564,35 +574,17 @@ class AnalyzeRawData(object):
 #         print pool.map(functools.partial(f, n=20), range(100000))
 #         pool.close()
 #         pool.join()  
-        result = fit_scurves_subset(occupancy_hist[:], PlsrDAC = PlsrDAC)
-        
-        print result
-        
-        result = result.reshape(occupancy_hist.shape[0],occupancy_hist.shape[1],occupancy_hist.shape[2])
-        
-        
-        
-        fitted_threshold_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name = 'HistThresholdFitted', title = 'Threshold Fitted Histogram', atom = tb.Atom.from_dtype(self.threshold_hist.dtype), shape = (336,80), filters = self._filter_table)
-        fitted_threshold_hist_table[0:336, 0:80] = np.swapaxes(result[:,:,1],0,1)
-        fitted_noise_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name = 'HistNoiseFitted', title = 'Noise Fitted Histogram', atom = tb.Atom.from_dtype(self.noise_hist.dtype), shape = (336,80), filters = self._filter_table)
-        fitted_noise_hist_table[0:336, 0:80] = np.swapaxes(result[:,:,2],0,1)
-        
-        if (self._output_file != None):
-            self._output_file.close()
+        result_array = np.array(fit_scurves_subset(occupancy_hist_shaped[:], PlsrDAC = PlsrDAC) )
+        return result_array.reshape(occupancy_hist.shape[0],occupancy_hist.shape[1],2)
 
 if __name__ == "__main__":
-    scan_name='scan_threshold_0'
+    scan_name='scan_threshold_4'
     chip_flavor = 'fei4a'
     input_file = r"C:\pybar\trunk\host\data/"+scan_name+".h5"
     output_file = r"C:\pybar\trunk\host\data/"+scan_name+"_interpreted.h5"
     scan_data_filename = r"C:\pybar\trunk\host\data/"+scan_name
     
     with AnalyzeRawData(input_file = input_file, output_file = output_file) as analyze_raw_data:
-#         analyze_raw_data.create_tot_hist = False
-#         analyze_raw_data.create_threshold_hists = True
-#         analyze_raw_data.interpreter.set_warning_output(False)  # so far the data structure in a threshold scan was always bad, too many warnings given
-#         analyze_raw_data.interpret_word_table(FEI4B = True if(chip_flavor == 'fei4b') else False)
-#         analyze_raw_data.interpreter.print_summary()
-#         analyze_raw_data.plot_histograms(scan_data_filename = scan_data_filename)
-        analyze_raw_data.create_triggered_threshold_hists = True
-        analyze_raw_data.fit_scurves()
+        analyze_raw_data.interpret_word_table(FEI4B = True if(chip_flavor == 'fei4b') else False)
+        analyze_raw_data.interpreter.print_summary()
+        analyze_raw_data.plot_histograms(scan_data_filename = scan_data_filename)
