@@ -48,8 +48,6 @@ class AnalyzeRawData(object):
         del self.interpreter
         del self.histograming
         del self.clusterizer
-        if(self.out_file_h5 != None):
-            self.out_file_h5.close()
     
     def set_standard_settings(self):
         self.out_file_h5 = None
@@ -342,9 +340,9 @@ class AnalyzeRawData(object):
                 hit_table.flush()
             logging.info('100 %')
             self._create_additional_data()
-        del hits
-        if(self.out_file_h5 != None):
-            self.out_file_h5.close()     
+            if(self._output_file != None):
+                self.out_file_h5.close()
+        del hits  
         
     def _create_additional_data(self):
         logging.info('create chosen hit and event histograms')           
@@ -414,7 +412,7 @@ class AnalyzeRawData(object):
                 noise_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name = 'HistNoise', title = 'Noise Histogram', atom = tb.Atom.from_dtype(self.noise_hist.dtype), shape = (336,80), filters = self._filter_table)
                 noise_hist_table[0:336, 0:80] = self.noise_hist
         if (self._create_fitted_threshold_hists):
-            self.scurve_fit_results = self.fit_scurves()
+            self.scurve_fit_results = self.fit_scurves(self.out_file_h5)
             if (self._output_file != None):
                 fitted_threshold_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name = 'HistThresholdFitted', title = 'Threshold Fitted Histogram', atom = tb.Atom.from_dtype(self.scurve_fit_results.dtype), shape = (336,80), filters = self._filter_table)
                 fitted_threshold_hist_table[0:336, 0:80] = self.scurve_fit_results[:,:,0]
@@ -509,7 +507,7 @@ class AnalyzeRawData(object):
                 logging.info('%d %%' % int(float(float(iHit)/float(table_size)*100.)))
             logging.info('100 %')
             self._create_additional_cluster_data()
-            if(self.out_file_h5 != None):
+            if(self._output_file != None):
                 self.out_file_h5.close()
         
     def plot_histograms(self, scan_data_filename = None):    # plots the histogram from output file if available otherwise from ram
@@ -550,14 +548,9 @@ class AnalyzeRawData(object):
             out_file_h5.close()       
         output_pdf.close()
         
-    def fit_scurves(self, hit_table_file = None):
-        if(hit_table_file == None and self._output_file != None): # assume that the data is there from an analysis run
-            hit_table_file = tb.openFile(self._output_file, mode = "r+")  
+    def fit_scurves(self, hit_table_file, PlsrDAC = range(0,101)):
         occupancy_hist = hit_table_file.root.HistOcc[:,:,:] if hit_table_file != None else self.occupancy_array[:,:,:] # take data from RAM if no file is opended       
         occupancy_hist_shaped = occupancy_hist.reshape(occupancy_hist.shape[0]*occupancy_hist.shape[1],occupancy_hist.shape[2])
-#         print occupancy_hist_shaped[10]
-#         print occupancy_hist_shaped.shape[0]
-        PlsrDAC = range(0,101)
 # TODO: use multiprocessing
 #         from multiprocessing import Process, cpu_count, Pool
 #         import os
