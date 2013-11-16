@@ -1,4 +1,4 @@
-import numpy as np
+﻿import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -256,7 +256,7 @@ def plotOccupancy(occupancy_hist, median = False, max_occ = None, filename = Non
     else:
         ceil_number = ceil_mod(H.max() if max_occ == None else max_occ, 10)
     #         ceil_number = ceil_mod(int(H.max()) if max_occ == None else max_occ, 255)
-    
+
     if(ceil_number<10):
         ceil_number = 10
     bounds = range(0, ceil_number+1, ceil_number/10)
@@ -276,7 +276,7 @@ def plotOccupancy(occupancy_hist, median = False, max_occ = None, filename = Non
         filename.savefig()
     else:
         plt.savefig(filename)
-        
+
 def plot_scurves(occupancy_hist, PlsrDAC = range(0,101), max_occ = 200, filename = None):
     if len(occupancy_hist.shape) < 3:
         logging.warning("plot_scurves: S-curve data most likely wrong")
@@ -284,7 +284,7 @@ def plot_scurves(occupancy_hist, PlsrDAC = range(0,101), max_occ = 200, filename
     x = []
     n_pixel = len(y)/len(PlsrDAC)
     for i in range(0,n_pixel):
-        x.extend(PlsrDAC)  
+        x.extend(PlsrDAC)
     cmap = cm.get_cmap('jet', 200)
     heatmap, xedges, yedges = np.histogram2d(y, x, range = [[0, max_occ], [PlsrDAC[0], PlsrDAC[-1]]], bins = (max_occ, len(PlsrDAC)))
     plt.clf()
@@ -324,7 +324,7 @@ def plot_cluster_size(cluster_size_hist, filename = None):
         filename.savefig()
     else:
         plt.savefig(filename)
-        
+
 def plot_cluster_tot_size(hist, median = False, max_occ = None, filename = None):
     plt.clf()
     H = hist[0:50,0:20]
@@ -343,7 +343,7 @@ def plot_cluster_tot_size(hist, median = False, max_occ = None, filename = None)
         filename.savefig()
     else:
         plt.savefig(filename)
-        
+
 def plot_cluster_tot(hist, median = False, max_occ = None, filename = None):
     plt.clf()
     fig = plt.figure()
@@ -460,7 +460,7 @@ def create_1d_hist(hist, title = None, x_axis_title = None, y_axis_title = None,
     except RuntimeError:
         logging.info('create_1d_hist: Fit failed, do not plot fit')
     plt.ylim([0, plt.ylim()[1]*1.05])
-#     plt.xlim([np.amin(hist_bins) if x_min == None else x_min, np.amax(hist_bins) if x_max == None else x_max])  
+#     plt.xlim([np.amin(hist_bins) if x_min == None else x_min, np.amax(hist_bins) if x_max == None else x_max])
     textleft = '$\mathrm{mean}=%.2f$\n$\mathrm{RMS}=%.2f$\n$\mathrm{median}=%.2f$'%(mean, rms, median)
     props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
     ax.text(0.1, 0.9, textleft, transform=ax.transAxes, fontsize=8, verticalalignment='top', bbox=props)
@@ -523,7 +523,7 @@ if __name__ == "__main__":
             #print str(col)
             H[col,row] = hits
     plotThreeWay(H.transpose(), title = 'Occupancy', label = 'occupancy', filename = 'SourceScanOccupancy.pdf')
-    
+
 #     with tb.openFile('out.h5', 'r') as in_file:
 #         H=np.empty(shape=(336,80),dtype=in_file.root.HistOcc.dtype)
 #         H[:]=in_file.root.HistThreshold[:,:]
