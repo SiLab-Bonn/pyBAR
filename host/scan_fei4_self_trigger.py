@@ -20,7 +20,7 @@ class FEI4SelfTriggerScan(ScanBase):
         '''Scan loop
         
         Parameters
-        ---------
+        ----------
         col_span : list, tuple
             Column range (from minimum to maximum value). From 1 to 80.
         row_span : list, tuple
@@ -28,7 +28,7 @@ class FEI4SelfTriggerScan(ScanBase):
         timeout_no_data : int
             In seconds; if no data, stop scan after given time.
         scan_timeout : int
-            In seconds; stop scan after given time
+            In seconds; stop scan after given time.
         '''
         # generate ROI mask for Enable mask
         pixel_reg = "Enable"
