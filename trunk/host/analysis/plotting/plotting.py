@@ -295,7 +295,7 @@ def plot_scurves(occupancy_hist, PlsrDAC = range(0,101), max_occ = 200, filename
     plt.imshow(heatmap, interpolation='nearest', aspect="auto", cmap = cmap, extent=extent, norm=norm)
     plt.gca().invert_yaxis()
     plt.colorbar()
-    plt.title('S-Curves for '+str(n_pixel)+' pixel')
+    plt.title('S-Curves for '+str(n_pixel)+' pixel(s)')
     plt.xlabel('PlsrDAC')
     plt.ylabel('Occupancy')
     if filename is None:
