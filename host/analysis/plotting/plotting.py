@@ -13,9 +13,9 @@ from matplotlib.backends.backend_pdf import PdfPages
 import logging
 logging.basicConfig(level=logging.INFO, format = "%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
-def make_occupancy(cols, rows, max_occ = None):
+def make_occupancy(cols, rows, max_occ = None, ncols=80, nrows=336):
     plt.clf()
-    H, xedges, yedges = np.histogram2d(rows, cols, bins = (336, 80), range = [[1,336], [1,80]])
+    H, xedges, yedges = np.histogram2d(rows, cols, bins = (nrows, ncols), range = [[1,nrows], [1,ncols]])
     #print xedges, yedges
     extent = [yedges[0]-0.5, yedges[-1]+0.5, xedges[-1]+0.5, xedges[0]-0.5]
     #plt.pcolor(H)
@@ -27,13 +27,17 @@ def make_occupancy(cols, rows, max_occ = None):
     plt.title('Occupancy')
     plt.xlabel('Column')
     plt.ylabel('Row')
+#     for ypos in range(0,nrows,336):
+#         plt.axhline(y=ypos, xmin=0, xmax=1)
+#     for xpos in range(0,ncols,80):
+#         plt.axvline(x=xpos, ymin=0, ymax=1)
     plt.colorbar(boundaries = bounds, cmap = cmap, norm = norm, ticks = bounds)
 
-def plot_occupancy(cols, rows = None, max_occ = None, filename = None, title = None):
+def plot_occupancy(cols, rows = None, max_occ = None, filename = None, title = None, ncols=80, nrows=336):
     if(rows == None):
         cols = 0
         rows = 0
-    make_occupancy(cols, rows, max_occ)
+    make_occupancy(cols, rows, max_occ, ncols, nrows)
     if(title != None):
         plt.title(title)
     fig = plt.figure()
@@ -418,67 +422,55 @@ def create_2d_pixel_hist(hist2d, title = None, x_axis_title = None, y_axis_title
     except:
         logging.info('plotting.py create_2d_pixel_hist: error printing color bar')
 
-
 def create_1d_hist(hist, title = None, x_axis_title = None, y_axis_title = None, bins = None, x_min = None, x_max = None):
     median = np.median(hist)
-    mean = np.mean(a = hist)
-    rms = 0
-    for i in range(0, len(hist.ravel())):
-        rms += (hist.ravel()[i]-mean)**2
-    rms = sqrt(rms/len(hist.ravel()))
-    
-    if(x_min!=None):
-        hist = hist[hist>=x_min]
-    if(x_max!=None):
-        hist = hist[hist<=x_max]
-    
-    hist,bins,_ = plt.hist(x = hist.ravel(), bins = 100 if bins == None else bins)   #rebin to 1 d hist
-   
+    mean = np.mean(hist)
+    rms = np.std(hist, dtype=np.float64)
+    hist_bins = 100 if bins == None else bins
+    hist_range = (x_min, x_max) if x_min is not None and x_max is not None else None
+    _, _, _ = plt.hist(x = hist.ravel(), bins = hist_bins, range = hist_range) # rebin to 1 d hist
+    # create hist without masked elements, higher precision while calculating gauss
+    h_1d, h_bins = np.histogram(np.ma.compressed(hist), bins = hist_bins, range = hist_range)
     if title != None:
         plt.title(title)
     if x_axis_title != None:
         plt.xlabel(x_axis_title)
     if y_axis_title != None:
         plt.ylabel(y_axis_title)
-
-    bin_centres = (bins[:-1] + bins[1:])/2
-    amplitude = np.amax(hist)    
-
+    bin_centres = (h_bins[:-1] + h_bins[1:])/2
+    amplitude = np.amax(h_1d)
+    # defining gauss fit function
     def gauss(x, *p):
         A, mu, sigma = p
         return A*np.exp(-(x-mu)**2/(2.*sigma**2))
-    
-    p0 = np.array([amplitude, mean, rms])# p0 is the initial guess for the fitting coefficients (A, mu and sigma above)
+
+    p0 = np.array([amplitude, mean, rms]) # p0 is the initial guess for the fitting coefficients (A, mu and sigma above)
     ax = plt.subplot(312)
     try:
-        coeff, _ = curve_fit(gauss, bin_centres, hist, p0=p0)
+        coeff, _ = curve_fit(gauss, bin_centres, h_1d, p0=p0)
         hist_fit = gauss(bin_centres, *coeff)
         plt.plot(bin_centres, hist_fit, "r--", label='Gaus fit')
         chi2 = 0
-        for i in range(0, len(hist)):
-            chi2 += (hist[i] - gauss(bins[i], *coeff))**2
+        for i in range(0, len(h_1d)):
+            chi2 += (h_1d[i] - gauss(h_bins[i], *coeff))**2
         textright = '$\mu=%.2f$\n$\sigma=%.2f$\n$\chi2=%.2f$'%(coeff[1], coeff[2], chi2)
         props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
         ax.text(0.85, 0.9, textright, transform=ax.transAxes, fontsize=8,
         verticalalignment='top', bbox=props)
     except RuntimeError:
         logging.info('create_1d_hist: Fit failed, do not plot fit')
-        
     plt.ylim([0, plt.ylim()[1]*1.05])
-#     plt.xlim([np.amin(bins) if x_min == None else x_min, np.amax(bins) if x_max == None else x_max])  
+#     plt.xlim([np.amin(hist_bins) if x_min == None else x_min, np.amax(hist_bins) if x_max == None else x_max])  
     textleft = '$\mathrm{mean}=%.2f$\n$\mathrm{RMS}=%.2f$\n$\mathrm{median}=%.2f$'%(mean, rms, median)
     props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
     ax.text(0.1, 0.9, textleft, transform=ax.transAxes, fontsize=8, verticalalignment='top', bbox=props)
 
 def create_pixel_scatter_plot(hist, title = None, x_axis_title = None, y_axis_title = None, y_min = None, y_max = None):
-    scatter_y = np.empty(shape=(336*80),dtype=hist.dtype)
+#     scatter_y = np.empty(shape=(336*80),dtype=hist.dtype)
     scatter_y_mean = np.zeros(shape=(80),dtype=np.float32)
     for col in range(80):
-        column_mean = 0
-        for row in range(336):
-            scatter_y[row + col*336] = hist[row,col]
-            column_mean += hist[row,col]
-        scatter_y_mean[col] = column_mean/336.
+        scatter_y_mean[col] = np.mean(hist[:,col])
+    scatter_y = hist.flatten('F')
     plt.scatter(range(80*336),  scatter_y, marker='o', s = 0.8)
     p1, = plt.plot(range(336/2,80*336+336/2,336), scatter_y_mean, 'o')
     plt.plot(range(336/2,80*336+336/2,336), scatter_y_mean, linewidth=2.0)
@@ -492,12 +484,13 @@ def create_pixel_scatter_plot(hist, title = None, x_axis_title = None, y_axis_ti
     if y_axis_title != None:
         plt.ylabel(y_axis_title)
 
-def plotThreeWay(hist, title, filename = None, label = "label not set", minimum = None, maximum = None, bins = None):   #the famous 3 way plot (enhanced)
-    mean = np.mean(hist)
+def plotThreeWay(hist, title, filename = None, label = "label not set", minimum = None, maximum = None, bins = None): # the famous 3 way plot (enhanced)
+    minimum = 0 if minimum is None else minimum
+    maximum = 2*np.median(hist) if maximum is None else maximum
     fig = plt.figure()
     fig.patch.set_facecolor('white')
     plt.subplot(311)
-    create_2d_pixel_hist(hist, title = title, x_axis_title = "column", y_axis_title = "row", z_max = 2*mean if maximum == None else maximum)
+    create_2d_pixel_hist(hist, title = title, x_axis_title = "column", y_axis_title = "row", z_max = maximum)
     plt.subplot(312)
     create_1d_hist(hist, bins = bins, x_axis_title = label, y_axis_title = "#", x_min = minimum, x_max = maximum)
     plt.subplot(313)
@@ -512,7 +505,6 @@ def plotThreeWay(hist, title, filename = None, label = "label not set", minimum 
 
 def plotTDACcfg(in_file_name, filename = None):
     plt.clf()
-    array = []
     for line in open(in_file_name, 'r'):
         if(line[0] != "#"): #skip comments
             line = filter(None, line.split(" ")) #create array from the line and delete empty entries
@@ -536,3 +528,10 @@ if __name__ == "__main__":
 #         H=np.empty(shape=(336,80),dtype=in_file.root.HistOcc.dtype)
 #         H[:]=in_file.root.HistThreshold[:,:]
 #         plotThreeWay(hist = in_file.root.HistThreshold[:,:], title = "Threshold", filename = "Threshold.pdf", label = "noise[e]")
+
+# TODO: set color for bad pixels
+# set nan to special value
+# masked_array = np.ma.array (a, mask=np.isnan(a))
+# cmap = matplotlib.cm.jet
+# cmap.set_bad('w',1.)
+# ax.imshow(masked_array, interpolation='nearest', cmap=cmap)
