@@ -5,6 +5,10 @@ import logging
 import os
 from scipy.optimize import curve_fit
 from scipy.special import erf
+import ctypes
+import multiprocessing as mp
+from functools import partial
+
 logging.basicConfig(level=logging.INFO, format = "%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 import data_struct
@@ -14,9 +18,18 @@ from RawDataConverter.data_interpreter import PyDataInterpreter
 from RawDataConverter.data_histograming import PyDataHistograming
 from RawDataConverter.data_clusterizer import PyDataClusterizer
 
-def fit_scurves_subset(pixel_subset_data, PlsrDAC):   #data of some pixels to fit, has to be global for the multiprocessing module
-    def scurve(x, A, mu, sigma):
-        return 0.5*A*erf((x-mu)/(np.sqrt(2)*sigma))+0.5*A   
+def scurve(x, A, mu, sigma):
+    return 0.5*A*erf((x-mu)/(np.sqrt(2)*sigma))+0.5*A
+
+def fit_scurve(scurve_data, PlsrDAC):   #data of some pixels to fit, has to be global for the multiprocessing module
+    n_failed_pxel_fits = 0
+    try:
+        popt, _ = curve_fit(scurve, PlsrDAC, scurve_data, p0 = [100, 50, 3])
+    except RuntimeError:
+        popt = [0,0,0]
+    return popt[1:3] 
+
+def fit_scurves_subset(pixel_subset_data, PlsrDAC):   #data of some pixels to fit, has to be global for the multiprocessing module  
     result = []
     n_failed_pxel_fits = 0
     for iPixel in range(0,pixel_subset_data.shape[0]):
@@ -28,7 +41,7 @@ def fit_scurves_subset(pixel_subset_data, PlsrDAC):   #data of some pixels to fi
         result.append(popt[1:3])
         if(iPixel%2000 == 0):
             logging.info('Fitting S-curve: %d%%' % (iPixel*100./26880.))
-    logging.info('Fitting S-curve: 100%%')
+    logging.info('Fitting S-curve: 100%')
     logging.info('S-Curve fit failed for %d pixel' % n_failed_pxel_fits)
     return result
 
@@ -445,7 +458,7 @@ class AnalyzeRawData(object):
                 noise_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name = 'HistNoise', title = 'Noise Histogram', atom = tb.Atom.from_dtype(self.noise_hist.dtype), shape = (336,80), filters = self._filter_table)
                 noise_hist_table[0:336, 0:80] = self.noise_hist
         if (self._create_fitted_threshold_hists):
-            self.scurve_fit_results = self.fit_scurves(self.out_file_h5)
+            self.scurve_fit_results = self.fit_scurves_multithread(self.out_file_h5)
             if (self._output_file != None):
                 fitted_threshold_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name = 'HistThresholdFitted', title = 'Threshold Fitted Histogram', atom = tb.Atom.from_dtype(self.scurve_fit_results.dtype), shape = (336,80), filters = self._filter_table)
                 fitted_threshold_hist_table[0:336, 0:80] = self.scurve_fit_results[:,:,0]
@@ -599,36 +612,32 @@ class AnalyzeRawData(object):
         logging.info('Closing PDF output file')
         output_pdf.close()
         
-    def fit_scurves(self, hit_table_file, PlsrDAC = range(0,101)):
+    def fit_scurves(self, hit_table_file = None, PlsrDAC = range(0,101)):
         occupancy_hist = hit_table_file.root.HistOcc[:,:,:] if hit_table_file != None else self.occupancy_array[:,:,:] # take data from RAM if no file was opened
         occupancy_hist_shaped = occupancy_hist.reshape(occupancy_hist.shape[0]*occupancy_hist.shape[1],occupancy_hist.shape[2])
-# TODO: use multiprocessing
-#         from multiprocessing import Process, cpu_count, Pool
-#         import os
-#         print cpu_count()
-#         p_1 = Process(target=fit_scurves_subset, args=(occupancy_hist[:occupancy_hist.shape[0]/2],PlsrDAC))
-#         p_2 = Process(target=fit_scurves_subset, args=(occupancy_hist[occupancy_hist.shape[0]/2:],PlsrDAC))
-#         p_1.start()
-#         p_2.start()
-#         p_1.join()
-#         p_2.join()
-#         pool = Pool(processes=1)    # start cpu_count() worker processes
-# #         result = pool.apply_async(f, [10])    # evaluate "f(10)" asynchronously
-# #         print result.get(timeout=100)           # prints "100" unless your computer is *very* slow
-#         print pool.map(functools.partial(f, n=20), range(100000))
-#         pool.close()
-#         pool.join()  
         result_array = np.array(fit_scurves_subset(occupancy_hist_shaped[:], PlsrDAC = PlsrDAC) )
+        return result_array.reshape(occupancy_hist.shape[0],occupancy_hist.shape[1],2)
+    
+    def fit_scurves_multithread(self, hit_table_file = None, PlsrDAC = range(0,101)):
+        logging.info("Start S-curve fit on %d cores" % mp.cpu_count())
+        occupancy_hist = hit_table_file.root.HistOcc[:,:,:] if hit_table_file != None else self.occupancy_array[:,:,:] # take data from RAM if no file is opended       
+        occupancy_hist_shaped = occupancy_hist.reshape(occupancy_hist.shape[0]*occupancy_hist.shape[1],occupancy_hist.shape[2])
+        partialfit_scurve = partial(fit_scurve, PlsrDAC = PlsrDAC)  # trick to give a function more than one parameter, needed for pool.map
+        pool = mp.Pool(processes = mp.cpu_count()) # create as many workers as physical cores are available
+        result_list = pool.map(partialfit_scurve, occupancy_hist_shaped.tolist())
+        pool.close()
+        pool.join() # blocking function until fit finished
+        result_array = np.array(result_list)
+        logging.info("S-curve fit finished")
         return result_array.reshape(occupancy_hist.shape[0],occupancy_hist.shape[1],2)
 
 if __name__ == "__main__":
     scan_name='scan_threshold_4'
     chip_flavor = 'fei4a'
-    input_file = r"C:\pybar\trunk\host\data/"+scan_name+".h5"
-    output_file = r"C:\pybar\trunk\host\data/"+scan_name+"_interpreted.h5"
+    input_file = r"fake_data.h5"
+    output_file = r"fake_data_interpreted.h5"
     scan_data_filename = r"C:\pybar\trunk\host\data/"+scan_name
     
     with AnalyzeRawData(input_file = input_file, output_file = output_file) as analyze_raw_data:
-        analyze_raw_data.interpret_word_table(FEI4B = True if(chip_flavor == 'fei4b') else False)
-        analyze_raw_data.interpreter.print_summary()
-        analyze_raw_data.plot_histograms(scan_data_filename = scan_data_filename)
+        with tb.openFile(analyze_raw_data._input_file, mode = "r") as in_file_h5:
+            analyze_raw_data.fit_scurves_multithread(in_file_h5)
