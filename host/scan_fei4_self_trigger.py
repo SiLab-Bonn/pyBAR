@@ -16,9 +16,20 @@ class FEI4SelfTriggerScan(ScanBase):
     def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "scan_fei4_self_trigger", scan_data_path = None):
         super(FEI4SelfTriggerScan, self).__init__(config_file = config_file, definition_file = definition_file, bit_file = bit_file, device = device, scan_identifier = scan_identifier, scan_data_path = scan_data_path)
         
-    def scan(self, **kwargs):
-        col_span = [1,80] # column range (from minimum to maximum value)
-        row_span = [1,336] # row range
+    def scan(self, col_span = [1,80], row_span = [1,336], timeout_no_data = 10, scan_timeout = 60, **kwargs):
+        '''Scan loop
+        
+        Parameters
+        ---------
+        col_span : list, tuple
+            Column range (from minimum to maximum value). From 1 to 80.
+        row_span : list, tuple
+            Row range (from minimum to maximum value). From 1 to 336.
+        timeout_no_data : int
+            In seconds; if no data, stop scan after given time.
+        scan_timeout : int
+            In seconds; stop scan after given time
+        '''
         # generate ROI mask for Enable mask
         pixel_reg = "Enable"
         mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
@@ -51,10 +62,6 @@ class FEI4SelfTriggerScan(ScanBase):
             self.readout.start()
             
             wait_for_first_data = True
-            
-            
-            timeout_no_data = 60 # secs
-            scan_timeout = 1200
             last_iteration = time.time()
             saw_no_data_at_time = last_iteration
             saw_data_at_time = last_iteration
@@ -63,7 +70,6 @@ class FEI4SelfTriggerScan(ScanBase):
             time_from_last_iteration = 0
             scan_stop_time = scan_start_time + scan_timeout
             while not self.stop_thread_event.wait(self.readout.readout_interval):
-                
     #                 if logger.isEnabledFor(logging.DEBUG):
     #                     lost_data = self.readout.get_lost_data_count()
     #                     if lost_data != 0:
@@ -90,7 +96,7 @@ class FEI4SelfTriggerScan(ScanBase):
                 try:
                     raw_data_file.append((self.readout.data.popleft(),))
                     #logging.info('data words')
-                except IndexError:
+                except IndexError: # no data
                     #logging.info('no data words')
                     no_data_at_time = last_iteration
                     if wait_for_first_data == False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
@@ -110,12 +116,10 @@ class FEI4SelfTriggerScan(ScanBase):
                     logging.info('Taking data...')
                     wait_for_first_data = False
             
-            self.stop_thread_event.set()
-            
             self.readout.stop()
 
 if __name__ == "__main__":
     import configuration
     scan = FEI4SelfTriggerScan(config_file = configuration.config_file, bit_file  = configuration.bit_file, scan_data_path = configuration.scan_data_path)
-    scan.start(configure=True, use_thread = False)
+    scan.start(configure=True, use_thread = True)
     scan.stop()
