@@ -2,6 +2,7 @@
 import tables as tb
 import numpy as np
 import logging
+import os
 from scipy.optimize import curve_fit
 from scipy.special import erf
 logging.basicConfig(level=logging.INFO, format = "%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
@@ -31,6 +32,23 @@ def fit_scurves_subset(pixel_subset_data, PlsrDAC):   #data of some pixels to fi
     logging.info('S-Curve fit failed for %d pixel' % n_failed_pxel_fits)
     return result
 
+def generate_threshold_mask(hist):
+    '''Masking array elements when equal 0.0 or greater than 2*median
+    
+    Parameters
+    ----------
+    hist : array_like
+        Input data.
+    
+    Returns
+    -------
+    masked array
+        Returns copy of the array with masked elements.
+    '''
+    masked_array = np.ma.masked_greater(np.ma.masked_values(hist, 0.0), 2*np.median(hist))
+    logging.info('Masking %d pixel(s)' % np.ma.count_masked(masked_array))
+    return np.ma.getmaskarray(masked_array)
+
 class AnalyzeRawData(object):
     """A class to analyze FE-I4 raw data"""
     def __init__(self, input_file = None, output_file = None):
@@ -44,7 +62,7 @@ class AnalyzeRawData(object):
     def __enter__(self):
         return self
         
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, *exc_info):
         del self.interpreter
         del self.histograming
         del self.clusterizer
@@ -65,6 +83,7 @@ class AnalyzeRawData(object):
         self.create_error_hist = True
         self.create_service_record_hist = True
         self.create_threshold_hists = False
+        self.create_threshold_mask = True # threshold/noise histogram mask: masking all pixels with noise == 0.0
         self.create_fitted_threshold_hists = False
         self.create_cluster_hit_table = False
         self.create_cluster_table = False
@@ -115,6 +134,13 @@ class AnalyzeRawData(object):
     @create_threshold_hists.setter
     def create_threshold_hists(self, value):
         self._create_threshold_hists = value
+    
+    @property
+    def create_threshold_mask(self):
+        return self._create_threshold_mask
+    @create_threshold_mask.setter
+    def create_threshold_mask(self, value):
+        self._create_threshold_mask = value
         
     @property
     def create_fitted_threshold_hists(self):
@@ -401,12 +427,19 @@ class AnalyzeRawData(object):
         if (self._create_threshold_hists):
             threshold = np.zeros(80*336, dtype=np.float64)
             noise = np.zeros(80*336, dtype=np.float64)
+            # calling fast algorithm function: M. Mertens, PhD thesis, Juelich 2010
+            # note: noise zero if occupancy was zero
             self.histograming.calculate_threshold_scan_arrays(threshold, noise)
             threshold_hist = np.reshape(a = threshold.view(), newshape = (80,336), order='F')
             noise_hist = np.reshape(a = noise.view(), newshape = (80,336), order='F')
             self.threshold_hist = np.swapaxes(threshold_hist,0,1)
             self.noise_hist = np.swapaxes(noise_hist,0,1)
+            if self._create_threshold_mask:
+                self.threshold_mask = generate_threshold_mask(self.noise_hist)
             if (self._output_file != None):
+#                 if self._create_threshold_mask:
+#                     threshold_mask_table = self.out_file_h5.createCArray(self.out_file_h5.root, name = 'MaskThreshold', title = 'Threshold Mask', atom = tb.Atom.from_dtype(self.threshold_mask.dtype), shape = (336,80), filters = self._filter_table)
+#                     threshold_mask_table[0:336, 0:80] = self.threshold_mask
                 threshold_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name = 'HistThreshold', title = 'Threshold Histogram', atom = tb.Atom.from_dtype(self.threshold_hist.dtype), shape = (336,80), filters = self._filter_table)
                 threshold_hist_table[0:336, 0:80] = self.threshold_hist
                 noise_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name = 'HistNoise', title = 'Noise Histogram', atom = tb.Atom.from_dtype(self.noise_hist.dtype), shape = (336,80), filters = self._filter_table)
@@ -510,19 +543,36 @@ class AnalyzeRawData(object):
             if(self._output_file != None):
                 self.out_file_h5.close()
         
-    def plot_histograms(self, scan_data_filename = None):    # plots the histogram from output file if available otherwise from ram
-        logging.info('plot chosen histograms')    
+    def plot_histograms(self, scan_data_filename): # plots the histogram from output file if available otherwise from ram
+        logging.info('Creating histograms%s' % (' (source: %s)' % self._output_file) if self._output_file != None else '')
         if(self._output_file != None):
             out_file_h5 = tb.openFile(self._output_file, mode = "r")
         else:
-            out_file_h5 = None     
-        output_pdf = PdfPages(scan_data_filename+'.pdf')
+            out_file_h5 = None
+        if os.path.splitext(scan_data_filename)[1].strip().lower() != ".pdf": # check for correct filename extension
+            output_pdf_filename = os.path.splitext(scan_data_filename)[0]+".pdf"
+        else:
+            output_pdf_filename = scan_data_filename
+        logging.info('Saving output file: %s' % output_pdf_filename)
+        output_pdf = PdfPages(output_pdf_filename)
         if (self._create_threshold_hists):
-            plotting.plotThreeWay(hist = out_file_h5.root.HistThreshold[:,:] if out_file_h5 != None else self.threshold_hist, title = "Threshold", label = "threshold [PlsrDAC]", filename = output_pdf, bins = 100, minimum = 0, maximum = 100)
-            plotting.plotThreeWay(hist = out_file_h5.root.HistNoise[:,:] if out_file_h5 != None else self.noise_hist, title = "Noise", label = "noise [PlsrDAC]", filename = output_pdf, bins = 100, minimum = 0, maximum = 10)
+            # use threshold mask if possible
+            if self._create_threshold_mask:
+                if out_file_h5 != None:
+                    threshold_mask = generate_threshold_mask(out_file_h5.root.HistNoise[:,:])
+                else:
+                    threshold_mask = self.threshold_mask
+                threshold_hist = np.ma.array(out_file_h5.root.HistThreshold[:,:] if out_file_h5 != None else self.threshold_hist, mask=threshold_mask)
+                noise_hist = np.ma.array(out_file_h5.root.HistNoise[:,:] if out_file_h5 != None else self.noise_hist, mask=threshold_mask)
+                mask_cnt = np.ma.count_masked(noise_hist)
+            else:
+                threshold_hist = out_file_h5.root.HistThreshold[:,:] if out_file_h5 != None else self.threshold_hist
+                noise_hist = out_file_h5.root.HistNoise[:,:] if out_file_h5 != None else self.noise_hist
+            plotting.plotThreeWay(hist = threshold_hist, title = 'Threshold%s' % (' (masked %i pixel(s))' % mask_cnt) if self._create_threshold_mask else '', label = "threshold [PlsrDAC]", filename = output_pdf, bins = 100, minimum = 0)
+            plotting.plotThreeWay(hist = noise_hist, title = 'Noise%s' % (' (masked %i pixel(s))' % mask_cnt) if self._create_threshold_mask else '', label = "noise [PlsrDAC]", filename = output_pdf, bins = 100, minimum = 0)
         if (self._create_fitted_threshold_hists):
-            plotting.plotThreeWay(hist = out_file_h5.root.HistThresholdFitted[:,:] if out_file_h5 != None else self.scurve_fit_results[:,:,0], title = "Threshold (from s-curve fit)", label = "threshold [PlsrDAC]", filename = output_pdf, bins = 100, minimum = 0, maximum = 100)
-            plotting.plotThreeWay(hist = out_file_h5.root.HistNoiseFitted[:,:] if out_file_h5 != None else self.scurve_fit_results[:,:,1], title = "Noise (from s-curve fit)", label = "noise [PlsrDAC]", filename = output_pdf, bins = 100, minimum = 0, maximum = 10)         
+            plotting.plotThreeWay(hist = out_file_h5.root.HistThresholdFitted[:,:] if out_file_h5 != None else self.scurve_fit_results[:,:,0], title = "Threshold (from s-curve fit)", label = "threshold [PlsrDAC]", filename = output_pdf, bins = 100, minimum = 0)
+            plotting.plotThreeWay(hist = out_file_h5.root.HistNoiseFitted[:,:] if out_file_h5 != None else self.scurve_fit_results[:,:,1], title = "Noise (from s-curve fit)", label = "noise [PlsrDAC]", filename = output_pdf, bins = 100, minimum = 0)         
         if (self._create_occupancy_hist):
             if(self._create_threshold_hists):
                 plotting.plot_scurves(occupancy_hist = out_file_h5.root.HistOcc[:,:,:] if out_file_h5 != None else self.occupancy_array[:,:,:], filename = output_pdf, PlsrDAC = range(self.histograming.get_min_parameter(),self.histograming.get_max_parameter()+1))
@@ -545,11 +595,12 @@ class AnalyzeRawData(object):
         if (self._create_trigger_error_hist):
             plotting.plot_trigger_errors(trigger_error_hist=out_file_h5.root.HistTriggerErrorCounter if out_file_h5 != None else self.trigger_error_counter_hist, filename = output_pdf) 
         if(self._output_file != None):
-            out_file_h5.close()       
+            out_file_h5.close()
+        logging.info('Closing PDF output file')
         output_pdf.close()
         
     def fit_scurves(self, hit_table_file, PlsrDAC = range(0,101)):
-        occupancy_hist = hit_table_file.root.HistOcc[:,:,:] if hit_table_file != None else self.occupancy_array[:,:,:] # take data from RAM if no file is opended       
+        occupancy_hist = hit_table_file.root.HistOcc[:,:,:] if hit_table_file != None else self.occupancy_array[:,:,:] # take data from RAM if no file was opened
         occupancy_hist_shaped = occupancy_hist.reshape(occupancy_hist.shape[0]*occupancy_hist.shape[1],occupancy_hist.shape[2])
 # TODO: use multiprocessing
 #         from multiprocessing import Process, cpu_count, Pool
