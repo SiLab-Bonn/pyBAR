@@ -5,7 +5,6 @@ import logging
 import os
 from scipy.optimize import curve_fit
 from scipy.special import erf
-import ctypes
 import multiprocessing as mp
 from functools import partial
 
