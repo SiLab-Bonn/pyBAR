@@ -53,12 +53,19 @@ class ExampleScan(ScanBase):
         # example code: how to call function abject from a thread
         self.some_function("this is some text")
 
-        # example code: how to abort a scan loop        
+        # example code: setting up some variables
         start_time = datetime.now()
         some_parameter = True
+        # example code: main scan loop with scan parameter (some_parameter) and abort condition (self.stop_thread_event)
+        # note: to use Ctrl-C to abort scan loop set parameter use_thread to True: scan.start(use_thread=True)
         while some_parameter and not self.stop_thread_event.is_set():
             print(datetime.now()-start_time)
             time.sleep(1)
+            
+            # example code: defining some abort condition
+            if datetime.now()-start_time > 600: # abort after 10min runtime
+                break
+            
 
         # example code: how to start readout
         self.readout.stop()
@@ -71,6 +78,6 @@ if __name__ == "__main__":
     import configuration
     scan = ExampleScan(config_file = configuration.config_file, bit_file = configuration.bit_file, scan_data_path = configuration.scan_data_path)
     # when use_thread is true (scan() runs in a thread), start() is non-blocking, otherwise blocking
-    scan.start(use_thread=True, some_keyword_paramter = "parameter was set", some_other_keyword_paramter = "parameter was set")
+    scan.start(use_thread=True, configure=True, some_keyword_paramter = "parameter was set", some_other_keyword_paramter = "parameter was set")
     # when use_thread is true (scan() runs in a thread), stop() is blocking until timeout is reached (if timeout is None, wait for scan has completed), otherwise non-blocking
     scan.stop(timeout=5)
