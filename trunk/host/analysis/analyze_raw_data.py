@@ -22,14 +22,13 @@ def scurve(x, A, mu, sigma):
     return 0.5*A*erf((x-mu)/(np.sqrt(2)*sigma))+0.5*A
 
 def fit_scurve(scurve_data, PlsrDAC):   #data of some pixels to fit, has to be global for the multiprocessing module
-    n_failed_pxel_fits = 0
     try:
         popt, _ = curve_fit(scurve, PlsrDAC, scurve_data, p0 = [100, 50, 3])
     except RuntimeError:
         popt = [0,0,0]
     return popt[1:3] 
 
-def fit_scurves_subset(pixel_subset_data, PlsrDAC):   #data of some pixels to fit, has to be global for the multiprocessing module  
+def fit_scurves_subset(pixel_subset_data, PlsrDAC):   #data of some pixels to fit, has to be global for the multiprocessing module
     result = []
     n_failed_pxel_fits = 0
     for iPixel in range(0,pixel_subset_data.shape[0]):
