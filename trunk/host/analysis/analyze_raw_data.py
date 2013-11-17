@@ -587,7 +587,7 @@ class AnalyzeRawData(object):
             plotting.plotThreeWay(hist = out_file_h5.root.HistNoiseFitted[:,:] if out_file_h5 != None else self.scurve_fit_results[:,:,1], title = "Noise (from s-curve fit)", label = "noise [PlsrDAC]", filename = output_pdf, bins = 100, minimum = 0)         
         if (self._create_occupancy_hist):
             if(self._create_threshold_hists):
-                plotting.plot_scurves(occupancy_hist = out_file_h5.root.HistOcc[:,:,:] if out_file_h5 != None else self.occupancy_array[:,:,:], filename = output_pdf, PlsrDAC = range(self.histograming.get_min_parameter(),self.histograming.get_max_parameter()+1))
+                plotting.plot_scurves(occupancy_hist = out_file_h5.root.HistOcc[:,:,:] if out_file_h5 != None else self.occupancy_array[:,:,:], filename = output_pdf, scan_parameters = np.linspace(self.histograming.get_min_parameter(), self.histograming.get_max_parameter(), num=self.histograming.get_n_parameters(), endpoint=True))
             else:
                 plotting.plotThreeWay(hist = out_file_h5.root.HistOcc[:,:,0] if out_file_h5 != None else self.occupancy_array[:,:,0], title = "Occupancy", label = "occupancy", filename = output_pdf)
         if (self._create_tot_hist):
