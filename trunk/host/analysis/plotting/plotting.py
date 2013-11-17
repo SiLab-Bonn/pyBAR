@@ -277,7 +277,9 @@ def plotOccupancy(occupancy_hist, median = False, max_occ = None, filename = Non
     else:
         plt.savefig(filename)
 
-def plot_scurves(occupancy_hist, scan_parameters, max_occ, scan_paramter_name = None, filename = None):
+def plot_scurves(occupancy_hist, scan_parameters, max_occ = None, scan_paramter_name = None, filename = None):
+    if max_occ is None:
+        max_occ = 2*np.median(np.amax(occupancy_hist, axis=2))
     if len(occupancy_hist.shape) < 3:
         logging.warning("plot_scurves: S-curve data most likely wrong")
     y = occupancy_hist.reshape(-1)
