@@ -608,7 +608,7 @@ class AnalyzeRawData(object):
             plotting.plot_trigger_errors(trigger_error_hist=out_file_h5.root.HistTriggerErrorCounter if out_file_h5 != None else self.trigger_error_counter_hist, filename = output_pdf) 
         if(self._output_file != None):
             out_file_h5.close()
-        logging.info('Closing PDF output file')
+        logging.info('Closing output file')
         output_pdf.close()
         
     def fit_scurves(self, hit_table_file = None, PlsrDAC = range(0,101)):
