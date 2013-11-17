@@ -277,16 +277,16 @@ def plotOccupancy(occupancy_hist, median = False, max_occ = None, filename = Non
     else:
         plt.savefig(filename)
 
-def plot_scurves(occupancy_hist, PlsrDAC = range(0,101), max_occ = 200, filename = None):
+def plot_scurves(occupancy_hist, scan_parameters, max_occ, scan_paramter_name = None, filename = None):
     if len(occupancy_hist.shape) < 3:
         logging.warning("plot_scurves: S-curve data most likely wrong")
     y = occupancy_hist.reshape(-1)
     x = []
-    n_pixel = len(y)/len(PlsrDAC)
-    for i in range(0,n_pixel):
-        x.extend(PlsrDAC)
+    n_pixel = len(y)/len(scan_parameters)
+    for _ in range(0,n_pixel):
+        x.extend(scan_parameters)
     cmap = cm.get_cmap('jet', 200)
-    heatmap, xedges, yedges = np.histogram2d(y, x, range = [[0, max_occ], [PlsrDAC[0], PlsrDAC[-1]]], bins = (max_occ, len(PlsrDAC)))
+    heatmap, xedges, yedges = np.histogram2d(y, x, range = [[0, max_occ], [scan_parameters[0], scan_parameters[-1]]], bins = (max_occ, len(scan_parameters)))
     plt.clf()
     fig = plt.figure()
     fig.patch.set_facecolor('white')
@@ -296,7 +296,10 @@ def plot_scurves(occupancy_hist, PlsrDAC = range(0,101), max_occ = 200, filename
     plt.gca().invert_yaxis()
     plt.colorbar()
     plt.title('S-Curves for '+str(n_pixel)+' pixel(s)')
-    plt.xlabel('PlsrDAC')
+    if scan_paramter_name is None:
+        plt.xlabel('Scan parameter')
+    else:
+        plt.xlabel(scan_paramter_name)
     plt.ylabel('Occupancy')
     if filename is None:
         plt.show()
