@@ -1,12 +1,6 @@
-import itertools
-import struct
 import time
-import datetime
 import logging
-from collections import deque
-import math
 
-import numpy as np
 from scan.scan import ScanBase
 from daq.readout import open_raw_data_file
 
