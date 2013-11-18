@@ -153,7 +153,7 @@ class ScanBase(object):
         self.lock.acquire()
         if not os.path.exists(self.scan_data_path):
             os.makedirs(self.scan_data_path)
-        with open(os.path.join(self.scan_data_path, self.scan_identifier+".cfg"), "r") as f:
+        with open(os.path.join(self.scan_data_path, self.scan_identifier+".cfg"), "a+") as f:
             for line in f.readlines():   
                 scan_number = int(re.findall(r'\d+\s', line)[0])
                 scan_numbers[scan_number] = line
