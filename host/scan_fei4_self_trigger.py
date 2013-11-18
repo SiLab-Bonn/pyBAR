@@ -51,7 +51,8 @@ class FEI4SelfTriggerScan(ScanBase):
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc = False, name = pixel_reg))
         # enable GateHitOr that enables FE self-trigger mode
         self.register.set_global_register_value("GateHitOr", 1)
-        commands.extend(self.register.get_commands("wrregister", name = "GateHitOr"))
+        self.register.set_global_register_value("Trig_Lat", 232)
+        commands.extend(self.register.get_commands("wrregister", name = ["GateHitOr","Trig_Lat"]))
         commands.extend(self.register.get_commands("runmode"))
         # send commands
         self.register_utils.send_commands(commands)
@@ -117,9 +118,21 @@ class FEI4SelfTriggerScan(ScanBase):
                     wait_for_first_data = False
             
             self.readout.stop()
+            
+    def analyze(self):
+        from analysis.analyze_raw_data import AnalyzeRawData
+        output_file = self.scan_data_filename+"_interpreted.h5"
+        with AnalyzeRawData(input_file = scan.scan_data_filename+".h5", output_file = output_file) as analyze_raw_data:
+            analyze_raw_data.create_cluster_size_hist = True   # can be set to false to omit cluster hit creation, can save some time, std. setting is false
+            analyze_raw_data.create_cluster_tot_hist = True
+            analyze_raw_data.interpreter.set_warning_output(False)
+            analyze_raw_data.interpret_word_table(FEI4B = scan.register.fei4b)
+            analyze_raw_data.interpreter.print_summary()
+            analyze_raw_data.plot_histograms(scan_data_filename = scan.scan_data_filename)
 
 if __name__ == "__main__":
     import configuration
     scan = FEI4SelfTriggerScan(config_file = configuration.config_file, bit_file  = configuration.bit_file, scan_data_path = configuration.scan_data_path)
     scan.start(configure=True, use_thread = True)
     scan.stop()
+    scan.analyze()
