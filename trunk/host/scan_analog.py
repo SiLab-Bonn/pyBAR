@@ -1,5 +1,6 @@
 from daq.readout import get_col_row_array_from_data_record_array, save_raw_data_from_data_dict_iterable, convert_data_array, data_array_from_data_dict_iterable, is_data_record, is_data_from_channel
 from analysis.plotting.plotting import plot_occupancy
+from analysis.analyze_raw_data import AnalyzeRawData
 
 from scan.scan import ScanBase
 
@@ -18,7 +19,7 @@ class AnalogScan(ScanBase):
         mask : int
             Number of mask steps.
         repeat : int
-            Number of injections per scan step.
+            Number of injections.
         scan_parameter : string
             Name of global register.
         scan_paramter_value : int
@@ -49,7 +50,6 @@ class AnalogScan(ScanBase):
         save_raw_data_from_data_dict_iterable(self.readout.data, filename = self.scan_data_filename, title=self.scan_identifier)
         
     def analyze(self):
-        from analysis.analyze_raw_data import AnalyzeRawData
         output_file = scan.scan_data_filename+"_interpreted.h5"
         with AnalyzeRawData(input_file = scan.scan_data_filename+".h5", output_file = output_file) as analyze_raw_data:
             analyze_raw_data.create_tot_hist = True
