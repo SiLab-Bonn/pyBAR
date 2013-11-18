@@ -29,14 +29,18 @@ class AnalogScan(ScanBase):
         
         # saving data
         save_raw_data_from_data_dict_iterable(self.readout.data, filename = self.scan_data_filename, title=self.scan_identifier)
+        
+    def analyze(self):
+        from analysis.analyze_raw_data import AnalyzeRawData
+        output_file = scan.scan_data_filename+"_interpreted.h5"
+        with AnalyzeRawData(input_file = scan.scan_data_filename+".h5", output_file = output_file) as analyze_raw_data:
+            analyze_raw_data.interpret_word_table(FEI4B = scan.register.fei4b)
+            analyze_raw_data.plot_histograms(scan_data_filename = scan.scan_data_filename)
 
 if __name__ == "__main__":
     import configuration
     scan = AnalogScan(config_file = configuration.config_file, bit_file  = configuration.bit_file, scan_data_path = configuration.scan_data_path)
     scan.start(use_thread = False)
     scan.stop()
-    from analysis.analyze_raw_data import AnalyzeRawData
-    output_file = scan.scan_data_filename+"_interpreted.h5"
-    with AnalyzeRawData(input_file = scan.scan_data_filename+".h5", output_file = output_file) as analyze_raw_data:
-        analyze_raw_data.interpret_word_table(FEI4B = scan.register.fei4b)
-        analyze_raw_data.plotHistograms(scan_data_filename = scan.scan_data_filename)
+    scan.analyze()
+        
