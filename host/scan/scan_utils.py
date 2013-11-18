@@ -26,9 +26,9 @@ class FEI4ScanUtils(object):
         double_columns : list, tuple
             List of double columns which will be enabled during scan. Default is all double columns. From 0 to 39 (double columns counted from zero).
         same_mask_for_all_dc : bool
-            Use same mask for all double columns. Enabling this is in general not a good idea since all double columns will have the same configuration but the scan speed can increased by an order of magnitude.  
+            Use same mask for all double columns. Enabling this is in general not a good idea since all double columns will have the same configuration but the scan speed can increased by an order of magnitude.
         eol_function : function
-            End of loop function that will be called each time the innermost loop ends.  
+            End of loop function that will be called each time the innermost loop ends.
         digital_injection : bool
             Enables digital injection.
         enable_c_high : bool
@@ -36,7 +36,7 @@ class FEI4ScanUtils(object):
         enable_c_low : bool
             Enables C_Low pixel mask. Will be overwritten by shift_mask.
         shift_masks : list, tuple
-            List of pixel masks that will be shifted. 
+            List of pixel masks that will be shifted.
         '''
         if not isinstance(command, BitVector.BitVector):
             raise TypeError
