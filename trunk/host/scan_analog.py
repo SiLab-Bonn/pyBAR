@@ -38,7 +38,7 @@ class AnalogScan(ScanBase):
         self.readout.start()
         
         cal_lvl1_command = self.register.get_commands("cal")[0]+self.register.get_commands("zeros", length=40)[0]+self.register.get_commands("lv1")[0]+self.register.get_commands("zeros", mask_steps=mask)[0]
-        self.scan_utils.base_scan(cal_lvl1_command, repeat = repeat, mask = mask, steps = steps, dcs = [], same_mask_for_all_dc = True, hardware_repeat = True, digital_injection = False, read_function = None)
+        self.scan_utils.base_scan(cal_lvl1_command, repeat = repeat, mask = mask, steps = [], dcs = [], same_mask_for_all_dc = True, hardware_repeat = True, digital_injection = False, read_function = None)
         
         self.readout.stop(timeout=10.0)
         
