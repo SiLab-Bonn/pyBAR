@@ -24,7 +24,7 @@ class DigitalScan(ScanBase):
         self.readout.start()
         
         cal_lvl1_command = self.register.get_commands("cal")[0]+self.register.get_commands("zeros", length=35)[0]+self.register.get_commands("lv1")[0]+self.register.get_commands("zeros", mask_steps=mask)[0]
-        self.scan_utils.base_scan(cal_lvl1_command, repeat = repeat, mask = mask, mask_steps = [], double_columns = [], same_mask_for_all_dc = True, hardware_repeat = True, enable_c_high = False, enable_c_low = False, digital_injection = True, eol_function = None)
+        self.scan_loop(cal_lvl1_command, repeat = repeat, mask = mask, mask_steps = [], double_columns = [], same_mask_for_all_dc = True, hardware_repeat = True, enable_c_high = False, enable_c_low = False, digital_injection = True, eol_function = None)
         
         self.readout.stop(timeout=10.0)
         
