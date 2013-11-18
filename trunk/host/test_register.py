@@ -12,6 +12,12 @@ class TestRegisters(ScanBase):
         super(TestRegisters, self).__init__(config_file = config_file, definition_file = definition_file, bit_file = bit_file, device = device, scan_identifier = scan_identifier, scan_data_path = scan_data_path)
 
     def scan(self, **kwargs):
+        '''Testing of FE global and pixel registers and reading of chip S/N.
+        
+        Note
+        ----
+        FEI4A has timing issues when reading back pixel registers. Data is corrupted. It is a known bug of the FEI4A. 
+        '''
         number_of_errors = self.test_global_register()
         logging.info('Global Register Test: Found %d error(s)' % number_of_errors)
         
