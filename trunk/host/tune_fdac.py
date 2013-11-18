@@ -57,22 +57,22 @@ class FdacTune(ScanBase):
         self.Ninjections = Ninjections
         
     def scan(self, configure = True):
-        self.write_target_charge()      
+        self.write_target_charge()
         self.set_start_fdac()
-            
+        
         addedAdditionalLastBitScan = False
         lastBitResult = np.zeros(shape = self.register.get_pixel_register_value("Fdac").shape, dtype = self.register.get_pixel_register_value("Fdac").dtype)
-                
+        
         mask = 3
-        steps = []
-               
+        mask_steps = []
+        
         scan_parameter = 'Fdac'
         scan_param_descr = {scan_parameter:tb.UInt32Col(pos=0)}
 
         with open_raw_data_file(filename = self.scan_data_filename, title=self.scan_identifier, scan_parameters=[scan_parameter]) as raw_data_file:            
             Fdac_mask = []
             
-            for index, Fdac_bit in enumerate(self.FdacTuneBits):                
+            for index, Fdac_bit in enumerate(self.FdacTuneBits):
                 if(not addedAdditionalLastBitScan):
                     self.set_fdac_bit(Fdac_bit)
                     logging.info('FDAC setting: bit %d = 1' % Fdac_bit)
@@ -83,12 +83,12 @@ class FdacTune(ScanBase):
                 self.write_fdac_config()
                 self.readout.start()
                 scan_paramter_value = index
-                          
+                
                 repeat = self.Ninjections
                 wait_cycles = 336*2/mask*24/4*3
                 
                 cal_lvl1_command = self.register.get_commands("cal")[0]+BitVector.BitVector(size = 40)+self.register.get_commands("lv1")[0]+BitVector.BitVector(size = wait_cycles)
-                self.scan_utils.base_scan(cal_lvl1_command, repeat = repeat, mask = mask, steps = steps, dcs = [], same_mask_for_all_dc = True, hardware_repeat = True, digital_injection = False, read_function = None)#self.readout.read_once)
+                self.scan_loop(cal_lvl1_command, repeat = repeat, mask = mask, mask_steps = mask_steps, double_columns = [], same_mask_for_all_dc = True, hardware_repeat = True, digital_injection = False, read_function = None)#self.readout.read_once)
                 
                 self.readout.stop()
 

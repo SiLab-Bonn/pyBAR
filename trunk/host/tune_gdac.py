@@ -21,7 +21,7 @@ class GdacTune(ScanBase):
         self.set_abort_precision()
         
     def set_abort_precision(self, delta_occupancy = 2):
-        self.abort_precision = delta_occupancy    
+        self.abort_precision = delta_occupancy
         
     def set_target_threshold(self, PlsrDAC = 50):
         self.target_threshold = PlsrDAC
@@ -63,7 +63,7 @@ class GdacTune(ScanBase):
         addedAdditionalLastBitScan = False
         lastBitResult = self.Ninjections
                 
-        steps = [0]
+        mask_steps = [0] # one mask step to increase speed, no effect on precision
         mask = 3
         
         def bits_set(int_type):
@@ -81,10 +81,8 @@ class GdacTune(ScanBase):
         
         #calculate selected pixels from the mask and the disabled columns
         select_mask_array=np.zeros(shape=(80,336),dtype=np.uint8)
-        if steps == None or steps == []:
+        if mask_steps == None or mask_steps == []:
             mask_steps = range(mask)
-        else:
-            mask_steps = steps
         for mask_step in mask_steps:
             select_mask_array += self.register_utils.make_pixel_mask(mask = mask, row_offset = mask_step)
         for column in bits_set(self.register.get_global_register_value("DisableColumnCnfg")):
@@ -95,7 +93,7 @@ class GdacTune(ScanBase):
         scan_param_descr = {scan_parameter:tb.UInt32Col(pos=0)}
             
         with open_raw_data_file(filename = self.scan_data_filename, title=self.scan_identifier, scan_parameters=[scan_parameter]) as raw_data_file:  
-            for gdac_bit in self.GdacTuneBits:                
+            for gdac_bit in self.GdacTuneBits:
                 scan_paramter_value = (self.register.get_global_register_value("Vthin_AltCoarse")<<8) + self.register.get_global_register_value("Vthin_AltFine")
                 
                 if(not addedAdditionalLastBitScan):
@@ -106,12 +104,12 @@ class GdacTune(ScanBase):
                     logging.info('GDAC setting: %d, bit %d = 0' % (scan_paramter_value,gdac_bit))
                     
                 self.readout.start()
-                          
+                
                 repeat = self.Ninjections
                 wait_cycles = 336*2/mask*24/4*3
                 
                 cal_lvl1_command = self.register.get_commands("cal")[0]+BitVector.BitVector(size = 40)+self.register.get_commands("lv1")[0]+BitVector.BitVector(size = wait_cycles)
-                self.scan_utils.base_scan(cal_lvl1_command, repeat = repeat, mask = mask, steps = steps, dcs = [], same_mask_for_all_dc = True, hardware_repeat = True, digital_injection = False, read_function = None)#self.readout.read_once)
+                self.scan_loop(cal_lvl1_command, repeat = repeat, mask = mask, mask_steps = mask_steps, double_columns = [], same_mask_for_all_dc = True, hardware_repeat = True, digital_injection = False, read_function = None)#self.readout.read_once)
                 
                 self.readout.stop()
                 
