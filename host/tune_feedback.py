@@ -53,7 +53,7 @@ class FeedbackTune(ScanBase):
     def set_n_injections(self, Ninjections = 100):
         self.Ninjections = Ninjections
         
-    def scan(self, configure = True):       
+    def scan(self, configure = True):
         self.write_target_charge()
         
         for PrmpVbpf_bit in self.FeedbackTuneBits: #reset all GDAC bits
@@ -62,21 +62,21 @@ class FeedbackTune(ScanBase):
         addedAdditionalLastBitScan = False
         lastBitResult = self.Ninjections
         
-        steps = [0]
+        mask_steps = [0] # one mask step to increase speed, no effect on precision
         mask = 3
         
         scan_parameter = 'PrmpVbpf'
         scan_param_descr = {scan_parameter:tb.UInt32Col(pos=0)}
         
         with open_raw_data_file(filename = self.scan_data_filename, title=self.scan_identifier, scan_parameters=[scan_parameter]) as raw_data_file:            
-            for PrmpVbpf_bit in self.FeedbackTuneBits:                                
+            for PrmpVbpf_bit in self.FeedbackTuneBits:
                 if(not addedAdditionalLastBitScan):
                     self.set_prmp_vbpf_bit(PrmpVbpf_bit)
                     logging.info('PrmpVbpf setting: %d, bit %d = 1' % (self.register.get_global_register_value("PrmpVbpf"),PrmpVbpf_bit))
                 else:
                     self.set_prmp_vbpf_bit(PrmpVbpf_bit, bit_value=0)
                     logging.info('PrmpVbpf setting: %d, bit %d = 0' % (self.register.get_global_register_value("PrmpVbpf"),PrmpVbpf_bit))
-                          
+                    
                 scan_paramter_value = self.register.get_global_register_value("PrmpVbpf")
                 
                 self.readout.start()
@@ -84,7 +84,7 @@ class FeedbackTune(ScanBase):
                 wait_cycles = 336*2/mask*24/4*3
                 
                 cal_lvl1_command = self.register.get_commands("cal")[0]+BitVector.BitVector(size = 40)+self.register.get_commands("lv1")[0]+BitVector.BitVector(size = wait_cycles)
-                self.scan_utils.base_scan(cal_lvl1_command, repeat = repeat, mask = mask, steps = steps, dcs = [], same_mask_for_all_dc = True, hardware_repeat = True, digital_injection = False, read_function = None)#self.readout.read_once)
+                self.scan_loop(cal_lvl1_command, repeat = repeat, mask = mask, mask_steps = mask_steps, double_columns = [], same_mask_for_all_dc = True, hardware_repeat = True, digital_injection = False, read_function = None)#self.readout.read_once)
                 
                 self.readout.stop()
                 raw_data_file.append(self.readout.data, scan_parameters={scan_parameter:scan_paramter_value})
