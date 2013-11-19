@@ -25,8 +25,8 @@ import numpy as np
 import tables as tb
 
 from utils.utils import get_float_time
-from analysis.data_struct import MetaTable
-from bitstring import BitArray # TODO: bitarray.bitarray() (in Python3 use int.from_bytes() to convert bitarray to integer)
+from analysis.data_struct import MetaTableV2 as MetaTable, generate_scan_parameter_description
+from bitstring import BitArray  # TODO: bitarray.bitarray() (in Python3 use int.from_bytes() to convert bitarray to integer)
 from collections import OrderedDict
 
 from SiLibUSB import SiUSBDevice
@@ -543,8 +543,7 @@ class RawDataFile(object):
             self.meta_data_table = self.raw_data_file_h5.getNode(self.raw_data_file_h5.root, name = 'meta_data')
         if self.scan_parameters:
             try:
-                # create this table dynamically with dict, cannot be done with tables.IsDescription
-                scan_param_descr = dict([(key, tb.UInt32Col(pos=idx)) for idx, key in enumerate(self.scan_parameters)])
+                scan_param_descr = generate_scan_parameter_description(self.scan_parameters)
                 self.scan_param_table = self.raw_data_file_h5.createTable(self.raw_data_file_h5.root, name = 'scan_parameters', description = scan_param_descr, title = 'scan_parameters', filters = filter_tables)
             except tb.exceptions.NodeError:
                 self.scan_param_table = self.raw_data_file_h5.getNode(self.raw_data_file_h5.root, name = 'scan_parameters')

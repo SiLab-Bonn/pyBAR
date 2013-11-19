@@ -10,12 +10,19 @@ np.import_array()   #if array is used it has to be imported, otherwise possible 
 cdef extern from "Basis.h":
     cdef cppclass Basis:
         Basis()
-    
+
 cdef packed struct numpy_meta_data:
     np.uint32_t start_index
     np.uint32_t stop_index
     np.uint32_t length
     np.float64_t timestamp
+
+cdef packed struct numpy_meta_data_v2:
+    np.uint32_t index_start
+    np.uint32_t index_stop
+    np.uint32_t data_length
+    np.float64_t timestamp_start
+    np.float64_t timestamp_stop
     np.uint32_t error
     
 cdef packed struct numpy_hit_info:
