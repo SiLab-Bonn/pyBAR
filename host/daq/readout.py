@@ -48,8 +48,8 @@ class Readout(object):
         self.readout_interval = 0.05
         self.rx_base_address = dict([(idx, addr) for idx, addr in enumerate(range(0x8600, 0x8200, -0x0100))])
         self.sram_base_address = dict([(idx, addr) for idx, addr in enumerate(range(0x8100, 0x8200, 0x0100))])
-        self.timestamp_start = get_float_time()
-        self.timestamp_stop = self.timestamp_start
+        self.timestamp = None
+        self.update_timestamp()
     
     def start(self, reset_rx=False, empty_data_queue=True, reset_sram_fifo=True, filename=None):
         if self.worker_thread != None:
@@ -96,7 +96,7 @@ class Readout(object):
         logging.info('Data queue size: %d' % len(self.data))#.qsize())
         logging.info('SRAM FIFO size: %d' % self.get_sram_fifo_size())
         logging.info('Channel:                     %s', " | ".join([('CH%d' % channel).rjust(3) for channel in range(1, 5, 1)]))
-        logging.info('RX FIFO sync:                %s', " | ".join(["YES".rjust(3) if status == True else "NO".rjust(3) for status in sync_status]))
+        logging.info('RX sync:                     %s', " | ".join(["YES".rjust(3) if status == True else "NO".rjust(3) for status in sync_status]))
         logging.info('RX FIFO discard counter:     %s', " | ".join([repr(count).rjust(3) for count in self.get_rx_fifo_discard_count()]))
         logging.info('RX FIFO 8b10b error counter: %s', " | ".join([repr(count).rjust(3) for count in self.get_rx_8b10b_error_count()]))
         return sync_status
@@ -104,7 +104,7 @@ class Readout(object):
     def worker(self):
         '''Reading thread to continuously reading SRAM
         
-        Worker thread function that uses read_data_dict() and appends data to self.data (deque)
+        Worker thread function that uses read_data_dict() and appends data to self.data (collection.deque)
         ''' 
         # TODO: check FIFO status (overflow) and check rx status (sync) once in a while
         while not self.stop_thread_event.wait(self.readout_interval): # TODO: this is probably what you need to reduce processor cycles
@@ -117,7 +117,7 @@ class Readout(object):
                 continue
             finally:
                 self.device.lock.release()
-            if data[data_deque_dict_names[0]].shape[0]>0: # TODO: make it optional
+            if data["data"].shape[0]>0: # TODO: make it optional
                 self.data.append(data)#put({'timestamp':get_float_time(), 'raw_data':filtered_data_words, 'error':0})
                         
     def read_data_dict(self):
@@ -129,9 +129,14 @@ class Readout(object):
         -------
         dict with following keys: "data", "timestamp_start", "timestamp_stop", "error"
         '''
-        self.timestamp_stop = get_float_time()
-        return {data_deque_dict_names[0]:self.read_data(), data_deque_dict_names[1]:self.timestamp_start, data_deque_dict_names[2]:self.timestamp_start, data_deque_dict_names[3]:self.read_status()}
-        self.timestamp_start = self.timestamp_stop 
+        last_time, curr_time = self.update_timestamp()
+        return {"data":self.read_data(), "timestamp_start":last_time, "timestamp_stop":curr_time, "error":self.read_status()}
+        
+    def update_timestamp(self):
+        curr_time = get_float_time()
+        last_time = self.timestamp
+        self.timestamp = curr_time
+        return last_time, curr_time
     
     def read_data(self):
         '''Read SRAM data words (array of 32-bit uint data words)
@@ -162,7 +167,7 @@ class Readout(object):
 
     def reset_sram_fifo(self):
         logging.info('Resetting SRAM FIFO')
-        self.timestamp_start = get_float_time()
+        self.update_timestamp()
         self.device.WriteExternal(address = self.sram_base_address[0], data = [0])
         if self.get_sram_fifo_size() != 0:
             logging.warning('SRAM FIFO size not zero')
@@ -193,35 +198,6 @@ class Readout(object):
         if index == None:
             index = self.rx_base_address.iterkeys()
         return map(lambda i: self.device.ReadExternal(address = self.rx_base_address[i]+5, size = 1)[0], index)
-
-class DataConverter(object):
-    def __init__(self, filter_func=None, converter_func=None, data_deque=None):
-        self.filter_func = filter_func
-        self.converter_func = converter_func
-        self.data_deque = data_deque
-        self.data = deque()
-        if self.data_deque is not None:
-            self.convert()
-        
-    def convert(self, data_deque=None, clear_deque=False, concatenate=False):
-        if data_deque is not None:
-            data = list(data_deque)
-            if clear_deque:
-                data_deque.clear()
-        elif self.array is not None:
-            data = list(self.data_deque)
-            if clear_deque:
-                self.data_deque.clear()
-        else:
-            raise ValueError('no data available')
-        if concatenate:
-            data_array = data_array_from_data_dict_iterable(data, filter_func=self.filter_func, converter_func=self.converter_func)
-            self.data.append({data_deque_dict_names[0]:data_array, data_deque_dict_names[1]:data[0][data_deque_dict_names[1]], data_deque_dict_names[2]:data[-1][data_deque_dict_names[2]], data_deque_dict_names[3]:reduce(lambda x,y: x|y, [item[data_deque_dict_names[3]] for item in data])})
-        else:
-            for item in data:
-                data_array = data_array_from_data_dict_iterable((item,), filter_func=self.filter_func, converter_func=self.converter_func)
-                self.data.append({data_deque_dict_names[0]:data_array, data_deque_dict_names[1]:item[data_deque_dict_names[1]], data_deque_dict_names[2]:item[data_deque_dict_names[2]], data_deque_dict_names[3]:item[data_deque_dict_names[3]]})
-        return self
 
 def convert_data_array(array, filter_func=None, converter_func=None):
     '''Filter and convert data array (numpy.ndarray)
@@ -263,10 +239,11 @@ def data_array_from_data_dict_iterable(data_dict_iterable, clear_deque=False):
     
     Returns
     -------
-    concatenated data array (numpy.ndarray)
+    data_array : numpy.array
+        concatenated data array
     '''
     try:
-        data_array = np.concatenate([item[data_deque_dict_names[0]] for item in data_dict_iterable])
+        data_array = np.concatenate([item["data"] for item in data_dict_iterable])
     except ValueError:
         data_array = np.array([], dtype=np.dtype('>u4'))
     if clear_deque:
@@ -295,7 +272,7 @@ def data_dict_list_from_data_dict_iterable(data_dict_iterable, filter_func=None,
     '''
     data_dict_list = []
     for item in data_dict_iterable:
-        data_dict_list.append({data_deque_dict_names[0]:convert_data_array(item[data_deque_dict_names[0]], filter_func=filter_func, converter_func=converter_func), data_deque_dict_names[1]:item[data_deque_dict_names[1]], data_deque_dict_names[2]:item[data_deque_dict_names[2]], data_deque_dict_names[3]:item[data_deque_dict_names[3]]})
+        data_dict_list.append({"data":convert_data_array(item["data"], filter_func=filter_func, converter_func=converter_func), "timestamp_start":item["timestamp_start"], "timestamp_stop":item["timestamp_stop"], "error":item["error"]})
     if clear_deque:
         data_dict_iterable.clear()
     return data_dict_list
@@ -534,8 +511,7 @@ class RawDataFile(object):
         self.scan_parameters = scan_parameters
         self.raw_data_earray = None
         self.meta_data_table = None
-        if self.scan_parameters:
-            self.scan_param_table = None
+        self.scan_param_table = None
         self.raw_data_file_h5 = None
         self.open(mode, title)
     
@@ -567,6 +543,7 @@ class RawDataFile(object):
             self.meta_data_table = self.raw_data_file_h5.getNode(self.raw_data_file_h5.root, name = 'meta_data')
         if self.scan_parameters:
             try:
+                # create this table dynamically with dict, cannot be done with tables.IsDescription
                 scan_param_descr = dict([(key, tb.UInt32Col(pos=idx)) for idx, key in enumerate(self.scan_parameters)])
                 self.scan_param_table = self.raw_data_file_h5.createTable(self.raw_data_file_h5.root, name = 'scan_parameters', description = scan_param_descr, title = 'scan_parameters', filters = filter_tables)
             except tb.exceptions.NodeError:
@@ -588,15 +565,16 @@ class RawDataFile(object):
         
         def append_item(item):
             total_words = self.raw_data_earray.nrows
-            raw_data = item[data_deque_dict_names[0]]
+            raw_data = item["data"]
             len_raw_data = raw_data.shape[0]
             self.raw_data_earray.append(raw_data)
-            row_meta['timestamp'] = item[data_deque_dict_names[1]] # TODO: support for timestamp_stop
-            row_meta['error'] = item[data_deque_dict_names[3]]
-            row_meta['length'] = len_raw_data
-            row_meta['start_index'] = total_words
+            row_meta['timestamp_start'] = item["timestamp_start"]
+            row_meta['timestamp_stop'] = item["timestamp_stop"]
+            row_meta['error'] = item["error"]
+            row_meta['data_length'] = len_raw_data
+            row_meta['index_start'] = total_words
             total_words += len_raw_data
-            row_meta['stop_index'] = total_words
+            row_meta['index_stop'] = total_words
             row_meta.append()
             if self.scan_parameters:
                 for key, value in dict.iteritems(scan_parameters):
