@@ -114,15 +114,15 @@ class FdacTune(ScanBase):
                         TotAvrArray[abs(TotAvrArray-self.TargetTot)>abs(lastBitResult-self.TargetTot)] = lastBitResult[abs(TotAvrArray-self.TargetTot)>abs(lastBitResult-self.TargetTot)]
             
             self.register.set_pixel_register_value("Fdac", Fdac_mask)
-            plotThreeWay(hist = TotAvrArray.transpose(), title = "TOT average final")
-            plotThreeWay(hist = self.register.get_pixel_register_value("FDAC").transpose(), title = "FDAC distribution final")
+            plotThreeWay(hist = TotAvrArray.transpose(), title = "TOT average final", label = "TOT average")
+            plotThreeWay(hist = self.register.get_pixel_register_value("FDAC").transpose(), title = "FDAC distribution final", label = "FDAC")
             logging.info('Tuned Fdac!')
         
 if __name__ == "__main__":
     import configuration
     #scan = FdacTune(configuration.config_file, bit_file = configuration.bit_file, scan_data_path = configuration.scan_data_path)
     scan = FdacTune(config_file = configuration.config_file, bit_file = None, scan_data_path = configuration.scan_data_path)
-    scan.set_target_charge(plsr_dac = 270)
+    scan.set_target_charge(plsr_dac = 280)
     scan.set_target_tot(tot = 5)
     scan.set_n_injections(30)
     scan.set_fdac_tune_bits(range(3,-1,-1))
