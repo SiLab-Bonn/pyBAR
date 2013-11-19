@@ -53,7 +53,7 @@ class ThresholdScan(ScanBase):
                 raw_data_file.append(self.readout.data, scan_parameters={scan_parameter:scan_paramter_value})
                 
     def analyze(self):
-        with AnalyzeRawData(input_file = scan.scan_data_filename+".h5", output_file = self.scan_data_filename+"_interpreted.h5") as analyze_raw_data:
+        with AnalyzeRawData(raw_data_file = scan.scan_data_filename+".h5", analyzed_data_file = self.scan_data_filename+"_interpreted.h5") as analyze_raw_data:
             analyze_raw_data.create_tot_hist = False
             analyze_raw_data.create_threshold_hists = True
             analyze_raw_data.create_threshold_mask = True

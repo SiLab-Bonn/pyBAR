@@ -90,9 +90,9 @@ class FEI4SelfTriggerScan(ScanBase):
                 last_iteration = time.time()
                 try:
                     raw_data_file.append((self.readout.data.popleft(),))
-                    #logging.info('data words')
+                    logging.info('data words')
                 except IndexError: # no data
-                    #logging.info('no data words')
+                    logging.info('no data words')
                     no_data_at_time = last_iteration
                     if wait_for_first_data == False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
                         logging.info('Reached no data timeout. Stopping Scan...')
@@ -116,7 +116,7 @@ class FEI4SelfTriggerScan(ScanBase):
     def analyze(self):
         from analysis.analyze_raw_data import AnalyzeRawData
         output_file = self.scan_data_filename+"_interpreted.h5"
-        with AnalyzeRawData(input_file = scan.scan_data_filename+".h5", output_file = output_file) as analyze_raw_data:
+        with AnalyzeRawData(raw_data_file = scan.scan_data_filename+".h5", analyzed_data_file = output_file) as analyze_raw_data:
             analyze_raw_data.create_cluster_size_hist = True   # can be set to false to omit cluster hit creation, can save some time, std. setting is false
             analyze_raw_data.create_cluster_tot_hist = True
             analyze_raw_data.interpreter.set_warning_output(False)
@@ -127,6 +127,6 @@ class FEI4SelfTriggerScan(ScanBase):
 if __name__ == "__main__":
     import configuration
     scan = FEI4SelfTriggerScan(config_file = configuration.config_file, bit_file  = configuration.bit_file, scan_data_path = configuration.scan_data_path)
-    scan.start(configure=True, use_thread = True)
+    scan.start(configure=True, use_thread = True, timeout_no_data = 600, scan_timeout = 60*60*24, col_span = [1,1], row_span = [336,336])
     scan.stop()
     scan.analyze()
