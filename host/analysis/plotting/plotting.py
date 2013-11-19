@@ -98,7 +98,7 @@ def round_to_multiple(number, multiple):
         Rounded up number.
     '''
     ceil_mod_number = number - number % (-multiple)
-    return ceil_mod_number
+    return int(ceil_mod_number)
 
 
 def plot_relative_bcid(relative_bcid_hist, filename=None):
