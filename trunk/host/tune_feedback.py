@@ -84,7 +84,7 @@ class FeedbackTune(ScanBase):
                 wait_cycles = 336*2/mask*24/4*3
                 
                 cal_lvl1_command = self.register.get_commands("cal")[0]+BitVector.BitVector(size = 40)+self.register.get_commands("lv1")[0]+BitVector.BitVector(size = wait_cycles)
-                self.scan_loop(cal_lvl1_command, repeat=repeat, mask=mask, mask_steps=[], double_columns=[], same_mask_for_all_dc=True, hardware_repeat=True, digital_injection=False, eol_function=None)
+                self.scan_loop(cal_lvl1_command, repeat=repeat, mask=mask, mask_steps=mask_steps, double_columns=[], same_mask_for_all_dc=True, hardware_repeat=True, digital_injection=False, eol_function=None)
                 
                 self.readout.stop()
                 raw_data_file.append(self.readout.data, scan_parameters={scan_parameter:scan_paramter_value})
@@ -94,7 +94,7 @@ class FeedbackTune(ScanBase):
                 
                 logging.info('TOT mean = %f' % mean_tot)
                 
-                if(abs(mean_tot-self.TargetTot) < self.abort_precision): #abort if good value already found to save time
+                if(abs(mean_tot-self.TargetTot) < self.abort_precision and PrmpVbpf_bit>0): #abort if good value already found to save time
                     logging.info('good result already achieved, skipping missing bits')  
                     break
                    
