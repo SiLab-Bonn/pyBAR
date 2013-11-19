@@ -93,6 +93,10 @@ class FeedbackTune(ScanBase):
                 mean_tot=np.mean(tots)
                 
                 logging.info('TOT mean = %f' % mean_tot)
+                
+                if(abs(mean_tot-self.TargetTot) < self.abort_precision): #abort if good value already found to save time
+                    logging.info('good result already achieved, skipping missing bits')  
+                    break
                    
                 if(PrmpVbpf_bit>0 and mean_tot < self.TargetTot):
                     self.set_prmp_vbpf_bit(PrmpVbpf_bit, bit_value = 0)
@@ -114,10 +118,6 @@ class FeedbackTune(ScanBase):
 
                 TotArray, _ = np.histogram(a = tots, range = (0,16), bins = 16)
 #                 plot_tot(tot_hist = TotArray, filename = None)#self.scan_data_filename+".pdf")
-                
-                if(abs(mean_tot-self.TargetTot) < self.abort_precision): #abort if good value already found to save time
-                    logging.info('good result already achieved, skipping missing bits')  
-                    break
             
             if(abs(mean_tot-self.TargetTot) > 2 * self.abort_precision):
                 logging.warning('Tuning of PrmpVbpf to %d tot failed. Difference = %f tot. PrmpVbpf = %d' % (self.TargetTot, abs(mean_tot-self.TargetTot), self.register.get_global_register_value("PrmpVbpf")))
