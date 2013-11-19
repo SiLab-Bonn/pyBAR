@@ -84,7 +84,7 @@ class TdacTune(ScanBase):
                 wait_cycles = 336*2/mask*24/4*3
 
                 cal_lvl1_command = self.register.get_commands("cal")[0]+BitVector.BitVector(size = 40)+self.register.get_commands("lv1")[0]+BitVector.BitVector(size = wait_cycles)
-                self.scan_loop(cal_lvl1_command, repeat=repeat, mask=mask, mask_steps=[], double_columns=[], same_mask_for_all_dc=True, hardware_repeat=True, digital_injection=False, eol_function=None)
+                self.scan_loop(cal_lvl1_command, repeat=repeat, mask=mask, mask_steps=mask_steps, double_columns=[], same_mask_for_all_dc=True, hardware_repeat=True, digital_injection=False, eol_function=None)
 
                 self.readout.stop()
                 raw_data_file.append(self.readout.data, scan_parameters={scan_parameter:scan_paramter_value})
@@ -107,8 +107,8 @@ class TdacTune(ScanBase):
                         OccupancyArray[abs(OccupancyArray-self.Ninjections/2)>abs(lastBitResult-self.Ninjections/2)] = lastBitResult[abs(OccupancyArray-self.Ninjections/2)>abs(lastBitResult-self.Ninjections/2)]
             
             self.register.set_pixel_register_value("TDAC", tdac_mask)
-            plotThreeWay(hist = OccupancyArray.transpose(), title = "Occupancy final", label = "Occupancy")
-            plotThreeWay(hist = self.register.get_pixel_register_value("TDAC").transpose(), title = "TDAC distribution final", label = "TDAC")
+            plotThreeWay(hist = OccupancyArray.transpose(), title = "Occupancy final", x_axis_title="Occupancy")
+            plotThreeWay(hist = self.register.get_pixel_register_value("TDAC").transpose(), title = "TDAC distribution final", x_axis_title = "TDAC")
             logging.info('Tuned Tdac!')
         
 if __name__ == "__main__":

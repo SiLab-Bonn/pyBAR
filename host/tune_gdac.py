@@ -158,7 +158,7 @@ class GdacTune(ScanBase):
                 wait_cycles = 336*2/mask*24/4*3
                 
                 cal_lvl1_command = self.register.get_commands("cal")[0]+BitVector.BitVector(size = 40)+self.register.get_commands("lv1")[0]+BitVector.BitVector(size = wait_cycles)
-                self.scan_loop(cal_lvl1_command, repeat=repeat, mask=mask, mask_steps=[], double_columns=[], same_mask_for_all_dc=True, hardware_repeat=True, digital_injection=False, eol_function=None)
+                self.scan_loop(cal_lvl1_command, repeat=repeat, mask=mask, mask_steps=mask_steps, double_columns=[], same_mask_for_all_dc=True, hardware_repeat=True, digital_injection=False, eol_function=None)
                 self.readout.stop()
                 
                 raw_data_file.append(self.readout.data, scan_parameters={scan_parameter:scan_paramter_value})
@@ -168,7 +168,7 @@ class GdacTune(ScanBase):
                 median_occupancy = np.median(OccArraySelPixel)
 #                 plotThreeWay(OccupancyArray.transpose(), title = "Occupancy (GDAC tuning bit "+str(gdac_bit)+")", label = 'Occupancy', filename = None)#self.scan_data_filename+".pdf")
                 
-                if(abs(median_occupancy-self.Ninjections/2) < self.abort_precision): #abort if good value already found to save time
+                if(abs(median_occupancy-self.Ninjections/2) < self.abort_precision and gdac_bit>0): #abort if good value already found to save time
                     logging.info('good result already achieved (median - Ninj/2 < %f), skipping not varied bits' % self.abort_precision)
                     break
                    

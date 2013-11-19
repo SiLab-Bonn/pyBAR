@@ -87,8 +87,8 @@ class FdacTune(ScanBase):
                 repeat = self.Ninjections
                 wait_cycles = 336*2/mask*24/4*3
                 
-                cal_lvl1_command = self.register.get_commands("cal")[0]+BitVector.BitVector(size = 40)+self.register.get_commands("lv1")[0]+BitVector.BitVector(size = wait_cycles)
-                self.scan_loop(cal_lvl1_command, repeat = repeat, mask = mask, mask_steps = mask_steps, double_columns = [], same_mask_for_all_dc = True, hardware_repeat = True, digital_injection = False, read_function = None)#self.readout.read_once)
+                cal_lvl1_command = self.register.get_commands("cal")[0]+BitVector.BitVector(size = 40)+self.register.get_commands("lv1")[0]+BitVector.BitVector(size = wait_cycles)                
+                self.scan_loop(cal_lvl1_command, repeat=repeat, mask=mask, mask_steps=mask_steps, double_columns=[], same_mask_for_all_dc=True, hardware_repeat=True, digital_injection=False, eol_function=None)
                 
                 self.readout.stop()
 
@@ -97,7 +97,7 @@ class FdacTune(ScanBase):
                 col_row_tot = np.column_stack(get_col_row_tot_array_from_data_record_array(convert_data_array(data_array_from_data_dict_iterable(self.readout.data), filter_func=logical_and(is_data_record, is_data_from_channel(4)))))
                 TotArray = np.histogramdd(col_row_tot, bins = (80, 336, 16), range = [[1,80], [1,336], [0,15]])[0]
                 TotAvrArray = np.average(TotArray,axis = 2, weights=range(0,16))*sum(range(0,16))/self.Ninjections
-                plotThreeWay(hist = TotAvrArray.transpose(), title = "TOT mean", x_axis_title = 'mean TOT', filename = None)
+                plotThreeWay(hist = TotAvrArray.transpose(), title = "TOT mean", x_axis_title = 'mean TOT')
             
                 Fdac_mask=self.register.get_pixel_register_value("Fdac")
                 if(Fdac_bit>0):
@@ -114,8 +114,8 @@ class FdacTune(ScanBase):
                         TotAvrArray[abs(TotAvrArray-self.TargetTot)>abs(lastBitResult-self.TargetTot)] = lastBitResult[abs(TotAvrArray-self.TargetTot)>abs(lastBitResult-self.TargetTot)]
             
             self.register.set_pixel_register_value("Fdac", Fdac_mask)
-            plotThreeWay(hist = TotAvrArray.transpose(), title = "TOT average final", label = "TOT average")
-            plotThreeWay(hist = self.register.get_pixel_register_value("FDAC").transpose(), title = "FDAC distribution final", label = "FDAC")
+            plotThreeWay(hist = TotAvrArray.transpose(), title = "TOT average final", x_axis_title = "TOT average")
+            plotThreeWay(hist = self.register.get_pixel_register_value("FDAC").transpose(), title = "FDAC distribution final", x_axis_title = "FDAC")
             logging.info('Tuned Fdac!')
         
 if __name__ == "__main__":
