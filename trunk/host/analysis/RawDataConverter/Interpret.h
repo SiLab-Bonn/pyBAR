@@ -20,6 +20,7 @@ public:
 	//main functions
 	bool interpretRawData(unsigned int* pDataWords, const unsigned int& pNdataWords); //starts to interpret the actual raw data pDataWords and saves result to _hitInfo
 	bool setMetaData(MetaInfo* &rMetaInfo, const unsigned int& tLength);         	  //sets the meta words for word number/event correlation
+	bool setMetaDataV2(MetaInfoV2* &rMetaInfo, const unsigned int& tLength);       	  //sets the meta words for word number/event correlation
 
 	//set arrays to be filled
 	void setHitsArray(HitInfo*& rHitInfo, const unsigned int &rSize);   			  //set the hit array to be filled
@@ -155,6 +156,7 @@ private:
 
 	//meta data infos in/out
 	MetaInfo* _metaInfo;                      //pointer to the meta info, meta data infos in
+	MetaInfoV2* _metaInfoV2;                  //pointer to the meta info V2, meta data infos in
 	bool _metaDataSet;                        //true if meta data is available
 	unsigned int _lastMetaIndexNotSet;        //the last meta index that is not set
 	unsigned int _lastWordIndexSet;           //the last word index used for the event calculation
@@ -164,6 +166,7 @@ private:
 	unsigned int _metaWordIndexLength;		  //length of the word number array
 	unsigned int _actualMetaWordIndex;		  //counter for the actual meta word array index
 	bool _createMetaDataWordIndex;			  //true if word index has to be set
+	bool _isMetaTableV2;                      //set to true if using MetaInfoV2 table
 
 	//counter histograms
 	unsigned int* _triggerErrorCounter;      //trigger error histogram

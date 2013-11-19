@@ -52,14 +52,24 @@ typedef struct MetaInfo{
   unsigned int startIndex;    //start index for this read out
   unsigned int stopIndex;     //stop index for this read out (exclusive!)
   unsigned int length;        //number of data word in this read out
-  double timeStamp;           //time stamp of the readout         
+  double timeStamp;           //time stamp of the readout
   unsigned int errorCode;     //error code for the read out (0: no error)
 } MetaInfo;
 
+//structure for the input meta data V2
+typedef struct MetaInfoV2{
+  unsigned int startIndex;    //start index for this read out
+  unsigned int stopIndex;     //stop index for this read out (exclusive!)
+  unsigned int length;        //number of data word in this read out
+  double startTimeStamp;      //start time stamp of the readout
+  double stopTimeStamp;       //stop time stamp of the readout
+  unsigned int errorCode;     //error code for the read out (0: no error)
+} MetaInfoV2;
+
 //structures for the output meta data
 typedef struct MetaInfoOut{
-  unsigned int eventIndex;   //event number of the read out
-  double timeStamp;           //time stamp of the readout         
+  unsigned int eventIndex;    //event number of the read out
+  double timeStamp;           //time stamp of the readout
   unsigned int errorCode;     //error code for the read out (0: no error)
 } MetaInfoOut;
 
