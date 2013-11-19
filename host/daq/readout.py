@@ -25,7 +25,7 @@ import numpy as np
 import tables as tb
 
 from utils.utils import get_float_time
-from analysis.data_struct import MetaTable as MetaTable, generate_scan_parameter_description
+from analysis.data_struct import MetaTableV2 as MetaTable, generate_scan_parameter_description
 from bitstring import BitArray  # TODO: bitarray.bitarray() (in Python3 use int.from_bytes() to convert bitarray to integer)
 from collections import OrderedDict
 
@@ -567,17 +567,17 @@ class RawDataFile(object):
             raw_data = item["data"]
             len_raw_data = raw_data.shape[0]
             self.raw_data_earray.append(raw_data)
-            row_meta['timestamp'] = item["timestamp_stop"]
-#             row_meta['timestamp_start'] = item["timestamp_start"]
-#             row_meta['timestamp_stop'] = item["timestamp_stop"]
+#             row_meta['timestamp'] = item["timestamp_stop"]
+            row_meta['timestamp_start'] = item["timestamp_start"]
+            row_meta['timestamp_stop'] = item["timestamp_stop"]
             row_meta['error'] = item["error"]
-            row_meta['length'] = len_raw_data
-#             row_meta['data_length'] = len_raw_data
-            row_meta['start_index'] = total_words
-#             row_meta['index_start'] = total_words
+#             row_meta['length'] = len_raw_data
+            row_meta['data_length'] = len_raw_data
+#             row_meta['start_index'] = total_words
+            row_meta['index_start'] = total_words
             total_words += len_raw_data
-            row_meta['stop_index'] = total_words
-#             row_meta['index_stop'] = total_words
+#             row_meta['stop_index'] = total_words
+            row_meta['index_stop'] = total_words
             row_meta.append()
             if self.scan_parameters:
                 for key, value in dict.iteritems(scan_parameters):

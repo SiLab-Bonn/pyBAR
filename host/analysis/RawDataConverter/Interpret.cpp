@@ -14,6 +14,7 @@ Interpret::Interpret(void)
 	_metaEventIndex = 0;
 	_startWordIndex = 0;
 	_createMetaDataWordIndex = false;
+	_isMetaTableV2 = false;
 	allocateHitBufferArray();
 	allocateTriggerErrorCounterArray();
 	allocateErrorCounterArray();
@@ -215,6 +216,7 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 
 bool Interpret::setMetaData(MetaInfo* &rMetaInfo, const unsigned int& tLength)
 {
+    _isMetaTableV2 = false;
 	_metaInfo = rMetaInfo;
 	if(tLength == 0){
 		warning(std::string("setMetaWordIndex: data is empty"));
@@ -228,6 +230,30 @@ bool Interpret::setMetaData(MetaInfo* &rMetaInfo, const unsigned int& tLength)
 			throw std::out_of_range("meta word index out of range");
 	}
 	if(_metaInfo[tLength-1].startIndex + _metaInfo[tLength-1].length != _metaInfo[tLength-1].stopIndex)
+		throw std::out_of_range("meta word index out of range");
+
+	_metaEventIndexLength = tLength;
+	_metaDataSet = true;
+
+	return true;
+}
+
+bool Interpret::setMetaDataV2(MetaInfoV2* &rMetaInfo, const unsigned int& tLength)
+{
+    _isMetaTableV2 = true;
+	_metaInfoV2 = rMetaInfo;
+	if(tLength == 0){
+		warning(std::string("setMetaWordIndex: data is empty"));
+		return false;
+	}
+	//sanity check
+	for(unsigned int i = 0; i < tLength-1; ++i){
+		if(_metaInfoV2[i].startIndex + _metaInfoV2[i].length != _metaInfoV2[i].stopIndex)
+			throw std::out_of_range("meta word index out of range");
+		if(_metaInfoV2[i].stopIndex != _metaInfoV2[i+1].startIndex)
+			throw std::out_of_range("meta word index out of range");
+	}
+	if(_metaInfoV2[tLength-1].startIndex + _metaInfoV2[tLength-1].length != _metaInfoV2[tLength-1].stopIndex)
 		throw std::out_of_range("meta word index out of range");
 
 	_metaEventIndexLength = tLength;
@@ -544,16 +570,31 @@ void Interpret::correlateMetaWordIndex(const unsigned int& pEventNumer, const un
 	if(_metaDataSet && pDataWordIndex == _lastWordIndexSet){
 //		std::cout<<"_lastMetaIndexNotSet "<<_lastMetaIndexNotSet<<"\n";
 		_metaEventIndex[_lastMetaIndexNotSet] = pEventNumer;
-		_lastWordIndexSet = _metaInfo[_lastMetaIndexNotSet].stopIndex;
-		_lastMetaIndexNotSet++;
-		if(_metaInfo[_lastMetaIndexNotSet-1].length == 0 && _lastMetaIndexNotSet < _metaEventIndexLength){
-//			std::cout<<"correction needed\n";
-//			std::cout<<"correlateMetaWordIndex: pEventNumer "<<pEventNumer<<" _lastWordIndexSet "<<_lastWordIndexSet<<" _lastMetaIndexNotSet "<<_lastMetaIndexNotSet<<"\n";
-			_metaEventIndex[_lastMetaIndexNotSet] = pEventNumer;
+		if(_isMetaTableV2 == true){
+			_lastWordIndexSet = _metaInfoV2[_lastMetaIndexNotSet].stopIndex;
+			_lastMetaIndexNotSet++;
+			if(_metaInfoV2[_lastMetaIndexNotSet-1].length == 0 && _lastMetaIndexNotSet < _metaEventIndexLength){
+//				std::cout<<"correction needed\n";
+//				std::cout<<"correlateMetaWordIndex: pEventNumer "<<pEventNumer<<" _lastWordIndexSet "<<_lastWordIndexSet<<" _lastMetaIndexNotSet "<<_lastMetaIndexNotSet<<"\n";
+				_metaEventIndex[_lastMetaIndexNotSet] = pEventNumer;
+				_lastWordIndexSet = _metaInfoV2[_lastMetaIndexNotSet].stopIndex;
+				_lastMetaIndexNotSet++;
+//				std::cout<<"correlateMetaWordIndex: pEventNumer "<<pEventNumer<<" _lastWordIndexSet "<<_lastWordIndexSet<<" _lastMetaIndexNotSet "<<_lastMetaIndexNotSet<<"\n";
+//				std::cout<<" finished\n";
+			}
+		}
+		else{
 			_lastWordIndexSet = _metaInfo[_lastMetaIndexNotSet].stopIndex;
 			_lastMetaIndexNotSet++;
-//			std::cout<<"correlateMetaWordIndex: pEventNumer "<<pEventNumer<<" _lastWordIndexSet "<<_lastWordIndexSet<<" _lastMetaIndexNotSet "<<_lastMetaIndexNotSet<<"\n";
-//			std::cout<<" finished\n";
+			if(_metaInfo[_lastMetaIndexNotSet-1].length == 0 && _lastMetaIndexNotSet < _metaEventIndexLength){
+//				std::cout<<"correction needed\n";
+//				std::cout<<"correlateMetaWordIndex: pEventNumer "<<pEventNumer<<" _lastWordIndexSet "<<_lastWordIndexSet<<" _lastMetaIndexNotSet "<<_lastMetaIndexNotSet<<"\n";
+				_metaEventIndex[_lastMetaIndexNotSet] = pEventNumer;
+				_lastWordIndexSet = _metaInfo[_lastMetaIndexNotSet].stopIndex;
+				_lastMetaIndexNotSet++;
+//				std::cout<<"correlateMetaWordIndex: pEventNumer "<<pEventNumer<<" _lastWordIndexSet "<<_lastWordIndexSet<<" _lastMetaIndexNotSet "<<_lastMetaIndexNotSet<<"\n";
+//				std::cout<<" finished\n";
+			}
 		}
 	}
 }
