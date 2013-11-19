@@ -1,14 +1,15 @@
 import tables as tb
 
 class MetaTable(tb.IsDescription):
-    start_index = tb.UInt32Col(pos=0)
-    stop_index = tb.UInt32Col(pos=1)
-    length = tb.UInt32Col(pos=2)
+    index_start = tb.UInt32Col(pos=0)
+    index_stop = tb.UInt32Col(pos=1)
+    data_length = tb.UInt32Col(pos=2)
     # https://github.com/PyTables/PyTables/issues/230
     #timestamp = tb.Time64Col(pos=3)
-    timestamp = tb.Float64Col(pos=3)
-    error = tb.UInt32Col(pos=4)
-
+    timestamp_start = tb.Float64Col(pos=3)
+    timestamp_stop = tb.Float64Col(pos=4)
+    error = tb.UInt32Col(pos=5)
+    
 class HitInfoTable(tb.IsDescription):
     event_number = tb.UInt32Col(pos=0)
     trigger_number = tb.UInt32Col(pos=1)
