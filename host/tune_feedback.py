@@ -84,7 +84,7 @@ class FeedbackTune(ScanBase):
                 wait_cycles = 336*2/mask*24/4*3
                 
                 cal_lvl1_command = self.register.get_commands("cal")[0]+BitVector.BitVector(size = 40)+self.register.get_commands("lv1")[0]+BitVector.BitVector(size = wait_cycles)
-                self.scan_loop(cal_lvl1_command, repeat = repeat, mask = mask, mask_steps = mask_steps, double_columns = [], same_mask_for_all_dc = True, hardware_repeat = True, digital_injection = False, read_function = None)#self.readout.read_once)
+                self.scan_loop(cal_lvl1_command, repeat=repeat, mask=mask, mask_steps=[], double_columns=[], same_mask_for_all_dc=True, hardware_repeat=True, digital_injection=False, eol_function=None)
                 
                 self.readout.stop()
                 raw_data_file.append(self.readout.data, scan_parameters={scan_parameter:scan_paramter_value})
@@ -130,7 +130,7 @@ if __name__ == "__main__":
     import configuration
     scan = FeedbackTune(config_file = configuration.config_file, bit_file = configuration.bit_file, scan_data_path = configuration.scan_data_path)
     scan.set_n_injections(100)
-    scan.set_target_charge(plsr_dac = 270)
+    scan.set_target_charge(plsr_dac = 280)
     scan.set_target_tot(Tot = 5)
     scan.set_abort_precision(delta_tot = 0.1)
     scan.set_feedback_tune_bits(range(7,-1,-1))

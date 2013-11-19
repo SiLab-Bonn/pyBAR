@@ -55,6 +55,55 @@ class GdacTune(ScanBase):
     def set_n_injections(self, Ninjections = 50):
         self.Ninjections = Ninjections
         
+    def test_global_register(self):
+        from daq.readout import FEI4Record
+
+        '''Test Global Register
+        '''
+        self.register_utils.configure_global()
+        commands = []
+        commands.extend(self.register.get_commands("confmode"))
+        self.register_utils.send_commands(commands)
+        commands = []
+        self.register.set_global_register_value('Conf_AddrEnable', 1)
+        commands.extend(self.register.get_commands("wrregister", name = 'Conf_AddrEnable'))
+        read_from_address = range(1,64)
+        self.register_utils.send_commands(commands)
+        self.readout.reset_sram_fifo()
+        commands = []
+        commands.extend(self.register.get_commands("rdregister", addresses = read_from_address))
+        self.register_utils.send_commands(commands)
+        
+        data = self.readout.read_data()
+        print data
+        checked_address = []
+        number_of_errors = 0
+        for index, word in enumerate(np.nditer(data)):
+            fei4_data = FEI4Record(word, self.register.chip_flavor)
+            #print fei4_data
+            if fei4_data == 'AR':
+                read_value = FEI4Record(data[index+1], self.register.chip_flavor)['value']
+                set_value = int(self.register.get_global_register_bitsets([fei4_data['address']])[0])
+                checked_address.append(fei4_data['address'])
+                #print int(self.register.get_global_register_bitsets([fei4_data['address']])[0])
+                if read_value == set_value:
+                    #print 'Register Test:', 'Address', fei4_data['address'], 'PASSED'
+                    pass
+                else:
+                    number_of_errors += 1
+                    logging.warning('Global Register Test: Wrong data for Global Register at address %d (read: %d, expected: %d)' % (fei4_data['address'], read_value, set_value))
+    
+        commands = []
+        commands.extend(self.register.get_commands("runmode"))
+        self.register_utils.send_commands(commands)
+        not_read_registers = set.difference(set(read_from_address), checked_address)
+        not_read_registers = list(not_read_registers)
+        not_read_registers.sort()
+        for address in not_read_registers:
+            logging.warning('Global Register Test: Data for Global Register at address %d missing' % address)
+            number_of_errors += 1
+        return number_of_errors
+        
     def scan(self, configure = True):
         self.write_target_threshold() 
         for gdac_bit in self.GdacTuneBits: #reset all GDAC bits
@@ -109,8 +158,7 @@ class GdacTune(ScanBase):
                 wait_cycles = 336*2/mask*24/4*3
                 
                 cal_lvl1_command = self.register.get_commands("cal")[0]+BitVector.BitVector(size = 40)+self.register.get_commands("lv1")[0]+BitVector.BitVector(size = wait_cycles)
-                self.scan_loop(cal_lvl1_command, repeat = repeat, mask = mask, mask_steps = mask_steps, double_columns = [], same_mask_for_all_dc = True, hardware_repeat = True, digital_injection = False, read_function = None)#self.readout.read_once)
-                
+                self.scan_loop(cal_lvl1_command, repeat=repeat, mask=mask, mask_steps=[], double_columns=[], same_mask_for_all_dc=True, hardware_repeat=True, digital_injection=False, eol_function=None)
                 self.readout.stop()
                 
                 raw_data_file.append(self.readout.data, scan_parameters={scan_parameter:scan_paramter_value})
@@ -119,6 +167,10 @@ class GdacTune(ScanBase):
                 OccArraySelPixel = OccupancyArray[select_mask_array>0]  #take only selected pixel
                 median_occupancy = np.median(OccArraySelPixel)
 #                 plotThreeWay(OccupancyArray.transpose(), title = "Occupancy (GDAC tuning bit "+str(gdac_bit)+")", label = 'Occupancy', filename = None)#self.scan_data_filename+".pdf")
+                
+                if(abs(median_occupancy-self.Ninjections/2) < self.abort_precision): #abort if good value already found to save time
+                    logging.info('good result already achieved (median - Ninj/2 < %f), skipping not varied bits' % self.abort_precision)
+                    break
                    
                 if(gdac_bit>0 and median_occupancy < self.Ninjections/2):
                     logging.info('median = %f < %f, set bit %d = 0' % (median_occupancy,self.Ninjections/2,gdac_bit))
@@ -142,10 +194,6 @@ class GdacTune(ScanBase):
                             median_occupancy = np.median(OccArraySelPixel)
                         else:
                             logging.info('set bit 0 = 0')
-
-                if(abs(median_occupancy-self.Ninjections/2) < self.abort_precision): #abort if good value already found to save time
-                    logging.info('good result already achieved (median - Ninj/2 < %f), skipping not varied bits' % self.abort_precision)
-                    break
             
             if(abs(median_occupancy-self.Ninjections/2) > 2 * self.abort_precision):
                 logging.warning('Tuning of Vthin_AltCoarse/Vthin_AltFine failed. Difference = %f. Vthin_AltCoarse/Vthin_AltFine = %d/%d' % (abs(median_occupancy-self.Ninjections/2), self.register.get_global_register_value("Vthin_AltCoarse"),self.register.get_global_register_value("Vthin_AltFine")))
@@ -163,4 +211,4 @@ if __name__ == "__main__":
     scan.set_n_injections(Ninjections = 50)
     scan.start(use_thread = False)
     scan.stop()
-    scan.register.save_configuration("SCC_unknown")#configuration.config_file)
+    scan.register.save_configuration(configuration.config_file)

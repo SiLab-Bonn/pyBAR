@@ -82,12 +82,11 @@ class TdacTune(ScanBase):
                 
                 repeat = self.Ninjections
                 wait_cycles = 336*2/mask*24/4*3
-                
+
                 cal_lvl1_command = self.register.get_commands("cal")[0]+BitVector.BitVector(size = 40)+self.register.get_commands("lv1")[0]+BitVector.BitVector(size = wait_cycles)
-                self.scan_loop(cal_lvl1_command, repeat = repeat, mask = mask, mask_steps = mask_steps, double_columns = [], same_mask_for_all_dc = True, hardware_repeat = True, digital_injection = False, read_function = None)#self.readout.read_once)
-                
+                self.scan_loop(cal_lvl1_command, repeat=repeat, mask=mask, mask_steps=[], double_columns=[], same_mask_for_all_dc=True, hardware_repeat=True, digital_injection=False, eol_function=None)
+
                 self.readout.stop()
-                
                 raw_data_file.append(self.readout.data, scan_parameters={scan_parameter:scan_paramter_value})
                 
                 OccupancyArray, _, _ = np.histogram2d(*convert_data_array(data_array_from_data_dict_iterable(self.readout.data), filter_func=logical_and(is_data_record, is_data_from_channel(4)), converter_func=get_col_row_array_from_data_record_array), bins = (80, 336), range = [[1,80], [1,336]])
@@ -108,8 +107,8 @@ class TdacTune(ScanBase):
                         OccupancyArray[abs(OccupancyArray-self.Ninjections/2)>abs(lastBitResult-self.Ninjections/2)] = lastBitResult[abs(OccupancyArray-self.Ninjections/2)>abs(lastBitResult-self.Ninjections/2)]
             
             self.register.set_pixel_register_value("TDAC", tdac_mask)
-            plotThreeWay(hist = OccupancyArray.transpose(), title = "Occupancy final")
-            plotThreeWay(hist = self.register.get_pixel_register_value("TDAC").transpose(), title = "TDAC distribution final")
+            plotThreeWay(hist = OccupancyArray.transpose(), title = "Occupancy final", label = "Occupancy")
+            plotThreeWay(hist = self.register.get_pixel_register_value("TDAC").transpose(), title = "TDAC distribution final", label = "TDAC")
             logging.info('Tuned Tdac!')
         
 if __name__ == "__main__":
