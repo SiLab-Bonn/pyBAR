@@ -152,7 +152,7 @@ class GdacTune(ScanBase):
             else:
                 logging.info('Tuned GDAC to Vthin_AltCoarse/Vthin_AltFine = %d/%d' % (self.register.get_global_register_value("Vthin_AltCoarse"),self.register.get_global_register_value("Vthin_AltFine")))
                 
-            plotThreeWay(OccupancyArray.transpose(), title = "Occupancy after GDAC tuning", label = 'Occupancy', filename = None)
+            plotThreeWay(OccupancyArray.transpose(), title = "Occupancy after GDAC tuning", x_axis_title = 'Occupancy', filename = None)
         
 if __name__ == "__main__":
     import configuration

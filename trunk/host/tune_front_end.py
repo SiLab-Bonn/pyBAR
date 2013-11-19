@@ -87,11 +87,11 @@ if __name__ == "__main__":
     gdac_tune_scan.register.save_configuration(name = cfg_name)
      
     if(global_iterations > 0):
-        plotThreeWay(hist = gdac_tune_scan.register.get_pixel_register_value("TDAC").transpose(), title = "TDAC distribution final", label = 'TDAC', filename = configuration.scan_data_path+"\TDAC_map.pdf")
-        plotThreeWay(hist = tdac_occ.transpose(), title = "Occupancy final", label = 'Occupancy', filename = configuration.scan_data_path+"\occupancy_map.pdf")
+        plotThreeWay(hist = gdac_tune_scan.register.get_pixel_register_value("TDAC").transpose(), title = "TDAC distribution final", x_axis_title = 'TDAC', filename = configuration.scan_data_path+"\TDAC_map.pdf")
+        plotThreeWay(hist = tdac_occ.transpose(), title = "Occupancy final", x_axis_title = 'Occupancy', filename = configuration.scan_data_path+"\occupancy_map.pdf")
      
     if(local_iterations > 0):
-        plotThreeWay(hist = fdac_tune_scan.register.get_pixel_register_value("FDAC").transpose(), title = "FDAC distribution final", label = 'FDAC', filename = configuration.scan_data_path+"\FDAC_map.pdf")
-        plotThreeWay(hist = fdac_mean_tot.transpose(), title = "TOT mean final", label = 'mean TOT', filename = configuration.scan_data_path+"\mean_tot_map.pdf")
+        plotThreeWay(hist = fdac_tune_scan.register.get_pixel_register_value("FDAC").transpose(), title = "FDAC distribution final", x_axis_title = 'FDAC', filename = configuration.scan_data_path+"\FDAC_map.pdf")
+        plotThreeWay(hist = fdac_mean_tot.transpose(), title = "TOT mean final", x_axis_title = 'mean TOT', filename = configuration.scan_data_path+"\mean_tot_map.pdf")
     
     logging.info("Tuning finished in d seconds" + str(datetime.now()-startTime))
