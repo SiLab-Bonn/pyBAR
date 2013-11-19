@@ -183,7 +183,7 @@ class ScanBase(object):
                 f.write(value)
         self.lock.release()
 
-    def scan_loop(self, command, repeat = 100, hardware_repeat = True, mask = 3, mask_steps = None, double_columns = None, same_mask_for_all_dc = False, eol_function = None, digital_injection = False, enable_c_high = None, enable_c_low = None, shift_masks = ["Enable", "C_High", "C_Low"]):
+    def scan_loop(self, command, repeat = 100, hardware_repeat = True, mask = 3, mask_steps = None, double_columns = None, same_mask_for_all_dc = False, eol_function = None, digital_injection = False, enable_c_high = None, enable_c_low = None, shift_masks = ["Enable", "C_High", "C_Low"], restore_shift_masks = True):
         '''Implementation of the scan loops (mask shifting, loop over double columns, repeatedly sending any arbitrary command).
         
         Parameters
@@ -212,17 +212,22 @@ class ScanBase(object):
             Enables C_Low pixel mask. Will be overwritten by shift_mask.
         shift_masks : list, tuple
             List of pixel masks that will be shifted.
+        restore_shift_masks : bool
+            Restores the masks shifted during the scan to the initial state.
         '''
         if not isinstance(command, BitVector.BitVector):
             raise TypeError
-        
+
+        if restore_shift_masks:
+            initial_masks = dict([(shift_mask, self.register.get_pixel_register_value(shift_mask)) for shift_mask in shift_masks])
+
         # pre-calculate often used commands
         conf_mode_command = self.register.get_commands("confmode")
         run_mode_command = self.register.get_commands("runmode")
-        
+
         if mask_steps == None or mask_steps == []:
             mask_steps = range(mask)
-            
+
         if double_columns == None or double_columns == []:
             double_columns = range(40)
         
@@ -289,6 +294,10 @@ class ScanBase(object):
 
         # setting back to default values
         commands = []
+        if restore_shift_masks:
+            for shift_mask, value in initial_masks.iteritems():
+                self.register.set_pixel_register_value(shift_mask, value)
+            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=initial_masks.iterkeys()))
         if digital_injection == True:
             #self.register.set_global_register_value("CalEn", 0) # for GlobalPulse instead Cal-Command
             self.register.set_global_register_value("DIGHITIN_SEL", 0)
