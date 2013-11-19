@@ -97,7 +97,7 @@ class FdacTune(ScanBase):
                 col_row_tot = np.column_stack(get_col_row_tot_array_from_data_record_array(convert_data_array(data_array_from_data_dict_iterable(self.readout.data), filter_func=logical_and(is_data_record, is_data_from_channel(4)))))
                 TotArray = np.histogramdd(col_row_tot, bins = (80, 336, 16), range = [[1,80], [1,336], [0,15]])[0]
                 TotAvrArray = np.average(TotArray,axis = 2, weights=range(0,16))*sum(range(0,16))/self.Ninjections
-                plotThreeWay(hist = TotAvrArray.transpose(), title = "TOT mean", label = 'mean TOT', filename = None)
+                plotThreeWay(hist = TotAvrArray.transpose(), title = "TOT mean", x_axis_title = 'mean TOT', filename = None)
             
                 Fdac_mask=self.register.get_pixel_register_value("Fdac")
                 if(Fdac_bit>0):
