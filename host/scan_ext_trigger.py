@@ -1,59 +1,68 @@
-import itertools
-import struct
 import time
-import datetime
 import logging
-from collections import deque
 import math
 
-import numpy as np
-import tables as tb
-import BitVector
-
-from daq.readout import Readout
-from utils.utils import get_iso_time
-
-from utils.utils import get_all_from_queue, split_seq
-
-from analysis.data_struct import MetaTable
-
 from scan.scan import ScanBase
+from daq.readout import open_raw_data_file
 
-logging.basicConfig(level=logging.INFO, format = "%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
+
 
 class ExtTriggerScan(ScanBase):
-    def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "scan_ext_trigger", scan_data_path = None):
-        super(ExtTriggerScan, self).__init__(config_file = config_file, definition_file = definition_file, bit_file = bit_file, device = device, scan_identifier = scan_identifier, scan_data_path = scan_data_path)
-        
-    def scan(self, col_span = [1,80], row_span = [1,336], timeout_no_data = 10, scan_timeout = 60, **kwargs):
-        
-        #scan_parameter = 'Vthin_AltFine'
-        #scan_paramter_value = self.register.get_global_register_value(scan_parameter)
-        append_size = 50000
-        filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
-        filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
-        with open_raw_data_file(filename = self.scan_data_filename, title=self.scan_identifier) as raw_data_file:
+    def __init__(self, config_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_ext_trigger", scan_data_path=None):
+        super(ExtTriggerScan, self).__init__(config_file=config_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
+
+    def scan(self, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=60, **kwargs):
+        '''Scan loop
+
+        Parameters
+        ----------
+        col_span : list, tuple
+            Column range (from minimum to maximum value). From 1 to 80.
+        row_span : list, tuple
+            Row range (from minimum to maximum value). From 1 to 336.
+        timeout_no_data : int
+            In seconds; if no data, stop scan after given time.
+        scan_timeout : int
+            In seconds; stop scan after given time.
+        '''
+        # generate mask for Enable mask
+        pixel_reg = "Enable"
+        mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
+        commands = []
+        commands.extend(self.register.get_commands("confmode"))
+        self.register.set_pixel_register_value(pixel_reg, mask)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
+        # generate mask for Imon mask
+        pixel_reg = "Imon"
+#         mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span, default=1, value=0)
+        self.register.set_pixel_register_value(pixel_reg, 0)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
+        # disable C_inj mask
+        pixel_reg = "C_High"
+        self.register.set_pixel_register_value(pixel_reg, 0)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
+        pixel_reg = "C_Low"
+        self.register.set_pixel_register_value(pixel_reg, 0)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
+        # setting FE into runmode
+        commands.extend(self.register.get_commands("runmode"))
+        # append_size = 50000
+        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier) as raw_data_file:
             self.readout.start()
-            
-            lvl1_command = BitVector.BitVector(size = 24)+self.register.get_commands("lv1")[0]#+BitVector.BitVector(size = 10000)
+
+            # preload command
+            lvl1_command = self.register.get_commands("zeros", length=24)[0] + self.register.get_commands("lv1")[0]  # + self.register.get_commands("zeros", length=1000)[0]
             self.register_utils.set_command(lvl1_command)
-            self.readout_utils.set_tlu_mode(mode = 3, disable_veto = False, enable_reset = False, tlu_trigger_clock_cycles = 16, trigger_data_delay = 4, tlu_trigger_low_timeout = 255)
-            self.readout_utils.set_ext_cmd_start(True)
-                
-            consecutive_lvl1 = self.register.get_global_register_value("Trig_Count")
-            if consecutive_lvl1 == 0:
-                consecutive_lvl1 = 16
-            
-            row_meta = meta_data_table_h5.row
-            
-            total_words = 0
+            self.readout.configure_trigger_fsm(mode=0, disable_veto=False, enable_reset=False, tlu_trigger_clock_cycles=16, trigger_data_delay=4, tlu_trigger_low_timeout=255)
+            self.readout.configure_command_fsm(enable_ext_trigger=True)
+
             wait_for_first_trigger = True
-            
-            
-            timeout_no_data = 60 # secs
+
+            timeout_no_data = 60  # in seconds
             max_triggers = 6000000
-            scan_timeout = 1200
-            show_trigger_message_at = 10**(int(math.ceil(math.log10(max_triggers)))-1)
+            scan_timeout = 1200  # in seconds
+            show_trigger_message_at = 10 ** (int(math.ceil(math.log10(max_triggers))) - 1)
             last_iteration = time.time()
             saw_no_data_at_time = last_iteration
             saw_data_at_time = last_iteration
@@ -61,22 +70,19 @@ class ExtTriggerScan(ScanBase):
             no_data_at_time = last_iteration
             time_from_last_iteration = 0
             scan_stop_time = scan_start_time + scan_timeout
-            #data_q = []
-            data_q = deque()
-            raw_data_q = deque()
             current_trigger_number = 0
             last_trigger_number = 0
-            while not self.stop_thread_event.wait(0.05):
-                
+            while not self.stop_thread_event.wait(self.readout.readout_interval):
+
 #                 if logger.isEnabledFor(logging.DEBUG):
 #                     lost_data = self.readout.get_lost_data_count()
 #                     if lost_data != 0:
 #                         logging.debug('Lost data count: %d', lost_data)
 #                         logging.debug('FIFO fill level: %4f', (float(fifo_size)/2**20)*100)
-#                         logging.debug('Collected triggers: %d', self.readout_utils.get_trigger_number())
-                
-                current_trigger_number = self.readout_utils.get_trigger_number()
-                if (current_trigger_number%show_trigger_message_at < last_trigger_number%show_trigger_message_at):
+#                         logging.debug('Collected triggers: %d', self.readout.get_trigger_number())
+
+                current_trigger_number = self.readout.get_trigger_number()
+                if (current_trigger_number % show_trigger_message_at < last_trigger_number % show_trigger_message_at):
                     logging.info('Collected triggers: %d', current_trigger_number)
                 last_trigger_number = current_trigger_number
                 if max_triggers is not None and current_trigger_number >= max_triggers:
@@ -86,98 +92,62 @@ class ExtTriggerScan(ScanBase):
                     logging.info('Reached maximum scan time. Stopping Scan...')
                     self.stop_thread_event.set()
                 # TODO: read 8b10b decoder err cnt
-#                 if not self.readout_utils.read_rx_status():
+#                 if not self.readout.read_rx_status():
 #                     logging.info('Lost data sync. Starting synchronization...')
-#                     self.readout_utils.set_ext_cmd_start(False)
-#                     if not self.readout_utils.reset_rx(1000):
+#                     self.readout.configure_command_fsm(False)
+#                     if not self.readout.reset_rx(1000):
 #                         logging.info('Failed. Stopping scan...')
 #                         self.stop_thread_event.set()
 #                     else:
 #                         logging.info('Done!')
-#                         self.readout_utils.set_ext_cmd_start(True)
-                        
-                if self.stop_thread_event.is_set():
-                    q_size = -1
-                    while self.readout.data_queue.qsize() != q_size or self.readout.get_fifo_size() != 0:
-                        time.sleep(0.5)
-                        q_size = self.readout.data_queue.qsize()
-                    print 'Items in queue:', q_size
+#                         self.readout.configure_command_fsm(True)
 
-                data_q.extend(list(get_all_from_queue(self.readout.data_queue))) # use list, it is faster
                 time_from_last_iteration = time.time() - last_iteration
                 last_iteration = time.time()
                 while True:
                     try:
-                        item = data_q.pop()
-                    except IndexError:
+                        raw_data_file.append((self.readout.data.popleft(),))
+                    except IndexError:  # no data
                         no_data_at_time = last_iteration
                         if wait_for_first_trigger == False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
                             logging.info('Reached no data timeout. Stopping Scan...')
                             self.stop_thread_event.set()
                         elif wait_for_first_trigger == False:
                             saw_no_data_at_time = no_data_at_time
-                        
+
                         if no_data_at_time > (saw_data_at_time + 10):
                             scan_stop_time += time_from_last_iteration
-                              
-                        break # jump out while loop
-                    
+
+                        break  # jump out while loop
+
                     saw_data_at_time = last_iteration
-                    
+
                     if wait_for_first_trigger == True:
                         logging.info('Taking data...')
                         wait_for_first_trigger = False
 
-                    raw_data = item['raw_data']
-                    len_raw_data = len(raw_data)
-                    #for data in split_seq(raw_data, append_size):
-                    raw_data_q.extend(split_seq(raw_data, append_size))
-                    while True:
-                        try:
-                            data = raw_data_q.pop()
-                        except IndexError:
-                            break
-                        self.lock.acquire()
-                        raw_data_earray_h5.append(data)
-                        raw_data_earray_h5.flush()
-                        self.lock.release()
-                    row_meta['timestamp'] = item['timestamp']
-                    row_meta['error'] = item['error']
-                    row_meta['length'] = len_raw_data
-                    row_meta['start_index'] = total_words
-                    total_words += len_raw_data
-                    row_meta['stop_index'] = total_words
-                    self.lock.acquire()
-                    row_meta.append()
-                    meta_data_table_h5.flush()
-                    self.lock.release()
-                
-            self.readout_utils.set_ext_cmd_start(False)
-            self.readout_utils.set_tlu_mode(mode = 0)
-            
-            logging.info('Total amount of triggers collected: %d', self.readout_utils.get_trigger_number())
-                
-        
-        self.stop_thread_event.set()
-     
-        logging.info('Stopping readout thread...')
+            self.readout.configure_command_fsm(enable_ext_trigger=False)
+            self.readout.configure_trigger_fsm(mode=0)
+
+            logging.info('Total amount of triggers collected: %d', self.readout.get_trigger_number())
+
         self.readout.stop()
-        logging.info('Done!')
+
     def analyze(self):
         from analysis.analyze_raw_data import AnalyzeRawData
-        output_file = self.scan_data_filename+"_interpreted.h5"
-        with AnalyzeRawData(raw_data_file = scan.scan_data_filename+".h5", analyzed_data_file = output_file) as analyze_raw_data:
+        output_file = self.scan_data_filename + "_interpreted.h5"
+        with AnalyzeRawData(raw_data_file=scan.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
             analyze_raw_data.create_cluster_size_hist = True
             analyze_raw_data.create_cluster_tot_hist = True
             analyze_raw_data.interpreter.set_warning_output(False)
-            analyze_raw_data.interpret_word_table(FEI4B = scan.register.fei4b)
+            analyze_raw_data.interpret_word_table(FEI4B=scan.register.fei4b)
             analyze_raw_data.interpreter.print_summary()
-            analyze_raw_data.plot_histograms(scan_data_filename = scan.scan_data_filename)
+            analyze_raw_data.plot_histograms(scan_data_filename=scan.scan_data_filename)
 
-        
+
 if __name__ == "__main__":
     import configuration
-    scan = ExtTriggerScan(config_file = configuration.config_file, bit_file = configuration.bit_file, scan_data_path = configuration.scan_data_path)
-    scan.start(configure=True, use_thread = True, timeout_no_data = 20, scan_timeout = 100, col_span = [1,1], row_span = [336,336])
+    scan = ExtTriggerScan(config_file=configuration.config_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
+    scan.start(configure=True, use_thread=True, timeout_no_data=20, scan_timeout=100, col_span=[1, 1], row_span=[336, 336])
     scan.stop()
     scan.analyze()
