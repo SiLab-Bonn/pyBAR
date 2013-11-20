@@ -54,4 +54,3 @@ if __name__ == "__main__":
     scan.start(use_thread=False)
     scan.stop()
     scan.analyze()
-    scan.register.save_configuration("test")
