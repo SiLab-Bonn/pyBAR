@@ -54,8 +54,8 @@ class ExtTriggerScan(ScanBase):
             # preload command
             lvl1_command = self.register.get_commands("zeros", length=24)[0] + self.register.get_commands("lv1")[0]  # + self.register.get_commands("zeros", length=1000)[0]
             self.register_utils.set_command(lvl1_command)
-            self.readout.configure_trigger_fsm(mode=0, disable_veto=False, enable_reset=False, tlu_trigger_clock_cycles=16, trigger_data_delay=4, tlu_trigger_low_timeout=255)
-            self.readout.configure_command_fsm(enable_ext_trigger=True)
+            self.readout_utils.configure_trigger_fsm(mode=0, disable_veto=False, enable_reset=False, invert_lemo_trigger_input=False, trigger_clock_cycles=16, trigger_data_delay=4, trigger_low_timeout=0)
+            self.readout_utils.configure_command_fsm(enable_ext_trigger=True)
 
             wait_for_first_trigger = True
 
@@ -81,7 +81,7 @@ class ExtTriggerScan(ScanBase):
 #                         logging.debug('FIFO fill level: %4f', (float(fifo_size)/2**20)*100)
 #                         logging.debug('Collected triggers: %d', self.readout.get_trigger_number())
 
-                current_trigger_number = self.readout.get_trigger_number()
+                current_trigger_number = self.readout_utils.get_trigger_number()
                 if (current_trigger_number % show_trigger_message_at < last_trigger_number % show_trigger_message_at):
                     logging.info('Collected triggers: %d', current_trigger_number)
                 last_trigger_number = current_trigger_number
@@ -126,8 +126,8 @@ class ExtTriggerScan(ScanBase):
                         logging.info('Taking data...')
                         wait_for_first_trigger = False
 
-            self.readout.configure_command_fsm(enable_ext_trigger=False)
-            self.readout.configure_trigger_fsm(mode=0)
+            self.readout_utils.configure_command_fsm(enable_ext_trigger=False)
+            self.readout_utils.configure_trigger_fsm(mode=0)
 
             logging.info('Total amount of triggers collected: %d', self.readout.get_trigger_number())
 
@@ -148,6 +148,6 @@ class ExtTriggerScan(ScanBase):
 if __name__ == "__main__":
     import configuration
     scan = ExtTriggerScan(config_file=configuration.config_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.start(configure=True, use_thread=True, timeout_no_data=20, scan_timeout=100, col_span=[1, 1], row_span=[336, 336])
+    scan.start(configure=True, use_thread=True, timeout_no_data=5, scan_timeout=100, col_span=[1, 1], row_span=[336, 336])
     scan.stop()
-    scan.analyze()
+#     scan.analyze()
