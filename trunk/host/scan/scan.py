@@ -295,7 +295,7 @@ class ScanBase(object):
                 except TypeError:
                     pass
 
-        # setting back to default values
+        # restoring default values
         commands = []
         if restore_shift_masks:
             for shift_mask, value in initial_masks.iteritems():
