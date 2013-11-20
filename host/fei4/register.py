@@ -160,7 +160,7 @@ class FEI4Handler(xml.sax.ContentHandler):  # TODO separate handlers
         # reset and assign all temp variables
         self.global_registers = []
         self.pixel_registers = []
-        self.lvl1_command = []
+        self.fe_command = []
 
     # this is executed after each element is terminated. elem is the tag element being read
     def startElement(self, name, attrs):
@@ -171,14 +171,14 @@ class FEI4Handler(xml.sax.ContentHandler):  # TODO separate handlers
         elif (name == "pixel_register"):
             self.pixel_registers.append(FEI4PixelRegister(**attrs))
         elif (name == "command"):
-            self.lvl1_command.append(FEI4Command(**attrs))
+            self.fe_command.append(FEI4Command(**attrs))
 
 
 class FEI4Register(object):
     def __init__(self, configuration_file=None, definition_file=None):
         self.global_registers = {}
         self.pixel_registers = {}
-        self.lvl1_command = {}
+        self.fe_command = {}
 
         self.configuration_file = configuration_file
         self.definition_file = definition_file
@@ -330,8 +330,8 @@ class FEI4Register(object):
 
         self.global_registers = handler.global_registers
         self.pixel_registers = handler.pixel_registers
-        self.lvl1_command = handler.lvl1_command
-        # pprint.pprint(self.lvl1_command)
+        self.fe_command = handler.fe_command
+        # pprint.pprint(self.fe_command)
         # pprint.pprint(self.global_registers)
         # pprint.pprint(self.pixel_registers)
 
@@ -567,7 +567,7 @@ class FEI4Register(object):
             return reg.value.copy()
 
     def get_commands(self, command_name, same_mask_for_all_dc=False, **kwargs):
-        """get lvl1_command from command name and keyword arguments
+        """get fe_command from command name and keyword arguments
 
         wrapper for build_commands()
         implements FEI4 specific behavior
@@ -662,10 +662,10 @@ class FEI4Register(object):
                         commands.extend([self.build_command(command_name, pixeldata=register_bitset, chipid=self.chip_id, **kwargs)])
                         if do_latch == True:
                             # self.set_global_register_value("Latch_En", 1)
-                            # lvl1_command.extend(self.get_commands("wrregister", name = ["Latch_En"]))
+                            # fe_command.extend(self.get_commands("wrregister", name = ["Latch_En"]))
                             commands.extend(self.get_commands("globalpulse", width=0))
                             # self.set_global_register_value("Latch_En", 0)
-                            # lvl1_command.extend(self.get_commands("wrregister", name = ["Latch_En"]))
+                            # fe_command.extend(self.get_commands("wrregister", name = ["Latch_En"]))
             self.set_global_register_value("Pixel_Strobes", 0)  # for SEU hardness set to zero
             self.set_global_register_value("Latch_En", 0)
             self.set_global_register_value("Colpr_Mode", 0)
@@ -675,7 +675,7 @@ class FEI4Register(object):
         else:
             # print command_name.lower()
             commands.append(self.build_command(command_name, chipid=self.chip_id, **kwargs))
-        # pprint.pprint(lvl1_command)
+        # pprint.pprint(fe_command)
         return commands
 
     def build_command(self, command_name, **kwargs):
@@ -859,7 +859,7 @@ class FEI4Register(object):
             except AttributeError:
                 keyword_values = kwargs[keyword]
             try:
-                command_objects.extend([x for x in self.lvl1_command if set(iterable(getattr(x, keyword))).intersection(keyword_values)])
+                command_objects.extend([x for x in self.fe_command if set(iterable(getattr(x, keyword))).intersection(keyword_values)])
             except AttributeError:
                 pass
         return command_objects
