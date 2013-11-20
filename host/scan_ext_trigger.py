@@ -7,10 +7,7 @@ from collections import deque
 import math
 
 import numpy as np
-#import pandas as pd
 import tables as tb
-#from tables import *
-#from tables import atom
 import BitVector
 
 from daq.readout import Readout
@@ -28,21 +25,15 @@ class ExtTriggerScan(ScanBase):
     def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "scan_ext_trigger", scan_data_path = None):
         super(ExtTriggerScan, self).__init__(config_file = config_file, definition_file = definition_file, bit_file = bit_file, device = device, scan_identifier = scan_identifier, scan_data_path = scan_data_path)
         
-    def start(self, configure = True):
-        super(ExtTriggerScan, self).start(configure)
-        
-        logging.info('Starting readout thread...')
-        self.readout.start()
-        logging.info('Done!')
+    def scan(self, col_span = [1,80], row_span = [1,336], timeout_no_data = 10, scan_timeout = 60, **kwargs):
         
         #scan_parameter = 'Vthin_AltFine'
         #scan_paramter_value = self.register.get_global_register_value(scan_parameter)
         append_size = 50000
         filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
         filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
-        with tb.openFile(self.scan_data_filename+".h5", mode = 'w', title = 'test file') as file_h5:
-            raw_data_earray_h5 = file_h5.createEArray(file_h5.root, name = 'raw_data', atom = tb.UIntAtom(), shape = (0,), title = 'raw_data', filters = filter_raw_data, expectedrows = append_size)
-            meta_data_table_h5 = file_h5.createTable(file_h5.root, name = 'meta_data', description = MetaTable, title = 'meta_data', filters = filter_tables, expectedrows = 10)
+        with open_raw_data_file(filename = self.scan_data_filename, title=self.scan_identifier) as raw_data_file:
+            self.readout.start()
             
             lvl1_command = BitVector.BitVector(size = 24)+self.register.get_commands("lv1")[0]#+BitVector.BitVector(size = 10000)
             self.register_utils.set_command(lvl1_command)
@@ -172,9 +163,21 @@ class ExtTriggerScan(ScanBase):
         logging.info('Stopping readout thread...')
         self.readout.stop()
         logging.info('Done!')
+    def analyze(self):
+        from analysis.analyze_raw_data import AnalyzeRawData
+        output_file = self.scan_data_filename+"_interpreted.h5"
+        with AnalyzeRawData(raw_data_file = scan.scan_data_filename+".h5", analyzed_data_file = output_file) as analyze_raw_data:
+            analyze_raw_data.create_cluster_size_hist = True
+            analyze_raw_data.create_cluster_tot_hist = True
+            analyze_raw_data.interpreter.set_warning_output(False)
+            analyze_raw_data.interpret_word_table(FEI4B = scan.register.fei4b)
+            analyze_raw_data.interpreter.print_summary()
+            analyze_raw_data.plot_histograms(scan_data_filename = scan.scan_data_filename)
 
         
 if __name__ == "__main__":
     import configuration
     scan = ExtTriggerScan(config_file = configuration.config_file, bit_file = configuration.bit_file, scan_data_path = configuration.scan_data_path)
-    scan.start()
+    scan.start(configure=True, use_thread = True, timeout_no_data = 20, scan_timeout = 100, col_span = [1,1], row_span = [336,336])
+    scan.stop()
+    scan.analyze()
