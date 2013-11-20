@@ -22,6 +22,12 @@ class DigitalScan(ScanBase):
         repeat : int
             Number of injections.
         '''
+        commands = []
+        commands.extend(self.register.get_commands("confmode"))
+        self.register.set_global_register_value("PlsrDAC", 0)  # has to be 0 , otherwise you also have also analog injection
+        commands.extend(self.register.get_commands("wrregister", name=["PlsrDAC"]))
+        self.register_utils.send_commands(commands)
+
         self.readout.start()
 
         cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=35)[0] + self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", mask_steps=mask)[0]
@@ -48,3 +54,4 @@ if __name__ == "__main__":
     scan.start(use_thread=False)
     scan.stop()
     scan.analyze()
+    scan.register.save_configuration("test")
