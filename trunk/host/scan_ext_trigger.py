@@ -12,7 +12,7 @@ class ExtTriggerScan(ScanBase):
     def __init__(self, config_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_ext_trigger", scan_data_path=None):
         super(ExtTriggerScan, self).__init__(config_file=config_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
 
-    def scan(self, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=60, **kwargs):
+    def scan(self, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=60, max_triggers=10000, **kwargs):
         '''Scan loop
 
         Parameters
@@ -59,9 +59,6 @@ class ExtTriggerScan(ScanBase):
 
             wait_for_first_trigger = True
 
-            timeout_no_data = 60  # in seconds
-            max_triggers = 6000000
-            scan_timeout = 1200  # in seconds
             show_trigger_message_at = 10 ** (int(math.ceil(math.log10(max_triggers))) - 1)
             last_iteration = time.time()
             saw_no_data_at_time = last_iteration
@@ -129,7 +126,7 @@ class ExtTriggerScan(ScanBase):
             self.readout_utils.configure_command_fsm(enable_ext_trigger=False)
             self.readout_utils.configure_trigger_fsm(mode=0)
 
-            logging.info('Total amount of triggers collected: %d', self.readout.get_trigger_number())
+            logging.info('Total amount of triggers collected: %d', self.readout_utils.get_trigger_number())
 
         self.readout.stop()
 
@@ -148,6 +145,6 @@ class ExtTriggerScan(ScanBase):
 if __name__ == "__main__":
     import configuration
     scan = ExtTriggerScan(config_file=configuration.config_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.start(configure=True, use_thread=True, timeout_no_data=5, scan_timeout=100, col_span=[1, 1], row_span=[336, 336])
+    scan.start(configure=True, use_thread=True, timeout_no_data=5, scan_timeout=100, max_triggers=1000, col_span=[1, 1], row_span=[336, 336])
     scan.stop()
-#     scan.analyze()
+    scan.analyze()
