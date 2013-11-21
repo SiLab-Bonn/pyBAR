@@ -128,7 +128,8 @@ cdef class PyDataInterpreter:
     def print_summary(self):
         self.thisptr.printSummary()
     def set_trig_count(self, trig_count):
-        self.thisptr.setNbCIDs(<const unsigned int&> trig_count)
+        trigger_count = trig_count if trig_count > 0 else 16
+        self.thisptr.setNbCIDs(<const unsigned int&> trigger_count)
     def setMaxTot(self, max_tot):
         self.thisptr.setMaxTot(<const unsigned int&> max_tot)
     def set_FEI4B(self, setFEI4B):
