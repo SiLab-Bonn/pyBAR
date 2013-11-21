@@ -51,14 +51,17 @@ class ExtTriggerScan(ScanBase):
         pixel_reg = "C_Low"
         self.register.set_pixel_register_value(pixel_reg, 0)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
+        self.register.set_global_register_value("Trig_Count", 4)
+        commands.extend(self.register.get_commands("wrregister", name=["Trig_Count"]))
         # setting FE into runmode
         commands.extend(self.register.get_commands("runmode"))
+        self.register_utils.send_commands(commands)
         # append_size = 50000
         with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier) as raw_data_file:
             self.readout.start()
 
             # preload command
-            lvl1_command = self.register.get_commands("zeros", length=24)[0] + self.register.get_commands("lv1")[0]  # + self.register.get_commands("zeros", length=1000)[0]
+            lvl1_command = self.register.get_commands("zeros", length=14)[0] + self.register.get_commands("lv1")[0]  # + self.register.get_commands("zeros", length=1000)[0]
             self.register_utils.set_command(lvl1_command)
             # set here external trigger mo
             self.readout_utils.configure_trigger_fsm(mode=mode, trigger_data_msb_first=False, disable_veto=False, trigger_data_delay=0, trigger_clock_cycles=16, enable_reset=False, invert_lemo_trigger_input=False, trigger_low_timeout=0)
@@ -141,6 +144,7 @@ class ExtTriggerScan(ScanBase):
         from analysis.analyze_raw_data import AnalyzeRawData
         output_file = self.scan_data_filename + "_interpreted.h5"
         with AnalyzeRawData(raw_data_file=scan.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
+            analyze_raw_data.interpreter.set_trig_count(self.register.get_global_register_value("Trig_Count"))
             analyze_raw_data.create_cluster_size_hist = True
             analyze_raw_data.create_cluster_tot_hist = True
             analyze_raw_data.interpreter.set_warning_output(False)
@@ -152,6 +156,6 @@ class ExtTriggerScan(ScanBase):
 if __name__ == "__main__":
     import configuration
     scan = ExtTriggerScan(config_file=configuration.config_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.start(configure=True, use_thread=True, mode=0, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=60, max_triggers=10000)
+    scan.start(configure=True, use_thread=True, mode=0, col_span=[1, 80], row_span=[1, 336], timeout_no_data=5, scan_timeout=5*60, max_triggers=100000)
     scan.stop()
     scan.analyze()
