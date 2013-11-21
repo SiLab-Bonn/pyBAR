@@ -91,9 +91,9 @@ class FEI4SelfTriggerScan(ScanBase):
                 last_iteration = time.time()
                 try:
                     raw_data_file.append((self.readout.data.popleft(),))
-                    logging.info('data words')
+                    #logging.info('data words')
                 except IndexError:  # no data
-                    logging.info('no data words')
+                    #logging.info('no data words')
                     no_data_at_time = last_iteration
                     if wait_for_first_data == False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
                         logging.info('Reached no data timeout. Stopping Scan...')
