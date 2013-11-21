@@ -1,4 +1,15 @@
 import struct
+import logging
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
+
+
+trigger_modes = {
+    0: 'external trigger',
+    1: 'TLU no handshake',
+    2: 'TLU simple handshake',
+    3: 'TLU trigger data handshake'
+}
 
 
 class ReadoutUtils(object):
@@ -19,6 +30,7 @@ class ReadoutUtils(object):
         disable_command_trigger : bool
             Disabling command trigger. Command trigger sends pulse to LEMO TX1 when sending command to FE. Sending pulses only when enable_ext_trigger is false.
         '''
+        logging.info('External trigger %s' % 'enabled' if enable_ext_trigger else 'disabled')
 #         array = self.device.ReadExternal(address=0 + 2, size=1)  # get stored register value
 #         reg = struct.unpack('B', array)[0]
         reg = 0
@@ -47,10 +59,10 @@ class ReadoutUtils(object):
         ----------
         mode : string
             TLU handshake mode. External trigger has to be enabled in command FSM. From 0 to 3.
-            0: External trigger (LEMO RX0 only, RJ45 disabled).
-            1: TLU no handshake (automatic detection of RJ45 connection).
-            2: TLU simple handshake (automatic detection of RJ45 connection).
-            3: TLU trigger data handshake (automatic detection of RJ45 connection).
+            0: External trigger (LEMO RX0 only, TLU port disabled (TLU port/RJ45)).
+            1: TLU no handshake (automatic detection of TLU connection (TLU port/RJ45)).
+            2: TLU simple handshake (automatic detection of TLU connection (TLU port/RJ45)).
+            3: TLU trigger data handshake (automatic detection of TLU connection (TLU port/RJ45)).
         trigger_data_msb_first : bool
             Setting endianness of TLU trigger data.
         disable_veto : bool
@@ -66,6 +78,7 @@ class ReadoutUtils(object):
         trigger_low_timeout : int
             Enabling timeout for waiting for de-asserting TLU trigger signal. From 0 to 255.
         '''
+        logging.info('Trigger mode: %s' % trigger_modes[mode])
 #         array = self.device.ReadExternal(address = 0x8200+1, size = 3)  # get stored register value
 #         reg = struct.unpack(4*'B', array)
         reg_1 = (mode & 0x03)
