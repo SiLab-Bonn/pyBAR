@@ -12,11 +12,17 @@ class ExtTriggerScan(ScanBase):
     def __init__(self, config_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_ext_trigger", scan_data_path=None):
         super(ExtTriggerScan, self).__init__(config_file=config_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
 
-    def scan(self, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=60, max_triggers=10000, **kwargs):
+    def scan(self, mode=0, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=60, max_triggers=10000, **kwargs):
         '''Scan loop
 
         Parameters
         ----------
+        mode : int
+            Trigger mode. More details in daq.readout_utils. From 0 to 3.
+            0: External trigger (LEMO RX0 only, TLU port disabled (TLU port/RJ45)).
+            1: TLU no handshake (automatic detection of TLU connection (TLU port/RJ45)).
+            2: TLU simple handshake (automatic detection of TLU connection (TLU port/RJ45)).
+            3: TLU trigger data handshake (automatic detection of TLU connection (TLU port/RJ45)).
         col_span : list, tuple
             Column range (from minimum to maximum value). From 1 to 80.
         row_span : list, tuple
@@ -54,8 +60,9 @@ class ExtTriggerScan(ScanBase):
             # preload command
             lvl1_command = self.register.get_commands("zeros", length=24)[0] + self.register.get_commands("lv1")[0]  # + self.register.get_commands("zeros", length=1000)[0]
             self.register_utils.set_command(lvl1_command)
-            self.readout_utils.configure_trigger_fsm(mode=0, disable_veto=False, enable_reset=False, invert_lemo_trigger_input=False, trigger_clock_cycles=16, trigger_data_delay=4, trigger_low_timeout=0)
-            self.readout_utils.configure_command_fsm(enable_ext_trigger=True)
+            # set here external trigger mo
+            self.readout_utils.configure_trigger_fsm(mode=mode, trigger_data_msb_first=False, disable_veto=False, trigger_data_delay=0, trigger_clock_cycles=16, enable_reset=False, invert_lemo_trigger_input=False, trigger_low_timeout=0)
+            self.readout_utils.configure_command_fsm(enable_ext_trigger=True, neg_edge=False, diable_clock=False, disable_command_trigger=False)
 
             wait_for_first_trigger = True
 
@@ -145,6 +152,6 @@ class ExtTriggerScan(ScanBase):
 if __name__ == "__main__":
     import configuration
     scan = ExtTriggerScan(config_file=configuration.config_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.start(configure=True, use_thread=True, timeout_no_data=5, scan_timeout=100, max_triggers=1000, col_span=[1, 1], row_span=[336, 336])
+    scan.start(configure=True, use_thread=True, mode=0, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=60, max_triggers=10000)
     scan.stop()
     scan.analyze()
