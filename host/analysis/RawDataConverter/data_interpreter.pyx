@@ -31,6 +31,8 @@ cdef extern from "Interpret.h":
         void setInfoOutput(bool pToggle)
         void setDebugOutput(bool pToggle)
 
+        void setNbCIDs(const unsigned int& NbCIDs)
+        void setMaxTot(const unsigned int& rMaxTot)
         void setFEI4B(bool setFEI4B)
 
         void setHitsArray(HitInfo* &rHitInfo, const unsigned int &rSize)
@@ -125,6 +127,10 @@ cdef class PyDataInterpreter:
         self.thisptr.createMetaDataWordIndex(<bool> value)
     def print_summary(self):
         self.thisptr.printSummary()
+    def set_trig_count(self, trig_count):
+        self.thisptr.setNbCIDs(<const unsigned int&> trig_count)
+    def setMaxTot(self, max_tot):
+        self.thisptr.setMaxTot(<const unsigned int&> max_tot)
     def set_FEI4B(self, setFEI4B):
         self.thisptr.setFEI4B(<bool> setFEI4B)
     def store_event(self):
