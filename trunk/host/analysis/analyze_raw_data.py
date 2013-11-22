@@ -642,7 +642,7 @@ class AnalyzeRawData(object):
         self.histograming.add_hits(hits[start_index:stop_index], hits[start_index:stop_index].shape[0])
 
     def plot_histograms(self, scan_data_filename):  # plots the histogram from output file if available otherwise from ram
-        logging.info('Creating histograms%s' % (' (source: %s)' % self._analyzed_data_file) if self._analyzed_data_file != None else '')
+        logging.info('Creating histograms%s' % ((' (source: %s)' % self._analyzed_data_file) if self._analyzed_data_file != None else ''))
         if(self._analyzed_data_file != None):
             out_file_h5 = tb.openFile(self._analyzed_data_file, mode="r")
         else:
@@ -666,8 +666,8 @@ class AnalyzeRawData(object):
             else:
                 threshold_hist = out_file_h5.root.HistThreshold[:, :] if out_file_h5 != None else self.threshold_hist
                 noise_hist = out_file_h5.root.HistNoise[:, :] if out_file_h5 != None else self.noise_hist
-            plotting.plotThreeWay(hist=threshold_hist, title='Threshold%s' % (' (masked %i pixel(s))' % mask_cnt) if self._create_threshold_mask else '', x_axis_title="threshold [PlsrDAC]", filename=output_pdf, bins=100, minimum=0)
-            plotting.plotThreeWay(hist=noise_hist, title='Noise%s' % (' (masked %i pixel(s))' % mask_cnt) if self._create_threshold_mask else '', x_axis_title="noise [PlsrDAC]", filename=output_pdf, bins=100, minimum=0)
+            plotting.plotThreeWay(hist=threshold_hist, title='Threshold%s' % ((' (masked %i pixel(s))' % mask_cnt) if self._create_threshold_mask else ''), x_axis_title="threshold [PlsrDAC]", filename=output_pdf, bins=100, minimum=0)
+            plotting.plotThreeWay(hist=noise_hist, title='Noise%s' % ((' (masked %i pixel(s))' % mask_cnt) if self._create_threshold_mask else ''), x_axis_title="noise [PlsrDAC]", filename=output_pdf, bins=100, minimum=0)
         if (self._create_fitted_threshold_hists):
             plotting.plotThreeWay(hist=out_file_h5.root.HistThresholdFitted[:, :] if out_file_h5 != None else self.scurve_fit_results[:, :, 0], title="Threshold (from s-curve fit)", x_axis_title="threshold [PlsrDAC]", filename=output_pdf, bins=100, minimum=0)
             plotting.plotThreeWay(hist=out_file_h5.root.HistNoiseFitted[:, :] if out_file_h5 != None else self.scurve_fit_results[:, :, 1], title="Noise (from s-curve fit)", x_axis_title="noise [PlsrDAC]", filename=output_pdf, bins=100, minimum=0)
