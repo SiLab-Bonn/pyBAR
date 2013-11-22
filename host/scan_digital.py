@@ -26,6 +26,12 @@ class DigitalScan(ScanBase):
         commands.extend(self.register.get_commands("confmode"))
         self.register.set_global_register_value("PlsrDAC", 0)  # has to be 0 , otherwise you also have also analog injection
         commands.extend(self.register.get_commands("wrregister", name=["PlsrDAC"]))
+        pixel_reg = "C_High"
+        self.register.set_pixel_register_value(pixel_reg, 0)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
+        pixel_reg = "C_Low"
+        self.register.set_pixel_register_value(pixel_reg, 0)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
         self.register_utils.send_commands(commands)
 
         self.readout.start()
