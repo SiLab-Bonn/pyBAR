@@ -240,13 +240,14 @@ class ScanBase(object):
         shift_masks : list, tuple
             List of pixel masks that will be shifted.
         restore_shift_masks : bool
-            Restores the masks shifted during the scan to the initial state.
+            Writing the initial (restored) FE pixel configuration into FE after finishing the scan loop.
         '''
         if not isinstance(command, BitVector.BitVector):
             raise TypeError
 
-        if restore_shift_masks:
-            initial_masks = dict([(shift_mask, self.register.get_pixel_register_value(shift_mask)) for shift_mask in shift_masks])
+        # create restore point
+        restore_point_name = self.scan_identifier + '_scan'
+        self.register.create_restore_point(name=restore_point_name)
 
         # pre-calculate often used commands
         conf_mode_command = self.register.get_commands("confmode")
@@ -320,19 +321,13 @@ class ScanBase(object):
                     pass
 
         # restoring default values
-        commands = []
+        self.register.restore(name=restore_point_name)
+        self.register_utils.configure_global()  # always restore global configuration
         if restore_shift_masks:
-            for shift_mask, value in initial_masks.iteritems():
-                self.register.set_pixel_register_value(shift_mask, value)
-            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=initial_masks.iterkeys()))
-        if digital_injection == True:
-            #self.register.set_global_register_value("CalEn", 0) # for GlobalPulse instead Cal-Command
-            self.register.set_global_register_value("DIGHITIN_SEL", 0)
-            commands.extend(self.register.get_commands("wrregister", name=["DIGHITIN_SEL"]))
-        self.register.set_global_register_value("Colpr_Addr", 0)
-        self.register.set_global_register_value("Colpr_Mode", 0)
-        commands.extend(self.register.get_commands("wrregister", name=["Colpr_Addr", "Colpr_Mode"]))
-        self.register_utils.send_commands(commands)
+            commands = []
+            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=shift_masks))
+            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name="EnableDigInj"))
+            self.register_utils.send_commands(commands)
 
     def scan(self, **kwargs):
         raise NotImplementedError('scan.scan() not implemented')
