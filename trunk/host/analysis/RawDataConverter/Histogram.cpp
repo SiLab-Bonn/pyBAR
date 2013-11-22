@@ -222,7 +222,7 @@ void Histogram::setParameterLimits()
     tParameterValues.push_back(_parInfo[i].scanParameter);
 
   std::sort(tParameterValues.begin(), tParameterValues.end());  //sort from lowest to highest value
-  std::set<int> tSet(tParameterValues.begin(), tParameterValues.end());
+  std::set<unsigned int> tSet(tParameterValues.begin(), tParameterValues.end());
   tParameterValues.assign(tSet.begin(), tSet.end() );
 
   for(unsigned int i = 0; i < tParameterValues.size(); ++i)
@@ -291,7 +291,7 @@ void Histogram::calculateThresholdScanArrays(double rMuArray[], double rSigmaArr
   unsigned int q_max = getMaxParameter();
   unsigned int n = getNparameters();
   unsigned int A = 100;
-  unsigned int d = (int) ( ((double) getMaxParameter() - (double) getMinParameter())/(n-1));
+  unsigned int d = (int) ( ((double) getMaxParameter() - (double) getMinParameter())/(double) (n-1));
 
   for(unsigned int i=0; i<RAW_DATA_MAX_COLUMN; ++i){
     for(unsigned int j=0; j<RAW_DATA_MAX_ROW; ++j){
@@ -308,12 +308,12 @@ void Histogram::calculateThresholdScanArrays(double rMuArray[], double rSigmaArr
       unsigned int mu1 = 0;
       unsigned int mu2 = 0;
       for(unsigned int k=0; k<getNparameters(); ++k){
-        if((double) k < threshold)
+        if((double) k*d < threshold)
           mu1 += _occupancy[(long)i + (long)j * (long)RAW_DATA_MAX_COLUMN  + (long)k * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW];
-        if((double) k > threshold)
+        if((double) k*d > threshold)
           mu2 += (A-_occupancy[(long)i + (long)j * (long)RAW_DATA_MAX_COLUMN  + (long)k * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW]);
       }
-      double noise = d*(double)(mu1+mu2)/(double)A*sqrt(3.141592653589893238462643383/2);
+      double noise = (double)d*(double)(mu1+mu2)/(double)A*sqrt(3.141592653589893238462643383/2);
       rSigmaArray[i+j*RAW_DATA_MAX_COLUMN] = noise;
     }
   }
