@@ -42,7 +42,7 @@ cdef extern from "Histogram.h":
         unsigned int getMaxParameter()  # returns the maximum parameter from _parInfo
         unsigned int getNparameters()  # returns the parameter range from _parInfo
 
-        void calculateThresholdScanArrays(double rMuArray[], double rSigmaArray[])  # takes the occupancy histograms for different parameters for the threshold arrays
+        void calculateThresholdScanArrays(double rMuArray[], double rSigmaArray[], const unsigned int& rMaxInjections)  # takes the occupancy histograms for different parameters for the threshold arrays
 
         void test()
 
@@ -94,8 +94,8 @@ cdef class PyDataHistograming:
     def get_n_parameters(self):
         return <unsigned int> self.thisptr.getNparameters()
 
-    def calculate_threshold_scan_arrays(self, cnp.ndarray[cnp.float64_t, ndim=1] threshold, cnp.ndarray[cnp.float64_t, ndim=1] noise):
-        self.thisptr.calculateThresholdScanArrays(<double*> threshold.data, <double*> noise.data)
+    def calculate_threshold_scan_arrays(self, cnp.ndarray[cnp.float64_t, ndim=1] threshold, cnp.ndarray[cnp.float64_t, ndim=1] noise, n_injections):
+        self.thisptr.calculateThresholdScanArrays(<double*> threshold.data, <double*> noise.data, <const unsigned int&> n_injections)
 
     def test(self):
         self.thisptr.test()
