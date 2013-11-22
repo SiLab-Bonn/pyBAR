@@ -656,7 +656,7 @@ class AnalyzeRawData(object):
         self.histograming.add_hits(hits[start_index:stop_index], hits[start_index:stop_index].shape[0])
 
     def plot_histograms(self, scan_data_filename, analyzed_data_file=None):  # plots the histogram from output file if available otherwise from ram
-        logging.info('Creating histograms%s' % ((' (source: %s)' % analyzed_data_file) if analyzed_data_file != None else (self._analyzed_data_file if self._analyzed_data_file != None else '')))
+        logging.info('Creating histograms%s' % ((' (source: %s)' % analyzed_data_file) if analyzed_data_file != None else ((' (source: %s)' % self._analyzed_data_file) if self._analyzed_data_file != None else '')))
         if analyzed_data_file != None:
             out_file_h5 = tb.openFile(analyzed_data_file, mode="r")
         elif(self._analyzed_data_file != None):
