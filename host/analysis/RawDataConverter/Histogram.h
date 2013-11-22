@@ -28,7 +28,7 @@ public:
   void setNoScanParameter();
   void addMetaEventIndex(const unsigned int& rNmetaEventIndexLength, unsigned int*& rMetaEventIndex);
 
-  void calculateThresholdScanArrays(double rMuArray[], double rSigmaArray[]); //takes the occupancy histograms for different parameters for the threshold arrays
+  void calculateThresholdScanArrays(double rMuArray[], double rSigmaArray[], const unsigned int& rMaxInjections); //takes the occupancy histograms for different parameters for the threshold arrays
 
   unsigned int getMinParameter(); //returns the minimum parameter from _parInfo
   unsigned int getMaxParameter(); //returns the maximum parameter from _parInfo

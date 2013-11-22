@@ -279,7 +279,7 @@ void Histogram::getRelBcidHist(unsigned int*& rRelBcidHist, bool copy)
 	 rRelBcidHist = _relBcid;
 }
 
-void Histogram::calculateThresholdScanArrays(double rMuArray[], double rSigmaArray[])
+void Histogram::calculateThresholdScanArrays(double rMuArray[], double rSigmaArray[], const unsigned int& rMaxInjections)
 {
   debug("calculateThresholdScanArrays(...)");
   //quick algorithm from M. Mertens, phd thesis, Juelich 2010
@@ -290,7 +290,7 @@ void Histogram::calculateThresholdScanArrays(double rMuArray[], double rSigmaArr
   unsigned int q_min = getMinParameter();
   unsigned int q_max = getMaxParameter();
   unsigned int n = getNparameters();
-  unsigned int A = 100;
+  unsigned int A = rMaxInjections;
   unsigned int d = (int) ( ((double) getMaxParameter() - (double) getMinParameter())/(double) (n-1));
 
   for(unsigned int i=0; i<RAW_DATA_MAX_COLUMN; ++i){
