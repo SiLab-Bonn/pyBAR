@@ -192,17 +192,16 @@ def plot_1d_hist(hist, title, x_axis_title=None, y_axis_title=None, x_ticks=None
     plt.clf()
     fig = plt.figure()
     fig.patch.set_facecolor('white')
-    if plot_range != None:
-        plt.bar(plot_range, height=hist[plot_range], color=color, align='center')
-        plt.xlim([min(plot_range), max(plot_range)])
-    else:
-        plt.bar(range(0, len(hist[:])), height=hist[:], color=color, align='center')
+    if plot_range is None:
+        plot_range = range(0, len(hist))
+    plt.bar(left=plot_range, height=hist[plot_range], color=color, align='center')
+    plt.xlim([min(plot_range) - 0.5, max(plot_range) + 0.5])
     plt.title(title)
-    if x_axis_title != None:
+    if x_axis_title is not None:
         plt.xlabel(x_axis_title)
-    if y_axis_title != None:
+    if y_axis_title is not None:
         plt.ylabel(y_axis_title)
-    if x_ticks != None:
+    if x_ticks is not None:
         plt.xticks(range(0, len(hist[:])) if plot_range == None else plot_range, x_ticks)
     if log_y:
         plt.yscale('log')
