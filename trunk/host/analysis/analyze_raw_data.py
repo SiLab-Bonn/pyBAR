@@ -7,6 +7,7 @@ from scipy.optimize import curve_fit
 from scipy.special import erf
 import multiprocessing as mp
 from functools import partial
+from mahotas import _histogram
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
@@ -117,6 +118,8 @@ class AnalyzeRawData(object):
         self.create_cluster_table = False
         self.create_cluster_size_hist = False
         self.create_cluster_tot_hist = False
+        self._n_injection = 100
+        self.n_bcid = 16
 
     @property
     def chunk_size(self):
@@ -236,6 +239,16 @@ class AnalyzeRawData(object):
         self.interpreter.set_FEI4B(value)
 
     @property
+    def n_injections(self):
+        """Get the numbers of injections per pixel."""
+        return self._n_injection
+
+    @n_injections.setter
+    def n_injections(self, value):
+        """Set the numbers of injections per pixel."""
+        self._n_injection = value
+
+    @property
     def n_bcid(self):
         """Get the numbers of BCIDs (usually 16) of one event."""
         return self._n_bcid
@@ -243,8 +256,8 @@ class AnalyzeRawData(object):
     @n_bcid.setter
     def n_bcid(self, value):
         """Set the numbers of BCIDs (usually 16) of one event."""
-        raise NotImplementedError("Not implemented, ask David")
-        self._n_bcid = value
+        _n_bcid = value
+        self.interpreter.set_trig_count(_n_bcid)
 
     @property
     def max_tot_value(self):
@@ -414,7 +427,7 @@ class AnalyzeRawData(object):
         del hits
 
     def _create_additional_data(self):
-        logging.info('create chosen hit and event histograms')
+        logging.info('create chosen event histograms')
         if (self._analyzed_data_file != None and self._create_meta_event_index):
             meta_data_size = self.meta_data.shape[0]
             nEventIndex = self.interpreter.get_n_meta_data_event()
@@ -460,6 +473,7 @@ class AnalyzeRawData(object):
         self._create_additional_cluster_data()
 
     def _create_additional_hit_data(self):
+        logging.info('Create chosen hit histograms')
         if (self._create_tot_hist):
             self.tot_hist = np.zeros(16, dtype=np.uint32)
             self.histograming.get_tot_hist(self.tot_hist)
@@ -485,7 +499,7 @@ class AnalyzeRawData(object):
             noise = np.zeros(80 * 336, dtype=np.float64)
             # calling fast algorithm function: M. Mertens, PhD thesis, Juelich 2010
             # note: noise zero if occupancy was zero
-            self.histograming.calculate_threshold_scan_arrays(threshold, noise)
+            self.histograming.calculate_threshold_scan_arrays(threshold, noise, self._n_injection)
             threshold_hist = np.reshape(a=threshold.view(), newshape=(80, 336), order='F')
             noise_hist = np.reshape(a=noise.view(), newshape=(80, 336), order='F')
             self.threshold_hist = np.swapaxes(threshold_hist, 0, 1)
@@ -501,7 +515,8 @@ class AnalyzeRawData(object):
                 noise_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistNoise', title='Noise Histogram', atom=tb.Atom.from_dtype(self.noise_hist.dtype), shape=(336, 80), filters=self._filter_table)
                 noise_hist_table[0:336, 0:80] = self.noise_hist
         if (self._create_fitted_threshold_hists):
-            self.scurve_fit_results = self.fit_scurves_multithread(self.out_file_h5)
+            scan_parameters = np.linspace(self.histograming.get_min_parameter(), self.histograming.get_max_parameter(), num=self.histograming.get_n_parameters(), endpoint=True)
+            self.scurve_fit_results = self.fit_scurves_multithread(self.out_file_h5, PlsrDAC = scan_parameters)
             if (self._analyzed_data_file != None):
                 fitted_threshold_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistThresholdFitted', title='Threshold Fitted Histogram', atom=tb.Atom.from_dtype(self.scurve_fit_results.dtype), shape=(336, 80), filters=self._filter_table)
                 fitted_threshold_hist_table[0:336, 0:80] = self.scurve_fit_results[:, :, 0]
@@ -509,7 +524,7 @@ class AnalyzeRawData(object):
                 fitted_noise_hist_table[0:336, 0:80] = self.scurve_fit_results[:, :, 1]
 
     def _create_additional_cluster_data(self):
-        logging.info('create chosen cluster histograms')
+        logging.info('Create chosen cluster histograms')
         if(self._create_cluster_size_hist):
             self.cluster_size_hist = np.zeros(1024, dtype=np.uint32)
             self.clusterizer.get_cluster_size_hist(self.cluster_size_hist)
@@ -641,9 +656,11 @@ class AnalyzeRawData(object):
     def histogram_hits(self, hits, start_index=0, stop_index=-1):
         self.histograming.add_hits(hits[start_index:stop_index], hits[start_index:stop_index].shape[0])
 
-    def plot_histograms(self, scan_data_filename):  # plots the histogram from output file if available otherwise from ram
-        logging.info('Creating histograms%s' % ((' (source: %s)' % self._analyzed_data_file) if self._analyzed_data_file != None else ''))
-        if(self._analyzed_data_file != None):
+    def plot_histograms(self, scan_data_filename, analyzed_data_file=None):  # plots the histogram from output file if available otherwise from ram
+        logging.info('Creating histograms%s' % ((' (source: %s)' % analyzed_data_file) if analyzed_data_file != None else (self._analyzed_data_file if self._analyzed_data_file != None else '')))
+        if analyzed_data_file != None:
+            out_file_h5 = tb.openFile(analyzed_data_file, mode="r")
+        elif(self._analyzed_data_file != None):
             out_file_h5 = tb.openFile(self._analyzed_data_file, mode="r")
         else:
             out_file_h5 = None
@@ -678,21 +695,21 @@ class AnalyzeRawData(object):
                 plotting.plotThreeWay(hist=out_file_h5.root.HistOcc[:, :, 0] if out_file_h5 != None else self.occupancy_array[:, :, 0], title="Occupancy", x_axis_title="occupancy", filename=output_pdf)
         if (self._create_tot_hist):
             plotting.plot_tot(tot_hist=out_file_h5.root.HistTot if out_file_h5 != None else self.tot_hist, filename=output_pdf)
-        if(self._create_cluster_size_hist):
+        if (self._create_cluster_size_hist):
             plotting.plot_cluster_size(cluster_size_hist=out_file_h5.root.HistClusterSize if out_file_h5 != None else self.cluster_size_hist, filename=output_pdf)
-        if(self._create_cluster_tot_hist):
+        if (self._create_cluster_tot_hist):
             plotting.plot_cluster_tot(hist=out_file_h5.root.HistClusterTot if out_file_h5 != None else self.cluster_tot_hist, filename=output_pdf)
-        if(self._create_cluster_tot_hist and self._create_cluster_size_hist):
+        if (self._create_cluster_tot_hist and self._create_cluster_size_hist):
             plotting.plot_cluster_tot_size(hist=out_file_h5.root.HistClusterTot if out_file_h5 != None else self.cluster_tot_hist, filename=output_pdf)
         if (self._create_rel_bcid_hist):
             plotting.plot_relative_bcid(relative_bcid_hist=out_file_h5.root.HistRelBcid if out_file_h5 != None else self.rel_bcid_hist, filename=output_pdf)
-        if (self._create_error_hist):
+        if (analyzed_data_file == None and self._create_error_hist):
             plotting.plot_event_errors(error_hist=out_file_h5.root.HistErrorCounter if out_file_h5 != None else self.error_counter_hist, filename=output_pdf)
-        if (self._create_service_record_hist):
+        if (analyzed_data_file == None and self._create_service_record_hist):
             plotting.plot_service_records(service_record_hist=out_file_h5.root.HistServiceRecord if out_file_h5 != None else self.service_record_hist, filename=output_pdf)
-        if (self._create_trigger_error_hist):
+        if (analyzed_data_file == None and self._create_trigger_error_hist):
             plotting.plot_trigger_errors(trigger_error_hist=out_file_h5.root.HistTriggerErrorCounter if out_file_h5 != None else self.trigger_error_counter_hist, filename=output_pdf)
-        if(self._analyzed_data_file != None):
+        if (self._analyzed_data_file != None):
             out_file_h5.close()
         logging.info('Closing output file')
         output_pdf.close()
@@ -734,12 +751,13 @@ class AnalyzeRawData(object):
         return False
 
 if __name__ == "__main__":
-    scan_name = 'scan_threshold_4'
+    mp.freeze_support()
+    scan_name = 'scan_threshold_14_interpreted'
     chip_flavor = 'fei4a'
     input_file = r"fake_data.h5"
-    output_file = r"fake_data_interpreted.h5"
-    scan_data_filename = r"C:\pybar\trunk\host\data/" + scan_name
-
-    with AnalyzeRawData(input_file=input_file, output_file=output_file) as analyze_raw_data:
+    output_file = r"C:\pybar\trunk\host\data/test.h5"
+    scan_data_filename = r"C:\pybar\trunk\host\data/" + scan_name+".h5"
+ 
+    with AnalyzeRawData(raw_data_file=scan_data_filename, analyzed_data_file=output_file) as analyze_raw_data:
         with tb.openFile(analyze_raw_data._raw_data_file, mode="r") as in_file_h5:
-            analyze_raw_data.fit_scurves_multithread(in_file_h5)
+            analyze_raw_data.fit_scurves_multithread(in_file_h5, PlsrDAC=range(0, 51))
