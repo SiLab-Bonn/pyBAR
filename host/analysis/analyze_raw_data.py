@@ -102,7 +102,7 @@ class AnalyzeRawData(object):
         self._filter_table = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
         self.FEI4B = False
         self.create_hit_table = False
-        self.create_meta_event_index = False
+        self.create_meta_event_index = True
         self.create_meta_word_index = False
         self.create_occupancy_hist = True
         self.create_tot_hist = True
@@ -390,7 +390,7 @@ class AnalyzeRawData(object):
                     self.histograming.add_meta_event_index(self.meta_event_index, nEventIndex)
                 if self.is_histogram_hits():
                     self.histogram_hits(hits[:Nhits], stop_index=Nhits)
-                if(self.is_cluster_hits):
+                if self.is_cluster_hits():
                     self.cluster_hits(hits[:Nhits])
                     if(self._create_cluster_hit_table):
                         cluster_hit_table.append(cluster_hits[:Nhits])
