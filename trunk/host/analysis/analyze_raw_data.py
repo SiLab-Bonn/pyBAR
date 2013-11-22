@@ -7,7 +7,6 @@ from scipy.optimize import curve_fit
 from scipy.special import erf
 import multiprocessing as mp
 from functools import partial
-from mahotas import _histogram
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
@@ -692,7 +691,9 @@ class AnalyzeRawData(object):
             if(self._create_threshold_hists):
                 plotting.plot_scurves(occupancy_hist=out_file_h5.root.HistOcc[:, :, :] if out_file_h5 != None else self.occupancy_array[:, :, :], filename=output_pdf, scan_parameters=np.linspace(self.histograming.get_min_parameter(), self.histograming.get_max_parameter(), num=self.histograming.get_n_parameters(), endpoint=True))
             else:
-                plotting.plotThreeWay(hist=out_file_h5.root.HistOcc[:, :, 0] if out_file_h5 != None else self.occupancy_array[:, :, 0], title="Occupancy", x_axis_title="occupancy", filename=output_pdf)
+                hist = out_file_h5.root.HistOcc[:, :, 0] if out_file_h5 != None else self.occupancy_array[:, :, 0]
+                occupancy_array_masked = np.ma.masked_equal(hist, 0)
+                plotting.plotThreeWay(hist=occupancy_array_masked, title="Occupancy", x_axis_title="occupancy", filename=output_pdf)
         if (self._create_tot_hist):
             plotting.plot_tot(tot_hist=out_file_h5.root.HistTot if out_file_h5 != None else self.tot_hist, filename=output_pdf)
         if (self._create_cluster_size_hist):
