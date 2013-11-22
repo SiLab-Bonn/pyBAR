@@ -69,17 +69,31 @@ class ScanBase(object):
         self.stop_thread_event = Event()
         self.stop_thread_event.set()
         self.use_thread = None
+        self.restore_configuration = None
 
     @property
     def is_running(self):
         return self.scan_thread.is_alive()
 
     def configure(self):
-        logging.info('Configuring FE')
+        logging.info('Sending configuration to FE')
         #scan.register.load_configuration_file(config_file)
         self.register_utils.configure_all(same_mask_for_all_dc=False, do_global_rest=True)
 
-    def start(self, configure=True, use_thread=False, **kwargs):  # TODO: in Python 3 use def func(a,b,*args,kw1=None,**kwargs)
+    def start(self, configure=True, restore_configuration=False, use_thread=False, **kwargs):  # TODO: in Python 3 use def func(a,b,*args,kw1=None,**kwargs)
+        '''Starting scan.
+
+        Parameters
+        ----------
+        configure : bool
+            If true, configure FE before starting scan.scan().
+        restore_configuration : bool
+            Restore FE configuration after finishing scan.scan().
+        use_thread : bool
+            If true, scan.scan() is running in a separate thread. Only then Ctrl-C can be used to interrupt scan loop.
+        **kwargs : any
+            Any keyword argument passed to scan.start() will be forwarded to scan.scan().
+        '''
         self.scan_completed = False
         self.use_thread = use_thread
         if self.scan_thread != None:
@@ -89,13 +103,16 @@ class ScanBase(object):
 
         if configure:
             self.configure()
+        self.restore_configuration = restore_configuration
+        if self.restore_configuration:
+            self.register.create_restore_point(name=self.scan_identifier)
 
         self.readout.reset_rx()
 #        self.readout.reset_sram_fifo()
 
         if not any(self.readout.print_readout_status()):
             self.device.dispose()  # free USB resources
-            raise NoSyncError('No data sync on any input channel')
+            raise NoSyncError('No data sync on any input channel. Power? Cables?')
 #             logging.error('Stopping scan: no sync')
 #             return
 
@@ -112,6 +129,9 @@ class ScanBase(object):
             self.scan(**kwargs)
 
     def stop(self, timeout=None):
+        '''Stopping scan. Cleaning up of variables and joining thread (if existing).
+
+        '''
         self.scan_completed = True
         if (self.scan_thread is not None) ^ self.use_thread:
             if self.scan_thread is None:
@@ -144,6 +164,10 @@ class ScanBase(object):
             self.scan_thread.join()  # SIGINT will be suppressed here
             self.scan_thread = None
         self.use_thread = None
+        if self.restore_configuration:
+            logging.info('Restoring FE configuration')
+            self.register.restore(name=self.scan_identifier)
+            self.configure()
         logging.info('Stopped scan %s with ID %d' % (self.scan_identifier, self.scan_number))
         self.readout.print_readout_status()
 
@@ -331,7 +355,7 @@ from functools import wraps
 
 
 def set_event_when_keyboard_interrupt(_lambda):
-    '''Decorator function that sets Threading.Event() when keyboard interrupt (Ctrl+c) was raised
+    '''Decorator function that sets Threading.Event() when keyboard interrupt (Ctrl+C) was raised
 
     Parameters
     ----------
