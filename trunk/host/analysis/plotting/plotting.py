@@ -110,7 +110,7 @@ def plot_relative_bcid(hist, filename=None):
 
 
 def plot_tot(hist, filename=None):
-    plot_1d_hist(hist=hist, title='Time over threshold distribution (TOT code)', plot_range=range(0, 16), x_axis_title='TOT [25 ns]', y_axis_title='#', color='b', filename=filename)
+    plot_1d_hist(hist=hist, title='Time-over-Threshold distribution (TOT code)', plot_range=range(0, 16), x_axis_title='TOT [25 ns]', y_axis_title='#', color='b', filename=filename)
 
 
 def plot_event_errors(hist, filename=None):
