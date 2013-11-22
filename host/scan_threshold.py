@@ -66,6 +66,6 @@ class ThresholdScan(ScanBase):
 if __name__ == "__main__":
     import configuration
     scan = ThresholdScan(config_file=configuration.config_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.start(use_thread=True, scan_paramter_values=range(0, 101, 2))
+    scan.start(use_thread=True, scan_paramter_values=range(0, 101, 1))
     scan.stop()
     scan.analyze()
