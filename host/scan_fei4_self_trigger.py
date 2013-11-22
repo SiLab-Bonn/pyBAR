@@ -45,7 +45,7 @@ class FEI4SelfTriggerScan(ScanBase):
         self.register.set_pixel_register_value(pixel_reg, 0)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
         # enable GateHitOr that enables FE self-trigger mode
-        self.register.set_global_register_value("GateHitOr", 1)
+        self.register.set_global_register_value("GateHitOr", 1)  # enable FE self-trigger mode
         self.register.set_global_register_value("Trig_Lat", 232)  # set trigger latency
         self.register.set_global_register_value("Trig_Count", 0)  # set number of consecutive triggers
         commands.extend(self.register.get_commands("wrregister", name=["GateHitOr", "Trig_Lat", "Trig_Count"]))
