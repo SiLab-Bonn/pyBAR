@@ -16,7 +16,7 @@ def plotOccupancy(occupancy_hist, median=False, max_occ=None, filename=None):
     plt.clf()
     H = occupancy_hist
     extent = [0.5, 80.5, 336.5, 0.5]
-    #cmap = cm.get_cmap('copper_r')
+    # cmap = cm.get_cmap('copper_r')
     cmap = cm.get_cmap('PuBu', 10)
     if median:
         ceil_number = round_to_multiple(np.median(H[H > 0] * 2) if max_occ == None else max_occ, 10)
@@ -48,9 +48,9 @@ def plotOccupancy(occupancy_hist, median=False, max_occ=None, filename=None):
 def make_occupancy(cols, rows, max_occ=None, ncols=80, nrows=336):
     plt.clf()
     H, xedges, yedges = np.histogram2d(rows, cols, bins=(nrows, ncols), range=[[1, nrows], [1, ncols]])
-    #print xedges, yedges
+    # print xedges, yedges
     extent = [yedges[0] - 0.5, yedges[-1] + 0.5, xedges[-1] + 0.5, xedges[0] - 0.5]
-    #plt.pcolor(H)
+    # plt.pcolor(H)
     cmap = cm.get_cmap('hot', 20)
     ceil_number = round_to_multiple(H.max() if max_occ == None else max_occ, 10)
     bounds = range(0, ceil_number + 1, ceil_number / 10)
@@ -98,140 +98,36 @@ def round_to_multiple(number, multiple):
         Rounded up number.
     '''
     ceil_mod_number = number - number % (-multiple)
+    print ceil_mod_number
     return int(ceil_mod_number)
 
 
-def plot_relative_bcid(relative_bcid_hist, filename=None):
-    plt.clf()
-    fig = plt.figure()
-    fig.patch.set_facecolor('white')
-    plt.bar(range(0, 16), relative_bcid_hist[:], color='r', align='center')  # bug: https://github.com/matplotlib/matplotlib/issues/1882, log = True
-    plt.xlabel('relative BCID [25 ns]')
-    plt.ylabel('#')
-    plt.yscale('log')
-    plt.title('Relative BCID (former LVL1ID)')
-    plt.xlim((0, 16))
-    plt.grid(True)
-    if filename is None:
-        plt.show()
-    elif type(filename) == PdfPages:
-        filename.savefig()
-    else:
-        plt.savefig(filename)
+def plot_relative_bcid(hist, filename=None):
+    plot_1d_hist(hist=hist, title='Relative BCID (former LVL1ID)', log_y=True, plot_range=range(0, 16), x_axis_title='Relative BCID [25 ns]', y_axis_title='#', filename=filename)
 
 
-def plot_tot(tot_hist, filename=None):
-    plt.clf()
-    fig = plt.figure()
-    fig.patch.set_facecolor('white')
-    plt.bar(range(0, 16), tot_hist[:], color='b', align='center')
-    plt.xlim((0, 15))
-    plt.xlabel('TOT [25 ns]')
-    plt.ylabel('#')
-    plt.title('Time over threshold distribution (TOT code)')
-    plt.grid(True)
-    if filename is None:
-        plt.show()
-    elif type(filename) == PdfPages:
-        filename.savefig()
-    else:
-        plt.savefig(filename)
+def plot_tot(hist, filename=None):
+    plot_1d_hist(hist=hist, title='Time over threshold distribution (TOT code)', plot_range=range(0, 16), x_axis_title='TOT [25 ns]', y_axis_title='#', color='b', filename=filename)
 
 
-def plot_event_errors(error_hist, filename=None):
-    plt.clf()
-    fig = plt.figure()
-    fig.patch.set_facecolor('white')
-    plt.bar(range(0, len(error_hist[:])), error_hist[:], color='r', align='center', label="Error code")
-    plt.xlabel('')
-    plt.ylabel('#')
-    plt.title('Event errors')
-    plt.grid(True)
-    plt.xticks(range(0, 8), ('SR\noccured', 'No\ntrigger', 'LVL1ID\nnot const.', '#BCID\nwrong', 'unknown\nword', 'BCID\njump', 'trigger\nerror', 'truncated'))
-    #plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
-    if filename is None:
-        plt.show()
-    elif type(filename) == PdfPages:
-        filename.savefig()
-    else:
-        plt.savefig(filename)
+def plot_event_errors(hist, filename=None):
+    plot_1d_hist(hist=hist, title='Event errors', plot_range=range(0, 8), x_ticks=('SR\noccured', 'No\ntrigger', 'LVL1ID\nnot const.', '#BCID\nwrong', 'unknown\nword', 'BCID\njump', 'trigger\nerror', 'truncated'), color='g', y_axis_title='#', filename=filename)
 
 
-def plot_trigger_errors(trigger_error_hist, filename=None):
-    plt.clf()
-    fig = plt.figure()
-    fig.patch.set_facecolor('white')
-    plt.bar(range(0, 8), trigger_error_hist[:], color='r', align='center', label="Error code")
-    plt.xlabel('')
-    plt.ylabel('#')
-    plt.title('Trigger errors')
-    plt.grid(True)
-    plt.xticks(range(0, 8), ('increase\nerror', 'more than\none trg.', 'TLU\naccept', 'TLU\ntime out', 'not\nused', 'not\nused', 'not\nused', 'not\nused'))
-    #plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
-    if filename is None:
-        plt.show()
-    elif type(filename) == PdfPages:
-        filename.savefig()
-    else:
-        plt.savefig(filename)
+def plot_trigger_errors(hist, filename=None):
+    plot_1d_hist(hist=hist, title='Trigger errors', plot_range=range(0, 8), x_ticks=('increase\nerror', 'more than\none trg.', 'TLU\naccept', 'TLU\ntime out', 'not\nused', 'not\nused', 'not\nused', 'not\nused'), color='g', y_axis_title='#', filename=filename)
 
 
-def plot_service_records(service_record_hist, filename=None):
-    plt.clf()
-    fig = plt.figure()
-    fig.patch.set_facecolor('white')
-    plt.bar(range(0, 32), service_record_hist[:], color='r', align='center', label="Error code")
-    plt.xlim((0, 31))
-    plt.xlabel('service record code')
-    plt.ylabel('#')
-    plt.title('Service records (' + str(np.sum(service_record_hist)) + ' entries)')
-    plt.grid(True)
-    #plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
-    if filename is None:
-        plt.show()
-    elif type(filename) == PdfPages:
-        filename.savefig()
-    else:
-        plt.savefig(filename)
+def plot_service_records(hist, filename=None):
+    plot_1d_hist(hist=hist, title='Service records (' + str(np.sum(hist)) + ' entries)', x_axis_title='Service record code', color='g', y_axis_title='#', filename=filename)
 
 
-def plot_correlations(filenames, limit=None):
-    plt.clf()
-    DataFrame = pd.DataFrame()
-    index = 0
-    for fileName in filenames:
-        print 'open ', fileName
-        with pd.get_store(fileName, 'r') as store:
-            tempDataFrame = pd.DataFrame({'Event': store.Hits.Event[:15000], 'Row' + str(index): store.Hits.Row[:15000]})
-            tempDataFrame = tempDataFrame.set_index('Event')
-            DataFrame = tempDataFrame.join(DataFrame)
-            DataFrame = DataFrame.dropna()
-            index += 1
-            del tempDataFrame
-    DataFrame["index"] = DataFrame.index
-    DataFrame.drop_duplicates(take_last=True, inplace=True)
-    del DataFrame["index"]
-    print DataFrame.head(10)
-    correlationNames = ('Row')
-    index = 0
-    for corName in correlationNames:
-        for colName in itertools.permutations(DataFrame.filter(regex=corName), 2):
-            if(corName == 'Col'):
-                heatmap, xedges, yedges = np.histogram2d(DataFrame[colName[0]], DataFrame[colName[1]], bins=(80, 80), range=[[1, 80], [1, 80]])
-            else:
-                heatmap, xedges, yedges = np.histogram2d(DataFrame[colName[0]], DataFrame[colName[1]], bins=(336, 336), range=[[1, 336], [1, 336]])
-            extent = [yedges[0] - 0.5, yedges[-1] + 0.5, xedges[-1] + 0.5, xedges[0] - 0.5]
-#             extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
-            plt.clf()
-            cmap = cm.get_cmap('hot', 40)
-            plt.imshow(heatmap, extent=extent, cmap=cmap, interpolation='nearest')
-            plt.gca().invert_yaxis()
-            plt.xlabel(colName[0])
-            plt.ylabel(colName[1])
-            plt.title('Correlation plot(' + corName + ')')
-            plt.savefig(colName[0] + '_' + colName[1] + '.pdf')
-#             print 'store as ', fileNames[int(index/2)]
-            index += 1
+def plot_cluster_tot(hist, median=False, max_occ=None, filename=None):
+    plot_1d_hist(hist=hist[:, 0], title='Cluster ToT (' + str(sum(hist[:, 0])) + ' entries)', plot_range=range(0, 32), x_axis_title='cluster ToT', y_axis_title='#', filename=filename)
+
+
+def plot_cluster_size(hist, filename=None):
+    plot_1d_hist(hist=hist, title='Cluster size (' + str(np.sum(hist)) + ' entries)', log_y=True, plot_range=range(0, 32), x_axis_title='Cluster size', y_axis_title='#', filename=filename)
 
 
 def plot_scurves(occupancy_hist, scan_parameters, max_occ=None, scan_paramter_name=None, filename=None):
@@ -268,27 +164,6 @@ def plot_scurves(occupancy_hist, scan_parameters, max_occ=None, scan_paramter_na
         plt.savefig(filename)
 
 
-def plot_cluster_size(cluster_size_hist, filename=None):
-    print 'plot_cluster_size'
-    plt.clf()
-    fig = plt.figure()
-    fig.patch.set_facecolor('white')
-    plt.bar(range(0, len(cluster_size_hist)), cluster_size_hist[:], color='r', align='center', label="Cluster size")
-#     print cluster_size_hist[:].nonzero()
-#     plt.xlim((0, 31))
-    plt.yscale('log')
-    plt.xlabel('cluster size')
-    plt.ylabel('#')
-    plt.title('Cluster size (' + str(np.sum(cluster_size_hist)) + ' entries)')
-    plt.grid(True)
-    if filename is None:
-        plt.show()
-    elif type(filename) == PdfPages:
-        filename.savefig()
-    else:
-        plt.savefig(filename)
-
-
 def plot_cluster_tot_size(hist, median=False, max_occ=None, filename=None):
     plt.clf()
     H = hist[0:50, 0:20]
@@ -309,14 +184,25 @@ def plot_cluster_tot_size(hist, median=False, max_occ=None, filename=None):
         plt.savefig(filename)
 
 
-def plot_cluster_tot(hist, median=False, max_occ=None, filename=None):
+def plot_1d_hist(hist, title, x_axis_title=None, y_axis_title=None, x_ticks=None, color='r', plot_range=None, log_y=False, filename=None):
+    logging.info("Plot 1d histogram "+title)
     plt.clf()
     fig = plt.figure()
     fig.patch.set_facecolor('white')
-    plt.bar(range(0, len(hist[:, 0])), hist[:, 0], color='r', align='center', label="Error code")
-    plt.xlabel('cluster ToT')
-    plt.ylabel('#')
-    plt.title('Cluster ToT (' + str(sum(hist[:, 0])) + ' entries)')
+    if plot_range != None:
+        plt.bar(plot_range, height=hist[plot_range], color=color, align='center')
+        plt.xlim([min(plot_range), max(plot_range)])
+    else:
+        plt.bar(range(0, len(hist[:])), height=hist[:], color=color, align='center')
+    plt.title(title)
+    if x_axis_title != None:
+        plt.xlabel(x_axis_title)
+    if y_axis_title != None:
+        plt.ylabel(y_axis_title)
+    if x_ticks != None:
+        plt.xticks(range(0, len(hist[:])) if plot_range == None else plot_range, x_ticks)
+    if log_y:
+        plt.yscale('log')
     plt.grid(True)
     if filename is None:
         plt.show()
@@ -324,7 +210,6 @@ def plot_cluster_tot(hist, median=False, max_occ=None, filename=None):
         filename.savefig()
     else:
         plt.savefig(filename)
-
 
 # def plot_pixel_mask(mask, maskname, filename=None):
 #     plt.clf()
@@ -367,9 +252,9 @@ def create_2d_pixel_hist(hist2d, title=None, x_axis_title=None, y_axis_title=Non
     H[:] = hist2d[:, :]
     extent = [0.5, 80.5, 336.5, 0.5]
     cmap = cm.get_cmap('hot', 200)
-    #ceil_number = np.max(hist2d) if z_max == None else z_max
+    # ceil_number = np.max(hist2d) if z_max == None else z_max
     ceil_number = round_to_multiple(H.max() if z_max == None else z_max, 10)
-    #ceil_number = np.max(hist2d)
+    # ceil_number = np.max(hist2d)
     bounds = range(0, ceil_number + 1, ceil_number / 10 if ceil_number > 0 else 1)
     norm = colors.BoundaryNorm(bounds, cmap.N)
     plt.imshow(H, interpolation='nearest', aspect="auto", cmap=cmap, norm=norm, extent=extent)  # for monitoring
@@ -458,7 +343,7 @@ def create_pixel_scatter_plot(hist, title=None, x_axis_title=None, y_axis_title=
 
 def plotThreeWay(hist, title, filename=None, x_axis_title=None, minimum=None, maximum=None, bins=None):  # the famous 3 way plot (enhanced)
     minimum = 0 if minimum is None else minimum
-    maximum = 2 * np.median(hist) if maximum is None else maximum
+    maximum = 2 * np.ma.median(hist) if maximum is None else maximum
     x_axis_title = '' if x_axis_title is None else x_axis_title
     fig = plt.figure()
     fig.patch.set_facecolor('white')
@@ -475,6 +360,45 @@ def plotThreeWay(hist, title, filename=None, x_axis_title=None, minimum=None, ma
         filename.savefig()
     else:
         plt.savefig(filename)
+        
+
+def plot_correlations(filenames, limit=None):
+    plt.clf()
+    DataFrame = pd.DataFrame()
+    index = 0
+    for fileName in filenames:
+        print 'open ', fileName
+        with pd.get_store(fileName, 'r') as store:
+            tempDataFrame = pd.DataFrame({'Event': store.Hits.Event[:15000], 'Row' + str(index): store.Hits.Row[:15000]})
+            tempDataFrame = tempDataFrame.set_index('Event')
+            DataFrame = tempDataFrame.join(DataFrame)
+            DataFrame = DataFrame.dropna()
+            index += 1
+            del tempDataFrame
+    DataFrame["index"] = DataFrame.index
+    DataFrame.drop_duplicates(take_last=True, inplace=True)
+    del DataFrame["index"]
+    print DataFrame.head(10)
+    correlationNames = ('Row')
+    index = 0
+    for corName in correlationNames:
+        for colName in itertools.permutations(DataFrame.filter(regex=corName), 2):
+            if(corName == 'Col'):
+                heatmap, xedges, yedges = np.histogram2d(DataFrame[colName[0]], DataFrame[colName[1]], bins=(80, 80), range=[[1, 80], [1, 80]])
+            else:
+                heatmap, xedges, yedges = np.histogram2d(DataFrame[colName[0]], DataFrame[colName[1]], bins=(336, 336), range=[[1, 336], [1, 336]])
+            extent = [yedges[0] - 0.5, yedges[-1] + 0.5, xedges[-1] + 0.5, xedges[0] - 0.5]
+#             extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
+            plt.clf()
+            cmap = cm.get_cmap('hot', 40)
+            plt.imshow(heatmap, extent=extent, cmap=cmap, interpolation='nearest')
+            plt.gca().invert_yaxis()
+            plt.xlabel(colName[0])
+            plt.ylabel(colName[1])
+            plt.title('Correlation plot(' + corName + ')')
+            plt.savefig(colName[0] + '_' + colName[1] + '.pdf')
+#             print 'store as ', fileNames[int(index/2)]
+            index += 1
 
 if __name__ == "__main__":
     filename = "HitMap.txt"
@@ -485,7 +409,7 @@ if __name__ == "__main__":
             col = int(values[0])
             row = int(values[1])
             hits = int(values[2])
-            #print str(col)
+            # print str(col)
             H[col, row] = hits
     plotThreeWay(H.transpose(), title='Occupancy', x_axis_title='occupancy', filename='SourceScanOccupancy.pdf')
 
