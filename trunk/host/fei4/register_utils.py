@@ -7,109 +7,110 @@ import re
 
 from utils.utils import bitvector_to_array
 
+
 class FEI4RegisterUtils(object):
     def __init__(self, device, readout, register):
         self.device = device
         self.readout = readout
         self.register = register
-        
-    def send_commands(self, commands = None, repeat = 1, repeat_all = 1, wait_for_cmd = False, command_bit_length = None):
+
+    def send_commands(self, commands=None, repeat=1, repeat_all=1, wait_for_cmd=False, command_bit_length=None):
         if repeat != 1:
             self.set_hardware_repeat(repeat)
         for _ in range(repeat_all):
             if commands == None:
-                self.device.WriteExternal(address = 0+1, data = [0])
-                self.wait_for_command(wait_for_cmd = wait_for_cmd, command_bit_length = command_bit_length, repeat = repeat)
+                self.device.WriteExternal(address=0 + 1, data=[0])
+                self.wait_for_command(wait_for_cmd=wait_for_cmd, command_bit_length=command_bit_length, repeat=repeat)
             else:
                 for command in commands:
                     command_bit_length = self.set_command(command)
-                    self.device.WriteExternal(address = 0+1, data = [0])
-                    self.wait_for_command(wait_for_cmd = wait_for_cmd, command_bit_length = command_bit_length, repeat = repeat)
+                    self.device.WriteExternal(address=0 + 1, data=[0])
+                    self.wait_for_command(wait_for_cmd=wait_for_cmd, command_bit_length=command_bit_length, repeat=repeat)
         # set back to default value of 1
         if repeat != 1:
             self.set_hardware_repeat()
 
-    def send_command(self, command = None, repeat = 1, wait_for_cmd = False, command_bit_length = None):
+    def send_command(self, command=None, repeat=1, wait_for_cmd=False, command_bit_length=None):
         if repeat != 1:
             self.set_hardware_repeat(repeat)
         if command != None:
             command_bit_length = self.set_command(command)
         # sending command
-        self.device.WriteExternal(address = 0+1, data = [0])
-        self.wait_for_command(wait_for_cmd = wait_for_cmd, command_bit_length = command_bit_length, repeat = repeat)
+        self.device.WriteExternal(address=0 + 1, data=[0])
+        self.wait_for_command(wait_for_cmd=wait_for_cmd, command_bit_length=command_bit_length, repeat=repeat)
         # set back to default value of 1
         if repeat != 1:
             self.set_hardware_repeat()
-    
+
     def set_command(self, command):
 #        if not isinstance(command, BitVector.BitVector):
 #            raise TypeError()
         # set command bit length
         command_bit_length = command.length()
         bit_length_array = array.array('B', struct.pack('H', command_bit_length))
-        self.device.WriteExternal(address = 0+3, data = bit_length_array)
+        self.device.WriteExternal(address=0 + 3, data=bit_length_array)
         # set command
         byte_array = bitvector_to_array(command)
-        self.device.WriteExternal(address = 0+8, data = byte_array)
+        self.device.WriteExternal(address=0 + 8, data=byte_array)
         return command_bit_length
-    
-    def set_hardware_repeat(self, repeat = 1):
+
+    def set_hardware_repeat(self, repeat=1):
         repeat_array = array.array('B', struct.pack('H', repeat))
-        self.device.WriteExternal(address = 0+5, data = repeat_array)
-    
-    def wait_for_command(self, wait_for_cmd = False, command_bit_length = None, repeat = 1):
-        #print self.device.ReadExternal(address = 0+1, size = 1)[0]
+        self.device.WriteExternal(address=0 + 5, data=repeat_array)
+
+    def wait_for_command(self, wait_for_cmd=False, command_bit_length=None, repeat=1):
+        # print self.device.ReadExternal(address = 0+1, size = 1)[0]
         if command_bit_length and wait_for_cmd:
-            #print 'sleeping'
-            time.sleep((command_bit_length+500)*0.000000025*repeat) # TODO: optimize wait time
+            # print 'sleeping'
+            time.sleep((command_bit_length + 500) * 0.000000025 * repeat)  # TODO: optimize wait time
         if wait_for_cmd:
-            while not self.device.ReadExternal(address = 0+1, size = 1)[0]&0x01:
-                #print 'waiting'
+            while not self.device.ReadExternal(address=0 + 1, size=1)[0] & 0x01:
+                # print 'waiting'
                 pass
-  
+
     def global_reset(self):
         '''FEI4 Global Reset
-        
-        Special function to do a global reset on FEI4. Sequence of commands has to be like this, otherwise FEI4 will be left in weird state.  
+
+        Special function to do a global reset on FEI4. Sequence of commands has to be like this, otherwise FEI4 will be left in weird state.
         '''
         commands = []
         commands.extend(self.register.get_commands("confmode"))
-        #vthin_altfine, vthin_altcoarse = self.register.get_global_register_value("Vthin_AltFine"), self.register.get_global_register_value("Vthin_AltCoarse")
-        #self.register.set_global_register_value("Vthin_AltFine", 255)
-        #self.register.set_global_register_value("Vthin_AltCoarse", 255)
-        #commands.extend(self.register.get_commands("wrregister", name = ["Vthin_AltFine", "Vthin_AltCoarse"]))
+        # vthin_altfine, vthin_altcoarse = self.register.get_global_register_value("Vthin_AltFine"), self.register.get_global_register_value("Vthin_AltCoarse")
+        # self.register.set_global_register_value("Vthin_AltFine", 255)
+        # self.register.set_global_register_value("Vthin_AltCoarse", 255)
+        # commands.extend(self.register.get_commands("wrregister", name = ["Vthin_AltFine", "Vthin_AltCoarse"]))
         commands.extend(self.register.get_commands("globalreset"))
         self.send_commands(commands)
         time.sleep(0.1)
         commands[:] = []
         commands.extend(self.register.get_commands("confmode"))
-        #self.register.set_global_register_value("Vthin_AltFine", vthin_altfine)
-        #self.register.set_global_register_value("Vthin_AltCoarse", vthin_altcoarse)
-        #commands.extend(self.register.get_commands("wrregister", name = ["Vthin_AltFine", "Vthin_AltCoarse"]))
+        # self.register.set_global_register_value("Vthin_AltFine", vthin_altfine)
+        # self.register.set_global_register_value("Vthin_AltCoarse", vthin_altcoarse)
+        # commands.extend(self.register.get_commands("wrregister", name = ["Vthin_AltFine", "Vthin_AltCoarse"]))
         commands.extend(self.register.get_commands("runmode"))
         self.send_commands(commands)
-        
+
     def configure_all(self, same_mask_for_all_dc=False, do_global_rest=False):
         if do_global_rest:
             self.global_reset()
         self.configure_global()
-        self.configure_pixel(same_mask_for_all_dc = same_mask_for_all_dc)
-        
+        self.configure_pixel(same_mask_for_all_dc=same_mask_for_all_dc)
+
     def configure_global(self):
         commands = []
         commands.extend(self.register.get_commands("confmode"))
         commands.extend(self.register.get_commands("wrregister", readonly=False))
         commands.extend(self.register.get_commands("runmode"))
         self.send_commands(commands)
-        
-    def configure_pixel(self, same_mask_for_all_dc = False):
+
+    def configure_pixel(self, same_mask_for_all_dc=False):
         commands = []
         commands.extend(self.register.get_commands("confmode"))
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc = same_mask_for_all_dc, name = ["Imon", "Enable", "c_high", "c_low", "TDAC", "FDAC"]))
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc = same_mask_for_all_dc, name = ["EnableDigInj"])) # write EnableDigInj last
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=same_mask_for_all_dc, name=["Imon", "Enable", "c_high", "c_low", "TDAC", "FDAC"]))
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=same_mask_for_all_dc, name=["EnableDigInj"]))  # write EnableDigInj last
         commands.extend(self.register.get_commands("runmode"))
         self.send_commands(commands)
-        
+
     def read_service_records(self):
         commands = []
         commands.extend(self.register.get_commands("confmode"))
@@ -117,22 +118,22 @@ class FEI4RegisterUtils(object):
         self.readout.reset_sram_fifo()
         commands = []
         self.register.set_global_register_value('ReadErrorReq', 1)
-        commands.extend(self.register.get_commands("wrregister", name = ['ReadErrorReq']))
-        commands.extend(self.register.get_commands("globalpulse", width = 0))
+        commands.extend(self.register.get_commands("wrregister", name=['ReadErrorReq']))
+        commands.extend(self.register.get_commands("globalpulse", width=0))
         self.register.set_global_register_value('ReadErrorReq', 0)
-        commands.extend(self.register.get_commands("wrregister", name = ['ReadErrorReq']))
+        commands.extend(self.register.get_commands("wrregister", name=['ReadErrorReq']))
         self.send_commands(commands)
-        
+
         data = self.readout.read_data()
 
         commands = []
         commands.extend(self.register.get_commands("runmode"))
         self.send_commands(commands)
         return data
-    
-    def make_pixel_mask(self, mask, default = 0, value = 1, column_offset = 0, row_offset = 0):
+
+    def make_pixel_mask(self, mask, default=0, value=1, column_offset=0, row_offset=0):
         '''Generate pixel mask
-        
+
         Parameters:
         mask : int
             Number of total mask steps. E.g. mask=3 means three steps to enable all pixels
@@ -144,7 +145,7 @@ class FEI4RegisterUtils(object):
             Shifts mask by given value to the right (higher columns)
         row_offset : int
             Shifts mask by given value to the bottom (higher rows)
-            
+
         Example:
         shift_mask = 'enable'
         mask = 3 # three step mask
@@ -156,30 +157,30 @@ class FEI4RegisterUtils(object):
             commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc = True, name = shift_mask))
             self.register_utils.send_commands(commands)
             # do something here
-        
+
         Returns:
         numpy.ndarray
-        
+
         '''
-        dimension = (80,336)
-        #value = np.zeros(dimension, dtype = np.uint8)
-        mask_array = np.empty(dimension, dtype = np.uint8)
+        dimension = (80, 336)
+        # value = np.zeros(dimension, dtype = np.uint8)
+        mask_array = np.empty(dimension, dtype=np.uint8)
         mask_array.fill(default)
         # FE columns and rows start from 1
-        odd_columns = np.arange((0+column_offset)%2, 80, 2)
-        even_columns = np.arange((1+column_offset)%2, 80, 2)
-        odd_rows = np.arange((0+row_offset)%mask, 336, mask)
-        even_row_offset = (int(math.floor(mask/2)+row_offset))%mask
-        even_rows = np.arange(0+even_row_offset, 336, mask)
-        odd_col_row = cartesian((odd_columns, odd_rows)) # get any combination of column and row, no for loop needed
+        odd_columns = np.arange((0 + column_offset) % 2, 80, 2)
+        even_columns = np.arange((1 + column_offset) % 2, 80, 2)
+        odd_rows = np.arange((0 + row_offset) % mask, 336, mask)
+        even_row_offset = (int(math.floor(mask / 2) + row_offset)) % mask
+        even_rows = np.arange(0 + even_row_offset, 336, mask)
+        odd_col_row = cartesian((odd_columns, odd_rows))  # get any combination of column and row, no for loop needed
         even_col_row = cartesian((even_columns, even_rows))
-        mask_array[odd_col_row[:,0], odd_col_row[:,1]] = value # advanced indexing
-        mask_array[even_col_row[:,0], even_col_row[:,1]] = value
+        mask_array[odd_col_row[:, 0], odd_col_row[:, 1]] = value  # advanced indexing
+        mask_array[even_col_row[:, 0], even_col_row[:, 1]] = value
         return mask_array
-        
-    def make_pixel_mask_from_col_row(self, column, row, default = 0, value = 1):
+
+    def make_pixel_mask_from_col_row(self, column, row, default=0, value=1):
         '''Generate mask from column and row lists
-        
+
         Paramaters:
         column : iterable, int
             List of colums values.
@@ -189,25 +190,25 @@ class FEI4RegisterUtils(object):
             Value of pixels that are not selected by the mask.
         value : int
             Value of pixels that are selected by the mask.
-        
+
         Returns:
         numpy.ndarray
         '''
         # FE columns and rows start from 1
-        col_array = np.array(column)-1
-        row_array = np.array(row)-1
-        if np.any(col_array>=80) or np.any(col_array<0) or np.any(row_array>=336) or np.any(col_array<0):
+        col_array = np.array(column) - 1
+        row_array = np.array(row) - 1
+        if np.any(col_array >= 80) or np.any(col_array < 0) or np.any(row_array >= 336) or np.any(col_array < 0):
             raise ValueError('Column and/or row out of range')
-        dimension = (80,336)
-        #value = np.zeros(dimension, dtype = np.uint8)
-        mask = np.empty(dimension, dtype = np.uint8)
+        dimension = (80, 336)
+        # value = np.zeros(dimension, dtype = np.uint8)
+        mask = np.empty(dimension, dtype=np.uint8)
         mask.fill(default)
-        mask[col_array, row_array] = value # advanced indexing
+        mask[col_array, row_array] = value  # advanced indexing
         return mask
-    
-    def make_box_pixel_mask_from_col_row(self, column, row, default = 0, value = 1):
+
+    def make_box_pixel_mask_from_col_row(self, column, row, default=0, value=1):
         '''Generate box shaped mask from column and row lists. Takes the minimum and maximum value from each list.
-        
+
         Paramaters:
         column : iterable, int
             List of colums values.
@@ -217,22 +218,23 @@ class FEI4RegisterUtils(object):
             Value of pixels that are not selected by the mask.
         value : int
             Value of pixels that are selected by the mask.
-        
+
         Returns:
         numpy.ndarray
         '''
         # FE columns and rows start from 1
-        col_array = np.array(column)-1
-        row_array = np.array(row)-1
-        if np.any(col_array>=80) or np.any(col_array<0) or np.any(row_array>=336) or np.any(col_array<0):
+        col_array = np.array(column) - 1
+        row_array = np.array(row) - 1
+        if np.any(col_array >= 80) or np.any(col_array < 0) or np.any(row_array >= 336) or np.any(col_array < 0):
             raise ValueError('Column and/or row out of range')
-        dimension = (80,336)
-        #value = np.zeros(dimension, dtype = np.uint8)
-        mask = np.empty(dimension, dtype = np.uint8)
+        dimension = (80, 336)
+        # value = np.zeros(dimension, dtype = np.uint8)
+        mask = np.empty(dimension, dtype=np.uint8)
         mask.fill(default)
-        mask[col_array.min():col_array.max()+1, row_array.min():row_array.max()+1] = value # advanced indexing
+        mask[col_array.min():col_array.max() + 1, row_array.min():row_array.max() + 1] = value  # advanced indexing
         return mask
-    
+
+
 def cartesian(arrays, out=None):
     """
     Generate a cartesian product of input arrays.
@@ -266,7 +268,7 @@ def cartesian(arrays, out=None):
            [3, 4, 7],
            [3, 5, 6],
            [3, 5, 7]])
-           
+
     Note
     ----
     http://stackoverflow.com/questions/1208118/using-numpy-to-build-an-array-of-all-combinations-of-two-arrays
@@ -281,18 +283,20 @@ def cartesian(arrays, out=None):
         out = np.zeros([n, len(arrays)], dtype=dtype)
 
     m = n / arrays[0].size
-    out[:,0] = np.repeat(arrays[0], m)
+    out[:, 0] = np.repeat(arrays[0], m)
     if arrays[1:]:
-        cartesian(arrays[1:], out=out[0:m,1:])
+        cartesian(arrays[1:], out=out[0:m, 1:])
         for j in xrange(1, arrays[0].size):
-            out[j*m:(j+1)*m,1:] = out[0:m,1:]
+            out[j * m:(j + 1) * m, 1:] = out[0:m, 1:]
     return out
-    
-def parse_key_value(filename, key, deletechars = ''):
+
+
+def parse_key_value(filename, key, deletechars=''):
     with open(filename, 'r') as f:
         return parse_key_value_from_file(f, key, deletechars)
-            
-def parse_key_value_from_file(f, key, deletechars = ''):
+
+
+def parse_key_value_from_file(f, key, deletechars=''):
     for line in f.readlines():
         key_value = re.split("\s+|[\s]*=[\s]*", line)
         if (key_value[0].translate(None, deletechars).lower() == key.translate(None, deletechars).lower()):
