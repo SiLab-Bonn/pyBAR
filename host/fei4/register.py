@@ -984,7 +984,7 @@ class FEI4Register(object):
             name = md5.digest()
         self.config_state[name] = (copy.deepcopy(self.global_registers), copy.deepcopy(self.pixel_registers))
 
-    def restore(self, name=None, keep=False, last=True):
+    def restore(self, name=None, keep=False, last=True, global_register=True, pixel_register=True):
         '''Restoring a configuration restore point.
 
         Parameters
@@ -995,17 +995,27 @@ class FEI4Register(object):
             Keeping restore point for later use.
         last : bool
             If name is not given, the latest restore point will be taken.
+        global_register : bool
+            Restore global register.
+        pixel_register : bool
+            Restore pixel register.
         '''
         if name is None:
             if keep:
                 key = next(reversed(self.config_state) if last else iter(self.config_state))
-                self.global_registers, self.pixel_registers = self.config_state[key]
+                value = self.config_state[key]
             else:
-                self.global_registers, self.pixel_registers = copy.deepcopy(self.config_state.popitem(last=last))
+                value = self.config_state.popitem(last=last)
         else:
-            self.global_registers, self.pixel_registers = copy.deepcopy(self.config_state[name])
+            value = self.config_state[name]
             if not keep:
+                value = copy.deepcopy(value)  # make a copy before deleting object
                 del self.config_state[name]
+
+        if global_register:
+            self.global_registers = copy.deepcopy(value[0])
+        if pixel_register:
+            self.pixel_registers = copy.deepcopy(value[1])
 
     def clear_restore_points(self, name=None):
         '''Deleting all/a configuration restore points/point.
