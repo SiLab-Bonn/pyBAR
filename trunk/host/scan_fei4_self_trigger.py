@@ -11,7 +11,7 @@ class FEI4SelfTriggerScan(ScanBase):
     def __init__(self, config_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_fei4_self_trigger", scan_data_path=None):
         super(FEI4SelfTriggerScan, self).__init__(config_file=config_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
 
-    def scan(self, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=60, **kwargs):
+    def scan(self, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=600, **kwargs):
         '''Scan loop
 
         Parameters
@@ -46,8 +46,9 @@ class FEI4SelfTriggerScan(ScanBase):
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
         # enable GateHitOr that enables FE self-trigger mode
         self.register.set_global_register_value("GateHitOr", 1)
-        self.register.set_global_register_value("Trig_Lat", 232)
-        commands.extend(self.register.get_commands("wrregister", name=["GateHitOr", "Trig_Lat"]))
+        self.register.set_global_register_value("Trig_Lat", 232)  # set trigger latency
+        self.register.set_global_register_value("Trig_Count", 0)  # set number of consecutive triggers
+        commands.extend(self.register.get_commands("wrregister", name=["GateHitOr", "Trig_Lat", "Trig_Count"]))
         commands.extend(self.register.get_commands("runmode"))
         # send commands
         self.register_utils.send_commands(commands)
@@ -129,6 +130,6 @@ class FEI4SelfTriggerScan(ScanBase):
 if __name__ == "__main__":
     import configuration
     scan = FEI4SelfTriggerScan(config_file=configuration.config_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.start(configure=True, use_thread=True, timeout_no_data=600, scan_timeout=60 * 60 * 24, col_span=[1, 1], row_span=[336, 336])
+    scan.start(configure=True, use_thread=True, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60)
     scan.stop()
     scan.analyze()

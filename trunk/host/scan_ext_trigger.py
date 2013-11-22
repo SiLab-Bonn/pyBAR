@@ -12,7 +12,7 @@ class ExtTriggerScan(ScanBase):
     def __init__(self, config_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_ext_trigger", scan_data_path=None):
         super(ExtTriggerScan, self).__init__(config_file=config_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
 
-    def scan(self, mode=0, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=60, max_triggers=10000, **kwargs):
+    def scan(self, mode=0, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=600, max_triggers=10000, **kwargs):
         '''Scan loop
 
         Parameters
@@ -51,8 +51,9 @@ class ExtTriggerScan(ScanBase):
         pixel_reg = "C_Low"
         self.register.set_pixel_register_value(pixel_reg, 0)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
-        self.register.set_global_register_value("Trig_Count", 4)
-        commands.extend(self.register.get_commands("wrregister", name=["Trig_Count"]))
+#         self.register.set_global_register_value("Trig_Lat", 232)  # set trigger latency
+        self.register.set_global_register_value("Trig_Count", 0)  # set number of consecutive triggers
+        commands.extend(self.register.get_commands("wrregister", name=["Trig_Lat", "Trig_Count"]))
         # setting FE into runmode
         commands.extend(self.register.get_commands("runmode"))
         self.register_utils.send_commands(commands)
@@ -156,6 +157,6 @@ class ExtTriggerScan(ScanBase):
 if __name__ == "__main__":
     import configuration
     scan = ExtTriggerScan(config_file=configuration.config_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.start(configure=True, use_thread=True, mode=0, col_span=[1, 80], row_span=[1, 336], timeout_no_data=5, scan_timeout=5*60, max_triggers=100000)
+    scan.start(configure=True, use_thread=True, mode=0, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=100000)
     scan.stop()
     scan.analyze()
