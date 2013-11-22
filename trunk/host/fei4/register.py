@@ -4,6 +4,9 @@ import re
 import os
 import numpy as np
 import itertools
+from collections import OrderedDict
+import hashlib
+import copy
 
 from utils.utils import string_is_binary, flatten_iterable, iterable, str2bool
 
@@ -185,6 +188,7 @@ class FEI4Register(object):
         self.chip_id = 8  # This 4-bit field always exists and is the chip ID. The three least significant bits define the chip address and are compared with the geographical address of the chip (selected via wire bonding), while the most significant one, if set, means that the command is broadcasted to all FE chips receiving the data stream.
         self.chip_flavor = None
         self.chip_flavors = ['fei4a', 'fei4b']
+        self.config_state = OrderedDict()
 
         self.load_configuration_file(self.configuration_file)
 
@@ -965,14 +969,100 @@ class FEI4Register(object):
         # print bv.length()
         return bv1 + bv0
 
-    def save_config_state(self):
-        pass
+    def create_restore_point(self, name=None):
+        '''Creating a configuration restore point.
 
-    def restore_config_state(self):
-        pass
+        Parameters
+        ----------
+        name : str
+            Name of the restore point. If not given, a md5 hash will be generated.
+        '''
+        md5 = hashlib.md5()
+        if name is None:
+            md5.update(self.global_registers)
+            md5.update(self.pixel_registers)
+            name = md5.digest()
+        self.config_state[name] = (copy.deepcopy(self.global_registers), copy.deepcopy(self.pixel_registers))
 
-    def clear(self):
-        pass
+    def restore(self, name=None, keep=False, last=True):
+        '''Restoring a configuration restore point.
 
-    def can_undo(self):
-        pass
+        Parameters
+        ----------
+        name : str
+            Name of the restore point. If not given, a md5 hash will be generated.
+        keep : bool
+            Keeping restore point for later use.
+        last : bool
+            If name is not given, the latest restore point will be taken.
+        '''
+        if name is None:
+            if keep:
+                key = next(reversed(self.config_state) if last else iter(self.config_state))
+                self.global_registers, self.pixel_registers = self.config_state[key]
+            else:
+                self.global_registers, self.pixel_registers = copy.deepcopy(self.config_state.popitem(last=last))
+        else:
+            self.global_registers, self.pixel_registers = copy.deepcopy(self.config_state[name])
+            if not keep:
+                del self.config_state[name]
+
+    def clear_restore_points(self, name=None):
+        '''Deleting all/a configuration restore points/point.
+
+        Parameters
+        ----------
+        name : str
+            Name of the restore point to be deleted. If not given, all restore points will be deleted.
+        '''
+        if name is None:
+            self.config_state.clear()
+        else:
+            del self.config_state[name]
+
+    @property
+    def can_restore(self):
+        '''Any restore point existing?
+
+        Parameters
+        ----------
+        none
+
+        Returns
+        -------
+        True if restore points are existing, else false.
+        '''
+        if self.config_state:
+            return True
+        else:
+            return False
+
+    def has_changed(self, name=None, last=True):
+        '''Compare existing restore point to current configuration.
+
+        Parameters
+        ----------
+        name : str
+            Name of the restore point. If name is not given, the first/last restore point will be taken depending on last.
+        last : bool
+            If name is not given, the latest restore point will be taken.
+
+        Returns
+        -------
+        True if configuration is identical, else false.
+        '''
+        if name is None:
+            key = next(reversed(self.config_state) if last else iter(self.config_state))
+            global_registers, pixel_registers = self.config_state[key]
+        else:
+            global_registers, pixel_registers = self.config_state[name]
+        md5_state = hashlib.md5()
+        md5_state.update(global_registers)
+        md5_state.update(pixel_registers)
+        md5_curr = hashlib.md5()
+        md5_curr.update(self.global_registers)
+        md5_curr.update(self.pixel_registers)
+        if md5_state.digest() != md5_curr.digest():
+            return False
+        else:
+            return True
