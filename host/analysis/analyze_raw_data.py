@@ -695,21 +695,21 @@ class AnalyzeRawData(object):
                 occupancy_array_masked = np.ma.masked_equal(hist, 0)
                 plotting.plotThreeWay(hist=occupancy_array_masked, title="Occupancy", x_axis_title="occupancy", filename=output_pdf)
         if (self._create_tot_hist):
-            plotting.plot_tot(tot_hist=out_file_h5.root.HistTot if out_file_h5 != None else self.tot_hist, filename=output_pdf)
+            plotting.plot_tot(hist=out_file_h5.root.HistTot if out_file_h5 != None else self.tot_hist, filename=output_pdf)
         if (self._create_cluster_size_hist):
-            plotting.plot_cluster_size(cluster_size_hist=out_file_h5.root.HistClusterSize if out_file_h5 != None else self.cluster_size_hist, filename=output_pdf)
+            plotting.plot_cluster_size(hist=out_file_h5.root.HistClusterSize if out_file_h5 != None else self.cluster_size_hist, filename=output_pdf)
         if (self._create_cluster_tot_hist):
             plotting.plot_cluster_tot(hist=out_file_h5.root.HistClusterTot if out_file_h5 != None else self.cluster_tot_hist, filename=output_pdf)
         if (self._create_cluster_tot_hist and self._create_cluster_size_hist):
             plotting.plot_cluster_tot_size(hist=out_file_h5.root.HistClusterTot if out_file_h5 != None else self.cluster_tot_hist, filename=output_pdf)
         if (self._create_rel_bcid_hist):
-            plotting.plot_relative_bcid(relative_bcid_hist=out_file_h5.root.HistRelBcid if out_file_h5 != None else self.rel_bcid_hist, filename=output_pdf)
+            plotting.plot_relative_bcid(hist=out_file_h5.root.HistRelBcid if out_file_h5 != None else self.rel_bcid_hist, filename=output_pdf)
         if (analyzed_data_file == None and self._create_error_hist):
-            plotting.plot_event_errors(error_hist=out_file_h5.root.HistErrorCounter if out_file_h5 != None else self.error_counter_hist, filename=output_pdf)
+            plotting.plot_event_errors(hist=out_file_h5.root.HistErrorCounter if out_file_h5 != None else self.error_counter_hist, filename=output_pdf)
         if (analyzed_data_file == None and self._create_service_record_hist):
-            plotting.plot_service_records(service_record_hist=out_file_h5.root.HistServiceRecord if out_file_h5 != None else self.service_record_hist, filename=output_pdf)
+            plotting.plot_service_records(hist=out_file_h5.root.HistServiceRecord if out_file_h5 != None else self.service_record_hist, filename=output_pdf)
         if (analyzed_data_file == None and self._create_trigger_error_hist):
-            plotting.plot_trigger_errors(trigger_error_hist=out_file_h5.root.HistTriggerErrorCounter if out_file_h5 != None else self.trigger_error_counter_hist, filename=output_pdf)
+            plotting.plot_trigger_errors(hist=out_file_h5.root.HistTriggerErrorCounter if out_file_h5 != None else self.trigger_error_counter_hist, filename=output_pdf)
         if (self._analyzed_data_file != None):
             out_file_h5.close()
         logging.info('Closing output file')
