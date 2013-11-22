@@ -1,9 +1,9 @@
 """This is an example module how to use the raw data analyzer. It takes a table with FE-I4 raw data and interprets, histograms and plots it.
     The first "with-statement" interprets the raw data and can also histogram and cluster hits in the same analysis loop if activated to save time. 
-    The second "with-statement" does the histogrammig and clustering starting from hits. 
+    The second "with-statement" does the histogramming and clustering starting from hits. 
     This shows how to use the analysis if hits are already available 
 """
-scan_name = 'scan_threshold_14'
+scan_name = 'scan_example'
 
 chip_flavor = 'fei4a'
 input_file = 'data/' + scan_name + ".h5"
