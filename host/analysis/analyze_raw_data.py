@@ -282,7 +282,6 @@ class AnalyzeRawData(object):
     @create_cluster_size_hist.setter
     def create_cluster_size_hist(self, value):
         self._create_cluster_size_hist = value
-        # self.clusterizer.create_cluster_size_hist(value)    TODO: implement
 
     @property
     def create_cluster_tot_hist(self):
@@ -291,8 +290,8 @@ class AnalyzeRawData(object):
     @create_cluster_tot_hist.setter
     def create_cluster_tot_hist(self, value):
         self._create_cluster_tot_hist = value
-        # self.clusterizer.create_cluster_tot_hist(value)    TODO: implement
 
+    #@profile
     def interpret_word_table(self, raw_data_file=None, analyzed_data_file=None, FEI4B=False):
         if(raw_data_file != None):
             self._raw_data_file = raw_data_file
@@ -389,9 +388,10 @@ class AnalyzeRawData(object):
                 if(self.scan_parameters != None):
                     nEventIndex = self.interpreter.get_n_meta_data_event()
                     self.histograming.add_meta_event_index(self.meta_event_index, nEventIndex)
-                self.histograming.add_hits(hits[:Nhits], Nhits)
-                if(self._analyzed_data_file != None and (self.create_cluster_hit_table or self.create_cluster_table or self.create_cluster_size_hist or self.create_cluster_tot_hist)):
-                    self.clusterizer.add_hits(hits[:Nhits])
+                if self.is_histogram_hits():
+                    self.histogram_hits(hits[:Nhits], stop_index=Nhits)
+                if(self.is_cluster_hits):
+                    self.cluster_hits(hits[:Nhits])
                     if(self._create_cluster_hit_table):
                         cluster_hit_table.append(cluster_hits[:Nhits])
                     if(self._create_cluster_table):
@@ -422,7 +422,7 @@ class AnalyzeRawData(object):
                 description = data_struct.MetaInfoEventTable.columns
                 if (self.scan_parameters != None):  # add additional column with the scan parameter
                     scan_par_name = self.scan_parameters.dtype.names[0]
-                    description[scan_par_name] = tb.Float64Col(dflt=0.0, pos=3) 
+                    description[scan_par_name] = tb.UInt32Col(dflt=0, pos=3) 
                 meta_data_out_table = self.out_file_h5.createTable(self.out_file_h5.root, name='meta_data', description=description, title='MetaData', filters=self._filter_table)
                 entry = meta_data_out_table.row
                 for i in range(0, nEventIndex):
@@ -433,8 +433,10 @@ class AnalyzeRawData(object):
                         entry[scan_par_name] = self.scan_parameters[i][0]
                     entry.append()
                 meta_data_out_table.flush()
+                if self.scan_parameters != None:
+                    logging.info("Save meta data with scan parameter "+scan_par_name)
             else:
-                logging.error('meta data analysis failed')
+                logging.error('Meta data analysis failed')
         if (self._create_service_record_hist):
             self.service_record_hist = np.zeros(32, dtype=np.uint32)  # IMPORTANT: has to be global to avoid deleting before c library is deleted
             self.interpreter.get_service_records_counters(self.service_record_hist)
@@ -524,12 +526,6 @@ class AnalyzeRawData(object):
 
     # @profile
     def analyze_hit_table(self, analyzed_data_file=None, analyzed_data_out_file=None):
-        if(analyzed_data_file != None):
-            self._analyzed_data_file = analyzed_data_file
-        elif (self._analyzed_data_file == None):
-            logging.warning("No data file with analyzed data give, abort!")
-            return
-
         cluster_hits = np.empty((2 * self._chunk_size,), dtype=[('eventNumber', np.uint32),
                  ('triggerNumber', np.uint32),
                  ('relativeBCID', np.uint8),
@@ -555,10 +551,28 @@ class AnalyzeRawData(object):
                  ('eventStatus', np.uint8)
                  ])
 
-        if(analyzed_data_out_file != None):
+        in_file_h5 = None
+
+        # set output file if an output file name is given, otherwise check if an output file is already opened
+        if analyzed_data_out_file != None:  # if an output file name is specified create new file for analyzed data
+            if self.is_open(self.out_file_h5):
+                self.out_file_h5.close()
             self.out_file_h5 = tb.openFile(analyzed_data_out_file, mode="w", title="Analyzed FE-I4 hits")
+        elif self._analyzed_data_file != None:  # if no output file is specified check if an output file is already open and write new data into the opened one
+            if not self.is_open(self.out_file_h5):
+                self.out_file_h5 = tb.openFile(self._analyzed_data_file, mode="r+")
+                in_file_h5 = self.out_file_h5  # input file is output file
         else:
-            self.out_file_h5 = tb.openFile(analyzed_data_out_file, mode="r+")
+            print self.out_file_h5
+
+        if analyzed_data_file != None:
+            self._analyzed_data_file = analyzed_data_file
+        elif (self._analyzed_data_file == None):
+            logging.warning("No data file with analyzed data given, abort!")
+            return
+
+        if in_file_h5 == None:
+            in_file_h5 = tb.openFile(self._analyzed_data_file, mode="r")
 
         if(self._create_cluster_table):
             cluster_table = self.out_file_h5.createTable(self.out_file_h5.root, name='Cluster', description=data_struct.ClusterInfoTable, title='cluster_hit_data', filters=self._filter_table, expectedrows=self._chunk_size)
@@ -570,19 +584,18 @@ class AnalyzeRawData(object):
         try:
             meta_data_table = in_file_h5.root.meta_data
             meta_data = meta_data_table[:]
-            if (len(meta_data[0]) > 3):
-                scan_par_name = meta_data.dtype.names[3]
-                scan_parameters = meta_data[scan_par_name]
-                self.histograming.add_scan_parameter(scan_parameters)
-                nEventIndex = in_file_h5.root.Hits.read(-1, 0)['event_number']
-                print nEventIndex
+            if (meta_data.dtype.names.index('error_code') < len(meta_data.dtype.names) - 1):
+                meta_data_array = np.array(meta_data['event_number'], dtype=[('metaEventIndex', np.uint32)])
+                self.histograming.add_meta_event_index(meta_data_array, array_length=len(meta_data_table))
+                scan_par_name = meta_data.dtype.names[meta_data.dtype.names.index('error_code') + 1]
+                scan_par_array = np.array(meta_data[scan_par_name], dtype=[(scan_par_name, '<u4'), ])
+                self.histograming.add_scan_parameter(scan_par_array)
+                logging.info("Add scan parameter " + scan_par_name + " for analysis")
             else:
-                scan_parameters = None
+                logging.info("No scan parameter data provided")
                 self.histograming.set_no_scan_parameter()
-
-            self.histograming.add_meta_event_index(self.meta_event_index, nEventIndex)
         except tb.exceptions.NoSuchNodeError:
-            pass
+            logging.info("No meta data provided")
 
         table_size = in_file_h5.root.Hits.shape[0]
         last_event_start_index = 0
@@ -602,27 +615,30 @@ class AnalyzeRawData(object):
             if(iHit == range(0, table_size, self._chunk_size)[-1]):
                 last_event_start_index = n_hits
 
-            self.cluster_hits(hits, stop_index=last_event_start_index)
-#                 self.histogram_hits(hits, stop_index = last_event_start_index)
+            if (self.is_cluster_hits()):
+                self.cluster_hits(hits, stop_index=last_event_start_index)
+
+            if (self.is_histogram_hits()):
+                self.histogram_hits(hits, stop_index=last_event_start_index)
 
             if(self._analyzed_data_file != None and self._create_cluster_hit_table):
                 cluster_hit_table.append(cluster_hits[:last_event_start_index])
             if(self._analyzed_data_file != None and self._create_cluster_table):
                 cluster_table.append(cluster[:self.clusterizer.get_n_clusters()])
+
             logging.info('%d %%' % int(float(float(iHit) / float(table_size) * 100.)))
 
-#             self._create_additional_hit_data()
         logging.info('100 %')
+        self._create_additional_hit_data()
         self._create_additional_cluster_data()
 
         self.out_file_h5.close()
+        in_file_h5.close()
 
     def cluster_hits(self, hits, start_index=0, stop_index=-1):
-        print 'hits[start_index:stop_index].shape[0]', hits[start_index:stop_index].shape[0]
         self.clusterizer.add_hits(hits[start_index:stop_index])
 
     def histogram_hits(self, hits, start_index=0, stop_index=-1):
-        print 'hits[start_index:stop_index].shape[0]', hits[start_index:stop_index].shape[0]
         self.histograming.add_hits(hits[start_index:stop_index], hits[start_index:stop_index].shape[0])
 
     def plot_histograms(self, scan_data_filename):  # plots the histogram from output file if available otherwise from ram
@@ -699,6 +715,23 @@ class AnalyzeRawData(object):
         result_array = np.array(result_list)
         logging.info("S-curve fit finished")
         return result_array.reshape(occupancy_hist.shape[0], occupancy_hist.shape[1], 2)
+
+    def is_open(self, h5_file):
+        try:  # check if output h5 file is already opened
+            h5_file.root
+        except AttributeError:
+            return False
+        return True
+
+    def is_histogram_hits(self):  # returns true if a setting needs to have the hit histogramming active
+        if (self._analyzed_data_file != None and (self._create_occupancy_hist or self._create_tot_hist or self._create_rel_bcid_hist or self._create_hit_table or self._create_threshold_hists or self._create_fitted_threshold_hists)):
+            return True
+        return False
+
+    def is_cluster_hits(self):  # returns true if a setting needs to have the clusterizer active
+        if (self._analyzed_data_file != None and (self.create_cluster_hit_table or self.create_cluster_table or self.create_cluster_size_hist or self.create_cluster_tot_hist)):
+            return True
+        return False
 
 if __name__ == "__main__":
     scan_name = 'scan_threshold_4'
