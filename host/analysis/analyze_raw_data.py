@@ -55,7 +55,7 @@ def fit_scurves_subset(hist, PlsrDAC):
         if(iPixel % 2000 == 0):
             logging.info('Fitting S-curve: %d%%' % (iPixel * 100. / 26880.))
     logging.info('Fitting S-curve: 100%')
-    logging.info('S-Curve fit failed for %d pixel' % n_failed_pxel_fits)
+    logging.info('S-curve fit failed for %d pixel' % n_failed_pxel_fits)
     return result
 
 
@@ -685,8 +685,8 @@ class AnalyzeRawData(object):
             plotting.plotThreeWay(hist=threshold_hist, title='Threshold%s' % ((' (masked %i pixel(s))' % mask_cnt) if self._create_threshold_mask else ''), x_axis_title="threshold [PlsrDAC]", filename=output_pdf, bins=100, minimum=0)
             plotting.plotThreeWay(hist=noise_hist, title='Noise%s' % ((' (masked %i pixel(s))' % mask_cnt) if self._create_threshold_mask else ''), x_axis_title="noise [PlsrDAC]", filename=output_pdf, bins=100, minimum=0)
         if (self._create_fitted_threshold_hists):
-            plotting.plotThreeWay(hist=out_file_h5.root.HistThresholdFitted[:, :] if out_file_h5 != None else self.scurve_fit_results[:, :, 0], title="Threshold (from s-curve fit)", x_axis_title="threshold [PlsrDAC]", filename=output_pdf, bins=100, minimum=0)
-            plotting.plotThreeWay(hist=out_file_h5.root.HistNoiseFitted[:, :] if out_file_h5 != None else self.scurve_fit_results[:, :, 1], title="Noise (from s-curve fit)", x_axis_title="noise [PlsrDAC]", filename=output_pdf, bins=100, minimum=0)
+            plotting.plotThreeWay(hist=out_file_h5.root.HistThresholdFitted[:, :] if out_file_h5 != None else self.scurve_fit_results[:, :, 0], title="Threshold (S-curve fit)", x_axis_title="threshold [PlsrDAC]", filename=output_pdf, bins=100, minimum=0)
+            plotting.plotThreeWay(hist=out_file_h5.root.HistNoiseFitted[:, :] if out_file_h5 != None else self.scurve_fit_results[:, :, 1], title="Noise (S-curve fit)", x_axis_title="noise [PlsrDAC]", filename=output_pdf, bins=100, minimum=0)
         if (self._create_occupancy_hist):
             if(self._create_threshold_hists):
                 plotting.plot_scurves(occupancy_hist=out_file_h5.root.HistOcc[:, :, :] if out_file_h5 != None else self.occupancy_array[:, :, :], filename=output_pdf, scan_parameters=np.linspace(self.histograming.get_min_parameter(), self.histograming.get_max_parameter(), num=self.histograming.get_n_parameters(), endpoint=True))
