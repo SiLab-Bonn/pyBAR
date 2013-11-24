@@ -26,18 +26,12 @@ class DigitalScan(ScanBase):
         commands.extend(self.register.get_commands("confmode"))
         self.register.set_global_register_value("PlsrDAC", 0)  # has to be 0 , otherwise you also have also analog injection
         commands.extend(self.register.get_commands("wrregister", name=["PlsrDAC"]))
-        pixel_reg = "C_High"
-        self.register.set_pixel_register_value(pixel_reg, 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
-        pixel_reg = "C_Low"
-        self.register.set_pixel_register_value(pixel_reg, 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
         self.register_utils.send_commands(commands)
 
         self.readout.start()
 
         cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=35)[0] + self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", mask_steps=mask)[0]
-        self.scan_loop(cal_lvl1_command, repeat=repeat, mask=mask, mask_steps=[], double_columns=[], same_mask_for_all_dc=True, hardware_repeat=True, enable_c_high=False, enable_c_low=False, digital_injection=True, eol_function=None, restore_shift_masks=False)
+        self.scan_loop(cal_lvl1_command, repeat=repeat, mask=mask, mask_steps=[], double_columns=[], same_mask_for_all_dc=True, hardware_repeat=True, enable_c_high=False, enable_c_low=False, shift_masks=["Enable"], digital_injection=True, eol_function=None, restore_shift_masks=False)
 
         self.readout.stop(timeout=10.0)
 
