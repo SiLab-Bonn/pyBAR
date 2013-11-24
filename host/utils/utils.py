@@ -5,6 +5,7 @@ import Queue
 import collections
 import itertools
 import array
+import numpy as np
 
 
 class Timer(object):
@@ -166,12 +167,15 @@ def bitvector_to_bytearray(bitvector, pad_to_n_bytes=4):
 
 
 def bitvector_to_array(bitvector):
-    bs = array.array('B', bitvector.vector.tostring())
-    bitstream_swap = ''
-    lsbits = lambda b: (b * 0x0202020202 & 0x010884422010) % 1023
-    for b in bs:
-        bitstream_swap += chr(lsbits(b))
-    return bitstream_swap
+#     bs = array.array('B', bitvector.vector.tostring())  # no padding needed here, replaces bitvector.getTextFromBitVector()
+#     bitstream_swap = ''
+#     lsbits = lambda b: (b * 0x0202020202 & 0x010884422010) % 1023
+#     for b in bs:
+#         bitstream_swap += chr(lsbits(b))
+#     return bitstream_swap
+    bs = np.fromstring(bitvector.vector, dtype=np.uint8)
+    bs = (bs * 0x0202020202 & 0x010884422010) % 1023
+    return bs.astype(np.uint8).tostring()
 
 
 def list_intersection(list_1, list_2):
