@@ -367,7 +367,7 @@ def plotThreeWay(hist, title, filename=None, x_axis_title=None, minimum=None, ma
     fig = plt.figure()
     fig.patch.set_facecolor('white')
     plt.subplot(311)
-    create_2d_pixel_hist(hist, title=title, x_axis_title="column", y_axis_title="row", z_max=None)
+    create_2d_pixel_hist(hist, title=title, x_axis_title="column", y_axis_title="row", z_max=maximum)
     plt.subplot(312)
     create_1d_hist(hist, bins=bins, x_axis_title=x_axis_title, y_axis_title="#", x_min=minimum, x_max=maximum)
     plt.subplot(313)
