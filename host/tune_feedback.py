@@ -52,7 +52,7 @@ class FeedbackTune(ScanBase):
     def set_n_injections(self, Ninjections=100):
         self.Ninjections = Ninjections
 
-    def scan(self):
+    def scan(self, plots_filename=None, plot_intermediate_steps=False):
         self.write_target_charge()
 
         for PrmpVbpf_bit in self.FeedbackTuneBits:  # reset all GDAC bits
@@ -90,6 +90,9 @@ class FeedbackTune(ScanBase):
                 mean_tot = np.mean(tots)
 
                 logging.info('TOT mean = %f' % mean_tot)
+                TotArray, _ = np.histogram(a=tots, range=(0, 16), bins=16)
+                if plot_intermediate_steps:
+                    plot_tot(tot_hist=TotArray, title='Time-over-Threshold distribution (TOT code, PrmpVbpf ' + str(scan_paramter_value) + ')', filename=plots_filename)
 
                 if(abs(mean_tot - self.TargetTot) < self.abort_precision and PrmpVbpf_bit > 0):  # abort if good value already found to save time
                     logging.info('good result already achieved, skipping missing bits')
@@ -113,15 +116,13 @@ class FeedbackTune(ScanBase):
                         else:
                             logging.info('set bit 0 = 0')
 
-                TotArray, _ = np.histogram(a=tots, range=(0, 16), bins=16)
-#                 plot_tot(tot_hist = TotArray, filename = None)#self.scan_data_filename+".pdf")
-
             if(abs(mean_tot - self.TargetTot) > 2 * self.abort_precision):
                 logging.warning('Tuning of PrmpVbpf to %d tot failed. Difference = %f tot. PrmpVbpf = %d' % (self.TargetTot, abs(mean_tot - self.TargetTot), self.register.get_global_register_value("PrmpVbpf")))
             else:
                 logging.info('Tuned PrmpVbpf to %d' % self.register.get_global_register_value("PrmpVbpf"))
 
-            plot_tot(tot_hist=TotArray, filename=None)
+            self.result = TotArray
+            plot_tot(tot_hist=TotArray, title='Time-over-Threshold distribution after feedback tuning (TOT code, PrmpVbpf ' + str(scan_paramter_value) + ')', filename=plots_filename)
 
 if __name__ == "__main__":
     import configuration
