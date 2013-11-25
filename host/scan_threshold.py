@@ -11,7 +11,7 @@ class ThresholdScan(ScanBase):
     def __init__(self, config_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_threshold", scan_data_path=None):
         super(ThresholdScan, self).__init__(config_file=config_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
 
-    def scan(self, mask_steps=3, repeat_command=100, scan_parameter='PlsrDAC', scan_paramter_values=None):
+    def scan(self, mask_steps=3, repeat_command=100, scan_parameter='PlsrDAC', scan_parameter_values=None):
         '''Scan loop
 
         Parameters
@@ -25,19 +25,19 @@ class ThresholdScan(ScanBase):
         scan_paramter_values : list, tuple
             Specify scan steps. These values will be written into global register scan_parameter.
         '''
-        if scan_paramter_values is None or not scan_paramter_values:
-            scan_paramter_values = range(0, 101, 1)  # default
+        if scan_parameter_values is None or not scan_parameter_values:
+            scan_parameter_values = range(0, 101, 1)  # default
 
         with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier, scan_parameters=[scan_parameter]) as raw_data_file:
 
-            for scan_paramter_value in scan_paramter_values:
+            for scan_parameter_value in scan_parameter_values:
                 if self.stop_thread_event.is_set():
                     break
-                logging.info('Scan step: %s %d' % (scan_parameter, scan_paramter_value))
+                logging.info('Scan step: %s %d' % (scan_parameter, scan_parameter_value))
 
                 commands = []
                 commands.extend(self.register.get_commands("confmode"))
-                self.register.set_global_register_value(scan_parameter, scan_paramter_value)
+                self.register.set_global_register_value(scan_parameter, scan_parameter_value)
                 commands.extend(self.register.get_commands("wrregister", name=[scan_parameter]))
                 self.register_utils.send_commands(commands)
 
@@ -49,7 +49,7 @@ class ThresholdScan(ScanBase):
                 self.readout.stop(timeout=10)
 
                 # saving data
-                raw_data_file.append(self.readout.data, scan_parameters={scan_parameter: scan_paramter_value})
+                raw_data_file.append(self.readout.data, scan_parameters={scan_parameter: scan_parameter_value})
 
     def analyze(self):
         with AnalyzeRawData(raw_data_file=scan.scan_data_filename + ".h5", analyzed_data_file=self.scan_data_filename + "_interpreted.h5") as analyze_raw_data:
@@ -66,6 +66,6 @@ class ThresholdScan(ScanBase):
 if __name__ == "__main__":
     import configuration
     scan = ThresholdScan(config_file=configuration.config_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.start(use_thread=True, scan_paramter_values=range(0, 101, 1))
+    scan.start(use_thread=True, scan_parameter_values=range(0, 101, 1))
     scan.stop()
     scan.analyze()
