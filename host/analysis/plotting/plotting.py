@@ -109,8 +109,8 @@ def plot_relative_bcid(hist, filename=None):
     plot_1d_hist(hist=hist, title='Relative BCID (former LVL1ID)', log_y=True, plot_range=range(0, 16), x_axis_title='Relative BCID [25 ns]', y_axis_title='#', filename=filename)
 
 
-def plot_tot(hist, filename=None):
-    plot_1d_hist(hist=hist, title='Time-over-Threshold distribution (TOT code)', plot_range=range(0, 16), x_axis_title='TOT [25 ns]', y_axis_title='#', color='b', filename=filename)
+def plot_tot(hist, title=None, filename=None):
+    plot_1d_hist(hist=hist, title='Time-over-Threshold distribution (TOT code)' if title == None else title, plot_range=range(0, 16), x_axis_title='TOT [25 ns]', y_axis_title='#', color='b', filename=filename)
 
 
 def plot_event_errors(hist, filename=None):
@@ -362,6 +362,8 @@ def plotThreeWay(hist, title, filename=None, x_axis_title=None, minimum=None, ma
             maximum = 1
         else:
             maximum = 2 * np.ma.median(hist) if maximum is None else maximum
+            if maximum < 1:
+                maximum = 10
             maximum = round_to_multiple(maximum, math.floor(math.log10(maximum)))
     x_axis_title = '' if x_axis_title is None else x_axis_title
     fig = plt.figure()
