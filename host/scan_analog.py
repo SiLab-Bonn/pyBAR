@@ -12,14 +12,14 @@ class AnalogScan(ScanBase):
     def __init__(self, config_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_analog", scan_data_path=None):
         super(AnalogScan, self).__init__(config_file=config_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
 
-    def scan(self, configure=True, mask=3, repeat=100, scan_parameter='PlsrDAC', scan_paramter_value=100):
+    def scan(self, mask_steps=3, repeat_command=100, scan_parameter='PlsrDAC', scan_paramter_value=100):
         '''Scan loop
 
         Parameters
         ----------
-        mask : int
+        mask_steps : int
             Number of mask steps.
-        repeat : int
+        repeat_command : int
             Number of injections.
         scan_parameter : string
             Name of global register.
@@ -39,13 +39,13 @@ class AnalogScan(ScanBase):
 
         self.readout.start()
 
-        cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", mask_steps=mask)[0]
-        self.scan_loop(cal_lvl1_command, repeat=repeat, mask=mask, mask_steps=[], double_columns=[], same_mask_for_all_dc=True, hardware_repeat=True, digital_injection=False, eol_function=None, restore_shift_masks=False)
+        cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", mask_steps=mask_steps)[0]
+        self.scan_loop(cal_lvl1_command, repeat_command=repeat_command, hardware_repeat=True, mask_steps=mask_steps, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_c_high=None, enable_c_low=None, shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=False, mask=None)
 
         self.readout.stop(timeout=10.0)
 
         # plotting data
-        plot_occupancy(*convert_data_array(data_array_from_data_dict_iterable(self.readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array), max_occ=repeat * 2, filename=self.scan_data_filename + "_occupancy.pdf")
+        plot_occupancy(*convert_data_array(data_array_from_data_dict_iterable(self.readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array), max_occ=repeat_command * 2, filename=self.scan_data_filename + "_occupancy.pdf")
 
         # saving data
         save_raw_data_from_data_dict_iterable(self.readout.data, filename=self.scan_data_filename, title=self.scan_identifier)

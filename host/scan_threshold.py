@@ -11,28 +11,26 @@ class ThresholdScan(ScanBase):
     def __init__(self, config_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_threshold", scan_data_path=None):
         super(ThresholdScan, self).__init__(config_file=config_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
 
-    def scan(self, mask=3, repeat=100, scan_parameter='PlsrDAC', scan_paramter_values=None):
+    def scan(self, mask_steps=3, repeat_command=100, scan_parameter='PlsrDAC', scan_paramter_values=None):
         '''Scan loop
 
         Parameters
         ----------
-        mask : int
+        mask_steps : int
             Number of mask steps.
-        repeat : int
+        repeat_command : int
             Number of injections per scan step.
         scan_parameter : string
             Name of global register.
         scan_paramter_values : list, tuple
             Specify scan steps. These values will be written into global register scan_parameter.
         '''
-        if scan_paramter_values is None:
-            scan_paramter_value_list = range(0, 101, 1)  # default
-        else:
-            scan_paramter_value_list = list(scan_paramter_values)
+        if scan_paramter_values is None or not scan_paramter_values:
+            scan_paramter_values = range(0, 101, 1)  # default
 
         with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier, scan_parameters=[scan_parameter]) as raw_data_file:
 
-            for scan_paramter_value in scan_paramter_value_list:
+            for scan_paramter_value in scan_paramter_values:
                 if self.stop_thread_event.is_set():
                     break
                 logging.info('Scan step: %s %d' % (scan_parameter, scan_paramter_value))
@@ -45,8 +43,8 @@ class ThresholdScan(ScanBase):
 
                 self.readout.start()
 
-                cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", mask_steps=mask)[0]
-                self.scan_loop(cal_lvl1_command, repeat=repeat, mask=mask, mask_steps=[], double_columns=[], same_mask_for_all_dc=True, hardware_repeat=True, digital_injection=False, eol_function=None, restore_shift_masks=False)
+                cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", mask_steps=mask_steps)[0]
+                self.scan_loop(cal_lvl1_command, repeat_command=repeat_command, hardware_repeat=True, mask_steps=mask_steps, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=False, eol_function=None, digital_injection=False, enable_c_high=None, enable_c_low=None, shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=False, mask=None)
 
                 self.readout.stop(timeout=10)
 
