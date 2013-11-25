@@ -16,7 +16,8 @@ class TestRegisters(ScanBase):
         
         Note
         ----
-        FEI4A has timing issues when reading back pixel registers. Data is corrupted. It is a known bug of the FEI4A. 
+        Number of register errors is some arbitrary number.
+        FEI4A has timing issues when reading pixel registers. The data from pixel registers is corrupted. It is a known bug of the FEI4A. 
         '''
         number_of_errors = self.test_global_register()
         logging.info('Global Register Test: Found %d error(s)' % number_of_errors)
