@@ -52,10 +52,12 @@ class TdacTune(ScanBase):
     def set_n_injections(self, Ninjections=100):
         self.Ninjections = Ninjections
 
-    def scan(self):
+    def scan(self, plots_filename=None, plot_intermediate_steps=False):
         self.write_target_threshold()
         addedAdditionalLastBitScan = False
         lastBitResult = np.zeros(shape=self.register.get_pixel_register_value("TDAC").shape, dtype=self.register.get_pixel_register_value("TDAC").dtype)
+
+        print 'self.register.get_global_register_value("PlsrDAC")',self.register.get_global_register_value("PlsrDAC")
 
         self.set_start_tdac()
 
@@ -90,7 +92,8 @@ class TdacTune(ScanBase):
                 raw_data_file.append(self.readout.data, scan_parameters={scan_parameter: scan_paramter_value})
 
                 OccupancyArray, _, _ = np.histogram2d(*convert_data_array(data_array_from_data_dict_iterable(self.readout.data), filter_func=logical_and(is_data_record, is_data_from_channel(4)), converter_func=get_col_row_array_from_data_record_array), bins=(80, 336), range=[[1, 80], [1, 336]])
-                plotThreeWay(hist=OccupancyArray.transpose(), title="Occupancy")
+                if plot_intermediate_steps:
+                    plotThreeWay(OccupancyArray.transpose(), title="Occupancy (TDAC tuning bit " + str(Tdac_bit) + ")", x_axis_title='Occupancy', filename=plots_filename)
 
                 tdac_mask = self.register.get_pixel_register_value("TDAC")
                 if(Tdac_bit > 0):
@@ -107,8 +110,10 @@ class TdacTune(ScanBase):
                         OccupancyArray[abs(OccupancyArray - repeat_command / 2) > abs(lastBitResult - repeat_command / 2)] = lastBitResult[abs(OccupancyArray - repeat_command / 2) > abs(lastBitResult - repeat_command / 2)]
 
             self.register.set_pixel_register_value("TDAC", tdac_mask)
-            plotThreeWay(hist=OccupancyArray.transpose(), title="Occupancy final", x_axis_title="Occupancy")
-            plotThreeWay(hist=self.register.get_pixel_register_value("TDAC").transpose(), title="TDAC distribution final", x_axis_title="TDAC")
+            self.result = OccupancyArray
+
+            plotThreeWay(hist=self.result.transpose(), title="Occupancy after TDAC tuning", x_axis_title="Occupancy", filename=plots_filename)
+            plotThreeWay(hist=self.register.get_pixel_register_value("TDAC").transpose(), title="TDAC distribution after tuning", x_axis_title="TDAC", filename=plots_filename)
             logging.info('Tuned Tdac!')
 
 if __name__ == "__main__":

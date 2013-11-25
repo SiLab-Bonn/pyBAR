@@ -57,7 +57,7 @@ class FdacTune(ScanBase):
     def set_n_injections(self, Ninjections=20):
         self.Ninjections = Ninjections
 
-    def scan(self):
+    def scan(self, plots_filename=None, plot_intermediate_steps=False):
         self.write_target_charge()
         self.set_start_fdac()
 
@@ -96,7 +96,8 @@ class FdacTune(ScanBase):
                 col_row_tot = np.column_stack(get_col_row_tot_array_from_data_record_array(convert_data_array(data_array_from_data_dict_iterable(self.readout.data), filter_func=logical_and(is_data_record, is_data_from_channel(4)))))
                 TotArray = np.histogramdd(col_row_tot, bins=(80, 336, 16), range=[[1, 80], [1, 336], [0, 15]])[0]
                 TotAvrArray = np.average(TotArray, axis=2, weights=range(0, 16)) * sum(range(0, 16)) / repeat_command
-                plotThreeWay(hist=TotAvrArray.transpose(), title="TOT mean", x_axis_title='mean TOT')
+                if plot_intermediate_steps:
+                    plotThreeWay(hist=TotAvrArray.transpose().transpose(), title="TOT mean (FDAC tuning bit " + str(Fdac_bit) + ")", x_axis_title='mean TOT', filename=plots_filename)
 
                 Fdac_mask = self.register.get_pixel_register_value("Fdac")
                 if(Fdac_bit > 0):
@@ -113,8 +114,9 @@ class FdacTune(ScanBase):
                         TotAvrArray[abs(TotAvrArray - self.TargetTot) > abs(lastBitResult - self.TargetTot)] = lastBitResult[abs(TotAvrArray - self.TargetTot) > abs(lastBitResult - self.TargetTot)]
 
             self.register.set_pixel_register_value("Fdac", Fdac_mask)
-            plotThreeWay(hist=TotAvrArray.transpose(), title="TOT average final", x_axis_title="TOT average")
-            plotThreeWay(hist=self.register.get_pixel_register_value("FDAC").transpose(), title="FDAC distribution final", x_axis_title="FDAC")
+            self.result = TotAvrArray
+            plotThreeWay(hist=TotAvrArray.transpose(), title="TOT mean after FDAC tuning", x_axis_title="TOT mean", filename=plots_filename)
+            plotThreeWay(hist=self.register.get_pixel_register_value("FDAC").transpose(), title="FDAC distribution after tuning", x_axis_title="FDAC", filename=plots_filename)
             logging.info('Tuned Fdac!')
 
 if __name__ == "__main__":
