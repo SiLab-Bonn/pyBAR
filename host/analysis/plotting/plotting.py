@@ -258,7 +258,7 @@ def create_2d_pixel_hist(hist2d, title=None, x_axis_title=None, y_axis_title=Non
             z_max = 2 * math.ceil(hist2d.max())
     bounds = np.linspace(start=0, stop=z_max, num=9, endpoint=True)
     cmap = cm.get_cmap('CMRmap')
-    cmap.set_bad('k')
+    cmap.set_bad('w')
     norm = colors.BoundaryNorm(bounds, cmap.N)
     # plot
     plt.imshow(hist2d, interpolation='nearest', aspect="auto", cmap=cmap, norm=norm, extent=extent)
