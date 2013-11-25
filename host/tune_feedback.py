@@ -92,7 +92,7 @@ class FeedbackTune(ScanBase):
                 logging.info('TOT mean = %f' % mean_tot)
                 TotArray, _ = np.histogram(a=tots, range=(0, 16), bins=16)
                 if plot_intermediate_steps:
-                    plot_tot(tot_hist=TotArray, title='Time-over-Threshold distribution (TOT code, PrmpVbpf ' + str(scan_paramter_value) + ')', filename=plots_filename)
+                    plot_tot(hist=TotArray, title='Time-over-Threshold distribution (PrmpVbpf ' + str(scan_paramter_value) + ')', filename=plots_filename)
 
                 if(abs(mean_tot - self.TargetTot) < self.abort_precision and PrmpVbpf_bit > 0):  # abort if good value already found to save time
                     logging.info('good result already achieved, skipping missing bits')
@@ -122,7 +122,7 @@ class FeedbackTune(ScanBase):
                 logging.info('Tuned PrmpVbpf to %d' % self.register.get_global_register_value("PrmpVbpf"))
 
             self.result = TotArray
-            plot_tot(tot_hist=TotArray, title='Time-over-Threshold distribution after feedback tuning (TOT code, PrmpVbpf ' + str(scan_paramter_value) + ')', filename=plots_filename)
+            plot_tot(hist=TotArray, title='Time-over-Threshold distribution after feedback tuning (PrmpVbpf ' + str(scan_paramter_value) + ')', filename=plots_filename)
 
 if __name__ == "__main__":
     import configuration

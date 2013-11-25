@@ -57,8 +57,6 @@ class TdacTune(ScanBase):
         addedAdditionalLastBitScan = False
         lastBitResult = np.zeros(shape=self.register.get_pixel_register_value("TDAC").shape, dtype=self.register.get_pixel_register_value("TDAC").dtype)
 
-        print 'self.register.get_global_register_value("PlsrDAC")',self.register.get_global_register_value("PlsrDAC")
-
         self.set_start_tdac()
 
         mask_steps = 3

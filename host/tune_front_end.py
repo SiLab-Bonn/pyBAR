@@ -17,8 +17,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(leve
 target_threshold = 50  # in PlsrDAC
 target_charge = 270  # in PlsrDAC
 target_tot = 5
-global_iterations = 0  # set 1..5, 0 is global threshold tuning only
-local_iterations = 0  # set 1..5, 0 is local threshold tuning only
+global_iterations = 1  # set 1..5, 0 is global threshold tuning only
+local_iterations = 1  # set 1..5, 0 is local threshold tuning only
 cfg_name = "tuning"
 
 if __name__ == "__main__":

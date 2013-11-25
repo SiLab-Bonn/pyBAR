@@ -114,8 +114,6 @@ class GdacTune(ScanBase):
         mask_steps = 3
         enable_mask_steps = [0]  # one mask step to increase speed, no effect on precision
 
-        print 'self.register.get_global_register_value("PlsrDAC")',self.register.get_global_register_value("PlsrDAC")
-
         def bits_set(int_type):
             int_type = int(int_type)
             count = 0
