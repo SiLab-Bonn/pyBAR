@@ -17,7 +17,7 @@ from daq.readout_utils import ReadoutUtils
 from daq.readout import Readout
 
 import signal
-import BitVector
+from bitarray import bitarray
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
@@ -244,7 +244,7 @@ class ScanBase(object):
         mask : array-like
             Additional mask. Must be convertible to an array of booleans with the same shape as mask array. True indicates a masked (i.e. invalid) data. Masked pixels will be selected (enabled) during mask shifting.
         '''
-        if not isinstance(command, BitVector.BitVector):
+        if not isinstance(command, bitarray):
             raise TypeError
 
         # create restore point
@@ -309,12 +309,12 @@ class ScanBase(object):
                 #commands.extend(self.register.get_commands("wrregister", name=["Colpr_Addr"]))
                 #commands.extend(run_mode_command)
 
-#                 self.register_utils.wait_for_command(wait_for_cmd=True)
+                self.register_utils.wait_for_command(wait_for_cmd=True)
                 self.register_utils.send_commands(commands)
 
                 bit_length = self.register_utils.set_command(command)
                 if hardware_repeat == True:
-                    self.register_utils.send_command(repeat=repeat_command, wait_for_cmd=True, command_bit_length=bit_length)
+                    self.register_utils.send_command(repeat=repeat_command, wait_for_cmd=False, command_bit_length=bit_length)
                 else:
                     for _ in range(repeat_command):
                         self.register_utils.send_command()
@@ -323,7 +323,7 @@ class ScanBase(object):
                 except TypeError:
                     pass
 
-#             self.register_utils.wait_for_command(wait_for_cmd=True)
+            self.register_utils.wait_for_command(wait_for_cmd=True)
 
         # restoring default values
         self.register.restore(name=restore_point_name)

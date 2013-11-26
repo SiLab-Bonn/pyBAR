@@ -1,4 +1,5 @@
-import BitVector  # note: bitarray, bitstring, BitVector are packages with similar functionality
+#import BitVector  # note: bitarray, bitstring, BitVector are packages with similar functionality
+from bitarray import bitarray
 import xml.sax
 import re
 import os
@@ -7,8 +8,18 @@ import itertools
 from collections import OrderedDict
 import hashlib
 import copy
+import struct
 
 from utils.utils import string_is_binary, flatten_iterable, iterable, str2bool
+
+
+def bitarray_from_value(value, size=None, fmt='Q'):
+    ba = bitarray(endian='little')
+    ba.frombytes(struct.pack(fmt, value))
+    if size is not None:
+        ba = ba[:size]
+    ba.reverse()
+    return ba
 
 
 class FEI4GlobalRegister(object):
@@ -49,35 +60,37 @@ class FEI4GlobalRegister(object):
         """add: self + other
 
         """
+        # other is FEI4GlobalRegister
         try:
-            return BitVector.BitVector(size=self.bitlength, intVal=self.value) + BitVector.BitVector(size=other.bitlength, intVal=other.value)
+            return bitarray_from_value(value=self.value, size=self.bitlength) + bitarray_from_value(value=other.value, size=other.bitlength)
         except TypeError:
-            pass
-
-        try:
-            return BitVector.BitVector(size=self.bitlength, intVal=self.value) + other
-        except TypeError:
-            pass
-
-        try:
-            return BitVector.BitVector(size=self.bitlength, intVal=self.value) + BitVector.BitVector(bitstring=other)
-        except TypeError:
-            pass
+            # other is bitarray.bitarray
+            try:
+                return bitarray_from_value(value=self.value, size=self.bitlength) + other
+            except TypeError:
+                # other is bit string
+                try:
+                    return bitarray_from_value(value=self.value, size=self.bitlength) + bitarray(other, endian='little')
+                except:
+                    raise Exception('Do not know how to add')
 
     def __radd__(self, other):
         """Reverse add: other + self
 
         """
+        # other is FEI4GlobalRegister
         try:
-            return BitVector.BitVector(bitstring=other) + BitVector.BitVector(size=self.bitlength, intVal=self.value)
+            return bitarray_from_value(value=other.value, size=other.bitlength) + bitarray_from_value(value=self.value, size=self.bitlength)
         except TypeError:
+            # other is bitarray.bitarray
             try:
-                return other + BitVector.BitVector(size=self.bitlength, intVal=self.value)
+                return other + bitarray_from_value(value=self.value, size=self.bitlength)
             except TypeError:
+                # other is bit string
                 try:
-                    return BitVector.BitVector(size=self.bitlength, intVal=self.value)
+                    return bitarray(other, endian='little') + bitarray_from_value(value=self.value, size=self.bitlength)
                 except:
-                    raise Exception("do not know how to add")
+                    raise Exception('Do not know how to radd')
 
     # rich comparison:
     def __eq__(self, other):
@@ -582,22 +595,23 @@ class FEI4Register(object):
 
         if command_name.lower() == "zeros":
             if "length" in kwargs:
-                bv = BitVector.BitVector(size=kwargs["length"])  # all bits to zero
+                bv = bitarray(kwargs["length"], endian='little')  # all bits to zero
             elif "mask_steps" in kwargs:
                 def calculate_wait_cycles(mask_steps):
                     return int(336 * 2 / mask_steps ** (1 / 2) * 24 / 4 * 3)  # good practice
-                bv = BitVector.BitVector(size=calculate_wait_cycles(kwargs["mask_steps"]))
+                bv = bitarray(calculate_wait_cycles(kwargs["mask_steps"]), endian='little')
             else:
-                raise ValueError('cannot calculate length')
+                raise ValueError('Cannot calculate length')
+            bv.setall(0)
             commands.append(bv)
         elif command_name.lower() == "ones":
             if "length" in kwargs:
-                bv = BitVector.BitVector(size=kwargs["length"])  # all bits to zero
+                bv = bitarray(kwargs["length"], endian='little')  # all bits to zero
             elif "mask_steps" in kwargs:
-                bv = BitVector.BitVector(size=calculate_wait_cycles(kwargs["mask_steps"]))
+                bv = bitarray(calculate_wait_cycles(kwargs["mask_steps"]), endian='little')
             else:
                 raise ValueError('cannot calculate length')
-            bv.reset(1)  # all bits to one
+            bv.setall(1)  # all bits to one
             commands.append(bv)
         elif command_name.lower() == "wrregister":
             # print "wrregister"
@@ -685,13 +699,17 @@ class FEI4Register(object):
     def build_command(self, command_name, **kwargs):
         """build command from command_name and keyword values
 
-        Usage:
-        Receives: command name as defined inside xml file, key-value-pairs as defined inside bit stream filed for each command
-        Returns: list of command bitvectors
+        Returns
+        -------
+        command_bitvector : list
+            List of bitarrays.
 
+        Usage
+        -----
+        Receives: command name as defined inside xml file, key-value-pairs as defined inside bit stream filed for each command
         """
         command_name = command_name.lower()
-        command_bitvector = BitVector.BitVector(size=0)
+        command_bitvector = bitarray(0, endian='little')
         try:
             command_object = self.get_command_objects(name=command_name)[0]
         except IndexError:
@@ -706,7 +724,7 @@ class FEI4Register(object):
                     command_part_object = None
                 if command_part_object and len(command_part_object.bitstream) != 0:  # command parts of defined content and length, e.g. Slow, ...
                     if string_is_binary(command_part_object.bitstream):
-                        command_bitvector += BitVector.BitVector(bitstring=command_part_object.bitstream)
+                        command_bitvector += bitarray(command_part_object.bitstream, endian='little')
                     else:
                         command_bitvector += self.build_command(part, **kwargs)
                 elif command_part_object and len(command_part_object.bitstream) == 0:  # Command parts with any content of defined length, e.g. ChipID, Address, ...
@@ -715,15 +733,15 @@ class FEI4Register(object):
                         value = kwargs[part]
                     try:
                         command_bitvector += value
-                    except AttributeError:
+                    except TypeError:  # value is no bitarray
                         if string_is_binary(value):
                             value = int(value, 2)
                         try:
-                            command_bitvector += BitVector.BitVector(size=command_part_object.bitlength, intVal=int(value))
+                            command_bitvector += bitarray_from_value(value=int(value), size=command_part_object.bitlength, fmt='I')
                         except:
                             raise Exception("unknown type")
                 elif string_is_binary(part):
-                    command_bitvector += BitVector.BitVector(bitstring=part)
+                    command_bitvector += bitarray(part, endian='little')
                 # elif part in kwargs.keys():
                 #    command_bitvector += kwargs[command_name]
             if command_bitvector.length() != command_object.bitlength:
@@ -746,7 +764,7 @@ class FEI4Register(object):
             pass
 
         try:
-            return x + BitVector.BitVector(size=y.bitlength, intVal=y.value)
+            return x + bitarray_from_value(value=y.value, size=y.bitlength, fmt='I')
         except AttributeError:
             pass
 
@@ -823,21 +841,24 @@ class FEI4Register(object):
         register_bitsets = []
         for register_address in register_addresses:
             register_objects = self.get_global_register_objects(addresses=register_address)
-            register_bitset = BitVector.BitVector(size=16)  # TODO remove hardcoded register size, see also below
+            register_bitset = bitarray(16, endian='little')  # TODO remove hardcoded register size, see also below
+            register_bitset.setall(0)
             register_littleendian = False
             for register_object in register_objects:
                 if register_object.register_littleendian:  # check for register endianness
                     register_littleendian = True
                 if (16 * register_object.address + register_object.offset < 16 * (register_address + 1) and
                     16 * register_object.address + register_object.offset + register_object.bitlength > 16 * register_address):
-                    reg = BitVector.BitVector(size=register_object.bitlength, intVal=register_object.value)
+                    reg = bitarray_from_value(value=register_object.value, size=register_object.bitlength)
                     if register_object.littleendian:
-                        reg = reg.reverse()
+                        reg.reverse()
                     # register_bitset[max(0, 16*(register_object.address-register_address)+register_object.offset):min(16, 16*(register_object.address-register_address)+register_object.offset+register_object.bitlength)] |= reg[max(0, 16*(register_address-register_object.address)-register_object.offset):min(register_object.bitlength,16*(register_address-register_object.address+1)-register_object.offset)] # [ bit(n) bit(n-1)... bit(0) ]
                     register_bitset[max(0, 16 - 16 * (register_object.address - register_address) - register_object.offset - register_object.bitlength):min(16, 16 - 16 * (register_object.address - register_address) - register_object.offset)] |= reg[max(0, register_object.bitlength - 16 - 16 * (register_address - register_object.address) + register_object.offset):min(register_object.bitlength, register_object.bitlength + 16 - 16 * (register_address - register_object.address + 1) + register_object.offset)]  # [ bit(0)... bit(n-1) bit(n) ]
                 else:
                     raise Exception("wrong register object")
-            register_bitsets.append(register_bitset.reverse() if register_littleendian else register_bitset)
+            if register_littleendian:
+                register_bitset.reverse()
+            register_bitsets.append(register_bitset)
         return register_bitsets
 
     def get_command_objects(self, **kwargs):
@@ -958,12 +979,13 @@ class FEI4Register(object):
             raise Exception("wrong bit number")
         col0 = register_object.value[dc_no * 2, :]
         sel0 = (2 ** bit_no == (col0 & 2 ** bit_no))
-        bv0 = BitVector.BitVector(bitlist=sel0.tolist())
+        bv0 = bitarray(sel0.tolist(), endian='little')
         col1 = register_object.value[dc_no * 2 + 1, :]
         sel1 = (2 ** bit_no == (col1 & 2 ** bit_no))
         # sel1 = sel1.astype(numpy.uint8) # copy of array
         # sel1 = sel1.view(dtype=np.uint8) # in-place type conversion
-        bv1 = BitVector.BitVector(bitlist=sel1.tolist()).reverse()  # shifted first
+        bv1 = bitarray(sel1.tolist(), endian='little')
+        bv1.reverse()  # shifted first
         # bv = bv1+bv0
         # print bv
         # print bv.length()
