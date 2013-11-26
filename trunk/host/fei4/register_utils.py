@@ -68,9 +68,9 @@ class FEI4RegisterUtils(object):
         repeat_array = array.array('B', struct.pack('H', repeat))
         self.device.WriteExternal(address=0 + 5, data=repeat_array)
 
-    def wait_for_command(self, wait_for_cmd=False, command_bit_length=None, repeat=1):
+    def wait_for_command(self, wait_for_cmd=False, command_bit_length=0, repeat=1):
         # print self.device.ReadExternal(address = 0+1, size = 1)[0]
-        if command_bit_length and wait_for_cmd:
+        if command_bit_length != 0 and wait_for_cmd:
             # print 'sleeping'
             time.sleep((command_bit_length + 500) * 0.000000025 * repeat)  # TODO: optimize wait time
         if wait_for_cmd:
