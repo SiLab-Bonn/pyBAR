@@ -14,7 +14,7 @@ class FEI4RegisterUtils(object):
         self.readout = readout
         self.register = register
 
-    def send_commands(self, commands=None, repeat=1, repeat_all=1, wait_for_cmd=False, command_bit_length=None):
+    def send_commands(self, commands=None, repeat=1, repeat_all=1, wait_for_cmd=False, command_bit_length=None, concatenate=False):
         if repeat != 1:
             self.set_hardware_repeat(repeat)
         for _ in range(repeat_all):
@@ -22,10 +22,18 @@ class FEI4RegisterUtils(object):
                 self.device.WriteExternal(address=0 + 1, data=[0])
                 self.wait_for_command(wait_for_cmd=wait_for_cmd, command_bit_length=command_bit_length, repeat=repeat)
             else:
-                for command in commands:
+                if concatenate:
+                    command = reduce(lambda x, y: x + y, commands)
                     command_bit_length = self.set_command(command)
+                    if command_bit_length > 2048 * 8:
+                        raise ValueError('Result of command concatenation is too long')
                     self.device.WriteExternal(address=0 + 1, data=[0])
                     self.wait_for_command(wait_for_cmd=wait_for_cmd, command_bit_length=command_bit_length, repeat=repeat)
+                else:
+                    for command in commands:
+                        command_bit_length = self.set_command(command)
+                        self.device.WriteExternal(address=0 + 1, data=[0])
+                        self.wait_for_command(wait_for_cmd=wait_for_cmd, command_bit_length=command_bit_length, repeat=repeat)
         # set back to default value of 1
         if repeat != 1:
             self.set_hardware_repeat()
