@@ -1,4 +1,4 @@
-""" Script to tune the the hole front end
+"""Full tuning of the FE chip (global and pixel registers) to target values defined below. This script just runs other scripts which will do the work.
 """
 from datetime import datetime
 import configuration
@@ -55,7 +55,7 @@ if __name__ == "__main__":
     PrmpVbpf = 0
     Vthin_AC = 0
     Vthin_AF = 0
- 
+
     for iteration in range(0, global_iterations):  # tune iteratively with decreasing range to save time
         start_bit = 7 - difference_bit * iteration
         logging.info("Global tuning iteration %d" % iteration)
@@ -68,15 +68,15 @@ if __name__ == "__main__":
         feedback_tune_scan.start(configure=True, plots_filename=output_pdf)
         feedback_tune_scan.stop()
         PrmpVbpf = feedback_tune_scan.register.get_global_register_value("PrmpVbpf")
- 
+
     gdac_tune_scan.start(configure=True, plots_filename=output_pdf)
     gdac_tune_scan.stop()
     Vthin_AC = gdac_tune_scan.register.get_global_register_value("Vthin_AltCoarse")
     Vthin_AF = gdac_tune_scan.register.get_global_register_value("Vthin_AltFine")
     logging.info("Results of global tuning PrmpVbpf/Vthin_AltCoarse,Vthin_AltFine = %d/%d,%d" % (PrmpVbpf, Vthin_AC, Vthin_AF))
- 
+
     difference_bit = int(5 / (local_iterations if local_iterations > 0 else 1))
- 
+
     for iteration in range(0, local_iterations):  # tune iteratively
         start_bit = 4  # -difference_bit*iteration
         logging.info("Lokal tuning iteration %d" % iteration)
@@ -86,19 +86,19 @@ if __name__ == "__main__":
         tdac_tune_scan.stop()
         fdac_tune_scan.start(configure=True, plots_filename=output_pdf)
         fdac_tune_scan.stop()
- 
+
     tdac_tune_scan.start(configure=True, plots_filename=output_pdf)
     tdac_tune_scan.stop()
- 
+
     gdac_tune_scan.register.save_configuration(name=cfg_name)
- 
+
     if(global_iterations > 0):
         plotThreeWay(hist=tdac_tune_scan.register.get_pixel_register_value("TDAC").transpose(), title="TDAC distribution after complete tuning", x_axis_title='TDAC', filename=output_pdf)
         plotThreeWay(hist=tdac_tune_scan.result.transpose(), title="Occupancy after complete tuning", x_axis_title='Occupancy', filename=output_pdf)
- 
+
     if(local_iterations > 0):
         plotThreeWay(hist=fdac_tune_scan.register.get_pixel_register_value("FDAC").transpose(), title="FDAC distribution after complete tuning", x_axis_title='FDAC', filename=output_pdf)
         plotThreeWay(hist=fdac_tune_scan.result.transpose(), title="TOT mean after complete tuning", x_axis_title='mean TOT', filename=output_pdf)
- 
+
     output_pdf.close()
     logging.info("Tuning finished in " + str(datetime.now() - startTime))
