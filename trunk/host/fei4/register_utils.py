@@ -4,6 +4,7 @@ import math
 import time
 import numpy as np
 import re
+import BitVector
 
 from utils.utils import bitvector_to_array
 
@@ -23,7 +24,8 @@ class FEI4RegisterUtils(object):
                 self.wait_for_command(wait_for_cmd=wait_for_cmd, command_bit_length=command_bit_length, repeat=repeat)
             else:
                 if concatenate:
-                    command = reduce(lambda x, y: x + y, commands)
+                    zero = BitVector.BitVector(size=10)
+                    command = reduce(lambda x, y: x + zero + y, commands)
                     command_bit_length = self.set_command(command)
                     if command_bit_length > 2048 * 8:
                         raise ValueError('Result of command concatenation is too long')
