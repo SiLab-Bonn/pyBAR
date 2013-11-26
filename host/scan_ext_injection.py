@@ -1,68 +1,44 @@
-""" Scan to inject charge with an external pulser. A trigger signal (3.3V logic level, TX1 at MultiIO board) 
-    is generated when the CAL command is issued. This trigger can is used to trigger the external pulser.
+""" Scan to inject charge with an external pulser. A trigger signal (3.3V logic level, TX1 at MultiIO board)
+    is generated when the CAL command is issued. This trigger can be used to trigger the external pulser.
 """
+import logging
 
-import time
-import tables as tb
-import BitVector
+from daq.readout import save_raw_data_from_data_dict_iterable
 
-from analysis.data_struct import MetaTable
-from utils.utils import get_all_from_queue, split_seq
 from scan.scan import ScanBase
 
-class ExtInjScan(ScanBase):
-    def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "scan_ext_inj", scan_data_path = None):
-        super(ExtInjScan, self).__init__(config_file = config_file, definition_file = definition_file, bit_file = bit_file, device = device, scan_identifier = scan_identifier, scan_data_path = scan_data_path)
-        
-    def start(self, configure = True):
-        super(ExtInjScan, self).start(configure)
-        
-        self.lock.acquire()
-        
-        print 'Starting readout thread...'
-        self.readout.start()
-        print 'Done!'
-        
-        mask = 6
-        repeat = 1000
-        wait_cycles = 336*2/mask*24/4*3
-        cal_lvl1_command = self.register.get_commands("cal")[0]+BitVector.BitVector(size = 40)+self.register.get_commands("lv1")[0]+BitVector.BitVector(size = wait_cycles)
-        self.scan_utils.base_scan(cal_lvl1_command, repeat = repeat, mask = mask, steps = [], dcs = [], same_mask_for_all_dc = True, hardware_repeat = True, digital_injection = False, read_function = None)#self.readout.read_once)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
-        print 'Stopping readout thread...'
+
+class ExtInjScan(ScanBase):
+    def __init__(self, config_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_ext_inj", scan_data_path=None):
+        super(ExtInjScan, self).__init__(config_file=config_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
+
+    def scan(self, mask_steps=6, repeat_command=1000, enable_double_columns=None):
+        self.readout.start()
+
+        cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", mask_steps=mask_steps)[0]
+        self.scan_loop(cal_lvl1_command, repeat_command=repeat_command, hardware_repeat=True, mask_steps=mask_steps, enable_mask_steps=None, enable_double_columns=enable_double_columns, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_c_high=None, enable_c_low=None, shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=False, mask=None)
+
         self.readout.stop()
-        print 'Done!'
-        
-        data_q = list(get_all_from_queue(self.readout.data_queue))
-        print 'got all from queue'
-        
-        total_words = 0
-        
-        filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
-        filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
-        with tb.openFile(self.scan_data_filename+".h5", mode = "w", title = "test file") as file_h5:
-            raw_data_earray_h5 = file_h5.createEArray(file_h5.root, name = 'raw_data', atom = tb.UIntAtom(), shape = (0,), title = 'raw_data', filters = filter_raw_data)
-            meta_data_table_h5 = file_h5.createTable(file_h5.root, name = 'meta_data', description = MetaTable, title = 'meta_data', filters = filter_tables)
-            
-            row_meta = meta_data_table_h5.row
-            for item in data_q:
-                raw_data = item['raw_data']
-                len_raw_data = len(raw_data)
-                for data in split_seq(raw_data, 50000):
-                    raw_data_earray_h5.append(data)
-                    raw_data_earray_h5.flush()
-                row_meta['timestamp'] = item['timestamp']
-                row_meta['error'] = item['error']
-                row_meta['length'] = len_raw_data
-                row_meta['start_index'] = total_words
-                total_words += len_raw_data
-                row_meta['stop_index'] = total_words
-                row_meta.append()
-                meta_data_table_h5.flush()
-        
-        self.lock.release()
+
+        save_raw_data_from_data_dict_iterable(self.readout.data, filename=self.scan_data_filename, title=self.scan_identifier)
+
+    def analyze(self):
+        from analysis.analyze_raw_data import AnalyzeRawData
+        output_file = self.scan_data_filename + "_interpreted.h5"
+        with AnalyzeRawData(raw_data_file=scan.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
+            analyze_raw_data.interpreter.set_trig_count(self.register.get_global_register_value("Trig_Count"))
+            analyze_raw_data.create_cluster_size_hist = True
+            analyze_raw_data.create_cluster_tot_hist = True
+            analyze_raw_data.interpreter.set_warning_output(False)
+            analyze_raw_data.interpret_word_table(FEI4B=scan.register.fei4b)
+            analyze_raw_data.interpreter.print_summary()
+            analyze_raw_data.plot_histograms(scan_data_filename=scan.scan_data_filename)
 
 if __name__ == "__main__":
     import configuration
-    scan = ExtInjScan(config_file = configuration.config_file, bit_file = configuration.bit_file, scan_data_path = configuration.scan_data_path)
-    scan.start()
+    scan = ExtInjScan(config_file=configuration.config_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
+    scan.start(use_thread=False)
+    scan.stop()
+    scan.analyze()
