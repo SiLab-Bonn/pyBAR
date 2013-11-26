@@ -308,10 +308,10 @@ class ScanBase(object):
                 commands.append(conf_mode_command[0] + self.register.get_commands("wrregister", name=["Colpr_Addr"])[0] + run_mode_command[0])
                 #commands.extend(self.register.get_commands("wrregister", name=["Colpr_Addr"]))
                 #commands.extend(run_mode_command)
+
                 self.register_utils.wait_for_command(wait_for_cmd=True)
                 self.register_utils.send_commands(commands)
 
-                #print repeat_command, 'injections:', 'mask step', mask_step, 'dc', dc
                 bit_length = self.register_utils.set_command(command)
                 if hardware_repeat == True:
                     self.register_utils.send_command(repeat=repeat_command, wait_for_cmd=False, command_bit_length=bit_length)
