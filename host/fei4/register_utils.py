@@ -49,7 +49,7 @@ class FEI4RegisterUtils(object):
         self.device.WriteExternal(address=0 + 1, data=[0])
         self.wait_for_command(wait_for_cmd=wait_for_cmd, command_bit_length=command_bit_length, repeat=repeat)
         # set back to default value of 1
-        if repeat != 1:
+        if repeat != 1 and wait_for_cmd is True:
             self.set_hardware_repeat()
 
     def set_command(self, command):
@@ -74,8 +74,7 @@ class FEI4RegisterUtils(object):
             # print 'sleeping'
             time.sleep((command_bit_length + 500) * 0.000000025 * repeat)  # TODO: optimize wait time
         if wait_for_cmd:
-            while not self.device.ReadExternal(address=0 + 1, size=1)[0] & 0x01:
-                # print 'waiting'
+            while not (self.device.ReadExternal(address=0 + 1, size=1)[0] & 0x01) == 1:
                 pass
 
     def global_reset(self):
