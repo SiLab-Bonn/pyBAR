@@ -309,12 +309,12 @@ class ScanBase(object):
                 #commands.extend(self.register.get_commands("wrregister", name=["Colpr_Addr"]))
                 #commands.extend(run_mode_command)
 
-                self.register_utils.wait_for_command(wait_for_cmd=True)
+#                 self.register_utils.wait_for_command(wait_for_cmd=True)
                 self.register_utils.send_commands(commands)
 
                 bit_length = self.register_utils.set_command(command)
                 if hardware_repeat == True:
-                    self.register_utils.send_command(repeat=repeat_command, wait_for_cmd=False, command_bit_length=bit_length)
+                    self.register_utils.send_command(repeat=repeat_command, wait_for_cmd=True, command_bit_length=bit_length)
                 else:
                     for _ in range(repeat_command):
                         self.register_utils.send_command()
@@ -323,7 +323,7 @@ class ScanBase(object):
                 except TypeError:
                     pass
 
-            self.register_utils.wait_for_command(wait_for_cmd=True)
+#             self.register_utils.wait_for_command(wait_for_cmd=True)
 
         # restoring default values
         self.register.restore(name=restore_point_name)
