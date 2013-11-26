@@ -37,7 +37,7 @@ class FEI4RegisterUtils(object):
                         self.device.WriteExternal(address=0 + 1, data=[0])
                         self.wait_for_command(wait_for_cmd=wait_for_cmd, command_bit_length=command_bit_length, repeat=repeat)
         # set back to default value of 1
-        if repeat != 1:
+        if repeat != 1 and wait_for_cmd is True:
             self.set_hardware_repeat()
 
     def send_command(self, command=None, repeat=1, wait_for_cmd=False, command_bit_length=None):
