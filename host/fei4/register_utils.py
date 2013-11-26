@@ -4,7 +4,6 @@ import math
 import time
 import numpy as np
 import re
-import BitVector
 
 from utils.utils import bitarray_to_array
 
@@ -16,7 +15,7 @@ class FEI4RegisterUtils(object):
         self.register = register
 
     def send_commands(self, commands=None, repeat=1, repeat_all=1, wait_for_cmd=False, command_bit_length=None, concatenate=False):
-        if repeat != 1:
+        if repeat is not None:
             self.set_hardware_repeat(repeat)
         for _ in range(repeat_all):
             if commands == None:
@@ -24,8 +23,7 @@ class FEI4RegisterUtils(object):
                 self.wait_for_command(wait_for_cmd=wait_for_cmd, command_bit_length=command_bit_length, repeat=repeat)
             else:
                 if concatenate:
-                    zero = BitVector.BitVector(size=10)
-                    command = reduce(lambda x, y: x + zero + y, commands)
+                    command = reduce(lambda x, y: x + y, commands)
                     command_bit_length = self.set_command(command)
                     if command_bit_length > 2048 * 8:
                         raise ValueError('Result of command concatenation is too long')
@@ -36,15 +34,14 @@ class FEI4RegisterUtils(object):
                         command_bit_length = self.set_command(command)
                         self.device.WriteExternal(address=0 + 1, data=[0])
                         self.wait_for_command(wait_for_cmd=wait_for_cmd, command_bit_length=command_bit_length, repeat=repeat)
-        # set back to default value of 1
-        if repeat != 1 and wait_for_cmd is True:
-            self.set_hardware_repeat()
 
     def send_command(self, command=None, repeat=1, wait_for_cmd=False, command_bit_length=None):
-        if repeat != 1:
+        if repeat is not None:
             self.set_hardware_repeat(repeat)
-        if command != None:
+        if command is not None:
             command_bit_length = self.set_command(command)
+        if command_bit_length is not None and command is None:
+            self.set_command_length(command_bit_length)
         # sending command
         self.device.WriteExternal(address=0 + 1, data=[0])
         self.wait_for_command(wait_for_cmd=wait_for_cmd, command_bit_length=command_bit_length, repeat=repeat)
@@ -52,13 +49,16 @@ class FEI4RegisterUtils(object):
         if repeat != 1 and wait_for_cmd is True:
             self.set_hardware_repeat()
 
+    def set_command_length(self, lenght):
+        bit_length_array = array.array('B', struct.pack('H', lenght))
+        self.device.WriteExternal(address=0 + 3, data=bit_length_array)
+
     def set_command(self, command):
 #        if not isinstance(command, BitVector.BitVector):
 #            raise TypeError()
         # set command bit length
         command_bit_length = command.length()
-        bit_length_array = array.array('B', struct.pack('H', command_bit_length))
-        self.device.WriteExternal(address=0 + 3, data=bit_length_array)
+        self.set_command_length(command_bit_length)
         # set command
         byte_array = bitarray_to_array(command)
         self.device.WriteExternal(address=0 + 8, data=byte_array)
