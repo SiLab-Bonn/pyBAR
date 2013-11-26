@@ -210,7 +210,8 @@ class ScanBase(object):
                 f.write(value)
         self.lock.release()
 
-    def scan_loop(self, command, repeat_command=100, hardware_repeat=True, mask_steps=3, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=False, eol_function=None, digital_injection=False, enable_c_high=None, enable_c_low=None, shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=True, mask=None):
+    @profile
+    def scan_loop(self, command, repeat_command=100, use_delay=True, hardware_repeat=True, mask_steps=3, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=False, eol_function=None, digital_injection=False, enable_c_high=None, enable_c_low=None, shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=True, mask=None):
         '''Implementation of the scan loops (mask shifting, loop over double columns, repeatedly sending any arbitrary command).
 
         Parameters
@@ -219,6 +220,8 @@ class ScanBase(object):
             (FEI4) command that will be sent out serially.
         repeat_command : int
             The number of repetitions command will be sent out each mask step.
+        use_delay : bool
+            Add additional delay to the command (append zeros). This helps to avoid FE data errors because of sending to many commands to the FE chip.
         hardware_repeat : bool
             If true, use FPGA to repeat commands. In general this is much faster than doing this in software.
         mask_steps : int
@@ -299,20 +302,29 @@ class ScanBase(object):
             self.register_utils.send_commands(commands)
             logging.info('%d injection(s): mask step %d' % (repeat_command, mask_step))
 
-            for dc in enable_double_columns:
+            for index, dc in enumerate(enable_double_columns):
                 commands = []
                 #commands.extend(conf_mode_command)
                 self.register.set_global_register_value("Colpr_Addr", dc)
                 # pack all commands into one bit vector, speeding up of inner loop
                 #commands.append(conf_mode_command[0]+BitVector.BitVector(size = 10)+self.register.get_commands("wrregister", name = ["Colpr_Addr"])[0]+BitVector.BitVector(size = 10)+run_mode_command[0])
-                commands.append(conf_mode_command[0] + self.register.get_commands("wrregister", name=["Colpr_Addr"])[0] + run_mode_command[0])
+                concatenated_command = conf_mode_command[0] + self.register.get_commands("wrregister", name=["Colpr_Addr"])[0] + run_mode_command[0]
+                empty_command = self.register.get_commands("zeros", length=concatenated_command.length())[0]
+                commands.append(concatenated_command)
                 #commands.extend(self.register.get_commands("wrregister", name=["Colpr_Addr"]))
                 #commands.extend(run_mode_command)
 
                 self.register_utils.wait_for_command(wait_for_cmd=True)
                 self.register_utils.send_commands(commands)
 
-                bit_length = self.register_utils.set_command(command)
+                if index == 0 and use_delay:
+                        bit_length = self.register_utils.set_command(command + self.register.get_commands("zeros", mask_steps=mask_steps)[0])  # overwrite with zeros
+                else:
+                    if use_delay:
+                        self.register_utils.set_command(empty_command)
+                        self.register_utils.set_command(command)
+                    else:
+                        bit_length = self.register_utils.set_command(command)
                 if hardware_repeat == True:
                     self.register_utils.send_command(repeat=repeat_command, wait_for_cmd=False, command_bit_length=bit_length)
                 else:
