@@ -6,7 +6,7 @@ import numpy as np
 import re
 import BitVector
 
-from utils.utils import bitvector_to_array
+from utils.utils import bitarray_to_array
 
 
 class FEI4RegisterUtils(object):
@@ -60,7 +60,7 @@ class FEI4RegisterUtils(object):
         bit_length_array = array.array('B', struct.pack('H', command_bit_length))
         self.device.WriteExternal(address=0 + 3, data=bit_length_array)
         # set command
-        byte_array = bitvector_to_array(command)
+        byte_array = bitarray_to_array(command)
         self.device.WriteExternal(address=0 + 8, data=byte_array)
         return command_bit_length
 

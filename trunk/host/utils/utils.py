@@ -6,6 +6,7 @@ import collections
 import itertools
 import array
 import numpy as np
+from bitarray import bitarray
 
 
 class Timer(object):
@@ -166,14 +167,20 @@ def bitvector_to_bytearray(bitvector, pad_to_n_bytes=4):
     return bytearray(pieces)
 
 
-def bitvector_to_array(bitvector):
-#     bs = array.array('B', bitvector.vector.tostring())  # no padding needed here, replaces bitvector.getTextFromBitVector()
+def bitvector_to_array(bitvec):
+#     bs = array.array('B', bitvec.vector.tostring())  # no padding needed here, replaces bitvector.getTextFromBitVector()
 #     bitstream_swap = ''
 #     lsbits = lambda b: (b * 0x0202020202 & 0x010884422010) % 1023
 #     for b in bs:
 #         bitstream_swap += chr(lsbits(b))
 #     return bitstream_swap
-    bs = np.fromstring(bitvector.vector, dtype=np.uint8)
+    bs = np.fromstring(bitvec.vector, dtype=np.uint8)
+    bs = (bs * 0x0202020202 & 0x010884422010) % 1023
+    return bs.astype(np.uint8).tostring()
+
+
+def bitarray_to_array(bitarr):
+    bs = np.fromstring(bitarr.tobytes(), dtype=np.uint8)  # byte padding happens here, bitarray.tobytes()
     bs = (bs * 0x0202020202 & 0x010884422010) % 1023
     return bs.astype(np.uint8).tostring()
 
