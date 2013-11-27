@@ -67,6 +67,8 @@ class FeedbackTune(ScanBase):
         scan_parameter = 'PrmpVbpf'
 
         with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier, scan_parameters=[scan_parameter]) as raw_data_file:
+            tot_mean_best = 0
+            prmp_vbpf_best = self.register.get_global_register_value("PrmpVbpf")
             for PrmpVbpf_bit in self.FeedbackTuneBits:
                 if(not addedAdditionalLastBitScan):
                     self.set_prmp_vbpf_bit(PrmpVbpf_bit)
@@ -81,13 +83,16 @@ class FeedbackTune(ScanBase):
                 repeat_command = self.Ninjections
 
                 cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", mask_steps=mask_steps)[0]
-                self.scan_loop(cal_lvl1_command, repeat_command=repeat_command, hardware_repeat=True, mask_steps=mask_steps, enable_mask_steps=enable_mask_steps, enable_double_columns=None, same_mask_for_all_dc=False, eol_function=None, digital_injection=False, enable_c_high=None, enable_c_low=None, shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=True, mask=None)
+                self.scan_loop(cal_lvl1_command, repeat_command=repeat_command, hardware_repeat=True, mask_steps=mask_steps, enable_mask_steps=enable_mask_steps, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_c_high=None, enable_c_low=None, shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=True, mask=None)
 
                 self.readout.stop()
                 raw_data_file.append(self.readout.data, scan_parameters={scan_parameter: scan_paramter_value})
 
                 tots = get_tot_array_from_data_record_array(convert_data_array(data_array_from_data_dict_iterable(self.readout.data), filter_func=logical_and(is_data_record, is_data_from_channel(4))))
                 mean_tot = np.mean(tots)
+                if abs(mean_tot - self.TargetTot) < abs(tot_mean_best - self.TargetTot):
+                    tot_mean_best = mean_tot
+                    prmp_vbpf_best = self.register.get_global_register_value("PrmpVbpf")
 
                 logging.info('TOT mean = %f' % mean_tot)
                 TotArray, _ = np.histogram(a=tots, range=(0, 16), bins=16)
@@ -115,6 +120,12 @@ class FeedbackTune(ScanBase):
                             logging.info('set bit 0 = 1')
                         else:
                             logging.info('set bit 0 = 0')
+                    if abs(mean_tot - self.TargetTot) > abs(tot_mean_best - self.TargetTot):
+                            logging.info("Binary search converged to non optimal value, take best measured value instead")
+                            mean_tot = tot_mean_best
+                            self.register.set_global_register_value("PrmpVbpf", prmp_vbpf_best)
+                    tot_mean_best = mean_tot
+                    prmp_vbpf_best
 
             if(abs(mean_tot - self.TargetTot) > 2 * self.abort_precision):
                 logging.warning('Tuning of PrmpVbpf to %d tot failed. Difference = %f tot. PrmpVbpf = %d' % (self.TargetTot, abs(mean_tot - self.TargetTot), self.register.get_global_register_value("PrmpVbpf")))
