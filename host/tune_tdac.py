@@ -127,7 +127,7 @@ if __name__ == "__main__":
     import configuration
     scan = TdacTune(config_file=configuration.config_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
     scan.set_n_injections(100)
-    scan.set_target_threshold(PlsrDAC=60)
+    scan.set_target_threshold(PlsrDAC=50)
     scan.set_tdac_tune_bits(range(4, -1, -1))
     scan.start(use_thread=False, plot_intermediate_steps=False)
     scan.stop()
