@@ -40,10 +40,10 @@ class FEI4SelfTriggerScan(ScanBase):
         # disable C_inj mask
         pixel_reg = "C_High"
         self.register.set_pixel_register_value(pixel_reg, 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
         pixel_reg = "C_Low"
         self.register.set_pixel_register_value(pixel_reg, 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
         # enable GateHitOr that enables FE self-trigger mode
         self.register.set_global_register_value("GateHitOr", 1)  # enable FE self-trigger mode
         self.register.set_global_register_value("Trig_Lat", 232)  # set trigger latency
