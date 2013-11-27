@@ -230,7 +230,7 @@ class ScanBase(object):
         enable_double_columns : list, tuple
             List of double columns which will be enabled during scan. Default is all double columns. From 0 to 39 (double columns counted from zero). A value equal None or empty list will select all double columns.
         same_mask_for_all_dc : bool
-            Use same mask for all double columns. Enabling this is in general not a good idea since all double columns will have the same configuration but the scan speed can increased by an order of magnitude.
+            Use same mask for all double columns. This will only affect all shift masks (see shift_masks). Enabling this is in general a good idea since all double columns will have the same configuration and the scan speed can increased by an order of magnitude.
         eol_function : function
             End of loop function that will be called each time the innermost loop ends.
         digital_injection : bool
@@ -240,7 +240,7 @@ class ScanBase(object):
         enable_c_low : bool
             Enables C_Low pixel mask. No change if value is equal None. Note: will be overwritten during mask shifting if in shift_masks.
         shift_masks : list, tuple
-            List of pixel masks that will be shifted.
+            List of pixel masks which get a mask applied that will be shifted during scan.
         restore_shift_masks : bool
             Writing the initial (restored) FE pixel configuration into FE after finishing the scan loop.
         mask : array-like
@@ -306,7 +306,7 @@ class ScanBase(object):
                 #commands.extend(conf_mode_command)
                 self.register.set_global_register_value("Colpr_Addr", dc)
                 commands.append(conf_mode_command)
-                commands.extend(self.register.get_commands("wrregister", name = ["Colpr_Addr"]))
+                commands.extend(self.register.get_commands("wrregister", name=["Colpr_Addr"]))
                 commands.append(run_mode_command)
 
                 self.register_utils.wait_for_command()
