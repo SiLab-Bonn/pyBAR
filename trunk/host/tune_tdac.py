@@ -1,4 +1,4 @@
-""" Script to tune the Tdac to the threshold value given in PlsrDAC. Binary search algorithm. Bit 0 is always scanned twice with value 1 and 0. Due to the nonlinearity it can happen that the binary search does not reach the best TDAC. Therefore the best TDAC is always set and taken at the end.
+""" Script to tune the TDAC to the threshold value given in PlsrDAC. Binary search algorithm. Bit 0 is always scanned twice with value 1 and 0. Due to the nonlinearity it can happen that the binary search does not reach the best TDAC. Therefore the best TDAC is always set and taken at the end.
 """
 import numpy as np
 import logging
@@ -84,37 +84,37 @@ class TdacTune(ScanBase):
                 self.readout.start()
 
                 cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", mask_steps=mask_steps)[0]
-                self.scan_loop(cal_lvl1_command, repeat_command=self.Ninjections, hardware_repeat=True, mask_steps=mask_steps, enable_mask_steps=enable_mask_steps, enable_double_columns=None, same_mask_for_all_dc=False, eol_function=None, digital_injection=False, enable_c_high=None, enable_c_low=None, shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=True, mask=None)
+                self.scan_loop(cal_lvl1_command, repeat_command=self.Ninjections, hardware_repeat=True, mask_steps=mask_steps, enable_mask_steps=enable_mask_steps, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_c_high=None, enable_c_low=None, shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=True, mask=None)
 
                 self.readout.stop()
 
                 raw_data_file.append(self.readout.data, scan_parameters={scan_parameter: scan_parameter_value})
 
-                OccupancyArray, _, _ = np.histogram2d(*convert_data_array(data_array_from_data_dict_iterable(self.readout.data), filter_func=logical_and(is_data_record, is_data_from_channel(4)), converter_func=get_col_row_array_from_data_record_array), bins=(80, 336), range=[[1, 80], [1, 336]])
-                select_better_pixel_mask = abs(OccupancyArray - self.Ninjections / 2) <= abs(occupancy_best - self.Ninjections / 2)
-                pixel_with_too_high_occupancy_mask = OccupancyArray > self.Ninjections / 2
-                occupancy_best[select_better_pixel_mask] = OccupancyArray[select_better_pixel_mask]
+                occupancy_array, _, _ = np.histogram2d(*convert_data_array(data_array_from_data_dict_iterable(self.readout.data), filter_func=logical_and(is_data_record, is_data_from_channel(4)), converter_func=get_col_row_array_from_data_record_array), bins=(80, 336), range=[[1, 80], [1, 336]])
+                select_better_pixel_mask = abs(occupancy_array - self.Ninjections / 2) <= abs(occupancy_best - self.Ninjections / 2)
+                pixel_with_too_high_occupancy_mask = occupancy_array > self.Ninjections / 2
+                occupancy_best[select_better_pixel_mask] = occupancy_array[select_better_pixel_mask]
 
                 if plot_intermediate_steps:
-                    plotThreeWay(OccupancyArray.transpose(), title="Occupancy (TDAC tuning bit " + str(Tdac_bit) + ")", x_axis_title='Occupancy', filename=plots_filename)
+                    plotThreeWay(occupancy_array.transpose(), title="Occupancy (TDAC tuning bit " + str(Tdac_bit) + ")", x_axis_title='Occupancy', filename=plots_filename)
 
                 tdac_mask = self.register.get_pixel_register_value("TDAC")
                 tdac_mask_best[select_better_pixel_mask] = tdac_mask[select_better_pixel_mask]
 
                 if(Tdac_bit > 0):
-                    tdac_mask[OccupancyArray > self.Ninjections / 2] = tdac_mask[OccupancyArray > self.Ninjections / 2] & ~(1 << Tdac_bit)
+                    tdac_mask[pixel_with_too_high_occupancy_mask] = tdac_mask[pixel_with_too_high_occupancy_mask] & ~(1 << Tdac_bit)
                     self.register.set_pixel_register_value("TDAC", tdac_mask)
 
                 if(Tdac_bit == 0):
                     if not(addedAdditionalLastBitScan):  # scan bit = 0 with the correct value again
                         addedAdditionalLastBitScan = True
-                        lastBitResult = OccupancyArray.copy()
+                        lastBitResult = occupancy_array.copy()
                         self.TdacTuneBits.append(0)  # bit 0 has to be scanned twice
                     else:
-                        tdac_mask[abs(OccupancyArray - self.Ninjections / 2) > abs(lastBitResult - self.Ninjections / 2)] = tdac_mask[abs(OccupancyArray - self.Ninjections / 2) > abs(lastBitResult - self.Ninjections / 2)] | (1 << Tdac_bit)
-                        OccupancyArray[abs(OccupancyArray - self.Ninjections / 2) > abs(lastBitResult - self.Ninjections / 2)] = lastBitResult[abs(OccupancyArray - self.Ninjections / 2) > abs(lastBitResult - self.Ninjections / 2)]
-                        occupancy_best[abs(OccupancyArray - self.Ninjections / 2) <= abs(occupancy_best - self.Ninjections / 2)] = OccupancyArray[abs(OccupancyArray - self.Ninjections / 2) <= abs(occupancy_best - self.Ninjections / 2)]
-                        tdac_mask_best[abs(OccupancyArray - self.Ninjections / 2) <= abs(occupancy_best - self.Ninjections / 2)] = tdac_mask[abs(OccupancyArray - self.Ninjections / 2) <= abs(occupancy_best - self.Ninjections / 2)]
+                        tdac_mask[abs(occupancy_array - self.Ninjections / 2) > abs(lastBitResult - self.Ninjections / 2)] = tdac_mask[abs(occupancy_array - self.Ninjections / 2) > abs(lastBitResult - self.Ninjections / 2)] | (1 << Tdac_bit)
+                        occupancy_array[abs(occupancy_array - self.Ninjections / 2) > abs(lastBitResult - self.Ninjections / 2)] = lastBitResult[abs(occupancy_array - self.Ninjections / 2) > abs(lastBitResult - self.Ninjections / 2)]
+                        occupancy_best[abs(occupancy_array - self.Ninjections / 2) <= abs(occupancy_best - self.Ninjections / 2)] = occupancy_array[abs(occupancy_array - self.Ninjections / 2) <= abs(occupancy_best - self.Ninjections / 2)]
+                        tdac_mask_best[abs(occupancy_array - self.Ninjections / 2) <= abs(occupancy_best - self.Ninjections / 2)] = tdac_mask[abs(occupancy_array - self.Ninjections / 2) <= abs(occupancy_best - self.Ninjections / 2)]
 
             self.register.set_pixel_register_value("TDAC", tdac_mask_best)
             self.result = occupancy_best
