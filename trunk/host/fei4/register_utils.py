@@ -13,69 +13,70 @@ class FEI4RegisterUtils(object):
         self.device = device
         self.readout = readout
         self.register = register
+        self.command_memory_bit_size = 2048 * 8 - 16
 
-    def send_commands(self, commands=None, repeat=1, repeat_all=1, wait_for_cmd=False, command_bit_length=None, concatenate=False):
+    def send_commands(self, commands, repeat=1, wait_for_finish=True, concatenate=False, clear_memory=False):
+        if concatenate:
+            command = reduce(lambda x, y: x + y, commands)
+            self.send_command(command=command, repeat=repeat, wait_for_finish=wait_for_finish, set_length=True, clear_memory=True)
+        else:
+            max_length = 0
+            self.set_hardware_repeat(1)
+            for command in commands:
+                max_length = max(command.length(), max_length)
+                self.send_command(command=command, repeat=None, wait_for_finish=wait_for_finish, set_length=True, clear_memory=False)
+            if clear_memory:
+                self.clear_command_memory(length=max_length)
+
+    def send_command(self, command, repeat=1, wait_for_finish=True, set_length=True, clear_memory=False):
         if repeat is not None:
             self.set_hardware_repeat(repeat)
-        for _ in range(repeat_all):
-            if commands == None:
-                self.device.WriteExternal(address=0 + 1, data=[0])
-                self.wait_for_command(wait_for_cmd=wait_for_cmd, command_bit_length=command_bit_length, repeat=repeat)
-            else:
-                if concatenate:
-                    command = reduce(lambda x, y: x + y, commands)
-                    command_bit_length = self.set_command(command)
-                    if command_bit_length > 2048 * 8:
-                        raise ValueError('Result of command concatenation is too long')
-                    self.device.WriteExternal(address=0 + 1, data=[0])
-                    self.wait_for_command(wait_for_cmd=wait_for_cmd, command_bit_length=command_bit_length, repeat=repeat)
-                else:
-                    for command in commands:
-                        command_bit_length = self.set_command(command)
-                        self.device.WriteExternal(address=0 + 1, data=[0])
-                        self.wait_for_command(wait_for_cmd=wait_for_cmd, command_bit_length=command_bit_length, repeat=repeat)
-
-    def send_command(self, command=None, repeat=1, wait_for_cmd=False, command_bit_length=None):
-        if repeat is not None:
-            self.set_hardware_repeat(repeat)
-        if command is not None:
-            command_bit_length = self.set_command(command)
-        if command_bit_length is not None and command is None:
-            self.set_command_length(command_bit_length)
+        # write command into memory
+        command_length = self.set_command(command, set_length=set_length)
         # sending command
-        self.device.WriteExternal(address=0 + 1, data=[0])
-        self.wait_for_command(wait_for_cmd=wait_for_cmd, command_bit_length=command_bit_length, repeat=repeat)
-        # set back to default value of 1
-        if repeat != 1 and wait_for_cmd is True:
-            self.set_hardware_repeat()
+        self.start_command()
+        # wait for command to be finished
+        if wait_for_finish:
+            self.wait_for_command(length=command_length, repeat=repeat)
+        # clear command memory
+        if clear_memory:
+            self.clear_command_memory(length=command_length)
+
+    def clear_command_memory(self, length=None):
+        self.set_command(self.register.get_commands("zeros", length=self.command_memory_bit_size if length is None else length)[0], set_length=False)
 
     def set_command_length(self, lenght):
         bit_length_array = array.array('B', struct.pack('H', lenght))
         self.device.WriteExternal(address=0 + 3, data=bit_length_array)
 
-    def set_command(self, command):
-#        if not isinstance(command, BitVector.BitVector):
-#            raise TypeError()
+    def set_command(self, command, set_length=True):
+        command_length = command.length()
+        if command_length > self.command_memory_bit_size:
+            raise ValueError('Length of command is too long')
         # set command bit length
-        command_bit_length = command.length()
-        self.set_command_length(command_bit_length)
+        if set_length:
+            self.set_command_length(command_length)
         # set command
-        byte_array = bitarray_to_array(command)
-        self.device.WriteExternal(address=0 + 8, data=byte_array)
-        return command_bit_length
+        self.device.WriteExternal(address=0 + 8, data=bitarray_to_array(command))
+        return command_length
+
+    def start_command(self):
+        self.device.WriteExternal(address=0 + 1, data=(0, ))
 
     def set_hardware_repeat(self, repeat=1):
         repeat_array = array.array('B', struct.pack('H', repeat))
         self.device.WriteExternal(address=0 + 5, data=repeat_array)
 
-    def wait_for_command(self, wait_for_cmd=False, command_bit_length=0, repeat=1):
+    def wait_for_command(self, length=None, repeat=None):
+
         # print self.device.ReadExternal(address = 0+1, size = 1)[0]
-        if command_bit_length != 0 and wait_for_cmd:
+        if length is not None:
+            if repeat is None:
+                repeat = 1
             # print 'sleeping'
-            time.sleep((command_bit_length + 500) * 0.000000025 * repeat)  # TODO: optimize wait time
-        if wait_for_cmd:
-            while not (self.device.ReadExternal(address=0 + 1, size=1)[0] & 0x01) == 1:
-                pass
+            time.sleep((length + 500) * 0.000000025 * repeat)  # TODO: optimize wait time
+        while not (self.device.ReadExternal(address=0 + 1, size=1)[0] & 0x01) == 1:
+            pass
 
     def global_reset(self):
         '''FEI4 Global Reset
