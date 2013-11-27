@@ -13,7 +13,8 @@ class FEI4RegisterUtils(object):
         self.device = device
         self.readout = readout
         self.register = register
-        self.command_memory_bit_size = 2048 * 8 - 16
+        self.command_memory_byte_offset = 8
+        self.command_memory_byte_size = 2048 - self.command_memory_byte_offset  # 16 bytes of register data
 
     def send_commands(self, commands, repeat=1, wait_for_finish=True, concatenate=False, clear_memory=False):
         if concatenate:
@@ -43,21 +44,22 @@ class FEI4RegisterUtils(object):
             self.clear_command_memory(length=command_length)
 
     def clear_command_memory(self, length=None):
-        self.set_command(self.register.get_commands("zeros", length=self.command_memory_bit_size if length is None else length)[0], set_length=False)
+        self.set_command(self.register.get_commands("zeros", length=(self.self.command_memory_byte_size * 8) if length is None else length)[0], set_length=False)
 
     def set_command_length(self, lenght):
         bit_length_array = array.array('B', struct.pack('H', lenght))
         self.device.WriteExternal(address=0 + 3, data=bit_length_array)
 
-    def set_command(self, command, set_length=True):
+    def set_command(self, command, set_length=True, byte_offset=0):
         command_length = command.length()
-        if command_length > self.command_memory_bit_size:
-            raise ValueError('Length of command is too long')
         # set command bit length
         if set_length:
             self.set_command_length(command_length)
         # set command
-        self.device.WriteExternal(address=0 + 8, data=bitarray_to_array(command))
+        data = bitarray_to_array(command)
+        if self.command_memory_byte_size < len(data) + byte_offset:
+            raise ValueError('Length of command or offset is too big')
+        self.device.WriteExternal(address=0 + self.command_memory_byte_offset + byte_offset, data=data)
         return command_length
 
     def start_command(self):
