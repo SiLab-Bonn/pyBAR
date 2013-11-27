@@ -1,4 +1,4 @@
-""" Script to tune the Tdac to the threshold value given in PlsrDAC. Binary search algorithm. Bit 0 is always scanned twice with value 1 and 0.
+""" Script to tune the Tdac to the threshold value given in PlsrDAC. Binary search algorithm. Bit 0 is always scanned twice with value 1 and 0. Due to the nonlinearity it can happen that the binary search does not reach the best TDAC. Therefore the best TDAC is always set and taken at the end.
 """
 import numpy as np
 import logging
@@ -43,7 +43,6 @@ class TdacTune(ScanBase):
         commands = []
         commands.extend(self.register.get_commands("confmode"))
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=["Tdac"]))
-        commands.extend(self.register.get_commands("runmode"))
         self.register_utils.send_commands(commands)
 
     def set_tdac_tune_bits(self, TdacTuneBits=range(4, -1, -1)):
@@ -67,6 +66,10 @@ class TdacTune(ScanBase):
         with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier, scan_parameters=[scan_parameter]) as raw_data_file:
             tdac_mask = []
 
+            occupancy_best = np.empty(shape=(80, 336))  # array to store the best occupancy (closest to Ninjections/2) of the pixel
+            occupancy_best.fill(self.Ninjections)
+            tdac_mask_best = self.register.get_pixel_register_value("TDAC")
+
             for index, Tdac_bit in enumerate(self.TdacTuneBits):
                 if(not addedAdditionalLastBitScan):
                     self.set_tdac_bit(Tdac_bit)
@@ -76,50 +79,56 @@ class TdacTune(ScanBase):
                     logging.info('TDAC setting: bit %d = 0' % Tdac_bit)
 
                 self.write_tdac_config()
-                scan_paramter_value = index
+                scan_parameter_value = index
 
                 self.readout.start()
 
-                repeat_command = self.Ninjections
-
                 cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", mask_steps=mask_steps)[0]
-                self.scan_loop(cal_lvl1_command, repeat_command=repeat_command, hardware_repeat=True, mask_steps=mask_steps, enable_mask_steps=enable_mask_steps, enable_double_columns=None, same_mask_for_all_dc=False, eol_function=None, digital_injection=False, enable_c_high=None, enable_c_low=None, shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=True, mask=None)
+                self.scan_loop(cal_lvl1_command, repeat_command=self.Ninjections, hardware_repeat=True, mask_steps=mask_steps, enable_mask_steps=enable_mask_steps, enable_double_columns=None, same_mask_for_all_dc=False, eol_function=None, digital_injection=False, enable_c_high=None, enable_c_low=None, shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=True, mask=None)
 
                 self.readout.stop()
 
-                raw_data_file.append(self.readout.data, scan_parameters={scan_parameter: scan_paramter_value})
+                raw_data_file.append(self.readout.data, scan_parameters={scan_parameter: scan_parameter_value})
 
                 OccupancyArray, _, _ = np.histogram2d(*convert_data_array(data_array_from_data_dict_iterable(self.readout.data), filter_func=logical_and(is_data_record, is_data_from_channel(4)), converter_func=get_col_row_array_from_data_record_array), bins=(80, 336), range=[[1, 80], [1, 336]])
+                select_better_pixel_mask = abs(OccupancyArray - self.Ninjections / 2) <= abs(occupancy_best - self.Ninjections / 2)
+                pixel_with_too_high_occupancy_mask = OccupancyArray > self.Ninjections / 2
+                occupancy_best[select_better_pixel_mask] = OccupancyArray[select_better_pixel_mask]
+
                 if plot_intermediate_steps:
                     plotThreeWay(OccupancyArray.transpose(), title="Occupancy (TDAC tuning bit " + str(Tdac_bit) + ")", x_axis_title='Occupancy', filename=plots_filename)
 
                 tdac_mask = self.register.get_pixel_register_value("TDAC")
+                tdac_mask_best[select_better_pixel_mask] = tdac_mask[select_better_pixel_mask]
+
                 if(Tdac_bit > 0):
-                    tdac_mask[OccupancyArray > repeat_command / 2] = tdac_mask[OccupancyArray > repeat_command / 2] & ~(1 << Tdac_bit)
+                    tdac_mask[OccupancyArray > self.Ninjections / 2] = tdac_mask[OccupancyArray > self.Ninjections / 2] & ~(1 << Tdac_bit)
                     self.register.set_pixel_register_value("TDAC", tdac_mask)
 
                 if(Tdac_bit == 0):
                     if not(addedAdditionalLastBitScan):  # scan bit = 0 with the correct value again
                         addedAdditionalLastBitScan = True
-                        lastBitResult = OccupancyArray
+                        lastBitResult = OccupancyArray.copy()
                         self.TdacTuneBits.append(0)  # bit 0 has to be scanned twice
                     else:
-                        tdac_mask[abs(OccupancyArray - repeat_command / 2) > abs(lastBitResult - repeat_command / 2)] = tdac_mask[abs(OccupancyArray - repeat_command / 2) > abs(lastBitResult - repeat_command / 2)] | (1 << Tdac_bit)
-                        OccupancyArray[abs(OccupancyArray - repeat_command / 2) > abs(lastBitResult - repeat_command / 2)] = lastBitResult[abs(OccupancyArray - repeat_command / 2) > abs(lastBitResult - repeat_command / 2)]
+                        tdac_mask[abs(OccupancyArray - self.Ninjections / 2) > abs(lastBitResult - self.Ninjections / 2)] = tdac_mask[abs(OccupancyArray - self.Ninjections / 2) > abs(lastBitResult - self.Ninjections / 2)] | (1 << Tdac_bit)
+                        OccupancyArray[abs(OccupancyArray - self.Ninjections / 2) > abs(lastBitResult - self.Ninjections / 2)] = lastBitResult[abs(OccupancyArray - self.Ninjections / 2) > abs(lastBitResult - self.Ninjections / 2)]
+                        occupancy_best[abs(OccupancyArray - self.Ninjections / 2) <= abs(occupancy_best - self.Ninjections / 2)] = OccupancyArray[abs(OccupancyArray - self.Ninjections / 2) <= abs(occupancy_best - self.Ninjections / 2)]
+                        tdac_mask_best[abs(OccupancyArray - self.Ninjections / 2) <= abs(occupancy_best - self.Ninjections / 2)] = tdac_mask[abs(OccupancyArray - self.Ninjections / 2) <= abs(occupancy_best - self.Ninjections / 2)]
 
-            self.register.set_pixel_register_value("TDAC", tdac_mask)
-            self.result = OccupancyArray
+            self.register.set_pixel_register_value("TDAC", tdac_mask_best)
+            self.result = occupancy_best
 
             plotThreeWay(hist=self.result.transpose(), title="Occupancy after TDAC tuning", x_axis_title="Occupancy", filename=plots_filename)
             plotThreeWay(hist=self.register.get_pixel_register_value("TDAC").transpose(), title="TDAC distribution after tuning", x_axis_title="TDAC", filename=plots_filename)
-            logging.info('Tuned Tdac!')
+            logging.info('Tuned TDAC!')
 
 if __name__ == "__main__":
     import configuration
     scan = TdacTune(config_file=configuration.config_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
     scan.set_n_injections(100)
-    scan.set_target_threshold(PlsrDAC=50)
+    scan.set_target_threshold(PlsrDAC=60)
     scan.set_tdac_tune_bits(range(4, -1, -1))
-    scan.start(use_thread=False)
+    scan.start(use_thread=False, plot_intermediate_steps=False)
     scan.stop()
     scan.register.save_configuration(configuration.config_file)
