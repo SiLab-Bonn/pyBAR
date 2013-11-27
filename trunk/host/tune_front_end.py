@@ -63,11 +63,12 @@ if __name__ == "__main__":
         feedback_tune_scan.set_feedback_tune_bits(range(start_bit, -1, -1))
         gdac_tune_scan.start(configure=True, plots_filename=output_pdf)
         gdac_tune_scan.stop()
-        Vthin_AC = gdac_tune_scan.register.get_global_register_value("Vthin_AltCoarse")
-        Vthin_AF = gdac_tune_scan.register.get_global_register_value("Vthin_AltFine")
         feedback_tune_scan.start(configure=True, plots_filename=output_pdf)
         feedback_tune_scan.stop()
-        PrmpVbpf = feedback_tune_scan.register.get_global_register_value("PrmpVbpf")
+
+    Vthin_AC = gdac_tune_scan.register.get_global_register_value("Vthin_AltCoarse")
+    Vthin_AF = gdac_tune_scan.register.get_global_register_value("Vthin_AltFine")
+    PrmpVbpf = feedback_tune_scan.register.get_global_register_value("PrmpVbpf")
 
     gdac_tune_scan.start(configure=True, plots_filename=output_pdf)
     gdac_tune_scan.stop()
@@ -92,13 +93,13 @@ if __name__ == "__main__":
 
     gdac_tune_scan.register.save_configuration(name=cfg_name)
 
+    if(local_iterations > 0):
+        plotThreeWay(hist=fdac_tune_scan.register.get_pixel_register_value("FDAC").transpose(), title="FDAC distribution after last FDAC tuning", x_axis_title='FDAC', filename=output_pdf)
+        plotThreeWay(hist=fdac_tune_scan.result.transpose(), title="TOT mean after last FDAC tuning", x_axis_title='mean TOT', filename=output_pdf)
+
     if(global_iterations > 0):
         plotThreeWay(hist=tdac_tune_scan.register.get_pixel_register_value("TDAC").transpose(), title="TDAC distribution after complete tuning", x_axis_title='TDAC', filename=output_pdf)
         plotThreeWay(hist=tdac_tune_scan.result.transpose(), title="Occupancy after complete tuning", x_axis_title='Occupancy', filename=output_pdf)
-
-    if(local_iterations > 0):
-        plotThreeWay(hist=fdac_tune_scan.register.get_pixel_register_value("FDAC").transpose(), title="FDAC distribution after complete tuning", x_axis_title='FDAC', filename=output_pdf)
-        plotThreeWay(hist=fdac_tune_scan.result.transpose(), title="TOT mean after complete tuning", x_axis_title='mean TOT', filename=output_pdf)
 
     output_pdf.close()
     logging.info("Tuning finished in " + str(datetime.now() - startTime))
