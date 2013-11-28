@@ -50,7 +50,7 @@ class TdacTune(ScanBase):
 
     def set_n_injections(self, Ninjections=100):
         self.Ninjections = Ninjections
-
+    #@profile
     def scan(self, plots_filename=None, plot_intermediate_steps=False):
         self.write_target_threshold()
         addedAdditionalLastBitScan = False
@@ -96,7 +96,7 @@ class TdacTune(ScanBase):
                 occupancy_best[select_better_pixel_mask] = occupancy_array[select_better_pixel_mask]
 
                 if plot_intermediate_steps:
-                    plotThreeWay(occupancy_array.transpose(), title="Occupancy (TDAC tuning bit " + str(Tdac_bit) + ")", x_axis_title='Occupancy', filename=plots_filename)
+                    plotThreeWay(occupancy_array.transpose(), title="Occupancy (TDAC tuning bit " + str(Tdac_bit) + ")", x_axis_title='Occupancy', filename=plots_filename, maximum = self.Ninjections)
 
                 tdac_mask = self.register.get_pixel_register_value("TDAC")
                 tdac_mask_best[select_better_pixel_mask] = tdac_mask[select_better_pixel_mask]
@@ -119,9 +119,19 @@ class TdacTune(ScanBase):
             self.register.set_pixel_register_value("TDAC", tdac_mask_best)
             self.result = occupancy_best
 
-            plotThreeWay(hist=self.result.transpose(), title="Occupancy after TDAC tuning", x_axis_title="Occupancy", filename=plots_filename)
-            plotThreeWay(hist=self.register.get_pixel_register_value("TDAC").transpose(), title="TDAC distribution after tuning", x_axis_title="TDAC", filename=plots_filename)
+            plotThreeWay(hist=self.result.transpose(), title="Occupancy after TDAC tuning", x_axis_title="Occupancy", filename=plots_filename, maximum=self.Ninjections)
+            plotThreeWay(hist=self.register.get_pixel_register_value("TDAC").transpose(), title="TDAC distribution after tuning", x_axis_title="TDAC", filename=plots_filename, maximum=32)
             logging.info('Tuned TDAC!')
+
+            # additional analog scan to get final results, not needed, just for checking
+#             self.write_tdac_config()
+#             self.readout.start()
+#             cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", mask_steps=mask_steps)[0]
+#             self.scan_loop(cal_lvl1_command, repeat_command=self.Ninjections, hardware_repeat=True, mask_steps=mask_steps, enable_mask_steps=enable_mask_steps, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_c_high=None, enable_c_low=None, shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=True, mask=None)
+#             self.readout.stop()
+#             occupancy_array, _, _ = np.histogram2d(*convert_data_array(data_array_from_data_dict_iterable(self.readout.data), filter_func=logical_and(is_data_record, is_data_from_channel(4)), converter_func=get_col_row_array_from_data_record_array), bins=(80, 336), range=[[1, 80], [1, 336]])
+#             plotThreeWay(hist=occupancy_array.transpose(), title="Occupancy check", x_axis_title="Occupancy", filename=plots_filename, maximum = self.Ninjections)
+#             plotThreeWay(hist=self.register.get_pixel_register_value("TDAC").transpose(), title="TDAC check distribution after tuning", x_axis_title="TDAC", filename=plots_filename, maximum = 32)
 
 if __name__ == "__main__":
     import configuration
