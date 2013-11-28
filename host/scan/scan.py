@@ -279,7 +279,7 @@ class ScanBase(object):
         if enable_c_low is not None:
             self.register.set_pixel_register_value("C_Low", 1 if enable_c_low else 0)
             commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=["C_Low"]))
-        self.register_utils.send_commands(commands)
+        self.register_utils.send_commands(commands, concatenate=True)
 
         for mask_step in enable_mask_steps:
             commands = []
@@ -298,31 +298,31 @@ class ScanBase(object):
                 commands.extend(self.register.get_commands("wrregister", name=["DIGHITIN_SEL"]))  # write DIGHITIN_SEL mask last
 #             else:
 #                 commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=["EnableDigInj"]))
-            self.register_utils.send_commands(commands)
+            self.register_utils.send_commands(commands, concatenate=True)
             logging.info('%d injection(s): mask step %d' % (repeat_command, mask_step))
 
+            if hardware_repeat == True:
+                self.register_utils.set_hardware_repeat(repeat_command)
+
             for index, dc in enumerate(enable_double_columns):
-                commands = []
-                #commands.extend(conf_mode_command)
+
                 self.register.set_global_register_value("Colpr_Addr", dc)
-                commands.append(conf_mode_command)
-                commands.extend(self.register.get_commands("wrregister", name=["Colpr_Addr"]))
-                commands.append(run_mode_command)
+                cmd_set_dc = conf_mode_command + self.register.get_commands("wrregister", name=["Colpr_Addr"])[0] + run_mode_command
+                cmd = cmd_set_dc + self.register.get_commands("zeros", length=8)[0] + command
 
                 self.register_utils.wait_for_command()
 
-                self.register_utils.send_commands(commands, repeat=1, wait_for_finish=True, concatenate=True, clear_memory=True)
-
                 if index == 0 and use_delay:
-                        bit_length = self.register_utils.set_command(command + self.register.get_commands("zeros", mask_steps=mask_steps)[0], set_length=False)  # overwrite with zeros
+                        bit_length = self.register_utils.set_command(cmd + self.register.get_commands("zeros", mask_steps=mask_steps)[0], set_length=False)  # overwrite with zeros
+                        self.register_utils.set_command_length(bit_length)
                 else:
                     if use_delay:
-                        self.register_utils.set_command(command, set_length=False)
+                        self.register_utils.set_command(cmd, set_length=False)
                     else:
-                        bit_length = self.register_utils.set_command(command, set_length=False)
-                self.register_utils.set_command_length(bit_length)
+                        bit_length = self.register_utils.set_command(cmd, set_length=False)
+                        self.register_utils.set_command_length(bit_length)
+
                 if hardware_repeat == True:
-                    self.register_utils.set_hardware_repeat(repeat_command)
                     self.register_utils.start_command()
                 else:
                     self.register_utils.set_hardware_repeat(1)
@@ -334,6 +334,7 @@ class ScanBase(object):
                     pass
 
             self.register_utils.wait_for_command()
+            self.register_utils.set_hardware_repeat(1)
 
         # restoring default values
         self.register.restore(name=restore_point_name)
