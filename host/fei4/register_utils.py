@@ -4,6 +4,7 @@ import math
 import time
 import numpy as np
 import re
+from bitarray import bitarray
 
 from utils.utils import bitarray_to_array
 
@@ -18,7 +19,9 @@ class FEI4RegisterUtils(object):
 
     def send_commands(self, commands, repeat=1, wait_for_finish=True, concatenate=False, clear_memory=False):
         if concatenate:
-            command = reduce(lambda x, y: x + y, commands)
+            zeros = bitarray(1)
+            zeros.setall(0)
+            command = reduce(lambda x, y: x + zeros + y, commands)  # FE needs a zero between commands
             self.send_command(command=command, repeat=repeat, wait_for_finish=wait_for_finish, set_length=True, clear_memory=True)
         else:
             max_length = 0
@@ -117,7 +120,7 @@ class FEI4RegisterUtils(object):
         commands.extend(self.register.get_commands("confmode"))
         commands.extend(self.register.get_commands("wrregister", readonly=False))
         commands.extend(self.register.get_commands("runmode"))
-        self.send_commands(commands)
+        self.send_commands(commands, concatenate=True)
 
     def configure_pixel(self, same_mask_for_all_dc=False):
         commands = []
