@@ -172,10 +172,10 @@ class GdacTune(ScanBase):
                     vthin_ac_best = self.register.get_global_register_value("Vthin_AltCoarse")
 
                 if plot_intermediate_steps:
-                    plotThreeWay(OccArraySelPixel.transpose(), title="Occupancy (GDAC " + str(scan_paramter_value) + " with tuning bit " + str(gdac_bit) + ")", x_axis_title='Occupancy', filename=plots_filename)
+                    plotThreeWay(OccArraySelPixel.transpose(), title="Occupancy (GDAC " + str(scan_paramter_value) + " with tuning bit " + str(gdac_bit) + ")", x_axis_title='Occupancy', filename=plots_filename, maximum=self.Ninjections)
 
                 if(abs(median_occupancy - self.Ninjections / 2) < self.abort_precision and gdac_bit > 0):  # abort if good value already found to save time
-                    logging.info('Good result already achieved (median - Ninj/2 < %f), skipping not varied bits' % self.abort_precision)
+                    logging.info('Median = %f, good result already achieved (median - Ninj/2 < %f), skipping not varied bits' % (median_occupancy, self.abort_precision))
                     break
 
                 if(gdac_bit > 0):
@@ -212,7 +212,7 @@ class GdacTune(ScanBase):
                 logging.info('Tuned GDAC to Vthin_AltCoarse/Vthin_AltFine = %d/%d' % (self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine")))
 
             self.result = OccArraySelPixel
-            plotThreeWay(OccArraySelPixel.transpose(), title="Occupancy after GDAC tuning (GDAC " + str(scan_paramter_value) + ")", x_axis_title='Occupancy', filename=plots_filename)
+            plotThreeWay(OccArraySelPixel.transpose(), title="Occupancy after GDAC tuning (GDAC " + str(scan_paramter_value) + ")", x_axis_title='Occupancy', filename=plots_filename, maximum=self.Ninjections)
 
 if __name__ == "__main__":
     import configuration
