@@ -1,5 +1,5 @@
 from functools import wraps
-from time import time
+from time import time, sleep
 
 
 def timed(f):
@@ -170,6 +170,7 @@ class Readout(object):
         logging.info('Resetting SRAM FIFO')
         self.update_timestamp()
         self.device.WriteExternal(address=self.sram_base_address[0], data=[0])
+        sleep(0.1)  # sleep here for a while
         if self.get_sram_fifo_size() != 0:
             logging.warning('SRAM FIFO size not zero')
 
@@ -184,6 +185,7 @@ class Readout(object):
             index = self.rx_base_address.iterkeys()
         filter(lambda i: self.device.WriteExternal(address=self.rx_base_address[i], data=[0]), index)
         # since WriteExternal returns nothing, filter returns empty list
+        sleep(0.1)  # sleep here for a while
 
     def get_rx_sync_status(self, index=None):
         if index == None:
