@@ -11,7 +11,7 @@ import copy
 import struct
 
 import logging
-logging.basicConfig(level=logging.INFO, format = "%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 from utils.utils import string_is_binary, flatten_iterable, iterable, str2bool
 
@@ -859,11 +859,6 @@ class FEI4Register(object):
                     reg = bitarray_from_value(value=register_object.value, size=register_object.bitlength)
                     if register_object.littleendian:
                         reg.reverse()
-#                     print "address", register_addresses
-#                     print register_bitset, register_bitset.buffer_info()
-#                     print register_bitset[max(0, 16 - 16 * (register_object.address - register_address) - register_object.offset - register_object.bitlength):min(16, 16 - 16 * (register_object.address - register_address) - register_object.offset)]
-#                     print reg, reg.buffer_info()
-#                     print reg[max(0, register_object.bitlength - 16 - 16 * (register_address - register_object.address) + register_object.offset):min(register_object.bitlength, register_object.bitlength + 16 - 16 * (register_address - register_object.address + 1) + register_object.offset)]
                     # register_bitset[max(0, 16*(register_object.address-register_address)+register_object.offset):min(16, 16*(register_object.address-register_address)+register_object.offset+register_object.bitlength)] |= reg[max(0, 16*(register_address-register_object.address)-register_object.offset):min(register_object.bitlength,16*(register_address-register_object.address+1)-register_object.offset)] # [ bit(n) bit(n-1)... bit(0) ]
                     register_bitset[max(0, 16 - 16 * (register_object.address - register_address) - register_object.offset - register_object.bitlength):min(16, 16 - 16 * (register_object.address - register_address) - register_object.offset)] |= reg[max(0, register_object.bitlength - 16 - 16 * (register_address - register_object.address) + register_object.offset):min(register_object.bitlength, register_object.bitlength + 16 - 16 * (register_address - register_object.address + 1) + register_object.offset)]  # [ bit(0)... bit(n-1) bit(n) ]
                 else:
