@@ -395,7 +395,7 @@ class AnalyzeRawData(object):
         del hits
 
     def _create_additional_data(self):
-        logging.info('create chosen event histograms')
+        logging.info('Create selected event histograms')
         if (self._analyzed_data_file != None and self._create_meta_event_index):
             meta_data_size = self.meta_data.shape[0]
             nEventIndex = self.interpreter.get_n_meta_data_event()
@@ -445,7 +445,7 @@ class AnalyzeRawData(object):
         self._create_additional_cluster_data()
 
     def _create_additional_hit_data(self):
-        logging.info('Create chosen hit histograms')
+        logging.info('Create selected hit histograms')
         if (self._create_tot_hist):
             self.tot_hist = np.zeros(16, dtype=np.uint32)
             self.histograming.get_tot_hist(self.tot_hist)
@@ -496,7 +496,7 @@ class AnalyzeRawData(object):
                 fitted_noise_hist_table[0:336, 0:80] = self.scurve_fit_results[:, :, 1]
 
     def _create_additional_cluster_data(self):
-        logging.info('Create chosen cluster histograms')
+        logging.info('Create selected cluster histograms')
         if(self._create_cluster_size_hist):
             self.cluster_size_hist = np.zeros(1024, dtype=np.uint32)
             self.clusterizer.get_cluster_size_hist(self.cluster_size_hist)
@@ -673,7 +673,7 @@ class AnalyzeRawData(object):
         return result_array.reshape(occupancy_hist.shape[0], occupancy_hist.shape[1], 2)
 
     def fit_scurves_multithread(self, hit_table_file=None, PlsrDAC=None):
-        logging.info("Start S-curve fit on %d cores" % mp.cpu_count())
+        logging.info("Start S-curve fit on %d CPU cores" % mp.cpu_count())
         occupancy_hist = hit_table_file.root.HistOcc[:, :, :] if hit_table_file != None else self.occupancy_array[:, :, :]  # take data from RAM if no file is opended
         occupancy_hist_shaped = occupancy_hist.reshape(occupancy_hist.shape[0] * occupancy_hist.shape[1], occupancy_hist.shape[2])
         partialfit_scurve = partial(fit_scurve, PlsrDAC=PlsrDAC)  # trick to give a function more than one parameter, needed for pool.map
