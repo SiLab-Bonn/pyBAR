@@ -10,6 +10,9 @@ import hashlib
 import copy
 import struct
 
+import logging
+logging.basicConfig(level=logging.INFO, format = "%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
+
 from utils.utils import string_is_binary, flatten_iterable, iterable, str2bool
 
 
@@ -598,7 +601,7 @@ class FEI4Register(object):
                 bv = bitarray(kwargs["length"], endian='little')  # all bits to zero
             elif "mask_steps" in kwargs:
                 def calculate_wait_cycles(mask_steps):
-                    return int(336 * 2 / mask_steps ** (1 / 2) * 24 / 4 * 3)  # good practice
+                    return int(336. / mask_steps * 25. + 600)  # good practice from measurement, see Feature #59
                 bv = bitarray(calculate_wait_cycles(kwargs["mask_steps"]), endian='little')
             else:
                 raise ValueError('Cannot calculate length')
