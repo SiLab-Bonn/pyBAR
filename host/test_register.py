@@ -2,7 +2,8 @@ from scan.scan import ScanBase
 from daq.readout import FEI4Record
 
 import numpy as np
-from bitstring import BitArray
+from bitarray import bitarray
+import struct
 
 import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
@@ -20,14 +21,11 @@ class TestRegisters(ScanBase):
         Number of register errors is some arbitrary number.
         FEI4A has timing issues when reading pixel registers. The data from pixel registers is corrupted. It is a known bug of the FEI4A.
         '''
-        number_of_errors = self.test_global_register()
-        logging.info('Global Register Test: Found %d error(s)' % number_of_errors)
+        self.test_global_register()
 
-        number_of_errors = self.test_pixel_register()
-        logging.info('Pixel Register Test: Found %d error(s)' % number_of_errors)
+        self.test_pixel_register()
 
-        sn = self.read_chip_sn()
-        logging.info('Chip S/N: %d' % sn)
+        self.read_chip_sn()
 
     def read_chip_sn(self):
         '''Reading Chip S/N
@@ -58,7 +56,9 @@ class TestRegisters(ScanBase):
         self.register_utils.send_commands(commands)
 
         data = self.readout.read_data()
-
+        if data.shape[0] == 0:
+            logging.warning('Chip S/N: No data')
+            return
         read_values = []
         for index, word in enumerate(np.nditer(data)):
             fei4_data = FEI4Record(word, self.register.chip_flavor)
@@ -79,7 +79,7 @@ class TestRegisters(ScanBase):
         commands.extend(self.register.get_commands("runmode"))
         self.register_utils.send_commands(commands)
 
-        return chip_sn
+        logging.info('Chip S/N: %d' % chip_sn)
 
     def test_global_register(self):
         '''Test Global Register
@@ -99,6 +99,9 @@ class TestRegisters(ScanBase):
         self.register_utils.send_commands(commands)
 
         data = self.readout.read_data()
+        if data.shape[0] == 0:
+            logging.warning('Global Register Test: No data')
+            return
         checked_address = []
         number_of_errors = 0
         for index, word in enumerate(np.nditer(data)):
@@ -106,7 +109,9 @@ class TestRegisters(ScanBase):
             # print fei4_data
             if fei4_data == 'AR':
                 read_value = FEI4Record(data[index + 1], self.register.chip_flavor)['value']
-                set_value = int(self.register.get_global_register_bitsets([fei4_data['address']])[0])
+                set_value_bitarray = self.register.get_global_register_bitsets([fei4_data['address']])[0]
+                set_value_bitarray.reverse()
+                set_value = struct.unpack('H', set_value_bitarray.tobytes())[0]
                 checked_address.append(fei4_data['address'])
                 # print int(self.register.get_global_register_bitsets([fei4_data['address']])[0])
                 if read_value == set_value:
@@ -125,7 +130,7 @@ class TestRegisters(ScanBase):
         for address in not_read_registers:
             logging.warning('Global Register Test: Data for Global Register at address %d missing' % address)
             number_of_errors += 1
-        return number_of_errors
+        logging.info('Global Register Test: Found %d error(s)' % number_of_errors)
 
     def test_pixel_register(self):
         '''Test Pixel Register
@@ -238,10 +243,12 @@ class TestRegisters(ScanBase):
                             # print fei4_data
                             if fei4_data == 'AR':
                                 # print int(self.register.get_global_register_bitsets([fei4_data['address']])[0])
-                                read_value = BitArray(uint=FEI4Record(data[index + 1], self.register.chip_flavor)['value'], length=16)
+                                #read_value = BitArray(uint=FEI4Record(data[index + 1], self.register.chip_flavor)['value'], length=16)
+                                read_value = bitarray()
+                                read_value.frombytes(struct.pack('H', FEI4Record(data[index + 1], self.register.chip_flavor)['value']))
                                 if do_latch == True:
                                     read_value.invert()
-                                read_value = read_value.uint
+                                read_value = struct.unpack('H', read_value.tobytes())[0]
                                 read_address = fei4_data['address']
                                 if read_address not in expected_addresses:
                                     if do_latch:
@@ -252,7 +259,8 @@ class TestRegisters(ScanBase):
                                 else:
                                     if read_address not in seen_addresses:
                                         seen_addresses[read_address] = 1
-                                        set_value = int(register_bitset[read_address - 15:read_address + 1])
+                                        set_value = register_bitset[read_address - 15:read_address + 1]
+                                        set_value = struct.unpack('H', set_value.tobytes())[0]
                                         if read_value == set_value:
     #                                        if do_latch:
     #                                            print 'Register Test:', 'PxStrobes Bit', pxstrobe+pxstrobe_bit_no, 'DC', dc_no, 'Address', read_address, 'PASSED'
@@ -301,7 +309,7 @@ class TestRegisters(ScanBase):
         commands.extend(self.register.get_commands("runmode"))
         self.register_utils.send_commands(commands)
 
-        return number_of_errors
+        logging.info('Pixel Register Test: Found %d error(s)' % number_of_errors)
 
 if __name__ == "__main__":
     import configuration
