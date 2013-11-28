@@ -77,8 +77,12 @@ class FEI4RegisterUtils(object):
                 repeat = 1
             # print 'sleeping'
             time.sleep((length + 500) * 0.000000025 * repeat)  # TODO: optimize wait time
-        while not (self.device.ReadExternal(address=0 + 1, size=1)[0] & 0x01) == 1:
+        while not self.is_ready:
             pass
+
+    @property
+    def is_ready(self):
+        return (self.device.ReadExternal(address=0 + 1, size=1)[0] & 0x01) == 1
 
     def global_reset(self):
         '''FEI4 Global Reset
