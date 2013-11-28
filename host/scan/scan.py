@@ -254,8 +254,21 @@ class ScanBase(object):
         self.register.create_restore_point(name=restore_point_name)
 
         # pre-calculate often used commands
+        zero_cmd = self.register.get_commands("zeros", length=1)[0]
         conf_mode_command = self.register.get_commands("confmode")[0]
         run_mode_command = self.register.get_commands("runmode")[0]
+        delay = self.register.get_commands("zeros", mask_steps=mask_steps)[0]
+        if use_delay:
+            scan_loop_command = command + delay
+        else:
+            scan_loop_command = command
+
+        def get_dc_address_command(dc, byte_padded=True):
+            self.register.set_global_register_value("Colpr_Addr", dc)
+            cmd = conf_mode_command + zero_cmd + self.register.get_commands("wrregister", name=["Colpr_Addr"])[0] + zero_cmd + run_mode_command + zero_cmd
+            if byte_padded:
+                cmd.fill()
+            return cmd
 
         if enable_mask_steps == None or not enable_mask_steps:
             enable_mask_steps = range(mask_steps)
@@ -301,40 +314,36 @@ class ScanBase(object):
             self.register_utils.send_commands(commands, concatenate=True)
             logging.info('%d injection(s): mask step %d' % (repeat_command, mask_step))
 
+            # set repeat, should be 1 by default when arriving here
             if hardware_repeat == True:
                 self.register_utils.set_hardware_repeat(repeat_command)
 
+            # get DC command for the first DC in the list, DC command is byte padded
+            # fill CMD memory with DC command and scan loop command, inside the loop only overwrite DC command
+            self.register_utils.set_command(command=get_dc_address_command(enable_double_columns[0]) + scan_loop_command)
+
             for index, dc in enumerate(enable_double_columns):
-
-                self.register.set_global_register_value("Colpr_Addr", dc)
-                cmd_set_dc = conf_mode_command + self.register.get_commands("wrregister", name=["Colpr_Addr"])[0] + run_mode_command
-                cmd = cmd_set_dc + self.register.get_commands("zeros", length=8)[0] + command
-
-                self.register_utils.wait_for_command()
-
-                if index == 0 and use_delay:
-                        bit_length = self.register_utils.set_command(cmd + self.register.get_commands("zeros", mask_steps=mask_steps)[0], set_length=False)  # overwrite with zeros
-                        self.register_utils.set_command_length(bit_length)
-                else:
-                    if use_delay:
-                        self.register_utils.set_command(cmd, set_length=False)
-                    else:
-                        bit_length = self.register_utils.set_command(cmd, set_length=False)
-                        self.register_utils.set_command_length(bit_length)
+                if index != 0:  # full command is already set before loop
+                    # get DC command before wait to save some time
+                    dc_address_command = get_dc_address_command(dc)
+                    self.register_utils.wait_for_command()
+                    # only set command after FPGA is ready
+                    # overwrite only the DC command in CMD memory
+                    self.register_utils.set_command(dc_address_command, set_length=False)  # do not set length here, because it was already set up before the loop
 
                 if hardware_repeat == True:
                     self.register_utils.start_command()
-                else:
-                    self.register_utils.set_hardware_repeat(1)
+                else:  # do this in software, much slower
                     for _ in range(repeat_command):
                         self.register_utils.start_command()
+
                 try:
                     eol_function()
                 except TypeError:
                     pass
 
+            # wait here before we go on because we just jumped out of the loop
             self.register_utils.wait_for_command()
-            self.register_utils.set_hardware_repeat(1)
 
         # restoring default values
         self.register.restore(name=restore_point_name)
