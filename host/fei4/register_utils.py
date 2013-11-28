@@ -16,13 +16,16 @@ class FEI4RegisterUtils(object):
         self.register = register
         self.command_memory_byte_offset = 8
         self.command_memory_byte_size = 2048 - self.command_memory_byte_offset  # 16 bytes of register data
+        self.zero_cmd = self.register.get_commands("zeros", length=1)[0]
+
+    def concatenate_commands(self, commands):
+        def add_commands(x, y):
+            return x + self.zero_cmd + y  # FE needs a zero between commands
+        return reduce(add_commands, commands)
 
     def send_commands(self, commands, repeat=1, wait_for_finish=True, concatenate=False, clear_memory=False):
         if concatenate:
-            zeros = bitarray(1)
-            zeros.setall(0)
-            command = reduce(lambda x, y: x + zeros + y, commands)  # FE needs a zero between commands
-            self.send_command(command=command, repeat=repeat, wait_for_finish=wait_for_finish, set_length=True, clear_memory=True)
+            self.send_command(command=self.concatenate_commands(commands), repeat=repeat, wait_for_finish=wait_for_finish, set_length=True, clear_memory=clear_memory)
         else:
             max_length = 0
             self.set_hardware_repeat(1)

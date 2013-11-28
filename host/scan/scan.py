@@ -254,7 +254,6 @@ class ScanBase(object):
         self.register.create_restore_point(name=restore_point_name)
 
         # pre-calculate often used commands
-        zero_cmd = self.register.get_commands("zeros", length=1)[0]
         conf_mode_command = self.register.get_commands("confmode")[0]
         run_mode_command = self.register.get_commands("runmode")[0]
         delay = self.register.get_commands("zeros", mask_steps=mask_steps)[0]
@@ -265,7 +264,7 @@ class ScanBase(object):
 
         def get_dc_address_command(dc, byte_padded=True):
             self.register.set_global_register_value("Colpr_Addr", dc)
-            cmd = conf_mode_command + zero_cmd + self.register.get_commands("wrregister", name=["Colpr_Addr"])[0] + zero_cmd + run_mode_command + zero_cmd
+            cmd = self.register_utils.concatenate_commands((conf_mode_command, self.register.get_commands("wrregister", name=["Colpr_Addr"])[0], run_mode_command))
             if byte_padded:
                 cmd.fill()
             return cmd
@@ -320,7 +319,7 @@ class ScanBase(object):
 
             # get DC command for the first DC in the list, DC command is byte padded
             # fill CMD memory with DC command and scan loop command, inside the loop only overwrite DC command
-            self.register_utils.set_command(command=get_dc_address_command(enable_double_columns[0]) + scan_loop_command)
+            self.register_utils.set_command(command=self.register_utils.concatenate_commands((get_dc_address_command(enable_double_columns[0]), scan_loop_command)))
 
             for index, dc in enumerate(enable_double_columns):
                 if index != 0:  # full command is already set before loop
