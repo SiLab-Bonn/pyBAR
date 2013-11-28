@@ -170,7 +170,7 @@ class Readout(object):
         logging.info('Resetting SRAM FIFO')
         self.update_timestamp()
         self.device.WriteExternal(address=self.sram_base_address[0], data=[0])
-        sleep(0.1)  # sleep here for a while
+        sleep(0.2)  # sleep here for a while
         if self.get_sram_fifo_size() != 0:
             logging.warning('SRAM FIFO size not zero')
 
