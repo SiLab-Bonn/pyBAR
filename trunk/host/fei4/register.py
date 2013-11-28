@@ -22,7 +22,6 @@ def bitarray_from_value(value, size=None, fmt='Q'):
     if size is not None:
         if size > ba.length():
             ba.extend((size - ba.length()) * [0])
-            print ba
         else:
             ba = ba[:size]
     ba.reverse()
