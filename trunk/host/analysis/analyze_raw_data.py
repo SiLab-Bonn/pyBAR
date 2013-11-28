@@ -1,5 +1,6 @@
 ''' Script to convert the raw data and to plot all histograms'''
 import tables as tb
+from tables import dtype_from_descr, Col
 import numpy as np
 import logging
 import os
@@ -32,12 +33,14 @@ def fit_scurve(scurve_data, PlsrDAC):  # data of some pixels to fit, has to be g
 
 def fit_scurves_subset(hist, PlsrDAC):
     '''
-    Fits Scurve to pixels
+    Fits S-curve for each pixel
 
     Parameters
     ----------
     hist : array like, shape = (number of pixel, PlsrDAC range)
-        Input data.
+        Array of input y data.
+    PlsrDAC : array-like
+        Input x data.
 
     Returns
     -------
@@ -313,49 +316,15 @@ class AnalyzeRawData(object):
 
         self.FEI4B = FEI4B
 
-        hits = np.empty((self._chunk_size,), dtype=[('eventNumber', np.uint32),
-                         ('triggerNumber', np.uint32),
-                         ('relativeBCID', np.uint8),
-                         ('LVLID', np.uint16),
-                         ('column', np.uint8),
-                         ('row', np.uint16),
-                         ('tot', np.uint8),
-                         ('BCID', np.uint16),
-                         ('triggerStatus', np.uint8),
-                         ('serviceRecord', np.uint32),
-                         ('eventStatus', np.uint8)
-                         ])
+        hits = np.empty((self._chunk_size,), dtype=dtype_from_descr(data_struct.HitInfoTable))
+
         if(self._create_meta_word_index):
-            meta_word = np.empty((self._chunk_size,), dtype=[('eventNumber', np.uint32),
-                             ('startIndex', np.uint32),
-                             ('stopIndex', np.uint32),
-                         ])
+            meta_word = np.empty((self._chunk_size,), dtype=dtype_from_descr(data_struct.MetaInfoWordTable))
             self.interpreter.set_meta_data_word_index(meta_word)
 
         if(self.create_cluster_hit_table or self.create_cluster_table):
-            cluster_hits = np.empty((2 * self._chunk_size,), dtype=[('eventNumber', np.uint32),
-                 ('triggerNumber', np.uint32),
-                 ('relativeBCID', np.uint8),
-                 ('LVLID', np.uint16),
-                 ('column', np.uint8),
-                 ('row', np.uint16),
-                 ('tot', np.uint8),
-                 ('BCID', np.uint16),
-                 ('triggerStatus', np.uint8),
-                 ('serviceRecord', np.uint32),
-                 ('eventStatus', np.uint8),
-                 ('clusterID', np.uint16),
-                 ('isSeed', np.uint8)
-                 ])
-            cluster = np.empty((2 * self._chunk_size,), dtype=[('eventNumber', np.uint32),
-                     ('ID', np.uint16),
-                     ('size', np.uint16),
-                     ('Tot', np.uint16),
-                     ('Charge', np.float32),
-                     ('seed_column', np.uint8),
-                     ('seed_row', np.uint16),
-                     ('eventStatus', np.uint8)
-                     ])
+            cluster_hits = np.empty((2 * self._chunk_size,), dtype=dtype_from_descr(data_struct.ClusterHitInfoTable))
+            cluster = np.empty((2 * self._chunk_size,), dtype=dtype_from_descr(data_struct.ClusterInfoTable))
             self.clusterizer.set_cluster_hit_info_array(cluster_hits)
             self.clusterizer.set_cluster_info_array(cluster)
 
@@ -431,10 +400,14 @@ class AnalyzeRawData(object):
             meta_data_size = self.meta_data.shape[0]
             nEventIndex = self.interpreter.get_n_meta_data_event()
             if (meta_data_size == nEventIndex):
-                description = data_struct.MetaInfoEventTable.columns
+                description = data_struct.MetaInfoEventTable().columns
+                last_pos = len(description)
                 if (self.scan_parameters != None):  # add additional column with the scan parameter
-                    scan_par_name = self.scan_parameters.dtype.names[0]
-                    description[scan_par_name] = tb.UInt32Col(dflt=0, pos=3) 
+                    for scan_par_name in self.scan_parameters.dtype.names:
+                        dtype, pos = self.scan_parameters.dtype.fields[scan_par_name][:2]
+                        if pos == 0:
+                            description[scan_par_name] = Col.from_dtype(dtype, dflt=0, pos=last_pos)  # TODO: support more scan parameters
+                            break
                 meta_data_out_table = self.out_file_h5.createTable(self.out_file_h5.root, name='meta_data', description=description, title='MetaData', filters=self._filter_table)
                 entry = meta_data_out_table.row
                 for i in range(0, nEventIndex):
@@ -446,7 +419,7 @@ class AnalyzeRawData(object):
                     entry.append()
                 meta_data_out_table.flush()
                 if self.scan_parameters != None:
-                    logging.info("Save meta data with scan parameter "+scan_par_name)
+                    logging.info("Save meta data with scan parameter " + scan_par_name)
             else:
                 logging.error('Meta data analysis failed')
         if (self._create_service_record_hist):
@@ -515,7 +488,7 @@ class AnalyzeRawData(object):
                 noise_hist_table[0:336, 0:80] = self.noise_hist
         if (self._create_fitted_threshold_hists):
             scan_parameters = np.linspace(self.histograming.get_min_parameter(), self.histograming.get_max_parameter(), num=self.histograming.get_n_parameters(), endpoint=True)
-            self.scurve_fit_results = self.fit_scurves_multithread(self.out_file_h5, PlsrDAC = scan_parameters)
+            self.scurve_fit_results = self.fit_scurves_multithread(self.out_file_h5, PlsrDAC=scan_parameters)
             if (self._analyzed_data_file != None):
                 fitted_threshold_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistThresholdFitted', title='Threshold Fitted Histogram', atom=tb.Atom.from_dtype(self.scurve_fit_results.dtype), shape=(336, 80), filters=self._filter_table)
                 fitted_threshold_hist_table[0:336, 0:80] = self.scurve_fit_results[:, :, 0]
@@ -540,30 +513,8 @@ class AnalyzeRawData(object):
 
     # @profile
     def analyze_hit_table(self, analyzed_data_file=None, analyzed_data_out_file=None):
-        cluster_hits = np.empty((2 * self._chunk_size,), dtype=[('eventNumber', np.uint32),
-                 ('triggerNumber', np.uint32),
-                 ('relativeBCID', np.uint8),
-                 ('LVLID', np.uint16),
-                 ('column', np.uint8),
-                 ('row', np.uint16),
-                 ('tot', np.uint8),
-                 ('BCID', np.uint16),
-                 ('triggerStatus', np.uint8),
-                 ('serviceRecord', np.uint32),
-                 ('eventStatus', np.uint8),
-                 ('clusterID', np.uint16),
-                 ('isSeed', np.uint8)
-                 ])
-
-        cluster = np.empty((2 * self._chunk_size,), dtype=[('eventNumber', np.uint32),
-                 ('ID', np.uint16),
-                 ('size', np.uint16),
-                 ('Tot', np.uint16),
-                 ('Charge', np.float32),
-                 ('seed_column', np.uint8),
-                 ('seed_row', np.uint16),
-                 ('eventStatus', np.uint8)
-                 ])
+        cluster_hits = np.empty((2 * self._chunk_size,), dtype=dtype_from_descr(data_struct.ClusterHitInfoTable))
+        cluster = np.empty((2 * self._chunk_size,), dtype=dtype_from_descr(data_struct.ClusterInfoTable))
 
         in_file_h5 = None
 
@@ -715,19 +666,22 @@ class AnalyzeRawData(object):
         logging.info('Closing output file')
         output_pdf.close()
 
-    def fit_scurves(self, hit_table_file=None, PlsrDAC=range(0, 101)):
+    def fit_scurves(self, hit_table_file=None, PlsrDAC=None):
         occupancy_hist = hit_table_file.root.HistOcc[:, :, :] if hit_table_file != None else self.occupancy_array[:, :, :]  # take data from RAM if no file was opened
         occupancy_hist_shaped = occupancy_hist.reshape(occupancy_hist.shape[0] * occupancy_hist.shape[1], occupancy_hist.shape[2])
         result_array = np.array(fit_scurves_subset(occupancy_hist_shaped[:], PlsrDAC=PlsrDAC))
         return result_array.reshape(occupancy_hist.shape[0], occupancy_hist.shape[1], 2)
 
-    def fit_scurves_multithread(self, hit_table_file=None, PlsrDAC=range(0, 101)):
+    def fit_scurves_multithread(self, hit_table_file=None, PlsrDAC=None):
         logging.info("Start S-curve fit on %d cores" % mp.cpu_count())
         occupancy_hist = hit_table_file.root.HistOcc[:, :, :] if hit_table_file != None else self.occupancy_array[:, :, :]  # take data from RAM if no file is opended
         occupancy_hist_shaped = occupancy_hist.reshape(occupancy_hist.shape[0] * occupancy_hist.shape[1], occupancy_hist.shape[2])
         partialfit_scurve = partial(fit_scurve, PlsrDAC=PlsrDAC)  # trick to give a function more than one parameter, needed for pool.map
         pool = mp.Pool(processes=mp.cpu_count())  # create as many workers as physical cores are available
-        result_list = pool.map(partialfit_scurve, occupancy_hist_shaped.tolist())
+        try:
+            result_list = pool.map(partialfit_scurve, occupancy_hist_shaped.tolist())
+        except TypeError:
+            raise Exception('S-curve fit needs at least three data points')
         pool.close()
         pool.join()  # blocking function until fit finished
         result_array = np.array(result_list)
@@ -757,8 +711,8 @@ if __name__ == "__main__":
     chip_flavor = 'fei4a'
     input_file = r"fake_data.h5"
     output_file = r"C:\pybar\trunk\host\data/test.h5"
-    scan_data_filename = r"C:\pybar\trunk\host\data/" + scan_name+".h5"
- 
+    scan_data_filename = r"C:\pybar\trunk\host\data/" + scan_name + ".h5"
+
     with AnalyzeRawData(raw_data_file=scan_data_filename, analyzed_data_file=output_file) as analyze_raw_data:
         with tb.openFile(analyze_raw_data._raw_data_file, mode="r") as in_file_h5:
             analyze_raw_data.fit_scurves_multithread(in_file_h5, PlsrDAC=range(0, 51))

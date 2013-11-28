@@ -1,5 +1,6 @@
 import tables as tb
-
+#from tables import descr_from_dtype
+import numpy as np
 
 class MetaTable(tb.IsDescription):
     start_index = tb.UInt32Col(pos=0)
@@ -39,7 +40,7 @@ def generate_scan_parameter_description(scan_parameters):
     -----
     pytables.createTable(self.raw_data_file_h5.root, name = 'scan_parameters', description = generate_scan_parameter_description(['PlsrDAC']), title = 'scan_parameters', filters = filter_tables)
     '''
-    table_description = dict([(key, tb.UInt32Col(pos=idx)) for idx, key in enumerate(scan_parameters)])
+    table_description = np.dtype([(key, tb.UInt32Col(pos=idx)) for idx, key in enumerate(scan_parameters)])
     return table_description
 
 
@@ -47,7 +48,7 @@ class HitInfoTable(tb.IsDescription):
     event_number = tb.UInt32Col(pos=0)
     trigger_number = tb.UInt32Col(pos=1)
     relative_BCID = tb.UInt8Col(pos=2)
-    LVLID = tb.UInt16Col(pos=3)
+    LVL1ID = tb.UInt16Col(pos=3)
     column = tb.UInt8Col(pos=4)
     row = tb.UInt16Col(pos=5)
     tot = tb.UInt8Col(pos=6)
@@ -65,15 +66,15 @@ class MetaInfoEventTable(tb.IsDescription):
 
 class MetaInfoWordTable(tb.IsDescription):
     event_number = tb.UInt32Col(pos=0)
-    start_word_index = tb.UInt32Col(pos=1)
-    stop_word_index = tb.UInt32Col(pos=2)
+    start_index = tb.UInt32Col(pos=1)
+    stop_index = tb.UInt32Col(pos=2)
 
 
 class ClusterHitInfoTable(tb.IsDescription):
     event_number = tb.UInt32Col(pos=0)
     trigger_number = tb.UInt32Col(pos=1)
     relative_BCID = tb.UInt8Col(pos=2)
-    LVLID = tb.UInt16Col(pos=3)
+    LVL1ID = tb.UInt16Col(pos=3)
     column = tb.UInt8Col(pos=4)
     row = tb.UInt16Col(pos=5)
     tot = tb.UInt8Col(pos=6)
