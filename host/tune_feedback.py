@@ -127,8 +127,9 @@ class FeedbackTune(ScanBase):
                             logging.info("Binary search converged to non optimal value, take best measured value instead")
                             mean_tot = tot_mean_best
                             self.register.set_global_register_value("PrmpVbpf", prmp_vbpf_best)
-                    tot_mean_best = mean_tot
-                    prmp_vbpf_best
+
+            if self.register.get_global_register_value("PrmpVbpf") == 0 or self.register.get_global_register_value("PrmpVbpf") == 254:
+                logging.warning('PrmpVbpf reached minimum/maximum value')
 
             if(abs(mean_tot - self.TargetTot) > 2 * self.abort_precision):
                 logging.warning('Tuning of PrmpVbpf to %d tot failed. Difference = %f tot. PrmpVbpf = %d' % (self.TargetTot, abs(mean_tot - self.TargetTot), self.register.get_global_register_value("PrmpVbpf")))
