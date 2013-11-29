@@ -90,6 +90,9 @@ class FeedbackTune(ScanBase):
 
                 tots = get_tot_array_from_data_record_array(convert_data_array(data_array_from_data_dict_iterable(self.readout.data), filter_func=logical_and(is_data_record, is_data_from_channel(4))))
                 mean_tot = np.mean(tots)
+                if np.isnan(mean_tot):
+                    logging.error("No hits, TOT calculation not possible, tuning will fail")
+
                 if abs(mean_tot - self.TargetTot) < abs(tot_mean_best - self.TargetTot):
                     tot_mean_best = mean_tot
                     prmp_vbpf_best = self.register.get_global_register_value("PrmpVbpf")

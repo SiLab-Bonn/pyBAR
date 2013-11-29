@@ -49,7 +49,7 @@ class FdacTune(ScanBase):
 
     def set_start_fdac(self):
         start_fdac_setting = self.register.get_pixel_register_value("FDAC")
-        for bit_position in self.FdacTuneBits:  # reset all TDAC bits, FIXME: speed up
+        for bit_position in self.FdacTuneBits:  # reset all FDAC bits, FIXME: speed up
             start_fdac_setting = start_fdac_setting & ~(1 << bit_position)
         self.register.set_pixel_register_value("FDAC", start_fdac_setting)
 
@@ -103,7 +103,7 @@ class FdacTune(ScanBase):
                 tot_mean_best[select_better_pixel_mask] = tot_mean_array[select_better_pixel_mask]
 
                 if plot_intermediate_steps:
-                    plotThreeWay(hist=tot_mean_array.transpose().transpose(), title="TOT mean (FDAC tuning bit " + str(Fdac_bit) + ")", x_axis_title='mean TOT', filename=plots_filename)
+                    plotThreeWay(hist=tot_mean_array.transpose().transpose(), title="TOT mean (FDAC tuning bit " + str(Fdac_bit) + ")", x_axis_title='mean TOT', filename=plots_filename, minimum=0, maximum=15)
 
                 fdac_mask = self.register.get_pixel_register_value("FDAC")
                 fdac_mask_best[select_better_pixel_mask] = fdac_mask[select_better_pixel_mask]
@@ -125,8 +125,8 @@ class FdacTune(ScanBase):
             self.register.set_pixel_register_value("FDAC", fdac_mask_best)
             self.result = tot_mean_best
 
-            plotThreeWay(hist=self.result.transpose(), title="TOT mean after FDAC tuning", x_axis_title="TOT mean", filename=plots_filename)
-            plotThreeWay(hist=self.register.get_pixel_register_value("FDAC").transpose(), title="FDAC distribution after tuning", x_axis_title="FDAC", filename=plots_filename)
+            plotThreeWay(hist=self.result.transpose(), title="TOT mean after FDAC tuning", x_axis_title="TOT mean", filename=plots_filename, minimum=0, maximum=15)
+            plotThreeWay(hist=self.register.get_pixel_register_value("FDAC").transpose(), title="FDAC distribution after tuning", x_axis_title="FDAC", filename=plots_filename, minimum=0, maximum=15)
 
             logging.info('Tuned FDAC!')
 
@@ -140,4 +140,4 @@ if __name__ == "__main__":
     scan.set_fdac_tune_bits(range(3, -1, -1))
     scan.start(use_thread=False)
     scan.stop()
-    scan.register.save_configuration(configuration.config_file)
+    scan.register.save_configuration("FDAC_only")
