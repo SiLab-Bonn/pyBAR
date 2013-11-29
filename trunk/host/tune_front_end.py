@@ -3,6 +3,7 @@
 from datetime import datetime
 import configuration
 import logging
+import os
 
 from tune_gdac import GdacTune
 from tune_feedback import FeedbackTune
@@ -22,7 +23,8 @@ target_tot = 5  # ToT code
 # iteration of tunings
 global_iterations = 3  # set -1..5, 0 is global threshold tuning only, -1 disables global tuning
 local_iterations = 1  # set -1..5, 0 is local threshold tuning only, -1 disables local tuning
-cfg_name = "SCC_50_tuning"
+# configuration filename
+cfg_name = "new_tuning"
 
 if __name__ == "__main__":
     startTime = datetime.now()
@@ -47,8 +49,8 @@ if __name__ == "__main__":
 
     difference_bit = 1
 
-    output_pdf_filename = configuration.scan_data_path + "/" + cfg_name
-    output_pdf = PdfPages(output_pdf_filename)
+    output_pdf_filename = os.path.join(configuration.scan_data_path, cfg_name)
+    output_pdf = PdfPages(output_pdf_filename + '.pdf')
 
     PrmpVbpf = 0
     Vthin_AC = 0
