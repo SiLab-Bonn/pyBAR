@@ -256,7 +256,7 @@ def create_2d_pixel_hist(hist2d, title=None, x_axis_title=None, y_axis_title=Non
             z_max = 1
         else:
             z_max = 2 * math.ceil(hist2d.max())
-    bounds = np.linspace(start=0, stop=z_max, num=z_max if z_max < 255 else 255, endpoint=True)
+    bounds = np.linspace(start=0, stop=z_max, num=255, endpoint=True)
     cmap = cm.get_cmap('jet')
     cmap.set_bad('w')
     norm = colors.BoundaryNorm(bounds, cmap.N)
@@ -434,10 +434,10 @@ if __name__ == "__main__":
             H[col, row] = hits
     plotThreeWay(H.transpose(), title='Occupancy', x_axis_title='occupancy', filename='SourceScanOccupancy.pdf')
 
-    with tb.openFile('out.h5', 'r') as in_file:
-        H=np.empty(shape=(336,80),dtype=in_file.root.HistOcc.dtype)
-        H[:]=in_file.root.HistThreshold[:,:]
-        plotThreeWay(hist = in_file.root.HistThreshold[:,:], title = "Threshold", filename = "Threshold.pdf", label = "noise[e]")
+#     with tb.openFile('out.h5', 'r') as in_file:
+#         H=np.empty(shape=(336,80),dtype=in_file.root.HistOcc.dtype)
+#         H[:]=in_file.root.HistThreshold[:,:]
+#         plotThreeWay(hist = in_file.root.HistThreshold[:,:], title = "Threshold", filename = "Threshold.pdf", label = "noise[e]")
 
 # TODO: set color for bad pixels
 # set nan to special value
