@@ -50,7 +50,7 @@ class TdacTune(ScanBase):
 
     def set_n_injections(self, Ninjections=100):
         self.Ninjections = Ninjections
-    #@profile
+
     def scan(self, plots_filename=None, plot_intermediate_steps=False):
         self.write_target_threshold()
         addedAdditionalLastBitScan = False
@@ -96,7 +96,7 @@ class TdacTune(ScanBase):
                 occupancy_best[select_better_pixel_mask] = occupancy_array[select_better_pixel_mask]
 
                 if plot_intermediate_steps:
-                    plotThreeWay(occupancy_array.transpose(), title="Occupancy (TDAC tuning bit " + str(Tdac_bit) + ")", x_axis_title='Occupancy', filename=plots_filename, maximum = self.Ninjections)
+                    plotThreeWay(occupancy_array.transpose(), title="Occupancy (TDAC tuning bit " + str(Tdac_bit) + ")", x_axis_title='Occupancy', filename=plots_filename, maximum=self.Ninjections)
 
                 tdac_mask = self.register.get_pixel_register_value("TDAC")
                 tdac_mask_best[select_better_pixel_mask] = tdac_mask[select_better_pixel_mask]
@@ -124,6 +124,7 @@ class TdacTune(ScanBase):
             logging.info('Tuned TDAC!')
 
             # additional analog scan to get final results, not needed, just for checking
+#             logging.info('Do analog scan with actual TDAC settings after TDAC tuning')
 #             self.write_tdac_config()
 #             self.readout.start()
 #             cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", mask_steps=mask_steps)[0]
