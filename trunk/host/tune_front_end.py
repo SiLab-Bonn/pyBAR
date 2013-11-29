@@ -42,8 +42,6 @@ if __name__ == "__main__":
     fdac_tune_scan.set_start_fdac()  # set FDAC = 0
     fdac_tune_scan.set_fdac_bit(bit_position=3, bit_value=1)  # set start value FDAC = 8
 
-    analog_scan = AnalogScan(config_file=gdac_tune_scan.register, bit_file=None, scan_data_path=configuration.scan_data_path, device=gdac_tune_scan.device)
-
     difference_bit = int(8 / (global_iterations if global_iterations > 0 else 1))
 
     output_pdf_filename = configuration.scan_data_path + "/" + cfg_name
