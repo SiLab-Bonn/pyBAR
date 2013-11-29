@@ -259,6 +259,7 @@ class FEI4RegisterUtils(object):
         -------
         numpy.ndarray
         '''
+
         # FE columns and rows start from 1
         col_array = np.array(column) - 1
         row_array = np.array(row) - 1
@@ -268,7 +269,8 @@ class FEI4RegisterUtils(object):
         # value = np.zeros(dimension, dtype = np.uint8)
         mask = np.empty(dimension, dtype=np.uint8)
         mask.fill(default)
-        mask[col_array.min():col_array.max() + 1, row_array.min():row_array.max() + 1] = value  # advanced indexing
+        if column and row:
+            mask[col_array.min():col_array.max() + 1, row_array.min():row_array.max() + 1] = value  # advanced indexing
         return mask
 
 
