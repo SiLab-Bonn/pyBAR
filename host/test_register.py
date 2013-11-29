@@ -84,6 +84,7 @@ class TestRegisters(ScanBase):
     def test_global_register(self):
         '''Test Global Register
         '''
+        logging.info('Running Global Register Test...')
         self.register_utils.configure_global()
         commands = []
         commands.extend(self.register.get_commands("confmode"))
@@ -135,6 +136,7 @@ class TestRegisters(ScanBase):
     def test_pixel_register(self):
         '''Test Pixel Register
         '''
+        logging.info('Running Pixel Register Test...')
         self.register_utils.configure_pixel()
         commands = []
         commands.extend(self.register.get_commands("confmode"))
