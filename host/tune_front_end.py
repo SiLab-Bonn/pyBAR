@@ -20,9 +20,9 @@ target_threshold = 50  # in PlsrDAC
 target_charge = 270  # in PlsrDAC
 target_tot = 5  # ToT code
 # iteration of tunings
-global_iterations = 1  # set -1..5, 0 is global threshold tuning only, -1 disables global tuning
+global_iterations = 3  # set -1..5, 0 is global threshold tuning only, -1 disables global tuning
 local_iterations = 1  # set -1..5, 0 is local threshold tuning only, -1 disables local tuning
-cfg_name = "tuning"
+cfg_name = "SCC_50_tuning"
 
 if __name__ == "__main__":
     startTime = datetime.now()
@@ -45,7 +45,7 @@ if __name__ == "__main__":
     fdac_tune_scan.set_start_fdac()  # set FDAC = 0
     fdac_tune_scan.set_fdac_bit(bit_position=3, bit_value=1)  # set start value FDAC = 8
 
-    difference_bit = int(8 / (global_iterations if global_iterations > 0 else 1))
+    difference_bit = 1
 
     output_pdf_filename = configuration.scan_data_path + "/" + cfg_name
     output_pdf = PdfPages(output_pdf_filename)
