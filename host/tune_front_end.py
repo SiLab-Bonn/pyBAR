@@ -14,9 +14,12 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
+# threshold
 target_threshold = 50  # in PlsrDAC
+# gain
 target_charge = 270  # in PlsrDAC
-target_tot = 5
+target_tot = 5  # ToT code
+# iteration of tunings
 global_iterations = 1  # set -1..5, 0 is global threshold tuning only, -1 disables global tuning
 local_iterations = 1  # set -1..5, 0 is local threshold tuning only, -1 disables local tuning
 cfg_name = "tuning"
@@ -95,7 +98,6 @@ if __name__ == "__main__":
     if(local_iterations > 0):
         plotThreeWay(hist=fdac_tune_scan.register.get_pixel_register_value("FDAC").transpose(), title="FDAC distribution after last FDAC tuning", x_axis_title='FDAC', filename=output_pdf, maximum=16)
         plotThreeWay(hist=fdac_tune_scan.result.transpose(), title="TOT mean after last FDAC tuning", x_axis_title='mean TOT', filename=output_pdf)
- 
     if(global_iterations > 0):
         plotThreeWay(hist=tdac_tune_scan.register.get_pixel_register_value("TDAC").transpose(), title="TDAC distribution after complete tuning", x_axis_title='TDAC', filename=output_pdf, maximum=32)
         plotThreeWay(hist=tdac_tune_scan.result.transpose(), title="Occupancy after complete tuning", x_axis_title='Occupancy', filename=output_pdf, maximum=100)
