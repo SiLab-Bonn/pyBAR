@@ -278,9 +278,14 @@ def create_2d_pixel_hist(hist2d, title=None, x_axis_title=None, y_axis_title=Non
 
 
 def create_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, bins=None, x_min=None, x_max=None):
-    median = np.median(hist)
-    mean = np.mean(hist)
-    rms = np.std(hist, dtype=np.float64)
+    if hist.all() is np.ma.masked:
+        median = 0.
+        mean = 0.
+        rms = 0.
+    else:
+        median = np.ma.median(hist)
+        mean = np.ma.mean(hist)
+        rms = np.ma.std(hist, dtype=np.float64)
     hist_bins = 100 if bins is None else bins
     if x_min is None:
         x_min = 0
@@ -309,7 +314,7 @@ def create_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, bins=
         A, mu, sigma = p
         return A * np.exp(-(x - mu) ** 2 / (2.0 * sigma ** 2))
 
-    p0 = np.array([amplitude, mean, rms])  # p0 is the initial guess for the fitting coefficients (A, mu and sigma above)
+    p0 = (amplitude, mean, rms)  # p0 is the initial guess for the fitting coefficients (A, mu and sigma above)
     ax = plt.subplot(312)
     try:
         coeff, _ = curve_fit(gauss, bin_centres, h_1d, p0=p0)
