@@ -4,9 +4,11 @@ import math
 import time
 import numpy as np
 import re
-from bitarray import bitarray
+import logging
 
 from utils.utils import bitarray_to_array
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
 class FEI4RegisterUtils(object):
@@ -112,13 +114,15 @@ class FEI4RegisterUtils(object):
         commands.extend(self.register.get_commands("runmode"))
         self.send_commands(commands)
 
-    def configure_all(self, same_mask_for_all_dc=False, do_global_rest=False):
-        if do_global_rest:
+    def configure_all(self, same_mask_for_all_dc=False, do_global_reset=False):
+        if do_global_reset:
+            logging.info('Global reset of FE')
             self.global_reset()
         self.configure_global()
         self.configure_pixel(same_mask_for_all_dc=same_mask_for_all_dc)
 
     def configure_global(self):
+        logging.info('Sending global configuration to FE')
         commands = []
         commands.extend(self.register.get_commands("confmode"))
         commands.extend(self.register.get_commands("wrregister", readonly=False))
@@ -126,6 +130,7 @@ class FEI4RegisterUtils(object):
         self.send_commands(commands, concatenate=True)
 
     def configure_pixel(self, same_mask_for_all_dc=False):
+        logging.info('Sending pixel configuration to FE')
         commands = []
         commands.extend(self.register.get_commands("confmode"))
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=same_mask_for_all_dc, name=["Imon", "Enable", "c_high", "c_low", "TDAC", "FDAC"]))
