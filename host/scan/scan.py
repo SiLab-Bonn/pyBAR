@@ -51,7 +51,10 @@ class ScanBase(object):
         self.readout = Readout(self.device)
         self.readout_utils = ReadoutUtils(self.device)
 
-        self.register = FEI4Register(config_file, definition_file=definition_file)
+        if isinstance(config_file, FEI4Register):
+            self.register = config_file
+        else:
+            self.register = FEI4Register(config_file, definition_file=definition_file)
         self.register_utils = FEI4RegisterUtils(self.device, self.readout, self.register)
 
         if scan_data_path == None:
@@ -75,12 +78,7 @@ class ScanBase(object):
     def is_running(self):
         return self.scan_thread.is_alive()
 
-    def configure(self):
-        logging.info('Sending configuration to FE')
-        #scan.register.load_configuration_file(config_file)
-        self.register_utils.configure_all(same_mask_for_all_dc=False, do_global_rest=True)
-
-    def start(self, configure=True, restore_configuration=False, use_thread=False, **kwargs):  # TODO: in Python 3 use def func(a,b,*args,kw1=None,**kwargs)
+    def start(self, configure=True, restore_configuration=False, use_thread=False, do_global_reset=True, **kwargs):  # TODO: in Python 3 use def func(a,b,*args,kw1=None,**kwargs)
         '''Starting scan.
 
         Parameters
@@ -91,6 +89,8 @@ class ScanBase(object):
             Restore FE configuration after finishing scan.scan().
         use_thread : bool
             If true, scan.scan() is running in a separate thread. Only then Ctrl-C can be used to interrupt scan loop.
+        do_global_reset : bool
+            Do a FE Global Reset before sending FE configuration.
         **kwargs : any
             Any keyword argument passed to scan.start() will be forwarded to scan.scan().
         '''
@@ -102,7 +102,7 @@ class ScanBase(object):
         self.write_scan_number()
 
         if configure:
-            self.configure()
+            self.register_utils.configure_all(do_global_reset=do_global_reset)
         self.restore_configuration = restore_configuration
         if self.restore_configuration:
             self.register.create_restore_point(name=self.scan_identifier)
@@ -167,7 +167,7 @@ class ScanBase(object):
         if self.restore_configuration:
             logging.info('Restoring FE configuration')
             self.register.restore(name=self.scan_identifier)
-            self.configure()
+            self.register_utils.configure_all(do_global_reset=False)
         logging.info('Stopped scan %s with ID %d' % (self.scan_identifier, self.scan_number))
         self.readout.print_readout_status()
 
@@ -250,7 +250,7 @@ class ScanBase(object):
             raise TypeError
 
         # create restore point
-        restore_point_name = self.scan_identifier + '_scan'
+        restore_point_name = self.scan_identifier + '_scan_loop'
         self.register.create_restore_point(name=restore_point_name)
 
         # pre-calculate often used commands
