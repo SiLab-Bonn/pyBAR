@@ -188,7 +188,7 @@ def plot_cluster_tot_size(hist, median=False, max_occ=None, filename=None):
 
 
 def plot_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, x_ticks=None, color='r', plot_range=None, log_y=False, filename=None):
-    logging.info("Plot 1d histogram%s" % ((' ' + title) if title is not None else ''))
+    logging.info("Plot 1d histogram%s" % ((': ' + title) if title is not None else ''))
     plt.clf()
     fig = plt.figure()
     fig.patch.set_facecolor('white')
@@ -323,7 +323,7 @@ def create_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, bins=
         ax.text(0.85, 0.9, textright, transform=ax.transAxes, fontsize=8,
         verticalalignment='top', bbox=props)
     except RuntimeError:
-        logging.info('create_1d_hist: Fit failed, do not plot fit')
+        logging.info('Plot 1d histogram: gauss fit failed, do not draw curve')
     textleft = '$\mathrm{mean}=%.2f$\n$\mathrm{RMS}=%.2f$\n$\mathrm{median}=%.2f$' % (mean, rms, median)
     props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
     ax.text(0.1, 0.9, textleft, transform=ax.transAxes, fontsize=8, verticalalignment='top', bbox=props)
