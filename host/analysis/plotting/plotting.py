@@ -325,8 +325,7 @@ def create_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, bins=
             chi2 += (h_1d[i] - gauss(h_bins[i], *coeff)) ** 2
         textright = '$\mu=%.2f$\n$\sigma=%.2f$\n$\chi2=%.2f$' % (coeff[1], coeff[2], chi2)
         props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
-        ax.text(0.85, 0.9, textright, transform=ax.transAxes, fontsize=8,
-        verticalalignment='top', bbox=props)
+        ax.text(0.85, 0.9, textright, transform=ax.transAxes, fontsize=8, verticalalignment='top', bbox=props)
     except RuntimeError:
         logging.info('Plot 1d histogram: gauss fit failed, do not draw curve')
     textleft = '$\mathrm{mean}=%.2f$\n$\mathrm{RMS}=%.2f$\n$\mathrm{median}=%.2f$' % (mean, rms, median)
