@@ -311,7 +311,7 @@ class ScanBase(object):
 #             else:
 #                 commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=["EnableDigInj"]))
             self.register_utils.send_commands(commands, concatenate=True)
-            logging.info('%d injection(s): mask step %d' % (repeat_command, mask_step))
+            logging.info('%d injection(s): mask step %d %s' % (repeat_command, mask_step, ('[%d - %d]' % (enable_mask_steps[0], enable_mask_steps[-1])) if len(enable_mask_steps) > 1 else ('[%d]' % enable_mask_steps[0])))
 
             # set repeat, should be 1 by default when arriving here
             if hardware_repeat == True:
