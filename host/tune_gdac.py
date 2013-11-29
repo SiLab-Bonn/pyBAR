@@ -103,16 +103,13 @@ class GdacTune(ScanBase):
             number_of_errors += 1
         return number_of_errors
 
-    def scan(self, plots_filename=None, plot_intermediate_steps=False):
+    def scan(self, mask_steps=3, enable_mask_steps=[0], plots_filename=None, plot_intermediate_steps=False):
         self.write_target_threshold()
         for gdac_bit in self.GdacTuneBits:  # reset all GDAC bits
             self.set_gdac_bit(gdac_bit, bit_value=0)
 
         addedAdditionalLastBitScan = False
         lastBitResult = self.Ninjections
-
-        mask_steps = 3
-        enable_mask_steps = [0]  # one mask step to increase speed, no effect on precision
 
         def bits_set(int_type):
             int_type = int(int_type)
@@ -206,6 +203,9 @@ class GdacTune(ScanBase):
                             self.register.set_global_register_value("Vthin_AltFine", vthin_af_best)
                             self.register.set_global_register_value("Vthin_AltCoarse", vthin_ac_best)
 
+            if (self.register.get_global_register_value("Vthin_AltFine") == 0 and self.register.get_global_register_value("Vthin_AltCoarse") == 0) or self.register.get_global_register_value("Vthin_AltFine") == 254:
+                logging.warning('GDAC reached minimum/maximum value')
+
             if(abs(median_occupancy - self.Ninjections / 2) > 2 * self.abort_precision):
                 logging.warning('Tuning of Vthin_AltCoarse/Vthin_AltFine failed. Difference = %f. Vthin_AltCoarse/Vthin_AltFine = %d/%d' % (abs(median_occupancy - self.Ninjections / 2), self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine")))
             else:
@@ -221,6 +221,6 @@ if __name__ == "__main__":
     scan.set_abort_precision(delta_occupancy=2)
     scan.set_gdac_tune_bits(range(7, -1, -1))
     scan.set_n_injections(Ninjections=50)
-    scan.start(use_thread=False, plot_intermediate_steps=False)
+    scan.start(use_thread=False, enable_mask_steps=[0], plot_intermediate_steps=False)
     scan.stop()
     scan.register.save_configuration(configuration.config_file)
