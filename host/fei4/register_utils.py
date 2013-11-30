@@ -97,6 +97,7 @@ class FEI4RegisterUtils(object):
 
         Special function to do a global reset on FEI4. Sequence of commands has to be like this, otherwise FEI4B will be left in weird state.
         '''
+        logging.info('Global reset of FE')
         commands = []
         commands.extend(self.register.get_commands("confmode"))
         # vthin_altfine, vthin_altcoarse = self.register.get_global_register_value("Vthin_AltFine"), self.register.get_global_register_value("Vthin_AltCoarse")
@@ -106,7 +107,7 @@ class FEI4RegisterUtils(object):
         commands.extend(self.register.get_commands("globalreset"))
         self.send_commands(commands)
         time.sleep(0.1)
-        commands[:] = []
+        commands = []
         commands.extend(self.register.get_commands("confmode"))
         # self.register.set_global_register_value("Vthin_AltFine", vthin_altfine)
         # self.register.set_global_register_value("Vthin_AltCoarse", vthin_altcoarse)
@@ -116,7 +117,6 @@ class FEI4RegisterUtils(object):
 
     def configure_all(self, same_mask_for_all_dc=False, do_global_reset=False):
         if do_global_reset:
-            logging.info('Global reset of FE')
             self.global_reset()
         self.configure_global()
         self.configure_pixel(same_mask_for_all_dc=same_mask_for_all_dc)
@@ -259,7 +259,6 @@ class FEI4RegisterUtils(object):
         -------
         numpy.ndarray
         '''
-
         # FE columns and rows start from 1
         col_array = np.array(column) - 1
         row_array = np.array(row) - 1
