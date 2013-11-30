@@ -32,17 +32,20 @@ class ScanBase(object):
             def handler(signum, hook=thread.interrupt_main):
                 hook()
                 return True
+
             import win32api
             win32api.SetConsoleCtrlHandler(handler, 1)
+
         if device is not None:
             #if isinstance(device, usb.core.Device):
             if isinstance(device, SiUSBDevice):
                 self.device = device
+                #logging.info('Using USB board with ID %s', self.device.board_id)
             else:
                 raise TypeError('Device has wrong type')
-        else:
+        else:  # TODO: use exception here
             self.device = SiUSBDevice()
-        logging.info('Found USB board with ID %s', self.device.board_id)
+            logging.info('Found USB board with ID %s', self.device.board_id)
         if bit_file != None:
             logging.info('Programming FPGA: %s' % bit_file)
             self.device.DownloadXilinx(bit_file)
