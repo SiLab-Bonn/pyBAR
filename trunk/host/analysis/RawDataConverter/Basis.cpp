@@ -76,6 +76,7 @@ void Basis::info(std::string pText, int pLine)
 
 void Basis::warning(std::string pText, int pLine)
 {
+	if(_warning){
 		std::stringstream tOutString;
 		if (pLine == -1)
 			tOutString<<"WARNING "<<_sourceFileName<<"::"<<pText;
@@ -88,21 +89,24 @@ void Basis::warning(std::string pText, int pLine)
 			tBugReport<<tOutString.str()<<std::endl;
 			tBugReport.close();
 		}
+	}
 }
 
 void Basis::error(std::string pText, int pLine)
 {
-	std::stringstream tOutString;
-	if (pLine == -1)
-		tOutString<<"ERROR "<<_sourceFileName<<"::"<<pText;
-	else
-		tOutString<<"ERROR "<<_sourceFileName<<"("<<pLine<<")::"<<pText;
-	std::cout<<tOutString.str()<<"\n";
-	if (_debugReport){
-		std::ofstream tBugReport;
-		tBugReport.open(_bugReportFileName.c_str(), std::ios::out | std::ios::app);
-		tBugReport<<tOutString.str()<<std::endl;
-		tBugReport.close();
+	if(_error){
+		std::stringstream tOutString;
+		if (pLine == -1)
+			tOutString<<"ERROR "<<_sourceFileName<<"::"<<pText;
+		else
+			tOutString<<"ERROR "<<_sourceFileName<<"("<<pLine<<")::"<<pText;
+		std::cout<<tOutString.str()<<"\n";
+		if (_debugReport){
+			std::ofstream tBugReport;
+			tBugReport.open(_bugReportFileName.c_str(), std::ios::out | std::ios::app);
+			tBugReport<<tOutString.str()<<std::endl;
+			tBugReport.close();
+		}
 	}
 }
 bool Basis::getStringSeparated(std::string pLine, std::string pSeparator, std::string& pLeft, std::string& pRight)
