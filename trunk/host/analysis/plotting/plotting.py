@@ -84,6 +84,34 @@ def plot_occupancy(cols, rows=None, max_occ=None, filename=None, title=None, nco
         plt.savefig(filename)
 
 
+def plot_correlation(hist, title="Hit correlation", xlabel=None, ylabel=None, filename=None):
+    logging.info("Plotting correlations")
+    cmap = cm.get_cmap('jet')
+    extent = [hist[2][0] - 0.5, hist[2][-1] + 0.5, hist[1][-1] + 0.5, hist[1][0] - 0.5]
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.imshow(hist[0], extent=extent, cmap=cmap, interpolation='nearest')
+    plt.gca().invert_yaxis()
+    # add colorbar
+    divider = make_axes_locatable(plt.gca())
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    z_max = np.max(hist[0])
+    bounds = np.linspace(start=0, stop=z_max, num=255, endpoint=True)
+    norm = colors.BoundaryNorm(bounds, cmap.N)
+    plt.colorbar(boundaries=bounds, cmap=cmap, norm=norm, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True), cax=cax)
+    if filename is None:
+        plt.show()
+    elif type(filename) == PdfPages:
+        filename.savefig()
+    else:
+        plt.savefig(filename)
+
+
+def plot_n_cluster(hist, filename=None):
+    plot_1d_hist(hist=hist[0], title='Cluster per event (' + str(np.sum(hist[0])) + ' entries)', log_y=True, x_axis_title='Cluster per event', y_axis_title='#', filename=filename)
+
+
 def round_to_multiple(number, multiple):
     '''Rounding up to the nearest multiple of any positive integer
 
