@@ -6,6 +6,7 @@ import re
 from threading import Thread, Event, Lock, Timer
 
 min_pysilibusb_version = '0.1.2'
+from usb.core import USBError
 from SiLibUSB import SiUSBDevice, __version__ as pysilibusb_version
 from distutils.version import StrictVersion as v
 if v(pysilibusb_version) < v(min_pysilibusb_version):
@@ -43,8 +44,11 @@ class ScanBase(object):
                 #logging.info('Using USB board with ID %s', self.device.board_id)
             else:
                 raise TypeError('Device has wrong type')
-        else:  # TODO: use exception here
-            self.device = SiUSBDevice()
+        else:
+            try:
+                self.device = SiUSBDevice()
+            except USBError:
+                raise NoDeviceError
             logging.info('Found USB board with ID %s', self.device.board_id)
         if bit_file != None:
             logging.info('Programming FPGA: %s' % bit_file)
@@ -370,6 +374,10 @@ class ScanBase(object):
 
 
 class NoSyncError(Exception):
+    pass
+
+
+class NoDeviceError(Exception):
     pass
 
 
