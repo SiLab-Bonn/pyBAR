@@ -115,9 +115,7 @@ class FEI4RegisterUtils(object):
         commands.extend(self.register.get_commands("runmode"))
         self.send_commands(commands)
 
-    def configure_all(self, same_mask_for_all_dc=False, do_global_reset=False):
-        if do_global_reset:
-            self.global_reset()
+    def configure_all(self, same_mask_for_all_dc=False):
         self.configure_global()
         self.configure_pixel(same_mask_for_all_dc=same_mask_for_all_dc)
 
@@ -133,7 +131,8 @@ class FEI4RegisterUtils(object):
         logging.info('Sending pixel configuration to FE')
         commands = []
         commands.extend(self.register.get_commands("confmode"))
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=same_mask_for_all_dc, name=["Imon", "Enable", "c_high", "c_low", "TDAC", "FDAC"]))
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=["TDAC", "FDAC"]))  # same config for all DC is in general a not so good idea
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=same_mask_for_all_dc, name=["Imon", "Enable", "c_high", "c_low"]))
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=same_mask_for_all_dc, name=["EnableDigInj"]))  # write EnableDigInj last
         commands.extend(self.register.get_commands("runmode"))
         self.send_commands(commands)

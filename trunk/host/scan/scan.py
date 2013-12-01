@@ -107,9 +107,11 @@ class ScanBase(object):
             raise RuntimeError('Scan thread is already running')
 
         self.write_scan_number()
-
+        
+        if do_global_reset:
+            self.register_utils.global_reset()
         if configure:
-            self.register_utils.configure_all(do_global_reset=do_global_reset)
+            self.register_utils.configure_all()
         self.restore_configuration = restore_configuration
         if self.restore_configuration:
             self.register.create_restore_point(name=self.scan_identifier)
@@ -174,7 +176,7 @@ class ScanBase(object):
         if self.restore_configuration:
             logging.info('Restoring FE configuration')
             self.register.restore(name=self.scan_identifier)
-            self.register_utils.configure_all(do_global_reset=False)
+            self.register_utils.configure_all()
         logging.info('Stopped scan %s with ID %d' % (self.scan_identifier, self.scan_number))
         self.readout.print_readout_status()
 
