@@ -122,6 +122,7 @@ class AnalyzeRawData(object):
         self.create_cluster_tot_hist = False
         self._n_injection = 100
         self.n_bcid = 16
+        self._max_tot_value = 14
 
     @property
     def chunk_size(self):
@@ -269,8 +270,8 @@ class AnalyzeRawData(object):
     @max_tot_value.setter
     def max_tot_value(self, value):
         """Set maximum TOT value that is considered to be a hit"""
-        raise NotImplementedError("Not implemented, ask David")
         self._max_tot_value = value
+        self.interpreter.set_max_tot(self._max_tot_value)
 
     @property
     def create_cluster_hit_table(self):
@@ -600,10 +601,10 @@ class AnalyzeRawData(object):
         self.out_file_h5.close()
         in_file_h5.close()
 
-    def cluster_hits(self, hits, start_index=0, stop_index=-1):
+    def cluster_hits(self, hits, start_index=0, stop_index=-1): #FIXME: std setting omits always the last hits
         self.clusterizer.add_hits(hits[start_index:stop_index])
 
-    def histogram_hits(self, hits, start_index=0, stop_index=-1):
+    def histogram_hits(self, hits, start_index=0, stop_index=-1): #FIXME: std setting omits always the last hits
         self.histograming.add_hits(hits[start_index:stop_index], hits[start_index:stop_index].shape[0])
 
     def plot_histograms(self, scan_data_filename, analyzed_data_file=None):  # plots the histogram from output file if available otherwise from ram
