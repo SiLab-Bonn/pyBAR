@@ -1007,8 +1007,8 @@ class FEI4Register(object):
         '''
         md5 = hashlib.md5()
         if name is None:
-            md5.update(self.global_registers)
-            md5.update(self.pixel_registers)
+            md5.update(repr(self.global_registers))
+            md5.update(repr(self.pixel_registers))
             name = md5.digest()
         self.config_state[name] = (copy.deepcopy(self.global_registers), copy.deepcopy(self.pixel_registers))
 
