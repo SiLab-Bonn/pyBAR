@@ -83,8 +83,8 @@ class Fei4TriggerScan(ScanBase):
             In seconds; stop scan after given time.
         '''
 
-        self.configure_trigger_fe(config_file_trigger_fe, col_span, row_span)
         self.configure_triggered_fe()
+        self.configure_trigger_fe(config_file_trigger_fe, col_span, row_span)
 
         with open_raw_data_file(filename=self.scan_data_filename + "_trigger_fe", title=self.scan_identifier) as raw_data_file_trigger_fe:
             with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier) as raw_data_file:
@@ -184,7 +184,7 @@ class Fei4TriggerScan(ScanBase):
             analyze_raw_data.interpreter.set_warning_output(False)
             analyze_raw_data.interpret_word_table(FEI4B=scan.register.fei4b)
             analyze_raw_data.interpreter.print_summary()
-            analyze_raw_data.plot_histograms(scan_data_filename=scan.scan_data_filename)
+            analyze_raw_data.plot_histograms(scan_data_filename=scan.scan_data_filename, maximum='maximum')
         with AnalyzeRawData(raw_data_file=scan.scan_data_filename + "_trigger_fe.h5", analyzed_data_file=output_file_trigger_fe) as analyze_raw_data:
             analyze_raw_data.interpreter.set_trig_count(self.register_trigger_fe.get_global_register_value("Trig_Count"))
             analyze_raw_data.create_cluster_size_hist = True
@@ -192,7 +192,7 @@ class Fei4TriggerScan(ScanBase):
             analyze_raw_data.interpreter.set_warning_output(False)
             analyze_raw_data.interpret_word_table(FEI4B=scan.register.fei4b)
             analyze_raw_data.interpreter.print_summary()
-            analyze_raw_data.plot_histograms(scan_data_filename=scan.scan_data_filename + '_trigger_fe')
+            analyze_raw_data.plot_histograms(scan_data_filename=scan.scan_data_filename + '_trigger_fe', maximum='maximum')
 
 
 if __name__ == "__main__":
