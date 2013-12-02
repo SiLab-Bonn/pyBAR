@@ -37,8 +37,9 @@ def analyze():
         analyze_raw_data.create_meta_word_index = False  # stores the start and stop raw data word index for every event, std. setting is false
         analyze_raw_data.create_meta_event_index = True  # stores the event number for each readout in an additional meta data array, default: False
 
-        analyze_raw_data.n_injections = 100
-        analyze_raw_data.n_bcid = 16
+        analyze_raw_data.n_injections = 100  # set the numbers of injections, needed for fast threshold/noise determination
+        analyze_raw_data.n_bcid = 16  # set the number of BCIDs per event, needed to judge the event structure
+        analyze_raw_data.max_tot_value = 14  # set the maximum TOT value considered to be a hit, 14 is a late hit
 
         analyze_raw_data.interpreter.set_warning_output(False)  # std. setting is True
         analyze_raw_data.interpreter.debug_events(0, 0, False)  # events to be printed onto the console for debugging, usually deactivated
