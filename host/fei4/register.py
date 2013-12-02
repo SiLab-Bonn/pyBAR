@@ -1009,7 +1009,7 @@ class FEI4Register(object):
         if name is None:
             md5.update(repr(self.global_registers))
             md5.update(repr(self.pixel_registers))
-            name = md5.digest()
+            name = md5.hexdigest()
         self.config_state[name] = (copy.deepcopy(self.global_registers), copy.deepcopy(self.pixel_registers))
 
     def restore(self, name=None, keep=False, last=True, global_register=True, pixel_register=True):
@@ -1030,10 +1030,10 @@ class FEI4Register(object):
         '''
         if name is None:
             if keep:
-                key = next(reversed(self.config_state) if last else iter(self.config_state))
-                value = self.config_state[key]
+                name = next(reversed(iter(self.config_state)) if last else iter(self.config_state))
+                value = self.config_state[name]
             else:
-                value = self.config_state.popitem(last=last)
+                name, value = self.config_state.popitem(last=last)
         else:
             value = self.config_state[name]
             if not keep:
