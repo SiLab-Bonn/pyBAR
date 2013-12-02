@@ -646,7 +646,7 @@ class AnalyzeRawData(object):
             else:
                 hist = out_file_h5.root.HistOcc[:, :, 0] if out_file_h5 != None else self.occupancy_array[:, :, 0]
                 occupancy_array_masked = np.ma.masked_equal(hist, 0)
-                plotting.plotThreeWay(hist=occupancy_array_masked, title="Occupancy", x_axis_title="occupancy", filename=output_pdf, maximum=maximum))
+                plotting.plotThreeWay(hist=occupancy_array_masked, title="Occupancy", x_axis_title="occupancy", filename=output_pdf, maximum=maximum)
         if (self._create_tot_hist):
             plotting.plot_tot(hist=out_file_h5.root.HistTot if out_file_h5 != None else self.tot_hist, filename=output_pdf)
         if (self._create_cluster_size_hist):
