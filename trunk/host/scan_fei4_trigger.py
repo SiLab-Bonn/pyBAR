@@ -21,7 +21,7 @@ class Fei4TriggerScan(ScanBase):
         logging.info("Sending configuration to trigger FE")
         self.register_trigger_fe = FEI4Register(config_file_trigger_fe)
         self.register_utils_trigger_fe = FEI4RegisterUtils(self.device, self.readout, self.register_trigger_fe)
-        self.register_utils_trigger_fe.configure_all(same_mask_for_all_dc=True, do_global_reset=True)
+        self.register_utils_trigger_fe.configure_all(same_mask_for_all_dc=True)
 
         commands = []
         # generate mask for Enable mask
@@ -42,8 +42,8 @@ class Fei4TriggerScan(ScanBase):
         self.register_trigger_fe.set_pixel_register_value(pixel_reg, 0)
         commands.extend(self.register_trigger_fe.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
         # set trigger latency and replication
-        self.register_trigger_fe.set_global_register_value("Trig_Lat", 210)  # set trigger latency
-        self.register_trigger_fe.set_global_register_value("Trig_Count", 0)  # set number of consecutive triggers
+        self.register_trigger_fe.set_global_register_value("Trig_Lat", 222)  # set trigger latency
+        self.register_trigger_fe.set_global_register_value("Trig_Count", 4)  # set number of consecutive triggers
         commands.extend(self.register_trigger_fe.get_commands("wrregister", name=["Trig_Lat", "Trig_Count"]))
         # setting FE into runmode
         commands.extend(self.register_trigger_fe.get_commands("runmode"))
@@ -52,22 +52,23 @@ class Fei4TriggerScan(ScanBase):
     def configure_triggered_fe(self):
         commands = []
         # disable C_inj mask
+        commands.extend(self.register.get_commands("confmode"))
         pixel_reg = "C_High"
         self.register.set_pixel_register_value(pixel_reg, 0)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
         pixel_reg = "C_Low"
         self.register.set_pixel_register_value(pixel_reg, 0)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
-        ## set trigger latency and replication
-        self.register.set_global_register_value("Trig_Lat", 210)  # set trigger latency
-        self.register.set_global_register_value("Trig_Count", 0)  # set number of consecutive triggers
+        # # set trigger latency and replication
+        self.register.set_global_register_value("Trig_Lat", 221)  # set trigger latency
+        self.register.set_global_register_value("Trig_Count", 4)  # set number of consecutive triggers
         commands.extend(self.register.get_commands("wrregister", name=["Trig_Lat", "Trig_Count"]))
         # setting FE into runmode
         commands.extend(self.register.get_commands("runmode"))
         self.register_utils.send_commands(commands)
         # append_size = 50000
 
-    def scan(self, config_file_trigger_fe, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=600, max_triggers=10000, invert_lemo_trigger_input=True, wait_for_first_trigger = True, channel_trigger_fe=3, channel_triggered_fe=4, **kwargs):
+    def scan(self, config_file_trigger_fe, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=600, max_triggers=10000, invert_lemo_trigger_input=False, wait_for_first_trigger=True, channel_trigger_fe=3, channel_triggered_fe=4, **kwargs):
         '''Scan loop
 
         Parameters
@@ -179,16 +180,22 @@ class Fei4TriggerScan(ScanBase):
         print output_file, output_file_trigger_fe
         with AnalyzeRawData(raw_data_file=scan.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
             analyze_raw_data.interpreter.set_trig_count(self.register.get_global_register_value("Trig_Count"))
+            analyze_raw_data.max_tot_value = 13
+            analyze_raw_data.create_hit_table = True
             analyze_raw_data.create_cluster_size_hist = True
             analyze_raw_data.create_cluster_tot_hist = True
+            analyze_raw_data.create_cluster_table = True
             analyze_raw_data.interpreter.set_warning_output(False)
             analyze_raw_data.interpret_word_table(FEI4B=scan.register.fei4b)
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms(scan_data_filename=scan.scan_data_filename, maximum='maximum')
         with AnalyzeRawData(raw_data_file=scan.scan_data_filename + "_trigger_fe.h5", analyzed_data_file=output_file_trigger_fe) as analyze_raw_data:
             analyze_raw_data.interpreter.set_trig_count(self.register_trigger_fe.get_global_register_value("Trig_Count"))
+            analyze_raw_data.max_tot_value = 13
+            analyze_raw_data.create_hit_table = True
             analyze_raw_data.create_cluster_size_hist = True
             analyze_raw_data.create_cluster_tot_hist = True
+            analyze_raw_data.create_cluster_table = True
             analyze_raw_data.interpreter.set_warning_output(False)
             analyze_raw_data.interpret_word_table(FEI4B=scan.register.fei4b)
             analyze_raw_data.interpreter.print_summary()
@@ -198,13 +205,14 @@ class Fei4TriggerScan(ScanBase):
 if __name__ == "__main__":
     import configuration
     import os
-    config_file_triggered_fe = os.path.join(os.getcwd(), r'config/fei4/configs/SCC_50_tuning.cfg') # Chip 1, GA 1
-    config_file_trigger_fe = os.path.join(os.getcwd(), r'config/fei4/configs/SCC_30_tuning.cfg') # Chip 2, GA 2
+
+    config_file_triggered_fe = os.path.join(os.getcwd(), r'config/fei4/configs/SCC_50_tuning.cfg')  # Chip 1, GA 1
+    config_file_trigger_fe = os.path.join(os.getcwd(), r'config/fei4/configs/SCC_30_tuning.cfg')  # Chip 2, GA 2
 
 #     config_file_trigger_fe = os.path.join(os.getcwd(), r'config/fei4/configs/SCC_50_tuning.cfg') # Chip 1, GA 1
 #     config_file_triggered_fe = os.path.join(os.getcwd(), r'config/fei4/configs/SCC_114_tuning.cfg') # Chip 2, GA 2
 
     scan = Fei4TriggerScan(config_file=config_file_triggered_fe, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.start(config_file_trigger_fe=config_file_trigger_fe, channel_triggered_fe=4, channel_trigger_fe=3, configure=True, use_thread=True, col_span=[], row_span=[], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=100000)
+    scan.start(config_file_trigger_fe=config_file_trigger_fe, channel_triggered_fe=4, channel_trigger_fe=3, invert_lemo_trigger_input=True, configure=True, use_thread=True, col_span=[30, 50], row_span=[100, 230], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=1000)
     scan.stop()
     scan.analyze()
