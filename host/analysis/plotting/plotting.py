@@ -397,6 +397,8 @@ def plotThreeWay(hist, title, filename=None, x_axis_title=None, minimum=None, ma
             if maximum < 1:
                 maximum = 10
             maximum = round_to_multiple(maximum, math.floor(math.log10(maximum)))
+    elif maximum == 'maximum':
+        maximum = np.ma.max(hist)
     x_axis_title = '' if x_axis_title is None else x_axis_title
     fig = plt.figure()
     fig.patch.set_facecolor('white')
