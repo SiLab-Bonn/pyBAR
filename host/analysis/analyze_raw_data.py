@@ -607,7 +607,7 @@ class AnalyzeRawData(object):
     def histogram_hits(self, hits, start_index=0, stop_index=-1): #FIXME: std setting omits always the last hits
         self.histograming.add_hits(hits[start_index:stop_index], hits[start_index:stop_index].shape[0])
 
-    def plot_histograms(self, scan_data_filename, analyzed_data_file=None):  # plots the histogram from output file if available otherwise from ram
+    def plot_histograms(self, scan_data_filename, analyzed_data_file=None, maximum=None):  # plots the histogram from output file if available otherwise from ram
         logging.info('Creating histograms%s' % ((' (source: %s)' % analyzed_data_file) if analyzed_data_file != None else ((' (source: %s)' % self._analyzed_data_file) if self._analyzed_data_file != None else '')))
         if analyzed_data_file != None:
             out_file_h5 = tb.openFile(analyzed_data_file, mode="r")
@@ -634,18 +634,18 @@ class AnalyzeRawData(object):
             else:
                 threshold_hist = out_file_h5.root.HistThreshold[:, :] if out_file_h5 != None else self.threshold_hist
                 noise_hist = out_file_h5.root.HistNoise[:, :] if out_file_h5 != None else self.noise_hist
-            plotting.plotThreeWay(hist=threshold_hist, title='Threshold%s' % ((' (masked %i pixel(s))' % mask_cnt) if self._create_threshold_mask else ''), x_axis_title="threshold [PlsrDAC]", filename=output_pdf, bins=100, minimum=0)
-            plotting.plotThreeWay(hist=noise_hist, title='Noise%s' % ((' (masked %i pixel(s))' % mask_cnt) if self._create_threshold_mask else ''), x_axis_title="noise [PlsrDAC]", filename=output_pdf, bins=100, minimum=0)
+            plotting.plotThreeWay(hist=threshold_hist, title='Threshold%s' % ((' (masked %i pixel(s))' % mask_cnt) if self._create_threshold_mask else ''), x_axis_title="threshold [PlsrDAC]", filename=output_pdf, bins=100, minimum=0, maximum=maximum)
+            plotting.plotThreeWay(hist=noise_hist, title='Noise%s' % ((' (masked %i pixel(s))' % mask_cnt) if self._create_threshold_mask else ''), x_axis_title="noise [PlsrDAC]", filename=output_pdf, bins=100, minimum=0, maximum=maximum)
         if (self._create_fitted_threshold_hists):
-            plotting.plotThreeWay(hist=out_file_h5.root.HistThresholdFitted[:, :] if out_file_h5 != None else self.scurve_fit_results[:, :, 0], title="Threshold (S-curve fit)", x_axis_title="threshold [PlsrDAC]", filename=output_pdf, bins=100, minimum=0)
-            plotting.plotThreeWay(hist=out_file_h5.root.HistNoiseFitted[:, :] if out_file_h5 != None else self.scurve_fit_results[:, :, 1], title="Noise (S-curve fit)", x_axis_title="noise [PlsrDAC]", filename=output_pdf, bins=100, minimum=0)
+            plotting.plotThreeWay(hist=out_file_h5.root.HistThresholdFitted[:, :] if out_file_h5 != None else self.scurve_fit_results[:, :, 0], title="Threshold (S-curve fit)", x_axis_title="threshold [PlsrDAC]", filename=output_pdf, bins=100, minimum=0, maximum=maximum)
+            plotting.plotThreeWay(hist=out_file_h5.root.HistNoiseFitted[:, :] if out_file_h5 != None else self.scurve_fit_results[:, :, 1], title="Noise (S-curve fit)", x_axis_title="noise [PlsrDAC]", filename=output_pdf, bins=100, minimum=0, maximum=maximum)
         if (self._create_occupancy_hist):
             if(self._create_threshold_hists):
                 plotting.plot_scurves(occupancy_hist=out_file_h5.root.HistOcc[:, :, :] if out_file_h5 != None else self.occupancy_array[:, :, :], filename=output_pdf, scan_parameters=np.linspace(self.histograming.get_min_parameter(), self.histograming.get_max_parameter(), num=self.histograming.get_n_parameters(), endpoint=True))
             else:
                 hist = out_file_h5.root.HistOcc[:, :, 0] if out_file_h5 != None else self.occupancy_array[:, :, 0]
                 occupancy_array_masked = np.ma.masked_equal(hist, 0)
-                plotting.plotThreeWay(hist=occupancy_array_masked, title="Occupancy", x_axis_title="occupancy", filename=output_pdf)
+                plotting.plotThreeWay(hist=occupancy_array_masked, title="Occupancy", x_axis_title="occupancy", filename=output_pdf, maximum=maximum))
         if (self._create_tot_hist):
             plotting.plot_tot(hist=out_file_h5.root.HistTot if out_file_h5 != None else self.tot_hist, filename=output_pdf)
         if (self._create_cluster_size_hist):
