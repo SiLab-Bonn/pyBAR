@@ -108,8 +108,8 @@ def plot_correlation(hist, title="Hit correlation", xlabel=None, ylabel=None, fi
         plt.savefig(filename)
 
 
-def plot_n_cluster(hist, filename=None):
-    plot_1d_hist(hist=hist[0], title='Cluster per event (' + str(np.sum(hist[0])) + ' entries)', log_y=True, x_axis_title='Cluster per event', y_axis_title='#', filename=filename)
+def plot_n_cluster(hist, title=None, filename=None):
+    plot_1d_hist(hist=hist[0], title='Cluster per event (' + str(np.sum(hist[0])) + ' entries)' if title == None else title, log_y=True, x_axis_title='Cluster per event', y_axis_title='#', filename=filename)
 
 
 def round_to_multiple(number, multiple):
