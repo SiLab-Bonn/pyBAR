@@ -75,7 +75,8 @@ def generate_threshold_mask(hist):
     masked array
         Returns copy of the array with masked elements.
     '''
-    masked_array = np.ma.masked_greater(np.ma.masked_values(hist, 0.0), 2 * np.median(hist))
+
+    masked_array = np.ma.array(hist, mask=((hist < 0.1) | (hist > 2 * np.median(hist))))
     logging.info('Masking %d pixel(s)' % np.ma.count_masked(masked_array))
     return np.ma.getmaskarray(masked_array)
 
