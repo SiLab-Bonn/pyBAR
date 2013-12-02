@@ -107,7 +107,7 @@ class ScanBase(object):
             raise RuntimeError('Scan thread is already running')
 
         self.write_scan_number()
-        
+
         if do_global_reset:
             self.register_utils.global_reset()
         if configure:
