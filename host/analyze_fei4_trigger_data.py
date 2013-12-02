@@ -35,7 +35,7 @@ def analyze(raw_data_file_triggered_fe=None, hit_file_triggered_fe=None, raw_dat
             analyze_raw_data.clusterizer.set_warning_output(print_warnings)
             analyze_raw_data.interpret_word_table(FEI4B=is_fei4b)
             analyze_raw_data.interpreter.print_summary()
-            analyze_raw_data.plot_histograms(scan_data_filename=hit_file_triggered_fe[:-3] + '.pdf')
+            analyze_raw_data.plot_histograms(scan_data_filename=hit_file_triggered_fe[:-3] + '.pdf', maximum='maximum')
 
     if raw_data_file_trigger_fe != None:
         logging.info("Analyze trigger Fe data")
@@ -50,7 +50,7 @@ def analyze(raw_data_file_triggered_fe=None, hit_file_triggered_fe=None, raw_dat
             analyze_raw_data.clusterizer.set_warning_output(print_warnings)
             analyze_raw_data.interpret_word_table(FEI4B=is_fei4b)
             analyze_raw_data.interpreter.print_summary()
-            analyze_raw_data.plot_histograms(scan_data_filename=hit_file_trigger_fe[:-3] + '.pdf')
+            analyze_raw_data.plot_histograms(scan_data_filename=hit_file_trigger_fe[:-3] + '.pdf', maximum='maximum')
 
 
 # @profile
