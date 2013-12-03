@@ -164,6 +164,10 @@ def plot_cluster_size(hist, filename=None):
 def plot_scurves(occupancy_hist, scan_parameters, max_occ=None, scan_paramter_name=None, filename=None):  # tornado plot
     if max_occ is None:
         max_occ = 2 * np.median(np.amax(occupancy_hist, axis=2))
+        if np.allclose(max_occ, 0.0):
+            max_occ = np.amax(occupancy_hist)
+        if np.allclose(max_occ, 0.0):
+            max_occ = 1
     if len(occupancy_hist.shape) < 3:
         raise ValueError('Found array with shape %s' % str(occupancy_hist.shape))
     y = occupancy_hist.reshape(-1)
