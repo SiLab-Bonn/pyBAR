@@ -24,7 +24,7 @@ class DigitalScan(ScanBase):
         '''
         commands = []
         commands.extend(self.register.get_commands("confmode"))
-        self.register.set_global_register_value("PlsrDAC", 0)  # has to be 0 , otherwise you also have also analog injection
+        self.register.set_global_register_value("PlsrDAC", 0)  # has to be 0, otherwise you also have analog injections
         commands.extend(self.register.get_commands("wrregister", name=["PlsrDAC"]))
         self.register_utils.send_commands(commands)
 
