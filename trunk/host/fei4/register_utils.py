@@ -157,6 +157,23 @@ class FEI4RegisterUtils(object):
         self.send_commands(commands)
         return data
 
+    def invert_pixel_mask(self, mask):
+        '''Invert pixel mask (0->1, 1(and greater)->0).
+
+        Parameters
+        ----------
+        mask : array-like
+            Mask.
+
+        Returns
+        -------
+        inverted_mask : array-like
+            Inverted Mask.
+        '''
+        inverted_mask = np.ones(shape=(80, 336), dtype=np.dtype('>u1'))
+        inverted_mask[mask >= 1] = 0
+        return inverted_mask
+
     def make_pixel_mask(self, steps, shift, default=0, value=1, mask=None):
         '''Generate pixel mask.
 
