@@ -25,7 +25,7 @@ class NoiseOccupancyScan(ScanBase):
         occupancy_limit : float
             Occupancy limit which is multiplied with measured number of hits for each pixel. Any pixel above 1 will be masked.
         triggers : int
-            Total number of triggers sent to FE.
+            Total number of triggers sent to FE. From 1 to 4294967295 (32-bit unsigned int).
         consecutive_lvl1 : int
             Number of consecutive LVL1 triggers. From 1 to 16.
         disable_for_mask : list, tuple
@@ -46,6 +46,7 @@ class NoiseOccupancyScan(ScanBase):
         Note
         ----
         The total number of trigger is triggers * consecutive_lvl1.
+        Please note that a high trigger rate leads to an effective lower threshold.
         '''
         # create restore point
         self.register.create_restore_point()
