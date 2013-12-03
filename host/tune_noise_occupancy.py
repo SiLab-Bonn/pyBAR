@@ -10,8 +10,6 @@ from daq.readout import open_raw_data_file
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
-cfg_name = "new_tuning"
-
 
 class NoiseOccupancyScan(ScanBase):
     def __init__(self, config_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_noise_occupancy", scan_data_path=None):
@@ -135,7 +133,6 @@ class NoiseOccupancyScan(ScanBase):
             inv_occ_mask = self.register_utils.invert_pixel_mask(occ_mask)
             if overwrite_mask:
                 self.register.set_pixel_register_value(disable_for_mask, inv_occ_mask)
-
             else:
                 for mask in disable_for_mask:
                     enable_mask = np.logical_and(inv_occ_mask, self.register.get_pixel_register_value(mask))
@@ -148,8 +145,6 @@ class NoiseOccupancyScan(ScanBase):
                     disable_mask = np.logical_or(occ_mask, self.register.get_pixel_register_value(mask))
                     self.register.set_pixel_register_value(mask, disable_mask)
 
-            self.register.save_configuration(name=cfg_name)  # save the final config
-
 #             plot_occupancy(self.col_arr, self.row_arr, max_occ=None, filename=self.scan_data_filename + "_occupancy.pdf")
 
     def analyze(self):
@@ -157,7 +152,7 @@ class NoiseOccupancyScan(ScanBase):
         output_file = self.scan_data_filename + "_interpreted.h5"
         with AnalyzeRawData(raw_data_file=scan.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
             analyze_raw_data.interpreter.set_trig_count(self.register.get_global_register_value("Trig_Count"))
-            analyze_raw_data.interpreter.set_warning_output(True)
+            analyze_raw_data.interpreter.set_warning_output(False)
             analyze_raw_data.interpret_word_table(FEI4B=scan.register.fei4b)
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms(scan_data_filename=scan.scan_data_filename)
@@ -169,3 +164,4 @@ if __name__ == "__main__":
     scan.start(configure=True, use_thread=True, occupancy_limit=10 ** (-5), triggers=10000000, consecutive_lvl1=16, disable_for_mask=['Enable'], enable_for_mask=['Imon'], overwrite_mask=False, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10)
     scan.stop()
     scan.analyze()
+    scan.register.save_configuration(configuration.config_file)
