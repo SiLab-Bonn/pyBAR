@@ -54,55 +54,6 @@ class GdacTune(ScanBase):
     def set_n_injections(self, Ninjections=50):
         self.Ninjections = Ninjections
 
-    def test_global_register(self):
-        from daq.readout import FEI4Record
-
-        '''Test Global Register
-        '''
-        self.register_utils.configure_global()
-        commands = []
-        commands.extend(self.register.get_commands("confmode"))
-        self.register_utils.send_commands(commands)
-        commands = []
-        self.register.set_global_register_value('Conf_AddrEnable', 1)
-        commands.extend(self.register.get_commands("wrregister", name='Conf_AddrEnable'))
-        read_from_address = range(1, 64)
-        self.register_utils.send_commands(commands)
-        self.readout.reset_sram_fifo()
-        commands = []
-        commands.extend(self.register.get_commands("rdregister", addresses=read_from_address))
-        self.register_utils.send_commands(commands)
-
-        data = self.readout.read_data()
-        print data
-        checked_address = []
-        number_of_errors = 0
-        for index, word in enumerate(np.nditer(data)):
-            fei4_data = FEI4Record(word, self.register.chip_flavor)
-            # print fei4_data
-            if fei4_data == 'AR':
-                read_value = FEI4Record(data[index + 1], self.register.chip_flavor)['value']
-                set_value = int(self.register.get_global_register_bitsets([fei4_data['address']])[0])
-                checked_address.append(fei4_data['address'])
-                # print int(self.register.get_global_register_bitsets([fei4_data['address']])[0])
-                if read_value == set_value:
-                    # print 'Register Test:', 'Address', fei4_data['address'], 'PASSED'
-                    pass
-                else:
-                    number_of_errors += 1
-                    logging.warning('Global Register Test: Wrong data for Global Register at address %d (read: %d, expected: %d)' % (fei4_data['address'], read_value, set_value))
-
-        commands = []
-        commands.extend(self.register.get_commands("runmode"))
-        self.register_utils.send_commands(commands)
-        not_read_registers = set.difference(set(read_from_address), checked_address)
-        not_read_registers = list(not_read_registers)
-        not_read_registers.sort()
-        for address in not_read_registers:
-            logging.warning('Global Register Test: Data for Global Register at address %d missing' % address)
-            number_of_errors += 1
-        return number_of_errors
-
     def scan(self, mask_steps=3, enable_mask_steps=[0], plots_filename=None, plot_intermediate_steps=False):
         self.write_target_threshold()
         for gdac_bit in self.GdacTuneBits:  # reset all GDAC bits
