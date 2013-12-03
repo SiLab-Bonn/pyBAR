@@ -1,5 +1,6 @@
 import struct
 import logging
+import array
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
@@ -30,7 +31,7 @@ class ReadoutUtils(object):
         disable_command_trigger : bool
             Disabling command trigger. Command trigger sends pulse to LEMO TX1 when sending command to FE. Sending pulses over LEMO TX1 only when enable_ext_trigger is set to false.
         '''
-        logging.info('External trigger enabled' if enable_ext_trigger else 'External trigger disabled')
+        logging.info('External trigger %s' % ('enabled' if enable_ext_trigger else 'disabled'))
 #         array = self.device.ReadExternal(address=0 + 2, size=1)  # get stored register value
 #         reg = struct.unpack('B', array)[0]
         reg = 0
@@ -114,3 +115,9 @@ class ReadoutUtils(object):
         '''
         trigger_number_array = self.device.ReadExternal(address=0x8200 + 8, size=4)
         return struct.unpack('I', trigger_number_array)[0]
+
+    def set_trigger_number(self, value=0):
+        '''Reading internal trigger counter.
+        '''
+        trigger_number = array.array('B', struct.pack('I', value))
+        self.device.WriteExternal(address=0x8200 + 8, data=trigger_number)
