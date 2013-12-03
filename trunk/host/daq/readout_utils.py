@@ -30,7 +30,7 @@ class ReadoutUtils(object):
         disable_command_trigger : bool
             Disabling command trigger. Command trigger sends pulse to LEMO TX1 when sending command to FE. Sending pulses over LEMO TX1 only when enable_ext_trigger is set to false.
         '''
-        logging.info('External trigger %s' % 'enabled' if enable_ext_trigger else 'disabled')
+        logging.info('External trigger %s' % ('enabled' if enable_ext_trigger else 'disabled'))
 #         array = self.device.ReadExternal(address=0 + 2, size=1)  # get stored register value
 #         reg = struct.unpack('B', array)[0]
         reg = 0
