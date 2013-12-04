@@ -174,13 +174,17 @@ class AnalysisUtils(object):
         numpy.Histogram
         '''
         tot_array = self.histogram_tot_per_pixel(array=array, labels=labels)[0]
-        occupancy = self.histogram_occupancy_per_pixel(array=array)[0]  # needed for normalization normalize
+        occupancy = self.histogram_occupancy_per_pixel(array=array)[0]  # needed for normalization
         tot_avr = np.average(tot_array, axis=2, weights=range(0, 16)) * sum(range(0, 16))
         tot_avr = np.divide(tot_avr, occupancy)
         return np.ma.array(tot_avr, mask=(occupancy == 0))  # return array with masked pixel without any hit
 
-    def histogram_occupancy_per_pixel(self, array, labels=['column', 'row']):
-        return np.histogram2d(x=array[labels[0]], y=array[labels[1]], bins=(80, 336), range=[[0, 80], [0, 336]])
+    def histogram_occupancy_per_pixel(self, array, labels=['column', 'row'], mask_no_hit=False):
+        occupancy = np.histogram2d(x=array[labels[0]], y=array[labels[1]], bins=(80, 336), range=[[0, 80], [0, 336]])
+        if mask_no_hit:
+            return np.ma.array(occupancy[0], mask=(occupancy[0] == 0)), occupancy[1], occupancy[2]
+        else:
+            return occupancy
 
 
 if __name__ == "__main__":
