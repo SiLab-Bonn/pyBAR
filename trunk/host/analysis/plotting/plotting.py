@@ -167,16 +167,14 @@ def plot_scurves(occupancy_hist, scan_parameters, max_occ=None, scan_paramter_na
         if np.allclose(max_occ, 0.0):
             max_occ = np.amax(occupancy_hist)
         if np.allclose(max_occ, 0.0):
-            max_occ = 10
+            max_occ = 1
     if len(occupancy_hist.shape) < 3:
         raise ValueError('Found array with shape %s' % str(occupancy_hist.shape))
     y = occupancy_hist.reshape(-1)
-    x = []
-    n_pixel = len(y) / len(scan_parameters)
-    for _ in range(0, n_pixel):
-        x.extend(scan_parameters)
+    n_pixel = occupancy_hist.shape[0] * occupancy_hist.shape[1]
+    x = np.tile(scan_parameters, n_pixel)
     cmap = cm.get_cmap('jet', 200)
-    heatmap, xedges, yedges = np.histogram2d(y, x, range=[[0, max_occ], [scan_parameters[0], scan_parameters[-1]]], bins=(max_occ, len(scan_parameters)))
+    heatmap, xedges, yedges = np.histogram2d(y, x, range=[[0, max_occ], [scan_parameters[0], scan_parameters[-1]]], bins=(max_occ + 1, len(scan_parameters)))
     plt.clf()
     fig = plt.figure()
     fig.patch.set_facecolor('white')
