@@ -167,7 +167,7 @@ def plot_scurves(occupancy_hist, scan_parameters, max_occ=None, scan_paramter_na
         if np.allclose(max_occ, 0.0):
             max_occ = np.amax(occupancy_hist)
         if np.allclose(max_occ, 0.0):
-            max_occ = 1
+            max_occ = 10
     if len(occupancy_hist.shape) < 3:
         raise ValueError('Found array with shape %s' % str(occupancy_hist.shape))
     y = occupancy_hist.reshape(-1)
@@ -227,7 +227,7 @@ def plot_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, x_ticks
     if plot_range is None:
         plot_range = range(0, len(hist))
     plt.bar(left=plot_range, height=hist[plot_range], color=color, align='center')
-    plt.xlim([min(plot_range) - 0.5, max(plot_range) + 0.5])
+    plt.xlim((min(plot_range) - 0.5, max(plot_range) + 0.5))
     plt.title(title)
     if x_axis_title is not None:
         plt.xlabel(x_axis_title)
@@ -235,8 +235,11 @@ def plot_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, x_ticks
         plt.ylabel(y_axis_title)
     if x_ticks is not None:
         plt.xticks(range(0, len(hist[:])) if plot_range == None else plot_range, x_ticks)
-    if log_y:
-        plt.yscale('log')
+    if np.allclose(hist, 0.0):
+        plt.ylim((0, 1))
+    else:
+        if log_y:
+            plt.yscale('log')
     plt.grid(True)
     if filename is None:
         plt.show()
@@ -330,6 +333,8 @@ def create_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, bins=
     # plot
     _, _, _ = plt.hist(x=hist.ravel(), bins=hist_bins, range=hist_range)  # re-bin to 1d histogram
     plt.xlim(hist_range)  # overwrite xlim
+    if hist.all() is np.ma.masked or np.allclose(hist, 0.0):
+        plt.ylim((0, 1))
     # create histogram without masked elements, higher precision when calculating gauss
     h_1d, h_bins = np.histogram(np.ma.compressed(hist), bins=hist_bins, range=hist_range)
     if title is not None:
