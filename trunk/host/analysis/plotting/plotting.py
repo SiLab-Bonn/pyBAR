@@ -108,6 +108,28 @@ def plot_correlation(hist, title="Hit correlation", xlabel=None, ylabel=None, fi
         plt.savefig(filename)
 
 
+def plot_pixel_matrix(hist, title="Hit correlation", filename=None):
+    logging.info("Plotting pixel matrix: " + title)
+    plt.title(title)
+    plt.xlabel('Col')
+    plt.ylabel('Row')
+    cmap = cm.get_cmap('jet')
+#             extent = [hist_mean[2] - 0.5, hist_mean[2][-1] + 0.5, hist_mean[1][-1] + 0.5, hist_mean[1][0] - 0.5]
+    plt.imshow(hist.T, aspect='auto', cmap=cmap, interpolation='nearest')
+    divider = make_axes_locatable(plt.gca())
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    z_max = np.max(hist)
+    bounds = np.linspace(start=0, stop=z_max, num=255, endpoint=True)
+    norm = colors.BoundaryNorm(bounds, cmap.N)
+    plt.colorbar(boundaries=bounds, cmap=cmap, norm=norm, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True), cax=cax)
+    if filename is None:
+        plt.show()
+    elif type(filename) == PdfPages:
+        filename.savefig()
+    else:
+        plt.savefig(filename)
+
+
 def plot_n_cluster(hist, title=None, filename=None):
     plot_1d_hist(hist=hist[0], title='Cluster per event (' + str(np.sum(hist[0])) + ' entries)' if title == None else title, log_y=True, x_axis_title='Cluster per event', y_axis_title='#', filename=filename)
 
