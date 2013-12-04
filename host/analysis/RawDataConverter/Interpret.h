@@ -42,6 +42,7 @@ public:
 	void setMaxTot(const unsigned int& rMaxTot);			  //sets the maximum tot code that is considered to be a hit
 	void setFEI4B(bool pIsFEI4B = true){_fEI4B = pIsFEI4B;};  //set the FE flavor to be able to read the raw data correctly
 	bool getFEI4B(){return _fEI4B;};                          //returns the FE flavor set
+	bool getMetaTableV2(){return _isMetaTableV2;};            //returns the MetaTable flavor (V1 or V2)
 
 	void addEvent();              //increases the event counter, adds the actual hits/error/SR codes
 

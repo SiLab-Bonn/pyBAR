@@ -10,9 +10,15 @@ from libcpp cimport bool  # to be able to use bool variables
 
 from data_struct cimport numpy_hit_info, numpy_meta_data, numpy_meta_data_v2, numpy_meta_word_data
 
+from ..data_struct import MetaTable, MetaTableV2
+
+from tables import dtype_from_descr
+
+
 cdef extern from "Basis.h":
     cdef cppclass Basis:
         Basis()
+
 
 cdef extern from "Interpret.h":
     cdef cppclass MetaInfo:
@@ -34,6 +40,8 @@ cdef extern from "Interpret.h":
         void setNbCIDs(const unsigned int& NbCIDs)
         void setMaxTot(const unsigned int& rMaxTot)
         void setFEI4B(bool setFEI4B)
+        bool getFEI4B()
+        bool getMetaTableV2()
 
         void setHitsArray(HitInfo* &rHitInfo, const unsigned int &rSize)
 
@@ -64,6 +72,7 @@ cdef extern from "Interpret.h":
 
         unsigned int getHitSize()
 
+
 cdef class PyDataInterpreter:
     cdef Interpret* thisptr  # hold a C++ instance which we're wrapping
     def __cinit__(self):
@@ -86,13 +95,17 @@ cdef class PyDataInterpreter:
         self.thisptr.interpretRawData(<unsigned int*> data.data, <unsigned int> data.shape[0])
         return data, data.shape[0]
     def set_meta_data(self, ndarray meta_data):  # set_meta_data(self, cnp.ndarray[numpy_meta_data, ndim=1] meta_data)
-        dtype = meta_data.dtype
-        if dtype == np.dtype([('start_index', '<u4'), ('stop_index', '<u4'), ('length', '<u4'), ('timestamp', '<f8'), ('error', '<u4')]):
+        meta_data_dtype = meta_data.dtype
+        if meta_data_dtype == dtype_from_descr(MetaTable):
             self.thisptr.setMetaData(<MetaInfo*&> meta_data.data, <const unsigned int&> meta_data.shape[0])
-        elif dtype == np.dtype([('index_start', '<u4'), ('index_stop', '<u4'), ('data_length', '<u4'), ('timestamp_start', '<f8'), ('timestamp_stop', '<f8'), ('error', '<u4')]):
+        elif meta_data_dtype == dtype_from_descr(MetaTableV2):
             self.thisptr.setMetaDataV2(<MetaInfoV2*&> meta_data.data, <const unsigned int&> meta_data.shape[0])
+#         if meta_data_dtype == np.dtype([('start_index', '<u4'), ('stop_index', '<u4'), ('length', '<u4'), ('timestamp', '<f8'), ('error', '<u4')]):
+#             self.thisptr.setMetaData(<MetaInfo*&> meta_data.data, <const unsigned int&> meta_data.shape[0])
+#         elif meta_data_dtype == np.dtype([('index_start', '<u4'), ('index_stop', '<u4'), ('data_length', '<u4'), ('timestamp_start', '<f8'), ('timestamp_stop', '<f8'), ('error', '<u4')]):
+#             self.thisptr.setMetaDataV2(<MetaInfoV2*&> meta_data.data, <const unsigned int&> meta_data.shape[0])
         else:
-            raise NotImplementedError('Unknown meta data type')
+            raise NotImplementedError('Unknown meta data type %s' % meta_data_dtype)
     def set_meta_event_data(self, cnp.ndarray[cnp.uint32_t, ndim=1] meta_data_event_index):
         self.thisptr.setMetaDataEventIndex(<unsigned int*&> meta_data_event_index.data, <const unsigned int&> meta_data_event_index.shape[0])
     def set_meta_data_word_index(self, cnp.ndarray[numpy_meta_word_data, ndim=1] meta_word_data):
@@ -140,3 +153,11 @@ cdef class PyDataInterpreter:
         self.thisptr.debugEvents(<const unsigned int&> start_event, <const unsigned int&> stop_event, <const bool&> toggle)
     def get_hit_size(self):
         return <unsigned int> self.thisptr.getHitSize()
+
+    @property
+    def fei4b(self):
+        return <bool> self.thisptr.getFEI4B()
+ 
+    @property
+    def meta_table_v2(self):
+        return <bool> self.thisptr.getMetaTableV2()

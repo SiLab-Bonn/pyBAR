@@ -35,16 +35,16 @@ hits = np.empty((1,), dtype=
          ('eventStatus', np.uint8)
          ])
 
-try:
-    from data_interpreter import PyDataInterpreter
-    interpreter = PyDataInterpreter()
-    from data_histograming import PyDataHistograming
-    histogram = PyDataHistograming()
-    from data_clusterizer import PyDataClusterizer
-    clusterizer = PyDataClusterizer()
-    if(interpreter.get_hit_size() != hits.itemsize):
-        print "STATUS: FAILED. Please report to pohl@physik.uni-bonn.de"
-    else:
-        print "STATUS: SUCCESS!"
-except Exception, e:
-    print "STATUS: FAILED (%s)" % str(e)
+# try:
+#     from data_interpreter import PyDataInterpreter
+#     interpreter = PyDataInterpreter()
+#     from data_histograming import PyDataHistograming
+#     histogram = PyDataHistograming()
+#     from data_clusterizer import PyDataClusterizer
+#     clusterizer = PyDataClusterizer()
+#     if(interpreter.get_hit_size() != hits.itemsize):
+#         print "STATUS: FAILED. Please report to pohl@physik.uni-bonn.de"
+#     else:
+#         print "STATUS: SUCCESS!"
+# except Exception, e:
+#     print "STATUS: FAILED (%s)" % str(e)

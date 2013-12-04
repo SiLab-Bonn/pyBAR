@@ -2,6 +2,7 @@ import tables as tb
 #from tables import descr_from_dtype
 import numpy as np
 
+
 class MetaTable(tb.IsDescription):
     start_index = tb.UInt32Col(pos=0)
     stop_index = tb.UInt32Col(pos=1)
@@ -62,6 +63,13 @@ class MetaInfoEventTable(tb.IsDescription):
     event_number = tb.UInt32Col(pos=0)
     time_stamp = tb.Float64Col(pos=1)
     error_code = tb.UInt32Col(pos=2)
+
+
+class MetaInfoEventTableV2(tb.IsDescription):
+    event_number = tb.UInt32Col(pos=0)
+    timestamp_start = tb.Float64Col(pos=1)
+    timestamp_stop = tb.Float64Col(pos=2)
+    error_code = tb.UInt32Col(pos=3)
 
 
 class MetaInfoWordTable(tb.IsDescription):
