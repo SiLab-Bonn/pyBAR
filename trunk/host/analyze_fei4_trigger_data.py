@@ -1,24 +1,27 @@
 """This is a script that analyzes the data taken with the scan_fei4_trigger scan. It uses the hit maps ad cluster maps for the analysis and can search for correlations etc.
 """
 
-import logging
-import itertools
-import pandas as pd
 import numpy as np
-import tables as tb
-from matplotlib.backends.backend_pdf import PdfPages
+import math
 import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+import pandas as pd
+import itertools
+import re
 from matplotlib import colors, cm
-from datetime import datetime
+from matplotlib.backends.backend_pdf import PdfPages
 
-from analysis.plotting.plotting import plot_correlation, plot_n_cluster
+
+import logging
+
+import tables as tb
+from datetime import datetime
+from analysis.analysis_utils import AnalysisUtils
+from analysis.plotting.plotting import plot_correlation, plot_n_cluster, plot_pixel_matrix
 from analysis.analyze_raw_data import AnalyzeRawData
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
-
-# TODO trigger number...
-# TODO omit TOT 14 before
 
 
 def analyze(raw_data_file_triggered_fe=None, hit_file_triggered_fe=None, raw_data_file_trigger_fe=None, hit_file_trigger_fe=None, trigger_count=16, is_fei4b=False, print_warnings=True):
@@ -53,63 +56,18 @@ def analyze(raw_data_file_triggered_fe=None, hit_file_triggered_fe=None, raw_dat
             analyze_raw_data.plot_histograms(scan_data_filename=hit_file_trigger_fe[:-3] + '.pdf', maximum='maximum')
 
 
-# @profile
-def correlate_hits(hit_table_triggered_fe, hit_table_trigger_fe):
-    logging.info("Correlating events")
-    data_frame_triggered_fe = pd.DataFrame({'event_number': hit_table_triggered_fe[:]['event_number'], 'column': hit_table_triggered_fe[:]['column'], 'row': hit_table_triggered_fe[:]['row']})
-    data_frame_trigger_fe = pd.DataFrame({'event_number': hit_table_trigger_fe[:]['event_number'], 'column_trigger': hit_table_trigger_fe[:]['column'], 'row_trigger': hit_table_trigger_fe[:]['row']})
-
-    # remove duplicate hits from TOT = 14 hits or FE data error and count how many have been removed
-    df_length_triggered_fe = len(data_frame_triggered_fe.index)
-    df_length_trigger_fe = len(data_frame_trigger_fe.index)
-    data_frame_triggered_fe = data_frame_triggered_fe.drop_duplicates()
-    data_frame_trigger_fe = data_frame_trigger_fe.drop_duplicates()
-    logging.info("Removed %d duplicates in triggered FE data" % (df_length_triggered_fe - len(data_frame_triggered_fe.index)))
-    logging.info("Removed %d duplicates in trigger FE data" % (df_length_trigger_fe - len(data_frame_trigger_fe.index)))
-
-    return data_frame_triggered_fe.merge(data_frame_trigger_fe, how='left', on='event_number')  # join in the events that the triggered fe sees, only these are interessting
-
-# @profile
-def get_hits_with_n_cluster_per_event(hits_table, cluster_table, n_cluster=1):
-    logging.info("Calculate hits with %d clusters" % n_cluster)
-    data_frame_hits = pd.DataFrame({'event_number': hits_table[:]['event_number'], 'column': hits_table[:]['column'], 'row': hits_table[:]['row']})
-    data_frame_hits = data_frame_hits.set_index(keys='event_number')
-    n_cluster_in_events = get_n_cluster_in_events(cluster_table_triggered_fe)
-    events_with_n_cluster = n_cluster_in_events[n_cluster_in_events[:, 1] == n_cluster, 0]
-#     print events_with_n_cluster[:20]
-    return data_frame_hits.loc[events_with_n_cluster]
-
-# @profile
-def get_n_cluster_in_events(cluster_table):
-    logging.info("Calculate the number of cluster in every event")
-    event_number_array = cluster_table[:]['event_number']
-    cluster_in_event = np.bincount(event_number_array)  # for one cluster one event number is given, counts how many different event_numbers are there for each event number from 0 to max event number
-    event_number = np.nonzero(cluster_in_event)[0]
-    return np.vstack((event_number, cluster_in_event[event_number])).T
-
-# @profile
-def get_n_cluster_per_event_hist(cluster_table):
-    logging.info("Calculate number of cluster per event")
-    cluster_in_events = get_n_cluster_in_events(cluster_table)[:, 1]  # get the number of cluster for every event
-    return np.histogram(cluster_in_events, bins=range(0, np.max(cluster_in_events) + 2))  # histogram the occurrence of n cluster per event
-
-# @profile
-def histogram_correlation(data_frame_combined):
-    logging.info("Histograming correlations")
-    corr_row = np.histogram2d(data_frame_combined['row'], data_frame_combined['row_trigger'], bins=(336, 336), range=[[1, 336], [1, 336]])
-    corr_col = np.histogram2d(data_frame_combined['column'], data_frame_combined['column_trigger'], bins=(80, 80), range=[[1, 80], [1, 80]])
-    return corr_col, corr_row
-
 
 if __name__ == "__main__":
     start_time = datetime.now()
     chip_flavor = 'fei4a'
-    scan_name = 'scan_fei4_trigger_67'
+    scan_name = 'scan_fei4_trigger_107'
 
     raw_data_file_triggered_fe = 'data/' + scan_name + ".h5"
     raw_data_file_trigger_fe = 'data/' + scan_name + "_trigger_fe.h5"
     hit_file_triggered_fe = 'data/' + scan_name + "_interpreted.h5"
     hit_file_trigger_fe = 'data/' + scan_name + "_trigger_fe_interpreted.h5"
+
+    analysis_utils = AnalysisUtils()
 
 #     analyze(raw_data_file_triggered_fe=raw_data_file_triggered_fe, hit_file_triggered_fe=hit_file_triggered_fe, raw_data_file_trigger_fe=raw_data_file_trigger_fe, hit_file_trigger_fe=hit_file_trigger_fe, print_warnings=False)
     with tb.openFile(hit_file_triggered_fe, mode="r") as in_file_h5_triggered_fe:
@@ -119,22 +77,57 @@ if __name__ == "__main__":
             cluster_table_triggered_fe = in_file_h5_triggered_fe.root.Cluster
             cluster_table_trigger_fe = in_file_h5_trigger_fe.root.Cluster
 
-#             hit_table_triggered_fe_subset = get_hits_with_n_cluster_per_event(hits_table=hit_table_triggered_fe, cluster_table=cluster_table_triggered_fe, n_cluster=1)
-#             hit_table_trigger_fe_subset = get_hits_with_n_cluster_per_event(hits_table=hit_table_trigger_fe, cluster_table=cluster_table_trigger_fe, n_cluster=1)
-#             print hit_table_triggered_fe_subset.head()
-#             print hit_table_trigger_fe_subset.head()
-#             print 'DONE'
-#             hit_table_trigger_fe_subset = hit_table_trigger_fe_subset.rename(columns={'column': 'column_trigger', 'row': 'row_trigger'})
-#             print hit_table_trigger_fe_subset.head()
+#             print cluster_table_trigger_fe[]
+#             tt = cluster_table_trigger_fe.read_where('size==1')
+            print hit_table_triggered_fe[:3]['column']
+            print hit_table_triggered_fe[:3]['row']
 
-            hist_n_cluster_triggered_fe = get_n_cluster_per_event_hist(cluster_table=cluster_table_triggered_fe)
-            hist_n_cluster_trigger_fe = get_n_cluster_per_event_hist(cluster_table=cluster_table_trigger_fe)
-            plot_n_cluster(hist=hist_n_cluster_triggered_fe, title='Cluster per event for the triggered Front-End')
-            plot_n_cluster(hist=hist_n_cluster_trigger_fe, title='Cluster per event for the trigger Front-End')
-            get_hits_with_n_cluster_per_event(hits_table=hit_table_triggered_fe, cluster_table=cluster_table_triggered_fe)
+            occupancy = analysis_utils.histogram_occupancy_per_pixel(array=hit_table_triggered_fe[:])[0]
+            print occupancy.shape
+#             print np.where(occupancy[:]!=0)
+#             print occupancy[occupancy[:]!=0].idx
+# 
+# 
+            array = hit_table_triggered_fe[:]
+            print array
+# 
+#             print analysis_utils.histogram_tot(array=array)
+#             hist_tot = analysis_utils.histogram_tot_per_pixel(array=array)[0]
+#             print hist_tot[42,156,5]
 
-            hits_correlated = correlate_hits(hit_table_triggered_fe=hit_table_triggered_fe, hit_table_trigger_fe=hit_table_trigger_fe)
-            hist_col, hist_row = histogram_correlation(data_frame_combined=hits_correlated)
-            plot_correlation(hist=hist_col, title='Hit correlation plot on columns', xlabel="Column triggered FE", ylabel="Column trigger FE")
-            plot_correlation(hist=hist_row, title='Hit correlation plot on rows', xlabel="Row triggered FE", ylabel="Row trigger FE")
+#             plot_pixel_matrix(analysis_utils.histogram_mean_tot_per_pixel(array=array), title='Mean tot')
+            plot_pixel_matrix(analysis_utils.histogram_occupancy_per_pixel(array=array, mask_no_hit=True)[0], title='Occupancy')
+
+# #             extent = [hist_mean[2] - 0.5, hist_mean[2][-1] + 0.5, hist_mean[1][-1] + 0.5, hist_mean[1][0] - 0.5]
+#             plt.imshow(hist.T, aspect='auto', cmap=cmap, interpolation='nearest')
+# #             plt.gca().invert_yaxis()
+#             divider = make_axes_locatable(plt.gca())
+#             cax = divider.append_axes("right", size="5%", pad=0.05)
+#             z_max = np.max(hist)
+#             bounds = np.linspace(start=0, stop=z_max, num=255, endpoint=True)
+#             norm = colors.BoundaryNorm(bounds, cmap.N)
+#             plt.colorbar(boundaries=bounds, cmap=cmap, norm=norm, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True), cax=cax)
+#             plt.show()
+
+            
+
+#             data_frame_triggered_fe_subset = analysis_utils.get_hits_with_n_cluster_per_event(hits_table=hit_table_triggered_fe, cluster_table=cluster_table_triggered_fe, n_cluster=1)
+#             data_frame_trigger_fe_subset = analysis_utils.get_hits_with_n_cluster_per_event(hits_table=hit_table_trigger_fe, cluster_table=cluster_table_trigger_fe, n_cluster=1)
+# #             print hit_table_triggered_fe_subset.head()
+# #             print hit_table_trigger_fe_subset.head()
+# 
+#             # change column, row name to make them unique and usable for the correlation method 
+#             data_frame_triggered_fe_subset = data_frame_triggered_fe_subset.rename(columns={'column': 'column_fe0', 'row': 'row_fe0'})
+#             data_frame_trigger_fe_subset = data_frame_trigger_fe_subset.rename(columns={'column': 'column_fe1', 'row': 'row_fe1'})
+# #             print hit_table_trigger_fe_subset.head()
+# 
+#             hist_n_cluster_triggered_fe = analysis_utils.get_n_cluster_per_event_hist(cluster_table=cluster_table_triggered_fe)
+#             hist_n_cluster_trigger_fe = analysis_utils.get_n_cluster_per_event_hist(cluster_table=cluster_table_trigger_fe)
+#             plot_n_cluster(hist=hist_n_cluster_triggered_fe, title='Cluster per event for the triggered Front-End')
+#             plot_n_cluster(hist=hist_n_cluster_trigger_fe, title='Cluster per event for the trigger Front-End')
+# #             analysis_utils.get_hits_with_n_cluster_per_event(hits_table=hit_table_triggered_fe, cluster_table=cluster_table_triggered_fe)
+#  
+#             hits_correlated = analysis_utils.correlate_events(data_frame_fe_1=data_frame_triggered_fe_subset, data_frame_fe_2=data_frame_trigger_fe_subset)
+#             hist_col, hist_row = analysis_utils.histogram_correlation(data_frame_combined=hits_correlated)
+#             plot_correlation(hist=hist_row, title='Hit correlation plot on rows', xlabel="Row triggered FE", ylabel="Row trigger FE")
     logging.info('Script runtime %.1f seconds' % (datetime.now() - start_time).total_seconds())
