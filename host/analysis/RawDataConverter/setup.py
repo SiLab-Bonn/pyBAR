@@ -3,9 +3,9 @@ from distutils.extension import Extension
 from Cython.Build import cythonize
 import numpy as np
 
-extensions = [Extension("data_interpreter",["data_interpreter.pyx"]),
-              Extension("data_histograming",["data_histograming.pyx"]),
-              Extension("data_clusterizer",["data_clusterizer.pyx"])
+extensions = [Extension("data_interpreter", ["data_interpreter.pyx"]),
+              Extension("data_histograming", ["data_histograming.pyx"]),
+              Extension("data_clusterizer", ["data_clusterizer.pyx"])
               ]
 
 setup(name='RawDataInterpreter',
@@ -15,24 +15,24 @@ setup(name='RawDataInterpreter',
       author='David-Leon Pohl',
       author_email='david-leon.pohl@cern.ch',
       url='https://silab-redmine.physik.uni-bonn.de/projects/pybar',
-      ext_modules = cythonize(extensions),
-      include_dirs = [np.get_include()],#
+      ext_modules=cythonize(extensions),
+      include_dirs=[np.get_include()],
       #language="c++",
       )
 
 #check compilation/installation
-hits = np.empty((1,), dtype= 
-        [('eventNumber', np.uint32), 
-         ('triggerNumber',np.uint32),
-         ('relativeBCID',np.uint8),
-         ('LVLID',np.uint16),
-         ('column',np.uint8),
-         ('row',np.uint16),
-         ('tot',np.uint8),
-         ('BCID',np.uint16),
-         ('triggerStatus',np.uint8),
-         ('serviceRecord',np.uint32),
-         ('eventStatus',np.uint8)
+hits = np.empty((1,), dtype=
+        [('eventNumber', np.uint32),
+         ('triggerNumber', np.uint32),
+         ('relativeBCID', np.uint8),
+         ('LVLID', np.uint16),
+         ('column', np.uint8),
+         ('row', np.uint16),
+         ('tot', np.uint8),
+         ('BCID', np.uint16),
+         ('triggerStatus', np.uint8),
+         ('serviceRecord', np.uint32),
+         ('eventStatus', np.uint8)
          ])
 
 try:
@@ -46,5 +46,5 @@ try:
         print "STATUS: FAILED. Please report to pohl@physik.uni-bonn.de"
     else:
         print "STATUS: SUCCESS!"
-except:
-    print "STATUS: FAILED (IMPORT)"
+except Exception, e:
+    print "STATUS: FAILED (%s)" % str(e)
