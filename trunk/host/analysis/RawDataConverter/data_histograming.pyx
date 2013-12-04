@@ -34,7 +34,7 @@ cdef extern from "Histogram.h":
         void getRelBcidHist(unsigned int*& rRelBcidHist, bool copy)  # returns the relative BCID histogram for all hits
 
         void addHits(HitInfo*& rHitInfo, const unsigned int& rNhits) except +
-        void addScanParameter(const unsigned int& rNparInfoLength, ParInfo*& rParInfo)  except +
+        void addScanParameter(const unsigned int& rNparInfoLength, ParInfo*& rParInfo) except +
         void setNoScanParameter()
         void addMetaEventIndex(const unsigned int& rNmetaEventIndexLength, unsigned int*& rMetaEventIndex) except +
 
