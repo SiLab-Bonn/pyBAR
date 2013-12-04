@@ -676,7 +676,7 @@ class AnalyzeRawData(object):
 
     def fit_scurves_multithread(self, hit_table_file=None, PlsrDAC=None):
         logging.info("Start S-curve fit on %d CPU cores" % mp.cpu_count())
-        occupancy_hist = hit_table_file.root.HistOcc[:, :, :] if hit_table_file != None else self.occupancy_array[:, :, :]  # take data from RAM if no file is opended
+        occupancy_hist = hit_table_file.root.HistOcc[:, :, :] if hit_table_file != None else self.occupancy_array[:, :, :]  # take data from RAM if no file is opened
         occupancy_hist_shaped = occupancy_hist.reshape(occupancy_hist.shape[0] * occupancy_hist.shape[1], occupancy_hist.shape[2])
         partialfit_scurve = partial(fit_scurve, PlsrDAC=PlsrDAC)  # trick to give a function more than one parameter, needed for pool.map
         pool = mp.Pool(processes=mp.cpu_count())  # create as many workers as physical cores are available
