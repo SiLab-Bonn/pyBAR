@@ -402,7 +402,10 @@ class AnalyzeRawData(object):
             meta_data_size = self.meta_data.shape[0]
             nEventIndex = self.interpreter.get_n_meta_data_event()
             if (meta_data_size == nEventIndex):
-                description = data_struct.MetaInfoEventTable().columns
+                if self.interpreter.meta_table_v2:
+                    description = data_struct.MetaInfoEventTableV2().columns
+                else:
+                    description = data_struct.MetaInfoEventTable().columns
                 last_pos = len(description)
                 if (self.scan_parameters != None):  # add additional column with the scan parameter
                     for scan_par_name in self.scan_parameters.dtype.names:
@@ -413,9 +416,15 @@ class AnalyzeRawData(object):
                 meta_data_out_table = self.out_file_h5.createTable(self.out_file_h5.root, name='meta_data', description=description, title='MetaData', filters=self._filter_table)
                 entry = meta_data_out_table.row
                 for i in range(0, nEventIndex):
-                    entry['event_number'] = self.meta_event_index[i][0]  # event index
-                    entry['time_stamp'] = self.meta_data[i][3]  # time stamp
-                    entry['error_code'] = self.meta_data[i][4]  # error code
+                    if self.interpreter.meta_table_v2:
+                        entry['event_number'] = self.meta_event_index[i][0]  # event index
+                        entry['timestamp_start'] = self.meta_data[i][3]  # timestamp
+                        entry['timestamp_stop'] = self.meta_data[i][4]  # timestamp
+                        entry['error_code'] = self.meta_data[i][5]  # error code
+                    else:
+                        entry['event_number'] = self.meta_event_index[i][0]  # event index
+                        entry['time_stamp'] = self.meta_data[i][3]  # time stamp
+                        entry['error_code'] = self.meta_data[i][4]  # error code
                     if (self.scan_parameters != None):  # scan parameter if available
                         entry[scan_par_name] = self.scan_parameters[i][0]
                     entry.append()
