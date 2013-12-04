@@ -616,8 +616,10 @@ class AnalyzeRawData(object):
             out_file_h5 = tb.openFile(self._analyzed_data_file, mode="r")
         else:
             out_file_h5 = None
-        if os.path.splitext(scan_data_filename)[1].strip().lower() != ".pdf":  # check for correct filename extension
-            output_pdf_filename = os.path.splitext(scan_data_filename)[0] + ".pdf"
+#         if os.path.splitext(scan_data_filename)[1].strip().lower() != ".pdf":  # check for correct filename extension
+#             output_pdf_filename = os.path.splitext(scan_data_filename)[0] + ".pdf"
+        if scan_data_filename[len(scan_data_filename) - 3:] != ".pdf":  # check for correct filename extension
+            output_pdf_filename = scan_data_filename + ".pdf"
         else:
             output_pdf_filename = scan_data_filename
         logging.info('Saving output file: %s' % output_pdf_filename)
