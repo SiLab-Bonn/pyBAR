@@ -132,11 +132,12 @@ class AnalysisUtils(object):
         return corr_col, corr_row
 
     def histogram_tot(self, array, label='tot'):
-        '''Takes the numpy hit/cluster array and histograms the tot values
+        '''Takes the numpy hit/cluster array and histograms the tot values.
 
         Parameters
         ----------
         hit_array : numpy.ndarray
+        label: string
 
         Returns
         -------
@@ -144,6 +145,42 @@ class AnalysisUtils(object):
         '''
         logging.info("Histograming tot values")
         return np.histogram(a=array[label], bins=16, range=(0,16))
+
+    def histogram_tot_per_pixel(self, array, labels=['column', 'row', 'tot']):
+        '''Takes the numpy hit/cluster array and histograms the tot values for each pixel
+
+        Parameters
+        ----------
+        hit_array : numpy.ndarray
+        label: string list
+
+        Returns
+        -------
+        numpy.Histogram
+        '''
+        logging.info("Histograming tot values for each pixel")
+        return np.histogramdd(sample=(array[labels[0]], array[labels[1]], array[labels[2]]), bins=(80, 336, 16), range=[[0, 80], [0, 336], [0, 16]])
+
+    def histogram_mean_tot_per_pixel(self, array, labels=['column', 'row', 'tot']):
+        '''Takes the numpy hit/cluster array and histograms the mean tot values for each pixel
+
+        Parameters
+        ----------
+        hit_array : numpy.ndarray
+        label: string list
+
+        Returns
+        -------
+        numpy.Histogram
+        '''
+        tot_array = self.histogram_tot_per_pixel(array=array, labels=labels)[0]
+        occupancy = self.histogram_occupancy_per_pixel(array=array)[0]  # needed for normalization normalize
+        tot_avr = np.average(tot_array, axis=2, weights=range(0, 16)) * sum(range(0, 16))
+        tot_avr = np.divide(tot_avr, occupancy)
+        return np.ma.array(tot_avr, mask=(occupancy == 0))  # return array with masked pixel without any hit
+
+    def histogram_occupancy_per_pixel(self, array, labels=['column', 'row']):
+        return np.histogram2d(x=array[labels[0]], y=array[labels[1]], bins=(80, 336), range=[[0, 80], [0, 336]])
 
 
 if __name__ == "__main__":
