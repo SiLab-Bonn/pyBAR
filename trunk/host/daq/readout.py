@@ -25,7 +25,7 @@ import numpy as np
 import tables as tb
 
 from utils.utils import get_float_time
-from analysis.data_struct import MetaTableV2 as MetaTable, generate_scan_parameter_description
+from analysis.RawDataConverter.data_struct import MetaTableV2 as MetaTable, generate_scan_parameter_description
 from bitstring import BitArray  # TODO: bitarray.bitarray() (in Python3 use int.from_bytes() to convert bitarray to integer)
 from collections import OrderedDict
 
