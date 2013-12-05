@@ -10,7 +10,7 @@ from libcpp cimport bool  # to be able to use bool variables
 
 from data_struct cimport numpy_hit_info, numpy_meta_data, numpy_meta_data_v2, numpy_meta_word_data
 
-from ..data_struct import MetaTable, MetaTableV2
+from data_struct import MetaTable, MetaTableV2
 
 from tables import dtype_from_descr
 
