@@ -474,6 +474,17 @@ unsigned int Interpret::getHitSize()
 	return sizeof(HitInfo);
 }
 
+void Interpret::reset()
+{
+	resetCounters();
+	resetEventVariables();
+	_lastMetaIndexNotSet = 0;
+	_lastWordIndexSet = 0;
+	_metaEventIndexLength = 0;
+	_metaEventIndex = 0;
+	_startWordIndex = 0;
+}
+
 //private
 
 void Interpret::addHit(const unsigned char& pRelBCID, const unsigned short int& pLVLID, const unsigned char& pColumn, const unsigned short int& pRow, const unsigned char& pTot, const unsigned short int& pBCID)	//add hit with event number, column, row, relative BCID [0:15], tot, trigger ID

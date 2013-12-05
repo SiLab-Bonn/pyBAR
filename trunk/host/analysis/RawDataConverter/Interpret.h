@@ -65,6 +65,7 @@ public:
 	void printHits(const unsigned int& pNhits = 100);		  //prints the hits stored in the array
 	void debugEvents(const unsigned int& rStartEvent = 0, const unsigned int& rStopEvent = 0, const bool& debugEvents = true);
 
+	void reset();
 	unsigned int getHitSize();								  //return the size of one hit entry in the hit array, needed to check data in memory alignment
 
 private:

@@ -34,19 +34,21 @@ public:
   unsigned int getMaxParameter(); //returns the maximum parameter from _parInfo
   unsigned int getNparameters();  //returns the parameter range from _parInfo
 
+  void resetOccupancyArray();
+  void resetTotArray();
+  void resetRelBcidArray();
+
+  void reset();
+
   void test();
 
 private:
   void allocateOccupancyArray();
-  void resetOccupancyArray();
   void deleteOccupancyArray();
   void allocateTotArray();
-  void resetTotArray();
   void deleteTotArray();
   void allocateRelBcidArray();
-  void resetRelBcidArray();
   void deleteRelBcidArray();
-
   void setParameterLimits();      //sets _minParameterValue/_maxParameterValue from _parInfo
   
   unsigned int* _occupancy;       //2d hit histogram for each parameter (in total 3d, linearly sorted via col, row, parameter)

@@ -176,6 +176,15 @@ unsigned int Clusterizer::getNclusters()
 	return _Nclusters;
 }
 
+void Clusterizer::reset()
+{
+	_nHits = 0;
+	clearActualClusterData();
+	clearActualEventVariables();
+	clearHitMap();
+	clearResultHistograms();
+}
+
 void Clusterizer::addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
 {
   if(Basis::debugSet())
