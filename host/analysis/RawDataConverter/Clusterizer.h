@@ -64,6 +64,7 @@ public:
 
 	unsigned int getNclusters();										//returns the number of clusters//main function to start the clustering of the hit array
 
+	void reset();
 	void test();
 
 private:
@@ -75,7 +76,6 @@ private:
 	void addClusterToResults();											//adds the actual cluster data to the result arrays
 	bool clusterize();
 
-	void clearClusterMaps();											//reset the cluster maps
 	void clearActualClusterData();
 	void clearActualEventVariables();
 	void showHits();													//shows the hit in the hit map for debugging
