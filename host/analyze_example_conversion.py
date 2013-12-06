@@ -23,6 +23,7 @@ def analyze():
         analyze_raw_data.create_cluster_table = False  # enables the creation of a table with all clusters, std. setting is false
 
         analyze_raw_data.create_occupancy_hist = True  # creates a colxrow histogram with accumulated hits for each scan parameter
+        analyze_raw_data.create_source_scan_hist = False  # create source scan hists
         analyze_raw_data.create_tot_hist = True  # creates a tot histogram
         analyze_raw_data.create_rel_bcid_hist = True  # creates a histogram with the relative BCID of the hits
         analyze_raw_data.create_service_record_hist = True  # creates a histogram with all SR send out from the FE

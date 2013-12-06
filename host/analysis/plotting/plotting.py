@@ -13,75 +13,111 @@ import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
-def plotOccupancy(occupancy_hist, median=False, max_occ=None, filename=None):
+def plot_fancy_occupancy(hist, z_max='maximum', filename=None):
     plt.clf()
-    H = occupancy_hist
+
+    if z_max == 'median':
+        median = np.ma.median(hist)
+        z_max = median * 2  # round_to_multiple(median * 2, math.floor(math.log10(median * 2)))
+    elif z_max == 'maximum' or z_max is None:
+        maximum = np.ma.max(hist)
+        z_max = maximum  # round_to_multiple(maximum, math.floor(math.log10(maximum)))
+
+#     plt.title('Occupancy (%d entries)' % np.sum(hist))
+    fig = plt.figure(1)
+    ax = fig.add_subplot(111)
     extent = [0.5, 80.5, 336.5, 0.5]
-    # cmap = cm.get_cmap('copper_r')
-    cmap = cm.get_cmap('PuBu', 10)
-    if median:
-        ceil_number = round_to_multiple(np.median(H[H > 0] * 2) if max_occ is None else max_occ, 10)
-    else:
-        ceil_number = round_to_multiple(H.max() if max_occ is None else max_occ, 10)
-    #         ceil_number = round_to_multiple(int(H.max()) if max_occ is None else max_occ, 255)
-
-    if(ceil_number < 10):
-        ceil_number = 10
-    bounds = range(0, ceil_number + 1, ceil_number / 10)
+    bounds = np.linspace(start=0, stop=z_max, num=255, endpoint=True)
+    cmap = cm.get_cmap('jet')
+    cmap.set_bad('w')
     norm = colors.BoundaryNorm(bounds, cmap.N)
-    #     if (ceil_number<255):
-    #         ceil_number = 255
-    #     bounds = range(0, ceil_number+1, 255/ceil_number)
-    #     norm = colors.BoundaryNorm(bounds, cmap.N)
-    plt.imshow(H, interpolation='nearest', aspect="auto", cmap=cmap, norm=norm, extent=extent)  # for monitoring
-    plt.title('Occupancy (' + str(np.sum(H)) + ' entries)')
-    plt.xlabel('Column')
-    plt.ylabel('Row')
-    plt.colorbar(boundaries=bounds, cmap=cmap, norm=norm)
+
+    im = ax.imshow(hist, interpolation='nearest', aspect='auto', cmap=cmap, norm=norm, extent=extent)
+    ax.set_ylim((336.5, 0.5))
+    ax.set_xlim((0.5, 80.5))
+#     plt.title('Occupancy (%d entries)' % np.sum(hist))
+    ax.set_xlabel('Column')
+    ax.set_ylabel('Row')
+
+    # create new axes on the right and on the top of the current axes
+    # The first argument of the new_vertical(new_horizontal) method is
+    # the height (width) of the axes to be created in inches.
+    divider = make_axes_locatable(ax)
+    axHistx = divider.append_axes("top", 1.2, pad=0.2, sharex=ax)
+    axHisty = divider.append_axes("right", 1.2, pad=0.2, sharey=ax)
+
+    cax = divider.append_axes("right", size="5%", pad=0.1)
+    cb = plt.colorbar(im, cax=cax, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True))
+    cb.set_label("#")
+
+    # make some labels invisible
+    plt.setp(axHistx.get_xticklabels() + axHisty.get_yticklabels(), visible=False)
+
+    axHistx.bar(left=range(1, 81), height=np.ma.sum(hist, axis=0), align='center', linewidth=0)
+    axHistx.set_xlim((0.5, 80.5))
+    axHistx.locator_params(axis='y', nbins=3)
+    axHistx.ticklabel_format(style='sci', scilimits=(0, 4), axis='y')
+    axHistx.set_ylabel('#')
+    axHisty.barh(bottom=range(1, 337), width=np.ma.sum(hist, axis=1), align='center', linewidth=0)
+    axHisty.set_ylim((336.5, 0.5))
+    axHisty.locator_params(axis='x', nbins=3)
+    axHisty.ticklabel_format(style='sci', scilimits=(0, 4), axis='x')
+    axHisty.set_xlabel('#')
+
     if filename is None:
         plt.show()
-    elif type(filename) == PdfPages:
+    elif isinstance(filename, PdfPages):
         filename.savefig()
     else:
         plt.savefig(filename)
 
 
-def make_occupancy(cols, rows, max_occ=None, ncols=80, nrows=336):
+def plot_occupancy(hist, z_max='maximum', filename=None):
     plt.clf()
-    H, xedges, yedges = np.histogram2d(rows, cols, bins=(nrows, ncols), range=[[1, nrows], [1, ncols]])
-    # print xedges, yedges
-    extent = [yedges[0] - 0.5, yedges[-1] + 0.5, xedges[-1] + 0.5, xedges[0] - 0.5]
-    # plt.pcolor(H)
-    cmap = cm.get_cmap('hot', 20)
-    ceil_number = round_to_multiple(H.max() if max_occ is None else max_occ, 10)
-    bounds = range(0, ceil_number + 1, ceil_number / 10)
+
+    if z_max == 'median':
+        median = np.ma.median(hist)
+        z_max = median * 2  # round_to_multiple(median * 2, math.floor(math.log10(median * 2)))
+    elif z_max == 'maximum' or z_max is None:
+        maximum = np.ma.max(hist)
+        z_max = maximum  # round_to_multiple(maximum, math.floor(math.log10(maximum)))
+
+    fig = plt.figure(1)
+    ax = fig.add_subplot(111)
+    ax.set_adjustable('box-forced')
+#     extent = [yedges[0] - 0.5, yedges[-1] + 0.5, xedges[-1] + 0.5, xedges[0] - 0.5]
+    extent = [0.5, 80.5, 336.5, 0.5]
+    bounds = np.linspace(start=0, stop=z_max, num=255, endpoint=True)
+    cmap = cm.get_cmap('jet')
+    cmap.set_bad('w')
     norm = colors.BoundaryNorm(bounds, cmap.N)
-    plt.imshow(H, interpolation='nearest', aspect="auto", cmap=cmap, norm=norm, extent=extent)  # for monitoring
-    plt.title('Occupancy')
+
+    im = ax.imshow(hist, interpolation='nearest', aspect='auto', cmap=cmap, norm=norm, extent=extent)
+    ax.set_ylim((336.5, 0.5))
+    ax.set_xlim((0.5, 80.5))
+    plt.title('Occupancy (%d entries)' % np.sum(hist))
     plt.xlabel('Column')
     plt.ylabel('Row')
-#     for ypos in range(0,nrows,336):
-#         plt.axhline(y=ypos, xmin=0, xmax=1)
-#     for xpos in range(0,ncols,80):
-#         plt.axvline(x=xpos, ymin=0, ymax=1)
-    plt.colorbar(boundaries=bounds, cmap=cmap, norm=norm, ticks=bounds)
 
+    divider = make_axes_locatable(ax)
 
-def plot_occupancy(cols, rows=None, max_occ=None, filename=None, title=None, ncols=80, nrows=336):
-    if(rows is None):
-        cols = 0
-        rows = 0
-    make_occupancy(cols, rows, max_occ, ncols, nrows)
-    if(title is not None):
-        plt.title(title)
-#     fig = plt.figure()
-#     fig.patch.set_facecolor('white')
+    cax = divider.append_axes("right", size="5%", pad=0.1)
+    cb = plt.colorbar(im, cax=cax, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True))
+    cb.set_label("#")
+
     if filename is None:
         plt.show()
     elif type(filename) == PdfPages:
         filename.savefig()
     else:
         plt.savefig(filename)
+
+
+def make_occupancy_hist(cols, rows, z_max=None, filename=None, title=None, ncols=80, nrows=336):
+    hist, xedges, yedges = np.histogram2d(rows, cols, bins=(nrows, ncols), range=[[1, nrows], [1, ncols]])
+#     extent = [yedges[0] - 0.5, yedges[-1] + 0.5, xedges[-1] + 0.5, xedges[0] - 0.5]
+
+    return hist  # , extent
 
 
 def plot_correlation(hist, title="Hit correlation", xlabel=None, ylabel=None, filename=None):
@@ -393,7 +429,7 @@ def create_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, bins=
 def create_pixel_scatter_plot(hist, title=None, x_axis_title=None, y_axis_title=None, y_min=None, y_max=None):
     scatter_y_mean = np.ma.mean(hist, axis=0)
     scatter_y = hist.flatten('F')
-    plt.scatter(range(80 * 336), scatter_y, marker='o', s=0.8)
+    plt.scatter(range(80 * 336), scatter_y, marker='o', s=0.8, rasterized=True)
     p1, = plt.plot(range(336 / 2, 80 * 336 + 336 / 2, 336), scatter_y_mean, 'o')
     plt.plot(range(336 / 2, 80 * 336 + 336 / 2, 336), scatter_y_mean, linewidth=2.0)
     plt.legend([p1], ["column mean"], prop={'size': 6})
