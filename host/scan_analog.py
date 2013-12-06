@@ -1,5 +1,5 @@
 from daq.readout import get_col_row_array_from_data_record_array, save_raw_data_from_data_dict_iterable, convert_data_array, data_array_from_data_dict_iterable, is_data_record, is_data_from_channel
-from analysis.plotting.plotting import plot_occupancy
+from analysis.plotting.plotting import plot_occupancy, make_occupancy_hist
 from analysis.analyze_raw_data import AnalyzeRawData
 
 from scan.scan import ScanBase
@@ -45,7 +45,7 @@ class AnalogScan(ScanBase):
         self.readout.stop(timeout=10.0)
 
         # plotting data
-        plot_occupancy(*convert_data_array(data_array_from_data_dict_iterable(self.readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array), max_occ=repeat_command * 2, filename=self.scan_data_filename + "_occupancy.pdf")
+        plot_occupancy(hist=make_occupancy_hist(*convert_data_array(data_array_from_data_dict_iterable(self.readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)), z_max='median', filename=self.scan_data_filename + "_occupancy.pdf")
 
         # saving data
         save_raw_data_from_data_dict_iterable(self.readout.data, filename=self.scan_data_filename, title=self.scan_identifier)
@@ -56,6 +56,7 @@ class AnalogScan(ScanBase):
             analyze_raw_data.create_tot_hist = True
             analyze_raw_data.interpret_word_table(FEI4B=scan.register.fei4b)
             analyze_raw_data.plot_histograms(scan_data_filename=scan.scan_data_filename)
+#             analyze_raw_data.interpreter.print_summary()
 
 if __name__ == "__main__":
     import configuration
