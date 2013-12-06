@@ -113,7 +113,7 @@ def plot_occupancy(hist, z_max='maximum', filename=None):
         plt.savefig(filename)
 
 
-def make_occupancy_hist(cols, rows, z_max=None, filename=None, title=None, ncols=80, nrows=336):
+def make_occupancy_hist(cols, rows, ncols=80, nrows=336):
     hist, xedges, yedges = np.histogram2d(rows, cols, bins=(nrows, ncols), range=[[1, nrows], [1, ncols]])
 #     extent = [yedges[0] - 0.5, yedges[-1] + 0.5, xedges[-1] + 0.5, xedges[0] - 0.5]
 
