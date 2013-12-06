@@ -117,7 +117,7 @@ class ThresholdScanFast(ScanBase):
             if self.stop_condition_triggered == True:
                 return False
             else:
-                logging.info("Stop precise scan condition triggered: %d pixels > %d with occupancy == %d" % (pixels_with_full_hits_count, stop_pixel_cnt, repeat_command))
+                logging.info("Stop precise scan condition triggered: %d pixels > %d with occupancy >= %d" % (pixels_with_full_hits_count, stop_pixel_cnt, repeat_command))
                 self.stop_condition_triggered = True
                 return True
         # start precise scanning actions
