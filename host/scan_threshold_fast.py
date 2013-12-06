@@ -15,8 +15,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(leve
 class ThresholdScanFast(ScanBase):
     def __init__(self, config_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_threshold_fast", scan_data_path=None):
         super(ThresholdScanFast, self).__init__(config_file=config_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
+        self.scan_parameter_start = 0
 
-    def scan(self, mask_steps=3, repeat_command=100, scan_parameter='PlsrDAC', scan_parameter_range=None, scan_parameter_stepsize=2, search_distance=10, minimum_data_points=15):
+    def scan(self, mask_steps=3, repeat_command=100, scan_parameter='PlsrDAC', scan_parameter_range=None, scan_parameter_stepsize=2, search_distance=10, minimum_data_points=15, ignore_columns=(0, 1, 77, 78, 79)):
         '''Scan loop
 
         Parameters
@@ -35,6 +36,8 @@ class ThresholdScanFast(ScanBase):
             The parameter step size if the start condition is not triggered.
         minimum_data_ponts : int
             The minimum data points that are taken for sure until scan finished. Saves also calculation time.
+        ignore_columns : list
+            All columns that are neither scanned nor taken into account to set the scan range are mentioned here. Usually the edge columns are ignored.
         '''
 
         self.start_condition_triggered = False  # set to true if the start condition is true once
@@ -49,8 +52,18 @@ class ThresholdScanFast(ScanBase):
 
         self.scan_parameter_value = scan_parameter_range[0]  # set to start value
         self.search_distance = search_distance
-
         data_points = 0  # counter variable to count the data points already recorded, have to be at least minimum_data_ponts
+
+        # calculate DCs to scan from the columns to ignore
+        a = np.array(ignore_columns)
+        dc_range = range(0, 40)
+        for index in range(len(a)):
+            actual_column = a[index:1 + index]
+            next_column = a[index + 1:1 + index + 1]
+            if actual_column % 2 == 0 and actual_column + 1 == next_column:  # deactivate DC if the two columns are not used
+                dc_range.remove(actual_column / 2)
+
+        logging.info("Use DCs " + str(dc_range))
 
         with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier, scan_parameters=[scan_parameter]) as raw_data_file:
             while self.scan_parameter_value < scan_parameter_range[1]:  # scan as long as scan parameter is smaller than defined maximum
@@ -67,12 +80,12 @@ class ThresholdScanFast(ScanBase):
                 self.readout.start()
 
                 cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0]
-                self.scan_loop(cal_lvl1_command, repeat_command=repeat_command, hardware_repeat=True, use_delay=True, mask_steps=mask_steps, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_c_high=None, enable_c_low=None, shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=False, mask=None)
+                self.scan_loop(cal_lvl1_command, repeat_command=repeat_command, hardware_repeat=True, use_delay=True, mask_steps=mask_steps, enable_mask_steps=None, enable_double_columns=dc_range, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_c_high=None, enable_c_low=None, shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=False, mask=None)
 
                 self.readout.stop(timeout=1)
 
                 if not self.start_condition_triggered or data_points > minimum_data_points:  # speed up, only create histograms when needed. Python is much too slow here.
-                    occupancy_array = np.histogram2d(*convert_data_array(data_array_from_data_dict_iterable(self.readout.data), filter_func=logical_and(is_data_record, is_data_from_channel(4)), converter_func=get_col_row_array_from_data_record_array), bins=(80, 336), range=[[1, 80], [1, 336]])[0]
+                    occupancy_array = np.histogram2d(*convert_data_array(data_array_from_data_dict_iterable(self.readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array), bins=(80, 336), range=[[1, 80], [1, 336]])[0]
 
                 # saving data
                 if self.record_data:
@@ -80,7 +93,7 @@ class ThresholdScanFast(ScanBase):
                     logging.info("%d data point recorded with PlsrDAC %d" % (data_points, self.scan_parameter_value))
                     raw_data_file.append(self.readout.data, scan_parameters={scan_parameter: self.scan_parameter_value})
 
-                if self.scan_condition(occupancy_array, repeat_command=repeat_command):
+                if self.scan_condition(occupancy_array, repeat_command=repeat_command, ignore_columns=ignore_columns):
                     logging.info("Precise scan condition active")
                     self.scan_parameter_value = self.scan_parameter_value + scan_parameter_stepsize
                 else:
@@ -90,14 +103,14 @@ class ThresholdScanFast(ScanBase):
                         logging.info("Precise scan condition deactivated, stopping scan")
                         break
 
-    def scan_condition(self, occupancy_array, repeat_command, ignore_columns=(0, 1, 77, 78, 79)):
+    def scan_condition(self, occupancy_array, repeat_command, ignore_columns):
         select_columns = []
         for column in range(0, 80):
             if column not in ignore_columns:
                 select_columns.append(column)
         occupancy_array = occupancy_array[select_columns, :]  # only select not ignored columns
         # stop precise scanning actions
-        pixels_with_full_hits = np.ma.array(occupancy_array, mask=(occupancy_array == repeat_command))  # select pixels that see all injections
+        pixels_with_full_hits = np.ma.array(occupancy_array, mask=(occupancy_array >= repeat_command))  # select pixels that see all injections
         pixels_with_full_hits_count = np.ma.count_masked(pixels_with_full_hits)  # count pixels that see all injections
         stop_pixel_cnt = len(occupancy_array.ravel()) * self.stop_at
         if pixels_with_full_hits_count > stop_pixel_cnt:  # stop precise scanning if this triggers
@@ -115,6 +128,7 @@ class ThresholdScanFast(ScanBase):
             if not self.start_condition_triggered:  # do this only once when the start condition is true
                 logging.info("Start precise scan condition triggered: %d pixels > %d with occupancy > 0" % (pixels_with_hits_count, start_pixel_cnt))
                 self.start_condition_triggered = True
+                self.scan_parameter_start = self.scan_parameter_value
                 if int(self.scan_parameter_value - self.search_distance / 2.) >= 0:  # go back with the scan parameter, maybe important points ommited
                     self.scan_parameter_value = int(self.scan_parameter_value - self.search_distance)
                 self.record_data = True  # start recording data
@@ -122,22 +136,23 @@ class ThresholdScanFast(ScanBase):
             return True
         return False  # std. setting
 
-    def analyze(self):
-        with AnalyzeRawData(raw_data_file=scan.scan_data_filename + ".h5", analyzed_data_file=self.scan_data_filename + "_interpreted.h5") as analyze_raw_data:
+    def analyze(self, create_plots=True):
+        with AnalyzeRawData(raw_data_file=self.scan_data_filename + ".h5", analyzed_data_file=self.scan_data_filename + "_interpreted.h5") as analyze_raw_data:
             analyze_raw_data.create_tot_hist = False
             analyze_raw_data.create_threshold_hists = True
             analyze_raw_data.create_fitted_threshold_hists = True
             analyze_raw_data.create_threshold_mask = True
             analyze_raw_data.n_injections = 100
             analyze_raw_data.interpreter.set_warning_output(False)  # so far the data structure in a threshold scan was always bad, too many warnings given
-            analyze_raw_data.interpret_word_table(FEI4B=scan.register.fei4b)
+            analyze_raw_data.interpret_word_table(FEI4B=self.register.fei4b)
             analyze_raw_data.interpreter.print_summary()
-            analyze_raw_data.plot_histograms(scan_data_filename=scan.scan_data_filename)
+            if create_plots:
+                analyze_raw_data.plot_histograms(scan_data_filename=self.scan_data_filename)
 
 
 if __name__ == "__main__":
     import configuration
     scan = ThresholdScanFast(config_file=configuration.config_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.start(use_thread=True, scan_parameter_range=(0, 100), scan_parameter_stepsize=2, search_distance=10, minimum_data_points=8)
+    scan.start(use_thread=True, scan_parameter_range=(0, 100), scan_parameter_stepsize=2, search_distance=10, minimum_data_points=10, ignore_columns=(0, 1, 77, 78, 79))
     scan.stop()
     scan.analyze()
