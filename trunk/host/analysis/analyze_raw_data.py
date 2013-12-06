@@ -109,6 +109,7 @@ class AnalyzeRawData(object):
         self.create_meta_event_index = True
         self.create_meta_word_index = False
         self.create_occupancy_hist = True
+        self.create_source_scan_hist = False
         self.create_tot_hist = True
         self.create_rel_bcid_hist = True
         self.create_trigger_error_hist = False
@@ -149,6 +150,14 @@ class AnalyzeRawData(object):
     def create_occupancy_hist(self, value):
         self._create_occupancy_hist = value
         self.histograming.create_occupancy_hist(value)
+
+    @property
+    def create_source_scan_hist(self):
+        return self._create_source_scan_hist
+
+    @create_source_scan_hist.setter
+    def create_source_scan_hist(self, value):
+        self._create_source_scan_hist = value
 
     @property
     def create_tot_hist(self):
@@ -657,7 +666,12 @@ class AnalyzeRawData(object):
             else:
                 hist = out_file_h5.root.HistOcc[:, :, 0] if out_file_h5 != None else self.occupancy_array[:, :, 0]
                 occupancy_array_masked = np.ma.masked_equal(hist, 0)
-                plotting.plotThreeWay(hist=occupancy_array_masked, title="Occupancy", x_axis_title="occupancy", filename=output_pdf, maximum=maximum)
+                if self._create_source_scan_hist:
+                    plotting.plot_fancy_occupancy(hist=occupancy_array_masked, filename=output_pdf, z_max='maximum')
+                    plotting.plot_occupancy(hist=occupancy_array_masked, filename=output_pdf, z_max='maximum')
+                else:
+                    plotting.plotThreeWay(hist=occupancy_array_masked, title="Occupancy", x_axis_title="occupancy", filename=output_pdf, maximum=maximum)
+                    plotting.plot_occupancy(hist=occupancy_array_masked, filename=output_pdf, z_max='median')
         if (self._create_tot_hist):
             plotting.plot_tot(hist=out_file_h5.root.HistTot if out_file_h5 != None else self.tot_hist, filename=output_pdf)
         if (self._create_cluster_size_hist):
