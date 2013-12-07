@@ -70,6 +70,7 @@ def plot_fancy_occupancy(hist, z_max='maximum', filename=None):
         filename.savefig()
     else:
         plt.savefig(filename)
+    plt.close()
 
 
 def plot_occupancy(hist, z_max='maximum', filename=None):
@@ -111,6 +112,7 @@ def plot_occupancy(hist, z_max='maximum', filename=None):
         filename.savefig()
     else:
         plt.savefig(filename)
+    plt.close()
 
 
 def make_occupancy_hist(cols, rows, ncols=80, nrows=336):
@@ -142,6 +144,7 @@ def plot_correlation(hist, title="Hit correlation", xlabel=None, ylabel=None, fi
         filename.savefig()
     else:
         plt.savefig(filename)
+    plt.close()
 
 
 def plot_pixel_matrix(hist, title="Hit correlation", filename=None):
@@ -164,6 +167,7 @@ def plot_pixel_matrix(hist, title="Hit correlation", filename=None):
         filename.savefig()
     else:
         plt.savefig(filename)
+    plt.close()
 
 
 def plot_n_cluster(hist, title=None, filename=None):
@@ -253,6 +257,7 @@ def plot_scurves(occupancy_hist, scan_parameters, max_occ=None, scan_paramter_na
         filename.savefig()
     else:
         plt.savefig(filename)
+    plt.close()
 
 
 def plot_cluster_tot_size(hist, median=False, max_occ=None, filename=None):
@@ -273,7 +278,7 @@ def plot_cluster_tot_size(hist, median=False, max_occ=None, filename=None):
         filename.savefig()
     else:
         plt.savefig(filename)
-
+    plt.close()
 
 def plot_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, x_ticks=None, color='r', plot_range=None, log_y=False, filename=None):
     logging.info("Plot 1d histogram%s" % ((': ' + title) if title is not None else ''))
@@ -303,6 +308,7 @@ def plot_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, x_ticks
         filename.savefig()
     else:
         plt.savefig(filename)
+    plt.close()
 
 # def plot_pixel_mask(mask, maskname, filename=None):
 #     plt.clf()
@@ -464,6 +470,7 @@ def plotThreeWay(hist, title, filename=None, x_axis_title=None, minimum=None, ma
             maximum = round_to_multiple(maximum, math.floor(math.log10(maximum)))
     elif maximum == 'maximum':
         maximum = np.ma.max(hist)
+
     x_axis_title = '' if x_axis_title is None else x_axis_title
     fig = plt.figure()
     fig.patch.set_facecolor('white')
@@ -480,6 +487,7 @@ def plotThreeWay(hist, title, filename=None, x_axis_title=None, minimum=None, ma
         filename.savefig()
     else:
         plt.savefig(filename)
+    plt.close()
 
 
 def plot_correlations(filenames, limit=None):
