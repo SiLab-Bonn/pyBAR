@@ -124,7 +124,7 @@ class AnalyzeRawData(object):
         self.create_cluster_tot_hist = False
         self._n_injection = 100
         self.n_bcid = 16
-        self._max_tot_value = 14
+        self._max_tot_value = 13
 
     @property
     def chunk_size(self):
