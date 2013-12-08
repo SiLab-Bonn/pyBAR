@@ -32,8 +32,9 @@ def analyze():
         analyze_raw_data.create_cluster_size_hist = False  # enables cluster size histogramming, can save some time, std. setting is false
         analyze_raw_data.create_cluster_tot_hist = False  # enables cluster tot histogramming per cluster size, std. setting is false
         analyze_raw_data.create_threshold_hists = True  # makes only sense if threshold scan data is analyzed, std. setting is false
-        analyze_raw_data.create_fitted_threshold_hists = True  # makes only sense if threshold scan data is analyzed, std. setting is false
         analyze_raw_data.create_threshold_mask = True  # masking of noisy or black pixels during histogramming, only affecting fast-algorithm
+        analyze_raw_data.create_fitted_threshold_hists = True  # makes only sense if threshold scan data is analyzed, std. setting is false
+        analyze_raw_data.create_fitted_threshold_mask = True  # masking of noisy or black pixels during histogramming, only affecting S-curve fitting
 
         analyze_raw_data.create_meta_word_index = False  # stores the start and stop raw data word index for every event, std. setting is false
         analyze_raw_data.create_meta_event_index = True  # stores the event number for each readout in an additional meta data array, default: False
