@@ -18,6 +18,7 @@ Histogram::Histogram(void)
   _createOccHist = false;
   _createRelBCIDhist = false;
   _createTotHist = false;
+  _maxTot = 13;
 }
 
 Histogram::~Histogram(void)
@@ -47,6 +48,11 @@ void Histogram::createTotHist(bool CreateTotHist)
   resetTotArray();
 }
 
+void Histogram::setMaxTot(const unsigned int& rMaxTot)
+{
+	_maxTot = rMaxTot;
+}
+
 void Histogram::addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
 {
   debug("addHits()");
@@ -72,11 +78,14 @@ void Histogram::addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
       throw std::out_of_range("parameter index out of range");
     }
     if(_createOccHist)
-      _occupancy[(long)tColumnIndex + (long)tRowIndex * (long)RAW_DATA_MAX_COLUMN + (long)tParIndex * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] += 1;
+      if(tTot <= _maxTot)
+        _occupancy[(long)tColumnIndex + (long)tRowIndex * (long)RAW_DATA_MAX_COLUMN + (long)tParIndex * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] += 1;
     if(_createRelBCIDhist)
-      _relBcid[tRelBcid] += 1;
+      if(tTot <= _maxTot)
+        _relBcid[tRelBcid] += 1;
     if(_createTotHist)
-      _tot[tTot] += 1;
+      if(tTot <= _maxTot) //not sure if cut on ToT histogram is unwanted here
+        _tot[tTot] += 1;
   }
   //std::cout<<"addHits done"<<std::endl;
 }

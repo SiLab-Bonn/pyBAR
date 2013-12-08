@@ -28,6 +28,7 @@ cdef extern from "Histogram.h":
         void createOccupancyHist(bool CreateOccHist)
         void createRelBCIDHist(bool CreateRelBCIDHist)
         void createTotHist(bool CreateTotHist)
+        void setMaxTot(const unsigned int& rMaxTot)
 
         void getOccupancy(unsigned int& rNparameterValues, unsigned int*& rOccupancy, bool copy)  # returns the occupancy histogram for all hits
         void getTotHist(unsigned int*& rTotHist, bool copy)  # returns the tot histogram for all hits
@@ -68,6 +69,8 @@ cdef class PyDataHistograming:
         self.thisptr.createRelBCIDHist(<bool> toggle)
     def create_tot_hist(self,toggle):
         self.thisptr.createTotHist(<bool> toggle)
+    def set_max_tot(self, max_tot):
+        self.thisptr.setMaxTot(<const unsigned int&> max_tot)
 
     def get_occupancy(self, cnp.ndarray[cnp.uint32_t, ndim=1] occupancy, copy = True):
         cdef unsigned int NparameterValues = 0

@@ -19,9 +19,11 @@ public:
   void getTotHist(unsigned int*& rTotHist, bool copy = true);           //returns the tot histogram for all hits
   void getRelBcidHist(unsigned int*& rRelBcidHist, bool copy = true);   //returns the relative BCID histogram for all hits
 
+  //options set/get
   void createOccupancyHist(bool CreateOccHist = true);
   void createRelBCIDHist(bool CreateRelBCIDHist = true);
   void createTotHist(bool CreateTotHist = true);
+  void setMaxTot(const unsigned int& rMaxTot);
 
   void addHits(HitInfo*& rHitInfo, const unsigned int& rNhits);
   void addScanParameter(const unsigned int& rNparInfoLength, ParInfo*& rParInfo);
@@ -70,7 +72,11 @@ private:
 
   std::map<unsigned int, unsigned int> _parameterValues; //different parameter values used in ParInfo, key = parameter value, value = index
 
-  bool _createOccHist, _createRelBCIDhist, _createTotHist;
+  //config variables
+  bool _createOccHist;
+  bool _createRelBCIDhist;
+  bool _createTotHist;
+  unsigned int _maxTot;               //maximum ToT value (inclusive) considered to be a hit
   
   ParInfo* _parInfo;
 };

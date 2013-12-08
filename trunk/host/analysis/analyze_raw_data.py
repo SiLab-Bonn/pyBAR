@@ -281,7 +281,7 @@ class AnalyzeRawData(object):
     def max_tot_value(self, value):
         """Set maximum TOT value that is considered to be a hit"""
         self._max_tot_value = value
-        self.interpreter.set_max_tot(self._max_tot_value)
+        self.histogramming.set_max_tot(self._max_tot_value)
 
     @property
     def create_cluster_hit_table(self):
