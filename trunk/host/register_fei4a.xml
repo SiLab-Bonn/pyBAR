@@ -130,12 +130,12 @@
             <register name="0_336" address="43" bitlength="336" readonly="1" description="" />
         </global>
         <pixel>
-            <pixel_register name="Enable" bitlength="1" pxstrobe="0" description="" />
-            <pixel_register name="TDAC" bitlength="5" pxstrobe="1" littleendian="1" description="" />
-            <pixel_register name="C_High" bitlength="1" pxstrobe="6" description="" />
-            <pixel_register name="C_Low" bitlength="1" pxstrobe="7" description="" />
-            <pixel_register name="Imon" bitlength="1" pxstrobe="8" description="" />
-            <pixel_register name="FDAC" bitlength="4" pxstrobe="9" description="" />
+            <pixel_register name="Enable" bitlength="1" pxstrobe="0" description="Enabling/disabling readout." />
+            <pixel_register name="TDAC" bitlength="5" pxstrobe="1" littleendian="1" description="The higher the value, the lower the threshold." />
+            <pixel_register name="C_High" bitlength="1" pxstrobe="6" description="Big injection capacitor (nominally 3.8fF/ measured 4.1fF)." />
+            <pixel_register name="C_Low" bitlength="1" pxstrobe="7" description="Big injection capacitor (nominally 1.9fF/ measured 2fF)." />
+            <pixel_register name="Imon" bitlength="1" pxstrobe="8" description="Disabling Imon enables hit-OR." />
+            <pixel_register name="FDAC" bitlength="4" pxstrobe="9" description="The higher the value, the higher the feedback current." />
             <pixel_register name="EnableDigInj" bitlength="1" pxstrobe="SR" description="SR is non-existing pixel register." />
         </pixel>
     </registers>
