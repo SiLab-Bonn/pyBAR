@@ -28,13 +28,13 @@ class ThresholdScanFast(ScanBase):
             Number of injections per scan step.
         scan_parameter : string
             Name of global register.
-        scan_parameter_range : list
-            Specify the minimum and maximum parameter settings that the scan uses.
-        scan_parameter_steps : int
+        scan_parameter_range : list, tuple
+            Specify the minimum and maximum value for scan parameter range.
+        scan_parameter_stepsize : int
             The minimum step size of the parameter. Used when start condition is not triggered.
         search_distance : int
             The parameter step size if the start condition is not triggered.
-        minimum_data_ponts : int
+        minimum_data_points : int
             The minimum data points that are taken for sure until scan finished. Saves also calculation time.
         ignore_columns : list
             All columns that are neither scanned nor taken into account to set the scan range are mentioned here. Usually the edge columns are ignored.
@@ -48,8 +48,9 @@ class ThresholdScanFast(ScanBase):
 
         self.record_data = False  # set to true to activate data storage, so far not everything is recorded to ease data analysis
 
-        logging.info("Starting fast threshold scan from %d until at maximum %f" % (scan_parameter_range[0], scan_parameter_range[1]))
-
+        if scan_parameter_range is None:
+            scan_parameter_range = (0, (2 ** self.register.get_global_register_objects(name=["PlsrDAC"])[0].bitlength) - 1)
+        logging.info("Scanning %s from %d to %d" % (scan_parameter, scan_parameter_range[0], scan_parameter_range[1]))
         self.scan_parameter_value = scan_parameter_range[0]  # set to start value
         self.search_distance = search_distance
         data_points = 0  # counter variable to count the data points already recorded, have to be at least minimum_data_ponts
@@ -153,6 +154,6 @@ class ThresholdScanFast(ScanBase):
 if __name__ == "__main__":
     import configuration
     scan = ThresholdScanFast(config_file=configuration.config_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.start(use_thread=True, scan_parameter_range=(0, 100), scan_parameter_stepsize=2, search_distance=10, minimum_data_points=10, ignore_columns=(0, 1, 77, 78, 79))
+    scan.start(use_thread=True, scan_parameter_range=None, scan_parameter_stepsize=2, search_distance=10, minimum_data_points=10, ignore_columns=(0, 1, 77, 78, 79))
     scan.stop()
     scan.analyze()
