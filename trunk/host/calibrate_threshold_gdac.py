@@ -104,7 +104,8 @@ def create_calibration(scan_identifier, is_FEI4B=False, create_plots=True):
                 plot_scurves(occupancy_hist=occupancy_masked, scan_parameters=scan_parameters, scan_paramter_name='PlsrDAC', filename=output_pdf)
             # fill the calibration data arrays
             mean_threshold_calibration[gdac_index] = np.ma.mean(thresholds_masked)
-            mean_threshold_rms_calibration[gdac_index] = np.ma.sqrt(np.ma.mean((thresholds_masked - mean_threshold_calibration[gdac_index]) ** 2))
+#             mean_threshold_rms_calibration[gdac_index] = np.ma.sqrt(np.ma.mean((thresholds_masked - mean_threshold_calibration[gdac_index]) ** 2))  # TODO: use numpy.ma.std here?
+            mean_threshold_rms_calibration[gdac_index] = np.ma.std(thresholds_masked)
             for column in range(0, 80):
                 for row in range(0, 336):
                     threshold_calibration[column, row, gdac_index] = thresholds_masked[row, column]
