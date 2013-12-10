@@ -1,5 +1,5 @@
-""" Script to tune the FDAC to the tot@charge given in TOT/PlsrDAC. Binary search algorithm. Bit 0 is always scanned twice with value 1 and 0. Due to the nonlinearity it can happen that the binary search does not reach the best FDAC. Therefore the best FDAC is always set and taken at the end.
-    Pixel below threshold get TOT = 0.
+""" Script to tune the FDAC to the ToT@charge given in ToT/PlsrDAC. Binary search algorithm. Bit 0 is always scanned twice with value 1 and 0. Due to the nonlinearity it can happen that the binary search does not reach the best FDAC. Therefore the best FDAC is always set and taken at the end.
+    Pixel below threshold get ToT = 0.
 """
 import numpy as np
 import logging
@@ -95,7 +95,7 @@ class FdacTune(ScanBase):
 
                 raw_data_file.append(self.readout.data, scan_parameters={scan_parameter: scan_parameter_value})
 
-                col_row_tot = np.column_stack(get_col_row_tot_array_from_data_record_array(convert_data_array(data_array_from_data_dict_iterable(self.readout.data), filter_func=logical_and(is_data_record, is_data_from_channel(4)))))
+                col_row_tot = np.column_stack(convert_data_array(data_array_from_data_dict_iterable(self.readout.data), filter_func=logical_and(is_data_record, is_data_from_channel(4)), converter_func=get_col_row_tot_array_from_data_record_array))
                 tot_array = np.histogramdd(col_row_tot, bins=(80, 336, 16), range=[[1, 80], [1, 336], [0, 15]])[0]
                 tot_mean_array = np.average(tot_array, axis=2, weights=range(0, 16)) * sum(range(0, 16)) / self.Ninjections
                 select_better_pixel_mask = abs(tot_mean_array - self.TargetTot) <= abs(tot_mean_best - self.TargetTot)
@@ -103,7 +103,7 @@ class FdacTune(ScanBase):
                 tot_mean_best[select_better_pixel_mask] = tot_mean_array[select_better_pixel_mask]
 
                 if plot_intermediate_steps:
-                    plotThreeWay(hist=tot_mean_array.transpose().transpose(), title="TOT mean (FDAC tuning bit " + str(Fdac_bit) + ")", x_axis_title='mean TOT', filename=plots_filename, minimum=0, maximum=15)
+                    plotThreeWay(hist=tot_mean_array.transpose().transpose(), title="Mean ToT (FDAC tuning bit " + str(Fdac_bit) + ")", x_axis_title='mean ToT', filename=plots_filename, minimum=0, maximum=15)
 
                 fdac_mask = self.register.get_pixel_register_value("FDAC")
                 fdac_mask_best[select_better_pixel_mask] = fdac_mask[select_better_pixel_mask]
@@ -125,7 +125,7 @@ class FdacTune(ScanBase):
             self.register.set_pixel_register_value("FDAC", fdac_mask_best)
             self.result = tot_mean_best
 
-            plotThreeWay(hist=self.result.transpose(), title="TOT mean after FDAC tuning", x_axis_title="TOT mean", filename=plots_filename, minimum=0, maximum=15)
+            plotThreeWay(hist=self.result.transpose(), title="Mean ToT after FDAC tuning", x_axis_title="ToT mean", filename=plots_filename, minimum=0, maximum=15)
             plotThreeWay(hist=self.register.get_pixel_register_value("FDAC").transpose(), title="FDAC distribution after tuning", x_axis_title="FDAC", filename=plots_filename, minimum=0, maximum=15)
 
             logging.info('Tuned FDAC!')
