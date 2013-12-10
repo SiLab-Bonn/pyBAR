@@ -49,6 +49,7 @@ def correlate_events(data_frame_fe_1, data_frame_fe_2):
     logging.info("Correlating events")
     return data_frame_fe_1.merge(data_frame_fe_2, how='left', on='event_number')  # join in the events that the triggered fe sees, only these are interessting
 
+
 def remove_duplicate_hits(data_frame):
     '''Removes duplicate hits, possible due to Fe error or Tot = 14 hits.
 
@@ -66,6 +67,7 @@ def remove_duplicate_hits(data_frame):
     logging.info("Removed %d duplicates in trigger FE data" % (df_length - len(data_frame.index)))
     return data_frame
 
+
 # @profile
 def get_hits_with_n_cluster_per_event(hits_table, cluster_table, n_cluster=1):
     '''Selects the hits with a certain number of cluster.
@@ -82,10 +84,11 @@ def get_hits_with_n_cluster_per_event(hits_table, cluster_table, n_cluster=1):
     logging.info("Calculate hits with %d clusters" % n_cluster)
     data_frame_hits = pd.DataFrame({'event_number': hits_table[:]['event_number'], 'column': hits_table[:]['column'], 'row': hits_table[:]['row']})
     data_frame_hits = data_frame_hits.set_index(keys='event_number')
-    n_cluster_in_events = self.get_n_cluster_in_events(cluster_table)
+    n_cluster_in_events = get_n_cluster_in_events(cluster_table)
     events_with_n_cluster = n_cluster_in_events[n_cluster_in_events[:, 1] == n_cluster, 0]
     data_frame_hits = data_frame_hits.reset_index()
     return data_frame_hits.loc[events_with_n_cluster]
+
 
 # @profile
 def get_n_cluster_in_events(cluster_table):
@@ -107,6 +110,7 @@ def get_n_cluster_in_events(cluster_table):
     event_number = np.nonzero(cluster_in_event)[0]
     return np.vstack((event_number, cluster_in_event[event_number])).T
 
+
 # @profile
 def get_n_cluster_per_event_hist(cluster_table):
     '''Calculates the number of cluster in every event.
@@ -120,8 +124,9 @@ def get_n_cluster_per_event_hist(cluster_table):
     numpy.Histogram
     '''
     logging.info("Histogram number of cluster per event")
-    cluster_in_events = self.get_n_cluster_in_events(cluster_table)[:, 1]  # get the number of cluster for every event
+    cluster_in_events = get_n_cluster_in_events(cluster_table)[:, 1]  # get the number of cluster for every event
     return np.histogram(cluster_in_events, bins=range(0, np.max(cluster_in_events) + 2))  # histogram the occurrence of n cluster per event
+
 
 # @profile
 def histogram_correlation(data_frame_combined):
@@ -140,6 +145,7 @@ def histogram_correlation(data_frame_combined):
     corr_col = np.histogram2d(data_frame_combined['column_fe0'], data_frame_combined['column_fe1'], bins=(80, 80), range=[[1, 80], [1, 80]])
     return corr_col, corr_row
 
+
 def histogram_tot(array, label='tot'):
     '''Takes the numpy hit/cluster array and histograms the tot values.
 
@@ -153,7 +159,8 @@ def histogram_tot(array, label='tot'):
     numpy.Histogram
     '''
     logging.info("Histograming tot values")
-    return np.histogram(a=array[label], bins=16, range=(0,16))
+    return np.histogram(a=array[label], bins=16, range=(0, 16))
+
 
 def histogram_tot_per_pixel(array, labels=['column', 'row', 'tot']):
     '''Takes the numpy hit/cluster array and histograms the tot values for each pixel
@@ -170,6 +177,7 @@ def histogram_tot_per_pixel(array, labels=['column', 'row', 'tot']):
     logging.info("Histograming tot values for each pixel")
     return np.histogramdd(sample=(array[labels[0]], array[labels[1]], array[labels[2]]), bins=(80, 336, 16), range=[[0, 80], [0, 336], [0, 16]])
 
+
 def histogram_mean_tot_per_pixel(array, labels=['column', 'row', 'tot']):
     '''Takes the numpy hit/cluster array and histograms the mean tot values for each pixel
 
@@ -182,15 +190,16 @@ def histogram_mean_tot_per_pixel(array, labels=['column', 'row', 'tot']):
     -------
     numpy.Histogram
     '''
-    tot_array = self.histogram_tot_per_pixel(array=array, labels=labels)[0]
-    occupancy = self.histogram_occupancy_per_pixel(array=array)[0]  # needed for normalization
+    tot_array = histogram_tot_per_pixel(array=array, labels=labels)[0]
+    occupancy = histogram_occupancy_per_pixel(array=array)[0]  # needed for normalization
     tot_avr = np.average(tot_array, axis=2, weights=range(0, 16)) * sum(range(0, 16))
     tot_avr = np.divide(tot_avr, occupancy)
     return np.ma.array(tot_avr, mask=(occupancy == 0))  # return array with masked pixel without any hit
 
+
 def histogram_occupancy_per_pixel(array, labels=['column', 'row'], mask_no_hit=False, fast=False):
     if fast:
-        occupancy = self.fast_histogram2d(x=array[labels[0]], y=array[labels[1]], bins=(80, 336))
+        occupancy = fast_histogram2d(x=array[labels[0]], y=array[labels[1]], bins=(80, 336))
     else:
         occupancy = np.histogram2d(x=array[labels[0]], y=array[labels[1]], bins=(80, 336), range=[[0, 80], [0, 336]])
     if mask_no_hit:
@@ -207,14 +216,15 @@ def histogram_occupancy_per_pixel(array, labels=['column', 'row'], mask_no_hit=F
 #         hit_histograming.add_hits(hits, hits.shape[0])
 #         occupancy_hist = np.zeros(80 * 336 * hit_histograming.get_n_parameters(), dtype=np.uint32)  # create linear array as it is created in histogram class
 #         hit_histograming.get_occupancy(occupancy_hist)
-#         occupancy_hist = np.reshape(a=self.occupancy.view(), newshape=(80, 336, hit_histograming.get_n_parameters()), order='F')  # make linear array to 3d array (col,row,parameter)
+#         occupancy_hist = np.reshape(a=occupancy.view(), newshape=(80, 336, hit_histograming.get_n_parameters()), order='F')  # make linear array to 3d array (col,row,parameter)
 #         occupancy_hist = np.swapaxes(occupancy_hist, 0, 1)
 #         return occupancy_hist
 
+
 def fast_histogram2d(x, y, bins):
     '''WARNING: GIVES NOT EXACT RESULTS'''
-    nx = bins[0]-1
-    ny = bins[1]-1
+    nx = bins[0] - 1
+    ny = bins[1] - 1
 
     print nx, ny
 
@@ -226,7 +236,7 @@ def fast_histogram2d(x, y, bins):
     weights = np.ones(x.size)
 
     # Basically, this is just doing what np.digitize does with one less copy
-    xyi = np.vstack((x,y)).T
+    xyi = np.vstack((x, y)).T
     xyi -= [xmin, ymin]
     xyi /= [dx, dy]
     xyi = np.floor(xyi, xyi).T
@@ -235,6 +245,7 @@ def fast_histogram2d(x, y, bins):
     grid = coo_matrix((weights, xyi), shape=(nx, ny)).toarray()
 
     return grid, np.linspace(xmin, xmax, nx), np.linspace(ymin, ymax, ny)
+
 
 def get_scan_parameter(meta_data_array):
     '''Takes the numpy meta data array and returns the different scan parameter settings and the name aligned in a dictionary
