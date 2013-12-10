@@ -12,7 +12,7 @@ class AnalogScan(ScanBase):
     def __init__(self, config_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_analog", scan_data_path=None):
         super(AnalogScan, self).__init__(config_file=config_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
 
-    def scan(self, mask_steps=3, repeat_command=100, scan_parameter='PlsrDAC', scan_paramter_value=100):
+    def scan(self, mask_steps=3, repeat_command=100, scan_parameter='PlsrDAC', scan_parameter_value=180):
         '''Scan loop
 
         Parameters
@@ -23,7 +23,7 @@ class AnalogScan(ScanBase):
             Number of injections.
         scan_parameter : string
             Name of global register.
-        scan_paramter_value : int
+        scan_parameter_value : int
             Specify scan steps. These values will be written into global register scan_parameter.
 
         Note
@@ -33,7 +33,7 @@ class AnalogScan(ScanBase):
         '''
         commands = []
         commands.extend(self.register.get_commands("confmode"))
-        self.register.set_global_register_value(scan_parameter, scan_paramter_value)
+        self.register.set_global_register_value(scan_parameter, scan_parameter_value)
         commands.extend(self.register.get_commands("wrregister", name=["PlsrDAC"]))
         self.register_utils.send_commands(commands)
 
