@@ -49,7 +49,7 @@ class ThresholdScanFast(ScanBase):
         self.record_data = False  # set to true to activate data storage, so far not everything is recorded to ease data analysis
 
         if scan_parameter_range is None:
-            scan_parameter_range = (0, (2 ** self.register.get_global_register_objects(name=["PlsrDAC"])[0].bitlength) - 1)
+            scan_parameter_range = (0, (2 ** self.register.get_global_register_objects(name=[scan_parameter])[0].bitlength) - 1)
         logging.info("Scanning %s from %d to %d" % (scan_parameter, scan_parameter_range[0], scan_parameter_range[1]))
         self.scan_parameter_value = scan_parameter_range[0]  # set to start value
         self.search_distance = search_distance
