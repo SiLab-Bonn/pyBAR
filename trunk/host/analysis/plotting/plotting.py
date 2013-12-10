@@ -122,6 +122,60 @@ def make_occupancy_hist(cols, rows, ncols=80, nrows=336):
     return hist  # , extent
 
 
+def plot_profile_histogram(x, y, n_bins=100, title=None, x_label=None, y_label=None, log_y=False, filename=None):
+    if len(x) != len(y):
+        raise ValueError('x and y dimensions have to be the same')
+    n, bin_edges = np.histogram(x, bins=n_bins)
+    sy = np.histogram(x, bins=n_bins, weights=y)[0]
+    sy2 = np.histogram(x, bins=n_bins, weights=y * y)[0]
+    bin_centers = (bin_edges[1:] + bin_edges[:-1]) / 2
+    mean = sy / n
+    std = np.sqrt(sy2 / n - mean * mean)
+#     polynom_fit = np.poly1d(np.polyfit(bin_centers, mean, deg=8, w=std))
+#     plt.plot(bin_centers, polynom_fit(bin_centers), 'r-')
+    plt.errorbar(bin_centers, mean, yerr=std, fmt='o')
+    plt.title(title)
+    if x_label is not None:
+        plt.xlabel(x_label)
+    if y_label is not None:
+        plt.ylabel(y_label)
+    if log_y:
+        plt.yscale('log')
+    plt.grid(True)
+    if filename is None:
+        plt.show()
+    elif type(filename) == PdfPages:
+        filename.savefig()
+    else:
+        plt.savefig(filename)
+    plt.close()
+
+
+def plot_scatter(x, y, title=None, x_label=None, y_label=None, marker_style='-o', log_x=False, log_y=False, filename=None):
+    logging.info("Plot scatter plot %s" % ((': ' + title) if title is not None else ''))
+    plt.clf()
+    fig = plt.figure()
+    fig.patch.set_facecolor('white')
+    plt.plot(x, y, marker_style)
+    plt.title(title)
+    if x_label is not None:
+        plt.xlabel(x_label)
+    if y_label is not None:
+        plt.ylabel(y_label)
+    if log_x:
+        plt.xscale('log')
+    if log_y:
+        plt.yscale('log')
+    plt.grid(True)
+    if filename is None:
+        plt.show()
+    elif type(filename) == PdfPages:
+        filename.savefig()
+    else:
+        plt.savefig(filename)
+    plt.close()
+
+
 def plot_correlation(hist, title="Hit correlation", xlabel=None, ylabel=None, filename=None):
     logging.info("Plotting correlations")
     cmap = cm.get_cmap('jet')
@@ -223,7 +277,7 @@ def plot_cluster_size(hist, filename=None):
     plot_1d_hist(hist=hist, title='Cluster size (' + str(np.sum(hist)) + ' entries)', log_y=True, plot_range=range(0, 32), x_axis_title='Cluster size', y_axis_title='#', filename=filename)
 
 
-def plot_scurves(occupancy_hist, scan_parameters, max_occ=None, scan_paramter_name=None, filename=None):  # tornado plot
+def plot_scurves(occupancy_hist, scan_parameters, title='S-Curves', ylabel='Occupancy', max_occ=None, scan_paramter_name=None, filename=None):  # tornado plot
     if max_occ is None:
         max_occ = 2 * np.median(np.amax(occupancy_hist, axis=2))
         if np.allclose(max_occ, 0.0):
@@ -245,12 +299,12 @@ def plot_scurves(occupancy_hist, scan_parameters, max_occ=None, scan_paramter_na
     plt.imshow(heatmap, interpolation='nearest', aspect="auto", cmap=cmap, extent=extent, norm=norm)
     plt.gca().invert_yaxis()
     plt.colorbar()
-    plt.title('S-Curves for ' + str(n_pixel) + ' pixel(s)')
+    plt.title(title + ' for ' + str(n_pixel) + ' pixel(s)')
     if scan_paramter_name is None:
         plt.xlabel('Scan parameter')
     else:
         plt.xlabel(scan_paramter_name)
-    plt.ylabel('Occupancy')
+    plt.ylabel(ylabel)
     if filename is None:
         plt.show()
     elif type(filename) == PdfPages:
