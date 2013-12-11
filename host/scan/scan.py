@@ -41,15 +41,18 @@ class ScanBase(object):
             #if isinstance(device, usb.core.Device):
             if isinstance(device, SiUSBDevice):
                 self.device = device
-                #logging.info('Using USB board with ID %s', self.device.board_id)
+                logging.info('Using USB board with ID %s', self.device.board_id)
             else:
                 raise TypeError('Device has wrong type')
         else:
             try:
                 self.device = SiUSBDevice()
             except USBError:
-                raise NoDeviceError
-            logging.info('Found USB board with ID %s', self.device.board_id)
+                raise NoDeviceError('Can\'t find USB board')
+            try:
+                logging.info('Found USB board with ID %s', self.device.board_id)
+            except USBError:
+                raise DeviceError('Can\'t communicate with USB board')
         if bit_file != None:
             logging.info('Programming FPGA: %s' % bit_file)
             self.device.DownloadXilinx(bit_file)
@@ -380,6 +383,10 @@ class NoSyncError(Exception):
 
 
 class NoDeviceError(Exception):
+    pass
+
+
+class DeviceError(Exception):
     pass
 
 
