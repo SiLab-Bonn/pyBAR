@@ -59,7 +59,7 @@ if __name__ == "__main__":
     start_bit = 7
     for iteration in range(0, global_iterations):  # tune iteratively with decreasing range to save time
         start_bit = 7 - difference_bit * iteration
-        logging.info("Global tuning iteration %d" % iteration)
+        logging.info("Global tuning iteration step %d" % iteration)
         gdac_tune_scan.set_gdac_tune_bits(range(start_bit, -1, -1))
         feedback_tune_scan.set_feedback_tune_bits(range(start_bit, -1, -1))
         gdac_tune_scan.start(configure=True, plots_filename=output_pdf)
@@ -81,7 +81,7 @@ if __name__ == "__main__":
 
     start_bit = 4
     for iteration in range(0, local_iterations):  # tune iteratively
-        logging.info("Lokal tuning iteration %d" % iteration)
+        logging.info("Local tuning iteration step %d" % iteration)
         start_bit = 4  # -difference_bit*iteration
         tdac_tune_scan.set_tdac_tune_bits(range(start_bit, -1, -1))
         fdac_tune_scan.set_fdac_tune_bits(range(start_bit - 1, -1, -1))
@@ -99,7 +99,7 @@ if __name__ == "__main__":
 
     if(local_iterations > 0):
         plotThreeWay(hist=fdac_tune_scan.register.get_pixel_register_value("FDAC").transpose(), title="FDAC distribution after last FDAC tuning", x_axis_title='FDAC', filename=output_pdf, maximum=16)
-        plotThreeWay(hist=fdac_tune_scan.result.transpose(), title="TOT mean after last FDAC tuning", x_axis_title='mean TOT', filename=output_pdf)
+        plotThreeWay(hist=fdac_tune_scan.result.transpose(), title="Mean ToT after last FDAC tuning", x_axis_title='mean ToT', filename=output_pdf)
     if(global_iterations > 0):
         plotThreeWay(hist=tdac_tune_scan.register.get_pixel_register_value("TDAC").transpose(), title="TDAC distribution after complete tuning", x_axis_title='TDAC', filename=output_pdf, maximum=32)
         plotThreeWay(hist=tdac_tune_scan.result.transpose(), title="Occupancy after complete tuning", x_axis_title='Occupancy', filename=output_pdf, maximum=100)
