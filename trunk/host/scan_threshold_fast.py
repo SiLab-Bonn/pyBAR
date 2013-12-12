@@ -156,6 +156,6 @@ class ThresholdScanFast(ScanBase):
 if __name__ == "__main__":
     import configuration
     scan = ThresholdScanFast(config_file=configuration.config_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.start(use_thread=True, scan_parameter_range=None, scan_parameter_stepsize=2, search_distance=10, minimum_data_points=10, ignore_columns=(0, 1, 3, 4, 77, 78, 79))
+    scan.start(use_thread=True, scan_parameter_range=None, scan_parameter_stepsize=2, search_distance=10, minimum_data_points=10, ignore_columns=(1, 78, 79, 80))
     scan.stop()
     scan.analyze()
