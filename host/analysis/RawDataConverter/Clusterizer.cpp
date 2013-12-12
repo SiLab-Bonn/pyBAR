@@ -5,7 +5,7 @@ Clusterizer::Clusterizer(void)
 	setSourceFileName("Clusterizer");
 	_dx = 1;
 	_dy = 1;
-	_DbCID = 0;
+	_DbCID = 1;
 	_minClusterHits = 1;
 	_maxClusterHits = 9;	//std. setting for maximum hits per cluster allowed
 	_runTime = 0;
@@ -39,7 +39,7 @@ Clusterizer::Clusterizer(void)
 	clearResultHistograms();
 	clearActualClusterData();
 	clearActualEventVariables();
-	_lateHitTot = 14;
+	_maxHitTot = 13;
 }
 
 Clusterizer::~Clusterizer(void)
@@ -166,9 +166,9 @@ void Clusterizer::setMaxClusterHitTot(const unsigned int& pMaxClusterHitTot)
 	_maxClusterHitTot = pMaxClusterHitTot;
 }
 
-void Clusterizer::setLateHitTot(const unsigned int&  pLateHitTot)
+void Clusterizer::setMaxHitTot(const unsigned int&  pMaxHitTot)
 {
-	_lateHitTot = pLateHitTot;
+	_maxHitTot = pMaxHitTot;
 }
 
 unsigned int Clusterizer::getNclusters()
@@ -290,6 +290,9 @@ void Clusterizer::addHit(const unsigned int& pHitIndex)
 	unsigned short tTot = _hitInfo[pHitIndex].tot;
 	float tCharge = -1;
 
+	if(tTot>_maxHitTot)	// ommit hits with a tot that is too high
+		return;
+
 	if(_nHits == 0)
 		_bCIDfirstHit = tRelBcid;
 
@@ -349,7 +352,7 @@ void Clusterizer::searchNextHits(const unsigned short& pCol, const unsigned shor
 
 	short unsigned int tTot = _hitMap[(long)pCol + (long)pRow * (long)RAW_DATA_MAX_COLUMN + (long)pRelBcid * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW];
 
-	if (tTot >= _actualClusterMaxTot && tTot < _lateHitTot){	//seed finding
+	if (tTot >= _actualClusterMaxTot && tTot <= _maxHitTot){	//seed finding
 		_actualClusterSeed_column = pCol;
 		_actualClusterSeed_row = pRow;
 		_actualClusterSeed_relbcid = pRelBcid;

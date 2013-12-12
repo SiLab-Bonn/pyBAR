@@ -20,8 +20,7 @@
  * - if the hit map is empty all hits are assigned to cluster, abort then
  * 	Method: Clusterize() does this
  *
- * 	The clusterizer can either be filled externally with hits (addHit method) or it can extract the hits from the
- * 	SRAM data including persistance check (clusterRawData method)
+ * 	The clusterizer can be filled externally with hits (addHit method)
  */
 
 #pragma once
@@ -58,7 +57,7 @@ public:
 	void setMinClusterHits(const unsigned int&  pMinNclusterHits);		//minimum hits per cluster allowed, otherwise cluster omitted
 	void setMaxClusterHits(const unsigned int&  pMaxNclusterHits);		//maximal hits per cluster allowed, otherwise cluster omitted
 	void setMaxClusterHitTot(const unsigned int&  pMaxClusterHitTot);	//maximal tot for a cluster hit, otherwise cluster omitted
-	void setLateHitTot(const unsigned int&  pLateHitTot);				//minimum tot a hit is considered to be late/small
+	void setMaxHitTot(const unsigned int&  pMaxHitTot);				//minimum tot a hit is considered to be a hit
 
 	void addHits(HitInfo*& rHitInfo, const unsigned int& rNhits);		//add hits to cluster, starts clustering, warning hits have to be aligned at events
 
@@ -127,7 +126,7 @@ private:
 	unsigned short _minClusterHits; 									//the minimum number of cluster hits allowed, if exeeded clustering aborted
 	unsigned short _maxClusterHits; 									//the maximum number of cluster hits allowed, if exeeded clustering aborted
 	unsigned int _runTime; 												//artificial value to represent the run time needed for clustering
-	unsigned int _lateHitTot;											//the tot value a hit is considered to be small (usually 14)
+	unsigned int _maxHitTot;											//the tot value a hit is considered to a hit (usually 13)
 	bool _createClusterHitInfoArray;									//true if ClusterHitInfoArray has to be filled
 	bool _createClusterInfoArray;										//true if ClusterHitInfoArray has to be filled
 
