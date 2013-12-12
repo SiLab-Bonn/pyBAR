@@ -67,7 +67,7 @@ class ThresholdScanFast(ScanBase):
         logging.info("Use DCs " + str(dc_range))
 
         with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier, scan_parameters=[scan_parameter]) as raw_data_file:
-            while self.scan_parameter_value < scan_parameter_range[1]:  # scan as long as scan parameter is smaller than defined maximum
+            while self.scan_parameter_value <= scan_parameter_range[1]:  # scan as long as scan parameter is smaller than defined maximum
                 if self.stop_thread_event.is_set():
                     break
                 logging.info('Scan step: %s %d' % (scan_parameter, self.scan_parameter_value))
@@ -91,7 +91,7 @@ class ThresholdScanFast(ScanBase):
                 # saving data
                 if self.record_data:
                     data_points = data_points + 1
-                    logging.info("Scan step %d (%s %d)" % (data_points, scan_parameter, self.scan_parameter_value))
+                    logging.info("Taking data at data point %d (%s %d)" % (data_points, scan_parameter, self.scan_parameter_value))
                     raw_data_file.append(self.readout.data, scan_parameters={scan_parameter: self.scan_parameter_value})
 
                 if self.scan_condition(occupancy_array, repeat_command=repeat_command, ignore_columns=ignore_columns):
