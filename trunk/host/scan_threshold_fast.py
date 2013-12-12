@@ -17,7 +17,7 @@ class ThresholdScanFast(ScanBase):
         super(ThresholdScanFast, self).__init__(config_file=config_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
         self.scan_parameter_start = 0
 
-    def scan(self, mask_steps=3, repeat_command=100, scan_parameter='PlsrDAC', scan_parameter_range=None, scan_parameter_stepsize=2, search_distance=10, minimum_data_points=15, ignore_columns=(1, 78, 79, 80)):
+    def scan(self, mask_steps=3, repeat_command=100, scan_parameter='PlsrDAC', scan_parameter_range=None, scan_parameter_stepsize=2, search_distance=10, minimum_data_points=15, ignore_columns=(1, 2, 3, 78, 79, 80)):
         '''Scan loop
 
         Parameters
@@ -107,11 +107,11 @@ class ThresholdScanFast(ScanBase):
                         break
 
     def scan_condition(self, occupancy_array, repeat_command, ignore_columns):
-        select_columns = []
-        for column in range(0, 80):
+        select_arr_columns = []
+        for column in range(1, 81):
             if column not in ignore_columns:
-                select_columns.append(column)
-        occupancy_array = occupancy_array[select_columns, :]  # only select not ignored columns
+                select_arr_columns.append(column-1)
+        occupancy_array = occupancy_array[select_arr_columns, :]  # only select not ignored columns
         # stop precise scanning actions
         pixels_with_full_hits = np.ma.array(occupancy_array, mask=(occupancy_array >= repeat_command))  # select pixels that see all injections
         pixels_with_full_hits_count = np.ma.count_masked(pixels_with_full_hits)  # count pixels that see all injections
@@ -156,6 +156,6 @@ class ThresholdScanFast(ScanBase):
 if __name__ == "__main__":
     import configuration
     scan = ThresholdScanFast(config_file=configuration.config_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.start(use_thread=True, scan_parameter_range=None, scan_parameter_stepsize=2, search_distance=10, minimum_data_points=10, ignore_columns=(1, 78, 79, 80))
+    scan.start(use_thread=True, scan_parameter_range=None, scan_parameter_stepsize=2, search_distance=10, minimum_data_points=10, ignore_columns=(1, 2, 3, 78, 79, 80))
     scan.stop()
     scan.analyze()
