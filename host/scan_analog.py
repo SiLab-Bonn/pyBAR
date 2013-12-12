@@ -12,7 +12,7 @@ class AnalogScan(ScanBase):
     def __init__(self, config_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_analog", scan_data_path=None):
         super(AnalogScan, self).__init__(config_file=config_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
 
-    def scan(self, mask_steps=3, repeat_command=100, scan_parameter='PlsrDAC', scan_parameter_value=180):
+    def scan(self, mask_steps=3, repeat_command=100, scan_parameter='PlsrDAC', scan_parameter_value=100):
         '''Scan loop
 
         Parameters
