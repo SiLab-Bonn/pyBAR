@@ -34,7 +34,7 @@ class AnalogScan(ScanBase):
         commands = []
         commands.extend(self.register.get_commands("confmode"))
         self.register.set_global_register_value(scan_parameter, scan_parameter_value)
-        commands.extend(self.register.get_commands("wrregister", name=["PlsrDAC"]))
+        commands.extend(self.register.get_commands("wrregister", name=[scan_parameter]))
         self.register_utils.send_commands(commands)
 
         self.readout.start()
