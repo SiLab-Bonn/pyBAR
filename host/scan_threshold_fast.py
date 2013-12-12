@@ -17,7 +17,7 @@ class ThresholdScanFast(ScanBase):
         super(ThresholdScanFast, self).__init__(config_file=config_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
         self.scan_parameter_start = 0
 
-    def scan(self, mask_steps=3, repeat_command=100, scan_parameter='PlsrDAC', scan_parameter_range=None, scan_parameter_stepsize=2, search_distance=10, minimum_data_points=15, ignore_columns=(0, 1, 77, 78, 79)):
+    def scan(self, mask_steps=3, repeat_command=100, scan_parameter='PlsrDAC', scan_parameter_range=None, scan_parameter_stepsize=2, search_distance=10, minimum_data_points=15, ignore_columns=(1, 78, 79, 80)):
         '''Scan loop
 
         Parameters
@@ -36,8 +36,8 @@ class ThresholdScanFast(ScanBase):
             The parameter step size if the start condition is not triggered.
         minimum_data_points : int
             The minimum data points that are taken for sure until scan finished. Saves also calculation time.
-        ignore_columns : list
-            All columns that are neither scanned nor taken into account to set the scan range are mentioned here. Usually the edge columns are ignored.
+        ignore_columns : list, tuple
+            All columns that are neither scanned nor taken into account to set the scan range are mentioned here. Usually the edge columns are ignored. From 1 to 80.
         '''
 
         self.start_condition_triggered = False  # set to true if the start condition is true once
@@ -56,13 +56,15 @@ class ThresholdScanFast(ScanBase):
         data_points = 0  # counter variable to count the data points already recorded, have to be at least minimum_data_ponts
 
         # calculate DCs to scan from the columns to ignore
-        a = np.array(ignore_columns)
+#         a = np.array(ignore_columns)
         dc_range = range(0, 40)
-        for index in range(len(a)):
-            actual_column = a[index:1 + index]
-            next_column = a[index + 1:1 + index + 1]
-            if actual_column % 2 == 0 and actual_column + 1 == next_column:  # deactivate DC if the two columns are not used
-                dc_range.remove(actual_column / 2)
+        if 1 in ignore_columns:
+            dc_range.remove(0)
+        if set((78, 79, 80)).issubset(ignore_columns):
+            dc_range.remove(39)
+        for double_column in range(1, 39):
+            if set((double_column * 2, (double_column * 2) + 1)).issubset(ignore_columns):
+                dc_range.remove(double_column)
 
         logging.info("Use DCs " + str(dc_range))
 
@@ -154,6 +156,6 @@ class ThresholdScanFast(ScanBase):
 if __name__ == "__main__":
     import configuration
     scan = ThresholdScanFast(config_file=configuration.config_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.start(use_thread=True, scan_parameter_range=None, scan_parameter_stepsize=2, search_distance=10, minimum_data_points=10, ignore_columns=(0, 1, 77, 78, 79))
+    scan.start(use_thread=True, scan_parameter_range=None, scan_parameter_stepsize=2, search_distance=10, minimum_data_points=10, ignore_columns=(0, 1, 3, 4, 77, 78, 79))
     scan.stop()
     scan.analyze()
