@@ -29,7 +29,7 @@ class ThresholdScanFast(ScanBase):
         scan_parameter : string
             Name of global register.
         scan_parameter_range : list, tuple
-            Specify the minimum and maximum value for scan parameter range.
+            Specify the minimum and maximum value for scan parameter range. Upper value not included.
         scan_parameter_stepsize : int
             The minimum step size of the parameter. Used when start condition is not triggered.
         search_distance : int
@@ -49,7 +49,7 @@ class ThresholdScanFast(ScanBase):
         self.record_data = False  # set to true to activate data storage, so far not everything is recorded to ease data analysis
 
         if scan_parameter_range is None:
-            scan_parameter_range = (0, (2 ** self.register.get_global_register_objects(name=[scan_parameter])[0].bitlength) - 1)
+            scan_parameter_range = (0, (2 ** self.register.get_global_register_objects(name=[scan_parameter])[0].bitlength))
         logging.info("Scanning %s from %d to %d" % (scan_parameter, scan_parameter_range[0], scan_parameter_range[1]))
         self.scan_parameter_value = scan_parameter_range[0]  # set to start value
         self.search_distance = search_distance
@@ -67,7 +67,7 @@ class ThresholdScanFast(ScanBase):
         logging.info("Use DCs " + str(dc_range))
 
         with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier, scan_parameters=[scan_parameter]) as raw_data_file:
-            while self.scan_parameter_value <= scan_parameter_range[1]:  # scan as long as scan parameter is smaller than defined maximum
+            while self.scan_parameter_value < scan_parameter_range[1]:  # scan as long as scan parameter is smaller than defined maximum
                 if self.stop_thread_event.is_set():
                     break
                 logging.info('Scan step: %s %d' % (scan_parameter, self.scan_parameter_value))
