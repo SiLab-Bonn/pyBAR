@@ -48,14 +48,17 @@ class ScanBase(object):
             try:
                 self.device = SiUSBDevice()
             except USBError:
-                raise NoDeviceError('Can\'t find USB board')
+                raise NoDeviceError('Can\'t find USB board. Connect or reset USB board!')
             try:
                 logging.info('Found USB board with ID %s', self.device.board_id)
             except USBError:
-                raise DeviceError('Can\'t communicate with USB board')
+                raise DeviceError('Can\'t communicate with USB board. Reset USB board!')
         if bit_file != None:
             logging.info('Programming FPGA: %s' % bit_file)
-            self.device.DownloadXilinx(bit_file)
+            try:
+                self.device.DownloadXilinx(bit_file)
+            except USBError:
+                raise DeviceError('Can\'t program FPGA firmware. Reset USB board!')
             time.sleep(1)
 
         self.readout = Readout(self.device)
