@@ -132,7 +132,7 @@ class AnalyzeRawData(object):
         self.create_cluster_tot_hist = False
         self._n_injection = 100
         self.n_bcid = 16
-        self._max_tot_value = 13
+        self.max_tot_value = 13
 
     @property
     def chunk_size(self):
@@ -297,7 +297,9 @@ class AnalyzeRawData(object):
     def max_tot_value(self, value):
         """Set maximum ToT value that is considered to be a hit"""
         self._max_tot_value = value
+        self.interpreter.set_max_tot(self._max_tot_value)
         self.histograming.set_max_tot(self._max_tot_value)
+        self.clusterizer.set_max_tot(self._max_tot_value)
 
     @property
     def create_cluster_hit_table(self):
@@ -638,11 +640,51 @@ class AnalyzeRawData(object):
         self.out_file_h5.close()
         in_file_h5.close()
 
-    def cluster_hits(self, hits, start_index=0, stop_index=-1): #FIXME: std setting omits always the last hits
-        self.clusterizer.add_hits(hits[start_index:stop_index])
+    def analyze_hits(self, hits, scan_parameter=None):
+        n_hits = hits.shape[0]
+        logging.info('Analyze %d hits' % n_hits)
 
-    def histogram_hits(self, hits, start_index=0, stop_index=-1): #FIXME: std setting omits always the last hits
-        self.histograming.add_hits(hits[start_index:stop_index], hits[start_index:stop_index].shape[0])
+        if(self._create_cluster_table):
+            cluster = np.zeros((n_hits,), dtype=dtype_from_descr(data_struct.ClusterInfoTable))
+            self.clusterizer.set_cluster_info_array(cluster)
+        else:
+            cluster = None
+
+        if(self._create_cluster_hit_table):
+            cluster_hits = np.zeros((n_hits,), dtype=dtype_from_descr(data_struct.ClusterHitInfoTable))
+            self.clusterizer.set_cluster_hit_info_array(cluster_hits)
+        else:
+            cluster_hits = None
+
+        if scan_parameter is None:
+            logging.info('No scan parameter used')
+            self.histograming.set_no_scan_parameter()
+#             scan_par_array = np.array(meta_data[scan_par_name], dtype=[(scan_par_name, '<u4'), ])
+        else:
+            logging.info('Setting a scan parameter')
+            self.histograming.add_scan_parameter(scan_parameter)
+
+        if (self.is_cluster_hits()):
+            logging.info('Cluster hits')
+            self.cluster_hits(hits)
+
+        if (self.is_histogram_hits()):
+            logging.info('Histogram hits')
+            self.histogram_hits(hits)
+
+        return cluster, cluster_hits
+
+    def cluster_hits(self, hits, start_index=0, stop_index=None):
+        if stop_index != None:
+            self.clusterizer.add_hits(hits[start_index:stop_index])
+        else:
+            self.clusterizer.add_hits(hits[start_index:])
+
+    def histogram_hits(self, hits, start_index=0, stop_index=None):
+        if stop_index != None:
+            self.histograming.add_hits(hits[start_index:stop_index], hits[start_index:stop_index].shape[0])
+        else:
+            self.histograming.add_hits(hits[start_index:], hits[start_index:].shape[0])
 
     def plot_histograms(self, scan_data_filename, analyzed_data_file=None, maximum=None):  # plots the histogram from output file if available otherwise from ram
         logging.info('Creating histograms%s' % ((' (source: %s)' % analyzed_data_file) if analyzed_data_file != None else ((' (source: %s)' % self._analyzed_data_file) if self._analyzed_data_file != None else '')))
@@ -754,12 +796,12 @@ class AnalyzeRawData(object):
         return True
 
     def is_histogram_hits(self):  # returns true if a setting needs to have the hit histogramming active
-        if (self._analyzed_data_file != None and (self._create_occupancy_hist or self._create_tot_hist or self._create_rel_bcid_hist or self._create_hit_table or self._create_threshold_hists or self._create_fitted_threshold_hists)):
+        if (self._create_occupancy_hist or self._create_tot_hist or self._create_rel_bcid_hist or self._create_hit_table or self._create_threshold_hists or self._create_fitted_threshold_hists):
             return True
         return False
 
     def is_cluster_hits(self):  # returns true if a setting needs to have the clusterizer active
-        if (self._analyzed_data_file != None and (self.create_cluster_hit_table or self.create_cluster_table or self.create_cluster_size_hist or self.create_cluster_tot_hist)):
+        if (self.create_cluster_hit_table or self.create_cluster_table or self.create_cluster_size_hist or self.create_cluster_tot_hist):
             return True
         return False
 
