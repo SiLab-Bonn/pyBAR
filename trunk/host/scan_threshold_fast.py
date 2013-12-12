@@ -91,7 +91,7 @@ class ThresholdScanFast(ScanBase):
                 # saving data
                 if self.record_data:
                     data_points = data_points + 1
-                    logging.info("%d data point recorded with PlsrDAC %d" % (data_points, self.scan_parameter_value))
+                    logging.info("Scan step %d (%s %d)" % (data_points, scan_parameter, self.scan_parameter_value))
                     raw_data_file.append(self.readout.data, scan_parameters={scan_parameter: self.scan_parameter_value})
 
                 if self.scan_condition(occupancy_array, repeat_command=repeat_command, ignore_columns=ignore_columns):
