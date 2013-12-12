@@ -24,13 +24,13 @@ def analyze():
 
         analyze_raw_data.create_occupancy_hist = True  # creates a colxrow histogram with accumulated hits for each scan parameter
         analyze_raw_data.create_source_scan_hist = False  # create source scan hists
-        analyze_raw_data.create_tot_hist = True  # creates a tot histogram
+        analyze_raw_data.create_tot_hist = True  # creates a ToT histogram
         analyze_raw_data.create_rel_bcid_hist = True  # creates a histogram with the relative BCID of the hits
         analyze_raw_data.create_service_record_hist = True  # creates a histogram with all SR send out from the FE
         analyze_raw_data.create_error_hist = True  # creates a histogram summing up the event errors that occurred
         analyze_raw_data.create_trigger_error_hist = True  # creates a histogram summing up the trigger errors
         analyze_raw_data.create_cluster_size_hist = False  # enables cluster size histogramming, can save some time, std. setting is false
-        analyze_raw_data.create_cluster_tot_hist = False  # enables cluster tot histogramming per cluster size, std. setting is false
+        analyze_raw_data.create_cluster_tot_hist = False  # enables cluster ToT histogramming per cluster size, std. setting is false
         analyze_raw_data.create_threshold_hists = True  # makes only sense if threshold scan data is analyzed, std. setting is false
         analyze_raw_data.create_threshold_mask = True  # masking of noisy or black pixels during histogramming, only affecting fast-algorithm
         analyze_raw_data.create_fitted_threshold_hists = True  # makes only sense if threshold scan data is analyzed, std. setting is false
@@ -41,7 +41,7 @@ def analyze():
 
         analyze_raw_data.n_injections = 100  # set the numbers of injections, needed for fast threshold/noise determination
         analyze_raw_data.n_bcid = 16  # set the number of BCIDs per event, needed to judge the event structure
-        analyze_raw_data.max_tot_value = 14  # set the maximum TOT value considered to be a hit, 14 is a late hit
+        analyze_raw_data.max_tot_value = 14  # set the maximum ToT value considered to be a hit, 14 is a late hit
 
         analyze_raw_data.interpreter.set_warning_output(False)  # std. setting is True
         analyze_raw_data.interpreter.debug_events(0, 0, False)  # events to be printed onto the console for debugging, usually deactivated
