@@ -4,6 +4,7 @@
 import logging
 import pandas as pd
 import numpy as np
+import numexpr as ne
 import tables as tb
 from scipy.sparse import coo_matrix
 from datetime import datetime
@@ -32,6 +33,45 @@ def central_difference(x, y):
     dx1 = np.hstack((0, np.diff(x)))
     dx2 = np.hstack((np.diff(x), 0))
     return (z2 - z1) / (dx2 + dx1)
+
+
+def get_not_unique_values(array):
+    '''Returns the values that appear at least twice in array.
+
+    Parameters
+    ----------
+    array : array like
+
+    Returns
+    -------
+    numpy.array
+    '''
+    s = np.sort(array, axis=None)
+    s = s[s[1:] == s[:-1]]
+    return np.unique(s)
+
+
+def get_meta_data_index_at_scan_parameter(meta_data_array, scan_parameter_name):
+    '''Takes the analyzed meta_data table and returns the indices where the scan parameter changes
+
+    Parameters
+    ----------
+    meta_data_array : numpy.recordarray
+    scan_parameter_name : string
+
+    Returns
+    -------
+    numpy.ndarray:
+        first dimension: scan parameter value
+        second dimension: index where scan parameter value was used first
+    '''
+    scan_parameter_values = meta_data_array[scan_parameter_name]
+    diff = np.concatenate(([1], np.diff(scan_parameter_values)))
+    idx = np.concatenate((np.where(diff)[0], [len(scan_parameter_values)]))
+    index = np.empty(len(idx) - 1, dtype={'names': [scan_parameter_name, 'index'], 'formats': ['u4','u4']})
+    index[scan_parameter_name] = scan_parameter_values[idx[:-1]]
+    index['index'] = idx[:-1]
+    return index
 
 
 def correlate_events(data_frame_fe_1, data_frame_fe_2):
@@ -69,7 +109,7 @@ def remove_duplicate_hits(data_frame):
 
 
 # @profile
-def get_hits_with_n_cluster_per_event(hits_table, cluster_table, n_cluster=1):
+def get_hits_with_n_cluster_per_event(hits_table, cluster_table, condition='n_cluster==1'):
     '''Selects the hits with a certain number of cluster.
 
     Parameters
@@ -81,13 +121,99 @@ def get_hits_with_n_cluster_per_event(hits_table, cluster_table, n_cluster=1):
     -------
     pandas.DataFrame
     '''
-    logging.info("Calculate hits with %d clusters" % n_cluster)
+
+    logging.info("Calculate hits with clusters where " + condition)
     data_frame_hits = pd.DataFrame({'event_number': hits_table[:]['event_number'], 'column': hits_table[:]['column'], 'row': hits_table[:]['row']})
     data_frame_hits = data_frame_hits.set_index(keys='event_number')
-    n_cluster_in_events = get_n_cluster_in_events(cluster_table)
-    events_with_n_cluster = n_cluster_in_events[n_cluster_in_events[:, 1] == n_cluster, 0]
+    events_with_n_cluster = get_events_with_n_cluster(cluster_table, condition)
     data_frame_hits = data_frame_hits.reset_index()
     return data_frame_hits.loc[events_with_n_cluster]
+
+
+def get_hits_in_events(hits_array, events):
+    '''Selects the hits that occurred in events.
+
+    Parameters
+    ----------
+    hits_array : numpy.array
+    events : array
+
+    Returns
+    -------
+    numpy.array
+        hit array with the hits in events.
+    '''
+
+    logging.info("Calculate hits that exists in the given %d events." % len(events))
+    try:
+        hits_in_events = hits_array[np.in1d(hits_array['event_number'], events)]
+    except MemoryError:
+        logging.error('There are too many hits to do in RAM operations. Use the write_hits_in_events function instead.')
+        raise MemoryError
+    return hits_in_events
+
+
+def write_hits_in_events(hit_table_in, hit_table_out, events, chunk_size=5000000):  # TODO: speed up: use the fact that the events in hit_table_in are sorted
+    '''Selects the hits that occurred in events and write them to a pytable. This function reduces the in RAM operations and has to be used if the get_hits_in_events
+        function raises a memory error.
+
+    Parameters
+    ----------
+    hit_table_in : pytable.table
+    hit_table_out : pytable.table
+        functions need to be able to write to hit_table_out
+    events : array like
+        defines the events to be written from hit_table_in to hit_table_out. They do not have to exists at all.
+    chunk_size : int
+        defines how many hits are analysed in RAM. Bigger numbers increase the speed, to big numbers let the program crash with a memory error.
+    '''
+    max_event = np.amax(events)
+    logging.info("Write hits that exists in the given %d events < event number %d into a new hit table." % (len(events),max_event) )
+    table_size = hit_table_in.shape[0]
+    for iHit in range(0, table_size, chunk_size):
+        hits = hit_table_in.read(iHit, iHit + chunk_size)
+        last_event_number = hits[-1]['event_number']
+        hit_table_out.append(get_hits_in_events(hits, events=events))
+        if last_event_number > max_event:  # small speed up
+            break
+
+
+def get_events_with_n_cluster(cluster_table, condition='n_cluster==1'):
+    '''Selects the events with a certain number of cluster.
+
+    Parameters
+    ----------
+    hits_table : pytables.table
+    cluster_table : pytables.table
+
+    Returns
+    -------
+    numpy.array
+    '''
+
+    logging.info("Calculate events with clusters where " + condition)
+    n_cluster_in_events = get_n_cluster_in_events(cluster_table)
+    n_cluster = n_cluster_in_events[:, 1]
+    return n_cluster_in_events[ne.evaluate(condition), 0]
+
+
+def get_events_with_cluster_size(cluster_table, condition='cluster_size==1'):
+    '''Selects the events with cluster of a given cluster size.
+
+    Parameters
+    ----------
+    cluster_table : pytables.table
+    condition : string
+
+    Returns
+    -------
+    numpy.array
+    '''
+
+    logging.info("Calculate events with clusters with " + condition)
+    cluster_table = cluster_table[:]
+    cluster_size = cluster_table['size']
+    return np.unique(cluster_table[ne.evaluate(condition)]['event_number'])
 
 
 # @profile
@@ -106,6 +232,7 @@ def get_n_cluster_in_events(cluster_table):
     '''
     logging.info("Calculate the number of cluster in every event")
     event_number_array = cluster_table[:]['event_number']
+    event_number_array = event_number_array.astype('<i4')  # BUG in numpy, unint work with 64-bit linux, Windows 32 bit needs reinterpretation
     cluster_in_event = np.bincount(event_number_array)  # for one cluster one event number is given, counts how many different event_numbers are there for each event number from 0 to max event number
     event_number = np.nonzero(cluster_in_event)[0]
     return np.vstack((event_number, cluster_in_event[event_number])).T
@@ -222,7 +349,7 @@ def histogram_occupancy_per_pixel(array, labels=['column', 'row'], mask_no_hit=F
 
 
 def fast_histogram2d(x, y, bins):
-    '''WARNING: GIVES NOT EXACT RESULTS'''
+    logging.warning('fast_histogram2d gives not exact results')
     nx = bins[0] - 1
     ny = bins[1] - 1
 
