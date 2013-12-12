@@ -277,12 +277,9 @@ class ScanBase(object):
         else:
             scan_loop_command = command
 
-        def get_dc_address_command(dc, byte_padded=True):
+        def get_dc_address_command(dc):
             self.register.set_global_register_value("Colpr_Addr", dc)
-            cmd = self.register_utils.concatenate_commands((conf_mode_command, self.register.get_commands("wrregister", name=["Colpr_Addr"])[0], run_mode_command))
-            if byte_padded:
-                cmd.fill()
-            return cmd
+            return self.register_utils.concatenate_commands((conf_mode_command, self.register.get_commands("wrregister", name=["Colpr_Addr"])[0], run_mode_command), byte_padding=True)
 
         if enable_mask_steps == None or not enable_mask_steps:
             enable_mask_steps = range(mask_steps)
@@ -320,9 +317,9 @@ class ScanBase(object):
             commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=same_mask_for_all_dc, name=shift_masks))
             if digital_injection == True:  # TODO: write EnableDigInj to FE or do it manually?
                 self.register.set_pixel_register_value("EnableDigInj", curr_mask)
-                commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=same_mask_for_all_dc, name=["EnableDigInj"]))
+                commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=same_mask_for_all_dc, name=["EnableDigInj"]))  # write EnableDigInj mask last
                 self.register.set_global_register_value("DIGHITIN_SEL", 1)
-                commands.extend(self.register.get_commands("wrregister", name=["DIGHITIN_SEL"]))  # write DIGHITIN_SEL mask last
+                commands.extend(self.register.get_commands("wrregister", name=["DIGHITIN_SEL"]))
 #             else:
 #                 commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=["EnableDigInj"]))
             self.register_utils.send_commands(commands, concatenate=True)
@@ -334,7 +331,7 @@ class ScanBase(object):
 
             # get DC command for the first DC in the list, DC command is byte padded
             # fill CMD memory with DC command and scan loop command, inside the loop only overwrite DC command
-            self.register_utils.set_command(command=self.register_utils.concatenate_commands((get_dc_address_command(enable_double_columns[0]), scan_loop_command)))
+            self.register_utils.set_command(command=self.register_utils.concatenate_commands((get_dc_address_command(enable_double_columns[0]), scan_loop_command), byte_padding=False))
 
             for index, dc in enumerate(enable_double_columns):
                 if index != 0:  # full command is already set before loop

@@ -19,15 +19,28 @@ class FEI4RegisterUtils(object):
         self.command_memory_byte_offset = 16
         self.command_memory_byte_size = 2048 - self.command_memory_byte_offset  # 16 bytes of register data
         self.zero_cmd = self.register.get_commands("zeros", length=1)[0]
+        self.zero_cmd_padded = self.zero_cmd.copy()
+        self.zero_cmd_padded.fill()
 
-    def concatenate_commands(self, commands):
-        def add_commands(x, y):
+    def add_commands(self, x, y):
             return x + self.zero_cmd + y  # FE needs a zero between commands
-        return reduce(add_commands, commands)
 
-    def send_commands(self, commands, repeat=1, wait_for_finish=True, concatenate=False, clear_memory=False):
+    def add_byte_padded_commands(self, x, y):
+            x_fill = x.copy()
+            x_fill.fill()
+            y_fill = y.copy()
+            y_fill.fill()
+            return x_fill + self.zero_cmd_padded + y_fill  # FE needs a zero between commands
+
+    def concatenate_commands(self, commands, byte_padding=False):
+        if byte_padding:
+            return reduce(self.add_byte_padded_commands, commands)
+        else:
+            return reduce(self.add_commands, commands)
+
+    def send_commands(self, commands, repeat=1, wait_for_finish=True, concatenate=False, byte_padding=False, clear_memory=False):
         if concatenate:
-            self.send_command(command=self.concatenate_commands(commands), repeat=repeat, wait_for_finish=wait_for_finish, set_length=True, clear_memory=clear_memory)
+            self.send_command(command=self.concatenate_commands(commands, byte_padding=byte_padding), repeat=repeat, wait_for_finish=wait_for_finish, set_length=True, clear_memory=clear_memory)
         else:
             max_length = 0
             self.set_hardware_repeat(1)
