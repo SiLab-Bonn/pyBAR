@@ -29,7 +29,7 @@ class AnalogScan(ScanBase):
         Note
         ----
         This scan is very similar to the threshold scan.
-        This scan can also be used for ToT verification: change scan_paramter_value to desired injection charge (in units of PulsrDAC).
+        This scan can also be used for ToT verification: change scan_parameter_value to desired injection charge (in units of PulsrDAC).
         '''
         commands = []
         commands.extend(self.register.get_commands("confmode"))

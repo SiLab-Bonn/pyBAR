@@ -51,7 +51,7 @@ def correlate_events(data_frame_fe_1, data_frame_fe_2):
 
 
 def remove_duplicate_hits(data_frame):
-    '''Removes duplicate hits, possible due to Fe error or Tot = 14 hits.
+    '''Removes duplicate hits, possible due to FE error or ToT = 14 hits.
 
     Parameters
     ----------
@@ -61,7 +61,7 @@ def remove_duplicate_hits(data_frame):
     -------
     pandas dataframe.
     '''
-    # remove duplicate hits from TOT = 14 hits or FE data error and count how many have been removed
+    # remove duplicate hits from ToT = 14 hits or FE data error and count how many have been removed
     df_length = len(data_frame.index)
     data_frame = data_frame.drop_duplicates(cols=['event_number', 'col', 'row'])
     logging.info("Removed %d duplicates in trigger FE data" % (df_length - len(data_frame.index)))
@@ -147,7 +147,7 @@ def histogram_correlation(data_frame_combined):
 
 
 def histogram_tot(array, label='tot'):
-    '''Takes the numpy hit/cluster array and histograms the tot values.
+    '''Takes the numpy hit/cluster array and histograms the ToT values.
 
     Parameters
     ----------
@@ -158,12 +158,12 @@ def histogram_tot(array, label='tot'):
     -------
     numpy.Histogram
     '''
-    logging.info("Histograming tot values")
+    logging.info("Histograming ToT values")
     return np.histogram(a=array[label], bins=16, range=(0, 16))
 
 
 def histogram_tot_per_pixel(array, labels=['column', 'row', 'tot']):
-    '''Takes the numpy hit/cluster array and histograms the tot values for each pixel
+    '''Takes the numpy hit/cluster array and histograms the ToT values for each pixel
 
     Parameters
     ----------
@@ -174,12 +174,12 @@ def histogram_tot_per_pixel(array, labels=['column', 'row', 'tot']):
     -------
     numpy.Histogram
     '''
-    logging.info("Histograming tot values for each pixel")
+    logging.info("Histograming ToT values for each pixel")
     return np.histogramdd(sample=(array[labels[0]], array[labels[1]], array[labels[2]]), bins=(80, 336, 16), range=[[0, 80], [0, 336], [0, 16]])
 
 
 def histogram_mean_tot_per_pixel(array, labels=['column', 'row', 'tot']):
-    '''Takes the numpy hit/cluster array and histograms the mean tot values for each pixel
+    '''Takes the numpy hit/cluster array and histograms the mean ToT values for each pixel
 
     Parameters
     ----------

@@ -25,7 +25,7 @@ class ExampleScan(ScanBase):
     def some_function(self, text):
         print text
         
-    def scan(self, some_keyword_paramter = "parameter was not set", **kwargs):
+    def scan(self, some_keyword_parameter = "parameter was not set", **kwargs):
         
         ######################################################################################
         #                                                                                    #
@@ -45,10 +45,10 @@ class ExampleScan(ScanBase):
         pr.print_stats('cumulative')
 
         # example code: how to set function arguments
-        print some_keyword_paramter
+        print some_keyword_parameter
         
         # example code: how to set function keyword arguments
-        print kwargs["some_other_keyword_paramter"]
+        print kwargs["some_other_keyword_parameter"]
         
         # example code: how to call function abject from a thread
         self.some_function("this is some text")
@@ -78,6 +78,6 @@ if __name__ == "__main__":
     import configuration
     scan = ExampleScan(config_file = configuration.config_file, bit_file = configuration.bit_file, scan_data_path = configuration.scan_data_path)
     # when use_thread is true (scan() runs in a thread), start() is non-blocking, otherwise blocking
-    scan.start(use_thread=True, configure=True, some_keyword_paramter = "parameter was set", some_other_keyword_paramter = "parameter was set")
+    scan.start(use_thread=True, configure=True, some_keyword_parameter = "parameter was set", some_other_keyword_parameter = "parameter was set")
     # when use_thread is true (scan() runs in a thread), stop() is blocking until timeout is reached (if timeout is None, wait for scan has completed), otherwise non-blocking
     scan.stop(timeout=5)

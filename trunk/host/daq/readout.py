@@ -299,7 +299,7 @@ def is_data_from_channel(channel=4):  # function factory
     is_data_from_channel_4 = is_data_from_channel(4)
     data_from_channel_4 = data_array[is_data_from_channel_4(data_array)]
     # 2
-    filter_func = np.logical_and(is_data_record, is_data_from_channel(3))
+    filter_func = logical_and(is_data_record, is_data_from_channel(3))
     data_record_from_channel_3 = data_array[filter_func(data_array)]
     # 3
     is_raw_data_from_channel_3 = is_data_from_channel(3)(raw_data)
@@ -311,13 +311,13 @@ def is_data_from_channel(channel=4):  # function factory
     Note:
     Trigger data not included
     '''
-    if channel > 0:
+    if channel > 0 and channel < 5:
         def f(value):
             return np.equal(np.right_shift(np.bitwise_and(value, 0x7F000000), 24), channel)
         f.__name__ = "is_data_from_channel_" + str(channel)  # or use inspect module: inspect.stack()[0][3]
         return f
     else:
-        raise ValueError('invalid channel number')
+        raise ValueError('Invalid channel number')
 
 
 def logical_and(f1, f2):  # function factory
@@ -334,7 +334,7 @@ def logical_and(f1, f2):  # function factory
 
     Examples
     --------
-    filter_func=logical_and(is_data_record,is_data_from_channel(4)) # new filter function
+    filter_func=logical_and(is_data_record, is_data_from_channel(4))  # new filter function
     filter_func(array) # array that has Data Records from channel 4
     '''
     def f(value):
@@ -433,6 +433,8 @@ def is_trigger_data(value):
     return np.equal(np.bitwise_and(value, 0xFF000000), 0x80000000)
 
 
+# def def get_col_row_tot_array_from_data_record_array(max_tot=14):
+
 def get_col_row_tot_array_from_data_record_array(array):
     '''Convert raw data array to column, row, and ToT array
 
@@ -526,7 +528,7 @@ def open_raw_data_file(filename, mode="w", title="", scan_parameters=[], **kwarg
     Examples:
     with open_raw_data_file(filename = self.scan_data_filename, title=self.scan_identifier, scan_parameters=[scan_parameter]) as raw_data_file:
         # do something here
-        raw_data_file.append(self.readout.data, scan_parameters={scan_parameter:scan_paramter_value})
+        raw_data_file.append(self.readout.data, scan_parameters={scan_parameter:scan_parameter_value})
     '''
     return RawDataFile(filename=filename, mode=mode, title=title, scan_parameters=scan_parameters, **kwargs)
 

@@ -13,7 +13,7 @@ import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
-def plot_fancy_occupancy(hist, z_max='maximum', filename=None):
+def plot_fancy_occupancy(hist, z_max=None, filename=None):
     plt.clf()
 
     if z_max == 'median':
@@ -32,7 +32,7 @@ def plot_fancy_occupancy(hist, z_max='maximum', filename=None):
     cmap.set_bad('w')
     norm = colors.BoundaryNorm(bounds, cmap.N)
 
-    im = ax.imshow(hist, interpolation='nearest', aspect='auto', cmap=cmap, norm=norm, extent=extent)
+    im = ax.imshow(hist, interpolation='nearest', aspect='auto', cmap=cmap, norm=norm, extent=extent)  # TODO: use pcolor or pcolormesh
     ax.set_ylim((336.5, 0.5))
     ax.set_xlim((0.5, 80.5))
 #     plt.title('Occupancy (%d entries)' % np.sum(hist))
@@ -73,7 +73,7 @@ def plot_fancy_occupancy(hist, z_max='maximum', filename=None):
     plt.close()
 
 
-def plot_occupancy(hist, z_max='maximum', filename=None):
+def plot_occupancy(hist, z_max=None, filename=None):
     plt.clf()
 
     if z_max == 'median':
@@ -93,7 +93,7 @@ def plot_occupancy(hist, z_max='maximum', filename=None):
     cmap.set_bad('w')
     norm = colors.BoundaryNorm(bounds, cmap.N)
 
-    im = ax.imshow(hist, interpolation='nearest', aspect='auto', cmap=cmap, norm=norm, extent=extent)
+    im = ax.imshow(hist, interpolation='nearest', aspect='auto', cmap=cmap, norm=norm, extent=extent)  # TODO: use pcolor or pcolormesh
     ax.set_ylim((336.5, 0.5))
     ax.set_xlim((0.5, 80.5))
     plt.title('Occupancy (%d entries)' % np.sum(hist))
@@ -254,7 +254,7 @@ def plot_relative_bcid(hist, filename=None):
 
 
 def plot_tot(hist, title=None, filename=None):
-    plot_1d_hist(hist=hist, title='Time-over-Threshold distribution (TOT code)' if title == None else title, plot_range=range(0, 16), x_axis_title='TOT [25 ns]', y_axis_title='#', color='b', filename=filename)
+    plot_1d_hist(hist=hist, title='Time-over-Threshold distribution (ToT code)' if title == None else title, plot_range=range(0, 16), x_axis_title='ToT [25 ns]', y_axis_title='#', color='b', filename=filename)
 
 
 def plot_event_errors(hist, filename=None):
@@ -277,7 +277,8 @@ def plot_cluster_size(hist, filename=None):
     plot_1d_hist(hist=hist, title='Cluster size (' + str(np.sum(hist)) + ' entries)', log_y=True, plot_range=range(0, 32), x_axis_title='Cluster size', y_axis_title='#', filename=filename)
 
 
-def plot_scurves(occupancy_hist, scan_parameters, title='S-Curves', ylabel='Occupancy', max_occ=None, scan_paramter_name=None, filename=None):  # tornado plot
+def plot_scurves(occupancy_hist, scan_parameters, title='S-Curves', ylabel='Occupancy', max_occ=None, scan_parameter_name=None, filename=None):  # tornado plot
+    occ_mask = np.all(occupancy_hist == 0, axis=2)
     if max_occ is None:
         max_occ = 2 * np.median(np.amax(occupancy_hist, axis=2))
         if np.allclose(max_occ, 0.0):
@@ -286,24 +287,34 @@ def plot_scurves(occupancy_hist, scan_parameters, title='S-Curves', ylabel='Occu
             max_occ = 1
     if len(occupancy_hist.shape) < 3:
         raise ValueError('Found array with shape %s' % str(occupancy_hist.shape))
-    y = occupancy_hist.reshape(-1)
+#     y = occupancy_hist.reshape(-1)  # np.ravel(occupancy_hist) or occupancy_hist.flat
     n_pixel = occupancy_hist.shape[0] * occupancy_hist.shape[1]
-    x = np.tile(scan_parameters, n_pixel)
+#     x = np.tile(scan_parameters, n_pixel)
     cmap = cm.get_cmap('jet', 200)
-    heatmap, xedges, yedges = np.histogram2d(y, x, range=[[0, max_occ], [scan_parameters[0], scan_parameters[-1]]], bins=(max_occ + 1, len(scan_parameters)))
+    for index, scan_parameter in enumerate(scan_parameters):
+        compressed_data = np.ma.masked_array(occupancy_hist[:, :, index], mask=occ_mask).compressed()
+        heatmap, xedges, yedges = np.histogram2d(compressed_data, [scan_parameter] * compressed_data.shape[0], range=[[0, max_occ], [scan_parameters[0], scan_parameters[-1]]], bins=(max_occ + 1, len(scan_parameters)))
+        if index == 0:
+            hist = heatmap
+        else:
+            hist += heatmap
     plt.clf()
     fig = plt.figure()
     fig.patch.set_facecolor('white')
-    extent = [yedges[0] - 0.5, yedges[-1] + 0.5, xedges[-1] + 0.5, xedges[0] - 0.5]
+    if len(scan_parameters) > 1:
+        scan_parameter_dist = abs(scan_parameters[0] - scan_parameters[-1]) / (len(scan_parameters) - 1)
+    else:
+        scan_parameter_dist = 0
+    extent = [yedges[0] - scan_parameter_dist / 2, yedges[-1] + scan_parameter_dist / 2, xedges[-1] + 0.5, xedges[0] - 0.5]
     norm = colors.LogNorm()
-    plt.imshow(heatmap, interpolation='nearest', aspect="auto", cmap=cmap, extent=extent, norm=norm)
+    plt.imshow(hist, interpolation='nearest', aspect="auto", cmap=cmap, extent=extent, norm=norm)
     plt.gca().invert_yaxis()
     plt.colorbar()
-    plt.title(title + ' for ' + str(n_pixel) + ' pixel(s)')
-    if scan_paramter_name is None:
+    plt.title(title + ' for %d pixel(s)' % (n_pixel - np.count_nonzero(occ_mask)))
+    if scan_parameter_name is None:
         plt.xlabel('Scan parameter')
     else:
-        plt.xlabel(scan_paramter_name)
+        plt.xlabel(scan_parameter_name)
     plt.ylabel(ylabel)
     if filename is None:
         plt.show()
@@ -333,6 +344,7 @@ def plot_cluster_tot_size(hist, median=False, max_occ=None, filename=None):
     else:
         plt.savefig(filename)
     plt.close()
+
 
 def plot_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, x_ticks=None, color='r', plot_range=None, log_y=False, filename=None):
     logging.info("Plot 1d histogram%s" % ((': ' + title) if title is not None else ''))
@@ -364,6 +376,7 @@ def plot_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, x_ticks
         plt.savefig(filename)
     plt.close()
 
+
 # def plot_pixel_mask(mask, maskname, filename=None):
 #     plt.clf()
 #     extent = [0.5, 80.5, 336.5, 0.5]
@@ -371,7 +384,7 @@ def plot_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, x_ticks
 #     plt.title(maskname+" mask")
 #     plt.xlabel('Column')
 #     plt.ylabel('Row')
-#     plt.colorbar(boundaries = bounds, cmap = cmap, norm = norm)  # FIXME: missing paramters
+#     plt.colorbar(boundaries = bounds, cmap = cmap, norm = norm)  # FIXME: missing parameters
 #     if filename is None:
 #         plt.show()
 #     elif type(filename) == PdfPages:
@@ -514,16 +527,16 @@ def create_pixel_scatter_plot(hist, title=None, x_axis_title=None, y_axis_title=
 def plotThreeWay(hist, title, filename=None, x_axis_title=None, minimum=None, maximum=None, bins=None):  # the famous 3 way plot (enhanced)
     if minimum is None:
         minimum = 0
-    if maximum is None:
-        if hist.all() is np.ma.masked:
-            maximum = 1
-        else:
-            maximum = 2 * np.ma.median(hist) if maximum is None else maximum
-            if maximum < 1:
-                maximum = 10
-            maximum = round_to_multiple(maximum, math.floor(math.log10(maximum)))
+    elif minimum == 'minimum':
+        minimum = np.ma.min(hist)
+    if maximum == 'median' or maximum is None:
+        median = np.ma.median(hist)
+        maximum = median * 2  # round_to_multiple(median * 2, math.floor(math.log10(median * 2)))
     elif maximum == 'maximum':
         maximum = np.ma.max(hist)
+        maximum = maximum  # round_to_multiple(maximum, math.floor(math.log10(maximum)))
+    if maximum < 1 or  hist.all() is np.ma.masked:
+        maximum = 1
 
     x_axis_title = '' if x_axis_title is None else x_axis_title
     fig = plt.figure()

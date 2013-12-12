@@ -29,7 +29,7 @@ def analyze(raw_data_file_triggered_fe=None, hit_file_triggered_fe=None, raw_dat
         logging.info("Analyze triggered Fe data")
         with AnalyzeRawData(raw_data_file=raw_data_file_triggered_fe, analyzed_data_file=hit_file_triggered_fe) as analyze_raw_data:
             analyze_raw_data.interpreter.set_trig_count(trigger_count)
-            analyze_raw_data.max_tot_value = 13  # omit TOT = 14
+            analyze_raw_data.max_tot_value = 13  # omit ToT = 14
             analyze_raw_data.create_hit_table = True
             analyze_raw_data.create_cluster_table = True
             analyze_raw_data.create_cluster_size_hist = True
@@ -44,7 +44,7 @@ def analyze(raw_data_file_triggered_fe=None, hit_file_triggered_fe=None, raw_dat
         logging.info("Analyze trigger Fe data")
         with AnalyzeRawData(raw_data_file=raw_data_file_trigger_fe, analyzed_data_file=hit_file_trigger_fe) as analyze_raw_data:
             analyze_raw_data.interpreter.set_trig_count(trigger_count)
-            analyze_raw_data.max_tot_value = 13  # omit TOT = 14
+            analyze_raw_data.max_tot_value = 13  # omit ToT = 14
             analyze_raw_data.create_hit_table = True
             analyze_raw_data.create_cluster_table = True
             analyze_raw_data.create_cluster_size_hist = True
@@ -54,7 +54,6 @@ def analyze(raw_data_file_triggered_fe=None, hit_file_triggered_fe=None, raw_dat
             analyze_raw_data.interpret_word_table(FEI4B=is_fei4b)
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms(scan_data_filename=hit_file_trigger_fe[:-3] + '.pdf', maximum='maximum')
-
 
 
 if __name__ == "__main__":
@@ -95,7 +94,7 @@ if __name__ == "__main__":
 #             hist_tot = analysis_utils.histogram_tot_per_pixel(array=array)[0]
 #             print hist_tot[42,156,5]
 
-#             plot_pixel_matrix(analysis_utils.histogram_mean_tot_per_pixel(array=array), title='Mean tot')
+#             plot_pixel_matrix(analysis_utils.histogram_mean_tot_per_pixel(array=array), title='Mean ToT')
             plot_pixel_matrix(analysis_utils.histogram_occupancy_per_pixel(array=array, mask_no_hit=True)[0], title='Occupancy')
 
 # #             extent = [hist_mean[2] - 0.5, hist_mean[2][-1] + 0.5, hist_mean[1][-1] + 0.5, hist_mean[1][0] - 0.5]
@@ -108,8 +107,6 @@ if __name__ == "__main__":
 #             norm = colors.BoundaryNorm(bounds, cmap.N)
 #             plt.colorbar(boundaries=bounds, cmap=cmap, norm=norm, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True), cax=cax)
 #             plt.show()
-
-            
 
 #             data_frame_triggered_fe_subset = analysis_utils.get_hits_with_n_cluster_per_event(hits_table=hit_table_triggered_fe, cluster_table=cluster_table_triggered_fe, n_cluster=1)
 #             data_frame_trigger_fe_subset = analysis_utils.get_hits_with_n_cluster_per_event(hits_table=hit_table_trigger_fe, cluster_table=cluster_table_trigger_fe, n_cluster=1)

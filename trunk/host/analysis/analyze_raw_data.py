@@ -290,12 +290,12 @@ class AnalyzeRawData(object):
 
     @property
     def max_tot_value(self):
-        """Get maximum TOT value that is considered to be a hit"""
+        """Get maximum ToT value that is considered to be a hit"""
         return self._max_tot_value
 
     @max_tot_value.setter
     def max_tot_value(self, value):
-        """Set maximum TOT value that is considered to be a hit"""
+        """Set maximum ToT value that is considered to be a hit"""
         self._max_tot_value = value
         self.histograming.set_max_tot(self._max_tot_value)
 
@@ -486,7 +486,7 @@ class AnalyzeRawData(object):
             self.tot_hist = np.zeros(16, dtype=np.uint32)
             self.histograming.get_tot_hist(self.tot_hist)
             if (self._analyzed_data_file != None):
-                tot_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistTot', title='TOT Histogram', atom=tb.Atom.from_dtype(self.tot_hist.dtype), shape=self.tot_hist.shape, filters=self._filter_table)
+                tot_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistTot', title='ToT Histogram', atom=tb.Atom.from_dtype(self.tot_hist.dtype), shape=self.tot_hist.shape, filters=self._filter_table)
                 tot_hist_table[:] = self.tot_hist
         if (self._create_rel_bcid_hist):
             self.rel_bcid_hist = np.zeros(16, dtype=np.uint32)

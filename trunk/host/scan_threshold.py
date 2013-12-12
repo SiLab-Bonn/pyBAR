@@ -22,7 +22,7 @@ class ThresholdScan(ScanBase):
             Number of injections per scan step.
         scan_parameter : string
             Name of global register.
-        scan_paramter_values : list, tuple
+        scan_parameter_values : list, tuple
             Specify scan steps. These values will be written into global register scan_parameter.
         '''
         if scan_parameter_values is None or not scan_parameter_values:
