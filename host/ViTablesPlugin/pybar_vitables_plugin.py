@@ -229,7 +229,7 @@ def plot_tot(tot_hist, filename = None):
     plt.xlim((0, 15))
     plt.xlabel('TOT [25 ns]')
     plt.ylabel('#')
-    plt.title('Time over threshold distribution (TOT code)')
+    plt.title('Time over threshold distribution (ToT code)')
     fig = plt.figure(1)
     fig.patch.set_facecolor('white')
     plt.grid(True)

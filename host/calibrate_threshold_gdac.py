@@ -109,7 +109,7 @@ def create_calibration(scan_identifier, is_FEI4B=False, create_plots=True):
             threshold_calibration[:, :, gdac_index] = thresholds_masked.T
 
     if create_plots:
-        plot_scurves(occupancy_hist=threshold_calibration, scan_parameters=gdac_range, title='Thresholds', ylabel='Threshold', scan_paramter_name='GDAC', filename=output_pdf)
+        plot_scurves(occupancy_hist=threshold_calibration, scan_parameters=gdac_range, title='Thresholds', ylabel='Threshold', scan_parameter_name='GDAC', filename=output_pdf)
         plot_scatter(x=gdac_range, y=mean_threshold_calibration, title='Threshold calibration', x_label='GDAC', y_label='Mean threshold', log_x=False, filename=output_pdf)
         plot_scatter(x=gdac_range, y=mean_threshold_calibration, title='Threshold calibration', x_label='GDAC', y_label='Mean threshold', log_x=True, filename=output_pdf)
         plot_scatter(x=gdac_range, y=mean_threshold_rms_calibration, title='Threshold calibration', x_label='GDAC', y_label='Threshold RMS', log_x=False, filename=output_pdf)

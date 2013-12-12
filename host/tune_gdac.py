@@ -95,12 +95,12 @@ class GdacTune(ScanBase):
 
                 if(not addedAdditionalLastBitScan):
                     self.set_gdac_bit(gdac_bit)
-                    scan_paramter_value = (self.register.get_global_register_value("Vthin_AltCoarse") << 8) + self.register.get_global_register_value("Vthin_AltFine")
-                    logging.info('GDAC setting: %d, bit %d = 1' % (scan_paramter_value, gdac_bit))
+                    scan_parameter_value = (self.register.get_global_register_value("Vthin_AltCoarse") << 8) + self.register.get_global_register_value("Vthin_AltFine")
+                    logging.info('GDAC setting: %d, bit %d = 1' % (scan_parameter_value, gdac_bit))
                 else:
                     self.set_gdac_bit(gdac_bit, bit_value=0)
-                    scan_paramter_value = (self.register.get_global_register_value("Vthin_AltCoarse") << 8) + self.register.get_global_register_value("Vthin_AltFine")
-                    logging.info('GDAC setting: %d, bit %d = 0' % (scan_paramter_value, gdac_bit))
+                    scan_parameter_value = (self.register.get_global_register_value("Vthin_AltCoarse") << 8) + self.register.get_global_register_value("Vthin_AltFine")
+                    logging.info('GDAC setting: %d, bit %d = 0' % (scan_parameter_value, gdac_bit))
 
                 self.readout.start()
 
@@ -109,7 +109,7 @@ class GdacTune(ScanBase):
 
                 self.readout.stop()
 
-                raw_data_file.append(self.readout.data, scan_parameters={scan_parameter: scan_paramter_value})
+                raw_data_file.append(self.readout.data, scan_parameters={scan_parameter: scan_parameter_value})
 
                 OccupancyArray, _, _ = np.histogram2d(*convert_data_array(data_array_from_data_dict_iterable(self.readout.data), filter_func=logical_and(is_data_record, is_data_from_channel(4)), converter_func=get_col_row_array_from_data_record_array), bins=(80, 336), range=[[1, 80], [1, 336]])
                 OccArraySelPixel = np.ma.array(OccupancyArray, mask=np.logical_not(np.ma.make_mask(select_mask_array)))  # take only selected pixel into account by creating a mask
@@ -120,7 +120,7 @@ class GdacTune(ScanBase):
                     vthin_ac_best = self.register.get_global_register_value("Vthin_AltCoarse")
 
                 if plot_intermediate_steps:
-                    plotThreeWay(OccArraySelPixel.transpose(), title="Occupancy (GDAC " + str(scan_paramter_value) + " with tuning bit " + str(gdac_bit) + ")", x_axis_title='Occupancy', filename=plots_filename, maximum=self.Ninjections)
+                    plotThreeWay(OccArraySelPixel.transpose(), title="Occupancy (GDAC " + str(scan_parameter_value) + " with tuning bit " + str(gdac_bit) + ")", x_axis_title='Occupancy', filename=plots_filename, maximum=self.Ninjections)
 
                 if(abs(median_occupancy - self.Ninjections / 2) < self.abort_precision and gdac_bit > 0):  # abort if good value already found to save time
                     logging.info('Median = %f, good result already achieved (median - Ninj/2 < %f), skipping not varied bits' % (median_occupancy, self.abort_precision))
@@ -163,7 +163,7 @@ class GdacTune(ScanBase):
                 logging.info('Tuned GDAC to Vthin_AltCoarse/Vthin_AltFine = %d/%d' % (self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine")))
 
             self.result = OccArraySelPixel
-            plotThreeWay(OccArraySelPixel.transpose(), title="Occupancy after GDAC tuning (GDAC " + str(scan_paramter_value) + ")", x_axis_title='Occupancy', filename=plots_filename, maximum=self.Ninjections)
+            plotThreeWay(OccArraySelPixel.transpose(), title="Occupancy after GDAC tuning (GDAC " + str(scan_parameter_value) + ")", x_axis_title='Occupancy', filename=plots_filename, maximum=self.Ninjections)
 
 if __name__ == "__main__":
     import configuration

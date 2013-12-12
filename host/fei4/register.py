@@ -297,7 +297,7 @@ class FEI4Register(object):
                     os.remove(self.configuration_file)
                 else:
                     print "Saving configuration file:", self.configuration_file
-                self.write_chip_paramters()
+                self.write_chip_parameters()
                 self.write_chip_config()
             elif path == "tdacs":
                 dac = self.get_pixel_register_objects(name="TDAC")[0]
@@ -384,7 +384,7 @@ class FEI4Register(object):
             print "Flavor:", self.chip_flavor
             print "Chip ID:", self.chip_id
 
-    def write_chip_paramters(self):
+    def write_chip_parameters(self):
 #         lines = []
 #         search = ["flavour", "chip-flavour", "chip_flavour", "flavor", "chip-flavor", "chip_flavor", "chipid", "chip-id", "chip_id", "Parameters"]
 #         with open(self.configuration_file, 'r') as f:

@@ -110,10 +110,10 @@ with tb.openFile("K:\\test_in.h5", mode = "r", title = "test file") as in_file_h
         trigger_error_counter_hist_table = out_file_h5.create_carray(out_file_h5.root, name = 'HistTriggerErrorCounter', title = 'Trigger Error Counter Histogram', atom = tb.Atom.from_dtype(trigger_error_counter_hist.dtype), shape = trigger_error_counter_hist.shape, filters = filter_table)
         trigger_error_counter_hist_table[:] = trigger_error_counter_hist
         
-        # create TOT array
+        # create ToT array
         tot_hist = np.zeros(16, dtype=np.uint32)
         myHistograming.get_tot_hist(tot_hist)
-        tot_hist_table = out_file_h5.create_carray(out_file_h5.root, name = 'HistTot', title = 'TOT Histogram', atom = tb.Atom.from_dtype(tot_hist.dtype), shape = tot_hist.shape, filters = filter_table)
+        tot_hist_table = out_file_h5.create_carray(out_file_h5.root, name = 'HistTot', title = 'ToT Histogram', atom = tb.Atom.from_dtype(tot_hist.dtype), shape = tot_hist.shape, filters = filter_table)
         tot_hist_table[:] = tot_hist
         
         # create relative BCID array
