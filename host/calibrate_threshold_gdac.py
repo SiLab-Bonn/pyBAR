@@ -19,8 +19,8 @@ from analysis.analyze_raw_data import AnalyzeRawData
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 gdac_range = range(100, 114, 1)  # has to be from low to high value
-gdac_range.extend((np.exp(np.array(range(0, 150)) / 10.) / 10. + 100).astype('<u8')[50:-40].tolist())  # exponential GDAC range to correct for logarithmic threshold(GDAC) function
-ignore_columns = (0, 1, 77, 78, 79)  # columns to ignore in analysis and during data taking
+gdac_range.extend((np.exp(np.array(range(0, 150)) / 10.) / 10. + 100).astype('<u4')[50:-40].tolist())  # exponential GDAC range to correct for logarithmic threshold(GDAC) function
+ignore_columns = (1, 77, 78, 79)  # FE columns (from 1 to 80), ignore these in analysis and during data taking
 
 
 def analyze(raw_data_file, analyzed_data_file, FEI4B=False):
@@ -141,9 +141,9 @@ def set_gdac(value, register, register_utils):
 
 if __name__ == "__main__":
     scan_identifier = "calibrate_threshold_gdac"
-
+    
     startTime = datetime.now()
-
+    logging.info('Taking threshold at following GDACs: %s' % str(gdac_range))
     scan_threshold_fast = ThresholdScanFast(config_file=configuration.config_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
     for i, gdac in enumerate(gdac_range):
         set_gdac(gdac, scan_threshold_fast.register, scan_threshold_fast.register_utils)
@@ -153,7 +153,7 @@ if __name__ == "__main__":
 
     logging.info("Calibration finished in " + str(datetime.now() - startTime))
 
-#  analyze and plot the data from all scans
-    create_calibration(scan_identifier, is_FEI4B=False, create_plots=True)
+    # analyze and plot the data from all scans
+    create_calibration(scan_identifier, is_FEI4B=scan_threshold_fast.register.fei4b, create_plots=True)
 
     logging.info("Finished!")
