@@ -123,7 +123,7 @@ def create_calibration(scan_identifier, is_FEI4B=False, create_plots=True):
 
 
 def mask_columns(pixel_array, ignore_columns):
-    idx = np.array(ignore_columns)
+    idx = np.array(ignore_columns) - 1  # from FE to Array columns
     m = np.zeros_like(pixel_array)
     m[:, idx] = 1
     return np.ma.masked_array(pixel_array, m)
