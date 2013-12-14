@@ -2,7 +2,9 @@ import time
 import logging
 import math
 import numpy as np
+import tables as tb
 from threading import Event
+from scipy.interpolate import interp1d
 
 from scan.scan import ScanBase
 from daq.readout import open_raw_data_file
@@ -15,9 +17,14 @@ from daq.readout import data_dict_list_from_data_dict_iterable, is_data_from_cha
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
-class Fei4TriggerScan(ScanBase):
-    def __init__(self, config_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_fei4_trigger", scan_data_path=None):
-        super(Fei4TriggerScan, self).__init__(config_file=config_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
+def get_gdacs(thresholds, mean_threshold_calibration):
+    interpolation = interp1d(mean_threshold_calibration['mean_threshold'], mean_threshold_calibration['gdac'], kind='slinear', bounds_error=True)
+    return np.unique(interpolation(thresholds).astype(np.uint32))
+
+
+class Fei4TriggerScanGdac(ScanBase):
+    def __init__(self, config_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_fei4_trigger_gdac", scan_data_path=None):
+        super(Fei4TriggerScanGdac, self).__init__(config_file=config_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
 
     def set_gdac(self, value):
         commands = []
@@ -101,6 +108,9 @@ class Fei4TriggerScan(ScanBase):
         scan_timeout : int
             In seconds; stop scan after given time.
         '''
+
+        logging.info('Start GDAC source scan from %d to %d in %d steps' % (np.amin(gdac_range), np.amax(gdac_range), len(gdac_range)))
+        logging.info('Estimated scan time %dh' % (len(gdac_range) * scan_timeout / 3600.))
 
         self.stop_loop_event = Event()
         self.stop_loop_event.clear()
@@ -191,6 +201,7 @@ class Fei4TriggerScan(ScanBase):
             analyze_raw_data.interpreter.set_trig_count(self.register.get_global_register_value("Trig_Count"))
             analyze_raw_data.max_tot_value = 13
             analyze_raw_data.create_hit_table = True
+            analyze_raw_data.create_source_scan_hist = True
             analyze_raw_data.create_cluster_size_hist = True
             analyze_raw_data.create_cluster_tot_hist = True
             analyze_raw_data.create_cluster_table = True
@@ -202,6 +213,7 @@ class Fei4TriggerScan(ScanBase):
             analyze_raw_data.interpreter.set_trig_count(self.register_trigger_fe.get_global_register_value("Trig_Count"))
             analyze_raw_data.max_tot_value = 13
             analyze_raw_data.create_hit_table = True
+            analyze_raw_data.create_source_scan_hist = True
             analyze_raw_data.create_cluster_size_hist = True
             analyze_raw_data.create_cluster_tot_hist = True
             analyze_raw_data.create_cluster_table = True
@@ -215,11 +227,18 @@ if __name__ == "__main__":
     import configuration
     import os
 
-    config_file_triggered_fe = os.path.join(os.getcwd(), r'config/fei4/configs/SCC_50_tuning.cfg')  # Chip 1, GA 1
+    config_file_triggered_fe = os.path.join(os.getcwd(), r'config/fei4/configs/SCC_99_low_thr_tuning.cfg')  # Chip 1, GA 1
     config_file_trigger_fe = os.path.join(os.getcwd(), r'config/fei4/configs/SCC_30_tuning.cfg')  # Chip 2, GA 2
+    gdac_range = range(100, 5001, 15)  # GDAC range set manually
 
-    scan = Fei4TriggerScan(config_file=config_file_triggered_fe, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.start(gdac_range=range(100, 5001, 15), config_file_trigger_fe=config_file_trigger_fe, channel_triggered_fe=4, channel_trigger_fe=3, invert_lemo_trigger_input=True, configure=True, use_thread=True, col_span=[25, 55], row_span=[50, 250], timeout_no_data=1 * 60, scan_timeout=100, max_triggers=10000000)
+    # GDAC settings can be set automatically from the calibration with equidistand thresholds
+    input_file_calibration = 'data/calibrate_threshold_gdac_SCC_99.h5'  # the file with the GDAC<-> PlsrDAC calibration
+    threshold_range = np.arange(19, 280, 0.8)  # threshold range in PlsrDAC to scan
+    with tb.openFile(input_file_calibration, mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
+        gdac_range = get_gdacs(threshold_range, in_file_calibration_h5.root.MeanThresholdCalibration[:])
+
+    scan = Fei4TriggerScanGdac(config_file=config_file_triggered_fe, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
+    scan.start(gdac_range=gdac_range, config_file_trigger_fe=config_file_trigger_fe, channel_triggered_fe=4, channel_trigger_fe=3, invert_lemo_trigger_input=True, configure=True, use_thread=True, col_span=[25, 55], row_span=[50, 250], timeout_no_data=1 * 60, scan_timeout=100, max_triggers=10000000)
 
     scan.stop()
     scan.analyze()
