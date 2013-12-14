@@ -10,7 +10,7 @@ from daq.readout import open_raw_data_file
 from fei4.register import FEI4Register
 from fei4.register_utils import FEI4RegisterUtils
 
-from daq.readout import convert_data_array, data_dict_list_from_data_dict_iterable, is_data_from_channel
+from daq.readout import data_dict_list_from_data_dict_iterable, is_data_from_channel
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
@@ -28,7 +28,7 @@ class Fei4TriggerScan(ScanBase):
         commands.extend(self.register.get_commands("runmode"))
         self.register_utils.send_commands(commands)
         logging.info("Set GDAC to VthinAC/VthinAF = %d/%d" % (self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine")))
-    
+
     def configure_trigger_fe(self, config_file_trigger_fe, col_span, row_span):
         logging.info("Sending configuration to trigger FE")
         self.register_trigger_fe = FEI4Register(config_file_trigger_fe)
@@ -125,7 +125,7 @@ class Fei4TriggerScan(ScanBase):
                     # setting up external trigger
                     self.readout_utils.configure_trigger_fsm(mode=0, trigger_data_msb_first=False, disable_veto=False, trigger_data_delay=0, trigger_clock_cycles=16, enable_reset=False, invert_lemo_trigger_input=invert_lemo_trigger_input, trigger_low_timeout=0)
                     self.readout_utils.configure_command_fsm(enable_ext_trigger=True, diable_clock=False, disable_command_trigger=False)
-    
+
                     show_trigger_message_at = 10 ** (int(math.ceil(math.log10(max_triggers))) - 1)
                     last_iteration = time.time()
                     saw_no_data_at_time = last_iteration
@@ -147,7 +147,7 @@ class Fei4TriggerScan(ScanBase):
                             self.stop_loop_event.set()
                         if scan_start_time is not None and time.time() > scan_stop_time:
                             logging.info('Reached maximum scan time. Stopping Scan...')
-                            self.stop_loop_event.set()    
+                            self.stop_loop_event.set()
                         time_from_last_iteration = time.time() - last_iteration
                         last_iteration = time.time()
                         while True:
@@ -165,14 +165,13 @@ class Fei4TriggerScan(ScanBase):
                                     self.stop_loop_event.set()
                                 elif wait_for_first_trigger == False:
                                     saw_no_data_at_time = no_data_at_time
-    
+
                                 if no_data_at_time > (saw_data_at_time + 10):
                                     scan_stop_time += time_from_last_iteration
-    
                                 break  # jump out while loop
-    
+
                             saw_data_at_time = last_iteration
-    
+
                             if wait_for_first_trigger == True:
                                 logging.info('Taking data...')
                                 wait_for_first_trigger = False
@@ -220,7 +219,7 @@ if __name__ == "__main__":
     config_file_trigger_fe = os.path.join(os.getcwd(), r'config/fei4/configs/SCC_30_tuning.cfg')  # Chip 2, GA 2
 
     scan = Fei4TriggerScan(config_file=config_file_triggered_fe, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.start(gdac_range=range(100, 5001, 15), config_file_trigger_fe=config_file_trigger_fe, channel_triggered_fe=4, channel_trigger_fe=3, invert_lemo_trigger_input=True, configure=True, use_thread=True, col_span=[25, 55], row_span=[50, 250], timeout_no_data=1*60, scan_timeout=100, max_triggers=10000000)
+    scan.start(gdac_range=range(100, 5001, 15), config_file_trigger_fe=config_file_trigger_fe, channel_triggered_fe=4, channel_trigger_fe=3, invert_lemo_trigger_input=True, configure=True, use_thread=True, col_span=[25, 55], row_span=[50, 250], timeout_no_data=1 * 60, scan_timeout=100, max_triggers=10000000)
 
     scan.stop()
     scan.analyze()
