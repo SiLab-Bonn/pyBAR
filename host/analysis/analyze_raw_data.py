@@ -95,7 +95,11 @@ class AnalyzeRawData(object):
         self.histograming = PyDataHistograming()
         self.clusterizer = PyDataClusterizer()
         self._raw_data_file = raw_data_file
+        if os.path.splitext(raw_data_file)[1].strip().lower() != ".h5":
+            self._raw_data_file = os.path.splitext(raw_data_file)[0] + ".h5"
         self._analyzed_data_file = analyzed_data_file
+        if os.path.splitext(analyzed_data_file)[1].strip().lower() != ".h5":
+            self._analyzed_data_file = os.path.splitext(analyzed_data_file)[0] + ".h5"
         self.set_standard_settings()
 
     def __enter__(self):
@@ -390,7 +394,10 @@ class AnalyzeRawData(object):
             self.interpreter.set_meta_event_data(self.meta_event_index)
 
             for iWord in range(0, table_size, self._chunk_size):
-                raw_data = in_file_h5.root.raw_data.read(iWord, iWord + self._chunk_size)
+                try:
+                    raw_data = in_file_h5.root.raw_data.read(iWord, iWord + self._chunk_size)
+                except OverflowError, e:
+                    logging.info('%s: 2^31 xrange() limitation in 32-bit Python' % e)
                 self.interpreter.interpret_raw_data(raw_data)
                 if(iWord == range(0, table_size, self._chunk_size)[-1]):  # store hits of the latest event
                     self.interpreter.store_event()
