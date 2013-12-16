@@ -123,7 +123,7 @@ def get_hits_with_n_cluster_per_event(hits_table, cluster_table, condition='n_cl
     '''
 
     logging.info("Calculate hits with clusters where " + condition)
-    data_frame_hits = pd.DataFrame({'event_number': hits_table[:]['event_number'], 'column': hits_table[:]['column'], 'row': hits_table[:]['row']})
+    data_frame_hits = pd.DataFrame({'event_number': hits_table.cols.event_number, 'column': hits_table.cols.column, 'row': hits_table.cols.row})
     data_frame_hits = data_frame_hits.set_index(keys='event_number')
     events_with_n_cluster = get_events_with_n_cluster(cluster_table, condition)
     data_frame_hits = data_frame_hits.reset_index()
@@ -131,7 +131,7 @@ def get_hits_with_n_cluster_per_event(hits_table, cluster_table, condition='n_cl
 
 
 def get_hits_in_events(hits_array, events):
-    '''Selects the hits that occurred in events.
+    '''Selects the hits that occurred in events. If a event range can be defined use the get_hits_in_event_range function. It is much faster.
 
     Parameters
     ----------
@@ -151,6 +151,25 @@ def get_hits_in_events(hits_array, events):
         logging.error('There are too many hits to do in RAM operations. Use the write_hits_in_events function instead.')
         raise MemoryError
     return hits_in_events
+
+
+def get_hits_in_event_range(hits_array, event_start, event_stop):
+    '''Selects the hits that occurred in the given event range [event_start, event_stop[
+
+    Parameters
+    ----------
+    hits_array : numpy.array
+    event_start : int
+    event_stop : int
+
+    Returns
+    -------
+    numpy.array
+        hit array with the hits in the event range.
+    '''
+    logging.info("Calculate hits that exists in the given event range [%d,%d[." % (event_start, event_stop))
+    event_number = hits_array['event_number']
+    return hits_array[np.logical_and(event_number >= event_start, event_number < event_stop)]
 
 
 def write_hits_in_events(hit_table_in, hit_table_out, events, chunk_size=5000000):  # TODO: speed up: use the fact that the events in hit_table_in are sorted
@@ -211,9 +230,9 @@ def get_events_with_cluster_size(cluster_table, condition='cluster_size==1'):
     '''
 
     logging.info("Calculate events with clusters with " + condition)
-    cluster_table = cluster_table[:]
-    cluster_size = cluster_table['size']
-    return np.unique(cluster_table[ne.evaluate(condition)]['event_number'])
+    cluster_events = cluster_table.cols.event_number
+    cluster_size = cluster_table.cols.size
+    return np.unique(cluster_events[ne.evaluate(condition)])
 
 
 # @profile
@@ -231,7 +250,7 @@ def get_n_cluster_in_events(cluster_table):
         Second dimension is the number of cluster of the event
     '''
     logging.info("Calculate the number of cluster in every event")
-    event_number_array = cluster_table[:]['event_number']
+    event_number_array = cluster_table.cols.event_number
     event_number_array = event_number_array.astype('<i4')  # BUG in numpy, unint work with 64-bit linux, Windows 32 bit needs reinterpretation
     cluster_in_event = np.bincount(event_number_array)  # for one cluster one event number is given, counts how many different event_numbers are there for each event number from 0 to max event number
     event_number = np.nonzero(cluster_in_event)[0]
