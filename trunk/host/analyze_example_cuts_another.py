@@ -47,8 +47,8 @@ def select_hits():
                 start_row = start_row + nrows
 
 
-            selected_events_1 = get_events_with_cluster_size(event_number=src_array['event_number'], cluster_size=src_array['size'], condition=cluster_size_condition)  # select the events with clusters of a certain size
-#             selected_events_2 = get_events_with_n_cluster(event_number=src_array['event_number'], condition=n_cluster_condition)  # select the events with a certain cluster number
+            selected_events_1 = get_events_with_cluster_size(event_number=src_array['event_number'][0:nrows], cluster_size=src_array['size'][0:nrows], condition=cluster_size_condition)  # select the events with clusters of a certain size
+#             selected_events_2 = get_events_with_n_cluster(event_number=src_array['event_number'][0:nrows], condition=n_cluster_condition)  # select the events with a certain cluster number
 #             selected_events = selected_events_1[np.in1d(selected_events_1, selected_events_2, assume_unique=True)]  # select events with both conditions above
 #             logging.info('Selected ' + str(len(selected_events)) + ' events with ' + n_cluster_condition + ' and ' + cluster_size_condition)
 #             write_hits_in_events(hit_table_in=in_hit_file_h5.root.Hits, hit_table_out=hit_table_out, events=selected_events)  # write the hits of the selected events into a new table
