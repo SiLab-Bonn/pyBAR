@@ -197,13 +197,12 @@ def write_hits_in_events(hit_table_in, hit_table_out, events, chunk_size=5000000
             break
 
 
-def get_events_with_n_cluster(cluster_table, condition='n_cluster==1'):
+def get_events_with_n_cluster(event_number, condition='n_cluster==1'):
     '''Selects the events with a certain number of cluster.
 
     Parameters
     ----------
-    hits_table : pytables.table
-    cluster_table : pytables.table
+    hits_table : numpy.array
 
     Returns
     -------
@@ -211,17 +210,18 @@ def get_events_with_n_cluster(cluster_table, condition='n_cluster==1'):
     '''
 
     logging.info("Calculate events with clusters where " + condition)
-    n_cluster_in_events = get_n_cluster_in_events(cluster_table)
+    n_cluster_in_events = get_n_cluster_in_events(event_number)
     n_cluster = n_cluster_in_events[:, 1]
     return n_cluster_in_events[ne.evaluate(condition), 0]
 
 
-def get_events_with_cluster_size(cluster_table, condition='cluster_size==1'):
+def get_events_with_cluster_size(event_number, cluster_size, condition='cluster_size==1'):
     '''Selects the events with cluster of a given cluster size.
 
     Parameters
     ----------
-    cluster_table : pytables.table
+    event_number : numpy.array
+    cluster_size : numpy.array
     condition : string
 
     Returns
@@ -230,18 +230,16 @@ def get_events_with_cluster_size(cluster_table, condition='cluster_size==1'):
     '''
 
     logging.info("Calculate events with clusters with " + condition)
-    cluster_events = cluster_table.cols.event_number
-    cluster_size = cluster_table.cols.size
-    return np.unique(cluster_events[ne.evaluate(condition)])
+    return np.unique(event_number[ne.evaluate(condition)])
 
 
 # @profile
-def get_n_cluster_in_events(cluster_table):
+def get_n_cluster_in_events(event_number):
     '''Calculates the number of cluster in every event.
 
     Parameters
     ----------
-    cluster_table : pytables.table
+    cluster_table : numpy.array
 
     Returns
     -------
@@ -249,12 +247,11 @@ def get_n_cluster_in_events(cluster_table):
         First dimension is the event number
         Second dimension is the number of cluster of the event
     '''
-    logging.info("Calculate the number of cluster in every event")
-    event_number_array = cluster_table.cols.event_number
-    event_number_array = event_number_array.astype('<i4')  # BUG in numpy, unint work with 64-bit linux, Windows 32 bit needs reinterpretation
+    logging.info("Calculate the number of cluster in every given event")
+    event_number_array = event_number.astype('<i4')  # BUG in numpy, unint work with 64-bit linux, Windows 32 bit needs reinterpretation
     cluster_in_event = np.bincount(event_number_array)  # for one cluster one event number is given, counts how many different event_numbers are there for each event number from 0 to max event number
-    event_number = np.nonzero(cluster_in_event)[0]
-    return np.vstack((event_number, cluster_in_event[event_number])).T
+    selected_event_number = np.nonzero(cluster_in_event)[0]
+    return np.vstack((selected_event_number, cluster_in_event[selected_event_number])).T
 
 
 # @profile
