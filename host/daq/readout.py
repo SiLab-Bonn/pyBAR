@@ -558,9 +558,9 @@ class RawDataFile(object):
         if os.path.splitext(self.filename)[1].strip().lower() != ".h5":
             self.filename = os.path.splitext(self.filename)[0] + ".h5"
         if os.path.isfile(self.filename) and mode in ('r+', 'a'):
-            logging.info('Appending raw data: %s' % self.filename)
+            logging.info('Opening existing raw data file: %s' % self.filename)
         else:
-            logging.info('Saving raw data: %s' % self.filename)
+            logging.info('Opening new raw data file: %s' % self.filename)
 
         filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
         filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
