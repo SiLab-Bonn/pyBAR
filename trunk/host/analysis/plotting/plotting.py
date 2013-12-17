@@ -15,13 +15,14 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(leve
 
 def plot_fancy_occupancy(hist, z_max=None, filename=None):
     plt.clf()
-
     if z_max == 'median':
         median = np.ma.median(hist)
         z_max = median * 2  # round_to_multiple(median * 2, math.floor(math.log10(median * 2)))
     elif z_max == 'maximum' or z_max is None:
         maximum = np.ma.max(hist)
         z_max = maximum  # round_to_multiple(maximum, math.floor(math.log10(maximum)))
+    if z_max < 1 or hist.all() is np.ma.masked:
+        z_max = 1
 
 #     plt.title('Occupancy (%d entries)' % np.sum(hist))
     fig = plt.figure(1)
@@ -31,6 +32,7 @@ def plot_fancy_occupancy(hist, z_max=None, filename=None):
     cmap = cm.get_cmap('jet')
     cmap.set_bad('w')
     norm = colors.BoundaryNorm(bounds, cmap.N)
+#     norm = colors.LogNorm()
 
     im = ax.imshow(hist, interpolation='nearest', aspect='auto', cmap=cmap, norm=norm, extent=extent)  # TODO: use pcolor or pcolormesh
     ax.set_ylim((336.5, 0.5))
@@ -48,6 +50,7 @@ def plot_fancy_occupancy(hist, z_max=None, filename=None):
 
     cax = divider.append_axes("right", size="5%", pad=0.1)
     cb = plt.colorbar(im, cax=cax, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True))
+#     cb = plt.colorbar(im, cax=cax)
     cb.set_label("#")
 
     # make some labels invisible
@@ -55,11 +58,15 @@ def plot_fancy_occupancy(hist, z_max=None, filename=None):
 
     axHistx.bar(left=range(1, 81), height=np.ma.sum(hist, axis=0), align='center', linewidth=0)
     axHistx.set_xlim((0.5, 80.5))
+    if hist.all() is np.ma.masked:
+        axHistx.set_ylim((0, 1))
     axHistx.locator_params(axis='y', nbins=3)
     axHistx.ticklabel_format(style='sci', scilimits=(0, 4), axis='y')
     axHistx.set_ylabel('#')
     axHisty.barh(bottom=range(1, 337), width=np.ma.sum(hist, axis=1), align='center', linewidth=0)
     axHisty.set_ylim((336.5, 0.5))
+    if hist.all() is np.ma.masked:
+        axHisty.set_xlim((0, 1))
     axHisty.locator_params(axis='x', nbins=3)
     axHisty.ticklabel_format(style='sci', scilimits=(0, 4), axis='x')
     axHisty.set_xlabel('#')
@@ -75,13 +82,14 @@ def plot_fancy_occupancy(hist, z_max=None, filename=None):
 
 def plot_occupancy(hist, z_max=None, filename=None):
     plt.clf()
-
     if z_max == 'median':
         median = np.ma.median(hist)
         z_max = median * 2  # round_to_multiple(median * 2, math.floor(math.log10(median * 2)))
     elif z_max == 'maximum' or z_max is None:
         maximum = np.ma.max(hist)
         z_max = maximum  # round_to_multiple(maximum, math.floor(math.log10(maximum)))
+    if z_max < 1 or hist.all() is np.ma.masked:
+        z_max = 1
 
     fig = plt.figure(1)
     ax = fig.add_subplot(111)
@@ -92,6 +100,7 @@ def plot_occupancy(hist, z_max=None, filename=None):
     cmap = cm.get_cmap('jet')
     cmap.set_bad('w')
     norm = colors.BoundaryNorm(bounds, cmap.N)
+#     norm = colors.LogNorm()
 
     im = ax.imshow(hist, interpolation='nearest', aspect='auto', cmap=cmap, norm=norm, extent=extent)  # TODO: use pcolor or pcolormesh
     ax.set_ylim((336.5, 0.5))
@@ -104,6 +113,7 @@ def plot_occupancy(hist, z_max=None, filename=None):
 
     cax = divider.append_axes("right", size="5%", pad=0.1)
     cb = plt.colorbar(im, cax=cax, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True))
+#     cb = plt.colorbar(im, cax=cax)
     cb.set_label("#")
 
     if filename is None:
@@ -535,7 +545,7 @@ def plotThreeWay(hist, title, filename=None, x_axis_title=None, minimum=None, ma
     elif maximum == 'maximum':
         maximum = np.ma.max(hist)
         maximum = maximum  # round_to_multiple(maximum, math.floor(math.log10(maximum)))
-    if maximum < 1 or  hist.all() is np.ma.masked:
+    if maximum < 1 or hist.all() is np.ma.masked:
         maximum = 1
 
     x_axis_title = '' if x_axis_title is None else x_axis_title
