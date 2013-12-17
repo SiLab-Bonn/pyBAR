@@ -68,7 +68,7 @@ def get_meta_data_index_at_scan_parameter(meta_data_array, scan_parameter_name):
     scan_parameter_values = meta_data_array[scan_parameter_name]
     diff = np.concatenate(([1], np.diff(scan_parameter_values)))
     idx = np.concatenate((np.where(diff)[0], [len(scan_parameter_values)]))
-    index = np.empty(len(idx) - 1, dtype={'names': [scan_parameter_name, 'index'], 'formats': ['u4','u4']})
+    index = np.empty(len(idx) - 1, dtype={'names': [scan_parameter_name, 'index'], 'formats': ['u4', 'u4']})
     index[scan_parameter_name] = scan_parameter_values[idx[:-1]]
     index['index'] = idx[:-1]
     return index
@@ -408,6 +408,41 @@ def get_scan_parameter(meta_data_array):
     for scan_par_name in meta_data_array.dtype.names[len(meta_data_array.dtype.names) - 1:len(meta_data_array.dtype.names)]:
         scan_parameters[scan_par_name] = np.unique(meta_data_array[scan_par_name])
     return scan_parameters
+
+
+def data_aligned_at_events(table, chunk_size=1000000):
+    '''Takes the table with a evet_number column and returns chunks with the size up to chunk_size. The chunks are chosen in a way that the events are not splitted.
+
+    Parameters
+    ----------
+    table : pytables.table
+
+    Returns
+    -------
+    numpy.histogram
+        The data of the actual chunk.
+
+    Example
+    -------
+    for data in data_aligned_at_events(table):
+        do_something(data)
+    '''
+    start_row = 0
+    while(start_row < table.nrows):
+        src_array = table.read(start=start_row, stop=start_row + chunk_size)
+        if start_row + src_array.shape[0] == table.nrows:
+            nrows = src_array.shape[0]
+        else:
+            last_event = src_array["event_number"][-1]
+            last_event_start_index = np.where(src_array["event_number"] == last_event)[0][0]
+            #last_event_start_index = 0
+            if last_event_start_index == 0:
+                nrows = src_array.shape[0]
+                logging.warning("Buffer too small to fit event. Possible loss of data. Increase chunk size.")
+            else:
+                nrows = last_event_start_index
+        start_row = start_row + nrows
+        yield src_array[0:nrows]
 
 
 class AnalysisUtils(object):
