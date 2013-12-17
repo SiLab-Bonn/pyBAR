@@ -172,7 +172,34 @@ def get_hits_in_event_range(hits_array, event_start, event_stop):
     return hits_array[np.logical_and(event_number >= event_start, event_number < event_stop)]
 
 
-def write_hits_in_events(hit_table_in, hit_table_out, events, chunk_size=5000000):  # TODO: speed up: use the fact that the events in hit_table_in are sorted
+def write_hits_in_events(hit_table_in, hit_table_out, events, start_hit_word=0, chunk_size=5000000):  # TODO: speed up: use the fact that the events in hit_table_in are sorted
+    '''Selects the hits that occurred in events and write them to a pytable. This function reduces the in RAM operations and has to be used if the get_hits_in_events
+        function raises a memory error.
+
+    Parameters
+    ----------
+    hit_table_in : pytable.table
+    hit_table_out : pytable.table
+        functions need to be able to write to hit_table_out
+    events : array like
+        defines the events to be written from hit_table_in to hit_table_out. They do not have to exists at all.
+    chunk_size : int
+        defines how many hits are analyzed in RAM. Bigger numbers increase the speed, to big numbers let the program crash with a memory error.
+    '''
+    max_event = np.amax(events)
+    logging.info("Write hits from index >= %d that exists in the given %d events < event number %d into a new hit table." % (start_hit_word, len(events), max_event) )
+    table_size = hit_table_in.shape[0]
+    iHit = 0
+    for iHit in range(start_hit_word, table_size, chunk_size):
+        hits = hit_table_in.read(iHit, iHit + chunk_size)
+        last_event_number = hits[-1]['event_number']
+        hit_table_out.append(get_hits_in_events(hits, events=events))
+        if last_event_number > max_event:  # small speed up
+            return iHit + chunk_size
+    return iHit + chunk_size
+
+
+def write_hits_in_event_range(hit_table_in, hit_table_out, events, chunk_size=5000000):  # TODO: speed up: use the fact that the events in hit_table_in are sorted
     '''Selects the hits that occurred in events and write them to a pytable. This function reduces the in RAM operations and has to be used if the get_hits_in_events
         function raises a memory error.
 
@@ -186,15 +213,16 @@ def write_hits_in_events(hit_table_in, hit_table_out, events, chunk_size=5000000
     chunk_size : int
         defines how many hits are analysed in RAM. Bigger numbers increase the speed, to big numbers let the program crash with a memory error.
     '''
-    max_event = np.amax(events)
-    logging.info("Write hits that exists in the given %d events < event number %d into a new hit table." % (len(events),max_event) )
-    table_size = hit_table_in.shape[0]
-    for iHit in range(0, table_size, chunk_size):
-        hits = hit_table_in.read(iHit, iHit + chunk_size)
-        last_event_number = hits[-1]['event_number']
-        hit_table_out.append(get_hits_in_events(hits, events=events))
-        if last_event_number > max_event:  # small speed up
-            break
+    #TODO implement
+#     max_event = np.amax(events)
+#     logging.info("Write hits that exists in the given %d events < event number %d into a new hit table." % (len(events),max_event) )
+#     table_size = hit_table_in.shape[0]
+#     for iHit in range(0, table_size, chunk_size):
+#         hits = hit_table_in.read(iHit, iHit + chunk_size)
+#         last_event_number = hits[-1]['event_number']
+#         hit_table_out.append(get_hits_in_events(hits, events=events))
+#         if last_event_number > max_event:  # small speed up
+#             break
 
 
 def get_events_with_n_cluster(event_number, condition='n_cluster==1'):
