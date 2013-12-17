@@ -151,6 +151,7 @@ class NoiseOccupancyScan(ScanBase):
         from analysis.analyze_raw_data import AnalyzeRawData
         output_file = self.scan_data_filename + "_interpreted.h5"
         with AnalyzeRawData(raw_data_file=scan.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
+            analyze_raw_data.create_source_scan_hist = True
             analyze_raw_data.interpreter.set_trig_count(self.register.get_global_register_value("Trig_Count"))
             analyze_raw_data.interpreter.set_warning_output(False)
             analyze_raw_data.interpret_word_table(FEI4B=scan.register.fei4b)
