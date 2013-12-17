@@ -299,7 +299,7 @@ def get_events_with_n_cluster(event_number, condition='n_cluster==1'):
 
     Parameters
     ----------
-    hits_table : numpy.array
+    event_number : numpy.array
 
     Returns
     -------
@@ -335,7 +335,7 @@ def get_n_cluster_in_events(event_number):
 
     Parameters
     ----------
-    cluster_table : numpy.array
+    event_number : numpy.array
 
     Returns
     -------
@@ -353,7 +353,7 @@ def get_n_cluster_in_events(event_number):
         selected_event_number = np.add(selected_event_number_index, offset)
         return np.vstack((selected_event_number, cluster_in_event[selected_event_number_index])).T
     else:
-        cluster_in_event = np.bincount(event_number_array) # for one cluster one event number is given, counts how many different event_numbers are there for each event number from 0 to max event number
+        cluster_in_event = np.bincount(event_number) # for one cluster one event number is given, counts how many different event_numbers are there for each event number from 0 to max event number
         selected_event_number = np.nonzero(cluster_in_event)[0]
         return np.vstack((selected_event_number, cluster_in_event[selected_event_number])).T
 
