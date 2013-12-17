@@ -335,17 +335,30 @@ def plot_scurves(occupancy_hist, scan_parameters, title='S-Curves', ylabel='Occu
     plt.close()
 
 
-def plot_cluster_tot_size(hist, median=False, max_occ=None, filename=None):
+def plot_cluster_tot_size(hist, median=False, z_max=None, filename=None):
     plt.clf()
     H = hist[0:50, 0:20]
+    if z_max is None:
+        z_max = np.ma.max(H)
+    if z_max < 1 or H.all() is np.ma.masked:
+        z_max = 1
+    fig = plt.figure(1)
+    ax = fig.add_subplot(111)
+    extent = [0.5, 20.5, 49.5, -0.5]
+    bounds = np.linspace(start=0, stop=z_max, num=255, endpoint=True)
     cmap = cm.get_cmap('jet')
-    plt.imshow(H, aspect="auto", interpolation='nearest', cmap=cmap)  # , norm=norm)#, extent=extent) # for monitoring
+    cmap.set_bad('w')
+    norm = colors.BoundaryNorm(bounds, cmap.N)
+    im = ax.imshow(H, aspect="auto", interpolation='nearest', cmap=cmap, norm=norm, extent=extent) # for monitoring
     plt.title('Cluster size and cluster ToT (' + str(np.sum(H) / 2) + ' entries)')
-    plt.xlabel('cluster size')
-    plt.ylabel('cluster ToT')
-    plt.colorbar(cmap=cmap)
-    plt.gca().invert_yaxis()
-    fig = plt.figure()
+    ax.set_xlabel('cluster size')
+    ax.set_ylabel('cluster ToT')
+    #ax.colorbar(cmap=cmap)
+    ax.invert_yaxis()
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.1)
+    cb = plt.colorbar(im, cax=cax, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True))
+    cb.set_label("#")
     fig.patch.set_facecolor('white')
     if filename is None:
         plt.show()
