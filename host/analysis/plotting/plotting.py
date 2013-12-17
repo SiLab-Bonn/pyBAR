@@ -55,15 +55,18 @@ def plot_fancy_occupancy(hist, z_max=None, filename=None):
 
     # make some labels invisible
     plt.setp(axHistx.get_xticklabels() + axHisty.get_yticklabels(), visible=False)
-
-    axHistx.bar(left=range(1, 81), height=np.ma.sum(hist, axis=0), align='center', linewidth=0)
+    hight = np.ma.sum(hist, axis=0)
+    hight[hight.mask] = 0
+    axHistx.bar(left=range(1, 81), height=hight, align='center', linewidth=0)
     axHistx.set_xlim((0.5, 80.5))
     if hist.all() is np.ma.masked:
         axHistx.set_ylim((0, 1))
     axHistx.locator_params(axis='y', nbins=3)
     axHistx.ticklabel_format(style='sci', scilimits=(0, 4), axis='y')
     axHistx.set_ylabel('#')
-    axHisty.barh(bottom=range(1, 337), width=np.ma.sum(hist, axis=1), align='center', linewidth=0)
+    width = np.ma.sum(hist, axis=1)
+    width[hight.mask] = 0
+    axHisty.barh(bottom=range(1, 337), width=width, align='center', linewidth=0)
     axHisty.set_ylim((336.5, 0.5))
     if hist.all() is np.ma.masked:
         axHisty.set_xlim((0, 1))
@@ -75,6 +78,7 @@ def plot_fancy_occupancy(hist, z_max=None, filename=None):
         plt.show()
     elif isinstance(filename, PdfPages):
         filename.savefig()
+        pass
     else:
         plt.savefig(filename)
     plt.close()
