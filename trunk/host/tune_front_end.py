@@ -15,20 +15,35 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
-# threshold
-target_threshold = 50  # in PlsrDAC
-# gain
-target_charge = 270  # in PlsrDAC
-target_tot = 5  # ToT code
-# iteration of tunings
-global_iterations = 3  # set -1..5, 0 is global threshold tuning only, -1 disables global tuning
-local_iterations = 1  # set -1..5, 0 is local threshold tuning only, -1 disables local tuning
-# configuration filename
-cfg_name = "new_tuning"
 
-if __name__ == "__main__":
-    startTime = datetime.now()
+def tune_front_end(cfg_name, target_threshold=20, target_charge=270, target_tot=7, global_iterations=3, local_iterations=2, create_plots=True):
+    '''Metascript that calls other scripts to tune the FE.
 
+    Parameters
+    ----------
+    cfg_name : string
+        Name of the config to be created. This config holds the tuning results.
+    target_threshold : int
+        The target threshold value in PlsrDAC.
+    target_charge : int
+        The target charge in PlsrDAC value to tune to.
+    target_tot : int
+        The target tot value to tune to.
+    global_iterations : int
+        Defines how often global threshold/global feedback current tuning is repeated.
+        -1: the global tuning is disabled
+        0: the global tuning consists of the global threshold tuning only
+        1: global threshold/global feedback current/global threshold tuning
+        2: global threshold/global feedback current/global threshold tuning/global feedback current/global threshold tuning
+        ...
+    local_iterations : int
+        Defines how often local threshold (TDAC) / feedback current (FDAC) tuning is repeated.
+            -1: the local tuning is disabled
+            0: the local tuning consists of the local threshold tuning only (TDAC)
+            1: TDAC/FDAC/TDAC
+            2: TDAC/FDAC/TDAC/FDAC/TDAC
+            ...
+    '''
     gdac_tune_scan = GdacTune(config_file=configuration.config_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
     gdac_tune_scan.set_target_threshold(target_threshold)
 
@@ -49,12 +64,9 @@ if __name__ == "__main__":
 
     difference_bit = 1
 
-    output_pdf_filename = os.path.join(configuration.scan_data_path, cfg_name)
-    output_pdf = PdfPages(output_pdf_filename + '.pdf')
-
-    PrmpVbpf = 0
-    Vthin_AC = 0
-    Vthin_AF = 0
+    if create_plots:
+        output_pdf_filename = os.path.join(configuration.scan_data_path, cfg_name)
+        output_pdf = PdfPages(output_pdf_filename + '.pdf')
 
     start_bit = 7
     for iteration in range(0, global_iterations):  # tune iteratively with decreasing range to save time
@@ -97,12 +109,16 @@ if __name__ == "__main__":
 
     gdac_tune_scan.register.save_configuration(name=cfg_name)  # save the final config
 
-    if(local_iterations > 0):
-        plotThreeWay(hist=fdac_tune_scan.register.get_pixel_register_value("FDAC").transpose(), title="FDAC distribution after last FDAC tuning", x_axis_title='FDAC', filename=output_pdf, maximum=16)
-        plotThreeWay(hist=fdac_tune_scan.result.transpose(), title="Mean ToT after last FDAC tuning", x_axis_title='mean ToT', filename=output_pdf)
-    if(global_iterations > 0):
-        plotThreeWay(hist=tdac_tune_scan.register.get_pixel_register_value("TDAC").transpose(), title="TDAC distribution after complete tuning", x_axis_title='TDAC', filename=output_pdf, maximum=32)
-        plotThreeWay(hist=tdac_tune_scan.result.transpose(), title="Occupancy after complete tuning", x_axis_title='Occupancy', filename=output_pdf, maximum=100)
+    if create_plots:
+        if(local_iterations > 0):
+            plotThreeWay(hist=fdac_tune_scan.register.get_pixel_register_value("FDAC").transpose(), title="FDAC distribution after last FDAC tuning", x_axis_title='FDAC', filename=output_pdf, maximum=16)
+            plotThreeWay(hist=fdac_tune_scan.result.transpose(), title="Mean ToT after last FDAC tuning", x_axis_title='mean ToT', filename=output_pdf)
+        if(global_iterations > 0):
+            plotThreeWay(hist=tdac_tune_scan.register.get_pixel_register_value("TDAC").transpose(), title="TDAC distribution after complete tuning", x_axis_title='TDAC', filename=output_pdf, maximum=32)
+            plotThreeWay(hist=tdac_tune_scan.result.transpose(), title="Occupancy after complete tuning", x_axis_title='Occupancy', filename=output_pdf, maximum=100)
+        output_pdf.close()
 
-    output_pdf.close()
+if __name__ == "__main__":
+    startTime = datetime.now()
+    tune_front_end(cfg_name='tuned_config', target_threshold=20, target_charge=270, target_tot=7, global_iterations=3, local_iterations=2)
     logging.info("Tuning finished in " + str(datetime.now() - startTime))
