@@ -8,6 +8,7 @@ import numexpr as ne
 import tables as tb
 from scipy.sparse import coo_matrix
 from datetime import datetime
+import sys
 
 from analysis.RawDataConverter.data_histograming import PyDataHistograming
 
@@ -33,6 +34,61 @@ def central_difference(x, y):
     dx1 = np.hstack((0, np.diff(x)))
     dx2 = np.hstack((np.diff(x), 0))
     return (z2 - z1) / (dx2 + dx1)
+
+
+def in1d_sorted(ar1, ar2):
+    """
+    Does the same than np.in1d but uses the fact that ar1 and ar2 are sorted. Is therefore much faster.
+
+    """
+    inds = ar2.searchsorted(ar1)
+    inds[inds == len(ar2)] = 0
+    return ar2[inds] == ar1
+
+
+def reduce_sorted_to_intersect(ar1, ar2):
+    """
+    Takes two sorted arrays and return the intersection ar1 in ar2 and ar2 in ar1.
+
+    Parameters
+    ----------
+    ar1 : (M,) array_like
+        Input array.
+    ar2 : array_like
+         Input array.
+
+    Returns
+    -------
+    ar1, ar1 : ndarray, ndarray
+        The interesction values.
+
+    """
+    # Ravel both arrays, behavior for the first array could be different
+    ar1 = np.asarray(ar1).ravel()
+    ar2 = np.asarray(ar2).ravel()
+
+    # get min max values of the arrays
+    ar1_biggest_value = ar1[-1]
+    ar1_smallest_value = ar1[0]
+    ar2_biggest_value = ar2[-1]
+    ar2_smallest_value = ar2[0]
+
+    # get min/max indices with values that are also in the other array
+    min_index_ar1 = np.argmin(ar1 < ar2_smallest_value)
+    max_index_ar1 = np.argmax(ar1 > ar2_biggest_value)
+    min_index_ar2 = np.argmin(ar2 < ar1_smallest_value)
+    max_index_ar2 = np.argmax(ar2 > ar1_biggest_value)
+    if min_index_ar1 < 0:
+        min_index_ar1 = 0
+    if min_index_ar2 < 0:
+        min_index_ar2 = 0
+    if max_index_ar1 == 0 or max_index_ar1 > ar1.shape[0]:
+        max_index_ar1 = ar1.shape[0]
+    if max_index_ar2 == 0 or max_index_ar2 > ar2.shape[0]:
+        max_index_ar2 = ar2.shape[0]
+
+    # reduce the data
+    return ar1[min_index_ar1:max_index_ar1], ar2[min_index_ar2:max_index_ar2]
 
 
 def get_not_unique_values(array):
@@ -130,13 +186,15 @@ def get_hits_with_n_cluster_per_event(hits_table, cluster_table, condition='n_cl
     return data_frame_hits.loc[events_with_n_cluster]
 
 
-def get_hits_in_events(hits_array, events):
+def get_hits_in_events(hits_array, events, is_sorted=True):
     '''Selects the hits that occurred in events. If a event range can be defined use the get_hits_in_event_range function. It is much faster.
 
     Parameters
     ----------
     hits_array : numpy.array
     events : array
+    is_sorted : bool
+        Is true if the events to select are sorted from low to high value. Increases speed by 35%.
 
     Returns
     -------
@@ -145,8 +203,10 @@ def get_hits_in_events(hits_array, events):
     '''
 
     logging.info("Calculate hits that exists in the given %d events." % len(events))
+    if is_sorted:
+        events, _ = reduce_sorted_to_intersect(events, hits_array['event_number'])  # reduce the event number range to the max min event number of the given hits to save time
     try:
-        hits_in_events = hits_array[np.in1d(hits_array['event_number'], events)]
+        hits_in_events = hits_array[in1d_sorted(hits_array['event_number'], events)]
     except MemoryError:
         logging.error('There are too many hits to do in RAM operations. Use the write_hits_in_events function instead.')
         raise MemoryError
@@ -172,8 +232,8 @@ def get_hits_in_event_range(hits_array, event_start, event_stop):
     return hits_array[np.logical_and(event_number >= event_start, event_number < event_stop)]
 
 
-def write_hits_in_events(hit_table_in, hit_table_out, events, start_hit_word=0, chunk_size=5000000):  # TODO: speed up: use the fact that the events in hit_table_in are sorted
-    '''Selects the hits that occurred in events and write them to a pytable. This function reduces the in RAM operations and has to be used if the get_hits_in_events
+def write_hits_in_events(hit_table_in, hit_table_out, events, start_hit_word=0, chunk_size=5000000):
+    '''Selects the hits that occurred in events and writes them to a pytable. This function reduces the in RAM operations and has to be used if the get_hits_in_events
         function raises a memory error.
 
     Parameters
@@ -184,23 +244,28 @@ def write_hits_in_events(hit_table_in, hit_table_out, events, start_hit_word=0, 
     events : array like
         defines the events to be written from hit_table_in to hit_table_out. They do not have to exists at all.
     chunk_size : int
-        defines how many hits are analyzed in RAM. Bigger numbers increase the speed, to big numbers let the program crash with a memory error.
+        defines how many hits are analyzed in RAM. Bigger numbers increase the speed, too big numbers let the program crash with a memory error.
+
+    Returns
+    -------
+    start_hit_word: int
+        Index of the last hit word analyzed. Used to speed up the next call of write_hits_in_events.
     '''
     max_event = np.amax(events)
-    logging.info("Write hits from index >= %d that exists in the given %d events < event number %d into a new hit table." % (start_hit_word, len(events), max_event) )
+    logging.info("Write hits from hit number >= %d that exists in the selected %d events with event number < %d into a new hit table." % (start_hit_word, len(events), max_event))
     table_size = hit_table_in.shape[0]
     iHit = 0
     for iHit in range(start_hit_word, table_size, chunk_size):
         hits = hit_table_in.read(iHit, iHit + chunk_size)
         last_event_number = hits[-1]['event_number']
         hit_table_out.append(get_hits_in_events(hits, events=events))
-        if last_event_number > max_event:  # small speed up
+        if last_event_number > max_event:  # speed up, use the fact that the hits are sorted by event_number
             return iHit + chunk_size
-    return iHit + chunk_size
+    return start_hit_word
 
 
-def write_hits_in_event_range(hit_table_in, hit_table_out, events, chunk_size=5000000):  # TODO: speed up: use the fact that the events in hit_table_in are sorted
-    '''Selects the hits that occurred in events and write them to a pytable. This function reduces the in RAM operations and has to be used if the get_hits_in_events
+def write_hits_in_event_range(hit_table_in, hit_table_out, event_start, event_stop, start_hit_word=0, chunk_size=5000000):
+    '''Selects the hits that occurred in given event range [event_start, event_stop[ and write them to a pytable. This function reduces the in RAM operations and has to be used if the get_hits_in_event_range
         function raises a memory error.
 
     Parameters
@@ -208,21 +273,25 @@ def write_hits_in_event_range(hit_table_in, hit_table_out, events, chunk_size=50
     hit_table_in : pytable.table
     hit_table_out : pytable.table
         functions need to be able to write to hit_table_out
-    events : array like
-        defines the events to be written from hit_table_in to hit_table_out. They do not have to exists at all.
+    event_start, event_stop : int
+        start/stop event numbers
     chunk_size : int
-        defines how many hits are analysed in RAM. Bigger numbers increase the speed, to big numbers let the program crash with a memory error.
+        defines how many hits are analysed in RAM. Bigger numbers increase the speed, too big numbers let the program crash with a memory error.
+    Returns
+    -------
+    start_hit_word: int
+        Index of the last hit word analyzed. Used to speed up the next call of write_hits_in_events.
     '''
-    #TODO implement
-#     max_event = np.amax(events)
-#     logging.info("Write hits that exists in the given %d events < event number %d into a new hit table." % (len(events),max_event) )
-#     table_size = hit_table_in.shape[0]
-#     for iHit in range(0, table_size, chunk_size):
-#         hits = hit_table_in.read(iHit, iHit + chunk_size)
-#         last_event_number = hits[-1]['event_number']
-#         hit_table_out.append(get_hits_in_events(hits, events=events))
-#         if last_event_number > max_event:  # small speed up
-#             break
+
+    logging.info("Write hits that exists in the given event range from %d to %d into a new hit table." % (event_start, event_stop))
+    table_size = hit_table_in.shape[0]
+    for iHit in range(0, table_size, chunk_size):
+        hits = hit_table_in.read(iHit, iHit + chunk_size)
+        last_event_number = hits[-1]['event_number']
+        hit_table_out.append(get_hits_in_event_range(hits, event_start=event_start, event_stop=event_stop))
+        if last_event_number > event_stop:  # speed up, use the fact that the hits are sorted by event_number
+            return iHit + chunk_size
+    return start_hit_word
 
 
 def get_events_with_n_cluster(event_number, condition='n_cluster==1'):
@@ -261,7 +330,6 @@ def get_events_with_cluster_size(event_number, cluster_size, condition='cluster_
     return np.unique(event_number[ne.evaluate(condition)])
 
 
-# @profile
 def get_n_cluster_in_events(event_number):
     '''Calculates the number of cluster in every event.
 
@@ -276,10 +344,18 @@ def get_n_cluster_in_events(event_number):
         Second dimension is the number of cluster of the event
     '''
     logging.info("Calculate the number of cluster in every given event")
-    event_number_array = event_number.astype('<i4')  # BUG in numpy, unint work with 64-bit linux, Windows 32 bit needs reinterpretation
-    cluster_in_event = np.bincount(event_number_array)  # for one cluster one event number is given, counts how many different event_numbers are there for each event number from 0 to max event number
-    selected_event_number = np.nonzero(cluster_in_event)[0]
-    return np.vstack((selected_event_number, cluster_in_event[selected_event_number])).T
+    if (sys.maxint < 3000000000):  # on 32- bit operation systems max int is 2147483647 leading to numpy bugs that need workarounds
+        event_number_array = event_number.astype('<i4')  # BUG in numpy, unint works with 64-bit, 32 bit needs reinterpretation
+        offset = np.amin(event_number_array)
+        event_number_array = np.subtract(event_number_array, offset) # BUG #225 for values > int32
+        cluster_in_event = np.bincount(event_number_array)  # for one cluster one event number is given, counts how many different event_numbers are there for each event number from 0 to max event number
+        selected_event_number_index = np.nonzero(cluster_in_event)[0]
+        selected_event_number = np.add(selected_event_number_index, offset)
+        return np.vstack((selected_event_number, cluster_in_event[selected_event_number_index])).T
+    else:
+        cluster_in_event = np.bincount(event_number_array) # for one cluster one event number is given, counts how many different event_numbers are there for each event number from 0 to max event number
+        selected_event_number = np.nonzero(cluster_in_event)[0]
+        return np.vstack((selected_event_number, cluster_in_event[selected_event_number])).T
 
 
 # @profile
@@ -438,8 +514,8 @@ def get_scan_parameter(meta_data_array):
     return scan_parameters
 
 
-def data_aligned_at_events(table, chunk_size=1000000):
-    '''Takes the table with a evet_number column and returns chunks with the size up to chunk_size. The chunks are chosen in a way that the events are not splitted.
+def data_aligned_at_events(table, chunk_size=10000000):
+    '''Takes the table with a event_number column and returns chunks with the size up to chunk_size. The chunks are chosen in a way that the events are not splitted.
 
     Parameters
     ----------
