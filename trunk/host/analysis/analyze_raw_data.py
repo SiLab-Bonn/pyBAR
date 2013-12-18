@@ -90,7 +90,7 @@ def generate_threshold_mask(hist):
 
 class AnalyzeRawData(object):
     """A class to analyze FE-I4 raw data"""
-    def __init__(self, raw_data_file=None, analyzed_data_file=None):
+    def __init__(self, raw_data_file=None, analyzed_data_file=None, create_pdf=False):
         self.interpreter = PyDataInterpreter()
         self.histograming = PyDataHistograming()
         self.clusterizer = PyDataClusterizer()
@@ -101,6 +101,15 @@ class AnalyzeRawData(object):
         if analyzed_data_file is not None and os.path.splitext(analyzed_data_file)[1].strip().lower() != ".h5":
             self._analyzed_data_file = os.path.splitext(analyzed_data_file)[0] + ".h5"
         self.set_standard_settings()
+        if raw_data_file is not None and create_pdf:
+            if os.path.splitext(raw_data_file)[1].strip().lower() != ".pdf":  # check for correct filename extension
+                output_pdf_filename = os.path.splitext(raw_data_file)[0] + ".pdf"
+            else:
+                output_pdf_filename = scan_data_filename
+            logging.info('Opening output file: %s' % output_pdf_filename)
+            self.output_pdf = PdfPages(output_pdf_filename)
+        else:
+            self.output_pdf = None
 
     def __enter__(self):
         return self
@@ -109,6 +118,9 @@ class AnalyzeRawData(object):
         del self.interpreter
         del self.histograming
         del self.clusterizer
+        if self.output_pdf is not None and isinstance(self.output_pdf, PdfPages):
+            logging.info('Closing output file: %s' % str(self.output_pdf._file.fh.name))
+            self.output_pdf.close()
 
     def set_standard_settings(self):
         self.out_file_h5 = None
@@ -693,7 +705,7 @@ class AnalyzeRawData(object):
         else:
             self.histograming.add_hits(hits[start_index:], hits[start_index:].shape[0])
 
-    def plot_histograms(self, scan_data_filename, analyzed_data_file=None, maximum=None):  # plots the histogram from output file if available otherwise from ram
+    def plot_histograms(self, scan_data_filename=None, analyzed_data_file=None, maximum=None):  # plots the histogram from output file if available otherwise from ram
         logging.info('Creating histograms%s' % ((' (source: %s)' % analyzed_data_file) if analyzed_data_file != None else ((' (source: %s)' % self._analyzed_data_file) if self._analyzed_data_file != None else '')))
         if analyzed_data_file != None:
             out_file_h5 = tb.openFile(analyzed_data_file, mode="r")
@@ -701,14 +713,18 @@ class AnalyzeRawData(object):
             out_file_h5 = tb.openFile(self._analyzed_data_file, mode="r")
         else:
             out_file_h5 = None
-#         if os.path.splitext(scan_data_filename)[1].strip().lower() != ".pdf":  # check for correct filename extension
-#             output_pdf_filename = os.path.splitext(scan_data_filename)[0] + ".pdf"
-        if scan_data_filename[len(scan_data_filename) - 3:] != ".pdf":  # check for correct filename extension
-            output_pdf_filename = scan_data_filename + ".pdf"
+        if scan_data_filename is not None:
+#             if os.path.splitext(scan_data_filename)[1].strip().lower() != ".pdf":  # check for correct filename extension
+#                 output_pdf_filename = os.path.splitext(scan_data_filename)[0] + ".pdf"
+            if scan_data_filename[len(scan_data_filename) - 3:] != ".pdf":  # check for correct filename extension
+                output_pdf_filename = scan_data_filename + ".pdf"
+            else:
+                output_pdf_filename = scan_data_filename
+            logging.info('Opening output file: %s' % output_pdf_filename)
+            output_pdf = PdfPages(output_pdf_filename)
         else:
-            output_pdf_filename = scan_data_filename
-        logging.info('Saving output file: %s' % output_pdf_filename)
-        output_pdf = PdfPages(output_pdf_filename)
+            output_pdf = self.output_pdf
+        logging.info('Saving histograms to file: %s' % str(output_pdf._file.fh.name))
         if (self._create_threshold_hists):
             # use threshold mask if possible
             if self._create_threshold_mask:
@@ -770,8 +786,9 @@ class AnalyzeRawData(object):
             plotting.plot_trigger_errors(hist=out_file_h5.root.HistTriggerErrorCounter if out_file_h5 != None else self.trigger_error_counter_hist, filename=output_pdf)
         if (self._analyzed_data_file != None):
             out_file_h5.close()
-        logging.info('Closing output file')
-        output_pdf.close()
+        if scan_data_filename is not None:
+            logging.info('Closing output file: %s' % str(output_pdf._file.fh.name))
+            output_pdf.close()
 
     def fit_scurves(self, hit_table_file=None, PlsrDAC=None):
         occupancy_hist = hit_table_file.root.HistOcc[:, :, :] if hit_table_file != None else self.occupancy_array[:, :, :]  # take data from RAM if no file was opened
