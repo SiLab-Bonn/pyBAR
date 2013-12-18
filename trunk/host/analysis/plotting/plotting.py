@@ -84,7 +84,7 @@ def plot_fancy_occupancy(hist, z_max=None, filename=None):
     plt.close()
 
 
-def plot_occupancy(hist, z_max=None, filename=None):
+def plot_occupancy(hist, title='Occupancy', z_max=None, filename=None):
     plt.clf()
     if z_max == 'median':
         median = np.ma.median(hist)
@@ -109,7 +109,7 @@ def plot_occupancy(hist, z_max=None, filename=None):
     im = ax.imshow(hist, interpolation='nearest', aspect='auto', cmap=cmap, norm=norm, extent=extent)  # TODO: use pcolor or pcolormesh
     ax.set_ylim((336.5, 0.5))
     ax.set_xlim((0.5, 80.5))
-    plt.title('Occupancy (%d entries)' % np.sum(hist))
+    plt.title(title + ' (%d entrie(s))' % (0 if hist.all() is np.ma.masked else np.ma.sum(hist)))
     plt.xlabel('Column')
     plt.ylabel('Row')
 
