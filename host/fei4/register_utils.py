@@ -87,8 +87,9 @@ class FEI4RegisterUtils(object):
         self.device.WriteExternal(address=0 + 1, data=(0, ))
 
     def set_hardware_repeat(self, repeat=1):
-        repeat_array = array.array('B', struct.pack('I', repeat))
-        self.device.WriteExternal(address=0 + 5, data=repeat_array)
+        if repeat is not None:
+            repeat_array = array.array('B', struct.pack('I', repeat))
+            self.device.WriteExternal(address=0 + 5, data=repeat_array)
 
     def wait_for_command(self, length=None, repeat=None):
 
