@@ -43,7 +43,7 @@ class FEI4RegisterUtils(object):
             self.send_command(command=self.concatenate_commands(commands, byte_padding=byte_padding), repeat=repeat, wait_for_finish=wait_for_finish, set_length=True, clear_memory=clear_memory)
         else:
             max_length = 0
-            self.set_hardware_repeat(1)
+            self.set_hardware_repeat(repeat)
             for command in commands:
                 max_length = max(command.length(), max_length)
                 self.send_command(command=command, repeat=None, wait_for_finish=wait_for_finish, set_length=True, clear_memory=False)
