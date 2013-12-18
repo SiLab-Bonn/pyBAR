@@ -84,7 +84,7 @@ class NoiseOccupancyScan(ScanBase):
             self.readout.start()
 
             # preload command
-            lvl1_command = self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", length=2000)[0]
+            lvl1_command = self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", length=400)[0]
             self.register_utils.send_command(lvl1_command, repeat=triggers, wait_for_finish=False, set_length=True, clear_memory=False)
 
             wait_for_first_data = False
