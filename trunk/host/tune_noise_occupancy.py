@@ -133,11 +133,11 @@ class NoiseOccupancyScan(ScanBase):
 
             occ_hist, _, _ = np.histogram2d(self.col_arr, self.row_arr, bins=(80, 336), range=[[1, 80], [1, 336]])
 
-            occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
+            self.occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
             # noisy pixels are set to 1
-            occ_mask[occ_hist > occupancy_limit * triggers * consecutive_lvl1] = 1
+            self.occ_mask[occ_hist > occupancy_limit * triggers * consecutive_lvl1] = 1
             # make inverse
-            inv_occ_mask = self.register_utils.invert_pixel_mask(occ_mask)
+            inv_occ_mask = self.register_utils.invert_pixel_mask(self.occ_mask)
             if overwrite_mask:
                 self.register.set_pixel_register_value(disable_for_mask, inv_occ_mask)
             else:
@@ -146,10 +146,10 @@ class NoiseOccupancyScan(ScanBase):
                     self.register.set_pixel_register_value(mask, enable_mask)
 
             if overwrite_mask:
-                self.register.set_pixel_register_value(enable_for_mask, occ_mask)
+                self.register.set_pixel_register_value(enable_for_mask, self.occ_mask)
             else:
                 for mask in enable_for_mask:
-                    disable_mask = np.logical_or(occ_mask, self.register.get_pixel_register_value(mask))
+                    disable_mask = np.logical_or(self.occ_mask, self.register.get_pixel_register_value(mask))
                     self.register.set_pixel_register_value(mask, disable_mask)
 
 #             plot_occupancy(self.col_arr, self.row_arr, max_occ=None, filename=self.scan_data_filename + "_occupancy.pdf")
@@ -157,7 +157,7 @@ class NoiseOccupancyScan(ScanBase):
     def analyze(self):
         from analysis.analyze_raw_data import AnalyzeRawData
         output_file = self.scan_data_filename + "_interpreted.h5"
-        with AnalyzeRawData(raw_data_file=scan.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
+        with AnalyzeRawData(raw_data_file=scan.scan_data_filename, analyzed_data_file=output_file, create_pdf=True) as analyze_raw_data:
             analyze_raw_data.create_source_scan_hist = True
 #             analyze_raw_data.create_hit_table = True
 #             analyze_raw_data.interpreter.debug_events(0, 0, True)  # events to be printed onto the console for debugging, usually deactivated
@@ -165,7 +165,8 @@ class NoiseOccupancyScan(ScanBase):
             analyze_raw_data.interpreter.set_warning_output(False)
             analyze_raw_data.interpret_word_table(FEI4B=scan.register.fei4b)
             analyze_raw_data.interpreter.print_summary()
-            analyze_raw_data.plot_histograms(scan_data_filename=scan.scan_data_filename)
+            analyze_raw_data.plot_histograms()
+            plot_occupancy(self.occ_mask.T, title='Masked Pixels', z_max=1, filename=analyze_raw_data.output_pdf)
 
 
 if __name__ == "__main__":
