@@ -84,7 +84,11 @@ class NoiseOccupancyScan(ScanBase):
             self.readout.start()
 
             # preload command
-            lvl1_command = self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", length=400)[0]
+            command_delay = 400
+            lvl1_command = self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", length=command_delay)[0]
+            commnd_lenght = lvl1_command.length()
+            logging.info('Estimated scan time: %ds' % int(commnd_lenght * 25 * (10 ** -9) * triggers))
+            logging.info('Please stand by...')
             self.register_utils.send_command(lvl1_command, repeat=triggers, wait_for_finish=False, set_length=True, clear_memory=False)
 
             wait_for_first_data = False
@@ -104,7 +108,10 @@ class NoiseOccupancyScan(ScanBase):
                 except IndexError:  # no data
                     #logging.info('no data words')
                     no_data_at_time = last_iteration
-                    if wait_for_first_data == False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
+                    if self.register_utils.is_ready:
+                        self.stop_thread_event.set()
+                        logging.info('Finished sending %d triggers' % triggers)
+                    elif wait_for_first_data == False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
                         logging.info('Reached no data timeout. Stopping Scan...')
                         self.stop_thread_event.set()
                     elif wait_for_first_data == False:
