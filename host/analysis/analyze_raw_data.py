@@ -95,10 +95,10 @@ class AnalyzeRawData(object):
         self.histograming = PyDataHistograming()
         self.clusterizer = PyDataClusterizer()
         self._raw_data_file = raw_data_file
-        if os.path.splitext(raw_data_file)[1].strip().lower() != ".h5":
+        if raw_data_file is not None and os.path.splitext(raw_data_file)[1].strip().lower() != ".h5":
             self._raw_data_file = os.path.splitext(raw_data_file)[0] + ".h5"
         self._analyzed_data_file = analyzed_data_file
-        if os.path.splitext(analyzed_data_file)[1].strip().lower() != ".h5":
+        if analyzed_data_file is not None and os.path.splitext(analyzed_data_file)[1].strip().lower() != ".h5":
             self._analyzed_data_file = os.path.splitext(analyzed_data_file)[0] + ".h5"
         self.set_standard_settings()
 
