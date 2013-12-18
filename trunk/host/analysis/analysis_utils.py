@@ -73,11 +73,15 @@ def reduce_sorted_to_intersect(ar1, ar2):
     ar2_biggest_value = ar2[-1]
     ar2_smallest_value = ar2[0]
 
+    if ar1_biggest_value < ar2_smallest_value or ar1_smallest_value > ar2_biggest_value:  # special case, no intersection at all
+        return ar1[0:0], ar2[0:0]
+
     # get min/max indices with values that are also in the other array
     min_index_ar1 = np.argmin(ar1 < ar2_smallest_value)
     max_index_ar1 = np.argmax(ar1 > ar2_biggest_value)
     min_index_ar2 = np.argmin(ar2 < ar1_smallest_value)
     max_index_ar2 = np.argmax(ar2 > ar1_biggest_value)
+
     if min_index_ar1 < 0:
         min_index_ar1 = 0
     if min_index_ar2 < 0:
@@ -205,6 +209,8 @@ def get_hits_in_events(hits_array, events, is_sorted=True):
     logging.info("Calculate hits that exists in the given %d events." % len(events))
     if is_sorted:
         events, _ = reduce_sorted_to_intersect(events, hits_array['event_number'])  # reduce the event number range to the max min event number of the given hits to save time
+        if events.shape[0] == 0:  # if there is not a single selected hit
+            return hits_array[0:0]
     try:
         hits_in_events = hits_array[in1d_sorted(hits_array['event_number'], events)]
     except MemoryError:
@@ -245,6 +251,8 @@ def write_hits_in_events(hit_table_in, hit_table_out, events, start_hit_word=0, 
         defines the events to be written from hit_table_in to hit_table_out. They do not have to exists at all.
     chunk_size : int
         defines how many hits are analyzed in RAM. Bigger numbers increase the speed, too big numbers let the program crash with a memory error.
+    start_hit_word: int
+        Index of the first hit word to be analyzed. Used for speed up.
 
     Returns
     -------
@@ -260,7 +268,7 @@ def write_hits_in_events(hit_table_in, hit_table_out, events, start_hit_word=0, 
         last_event_number = hits[-1]['event_number']
         hit_table_out.append(get_hits_in_events(hits, events=events))
         if last_event_number > max_event:  # speed up, use the fact that the hits are sorted by event_number
-            return iHit + chunk_size
+            return iHit
     return start_hit_word
 
 
