@@ -4,7 +4,7 @@ First the events are determined where the scan parameter changes. Then the hits 
 
 This example takes the data from a source scan where the global threshold was changed and clusters the hits for each global threshold setting.
 """
-scan_name = 'scan_fei4_trigger_141'
+scan_name = 'SCC29_raw_data_cut_0_analyzed'
 
 chip_flavor = 'fei4a'
 input_file = 'data/' + scan_name + ".h5"

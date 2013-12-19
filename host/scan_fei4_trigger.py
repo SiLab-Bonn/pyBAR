@@ -186,7 +186,7 @@ class Fei4TriggerScan(ScanBase):
             analyze_raw_data.create_cluster_tot_hist = True
             analyze_raw_data.create_cluster_table = True
             analyze_raw_data.interpreter.set_warning_output(False)
-            analyze_raw_data.interpret_word_table(FEI4B=scan.register.fei4b)
+            analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms(scan_data_filename=scan.scan_data_filename, maximum='maximum')
         with AnalyzeRawData(raw_data_file=scan.scan_data_filename + "_trigger_fe.h5", analyzed_data_file=output_file_trigger_fe) as analyze_raw_data:
@@ -197,7 +197,7 @@ class Fei4TriggerScan(ScanBase):
             analyze_raw_data.create_cluster_tot_hist = True
             analyze_raw_data.create_cluster_table = True
             analyze_raw_data.interpreter.set_warning_output(False)
-            analyze_raw_data.interpret_word_table(FEI4B=scan.register.fei4b)
+            analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms(scan_data_filename=scan.scan_data_filename + '_trigger_fe', maximum='maximum')
 

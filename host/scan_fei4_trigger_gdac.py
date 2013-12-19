@@ -26,16 +26,6 @@ class Fei4TriggerScanGdac(ScanBase):
     def __init__(self, config_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_fei4_trigger_gdac", scan_data_path=None):
         super(Fei4TriggerScanGdac, self).__init__(config_file=config_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
 
-    def set_gdac(self, value):
-        commands = []
-        commands.extend(self.register.get_commands("confmode"))
-        self.register.set_global_register_value("Vthin_AltFine", value & 255)  # take low word
-        self.register.set_global_register_value("Vthin_AltCoarse", value >> 8)  # take high word
-        commands.extend(self.register.get_commands("wrregister", name=["Vthin_AltFine", "Vthin_AltCoarse"]))
-        commands.extend(self.register.get_commands("runmode"))
-        self.register_utils.send_commands(commands)
-        logging.info("Set GDAC to VthinAC/VthinAF = %d/%d" % (self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine")))
-
     def configure_trigger_fe(self, config_file_trigger_fe, col_span, row_span):
         logging.info("Sending configuration to trigger FE")
         self.register_trigger_fe = FEI4Register(config_file_trigger_fe)
@@ -126,7 +116,7 @@ class Fei4TriggerScanGdac(ScanBase):
                     if self.stop_thread_event.is_set():
                         break
                     self.stop_loop_event.clear()
-                    self.set_gdac(gdac_value)
+                    self.register_utils.set_gdac(gdac_value)
                     self.readout.start()
                     wait_for_first_trigger = wait_for_first_trigger_setting
                     # preload command
@@ -206,7 +196,7 @@ class Fei4TriggerScanGdac(ScanBase):
             analyze_raw_data.create_cluster_tot_hist = True
             analyze_raw_data.create_cluster_table = True
             analyze_raw_data.interpreter.set_warning_output(False)
-            analyze_raw_data.interpret_word_table(FEI4B=scan.register.fei4b)
+            analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms(scan_data_filename=scan.scan_data_filename, maximum='maximum')
         with AnalyzeRawData(raw_data_file=scan.scan_data_filename + "_trigger_fe.h5", analyzed_data_file=output_file_trigger_fe) as analyze_raw_data:
@@ -218,7 +208,7 @@ class Fei4TriggerScanGdac(ScanBase):
             analyze_raw_data.create_cluster_tot_hist = True
             analyze_raw_data.create_cluster_table = True
             analyze_raw_data.interpreter.set_warning_output(False)
-            analyze_raw_data.interpret_word_table(FEI4B=scan.register.fei4b)
+            analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms(scan_data_filename=scan.scan_data_filename + '_trigger_fe', maximum='maximum')
 

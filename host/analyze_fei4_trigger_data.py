@@ -24,7 +24,7 @@ from analysis.analyze_raw_data import AnalyzeRawData
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
-def analyze(raw_data_file_triggered_fe=None, hit_file_triggered_fe=None, raw_data_file_trigger_fe=None, hit_file_trigger_fe=None, trigger_count=16, is_fei4b=False, print_warnings=True):
+def analyze(raw_data_file_triggered_fe=None, hit_file_triggered_fe=None, raw_data_file_trigger_fe=None, hit_file_trigger_fe=None, trigger_count=16, fei4b=False, print_warnings=True):
     if raw_data_file_triggered_fe != None:
         logging.info("Analyze triggered Fe data")
         with AnalyzeRawData(raw_data_file=raw_data_file_triggered_fe, analyzed_data_file=hit_file_triggered_fe) as analyze_raw_data:
@@ -36,7 +36,7 @@ def analyze(raw_data_file_triggered_fe=None, hit_file_triggered_fe=None, raw_dat
             analyze_raw_data.create_cluster_tot_hist = True
             analyze_raw_data.interpreter.set_warning_output(print_warnings)
             analyze_raw_data.clusterizer.set_warning_output(print_warnings)
-            analyze_raw_data.interpret_word_table(FEI4B=is_fei4b)
+            analyze_raw_data.interpret_word_table(fei4b=fei4b)
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms(scan_data_filename=hit_file_triggered_fe[:-3] + '.pdf', maximum='maximum')
 
@@ -51,7 +51,7 @@ def analyze(raw_data_file_triggered_fe=None, hit_file_triggered_fe=None, raw_dat
             analyze_raw_data.create_cluster_tot_hist = True
             analyze_raw_data.interpreter.set_warning_output(print_warnings)
             analyze_raw_data.clusterizer.set_warning_output(print_warnings)
-            analyze_raw_data.interpret_word_table(FEI4B=is_fei4b)
+            analyze_raw_data.interpret_word_table(fei4b=fei4b)
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms(scan_data_filename=hit_file_trigger_fe[:-3] + '.pdf', maximum='maximum')
 

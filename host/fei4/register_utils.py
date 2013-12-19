@@ -302,6 +302,19 @@ class FEI4RegisterUtils(object):
             mask[col_array.min():col_array.max() + 1, row_array.min():row_array.max() + 1] = value  # advanced indexing
         return mask
 
+    def set_gdac(self, value):
+        commands = []
+        commands.extend(self.register.get_commands("confmode"))
+        self.register.set_global_register_value("Vthin_AltFine", value & 255)  # take low word
+        if self.register.fei4b:
+            self.register.set_global_register_value("Vthin_AltCoarse", value >> 7)  # take every second AltCoarse value
+        else:
+            self.register.set_global_register_value("Vthin_AltCoarse", value >> 8)  # take high word
+        commands.extend(self.register.get_commands("wrregister", name=["Vthin_AltFine", "Vthin_AltCoarse"]))
+        commands.extend(self.register.get_commands("runmode"))
+        self.send_commands(commands)
+        logging.info("Set GDAC to %d (VthinAltCoarse / VthinAltFine = %d / %d)" % (value, self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine")))
+
 
 def cartesian(arrays, out=None):
     """

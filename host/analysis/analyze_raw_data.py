@@ -127,7 +127,7 @@ class AnalyzeRawData(object):
         self.meta_event_index = None
         self._chunk_size = 2000000
         self._filter_table = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
-        self.FEI4B = False
+        self.fei4b = False
         self.create_hit_table = False
         self.create_meta_event_index = True
         self.create_meta_word_index = False
@@ -275,12 +275,12 @@ class AnalyzeRawData(object):
         self.interpreter.create_meta_data_word_index(value)
 
     @property
-    def FEI4B(self):
-        return self._FEI4B
+    def fei4b(self):
+        return self._fei4b
 
-    @FEI4B.setter
-    def FEI4B(self, value):
-        self._FEI4B = value
+    @fei4b.setter
+    def fei4b(self, value):
+        self._fei4b = value
         self.interpreter.set_FEI4B(value)
 
     @property
@@ -352,14 +352,14 @@ class AnalyzeRawData(object):
         self._create_cluster_tot_hist = value
 
     #@profile
-    def interpret_word_table(self, raw_data_file=None, analyzed_data_file=None, FEI4B=False):
+    def interpret_word_table(self, raw_data_file=None, analyzed_data_file=None, fei4b=False):
         if(raw_data_file != None):
             self._raw_data_file = raw_data_file
 
         if(analyzed_data_file != None):
             self._analyzed_data_file = analyzed_data_file
 
-        self.FEI4B = FEI4B
+        self.fei4b = fei4b
 
         hits = np.empty((self._chunk_size,), dtype=dtype_from_descr(data_struct.HitInfoTable))
 
