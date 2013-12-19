@@ -239,8 +239,7 @@ def get_hits_in_event_range(hits_array, event_start, event_stop):
 
 
 def write_hits_in_events(hit_table_in, hit_table_out, events, start_hit_word=0, chunk_size=5000000):
-    '''Selects the hits that occurred in events and writes them to a pytable. This function reduces the in RAM operations and has to be used if the get_hits_in_events
-        function raises a memory error.
+    '''Selects the hits that occurred in events and writes them to a pytable. This function reduces the in RAM operations and has to be used if the get_hits_in_events function raises a memory error.
 
     Parameters
     ----------
