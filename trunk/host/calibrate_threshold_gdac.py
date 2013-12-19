@@ -138,7 +138,7 @@ if __name__ == "__main__":
     scan_data_filenames = {}
     scan_threshold_fast = ThresholdScanFast(config_file=configuration.config_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
     for i, gdac_value in enumerate(gdac_range):
-        scan_threshold_fast.register_util.set_gdac(gdac_value)
+        scan_threshold_fast.register_utils.set_gdac(gdac_value)
         scan_threshold_fast.scan_identifier = scan_identifier + '_' + str(gdac_value)
         scan_threshold_fast.start(configure=True, scan_parameter_range=(scan_threshold_fast.scan_parameter_start, 800), scan_parameter_stepsize=2, search_distance=10, minimum_data_points=10, ignore_columns=ignore_columns)
         scan_threshold_fast.stop()
