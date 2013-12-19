@@ -72,15 +72,26 @@ def get_hit_rate_correction(gdacs, calibration_gdacs, cluster_size_histogram):
 
 
 if __name__ == "__main__":
-    scan_name = 'scan_fei4_trigger_141'
-    chip_flavor = 'fei4a'
-    input_file_hits = 'data/' + scan_name + "_cut_1_analyzed.h5"
+    
+    
+    input_file_hits = 'data/' + scan_name + "_cut_3_analyzed.h5"
     input_file_calibration = 'data/calibrate_threshold_gdac.h5'
     input_file_correction = 'data/scan_fei4_trigger_141_analyzed_per_parameter_2.h5'
+    
+    scan_name = 'bias_20\\scan_fei4_trigger_gdac_0'
+    folder = 'K:\\data\\FE-I4\\ChargeRecoMethod\\'
+    
+    chip_flavor = 'fei4a'
+    input_file_hits = folder + scan_name + "_interpreted.h5"
+    output_file_hits = folder + scan_name + "_cut_3.h5"
+    scan_data_filename = folder + scan_name
+
+    use_cluster_rate_correction = False
+
     gdac_range = range(100, 114, 1)  # the GDAC range used during the calibration
     gdac_range.extend((np.exp(np.array(range(0, 150)) / 10.) / 10. + 100).astype('<u8')[50:-40].tolist())  # exponential GDAC range to correct for logarithmic threshold(GDAC) function
 
-    use_cluster_rate_correction = True
+    
 
     with tb.openFile(input_file_calibration, mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
         with tb.openFile(input_file_hits, mode="r") as in_file_hits_h5:  # read scan data file from scan_fei4_trigger_gdac scan
@@ -92,11 +103,11 @@ if __name__ == "__main__":
             gdac_range_calibration = gdac_range
             gdac_range_source_scan = analysis_utils.get_scan_parameter(meta_data_array=in_file_hits_h5.root.meta_data[:])['GDAC']
 
+            correction_factors = 1
             if use_cluster_rate_correction:
                 correction_h5 = tb.openFile(input_file_correction, mode="r")
                 cluster_size_histogram = correction_h5.root.AllHistClusterSize[:]
                 correction_factors = get_hit_rate_correction(gdacs=gdac_range_source_scan[:-1], calibration_gdacs=gdac_range_source_scan, cluster_size_histogram=cluster_size_histogram)
-                print correction_factors.shape
 
             logging.info('Analyzing source scan data with %d different GDAC settings from %d to %d with minimum step sizes from %d to %d' % (len(gdac_range_source_scan), np.min(gdac_range_source_scan), np.max(gdac_range_source_scan), np.min(np.gradient(gdac_range_source_scan)), np.max(np.gradient(gdac_range_source_scan))))
             logging.info('Use calibration data with %d different GDAC settings from %d to %d with minimum step sizes from %d to %d' % (len(gdac_range_calibration), np.min(gdac_range_calibration), np.max(gdac_range_calibration), np.min(np.gradient(gdac_range_calibration)), np.max(np.gradient(gdac_range_calibration))))
@@ -117,18 +128,16 @@ if __name__ == "__main__":
             x = np.reshape(selected_pixel_thresholds, newshape=(selected_pixel_thresholds.shape[0] * selected_pixel_thresholds.shape[1], selected_pixel_thresholds.shape[2])).ravel()
             y = np.reshape(selected_pixel_hits, newshape=(selected_pixel_hits.shape[0] * selected_pixel_hits.shape[1], selected_pixel_hits.shape[2])).ravel()
 
-            print len(x), len(y)
-
             #nothing should be NAN, NAN is not supported yet
             if np.isnan(x).sum() > 0 or np.isnan(y).sum() > 0:
                 logging.warning('There are pixels with NaN threshold or hit values, analysis will be wrong')
 
-            plot_profile_histogram(x=x * 55., y=y / 100., n_bins=len(gdac_range_source_scan) / 2, title='Single hit cluster rate for different pixel thresholds', x_label='pixel threshold [e]', y_label='single hit cluster rate [1/s]')
+            plot_profile_histogram(x=x * 55., y=y / 100., n_bins=len(gdac_range_source_scan) / 2, title='Triple hit cluster rate for different pixel thresholds', x_label='pixel threshold [e]', y_label='triple hit cluster rate [1/s]')
 
-            x = get_mean_threshold(gdac_range_source_scan, mean_threshold_calibration)
-            y = selected_pixel_hits.mean(axis=(0, 1))
-
-            plot_scatter(x * 55, y, title='Mean single pixel cluster rate at different thresholds', x_label='mean threshold [e]', y_label='mean single pixel cluster')
+#             x = get_mean_threshold(gdac_range_source_scan, mean_threshold_calibration)
+#             y = selected_pixel_hits.mean(axis=(0, 1))
+# 
+#             plot_scatter(x * 55, y, title='Mean single pixel cluster rate at different thresholds', x_label='mean threshold [e]', y_label='mean single pixel cluster')
 
     if use_cluster_rate_correction:
         correction_h5.close()
