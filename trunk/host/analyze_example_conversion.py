@@ -54,7 +54,7 @@ def analyze():
 #  
 #         analyze_raw_data.interpreter.set_warning_output(True)  # std. setting is True
 #         analyze_raw_data.interpreter.debug_events(0, 0, False)  # events to be printed onto the console for debugging, usually deactivated
-#         analyze_raw_data.interpret_word_table(FEI4B=True if(chip_flavor == 'fei4b') else False)  # the actual start conversion command
+#         analyze_raw_data.interpret_word_table(fei4b=True if(chip_flavor == 'fei4b') else False)  # the actual start conversion command
 #         analyze_raw_data.interpreter.print_summary()  # prints the interpreter summary
 #         analyze_raw_data.plot_histograms(scan_data_filename=scan_data_filename)  # plots all activated histograms into one pdf
 
