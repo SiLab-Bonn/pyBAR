@@ -163,7 +163,7 @@ class NoiseOccupancyScan(ScanBase):
 #             analyze_raw_data.interpreter.debug_events(0, 0, True)  # events to be printed onto the console for debugging, usually deactivated
             analyze_raw_data.interpreter.set_trig_count(self.register.get_global_register_value("Trig_Count"))
             analyze_raw_data.interpreter.set_warning_output(False)
-            analyze_raw_data.interpret_word_table(FEI4B=scan.register.fei4b)
+            analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms()
             plot_occupancy(self.occ_mask.T, title='Masked Pixels', z_max=1, filename=analyze_raw_data.output_pdf)

@@ -23,7 +23,7 @@ gdac_range.extend((np.exp(np.array(range(0, 150)) / 10.) / 10. + 100).astype('<u
 ignore_columns = (1, 77, 78, 79)  # FE columns (from 1 to 80), ignore these in analysis and during data taking
 
 
-def analyze(raw_data_file, analyzed_data_file, FEI4B=False):
+def analyze(raw_data_file, analyzed_data_file, fei4b=False):
     with AnalyzeRawData(raw_data_file=raw_data_file + ".h5", analyzed_data_file=analyzed_data_file) as analyze_raw_data:
         analyze_raw_data.create_tot_hist = False
         analyze_raw_data.create_threshold_hists = True
@@ -31,7 +31,7 @@ def analyze(raw_data_file, analyzed_data_file, FEI4B=False):
         analyze_raw_data.create_threshold_mask = True
         analyze_raw_data.n_injections = 100
         analyze_raw_data.interpreter.set_warning_output(False)  # so far the data structure in a threshold scan was always bad, too many warnings given
-        analyze_raw_data.interpret_word_table(FEI4B=FEI4B)
+        analyze_raw_data.interpret_word_table(fei4b=fei4b)
         analyze_raw_data.interpreter.print_summary()
 
 
@@ -71,7 +71,7 @@ def store_calibration_data_as_array(out_file_h5, mean_threshold_calibration, mea
     logging.info("done")
 
 
-def create_calibration(scan_identifier, scan_data_filenames, is_FEI4B=False, create_plots=True):
+def create_calibration(scan_identifier, scan_data_filenames, fei4b=False, create_plots=True):
     logging.info("Analyzing and plotting results...")
     output_h5_filename = 'data/' + scan_identifier + '.h5'
     logging.info('Saving calibration in: %s' % output_h5_filename)
@@ -90,7 +90,7 @@ def create_calibration(scan_identifier, scan_data_filenames, is_FEI4B=False, cre
         #raw_data_file = 'data/' + scan_identifier + '_' + str(gdac) + "_0"
         raw_data_file = scan_data_filenames[gdac]
         analyzed_data_file = raw_data_file + '_interpreted.h5'
-        analyze(raw_data_file=raw_data_file, analyzed_data_file=analyzed_data_file, FEI4B=is_FEI4B)
+        analyze(raw_data_file=raw_data_file, analyzed_data_file=analyzed_data_file, fei4b=fei4b)
         with tb.openFile(analyzed_data_file, mode="r") as in_file_h5:
             # mask the not scanned columns for analysis and plotting
             occupancy_masked = mask_columns(pixel_array=in_file_h5.root.HistOcc[:], ignore_columns=ignore_columns)
@@ -130,16 +130,6 @@ def mask_columns(pixel_array, ignore_columns):
     return np.ma.masked_array(pixel_array, m)
 
 
-def set_gdac(value, register, register_utils):
-    commands = []
-    commands.extend(register.get_commands("confmode"))
-    register.set_global_register_value("Vthin_AltFine", value & 255)  # take low word
-    register.set_global_register_value("Vthin_AltCoarse", value >> 8)  # take high word
-    commands.extend(register.get_commands("wrregister", name=["Vthin_AltFine", "Vthin_AltCoarse"]))
-    commands.extend(register.get_commands("runmode"))
-    register_utils.send_commands(commands)
-    logging.info("Set GDAC to VthinAC/VthinAF = %d/%d" % (register.get_global_register_value("Vthin_AltCoarse"), register.get_global_register_value("Vthin_AltFine")))
-
 if __name__ == "__main__":
     scan_identifier = "calibrate_threshold_gdac"
 
@@ -147,16 +137,16 @@ if __name__ == "__main__":
     logging.info('Taking threshold data at following GDACs: %s' % str(gdac_range))
     scan_data_filenames = {}
     scan_threshold_fast = ThresholdScanFast(config_file=configuration.config_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    for i, gdac in enumerate(gdac_range):
-        set_gdac(gdac, scan_threshold_fast.register, scan_threshold_fast.register_utils)
-        scan_threshold_fast.scan_identifier = scan_identifier + '_' + str(gdac)
+    for i, gdac_value in enumerate(gdac_range):
+        scan_threshold_fast.register_util.set_gdac(gdac_value)
+        scan_threshold_fast.scan_identifier = scan_identifier + '_' + str(gdac_value)
         scan_threshold_fast.start(configure=True, scan_parameter_range=(scan_threshold_fast.scan_parameter_start, 800), scan_parameter_stepsize=2, search_distance=10, minimum_data_points=10, ignore_columns=ignore_columns)
         scan_threshold_fast.stop()
-        scan_data_filenames[gdac] = scan_threshold_fast.scan_data_filename
+        scan_data_filenames[gdac_value] = scan_threshold_fast.scan_data_filename
 
     logging.info("Calibration finished in " + str(datetime.now() - startTime))
 
     # analyze and plot the data from all scans
-    create_calibration(scan_identifier, scan_data_filenames=scan_data_filenames, is_FEI4B=scan_threshold_fast.register.fei4b, create_plots=True)
+    create_calibration(scan_identifier, scan_data_filenames=scan_data_filenames, fei4b=scan_threshold_fast.register.fei4b, create_plots=True)
 
     logging.info("Finished!")

@@ -1,7 +1,8 @@
 """This is an example module how to use the analysis_utils to apply cuts on interpreted hit and cluster data.
 """
-scan_name = 'scan_fei4_trigger_gdac_0'
-folder = 'K:\\data\\FE-I4\\ChargeRecoMethod\\bias_20\\'
+
+scan_name = 'SCC45_raw_data'
+folder = 'data/'
 
 chip_flavor = 'fei4a'
 input_file = folder + scan_name + ".h5"
@@ -21,8 +22,8 @@ chunk_size_hits = 5000000
 
 
 def select_hits():
-    n_cluster_condition = 'n_cluster>=1'
-    cluster_size_condition = 'cluster_size>=1'
+    n_cluster_condition = 'n_cluster==1'
+    cluster_size_condition = 'cluster_size==1'
     with tb.openFile(input_file_hits, mode="r") as in_hit_file_h5:
         with tb.openFile(output_file_hits, mode="w") as out_hit_file_h5:
             hit_table_out = out_hit_file_h5.createTable(out_hit_file_h5.root, name='Hits', description=data_struct.HitInfoTable, title='hit_data', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
