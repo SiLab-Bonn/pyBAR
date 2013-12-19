@@ -14,7 +14,6 @@ input_file_hits = folder + scan_name + "_interpreted.h5"
 output_file = folder + scan_name + "_cluster_sizes.h5"
 scan_data_filename = folder + scan_name
 
-
 import tables as tb
 import numpy as np
 from datetime import datetime
@@ -25,7 +24,6 @@ from analysis.analyze_raw_data import AnalyzeRawData
 from analysis.analysis_utils import get_scan_parameter, get_meta_data_index_at_scan_parameter, get_hits_in_event_range, data_aligned_at_events
 
 
-# @profile
 def analyze_per_scan_parameter():
     with tb.openFile(input_file_hits, mode="r+") as in_hit_file_h5:
         meta_data_array = in_hit_file_h5.root.meta_data[:]
@@ -38,7 +36,7 @@ def analyze_per_scan_parameter():
 
         hit_table = in_hit_file_h5.root.Hits
 
-        if not hit_table.cols.event_number.is_indexed:
+        if not hit_table.cols.event_number.is_indexed:  # index event_number column to speed up everything
             logging.info('Create event_number index')
             hit_table.cols.event_number.remove_index()
             hit_table.cols.event_number.create_index(1, 'ultralight', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
@@ -65,42 +63,22 @@ def analyze_per_scan_parameter():
 
                 logging.info('Data from events = [' + str(start_event_number) + ',' + str(stop_event_number) + '[')
 
-                i = 0
-                total_hits = 0
                 for hits, stop_index in data_aligned_at_events(hit_table, start_event_number=start_event_number, stop_event_number=stop_event_number, start=stop_index):
                     analyze_data.analyze_hits(hits)  # analyze the selected hits in chunks
-                    total_hits += len(hits)
 
-                # store tot hist
-                tot_hist = np.zeros(16, dtype=np.uint32)
-                analyze_data.histograming.get_tot_hist(tot_hist)
-                tot_hist_table = out_file_h5.createCArray(actual_parameter_group, name='HistTot', title='TOT Histogram', atom=tb.Atom.from_dtype(tot_hist.dtype), shape=tot_hist.shape, filters=filter_table)
-                tot_hist_table[:] = tot_hist
-                plotting.plot_tot(hist=tot_hist, title='Time-over-Threshold distribution (ToT code) for '+scan_parameter_name+'='+str(scan_parameter_values[event_number_index]), filename=output_pdf)
-                print scan_parameter_name, total_hits, np.sum(tot_hist)
-#                 #store occupancy hist
-#                 occupancy = np.zeros(80 * 336 * analyze_data.histograming.get_n_parameters(), dtype=np.uint32)  # create linear array as it is created in histogram class
-#                 analyze_data.histograming.get_occupancy(occupancy)
-#                 occupancy_array = np.reshape(a=occupancy.view(), newshape=(80, 336, analyze_data.histograming.get_n_parameters()), order='F')  # make linear array to 3d array (col,row,parameter)
-#                 occupancy_array = np.swapaxes(occupancy_array, 0, 1)
-#                 occupancy_array_table = out_file_h5.createCArray(actual_parameter_group, name='HistOcc', title='Occupancy Histogram', atom=tb.Atom.from_dtype(occupancy.dtype), shape=(336, 80, analyze_data.histograming.get_n_parameters()), filters=filter_table)
-#                 occupancy_array_table[0:336, 0:80, 0:analyze_data.histograming.get_n_parameters()] = occupancy_array  # swap axis col,row,parameter --> row, col,parameter
-#                 #store cluster size hist
+                # store occupancy hist
+                occupancy = np.zeros(80 * 336 * analyze_data.histograming.get_n_parameters(), dtype=np.uint32)  # create linear array as it is created in histogram class
+                analyze_data.histograming.get_occupancy(occupancy)
+                occupancy_array = np.reshape(a=occupancy.view(), newshape=(80, 336, analyze_data.histograming.get_n_parameters()), order='F')  # make linear array to 3d array (col,row,parameter)
+                occupancy_array = np.swapaxes(occupancy_array, 0, 1)
+                occupancy_array_table = out_file_h5.createCArray(actual_parameter_group, name='HistOcc', title='Occupancy Histogram', atom=tb.Atom.from_dtype(occupancy.dtype), shape=(336, 80, analyze_data.histograming.get_n_parameters()), filters=filter_table)
+                occupancy_array_table[0:336, 0:80, 0:analyze_data.histograming.get_n_parameters()] = occupancy_array  # swap axis col,row,parameter --> row, col,parameter
+                # create cluster size hist
                 cluster_size_hist = np.zeros(1024, dtype=np.uint32)
                 analyze_data.clusterizer.get_cluster_size_hist(cluster_size_hist)
-#                 cluster_size_hist_table = out_file_h5.createCArray(actual_parameter_group, name='HistClusterSize', title='Cluster Size Histogram', atom=tb.Atom.from_dtype(cluster_size_hist.dtype), shape=cluster_size_hist.shape, filters=filter_table)
-#                 cluster_size_hist_table[:] = cluster_size_hist
                 cluster_size_total[event_number_index] = cluster_size_hist
-                plotting.plot_cluster_size(hist=cluster_size_hist, title='Cluster size (' + str(np.sum(cluster_size_hist)) + ' entries) for '+scan_parameter_name+'='+str(scan_parameter_values[event_number_index]), filename=output_pdf)
-#                 #store cluster tot hist
-#                 cluster_tot_hist = np.zeros(128 * 1024, dtype=np.uint32)  # create linear array as it is created in histogram class
-#                 analyze_data.clusterizer.get_cluster_tot_hist(cluster_tot_hist)
-#                 cluster_tot_hist = np.reshape(a=cluster_tot_hist.view(), newshape=(128, 1024), order='F')  # make linear array to 2d array (tot, cluster size)
-#                 cluster_tot_hist_table = out_file_h5.createCArray(actual_parameter_group, name='HistClusterTot', title='Cluster Tot Histogram', atom=tb.Atom.from_dtype(cluster_tot_hist.dtype), shape=cluster_tot_hist.shape, filters=filter_table)
-#                 cluster_tot_hist_table[:] = cluster_tot_hist
-#                 if stop_index > 0:
-#                     break
-# 
+                plotting.plot_cluster_size(hist=cluster_size_hist, title='Cluster size (' + str(np.sum(cluster_size_hist)) + ' entries) for ' + scan_parameter_name + '=' + str(scan_parameter_values[event_number_index]), filename=output_pdf)
+
             cluster_size_total_out = out_file_h5.createCArray(out_file_h5.root, name='AllHistClusterSize', title='All Cluster Size Histograms', atom=tb.Atom.from_dtype(cluster_size_total.dtype), shape=cluster_size_total.shape, filters=filter_table)
             cluster_size_total_out[:] = cluster_size_total
         output_pdf.close()
