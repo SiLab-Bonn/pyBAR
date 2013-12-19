@@ -137,17 +137,39 @@ def make_occupancy_hist(cols, rows, ncols=80, nrows=336):
 
 
 def plot_profile_histogram(x, y, n_bins=100, title=None, x_label=None, y_label=None, log_y=False, filename=None):
+    '''Takes 2D point data (x,y) and creates a profile histogram similar to the TProfile in ROOT. It calculates
+    the y mean for every bin and gives the y mean error as error bars.
+
+    Parameters
+    ----------
+    x : array like
+        data x positions
+    y : array like
+        data y positions
+    n_bins : int
+        the number of bins used to create the histogram
+    '''
     if len(x) != len(y):
         raise ValueError('x and y dimensions have to be the same')
-    n, bin_edges = np.histogram(x, bins=n_bins)
-    sy = np.histogram(x, bins=n_bins, weights=y)[0]
-    sy2 = np.histogram(x, bins=n_bins, weights=y * y)[0]
-    bin_centers = (bin_edges[1:] + bin_edges[:-1]) / 2
-    mean = sy / n
-    std = np.sqrt(sy2 / n - mean * mean)
-#     polynom_fit = np.poly1d(np.polyfit(bin_centers, mean, deg=8, w=std))
+    n, bin_edges = np.histogram(x, bins=n_bins)  # needed to calculate the number of points per bin
+    sy = np.histogram(x, bins=n_bins, weights=y)[0]  # the sum of the bin values
+    sy2 = np.histogram(x, bins=n_bins, weights=y * y)[0]  # the quadratic sum of the bin values
+    bin_centers = (bin_edges[1:] + bin_edges[:-1]) / 2  # calculate the bin center for all bins
+    mean = sy / n  # calculate the mean of all bins
+    std = np.sqrt((sy2 / n - mean * mean))  # TODO: no understood, need check if this is really the standard deviation
+    #     std_mean = np.sqrt((sy2 - 2 * mean * sy + mean * mean) / (1*(n - 1)))  # this should be the formular ?!
+    std_mean = std / np.sqrt((n - 1))
+
+#     from scipy.special import erf
+# #     
+#     def scurve(x, A, mu, sigma):
+#         return 0.5 * A * erf((-x + mu) / (np.sqrt(2) * sigma)) + 0.5 * A
+#      
+#     popt, _ = curve_fit(scurve, bin_centers, mean, p0=[1.5, 9000, 500])
+
+#     polynom_fit = np.poly1d(np.polyfit(bin_centers, mean, deg=7))
 #     plt.plot(bin_centers, polynom_fit(bin_centers), 'r-')
-    plt.errorbar(bin_centers, mean, yerr=std, fmt='o')
+    plt.errorbar(bin_centers, mean, yerr=std_mean, fmt='o')
     plt.title(title)
     if x_label is not None:
         plt.xlabel(x_label)
@@ -287,8 +309,8 @@ def plot_cluster_tot(hist, median=False, max_occ=None, filename=None):
     plot_1d_hist(hist=hist[:, 0], title='Cluster ToT (' + str(sum(hist[:, 0])) + ' entries)', plot_range=range(0, 32), x_axis_title='cluster ToT', y_axis_title='#', filename=filename)
 
 
-def plot_cluster_size(hist, filename=None):
-    plot_1d_hist(hist=hist, title='Cluster size (' + str(np.sum(hist)) + ' entries)', log_y=True, plot_range=range(0, 32), x_axis_title='Cluster size', y_axis_title='#', filename=filename)
+def plot_cluster_size(hist, title = None, filename=None):
+    plot_1d_hist(hist=hist, title='Cluster size (' + str(np.sum(hist)) + ' entries)' if title == None else title, log_y=True, plot_range=range(0, 32), x_axis_title='Cluster size', y_axis_title='#', filename=filename)
 
 
 def plot_scurves(occupancy_hist, scan_parameters, title='S-Curves', ylabel='Occupancy', max_occ=None, scan_parameter_name=None, filename=None):  # tornado plot
