@@ -5,12 +5,8 @@ import logging
 import pandas as pd
 import numpy as np
 import numexpr as ne
-import tables as tb
 from scipy.sparse import coo_matrix
-from datetime import datetime
 import sys
-
-from analysis.RawDataConverter.data_histograming import PyDataHistograming
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
@@ -73,7 +69,7 @@ def reduce_sorted_to_intersect(ar1, ar2):
     ar2_biggest_value = ar2[-1]
     ar2_smallest_value = ar2[0]
 
-    if ar1_biggest_value < ar2_smallest_value or ar1_smallest_value > ar2_biggest_value:  # special case, no intersection at all
+    if ar1_biggest_value < ar2_smallest_value or ar1_smallest_value > ar2_biggest_value or ar1_smallest_value == ar1_biggest_value or ar2_smallest_value == ar2_biggest_value:  # special case, no intersection at all
         return ar1[0:0], ar2[0:0]
 
     # get min/max indices with values that are also in the other array
@@ -168,7 +164,6 @@ def remove_duplicate_hits(data_frame):
     return data_frame
 
 
-# @profile
 def get_hits_with_n_cluster_per_event(hits_table, cluster_table, condition='n_cluster==1'):
     '''Selects the hits with a certain number of cluster.
 
@@ -190,14 +185,14 @@ def get_hits_with_n_cluster_per_event(hits_table, cluster_table, condition='n_cl
     return data_frame_hits.loc[events_with_n_cluster]
 
 
-def get_hits_in_events(hits_array, events, is_sorted=True):
+def get_hits_in_events(hits_array, events, assume_sorted=True):
     '''Selects the hits that occurred in events. If a event range can be defined use the get_hits_in_event_range function. It is much faster.
 
     Parameters
     ----------
     hits_array : numpy.array
     events : array
-    is_sorted : bool
+    assume_sorted : bool
         Is true if the events to select are sorted from low to high value. Increases speed by 35%.
 
     Returns
@@ -207,19 +202,22 @@ def get_hits_in_events(hits_array, events, is_sorted=True):
     '''
 
     logging.info("Calculate hits that exists in the given %d events." % len(events))
-    if is_sorted:
+    if assume_sorted:
         events, _ = reduce_sorted_to_intersect(events, hits_array['event_number'])  # reduce the event number range to the max min event number of the given hits to save time
         if events.shape[0] == 0:  # if there is not a single selected hit
             return hits_array[0:0]
     try:
-        hits_in_events = hits_array[in1d_sorted(hits_array['event_number'], events)]
+        if assume_sorted:
+            hits_in_events = hits_array[in1d_sorted(hits_array['event_number'], events)]
+        else:
+            hits_in_events = hits_array[np.in1d(hits_array['event_number'], events)]
     except MemoryError:
         logging.error('There are too many hits to do in RAM operations. Use the write_hits_in_events function instead.')
         raise MemoryError
     return hits_in_events
 
 
-def get_hits_in_event_range(hits_array, event_start, event_stop):
+def get_hits_in_event_range(hits_array, event_start, event_stop, assume_sorted=True):
     '''Selects the hits that occurred in the given event range [event_start, event_stop[
 
     Parameters
@@ -227,6 +225,8 @@ def get_hits_in_event_range(hits_array, event_start, event_stop):
     hits_array : numpy.array
     event_start : int
     event_stop : int
+    assume_sorted : bool
+        Set to true if the hits are sorted by the event_number. Increases speed.
 
     Returns
     -------
@@ -235,7 +235,24 @@ def get_hits_in_event_range(hits_array, event_start, event_stop):
     '''
     logging.info("Calculate hits that exists in the given event range [%d,%d[." % (event_start, event_stop))
     event_number = hits_array['event_number']
-    return hits_array[np.logical_and(event_number >= event_start, event_number < event_stop)]
+    if assume_sorted:
+        hits_event_start = hits_array['event_number'][0]
+        hits_event_stop = hits_array['event_number'][-1]
+        if hits_event_stop < event_start or hits_event_start > event_stop or event_start == event_stop:  # special case, no intersection at all
+            print 'return NADA'
+            return hits_array[0:0]
+
+        # get min/max indices with values that are also in the other array
+        min_index_hits = np.argmin(hits_array['event_number'] < event_start)
+        max_index_hits = np.argmax(hits_array['event_number'] >= event_stop)
+
+        if min_index_hits < 0:
+            min_index_hits = 0
+        if max_index_hits == 0 or max_index_hits > hits_array['event_number'].shape[0]:
+            max_index_hits = hits_array['event_number'].shape[0]
+        return hits_array[min_index_hits:max_index_hits]
+    else:
+        return hits_array[np.logical_and(event_number >= event_start, event_number < event_stop)]
 
 
 def write_hits_in_events(hit_table_in, hit_table_out, events, start_hit_word=0, chunk_size=5000000):
@@ -354,13 +371,13 @@ def get_n_cluster_in_events(event_number):
     if (sys.maxint < 3000000000):  # on 32- bit operation systems max int is 2147483647 leading to numpy bugs that need workarounds
         event_number_array = event_number.astype('<i4')  # BUG in numpy, unint works with 64-bit, 32 bit needs reinterpretation
         offset = np.amin(event_number_array)
-        event_number_array = np.subtract(event_number_array, offset) # BUG #225 for values > int32
+        event_number_array = np.subtract(event_number_array, offset)  # BUG #225 for values > int32
         cluster_in_event = np.bincount(event_number_array)  # for one cluster one event number is given, counts how many different event_numbers are there for each event number from 0 to max event number
         selected_event_number_index = np.nonzero(cluster_in_event)[0]
         selected_event_number = np.add(selected_event_number_index, offset)
         return np.vstack((selected_event_number, cluster_in_event[selected_event_number_index])).T
     else:
-        cluster_in_event = np.bincount(event_number) # for one cluster one event number is given, counts how many different event_numbers are there for each event number from 0 to max event number
+        cluster_in_event = np.bincount(event_number)  # for one cluster one event number is given, counts how many different event_numbers are there for each event number from 0 to max event number
         selected_event_number = np.nonzero(cluster_in_event)[0]
         return np.vstack((selected_event_number, cluster_in_event[selected_event_number])).T
 
@@ -384,7 +401,7 @@ def get_n_cluster_per_event_hist(cluster_table):
 
 # @profile
 def histogram_correlation(data_frame_combined):
-    '''Takes a dataframe with combined hit data from two Fe and correlates for each event each hit from one Fe to each hit of the other Fe. 
+    '''Takes a dataframe with combined hit data from two Fe and correlates for each event each hit from one Fe to each hit of the other Fe.
 
     Parameters
     ----------
@@ -461,19 +478,6 @@ def histogram_occupancy_per_pixel(array, labels=['column', 'row'], mask_no_hit=F
     else:
         return occupancy
 
-#     def fast_occupancy_histograming(self, hits): TODO bring this to work
-#         hit_histograming = PyDataHistograming()
-#         hit_histograming.set_info_output(True)
-#         hit_histograming.set_debug_output(True)
-#         hit_histograming.create_occupancy_hist(True)
-# 
-#         hit_histograming.add_hits(hits, hits.shape[0])
-#         occupancy_hist = np.zeros(80 * 336 * hit_histograming.get_n_parameters(), dtype=np.uint32)  # create linear array as it is created in histogram class
-#         hit_histograming.get_occupancy(occupancy_hist)
-#         occupancy_hist = np.reshape(a=occupancy.view(), newshape=(80, 336, hit_histograming.get_n_parameters()), order='F')  # make linear array to 3d array (col,row,parameter)
-#         occupancy_hist = np.swapaxes(occupancy_hist, 0, 1)
-#         return occupancy_hist
-
 
 def fast_histogram2d(x, y, bins):
     logging.warning('fast_histogram2d gives not exact results')
@@ -521,39 +525,82 @@ def get_scan_parameter(meta_data_array):
     return scan_parameters
 
 
-def data_aligned_at_events(table, chunk_size=10000000):
-    '''Takes the table with a event_number column and returns chunks with the size up to chunk_size. The chunks are chosen in a way that the events are not splitted.
+def data_aligned_at_events(table, start_event_number=None, stop_event_number=None, start=None, stop=None, chunk_size=10000000):
+    '''Takes the table with a event_number column and returns chunks with the size up to chunk_size. The chunks are chosen in a way that the events are not splitted. Additional
+    parameters can be set to increase the readout speed. If only events between a certain event range are used one can specify this. Also the start and the
+    stop indices for the reading of the table can be specified for speed up.
 
     Parameters
     ----------
     table : pytables.table
-
+    start_event_number : int
+        The data read is corrected that only data starting from the start_event number is returned. Lower event numbers are discarded.
+    stop_event_number : int
+        The data read is corrected that only data up to the stop_event number is returned. The stop_event number is not included.
     Returns
     -------
     numpy.histogram
         The data of the actual chunk.
-
+    last_index: int
+        The index of the last table part already used. Can be used if data_aligned_at_events is called in a loop for speed up.
+        Example:
+        start_index = 0
+        for scan_parameter in scan_parameter_range:
+            start_event_number, stop_event_number = event_select_function(scan_parameter)
+            for data, start_index in data_aligned_at_events(table, start_event_number=start_event_number, stop_event_number=stop_event_number, start=start_index):
+                do_something(data)
     Example
     -------
-    for data in data_aligned_at_events(table):
+    for data, index in data_aligned_at_events(table):
         do_something(data)
     '''
-    start_row = 0
-    while(start_row < table.nrows):
-        src_array = table.read(start=start_row, stop=start_row + chunk_size)
-        if start_row + src_array.shape[0] == table.nrows:
-            nrows = src_array.shape[0]
-        else:
-            last_event = src_array["event_number"][-1]
-            last_event_start_index = np.where(src_array["event_number"] == last_event)[0][0]
-            #last_event_start_index = 0
-            if last_event_start_index == 0:
+
+    # initialize variables
+    start_index_known = False
+    last_event_start_index = 0
+    start_index = 0 if start == None else start
+    stop_index = table.nrows if stop == None else stop
+
+    # set start stop indices from the event numbers for fast read if possible, not possible if the given event number does not exist
+    if start_event_number != None:
+        condition_1 = 'event_number==' + str(start_event_number)
+        start_indeces = table.get_where_list(condition_1)
+        if len(start_indeces) != 0:  # set start index if possible
+            start_index = start_indeces[0]
+            start_index_known = True
+    else:
+        start_event_number = 0
+
+    if stop_event_number != None:
+        condition_2 = 'event_number==' + str(stop_event_number)
+        stop_indeces = table.get_where_list(condition_2)
+        if len(stop_indeces) != 0:  # set the stop index if possible, stop index is excluded
+            stop_index = stop_indeces[0]
+
+    if start_index_known and start_index + chunk_size >= stop_index:  # special case, one read is enough, data not bigger than one chunk and the indices are known
+            yield table.read(start=start_index, stop=stop_index), stop_index
+            start_index = stop_index
+    else:  # read data in chunks, chunks do not devide events, abort if maximum event number is reached
+        while(start_index < stop_index):
+            src_array = table.read(start=start_index, stop=start_index + chunk_size + 1)  # stop index is exclusive, so add 1
+            if start_index + src_array.shape[0] == table.nrows:
                 nrows = src_array.shape[0]
-                logging.warning("Buffer too small to fit event. Possible loss of data. Increase chunk size.")
             else:
-                nrows = last_event_start_index
-        start_row = start_row + nrows
-        yield src_array[0:nrows]
+                first_event = src_array["event_number"][0]
+                last_event = src_array["event_number"][-1]
+                last_event_start_index = np.argmax(src_array["event_number"] == last_event)  # speedup
+                if last_event_start_index == 0:
+                    nrows = src_array.shape[0]
+                    logging.warning("Buffer too small to fit event. Possible loss of data. Increase chunk size.")
+                else:
+                    nrows = last_event_start_index
+
+            if stop_event_number != None and last_event > stop_event_number or first_event < start_event_number:
+                yield get_hits_in_event_range(src_array[0:nrows], event_start=start_event_number, event_stop=stop_event_number, assume_sorted=True), start_index
+                break
+            else:
+                yield src_array[0:nrows], start_index + nrows
+            start_index = start_index + nrows
 
 
 class AnalysisUtils(object):
