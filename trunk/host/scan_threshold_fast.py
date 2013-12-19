@@ -105,6 +105,7 @@ class ThresholdScanFast(ScanBase):
                     if self.scan_parameter_value < 0:
                         self.scan_parameter_value = 0
                     logging.info('Starting threshold scan at %s %d' % (scan_parameter, self.scan_parameter_value))
+                    self.scan_parameter_start = self.scan_parameter_value
                     self.record_data = True
                     continue
                         
