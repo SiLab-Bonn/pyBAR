@@ -150,6 +150,11 @@ class AnalyzeRawData(object):
         self.n_bcid = 16
         self.max_tot_value = 13
 
+    def reset(self):
+        self.interpreter.reset()
+        self.histograming.reset()
+        self.clusterizer.reset()
+
     @property
     def chunk_size(self):
         return self._chunk_size
@@ -675,10 +680,11 @@ class AnalyzeRawData(object):
         else:
             cluster_hits = None
 
-        if scan_parameter is None:
+        if scan_parameter is None:  # if nothing specified keep actual setting
+            logging.info('Keep scan parameter settings ')
+        elif not scan_parameter:    # set no scan parameter
             logging.info('No scan parameter used')
             self.histograming.set_no_scan_parameter()
-#             scan_par_array = np.array(meta_data[scan_par_name], dtype=[(scan_par_name, '<u4'), ])
         else:
             logging.info('Setting a scan parameter')
             self.histograming.add_scan_parameter(scan_parameter)
