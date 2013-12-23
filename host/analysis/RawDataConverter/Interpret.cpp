@@ -3,18 +3,7 @@
 Interpret::Interpret(void)
 {
 	setSourceFileName("Interpret");
-	_NbCID = 16;
-	_maxTot = 14;
-	_fEI4B = false;
-	_metaDataSet = false;
-	_debugEvents = false;
-	_lastMetaIndexNotSet = 0;
-	_lastWordIndexSet = 0;
-	_metaEventIndexLength = 0;
-	_metaEventIndex = 0;
-	_startWordIndex = 0;
-	_createMetaDataWordIndex = false;
-	_isMetaTableV2 = false;
+	setStandardSettings();
 	allocateHitBufferArray();
 	allocateTriggerErrorCounterArray();
 	allocateErrorCounterArray();
@@ -29,6 +18,23 @@ Interpret::~Interpret(void)
 	deleteTriggerErrorCounterArray();
 	deleteErrorCounterArray();
 	deleteServiceRecordCounterArray();
+}
+
+void Interpret::setStandardSettings()
+{
+	info("setStandardSettings()");
+	_NbCID = 16;
+	_maxTot = 14;
+	_fEI4B = false;
+	_metaDataSet = false;
+	_debugEvents = false;
+	_lastMetaIndexNotSet = 0;
+	_lastWordIndexSet = 0;
+	_metaEventIndexLength = 0;
+	_metaEventIndex = 0;
+	_startWordIndex = 0;
+	_createMetaDataWordIndex = false;
+	_isMetaTableV2 = false;
 }
 
 bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& pNdataWords)
@@ -286,6 +292,7 @@ void Interpret::setMetaDataWordIndex(MetaWordInfoOut*& rWordNumber, const unsign
 
 void Interpret::resetCounters()
 {
+	info("resetCounters()");
 	_nDataWords = 0;
 	_nTriggers = 0;
 	_nEvents = 0;
@@ -477,6 +484,7 @@ unsigned int Interpret::getHitSize()
 
 void Interpret::reset()
 {
+	info("reset()");
 	resetCounters();
 	resetEventVariables();
 	_lastMetaIndexNotSet = 0;

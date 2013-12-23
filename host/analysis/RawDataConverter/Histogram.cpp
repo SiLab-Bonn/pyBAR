@@ -3,30 +3,39 @@
 Histogram::Histogram(void)
 {
   setSourceFileName("Histogram");
-  _metaEventIndex = 0;
-  _parInfo = 0;
-  _lastMetaEventIndex = 0;
-  _parInfo = 0;
-  _metaEventIndex = 0;
-  _maxParameterValue = 1;
   _occupancy = 0;
-  _relBcid = 0;
   _tot = 0;
-  _NparameterValues = 1;
-  _minParameterValue = 0;
-  _maxParameterValue = 0;
-  _createOccHist = false;
-  _createRelBCIDhist = false;
-  _createTotHist = false;
-  _maxTot = 13;
+  _relBcid = 0;
+  setStandardSettings();
 }
 
 Histogram::~Histogram(void)
 {
-	debug("~Histogram(void): destructor called");
+  debug("~Histogram(void): destructor called");
   deleteOccupancyArray();
   deleteTotArray();
   deleteRelBcidArray();
+}
+
+void Histogram::setStandardSettings()
+{
+	info("setStandardSettings()");
+    _metaEventIndex = 0;
+	_parInfo = 0;
+	_lastMetaEventIndex = 0;
+	_parInfo = 0;
+	_metaEventIndex = 0;
+	_maxParameterValue = 1;
+	_occupancy = 0;
+	_relBcid = 0;
+	_tot = 0;
+	_NparameterValues = 1;
+	_minParameterValue = 0;
+	_maxParameterValue = 0;
+	_createOccHist = false;
+	_createRelBCIDhist = false;
+	_createTotHist = false;
+	_maxTot = 13;
 }
 
 void Histogram::createOccupancyHist(bool CreateOccHist)
@@ -155,11 +164,13 @@ void Histogram::deleteOccupancyArray()
 
 void Histogram::resetOccupancyArray()
 {
-  debug("resetOccupancyArray()");
-  for (unsigned int i = 0; i < RAW_DATA_MAX_COLUMN; i++)
-    for (unsigned int j = 0; j < RAW_DATA_MAX_ROW; j++)
-      for(unsigned int k = 0; k < getNparameters();k++)
-	      _occupancy[(long)i + (long)j * (long)RAW_DATA_MAX_COLUMN + (long)k * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] = 0;
+  info("resetOccupancyArray()");
+  if (_occupancy != 0){
+	  for (unsigned int i = 0; i < RAW_DATA_MAX_COLUMN; i++)
+		for (unsigned int j = 0; j < RAW_DATA_MAX_ROW; j++)
+		  for(unsigned int k = 0; k < getNparameters();k++)
+			  _occupancy[(long)i + (long)j * (long)RAW_DATA_MAX_COLUMN + (long)k * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] = 0;
+  }
 }
 
 void Histogram::allocateTotArray()
@@ -176,9 +187,11 @@ void Histogram::allocateTotArray()
 
 void Histogram::resetTotArray()
 {
-  debug("resetTotArray()");
-  for (unsigned int i = 0; i < 16; i++)
-    _tot[(long)i] = 0;
+  info("resetTotArray()");
+  if (_tot != 0){
+	  for (unsigned int i = 0; i < 16; i++)
+		_tot[(long)i] = 0;
+  }
 }
   
 void Histogram::deleteTotArray()
@@ -203,9 +216,11 @@ void Histogram::allocateRelBcidArray()
 
 void Histogram::resetRelBcidArray()
 {
-  debug("resetRelBcidArray()");
-  for (unsigned int i = 0; i < __MAXBCID; i++)
-    _relBcid[(long)i] = 0;
+  info("resetRelBcidArray()");
+  if (_relBcid != 0){
+	  for (unsigned int i = 0; i < __MAXBCID; i++)
+		_relBcid[(long)i] = 0;
+  }
 }
   
 void Histogram::deleteRelBcidArray()
@@ -319,7 +334,7 @@ void Histogram::calculateThresholdScanArrays(double rMuArray[], double rSigmaArr
       for(unsigned int k=0; k<getNparameters(); ++k){
         if((double) k*d < threshold)
           mu1 += _occupancy[(long)i + (long)j * (long)RAW_DATA_MAX_COLUMN  + (long)k * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW];
-        if((double) k*d > threshold)
+        else
           mu2 += (A-_occupancy[(long)i + (long)j * (long)RAW_DATA_MAX_COLUMN  + (long)k * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW]);
       }
       double noise = (double)d*(double)(mu1+mu2)/(double)A*sqrt(3.141592653589893238462643383/2);
@@ -335,5 +350,13 @@ void Histogram::setNoScanParameter()
   _NparameterValues = 1;
   allocateOccupancyArray();
   resetOccupancyArray();
+}
+
+void Histogram::reset()
+{
+	info("reset()");
+	resetOccupancyArray();
+	resetTotArray();
+	resetRelBcidArray();
 }
 

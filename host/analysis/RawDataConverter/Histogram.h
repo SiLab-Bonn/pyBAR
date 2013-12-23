@@ -40,11 +40,12 @@ public:
   void resetTotArray();
   void resetRelBcidArray();
 
-  void reset();
+  void reset();  // resets the histograms and keeps the settings
 
   void test();
 
 private:
+  void setStandardSettings();
   void allocateOccupancyArray();
   void deleteOccupancyArray();
   void allocateTotArray();

@@ -48,8 +48,8 @@ public:
 
 	void getClusterSizeHist(unsigned int& rNparameterValues, unsigned int*& rClusterSize, bool copy = true);
 	void getClusterTotHist(unsigned int& rNparameterValues, unsigned int*& rClusterTot, bool copy = true);
-	void getClusterChargeHist(unsigned int& rNparameterValues, unsigned int*& rClusterCharge, bool copy = true);
-	void getClusterPositionHist(unsigned int& rNparameterValues, unsigned int*& rClusterPosition, bool copy = true);
+	void getClusterChargeHist(unsigned int& rNparameterValues, unsigned int*& rClusterCharge, bool copy = true);  // no rested in reset function, deactivated at the moment since not used
+	void getClusterPositionHist(unsigned int& rNparameterValues, unsigned int*& rClusterPosition, bool copy = true);  // no rested in reset function, deactivated at the moment since not used
 
 	void setXclusterDistance(const unsigned int& pDx);					//sets the x distance between two hits that they belong to one cluster
 	void setYclusterDistance(const unsigned int& pDy);					//sets the x distance between two hits that they belong to one cluster
@@ -57,13 +57,13 @@ public:
 	void setMinClusterHits(const unsigned int&  pMinNclusterHits);		//minimum hits per cluster allowed, otherwise cluster omitted
 	void setMaxClusterHits(const unsigned int&  pMaxNclusterHits);		//maximal hits per cluster allowed, otherwise cluster omitted
 	void setMaxClusterHitTot(const unsigned int&  pMaxClusterHitTot);	//maximal tot for a cluster hit, otherwise cluster omitted
-	void setMaxHitTot(const unsigned int&  pMaxHitTot);				//minimum tot a hit is considered to be a hit
+	void setMaxHitTot(const unsigned int&  pMaxHitTot);					//minimum tot a hit is considered to be a hit
 
 	void addHits(HitInfo*& rHitInfo, const unsigned int& rNhits);		//add hits to cluster, starts clustering, warning hits have to be aligned at events
 
 	unsigned int getNclusters();										//returns the number of clusters//main function to start the clustering of the hit array
 
-	void reset();
+	void reset();														//resets all data but keeps the settings and the charge calibration
 	void test();
 
 private:
@@ -74,6 +74,8 @@ private:
 	void initChargeCalibMap();											//sets the calibration map to all entries = 0
 	void addClusterToResults();											//adds the actual cluster data to the result arrays
 	bool clusterize();
+
+	void setStandardSettings();
 
 	void clearActualClusterData();
 	void clearActualEventVariables();

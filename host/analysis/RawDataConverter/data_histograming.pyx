@@ -45,6 +45,7 @@ cdef extern from "Histogram.h":
 
         void calculateThresholdScanArrays(double rMuArray[], double rSigmaArray[], const unsigned int& rMaxInjections)  # takes the occupancy histograms for different parameters for the threshold arrays
 
+        void reset()
         void test()
 
 cdef class PyDataHistograming:
@@ -99,6 +100,8 @@ cdef class PyDataHistograming:
 
     def calculate_threshold_scan_arrays(self, cnp.ndarray[cnp.float64_t, ndim=1] threshold, cnp.ndarray[cnp.float64_t, ndim=1] noise, n_injections):
         self.thisptr.calculateThresholdScanArrays(<double*> threshold.data, <double*> noise.data, <const unsigned int&> n_injections)
+    def reset(self):
+        self.thisptr.reset()
 
     def test(self):
         self.thisptr.test()
