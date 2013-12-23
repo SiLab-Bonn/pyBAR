@@ -50,6 +50,7 @@ cdef extern from "Clusterizer.h":
 
         unsigned int getNclusters()
 
+        void reset()
         void test()
 
 cdef class PyDataClusterizer:
@@ -106,5 +107,7 @@ cdef class PyDataClusterizer:
 
     def get_n_clusters(self):
         return < unsigned int > self.thisptr.getNclusters()
+    def reset(self):
+        self.thisptr.reset()
     def test(self):
         self.thisptr.test()

@@ -71,6 +71,8 @@ cdef extern from "Interpret.h":
         void addEvent()
 
         unsigned int getHitSize()
+        
+        void reset()
 
 
 cdef class PyDataInterpreter:
@@ -161,3 +163,6 @@ cdef class PyDataInterpreter:
     @property
     def meta_table_v2(self):
         return <bool> self.thisptr.getMetaTableV2()
+    
+    def reset(self):
+        self.thisptr.reset()

@@ -65,7 +65,7 @@ public:
 	void printHits(const unsigned int& pNhits = 100);		  //prints the hits stored in the array
 	void debugEvents(const unsigned int& rStartEvent = 0, const unsigned int& rStopEvent = 0, const bool& debugEvents = true);
 
-	void reset();
+	void reset();											  //resets all data but keeps the settings
 	unsigned int getHitSize();								  //return the size of one hit entry in the hit array, needed to check data in memory alignment
 
 private:
@@ -92,6 +92,7 @@ private:
 	void addServiceRecord(const unsigned char& pSRcode);            //adds the service record code to SR histogram
 
 	//memory allocation/initialization
+	void setStandardSettings();
 	void allocateHitBufferArray();
 	void deleteHitBufferArray();
 	void allocateTriggerErrorCounterArray();

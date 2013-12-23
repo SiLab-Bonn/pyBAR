@@ -3,6 +3,37 @@
 Clusterizer::Clusterizer(void)
 {
 	setSourceFileName("Clusterizer");
+//	set NULL pointer
+	_clusterHitInfo = 0;
+	_clusterInfo = 0;
+	_hitMap = 0;
+	_hitIndexMap = 0;
+	_chargeMap = 0;
+	_clusterTots = 0;
+	_clusterCharges = 0;
+	_clusterHits = 0;
+	_clusterPosition = 0;
+	allocateHitMap();
+	allocateHitIndexMap();
+	allocateChargeMap();
+	allocateResultHistograms();
+	setStandardSettings();
+	reset();
+}
+
+Clusterizer::~Clusterizer(void)
+{
+	debug("~Clusterizer(void): destructor called");
+	deleteHitMap();
+	deleteHitIndexMap();
+	deleteChargeMap();
+	deleteResultHistograms();
+}
+
+void Clusterizer::setStandardSettings()
+{
+	info("setStandardSettings()");
+	initChargeCalibMap();
 	_dx = 1;
 	_dy = 1;
 	_DbCID = 1;
@@ -17,42 +48,12 @@ Clusterizer::Clusterizer(void)
 	_maxColHitPos = 0;
 	_minRowHitPos = RAW_DATA_MAX_ROW-1;
 	_maxRowHitPos = 0;
-	//set NULL pointer
-	_clusterHitInfo = 0;
-	_clusterInfo = 0;
-	_hitMap = 0;
-	_hitIndexMap = 0;
-	_chargeMap = 0;
-	_clusterTots = 0;
-	_clusterCharges = 0;
-	_clusterHits = 0;
-	_clusterPosition = 0;
-
-	allocateHitMap();
-	allocateHitIndexMap();
-	allocateChargeMap();
-	initHitMap();
-	initChargeCalibMap();
-
-	allocateResultHistograms();
-
-	clearResultHistograms();
-	clearActualClusterData();
-	clearActualEventVariables();
 	_maxHitTot = 13;
-}
-
-Clusterizer::~Clusterizer(void)
-{
-	debug("~Clusterizer(void): destructor called");
-	deleteHitMap();
-	deleteHitIndexMap();
-	deleteChargeMap();
-	deleteResultHistograms();
 }
 
 void Clusterizer::setClusterHitInfoArray(ClusterHitInfo*& rClusterHitInfo, const unsigned int& rSize)
 {
+	info("setClusterHitInfoArray()");
 	_clusterHitInfo = rClusterHitInfo;
 	_clusterHitInfoSize = rSize;
 	_NclustersHits = 0;
@@ -60,6 +61,7 @@ void Clusterizer::setClusterHitInfoArray(ClusterHitInfo*& rClusterHitInfo, const
 
 void Clusterizer::setClusterInfoArray(ClusterInfo*& rClusterHitInfo, const unsigned int& rSize)
 {
+	info("setClusterInfoArray()");
 	_clusterInfo = rClusterHitInfo;
 	_clusterInfoSize = rSize;
 	_Nclusters = 0;
@@ -67,7 +69,7 @@ void Clusterizer::setClusterInfoArray(ClusterInfo*& rClusterHitInfo, const unsig
 
 void Clusterizer::getClusterSizeHist(unsigned int& rNparameterValues, unsigned int*& rClusterSize, bool copy)
 {
-  debug("getClusterSizeHist(...)");
+  info("getClusterSizeHist(...)");
   if(copy){
 	  std::copy(_clusterHits, _clusterHits+__MAXCLUSTERHITSBINS, rClusterSize);
   }
@@ -79,18 +81,9 @@ void Clusterizer::getClusterSizeHist(unsigned int& rNparameterValues, unsigned i
 
 void Clusterizer::getClusterTotHist(unsigned int& rNparameterValues, unsigned int*& rClusterTot, bool copy)
 {
-	debug("getClusterTotHist(...)");
+	info("getClusterTotHist(...)");
 	unsigned int tArrayLength = 0;
 	if(copy){
-//		unsigned int counter = 0;
-//		for(unsigned int iTot = 0; iTot<__MAXTOTBINS; ++iTot){
-//			for(unsigned int iClusterHit = 0; iClusterHit<__MAXCLUSTERHITSBINS; ++iClusterHit){
-////				if(_clusterTots[(long)iTot + (long)iClusterHit*(long)iTot] != 0){
-//					_clusterTots[(long)iTot + (long)iClusterHit*(long)__MAXTOTBINS] = counter++;
-////				}
-////				std::cout<<counter<<"\n";
-//			}
-//		}
 		tArrayLength = (long)(__MAXTOTBINS-1) + (long)(__MAXCLUSTERHITSBINS-1) * (long)__MAXTOTBINS +1;
 		std::copy(_clusterTots, _clusterTots+tArrayLength, rClusterTot);
 	}
@@ -102,7 +95,7 @@ void Clusterizer::getClusterTotHist(unsigned int& rNparameterValues, unsigned in
 
 void Clusterizer::getClusterChargeHist(unsigned int& rNparameterValues, unsigned int*& rClusterCharge, bool copy)
 {
-	debug("getClusterChargeHist(...)");
+	info("getClusterChargeHist(...)");
 	unsigned int tArrayLength = 0;
 	if(copy){
 		tArrayLength = (long)(__MAXCHARGEBINS-1) + (long)(__MAXCLUSTERHITSBINS-1) * (long)__MAXCHARGEBINS +1;
@@ -115,7 +108,7 @@ void Clusterizer::getClusterChargeHist(unsigned int& rNparameterValues, unsigned
 }
 void Clusterizer::getClusterPositionHist(unsigned int& rNparameterValues, unsigned int*& rClusterPosition, bool copy)
 {
-	debug("getClusterPositionHist(...)");
+	info("getClusterPositionHist(...)");
 	unsigned int tArrayLength = 0;
 	if(copy){
 		tArrayLength = (long)(__MAXPOSXBINS-1) + (long)(__MAXPOSYBINS-1) * (long)__MAXPOSXBINS +1;
@@ -129,60 +122,62 @@ void Clusterizer::getClusterPositionHist(unsigned int& rNparameterValues, unsign
 
 void Clusterizer::setXclusterDistance(const unsigned int& pDx)
 {
-	debug("setXclusterDistance: "+IntToStr(pDx));
+	info("setXclusterDistance: "+IntToStr(pDx));
 	if (pDx > 1 && pDx < RAW_DATA_MAX_COLUMN-1)
 		_dx = pDx;
 }
 
 void Clusterizer::setYclusterDistance(const unsigned int& pDy)
 {
-	debug("setYclusterDistance: "+IntToStr(pDy));
+	info("setYclusterDistance: "+IntToStr(pDy));
 	if (pDy > 1 && pDy < RAW_DATA_MAX_ROW-1)
 		_dy = pDy;
 }
 
 void Clusterizer::setBCIDclusterDistance(const unsigned int& pDbCID)
 {
-	debug("setBCIDclusterDistance: "+IntToStr(pDbCID));
+	info("setBCIDclusterDistance: "+IntToStr(pDbCID));
 	if (pDbCID < __MAXBCID-1)
 		_DbCID = pDbCID;
 }
 
 void Clusterizer::setMinClusterHits(const unsigned int& pMinNclusterHits)
 {
-	debug("setMinClusterHits: "+IntToStr(pMinNclusterHits));
+	info("setMinClusterHits: "+IntToStr(pMinNclusterHits));
 	_minClusterHits = pMinNclusterHits;
 }
 
 void Clusterizer::setMaxClusterHits(const unsigned int& pMaxNclusterHits)
 {
-	debug("setMaxClusterHits: "+IntToStr(pMaxNclusterHits));
+	info("setMaxClusterHits: "+IntToStr(pMaxNclusterHits));
 	_maxClusterHits = pMaxNclusterHits;
 }
 
 void Clusterizer::setMaxClusterHitTot(const unsigned int& pMaxClusterHitTot)
 {
-	debug("setMaxClusterHitTot: "+IntToStr(pMaxClusterHitTot));
+	info("setMaxClusterHitTot: "+IntToStr(pMaxClusterHitTot));
 	_maxClusterHitTot = pMaxClusterHitTot;
 }
 
 void Clusterizer::setMaxHitTot(const unsigned int&  pMaxHitTot)
 {
+	info("setMaxHitTot: "+IntToStr(pMaxHitTot));
 	_maxHitTot = pMaxHitTot;
 }
 
 unsigned int Clusterizer::getNclusters()
 {
+	info("getNclusters:");
 	return _Nclusters;
 }
 
 void Clusterizer::reset()
 {
-	_nHits = 0;
+	info("reset()");
+	initHitMap();
+	clearResultHistograms();
 	clearActualClusterData();
 	clearActualEventVariables();
-	clearHitMap();
-	clearResultHistograms();
 }
 
 void Clusterizer::addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
@@ -470,7 +465,7 @@ bool Clusterizer::hitExists(const unsigned short& pCol, const unsigned short& pR
 
 void Clusterizer::initChargeCalibMap()
 {
-	debug("initChargeCalibMap");
+	info("initChargeCalibMap");
 
 	for(int iCol = 0; iCol < RAW_DATA_MAX_COLUMN; ++iCol){
 		for(int iRow = 0; iRow < RAW_DATA_MAX_ROW; ++iRow){
@@ -482,7 +477,7 @@ void Clusterizer::initChargeCalibMap()
 
 void Clusterizer::initHitMap()
 {
-	debug("initHitMap");
+	info("initHitMap");
 
 	for(int iCol = 0; iCol < RAW_DATA_MAX_COLUMN; ++iCol){
 		for(int iRow = 0; iRow < RAW_DATA_MAX_ROW; ++iRow){
@@ -534,7 +529,7 @@ void Clusterizer::addClusterToResults()
 
 void Clusterizer::allocateHitMap()
 {
-	debug("allocateHitMap()");
+	info("allocateHitMap()");
 	deleteHitMap();
 	try{
 		_hitMap = new short[(long)(RAW_DATA_MAX_COLUMN-1) + ((long)RAW_DATA_MAX_ROW-1)*(long)RAW_DATA_MAX_COLUMN + ((long)__MAXBCID-1) * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW +1];
@@ -575,7 +570,7 @@ void Clusterizer::clearHitMap()
 
 void Clusterizer::deleteHitMap()
 {
-	debug("deleteHitMap()");
+	info("deleteHitMap()");
 	if (_hitMap != 0)
 		delete _hitMap;
 	_hitMap = 0;
@@ -583,7 +578,7 @@ void Clusterizer::deleteHitMap()
 
 void Clusterizer::allocateHitIndexMap()
 {
-	debug("allocateHitIndexMap()");
+	info("allocateHitIndexMap()");
 	deleteHitIndexMap();
 	try{
 		_hitIndexMap = new unsigned int[(long)(RAW_DATA_MAX_COLUMN-1) + ((long)RAW_DATA_MAX_ROW-1)*(long)RAW_DATA_MAX_COLUMN + ((long)__MAXBCID-1) * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW +1];
@@ -595,7 +590,7 @@ void Clusterizer::allocateHitIndexMap()
 
 void Clusterizer::deleteHitIndexMap()
 {
-	debug(std::string("deleteHitIndexMap()"));
+	info(std::string("deleteHitIndexMap()"));
 	if (_hitIndexMap != 0)
 		delete _hitIndexMap;
 	_hitIndexMap = 0;
@@ -603,7 +598,7 @@ void Clusterizer::deleteHitIndexMap()
 
 void Clusterizer::allocateChargeMap()
 {
-	debug("allocateChargeMap()");
+	info("allocateChargeMap()");
 	deleteChargeMap();
 	try{
 		_chargeMap = new float[(long)(RAW_DATA_MAX_COLUMN-1) + ((long)RAW_DATA_MAX_ROW-1)*(long)RAW_DATA_MAX_COLUMN + ((long)__MAXTOTLOOKUP-1) * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW +1];
@@ -615,7 +610,7 @@ void Clusterizer::allocateChargeMap()
 
 void Clusterizer::allocateResultHistograms()
 {
-	debug("allocateResultHistograms()");
+	info("allocateResultHistograms()");
 	deleteResultHistograms();
 	try{
 		_clusterTots = new unsigned int[(long)(__MAXTOTBINS-1) + ((long)__MAXCLUSTERHITSBINS-1)*(long)__MAXTOTBINS];
@@ -628,25 +623,25 @@ void Clusterizer::allocateResultHistograms()
 	}
 }
 
-void Clusterizer::clearResultHistograms()
+void Clusterizer::clearResultHistograms()  // this function takes a long time
 {
-	debug("clearResultHistograms()");
+	info("clearResultHistograms()");
 	for(unsigned int iTot = 0; iTot<__MAXTOTBINS; ++iTot)
 		for(unsigned int iClusterHit = 0; iClusterHit<__MAXCLUSTERHITSBINS; ++iClusterHit)
 			_clusterTots[(long)iTot + (long)iClusterHit*(long)__MAXTOTBINS] = 0;
-	for(unsigned int iCharge = 0; iCharge<__MAXCHARGEBINS; ++iCharge)
-		for(unsigned int iClusterHit = 0; iClusterHit<__MAXCLUSTERHITSBINS; ++iClusterHit)
-			_clusterCharges[(long)iCharge + (long)iClusterHit*(long)__MAXCLUSTERHITSBINS] = 0;
-	for(unsigned int iX = 0; iX<__MAXPOSXBINS; ++iX)
-			for(unsigned int iY = 0; iY<__MAXPOSYBINS; ++iY)
-				_clusterPosition[(long)iX + (long)iY*(long)__MAXPOSXBINS] = 0;
+//	for(unsigned int iCharge = 0; iCharge<__MAXCHARGEBINS; ++iCharge)
+//		for(unsigned int iClusterHit = 0; iClusterHit<__MAXCLUSTERHITSBINS; ++iClusterHit)
+//			_clusterCharges[(long)iCharge + (long)iClusterHit*(long)__MAXCLUSTERHITSBINS] = 0;
+//	for(unsigned int iX = 0; iX<__MAXPOSXBINS; ++iX)
+//			for(unsigned int iY = 0; iY<__MAXPOSYBINS; ++iY)
+//				_clusterPosition[(long)iX + (long)iY*(long)__MAXPOSXBINS] = 0;
 	for(unsigned int iClusterHit = 0; iClusterHit<__MAXCLUSTERHITSBINS; ++iClusterHit)
 		_clusterHits[(long)iClusterHit] = 0;
 }
 
 void Clusterizer::deleteResultHistograms()
 {
-	debug(std::string("deleteResultHistograms()"));
+	info(std::string("deleteResultHistograms()"));
 	if (_clusterTots != 0)
 		delete _clusterTots;
 	if (_clusterCharges != 0)
@@ -663,7 +658,7 @@ void Clusterizer::deleteResultHistograms()
 
 void Clusterizer::deleteChargeMap()
 {
-	debug(std::string("deleteChargeMap()"));
+	info(std::string("deleteChargeMap()"));
 	if (_chargeMap != 0)
 		delete _chargeMap;
 	_chargeMap = 0;
@@ -693,7 +688,7 @@ void Clusterizer::clearActualEventVariables()
 
 void Clusterizer::showHits()
 {
-	debug("ShowHits");
+	info("ShowHits");
 	if(_nHits < 100){
 		for(int iCol = 0; iCol < RAW_DATA_MAX_COLUMN; ++iCol){
 			for(int iRow = 0; iRow < RAW_DATA_MAX_ROW; ++iRow){
