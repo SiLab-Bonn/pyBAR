@@ -130,6 +130,22 @@ def get_meta_data_index_at_scan_parameter(meta_data_array, scan_parameter_name):
     return index
 
 
+def get_meta_data_at_scan_parameter(meta_data_array, scan_parameter_name):
+    '''Takes the analyzed meta_data table and returns the entries where the scan parameter changes
+
+    Parameters
+    ----------
+    meta_data_array : numpy.recordarray
+    scan_parameter_name : string
+
+    Returns
+    -------
+    numpy.ndarray:
+        reduced meta_data_array
+    '''
+    return meta_data_array[get_meta_data_index_at_scan_parameter(meta_data_array, scan_parameter_name)['index']]
+
+
 def correlate_events(data_frame_fe_1, data_frame_fe_2):
     '''Correlates events from different Fe by the event number
 
@@ -233,18 +249,24 @@ def get_hits_in_event_range(hits_array, event_start, event_stop, assume_sorted=T
     numpy.array
         hit array with the hits in the event range.
     '''
-    logging.info("Calculate hits that exists in the given event range [%d,%d[." % (event_start, event_stop))
+    logging.info("Calculate hits that exists in the given event range [" + str(event_start) + ", " + str(event_stop) + "[")
     event_number = hits_array['event_number']
     if assume_sorted:
         hits_event_start = hits_array['event_number'][0]
         hits_event_stop = hits_array['event_number'][-1]
-        if hits_event_stop < event_start or hits_event_start > event_stop or event_start == event_stop:  # special case, no intersection at all
-            print 'return NADA'
+        if (event_start != None and event_stop != None) and (hits_event_stop < event_start or hits_event_start > event_stop or event_start == event_stop):  # special case, no intersection at all
             return hits_array[0:0]
 
         # get min/max indices with values that are also in the other array
-        min_index_hits = np.argmin(hits_array['event_number'] < event_start)
-        max_index_hits = np.argmax(hits_array['event_number'] >= event_stop)
+        if event_start == None:
+            min_index_hits = 0
+        else:
+            min_index_hits = np.argmin(hits_array['event_number'] < event_start)
+
+        if event_stop == None:
+            max_index_hits = hits_array['event_number'].shape[0]
+        else:
+            max_index_hits = np.argmax(hits_array['event_number'] >= event_stop)
 
         if min_index_hits < 0:
             min_index_hits = 0
@@ -525,10 +547,28 @@ def get_scan_parameter(meta_data_array):
     return scan_parameters
 
 
+def get_event_range(events):
+    '''Takes the events and calculates event ranges [start event, stop event[. The last range end with none since the last event is unknown.
+
+    Parameters
+    ----------
+    events : array like
+
+    Returns
+    -------
+    numpy.array
+    '''
+    left = events[:len(events)]
+    right = events[1:len(events)]
+    right = np.append(right, None)
+    return np.column_stack((left, right))
+
+
 def data_aligned_at_events(table, start_event_number=None, stop_event_number=None, start=None, stop=None, chunk_size=10000000):
     '''Takes the table with a event_number column and returns chunks with the size up to chunk_size. The chunks are chosen in a way that the events are not splitted. Additional
     parameters can be set to increase the readout speed. If only events between a certain event range are used one can specify this. Also the start and the
     stop indices for the reading of the table can be specified for speed up.
+    It is important to index the event_number with pytables before using this function, otherwise the queries are very slow.
 
     Parameters
     ----------
@@ -557,11 +597,12 @@ def data_aligned_at_events(table, start_event_number=None, stop_event_number=Non
 
     # initialize variables
     start_index_known = False
+    stop_index_known = False
     last_event_start_index = 0
     start_index = 0 if start == None else start
     stop_index = table.nrows if stop == None else stop
 
-    # set start stop indices from the event numbers for fast read if possible, not possible if the given event number does not exist
+    # set start stop indices from the event numbers for fast read if possible; not possible if the given event number does not exist
     if start_event_number != None:
         condition_1 = 'event_number==' + str(start_event_number)
         start_indeces = table.get_where_list(condition_1)
@@ -576,31 +617,32 @@ def data_aligned_at_events(table, start_event_number=None, stop_event_number=Non
         stop_indeces = table.get_where_list(condition_2)
         if len(stop_indeces) != 0:  # set the stop index if possible, stop index is excluded
             stop_index = stop_indeces[0]
+            stop_index_known = True
 
-    if start_index_known and start_index + chunk_size >= stop_index:  # special case, one read is enough, data not bigger than one chunk and the indices are known
+    if start_index_known and stop_index_known and start_index + chunk_size >= stop_index:  # special case, one read is enough, data not bigger than one chunk and the indices are known
             yield table.read(start=start_index, stop=stop_index), stop_index
-            start_index = stop_index
-    else:  # read data in chunks, chunks do not devide events, abort if maximum event number is reached
+    else:  # read data in chunks, chunks do not divide events, abort if stop_event_number is reached
         while(start_index < stop_index):
             src_array = table.read(start=start_index, stop=start_index + chunk_size + 1)  # stop index is exclusive, so add 1
-            if start_index + src_array.shape[0] == table.nrows:
+            first_event = src_array["event_number"][0]
+            last_event = src_array["event_number"][-1]
+            last_event_start_index = np.argmax(src_array["event_number"] == last_event)  # get first index of last event
+            if last_event_start_index == 0:
                 nrows = src_array.shape[0]
-            else:
-                first_event = src_array["event_number"][0]
-                last_event = src_array["event_number"][-1]
-                last_event_start_index = np.argmax(src_array["event_number"] == last_event)  # speedup
-                if last_event_start_index == 0:
-                    nrows = src_array.shape[0]
+                if nrows != 1:
                     logging.warning("Buffer too small to fit event. Possible loss of data. Increase chunk size.")
-                else:
-                    nrows = last_event_start_index
-
-            if stop_event_number != None and last_event > stop_event_number or first_event < start_event_number:
-                yield get_hits_in_event_range(src_array[0:nrows], event_start=start_event_number, event_stop=stop_event_number, assume_sorted=True), start_index
-                break
             else:
-                yield src_array[0:nrows], start_index + nrows
-            start_index = start_index + nrows
+                nrows = last_event_start_index
+
+            if (start_event_number != None or stop_event_number != None) and (last_event > stop_event_number or first_event < start_event_number):  # too many events read, get only the selected ones if specified
+                selected_hits = get_hits_in_event_range(src_array[0:nrows], event_start=start_event_number, event_stop=stop_event_number, assume_sorted=True)
+                if len(selected_hits) != 0:  # only return non empty data
+                    yield selected_hits, start_index + len(selected_hits)
+            else:
+                yield src_array[0:nrows], start_index + nrows  # no events specified or selected event range is larger than read chunk, thus return the whole chunk minus the little part for event alignment
+            if stop_event_number != None and last_event > stop_event_number:  # events are sorted, thus stop here to save time
+                break
+            start_index = start_index + nrows  # events fully read, increase start index and continue reading
 
 
 class AnalysisUtils(object):
