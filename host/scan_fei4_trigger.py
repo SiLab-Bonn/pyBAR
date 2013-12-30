@@ -183,6 +183,7 @@ class Fei4TriggerScan(ScanBase):
             analyze_raw_data.max_tot_value = 13
             analyze_raw_data.create_hit_table = True
             analyze_raw_data.create_cluster_size_hist = True
+            analyze_raw_data.create_source_scan_hist = True
             analyze_raw_data.create_cluster_tot_hist = True
             analyze_raw_data.create_cluster_table = True
             analyze_raw_data.interpreter.set_warning_output(False)
@@ -194,6 +195,7 @@ class Fei4TriggerScan(ScanBase):
             analyze_raw_data.max_tot_value = 13
             analyze_raw_data.create_hit_table = True
             analyze_raw_data.create_cluster_size_hist = True
+            analyze_raw_data.create_source_scan_hist = True
             analyze_raw_data.create_cluster_tot_hist = True
             analyze_raw_data.create_cluster_table = True
             analyze_raw_data.interpreter.set_warning_output(False)
