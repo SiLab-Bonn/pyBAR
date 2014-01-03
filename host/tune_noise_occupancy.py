@@ -84,7 +84,7 @@ class NoiseOccupancyScan(ScanBase):
             self.readout.start()
 
             # preload command
-            command_delay = 400
+            command_delay = 400 # 100kHz
             lvl1_command = self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", length=command_delay)[0]
             commnd_lenght = lvl1_command.length()
             logging.info('Estimated scan time: %ds' % int(commnd_lenght * 25 * (10 ** -9) * triggers))
@@ -137,14 +137,16 @@ class NoiseOccupancyScan(ScanBase):
             # noisy pixels are set to 1
             self.occ_mask[occ_hist > occupancy_limit * triggers * consecutive_lvl1] = 1
             # make inverse
-            inv_occ_mask = self.register_utils.invert_pixel_mask(self.occ_mask)
+            self.inv_occ_mask = self.register_utils.invert_pixel_mask(self.occ_mask)
+            self.disable_for_mask = disable_for_mask
             if overwrite_mask:
-                self.register.set_pixel_register_value(disable_for_mask, inv_occ_mask)
+                self.register.set_pixel_register_value(disable_for_mask, self.inv_occ_mask)
             else:
                 for mask in disable_for_mask:
-                    enable_mask = np.logical_and(inv_occ_mask, self.register.get_pixel_register_value(mask))
+                    enable_mask = np.logical_and(self.inv_occ_mask, self.register.get_pixel_register_value(mask))
                     self.register.set_pixel_register_value(mask, enable_mask)
 
+            self.enable_for_mask = enable_for_mask
             if overwrite_mask:
                 self.register.set_pixel_register_value(enable_for_mask, self.occ_mask)
             else:
@@ -166,7 +168,13 @@ class NoiseOccupancyScan(ScanBase):
             analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms()
-            plot_occupancy(self.occ_mask.T, title='Masked Pixels', z_max=1, filename=analyze_raw_data.output_pdf)
+            plot_occupancy(self.occ_mask.T, title='Noisy Pixels', z_max=1, filename=analyze_raw_data.output_pdf)
+            for mask in self.disable_for_mask:
+                mask_name = self.register.get_pixel_register_attributes("full_name", do_sort=True, name=[mask])[0]
+                plot_occupancy(self.register.get_pixel_register_value(mask).T, title='%s Mask' % mask_name, z_max=1, filename=analyze_raw_data.output_pdf)
+            for mask in self.enable_for_mask:
+                mask_name = self.register.get_pixel_register_attributes("full_name", do_sort=True, name=[mask])[0]
+                plot_occupancy(self.register.get_pixel_register_value(mask).T, title='%s Mask' % mask_name, z_max=1, filename=analyze_raw_data.output_pdf)
 
 
 if __name__ == "__main__":
