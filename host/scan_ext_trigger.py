@@ -1,6 +1,7 @@
 import time
 import logging
 import math
+import numpy as np
 
 from scan.scan import ScanBase
 from daq.readout import open_raw_data_file
@@ -12,7 +13,7 @@ class ExtTriggerScan(ScanBase):
     def __init__(self, config_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_ext_trigger", scan_data_path=None):
         super(ExtTriggerScan, self).__init__(config_file=config_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
 
-    def scan(self, mode=0, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=600, max_triggers=10000, **kwargs):
+    def scan(self, mode=0, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=600, max_triggers=10000, enable_hitbus=False):
         '''Scan loop
 
         Parameters
@@ -37,12 +38,17 @@ class ExtTriggerScan(ScanBase):
         mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
         commands = []
         commands.extend(self.register.get_commands("confmode"))
-        self.register.set_pixel_register_value(pixel_reg, mask)
+        enable_mask = np.logical_and(mask, self.register.get_pixel_register_value(pixel_reg))
+        self.register.set_pixel_register_value(pixel_reg, enable_mask)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
         # generate mask for Imon mask
         pixel_reg = "Imon"
-#         mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span, default=1, value=0)
-        self.register.set_pixel_register_value(pixel_reg, 1)
+        if enable_hitbus:
+            mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span, default=1, value=0)
+            imon_mask = np.logical_or(mask, self.register.get_pixel_register_value(pixel_reg))
+        else:
+            imon_mask = 1
+        self.register.set_pixel_register_value(pixel_reg, imon_mask)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
         # disable C_inj mask
         pixel_reg = "C_High"
@@ -158,6 +164,6 @@ class ExtTriggerScan(ScanBase):
 if __name__ == "__main__":
     import configuration
     scan = ExtTriggerScan(config_file=configuration.config_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.start(configure=True, use_thread=True, mode=0, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=100000)
+    scan.start(configure=True, use_thread=True, mode=0, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=100000, enable_hitbus=False)
     scan.stop()
     scan.analyze()
