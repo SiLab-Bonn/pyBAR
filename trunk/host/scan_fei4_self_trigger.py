@@ -12,7 +12,7 @@ class FEI4SelfTriggerScan(ScanBase):
     def __init__(self, config_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_fei4_self_trigger", scan_data_path=None):
         super(FEI4SelfTriggerScan, self).__init__(config_file=config_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
 
-    def scan(self, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=600, **kwargs):
+    def scan(self, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=600):
         '''Scan loop
 
         Parameters
