@@ -48,11 +48,9 @@ class FEI4SelfTriggerScan(ScanBase):
         self.register.set_pixel_register_value(pixel_reg, 0)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
         # enable GateHitOr that enables FE self-trigger mode
-        self.register.set_global_register_value("GateHitOr", 1)  # enable FE self-trigger mode
         self.register.set_global_register_value("Trig_Lat", 232)  # set trigger latency
         self.register.set_global_register_value("Trig_Count", 0)  # set number of consecutive triggers
-        commands.extend(self.register.get_commands("wrregister", name=["GateHitOr", "Trig_Lat", "Trig_Count"]))
-        commands.extend(self.register.get_commands("runmode"))
+        commands.extend(self.register.get_commands("wrregister", name=["Trig_Lat", "Trig_Count"]))
         # send commands
         self.register_utils.send_commands(commands)
         # preload command
@@ -60,7 +58,11 @@ class FEI4SelfTriggerScan(ScanBase):
         # self.register_utils.set_command(lvl1_command)
         with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier) as raw_data_file:
             self.readout.start()
-
+            commands = []
+            self.register.set_global_register_value("GateHitOr", 1)  # enable FE self-trigger mode
+            commands.extend(self.register.get_commands("wrregister", name=["GateHitOr"]))
+            commands.extend(self.register.get_commands("runmode"))
+            self.register_utils.send_commands(commands)
             wait_for_first_data = True
             last_iteration = time.time()
             saw_no_data_at_time = last_iteration
