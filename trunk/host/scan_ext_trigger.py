@@ -32,6 +32,10 @@ class ExtTriggerScan(ScanBase):
             In seconds; if no data, stop scan after given time.
         scan_timeout : int
             In seconds; stop scan after given time.
+        max_triggers : int
+            Maximum number of triggers to be taken.
+        enable_hitbus : bool
+            Enable Hitbus (Hit OR) for columns and rows given by col_span and row_span.
         '''
         # generate mask for Enable mask
         pixel_reg = "Enable"
