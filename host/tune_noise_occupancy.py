@@ -15,7 +15,7 @@ class NoiseOccupancyScan(ScanBase):
     def __init__(self, config_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_noise_occupancy", scan_data_path=None):
         super(NoiseOccupancyScan, self).__init__(config_file=config_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
 
-    def scan(self, occupancy_limit=10 ** (-5), triggers=10000000, consecutive_lvl1=16, disable_for_mask=['Enable'], enable_for_mask=['Imon'], overwrite_mask=False, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10):
+    def scan(self, occupancy_limit=10 ** (-5), triggers=10000000, consecutive_lvl1=1, disable_for_mask=['Enable'], enable_for_mask=['Imon'], overwrite_mask=False, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10):
         '''Masking pixels with occupancy above certain limit.
 
         Parameters
@@ -71,6 +71,7 @@ class NoiseOccupancyScan(ScanBase):
         self.register.set_pixel_register_value(pixel_reg, 0)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
 #         self.register.set_global_register_value("Trig_Lat", 232)  # set trigger latency
+        self.consecutive_lvl1 = consecutive_lvl1
         self.register.set_global_register_value("Trig_Count", (0 if consecutive_lvl1 == 16 else consecutive_lvl1))  # set number of consecutive triggers
         commands.extend(self.register.get_commands("wrregister", name=["Trig_Count"]))
         # setting FE into runmode
@@ -160,10 +161,10 @@ class NoiseOccupancyScan(ScanBase):
         from analysis.analyze_raw_data import AnalyzeRawData
         output_file = self.scan_data_filename + "_interpreted.h5"
         with AnalyzeRawData(raw_data_file=scan.scan_data_filename, analyzed_data_file=output_file, create_pdf=True) as analyze_raw_data:
+            analyze_raw_data.interpreter.set_trig_count(self.consecutive_lvl1)
             analyze_raw_data.create_source_scan_hist = True
 #             analyze_raw_data.create_hit_table = True
 #             analyze_raw_data.interpreter.debug_events(0, 0, True)  # events to be printed onto the console for debugging, usually deactivated
-            analyze_raw_data.interpreter.set_trig_count(self.register.get_global_register_value("Trig_Count"))
             analyze_raw_data.interpreter.set_warning_output(False)
             analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
             analyze_raw_data.interpreter.print_summary()
@@ -180,7 +181,7 @@ class NoiseOccupancyScan(ScanBase):
 if __name__ == "__main__":
     import configuration
     scan = NoiseOccupancyScan(config_file=configuration.config_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.start(configure=True, use_thread=True, occupancy_limit=10 ** (-5), triggers=10000000, consecutive_lvl1=16, disable_for_mask=['Enable'], enable_for_mask=['Imon'], overwrite_mask=False, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10)
+    scan.start(configure=True, use_thread=True, occupancy_limit=10 ** (-5), triggers=10000000, consecutive_lvl1=1, disable_for_mask=['Enable'], enable_for_mask=['Imon'], overwrite_mask=False, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10)
     scan.stop()
     scan.analyze()
     scan.register.save_configuration(configuration.config_file)
