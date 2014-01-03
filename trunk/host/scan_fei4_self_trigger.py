@@ -1,5 +1,6 @@
 import time
 import logging
+import numpy as np
 
 from scan.scan import ScanBase
 from daq.readout import open_raw_data_file
@@ -30,12 +31,14 @@ class FEI4SelfTriggerScan(ScanBase):
         mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
         commands = []
         commands.extend(self.register.get_commands("confmode"))
-        self.register.set_pixel_register_value(pixel_reg, mask)
+        enable_mask = np.logical_and(mask, self.register.get_pixel_register_value(pixel_reg))
+        self.register.set_pixel_register_value(pixel_reg, enable_mask)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
         # generate ROI mask for Imon mask
         pixel_reg = "Imon"
         mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span, default=1, value=0)
-        self.register.set_pixel_register_value(pixel_reg, mask)
+        imon_mask = np.logical_or(mask, self.register.get_pixel_register_value(pixel_reg))
+        self.register.set_pixel_register_value(pixel_reg, imon_mask)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
         # disable C_inj mask
         pixel_reg = "C_High"
