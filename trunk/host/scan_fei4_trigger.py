@@ -1,6 +1,7 @@
 import time
 import logging
 import math
+import numpy as np
 
 from scan.scan import ScanBase
 from daq.readout import open_raw_data_file
@@ -24,19 +25,18 @@ class Fei4TriggerScan(ScanBase):
         self.register_utils_trigger_fe.configure_all(same_mask_for_all_dc=True)
 
         commands = []
-        # generate mask for Enable mask
+        # generate ROI mask for Enable mask
         pixel_reg = "Enable"
-        mask = self.register_utils_trigger_fe.make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
+        mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
         commands.extend(self.register_trigger_fe.get_commands("confmode"))
-        enable_mask = self.register_trigger_fe.get_pixel_register_value(pixel_reg)
-        # hack not to overwrite the existing mask
-        import numpy as np
-        mask_and = np.logical_and(mask, enable_mask)
-        self.register_trigger_fe.set_pixel_register_value(pixel_reg, mask_and)
+        enable_mask = np.logical_and(mask, self.register_trigger_fe.get_pixel_register_value(pixel_reg))
+        self.register_trigger_fe.set_pixel_register_value(pixel_reg, enable_mask)
         commands.extend(self.register_trigger_fe.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
-        # generate mask for Imon mask
+        # generate ROI mask for Imon mask
         pixel_reg = "Imon"
-        self.register_trigger_fe.set_pixel_register_value(pixel_reg, 0)
+        mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span, default=1, value=0)
+        imon_mask = np.logical_or(mask, self.register_trigger_fe.get_pixel_register_value(pixel_reg))
+        self.register_trigger_fe.set_pixel_register_value(pixel_reg, imon_mask)
         commands.extend(self.register_trigger_fe.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
         # disable C_inj mask
         pixel_reg = "C_High"
@@ -54,9 +54,14 @@ class Fei4TriggerScan(ScanBase):
         self.register_utils_trigger_fe.send_commands(commands)
 
     def configure_triggered_fe(self):
+        logging.info("Sending configuration to triggered FE")
         commands = []
-        # disable C_inj mask
         commands.extend(self.register.get_commands("confmode"))
+        # disable hitbus
+        pixel_reg = "Imon"
+        self.register.set_pixel_register_value(pixel_reg, 1)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
+        # disable C_inj mask
         pixel_reg = "C_High"
         self.register.set_pixel_register_value(pixel_reg, 0)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))

@@ -36,7 +36,6 @@ class Fei4TriggerScanGdac(ScanBase):
         # generate ROI mask for Enable mask
         pixel_reg = "Enable"
         mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
-        commands = []
         commands.extend(self.register_trigger_fe.get_commands("confmode"))
         enable_mask = np.logical_and(mask, self.register_trigger_fe.get_pixel_register_value(pixel_reg))
         self.register_trigger_fe.set_pixel_register_value(pixel_reg, enable_mask)
@@ -65,12 +64,12 @@ class Fei4TriggerScanGdac(ScanBase):
     def configure_triggered_fe(self):
         logging.info("Sending configuration to triggered FE")
         commands = []
-        # disable C_inj mask
         commands.extend(self.register.get_commands("confmode"))
-        # generate mask for Imon mask
+        # disable hitbus
         pixel_reg = "Imon"
         self.register.set_pixel_register_value(pixel_reg, 1)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
+        # disable C_inj mask
         pixel_reg = "C_High"
         self.register.set_pixel_register_value(pixel_reg, 0)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
