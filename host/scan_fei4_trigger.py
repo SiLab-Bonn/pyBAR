@@ -28,7 +28,11 @@ class Fei4TriggerScan(ScanBase):
         pixel_reg = "Enable"
         mask = self.register_utils_trigger_fe.make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
         commands.extend(self.register_trigger_fe.get_commands("confmode"))
-        self.register_trigger_fe.set_pixel_register_value(pixel_reg, mask)
+        enable_mask = self.register_trigger_fe.get_pixel_register_value(pixel_reg)
+        # hack not to overwrite the existing mask
+        import numpy as np
+        mask_and = np.logical_and(mask, enable_mask)
+        self.register_trigger_fe.set_pixel_register_value(pixel_reg, mask_and)
         commands.extend(self.register_trigger_fe.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
         # generate mask for Imon mask
         pixel_reg = "Imon"
@@ -182,6 +186,7 @@ class Fei4TriggerScan(ScanBase):
             analyze_raw_data.interpreter.set_trig_count(self.register.get_global_register_value("Trig_Count"))
             analyze_raw_data.max_tot_value = 13
             analyze_raw_data.create_hit_table = True
+            analyze_raw_data.create_source_scan_hist = True
             analyze_raw_data.create_cluster_size_hist = True
             analyze_raw_data.create_source_scan_hist = True
             analyze_raw_data.create_cluster_tot_hist = True
@@ -194,6 +199,7 @@ class Fei4TriggerScan(ScanBase):
             analyze_raw_data.interpreter.set_trig_count(self.register_trigger_fe.get_global_register_value("Trig_Count"))
             analyze_raw_data.max_tot_value = 13
             analyze_raw_data.create_hit_table = True
+            analyze_raw_data.create_source_scan_hist = True
             analyze_raw_data.create_cluster_size_hist = True
             analyze_raw_data.create_source_scan_hist = True
             analyze_raw_data.create_cluster_tot_hist = True
@@ -208,13 +214,13 @@ if __name__ == "__main__":
     import configuration
     import os
 
-    config_file_triggered_fe = os.path.join(os.getcwd(), r'config/fei4/configs/SCC_50_tuning.cfg')  # Chip 1, GA 1
+    config_file_triggered_fe = os.path.join(os.getcwd(), r'config/fei4/configs/SCC_99_low_thr_tuning.cfg')  # Chip 1, GA 1
     config_file_trigger_fe = os.path.join(os.getcwd(), r'config/fei4/configs/SCC_30_tuning.cfg')  # Chip 2, GA 2
 
 #     config_file_trigger_fe = os.path.join(os.getcwd(), r'config/fei4/configs/SCC_50_tuning.cfg') # Chip 1, GA 1
 #     config_file_triggered_fe = os.path.join(os.getcwd(), r'config/fei4/configs/SCC_114_tuning.cfg') # Chip 2, GA 2
 
     scan = Fei4TriggerScan(config_file=config_file_triggered_fe, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.start(config_file_trigger_fe=config_file_trigger_fe, channel_triggered_fe=4, channel_trigger_fe=3, invert_lemo_trigger_input=True, configure=True, use_thread=True, col_span=[30, 50], row_span=[100, 230], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=1000)
+    scan.start(config_file_trigger_fe=config_file_trigger_fe, channel_triggered_fe=4, channel_trigger_fe=3, invert_lemo_trigger_input=True, configure=True, use_thread=True, col_span=[5, 75], row_span=[20, 310], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=1000000)
     scan.stop()
     scan.analyze()
