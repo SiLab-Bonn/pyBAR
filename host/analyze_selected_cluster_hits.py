@@ -25,24 +25,27 @@ def select_hits(input_file_hits, output_file_hits, cluster_size_condition='clust
 
 def analyze_selected_hits(output_file_hits, output_file_hits_analyzed, scan_data_filename):
     with AnalyzeRawData(raw_data_file=None, analyzed_data_file=output_file_hits) as analyze_raw_data:
-            analyze_raw_data.create_source_scan_hist = True
-            analyze_raw_data.create_tot_hist = False
-            analyze_raw_data.create_cluster_size_hist = True
-            analyze_raw_data.create_cluster_tot_hist = True
-            analyze_raw_data.analyze_hit_table(analyzed_data_out_file=output_file_hits_analyzed)
-            analyze_raw_data.plot_histograms(scan_data_filename=output_file_hits_analyzed, analyzed_data_file=output_file_hits_analyzed)
+        analyze_raw_data.create_source_scan_hist = True
+        analyze_raw_data.create_tot_hist = False
+        analyze_raw_data.create_cluster_size_hist = True
+        analyze_raw_data.create_cluster_tot_hist = True
+        analyze_raw_data.analyze_hit_table(analyzed_data_out_file=output_file_hits_analyzed)
+        analyze_raw_data.plot_histograms(scan_data_filename=output_file_hits_analyzed, analyzed_data_file=output_file_hits_analyzed)
 
 
 if __name__ == "__main__":
-    scan_name = 'scan_fei4_trigger_gdac_0'
-    folder = 'K:\\data\\FE-I4\\ChargeRecoMethod\\bias_20\\'
+    scan_name = 'scan_fei4_trigger_gdac'
+    folder = 'K:\\data\\FE-I4\\ChargeRecoMethod\\bias_2\\'
 
     input_file_hits = folder + scan_name + "_interpreted.h5"
     output_file_hits = folder + scan_name + "_cut_1.h5"
-    output_file_hits_analyzed = folder + scan_name + "_cut_0_analyzed.h5"
-    scan_data_filename = folder + scan_name + "_cut_0_analyzed"
+    output_file_hits_analyzed = folder + scan_name + "_cut_1_analyzed.h5"
+    scan_data_filename = folder + scan_name + "_cut_1_analyzed"
 
     start_time = datetime.now()
-#     select_hits(input_file_hits, output_file_hits, cluster_size_condition='cluster_size==1', n_cluster_condition='n_cluster==1')
+    select_hits(input_file_hits, output_file_hits, cluster_size_condition='cluster_size==1', n_cluster_condition='n_cluster==1')
     analyze_selected_hits(output_file_hits, output_file_hits_analyzed, scan_data_filename)
+    with tb.openFile(input_file_hits, mode="r") as in_hit_file_h5:  # copy meta data to the new analyzed file
+        with tb.openFile(output_file_hits_analyzed, mode="r+") as output_hit_file_h5:
+            in_hit_file_h5.root.meta_data.copy(output_hit_file_h5.root)  # copy meta_data note to new file
     logging.info('Script runtime %.1f seconds' % (datetime.now() - start_time).total_seconds())
