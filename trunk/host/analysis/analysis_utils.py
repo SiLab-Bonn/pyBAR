@@ -11,6 +11,31 @@ import sys
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
+def get_profile_histogram(x, y, n_bins=100):
+    '''Takes 2D point data (x,y) and creates a profile histogram similar to the TProfile in ROOT. It calculates
+    the y mean for every bin at the bin center and gives the y mean error as error bars.
+
+    Parameters
+    ----------
+    x : array like
+        data x positions
+    y : array like
+        data y positions
+    n_bins : int
+        the number of bins used to create the histogram
+    '''
+    if len(x) != len(y):
+        raise ValueError('x and y dimensions have to be the same')
+    n, bin_edges = np.histogram(x, bins=n_bins)  # needed to calculate the number of points per bin
+    sy = np.histogram(x, bins=n_bins, weights=y)[0]  # the sum of the bin values
+    sy2 = np.histogram(x, bins=n_bins, weights=y * y)[0]  # the quadratic sum of the bin values
+    bin_centers = (bin_edges[1:] + bin_edges[:-1]) / 2  # calculate the bin center for all bins
+    mean = sy / n  # calculate the mean of all bins
+    std = np.sqrt((sy2 / n - mean * mean))  # TODO: not understood, need check if this is really the standard deviation
+    std_mean = std / np.sqrt((n - 1))
+    return bin_centers, mean, std_mean
+
+
 def central_difference(x, y):
     '''Returns the dy/dx(x) visa central difference method
 
@@ -579,7 +604,7 @@ def data_aligned_at_events(table, start_event_number=None, stop_event_number=Non
         The data read is corrected that only data up to the stop_event number is returned. The stop_event number is not included.
     Returns
     -------
-    numpy.histogram
+    iterable to numpy.histogram
         The data of the actual chunk.
     last_index: int
         The index of the last table part already used. Can be used if data_aligned_at_events is called in a loop for speed up.
