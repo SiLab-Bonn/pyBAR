@@ -305,11 +305,16 @@ class FEI4RegisterUtils(object):
     def set_gdac(self, value):
         commands = []
         commands.extend(self.register.get_commands("confmode"))
-        self.register.set_global_register_value("Vthin_AltFine", value & 255)  # take low word
         if self.register.fei4b:
-            self.register.set_global_register_value("Vthin_AltCoarse", value >> 7)  # take every second AltCoarse value
+            altf = value & 0x7f
+            altc = (value >> 7)
+            self.register.set_global_register_value("Vthin_AltCoarse", altc)  # take every second AltCoarse value
+            self.register.set_global_register_value("Vthin_AltFine", altf)  # take low word
         else:
-            self.register.set_global_register_value("Vthin_AltCoarse", value >> 8)  # take high word
+            altf = value & 0xff
+            altc = (value >> 8)
+            self.register.set_global_register_value("Vthin_AltCoarse", altc)  # take high word
+            self.register.set_global_register_value("Vthin_AltFine", altf)  # take low word
         commands.extend(self.register.get_commands("wrregister", name=["Vthin_AltFine", "Vthin_AltCoarse"]))
         commands.extend(self.register.get_commands("runmode"))
         self.send_commands(commands)
