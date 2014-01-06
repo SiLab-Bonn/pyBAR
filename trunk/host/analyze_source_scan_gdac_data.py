@@ -3,12 +3,17 @@ import tables as tb
 from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
 from scipy.special import erf
+from scipy.optimize import curve_fit
 
-from analysis.plotting.plotting import plot_profile_histogram, plot_scatter
+from analysis.plotting.plotting import plot_profile_histogram, plot_scatter, plot_occupancy
 from analysis import analysis_utils
 
 import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
+
+
+def scurve(x, A, mu, sigma):
+    return 0.5 * (1 - A) * erf((x - mu) / (np.sqrt(2) * sigma)) + 0.5 * A
 
 
 def get_mean_threshold(gdac, mean_threshold_calibration):
@@ -73,6 +78,25 @@ def get_hit_rate_correction(gdacs, calibration_gdacs, cluster_size_histogram):
     return interpolation(gdacs)
 
 
+def select_hot_region(hits, cut_threshold=0.8):
+    '''Takes the hit array and masks all pixels with occupancy < (max_occupancy-min_occupancy) * cut_threshold.
+
+    Parameters
+    ----------
+    hits : array like
+        If dim > 2 the additional dimensions are summed up.
+    mean_threshold : float, [0, 1]
+        A number to specify the threshold, which pixel to take. Pixels are masked if
+        pixel_occupancy < mean_occupancy * mean_threshold
+
+    Returns
+    -------
+    numpy.ma.array, shape=(80,336)
+        The hits array with masked pixels.
+    '''
+    hits = np.sum(hits, axis=(-1)).astype('u8')
+    return np.ma.masked_where(hits < cut_threshold * (np.amax(hits) - np.amin(hits)), hits)
+
 if __name__ == "__main__":
     scan_name = 'scan_fei4_trigger_gdac_0'
     folder = 'K:\\data\\FE-I4\\ChargeRecoMethod\\'
@@ -107,37 +131,41 @@ if __name__ == "__main__":
             pixel_thresholds = get_pixel_thresholds(gdacs=gdac_range_source_scan, calibration_gdacs=gdac_range_calibration, threshold_calibration_array=threshold_calibration_array)  # interpolates the threshold at the source scan GDAC setting from the calibration
             pixel_hits = np.swapaxes(hits, 0, 1)  # create hit array with shape (col, row, ...)
 
-            pixel_thresholds = pixel_thresholds[:, :, :]
-            pixel_hits = pixel_hits[:, :, :]
-
             pixel_hits = pixel_hits * correction_factors
 
-            # choose good region
-            selected_pixel_thresholds = pixel_thresholds[35:45, 140:180, :]
-            selected_pixel_hits = pixel_hits[35:45, 140:180, :]
+            # choose region with pixels that have a sufficient occupancy
+            selected_pixel_hits = pixel_hits[~np.ma.getmaskarray(select_hot_region(pixel_hits)), :]  # reduce the data to pixels that are in the hot pixel region
+            selected_pixel_thresholds = pixel_thresholds[~np.ma.getmaskarray(select_hot_region(pixel_hits)), :]  # reduce the data to pixels that are in the hot pixel region
+            plot_occupancy(select_hot_region(pixel_hits), title='Select ' + str(len(selected_pixel_hits)) + ' pixels for analysis')
 
             # reshape to one dimension
-            x = np.reshape(selected_pixel_thresholds, newshape=(selected_pixel_thresholds.shape[0] * selected_pixel_thresholds.shape[1], selected_pixel_thresholds.shape[2])).ravel()
-            y = np.reshape(selected_pixel_hits, newshape=(selected_pixel_hits.shape[0] * selected_pixel_hits.shape[1], selected_pixel_hits.shape[2])).ravel()
+            x = selected_pixel_thresholds.flatten()
+            y = selected_pixel_hits.flatten()
 
             #nothing should be NAN, NAN is not supported yet
             if np.isnan(x).sum() > 0 or np.isnan(y).sum() > 0:
                 logging.warning('There are pixels with NaN threshold or hit values, analysis will be wrong')
 
-            def scurve(x, A, mu, sigma):
-                return 0.5 * (1 - A) * erf((x - mu) / (np.sqrt(2) * sigma)) + 0.5 * A
+            # calculated profile histogram, fit scurve to it and plot results
+            x_p, y_p, y_p_e = analysis_utils.get_profile_histogram(x, y, n_bins=100)  # profile histogram data
+            plot_profile_histogram(x=x_p * 55., y=y_p / 100., n_bins=len(gdac_range_source_scan) / 2, title='\'Single hit cluster\'-rate for different pixel thresholds', x_label='Pixel threshold [e]', y_label='Single hit cluster rate [a.u.]')
 
-            x_plt = x * 55.
-            y_plt = scurve(x * 55., 4.3, 10500, 3000)
-            plt.plot(x_plt, y_plt, 'o')
-            #plt.show()
+            # fit Scurve and plot differentiated results
+            popt, _ = curve_fit(scurve, x_p, y_p, sigma=y_p_e, p0=[11.5, 164, 73])  # fit scurve
+            y_p_f = scurve(x_p, popt[0], popt[1], popt[2])  # calculate y from the fitted scurve function
+            plt.plot(x_p * 55., -analysis_utils.central_difference(x_p, y_p), 'o')  # plot differentiated data
+            plt.plot(x_p * 55., -analysis_utils.central_difference(x_p, y_p_f), '-')  # plot differentiated fit data
+            plt.title('\'Single hit cluster\'-occupancy for different pixel thresholds')
+            plt.xlabel('Pixel threshold [e]')
+            plt.ylabel('Single hit cluster occupancy [a.u.]')
+            plt.ylim((0, 8))
+            plt.show()
 
-            plot_profile_histogram(x=x * 55., y=y / 100., n_bins=len(gdac_range_source_scan) / 2, title='Single hit cluster rate for different pixel thresholds', x_label='pixel threshold [e]', y_label='Single hit cluster rate [1/s]')
+            # calculate and plot mean results
+            x_mean = get_mean_threshold(gdac_range_source_scan, mean_threshold_calibration)
+            y_mean = selected_pixel_hits.mean(axis=(0))
 
-#             x = get_mean_threshold(gdac_range_source_scan, mean_threshold_calibration)
-#             y = selected_pixel_hits.mean(axis=(0, 1))
-#
-#             plot_scatter(x * 55, y, title='Mean single pixel cluster rate at different thresholds', x_label='mean threshold [e]', y_label='mean single pixel cluster')
+            plot_scatter(x_mean * 55, y_mean, title='Mean single pixel cluster rate at different thresholds', x_label='mean threshold [e]', y_label='mean single pixel cluster rate')
 
     if use_cluster_rate_correction:
         correction_h5.close()
