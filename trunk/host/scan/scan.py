@@ -5,12 +5,12 @@ import re
 
 from threading import Thread, Event, Lock, Timer
 
-min_pysilibusb_version = '0.1.2'
+min_pysilibusb_version = '0.1.3'
 from usb.core import USBError
 from SiLibUSB import SiUSBDevice, __version__ as pysilibusb_version
 from distutils.version import StrictVersion as v
 if v(pysilibusb_version) < v(min_pysilibusb_version):
-    raise ImportError('Wrong pySiLibUsb version (installed=%s, minimum expected=%s)' % (pysilibusb_version, min_pysilibusb_version))
+    raise ImportError('Wrong pySiLibUsb version (installed=%s, expected>=%s)' % (pysilibusb_version, min_pysilibusb_version))
 
 from fei4.register import FEI4Register
 from fei4.register_utils import FEI4RegisterUtils
@@ -54,12 +54,15 @@ class ScanBase(object):
             except USBError:
                 raise DeviceError('Can\'t communicate with USB board. Reset USB board!')
         if bit_file != None:
-            logging.info('Programming FPGA: %s' % bit_file)
-            try:
-                self.device.DownloadXilinx(bit_file)
-            except USBError:
-                raise DeviceError('Can\'t program FPGA firmware. Reset USB board!')
-            time.sleep(1)
+            if self.device.XilinxAlreadyLoaded():
+                logging.info('FPGA already configured, skipping download of bitstream')
+            else:
+                logging.info('Downloading bitstream to FPGA: %s' % bit_file)
+                try:
+                    self.device.DownloadXilinx(bit_file)
+                except USBError:
+                    raise DeviceError('Can\'t program FPGA firmware. Reset USB board!')
+                time.sleep(1)
 
         self.readout = Readout(self.device)
         self.readout_utils = ReadoutUtils(self.device)
