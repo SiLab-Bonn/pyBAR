@@ -125,15 +125,15 @@ assign TX[2] = (RJ45_ENABLED == 1'b1) ? RJ45_TRIGGER : LEMO_TRIGGER;
 reset_gen ireset_gen(.CLK(BUS_CLK), .RST(BUS_RST));
 
 clk_gen iclkgen(
-    .U1_CLKIN_IN(FCLK_IN), 
-    .U1_RST_IN(1'b0),  
-    .U1_CLKIN_IBUFG_OUT(), 
-    .U1_CLK0_OUT(BUS_CLK), 
-    .U1_CLK270_OUT(BUS_CLK270), 
-    .U1_STATUS_OUT(), 
+    .U1_CLKIN_IN(FCLK_IN),
+    .U1_RST_IN(1'b0),
+    .U1_CLKIN_IBUFG_OUT(),
+    .U1_CLK0_OUT(BUS_CLK),
+    .U1_CLK270_OUT(BUS_CLK270),
+    .U1_STATUS_OUT(),
     .U2_CLKFX_OUT(CLK_40),
     .U2_CLKDV_OUT(DATA_CLK),
-    .U2_CLK0_OUT(RX_CLK), 
+    .U2_CLK0_OUT(RX_CLK),
     .U2_CLK90_OUT(RX_CLK90),
     .U2_LOCKED_OUT(CLK_LOCKED),
     .U2_STATUS_OUT()
@@ -166,26 +166,23 @@ clock_divider #(
 localparam CMD_BASEADDR = 16'h0000;
 localparam CMD_HIGHADDR = 16'h8000-1;
 
-localparam FIFO_BASEADDR = 16'h8100; 
+localparam FIFO_BASEADDR = 16'h8100;
 localparam FIFO_HIGHADDR = 16'h8200-1;
 
-localparam TLU_BASEADDR = 16'h8200; 
+localparam TLU_BASEADDR = 16'h8200;
 localparam TLU_HIGHADDR = 16'h8300-1;
 
-localparam RX4_BASEADDR = 16'h8300; 
+localparam RX4_BASEADDR = 16'h8300;
 localparam RX4_HIGHADDR = 16'h8400-1;
 
-localparam RX3_BASEADDR = 16'h8400; 
+localparam RX3_BASEADDR = 16'h8400;
 localparam RX3_HIGHADDR = 16'h8500-1;
 
-localparam RX2_BASEADDR = 16'h8500; 
+localparam RX2_BASEADDR = 16'h8500;
 localparam RX2_HIGHADDR = 16'h8600-1;
 
-localparam RX1_BASEADDR = 16'h8600; 
+localparam RX1_BASEADDR = 16'h8600;
 localparam RX1_HIGHADDR = 16'h8700-1;
-
-localparam GPIO_BASEADDR = 16'h9000;                    
-localparam GPIO_HIGHADDR = GPIO_BASEADDR + 15;       
 
 
 // -------  BUS SYGNALING  ------- //
@@ -205,7 +202,7 @@ wire FIFO_READ_ERROR; // raised, when attempting to read from SRAM FIFO when it 
 
 cmd_seq 
 #( 
-    .BASEADDR(CMD_BASEADDR), 
+    .BASEADDR(CMD_BASEADDR),
     .HIGHADDR(CMD_HIGHADDR)
 )  icmd
 (
@@ -248,7 +245,7 @@ generate
     #(
         .BASEADDR(RX1_BASEADDR-16'h0100*i),
         .HIGHADDR(RX1_HIGHADDR-16'h0100*i),
-        .DSIZE(DSIZE), 
+        .DSIZE(DSIZE),
         .DATA_IDENTIFIER(i+1)
     ) ifei4_rx
     (
@@ -352,7 +349,7 @@ assign USB_READ = FREAD & FSTROBE;
 
 sram_fifo 
 #(
-    .BASEADDR(FIFO_BASEADDR), 
+    .BASEADDR(FIFO_BASEADDR),
     .HIGHADDR(FIFO_HIGHADDR)
 ) i_out_fifo (
     .BUS_CLK270(BUS_CLK270),
