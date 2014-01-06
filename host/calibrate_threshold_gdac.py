@@ -11,16 +11,11 @@ from scan_threshold_fast import ThresholdScanFast
 from analysis import analysis_utils
 from analysis.RawDataConverter import data_struct
 
-import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 from analysis.plotting.plotting import plotThreeWay, plot_scurves, plot_scatter
 from analysis.analyze_raw_data import AnalyzeRawData
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
-
-gdac_range = range(100, 114, 1)  # has to be from low to high value
-gdac_range.extend((np.exp(np.array(range(0, 150)) / 10.) / 10. + 100).astype('<u4')[50:-40].tolist())  # exponential GDAC range to correct for logarithmic threshold(GDAC) function
-ignore_columns = (1, 77, 78, 79)  # FE columns (from 1 to 80), ignore these in analysis and during data taking
 
 
 def analyze(raw_data_file, analyzed_data_file, fei4b=False):
@@ -32,7 +27,7 @@ def analyze(raw_data_file, analyzed_data_file, fei4b=False):
         analyze_raw_data.n_injections = 100
         analyze_raw_data.interpreter.set_warning_output(False)  # so far the data structure in a threshold scan was always bad, too many warnings given
         analyze_raw_data.interpret_word_table(fei4b=fei4b)
-        analyze_raw_data.interpreter.print_summary()
+#         analyze_raw_data.interpreter.print_summary()
 
 
 def store_calibration_data_as_table(out_file_h5, mean_threshold_calibration, mean_threshold_rms_calibration, threshold_calibration):
@@ -71,7 +66,7 @@ def store_calibration_data_as_array(out_file_h5, mean_threshold_calibration, mea
     logging.info("done")
 
 
-def create_calibration(scan_identifier, scan_data_filenames, fei4b=False, create_plots=True):
+def create_calibration(scan_identifier, scan_data_filenames, ignore_columns, fei4b=False, create_plots=True):
     logging.info("Analyzing and plotting results...")
     output_h5_filename = 'data/' + scan_identifier + '.h5'
     logging.info('Saving calibration in: %s' % output_h5_filename)
@@ -110,7 +105,6 @@ def create_calibration(scan_identifier, scan_data_filenames, fei4b=False, create
             threshold_calibration[:, :, gdac_index] = thresholds_masked.T
 
     if create_plots:
-        plot_scurves(occupancy_hist=threshold_calibration, scan_parameters=gdac_range, title='Thresholds', ylabel='Threshold', scan_parameter_name='GDAC', filename=output_pdf)
         plot_scatter(x=gdac_range, y=mean_threshold_calibration, title='Threshold calibration', x_label='GDAC', y_label='Mean threshold', log_x=False, filename=output_pdf)
         plot_scatter(x=gdac_range, y=mean_threshold_calibration, title='Threshold calibration', x_label='GDAC', y_label='Mean threshold', log_x=True, filename=output_pdf)
         plot_scatter(x=gdac_range, y=mean_threshold_rms_calibration, title='Threshold calibration', x_label='GDAC', y_label='Threshold RMS', log_x=False, filename=output_pdf)
@@ -131,7 +125,13 @@ def mask_columns(pixel_array, ignore_columns):
 
 
 if __name__ == "__main__":
-    scan_identifier = "calibrate_threshold_gdac"
+    scan_identifier = "calibrate_threshold_gdac_SCC_99_check"
+
+    gdac_range = range(70, 90, 1)  # has to be from low to high value
+    gdac_range.extend(range(90, 114, 2))  # has to be from low to high value
+    gdac_range.extend((np.exp(np.array(range(0, 150)) / 10.) / 10. + 100).astype('<u4')[50:-40].tolist())  # exponential GDAC range to correct for logarithmic threshold(GDAC) function
+
+    ignore_columns = (1, 77, 78, 79)  # FE columns (from 1 to 80), ignore these in analysis and during data taking
 
     startTime = datetime.now()
     logging.info('Taking threshold data at following GDACs: %s' % str(gdac_range))
@@ -147,6 +147,6 @@ if __name__ == "__main__":
     logging.info("Calibration finished in " + str(datetime.now() - startTime))
 
     # analyze and plot the data from all scans
-    create_calibration(scan_identifier, scan_data_filenames=scan_data_filenames, fei4b=scan_threshold_fast.register.fei4b, create_plots=True)
+    create_calibration(scan_identifier, scan_data_filenames=scan_data_filenames, ignore_columns=ignore_columns, fei4b=scan_threshold_fast.register.fei4b, create_plots=True)
 
     logging.info("Finished!")
