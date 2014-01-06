@@ -18,12 +18,13 @@ class FEI4RegisterUtils(object):
         self.register = register
         self.command_memory_byte_offset = 16
         self.command_memory_byte_size = 2048 - self.command_memory_byte_offset  # 16 bytes of register data
-        self.zero_cmd = self.register.get_commands("zeros", length=1)[0]
+        self.zero_cmd_length = 1
+        self.zero_cmd = self.register.get_commands("zeros", length=self.zero_cmd_length)[0]
         self.zero_cmd_padded = self.zero_cmd.copy()
         self.zero_cmd_padded.fill()
 
     def add_commands(self, x, y):
-            return x + self.zero_cmd + y  # FE needs a zero between commands
+            return x + self.zero_cmd + y  # FE needs a zero bits between commands
 
     def add_byte_padded_commands(self, x, y):
             x_fill = x.copy()
@@ -38,9 +39,19 @@ class FEI4RegisterUtils(object):
         else:
             return reduce(self.add_commands, commands)
 
-    def send_commands(self, commands, repeat=1, wait_for_finish=True, concatenate=False, byte_padding=False, clear_memory=False):
+    def send_commands(self, commands, repeat=1, wait_for_finish=True, concatenate=True, byte_padding=False, clear_memory=False):
         if concatenate:
-            self.send_command(command=self.concatenate_commands(commands, byte_padding=byte_padding), repeat=repeat, wait_for_finish=wait_for_finish, set_length=True, clear_memory=clear_memory)
+            commands_iter = iter(commands)
+            concatenated_cmd = commands_iter.next()
+            for command in commands_iter:
+                concatenated_cmd_tmp = self.concatenate_commands((concatenated_cmd, command), byte_padding=byte_padding)
+                if concatenated_cmd_tmp.length() > self.command_memory_byte_size * 8:
+                    self.send_command(command=concatenated_cmd, repeat=repeat, wait_for_finish=wait_for_finish, set_length=True, clear_memory=clear_memory)
+                    concatenated_cmd = command
+                else:
+                    concatenated_cmd = concatenated_cmd_tmp
+            # send remaining commands
+            self.send_command(command=concatenated_cmd, repeat=repeat, wait_for_finish=wait_for_finish, set_length=True, clear_memory=clear_memory)
         else:
             max_length = 0
             self.set_hardware_repeat(repeat)
