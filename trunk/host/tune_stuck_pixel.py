@@ -16,7 +16,7 @@ class StuckPixelScan(ScanBase):
         super(StuckPixelScan, self).__init__(config_file=config_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
 
     def scan(self, mask_steps=3, repeat_command=100, disable_for_mask=['Enable'], enable_for_mask=['Imon'], overwrite_mask=False):
-        '''Scan loop
+        '''Disable stuck pixels (hitbus always high). Based on digital scan.
 
         Parameters
         ----------
@@ -24,6 +24,12 @@ class StuckPixelScan(ScanBase):
             Number of mask steps.
         repeat : int
             Number of injections.
+        disable_for_mask : list, tuple
+            List of masks for which noisy pixels will be disabled.
+        enable_for_mask : list, tuple
+            List of masks for which noisy pixels will be enabled.
+        overwrite_mask : bool
+            Overwrite masks (disable_for_mask, enable_for_mask) if set to true. If set to false, make a combination of existing mask and new mask.
         '''
         self.register.create_restore_point()
         commands = []
@@ -47,7 +53,7 @@ class StuckPixelScan(ScanBase):
         # saving data
         save_raw_data_from_data_dict_iterable(self.readout.data, filename=self.scan_data_filename, title=self.scan_identifier)
 
-        occ_hist = make_occupancy_hist(*convert_data_array(data_array_from_data_dict_iterable(self.readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array))
+        occ_hist = make_occupancy_hist(*convert_data_array(data_array_from_data_dict_iterable(self.readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)).T
 
         self.occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
         # noisy pixels are set to 1
@@ -76,7 +82,7 @@ class StuckPixelScan(ScanBase):
         from analysis.analyze_raw_data import AnalyzeRawData
         output_file = self.scan_data_filename + "_interpreted.h5"
         with AnalyzeRawData(raw_data_file=scan.scan_data_filename, analyzed_data_file=output_file, create_pdf=True) as analyze_raw_data:
-            analyze_raw_data.interpreter.set_trig_count(self.consecutive_lvl1)
+            analyze_raw_data.interpreter.set_trig_count(self.register.get_global_register_value("Trig_Count"))
             analyze_raw_data.create_source_scan_hist = True
 #             analyze_raw_data.create_hit_table = True
 #             analyze_raw_data.interpreter.debug_events(0, 0, True)  # events to be printed onto the console for debugging, usually deactivated
@@ -84,7 +90,7 @@ class StuckPixelScan(ScanBase):
             analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms()
-            plot_occupancy(self.occ_mask.T, title='Noisy Pixels', z_max=1, filename=analyze_raw_data.output_pdf)
+            plot_occupancy(self.occ_mask.T, title='Stuck Pixels', z_max=1, filename=analyze_raw_data.output_pdf)
             for mask in self.disable_for_mask:
                 mask_name = self.register.get_pixel_register_attributes("full_name", do_sort=True, name=[mask])[0]
                 plot_occupancy(self.register.get_pixel_register_value(mask).T, title='%s Mask' % mask_name, z_max=1, filename=analyze_raw_data.output_pdf)
@@ -96,7 +102,7 @@ class StuckPixelScan(ScanBase):
 if __name__ == "__main__":
     import configuration
     scan = StuckPixelScan(config_file=configuration.config_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.start(configure=True, use_thread=True, occupancy_limit=10 ** (-5), triggers=10000000, consecutive_lvl1=1, disable_for_mask=['Enable'], enable_for_mask=['Imon'], overwrite_mask=False, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10)
+    scan.start(configure=True, use_thread=False, mask_steps=3, repeat_command=100, disable_for_mask=['Enable'], enable_for_mask=['Imon'], overwrite_mask=False)
     scan.stop()
     scan.analyze()
     scan.register.save_configuration(configuration.config_file)
