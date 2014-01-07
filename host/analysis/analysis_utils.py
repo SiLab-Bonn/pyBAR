@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 import numexpr as ne
 from scipy.sparse import coo_matrix
+from scipy.interpolate import splrep, splev
 import sys
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
@@ -37,7 +38,7 @@ def get_profile_histogram(x, y, n_bins=100):
 
 
 def central_difference(x, y):
-    '''Returns the dy/dx(x) visa central difference method
+    '''Returns the dy/dx(x) via central difference method
 
     Parameters
     ----------
@@ -65,6 +66,24 @@ def in1d_sorted(ar1, ar2):
     inds = ar2.searchsorted(ar1)
     inds[inds == len(ar2)] = 0
     return ar2[inds] == ar1
+
+
+def smooth_differentiation(x, y, weigths=None, order=5, smoothness=3, derivation=1):
+    '''Returns the dy/dx(x) with the fit and differentiation of a spline curve
+
+    Parameters
+    ----------
+    x : array like
+    y : array like
+
+    Returns
+    -------
+    dy/dx : array like
+    '''
+    if (len(x) != len(y)):
+        raise ValueError("x, y must have the same length")
+    f = splrep(x, y, w=weigths, k=order, s=smoothness)  # spline function
+    return splev(x, f, der=derivation)
 
 
 def reduce_sorted_to_intersect(ar1, ar2):
