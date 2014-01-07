@@ -15,6 +15,7 @@ class ThresholdScanFast(ScanBase):
     def __init__(self, config_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_threshold_fast", scan_data_path=None):
         super(ThresholdScanFast, self).__init__(config_file=config_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
         self.scan_parameter_start = 0  # holding last start value (e.g. used in GDAC threshold scan)
+        self.data_points = 10
 
     def scan(self, mask_steps=3, repeat_command=100, scan_parameter='PlsrDAC', scan_parameter_range=None, scan_parameter_stepsize=2, search_distance=10, minimum_data_points=15, ignore_columns=(1, 78, 79, 80)):
         '''Scan loop
@@ -52,7 +53,7 @@ class ThresholdScanFast(ScanBase):
         logging.info("Scanning %s from %d to %d" % (scan_parameter, scan_parameter_range[0], scan_parameter_range[1]))
         self.scan_parameter_value = scan_parameter_range[0]  # set to start value
         self.search_distance = search_distance
-        data_points = 0  # counter variable to count the data points already recorded, have to be at least minimum_data_ponts
+        self.data_points = 0  # counter variable to count the data points already recorded, have to be at least minimum_data_ponts
 
         # calculate DCs to scan from the columns to ignore
         enable_double_columns = range(0, 40)
@@ -64,10 +65,10 @@ class ThresholdScanFast(ScanBase):
             if set((double_column * 2, (double_column * 2) + 1)).issubset(ignore_columns):
                 enable_double_columns.remove(double_column)
         logging.info("Use DCs: %s" % str(enable_double_columns))
-            
+
         self.select_arr_columns = range(0, 80)
         for column in ignore_columns:
-            self.select_arr_columns.remove(column-1)
+            self.select_arr_columns.remove(column - 1)
 
         self.repeat_command = repeat_command
 
@@ -76,7 +77,7 @@ class ThresholdScanFast(ScanBase):
                 if self.stop_thread_event.is_set():
                     break
                 if self.record_data:
-                    logging.info("Scan step %d (%s %d)" % (data_points, scan_parameter, self.scan_parameter_value))
+                    logging.info("Scan step %d (%s %d)" % (self.data_points, scan_parameter, self.scan_parameter_value))
 
                 commands = []
                 commands.extend(self.register.get_commands("confmode"))
@@ -91,7 +92,7 @@ class ThresholdScanFast(ScanBase):
 
                 self.readout.stop()
 
-                if not self.start_condition_triggered or data_points > minimum_data_points:  # speed up, only create histograms when needed. Python is much too slow here.
+                if not self.start_condition_triggered or self.data_points > minimum_data_points:  # speed up, only create histograms when needed. Python is much too slow here.
                     if not self.start_condition_triggered and not self.record_data:
                         logging.info('Testing for start condition: %s %d' % (scan_parameter, self.scan_parameter_value))
                     if not self.stop_condition_triggered and self.record_data:
@@ -108,17 +109,17 @@ class ThresholdScanFast(ScanBase):
                     self.scan_parameter_start = self.scan_parameter_value
                     self.record_data = True
                     continue
-                        
+
                 # saving data
                 if self.record_data:
-                    data_points = data_points + 1
+                    self.data_points = self.data_points + 1
                     raw_data_file.append(self.readout.data, scan_parameters={scan_parameter: self.scan_parameter_value})
-                
+
                 # stop condition is met for the first time
                 if self.stop_condition_triggered and self.record_data:
                     logging.info('Stopping threshold scan at %s %d' % (scan_parameter, self.scan_parameter_value))
                     break
-                
+
                 # increase scan parameter value
                 if not self.start_condition_triggered:
                     self.scan_parameter_value = self.scan_parameter_value + self.search_distance
