@@ -1,26 +1,19 @@
 """ This script takes the data from a source scan where the global threshold was changed and clusters the hits for each global threshold setting.
 """
 
-scan_name = 'scan_fei4_trigger_gdac_0'
-folder = 'K:\\data\\FE-I4\\ChargeRecoMethod\\bias_20\\'
-
-chip_flavor = 'fei4a'
-input_file = folder + scan_name + ".h5"
-input_file_hits = folder + scan_name + "_interpreted.h5"
-output_file = folder + scan_name + "_cluster_sizes.h5"
-scan_data_filename = folder + scan_name
-
 import tables as tb
 import numpy as np
 from datetime import datetime
 import logging
+import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
+
 from analysis.plotting import plotting
 from analysis.analyze_raw_data import AnalyzeRawData
 from analysis.analysis_utils import get_scan_parameter, get_meta_data_at_scan_parameter, data_aligned_at_events, get_event_range
 
 
-def analyze_per_scan_parameter():
+def analyze_per_scan_parameter(input_file_hits, output_file):
     with tb.openFile(input_file_hits, mode="r+") as in_hit_file_h5:
         meta_data_array = in_hit_file_h5.root.meta_data[:]
         scan_parameter_values = get_scan_parameter(meta_data_array).itervalues().next()
@@ -31,7 +24,7 @@ def analyze_per_scan_parameter():
         hit_table = in_hit_file_h5.root.Hits
 
         if not hit_table.cols.event_number.is_indexed:  # index event_number column to speed up everything
-            logging.info('Create event_number index')
+            logging.info('Create event_number index, this takes about a minute')
             hit_table.cols.event_number.create_csindex(filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))  # this takes time (1 min. ~ 150. Mio entries) but immediately pays off
             logging.info('Done')
         else:
@@ -102,5 +95,11 @@ def analyze_per_scan_parameter():
 
 if __name__ == "__main__":
     start_time = datetime.now()
-    analyze_per_scan_parameter()
+    scan_name = 'scan_fei4_trigger_gdac'
+    folder = 'K:\\data\\FE-I4\\ChargeRecoMethod\\bias_2\\'
+
+    chip_flavor = 'fei4a'
+    input_file_hits = folder + scan_name + "_interpreted.h5"
+    output_file = folder + scan_name + "_cluster_sizes.h5"
+    analyze_per_scan_parameter(input_file_hits, output_file)
     logging.info('Script runtime %.1f seconds' % (datetime.now() - start_time).total_seconds())
