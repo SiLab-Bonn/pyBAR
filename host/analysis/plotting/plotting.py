@@ -138,7 +138,7 @@ def make_occupancy_hist(cols, rows, ncols=80, nrows=336):
 
 def plot_profile_histogram(x, y, n_bins=100, title=None, x_label=None, y_label=None, log_y=False, filename=None):
     '''Takes 2D point data (x,y) and creates a profile histogram similar to the TProfile in ROOT. It calculates
-    the y mean for every bin and gives the y mean error as error bars.
+    the y mean for every bin at the bin center and gives the y mean error as error bars.
 
     Parameters
     ----------
@@ -309,7 +309,7 @@ def plot_cluster_tot(hist, median=False, max_occ=None, filename=None):
     plot_1d_hist(hist=hist[:, 0], title='Cluster ToT (' + str(sum(hist[:, 0])) + ' entries)', plot_range=range(0, 32), x_axis_title='cluster ToT', y_axis_title='#', filename=filename)
 
 
-def plot_cluster_size(hist, title = None, filename=None):
+def plot_cluster_size(hist, title=None, filename=None):
     plot_1d_hist(hist=hist, title='Cluster size (' + str(np.sum(hist)) + ' entries)' if title == None else title, log_y=True, plot_range=range(0, 32), x_axis_title='Cluster size', y_axis_title='#', filename=filename)
 
 
@@ -338,7 +338,7 @@ def plot_scurves(occupancy_hist, scan_parameters, title='S-Curves', ylabel='Occu
     fig = plt.figure()
     fig.patch.set_facecolor('white')
     if len(scan_parameters) > 1:
-        scan_parameter_dist = abs(scan_parameters[0] - scan_parameters[-1]) / (len(scan_parameters) - 1)
+        scan_parameter_dist = (np.amax(scan_parameters) - np.amin(scan_parameters)) / (len(scan_parameters) - 1)
     else:
         scan_parameter_dist = 0
     extent = [yedges[0] - scan_parameter_dist / 2, yedges[-1] + scan_parameter_dist / 2, xedges[-1] + 0.5, xedges[0] - 0.5]
