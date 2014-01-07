@@ -96,6 +96,32 @@ def plot_cluster_sizes(in_file_cluster_h5, in_file_calibration_h5, gdac_range, v
     plt.close()
 
 
+def plot_result(x_p, y_p, y_p_e):
+    ''' Fit spline to profile histogramed data, differentiate, determine MPV and plots.
+     Parameters
+    ----------
+        x_p, y_p : array like
+            data points (x,y)
+        y_p_e : array like
+            error bars in y
+    '''
+    smoothed_data = analysis_utils.smooth_differentiation(x_p, y_p, weigths=1 / y_p_e, order=3, smoothness=smoothness, derivation=0)
+    smoothed_data_diff = analysis_utils.smooth_differentiation(x_p, y_p, weigths=1 / y_p_e, order=3, smoothness=smoothness, derivation=1)
+    p1 = plt.errorbar(x_p * vcal_calibration, y_p, yerr=y_p_e, fmt='o')  # plot differentiated data with error bars of data
+    p2, = plt.plot(x_p * vcal_calibration, smoothed_data, '-r')  # plot smoothed data
+    p3, = plt.plot(x_p * vcal_calibration, -100. * smoothed_data_diff, '-', lw=2)  # plot differentiated data
+    mpv_index = np.argmax(-analysis_utils.smooth_differentiation(x_p, y_p, weigths=1 / y_p_e, order=3, smoothness=smoothness, derivation=1))
+    p4, = plt.plot([x_p[mpv_index] * vcal_calibration, x_p[mpv_index] * vcal_calibration], [0, -100. * smoothed_data_diff[mpv_index]], 'k-', lw=2)
+    text = 'MPV ' + str(int(x_p[mpv_index] * vcal_calibration)) + ' e'
+    plt.text(1.01 * x_p[mpv_index] * vcal_calibration, -10. * smoothed_data_diff[mpv_index], text, ha='left')
+    plt.legend([p1, p2, p3, p4], ['data', 'smoothed spline', 'spline differentiation', text], prop={'size': 12})
+    plt.title('\'Single hit cluster\'-occupancy for different pixel thresholds')
+    plt.xlabel('Pixel threshold [e]')
+    plt.ylabel('Single hit cluster occupancy [a.u.]')
+    plt.ylim((0, 1.05 * np.amax(y_p)))
+    plt.show()
+
+
 def select_hot_region(hits, cut_threshold=0.8):
     '''Takes the hit array and masks all pixels with occupancy < (max_occupancy-min_occupancy) * cut_threshold.
 
@@ -103,9 +129,11 @@ def select_hot_region(hits, cut_threshold=0.8):
     ----------
     hits : array like
         If dim > 2 the additional dimensions are summed up.
-    mean_threshold : float, [0, 1]
+    cut_threshold : float, [0, 1]
         A number to specify the threshold, which pixel to take. Pixels are masked if
-        pixel_occupancy < mean_occupancy * mean_threshold
+        occupancy < (max_occupancy-min_occupancy) * cut_threshold
+        1 means that all pixels are masked
+        0 means that no pixels are masked
 
     Returns
     -------
@@ -157,9 +185,11 @@ if __name__ == "__main__":
             pixel_hits = pixel_hits * correction_factors
 
             # choose region with pixels that have a sufficient occupancy
-            selected_pixel_hits = pixel_hits[~np.ma.getmaskarray(select_hot_region(pixel_hits)), :]  # reduce the data to pixels that are in the hot pixel region
-            selected_pixel_thresholds = pixel_thresholds[~np.ma.getmaskarray(select_hot_region(pixel_hits)), :]  # reduce the data to pixels that are in the hot pixel region
-            plot_occupancy(select_hot_region(pixel_hits), title='Select ' + str(len(selected_pixel_hits)) + ' pixels for analysis')
+            hot_pixel = select_hot_region(pixel_hits, cut_threshold=0.8)
+            pixel_mask = ~np.ma.getmaskarray(hot_pixel)
+            selected_pixel_hits = pixel_hits[pixel_mask, :]  # reduce the data to pixels that are in the hot pixel region
+            selected_pixel_thresholds = pixel_thresholds[pixel_mask, :]  # reduce the data to pixels that are in the hot pixel region
+            plot_occupancy(hot_pixel, title='Select ' + str(len(selected_pixel_hits)) + ' pixels for analysis')
 
             # reshape to one dimension
             x = selected_pixel_thresholds.flatten()
@@ -178,22 +208,7 @@ if __name__ == "__main__":
             y_p = y_p[selected_data]
             y_p_e = y_p_e[selected_data]
 
-            # fit spline, differentiate, determine MPV and plot
-            smoothed_data = analysis_utils.smooth_differentiation(x_p, y_p, weigths=1 / y_p_e, order=3, smoothness=smoothness, derivation=0)
-            smoothed_data_diff = analysis_utils.smooth_differentiation(x_p, y_p, weigths=1 / y_p_e, order=3, smoothness=smoothness, derivation=1)
-            p1 = plt.errorbar(x_p * vcal_calibration, y_p, yerr=y_p_e, fmt='o')  # plot differentiated data with error bars of data
-            p2, = plt.plot(x_p * vcal_calibration, smoothed_data, '-r')  # plot smoothed data
-            p3, = plt.plot(x_p * vcal_calibration, -100. * smoothed_data_diff, '-', lw=2)  # plot differentiated data
-            mpv_index = np.argmax(-analysis_utils.smooth_differentiation(x_p, y_p, weigths=1 / y_p_e, order=3, smoothness=smoothness, derivation=1))
-            p4, = plt.plot([x_p[mpv_index] * vcal_calibration, x_p[mpv_index] * vcal_calibration], [0, -100. * smoothed_data_diff[mpv_index]], 'k-', lw=2)
-            text = 'MPV ' + str(int(x_p[mpv_index] * vcal_calibration)) + ' e'
-            plt.text(1.01 * x_p[mpv_index] * vcal_calibration, -10. * smoothed_data_diff[mpv_index], text, ha='left')
-            plt.legend([p1, p2, p3, p4], ['data', 'smoothed spline', 'spline differentiation', text], prop={'size': 12})
-            plt.title('\'Single hit cluster\'-occupancy for different pixel thresholds')
-            plt.xlabel('Pixel threshold [e]')
-            plt.ylabel('Single hit cluster occupancy [a.u.]')
-            plt.ylim((0, 1.05 * np.amax(y_p)))
-            plt.show()
+            plot_result(x_p, y_p, y_p_e)
 
             #  calculate and plot mean results
 #             x_mean = get_mean_threshold(gdac_range_source_scan, mean_threshold_calibration)
