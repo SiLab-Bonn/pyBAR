@@ -44,6 +44,7 @@ class DigitalScan(ScanBase):
     def analyze(self):
         output_file = scan.scan_data_filename + "_interpreted.h5"
         with AnalyzeRawData(raw_data_file=scan.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
+            analyze_raw_data.interpreter.set_trig_count(self.register.get_global_register_value("Trig_Count"))
             analyze_raw_data.create_tot_hist = False
             analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
             analyze_raw_data.plot_histograms(scan_data_filename=scan.scan_data_filename)
