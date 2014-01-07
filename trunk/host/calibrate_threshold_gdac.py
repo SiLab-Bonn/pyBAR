@@ -100,7 +100,6 @@ def create_calibration(scan_identifier, scan_data_filenames, ignore_columns, fei
                 plot_scurves(occupancy_hist=occupancy_masked, scan_parameters=scan_parameters, scan_parameter_name='PlsrDAC', filename=output_pdf)
             # fill the calibration data arrays
             mean_threshold_calibration[gdac_index] = np.ma.mean(thresholds_masked)
-#             mean_threshold_rms_calibration[gdac_index] = np.ma.sqrt(np.ma.mean((thresholds_masked - mean_threshold_calibration[gdac_index]) ** 2))  # TODO: use numpy.ma.std here?
             mean_threshold_rms_calibration[gdac_index] = np.ma.std(thresholds_masked)
             threshold_calibration[:, :, gdac_index] = thresholds_masked.T
 
@@ -131,7 +130,7 @@ if __name__ == "__main__":
     gdac_range.extend(range(90, 114, 2))  # has to be from low to high value
     gdac_range.extend((np.exp(np.array(range(0, 150)) / 10.) / 10. + 100).astype('<u4')[50:-40].tolist())  # exponential GDAC range to correct for logarithmic threshold(GDAC) function
 
-    ignore_columns = (1, 77, 78, 79)  # FE columns (from 1 to 80), ignore these in analysis and during data taking
+    ignore_columns = (1, 78, 79, 80)  # FE columns (from 1 to 80), ignore these in analysis and during data taking
 
     startTime = datetime.now()
     logging.info('Taking threshold data at following GDACs: %s' % str(gdac_range))
