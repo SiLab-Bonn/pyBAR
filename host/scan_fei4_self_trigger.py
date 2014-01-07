@@ -26,6 +26,7 @@ class FEI4SelfTriggerScan(ScanBase):
         scan_timeout : int
             In seconds; stop scan after given time.
         '''
+        self.register.create_restore_point()
         # generate ROI mask for Enable mask
         pixel_reg = "Enable"
         mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
@@ -81,6 +82,8 @@ class FEI4SelfTriggerScan(ScanBase):
 
                 if scan_start_time is not None and time.time() > scan_stop_time:
                     logging.info('Reached maximum scan time. Stopping Scan...')
+                    self.register.restore()
+                    self.register_utils.configure_global()
                     self.stop_thread_event.set()
                 # TODO: read 8b10b decoder err cnt
     #                 if not self.readout_utils.read_rx_status():
@@ -103,6 +106,8 @@ class FEI4SelfTriggerScan(ScanBase):
                     no_data_at_time = last_iteration
                     if wait_for_first_data == False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
                         logging.info('Reached no data timeout. Stopping Scan...')
+                        self.register.restore()
+                        self.register_utils.configure_global()
                         self.stop_thread_event.set()
                     elif wait_for_first_data == False:
                         saw_no_data_at_time = no_data_at_time
@@ -119,6 +124,8 @@ class FEI4SelfTriggerScan(ScanBase):
                     wait_for_first_data = False
 
             self.readout.stop()
+
+            raw_data_file.append(self.readout.data)
 
     def analyze(self):
         from analysis.analyze_raw_data import AnalyzeRawData
