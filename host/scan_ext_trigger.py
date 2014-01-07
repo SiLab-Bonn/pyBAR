@@ -149,7 +149,9 @@ class ExtTriggerScan(ScanBase):
 
             logging.info('Total amount of triggers collected: %d', self.readout_utils.get_trigger_number())
 
-        self.readout.stop()
+            self.readout.stop()
+
+            raw_data_file.append(self.readout.data)
 
     def analyze(self):
         from analysis.analyze_raw_data import AnalyzeRawData
