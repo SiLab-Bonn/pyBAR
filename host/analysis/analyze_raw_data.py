@@ -34,6 +34,8 @@ def fit_scurve(scurve_data, PlsrDAC):  # data of some pixels to fit, has to be g
             popt, _ = curve_fit(scurve, PlsrDAC, scurve_data, p0=[max_occ, threshold, 2.5])
         except RuntimeError:  # fit failed
             popt = [0, 0, 0]
+    if popt[1] < 0:  # threshold < 0 rarely happens if fit does not work
+        popt = [0, 0, 0]
     return popt[1:3]
 
 
