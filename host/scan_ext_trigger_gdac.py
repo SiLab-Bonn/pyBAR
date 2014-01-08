@@ -47,8 +47,8 @@ class ExtTriggerGdacScan(ScanBase):
         max_triggers : int
             Maximum number of triggers to be taken.
         '''
-        logging.info('Start GDAC source scan from %d to %d in %d steps' % (np.amin(gdac_range), np.amax(gdac_range), len(gdac_range)))
-        logging.info('Estimated scan time %dh' % (len(gdac_range) * scan_timeout / 3600.))
+        logging.info('Start GDAC source scan from %d to %d in %d steps' % (np.amin(gdacs), np.amax(gdacs), len(gdacs)))
+        logging.info('Estimated scan time %dh' % (len(gdacs) * scan_timeout / 3600.))
 
         self.stop_loop_event = Event()
         self.stop_loop_event.clear()
@@ -82,7 +82,7 @@ class ExtTriggerGdacScan(ScanBase):
         wait_for_first_trigger_setting = True  # needed to reset this for a new GDAC
 
         with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier, scan_parameters=["GDAC"]) as raw_data_file:
-            for gdac_value in gdac_range:
+            for gdac_value in gdacs:
                 if self.stop_thread_event.is_set():
                     break
                 self.stop_loop_event.clear()
