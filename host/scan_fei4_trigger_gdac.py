@@ -85,7 +85,7 @@ class Fei4TriggerGdacScan(ScanBase):
         self.register_utils.send_commands(commands)
         # append_size = 50000
 
-    def scan(self, config_file_trigger_fe, gdac_range=range(255, -1, -1), col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=600, max_triggers=10000, invert_lemo_trigger_input=False, wait_for_first_trigger=True, channel_trigger_fe=3, channel_triggered_fe=4, **kwargs):
+    def scan(self, gdac_range, config_file_trigger_fe, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=10000, invert_lemo_trigger_input=False, wait_for_first_trigger=True, channel_trigger_fe=3, channel_triggered_fe=4):
         '''Scan loop
 
         Parameters
@@ -235,7 +235,7 @@ if __name__ == "__main__":
         gdac_range = get_gdacs(threshold_range, in_file_calibration_h5.root.MeanThresholdCalibration[:])
 
     scan = Fei4TriggerGdacScan(config_file=config_file_triggered_fe, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.start(gdac_range=gdac_range, config_file_trigger_fe=config_file_trigger_fe, channel_triggered_fe=4, channel_trigger_fe=3, invert_lemo_trigger_input=True, configure=True, use_thread=True, col_span=[25, 55], row_span=[50, 250], timeout_no_data=1 * 60, scan_timeout=100, max_triggers=10000000)
+    scan.start(configure=True, use_thread=True, gdac_range=gdac_range, config_file_trigger_fe=config_file_trigger_fe, col_span=[25, 55], row_span=[50, 250], timeout_no_data=1 * 60, scan_timeout=100, max_triggers=10000000, channel_triggered_fe=4, channel_trigger_fe=3, invert_lemo_trigger_input=True)
 
     scan.stop()
     scan.analyze()
