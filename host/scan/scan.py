@@ -25,7 +25,23 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 
 class ScanBase(object):
     # TODO: implement callback for stop() & analyze()
-    def __init__(self, config_file, definition_file=None, bit_file=None, device=None, scan_identifier="base_scan", scan_data_path=None):
+    def __init__(self, config_file=None, definition_file=None, bit_file=None, force_download=False, device=None, scan_identifier="base_scan", scan_data_path=None):
+        '''
+        config_file : str, FEI4Register
+            Filename of FE configuration file or FEI4Register object.
+        definition_file : str
+            Filename of FE definition file (XML file). Usually not needed.
+        bit_file : str
+            Filename of FPGA bitstream file (bit file).
+        force_download : bool
+            Force download of bitstream file, even if FPGA is configured.
+        device : SiUSBDevice
+            SiUSBDevice object. If None, any available USB device will be taken.
+        scan_identifier : str
+            Scan identifier string.
+        scan_data_path : str
+            Pathname of data output path.
+        '''
         # fixing event handler: http://stackoverflow.com/questions/15457786/ctrl-c-crashes-python-after-importing-scipy-stats
         if os.name == 'nt':
             import thread
@@ -54,7 +70,7 @@ class ScanBase(object):
             except USBError:
                 raise DeviceError('Can\'t communicate with USB board. Reset USB board!')
         if bit_file != None:
-            if self.device.XilinxAlreadyLoaded():
+            if self.device.XilinxAlreadyLoaded() and not force_download:
                 logging.info('FPGA already configured, skipping download of bitstream')
             else:
                 logging.info('Downloading bitstream to FPGA: %s' % bit_file)
