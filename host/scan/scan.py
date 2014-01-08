@@ -25,9 +25,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 
 class ScanBase(object):
     # TODO: implement callback for stop() & analyze()
-    def __init__(self, config_file=None, definition_file=None, bit_file=None, force_download=False, device=None, scan_identifier="base_scan", scan_data_path=None):
+    def __init__(self, configuration_file=None, definition_file=None, bit_file=None, force_download=False, device=None, scan_identifier="base_scan", scan_data_path=None):
         '''
-        config_file : str, FEI4Register
+        configuration_file : str, FEI4Register
             Filename of FE configuration file or FEI4Register object.
         definition_file : str
             Filename of FE definition file (XML file). Usually not needed.
@@ -83,10 +83,10 @@ class ScanBase(object):
         self.readout = Readout(self.device)
         self.readout_utils = ReadoutUtils(self.device)
 
-        if isinstance(config_file, FEI4Register):
-            self.register = config_file
+        if isinstance(configuration_file, FEI4Register):
+            self.register = configuration_file
         else:
-            self.register = FEI4Register(config_file=config_file, definition_file=definition_file)
+            self.register = FEI4Register(configuration_file=configuration_file, definition_file=definition_file)
         self.register_utils = FEI4RegisterUtils(self.device, self.readout, self.register)
 
         if scan_data_path == None:
