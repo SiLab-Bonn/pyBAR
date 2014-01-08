@@ -82,7 +82,7 @@ def create_calibration(scan_identifier, scan_data_filenames, ignore_columns, fei
 
     for gdac_index, gdac in enumerate(gdac_range):
         logging.info("Analyzing GDAC %d, progress %d %%" % (gdac, int(float(float(gdac_index) / float(len(gdac_range)) * 100.))))
-#         raw_data_file = 'data/' + scan_identifier + '_' + str(gdac) + "_0"
+        #raw_data_file = 'data/' + scan_identifier + '_' + str(gdac) + "_0"
         raw_data_file = scan_data_filenames[gdac]
         analyzed_data_file = raw_data_file + '_interpreted.h5'
         analyze(raw_data_file=raw_data_file, analyzed_data_file=analyzed_data_file, fei4b=fei4b)
@@ -104,10 +104,10 @@ def create_calibration(scan_identifier, scan_data_filenames, ignore_columns, fei
             threshold_calibration[:, :, gdac_index] = thresholds_masked.T
 
     if create_plots:
-        plot_scatter(x=gdac_range, y=mean_threshold_calibration, title='Threshold vs. GDAC', x_label='GDAC', y_label='Mean threshold', log_x=False, filename=output_pdf)
-        plot_scatter(x=gdac_range, y=mean_threshold_calibration, title='Threshold vs. GDAC (log scale)', x_label='GDAC', y_label='Mean threshold', log_x=True, filename=output_pdf)
-        plot_scatter(x=gdac_range, y=mean_threshold_rms_calibration, title='Threshold RMS vs. GDAC', x_label='GDAC', y_label='Threshold RMS', log_x=False, filename=output_pdf)
-        plot_scatter(x=gdac_range, y=mean_threshold_rms_calibration, title='Threshold RMS vs. GDAC (log scale)', x_label='GDAC', y_label='Threshold RMS', log_x=True, filename=output_pdf)
+        plot_scatter(x=gdac_range, y=mean_threshold_calibration, title='Threshold calibration', x_label='GDAC', y_label='Mean threshold', log_x=False, filename=output_pdf)
+        plot_scatter(x=gdac_range, y=mean_threshold_calibration, title='Threshold calibration', x_label='GDAC', y_label='Mean threshold', log_x=True, filename=output_pdf)
+        plot_scatter(x=gdac_range, y=mean_threshold_rms_calibration, title='Threshold calibration', x_label='GDAC', y_label='Threshold RMS', log_x=False, filename=output_pdf)
+        plot_scatter(x=gdac_range, y=mean_threshold_rms_calibration, title='Threshold calibration', x_label='GDAC', y_label='Threshold RMS', log_x=True, filename=output_pdf)
         output_pdf.close()
 
     # store the calibration data into a hdf5 file as an easy to read table and as an array for quick data access
@@ -124,7 +124,7 @@ def mask_columns(pixel_array, ignore_columns):
 
 
 if __name__ == "__main__":
-    scan_identifier = "calibrate_threshold_gdac_MDBM30"
+    scan_identifier = "calibrate_threshold_gdac_SCC_99_check"
 
     gdac_range = range(70, 90, 1)  # has to be from low to high value
     gdac_range.extend(range(90, 114, 2))  # has to be from low to high value
