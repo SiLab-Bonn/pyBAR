@@ -86,7 +86,7 @@ class ScanBase(object):
         if isinstance(config_file, FEI4Register):
             self.register = config_file
         else:
-            self.register = FEI4Register(config_file, definition_file=definition_file)
+            self.register = FEI4Register(config_file=config_file, definition_file=definition_file)
         self.register_utils = FEI4RegisterUtils(self.device, self.readout, self.register)
 
         if scan_data_path == None:
