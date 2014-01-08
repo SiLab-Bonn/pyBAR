@@ -22,9 +22,9 @@ def get_gdacs(thresholds, mean_threshold_calibration):
     return np.unique(interpolation(thresholds).astype(np.uint32))
 
 
-class Fei4TriggerScanGdac(ScanBase):
+class Fei4TriggerGdacScan(ScanBase):
     def __init__(self, config_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_fei4_trigger_gdac", scan_data_path=None):
-        super(Fei4TriggerScanGdac, self).__init__(config_file=config_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
+        super(Fei4TriggerGdacScan, self).__init__(config_file=config_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
 
     def configure_trigger_fe(self, config_file_trigger_fe, col_span, row_span):
         logging.info("Sending configuration to trigger FE")
@@ -188,7 +188,6 @@ class Fei4TriggerScanGdac(ScanBase):
         from analysis.analyze_raw_data import AnalyzeRawData
         output_file = self.scan_data_filename + "_interpreted.h5"
         output_file_trigger_fe = self.scan_data_filename + "_trigger_fe_interpreted.h5"
-        print output_file, output_file_trigger_fe
         with AnalyzeRawData(raw_data_file=scan.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
             analyze_raw_data.interpreter.set_trig_count(self.register.get_global_register_value("Trig_Count"))
             analyze_raw_data.max_tot_value = 13
@@ -223,13 +222,13 @@ if __name__ == "__main__":
     config_file_trigger_fe = os.path.join(os.getcwd(), r'config/fei4/configs/SCC_30_tuning.cfg')  # Chip 2, GA 2
     gdac_range = range(100, 5001, 15)  # GDAC range set manually
 
-    # GDAC settings can be set automatically from the calibration with equidistand thresholds
-    input_file_calibration = 'data/calibrate_threshold_gdac_SCC_99.h5'  # the file with the GDAC<-> PlsrDAC calibration
+    # GDAC settings can be set automatically from the calibration with equidistant thresholds
+    input_file_calibration = 'data/calibrate_threshold_gdac_SCC_99.h5'  # the file with the GDAC <-> PlsrDAC calibration
     threshold_range = np.arange(19, 280, 0.8)  # threshold range in PlsrDAC to scan
     with tb.openFile(input_file_calibration, mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
         gdac_range = get_gdacs(threshold_range, in_file_calibration_h5.root.MeanThresholdCalibration[:])
 
-    scan = Fei4TriggerScanGdac(config_file=config_file_triggered_fe, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
+    scan = Fei4TriggerGdacScan(config_file=config_file_triggered_fe, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
     scan.start(gdac_range=gdac_range, config_file_trigger_fe=config_file_trigger_fe, channel_triggered_fe=4, channel_trigger_fe=3, invert_lemo_trigger_input=True, configure=True, use_thread=True, col_span=[25, 55], row_span=[50, 250], timeout_no_data=1 * 60, scan_timeout=100, max_triggers=10000000)
 
     scan.stop()
