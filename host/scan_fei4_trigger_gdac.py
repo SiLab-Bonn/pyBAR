@@ -220,7 +220,7 @@ if __name__ == "__main__":
 
     config_file_triggered_fe = os.path.join(os.getcwd(), r'config/fei4/configs/SCC_99_low_thr_tuning.cfg')  # Chip 1, GA 1
     config_file_trigger_fe = os.path.join(os.getcwd(), r'config/fei4/configs/SCC_30_tuning.cfg')  # Chip 2, GA 2
-    gdac_range = range(100, 5001, 15)  # GDAC range set manually
+#     gdac_range = range(100, 5001, 15)  # GDAC range set manually
 
     # GDAC settings can be set automatically from the calibration with equidistant thresholds
     input_file_calibration = 'data/calibrate_threshold_gdac_SCC_99.h5'  # the file with the GDAC <-> PlsrDAC calibration
