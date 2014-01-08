@@ -140,4 +140,4 @@ if __name__ == "__main__":
     scan.set_fdac_tune_bits(range(3, -1, -1))
     scan.start(use_thread=False)
     scan.stop()
-    scan.register.save_configuration("FDAC_only")
+    scan.register.save_configuration(configuration.configuration_file)
