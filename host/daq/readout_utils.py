@@ -53,7 +53,7 @@ class ReadoutUtils(object):
             reg &= ~0x08
         self.device.WriteExternal(address=0 + 2, data=[reg])  # overwriting register
 
-    def configure_trigger_fsm(self, mode=0, trigger_data_msb_first=False, disable_veto=False, trigger_data_delay=0, trigger_clock_cycles=16, enable_reset=False, invert_lemo_trigger_input=False, trigger_low_timeout=0):
+    def configure_trigger_fsm(self, mode=0, trigger_data_msb_first=False, disable_veto=False, trigger_data_delay=0, trigger_clock_cycles=16, enable_reset=False, invert_lemo_trigger_input=False, trigger_low_timeout=0, reset_trigger_counter=False):
         '''Setting up external trigger mode and TLU trigger FSM.
 
         Parameters
@@ -78,6 +78,8 @@ class ReadoutUtils(object):
             Enable inverting of LEMO RX0 trigger input.
         trigger_low_timeout : int
             Enabling timeout for waiting for de-asserting TLU trigger signal. From 0 to 255.
+        reset_trigger_counter : bool
+            Reset trigger counter to zero.
         '''
         logging.info('Trigger mode: %s' % trigger_modes[mode])
 #         array = self.device.ReadExternal(address = 0x8200+1, size = 3)  # get stored register value
@@ -102,6 +104,8 @@ class ReadoutUtils(object):
         else:
             reg_2 &= ~0x40
         reg_3 = trigger_low_timeout
+        if reset_trigger_counter:
+            self.set_trigger_number(value=0)
         self.device.WriteExternal(address=0x8200 + 1, data=[reg_1, reg_2, reg_3])  # overwriting registers
 
     def get_tlu_trigger_number(self):
@@ -121,3 +125,6 @@ class ReadoutUtils(object):
         '''
         trigger_number = array.array('B', struct.pack('I', value))
         self.device.WriteExternal(address=0x8200 + 8, data=trigger_number)
+        read_value = self.get_trigger_number()
+        if read_value != value:
+            logging.warning('Trigger counter is not %d (read %d)' % (value, read_value))
