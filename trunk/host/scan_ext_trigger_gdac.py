@@ -148,7 +148,7 @@ class ExtTriggerGdacScan(ScanBase):
     
                 self.readout.stop()
     
-                raw_data_file.append(self.readout.data)
+                raw_data_file.append(self.readout.data, scan_parameters={"GDAC": gdac_value})
 
     def analyze(self):
         from analysis.analyze_raw_data import AnalyzeRawData
