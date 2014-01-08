@@ -178,11 +178,17 @@ class Fei4TriggerGdacScan(ScanBase):
                                 logging.info('Taking data...')
                                 wait_for_first_trigger = False
 
-                    logging.info('Total amount of triggers collected: %d for GDAC %d' % (self.readout_utils.get_trigger_number(), gdac_value))
-
                     self.readout_utils.configure_command_fsm(enable_ext_trigger=False)
                     self.readout_utils.configure_trigger_fsm(mode=0)
+        
+                    logging.info('Total amount of triggers collected: %d for GDAC %d' % (self.readout_utils.get_trigger_number(), gdac_value))
+        
                     self.readout.stop()
+        
+                    raw_data_trigger_fe = data_dict_list_from_data_dict_iterable(data_dict_iterable=self.readout.data, filter_func=is_data_from_channel(channel_trigger_fe))
+                    raw_data_fe = data_dict_list_from_data_dict_iterable(data_dict_iterable=self.readout.data, filter_func=is_data_from_channel(channel_triggered_fe))
+                    raw_data_file.append(raw_data_fe, scan_parameters={"GDAC": gdac_value})
+                    raw_data_file_trigger_fe.append(raw_data_trigger_fe, scan_parameters={"GDAC": gdac_value})
 
     def analyze(self):
         from analysis.analyze_raw_data import AnalyzeRawData
