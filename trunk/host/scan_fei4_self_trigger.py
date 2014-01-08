@@ -143,6 +143,6 @@ class FEI4SelfTriggerScan(ScanBase):
 if __name__ == "__main__":
     import configuration
     scan = FEI4SelfTriggerScan(config_file=configuration.config_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.start(configure=True, use_thread=True, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=1 * 60)
+    scan.start(configure=True, use_thread=True, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60)
     scan.stop()
     scan.analyze()
