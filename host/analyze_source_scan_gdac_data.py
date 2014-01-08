@@ -72,6 +72,25 @@ def get_hit_rate_correction(gdacs, calibration_gdacs, cluster_size_histogram):
     return interpolation(gdacs)
 
 
+def get_normalization(meta_data, reference='event'):
+    gdacs = analysis_utils.get_scan_parameter(meta_data_array=meta_data)['GDAC']
+    if reference == 'event':
+        event_numbers = analysis_utils.get_meta_data_at_scan_parameter(meta_data, 'GDAC')['event_number']  # get the event numbers in meta_data where the scan parameter changes
+        event_range = analysis_utils.get_event_range(event_numbers)
+        event_range[-1, 1] = event_range[-2, 1]  # hack the last event range not to be None
+        n_events = event_range[:, 1] - event_range[:, 0]  # number of events for every GDAC
+        n_events[-1] = n_events[-2]  # FIXME: set the last number of events manually, bad extrapolaton
+        logging.warning('Last number of events unknown and extrapolated')
+        plot_scatter(gdacs, n_events, title='Events per GDAC setting', x_label='GDAC', y_label='# events', log_x=True)
+        return n_events.astype('f64') / np.amax(n_events)
+    else:
+        time_start = analysis_utils.get_meta_data_at_scan_parameter(meta_data, 'GDAC')['timestamp_start']
+        time_spend = np.diff(time_start)
+        time_spend = np.append(time_spend, meta_data[-1]['timestamp_stop'] - time_start[-1])  # TODO: needs check, add last missing entry
+        plot_scatter(gdacs, time_spend, title='Measuring time per GDAC setting', x_label='GDAC', y_label='time [s]', log_x=True)
+        return time_spend.astype('f64') / np.amax(time_spend)
+
+
 def plot_cluster_sizes(in_file_cluster_h5, in_file_calibration_h5, gdac_range, vcal_calibration):
     mean_threshold_calibration = in_file_calibration_h5.root.MeanThresholdCalibration[:]
     hist = in_file_cluster_h5.root.AllHistClusterSize[:]
@@ -97,7 +116,7 @@ def plot_cluster_sizes(in_file_cluster_h5, in_file_calibration_h5, gdac_range, v
 
 
 def plot_result(x_p, y_p, y_p_e):
-    ''' Fit spline to profile histogramed data, differentiate, determine MPV and plots.
+    ''' Fit spline to the profile histogramed data, differentiate, determine MPV and plot.
      Parameters
     ----------
         x_p, y_p : array like
@@ -144,14 +163,11 @@ def select_hot_region(hits, cut_threshold=0.8):
     return np.ma.masked_where(hits < cut_threshold * (np.amax(hits) - np.amin(hits)), hits)
 
 if __name__ == "__main__":
-    scan_name = 'scan_fei4_trigger_gdac'
+    scan_name = 'scan_fei4_trigger_gdac_0'
     folder = 'K:\\data\\FE-I4\\ChargeRecoMethod\\'
-    input_file_hits = folder + 'bias_2\\' + scan_name + "_cut_1_analyzed.h5"
+    input_file_hits = folder + 'bias_20\\' + scan_name + "_cut_1_analyzed.h5"
     input_file_calibration = folder + 'calibration\\calibrate_threshold_gdac_SCC_99.h5'
-    input_file_correction = folder + 'bias_2\\' + scan_name + "_cluster_sizes.h5"
-
-    scan_name = 'bias_2\\scan_fei4_trigger_gdac_0'
-    folder = 'K:\\data\\FE-I4\\ChargeRecoMethod\\'
+    input_file_correction = folder + 'bias_20\\' + scan_name + "_cluster_sizes.h5"
 
     use_cluster_rate_correction = True
 
@@ -162,12 +178,15 @@ if __name__ == "__main__":
     with tb.openFile(input_file_calibration, mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
         with tb.openFile(input_file_hits, mode="r") as in_file_hits_h5:  # read scan data file from scan_fei4_trigger_gdac scan
             hits = in_file_hits_h5.root.HistOcc[:]
+            meta_data = in_file_hits_h5.root.meta_data[:]
             mean_threshold_calibration = in_file_calibration_h5.root.MeanThresholdCalibration[:]
             threshold_calibration_table = in_file_calibration_h5.root.ThresholdCalibration[:]
             threshold_calibration_array = in_file_calibration_h5.root.HistThresholdCalibration[:]
 
             gdac_range_calibration = mean_threshold_calibration['gdac']
-            gdac_range_source_scan = analysis_utils.get_scan_parameter(meta_data_array=in_file_hits_h5.root.meta_data[:])['GDAC']
+            gdac_range_source_scan = analysis_utils.get_scan_parameter(meta_data_array=meta_data)['GDAC']
+
+            normalization = get_normalization(meta_data, reference='event')  # normalize the number of hits for each GDAC setting, can be different due to different scan time
 
             correction_factors = 1
             if use_cluster_rate_correction:
@@ -182,7 +201,7 @@ if __name__ == "__main__":
             pixel_thresholds = get_pixel_thresholds(gdacs=gdac_range_source_scan, calibration_gdacs=gdac_range_calibration, threshold_calibration_array=threshold_calibration_array)  # interpolates the threshold at the source scan GDAC setting from the calibration
             pixel_hits = np.swapaxes(hits, 0, 1)  # create hit array with shape (col, row, ...)
 
-            pixel_hits = pixel_hits * correction_factors
+            pixel_hits = pixel_hits * correction_factors * normalization
 
             # choose region with pixels that have a sufficient occupancy
             hot_pixel = select_hot_region(pixel_hits, cut_threshold=0.8)
