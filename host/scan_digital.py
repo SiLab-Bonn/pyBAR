@@ -9,8 +9,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(leve
 
 
 class DigitalScan(ScanBase):
-    def __init__(self, config_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_digital", scan_data_path=None):
-        super(DigitalScan, self).__init__(config_file=config_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
+    def __init__(self, configuration_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_digital", scan_data_path=None):
+        super(DigitalScan, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
 
     def scan(self, mask_steps=3, repeat_command=100):
         '''Scan loop
@@ -52,7 +52,7 @@ class DigitalScan(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = DigitalScan(config_file=configuration.config_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
+    scan = DigitalScan(configuration_file=configuration.configuration_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
     scan.start(use_thread=False)
     scan.stop()
     scan.analyze()

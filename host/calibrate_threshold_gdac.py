@@ -135,7 +135,7 @@ if __name__ == "__main__":
     startTime = datetime.now()
     logging.info('Taking threshold data at following GDACs: %s' % str(gdac_range))
     scan_data_filenames = {}
-    scan_threshold_fast = ThresholdScanFast(config_file=configuration.config_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
+    scan_threshold_fast = ThresholdScanFast(configuration_file=configuration.configuration_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
     for i, gdac_value in enumerate(gdac_range):
         scan_threshold_fast.register_utils.set_gdac(gdac_value)
         scan_threshold_fast.scan_identifier = scan_identifier + '_' + str(gdac_value)

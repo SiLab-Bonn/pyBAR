@@ -11,8 +11,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 
 
 class ExtInjScan(ScanBase):
-    def __init__(self, config_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_ext_inj", scan_data_path=None):
-        super(ExtInjScan, self).__init__(config_file=config_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
+    def __init__(self, configuration_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_ext_inj", scan_data_path=None):
+        super(ExtInjScan, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
 
     def scan(self, mask_steps=6, repeat_command=1000, enable_double_columns=None):
         self.readout.start()
@@ -38,7 +38,7 @@ class ExtInjScan(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = ExtInjScan(config_file=configuration.config_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
+    scan = ExtInjScan(configuration_file=configuration.configuration_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
     scan.start(use_thread=False)
     scan.stop()
     scan.analyze()

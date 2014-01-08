@@ -12,8 +12,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(leve
 
 
 class FeedbackTune(ScanBase):
-    def __init__(self, config_file, definition_file=None, bit_file=None, device=None, scan_identifier="tune_feedback", scan_data_path=None):
-        super(FeedbackTune, self).__init__(config_file=config_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
+    def __init__(self, configuration_file, definition_file=None, bit_file=None, device=None, scan_identifier="tune_feedback", scan_data_path=None):
+        super(FeedbackTune, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
         self.set_target_charge()
         self.set_target_tot()
         self.set_n_injections()
@@ -141,7 +141,7 @@ class FeedbackTune(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = FeedbackTune(config_file=configuration.config_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
+    scan = FeedbackTune(configuration_file=configuration.configuration_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
     scan.set_n_injections(100)
     scan.set_target_charge(plsr_dac=280)
     scan.set_target_tot(Tot=5)
@@ -149,4 +149,4 @@ if __name__ == "__main__":
     scan.set_feedback_tune_bits(range(7, -1, -1))
     scan.start(use_thread=False)
     scan.stop()
-    scan.register.save_configuration(configuration.config_file)
+    scan.register.save_configuration(configuration.configuration_file)

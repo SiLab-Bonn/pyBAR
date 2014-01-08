@@ -12,8 +12,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 
 
 class StuckPixelScan(ScanBase):
-    def __init__(self, config_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_stuck_pixel", scan_data_path=None):
-        super(StuckPixelScan, self).__init__(config_file=config_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
+    def __init__(self, configuration_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_stuck_pixel", scan_data_path=None):
+        super(StuckPixelScan, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
 
     def scan(self, mask_steps=3, repeat_command=100, disable_for_mask=['Enable'], enable_for_mask=['Imon'], overwrite_mask=False):
         '''Disable stuck pixels (hitbus always high). Based on digital scan.
@@ -101,8 +101,8 @@ class StuckPixelScan(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = StuckPixelScan(config_file=configuration.config_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
+    scan = StuckPixelScan(configuration_file=configuration.configuration_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
     scan.start(configure=True, use_thread=False, mask_steps=3, repeat_command=100, disable_for_mask=['Enable'], enable_for_mask=['Imon'], overwrite_mask=False)
     scan.stop()
     scan.analyze()
-    scan.register.save_configuration(configuration.config_file)
+    scan.register.save_configuration(configuration.configuration_file)

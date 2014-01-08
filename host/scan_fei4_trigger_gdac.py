@@ -23,8 +23,8 @@ def get_gdacs(thresholds, mean_threshold_calibration):
 
 
 class Fei4TriggerGdacScan(ScanBase):
-    def __init__(self, config_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_fei4_trigger_gdac", scan_data_path=None):
-        super(Fei4TriggerGdacScan, self).__init__(config_file=config_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
+    def __init__(self, configuration_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_fei4_trigger_gdac", scan_data_path=None):
+        super(Fei4TriggerGdacScan, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
 
     def configure_trigger_fe(self, config_file_trigger_fe, col_span, row_span):
         logging.info("Sending configuration to trigger FE")
@@ -234,7 +234,7 @@ if __name__ == "__main__":
     with tb.openFile(input_file_calibration, mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
         gdac_range = get_gdacs(threshold_range, in_file_calibration_h5.root.MeanThresholdCalibration[:])
 
-    scan = Fei4TriggerGdacScan(config_file=config_file_triggered_fe, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
+    scan = Fei4TriggerGdacScan(configuration_file=config_file_triggered_fe, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
     scan.start(configure=True, use_thread=True, gdac_range=gdac_range, config_file_trigger_fe=config_file_trigger_fe, col_span=[25, 55], row_span=[50, 250], timeout_no_data=1 * 60, scan_timeout=100, max_triggers=10000000, channel_triggered_fe=4, channel_trigger_fe=3, invert_lemo_trigger_input=True)
 
     scan.stop()

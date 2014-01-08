@@ -13,7 +13,7 @@ import scan_ext_trigger
 logging.basicConfig(level=logging.DEBUG, format = "%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 chip_flavor = 'fei4a'
-#config_file = r'C:\Users\silab\Dropbox\pyats\trunk\host\config\fei4default\configs\std_cfg_'+chip_flavor+'_simple.cfg'
+#configuration_file = r'C:\Users\silab\Dropbox\pyats\trunk\host\config\fei4default\configs\std_cfg_'+chip_flavor+'_simple.cfg'
 #bit_file = r'C:\Users\silab\Dropbox\pyats\trunk\device\MultiIO\FPGA\ise\top.bit'
 bit_file = r'C:\Users\silab\Dropbox\pyats\trunk\host\config\FPGA\top.bit'
 
@@ -71,14 +71,14 @@ for vthin_altcoarse in vthin_altcoarse_range:
     #         
     #         if device_id in threshold_devices:
     #             init_number += 1
-    #             config_file = device_config[device_id]["config_file"]
+    #             configuration_file = device_config[device_id]["config_file"]
     #             dev.device_identifier = device_config[device_id]["device_identifier"]
     #             scan_identifier = device_config[device_id]["scan_identifier"]+"_Vthin_AltCoarse_"+str(vthin_altcoarse)+"_Vthin_AltFine_"+str(vthin_altfine)
     #         
     #             logging.info("Initialize board number %d with ID %s (device identifier: %s, scan identifier: %s)", init_number, device_id, dev.identifier, scan_identifier)
     # 
     #             #Threshold scan
-    #             scan = scan_threshold.ThresholdScan(config_file = config_file, bit_file = None, device = dev, scan_identifier = scan_identifier, outdir = outdir)
+    #             scan = scan_threshold.ThresholdScan(configuration_file = configuration_file, bit_file = None, device = dev, scan_identifier = scan_identifier, outdir = outdir)
     #             # set scan variable
 #                 if device_id in threshold_devices:
 #                     scan.register.set_global_register_value("Vthin_AltCoarse", vthin_altcoarse)
@@ -131,14 +131,14 @@ for vthin_altcoarse in vthin_altcoarse_range:
             
             if device_id in device_config.iterkeys():
                 init_number += 1
-                config_file = device_config[device_id]["config_file"]
+                configuration_file = device_config[device_id]["config_file"]
                 dev.device_identifier = device_config[device_id]["device_identifier"]
                 scan_identifier = device_config[device_id]["scan_identifier"]+"_Vthin_AltCoarse_"+str(vthin_altcoarse)+"_Vthin_AltFine_"+str(vthin_altfine)
             
                 logging.info("Initialize board number %d with ID %s (device identifier: %s, scan identifier: %s)", init_number, device_id, dev.identifier, scan_identifier)
                 
                 # ext trigger scan
-                scan = scan_ext_trigger.ExtTriggerScan(config_file = config_file, bit_file = None, device = dev, scan_identifier = scan_identifier, outdir = outdir)
+                scan = scan_ext_trigger.ExtTriggerScan(configuration_file = configuration_file, bit_file = None, device = dev, scan_identifier = scan_identifier, outdir = outdir)
                 # set scan variable
                 if device_id in threshold_devices:
                     scan.register.set_global_register_value("Vthin_AltCoarse", vthin_altcoarse)

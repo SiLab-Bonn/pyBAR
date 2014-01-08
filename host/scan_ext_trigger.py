@@ -10,8 +10,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 
 
 class ExtTriggerScan(ScanBase):
-    def __init__(self, config_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_ext_trigger", scan_data_path=None):
-        super(ExtTriggerScan, self).__init__(config_file=config_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
+    def __init__(self, configuration_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_ext_trigger", scan_data_path=None):
+        super(ExtTriggerScan, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
 
     def scan(self, mode=0, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=600, max_triggers=10000, enable_hitbus=False):
         '''Scan loop
@@ -170,7 +170,7 @@ class ExtTriggerScan(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = ExtTriggerScan(config_file=configuration.config_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
+    scan = ExtTriggerScan(configuration_file=configuration.configuration_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
     scan.start(configure=True, use_thread=True, mode=0, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=100000, enable_hitbus=False)
     scan.stop()
     scan.analyze()
