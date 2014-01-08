@@ -183,6 +183,7 @@ class FEI4Handler(xml.sax.ContentHandler):  # TODO separate handlers
         self.global_registers = []
         self.pixel_registers = []
         self.fe_command = []
+        self.flavor = None
 
     # this is executed after each element is terminated. elem is the tag element being read
     def startElement(self, name, attrs):
@@ -194,6 +195,8 @@ class FEI4Handler(xml.sax.ContentHandler):  # TODO separate handlers
             self.pixel_registers.append(FEI4PixelRegister(**attrs))
         elif (name == "command"):
             self.fe_command.append(FEI4Command(**attrs))
+        elif (name == "fei4"):
+            self.flavor = attrs["flavor"]
 
 
 class FEI4Register(object):
@@ -243,16 +246,21 @@ class FEI4Register(object):
         else:
             raise ValueError('unknown flavor')
 
-    def load_configuration_file(self, configuration_file=None):
+    def load_configuration_file(self, configuration_file=None, definition_file=None):
         if configuration_file is not None:
             self.configuration_file = configuration_file
+        if definition_file is not None:
+            self.definition_file = definition_file
         if self.configuration_file is not None:
-            print "Loading configuration file:", self.configuration_file
+            print "Loading configuration file: %s" % self.configuration_file
             self.parse_chip_parameters()  # get flavor, chip ID
             self.parse_register_config()
             self.parse_chip_config()
+        elif self.definition_file is not None:
+            print "Parsing definition file: %s" % self.definition_file
+            self.parse_register_config()
         else:
-            print "No configuration file specified."
+            print "No configuration file and/or definition file specified."
 
     def save_configuration(self, name):
         '''Saving configuration files to specific location
@@ -347,9 +355,10 @@ class FEI4Register(object):
             elif self.is_chip_flavor("fei4b"):
                 parser.parse("register_fei4b.xml")
             else:
-                raise ValueError("No chip flavor assigned")
+                raise ValueError("Unknown chip flavor")
         else:
             parser.parse(self.definition_file)
+            self.chip_flavor = handler.flavor
 
         self.global_registers = handler.global_registers
         self.pixel_registers = handler.pixel_registers

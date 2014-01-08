@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<fei4>
+<fei4 flavor="fei4a">
     <commands>
         <fast>
             <command name="LV1" bitstream="11101" bitlength="5" description="Level 1 Trigger: a single bit flip in the LV1 command will still result in a LV1 being decoded." />
