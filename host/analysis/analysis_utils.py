@@ -341,16 +341,18 @@ def write_hits_in_events(hit_table_in, hit_table_out, events, start_hit_word=0, 
     start_hit_word: int
         Index of the last hit word analyzed. Used to speed up the next call of write_hits_in_events.
     '''
-    max_event = np.amax(events)
-    logging.info("Write hits from hit number >= %d that exists in the selected %d events with event number < %d into a new hit table." % (start_hit_word, len(events), max_event))
-    table_size = hit_table_in.shape[0]
-    iHit = 0
-    for iHit in range(start_hit_word, table_size, chunk_size):
-        hits = hit_table_in.read(iHit, iHit + chunk_size)
-        last_event_number = hits[-1]['event_number']
-        hit_table_out.append(get_hits_in_events(hits, events=events))
-        if last_event_number > max_event:  # speed up, use the fact that the hits are sorted by event_number
-            return iHit
+    if len(events) > 0:  # needed to avoid crash
+        min_event = np.amin(events)
+        max_event = np.amax(events)
+        logging.info("Write hits from hit number >= %d that exists in the selected %d events with %d <= event number < %d into a new hit table." % (start_hit_word, len(events), min_event, max_event))
+        table_size = hit_table_in.shape[0]
+        iHit = 0
+        for iHit in range(start_hit_word, table_size, chunk_size):
+            hits = hit_table_in.read(iHit, iHit + chunk_size)
+            last_event_number = hits[-1]['event_number']
+            hit_table_out.append(get_hits_in_events(hits, events=events))
+            if last_event_number > max_event:  # speed up, use the fact that the hits are sorted by event_number
+                return iHit
     return start_hit_word
 
 
@@ -653,8 +655,8 @@ def data_aligned_at_events(table, start_event_number=None, stop_event_number=Non
         if len(start_indeces) != 0:  # set start index if possible
             start_index = start_indeces[0]
             start_index_known = True
-    else:
-        start_event_number = 0
+#     else:
+#         start_event_number = 0
 
     if stop_event_number != None:
         condition_2 = 'event_number==' + str(stop_event_number)
