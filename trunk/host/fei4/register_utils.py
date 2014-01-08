@@ -317,8 +317,9 @@ class FEI4RegisterUtils(object):
         commands = []
         commands.extend(self.register.get_commands("confmode"))
         if self.register.fei4b:
-            altf = value & 0x7f
+            altf = value & 0xff
             altc = (value >> 7)
+            altc &= ~0x01
             self.register.set_global_register_value("Vthin_AltCoarse", altc)  # take every second AltCoarse value
             self.register.set_global_register_value("Vthin_AltFine", altf)  # take low word
         else:
