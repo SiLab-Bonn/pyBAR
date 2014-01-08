@@ -120,5 +120,5 @@ def tune_front_end(cfg_name, target_threshold=20, target_charge=270, target_tot=
 
 if __name__ == "__main__":
     startTime = datetime.now()
-    tune_front_end(cfg_name='tuned_config', target_threshold=20, target_charge=270, target_tot=7, global_iterations=3, local_iterations=2)
+    tune_front_end(cfg_name='MDBM30_15_150_8', target_threshold=15, target_charge=150, target_tot=8, global_iterations=3, local_iterations=3)
     logging.info("Tuning finished in " + str(datetime.now() - startTime))
