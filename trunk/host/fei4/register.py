@@ -212,7 +212,7 @@ class FEI4Register(object):
         self.chip_flavors = ['fei4a', 'fei4b']
         self.config_state = OrderedDict()
 
-        self.load_configuration_file(self.configuration_file)
+        self.load_configuration(self.configuration_file)
 
     def is_chip_flavor(self, chip_flavor):
         chip_flavor = chip_flavor.translate(None, '_-').lower()
@@ -246,7 +246,7 @@ class FEI4Register(object):
         else:
             raise ValueError('unknown flavor')
 
-    def load_configuration_file(self, configuration_file=None, definition_file=None):
+    def load_configuration(self, configuration_file=None, definition_file=None):
         if configuration_file is not None:
             self.configuration_file = configuration_file
         if definition_file is not None:
@@ -286,7 +286,7 @@ class FEI4Register(object):
             if self.configuration_file is not None:
                 configuration_path, _ = os.path.split(self.configuration_file)
                 configuration_path = os.path.dirname(configuration_path)
-                # filename, extension = os.path.splitext(config_file_name)
+                # filename, extension = os.path.splitext(configuration_file_name)
             else:
                 print "Unknown path: nothing saved"
                 return

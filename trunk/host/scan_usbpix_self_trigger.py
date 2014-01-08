@@ -9,8 +9,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 
 
 class UsbPixSelfTriggerScan(ScanBase):
-    def __init__(self, config_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_usbpix_self_trigger", scan_data_path=None):
-        super(UsbPixSelfTriggerScan, self).__init__(config_file=config_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
+    def __init__(self, configuration_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_usbpix_self_trigger", scan_data_path=None):
+        super(UsbPixSelfTriggerScan, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
 
     def scan(self, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=600, max_triggers=10000, invert_lemo_trigger_input=False, **kwargs):
         '''Scan loop
@@ -153,7 +153,7 @@ class UsbPixSelfTriggerScan(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = UsbPixSelfTriggerScan(config_file=configuration.config_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
+    scan = UsbPixSelfTriggerScan(configuration_file=configuration.configuration_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
     scan.start(configure=True, use_thread=True, col_span=[20, 60], row_span=[100, 200], timeout_no_data=10*60, scan_timeout=10 * 60, max_triggers=1000, invert_lemo_trigger_input=True)
     scan.stop()
     scan.analyze()

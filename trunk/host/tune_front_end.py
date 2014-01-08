@@ -44,19 +44,19 @@ def tune_front_end(cfg_name, target_threshold=20, target_charge=270, target_tot=
             2: TDAC/FDAC/TDAC/FDAC/TDAC
             ...
     '''
-    gdac_tune_scan = GdacTune(config_file=configuration.config_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
+    gdac_tune_scan = GdacTune(configuration_file=configuration.configuration_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
     gdac_tune_scan.set_target_threshold(target_threshold)
 
-    feedback_tune_scan = FeedbackTune(config_file=gdac_tune_scan.register, bit_file=None, scan_data_path=configuration.scan_data_path, device=gdac_tune_scan.device)
+    feedback_tune_scan = FeedbackTune(configuration_file=gdac_tune_scan.register, bit_file=None, scan_data_path=configuration.scan_data_path, device=gdac_tune_scan.device)
     feedback_tune_scan.set_target_charge(target_charge)
     feedback_tune_scan.set_target_tot(target_tot)
 
-    tdac_tune_scan = TdacTune(config_file=gdac_tune_scan.register, bit_file=None, scan_data_path=configuration.scan_data_path, device=gdac_tune_scan.device)
+    tdac_tune_scan = TdacTune(configuration_file=gdac_tune_scan.register, bit_file=None, scan_data_path=configuration.scan_data_path, device=gdac_tune_scan.device)
     tdac_tune_scan.set_target_threshold(target_threshold)
     tdac_tune_scan.set_start_tdac()  # set TDAC = 0
     tdac_tune_scan.set_tdac_bit(bit_position=4, bit_value=1)  # set start value TDAC = 16
 
-    fdac_tune_scan = FdacTune(config_file=gdac_tune_scan.register, bit_file=None, scan_data_path=configuration.scan_data_path, device=gdac_tune_scan.device)
+    fdac_tune_scan = FdacTune(configuration_file=gdac_tune_scan.register, bit_file=None, scan_data_path=configuration.scan_data_path, device=gdac_tune_scan.device)
     fdac_tune_scan.set_target_charge(target_charge)
     fdac_tune_scan.set_target_tot(target_tot)
     fdac_tune_scan.set_start_fdac()  # set FDAC = 0

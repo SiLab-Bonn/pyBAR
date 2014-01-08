@@ -13,7 +13,7 @@ import scan_ext_trigger
 logging.basicConfig(level=logging.DEBUG, format = "%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 chip_flavor = 'fei4a'
-#config_file = r'C:\Users\silab\Dropbox\pyats\trunk\host\config\fei4default\configs\std_cfg_'+chip_flavor+'_simple.cfg'
+#configuration_file = r'C:\Users\silab\Dropbox\pyats\trunk\host\config\fei4default\configs\std_cfg_'+chip_flavor+'_simple.cfg'
 #bit_file = r'C:\Users\silab\Dropbox\pyats\trunk\device\MultiIO\FPGA\ise\top.bit'
 bit_file = r'C:\Users\silab\Dropbox\pyats\trunk\host\config\FPGA\top.bit'
 
@@ -54,19 +54,19 @@ for dev in devices.iterkeys():
     
     if device_id in device_config.iterkeys():
         init_number += 1
-        config_file = device_config[device_id]["config_file"]
+        configuration_file = device_config[device_id]["config_file"]
         dev.device_identifier = device_config[device_id]["device_identifier"]
         scan_identifier = device_config[device_id]["scan_identifier"]
     
         logging.info("Initialize board number %d with ID %s (device identifier: %s, scan identifier: %s)", init_number, device_id, dev.identifier, scan_identifier)
         # Analog scan
-        #scan = scan_analog.AnalogScan(config_file = config_file, bit_file = bit_file, device = dev, scan_identifier = scan_identifier, outdir = outdir)
+        #scan = scan_analog.AnalogScan(configuration_file = configuration_file, bit_file = bit_file, device = dev, scan_identifier = scan_identifier, outdir = outdir)
          
         #Threshold scan
-        scan = scan_threshold.ThresholdScan(config_file = config_file, bit_file = bit_file, device = dev, scan_identifier = scan_identifier, outdir = outdir)
+        scan = scan_threshold.ThresholdScan(configuration_file = configuration_file, bit_file = bit_file, device = dev, scan_identifier = scan_identifier, outdir = outdir)
         
         # ext trigger scan
-        #scan = scan_ext_trigger.ExtTriggerScan(config_file = config_file, bit_file = bit_file, device = dev, scan_identifier = scan_identifier, outdir = outdir)
+        #scan = scan_ext_trigger.ExtTriggerScan(configuration_file = configuration_file, bit_file = bit_file, device = dev, scan_identifier = scan_identifier, outdir = outdir)
          
         # start scan here
         thread = Thread(name = scan_identifier, target = scan.start)
@@ -78,8 +78,8 @@ for dev in devices.iterkeys():
     #     thread = Thread(name = dev.identifier, target = test_func, kwargs = {"device" : dev})   
         
     
-        #scan = scan_analog.AnalogScan(config_file = config_file, bit_file = bit_file, device = dev)
-        #thread = Thread(name = dev.identifier, target = scan_analog.AnalogScan, kwargs = {"config_file" : config_file, "bit_file" : bit_file, "device" : dev})
+        #scan = scan_analog.AnalogScan(configuration_file = configuration_file, bit_file = bit_file, device = dev)
+        #thread = Thread(name = dev.identifier, target = scan_analog.AnalogScan, kwargs = {"config_file" : configuration_file, "bit_file" : bit_file, "device" : dev})
         
         
         #thread.setDaemon(True)

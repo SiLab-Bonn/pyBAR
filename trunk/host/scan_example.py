@@ -8,9 +8,9 @@ logging.basicConfig(level=logging.INFO, format = "%(asctime)s - %(name)s - [%(le
 
 # inherit from ScanBase class
 class ExampleScan(ScanBase):
-    def __init__(self, config_file, definition_file = None, bit_file = None, device = None, scan_identifier = "scan_example", scan_data_path = None):
+    def __init__(self, configuration_file, definition_file = None, bit_file = None, device = None, scan_identifier = "scan_example", scan_data_path = None):
         # accessing inherited methods that have been overridden in a class
-        super(ExampleScan, self).__init__(config_file = config_file, definition_file = definition_file, bit_file = bit_file, device = device, scan_identifier = scan_identifier, scan_data_path = scan_data_path)
+        super(ExampleScan, self).__init__(configuration_file = configuration_file, definition_file = definition_file, bit_file = bit_file, device = device, scan_identifier = scan_identifier, scan_data_path = scan_data_path)
         
         # a public instance variable
         self.some_public_variable = 123
@@ -76,7 +76,7 @@ class ExampleScan(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = ExampleScan(config_file = configuration.config_file, bit_file = configuration.bit_file, scan_data_path = configuration.scan_data_path)
+    scan = ExampleScan(configuration_file = configuration.configuration_file, bit_file = configuration.bit_file, scan_data_path = configuration.scan_data_path)
     # when use_thread is true (scan() runs in a thread), start() is non-blocking, otherwise blocking
     scan.start(use_thread=True, configure=True, some_keyword_parameter = "parameter was set", some_other_keyword_parameter = "parameter was set")
     # when use_thread is true (scan() runs in a thread), stop() is blocking until timeout is reached (if timeout is None, wait for scan has completed), otherwise non-blocking

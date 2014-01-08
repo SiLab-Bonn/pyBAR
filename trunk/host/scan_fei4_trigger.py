@@ -15,8 +15,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 
 
 class Fei4TriggerScan(ScanBase):
-    def __init__(self, config_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_fei4_trigger", scan_data_path=None):
-        super(Fei4TriggerScan, self).__init__(config_file=config_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
+    def __init__(self, configuration_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_fei4_trigger", scan_data_path=None):
+        super(Fei4TriggerScan, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
 
     def configure_trigger_fe(self, config_file_trigger_fe, col_span, row_span):
         logging.info("Sending configuration to trigger FE")
@@ -225,7 +225,7 @@ if __name__ == "__main__":
 #     config_file_trigger_fe = os.path.join(os.getcwd(), r'config/fei4/configs/SCC_50_tuning.cfg') # Chip 1, GA 1
 #     config_file_triggered_fe = os.path.join(os.getcwd(), r'config/fei4/configs/SCC_114_tuning.cfg') # Chip 2, GA 2
 
-    scan = Fei4TriggerScan(config_file=config_file_triggered_fe, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
+    scan = Fei4TriggerScan(configuration_file=config_file_triggered_fe, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
     scan.start(config_file_trigger_fe=config_file_trigger_fe, channel_triggered_fe=4, channel_trigger_fe=3, invert_lemo_trigger_input=True, configure=True, use_thread=True, col_span=[5, 75], row_span=[20, 310], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=1000000)
     scan.stop()
     scan.analyze()

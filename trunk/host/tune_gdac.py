@@ -12,8 +12,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(leve
 
 
 class GdacTune(ScanBase):
-    def __init__(self, config_file, definition_file=None, bit_file=None, device=None, scan_identifier="tune_gdac", scan_data_path=None):
-        super(GdacTune, self).__init__(config_file=config_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
+    def __init__(self, configuration_file, definition_file=None, bit_file=None, device=None, scan_identifier="tune_gdac", scan_data_path=None):
+        super(GdacTune, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
         self.set_gdac_tune_bits()
         self.set_target_threshold()
         self.set_n_injections()
@@ -167,11 +167,11 @@ class GdacTune(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = GdacTune(config_file=configuration.config_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
+    scan = GdacTune(configuration_file=configuration.configuration_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
     scan.set_target_threshold(PlsrDAC=50)
     scan.set_abort_precision(delta_occupancy=2)
     scan.set_gdac_tune_bits(range(7, -1, -1))
     scan.set_n_injections(Ninjections=50)
     scan.start(use_thread=False, enable_mask_steps=[0], plot_intermediate_steps=False)
     scan.stop()
-    scan.register.save_configuration(configuration.config_file)
+    scan.register.save_configuration(configuration.configuration_file)

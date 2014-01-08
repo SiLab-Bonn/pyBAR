@@ -12,8 +12,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(leve
 
 
 class FdacTune(ScanBase):
-    def __init__(self, config_file, definition_file=None, bit_file=None, device=None, scan_identifier="tune_fdac", scan_data_path=None):
-        super(FdacTune, self).__init__(config_file=config_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
+    def __init__(self, configuration_file, definition_file=None, bit_file=None, device=None, scan_identifier="tune_fdac", scan_data_path=None):
+        super(FdacTune, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
         self.set_target_charge()
         self.set_target_tot()
         self.set_n_injections()
@@ -132,8 +132,8 @@ class FdacTune(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    # scan = FdacTune(configuration.config_file, bit_file = configuration.bit_file, scan_data_path = configuration.scan_data_path)
-    scan = FdacTune(config_file=configuration.config_file, bit_file=None, scan_data_path=configuration.scan_data_path)
+    # scan = FdacTune(configuration_file=configuration.configuration_file, bit_file = configuration.bit_file, scan_data_path = configuration.scan_data_path)
+    scan = FdacTune(configuration_file=configuration.configuration_file, bit_file=None, scan_data_path=configuration.scan_data_path)
     scan.set_target_charge(plsr_dac=280)
     scan.set_target_tot(tot=5)
     scan.set_n_injections(30)
