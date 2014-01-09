@@ -76,7 +76,7 @@ class ExtTriggerScan(ScanBase):
             self.register_utils.set_command(lvl1_command)
             # setting up external trigger
             self.readout_utils.set_trigger_number(0)
-            self.readout_utils.configure_trigger_fsm(mode=mode, trigger_data_msb_first=False, disable_veto=False, trigger_data_delay=0, trigger_clock_cycles=16, enable_reset=False, invert_lemo_trigger_input=False, trigger_low_timeout=0)
+            self.readout_utils.configure_trigger_fsm(mode=mode, trigger_data_msb_first=False, disable_veto=False, trigger_data_delay=0, trigger_clock_cycles=16, enable_reset=False, invert_lemo_trigger_input=False, trigger_low_timeout=0, reset_trigger_counter=True)
             self.readout_utils.configure_command_fsm(enable_ext_trigger=True, neg_edge=False, diable_clock=False, disable_command_trigger=False)
 
             wait_for_first_trigger = True
