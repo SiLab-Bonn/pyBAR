@@ -160,20 +160,27 @@ def select_hot_region(hits, cut_threshold=0.8):
         The hits array with masked pixels.
     '''
     hits = np.sum(hits, axis=(-1)).astype('u8')
-    return np.ma.masked_where(hits < cut_threshold * (np.amax(hits) - np.amin(hits)), hits)
+    dimension = (80, 336)
+    mask = np.ones(dimension, dtype=np.uint8)
+            
+    mask[20:60, 20:150] = 0  # advanced indexing
+#     pixel_mask = np.logical_and(mask, pixel_mask)
+    
+    ma = np.ma.masked_where(hits < cut_threshold * (np.amax(hits) - np.amin(hits)), hits)
+    return np.ma.masked_where(mask, ma)
 
 if __name__ == "__main__":
-    scan_name = 'scan_fei4_trigger_gdac_0'
-    folder = 'K:\\data\\FE-I4\\ChargeRecoMethod\\'
-    input_file_hits = folder + 'bias_20\\' + scan_name + "_cut_1_analyzed.h5"
-    input_file_calibration = folder + 'calibration\\calibrate_threshold_gdac_SCC_99.h5'
-    input_file_correction = folder + 'bias_20\\' + scan_name + "_cluster_sizes.h5"
+    scan_name = 'scan_ext_trigger_gdac_0'
+    folder = 'data\\'
+    input_file_hits = folder + scan_name + "_cut_1_analyzed.h5"
+    input_file_calibration = folder + 'calibrate_threshold_gdac_MDBM30.h5'
+    input_file_correction = folder + scan_name + "_cluster_sizes.h5"
 
     use_cluster_rate_correction = True
 
     smoothness = 200  # the smoothness of the spline fit to the data
     vcal_calibration = 55.  # calibration electrons/PlsrDAC
-    n_bins = 200  # number of bins for the profile histogram
+    n_bins = 100  # number of bins for the profile histogram
 
     with tb.openFile(input_file_calibration, mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
         with tb.openFile(input_file_hits, mode="r") as in_file_hits_h5:  # read scan data file from scan_fei4_trigger_gdac scan
@@ -200,40 +207,59 @@ if __name__ == "__main__":
 
             pixel_thresholds = get_pixel_thresholds(gdacs=gdac_range_source_scan, calibration_gdacs=gdac_range_calibration, threshold_calibration_array=threshold_calibration_array)  # interpolates the threshold at the source scan GDAC setting from the calibration
             pixel_hits = np.swapaxes(hits, 0, 1)  # create hit array with shape (col, row, ...)
+            
+            print pixel_thresholds.shape
+            print pixel_thresholds[40, 80, :]
 
+            normalization = 1.
+            correction_factors = 1.
             pixel_hits = pixel_hits * correction_factors * normalization
 
             # choose region with pixels that have a sufficient occupancy
-            hot_pixel = select_hot_region(pixel_hits, cut_threshold=0.8)
+            hot_pixel = select_hot_region(pixel_hits, cut_threshold=0.01)
+#             hot_pixel
             pixel_mask = ~np.ma.getmaskarray(hot_pixel)
             selected_pixel_hits = pixel_hits[pixel_mask, :]  # reduce the data to pixels that are in the hot pixel region
             selected_pixel_thresholds = pixel_thresholds[pixel_mask, :]  # reduce the data to pixels that are in the hot pixel region
-            plot_occupancy(hot_pixel, title='Select ' + str(len(selected_pixel_hits)) + ' pixels for analysis')
+            plot_occupancy(hot_pixel.T, title='Select ' + str(len(selected_pixel_hits)) + ' pixels for analysis')
 
             # reshape to one dimension
             x = selected_pixel_thresholds.flatten()
             y = selected_pixel_hits.flatten()
+            
+            plot_scatter(x * vcal_calibration, y, marker_style='o')
+            
+#             print x[:],y[:]
+#  
+#             #nothing should be NAN, NAN is not supported yet
+#             if np.isnan(x).sum() > 0 or np.isnan(y).sum() > 0:
+#                 logging.warning('There are pixels with NaN threshold or hit values, analysis will be wrong')
+# 
+# # 
+# #             # calculated profile histogram
+#             x_p, y_p, y_p_e = analysis_utils.get_profile_histogram(x, y, n_bins=n_bins)  # profile histogram data
+# # 
+# #             # select only the data point where the calibration worked
+# #             selected_data = np.logical_or(x_p > 4840 / vcal_calibration, x_p < 4180 / vcal_calibration)
+# #             x_p = x_p[selected_data]
+# #             y_p = y_p[selected_data]
+# #             y_p_e = y_p_e[selected_data]
+#              
+#             if np.isnan(x_p).sum() > 0 or np.isnan(y_p).sum() > 0 or np.isnan(y_p_e).sum() > 0:
+#                 logging.error('There are pixels with NaN threshold or hit values, analysis will fail') 
+#             print x_p
+#             print y_p
+#             print y_p_e
+#             
+# #             plt.plot(x_p, y_p)
+# # 
+#             plot_result(x_p, y_p, y_p_e)
+# 
+#             #  calculate and plot mean results
+            x_mean = get_mean_threshold(gdac_range_source_scan, mean_threshold_calibration)
+            y_mean = selected_pixel_hits.mean(axis=(0))
 
-            #nothing should be NAN, NAN is not supported yet
-            if np.isnan(x).sum() > 0 or np.isnan(y).sum() > 0:
-                logging.warning('There are pixels with NaN threshold or hit values, analysis will be wrong')
-
-            # calculated profile histogram
-            x_p, y_p, y_p_e = analysis_utils.get_profile_histogram(x, y, n_bins=n_bins)  # profile histogram data
-
-            # select only the data point where the calibration worked
-            selected_data = np.logical_or(x_p > 4840 / vcal_calibration, x_p < 4180 / vcal_calibration)
-            x_p = x_p[selected_data]
-            y_p = y_p[selected_data]
-            y_p_e = y_p_e[selected_data]
-
-            plot_result(x_p, y_p, y_p_e)
-
-            #  calculate and plot mean results
-#             x_mean = get_mean_threshold(gdac_range_source_scan, mean_threshold_calibration)
-#             y_mean = selected_pixel_hits.mean(axis=(0))
-#
-#             plot_scatter(x_mean * 55, y_mean, title='Mean single pixel cluster rate at different thresholds', x_label='mean threshold [e]', y_label='mean single pixel cluster rate')
+            plot_scatter(x_mean * 55, y_mean, title='Mean single pixel cluster rate at different thresholds', x_label='mean threshold [e]', y_label='mean single pixel cluster rate')
 
     if use_cluster_rate_correction:
         correction_h5.close()
