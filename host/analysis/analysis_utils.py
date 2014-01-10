@@ -34,6 +34,8 @@ def get_profile_histogram(x, y, n_bins=100):
     mean = sy / n  # calculate the mean of all bins
     std = np.sqrt((sy2 / n - mean * mean))  # TODO: not understood, need check if this is really the standard deviation
     std_mean = std / np.sqrt((n - 1))
+    mean[np.isnan(mean)] = 0.
+    std_mean[np.isnan(std_mean)] = 0.
     return bin_centers, mean, std_mean
 
 
