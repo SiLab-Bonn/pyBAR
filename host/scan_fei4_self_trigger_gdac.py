@@ -94,7 +94,9 @@ class FEI4SelfTriggerGdacScan(ScanBase):
                 while not self.stop_loop_event.is_set() and not self.stop_thread_event.wait(self.readout.readout_interval):
                     if scan_start_time is not None and time.time() > scan_stop_time:
                         logging.info('Reached maximum scan time. Stopping Scan...')
-                        self.register.restore(keep=True, global_register=True, pixel_register=False)
+                        self.register.restore(keep=False, global_register=True, pixel_register=False)
+                        self.register.create_restore_point()
+#                         self.register.restore(keep=True, global_register=True, pixel_register=False)
                         self.register_utils.configure_global()
                         self.stop_loop_event.set()
                     time_from_last_iteration = time.time() - last_iteration
@@ -107,7 +109,9 @@ class FEI4SelfTriggerGdacScan(ScanBase):
                         no_data_at_time = last_iteration
                         if wait_for_first_data == False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
                             logging.info('Reached no data timeout. Stopping Scan...')
-                            self.register.restore(keep=True, global_register=True, pixel_register=False)
+                            self.register.restore(keep=False, global_register=True, pixel_register=False)
+                            self.register.create_restore_point()
+#                             self.register.restore(keep=True, global_register=True, pixel_register=False)
                             self.register_utils.configure_global()
                             self.stop_loop_event.set()
                         elif wait_for_first_data == False:
@@ -154,6 +158,6 @@ if __name__ == "__main__":
         gdacs = get_gdacs(threshold_range, in_file_calibration_h5.root.MeanThresholdCalibration[:])
 
     scan = FEI4SelfTriggerGdacScan(configuration_file=configuration.configuration_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.start(configure=True, use_thread=True, gdacs=gdacs, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=1 * 60)
+    scan.start(configure=True, use_thread=True, gdacs=gdacs[:2], col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=1 * 60)
     scan.stop()
     scan.analyze()
