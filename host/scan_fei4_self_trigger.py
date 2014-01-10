@@ -82,7 +82,7 @@ class FEI4SelfTriggerScan(ScanBase):
 
                 if scan_start_time is not None and time.time() > scan_stop_time:
                     logging.info('Reached maximum scan time. Stopping Scan...')
-                    self.register.restore()
+                    self.register.restore(keep=True)
                     self.register_utils.configure_global()
                     self.stop_thread_event.set()
                 # TODO: read 8b10b decoder err cnt
@@ -106,7 +106,7 @@ class FEI4SelfTriggerScan(ScanBase):
                     no_data_at_time = last_iteration
                     if wait_for_first_data == False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
                         logging.info('Reached no data timeout. Stopping Scan...')
-                        self.register.restore()
+                        self.register.restore(keep=True)
                         self.register_utils.configure_global()
                         self.stop_thread_event.set()
                     elif wait_for_first_data == False:
@@ -122,6 +122,9 @@ class FEI4SelfTriggerScan(ScanBase):
                 if wait_for_first_data == True:
                     logging.info('Taking data...')
                     wait_for_first_data = False
+
+            self.register.restore()
+            self.register_utils.configure_global()    
 
             self.readout.stop()
 
