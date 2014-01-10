@@ -17,8 +17,8 @@ def get_gdacs(thresholds, mean_threshold_calibration):
 
 
 class FEI4SelfTriggerGdacScan(ScanBase):
-    def __init__(self, config_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_fei4_self_trigger", scan_data_path=None):
-        super(FEI4SelfTriggerGdacScan, self).__init__(config_file=config_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
+    def __init__(self, configuration_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_fei4_self_trigger", scan_data_path=None):
+        super(FEI4SelfTriggerGdacScan, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
 
     def scan(self, gdacs, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=600):
         '''Scan loop
@@ -153,7 +153,7 @@ if __name__ == "__main__":
     with tb.openFile(input_file_calibration, mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
         gdacs = get_gdacs(threshold_range, in_file_calibration_h5.root.MeanThresholdCalibration[:])
 
-    scan = FEI4SelfTriggerGdacScan(config_file=configuration.configuration_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.start(configure=True, use_thread=True, gdacs=gdacs, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60)
+    scan = FEI4SelfTriggerGdacScan(configuration_file=configuration.configuration_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
+    scan.start(configure=True, use_thread=True, gdacs=gdacs, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=1 * 60)
     scan.stop()
     scan.analyze()
