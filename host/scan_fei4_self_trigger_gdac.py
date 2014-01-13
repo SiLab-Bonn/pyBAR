@@ -43,13 +43,14 @@ class FEI4SelfTriggerGdacScan(ScanBase):
         self.register.set_pixel_register_value(pixel_reg, 0)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
         # enable GateHitOr that enables FE self-trigger mode
-        self.register.set_global_register_value("Trig_Lat", 239)  # set trigger latency
+#         self.register.set_global_register_value("Trig_Lat", 239)  # set trigger latency, this latency sets the hits at the first rel. BCID bins
 #         self.register.set_global_register_value("Trig_Count", 0)  # set number of consecutive triggers
-        commands.extend(self.register.get_commands("wrregister", name=["Trig_Lat", "Trig_Count"]))
+#         commands.extend(self.register.get_commands("wrregister", name=["Trig_Lat", "Trig_Count"]))
         # send commands
         self.register_utils.send_commands(commands)
         
     def set_self_trigger(self):
+        logging.info('Activate self trigger feature')
         commands = []
         commands.extend(self.register.get_commands("confmode"))
         self.register.set_global_register_value("GateHitOr", 1)  # enable FE self-trigger mode
@@ -101,10 +102,6 @@ class FEI4SelfTriggerGdacScan(ScanBase):
                 while not self.stop_loop_event.is_set() and not self.stop_thread_event.wait(self.readout.readout_interval):
                     if scan_start_time is not None and time.time() > scan_stop_time:
                         logging.info('Reached maximum scan time. Stopping Scan...')
-                        self.register.restore(keep=False, global_register=True, pixel_register=False)
-                        self.register.create_restore_point()
-#                         self.register.restore(keep=True, global_register=True, pixel_register=False)
-                        self.register_utils.configure_global()
                         self.stop_loop_event.set()
                     time_from_last_iteration = time.time() - last_iteration
                     last_iteration = time.time()
@@ -116,10 +113,6 @@ class FEI4SelfTriggerGdacScan(ScanBase):
                         no_data_at_time = last_iteration
                         if wait_for_first_data == False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
                             logging.info('Reached no data timeout. Stopping Scan...')
-                            self.register.restore(keep=False, global_register=True, pixel_register=False)
-                            self.register.create_restore_point()
-#                             self.register.restore(keep=True, global_register=True, pixel_register=False)
-                            self.register_utils.configure_global()
                             self.stop_loop_event.set()
                         elif wait_for_first_data == False:
                             saw_no_data_at_time = no_data_at_time
@@ -134,11 +127,14 @@ class FEI4SelfTriggerGdacScan(ScanBase):
                         logging.info('Taking data...')
                         wait_for_first_data = False
             
-#                 print 'last restore'
-#                 self.register.restore()
-#                 self.register_utils.configure_global()    
+                self.register.restore(keep=True, global_register=True, pixel_register=False)  # reset the GR to leave the self trigger mode
+                self.register_utils.configure_global()
              
                 self.readout.stop()
+                raw_data_file.append(self.readout.data, scan_parameters={"GDAC": gdac_value})
+                
+            self.register.restore()  # restore the FE config
+            self.register_utils.configure_all()
 
 
     def analyze(self):
@@ -168,6 +164,6 @@ if __name__ == "__main__":
 #         gdacs = get_gdacs(threshold_range, in_file_calibration_h5.root.MeanThresholdCalibration[:])
 
     scan = FEI4SelfTriggerGdacScan(configuration_file=configuration.configuration_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.start(configure=True, use_thread=True, gdacs=gdacs[:2], col_span=[20, 50], row_span=[20, 150], timeout_no_data=10, scan_timeout=60)
+    scan.start(configure=True, use_thread=True, gdacs=gdacs, col_span=[20, 50], row_span=[20, 150], timeout_no_data=10, scan_timeout=60)
     scan.stop()
     scan.analyze()
