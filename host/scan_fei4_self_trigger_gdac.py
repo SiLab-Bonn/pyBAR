@@ -17,8 +17,45 @@ def get_gdacs(thresholds, mean_threshold_calibration):
 
 
 class FEI4SelfTriggerGdacScan(ScanBase):
-    def __init__(self, configuration_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_fei4_self_trigger", scan_data_path=None):
+    def __init__(self, configuration_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_fei4_self_trigger_gdac", scan_data_path=None):
         super(FEI4SelfTriggerGdacScan, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
+
+    def configure_fe(self, col_span, row_span):
+        # generate ROI mask for Enable mask
+        pixel_reg = "Enable"
+        mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
+        commands = []
+        commands.extend(self.register.get_commands("confmode"))
+        enable_mask = np.logical_and(mask, self.register.get_pixel_register_value(pixel_reg))
+        self.register.set_pixel_register_value(pixel_reg, enable_mask)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
+        # generate ROI mask for Imon mask
+        pixel_reg = "Imon"
+        mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span, default=1, value=0)
+        imon_mask = np.logical_or(mask, self.register.get_pixel_register_value(pixel_reg))
+        self.register.set_pixel_register_value(pixel_reg, imon_mask)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
+        # disable C_inj mask
+        pixel_reg = "C_High"
+        self.register.set_pixel_register_value(pixel_reg, 0)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
+        pixel_reg = "C_Low"
+        self.register.set_pixel_register_value(pixel_reg, 0)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
+        # enable GateHitOr that enables FE self-trigger mode
+        self.register.set_global_register_value("Trig_Lat", 239)  # set trigger latency
+#         self.register.set_global_register_value("Trig_Count", 0)  # set number of consecutive triggers
+        commands.extend(self.register.get_commands("wrregister", name=["Trig_Lat", "Trig_Count"]))
+        # send commands
+        self.register_utils.send_commands(commands)
+        
+    def set_self_trigger(self):
+        commands = []
+        commands.extend(self.register.get_commands("confmode"))
+        self.register.set_global_register_value("GateHitOr", 1)  # enable FE self-trigger mode
+        commands.extend(self.register.get_commands("wrregister", name=["GateHitOr"]))
+        commands.extend(self.register.get_commands("runmode"))
+        self.register_utils.send_commands(commands)
 
     def scan(self, gdacs, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=600):
         '''Scan loop
@@ -42,33 +79,8 @@ class FEI4SelfTriggerGdacScan(ScanBase):
         self.stop_loop_event.clear()
 
         self.register.create_restore_point()
-        # generate ROI mask for Enable mask
-        pixel_reg = "Enable"
-        mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
-        commands = []
-        commands.extend(self.register.get_commands("confmode"))
-        enable_mask = np.logical_and(mask, self.register.get_pixel_register_value(pixel_reg))
-        self.register.set_pixel_register_value(pixel_reg, enable_mask)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
-        # generate ROI mask for Imon mask
-        pixel_reg = "Imon"
-        mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span, default=1, value=0)
-        imon_mask = np.logical_or(mask, self.register.get_pixel_register_value(pixel_reg))
-        self.register.set_pixel_register_value(pixel_reg, imon_mask)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
-        # disable C_inj mask
-        pixel_reg = "C_High"
-        self.register.set_pixel_register_value(pixel_reg, 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
-        pixel_reg = "C_Low"
-        self.register.set_pixel_register_value(pixel_reg, 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
-        # enable GateHitOr that enables FE self-trigger mode
-        self.register.set_global_register_value("Trig_Lat", 232)  # set trigger latency
-#         self.register.set_global_register_value("Trig_Count", 0)  # set number of consecutive triggers
-        commands.extend(self.register.get_commands("wrregister", name=["Trig_Lat", "Trig_Count"]))
-        # send commands
-        self.register_utils.send_commands(commands)
+        self.configure_fe(col_span, row_span)
+        
 
         with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier, scan_parameters=["GDAC"]) as raw_data_file:
             for gdac_value in gdacs:
@@ -77,12 +89,7 @@ class FEI4SelfTriggerGdacScan(ScanBase):
                 self.stop_loop_event.clear()
                 self.register_utils.set_gdac(gdac_value)
                 self.readout.start()
-                commands = []
-                commands.extend(self.register.get_commands("confmode"))
-                self.register.set_global_register_value("GateHitOr", 1)  # enable FE self-trigger mode
-                commands.extend(self.register.get_commands("wrregister", name=["GateHitOr"]))
-                commands.extend(self.register.get_commands("runmode"))
-                self.register_utils.send_commands(commands)
+                self.set_self_trigger()
                 wait_for_first_data = True
                 last_iteration = time.time()
                 saw_no_data_at_time = last_iteration
@@ -127,12 +134,12 @@ class FEI4SelfTriggerGdacScan(ScanBase):
                         logging.info('Taking data...')
                         wait_for_first_data = False
             
-                self.register.restore()
-                self.register_utils.configure_global()    
-            
+#                 print 'last restore'
+#                 self.register.restore()
+#                 self.register_utils.configure_global()    
+             
                 self.readout.stop()
-                
-                raw_data_file.append(self.readout.data, scan_parameters={"GDAC": gdac_value})
+
 
     def analyze(self):
         from analysis.analyze_raw_data import AnalyzeRawData
@@ -150,14 +157,17 @@ class FEI4SelfTriggerGdacScan(ScanBase):
 if __name__ == "__main__":
     import configuration
 #     gdacs = range(100, 5001, 15)  # GDAC range set manually
+    gdacs = range(70, 90, 1)  # has to be from low to high value
+    gdacs.extend(range(90, 114, 2))  # has to be from low to high value
+    gdacs.extend((np.exp(np.array(range(0, 150)) / 10.) / 10. + 100).astype('<u4')[50:-40].tolist())  # exponential GDAC range to correct for logarithmic threshold(GDAC) function
 
     # GDAC settings can be set automatically from the calibration with equidistant thresholds
-    input_file_calibration = 'data/calibrate_threshold_gdac_SCC_99_big_range_2.h5'  # the file with the GDAC <-> PlsrDAC calibration
-    threshold_range = np.arange(19, 550, 0.8)  # threshold range in PlsrDAC to scan
-    with tb.openFile(input_file_calibration, mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
-        gdacs = get_gdacs(threshold_range, in_file_calibration_h5.root.MeanThresholdCalibration[:])
+#     input_file_calibration = 'data/calibrate_threshold_gdac_SCC_99_big_range_2.h5'  # the file with the GDAC <-> PlsrDAC calibration
+#     threshold_range = np.arange(19, 550, 0.8)  # threshold range in PlsrDAC to scan
+#     with tb.openFile(input_file_calibration, mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
+#         gdacs = get_gdacs(threshold_range, in_file_calibration_h5.root.MeanThresholdCalibration[:])
 
     scan = FEI4SelfTriggerGdacScan(configuration_file=configuration.configuration_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.start(configure=True, use_thread=True, gdacs=gdacs[:2], col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=1 * 60)
+    scan.start(configure=True, use_thread=True, gdacs=gdacs[:2], col_span=[20, 50], row_span=[20, 150], timeout_no_data=10, scan_timeout=60)
     scan.stop()
     scan.analyze()
