@@ -1039,7 +1039,7 @@ class FEI4Register(object):
         '''
         if name is None:
             if keep:
-                name = next(reversed(iter(self.config_state)) if last else iter(self.config_state))
+                name = next(reversed(self.config_state)) if last else next(iter(self.config_state))
                 value = self.config_state[name]
             else:
                 name, value = self.config_state.popitem(last=last)
