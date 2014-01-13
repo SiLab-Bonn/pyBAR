@@ -40,7 +40,7 @@ class FEI4SelfTriggerScan(ScanBase):
         commands.extend(self.register.get_commands("wrregister", name=["Trig_Lat", "Trig_Count"]))
         # send commands
         self.register_utils.send_commands(commands)
-    
+
     def set_self_trigger(self):
         commands = []
         commands.extend(self.register.get_commands("confmode"))
@@ -48,8 +48,8 @@ class FEI4SelfTriggerScan(ScanBase):
         commands.extend(self.register.get_commands("wrregister", name=["GateHitOr"]))
         commands.extend(self.register.get_commands("runmode"))
         self.register_utils.send_commands(commands)
-        
-    def scan(self, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=600):
+
+    def scan(self, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=1 * 60):
         '''Scan loop
 
         Parameters
@@ -87,8 +87,6 @@ class FEI4SelfTriggerScan(ScanBase):
 
                 if scan_start_time is not None and time.time() > scan_stop_time:
                     logging.info('Reached maximum scan time. Stopping Scan...')
-                    self.register.restore(keep=True)
-                    self.register_utils.configure_global()
                     self.stop_thread_event.set()
                 # TODO: read 8b10b decoder err cnt
     #                 if not self.readout_utils.read_rx_status():
@@ -111,8 +109,6 @@ class FEI4SelfTriggerScan(ScanBase):
                     no_data_at_time = last_iteration
                     if wait_for_first_data == False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
                         logging.info('Reached no data timeout. Stopping Scan...')
-                        self.register.restore(keep=True)
-                        self.register_utils.configure_global()
                         self.stop_thread_event.set()
                     elif wait_for_first_data == False:
                         saw_no_data_at_time = no_data_at_time
@@ -129,7 +125,7 @@ class FEI4SelfTriggerScan(ScanBase):
                     wait_for_first_data = False
 
             self.register.restore()
-            self.register_utils.configure_global()    
+            self.register_utils.configure_all()
 
             self.readout.stop()
 
@@ -151,6 +147,6 @@ class FEI4SelfTriggerScan(ScanBase):
 if __name__ == "__main__":
     import configuration
     scan = FEI4SelfTriggerScan(configuration_file=configuration.configuration_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.start(configure=True, use_thread=True, col_span=[20, 50], row_span=[20, 150], timeout_no_data=10, scan_timeout=60)
+    scan.start(configure=True, use_thread=True, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=1 * 60)
     scan.stop()
     scan.analyze()
