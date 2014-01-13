@@ -159,7 +159,8 @@ def plot_profile_histogram(x, y, n_bins=100, title=None, x_label=None, y_label=N
     std = np.sqrt((sy2 / n - mean * mean))  # TODO: no understood, need check if this is really the standard deviation
     #     std_mean = np.sqrt((sy2 - 2 * mean * sy + mean * mean) / (1*(n - 1)))  # this should be the formular ?!
     std_mean = std / np.sqrt((n - 1))
-
+    mean[np.isnan(mean)] = 0.
+    std_mean[np.isnan(std_mean)] = 0.
 #     from scipy.special import erf
 # #     
 #     def scurve(x, A, mu, sigma):
