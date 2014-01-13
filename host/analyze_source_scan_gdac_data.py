@@ -3,7 +3,7 @@ import tables as tb
 from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
 
-from analysis.plotting.plotting import plot_scatter, plot_occupancy
+from analysis.plotting.plotting import plot_scatter, plot_occupancy, plot_profile_histogram
 from analysis import analysis_utils
 
 import logging
@@ -72,7 +72,7 @@ def get_hit_rate_correction(gdacs, calibration_gdacs, cluster_size_histogram):
     return interpolation(gdacs)
 
 
-def get_normalization(meta_data, reference='event'):
+def get_normalization(meta_data, reference='event', plot=False):
     gdacs = analysis_utils.get_scan_parameter(meta_data_array=meta_data)['GDAC']
     if reference == 'event':
         event_numbers = analysis_utils.get_meta_data_at_scan_parameter(meta_data, 'GDAC')['event_number']  # get the event numbers in meta_data where the scan parameter changes
@@ -81,13 +81,15 @@ def get_normalization(meta_data, reference='event'):
         n_events = event_range[:, 1] - event_range[:, 0]  # number of events for every GDAC
         n_events[-1] = n_events[-2]  # FIXME: set the last number of events manually, bad extrapolaton
         logging.warning('Last number of events unknown and extrapolated')
-        plot_scatter(gdacs, n_events, title='Events per GDAC setting', x_label='GDAC', y_label='# events', log_x=True)
+        if plot:
+            plot_scatter(gdacs, n_events, title='Events per GDAC setting', x_label='GDAC', y_label='# events', log_x=True)
         return n_events.astype('f64') / np.amax(n_events)
     else:
         time_start = analysis_utils.get_meta_data_at_scan_parameter(meta_data, 'GDAC')['timestamp_start']
         time_spend = np.diff(time_start)
         time_spend = np.append(time_spend, meta_data[-1]['timestamp_stop'] - time_start[-1])  # TODO: needs check, add last missing entry
-        plot_scatter(gdacs, time_spend, title='Measuring time per GDAC setting', x_label='GDAC', y_label='time [s]', log_x=True)
+        if plot:
+            plot_scatter(gdacs, time_spend, title='Measuring time per GDAC setting', x_label='GDAC', y_label='time [s]', log_x=True)
         return time_spend.astype('f64') / np.amax(time_spend)
 
 
@@ -124,8 +126,14 @@ def plot_result(x_p, y_p, y_p_e):
         y_p_e : array like
             error bars in y
     '''
+
+    if len(y_p_e[y_p_e == 0]) != 0:
+        logging.warning('There are bins without any data, guessing the error bars')
+        y_p_e[y_p_e == 0] = np.amin(y_p_e[y_p_e != 0])
+
     smoothed_data = analysis_utils.smooth_differentiation(x_p, y_p, weigths=1 / y_p_e, order=3, smoothness=smoothness, derivation=0)
     smoothed_data_diff = analysis_utils.smooth_differentiation(x_p, y_p, weigths=1 / y_p_e, order=3, smoothness=smoothness, derivation=1)
+
     p1 = plt.errorbar(x_p * vcal_calibration, y_p, yerr=y_p_e, fmt='o')  # plot differentiated data with error bars of data
     p2, = plt.plot(x_p * vcal_calibration, smoothed_data, '-r')  # plot smoothed data
     p3, = plt.plot(x_p * vcal_calibration, -100. * smoothed_data_diff, '-', lw=2)  # plot differentiated data
@@ -137,11 +145,11 @@ def plot_result(x_p, y_p, y_p_e):
     plt.title('\'Single hit cluster\'-occupancy for different pixel thresholds')
     plt.xlabel('Pixel threshold [e]')
     plt.ylabel('Single hit cluster occupancy [a.u.]')
-    plt.ylim((0, 1.05 * np.amax(y_p)))
+    plt.ylim((0, 1.02 * np.amax(np.append(y_p, -100. * smoothed_data_diff))))
     plt.show()
 
 
-def select_hot_region(hits, cut_threshold=0.8):
+def select_hot_region(hits, col_span, row_span, cut_threshold=0.8):
     '''Takes the hit array and masks all pixels with occupancy < (max_occupancy-min_occupancy) * cut_threshold.
 
     Parameters
@@ -160,25 +168,29 @@ def select_hot_region(hits, cut_threshold=0.8):
         The hits array with masked pixels.
     '''
     hits = np.sum(hits, axis=(-1)).astype('u8')
-    dimension = (80, 336)
-    mask = np.ones(dimension, dtype=np.uint8)
-            
-    mask[20:60, 20:150] = 0  # advanced indexing
-#     pixel_mask = np.logical_and(mask, pixel_mask)
-    
-    ma = np.ma.masked_where(hits < cut_threshold * (np.amax(hits) - np.amin(hits)), hits)
-    return np.ma.masked_where(mask, ma)
+    mask = np.ones(shape=(80, 336), dtype=np.uint8)
+
+    mask[min(col_span):max(col_span) + 1, min(row_span):max(row_span) + 1] = 0
+
+    ma = np.ma.masked_where(mask, hits)
+    return np.ma.masked_where(ma < cut_threshold * (np.amax(ma) - np.amin(ma)), ma)
 
 if __name__ == "__main__":
+#     scan_name = 'scan_fei4_trigger_gdac_0'
+#     folder = 'K:\\data\\FE-I4\\ChargeRecoMethod\\'
+#     input_file_hits = folder + 'bias_20\\' + scan_name + "_cut_1_analyzed.h5"
+#     input_file_calibration = folder + 'calibration\\calibrate_threshold_gdac_SCC_99.h5'
+#     input_file_correction = folder + 'bias_20\\' + scan_name + "_cluster_sizes.h5"
+
     scan_name = 'scan_ext_trigger_gdac_0'
-    folder = 'data\\'
+    folder = 'data\\dia_data\\'
     input_file_hits = folder + scan_name + "_cut_1_analyzed.h5"
     input_file_calibration = folder + 'calibrate_threshold_gdac_MDBM30.h5'
     input_file_correction = folder + scan_name + "_cluster_sizes.h5"
 
     use_cluster_rate_correction = True
 
-    smoothness = 200  # the smoothness of the spline fit to the data
+    smoothness = 60  # the smoothness of the spline fit to the data
     vcal_calibration = 55.  # calibration electrons/PlsrDAC
     n_bins = 100  # number of bins for the profile histogram
 
@@ -200,24 +212,20 @@ if __name__ == "__main__":
                 correction_h5 = tb.openFile(input_file_correction, mode="r")
                 cluster_size_histogram = correction_h5.root.AllHistClusterSize[:]
                 correction_factors = get_hit_rate_correction(gdacs=gdac_range_source_scan, calibration_gdacs=gdac_range_source_scan, cluster_size_histogram=cluster_size_histogram)
-                plot_cluster_sizes(correction_h5, in_file_calibration_h5, gdac_range=gdac_range_source_scan, vcal_calibration=vcal_calibration)
+#                 plot_cluster_sizes(correction_h5, in_file_calibration_h5, gdac_range=gdac_range_source_scan, vcal_calibration=vcal_calibration)
 
             logging.info('Analyzing source scan data with %d different GDAC settings from %d to %d with minimum step sizes from %d to %d' % (len(gdac_range_source_scan), np.min(gdac_range_source_scan), np.max(gdac_range_source_scan), np.min(np.gradient(gdac_range_source_scan)), np.max(np.gradient(gdac_range_source_scan))))
             logging.info('Use calibration data with %d different GDAC settings from %d to %d with minimum step sizes from %d to %d' % (len(gdac_range_calibration), np.min(gdac_range_calibration), np.max(gdac_range_calibration), np.min(np.gradient(gdac_range_calibration)), np.max(np.gradient(gdac_range_calibration))))
 
             pixel_thresholds = get_pixel_thresholds(gdacs=gdac_range_source_scan, calibration_gdacs=gdac_range_calibration, threshold_calibration_array=threshold_calibration_array)  # interpolates the threshold at the source scan GDAC setting from the calibration
             pixel_hits = np.swapaxes(hits, 0, 1)  # create hit array with shape (col, row, ...)
-            
-            print pixel_thresholds.shape
-            print pixel_thresholds[40, 80, :]
 
             normalization = 1.
             correction_factors = 1.
             pixel_hits = pixel_hits * correction_factors * normalization
 
             # choose region with pixels that have a sufficient occupancy
-            hot_pixel = select_hot_region(pixel_hits, cut_threshold=0.01)
-#             hot_pixel
+            hot_pixel = select_hot_region(pixel_hits, col_span=[20,60], row_span=[20,150], cut_threshold=0.04)
             pixel_mask = ~np.ma.getmaskarray(hot_pixel)
             selected_pixel_hits = pixel_hits[pixel_mask, :]  # reduce the data to pixels that are in the hot pixel region
             selected_pixel_thresholds = pixel_thresholds[pixel_mask, :]  # reduce the data to pixels that are in the hot pixel region
@@ -226,35 +234,22 @@ if __name__ == "__main__":
             # reshape to one dimension
             x = selected_pixel_thresholds.flatten()
             y = selected_pixel_hits.flatten()
-            
-            plot_scatter(x * vcal_calibration, y, marker_style='o')
-            
-#             print x[:],y[:]
-#  
-#             #nothing should be NAN, NAN is not supported yet
-#             if np.isnan(x).sum() > 0 or np.isnan(y).sum() > 0:
-#                 logging.warning('There are pixels with NaN threshold or hit values, analysis will be wrong')
-# 
-# # 
-# #             # calculated profile histogram
-#             x_p, y_p, y_p_e = analysis_utils.get_profile_histogram(x, y, n_bins=n_bins)  # profile histogram data
-# # 
-# #             # select only the data point where the calibration worked
-# #             selected_data = np.logical_or(x_p > 4840 / vcal_calibration, x_p < 4180 / vcal_calibration)
-# #             x_p = x_p[selected_data]
-# #             y_p = y_p[selected_data]
-# #             y_p_e = y_p_e[selected_data]
-#              
-#             if np.isnan(x_p).sum() > 0 or np.isnan(y_p).sum() > 0 or np.isnan(y_p_e).sum() > 0:
-#                 logging.error('There are pixels with NaN threshold or hit values, analysis will fail') 
-#             print x_p
-#             print y_p
-#             print y_p_e
-#             
-# #             plt.plot(x_p, y_p)
-# # 
-#             plot_result(x_p, y_p, y_p_e)
-# 
+
+            #nothing should be NAN, NAN is not supported yet
+            if np.isfinite(x).shape != x.shape or np.isfinite(y).shape != y.shape:
+                logging.warning('There are pixels with NaN or INF threshold or hit values, analysis will fail')
+ 
+            # calculated profile histogram
+            x_p, y_p, y_p_e = analysis_utils.get_profile_histogram(x, y, n_bins=n_bins)  # profile histogram data
+
+            # select only the data point where the calibration worked
+            selected_data = np.logical_or(x_p > 700 / vcal_calibration, 0)
+            x_p = x_p[selected_data]
+            y_p = y_p[selected_data]
+            y_p_e = y_p_e[selected_data]
+
+            plot_result(x_p, y_p, y_p_e)
+
 #             #  calculate and plot mean results
             x_mean = get_mean_threshold(gdac_range_source_scan, mean_threshold_calibration)
             y_mean = selected_pixel_hits.mean(axis=(0))
