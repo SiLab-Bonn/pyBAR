@@ -12,21 +12,7 @@ class FEI4SelfTriggerScan(ScanBase):
     def __init__(self, configuration_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_fei4_self_trigger", scan_data_path=None):
         super(FEI4SelfTriggerScan, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
 
-    def scan(self, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=600):
-        '''Scan loop
-
-        Parameters
-        ----------
-        col_span : list, tuple
-            Column range (from minimum to maximum value). From 1 to 80.
-        row_span : list, tuple
-            Row range (from minimum to maximum value). From 1 to 336.
-        timeout_no_data : int
-            In seconds; if no data, stop scan after given time.
-        scan_timeout : int
-            In seconds; stop scan after given time.
-        '''
-        self.register.create_restore_point()
+    def configure_fe(self, col_span, row_span):
         # generate ROI mask for Enable mask
         pixel_reg = "Enable"
         mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
@@ -49,21 +35,40 @@ class FEI4SelfTriggerScan(ScanBase):
         self.register.set_pixel_register_value(pixel_reg, 0)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
         # enable GateHitOr that enables FE self-trigger mode
-        self.register.set_global_register_value("Trig_Lat", 232)  # set trigger latency
+        self.register.set_global_register_value("Trig_Lat", 239)  # set trigger latency, this latency sets the hits at the first rel. BCID bins
 #         self.register.set_global_register_value("Trig_Count", 0)  # set number of consecutive triggers
         commands.extend(self.register.get_commands("wrregister", name=["Trig_Lat", "Trig_Count"]))
         # send commands
         self.register_utils.send_commands(commands)
-        # preload command
-        # lvl1_command = self.register.get_commands("zeros", length=24)[0]+self.register.get_commands("lv1")[0]#+BitVector.BitVector(size = 10000)
-        # self.register_utils.set_command(lvl1_command)
+    
+    def set_self_trigger(self):
+        commands = []
+        commands.extend(self.register.get_commands("confmode"))
+        self.register.set_global_register_value("GateHitOr", 1)  # enable FE self-trigger mode
+        commands.extend(self.register.get_commands("wrregister", name=["GateHitOr"]))
+        commands.extend(self.register.get_commands("runmode"))
+        self.register_utils.send_commands(commands)
+        
+    def scan(self, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=600):
+        '''Scan loop
+
+        Parameters
+        ----------
+        col_span : list, tuple
+            Column range (from minimum to maximum value). From 1 to 80.
+        row_span : list, tuple
+            Row range (from minimum to maximum value). From 1 to 336.
+        timeout_no_data : int
+            In seconds; if no data, stop scan after given time.
+        scan_timeout : int
+            In seconds; stop scan after given time.
+        '''
+        self.register.create_restore_point()
+        self.configure_fe(col_span, row_span)
+
         with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier) as raw_data_file:
             self.readout.start()
-            commands = []
-            self.register.set_global_register_value("GateHitOr", 1)  # enable FE self-trigger mode
-            commands.extend(self.register.get_commands("wrregister", name=["GateHitOr"]))
-            commands.extend(self.register.get_commands("runmode"))
-            self.register_utils.send_commands(commands)
+            self.set_self_trigger()
             wait_for_first_data = True
             last_iteration = time.time()
             saw_no_data_at_time = last_iteration
@@ -146,6 +151,6 @@ class FEI4SelfTriggerScan(ScanBase):
 if __name__ == "__main__":
     import configuration
     scan = FEI4SelfTriggerScan(configuration_file=configuration.configuration_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.start(configure=True, use_thread=True, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60)
+    scan.start(configure=True, use_thread=True, col_span=[20, 50], row_span=[20, 150], timeout_no_data=10, scan_timeout=60)
     scan.stop()
     scan.analyze()
