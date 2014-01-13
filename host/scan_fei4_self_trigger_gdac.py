@@ -48,7 +48,7 @@ class FEI4SelfTriggerGdacScan(ScanBase):
 #         commands.extend(self.register.get_commands("wrregister", name=["Trig_Lat", "Trig_Count"]))
         # send commands
         self.register_utils.send_commands(commands)
-        
+
     def set_self_trigger(self):
         logging.info('Activate self trigger feature')
         commands = []
@@ -58,7 +58,7 @@ class FEI4SelfTriggerGdacScan(ScanBase):
         commands.extend(self.register.get_commands("runmode"))
         self.register_utils.send_commands(commands)
 
-    def scan(self, gdacs, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=600):
+    def scan(self, gdacs, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=60):
         '''Scan loop
 
         Parameters
@@ -81,7 +81,6 @@ class FEI4SelfTriggerGdacScan(ScanBase):
 
         self.register.create_restore_point()
         self.configure_fe(col_span, row_span)
-        
 
         with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier, scan_parameters=["GDAC"]) as raw_data_file:
             for gdac_value in gdacs:
@@ -113,7 +112,7 @@ class FEI4SelfTriggerGdacScan(ScanBase):
                         no_data_at_time = last_iteration
                         if wait_for_first_data == False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
                             logging.info('Reached no data timeout. Stopping Scan...')
-                            self.stop_loop_event.set()
+                            self.stop_thread_event.set()
                         elif wait_for_first_data == False:
                             saw_no_data_at_time = no_data_at_time
 
@@ -126,16 +125,16 @@ class FEI4SelfTriggerGdacScan(ScanBase):
                     if wait_for_first_data == True:
                         logging.info('Taking data...')
                         wait_for_first_data = False
-            
+
                 self.register.restore(keep=True, global_register=True, pixel_register=False)  # reset the GR to leave the self trigger mode
                 self.register_utils.configure_global()
-             
-                self.readout.stop()
-                raw_data_file.append(self.readout.data, scan_parameters={"GDAC": gdac_value})
-                
-            self.register.restore()  # restore the FE config
-            self.register_utils.configure_all()
 
+                self.readout.stop()
+
+                raw_data_file.append(self.readout.data, scan_parameters={"GDAC": gdac_value})
+
+            self.register.restore()
+            self.register_utils.configure_all()
 
     def analyze(self):
         from analysis.analyze_raw_data import AnalyzeRawData
@@ -153,17 +152,14 @@ class FEI4SelfTriggerGdacScan(ScanBase):
 if __name__ == "__main__":
     import configuration
 #     gdacs = range(100, 5001, 15)  # GDAC range set manually
-    gdacs = range(70, 90, 1)  # has to be from low to high value
-    gdacs.extend(range(90, 114, 2))  # has to be from low to high value
-    gdacs.extend((np.exp(np.array(range(0, 150)) / 10.) / 10. + 100).astype('<u4')[50:-40].tolist())  # exponential GDAC range to correct for logarithmic threshold(GDAC) function
 
     # GDAC settings can be set automatically from the calibration with equidistant thresholds
-#     input_file_calibration = 'data/calibrate_threshold_gdac_SCC_99_big_range_2.h5'  # the file with the GDAC <-> PlsrDAC calibration
-#     threshold_range = np.arange(19, 550, 0.8)  # threshold range in PlsrDAC to scan
-#     with tb.openFile(input_file_calibration, mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
-#         gdacs = get_gdacs(threshold_range, in_file_calibration_h5.root.MeanThresholdCalibration[:])
+    input_file_calibration = 'data/calibrate_threshold_gdac_SCC_99_big_range_2.h5'  # the file with the GDAC <-> PlsrDAC calibration
+    threshold_range = np.arange(19, 550, 0.8)  # threshold range in PlsrDAC to scan
+    with tb.openFile(input_file_calibration, mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
+        gdacs = get_gdacs(threshold_range, in_file_calibration_h5.root.MeanThresholdCalibration[:])
 
     scan = FEI4SelfTriggerGdacScan(configuration_file=configuration.configuration_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.start(configure=True, use_thread=True, gdacs=gdacs, col_span=[20, 50], row_span=[20, 150], timeout_no_data=10, scan_timeout=60)
+    scan.start(configure=True, use_thread=True, gdacs=gdacs, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=60)
     scan.stop()
     scan.analyze()
