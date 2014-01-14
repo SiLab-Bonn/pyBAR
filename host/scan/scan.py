@@ -25,7 +25,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 
 class ScanBase(object):
     # TODO: implement callback for stop() & analyze()
-    def __init__(self, configuration_file=None, definition_file=None, bit_file=None, force_download=False, device=None, scan_identifier="base_scan", scan_data_path=None):
+    def __init__(self, configuration_file=None, definition_file=None, bit_file=None, force_download=False, device=None, scan_data_path=None, device_identifier="", scan_identifier="base_scan"):
         '''
         configuration_file : str, FEI4Register
             Filename of FE configuration file or FEI4Register object.
@@ -35,8 +35,8 @@ class ScanBase(object):
             Filename of FPGA bitstream file (bit file).
         force_download : bool
             Force download of bitstream file, even if FPGA is configured.
-        device : SiUSBDevice
-            SiUSBDevice object. If None, any available USB device will be taken.
+        device : SiUSBDevice, int
+            SiUSBDevice object or device ID. If None, any available USB device will be taken.
         scan_identifier : str
             Scan identifier string.
         scan_data_path : str
@@ -57,9 +57,14 @@ class ScanBase(object):
             #if isinstance(device, usb.core.Device):
             if isinstance(device, SiUSBDevice):
                 self.device = device
-                logging.info('Using USB board with ID %s', self.device.board_id)
+            elif isinstance(device, int):
+                self.device = SiUSBDevice.from_board_id(device)
             else:
                 raise TypeError('Device has wrong type')
+            try:
+                logging.info('Using USB board with ID %s', self.device.board_id)
+            except USBError:
+                raise DeviceError('Can\'t communicate with USB board. Reset USB board!')
         else:
             try:
                 self.device = SiUSBDevice()
@@ -89,11 +94,18 @@ class ScanBase(object):
             self.register = FEI4Register(configuration_file=configuration_file, definition_file=definition_file)
         self.register_utils = FEI4RegisterUtils(self.device, self.readout, self.register)
 
+        # remove all non_word characters and whitespace characters to prevent problems with os.path.join
+        self.device_identifier = re.sub(r"[^\w\s+]", '', device_identifier)
+        self.device_identifier = re.sub(r"\s+", '_', self.device_identifier)
+        self.scan_identifier = re.sub(r"[^\w\s+]", '', scan_identifier)
+        self.scan_identifier = re.sub(r"\s+", '_', self.scan_identifier)
         if scan_data_path == None:
             self.scan_data_path = os.getcwd()
         else:
             self.scan_data_path = scan_data_path
-        self.scan_identifier = scan_identifier.lstrip('/\\')  # remove leading slashes, prevent problems with os.path.join
+        if self.device_identifier:
+            self.scan_data_path = os.path.join(self.scan_data_path, self.device_identifier)
+
         self.scan_number = None
         self.scan_data_filename = None
         self.scan_completed = False
@@ -214,7 +226,7 @@ class ScanBase(object):
         self.lock.acquire()
         if not os.path.exists(self.scan_data_path):
             os.makedirs(self.scan_data_path)
-        with open(os.path.join(self.scan_data_path, self.scan_identifier + ".cfg"), "a+") as f:
+        with open(os.path.join(self.scan_data_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), "a+") as f:
             for line in f.readlines():
                 scan_number = int(re.findall(r'\d+\s', line)[0])
                 scan_numbers[scan_number] = line
@@ -222,24 +234,24 @@ class ScanBase(object):
             self.scan_number = 0
         else:
             self.scan_number = max(dict.iterkeys(scan_numbers)) + 1
-        scan_numbers[self.scan_number] = str(self.scan_number) + '\n'
-        with open(os.path.join(self.scan_data_path, self.scan_identifier + ".cfg"), "w") as f:
+        scan_numbers[self.scan_number] = str(self.scan_number) + ' ' + self.scan_identifier + '\n'
+        with open(os.path.join(self.scan_data_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), "w") as f:
             for value in dict.itervalues(scan_numbers):
                 f.write(value)
         self.lock.release()
-        self.scan_data_filename = os.path.join(self.scan_data_path, self.scan_identifier + "_" + str(self.scan_number))
+        self.scan_data_filename = os.path.join(self.scan_data_path, ((self.device_identifier + "_" + self.scan_identifier) if self.device_identifier else self.scan_identifier) + "_" + str(self.scan_number))
 
     def write_scan_status(self, finished=True):
         scan_numbers = {}
         self.lock.acquire()
-        with open(os.path.join(self.scan_data_path, self.scan_identifier + ".cfg"), "r") as f:
+        with open(os.path.join(self.scan_data_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), "r") as f:
             for line in f.readlines():
                 scan_number = int(re.findall(r'\d+\s', line)[0])
                 if scan_number != self.scan_number:
                     scan_numbers[scan_number] = line
                 else:
                     scan_numbers[scan_number] = line.strip() + (' SUCCESS\n' if finished else ' ABORTED\n')
-        with open(os.path.join(self.scan_data_path, self.scan_identifier + ".cfg"), "w") as f:
+        with open(os.path.join(self.scan_data_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), "w") as f:
             for value in dict.itervalues(scan_numbers):
                 f.write(value)
         self.lock.release()
