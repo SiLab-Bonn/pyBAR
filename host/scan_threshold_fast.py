@@ -11,9 +11,21 @@ import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
-class ThresholdScanFast(ScanBase):
-    def __init__(self, configuration_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_threshold_fast", scan_data_path=None):
-        super(ThresholdScanFast, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
+scan_configuration = {
+    "mask_steps": 3,
+    "repeat_command": 100,
+    "scan_parameter": 'PlsrDAC',
+    "scan_parameter_range": None,
+    "scan_parameter_stepsize": 2,
+    "search_distance": 10,
+    "minimum_data_points": 15,
+    "ignore_columns": (1, 78, 79, 80)
+}
+
+
+class FastThresholdScan(ScanBase):
+    def __init__(self, configuration_file, definition_file=None, bit_file=None, force_download=False, device=None, scan_data_path=None, device_identifier=""):
+        super(FastThresholdScan, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, force_download=force_download, device=device, scan_data_path=scan_data_path, device_identifier=device_identifier, scan_identifier="fast_threshold_scan")
         self.scan_parameter_start = 0  # holding last start value (e.g. used in GDAC threshold scan)
         self.data_points = 10
 
@@ -160,7 +172,7 @@ class ThresholdScanFast(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = ThresholdScanFast(configuration_file=configuration.configuration_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.start(use_thread=True, scan_parameter_range=None, scan_parameter_stepsize=2, search_distance=10, minimum_data_points=10, ignore_columns=(1, 78, 79, 80))
+    scan = FastThresholdScan(**configuration.device_configuration)
+    scan.start(use_thread=True, **scan_configuration)
     scan.stop()
     scan.analyze()
