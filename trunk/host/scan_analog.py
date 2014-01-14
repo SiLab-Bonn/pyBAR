@@ -8,9 +8,17 @@ import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
+scan_configuration = {
+    "mask_steps": 3,
+    "repeat_command": 100,
+    "scan_parameter": 'PlsrDAC',
+    "scan_parameter_value": 100
+}
+
+
 class AnalogScan(ScanBase):
-    def __init__(self, configuration_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_analog", scan_data_path=None):
-        super(AnalogScan, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
+    def __init__(self, configuration_file, definition_file=None, bit_file=None, force_download=False, device=None, scan_data_path=None, device_identifier=""):
+        super(AnalogScan, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, force_download=force_download, device=device, scan_data_path=scan_data_path, device_identifier=device_identifier, scan_identifier="analog_scan")
 
     def scan(self, mask_steps=3, repeat_command=100, scan_parameter='PlsrDAC', scan_parameter_value=100):
         '''Scan loop
@@ -61,7 +69,7 @@ class AnalogScan(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = AnalogScan(configuration_file=configuration.configuration_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.start(use_thread=False)
+    scan = AnalogScan(**configuration.device_configuration)
+    scan.start(use_thread=False, **scan_configuration)
     scan.stop()
     scan.analyze()
