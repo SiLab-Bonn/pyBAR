@@ -123,8 +123,6 @@ class ScanBase(object):
         self.use_thread = None
         self.restore_configuration = None
 
-        self.write_scan_number()
-
     @property
     def is_running(self):
         return self.scan_thread.is_alive()
@@ -151,6 +149,8 @@ class ScanBase(object):
         '''
         self.scan_is_running = True
         self.scan_aborted = False
+
+        self.write_scan_number()
 
         if kwargs:
             self.save_scan_configuration(kwargs)
