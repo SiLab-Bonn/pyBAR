@@ -519,7 +519,7 @@ def get_tot_iterator_from_data_records(array):  # generator
             yield np.bitwise_and(item, 0x0000000F)  # ToT2
 
 
-def open_raw_data_file(filename, mode="w", title="", scan_parameters=[], **kwargs):
+def open_raw_data_file(filename, mode="a", title="", scan_parameters=[], **kwargs):
     '''Mimics pytables.open_file()/openFile()
 
     Returns:
