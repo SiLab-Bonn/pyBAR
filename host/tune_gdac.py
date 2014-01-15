@@ -11,13 +11,21 @@ from scan.scan import ScanBase
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
+scan_configuration = {
+    "target_threshold": 50,
+    "gdac_tune_bits": range(7, -1, -1),
+    "n_injections": 50,
+    "abort_precision_occ": 2,
+    "mask_steps": 3,
+    "enable_mask_steps": [0],
+    "plot_intermediate_steps": False,
+    "plots_filename": None,
+}
+
+
 class GdacTune(ScanBase):
-    def __init__(self, configuration_file, definition_file=None, bit_file=None, device=None, scan_identifier="tune_gdac", scan_data_path=None):
-        super(GdacTune, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
-        self.set_gdac_tune_bits()
-        self.set_target_threshold()
-        self.set_n_injections()
-        self.set_abort_precision()
+    def __init__(self, configuration_file, definition_file=None, bit_file=None, force_download=False, device=None, scan_data_path=None, device_identifier=""):
+        super(GdacTune, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, force_download=force_download, device=device, scan_data_path=scan_data_path, device_identifier=device_identifier, scan_identifier="gdac_tune")
 
     def set_abort_precision(self, delta_occupancy=2):
         self.abort_precision = delta_occupancy
@@ -54,7 +62,13 @@ class GdacTune(ScanBase):
     def set_n_injections(self, Ninjections=50):
         self.Ninjections = Ninjections
 
-    def scan(self, mask_steps=3, enable_mask_steps=[0], plots_filename=None, plot_intermediate_steps=False):
+    def scan(self, target_threshold, gdac_tune_bits=range(7, -1, -1), n_injections=50, abort_precision_occ=2, enable_mask_steps=[0], mask_steps=3, plots_filename=None, plot_intermediate_steps=False, **kwarg):
+        #  set scan settings
+        self.set_target_threshold(target_threshold)
+        self.set_gdac_tune_bits(gdac_tune_bits)
+        self.set_n_injections(n_injections)
+        self.set_abort_precision(abort_precision_occ)
+
         self.write_target_threshold()
         for gdac_bit in self.GdacTuneBits:  # reset all GDAC bits
             self.set_gdac_bit(gdac_bit, bit_value=0)
@@ -167,11 +181,7 @@ class GdacTune(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = GdacTune(configuration_file=configuration.configuration_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.set_target_threshold(PlsrDAC=50)
-    scan.set_abort_precision(delta_occupancy=2)
-    scan.set_gdac_tune_bits(range(7, -1, -1))
-    scan.set_n_injections(Ninjections=50)
-    scan.start(use_thread=False, enable_mask_steps=[0], plot_intermediate_steps=False)
+    scan = GdacTune(**configuration.device_configuration)
+    scan.start(use_thread=False, **scan_configuration)
     scan.stop()
-    scan.register.save_configuration(configuration.configuration_file)
+    scan.register.save_configuration(configuration.device_configuration['configuration_file'])
