@@ -10,12 +10,18 @@ from scan.scan import ScanBase
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
+scan_configuration = {
+    "target_threshold": 50,
+    "tdac_tune_bits": range(4, -1, -1),
+    "n_injections": 100,
+    "plot_intermediate_steps": False,
+    "plots_filename": None
+}
+
+
 class TdacTune(ScanBase):
-    def __init__(self, configuration_file, definition_file=None, bit_file=None, device=None, scan_identifier="tune_tdac", scan_data_path=None):
-        super(TdacTune, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
-        self.set_tdac_tune_bits()
-        self.set_target_threshold()
-        self.set_n_injections()
+    def __init__(self, configuration_file, definition_file=None, bit_file=None, force_download=False, device=None, scan_data_path=None, device_identifier=""):
+        super(TdacTune, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, force_download=force_download, device=device, scan_data_path=scan_data_path, device_identifier=device_identifier, scan_identifier="tdac_tune")
 
     def set_target_threshold(self, PlsrDAC=50):
         self.target_threshold = PlsrDAC
@@ -51,7 +57,12 @@ class TdacTune(ScanBase):
     def set_n_injections(self, Ninjections=100):
         self.Ninjections = Ninjections
 
-    def scan(self, plots_filename=None, plot_intermediate_steps=False):
+    def scan(self, target_threshold, tdac_tune_bits=range(4, -1, -1), n_injections=100, plots_filename=None, plot_intermediate_steps=False, **kwarg):
+        #  set scan settings
+        self.set_n_injections(n_injections)
+        self.set_target_threshold(target_threshold)
+        self.set_tdac_tune_bits(tdac_tune_bits)
+
         self.write_target_threshold()
         addedAdditionalLastBitScan = False
         lastBitResult = np.zeros(shape=self.register.get_pixel_register_value("TDAC").shape, dtype=self.register.get_pixel_register_value("TDAC").dtype)
@@ -136,10 +147,7 @@ class TdacTune(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = TdacTune(configuration_file=configuration.configuration_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.set_n_injections(100)
-    scan.set_target_threshold(PlsrDAC=50)
-    scan.set_tdac_tune_bits(range(4, -1, -1))
-    scan.start(use_thread=False, plot_intermediate_steps=False)
+    scan = TdacTune(**configuration.device_configuration)
+    scan.start(use_thread=False, **scan_configuration)
     scan.stop()
-    scan.register.save_configuration(configuration.configuration_file)
+    scan.register.save_configuration(configuration.device_configuration['configuration_file'])

@@ -11,13 +11,19 @@ from scan.scan import ScanBase
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
+scan_configuration = {
+    "target_charge": 280,
+    "target_tot": 5,
+    "fdac_tune_bits": range(3, -1, -1),
+    "n_injections": 30,
+    "plot_intermediate_steps": False,
+    "plots_filename": None
+}
+
+
 class FdacTune(ScanBase):
-    def __init__(self, configuration_file, definition_file=None, bit_file=None, device=None, scan_identifier="tune_fdac", scan_data_path=None):
-        super(FdacTune, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
-        self.set_target_charge()
-        self.set_target_tot()
-        self.set_n_injections()
-        self.set_fdac_tune_bits()
+    def __init__(self, configuration_file, definition_file=None, bit_file=None, force_download=False, device=None, scan_data_path=None, device_identifier=""):
+        super(FdacTune, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, force_download=force_download, device=device, scan_data_path=scan_data_path, device_identifier=device_identifier, scan_identifier="fdac_tune")
 
     def set_target_charge(self, plsr_dac=30):
         self.target_charge = plsr_dac
@@ -56,7 +62,13 @@ class FdacTune(ScanBase):
     def set_n_injections(self, Ninjections=20):
         self.Ninjections = Ninjections
 
-    def scan(self, plots_filename=None, plot_intermediate_steps=False):
+    def scan(self, target_tot, target_charge, fdac_tune_bits=range(3, -1, -1), n_injections=30, plots_filename=None, plot_intermediate_steps=False, **kwarg):
+        #  set scan settings
+        self.set_target_charge(target_charge)
+        self.set_target_tot(target_tot)
+        self.set_n_injections(n_injections)
+        self.set_fdac_tune_bits(fdac_tune_bits)
+
         self.write_target_charge()
         addedAdditionalLastBitScan = False
         lastBitResult = np.zeros(shape=self.register.get_pixel_register_value("Fdac").shape, dtype=self.register.get_pixel_register_value("Fdac").dtype)
@@ -132,12 +144,7 @@ class FdacTune(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    # scan = FdacTune(configuration_file=configuration.configuration_file, bit_file = configuration.bit_file, scan_data_path = configuration.scan_data_path)
-    scan = FdacTune(configuration_file=configuration.configuration_file, bit_file=None, scan_data_path=configuration.scan_data_path)
-    scan.set_target_charge(plsr_dac=280)
-    scan.set_target_tot(tot=5)
-    scan.set_n_injections(30)
-    scan.set_fdac_tune_bits(range(3, -1, -1))
-    scan.start(use_thread=False)
+    scan = FdacTune(**configuration.device_configuration)
+    scan.start(use_thread=False, **scan_configuration)
     scan.stop()
-    scan.register.save_configuration(configuration.configuration_file)
+    scan.register.save_configuration(configuration.device_configuration['configuration_file'])

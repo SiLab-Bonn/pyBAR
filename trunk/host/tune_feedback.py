@@ -11,14 +11,20 @@ from scan.scan import ScanBase
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
+scan_configuration = {
+    "target_charge": 280,
+    "target_tot": 5,
+    "feedback_tune_bits": range(7, -1, -1),
+    "n_injections": 50,
+    "abort_precision_tot": 0.1,
+    "plot_intermediate_steps": False,
+    "plots_filename": None
+}
+
+
 class FeedbackTune(ScanBase):
-    def __init__(self, configuration_file, definition_file=None, bit_file=None, device=None, scan_identifier="tune_feedback", scan_data_path=None):
-        super(FeedbackTune, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
-        self.set_target_charge()
-        self.set_target_tot()
-        self.set_n_injections()
-        self.set_feedback_tune_bits()
-        self.set_abort_precision()
+    def __init__(self, configuration_file, definition_file=None, bit_file=None, force_download=False, device=None, scan_data_path=None, device_identifier=""):
+        super(FeedbackTune, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, force_download=force_download, device=device, scan_data_path=scan_data_path, device_identifier=device_identifier, scan_identifier="feedback_tune")
 
     def set_target_charge(self, plsr_dac=250):
         self.target_charge = plsr_dac
@@ -52,7 +58,14 @@ class FeedbackTune(ScanBase):
     def set_n_injections(self, Ninjections=100):
         self.Ninjections = Ninjections
 
-    def scan(self, plots_filename=None, plot_intermediate_steps=False):
+    def scan(self, target_tot, target_charge, feedback_tune_bits=range(7, -1, -1), abort_precision_tot=0.1, n_injections=50, plots_filename=None, plot_intermediate_steps=False, **kwarg):
+        #  set scan settings
+        self.set_n_injections(n_injections)
+        self.set_target_charge(target_charge)
+        self.set_target_tot(target_tot)
+        self.set_abort_precision(abort_precision_tot)
+        self.set_feedback_tune_bits(feedback_tune_bits)
+
         self.write_target_charge()
 
         for PrmpVbpf_bit in self.FeedbackTuneBits:  # reset all GDAC bits
@@ -141,12 +154,7 @@ class FeedbackTune(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = FeedbackTune(configuration_file=configuration.configuration_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.set_n_injections(100)
-    scan.set_target_charge(plsr_dac=280)
-    scan.set_target_tot(Tot=5)
-    scan.set_abort_precision(delta_tot=0.1)
-    scan.set_feedback_tune_bits(range(7, -1, -1))
-    scan.start(use_thread=False)
+    scan = FeedbackTune(**configuration.device_configuration)
+    scan.start(use_thread=False, **scan_configuration)
     scan.stop()
-    scan.register.save_configuration(configuration.configuration_file)
+    scan.register.save_configuration(configuration.device_configuration['configuration_file'])
