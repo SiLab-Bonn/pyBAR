@@ -3,7 +3,7 @@ import os
 import logging
 import re
 import tables as tb
-from analysis.RawDataConverter.data_struct import generate_scan_parameter_description
+from analysis.RawDataConverter.data_struct import generate_scan_configuration_description
 
 from threading import Thread, Event, Lock, Timer
 
@@ -422,7 +422,7 @@ class ScanBase(object):
         self.raw_data_file_h5 = tb.openFile(h5_file, mode="a", title=((self.device_identifier + "_" + self.scan_identifier) if self.device_identifier else self.scan_identifier) + "_" + str(self.scan_number), **kwargs)
 
         try:
-            scan_param_descr = generate_scan_parameter_description(dict.iterkeys(scan_configuration))
+            scan_param_descr = generate_scan_configuration_description(dict.iterkeys(scan_configuration))
             filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
             self.scan_param_table = self.raw_data_file_h5.createTable(self.raw_data_file_h5.root, name='scan_configuration', description=scan_param_descr, title='scan_configuration', filters=filter_tables)
         except tb.exceptions.NodeError:
@@ -431,7 +431,7 @@ class ScanBase(object):
         row_scan_param = self.scan_param_table.row
 
         for key, value in dict.iteritems(scan_configuration):
-            row_scan_param[key] = value
+            row_scan_param[key] = str(value)
 
         row_scan_param.append()
 
