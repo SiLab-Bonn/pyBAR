@@ -15,9 +15,9 @@ scan_configuration = {
 
 # inherit from ScanBase class
 class ExampleScan(ScanBase):
-    def __init__(self, configuration_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_example", scan_data_path=None):
+    def __init__(self, configuration_file, definition_file=None, bit_file=None, force_download=False, device=None, scan_data_path=None, device_identifier=""):
         # accessing inherited methods that have been overridden in a class
-        super(ExampleScan, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
+        super(ExampleScan, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, force_download=force_download, device=device, scan_data_path=scan_data_path, device_identifier=device_identifier, scan_identifier="example_scan")
 
         # a public instance variable
         self.some_public_variable = 123
