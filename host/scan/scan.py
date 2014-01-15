@@ -106,7 +106,9 @@ class ScanBase(object):
         else:
             self.scan_data_path = scan_data_path
         if self.device_identifier:
-            self.scan_data_path = os.path.join(self.scan_data_path, self.device_identifier)
+            self.scan_data_output_path = os.path.join(self.scan_data_path, self.device_identifier)
+        else:
+            self.scan_data_output_path = self.scan_data_path
 
         self.scan_number = None
         self.scan_data_filename = None
@@ -126,6 +128,10 @@ class ScanBase(object):
     @property
     def is_running(self):
         return self.scan_thread.is_alive()
+
+    @property
+    def device_configuration(self):
+        return {"configuration_file": self.register, "device": self.device, "scan_data_path": self.scan_data_path, "device_identifier": self.device_identifier}
 
     def start(self, configure=True, restore_configuration=False, use_thread=False, do_global_reset=True, **kwargs):  # TODO: in Python 3 use def func(a,b,*args,kw1=None,**kwargs)
         '''Starting scan.
@@ -172,7 +178,7 @@ class ScanBase(object):
 
         self.stop_thread_event.clear()
 
-        logging.info('Starting scan %s with ID %d (output path: %s)' % (self.scan_identifier, self.scan_number, self.scan_data_path))
+        logging.info('Starting scan %s with ID %d (output path: %s)' % (self.scan_identifier, self.scan_number, self.scan_data_output_path))
         if use_thread:
             self.scan_thread = Thread(target=self.scan, name='%s with ID %d' % (self.scan_identifier, self.scan_number), kwargs=kwargs)  # , args=kwargs)
             self.scan_thread.daemon = True  # Abruptly close thread when closing main thread. Resources may not be released properly.
@@ -231,9 +237,9 @@ class ScanBase(object):
     def write_scan_number(self):
         scan_numbers = {}
         self.lock.acquire()
-        if not os.path.exists(self.scan_data_path):
-            os.makedirs(self.scan_data_path)
-        with open(os.path.join(self.scan_data_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), "a+") as f:
+        if not os.path.exists(self.scan_data_output_path):
+            os.makedirs(self.scan_data_output_path)
+        with open(os.path.join(self.scan_data_output_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), "a+") as f:
             for line in f.readlines():
                 scan_number = int(re.findall(r'\d+\s', line)[0])
                 scan_numbers[scan_number] = line
@@ -242,23 +248,23 @@ class ScanBase(object):
         else:
             self.scan_number = max(dict.iterkeys(scan_numbers)) + 1
         scan_numbers[self.scan_number] = str(self.scan_number) + ' ' + self.scan_identifier + '\n'
-        with open(os.path.join(self.scan_data_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), "w") as f:
+        with open(os.path.join(self.scan_data_output_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), "w") as f:
             for value in dict.itervalues(scan_numbers):
                 f.write(value)
         self.lock.release()
-        self.scan_data_filename = os.path.join(self.scan_data_path, ((self.device_identifier + "_" + self.scan_identifier) if self.device_identifier else self.scan_identifier) + "_" + str(self.scan_number))
+        self.scan_data_filename = os.path.join(self.scan_data_output_path, ((self.device_identifier + "_" + self.scan_identifier) if self.device_identifier else self.scan_identifier) + "_" + str(self.scan_number))
 
     def write_scan_status(self, aborted=False):
         scan_numbers = {}
         self.lock.acquire()
-        with open(os.path.join(self.scan_data_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), "r") as f:
+        with open(os.path.join(self.scan_data_output_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), "r") as f:
             for line in f.readlines():
                 scan_number = int(re.findall(r'\d+\s', line)[0])
                 if scan_number != self.scan_number:
                     scan_numbers[scan_number] = line
                 else:
                     scan_numbers[scan_number] = line.strip() + (' ABORTED\n' if aborted else ' SUCCESS\n')
-        with open(os.path.join(self.scan_data_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), "w") as f:
+        with open(os.path.join(self.scan_data_output_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), "w") as f:
             for value in dict.itervalues(scan_numbers):
                 f.write(value)
         self.lock.release()
