@@ -98,7 +98,7 @@ class NoiseOccupancyScan(ScanBase):
             self.readout.start()
 
             # preload command
-            command_delay = 400 # 100kHz
+            command_delay = 400  # 100kHz
             lvl1_command = self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", length=command_delay)[0]
             commnd_lenght = lvl1_command.length()
             logging.info('Estimated scan time: %ds' % int(commnd_lenght * 25 * (10 ** -9) * triggers))
