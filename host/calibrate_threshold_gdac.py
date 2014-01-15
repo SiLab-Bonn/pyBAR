@@ -7,7 +7,7 @@ import tables as tb
 import numpy as np
 import logging
 
-from scan_threshold_fast import ThresholdScanFast
+from scan_threshold_fast import FastThresholdScan
 from analysis import analysis_utils
 from analysis.RawDataConverter import data_struct
 
@@ -82,7 +82,7 @@ def create_calibration(scan_identifier, scan_data_filenames, ignore_columns, fei
 
     for gdac_index, gdac in enumerate(gdac_range):
         logging.info("Analyzing GDAC %d, progress %d %%" % (gdac, int(float(float(gdac_index) / float(len(gdac_range)) * 100.))))
-        #raw_data_file = 'data/' + scan_identifier + '_' + str(gdac) + "_0"
+#         raw_data_file = 'data/' + scan_identifier + '_' + str(gdac) + "_0"
         raw_data_file = scan_data_filenames[gdac]
         analyzed_data_file = raw_data_file + '_interpreted.h5'
         analyze(raw_data_file=raw_data_file, analyzed_data_file=analyzed_data_file, fei4b=fei4b)
@@ -124,27 +124,29 @@ def mask_columns(pixel_array, ignore_columns):
 
 
 if __name__ == "__main__":
-    scan_identifier = "calibrate_threshold_gdac_SCC_99_check"
+    scan_identifier = "calibrate_threshold_gdac_SCC_122_test"
 
     gdac_range = range(70, 90, 1)  # has to be from low to high value
-    gdac_range.extend(range(90, 114, 2))  # has to be from low to high value
-    gdac_range.extend((np.exp(np.array(range(0, 150)) / 10.) / 10. + 100).astype('<u4')[50:-40].tolist())  # exponential GDAC range to correct for logarithmic threshold(GDAC) function
-
+    gdac_range = range(70, 72, 1)  # has to be from low to high value
+#     gdac_range.extend(range(90, 114, 2))  # has to be from low to high value
+#     gdac_range.extend((np.exp(np.array(range(0, 150)) / 10.) / 10. + 100).astype('<u4')[50:-40].tolist())  # exponential GDAC range to correct for logarithmic threshold(GDAC) function
+#     gdac_range.extend((np.array(range(6000, 25001, 500)).astype('<u4')[:].tolist()))
     ignore_columns = (1, 78, 79, 80)  # FE columns (from 1 to 80), ignore these in analysis and during data taking
 
     startTime = datetime.now()
     logging.info('Taking threshold data at following GDACs: %s' % str(gdac_range))
     scan_data_filenames = {}
-    scan_threshold_fast = ThresholdScanFast(configuration_file=configuration.configuration_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
+    scan_threshold_fast = FastThresholdScan(**configuration.device_configuration)
     for i, gdac_value in enumerate(gdac_range):
+        print scan_threshold_fast.data_points
         scan_threshold_fast.register_utils.set_gdac(gdac_value)
         scan_threshold_fast.scan_identifier = scan_identifier + '_' + str(gdac_value)
-        scan_threshold_fast.start(configure=True, scan_parameter_range=(scan_threshold_fast.scan_parameter_start, 800), scan_parameter_stepsize=2, search_distance=10, minimum_data_points=10, ignore_columns=ignore_columns)
+        scan_threshold_fast.start(configure=True, scan_parameter_range=(scan_threshold_fast.scan_parameter_start, 700), scan_parameter_stepsize=2, search_distance=10, minimum_data_points=scan_threshold_fast.data_points - 2, ignore_columns=ignore_columns)
         scan_threshold_fast.stop()
         scan_data_filenames[gdac_value] = scan_threshold_fast.scan_data_filename
-
+ 
     logging.info("Calibration finished in " + str(datetime.now() - startTime))
-
+ 
     # analyze and plot the data from all scans
     create_calibration(scan_identifier, scan_data_filenames=scan_data_filenames, ignore_columns=ignore_columns, fei4b=scan_threshold_fast.register.fei4b, create_plots=True)
 
