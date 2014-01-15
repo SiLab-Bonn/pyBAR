@@ -32,7 +32,7 @@ class ExampleScan(ScanBase):
         # a name mangled instance variable (Any identifier of the form __spam (at least two leading underscores, at most one trailing underscore) is textually replaced with _classname__spam, where classname is the current class name with leading underscore(s) stripped)
         self.__some_name_mangling_variable = 123
 
-# example code: how to define a function/method object
+    # example code: how to define a function/method object
     def some_function(self, text):
         print text
 
