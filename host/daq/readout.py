@@ -538,7 +538,7 @@ class RawDataFile(object):
 
     TODO: Python 3.x support for contextlib.ContextDecorator
     '''
-    def __init__(self, filename, mode="w", title="", scan_parameters=[], **kwargs):  # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created):
+    def __init__(self, filename, mode="a", title="", scan_parameters=[], **kwargs):  # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created):
         self.filename = filename
         self.scan_parameters = scan_parameters
         self.raw_data_earray = None
