@@ -15,7 +15,7 @@ scan_configuration = {
     "colpr_addr": 20,
     "scan_parameter": 'PlsrDAC',
     "plsr_dac_steps": range(0, 1024, 33),
-    "fit_range": [0, 800]
+    "fit_range": [0, 700]
 }
 
 
@@ -39,7 +39,8 @@ class PlsrDacScan(ScanBase):
         commands.extend(self.register.get_commands("confmode"))
         self.register.set_global_register_value('colpr_addr', colpr_addr)
         self.register.set_global_register_value('colpr_mode', 0)
-        commands.extend(self.register.get_commands("wrregister", name=['colpr_addr', 'colpr_mode']))
+        self.register.set_global_register_value('ExtAnaCalSW', 1)
+        commands.extend(self.register.get_commands("wrregister", name=['colpr_addr', 'colpr_mode', 'ExtAnaCalSW']))
         self.register_utils.send_commands(commands)
 
     def scan(self, multimeter_device_config, colpr_addr, fit_range, scan_parameter='PlsrDAC', plsr_dac_steps=range(0, 1024, 93), **kwarg):
@@ -67,7 +68,7 @@ class PlsrDacScan(ScanBase):
         self.register.restore()
         self.register_utils.configure_all()
 
-    def analyze(self, filename=None):
+    def analyze(self, show=False):
         logging.info('Analyze and plot results')
         x = self.data[:, 0]
         y = self.data[:, 1]
@@ -82,10 +83,10 @@ class PlsrDacScan(ScanBase):
         plt.ylabel('voltage [V]')
         plt.grid(True)
         plt.legend([data_plt, fit_plt], ["data", str(fit_fn)])
-        if filename is None:
+        if show:
             plt.show()
         else:
-            plt.savefig(filename)
+            plt.savefig(self.scan_data_filename + '.pdf')
         plt.close()
 
 
