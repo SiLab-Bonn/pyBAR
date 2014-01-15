@@ -2,6 +2,8 @@ import time
 import os
 import logging
 import re
+import tables as tb
+from analysis.RawDataConverter.data_struct import generate_scan_parameter_description
 
 from threading import Thread, Event, Lock, Timer
 
@@ -108,7 +110,8 @@ class ScanBase(object):
 
         self.scan_number = None
         self.scan_data_filename = None
-        self.scan_completed = False
+        self.scan_aborted = False
+        self.scan_is_running = False
 
         self.lock = Lock()
 
@@ -117,6 +120,8 @@ class ScanBase(object):
         self.stop_thread_event.set()
         self.use_thread = None
         self.restore_configuration = None
+
+        self.write_scan_number()
 
     @property
     def is_running(self):
@@ -138,12 +143,14 @@ class ScanBase(object):
         **kwargs : any
             Any keyword argument passed to scan.start() will be forwarded to scan.scan().
         '''
-        self.scan_completed = False
+        self.scan_is_running = True
+        self.scan_aborted = False
+
+        self.save_scan_configuration(kwargs)
+
         self.use_thread = use_thread
         if self.scan_thread != None:
             raise RuntimeError('Scan thread is already running')
-
-        self.write_scan_number()
 
         if do_global_reset:
             self.register_utils.global_reset()
@@ -178,7 +185,6 @@ class ScanBase(object):
         '''Stopping scan. Cleaning up of variables and joining thread (if existing).
 
         '''
-        self.scan_completed = True
         if (self.scan_thread is not None) ^ self.use_thread:
             if self.scan_thread is None:
                 pass
@@ -191,7 +197,7 @@ class ScanBase(object):
             def stop_thread():
                 logging.warning('Scan timeout after %.1f second(s)' % timeout)
                 self.stop_thread_event.set()
-                self.scan_completed = False
+                self.scan_aborted = True
 
             timeout_timer = Timer(timeout, stop_thread)  # could also use shed.scheduler() here
             if timeout:
@@ -200,7 +206,7 @@ class ScanBase(object):
                 while self.scan_thread.is_alive() and not self.stop_thread_event.wait(1):
                     pass
             except IOError:  # catching "IOError: [Errno4] Interrupted function call" because of wait_timeout_event.wait()
-                logging.exception('Event handler problem?')
+                logging.exception('Event handler problems?')
                 raise
 
             timeout_timer.cancel()
@@ -218,8 +224,8 @@ class ScanBase(object):
         self.readout.print_readout_status()
 
         self.device.dispose()  # free USB resources
-        self.write_scan_status(self.scan_completed)
-        return self.scan_completed
+        self.write_scan_status(self.scan_aborted)
+        self.scan_is_running = False
 
     def write_scan_number(self):
         scan_numbers = {}
@@ -241,7 +247,7 @@ class ScanBase(object):
         self.lock.release()
         self.scan_data_filename = os.path.join(self.scan_data_path, ((self.device_identifier + "_" + self.scan_identifier) if self.device_identifier else self.scan_identifier) + "_" + str(self.scan_number))
 
-    def write_scan_status(self, finished=True):
+    def write_scan_status(self, aborted=False):
         scan_numbers = {}
         self.lock.acquire()
         with open(os.path.join(self.scan_data_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), "r") as f:
@@ -250,7 +256,7 @@ class ScanBase(object):
                 if scan_number != self.scan_number:
                     scan_numbers[scan_number] = line
                 else:
-                    scan_numbers[scan_number] = line.strip() + (' SUCCESS\n' if finished else ' ABORTED\n')
+                    scan_numbers[scan_number] = line.strip() + (' ABORTED\n' if aborted else ' SUCCESS\n')
         with open(os.path.join(self.scan_data_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), "w") as f:
             for value in dict.itervalues(scan_numbers):
                 f.write(value)
@@ -405,8 +411,32 @@ class ScanBase(object):
     def signal_handler(self, signum, frame):
         signal.signal(signal.SIGINT, signal.SIG_DFL)  # setting default handler... pressing Ctrl-C a second time will kill application
         logging.info('Pressed Ctrl-C. Stopping scan...')
-        self.scan_completed = False
+        self.scan_aborted = False
         self.stop_thread_event.set()
+
+    def save_scan_configuration(self, scan_configuration, **kwargs):
+        if os.path.splitext(self.scan_data_filename)[1].strip().lower() != ".h5":
+            h5_file = os.path.splitext(self.scan_data_filename)[0] + ".h5"
+
+        self.raw_data_file_h5 = tb.openFile(h5_file, mode="a", title=((self.device_identifier + "_" + self.scan_identifier) if self.device_identifier else self.scan_identifier) + "_" + str(self.scan_number), **kwargs)
+
+        try:
+            scan_param_descr = generate_scan_parameter_description(dict.iterkeys(scan_configuration))
+            filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
+            self.scan_param_table = self.raw_data_file_h5.createTable(self.raw_data_file_h5.root, name='scan_configuration', description=scan_param_descr, title='scan_configuration', filters=filter_tables)
+        except tb.exceptions.NodeError:
+            self.scan_param_table = self.raw_data_file_h5.getNode(self.raw_data_file_h5.root, name='scan_configuration')
+
+        row_scan_param = self.scan_param_table.row
+
+        for key, value in dict.iteritems(scan_configuration):
+            row_scan_param[key] = value
+
+        row_scan_param.append()
+
+        self.scan_param_table.flush()
+
+        self.raw_data_file_h5.close()
 
 
 class NoSyncError(Exception):
