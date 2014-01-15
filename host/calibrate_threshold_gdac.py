@@ -127,10 +127,9 @@ if __name__ == "__main__":
     scan_identifier = "calibrate_threshold_gdac"
 
     gdac_range = range(70, 90, 1)  # has to be from low to high value
-    gdac_range = range(70, 72, 1)  # has to be from low to high value
-#     gdac_range.extend(range(90, 114, 2))  # has to be from low to high value
-#     gdac_range.extend((np.exp(np.array(range(0, 150)) / 10.) / 10. + 100).astype('<u4')[50:-40].tolist())  # exponential GDAC range to correct for logarithmic threshold(GDAC) function
-#     gdac_range.extend((np.array(range(6000, 25001, 500)).astype('<u4')[:].tolist()))
+    gdac_range.extend(range(90, 114, 2))  # has to be from low to high value
+    gdac_range.extend((np.exp(np.array(range(0, 150)) / 10.) / 10. + 100).astype('<u4')[50:-40].tolist())  # exponential GDAC range to correct for logarithmic threshold(GDAC) function
+    gdac_range.extend((np.array(range(6000, 25001, 500)).astype('<u4')[:].tolist()))
     ignore_columns = (1, 78, 79, 80)  # FE columns (from 1 to 80), ignore these in analysis and during data taking
 
     startTime = datetime.now()
