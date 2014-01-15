@@ -84,6 +84,7 @@ class ExampleScan(ScanBase):
 if __name__ == "__main__":
     import configuration
     # dereference device_configuration dictionary and use it for setting the parameters
+    # open configuration.py to change device parameters
     scan = ExampleScan(**configuration.device_configuration)
     # when use_thread is true (scan() runs in a thread), start() is non-blocking, otherwise blocking
     scan.start(use_thread=True, configure=True, **scan_configuration)
