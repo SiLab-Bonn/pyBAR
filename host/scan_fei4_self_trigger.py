@@ -8,48 +8,19 @@ from daq.readout import open_raw_data_file
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
+scan_configuration = {
+    "col_span": [1, 80],
+    "row_span": [1, 336],
+    "timeout_no_data": 10,
+    "scan_timeout": 10 * 60
+}
+
+
 class FEI4SelfTriggerScan(ScanBase):
-    def __init__(self, configuration_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_fei4_self_trigger", scan_data_path=None):
-        super(FEI4SelfTriggerScan, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
+    def __init__(self, configuration_file, definition_file=None, bit_file=None, force_download=False, device=None, scan_data_path=None, device_identifier=""):
+        super(FEI4SelfTriggerScan, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, force_download=force_download, device=device, scan_data_path=scan_data_path, device_identifier=device_identifier, scan_identifier="fei4_self_trigger_scan")
 
-    def configure_fe(self, col_span, row_span):
-        # generate ROI mask for Enable mask
-        pixel_reg = "Enable"
-        mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
-        commands = []
-        commands.extend(self.register.get_commands("confmode"))
-        enable_mask = np.logical_and(mask, self.register.get_pixel_register_value(pixel_reg))
-        self.register.set_pixel_register_value(pixel_reg, enable_mask)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
-        # generate ROI mask for Imon mask
-        pixel_reg = "Imon"
-        mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span, default=1, value=0)
-        imon_mask = np.logical_or(mask, self.register.get_pixel_register_value(pixel_reg))
-        self.register.set_pixel_register_value(pixel_reg, imon_mask)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
-        # disable C_inj mask
-        pixel_reg = "C_High"
-        self.register.set_pixel_register_value(pixel_reg, 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
-        pixel_reg = "C_Low"
-        self.register.set_pixel_register_value(pixel_reg, 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
-        # enable GateHitOr that enables FE self-trigger mode
-        self.register.set_global_register_value("Trig_Lat", 239)  # set trigger latency, this latency sets the hits at the first rel. BCID bins
-#         self.register.set_global_register_value("Trig_Count", 0)  # set number of consecutive triggers
-        commands.extend(self.register.get_commands("wrregister", name=["Trig_Lat", "Trig_Count"]))
-        # send commands
-        self.register_utils.send_commands(commands)
-
-    def set_self_trigger(self):
-        commands = []
-        commands.extend(self.register.get_commands("confmode"))
-        self.register.set_global_register_value("GateHitOr", 1)  # enable FE self-trigger mode
-        commands.extend(self.register.get_commands("wrregister", name=["GateHitOr"]))
-        commands.extend(self.register.get_commands("runmode"))
-        self.register_utils.send_commands(commands)
-
-    def scan(self, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=1 * 60):
+    def scan(self, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60):
         '''Scan loop
 
         Parameters
@@ -131,6 +102,43 @@ class FEI4SelfTriggerScan(ScanBase):
 
             raw_data_file.append(self.readout.data)
 
+    def configure_fe(self, col_span, row_span):
+        # generate ROI mask for Enable mask
+        pixel_reg = "Enable"
+        mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
+        commands = []
+        commands.extend(self.register.get_commands("confmode"))
+        enable_mask = np.logical_and(mask, self.register.get_pixel_register_value(pixel_reg))
+        self.register.set_pixel_register_value(pixel_reg, enable_mask)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
+        # generate ROI mask for Imon mask
+        pixel_reg = "Imon"
+        mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span, default=1, value=0)
+        imon_mask = np.logical_or(mask, self.register.get_pixel_register_value(pixel_reg))
+        self.register.set_pixel_register_value(pixel_reg, imon_mask)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
+        # disable C_inj mask
+        pixel_reg = "C_High"
+        self.register.set_pixel_register_value(pixel_reg, 0)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
+        pixel_reg = "C_Low"
+        self.register.set_pixel_register_value(pixel_reg, 0)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
+        # enable GateHitOr that enables FE self-trigger mode
+        self.register.set_global_register_value("Trig_Lat", 239)  # set trigger latency, this latency sets the hits at the first rel. BCID bins
+#         self.register.set_global_register_value("Trig_Count", 0)  # set number of consecutive triggers
+        commands.extend(self.register.get_commands("wrregister", name=["Trig_Lat", "Trig_Count"]))
+        # send commands
+        self.register_utils.send_commands(commands)
+
+    def set_self_trigger(self):
+        commands = []
+        commands.extend(self.register.get_commands("confmode"))
+        self.register.set_global_register_value("GateHitOr", 1)  # enable FE self-trigger mode
+        commands.extend(self.register.get_commands("wrregister", name=["GateHitOr"]))
+        commands.extend(self.register.get_commands("runmode"))
+        self.register_utils.send_commands(commands)
+
     def analyze(self):
         from analysis.analyze_raw_data import AnalyzeRawData
         output_file = self.scan_data_filename + "_interpreted.h5"
@@ -146,7 +154,7 @@ class FEI4SelfTriggerScan(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = FEI4SelfTriggerScan(configuration_file=configuration.configuration_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.start(configure=True, use_thread=True, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=1 * 60)
+    scan = FEI4SelfTriggerScan(**configuration.device_configuration)
+    scan.start(use_thread=True, **scan_configuration)
     scan.stop()
     scan.analyze()
