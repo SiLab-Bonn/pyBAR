@@ -78,10 +78,10 @@ def plot_fancy_occupancy(hist, z_max=None, filename=None):
         plt.show()
     elif isinstance(filename, PdfPages):
         filename.savefig()
-        pass
+        plt.close()
     else:
         plt.savefig(filename)
-    plt.close()
+        plt.close()
 
 
 def plot_occupancy(hist, title='Occupancy', z_max=None, filename=None):
@@ -124,9 +124,10 @@ def plot_occupancy(hist, title='Occupancy', z_max=None, filename=None):
         plt.show()
     elif type(filename) == PdfPages:
         filename.savefig()
+        plt.close()
     else:
         plt.savefig(filename)
-    plt.close()
+        plt.close()
 
 
 def make_occupancy_hist(cols, rows, ncols=80, nrows=336):
@@ -183,9 +184,10 @@ def plot_profile_histogram(x, y, n_bins=100, title=None, x_label=None, y_label=N
         plt.show()
     elif type(filename) == PdfPages:
         filename.savefig()
+        plt.close()
     else:
         plt.savefig(filename)
-    plt.close()
+        plt.close()
 
 
 def plot_scatter(x, y, title=None, x_label=None, y_label=None, marker_style='-o', log_x=False, log_y=False, filename=None):
@@ -208,9 +210,10 @@ def plot_scatter(x, y, title=None, x_label=None, y_label=None, marker_style='-o'
         plt.show()
     elif type(filename) == PdfPages:
         filename.savefig()
+        plt.close()
     else:
         plt.savefig(filename)
-    plt.close()
+        plt.close()
 
 
 def plot_correlation(hist, title="Hit correlation", xlabel=None, ylabel=None, filename=None):
@@ -233,9 +236,10 @@ def plot_correlation(hist, title="Hit correlation", xlabel=None, ylabel=None, fi
         plt.show()
     elif type(filename) == PdfPages:
         filename.savefig()
+        plt.close()
     else:
         plt.savefig(filename)
-    plt.close()
+        plt.close()
 
 
 def plot_pixel_matrix(hist, title="Hit correlation", filename=None):
@@ -256,9 +260,10 @@ def plot_pixel_matrix(hist, title="Hit correlation", filename=None):
         plt.show()
     elif type(filename) == PdfPages:
         filename.savefig()
+        plt.close()
     else:
         plt.savefig(filename)
-    plt.close()
+        plt.close()
 
 
 def plot_n_cluster(hist, title=None, filename=None):
@@ -357,9 +362,10 @@ def plot_scurves(occupancy_hist, scan_parameters, title='S-Curves', ylabel='Occu
         plt.show()
     elif type(filename) == PdfPages:
         filename.savefig()
+        plt.close()
     else:
         plt.savefig(filename)
-    plt.close()
+        plt.close()
 
 
 def plot_cluster_tot_size(hist, median=False, z_max=None, filename=None):
@@ -391,16 +397,17 @@ def plot_cluster_tot_size(hist, median=False, z_max=None, filename=None):
         plt.show()
     elif type(filename) == PdfPages:
         filename.savefig()
+        plt.close()
     else:
         plt.savefig(filename)
-    plt.close()
+        plt.close()
 
 
 def plot_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, x_ticks=None, color='r', plot_range=None, log_y=False, filename=None):
     logging.info("Plot 1d histogram%s" % ((': ' + title) if title is not None else ''))
-    plt.clf()
-    fig = plt.figure()
-    fig.patch.set_facecolor('white')
+#     plt.clf()
+#     fig = plt.figure()
+#     
     if plot_range is None:
         plot_range = range(0, len(hist))
     plt.bar(left=plot_range, height=hist[plot_range], color=color, align='center')
@@ -422,9 +429,10 @@ def plot_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, x_ticks
         plt.show()
     elif type(filename) == PdfPages:
         filename.savefig()
+        plt.close()
     else:
         plt.savefig(filename)
-    plt.close()
+        plt.close()
 
 
 # def plot_pixel_mask(mask, maskname, filename=None):
@@ -602,9 +610,10 @@ def plotThreeWay(hist, title, filename=None, x_axis_title=None, minimum=None, ma
         plt.show()
     elif type(filename) == PdfPages:
         filename.savefig()
+        plt.close()
     else:
         plt.savefig(filename)
-    plt.close()
+        plt.close()
 
 
 def plot_correlations(filenames, limit=None):
