@@ -146,7 +146,8 @@ class ScanBase(object):
         self.scan_is_running = True
         self.scan_aborted = False
 
-        self.save_scan_configuration(kwargs)
+        if kwargs:
+            self.save_scan_configuration(kwargs)
 
         self.use_thread = use_thread
         if self.scan_thread != None:
