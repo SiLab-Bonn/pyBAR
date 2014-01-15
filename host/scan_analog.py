@@ -12,7 +12,7 @@ scan_configuration = {
     "mask_steps": 3,
     "repeat_command": 100,
     "scan_parameter": 'PlsrDAC',
-    "scan_parameter_value": 100
+    "scan_parameter_value": 200
 }
 
 
