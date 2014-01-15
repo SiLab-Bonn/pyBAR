@@ -16,12 +16,33 @@ def get_gdacs(thresholds, mean_threshold_calibration):
     interpolation = interp1d(mean_threshold_calibration['mean_threshold'], mean_threshold_calibration['gdac'], kind='slinear', bounds_error=True)
     return np.unique(interpolation(thresholds).astype(np.uint32))
 
+# gdacs = range(100, 5001, 15)  # GDAC range set manually
+
+# GDAC settings can be set automatically from the calibration with equidistant thresholds
+input_file_calibration = 'data/calibrate_threshold_gdac_SCC_99.h5'  # the file with the GDAC <-> PlsrDAC calibration
+threshold_range = np.arange(19, 280, 0.8)  # threshold range in PlsrDAC to scan
+with tb.openFile(input_file_calibration, mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
+    gdacs = get_gdacs(threshold_range, in_file_calibration_h5.root.MeanThresholdCalibration[:])
+
+
+scan_configuration = {
+    "gdacs": gdacs,
+    "mode": 0,
+    "trigger_latency": 232,
+    "col_span": [1, 80],
+    "row_span": [1, 336],
+    "timeout_no_data": 10,
+    "scan_timeout": 10 * 60,
+    "max_triggers": 10000,
+    "enable_hitbus": False
+}
+
 
 class ExtTriggerGdacScan(ScanBase):
-    def __init__(self, configuration_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_ext_trigger_gdac", scan_data_path=None):
-        super(ExtTriggerGdacScan, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
+    def __init__(self, configuration_file, definition_file=None, bit_file=None, force_download=False, device=None, scan_data_path=None, device_identifier=""):
+        super(ExtTriggerGdacScan, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, force_download=force_download, device=device, scan_data_path=scan_data_path, device_identifier=device_identifier, scan_identifier="ext_trigger_gdac_scan")
 
-    def scan(self, gdacs, mode=0, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=10000):
+    def scan(self, gdacs, mode=0, trigger_latency=232, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=10000, enable_hitbus=False):
         '''Scan loop
 
         Parameters
@@ -34,6 +55,11 @@ class ExtTriggerGdacScan(ScanBase):
             1: TLU no handshake (automatic detection of TLU connection (TLU port/RJ45)).
             2: TLU simple handshake (automatic detection of TLU connection (TLU port/RJ45)).
             3: TLU trigger data handshake (automatic detection of TLU connection (TLU port/RJ45)).
+        trigger_latency : int
+            FE trigger latency. From 0 to 255.
+            Some ballpark estimates:
+            External scintillator/TLU: 232
+            FE Hit-OR: 216
         col_span : list, tuple
             Column range (from minimum to maximum value). From 1 to 80.
         row_span : list, tuple
@@ -44,6 +70,8 @@ class ExtTriggerGdacScan(ScanBase):
             In seconds; stop scan after given time.
         max_triggers : int
             Maximum number of triggers to be taken.
+        enable_hitbus : bool
+            Enable Hitbus (Hit OR) for columns and rows given by col_span and row_span.
         '''
         logging.info('Start GDAC source scan from %d to %d in %d steps' % (np.amin(gdacs), np.amax(gdacs), len(gdacs)))
         logging.info('Estimated scan time %dh' % (len(gdacs) * scan_timeout / 3600.))
@@ -60,7 +88,11 @@ class ExtTriggerGdacScan(ScanBase):
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
         # generate mask for Imon mask
         pixel_reg = "Imon"
-        imon_mask = 1
+        if enable_hitbus:
+            mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span, default=1, value=0)
+            imon_mask = np.logical_or(mask, self.register.get_pixel_register_value(pixel_reg))
+        else:
+            imon_mask = 1
         self.register.set_pixel_register_value(pixel_reg, imon_mask)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
         # disable C_inj mask
@@ -70,13 +102,13 @@ class ExtTriggerGdacScan(ScanBase):
         pixel_reg = "C_Low"
         self.register.set_pixel_register_value(pixel_reg, 0)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
-#         self.register.set_global_register_value("Trig_Lat", 232)  # set trigger latency
-        self.register.set_global_register_value("Trig_Count", 0)  # set number of consecutive triggers
+        self.register.set_global_register_value("Trig_Lat", trigger_latency)  # set trigger latency
+#         self.register.set_global_register_value("Trig_Count", 0)  # set number of consecutive triggers
         commands.extend(self.register.get_commands("wrregister", name=["Trig_Lat", "Trig_Count"]))
         # setting FE into runmode
         commands.extend(self.register.get_commands("runmode"))
         self.register_utils.send_commands(commands)
-        
+
         wait_for_first_trigger_setting = True  # needed to reset this for a new GDAC
 
         with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier, scan_parameters=["GDAC"]) as raw_data_file:
@@ -140,11 +172,11 @@ class ExtTriggerGdacScan(ScanBase):
 
                 self.readout_utils.configure_command_fsm(enable_ext_trigger=False)
                 self.readout_utils.configure_trigger_fsm(mode=0)
-    
+
                 logging.info('Total amount of triggers collected: %d for GDAC %d' % (self.readout_utils.get_trigger_number(), gdac_value))
-    
+
                 self.readout.stop()
-    
+
                 raw_data_file.append(self.readout.data, scan_parameters={"GDAC": gdac_value})
 
     def analyze(self):
@@ -166,16 +198,7 @@ class ExtTriggerGdacScan(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-
-#     gdacs = range(100, 5001, 15)  # GDAC range set manually
-
-    # GDAC settings can be set automatically from the calibration with equidistant thresholds
-    input_file_calibration = 'data/calibrate_threshold_gdac_SCC_99.h5'  # the file with the GDAC <-> PlsrDAC calibration
-    threshold_range = np.arange(19, 280, 0.8)  # threshold range in PlsrDAC to scan
-    with tb.openFile(input_file_calibration, mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
-        gdacs = get_gdacs(threshold_range, in_file_calibration_h5.root.MeanThresholdCalibration[:])
-
-    scan = ExtTriggerGdacScan(configuration_file=configuration.configuration_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.start(configure=True, use_thread=True, gdacs=gdacs, mode=0, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=10000)
+    scan = ExtTriggerGdacScan(**configuration.device_configuration)
+    scan.start(use_thread=True, **scan_configuration)
     scan.stop()
     scan.analyze()

@@ -9,11 +9,23 @@ from daq.readout import open_raw_data_file
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
-class ExtTriggerScan(ScanBase):
-    def __init__(self, configuration_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_ext_trigger", scan_data_path=None):
-        super(ExtTriggerScan, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
+scan_configuration = {
+    "mode": 0,
+    "trigger_latency": 232,
+    "col_span": [1, 80],
+    "row_span": [1, 336],
+    "timeout_no_data": 10,
+    "scan_timeout": 10 * 60,
+    "max_triggers": 10000,
+    "enable_hitbus": False
+}
 
-    def scan(self, mode=0, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=600, max_triggers=10000, enable_hitbus=False):
+
+class ExtTriggerScan(ScanBase):
+    def __init__(self, configuration_file, definition_file=None, bit_file=None, force_download=False, device=None, scan_data_path=None, device_identifier=""):
+        super(ExtTriggerScan, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, force_download=force_download, device=device, scan_data_path=scan_data_path, device_identifier=device_identifier, scan_identifier="ext_trigger_scan")
+
+    def scan(self, mode=0, trigger_latency=232, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=10000, enable_hitbus=False):
         '''Scan loop
 
         Parameters
@@ -24,6 +36,11 @@ class ExtTriggerScan(ScanBase):
             1: TLU no handshake (automatic detection of TLU connection (TLU port/RJ45)).
             2: TLU simple handshake (automatic detection of TLU connection (TLU port/RJ45)).
             3: TLU trigger data handshake (automatic detection of TLU connection (TLU port/RJ45)).
+        trigger_latency : int
+            FE trigger latency. From 0 to 255.
+            Some ballpark estimates:
+            External scintillator/TLU: 232
+            FE Hit-OR: 216
         col_span : list, tuple
             Column range (from minimum to maximum value). From 1 to 80.
         row_span : list, tuple
@@ -61,13 +78,15 @@ class ExtTriggerScan(ScanBase):
         pixel_reg = "C_Low"
         self.register.set_pixel_register_value(pixel_reg, 0)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
-#         self.register.set_global_register_value("Trig_Lat", 232)  # set trigger latency
-        self.register.set_global_register_value("Trig_Count", 0)  # set number of consecutive triggers
+        self.register.set_global_register_value("Trig_Lat", trigger_latency)  # set trigger latency
+#         self.register.set_global_register_value("Trig_Count", 0)  # set number of consecutive triggers
         commands.extend(self.register.get_commands("wrregister", name=["Trig_Lat", "Trig_Count"]))
         # setting FE into runmode
         commands.extend(self.register.get_commands("runmode"))
         self.register_utils.send_commands(commands)
-        # append_size = 50000
+
+        wait_for_first_trigger = True
+
         with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier) as raw_data_file:
             self.readout.start()
 
@@ -77,8 +96,6 @@ class ExtTriggerScan(ScanBase):
             # setting up external trigger
             self.readout_utils.configure_trigger_fsm(mode=mode, trigger_data_msb_first=False, disable_veto=False, trigger_data_delay=0, trigger_clock_cycles=16, enable_reset=False, invert_lemo_trigger_input=False, trigger_low_timeout=0, reset_trigger_counter=True)
             self.readout_utils.configure_command_fsm(enable_ext_trigger=True, neg_edge=False, diable_clock=False, disable_command_trigger=False)
-
-            wait_for_first_trigger = True
 
             show_trigger_message_at = 10 ** (int(math.ceil(math.log10(max_triggers))) - 1)
             last_iteration = time.time()
@@ -169,7 +186,7 @@ class ExtTriggerScan(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = ExtTriggerScan(configuration_file=configuration.configuration_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.start(configure=True, use_thread=True, mode=0, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=100000, enable_hitbus=False)
+    scan = ExtTriggerScan(**configuration.device_configuration)
+    scan.start(use_thread=True, **scan_configuration)
     scan.stop()
     scan.analyze()
