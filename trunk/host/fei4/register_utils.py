@@ -162,26 +162,6 @@ class FEI4RegisterUtils(object):
         commands.extend(self.register.get_commands("runmode"))
         self.send_commands(commands)
 
-    def read_service_records(self):
-        commands = []
-        commands.extend(self.register.get_commands("confmode"))
-        self.send_commands(commands)
-        self.readout.reset_sram_fifo()
-        commands = []
-        self.register.set_global_register_value('ReadErrorReq', 1)
-        commands.extend(self.register.get_commands("wrregister", name=['ReadErrorReq']))
-        commands.extend(self.register.get_commands("globalpulse", width=0))
-        self.register.set_global_register_value('ReadErrorReq', 0)
-        commands.extend(self.register.get_commands("wrregister", name=['ReadErrorReq']))
-        self.send_commands(commands)
-
-        data = self.readout.read_data()
-
-        commands = []
-        commands.extend(self.register.get_commands("runmode"))
-        self.send_commands(commands)
-        return data
-
     def invert_pixel_mask(self, mask):
         '''Invert pixel mask (0->1, 1(and greater)->0).
 
