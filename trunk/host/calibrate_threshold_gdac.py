@@ -124,7 +124,7 @@ def mask_columns(pixel_array, ignore_columns):
 
 
 if __name__ == "__main__":
-    scan_identifier = "calibrate_threshold_gdac_SCC_122_test"
+    scan_identifier = "calibrate_threshold_gdac"
 
     gdac_range = range(70, 90, 1)  # has to be from low to high value
     gdac_range = range(70, 72, 1)  # has to be from low to high value
@@ -138,10 +138,9 @@ if __name__ == "__main__":
     scan_data_filenames = {}
     scan_threshold_fast = FastThresholdScan(**configuration.device_configuration)
     for i, gdac_value in enumerate(gdac_range):
-        print scan_threshold_fast.data_points
         scan_threshold_fast.register_utils.set_gdac(gdac_value)
         scan_threshold_fast.scan_identifier = scan_identifier + '_' + str(gdac_value)
-        scan_threshold_fast.start(configure=True, scan_parameter_range=(scan_threshold_fast.scan_parameter_start, 700), scan_parameter_stepsize=2, search_distance=10, minimum_data_points=scan_threshold_fast.data_points - 2, ignore_columns=ignore_columns)
+        scan_threshold_fast.start(configure=True, scan_parameter_range=(scan_threshold_fast.scan_parameter_start, 800), scan_parameter_stepsize=2, search_distance=10, minimum_data_points=scan_threshold_fast.data_points - 2, ignore_columns=ignore_columns)
         scan_threshold_fast.stop()
         scan_data_filenames[gdac_value] = scan_threshold_fast.scan_data_filename
  
