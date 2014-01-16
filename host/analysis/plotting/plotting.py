@@ -95,7 +95,7 @@ def plot_occupancy(hist, title='Occupancy', z_max=None, filename=None):
     if z_max < 1 or hist.all() is np.ma.masked:
         z_max = 1
 
-    fig = plt.figure(1)
+    fig = plt.figure('plot_occupancy')
     ax = fig.add_subplot(111)
     ax.set_adjustable('box-forced')
 #     extent = [yedges[0] - 0.5, yedges[-1] + 0.5, xedges[-1] + 0.5, xedges[0] - 0.5]
@@ -292,23 +292,23 @@ def round_to_multiple(number, multiple):
 
 
 def plot_relative_bcid(hist, filename=None):
-    plot_1d_hist(hist=hist, title='Relative BCID (former LVL1ID)', log_y=True, plot_range=range(0, 16), x_axis_title='Relative BCID [25 ns]', y_axis_title='#', filename=filename)
+    plot_1d_hist(hist=hist, title='Relative BCID (former LVL1ID)', log_y=True, plot_range=range(0, 16), x_axis_title='Relative BCID [25 ns]', y_axis_title='#', filename=filename, figure_name='Relative BCID')
 
 
 def plot_tot(hist, title=None, filename=None):
-    plot_1d_hist(hist=hist, title='Time-over-Threshold distribution (ToT code)' if title == None else title, plot_range=range(0, 16), x_axis_title='ToT [25 ns]', y_axis_title='#', color='b', filename=filename)
+    plot_1d_hist(hist=hist, title='Time-over-Threshold distribution (ToT code)' if title == None else title, plot_range=range(0, 16), x_axis_title='ToT [25 ns]', y_axis_title='#', color='b', filename=filename, figure_name='Hit Tot')
 
 
 def plot_event_errors(hist, filename=None):
-    plot_1d_hist(hist=hist, title='Event errors', plot_range=range(0, 8), x_ticks=('SR\noccured', 'No\ntrigger', 'LVL1ID\nnot const.', '#BCID\nwrong', 'unknown\nword', 'BCID\njump', 'trigger\nerror', 'truncated'), color='g', y_axis_title='#', filename=filename)
+    plot_1d_hist(hist=hist, title='Event errors', plot_range=range(0, 8), x_ticks=('SR\noccured', 'No\ntrigger', 'LVL1ID\nnot const.', '#BCID\nwrong', 'unknown\nword', 'BCID\njump', 'trigger\nerror', 'truncated'), color='g', y_axis_title='#', filename=filename, figure_name='Event Errors')
 
 
 def plot_trigger_errors(hist, filename=None):
-    plot_1d_hist(hist=hist, title='Trigger errors', plot_range=range(0, 8), x_ticks=('increase\nerror', 'more than\none trg.', 'TLU\naccept', 'TLU\ntime out', 'not\nused', 'not\nused', 'not\nused', 'not\nused'), color='g', y_axis_title='#', filename=filename)
+    plot_1d_hist(hist=hist, title='Trigger errors', plot_range=range(0, 8), x_ticks=('increase\nerror', 'more than\none trg.', 'TLU\naccept', 'TLU\ntime out', 'not\nused', 'not\nused', 'not\nused', 'not\nused'), color='g', y_axis_title='#', filename=filename, figure_name='Trigger Errors')
 
 
 def plot_service_records(hist, filename=None):
-    plot_1d_hist(hist=hist, title='Service records (' + str(np.sum(hist)) + ' entries)', x_axis_title='Service record code', color='g', y_axis_title='#', filename=filename)
+    plot_1d_hist(hist=hist, title='Service records (' + str(np.sum(hist)) + ' entries)', x_axis_title='Service record code', color='g', y_axis_title='#', filename=filename, figure_name='Service Records')
 
 
 def plot_cluster_tot(hist, median=False, max_occ=None, filename=None):
@@ -403,11 +403,15 @@ def plot_cluster_tot_size(hist, median=False, z_max=None, filename=None):
         plt.close()
 
 
-def plot_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, x_ticks=None, color='r', plot_range=None, log_y=False, filename=None):
+def plot_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, x_ticks=None, color='r', plot_range=None, log_y=False, filename=None, figure_name = None):
     logging.info("Plot 1d histogram%s" % ((': ' + title) if title is not None else ''))
 #     plt.clf()
 #     fig = plt.figure()
 #     
+    if figure_name != None:
+        fig = plt.figure(figure_name)
+        fig.clf()
+
     if plot_range is None:
         plot_range = range(0, len(hist))
     plt.bar(left=plot_range, height=hist[plot_range], color=color, align='center')
