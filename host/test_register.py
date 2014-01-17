@@ -9,9 +9,9 @@ import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
-class TestRegisters(ScanBase):
-    def __init__(self, configuration_file, definition_file=None, bit_file=None, device=None, scan_identifier="test_register", scan_data_path=None):
-        super(TestRegisters, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
+class RegisterTest(ScanBase):
+    def __init__(self, configuration_file, definition_file=None, bit_file=None, force_download=False, device=None, scan_data_path=None, device_identifier=""):
+        super(RegisterTest, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, force_download=force_download, device=device, scan_data_path=scan_data_path, device_identifier=device_identifier, scan_identifier="register_test")
 
     def scan(self):
         '''Testing of FE global and pixel registers and reading of chip S/N.
@@ -318,6 +318,6 @@ def test_pixel_register(self):
 
 if __name__ == "__main__":
     import configuration
-    scan = TestRegisters(**configuration.device_configuration)
+    scan = RegisterTest(**configuration.device_configuration)
     scan.start()
     scan.stop()
