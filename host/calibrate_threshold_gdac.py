@@ -142,9 +142,9 @@ if __name__ == "__main__":
         scan_threshold_fast.start(configure=True, scan_parameter_range=(scan_threshold_fast.scan_parameter_start, 800), scan_parameter_stepsize=2, search_distance=10, minimum_data_points=scan_threshold_fast.data_points - 2, ignore_columns=ignore_columns)
         scan_threshold_fast.stop()
         scan_data_filenames[gdac_value] = scan_threshold_fast.scan_data_filename
- 
+
     logging.info("Calibration finished in " + str(datetime.now() - startTime))
- 
+
     # analyze and plot the data from all scans
     create_calibration(scan_identifier, scan_data_filenames=scan_data_filenames, ignore_columns=ignore_columns, fei4b=scan_threshold_fast.register.fei4b, create_plots=True)
 
