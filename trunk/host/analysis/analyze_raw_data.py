@@ -396,7 +396,12 @@ class AnalyzeRawData(object):
             self.meta_data = in_file_h5.root.meta_data[:]
             try:
                 self.scan_parameters = in_file_h5.root.scan_parameters[:]
-                self.histograming.add_scan_parameter(self.scan_parameters)
+                if self.scan_parameters.shape[0] == 0:  # can happen for corrupt data
+                    logging.warning('Scan parameter data is empty!')
+                    self.scan_parameters = None
+                    self.histograming.set_no_scan_parameter()
+                else:
+                    self.histograming.add_scan_parameter(self.scan_parameters)
             except tb.exceptions.NoSuchNodeError:
                 self.scan_parameters = None
                 self.histograming.set_no_scan_parameter()
@@ -409,18 +414,18 @@ class AnalyzeRawData(object):
             self.interpreter.set_hits_array(hits)
             self.interpreter.set_meta_data(self.meta_data)
 
-            self.meta_event_index = np.zeros((meta_data_size,), dtype=[('metaEventIndex', np.uint32)])
-            self.interpreter.set_meta_event_data(self.meta_event_index)
+            self.meta_event_index = np.zeros((meta_data_size,), dtype=[('metaEventIndex', np.uint32)])  # this array is filled by the interpreter and holds the event number per read out
+            self.interpreter.set_meta_event_data(self.meta_event_index)  # tell the interpreter the data container to write the meta event index to
 
             for iWord in range(0, table_size, self._chunk_size):
                 try:
                     raw_data = in_file_h5.root.raw_data.read(iWord, iWord + self._chunk_size)
                 except OverflowError, e:
                     logging.info('%s: 2^31 xrange() limitation in 32-bit Python' % e)
-                self.interpreter.interpret_raw_data(raw_data)
+                self.interpreter.interpret_raw_data(raw_data)  # interpret the raw data
                 if(iWord == range(0, table_size, self._chunk_size)[-1]):  # store hits of the latest event
-                    self.interpreter.store_event()
-                Nhits = self.interpreter.get_n_array_hits()
+                    self.interpreter.store_event()  # al actual buffered events in the interpreter are stored
+                Nhits = self.interpreter.get_n_array_hits()  # get the number of hits of the actual interpreted raw data chunk
                 if(self.scan_parameters != None):
                     nEventIndex = self.interpreter.get_n_meta_data_event()
                     self.histograming.add_meta_event_index(self.meta_event_index, nEventIndex)
@@ -771,7 +776,7 @@ class AnalyzeRawData(object):
                 hist = out_file_h5.root.HistOcc[:, :, 0] if out_file_h5 != None else self.occupancy_array[:, :, 0]
                 occupancy_array_masked = np.ma.masked_equal(hist, 0)
                 if self._create_source_scan_hist:
-                    plotting.plot_fancy_occupancy(hist=occupancy_array_masked, filename=output_pdf, z_max='maximum')
+                    plotting.plot_fancy_occupancy(hist=occupancy_array_masked, filename=output_pdf, z_max='median')
                     plotting.plot_occupancy(hist=occupancy_array_masked, filename=output_pdf, z_max='maximum')
                 else:
                     plotting.plotThreeWay(hist=occupancy_array_masked, title="Occupancy", x_axis_title="occupancy", filename=output_pdf, maximum=maximum)
