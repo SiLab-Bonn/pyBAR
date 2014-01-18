@@ -9,10 +9,12 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 
 
 scan_configuration = {
-    "col_span": [1, 80],
-    "row_span": [1, 336],
+    "col_span": [2, 77],
+    "row_span": [2, 335],
     "timeout_no_data": 10,
-    "scan_timeout": 10 * 60
+    "scan_timeout": 1 * 20,
+    "trig_latency": 239,
+    "trig_count": 4
 }
 
 
@@ -20,7 +22,7 @@ class FEI4SelfTriggerScan(ScanBase):
     def __init__(self, configuration_file, definition_file=None, bit_file=None, force_download=False, device=None, scan_data_path=None, device_identifier=""):
         super(FEI4SelfTriggerScan, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, force_download=force_download, device=device, scan_data_path=scan_data_path, device_identifier=device_identifier, scan_identifier="fei4_self_trigger_scan")
 
-    def scan(self, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60):
+    def scan(self, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60, trig_latency=239, trig_count=4):
         '''Scan loop
 
         Parameters
@@ -35,7 +37,7 @@ class FEI4SelfTriggerScan(ScanBase):
             In seconds; stop scan after given time.
         '''
         self.register.create_restore_point()
-        self.configure_fe(col_span, row_span)
+        self.configure_fe(col_span, row_span, trig_latency, trig_count)
 
         with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier) as raw_data_file:
             self.readout.start()
@@ -102,7 +104,7 @@ class FEI4SelfTriggerScan(ScanBase):
 
             raw_data_file.append(self.readout.data)
 
-    def configure_fe(self, col_span, row_span):
+    def configure_fe(self, col_span, row_span, trig_latency, trig_count):
         # generate ROI mask for Enable mask
         pixel_reg = "Enable"
         mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
@@ -125,13 +127,14 @@ class FEI4SelfTriggerScan(ScanBase):
         self.register.set_pixel_register_value(pixel_reg, 0)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
         # enable GateHitOr that enables FE self-trigger mode
-        self.register.set_global_register_value("Trig_Lat", 239)  # set trigger latency, this latency sets the hits at the first rel. BCID bins
-#         self.register.set_global_register_value("Trig_Count", 0)  # set number of consecutive triggers
+        self.register.set_global_register_value("Trig_Lat", trig_latency)  # set trigger latency, this latency sets the hits at the first rel. BCID bins
+        self.register.set_global_register_value("Trig_Count", trig_count)  # set number of consecutive triggers
         commands.extend(self.register.get_commands("wrregister", name=["Trig_Lat", "Trig_Count"]))
         # send commands
         self.register_utils.send_commands(commands)
 
     def set_self_trigger(self):
+        logging.info('Activate self trigger feature')
         commands = []
         commands.extend(self.register.get_commands("confmode"))
         self.register.set_global_register_value("GateHitOr", 1)  # enable FE self-trigger mode
@@ -143,18 +146,20 @@ class FEI4SelfTriggerScan(ScanBase):
         from analysis.analyze_raw_data import AnalyzeRawData
         output_file = self.scan_data_filename + "_interpreted.h5"
         with AnalyzeRawData(raw_data_file=scan.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
-            analyze_raw_data.interpreter.set_trig_count(self.register.get_global_register_value("Trig_Count"))
+            analyze_raw_data.interpreter.set_trig_count(scan_configuration['trig_count'])
             analyze_raw_data.create_cluster_size_hist = True  # can be set to false to omit cluster hit creation, can save some time, std. setting is false
             analyze_raw_data.create_source_scan_hist = True
             analyze_raw_data.create_cluster_tot_hist = True
             analyze_raw_data.interpreter.set_warning_output(False)
+            analyze_raw_data.clusterizer.set_warning_output(False)
             analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms(scan_data_filename=scan.scan_data_filename)
 
 if __name__ == "__main__":
     import configuration
-    scan = FEI4SelfTriggerScan(**configuration.device_configuration)
+#     scan = FEI4SelfTriggerScan(**configuration.scc99_configuration)
+    scan = FEI4SelfTriggerScan(**configuration.mdbm30_configuration)
     scan.start(use_thread=True, **scan_configuration)
     scan.stop()
     scan.analyze()
