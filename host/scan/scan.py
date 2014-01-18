@@ -159,6 +159,11 @@ class ScanBase(object):
         if self.scan_thread != None:
             raise RuntimeError('Scan thread is already running')
 
+        # setting FPGA register to default state
+        # TODO: just temporary here
+        self.readout_utils.configure_command_fsm()
+        self.readout_utils.configure_trigger_fsm()
+
         if do_global_reset:
             self.register_utils.global_reset()
         if configure:
