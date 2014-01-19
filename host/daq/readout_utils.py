@@ -53,7 +53,7 @@ class ReadoutUtils(object):
             reg &= ~0x08
         self.device.WriteExternal(address=0 + 2, data=[reg])  # overwriting register
 
-    def configure_trigger_fsm(self, mode=0, trigger_data_msb_first=False, disable_veto=False, trigger_data_delay=0, trigger_clock_cycles=16, enable_reset=False, invert_lemo_trigger_input=False, trigger_low_timeout=0, reset_trigger_counter=False):
+    def configure_trigger_fsm(self, mode=0, trigger_data_msb_first=False, disable_veto=False, trigger_data_delay=0, trigger_clock_cycles=16, enable_reset=False, invert_lemo_trigger_input=False, force_use_rj45=False, trigger_low_timeout=0, reset_trigger_counter=False):
         '''Setting up external trigger mode and TLU trigger FSM.
 
         Parameters
@@ -103,10 +103,21 @@ class ReadoutUtils(object):
             reg_2 |= 0x40
         else:
             reg_2 &= ~0x40
+        if force_use_rj45:
+            reg_2 |= 0x80
+        else:
+            reg_2 &= ~0x80
         reg_3 = trigger_low_timeout
         if reset_trigger_counter:
             self.set_trigger_number(value=0)
         self.device.WriteExternal(address=0x8200 + 1, data=[reg_1, reg_2, reg_3])  # overwriting registers
+        if not force_use_rj45:
+            array = self.device.ReadExternal(address=0x8200 + 2, size=1)  # get stored register value
+            reg = struct.unpack('B', array)
+            if reg & 0x80:
+                logging.info('TLU detected at RJ45')
+        else:
+            logging.info('Using RJ45 port for trigger')
 
     def get_tlu_trigger_number(self):
         '''Reading most recent TLU trigger data/number.
