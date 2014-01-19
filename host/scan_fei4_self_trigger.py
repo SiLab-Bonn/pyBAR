@@ -12,7 +12,7 @@ scan_configuration = {
     "col_span": [2, 77],
     "row_span": [2, 335],
     "timeout_no_data": 10,
-    "scan_timeout": 1 * 20,
+    "scan_timeout": 1 * 10,
     "trig_latency": 239,
     "trig_count": 4
 }
@@ -36,7 +36,7 @@ class FEI4SelfTriggerScan(ScanBase):
         scan_timeout : int
             In seconds; stop scan after given time.
         '''
-        self.register.create_restore_point()
+
         self.configure_fe(col_span, row_span, trig_latency, trig_count)
 
         with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier) as raw_data_file:
@@ -97,9 +97,7 @@ class FEI4SelfTriggerScan(ScanBase):
                     logging.info('Taking data...')
                     wait_for_first_data = False
 
-            self.register.restore()
-            self.register_utils.configure_all()
-
+            self.set_self_trigger(False)
             self.readout.stop()
 
             raw_data_file.append(self.readout.data)
@@ -133,11 +131,11 @@ class FEI4SelfTriggerScan(ScanBase):
         # send commands
         self.register_utils.send_commands(commands)
 
-    def set_self_trigger(self):
-        logging.info('Activate self trigger feature')
+    def set_self_trigger(self, activate=True):
+        logging.info('Set self trigger feature to ' + str(activate))
         commands = []
         commands.extend(self.register.get_commands("confmode"))
-        self.register.set_global_register_value("GateHitOr", 1)  # enable FE self-trigger mode
+        self.register.set_global_register_value("GateHitOr", 1 if activate else 0)  # enable FE self-trigger mode
         commands.extend(self.register.get_commands("wrregister", name=["GateHitOr"]))
         commands.extend(self.register.get_commands("runmode"))
         self.register_utils.send_commands(commands)
@@ -150,7 +148,7 @@ class FEI4SelfTriggerScan(ScanBase):
             analyze_raw_data.create_cluster_size_hist = True  # can be set to false to omit cluster hit creation, can save some time, std. setting is false
             analyze_raw_data.create_source_scan_hist = True
             analyze_raw_data.create_cluster_tot_hist = True
-            analyze_raw_data.interpreter.set_warning_output(False)
+            analyze_raw_data.interpreter.set_warning_output(True)
             analyze_raw_data.clusterizer.set_warning_output(False)
             analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
             analyze_raw_data.interpreter.print_summary()
