@@ -115,7 +115,7 @@ class ReadoutUtils(object):
             array = self.device.ReadExternal(address=0x8200 + 2, size=1)  # get stored register value
             reg = struct.unpack('B', array)
             if reg & 0x80:
-                logging.info('TLU detected at RJ45')
+                logging.info('TLU detected at RJ45 port')
         else:
             logging.info('Using RJ45 port for trigger')
 
