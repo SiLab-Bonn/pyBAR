@@ -319,30 +319,26 @@ tlu_controller #(
     .FIFO_NEAR_FULL(FIFO_NEAR_FULL)
 );
 
+wire FIFO_READ, FIFO_EMPTY;
+wire [31:0] FIFO_DATA;
 
-wire ARB_READY_OUT, ARB_WRITE_OUT;
-wire [31:0] ARB_DATA_OUT;
-wire [7:0] READ_GRANT;
-rrp_arbiter 
-#( 
-    .WIDTH(8), 
-    .PRIORITY(8'b1000_0000)
-) i_rrp_arbiter
-(
-    .RST(BUS_RST),
-    .CLK(BUS_CLK),
+wire TLU_FIFO_REQ;
+assign TLU_FIFO_REQ = ~TLU_FIFO_EMPTY;
+wire [3:0] FE_FIFO_REQ;
+assign FE_FIFO_REQ = TLU_FIFO_PEEMPT_REQ? 4'b0000 : {~FE_FIFO_EMPTY[3], ~FE_FIFO_EMPTY[2], ~FE_FIFO_EMPTY[1], ~FE_FIFO_EMPTY[0]};
+wire [4:0] FIFO_READ_SEL;
 
-    .WRITE_REQ({~TLU_FIFO_EMPTY, ~FE_FIFO_EMPTY, 3'b0}),
-    .HOLD_REQ({TLU_FIFO_PEEMPT_REQ, 7'b0}),
-    .DATA_IN({TLU_FIFO_DATA,FE_FIFO_DATA[3],FE_FIFO_DATA[2],FE_FIFO_DATA[1], FE_FIFO_DATA[0], {3{32'b0}} }),
-    .READ_GRANT(READ_GRANT),
+assign {FE_FIFO_READ[3], FE_FIFO_READ[2], FE_FIFO_READ[1], FE_FIFO_READ[0], TLU_FIFO_READ} = (FIFO_READ_SEL & ({5{FIFO_READ}}));
+assign FIFO_EMPTY = ~((FIFO_READ_SEL & {FE_FIFO_REQ, TLU_FIFO_REQ}) != 5'b0_0000);
+assign FIFO_DATA = (({32{FIFO_READ_SEL[4]}} & FE_FIFO_DATA[3]) | ({32{FIFO_READ_SEL[3]}} & FE_FIFO_DATA[2]) | ({32{FIFO_READ_SEL[2]}} & FE_FIFO_DATA[1]) | ({32{FIFO_READ_SEL[1]}} & FE_FIFO_DATA[0]) | ({32{FIFO_READ_SEL[0]}} & TLU_FIFO_DATA));
 
-    .READY_OUT(ARB_READY_OUT),
-    .WRITE_OUT(ARB_WRITE_OUT),
-    .DATA_OUT(ARB_DATA_OUT)
+arbiter #(
+    .WIDTH(5)
+) arbiter_inst (
+    .req({FE_FIFO_REQ, TLU_FIFO_REQ}),
+    .grant(FIFO_READ_SEL),
+    .base(5'b0_0001) // one hot, TLU has highest priority followed by higher indexed requests
 );
-assign TLU_FIFO_READ = READ_GRANT[7];
-assign FE_FIFO_READ = READ_GRANT[6:3];
 
 wire USB_READ;
 assign USB_READ = FREAD & FSTROBE;
@@ -371,9 +367,9 @@ sram_fifo
     .USB_READ(USB_READ),
     .USB_DATA(FDATA),
     
-    .FIFO_READ_NEXT_OUT(ARB_READY_OUT),
-    .FIFO_EMPTY_IN(!ARB_WRITE_OUT),
-    .FIFO_DATA(ARB_DATA_OUT),
+    .FIFO_READ_NEXT_OUT(FIFO_READ),
+    .FIFO_EMPTY_IN(FIFO_EMPTY),
+    .FIFO_DATA(FIFO_DATA),
     
     .FIFO_NOT_EMPTY(FIFO_NOT_EMPTY),
     .FIFO_FULL(FIFO_FULL),
