@@ -377,7 +377,7 @@ def plot_cluster_tot_size(hist, median=False, z_max=None, filename=None):
         z_max = 1
     fig = plt.figure(1)
     ax = fig.add_subplot(111)
-    extent = [0.5, 20.5, 49.5, -0.5]
+    extent = [-0.5, 20.5, 49.5, -0.5]
     bounds = np.linspace(start=0, stop=z_max, num=255, endpoint=True)
     cmap = cm.get_cmap('jet')
     cmap.set_bad('w')
