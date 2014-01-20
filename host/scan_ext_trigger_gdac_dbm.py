@@ -19,12 +19,15 @@ def get_gdacs(thresholds, mean_threshold_calibration):
 # gdacs = range(100, 5001, 15)  # GDAC range set manually
 
 # GDAC settings can be set automatically from the calibration with equidistant thresholds
-input_file_calibration = 'data//SCC_99//calibrate_threshold_gdac_SCC_99_new.h5'  # the file with the GDAC <-> PlsrDAC calibration
+input_file_calibration = 'data//MDBM30//calibrate_threshold_gdac_MDBM30.h5'  # the file with the GDAC <-> PlsrDAC calibration
 threshold_range = np.arange(19, 280, 0.8)  # threshold range in PlsrDAC to scan
 with tb.openFile(input_file_calibration, mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
 #     gdacs = get_gdacs(threshold_range, in_file_calibration_h5.root.MeanThresholdCalibration[:])
     gdacs = in_file_calibration_h5.root.MeanThresholdCalibration[:]['gdac']
+    gdacs = gdacs[:150]
     print len(gdacs)*200/3600
+    print gdacs
+
 
 scan_configuration = {
     "gdacs": gdacs,
@@ -199,7 +202,7 @@ class ExtTriggerGdacScan(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = ExtTriggerGdacScan(**configuration.scc99_configuration)
+    scan = ExtTriggerGdacScan(**configuration.mdbm30_configuration)
     scan.start(use_thread=True, **scan_configuration)
     scan.stop()
     scan.analyze()
