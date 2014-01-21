@@ -1,3 +1,15 @@
+''' This script does the full analysis of a source scan where the global threshold setting was changed to reconstruct the charge injected in a sensor pixel 
+by a constant source. Several steps are done automatically:
+Step 1 Tnterpret the raw data:
+    This step interprets the raw data from the FE and creates and plots distributions.
+    Everything is summed up, but the occupancy histogram is created per GDAC setting.
+Step 2 Analyze selected hits:
+    This step just takes the single hit cluster of the interpreted data and analyzes these hits for each GDAC setting.
+Step 3 Analyze cluster size:
+    In this step the fraction of 1,2,3,4, ... cluster sizes are determined for each GDAC setting.
+Step 4 Analyze the injected charge:
+    Here the data from the previous steps is used to determine the injected charge. Plots of the results are shown.
+'''
 import numpy as np
 import tables as tb
 from scipy.interpolate import interp1d
@@ -11,6 +23,30 @@ from analysis.analyze_raw_data import AnalyzeRawData
 
 import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
+
+analysis_configuration = {
+#     "scan_name": 'SCC_99_ext_trigger_gdac_scan_381',
+#     "folder": 'data//SCC_99//',
+#     'input_file_calibration': 'data//SCC_99//calibrate_threshold_gdac_SCC_99_new.h5',
+    "scan_name": 'MDBM30_ext_trigger_gdac_scan_444',
+    "folder": 'data//MDBM30//',
+    'input_file_calibration': 'data//MDBM30//calibrate_threshold_gdac_MDBM30.h5',
+    "analysis_steps": [4],#[1, 2, 3, 4],  # the analysis includes the selected steps here. See explenation above.
+    "chip_flavor": 'fei4b',
+    "n_bcid": 16,
+    "max_tot_value": 13,  # maximum tot value to use the hit
+    "use_cluster_rate_correction": True,  # corrects the hit rate, because one pixel hit cluster are less likely for low thresholds
+    "smoothness": 180,  # the smoothness of the spline fit to the data
+    "vcal_calibration": 55.,   # calibration electrons/PlsrDAC
+    "n_bins": 200,  # number of bins for the profile histogram
+    "col_span": [30, 70],  # the column pixel range to use in the analysis
+    "row_span": [50, 340],  # the row pixel range to use in the analysis
+    "cut_threshold": 0.01,  # the cut threshold for the occupancy to define pixel to use in the analysis
+    "min_thr": 500,  # minimum threshold position in electrons to be used for the analysis
+    "max_thr": 35000,  # maximum threshold position in electrons to be used for the analysis
+    "normalization_reference": 'event',  # one can normalize the hits per GDAC setting to the number of events ('event') or time ('time')
+    "plot_normalization": True  # active the output of the normalization
+}
 
 
 def get_mean_threshold(gdac, mean_threshold_calibration):
@@ -96,26 +132,26 @@ def get_normalization(meta_data, reference='event', plot=False):
         return time_spend.astype('f64') / np.amax(time_spend)
 
 
-def plot_cluster_sizes(in_file_cluster_h5, in_file_calibration_h5, gdac_range, vcal_calibration):
+def plot_cluster_sizes(in_file_cluster_h5, in_file_calibration_h5, gdac_range):
     mean_threshold_calibration = in_file_calibration_h5.root.MeanThresholdCalibration[:]
     hist = in_file_cluster_h5.root.AllHistClusterSize[:]
     hist_sum = np.sum(hist, axis=1)
     hist_rel = hist / hist_sum[:, np.newaxis] * 100
     x = get_mean_threshold(gdac_range, mean_threshold_calibration)
     plt.grid(True)
-    plt.plot(x * vcal_calibration, hist_rel[:, 1], '-o')
-    plt.plot(x * vcal_calibration, hist_rel[:, 2], '-o')
-    plt.plot(x * vcal_calibration, hist_rel[:, 3], '-o')
-    plt.plot(x * vcal_calibration, hist_rel[:, 4], '-o')
-    plt.plot(x * vcal_calibration, hist_rel[:, 5], '-o')
+    plt.plot(x * analysis_configuration['vcal_calibration'], hist_rel[:, 1], '-o')
+    plt.plot(x * analysis_configuration['vcal_calibration'], hist_rel[:, 2], '-o')
+    plt.plot(x * analysis_configuration['vcal_calibration'], hist_rel[:, 3], '-o')
+    plt.plot(x * analysis_configuration['vcal_calibration'], hist_rel[:, 4], '-o')
+    plt.plot(x * analysis_configuration['vcal_calibration'], hist_rel[:, 5], '-o')
     plt.title('Frequency of different cluster sizes for different thresholds')
     plt.xlabel('threshold [e]')
     plt.ylabel('cluster size frequency [%]')
     plt.legend(["1 hit cluster", "2 hit cluster", "3 hit cluster", "4 hit cluster", "5 hit cluster"], loc='best')
 #             plt.ylim(0, 100)
 #             plt.xlim(0, 12000)
-    fig = plt.gca()
-    fig.patch.set_facecolor('white')
+#     fig = plt.gca()
+#     fig.patch.set_facecolor('white')
     plt.show()
     plt.close()
 
@@ -129,27 +165,30 @@ def plot_result(x_p, y_p, y_p_e):
         y_p_e : array like
             error bars in y
     '''
+    logging.info('Plot results')
+    plt.close()
 
     if len(y_p_e[y_p_e == 0]) != 0:
         logging.warning('There are bins without any data, guessing the error bars')
         y_p_e[y_p_e == 0] = np.amin(y_p_e[y_p_e != 0])
 
-    smoothed_data = analysis_utils.smooth_differentiation(x_p, y_p, weigths=1 / y_p_e, order=3, smoothness=smoothness, derivation=0)
-    smoothed_data_diff = analysis_utils.smooth_differentiation(x_p, y_p, weigths=1 / y_p_e, order=3, smoothness=smoothness, derivation=1)
+    smoothed_data = analysis_utils.smooth_differentiation(x_p, y_p, weigths=1 / y_p_e, order=3, smoothness=analysis_configuration['smoothness'], derivation=0)
+    smoothed_data_diff = analysis_utils.smooth_differentiation(x_p, y_p, weigths=1 / y_p_e, order=3, smoothness=analysis_configuration['smoothness'], derivation=1)
 
-    p1 = plt.errorbar(x_p * vcal_calibration, y_p, yerr=y_p_e, fmt='o')  # plot differentiated data with error bars of data
-    p2, = plt.plot(x_p * vcal_calibration, smoothed_data, '-r')  # plot smoothed data
-    p3, = plt.plot(x_p * vcal_calibration, -100. * smoothed_data_diff, '-', lw=2)  # plot differentiated data
-    mpv_index = np.argmax(-analysis_utils.smooth_differentiation(x_p, y_p, weigths=1 / y_p_e, order=3, smoothness=smoothness, derivation=1))
-    p4, = plt.plot([x_p[mpv_index] * vcal_calibration, x_p[mpv_index] * vcal_calibration], [0, -100. * smoothed_data_diff[mpv_index]], 'k-', lw=2)
-    text = 'MPV ' + str(int(x_p[mpv_index] * vcal_calibration)) + ' e'
-    plt.text(1.01 * x_p[mpv_index] * vcal_calibration, -10. * smoothed_data_diff[mpv_index], text, ha='left')
+    p1 = plt.errorbar(x_p * analysis_configuration['vcal_calibration'], y_p, yerr=y_p_e, fmt='o')  # plot differentiated data with error bars of data
+    p2, = plt.plot(x_p * analysis_configuration['vcal_calibration'], smoothed_data, '-r')  # plot smoothed data
+    p3, = plt.plot(x_p * analysis_configuration['vcal_calibration'], -100. * smoothed_data_diff, '-', lw=2)  # plot differentiated data
+    mpv_index = np.argmax(-analysis_utils.smooth_differentiation(x_p, y_p, weigths=1 / y_p_e, order=3, smoothness=analysis_configuration['smoothness'], derivation=1))
+    p4, = plt.plot([x_p[mpv_index] * analysis_configuration['vcal_calibration'], x_p[mpv_index] * analysis_configuration['vcal_calibration']], [0, -100. * smoothed_data_diff[mpv_index]], 'k-', lw=2)
+    text = 'MPV ' + str(int(x_p[mpv_index] * analysis_configuration['vcal_calibration'])) + ' e'
+    plt.text(1.01 * x_p[mpv_index] * analysis_configuration['vcal_calibration'], -10. * smoothed_data_diff[mpv_index], text, ha='left')
     plt.legend([p1, p2, p3, p4], ['data', 'smoothed spline', 'spline differentiation', text], prop={'size': 12})
     plt.title('\'Single hit cluster\'-occupancy for different pixel thresholds')
     plt.xlabel('Pixel threshold [e]')
     plt.ylabel('Single hit cluster occupancy [a.u.]')
     plt.ylim((0, 1.02 * np.amax(np.append(y_p, -100. * smoothed_data_diff))))
     plt.show()
+    plt.close()
 
 
 def select_hot_region(hits, col_span, row_span, cut_threshold=0.8):
@@ -199,8 +238,8 @@ def analyze_raw_data(input_file, output_file_hits, chip_flavor, scan_data_filena
         analyze_raw_data.create_meta_word_index = False  # stores the start and stop raw data word index for every event, std. setting is false
         analyze_raw_data.create_meta_event_index = True  # stores the event number for each readout in an additional meta data array, default: False
 
-        analyze_raw_data.n_bcid = n_bcid  # set the number of BCIDs per event, needed to judge the event structure
-        analyze_raw_data.max_tot_value = max_tot_value  # set the maximum ToT value considered to be a hit, 14 is a late hit
+        analyze_raw_data.n_bcid = analysis_configuration['n_bcid']  # set the number of BCIDs per event, needed to judge the event structure
+        analyze_raw_data.max_tot_value = analysis_configuration['max_tot_value']  # set the maximum ToT value considered to be a hit, 14 is a late hit
 
         analyze_raw_data.interpreter.set_warning_output(True)  # std. setting is True
         analyze_raw_data.interpreter.debug_events(0, 10, False)  # events to be printed onto the console for debugging, usually deactivated
@@ -265,6 +304,7 @@ def analyze_cluster_size(input_file_hits, output_file, output_file_pdf):
                 chunk_size = int(1.05 * readout_hit_len) if int(1.05 * readout_hit_len) < max_chunk_size else max_chunk_size  # to increase the readout speed, estimated the number of hits for one read instruction
                 if chunk_size < 50:  # limit the lower chunk size, there can always be a crazy event with more than 20 hits
                     chunk_size = 50
+
                 # store occupancy hist
                 occupancy = np.zeros(80 * 336 * analyze_data.histograming.get_n_parameters(), dtype=np.uint32)  # create linear array as it is created in histogram class
                 analyze_data.histograming.get_occupancy(occupancy)
@@ -321,7 +361,7 @@ def analyse_selected_hits(input_file_hits, output_file_hits, output_file_hits_an
 
 def analyze_injected_charge():
     logging.info('Analyze the injected charge')
-    with tb.openFile(input_file_calibration, mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
+    with tb.openFile(analysis_configuration['input_file_calibration'], mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
         with tb.openFile(hit_analyzed_file, mode="r") as in_file_hits_h5:  # read scan data file from scan_fei4_trigger_gdac scan
             occupancy = in_file_hits_h5.root.HistOcc[:]
             meta_data = in_file_hits_h5.root.meta_data[:]
@@ -331,14 +371,14 @@ def analyze_injected_charge():
             gdac_range_calibration = mean_threshold_calibration['gdac']
             gdac_range_source_scan = analysis_utils.get_scan_parameter(meta_data_array=meta_data)['GDAC']
 
-            normalization = get_normalization(meta_data, reference='event')  # normalize the number of hits for each GDAC setting, can be different due to different scan time
+            normalization = get_normalization(meta_data, reference=analysis_configuration['normalization_reference'], plot=analysis_configuration['plot_normalization'])  # normalize the number of hits for each GDAC setting, can be different due to different scan time
 
             correction_factors = 1
-            if use_cluster_rate_correction:
+            if analysis_configuration['use_cluster_rate_correction']:
                 correction_h5 = tb.openFile(cluster_size_file, mode="r")
                 cluster_size_histogram = correction_h5.root.AllHistClusterSize[:]
                 correction_factors = get_hit_rate_correction(gdacs=gdac_range_source_scan, calibration_gdacs=gdac_range_source_scan, cluster_size_histogram=cluster_size_histogram)
-                plot_cluster_sizes(correction_h5, in_file_calibration_h5, gdac_range=gdac_range_source_scan, vcal_calibration=vcal_calibration)
+                plot_cluster_sizes(correction_h5, in_file_calibration_h5, gdac_range=gdac_range_source_scan)
 
             logging.info('Analyzing source scan data with %d different GDAC settings from %d to %d with minimum step sizes from %d to %d' % (len(gdac_range_source_scan), np.min(gdac_range_source_scan), np.max(gdac_range_source_scan), np.min(np.gradient(gdac_range_source_scan)), np.max(np.gradient(gdac_range_source_scan))))
             logging.info('Use calibration data with %d different GDAC settings from %d to %d with minimum step sizes from %d to %d' % (len(gdac_range_calibration), np.min(gdac_range_calibration), np.max(gdac_range_calibration), np.min(np.gradient(gdac_range_calibration)), np.max(np.gradient(gdac_range_calibration))))
@@ -349,7 +389,7 @@ def analyze_injected_charge():
             pixel_hits = pixel_hits * correction_factors * normalization
 
             # choose region with pixels that have a sufficient occupancy
-            hot_pixel = select_hot_region(pixel_hits, col_span=col_span, row_span=row_span, cut_threshold=cut_threshold)
+            hot_pixel = select_hot_region(pixel_hits, col_span=analysis_configuration['col_span'], row_span=analysis_configuration['row_span'], cut_threshold=analysis_configuration['cut_threshold'])
             pixel_mask = ~np.ma.getmaskarray(hot_pixel)
             selected_pixel_hits = pixel_hits[pixel_mask, :]  # reduce the data to pixels that are in the hot pixel region
             selected_pixel_thresholds = pixel_thresholds[pixel_mask, :]  # reduce the data to pixels that are in the hot pixel region
@@ -364,54 +404,40 @@ def analyze_injected_charge():
                 logging.warning('There are pixels with NaN or INF threshold or hit values, analysis will fail')
 
             # calculated profile histogram
-            x_p, y_p, y_p_e = analysis_utils.get_profile_histogram(x, y, n_bins=n_bins)  # profile histogram data
+            x_p, y_p, y_p_e = analysis_utils.get_profile_histogram(x, y, n_bins=analysis_configuration['n_bins'])  # profile histogram data
 
             # select only the data point where the calibration worked
-            selected_data = np.logical_and(x_p > min_thr / vcal_calibration, x_p < max_thr / vcal_calibration)
+            selected_data = np.logical_and(x_p > analysis_configuration['min_thr'] / analysis_configuration['vcal_calibration'], x_p < analysis_configuration['max_thr'] / analysis_configuration['vcal_calibration'])
             x_p = x_p[selected_data]
             y_p = y_p[selected_data]
             y_p_e = y_p_e[selected_data]
 
             plot_result(x_p, y_p, y_p_e)
 
-#             #  calculate and plot mean results
+            #  calculate and plot mean results
             x_mean = get_mean_threshold(gdac_range_source_scan, mean_threshold_calibration)
             y_mean = selected_pixel_hits.mean(axis=(0))
 
-            plotting.plot_scatter(x_mean * 55, y_mean, title='Mean single pixel cluster rate at different thresholds', x_label='mean threshold [e]', y_label='mean single pixel cluster rate')
+            plotting.plot_scatter(x_mean * analysis_configuration['vcal_calibration'], y_mean, title='Mean single pixel cluster rate at different thresholds', x_label='mean threshold [e]', y_label='mean single pixel cluster rate')
 
-    if use_cluster_rate_correction:
+    if analysis_configuration['use_cluster_rate_correction']:
         correction_h5.close()
 
 
 if __name__ == "__main__":
-    # input data names
-    scan_name = 'scan_ext_trigger_gdac_0'
-    folder = 'data\\dia_data\\'
-    input_file_calibration = folder + 'calibrate_threshold_gdac_MDBM30.h5'
-
-    # analysis options
-    chip_flavor = 'fei4a'
-    n_bcid = 4
-    max_tot_value = 13
-    use_cluster_rate_correction = True  # corrects the hit rate, because one pixel hit cluster are less likely for low thresholds
-    smoothness = 20  # the smoothness of the spline fit to the data
-    vcal_calibration = 55.  # calibration electrons/PlsrDAC
-    n_bins = 100  # number of bins for the profile histogram
-    col_span = [20, 60]  # the column pixel range to use in the analysis
-    row_span = [20, 150]  # the row pixel range to use in the analysis
-    cut_threshold = 0.01  # the cut threshold for the occupancy to define pixel to use in the analysis
-    min_thr = 600  # minimum threshold position in electrons to be used for the analysis
-    max_thr = 25000  # maximum threshold position in electrons to be used for the analysis
-
     # names of data files
-    raw_data_file = folder + scan_name + '.h5'
-    hit_file = folder + scan_name + '_interpreted.h5'
-    cluster_size_file = folder + scan_name + '_cluster_sizes.h5'
-    hit_cut = folder + scan_name + '_cut_hits.h5'
-    hit_analyzed_file = folder + scan_name + '_cut_hits_analyzed.h5'
+    raw_data_file = analysis_configuration['folder'] + analysis_configuration['scan_name'] + '.h5'
+    hit_file = analysis_configuration['folder'] + analysis_configuration['scan_name'] + '_interpreted.h5'
+    cluster_size_file = analysis_configuration['folder'] + analysis_configuration['scan_name'] + '_cluster_sizes.h5'
+    hit_cut = analysis_configuration['folder'] + analysis_configuration['scan_name'] + '_cut_hits.h5'
+    hit_analyzed_file = analysis_configuration['folder'] + analysis_configuration['scan_name'] + '_cut_hits_analyzed.h5'
 
-    analyze_raw_data(input_file=raw_data_file, output_file_hits=hit_file, chip_flavor=chip_flavor, scan_data_filename=folder + scan_name)
-    analyse_selected_hits(input_file_hits=hit_file, output_file_hits=hit_cut, output_file_hits_analyzed=hit_analyzed_file, scan_data_filename=folder + scan_name)
-    analyze_cluster_size(input_file_hits=hit_file, output_file=cluster_size_file, output_file_pdf=folder + scan_name + '_cluster_sizes.pdf')
-    analyze_injected_charge()
+    # the different analysis steps executed
+    if 1 in analysis_configuration['analysis_steps']:
+        analyze_raw_data(input_file=raw_data_file, output_file_hits=hit_file, chip_flavor=analysis_configuration['chip_flavor'], scan_data_filename=analysis_configuration['folder'] + analysis_configuration['scan_name'])
+    if 2 in analysis_configuration['analysis_steps']:
+        analyse_selected_hits(input_file_hits=hit_file, output_file_hits=hit_cut, output_file_hits_analyzed=hit_analyzed_file, scan_data_filename=analysis_configuration['folder'] + analysis_configuration['scan_name'])
+    if 3 in analysis_configuration['analysis_steps']:
+        analyze_cluster_size(input_file_hits=hit_file, output_file=cluster_size_file, output_file_pdf=analysis_configuration['folder'] + analysis_configuration['scan_name'] + '_cluster_sizes.pdf')
+    if 4 in analysis_configuration['analysis_steps']:
+        analyze_injected_charge()
