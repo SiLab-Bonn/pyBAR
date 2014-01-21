@@ -76,7 +76,7 @@ class FEI4RegisterUtils(object):
             self.clear_command_memory(length=command_length)
 
     def clear_command_memory(self, length=None):
-        self.set_command(self.register.get_commands("zeros", length=(self.self.command_memory_byte_size * 8) if length is None else length)[0], set_length=False)
+        self.set_command(self.register.get_commands("zeros", length=(self.command_memory_byte_size * 8) if length is None else length)[0], set_length=False)
 
     def set_command_length(self, lenght):
         bit_length_array = array.array('B', struct.pack('H', lenght))
