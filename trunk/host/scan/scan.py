@@ -22,20 +22,7 @@ from daq.readout import Readout
 import signal
 from bitarray import bitarray
 
-scan_logger = logging.getLogger("scan")
-# fh = logging.FileHandler(self.scan_data_filename + ".log")
-# fh.setLevel(logging.DEBUG)
-# create console handler with a higher log level
-ch = logging.StreamHandler()
-# ch.setLevel(logging.ERROR)
-# create formatter and add it to the handlers
-formatter = logging.Formatter("%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(name)s %(message)s")
-scan_logger.propagate = False
-# fh.setFormatter(formatter)
-ch.setFormatter(formatter)
-# add the handlers to the logger
-# logger.addHandler(fh)
-scan_logger.addHandler(ch)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
 class ScanBase(object):
@@ -57,31 +44,6 @@ class ScanBase(object):
         scan_data_path : str
             Pathname of data output path.
         '''
-        # remove all non_word characters and whitespace characters to prevent problems with os.path.join
-        self.device_identifier = re.sub(r"[^\w\s+]", '', device_identifier)
-        self.device_identifier = re.sub(r"\s+", '_', self.device_identifier)
-        self.scan_identifier = re.sub(r"[^\w\s+]", '', scan_identifier)
-        self.scan_identifier = re.sub(r"\s+", '_', self.scan_identifier)
-        if scan_data_path == None:
-            self.scan_data_path = os.getcwd()
-        else:
-            self.scan_data_path = scan_data_path
-        if self.device_identifier:
-            self.scan_data_output_path = os.path.join(self.scan_data_path, self.device_identifier)
-        else:
-            self.scan_data_output_path = self.scan_data_path
-
-        self.logger = logging.getLogger("scan." + self.scan_identifier)
-        ch = logging.StreamHandler()
-        ch.setFormatter(formatter)
-        self.logger.addHandler(ch)
-        fh = logging.FileHandler(os.path.join(self.scan_data_output_path, ((self.device_identifier + "_" + self.scan_identifier) if self.device_identifier else self.scan_identifier)) + ".log")
-        fh.setFormatter(formatter)
-        self.logger.addHandler(fh)
-        self.logger.propagate = False
-
-        self.logger.info('Initializing scan %s (output path: %s)' % (self.scan_identifier, self.scan_data_output_path))
-
         # fixing event handler: http://stackoverflow.com/questions/15457786/ctrl-c-crashes-python-after-importing-scipy-stats
         if os.name == 'nt':
             import thread
@@ -102,7 +64,7 @@ class ScanBase(object):
             else:
                 raise TypeError('Device has wrong type')
             try:
-                self.logger.info('Using USB board with ID %s', self.device.board_id)
+                logging.info('Using USB board with ID %s', self.device.board_id)
             except USBError:
                 raise DeviceError('Can\'t communicate with USB board. Reset USB board!')
         else:
@@ -111,14 +73,14 @@ class ScanBase(object):
             except USBError:
                 raise NoDeviceError('Can\'t find USB board. Connect or reset USB board!')
             try:
-                self.logger.info('Found USB board with ID %s', self.device.board_id)
+                logging.info('Found USB board with ID %s', self.device.board_id)
             except USBError:
                 raise DeviceError('Can\'t communicate with USB board. Reset USB board!')
         if bit_file != None:
             if self.device.XilinxAlreadyLoaded() and not force_download:
-                self.logger.info('FPGA already configured, skipping download of bitstream')
+                logging.info('FPGA already configured, skipping download of bitstream')
             else:
-                self.logger.info('Downloading bitstream to FPGA: %s' % bit_file)
+                logging.info('Downloading bitstream to FPGA: %s' % bit_file)
                 try:
                     self.device.DownloadXilinx(bit_file)
                 except USBError:
@@ -133,6 +95,20 @@ class ScanBase(object):
         else:
             self.register = FEI4Register(configuration_file=configuration_file, definition_file=definition_file)
         self.register_utils = FEI4RegisterUtils(self.device, self.readout, self.register)
+
+        # remove all non_word characters and whitespace characters to prevent problems with os.path.join
+        self.device_identifier = re.sub(r"[^\w\s+]", '', device_identifier)
+        self.device_identifier = re.sub(r"\s+", '_', self.device_identifier)
+        self.scan_identifier = re.sub(r"[^\w\s+]", '', scan_identifier)
+        self.scan_identifier = re.sub(r"\s+", '_', self.scan_identifier)
+        if scan_data_path == None:
+            self.scan_data_path = os.getcwd()
+        else:
+            self.scan_data_path = scan_data_path
+        if self.device_identifier:
+            self.scan_data_output_path = os.path.join(self.scan_data_path, self.device_identifier)
+        else:
+            self.scan_data_output_path = self.scan_data_path
 
         self.scan_number = None
         self.scan_data_filename = None
@@ -202,17 +178,17 @@ class ScanBase(object):
         if not any(self.readout.print_readout_status()):
             self.device.dispose()  # free USB resources
             raise NoSyncError('No data sync on any input channel. Power? Cables?')
-#             self.logger.error('Stopping scan: no sync')
+#             logging.error('Stopping scan: no sync')
 #             return
 
         self.stop_thread_event.clear()
 
-        self.logger.info('Starting scan %s with ID %d (output path: %s)' % (self.scan_identifier, self.scan_number, self.scan_data_output_path))
+        logging.info('Starting scan %s with ID %d (output path: %s)' % (self.scan_identifier, self.scan_number, self.scan_data_output_path))
         if use_thread:
             self.scan_thread = Thread(target=self.scan, name='%s with ID %d' % (self.scan_identifier, self.scan_number), kwargs=kwargs)  # , args=kwargs)
             self.scan_thread.daemon = True  # Abruptly close thread when closing main thread. Resources may not be released properly.
             self.scan_thread.start()
-            self.logger.info('Press Ctrl-C to stop scan loop')
+            logging.info('Press Ctrl-C to stop scan loop')
             signal.signal(signal.SIGINT, self.signal_handler)
         else:
             self.scan(**kwargs)
@@ -224,14 +200,14 @@ class ScanBase(object):
         if (self.scan_thread is not None) ^ self.use_thread:
             if self.scan_thread is None:
                 pass
-                #self.logger.warning('Scan thread has already stopped')
+                #logging.warning('Scan thread has already stopped')
                 #raise RuntimeError('Scan thread has already stopped')
             else:
                 raise RuntimeError('Thread is running where no thread was expected')
         if self.scan_thread is not None:
 
             def stop_thread():
-                self.logger.warning('Scan timeout after %.1f second(s)' % timeout)
+                logging.warning('Scan timeout after %.1f second(s)' % timeout)
                 self.stop_thread_event.set()
                 self.scan_aborted = True
 
@@ -242,7 +218,7 @@ class ScanBase(object):
                 while self.scan_thread.is_alive() and not self.stop_thread_event.wait(1):
                     pass
             except IOError:  # catching "IOError: [Errno4] Interrupted function call" because of wait_timeout_event.wait()
-                self.logger.exception('Event handler problems?')
+                logging.exception('Event handler problems?')
                 raise
 
             timeout_timer.cancel()
@@ -253,10 +229,10 @@ class ScanBase(object):
             self.scan_thread = None
         self.use_thread = None
         if self.restore_configuration:
-            self.logger.info('Restoring FE configuration')
+            logging.info('Restoring FE configuration')
             self.register.restore(name=self.scan_identifier)
             self.register_utils.configure_all()
-        self.logger.info('Stopped scan %s with ID %d' % (self.scan_identifier, self.scan_number))
+        logging.info('Stopped scan %s with ID %d' % (self.scan_identifier, self.scan_number))
         self.readout.print_readout_status()
 
         self.device.dispose()  # free USB resources
@@ -396,7 +372,7 @@ class ScanBase(object):
 #             else:
 #                 commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=["EnableDigInj"]))
             self.register_utils.send_commands(commands, concatenate=True)
-            self.logger.info('%d injection(s): mask step %d %s' % (repeat_command, mask_step, ('[%d - %d]' % (enable_mask_steps[0], enable_mask_steps[-1])) if len(enable_mask_steps) > 1 else ('[%d]' % enable_mask_steps[0])))
+            logging.info('%d injection(s): mask step %d %s' % (repeat_command, mask_step, ('[%d - %d]' % (enable_mask_steps[0], enable_mask_steps[-1])) if len(enable_mask_steps) > 1 else ('[%d]' % enable_mask_steps[0])))
 
             # set repeat, should be 1 by default when arriving here
             if hardware_repeat == True:
@@ -446,7 +422,7 @@ class ScanBase(object):
 
     def signal_handler(self, signum, frame):
         signal.signal(signal.SIGINT, signal.SIG_DFL)  # setting default handler... pressing Ctrl-C a second time will kill application
-        self.logger.info('Pressed Ctrl-C. Stopping scan...')
+        logging.info('Pressed Ctrl-C. Stopping scan...')
         self.scan_aborted = False
         self.stop_thread_event.set()
 
@@ -518,7 +494,7 @@ def set_event_when_keyboard_interrupt(_lambda):
             try:
                 f(self, *f_args, **f_kwargs)
             except KeyboardInterrupt:
-                #self.logger.info('Keyboard interrupt: setting %s' % _lambda(self).__name__)
+                #logging.info('Keyboard interrupt: setting %s' % _lambda(self).__name__)
                 _lambda(self).set()
         return wrapped_f
     return wrapper
