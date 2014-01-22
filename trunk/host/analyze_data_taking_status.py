@@ -7,6 +7,7 @@ import string
 import smtplib
 import logging
 import pprint
+from datetime import datetime
 from threading import Event
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -15,13 +16,13 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(leve
 
 configuration = {
     "path_to_monitor": 'data/SCC_99',  # the monitor the watchdog checks
-    "timeout": 30,  # the timeout in seconds until an alert email is send if the data files did not change
+    "timeout": 30 * 60,  # the timeout in seconds until an alert email is send if the data files did not change
     'data_files': None,  # the files that are monitored for changes
     "check_subfolders": True,  # check also the subfolders of 'path_to_monitor'
-    "email_text_alert": 'Sorry SCC 99 does not collect data... go to work ;-)\nSincerely Mr. Beam',  # outgoing mail server
+    "email_text_alert": 'Sorry, SCC 99 did not collect data within the last 30 min. Usually one GDAC setting takes less than 15. min to collect the desired triggers. Please check ;-)\nSincerely Mr. Beam',  # outgoing mail server
     "email_text_alert_cleared": 'Very nice, I see that the data taking works again\nSincerely Mr. Beam',  # outgoing mail server
     "email_host": 'mail.gmx.net',  # outgoing mail server
-    "email_to": ["pohl@physik.uni-bonn.de"],#, "janssen@physik.uni-bonn.de"],  # the Email adresses the status emails are send to
+    "email_to": ["pohl@physik.uni-bonn.de", "janssen@physik.uni-bonn.de"],  # the Email adresses the status emails are send to
     "email_account": ['mr_beam@gmx.de', 'pidub123']  # email account name and password used to send email
 }
 
@@ -37,7 +38,7 @@ def send_mail(text, subject=''):
             ), "\r\n")
     server = smtplib.SMTP(configuration['email_host'])
     server.login(configuration['email_account'][0], configuration['email_account'][1])
-    server.sendmail(configuration['email_account'][0], configuration['email_to'][0], body)
+    server.sendmail(configuration['email_account'][0], configuration['email_to'], body)
     server.quit()
 
 
