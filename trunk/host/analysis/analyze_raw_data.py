@@ -148,7 +148,7 @@ class AnalyzeRawData(object):
         self.create_cluster_table = False
         self.create_cluster_size_hist = False
         self.create_cluster_tot_hist = False
-        self._n_injection = 100
+        self.n_injections = 100
         self.n_bcid = 16
         self.max_tot_value = 13
 
