@@ -62,25 +62,24 @@ def read_chip_sn(self):
         return
     read_values = []
     for index, word in enumerate(np.nditer(data)):
-        fei4_data = FEI4Record(word, self.register.chip_flavor)
-        if fei4_data == 'AR':
-            read_value = FEI4Record(data[index + 1], self.register.chip_flavor)['value']
-            # print read_value
-            read_values.append(read_value)
-
-    # print read_values
-    # sn_struct = struct.pack(len(read_values)*'H', *read_values)
-
-    if len(read_values) == 0:
-        chip_sn = None
-    else:
-        chip_sn = read_values[0]
+        fei4_data_word = FEI4Record(word, self.register.chip_flavor)
+        if fei4_data_word == 'AR':
+            fei4_next_data_word = FEI4Record(data[index + 1], self.register.chip_flavor)
+            if fei4_next_data_word == 'VR':
+                read_value = fei4_next_data_word['value']
+                # print read_value
+                read_values.append(read_value)
 
     commands = []
     commands.extend(self.register.get_commands("runmode"))
     self.register_utils.send_commands(commands)
 
-    logging.info('Chip S/N: %d' % chip_sn)
+    if len(read_values) == 0:
+        logging.warning('No Chip S/N was found')
+    elif len(read_values) == 1:
+        logging.info('Chip S/N: %d' % read_values[0])
+    else:
+        logging.warning('Ambiguous Chip S/N: %s' % read_values)
 
 
 def test_global_register(self):
@@ -108,21 +107,26 @@ def test_global_register(self):
     checked_address = []
     number_of_errors = 0
     for index, word in enumerate(np.nditer(data)):
-        fei4_data = FEI4Record(word, self.register.chip_flavor)
-        # print fei4_data
-        if fei4_data == 'AR':
-            read_value = FEI4Record(data[index + 1], self.register.chip_flavor)['value']
-            set_value_bitarray = self.register.get_global_register_bitsets([fei4_data['address']])[0]
-            set_value_bitarray.reverse()
-            set_value = struct.unpack('H', set_value_bitarray.tobytes())[0]
-            checked_address.append(fei4_data['address'])
-            # print int(self.register.get_global_register_bitsets([fei4_data['address']])[0])
-            if read_value == set_value:
-                # print 'Register Test:', 'Address', fei4_data['address'], 'PASSED'
-                pass
+        fei4_data_word = FEI4Record(word, self.register.chip_flavor)
+        # print fei4_data_word
+        if fei4_data_word == 'AR':
+            fei4_next_data_word = FEI4Record(data[index + 1], self.register.chip_flavor)
+            if fei4_next_data_word == 'VR':
+                read_value = fei4_next_data_word['value']
+                set_value_bitarray = self.register.get_global_register_bitsets([fei4_data_word['address']])[0]
+                set_value_bitarray.reverse()
+                set_value = struct.unpack('H', set_value_bitarray.tobytes())[0]
+                checked_address.append(fei4_data_word['address'])
+                # print int(self.register.get_global_register_bitsets([fei4_data_word['address']])[0])
+                if read_value == set_value:
+                    # print 'Register Test:', 'Address', fei4_data_word['address'], 'PASSED'
+                    pass
+                else:
+                    number_of_errors += 1
+                    logging.warning('Global Register Test: Wrong data for Global Register at address %d (read: %d, expected: %d)' % (fei4_data_word['address'], read_value, set_value))
             else:
                 number_of_errors += 1
-                logging.warning('Global Register Test: Wrong data for Global Register at address %d (read: %d, expected: %d)' % (fei4_data['address'], read_value, set_value))
+                logging.warning('Global Register Test: Expected Value Record but found %s' % fei4_next_data_word)
 
     commands = []
     commands.extend(self.register.get_commands("runmode"))
@@ -250,41 +254,46 @@ def test_pixel_register(self):
                             # print int(self.register.get_global_register_bitsets([fei4_data['address']])[0])
                             #read_value = BitArray(uint=FEI4Record(data[index + 1], self.register.chip_flavor)['value'], length=16)
                             read_value = bitarray()
-                            read_value.frombytes(struct.pack('H', FEI4Record(data[index + 1], self.register.chip_flavor)['value']))
-                            if do_latch == True:
-                                read_value.invert()
-                            read_value = struct.unpack('H', read_value.tobytes())[0]
-                            read_address = fei4_data['address']
-                            if read_address not in expected_addresses:
-                                if do_latch:
-                                    logging.warning('Pixel Register Test: Wrong address for PxStrobes Bit %d at DC %d at address %d' % (pxstrobe + pxstrobe_bit_no, dc_no, read_address))
-                                else:
-                                    logging.warning('Pixel Register Test: Wrong address for PxStrobes Bit SR at DC %d at address %d' % (dc_no, read_address))
-                                number_of_errors += 1
-                            else:
-                                if read_address not in seen_addresses:
-                                    seen_addresses[read_address] = 1
-                                    set_value = register_bitset[read_address - 15:read_address + 1]
-                                    set_value = struct.unpack('H', set_value.tobytes())[0]
-                                    if read_value == set_value:
-#                                        if do_latch:
-#                                            print 'Register Test:', 'PxStrobes Bit', pxstrobe+pxstrobe_bit_no, 'DC', dc_no, 'Address', read_address, 'PASSED'
-#                                        else:
-#                                            print 'Register Test:', 'PxStrobes Bit', 'SR', 'DC', dc_no, 'Address', read_address, 'PASSED'
-                                        pass
+                            fei4_next_data_word = FEI4Record(data[index + 1], self.register.chip_flavor)
+                            if fei4_next_data_word == 'VR':
+                                read_value.frombytes(struct.pack('H', fei4_next_data_word['value']))
+                                if do_latch == True:
+                                    read_value.invert()
+                                read_value = struct.unpack('H', read_value.tobytes())[0]
+                                read_address = fei4_data['address']
+                                if read_address not in expected_addresses:
+                                    if do_latch:
+                                        logging.warning('Pixel Register Test: Wrong address for PxStrobes Bit %d at DC %d at address %d' % (pxstrobe + pxstrobe_bit_no, dc_no, read_address))
                                     else:
+                                        logging.warning('Pixel Register Test: Wrong address for PxStrobes Bit SR at DC %d at address %d' % (dc_no, read_address))
+                                    number_of_errors += 1
+                                else:
+                                    if read_address not in seen_addresses:
+                                        seen_addresses[read_address] = 1
+                                        set_value = register_bitset[read_address - 15:read_address + 1]
+                                        set_value = struct.unpack('H', set_value.tobytes())[0]
+                                        if read_value == set_value:
+    #                                        if do_latch:
+    #                                            print 'Register Test:', 'PxStrobes Bit', pxstrobe+pxstrobe_bit_no, 'DC', dc_no, 'Address', read_address, 'PASSED'
+    #                                        else:
+    #                                            print 'Register Test:', 'PxStrobes Bit', 'SR', 'DC', dc_no, 'Address', read_address, 'PASSED'
+                                            pass
+                                        else:
+                                            number_of_errors += 1
+                                            if do_latch:
+                                                logging.warning('Pixel Register Test: Wrong value at PxStrobes Bit %d at DC %d at address %d (read: %d, expected: %d)' % (pxstrobe + pxstrobe_bit_no, dc_no, read_address, read_value, set_value))
+                                            else:
+                                                logging.warning('Pixel Register Test: Wrong value at PxStrobes Bit SR at DC %d at address %d (read: %d, expected: %d)' % (dc_no, read_address, read_value, set_value))
+                                    else:
+                                        seen_addresses[read_address] = seen_addresses[read_address] + 1
                                         number_of_errors += 1
                                         if do_latch:
-                                            logging.warning('Pixel Register Test: Wrong value at PxStrobes Bit %d at DC %d at address %d (read: %d, expected: %d)' % (pxstrobe + pxstrobe_bit_no, dc_no, read_address, read_value, set_value))
+                                            logging.warning('Pixel Register Test: Multiple occurrence of data for PxStrobes Bit %d at DC %d at address %d' % (pxstrobe + pxstrobe_bit_no, dc_no, read_address))
                                         else:
-                                            logging.warning('Pixel Register Test: Wrong value at PxStrobes Bit SR at DC %d at address %d (read: %d, expected: %d)' % (dc_no, read_address, read_value, set_value))
-                                else:
-                                    seen_addresses[read_address] = seen_addresses[read_address] + 1
-                                    number_of_errors += 1
-                                    if do_latch:
-                                        logging.warning('Pixel Register Test: Multiple occurrence of data for PxStrobes Bit %d at DC %d at address %d' % (pxstrobe + pxstrobe_bit_no, dc_no, read_address))
-                                    else:
-                                        logging.warning('Pixel Register Test: Multiple occurrence of data for PxStrobes Bit SR at DC %d at address %d' % (dc_no, read_address))
+                                            logging.warning('Pixel Register Test: Multiple occurrence of data for PxStrobes Bit SR at DC %d at address %d' % (dc_no, read_address))
+                            else:
+                                # number_of_errors += 1  # will be increased later
+                                logging.warning('Pixel Register Test: Expected Value Record but found %s' % fei4_next_data_word)
 
                     not_read_addresses = set.difference(set(expected_addresses), seen_addresses.iterkeys())
                     not_read_addresses = list(not_read_addresses)
