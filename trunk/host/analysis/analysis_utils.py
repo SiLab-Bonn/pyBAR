@@ -2,6 +2,7 @@
 """
 
 import logging
+import re
 import pandas as pd
 import numpy as np
 import numexpr as ne
@@ -60,11 +61,42 @@ def central_difference(x, y):
     return (z2 - z1) / (dx2 + dx1)
 
 
+def get_parameter_value_of_files(files, parameter_name):
+    """
+    Takes a list of files, searches for the parameter name and returns a ordered dict with the parameter value in the first dimension and a list of matching
+    file names in the second.
+
+    Parameters
+    ----------
+    files : list of strings
+    parameter_name : string
+
+    Returns
+    -------
+    collections.OrderedDict
+
+    """
+    files_dict = {}
+    for file in files:
+        parameter_value = re.findall(parameter_name + r'_(\d+)', file)
+        if parameter_value:
+            parameter_value = int(parameter_value[0])
+            if parameter_value in files_dict:
+                raise RuntimeError('File name search for ' + parameter_name + ' matches multiple files')
+#                 files_dict[parameter_value].append(file)
+            else:
+                files_dict[parameter_value] = file
+    import collections
+    return collections.OrderedDict(sorted(files_dict.items()))
+
+
 def in1d_sorted(ar1, ar2):
     """
     Does the same than np.in1d but uses the fact that ar1 and ar2 are sorted. Is therefore much faster.
 
     """
+    if ar1.shape[0] == 0 or ar2.shape[0] == 0:  # check for empty arrays to avoid crash
+        return []
     inds = ar2.searchsorted(ar1)
     inds[inds == len(ar2)] = 0
     return ar2[inds] == ar1
@@ -90,7 +122,7 @@ def smooth_differentiation(x, y, weigths=None, order=5, smoothness=3, derivation
 
 def reduce_sorted_to_intersect(ar1, ar2):
     """
-    Takes two sorted arrays and return the intersection ar1 in ar2 and ar2 in ar1.
+    Takes two sorted arrays and return the intersection ar1 in ar2, ar2 in ar1.
 
     Parameters
     ----------
@@ -102,7 +134,7 @@ def reduce_sorted_to_intersect(ar1, ar2):
     Returns
     -------
     ar1, ar1 : ndarray, ndarray
-        The interesction values.
+        The intersection values.
 
     """
     # Ravel both arrays, behavior for the first array could be different
@@ -115,7 +147,7 @@ def reduce_sorted_to_intersect(ar1, ar2):
     ar2_biggest_value = ar2[-1]
     ar2_smallest_value = ar2[0]
 
-    if ar1_biggest_value < ar2_smallest_value or ar1_smallest_value > ar2_biggest_value or ar1_smallest_value == ar1_biggest_value or ar2_smallest_value == ar2_biggest_value:  # special case, no intersection at all
+    if ar1_biggest_value < ar2_smallest_value or ar1_smallest_value > ar2_biggest_value:  # special case, no intersection at all
         return ar1[0:0], ar2[0:0]
 
     # get min/max indices with values that are also in the other array
@@ -346,7 +378,7 @@ def write_hits_in_events(hit_table_in, hit_table_out, events, start_hit_word=0, 
     if len(events) > 0:  # needed to avoid crash
         min_event = np.amin(events)
         max_event = np.amax(events)
-        logging.info("Write hits from hit number >= %d that exists in the selected %d events with %d <= event number < %d into a new hit table." % (start_hit_word, len(events), min_event, max_event))
+        logging.info("Write hits from hit number >= %d that exists in the selected %d events with %d <= event number <= %d into a new hit table." % (start_hit_word, len(events), min_event, max_event))
         table_size = hit_table_in.shape[0]
         iHit = 0
         for iHit in range(start_hit_word, table_size, chunk_size):
@@ -667,7 +699,7 @@ def data_aligned_at_events(table, start_event_number=None, stop_event_number=Non
             stop_index = stop_indeces[0]
             stop_index_known = True
 
-    if start_index_known and stop_index_known and start_index + chunk_size >= stop_index:  # special case, one read is enough, data not bigger than one chunk and the indices are known
+    if (start_index_known and stop_index_known) or (start_index + chunk_size >= stop_index):  # special case, one read is enough, data not bigger than one chunk and the indices are known
             yield table.read(start=start_index, stop=stop_index), stop_index
     else:  # read data in chunks, chunks do not divide events, abort if stop_event_number is reached
         while(start_index < stop_index):
@@ -708,4 +740,15 @@ class AnalysisUtils(object):
         pass
 
 if __name__ == "__main__":
-    pass
+    l = [1, 2, 11999, 20000]
+    ll = [1, 2, 11998, 11999]
+    print reduce_sorted_to_intersect(l, ll)
+    print reduce_sorted_to_intersect(ll, l)
+ 
+    lll = [11999]
+    print reduce_sorted_to_intersect(l, lll)
+    print reduce_sorted_to_intersect(lll, l)
+ 
+    llll = [0]
+    print reduce_sorted_to_intersect(ll, llll)
+    print reduce_sorted_to_intersect(llll, ll)
