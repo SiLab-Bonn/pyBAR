@@ -64,7 +64,7 @@ class ScanBase(object):
             else:
                 raise TypeError('Device has wrong type')
             try:
-                logging.info('Using USB board with ID %s', self.device.board_id)
+                logging.info('Using %s with ID %s (FW %s)', self.device.board_name, filter(type(self.device.board_id).isdigit, self.device.board_id), filter(type(self.device.fw_version).isdigit, self.device.fw_version))
             except USBError:
                 raise DeviceError('Can\'t communicate with USB board. Reset USB board!')
         else:
@@ -73,7 +73,7 @@ class ScanBase(object):
             except USBError:
                 raise NoDeviceError('Can\'t find USB board. Connect or reset USB board!')
             try:
-                logging.info('Found USB board with ID %s', self.device.board_id)
+                logging.info('Found %s with ID %s (FW %s)', self.device.board_name, filter(type(self.device.board_id).isdigit, self.device.board_id), filter(type(self.device.fw_version).isdigit, self.device.fw_version))
             except USBError:
                 raise DeviceError('Can\'t communicate with USB board. Reset USB board!')
         if bit_file != None:
