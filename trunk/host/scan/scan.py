@@ -3,6 +3,7 @@ import os
 import logging
 import re
 import tables as tb
+import platform
 from analysis.RawDataConverter.data_struct import generate_scan_configuration_description
 
 from threading import Thread, Event, Lock, Timer
@@ -244,7 +245,11 @@ class ScanBase(object):
         self.lock.acquire()
         if not os.path.exists(self.scan_data_output_path):
             os.makedirs(self.scan_data_output_path)
-        with open(os.path.join(self.scan_data_output_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), "rw+") as f:
+        if platform.system() == 'Darwin':
+            mode = 'rw+'
+        else:
+            mode = 'w+'
+        with open(os.path.join(self.scan_data_output_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), mode) as f:
             for line in f.readlines():
                 scan_number = int(re.findall(r'\d+\s', line)[0])
                 scan_numbers[scan_number] = line
@@ -262,7 +267,11 @@ class ScanBase(object):
     def write_scan_status(self, aborted=False):
         scan_numbers = {}
         self.lock.acquire()
-        with open(os.path.join(self.scan_data_output_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), "rw+") as f:
+        if platform.system() == 'Darwin':
+            mode = 'rw+'
+        else:
+            mode = 'w+'
+        with open(os.path.join(self.scan_data_output_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), mode) as f:
             for line in f.readlines():
                 scan_number = int(re.findall(r'\d+\s', line)[0])
                 if scan_number != self.scan_number:
