@@ -461,9 +461,9 @@ class AnalyzeRawData(object):
             nEventIndex = self.interpreter.get_n_meta_data_event()
             if (meta_data_size == nEventIndex):
                 if self.interpreter.meta_table_v2:
-                    description = data_struct.MetaInfoEventTableV2().columns
+                    description = data_struct.MetaInfoEventTableV2().columns.copy()
                 else:
-                    description = data_struct.MetaInfoEventTable().columns
+                    description = data_struct.MetaInfoEventTable().columns.copy()
                 last_pos = len(description)
                 if (self.scan_parameters != None):  # add additional column with the scan parameter
                     for scan_par_name in self.scan_parameters.dtype.names:
