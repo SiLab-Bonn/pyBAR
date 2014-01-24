@@ -85,7 +85,7 @@ def plot_fancy_occupancy(hist, z_max=None, filename=None):
 
 
 def plot_occupancy(hist, title='Occupancy', z_max=None, filename=None):
-    plt.clf()
+#     plt.clf()
     if z_max == 'median':
         median = np.ma.median(hist)
         z_max = median * 2  # round_to_multiple(median * 2, math.floor(math.log10(median * 2)))
@@ -192,9 +192,9 @@ def plot_profile_histogram(x, y, n_bins=100, title=None, x_label=None, y_label=N
 
 def plot_scatter(x, y, title=None, x_label=None, y_label=None, marker_style='-o', log_x=False, log_y=False, filename=None):
     logging.info("Plot scatter plot %s" % ((': ' + title) if title is not None else ''))
-    plt.clf()
-    fig = plt.figure()
-    fig.patch.set_facecolor('white')
+#     plt.clf()
+#     fig = plt.figure()
+#     fig.patch.set_facecolor('white')
     plt.plot(x, y, marker_style)
     plt.title(title)
     if x_label is not None:
