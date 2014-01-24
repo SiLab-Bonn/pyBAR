@@ -4,6 +4,7 @@
 import logging
 import re
 import sys
+import os
 import itertools
 import collections
 import pandas as pd
@@ -16,6 +17,26 @@ from scipy.sparse import coo_matrix
 from scipy.interpolate import splrep, splev
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
+
+
+def get_data_statistics(interpreted_files):
+    '''Quick and dirty function to give as redmine compatible iverview table
+    '''
+    print '| File Name | File Size | Events | Bad Events | Measurement time | # SR | Hits |'# Mean Tot | Mean rel. BCID'
+    for interpreted_file in interpreted_files:
+        with tb.openFile(interpreted_file, mode="r") as in_file_h5:  # open the actual hit file
+            event_errors = in_file_h5.root.HistErrorCounter[:]
+            n_hits = np.sum(in_file_h5.root.HistOcc[:])
+            measurement_time = int(in_file_h5.root.meta_data[-1]['timestamp_stop'] - in_file_h5.root.meta_data[0]['timestamp_start'])
+#             mean_tot = np.average(in_file_h5.root.HistTot[:], weights=range(0,16) * np.sum(range(0,16)))# / in_file_h5.root.HistTot[:].shape[0]
+#             mean_bcid = np.average(in_file_h5.root.HistRelBcid[:], weights=range(0,16))
+            n_sr = np.sum(in_file_h5.root.HistServiceRecord[:])
+            n_bad_events = int(np.sum(in_file_h5.root.HistErrorCounter[2:]))
+            try:
+                n_events = str(in_file_h5.root.Hits[-1]['event_number'] + 1)
+            except tb.NoSuchNodeError:
+                n_events = '~' + str(in_file_h5.root.meta_data[-1]['event_number'] + (in_file_h5.root.meta_data[-1]['event_number'] - in_file_h5.root.meta_data[-2]['event_number']))
+            print '|', os.path.basename(interpreted_file), '|', int(os.path.getsize(interpreted_file) / (1024 * 1024.)), 'Mb |', n_events, '|', n_bad_events, '|', measurement_time, 's |', n_sr, '|', n_hits, '|'#, mean_tot, '|', mean_bcid, '|'
 
 
 def get_profile_histogram(x, y, n_bins=100):

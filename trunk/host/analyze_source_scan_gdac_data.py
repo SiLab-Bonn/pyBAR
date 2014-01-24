@@ -32,7 +32,7 @@ analysis_configuration = {
     "scan_name": 'test',
     "folder": 'data//',
     'input_file_calibration': 'data//calibrate_threshold_gdac_MDBM30.h5',
-    "analysis_steps": [1, 2, 3, 4],#[1, 2, 3, 4],  # the analysis includes the selected steps here. See explenation above.
+    "analysis_steps": [1, 2, 3, 4],  # the analysis includes the selected steps here. See explenation above.
     "chip_flavor": 'fei4b',
     "n_bcid": 4,
     "max_tot_value": 13,  # maximum tot value to use the hit
@@ -235,8 +235,9 @@ def analyze_raw_data(input_files, output_files_hits, chip_flavor, scan_data_file
                 analyze_raw_data.interpreter.set_warning_output(analysis_configuration['interpreter_warnings'])  # std. setting is True
                 analyze_raw_data.interpreter.debug_events(0, 10, False)  # events to be printed onto the console for debugging, usually deactivated
                 analyze_raw_data.interpret_word_table(fei4b=True if(chip_flavor == 'fei4b') else False)  # the actual start conversion command
-                analyze_raw_data.interpreter.print_summary()  # prints the interpreter summary
+#                 analyze_raw_data.interpreter.print_summary()  # prints the interpreter summary
                 analyze_raw_data.plot_histograms(scan_data_filename=scan_data_filenames[index])  # plots all activated histograms into one pdf
+    analysis_utils.get_data_statistics(output_files_hits)
 
 
 def analyze_cluster_size(input_files_hits, output_file, parameter='GDAC', output_file_pdf=None):
