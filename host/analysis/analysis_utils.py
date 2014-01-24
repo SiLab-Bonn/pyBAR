@@ -3,12 +3,17 @@
 
 import logging
 import re
+import sys
+import itertools
+import collections
 import pandas as pd
 import numpy as np
+import tables as tb
 import numexpr as ne
+from analysis.plotting import plotting
+from operator import itemgetter
 from scipy.sparse import coo_matrix
 from scipy.interpolate import splrep, splev
-import sys
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
@@ -40,6 +45,97 @@ def get_profile_histogram(x, y, n_bins=100):
     return bin_centers, mean, std_mean
 
 
+def get_normalization(hit_files, parameter, reference='event', sort=False, plot=False):
+    ''' Takes different hit files (hit_files), extracts the number of events or the scan time (reference) per scan parameter (parameter)
+    and returns an array with a normalization factor. This normalization factor has the length of the number of different parameters.
+    One can also sort the normalization by the parameter values.
+
+    Parameters
+    ----------
+    hit_files : list of strings
+    parameter : string
+    reference : string
+    plot : bool
+
+    Returns
+    -------
+    numpy.ndarray
+    '''
+
+    scan_parameter_values_files_dict = get_parameter_value_from_files(hit_files, parameter, sort=sort)
+    normalization = []
+    for one_file in scan_parameter_values_files_dict:
+        with tb.openFile(one_file, mode="r") as in_hit_file_h5:  # open the actual hit file
+            meta_data = in_hit_file_h5.root.meta_data[:]
+            if reference == 'event':
+                try:
+                    event_numbers = get_meta_data_at_scan_parameter(meta_data, parameter)['event_number']  # get the event numbers in meta_data where the scan parameter changes
+                    event_range = get_event_range(event_numbers)
+                    event_range[-1, 1] = event_range[-2, 1]  # hack the last event range not to be None
+                    n_events = event_range[:, 1] - event_range[:, 0]  # number of events for every GDAC
+                    n_events[-1] = n_events[-2] - (n_events[-3] - n_events[-2])  # FIXME: set the last number of events manually, bad extrapolaton
+                except ValueError:  # there is not necessarily a scan parameter given in the meta_data
+                    n_events = [meta_data[-1]['event_number'] + (meta_data[-1]['event_number'] - meta_data[-2]['event_number'])]
+                normalization.extend(n_events)
+                logging.warning('Last number of events unknown and extrapolated')
+            elif reference == 'time':
+                try:
+                    time_start = get_meta_data_at_scan_parameter(meta_data, parameter)['timestamp_start']
+                    time_spend = np.diff(time_start)
+                    time_spend = np.append(time_spend, meta_data[-1]['timestamp_stop'] - time_start[-1])  # TODO: needs check, add last missing entry
+                except ValueError:  # there is not necessarily a scan parameter given in the meta_data
+                    time_spend = [meta_data[-1]['timestamp_stop'] - meta_data[0]['timestamp_start']]
+                normalization.extend(time_spend)
+            else:
+                raise NotImplementedError('The normalization reference ' + reference + ' is not implemented')
+    if plot:
+        x = list(itertools.chain.from_iterable(scan_parameter_values_files_dict.values()))
+        if reference == 'event':
+            plotting.plot_scatter(x, normalization, title='Events per ' + parameter + ' setting', x_label=parameter, y_label='# events', log_x=True)
+        elif reference == 'time':
+            plotting.plot_scatter(x, normalization, title='Measuring time per GDAC setting', x_label=parameter, y_label='time [s]', log_x=True)
+    return np.amax(np.array(normalization)).astype('f16') / np.array(normalization)
+
+
+def get_occupancy_per_parameter(hit_analyzed_files, parameter='GDAC'):
+    '''Takes the hit files mentioned in hit_analyzed_files, opens the occupancy hist of each file and combines theses occupancy hist to one occupancy hist, where
+    the third dimension is the number of scan parameters (col * row * n_parameter).
+    Every scan parameter value is checked to have only one corresponding occupancy histogram. The files can have a scan parameter, which is then extracted from the
+    meta data. If there is no scan parameter given the scan parameter is extracted from the file name.
+
+    Parameters
+    ----------
+    hit_analyzed_files : list of strings:
+        Absolute paths of the analyzed hit files containing the occupancy histograms.
+        data x positions
+    parameter : string:
+        The name of the scan parameter varied for the different occupancy histograms
+    '''
+    logging.info('Get and combine the occupancy hists from ' + str(len(hit_analyzed_files)) + ' files')
+    occupancy_combined = None
+    all_scan_parameters = []  # list with all scan parameters of all files, used to check for parameter values that occurs more than once
+    for index in range(0, len(hit_analyzed_files)):  # loop over all hit files
+        with tb.openFile(hit_analyzed_files[index], mode="r") as in_hit_analyzed_file_h5:  # open the actual hit file
+            scan_parameter = get_scan_parameter(in_hit_analyzed_file_h5.root.meta_data[:])  # get the scan parameters
+            if scan_parameter:  # scan parameter is not none, therefore the occupancy hist has more dimensions col*row*n_scan_parameter
+                scan_parameter_values = scan_parameter[parameter].tolist()  # get the scan parameters
+                if set(scan_parameter_values).intersection(all_scan_parameters):  # check that the scan parameters are unique
+                    logging.error('The following settings for ' + parameter + ' appear more than once: ' + str(set(scan_parameter).intersection(all_scan_parameters)))
+                    raise NotImplementedError('Every scan parameter has to have only one occupancy histogram')
+                all_scan_parameters.extend(scan_parameter_values)
+            else:  # scan parameter not in meta data, therefore it has to be in the file name
+                parameter_value = get_parameter_value_from_file_names([hit_analyzed_files[index]], parameter).values()[0]  # get the parameter value from the file name
+                if parameter_value in all_scan_parameters:  # check that the scan parameters are unique
+                    logging.error('The setting ' + str(parameter_value) + ' for ' + parameter + ' appears more than once')
+                    raise NotImplementedError('Every scan parameter has to have only one occupancy histogram')
+                all_scan_parameters.append(long(parameter_value))
+            if occupancy_combined is None:
+                occupancy_combined = in_hit_analyzed_file_h5.root.HistOcc[:]
+            else:
+                occupancy_combined = np.append(occupancy_combined, in_hit_analyzed_file_h5.root.HistOcc[:], axis=2)
+    return occupancy_combined, all_scan_parameters
+
+
 def central_difference(x, y):
     '''Returns the dy/dx(x) via central difference method
 
@@ -61,33 +157,73 @@ def central_difference(x, y):
     return (z2 - z1) / (dx2 + dx1)
 
 
-def get_parameter_value_of_files(files, parameter_name):
+def get_parameter_value_from_file_names(files, parameter, sort=True):
     """
-    Takes a list of files, searches for the parameter name and returns a ordered dict with the parameter value in the first dimension and a list of matching
-    file names in the second.
+    Takes a list of files, searches for the parameter name in the file name and returns a ordered dict with the file name
+    in the first dimension and the corresponding parameter value in the second.
+    The file names can be sorted by the parameter value, otherwise the order is kept.
 
     Parameters
     ----------
     files : list of strings
-    parameter_name : string
+    parameter : string
+    sort : bool
 
     Returns
     -------
     collections.OrderedDict
 
     """
-    files_dict = {}
-    for file in files:
-        parameter_value = re.findall(parameter_name + r'_(\d+)', file)
+    logging.info('Get the ' + parameter + ' values from the file names of ' + str(len(files)) + ' files')
+    files_dict = collections.OrderedDict()
+    for one_file in files:
+        parameter_value = re.findall(parameter + r'_(\d+)', one_file)
         if parameter_value:
             parameter_value = int(parameter_value[0])
-            if parameter_value in files_dict:
-                raise RuntimeError('File name search for ' + parameter_name + ' matches multiple files')
-#                 files_dict[parameter_value].append(file)
+            if parameter_value in files_dict.items():
+                raise NotImplementedError('File name search for ' + parameter + ' matches multiple files')
             else:
-                files_dict[parameter_value] = file
-    import collections
-    return collections.OrderedDict(sorted(files_dict.items()))
+                files_dict[one_file] = parameter_value
+    return collections.OrderedDict(sorted(files_dict.iteritems(), key=itemgetter(1)) if sort else files_dict)  # with PEP 265 solution of sorting a dict by value
+
+
+def get_parameter_value_from_files(files, parameter, sort=True):
+    '''
+    Takes a list of files, searches for the parameter name in the file name and in the file and returns a ordered dict with the parameter values
+    in the first dimension and the corresponding file name in the second.
+    If a scan parameter appears in the file name and in the file the first parameter setting has to be in the file name, otherwise a warning is shown.
+    The file names can be sorted by the first parameter value of each file.
+
+    Parameters
+    ----------
+    files : list of strings
+    parameter : string
+    sort : bool
+
+    Returns
+    -------
+    collections.OrderedDict
+
+    '''
+    logging.info('Get the ' + parameter + ' values from ' + str(len(files)) + ' files')
+    files_dict = collections.OrderedDict()
+    parameter_values_from_file_names_dict = get_parameter_value_from_file_names(files, parameter, sort=sort)
+    for file_name, parameter_value_from_file_name in parameter_values_from_file_names_dict.iteritems():
+        with tb.openFile(file_name, mode="r") as in_file_h5:  # open the actual hit file
+            try:
+                scan_parameters = get_scan_parameter(in_file_h5.root.meta_data[:])  # get the scan parameters from the meta data
+                if scan_parameters:
+                    scan_parameter_values = scan_parameters[parameter].tolist()  # scan parameter settings used
+                else:
+                    scan_parameter_values = None
+            except tb.NoSuchNodeError:  # no meta data array and therefore no scan parameter used
+                scan_parameter_values = None
+            if scan_parameter_values is None:
+                scan_parameter_values = [parameter_value_from_file_name]
+            elif parameter_value_from_file_name != scan_parameter_values[0]:
+                logging.warning(parameter + ' = ' + str(parameter_value_from_file_name) + ' info in file name differs from the ' + parameter + ' info = ' + str(scan_parameter_values) + ' in the meta data')
+            files_dict[file_name] = scan_parameter_values
+    return collections.OrderedDict(files_dict)
 
 
 def in1d_sorted(ar1, ar2):
@@ -484,7 +620,6 @@ def get_n_cluster_in_events(event_number):
         return np.vstack((selected_event_number, cluster_in_event[selected_event_number])).T
 
 
-# @profile
 def get_n_cluster_per_event_hist(cluster_table):
     '''Calculates the number of cluster in every event.
 
@@ -501,7 +636,6 @@ def get_n_cluster_per_event_hist(cluster_table):
     return np.histogram(cluster_in_events, bins=range(0, np.max(cluster_in_events) + 2))  # histogram the occurrence of n cluster per event
 
 
-# @profile
 def histogram_correlation(data_frame_combined):
     '''Takes a dataframe with combined hit data from two Fe and correlates for each event each hit from one Fe to each hit of the other Fe.
 
@@ -725,19 +859,6 @@ def data_aligned_at_events(table, start_event_number=None, stop_event_number=Non
             start_index = start_index + nrows  # events fully read, increase start index and continue reading
 
 
-class AnalysisUtils(object):
-    """A class to analyze FE-I4 data with Python"""
-    def __init__(self, raw_data_file=None, analyzed_data_file=None):
-        self.set_standard_settings()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *exc_info):
-        pass
-
-    def set_standard_settings(self):
-        pass
 
 if __name__ == "__main__":
     l = [1, 2, 11999, 20000]
