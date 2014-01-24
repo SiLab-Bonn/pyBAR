@@ -244,7 +244,7 @@ class ScanBase(object):
         self.lock.acquire()
         if not os.path.exists(self.scan_data_output_path):
             os.makedirs(self.scan_data_output_path)
-        with open(os.path.join(self.scan_data_output_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), "a+") as f:
+        with open(os.path.join(self.scan_data_output_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), "rw+") as f:
             for line in f.readlines():
                 scan_number = int(re.findall(r'\d+\s', line)[0])
                 scan_numbers[scan_number] = line
@@ -252,7 +252,7 @@ class ScanBase(object):
             self.scan_number = 0
         else:
             self.scan_number = max(dict.iterkeys(scan_numbers)) + 1
-        scan_numbers[self.scan_number] = str(self.scan_number) + ' ' + self.scan_identifier + '\n'
+        scan_numbers[self.scan_number] = str(self.scan_number) + ' ' + self.scan_identifier + ' ' + 'NOT_FINISHED' + '\n'
         with open(os.path.join(self.scan_data_output_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), "w") as f:
             for value in dict.itervalues(scan_numbers):
                 f.write(value)
@@ -262,13 +262,16 @@ class ScanBase(object):
     def write_scan_status(self, aborted=False):
         scan_numbers = {}
         self.lock.acquire()
-        with open(os.path.join(self.scan_data_output_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), "r") as f:
+        with open(os.path.join(self.scan_data_output_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), "rw+") as f:
             for line in f.readlines():
                 scan_number = int(re.findall(r'\d+\s', line)[0])
                 if scan_number != self.scan_number:
                     scan_numbers[scan_number] = line
                 else:
-                    scan_numbers[scan_number] = line.strip() + (' ABORTED\n' if aborted else ' SUCCESS\n')
+                    scan_numbers[scan_number] = str(self.scan_number) + ' ' + self.scan_identifier + ' ' + ('ABORTED' if aborted else 'FINISHED') + '\n'
+        if scan_number not in scan_numbers:
+            scan_numbers[self.scan_number] = str(self.scan_number) + ' ' + self.scan_identifier + ' ' + ('ABORTED' if aborted else 'SUCCESS') + '\n'
+            logging.warning('Configuration file was deleted: Restoring %s', os.path.join(self.scan_data_output_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"))
         with open(os.path.join(self.scan_data_output_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), "w") as f:
             for value in dict.itervalues(scan_numbers):
                 f.write(value)
