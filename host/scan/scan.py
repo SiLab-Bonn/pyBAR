@@ -248,10 +248,12 @@ class ScanBase(object):
         if platform.system() == 'Darwin':
             mode = 'rw+'
         else:
-            mode = 'w+'
+            mode = 'a+'
         with open(os.path.join(self.scan_data_output_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), mode) as f:
             for line in f.readlines():
-                scan_number = int(re.findall(r'\d+\s', line)[0])
+                scan_number = int(re.findall(r'\d+\s*', line)[0])
+                if line[-1] != '\n':
+                    line = line + '\n'
                 scan_numbers[scan_number] = line
         if not scan_numbers:
             self.scan_number = 0
@@ -270,10 +272,12 @@ class ScanBase(object):
         if platform.system() == 'Darwin':
             mode = 'rw+'
         else:
-            mode = 'w+'
+            mode = 'a+'
         with open(os.path.join(self.scan_data_output_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), mode) as f:
             for line in f.readlines():
-                scan_number = int(re.findall(r'\d+\s', line)[0])
+                scan_number = int(re.findall(r'\d+\s*', line)[0])
+                if line[-1] != '\n':
+                    line = line + '\n'
                 if scan_number != self.scan_number:
                     scan_numbers[scan_number] = line
                 else:
