@@ -380,7 +380,7 @@ class AnalyzeRawData(object):
             self.clusterizer.set_cluster_hit_info_array(cluster_hits)
             self.clusterizer.set_cluster_info_array(cluster)
 
-        logging.info('Interpreting:')
+        logging.info('Interpreting: ' + self._raw_data_file)
         self._filter_table = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
         with tb.openFile(self._raw_data_file, mode="r") as in_file_h5:
             if(self._analyzed_data_file != None):
@@ -444,7 +444,9 @@ class AnalyzeRawData(object):
                     size = self.interpreter.get_n_meta_data_word()
                     meta_word_index_table.append(meta_word[:size])
 
-                logging.info('%d %%' % int(float(float(iWord) / float(table_size) * 100.)))
+#                 if iWord % (int(table_size / 10.)) == 0:
+                if int(float(float(iWord) / float(table_size) * 100.)) % 10 == 0:
+                    logging.info('%d %%' % int(float(float(iWord) / float(table_size) * 100.)))
 
             if (self._analyzed_data_file != None and self._create_hit_table == True):
                 hit_table.flush()
