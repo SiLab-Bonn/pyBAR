@@ -28,16 +28,21 @@ from analysis.analyze_raw_data import AnalyzeRawData
 import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
+
 analysis_configuration = {
-    "scan_name": 'test',
-    "folder": 'data//',
-    'input_file_calibration': 'data//calibrate_threshold_gdac_MDBM30.h5',
-    "analysis_steps": [1, 2, 3, 4],  # the analysis includes the selected steps here. See explenation above.
-    "chip_flavor": 'fei4b',
-    "n_bcid": 4,
+    "scan_name": 'SCC_99_ext_trigger_gdac_scan_432',
+    "folder": 'data//SCC_99//',
+    'input_file_calibration': 'data//calibrate_threshold_gdac_SCC_99_new.h5',
+#     "scan_name": 'MDBM30_ext_trigger_gdac_scan_dbm_489',
+#     "folder": 'data//MDBM30//',
+#     'input_file_calibration': 'data//calibrate_threshold_gdac_MDBM30.h5',
+    "analysis_steps": [1, 2, 3],#, 2, 3, 4],  # the analysis includes the selected steps here. See explenation above.
+    "chip_flavor": 'fei4a',
+    "n_bcid": 16,
     "max_tot_value": 13,  # maximum tot value to use the hit
     "use_cluster_rate_correction": True,  # corrects the hit rate, because one pixel hit cluster are less likely for low thresholds
-    "normalize_rate": True,  # corret the number of GDACs per scan parameter by the number of triggers or scan time
+    "normalize_rate": True,  # correct the number of GDACs per scan parameter by the number of triggers or scan time
+    "normalization_reference": 'event',  # one can normalize the hits per GDAC setting to the number of events ('event') or time ('time')
     "smoothness": 180,  # the smoothness of the spline fit to the data
     "vcal_calibration": 55.,   # calibration electrons/PlsrDAC
     "n_bins": 200,  # number of bins for the profile histogram
@@ -46,9 +51,9 @@ analysis_configuration = {
     "cut_threshold": 0.01,  # the cut threshold for the occupancy to define pixel to use in the analysis
     "min_thr": 500,  # minimum threshold position in electrons to be used for the analysis
     "max_thr": 35000,  # maximum threshold position in electrons to be used for the analysis
-    "normalization_reference": 'event',  # one can normalize the hits per GDAC setting to the number of events ('event') or time ('time')
     "plot_normalization": True,  # active the output of the normalization
-    "interpreter_warnings": False
+    "interpreter_warnings": False,
+    "overwrite_output_files": True
 }
 
 
@@ -208,7 +213,7 @@ def select_hot_region(hits, col_span, row_span, cut_threshold=0.8):
 def analyze_raw_data(input_files, output_files_hits, chip_flavor, scan_data_filenames):
     logging.info('Analyze the raw FE data given in ' + str(len(input_files)) + ' files and store the needed data')
     for index in range(0, len(input_files)):  # loop over all raw data files
-        if os.path.isfile(output_files_hits[index]):  # skip analysis if already done
+        if os.path.isfile(output_files_hits[index]) and not analysis_configuration['overwrite_output_files']:  # skip analysis if already done
             logging.info('Analyzed data file ' + output_files_hits[index] + ' already exists. Skip analysis for this file.')
         else:
             with AnalyzeRawData(raw_data_file=input_files[index], analyzed_data_file=output_files_hits[index]) as analyze_raw_data:
@@ -233,6 +238,7 @@ def analyze_raw_data(input_files, output_files_hits, chip_flavor, scan_data_file
                 analyze_raw_data.max_tot_value = analysis_configuration['max_tot_value']  # set the maximum ToT value considered to be a hit, 14 is a late hit
 
                 analyze_raw_data.interpreter.set_warning_output(analysis_configuration['interpreter_warnings'])  # std. setting is True
+                analyze_raw_data.clusterizer.set_warning_output(analysis_configuration['interpreter_warnings'])  # std. setting is True
                 analyze_raw_data.interpreter.debug_events(0, 10, False)  # events to be printed onto the console for debugging, usually deactivated
                 analyze_raw_data.interpret_word_table(fei4b=True if(chip_flavor == 'fei4b') else False)  # the actual start conversion command
 #                 analyze_raw_data.interpreter.print_summary()  # prints the interpreter summary
@@ -456,6 +462,7 @@ if __name__ == "__main__":
     scan_data_filenames = [filename[:-3] for filename in raw_data_files_dict]
     cluster_sizes_file = analysis_configuration['folder'] + analysis_configuration['scan_name'] + '_ALL_cluster_sizes.h5'
 
+#     analysis_utils.get_data_statistics(hit_files)
     if 1 in analysis_configuration['analysis_steps']:
         analyze_raw_data(input_files=raw_data_files_dict.keys(), output_files_hits=hit_files, chip_flavor=analysis_configuration['chip_flavor'], scan_data_filenames=scan_data_filenames)
     if 2 in analysis_configuration['analysis_steps']:
