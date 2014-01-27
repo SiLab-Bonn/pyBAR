@@ -246,7 +246,7 @@ class ScanBase(object):
         if not os.path.exists(self.scan_data_output_path):
             os.makedirs(self.scan_data_output_path)
         # In Python 2.x, open on all POSIX systems ultimately just depends on fopen.
-        with open(os.path.join(self.scan_data_output_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), mode) as f:
+        with open(os.path.join(self.scan_data_output_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), 'a+') as f:
             f.seek(0)
             for line in f.readlines():
                 print line
@@ -268,7 +268,7 @@ class ScanBase(object):
     def write_scan_status(self, aborted=False):
         scan_numbers = {}
         self.lock.acquire()
-        with open(os.path.join(self.scan_data_output_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), mode) as f:
+        with open(os.path.join(self.scan_data_output_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), 'a+') as f:
             f.seek(0)
             for line in f.readlines():
                 scan_number = int(re.findall(r'\d+\s*', line)[0])
