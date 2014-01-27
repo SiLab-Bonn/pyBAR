@@ -249,7 +249,6 @@ class ScanBase(object):
         with open(os.path.join(self.scan_data_output_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), 'a+') as f:
             f.seek(0)
             for line in f.readlines():
-                print line
                 scan_number = int(re.findall(r'\d+\s*', line)[0])
                 if line[-1] != '\n':
                     line = line + '\n'
