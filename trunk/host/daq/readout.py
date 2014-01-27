@@ -545,7 +545,7 @@ class RawDataFile(object):
         self.meta_data_table = None
         self.scan_param_table = None
         self.raw_data_file_h5 = None
-        self.open(mode, title)
+        self.open(mode, title, **kwargs)
 
     def __enter__(self):
         return self
@@ -554,7 +554,7 @@ class RawDataFile(object):
         self.close()
         return False  # do not hide exceptions
 
-    def open(self, mode='w', title='', **kwargs):
+    def open(self, mode='a', title='', **kwargs):
         if os.path.splitext(self.filename)[1].strip().lower() != ".h5":
             self.filename = os.path.splitext(self.filename)[0] + ".h5"
         if os.path.isfile(self.filename) and mode in ('r+', 'a'):
