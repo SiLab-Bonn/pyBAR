@@ -245,12 +245,11 @@ class ScanBase(object):
         self.lock.acquire()
         if not os.path.exists(self.scan_data_output_path):
             os.makedirs(self.scan_data_output_path)
-        if platform.system() == 'Darwin':
-            mode = 'rw+'
-        else:
-            mode = 'a+'
+        # In Python 2.x, open on all POSIX systems ultimately just depends on fopen.
         with open(os.path.join(self.scan_data_output_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), mode) as f:
+            f.seek(0)
             for line in f.readlines():
+                print line
                 scan_number = int(re.findall(r'\d+\s*', line)[0])
                 if line[-1] != '\n':
                     line = line + '\n'
@@ -269,11 +268,8 @@ class ScanBase(object):
     def write_scan_status(self, aborted=False):
         scan_numbers = {}
         self.lock.acquire()
-        if platform.system() == 'Darwin':
-            mode = 'rw+'
-        else:
-            mode = 'a+'
         with open(os.path.join(self.scan_data_output_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), mode) as f:
+            f.seek(0)
             for line in f.readlines():
                 scan_number = int(re.findall(r'\d+\s*', line)[0])
                 if line[-1] != '\n':
@@ -282,8 +278,8 @@ class ScanBase(object):
                     scan_numbers[scan_number] = line
                 else:
                     scan_numbers[scan_number] = str(self.scan_number) + ' ' + self.scan_identifier + ' ' + ('ABORTED' if aborted else 'FINISHED') + '\n'
-        if scan_number not in scan_numbers:
-            scan_numbers[self.scan_number] = str(self.scan_number) + ' ' + self.scan_identifier + ' ' + ('ABORTED' if aborted else 'SUCCESS') + '\n'
+        if not scan_numbers:
+            scan_numbers[self.scan_number] = str(self.scan_number) + ' ' + self.scan_identifier + ' ' + ('ABORTED' if aborted else 'FINISHED') + '\n'
             logging.warning('Configuration file was deleted: Restoring %s', os.path.join(self.scan_data_output_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"))
         with open(os.path.join(self.scan_data_output_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), "w") as f:
             for value in dict.itervalues(scan_numbers):
