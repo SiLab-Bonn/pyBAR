@@ -130,54 +130,57 @@ class ExtTriggerGdacScan(ScanBase):
         for gdac_value in gdacs:
             if self.stop_thread_event.is_set():
                 break
-            with open_raw_data_file(filename=self.scan_data_filename + '_GDAC_' + str(gdac_value), title=self.scan_identifier, scan_parameters=["GDAC"], mode='w') as raw_data_file:
-                self.stop_loop_event.clear()
-                self.register_utils.set_gdac(gdac_value)
-                self.readout.start()
-                wait_for_first_trigger = wait_for_first_trigger_setting
-                # preload command
-                lvl1_command = self.register.get_commands("zeros", length=trigger_delay)[0] + self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", length=200)[0]  # + self.register.get_commands("zeros", length=1000)[0]
-                self.register_utils.set_command(lvl1_command)
-                # setting up external trigger
-                self.readout_utils.configure_trigger_fsm(force_use_rj45=True, mode=mode, trigger_data_msb_first=False, disable_veto=False, trigger_data_delay=0, trigger_clock_cycles=16, enable_reset=False, invert_lemo_trigger_input=False, trigger_low_timeout=10, reset_trigger_counter=True)
-                self.readout_utils.configure_command_fsm(enable_ext_trigger=True, neg_edge=False, diable_clock=False, disable_command_trigger=False)
+            repeat_scan_step = True
+            while repeat_scan_step and not self.stop_loop_event.is_set() and not self.stop_thread_event.is_set():
+                with open_raw_data_file(filename=self.scan_data_filename + '_GDAC_' + str(gdac_value), title=self.scan_identifier, scan_parameters=["GDAC"], mode='w') as raw_data_file:
+                    self.stop_loop_event.clear()
+                    repeat_scan_step = False
+                    self.register_utils.set_gdac(gdac_value)
+                    self.readout.start()
+                    wait_for_first_trigger = wait_for_first_trigger_setting
+                    # preload command
+                    lvl1_command = self.register.get_commands("zeros", length=trigger_delay)[0] + self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", length=200)[0]  # + self.register.get_commands("zeros", length=1000)[0]
+                    self.register_utils.set_command(lvl1_command)
+                    # setting up external trigger
+                    self.readout_utils.configure_trigger_fsm(force_use_rj45=True, mode=mode, trigger_data_msb_first=False, disable_veto=False, trigger_data_delay=0, trigger_clock_cycles=16, enable_reset=False, invert_lemo_trigger_input=False, trigger_low_timeout=10, reset_trigger_counter=True)
+                    self.readout_utils.configure_command_fsm(enable_ext_trigger=True, neg_edge=False, diable_clock=False, disable_command_trigger=False)
 
-                show_trigger_message_at = 10 ** (int(math.floor(math.log10(max_triggers) - math.log10(3) / math.log10(10))))
-                time_current_iteration = time.time()
-                saw_no_data_at_time = time_current_iteration
-                saw_data_at_time = time_current_iteration
-                scan_start_time = time_current_iteration
-                no_data_at_time = time_current_iteration
-                time_from_last_iteration = 0
-                scan_stop_time = scan_start_time + scan_timeout
-                current_trigger_number = 0
-                last_trigger_number = 0
-                while not self.stop_loop_event.is_set() and not self.stop_thread_event.wait(self.readout.readout_interval):
-                    time_last_iteration = time_current_iteration
+                    show_trigger_message_at = 10 ** (int(math.floor(math.log10(max_triggers) - math.log10(3) / math.log10(10))))
                     time_current_iteration = time.time()
-                    time_from_last_iteration = time_current_iteration - time_last_iteration
-                    current_trigger_number = self.readout_utils.get_trigger_number()
-                    if (current_trigger_number % show_trigger_message_at < last_trigger_number % show_trigger_message_at):
-                        logging.info('Collected triggers: %d', current_trigger_number)
-                        if not any(self.readout.get_rx_sync_status()):
-                            self.stop_thread_event.set()
-                            logging.error('No sync. Stopping Scan...')
-                        if any(self.readout.get_rx_8b10b_error_count()):
-                            self.stop_thread_event.set()
-                            logging.error('8b10b errors. Stopping Scan...')
-                        if any(self.readout.get_rx_fifo_discard_count()):
-                            self.stop_thread_event.set()
-                            logging.error('FIFO discard errors. Stopping Scan...')
-                        if self.stop_thread_event.is_set():
-                            self.readout.print_readout_status()
-                    last_trigger_number = current_trigger_number
-                    if max_triggers is not None and current_trigger_number >= max_triggers:
-                        logging.info('Reached maximum triggers. Stopping Scan...')
-                        self.stop_loop_event.set()
-                    if scan_start_time is not None and time_current_iteration > scan_stop_time:
-                        logging.info('Reached maximum scan time. Stopping Scan...')
-                        self.stop_loop_event.set()
-                    while True:
+                    saw_no_data_at_time = time_current_iteration
+                    saw_data_at_time = time_current_iteration
+                    scan_start_time = time_current_iteration
+                    no_data_at_time = time_current_iteration
+                    time_from_last_iteration = 0
+                    scan_stop_time = scan_start_time + scan_timeout
+                    current_trigger_number = 0
+                    last_trigger_number = 0
+                    while not self.stop_loop_event.is_set() and not self.stop_thread_event.wait(self.readout.readout_interval):
+                        time_last_iteration = time_current_iteration
+                        time_current_iteration = time.time()
+                        time_from_last_iteration = time_current_iteration - time_last_iteration
+                        current_trigger_number = self.readout_utils.get_trigger_number()
+                        if (current_trigger_number % show_trigger_message_at < last_trigger_number % show_trigger_message_at):
+                            logging.info('Collected triggers: %d', current_trigger_number)
+                            if not any(self.readout.get_rx_sync_status()):
+                                repeat_scan_step = True
+                                logging.error('No sync. Stopping Scan...')
+                            if any(self.readout.get_rx_8b10b_error_count()):
+                                repeat_scan_step = True
+                                logging.error('8b10b errors. Stopping Scan...')
+                            if any(self.readout.get_rx_fifo_discard_count()):
+                                repeat_scan_step = True
+                                logging.error('FIFO discard errors. Stopping Scan...')
+                            if repeat_scan_step:
+                                self.readout.print_readout_status()
+                                self.register_utils.configure_all()
+                        last_trigger_number = current_trigger_number
+                        if max_triggers is not None and current_trigger_number >= max_triggers:
+                            logging.info('Reached maximum triggers. Stopping Scan...')
+                            self.stop_loop_event.set()
+                        if scan_start_time is not None and time_current_iteration > scan_stop_time:
+                            logging.info('Reached maximum scan time. Stopping Scan...')
+                            self.stop_loop_event.set()
                         try:
                             raw_data_file.append((self.readout.data.popleft(),), scan_parameters={"GDAC": gdac_value})
                         except IndexError:  # no data
@@ -190,23 +193,22 @@ class ExtTriggerGdacScan(ScanBase):
 
                             if no_data_at_time > (saw_data_at_time + 10):
                                 scan_stop_time += time_from_last_iteration
-                            break  # jump out while loop
+                        else:
+                            saw_data_at_time = time_current_iteration
 
-                        saw_data_at_time = time_last_iteration
+                            if wait_for_first_trigger == True:
+                                logging.info('Taking data...')
+                                wait_for_first_trigger = False
 
-                        if wait_for_first_trigger == True:
-                            logging.info('Taking data...')
-                            wait_for_first_trigger = False
+                    self.readout_utils.configure_command_fsm(enable_ext_trigger=False)
 
-                self.readout_utils.configure_command_fsm(enable_ext_trigger=False)
-                self.register_utils.clear_command_memory()
+                    self.readout.stop()
 
-                self.readout.stop()
+                    raw_data_file.append(self.readout.data, scan_parameters={"GDAC": gdac_value})
 
-                raw_data_file.append(self.readout.data, scan_parameters={"GDAC": gdac_value})
+                    logging.info('Total amount of triggers collected: %d for GDAC %d' % (self.readout_utils.get_trigger_number(), gdac_value))
 
-                logging.info('Total amount of triggers collected: %d for GDAC %d' % (self.readout_utils.get_trigger_number(), gdac_value))
-
+        self.register_utils.clear_command_memory()
         self.readout_utils.configure_command_fsm(enable_ext_trigger=True)
 
     def analyze(self):
