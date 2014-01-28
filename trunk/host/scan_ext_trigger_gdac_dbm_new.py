@@ -31,8 +31,9 @@ with tb.openFile(input_file_calibration, mode="r") as in_file_calibration_h5:  #
 #     gdacs.extend(range(159, 170))
 #     gdacs.extend([187, 188])
     gdacs = []
-    gdacs.extend(range(128, 140))
-    gdacs.extend(range(150, 185))
+#     gdacs.extend(range(128, 140))
+#     gdacs.extend(range(150, 185))
+    gdacs.extend(range(157, 185))
     gdacs.extend(range(197, 203))
     gdacs.extend([230, 231, 1089, 1193, 1308, 15500, 16000, 16500, 17000, 17500, 18000, 18500, 19000, 19500, 20000])
 
@@ -174,6 +175,7 @@ class ExtTriggerGdacScan(ScanBase):
                             if repeat_scan_step:
                                 self.readout.print_readout_status()
                                 self.register_utils.configure_all()
+                                self.readout.reset_rx()
                         last_trigger_number = current_trigger_number
                         if max_triggers is not None and current_trigger_number >= max_triggers:
                             logging.info('Reached maximum triggers. Stopping Scan...')
