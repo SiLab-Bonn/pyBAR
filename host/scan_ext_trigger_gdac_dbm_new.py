@@ -33,9 +33,9 @@ with tb.openFile(input_file_calibration, mode="r") as in_file_calibration_h5:  #
     gdacs = []
 #     gdacs.extend(range(128, 140))
 #     gdacs.extend(range(150, 185))
-    gdacs.extend(range(157, 185))
+    gdacs.extend(range(158, 185))
     gdacs.extend(range(197, 203))
-    gdacs.extend([230, 231, 1089, 1193, 1308, 15500, 16000, 16500, 17000, 17500, 18000, 18500, 19000, 19500, 20000])
+    gdacs.extend([230, 231, 1089, 1193, 1308])
 
 #     print len(gdacs)*200/3600
     print gdacs
@@ -132,9 +132,9 @@ class ExtTriggerGdacScan(ScanBase):
             if self.stop_thread_event.is_set():
                 break
             repeat_scan_step = True
+            self.stop_loop_event.clear()
             while repeat_scan_step and not self.stop_loop_event.is_set() and not self.stop_thread_event.is_set():
                 with open_raw_data_file(filename=self.scan_data_filename + '_GDAC_' + str(gdac_value), title=self.scan_identifier, scan_parameters=["GDAC"], mode='w') as raw_data_file:
-                    self.stop_loop_event.clear()
                     repeat_scan_step = False
                     self.register_utils.set_gdac(gdac_value)
                     self.readout.start()
