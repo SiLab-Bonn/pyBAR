@@ -33,7 +33,7 @@ with tb.openFile(input_file_calibration, mode="r") as in_file_calibration_h5:  #
     gdacs = []
 #     gdacs.extend(range(128, 140))
 #     gdacs.extend(range(150, 185))
-    gdacs.extend(range(158, 185))
+    gdacs.extend(range(181, 185))
     gdacs.extend(range(197, 203))
     gdacs.extend([230, 231, 1089, 1193, 1308])
 
@@ -95,6 +95,7 @@ class ExtTriggerGdacScan(ScanBase):
 
         self.stop_loop_event = Event()
         self.stop_loop_event.clear()
+        self.repeat_scan_step = True
 
         pixel_reg = "Enable"
         mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
@@ -131,11 +132,11 @@ class ExtTriggerGdacScan(ScanBase):
         for gdac_value in gdacs:
             if self.stop_thread_event.is_set():
                 break
-            repeat_scan_step = True
-            self.stop_loop_event.clear()
-            while repeat_scan_step and not self.stop_loop_event.is_set() and not self.stop_thread_event.is_set():
+            self.repeat_scan_step = True
+            while self.repeat_scan_step and not self.stop_thread_event.is_set():
                 with open_raw_data_file(filename=self.scan_data_filename + '_GDAC_' + str(gdac_value), title=self.scan_identifier, scan_parameters=["GDAC"], mode='w') as raw_data_file:
-                    repeat_scan_step = False
+                    self.repeat_scan_step = False
+                    self.stop_loop_event.clear()
                     self.register_utils.set_gdac(gdac_value)
                     self.readout.start()
                     wait_for_first_trigger = wait_for_first_trigger_setting
@@ -164,18 +165,17 @@ class ExtTriggerGdacScan(ScanBase):
                         if (current_trigger_number % show_trigger_message_at < last_trigger_number % show_trigger_message_at):
                             logging.info('Collected triggers: %d', current_trigger_number)
                             if not any(self.readout.get_rx_sync_status()):
-                                repeat_scan_step = True
-                                logging.error('No sync. Stopping Scan...')
+                                self.repeat_scan_step = True
+                                self.stop_loop_event.set()
+                                logging.error('No RX sync. Stopping Scan...')
                             if any(self.readout.get_rx_8b10b_error_count()):
-                                repeat_scan_step = True
-                                logging.error('8b10b errors. Stopping Scan...')
+                                self.repeat_scan_step = True
+                                self.stop_loop_event.set()
+                                logging.error('RX 8b10b error(s) detected. Stopping Scan...')
                             if any(self.readout.get_rx_fifo_discard_count()):
-                                repeat_scan_step = True
-                                logging.error('FIFO discard errors. Stopping Scan...')
-                            if repeat_scan_step:
-                                self.readout.print_readout_status()
-                                self.register_utils.configure_all()
-                                self.readout.reset_rx()
+                                self.repeat_scan_step = True
+                                self.stop_loop_event.set()
+                                logging.error('RX FIFO discard error(s) detected. Stopping Scan...')
                         last_trigger_number = current_trigger_number
                         if max_triggers is not None and current_trigger_number >= max_triggers:
                             logging.info('Reached maximum triggers. Stopping Scan...')
@@ -206,9 +206,15 @@ class ExtTriggerGdacScan(ScanBase):
 
                     self.readout.stop()
 
-                    raw_data_file.append(self.readout.data, scan_parameters={"GDAC": gdac_value})
+                    if self.repeat_scan_step:
+                        self.readout.print_readout_status()
+                        logging.warning('Detected RX error(s) at GDAC %d: Repeating scan step...' % (gdac_value))
+                        self.register_utils.configure_all()
+                        self.readout.reset_rx()
+                    else:
+                        raw_data_file.append(self.readout.data, scan_parameters={"GDAC": gdac_value})
 
-                    logging.info('Total amount of triggers collected: %d for GDAC %d' % (self.readout_utils.get_trigger_number(), gdac_value))
+                        logging.info('Total amount of triggers collected: %d for GDAC %d' % (self.readout_utils.get_trigger_number(), gdac_value))
 
         self.register_utils.clear_command_memory()
         self.readout_utils.configure_command_fsm(enable_ext_trigger=True)
