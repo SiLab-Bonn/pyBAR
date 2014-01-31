@@ -579,7 +579,13 @@ class FEI4Register(object):
                 # reg.value.fill(value)
             except ValueError:  # value is path to pixel config
                 if reg.bitlength == 1:
-                    reg.value = self.parse_pixel_mask_config(value)
+                    if value[0] == "~":
+                        reg_value = self.parse_pixel_mask_config(value[1:])
+                        inverted_mask = np.ones(shape=(80, 336), dtype=np.dtype('>u1'))
+                        inverted_mask[reg_value >= 1] = 0
+                        reg.value = inverted_mask
+                    else:
+                        reg.value = self.parse_pixel_mask_config(value)
                 else:
                     reg.value = self.parse_pixel_dac_config(value)
             finally:
