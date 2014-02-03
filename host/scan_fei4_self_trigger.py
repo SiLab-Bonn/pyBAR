@@ -9,10 +9,10 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 
 
 scan_configuration = {
-    "col_span": [2, 77],
-    "row_span": [2, 335],
+    "col_span": [1, 80],
+    "row_span": [1, 336],
     "timeout_no_data": 10,
-    "scan_timeout": 1 * 10,
+    "scan_timeout": 1 * 60,
     "trig_latency": 239,
     "trig_count": 4
 }
@@ -35,13 +35,17 @@ class FEI4SelfTriggerScan(ScanBase):
             In seconds; if no data, stop scan after given time.
         scan_timeout : int
             In seconds; stop scan after given time.
+        trig_latency : int
+            FE global register Trig_Lat.
+        trig_count : int
+            FE global register Trig_Count.
         '''
 
         self.configure_fe(col_span, row_span, trig_latency, trig_count)
 
         with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier) as raw_data_file:
             self.readout.start()
-            self.set_self_trigger()
+            self.set_self_trigger(True)
             wait_for_first_data = True
             last_iteration = time.time()
             saw_no_data_at_time = last_iteration
@@ -125,17 +129,17 @@ class FEI4SelfTriggerScan(ScanBase):
         self.register.set_pixel_register_value(pixel_reg, 0)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
         # enable GateHitOr that enables FE self-trigger mode
-        self.register.set_global_register_value("Trig_Lat", trig_latency)  # set trigger latency, this latency sets the hits at the first rel. BCID bins
+        self.register.set_global_register_value("Trig_Lat", trig_latency)  # set trigger latency, this latency sets the hits at the first relative BCID bins
         self.register.set_global_register_value("Trig_Count", trig_count)  # set number of consecutive triggers
         commands.extend(self.register.get_commands("wrregister", name=["Trig_Lat", "Trig_Count"]))
         # send commands
         self.register_utils.send_commands(commands)
 
-    def set_self_trigger(self, activate=True):
-        logging.info('Set self trigger feature to ' + str(activate))
+    def set_self_trigger(self, enable=True):
+        logging.info('%s FEI4 self-trigger' % ('Enable' if enable == True else "Disable"))
         commands = []
         commands.extend(self.register.get_commands("confmode"))
-        self.register.set_global_register_value("GateHitOr", 1 if activate else 0)  # enable FE self-trigger mode
+        self.register.set_global_register_value("GateHitOr", 1 if enable else 0)  # enable FE self-trigger mode
         commands.extend(self.register.get_commands("wrregister", name=["GateHitOr"]))
         commands.extend(self.register.get_commands("runmode"))
         self.register_utils.send_commands(commands)
@@ -145,7 +149,7 @@ class FEI4SelfTriggerScan(ScanBase):
         output_file = self.scan_data_filename + "_interpreted.h5"
         with AnalyzeRawData(raw_data_file=scan.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
             analyze_raw_data.interpreter.set_trig_count(scan_configuration['trig_count'])
-            analyze_raw_data.create_cluster_size_hist = True  # can be set to false to omit cluster hit creation, can save some time, std. setting is false
+            analyze_raw_data.create_cluster_size_hist = True  # can be set to false to omit cluster hit creation, can save some time, standard setting is false
             analyze_raw_data.create_source_scan_hist = True
             analyze_raw_data.create_cluster_tot_hist = True
             analyze_raw_data.interpreter.set_warning_output(True)
@@ -156,8 +160,7 @@ class FEI4SelfTriggerScan(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-#     scan = FEI4SelfTriggerScan(**configuration.scc99_configuration)
-    scan = FEI4SelfTriggerScan(**configuration.mdbm30_configuration)
+    scan = FEI4SelfTriggerScan(**configuration.device_configuration)
     scan.start(use_thread=True, **scan_configuration)
     scan.stop()
     scan.analyze()
