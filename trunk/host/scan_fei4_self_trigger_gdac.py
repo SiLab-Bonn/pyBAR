@@ -15,22 +15,20 @@ def get_gdacs(thresholds, mean_threshold_calibration):
     interpolation = interp1d(mean_threshold_calibration['mean_threshold'], mean_threshold_calibration['gdac'], kind='slinear', bounds_error=True)
     return np.unique(interpolation(thresholds).astype(np.uint32))
 
-# gdacs = range(100, 5001, 15)  # GDAC range set manually
-
-# GDAC settings can be set automatically from the calibration with equidistant thresholds
-input_file_calibration = 'data//SCC_99//calibrate_threshold_gdac_SCC_99_new.h5'  # the file with the GDAC <-> PlsrDAC calibration
-threshold_range = np.arange(30, 600, 16)  # threshold range in PlsrDAC to scan
+# load GDAC values from calibration file
+input_file_calibration = 'data//example.h5'  # the file with the GDAC <-> PlsrDAC calibration
 with tb.openFile(input_file_calibration, mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
-    gdacs = get_gdacs(threshold_range, in_file_calibration_h5.root.MeanThresholdCalibration[:])
+#     threshold_range = np.arange(30, 600, 16)  # threshold range in PlsrDAC to scan
+#     gdacs = get_gdacs(threshold_range, in_file_calibration_h5.root.MeanThresholdCalibration[:])
     gdacs = in_file_calibration_h5.root.MeanThresholdCalibration[:]['gdac']
-    print len(gdacs)*100/3600
+
 
 scan_configuration = {
     "gdacs": gdacs,
-    "col_span": [2, 77],
-    "row_span": [2, 335],
-    "timeout_no_data": 10000,
-    "scan_timeout": 1 * 200,
+    "col_span": [1, 80],
+    "row_span": [1, 336],
+    "timeout_no_data": 10,
+    "scan_timeout": 1 * 60,
     "trig_latency": 239,
     "trig_count": 4
 }
@@ -53,6 +51,10 @@ class FEI4SelfTriggerGdacScan(ScanBase):
             In seconds; if no data, stop scan after given time.
         scan_timeout : int
             In seconds; stop scan after given time.
+        trig_latency : int
+            FE global register Trig_Lat.
+        trig_count : int
+            FE global register Trig_Count.
         '''
 
         logging.info('Start GDAC self trigger source scan from %d to %d in %d steps' % (np.amin(gdacs), np.amax(gdacs), len(gdacs)))
@@ -70,7 +72,7 @@ class FEI4SelfTriggerGdacScan(ScanBase):
                 self.stop_loop_event.clear()
                 self.register_utils.set_gdac(gdac_value)
                 self.readout.start()
-                self.set_self_trigger()
+                self.set_self_trigger(True)
                 wait_for_first_data = True
                 last_iteration = time.time()
                 saw_no_data_at_time = last_iteration
@@ -135,17 +137,17 @@ class FEI4SelfTriggerGdacScan(ScanBase):
         self.register.set_pixel_register_value(pixel_reg, 0)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
         # enable GateHitOr that enables FE self-trigger mode
-        self.register.set_global_register_value("Trig_Lat", trig_latency)  # set trigger latency, this latency sets the hits at the first rel. BCID bins
+        self.register.set_global_register_value("Trig_Lat", trig_latency)  # set trigger latency, this latency sets the hits at the first relative BCID bins
         self.register.set_global_register_value("Trig_Count", trig_count)  # set number of consecutive triggers
         commands.extend(self.register.get_commands("wrregister", name=["Trig_Lat", "Trig_Count"]))
         # send commands
         self.register_utils.send_commands(commands)
 
-    def set_self_trigger(self, activate=True):
-        logging.info('Set self trigger feature to ' + str(activate))
+    def set_self_trigger(self, enable=True):
+        logging.info('%s FEI4 self-trigger' % ('Enable' if enable == True else "Disable"))
         commands = []
         commands.extend(self.register.get_commands("confmode"))
-        self.register.set_global_register_value("GateHitOr", 1 if activate else 0)  # enable FE self-trigger mode
+        self.register.set_global_register_value("GateHitOr", 1 if enable else 0)  # enable FE self-trigger mode
         commands.extend(self.register.get_commands("wrregister", name=["GateHitOr"]))
         commands.extend(self.register.get_commands("runmode"))
         self.register_utils.send_commands(commands)
@@ -155,7 +157,7 @@ class FEI4SelfTriggerGdacScan(ScanBase):
         output_file = self.scan_data_filename + "_interpreted.h5"
         with AnalyzeRawData(raw_data_file=scan.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
             analyze_raw_data.interpreter.set_trig_count(scan_configuration['trig_count'])
-            analyze_raw_data.create_cluster_size_hist = True  # can be set to false to omit cluster hit creation, can save some time, std. setting is false
+            analyze_raw_data.create_cluster_size_hist = True  # can be set to false to omit cluster hit creation, can save some time, standard setting is false
             analyze_raw_data.create_source_scan_hist = True
             analyze_raw_data.create_cluster_tot_hist = True
             analyze_raw_data.interpreter.set_warning_output(False)
@@ -165,8 +167,7 @@ class FEI4SelfTriggerGdacScan(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = FEI4SelfTriggerGdacScan(**configuration.scc99_configuration)
-#     scan = FEI4SelfTriggerGdacScan(**configuration.mdbm30_configuration)
+    scan = FEI4SelfTriggerGdacScan(**configuration.device_configuration)
     scan.start(use_thread=True, **scan_configuration)
     scan.stop()
     scan.analyze()
