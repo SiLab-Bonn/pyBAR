@@ -6,6 +6,7 @@ import re
 import sys
 import os
 import itertools
+import time
 import collections
 import pandas as pd
 import numpy as np
@@ -22,7 +23,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(leve
 def get_data_statistics(interpreted_files):
     '''Quick and dirty function to give as redmine compatible iverview table
     '''
-    print '| File Name | File Size | Events | Bad Events | Measurement time | # SR | Hits |'# Mean Tot | Mean rel. BCID'
+    print '| *File Name* | *File Size* | *Times Stamp* | *Events* | *Bad Events* | *Measurement time* | *# SR* | *Hits* |'# Mean Tot | Mean rel. BCID'
     for interpreted_file in interpreted_files:
         with tb.openFile(interpreted_file, mode="r") as in_file_h5:  # open the actual hit file
             event_errors = in_file_h5.root.HistErrorCounter[:]
@@ -36,7 +37,10 @@ def get_data_statistics(interpreted_files):
                 n_events = str(in_file_h5.root.Hits[-1]['event_number'] + 1)
             except tb.NoSuchNodeError:
                 n_events = '~' + str(in_file_h5.root.meta_data[-1]['event_number'] + (in_file_h5.root.meta_data[-1]['event_number'] - in_file_h5.root.meta_data[-2]['event_number']))
-            print '|', os.path.basename(interpreted_file), '|', int(os.path.getsize(interpreted_file) / (1024 * 1024.)), 'Mb |', n_events, '|', n_bad_events, '|', measurement_time, 's |', n_sr, '|', n_hits, '|'#, mean_tot, '|', mean_bcid, '|'
+            if int(n_events) < 7800000 or n_sr > 4200 or n_bad_events > 40:
+                print '| %{color:red}', os.path.basename(interpreted_file) + '%', '|', int(os.path.getsize(interpreted_file) / (1024 * 1024.)), 'Mb |', time.ctime(os.path.getctime(interpreted_file)), '|',  n_events, '|', n_bad_events, '|', measurement_time, 's |', n_sr, '|', n_hits, '|'#, mean_tot, '|', mean_bcid, '|'
+            else:
+                print '|', os.path.basename(interpreted_file), '|', int(os.path.getsize(interpreted_file) / (1024 * 1024.)), 'Mb |', time.ctime(os.path.getctime(interpreted_file)), '|',  n_events, '|', n_bad_events, '|', measurement_time, 's |', n_sr, '|', n_hits, '|'#, mean_tot, '|', mean_bcid, '|'
 
 
 def get_profile_histogram(x, y, n_bins=100):
@@ -66,6 +70,10 @@ def get_profile_histogram(x, y, n_bins=100):
     return bin_centers, mean, std_mean
 
 
+def get_scan_parameter_from_nodes(parent_node, parameter):
+    ''' Takes the hdf5 parent node and searches for child notes that have parameter in the name.'''
+
+
 def get_normalization(hit_files, parameter, reference='event', sort=False, plot=False):
     ''' Takes different hit files (hit_files), extracts the number of events or the scan time (reference) per scan parameter (parameter)
     and returns an array with a normalization factor. This normalization factor has the length of the number of different parameters.
@@ -88,6 +96,7 @@ def get_normalization(hit_files, parameter, reference='event', sort=False, plot=
     for one_file in scan_parameter_values_files_dict:
         with tb.openFile(one_file, mode="r") as in_hit_file_h5:  # open the actual hit file
             meta_data = in_hit_file_h5.root.meta_data[:]
+            parameter_values = scan_parameter_values_files_dict.values()
             if reference == 'event':
                 try:
                     event_numbers = get_meta_data_at_scan_parameter(meta_data, parameter)['event_number']  # get the event numbers in meta_data where the scan parameter changes
@@ -97,6 +106,8 @@ def get_normalization(hit_files, parameter, reference='event', sort=False, plot=
                     n_events[-1] = n_events[-2] - (n_events[-3] - n_events[-2])  # FIXME: set the last number of events manually, bad extrapolaton
                 except ValueError:  # there is not necessarily a scan parameter given in the meta_data
                     n_events = [meta_data[-1]['event_number'] + (meta_data[-1]['event_number'] - meta_data[-2]['event_number'])]
+                except IndexError: # there is maybe just one scan parameter given
+                    n_events = [meta_data[-1]['event_number']]
                 normalization.extend(n_events)
                 logging.warning('Last number of events unknown and extrapolated')
             elif reference == 'time':
@@ -141,7 +152,7 @@ def get_occupancy_per_parameter(hit_analyzed_files, parameter='GDAC'):
             if scan_parameter:  # scan parameter is not none, therefore the occupancy hist has more dimensions col*row*n_scan_parameter
                 scan_parameter_values = scan_parameter[parameter].tolist()  # get the scan parameters
                 if set(scan_parameter_values).intersection(all_scan_parameters):  # check that the scan parameters are unique
-                    logging.error('The following settings for ' + parameter + ' appear more than once: ' + str(set(scan_parameter).intersection(all_scan_parameters)))
+                    logging.error('The following settings for ' + parameter + ' appear more than once: ' + str(set(scan_parameter_values).intersection(all_scan_parameters)))
                     raise NotImplementedError('Every scan parameter has to have only one occupancy histogram')
                 all_scan_parameters.extend(scan_parameter_values)
             else:  # scan parameter not in meta data, therefore it has to be in the file name
