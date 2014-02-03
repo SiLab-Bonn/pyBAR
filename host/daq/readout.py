@@ -688,7 +688,7 @@ class FEI4Record(object):
                 elif self.record_word[8:14].uint == 15:
                     self.record_dict = OrderedDict([('start', self.record_word[0:5].uint), ('header', self.record_word[5:8].uint), ('code', self.record_word[8:14].uint), ('skipped', self.record_word[14:24].uint)])
                 elif self.record_word[8:14].uint == 16:
-                    self.record_dict = OrderedDict([('start', self.record_word[0:5].uint), ('header', self.record_word[5:8].uint), ('code', self.record_word[8:14].uint), ('truncation flag', self.record_word[14:15].uint), ('truncation counter'.self.record_word[15:20].uint), ('l1req', self.record_word[20:24].uint)])
+                    self.record_dict = OrderedDict([('start', self.record_word[0:5].uint), ('header', self.record_word[5:8].uint), ('code', self.record_word[8:14].uint), ('truncation flag', self.record_word[14:15].uint), ('truncation counter', self.record_word[15:20].uint), ('l1req', self.record_word[20:24].uint)])
                 else:
                     self.record_dict = OrderedDict([('start', self.record_word[0:5].uint), ('header', self.record_word[5:8].uint), ('code', self.record_word[8:14].uint), ('counter', self.record_word[14:24].uint)])
         elif is_data_record(self.record_rawdata):
