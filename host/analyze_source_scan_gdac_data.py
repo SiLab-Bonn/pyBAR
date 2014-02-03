@@ -30,14 +30,21 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(leve
 
 
 analysis_configuration = {
-    "scan_name": 'SCC_99_ext_trigger_gdac_scan_432',
-    "folder": 'data//SCC_99//',
-    'input_file_calibration': 'data//calibrate_threshold_gdac_SCC_99_new.h5',
-#     "scan_name": 'MDBM30_ext_trigger_gdac_scan_dbm_489',
-#     "folder": 'data//MDBM30//',
-#     'input_file_calibration': 'data//calibrate_threshold_gdac_MDBM30.h5',
-    "analysis_steps": [1, 2, 3],#, 2, 3, 4],  # the analysis includes the selected steps here. See explenation above.
-    "chip_flavor": 'fei4a',
+#     "scan_name": ['SCC_99_ext_trigger_gdac_scan_439'],
+#     "folder": 'data//SCC_99//',
+#     'input_file_calibration': 'data//SCC_99//calibrate_threshold_gdac_SCC_99_new.h5',
+#     500V
+#     "scan_name": ['MDBM30_ext_trigger_gdac_scan_dbm_489', 'MDBM30_ext_trigger_gdac_scan_dbm_508', 'MDBM30_ext_trigger_gdac_scan_dbm_509'],
+#     600V
+#     "scan_name": ['MDBM30_ext_trigger_gdac_scan_dbm_489', 'MDBM30_ext_trigger_gdac_scan_dbm_508', 'MDBM30_ext_trigger_gdac_scan_dbm_509'],
+#     "scan_name": ['MDBM30_ext_trigger_gdac_scan_dbm_492', 'MDBM30_ext_trigger_gdac_scan_dbm_498', 'MDBM30_ext_trigger_gdac_scan_dbm_499', 'MDBM30_ext_trigger_gdac_scan_dbm_515', 'MDBM30_ext_trigger_gdac_scan_dbm_516'],
+#     "scan_name": ['MDBM30_ext_trigger_gdac_scan_dbm_492', 'MDBM30_ext_trigger_gdac_scan_dbm_498', 'MDBM30_ext_trigger_gdac_scan_dbm_510', 'MDBM30_ext_trigger_gdac_scan_dbm_515', 'MDBM30_ext_trigger_gdac_scan_dbm_516'],
+#     700V
+    "scan_name": ['MDBM30_ext_trigger_gdac_scan_dbm_517', 'MDBM30_ext_trigger_gdac_scan_dbm_523'],
+    "folder": 'data//MDBM30//700V//',
+    'input_file_calibration': 'data//MDBM30//calibrate_threshold_gdac_MDBM30.h5',
+    "analysis_steps": [1],#, 2, 3, 4],  # the analysis includes the selected steps here. See explanation above.
+    "chip_flavor": 'fei4b',
     "n_bcid": 16,
     "max_tot_value": 13,  # maximum tot value to use the hit
     "use_cluster_rate_correction": True,  # corrects the hit rate, because one pixel hit cluster are less likely for low thresholds
@@ -45,15 +52,18 @@ analysis_configuration = {
     "normalization_reference": 'event',  # one can normalize the hits per GDAC setting to the number of events ('event') or time ('time')
     "smoothness": 180,  # the smoothness of the spline fit to the data
     "vcal_calibration": 55.,   # calibration electrons/PlsrDAC
-    "n_bins": 200,  # number of bins for the profile histogram
-    "col_span": [30, 70],  # the column pixel range to use in the analysis
-    "row_span": [50, 340],  # the row pixel range to use in the analysis
-    "cut_threshold": 0.01,  # the cut threshold for the occupancy to define pixel to use in the analysis
-    "min_thr": 500,  # minimum threshold position in electrons to be used for the analysis
-    "max_thr": 35000,  # maximum threshold position in electrons to be used for the analysis
+    "n_bins": 100,  # number of bins for the profile histogram
+    "col_span": [38, 65],  # the column pixel range to use in the analysis
+    "row_span": [1, 355],  # the row pixel range to use in the analysis
+    "min_cut_threshold": 0.30,  # the minimum cut threshold for the occupancy to define pixel to use in the analysis
+    "max_cut_threshold": 1.3,  # the minimum cut threshold for the occupancy to define pixel to use in the analysis
+    "min_gdac": 50,  # minimum threshold position in gdac setting to be used for the analysis
+    "max_gdac": 35000,  # maximum threshold position in gdac setting to be used for the analysis
+    "min_thr": 500,  # minimum threshold position in gdac setting to be used for the analysis
+    "max_thr": 15000,  # maximum threshold position in gdac setting to be used for the analysis
     "plot_normalization": True,  # active the output of the normalization
     "interpreter_warnings": False,
-    "overwrite_output_files": True
+    "overwrite_output_files": False
 }
 
 
@@ -128,14 +138,15 @@ def plot_cluster_sizes(in_file_cluster_h5, in_file_calibration_h5, gdac_range):
     mean_threshold_calibration = in_file_calibration_h5.root.MeanThresholdCalibration[:]
     hist = in_file_cluster_h5.root.AllHistClusterSize[:]
     hist_sum = np.sum(hist, axis=1)
-    hist_rel = hist / hist_sum[:, np.newaxis] * 100
+    hist_rel = hist / hist_sum[:, np.newaxis].astype('f4') * 100
+    hist_rel_error = hist_rel / np.sqrt(hist_sum[:, np.newaxis].astype('f4'))  # TODO: check calculation
     x = get_mean_threshold(gdac_range, mean_threshold_calibration)
     plt.grid(True)
-    plt.plot(x * analysis_configuration['vcal_calibration'], hist_rel[:, 1], '-o')
-    plt.plot(x * analysis_configuration['vcal_calibration'], hist_rel[:, 2], '-o')
-    plt.plot(x * analysis_configuration['vcal_calibration'], hist_rel[:, 3], '-o')
-    plt.plot(x * analysis_configuration['vcal_calibration'], hist_rel[:, 4], '-o')
-    plt.plot(x * analysis_configuration['vcal_calibration'], hist_rel[:, 5], '-o')
+    plt.errorbar(x * analysis_configuration['vcal_calibration'], hist_rel[:, 1], yerr=hist_rel_error[:, 1].tolist(), fmt='-o')
+    plt.errorbar(x * analysis_configuration['vcal_calibration'], hist_rel[:, 2], yerr=hist_rel_error[:, 1].tolist(), fmt='-o')
+    plt.errorbar(x * analysis_configuration['vcal_calibration'], hist_rel[:, 3], yerr=hist_rel_error[:, 1].tolist(), fmt='-o')
+    plt.errorbar(x * analysis_configuration['vcal_calibration'], hist_rel[:, 4], yerr=hist_rel_error[:, 1].tolist(), fmt='-o')
+    plt.errorbar(x * analysis_configuration['vcal_calibration'], hist_rel[:, 5], yerr=hist_rel_error[:, 1].tolist(), fmt='-o')
     plt.title('Frequency of different cluster sizes for different thresholds')
     plt.xlabel('threshold [e]')
     plt.ylabel('cluster size frequency [%]')
@@ -183,17 +194,20 @@ def plot_result(x_p, y_p, y_p_e):
     plt.close()
 
 
-def select_hot_region(hits, col_span, row_span, cut_threshold=0.8):
-    '''Takes the hit array and masks all pixels with occupancy < (max_occupancy-min_occupancy) * cut_threshold.
+def select_good_region(hits, col_span, row_span, min_cut_threshold=0.2, max_cut_threshold=2.0):
+    '''Takes the hit array and masks all pixels with a certain occupancy.
 
     Parameters
     ----------
     hits : array like
         If dim > 2 the additional dimensions are summed up.
-    cut_threshold : float, [0, 1]
-        A number to specify the threshold, which pixel to take. Pixels are masked if
-        occupancy < (max_occupancy-min_occupancy) * cut_threshold
-        1 means that all pixels are masked
+    min_cut_threshold : float, [0, 1]
+        A number to specify the minimum threshold, which pixel to take. Pixels are masked if
+        occupancy < min_cut_threshold * np.ma.median(occupancy)
+        0 means that no pixels are masked
+    max_cut_threshold : float, [0, 1]
+        A number to specify the maximum threshold, which pixel to take. Pixels are masked if
+        occupancy > max_cut_threshold * np.ma.median(occupancy)
         0 means that no pixels are masked
 
     Returns
@@ -207,7 +221,7 @@ def select_hot_region(hits, col_span, row_span, cut_threshold=0.8):
     mask[min(col_span):max(col_span) + 1, min(row_span):max(row_span) + 1] = 0
 
     ma = np.ma.masked_where(mask, hits)
-    return np.ma.masked_where(ma < cut_threshold * (np.amax(ma) - np.amin(ma)), ma)
+    return np.ma.masked_where(np.logical_or(ma < min_cut_threshold * np.ma.median(ma), ma > max_cut_threshold * np.ma.median(ma)), ma)
 
 
 def analyze_raw_data(input_files, output_files_hits, chip_flavor, scan_data_filenames):
@@ -248,7 +262,7 @@ def analyze_raw_data(input_files, output_files_hits, chip_flavor, scan_data_file
 
 def analyze_cluster_size(input_files_hits, output_file, parameter='GDAC', output_file_pdf=None):
     logging.info('Analyze the cluster sizes for different ' + parameter + ' settings for ' + str(len(input_files_hits)) + ' different files')
-    if os.path.isfile(output_file):  # skip analysis if already done
+    if os.path.isfile(output_file) and not analysis_configuration["overwrite_output_files"]:  # skip analysis if already done
             logging.info('Analyzed cluster size file ' + output_file + ' already exists. Skip cluster size analysis.')
     else:
         with tb.openFile(output_file, mode="w") as out_file_h5:  # file to write the data into
@@ -263,73 +277,77 @@ def analyze_cluster_size(input_files_hits, output_file, parameter='GDAC', output
                     scan_parameter = analysis_utils.get_scan_parameter(meta_data_array)  # get the scan parameters
                     if scan_parameter:  # if a GDAC scan parameter was used analyze the cluster size per GDAC setting
                         scan_parameter_values = scan_parameter.itervalues().next()  # scan parameter settings used
-                        logging.info('Analyze ' + input_files_hits[index] + ' per scan parameter ' + parameter + ' for ' + str(len(scan_parameter_values)) + ' values from ' + str(np.amin(scan_parameter_values)) + ' to ' + str(np.amax(scan_parameter_values)))
-                        event_numbers = analysis_utils.get_meta_data_at_scan_parameter(meta_data_array, parameter)['event_number']  # get the event numbers in meta_data where the scan parameter changes
-                        parameter_ranges = np.column_stack((scan_parameter_values, analysis_utils.get_event_range(event_numbers)))
-                        hit_table = in_hit_file_h5.root.Hits
-
-                        if not hit_table.cols.event_number.is_indexed:  # index event_number column to speed up everything
-                            logging.info('Create event_number index, this takes some time (up to 2 minutes)')
-                            hit_table.cols.event_number.create_csindex(filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))  # this takes time (1 min. ~ 150. Mio entries) but immediately pays off
-                        else:
-                            logging.info('Event_number index exists already')
-
-                        total_hits = 0
-                        total_hits_2 = 0
-                        index = 0  # index where to start the read out, 0 at the beginning
-                        max_chunk_size = 10000000  # max chunk size used, if too big memory errors occur
-                        chunk_size = max_chunk_size
-
-                        # initialize the analysis and set settings
-                        analyze_data = AnalyzeRawData()
-                        analyze_data.create_cluster_size_hist = True
-                        analyze_data.create_cluster_tot_hist = True
-                        analyze_data.histograming.set_no_scan_parameter()  # one has to tell the histogramer the # of scan parameters for correct occupancy hist allocation
-
-                        for parameter_index, parameter_range in enumerate(parameter_ranges):  # loop over the selected events
-                            analyze_data.reset()  # resets the data of the last analysis
-
-                            logging.info('Analyze GDAC = ' + str(parameter_range[0]) + ' ' + str(int(float(float(parameter_index) / float(len(parameter_ranges)) * 100.))) + '%')
-                            start_event_number = parameter_range[1]
-                            stop_event_number = parameter_range[2]
-                            logging.info('Data from events = [' + str(start_event_number) + ',' + str(stop_event_number) + '[')
-                            actual_parameter_group = out_file_h5.createGroup(parameter_goup, name=parameter + '_' + str(parameter_range[0]), title=parameter + '_' + str(parameter_range[0]))
-
-                            # loop over the hits in the actual selected events with optimizations: variable chunk size, start word index given
-                            readout_hit_len = 0  # variable to calculate a optimal chunk size value from the number of hits for speed up
-                            for hits, index in analysis_utils.data_aligned_at_events(hit_table, start_event_number=start_event_number, stop_event_number=stop_event_number, start=index, chunk_size=chunk_size):
-                                total_hits += hits.shape[0]
-                                analyze_data.analyze_hits(hits)  # analyze the selected hits in chunks
-
-                                readout_hit_len += hits.shape[0]
-                            chunk_size = int(1.05 * readout_hit_len) if int(1.05 * readout_hit_len) < max_chunk_size else max_chunk_size  # to increase the readout speed, estimated the number of hits for one read instruction
-                            if chunk_size < 50:  # limit the lower chunk size, there can always be a crazy event with more than 20 hits
-                                chunk_size = 50
-
-                            # get occupancy hist
-                            occupancy = np.zeros(80 * 336 * analyze_data.histograming.get_n_parameters(), dtype=np.uint32)  # create linear array as it is created in histogram class
-                            analyze_data.histograming.get_occupancy(occupancy)
-#                             occupancy_array = np.reshape(a=occupancy.view(), newshape=(80, 336, analyze_data.histograming.get_n_parameters()), order='F')  # make linear array to 3d array (col,row,parameter)
-#                             occupancy_array = np.swapaxes(occupancy_array, 0, 1)
-#                             occupancy_array_table = out_file_h5.createCArray(actual_parameter_group, name='HistOcc', title='Occupancy Histogram', atom=tb.Atom.from_dtype(occupancy.dtype), shape=(336, 80, analyze_data.histograming.get_n_parameters()), filters=filter_table)
-#                             occupancy_array_table[0:336, 0:80, 0:analyze_data.histograming.get_n_parameters()] = occupancy_array  # swap axis col,row,parameter --> row, col,parameter
-
-                            # store and plot cluster size hist
-                            cluster_size_hist = np.zeros(1024, dtype=np.uint32)
-                            analyze_data.clusterizer.get_cluster_size_hist(cluster_size_hist)
-                            cluster_size_hist_table = out_file_h5.createCArray(actual_parameter_group, name='HistClusterSize', title='Cluster Size Histogram', atom=tb.Atom.from_dtype(cluster_size_hist.dtype), shape=cluster_size_hist.shape, filters=filter_table)
-                            cluster_size_hist_table[:] = cluster_size_hist
-                            plotting.plot_cluster_size(hist=cluster_size_hist, title='Cluster size (' + str(np.sum(cluster_size_hist)) + ' entries) for ' + parameter + ' = ' + str(scan_parameter_values[parameter_index]), filename=output_pdf)
-                            if cluster_size_total is None: # true if no data was appended to the array yet
+                        if len(scan_parameter_values) == 1:  # only analyze per scan step if there are more than one scan step
+                            logging.info('Extract from ' + input_files_hits[index] + ' the cluster size for ' + parameter + ' = ' + str(scan_parameter_values[0]))
+                            cluster_size_hist = in_hit_file_h5.root.HistClusterSize[:]
+                            plotting.plot_cluster_size(hist=cluster_size_hist, title='Cluster size (' + str(np.sum(cluster_size_hist)) + ' entries) for ' + parameter + ' =' + str(scan_parameter_values[0]), filename=output_pdf)
+                            if cluster_size_total is None:  # true if no data was appended to the array yet
                                 cluster_size_total = cluster_size_hist
                             else:
                                 cluster_size_total = np.vstack([cluster_size_total, cluster_size_hist])
+                            actual_parameter_group = out_file_h5.createGroup(parameter_goup, name=parameter + '_' + str(scan_parameter_values[0]), title=parameter + '_' + str(scan_parameter_values[0]))
+                            cluster_size_hist_table = out_file_h5.createCArray(actual_parameter_group, name='HistClusterSize', title='Cluster Size Histogram', atom=tb.Atom.from_dtype(cluster_size_hist.dtype), shape=cluster_size_hist.shape, filters=filter_table)
+                            cluster_size_hist_table[:] = cluster_size_hist
+                        else:
+                            logging.info('Analyze ' + input_files_hits[index] + ' per scan parameter ' + parameter + ' for ' + str(len(scan_parameter_values)) + ' values from ' + str(np.amin(scan_parameter_values)) + ' to ' + str(np.amax(scan_parameter_values)))
+                            event_numbers = analysis_utils.get_meta_data_at_scan_parameter(meta_data_array, parameter)['event_number']  # get the event numbers in meta_data where the scan parameter changes
+                            parameter_ranges = np.column_stack((scan_parameter_values, analysis_utils.get_event_range(event_numbers)))
+                            hit_table = in_hit_file_h5.root.Hits
+                            if not hit_table.cols.event_number.is_indexed:  # index event_number column to speed up everything
+                                logging.info('Create event_number index, this takes some time (up to 2 minutes)')
+                                hit_table.cols.event_number.create_csindex(filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))  # this takes time (1 min. ~ 150. Mio entries) but immediately pays off
+                            else:
+                                logging.info('Event_number index exists already')
+                            total_hits = 0
+                            total_hits_2 = 0
+                            index = 0  # index where to start the read out, 0 at the beginning
+                            max_chunk_size = 10000000  # max chunk size used, if too big memory errors occur
+                            chunk_size = max_chunk_size
+                            # initialize the analysis and set settings
+                            analyze_data = AnalyzeRawData()
+                            analyze_data.create_cluster_size_hist = True
+                            analyze_data.create_cluster_tot_hist = True
+                            analyze_data.histograming.set_no_scan_parameter()  # one has to tell the histogramer the # of scan parameters for correct occupancy hist allocation
+                            for parameter_index, parameter_range in enumerate(parameter_ranges):  # loop over the selected events
+                                analyze_data.reset()  # resets the data of the last analysis
+                                logging.info('Analyze GDAC = ' + str(parameter_range[0]) + ' ' + str(int(float(float(parameter_index) / float(len(parameter_ranges)) * 100.))) + '%')
+                                start_event_number = parameter_range[1]
+                                stop_event_number = parameter_range[2]
+                                logging.info('Data from events = [' + str(start_event_number) + ',' + str(stop_event_number) + '[')
+                                actual_parameter_group = out_file_h5.createGroup(parameter_goup, name=parameter + '_' + str(parameter_range[0]), title=parameter + '_' + str(parameter_range[0]))
+                                # loop over the hits in the actual selected events with optimizations: variable chunk size, start word index given
+                                readout_hit_len = 0  # variable to calculate a optimal chunk size value from the number of hits for speed up
+                                for hits, index in analysis_utils.data_aligned_at_events(hit_table, start_event_number=start_event_number, stop_event_number=stop_event_number, start=index, chunk_size=chunk_size):
+                                    total_hits += hits.shape[0]
+                                    analyze_data.analyze_hits(hits)  # analyze the selected hits in chunks
+                                    readout_hit_len += hits.shape[0]
+                                chunk_size = int(1.05 * readout_hit_len) if int(1.05 * readout_hit_len) < max_chunk_size else max_chunk_size  # to increase the readout speed, estimated the number of hits for one read instruction
+                                if chunk_size < 50:  # limit the lower chunk size, there can always be a crazy event with more than 20 hits
+                                    chunk_size = 50
+                                # get occupancy hist
+                                occupancy = np.zeros(80 * 336 * analyze_data.histograming.get_n_parameters(), dtype=np.uint32)  # create linear array as it is created in histogram class
+                                analyze_data.histograming.get_occupancy(occupancy)
+    #                             occupancy_array = np.reshape(a=occupancy.view(), newshape=(80, 336, analyze_data.histograming.get_n_parameters()), order='F')  # make linear array to 3d array (col,row,parameter)
+    #                             occupancy_array = np.swapaxes(occupancy_array, 0, 1)
+    #                             occupancy_array_table = out_file_h5.createCArray(actual_parameter_group, name='HistOcc', title='Occupancy Histogram', atom=tb.Atom.from_dtype(occupancy.dtype), shape=(336, 80, analyze_data.histograming.get_n_parameters()), filters=filter_table)
+    #                             occupancy_array_table[0:336, 0:80, 0:analyze_data.histograming.get_n_parameters()] = occupancy_array  # swap axis col,row,parameter --> row, col,parameter
 
-                            total_hits_2 += np.sum(occupancy)
+                                # store and plot cluster size hist
+                                cluster_size_hist = np.zeros(1024, dtype=np.uint32)
+                                analyze_data.clusterizer.get_cluster_size_hist(cluster_size_hist)
+                                cluster_size_hist_table = out_file_h5.createCArray(actual_parameter_group, name='HistClusterSize', title='Cluster Size Histogram', atom=tb.Atom.from_dtype(cluster_size_hist.dtype), shape=cluster_size_hist.shape, filters=filter_table)
+                                cluster_size_hist_table[:] = cluster_size_hist
+                                plotting.plot_cluster_size(hist=cluster_size_hist, title='Cluster size (' + str(np.sum(cluster_size_hist)) + ' entries) for ' + parameter + ' = ' + str(scan_parameter_values[parameter_index]), filename=output_pdf)
+                                if cluster_size_total is None:  # true if no data was appended to the array yet
+                                    cluster_size_total = cluster_size_hist
+                                else:
+                                    cluster_size_total = np.vstack([cluster_size_total, cluster_size_hist])
 
-                        if total_hits != total_hits_2:
-                            logging.warning('Analysis shows inconsistent number of hits. Check needed!')
-                        logging.info('Analyzed %d hits!' % total_hits)
+                                total_hits_2 += np.sum(occupancy)
+
+                            if total_hits != total_hits_2:
+                                logging.warning('Analysis shows inconsistent number of hits. Check needed!')
+                            logging.info('Analyzed %d hits!' % total_hits)
                     else:  # no scan parameter is given, therefore the data file contains hits of only one GDAC setting and no analysis is necessary
                         parameter_value = analysis_utils.get_parameter_value_from_file_names([input_files_hits[index]], parameter).keys()[0]  # get the parameter value from the file name
                         logging.info('Extract from ' + input_files_hits[index] + ' the cluster size for ' + parameter + ' = ' + str(parameter_value))
@@ -413,12 +431,12 @@ def analyze_injected_charge(occupancy, gdacs):
 
         pixel_hits = pixel_hits * correction_factors * normalization
 
-        # choose region with pixels that have a sufficient occupancy
-        hot_pixel = select_hot_region(pixel_hits, col_span=analysis_configuration['col_span'], row_span=analysis_configuration['row_span'], cut_threshold=analysis_configuration['cut_threshold'])
-        pixel_mask = ~np.ma.getmaskarray(hot_pixel)
-        selected_pixel_hits = pixel_hits[pixel_mask, :]  # reduce the data to pixels that are in the hot pixel region
+        # choose region with pixels that have a sufficient occupancy but are not too hot
+        good_pixel = select_good_region(pixel_hits, col_span=analysis_configuration['col_span'], row_span=analysis_configuration['row_span'], min_cut_threshold=analysis_configuration['min_cut_threshold'], max_cut_threshold=analysis_configuration['max_cut_threshold'])
+        pixel_mask = ~np.ma.getmaskarray(good_pixel)
+        selected_pixel_hits = pixel_hits[pixel_mask, :]  # reduce the data to pixels that are in the good pixel region
         selected_pixel_thresholds = pixel_thresholds[pixel_mask, :]  # reduce the data to pixels that are in the hot pixel region
-        plotting.plot_occupancy(hot_pixel.T, title='Select ' + str(len(selected_pixel_hits)) + ' pixels for analysis')
+        plotting.plot_occupancy(good_pixel.T, title='Select ' + str(len(selected_pixel_hits)) + ' pixels for analysis')
 
         # reshape to one dimension
         x = selected_pixel_thresholds.flatten()
@@ -437,22 +455,30 @@ def analyze_injected_charge(occupancy, gdacs):
         y_p = y_p[selected_data]
         y_p_e = y_p_e[selected_data]
 
-        plot_result(x_p, y_p, y_p_e)
+#         plot_result(x_p, y_p, y_p_e)
 
         #  calculate and plot mean results
         x_mean = get_mean_threshold(gdac_range_source_scan, mean_threshold_calibration)
+        print x_mean
         y_mean = selected_pixel_hits.mean(axis=(0))
+        print y_mean
 
-        plotting.plot_scatter(x_mean * analysis_configuration['vcal_calibration'], y_mean, title='Mean single pixel cluster rate at different thresholds', x_label='mean threshold [e]', y_label='mean single pixel cluster rate')
+        plotting.plot_scatter(np.array(gdac_range_source_scan), y_mean, plot_range=None, title='Mean single pixel cluster rate at different thresholds', x_label='threshold setting [GDAC]', y_label='mean single pixel cluster rate')
+        plotting.plot_scatter(x_mean * analysis_configuration['vcal_calibration'], y_mean, plot_range=(analysis_configuration['min_thr'], analysis_configuration['max_thr']), title='Mean single pixel cluster rate at different thresholds', x_label='mean threshold [e]', y_label='mean single pixel cluster rate')
 
     if analysis_configuration['use_cluster_rate_correction']:
         correction_h5.close()
 
 if __name__ == "__main__":
     # names of data files
-    data_files = glob.glob(analysis_configuration['folder'] + analysis_configuration['scan_name'] + '_*.h5')
-    filter_file_words = ['interpreted', 'cut_', 'cluster_sizes']
-    raw_data_files = filter(lambda data_file: not any(x in data_file for x in filter_file_words), data_files)  # filter out already analyzed data
+    raw_data_files = []
+    for scan_name in analysis_configuration['scan_name']:
+        data_files = glob.glob(analysis_configuration['folder'] + scan_name + '_*.h5')
+        if not data_files:
+            raise RuntimeError('Cannot find any files for ' + scan_name)
+        filter_file_words = ['interpreted', 'cut_', 'cluster_sizes']
+        raw_data_files.extend(filter(lambda data_file: not any(x in data_file for x in filter_file_words), data_files))  # filter out already analyzed data
+
     raw_data_files_dict = analysis_utils.get_parameter_value_from_file_names(raw_data_files, 'GDAC')  # get a sorted ordered dict with GDAC, raw_data_filename
     logging.info('Found ' + str(len(raw_data_files_dict)) + ' raw data files with GDAC settings:\n' + str(raw_data_files_dict))
 
@@ -460,15 +486,19 @@ if __name__ == "__main__":
     hit_cut_files = [filename[:-3] + '_cut_hits.h5' for filename in raw_data_files_dict]
     hit_analyzed_files = [filename[:-3] + '_cut_hits_analyzed.h5' for filename in raw_data_files_dict]
     scan_data_filenames = [filename[:-3] for filename in raw_data_files_dict]
-    cluster_sizes_file = analysis_configuration['folder'] + analysis_configuration['scan_name'] + '_ALL_cluster_sizes.h5'
+    cluster_sizes_file = analysis_configuration['folder'] + analysis_configuration['scan_name'][0] + '_ALL_cluster_sizes.h5'
 
 #     analysis_utils.get_data_statistics(hit_files)
+
+#     import json
+#     print(json.dumps(hit_analyzed_files, indent=4))
+
     if 1 in analysis_configuration['analysis_steps']:
         analyze_raw_data(input_files=raw_data_files_dict.keys(), output_files_hits=hit_files, chip_flavor=analysis_configuration['chip_flavor'], scan_data_filenames=scan_data_filenames)
     if 2 in analysis_configuration['analysis_steps']:
-        analyse_selected_hits(input_files_hits=hit_files, output_files_hits=hit_cut_files, output_files_hits_analyzed=hit_analyzed_files, scan_data_filenames=scan_data_filenames)#, cluster_size_condition='cluster_size>=1', n_cluster_condition='n_cluster>=1')
+        analyse_selected_hits(input_files_hits=hit_files, output_files_hits=hit_cut_files, output_files_hits_analyzed=hit_analyzed_files, scan_data_filenames=scan_data_filenames)
     if 3 in analysis_configuration['analysis_steps']:
-        analyze_cluster_size(input_files_hits=hit_files, output_file=cluster_sizes_file, output_file_pdf=analysis_configuration['folder'] + analysis_configuration['scan_name'] + '_cluster_sizes.pdf')
+        analyze_cluster_size(input_files_hits=hit_files, output_file=cluster_sizes_file, output_file_pdf=analysis_configuration['folder'] + analysis_configuration['scan_name'][0] + '_cluster_sizes.pdf')
     if 4 in analysis_configuration['analysis_steps']:
         occupancy, gdacs = analysis_utils.get_occupancy_per_parameter(hit_analyzed_files)  # combine the occupancy arrays of all data files
         analyze_injected_charge(occupancy=occupancy, gdacs=gdacs)
