@@ -28,8 +28,8 @@ public:
 	void setMetaDataWordIndex(MetaWordInfoOut*& rWordNumber, const unsigned int& rSize);  //set the meta word index array to be filled
 
 	//array info get funnctions
-	unsigned int getNarrayHits(){return _hitIndex;};
-	unsigned int getNmetaDataEvent(){return _metaEventIndexLength;};
+	unsigned int getNarrayHits(){return _hitIndex;};								  // the number of hits of the actual interpreted raw data
+	unsigned int getNmetaDataEvent(){return _metaEventIndexLength;};				  // the length of the array storing the event number per read out
 	unsigned int getNmetaDataWord(){return _actualMetaWordIndex;};
 
 	//initializers, should be called before first call of interpretRawData() with new data file
@@ -43,6 +43,7 @@ public:
 	void setFEI4B(bool pIsFEI4B = true){_fEI4B = pIsFEI4B;};  //set the FE flavor to be able to read the raw data correctly
 	bool getFEI4B(){return _fEI4B;};                          //returns the FE flavor set
 	bool getMetaTableV2(){return _isMetaTableV2;};            //returns the MetaTable flavor (V1 or V2)
+	void useTriggerNumber(bool useTriggerNumber = true);      //new events are createrd if trigger number occures
 
 	void addEvent();              //increases the event counter, adds the actual hits/error/SR codes
 
@@ -124,6 +125,7 @@ private:
 	bool _debugEvents;                          //true if some events have to have debug output
 	unsigned int _startDebugEvent;              //start event number to have debug output
 	unsigned int _stopDebugEvent;               //stop event number to have debug output
+	bool _useTriggerNumber;						//set tio true to force event recognision by trigger number
 
 	//one event variables
 	unsigned int tNdataHeader;					//number of data header per event
