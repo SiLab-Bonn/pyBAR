@@ -8,7 +8,8 @@ Interpret::Interpret(void)
 	allocateTriggerErrorCounterArray();
 	allocateErrorCounterArray();
 	allocateServiceRecordCounterArray();
-	resetCounters();
+	reset();
+	_hitInfo = 0;
 }
 
 Interpret::~Interpret(void)
@@ -23,6 +24,7 @@ Interpret::~Interpret(void)
 void Interpret::setStandardSettings()
 {
 	info("setStandardSettings()");
+	_hitIndex = 0;
 	_NbCID = 16;
 	_maxTot = 14;
 	_fEI4B = false;
@@ -35,6 +37,7 @@ void Interpret::setStandardSettings()
 	_startWordIndex = 0;
 	_createMetaDataWordIndex = false;
 	_isMetaTableV2 = false;
+	_useTriggerNumber = false;
 }
 
 bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& pNdataWords)
@@ -76,7 +79,12 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 		tActualTot2 = -1;												          //TOT2 value stays negative if it can not be set properly in getHitsfromDataRecord()
 		if (getTimefromDataHeader(tActualWord, tActualLVL1ID, tActualBCID)){	//data word is data header if true is returned
 			_nDataHeaders++;
-			if (tNdataHeader > _NbCID-1){	                  //maximum event window is reached (tNdataHeader > BCIDs, mostly tNdataHeader > 15), so create new event
+			if (tNdataHeader > _NbCID-1){	                //maximum event window is reached (tNdataHeader > BCIDs, mostly tNdataHeader > 15), so create new event
+				if (_useTriggerNumber){
+					addEventErrorCode(__TRUNC_EVENT); //too many hits in the event, abort this event, add truncated flac
+					if(Basis::warningSet())
+						warning(std::string("addHit: Hit buffer overflow prevented by splitting events at event "+IntToStr(_nEvents)), __LINE__);
+				}
 				if(tNdataRecord==0)
 					_nEmptyEvents++;
 				addEvent();
@@ -99,13 +107,13 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 				if(tStartBCID+tDbCID != tActualBCID){  //check if BCID is increasing by 1s in the event window, if not close actual event and create new event with actual data header
 					if(tActualLVL1ID == tStartLVL1ID) //happens sometimes, non inc. BCID, FE feature, only abort the LVL1ID is not constant (if no external trigger is used or)
 						addEventErrorCode(__BCID_JUMP);
-					else{
+					else if (!_useTriggerNumber){
 						tBCIDerror = true;					       //BCID number wrong, abort event and take actual data header for the first hit of the new event
 						addEventErrorCode(__EVENT_INCOMPLETE);
 					}
 				}
 				if (!tBCIDerror && tActualLVL1ID != tStartLVL1ID){    //LVL1ID not constant, is expected for CMOS pulse trigger/hit OR, but not for trigger word triggering
-					tLVL1IDisConst = false;
+//					tLVL1IDisConst = false;
 					addEventErrorCode(__NON_CONST_LVL1ID);
 				}
 			}
@@ -115,9 +123,14 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 		}
 		else if (isTriggerWord(tActualWord)){ //data word is trigger word, is first word of the event data if external trigger is present
 			_nTriggers++;										    //increase the total trigger number counter
-			if (tNdataHeader > _NbCID-1){	      //special case: first word is trigger word
-				if(tNdataRecord==0)
-					_nEmptyEvents++;
+			if (!_useTriggerNumber){
+				if (tNdataHeader > _NbCID-1){	      //special case: first word is trigger word
+					if(tNdataRecord==0)
+						_nEmptyEvents++;
+					addEvent();
+				}
+			}
+			else if (_firstTriggerNrSet){		// if a trigger word but not the first occurs create an event
 				addEvent();
 			}
 			tTriggerWord++;                     //trigger event counter increase
@@ -149,8 +162,8 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 			_lastTriggerNumber = tTriggerNumber;
 		}
 		else if (getInfoFromServiceRecord(tActualWord, tActualSRcode, tActualSRcounter)){ //data word is service record
-			if (Basis::infoSet())
-				info(IntToStr(_nDataWords)+" SR "+IntToStr(tActualSRcode)+" at event "+IntToStr(_nEvents));
+			if (Basis::debugSet())
+				debug(IntToStr(_nDataWords)+" SR "+IntToStr(tActualSRcode)+" at event "+IntToStr(_nEvents));
 			addServiceRecord(tActualSRcode);
 			addEventErrorCode(__HAS_SR);
 			_nServiceRecords++;
@@ -225,7 +238,7 @@ bool Interpret::setMetaData(MetaInfo* &rMetaInfo, const unsigned int& tLength)
     _isMetaTableV2 = false;
 	_metaInfo = rMetaInfo;
 	if(tLength == 0){
-		warning(std::string("setMetaWordIndex: data is empty"));
+		warning("setMetaWordIndex: data is empty");
 		return false;
 	}
 	//sanity check
@@ -321,7 +334,7 @@ void Interpret::resetEventVariables()
 	tErrorCode = 0;
 	tServiceRecord = 0;
 	tBCIDerror = false;
-	tLVL1IDisConst = true;
+//	tLVL1IDisConst = true;
 	tTriggerWord = 0;
 	tTriggerNumber = 0;
 	tStartBCID = 0;
@@ -346,9 +359,15 @@ void Interpret::setMaxTot(const unsigned int& rMaxTot)
 	_maxTot = rMaxTot;
 }
 
+void Interpret::useTriggerNumber(bool useTriggerNumber)
+{
+	info("useTriggerNumber()");
+	_useTriggerNumber = useTriggerNumber;
+}
+
 void Interpret::getServiceRecordsCounters(unsigned int*& rServiceRecordsCounter, unsigned int& rNserviceRecords, bool copy)
 {
-	debug(std::string("getServiceRecordsCounters(...)"));
+	debug("getServiceRecordsCounters(...)");
 	if(copy)
 	 	std::copy(_serviceRecordCounter, _serviceRecordCounter+__NSERVICERECORDS, rServiceRecordsCounter);
 	else
@@ -359,7 +378,7 @@ void Interpret::getServiceRecordsCounters(unsigned int*& rServiceRecordsCounter,
 
 void Interpret::getErrorCounters(unsigned int*& rErrorCounter, unsigned int& rNerrorCounters, bool copy)
 {
-	debug(std::string("getErrorCounters(...)"));
+	debug("getErrorCounters(...)");
 	if(copy)
 		std::copy(_errorCounter, _errorCounter+__N_ERROR_CODES, rErrorCounter);
 	else
@@ -408,6 +427,7 @@ void Interpret::printSummary()
 	std::cout<<"\t4\t"<<_errorCounter[4]<<"\tEvents with unknown words\n";
 	std::cout<<"\t5\t"<<_errorCounter[5]<<"\tEvents with jumping BCIDs\n";
 	std::cout<<"\t6\t"<<_errorCounter[6]<<"\tEvents with TLU trigger error\n";
+	std::cout<<"\t7\t"<<_errorCounter[7]<<"\tEvents has too many hit and was truncated\n";
 
 	std::cout<<"#TriggerErrorCounters \n";
 	std::cout<<"\t0\t"<<_triggerErrorCounter[0]<<"\tTrigger number does not increase by 1\n";
@@ -440,7 +460,7 @@ void Interpret::printStatus() {
 	std::cout << "tServiceRecord "<<tServiceRecord<<"\n";
 	std::cout << "tTriggerNumber "<<tTriggerNumber<<"\n";
 	std::cout << "tTotalHits "<<tTotalHits<<"\n";
-	std::cout << "tLVL1IDisConst "<<tLVL1IDisConst<<"\n";
+//	std::cout << "tLVL1IDisConst "<<tLVL1IDisConst<<"\n";
 	std::cout << "tBCIDerror "<<tBCIDerror<<"\n";
 	std::cout << "tTriggerWord "<<tTriggerWord<<"\n";
 	std::cout << "_lastTriggerNumber "<<_lastTriggerNumber<<"\n";
@@ -517,7 +537,7 @@ void Interpret::addHit(const unsigned char& pRelBCID, const unsigned short int& 
 		addEventErrorCode(__TRUNC_EVENT); //too many hits in the event, abort this event, add truncated flac
 		addEvent();
 		if(Basis::warningSet())
-			warning(std::string("storeHit: Hit buffer overflow prevented by splitting events at event "+IntToStr(_nEvents)), __LINE__);
+			warning(std::string("addHit: Hit buffer overflow prevented by splitting events at event "+IntToStr(_nEvents)), __LINE__);
 	}
 }
 
@@ -525,8 +545,14 @@ void Interpret::storeHit(HitInfo& rHit)
 {
 	_nHits++;
 	if(_hitIndex < _hitInfoSize){
-		_hitInfo[_hitIndex] = rHit;
-		_hitIndex++;
+		if (_hitInfo != 0){
+			_hitInfo[_hitIndex] = rHit;
+			_hitIndex++;
+		}
+		else{
+			error("storeHit: output hit array not set");
+			throw std::runtime_error("output hit array not set");
+		}
 	}
 	else{
 		if(Basis::errorSet())
@@ -577,6 +603,7 @@ void Interpret::addEvent()
 
 void Interpret::storeEventHits()
 {
+	debug("storeEventHits()");
 	for (unsigned int i = 0; i<tHitBufferIndex; ++i){
 		_hitBuffer[i].triggerNumber = tTriggerNumber; //not needed if trigger number is at the beginning
 		_hitBuffer[i].triggerStatus = tTriggerError;

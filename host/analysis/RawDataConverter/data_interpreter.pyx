@@ -47,6 +47,7 @@ cdef extern from "Interpret.h":
 
         void setMetaData(MetaInfo*& rMetaInfo, const unsigned int& tLength) except +
         void setMetaDataV2(MetaInfoV2*& rMetaInfo, const unsigned int& tLength) except +
+ 
         void setMetaDataEventIndex(unsigned int*& rEventNumber, const unsigned int& rSize)
         void setMetaDataWordIndex(MetaWordInfoOut*& rWordNumber, const unsigned int& rSize)
 
@@ -60,6 +61,7 @@ cdef extern from "Interpret.h":
         unsigned int getNarrayHits()  # returns the maximum index filled with hits in the hit array
         unsigned int getNmetaDataEvent()  # returns the maximum index filled with event data infos
         unsigned int getNmetaDataWord()
+        void useTriggerNumber(bool useTriggerNumber)
 
         void resetEventVariables()
         void resetCounters()
@@ -71,7 +73,7 @@ cdef extern from "Interpret.h":
         void addEvent()
 
         unsigned int getHitSize()
-        
+
         void reset()
 
 
@@ -128,6 +130,8 @@ cdef class PyDataInterpreter:
         return <unsigned int> self.thisptr.getNarrayHits()
     def get_n_meta_data_word(self):
         return <unsigned int> self.thisptr.getNmetaDataWord()
+    def use_trigger_number(self, use_trigger_number):
+        self.thisptr.useTriggerNumber(<bool> use_trigger_number)
     def get_n_meta_data_event(self):
         return <unsigned int> self.thisptr.getNmetaDataEvent()
 #     def get_meta_event_index(self, cnp.ndarray[cnp.uint32_t, ndim=1] event_index):
@@ -159,10 +163,10 @@ cdef class PyDataInterpreter:
     @property
     def fei4b(self):
         return <bool> self.thisptr.getFEI4B()
- 
+
     @property
     def meta_table_v2(self):
         return <bool> self.thisptr.getMetaTableV2()
-    
+
     def reset(self):
         self.thisptr.reset()
