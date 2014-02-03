@@ -185,6 +185,7 @@ def test_pixel_register(self):
         pxstrobe = register_object.pxstrobe
         bitlength = register_object.bitlength
         for pxstrobe_bit_no in range(bitlength):
+            logging.info('Testing Pixel Register %s Bit %d', register_object.full_name, pxstrobe_bit_no)
             do_latch = True
             commands = []
             try:
