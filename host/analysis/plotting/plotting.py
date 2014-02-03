@@ -124,10 +124,9 @@ def plot_occupancy(hist, title='Occupancy', z_max=None, filename=None):
         plt.show()
     elif type(filename) == PdfPages:
         filename.savefig()
-        plt.close()
     else:
         plt.savefig(filename)
-        plt.close()
+    plt.close()
 
 
 def make_occupancy_hist(cols, rows, ncols=80, nrows=336):
@@ -190,7 +189,7 @@ def plot_profile_histogram(x, y, n_bins=100, title=None, x_label=None, y_label=N
         plt.close()
 
 
-def plot_scatter(x, y, title=None, x_label=None, y_label=None, marker_style='-o', log_x=False, log_y=False, filename=None):
+def plot_scatter(x, y, title=None, plot_range=None, x_label=None, y_label=None, marker_style='-o', log_x=False, log_y=False, filename=None):
     logging.info("Plot scatter plot %s" % ((': ' + title) if title is not None else ''))
 #     plt.clf()
 #     fig = plt.figure()
@@ -205,15 +204,16 @@ def plot_scatter(x, y, title=None, x_label=None, y_label=None, marker_style='-o'
         plt.xscale('log')
     if log_y:
         plt.yscale('log')
+    if plot_range:
+        plt.xlim((min(plot_range), max(plot_range)))
     plt.grid(True)
     if filename is None:
         plt.show()
     elif type(filename) == PdfPages:
         filename.savefig()
-        plt.close()
     else:
         plt.savefig(filename)
-        plt.close()
+    plt.close()
 
 
 def plot_correlation(hist, title="Hit correlation", xlabel=None, ylabel=None, filename=None):
