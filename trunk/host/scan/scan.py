@@ -167,6 +167,7 @@ class ScanBase(object):
 
         if do_global_reset:
             self.register_utils.global_reset()
+        self.register_utils.reset_service_records()
         if configure:
             self.register_utils.configure_all()
         self.restore_configuration = restore_configuration

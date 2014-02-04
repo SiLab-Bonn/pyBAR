@@ -122,7 +122,7 @@ class FEI4RegisterUtils(object):
 
         Special function to do a global reset on FEI4. Sequence of commands has to be like this, otherwise FEI4B will be left in weird state.
         '''
-        logging.info('Global reset of FE')
+        logging.info('Sending Global Reset')
         commands = []
         commands.extend(self.register.get_commands("confmode"))
 #         vthin_altfine, vthin_altcoarse = self.register.get_global_register_value("Vthin_AltFine"), self.register.get_global_register_value("Vthin_AltCoarse")
@@ -137,6 +137,18 @@ class FEI4RegisterUtils(object):
 #         self.register.set_global_register_value("Vthin_AltFine", vthin_altfine)
 #         self.register.set_global_register_value("Vthin_AltCoarse", vthin_altcoarse)
 #         commands.extend(self.register.get_commands("wrregister", name=["Vthin_AltFine", "Vthin_AltCoarse"]))
+        commands.extend(self.register.get_commands("runmode"))
+        self.send_commands(commands)
+
+    def reset_service_records(self):
+        logging.info('Resetting Service Records')
+        commands = []
+        commands.extend(self.register.get_commands("confmode"))
+        self.register.set_global_register_value('ReadErrorReq', 1)
+        commands.extend(self.register.get_commands("wrregister", name=['ReadErrorReq']))
+        commands.extend(self.register.get_commands("globalpulse", width=0))
+        self.register.set_global_register_value('ReadErrorReq', 0)
+        commands.extend(self.register.get_commands("wrregister", name=['ReadErrorReq']))
         commands.extend(self.register.get_commands("runmode"))
         self.send_commands(commands)
 
