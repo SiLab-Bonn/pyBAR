@@ -134,6 +134,10 @@ class FEI4RegisterUtils(object):
         self.send_commands(commands)
 
     def reset_service_records(self):
+        '''Resetting Service Records
+
+        This will reset Service Record counters. This will also bring back alive some FE where the output FIFO is stuck (no data is coming out in run mode).
+        '''
         logging.info('Resetting Service Records')
         commands = []
         commands.extend(self.register.get_commands("confmode"))
