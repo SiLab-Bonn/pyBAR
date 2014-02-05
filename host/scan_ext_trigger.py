@@ -129,14 +129,14 @@ class ExtTriggerScan(ScanBase):
                 if max_triggers is not None and current_trigger_number >= max_triggers:
                     logging.info('Reached maximum triggers. Stopping Scan...')
                     self.stop_thread_event.set()
-                if scan_start_time is not None and time_current_iteration > scan_stop_time:
+                if scan_timeout is not None and time_current_iteration > scan_stop_time:
                     logging.info('Reached maximum scan time. Stopping Scan...')
                     self.stop_thread_event.set()
                 try:
                     raw_data_file.append((self.readout.data.popleft(),))
                 except IndexError:  # no data
                     no_data_at_time = time_current_iteration
-                    if not wait_for_first_trigger and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
+                    if timeout_no_data is not None and not wait_for_first_trigger and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
                         logging.info('Reached no data timeout. Stopping Scan...')
                         self.stop_thread_event.set()
                     elif not wait_for_first_trigger:
