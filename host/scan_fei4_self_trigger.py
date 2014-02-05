@@ -1,5 +1,6 @@
 import time
 import logging
+import math
 import numpy as np
 
 from scan.scan import ScanBase
@@ -22,7 +23,7 @@ class FEI4SelfTriggerScan(ScanBase):
     def __init__(self, configuration_file, definition_file=None, bit_file=None, force_download=False, device=None, scan_data_path=None, device_identifier=""):
         super(FEI4SelfTriggerScan, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, force_download=force_download, device=device, scan_data_path=scan_data_path, device_identifier=device_identifier, scan_identifier="fei4_self_trigger_scan")
 
-    def scan(self, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60, trig_latency=239, trig_count=4):
+    def scan(self, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=1 * 60, trig_latency=239, trig_count=4):
         '''Scan loop
 
         Parameters
@@ -43,48 +44,41 @@ class FEI4SelfTriggerScan(ScanBase):
 
         self.configure_fe(col_span, row_span, trig_latency, trig_count)
 
-        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier) as raw_data_file:
+        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier, mode='w') as raw_data_file:
             self.readout.start()
             self.set_self_trigger(True)
             wait_for_first_data = True
-            last_iteration = time.time()
-            saw_no_data_at_time = last_iteration
-            saw_data_at_time = last_iteration
-            scan_start_time = last_iteration
-            no_data_at_time = last_iteration
+            show_trigger_message_at = 10 ** (int(math.floor(math.log10(scan_timeout) - math.log10(3) / math.log10(10))))
+            time_current_iteration = time.time()
+            saw_no_data_at_time = time_current_iteration
+            saw_data_at_time = time_current_iteration
+            scan_start_time = time_current_iteration
+            no_data_at_time = time_current_iteration
             time_from_last_iteration = 0
             scan_stop_time = scan_start_time + scan_timeout
             while not self.stop_thread_event.wait(self.readout.readout_interval):
-    #                 if logger.isEnabledFor(logging.DEBUG):
-    #                     lost_data = self.readout.get_lost_data_count()
-    #                     if lost_data != 0:
-    #                         logging.debug('Lost data count: %d', lost_data)
-    #                         logging.debug('FIFO fill level: %4f', (float(fifo_size)/2**20)*100)
-    #                         logging.debug('Collected triggers: %d', self.readout_utils.get_trigger_number())
-
-                if scan_start_time is not None and time.time() > scan_stop_time:
+                time_last_iteration = time_current_iteration
+                time_current_iteration = time.time()
+                time_from_last_iteration = time_current_iteration - time_last_iteration
+                if ((time_current_iteration - scan_start_time) % show_trigger_message_at < (time_last_iteration - scan_start_time) % show_trigger_message_at):
+                    logging.info('Scan runtime: %d seconds', time_current_iteration - scan_start_time)
+                    if not any(self.readout.get_rx_sync_status()):
+                        self.stop_thread_event.set()
+                        logging.error('No RX sync. Stopping Scan...')
+                    if any(self.readout.get_rx_8b10b_error_count()):
+                        self.stop_thread_event.set()
+                        logging.error('RX 8b10b error(s) detected. Stopping Scan...')
+                    if any(self.readout.get_rx_fifo_discard_count()):
+                        self.stop_thread_event.set()
+                        logging.error('RX FIFO discard error(s) detected. Stopping Scan...')
+                if scan_timeout is not None and time_current_iteration > scan_stop_time:
                     logging.info('Reached maximum scan time. Stopping Scan...')
                     self.stop_thread_event.set()
-                # TODO: read 8b10b decoder err cnt
-    #                 if not self.readout_utils.read_rx_status():
-    #                     logging.info('Lost data sync. Starting synchronization...')
-    #                     self.readout_utils.set_ext_cmd_start(False)
-    #                     if not self.readout_utils.reset_rx(1000):
-    #                         logging.info('Failed. Stopping scan...')
-    #                         self.stop_thread_event.set()
-    #                     else:
-    #                         logging.info('Done!')
-    #                         self.readout_utils.set_ext_cmd_start(True)
-
-                time_from_last_iteration = time.time() - last_iteration
-                last_iteration = time.time()
                 try:
                     raw_data_file.append((self.readout.data.popleft(),))
-                    #logging.info('data words')
                 except IndexError:  # no data
-                    #logging.info('no data words')
-                    no_data_at_time = last_iteration
-                    if wait_for_first_data == False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
+                    no_data_at_time = time_current_iteration
+                    if timeout_no_data is not None and wait_for_first_data == False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
                         logging.info('Reached no data timeout. Stopping Scan...')
                         self.stop_thread_event.set()
                     elif wait_for_first_data == False:
@@ -92,14 +86,12 @@ class FEI4SelfTriggerScan(ScanBase):
 
                     if no_data_at_time > (saw_data_at_time + 10):
                         scan_stop_time += time_from_last_iteration
+                else:
+                    saw_data_at_time = time_current_iteration
 
-                    continue
-
-                saw_data_at_time = last_iteration
-
-                if wait_for_first_data == True:
-                    logging.info('Taking data...')
-                    wait_for_first_data = False
+                    if wait_for_first_data == True:
+                        logging.info('Taking data...')
+                        wait_for_first_data = False
 
             self.set_self_trigger(False)
             self.readout.stop()
@@ -141,7 +133,8 @@ class FEI4SelfTriggerScan(ScanBase):
         commands.extend(self.register.get_commands("confmode"))
         self.register.set_global_register_value("GateHitOr", 1 if enable else 0)  # enable FE self-trigger mode
         commands.extend(self.register.get_commands("wrregister", name=["GateHitOr"]))
-        commands.extend(self.register.get_commands("runmode"))
+        if enable:
+            commands.extend(self.register.get_commands("runmode"))
         self.register_utils.send_commands(commands)
 
     def analyze(self):
@@ -152,7 +145,7 @@ class FEI4SelfTriggerScan(ScanBase):
             analyze_raw_data.create_cluster_size_hist = True  # can be set to false to omit cluster hit creation, can save some time, standard setting is false
             analyze_raw_data.create_source_scan_hist = True
             analyze_raw_data.create_cluster_tot_hist = True
-            analyze_raw_data.interpreter.set_warning_output(True)
+            analyze_raw_data.interpreter.set_warning_output(False)
             analyze_raw_data.clusterizer.set_warning_output(False)
             analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
             analyze_raw_data.interpreter.print_summary()
