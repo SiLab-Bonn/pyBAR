@@ -97,6 +97,7 @@ private:
 	void deleteResultHistograms();
 
 	void addCluster();													//adds the actual cluster to the _clusterInfo array
+	void addHitClusterInfo(const unsigned int& pHitIndex);				//adds the cluster info to the actual cluster hits in the cluster hit table
 
 	//input data structure
 	HitInfo* _hitInfo;

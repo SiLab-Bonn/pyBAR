@@ -113,6 +113,8 @@ class ClusterHitInfoTable(tb.IsDescription):
     event_status = tb.UInt8Col(pos=10)
     cluster_id = tb.UInt16Col(pos=11)
     is_seed = tb.UInt8Col(pos=12)
+    cluster_size = tb.UInt16Col(pos=13)
+    n_cluster = tb.UInt16Col(pos=14)
 
 
 class ClusterInfoTable(tb.IsDescription):
