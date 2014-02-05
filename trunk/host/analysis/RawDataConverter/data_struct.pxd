@@ -51,6 +51,8 @@ cdef packed struct numpy_cluster_hit_info:
     cnp.uint8_t eventStatus  # event status value (unsigned char: 0 to 255)
     cnp.uint16_t clusterID  # the cluster id of the hit
     cnp.uint8_t isSeed  # flag to mark seed pixel
+    cnp.uint16_t clusterSize  # the cluster id of the hit
+    cnp.uint16_t nCluster  # the cluster id of the hit
 
 cdef packed struct numpy_cluster_info:
     cnp.uint32_t eventNumber  # event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)

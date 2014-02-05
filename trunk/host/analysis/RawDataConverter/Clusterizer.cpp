@@ -36,7 +36,7 @@ void Clusterizer::setStandardSettings()
 	initChargeCalibMap();
 	_dx = 1;
 	_dy = 1;
-	_DbCID = 1;
+	_DbCID = 2;
 	_minClusterHits = 1;
 	_maxClusterHits = 9;	//std. setting for maximum hits per cluster allowed
 	_runTime = 0;
@@ -194,6 +194,7 @@ void Clusterizer::addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
   for(unsigned int i = 0; i<rNhits; i++){
 	  if(_actualEventNumber != rHitInfo[i].eventNumber){
 		  clusterize();
+		  addHitClusterInfo(i);
 		  clearActualEventVariables();
 	  }
 	  _actualEventNumber = rHitInfo[i].eventNumber;
@@ -201,6 +202,7 @@ void Clusterizer::addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
   }
   //manually add remaining hit data
   clusterize();
+  addHitClusterInfo(rNhits-1);
 }
 
 bool Clusterizer::clusterize()
@@ -262,6 +264,8 @@ void Clusterizer::test()
 		std::cout<<"_clusterHitInfo["<<i<<"].eventStatus "<<(unsigned int)_clusterHitInfo[i].eventStatus<<"\n";
 		std::cout<<"_clusterHitInfo["<<i<<"].clusterID "<<(unsigned int)_clusterHitInfo[i].clusterID<<"\n";
 		std::cout<<"_clusterHitInfo["<<i<<"].isSeed "<<(unsigned int)_clusterHitInfo[i].isSeed<<"\n";
+		std::cout<<"_clusterHitInfo["<<i<<"].clusterSize "<<(unsigned int)_clusterHitInfo[i].clusterSize<<"\n";
+		std::cout<<"_clusterHitInfo["<<i<<"].nCluster "<<(unsigned int)_clusterHitInfo[i].nCluster<<"\n";
 	}
 	for(unsigned int i=0; i<_clusterInfoSize; ++i){
 		std::cout<<"_clusterInfo["<<i<<"].eventNumber "<<_clusterInfo[i].eventNumber<<"\n";
@@ -327,6 +331,8 @@ void Clusterizer::addHit(const unsigned int& pHitIndex)
 		_clusterHitInfo[pHitIndex].serviceRecord = _hitInfo[pHitIndex].serviceRecord;
 		_clusterHitInfo[pHitIndex].eventStatus = _hitInfo[pHitIndex].eventStatus;
 		_clusterHitInfo[pHitIndex].isSeed = 0;
+		_clusterHitInfo[pHitIndex].clusterSize = 666;
+		_clusterHitInfo[pHitIndex].nCluster = 666;
 	}
 }
 
@@ -725,9 +731,14 @@ void Clusterizer::addCluster()
 	//set seed
 	if(_createClusterHitInfoArray){
 		if(_hitIndexMap[(long)_actualClusterSeed_column + (long)_actualClusterSeed_row * (long)RAW_DATA_MAX_COLUMN + (long)_actualClusterSeed_relbcid * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] < _clusterHitInfoSize)
-		_clusterHitInfo[_hitIndexMap[(long)_actualClusterSeed_column + (long)_actualClusterSeed_row * (long)RAW_DATA_MAX_COLUMN + (long)_actualClusterSeed_relbcid * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW]].isSeed = 1;
+			_clusterHitInfo[_hitIndexMap[(long)_actualClusterSeed_column + (long)_actualClusterSeed_row * (long)RAW_DATA_MAX_COLUMN + (long)_actualClusterSeed_relbcid * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW]].isSeed = 1;
 		else
 			throw std::out_of_range("Clusterizer: addCluster(): hit index is out of range");
 	}
+}
+
+void Clusterizer::addHitClusterInfo(const unsigned int& pHitIndex)
+{
+//	std::cout<<"add cluster for hits at "<<pHitIndex<<"\n";
 }
 

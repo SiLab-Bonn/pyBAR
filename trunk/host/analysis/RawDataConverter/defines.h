@@ -20,7 +20,7 @@ typedef struct HitInfo{
 
 //structure to store the hits with cluster info
 typedef struct ClusterHitInfo{
-  unsigned int eventNumber;  //event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
+  unsigned int eventNumber;   //event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
   unsigned int triggerNumber; //external trigger number for read out system
   unsigned char relativeBCID; //relative BCID value (unsigned char: 0 to 255)
   unsigned short int LVLID;   //LVL1ID (unsigned short int: 0 to 65.535)
@@ -32,7 +32,9 @@ typedef struct ClusterHitInfo{
   unsigned int serviceRecord; //event service records
   unsigned char eventStatus;  //event status value (unsigned char: 0 to 255)
   unsigned short clusterID;	  //the cluster id of the hit
-  unsigned char isSeed;	  //flag to mark seed pixel
+  unsigned char isSeed;	  	  //flag to mark seed pixel
+  unsigned short clusterSize;//the cluster size of the cluster belonging to the hit
+  unsigned short nCluster;	  //the number of hits of the cluster belonging to the hit
 } ClusterHitInfo;
 
 //structure to store the cluster
