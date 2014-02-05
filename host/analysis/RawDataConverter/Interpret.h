@@ -79,18 +79,18 @@ private:
 	bool getTimefromDataHeader(const unsigned int& pSRAMWORD, unsigned int& pLVL1ID, unsigned int& pBCID);	      //returns true if the SRAMword is a data header and if it is sets the BCID and LVL1
 	bool isDataRecord(const unsigned int& pSRAMWORD);               //returns true if data word is a data record (no col ,row ,tot limit checks done, only check for data record header)
 	bool getHitsfromDataRecord(const unsigned int& pSRAMWORD, int& pColHit1, int& pRowHit1, int& pTotHit1, int& pColHit2, int& pRowHit2, int& pTotHit2);	//returns true if the SRAMword is a data record with reasonable hit infos and if it is sets pCol,pRow,pTot
-	bool getInfoFromServiceRecord(const unsigned int& pSRAMWORD, unsigned int& pSRcode, unsigned int& pSRcount); 	//returns true if the SRAMword is a service record and sets pSRcode,pSRcount
+	bool getInfoFromServiceRecord(const unsigned int& pSRAMWORD, unsigned int& pSRcode, unsigned int& pSRcount); 	//returns true if the SRAMword is a service record and sets pSRcode, pSRcount
 	bool isTriggerWord(const unsigned int& pSRAMWORD);						  //returns true if data word is trigger word
-	bool isAddressRecord(const unsigned int& pSRAMWORD, unsigned int& rAddress, bool& isShiftRegister);//returns true if data word is a adress record
+	bool isAddressRecord(const unsigned int& pSRAMWORD, unsigned int& rAddress, bool& isShiftRegister); //returns true if data word is a adress record
 	bool isValueRecord(const unsigned int& pSRAMWORD, unsigned int& rValue);    //returns true if data word is a value record
 	bool isOtherWord(const unsigned int& pSRAMWORD);							  //returns true if data word is an empty record, adress record, value record or service record
 
 	//SR/error histogramming methods
-	void addTriggerErrorCode(const unsigned char& pErrorCode);      //adds the trigger error code to the existing error code
-	void addEventErrorCode(const unsigned char& pErrorCode);        //adds the error code to the existing error code
-	void histogramTriggerErrorCode();                               //adds the event trigger error code to the histogram
-	void histogramErrorCode();                                      //adds the event error code to the histogram
-	void addServiceRecord(const unsigned char& pSRcode);            //adds the service record code to SR histogram
+	void addTriggerErrorCode(const unsigned char& pErrorCode);                              //adds the trigger error code to the existing error code
+	void addEventErrorCode(const unsigned char& pErrorCode);                                //adds the error code to the existing error code
+	void histogramTriggerErrorCode();                                                       //adds the event trigger error code to the histogram
+	void histogramErrorCode();                                                              //adds the event error code to the histogram
+	void addServiceRecord(const unsigned char& pSRcode, const unsigned int& pSRcounter);    //adds the service record code to SR histogram
 
 	//memory allocation/initialization
 	void setStandardSettings();
