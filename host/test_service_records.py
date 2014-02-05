@@ -18,15 +18,15 @@ class TestServiceRecords(ScanBase):
 
         self.readout.reset_sram_fifo()
 
-        self.register_utils.reset_service_records(self)
+        self.register_utils.reset_service_records()
 
         # saving data
         data_dict = self.readout.read_data_dict()
         save_raw_data_from_data_dict_iterable((data_dict,), filename=self.scan_data_filename, title=self.scan_identifier)
 
         # debug
-#         for data in data_dict["data"]:
-#             print FEI4Record(data, chip_flavor=self.register.chip_flavor)
+        for data in data_dict["data"]:
+            print FEI4Record(data, chip_flavor=self.register.chip_flavor)
 
         self.register.restore()
         self.register_utils.configure_global()
