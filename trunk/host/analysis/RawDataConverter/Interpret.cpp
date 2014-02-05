@@ -163,8 +163,8 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 		}
 		else if (getInfoFromServiceRecord(tActualWord, tActualSRcode, tActualSRcounter)){ //data word is service record
 			if (Basis::debugSet())
-				debug(IntToStr(_nDataWords)+" SR "+IntToStr(tActualSRcode)+" at event "+IntToStr(_nEvents));
-			addServiceRecord(tActualSRcode);
+				debug(IntToStr(_nDataWords)+" SR "+IntToStr(tActualSRcode)+" ("+IntToStr(tActualSRcounter)+") at event "+IntToStr(_nEvents));
+			addServiceRecord(tActualSRcode, tActualSRcounter);
 			addEventErrorCode(__HAS_SR);
 			_nServiceRecords++;
 		}
@@ -703,8 +703,18 @@ bool Interpret::getHitsfromDataRecord(const unsigned int& pSRAMWORD, int& pColHi
 bool Interpret::getInfoFromServiceRecord(const unsigned int& pSRAMWORD, unsigned int& pSRcode, unsigned int& pSRcount)
 {
 	if(SERVICE_RECORD_MACRO(pSRAMWORD)){
-		pSRcode = SERVICE_RECORD_CODE_MACRO(pSRAMWORD);
-		pSRcount = SERVICE_RECORD_COUNTER_MACRO(pSRAMWORD);
+        pSRcode = SERVICE_RECORD_CODE_MACRO(pSRAMWORD);
+        if (_fEI4B){
+            if (pSRcode == 14)
+                pSRcount = 1;
+            else if (pSRcode == 16)
+                pSRcount = SERVICE_RECORD_ETC_MACRO_FEI4B(pSRAMWORD);
+            else
+                pSRcount = SERVICE_RECORD_COUNTER_MACRO(pSRAMWORD);
+        }
+        else{
+            pSRcount = SERVICE_RECORD_COUNTER_MACRO(pSRAMWORD);
+        }
 		return true;
 	}
 	return false;
@@ -823,11 +833,11 @@ void Interpret::histogramErrorCode()
 	}
 }
 
-void Interpret::addServiceRecord(const unsigned char& pSRcode)
+void Interpret::addServiceRecord(const unsigned char& pSRcode, const unsigned int& pSRcounter)
 {
 	tServiceRecord |= pSRcode;
 	if(pSRcode<__NSERVICERECORDS)
-		_serviceRecordCounter[pSRcode]+=1;
+		_serviceRecordCounter[pSRcode]+=pSRcounter;
 }
 
 void Interpret::allocateHitBufferArray()
