@@ -16,7 +16,9 @@ class TestServiceRecords(ScanBase):
     def scan(self):
         self.register.create_restore_point()
 
-        read_service_records(self)
+        self.readout.reset_sram_fifo()
+
+        self.register_utils.reset_service_records(self)
 
         # saving data
         data_dict = self.readout.read_data_dict()
@@ -37,21 +39,6 @@ class TestServiceRecords(ScanBase):
             analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
             analyze_raw_data.plot_histograms(scan_data_filename=scan.scan_data_filename)
 #             analyze_raw_data.interpreter.print_summary()
-
-
-def read_service_records(self):
-    logging.info('Reading Service Records...')
-    commands = []
-    commands.extend(self.register.get_commands("confmode"))
-    self.register_utils.send_commands(commands)
-    self.readout.reset_sram_fifo()
-    commands = []
-    self.register.set_global_register_value('ReadErrorReq', 1)
-    commands.extend(self.register.get_commands("wrregister", name=['ReadErrorReq']))
-    commands.extend(self.register.get_commands("globalpulse", width=0))
-    self.register.set_global_register_value('ReadErrorReq', 0)
-    commands.extend(self.register.get_commands("wrregister", name=['ReadErrorReq']))
-    self.register_utils.send_commands(commands)
 
 
 if __name__ == "__main__":
