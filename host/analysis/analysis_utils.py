@@ -96,20 +96,23 @@ def get_normalization(hit_files, parameter, reference='event', sort=False, plot=
     for one_file in scan_parameter_values_files_dict:
         with tb.openFile(one_file, mode="r") as in_hit_file_h5:  # open the actual hit file
             meta_data = in_hit_file_h5.root.meta_data[:]
-            parameter_values = scan_parameter_values_files_dict.values()
             if reference == 'event':
-                try:
-                    event_numbers = get_meta_data_at_scan_parameter(meta_data, parameter)['event_number']  # get the event numbers in meta_data where the scan parameter changes
-                    event_range = get_event_range(event_numbers)
-                    event_range[-1, 1] = event_range[-2, 1]  # hack the last event range not to be None
-                    n_events = event_range[:, 1] - event_range[:, 0]  # number of events for every GDAC
-                    n_events[-1] = n_events[-2] - (n_events[-3] - n_events[-2])  # FIXME: set the last number of events manually, bad extrapolaton
-                except ValueError:  # there is not necessarily a scan parameter given in the meta_data
-                    n_events = [meta_data[-1]['event_number'] + (meta_data[-1]['event_number'] - meta_data[-2]['event_number'])]
-                except IndexError: # there is maybe just one scan parameter given
-                    n_events = [meta_data[-1]['event_number']]
+                if len(get_meta_data_at_scan_parameter(meta_data, parameter)) < 2:  # if there is only one parameter used take the event number from the last hit
+                    hits = in_hit_file_h5.root.Hits
+                    n_events = [hits[-1]['event_number']]
+                else:
+                    try:
+                        event_numbers = get_meta_data_at_scan_parameter(meta_data, parameter)['event_number']  # get the event numbers in meta_data where the scan parameter changes
+                        event_range = get_event_range(event_numbers)
+                        event_range[-1, 1] = event_range[-2, 1]  # hack the last event range not to be None
+                        n_events = event_range[:, 1] - event_range[:, 0]  # number of events for every GDAC
+                        n_events[-1] = n_events[-2] - (n_events[-3] - n_events[-2])  # FIXME: set the last number of events manually, bad extrapolaton
+                    except ValueError:  # there is not necessarily a scan parameter given in the meta_data
+                        n_events = [meta_data[-1]['event_number'] + (meta_data[-1]['event_number'] - meta_data[-2]['event_number'])]
+                    except IndexError:  # there is maybe just one scan parameter given
+                        n_events = [meta_data[-1]['event_number']]
+                        logging.warning('Last number of events unknown and extrapolated')
                 normalization.extend(n_events)
-                logging.warning('Last number of events unknown and extrapolated')
             elif reference == 'time':
                 try:
                     time_start = get_meta_data_at_scan_parameter(meta_data, parameter)['timestamp_start']
@@ -189,16 +192,18 @@ def central_difference(x, y):
     return (z2 - z1) / (dx2 + dx1)
 
 
-def get_parameter_value_from_file_names(files, parameter, sort=True):
+def get_parameter_value_from_file_names(files, parameter, unique=True, sort=True):
     """
     Takes a list of files, searches for the parameter name in the file name and returns a ordered dict with the file name
     in the first dimension and the corresponding parameter value in the second.
-    The file names can be sorted by the parameter value, otherwise the order is kept.
+    The file names can be sorted by the parameter value, otherwise the order is kept. If unique is true every parameter is unique and
+    mapped to the file name that occurred last in the files list.
 
     Parameters
     ----------
     files : list of strings
     parameter : string
+    unique : bool
     sort : bool
 
     Returns
@@ -206,16 +211,19 @@ def get_parameter_value_from_file_names(files, parameter, sort=True):
     collections.OrderedDict
 
     """
+#     unique=False
     logging.info('Get the ' + parameter + ' values from the file names of ' + str(len(files)) + ' files')
     files_dict = collections.OrderedDict()
     for one_file in files:
         parameter_value = re.findall(parameter + r'_(\d+)', one_file)
         if parameter_value:
             parameter_value = int(parameter_value[0])
-            if parameter_value in files_dict.items():
-                raise NotImplementedError('File name search for ' + parameter + ' matches multiple files')
-            else:
-                files_dict[one_file] = parameter_value
+            if unique and parameter_value in files_dict.values():  # check if the value is already there
+                for i_file_name, i_parameter_value in files_dict.iteritems():
+                    if i_parameter_value == parameter_value:
+                        del files_dict[i_file_name]
+                        logging.info('File with ' + parameter + ' = ' + str(parameter_value) + ' is not unique. Take ' + one_file)
+            files_dict[one_file] = parameter_value
     return collections.OrderedDict(sorted(files_dict.iteritems(), key=itemgetter(1)) if sort else files_dict)  # with PEP 265 solution of sorting a dict by value
 
 
@@ -876,7 +884,7 @@ def data_aligned_at_events(table, start_event_number=None, stop_event_number=Non
             if last_event_start_index == 0:
                 nrows = src_array.shape[0]
                 if nrows != 1:
-                    logging.warning("Buffer too small to fit event. Possible loss of data. Increase chunk size.")
+                    logging.warning("Depreciated warning?! Buffer too small to fit event. Possible loss of data. Increase chunk size.")
             else:
                 nrows = last_event_start_index
 
