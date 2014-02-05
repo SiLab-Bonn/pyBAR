@@ -1,5 +1,6 @@
 import time
 import logging
+import math
 import numpy as np
 
 from scan.scan import ScanBase
@@ -21,7 +22,6 @@ with tb.openFile(input_file_calibration, mode="r") as in_file_calibration_h5:  #
 #     threshold_range = np.arange(30, 600, 16)  # threshold range in PlsrDAC to scan
 #     gdacs = get_gdacs(threshold_range, in_file_calibration_h5.root.MeanThresholdCalibration[:])
     gdacs = in_file_calibration_h5.root.MeanThresholdCalibration[:]['gdac']
-
 
 scan_configuration = {
     "gdacs": gdacs,
@@ -62,57 +62,83 @@ class FEI4SelfTriggerGdacScan(ScanBase):
 
         self.stop_loop_event = Event()
         self.stop_loop_event.clear()
+        self.repeat_scan_step = True
 
         self.configure_fe(col_span, row_span, trig_latency, trig_count)
 
-        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier, scan_parameters=["GDAC"]) as raw_data_file:
-            for gdac_value in gdacs:
-                if self.stop_thread_event.is_set():
-                    break
-                self.stop_loop_event.clear()
-                self.register_utils.set_gdac(gdac_value)
-                self.readout.start()
-                self.set_self_trigger(True)
-                wait_for_first_data = True
-                last_iteration = time.time()
-                saw_no_data_at_time = last_iteration
-                saw_data_at_time = last_iteration
-                scan_start_time = last_iteration
-                no_data_at_time = last_iteration
-                time_from_last_iteration = 0
-                scan_stop_time = scan_start_time + scan_timeout
-                while not self.stop_loop_event.is_set() and not self.stop_thread_event.wait(self.readout.readout_interval):
-                    if scan_start_time is not None and time.time() > scan_stop_time:
-                        logging.info('Reached maximum scan time. Stopping Scan...')
-                        self.stop_loop_event.set()
-                    time_from_last_iteration = time.time() - last_iteration
-                    last_iteration = time.time()
-                    try:
-                        raw_data_file.append((self.readout.data.popleft(),), scan_parameters={"GDAC": gdac_value})
-                        #logging.info('data words')
-                    except IndexError:  # no data
-                        #logging.info('no data words')
-                        no_data_at_time = last_iteration
-                        if wait_for_first_data == False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
-                            logging.info('Reached no data timeout. Stopping Scan...')
-                            self.stop_thread_event.set()
-                        elif wait_for_first_data == False:
-                            saw_no_data_at_time = no_data_at_time
+        for gdac_value in gdacs:
+            if self.stop_thread_event.is_set():
+                break
+            self.repeat_scan_step = True
+            while self.repeat_scan_step and not self.stop_thread_event.is_set():
+                with open_raw_data_file(filename=self.scan_data_filename + '_GDAC_' + str(gdac_value), title=self.scan_identifier, scan_parameters=["GDAC"], mode='w') as raw_data_file:
+                    self.repeat_scan_step = False
+                    self.stop_loop_event.clear()
+                    self.register_utils.set_gdac(gdac_value)
+                    self.readout.start()
+                    self.set_self_trigger(True)
+                    wait_for_first_data = True
+                    show_trigger_message_at = 10 ** (int(math.floor(math.log10(scan_timeout) - math.log10(3) / math.log10(10))))
+                    time_current_iteration = time.time()
+                    saw_no_data_at_time = time_current_iteration
+                    saw_data_at_time = time_current_iteration
+                    scan_start_time = time_current_iteration
+                    no_data_at_time = time_current_iteration
+                    time_from_last_iteration = 0
+                    scan_stop_time = scan_start_time + scan_timeout
+                    while not self.stop_loop_event.is_set() and not self.stop_thread_event.wait(self.readout.readout_interval):
+                        time_last_iteration = time_current_iteration
+                        time_current_iteration = time.time()
+                        time_from_last_iteration = time_current_iteration - time_last_iteration
+                        if ((time_current_iteration - scan_start_time) % show_trigger_message_at < (time_last_iteration - scan_start_time) % show_trigger_message_at):
+                            logging.info('Scan runtime: %d seconds', time_current_iteration - scan_start_time)
+                            if not any(self.readout.get_rx_sync_status()):
+                                self.repeat_scan_step = True
+                                self.stop_loop_event.set()
+                                logging.error('No RX sync. Stopping Scan...')
+                            if any(self.readout.get_rx_8b10b_error_count()):
+                                self.repeat_scan_step = True
+                                self.stop_loop_event.set()
+                                logging.error('RX 8b10b error(s) detected. Stopping Scan...')
+                            if any(self.readout.get_rx_fifo_discard_count()):
+                                self.repeat_scan_step = True
+                                self.stop_loop_event.set()
+                                logging.error('RX FIFO discard error(s) detected. Stopping Scan...')
+                        if scan_timeout is not None and time_current_iteration > scan_stop_time:
+                            logging.info('Reached maximum scan time. Stopping Scan...')
+                            self.stop_loop_event.set()
+                        try:
+                            raw_data_file.append((self.readout.data.popleft(),), scan_parameters={"GDAC": gdac_value})
+                        except IndexError:  # no data
+                            no_data_at_time = time_current_iteration
+                            if timeout_no_data is not None and wait_for_first_data == False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
+                                logging.info('Reached no data timeout. Stopping Scan...')
+                                self.repeat_scan_step = True
+                                self.stop_loop_event.set()
+                            elif wait_for_first_data == False:
+                                saw_no_data_at_time = no_data_at_time
 
-                        if no_data_at_time > (saw_data_at_time + 10):
-                            scan_stop_time += time_from_last_iteration
-                        continue
+                            if no_data_at_time > (saw_data_at_time + 10):
+                                scan_stop_time += time_from_last_iteration
+                        else:
+                            saw_data_at_time = time_current_iteration
 
-                    saw_data_at_time = last_iteration
+                            if wait_for_first_data == True:
+                                logging.info('Taking data...')
+                                wait_for_first_data = False
 
-                    if wait_for_first_data == True:
-                        logging.info('Taking data...')
-                        wait_for_first_data = False
+                    self.set_self_trigger(False)
+                    self.readout.stop()
 
-                self.set_self_trigger(False)
-                self.readout.stop()
+                    if self.repeat_scan_step:
+                        self.readout.print_readout_status()
+                        logging.warning('Repeating scan for GDAC %d' % (gdac_value))
+                        self.register_utils.configure_all()
+                        self.readout.reset_rx()
+                    else:
+                        raw_data_file.append(self.readout.data, scan_parameters={"GDAC": gdac_value})
 
-                raw_data_file.append(self.readout.data, scan_parameters={"GDAC": gdac_value})
+                        logging.info('Total scan runtime for GDAC %d: %d seconds' % (gdac_value, (time_current_iteration - scan_start_time)))
 
     def configure_fe(self, col_span, row_span, trig_latency, trig_count):
         # generate ROI mask for Enable mask
@@ -149,7 +175,8 @@ class FEI4SelfTriggerGdacScan(ScanBase):
         commands.extend(self.register.get_commands("confmode"))
         self.register.set_global_register_value("GateHitOr", 1 if enable else 0)  # enable FE self-trigger mode
         commands.extend(self.register.get_commands("wrregister", name=["GateHitOr"]))
-        commands.extend(self.register.get_commands("runmode"))
+        if enable:
+            commands.extend(self.register.get_commands("runmode"))
         self.register_utils.send_commands(commands)
 
     def analyze(self):
@@ -161,6 +188,7 @@ class FEI4SelfTriggerGdacScan(ScanBase):
             analyze_raw_data.create_source_scan_hist = True
             analyze_raw_data.create_cluster_tot_hist = True
             analyze_raw_data.interpreter.set_warning_output(False)
+            analyze_raw_data.clusterizer.set_warning_output(False)
             analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms(scan_data_filename=scan.scan_data_filename)
@@ -170,4 +198,4 @@ if __name__ == "__main__":
     scan = FEI4SelfTriggerGdacScan(**configuration.device_configuration)
     scan.start(use_thread=True, **scan_configuration)
     scan.stop()
-    scan.analyze()
+#     scan.analyze()
