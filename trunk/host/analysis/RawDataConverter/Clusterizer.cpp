@@ -34,9 +34,9 @@ void Clusterizer::setStandardSettings()
 {
 	info("setStandardSettings()");
 	initChargeCalibMap();
-	_dx = 1;
-	_dy = 1;
-	_DbCID = 2;
+	_dx = 1; // column
+	_dy = 2; // row
+	_DbCID = 4; // timewalk
 	_minClusterHits = 1;
 	_maxClusterHits = 9;	//std. setting for maximum hits per cluster allowed
 	_runTime = 0;
