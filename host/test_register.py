@@ -21,11 +21,11 @@ class RegisterTest(ScanBase):
         Number of register errors is some arbitrary number.
         FEI4A has timing issues when reading pixel registers. The data from pixel registers is corrupted. It is a known bug of the FEI4A. Lowering the digital voltage (VDDD) to 1.0V can improve results.
         '''
+        read_chip_sn(self)
+
         test_global_register(self)
 
         test_pixel_register(self)
-
-        read_chip_sn(self)
 
 
 def read_chip_sn(self):
@@ -40,7 +40,7 @@ def read_chip_sn(self):
     commands.extend(self.register.get_commands("confmode"))
     self.register_utils.send_commands(commands)
     self.readout.reset_sram_fifo()
-    if self.register.is_chip_flavor('fei4b'):
+    if self.register.fei4b:
         commands = []
         self.register.set_global_register_value('Efuse_Sense', 1)
         commands.extend(self.register.get_commands("wrregister", name=['Efuse_Sense']))
@@ -227,11 +227,11 @@ def test_pixel_register(self):
                 register_bitset = self.register.get_pixel_register_bitset(register_object, pxstrobe_bit_no if (register_object.littleendian == False) else register_object.bitlength - pxstrobe_bit_no - 1, dc_no)
 
                 commands = []
-                if self.register.is_chip_flavor('fei4b'):
+                if self.register.fei4b:
                     self.register.set_global_register_value("SR_Read", 1)
                     commands.extend(self.register.get_commands("wrregister", name=["SR_Read"]))
                 commands.extend([self.register.build_command("wrfrontend", pixeldata=register_bitset, chipid=self.register.chip_id)])
-                if self.register.is_chip_flavor('fei4b'):
+                if self.register.fei4b:
                     self.register.set_global_register_value("SR_Read", 0)
                     commands.extend(self.register.get_commands("wrregister", name=["SR_Read"]))
                 # print commands[0]
@@ -314,7 +314,7 @@ def test_pixel_register(self):
     self.register.set_global_register_value("S0", 0)
     self.register.set_global_register_value("S1", 0)
     self.register.set_global_register_value("SR_Clock", 0)
-    if self.register.is_chip_flavor('fei4b'):
+    if self.register.fei4b:
         self.register.set_global_register_value("SR_Read", 0)
         commands.extend(self.register.get_commands("wrregister", name=["Colpr_Addr", "Pixel_Strobes", "S0", "S1", "SR_Clock", "SR_Read"]))
     else:
