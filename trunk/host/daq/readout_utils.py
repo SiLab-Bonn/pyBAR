@@ -5,6 +5,14 @@ import array
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
+cmd_modes = {
+    0: 'positive edge',
+    1: 'negative edge',
+    2: 'Manchester Code IEEE 802.3',
+    3: 'Manchester Code G.E. Thomas'
+}
+
+
 trigger_modes = {
     0: 'external trigger',
     1: 'TLU no handshake',
@@ -17,20 +25,26 @@ class ReadoutUtils(object):
     def __init__(self, device):
         self.device = device
 
-    def configure_command_fsm(self, enable_ext_trigger=False, neg_edge=False, diable_clock=False, disable_command_trigger=False):
+    def configure_command_fsm(self, enable_ext_trigger=False, cmd_mode=0, diable_clock=False, disable_command_trigger=False):
         '''Setting up command FSM to receive external triggers.
 
         Parameters
         ----------
         enable_ext_trigger : bool
             Enabling external trigger and TLU trigger.
-        neg_edge : bool
-            Sending data on negative edge of FE clock.
+        cmd_mode : bool
+            Changing CMD output mode. From 0 to 3.
+            0: positive edge (default)
+            1: negative edge
+            2: Manchester Code IEEE 802.3 (for capacitively coupled Din)
+            3: Manchester Code G.E. Thomas
         diable_clock : bool
             Disabling FE clock.
         disable_command_trigger : bool
             Disabling command trigger. Command trigger sends pulse to LEMO TX1 when sending command to FE. Sending pulses over LEMO TX1 only when enable_ext_trigger is set to false.
         '''
+        if cmd_mode != 0:
+            logging.info('Command mode: %s' % cmd_modes[cmd_mode])
         logging.info('External trigger %s' % ('enabled' if enable_ext_trigger else 'disabled'))
 #         array = self.device.ReadExternal(address=0 + 2, size=1)  # get stored register value
 #         reg = struct.unpack('B', array)[0]
@@ -39,18 +53,15 @@ class ReadoutUtils(object):
             reg |= 0x01
         else:
             reg &= ~0x01
-        if neg_edge:
-            reg |= 0x02
-        else:
-            reg &= ~0x02
+        reg = ((cmd_mode & 0x03) << 1) | (reg & 0xf9)
         if diable_clock:
-            reg |= 0x04
-        else:
-            reg &= ~0x04
-        if disable_command_trigger:
             reg |= 0x08
         else:
             reg &= ~0x08
+        if disable_command_trigger:
+            reg |= 0x10
+        else:
+            reg &= ~0x10
         self.device.WriteExternal(address=0 + 2, data=[reg])  # overwriting register
 
     def configure_trigger_fsm(self, mode=0, trigger_data_msb_first=False, disable_veto=False, trigger_data_delay=0, trigger_clock_cycles=16, enable_reset=False, invert_lemo_trigger_input=False, force_use_rj45=False, trigger_low_timeout=0, reset_trigger_counter=False):
