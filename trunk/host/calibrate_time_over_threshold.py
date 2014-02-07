@@ -12,9 +12,17 @@ import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
+scan_configuration = {
+    "mask_steps": 3,
+    "repeat_command": 100,
+    "scan_parameter": 'PlsrDAC',
+    "scan_parameter_range": None
+}
+
+
 class TimeOverThresholdScan(ScanBase):
-    def __init__(self, configuration_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_time_over_threshold", scan_data_path=None):
-        super(TimeOverThresholdScan, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
+    def __init__(self, configuration_file, definition_file=None, bit_file=None, force_download=False, device=None, scan_data_path=None, device_identifier=""):
+        super(TimeOverThresholdScan, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, force_download=force_download, device=device, scan_data_path=scan_data_path, device_identifier=device_identifier, scan_identifier="time_over_threshold_calibration")
 
     def scan(self, mask_steps=3, repeat_command=100, scan_parameter='PlsrDAC', scan_parameter_range=None):
         '''Scan loop
@@ -39,7 +47,7 @@ class TimeOverThresholdScan(ScanBase):
             scan_parameter_range = range(0, (2 ** self.register.get_global_register_objects(name=[scan_parameter])[0].bitlength) - 1)
         logging.info("Scanning %s from %d to %d" % (scan_parameter, scan_parameter_range[0], scan_parameter_range[-1]))
 
-        output_pdf = PdfPages(os.path.join(configuration.scan_data_path, self.scan_data_filename) + '.pdf')
+        output_pdf = PdfPages(os.path.join(self.scan_data_path, self.scan_data_filename) + '.pdf')
         tot_calibration = np.empty(shape=(80, 336, len(scan_parameter_range)), dtype='<f8')  # array to hold the analyzed data in ram
         with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier, scan_parameters=[scan_parameter]) as raw_data_file:
             for index, scan_parameter_value in enumerate(scan_parameter_range):
@@ -78,7 +86,7 @@ class TimeOverThresholdScan(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = TimeOverThresholdScan(configuration_file=configuration.configuration_file, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
-    scan.start(use_thread=False, scan_parameter_range=range(0, 1024, 2))
+    scan = TimeOverThresholdScan(**configuration.device_configuration)
+    scan.start(use_thread=False, **scan_configuration)
     scan.stop()
     scan.analyze()
