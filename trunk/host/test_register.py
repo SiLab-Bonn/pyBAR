@@ -21,12 +21,19 @@ class RegisterTest(ScanBase):
         Number of register errors is some arbitrary number.
         FEI4A has timing issues when reading pixel registers. The data from pixel registers is corrupted. It is a known bug of the FEI4A. Lowering the digital voltage (VDDD) to 1.0V can improve results.
         '''
+        self.register.create_restore_point()
+
         read_chip_sn(self)
+        self.register.restore(keep=True)
+        self.register_utils.configure_global()
 
         test_global_register(self)
+        self.register.restore(keep=True)
+        self.register_utils.configure_global()
 
         test_pixel_register(self)
-
+        self.register.restore()
+        self.register_utils.configure_global()
 
 def read_chip_sn(self):
     '''Reading Chip S/N
