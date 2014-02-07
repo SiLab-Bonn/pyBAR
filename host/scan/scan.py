@@ -292,7 +292,7 @@ class ScanBase(object):
                 f.write(value)
         self.lock.release()
 
-    def scan_loop(self, command, repeat_command=100, use_delay=False, hardware_repeat=True, mask_steps=3, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=False, eol_function=None, digital_injection=False, enable_c_high=None, enable_c_low=None, shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=True, mask=None):
+    def scan_loop(self, command, repeat_command=100, use_delay=False, hardware_repeat=True, mask_steps=3, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=False, bol_function=None, eol_function=None, digital_injection=False, enable_c_high=None, enable_c_low=None, enable_shift_masks=["Enable", "C_High", "C_Low"], disable_shift_masks=[], restore_shift_masks=True, mask=None):
         '''Implementation of the scan loops (mask shifting, loop over double columns, repeatedly sending any arbitrary command).
 
         Parameters
@@ -312,17 +312,21 @@ class ScanBase(object):
         enable_double_columns : list, tuple
             List of double columns which will be enabled during scan. Default is all double columns. From 0 to 39 (double columns counted from zero). A value equal None or empty list will select all double columns.
         same_mask_for_all_dc : bool
-            Use same mask for all double columns. This will only affect all shift masks (see shift_masks). Enabling this is in general a good idea since all double columns will have the same configuration and the scan speed can increased by an order of magnitude.
+            Use same mask for all double columns. This will only affect all shift masks (see enable_shift_masks). Enabling this is in general a good idea since all double columns will have the same configuration and the scan speed can increased by an order of magnitude.
+        bol_function : function
+            Begin of loop function that will be called each time before sending command.
         eol_function : function
-            End of loop function that will be called each time the innermost loop ends.
+            End of loop function that will be called each time after sending command.
         digital_injection : bool
             Enables digital injection.
         enable_c_high : bool
-            Enables C_High pixel mask. No change if value is equal None. Note: will be overwritten during mask shifting if in shift_masks.
+            Enables C_High pixel mask. No change if value is equal None. Note: will be overwritten during mask shifting if in enable_shift_masks.
         enable_c_low : bool
-            Enables C_Low pixel mask. No change if value is equal None. Note: will be overwritten during mask shifting if in shift_masks.
-        shift_masks : list, tuple
-            List of pixel masks which get a mask applied that will be shifted during scan.
+            Enables C_Low pixel mask. No change if value is equal None. Note: will be overwritten during mask shifting if in enable_shift_masks.
+        enable_shift_masks : list, tuple
+            List of enable pixel masks which will be shifted during scan. Mask set to 1 for selected pixels else 0.
+        disable_shift_masks : list, tuple
+            List of disable pixel masks which will be shifted during scan. Mask set to 0 for selected pixels else 1.
         restore_shift_masks : bool
             Writing the initial (restored) FE pixel configuration into FE after finishing the scan loop.
         mask : array-like
@@ -375,20 +379,25 @@ class ScanBase(object):
         for mask_step in enable_mask_steps:
             commands = []
             commands.append(conf_mode_command)
-            curr_mask = self.register_utils.make_pixel_mask(steps=mask_steps, shift=mask_step, mask=mask)
-            #plt.imshow(np.transpose(curr_mask), interpolation='nearest', aspect="auto")
-            #plt.pcolor(np.transpose(curr_mask))
-            #plt.colorbar()
-            #plt.savefig('mask_step'+str(mask_step)+'.eps')
-            map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_mask), [shift_mask_name for shift_mask_name in shift_masks if (shift_mask_name.lower() != "EnableDigInj".lower())])
-            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=same_mask_for_all_dc, name=shift_masks))
-            if digital_injection == True:  # TODO: write EnableDigInj to FE or do it manually?
-                self.register.set_pixel_register_value("EnableDigInj", curr_mask)
-                commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=same_mask_for_all_dc, name=["EnableDigInj"]))  # write EnableDigInj mask last
-                self.register.set_global_register_value("DIGHITIN_SEL", 1)
-                commands.extend(self.register.get_commands("wrregister", name=["DIGHITIN_SEL"]))
-#             else:
-#                 commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=["EnableDigInj"]))
+            if disable_shift_masks:
+                curr_dis_mask = self.register_utils.make_pixel_mask(steps=mask_steps, shift=mask_step, default=1, value=0, mask=mask)
+                map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_dis_mask), disable_shift_masks)
+                commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=same_mask_for_all_dc, name=disable_shift_masks))
+            if enable_shift_masks or digital_injection:
+                curr_en_mask = self.register_utils.make_pixel_mask(steps=mask_steps, shift=mask_step, mask=mask)
+#                 plt.imshow(np.transpose(curr_en_mask), interpolation='nearest', aspect="auto")
+#                 plt.pcolor(np.transpose(curr_en_mask))
+#                 plt.colorbar()
+#                 plt.savefig('mask_step'+str(mask_step)+'.eps')
+                map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_en_mask), [shift_mask_name for shift_mask_name in enable_shift_masks if (shift_mask_name.lower() != "EnableDigInj".lower())])
+                commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=same_mask_for_all_dc, name=enable_shift_masks))
+                if digital_injection == True:  # TODO: write EnableDigInj to FE or do it manually?
+                    self.register.set_pixel_register_value("EnableDigInj", curr_en_mask)
+                    commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=same_mask_for_all_dc, name=["EnableDigInj"]))  # write EnableDigInj mask last
+                    self.register.set_global_register_value("DIGHITIN_SEL", 1)
+                    commands.extend(self.register.get_commands("wrregister", name=["DIGHITIN_SEL"]))
+#                 else:
+#                     commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=["EnableDigInj"]))
             self.register_utils.send_commands(commands, concatenate=True)
             logging.info('%d injection(s): mask step %d %s' % (repeat_command, mask_step, ('[%d - %d]' % (enable_mask_steps[0], enable_mask_steps[-1])) if len(enable_mask_steps) > 1 else ('[%d]' % enable_mask_steps[0])))
 
@@ -409,6 +418,11 @@ class ScanBase(object):
                     # overwrite only the DC command in CMD memory
                     self.register_utils.set_command(dc_address_command, set_length=False)  # do not set length here, because it was already set up before the loop
 
+                try:
+                    bol_function()
+                except TypeError:
+                    pass
+
                 if hardware_repeat == True:
                     self.register_utils.start_command()
                 else:  # do this in software, much slower
@@ -428,7 +442,8 @@ class ScanBase(object):
         self.register_utils.configure_global()  # always restore global configuration
         if restore_shift_masks:
             commands = []
-            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=shift_masks))
+            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=disable_shift_masks))
+            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=enable_shift_masks))
             commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name="EnableDigInj"))
             self.register_utils.send_commands(commands)
 
