@@ -26,7 +26,7 @@
 `define CMD_START_REG `CMD_BASE_ADD+1
 `define CMD_SIZE_REG `CMD_BASE_ADD+3
 `define CMD_REP_REG `CMD_BASE_ADD+5
-`define CMD_DATA_MEM `CMD_BASE_ADD+8
+`define CMD_DATA_MEM `CMD_BASE_ADD+16
 
 `define RX_BASE_ADD 16'h8000
 `define RX_RESET_REG `RX_BASE_ADD
@@ -58,6 +58,7 @@ module top_tb;
 
     wire CLK_160;
     wire CMD_CLK, CMD_DATA;
+    wire DOBOUT;
     
     SiLibUSB sidev(FCLK_IN);
     
@@ -91,13 +92,14 @@ module top_tb;
         .SRAM_OE_B(SRAM_OE_B), 
         .SRAM_WE_B(SRAM_WE_B), 
         
-        .DOBOUT({4{FE_RX}}),
+        .DOBOUT({4{DOBOUT}}),
         
         .CMD_CLK(CMD_CLK),
         .CMD_DATA(CMD_DATA)
     
     );
    
+   assign #4ns DOBOUT = FE_RX;
    
     //FEI4 Reset
     reg  RD1bar, RD2ENbar; 
