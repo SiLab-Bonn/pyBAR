@@ -1,6 +1,7 @@
 # ----------------------------------------------------------------
 # TO RUN (in work directory):
 # source vsim.tcl
+# vlog_libs (once)
 # vlog_top
 # vsim_top
 # wave_top
@@ -35,6 +36,16 @@ set FEI4 "../../../../../../fei4/trunk/models/fei4a"
 #vmap simprims_ver $XILINX/ISE/verilog/questasim/10.1c/lin64/simprims_ver 
 # ----------------------------------------------------------------
 
+proc vlog_libs {} {
+    
+    global XILINX
+    vlib simprims_ver
+    vlog -work simprims_ver $XILINX/verilog/src/simprims/*.v
+
+    vlib unisims_ver
+    vlog -work unisims_ver $XILINX/verilog/src/unisims/*.v    
+}
+
 proc vlog_top {} {
 
     global XILINX
@@ -46,14 +57,9 @@ proc vlog_top {} {
         vdel -all -lib work
     }
 
-    vmap unisims_ver $XILINX/EDK/unisims_ver
-    vmap simprims_ver $XILINX/EDK/simprims_ver
-    #vmap unisims_ver $XILINX/ISE/verilog/questasim/10.1e/nt64/unisims_ver
-    #vmap simprims_ver $XILINX/ISE/verilog/questasim/10.1e/nt64/simprims_ver
-
     vlib work
 
-    vlog $XILINX/ISE/verilog/src/glbl.v
+    vlog $XILINX/verilog/src/glbl.v
 
     vlog -lint $BASIL/trunk/device/modules/utils/*.v
     vlog -lint $BASIL/trunk/device/modules/sram_fifo/*.v
@@ -84,7 +90,8 @@ proc wave_top {} {
     add wave -group cmd sim:/top_tb/uut/icmd/i_cmd_seq_core/*
     add wave -group fifo_sram sim:/top_tb/uut/i_out_fifo/i_sram_fifo/*
 
-    add wave -group {fei4_rx_0 sim:/top_tb/uut/rx_gen[0]/ifei4_rx/i_fei4_rx_core/*}
+    
+    add wave -group fei4_rx_0 {sim:/top_tb/uut/rx_gen[0]/ifei4_rx/i_fei4_rx_core/*}
     add wave -group tlu sim:/top_tb/uut/tlu_controller_module/i_tlu_controller/*
 
     #add wave -group pa sim:/top_tb/uut/ifei4_rx/ireceiver_logic/irec_sync/iphase_align/*
