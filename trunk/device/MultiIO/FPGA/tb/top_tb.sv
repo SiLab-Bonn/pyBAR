@@ -40,7 +40,7 @@ module top_tb;
     wire FE_RX;
     
     // Outputs
-    wire [15:0] DEBUG_D;
+    reg MONHIT;
     wire LED1;
     wire LED2;
     wire LED3;
@@ -77,7 +77,7 @@ module top_tb;
         .FSTROBE(sidev.FSTROBE), 
         .FMODE(sidev.FMODE),
         
-        .DEBUG_D(DEBUG_D), 
+        .MONHIT(MONHIT), 
         .LED1(LED1), 
         .LED2(LED2), 
         .LED3(LED3), 
@@ -110,6 +110,7 @@ module top_tb;
         #3500  RD1bar  = 1;
         RD2ENbar = 1;
     end  
+   
     
     //FEI4 Model
     reg [26880-1:0] hit;
@@ -144,6 +145,8 @@ module top_tb;
     reg [23:0]  data_size ;
     
     initial begin
+        MONHIT = 0;
+        
         repeat (300) @(posedge FCLK_IN);
         
         /*
@@ -271,8 +274,19 @@ module top_tb;
       
         repeat (100) @(posedge FCLK_IN);
         
-        #100000
+        sidev.WriteExternal( 16'h8700+1,  1); // TDC start
+        #50000
+        MONHIT = 1;
+        #150
+        MONHIT = 0;
+        #500
+        MONHIT = 1;
+        #152
+        MONHIT = 0;
+        #50000
         @(posedge FCLK_IN);
+        
+        
         
         sidev.ReadExternal( `FIFO_BASE_ADD + 1, data_size[7:0]);
         sidev.ReadExternal( `FIFO_BASE_ADD + 2, data_size[15:8]);
