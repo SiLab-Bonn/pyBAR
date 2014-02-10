@@ -26,6 +26,7 @@ public:
   void setMaxTot(const unsigned int& rMaxTot);
 
   void addHits(HitInfo*& rHitInfo, const unsigned int& rNhits);
+  void addClusterSeedHits(ClusterInfo*& rClusterInfo, const unsigned int& rNcluster);
   void addScanParameter(const unsigned int& rNparInfoLength, ParInfo*& rParInfo);
   void setNoScanParameter();
   void addMetaEventIndex(const unsigned int& rNmetaEventIndexLength, unsigned int*& rMetaEventIndex);

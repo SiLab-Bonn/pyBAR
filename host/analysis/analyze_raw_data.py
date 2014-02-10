@@ -401,7 +401,12 @@ class AnalyzeRawData(object):
                     self.scan_parameters = None
                     self.histograming.set_no_scan_parameter()
                 else:
-                    self.histograming.add_scan_parameter(self.scan_parameters)
+                    if len(self.scan_parameters.dtype) != 1:
+                        scan_parameter_name = self.scan_parameters.dtype.names[0]
+                        logging.warning('More than one scan parameter found but the occupancy histograming will only be done for parameter: ' + str(scan_parameter_name))
+                        self.histograming.add_scan_parameter(self.scan_parameters[scan_parameter_name].copy())  # use copy to rearrange the data in memory to be able to access the data from the c++ library
+                    else:
+                        self.histograming.add_scan_parameter(self.scan_parameters)
             except tb.exceptions.NoSuchNodeError:
                 self.scan_parameters = None
                 self.histograming.set_no_scan_parameter()
@@ -469,10 +474,8 @@ class AnalyzeRawData(object):
                 last_pos = len(description)
                 if (self.scan_parameters != None):  # add additional column with the scan parameter
                     for scan_par_name in self.scan_parameters.dtype.names:
-                        dtype, pos = self.scan_parameters.dtype.fields[scan_par_name][:2]
-                        if pos == 0:
-                            description[scan_par_name] = Col.from_dtype(dtype, dflt=0, pos=last_pos)  # TODO: support more scan parameters
-                            break
+                        dtype, _ = self.scan_parameters.dtype.fields[scan_par_name][:2]
+                        description[scan_par_name] = Col.from_dtype(dtype, dflt=0, pos=last_pos)
                 meta_data_out_table = self.out_file_h5.createTable(self.out_file_h5.root, name='meta_data', description=description, title='MetaData', filters=self._filter_table)
                 entry = meta_data_out_table.row
                 for i in range(0, nEventIndex):
@@ -486,7 +489,8 @@ class AnalyzeRawData(object):
                         entry['time_stamp'] = self.meta_data[i][3]  # time stamp
                         entry['error_code'] = self.meta_data[i][4]  # error code
                     if (self.scan_parameters != None):  # scan parameter if available
-                        entry[scan_par_name] = self.scan_parameters[i][0]
+                        for scan_par_name in self.scan_parameters.dtype.names:
+                            entry[scan_par_name] = self.scan_parameters[scan_par_name][i]
                     entry.append()
                 meta_data_out_table.flush()
                 if self.scan_parameters != None:
@@ -622,7 +626,7 @@ class AnalyzeRawData(object):
         try:
             meta_data_table = in_file_h5.root.meta_data
             meta_data = meta_data_table[:]
-            if (meta_data.dtype.names.index('error_code') < len(meta_data.dtype.names) - 1):
+            if (meta_data.dtype.names.index('error_code') < len(meta_data.dtype.names) - 1):  # check if there is an additional column after the error code column, if yes this column has scan parameter infos
                 meta_data_array = np.array(meta_data['event_number'], dtype=[('metaEventIndex', np.uint32)])
                 self.histograming.add_meta_event_index(meta_data_array, array_length=len(meta_data_table))
                 scan_par_name = meta_data.dtype.names[meta_data.dtype.names.index('error_code') + 1]
@@ -673,6 +677,72 @@ class AnalyzeRawData(object):
         self.out_file_h5.close()
         in_file_h5.close()
 
+    def analyze_cluster_table(self, analyzed_data_file=None):
+        '''This helper method reads in the cluster info table in chunks and histograms the seed pixels into one occupancy array.
+        The 3rd dimension of the occupancy array is the number of different scan parameters used
+
+        Parameters
+        ----------
+        analyzed_data_file : hdf5 file containing the cluster table. If a scan parameter is given in the meta data the occupancy
+                            histograming is done per scan parameter.
+        Returns
+        -------
+        occupancy_array: numpy.array with dimensions (col, row, #scan_parameter)
+        '''
+        cluster = np.empty((2 * self._chunk_size,), dtype=dtype_from_descr(data_struct.ClusterInfoTable))
+
+        if analyzed_data_file != None:
+            self._analyzed_data_file = analyzed_data_file
+        elif (self._analyzed_data_file == None):
+            logging.warning("No data file with analyzed data given, abort!")
+            return
+
+        in_file_h5 = tb.openFile(self._analyzed_data_file, mode="r")
+
+        try:
+            meta_data_table = in_file_h5.root.meta_data
+            meta_data = meta_data_table[:]
+            if (meta_data.dtype.names.index('error_code') < len(meta_data.dtype.names) - 1):  # check if there is an additional column after the error code column, if yes this column has scan parameter infos
+                meta_data_array = np.array(meta_data['event_number'], dtype=[('metaEventIndex', np.uint32)])
+                self.histograming.add_meta_event_index(meta_data_array, array_length=len(meta_data_table))
+                scan_par_name = meta_data.dtype.names[meta_data.dtype.names.index('error_code') + 1]
+                scan_par_array = np.array(meta_data[scan_par_name], dtype=[(scan_par_name, '<u4'), ])
+                self.histograming.add_scan_parameter(scan_par_array)
+                logging.info("Add scan parameter " + scan_par_name + " for analysis")
+            else:
+                logging.info("No scan parameter data provided")
+                self.histograming.set_no_scan_parameter()
+        except tb.exceptions.NoSuchNodeError:
+            logging.info("No meta data provided, use no scan parameter")
+            self.histograming.set_no_scan_parameter()
+
+        table_size = in_file_h5.root.Hits.shape[0]
+        last_event_start_index = 0
+        n_cluster = 0  # number of hits in actual chunk
+
+        logging.info('Analyze clusters:')
+        for iCluster in range(0, table_size, self._chunk_size):
+            offset = last_event_start_index - n_cluster if iCluster != 0 else 0  # reread last hits of last event of last chunk
+            cluster = in_file_h5.root.Hits.read(iCluster + offset, iCluster + self._chunk_size)
+            n_cluster = cluster.shape[0]
+
+            # align hits at events, omit last event
+            last_event = cluster["event_number"][-1]
+            last_event_start_index = np.where(cluster["event_number"] == last_event)[0][0]
+
+            # do not omit the last cluster of the last events of the last chunk
+            if(iCluster == range(0, table_size, self._chunk_size)[-1]):
+                last_event_start_index = n_cluster
+
+            if (self.is_histogram_hits()):
+                self.histogram_cluster_seed_hits(cluster, stop_index=last_event_start_index)
+
+            logging.info('%d %%' % int(float(float(iCluster) / float(table_size) * 100.)))
+
+        logging.info('100 %')
+        self._create_additional_hit_data()
+        in_file_h5.close()
+
     def analyze_hits(self, hits, scan_parameter=None):
         n_hits = hits.shape[0]
         logging.info('Analyze %d hits' % n_hits)
@@ -719,6 +789,12 @@ class AnalyzeRawData(object):
             self.histograming.add_hits(hits[start_index:stop_index], hits[start_index:stop_index].shape[0])
         else:
             self.histograming.add_hits(hits[start_index:], hits[start_index:].shape[0])
+
+    def histogram_cluster_seed_hits(self, cluster, start_index=0, stop_index=None):
+        if stop_index != None:
+            self.histograming.add_hits(cluster[start_index:stop_index], cluster[start_index:stop_index].shape[0])
+        else:
+            self.histograming.add_hits(cluster[start_index:], cluster[start_index:].shape[0])
 
     def plot_histograms(self, scan_data_filename=None, analyzed_data_file=None, maximum=None):  # plots the histogram from output file if available otherwise from ram
         logging.info('Creating histograms%s' % ((' (source: %s)' % analyzed_data_file) if analyzed_data_file != None else ((' (source: %s)' % self._analyzed_data_file) if self._analyzed_data_file != None else '')))
