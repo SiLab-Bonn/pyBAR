@@ -35,6 +35,7 @@ class RegisterTest(ScanBase):
         self.register.restore()
         self.register_utils.configure_global()
 
+
 def read_chip_sn(self):
     '''Reading Chip S/N
 
@@ -65,7 +66,7 @@ def read_chip_sn(self):
 
     data = self.readout.read_data()
     if data.shape[0] == 0:
-        logging.warning('Chip S/N: No data')
+        logging.error('Chip S/N: No data')
         return
     read_values = []
     for index, word in enumerate(np.nditer(data)):
@@ -82,7 +83,7 @@ def read_chip_sn(self):
     self.register_utils.send_commands(commands)
 
     if len(read_values) == 0:
-        logging.warning('No Chip S/N was found')
+        logging.error('No Chip S/N was found')
     elif len(read_values) == 1:
         logging.info('Chip S/N: %d' % read_values[0])
     else:
@@ -109,7 +110,7 @@ def test_global_register(self):
 
     data = self.readout.read_data()
     if data.shape[0] == 0:
-        logging.warning('Global Register Test: No data')
+        logging.error('Global Register Test: No data')
         return
     checked_address = []
     number_of_errors = 0
@@ -248,9 +249,9 @@ def test_pixel_register(self):
                 data = self.readout.read_data()
                 if data.shape[0] == 0:  # no data
                     if do_latch:
-                        logging.warning('Pixel Register Test: Missing data from PxStrobes Bit %d at DC %d' % (pxstrobe + pxstrobe_bit_no, dc_no))
+                        logging.error('Pixel Register Test: No data from PxStrobes Bit %d at DC %d' % (pxstrobe + pxstrobe_bit_no, dc_no))
                     else:
-                        logging.warning('Pixel Register Test: Missing data from PxStrobes Bit SR at DC %d' % dc_no)
+                        logging.error('Pixel Register Test: No data from PxStrobes Bit SR at DC %d' % dc_no)
                     number_of_errors += 1
                 else:
                     expected_addresses = range(15, 672, 16)
