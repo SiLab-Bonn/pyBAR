@@ -168,6 +168,12 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 			addEventErrorCode(__HAS_SR);
 			_nServiceRecords++;
 		}
+		else if (isTdcWord(tActualWord)){	//data word is a tdc word
+			addEventErrorCode(__TDC_WORD);
+			tTdcCount = TDC_COUNT_MACRO(tActualWord);
+			if (Basis::debugSet())
+				debug(std::string(" ")+IntToStr(_nDataWords)+" TDC COUNT "+IntToStr(tTdcCount)+"\t"+IntToStr(_nEvents));
+		}
 		else if (isDataRecord(tActualWord)){	//data word is data record if true is returned
 			if (getHitsfromDataRecord(tActualWord, tActualCol1, tActualRow1, tActualTot1, tActualCol2, tActualRow2, tActualTot2)){
 				tNdataRecord++;										  //increase data record counter for this event
@@ -336,6 +342,7 @@ void Interpret::resetEventVariables()
 	tBCIDerror = false;
 //	tLVL1IDisConst = true;
 	tTriggerWord = 0;
+	tTdcCount = 0;
 	tTriggerNumber = 0;
 	tStartBCID = 0;
 	tStartLVL1ID = 0;
@@ -463,6 +470,7 @@ void Interpret::printStatus() {
 //	std::cout << "tLVL1IDisConst "<<tLVL1IDisConst<<"\n";
 	std::cout << "tBCIDerror "<<tBCIDerror<<"\n";
 	std::cout << "tTriggerWord "<<tTriggerWord<<"\n";
+	std::cout << "tTdcCount "<<tTdcCount<<"\n";
 	std::cout << "_lastTriggerNumber "<<_lastTriggerNumber<<"\n";
 
 	std::cout << "counters/flags for the total raw data processing\n";
@@ -528,6 +536,7 @@ void Interpret::addHit(const unsigned char& pRelBCID, const unsigned short int& 
 		_hitBuffer[tHitBufferIndex].row = pRow;
 		_hitBuffer[tHitBufferIndex].tot = pTot;
 		_hitBuffer[tHitBufferIndex].BCID = pBCID;
+		_hitBuffer[tHitBufferIndex].TDC = tTdcCount;
 		_hitBuffer[tHitBufferIndex].serviceRecord = tServiceRecord;
 		_hitBuffer[tHitBufferIndex].triggerStatus = tTriggerError;
 		_hitBuffer[tHitBufferIndex].eventStatus = tErrorCode;
@@ -606,6 +615,7 @@ void Interpret::storeEventHits()
 	debug("storeEventHits()");
 	for (unsigned int i = 0; i<tHitBufferIndex; ++i){
 		_hitBuffer[i].triggerNumber = tTriggerNumber; //not needed if trigger number is at the beginning
+		_hitBuffer[i].TDC = tTdcCount;
 		_hitBuffer[i].triggerStatus = tTriggerError;
 		_hitBuffer[i].eventStatus = tErrorCode;
 		storeHit(_hitBuffer[i]);
@@ -665,6 +675,13 @@ bool Interpret::getTimefromDataHeader(const unsigned int& pSRAMWORD, unsigned in
 bool Interpret::isDataRecord(const unsigned int& pSRAMWORD)
 {
 	if (DATA_RECORD_MACRO(pSRAMWORD))
+		return true;
+	return false;
+}
+
+bool Interpret::isTdcWord(const unsigned int& pSRAMWORD)
+{
+	if (TDC_WORD_MACRO(pSRAMWORD))
 		return true;
 	return false;
 }

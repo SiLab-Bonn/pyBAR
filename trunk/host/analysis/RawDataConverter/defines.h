@@ -13,6 +13,7 @@ typedef struct HitInfo{
   unsigned short int row;     //row value (unsigned short int: 0 to 65.535)
   unsigned char tot;          //tot value (unsigned char: 0 to 255)
   unsigned short int BCID;    //absolute BCID value (unsigned short int: 0 to 65.535)
+  unsigned short int TDC; 	  //the TDC count (12-bit value)
   unsigned char triggerStatus;//event service records
   unsigned int serviceRecord; //event service records
   unsigned char eventStatus;  //event status value (unsigned char: 0 to 255)
@@ -28,12 +29,13 @@ typedef struct ClusterHitInfo{
   unsigned short int row;     //row value (unsigned short int: 0 to 65.535)
   unsigned char tot;          //tot value (unsigned char: 0 to 255)
   unsigned short int BCID;    //absolute BCID value (unsigned short int: 0 to 65.535)
+  unsigned short int TDC; 	  //the TDC count (12-bit value)
   unsigned char triggerStatus;//event service records
   unsigned int serviceRecord; //event service records
   unsigned char eventStatus;  //event status value (unsigned char: 0 to 255)
   unsigned short clusterID;	  //the cluster id of the hit
   unsigned char isSeed;	  	  //flag to mark seed pixel
-  unsigned short clusterSize;//the cluster size of the cluster belonging to the hit
+  unsigned short clusterSize; //the cluster size of the cluster belonging to the hit
   unsigned short nCluster;	  //the number of hits of the cluster belonging to the hit
 } ClusterHitInfo;
 
@@ -105,6 +107,7 @@ typedef struct ParInfo{
 #define __BCID_JUMP 32                //BCID jumps, but LVL1ID is constant and data is externally triggered
 #define __TRG_ERROR 64                //a trigger error occured
 #define __TRUNC_EVENT 128             //Event had to many hits (>__MAXHITBUFFERSIZE) and was therefore truncated
+#define __TDC_WORD 256             	  //Event has a TDC count word
 
 //trigger error codes
 #define __TRG_N_ERROR_CODES 8         //number of trigger error codes
@@ -123,10 +126,17 @@ typedef struct ParInfo{
 #define TRIGGER_NUMBER_MACRO_NEW(X)	(TRIGGER_NUMBER_MASK_NEW & X)                                                           //calculates the trigger number from a trigger word
 
 //FE number macros
-#define NFE_HEADER_MASK 0x80000000  //first bit 0 means FE number word
-#define NFE_NUMBER_MASK 0x7F000000  
+#define NFE_HEADER_MASK 0xF0000000  //first bit 0 means FE number word
+#define NFE_NUMBER_MASK 0x0F000000
 #define NFE_WORD_MACRO(X) (((NFE_HEADER_MASK & X) == 0) ? true : false)
 #define NFE_NUMBER_MACRO(X) ((NFE_NUMBER_MASK & X)  >> 24)
+
+//TDC macros
+#define TDC_HEADER 0x40000000
+#define TDC_HEADER_MASK 0xF0000000  //first bit 0 means FE number word
+#define TDC_COUNT_MASK 0x00000FFF
+#define TDC_WORD_MACRO(X) (((TDC_HEADER_MASK & X) == TDC_HEADER) ? true : false)
+#define TDC_COUNT_MACRO(X) (TDC_COUNT_MASK & X)
 
 // Data Header (DH)
 #define DATA_HEADER						0x00E90000

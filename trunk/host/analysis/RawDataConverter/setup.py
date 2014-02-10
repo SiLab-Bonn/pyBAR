@@ -30,6 +30,7 @@ hits = np.empty((1,), dtype=
          ('row', np.uint16),
          ('tot', np.uint8),
          ('BCID', np.uint16),
+         ('TDC', np.uint16),
          ('triggerStatus', np.uint8),
          ('serviceRecord', np.uint32),
          ('eventStatus', np.uint8)
