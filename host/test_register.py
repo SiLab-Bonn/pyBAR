@@ -24,14 +24,15 @@ class RegisterTest(ScanBase):
         self.register.create_restore_point()
 
         read_chip_sn(self)
+
         self.register.restore(keep=True)
         self.register_utils.configure_global()
-
         test_global_register(self)
+
         self.register.restore(keep=True)
         self.register_utils.configure_global()
-
         test_pixel_register(self)
+
         self.register.restore()
         self.register_utils.configure_global()
 
