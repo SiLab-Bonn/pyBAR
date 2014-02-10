@@ -27,8 +27,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 
 
 class ScanBase(object):
-    # TODO: implement callback for stop() & analyze()
-    def __init__(self, configuration_file=None, definition_file=None, bit_file=None, force_download=False, device=None, scan_data_path=None, device_identifier="", scan_identifier="base_scan"):
+    scan_identifier = "base_scan"
+
+    def __init__(self, configuration_file=None, definition_file=None, bit_file=None, force_download=False, device=None, scan_data_path=None, device_identifier="", **kwargs):
         '''
         configuration_file : str, FEI4Register
             Filename of FE configuration file or FEI4Register object.
@@ -106,7 +107,7 @@ class ScanBase(object):
         # remove all non_word characters and whitespace characters to prevent problems with os.path.join
         self.device_identifier = re.sub(r"[^\w\s+]", '', device_identifier)
         self.device_identifier = re.sub(r"\s+", '_', self.device_identifier)
-        self.scan_identifier = re.sub(r"[^\w\s+]", '', scan_identifier)
+        self.scan_identifier = re.sub(r"[^\w\s+]", '', self.scan_identifier)
         self.scan_identifier = re.sub(r"\s+", '_', self.scan_identifier)
         if scan_data_path == None:
             self.scan_data_path = os.getcwd()
@@ -130,6 +131,8 @@ class ScanBase(object):
         self.use_thread = None
         self.restore_configuration = None
 
+        self.scan_kwargs = kwargs
+
     @property
     def is_running(self):
         return self.scan_thread.is_alive()
@@ -151,25 +154,29 @@ class ScanBase(object):
             If true, scan.scan() is running in a separate thread. Only then Ctrl-C can be used to interrupt scan loop.
         do_global_reset : bool
             Do a FE Global Reset before sending FE configuration.
-        **kwargs : any
-            Any keyword argument passed to scan.start() will be forwarded to scan.scan().
+        kwargs : any
+            Any keyword argument passed to scan.start() will be forwarded to scan.scan(). Please note: scan.start() keyword arguments will merged with class keyword arguments
         '''
         self.scan_is_running = True
         self.scan_aborted = False
 
+        # copy and merge keyword arguments
+        scan_loop_kwargs = kwargs.copy()
+        scan_loop_kwargs.update(self.scan_kwargs)
+
         self.write_scan_number()
 
-        if kwargs:
-            self.save_scan_configuration(kwargs)
+        if scan_loop_kwargs:
+            self.save_scan_configuration(scan_loop_kwargs)
 
         self.use_thread = use_thread
         if self.scan_thread != None:
             raise RuntimeError('Scan thread is already running')
 
         # setting FPGA register to default state
-        # TODO: just temporary here
-        self.readout_utils.configure_command_fsm()
-        self.readout_utils.configure_trigger_fsm()
+        self.readout_utils.configure_rx_fsm(**scan_loop_kwargs)
+        self.readout_utils.configure_command_fsm(**scan_loop_kwargs)
+        self.readout_utils.configure_trigger_fsm(**scan_loop_kwargs)
 
         if do_global_reset:
             self.register_utils.global_reset()
@@ -193,13 +200,13 @@ class ScanBase(object):
 
         logging.info('Starting scan %s with ID %d (output path: %s)' % (self.scan_identifier, self.scan_number, self.scan_data_output_path))
         if use_thread:
-            self.scan_thread = Thread(target=self.scan, name='%s with ID %d' % (self.scan_identifier, self.scan_number), kwargs=kwargs)  # , args=kwargs)
+            self.scan_thread = Thread(target=self.scan, name='%s with ID %d' % (self.scan_identifier, self.scan_number), kwargs=scan_loop_kwargs)  # , args=kwargs)
             self.scan_thread.daemon = True  # Abruptly close thread when closing main thread. Resources may not be released properly.
             self.scan_thread.start()
             logging.info('Press Ctrl-C to stop scan loop')
             signal.signal(signal.SIGINT, self.signal_handler)
         else:
-            self.scan(**kwargs)
+            self.scan(**scan_loop_kwargs)
 
     def stop(self, timeout=None):
         '''Stopping scan. Cleaning up of variables and joining thread (if existing).
