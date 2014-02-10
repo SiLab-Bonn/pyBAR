@@ -29,7 +29,6 @@ module clk_gen    (U1_CLKIN_IN,
                    U1_RST_IN,  
                    U1_CLKIN_IBUFG_OUT, 
                    U1_CLK0_OUT, 
-                   U1_CLK270_OUT, 
                    U1_STATUS_OUT, 
                    U2_CLKFX_OUT, 
                    U2_CLKDV_OUT, 
@@ -43,7 +42,6 @@ module clk_gen    (U1_CLKIN_IN,
    output wire U2_CLKFX_OUT;
    output wire U1_CLKIN_IBUFG_OUT;
    output wire U1_CLK0_OUT;
-   output wire U1_CLK270_OUT;
    output wire [7:0] U1_STATUS_OUT;
    output wire U2_CLKDV_OUT;
    output wire U2_CLK0_OUT;
@@ -54,7 +52,6 @@ module clk_gen    (U1_CLKIN_IN,
    wire GND_BIT;
    wire U1_CLKIN_IBUFG;
    wire U1_CLK0_BUF;
-   wire U1_CLK270_BUF;
    wire U1_LOCKED_INV_IN;
    wire U2_CLKDV_BUF;
    wire U2_CLKFB_IN;
@@ -94,7 +91,7 @@ module clk_gen    (U1_CLKIN_IN,
                   .CLK2X180(), 
                   .CLK90(), 
                   .CLK180(), 
-                  .CLK270(U1_CLK270_BUF), 
+                  .CLK270(), 
                   .LOCKED(U1_LOCKED_INV_IN), 
                   .PSDONE(), 
                   .STATUS(U1_STATUS_OUT[7:0]));
@@ -127,8 +124,6 @@ module clk_gen    (U1_CLKIN_IN,
                               .O(U1_CLKIN_IBUFG));
    BUFG  U1_CLK0_BUFG_INST (.I(U1_CLK0_BUF), 
                            .O(U1_CLK0_OUT));
-   BUFG  U1_CLK270_BUFG_INST (.I(U1_CLK270_BUF), 
-                             .O(U1_CLK270_OUT));
    INV  U1_INV_INST (.I(U1_LOCKED_INV_IN), 
                     .O(U2_LOCKED_INV_RST));
    BUFG  U2_CLKDV_BUFG_INST (.I(U2_CLKDV_BUF), 
