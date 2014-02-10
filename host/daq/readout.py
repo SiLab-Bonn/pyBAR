@@ -179,28 +179,28 @@ class Readout(object):
         retfifo.reverse()  # FIXME: enable for new firmware
         return struct.unpack('I', retfifo.tostring() + '\x00')[0]
 
-    def reset_rx(self, index=None):
+    def reset_rx(self, channels=None):
         logging.info('Resetting RX')
-        if index == None:
-            index = self.rx_base_address.iterkeys()
-        filter(lambda i: self.device.WriteExternal(address=self.rx_base_address[i], data=[0]), index)
+        if channels == None:
+            channels = self.rx_base_address.iterkeys()
+        filter(lambda i: self.device.WriteExternal(address=self.rx_base_address[i], data=[0]), channels)
         # since WriteExternal returns nothing, filter returns empty list
         sleep(0.1)  # sleep here for a while
 
-    def get_rx_sync_status(self, index=None):
-        if index == None:
-            index = self.rx_base_address.iterkeys()
-        return map(lambda i: True if (self.device.ReadExternal(address=self.rx_base_address[i] + 1, size=1)[0]) & 0x1 == 1 else False, index)
+    def get_rx_sync_status(self, channels=None):
+        if channels == None:
+            channels = self.rx_base_address.iterkeys()
+        return map(lambda i: True if (self.device.ReadExternal(address=self.rx_base_address[i] + 1, size=1)[0]) & 0x1 == 1 else False, channels)
 
-    def get_rx_8b10b_error_count(self, index=None):
-        if index == None:
-            index = self.rx_base_address.iterkeys()
-        return map(lambda i: self.device.ReadExternal(address=self.rx_base_address[i] + 4, size=1)[0], index)
+    def get_rx_8b10b_error_count(self, channels=None):
+        if channels == None:
+            channels = self.rx_base_address.iterkeys()
+        return map(lambda i: self.device.ReadExternal(address=self.rx_base_address[i] + 4, size=1)[0], channels)
 
-    def get_rx_fifo_discard_count(self, index=None):
-        if index == None:
-            index = self.rx_base_address.iterkeys()
-        return map(lambda i: self.device.ReadExternal(address=self.rx_base_address[i] + 5, size=1)[0], index)
+    def get_rx_fifo_discard_count(self, channels=None):
+        if channels == None:
+            channels = self.rx_base_address.iterkeys()
+        return map(lambda i: self.device.ReadExternal(address=self.rx_base_address[i] + 5, size=1)[0], channels)
 
 
 def convert_data_array(array, filter_func=None, converter_func=None):
