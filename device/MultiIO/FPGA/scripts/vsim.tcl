@@ -70,7 +70,8 @@ proc vlog_top {} {
     vlog -lint $BASIL/trunk/device/modules/cmd_seq/*.v
     vlog -lint $BASIL/trunk/device/modules/rrp_arbiter/*.v +incdir+$BASIL/trunk/device/modules/rrp_arbiter
     vlog -lint $BASIL/trunk/device/modules/tlu/*.v
-
+    vlog -lint $BASIL/trunk/device/modules/tdc_s3/*.v
+    
     vlog ../src/top.v
     vlog ../src/clk_gen.v
 
@@ -95,7 +96,9 @@ proc wave_top {} {
 
     add wave -group fei4_rx_0 {sim:/top_tb/uut/rx_gen[0]/ifei4_rx/i_fei4_rx_core/*}
     add wave -group tlu sim:/top_tb/uut/tlu_controller_module/i_tlu_controller/*
-
+    add wave -group tdc sim:/top_tb/uut/itdc/i_tdc_s3_core/*
+    add wave -group arbiter sim:/top_tb/uut/i_rrp_arbiter/*
+    
     #add wave -group pa sim:/top_tb/uut/ifei4_rx/ireceiver_logic/irec_sync/iphase_align/*
     #add wave -group rec_sync sim:/top_tb/uut/ifei4_rx/ireceiver_logic/irec_sync/*
     #add wave -group rec_logic sim:/top_tb/uut/ifei4_rx/ireceiver_logic/*
