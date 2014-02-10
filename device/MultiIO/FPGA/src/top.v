@@ -53,6 +53,7 @@ module top (
     output wire [2:0] TX, // TX[0] == RJ45 trigger clock output, TX[1] == RJ45 busy output
     input wire RJ45_RESET,
     input wire RJ45_TRIGGER,
+    input wire MONHIT,
     
     output wire CMD_CLK,
     output wire CMD_DATA,
@@ -100,7 +101,7 @@ assign MULTI_IO = 11'b000_0000_0000;
 assign DEBUG_D = 16'ha5a5;
 
 
-wire LEMO_TRIGGER, LEMO_TRIGGER_TDC, LEMO_RESET, EXT_VETO;
+wire LEMO_TRIGGER, LEMO_RESET, EXT_VETO, MONHIT_TDC; // , LEMO_TRIGGER_TDC;
 assign LEMO_TRIGGER = LEMO_RX[0];
 assign LEMO_RESET = LEMO_RX[1];
 assign EXT_VETO = LEMO_RX[2];
@@ -119,7 +120,7 @@ wire            CMD_START_FLAG;         // for triggering external devices
 
 assign TX[0] = TLU_CLOCK; // trigger clock; also connected to RJ45 output
 assign TX[1] = TLU_BUSY | (CMD_START_FLAG/*CMD_CAL*/ & ~CMD_EXT_START_ENABLE); // TLU_BUSY signal; also connected to RJ45 output. Asserted when TLU FSM has accepted a trigger or when CMD FSM is busy. 
-assign TX[2] = (RJ45_ENABLED == 1'b1) ? RJ45_TRIGGER : LEMO_TRIGGER_TDC;//LEMO_TRIGGER;
+assign TX[2] = (RJ45_ENABLED == 1'b1) ? RJ45_TRIGGER : (LEMO_TRIGGER | MONHIT_TDC); //LEMO_TRIGGER_TDC;
 
 
 // ------- RESRT/CLOCK  ------- //
@@ -291,8 +292,8 @@ tdc_s3
     .CLK320(RX_CLK2X),
     .CLK160(RX_CLK),
     .CLK40(CLK_40),
-    .TDC_IN(LEMO_TRIGGER),
-    .TDC_OUT(LEMO_TRIGGER_TDC),
+    .TDC_IN(MONHIT),
+    .TDC_OUT(MONHIT_TDC),
 
     .FIFO_READ(TDC_FIFO_READ),
     .FIFO_EMPTY(TDC_FIFO_EMPTY),
@@ -335,7 +336,7 @@ tlu_controller #(
     .FIFO_PREEMPT_REQ(TLU_FIFO_PEEMPT_REQ),
     
     .RJ45_TRIGGER(RJ45_TRIGGER),
-    .LEMO_TRIGGER(LEMO_TRIGGER_TDC),
+    .LEMO_TRIGGER(LEMO_TRIGGER),
     .RJ45_RESET(RJ45_RESET),
     .LEMO_RESET(LEMO_RESET),
     .RJ45_ENABLED(RJ45_ENABLED),
