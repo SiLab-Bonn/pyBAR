@@ -596,6 +596,22 @@ def write_hits_in_event_range(hit_table_in, hit_table_out, event_start, event_st
     return start_hit_word
 
 
+def get_median_from_histogram(counts, bin_positions):
+    values = []
+    for index, one_bin in enumerate(counts):
+        for _ in range(one_bin):
+            values.extend([bin_positions[index]])
+    return np.median(values)
+
+
+def get_rms_from_histogram(counts, bin_positions):
+    values = []
+    for index, one_bin in enumerate(counts):
+        for _ in range(one_bin):
+            values.extend([bin_positions[index]])
+    return np.std(values)
+
+
 def get_events_with_n_cluster(event_number, condition='n_cluster==1'):
     '''Selects the events with a certain number of cluster.
 
@@ -796,10 +812,63 @@ def get_scan_parameter(meta_data_array):
     if len(meta_data_array.dtype.names) < 5:  # no meta_data found
         return
     scan_parameters = {}
-    for scan_par_name in meta_data_array.dtype.names[len(meta_data_array.dtype.names) - 1:len(meta_data_array.dtype.names)]:
+    for scan_par_name in meta_data_array.dtype.names[4:]:  # scan parameters are in columns 5 (= index 4) and above
         scan_parameters[scan_par_name] = np.unique(meta_data_array[scan_par_name])
     return scan_parameters
 
+
+def get_unique_scan_parameter_combinations(meta_data_array, selected_columns_only=False):
+    '''Takes the numpy meta data array and returns the rows with unique combinations of different scan parameter values for all scan parameters.
+        If selected columns only is true, the returned histogram only contains the selected columns.
+
+    Parameters
+    ----------
+    meta_data_array : numpy.ndarray
+
+    Returns
+    -------
+    numpy.Histogram
+    '''
+
+    if len(meta_data_array.dtype.names) < 5:  # no meta_data found
+        return
+    return unique_row(meta_data_array, use_columns=range(4, len(meta_data_array.dtype.names)), selected_columns_only=selected_columns_only)
+
+
+def unique_row(array, use_columns=None, selected_columns_only=False):
+    '''Takes a numpy array and returns the array reduced to unique rows. If columns are defined only these columns are taken to define a unique row.
+    Parameters
+    ----------
+    array : numpy.ndarray
+    use_columns : list
+        Index of columns to be used to define a unique row
+
+    Returns
+    -------
+    numpy.ndarray
+    '''
+    if array.dtype.names is None:  # normal array has no named dtype
+        if use_columns is not None:
+            a_cut = array[:, use_columns]
+        else:
+            a_cut = array
+        b = np.ascontiguousarray(a_cut).view(np.dtype((np.void, a_cut.dtype.itemsize * a_cut.shape[1])))
+        _, index = np.unique(b, return_index=True)
+        if not selected_columns_only:
+            return array[np.sort(index)]  # sort to preserve order
+        else:
+            return a_cut[np.sort(index)]  # sort to preserve order
+    else:  # names for dtype founnd --> array is recarray
+        names = list(array.dtype.names)
+        if use_columns is not None:
+            new_names = [names[i] for i in use_columns]
+        else:
+            new_names = names
+        a_cut, index = np.unique(array[new_names], return_index=True)
+        if not selected_columns_only:
+            return array[np.sort(index)]  # sort to preserve order
+        else:
+            return array[np.sort(index)][new_names]  # sort to preserve order
 
 def get_event_range(events):
     '''Takes the events and calculates event ranges [start event, stop event[. The last range end with none since the last event is unknown.
@@ -816,6 +885,14 @@ def get_event_range(events):
     right = events[1:len(events)]
     right = np.append(right, None)
     return np.column_stack((left, right))
+
+
+def index_event_number(table_with_event_numer):
+    if not table_with_event_numer.cols.event_number.is_indexed:  # index event_number column to speed up everything
+        logging.info('Create event_number index, this takes some time')
+        table_with_event_numer.cols.event_number.create_csindex(filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))  # this takes time (1 min. ~ 150. Mio entries) but immediately pays off
+    else:
+        logging.info('Event_number index exists already, omit creation')
 
 
 def data_aligned_at_events(table, start_event_number=None, stop_event_number=None, start=None, stop=None, chunk_size=10000000):
