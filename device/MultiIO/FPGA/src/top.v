@@ -80,7 +80,6 @@ module top (
 
 wire BUS_RST;
 wire BUS_CLK;
-wire BUS_CLK270;
 wire CLK_40;
 wire RX_CLK;
 wire RX_CLK2X;
@@ -101,7 +100,7 @@ assign MULTI_IO = 11'b000_0000_0000;
 assign DEBUG_D = 16'ha5a5;
 
 
-wire LEMO_TRIGGER, LEMO_RESET, EXT_VETO;
+wire LEMO_TRIGGER, LEMO_TRIGGER_TDC, LEMO_RESET, EXT_VETO;
 assign LEMO_TRIGGER = LEMO_RX[0];
 assign LEMO_RESET = LEMO_RX[1];
 assign EXT_VETO = LEMO_RX[2];
@@ -120,7 +119,7 @@ wire            CMD_START_FLAG;         // for triggering external devices
 
 assign TX[0] = TLU_CLOCK; // trigger clock; also connected to RJ45 output
 assign TX[1] = TLU_BUSY | (CMD_START_FLAG/*CMD_CAL*/ & ~CMD_EXT_START_ENABLE); // TLU_BUSY signal; also connected to RJ45 output. Asserted when TLU FSM has accepted a trigger or when CMD FSM is busy. 
-assign TX[2] = (RJ45_ENABLED == 1'b1) ? RJ45_TRIGGER : LEMO_TRIGGER;
+assign TX[2] = (RJ45_ENABLED == 1'b1) ? RJ45_TRIGGER : LEMO_TRIGGER_TDC;//LEMO_TRIGGER;
 
 
 // ------- RESRT/CLOCK  ------- //
@@ -185,6 +184,8 @@ localparam RX2_HIGHADDR = 16'h8600-1;
 localparam RX1_BASEADDR = 16'h8600;
 localparam RX1_HIGHADDR = 16'h8700-1;
 
+localparam TDC_BASEADDR = 16'h8700;
+localparam TDC_HIGHADDR = 16'h8800-1;
 
 // -------  BUS SYGNALING  ------- //
 wire [15:0] BUS_ADD;
@@ -276,6 +277,37 @@ generate
   end
 endgenerate
 
+wire TDC_FIFO_READ;
+wire TDC_FIFO_EMPTY;
+wire [31:0] TDC_FIFO_DATA;
+
+tdc_s3
+#(
+    .BASEADDR(TDC_BASEADDR),
+    .HIGHADDR(TDC_HIGHADDR),
+    .DATA_IDENTIFIER(4'b1010)
+) itdc
+(
+    .CLK320(RX_CLK2X),
+    .CLK160(RX_CLK),
+    .CLK40(CLK_40),
+    .TDC_IN(LEMO_TRIGGER),
+    .TDC_OUT(LEMO_TRIGGER_TDC),
+
+    .FIFO_READ(TDC_FIFO_READ),
+    .FIFO_EMPTY(TDC_FIFO_EMPTY),
+    .FIFO_DATA(TDC_FIFO_DATA),
+
+    .BUS_CLK(BUS_CLK),
+    .BUS_RST(BUS_RST),
+    .BUS_ADD(BUS_ADD),
+    .BUS_DATA(BUS_DATA),
+    .BUS_RD(BUS_RD),
+    .BUS_WR(BUS_WR),
+
+    .ARM_TDC(CMD_START_FLAG) // arm TDC by sending commands
+);
+
 wire TLU_FIFO_READ;
 wire TLU_FIFO_EMPTY;
 wire [31:0] TLU_FIFO_DATA;
@@ -303,7 +335,7 @@ tlu_controller #(
     .FIFO_PREEMPT_REQ(TLU_FIFO_PEEMPT_REQ),
     
     .RJ45_TRIGGER(RJ45_TRIGGER),
-    .LEMO_TRIGGER(LEMO_TRIGGER),
+    .LEMO_TRIGGER(LEMO_TRIGGER_TDC),
     .RJ45_RESET(RJ45_RESET),
     .LEMO_RESET(LEMO_RESET),
     .RJ45_ENABLED(RJ45_ENABLED),
@@ -319,26 +351,30 @@ tlu_controller #(
     .FIFO_NEAR_FULL(FIFO_NEAR_FULL)
 );
 
-wire FIFO_READ, FIFO_EMPTY;
-wire [31:0] FIFO_DATA;
+wire ARB_READY_OUT, ARB_WRITE_OUT;
+wire [31:0] ARB_DATA_OUT;
+wire [7:0] READ_GRANT;
+rrp_arbiter 
+#( 
+    .WIDTH(8), 
+    .PRIORITY(8'b1000_0000)
+) i_rrp_arbiter
+(
+    .RST(BUS_RST),
+    .CLK(BUS_CLK),
 
-wire TLU_FIFO_REQ;
-assign TLU_FIFO_REQ = ~TLU_FIFO_EMPTY;
-wire [3:0] FE_FIFO_REQ;
-assign FE_FIFO_REQ = TLU_FIFO_PEEMPT_REQ? 4'b0000 : {~FE_FIFO_EMPTY[3], ~FE_FIFO_EMPTY[2], ~FE_FIFO_EMPTY[1], ~FE_FIFO_EMPTY[0]};
-wire [4:0] FIFO_READ_SEL;
+    .WRITE_REQ({~TLU_FIFO_EMPTY, ~FE_FIFO_EMPTY, ~TDC_FIFO_EMPTY, 2'b0}),
+    .HOLD_REQ({TLU_FIFO_PEEMPT_REQ, 7'b0}),
+    .DATA_IN({TLU_FIFO_DATA,FE_FIFO_DATA[3],FE_FIFO_DATA[2],FE_FIFO_DATA[1], FE_FIFO_DATA[0], TDC_FIFO_DATA,  {2{32'b0}} }),
+    .READ_GRANT(READ_GRANT),
 
-assign {FE_FIFO_READ[3], FE_FIFO_READ[2], FE_FIFO_READ[1], FE_FIFO_READ[0], TLU_FIFO_READ} = (FIFO_READ_SEL & ({5{FIFO_READ}}));
-assign FIFO_EMPTY = ~((FIFO_READ_SEL & {FE_FIFO_REQ, TLU_FIFO_REQ}) != 5'b0_0000);
-assign FIFO_DATA = (({32{FIFO_READ_SEL[4]}} & FE_FIFO_DATA[3]) | ({32{FIFO_READ_SEL[3]}} & FE_FIFO_DATA[2]) | ({32{FIFO_READ_SEL[2]}} & FE_FIFO_DATA[1]) | ({32{FIFO_READ_SEL[1]}} & FE_FIFO_DATA[0]) | ({32{FIFO_READ_SEL[0]}} & TLU_FIFO_DATA));
-
-arbiter #(
-    .WIDTH(5)
-) arbiter_inst (
-    .req({FE_FIFO_REQ, TLU_FIFO_REQ}),
-    .grant(FIFO_READ_SEL),
-    .base(5'b0_0001) // one hot, TLU has highest priority followed by higher indexed requests
+    .READY_OUT(ARB_READY_OUT),
+    .WRITE_OUT(ARB_WRITE_OUT),
+    .DATA_OUT(ARB_DATA_OUT)
 );
+assign TLU_FIFO_READ = READ_GRANT[7];
+assign FE_FIFO_READ = READ_GRANT[6:3];
+assign TDC_FIFO_READ = READ_GRANT[2];
 
 wire USB_READ;
 assign USB_READ = FREAD & FSTROBE;
@@ -354,7 +390,7 @@ sram_fifo
     .BUS_DATA(BUS_DATA),
     .BUS_RD(BUS_RD),
     .BUS_WR(BUS_WR), 
-    
+
     .SRAM_A(SRAM_A),
     .SRAM_IO(SRAM_IO),
     .SRAM_BHE_B(SRAM_BHE_B),
@@ -362,14 +398,14 @@ sram_fifo
     .SRAM_CE1_B(SRAM_CE1_B),
     .SRAM_OE_B(SRAM_OE_B),
     .SRAM_WE_B(SRAM_WE_B),
-    
+
     .USB_READ(USB_READ),
     .USB_DATA(FDATA),
-    
-    .FIFO_READ_NEXT_OUT(FIFO_READ),
-    .FIFO_EMPTY_IN(FIFO_EMPTY),
-    .FIFO_DATA(FIFO_DATA),
-    
+
+    .FIFO_READ_NEXT_OUT(ARB_READY_OUT),
+    .FIFO_EMPTY_IN(!ARB_WRITE_OUT),
+    .FIFO_DATA(ARB_DATA_OUT),
+
     .FIFO_NOT_EMPTY(FIFO_NOT_EMPTY),
     .FIFO_FULL(FIFO_FULL),
     .FIFO_NEAR_FULL(FIFO_NEAR_FULL),
