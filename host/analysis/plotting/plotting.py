@@ -301,7 +301,7 @@ def plot_tot(hist, title=None, filename=None):
 
 
 def plot_event_errors(hist, filename=None):
-    plot_1d_hist(hist=hist, title='Event errors', plot_range=range(0, 8), x_ticks=('SR\noccured', 'No\ntrigger', 'LVL1ID\nnot const.', '#BCID\nwrong', 'unknown\nword', 'BCID\njump', 'trigger\nerror', 'truncated'), color='g', y_axis_title='#', filename=filename, figure_name='Event Errors')
+    plot_1d_hist(hist=hist, title='Event errors', plot_range=range(0, 9), x_ticks=('SR\noccured', 'No\ntrigger', 'LVL1ID\nnot const.', '#BCID\nwrong', 'unknown\nword', 'BCID\njump', 'trigger\nerror', 'truncated', 'TDC\nword'), color='g', y_axis_title='#', filename=filename, figure_name='Event Errors')
 
 
 def plot_trigger_errors(hist, filename=None):
