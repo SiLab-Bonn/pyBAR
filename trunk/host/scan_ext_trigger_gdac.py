@@ -39,10 +39,9 @@ scan_configuration = {
 
 
 class ExtTriggerGdacScan(ScanBase):
-    def __init__(self, configuration_file, definition_file=None, bit_file=None, force_download=False, device=None, scan_data_path=None, device_identifier=""):
-        super(ExtTriggerGdacScan, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, force_download=force_download, device=device, scan_data_path=scan_data_path, device_identifier=device_identifier, scan_identifier="ext_trigger_gdac_scan")
+    scan_identifier = "ext_trigger_gdac_scan"
 
-    def scan(self, gdacs, mode=0, trigger_latency=232, trigger_delay=14, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=10000, enable_hitbus=False):
+    def scan(self, gdacs, mode=0, trigger_latency=232, trigger_delay=14, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=10000, enable_hitbus=False, **kwargs):
         '''Scan loop
 
         Parameters

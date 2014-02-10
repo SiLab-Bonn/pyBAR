@@ -24,8 +24,7 @@ scan_configuration = {
 
 
 class GdacTune(ScanBase):
-    def __init__(self, configuration_file, definition_file=None, bit_file=None, force_download=False, device=None, scan_data_path=None, device_identifier=""):
-        super(GdacTune, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, force_download=force_download, device=device, scan_data_path=scan_data_path, device_identifier=device_identifier, scan_identifier="gdac_tune")
+    scan_identifier = "gdac_tune"
 
     def set_abort_precision(self, delta_occupancy=2):
         self.abort_precision = delta_occupancy
@@ -62,7 +61,7 @@ class GdacTune(ScanBase):
     def set_n_injections(self, Ninjections=50):
         self.Ninjections = Ninjections
 
-    def scan(self, target_threshold, gdac_tune_bits=range(7, -1, -1), n_injections=50, abort_precision_occ=2, enable_mask_steps=[0], mask_steps=3, plots_filename=None, plot_intermediate_steps=False, **kwarg):
+    def scan(self, target_threshold, gdac_tune_bits=range(7, -1, -1), n_injections=50, abort_precision_occ=2, enable_mask_steps=[0], mask_steps=3, plots_filename=None, plot_intermediate_steps=False, **kwargs):
         #  set scan settings
         self.set_target_threshold(target_threshold)
         self.set_gdac_tune_bits(gdac_tune_bits)

@@ -10,10 +10,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(leve
 
 
 class TestServiceRecords(ScanBase):
-    def __init__(self, configuration_file, definition_file=None, bit_file=None, force_download=False, device=None, scan_data_path=None, device_identifier=""):
-        super(TestServiceRecords, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, force_download=force_download, device=device, scan_data_path=scan_data_path, device_identifier=device_identifier, scan_identifier="test_service_records")
+    scan_identifier = "service_record_test"
 
-    def scan(self):
+    def scan(self, **kwargs):
         self.register.create_restore_point()
 
         self.readout.reset_sram_fifo()

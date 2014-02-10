@@ -18,10 +18,9 @@ scan_configuration = {
 
 
 class ExtInjScan(ScanBase):
-    def __init__(self, configuration_file, definition_file=None, bit_file=None, force_download=False, device=None, scan_data_path=None, device_identifier=""):
-        super(ExtInjScan, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, force_download=force_download, device=device, scan_data_path=scan_data_path, device_identifier=device_identifier, scan_identifier="ext_injection_scan")
+    scan_identifier = "ext_injection_scan"
 
-    def scan(self, mask_steps=6, repeat_command=1000, enable_double_columns=None):
+    def scan(self, mask_steps=6, repeat_command=1000, enable_double_columns=None, **kwargs):
         self.readout.start()
 
         cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", mask_steps=mask_steps)[0]

@@ -22,8 +22,7 @@ scan_configuration = {
 
 
 class FdacTune(ScanBase):
-    def __init__(self, configuration_file, definition_file=None, bit_file=None, force_download=False, device=None, scan_data_path=None, device_identifier=""):
-        super(FdacTune, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, force_download=force_download, device=device, scan_data_path=scan_data_path, device_identifier=device_identifier, scan_identifier="fdac_tune")
+    scan_identifier = "fdac_tune"
 
     def set_target_charge(self, plsr_dac=30):
         self.target_charge = plsr_dac
@@ -62,7 +61,7 @@ class FdacTune(ScanBase):
     def set_n_injections(self, Ninjections=20):
         self.Ninjections = Ninjections
 
-    def scan(self, target_tot, target_charge, fdac_tune_bits=range(3, -1, -1), n_injections=30, plots_filename=None, plot_intermediate_steps=False, **kwarg):
+    def scan(self, target_tot, target_charge, fdac_tune_bits=range(3, -1, -1), n_injections=30, plots_filename=None, plot_intermediate_steps=False, **kwargs):
         #  set scan settings
         self.set_target_charge(target_charge)
         self.set_target_tot(target_tot)

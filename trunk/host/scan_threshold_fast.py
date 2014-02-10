@@ -24,12 +24,11 @@ scan_configuration = {
 
 
 class FastThresholdScan(ScanBase):
-    def __init__(self, configuration_file, definition_file=None, bit_file=None, force_download=False, device=None, scan_data_path=None, device_identifier=""):
-        super(FastThresholdScan, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, force_download=force_download, device=device, scan_data_path=scan_data_path, device_identifier=device_identifier, scan_identifier="fast_threshold_scan")
-        self.scan_parameter_start = 0  # holding last start value (e.g. used in GDAC threshold scan)
-        self.data_points = 10
+    scan_identifier = "fast_threshold_scan"
+    scan_parameter_start = 0  # holding last start value (e.g. used in GDAC threshold scan)
+    data_points = 10
 
-    def scan(self, mask_steps=3, repeat_command=100, scan_parameter='PlsrDAC', scan_parameter_range=None, scan_parameter_stepsize=2, search_distance=10, minimum_data_points=15, ignore_columns=(1, 78, 79, 80)):
+    def scan(self, mask_steps=3, repeat_command=100, scan_parameter='PlsrDAC', scan_parameter_range=None, scan_parameter_stepsize=2, search_distance=10, minimum_data_points=15, ignore_columns=(1, 78, 79, 80), **kwargs):
         '''Scan loop
 
         Parameters
