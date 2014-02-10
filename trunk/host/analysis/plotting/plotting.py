@@ -6,6 +6,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import pandas as pd
 import itertools
 import re
+import operator
 from matplotlib import colors, cm
 from matplotlib.backends.backend_pdf import PdfPages
 
@@ -189,12 +190,12 @@ def plot_profile_histogram(x, y, n_bins=100, title=None, x_label=None, y_label=N
         plt.close()
 
 
-def plot_scatter(x, y, title=None, plot_range=None, x_label=None, y_label=None, marker_style='-o', log_x=False, log_y=False, filename=None):
+def plot_scatter(x, y, yerr=None, title=None, plot_range=None, x_label=None, y_label=None, marker_style='-o', log_x=False, log_y=False, filename=None):
     logging.info("Plot scatter plot %s" % ((': ' + title) if title is not None else ''))
-#     plt.clf()
-#     fig = plt.figure()
-#     fig.patch.set_facecolor('white')
-    plt.plot(x, y, marker_style)
+    if yerr is not None:
+        plt.errorbar(x, y, yerr=[yerr, yerr], fmt=marker_style)
+    else:
+        plt.plot(x, y, marker_style)
     plt.title(title)
     if x_label is not None:
         plt.xlabel(x_label)
@@ -403,18 +404,20 @@ def plot_cluster_tot_size(hist, median=False, z_max=None, filename=None):
         plt.close()
 
 
-def plot_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, x_ticks=None, color='r', plot_range=None, log_y=False, filename=None, figure_name = None):
+def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=None, x_ticks=None, color='r', plot_range=None, log_y=False, filename=None, figure_name=None):
     logging.info("Plot 1d histogram%s" % ((': ' + title) if title is not None else ''))
 #     plt.clf()
 #     fig = plt.figure()
-#     
     if figure_name != None:
         fig = plt.figure(figure_name)
         fig.clf()
 
     if plot_range is None:
         plot_range = range(0, len(hist))
-    plt.bar(left=plot_range, height=hist[plot_range], color=color, align='center')
+    if yerr is not None:
+        plt.bar(left=plot_range, height=hist[plot_range], color=color, align='center', yerr=yerr)
+    else:
+        plt.bar(left=plot_range, height=hist[plot_range], color=color, align='center')
     plt.xlim((min(plot_range) - 0.5, max(plot_range) + 0.5))
     plt.title(title)
     if x_axis_title is not None:
