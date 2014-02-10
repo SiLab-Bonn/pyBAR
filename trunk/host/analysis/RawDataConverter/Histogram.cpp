@@ -40,21 +40,21 @@ void Histogram::setStandardSettings()
 
 void Histogram::createOccupancyHist(bool CreateOccHist)
 {
-  _createOccHist = CreateOccHist;
+	_createOccHist = CreateOccHist;
 }
 
 void Histogram::createRelBCIDHist(bool CreateRelBCIDHist)
 {
-  _createRelBCIDhist = CreateRelBCIDHist;
-  allocateRelBcidArray();
-  resetRelBcidArray();
+	_createRelBCIDhist = CreateRelBCIDHist;
+	allocateRelBcidArray();
+	resetRelBcidArray();
 }
 
 void Histogram::createTotHist(bool CreateTotHist)
 {
-  _createTotHist = CreateTotHist;
-  allocateTotArray();
-  resetTotArray();
+	_createTotHist = CreateTotHist;
+	allocateTotArray();
+	resetTotArray();
 }
 
 void Histogram::setMaxTot(const unsigned int& rMaxTot)
@@ -64,39 +64,63 @@ void Histogram::setMaxTot(const unsigned int& rMaxTot)
 
 void Histogram::addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
 {
-  debug("addHits()");
-  for(unsigned int i = 0; i<rNhits; i++){
-    unsigned short tColumnIndex = rHitInfo[i].column-1;
-    if(tColumnIndex > RAW_DATA_MAX_COLUMN-1)
-        throw std::out_of_range("column index out of range");
-    unsigned int tRowIndex = rHitInfo[i].row-1;
-    if(tRowIndex > RAW_DATA_MAX_ROW-1)
-      throw std::out_of_range("row index out of range");
-    unsigned int tTot = rHitInfo[i].tot;
-    if(tTot > 15)
-      throw std::out_of_range("tot index out of range");
-    unsigned int tRelBcid = rHitInfo[i].relativeBCID;
-    if(tRelBcid > 15)
-      throw std::out_of_range("relative BCID index out of range");
+	debug("addHits()");
+	for(unsigned int i = 0; i<rNhits; ++i){
+		unsigned short tColumnIndex = rHitInfo[i].column-1;
+		if(tColumnIndex > RAW_DATA_MAX_COLUMN-1)
+			throw std::out_of_range("column index out of range");
+		unsigned int tRowIndex = rHitInfo[i].row-1;
+		if(tRowIndex > RAW_DATA_MAX_ROW-1)
+			throw std::out_of_range("row index out of range");
+		unsigned int tTot = rHitInfo[i].tot;
+		if(tTot > 15)
+			throw std::out_of_range("tot index out of range");
+		unsigned int tRelBcid = rHitInfo[i].relativeBCID;
+		if(tRelBcid > 15)
+			throw std::out_of_range("relative BCID index out of range");
 
-    unsigned int tEventParameter = getScanParameter(rHitInfo[i].eventNumber);
-    unsigned int tParIndex = getParIndex(tEventParameter);
+		unsigned int tEventParameter = getScanParameter(rHitInfo[i].eventNumber);
+		unsigned int tParIndex = getParIndex(tEventParameter);
 
-    if(tParIndex < 0 || tParIndex > getNparameters()-1){
-      error("addHits: tParIndex "+IntToStr(tParIndex)+"\t_minParameterValue "+IntToStr(_minParameterValue)+"\t_maxParameterValue "+IntToStr(_maxParameterValue));
-      throw std::out_of_range("parameter index out of range");
-    }
-    if(_createOccHist)
-      if(tTot <= _maxTot)
-        _occupancy[(long)tColumnIndex + (long)tRowIndex * (long)RAW_DATA_MAX_COLUMN + (long)tParIndex * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] += 1;
-    if(_createRelBCIDhist)
-      if(tTot <= _maxTot)
-        _relBcid[tRelBcid] += 1;
-    if(_createTotHist)
-      if(tTot <= _maxTot) //not sure if cut on ToT histogram is unwanted here
-        _tot[tTot] += 1;
-  }
-  //std::cout<<"addHits done"<<std::endl;
+		if(tParIndex < 0 || tParIndex > getNparameters()-1){
+			error("addHits: tParIndex "+IntToStr(tParIndex)+"\t_minParameterValue "+IntToStr(_minParameterValue)+"\t_maxParameterValue "+IntToStr(_maxParameterValue));
+			throw std::out_of_range("parameter index out of range");
+		}
+		if(_createOccHist)
+			if(tTot <= _maxTot)
+				_occupancy[(long)tColumnIndex + (long)tRowIndex * (long)RAW_DATA_MAX_COLUMN + (long)tParIndex * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] += 1;
+		if(_createRelBCIDhist)
+			if(tTot <= _maxTot)
+				_relBcid[tRelBcid] += 1;
+		if(_createTotHist)
+			if(tTot <= _maxTot) //not sure if cut on ToT histogram is unwanted here
+				_tot[tTot] += 1;
+	}
+	//std::cout<<"addHits done"<<std::endl;
+}
+
+void Histogram::addClusterSeedHits(ClusterInfo*& rClusterInfo, const unsigned int& rNcluster)
+{
+	if(Basis::debugSet())
+		debug("addClusterSeedHits(...,rNcluster="+IntToStr(rNcluster)+")");
+	for(unsigned int i = 0; i<rNcluster; ++i){
+		unsigned short tColumnIndex = rClusterInfo[i].seed_column-1;
+		if(tColumnIndex > RAW_DATA_MAX_COLUMN-1)
+			throw std::out_of_range("column index out of range");
+		unsigned int tRowIndex = rClusterInfo[i].seed_row-1;
+		if(tRowIndex > RAW_DATA_MAX_ROW-1)
+			throw std::out_of_range("row index out of range");
+
+		unsigned int tEventParameter = getScanParameter(rClusterInfo[i].eventNumber);
+		unsigned int tParIndex = getParIndex(tEventParameter);
+
+		if(tParIndex < 0 || tParIndex > getNparameters()-1){
+			error("addClusterSeedHits: tParIndex "+IntToStr(tParIndex)+"\t_minParameterValue "+IntToStr(_minParameterValue)+"\t_maxParameterValue "+IntToStr(_maxParameterValue));
+			throw std::out_of_range("parameter index out of range");
+		}
+		if(_createOccHist)
+			_occupancy[(long)tColumnIndex + (long)tRowIndex * (long)RAW_DATA_MAX_COLUMN + (long)tParIndex * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] += 1;
+	}
 }
 
 unsigned int Histogram::getScanParameter(unsigned int& rEventNumber)
@@ -129,8 +153,10 @@ void Histogram::addScanParameter(const unsigned int& rNparInfoLength, ParInfo*& 
   setParameterLimits();
   allocateOccupancyArray();
   resetOccupancyArray();
-  //for(unsigned int i=0; i<11; ++i)
-  //   std::cout<<"read out "<<i<<"\t"<<_parInfo[i].scanParameter<<"\n";
+  if (Basis::debugSet()){
+	  for(unsigned int i=0; i<rNparInfoLength; ++i)
+	     std::cout<<"read out "<<i<<"\t"<<_parInfo[i].scanParameter<<"\n";
+  }
 }
 
 void Histogram::addMetaEventIndex(const unsigned int& rNmetaEventIndexLength, unsigned int*& rMetaEventIndex)
