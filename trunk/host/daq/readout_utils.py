@@ -24,8 +24,30 @@ trigger_modes = {
 class ReadoutUtils(object):
     def __init__(self, device):
         self.device = device
+        self.rx_base_address = dict([(idx, addr) for idx, addr in enumerate(range(0x8600, 0x8200, -0x0100))])
 
-    def configure_command_fsm(self, enable_ext_trigger=False, cmd_mode=0, diable_clock=False, disable_command_trigger=False):
+    def configure_rx_fsm(self, channels=None, invert_rx_data=False, **kwargs):
+        '''Setting up RX FSM.
+
+        Parameters
+        ----------
+        channels : list, tuple
+            List of readout channels to which the setting is applied.
+        invert_rx_data : bool
+            Enables inverting RX data. This can be used to compensate swapped n and p LVDS signal lines.
+        '''
+        if invert_rx_data:
+            logging.info('Inverting of RX data enabled')
+        reg = 0
+        if invert_rx_data:
+            reg |= 0x02
+        else:
+            reg &= ~0x02
+        if channels == None:
+            channels = self.rx_base_address.iterkeys()
+        filter(lambda i: self.device.WriteExternal(address=self.rx_base_address[i] + 1, data=[reg]), channels)  # overwriting selected register
+
+    def configure_command_fsm(self, enable_ext_trigger=False, cmd_mode=0, diable_clock=False, disable_command_trigger=False, **kwargs):
         '''Setting up command FSM to receive external triggers.
 
         Parameters
@@ -64,12 +86,12 @@ class ReadoutUtils(object):
             reg &= ~0x10
         self.device.WriteExternal(address=0 + 2, data=[reg])  # overwriting register
 
-    def configure_trigger_fsm(self, mode=0, trigger_data_msb_first=False, disable_veto=False, trigger_data_delay=0, trigger_clock_cycles=16, enable_reset=False, invert_lemo_trigger_input=False, force_use_rj45=False, trigger_low_timeout=0, reset_trigger_counter=False):
+    def configure_trigger_fsm(self, trigger_mode=0, trigger_data_msb_first=False, disable_veto=False, trigger_data_delay=0, trigger_clock_cycles=16, enable_reset=False, invert_lemo_trigger_input=False, force_use_rj45=False, trigger_low_timeout=0, reset_trigger_counter=False, **kwargs):
         '''Setting up external trigger mode and TLU trigger FSM.
 
         Parameters
         ----------
-        mode : string
+        trigger_mode : string
             TLU handshake mode. External trigger has to be enabled in command FSM. From 0 to 3.
             0: External trigger (LEMO RX0 only, TLU port disabled (TLU port/RJ45)).
             1: TLU no handshake (automatic detection of TLU connection (TLU port/RJ45)).
@@ -92,10 +114,10 @@ class ReadoutUtils(object):
         reset_trigger_counter : bool
             Reset trigger counter to zero.
         '''
-        logging.info('Trigger mode: %s' % trigger_modes[mode])
+        logging.info('Trigger mode: %s' % trigger_modes[trigger_mode])
 #         array = self.device.ReadExternal(address = 0x8200+1, size = 3)  # get stored register value
 #         reg = struct.unpack(4*'B', array)
-        reg_1 = (mode & 0x03)
+        reg_1 = (trigger_mode & 0x03)
         if trigger_data_msb_first:
             reg_1 |= 0x04
         else:
@@ -129,6 +151,29 @@ class ReadoutUtils(object):
                 logging.info('TLU detected on RJ45 port')
         else:
             logging.info('Using RJ45 port for triggering')
+
+    def configure_tdc_fsm(self, enable_tdc=False, enable_tdc_arming=False, **kwargs):
+        '''Setting up TDC (time-to-digital converter) FSM.
+
+        Parameters
+        ----------
+        enable_tdc : bool
+            Enables TDC. TDC will measure signal at RX0 (LEMO trigger input).
+        enable_tdc_arming : bool
+            Enables arming of TDC. TDC will only measure a signal when triggered (command is sent out).
+        '''
+#         array = self.device.ReadExternal(address=0x8700 + 1, size=1)  # get stored register value
+#         reg = struct.unpack('B', array)[0]
+        reg = 0
+        if enable_tdc:
+            reg |= 0x01
+        else:
+            reg &= ~0x01
+        if enable_tdc_arming:
+            reg |= 0x02
+        else:
+            reg &= ~0x02
+        self.device.WriteExternal(address=0x8700 + 1, data=[reg])
 
     def get_tlu_trigger_number(self):
         '''Reading most recent TLU trigger data/number.
