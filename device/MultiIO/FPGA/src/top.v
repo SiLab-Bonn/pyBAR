@@ -130,13 +130,12 @@ clk_gen iclkgen(
     .U1_CLKIN_IN(FCLK_IN),
     .U1_RST_IN(1'b0),
     .U1_CLKIN_IBUFG_OUT(),
-    .U1_CLK0_OUT(BUS_CLK),
-    .U1_CLK270_OUT(BUS_CLK270),
+    .U1_CLK0_OUT(BUS_CLK), // DCM1: 48MHz USB/SRAM clock
     .U1_STATUS_OUT(),
-    .U2_CLKFX_OUT(CLK_40),
-    .U2_CLKDV_OUT(DATA_CLK),
-    .U2_CLK0_OUT(RX_CLK),
-    .U2_CLK2X_OUT(RX_CLK2X),
+    .U2_CLKFX_OUT(CLK_40), // DCM2: 40MHz command clock
+    .U2_CLKDV_OUT(DATA_CLK), // DCM2: 16MHz SERDES clock
+    .U2_CLK0_OUT(RX_CLK), // DCM2: 160MHz data clock
+    .U2_CLK2X_OUT(RX_CLK2X), // DCM2: 320MHz data recovery clock
     .U2_LOCKED_OUT(CLK_LOCKED),
     .U2_STATUS_OUT()
 );
@@ -349,7 +348,6 @@ sram_fifo
     .BASEADDR(FIFO_BASEADDR),
     .HIGHADDR(FIFO_HIGHADDR)
 ) i_out_fifo (
-    .BUS_CLK270(BUS_CLK270),
     .BUS_CLK(BUS_CLK),
     .BUS_RST(BUS_RST),
     .BUS_ADD(BUS_ADD),
