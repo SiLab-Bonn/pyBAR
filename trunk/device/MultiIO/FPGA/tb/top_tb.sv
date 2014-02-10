@@ -99,7 +99,7 @@ module top_tb;
     
     );
    
-   assign #4ns DOBOUT = FE_RX;
+   assign #0ns DOBOUT = FE_RX;
    
     //FEI4 Reset
     reg  RD1bar, RD2ENbar; 
@@ -121,7 +121,7 @@ module top_tb;
     //SRAM Model
     reg [15:0] sram [1048576-1:0];
     //reg [15:0] sram [64-1:0];
-    always@(posedge SRAM_WE_B)
+    always@(negedge SRAM_WE_B)
         sram[SRAM_A] <= SRAM_IO;
     
     assign SRAM_IO = !SRAM_OE_B ? sram[SRAM_A] : 16'hzzzz;

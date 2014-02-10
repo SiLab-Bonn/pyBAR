@@ -83,7 +83,7 @@ wire BUS_CLK;
 wire BUS_CLK270;
 wire CLK_40;
 wire RX_CLK;
-wire RX_CLK90;
+wire RX_CLK2X;
 wire DATA_CLK;
 wire CLK_LOCKED;
 
@@ -136,7 +136,7 @@ clk_gen iclkgen(
     .U2_CLKFX_OUT(CLK_40),
     .U2_CLKDV_OUT(DATA_CLK),
     .U2_CLK0_OUT(RX_CLK),
-    .U2_CLK90_OUT(RX_CLK90),
+    .U2_CLK2X_OUT(RX_CLK2X),
     .U2_LOCKED_OUT(CLK_LOCKED),
     .U2_STATUS_OUT()
 );
@@ -252,7 +252,7 @@ generate
     ) ifei4_rx
     (
         .RX_CLK(RX_CLK),
-        .RX_CLK90(RX_CLK90),
+        .RX_CLK2X(RX_CLK2X),
         .DATA_CLK(DATA_CLK),
         
         .RX_DATA(DOBOUT[i]),
