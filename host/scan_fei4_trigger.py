@@ -15,67 +15,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 
 
 class Fei4TriggerScan(ScanBase):
-    def __init__(self, configuration_file, definition_file=None, bit_file=None, device=None, scan_identifier="scan_fei4_trigger", scan_data_path=None):
-        super(Fei4TriggerScan, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, device=device, scan_identifier=scan_identifier, scan_data_path=scan_data_path)
-
-    def configure_trigger_fe(self, config_file_trigger_fe, col_span, row_span):
-        logging.info("Sending configuration to trigger FE")
-        self.register_trigger_fe = FEI4Register(config_file_trigger_fe)
-        self.register_utils_trigger_fe = FEI4RegisterUtils(self.device, self.readout, self.register_trigger_fe)
-        self.register_utils_trigger_fe.configure_all(same_mask_for_all_dc=True)
-
-        commands = []
-        # generate ROI mask for Enable mask
-        pixel_reg = "Enable"
-        mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
-        commands.extend(self.register_trigger_fe.get_commands("confmode"))
-        enable_mask = np.logical_and(mask, self.register_trigger_fe.get_pixel_register_value(pixel_reg))
-        self.register_trigger_fe.set_pixel_register_value(pixel_reg, enable_mask)
-        commands.extend(self.register_trigger_fe.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
-        # generate ROI mask for Imon mask
-        pixel_reg = "Imon"
-        mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span, default=1, value=0)
-        imon_mask = np.logical_or(mask, self.register_trigger_fe.get_pixel_register_value(pixel_reg))
-        self.register_trigger_fe.set_pixel_register_value(pixel_reg, imon_mask)
-        commands.extend(self.register_trigger_fe.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
-        # disable C_inj mask
-        pixel_reg = "C_High"
-        self.register_trigger_fe.set_pixel_register_value(pixel_reg, 0)
-        commands.extend(self.register_trigger_fe.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
-        pixel_reg = "C_Low"
-        self.register_trigger_fe.set_pixel_register_value(pixel_reg, 0)
-        commands.extend(self.register_trigger_fe.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
-        # set trigger latency and replication
-        self.register_trigger_fe.set_global_register_value("Trig_Lat", 222)  # set trigger latency
-        self.register_trigger_fe.set_global_register_value("Trig_Count", 4)  # set number of consecutive triggers
-        commands.extend(self.register_trigger_fe.get_commands("wrregister", name=["Trig_Lat", "Trig_Count"]))
-        # setting FE into runmode
-        commands.extend(self.register_trigger_fe.get_commands("runmode"))
-        self.register_utils_trigger_fe.send_commands(commands)
-
-    def configure_triggered_fe(self):
-        logging.info("Sending configuration to triggered FE")
-        commands = []
-        commands.extend(self.register.get_commands("confmode"))
-        # disable hitbus
-        pixel_reg = "Imon"
-        self.register.set_pixel_register_value(pixel_reg, 1)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
-        # disable C_inj mask
-        pixel_reg = "C_High"
-        self.register.set_pixel_register_value(pixel_reg, 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
-        pixel_reg = "C_Low"
-        self.register.set_pixel_register_value(pixel_reg, 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
-        # # set trigger latency and replication
-        self.register.set_global_register_value("Trig_Lat", 221)  # set trigger latency
-        self.register.set_global_register_value("Trig_Count", 4)  # set number of consecutive triggers
-        commands.extend(self.register.get_commands("wrregister", name=["Trig_Lat", "Trig_Count"]))
-        # setting FE into runmode
-        commands.extend(self.register.get_commands("runmode"))
-        self.register_utils.send_commands(commands)
-        # append_size = 50000
+    scan_identifier = "scan_fei4_trigger"
 
     def scan(self, config_file_trigger_fe, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=600, max_triggers=10000, invert_lemo_trigger_input=False, wait_for_first_trigger=True, channel_trigger_fe=3, channel_triggered_fe=4, **kwargs):
         '''Scan loop
@@ -182,18 +122,74 @@ class Fei4TriggerScan(ScanBase):
 
         self.readout.stop()
 
+    def configure_trigger_fe(self, config_file_trigger_fe, col_span, row_span):
+        logging.info("Sending configuration to trigger FE")
+        self.register_trigger_fe = FEI4Register(config_file_trigger_fe)
+        self.register_utils_trigger_fe = FEI4RegisterUtils(self.device, self.readout, self.register_trigger_fe)
+        self.register_utils_trigger_fe.configure_all(same_mask_for_all_dc=True)
+
+        commands = []
+        # generate ROI mask for Enable mask
+        pixel_reg = "Enable"
+        mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
+        commands.extend(self.register_trigger_fe.get_commands("confmode"))
+        enable_mask = np.logical_and(mask, self.register_trigger_fe.get_pixel_register_value(pixel_reg))
+        self.register_trigger_fe.set_pixel_register_value(pixel_reg, enable_mask)
+        commands.extend(self.register_trigger_fe.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
+        # generate ROI mask for Imon mask
+        pixel_reg = "Imon"
+        mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span, default=1, value=0)
+        imon_mask = np.logical_or(mask, self.register_trigger_fe.get_pixel_register_value(pixel_reg))
+        self.register_trigger_fe.set_pixel_register_value(pixel_reg, imon_mask)
+        commands.extend(self.register_trigger_fe.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
+        # disable C_inj mask
+        pixel_reg = "C_High"
+        self.register_trigger_fe.set_pixel_register_value(pixel_reg, 0)
+        commands.extend(self.register_trigger_fe.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
+        pixel_reg = "C_Low"
+        self.register_trigger_fe.set_pixel_register_value(pixel_reg, 0)
+        commands.extend(self.register_trigger_fe.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
+        # set trigger latency and replication
+        self.register_trigger_fe.set_global_register_value("Trig_Lat", 222)  # set trigger latency
+        self.register_trigger_fe.set_global_register_value("Trig_Count", 4)  # set number of consecutive triggers
+        commands.extend(self.register_trigger_fe.get_commands("wrregister", name=["Trig_Lat", "Trig_Count"]))
+        # setting FE into runmode
+        commands.extend(self.register_trigger_fe.get_commands("runmode"))
+        self.register_utils_trigger_fe.send_commands(commands)
+
+    def configure_triggered_fe(self):
+        logging.info("Sending configuration to triggered FE")
+        commands = []
+        commands.extend(self.register.get_commands("confmode"))
+        # disable hitbus
+        pixel_reg = "Imon"
+        self.register.set_pixel_register_value(pixel_reg, 1)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
+        # disable C_inj mask
+        pixel_reg = "C_High"
+        self.register.set_pixel_register_value(pixel_reg, 0)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
+        pixel_reg = "C_Low"
+        self.register.set_pixel_register_value(pixel_reg, 0)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
+        # # set trigger latency and replication
+        self.register.set_global_register_value("Trig_Lat", 221)  # set trigger latency
+        self.register.set_global_register_value("Trig_Count", 4)  # set number of consecutive triggers
+        commands.extend(self.register.get_commands("wrregister", name=["Trig_Lat", "Trig_Count"]))
+        # setting FE into runmode
+        commands.extend(self.register.get_commands("runmode"))
+        self.register_utils.send_commands(commands)
+
     def analyze(self):
         from analysis.analyze_raw_data import AnalyzeRawData
         output_file = self.scan_data_filename + "_interpreted.h5"
         output_file_trigger_fe = self.scan_data_filename + "_trigger_fe_interpreted.h5"
-        print output_file, output_file_trigger_fe
         with AnalyzeRawData(raw_data_file=scan.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
             analyze_raw_data.interpreter.set_trig_count(self.register.get_global_register_value("Trig_Count"))
             analyze_raw_data.max_tot_value = 13
             analyze_raw_data.create_hit_table = True
             analyze_raw_data.create_source_scan_hist = True
             analyze_raw_data.create_cluster_size_hist = True
-            analyze_raw_data.create_source_scan_hist = True
             analyze_raw_data.create_cluster_tot_hist = True
             analyze_raw_data.create_cluster_table = True
             analyze_raw_data.interpreter.set_warning_output(False)
@@ -206,7 +202,6 @@ class Fei4TriggerScan(ScanBase):
             analyze_raw_data.create_hit_table = True
             analyze_raw_data.create_source_scan_hist = True
             analyze_raw_data.create_cluster_size_hist = True
-            analyze_raw_data.create_source_scan_hist = True
             analyze_raw_data.create_cluster_tot_hist = True
             analyze_raw_data.create_cluster_table = True
             analyze_raw_data.interpreter.set_warning_output(False)

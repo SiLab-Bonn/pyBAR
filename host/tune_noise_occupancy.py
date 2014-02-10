@@ -25,10 +25,9 @@ scan_configuration = {
 
 
 class NoiseOccupancyScan(ScanBase):
-    def __init__(self, configuration_file, definition_file=None, bit_file=None, force_download=False, device=None, scan_data_path=None, device_identifier=""):
-        super(NoiseOccupancyScan, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, force_download=force_download, device=device, scan_data_path=scan_data_path, device_identifier=device_identifier, scan_identifier="noise_occupancy_tuning")
+    scan_identifier = "noise_occupancy_tuning"
 
-    def scan(self, occupancy_limit=10 ** (-7), triggers=10000000, consecutive_lvl1=1, disable_for_mask=['Enable'], enable_for_mask=['Imon'], overwrite_mask=False, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10):
+    def scan(self, occupancy_limit=10 ** (-7), triggers=10000000, consecutive_lvl1=1, disable_for_mask=['Enable'], enable_for_mask=['Imon'], overwrite_mask=False, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, **kwargs):
         '''Masking pixels with occupancy above certain limit.
 
         Parameters

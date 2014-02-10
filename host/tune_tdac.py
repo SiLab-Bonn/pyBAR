@@ -20,8 +20,7 @@ scan_configuration = {
 
 
 class TdacTune(ScanBase):
-    def __init__(self, configuration_file, definition_file=None, bit_file=None, force_download=False, device=None, scan_data_path=None, device_identifier=""):
-        super(TdacTune, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, force_download=force_download, device=device, scan_data_path=scan_data_path, device_identifier=device_identifier, scan_identifier="tdac_tune")
+    scan_identifier = "tdac_tune"
 
     def set_target_threshold(self, PlsrDAC=50):
         self.target_threshold = PlsrDAC
@@ -57,7 +56,7 @@ class TdacTune(ScanBase):
     def set_n_injections(self, Ninjections=100):
         self.Ninjections = Ninjections
 
-    def scan(self, target_threshold, tdac_tune_bits=range(4, -1, -1), n_injections=100, plots_filename=None, plot_intermediate_steps=False, **kwarg):
+    def scan(self, target_threshold, tdac_tune_bits=range(4, -1, -1), n_injections=100, plots_filename=None, plot_intermediate_steps=False, **kwargs):
         #  set scan settings
         self.set_n_injections(n_injections)
         self.set_target_threshold(target_threshold)

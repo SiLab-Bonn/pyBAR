@@ -17,10 +17,9 @@ scan_configuration = {
 
 
 class ThresholdScan(ScanBase):
-    def __init__(self, configuration_file, definition_file=None, bit_file=None, force_download=False, device=None, scan_data_path=None, device_identifier=""):
-        super(ThresholdScan, self).__init__(configuration_file=configuration_file, definition_file=definition_file, bit_file=bit_file, force_download=force_download, device=device, scan_data_path=scan_data_path, device_identifier=device_identifier, scan_identifier="threshold_scan")
+    scan_identifier = "threshold_scan"
 
-    def scan(self, mask_steps=3, repeat_command=100, scan_parameter='PlsrDAC', scan_parameter_range=(0, 100), scan_parameter_stepsize=1):
+    def scan(self, mask_steps=3, repeat_command=100, scan_parameter='PlsrDAC', scan_parameter_range=(0, 100), scan_parameter_stepsize=1, **kwargs):
         '''Scan loop
 
         Parameters
