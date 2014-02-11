@@ -33,7 +33,7 @@ hits = np.empty((1,), dtype=
          ('TDC', np.uint16),
          ('triggerStatus', np.uint8),
          ('serviceRecord', np.uint32),
-         ('eventStatus', np.uint8)
+         ('eventStatus', np.uint16)
          ])
 
 try:

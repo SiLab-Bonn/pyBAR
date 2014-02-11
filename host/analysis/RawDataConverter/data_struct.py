@@ -78,7 +78,7 @@ class HitInfoTable(tb.IsDescription):
     TDC = tb.UInt16Col(pos=8)
     trigger_status = tb.UInt8Col(pos=9)
     service_record = tb.UInt32Col(pos=10)
-    event_status = tb.UInt8Col(pos=11)
+    event_status = tb.UInt16Col(pos=11)
 
 
 class MetaInfoEventTable(tb.IsDescription):
@@ -112,7 +112,7 @@ class ClusterHitInfoTable(tb.IsDescription):
     TDC = tb.UInt16Col(pos=8)
     trigger_status = tb.UInt8Col(pos=9)
     service_record = tb.UInt32Col(pos=10)
-    event_status = tb.UInt8Col(pos=11)
+    event_status = tb.UInt16Col(pos=11)
     cluster_id = tb.UInt16Col(pos=12)
     is_seed = tb.UInt8Col(pos=13)
     cluster_size = tb.UInt16Col(pos=14)
@@ -127,7 +127,7 @@ class ClusterInfoTable(tb.IsDescription):
     charge = tb.Float32Col(pos=4)
     seed_column = tb.UInt8Col(pos=5)
     seed_row = tb.UInt16Col(pos=6)
-    event_status = tb.UInt8Col(pos=7)
+    event_status = tb.UInt16Col(pos=7)
 
 
 class MeanThresholdCalibrationTable(tb.IsDescription):
