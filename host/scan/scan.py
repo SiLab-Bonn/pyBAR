@@ -177,6 +177,7 @@ class ScanBase(object):
         self.readout_utils.configure_rx_fsm(**scan_loop_kwargs)
         self.readout_utils.configure_command_fsm(**scan_loop_kwargs)
         self.readout_utils.configure_trigger_fsm(**scan_loop_kwargs)
+        self.readout_utils.configure_tdc_fsm(**scan_loop_kwargs)
 
         if do_global_reset:
             self.register_utils.global_reset()
