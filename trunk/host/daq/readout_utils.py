@@ -152,13 +152,15 @@ class ReadoutUtils(object):
         else:
             logging.info('Using RJ45 port for triggering')
 
-    def configure_tdc_fsm(self, enable_tdc=False, enable_tdc_arming=False, **kwargs):
+    def configure_tdc_fsm(self, enable_tdc=False, reject_small_tot=False, enable_tdc_arming=False, **kwargs):
         '''Setting up TDC (time-to-digital converter) FSM.
 
         Parameters
         ----------
         enable_tdc : bool
             Enables TDC. TDC will measure signal at RX0 (LEMO trigger input).
+        reject_small_tot : bool
+            If true rejecting signals shorter than 25ns (40MHz).
         enable_tdc_arming : bool
             Enables arming of TDC. TDC will only measure a signal when triggered (command is sent out).
         '''
@@ -169,10 +171,14 @@ class ReadoutUtils(object):
             reg |= 0x01
         else:
             reg &= ~0x01
-        if enable_tdc_arming:
+        if reject_small_tot:
             reg |= 0x02
         else:
             reg &= ~0x02
+        if enable_tdc_arming:
+            reg |= 0x04
+        else:
+            reg &= ~0x04
         self.device.WriteExternal(address=0x8700 + 1, data=[reg])
 
     def get_tlu_trigger_number(self):
