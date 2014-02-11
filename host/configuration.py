@@ -11,5 +11,6 @@ device_configuration = {
     "force_download": False,  # force download of FPGA bit file
     "device": None,  # specify USB device (device ID)
     "scan_data_path": os.path.join(path, r'data'),  # data output path
-    "device_identifier": ""  # additional device identifier
+    "device_identifier": "",  # additional device identifier
+    "invert_rx_data": False # enable for DBM modules
 }
