@@ -16,7 +16,7 @@ typedef struct HitInfo{
   unsigned short int TDC; 	  //the TDC count (12-bit value)
   unsigned char triggerStatus;//event service records
   unsigned int serviceRecord; //event service records
-  unsigned char eventStatus;  //event status value (unsigned char: 0 to 255)
+  unsigned short int eventStatus;  //event status value (unsigned short int: 0 to 65.535)
 } HitInfo;
 
 //structure to store the hits with cluster info
@@ -32,7 +32,7 @@ typedef struct ClusterHitInfo{
   unsigned short int TDC; 	  //the TDC count (12-bit value)
   unsigned char triggerStatus;//event service records
   unsigned int serviceRecord; //event service records
-  unsigned char eventStatus;  //event status value (unsigned char: 0 to 255)
+  unsigned short int eventStatus;  //event status value (unsigned short int: 0 to 65.535)
   unsigned short clusterID;	  //the cluster id of the hit
   unsigned char isSeed;	  	  //flag to mark seed pixel
   unsigned short clusterSize; //the cluster size of the cluster belonging to the hit
@@ -48,7 +48,7 @@ typedef struct ClusterInfo{
   float charge; 		  	  //sum charge of all cluster hits
   unsigned char seed_column;  //column value (unsigned char: 0 to 255)
   unsigned short int seed_row;//row value (unsigned short int: 0 to 65.535)
-  unsigned char eventStatus;  //event status value (unsigned char: 0 to 255)
+  unsigned short int eventStatus;  //event status value (unsigned char: 0 to 255)
 } ClusterInfo;
 
 //structure for the input meta data
@@ -140,7 +140,7 @@ typedef struct ParInfo{
 
 // Data Header (DH)
 #define DATA_HEADER						0x00E90000
-#define DATA_HEADER_MASK				0x00FF0000
+#define DATA_HEADER_MASK				0xF0FF0000
 #define DATA_HEADER_FLAG_MASK			0x00008000
 #define DATA_HEADER_LV1ID_MASK			0x00007F00
 #define DATA_HEADER_LV1ID_MASK_FEI4B	0x00007C00	// data format changed in fE-I4B. Upper LV1IDs comming in seperate SR.
@@ -156,6 +156,7 @@ typedef struct ParInfo{
 #define DATA_HEADER_BCID_MACRO_FEI4B(X)		(DATA_HEADER_BCID_MASK_FEI4B & X) // data format changed in FE-I4B due to increased counter size, See DATA_HEADER_LV1ID_MASK_FEI4B also.
 
 // Data Record (DR)
+#define DATA_RECORD_MASK				0xF0000000
 #define DATA_RECORD_COLUMN_MASK			0x00FE0000
 #define DATA_RECORD_ROW_MASK			0x0001FF00
 #define DATA_RECORD_TOT1_MASK			0x000000F0
@@ -170,7 +171,7 @@ typedef struct ParInfo{
 #define DATA_RECORD_MIN_ROW				(RAW_DATA_MIN_ROW << 8)
 #define DATA_RECORD_MAX_ROW				(RAW_DATA_MAX_ROW << 8)
 
-#define DATA_RECORD_MACRO(X)			(((DATA_RECORD_COLUMN_MASK & X) <= DATA_RECORD_MAX_COLUMN) && ((DATA_RECORD_COLUMN_MASK & X) >= DATA_RECORD_MIN_COLUMN) && ((DATA_RECORD_ROW_MASK & X) <= DATA_RECORD_MAX_ROW) && ((DATA_RECORD_ROW_MASK & X) >= DATA_RECORD_MIN_ROW) ? true : false)
+#define DATA_RECORD_MACRO(X)			(((DATA_RECORD_COLUMN_MASK & X) <= DATA_RECORD_MAX_COLUMN) && ((DATA_RECORD_COLUMN_MASK & X) >= DATA_RECORD_MIN_COLUMN) && ((DATA_RECORD_ROW_MASK & X) <= DATA_RECORD_MAX_ROW) && ((DATA_RECORD_ROW_MASK & X) >= DATA_RECORD_MIN_ROW) && ((DATA_RECORD_MASK & X) == 0) ? true : false)
 #define DATA_RECORD_COLUMN1_MACRO(X)	((DATA_RECORD_COLUMN_MASK & X) >> 17)
 #define DATA_RECORD_ROW1_MACRO(X)		((DATA_RECORD_ROW_MASK & X) >> 8)
 #define DATA_RECORD_TOT1_MACRO(X)		((DATA_RECORD_TOT1_MASK & X) >> 4)

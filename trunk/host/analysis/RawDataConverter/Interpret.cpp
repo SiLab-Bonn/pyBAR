@@ -435,6 +435,7 @@ void Interpret::printSummary()
 	std::cout<<"\t5\t"<<_errorCounter[5]<<"\tEvents with jumping BCIDs\n";
 	std::cout<<"\t6\t"<<_errorCounter[6]<<"\tEvents with TLU trigger error\n";
 	std::cout<<"\t7\t"<<_errorCounter[7]<<"\tEvents has too many hit and was truncated\n";
+	std::cout<<"\t8\t"<<_errorCounter[8]<<"\tEvents with TDC words\n";
 
 	std::cout<<"#TriggerErrorCounters \n";
 	std::cout<<"\t0\t"<<_triggerErrorCounter[0]<<"\tTrigger number does not increase by 1\n";
@@ -782,7 +783,7 @@ void Interpret::addTriggerErrorCode(const unsigned char& pErrorCode)
 	tTriggerError |= pErrorCode;
 }
 
-void Interpret::addEventErrorCode(const unsigned char& pErrorCode)
+void Interpret::addEventErrorCode(const unsigned short int& pErrorCode)
 {
 	if(Basis::debugSet()){
 		std::stringstream tDebug;
@@ -824,6 +825,10 @@ void Interpret::addEventErrorCode(const unsigned char& pErrorCode)
 				tDebug<<"EVENT HAS TOO MANY HITS AND WAS TRUNCATED";
 				break;
 			}
+			case __TDC_WORD:{
+				tDebug<<"EVENT HAS TDC WORD";
+				break;
+			}
 		}
 		debug(tDebug.str());
 	}
@@ -843,7 +848,7 @@ void Interpret::histogramTriggerErrorCode()
 void Interpret::histogramErrorCode()
 {
 	unsigned int tBitPosition = 0;
-	for(unsigned char iErrorCode = tErrorCode; iErrorCode != 0; iErrorCode = iErrorCode>>1){
+	for(unsigned short int iErrorCode = tErrorCode; iErrorCode != 0; iErrorCode = iErrorCode>>1){
 		if(iErrorCode & 0x1)
 			_errorCounter[tBitPosition]+=1;
 		tBitPosition++;

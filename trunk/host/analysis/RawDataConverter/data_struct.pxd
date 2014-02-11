@@ -36,7 +36,7 @@ cdef packed struct numpy_hit_info:
     cnp.uint16_t TDC  # absolute BCID value (unsigned short int: 0 to 65.535)
     cnp.uint8_t triggerStatus  # event trigger status
     cnp.uint32_t serviceRecord  # event service records
-    cnp.uint8_t eventStatus  # event status value (unsigned char: 0 to 255)
+    cnp.uint16_t eventStatus  # event status value (unsigned char: 0 to 255)
 
 cdef packed struct numpy_cluster_hit_info:
     cnp.uint32_t eventNumber  # event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
@@ -50,7 +50,7 @@ cdef packed struct numpy_cluster_hit_info:
     cnp.uint16_t TDC  # absolute BCID value (unsigned short int: 0 to 65.535)
     cnp.uint8_t triggerStatus  # event trigger status
     cnp.uint32_t serviceRecord  # event service records
-    cnp.uint8_t eventStatus  # event status value (unsigned char: 0 to 255)
+    cnp.uint16_t eventStatus  # event status value (unsigned char: 0 to 255)
     cnp.uint16_t clusterID  # the cluster id of the hit
     cnp.uint8_t isSeed  # flag to mark seed pixel
     cnp.uint16_t clusterSize  # the cluster id of the hit
@@ -64,4 +64,4 @@ cdef packed struct numpy_cluster_info:
     cnp.float32_t charge  # sum charge of all cluster hits
     cnp.uint8_t seed_column  # column value (unsigned char: 0 to 255)
     cnp.uint16_t seed_row  # row value (unsigned short int: 0 to 65.535)
-    cnp.uint8_t eventStatus  # event status value (unsigned char: 0 to 255)
+    cnp.uint16_t eventStatus  # event status value (unsigned char: 0 to 255)

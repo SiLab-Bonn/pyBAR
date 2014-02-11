@@ -88,7 +88,7 @@ private:
 
 	//SR/error histogramming methods
 	void addTriggerErrorCode(const unsigned char& pErrorCode);                              //adds the trigger error code to the existing error code
-	void addEventErrorCode(const unsigned char& pErrorCode);                                //adds the error code to the existing error code
+	void addEventErrorCode(const unsigned short int& pErrorCode);                           //adds the error code to the existing error code
 	void histogramTriggerErrorCode();                                                       //adds the event trigger error code to the histogram
 	void histogramErrorCode();                                                              //adds the event error code to the histogram
 	void addServiceRecord(const unsigned char& pSRcode, const unsigned int& pSRcounter);    //adds the service record code to SR histogram
@@ -135,7 +135,7 @@ private:
 	unsigned int tStartLVL1ID;					//LVL1ID value of the first data header of the event window
 	unsigned int tDbCID;						//relative BCID of on event window [0:15], counter
 	unsigned char tTriggerError;				//event trigger error code
-	unsigned char tErrorCode;					//event error code
+	unsigned int tErrorCode;					//event error code
 	unsigned int tServiceRecord;				//event service records
 	unsigned int tTriggerNumber;                //event trigger number
 	unsigned int tTotalHits;                    //event hits
