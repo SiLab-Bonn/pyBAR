@@ -8,6 +8,8 @@ import numpy as np
 
 from scan.scan import ScanBase
 from daq.readout import open_raw_data_file
+from analysis.plotting import plotting
+from matplotlib.backends.backend_pdf import PdfPages
 from analysis.analyze_raw_data import AnalyzeRawData
 import tables as tb
 from threading import Event
@@ -237,9 +239,8 @@ class FEI4SelfTriggerHitOr(ScanBase):
         self.register_utils.send_commands(commands)
 
     def analyze(self):
-        print self.scan_data_filename
+        output_pdf = PdfPages(scan.scan_data_filename + "_histogram.pdf")
         for raw_data_file in glob.glob(self.scan_data_filename + '_*.h5'):  # loop over all created raw data files
-            print raw_data_file[:-3]
             with AnalyzeRawData(raw_data_file=raw_data_file, analyzed_data_file=raw_data_file[:-3] + "_interpreted.h5") as analyze_raw_data:
                 analyze_raw_data.interpreter.set_trig_count(scan_configuration['trig_count'])
                 analyze_raw_data.create_cluster_size_hist = True  # can be set to false to omit cluster hit creation, can save some time, standard setting is false
@@ -250,6 +251,13 @@ class FEI4SelfTriggerHitOr(ScanBase):
                 analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
                 analyze_raw_data.interpreter.print_summary()
                 analyze_raw_data.plot_histograms(scan_data_filename=raw_data_file[:-3])
+            with tb.openFile(raw_data_file, mode="r") as raw_data_file_h5:  # open the raw data file to access the oszi histograms
+                column = raw_data_file.split('_')[-2]
+                row = raw_data_file.split('_')[-1].split('.')[0]
+                tdc_hist = raw_data_file_h5.root._f_get_child('col_row_' + str(column) + '_' + str(row))[0, :]
+                plotting.plot_1d_hist(tdc_hist, title='TDC histogram for pixel ' + str(column) + '/' + str(row), x_axis_title='TDC', y_axis_title='#', filename=output_pdf)
+        output_pdf.close()
+
 
 if __name__ == "__main__":
     import configuration
