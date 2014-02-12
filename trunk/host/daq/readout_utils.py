@@ -45,7 +45,7 @@ class ReadoutUtils(object):
             reg &= ~0x02
         if channels == None:
             channels = self.rx_base_address.iterkeys()
-        filter(lambda i: self.device.WriteExternal(address=self.rx_base_address[i] + 1, data=[reg]), channels)  # overwriting selected register
+        filter(lambda i: self.device.WriteExternal(address=self.rx_base_address[i] + 2, data=[reg]), channels)  # overwriting selected register
 
     def configure_command_fsm(self, enable_ext_trigger=False, cmd_mode=0, diable_clock=False, disable_command_trigger=False, **kwargs):
         '''Setting up command FSM to receive external triggers.

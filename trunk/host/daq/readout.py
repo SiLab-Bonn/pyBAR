@@ -183,24 +183,24 @@ class Readout(object):
         logging.info('Resetting RX')
         if channels == None:
             channels = self.rx_base_address.iterkeys()
-        filter(lambda i: self.device.WriteExternal(address=self.rx_base_address[i], data=[0]), channels)
+        filter(lambda i: self.device.WriteExternal(address=self.rx_base_address[i] + 1, data=[0]), channels)  # reset RX counters
         # since WriteExternal returns nothing, filter returns empty list
         sleep(0.1)  # sleep here for a while
 
     def get_rx_sync_status(self, channels=None):
         if channels == None:
             channels = self.rx_base_address.iterkeys()
-        return map(lambda i: True if (self.device.ReadExternal(address=self.rx_base_address[i] + 1, size=1)[0]) & 0x1 == 1 else False, channels)
+        return map(lambda i: True if (self.device.ReadExternal(address=self.rx_base_address[i] + 2, size=1)[0]) & 0x1 == 1 else False, channels)
 
     def get_rx_8b10b_error_count(self, channels=None):
         if channels == None:
             channels = self.rx_base_address.iterkeys()
-        return map(lambda i: self.device.ReadExternal(address=self.rx_base_address[i] + 4, size=1)[0], channels)
+        return map(lambda i: self.device.ReadExternal(address=self.rx_base_address[i] + 5, size=1)[0], channels)
 
     def get_rx_fifo_discard_count(self, channels=None):
         if channels == None:
             channels = self.rx_base_address.iterkeys()
-        return map(lambda i: self.device.ReadExternal(address=self.rx_base_address[i] + 5, size=1)[0], channels)
+        return map(lambda i: self.device.ReadExternal(address=self.rx_base_address[i] + 6, size=1)[0], channels)
 
 
 def convert_data_array(array, filter_func=None, converter_func=None):
