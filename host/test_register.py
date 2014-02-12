@@ -143,7 +143,7 @@ def test_global_register(self):
     not_read_registers = list(not_read_registers)
     not_read_registers.sort()
     for address in not_read_registers:
-        logging.warning('Global Register Test: Data for Global Register at address %d missing' % address)
+        logging.error('Global Register Test: Data for Global Register at address %d missing' % address)
         number_of_errors += 1
     logging.info('Global Register Test: Found %d error(s)' % number_of_errors)
 
