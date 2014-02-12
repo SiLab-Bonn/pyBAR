@@ -8,6 +8,7 @@ import logging
 from analysis.RawDataConverter import data_struct
 from analysis.analyze_raw_data import AnalyzeRawData
 from analysis import analysis_utils
+from scipy.sparse import coo_matrix
 
 analysis_configuration = {
     "scan_name": 'SCC_50_fei4_self_trigger_scan_390',
@@ -50,9 +51,12 @@ def histogram_tdc_hits():
             in_hit_file_h5.root.meta_data.copy(out_hit_file_h5.root)  # copy meta_data note to new file
     # histogram selected hits
     with tb.openFile(scan_base + '_selected_hits.h5', mode="r") as in_hit_file_h5:
-        hits = in_hit_file_h5.root.Hits[:]
-        col_row_tdc_hist, _ = np.histogramdd((hits[:]['column'], hits[:]['row'], hits[:]['TDC']), bins=(80, 336, 1024), range=[[1, 80], [1, 336], [0, 1024]])
-        print col_row_tdc_hist[3, 5, :]
+        with tb.openFile(scan_base + '_histograms.h5', mode="w") as out_file_histograms_h5:
+            hits = in_hit_file_h5.root.Hits[:]
+            pixel = hits[:]['row'] + hits[:]['column'] * 335  # make 2d -> 1d hist to be able to use the supported 2d sparse matrix
+            tdc_hist_per_pixel = coo_matrix((np.ones(shape=(len(pixel,)), dtype=np.uint8), (pixel, hits[:]['TDC'])), shape=(80 * 336, 4096)).todense()  # use sparse matrix to keep memory usage decend
+            tdc_hist_array = out_file_histograms_h5.createCArray(out_file_histograms_h5.root, name='HistTdc', title='TDC Histograms', atom=tb.Atom.from_dtype(tdc_hist_per_pixel.dtype), shape=tdc_hist_per_pixel.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+            tdc_hist_array[:] = tdc_hist_per_pixel
 
 
 if __name__ == "__main__":
