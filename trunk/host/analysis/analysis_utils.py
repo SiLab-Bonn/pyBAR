@@ -10,9 +10,11 @@ import time
 import collections
 import pandas as pd
 import numpy as np
+import glob
 import tables as tb
 import numexpr as ne
 from plotting import plotting
+from scipy.interpolate import interp1d
 from operator import itemgetter
 from scipy.sparse import coo_matrix
 from scipy.interpolate import splrep, splev
@@ -225,6 +227,30 @@ def get_parameter_value_from_file_names(files, parameter, unique=True, sort=True
                         logging.info('File with ' + parameter + ' = ' + str(parameter_value) + ' is not unique. Take ' + one_file)
             files_dict[one_file] = parameter_value
     return collections.OrderedDict(sorted(files_dict.iteritems(), key=itemgetter(1)) if sort else files_dict)  # with PEP 265 solution of sorting a dict by value
+
+
+def get_data_file_names_from_scan_base(scan_base, filter_file_words=['interpreted', 'cut_', 'cluster_sizes']):
+    """
+    Takes a list of scan base names and returns all file names that have this scan base within their name. File names that have a word of filter_file_words
+    in their name are excluded.
+
+    Parameters
+    ----------
+    scan_base : list of strings
+    filter_file_words : list of strings
+
+    Returns
+    -------
+    list of strings
+
+    """
+    raw_data_files = []
+    for scan_name in scan_base:
+        data_files = glob.glob(scan_name + '_*.h5')
+        if not data_files:
+            raise RuntimeError('Cannot find any files for ' + scan_name)
+        raw_data_files.extend(filter(lambda data_file: not any(x in data_file for x in filter_file_words), data_files))  # filter out already analyzed data
+    return raw_data_files
 
 
 def get_parameter_value_from_files(files, parameter, sort=True):
@@ -997,6 +1023,134 @@ def data_aligned_at_events(table, start_event_number=None, stop_event_number=Non
             if stop_event_number != None and last_event > stop_event_number:  # events are sorted, thus stop here to save time
                 break
             start_index = start_index + nrows  # events fully read, increase start index and continue reading
+
+
+def select_good_pixel_region(hits, col_span, row_span, min_cut_threshold=0.2, max_cut_threshold=2.0):
+    '''Takes the hit array and masks all pixels with a certain occupancy.
+
+    Parameters
+    ----------
+    hits : array like
+        If dim > 2 the additional dimensions are summed up.
+    min_cut_threshold : float, [0, 1]
+        A number to specify the minimum threshold, which pixel to take. Pixels are masked if
+        occupancy < min_cut_threshold * np.ma.median(occupancy)
+        0 means that no pixels are masked
+    max_cut_threshold : float, [0, 1]
+        A number to specify the maximum threshold, which pixel to take. Pixels are masked if
+        occupancy > max_cut_threshold * np.ma.median(occupancy)
+        0 means that no pixels are masked
+
+    Returns
+    -------
+    numpy.ma.array, shape=(80,336)
+        The hits array with masked pixels.
+    '''
+    hits = np.sum(hits, axis=(-1)).astype('u8')
+    mask = np.ones(shape=(80, 336), dtype=np.uint8)
+
+    mask[min(col_span):max(col_span) + 1, min(row_span):max(row_span) + 1] = 0
+
+    ma = np.ma.masked_where(mask, hits)
+    return np.ma.masked_where(np.logical_or(ma < min_cut_threshold * np.ma.median(ma), ma > max_cut_threshold * np.ma.median(ma)), ma)
+
+
+def get_hit_rate_correction(gdacs, calibration_gdacs, cluster_size_histogram):
+    '''Calculates a correction factor for single hit clusters at the given GDACs from the cluster_size_histogram via cubic interpolation.
+
+    Parameters
+    ----------
+    gdacs : array like
+        The GDAC settings where the threshold should be determined from the calibration
+    calibration_gdacs : array like
+        GDAC settings used during the source scan for the cluster size calibration.
+    cluster_size_histogram : numpy.array, shape=(80,336,# of GDACs during calibration)
+        The calibration array
+
+    Returns
+    -------
+    numpy.array, shape=(80,336,# of GDACs during calibration)
+        The threshold values for each pixel at gdacs.
+    '''
+    logging.info('Calculate the correction factor for the single hit cluster rate at %d given GDAC settings' % len(gdacs))
+    if len(calibration_gdacs) != cluster_size_histogram.shape[0]:
+        raise ValueError('Length of the provided pixel GDACs does not match the dimension of the cluster size array')
+    hist_sum = np.sum(cluster_size_histogram, axis=1)
+    hist_rel = cluster_size_histogram / hist_sum[:, np.newaxis].astype('f4') * 100.
+    maximum_rate = np.amax(hist_rel[:, 1])
+    correction_factor = maximum_rate / hist_rel[:, 1]
+    # sort arrays since interpolate does not work otherwise
+    calibration_gdacs_sorted = np.array(calibration_gdacs)
+    correction_factor_sorted = correction_factor[np.argsort(calibration_gdacs_sorted)]
+    calibration_gdacs_sorted = np.sort(calibration_gdacs_sorted)
+    interpolation = interp1d(calibration_gdacs_sorted.tolist(), correction_factor_sorted.tolist(), kind='cubic', bounds_error=True)
+    return interpolation(gdacs)
+
+
+def get_mean_threshold_from_calibration(gdac, mean_threshold_calibration):
+    '''Calculates the mean threshold from the threshold calibration at the given gdac settings. If the given gdac value was not used during caluibration
+    the value is determined by interpolation.
+
+    Parameters
+    ----------
+    gdacs : array like
+        The GDAC settings where the threshold should be determined from the calibration
+    mean_threshold_calibration : pytable
+        The table created during the calibration scan.
+
+    Returns
+    -------
+    numpy.array, shape=(len(gdac), )
+        The mean threshold values at each value in gdacs.
+    '''
+    interpolation = interp1d(mean_threshold_calibration['gdac'], mean_threshold_calibration['mean_threshold'], kind='slinear', bounds_error=True)
+    return interpolation(gdac)
+
+
+# def get_pixel_thresholds_from_calibration_table(column, row, gdacs, threshold_calibration_table):
+#     '''Calculates the pixel threshold from the threshold calibration at the given gdac settings (gdacs). If the given gdac value was not used during caluibration
+#     the value is determined by interpolation.
+# 
+#     Parameters
+#     ----------
+#     column/row: ndarray
+#     gdacs : array like
+#         The GDAC settings where the threshold should be determined from the calibration
+#     threshold_calibration_table : pytable
+#         The table created during the calibration scan.
+# 
+#     Returns
+#     -------
+#     numpy.array, shape=(len(column), len(row), len(gdac), )
+#         The pixel threshold values at each value in gdacs.
+#     '''
+#     pixel_gdacs = threshold_calibration_table[np.logical_and(threshold_calibration_table['column'] == column, threshold_calibration_table['row'] == row)]['gdac']
+#     pixel_thresholds = threshold_calibration_table[np.logical_and(threshold_calibration_table['column'] == column, threshold_calibration_table['row'] == row)]['threshold']
+#     interpolation = interp1d(x=pixel_gdacs, y=pixel_thresholds, kind='slinear', bounds_error=True)
+#     return interpolation(gdacs)
+
+
+def get_pixel_thresholds_from_calibration_array(gdacs, calibration_gdacs, threshold_calibration_array):
+    '''Calculates the threshold for all pixels in threshold_calibration_array at the given GDAC settings via linear interpolation. The GDAC settings used during calibration have to be given.
+
+    Parameters
+    ----------
+    gdacs : array like
+        The GDAC settings where the threshold should be determined from the calibration
+    calibration_gdacs : array like
+        GDAC settings used during calibration, needed to translate the index of the calibration array to a value.
+    threshold_calibration_array : numpy.array, shape=(80,336,# of GDACs during calibration)
+        The calibration array
+
+    Returns
+    -------
+    numpy.array, shape=(80,336,# gdacs given)
+        The threshold values for each pixel at gdacs.
+    '''
+    if len(calibration_gdacs) != threshold_calibration_array.shape[2]:
+        raise ValueError('Length of the provided pixel GDACs does not match the third dimension of the calibration array')
+    interpolation = interp1d(x=calibration_gdacs, y=threshold_calibration_array, kind='slinear', bounds_error=True)
+    return interpolation(gdacs)
 
 
 
