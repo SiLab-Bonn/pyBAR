@@ -229,10 +229,36 @@ def get_parameter_value_from_file_names(files, parameter, unique=True, sort=True
     return collections.OrderedDict(sorted(files_dict.iteritems(), key=itemgetter(1)) if sort else files_dict)  # with PEP 265 solution of sorting a dict by value
 
 
-def get_data_file_names_from_scan_base(scan_base, filter_file_words=['interpreted', 'cut_', 'cluster_sizes']):
+def get_data_file_names_from_scan_base(scan_base, filter_file_words=None):
     """
     Takes a list of scan base names and returns all file names that have this scan base within their name. File names that have a word of filter_file_words
     in their name are excluded.
+
+    Parameters
+    ----------
+    scan_base : list of strings
+    filter_file_words : list of strings
+        Return only file names without a filter_file_word. Deactivate feature by setting filter_file_words to None.
+    Returns
+    -------
+    list of strings
+
+    """
+    raw_data_files = []
+    for scan_name in scan_base:
+        data_files = glob.glob(scan_name + '_*.h5')
+        if not data_files:
+            raise RuntimeError('Cannot find any files for ' + scan_name)
+        if filter_file_words is not None:
+            raw_data_files.extend(filter(lambda data_file: not any(x in data_file for x in filter_file_words), data_files))  # filter out already analyzed data
+        else:
+            raw_data_files = data_files
+    return raw_data_files
+
+
+def get_parameter_scan_bases_from_scan_base(scan_base):
+    """
+    Takes a list of scan base names and returns all scan base names that have this scan base within their name.
 
     Parameters
     ----------
@@ -244,13 +270,7 @@ def get_data_file_names_from_scan_base(scan_base, filter_file_words=['interprete
     list of strings
 
     """
-    raw_data_files = []
-    for scan_name in scan_base:
-        data_files = glob.glob(scan_name + '_*.h5')
-        if not data_files:
-            raise RuntimeError('Cannot find any files for ' + scan_name)
-        raw_data_files.extend(filter(lambda data_file: not any(x in data_file for x in filter_file_words), data_files))  # filter out already analyzed data
-    return raw_data_files
+    return [scan_bases[:-3] for scan_bases in get_data_file_names_from_scan_base(scan_base, filter_file_words=['interpreted', 'cut_', 'cluster_sizes'])]
 
 
 def get_parameter_value_from_files(files, parameter, sort=True):
@@ -623,11 +643,7 @@ def write_hits_in_event_range(hit_table_in, hit_table_out, event_start, event_st
 
 
 def get_mean_from_histogram(counts, bin_positions):
-    values = []
-    for index, one_bin in enumerate(counts):
-        for _ in range(one_bin):
-            values.extend([bin_positions[index]])
-    return np.mean(values)
+    return np.dot(counts, np.array(bin_positions)) / np.sum(counts).astype('f4')
 
 
 def get_median_from_histogram(counts, bin_positions):
