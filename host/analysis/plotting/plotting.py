@@ -3,7 +3,9 @@ import math
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+import matplotlib.dates as mdates
 import pandas as pd
+from datetime import datetime
 import itertools
 import re
 import operator
@@ -190,7 +192,7 @@ def plot_profile_histogram(x, y, n_bins=100, title=None, x_label=None, y_label=N
         plt.close()
 
 
-def plot_scatter(x, y, yerr=None, title=None, plot_range=None, x_label=None, y_label=None, marker_style='-o', log_x=False, log_y=False, filename=None):
+def plot_scatter(x, y, yerr=None, title=None, plot_range=None, plot_range_y=None, x_label=None, y_label=None, marker_style='-o', log_x=False, log_y=False, filename=None):
     logging.info("Plot scatter plot %s" % ((': ' + title) if title is not None else ''))
     if yerr is not None:
         plt.errorbar(x, y, yerr=[yerr, yerr], fmt=marker_style)
@@ -207,6 +209,8 @@ def plot_scatter(x, y, yerr=None, title=None, plot_range=None, x_label=None, y_l
         plt.yscale('log')
     if plot_range:
         plt.xlim((min(plot_range), max(plot_range)))
+    if plot_range_y:
+        plt.ylim((min(plot_range_y), max(plot_range_y)))
     plt.grid(True)
     if filename is None:
         plt.show()
@@ -367,6 +371,42 @@ def plot_scurves(occupancy_hist, scan_parameters, title='S-Curves', ylabel='Occu
     else:
         plt.savefig(filename)
         plt.close()
+
+
+def plot_scatter_time(x, y, yerr=None, title=None, legend=None, plot_range=None, plot_range_y=None, x_label=None, y_label=None, marker_style='-o', log_x=False, log_y=False, filename=None):
+    logging.info("Plot time scatter plot %s" % ((': ' + title) if title is not None else ''))
+    ax = plt.gca()
+    ax.format_xdata = mdates.DateFormatter('%Y-%m-%d')
+    times = []
+    for time in x:
+        times.append(datetime.fromtimestamp(time))
+    if yerr is not None:
+        plt.errorbar(times, y, yerr=[yerr, yerr], fmt=marker_style)
+    else:
+        plt.plot(times, y, marker_style)
+    plt.title(title)
+    if x_label is not None:
+        plt.xlabel(x_label)
+    if y_label is not None:
+        plt.ylabel(y_label)
+    if log_x:
+        plt.xscale('log')
+    if log_y:
+        plt.yscale('log')
+    if plot_range:
+        plt.xlim((min(plot_range), max(plot_range)))
+    if plot_range_y:
+        plt.ylim((min(plot_range_y), max(plot_range_y)))
+    if legend:
+        plt.legend(legend, loc=2)
+    plt.grid(True)
+    if filename is None:
+        plt.show()
+    elif type(filename) == PdfPages:
+        filename.savefig()
+    else:
+        plt.savefig(filename)
+    plt.close()
 
 
 def plot_cluster_tot_size(hist, median=False, z_max=None, filename=None):
