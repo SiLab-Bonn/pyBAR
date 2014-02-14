@@ -12,7 +12,7 @@ import pandas as pd
 import numpy as np
 import tables as tb
 import numexpr as ne
-from analysis.plotting import plotting
+from plotting import plotting
 from operator import itemgetter
 from scipy.sparse import coo_matrix
 from scipy.interpolate import splrep, splev
@@ -596,6 +596,14 @@ def write_hits_in_event_range(hit_table_in, hit_table_out, event_start, event_st
     return start_hit_word
 
 
+def get_mean_from_histogram(counts, bin_positions):
+    values = []
+    for index, one_bin in enumerate(counts):
+        for _ in range(one_bin):
+            values.extend([bin_positions[index]])
+    return np.mean(values)
+
+
 def get_median_from_histogram(counts, bin_positions):
     values = []
     for index, one_bin in enumerate(counts):
@@ -648,12 +656,12 @@ def get_events_with_cluster_size(event_number, cluster_size, condition='cluster_
     return np.unique(event_number[ne.evaluate(condition)])
 
 
-def get_n_cluster_in_events(event_number):
-    '''Calculates the number of cluster in every event.
+def get_n_cluster_in_events(event_numbers):
+    '''Calculates the number of cluster in every given event.
 
     Parameters
     ----------
-    event_number : numpy.array
+    event_numbers : numpy.array
 
     Returns
     -------
@@ -663,7 +671,7 @@ def get_n_cluster_in_events(event_number):
     '''
     logging.info("Calculate the number of cluster in every given event")
     if (sys.maxint < 3000000000):  # on 32- bit operation systems max int is 2147483647 leading to numpy bugs that need workarounds
-        event_number_array = event_number.astype('<i4')  # BUG in numpy, unint works with 64-bit, 32 bit needs reinterpretation
+        event_number_array = event_numbers.astype('<i4')  # BUG in numpy, unint works with 64-bit, 32 bit needs reinterpretation
         offset = np.amin(event_number_array)
         event_number_array = np.subtract(event_number_array, offset)  # BUG #225 for values > int32
         cluster_in_event = np.bincount(event_number_array)  # for one cluster one event number is given, counts how many different event_numbers are there for each event number from 0 to max event number
@@ -671,7 +679,7 @@ def get_n_cluster_in_events(event_number):
         selected_event_number = np.add(selected_event_number_index, offset)
         return np.vstack((selected_event_number, cluster_in_event[selected_event_number_index])).T
     else:
-        cluster_in_event = np.bincount(event_number)  # for one cluster one event number is given, counts how many different event_numbers are there for each event number from 0 to max event number
+        cluster_in_event = np.bincount(event_numbers)  # for one cluster one event number is given, counts how many different event_numbers are there for each event number from 0 to max event number
         selected_event_number = np.nonzero(cluster_in_event)[0]
         return np.vstack((selected_event_number, cluster_in_event[selected_event_number])).T
 
@@ -815,6 +823,21 @@ def get_scan_parameter(meta_data_array):
     for scan_par_name in meta_data_array.dtype.names[4:]:  # scan parameters are in columns 5 (= index 4) and above
         scan_parameters[scan_par_name] = np.unique(meta_data_array[scan_par_name])
     return scan_parameters
+
+
+def get_scan_parameters_index(scan_parameter_array):
+    '''Takes the scan parameter array and creates a scan parameter index labeling unique scan parameter combinations.
+    Parameters
+    ----------
+    meta_data_array : numpy.ndarray
+
+    Returns
+    -------
+    numpy.Histogram
+    '''
+#     scan_parameter_names = list(meta_data_array.dtype.names)[5:]
+#     print scan_parameter_names
+    return np.unique(scan_parameter_array, return_inverse=True)[1]
 
 
 def get_unique_scan_parameter_combinations(meta_data_array, selected_columns_only=False):
