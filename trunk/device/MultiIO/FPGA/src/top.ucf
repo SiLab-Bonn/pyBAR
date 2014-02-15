@@ -491,5 +491,5 @@ NET "MONHIT" IOSTANDARD = LVCMOS33;
 # 320MHz
 INST "rx_gen[2].ifei4_rx/i_fei4_rx_core/ireceiver_logic/sync_master_inst/DDRQ_DLY_0" LOC = SLICE_X44Y95;
 INST "rx_gen[2].ifei4_rx/i_fei4_rx_core/ireceiver_logic/sync_master_inst/DDRQ_DATA_2" LOC = SLICE_X44Y95;
-INST "itdc/i_tdc_s3_core/DDRQ_DLY_0" LOC = SLICE_X51Y95
+INST "itdc/i_tdc_s3_core/DDRQ_DLY_0" LOC = SLICE_X51Y95;
 INST "rx_gen[1].ifei4_rx/i_fei4_rx_core/ireceiver_logic/sync_master_inst/DDRQ_DLY_0" LOC = SLICE_X42Y95;
