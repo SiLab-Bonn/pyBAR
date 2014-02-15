@@ -12,5 +12,5 @@ device_configuration = {
     "device": None,  # specify USB device (device ID)
     "scan_data_path": os.path.join(path, r'data'),  # data output path
     "device_identifier": "",  # additional device identifier
-    "invert_rx_data": False # enable for DBM modules
+    "invert_rx_data": False  # enable for DBM modules
 }
