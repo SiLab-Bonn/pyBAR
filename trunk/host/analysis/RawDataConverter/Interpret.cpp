@@ -169,6 +169,7 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 			_nServiceRecords++;
 		}
 		else if (isTdcWord(tActualWord)){	//data word is a tdc word
+			_nTDCWords++;
 			addEventErrorCode(__TDC_WORD);
 			tTdcCount = TDC_COUNT_MACRO(tActualWord);
 			if (Basis::debugSet())
@@ -320,6 +321,7 @@ void Interpret::resetCounters()
 	_nDataHeaders = 0;
 	_nServiceRecords = 0;
 	_nUnknownWords = 0;
+	_nTDCWords = 0;
 	_nOtherWords = 0;
 	_nHits = 0;
 	_nEmptyEvents = 0;
@@ -417,7 +419,8 @@ void Interpret::printSummary()
 	std::cout<<"#Data Records "<<_nDataRecords<<"\n";
 	std::cout<<"#Service Records "<<_nServiceRecords<<"\n";
 	std::cout<<"#Other Words "<<_nOtherWords<<"\n";
-	std::cout<<"#Unknown words "<<_nUnknownWords<<"\n\n";
+	std::cout<<"#Unknown words "<<_nUnknownWords<<"\n";
+	std::cout<<"#TDC words "<<_nTDCWords<<"\n\n";
 
 	std::cout<<"#Hits "<<_nHits<<"\n";
 	std::cout<<"MaxHitsPerEvent "<<_nMaxHitsPerEvent<<"\n";
@@ -482,6 +485,7 @@ void Interpret::printStatus() {
 	std::cout << "_nIncompleteEvents "<<_nIncompleteEvents<<"\n";
 	std::cout << "_nOtherWords "<<_nOtherWords<<"\n";
 	std::cout << "_nUnknownWords "<<_nUnknownWords<<"\n";
+	std::cout << "_nTDCWords "<<_nTDCWords<<"\n\n";
 	std::cout << "_nServiceRecords "<<_nServiceRecords<<"\n";
 	std::cout << "_nDataRecords "<<_nDataRecords<<"\n";
 	std::cout << "_nDataHeaders "<<_nDataHeaders<<"\n";
