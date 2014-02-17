@@ -1001,7 +1001,7 @@ def data_aligned_at_events(table, start_event_number=None, stop_event_number=Non
     # set start stop indices from the event numbers for fast read if possible; not possible if the given event number does not exist
     if start_event_number != None:
         condition_1 = 'event_number==' + str(start_event_number)
-        start_indeces = table.get_where_list(condition_1)
+        start_indeces = table.get_where_list(condition_1, start=start_index, stop=stop_index)
         if len(start_indeces) != 0:  # set start index if possible
             start_index = start_indeces[0]
             start_index_known = True
@@ -1010,12 +1010,12 @@ def data_aligned_at_events(table, start_event_number=None, stop_event_number=Non
 
     if stop_event_number != None:
         condition_2 = 'event_number==' + str(stop_event_number)
-        stop_indeces = table.get_where_list(condition_2)
+        stop_indeces = table.get_where_list(condition_2, start=start_index, stop=stop_index)
         if len(stop_indeces) != 0:  # set the stop index if possible, stop index is excluded
             stop_index = stop_indeces[0]
             stop_index_known = True
 
-    if (start_index_known and stop_index_known) or (start_index + chunk_size >= stop_index):  # special case, one read is enough, data not bigger than one chunk and the indices are known
+    if (start_index_known and stop_index_known) and (start_index + chunk_size >= stop_index):  # special case, one read is enough, data not bigger than one chunk and the indices are known
             yield table.read(start=start_index, stop=stop_index), stop_index
     else:  # read data in chunks, chunks do not divide events, abort if stop_event_number is reached
         while(start_index < stop_index):
