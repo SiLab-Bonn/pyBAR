@@ -104,7 +104,7 @@ class ReadoutUtils(object):
         trigger_data_delay : int
             Addition wait cycles before latching TLU trigger data. From 0 to 15.
         trigger_clock_cycles : int
-            Number of clock cycles sent to TLU to clock out TLU trigger data. The number of clock cycles is usually (bit length of TLU trigger data + 1). From 0 to 31.
+            Number of clock cycles sent to TLU to clock out TLU trigger data (only in TLU trigger data handshake mode). The number of clock cycles is usually (bit length of TLU trigger data + 1). From 0 to 31 (0 = 32 clock cycles).
         enable_reset : bool
             Enable resetting of internal trigger counter when TLU asserts reset signal.
         invert_lemo_trigger_input : bool
