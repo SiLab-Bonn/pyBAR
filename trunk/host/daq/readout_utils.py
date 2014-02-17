@@ -109,6 +109,8 @@ class ReadoutUtils(object):
             Enable resetting of internal trigger counter when TLU asserts reset signal.
         invert_lemo_trigger_input : bool
             Enable inverting of LEMO RX0 trigger input.
+        force_use_rj45 : bool
+            Forcing RJ45 input/output for TLU (instead of auto sensing).
         trigger_low_timeout : int
             Enabling timeout for waiting for de-asserting TLU trigger signal. From 0 to 255.
         reset_trigger_counter : bool
