@@ -95,9 +95,9 @@ proc wave_top {} {
     add wave -group fifo_sram sim:/top_tb/uut/i_out_fifo/i_sram_fifo/*
 
     add wave -group fei4_rx_0 {sim:/top_tb/uut/rx_gen[0]/ifei4_rx/i_fei4_rx_core/*}
-    add wave -group tlu sim:/top_tb/uut/tlu_controller_module/i_tlu_controller/*
-    add wave -group tlu_fsm sim:/top_tb/uut/tlu_controller_module/i_tlu_controller/tlu_controller_fsm_inst/*
-    add wave -group tdc sim:/top_tb/uut/itdc/i_tdc_s3_core/*
+    add wave -group tlu sim:/top_tb/uut/i_tlu_controller/i_tlu_controller_core/*
+    add wave -group tlu_fsm sim:/top_tb/uut/i_tlu_controller/i_tlu_controller_core/tlu_controller_fsm_inst/*
+    add wave -group tdc sim:/top_tb/uut/i_tdc/i_tdc_s3_core/*
     # new arbiter
     add wave -group arbiter sim:/top_tb/uut/i_rrp_arbiter/*
     # old arbiter
