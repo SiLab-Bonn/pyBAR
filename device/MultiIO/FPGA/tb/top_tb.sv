@@ -38,9 +38,13 @@ module top_tb;
     // Inputs
     wire FCLK_IN;
     wire FE_RX;
+    reg [2:0] LEMO_RX;
+    reg RJ45_RESET;
+    reg RJ45_TRIGGER;
+    reg MONHIT;
     
     // Outputs
-    reg MONHIT;
+    wire [2:0] TX; // TX[0] == RJ45 trigger clock output, TX[1] == RJ45 busy output
     wire LED1;
     wire LED2;
     wire LED3;
@@ -77,12 +81,13 @@ module top_tb;
         .FSTROBE(sidev.FSTROBE), 
         .FMODE(sidev.FMODE),
         
-        .MONHIT(MONHIT), 
-        .LED1(LED1), 
-        .LED2(LED2), 
-        .LED3(LED3), 
-        .LED4(LED4), 
-        .LED5(LED5), 
+        .MONHIT(MONHIT),
+        
+        .LED1(LED1),
+        .LED2(LED2),
+        .LED3(LED3),
+        .LED4(LED4),
+        .LED5(LED5),
         
         .SRAM_A(SRAM_A), 
         .SRAM_IO(SRAM_IO), 
@@ -95,7 +100,12 @@ module top_tb;
         .DOBOUT({4{DOBOUT}}),
         
         .CMD_CLK(CMD_CLK),
-        .CMD_DATA(CMD_DATA)
+        .CMD_DATA(CMD_DATA),
+    
+        .LEMO_RX(LEMO_RX),
+        .TX(TX),
+        .RJ45_RESET(RJ45_RESET),
+        .RJ45_TRIGGER(RJ45_TRIGGER)
     
     );
    
@@ -145,6 +155,9 @@ module top_tb;
     reg [23:0]  data_size ;
     
     initial begin
+        LEMO_RX = 0;
+        RJ45_RESET = 0;
+        RJ45_TRIGGER = 0;
         MONHIT = 0;
         
         repeat (300) @(posedge FCLK_IN);
@@ -279,14 +292,29 @@ module top_tb;
         MONHIT = 1;
         #150
         MONHIT = 0;
-        #500
-        MONHIT = 1;
-        #152
-        MONHIT = 0;
-        #50000
+        #500 MONHIT = 1;
+        #152 MONHIT = 0;
+        #496 MONHIT = 1; // small ToT: overlapping two data words 
+        #5 MONHIT = 0;
+        #489 MONHIT = 1; // small ToT: at the end of data
+        #7 MONHIT = 0;
+        #500 MONHIT = 1;
+        #500 MONHIT = 0;
+        #500 MONHIT = 1;
+        #30 MONHIT = 0;
+        #500 MONHIT = 1;
+        #40 MONHIT = 0;
+        #10000
         @(posedge FCLK_IN);
         
-        
+        sidev.WriteExternal( 16'h8200+1,  3); // set trigger mode
+        sidev.WriteExternal( 16'h0000+2,  1); // set trigger mode
+        #20000
+        RJ45_TRIGGER = 1;
+        #25
+        RJ45_TRIGGER = 0;
+        #80000
+        @(posedge FCLK_IN);
         
         sidev.ReadExternal( `FIFO_BASE_ADD + 1, data_size[7:0]);
         sidev.ReadExternal( `FIFO_BASE_ADD + 2, data_size[15:8]);
