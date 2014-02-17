@@ -5,14 +5,14 @@
 # vlog_top
 # vsim_top
 # wave_top
-# restart (to clear waveforms)
+# restart -f (to clear waveforms)
 # run 1ms
 # ----------------------------------------------------------------
 
 # ----------------------------------------------------------------
 # set system environment XILINX to ISE directory
 # ----------------------------------------------------------------
-#set XILINX "C:/Xilinx/14.6/ISE_DS/ISE"
+#set XILINX "C:/Xilinx/14.7/ISE_DS/ISE"
 set XILINX   $env(XILINX)
 
 # ----------------------------------------------------------------
@@ -96,8 +96,12 @@ proc wave_top {} {
 
     add wave -group fei4_rx_0 {sim:/top_tb/uut/rx_gen[0]/ifei4_rx/i_fei4_rx_core/*}
     add wave -group tlu sim:/top_tb/uut/tlu_controller_module/i_tlu_controller/*
+    add wave -group tlu_fsm sim:/top_tb/uut/tlu_controller_module/i_tlu_controller/tlu_controller_fsm_inst/*
     add wave -group tdc sim:/top_tb/uut/itdc/i_tdc_s3_core/*
+    # new arbiter
     add wave -group arbiter sim:/top_tb/uut/i_rrp_arbiter/*
+    # old arbiter
+    #add wave -group old_arbiter sim:/top_tb/uut/arbiter_inst/*
     
     #add wave -group pa sim:/top_tb/uut/ifei4_rx/ireceiver_logic/irec_sync/iphase_align/*
     #add wave -group rec_sync sim:/top_tb/uut/ifei4_rx/ireceiver_logic/irec_sync/*
