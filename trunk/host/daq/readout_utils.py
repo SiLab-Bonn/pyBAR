@@ -86,7 +86,7 @@ class ReadoutUtils(object):
             reg &= ~0x10
         self.device.WriteExternal(address=0 + 2, data=[reg])  # overwriting register
 
-    def configure_trigger_fsm(self, trigger_mode=0, trigger_data_msb_first=False, disable_veto=False, trigger_data_delay=0, trigger_clock_cycles=16, enable_reset=False, invert_lemo_trigger_input=False, force_use_rj45=False, trigger_low_timeout=0, reset_trigger_counter=False, **kwargs):
+    def configure_trigger_fsm(self, trigger_mode=0, trigger_data_msb_first=False, disable_veto=False, trigger_data_delay=0, trigger_clock_cycles=16, enable_reset=False, invert_lemo_trigger_input=False, write_timestamp=False, trigger_low_timeout=0, reset_trigger_counter=False, **kwargs):
         '''Setting up external trigger mode and TLU trigger FSM.
 
         Parameters
@@ -109,8 +109,8 @@ class ReadoutUtils(object):
             Enable resetting of internal trigger counter when TLU asserts reset signal.
         invert_lemo_trigger_input : bool
             Enable inverting of LEMO RX0 trigger input.
-        force_use_rj45 : bool
-            Forcing RJ45 input/output for TLU (instead of auto sensing).
+        write_timestamp : bool
+            Writing time stamp to SRAM every trigger (not available in TLU trigger data handshake mode).
         trigger_low_timeout : int
             Enabling timeout for waiting for de-asserting TLU trigger signal. From 0 to 255.
         reset_trigger_counter : bool
@@ -138,7 +138,7 @@ class ReadoutUtils(object):
             reg_2 |= 0x40
         else:
             reg_2 &= ~0x40
-        if force_use_rj45:
+        if write_timestamp:
             reg_2 |= 0x80
         else:
             reg_2 &= ~0x80
@@ -146,13 +146,13 @@ class ReadoutUtils(object):
         if reset_trigger_counter:
             self.set_trigger_number(value=0)
         self.device.WriteExternal(address=0x8200 + 1, data=[reg_1, reg_2, reg_3])  # overwriting registers
-        if not force_use_rj45:
-            array = self.device.ReadExternal(address=0x8200 + 2, size=1)  # get stored register value
-            reg = struct.unpack('B', array)
-            if reg[0] & 0x80:
-                logging.info('TLU detected on RJ45 port')
-        else:
-            logging.info('Using RJ45 port for triggering')
+#         if not force_use_rj45:
+#             array = self.device.ReadExternal(address=0x8200 + 2, size=1)  # get stored register value
+#             reg = struct.unpack('B', array)
+#             if reg[0] & 0x80:
+#                 logging.info('TLU detected on RJ45 port')
+#         else:
+#             logging.info('Using RJ45 port for triggering')
 
     def configure_tdc_fsm(self, enable_tdc=False, enable_tdc_arming=False, **kwargs):
         '''Setting up TDC (time-to-digital converter) FSM.
