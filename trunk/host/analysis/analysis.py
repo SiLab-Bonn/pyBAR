@@ -42,6 +42,8 @@ def analyze_beam_spot(scan_base, combine_n_readouts=1000, max_chunk_size=1000000
     output_pdf: PdfPages
         PdfPages file object, if none the plot is printed to screen
     '''
+    x = []
+    y = []
     for data_file in scan_base:
         with tb.openFile(data_file + '_interpreted.h5', mode="r+") as in_hit_file_h5:
             # get data and data pointer
@@ -67,9 +69,6 @@ def analyze_beam_spot(scan_base, combine_n_readouts=1000, max_chunk_size=1000000
             timestamp = np.empty(shape=(len(parameter_ranges),))
             occupancy = np.zeros(80 * 336 * 1, dtype=np.uint32)  # create linear array as it is created in histogram class
 
-            x = []
-            y = []
-
             # loop over the selected events
             for parameter_index, parameter_range in enumerate(parameter_ranges):
                 logging.info('Analyze time stamp ' + str(parameter_range[0]) + ' and data from events = [' + str(parameter_range[2]) + ',' + str(parameter_range[3]) + '[ ' + str(int(float(float(parameter_index) / float(len(parameter_ranges)) * 100.))) + '%')
@@ -88,11 +87,13 @@ def analyze_beam_spot(scan_base, combine_n_readouts=1000, max_chunk_size=1000000
                 analyze_data.histograming.get_occupancy(occupancy)
                 occupancy_array = np.reshape(a=occupancy.view(), newshape=(80, 336, analyze_data.histograming.get_n_parameters()), order='F')  # make linear array to 3d array (col,row,parameter)
                 occupancy_array = np.swapaxes(occupancy_array, 0, 1)
-                x.append(analysis_utils.get_mean_from_histogram(np.sum(occupancy_array, axis=0), bin_positions=range(0, 80)))
-                y.append(analysis_utils.get_mean_from_histogram(np.sum(occupancy_array, axis=1), bin_positions=range(0, 336)))
+                projection_x = np.sum(occupancy_array, axis=0).ravel()
+                projection_y = np.sum(occupancy_array, axis=1).ravel()
+                x.append(analysis_utils.get_mean_from_histogram(projection_x, bin_positions=range(0, 80)))
+                y.append(analysis_utils.get_mean_from_histogram(projection_y, bin_positions=range(0, 336)))
                 if plot_occupancy_hists:
                     plotting.plot_occupancy(occupancy_array[:, :, 0], title='Occupancy for events between ' + time.strftime('%H:%M:%S', time.localtime(parameter_range[0])) + ' and ' + time.strftime('%H:%M:%S', time.localtime(parameter_range[1])), filename=output_pdf)
-            plotting.plot_scatter([i * 250 for i in x], [i * 50 for i in y], title='Mean beam position', x_label='x [um]', y_label='y [um]', marker_style='-o', filename=output_pdf)
+    plotting.plot_scatter([i * 250 for i in x], [i * 50 for i in y], title='Mean beam position', x_label='x [um]', y_label='y [um]', marker_style='-o', filename=output_pdf)
 
 
 def analyze_event_rate(scan_base, combine_n_readouts=1000, max_chunk_size=10000000, time_line_absolute=True, plot_occupancy_hists=False, output_pdf=None, **kwarg):
@@ -112,24 +113,33 @@ def analyze_event_rate(scan_base, combine_n_readouts=1000, max_chunk_size=100000
     output_pdf: PdfPages
         PdfPages file object, if none the plot is printed to screen
     '''
+    x = []
+    y = []
     for data_file in scan_base:
         with tb.openFile(data_file + '_interpreted.h5', mode="r") as in_file_h5:
             meta_data_array = in_file_h5.root.meta_data[:]
             parameter_ranges = np.column_stack((meta_data_array['timestamp_start'][::combine_n_readouts], meta_data_array['timestamp_stop'][::combine_n_readouts], analysis_utils.get_event_range(meta_data_array['event_number'][::combine_n_readouts])))
             if time_line_absolute:
-                x = parameter_ranges[:-1, 0] + (parameter_ranges[:-1, 1] - parameter_ranges[:-1, 0]) / 2.
-                plotting.plot_scatter_time(x, y=parameter_ranges[:-1, 3] - parameter_ranges[:-1, 2], title='Events per time', filename=output_pdf)
+                x.extend(parameter_ranges[:-1, 0] + (parameter_ranges[:-1, 1] - parameter_ranges[:-1, 0]) / 2.)
+                y.extend(parameter_ranges[:-1, 3] - parameter_ranges[:-1, 2])
             else:
-                plotting.plot_scatter(x=(parameter_ranges[:-1, 0] + (parameter_ranges[:-1, 1] - parameter_ranges[:-1, 0]) / 2. - parameter_ranges[0, 0]) / 60., y=parameter_ranges[:-1, 3] - parameter_ranges[:-1, 2], title='Events per time', x_label='Progressed time [min.]', y_label='Events per time [a.u.]', filename=output_pdf)
+                x.extend((parameter_ranges[:-1, 0] + (parameter_ranges[:-1, 1] - parameter_ranges[:-1, 0]) / 2. - parameter_ranges[0, 0]) / 60.)
+                y.extend(parameter_ranges[:-1, 3] - parameter_ranges[:-1, 2])
+    if time_line_absolute:
+        plotting.plot_scatter_time(x, y, title='Events per time', filename=output_pdf)
+    else:
+        plotting.plot_scatter(x, y, title='Events per time', x_label='Progressed time [min.]', y_label='Events per time [a.u.]', filename=output_pdf)
 
-
-def analyse_n_cluster_per_event(scan_base, combine_n_readouts=1000, max_chunk_size=10000000, plot_n_cluster_hists=False, output_pdf=None, **kwarg):
+@profile
+def analyse_n_cluster_per_event(scan_base, include_no_cluster=False, combine_n_readouts=1000, max_chunk_size=10000000, plot_n_cluster_hists=False, output_pdf=None, **kwarg):
     ''' Determines the number of cluster per event as a function of time. Therefore the data of a fixed number of read outs are combined ('combine_n_readouts').
 
     Parameters
     ----------
     scan_base: list of str
         scan base names (e.g.:  ['//data//SCC_50_fei4_self_trigger_scan_390', ]
+    include_no_cluster: bool
+        Set to true to also consider all events without any hit.
     combine_n_readouts: int
         the number of read outs to combine (e.g. 1000)
     max_chunk_size: int
@@ -177,7 +187,7 @@ def analyse_n_cluster_per_event(scan_base, combine_n_readouts=1000, max_chunk_si
                         hist = np.histogram(n_cluster_per_event, bins=10, range=(0, 10))[0]
                     else:
                         hist = np.add(hist, np.histogram(n_cluster_per_event, bins=10, range=(0, 10))[0])
-                    if parameter_range[3] is not None:  # happend for the last readout
+                    if include_no_cluster and parameter_range[3] is not None:  # happend for the last readout
                         hist[0] = (parameter_range[3] - parameter_range[2]) - len(n_cluster_per_event)  # add the events without any cluster
                     if plot_n_cluster_hists:
                         plotting.plot_1d_hist(hist, title='Number of cluster per event at ' + str(parameter_range[0]), x_axis_title='Number of cluster', y_axis_title='fraction', log_y=True, filename=output_pdf)
@@ -188,7 +198,7 @@ def analyse_n_cluster_per_event(scan_base, combine_n_readouts=1000, max_chunk_si
                 x.append(parameter_range[0])
                 y.append(hist)
 
-    plotting.plot_scatter_time(x, y, title='Number of cluster per event as a function of time', filename=output_pdf, legend=('0 cluster', '1 cluster', '2 cluster', '3 cluster'))
+    plotting.plot_scatter_time(x, y, title='Number of cluster per event as a function of time', filename=output_pdf, legend=('0 cluster', '1 cluster', '2 cluster', '3 cluster') if include_no_cluster else ('1 cluster', '2 cluster', '3 cluster'))
 
 
 def select_hits_from_cluster_info(input_file_hits, output_file_hits, cluster_size_condition, n_cluster_condition, output_pdf=None, **kwarg):
@@ -206,7 +216,7 @@ def select_hits_from_cluster_info(input_file_hits, output_file_hits, cluster_siz
     n_cluster_condition: str
         the number of cluster in a event ((e.g.: 'n_cluster_condition == 1')
     '''
-
+    logging.info('Write hits of events from ' + str(input_file_hits) + ' with ' + cluster_size_condition + ' and ' + n_cluster_condition + ' into ' + str(output_file_hits))
     with tb.openFile(input_file_hits, mode="r+") as in_hit_file_h5:
         analysis_utils.index_event_number(in_hit_file_h5.root.Hits)
         analysis_utils.index_event_number(in_hit_file_h5.root.Cluster)
