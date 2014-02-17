@@ -152,6 +152,7 @@ private:
 	unsigned int _nMaxHitsPerEvent;				//number of the maximum hits per event
 	unsigned int _nEmptyEvents;				  	//number of events with no records
 	unsigned int _nIncompleteEvents;			//number of events with incomplete data structure (# data header != _NbCID)
+	unsigned int _nTDCWords;					//number of TDC words found
 	unsigned int _nUnknownWords;				//number of unknowns words found
 	unsigned int _nOtherWords;					//Address or value records
 	unsigned int _nServiceRecords;				//total number of service records found
