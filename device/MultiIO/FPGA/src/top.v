@@ -287,7 +287,7 @@ tdc_s3
     .BASEADDR(TDC_BASEADDR),
     .HIGHADDR(TDC_HIGHADDR),
     .DATA_IDENTIFIER(4'b0100) // one-hot
-) itdc
+) i_tdc
 (
     .CLK320(RX_CLK2X),
     .CLK160(RX_CLK),
@@ -318,7 +318,7 @@ tlu_controller #(
     .BASEADDR(TLU_BASEADDR),
     .HIGHADDR(TLU_HIGHADDR),
     .DIVISOR(12)
-) tlu_controller_module (
+) i_tlu_controller (
 
     .BUS_CLK(BUS_CLK),
     .BUS_RST(BUS_RST),
