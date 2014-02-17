@@ -26,7 +26,7 @@ with tb.openFile(input_file_calibration, mode="r") as in_file_calibration_h5:  #
 
 scan_configuration = {
     "gdacs": gdacs,
-    "mode": 0,
+    "trigger_mode": 0,
     "trigger_latency": 232,
     "trigger_delay": 14,
     "col_span": [1, 80],
@@ -41,14 +41,14 @@ scan_configuration = {
 class ExtTriggerGdacScan(ScanBase):
     scan_identifier = "ext_trigger_gdac_scan"
 
-    def scan(self, gdacs, mode=0, trigger_latency=232, trigger_delay=14, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=10000, enable_hitbus=False, **kwargs):
+    def scan(self, gdacs, trigger_mode=0, trigger_latency=232, trigger_delay=14, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=10000, enable_hitbus=False, **kwargs):
         '''Scan loop
 
         Parameters
         ----------
         gdacs : list, tuple
             List of GDACs to be scanned.
-        mode : int
+        trigger_mode : int
             Trigger mode. More details in daq.readout_utils. From 0 to 3.
             0: External trigger (LEMO RX0 only, TLU port disabled (TLU port/RJ45)).
             1: TLU no handshake (automatic detection of TLU connection (TLU port/RJ45)).
@@ -128,8 +128,8 @@ class ExtTriggerGdacScan(ScanBase):
                     lvl1_command = self.register.get_commands("zeros", length=trigger_delay)[0] + self.register.get_commands("lv1")[0]  # + self.register.get_commands("zeros", length=200)[0]
                     self.register_utils.set_command(lvl1_command)
                     # setting up external trigger
-                    self.readout_utils.configure_trigger_fsm(mode=mode, trigger_data_msb_first=False, disable_veto=False, trigger_data_delay=0, trigger_clock_cycles=16, enable_reset=False, invert_lemo_trigger_input=False, force_use_rj45=True, trigger_low_timeout=10, reset_trigger_counter=True)
-                    self.readout_utils.configure_command_fsm(enable_ext_trigger=True, neg_edge=False, diable_clock=False, disable_command_trigger=False)
+                    self.readout_utils.configure_trigger_fsm(trigger_mode=trigger_mode, **kwargs)
+                    self.readout_utils.configure_command_fsm(enable_ext_trigger=True, **kwargs)
 
                     show_trigger_message_at = 10 ** (int(math.floor(math.log10(max_triggers) - math.log10(3) / math.log10(10))))
                     time_current_iteration = time.time()
