@@ -280,11 +280,11 @@ module top_tb;
         repeat (105) @(posedge FCLK_IN);
         
         //send trigger
-        sidev.WriteExternal( `CMD_SIZE_REG,  5);
-        sidev.WriteExternal( `CMD_SIZE_REG+1 , 0 );
-        sidev.WriteExternal( `CMD_DATA_MEM, {`CMD_LV1, 3'b0} );
+        sidev.WriteExternal( `CMD_SIZE_REG, 5);
+        sidev.WriteExternal( `CMD_SIZE_REG+1, 0);
+        sidev.WriteExternal( `CMD_DATA_MEM, {`CMD_LV1, 3'b0});
         sidev.WriteExternal( `CMD_START_REG,  0);
-      
+        
         repeat (100) @(posedge FCLK_IN);
         
         sidev.WriteExternal( 16'h8700+1,  1); // TDC start
@@ -307,13 +307,16 @@ module top_tb;
         #10000
         @(posedge FCLK_IN);
         
-        sidev.WriteExternal( 16'h8200+1,  3); // set trigger mode
-        sidev.WriteExternal( 16'h8200+2,  144); // set trigger clock cycles, and force use RJ45
+        
+        sidev.WriteExternal( `CMD_SIZE_REG, 0);
+        sidev.WriteExternal( `CMD_SIZE_REG+1, 0 );
+        sidev.WriteExternal( 16'h8200+1,  2); // set trigger mode
+        sidev.WriteExternal( 16'h8200+2,  144); // set trigger clock cycles, and write timestamp
         sidev.WriteExternal( 16'h0000+2,  1); // enable ext command
 
         #20000
         RJ45_TRIGGER = 1;
-        #25
+        #150
         RJ45_TRIGGER = 0;
         #80000
         @(posedge FCLK_IN);
