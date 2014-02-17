@@ -308,7 +308,9 @@ module top_tb;
         @(posedge FCLK_IN);
         
         sidev.WriteExternal( 16'h8200+1,  3); // set trigger mode
-        sidev.WriteExternal( 16'h0000+2,  1); // set trigger mode
+        sidev.WriteExternal( 16'h8200+2,  144); // set trigger clock cycles, and force use RJ45
+        sidev.WriteExternal( 16'h0000+2,  1); // enable ext command
+
         #20000
         RJ45_TRIGGER = 1;
         #25
