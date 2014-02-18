@@ -502,7 +502,7 @@ def get_hits_with_n_cluster_per_event(hits_table, cluster_table, condition='n_cl
 
 
 def get_hits_in_events(hits_array, events, assume_sorted=True):
-    '''Selects the hits that occurred in events. If a event range can be defined use the get_hits_in_event_range function. It is much faster.
+    '''Selects the hits that occurred in events. If a event range can be defined use the get_data_in_event_range function. It is much faster.
 
     Parameters
     ----------
@@ -533,8 +533,8 @@ def get_hits_in_events(hits_array, events, assume_sorted=True):
     return hits_in_events
 
 
-def get_hits_in_event_range(hits_array, event_start, event_stop, assume_sorted=True):
-    '''Selects the hits that occurred in the given event range [event_start, event_stop[
+def get_data_in_event_range(hits_array, event_start, event_stop, assume_sorted=True):
+    '''Selects the data (rows of a table) that occurred in the given event range [event_start, event_stop[
 
     Parameters
     ----------
@@ -549,7 +549,7 @@ def get_hits_in_event_range(hits_array, event_start, event_stop, assume_sorted=T
     numpy.array
         hit array with the hits in the event range.
     '''
-    logging.info("Calculate hits that exists in the given event range [" + str(event_start) + ", " + str(event_stop) + "[")
+    logging.info("Calculate data of the the given event range [" + str(event_start) + ", " + str(event_stop) + "[")
     event_number = hits_array['event_number']
     if assume_sorted:
         hits_event_start = hits_array['event_number'][0]
@@ -613,7 +613,7 @@ def write_hits_in_events(hit_table_in, hit_table_out, events, start_hit_word=0, 
 
 
 def write_hits_in_event_range(hit_table_in, hit_table_out, event_start, event_stop, start_hit_word=0, chunk_size=5000000):
-    '''Selects the hits that occurred in given event range [event_start, event_stop[ and write them to a pytable. This function reduces the in RAM operations and has to be used if the get_hits_in_event_range
+    '''Selects the hits that occurred in given event range [event_start, event_stop[ and write them to a pytable. This function reduces the in RAM operations and has to be used if the get_data_in_event_range
         function raises a memory error.
 
     Parameters
@@ -636,7 +636,7 @@ def write_hits_in_event_range(hit_table_in, hit_table_out, event_start, event_st
     for iHit in range(0, table_size, chunk_size):
         hits = hit_table_in.read(iHit, iHit + chunk_size)
         last_event_number = hits[-1]['event_number']
-        hit_table_out.append(get_hits_in_event_range(hits, event_start=event_start, event_stop=event_stop))
+        hit_table_out.append(get_data_in_event_range(hits, event_start=event_start, event_stop=event_stop))
         if last_event_number > event_stop:  # speed up, use the fact that the hits are sorted by event_number
             return iHit + chunk_size
     return start_hit_word
@@ -1001,16 +1001,14 @@ def data_aligned_at_events(table, start_event_number=None, stop_event_number=Non
     # set start stop indices from the event numbers for fast read if possible; not possible if the given event number does not exist
     if start_event_number != None:
         condition_1 = 'event_number==' + str(start_event_number)
-        start_indeces = table.get_where_list(condition_1, start=start_index, stop=stop_index)
+        start_indeces = table.get_where_list(condition_1)
         if len(start_indeces) != 0:  # set start index if possible
             start_index = start_indeces[0]
             start_index_known = True
-#     else:
-#         start_event_number = 0
 
     if stop_event_number != None:
         condition_2 = 'event_number==' + str(stop_event_number)
-        stop_indeces = table.get_where_list(condition_2, start=start_index, stop=stop_index)
+        stop_indeces = table.get_where_list(condition_2)
         if len(stop_indeces) != 0:  # set the stop index if possible, stop index is excluded
             stop_index = stop_indeces[0]
             stop_index_known = True
@@ -1031,9 +1029,9 @@ def data_aligned_at_events(table, start_event_number=None, stop_event_number=Non
                 nrows = last_event_start_index
 
             if (start_event_number != None or stop_event_number != None) and (last_event > stop_event_number or first_event < start_event_number):  # too many events read, get only the selected ones if specified
-                selected_hits = get_hits_in_event_range(src_array[0:nrows], event_start=start_event_number, event_stop=stop_event_number, assume_sorted=True)
-                if len(selected_hits) != 0:  # only return non empty data
-                    yield selected_hits, start_index + len(selected_hits)
+                selected_rows = get_data_in_event_range(src_array[0:nrows], event_start=start_event_number, event_stop=stop_event_number, assume_sorted=True)
+                if len(selected_rows) != 0:  # only return non empty data
+                    yield selected_rows, start_index + len(selected_rows)
             else:
                 yield src_array[0:nrows], start_index + nrows  # no events specified or selected event range is larger than read chunk, thus return the whole chunk minus the little part for event alignment
             if stop_event_number != None and last_event > stop_event_number:  # events are sorted, thus stop here to save time
