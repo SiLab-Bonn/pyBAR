@@ -192,7 +192,7 @@ def plot_profile_histogram(x, y, n_bins=100, title=None, x_label=None, y_label=N
         plt.close()
 
 
-def plot_scatter(x, y, yerr=None, title=None, plot_range=None, plot_range_y=None, x_label=None, y_label=None, marker_style='-o', log_x=False, log_y=False, filename=None):
+def plot_scatter(x, y, yerr=None, title=None, legend=None, plot_range=None, plot_range_y=None, x_label=None, y_label=None, marker_style='-o', log_x=False, log_y=False, filename=None):
     logging.info("Plot scatter plot %s" % ((': ' + title) if title is not None else ''))
     if yerr is not None:
         plt.errorbar(x, y, yerr=[yerr, yerr], fmt=marker_style)
@@ -211,6 +211,8 @@ def plot_scatter(x, y, yerr=None, title=None, plot_range=None, plot_range_y=None
         plt.xlim((min(plot_range), max(plot_range)))
     if plot_range_y:
         plt.ylim((min(plot_range_y), max(plot_range_y)))
+    if legend:
+        plt.legend(legend, 0)
     plt.grid(True)
     if filename is None:
         plt.show()
@@ -304,8 +306,12 @@ def plot_tot(hist, title=None, filename=None):
     plot_1d_hist(hist=hist, title='Time-over-Threshold distribution (ToT code)' if title == None else title, plot_range=range(0, 16), x_axis_title='ToT [25 ns]', y_axis_title='#', color='b', filename=filename, figure_name='Hit Tot')
 
 
+def plot_tdc(hist, title=None, filename=None):
+    plot_1d_hist(hist=hist, title='TDC distribution' if title == None else title, plot_range=range(0, 4096), x_axis_title='TDC', y_axis_title='#', color='b', filename=filename, figure_name='Hit TDC')
+
+
 def plot_event_errors(hist, filename=None):
-    plot_1d_hist(hist=hist, title='Event errors', plot_range=range(0, 9), x_ticks=('SR\noccured', 'No\ntrigger', 'LVL1ID\nnot const.', '#BCID\nwrong', 'unknown\nword', 'BCID\njump', 'trigger\nerror', 'truncated', 'TDC\nword'), color='g', y_axis_title='#', filename=filename, figure_name='Event Errors')
+    plot_1d_hist(hist=hist, title='Event status', plot_range=range(0, 11), x_ticks=('SR\noccured', 'No\ntrigger', 'LVL1ID\nnot const.', '#BCID\nwrong', 'unknown\nword', 'BCID\njump', 'trigger\nerror', 'truncated', 'TDC\nword', '> 1 TDC\nwords', 'TDC\noverflow'), color='g', y_axis_title='#', filename=filename, figure_name='Event Errors')
 
 
 def plot_trigger_errors(hist, filename=None):
@@ -398,7 +404,7 @@ def plot_scatter_time(x, y, yerr=None, title=None, legend=None, plot_range=None,
     if plot_range_y:
         plt.ylim((min(plot_range_y), max(plot_range_y)))
     if legend:
-        plt.legend(legend, loc=2)
+        plt.legend(legend, 0)
     plt.grid(True)
     if filename is None:
         plt.show()
@@ -466,6 +472,7 @@ def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=No
         plt.ylabel(y_axis_title)
     if x_ticks is not None:
         plt.xticks(range(0, len(hist[:])) if plot_range == None else plot_range, x_ticks)
+        plt.tick_params(axis='both', which='major', labelsize=8)
     if np.allclose(hist, 0.0):
         plt.ylim((0, 1))
     else:
