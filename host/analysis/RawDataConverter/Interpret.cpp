@@ -170,8 +170,6 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 
 			if ((tErrorCode & __TDC_WORD) == __TDC_WORD){  //if the event has already a TDC word set __MANY_TDC_WORDS
 				addEventErrorCode(__MANY_TDC_WORDS);
-//				if (Basis::debugSet())
-					warning("Two words in event\t"+IntToStr(_nEvents));
 			}
 			else{
 				addEventErrorCode(__TDC_WORD);

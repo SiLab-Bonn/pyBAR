@@ -13,6 +13,7 @@ Histogram::~Histogram(void)
   debug("~Histogram(void): destructor called");
   deleteOccupancyArray();
   deleteTotArray();
+  deleteTdcArray();
   deleteRelBcidArray();
 }
 
@@ -84,8 +85,8 @@ void Histogram::addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
 		if(tTot > 15)
 			throw std::out_of_range("tot index out of range");
 		unsigned int tTdc = rHitInfo[i].TDC;
-		if(tTdc > 4096)
-			throw std::out_of_range("tdc index out of range");
+		if(tTdc > 4095)
+			throw std::out_of_range("TDC index out of range");
 		unsigned int tRelBcid = rHitInfo[i].relativeBCID;
 		if(tRelBcid > 15)
 			throw std::out_of_range("relative BCID index out of range");
@@ -227,7 +228,7 @@ void Histogram::allocateTotArray()
 void Histogram::allocateTdcArray()
 {
   debug("allocateTdcArray()");
-  deleteTotArray();
+  deleteTdcArray();
   try{
     _tdc = new unsigned int[4096];
   }
@@ -434,6 +435,7 @@ void Histogram::reset()
 	info("reset()");
 	resetOccupancyArray();
 	resetTotArray();
+	resetTdcArray();
 	resetRelBcidArray();
 }
 

@@ -137,6 +137,7 @@ class AnalyzeRawData(object):
         self.create_occupancy_hist = True
         self.create_source_scan_hist = False
         self.create_tot_hist = True
+        self.create_tdc_hist = False
         self.create_rel_bcid_hist = True
         self.create_trigger_error_hist = False
         self.create_error_hist = True
@@ -193,12 +194,21 @@ class AnalyzeRawData(object):
 
     @property
     def create_tot_hist(self):
-        return self._create_occupancy_hist
+        return self.create_tot_hist
 
     @create_tot_hist.setter
     def create_tot_hist(self, value):
         self._create_tot_hist = value
         self.histograming.create_tot_hist(value)
+
+    @property
+    def create_tdc_hist(self):
+        return self._create_tdc_hist
+
+    @create_tdc_hist.setter
+    def create_tdc_hist(self, value):
+        self._create_tdc_hist = value
+        self.histograming.create_tdc_hist(value)
 
     @property
     def create_rel_bcid_hist(self):
@@ -359,7 +369,6 @@ class AnalyzeRawData(object):
     def create_cluster_tot_hist(self, value):
         self._create_cluster_tot_hist = value
 
-    #@profile
     def interpret_word_table(self, raw_data_file=None, analyzed_data_file=None, fei4b=False):
         if(raw_data_file != None):
             self._raw_data_file = raw_data_file
@@ -529,6 +538,12 @@ class AnalyzeRawData(object):
             if (self._analyzed_data_file != None):
                 tot_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistTot', title='ToT Histogram', atom=tb.Atom.from_dtype(self.tot_hist.dtype), shape=self.tot_hist.shape, filters=self._filter_table)
                 tot_hist_table[:] = self.tot_hist
+        if (self._create_tdc_hist):
+            self.tdc_hist = np.zeros(4096, dtype=np.uint32)
+            self.histograming.get_tdc_hist(self.tdc_hist)
+            if (self._analyzed_data_file != None):
+                tdc_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistTdc', title='Tdc Histogram', atom=tb.Atom.from_dtype(self.tdc_hist.dtype), shape=self.tdc_hist.shape, filters=self._filter_table)
+                tdc_hist_table[:] = self.tdc_hist
         if (self._create_rel_bcid_hist):
             self.rel_bcid_hist = np.zeros(16, dtype=np.uint32)
             self.histograming.get_rel_bcid_hist(self.rel_bcid_hist)
@@ -863,6 +878,8 @@ class AnalyzeRawData(object):
                     plotting.plot_occupancy(hist=occupancy_array_masked, filename=output_pdf, z_max='median')
         if (self._create_tot_hist):
             plotting.plot_tot(hist=out_file_h5.root.HistTot if out_file_h5 != None else self.tot_hist, filename=output_pdf)
+        if (self._create_tdc_hist):
+            plotting.plot_tdc(hist=out_file_h5.root.HistTdc if out_file_h5 != None else self.tdc_hist, filename=output_pdf)
         if (self._create_cluster_size_hist):
             plotting.plot_cluster_size(hist=out_file_h5.root.HistClusterSize if out_file_h5 != None else self.cluster_size_hist, filename=output_pdf)
         if (self._create_cluster_tot_hist):
