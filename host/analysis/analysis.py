@@ -51,7 +51,7 @@ def analyze_beam_spot(scan_base, combine_n_readouts=1000, max_chunk_size=1000000
             hit_table = in_hit_file_h5.root.Hits
 
             # determine the event ranges to analyze (timestamp_start, start_event_number, stop_event_number)
-            parameter_ranges = np.column_stack((meta_data_array['timestamp_start'][::combine_n_readouts], meta_data_array['timestamp_stop'][::combine_n_readouts], analysis_utils.get_event_range(meta_data_array['event_number'][::combine_n_readouts])))
+            parameter_ranges = np.column_stack((analysis_utils.get_ranges_from_array(meta_data_array['timestamp_start'][::combine_n_readouts]), analysis_utils.get_ranges_from_array(meta_data_array['event_number'][::combine_n_readouts])))
 
             # create a event_numer index (important)
             analysis_utils.index_event_number(hit_table)
@@ -60,13 +60,13 @@ def analyze_beam_spot(scan_base, combine_n_readouts=1000, max_chunk_size=1000000
             analyze_data = AnalyzeRawData()
             analyze_data.create_tot_hist = False
             analyze_data.create_bcid_hist = False
+            analyze_data.histograming.set_no_scan_parameter()
 
             # variables for read speed up
             index = 0  # index where to start the read out, 0 at the beginning, increased during looping
             chunk_size = max_chunk_size
 
             # result data
-            timestamp = np.empty(shape=(len(parameter_ranges),))
             occupancy = np.zeros(80 * 336 * 1, dtype=np.uint32)  # create linear array as it is created in histogram class
 
             # loop over the selected events
@@ -78,12 +78,11 @@ def analyze_beam_spot(scan_base, combine_n_readouts=1000, max_chunk_size=1000000
                 # loop over the hits in the actual selected events with optimizations: determine best chunk size, start word index given
                 readout_hit_len = 0  # variable to calculate a optimal chunk size value from the number of hits for speed up
                 for hits, index in analysis_utils.data_aligned_at_events(hit_table, start_event_number=parameter_range[2], stop_event_number=parameter_range[3], start=index, chunk_size=chunk_size):
-                    analyze_data.analyze_hits(hits, scan_parameter=False)  # analyze the selected hits in chunks
+                    analyze_data.analyze_hits(hits)  # analyze the selected hits in chunks
                     readout_hit_len += hits.shape[0]
                 chunk_size = int(1.5 * readout_hit_len) if int(1.05 * readout_hit_len) < max_chunk_size else max_chunk_size  # to increase the readout speed, estimated the number of hits for one read instruction
 
                 # get and store results
-                timestamp[parameter_index] = parameter_range[0]
                 analyze_data.histograming.get_occupancy(occupancy)
                 occupancy_array = np.reshape(a=occupancy.view(), newshape=(80, 336, analyze_data.histograming.get_n_parameters()), order='F')  # make linear array to 3d array (col,row,parameter)
                 occupancy_array = np.swapaxes(occupancy_array, 0, 1)
@@ -115,23 +114,31 @@ def analyze_event_rate(scan_base, combine_n_readouts=1000, max_chunk_size=100000
     '''
     x = []
     y = []
+
+    start_time_set = False
+
     for data_file in scan_base:
         with tb.openFile(data_file + '_interpreted.h5', mode="r") as in_file_h5:
             meta_data_array = in_file_h5.root.meta_data[:]
-            parameter_ranges = np.column_stack((meta_data_array['timestamp_start'][::combine_n_readouts], meta_data_array['timestamp_stop'][::combine_n_readouts], analysis_utils.get_event_range(meta_data_array['event_number'][::combine_n_readouts])))
-            if time_line_absolute:
-                x.extend(parameter_ranges[:-1, 0] + (parameter_ranges[:-1, 1] - parameter_ranges[:-1, 0]) / 2.)
-                y.extend(parameter_ranges[:-1, 3] - parameter_ranges[:-1, 2])
-            else:
-                x.extend((parameter_ranges[:-1, 0] + (parameter_ranges[:-1, 1] - parameter_ranges[:-1, 0]) / 2. - parameter_ranges[0, 0]) / 60.)
-                y.extend(parameter_ranges[:-1, 3] - parameter_ranges[:-1, 2])
-    if time_line_absolute:
-        plotting.plot_scatter_time(x, y, title='Events per time', filename=output_pdf)
-    else:
-        plotting.plot_scatter(x, y, title='Events per time', x_label='Progressed time [min.]', y_label='Events per time [a.u.]', filename=output_pdf)
+            parameter_ranges = np.column_stack((analysis_utils.get_ranges_from_array(meta_data_array['timestamp_start'][::combine_n_readouts]), analysis_utils.get_ranges_from_array(meta_data_array['event_number'][::combine_n_readouts])))
 
-@profile
-def analyse_n_cluster_per_event(scan_base, include_no_cluster=False, combine_n_readouts=1000, max_chunk_size=10000000, plot_n_cluster_hists=False, output_pdf=None, **kwarg):
+            if time_line_absolute:
+                x.extend(parameter_ranges[:-1, 0])
+                y.extend((parameter_ranges[:-1, 3] - parameter_ranges[:-1, 2]) / (parameter_ranges[:-1, 1] - parameter_ranges[:-1, 0]))  # d#Events / dt
+            else:
+                if not start_time_set:
+                    start_time = parameter_ranges[0, 0]
+                    start_time_set = True
+                x.extend((parameter_ranges[:-1, 0] - start_time) / 60.)
+                y.extend((parameter_ranges[:-1, 3] - parameter_ranges[:-1, 2]) / (parameter_ranges[:-1, 1] - parameter_ranges[:-1, 0]))  # d#Events / dt
+#                 y.extend(parameter_ranges[:-1, 3] - parameter_ranges[:-1, 2])
+    if time_line_absolute:
+        plotting.plot_scatter_time(x, y, title='Event rate [Hz]', filename=output_pdf)
+    else:
+        plotting.plot_scatter(x, y, title='Events per time', x_label='Progressed time [min.]', y_label='Events rate [Hz]', filename=output_pdf)
+
+
+def analyse_n_cluster_per_event(scan_base, include_no_cluster=False, time_line_absolute=True, combine_n_readouts=1000, max_chunk_size=10000000, plot_n_cluster_hists=False, output_pdf=None, **kwarg):
     ''' Determines the number of cluster per event as a function of time. Therefore the data of a fixed number of read outs are combined ('combine_n_readouts').
 
     Parameters
@@ -151,6 +158,8 @@ def analyse_n_cluster_per_event(scan_base, include_no_cluster=False, combine_n_r
     x = []
     y = []
 
+    start_time_set = False
+
     for data_file in scan_base:
         with tb.openFile(data_file + '_interpreted.h5', mode="r+") as in_cluster_file_h5:
             # get data and data pointer
@@ -158,7 +167,7 @@ def analyse_n_cluster_per_event(scan_base, include_no_cluster=False, combine_n_r
             cluster_table = in_cluster_file_h5.root.Cluster
 
             # determine the event ranges to analyze (timestamp_start, start_event_number, stop_event_number)
-            parameter_ranges = np.column_stack((meta_data_array['timestamp_start'][::combine_n_readouts], meta_data_array['timestamp_stop'][::combine_n_readouts], analysis_utils.get_event_range(meta_data_array['event_number'][::combine_n_readouts])))
+            parameter_ranges = np.column_stack((analysis_utils.get_ranges_from_array(meta_data_array['timestamp_start'][::combine_n_readouts]), analysis_utils.get_ranges_from_array(meta_data_array['event_number'][::combine_n_readouts])))
 
             # create a event_numer index (important)
             analysis_utils.index_event_number(cluster_table)
@@ -172,10 +181,11 @@ def analyse_n_cluster_per_event(scan_base, include_no_cluster=False, combine_n_r
             index = 0  # index where to start the read out, 0 at the beginning, increased during looping
             chunk_size = max_chunk_size
 
+            total_cluster = cluster_table.shape[0]
+
             # loop over the selected events
             for parameter_index, parameter_range in enumerate(parameter_ranges):
                 logging.info('Analyze time stamp ' + str(parameter_range[0]) + ' and data from events = [' + str(parameter_range[2]) + ',' + str(parameter_range[3]) + '[ ' + str(int(float(float(parameter_index) / float(len(parameter_ranges)) * 100.))) + '%')
-
                 analyze_data.reset()  # resets the data of the last analysis
 
                 # loop over the hits in the actual selected events with optimizations: determine best chunk size, start word index given
@@ -189,16 +199,30 @@ def analyse_n_cluster_per_event(scan_base, include_no_cluster=False, combine_n_r
                         hist = np.add(hist, np.histogram(n_cluster_per_event, bins=10, range=(0, 10))[0])
                     if include_no_cluster and parameter_range[3] is not None:  # happend for the last readout
                         hist[0] = (parameter_range[3] - parameter_range[2]) - len(n_cluster_per_event)  # add the events without any cluster
-                    if plot_n_cluster_hists:
-                        plotting.plot_1d_hist(hist, title='Number of cluster per event at ' + str(parameter_range[0]), x_axis_title='Number of cluster', y_axis_title='fraction', log_y=True, filename=output_pdf)
-                    hist = hist.astype('f4') / np.sum(hist)  # calculate fraction from total numbers
                     readout_cluster_len += clusters.shape[0]
+                    total_cluster -= len(clusters)
                 chunk_size = int(1.5 * readout_cluster_len) if int(1.05 * readout_cluster_len) < max_chunk_size else max_chunk_size  # to increase the readout speed, estimated the number of hits for one read instruction
 
-                x.append(parameter_range[0])
+                if plot_n_cluster_hists:
+                    plotting.plot_1d_hist(hist, title='Number of cluster per event at ' + str(parameter_range[0]), x_axis_title='Number of cluster', y_axis_title='#', log_y=True, filename=output_pdf)
+                hist = hist.astype('f4') / np.sum(hist)  # calculate fraction from total numbers
+
+                if time_line_absolute:
+                    x.append(parameter_range[0])
+                else:
+                    if not start_time_set:
+                        start_time = parameter_ranges[0, 0]
+                        start_time_set = True
+                    x.append((parameter_range[0] - start_time) / 60.)
                 y.append(hist)
 
-    plotting.plot_scatter_time(x, y, title='Number of cluster per event as a function of time', filename=output_pdf, legend=('0 cluster', '1 cluster', '2 cluster', '3 cluster') if include_no_cluster else ('1 cluster', '2 cluster', '3 cluster'))
+            if total_cluster != 0:
+                logging.warning('Not all clusters were selected during analysis. Analysis is therefore not exact')
+
+    if time_line_absolute:
+        plotting.plot_scatter_time(x, y, title='Number of cluster per event as a function of time', filename=output_pdf, legend=('0 cluster', '1 cluster', '2 cluster', '3 cluster') if include_no_cluster else ('0 cluster not plotted', '1 cluster', '2 cluster', '3 cluster'))
+    else:
+        plotting.plot_scatter(x, y, title='Number of cluster per event as a function of time', x_label='time [min.]', filename=output_pdf, legend=('0 cluster', '1 cluster', '2 cluster', '3 cluster') if include_no_cluster else ('0 cluster not plotted', '1 cluster', '2 cluster', '3 cluster'))
 
 
 def select_hits_from_cluster_info(input_file_hits, output_file_hits, cluster_size_condition, n_cluster_condition, output_pdf=None, **kwarg):
@@ -311,7 +335,7 @@ def analyze_cluster_size_per_scan_parameter(scan_bases, output_file_cluster_size
                         else:
                             logging.info('Analyze ' + scan_bases[index] + ' per scan parameter ' + parameter + ' for ' + str(len(scan_parameter_values)) + ' values from ' + str(np.amin(scan_parameter_values)) + ' to ' + str(np.amax(scan_parameter_values)))
                             event_numbers = analysis_utils.get_meta_data_at_scan_parameter(meta_data_array, parameter)['event_number']  # get the event numbers in meta_data where the scan parameter changes
-                            parameter_ranges = np.column_stack((scan_parameter_values, analysis_utils.get_event_range(event_numbers)))
+                            parameter_ranges = np.column_stack((scan_parameter_values, analysis_utils.get_ranges_from_array(event_numbers)))
                             hit_table = in_hit_file_h5.root.Hits
                             analysis_utils.index_event_number(hit_table)
                             total_hits = 0
