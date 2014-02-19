@@ -105,7 +105,7 @@ def get_normalization(hit_files, parameter, reference='event', sort=False, plot=
                 else:
                     try:
                         event_numbers = get_meta_data_at_scan_parameter(meta_data, parameter)['event_number']  # get the event numbers in meta_data where the scan parameter changes
-                        event_range = get_event_range(event_numbers)
+                        event_range = get_ranges_from_array(event_numbers)
                         event_range[-1, 1] = event_range[-2, 1]  # hack the last event range not to be None
                         n_events = event_range[:, 1] - event_range[:, 0]  # number of events for every GDAC
                         n_events[-1] = n_events[-2] - (n_events[-3] - n_events[-2])  # FIXME: set the last number of events manually, bad extrapolaton
@@ -935,20 +935,23 @@ def unique_row(array, use_columns=None, selected_columns_only=False):
         else:
             return array[np.sort(index)][new_names]  # sort to preserve order
 
-def get_event_range(events):
-    '''Takes the events and calculates event ranges [start event, stop event[. The last range end with none since the last event is unknown.
+def get_ranges_from_array(array, append_last=True):
+    '''Takes an array and calculates ranges [start event, stop event[. The last range end is none to keep the same length.
 
     Parameters
     ----------
     events : array like
+    append_last: bool
+        If false the returned array has one entry less
 
     Returns
     -------
     numpy.array
     '''
-    left = events[:len(events)]
-    right = events[1:len(events)]
-    right = np.append(right, None)
+    left = array[:len(array)]
+    right = array[1:len(array)]
+    if append_last:
+        right = np.append(right, None)
     return np.column_stack((left, right))
 
 
