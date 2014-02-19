@@ -8,6 +8,7 @@ from scipy.optimize import curve_fit
 from scipy.special import erf
 import multiprocessing as mp
 from functools import partial
+import analysis_utils
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
@@ -402,9 +403,10 @@ class AnalyzeRawData(object):
                     self.histograming.set_no_scan_parameter()
                 else:
                     if len(self.scan_parameters.dtype) != 1:
-                        scan_parameter_name = self.scan_parameters.dtype.names[0]
-                        logging.warning('More than one scan parameter found but the occupancy histograming will only be done for parameter: ' + str(scan_parameter_name))
-                        self.histograming.add_scan_parameter(self.scan_parameters[scan_parameter_name].copy())  # use copy to rearrange the data in memory to be able to access the data from the c++ library
+#                         self.histograming.add_scan_parameter(self.scan_parameters[scan_parameter_name].copy())  # use copy to rearrange the data in memory to be able to access the data from the c++ library
+                        scan_parameter_indices = np.array(range(0, analysis_utils.unique_row(self.scan_parameters).shape[0]), dtype='u4')
+                        logging.info('More than one scan parameter found and occupancy histogramming will be done for %d unique scan parameter combinations' % analysis_utils.unique_row(self.scan_parameters).shape[0])
+                        self.histograming.add_scan_parameter(scan_parameter_indices)  # just add an index for the different scan parameter cominations
                     else:
                         self.histograming.add_scan_parameter(self.scan_parameters)
             except tb.exceptions.NoSuchNodeError:
