@@ -294,14 +294,16 @@ module top_tb;
         MONHIT = 0;
         #500 MONHIT = 1;
         #152 MONHIT = 0;
-        #496 MONHIT = 1; // small ToT: overlapping two data words 
-        #5 MONHIT = 0;
+        #494 MONHIT = 1; // small ToT: overlapping two data words 
+        #7 MONHIT = 0;
         #489 MONHIT = 1; // small ToT: at the end of data
         #7 MONHIT = 0;
+        #489 MONHIT = 1; // small ToT: middle of data
+        #7 MONHIT = 0;
+        #500 MONHIT = 1; // overflow
+        #8192 MONHIT = 0;
         #500 MONHIT = 1;
-        #500 MONHIT = 0;
-        #500 MONHIT = 1;
-        #30 MONHIT = 0;
+        #12 MONHIT = 0;
         #500 MONHIT = 1;
         #40 MONHIT = 0;
         #10000
