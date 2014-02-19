@@ -21,8 +21,8 @@ scan_configuration = {
     "reject_small_tot": False,
     "scan_parameter": 'PlsrDAC',
     "scan_parameter_values": [i for j in (range(40, 70, 5), range(70, 100, 10), range(100, 600, 20), range(600, 801, 40)) for i in j],  # list of scan parameters to use
-    "plot_tdc_histograms": False,
-    "pixels": [(30, 30), ]  # list of (col,row) tupel of pixels to use
+    "plot_tdc_histograms": True,
+    "pixels": [(50, 150), ]  # list of (col,row) tupel of pixels to use
 }
 
 
@@ -124,7 +124,7 @@ class HitOrScan(ScanBase):
                         tot_std = np.std(hits["tot"])
                         tdc_std = np.std(hits["TDC"])
                         if scan_configuration['plot_tdc_histograms']:
-                            plotting.plot_1d_hist(np.histogram(hits["TDC"], range=(0, 255), bins=256)[0], title="TDC histogram for pixel " + str(column) + "/" + str(row) + " and PlsrDAC " + str(scan_parameter_value[0]), x_axis_title="TDC", y_axis_title="#", filename=output_pdf)
+                            plotting.plot_1d_hist(np.histogram(hits["TDC"], range=(0, 255), bins=256)[0], title="TDC histogram for pixel " + str(column) + "/" + str(row) + " and PlsrDAC " + str(scan_parameter_value[0]) + " (" + str(len(hits["TDC"])) + " entrie(s))", x_axis_title="TDC", y_axis_title="#", filename=output_pdf)
 
                     if len(tot_mean) != 0:
                         calibration_data[column - 1, row - 1, scan_parameter_index, 0] = tot_mean[0]  # just add data of the selected pixel
@@ -161,7 +161,7 @@ class HitOrScan(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = HitOrScan(**configuration.scc99_configuration)
+    scan = HitOrScan(**configuration.mdbm30_configuration)
     scan.start(use_thread=False, **scan_configuration)
     scan.stop()
 #     scan.scan_data_filename='data//SCC_99//SCC_99_hit_or_scan_614'
