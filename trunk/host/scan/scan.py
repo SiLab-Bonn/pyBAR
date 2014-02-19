@@ -322,9 +322,9 @@ class ScanBase(object):
         same_mask_for_all_dc : bool
             Use same mask for all double columns. This will only affect all shift masks (see enable_shift_masks). Enabling this is in general a good idea since all double columns will have the same configuration and the scan speed can increased by an order of magnitude.
         bol_function : function
-            Begin of loop function that will be called each time before sending command.
+            Begin of loop function that will be called each time before sending command. Argument is a function pointer (without braces) or functor.
         eol_function : function
-            End of loop function that will be called each time after sending command.
+            End of loop function that will be called each time after sending command. Argument is a function pointer (without braces) or functor.
         digital_injection : bool
             Enables digital injection.
         enable_c_high : bool
