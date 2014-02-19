@@ -307,6 +307,7 @@ def plot_tot(hist, title=None, filename=None):
 
 
 def plot_tdc(hist, title=None, filename=None):
+    print hist[:]
     plot_1d_hist(hist=hist, title='TDC distribution' if title == None else title, plot_range=range(0, 4096), x_axis_title='TDC', y_axis_title='#', color='b', filename=filename, figure_name='Hit TDC')
 
 
