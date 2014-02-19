@@ -112,7 +112,7 @@ class HitOrScan(ScanBase):
                         tot_std = np.std(hits["tot"])
                         tdc_std = np.std(hits["TDC"])
                         if scan_configuration['plot_tdc_histograms']:
-                            plotting.plot_1d_hist(hits["TDC"], title="TDC histogram for pixel " + str(column) + "/" + str(row) + " and PlsrDAC " + str(scan_parameter_value[0]), x_axis_title="TDC", y_axis_title="#", filename=output_pdf)
+                            plotting.plot_1d_hist(np.histogram(hits["TDC"], range=(0, 255), bins=256)[0], title="TDC histogram for pixel " + str(column) + "/" + str(row) + " and PlsrDAC " + str(scan_parameter_value[0]), x_axis_title="TDC", y_axis_title="#", filename=output_pdf)
 
                     calibration_data[column - 1, row - 1, scan_parameter_index, 0] = tot_mean[0]  # just add data of the selected pixel
                     calibration_data[column - 1, row - 1, scan_parameter_index, 1] = tot_std
