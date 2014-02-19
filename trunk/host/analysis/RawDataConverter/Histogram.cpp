@@ -86,7 +86,7 @@ void Histogram::addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
 			throw std::out_of_range("tot index out of range");
 		unsigned int tTdc = rHitInfo[i].TDC;
 		if(tTdc > 4095)
-			throw std::out_of_range("TDC index out of range");
+			throw std::out_of_range("TDC counter " + IntToStr(tTdc) + " index out of range");
 		unsigned int tRelBcid = rHitInfo[i].relativeBCID;
 		if(tRelBcid > 15)
 			throw std::out_of_range("relative BCID index out of range");
