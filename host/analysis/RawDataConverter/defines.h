@@ -107,7 +107,9 @@ typedef struct ParInfo{
 #define __BCID_JUMP 32                //BCID jumps, but LVL1ID is constant and data is externally triggered
 #define __TRG_ERROR 64                //a trigger error occured
 #define __TRUNC_EVENT 128             //Event had to many hits (>__MAXHITBUFFERSIZE) and was therefore truncated
-#define __TDC_WORD 256             	  //Event has a TDC count word
+#define __TDC_WORD 256             	  //Event has a TDC word
+#define __MANY_TDC_WORDS 512          //Event has more than one TDC word
+#define __TDC_OVERFLOW 1024           //Event has TDC word indicating a TDC overflow
 
 //trigger error codes
 #define __TRG_N_ERROR_CODES 8         //number of trigger error codes

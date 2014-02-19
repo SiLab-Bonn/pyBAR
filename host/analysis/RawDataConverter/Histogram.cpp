@@ -4,7 +4,6 @@ Histogram::Histogram(void)
 {
   setSourceFileName("Histogram");
   _occupancy = 0;
-  _tot = 0;
   _relBcid = 0;
   setStandardSettings();
 }
@@ -29,12 +28,14 @@ void Histogram::setStandardSettings()
 	_occupancy = 0;
 	_relBcid = 0;
 	_tot = 0;
+	_tdc = 0;
 	_NparameterValues = 1;
 	_minParameterValue = 0;
 	_maxParameterValue = 0;
 	_createOccHist = false;
 	_createRelBCIDhist = false;
 	_createTotHist = false;
+	_createTdcHist = false;
 	_maxTot = 13;
 }
 
@@ -57,6 +58,13 @@ void Histogram::createTotHist(bool CreateTotHist)
 	resetTotArray();
 }
 
+void Histogram::createTdcHist(bool CreateTdcHist)
+{
+	_createTdcHist = CreateTdcHist;
+	allocateTdcArray();
+	resetTdcArray();
+}
+
 void Histogram::setMaxTot(const unsigned int& rMaxTot)
 {
 	_maxTot = rMaxTot;
@@ -75,6 +83,9 @@ void Histogram::addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
 		unsigned int tTot = rHitInfo[i].tot;
 		if(tTot > 15)
 			throw std::out_of_range("tot index out of range");
+		unsigned int tTdc = rHitInfo[i].TDC;
+		if(tTdc > 4096)
+			throw std::out_of_range("tdc index out of range");
 		unsigned int tRelBcid = rHitInfo[i].relativeBCID;
 		if(tRelBcid > 15)
 			throw std::out_of_range("relative BCID index out of range");
@@ -95,6 +106,8 @@ void Histogram::addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
 		if(_createTotHist)
 			if(tTot <= _maxTot) //not sure if cut on ToT histogram is unwanted here
 				_tot[tTot] += 1;
+		if(_createTdcHist)
+			_tdc[tTdc] += 1;
 	}
 	//std::cout<<"addHits done"<<std::endl;
 }
@@ -211,12 +224,33 @@ void Histogram::allocateTotArray()
   }
 }
 
+void Histogram::allocateTdcArray()
+{
+  debug("allocateTdcArray()");
+  deleteTotArray();
+  try{
+    _tdc = new unsigned int[4096];
+  }
+  catch(std::bad_alloc& exception){
+    error(std::string("allocateTotArray: ")+std::string(exception.what()));
+  }
+}
+
 void Histogram::resetTotArray()
 {
   info("resetTotArray()");
   if (_tot != 0){
 	  for (unsigned int i = 0; i < 16; i++)
 		_tot[(long)i] = 0;
+  }
+}
+
+void Histogram::resetTdcArray()
+{
+  info("resetTdcArray()");
+  if (_tdc != 0){
+	  for (unsigned int i = 0; i < 4096; i++)
+		_tdc[(long)i] = 0;
   }
 }
   
@@ -226,6 +260,14 @@ void Histogram::deleteTotArray()
   if (_tot != 0)
     delete _tot;
   _tot = 0;
+}
+
+void Histogram::deleteTdcArray()
+{
+  debug("deleteTdcArray()");
+  if (_tdc != 0)
+    delete _tdc;
+  _tdc = 0;
 }
 
 void Histogram::allocateRelBcidArray()
@@ -318,6 +360,15 @@ void Histogram::getTotHist(unsigned int*& rTotHist, bool copy)
  	  std::copy(_tot, _tot+16, rTotHist);
   else
 	  rTotHist = _tot;
+}
+
+void Histogram::getTdcHist(unsigned int*& rTdcHist, bool copy)
+{
+  debug("getTdcHist(...)");
+  if(copy)
+ 	  std::copy(_tdc, _tdc+4096, rTdcHist);
+  else
+	  rTdcHist = _tot;
 }
 
 void Histogram::getRelBcidHist(unsigned int*& rRelBcidHist, bool copy)
