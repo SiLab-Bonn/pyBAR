@@ -7,7 +7,7 @@ cnp.import_array()  # if array is used it has to be imported, otherwise possible
 
 from libcpp cimport bool  # to be able to use bool variables
 
-from data_struct cimport numpy_hit_info, numpy_meta_data, numpy_meta_data_v2, numpy_par_info
+from data_struct cimport numpy_hit_info, numpy_meta_data, numpy_meta_data_v2, numpy_par_info, numpy_cluster_info
 
 cdef extern from "Basis.h":
     cdef cppclass Basis:
@@ -18,6 +18,8 @@ cdef extern from "Histogram.h":
         HitInfo()
     cdef cppclass ParInfo:
         ParInfo()
+    cdef cppclass ClusterInfo:
+        ClusterInfo()
     cdef cppclass Histogram(Basis):
         Histogram() except +
         void setErrorOutput(bool pToggle)
@@ -35,6 +37,7 @@ cdef extern from "Histogram.h":
         void getRelBcidHist(unsigned int*& rRelBcidHist, bool copy)  # returns the relative BCID histogram for all hits
 
         void addHits(HitInfo*& rHitInfo, const unsigned int& rNhits) except +
+        void addClusterSeedHits(ClusterInfo*& rClusterInfo, const unsigned int& rNcluster) except +
         void addScanParameter(const unsigned int& rNparInfoLength, ParInfo*& rParInfo) except +
         void setNoScanParameter()
         void addMetaEventIndex(const unsigned int& rNmetaEventIndexLength, unsigned int*& rMetaEventIndex) except +
@@ -84,6 +87,8 @@ cdef class PyDataHistograming:
 
     def add_hits(self, cnp.ndarray[numpy_hit_info, ndim=1] hit_info, Nhits):
         self.thisptr.addHits(<HitInfo*&> hit_info.data, <const unsigned int&> Nhits)
+    def add_cluster_seed_hits(self, cnp.ndarray[numpy_cluster_info, ndim=1] cluster_info, Ncluster):
+        self.thisptr.addClusterSeedHits(<ClusterInfo*&> cluster_info.data, <const unsigned int&> Ncluster)
     def add_scan_parameter(self, cnp.ndarray[numpy_par_info, ndim=1] parameter_info):
         self.thisptr.addScanParameter(<const unsigned int&> parameter_info.shape[0], <ParInfo*&> parameter_info.data)
     def set_no_scan_parameter(self):

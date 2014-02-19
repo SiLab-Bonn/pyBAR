@@ -43,7 +43,8 @@ public:
 	void setFEI4B(bool pIsFEI4B = true){_fEI4B = pIsFEI4B;};  //set the FE flavor to be able to read the raw data correctly
 	bool getFEI4B(){return _fEI4B;};                          //returns the FE flavor set
 	bool getMetaTableV2(){return _isMetaTableV2;};            //returns the MetaTable flavor (V1 or V2)
-	void useTriggerNumber(bool useTriggerNumber = true);      //new events are createrd if trigger number occures
+	void useTriggerNumber(bool useTriggerNumber = true);      //new events are created if trigger number occurs
+	void useTdcWord(bool useTdcWord = true);      			  //new events are created if tdc word occurs and event structure of event before is complete
 
 	void addEvent();              //increases the event counter, adds the actual hits/error/SR codes
 
@@ -126,7 +127,8 @@ private:
 	bool _debugEvents;                          //true if some events have to have debug output
 	unsigned int _startDebugEvent;              //start event number to have debug output
 	unsigned int _stopDebugEvent;               //stop event number to have debug output
-	bool _useTriggerNumber;						//set tio true to force event recognision by trigger number
+	bool _useTriggerNumber;						//set to true to force event recognision by trigger numbe
+	bool _useTdcWord;							//set to true to force event recognision by tdc word if event before is complete
 
 	//one event variables
 	unsigned int tNdataHeader;					//number of data header per event
@@ -161,6 +163,7 @@ private:
 	unsigned int _nHits;						//total number of hits found
 	unsigned int _nDataWords;					//total number of data words
 	bool _firstTriggerNrSet;                    //true if the first trigger was found
+	bool _firstTdcSet;                    		//true if the first tdc word was found
 
 	//meta data infos in/out
 	MetaInfo* _metaInfo;                      //pointer to the meta info, meta data infos in

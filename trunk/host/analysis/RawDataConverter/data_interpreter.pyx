@@ -62,6 +62,7 @@ cdef extern from "Interpret.h":
         unsigned int getNmetaDataEvent()  # returns the maximum index filled with event data infos
         unsigned int getNmetaDataWord()
         void useTriggerNumber(bool useTriggerNumber)
+        void useTdcWord(bool useTdcWord)
 
         void resetEventVariables()
         void resetCounters()
@@ -132,6 +133,8 @@ cdef class PyDataInterpreter:
         return <unsigned int> self.thisptr.getNmetaDataWord()
     def use_trigger_number(self, use_trigger_number):
         self.thisptr.useTriggerNumber(<bool> use_trigger_number)
+    def use_tdc_word(self, use_tdc_word):
+        self.thisptr.useTdcWord(<bool> use_tdc_word)
     def get_n_meta_data_event(self):
         return <unsigned int> self.thisptr.getNmetaDataEvent()
 #     def get_meta_event_index(self, cnp.ndarray[cnp.uint32_t, ndim=1] event_index):

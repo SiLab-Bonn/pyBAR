@@ -38,6 +38,7 @@ void Interpret::setStandardSettings()
 	_createMetaDataWordIndex = false;
 	_isMetaTableV2 = false;
 	_useTriggerNumber = false;
+	_useTdcWord=false;
 }
 
 bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& pNdataWords)
@@ -62,8 +63,6 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 	int tActualRow2 = 0;				//row position of the second hit in the actual data record
 	int tActualTot2 = -1;				//tot value of the second hit in the actual data record
 
-	int counter = 0;
-
 	for (unsigned int iWord = 0; iWord < pNdataWords; ++iWord){	//loop over the SRAM words
 		if(_debugEvents){
 			if(_nEvents >= _startDebugEvent && _nEvents <= _stopDebugEvent)
@@ -85,8 +84,6 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 					if(Basis::warningSet())
 						warning(std::string("addHit: Hit buffer overflow prevented by splitting events at event "+IntToStr(_nEvents)), __LINE__);
 				}
-				if(tNdataRecord==0)
-					_nEmptyEvents++;
 				addEvent();
 			}
 			if (tNdataHeader == 0){								        //set the BCID of the first data header
@@ -122,13 +119,10 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 				debug(std::string(" ")+IntToStr(_nDataWords)+" DH LVL1ID/BCID "+IntToStr(tActualLVL1ID)+"/"+IntToStr(tActualBCID)+"\t"+IntToStr(_nEvents));
 		}
 		else if (isTriggerWord(tActualWord)){ //data word is trigger word, is first word of the event data if external trigger is present
-			_nTriggers++;										    //increase the total trigger number counter
+			_nTriggers++;						//increase the total trigger number counter
 			if (!_useTriggerNumber){
-				if (tNdataHeader > _NbCID-1){	      //special case: first word is trigger word
-					if(tNdataRecord==0)
-						_nEmptyEvents++;
+				if (tNdataHeader > _NbCID-1)	//special case: first word is trigger word
 					addEvent();
-				}
 			}
 			else if (_firstTriggerNrSet){		// if a trigger word but not the first occurs create an event
 				addEvent();
@@ -145,8 +139,6 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 				addTriggerErrorCode(__TRG_NUMBER_INC_ERROR);
 				if (Basis::warningSet())
 					warning("interpretRawData: Trigger Number not increasing by 1 (old/new): "+IntToStr(_lastTriggerNumber)+"/"+IntToStr(tTriggerNumber)+" at event "+IntToStr(_nEvents));
-//				if (Basis::debugSet())
-//					printInterpretedWords(pDataWords, pNdataWords, iWord-10, iWord+250);
 			}
 
 			if ((tTriggerNumber & TRIGGER_ERROR_TRG_ACCEPT) == TRIGGER_ERROR_TRG_ACCEPT){
@@ -163,15 +155,30 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 		}
 		else if (getInfoFromServiceRecord(tActualWord, tActualSRcode, tActualSRcounter)){ //data word is service record
 			if (Basis::debugSet())
-				debug(IntToStr(_nDataWords)+" SR "+IntToStr(tActualSRcode)+" ("+IntToStr(tActualSRcounter)+") at event "+IntToStr(_nEvents));
+				debug(std::string(" ")+IntToStr(_nDataWords)+" SR "+IntToStr(tActualSRcode)+" ("+IntToStr(tActualSRcounter)+") at event "+IntToStr(_nEvents));
 			addServiceRecord(tActualSRcode, tActualSRcounter);
 			addEventErrorCode(__HAS_SR);
 			_nServiceRecords++;
 		}
 		else if (isTdcWord(tActualWord)){	//data word is a tdc word
 			_nTDCWords++;
-			addEventErrorCode(__TDC_WORD);
-			tTdcCount = TDC_COUNT_MACRO(tActualWord);
+			if (_useTdcWord && _firstTdcSet && (tNdataHeader > _NbCID-1)){  //all data headers occurred already, so use TDC word for new event
+				addEvent();
+			}
+
+			_firstTdcSet = true;
+
+			if ((tErrorCode & __TDC_WORD) == __TDC_WORD){  //if the event has already a TDC word set __MANY_TDC_WORDS
+				addEventErrorCode(__MANY_TDC_WORDS);
+//				if (Basis::debugSet())
+					warning("Two words in event\t"+IntToStr(_nEvents));
+			}
+			else{
+				addEventErrorCode(__TDC_WORD);
+				tTdcCount = TDC_COUNT_MACRO(tActualWord);
+			}
+			if (tTdcCount == 0)
+				addEventErrorCode(__TDC_OVERFLOW);
 			if (Basis::debugSet())
 				debug(std::string(" ")+IntToStr(_nDataWords)+" TDC COUNT "+IntToStr(tTdcCount)+"\t"+IntToStr(_nEvents));
 		}
@@ -198,8 +205,6 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 					warning("interpretRawData: "+IntToStr(_nDataWords)+" UNKNOWN WORD "+IntToStr(tActualWord)+" at event "+IntToStr(_nEvents));
 				if (Basis::debugSet())
 					debug(std::string(" ")+IntToStr(_nDataWords)+" UNKNOWN WORD "+IntToStr(tActualWord)+" at event "+IntToStr(_nEvents));
-//				if (Basis::debugSet())
-//					printInterpretedWords(pDataWords, pNdataWords, iWord-10, iWord+250);
 			}
 			else{
 				_nOtherWords++;
@@ -223,8 +228,6 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 		if (tBCIDerror){	//tBCIDerror is raised if BCID is not increasing by 1, most likely due to incomplete data transmission, so start new event, actual word is data header here
 			if(Basis::warningSet())
 				warning("interpretRawData "+IntToStr(_nDataWords)+" BCID ERROR at event "+IntToStr(_nEvents));
-//			if (Basis::debugSet())
-//				printInterpretedWords(pDataWords, pNdataWords, iWord-50, iWord+50);
 			addEvent();
 			_nIncompleteEvents++;
 			getTimefromDataHeader(tActualWord, tActualLVL1ID, tStartBCID);
@@ -233,9 +236,6 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 			tStartLVL1ID = tActualLVL1ID;
 		}
 	}
-	////save last incomplete event, otherwise maybe hit buffer/hit array overflow in next chunk
-	//storeEventHits();
-	//tHitBufferIndex = 0;
 	return true;
 }
 
@@ -327,6 +327,7 @@ void Interpret::resetCounters()
 	_nEmptyEvents = 0;
 	_nMaxHitsPerEvent = 0;
 	_firstTriggerNrSet = false;
+	_firstTdcSet = false;
 	_lastTriggerNumber = 0;
 	resetTriggerErrorCounterArray();
 	resetErrorCounterArray();
@@ -372,6 +373,12 @@ void Interpret::useTriggerNumber(bool useTriggerNumber)
 {
 	info("useTriggerNumber()");
 	_useTriggerNumber = useTriggerNumber;
+}
+
+void Interpret::useTdcWord(bool useTdcWord)
+{
+	info("useTdcWord()");
+	_useTdcWord = useTdcWord;
 }
 
 void Interpret::getServiceRecordsCounters(unsigned int*& rServiceRecordsCounter, unsigned int& rNserviceRecords, bool copy)
@@ -459,8 +466,10 @@ void Interpret::printStatus() {
 	std::cout << "_debugEvents "<<_debugEvents<<"\n";
 	std::cout << "_startDebugEvent "<<_startDebugEvent<<"\n";
 	std::cout << "_stopDebugEvent "<<_stopDebugEvent<<"\n";
+	std::cout << "_useTriggerNumber "<<_useTriggerNumber<<"\n";
+	std::cout << "_useTdcWord "<<_useTdcWord<<"\n";
 
-	std::cout << "one event variables\n";
+	std::cout << "\none event variables\n";
 	std::cout << "tNdataHeader "<<tNdataHeader<<"\n";
 	std::cout << "tNdataRecord "<<tNdataRecord<<"\n";
 	std::cout << "tStartBCID "<<tStartBCID<<"\n";
@@ -477,7 +486,7 @@ void Interpret::printStatus() {
 	std::cout << "tTdcCount "<<tTdcCount<<"\n";
 	std::cout << "_lastTriggerNumber "<<_lastTriggerNumber<<"\n";
 
-	std::cout << "counters/flags for the total raw data processing\n";
+	std::cout << "\ncounters/flags for the total raw data processing\n";
 	std::cout << "_nTriggers "<<_nTriggers<<"\n";
 	std::cout << "_nEvents "<<_nEvents<<"\n";
 	std::cout << "_nMaxHitsPerEvent "<<_nMaxHitsPerEvent<<"\n";
@@ -492,6 +501,7 @@ void Interpret::printStatus() {
 	std::cout << "_nHits "<<_nHits<<"\n";
 	std::cout << "_nDataWords "<<_nDataWords<<"\n";
 	std::cout << "_firstTriggerNrSet "<<_firstTriggerNrSet<<"\n";
+	std::cout << "_firstTdcSet "<<_firstTdcSet<<"\n";
 }
 
 void Interpret::printHits(const unsigned int& pNhits)
@@ -582,6 +592,8 @@ void Interpret::addEvent()
 		tDebug<<"addEvent() "<<_nEvents;
 		debug(tDebug.str());
 	}
+	if(tNdataRecord==0)
+		_nEmptyEvents++;
 	if(tTriggerWord == 0){
 		addEventErrorCode(__NO_TRG_WORD);
 		if(Basis::debugSet())
@@ -831,6 +843,14 @@ void Interpret::addEventErrorCode(const unsigned short int& pErrorCode)
 			}
 			case __TDC_WORD:{
 				tDebug<<"EVENT HAS TDC WORD";
+				break;
+			}
+			case __MANY_TDC_WORDS:{
+				tDebug<<"EVENT HAS MORE THAN ONE TDC WORD";
+				break;
+			}
+			case __TDC_OVERFLOW:{
+				tDebug<<"EVENT HAS TDC COUNTER OVERFLOW";
 				break;
 			}
 		}
