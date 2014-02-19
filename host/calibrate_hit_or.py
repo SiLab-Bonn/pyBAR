@@ -93,7 +93,7 @@ class HitOrScan(ScanBase):
                 meta_data_array = in_hit_file_h5.root.meta_data[:]  # get the meta data array to select be able to select hits per scan parameter
                 scan_parameter_values = analysis_utils.get_unique_scan_parameter_combinations(meta_data_array, selected_columns_only=True)  # get the PlsrDAC/col/row values
                 event_numbers = analysis_utils.get_unique_scan_parameter_combinations(meta_data_array)['event_number']  # get the event numbers in meta_data where the scan parameters have different settings
-                parameter_ranges = np.column_stack((scan_parameter_values, analysis_utils.get_event_range(event_numbers)))  # list with entries [scan_parameter_value, start_event_number, stop_event_number]
+                parameter_ranges = np.column_stack((scan_parameter_values, analysis_utils.get_ranges_from_array(event_numbers)))  # list with entries [scan_parameter_value, start_event_number, stop_event_number]
                 calibration_data = np.zeros(shape=(80, 336, len(scan_configuration['scan_parameter_values']), 4), dtype='f4')  # result of the calibration is a histogram with col_index, row_index, plsrDAC value, mean discrete tot, rms discrete tot, mean tot from TDC, rms tot from TDC
                 start_index = 0
                 for scan_parameter_value, start_event_number, stop_event_number in parameter_ranges:  # loop over the different PlsrDAC/col/row settings
