@@ -630,7 +630,6 @@ void Interpret::storeEventHits()
 	debug("storeEventHits()");
 	for (unsigned int i = 0; i<tHitBufferIndex; ++i){
 		_hitBuffer[i].triggerNumber = tTriggerNumber; //not needed if trigger number is at the beginning
-		_hitBuffer[i].TDC = tTdcCount;
 		_hitBuffer[i].triggerStatus = tTriggerError;
 		_hitBuffer[i].eventStatus = tErrorCode;
 		storeHit(_hitBuffer[i]);
