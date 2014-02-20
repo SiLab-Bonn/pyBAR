@@ -144,18 +144,18 @@ private:
 	unsigned int _actualClusterTot;										//temporary value holding the total tot value of the actual cluster
 	unsigned int _actualClusterMaxTot;									//temporary value holding the maximum tot value of the actual cluster
 	unsigned int _actualRelativeClusterBCID; 							//temporary value holding the relative BCID start value of the actual cluster [0:15]
-	unsigned short _actualClusterID;
+	unsigned short _actualClusterID;									//temporary value holding the cluster ID of the actual cluster
 	unsigned short _actualClusterSize;									//temporary value holding the total hit number of the actual cluster
-	unsigned short _actualClusterSeed_column;
-	unsigned short _actualClusterSeed_row;
-	unsigned short _actualClusterSeed_relbcid;
+	unsigned short _actualClusterSeed_column;							//temporary value holding the column number of the seed pixel of the actual cluster
+	unsigned short _actualClusterSeed_row;								//temporary value holding the row number of the seed pixel of the actual cluster
+	unsigned short _actualClusterSeed_relbcid;							//temporary value holding the relative BCID number of the seed pixel of the actual cluster
 	float _actualClusterX;												//temporary value holding the x position of the actual cluster
 	float _actualClusterY;												//temporary value holding the y position of the actual cluster
 	float _actualClusterCharge;											//temporary value holding the total charge value of the actual cluster
 
 	//actual event variables
 	unsigned int _actualEventNumber;  //event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
-	unsigned char _actualEventStatus;
+	unsigned int _actualEventStatus;
 
 	bool _abortCluster;													//set to true if one cluster TOT hit exeeds _maxClusterHitTot, cluster is not added to the result array
 };
