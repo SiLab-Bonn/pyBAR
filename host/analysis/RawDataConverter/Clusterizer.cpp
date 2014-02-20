@@ -289,6 +289,8 @@ void Clusterizer::addHit(const unsigned int& pHitIndex)
 	unsigned short tTot = _hitInfo[pHitIndex].tot;
 	float tCharge = -1;
 
+	_actualEventStatus = _hitInfo[pHitIndex].eventStatus | _actualEventStatus;
+
 	if(tTot>_maxHitTot)	// ommit hits with a tot that is too high
 		return;
 
@@ -739,6 +741,7 @@ void Clusterizer::addCluster()
 
 void Clusterizer::addHitClusterInfo(const unsigned int& pHitIndex)
 {
-//	std::cout<<"add cluster for hits at "<<pHitIndex<<"\n";
+//	for (unsigned int i = 0; i < )
+//	std::cout<<"add cluster "<<_Nclusters<<" with id "<<_actualClusterID<<"\n";
 }
 
