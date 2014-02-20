@@ -433,6 +433,12 @@ def is_trigger_data(value):
     return np.equal(np.bitwise_and(value, 0xFF000000), 0x80000000)
 
 
+def is_tdc_data(value):
+    '''Select tdc data
+    '''
+    return np.equal(np.bitwise_and(value, 0xF0000000), 0x40000000)
+
+
 # def def get_col_row_tot_array_from_data_record_array(max_tot=14):
 
 def get_col_row_tot_array_from_data_record_array(array):
