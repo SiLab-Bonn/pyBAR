@@ -39,8 +39,8 @@ def get_data_statistics(interpreted_files):
                 n_events = str(in_file_h5.root.Hits[-1]['event_number'] + 1)
             except tb.NoSuchNodeError:
                 n_events = '~' + str(in_file_h5.root.meta_data[-1]['event_number'] + (in_file_h5.root.meta_data[-1]['event_number'] - in_file_h5.root.meta_data[-2]['event_number']))
-            if int(n_events) < 7800000 or n_sr > 4200 or n_bad_events > 40:
-                print '| %{color:red}', os.path.basename(interpreted_file) + '%', '|', int(os.path.getsize(interpreted_file) / (1024 * 1024.)), 'Mb |', time.ctime(os.path.getctime(interpreted_file)), '|',  n_events, '|', n_bad_events, '|', measurement_time, 's |', n_sr, '|', n_hits, '|'#, mean_tot, '|', mean_bcid, '|'
+#             if int(n_events) < 7800000 or n_sr > 4200 or n_bad_events > 40:
+#                 print '| %{color:red}', os.path.basename(interpreted_file) + '%', '|', int(os.path.getsize(interpreted_file) / (1024 * 1024.)), 'Mb |', time.ctime(os.path.getctime(interpreted_file)), '|',  n_events, '|', n_bad_events, '|', measurement_time, 's |', n_sr, '|', n_hits, '|'#, mean_tot, '|', mean_bcid, '|'
             else:
                 print '|', os.path.basename(interpreted_file), '|', int(os.path.getsize(interpreted_file) / (1024 * 1024.)), 'Mb |', time.ctime(os.path.getctime(interpreted_file)), '|',  n_events, '|', n_bad_events, '|', measurement_time, 's |', n_sr, '|', n_hits, '|'#, mean_tot, '|', mean_bcid, '|'
 
@@ -698,6 +698,27 @@ def get_events_with_cluster_size(event_number, cluster_size, condition='cluster_
     return np.unique(event_number[ne.evaluate(condition)])
 
 
+def get_events_with_error_code(event_number, event_status, select_mask=0b1111111111111111, condition=0b0000000000000000):
+    '''Selects the events with a certain error code.
+
+    Parameters
+    ----------
+    event_number : numpy.array
+    event_status : numpy.array
+    select_mask : int
+        The mask that selects the event error code to check.
+    condition : int
+        The value the selected event error code should have.
+
+    Returns
+    -------
+    numpy.array
+    '''
+
+    logging.info("Calculate events with certain error code")
+    return np.unique(event_number[event_status & select_mask == condition])
+
+
 def get_n_cluster_in_events(event_numbers):
     '''Calculates the number of cluster in every given event.
 
@@ -1029,7 +1050,10 @@ def data_aligned_at_events(table, start_event_number=None, stop_event_number=Non
                 if nrows != 1:
                     logging.warning("Depreciated warning?! Buffer too small to fit event. Possible loss of data. Increase chunk size.")
             else:
-                nrows = last_event_start_index
+                if start_index + chunk_size > stop_index:  # special case for the last chunk read, there read the table until its end
+                    nrows = src_array.shape[0]
+                else:
+                    nrows = last_event_start_index
 
             if (start_event_number != None or stop_event_number != None) and (last_event > stop_event_number or first_event < start_event_number):  # too many events read, get only the selected ones if specified
                 selected_rows = get_data_in_event_range(src_array[0:nrows], event_start=start_event_number, event_stop=stop_event_number, assume_sorted=True)
