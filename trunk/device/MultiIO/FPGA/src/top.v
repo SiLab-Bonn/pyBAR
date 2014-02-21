@@ -146,7 +146,7 @@ wire CE_1HZ; // use for sequential logic
 wire CLK_1HZ; // don't connect to clock input, only combinatorial logic
 clock_divider #(
     .DIVISOR(40000000)
-) clock_divisor_40MHz_to_1Hz (
+) i_clock_divisor_40MHz_to_1Hz (
     .CLK(CLK_40),
     .RESET(1'b0),
     .CE(CE_1HZ),
@@ -155,8 +155,8 @@ clock_divider #(
 
 wire CLK_2HZ;
 clock_divider #(
-    .DIVISOR(20000000)
-) clock_divisor_40MHz_to_2Hz (
+    .DIVISOR(13000000)
+) i_clock_divisor_40MHz_to_2Hz (
     .CLK(CLK_40),
     .RESET(1'b0),
     .CE(),
