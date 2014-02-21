@@ -278,7 +278,7 @@ def select_hits_for_tdc_info(input_file_hits, output_file_hits, cluster_size_con
             for data, _ in analysis_utils.data_aligned_at_events(cluster_table):
                 selected_events_1 = analysis_utils.get_events_with_cluster_size(event_number=data['event_number'], cluster_size=data['size'], condition='cluster_size==1')  # select the events with only 1 hit cluster
                 selected_events_2 = analysis_utils.get_events_with_n_cluster(event_number=data['event_number'], condition='n_cluster==1')  # select the events with only 1 cluster
-                selected_events_3 = analysis_utils.get_events_with_error_code(event_number=data['event_number'], event_status=data['event_status'], select_mask=0b0000011100000000, condition=0b0000000100000000)  # select events with one tdc word and no tdc overflow
+                selected_events_3 = analysis_utils.get_events_with_error_code(event_number=data['event_number'], event_status=data['event_status'], select_mask=0b0000011110001000, condition=0b0000000100000000)  # select only complete events with one tdc word and no tdc overflow
                 selected_events = selected_events_1[analysis_utils.in1d_sorted(selected_events_1, selected_events_2)]  # select events with the first two conditions above
                 selected_events = selected_events[analysis_utils.in1d_sorted(selected_events, selected_events_3)]  # select events with all conditions above
                 logging.info('Selected ' + str(len(selected_events)) + ' events matching the TDC conditions')
