@@ -270,7 +270,7 @@ def get_parameter_scan_bases_from_scan_base(scan_base):
     list of strings
 
     """
-    return [scan_bases[:-3] for scan_bases in get_data_file_names_from_scan_base(scan_base, filter_file_words=['interpreted', 'cut_', 'cluster_sizes'])]
+    return [scan_bases[:-3] for scan_bases in get_data_file_names_from_scan_base(scan_base, filter_file_words=['interpreted', 'cut_', 'cluster_sizes', 'histograms'])]
 
 
 def get_parameter_value_from_files(files, parameter, sort=True):
