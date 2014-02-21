@@ -18,14 +18,15 @@ scan_configuration = {
     "timeout_no_data": 10,
     "scan_timeout": 1 * 60,
     "max_triggers": 10000,
-    "enable_hitbus": False
+    "enable_hitbus": False,
+    "enable_tdc": False
 }
 
 
 class ExtTriggerScan(ScanBase):
     scan_identifier = "ext_trigger_scan"
 
-    def scan(self, trigger_mode=0, trigger_latency=232, trigger_delay=14, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=10000, enable_hitbus=False, **kwargs):
+    def scan(self, trigger_mode=0, trigger_latency=232, trigger_delay=14, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=10000, enable_hitbus=False, enable_tdc=False, **kwargs):
         '''Scan loop
 
         Parameters
@@ -40,7 +41,7 @@ class ExtTriggerScan(ScanBase):
             FE global register Trig_Lat.
             Some ballpark estimates:
             External scintillator/TLU: 232
-            FE Hit-OR: 216
+            FE/USBpix Self-Trigger: 220
         trigger_delay : int
             Delay between trigger and LVL1 command.
         col_span : list, tuple
@@ -55,6 +56,8 @@ class ExtTriggerScan(ScanBase):
             Maximum number of triggers to be taken.
         enable_hitbus : bool
             Enable Hitbus (Hit OR) for columns and rows given by col_span and row_span.
+        enable_tdc : bool
+            Enable for Hit-OR TDC (time-to-digital-converter) measurement. In this mode the Hit-Or/Hitbus output of the FEI4 has to be connected to USBpix Hit-OR input on the Single Chip Adapter Card.
         '''
         # generate mask for Enable mask
         pixel_reg = "Enable"
@@ -94,6 +97,8 @@ class ExtTriggerScan(ScanBase):
             # preload command
             lvl1_command = self.register.get_commands("zeros", length=trigger_delay)[0] + self.register.get_commands("lv1")[0]  # + self.register.get_commands("zeros", length=200)[0]
             self.register_utils.set_command(lvl1_command)
+            # setting up TDC
+            self.readout_utils.configure_tdc_fsm(enable_tdc=enable_tdc, enable_tdc_arming=False)
             # setting up external trigger
             self.readout_utils.configure_trigger_fsm(trigger_mode=trigger_mode, **kwargs)
             self.readout_utils.configure_command_fsm(enable_ext_trigger=True, **kwargs)
@@ -165,6 +170,8 @@ class ExtTriggerScan(ScanBase):
             analyze_raw_data.create_cluster_size_hist = True
             analyze_raw_data.create_cluster_tot_hist = True
             analyze_raw_data.create_cluster_table = False
+            analyze_raw_data.create_tdc_counter_hist = True
+#             analyze_raw_data.interpreter.use_tdc_word(True)
             analyze_raw_data.interpreter.set_warning_output(False)
             analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
             analyze_raw_data.interpreter.print_summary()
