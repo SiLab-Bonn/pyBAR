@@ -19,15 +19,18 @@ scan_configuration = {
     "pixels": [(40, 90), ],  # list of (col,row) tupel of pixels to use
     "timeout_no_data": 30,
     "scan_timeout": 1 * 10,
-    "trig_latency": 239,
-    "trig_count": 4
+    "trig_count": 4,
+    "trigger_mode": 0,
+    "trigger_latency": 232,
+    "trigger_delay": 14,
+    "max_triggers": 10000
 }
 
 
-class FEI4SelfTriggerHitOr(ScanBase):
-    scan_identifier = "fei4_self_trigger_hit_or"
+class ExtTriggerHitOr(ScanBase):
+    scan_identifier = "ext_trigger_hit_or"
 
-    def scan(self, pixels, timeout_no_data=10, scan_timeout=1 * 60, trig_latency=239, trig_count=4):
+    def scan(self, pixels, trigger_mode=0, trigger_latency=232, trigger_delay=14, timeout_no_data=10, scan_timeout=1 * 60, max_triggers=10000, trig_latency=239, trig_count=4, **kwargs):
         '''Scan loop
 
         Parameters
@@ -43,7 +46,7 @@ class FEI4SelfTriggerHitOr(ScanBase):
             FE global register Trig_Count.
         '''
 
-        logging.info('Start self trigger source scan with TDC tot histograming for %d pixels' % len(pixels))
+        logging.info('Start hit bus trigger source scan with TDC histograming for %d pixels' % len(pixels))
         logging.info('Estimated scan time %dh' % (len(pixels) * scan_timeout / 3600.))
 
         self.stop_loop_event = Event()
@@ -52,21 +55,31 @@ class FEI4SelfTriggerHitOr(ScanBase):
 
         self.register.create_restore_point()
 
+        wait_for_first_trigger_setting = True  # needed to reset this for a new GDAC
+
         for column, row  in pixels:
             self.register.restore(keep=True, global_register=False)
             self.configure_fe(column, row, trig_latency, trig_count)
             if self.stop_thread_event.is_set():
                 break
             self.repeat_scan_step = True
+
             while self.repeat_scan_step and not self.stop_thread_event.is_set():
                 with open_raw_data_file(filename=self.scan_data_filename + '_col_row_' + str(column) + '_' + str(row), title=self.scan_identifier, scan_parameters=['column', 'row'], mode='w') as raw_data_file:
                     self.repeat_scan_step = False
                     self.stop_loop_event.clear()
                     self.readout.start()
                     self.readout_utils.configure_tdc_fsm(enable_tdc=True, enable_tdc_arming=False)
-                    self.set_self_trigger(True)
-                    wait_for_first_data = True
-                    show_trigger_message_at = 10 ** (int(math.floor(math.log10(scan_timeout) - math.log10(3) / math.log10(10))))
+
+                    wait_for_first_trigger = wait_for_first_trigger_setting
+                    # preload command
+                    lvl1_command = self.register.get_commands("zeros", length=trigger_delay)[0] + self.register.get_commands("lv1")[0]  # + self.register.get_commands("zeros", length=200)[0]
+                    self.register_utils.set_command(lvl1_command)
+                    # setting up external trigger
+                    self.readout_utils.configure_trigger_fsm(trigger_mode=trigger_mode, **kwargs)
+                    self.readout_utils.configure_command_fsm(enable_ext_trigger=True, **kwargs)
+
+                    show_trigger_message_at = 10 ** (int(math.floor(math.log10(max_triggers) - math.log10(3) / math.log10(10))))
                     time_current_iteration = time.time()
                     saw_no_data_at_time = time_current_iteration
                     saw_data_at_time = time_current_iteration
@@ -74,12 +87,15 @@ class FEI4SelfTriggerHitOr(ScanBase):
                     no_data_at_time = time_current_iteration
                     time_from_last_iteration = 0
                     scan_stop_time = scan_start_time + scan_timeout
+                    current_trigger_number = 0
+                    last_trigger_number = 0
                     while not self.stop_loop_event.is_set() and not self.stop_thread_event.wait(self.readout.readout_interval):
                         time_last_iteration = time_current_iteration
                         time_current_iteration = time.time()
                         time_from_last_iteration = time_current_iteration - time_last_iteration
-                        if ((time_current_iteration - scan_start_time) % show_trigger_message_at < (time_last_iteration - scan_start_time) % show_trigger_message_at):
-                            logging.info('Scan runtime: %d seconds', time_current_iteration - scan_start_time)
+                        current_trigger_number = self.readout_utils.get_trigger_number()
+                        if (current_trigger_number % show_trigger_message_at < last_trigger_number % show_trigger_message_at):
+                            logging.info('Collected triggers: %d', current_trigger_number)
                             if not any(self.readout.get_rx_sync_status()):
                                 self.repeat_scan_step = True
                                 self.stop_loop_event.set()
@@ -92,6 +108,10 @@ class FEI4SelfTriggerHitOr(ScanBase):
                                 self.repeat_scan_step = True
                                 self.stop_loop_event.set()
                                 logging.error('RX FIFO discard error(s) detected. Stopping Scan...')
+                        last_trigger_number = current_trigger_number
+                        if max_triggers is not None and current_trigger_number >= max_triggers:
+                            logging.info('Reached maximum triggers. Stopping Scan...')
+                            self.stop_loop_event.set()
                         if scan_timeout is not None and time_current_iteration > scan_stop_time:
                             logging.info('Reached maximum scan time. Stopping Scan...')
                             self.stop_loop_event.set()
@@ -99,11 +119,11 @@ class FEI4SelfTriggerHitOr(ScanBase):
                             raw_data_file.append((self.readout.data.popleft(),), scan_parameters={'column': column, 'row': row})
                         except IndexError:  # no data
                             no_data_at_time = time_current_iteration
-                            if timeout_no_data is not None and wait_for_first_data == False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
+                            if timeout_no_data is not None and not wait_for_first_trigger and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
                                 logging.info('Reached no data timeout. Stopping Scan...')
                                 self.repeat_scan_step = True
                                 self.stop_loop_event.set()
-                            elif wait_for_first_data == False:
+                            elif not wait_for_first_trigger:
                                 saw_no_data_at_time = no_data_at_time
 
                             if no_data_at_time > (saw_data_at_time + 10):
@@ -111,12 +131,12 @@ class FEI4SelfTriggerHitOr(ScanBase):
                         else:
                             saw_data_at_time = time_current_iteration
 
-                            if wait_for_first_data == True:
+                            if wait_for_first_trigger == True:
                                 logging.info('Taking data...')
-                                wait_for_first_data = False
+                                wait_for_first_trigger = False
 
-                    self.readout_utils.configure_tdc_fsm(enable_tdc=False, enable_tdc_arming=False)
-                    self.set_self_trigger(False)
+                    self.readout_utils.configure_command_fsm(enable_ext_trigger=False)
+
                     self.readout.stop()
 
                     if self.repeat_scan_step:
@@ -128,6 +148,70 @@ class FEI4SelfTriggerHitOr(ScanBase):
                         raw_data_file.append(self.readout.data, scan_parameters={'column': column, 'row': row})
 
                         logging.info('Total scan runtime for pixel %d/%d: %d seconds' % (column, row, (time_current_iteration - scan_start_time)))
+
+#                     wait_for_first_data = True
+#                     show_trigger_message_at = 10 ** (int(math.floor(math.log10(scan_timeout) - math.log10(3) / math.log10(10))))
+#                     time_current_iteration = time.time()
+#                     saw_no_data_at_time = time_current_iteration
+#                     saw_data_at_time = time_current_iteration
+#                     scan_start_time = time_current_iteration
+#                     no_data_at_time = time_current_iteration
+#                     time_from_last_iteration = 0
+#                     scan_stop_time = scan_start_time + scan_timeout
+#                     while not self.stop_loop_event.is_set() and not self.stop_thread_event.wait(self.readout.readout_interval):
+#                         time_last_iteration = time_current_iteration
+#                         time_current_iteration = time.time()
+#                         time_from_last_iteration = time_current_iteration - time_last_iteration
+#                         if ((time_current_iteration - scan_start_time) % show_trigger_message_at < (time_last_iteration - scan_start_time) % show_trigger_message_at):
+#                             logging.info('Scan runtime: %d seconds', time_current_iteration - scan_start_time)
+#                             if not any(self.readout.get_rx_sync_status()):
+#                                 self.repeat_scan_step = True
+#                                 self.stop_loop_event.set()
+#                                 logging.error('No RX sync. Stopping Scan...')
+#                             if any(self.readout.get_rx_8b10b_error_count()):
+#                                 self.repeat_scan_step = True
+#                                 self.stop_loop_event.set()
+#                                 logging.error('RX 8b10b error(s) detected. Stopping Scan...')
+#                             if any(self.readout.get_rx_fifo_discard_count()):
+#                                 self.repeat_scan_step = True
+#                                 self.stop_loop_event.set()
+#                                 logging.error('RX FIFO discard error(s) detected. Stopping Scan...')
+#                         if scan_timeout is not None and time_current_iteration > scan_stop_time:
+#                             logging.info('Reached maximum scan time. Stopping Scan...')
+#                             self.stop_loop_event.set()
+#                         try:
+#                             raw_data_file.append((self.readout.data.popleft(),), scan_parameters={'column': column, 'row': row})
+#                         except IndexError:  # no data
+#                             no_data_at_time = time_current_iteration
+#                             if timeout_no_data is not None and wait_for_first_data == False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
+#                                 logging.info('Reached no data timeout. Stopping Scan...')
+#                                 self.repeat_scan_step = True
+#                                 self.stop_loop_event.set()
+#                             elif wait_for_first_data == False:
+#                                 saw_no_data_at_time = no_data_at_time
+# 
+#                             if no_data_at_time > (saw_data_at_time + 10):
+#                                 scan_stop_time += time_from_last_iteration
+#                         else:
+#                             saw_data_at_time = time_current_iteration
+# 
+#                             if wait_for_first_data == True:
+#                                 logging.info('Taking data...')
+#                                 wait_for_first_data = False
+# 
+#                     self.readout_utils.configure_tdc_fsm(enable_tdc=False, enable_tdc_arming=False)
+#                     self.set_self_trigger(False)
+#                     self.readout.stop()
+# 
+#                     if self.repeat_scan_step:
+#                         self.readout.print_readout_status()
+#                         logging.warning('Repeating scan for pixel %d/%d' % (column, row))
+#                         self.register_utils.configure_all()
+#                         self.readout.reset_rx()
+#                     else:
+#                         raw_data_file.append(self.readout.data, scan_parameters={'column': column, 'row': row})
+# 
+#                         logging.info('Total scan runtime for pixel %d/%d: %d seconds' % (column, row, (time_current_iteration - scan_start_time)))
 
     def configure_fe(self, column, row, trig_latency, trig_count):
         pixel_reg = "Enable"
@@ -159,16 +243,6 @@ class FEI4SelfTriggerHitOr(ScanBase):
         # send commands
         self.register_utils.send_commands(commands)
 
-    def set_self_trigger(self, enable=True):
-        logging.info('%s FEI4 self-trigger' % ('Enable' if enable == True else "Disable"))
-        commands = []
-        commands.extend(self.register.get_commands("confmode"))
-        self.register.set_global_register_value("GateHitOr", 1 if enable else 0)  # enable FE self-trigger mode
-        commands.extend(self.register.get_commands("wrregister", name=["GateHitOr"]))
-        if enable:
-            commands.extend(self.register.get_commands("runmode"))
-        self.register_utils.send_commands(commands)
-
     def analyze(self):
         for raw_data_file in glob.glob(self.scan_data_filename + '_*.h5'):  # loop over all created raw data files
             with AnalyzeRawData(raw_data_file=raw_data_file, analyzed_data_file=raw_data_file[:-3] + "_interpreted.h5") as analyze_raw_data:
@@ -181,7 +255,7 @@ class FEI4SelfTriggerHitOr(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = FEI4SelfTriggerHitOr(**configuration.scc99_configuration)
+    scan = ExtTriggerHitOr(**configuration.scc99_configuration)
     scan.start(use_thread=False, **scan_configuration)
     scan.stop()
     scan.analyze()
