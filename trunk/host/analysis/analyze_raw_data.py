@@ -142,6 +142,7 @@ class AnalyzeRawData(object):
         self.create_trigger_error_hist = False
         self.create_error_hist = True
         self.create_service_record_hist = True
+        self.create_tdc_counter_hist = False
         self.create_threshold_hists = False
         self.create_threshold_mask = True  # threshold/noise histogram mask: masking all pixels out of bounds
         self.create_fitted_threshold_mask = True  # fitted threshold/noise histogram mask: masking all pixels out of bounds
@@ -274,6 +275,14 @@ class AnalyzeRawData(object):
     @create_service_record_hist.setter
     def create_service_record_hist(self, value):
         self._create_service_record_hist = value
+
+    @property
+    def create_tdc_counter_hist(self):
+        return self._create_tdc_counter_hist
+
+    @create_tdc_counter_hist.setter
+    def create_tdc_counter_hist(self, value):
+        self._create_tdc_counter_hist = value
 
     @property
     def create_meta_event_index(self):
@@ -514,6 +523,12 @@ class AnalyzeRawData(object):
             if (self._analyzed_data_file != None):
                 service_record_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistServiceRecord', title='Service Record Histogram', atom=tb.Atom.from_dtype(self.service_record_hist.dtype), shape=self.service_record_hist.shape, filters=self._filter_table)
                 service_record_hist_table[:] = self.service_record_hist
+        if (self._create_tdc_counter_hist):
+            self.tdc_counter_hist = np.zeros(4096, dtype=np.uint32)  # IMPORTANT: has to be global to avoid deleting before c library is deleted
+            self.interpreter.get_tdc_counters(self.tdc_counter_hist)
+            if (self._analyzed_data_file != None):
+                tdc_counter_hist = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistTdcCounter', title='All Tdc word counter values', atom=tb.Atom.from_dtype(self.tdc_counter_hist.dtype), shape=self.tdc_counter_hist.shape, filters=self._filter_table)
+                tdc_counter_hist[:] = self.tdc_counter_hist
         if (self._create_error_hist):
             self.error_counter_hist = np.zeros(16, dtype=np.uint32)
             self.interpreter.get_error_counters(self.error_counter_hist)
@@ -878,6 +893,8 @@ class AnalyzeRawData(object):
                     plotting.plot_occupancy(hist=occupancy_array_masked, filename=output_pdf, z_max='median')
         if (self._create_tot_hist):
             plotting.plot_tot(hist=out_file_h5.root.HistTot if out_file_h5 != None else self.tot_hist, filename=output_pdf)
+        if (self._create_tdc_counter_hist):
+            plotting.plot_tdc_counter(hist=out_file_h5.root.HistTdcCounter if out_file_h5 != None else self.tdc_hist_counter, filename=output_pdf)
         if (self._create_tdc_hist):
             plotting.plot_tdc(hist=out_file_h5.root.HistTdc if out_file_h5 != None else self.tdc_hist, filename=output_pdf)
         if (self._create_cluster_size_hist):

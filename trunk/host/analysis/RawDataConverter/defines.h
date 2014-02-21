@@ -104,7 +104,7 @@ typedef struct ParInfo{
 #define __NON_CONST_LVL1ID 4          //LVL1ID changes in one event, is ok for self triggering
 #define __EVENT_INCOMPLETE 8          //BCID not increasing by 1, most likely BCID missing (incomplete data transmission)
 #define __UNKNOWN_WORD 16             //event has unknown words
-#define __BCID_JUMP 32                //BCID jumps, but LVL1ID is constant and data is externally triggered
+#define __BCID_JUMP 32                //BCID jumps, but either LVL1ID is constant or data is externally triggered with trigger word or TDC word
 #define __TRG_ERROR 64                //a trigger error occured
 #define __TRUNC_EVENT 128             //Event had to many hits (>__MAXHITBUFFERSIZE) and was therefore truncated
 #define __TDC_WORD 256             	  //Event has a TDC word
@@ -134,6 +134,7 @@ typedef struct ParInfo{
 #define NFE_NUMBER_MACRO(X) ((NFE_NUMBER_MASK & X)  >> 24)
 
 //TDC macros
+#define __N_TDC_VALUES 4096
 #define TDC_HEADER 0x40000000
 #define TDC_HEADER_MASK 0xF0000000  //first bit 0 means FE number word
 #define TDC_COUNT_MASK 0x00000FFF
