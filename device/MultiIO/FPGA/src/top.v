@@ -135,6 +135,7 @@ clk_gen iclkgen(
     .U2_CLKFX_OUT(CLK_40), // DCM2: 40MHz command clock
     .U2_CLKDV_OUT(DATA_CLK), // DCM2: 16MHz SERDES clock
     .U2_CLK0_OUT(RX_CLK), // DCM2: 160MHz data clock
+    .U2_CLK90_OUT(),
     .U2_CLK2X_OUT(RX_CLK2X), // DCM2: 320MHz data recovery clock
     .U2_LOCKED_OUT(CLK_LOCKED),
     .U2_STATUS_OUT()
