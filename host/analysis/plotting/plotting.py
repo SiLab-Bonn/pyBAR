@@ -307,8 +307,11 @@ def plot_tot(hist, title=None, filename=None):
 
 
 def plot_tdc(hist, title=None, filename=None):
-    print hist[:]
-    plot_1d_hist(hist=hist, title='TDC distribution' if title == None else title, plot_range=range(0, 4096), x_axis_title='TDC', y_axis_title='#', color='b', filename=filename, figure_name='Hit TDC')
+    plot_1d_hist(hist=hist, title='TDC Hit distribution (' + str(np.sum(hist)) + ' entries)' if title == None else title, plot_range=range(0, np.where(np.nonzero(hist))[1][-1] + 1) if np.sum(hist) > 1 else range(0, 4096), x_axis_title='hit TDC', y_axis_title='#', color='b', filename=filename, figure_name='Hit TDC')
+
+
+def plot_tdc_counter(hist, title=None, filename=None):
+    plot_1d_hist(hist=hist, title='TDC counter distribution (' + str(np.sum(hist)) + ' entries)' if title == None else title, plot_range=range(0, np.where(np.nonzero(hist))[1][-1] + 1) if np.sum(hist) > 1 else range(0, 4096), x_axis_title='TDC value', y_axis_title='#', color='b', filename=filename, figure_name='Counter TDC')
 
 
 def plot_event_errors(hist, filename=None):
