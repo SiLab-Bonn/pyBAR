@@ -173,7 +173,7 @@ class ExtTriggerScan(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = ExtTriggerScan(**configuration.scc99_configuration)
+    scan = ExtTriggerScan(**configuration.device_configuration)
     scan.start(use_thread=True, **scan_configuration)
     scan.stop()
     scan.analyze()
