@@ -33,6 +33,7 @@ module clk_gen    (U1_CLKIN_IN,
                    U2_CLKFX_OUT, 
                    U2_CLKDV_OUT, 
                    U2_CLK0_OUT, 
+                   U2_CLK90_OUT, 
                    U2_CLK2X_OUT, 
                    U2_LOCKED_OUT, 
                    U2_STATUS_OUT);
@@ -45,6 +46,7 @@ module clk_gen    (U1_CLKIN_IN,
    output wire [7:0] U1_STATUS_OUT;
    output wire U2_CLKDV_OUT;
    output wire U2_CLK0_OUT;
+   output wire U2_CLK90_OUT;
    output wire U2_CLK2X_OUT;
    output wire U2_LOCKED_OUT;
    output wire [7:0] U2_STATUS_OUT;
@@ -57,6 +59,7 @@ module clk_gen    (U1_CLKIN_IN,
    wire U2_CLKFB_IN;
    wire U2_CLKFX_BUF;
    wire U2_CLK0_BUF;
+   wire U2_CLK90_BUF;
    wire U2_CLK2X_BUF;
    wire U2_FDS_Q_OUT;
    wire U2_FD1_Q_OUT;
@@ -114,7 +117,7 @@ module clk_gen    (U1_CLKIN_IN,
                   .CLK0(U2_CLK0_BUF), 
                   .CLK2X(U2_CLK2X_BUF), 
                   .CLK2X180(), 
-                  .CLK90(), 
+                  .CLK90(U2_CLK90_BUF), 
                   .CLK180(), 
                   .CLK270(), 
                   .LOCKED(U2_LOCKED_OUT), 
@@ -132,6 +135,8 @@ module clk_gen    (U1_CLKIN_IN,
                             .O(U2_CLKFX_OUT));
    BUFG  U2_CLK0_BUFG_INST (.I(U2_CLK0_BUF), 
                            .O(U2_CLKFB_IN));
+   BUFG  U2_CLK90_BUFG_INST (.I(U2_CLK90_BUF), 
+                            .O(U2_CLK90_OUT));
    BUFG  U2_CLK2X_BUFG_INST (.I(U2_CLK2X_BUF), 
                             .O(U2_CLK2X_OUT));
    FDS  U2_FDS_INST (.C(U1_CLK0_OUT), 
