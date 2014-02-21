@@ -52,6 +52,7 @@ public:
 	void getServiceRecordsCounters(unsigned int*& rServiceRecordsCounter, unsigned int &rNserviceRecords, bool copy = true);   //returns the total service record counter array
 	void getErrorCounters(unsigned int*& rErrorCounter, unsigned int &rNerrorCounters, bool copy = true);                      //returns the total errors counter array
 	void getTriggerErrorCounters(unsigned int*& rTriggerErrorCounter, unsigned int &rNTriggerErrorCounters, bool copy = true); //returns the total trigger errors counter array
+	void getTdcCounters(unsigned int*& rTdcCounter, unsigned int& rNtdcCounters, bool copy); //returns the TDC counter array
 	unsigned int getNhits(){return _nHits;};                 //returns the total numbers of hits found (global counter)
 	unsigned int getNwords();                                //returns the total numbers of words analyzed (global counter)
 	unsigned int getNunknownWords(){return _nUnknownWords;}; //returns the total numbers of unknown words found (global counter)
@@ -93,6 +94,7 @@ private:
 	void histogramTriggerErrorCode();                                                       //adds the event trigger error code to the histogram
 	void histogramErrorCode();                                                              //adds the event error code to the histogram
 	void addServiceRecord(const unsigned char& pSRcode, const unsigned int& pSRcounter);    //adds the service record code to SR histogram
+	void addTdcValue(const unsigned short& pTdcCode);                           			//adds the TDC count code to TDC histogram
 
 	//memory allocation/initialization
 	void setStandardSettings();
@@ -104,6 +106,9 @@ private:
 	void allocateErrorCounterArray();
 	void resetErrorCounterArray();
 	void deleteErrorCounterArray();
+	void allocateTdcCounterArray();
+	void resetTdcCounterArray();
+	void deleteTdcCounterArray();
 	void allocateServiceRecordCounterArray();
 	void resetServiceRecordCounterArray();
 	void deleteServiceRecordCounterArray();
@@ -137,7 +142,7 @@ private:
 	unsigned int tStartLVL1ID;					//LVL1ID value of the first data header of the event window
 	unsigned int tDbCID;						//relative BCID of on event window [0:15], counter
 	unsigned char tTriggerError;				//event trigger error code
-	unsigned int tErrorCode;					//event error code
+	unsigned short tErrorCode;					//event error code
 	unsigned int tServiceRecord;				//event service records
 	unsigned int tTriggerNumber;                //event trigger number
 	unsigned int tTotalHits;                    //event hits
@@ -146,7 +151,7 @@ private:
 	unsigned int tTriggerWord;				    //count the trigger words per event
 	unsigned int _lastTriggerNumber;            //trigger number of last event
 	unsigned int _startWordIndex;				//the absolute word index of the first word of the actual event
-	unsigned int tTdcCount;
+	unsigned short tTdcCount;					//the TDC count value of the actual event, if no TDC word occured this value is zero
 
 	//counters/flags for the total raw data processing
 	unsigned int _nTriggers;					//total number of trigger words found
@@ -182,6 +187,7 @@ private:
 	//counter histograms
 	unsigned int* _triggerErrorCounter;      //trigger error histogram
 	unsigned int* _errorCounter;             //error code histogram
+	unsigned int* _tdcCounter;             	 //tdc counter value histogram
 	unsigned int* _serviceRecordCounter;     //SR histogram
 };
 

@@ -7,6 +7,7 @@ Interpret::Interpret(void)
 	allocateHitBufferArray();
 	allocateTriggerErrorCounterArray();
 	allocateErrorCounterArray();
+	allocateTdcCounterArray();
 	allocateServiceRecordCounterArray();
 	reset();
 	_hitInfo = 0;
@@ -18,6 +19,7 @@ Interpret::~Interpret(void)
 	deleteHitBufferArray();
 	deleteTriggerErrorCounterArray();
 	deleteErrorCounterArray();
+	deleteTdcCounterArray();
 	deleteServiceRecordCounterArray();
 }
 
@@ -104,7 +106,9 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 				if(tStartBCID+tDbCID != tActualBCID){  //check if BCID is increasing by 1s in the event window, if not close actual event and create new event with actual data header
 					if(tActualLVL1ID == tStartLVL1ID) //happens sometimes, non inc. BCID, FE feature, only abort the LVL1ID is not constant (if no external trigger is used or)
 						addEventErrorCode(__BCID_JUMP);
-					else if (!_useTriggerNumber){
+					else if(_useTriggerNumber || _useTdcWord)  //rely here on the trigger number or TDC word and do not start a new event
+						addEventErrorCode(__BCID_JUMP);
+					else{
 						tBCIDerror = true;					       //BCID number wrong, abort event and take actual data header for the first hit of the new event
 						addEventErrorCode(__EVENT_INCOMPLETE);
 					}
@@ -161,8 +165,10 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 			_nServiceRecords++;
 		}
 		else if (isTdcWord(tActualWord)){	//data word is a tdc word
+			addTdcValue(TDC_COUNT_MACRO(tActualWord));
 			_nTDCWords++;
-			if (_useTdcWord && _firstTdcSet && (tNdataHeader > _NbCID-1)){  //all data headers occurred already, so use TDC word for new event
+			//create new event if the option to align at TDC words is active AND the previous event has seen already all needed data headers OR the prvious event was not aligned at a TDC word
+			if (_useTdcWord && _firstTdcSet && ((tNdataHeader > _NbCID-1) || (tErrorCode & __TDC_WORD) != __TDC_WORD)){
 				addEvent();
 			}
 
@@ -329,6 +335,7 @@ void Interpret::resetCounters()
 	_lastTriggerNumber = 0;
 	resetTriggerErrorCounterArray();
 	resetErrorCounterArray();
+	resetTdcCounterArray();
 	resetServiceRecordCounterArray();
 }
 
@@ -399,6 +406,17 @@ void Interpret::getErrorCounters(unsigned int*& rErrorCounter, unsigned int& rNe
 		rErrorCounter = _errorCounter;
 
 	rNerrorCounters = __N_ERROR_CODES;
+}
+
+void Interpret::getTdcCounters(unsigned int*& rTdcCounter, unsigned int& rNtdcCounters, bool copy)
+{
+	debug("getErrorCounters(...)");
+	if(copy)
+		std::copy(_tdcCounter, _tdcCounter+__N_TDC_VALUES, rTdcCounter);
+	else
+		rTdcCounter = _tdcCounter;
+
+	rNtdcCounters = __N_TDC_VALUES;
 }
 
 void Interpret::getTriggerErrorCounters(unsigned int*& rTriggerErrorCounter, unsigned int& rNTriggerErrorCounters, bool copy)
@@ -594,8 +612,6 @@ void Interpret::addEvent()
 		_nEmptyEvents++;
 	if(tTriggerWord == 0){
 		addEventErrorCode(__NO_TRG_WORD);
-		if(Basis::debugSet())
-			debug(std::string("addEvent: no trigger word"));
 	}
 	if(tTriggerWord > 1){
 		addTriggerErrorCode(__TRG_NUMBER_MORE_ONE);
@@ -627,7 +643,6 @@ void Interpret::addEvent()
 
 void Interpret::storeEventHits()
 {
-	debug("storeEventHits()");
 	for (unsigned int i = 0; i<tHitBufferIndex; ++i){
 		_hitBuffer[i].triggerNumber = tTriggerNumber; //not needed if trigger number is at the beginning
 		_hitBuffer[i].triggerStatus = tTriggerError;
@@ -688,8 +703,9 @@ bool Interpret::getTimefromDataHeader(const unsigned int& pSRAMWORD, unsigned in
 
 bool Interpret::isDataRecord(const unsigned int& pSRAMWORD)
 {
-	if (DATA_RECORD_MACRO(pSRAMWORD))
+	if (DATA_RECORD_MACRO(pSRAMWORD)){
 		return true;
+	}
 	return false;
 }
 
@@ -796,64 +812,66 @@ void Interpret::addTriggerErrorCode(const unsigned char& pErrorCode)
 	tTriggerError |= pErrorCode;
 }
 
-void Interpret::addEventErrorCode(const unsigned short int& pErrorCode)
+void Interpret::addEventErrorCode(const unsigned short& pErrorCode)
 {
-	if(Basis::debugSet()){
-		std::stringstream tDebug;
-		tDebug<<"addEventErrorCode: "<<(unsigned int) pErrorCode<<" ";
-		switch((unsigned int) pErrorCode){
-			case __NO_ERROR:{
-				tDebug<<"NO ERROR";
-				break;
+	if ((tErrorCode & pErrorCode) != pErrorCode){  //only add event error code if its not already set
+		if(Basis::debugSet()){
+			std::stringstream tDebug;
+			tDebug<<"addEventErrorCode: "<<(unsigned int) pErrorCode<<" ";
+			switch((unsigned int) pErrorCode){
+				case __NO_ERROR:{
+					tDebug<<"NO ERROR";
+					break;
+				}
+				case __HAS_SR:{
+					tDebug<<"EVENT HAS SERVICE RECORD";
+					break;
+				}
+				case __NO_TRG_WORD:{
+					tDebug<<"EVENT HAS NO TRIGGER NUMBER";
+					break;
+				}
+				case __NON_CONST_LVL1ID:{
+					tDebug<<"EVENT HAS NON CONST LVL1ID";
+					break;
+				}
+				case __EVENT_INCOMPLETE:{
+					tDebug<<"EVENT HAS TOO LESS DATA HEADER";
+					break;
+				}
+				case __UNKNOWN_WORD:{
+					tDebug<<"EVENT HAS UNKNOWN WORDS";
+					break;
+				}
+				case __BCID_JUMP:{
+					tDebug<<"EVENT HAS JUMPING BCID NUMBERS";
+					break;
+				}
+				case __TRG_ERROR:{
+					tDebug<<"EVENT HAS AN EXTERNAL TRIGGER ERROR";
+					break;
+				}
+				case __TRUNC_EVENT:{
+					tDebug<<"EVENT HAS TOO MANY HITS AND WAS TRUNCATED";
+					break;
+				}
+				case __TDC_WORD:{
+					tDebug<<"EVENT HAS TDC WORD";
+					break;
+				}
+				case __MANY_TDC_WORDS:{
+					tDebug<<"EVENT HAS MORE THAN ONE TDC WORD";
+					break;
+				}
+				case __TDC_OVERFLOW:{
+					tDebug<<"EVENT HAS TDC COUNTER OVERFLOW";
+					break;
+				}
 			}
-			case __HAS_SR:{
-				tDebug<<"EVENT HAS SERVICE RECORD";
-				break;
-			}
-			case __NO_TRG_WORD:{
-				tDebug<<"EVENT HAS NO TRIGGER NUMBER";
-				break;
-			}
-			case __NON_CONST_LVL1ID:{
-				tDebug<<"EVENT HAS NON CONST LVL1ID";
-				break;
-			}
-			case __EVENT_INCOMPLETE:{
-				tDebug<<"EVENT HAS TOO LESS DATA HEADER";
-				break;
-			}
-			case __UNKNOWN_WORD:{
-				tDebug<<"EVENT HAS UNKNOWN WORDS";
-				break;
-			}
-			case __BCID_JUMP:{
-				tDebug<<"EVENT HAS WRONG BCID NUMBERS";
-				break;
-			}
-			case __TRG_ERROR:{
-				tDebug<<"EVENT HAS AN EXTERNAL TRIGGER ERROR";
-				break;
-			}
-			case __TRUNC_EVENT:{
-				tDebug<<"EVENT HAS TOO MANY HITS AND WAS TRUNCATED";
-				break;
-			}
-			case __TDC_WORD:{
-				tDebug<<"EVENT HAS TDC WORD";
-				break;
-			}
-			case __MANY_TDC_WORDS:{
-				tDebug<<"EVENT HAS MORE THAN ONE TDC WORD";
-				break;
-			}
-			case __TDC_OVERFLOW:{
-				tDebug<<"EVENT HAS TDC COUNTER OVERFLOW";
-				break;
-			}
+			debug(tDebug.str()+"\t"+IntToStr(_nEvents));
 		}
-		debug(tDebug.str());
+		tErrorCode |= pErrorCode;
 	}
-	tErrorCode |= pErrorCode;
 }
 
 void Interpret::histogramTriggerErrorCode()
@@ -881,6 +899,12 @@ void Interpret::addServiceRecord(const unsigned char& pSRcode, const unsigned in
 	tServiceRecord |= pSRcode;
 	if(pSRcode<__NSERVICERECORDS)
 		_serviceRecordCounter[pSRcode]+=pSRcounter;
+}
+
+void Interpret::addTdcValue(const unsigned short& pTdcCode)
+{
+	if(pTdcCode<__N_TDC_VALUES)
+		_tdcCounter[pTdcCode]+=1;
 }
 
 void Interpret::allocateHitBufferArray()
@@ -940,10 +964,27 @@ void Interpret::allocateErrorCounterArray()
 	}
 }
 
+void Interpret::allocateTdcCounterArray()
+{
+	debug(std::string("allocateTdcCounterArray()"));
+	try{
+		_tdcCounter = new unsigned int[__N_TDC_VALUES];
+	}
+	catch(std::bad_alloc& exception){
+		error(std::string("allocateTdcCounterArray(): ")+std::string(exception.what()));
+	}
+}
+
 void Interpret::resetErrorCounterArray()
 {
 	for(unsigned int i = 0; i<__N_ERROR_CODES; ++i)
 		_errorCounter[i] = 0;
+}
+
+void Interpret::resetTdcCounterArray()
+{
+	for(unsigned int i = 0; i<__N_TDC_VALUES; ++i)
+		_tdcCounter[i] = 0;
 }
 
 void Interpret::deleteErrorCounterArray()
@@ -953,6 +994,15 @@ void Interpret::deleteErrorCounterArray()
 		return;
 	delete[] _errorCounter;
 	_errorCounter = 0;
+}
+
+void Interpret::deleteTdcCounterArray()
+{
+	debug(std::string("deleteTdcCounterArray()"));
+	if (_tdcCounter == 0)
+		return;
+	delete[] _tdcCounter;
+	_tdcCounter = 0;
 }
 
 void Interpret::allocateServiceRecordCounterArray()

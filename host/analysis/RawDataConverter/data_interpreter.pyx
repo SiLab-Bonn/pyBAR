@@ -58,6 +58,7 @@ cdef extern from "Interpret.h":
         void getServiceRecordsCounters(unsigned int*& rServiceRecordsCounter, unsigned int& rNserviceRecords, bool copy)  # returns the total service record counter array
         void getErrorCounters(unsigned int*& rErrorCounter, unsigned int& rNerrorCounters, bool copy)  # returns the total errors counter array
         void getTriggerErrorCounters(unsigned int*& rTriggerErrorCounter, unsigned int& rNTriggerErrorCounters, bool copy)  # returns the total trigger errors counter array
+        void getTdcCounters(unsigned int*& rTdcCounter, unsigned int& rNtdcCounters, bool copy)
         unsigned int getNarrayHits()  # returns the maximum index filled with hits in the hit array
         unsigned int getNmetaDataEvent()  # returns the maximum index filled with event data infos
         unsigned int getNmetaDataWord()
@@ -127,6 +128,10 @@ cdef class PyDataInterpreter:
         cdef unsigned int NtriggerErrorCodes = 0
         self.thisptr.getTriggerErrorCounters(<unsigned int*&> trigger_error_counters.data, <unsigned int&> NtriggerErrorCodes, <bool> True)
         return NtriggerErrorCodes
+    def get_tdc_counters(self, cnp.ndarray[cnp.uint32_t, ndim=1] tdc_counters):
+        cdef unsigned int NtdcCounters = 0
+        self.thisptr.getTdcCounters(<unsigned int*&> tdc_counters.data, <unsigned int&> NtdcCounters, <bool> True)
+        return NtdcCounters
     def get_n_array_hits(self):
         return <unsigned int> self.thisptr.getNarrayHits()
     def get_n_meta_data_word(self):
