@@ -23,7 +23,7 @@ scan_configuration = {
 
 
 class ExtTriggerScan(ScanBase):
-    scan_identifier="ext_trigger_scan"
+    scan_identifier = "ext_trigger_scan"
 
     def scan(self, trigger_mode=0, trigger_latency=232, trigger_delay=14, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=10000, enable_hitbus=False, **kwargs):
         '''Scan loop
@@ -151,7 +151,7 @@ class ExtTriggerScan(ScanBase):
                         wait_for_first_trigger = False
 
             self.readout_utils.configure_command_fsm(enable_ext_trigger=False)
-            self.readout_utils.configure_trigger_fsm(mode=0)
+            self.readout_utils.configure_trigger_fsm(trigger_mode=0)
             logging.info('Total amount of triggers collected: %d', self.readout_utils.get_trigger_number())
             self.readout.stop()
             raw_data_file.append(self.readout.data)
@@ -173,7 +173,7 @@ class ExtTriggerScan(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = ExtTriggerScan(**configuration.device_configuration)
+    scan = ExtTriggerScan(**configuration.scc99_configuration)
     scan.start(use_thread=True, **scan_configuration)
     scan.stop()
     scan.analyze()
