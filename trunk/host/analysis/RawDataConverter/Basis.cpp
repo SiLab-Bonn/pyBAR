@@ -27,15 +27,33 @@ void Basis::setErrorOutput(bool pToggle)
 }
 void Basis::setWarningOutput(bool pToggle)
 {
-	_warning = pToggle;
+	if (pToggle){
+			_warning = true;
+			_error = true;
+	}
+	else
+		_warning = false;
 }
 void Basis::setInfoOutput(bool pToggle)
 {
-	_info = pToggle;
+	if (pToggle){
+			_info = true;
+			_warning = true;
+			_error = true;
+	}
+	else
+		_info = false;
 }
 void Basis::setDebugOutput(bool pToggle)
 {
-	_debug = pToggle;
+	if (pToggle){
+		_debug = true;
+		_info = true;
+		_warning = true;
+		_error = true;
+	}
+	else
+		_debug = false;
 }
 
 void Basis::debug(std::string pText, int pLine)
