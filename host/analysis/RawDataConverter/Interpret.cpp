@@ -255,12 +255,12 @@ bool Interpret::setMetaData(MetaInfo* &rMetaInfo, const unsigned int& tLength)
 	//sanity check
 	for(unsigned int i = 0; i < tLength-1; ++i){
 		if(_metaInfo[i].startIndex + _metaInfo[i].length != _metaInfo[i].stopIndex)
-			throw std::out_of_range("meta word index out of range");
+			throw std::out_of_range("Meta word index out of range.");
 		if(_metaInfo[i].stopIndex != _metaInfo[i+1].startIndex)
-			throw std::out_of_range("meta word index out of range");
+			throw std::out_of_range("Meta word index out of range.");
 	}
 	if(_metaInfo[tLength-1].startIndex + _metaInfo[tLength-1].length != _metaInfo[tLength-1].stopIndex)
-		throw std::out_of_range("meta word index out of range");
+		throw std::out_of_range("Meta word index out of range.");
 
 	_metaEventIndexLength = tLength;
 	_metaDataSet = true;
@@ -280,12 +280,12 @@ bool Interpret::setMetaDataV2(MetaInfoV2* &rMetaInfo, const unsigned int& tLengt
 	//sanity check
 	for(unsigned int i = 0; i < tLength-1; ++i){
 		if(_metaInfoV2[i].startIndex + _metaInfoV2[i].length != _metaInfoV2[i].stopIndex)
-			throw std::out_of_range("meta word index out of range");
+			throw std::out_of_range("Meta word index out of range.");
 		if(_metaInfoV2[i].stopIndex != _metaInfoV2[i+1].startIndex)
-			throw std::out_of_range("meta word index out of range");
+			throw std::out_of_range("Meta word index out of range.");
 	}
 	if(_metaInfoV2[tLength-1].startIndex + _metaInfoV2[tLength-1].length != _metaInfoV2[tLength-1].stopIndex)
-		throw std::out_of_range("meta word index out of range");
+		throw std::out_of_range("Meta word index out of range.");
 
 	_metaEventIndexLength = tLength;
 	_metaDataSet = true;
@@ -591,13 +591,13 @@ void Interpret::storeHit(HitInfo& rHit)
 		}
 		else{
 			error("storeHit: output hit array not set");
-			throw std::runtime_error("output hit array not set");
+			throw std::runtime_error("Output hit array not set.");
 		}
 	}
 	else{
 		if(Basis::errorSet())
 			error("storeHit: _hitIndex = "+IntToStr(_hitIndex), __LINE__);
-		throw std::out_of_range("hit index out of range");
+		throw std::out_of_range("Hit index out of range.");
 	}
 }
 
