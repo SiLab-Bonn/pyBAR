@@ -15,16 +15,21 @@ public:
   Histogram(void);
   ~Histogram(void);
 
+  //get histograms
   void getOccupancy(unsigned int& rNparameterValues, unsigned int*& rOccupancy, bool copy = true);  //returns the occupancy histogram for all hits
   void getTotHist(unsigned int*& rTotHist, bool copy = true);           //returns the tot histogram for all hits
   void getTdcHist(unsigned int*& rTdcHist, bool copy = true);           //returns the tdc histogram for all hits
   void getRelBcidHist(unsigned int*& rRelBcidHist, bool copy = true);   //returns the relative BCID histogram for all hits
+
+  //set external histograms to be filled
+  void setTdcPixelHist(unsigned short*& rTdcPixelHist); //sets the pixel tdc histogram
 
   //options set/get
   void createOccupancyHist(bool CreateOccHist = true);
   void createRelBCIDHist(bool CreateRelBCIDHist = true);
   void createTotHist(bool CreateTotHist = true);
   void createTdcHist(bool CreateTdcHist = true);
+  void createTdcPixelHist(bool CreateTdcPixelHist = true);
   void setMaxTot(const unsigned int& rMaxTot);
 
   void addHits(HitInfo*& rHitInfo, const unsigned int& rNhits);
@@ -42,6 +47,7 @@ public:
   void resetOccupancyArray();
   void resetTotArray();
   void resetTdcArray();
+  void resetTdcPixelArray();
   void resetRelBcidArray();
 
   void reset();  // resets the histograms and keeps the settings
@@ -63,6 +69,7 @@ private:
   unsigned int* _occupancy;       //2d hit histogram for each parameter (in total 3d, linearly sorted via col, row, parameter)
   unsigned int* _tot;             //tot histogram
   unsigned int* _tdc;             //tdc histogram
+  unsigned short* _tdcPixel;      //3d pixel tdc histogram  (in total 3d, linearly sorted via col, row, tdc value)
   unsigned int* _relBcid;         //realative BCID histogram
 
   unsigned int getScanParameter(unsigned int& rEventNumber);  //returns the event parameter from ParInfo for the given event number
@@ -85,6 +92,7 @@ private:
   bool _createRelBCIDhist;
   bool _createTotHist;
   bool _createTdcHist;
+  bool _createTdcPixelHist;
   unsigned int _maxTot;               //maximum ToT value (inclusive) considered to be a hit
   
   ParInfo* _parInfo;

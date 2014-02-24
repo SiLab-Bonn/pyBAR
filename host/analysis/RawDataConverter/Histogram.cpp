@@ -30,6 +30,7 @@ void Histogram::setStandardSettings()
 	_relBcid = 0;
 	_tot = 0;
 	_tdc = 0;
+	_tdcPixel = 0;
 	_NparameterValues = 1;
 	_minParameterValue = 0;
 	_maxParameterValue = 0;
@@ -37,6 +38,7 @@ void Histogram::setStandardSettings()
 	_createRelBCIDhist = false;
 	_createTotHist = false;
 	_createTdcHist = false;
+	_createTdcPixelHist = false;
 	_maxTot = 13;
 }
 
@@ -66,6 +68,11 @@ void Histogram::createTdcHist(bool CreateTdcHist)
 	resetTdcArray();
 }
 
+void Histogram::createTdcPixelHist(bool CreateTdcPixelHist)
+{
+	_createTdcPixelHist = CreateTdcPixelHist;
+}
+
 void Histogram::setMaxTot(const unsigned int& rMaxTot)
 {
 	_maxTot = rMaxTot;
@@ -85,7 +92,7 @@ void Histogram::addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
 		if(tTot > 15)
 			throw std::out_of_range("tot index out of range");
 		unsigned int tTdc = rHitInfo[i].TDC;
-		if(tTdc > 4095)
+		if(tTdc > __N_TDC_VALUES - 1)
 			throw std::out_of_range("TDC counter " + IntToStr(tTdc) + " index out of range");
 		unsigned int tRelBcid = rHitInfo[i].relativeBCID;
 		if(tRelBcid > 15)
@@ -107,8 +114,11 @@ void Histogram::addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
 		if(_createTotHist)
 			if(tTot <= _maxTot) //not sure if cut on ToT histogram is unwanted here
 				_tot[tTot] += 1;
-		if(_createTdcHist)
-			_tdc[tTdc] += 1;
+		if(_createTdcPixelHist)
+			if (_tdcPixel != 0)
+				_tdcPixel[(long)tColumnIndex + (long)tRowIndex * (long)RAW_DATA_MAX_COLUMN + (long)tTdc * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] += 1;
+			else
+				throw std::runtime_error("Output TDC pixel array array not set.");
 	}
 	//std::cout<<"addHits done"<<std::endl;
 }
@@ -213,6 +223,19 @@ void Histogram::resetOccupancyArray()
   }
 }
 
+void Histogram::resetTdcPixelArray()
+{
+  info("resetTdcPixelArray()");
+  if (_tdcPixel != 0){
+	  for (unsigned int i = 0; i < RAW_DATA_MAX_COLUMN; i++)
+		for (unsigned int j = 0; j < RAW_DATA_MAX_ROW; j++)
+		  for(unsigned int k = 0; k < __N_TDC_VALUES;k++)
+			  _tdcPixel[(long)i + (long)j * (long)RAW_DATA_MAX_COLUMN + (long)k * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] = 0;
+  }
+  else
+	  throw std::runtime_error("Output TDC pixel array array not set.");
+}
+
 void Histogram::allocateTotArray()
 {
   debug("allocateTotArray()");
@@ -230,7 +253,7 @@ void Histogram::allocateTdcArray()
   debug("allocateTdcArray()");
   deleteTdcArray();
   try{
-    _tdc = new unsigned int[4096];
+    _tdc = new unsigned int[__N_TDC_VALUES];
   }
   catch(std::bad_alloc& exception){
     error(std::string("allocateTotArray: ")+std::string(exception.what()));
@@ -250,7 +273,7 @@ void Histogram::resetTdcArray()
 {
   info("resetTdcArray()");
   if (_tdc != 0){
-	  for (unsigned int i = 0; i < 4096; i++)
+	  for (unsigned int i = 0; i < __N_TDC_VALUES; i++)
 		_tdc[(long)i] = 0;
   }
 }
@@ -367,9 +390,15 @@ void Histogram::getTdcHist(unsigned int*& rTdcHist, bool copy)
 {
   debug("getTdcHist(...)");
   if(copy)
- 	  std::copy(_tdc, _tdc+4096, rTdcHist);
+ 	  std::copy(_tdc, _tdc+__N_TDC_VALUES, rTdcHist);
   else
-	  rTdcHist = _tot;
+	  rTdcHist = _tdc;
+}
+
+void Histogram::setTdcPixelHist(unsigned short*& rTdcPixelHist)
+{
+	info("setTdcPixelHist(...)");
+	_tdcPixel = rTdcPixelHist;
 }
 
 void Histogram::getRelBcidHist(unsigned int*& rRelBcidHist, bool copy)
