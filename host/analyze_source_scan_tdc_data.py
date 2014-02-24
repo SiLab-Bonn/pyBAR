@@ -1,4 +1,4 @@
-''' This script does the full analysis of the tdc values taken during a source scan.
+''' This script does the full analysis of the TDC values taken during a source scan.
 Several steps are done automatically:
 Step 1 Tnterpret the raw data:
     This step interprets the raw data from the FE, creates and plots distributions for each data file seperately.
@@ -7,12 +7,8 @@ Step 2 Analyze selected hits:
     This step just takes events with usable TDC information and stores the corresponding hits.
 Step 3 Takes the hits and the calibration and creates a TDC histogram for all used pixel.
 '''
-import numpy as np
-import tables as tb
 import os.path
-from matplotlib.backends.backend_pdf import PdfPages
 from analysis import analysis
-from analysis.plotting import plotting
 from analysis import analysis_utils
 from analysis.analyze_raw_data import AnalyzeRawData
 import logging
@@ -29,8 +25,7 @@ analysis_configuration = {
     "vcal_calibration": 55.,   # calibration electrons/PlsrDAC
     "interpreter_plots": True,
     "interpreter_warnings": False,
-    "overwrite_output_files": False,
-    "plot_tdc_histograms": True
+    "overwrite_output_files": False
 }
 
 
@@ -70,38 +65,12 @@ def analyse_selected_hits(input_files_hits, output_files_hits, output_files_hits
 
 def analyze_tdc(input_files_hits, output_file, max_chunk_size=10000000, output_file_pdf=None):
     logging.info('Analyze the TDC histograms of %d different files' % len(input_files_hits))
-    with tb.openFile(output_file + '_histograms.h5', mode="w") as output_file_h5:
-        chunk_size = max_chunk_size
-        for input_files_hit in input_files_hits:
-            with tb.openFile(input_files_hit, mode="r+") as in_hit_file_h5:
-                output_pdf = PdfPages(output_file + '_histograms.pdf')
-                logging.info('Calculate TDC histogram from hits in file %s' % input_files_hit)
-                analysis_utils.index_event_number(in_hit_file_h5.root.Hits)  # create index to efficiently work on data based on event numbers
-                meta_data_array = in_hit_file_h5.root.meta_data[:]  # get the meta data array be able to select hits per scan parameter
-                scan_parameter_values = analysis_utils.get_unique_scan_parameter_combinations(meta_data_array, selected_columns_only=True)  # get the PlsrDAC/col/row values
-                event_numbers = analysis_utils.get_unique_scan_parameter_combinations(meta_data_array)['event_number']  # get the event numbers in meta_data where the scan parameters have different settings
-                parameter_ranges = np.column_stack((scan_parameter_values, analysis_utils.get_ranges_from_array(event_numbers)))  # list with entries [scan_parameter_value, start_event_number, stop_event_number]
-                analyze_data = AnalyzeRawData()
-                analyze_data.create_tdc_hist = True
-                analyze_data.histograming.set_no_scan_parameter()  # one has to tell the histogrammer the # of scan parameters for correct occupancy hist allocation
-                start_index = 0
-                for scan_parameter_value, start_event_number, stop_event_number in parameter_ranges:  # loop over the different PlsrDAC/col/row settings
-                    analyze_data.reset()  # resets the data of the last analysis
-                    column = scan_parameter_value[0]
-                    row = scan_parameter_value[1]
-                    logging.info("Analyze TDC words for pixel " + str(column) + "/" + str(row))
-                    tdc_hist = np.zeros(4096, dtype=np.uint32)
-                    readout_hit_len = 0  # variable to calculate a optimal chunk size value from the number of hits for speed up
-                    for hits, start_index in analysis_utils.data_aligned_at_events(in_hit_file_h5.root.Hits, start_event_number=start_event_number, stop_event_number=stop_event_number, start=start_index, chunk_size=chunk_size):  # loop over hits for one PlsrDAC setting in chunks
-                        analyze_data.analyze_hits(hits)  # analyze the selected hits in chunks
-                        readout_hit_len += hits.shape[0]
-                    chunk_size = int(1.5 * readout_hit_len) if int(1.05 * readout_hit_len) < max_chunk_size else max_chunk_size  # to increase the readout speed, estimated the number of hits for one read instruction
-                    analyze_data.histograming.get_tdc_hist(tdc_hist)
-                    if np.sum(tdc_hist) != readout_hit_len:
-                        logging.warning('The TDC histogram does not have the correct number of hits, analysis has to be checked')
-                    if analysis_configuration['plot_tdc_histograms']:
-                        plotting.plot_tdc(tdc_hist, title="TDC histogram for pixel " + str(column) + "/" + str(row) + " (" + str(np.sum(tdc_hist)) + " entrie(s))", filename=output_pdf)
-                output_pdf.close()
+    for input_files_hit in input_files_hits:
+        with AnalyzeRawData(raw_data_file=None, analyzed_data_file=input_files_hit) as analyze_data:
+            analyze_data.create_tdc_hist = True
+            analyze_data.create_tdc_pixel_hist = True
+            analyze_data.analyze_hit_table(analyzed_data_out_file=output_file)
+            analyze_data.plot_histograms(scan_data_filename=output_file[:-3], analyzed_data_file=output_file)
 
 
 if __name__ == "__main__":
@@ -118,4 +87,4 @@ if __name__ == "__main__":
     if 2 in analysis_configuration['analysis_steps']:
         analyse_selected_hits(input_files_hits=hit_files, output_files_hits=hit_cut_files, output_files_hits_analyzed=hit_analyzed_files, scan_data_filenames=scan_base_names)
     if 3 in analysis_configuration['analysis_steps']:
-        analyze_tdc(input_files_hits=hit_cut_files, output_file=scan_base_names[0], output_file_pdf=None)
+        analyze_tdc(input_files_hits=hit_cut_files, output_file=scan_base_names[0] + '_histograms.h5', output_file_pdf=None)
