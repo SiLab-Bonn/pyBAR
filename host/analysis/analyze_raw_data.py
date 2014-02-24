@@ -138,6 +138,7 @@ class AnalyzeRawData(object):
         self.create_source_scan_hist = False
         self.create_tot_hist = True
         self.create_tdc_hist = False
+        self.create_tdc_pixel_hist = False
         self.create_rel_bcid_hist = True
         self.create_trigger_error_hist = False
         self.create_error_hist = True
@@ -211,6 +212,19 @@ class AnalyzeRawData(object):
         self._create_tdc_hist = value
         self.histograming.create_tdc_hist(value)
 
+    @property
+    def create_tdc_pixel_hist(self):
+        return self._create_tdc_pixel_hist
+
+    @create_tdc_pixel_hist.setter
+    def create_tdc_pixel_hist(self, value):
+        self._create_tdc_pixel_hist = value
+        self.histograming.create_tdc_pixel_hist(value)
+        if value:
+            self.tdc_pixel_hist = np.zeros(80 * 336 * 4096, dtype=np.uint16)
+            self.histograming.set_tdc_pixel_hist(self.tdc_pixel_hist)
+        else:
+            self.tdc_pixel_hist = None
     @property
     def create_rel_bcid_hist(self):
         return self._create_rel_bcid_hist
@@ -559,6 +573,11 @@ class AnalyzeRawData(object):
             if (self._analyzed_data_file != None):
                 tdc_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistTdc', title='Tdc Histogram', atom=tb.Atom.from_dtype(self.tdc_hist.dtype), shape=self.tdc_hist.shape, filters=self._filter_table)
                 tdc_hist_table[:] = self.tdc_hist
+        if (self._create_tdc_pixel_hist):
+            if (self._analyzed_data_file != None):
+                tdc_pixel_hist_array = np.swapaxes(np.reshape(a=self.tdc_pixel_hist.view(), newshape=(80, 336, 4096), order='F'), 0, 1)  # make linear array to 3d array (col,row,parameter)
+                tdc_pixel_hist_out = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistTdcPixel', title='Tdc Pixel Histogram', atom=tb.Atom.from_dtype(tdc_pixel_hist_array.dtype), shape=tdc_pixel_hist_array.shape, filters=self._filter_table)
+                tdc_pixel_hist_out[:] = tdc_pixel_hist_array
         if (self._create_rel_bcid_hist):
             self.rel_bcid_hist = np.zeros(16, dtype=np.uint32)
             self.histograming.get_rel_bcid_hist(self.rel_bcid_hist)
@@ -622,9 +641,6 @@ class AnalyzeRawData(object):
 
     # @profile
     def analyze_hit_table(self, analyzed_data_file=None, analyzed_data_out_file=None):
-        cluster_hits = np.empty((2 * self._chunk_size,), dtype=dtype_from_descr(data_struct.ClusterHitInfoTable))
-        cluster = np.empty((2 * self._chunk_size,), dtype=dtype_from_descr(data_struct.ClusterInfoTable))
-
         in_file_h5 = None
 
         # set output file if an output file name is given, otherwise check if an output file is already opened
@@ -649,9 +665,11 @@ class AnalyzeRawData(object):
             in_file_h5 = tb.openFile(self._analyzed_data_file, mode="r")
 
         if(self._create_cluster_table):
+            cluster = np.empty((2 * self._chunk_size,), dtype=dtype_from_descr(data_struct.ClusterInfoTable))
             cluster_table = self.out_file_h5.createTable(self.out_file_h5.root, name='Cluster', description=data_struct.ClusterInfoTable, title='cluster_hit_data', filters=self._filter_table, expectedrows=self._chunk_size)
             self.clusterizer.set_cluster_info_array(cluster)
         if(self._create_cluster_hit_table):
+            cluster_hits = np.empty((2 * self._chunk_size,), dtype=dtype_from_descr(data_struct.ClusterHitInfoTable))
             cluster_hit_table = self.out_file_h5.createTable(self.out_file_h5.root, name='ClusterHits', description=data_struct.ClusterHitInfoTable, title='cluster_hit_data', filters=self._filter_table, expectedrows=self._chunk_size)
             self.clusterizer.set_cluster_hit_info_array(cluster_hits)
 
