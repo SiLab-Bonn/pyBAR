@@ -30,13 +30,15 @@ cdef extern from "Histogram.h":
         void createOccupancyHist(bool CreateOccHist)
         void createRelBCIDHist(bool CreateRelBCIDHist)
         void createTotHist(bool CreateTotHist)
-        void createTdcHist(bool CreateTdcHist)
+        void createTdcHist(bool CreateTdcPixelHist)
+        void createTdcPixelHist(bool CreateTdcPixelHist)
         void setMaxTot(const unsigned int& rMaxTot)
 
         void getOccupancy(unsigned int& rNparameterValues, unsigned int*& rOccupancy, bool copy)  # returns the occupancy histogram for all hits
         void getTotHist(unsigned int*& rTotHist, bool copy)  # returns the tot histogram for all hits
-        void getTdcHist(unsigned int*& rTdcHist, bool copy)  # returns the tdc histogram for all hits
+        void getTdcHist(unsigned int*& rTdcHist, bool copy)
         void getRelBcidHist(unsigned int*& rRelBcidHist, bool copy)  # returns the relative BCID histogram for all hits
+        void setTdcPixelHist(unsigned short*& rTdcPixelHist)  # sets the tdc pixel histogram for all hits
 
         void addHits(HitInfo*& rHitInfo, const unsigned int& rNhits) except +
         void addClusterSeedHits(ClusterInfo*& rClusterInfo, const unsigned int& rNcluster) except +
@@ -77,6 +79,8 @@ cdef class PyDataHistograming:
         self.thisptr.createTotHist(<bool> toggle)
     def create_tdc_hist(self,toggle):
         self.thisptr.createTdcHist(<bool> toggle)
+    def create_tdc_pixel_hist(self,toggle):
+        self.thisptr.createTdcPixelHist(<bool> toggle)
     def set_max_tot(self, max_tot):
         self.thisptr.setMaxTot(<const unsigned int&> max_tot)
 
@@ -88,6 +92,8 @@ cdef class PyDataHistograming:
         self.thisptr.getTotHist(<unsigned int*&> tot_hist.data, <bool> copy)
     def get_tdc_hist(self, cnp.ndarray[cnp.uint32_t, ndim=1] tdc_hist, copy = True):
         self.thisptr.getTdcHist(<unsigned int*&> tdc_hist.data, <bool> copy)
+    def set_tdc_pixel_hist(self, cnp.ndarray[cnp.uint16_t, ndim=1] tdc_pixel_hist):
+        self.thisptr.setTdcPixelHist(<unsigned short*&> tdc_pixel_hist.data)
     def get_rel_bcid_hist(self, cnp.ndarray[cnp.uint32_t, ndim=1] rel_bcid_hist, copy = True):
         self.thisptr.getRelBcidHist(<unsigned int*&> rel_bcid_hist.data, <bool> copy)
 
