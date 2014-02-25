@@ -14,8 +14,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(leve
 
 scan_configuration = {
     "GPIB_prim_address": 1,
-    "n_pulses": 10000,
-    "reject_small_tot": False
+    "n_pulses": 10000
 }
 
 
@@ -39,10 +38,10 @@ class TdcTest(ScanBase):
         self.pulser.write('BURS:NCYC ' + str(n_pulses))
         self.pulser.write('*TRG')
 
-    def scan(self, GPIB_prim_address=1, n_pulses=100, reject_small_tot=False, **kwargs):
+    def scan(self, GPIB_prim_address=1, n_pulses=100, **kwargs):
         self.init_pulser(GPIB_prim_address)
 
-        self.readout_utils.configure_tdc_fsm(enable_tdc=True, reject_small_tot=reject_small_tot, enable_tdc_arming=False)
+        self.readout_utils.configure_tdc_fsm(enable_tdc=True, enable_tdc_arming=False)
 
         x = []
         y = []
@@ -70,6 +69,6 @@ class TdcTest(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = TdcTest(**configuration.scc50_configuration)
+    scan = TdcTest(**configuration.device_configuration)
     scan.start(**scan_configuration)
     scan.stop()
