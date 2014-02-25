@@ -96,7 +96,7 @@ class ExtTriggerGdacScan(ScanBase):
         else:
             imon_mask = 1
         self.register.set_pixel_register_value(pixel_reg, imon_mask)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
         # disable C_inj mask
         pixel_reg = "C_High"
         self.register.set_pixel_register_value(pixel_reg, 0)

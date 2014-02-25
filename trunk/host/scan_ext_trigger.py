@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 
 scan_configuration = {
     "trigger_mode": 0,
-    "trigger_latency": 220,
+    "trigger_latency": 232,
     "trigger_delay": 14,
     "col_span": [1, 80],
     "row_span": [1, 336],
@@ -72,11 +72,10 @@ class ExtTriggerScan(ScanBase):
         if enable_hitbus:
             mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span, default=1, value=0)
             imon_mask = np.logical_or(mask, self.register.get_pixel_register_value(pixel_reg))
-            self.register.set_pixel_register_value(pixel_reg, imon_mask)
-            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
         else:
-            self.register.set_pixel_register_value(pixel_reg, 1)
-            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
+            imon_mask = 1
+        self.register.set_pixel_register_value(pixel_reg, imon_mask)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
         # disable C_inj mask
         pixel_reg = "C_High"
         self.register.set_pixel_register_value(pixel_reg, 0)
