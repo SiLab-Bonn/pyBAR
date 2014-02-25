@@ -170,8 +170,10 @@ class ExtTriggerScan(ScanBase):
             analyze_raw_data.create_cluster_size_hist = True
             analyze_raw_data.create_cluster_tot_hist = True
             analyze_raw_data.create_cluster_table = False
-            analyze_raw_data.create_tdc_counter_hist = True
-#             analyze_raw_data.interpreter.use_tdc_word(True)
+            if scan_configuration['enable_tdc']:
+                analyze_raw_data.create_tdc_counter_hist = True  # histogram all TDC words
+                analyze_raw_data.create_tdc_hist = True  # histogram the hit TDC information
+                analyze_raw_data.interpreter.use_tdc_word(True)  # align events at the TDC word
             analyze_raw_data.interpreter.set_warning_output(False)
             analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
             analyze_raw_data.interpreter.print_summary()
