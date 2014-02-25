@@ -114,6 +114,8 @@ void Histogram::addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
 		if(_createTotHist)
 			if(tTot <= _maxTot) //not sure if cut on ToT histogram is unwanted here
 				_tot[tTot] += 1;
+		if(_createTdcHist)
+			_tdc[tTdc] += 1;
 		if(_createTdcPixelHist)
 			if (_tdcPixel != 0)
 				_tdcPixel[(long)tColumnIndex + (long)tRowIndex * (long)RAW_DATA_MAX_COLUMN + (long)tTdc * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] += 1;
