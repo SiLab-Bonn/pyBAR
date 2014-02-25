@@ -12,7 +12,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(leve
 
 
 scan_configuration = {
-    "target_threshold": 50,
+    "target_threshold": 19,
     "gdac_tune_bits": range(7, -1, -1),
     "n_injections": 50,
     "abort_precision_occ": 2,
@@ -183,4 +183,5 @@ if __name__ == "__main__":
     scan = GdacTune(**configuration.device_configuration)
     scan.start(use_thread=False, **scan_configuration)
     scan.stop()
-    scan.register.save_configuration(configuration.device_configuration['configuration_file'])
+#     scan.register.save_configuration(configuration.device_configuration['configuration_file'])
+    scan.register.save_configuration('SCC_99_tuning_new')
