@@ -42,9 +42,9 @@ cdef extern from "Histogram.h":
 
         void addHits(HitInfo*& rHitInfo, const unsigned int& rNhits) except +
         void addClusterSeedHits(ClusterInfo*& rClusterInfo, const unsigned int& rNcluster) except +
-        void addScanParameter(const unsigned int& rNparInfoLength, ParInfo*& rParInfo) except +
+        void addScanParameter(ParInfo*& rParInfo, const unsigned int& rNparInfoLength) except +
         void setNoScanParameter()
-        void addMetaEventIndex(const unsigned int& rNmetaEventIndexLength, unsigned int*& rMetaEventIndex) except +
+        void addMetaEventIndex(unsigned int*& rMetaEventIndex, const unsigned int& rNmetaEventIndexLength) except +
 
         unsigned int getMinParameter()  # returns the minimum parameter from _parInfo
         unsigned int getMaxParameter()  # returns the maximum parameter from _parInfo
@@ -102,11 +102,11 @@ cdef class PyDataHistograming:
     def add_cluster_seed_hits(self, cnp.ndarray[numpy_cluster_info, ndim=1] cluster_info, Ncluster):
         self.thisptr.addClusterSeedHits(<ClusterInfo*&> cluster_info.data, <const unsigned int&> Ncluster)
     def add_scan_parameter(self, cnp.ndarray[numpy_par_info, ndim=1] parameter_info):
-        self.thisptr.addScanParameter(<const unsigned int&> parameter_info.shape[0], <ParInfo*&> parameter_info.data)
+        self.thisptr.addScanParameter(<ParInfo*&> parameter_info.data, <const unsigned int&> parameter_info.shape[0])
     def set_no_scan_parameter(self):
         self.thisptr.setNoScanParameter()
     def add_meta_event_index(self, cnp.ndarray[cnp.uint32_t, ndim=1] event_index, array_length):
-        self.thisptr.addMetaEventIndex(<unsigned int&> array_length, <unsigned int*&> event_index.data)
+        self.thisptr.addMetaEventIndex(<unsigned int*&> event_index.data, <unsigned int&> array_length)
 
     def get_min_parameter(self):
         return <unsigned int> self.thisptr.getMinParameter()

@@ -171,7 +171,7 @@ unsigned int Histogram::getParIndex(unsigned int& rScanParameter)
   return _parameterValues[rScanParameter];
 }
 
-void Histogram::addScanParameter(const unsigned int& rNparInfoLength, ParInfo*& rParInfo)
+void Histogram::addScanParameter(ParInfo*& rParInfo, const unsigned int& rNparInfoLength)
 {
   debug("addScanParameter");
   _nParInfoLength = rNparInfoLength;
@@ -185,7 +185,7 @@ void Histogram::addScanParameter(const unsigned int& rNparInfoLength, ParInfo*& 
   }
 }
 
-void Histogram::addMetaEventIndex(const unsigned int& rNmetaEventIndexLength, unsigned int*& rMetaEventIndex)
+void Histogram::addMetaEventIndex(unsigned int*& rMetaEventIndex, const unsigned int& rNmetaEventIndexLength)
 {
   debug("addMetaEventIndex()");
   _nMetaEventIndexLength = rNmetaEventIndexLength;
