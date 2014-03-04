@@ -34,9 +34,9 @@ public:
 
   void addHits(HitInfo*& rHitInfo, const unsigned int& rNhits);
   void addClusterSeedHits(ClusterInfo*& rClusterInfo, const unsigned int& rNcluster);
-  void addScanParameter(const unsigned int& rNparInfoLength, ParInfo*& rParInfo);
+  void addScanParameter(ParInfo*& rParInfo, const unsigned int& rNparInfoLength);
   void setNoScanParameter();
-  void addMetaEventIndex(const unsigned int& rNmetaEventIndexLength, unsigned int*& rMetaEventIndex);
+  void addMetaEventIndex(unsigned int*& rMetaEventIndex, const unsigned int& rNmetaEventIndexLength);
 
   void calculateThresholdScanArrays(double rMuArray[], double rSigmaArray[], const unsigned int& rMaxInjections); //takes the occupancy histograms for different parameters for the threshold arrays
 
