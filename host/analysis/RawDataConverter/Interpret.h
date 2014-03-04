@@ -24,7 +24,7 @@ public:
 
 	//set arrays to be filled
 	void setHitsArray(HitInfo*& rHitInfo, const unsigned int &rSize);   			  //set the hit array to be filled
-	void setMetaDataEventIndex(unsigned int*& rEventNumber, const unsigned int& rSize);  //set the meta event index array to be filled
+	void setMetaDataEventIndex(uint64_t*& rEventNumber, const unsigned int& rSize);  //set the meta event index array to be filled
 	void setMetaDataWordIndex(MetaWordInfoOut*& rWordNumber, const unsigned int& rSize);  //set the meta word index array to be filled
 
 	//array info get funnctions
@@ -56,7 +56,7 @@ public:
 	unsigned int getNhits(){return _nHits;};                 //returns the total numbers of hits found (global counter)
 	unsigned int getNwords();                                //returns the total numbers of words analyzed (global counter)
 	unsigned int getNunknownWords(){return _nUnknownWords;}; //returns the total numbers of unknown words found (global counter)
-	unsigned int getNevents(){return _nEvents;};             //returns the total numbers of events analyzed (global counter)
+	uint64_t getNevents(){return _nEvents;};             	 //returns the total numbers of events analyzed (global counter)
 	unsigned int getNemptyEvents(){return _nEmptyEvents;};   //returns the total numbers of empty events found (global counter)
 	unsigned int getNtriggers(){return _nTriggers;};         //returns the total numbers of trigger found (global counter)
 	unsigned int getNtriggerNotInc(){return _triggerErrorCounter[1];}; //returns the total numbers of not increasing trigger (error histogram)
@@ -75,7 +75,7 @@ private:
 	void addHit(const unsigned char& pRelBCID, const unsigned short int& pLVLID, const unsigned char& pColumn, const unsigned short int& pRow, const unsigned char& pTot, const unsigned short int& pBCID); //adds the hit to the event hits array _hitBuffer
 	void storeHit(HitInfo& rHit);	//stores the hit into the output hit array _hitInfo
 	void storeEventHits();          //adds the hits of the actual event to _hitInfo
-	void correlateMetaWordIndex(const unsigned int& pEventNumer, const unsigned int& pDataWordIndex);  //writes the event number for the meta data
+	void correlateMetaWordIndex(const uint64_t& pEventNumer, const unsigned int& pDataWordIndex);  //writes the event number for the meta data
 
 	//SRAM word check and interpreting methods
 	bool getTimefromDataHeader(const unsigned int& pSRAMWORD, unsigned int& pLVL1ID, unsigned int& pBCID);	      //returns true if the SRAMword is a data header and if it is sets the BCID and LVL1
@@ -155,7 +155,7 @@ private:
 
 	//counters/flags for the total raw data processing
 	unsigned int _nTriggers;					//total number of trigger words found
-	unsigned int _nEvents;						//total number of valid events counted
+	uint64_t _nEvents;							//total number of valid events counted
 	unsigned int _nMaxHitsPerEvent;				//number of the maximum hits per event
 	unsigned int _nEmptyEvents;				  	//number of events with no records
 	unsigned int _nIncompleteEvents;			//number of events with incomplete data structure (# data header != _NbCID)
@@ -176,7 +176,7 @@ private:
 	bool _metaDataSet;                        //true if meta data is available
 	unsigned int _lastMetaIndexNotSet;        //the last meta index that is not set
 	unsigned int _lastWordIndexSet;           //the last word index used for the event calculation
-	unsigned int* _metaEventIndex;            //pointer to the array that holds the event number for every read out (meta_data row), meta data infos out
+	uint64_t* _metaEventIndex;                //pointer to the array that holds the event number for every read out (meta_data row), meta data infos out
 	unsigned int _metaEventIndexLength;       //length of event number array
 	MetaWordInfoOut* _metaWordIndex;		  //pointer to the structure array that holds the start/stop word number for every event
 	unsigned int _metaWordIndexLength;		  //length of the word number array

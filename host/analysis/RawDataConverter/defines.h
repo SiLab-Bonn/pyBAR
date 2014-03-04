@@ -1,11 +1,13 @@
 #ifndef DEFINES_H
 #define DEFINES_H
 
+#include <stdint.h>  // for uint64_t event_number
+
 #pragma pack(1) //data struct in memory alignement
 
 //structure to store the hits
 typedef struct HitInfo{
-  unsigned int eventNumber;  //event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
+  uint64_t eventNumber;   //event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
   unsigned int triggerNumber; //external trigger number for read out system
   unsigned char relativeBCID; //relative BCID value (unsigned char: 0 to 255)
   unsigned short int LVLID;   //LVL1ID (unsigned short int: 0 to 65.535)
@@ -21,7 +23,7 @@ typedef struct HitInfo{
 
 //structure to store the hits with cluster info
 typedef struct ClusterHitInfo{
-  unsigned int eventNumber;   //event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
+  uint64_t eventNumber;   //event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
   unsigned int triggerNumber; //external trigger number for read out system
   unsigned char relativeBCID; //relative BCID value (unsigned char: 0 to 255)
   unsigned short int LVLID;   //LVL1ID (unsigned short int: 0 to 65.535)
@@ -41,7 +43,7 @@ typedef struct ClusterHitInfo{
 
 //structure to store the cluster
 typedef struct ClusterInfo{
-  unsigned int eventNumber;  //event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
+  uint64_t eventNumber;  //event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
   unsigned short ID;	  	  //the cluster id of the cluster
   unsigned short size; 		  //sum tot of all cluster hits
   unsigned short Tot; 		  //sum tot of all cluster hits
@@ -72,21 +74,21 @@ typedef struct MetaInfoV2{
 
 //structures for the output meta data
 typedef struct MetaInfoOut{
-  unsigned int eventIndex;    //event number of the read out
+  uint64_t eventIndex;    //event number of the read out
   double timeStamp;           //time stamp of the readout
   unsigned int errorCode;     //error code for the read out (0: no error)
 } MetaInfoOut;
 
 typedef struct MetaWordInfoOut{
-  unsigned int eventIndex;   //event number
+  uint64_t eventIndex;   //event number
   unsigned int startWordIdex;//start word index
   unsigned int stopWordIdex; //stop word index
 } MetaWordInfoOut;
 
-//structure to read the parameter information table
-typedef struct ParInfo{
-  unsigned int scanParameter;     //parameter setting
-} ParInfo;
+////structure to read the parameter information table
+//typedef struct ParInfo{
+//  unsigned int scanParameter;     //parameter setting
+//} ParInfo;
 
 //DUT and TLU defines
 #define __BCIDCOUNTERSIZE_FEI4A 256	  //BCID counter for FEI4A has 8 bit

@@ -18,6 +18,8 @@
 #include <new>
 #include <stdexcept>
 
+#include <stdint.h>  // for uint64_t event_number
+
 class Basis
 {
 public:
@@ -31,6 +33,7 @@ public:
 	double StrToDouble(std::string const& pValue);		//converts a std::string to a double
 	int StrToInt(std::string const& pValue);			//converts a std::string to a int
 	std::string IntToStr(unsigned int const& pValue);	//converts a int to a std::string
+	std::string LongIntToStr(uint64_t const& pValue);		//converts a int to a std::string
 	std::string DoubleToStr(double const& pValue);		//converts a double to a std::string
 	std::string IntToBin(unsigned int pValue);			//converts an unsigned int to a binary string
 	bool isInf(double pValue);							//checks if the value is infinite

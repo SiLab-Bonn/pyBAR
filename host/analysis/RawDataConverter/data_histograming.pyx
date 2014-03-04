@@ -9,6 +9,9 @@ from libcpp cimport bool  # to be able to use bool variables
 
 from data_struct cimport numpy_hit_info, numpy_meta_data, numpy_meta_data_v2, numpy_par_info, numpy_cluster_info
 
+cdef extern from "stdint.h":
+    ctypedef unsigned long long uint64_t
+
 cdef extern from "Basis.h":
     cdef cppclass Basis:
         Basis()
@@ -42,15 +45,15 @@ cdef extern from "Histogram.h":
 
         void addHits(HitInfo*& rHitInfo, const unsigned int& rNhits) except +
         void addClusterSeedHits(ClusterInfo*& rClusterInfo, const unsigned int& rNcluster) except +
-        void addScanParameter(ParInfo*& rParInfo, const unsigned int& rNparInfoLength) except +
+        void addScanParameter(unsigned int*& rParInfo, const unsigned int& rNparInfoLength) except +
         void setNoScanParameter()
-        void addMetaEventIndex(unsigned int*& rMetaEventIndex, const unsigned int& rNmetaEventIndexLength) except +
+        void addMetaEventIndex(uint64_t*& rMetaEventIndex, const unsigned int& rNmetaEventIndexLength) except +
 
         unsigned int getMinParameter()  # returns the minimum parameter from _parInfo
         unsigned int getMaxParameter()  # returns the maximum parameter from _parInfo
         unsigned int getNparameters()  # returns the parameter range from _parInfo
 
-        void calculateThresholdScanArrays(double rMuArray[], double rSigmaArray[], const unsigned int& rMaxInjections)  # takes the occupancy histograms for different parameters for the threshold arrays
+        void calculateThresholdScanArrays(double rMuArray[], double rSigmaArray[], const unsigned int& rMaxInjections, const unsigned int& min_parameter, const unsigned int& max_parameter)  # takes the occupancy histograms for different parameters for the threshold arrays
 
         void reset()
         void test()
@@ -101,22 +104,17 @@ cdef class PyDataHistograming:
         self.thisptr.addHits(<HitInfo*&> hit_info.data, <const unsigned int&> Nhits)
     def add_cluster_seed_hits(self, cnp.ndarray[numpy_cluster_info, ndim=1] cluster_info, Ncluster):
         self.thisptr.addClusterSeedHits(<ClusterInfo*&> cluster_info.data, <const unsigned int&> Ncluster)
-    def add_scan_parameter(self, cnp.ndarray[numpy_par_info, ndim=1] parameter_info):
-        self.thisptr.addScanParameter(<ParInfo*&> parameter_info.data, <const unsigned int&> parameter_info.shape[0])
+    def add_scan_parameter(self, cnp.ndarray[cnp.uint32_t, ndim=1] parameter_info):
+        self.thisptr.addScanParameter(<unsigned int*&> parameter_info.data, <const unsigned int&> parameter_info.shape[0])
     def set_no_scan_parameter(self):
         self.thisptr.setNoScanParameter()
-    def add_meta_event_index(self, cnp.ndarray[cnp.uint32_t, ndim=1] event_index, array_length):
-        self.thisptr.addMetaEventIndex(<unsigned int*&> event_index.data, <unsigned int&> array_length)
-
-    def get_min_parameter(self):
-        return <unsigned int> self.thisptr.getMinParameter()
-    def get_max_parameter(self):
-        return <unsigned int> self.thisptr.getMaxParameter()
+    def add_meta_event_index(self, cnp.ndarray[cnp.uint64_t, ndim=1] event_index, array_length):
+        self.thisptr.addMetaEventIndex(<uint64_t*&> event_index.data, <unsigned int&> array_length)
     def get_n_parameters(self):
         return <unsigned int> self.thisptr.getNparameters()
 
-    def calculate_threshold_scan_arrays(self, cnp.ndarray[cnp.float64_t, ndim=1] threshold, cnp.ndarray[cnp.float64_t, ndim=1] noise, n_injections):
-        self.thisptr.calculateThresholdScanArrays(<double*> threshold.data, <double*> noise.data, <const unsigned int&> n_injections)
+    def calculate_threshold_scan_arrays(self, cnp.ndarray[cnp.float64_t, ndim=1] threshold, cnp.ndarray[cnp.float64_t, ndim=1] noise, n_injections, min_parameter, max_parameter):
+        self.thisptr.calculateThresholdScanArrays(<double*> threshold.data, <double*> noise.data, <const unsigned int&> n_injections, <const unsigned int&> min_parameter, <const unsigned int&> max_parameter)
     def reset(self):
         self.thisptr.reset()
 

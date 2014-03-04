@@ -67,7 +67,7 @@ def generate_scan_configuration_description(scan_parameters):
 
 
 class HitInfoTable(tb.IsDescription):
-    event_number = tb.UInt32Col(pos=0)
+    event_number = tb.UInt64Col(pos=0)
     trigger_number = tb.UInt32Col(pos=1)
     relative_BCID = tb.UInt8Col(pos=2)
     LVL1ID = tb.UInt16Col(pos=3)
@@ -82,26 +82,26 @@ class HitInfoTable(tb.IsDescription):
 
 
 class MetaInfoEventTable(tb.IsDescription):
-    event_number = tb.UInt32Col(pos=0)
+    event_number = tb.UInt64Col(pos=0)
     time_stamp = tb.Float64Col(pos=1)
     error_code = tb.UInt32Col(pos=2)
 
 
 class MetaInfoEventTableV2(tb.IsDescription):
-    event_number = tb.UInt32Col(pos=0)
+    event_number = tb.UInt64Col(pos=0)
     timestamp_start = tb.Float64Col(pos=1)
     timestamp_stop = tb.Float64Col(pos=2)
     error_code = tb.UInt32Col(pos=3)
 
 
 class MetaInfoWordTable(tb.IsDescription):
-    event_number = tb.UInt32Col(pos=0)
+    event_number = tb.UInt64Col(pos=0)
     start_index = tb.UInt32Col(pos=1)
     stop_index = tb.UInt32Col(pos=2)
 
 
 class ClusterHitInfoTable(tb.IsDescription):
-    event_number = tb.UInt32Col(pos=0)
+    event_number = tb.UInt64Col(pos=0)
     trigger_number = tb.UInt32Col(pos=1)
     relative_BCID = tb.UInt8Col(pos=2)
     LVL1ID = tb.UInt16Col(pos=3)
@@ -120,7 +120,7 @@ class ClusterHitInfoTable(tb.IsDescription):
 
 
 class ClusterInfoTable(tb.IsDescription):
-    event_number = tb.UInt32Col(pos=0)
+    event_number = tb.UInt64Col(pos=0)
     id = tb.UInt16Col(pos=1)
     size = tb.UInt16Col(pos=2)
     tot = tb.UInt16Col(pos=3)

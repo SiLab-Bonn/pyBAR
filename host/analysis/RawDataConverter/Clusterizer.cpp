@@ -282,7 +282,7 @@ void Clusterizer::test()
 void Clusterizer::addHit(const unsigned int& pHitIndex)
 {
 	debug("addHit");
-	unsigned int tEvent = _hitInfo[pHitIndex].eventNumber;
+	uint64_t tEvent = _hitInfo[pHitIndex].eventNumber;
 	unsigned short tCol = _hitInfo[pHitIndex].column-1;
 	unsigned short tRow = _hitInfo[pHitIndex].row-1;
 	unsigned short tRelBcid = _hitInfo[pHitIndex].relativeBCID;
@@ -328,6 +328,7 @@ void Clusterizer::addHit(const unsigned int& pHitIndex)
 		_clusterHitInfo[pHitIndex].column = _hitInfo[pHitIndex].column;
 		_clusterHitInfo[pHitIndex].row = _hitInfo[pHitIndex].row;
 		_clusterHitInfo[pHitIndex].tot = _hitInfo[pHitIndex].tot;
+		_clusterHitInfo[pHitIndex].TDC = _hitInfo[pHitIndex].TDC;
 		_clusterHitInfo[pHitIndex].BCID = _hitInfo[pHitIndex].BCID;
 		_clusterHitInfo[pHitIndex].triggerStatus = _hitInfo[pHitIndex].triggerStatus;
 		_clusterHitInfo[pHitIndex].serviceRecord = _hitInfo[pHitIndex].serviceRecord;
