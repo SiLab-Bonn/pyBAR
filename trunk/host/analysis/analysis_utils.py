@@ -8,7 +8,6 @@ import os
 import itertools
 import time
 import collections
-import pandas as pd
 import numpy as np
 import glob
 import tables as tb
@@ -16,7 +15,6 @@ import numexpr as ne
 from plotting import plotting
 from scipy.interpolate import interp1d
 from operator import itemgetter
-from scipy.sparse import coo_matrix
 from scipy.interpolate import splrep, splev
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
@@ -25,7 +23,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(leve
 def get_data_statistics(interpreted_files):
     '''Quick and dirty function to give as redmine compatible iverview table
     '''
-    print '| *File Name* | *File Size* | *Times Stamp* | *Events* | *Bad Events* | *Measurement time* | *# SR* | *Hits* |'# Mean Tot | Mean rel. BCID'
+    print '| *File Name* | *File Size* | *Times Stamp* | *Events* | *Bad Events* | *Measurement time* | *# SR* | *Hits* |'  # Mean Tot | Mean rel. BCID'
     for interpreted_file in interpreted_files:
         with tb.openFile(interpreted_file, mode="r") as in_file_h5:  # open the actual hit file
             event_errors = in_file_h5.root.HistErrorCounter[:]
@@ -72,10 +70,6 @@ def get_profile_histogram(x, y, n_bins=100):
     return bin_centers, mean, std_mean
 
 
-def get_scan_parameter_from_nodes(parent_node, parameter):
-    ''' Takes the hdf5 parent node and searches for child notes that have parameter in the name.'''
-
-
 def get_normalization(hit_files, parameter, reference='event', sort=False, plot=False):
     ''' Takes different hit files (hit_files), extracts the number of events or the scan time (reference) per scan parameter (parameter)
     and returns an array with a normalization factor. This normalization factor has the length of the number of different parameters.
@@ -93,7 +87,7 @@ def get_normalization(hit_files, parameter, reference='event', sort=False, plot=
     numpy.ndarray
     '''
 
-    scan_parameter_values_files_dict = get_parameter_value_from_files(hit_files, parameter, sort=sort)
+    scan_parameter_values_files_dict = get_parameter_values_from_files(hit_files, parameter, sort=sort)
     normalization = []
     for one_file in scan_parameter_values_files_dict:
         with tb.openFile(one_file, mode="r") as in_hit_file_h5:  # open the actual hit file
@@ -214,7 +208,7 @@ def get_parameter_value_from_file_names(files, parameter, unique=True, sort=True
 
     """
 #     unique=False
-    logging.info('Get the ' + parameter + ' values from the file names of ' + str(len(files)) + ' files')
+    logging.info('Get the parameter: ' + str(parameter) + ' values from the file names of ' + str(len(files)) + ' files')
     files_dict = collections.OrderedDict()
     for one_file in files:
         parameter_value = re.findall(parameter + r'_(\d+)', one_file)
@@ -246,7 +240,7 @@ def get_data_file_names_from_scan_base(scan_base, filter_file_words=None):
     """
     raw_data_files = []
     for scan_name in scan_base:
-        data_files = glob.glob(scan_name + '_*.h5')
+        data_files = glob.glob(scan_name + '*.h5')
         if not data_files:
             raise RuntimeError('Cannot find any files for ' + scan_name)
         if filter_file_words is not None:
@@ -273,10 +267,10 @@ def get_parameter_scan_bases_from_scan_base(scan_base):
     return [scan_bases[:-3] for scan_bases in get_data_file_names_from_scan_base(scan_base, filter_file_words=['interpreted', 'cut_', 'cluster_sizes', 'histograms'])]
 
 
-def get_parameter_value_from_files(files, parameter, sort=True):
+def get_parameter_values_from_files(files, parameter, sort=True):
     '''
-    Takes a list of files, searches for the parameter name in the file name and in the file and returns a ordered dict with the parameter values
-    in the first dimension and the corresponding file name in the second.
+    Takes a list of files, searches for the parameter name in the file name and in the file and returns a ordered dict with the file name in
+    the first dimension and the corresponding parameter values in the second.
     If a scan parameter appears in the file name and in the file the first parameter setting has to be in the file name, otherwise a warning is shown.
     The file names can be sorted by the first parameter value of each file.
 
@@ -293,23 +287,31 @@ def get_parameter_value_from_files(files, parameter, sort=True):
     '''
     logging.info('Get the ' + parameter + ' values from ' + str(len(files)) + ' files')
     files_dict = collections.OrderedDict()
-    parameter_values_from_file_names_dict = get_parameter_value_from_file_names(files, parameter, sort=sort)
-    for file_name, parameter_value_from_file_name in parameter_values_from_file_names_dict.iteritems():
-        with tb.openFile(file_name, mode="r") as in_file_h5:  # open the actual hit file
+    parameter_values_from_file_names_dict = get_parameter_value_from_file_names(files, parameter, sort=sort)  # get the parameter from the file name
+    for file_name in files:
+        with tb.openFile(file_name, mode="r") as in_file_h5:  # open the actual file
+            scan_parameter_values = None
             try:
-                scan_parameters = get_scan_parameter(in_file_h5.root.meta_data[:])  # get the scan parameters from the meta data
-                if scan_parameters:
-                    scan_parameter_values = scan_parameters[parameter].tolist()  # scan parameter settings used
-                else:
-                    scan_parameter_values = None
-            except tb.NoSuchNodeError:  # no meta data array and therefore no scan parameter used
-                scan_parameter_values = None
-            if scan_parameter_values is None:
-                scan_parameter_values = [parameter_value_from_file_name]
-            elif parameter_value_from_file_name != scan_parameter_values[0]:
-                logging.warning(parameter + ' = ' + str(parameter_value_from_file_name) + ' info in file name differs from the ' + parameter + ' info = ' + str(scan_parameter_values) + ' in the meta data')
+                scan_parameters = in_file_h5.root.scan_parameters[:]  # get the scan parameters from the scan parameter table
+                scan_parameter_values = np.unique(scan_parameters[parameter]).tolist()  # different scan parameter values used
+            except tb.NoSuchNodeError:  # scan parameter table does not exist
+                try:
+                    scan_parameters = get_scan_parameter(in_file_h5.root.meta_data[:])  # get the scan parameters from the meta data
+                    if scan_parameters:
+                        scan_parameter_values = np.unique(scan_parameters[parameter]).tolist()  # different scan parameter values used
+                except tb.NoSuchNodeError:  # meta data table does not exist
+                    pass
+            if scan_parameter_values is None:  # take the parameter found in the file
+                scan_parameter_values = [parameter_values_from_file_names_dict[file_name]]
+            else:
+                try:
+                    parameter_values_from_file_names_dict[file_name]
+                    if parameter_values_from_file_names_dict[file_name] != scan_parameter_values[0]:  # compare the file name parameter with the parameter found in the file
+                        logging.warning(parameter + ' = ' + str(parameter_values_from_file_names_dict[file_name]) + ' info in file name differs from the ' + parameter + ' info = ' + str(scan_parameter_values) + ' in the meta data')
+                except KeyError:  # file_name key does not exist in parameter_values_from_file_names_dict
+                    pass
             files_dict[file_name] = scan_parameter_values
-    return collections.OrderedDict(files_dict)
+    return collections.OrderedDict(sorted(files_dict.iteritems(), key=itemgetter(1)) if sort else files_dict)
 
 
 def in1d_sorted(ar1, ar2):
@@ -462,45 +464,6 @@ def correlate_events(data_frame_fe_1, data_frame_fe_2):
     return data_frame_fe_1.merge(data_frame_fe_2, how='left', on='event_number')  # join in the events that the triggered fe sees, only these are interessting
 
 
-def remove_duplicate_hits(data_frame):
-    '''Removes duplicate hits, possible due to FE error or ToT = 14 hits.
-
-    Parameters
-    ----------
-    data_frame : pandas.dataframe
-
-    Returns
-    -------
-    pandas dataframe.
-    '''
-    # remove duplicate hits from ToT = 14 hits or FE data error and count how many have been removed
-    df_length = len(data_frame.index)
-    data_frame = data_frame.drop_duplicates(cols=['event_number', 'col', 'row'])
-    logging.info("Removed %d duplicates in trigger FE data" % (df_length - len(data_frame.index)))
-    return data_frame
-
-
-def get_hits_with_n_cluster_per_event(hits_table, cluster_table, condition='n_cluster==1'):
-    '''Selects the hits with a certain number of cluster.
-
-    Parameters
-    ----------
-    hits_table : pytables.table
-    cluster_table : pytables.table
-
-    Returns
-    -------
-    pandas.DataFrame
-    '''
-
-    logging.info("Calculate hits with clusters where " + condition)
-    data_frame_hits = pd.DataFrame({'event_number': hits_table.cols.event_number, 'column': hits_table.cols.column, 'row': hits_table.cols.row})
-    data_frame_hits = data_frame_hits.set_index(keys='event_number')
-    events_with_n_cluster = get_events_with_n_cluster(cluster_table, condition)
-    data_frame_hits = data_frame_hits.reset_index()
-    return data_frame_hits.loc[events_with_n_cluster]
-
-
 def get_hits_in_events(hits_array, events, assume_sorted=True):
     '''Selects the hits that occurred in events. If a event range can be defined use the get_data_in_event_range function. It is much faster.
 
@@ -549,7 +512,7 @@ def get_data_in_event_range(hits_array, event_start, event_stop, assume_sorted=T
     numpy.array
         hit array with the hits in the event range.
     '''
-    logging.info("Calculate data of the the given event range [" + str(event_start) + ", " + str(event_stop) + "[")
+    logging.debug("Calculate data of the the given event range [" + str(event_start) + ", " + str(event_stop) + "[")
     event_number = hits_array['event_number']
     if assume_sorted:
         hits_event_start = hits_array['event_number'][0]
@@ -732,7 +695,7 @@ def get_n_cluster_in_events(event_numbers):
         First dimension is the event number
         Second dimension is the number of cluster of the event
     '''
-    logging.info("Calculate the number of cluster in every given event")
+    logging.debug("Calculate the number of cluster in every given event")
     if (sys.maxint < 3000000000):  # on 32- bit operation systems max int is 2147483647 leading to numpy bugs that need workarounds
         event_number_array = event_numbers.astype('<i4')  # BUG in numpy, unint works with 64-bit, 32 bit needs reinterpretation
         offset = np.amin(event_number_array)
@@ -761,23 +724,6 @@ def get_n_cluster_per_event_hist(cluster_table):
     logging.info("Histogram number of cluster per event")
     cluster_in_events = get_n_cluster_in_events(cluster_table)[:, 1]  # get the number of cluster for every event
     return np.histogram(cluster_in_events, bins=range(0, np.max(cluster_in_events) + 2))  # histogram the occurrence of n cluster per event
-
-
-def histogram_correlation(data_frame_combined):
-    '''Takes a dataframe with combined hit data from two Fe and correlates for each event each hit from one Fe to each hit of the other Fe.
-
-    Parameters
-    ----------
-    data_frame_combined : pandas.DataFrame
-
-    Returns
-    -------
-    [numpy.Histogram, numpy.Histogram]
-    '''
-    logging.info("Histograming correlations")
-    corr_row = np.histogram2d(data_frame_combined['row_fe0'], data_frame_combined['row_fe1'], bins=(336, 336), range=[[1, 336], [1, 336]])
-    corr_col = np.histogram2d(data_frame_combined['column_fe0'], data_frame_combined['column_fe1'], bins=(80, 80), range=[[1, 80], [1, 80]])
-    return corr_col, corr_row
 
 
 def histogram_tot(array, label='tot'):
@@ -832,40 +778,11 @@ def histogram_mean_tot_per_pixel(array, labels=['column', 'row', 'tot']):
 
 
 def histogram_occupancy_per_pixel(array, labels=['column', 'row'], mask_no_hit=False, fast=False):
-    if fast:
-        occupancy = fast_histogram2d(x=array[labels[0]], y=array[labels[1]], bins=(80, 336))
-    else:
-        occupancy = np.histogram2d(x=array[labels[0]], y=array[labels[1]], bins=(80, 336), range=[[0, 80], [0, 336]])
+    occupancy = np.histogram2d(x=array[labels[0]], y=array[labels[1]], bins=(80, 336), range=[[0, 80], [0, 336]])
     if mask_no_hit:
         return np.ma.array(occupancy[0], mask=(occupancy[0] == 0)), occupancy[1], occupancy[2]
     else:
         return occupancy
-
-
-def fast_histogram2d(x, y, bins):
-    logging.warning('fast_histogram2d gives not exact results')
-    nx = bins[0] - 1
-    ny = bins[1] - 1
-
-    print nx, ny
-
-    xmin, xmax = x.min(), x.max()
-    ymin, ymax = y.min(), y.max()
-    dx = (xmax - xmin) / (nx - 1.0)
-    dy = (ymax - ymin) / (ny - 1.0)
-
-    weights = np.ones(x.size)
-
-    # Basically, this is just doing what np.digitize does with one less copy
-    xyi = np.vstack((x, y)).T
-    xyi -= [xmin, ymin]
-    xyi /= [dx, dy]
-    xyi = np.floor(xyi, xyi).T
-
-    # Now, we'll exploit a sparse coo_matrix to build the 2D histogram...
-    grid = coo_matrix((weights, xyi), shape=(nx, ny)).toarray()
-
-    return grid, np.linspace(xmin, xmax, nx), np.linspace(ymin, ymax, ny)
 
 
 def get_scan_parameter(meta_data_array):
@@ -880,7 +797,8 @@ def get_scan_parameter(meta_data_array):
     python.dict{string, numpy.Histogram}
     '''
 
-    if len(meta_data_array.dtype.names) < 5:  # no meta_data found
+    last_not_parameter_column = meta_data_array.dtype.names.index('error_code')
+    if last_not_parameter_column == len(meta_data_array.dtype.names) - 1:  # no meta_data found
         return
     scan_parameters = {}
     for scan_par_name in meta_data_array.dtype.names[4:]:  # scan parameters are in columns 5 (= index 4) and above
@@ -888,19 +806,22 @@ def get_scan_parameter(meta_data_array):
     return scan_parameters
 
 
-def get_scan_parameters_index(scan_parameter_array):
-    '''Takes the scan parameter array and creates a scan parameter index labeling unique scan parameter combinations.
+def get_scan_parameters_index(scan_parameter):
+    '''Takes the scan parameter array and creates a scan parameter index labeling the unique scan parameter combinations.
     Parameters
     ----------
-    meta_data_array : numpy.ndarray
+    scan_parameter : numpy.ndarray
+        The table with the scan parameters.
 
     Returns
     -------
     numpy.Histogram
     '''
-#     scan_parameter_names = list(meta_data_array.dtype.names)[5:]
-#     print scan_parameter_names
-    return np.unique(scan_parameter_array, return_inverse=True)[1]
+    _, index = np.unique(scan_parameter, return_index=True)
+    values = np.array(range(0, len(index)), dtype='u4')
+    index = np.append(index, len(scan_parameter))
+    counts = np.diff(index)
+    return np.repeat(values, counts)
 
 
 def get_unique_scan_parameter_combinations(meta_data_array, selected_columns_only=False):
@@ -916,18 +837,21 @@ def get_unique_scan_parameter_combinations(meta_data_array, selected_columns_onl
     numpy.Histogram
     '''
 
-    if len(meta_data_array.dtype.names) < 5:  # no meta_data found
+    if len(meta_data_array.dtype.names) < 5:  # no scan parameter found
         return
     return unique_row(meta_data_array, use_columns=range(4, len(meta_data_array.dtype.names)), selected_columns_only=selected_columns_only)
 
 
 def unique_row(array, use_columns=None, selected_columns_only=False):
     '''Takes a numpy array and returns the array reduced to unique rows. If columns are defined only these columns are taken to define a unique row.
+    The returned array can have all columns of the original array or only the columns defined in use_columns.
     Parameters
     ----------
     array : numpy.ndarray
     use_columns : list
         Index of columns to be used to define a unique row
+    selected_columns_only : bool
+        If true only the columns defined in use_columns are returned
 
     Returns
     -------
@@ -938,7 +862,11 @@ def unique_row(array, use_columns=None, selected_columns_only=False):
             a_cut = array[:, use_columns]
         else:
             a_cut = array
-        b = np.ascontiguousarray(a_cut).view(np.dtype((np.void, a_cut.dtype.itemsize * a_cut.shape[1])))
+        if len(use_columns) > 1:
+            b = np.ascontiguousarray(a_cut).view(np.dtype((np.void, a_cut.dtype.itemsize * a_cut.shape[1])))
+        else:
+            b = np.ascontiguousarray(a_cut)
+            print b
         _, index = np.unique(b, return_index=True)
         if not selected_columns_only:
             return array[np.sort(index)]  # sort to preserve order
@@ -955,6 +883,7 @@ def unique_row(array, use_columns=None, selected_columns_only=False):
             return array[np.sort(index)]  # sort to preserve order
         else:
             return array[np.sort(index)][new_names]  # sort to preserve order
+
 
 def get_ranges_from_array(array, append_last=True):
     '''Takes an array and calculates ranges [start event, stop event[. The last range end is none to keep the same length.
@@ -1073,14 +1002,14 @@ def select_good_pixel_region(hits, col_span, row_span, min_cut_threshold=0.2, ma
     ----------
     hits : array like
         If dim > 2 the additional dimensions are summed up.
-    min_cut_threshold : float, [0, 1]
+    min_cut_threshold : float
         A number to specify the minimum threshold, which pixel to take. Pixels are masked if
         occupancy < min_cut_threshold * np.ma.median(occupancy)
         0 means that no pixels are masked
-    max_cut_threshold : float, [0, 1]
+    max_cut_threshold : float
         A number to specify the maximum threshold, which pixel to take. Pixels are masked if
         occupancy > max_cut_threshold * np.ma.median(occupancy)
-        0 means that no pixels are masked
+        Can be set to None that no pixels are masked by max_cut_threshold
 
     Returns
     -------
@@ -1093,7 +1022,10 @@ def select_good_pixel_region(hits, col_span, row_span, min_cut_threshold=0.2, ma
     mask[min(col_span):max(col_span) + 1, min(row_span):max(row_span) + 1] = 0
 
     ma = np.ma.masked_where(mask, hits)
-    return np.ma.masked_where(np.logical_or(ma < min_cut_threshold * np.ma.median(ma), ma > max_cut_threshold * np.ma.median(ma)), ma)
+    if max_cut_threshold is not None:
+        return np.ma.masked_where(np.logical_or(ma < min_cut_threshold * np.ma.median(ma), ma > max_cut_threshold * np.ma.median(ma)), ma)
+    else:
+        return np.ma.masked_where(ma < min_cut_threshold * np.ma.median(ma), ma)
 
 
 def get_hit_rate_correction(gdacs, calibration_gdacs, cluster_size_histogram):
@@ -1148,29 +1080,6 @@ def get_mean_threshold_from_calibration(gdac, mean_threshold_calibration):
     return interpolation(gdac)
 
 
-# def get_pixel_thresholds_from_calibration_table(column, row, gdacs, threshold_calibration_table):
-#     '''Calculates the pixel threshold from the threshold calibration at the given gdac settings (gdacs). If the given gdac value was not used during caluibration
-#     the value is determined by interpolation.
-# 
-#     Parameters
-#     ----------
-#     column/row: ndarray
-#     gdacs : array like
-#         The GDAC settings where the threshold should be determined from the calibration
-#     threshold_calibration_table : pytable
-#         The table created during the calibration scan.
-# 
-#     Returns
-#     -------
-#     numpy.array, shape=(len(column), len(row), len(gdac), )
-#         The pixel threshold values at each value in gdacs.
-#     '''
-#     pixel_gdacs = threshold_calibration_table[np.logical_and(threshold_calibration_table['column'] == column, threshold_calibration_table['row'] == row)]['gdac']
-#     pixel_thresholds = threshold_calibration_table[np.logical_and(threshold_calibration_table['column'] == column, threshold_calibration_table['row'] == row)]['threshold']
-#     interpolation = interp1d(x=pixel_gdacs, y=pixel_thresholds, kind='slinear', bounds_error=True)
-#     return interpolation(gdacs)
-
-
 def get_pixel_thresholds_from_calibration_array(gdacs, calibration_gdacs, threshold_calibration_array):
     '''Calculates the threshold for all pixels in threshold_calibration_array at the given GDAC settings via linear interpolation. The GDAC settings used during calibration have to be given.
 
@@ -1194,17 +1103,5 @@ def get_pixel_thresholds_from_calibration_array(gdacs, calibration_gdacs, thresh
     return interpolation(gdacs)
 
 
-
 if __name__ == "__main__":
-    l = [1, 2, 11999, 20000]
-    ll = [1, 2, 11998, 11999]
-    print reduce_sorted_to_intersect(l, ll)
-    print reduce_sorted_to_intersect(ll, l)
- 
-    lll = [11999]
-    print reduce_sorted_to_intersect(l, lll)
-    print reduce_sorted_to_intersect(lll, l)
- 
-    llll = [0]
-    print reduce_sorted_to_intersect(ll, llll)
-    print reduce_sorted_to_intersect(llll, ll)
+    print 'Run analysis_utils as main'
