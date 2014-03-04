@@ -3,6 +3,7 @@ import tables as tb
 from tables import dtype_from_descr, Col
 import numpy as np
 import logging
+import progressbar
 import os
 from scipy.optimize import curve_fit
 from scipy.special import erf
@@ -128,7 +129,7 @@ class AnalyzeRawData(object):
     def set_standard_settings(self):
         self.out_file_h5 = None
         self.meta_event_index = None
-        self._chunk_size = 2000000
+        self.chunk_size = 2000000
         self._filter_table = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
         self.fei4b = False
         self.create_hit_table = False
@@ -225,6 +226,7 @@ class AnalyzeRawData(object):
             self.histograming.set_tdc_pixel_hist(self.tdc_pixel_hist)
         else:
             self.tdc_pixel_hist = None
+
     @property
     def create_rel_bcid_hist(self):
         return self._create_rel_bcid_hist
@@ -434,13 +436,8 @@ class AnalyzeRawData(object):
                     self.scan_parameters = None
                     self.histograming.set_no_scan_parameter()
                 else:
-                    if len(self.scan_parameters.dtype) != 1:
-#                         self.histograming.add_scan_parameter(self.scan_parameters[scan_parameter_name].copy())  # use copy to rearrange the data in memory to be able to access the data from the c++ library
-                        scan_parameter_indices = np.array(range(0, analysis_utils.unique_row(self.scan_parameters).shape[0]), dtype='u4')
-                        logging.info('More than one scan parameter found and occupancy histogramming will be done for %d unique scan parameter combinations' % analysis_utils.unique_row(self.scan_parameters).shape[0])
-                        self.histograming.add_scan_parameter(scan_parameter_indices)  # just add an index for the different scan parameter cominations
-                    else:
-                        self.histograming.add_scan_parameter(self.scan_parameters)
+                    self.scan_parameter_index = analysis_utils.get_scan_parameters_index(self.scan_parameters)  # a array that labels unique scan parameter combinations
+                    self.histograming.add_scan_parameter(self.scan_parameter_index)  # just add an index for the different scan parameter combinations
             except tb.exceptions.NoSuchNodeError:
                 self.scan_parameters = None
                 self.histograming.set_no_scan_parameter()
@@ -453,8 +450,11 @@ class AnalyzeRawData(object):
             self.interpreter.set_hits_array(hits)
             self.interpreter.set_meta_data(self.meta_data)
 
-            self.meta_event_index = np.zeros((meta_data_size,), dtype=[('metaEventIndex', np.uint32)])  # this array is filled by the interpreter and holds the event number per read out
+            self.meta_event_index = np.zeros((meta_data_size,), dtype=[('metaEventIndex', np.uint64)])  # this array is filled by the interpreter and holds the event number per read out
             self.interpreter.set_meta_event_data(self.meta_event_index)  # tell the interpreter the data container to write the meta event index to
+
+            progress_bar = progressbar.ProgressBar(poll=100, widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=table_size)
+            progress_bar.start()
 
             for iWord in range(0, table_size, self._chunk_size):
                 try:
@@ -483,13 +483,11 @@ class AnalyzeRawData(object):
                     size = self.interpreter.get_n_meta_data_word()
                     meta_word_index_table.append(meta_word[:size])
 
-#                 if iWord % (int(table_size / 10.)) == 0:
-                if int(float(float(iWord) / float(table_size) * 100.)) % 10 == 0:
-                    logging.info('%d %%' % int(float(float(iWord) / float(table_size) * 100.)))
+                progress_bar.update(iWord)
 
             if (self._analyzed_data_file != None and self._create_hit_table == True):
                 hit_table.flush()
-            logging.info('100 %')
+            progress_bar.finish()
             self._create_additional_data()
             if(self._analyzed_data_file != None):
                 self.out_file_h5.close()
@@ -597,7 +595,7 @@ class AnalyzeRawData(object):
             noise = np.zeros(80 * 336, dtype=np.float64)
             # calling fast algorithm function: M. Mertens, PhD thesis, Juelich 2010
             # note: noise zero if occupancy was zero
-            self.histograming.calculate_threshold_scan_arrays(threshold, noise, self._n_injection)
+            self.histograming.calculate_threshold_scan_arrays(threshold, noise, self._n_injection, np.amin(self.scan_parameters['PlsrDAC']), np.amax(self.scan_parameters['PlsrDAC']))
             threshold_hist = np.reshape(a=threshold.view(), newshape=(80, 336), order='F')
             noise_hist = np.reshape(a=noise.view(), newshape=(80, 336), order='F')
             self.threshold_hist = np.swapaxes(threshold_hist, 0, 1)
@@ -677,7 +675,7 @@ class AnalyzeRawData(object):
             meta_data_table = in_file_h5.root.meta_data
             meta_data = meta_data_table[:]
             if (meta_data.dtype.names.index('error_code') < len(meta_data.dtype.names) - 1):  # check if there is an additional column after the error code column, if yes this column has scan parameter infos
-                meta_data_array = np.array(meta_data['event_number'], dtype=[('metaEventIndex', np.uint32)])
+                meta_data_array = np.array(meta_data['event_number'], dtype=[('metaEventIndex', np.uint64)])
                 self.histograming.add_meta_event_index(meta_data_array, array_length=len(meta_data_table))
                 scan_par_name = meta_data.dtype.names[meta_data.dtype.names.index('error_code') + 1]
                 scan_par_array = np.array(meta_data[scan_par_name], dtype=[(scan_par_name, '<u4'), ])
@@ -690,107 +688,36 @@ class AnalyzeRawData(object):
             logging.info("No meta data provided")
 
         table_size = in_file_h5.root.Hits.shape[0]
-        last_event_start_index = 0
         n_hits = 0  # number of hits in actual chunk
 
-        logging.info('Analyze hits:')
-        for iHit in range(0, table_size, self._chunk_size):
-            offset = last_event_start_index - n_hits if iHit != 0 else 0  # reread last hits of last event of last chunk
-            hits = in_file_h5.root.Hits.read(iHit + offset, iHit + self._chunk_size)
-            n_hits = hits.shape[0]
+        logging.info('Analyze hits...')
+        progress_bar = progressbar.ProgressBar(poll=100, widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=table_size)
+        progress_bar.start()
 
-            # align hits at events, omit last event
-            last_event = hits["event_number"][-1]
-            last_event_start_index = np.where(hits["event_number"] == last_event)[0][0]
-
-            # do not omit the last words of the last events of the last chunk
-            if(iHit == range(0, table_size, self._chunk_size)[-1]):
-                last_event_start_index = n_hits
+        for hits, _ in analysis_utils.data_aligned_at_events(in_file_h5.root.Hits, chunk_size=self._chunk_size):
+            n_hits += hits.shape[0]
 
             if (self.is_cluster_hits()):
-                self.cluster_hits(hits, stop_index=last_event_start_index)
+                self.cluster_hits(hits)
 
             if (self.is_histogram_hits()):
-                self.histogram_hits(hits, stop_index=last_event_start_index)
+                self.histogram_hits(hits)
 
             if(self._analyzed_data_file != None and self._create_cluster_hit_table):
-                cluster_hit_table.append(cluster_hits[:last_event_start_index])
+                cluster_hit_table.append(cluster_hits[:len(hits)])
             if(self._analyzed_data_file != None and self._create_cluster_table):
                 cluster_table.append(cluster[:self.clusterizer.get_n_clusters()])
 
-            logging.info('%d %%' % int(float(float(iHit) / float(table_size) * 100.)))
+            progress_bar.update(n_hits)
 
-        logging.info('100 %')
+        if (n_hits != table_size):
+            logging.warning('Not all hits analyzed, check analysis!')
+
+        progress_bar.finish()
         self._create_additional_hit_data()
         self._create_additional_cluster_data()
 
         self.out_file_h5.close()
-        in_file_h5.close()
-
-    def analyze_cluster_table(self, analyzed_data_file=None):
-        '''This helper method reads in the cluster info table in chunks and histograms the seed pixels into one occupancy array.
-        The 3rd dimension of the occupancy array is the number of different scan parameters used
-
-        Parameters
-        ----------
-        analyzed_data_file : hdf5 file containing the cluster table. If a scan parameter is given in the meta data the occupancy
-                            histograming is done per scan parameter.
-        Returns
-        -------
-        occupancy_array: numpy.array with dimensions (col, row, #scan_parameter)
-        '''
-        cluster = np.empty((2 * self._chunk_size,), dtype=dtype_from_descr(data_struct.ClusterInfoTable))
-
-        if analyzed_data_file != None:
-            self._analyzed_data_file = analyzed_data_file
-        elif (self._analyzed_data_file == None):
-            logging.warning("No data file with analyzed data given, abort!")
-            return
-
-        in_file_h5 = tb.openFile(self._analyzed_data_file, mode="r")
-
-        try:
-            meta_data_table = in_file_h5.root.meta_data
-            meta_data = meta_data_table[:]
-            if (meta_data.dtype.names.index('error_code') < len(meta_data.dtype.names) - 1):  # check if there is an additional column after the error code column, if yes this column has scan parameter infos
-                meta_data_array = np.array(meta_data['event_number'], dtype=[('metaEventIndex', np.uint32)])
-                self.histograming.add_meta_event_index(meta_data_array, array_length=len(meta_data_table))
-                scan_par_name = meta_data.dtype.names[meta_data.dtype.names.index('error_code') + 1]
-                scan_par_array = np.array(meta_data[scan_par_name], dtype=[(scan_par_name, '<u4'), ])
-                self.histograming.add_scan_parameter(scan_par_array)
-                logging.info("Add scan parameter " + scan_par_name + " for analysis")
-            else:
-                logging.info("No scan parameter data provided")
-                self.histograming.set_no_scan_parameter()
-        except tb.exceptions.NoSuchNodeError:
-            logging.info("No meta data provided, use no scan parameter")
-            self.histograming.set_no_scan_parameter()
-
-        table_size = in_file_h5.root.Hits.shape[0]
-        last_event_start_index = 0
-        n_cluster = 0  # number of hits in actual chunk
-
-        logging.info('Analyze clusters:')
-        for iCluster in range(0, table_size, self._chunk_size):
-            offset = last_event_start_index - n_cluster if iCluster != 0 else 0  # reread last hits of last event of last chunk
-            cluster = in_file_h5.root.Hits.read(iCluster + offset, iCluster + self._chunk_size)
-            n_cluster = cluster.shape[0]
-
-            # align hits at events, omit last event
-            last_event = cluster["event_number"][-1]
-            last_event_start_index = np.where(cluster["event_number"] == last_event)[0][0]
-
-            # do not omit the last cluster of the last events of the last chunk
-            if(iCluster == range(0, table_size, self._chunk_size)[-1]):
-                last_event_start_index = n_cluster
-
-            if (self.is_histogram_hits()):
-                self.histogram_cluster_seed_hits(cluster, stop_index=last_event_start_index)
-
-            logging.info('%d %%' % int(float(float(iCluster) / float(table_size) * 100.)))
-
-        logging.info('100 %')
-        self._create_additional_hit_data()
         in_file_h5.close()
 
     def analyze_hits(self, hits, scan_parameter=None):
@@ -810,7 +737,7 @@ class AnalyzeRawData(object):
             cluster_hits = None
 
         if scan_parameter is None:  # if nothing specified keep actual setting
-            logging.info('Keep scan parameter settings ')
+            logging.debug('Keep scan parameter settings ')
         elif not scan_parameter:    # set no scan parameter
             logging.info('No scan parameter used')
             self.histograming.set_no_scan_parameter()
@@ -899,7 +826,7 @@ class AnalyzeRawData(object):
             plotting.plotThreeWay(hist=noise_hist, title='Noise (S-curve fit%s' % ((', masked %i pixel(s))' % mask_cnt) if self._create_fitted_threshold_mask else ')'), x_axis_title="noise [PlsrDAC]", filename=output_pdf, bins=100, minimum=0, maximum=maximum)
         if (self._create_occupancy_hist):
             if(self._create_threshold_hists):
-                plotting.plot_scurves(occupancy_hist=out_file_h5.root.HistOcc[:, :, :] if out_file_h5 != None else self.occupancy_array[:, :, :], filename=output_pdf, scan_parameters=np.linspace(self.histograming.get_min_parameter(), self.histograming.get_max_parameter(), num=self.histograming.get_n_parameters(), endpoint=True))
+                plotting.plot_scurves(occupancy_hist=out_file_h5.root.HistOcc[:, :, :] if out_file_h5 != None else self.occupancy_array[:, :, :], filename=output_pdf, scan_parameters=np.linspace(np.amin(self.scan_parameters['PlsrDAC']), np.amax(self.scan_parameters['PlsrDAC']), num=self.histograming.get_n_parameters(), endpoint=True))
             else:
                 hist = out_file_h5.root.HistOcc[:, :, 0] if out_file_h5 != None else self.occupancy_array[:, :, 0]
                 occupancy_array_masked = np.ma.masked_equal(hist, 0)
