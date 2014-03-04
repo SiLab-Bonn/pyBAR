@@ -23,11 +23,12 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from scipy.sparse import coo_matrix
 from scipy.interpolate import splrep, splev
+from RawDataConverter.data_histograming import PyDataHistograming
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
-def analyze_beam_spot(scan_base, combine_n_readouts=1000, max_chunk_size=10000000, plot_occupancy_hists=False, output_pdf=None, **kwarg):
+def analyze_beam_spot(scan_base, combine_n_readouts=1000, chunk_size=10000000, plot_occupancy_hists=False, output_pdf=None, output_file=None, **kwarg):
     ''' Determines the mean x and y beam spot position as a function of time. Therefore the data of a fixed number of read outs are combined ('combine_n_readouts'). The occupancy is determined
     for the given combined events and stored into a pdf file. At the end the beam x and y is plotted into a scatter plot with absolute positions in um.
 
@@ -38,10 +39,11 @@ def analyze_beam_spot(scan_base, combine_n_readouts=1000, max_chunk_size=1000000
     combine_n_readouts: int
         the number of read outs to combine (e.g. 1000)
     max_chunk_size: int
-        the maximum chink size used during read, if too big memory error occurs, if too small analysis takes longer
+        the maximum chunk size used during read, if too big memory error occurs, if too small analysis takes longer
     output_pdf: PdfPages
         PdfPages file object, if none the plot is printed to screen
     '''
+    time_stamp = []
     x = []
     y = []
     for data_file in scan_base:
@@ -64,7 +66,7 @@ def analyze_beam_spot(scan_base, combine_n_readouts=1000, max_chunk_size=1000000
 
             # variables for read speed up
             index = 0  # index where to start the read out, 0 at the beginning, increased during looping
-            chunk_size = max_chunk_size
+            best_chunk_size = chunk_size
 
             # result data
             occupancy = np.zeros(80 * 336 * 1, dtype=np.uint32)  # create linear array as it is created in histogram class
@@ -77,10 +79,10 @@ def analyze_beam_spot(scan_base, combine_n_readouts=1000, max_chunk_size=1000000
 
                 # loop over the hits in the actual selected events with optimizations: determine best chunk size, start word index given
                 readout_hit_len = 0  # variable to calculate a optimal chunk size value from the number of hits for speed up
-                for hits, index in analysis_utils.data_aligned_at_events(hit_table, start_event_number=parameter_range[2], stop_event_number=parameter_range[3], start=index, chunk_size=chunk_size):
+                for hits, index in analysis_utils.data_aligned_at_events(hit_table, start_event_number=parameter_range[2], stop_event_number=parameter_range[3], start=index, chunk_size=best_chunk_size):
                     analyze_data.analyze_hits(hits)  # analyze the selected hits in chunks
                     readout_hit_len += hits.shape[0]
-                chunk_size = int(1.5 * readout_hit_len) if int(1.05 * readout_hit_len) < max_chunk_size else max_chunk_size  # to increase the readout speed, estimated the number of hits for one read instruction
+                best_chunk_size = int(1.5 * readout_hit_len) if int(1.05 * readout_hit_len) < chunk_size else chunk_size  # to increase the readout speed, estimated the number of hits for one read instruction
 
                 # get and store results
                 analyze_data.histograming.get_occupancy(occupancy)
@@ -90,12 +92,22 @@ def analyze_beam_spot(scan_base, combine_n_readouts=1000, max_chunk_size=1000000
                 projection_y = np.sum(occupancy_array, axis=1).ravel()
                 x.append(analysis_utils.get_mean_from_histogram(projection_x, bin_positions=range(0, 80)))
                 y.append(analysis_utils.get_mean_from_histogram(projection_y, bin_positions=range(0, 336)))
+                time_stamp.append(parameter_range[0])
                 if plot_occupancy_hists:
                     plotting.plot_occupancy(occupancy_array[:, :, 0], title='Occupancy for events between ' + time.strftime('%H:%M:%S', time.localtime(parameter_range[0])) + ' and ' + time.strftime('%H:%M:%S', time.localtime(parameter_range[1])), filename=output_pdf)
     plotting.plot_scatter([i * 250 for i in x], [i * 50 for i in y], title='Mean beam position', x_label='x [um]', y_label='y [um]', marker_style='-o', filename=output_pdf)
+    if output_file:
+        with tb.openFile(output_file, mode="a") as out_file_h5:
+            rec_array = np.array(zip(time_stamp, x, y), dtype=[('time_stamp', float), ('x', float), ('y', float)])
+            try:
+                beam_spot_table = out_file_h5.createTable(out_file_h5.root, name='Beamspot', description=rec_array, title='Beam spot position', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+                beam_spot_table[:] = rec_array
+            except tb.exceptions.NodeError:
+                logging.warning(output_file + ' has already a Beamspot note, do not overwrite existing.')
+    return time_stamp, x, y
 
 
-def analyze_event_rate(scan_base, combine_n_readouts=1000, max_chunk_size=10000000, time_line_absolute=True, plot_occupancy_hists=False, output_pdf=None, **kwarg):
+def analyze_event_rate(scan_base, combine_n_readouts=1000, time_line_absolute=True, plot_occupancy_hists=False, output_pdf=None, output_file=None, **kwarg):
     ''' Determines the number of events as a function of time. Therefore the data of a fixed number of read outs are combined ('combine_n_readouts'). The number of events is taken from the meta data info
     and stored into a pdf file.
 
@@ -105,15 +117,13 @@ def analyze_event_rate(scan_base, combine_n_readouts=1000, max_chunk_size=100000
         scan base names (e.g.:  ['//data//SCC_50_fei4_self_trigger_scan_390', ]
     combine_n_readouts: int
         the number of read outs to combine (e.g. 1000)
-    max_chunk_size: int
-        the maximum chink size used during read, if too big memory error occurs, if too small analysis takes longer
     time_line_absolute: bool
         if true the analysis uses absolute time stamps
     output_pdf: PdfPages
         PdfPages file object, if none the plot is printed to screen
     '''
-    x = []
-    y = []
+    time_stamp = []
+    rate = []
 
     start_time_set = False
 
@@ -123,22 +133,30 @@ def analyze_event_rate(scan_base, combine_n_readouts=1000, max_chunk_size=100000
             parameter_ranges = np.column_stack((analysis_utils.get_ranges_from_array(meta_data_array['timestamp_start'][::combine_n_readouts]), analysis_utils.get_ranges_from_array(meta_data_array['event_number'][::combine_n_readouts])))
 
             if time_line_absolute:
-                x.extend(parameter_ranges[:-1, 0])
-                y.extend((parameter_ranges[:-1, 3] - parameter_ranges[:-1, 2]) / (parameter_ranges[:-1, 1] - parameter_ranges[:-1, 0]))  # d#Events / dt
+                time_stamp.extend(parameter_ranges[:-1, 0])
+                rate.extend((parameter_ranges[:-1, 3] - parameter_ranges[:-1, 2]) / (parameter_ranges[:-1, 1] - parameter_ranges[:-1, 0]))  # d#Events / dt
             else:
                 if not start_time_set:
                     start_time = parameter_ranges[0, 0]
                     start_time_set = True
-                x.extend((parameter_ranges[:-1, 0] - start_time) / 60.)
-                y.extend((parameter_ranges[:-1, 3] - parameter_ranges[:-1, 2]) / (parameter_ranges[:-1, 1] - parameter_ranges[:-1, 0]))  # d#Events / dt
-#                 y.extend(parameter_ranges[:-1, 3] - parameter_ranges[:-1, 2])
+                time_stamp.extend((parameter_ranges[:-1, 0] - start_time) / 60.)
+                rate.extend((parameter_ranges[:-1, 3] - parameter_ranges[:-1, 2]) / (parameter_ranges[:-1, 1] - parameter_ranges[:-1, 0]))  # d#Events / dt
     if time_line_absolute:
-        plotting.plot_scatter_time(x, y, title='Event rate [Hz]', filename=output_pdf)
+        plotting.plot_scatter_time(time_stamp, rate, title='Event rate [Hz]', marker_style='o', filename=output_pdf)
     else:
-        plotting.plot_scatter(x, y, title='Events per time', x_label='Progressed time [min.]', y_label='Events rate [Hz]', filename=output_pdf)
+        plotting.plot_scatter(time_stamp, rate, title='Events per time', x_label='Progressed time [min.]', y_label='Events rate [Hz]', marker_style='o', filename=output_pdf)
+    if output_file:
+        with tb.openFile(output_file, mode="a") as out_file_h5:
+            rec_array = np.array(zip(time_stamp, rate), dtype=[('time_stamp', float), ('rate', float)]).view(np.recarray)
+            try:
+                rate_table = out_file_h5.createTable(out_file_h5.root, name='Eventrate', description=rec_array, title='Event rate', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+                rate_table[:] = rec_array
+            except tb.exceptions.NodeError:
+                logging.warning(output_file + ' has already a Eventrate note, do not overwrite existing.')
+    return time_stamp, rate
 
 
-def analyse_n_cluster_per_event(scan_base, include_no_cluster=False, time_line_absolute=True, combine_n_readouts=1000, max_chunk_size=10000000, plot_n_cluster_hists=False, output_pdf=None, **kwarg):
+def analyse_n_cluster_per_event(scan_base, include_no_cluster=False, time_line_absolute=True, combine_n_readouts=1000, chunk_size=10000000, plot_n_cluster_hists=False, output_pdf=None, output_file=None, **kwarg):
     ''' Determines the number of cluster per event as a function of time. Therefore the data of a fixed number of read outs are combined ('combine_n_readouts').
 
     Parameters
@@ -150,13 +168,13 @@ def analyse_n_cluster_per_event(scan_base, include_no_cluster=False, time_line_a
     combine_n_readouts: int
         the number of read outs to combine (e.g. 1000)
     max_chunk_size: int
-        the maximum chink size used during read, if too big memory error occurs, if too small analysis takes longer
+        the maximum chunk size used during read, if too big memory error occurs, if too small analysis takes longer
     output_pdf: PdfPages
         PdfPages file object, if none the plot is printed to screen
     '''
 
-    x = []
-    y = []
+    time_stamp = []
+    n_cluster = []
 
     start_time_set = False
 
@@ -179,7 +197,7 @@ def analyse_n_cluster_per_event(scan_base, include_no_cluster=False, time_line_a
 
             # variables for read speed up
             index = 0  # index where to start the read out, 0 at the beginning, increased during looping
-            chunk_size = max_chunk_size
+            best_chunk_size = chunk_size
 
             total_cluster = cluster_table.shape[0]
 
@@ -191,7 +209,7 @@ def analyse_n_cluster_per_event(scan_base, include_no_cluster=False, time_line_a
                 # loop over the hits in the actual selected events with optimizations: determine best chunk size, start word index given
                 readout_cluster_len = 0  # variable to calculate a optimal chunk size value from the number of hits for speed up
                 hist = None
-                for clusters, index in analysis_utils.data_aligned_at_events(cluster_table, start_event_number=parameter_range[2], stop_event_number=parameter_range[3], start=index, chunk_size=chunk_size):
+                for clusters, index in analysis_utils.data_aligned_at_events(cluster_table, start_event_number=parameter_range[2], stop_event_number=parameter_range[3], start=index, chunk_size=best_chunk_size):
                     n_cluster_per_event = analysis_utils.get_n_cluster_in_events(clusters)[:, 1]  # array with the number of cluster per event, cluster per event are at least 1
                     if hist is None:
                         hist = np.histogram(n_cluster_per_event, bins=10, range=(0, 10))[0]
@@ -201,28 +219,38 @@ def analyse_n_cluster_per_event(scan_base, include_no_cluster=False, time_line_a
                         hist[0] = (parameter_range[3] - parameter_range[2]) - len(n_cluster_per_event)  # add the events without any cluster
                     readout_cluster_len += clusters.shape[0]
                     total_cluster -= len(clusters)
-                chunk_size = int(1.5 * readout_cluster_len) if int(1.05 * readout_cluster_len) < max_chunk_size else max_chunk_size  # to increase the readout speed, estimated the number of hits for one read instruction
+                best_chunk_size = int(1.5 * readout_cluster_len) if int(1.05 * readout_cluster_len) < chunk_size else chunk_size  # to increase the readout speed, estimated the number of hits for one read instruction
 
                 if plot_n_cluster_hists:
                     plotting.plot_1d_hist(hist, title='Number of cluster per event at ' + str(parameter_range[0]), x_axis_title='Number of cluster', y_axis_title='#', log_y=True, filename=output_pdf)
                 hist = hist.astype('f4') / np.sum(hist)  # calculate fraction from total numbers
 
                 if time_line_absolute:
-                    x.append(parameter_range[0])
+                    time_stamp.append(parameter_range[0])
                 else:
                     if not start_time_set:
                         start_time = parameter_ranges[0, 0]
                         start_time_set = True
-                    x.append((parameter_range[0] - start_time) / 60.)
-                y.append(hist)
+                    time_stamp.append((parameter_range[0] - start_time) / 60.)
+                n_cluster.append(hist)
 
             if total_cluster != 0:
                 logging.warning('Not all clusters were selected during analysis. Analysis is therefore not exact')
 
     if time_line_absolute:
-        plotting.plot_scatter_time(x, y, title='Number of cluster per event as a function of time', filename=output_pdf, legend=('0 cluster', '1 cluster', '2 cluster', '3 cluster') if include_no_cluster else ('0 cluster not plotted', '1 cluster', '2 cluster', '3 cluster'))
+        plotting.plot_scatter_time(time_stamp, n_cluster, title='Number of cluster per event as a function of time', marker_style='o', filename=output_pdf, legend=('0 cluster', '1 cluster', '2 cluster', '3 cluster') if include_no_cluster else ('0 cluster not plotted', '1 cluster', '2 cluster', '3 cluster'))
     else:
-        plotting.plot_scatter(x, y, title='Number of cluster per event as a function of time', x_label='time [min.]', filename=output_pdf, legend=('0 cluster', '1 cluster', '2 cluster', '3 cluster') if include_no_cluster else ('0 cluster not plotted', '1 cluster', '2 cluster', '3 cluster'))
+        plotting.plot_scatter(time_stamp, n_cluster, title='Number of cluster per event as a function of time', x_label='time [min.]', marker_style='o', filename=output_pdf, legend=('0 cluster', '1 cluster', '2 cluster', '3 cluster') if include_no_cluster else ('0 cluster not plotted', '1 cluster', '2 cluster', '3 cluster'))
+    if output_file:
+        with tb.openFile(output_file, mode="a") as out_file_h5:
+            cluster_array = np.array(n_cluster)
+            rec_array = np.array(zip(time_stamp, cluster_array[:, 0], cluster_array[:, 1], cluster_array[:, 2], cluster_array[:, 3], cluster_array[:, 4], cluster_array[:, 5]), dtype=[('time_stamp', float), ('cluster_0', float), ('cluster_1', float), ('cluster_2', float), ('cluster_3', float), ('cluster_4', float), ('cluster_5', float)]).view(np.recarray)
+            try:
+                n_cluster_table = out_file_h5.createTable(out_file_h5.root, name='n_cluster', description=rec_array, title='Cluster per event', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+                n_cluster_table[:] = rec_array
+            except tb.exceptions.NodeError:
+                logging.warning(output_file + ' has already a Beamspot note, do not overwrite existing.')
+    return time_stamp, n_cluster
 
 
 def select_hits_from_cluster_info(input_file_hits, output_file_hits, cluster_size_condition, n_cluster_condition, output_pdf=None, **kwarg):
@@ -318,13 +346,12 @@ def histogram_tdc_hits(scan_bases, output_pdf=None, **kwarg):
             tdc_hist_array[:] = tdc_hist_per_pixel
 
 
-def analyze_cluster_size_per_scan_parameter(scan_bases, output_file_cluster_size, parameter='GDAC', max_chunk_size=10000000, overwrite_output_files=False, output_pdf=None, **kwarg):
+def analyze_cluster_size_per_scan_parameter(input_files_hits, output_file_cluster_size, parameter='GDAC', max_chunk_size=10000000, overwrite_output_files=False, output_pdf=None, **kwarg):
     ''' This method takes multiple hit files and determines the cluster size for different scan parameter values of
 
      Parameters
     ----------
-    scan_bases: list of str
-        has the scan base names (e.g.:  ['//data//SCC_50_fei4_self_trigger_scan_390', ]
+    input_files_hits: list of str
     output_file_cluster_size: str
         The data file with the results
     parameter: int
@@ -334,9 +361,9 @@ def analyze_cluster_size_per_scan_parameter(scan_bases, output_file_cluster_size
     overwrite_output_files: bool
         Set to true to overwrite the output file if it already exists
     output_pdf: PdfPages
-        PdfPages file object, if none the plot is printed to screen
+        PdfPages file object, if none the plot is printed to screen, if False nothing is printed
     '''
-    logging.info('Analyze the cluster sizes for different ' + parameter + ' settings for ' + str(len(scan_bases)) + ' different files')
+    logging.info('Analyze the cluster sizes for different ' + parameter + ' settings for ' + str(len(input_files_hits)) + ' different files')
     if os.path.isfile(output_file_cluster_size) and not overwrite_output_files:  # skip analysis if already done
             logging.info('Analyzed cluster size file ' + output_file_cluster_size + ' already exists. Skip cluster size analysis.')
     else:
@@ -344,16 +371,17 @@ def analyze_cluster_size_per_scan_parameter(scan_bases, output_file_cluster_size
             filter_table = tb.Filters(complib='blosc', complevel=5, fletcher32=False)  # compression of the written data
             parameter_goup = out_file_h5.createGroup(out_file_h5.root, parameter, title=parameter)  # note to store the data
             cluster_size_total = None  # final array for the cluster size per GDAC
-            for index in range(0, len(scan_bases)):  # loop over all hit files
-                with tb.openFile(scan_bases[index], mode="r+") as in_hit_file_h5:  # open the actual hit file
+            for index in range(0, len(input_files_hits)):  # loop over all hit files
+                with tb.openFile(input_files_hits[index], mode="r+") as in_hit_file_h5:  # open the actual hit file
                     meta_data_array = in_hit_file_h5.root.meta_data[:]
                     scan_parameter = analysis_utils.get_scan_parameter(meta_data_array)  # get the scan parameters
                     if scan_parameter:  # if a GDAC scan parameter was used analyze the cluster size per GDAC setting
                         scan_parameter_values = scan_parameter.itervalues().next()  # scan parameter settings used
                         if len(scan_parameter_values) == 1:  # only analyze per scan step if there are more than one scan step
-                            logging.info('Extract from ' + scan_bases[index] + ' the cluster size for ' + parameter + ' = ' + str(scan_parameter_values[0]))
+                            logging.info('Extract from ' + input_files_hits[index] + ' the cluster size for ' + parameter + ' = ' + str(scan_parameter_values[0]))
                             cluster_size_hist = in_hit_file_h5.root.HistClusterSize[:]
-                            plotting.plot_cluster_size(hist=cluster_size_hist, title='Cluster size (' + str(np.sum(cluster_size_hist)) + ' entries) for ' + parameter + ' =' + str(scan_parameter_values[0]), filename=output_pdf)
+                            if output_pdf is not False:
+                                plotting.plot_cluster_size(hist=cluster_size_hist, title='Cluster size (' + str(np.sum(cluster_size_hist)) + ' entries) for ' + parameter + ' =' + str(scan_parameter_values[0]), filename=output_pdf)
                             if cluster_size_total is None:  # true if no data was appended to the array yet
                                 cluster_size_total = cluster_size_hist
                             else:
@@ -362,7 +390,7 @@ def analyze_cluster_size_per_scan_parameter(scan_bases, output_file_cluster_size
                             cluster_size_hist_table = out_file_h5.createCArray(actual_parameter_group, name='HistClusterSize', title='Cluster Size Histogram', atom=tb.Atom.from_dtype(cluster_size_hist.dtype), shape=cluster_size_hist.shape, filters=filter_table)
                             cluster_size_hist_table[:] = cluster_size_hist
                         else:
-                            logging.info('Analyze ' + scan_bases[index] + ' per scan parameter ' + parameter + ' for ' + str(len(scan_parameter_values)) + ' values from ' + str(np.amin(scan_parameter_values)) + ' to ' + str(np.amax(scan_parameter_values)))
+                            logging.info('Analyze ' + input_files_hits[index] + ' per scan parameter ' + parameter + ' for ' + str(len(scan_parameter_values)) + ' values from ' + str(np.amin(scan_parameter_values)) + ' to ' + str(np.amax(scan_parameter_values)))
                             event_numbers = analysis_utils.get_meta_data_at_scan_parameter(meta_data_array, parameter)['event_number']  # get the event numbers in meta_data where the scan parameter changes
                             parameter_ranges = np.column_stack((scan_parameter_values, analysis_utils.get_ranges_from_array(event_numbers)))
                             hit_table = in_hit_file_h5.root.Hits
@@ -401,7 +429,8 @@ def analyze_cluster_size_per_scan_parameter(scan_bases, output_file_cluster_size
                                 analyze_data.clusterizer.get_cluster_size_hist(cluster_size_hist)
                                 cluster_size_hist_table = out_file_h5.createCArray(actual_parameter_group, name='HistClusterSize', title='Cluster Size Histogram', atom=tb.Atom.from_dtype(cluster_size_hist.dtype), shape=cluster_size_hist.shape, filters=filter_table)
                                 cluster_size_hist_table[:] = cluster_size_hist
-                                plotting.plot_cluster_size(hist=cluster_size_hist, title='Cluster size (' + str(np.sum(cluster_size_hist)) + ' entries) for ' + parameter + ' = ' + str(scan_parameter_values[parameter_index]), filename=output_pdf)
+                                if output_pdf is not False:
+                                    plotting.plot_cluster_size(hist=cluster_size_hist, title='Cluster size (' + str(np.sum(cluster_size_hist)) + ' entries) for ' + parameter + ' = ' + str(scan_parameter_values[parameter_index]), filename=output_pdf)
                                 if cluster_size_total is None:  # true if no data was appended to the array yet
                                     cluster_size_total = cluster_size_hist
                                 else:
@@ -413,8 +442,8 @@ def analyze_cluster_size_per_scan_parameter(scan_bases, output_file_cluster_size
                                 logging.warning('Analysis shows inconsistent number of hits. Check needed!')
                             logging.info('Analyzed %d hits!' % total_hits)
                     else:  # no scan parameter is given, therefore the data file contains hits of only one GDAC setting and no analysis is necessary
-                        parameter_value = analysis_utils.get_parameter_value_from_file_names([scan_bases[index]], parameter).keys()[0]  # get the parameter value from the file name
-                        logging.info('Extract from ' + scan_bases[index] + ' the cluster size for ' + parameter + ' = ' + str(parameter_value))
+                        parameter_value = analysis_utils.get_parameter_value_from_file_names([input_files_hits[index]], parameter).keys()[0]  # get the parameter value from the file name
+                        logging.info('Extract from ' + input_files_hits[index] + ' the cluster size for ' + parameter + ' = ' + str(parameter_value))
                         cluster_size_hist = in_hit_file_h5.root.HistClusterSize[:]
                         plotting.plot_cluster_size(hist=cluster_size_hist, title='Cluster size (' + str(np.sum(cluster_size_hist)) + ' entries) for ' + parameter + ' =' + str(parameter_value), filename=output_pdf)
                         if cluster_size_total is None:  # true if no data was appended to the array yet
@@ -426,6 +455,43 @@ def analyze_cluster_size_per_scan_parameter(scan_bases, output_file_cluster_size
                         cluster_size_hist_table[:] = cluster_size_hist
             cluster_size_total_out = out_file_h5.createCArray(out_file_h5.root, name='AllHistClusterSize', title='All Cluster Size Histograms', atom=tb.Atom.from_dtype(cluster_size_total.dtype), shape=cluster_size_total.shape, filters=filter_table)
             cluster_size_total_out[:] = cluster_size_total
+
+
+def histogram_cluster_table(analyzed_data_files, chunk_size=10000000):
+        '''Reads in the cluster info table in chunks and histograms the seed pixels into one occupancy array.
+        The 3rd dimension of the occupancy array is the number of different scan parameters used
+
+        Parameters
+        ----------
+        analyzed_data_file : hdf5 file containing the cluster table. If a scan parameter is given in the meta data the occupancy
+                            histograming is done per scan parameter.
+        Returns
+        -------
+        occupancy_array: numpy.array with dimensions (col, row, #scan_parameter)
+        '''
+
+        for analyzed_data_file in analyzed_data_files:
+            with tb.openFile(analyzed_data_file, mode="r") as in_file_h5:
+                histograming = PyDataHistograming()
+                try:
+                    meta_data = in_file_h5.root.meta_data[:]
+                    scan_parameters = analysis_utils.get_unique_scan_parameter_combinations(meta_data)
+                    if scan_parameters is not None:
+                        histograming.add_meta_event_index(scan_parameters['event_number'], array_length=len(meta_data))
+                        scan_parameter_indices = np.array(range(0, len(scan_parameters)), dtype='u4')
+                        histograming.add_scan_parameter(scan_parameter_indices)
+                        logging.info("Add %d different scan parameter(s) for analysis" % len(scan_parameters))
+                    else:
+                        logging.info("No scan parameter data provided")
+                        histograming.set_no_scan_parameter()
+                except tb.exceptions.NoSuchNodeError:
+                    logging.info("No meta data provided, use no scan parameter")
+                    histograming.set_no_scan_parameter()
+
+                logging.info('Histogram cluster seeds...')
+                for cluster, _ in analysis_utils.data_aligned_at_events(in_file_h5.root.Cluster, chunk_size=chunk_size):
+                    print len(cluster), cluster
+                    histograming.add_cluster_seed_hits(cluster, len(cluster))
 
 
 if __name__ == "__main__":
