@@ -1,5 +1,4 @@
-''' Script to check the correctness of the analysis'''
-import random
+''' Script to check the correctness of the analysis. The analysis is done on raw data and all results are compared to a recorded analysis.'''
 import unittest
 
 import tables as tb
@@ -8,7 +7,6 @@ from analyze_raw_data import AnalyzeRawData
 
 
 class TestAnalysis(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls):
         from RawDataConverter.data_interpreter import PyDataInterpreter
@@ -22,30 +20,20 @@ class TestAnalysis(unittest.TestCase):
             analyze_raw_data.create_hit_table = True  # can be set to false to omit hit table creation, std. setting is false
             analyze_raw_data.create_cluster_hit_table = True  # adds the cluster id and seed info to each hit, std. setting is false
             analyze_raw_data.create_cluster_table = True  # enables the creation of a table with all clusters, std. setting is false
-#             analyze_raw_data.create_occupancy_hist = True  # creates a colxrow histogram with accumulated hits for each scan parameter
             analyze_raw_data.create_source_scan_hist = True  # create source scan hists
-#             analyze_raw_data.create_tot_hist = True  # creates a ToT histogram
-#             analyze_raw_data.create_rel_bcid_hist = True  # creates a histogram with the relative BCID of the hits
-#             analyze_raw_data.create_service_record_hist = True  # creates a histogram with all SR send out from the FE
-#             analyze_raw_data.create_error_hist = True  # creates a histogram summing up the event errors that occurred
             analyze_raw_data.create_trigger_error_hist = True  # creates a histogram summing up the trigger errors
             analyze_raw_data.create_cluster_size_hist = True  # enables cluster size histogramming, can save some time, std. setting is false
             analyze_raw_data.create_cluster_tot_hist = True  # enables cluster ToT histogramming per cluster size, std. setting is false
-#             analyze_raw_data.create_threshold_hists = True  # makes only sense if threshold scan data is analyzed, std. setting is false
             analyze_raw_data.create_meta_word_index = True  # stores the start and stop raw data word index for every event, std. setting is false
             analyze_raw_data.create_meta_event_index = True  # stores the event number for each readout in an additional meta data array, default: False
-
             analyze_raw_data.n_injections = 100  # set the numbers of injections, needed for fast threshold/noise determination
             analyze_raw_data.n_bcid = 16  # set the number of BCIDs per event, needed to judge the event structure
             analyze_raw_data.max_tot_value = 13  # set the maximum ToT value considered to be a hit, 14 is a late hit
-
             analyze_raw_data.use_trigger_number = False
             analyze_raw_data.interpreter.use_tdc_word(False)
-
             analyze_raw_data.clusterizer.set_warning_output(False)
             analyze_raw_data.interpreter.set_debug_output(False)
             analyze_raw_data.histograming.set_warning_output(False)
-
             analyze_raw_data.interpret_word_table(fei4b=False)  # the actual start conversion command
 
         with AnalyzeRawData(raw_data_file=None, analyzed_data_file='unit_test_data_1_interpreted.h5') as analyze_raw_data:
