@@ -20,9 +20,9 @@ setup(name='RawDataInterpreter',
       #language="c++",
       )
 
-#check compilation/installation
+#check compilation/installation/data in memory alignement
 hits = np.empty((1,), dtype=
-        [('eventNumber', np.uint32),
+        [('eventNumber', np.uint64),
          ('triggerNumber', np.uint32),
          ('relativeBCID', np.uint8),
          ('LVLID', np.uint16),

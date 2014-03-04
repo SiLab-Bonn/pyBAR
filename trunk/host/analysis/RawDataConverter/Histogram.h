@@ -34,14 +34,12 @@ public:
 
   void addHits(HitInfo*& rHitInfo, const unsigned int& rNhits);
   void addClusterSeedHits(ClusterInfo*& rClusterInfo, const unsigned int& rNcluster);
-  void addScanParameter(ParInfo*& rParInfo, const unsigned int& rNparInfoLength);
+  void addScanParameter(unsigned int*& rParInfo, const unsigned int& rNparInfoLength);
   void setNoScanParameter();
-  void addMetaEventIndex(unsigned int*& rMetaEventIndex, const unsigned int& rNmetaEventIndexLength);
+  void addMetaEventIndex(uint64_t*& rMetaEventIndex, const unsigned int& rNmetaEventIndexLength);
 
-  void calculateThresholdScanArrays(double rMuArray[], double rSigmaArray[], const unsigned int& rMaxInjections); //takes the occupancy histograms for different parameters for the threshold arrays
+  void calculateThresholdScanArrays(double rMuArray[], double rSigmaArray[], const unsigned int& rMaxInjections, const unsigned int& min_parameter, const unsigned int& max_parameter); //takes the occupancy histograms for different parameters for the threshold arrays
 
-  unsigned int getMinParameter(); //returns the minimum parameter from _parInfo
-  unsigned int getMaxParameter(); //returns the maximum parameter from _parInfo
   unsigned int getNparameters();  //returns the parameter range from _parInfo
 
   void resetOccupancyArray();
@@ -64,7 +62,6 @@ private:
   void deleteTdcArray();
   void allocateRelBcidArray();
   void deleteRelBcidArray();
-  void setParameterLimits();      //sets _minParameterValue/_maxParameterValue from _parInfo
   
   unsigned int* _occupancy;       //2d hit histogram for each parameter (in total 3d, linearly sorted via col, row, parameter)
   unsigned int* _tot;             //tot histogram
@@ -72,16 +69,12 @@ private:
   unsigned short* _tdcPixel;      //3d pixel tdc histogram  (in total 3d, linearly sorted via col, row, tdc value)
   unsigned int* _relBcid;         //realative BCID histogram
 
-  unsigned int getScanParameter(unsigned int& rEventNumber);  //returns the event parameter from ParInfo for the given event number
-  unsigned int getParIndex(unsigned int& rScanParameter);      //returns the event index in _parameterValues
+  unsigned int getParIndex(uint64_t& rEventNumber);      //returns the parameter index for the given event number
 
   unsigned int _nMetaEventIndexLength;//length of the meta data event index array
-  unsigned int* _metaEventIndex;      //event index of meta data array
+  uint64_t* _metaEventIndex;      	  //event index of meta data array
   unsigned int _nParInfoLength;       //length of the parInfo array
-  unsigned int _lastMetaEventIndex;   //for loop speed up
-  
-  unsigned int _minParameterValue;    //...
-  unsigned int _maxParameterValue;    //...
+  uint64_t _lastMetaEventIndex;   	  //for loop speed up
 
   unsigned int _NparameterValues;     //needed for _occupancy histogram allocation
 
@@ -95,6 +88,6 @@ private:
   bool _createTdcPixelHist;
   unsigned int _maxTot;               //maximum ToT value (inclusive) considered to be a hit
   
-  ParInfo* _parInfo;
+  unsigned int* _parInfo;
 };
 

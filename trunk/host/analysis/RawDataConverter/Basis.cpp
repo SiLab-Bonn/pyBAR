@@ -188,6 +188,14 @@ std::string Basis::IntToStr(unsigned int const& pValue)
 	return tStream.str();
 }
 
+std::string Basis::LongIntToStr(uint64_t const& pValue)
+{
+	std::stringstream tStream;
+	tStream << pValue;
+	return tStream.str();
+}
+
+
 std::string Basis::DoubleToStr(double const& pValue)
 {
 	std::stringstream tValue;

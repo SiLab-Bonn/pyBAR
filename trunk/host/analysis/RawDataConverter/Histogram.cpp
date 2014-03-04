@@ -25,15 +25,12 @@ void Histogram::setStandardSettings()
 	_lastMetaEventIndex = 0;
 	_parInfo = 0;
 	_metaEventIndex = 0;
-	_maxParameterValue = 1;
 	_occupancy = 0;
 	_relBcid = 0;
 	_tot = 0;
 	_tdc = 0;
 	_tdcPixel = 0;
 	_NparameterValues = 1;
-	_minParameterValue = 0;
-	_maxParameterValue = 0;
 	_createOccHist = false;
 	_createRelBCIDhist = false;
 	_createTotHist = false;
@@ -84,26 +81,25 @@ void Histogram::addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
 	for(unsigned int i = 0; i<rNhits; ++i){
 		unsigned short tColumnIndex = rHitInfo[i].column-1;
 		if(tColumnIndex > RAW_DATA_MAX_COLUMN-1)
-			throw std::out_of_range("column index out of range");
+			throw std::out_of_range("Column index out of range.");
 		unsigned int tRowIndex = rHitInfo[i].row-1;
 		if(tRowIndex > RAW_DATA_MAX_ROW-1)
-			throw std::out_of_range("row index out of range");
+			throw std::out_of_range("Row index out of range.");
 		unsigned int tTot = rHitInfo[i].tot;
 		if(tTot > 15)
-			throw std::out_of_range("tot index out of range");
+			throw std::out_of_range("Tot index out of range.");
 		unsigned int tTdc = rHitInfo[i].TDC;
 		if(tTdc > __N_TDC_VALUES - 1)
-			throw std::out_of_range("TDC counter " + IntToStr(tTdc) + " index out of range");
+			throw std::out_of_range("TDC counter " + IntToStr(tTdc) + " index out of range.");
 		unsigned int tRelBcid = rHitInfo[i].relativeBCID;
 		if(tRelBcid > 15)
-			throw std::out_of_range("relative BCID index out of range");
+			throw std::out_of_range("Relative BCID index out of range.");
 
-		unsigned int tEventParameter = getScanParameter(rHitInfo[i].eventNumber);
-		unsigned int tParIndex = getParIndex(tEventParameter);
+		unsigned int tParIndex = getParIndex(rHitInfo[i].eventNumber);
 
 		if(tParIndex < 0 || tParIndex > getNparameters()-1){
-			error("addHits: tParIndex "+IntToStr(tParIndex)+"\t_minParameterValue "+IntToStr(_minParameterValue)+"\t_maxParameterValue "+IntToStr(_maxParameterValue));
-			throw std::out_of_range("parameter index out of range");
+			error("addHits: tParIndex "+IntToStr(tParIndex)+"\t> "+IntToStr(_NparameterValues));
+			throw std::out_of_range("Parameter index out of range.");
 		}
 		if(_createOccHist)
 			if(tTot <= _maxTot)
@@ -132,60 +128,73 @@ void Histogram::addClusterSeedHits(ClusterInfo*& rClusterInfo, const unsigned in
 	for(unsigned int i = 0; i<rNcluster; ++i){
 		unsigned short tColumnIndex = rClusterInfo[i].seed_column-1;
 		if(tColumnIndex > RAW_DATA_MAX_COLUMN-1)
-			throw std::out_of_range("column index out of range");
+			throw std::out_of_range("Column index out of range.");
 		unsigned int tRowIndex = rClusterInfo[i].seed_row-1;
 		if(tRowIndex > RAW_DATA_MAX_ROW-1)
-			throw std::out_of_range("row index out of range");
+			throw std::out_of_range("Row index out of range.");
 
-		unsigned int tEventParameter = getScanParameter(rClusterInfo[i].eventNumber);
-		unsigned int tParIndex = getParIndex(tEventParameter);
+		unsigned int tParIndex = getParIndex(rClusterInfo[i].eventNumber);
 
 		if(tParIndex < 0 || tParIndex > getNparameters()-1){
-			error("addClusterSeedHits: tParIndex "+IntToStr(tParIndex)+"\t_minParameterValue "+IntToStr(_minParameterValue)+"\t_maxParameterValue "+IntToStr(_maxParameterValue));
-			throw std::out_of_range("parameter index out of range");
+			error("addHits: tParIndex "+IntToStr(tParIndex)+"\t> "+IntToStr(_NparameterValues));
+			throw std::out_of_range("Parameter index out of range.");
 		}
 		if(_createOccHist)
 			_occupancy[(long)tColumnIndex + (long)tRowIndex * (long)RAW_DATA_MAX_COLUMN + (long)tParIndex * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] += 1;
 	}
 }
 
-unsigned int Histogram::getScanParameter(unsigned int& rEventNumber)
+unsigned int Histogram::getParIndex(uint64_t& rEventNumber)
 {
   if(_parInfo == 0)
     return 0;
-  for(unsigned int i=_lastMetaEventIndex; i<_nMetaEventIndexLength-1; ++i){
+  for(uint64_t i=_lastMetaEventIndex; i<_nMetaEventIndexLength-1; ++i){
     if(_metaEventIndex[i+1] > rEventNumber || _metaEventIndex[i+1] < _metaEventIndex[i]){ // second case: meta event data not set yet (std value = 0), event number has to increase
       _lastMetaEventIndex = i;
-      return _parInfo[i].scanParameter;
+      if (i < _nParInfoLength)
+      	return _parInfo[i];
+      else{
+    	  error("Scan parameter index " + IntToStr(i) + " out of range");
+    	  throw std::out_of_range("Scan parameter index out of range.");
+      }
     }
   }
   if(_metaEventIndex[_nMetaEventIndexLength-1] <= rEventNumber) //last read outs
-    return _parInfo[_nMetaEventIndexLength-1].scanParameter;
+    return _parInfo[_nMetaEventIndexLength-1];
   error("getScanParameter: Correlation issues at event "+IntToStr(rEventNumber)+"\n_metaEventIndex[_nMetaEventIndexLength-1] "+IntToStr(_metaEventIndex[_nMetaEventIndexLength-1])+"\n_lastMetaEventIndex "+IntToStr(_lastMetaEventIndex));
-  throw std::logic_error("Event parameter correlation issues");
+  throw std::logic_error("Event parameter correlation issues.");
   return 0;
 }
 
-unsigned int Histogram::getParIndex(unsigned int& rScanParameter)
+void Histogram::addScanParameter(unsigned int*& rParInfo, const unsigned int& rNparInfoLength)
 {
-  return _parameterValues[rScanParameter];
-}
+	debug("addScanParameter");
+	_nParInfoLength = rNparInfoLength;
+	_parInfo = rParInfo;
 
-void Histogram::addScanParameter(ParInfo*& rParInfo, const unsigned int& rNparInfoLength)
-{
-  debug("addScanParameter");
-  _nParInfoLength = rNparInfoLength;
-  _parInfo = rParInfo;
-  setParameterLimits();
-  allocateOccupancyArray();
-  resetOccupancyArray();
-  if (Basis::debugSet()){
+	std::vector<unsigned int> tParameterValues;
+
+	for(unsigned int i = 0; i < _nParInfoLength; ++i)
+	  tParameterValues.push_back(_parInfo[i]);
+
+	std::sort(tParameterValues.begin(), tParameterValues.end());  //sort from lowest to highest value
+	std::set<unsigned int> tSet(tParameterValues.begin(), tParameterValues.end());
+	tParameterValues.assign(tSet.begin(), tSet.end() );
+
+	for(unsigned int i = 0; i < tParameterValues.size(); ++i)
+		_parameterValues[tParameterValues[i]] = i;
+
+	_NparameterValues = std::unique(tParameterValues.begin(), tParameterValues.end()) - tParameterValues.begin();
+
+	allocateOccupancyArray();
+	resetOccupancyArray();
+	if (Basis::debugSet()){
 	  for(unsigned int i=0; i<rNparInfoLength; ++i)
-	     std::cout<<"read out "<<i<<"\t"<<_parInfo[i].scanParameter<<"\n";
-  }
+		 std::cout<<"read out "<<i<<"\t"<<_parInfo[i]<<"\n";
+	}
 }
 
-void Histogram::addMetaEventIndex(unsigned int*& rMetaEventIndex, const unsigned int& rNmetaEventIndexLength)
+void Histogram::addMetaEventIndex(uint64_t*& rMetaEventIndex, const unsigned int& rNmetaEventIndexLength)
 {
   debug("addMetaEventIndex()");
   _nMetaEventIndexLength = rNmetaEventIndexLength;
@@ -328,37 +337,6 @@ void Histogram::deleteRelBcidArray()
 void Histogram::test()
 {
   debug("test()");
-  setParameterLimits();
-}
-
-void Histogram::setParameterLimits()
-{
-  debug("setParameterLimits()");
-  std::vector<unsigned int> tParameterValues;
-
-  for(unsigned int i = 0; i < _nParInfoLength; ++i)
-    tParameterValues.push_back(_parInfo[i].scanParameter);
-
-  std::sort(tParameterValues.begin(), tParameterValues.end());  //sort from lowest to highest value
-  std::set<unsigned int> tSet(tParameterValues.begin(), tParameterValues.end());
-  tParameterValues.assign(tSet.begin(), tSet.end() );
-
-  for(unsigned int i = 0; i < tParameterValues.size(); ++i)
-      _parameterValues[tParameterValues[i]] = i;
-
-  _minParameterValue = tParameterValues.front();
-  _maxParameterValue = tParameterValues.back();
-  _NparameterValues = std::unique(tParameterValues.begin(), tParameterValues.end()) - tParameterValues.begin();
-}
-
-unsigned int Histogram::getMaxParameter()
-{
-  return _maxParameterValue;
-}
-
-unsigned int Histogram::getMinParameter()
-{
- return _minParameterValue;
 }
 
 unsigned int Histogram::getNparameters()
@@ -412,7 +390,7 @@ void Histogram::getRelBcidHist(unsigned int*& rRelBcidHist, bool copy)
 	 rRelBcidHist = _relBcid;
 }
 
-void Histogram::calculateThresholdScanArrays(double rMuArray[], double rSigmaArray[], const unsigned int& rMaxInjections)
+void Histogram::calculateThresholdScanArrays(double rMuArray[], double rSigmaArray[], const unsigned int& rMaxInjections, const unsigned int& min_parameter, const unsigned int& max_parameter)
 {
   debug("calculateThresholdScanArrays(...)");
   //quick algorithm from M. Mertens, phd thesis, Juelich 2010
@@ -420,11 +398,11 @@ void Histogram::calculateThresholdScanArrays(double rMuArray[], double rSigmaArr
   if (_NparameterValues<2)  //a minimum number of different scans is needed
     return;
 
-  unsigned int q_min = getMinParameter();
-  unsigned int q_max = getMaxParameter();
+  unsigned int q_min = min_parameter;
+  unsigned int q_max = max_parameter;
   unsigned int n = getNparameters();
   unsigned int A = rMaxInjections;
-  unsigned int d = (int) ( ((double) getMaxParameter() - (double) getMinParameter())/(double) (n-1));
+  unsigned int d = (int) ( ((double) q_max - (double) q_min)/(double) (n-1));
 
   for(unsigned int i=0; i<RAW_DATA_MAX_COLUMN; ++i){
     for(unsigned int j=0; j<RAW_DATA_MAX_ROW; ++j){

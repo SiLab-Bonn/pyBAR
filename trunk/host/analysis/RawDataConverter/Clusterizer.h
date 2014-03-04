@@ -154,7 +154,7 @@ private:
 	float _actualClusterCharge;											//temporary value holding the total charge value of the actual cluster
 
 	//actual event variables
-	unsigned int _actualEventNumber;  //event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
+	uint64_t _actualEventNumber;  										//event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
 	unsigned int _actualEventStatus;
 
 	bool _abortCluster;													//set to true if one cluster TOT hit exeeds _maxClusterHitTot, cluster is not added to the result array

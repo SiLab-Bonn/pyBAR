@@ -14,6 +14,8 @@ from data_struct import MetaTable, MetaTableV2
 
 from tables import dtype_from_descr
 
+cdef extern from "stdint.h":
+    ctypedef unsigned long long uint64_t
 
 cdef extern from "Basis.h":
     cdef cppclass Basis:
@@ -48,7 +50,7 @@ cdef extern from "Interpret.h":
         void setMetaData(MetaInfo*& rMetaInfo, const unsigned int& tLength) except +
         void setMetaDataV2(MetaInfoV2*& rMetaInfo, const unsigned int& tLength) except +
  
-        void setMetaDataEventIndex(unsigned int*& rEventNumber, const unsigned int& rSize)
+        void setMetaDataEventIndex(unsigned long long*& rEventNumber, const unsigned int& rSize)
         void setMetaDataWordIndex(MetaWordInfoOut*& rWordNumber, const unsigned int& rSize)
 
         void interpretRawData(unsigned int* pDataWords, const unsigned int& pNdataWords) except +
@@ -112,8 +114,8 @@ cdef class PyDataInterpreter:
 #             self.thisptr.setMetaDataV2(<MetaInfoV2*&> meta_data.data, <const unsigned int&> meta_data.shape[0])
         else:
             raise NotImplementedError('Unknown meta data type %s' % meta_data_dtype)
-    def set_meta_event_data(self, cnp.ndarray[cnp.uint32_t, ndim=1] meta_data_event_index):
-        self.thisptr.setMetaDataEventIndex(<unsigned int*&> meta_data_event_index.data, <const unsigned int&> meta_data_event_index.shape[0])
+    def set_meta_event_data(self, cnp.ndarray[cnp.uint64_t, ndim=1] meta_data_event_index):
+        self.thisptr.setMetaDataEventIndex(<unsigned long long*&> meta_data_event_index.data, <const unsigned int&> meta_data_event_index.shape[0])
     def set_meta_data_word_index(self, cnp.ndarray[numpy_meta_word_data, ndim=1] meta_word_data):
         self.thisptr.setMetaDataWordIndex(<MetaWordInfoOut*&> meta_word_data.data, <const unsigned int&>  meta_word_data.shape[0])
     def get_service_records_counters(self, cnp.ndarray[cnp.uint32_t, ndim=1] service_records_counters):
