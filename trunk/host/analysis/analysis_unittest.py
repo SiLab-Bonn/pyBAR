@@ -6,6 +6,48 @@ import numpy as np
 from analyze_raw_data import AnalyzeRawData
 
 
+def compare_h5_files(first_file, second_file, expected_nodes=None):
+    '''Takes two hdf5 files and check for equality of all nodes. Returns true if the node data is equal and the number of nodes is the number of expected nodes.
+    It also returns a error string containing the names of the nodes that are not equal.
+
+    Parameters
+    ----------
+    first_file : string
+        Path to the first file.
+    second_file : string
+        Path to the first file.
+    expected_nodes : Int
+        The number of nodes expected in the second_file. If not specified the number of nodes expected in the second_file equals
+        the number of nodes in the first file.
+
+    Returns
+    -------
+    bool, string
+    '''
+    checks_passed = True
+    error_msg = ""
+    with tb.open_file(first_file, 'r') as first_h5_file:
+        with tb.open_file(second_file, 'r') as second_h5_file:
+            expected_nodes = sum(1 for _ in enumerate(first_h5_file.root)) if expected_nodes is None else expected_nodes  # set the number of expected nodes
+            nodes = sum(1 for _ in enumerate(second_h5_file.root))  # calculated the number of nodes
+            if nodes != expected_nodes:
+                checks_passed = False
+                error_msg += 'The number of nodes in the file is wrong.\n'
+            for node in second_h5_file.root:  # loop over all nodes and compare each node, do not abort if one node is wrong
+                node_name = node.name
+                expected_data = first_h5_file.get_node(first_h5_file.root, node_name)[:]
+                data = second_h5_file.get_node(second_h5_file.root, node_name)[:]
+                try:
+                    if not (expected_data == data).all():  # compare the arrays for each element
+                        checks_passed = False
+                        error_msg += node_name + ' '
+                except AttributeError:  # .all() only works on non scalars
+                    if not (expected_data == data):
+                        checks_passed = False
+                        error_msg += node_name + ' '
+    return checks_passed, error_msg
+
+
 class TestAnalysis(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -47,7 +89,7 @@ class TestAnalysis(unittest.TestCase):
             analyze_raw_data.interpret_word_table(fei4b=False)  # the actual start conversion command
 
         # analyze the digital scan hit data, do not show any feedback (no prints to console, no plots)
-        with AnalyzeRawData(raw_data_file=None, analyzed_data_file='unittest_data//unit_test_data_1_interpreted.h5') as analyze_raw_data:
+        with AnalyzeRawData(raw_data_file=None, analyzed_data_file='unittest_data//unit_test_data_1_result.h5') as analyze_raw_data:
             analyze_raw_data.clusterizer.set_warning_output(False)
             analyze_raw_data.clusterizer.set_warning_output(False)
             analyze_raw_data.create_cluster_hit_table = True
@@ -58,6 +100,10 @@ class TestAnalysis(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):  # remove created files
+        # explicit del call to check c++ library destructors
+        del cls.interpreter
+        del cls.histogram
+        del cls.clusterizer
         os.remove('unittest_data//unit_test_data_1_interpreted.h5')
         os.remove('unittest_data//unit_test_data_1_analyzed.h5')
         os.remove('unittest_data//unit_test_data_2_interpreted.h5')
@@ -79,73 +125,16 @@ class TestAnalysis(unittest.TestCase):
         self.assertTrue(self.interpreter.get_hit_size() == hits.itemsize)
 
     def test_raw_data_analysis(self):  # test the created interpretation file against the stored one
-        with tb.open_file('unittest_data//unit_test_data_1_result.h5', 'r') as h5_file_stored_results:
-            with tb.open_file('unittest_data//unit_test_data_1_interpreted.h5', 'r') as h5_file_actual_results:
-                expected_nodes = sum(1 for _ in enumerate(h5_file_stored_results.root))  # calculated the number of nodes
-                nodes = sum(1 for _ in enumerate(h5_file_actual_results.root))  # calculated the number of nodes
-                self.assertEqual(expected_nodes, nodes, msg='The number of nodes in the file is wrong.')  # compare the number of nodes
-                data_equal = True
-                error_msg = ''
-                for node in h5_file_stored_results.root:  # loop over all nodes and compare each node, do not abort if one node is wrong
-                    node_name = node.name
-                    expected_data = h5_file_stored_results.get_node(h5_file_stored_results.root, node_name)[:]
-                    data = h5_file_actual_results.get_node(h5_file_actual_results.root, node_name)[:]
-                    try:
-                        if not (expected_data == data).all():  # compare the arrays for each element
-                            data_equal = False
-                            error_msg += node_name + ' '
-                    except AttributeError:  # .all() only works on non scalars
-                        if not (expected_data == data):
-                            data_equal = False
-                            error_msg += node_name + ' '
-                error_msg += 'are wrong.'
-                self.assertTrue(data_equal, msg=error_msg)
+        data_equal, error_msg = compare_h5_files('unittest_data//unit_test_data_1_result.h5', 'unittest_data//unit_test_data_1_interpreted.h5')
+        self.assertTrue(data_equal, msg=error_msg)
 
-    def test_threshold_analysis(self):  # test the created interpretation file against the stored one
-        with tb.open_file('unittest_data//unit_test_data_2_result.h5', 'r') as h5_file_stored_results:
-            with tb.open_file('unittest_data//unit_test_data_2_interpreted.h5', 'r') as h5_file_actual_results:
-                expected_nodes = sum(1 for _ in enumerate(h5_file_stored_results.root))  # calculated the number of nodes
-                nodes = sum(1 for _ in enumerate(h5_file_actual_results.root))  # calculated the number of nodes
-                self.assertEqual(expected_nodes, nodes, msg='The number of nodes in the file is wrong.')  # compare the number of nodes
-                data_equal = True
-                error_msg = ''
-                for node in h5_file_stored_results.root:  # loop over all nodes and compare each node, do not abort if one node is wrong
-                    node_name = node.name
-                    expected_data = h5_file_stored_results.get_node(h5_file_stored_results.root, node_name)[:]
-                    data = h5_file_actual_results.get_node(h5_file_actual_results.root, node_name)[:]
-                    try:
-                        if not (expected_data == data).all():  # compare the arrays for each element
-                            data_equal = False
-                            error_msg += node_name + ' '
-                    except AttributeError:  # .all() only works on non scalars
-                        if not (expected_data == data):
-                            data_equal = False
-                            error_msg += node_name + ' '
-                error_msg += 'are wrong.'
-                self.assertTrue(data_equal, msg=error_msg)
+    def test_threshold_analysis(self):  # test the created interpretation file of the threshold data against the stored one
+        data_equal, error_msg = compare_h5_files('unittest_data//unit_test_data_2_result.h5', 'unittest_data//unit_test_data_2_interpreted.h5')
+        self.assertTrue(data_equal, msg=error_msg)
 
-    def test_hit_data_analysis(self):  # test the hit histograming/clustering starting from the interpreted data
-        with tb.open_file('unittest_data//unit_test_data_1_result.h5', 'r') as h5_file_stored_results:
-            with tb.open_file('unittest_data//unit_test_data_1_analyzed.h5', 'r') as h5_file_actual_results:
-                expected_nodes = 7
-                nodes = sum(1 for _ in enumerate(h5_file_actual_results.root))  # calculated the number of nodes
-                self.assertEqual(expected_nodes, nodes, msg='The number of nodes in the file is wrong.')  # compare the number of nodes
-                data_equal = True
-                error_msg = ''
-                for node in h5_file_actual_results.root:  # loop over all nodes and compare each node, do not abort if one node is wrong
-                    node_name = node.name
-                    expected_data = h5_file_stored_results.get_node(h5_file_stored_results.root, node_name)[:]
-                    data = h5_file_actual_results.get_node(h5_file_actual_results.root, node_name)[:]
-                    try:
-                        if not (expected_data == data).all():  # compare the arrays for each element
-                            data_equal = False
-                            error_msg += node_name + ' '
-                    except AttributeError:  # .all() only works on non scalars
-                        if not (expected_data == data):
-                            data_equal = False
-                            error_msg += node_name + ' '
-                error_msg += 'are wrong.'
-                self.assertTrue(data_equal, msg=error_msg)
+    def test_hit_data_analysis(self):  # test the hit histograming/clustering starting from the predefined interpreted data
+        data_equal, error_msg = compare_h5_files('unittest_data//unit_test_data_1_result.h5', 'unittest_data//unit_test_data_1_analyzed.h5', expected_nodes=7)
+        self.assertTrue(data_equal, msg=error_msg)
 
 
 if __name__ == '__main__':
