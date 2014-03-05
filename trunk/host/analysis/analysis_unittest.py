@@ -6,8 +6,40 @@ import numpy as np
 from analyze_raw_data import AnalyzeRawData
 
 
-def compare_h5_files(first_file, second_file, expected_nodes=None):
-    '''Takes two hdf5 files and check for equality of all nodes. Returns true if the node data is equal and the number of nodes is the number of expected nodes.
+def get_array_differences(first_array, second_array):
+    '''Takes two numpy.ndarrays and compares them on a column basis. 
+    Different column data types, missing columns and columns with different values are returned in a string.
+
+    Parameters
+    ----------
+    first_array : numpy.ndarray
+    second_array : numpy.ndarray
+
+    Returns
+    -------
+    string
+    '''
+    if first_array.dtype.names is None:  # normal nd.array
+        return ': Sum first array: ' + str(np.sum(first_array)) + ', Sum second array: ' + str(np.sum(second_array))
+    else:
+        return_str = ''
+        for column_name in first_array.dtype.names:
+            first_column = first_array[column_name]
+            try:
+                second_column = second_array[column_name]
+            except ValueError:
+                return_str += 'No ' + column_name + ' column found. '
+                continue
+            if (first_column.dtype != second_column.dtype):
+                return_str += 'Column ' + column_name + ' has different data type. '
+            if not (first_column == second_column).all():  # check if the data of the column is equal
+                return_str += 'Column ' + column_name + ' not equal. '
+        return ': ' + return_str
+
+
+def compare_h5_files(first_file, second_file, expected_nodes=None, detailed_comparison=True):
+    '''Takes two hdf5 files and check for equality of all nodes.
+    Returns true if the node data is equal and the number of nodes is the number of expected nodes.
     It also returns a error string containing the names of the nodes that are not equal.
 
     Parameters
@@ -40,11 +72,17 @@ def compare_h5_files(first_file, second_file, expected_nodes=None):
                 try:
                     if not (expected_data == data).all():  # compare the arrays for each element
                         checks_passed = False
-                        error_msg += node_name + ' '
-                except AttributeError:  # .all() only works on non scalars
+                        error_msg += node_name
+                        if detailed_comparison:
+                            error_msg += get_array_differences(data, expected_data)
+                        error_msg += '\n'
+                except AttributeError:  # .all() only works on non scalars, recarray is somewhat a scalar
                     if not (expected_data == data):
                         checks_passed = False
-                        error_msg += node_name + ' '
+                        error_msg += node_name
+                        if detailed_comparison:
+                            error_msg += get_array_differences(data, expected_data)
+                        error_msg += '\n'
     return checks_passed, error_msg
 
 
@@ -98,6 +136,26 @@ class TestAnalysis(unittest.TestCase):
             analyze_raw_data.create_cluster_tot_hist = True
             analyze_raw_data.analyze_hit_table(analyzed_data_out_file='unittest_data//unit_test_data_1_analyzed.h5')
 
+        # analyze the digital scan raw data, do not show any feedback (no prints to console, no plots)
+        with AnalyzeRawData(raw_data_file='unittest_data//unit_test_data_3.h5', analyzed_data_file='unittest_data//unit_test_data_3_interpreted.h5') as analyze_raw_data:
+            analyze_raw_data.create_hit_table = True  # can be set to false to omit hit table creation, std. setting is false
+            analyze_raw_data.create_cluster_hit_table = True  # adds the cluster id and seed info to each hit, std. setting is false
+            analyze_raw_data.create_cluster_table = True  # enables the creation of a table with all clusters, std. setting is false
+            analyze_raw_data.create_trigger_error_hist = True  # creates a histogram summing up the trigger errors
+            analyze_raw_data.create_cluster_size_hist = True  # enables cluster size histogramming, can save some time, std. setting is false
+            analyze_raw_data.create_cluster_tot_hist = True  # enables cluster ToT histogramming per cluster size, std. setting is false
+            analyze_raw_data.create_meta_word_index = True  # stores the start and stop raw data word index for every event, std. setting is false
+            analyze_raw_data.create_meta_event_index = True  # stores the event number for each readout in an additional meta data array, default: False
+            analyze_raw_data.n_injections = 100  # set the numbers of injections, needed for fast threshold/noise determination
+            analyze_raw_data.n_bcid = 16  # set the number of BCIDs per event, needed to judge the event structure
+            analyze_raw_data.max_tot_value = 13  # set the maximum ToT value considered to be a hit, 14 is a late hit
+            analyze_raw_data.use_trigger_number = False
+            analyze_raw_data.interpreter.use_tdc_word(False)
+            analyze_raw_data.clusterizer.set_warning_output(False)
+            analyze_raw_data.interpreter.set_debug_output(False)
+            analyze_raw_data.histograming.set_warning_output(False)
+            analyze_raw_data.interpret_word_table(fei4b=False)  # the actual start conversion command
+
     @classmethod
     def tearDownClass(cls):  # remove created files
         # explicit del call to check c++ library destructors
@@ -107,6 +165,7 @@ class TestAnalysis(unittest.TestCase):
         os.remove('unittest_data//unit_test_data_1_interpreted.h5')
         os.remove('unittest_data//unit_test_data_1_analyzed.h5')
         os.remove('unittest_data//unit_test_data_2_interpreted.h5')
+        os.remove('unittest_data//unit_test_data_3_interpreted.h5')
 
     def test_data_alignement(self):  # test if the data alignment is correct (important to detect 32/64 bit related issues)
         hits = np.empty((1,), dtype=[('eventNumber', np.uint64),
@@ -134,6 +193,10 @@ class TestAnalysis(unittest.TestCase):
 
     def test_hit_data_analysis(self):  # test the hit histograming/clustering starting from the predefined interpreted data
         data_equal, error_msg = compare_h5_files('unittest_data//unit_test_data_1_result.h5', 'unittest_data//unit_test_data_1_analyzed.h5', expected_nodes=7)
+        self.assertTrue(data_equal, msg=error_msg)
+
+    def test_analysis_per_scan_parameter(self):  # check if the data per scan parameter is correctly analyzed
+        data_equal, error_msg = compare_h5_files('unittest_data//unit_test_data_3_result.h5', 'unittest_data//unit_test_data_3_interpreted.h5')
         self.assertTrue(data_equal, msg=error_msg)
 
 
