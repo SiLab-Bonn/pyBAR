@@ -189,5 +189,11 @@ private:
 	unsigned int* _errorCounter;             //error code histogram
 	unsigned int* _tdcCounter;             	 //tdc counter value histogram
 	unsigned int* _serviceRecordCounter;     //SR histogram
+
+	//temporary variables set according to the actual SRAM word
+	unsigned int tActualLVL1ID;				//LVL1ID of the actual data header
+	unsigned int tActualBCID;				//BCID of the actual data header
+	unsigned int tActualSRcode;				//Service record code of the actual service record
+	unsigned int tActualSRcounter;			//Service record counter value of the actual service record
 };
 

@@ -53,11 +53,6 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 	_hitIndex = 0;
 	_actualMetaWordIndex = 0;
 
-	//temporary variables set according to the actual SRAM word
-	unsigned int tActualLVL1ID = 0;		//LVL1ID of the actual data header
-	unsigned int tActualBCID = 0;		//BCID of the actual data header
-	unsigned int tActualSRcode = 0;		//Service record code of the actual service record
-	unsigned int tActualSRcounter = 0;	//Service record counter value of the actual service record
 	int tActualCol1 = 0;				//column position of the first hit in the actual data record
 	int tActualRow1 = 0;				//row position of the first hit in the actual data record
 	int tActualTot1 = -1;				//tot value of the first hit in the actual data record
