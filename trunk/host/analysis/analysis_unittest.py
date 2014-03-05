@@ -34,6 +34,9 @@ def get_array_differences(first_array, second_array):
                 return_str += 'Column ' + column_name + ' has different data type. '
             if not (first_column == second_column).all():  # check if the data of the column is equal
                 return_str += 'Column ' + column_name + ' not equal. '
+                print column_name, np.where(first_column != second_column)
+                print first_array[np.where(first_column != second_column)]
+                print second_array[np.where(first_column != second_column)]
         return ': ' + return_str
 
 
@@ -96,8 +99,9 @@ class TestAnalysis(unittest.TestCase):
         cls.histogram = PyDataHistograming()
         cls.clusterizer = PyDataClusterizer()
 
-        # analyze the digital scan raw data, do not show any feedback (no prints to console, no plots)
+#         # analyze the digital scan raw data, do not show any feedback (no prints to console, no plots)
         with AnalyzeRawData(raw_data_file='unittest_data//unit_test_data_1.h5', analyzed_data_file='unittest_data//unit_test_data_1_interpreted.h5') as analyze_raw_data:
+            analyze_raw_data.chunk_size = 3000000
             analyze_raw_data.create_hit_table = True  # can be set to false to omit hit table creation, std. setting is false
             analyze_raw_data.create_cluster_hit_table = True  # adds the cluster id and seed info to each hit, std. setting is false
             analyze_raw_data.create_cluster_table = True  # enables the creation of a table with all clusters, std. setting is false
@@ -115,9 +119,10 @@ class TestAnalysis(unittest.TestCase):
             analyze_raw_data.interpreter.set_debug_output(False)
             analyze_raw_data.histograming.set_warning_output(False)
             analyze_raw_data.interpret_word_table(fei4b=False)  # the actual start conversion command
-
+ 
         # analyze the fast threshold scan raw data, do not show any feedback (no prints to console, no plots)
         with AnalyzeRawData(raw_data_file='unittest_data//unit_test_data_2.h5', analyzed_data_file='unittest_data//unit_test_data_2_interpreted.h5') as analyze_raw_data:
+            analyze_raw_data.chunk_size = 3000000
             analyze_raw_data.n_injections = 100  # set the numbers of injections, needed for fast threshold/noise determination
             analyze_raw_data.n_bcid = 16  # set the number of BCIDs per event, needed to judge the event structure
             analyze_raw_data.max_tot_value = 13  # set the maximum ToT value considered to be a hit, 14 is a late hit
@@ -128,6 +133,7 @@ class TestAnalysis(unittest.TestCase):
 
         # analyze the digital scan hit data, do not show any feedback (no prints to console, no plots)
         with AnalyzeRawData(raw_data_file=None, analyzed_data_file='unittest_data//unit_test_data_1_result.h5') as analyze_raw_data:
+            analyze_raw_data.chunk_size = 3000000
             analyze_raw_data.clusterizer.set_warning_output(False)
             analyze_raw_data.clusterizer.set_warning_output(False)
             analyze_raw_data.create_cluster_hit_table = True
@@ -138,6 +144,7 @@ class TestAnalysis(unittest.TestCase):
 
         # analyze the digital scan raw data, do not show any feedback (no prints to console, no plots)
         with AnalyzeRawData(raw_data_file='unittest_data//unit_test_data_3.h5', analyzed_data_file='unittest_data//unit_test_data_3_interpreted.h5') as analyze_raw_data:
+            analyze_raw_data.chunk_size = 3000000
             analyze_raw_data.create_hit_table = True  # can be set to false to omit hit table creation, std. setting is false
             analyze_raw_data.create_cluster_hit_table = True  # adds the cluster id and seed info to each hit, std. setting is false
             analyze_raw_data.create_cluster_table = True  # enables the creation of a table with all clusters, std. setting is false
