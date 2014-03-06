@@ -4,19 +4,25 @@ from distutils.command.build_ext import build_ext
 from Cython.Build import cythonize
 import numpy as np
 
-copt =  {'msvc': ['-I/external']}
-lopt =  {}
+import os
+path = os.getcwd()  # current path
+
+copt = {'msvc': ['-I' + os.path.join(path, 'external')]}
+lopt = {}
+
 
 class build_ext_opt(build_ext):
     def build_extensions(self):
         c = self.compiler.compiler_type
-        if copt.has_key(c):
+        if c in copt:
             for e in self.extensions:
                 e.extra_compile_args = copt[c]
-        if lopt.has_key(c):
+        if c in lopt:
             for e in self.extensions:
                 e.extra_link_args = lopt[c]
+        # new-style class
         #super(build_ext_opt, self).build_extensions()
+        # old-style class
         build_ext.build_extensions(self)
 
 
