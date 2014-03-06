@@ -4,10 +4,13 @@ import os
 import tables as tb
 import numpy as np
 from analyze_raw_data import AnalyzeRawData
+from RawDataConverter.data_interpreter import PyDataInterpreter
+from RawDataConverter.data_histograming import PyDataHistograming
+from RawDataConverter.data_clusterizer import PyDataClusterizer
 
 
 def get_array_differences(first_array, second_array):
-    '''Takes two numpy.ndarrays and compares them on a column basis. 
+    '''Takes two numpy.ndarrays and compares them on a column basis.
     Different column data types, missing columns and columns with different values are returned in a string.
 
     Parameters
@@ -92,9 +95,6 @@ def compare_h5_files(first_file, second_file, expected_nodes=None, detailed_comp
 class TestAnalysis(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        from RawDataConverter.data_interpreter import PyDataInterpreter
-        from RawDataConverter.data_histograming import PyDataHistograming
-        from RawDataConverter.data_clusterizer import PyDataClusterizer
         cls.interpreter = PyDataInterpreter()
         cls.histogram = PyDataHistograming()
         cls.clusterizer = PyDataClusterizer()
@@ -173,6 +173,15 @@ class TestAnalysis(unittest.TestCase):
         os.remove('unittest_data//unit_test_data_1_analyzed.h5')
         os.remove('unittest_data//unit_test_data_2_interpreted.h5')
         os.remove('unittest_data//unit_test_data_3_interpreted.h5')
+
+    def test_libraries_stability(self):  # calls 10000 times the constructor and destructor to check the libraries
+        for _ in range(1000):
+            interpreter = PyDataInterpreter()
+            histogram = PyDataHistograming()
+            clusterizer = PyDataClusterizer()
+            del interpreter
+            del histogram
+            del clusterizer
 
     def test_data_alignement(self):  # test if the data alignment is correct (important to detect 32/64 bit related issues)
         hits = np.empty((1,), dtype=[('eventNumber', np.uint64),
