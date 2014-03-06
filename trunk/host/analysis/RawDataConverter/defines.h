@@ -1,15 +1,14 @@
 #ifndef DEFINES_H
 #define DEFINES_H
 
+#pragma pack(1) //data struct in memory alignement
+
 // for (u)int64_t event_number
 #ifdef _MSC_VER
-typedef __int64 int64_t;
-typedef unsigned __int64 uint64_t;
+#include "external/stdint.h"
 #else
 #include <stdint.h>
 #endif
-
-#pragma pack(1) //data struct in memory alignement
 
 //structure to store the hits
 typedef struct HitInfo{

@@ -16,7 +16,7 @@ setup(name='RawDataInterpreter',
       author_email='david-leon.pohl@cern.ch',
       url='https://silab-redmine.physik.uni-bonn.de/projects/pybar',
       ext_modules=cythonize(extensions),
-      include_dirs=[np.get_include()],
+      include_dirs=[np.get_include(), 'external'],
       #language="c++",
       )
 

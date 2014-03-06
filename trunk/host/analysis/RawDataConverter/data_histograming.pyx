@@ -9,9 +9,9 @@ from libcpp cimport bool  # to be able to use bool variables
 
 from data_struct cimport numpy_hit_info, numpy_meta_data, numpy_meta_data_v2, numpy_par_info, numpy_cluster_info
 
-#from libc.stdint cimport uint64_t
-cdef extern from "defines.h":
-    ctypedef unsigned long long uint64_t  # http://stackoverflow.com/questions/3544240/conditional-ctypedef-with-cython
+from libc.stdint cimport uint64_t
+# cdef extern from "defines.h":
+#     ctypedef unsigned long long uint64_t  # http://stackoverflow.com/questions/3544240/conditional-ctypedef-with-cython
 
 cdef extern from "Basis.h":
     cdef cppclass Basis:
