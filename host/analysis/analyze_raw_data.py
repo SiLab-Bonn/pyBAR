@@ -453,7 +453,7 @@ class AnalyzeRawData(object):
             self.meta_event_index = np.zeros((meta_data_size,), dtype=[('metaEventIndex', np.uint64)])  # this array is filled by the interpreter and holds the event number per read out
             self.interpreter.set_meta_event_data(self.meta_event_index)  # tell the interpreter the data container to write the meta event index to
 
-            progress_bar = progressbar.ProgressBar(poll=100, widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=table_size)
+            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=table_size)
             progress_bar.start()
 
             for iWord in range(0, table_size, self._chunk_size):
@@ -691,7 +691,7 @@ class AnalyzeRawData(object):
         n_hits = 0  # number of hits in actual chunk
 
         logging.info('Analyze hits...')
-        progress_bar = progressbar.ProgressBar(poll=100, widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=table_size)
+        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=table_size)
         progress_bar.start()
 
         for hits, _ in analysis_utils.data_aligned_at_events(in_file_h5.root.Hits, chunk_size=self._chunk_size):
