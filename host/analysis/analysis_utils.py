@@ -188,7 +188,7 @@ def central_difference(x, y):
     return (z2 - z1) / (dx2 + dx1)
 
 
-def get_parameter_value_from_file_names(files, parameter, unique=True, sort=True):
+def get_parameter_value_from_file_names(files, parameters=None, unique=False, sort=True):
     """
     Takes a list of files, searches for the parameter name in the file name and returns a ordered dict with the file name
     in the first dimension and the corresponding parameter value in the second.
@@ -198,7 +198,7 @@ def get_parameter_value_from_file_names(files, parameter, unique=True, sort=True
     Parameters
     ----------
     files : list of strings
-    parameter : string
+    parameter : string or list of strings
     unique : bool
     sort : bool
 
@@ -208,19 +208,30 @@ def get_parameter_value_from_file_names(files, parameter, unique=True, sort=True
 
     """
 #     unique=False
-    logging.info('Get the parameter: ' + str(parameter) + ' values from the file names of ' + str(len(files)) + ' files')
+    logging.debug('Get the parameter: ' + str(parameters) + ' values from the file names of ' + str(len(files)) + ' files')
     files_dict = collections.OrderedDict()
+    if parameters is None:  # special case, no parameter defined
+        return files_dict
+    if isinstance(parameters, basestring):
+        parameters = (parameters, )
+    search_string = '_'.join(parameters)
+    for _ in parameters:
+        search_string += r'_(\d+)'
+    result = {}
     for one_file in files:
-        parameter_value = re.findall(parameter + r'_(\d+)', one_file)
-        if parameter_value:
-            parameter_value = int(parameter_value[0])
-            if unique and parameter_value in files_dict.values():  # check if the value is already there
-                for i_file_name, i_parameter_value in files_dict.iteritems():
-                    if i_parameter_value == parameter_value:
-                        del files_dict[i_file_name]
-                        logging.info('File with ' + parameter + ' = ' + str(parameter_value) + ' is not unique. Take ' + one_file)
-            files_dict[one_file] = parameter_value
-    return collections.OrderedDict(sorted(files_dict.iteritems(), key=itemgetter(1)) if sort else files_dict)  # with PEP 265 solution of sorting a dict by value
+        parameter_values = re.findall(search_string, one_file)
+        if parameter_values:
+            if isinstance(parameter_values[0], tuple):
+                parameter_values = list(reduce(lambda t1, t2: t1 + t2, parameter_values))
+            parameter_values = [[int(i), ] for i in parameter_values]  # convert string value to list with int
+            files_dict[one_file] = dict(zip(parameters, parameter_values))
+            if unique:  # reduce to the files with different scan parameters
+                for key, value in files_dict.items():
+                    if value not in result.values():
+                        result[key] = value
+            else:
+                result[one_file] = files_dict[one_file]
+    return collections.OrderedDict(sorted(result.iteritems(), key=itemgetter(1)) if sort else files_dict)  # with PEP 265 solution of sorting a dict by value
 
 
 def get_data_file_names_from_scan_base(scan_base, filter_file_words=None):
@@ -251,8 +262,7 @@ def get_data_file_names_from_scan_base(scan_base, filter_file_words=None):
 
 
 def get_parameter_scan_bases_from_scan_base(scan_base):
-    """
-    Takes a list of scan base names and returns all scan base names that have this scan base within their name.
+    """ Takes a list of scan base names and returns all scan base names that have this scan base within their name.
 
     Parameters
     ----------
@@ -267,17 +277,31 @@ def get_parameter_scan_bases_from_scan_base(scan_base):
     return [scan_bases[:-3] for scan_bases in get_data_file_names_from_scan_base(scan_base, filter_file_words=['interpreted', 'cut_', 'cluster_sizes', 'histograms'])]
 
 
-def get_parameter_values_from_files(files, parameter, sort=True):
+def get_scan_parameter_names(scan_parameters):
+    ''' Returns the scan parameter names of the scan_paraemeter table.
+
+    Parameters
+    ----------
+    scan_parameters : numpy.array
+
+    Returns
+    -------
+    list of strings
+
     '''
-    Takes a list of files, searches for the parameter name in the file name and in the file and returns a ordered dict with the file name in
-    the first dimension and the corresponding parameter values in the second.
+    return scan_parameters.dtype.names
+
+
+def get_parameter_values_from_files(files, parameters=None, sort=True):
+    ''' Takes a list of files, searches for the parameter name in the file name and in the file.
+    Returns a ordered dict with the file name in the first dimension and the corresponding parameter values in the second.
     If a scan parameter appears in the file name and in the file the first parameter setting has to be in the file name, otherwise a warning is shown.
     The file names can be sorted by the first parameter value of each file.
 
     Parameters
     ----------
     files : list of strings
-    parameter : string
+    parameters : string, list of strings
     sort : bool
 
     Returns
@@ -285,31 +309,45 @@ def get_parameter_values_from_files(files, parameter, sort=True):
     collections.OrderedDict
 
     '''
-    logging.info('Get the ' + parameter + ' values from ' + str(len(files)) + ' files')
+    logging.debug('Get the parameter ' + str(parameters) + ' values from ' + str(len(files)) + ' files')
     files_dict = collections.OrderedDict()
-    parameter_values_from_file_names_dict = get_parameter_value_from_file_names(files, parameter, sort=sort)  # get the parameter from the file name
+    if isinstance(parameters, basestring):
+        parameters = (parameters, )
+    parameter_values_from_file_names_dict = get_parameter_value_from_file_names(files, parameters, sort=sort)  # get the parameter from the file name
     for file_name in files:
         with tb.openFile(file_name, mode="r") as in_file_h5:  # open the actual file
-            scan_parameter_values = None
+            scan_parameter_values = {}
             try:
                 scan_parameters = in_file_h5.root.scan_parameters[:]  # get the scan parameters from the scan parameter table
-                scan_parameter_values = np.unique(scan_parameters[parameter]).tolist()  # different scan parameter values used
+                if parameters is None:
+                    parameters = get_scan_parameter_names(scan_parameters)
+                for parameter in parameters:
+                    try:
+                        scan_parameter_values[parameter] = np.unique(scan_parameters[parameter]).tolist()  # different scan parameter values used
+                    except ValueError:  # the scan parameter does not exists
+                        pass
             except tb.NoSuchNodeError:  # scan parameter table does not exist
                 try:
                     scan_parameters = get_scan_parameter(in_file_h5.root.meta_data[:])  # get the scan parameters from the meta data
                     if scan_parameters:
-                        scan_parameter_values = np.unique(scan_parameters[parameter]).tolist()  # different scan parameter values used
+                        try:
+                            scan_parameter_values = np.unique(scan_parameters[parameters]).tolist()  # different scan parameter values used
+                        except ValueError:  # the scan parameter does not exists
+                            pass
                 except tb.NoSuchNodeError:  # meta data table does not exist
                     pass
-            if scan_parameter_values is None:  # take the parameter found in the file
-                scan_parameter_values = [parameter_values_from_file_names_dict[file_name]]
+            if not scan_parameter_values:  # take the parameter found in the file name
+                try:
+                    scan_parameter_values = parameter_values_from_file_names_dict[file_name]
+                except KeyError:  # no scan parameter found at all, neither in the file name nor in the file
+                    scan_parameter_values = None
             else:
                 try:
-                    parameter_values_from_file_names_dict[file_name]
-                    if parameter_values_from_file_names_dict[file_name] != scan_parameter_values[0]:  # compare the file name parameter with the parameter found in the file
-                        logging.warning(parameter + ' = ' + str(parameter_values_from_file_names_dict[file_name]) + ' info in file name differs from the ' + parameter + ' info = ' + str(scan_parameter_values) + ' in the meta data')
-                except KeyError:  # file_name key does not exist in parameter_values_from_file_names_dict
-                    pass
+                    for key, value in scan_parameter_values.items():
+                        print key, value
+                        print parameter_values_from_file_names_dict[file_name][key]
+                except KeyError:
+                    print 'no'
             files_dict[file_name] = scan_parameter_values
     return collections.OrderedDict(sorted(files_dict.iteritems(), key=itemgetter(1)) if sort else files_dict)
 
@@ -797,7 +835,10 @@ def get_scan_parameter(meta_data_array):
     python.dict{string, numpy.Histogram}
     '''
 
-    last_not_parameter_column = meta_data_array.dtype.names.index('error_code')
+    try:
+        last_not_parameter_column = meta_data_array.dtype.names.index('error_code')  # for interpreted meta_data
+    except ValueError:
+        last_not_parameter_column = meta_data_array.dtype.names.index('error')  # for raw data file meta_data
     if last_not_parameter_column == len(meta_data_array.dtype.names) - 1:  # no meta_data found
         return
     scan_parameters = {}
