@@ -14,8 +14,9 @@ from data_struct import MetaTable, MetaTableV2
 
 from tables import dtype_from_descr
 
-cdef extern from "stdint.h":
-    ctypedef unsigned long long uint64_t
+#from libc.stdint cimport uint64_t
+cdef extern from "defines.h":
+    ctypedef unsigned long long uint64_t  # http://stackoverflow.com/questions/3544240/conditional-ctypedef-with-cython
 
 cdef extern from "Basis.h":
     cdef cppclass Basis:

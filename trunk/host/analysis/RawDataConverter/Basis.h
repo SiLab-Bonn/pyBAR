@@ -18,7 +18,14 @@
 #include <new>
 #include <stdexcept>
 
-#include <stdint.h>  // for uint64_t event_number
+// for (u)int64_t event_number
+#ifdef _MSC_VER
+typedef __int64 int64_t;
+typedef unsigned __int64 uint64_t;
+#else
+#include <stdint.h>
+#endif
+
 
 class Basis
 {
