@@ -154,14 +154,14 @@ unsigned int Histogram::getParIndex(uint64_t& rEventNumber)
       if (i < _nParInfoLength)
       	return _parInfo[i];
       else{
-    	  error("Scan parameter index " + IntToStr(i) + " out of range");
+    	  error("Scan parameter index " + LongIntToStr(i) + " out of range");
     	  throw std::out_of_range("Scan parameter index out of range.");
       }
     }
   }
   if(_metaEventIndex[_nMetaEventIndexLength-1] <= rEventNumber) //last read outs
     return _parInfo[_nMetaEventIndexLength-1];
-  error("getScanParameter: Correlation issues at event "+IntToStr(rEventNumber)+"\n_metaEventIndex[_nMetaEventIndexLength-1] "+IntToStr(_metaEventIndex[_nMetaEventIndexLength-1])+"\n_lastMetaEventIndex "+IntToStr(_lastMetaEventIndex));
+  error("getScanParameter: Correlation issues at event "+LongIntToStr(rEventNumber)+"\n_metaEventIndex[_nMetaEventIndexLength-1] "+LongIntToStr(_metaEventIndex[_nMetaEventIndexLength-1])+"\n_lastMetaEventIndex "+LongIntToStr(_lastMetaEventIndex));
   throw std::logic_error("Event parameter correlation issues.");
   return 0;
 }
