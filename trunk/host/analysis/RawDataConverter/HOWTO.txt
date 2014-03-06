@@ -3,5 +3,14 @@ The Cython solution just uses the Interpreter/Histogram and CLusterizer class an
 It is platform independent and allows Pytables Blosc compression in tables.
 1. make sure you have cython installed
 2. run setup.py with cython to build libraries:
-   Linux:   python setup.py build_ext --inplace --f
-   Windows: python setup.py build_ext --inplace --compiler=msvc --f
+   Linux/Mac: python setup.py build_ext --inplace --f
+   Windows:   python setup.py build_ext --inplace --compiler=msvc --f
+
+Setting up Eclipse + PyDev:
+Goto External Tools Configurations --> Program --> Cythonize Converter
+Location: location of Python executable e.g. c:\anaconda\python.exe
+Working Directory: ${workspace_loc:/pyBAR/host/analysis/RawDataConverter}
+Arguments (Linux/Mac): ${selected_resource_loc} build_ext --inplace --f
+Arguments (Windows):   ${selected_resource_loc} build_ext --inplace --compiler=msvc --f
+
+Run analysis_unittest.py to validate binary code.
