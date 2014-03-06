@@ -1,7 +1,24 @@
 from distutils.core import setup
 from distutils.extension import Extension
+from distutils.command.build_ext import build_ext
 from Cython.Build import cythonize
 import numpy as np
+
+copt =  {'msvc': ['-I/external']}
+lopt =  {}
+
+class build_ext_opt(build_ext):
+    def build_extensions(self):
+        c = self.compiler.compiler_type
+        if copt.has_key(c):
+            for e in self.extensions:
+                e.extra_compile_args = copt[c]
+        if lopt.has_key(c):
+            for e in self.extensions:
+                e.extra_link_args = lopt[c]
+        #super(build_ext_opt, self).build_extensions()
+        build_ext.build_extensions(self)
+
 
 extensions = [Extension("data_interpreter", ["data_interpreter.pyx"]),
               Extension("data_histograming", ["data_histograming.pyx"]),
@@ -16,7 +33,8 @@ setup(name='RawDataInterpreter',
       author_email='david-leon.pohl@cern.ch',
       url='https://silab-redmine.physik.uni-bonn.de/projects/pybar',
       ext_modules=cythonize(extensions),
-      include_dirs=[np.get_include(), 'external'],
+      include_dirs=[np.get_include()],
+      cmdclass = {'build_ext': build_ext_opt},
       #language="c++",
       )
 
