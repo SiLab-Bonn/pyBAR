@@ -9,6 +9,7 @@ import itertools
 import time
 import collections
 import numpy as np
+import progressbar
 import glob
 import tables as tb
 import numexpr as ne
@@ -87,7 +88,7 @@ def get_normalization(hit_files, parameter, reference='event', sort=False, plot=
     numpy.ndarray
     '''
 
-    scan_parameter_values_files_dict = get_parameter_values_from_files(hit_files, parameter, sort=sort)
+    scan_parameter_values_files_dict = get_parameter_from_files(hit_files, parameter, sort=sort)
     normalization = []
     for one_file in scan_parameter_values_files_dict:
         with tb.openFile(one_file, mode="r") as in_hit_file_h5:  # open the actual hit file
@@ -188,6 +189,47 @@ def central_difference(x, y):
     return (z2 - z1) / (dx2 + dx1)
 
 
+def get_total_n_data_words(files_dict):
+    n_words = 0
+    for file_name in files_dict.iterkeys():
+        with tb.openFile(file_name, mode="r") as in_file_h5:  # open the actual file
+            n_words += in_file_h5.root.raw_data.shape[0]
+    return n_words
+
+
+def create_parameter_table(files_dict):
+    if not check_parameter_similarity(files_dict):
+        raise RuntimeError('Cannot create table from file with different scan parameters.')
+    # create the parameter names / format for the parameter table
+    try:
+        names = ','.join([name for name in files_dict.itervalues().next().keys()])
+        formats = ','.join(['uint32' for name in files_dict.itervalues().next().keys()])
+        arrayList = [l for l in files_dict.itervalues().next().values()]
+    except AttributeError:  # no parameters given, return None
+        return
+    parameter_table = None
+    # create a parameter list for every read out
+    for file_name, parameters in files_dict.iteritems():
+        with tb.openFile(file_name, mode="r") as in_file_h5:  # open the actual file
+            n_parameter_settings = len(files_dict[file_name].values()[0])  # determine the number of different parameter settings from the list length of parameter values of the first parameter
+            if n_parameter_settings == 1:  # only one parameter setting used, therefore create a temporary parameter table with these parameter setting and append it to the final parameter table
+                read_out = in_file_h5.root.meta_data.shape[0]
+                if parameter_table is None:  # final parameter_table does not exists, so create is
+                    parameter_table = np.rec.fromarrays(arrayList, names=names, formats=formats)  # create recarray
+                    parameter_table.resize(read_out)
+                    parameter_table[-read_out:] = np.rec.fromarrays(arrayList, names=names, formats=formats)
+                else:  # final parameter table already exist, so append to existing
+                    parameter_table.resize(parameter_table.shape[0] + read_out)  # fastest way to append, http://stackoverflow.com/questions/1730080/append-rows-to-a-numpy-record-array
+                    parameter_table[-read_out:] = np.rec.fromarrays([l for l in parameters.values()], names=names, formats=formats)
+            else:  # more than one parameter setting used, therefore the info has to be taken from the parameter table in the file. Append this table to the final parameter_table
+                if parameter_table is None:  # final parameter_table does not exists, so create is
+                    parameter_table = in_file_h5.root.scan_parameters[:]
+                else:  # final parameter table already exist, so append to existing
+                    parameter_table.resize(parameter_table.shape[0] + in_file_h5.root.scan_parameters.shape[0])  # fastest way to append, http://stackoverflow.com/questions/1730080/append-rows-to-a-numpy-record-array
+                    parameter_table[-in_file_h5.root.scan_parameters.shape[0]:] = in_file_h5.root.scan_parameters[:]  # set table
+    return parameter_table
+
+
 def get_parameter_value_from_file_names(files, parameters=None, unique=False, sort=True):
     """
     Takes a list of files, searches for the parameter name in the file name and returns a ordered dict with the file name
@@ -234,7 +276,7 @@ def get_parameter_value_from_file_names(files, parameters=None, unique=False, so
     return collections.OrderedDict(sorted(result.iteritems(), key=itemgetter(1)) if sort else files_dict)  # with PEP 265 solution of sorting a dict by value
 
 
-def get_data_file_names_from_scan_base(scan_base, filter_file_words=None):
+def get_data_file_names_from_scan_base(scan_base, filter_file_words=None, parameter=False):
     """
     Takes a list of scan base names and returns all file names that have this scan base within their name. File names that have a word of filter_file_words
     in their name are excluded.
@@ -251,7 +293,10 @@ def get_data_file_names_from_scan_base(scan_base, filter_file_words=None):
     """
     raw_data_files = []
     for scan_name in scan_base:
-        data_files = glob.glob(scan_name + '*.h5')
+        if parameter:
+            data_files = glob.glob(scan_name + '_*.h5')
+        else:
+            data_files = glob.glob(scan_name + '*.h5')
         if not data_files:
             raise RuntimeError('Cannot find any files for ' + scan_name)
         if filter_file_words is not None:
@@ -289,10 +334,10 @@ def get_scan_parameter_names(scan_parameters):
     list of strings
 
     '''
-    return scan_parameters.dtype.names
+    return scan_parameters.dtype.names if scan_parameters is not None else None
 
 
-def get_parameter_values_from_files(files, parameters=None, sort=True):
+def get_parameter_from_files(files, parameters=None, sort=True):
     ''' Takes a list of files, searches for the parameter name in the file name and in the file.
     Returns a ordered dict with the file name in the first dimension and the corresponding parameter values in the second.
     If a scan parameter appears in the file name and in the file the first parameter setting has to be in the file name, otherwise a warning is shown.
@@ -300,7 +345,7 @@ def get_parameter_values_from_files(files, parameters=None, sort=True):
 
     Parameters
     ----------
-    files : list of strings
+    files : string, list of strings
     parameters : string, list of strings
     sort : bool
 
@@ -311,6 +356,8 @@ def get_parameter_values_from_files(files, parameters=None, sort=True):
     '''
     logging.debug('Get the parameter ' + str(parameters) + ' values from ' + str(len(files)) + ' files')
     files_dict = collections.OrderedDict()
+    if isinstance(files, basestring):
+        files = (files, )
     if isinstance(parameters, basestring):
         parameters = (parameters, )
     parameter_values_from_file_names_dict = get_parameter_value_from_file_names(files, parameters, sort=sort)  # get the parameter from the file name
@@ -336,20 +383,87 @@ def get_parameter_values_from_files(files, parameters=None, sort=True):
                             pass
                 except tb.NoSuchNodeError:  # meta data table does not exist
                     pass
-            if not scan_parameter_values:  # take the parameter found in the file name
+            if not scan_parameter_values:  # if no scan parameter values could be set from file take the parameter found in the file name
                 try:
                     scan_parameter_values = parameter_values_from_file_names_dict[file_name]
                 except KeyError:  # no scan parameter found at all, neither in the file name nor in the file
                     scan_parameter_values = None
-            else:
+            else:  # use the parameter given in the file and cross check if it matches the file name parameter if these is given
                 try:
                     for key, value in scan_parameter_values.items():
-                        print key, value
-                        print parameter_values_from_file_names_dict[file_name][key]
-                except KeyError:
-                    print 'no'
+                        if value[0] != parameter_values_from_file_names_dict[file_name][key][0]:
+                            logging.warning('Parameter values in the file name and in the file differ. Take ' + str(key) + ' parameters ' + str(value) + ' found in %s.' % file_name)
+                except KeyError:  # parameter does not exists in the file name
+                    pass
             files_dict[file_name] = scan_parameter_values
     return collections.OrderedDict(sorted(files_dict.iteritems(), key=itemgetter(1)) if sort else files_dict)
+
+
+def check_parameter_similarity(files_dict):
+    """
+    Checks if the parameter names of all files are similar. Takes the dictionary from get_parameter_from_files output as input.
+
+    """
+
+    try:
+        parameter_names = files_dict.itervalues().next().keys()  # get the parameter names of the first file, to check if these are the same in the other files
+    except AttributeError:  # if there is no parameter at all
+        if any(i is not None for i in files_dict.itervalues()):  # check if there is also no parameter for the other files
+            return False
+        else:
+            return True
+    if any(parameter_names != i.keys() for i in files_dict.itervalues()):
+        return False
+    return True
+
+
+def combine_meta_data(files_dict):
+    """
+    Takes the dict of hdf5 files and combines their meta data tables into one new numpy record array.
+
+    """
+    logging.info("Combine the meta data from %d files" % len(files_dict))
+    # determine total length needed for the new combined array, thats the fastest way to combine arrays
+    total_length = 0  # the total length of the new table
+    meta_data_v2 = True
+    for file_name in files_dict.iterkeys():
+        with tb.openFile(file_name, mode="r") as in_file_h5:  # open the actual file
+            total_length += in_file_h5.root.meta_data.shape[0]
+            try:
+                in_file_h5.root.meta_data[0]['timestamp_stop']  # this only exists in the new data format, https://silab-redmine.physik.uni-bonn.de/news/7
+            except KeyError:
+                meta_data_v2 = False
+
+    if meta_data_v2:
+        meta_data_combined = np.empty((total_length, ), dtype=[('index_start', np.uint32),
+             ('index_stop', np.uint32),
+             ('data_length', np.uint32),
+             ('timestamp_start', np.float64),
+             ('timestamp_stop', np.float64),
+             ('error', np.uint32)
+             ])
+    else:
+        meta_data_combined = np.empty((total_length, ), dtype=[('index_start', np.uint32),
+             ('index_stop', np.uint32),
+             ('data_length', np.uint32),
+             ('timestamp', np.float64),
+             ('error', np.uint32)
+             ])
+
+    progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=total_length)
+    progress_bar.start()
+
+    index = 0
+
+    # fill actual result array
+    for file_name in files_dict.iterkeys():
+        with tb.openFile(file_name, mode="r") as in_file_h5:  # open the actual file
+            array_length = in_file_h5.root.meta_data.shape[0]
+            meta_data_combined[index:index + array_length] = in_file_h5.root.meta_data[:]
+            index += array_length
+            progress_bar.update(index)
+    progress_bar.finish()
+    return meta_data_combined
 
 
 def in1d_sorted(ar1, ar2):
@@ -907,7 +1021,6 @@ def unique_row(array, use_columns=None, selected_columns_only=False):
             b = np.ascontiguousarray(a_cut).view(np.dtype((np.void, a_cut.dtype.itemsize * a_cut.shape[1])))
         else:
             b = np.ascontiguousarray(a_cut)
-            print b
         _, index = np.unique(b, return_index=True)
         if not selected_columns_only:
             return array[np.sort(index)]  # sort to preserve order
