@@ -29,7 +29,7 @@ public:
 
 	//array info get funnctions
 	unsigned int getNarrayHits(){return _hitIndex;};								  // the number of hits of the actual interpreted raw data
-	unsigned int getNmetaDataEvent(){return _metaEventIndexLength;};				  // the length of the array storing the event number per read out
+	unsigned int getNmetaDataEvent(){return _lastMetaIndexNotSet;};				  	  // the filled length of the array storing the event number per read out
 	unsigned int getNmetaDataWord(){return _actualMetaWordIndex;};
 
 	//initializers, should be called before first call of interpretRawData() with new data file
@@ -69,6 +69,7 @@ public:
 	void debugEvents(const unsigned int& rStartEvent = 0, const unsigned int& rStopEvent = 0, const bool& debugEvents = true);
 
 	void reset();											  //resets all data but keeps the settings
+	void resetMetaDataCounter();							  //resets the meta data counter, is needed if meta data was combined from different files
 	unsigned int getHitSize();								  //return the size of one hit entry in the hit array, needed to check data in memory alignment
 
 private:
@@ -173,6 +174,7 @@ private:
 	//meta data infos in/out
 	MetaInfo* _metaInfo;                      //pointer to the meta info, meta data infos in
 	MetaInfoV2* _metaInfoV2;                  //pointer to the meta info V2, meta data infos in
+
 	bool _metaDataSet;                        //true if meta data is available
 	unsigned int _lastMetaIndexNotSet;        //the last meta index that is not set
 	unsigned int _lastWordIndexSet;           //the last word index used for the event calculation
@@ -195,5 +197,8 @@ private:
 	unsigned int tActualBCID;				//BCID of the actual data header
 	unsigned int tActualSRcode;				//Service record code of the actual service record
 	unsigned int tActualSRcounter;			//Service record counter value of the actual service record
+
+	//counter variables for the actual raw data file
+	unsigned int _dataWordIndex;			//the word index of the actual raw data file, needed for event number calculation
 };
 
