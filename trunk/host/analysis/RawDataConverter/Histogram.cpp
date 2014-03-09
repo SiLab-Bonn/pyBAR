@@ -96,6 +96,7 @@ void Histogram::addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
 			throw std::out_of_range("Relative BCID index out of range.");
 
 		unsigned int tParIndex = getParIndex(rHitInfo[i].eventNumber);
+//		std::cout<<i<<" tParIndex "<<tParIndex<<" rHitInfo[i].eventNumber "<<rHitInfo[i].eventNumber<<"\n";
 
 		if(tParIndex < 0 || tParIndex > getNparameters()-1){
 			error("addHits: tParIndex "+IntToStr(tParIndex)+"\t> "+IntToStr(_NparameterValues));
@@ -189,8 +190,8 @@ void Histogram::addScanParameter(unsigned int*& rParInfo, const unsigned int& rN
 	allocateOccupancyArray();
 	resetOccupancyArray();
 	if (Basis::debugSet()){
-	  for(unsigned int i=0; i<rNparInfoLength; ++i)
-		 std::cout<<"read out "<<i<<"\t"<<_parInfo[i]<<"\n";
+	  for(unsigned int i=0; i<_nParInfoLength; ++i)
+		 std::cout<<"read out "<<i<<"\t parameter index "<<_parInfo[i]<<"\n";
 	}
 }
 
@@ -199,8 +200,9 @@ void Histogram::addMetaEventIndex(uint64_t*& rMetaEventIndex, const unsigned int
   debug("addMetaEventIndex()");
   _nMetaEventIndexLength = rNmetaEventIndexLength;
   _metaEventIndex = rMetaEventIndex;
-  //for(unsigned int i=0; i<15; ++i)
-  //   std::cout<<"read out "<<i<<"\t"<<_metaEventIndex[i]<<"\n";
+  if (Basis::debugSet())
+	  for(unsigned int i=0; i<_nMetaEventIndexLength; ++i)
+		 std::cout<<"read out "<<i<<"\t event number "<<_metaEventIndex[i]<<"\n";
 }
 
 void Histogram::allocateOccupancyArray()

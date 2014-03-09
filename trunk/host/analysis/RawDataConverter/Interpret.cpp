@@ -41,6 +41,7 @@ void Interpret::setStandardSettings()
 	_isMetaTableV2 = false;
 	_useTriggerNumber = false;
 	_useTdcWord=false;
+	_dataWordIndex = 0;
 }
 
 bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& pNdataWords)
@@ -68,8 +69,10 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 				setDebugOutput(false);
 		}
 
-		correlateMetaWordIndex(_nEvents, _nDataWords);
+//		correlateMetaWordIndex(_nEvents, _nDataWords);
+		correlateMetaWordIndex(_nEvents, _dataWordIndex);
 		_nDataWords++;
+		_dataWordIndex++;
 		unsigned int tActualWord = pDataWords[iWord];			//take the actual SRAM word
 		tActualTot1 = -1;												          //TOT1 value stays negative if it can not be set properly in getHitsfromDataRecord()
 		tActualTot2 = -1;												          //TOT2 value stays negative if it can not be set properly in getHitsfromDataRecord()
@@ -251,7 +254,7 @@ bool Interpret::setMetaData(MetaInfo* &rMetaInfo, const unsigned int& tLength)
 	for(unsigned int i = 0; i < tLength-1; ++i){
 		if(_metaInfo[i].startIndex + _metaInfo[i].length != _metaInfo[i].stopIndex)
 			throw std::out_of_range("Meta word index out of range.");
-		if(_metaInfo[i].stopIndex != _metaInfo[i+1].startIndex)
+		if(_metaInfo[i].stopIndex != _metaInfo[i+1].startIndex && _metaInfoV2[i+1].startIndex != 0)
 			throw std::out_of_range("Meta word index out of range.");
 	}
 	if(_metaInfo[tLength-1].startIndex + _metaInfo[tLength-1].length != _metaInfo[tLength-1].stopIndex)
@@ -276,7 +279,7 @@ bool Interpret::setMetaDataV2(MetaInfoV2* &rMetaInfo, const unsigned int& tLengt
 	for(unsigned int i = 0; i < tLength-1; ++i){
 		if(_metaInfoV2[i].startIndex + _metaInfoV2[i].length != _metaInfoV2[i].stopIndex)
 			throw std::out_of_range("Meta word index out of range.");
-		if(_metaInfoV2[i].stopIndex != _metaInfoV2[i+1].startIndex)
+		if(_metaInfoV2[i].stopIndex != _metaInfoV2[i+1].startIndex && _metaInfoV2[i+1].startIndex != 0)
 			throw std::out_of_range("Meta word index out of range.");
 	}
 	if(_metaInfoV2[tLength-1].startIndex + _metaInfoV2[tLength-1].length != _metaInfoV2[tLength-1].stopIndex)
@@ -328,6 +331,7 @@ void Interpret::resetCounters()
 	_firstTriggerNrSet = false;
 	_firstTdcSet = false;
 	_lastTriggerNumber = 0;
+	_dataWordIndex = 0;
 	resetTriggerErrorCounterArray();
 	resetErrorCounterArray();
 	resetTdcCounterArray();
@@ -546,6 +550,12 @@ void Interpret::reset()
 	_metaEventIndexLength = 0;
 	_metaEventIndex = 0;
 	_startWordIndex = 0;
+}
+
+void Interpret::resetMetaDataCounter()
+{
+	_lastWordIndexSet = 0;
+	_dataWordIndex = 0;
 }
 
 //private

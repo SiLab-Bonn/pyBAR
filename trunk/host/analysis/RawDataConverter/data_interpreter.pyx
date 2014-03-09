@@ -80,6 +80,7 @@ cdef extern from "Interpret.h":
         unsigned int getHitSize()
 
         void reset()
+        void resetMetaDataCounter()
 
 
 cdef class PyDataInterpreter:
@@ -181,3 +182,6 @@ cdef class PyDataInterpreter:
 
     def reset(self):
         self.thisptr.reset()
+
+    def reset_meta_data_counter(self):
+        self.thisptr.resetMetaDataCounter()
