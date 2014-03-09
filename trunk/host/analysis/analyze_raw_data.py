@@ -3,6 +3,7 @@ import tables as tb
 from tables import dtype_from_descr, Col
 import numpy as np
 import logging
+import pprint
 import progressbar
 import os
 from scipy.optimize import curve_fit
@@ -94,14 +95,38 @@ def generate_threshold_mask(hist):
 
 class AnalyzeRawData(object):
     """A class to analyze FE-I4 raw data"""
-    def __init__(self, raw_data_file=None, analyzed_data_file=None, create_pdf=False):
+    def __init__(self, raw_data_file=None, analyzed_data_file=None, create_pdf=False, scan_parameter_name=None):
         self.interpreter = PyDataInterpreter()
         self.histograming = PyDataHistograming()
         self.clusterizer = PyDataClusterizer()
-        self._raw_data_file = raw_data_file
-        if raw_data_file is not None and os.path.splitext(raw_data_file)[1].strip().lower() != ".h5":
-            self._raw_data_file = os.path.splitext(raw_data_file)[0] + ".h5"
+        raw_data_files = []
+        if isinstance(raw_data_file, (list, tuple)):
+            for one_raw_data_file in raw_data_file:
+                if one_raw_data_file is not None and os.path.splitext(one_raw_data_file)[1].strip().lower() != ".h5":
+                    raw_data_files.append(os.path.splitext(one_raw_data_file)[0] + ".h5")
+                else:
+                    raw_data_files.append(one_raw_data_file)
+        else:
+            if raw_data_file is not None and os.path.splitext(raw_data_file)[1].strip().lower() != ".h5":
+                raw_data_files.append(os.path.splitext(raw_data_file)[0] + ".h5")
+            elif raw_data_file is not None:
+                raw_data_files.append(raw_data_file)
+            else:
+                raw_data_files = None
         self._analyzed_data_file = analyzed_data_file
+
+        # create a scan parameter table from all raw data files
+        if raw_data_files is not None:
+            self.files_dict = analysis_utils.get_parameter_from_files(raw_data_files, parameters=scan_parameter_name)
+            if not analysis_utils.check_parameter_similarity(self.files_dict):
+                raise NotImplementedError('Different scan parameters are not supported.')
+            self.scan_parameters = analysis_utils.create_parameter_table(self.files_dict)
+        else:
+            self.files_dict = None
+            self.scan_parameters = None
+
+        logging.info('Found scan parameter(s): ' + pprint.pformat(analysis_utils.get_scan_parameter_names(self.scan_parameters)))
+
         if analyzed_data_file is not None and os.path.splitext(analyzed_data_file)[1].strip().lower() != ".h5":
             self._analyzed_data_file = os.path.splitext(analyzed_data_file)[0] + ".h5"
         self.set_standard_settings()
@@ -114,6 +139,7 @@ class AnalyzeRawData(object):
             self.output_pdf = PdfPages(output_pdf_filename)
         else:
             self.output_pdf = None
+        self._scan_parameter_name = scan_parameter_name
 
     def __enter__(self):
         return self
@@ -129,7 +155,7 @@ class AnalyzeRawData(object):
     def set_standard_settings(self):
         self.out_file_h5 = None
         self.meta_event_index = None
-        self.chunk_size = 2000000
+        self.chunk_size = 3000000
         self._filter_table = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
         self.fei4b = False
         self.create_hit_table = False
@@ -394,9 +420,9 @@ class AnalyzeRawData(object):
     def create_cluster_tot_hist(self, value):
         self._create_cluster_tot_hist = value
 
-    def interpret_word_table(self, raw_data_file=None, analyzed_data_file=None, fei4b=False):
-        if(raw_data_file != None):
-            self._raw_data_file = raw_data_file
+    def interpret_word_table(self, raw_data_files=None, analyzed_data_file=None, fei4b=False):
+        if(raw_data_files != None):
+            raise NotImplemented('This is not supported yet.')
 
         if(analyzed_data_file != None):
             self._analyzed_data_file = analyzed_data_file
@@ -415,90 +441,92 @@ class AnalyzeRawData(object):
             self.clusterizer.set_cluster_hit_info_array(cluster_hits)
             self.clusterizer.set_cluster_info_array(cluster)
 
-        logging.info('Interpreting: ' + self._raw_data_file)
         self._filter_table = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
-        with tb.openFile(self._raw_data_file, mode="r") as in_file_h5:
-            if(self._analyzed_data_file != None):
-                self.out_file_h5 = tb.openFile(self._analyzed_data_file, mode="w", title="Interpreted FE-I4 raw data")
-                if (self._create_hit_table == True):
-                    hit_table = self.out_file_h5.createTable(self.out_file_h5.root, name='Hits', description=data_struct.HitInfoTable, title='hit_data', filters=self._filter_table, chunkshape=(self._chunk_size / 100,))
-                if (self._create_meta_word_index == True):
-                    meta_word_index_table = self.out_file_h5.createTable(self.out_file_h5.root, name='EventMetaData', description=data_struct.MetaInfoWordTable, title='event_meta_data', filters=self._filter_table, chunkshape=(self._chunk_size / 10,))
-                if(self._create_cluster_table):
-                    cluster_table = self.out_file_h5.createTable(self.out_file_h5.root, name='Cluster', description=data_struct.ClusterInfoTable, title='cluster_hit_data', filters=self._filter_table, expectedrows=self._chunk_size)
-                if(self._create_cluster_hit_table):
-                    cluster_hit_table = self.out_file_h5.createTable(self.out_file_h5.root, name='ClusterHits', description=data_struct.ClusterHitInfoTable, title='cluster_hit_data', filters=self._filter_table, expectedrows=self._chunk_size)
-            self.meta_data = in_file_h5.root.meta_data[:]
-            try:
-                self.scan_parameters = in_file_h5.root.scan_parameters[:]
-                if self.scan_parameters.shape[0] == 0:  # can happen for corrupt data
-                    logging.warning('Scan parameter data is empty!')
-                    self.scan_parameters = None
-                    self.histograming.set_no_scan_parameter()
-                else:
-                    self.scan_parameter_index = analysis_utils.get_scan_parameters_index(self.scan_parameters)  # a array that labels unique scan parameter combinations
-                    self.histograming.add_scan_parameter(self.scan_parameter_index)  # just add an index for the different scan parameter combinations
-            except tb.exceptions.NoSuchNodeError:
-                self.scan_parameters = None
-                self.histograming.set_no_scan_parameter()
 
-            table_size = in_file_h5.root.raw_data.shape[0]
-            meta_data_size = self.meta_data.shape[0]
+        if(self._analyzed_data_file != None):
+            self.out_file_h5 = tb.openFile(self._analyzed_data_file, mode="w", title="Interpreted FE-I4 raw data")
+            if (self._create_hit_table == True):
+                hit_table = self.out_file_h5.createTable(self.out_file_h5.root, name='Hits', description=data_struct.HitInfoTable, title='hit_data', filters=self._filter_table, chunkshape=(self._chunk_size / 100,))
+            if (self._create_meta_word_index == True):
+                meta_word_index_table = self.out_file_h5.createTable(self.out_file_h5.root, name='EventMetaData', description=data_struct.MetaInfoWordTable, title='event_meta_data', filters=self._filter_table, chunkshape=(self._chunk_size / 10,))
+            if(self._create_cluster_table):
+                cluster_table = self.out_file_h5.createTable(self.out_file_h5.root, name='Cluster', description=data_struct.ClusterInfoTable, title='cluster_hit_data', filters=self._filter_table, expectedrows=self._chunk_size)
+            if(self._create_cluster_hit_table):
+                cluster_hit_table = self.out_file_h5.createTable(self.out_file_h5.root, name='ClusterHits', description=data_struct.ClusterHitInfoTable, title='cluster_hit_data', filters=self._filter_table, expectedrows=self._chunk_size)
 
-            self.interpreter.reset_event_variables()
-            self.interpreter.reset_counters()
-            self.interpreter.set_hits_array(hits)
-            self.interpreter.set_meta_data(self.meta_data)
+        logging.info('Interpreting: ' + pprint.pformat(self.files_dict.keys()))
 
-            self.meta_event_index = np.zeros((meta_data_size,), dtype=[('metaEventIndex', np.uint64)])  # this array is filled by the interpreter and holds the event number per read out
-            self.interpreter.set_meta_event_data(self.meta_event_index)  # tell the interpreter the data container to write the meta event index to
+        self.interpreter.reset_event_variables()
+        self.interpreter.reset_counters()
+        self.interpreter.set_hits_array(hits)
 
-            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=table_size)
-            progress_bar.start()
+        if self.scan_parameters is None:
+            self.histograming.set_no_scan_parameter()
+        else:
+            self.scan_parameter_index = analysis_utils.get_scan_parameters_index(self.scan_parameters)  # a array that labels unique scan parameter combinations
+            self.histograming.add_scan_parameter(self.scan_parameter_index)  # just add an index for the different scan parameter combinations
 
-            for iWord in range(0, table_size, self._chunk_size):
-                try:
-                    raw_data = in_file_h5.root.raw_data.read(iWord, iWord + self._chunk_size)
-                except OverflowError, e:
-                    logging.info('%s: 2^31 xrange() limitation in 32-bit Python' % e)
-                self.interpreter.interpret_raw_data(raw_data)  # interpret the raw data
-                if(iWord == range(0, table_size, self._chunk_size)[-1]):  # store hits of the latest event
-                    self.interpreter.store_event()  # al actual buffered events in the interpreter are stored
-                Nhits = self.interpreter.get_n_array_hits()  # get the number of hits of the actual interpreted raw data chunk
-                if(self.scan_parameters != None):
-                    nEventIndex = self.interpreter.get_n_meta_data_event()
-                    self.histograming.add_meta_event_index(self.meta_event_index, nEventIndex)
-                if self.is_histogram_hits():
-                    self.histogram_hits(hits[:Nhits], stop_index=Nhits)
-                if self.is_cluster_hits():
-                    self.cluster_hits(hits[:Nhits])
-                    if(self._create_cluster_hit_table):
-                        cluster_hit_table.append(cluster_hits[:Nhits])
-                    if(self._create_cluster_table):
-                        cluster_table.append(cluster[:self.clusterizer.get_n_clusters()])
+        self.meta_data = analysis_utils.combine_meta_data(self.files_dict)
+        self.interpreter.set_meta_data(self.meta_data)  # tell interpreter the word index per readout to be able to calculate the event number per read out
+        meta_data_size = self.meta_data.shape[0]
+        self.meta_event_index = np.zeros((meta_data_size,), dtype=[('metaEventIndex', np.uint64)])  # this array is filled by the interpreter and holds the event number per read out
+        self.interpreter.set_meta_event_data(self.meta_event_index)  # tell the interpreter the data container to write the meta event index to
 
+        logging.info("Interpreting...")
+        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=analysis_utils.get_total_n_data_words(self.files_dict))
+        progress_bar.start()
+        total_words = 0
+
+        for index, raw_data_file in enumerate(self.files_dict.keys()):  # loop over all raw data files
+            self.interpreter.reset_meta_data_counter()
+            with tb.openFile(raw_data_file, mode="r") as in_file_h5:
+                table_size = in_file_h5.root.raw_data.shape[0]
+
+                for iWord in range(0, table_size, self._chunk_size):
+                    try:
+                        raw_data = in_file_h5.root.raw_data.read(iWord, iWord + self._chunk_size)
+                    except OverflowError, e:
+                        logging.info('%s: 2^31 xrange() limitation in 32-bit Python' % e)
+                    self.interpreter.interpret_raw_data(raw_data)  # interpret the raw data
+                    if(index == len(self.files_dict.keys()) - 1 and iWord == range(0, table_size, self._chunk_size)[-1]):  # store hits of the latest event of the last file
+                        self.interpreter.store_event()  # all actual buffered events in the interpreter are stored
+                    Nhits = self.interpreter.get_n_array_hits()  # get the number of hits of the actual interpreted raw data chunk
+                    if(self.scan_parameters != None):
+                        nEventIndex = self.interpreter.get_n_meta_data_event()
+#                         if index == 0:
+#                             nEventIndex = 2
+                        self.histograming.add_meta_event_index(self.meta_event_index, nEventIndex)
+                    if self.is_histogram_hits():
+                        self.histogram_hits(hits[:Nhits], stop_index=Nhits)
+                    if self.is_cluster_hits():
+                        self.cluster_hits(hits[:Nhits])
+                        if(self._create_cluster_hit_table):
+                            cluster_hit_table.append(cluster_hits[:Nhits])
+                        if(self._create_cluster_table):
+                            cluster_table.append(cluster[:self.clusterizer.get_n_clusters()])
+
+                    if (self._analyzed_data_file != None and self._create_hit_table == True):
+                        hit_table.append(hits[:Nhits])
+                    if (self._analyzed_data_file != None and self._create_meta_word_index == True):
+                        size = self.interpreter.get_n_meta_data_word()
+                        meta_word_index_table.append(meta_word[:size])
+
+                    progress_bar.update(total_words + iWord)
+                total_words += table_size
                 if (self._analyzed_data_file != None and self._create_hit_table == True):
-                    hit_table.append(hits[:Nhits])
-                if (self._analyzed_data_file != None and self._create_meta_word_index == True):
-                    size = self.interpreter.get_n_meta_data_word()
-                    meta_word_index_table.append(meta_word[:size])
-
-                progress_bar.update(iWord)
-
-            if (self._analyzed_data_file != None and self._create_hit_table == True):
-                hit_table.flush()
-            progress_bar.finish()
-            self._create_additional_data()
-            if(self._analyzed_data_file != None):
-                self.out_file_h5.close()
+                    hit_table.flush()
+        progress_bar.finish()
+        self._create_additional_data()
+        if(self._analyzed_data_file != None):
+            self.out_file_h5.close()
         del hits
 
     def _create_additional_data(self):
         logging.info('Create selected event histograms')
         if (self._analyzed_data_file != None and self._create_meta_event_index):
             meta_data_size = self.meta_data.shape[0]
-            nEventIndex = self.interpreter.get_n_meta_data_event()
-            if (meta_data_size == nEventIndex):
+            n_event_index = self.interpreter.get_n_meta_data_event()
+            if (meta_data_size == n_event_index):
                 if self.interpreter.meta_table_v2:
                     description = data_struct.MetaInfoEventTableV2().columns.copy()
                 else:
@@ -510,7 +538,7 @@ class AnalyzeRawData(object):
                         description[scan_par_name] = Col.from_dtype(dtype, dflt=0, pos=last_pos)
                 meta_data_out_table = self.out_file_h5.createTable(self.out_file_h5.root, name='meta_data', description=description, title='MetaData', filters=self._filter_table)
                 entry = meta_data_out_table.row
-                for i in range(0, nEventIndex):
+                for i in range(0, n_event_index):
                     if self.interpreter.meta_table_v2:
                         entry['event_number'] = self.meta_event_index[i][0]  # event index
                         entry['timestamp_start'] = self.meta_data[i][3]  # timestamp
@@ -637,7 +665,6 @@ class AnalyzeRawData(object):
                 cluster_tot_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistClusterTot', title='Cluster Tot Histogram', atom=tb.Atom.from_dtype(self.cluster_tot_hist.dtype), shape=self.cluster_tot_hist.shape, filters=self._filter_table)
                 cluster_tot_hist_table[:] = self.cluster_tot_hist
 
-    # @profile
     def analyze_hit_table(self, analyzed_data_file=None, analyzed_data_out_file=None):
         in_file_h5 = None
 
@@ -782,8 +809,6 @@ class AnalyzeRawData(object):
         else:
             out_file_h5 = None
         if scan_data_filename is not None:
-#             if os.path.splitext(scan_data_filename)[1].strip().lower() != ".pdf":  # check for correct filename extension
-#                 output_pdf_filename = os.path.splitext(scan_data_filename)[0] + ".pdf"
             if scan_data_filename[len(scan_data_filename) - 3:] != ".pdf":  # check for correct filename extension
                 output_pdf_filename = scan_data_filename + ".pdf"
             else:
@@ -902,13 +927,4 @@ class AnalyzeRawData(object):
         return False
 
 if __name__ == "__main__":
-    mp.freeze_support()
-    scan_name = 'scan_threshold_14_interpreted'
-    chip_flavor = 'fei4a'
-    input_file = r"fake_data.h5"
-    output_file = r"C:\pybar\trunk\host\data/test.h5"
-    scan_data_filename = r"C:\pybar\trunk\host\data/" + scan_name + ".h5"
-
-    with AnalyzeRawData(raw_data_file=scan_data_filename, analyzed_data_file=output_file) as analyze_raw_data:
-        with tb.openFile(analyze_raw_data._raw_data_file, mode="r") as in_file_h5:
-            analyze_raw_data.fit_scurves_multithread(in_file_h5, PlsrDAC=range(0, 51))
+    print '__main__'
