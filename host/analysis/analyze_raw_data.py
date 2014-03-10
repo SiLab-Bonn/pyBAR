@@ -473,7 +473,7 @@ class AnalyzeRawData(object):
         self.interpreter.set_meta_event_data(self.meta_event_index)  # tell the interpreter the data container to write the meta event index to
 
         logging.info("Interpreting...")
-        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=analysis_utils.get_total_n_data_words(self.files_dict))
+        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=analysis_utils.get_total_n_data_words(self.files_dict))
         progress_bar.start()
         total_words = 0
 
@@ -511,7 +511,8 @@ class AnalyzeRawData(object):
                         size = self.interpreter.get_n_meta_data_word()
                         meta_word_index_table.append(meta_word[:size])
 
-                    progress_bar.update(total_words + iWord)
+                    if total_words + iWord < progress_bar.maxval:  # otherwise unwanted exception is thrown
+                        progress_bar.update(total_words + iWord)
                 total_words += table_size
                 if (self._analyzed_data_file != None and self._create_hit_table == True):
                     hit_table.flush()
