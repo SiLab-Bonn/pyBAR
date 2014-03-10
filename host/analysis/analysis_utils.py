@@ -189,12 +189,26 @@ def central_difference(x, y):
     return (z2 - z1) / (dx2 + dx1)
 
 
-def get_total_n_data_words(files_dict):
+def get_total_n_data_words(files_dict, precise=False):
     n_words = 0
-    for file_name in files_dict.iterkeys():
-        with tb.openFile(file_name, mode="r") as in_file_h5:  # open the actual file
+    if precise:  # open all files and determine the total number of words precicely, can take some time
+        if len(files_dict) > 10:
+            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=len(files_dict))
+            progress_bar.start()
+        for index, file_name in enumerate(files_dict.iterkeys()):
+            with tb.openFile(file_name, mode="r") as in_file_h5:  # open the actual file
+                n_words += in_file_h5.root.raw_data.shape[0]
+            if len(files_dict) > 10:
+                progress_bar.update(index)
+        if len(files_dict) > 10:
+            progress_bar.finish()
+        return n_words
+    else:  # open just first an last file and take the mean to estimate the total numbe rof words
+        with tb.openFile(files_dict.keys()[0], mode="r") as in_file_h5:  # open the actual file
             n_words += in_file_h5.root.raw_data.shape[0]
-    return n_words
+        with tb.openFile(files_dict.keys()[-1], mode="r") as in_file_h5:  # open the actual file
+            n_words += in_file_h5.root.raw_data.shape[0]
+        return n_words * len(files_dict) / 2
 
 
 def create_parameter_table(files_dict):
