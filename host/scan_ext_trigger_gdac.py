@@ -128,7 +128,7 @@ class ExtTriggerGdacScan(ScanBase):
                     lvl1_command = self.register.get_commands("zeros", length=trigger_delay)[0] + self.register.get_commands("lv1")[0]  # + self.register.get_commands("zeros", length=200)[0]
                     self.register_utils.set_command(lvl1_command)
                     # setting up external trigger
-                    self.readout_utils.configure_trigger_fsm(trigger_mode=trigger_mode, **kwargs)
+                    self.readout_utils.configure_trigger_fsm(trigger_mode=trigger_mode, reset_trigger_counter=True, **kwargs)
                     self.readout_utils.configure_command_fsm(enable_ext_trigger=True, **kwargs)
 
                     show_trigger_message_at = 10 ** (int(math.floor(math.log10(max_triggers) - math.log10(3) / math.log10(10))))

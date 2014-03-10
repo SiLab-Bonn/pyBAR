@@ -21,7 +21,7 @@ scan_configuration = {
     "reject_small_tot": False,
     "scan_parameter": 'PlsrDAC',
     "scan_parameter_values": [i for j in (range(40, 70, 5), range(70, 100, 10), range(100, 600, 20), range(600, 801, 40)) for i in j],  # list of scan parameters to use
-    "plot_tdc_histograms": True,
+    "plot_tdc_histograms": False,
     "pixels": [(50, 150), ]  # list of (col,row) tupel of pixels to use
 }
 
@@ -35,11 +35,11 @@ class HitOrScan(ScanBase):
 
     def activate_tdc(self):
         pass
-#         self.readout_utils.configure_tdc_fsm(enable_tdc=True, enable_tdc_arming=True)
- 
+        self.readout_utils.configure_tdc_fsm(enable_tdc=True, enable_tdc_arming=True)
+
     def deactivate_tdc(self):
         pass
-#         self.readout_utils.configure_tdc_fsm(enable_tdc=False, enable_tdc_arming=True)
+        self.readout_utils.configure_tdc_fsm(enable_tdc=False, enable_tdc_arming=True)
 
     def scan(self, pixels, reject_small_tot=False, repeat_command=100, scan_parameter='PlsrDAC', scan_parameter_values=(55, 100, 150, 250), **kwarg):
         '''Scan loop
@@ -57,7 +57,8 @@ class HitOrScan(ScanBase):
         '''
 
 #         self.activate_tdc()
-        self.readout_utils.configure_tdc_fsm(enable_tdc=True, enable_tdc_arming=True)
+#         self.deactivate_tdc()
+#         self.activate_tdc()
 
         with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier, scan_parameters=[scan_parameter, 'column', 'row']) as raw_data_file:
             for pixel in pixels:
@@ -124,7 +125,7 @@ class HitOrScan(ScanBase):
                         tot_std = np.std(hits["tot"])
                         tdc_std = np.std(hits["TDC"])
                         if scan_configuration['plot_tdc_histograms']:
-                            plotting.plot_1d_hist(np.histogram(hits["TDC"], range=(0, 255), bins=256)[0], title="TDC histogram for pixel " + str(column) + "/" + str(row) + " and PlsrDAC " + str(scan_parameter_value[0]) + " (" + str(len(hits["TDC"])) + " entrie(s))", x_axis_title="TDC", y_axis_title="#", filename=output_pdf)
+                            plotting.plot_1d_hist(np.histogram(hits["TDC"], range=(0, 4095), bins=4096)[0], title="TDC histogram for pixel " + str(column) + "/" + str(row) + " and PlsrDAC " + str(scan_parameter_value[0]) + " (" + str(len(hits["TDC"])) + " entrie(s))", x_axis_title="TDC", y_axis_title="#", filename=output_pdf)
 
                     if len(tot_mean) != 0:
                         calibration_data[column - 1, row - 1, scan_parameter_index, 0] = tot_mean[0]  # just add data of the selected pixel

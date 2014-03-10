@@ -100,7 +100,7 @@ class ExtTriggerScan(ScanBase):
             # setting up TDC
             self.readout_utils.configure_tdc_fsm(enable_tdc=enable_tdc, enable_tdc_arming=False)
             # setting up external trigger
-            self.readout_utils.configure_trigger_fsm(trigger_mode=trigger_mode, **kwargs)
+            self.readout_utils.configure_trigger_fsm(trigger_mode=trigger_mode, reset_trigger_counter=True, **kwargs)
             self.readout_utils.configure_command_fsm(enable_ext_trigger=True, **kwargs)
 
             show_trigger_message_at = 10 ** (int(math.floor(math.log10(max_triggers) - math.log10(3) / math.log10(10))))

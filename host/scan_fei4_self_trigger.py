@@ -10,8 +10,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 
 
 scan_configuration = {
-    "col_span": [1, 80],
-    "row_span": [1, 336],
+    "col_span": [2, 77],
+    "row_span": [2, 335],
     "timeout_no_data": 10,
     "scan_timeout": 1 * 60,
     "trig_latency": 239,
@@ -152,7 +152,7 @@ class FEI4SelfTriggerScan(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = FEI4SelfTriggerScan(**configuration.device_configuration)
+    scan = FEI4SelfTriggerScan(**configuration.scc_50_configuration)
     scan.start(use_thread=True, **scan_configuration)
     scan.stop()
     scan.analyze()
