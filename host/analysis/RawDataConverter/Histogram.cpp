@@ -113,11 +113,12 @@ void Histogram::addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
 				_tot[tTot] += 1;
 		if(_createTdcHist)
 			_tdc[tTdc] += 1;
-		if(_createTdcPixelHist)
+		if(_createTdcPixelHist){
 			if (_tdcPixel != 0)
 				_tdcPixel[(long)tColumnIndex + (long)tRowIndex * (long)RAW_DATA_MAX_COLUMN + (long)tTdc * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] += 1;
 			else
 				throw std::runtime_error("Output TDC pixel array array not set.");
+		}
 	}
 	//std::cout<<"addHits done"<<std::endl;
 }
@@ -409,8 +410,6 @@ void Histogram::calculateThresholdScanArrays(double rMuArray[], double rSigmaArr
   for(unsigned int i=0; i<RAW_DATA_MAX_COLUMN; ++i){
     for(unsigned int j=0; j<RAW_DATA_MAX_ROW; ++j){
       unsigned int M = 0;
-      unsigned int tMinOccupancy = _occupancy[(long)i + (long)j * (long)RAW_DATA_MAX_COLUMN];
-      unsigned int tMaxOccupancy = _occupancy[(long)i + (long)j * (long)RAW_DATA_MAX_COLUMN  + ((long)getNparameters()-1) * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW];
         
       for(unsigned int k=0; k<getNparameters(); ++k){
         M += _occupancy[(long)i + (long)j * (long)RAW_DATA_MAX_COLUMN  + (long)k * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW]; 
