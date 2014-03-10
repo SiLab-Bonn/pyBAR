@@ -126,7 +126,7 @@ class TestAnalysis(unittest.TestCase):
             analyze_raw_data.interpret_word_table(fei4b=False)  # the actual start conversion command
 
         # analyze the digital scan hit data, do not show any feedback (no prints to console, no plots)
-        with AnalyzeRawData(raw_data_file=None, analyzed_data_file='unittest_data//unit_test_data_1_result.h5') as analyze_raw_data:
+        with AnalyzeRawData(raw_data_file=None, analyzed_data_file='unittest_data//unit_test_data_1_interpreted.h5') as analyze_raw_data:
             analyze_raw_data.chunk_size = 3000001
             analyze_raw_data.clusterizer.set_warning_output(False)
             analyze_raw_data.clusterizer.set_warning_output(False)
