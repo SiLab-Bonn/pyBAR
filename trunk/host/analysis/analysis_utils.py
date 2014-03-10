@@ -193,7 +193,7 @@ def get_total_n_data_words(files_dict, precise=False):
     n_words = 0
     if precise:  # open all files and determine the total number of words precicely, can take some time
         if len(files_dict) > 10:
-            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=len(files_dict))
+            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', ETA()], maxval=len(files_dict))
             progress_bar.start()
         for index, file_name in enumerate(files_dict.iterkeys()):
             with tb.openFile(file_name, mode="r") as in_file_h5:  # open the actual file
@@ -466,7 +466,7 @@ def combine_meta_data(files_dict):
              ])
 
     if len(files_dict) > 10:
-        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=total_length)
+        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', ETA()], maxval=total_length)
         progress_bar.start()
 
     index = 0
