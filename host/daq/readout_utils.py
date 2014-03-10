@@ -86,7 +86,7 @@ class ReadoutUtils(object):
             reg &= ~0x10
         self.device.WriteExternal(address=0 + 2, data=[reg])  # overwriting register
 
-    def configure_trigger_fsm(self, trigger_mode=0, trigger_data_msb_first=False, disable_veto=False, trigger_data_delay=0, trigger_clock_cycles=16, enable_reset=False, invert_lemo_trigger_input=False, write_tlu_timestamp=False, trigger_low_timeout=0, reset_trigger_counter=True, **kwargs):
+    def configure_trigger_fsm(self, trigger_mode=0, trigger_data_msb_first=False, disable_veto=False, trigger_data_delay=0, trigger_clock_cycles=16, enable_reset=False, invert_lemo_trigger_input=False, write_tlu_timestamp=False, trigger_low_timeout=0, reset_trigger_counter=False, **kwargs):
         '''Setting up external trigger mode and TLU trigger FSM.
 
         Parameters
