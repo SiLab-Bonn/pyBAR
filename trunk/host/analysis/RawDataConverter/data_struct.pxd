@@ -2,7 +2,7 @@ cimport numpy as cnp
 cnp.import_array()  # if array is used it has to be imported, otherwise possible runtime error
 
 cdef packed struct numpy_meta_word_data:
-    cnp.uint64_t eventNumber
+    cnp.int64_t eventNumber
     cnp.uint32_t start_word_index
     cnp.uint32_t stop__word_index
 
@@ -25,7 +25,7 @@ cdef packed struct numpy_par_info:
     cnp.uint32_t scanParameter  # parameter setting
 
 cdef packed struct numpy_hit_info:
-    cnp.uint64_t eventNumber  # event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
+    cnp.int64_t eventNumber  # event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
     cnp.uint32_t triggerNumber  # external trigger number for read out system
     cnp.uint8_t relativeBCID  # relative BCID value (unsigned char: 0 to 255)
     cnp.uint16_t LVLID  # LVL1ID (unsigned short int: 0 to 65.535)
@@ -39,7 +39,7 @@ cdef packed struct numpy_hit_info:
     cnp.uint16_t eventStatus  # event status value (unsigned char: 0 to 255)
 
 cdef packed struct numpy_cluster_hit_info:
-    cnp.uint64_t eventNumber  # event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
+    cnp.int64_t eventNumber  # event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
     cnp.uint32_t triggerNumber  # external trigger number for read out system
     cnp.uint8_t relativeBCID  # relative BCID value (unsigned char: 0 to 255)
     cnp.uint16_t LVLID  # LVL1ID (unsigned short int: 0 to 65.535)
@@ -57,7 +57,7 @@ cdef packed struct numpy_cluster_hit_info:
     cnp.uint16_t nCluster  # the cluster id of the hit
 
 cdef packed struct numpy_cluster_info:
-    cnp.uint64_t eventNumber  # event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
+    cnp.int64_t eventNumber  # event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
     cnp.uint16_t ID  # the cluster id of the cluster
     cnp.uint16_t size  # sum ToT of all cluster hits
     cnp.uint16_t tot  # sum ToT of all cluster hits
