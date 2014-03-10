@@ -436,7 +436,8 @@ def combine_meta_data(files_dict):
     Takes the dict of hdf5 files and combines their meta data tables into one new numpy record array.
 
     """
-    logging.info("Combine the meta data from %d files" % len(files_dict))
+    if len(files_dict) > 10:
+        logging.info("Combine the meta data from %d files" % len(files_dict))
     # determine total length needed for the new combined array, thats the fastest way to combine arrays
     total_length = 0  # the total length of the new table
     meta_data_v2 = True
@@ -464,8 +465,9 @@ def combine_meta_data(files_dict):
              ('error', np.uint32)
              ])
 
-    progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=total_length)
-    progress_bar.start()
+    if len(files_dict) > 10:
+        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=total_length)
+        progress_bar.start()
 
     index = 0
 
@@ -475,8 +477,10 @@ def combine_meta_data(files_dict):
             array_length = in_file_h5.root.meta_data.shape[0]
             meta_data_combined[index:index + array_length] = in_file_h5.root.meta_data[:]
             index += array_length
-            progress_bar.update(index)
-    progress_bar.finish()
+            if len(files_dict) > 10:
+                progress_bar.update(index)
+    if len(files_dict) > 10:
+        progress_bar.finish()
     return meta_data_combined
 
 
