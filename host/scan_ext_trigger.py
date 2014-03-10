@@ -40,10 +40,13 @@ class ExtTriggerScan(ScanBase):
         trigger_latency : int
             FE global register Trig_Lat.
             Some ballpark estimates:
-            External scintillator/TLU: 232
+            External scintillator/TLU/Hitbus: 232 (default)
             FE/USBpix Self-Trigger: 220
         trigger_delay : int
             Delay between trigger and LVL1 command.
+            Some ballpark estimates:
+            Hitbus: 0
+            else: 14 (default)
         col_span : list, tuple
             Column range (from minimum to maximum value). From 1 to 80.
         row_span : list, tuple
