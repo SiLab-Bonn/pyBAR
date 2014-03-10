@@ -1296,7 +1296,6 @@ class ETA(progressbar.Timer):
                 self.speed_smooth = (self.speed_smooth * (1 - self.SMOOTHING)) + (speed * self.SMOOTHING)
             else:
                 self.speed_smooth = speed
-            print speed - self.speed_smooth
             eta = pbar.maxval / self.speed_smooth - elapsed + 1
             return 'ETA:  %s' % self.format_time(eta)
 
