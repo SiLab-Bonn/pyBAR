@@ -86,7 +86,7 @@ class ReadoutUtils(object):
             reg &= ~0x10
         self.device.WriteExternal(address=0 + 2, data=[reg])  # overwriting register
 
-    def configure_trigger_fsm(self, trigger_mode=0, trigger_data_msb_first=False, disable_veto=False, trigger_data_delay=0, trigger_clock_cycles=16, enable_reset=False, invert_lemo_trigger_input=False, write_timestamp=False, trigger_low_timeout=0, reset_trigger_counter=False, **kwargs):
+    def configure_trigger_fsm(self, trigger_mode=0, trigger_data_msb_first=False, disable_veto=False, trigger_data_delay=0, trigger_clock_cycles=16, enable_reset=False, invert_lemo_trigger_input=False, write_tlu_timestamp=False, trigger_low_timeout=0, reset_trigger_counter=True, **kwargs):
         '''Setting up external trigger mode and TLU trigger FSM.
 
         Parameters
@@ -109,7 +109,7 @@ class ReadoutUtils(object):
             Enable resetting of internal trigger counter when TLU asserts reset signal.
         invert_lemo_trigger_input : bool
             Enable inverting of LEMO RX0 trigger input.
-        write_timestamp : bool
+        write_tlu_timestamp : bool
             Writing time stamp to SRAM every trigger (not available in TLU trigger data handshake mode).
         trigger_low_timeout : int
             Enabling timeout for waiting for de-asserting TLU trigger signal. From 0 to 255.
@@ -138,7 +138,7 @@ class ReadoutUtils(object):
             reg_2 |= 0x40
         else:
             reg_2 &= ~0x40
-        if write_timestamp:
+        if write_tlu_timestamp:
             reg_2 |= 0x80
         else:
             reg_2 &= ~0x80
@@ -154,17 +154,17 @@ class ReadoutUtils(object):
 #         else:
 #             logging.info('Using RJ45 port for triggering')
 
-    def configure_tdc_fsm(self, enable_tdc=False, enable_tdc_arming=False, **kwargs):
+    def configure_tdc_fsm(self, enable_tdc=False, enable_tdc_arming=False, write_tdc_timestamp=False, **kwargs):
         '''Setting up TDC (time-to-digital converter) FSM.
 
         Parameters
         ----------
         enable_tdc : bool
             Enables TDC. TDC will measure signal at RX0 (LEMO trigger input).
-        reject_small_tot : bool
-            If true rejecting signals shorter than 25ns (40MHz).
         enable_tdc_arming : bool
             Enables arming of TDC. TDC will only measure a signal when triggered (command is sent out).
+        write_tdc_timestamp : bool
+            Writes 16-bit time stamp (40MHz) instead of TDC counter.
         '''
 #         array = self.device.ReadExternal(address=0x8700 + 1, size=1)  # get stored register value
 #         reg = struct.unpack('B', array)[0]
@@ -177,6 +177,10 @@ class ReadoutUtils(object):
             reg |= 0x02
         else:
             reg &= ~0x02
+        if write_tdc_timestamp:
+            reg |= 0x04
+        else:
+            reg &= ~0x04
         self.device.WriteExternal(address=0x8700 + 1, data=[reg])
 
     def get_tlu_trigger_number(self):
