@@ -6,6 +6,7 @@ import numpy as np
 import time
 
 from scan.scan import ScanBase
+from fei4.register_utils import cartesian
 from daq.readout import open_raw_data_file
 from analysis.analyze_raw_data import AnalyzeRawData
 from threading import Event
@@ -16,7 +17,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 
 
 scan_configuration = {
-    "pixels": [(40, 90), ],  # list of (col,row) tupel of pixels to use
+    "pixels": cartesian((range(1, 80), range(1, 336))),  # list of (col,row) tupel of pixels to use
     "timeout_no_data": 30,
     "scan_timeout": 1 * 10,
     "trig_count": 4,
@@ -76,7 +77,7 @@ class ExtTriggerHitOr(ScanBase):
                     lvl1_command = self.register.get_commands("zeros", length=trigger_delay)[0] + self.register.get_commands("lv1")[0]  # + self.register.get_commands("zeros", length=200)[0]
                     self.register_utils.set_command(lvl1_command)
                     # setting up external trigger
-                    self.readout_utils.configure_trigger_fsm(trigger_mode=trigger_mode, **kwargs)
+                    self.readout_utils.configure_trigger_fsm(trigger_mode=trigger_mode, reset_trigger_counter=True, **kwargs)
                     self.readout_utils.configure_command_fsm(enable_ext_trigger=True, **kwargs)
 
                     show_trigger_message_at = 10 ** (int(math.floor(math.log10(max_triggers) - math.log10(3) / math.log10(10))))
@@ -247,7 +248,7 @@ class ExtTriggerHitOr(ScanBase):
         for raw_data_file in glob.glob(self.scan_data_filename + '_*.h5'):  # loop over all created raw data files
             with AnalyzeRawData(raw_data_file=raw_data_file, analyzed_data_file=raw_data_file[:-3] + "_interpreted.h5") as analyze_raw_data:
                 analyze_raw_data.interpreter.set_trig_count(scan_configuration['trig_count'])
-                analyze_raw_data.create_tdc_hist = True
+                analyze_raw_data.create_tdc_counter_hist = True
                 analyze_raw_data.interpreter.use_tdc_word(True)  # align events at TDC words, first word of event has to be a tdc word
                 analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
                 analyze_raw_data.interpreter.print_summary()
@@ -255,7 +256,7 @@ class ExtTriggerHitOr(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = ExtTriggerHitOr(**configuration.scc99_configuration)
+    scan = ExtTriggerHitOr(**configuration.device_configuration)
     scan.start(use_thread=False, **scan_configuration)
     scan.stop()
     scan.analyze()
