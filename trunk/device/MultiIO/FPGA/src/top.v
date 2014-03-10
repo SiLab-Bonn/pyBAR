@@ -282,6 +282,7 @@ endgenerate
 wire TDC_FIFO_READ;
 wire TDC_FIFO_EMPTY;
 wire [31:0] TDC_FIFO_DATA;
+wire [31:0] TIMESTAMP;
 
 tdc_s3
 #(
@@ -307,7 +308,9 @@ tdc_s3
     .BUS_RD(BUS_RD),
     .BUS_WR(BUS_WR),
 
-    .ARM_TDC(CMD_START_FLAG) // arm TDC by sending commands
+    .ARM_TDC(CMD_START_FLAG), // arm TDC by sending commands
+    
+    .TIMESTAMP(TIMESTAMP[15:0])
 );
 
 wire TLU_FIFO_READ;
@@ -348,7 +351,9 @@ tlu_controller #(
     
     .CMD_READY(CMD_READY),
     .CMD_EXT_START_FLAG(CMD_EXT_START_FLAG),
-    .CMD_EXT_START_ENABLE(CMD_EXT_START_ENABLE)
+    .CMD_EXT_START_ENABLE(CMD_EXT_START_ENABLE),
+    
+    .TIMESTAMP(TIMESTAMP)
 );
 
 wire ARB_READY_OUT, ARB_WRITE_OUT;
