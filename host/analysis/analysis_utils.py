@@ -1275,5 +1275,31 @@ def get_pixel_thresholds_from_calibration_array(gdacs, calibration_gdacs, thresh
     return interpolation(gdacs)
 
 
+class ETA(progressbar.Timer):
+    'Widget which estimate the time of arrival for the progress bar via exponential moving average.'
+
+    TIME_SENSITIVE = True
+    speed_smooth = None
+    SMOOTHING = 0.1
+
+    def update(self, pbar):
+        'Updates the widget to show the ETA or total time when finished.'
+
+        if pbar.currval == 0:
+            return 'ETA:  --:--:--'
+        elif pbar.finished:
+            return 'Time: %s' % self.format_time(pbar.seconds_elapsed)
+        else:
+            elapsed = pbar.seconds_elapsed
+            speed = pbar.currval / elapsed
+            if self.speed_smooth is not None:
+                self.speed_smooth = (self.speed_smooth * (1 - self.SMOOTHING)) + (speed * self.SMOOTHING)
+            else:
+                self.speed_smooth = speed
+            print speed - self.speed_smooth
+            eta = pbar.maxval / self.speed_smooth - elapsed + 1
+            return 'ETA:  %s' % self.format_time(eta)
+
+
 if __name__ == "__main__":
     print 'Run analysis_utils as main'
