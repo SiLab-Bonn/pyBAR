@@ -12,11 +12,13 @@ import numpy as np
 import progressbar
 import glob
 import tables as tb
+import datetime
 import numexpr as ne
 from plotting import plotting
 from scipy.interpolate import interp1d
 from operator import itemgetter
 from scipy.interpolate import splrep, splev
+from RawDataConverter import analysis_functions
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
@@ -496,6 +498,29 @@ def in1d_sorted(ar1, ar2):
     return ar2[inds] == ar1
 
 
+def in1d_events(ar1, ar2):
+    """
+    Does the same than np.in1d but uses the fact that ar1 and ar2 are sorted and the c++ library. Is therefore much much faster.
+
+    """
+    ar1 = np.ascontiguousarray(ar1)  # change memory alignement for c++ library
+    ar2 = np.ascontiguousarray(ar2)  # change memory alignement for c++ library
+    tmp = np.empty_like(ar1, dtype=np.uint8)  # temporary result array filled by c++ library, bool type is not supported with cython/numpy
+    return analysis_functions.get_in1d_sorted(ar1, ar2, tmp)
+
+
+def get_events_in_both_arrays(events_one, events_two):
+    """
+    Calculates the events that exist in both arrays.
+
+    """
+    events_one = np.ascontiguousarray(events_one)  # change memory alignement for c++ library
+    events_two = np.ascontiguousarray(events_two)  # change memory alignement for c++ library
+    event_result = np.empty_like(events_one)
+    count = analysis_functions.get_events_in_both_arrays(events_one, events_two, event_result)
+    return event_result[:count]
+
+
 def smooth_differentiation(x, y, weigths=None, order=5, smoothness=3, derivation=1):
     '''Returns the dy/dx(x) with the fit and differentiation of a spline curve
 
@@ -650,14 +675,14 @@ def get_hits_in_events(hits_array, events, assume_sorted=True):
         hit array with the hits in events.
     '''
 
-    logging.info("Calculate hits that exists in the given %d events." % len(events))
+    logging.debug("Calculate hits that exists in the given %d events." % len(events))
     if assume_sorted:
         events, _ = reduce_sorted_to_intersect(events, hits_array['event_number'])  # reduce the event number range to the max min event number of the given hits to save time
         if events.shape[0] == 0:  # if there is not a single selected hit
             return hits_array[0:0]
     try:
         if assume_sorted:
-            hits_in_events = hits_array[in1d_sorted(hits_array['event_number'], events)]
+            hits_in_events = hits_array[in1d_events(hits_array['event_number'], events)]
         else:
             hits_in_events = hits_array[np.in1d(hits_array['event_number'], events)]
     except MemoryError:
@@ -733,7 +758,7 @@ def write_hits_in_events(hit_table_in, hit_table_out, events, start_hit_word=0, 
     if len(events) > 0:  # needed to avoid crash
         min_event = np.amin(events)
         max_event = np.amax(events)
-        logging.info("Write hits from hit number >= %d that exists in the selected %d events with %d <= event number <= %d into a new hit table." % (start_hit_word, len(events), min_event, max_event))
+        logging.debug("Write hits from hit number >= %d that exists in the selected %d events with %d <= event number <= %d into a new hit table." % (start_hit_word, len(events), min_event, max_event))
         table_size = hit_table_in.shape[0]
         iHit = 0
         for iHit in range(start_hit_word, table_size, chunk_size):
@@ -743,6 +768,35 @@ def write_hits_in_events(hit_table_in, hit_table_out, events, start_hit_word=0, 
             if last_event_number > max_event:  # speed up, use the fact that the hits are sorted by event_number
                 return iHit
     return start_hit_word
+
+
+# def write_hits_with_condition(hit_table_in, hit_table_out, start_hit_word=0, condition, chunk_size=5000000):
+#     '''Selects the hits that occurred in events and writes them to a pytable. This function reduces the in RAM operations and has to be used if the get_hits_in_events function raises a memory error.
+# 
+#     Parameters
+#     ----------
+#     hit_table_in : pytable.table
+#     hit_table_out : pytable.table
+#         functions need to be able to write to hit_table_out
+#     condition: string that satisfies np.numexp
+#     chunk_size : int
+#         defines how many hits are analyzed in RAM. Bigger numbers increase the speed, too big numbers let the program crash with a memory error.
+#     start_hit_word: int
+#         Index of the first hit word to be analyzed. Used for speed up.
+# 
+#     Returns
+#     -------
+#     start_hit_word: int
+#         Index of the last hit word analyzed. Used to speed up the next call of write_hits_in_events.
+#     '''
+#     logging.debug("Write hits from hit number >= %d that exists in the selected %d events with %d <= event number <= %d into a new hit table." % (start_hit_word, len(events), min_event, max_event))
+#     table_size = hit_table_in.shape[0]
+#     iHit = 0
+#     for iHit in range(start_hit_word, table_size, chunk_size):
+#         hits = hit_table_in.read(iHit, iHit + chunk_size)
+#         selected_hits = hits[ne.evaluate(condition), 0]
+#         hit_table_out.append(selected_hits)
+#     return start_hit_word
 
 
 def write_hits_in_event_range(hit_table_in, hit_table_out, event_start, event_stop, start_hit_word=0, chunk_size=5000000):
@@ -807,7 +861,7 @@ def get_events_with_n_cluster(event_number, condition='n_cluster==1'):
     numpy.array
     '''
 
-    logging.info("Calculate events with clusters where " + condition)
+    logging.debug("Calculate events with clusters where " + condition)
     n_cluster_in_events = get_n_cluster_in_events(event_number)
     n_cluster = n_cluster_in_events[:, 1]
     return n_cluster_in_events[ne.evaluate(condition), 0]
@@ -827,7 +881,7 @@ def get_events_with_cluster_size(event_number, cluster_size, condition='cluster_
     numpy.array
     '''
 
-    logging.info("Calculate events with clusters with " + condition)
+    logging.debug("Calculate events with clusters with " + condition)
     return np.unique(event_number[ne.evaluate(condition)])
 
 
@@ -848,12 +902,14 @@ def get_events_with_error_code(event_number, event_status, select_mask=0b1111111
     numpy.array
     '''
 
-    logging.info("Calculate events with certain error code")
+    logging.debug("Calculate events with certain error code")
     return np.unique(event_number[event_status & select_mask == condition])
 
 
 def get_n_cluster_in_events(event_numbers):
-    '''Calculates the number of cluster in every given event.
+    '''Calculates the number of cluster in every given event. 
+    An external C++ library is used since there is no sufficient solution in python possible.
+    Because of np.bincount # BUG #225 for values > int32 and the different handling under 32/64 bit operating systems.
 
     Parameters
     ----------
@@ -866,18 +922,26 @@ def get_n_cluster_in_events(event_numbers):
         Second dimension is the number of cluster of the event
     '''
     logging.debug("Calculate the number of cluster in every given event")
-    if (sys.maxint < 3000000000):  # on 32- bit operation systems max int is 2147483647 leading to numpy bugs that need workarounds
-        event_number_array = event_numbers.astype('<i4')  # BUG in numpy, unint works with 64-bit, 32 bit needs reinterpretation
-        offset = np.amin(event_number_array)
-        event_number_array = np.subtract(event_number_array, offset)  # BUG #225 for values > int32
-        cluster_in_event = np.bincount(event_number_array)  # for one cluster one event number is given, counts how many different event_numbers are there for each event number from 0 to max event number
-        selected_event_number_index = np.nonzero(cluster_in_event)[0]
-        selected_event_number = np.add(selected_event_number_index, offset)
-        return np.vstack((selected_event_number, cluster_in_event[selected_event_number_index])).T
-    else:
-        cluster_in_event = np.bincount(event_numbers)  # for one cluster one event number is given, counts how many different event_numbers are there for each event number from 0 to max event number
-        selected_event_number = np.nonzero(cluster_in_event)[0]
-        return np.vstack((selected_event_number, cluster_in_event[selected_event_number])).T
+    event_numbers = np.ascontiguousarray(event_numbers)  # change memory alignement for c++ library
+    result_event_numbers = np.empty_like(event_numbers)
+    result_count = np.empty_like(event_numbers, dtype=np.uint32)
+    result_size = analysis_functions.get_n_cluster_in_events(event_numbers, result_event_numbers, result_count)
+    return np.vstack((result_event_numbers[:result_size], result_count[:result_size])).T
+
+# old python solution
+#     if (sys.maxint < 3000000000):  # on 32- bit operation systems max int is 2147483647 leading to numpy bugs that need workarounds
+#         event_number_array = event_numbers.astype('<i4')  # BUG in numpy, unint works with 64-bit, 32 bit needs reinterpretation
+#         event_number_array = event_numbers
+#         offset = np.amin(event_numbers)
+#         event_numbers = np.subtract(event_numbers, offset)  # BUG #225 for values > int32
+#         cluster_in_event = np.bincount(event_numbers)  # for one cluster one event number is given, counts how many different event_numbers are there for each event number from 0 to max event number
+#         selected_event_number_index = np.nonzero(cluster_in_event)[0]
+#         selected_event_number = np.add(selected_event_number_index, offset)
+#         return np.vstack((selected_event_number, cluster_in_event[selected_event_number_index])).T
+#     else:
+#         cluster_in_event = np.bincount(event_numbers)  # for one cluster one event number is given, counts how many different event_numbers are there for each event number from 0 to max event number
+#         selected_event_number = np.nonzero(cluster_in_event)[0]
+#         return np.vstack((selected_event_number, cluster_in_event[selected_event_number])).T
 
 
 def get_n_cluster_per_event_hist(cluster_table):
@@ -955,12 +1019,14 @@ def histogram_occupancy_per_pixel(array, labels=['column', 'row'], mask_no_hit=F
         return occupancy
 
 
-def get_scan_parameter(meta_data_array):
+def get_scan_parameter(meta_data_array, unique=True):
     '''Takes the numpy meta data array and returns the different scan parameter settings and the name aligned in a dictionary
 
     Parameters
     ----------
     meta_data_array : numpy.ndarray
+    unique: boolean
+        If true only unique values for each scan parameter are returned
 
     Returns
     -------
@@ -975,7 +1041,7 @@ def get_scan_parameter(meta_data_array):
         return
     scan_parameters = {}
     for scan_par_name in meta_data_array.dtype.names[4:]:  # scan parameters are in columns 5 (= index 4) and above
-        scan_parameters[scan_par_name] = np.unique(meta_data_array[scan_par_name])
+        scan_parameters[scan_par_name] = np.unique(meta_data_array[scan_par_name]) if unique else meta_data_array[scan_par_name]
     return scan_parameters
 
 
@@ -997,7 +1063,31 @@ def get_scan_parameters_index(scan_parameter):
     return np.repeat(values, counts)
 
 
-def get_unique_scan_parameter_combinations(meta_data_array, selected_columns_only=False):
+def get_scan_parameters_table_from_meta_data(meta_data_array):
+    '''Takes the meta data array and creates a scan parameter index labeling the unique scan parameter combinations.
+    Parameters
+    ----------
+    scan_parameter : numpy.ndarray
+        The table with the scan parameters.
+
+    Returns
+    -------
+    numpy.Histogram
+    '''
+
+    try:
+        last_not_parameter_column = meta_data_array.dtype.names.index('error_code')  # for interpreted meta_data
+    except ValueError:
+        return
+    if last_not_parameter_column == len(meta_data_array.dtype.names) - 1:  # no meta_data found
+        return
+
+    # http://stackoverflow.com/questions/15182381/how-to-return-a-view-of-several-columns-in-numpy-structured-array
+    dtype2 = np.dtype({name: meta_data_array.dtype.fields[name] for name in meta_data_array.dtype.names[last_not_parameter_column + 1:]})
+    return np.ndarray(meta_data_array.shape, dtype2, meta_data_array, 0, meta_data_array.strides)
+
+
+def get_unique_scan_parameter_combinations(meta_data_array, scan_parameter_columns_only=False):
     '''Takes the numpy meta data array and returns the rows with unique combinations of different scan parameter values for all scan parameters.
         If selected columns only is true, the returned histogram only contains the selected columns.
 
@@ -1010,9 +1100,13 @@ def get_unique_scan_parameter_combinations(meta_data_array, selected_columns_onl
     numpy.Histogram
     '''
 
-    if len(meta_data_array.dtype.names) < 5:  # no scan parameter found
+    try:
+        last_not_parameter_column = meta_data_array.dtype.names.index('error_code')  # for interpreted meta_data
+    except ValueError:
+        last_not_parameter_column = meta_data_array.dtype.names.index('error')  # for raw data file meta_data
+    if last_not_parameter_column == len(meta_data_array.dtype.names) - 1:  # no meta_data found
         return
-    return unique_row(meta_data_array, use_columns=range(4, len(meta_data_array.dtype.names)), selected_columns_only=selected_columns_only)
+    return unique_row(meta_data_array, use_columns=range(4, len(meta_data_array.dtype.names)), selected_columns_only=scan_parameter_columns_only)
 
 
 def unique_row(array, use_columns=None, selected_columns_only=False):
@@ -1082,9 +1176,9 @@ def index_event_number(table_with_event_numer):
         logging.info('Create event_number index, this takes some time')
         table_with_event_numer.cols.event_number.create_csindex(filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))  # this takes time (1 min. ~ 150. Mio entries) but immediately pays off
     else:
-        logging.info('Event_number index exists already, omit creation')
+        logging.debug('Event_number index exists already, omit creation')
 
-
+# @profile
 def data_aligned_at_events(table, start_event_number=None, stop_event_number=None, start=None, stop=None, chunk_size=10000000):
     '''Takes the table with a event_number column and returns chunks with the size up to chunk_size. The chunks are chosen in a way that the events are not splitted. Additional
     parameters can be set to increase the readout speed. If only events between a certain event range are used one can specify this. Also the start and the
@@ -1281,10 +1375,12 @@ class ETA(progressbar.Timer):
     TIME_SENSITIVE = True
     speed_smooth = None
     SMOOTHING = 0.1
+    old_eta = None
+    n_refresh = 0
 
     def update(self, pbar):
         'Updates the widget to show the ETA or total time when finished.'
-
+        self.n_refresh += 1
         if pbar.currval == 0:
             return 'ETA:  --:--:--'
         elif pbar.finished:
@@ -1296,8 +1392,16 @@ class ETA(progressbar.Timer):
                 self.speed_smooth = (self.speed_smooth * (1 - self.SMOOTHING)) + (speed * self.SMOOTHING)
             else:
                 self.speed_smooth = speed
-            eta = pbar.maxval / self.speed_smooth - elapsed + 1
-            return 'ETA:  %s' % self.format_time(eta)
+
+            eta = float(pbar.maxval) / self.speed_smooth - elapsed + 1 if float(pbar.maxval) / self.speed_smooth - elapsed + 1 > 0 else 0
+
+            if float(pbar.currval) / pbar.maxval > 0.30 or self.n_refresh > 10:  # ETA only rather precise if > 30% is already finished or more than 10 times updated
+                return 'ETA:  %s' % self.format_time(eta)
+            if self.old_eta is not None and self.old_eta < eta:  # do not show jumping ETA if non precise mode is active
+                return 'ETA: ~%s' % self.format_time(self.old_eta)
+            else:
+                self.old_eta = eta
+                return 'ETA: ~%s' % self.format_time(eta)
 
 
 if __name__ == "__main__":
