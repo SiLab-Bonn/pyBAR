@@ -125,7 +125,7 @@ class AnalyzeRawData(object):
             self.files_dict = None
             self.scan_parameters = None
 
-        logging.info('Found scan parameter(s): ' + pprint.pformat(analysis_utils.get_scan_parameter_names(self.scan_parameters)))
+        logging.info('Found scan parameter(s): ' + pprint.pformat(analysis_utils.get_scan_parameter_names(self.scan_parameters)) + ' in raw data file.')
 
         if analyzed_data_file is not None and os.path.splitext(analyzed_data_file)[1].strip().lower() != ".h5":
             self._analyzed_data_file = os.path.splitext(analyzed_data_file)[0] + ".h5"
@@ -702,13 +702,13 @@ class AnalyzeRawData(object):
         try:
             meta_data_table = in_file_h5.root.meta_data
             meta_data = meta_data_table[:]
-            if (meta_data.dtype.names.index('error_code') < len(meta_data.dtype.names) - 1):  # check if there is an additional column after the error code column, if yes this column has scan parameter infos
+            self.scan_parameters = analysis_utils.get_scan_parameters_table_from_meta_data(meta_data)
+            if self.scan_parameters is not None:  # check if there is an additional column after the error code column, if yes this column has scan parameter infos
                 meta_data_array = np.array(meta_data['event_number'], dtype=[('metaEventIndex', np.uint64)])
                 self.histograming.add_meta_event_index(meta_data_array, array_length=len(meta_data_table))
-                scan_par_name = meta_data.dtype.names[meta_data.dtype.names.index('error_code') + 1]
-                scan_par_array = np.array(meta_data[scan_par_name], dtype=[(scan_par_name, '<u4'), ])
-                self.histograming.add_scan_parameter(scan_par_array)
-                logging.info("Add scan parameter " + scan_par_name + " for analysis")
+                self.scan_parameter_index = analysis_utils.get_scan_parameters_index(self.scan_parameters)  # a array that labels unique scan parameter combinations
+                self.histograming.add_scan_parameter(self.scan_parameter_index)  # just add an index for the different scan parameter combinations
+                logging.info('Add scan parameter(s): ' + pprint.pformat(analysis_utils.get_scan_parameter_names(self.scan_parameters)) + ' for analysis.')
             else:
                 logging.info("No scan parameter data provided")
                 self.histograming.set_no_scan_parameter()
@@ -718,11 +718,15 @@ class AnalyzeRawData(object):
         table_size = in_file_h5.root.Hits.shape[0]
         n_hits = 0  # number of hits in actual chunk
 
+        if table_size == 0:
+            logging.warning('Hit table is empty.')
+            return
+
         logging.info('Analyze hits...')
         progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=table_size)
         progress_bar.start()
 
-        for hits, _ in analysis_utils.data_aligned_at_events(in_file_h5.root.Hits, chunk_size=self._chunk_size):
+        for hits, index in analysis_utils.data_aligned_at_events(in_file_h5.root.Hits, chunk_size=self._chunk_size):
             n_hits += hits.shape[0]
 
             if (self.is_cluster_hits()):
@@ -736,7 +740,7 @@ class AnalyzeRawData(object):
             if(self._analyzed_data_file != None and self._create_cluster_table):
                 cluster_table.append(cluster[:self.clusterizer.get_n_clusters()])
 
-            progress_bar.update(n_hits)
+            progress_bar.update(index)
 
         if (n_hits != table_size):
             logging.warning('Not all hits analyzed, check analysis!')
