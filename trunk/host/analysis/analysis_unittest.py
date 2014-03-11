@@ -7,6 +7,7 @@ from analyze_raw_data import AnalyzeRawData
 from RawDataConverter.data_interpreter import PyDataInterpreter
 from RawDataConverter.data_histograming import PyDataHistograming
 from RawDataConverter.data_clusterizer import PyDataClusterizer
+import analysis_utils
 
 
 def get_array_differences(first_array, second_array):
@@ -37,9 +38,6 @@ def get_array_differences(first_array, second_array):
                 return_str += 'Column ' + column_name + ' has different data type. '
             if not (first_column == second_column).all():  # check if the data of the column is equal
                 return_str += 'Column ' + column_name + ' not equal. '
-                print column_name, np.where(first_column != second_column)
-                print first_array[np.where(first_column != second_column)]
-                print second_array[np.where(first_column != second_column)]
         return ': ' + return_str
 
 
@@ -73,22 +71,26 @@ def compare_h5_files(first_file, second_file, expected_nodes=None, detailed_comp
                 error_msg += 'The number of nodes in the file is wrong.\n'
             for node in second_h5_file.root:  # loop over all nodes and compare each node, do not abort if one node is wrong
                 node_name = node.name
-                expected_data = first_h5_file.get_node(first_h5_file.root, node_name)[:]
-                data = second_h5_file.get_node(second_h5_file.root, node_name)[:]
                 try:
-                    if not (expected_data == data).all():  # compare the arrays for each element
-                        checks_passed = False
-                        error_msg += node_name
-                        if detailed_comparison:
-                            error_msg += get_array_differences(data, expected_data)
-                        error_msg += '\n'
-                except AttributeError:  # .all() only works on non scalars, recarray is somewhat a scalar
-                    if not (expected_data == data):
-                        checks_passed = False
-                        error_msg += node_name
-                        if detailed_comparison:
-                            error_msg += get_array_differences(data, expected_data)
-                        error_msg += '\n'
+                    expected_data = first_h5_file.get_node(first_h5_file.root, node_name)[:]
+                    data = second_h5_file.get_node(second_h5_file.root, node_name)[:]
+                    try:
+                        if not (expected_data == data).all():  # compare the arrays for each element
+                            checks_passed = False
+                            error_msg += node_name
+                            if detailed_comparison:
+                                error_msg += get_array_differences(expected_data, data)
+                            error_msg += '\n'
+                    except AttributeError:  # .all() only works on non scalars, recarray is somewhat a scalar
+                        if not (expected_data == data):
+                            checks_passed = False
+                            error_msg += node_name
+                            if detailed_comparison:
+                                error_msg += get_array_differences(expected_data, data)
+                            error_msg += '\n'
+                except tb.NoSuchNodeError:
+                    checks_passed = False
+                    error_msg += 'Unknown node ' + node_name + '\n'
     return checks_passed, error_msg
 
 
@@ -99,7 +101,7 @@ class TestAnalysis(unittest.TestCase):
         cls.histogram = PyDataHistograming()
         cls.clusterizer = PyDataClusterizer()
 
-#         # analyze the digital scan raw data, do not show any feedback (no prints to console, no plots)
+        # analyze the digital scan raw data, do not show any feedback (no prints to console, no plots)
         with AnalyzeRawData(raw_data_file='unittest_data//unit_test_data_1.h5', analyzed_data_file='unittest_data//unit_test_data_1_interpreted.h5') as analyze_raw_data:
             analyze_raw_data.chunk_size = 3000001
             analyze_raw_data.create_hit_table = True  # can be set to false to omit hit table creation, std. setting is false
@@ -153,6 +155,18 @@ class TestAnalysis(unittest.TestCase):
             analyze_raw_data.interpreter.set_debug_output(False)
             analyze_raw_data.histograming.set_warning_output(False)
             analyze_raw_data.interpret_word_table(fei4b=False)  # the actual start conversion command
+        # analyze the fast threshold scan raw data, do not show any feedback (no prints to console, no plots)
+        with AnalyzeRawData(raw_data_file='unittest_data//unit_test_data_2.h5', analyzed_data_file='unittest_data//unit_test_data_2_hits.h5') as analyze_raw_data:
+            analyze_raw_data.chunk_size = 3000001
+            analyze_raw_data.create_hit_table = True
+            analyze_raw_data.interpreter.set_debug_output(False)
+            analyze_raw_data.histograming.set_warning_output(False)
+            analyze_raw_data.create_threshold_hists = True  # makes only sense if threshold scan data is analyzed, std. setting is false
+            analyze_raw_data.interpret_word_table(fei4b=False)  # the actual start conversion command
+        with AnalyzeRawData(raw_data_file=None, analyzed_data_file='unittest_data//unit_test_data_2_hits.h5') as analyze_raw_data:
+            analyze_raw_data.chunk_size = 3000001
+            analyze_raw_data.create_threshold_hists = True
+            analyze_raw_data.analyze_hit_table(analyzed_data_out_file='unittest_data//unit_test_data_2_analyzed.h5')
         with AnalyzeRawData(raw_data_file='unittest_data//unit_test_data_4.h5', analyzed_data_file='unittest_data//unit_test_data_4_interpreted.h5') as analyze_raw_data:
             analyze_raw_data.chunk_size = 3000001
             analyze_raw_data.create_hit_table = True
@@ -175,10 +189,12 @@ class TestAnalysis(unittest.TestCase):
         os.remove('unittest_data//unit_test_data_1_interpreted.h5')
         os.remove('unittest_data//unit_test_data_1_analyzed.h5')
         os.remove('unittest_data//unit_test_data_2_interpreted.h5')
+        os.remove('unittest_data//unit_test_data_2_analyzed.h5')
+        os.remove('unittest_data//unit_test_data_2_hits.h5')
         os.remove('unittest_data//unit_test_data_3_interpreted.h5')
         os.remove('unittest_data//unit_test_data_4_interpreted.h5')
         os.remove('unittest_data//unit_test_data_4_interpreted_2.h5')
-
+ 
     def test_libraries_stability(self):  # calls 10000 times the constructor and destructor to check the libraries
         for _ in range(1000):
             interpreter = PyDataInterpreter()
@@ -187,7 +203,7 @@ class TestAnalysis(unittest.TestCase):
             del interpreter
             del histogram
             del clusterizer
-
+ 
     def test_data_alignement(self):  # test if the data alignment is correct (important to detect 32/64 bit related issues)
         hits = np.empty((1,), dtype=[('eventNumber', np.uint64),
              ('triggerNumber', np.uint32),
@@ -203,25 +219,50 @@ class TestAnalysis(unittest.TestCase):
              ('eventStatus', np.uint16)
              ])
         self.assertTrue(self.interpreter.get_hit_size() == hits.itemsize)
-
+ 
     def test_raw_data_analysis(self):  # test the created interpretation file against the stored one
         data_equal, error_msg = compare_h5_files('unittest_data//unit_test_data_1_result.h5', 'unittest_data//unit_test_data_1_interpreted.h5')
         self.assertTrue(data_equal, msg=error_msg)
-
+ 
     def test_threshold_analysis(self):  # test the created interpretation file of the threshold data against the stored one
         data_equal, error_msg = compare_h5_files('unittest_data//unit_test_data_2_result.h5', 'unittest_data//unit_test_data_2_interpreted.h5')
         self.assertTrue(data_equal, msg=error_msg)
-
+ 
     def test_hit_data_analysis(self):  # test the hit histograming/clustering starting from the predefined interpreted data
         data_equal, error_msg = compare_h5_files('unittest_data//unit_test_data_1_result.h5', 'unittest_data//unit_test_data_1_analyzed.h5', expected_nodes=7)
         self.assertTrue(data_equal, msg=error_msg)
 
     def test_analysis_per_scan_parameter(self):  # check if the data per scan parameter is correctly analyzed
+        # check if the data with more than one scan parameter is correctly analyzed
         data_equal, error_msg = compare_h5_files('unittest_data//unit_test_data_3_result.h5', 'unittest_data//unit_test_data_3_interpreted.h5')
         self.assertTrue(data_equal, msg=error_msg)
+        # check the data from two files with one scan parameter each with the previous file containing two scan parameters
         data_equal, error_msg = compare_h5_files('unittest_data//unit_test_data_4_interpreted.h5', 'unittest_data//unit_test_data_4_interpreted_2.h5')
         self.assertTrue(data_equal, msg=error_msg)
+        # check if the occupancy hist from the threshold scan hit data is correctly created
+        with tb.open_file('unittest_data//unit_test_data_2_interpreted.h5', 'r') as first_h5_file:
+            with tb.open_file('unittest_data//unit_test_data_2_analyzed.h5', 'r') as second_h5_file:
+                occupancy_expected = first_h5_file.root.HistOcc[:]
+                occupancy = second_h5_file.root.HistOcc[:]
+                self.assertTrue(np.all(occupancy_expected == occupancy), msg=error_msg)
 
+    def test_analysis_utils_get_n_cluster_in_events(self):
+        event_numbers = np.array([[0, 0, 1, 2, 2, 2, 4, 4000000000, 4000000000, 40000000000, 40000000000], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=np.int64)  # use data format with non linear memory alignment
+        result = analysis_utils.get_n_cluster_in_events(event_numbers[0])
+        self.assertListEqual([0, 1, 2, 4, 4000000000, 40000000000], result[:, 0].tolist())
+        self.assertListEqual([2, 1, 3, 1, 2, 2], result[:, 1].tolist())
+
+    def test_analysis_utils_get_events_in_both_arrays(self):
+        event_numbers = np.array([[0, 0, 2, 2, 2, 4, 5, 5, 6, 7, 7, 7, 8], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=np.int64)
+        event_numbers_2 = np.array([1, 1, 1, 2, 2, 2, 4, 4, 4, 7], dtype=np.int64)
+        result = analysis_utils.get_events_in_both_arrays(event_numbers[0], event_numbers_2)
+        self.assertListEqual([2, 4, 7], result.tolist())
+
+    def test_analysis_utils_in1d_events(self):
+        event_numbers = np.array([[0, 0, 2, 2, 2, 4, 5, 5, 6, 7, 7, 7, 8], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=np.int64)
+        event_numbers_2 = np.array([1, 1, 1, 2, 2, 2, 4, 4, 4, 7], dtype=np.int64)
+        result = event_numbers[0][analysis_utils.in1d_events(event_numbers[0], event_numbers_2)]
+        self.assertListEqual([2, 2, 2, 4, 7, 7, 7], result.tolist())
 
 if __name__ == '__main__':
     suite = unittest.TestLoader().loadTestsFromTestCase(TestAnalysis)
