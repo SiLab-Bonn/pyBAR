@@ -28,7 +28,8 @@ class build_ext_opt(build_ext):
 
 extensions = [Extension("data_interpreter", ["data_interpreter.pyx"]),
               Extension("data_histograming", ["data_histograming.pyx"]),
-              Extension("data_clusterizer", ["data_clusterizer.pyx"])
+              Extension("data_clusterizer", ["data_clusterizer.pyx"]),
+              Extension("analysis_functions", ["analysis_functions.pyx"])
               ]
 
 setup(name='RawDataInterpreter',
