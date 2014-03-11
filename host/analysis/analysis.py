@@ -2,27 +2,16 @@
 """
 
 import logging
-import re
-from datetime import datetime
-import sys
 import os
-import itertools
 import time
+import progressbar
 import analysis_utils
-import collections
-import pandas as pd
 from RawDataConverter import data_struct
 import numpy as np
 import tables as tb
-import numexpr as ne
 from plotting import plotting
 from analyze_raw_data import AnalyzeRawData
-from matplotlib.backends.backend_pdf import PdfPages
-from operator import itemgetter
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
 from scipy.sparse import coo_matrix
-from scipy.interpolate import splrep, splev
 from RawDataConverter.data_histograming import PyDataHistograming
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
@@ -46,44 +35,45 @@ def analyze_beam_spot(scan_base, combine_n_readouts=1000, chunk_size=10000000, p
     time_stamp = []
     x = []
     y = []
+
     for data_file in scan_base:
         with tb.openFile(data_file + '_interpreted.h5', mode="r+") as in_hit_file_h5:
             # get data and data pointer
             meta_data_array = in_hit_file_h5.root.meta_data[:]
             hit_table = in_hit_file_h5.root.Hits
-
+    
             # determine the event ranges to analyze (timestamp_start, start_event_number, stop_event_number)
             parameter_ranges = np.column_stack((analysis_utils.get_ranges_from_array(meta_data_array['timestamp_start'][::combine_n_readouts]), analysis_utils.get_ranges_from_array(meta_data_array['event_number'][::combine_n_readouts])))
-
+    
             # create a event_numer index (important)
             analysis_utils.index_event_number(hit_table)
-
+    
             # initialize the analysis and set settings
             analyze_data = AnalyzeRawData()
             analyze_data.create_tot_hist = False
             analyze_data.create_bcid_hist = False
             analyze_data.histograming.set_no_scan_parameter()
-
+    
             # variables for read speed up
             index = 0  # index where to start the read out, 0 at the beginning, increased during looping
             best_chunk_size = chunk_size
-
+    
             # result data
             occupancy = np.zeros(80 * 336 * 1, dtype=np.uint32)  # create linear array as it is created in histogram class
-
+    
             # loop over the selected events
             for parameter_index, parameter_range in enumerate(parameter_ranges):
                 logging.info('Analyze time stamp ' + str(parameter_range[0]) + ' and data from events = [' + str(parameter_range[2]) + ',' + str(parameter_range[3]) + '[ ' + str(int(float(float(parameter_index) / float(len(parameter_ranges)) * 100.))) + '%')
-
+    
                 analyze_data.reset()  # resets the data of the last analysis
-
+    
                 # loop over the hits in the actual selected events with optimizations: determine best chunk size, start word index given
                 readout_hit_len = 0  # variable to calculate a optimal chunk size value from the number of hits for speed up
                 for hits, index in analysis_utils.data_aligned_at_events(hit_table, start_event_number=parameter_range[2], stop_event_number=parameter_range[3], start=index, chunk_size=best_chunk_size):
                     analyze_data.analyze_hits(hits)  # analyze the selected hits in chunks
                     readout_hit_len += hits.shape[0]
                 best_chunk_size = int(1.5 * readout_hit_len) if int(1.05 * readout_hit_len) < chunk_size else chunk_size  # to increase the readout speed, estimated the number of hits for one read instruction
-
+    
                 # get and store results
                 analyze_data.histograming.get_occupancy(occupancy)
                 occupancy_array = np.reshape(a=occupancy.view(), newshape=(80, 336, analyze_data.histograming.get_n_parameters()), order='F')  # make linear array to 3d array (col,row,parameter)
@@ -276,12 +266,35 @@ def select_hits_from_cluster_info(input_file_hits, output_file_hits, cluster_siz
             hit_table_out = out_hit_file_h5.createTable(out_hit_file_h5.root, name='Hits', description=data_struct.HitInfoTable, title='hit_data', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
             cluster_table = in_hit_file_h5.root.Cluster
             last_word_number = 0
-            for data, _ in analysis_utils.data_aligned_at_events(cluster_table):
+            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=cluster_table.shape[0])
+            progress_bar.start()
+            for data, index in analysis_utils.data_aligned_at_events(cluster_table):
                 selected_events_1 = analysis_utils.get_events_with_cluster_size(event_number=data['event_number'], cluster_size=data['size'], condition=cluster_size_condition)  # select the events with clusters of a certain size
                 selected_events_2 = analysis_utils.get_events_with_n_cluster(event_number=data['event_number'], condition=n_cluster_condition)  # select the events with a certain cluster number
-                selected_events = selected_events_1[analysis_utils.in1d_sorted(selected_events_1, selected_events_2)]  # select events with both conditions above
-                logging.info('Selected ' + str(len(selected_events)) + ' events with ' + n_cluster_condition + ' and ' + cluster_size_condition)
+                selected_events = analysis_utils.get_events_in_both_arrays(selected_events_1, selected_events_2)  # select events with both conditions above 
+                logging.debug('Selected ' + str(len(selected_events)) + ' events with ' + n_cluster_condition + ' and ' + cluster_size_condition)
                 last_word_number = analysis_utils.write_hits_in_events(hit_table_in=in_hit_file_h5.root.Hits, hit_table_out=hit_table_out, events=selected_events, start_hit_word=last_word_number)  # write the hits of the selected events into a new table
+                progress_bar.update(index)
+            progress_bar.finish()
+            in_hit_file_h5.root.meta_data.copy(out_hit_file_h5.root)  # copy meta_data note to new file
+
+
+def select_hits(input_file_hits, output_file_hits, condition, **kwarg):
+    ''' Takes a hit table and stores only selected hits into a new table. The selection is done on an event base and events are selected if they have a certain number of cluster or cluster size.
+    To increase the analysis speed a event index for the input hit file is created first.
+
+     Parameters
+    ----------
+    input_file_hits: str
+        the input file name with hits
+    output_file_hits: str
+        the output file name for the hits
+    '''
+    logging.info('Write hits with ' + condition + ' into ' + str(output_file_hits))
+    with tb.openFile(input_file_hits, mode="r+") as in_hit_file_h5:
+        with tb.openFile(output_file_hits, mode="w") as out_hit_file_h5:
+            hit_table_out = out_hit_file_h5.createTable(out_hit_file_h5.root, name='Hits', description=data_struct.HitInfoTable, title='hit_data', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+            analysis_utils.write_hits_with_condition(in_hit_file_h5.root.Hits, hit_table_out, condition)
             in_hit_file_h5.root.meta_data.copy(out_hit_file_h5.root)  # copy meta_data note to new file
 
 
@@ -303,14 +316,18 @@ def select_hits_for_tdc_info(input_file_hits, output_file_hits, cluster_size_con
             hit_table_out = out_hit_file_h5.createTable(out_hit_file_h5.root, name='Hits', description=data_struct.HitInfoTable, title='hit_data', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
             cluster_table = in_hit_file_h5.root.Cluster
             last_word_number = 0
-            for data, _ in analysis_utils.data_aligned_at_events(cluster_table):
+            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=cluster_table.shape[0])
+            progress_bar.start()
+            for data, index in analysis_utils.data_aligned_at_events(cluster_table):
                 selected_events_1 = analysis_utils.get_events_with_cluster_size(event_number=data['event_number'], cluster_size=data['size'], condition='cluster_size==1')  # select the events with only 1 hit cluster
                 selected_events_2 = analysis_utils.get_events_with_n_cluster(event_number=data['event_number'], condition='n_cluster==1')  # select the events with only 1 cluster
                 selected_events_3 = analysis_utils.get_events_with_error_code(event_number=data['event_number'], event_status=data['event_status'], select_mask=0b0000011110001000, condition=0b0000000100000000)  # select only complete events with one tdc word and no tdc overflow
                 selected_events = selected_events_1[analysis_utils.in1d_sorted(selected_events_1, selected_events_2)]  # select events with the first two conditions above
                 selected_events = selected_events[analysis_utils.in1d_sorted(selected_events, selected_events_3)]  # select events with all conditions above
-                logging.info('Selected ' + str(len(selected_events)) + ' events matching the TDC conditions')
+                logging.debug('Selected ' + str(len(selected_events)) + ' events matching the TDC conditions')
                 last_word_number = analysis_utils.write_hits_in_events(hit_table_in=in_hit_file_h5.root.Hits, hit_table_out=hit_table_out, events=selected_events, start_hit_word=last_word_number)  # write the hits of the selected events into a new table
+                progress_bar.update(index)
+            progress_bar.finish()
             in_hit_file_h5.root.meta_data.copy(out_hit_file_h5.root)  # copy meta_data note to new file
 
 
@@ -329,12 +346,16 @@ def histogram_tdc_hits(scan_bases, output_pdf=None, **kwarg):
             hit_table_out = out_hit_file_h5.createTable(out_hit_file_h5.root, name='Hits', description=data_struct.HitInfoTable, title='hit_data', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
             cluster_table = in_hit_file_h5.root.Cluster
             last_word_number = 0
-            for data, _ in analysis_utils.data_aligned_at_events(cluster_table):
+            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=cluster_table.shape[0])
+            progress_bar.start()
+            for data, index in analysis_utils.data_aligned_at_events(cluster_table):
                 selected_events_1 = analysis_utils.get_events_with_cluster_size(event_number=data['event_number'], cluster_size=data['size'], condition='cluster_size==1')  # select the events with clusters of a certain size
                 selected_events_2 = analysis_utils.get_events_with_n_cluster(event_number=data['event_number'], condition='n_cluster==1')  # select the events with a certain cluster number
                 selected_events = selected_events_1[analysis_utils.in1d_sorted(selected_events_1, selected_events_2)]  # select events with both conditions above
-                logging.info('Selected ' + str(len(selected_events)) + ' events with  n_cluster==1 and cluster_size==1')
+                logging.debug('Selected ' + str(len(selected_events)) + ' events with n_cluster==1 and cluster_size==1')
                 last_word_number = analysis_utils.write_hits_in_events(hit_table_in=in_hit_file_h5.root.Hits, hit_table_out=hit_table_out, events=selected_events, start_hit_word=last_word_number)  # write the hits of the selected events into a new table
+                progress_bar.update(index)
+            progress_bar.finish()
             in_hit_file_h5.root.meta_data.copy(out_hit_file_h5.root)  # copy meta_data note to new file
     # histogram selected hits
     with tb.openFile(scan_bases + '_selected_hits.h5', mode="r") as in_hit_file_h5:
@@ -406,10 +427,10 @@ def analyze_cluster_size_per_scan_parameter(input_files_hits, output_file_cluste
                             analyze_data.histograming.set_no_scan_parameter()  # one has to tell the histogramer the # of scan parameters for correct occupancy hist allocation
                             for parameter_index, parameter_range in enumerate(parameter_ranges):  # loop over the selected events
                                 analyze_data.reset()  # resets the data of the last analysis
-                                logging.info('Analyze GDAC = ' + str(parameter_range[0]) + ' ' + str(int(float(float(parameter_index) / float(len(parameter_ranges)) * 100.))) + '%')
+                                logging.debug('Analyze GDAC = ' + str(parameter_range[0]) + ' ' + str(int(float(float(parameter_index) / float(len(parameter_ranges)) * 100.))) + '%')
                                 start_event_number = parameter_range[1]
                                 stop_event_number = parameter_range[2]
-                                logging.info('Data from events = [' + str(start_event_number) + ',' + str(stop_event_number) + '[')
+                                logging.debug('Data from events = [' + str(start_event_number) + ',' + str(stop_event_number) + '[')
                                 actual_parameter_group = out_file_h5.createGroup(parameter_goup, name=parameter + '_' + str(parameter_range[0]), title=parameter + '_' + str(parameter_range[0]))
                                 # loop over the hits in the actual selected events with optimizations: variable chunk size, start word index given
                                 readout_hit_len = 0  # variable to calculate a optimal chunk size value from the number of hits for speed up
