@@ -294,7 +294,7 @@ def select_hits(input_file_hits, output_file_hits, condition, **kwarg):
     with tb.openFile(input_file_hits, mode="r+") as in_hit_file_h5:
         with tb.openFile(output_file_hits, mode="w") as out_hit_file_h5:
             hit_table_out = out_hit_file_h5.createTable(out_hit_file_h5.root, name='Hits', description=data_struct.HitInfoTable, title='hit_data', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
-            analysis_utils.write_hits_with_condition(in_hit_file_h5.root.Hits, hit_table_out, condition)
+            in_hit_file_h5.root.Hits.append_where(hit_table_out, condition)
             in_hit_file_h5.root.meta_data.copy(out_hit_file_h5.root)  # copy meta_data note to new file
 
 

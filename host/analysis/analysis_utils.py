@@ -770,33 +770,32 @@ def write_hits_in_events(hit_table_in, hit_table_out, events, start_hit_word=0, 
     return start_hit_word
 
 
-# def write_hits_with_condition(hit_table_in, hit_table_out, start_hit_word=0, condition, chunk_size=5000000):
-#     '''Selects the hits that occurred in events and writes them to a pytable. This function reduces the in RAM operations and has to be used if the get_hits_in_events function raises a memory error.
-# 
-#     Parameters
-#     ----------
-#     hit_table_in : pytable.table
-#     hit_table_out : pytable.table
-#         functions need to be able to write to hit_table_out
-#     condition: string that satisfies np.numexp
-#     chunk_size : int
-#         defines how many hits are analyzed in RAM. Bigger numbers increase the speed, too big numbers let the program crash with a memory error.
-#     start_hit_word: int
-#         Index of the first hit word to be analyzed. Used for speed up.
-# 
-#     Returns
-#     -------
-#     start_hit_word: int
-#         Index of the last hit word analyzed. Used to speed up the next call of write_hits_in_events.
-#     '''
-#     logging.debug("Write hits from hit number >= %d that exists in the selected %d events with %d <= event number <= %d into a new hit table." % (start_hit_word, len(events), min_event, max_event))
+def write_hits_with_condition(hit_table_in, hit_table_out, condition, start_hit_word=0):  # , chunk_size=5000000):
+    '''Selects the hits that occurred in events and writes them to a pytable. This function reduces the in RAM operations and has to be used if the get_hits_in_events function raises a memory error.
+
+    Parameters
+    ----------
+    hit_table_in : pytable.table
+    hit_table_out : pytable.table
+        functions need to be able to write to hit_table_out
+    condition: string that satisfies np.numexp
+    chunk_size : int
+        defines how many hits are analyzed in RAM. Bigger numbers increase the speed, too big numbers let the program crash with a memory error.
+    start_hit_word: int
+        Index of the first hit word to be analyzed. Used for speed up.
+
+    Returns
+    -------
+    start_hit_word: int
+        Index of the last hit word analyzed. Used to speed up the next call of write_hits_in_events.
+    '''
+    logging.debug("Write hits from hit number >= %d" % start_hit_word)
 #     table_size = hit_table_in.shape[0]
 #     iHit = 0
 #     for iHit in range(start_hit_word, table_size, chunk_size):
-#         hits = hit_table_in.read(iHit, iHit + chunk_size)
-#         selected_hits = hits[ne.evaluate(condition), 0]
-#         hit_table_out.append(selected_hits)
-#     return start_hit_word
+#         hit_table_in.append_where(hit_table_out, condition, iHit, iHit + chunk_size)
+    hit_table_in.append_where(hit_table_out, condition, start=start_hit_word)
+    return start_hit_word
 
 
 def write_hits_in_event_range(hit_table_in, hit_table_out, event_start, event_stop, start_hit_word=0, chunk_size=5000000):
@@ -914,12 +913,13 @@ def get_n_cluster_in_events(event_numbers):
     Parameters
     ----------
     event_numbers : numpy.array
+        List of event numbers to be checked.
 
     Returns
     -------
-    numpy.Array
-        First dimension is the event number
-        Second dimension is the number of cluster of the event
+    numpy.array
+        First dimension is the event number.
+        Second dimension is the number of cluster of the event.
     '''
     logging.debug("Calculate the number of cluster in every given event")
     event_numbers = np.ascontiguousarray(event_numbers)  # change memory alignement for c++ library
