@@ -73,14 +73,14 @@ def get_profile_histogram(x, y, n_bins=100):
     return bin_centers, mean, std_mean
 
 
-def get_normalization(hit_files, parameter, reference='event', sort=False, plot=False):
+def get_normalization(hit_file, parameter, reference='event', sort=False, plot=False):
     ''' Takes different hit files (hit_files), extracts the number of events or the scan time (reference) per scan parameter (parameter)
     and returns an array with a normalization factor. This normalization factor has the length of the number of different parameters.
     One can also sort the normalization by the parameter values.
 
     Parameters
     ----------
-    hit_files : list of strings
+    hit_files : string
     parameter : string
     reference : string
     plot : bool
@@ -90,40 +90,32 @@ def get_normalization(hit_files, parameter, reference='event', sort=False, plot=
     numpy.ndarray
     '''
 
-    scan_parameter_values_files_dict = get_parameter_from_files(hit_files, parameter, sort=sort)
     normalization = []
-    for one_file in scan_parameter_values_files_dict:
-        with tb.openFile(one_file, mode="r") as in_hit_file_h5:  # open the actual hit file
-            meta_data = in_hit_file_h5.root.meta_data[:]
-            if reference == 'event':
-                if len(get_meta_data_at_scan_parameter(meta_data, parameter)) < 2:  # if there is only one parameter used take the event number from the last hit
-                    hits = in_hit_file_h5.root.Hits
-                    n_events = [hits[-1]['event_number']]
-                else:
-                    try:
-                        event_numbers = get_meta_data_at_scan_parameter(meta_data, parameter)['event_number']  # get the event numbers in meta_data where the scan parameter changes
-                        event_range = get_ranges_from_array(event_numbers)
-                        event_range[-1, 1] = event_range[-2, 1]  # hack the last event range not to be None
-                        n_events = event_range[:, 1] - event_range[:, 0]  # number of events for every GDAC
-                        n_events[-1] = n_events[-2] - (n_events[-3] - n_events[-2])  # FIXME: set the last number of events manually, bad extrapolaton
-                    except ValueError:  # there is not necessarily a scan parameter given in the meta_data
-                        n_events = [meta_data[-1]['event_number'] + (meta_data[-1]['event_number'] - meta_data[-2]['event_number'])]
-                    except IndexError:  # there is maybe just one scan parameter given
-                        n_events = [meta_data[-1]['event_number']]
-                        logging.warning('Last number of events unknown and extrapolated')
-                normalization.extend(n_events)
-            elif reference == 'time':
-                try:
-                    time_start = get_meta_data_at_scan_parameter(meta_data, parameter)['timestamp_start']
-                    time_spend = np.diff(time_start)
-                    time_spend = np.append(time_spend, meta_data[-1]['timestamp_stop'] - time_start[-1])  # TODO: needs check, add last missing entry
-                except ValueError:  # there is not necessarily a scan parameter given in the meta_data
-                    time_spend = [meta_data[-1]['timestamp_stop'] - meta_data[0]['timestamp_start']]
-                normalization.extend(time_spend)
-            else:
-                raise NotImplementedError('The normalization reference ' + reference + ' is not implemented')
+    with tb.openFile(hit_file, mode="r") as in_hit_file_h5:  # open the hit file
+        meta_data = in_hit_file_h5.root.meta_data[:]
+        scan_parameter = get_scan_parameter(meta_data)[parameter]
+        if reference == 'event':
+            event_numbers = get_meta_data_at_scan_parameter(meta_data, parameter)['event_number']  # get the event numbers in meta_data where the scan parameter changes
+            event_range = get_ranges_from_array(event_numbers)
+            try:
+                event_range[-1, 1] = in_hit_file_h5.root.Hits[-1]['event_number']
+            except tb.NoSuchNodeError:
+                logging.error('Cannot find hits table')
+                return
+            n_events = event_range[:, 1] - event_range[:, 0]  # number of events for every parameter setting
+            normalization.extend(n_events)
+        elif reference == 'time':
+            try:
+                time_start = get_meta_data_at_scan_parameter(meta_data, parameter)['timestamp_start']
+                time_spend = np.diff(time_start)
+                time_spend = np.append(time_spend, meta_data[-1]['timestamp_stop'] - time_start[-1])  # TODO: needs check, add last missing entry
+            except ValueError:  # there is not necessarily a scan parameter given in the meta_data
+                time_spend = [meta_data[-1]['timestamp_stop'] - meta_data[0]['timestamp_start']]
+            normalization.extend(time_spend)
+        else:
+            raise NotImplementedError('The normalization reference ' + reference + ' is not implemented')
     if plot:
-        x = list(itertools.chain.from_iterable(scan_parameter_values_files_dict.values()))
+        x = scan_parameter
         if reference == 'event':
             plotting.plot_scatter(x, normalization, title='Events per ' + parameter + ' setting', x_label=parameter, y_label='# events', log_x=True)
         elif reference == 'time':
@@ -770,7 +762,7 @@ def write_hits_in_events(hit_table_in, hit_table_out, events, start_hit_word=0, 
     return start_hit_word
 
 
-def write_hits_with_condition(hit_table_in, hit_table_out, condition, start_hit_word=0):  # , chunk_size=5000000):
+def write_hits_with_condition(hit_table_in, hit_table_out, condition=None, start_hit_word=0, chunk_size=5000000):
     '''Selects the hits that occurred in events and writes them to a pytable. This function reduces the in RAM operations and has to be used if the get_hits_in_events function raises a memory error.
 
     Parameters
@@ -790,12 +782,23 @@ def write_hits_with_condition(hit_table_in, hit_table_out, condition, start_hit_
         Index of the last hit word analyzed. Used to speed up the next call of write_hits_in_events.
     '''
     logging.debug("Write hits from hit number >= %d" % start_hit_word)
-#     table_size = hit_table_in.shape[0]
-#     iHit = 0
+    table_size = hit_table_in.shape[0]
+    iHit = 0
+
+    progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', ETA()], maxval=table_size)
+    progress_bar.start()
+
+    for iHit in range(start_hit_word, table_size, chunk_size):
+        hits = hit_table_in.read(iHit, iHit + chunk_size)
+        selected_hits = hits[hits["BCID"] > 128]
+        hit_table_out.append(selected_hits)
+        progress_bar.update(iHit)
+    progress_bar.finish()
+    
 #     for iHit in range(start_hit_word, table_size, chunk_size):
 #         hit_table_in.append_where(hit_table_out, condition, iHit, iHit + chunk_size)
-    hit_table_in.append_where(hit_table_out, condition, start=start_hit_word)
-    return start_hit_word
+#     hit_table_in.append_where(hit_table_out, condition, start=start_hit_word)
+#     return start_hit_word
 
 
 def write_hits_in_event_range(hit_table_in, hit_table_out, event_start, event_stop, start_hit_word=0, chunk_size=5000000):
@@ -848,7 +851,7 @@ def get_rms_from_histogram(counts, bin_positions):
     return np.std(values)
 
 
-def get_events_with_n_cluster(event_number, condition='n_cluster==1'):
+def get_events_with_n_cluster(event_number, condition='n_cluster==1', condvar='n_cluster'):
     '''Selects the events with a certain number of cluster.
 
     Parameters
