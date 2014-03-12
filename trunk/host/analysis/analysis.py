@@ -268,7 +268,7 @@ def select_hits_from_cluster_info(input_file_hits, output_file_hits, cluster_siz
             last_word_number = 0
             progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=cluster_table.shape[0])
             progress_bar.start()
-            for data, index in analysis_utils.data_aligned_at_events(cluster_table):
+            for data, index in analysis_utils.data_aligned_at_events(cluster_table, chunk_size = 5000000):
                 selected_events_1 = analysis_utils.get_events_with_cluster_size(event_number=data['event_number'], cluster_size=data['size'], condition=cluster_size_condition)  # select the events with clusters of a certain size
                 selected_events_2 = analysis_utils.get_events_with_n_cluster(event_number=data['event_number'], condition=n_cluster_condition)  # select the events with a certain cluster number
                 selected_events = analysis_utils.get_events_in_both_arrays(selected_events_1, selected_events_2)  # select events with both conditions above 
@@ -318,7 +318,7 @@ def select_hits_for_tdc_info(input_file_hits, output_file_hits, cluster_size_con
             last_word_number = 0
             progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=cluster_table.shape[0])
             progress_bar.start()
-            for data, index in analysis_utils.data_aligned_at_events(cluster_table):
+            for data, index in analysis_utils.data_aligned_at_events(cluster_table, chunk_size = 5000000):
                 selected_events_1 = analysis_utils.get_events_with_cluster_size(event_number=data['event_number'], cluster_size=data['size'], condition='cluster_size==1')  # select the events with only 1 hit cluster
                 selected_events_2 = analysis_utils.get_events_with_n_cluster(event_number=data['event_number'], condition='n_cluster==1')  # select the events with only 1 cluster
                 selected_events_3 = analysis_utils.get_events_with_error_code(event_number=data['event_number'], event_status=data['event_status'], select_mask=0b0000011110001000, condition=0b0000000100000000)  # select only complete events with one tdc word and no tdc overflow
@@ -348,7 +348,7 @@ def histogram_tdc_hits(scan_bases, output_pdf=None, **kwarg):
             last_word_number = 0
             progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=cluster_table.shape[0])
             progress_bar.start()
-            for data, index in analysis_utils.data_aligned_at_events(cluster_table):
+            for data, index in analysis_utils.data_aligned_at_events(cluster_table, chunk_size = 5000000):
                 selected_events_1 = analysis_utils.get_events_with_cluster_size(event_number=data['event_number'], cluster_size=data['size'], condition='cluster_size==1')  # select the events with clusters of a certain size
                 selected_events_2 = analysis_utils.get_events_with_n_cluster(event_number=data['event_number'], condition='n_cluster==1')  # select the events with a certain cluster number
                 selected_events = selected_events_1[analysis_utils.in1d_sorted(selected_events_1, selected_events_2)]  # select events with both conditions above
