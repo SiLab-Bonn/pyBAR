@@ -702,10 +702,10 @@ class AnalyzeRawData(object):
         try:
             meta_data_table = in_file_h5.root.meta_data
             meta_data = meta_data_table[:]
-            self.scan_parameters = analysis_utils.get_scan_parameters_table_from_meta_data(meta_data)
+            self.scan_parameters = analysis_utils.get_unique_scan_parameter_combinations(meta_data, scan_parameter_columns_only=True)
             if self.scan_parameters is not None:  # check if there is an additional column after the error code column, if yes this column has scan parameter infos
-                meta_data_array = np.array(meta_data['event_number'], dtype=[('metaEventIndex', np.uint64)])
-                self.histograming.add_meta_event_index(meta_data_array, array_length=len(meta_data_table))
+                meta_event_index = np.ascontiguousarray(analysis_utils.get_unique_scan_parameter_combinations(meta_data)['event_number'].astype(np.uint64))
+                self.histograming.add_meta_event_index(meta_event_index, array_length=len(meta_event_index))
                 self.scan_parameter_index = analysis_utils.get_scan_parameters_index(self.scan_parameters)  # a array that labels unique scan parameter combinations
                 self.histograming.add_scan_parameter(self.scan_parameter_index)  # just add an index for the different scan parameter combinations
                 logging.info('Add scan parameter(s): ' + pprint.pformat(analysis_utils.get_scan_parameter_names(self.scan_parameters)) + ' for analysis.')
@@ -754,7 +754,7 @@ class AnalyzeRawData(object):
 
     def analyze_hits(self, hits, scan_parameter=None):
         n_hits = hits.shape[0]
-        logging.info('Analyze %d hits' % n_hits)
+        logging.debug('Analyze %d hits' % n_hits)
 
         if(self._create_cluster_table):
             cluster = np.zeros((n_hits,), dtype=dtype_from_descr(data_struct.ClusterInfoTable))
@@ -778,11 +778,11 @@ class AnalyzeRawData(object):
             self.histograming.add_scan_parameter(scan_parameter)
 
         if (self.is_cluster_hits()):
-            logging.info('Cluster hits')
+            logging.debug('Cluster hits')
             self.cluster_hits(hits)
 
         if (self.is_histogram_hits()):
-            logging.info('Histogram hits')
+            logging.debug('Histogram hits')
             self.histogram_hits(hits)
 
         return cluster, cluster_hits
