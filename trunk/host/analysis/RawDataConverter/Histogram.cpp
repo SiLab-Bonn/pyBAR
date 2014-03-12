@@ -192,7 +192,7 @@ void Histogram::addScanParameter(unsigned int*& rParInfo, const unsigned int& rN
 	resetOccupancyArray();
 	if (Basis::debugSet()){
 	  for(unsigned int i=0; i<_nParInfoLength; ++i)
-		 std::cout<<"read out "<<i<<"\t parameter index "<<_parInfo[i]<<"\n";
+		 std::cout<<"index "<<i<<"\t parameter index "<<_parInfo[i]<<"\n";
 	}
 }
 
@@ -203,7 +203,7 @@ void Histogram::addMetaEventIndex(uint64_t*& rMetaEventIndex, const unsigned int
   _metaEventIndex = rMetaEventIndex;
   if (Basis::debugSet())
 	  for(unsigned int i=0; i<_nMetaEventIndexLength; ++i)
-		 std::cout<<"read out "<<i<<"\t event number "<<_metaEventIndex[i]<<"\n";
+		 std::cout<<"index "<<i<<"\t event number "<<_metaEventIndex[i]<<"\n";
 }
 
 void Histogram::allocateOccupancyArray()
@@ -340,6 +340,18 @@ void Histogram::deleteRelBcidArray()
 void Histogram::test()
 {
   debug("test()");
+  uint64_t one = 0;
+  uint64_t two = 19537531;
+  uint64_t three = 39086851;
+  uint64_t four = 273752263;
+  std::cout<<one<<"\t"<<getParIndex(one)<<"\n";
+  std::cout<<two<<"\t"<<getParIndex(two)<<"\n";
+  std::cout<<three<<"\t"<<getParIndex(three)<<"\n";
+  std::cout<<four<<"\t"<<getParIndex(four)<<"\n";
+//  for (unsigned int i; i < _nParInfoLength; ++i){
+//	  std::cout<<_parInfo[i]<<"\n";
+//	  std::cout<<_metaEventIndex[i]<<"\n";
+//  }
 }
 
 unsigned int Histogram::getNparameters()
