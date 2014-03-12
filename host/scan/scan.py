@@ -471,6 +471,7 @@ class ScanBase(object):
         if os.path.splitext(self.scan_data_filename)[1].strip().lower() != ".h5":
             h5_file = os.path.splitext(self.scan_data_filename)[0] + ".h5"
 
+        # append to file if existing otherwise create new one
         self.raw_data_file_h5 = tb.openFile(h5_file, mode="a", title=((self.device_identifier + "_" + self.scan_identifier) if self.device_identifier else self.scan_identifier) + "_" + str(self.scan_number), **kwargs)
 
         try:
