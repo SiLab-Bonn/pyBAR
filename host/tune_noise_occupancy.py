@@ -12,7 +12,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 
 
 scan_configuration = {
-    "occupancy_limit": 10 ** (-7),  # 0 will mask any pixel with occupancy greater than zero
+    "occupancy_limit": 10 ** (-5),  # 0 will mask any pixel with occupancy greater than zero
     "triggers": 10000000,
     "consecutive_lvl1": 1,
     "disable_for_mask": ['Enable'],
@@ -153,7 +153,8 @@ class NoiseOccupancyScan(ScanBase):
             self.inv_occ_mask = self.register_utils.invert_pixel_mask(self.occ_mask)
             self.disable_for_mask = disable_for_mask
             if overwrite_mask:
-                self.register.set_pixel_register_value(disable_for_mask, self.inv_occ_mask)
+                for mask in disable_for_mask:
+                    self.register.set_pixel_register_value(disable_for_mask, self.inv_occ_mask)
             else:
                 for mask in disable_for_mask:
                     enable_mask = np.logical_and(self.inv_occ_mask, self.register.get_pixel_register_value(mask))
@@ -161,7 +162,8 @@ class NoiseOccupancyScan(ScanBase):
 
             self.enable_for_mask = enable_for_mask
             if overwrite_mask:
-                self.register.set_pixel_register_value(enable_for_mask, self.occ_mask)
+                for mask in disable_for_mask:
+                    self.register.set_pixel_register_value(enable_for_mask, self.occ_mask)
             else:
                 for mask in enable_for_mask:
                     disable_mask = np.logical_or(self.occ_mask, self.register.get_pixel_register_value(mask))
