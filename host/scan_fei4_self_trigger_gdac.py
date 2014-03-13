@@ -24,6 +24,7 @@ with tb.openFile(input_file_calibration, mode="r") as in_file_calibration_h5:  #
     gdacs = in_file_calibration_h5.root.MeanThresholdCalibration[:]['gdac']
 
 scan_configuration = {
+    "source": 'not specified',
     "gdacs": gdacs,
     "col_span": [1, 80],
     "row_span": [1, 336],

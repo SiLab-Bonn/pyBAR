@@ -25,6 +25,7 @@ with tb.openFile(input_file_calibration, mode="r") as in_file_calibration_h5:  #
 
 
 scan_configuration = {
+    "source": 'not specified',
     "gdacs": gdacs,
     "trigger_mode": 0,
     "trigger_latency": 232,
