@@ -2,37 +2,41 @@ import time
 import logging
 import math
 import numpy as np
+import tables as tb
+from scipy.interpolate import interp1d
+from threading import Event
 
 from scan.scan import ScanBase
 from daq.readout import open_raw_data_file
-from scipy.interpolate import interp1d
-import tables as tb
-from threading import Event
+from analysis.analyze_raw_data import AnalyzeRawData
+from analysis import analysis_utils
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
-
-def get_gdacs(thresholds, mean_threshold_calibration):
-    interpolation = interp1d(mean_threshold_calibration['mean_threshold'], mean_threshold_calibration['gdac'], kind='slinear', bounds_error=True)
-    return np.unique(interpolation(thresholds).astype(np.uint32))
-
-# load GDAC values from calibration file
-input_file_calibration = 'data//example.h5'  # the file with the GDAC <-> PlsrDAC calibration
-with tb.openFile(input_file_calibration, mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
-#     threshold_range = np.arange(30, 600, 16)  # threshold range in PlsrDAC to scan
-#     gdacs = get_gdacs(threshold_range, in_file_calibration_h5.root.MeanThresholdCalibration[:])
-    gdacs = in_file_calibration_h5.root.MeanThresholdCalibration[:]['gdac']
-
 scan_configuration = {
     "source": 'not specified',
-    "gdacs": gdacs,
+    "GDAC_calibration_file": None,
+    "gdacs": None,  # specifiy the GDACs to use here, if set to None they are taken from the GDAC_calibration_file
+    "threshold_range": range(30, 600, 4),  # if set to None the GDAC values are not interpolated and taken from the GDAC_calibration_file directly
     "col_span": [1, 80],
     "row_span": [1, 336],
     "timeout_no_data": 10,
     "scan_timeout": 1 * 60,
-    "trig_latency": 239,
-    "trig_count": 4
+    "trig_latency": 238,
+    "trig_count": 5
 }
+
+
+# load GDAC values from calibration file
+if scan_configuration['gdacs'] is None:
+    def get_gdacs(thresholds, mean_threshold_calibration):  # interpolate the GDAC value at the chosen threshold positions
+        interpolation = interp1d(mean_threshold_calibration['mean_threshold'], mean_threshold_calibration['gdac'], kind='slinear', bounds_error=True)
+        return np.unique(interpolation(thresholds).astype(np.uint32))
+    with tb.openFile(scan_configuration['GDAC_calibration_file'], mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
+        if scan_configuration['threshold_range'] is not None:
+            gdacs = get_gdacs(scan_configuration['threshold_range'], in_file_calibration_h5.root.MeanThresholdCalibration[:])
+        else:
+            gdacs = in_file_calibration_h5.root.MeanThresholdCalibration[:]['gdac']
 
 
 class FEI4SelfTriggerGdacScan(ScanBase):
@@ -180,9 +184,9 @@ class FEI4SelfTriggerGdacScan(ScanBase):
         self.register_utils.send_commands(commands)
 
     def analyze(self):
-        from analysis.analyze_raw_data import AnalyzeRawData
         output_file = self.scan_data_filename + "_interpreted.h5"
-        with AnalyzeRawData(raw_data_file=scan.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
+        raw_data_files = analysis_utils.get_data_file_names_from_scan_base([self.scan_data_filename], parameter=True)
+        with AnalyzeRawData(raw_data_file=raw_data_files, analyzed_data_file=output_file, scan_parameter_name='GDAC') as analyze_raw_data:
             analyze_raw_data.interpreter.set_trig_count(scan_configuration['trig_count'])
             analyze_raw_data.create_cluster_size_hist = True  # can be set to false to omit cluster hit creation, can save some time, standard setting is false
             analyze_raw_data.create_source_scan_hist = True
@@ -198,4 +202,4 @@ if __name__ == "__main__":
     scan = FEI4SelfTriggerGdacScan(**configuration.device_configuration)
     scan.start(use_thread=True, **scan_configuration)
     scan.stop()
-#     scan.analyze()
+    scan.analyze()
