@@ -162,7 +162,7 @@ class NoiseOccupancyScan(ScanBase):
 
             self.enable_for_mask = enable_for_mask
             if overwrite_mask:
-                for mask in disable_for_mask:
+                for mask in enable_for_mask:
                     self.register.set_pixel_register_value(mask, self.occ_mask)
             else:
                 for mask in enable_for_mask:
