@@ -14,12 +14,12 @@ from analysis import analysis_utils
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 scan_configuration = {
-    "source": 'not specified',
-    "GDAC_calibration_file": None,
+    "source": 'Cd strong source',
+    "GDAC_calibration_file": 'data//SCC_99//calibrate_threshold_gdac_SCC_99_new.h5',
     "gdacs": None,  # specifiy the GDACs to use here, if set to None they are taken from the GDAC_calibration_file
-    "threshold_range": range(30, 600, 4),  # if set to None the GDAC values are not interpolated and taken from the GDAC_calibration_file directly
-    "col_span": [1, 80],
-    "row_span": [1, 336],
+    "threshold_range": range(30, 600, 1),  # if set to None the GDAC values are not interpolated and taken from the GDAC_calibration_file directly
+    "col_span": [3, 77],
+    "row_span": [2, 335],
     "timeout_no_data": 10,
     "scan_timeout": 1 * 60,
     "trig_latency": 238,
@@ -34,9 +34,9 @@ if scan_configuration['gdacs'] is None:
         return np.unique(interpolation(thresholds).astype(np.uint32))
     with tb.openFile(scan_configuration['GDAC_calibration_file'], mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
         if scan_configuration['threshold_range'] is not None:
-            gdacs = get_gdacs(scan_configuration['threshold_range'], in_file_calibration_h5.root.MeanThresholdCalibration[:])
+            scan_configuration['gdacs'] = get_gdacs(scan_configuration['threshold_range'], in_file_calibration_h5.root.MeanThresholdCalibration[:])
         else:
-            gdacs = in_file_calibration_h5.root.MeanThresholdCalibration[:]['gdac']
+            scan_configuration['gdacs'] = in_file_calibration_h5.root.MeanThresholdCalibration[:]['gdac']
 
 
 class FEI4SelfTriggerGdacScan(ScanBase):
@@ -61,7 +61,7 @@ class FEI4SelfTriggerGdacScan(ScanBase):
             FE global register Trig_Count.
         '''
 
-        logging.info('Start GDAC self trigger source scan from %d to %d in %d steps' % (np.amin(gdacs), np.amax(gdacs), len(gdacs)))
+        logging.info('Start GDAC self trigger source scan from %d to %d in %d steps' % (min(gdacs), max(gdacs), len(gdacs)))
         logging.info('Estimated scan time %dh' % (len(gdacs) * scan_timeout / 3600.))
 
         self.stop_loop_event = Event()
@@ -117,7 +117,6 @@ class FEI4SelfTriggerGdacScan(ScanBase):
                             no_data_at_time = time_current_iteration
                             if timeout_no_data is not None and wait_for_first_data == False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
                                 logging.info('Reached no data timeout. Stopping Scan...')
-                                self.repeat_scan_step = True
                                 self.stop_loop_event.set()
                             elif wait_for_first_data == False:
                                 saw_no_data_at_time = no_data_at_time
@@ -183,23 +182,9 @@ class FEI4SelfTriggerGdacScan(ScanBase):
             commands.extend(self.register.get_commands("runmode"))
         self.register_utils.send_commands(commands)
 
-    def analyze(self):
-        output_file = self.scan_data_filename + "_interpreted.h5"
-        raw_data_files = analysis_utils.get_data_file_names_from_scan_base([self.scan_data_filename], parameter=True)
-        with AnalyzeRawData(raw_data_file=raw_data_files, analyzed_data_file=output_file, scan_parameter_name='GDAC') as analyze_raw_data:
-            analyze_raw_data.interpreter.set_trig_count(scan_configuration['trig_count'])
-            analyze_raw_data.create_cluster_size_hist = True  # can be set to false to omit cluster hit creation, can save some time, standard setting is false
-            analyze_raw_data.create_source_scan_hist = True
-            analyze_raw_data.create_cluster_tot_hist = True
-            analyze_raw_data.interpreter.set_warning_output(False)
-            analyze_raw_data.clusterizer.set_warning_output(False)
-            analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
-            analyze_raw_data.interpreter.print_summary()
-            analyze_raw_data.plot_histograms(scan_data_filename=scan.scan_data_filename)
-
 if __name__ == "__main__":
     import configuration
-    scan = FEI4SelfTriggerGdacScan(**configuration.device_configuration)
+    scan = FEI4SelfTriggerGdacScan(**configuration.scc99_configuration)
     scan.start(use_thread=True, **scan_configuration)
     scan.stop()
-    scan.analyze()
+    # for analysis run analyze_source_scan_gdac_data
