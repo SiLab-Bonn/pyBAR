@@ -101,7 +101,7 @@ class ExtTriggerScan(ScanBase):
             lvl1_command = self.register.get_commands("zeros", length=trigger_delay)[0] + self.register.get_commands("lv1")[0]  # + self.register.get_commands("zeros", length=200)[0]
             self.register_utils.set_command(lvl1_command)
             # setting up TDC
-            self.readout_utils.configure_tdc_fsm(enable_tdc=enable_tdc, enable_tdc_arming=False)
+            self.readout_utils.configure_tdc_fsm(enable_tdc=enable_tdc, **kwargs)
             # setting up external trigger
             self.readout_utils.configure_trigger_fsm(trigger_mode=trigger_mode, reset_trigger_counter=True, **kwargs)
             self.readout_utils.configure_command_fsm(enable_ext_trigger=True, **kwargs)
