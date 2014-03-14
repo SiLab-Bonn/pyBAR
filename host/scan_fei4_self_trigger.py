@@ -152,7 +152,7 @@ class FEI4SelfTriggerScan(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = FEI4SelfTriggerScan(**configuration.scc_50_configuration)
+    scan = FEI4SelfTriggerScan(**configuration.device_configuration)
     scan.start(use_thread=True, **scan_configuration)
     scan.stop()
     scan.analyze()
