@@ -20,7 +20,7 @@ scan_configuration = {
     "threshold_range": range(30, 600, 1),  # if set to None the GDAC values are not interpolated and taken from the GDAC_calibration_file directly
     "col_span": [3, 77],
     "row_span": [2, 335],
-    "timeout_no_data": 10,
+    "timeout_no_data": None,
     "scan_timeout": 1 * 60,
     "trig_latency": 238,
     "trig_count": 5
@@ -117,6 +117,7 @@ class FEI4SelfTriggerGdacScan(ScanBase):
                             no_data_at_time = time_current_iteration
                             if timeout_no_data is not None and wait_for_first_data == False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
                                 logging.info('Reached no data timeout. Stopping Scan...')
+                                self.repeat_scan_step = True
                                 self.stop_loop_event.set()
                             elif wait_for_first_data == False:
                                 saw_no_data_at_time = no_data_at_time
