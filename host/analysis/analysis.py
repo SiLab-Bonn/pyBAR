@@ -202,7 +202,7 @@ def analyse_n_cluster_per_event(scan_base, include_no_cluster=False, time_line_a
                 logging.debug('Analyze time stamp ' + str(parameter_range[0]) + ' and data from events = [' + str(parameter_range[2]) + ',' + str(parameter_range[3]) + '[ ' + str(int(float(float(parameter_index) / float(len(parameter_ranges)) * 100.))) + '%')
                 analyze_data.reset()  # resets the data of the last analysis
 
-                # loop over the hits in the actual selected events with optimizations: determine best chunk size, start word index given
+                # loop over the cluster in the actual selected events with optimizations: determine best chunk size, start word index given
                 readout_cluster_len = 0  # variable to calculate a optimal chunk size value from the number of hits for speed up
                 hist = None
                 for clusters, index in analysis_utils.data_aligned_at_events(cluster_table, start_event_number=parameter_range[2], stop_event_number=parameter_range[3], start=index, chunk_size=best_chunk_size):
@@ -250,7 +250,7 @@ def analyse_n_cluster_per_event(scan_base, include_no_cluster=False, time_line_a
     return time_stamp, n_cluster
 
 
-def select_hits_from_cluster_info(input_file_hits, output_file_hits, cluster_size_condition, n_cluster_condition, output_pdf=None, **kwarg):
+def select_hits_from_cluster_info(input_file_hits, output_file_hits, cluster_size_condition, n_cluster_condition, chunk_size=4000000, output_pdf=None, **kwarg):
     ''' Takes a hit table and stores only selected hits into a new table. The selection is done on an event base and events are selected if they have a certain number of cluster or cluster size.
     To increase the analysis speed a event index for the input hit file is created first.
 
@@ -275,7 +275,7 @@ def select_hits_from_cluster_info(input_file_hits, output_file_hits, cluster_siz
             last_word_number = 0
             progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=cluster_table.shape[0])
             progress_bar.start()
-            for data, index in analysis_utils.data_aligned_at_events(cluster_table, chunk_size=5000000):
+            for data, index in analysis_utils.data_aligned_at_events(cluster_table, chunk_size=chunk_size):
                 selected_events_1 = analysis_utils.get_events_with_cluster_size(event_number=data['event_number'], cluster_size=data['size'], condition=cluster_size_condition)  # select the events with clusters of a certain size
                 selected_events_2 = analysis_utils.get_events_with_n_cluster(event_number=data['event_number'], condition=n_cluster_condition)  # select the events with a certain cluster number
                 selected_events = analysis_utils.get_events_in_both_arrays(selected_events_1, selected_events_2)  # select events with both conditions above
@@ -520,7 +520,8 @@ def histogram_cluster_table(analyzed_data_file, output_file, chunk_size=10000000
                 occupancy_array_table[0:336, 0:80, 0:histograming.get_n_parameters()] = occupancy_array
 
                 if total_cluster != np.sum(occupancy_array):
-                            logging.warning('Analysis shows inconsistent number of cluster used. Check needed!')
+                    logging.warning('Analysis shows inconsistent number of cluster used. Check needed!')
+                in_file_h5.root.meta_data.copy(out_file_h5.root)  # copy meta_data note to new file
 
 if __name__ == "__main__":
     print 'run analysis as main'
