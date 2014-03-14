@@ -3,6 +3,7 @@ import unittest
 import os
 import tables as tb
 import numpy as np
+import progressbar
 from analyze_raw_data import AnalyzeRawData
 from RawDataConverter.data_interpreter import PyDataInterpreter
 from RawDataConverter.data_histograming import PyDataHistograming
@@ -194,16 +195,20 @@ class TestAnalysis(unittest.TestCase):
         os.remove('unittest_data//unit_test_data_3_interpreted.h5')
         os.remove('unittest_data//unit_test_data_4_interpreted.h5')
         os.remove('unittest_data//unit_test_data_4_interpreted_2.h5')
- 
+
     def test_libraries_stability(self):  # calls 10000 times the constructor and destructor to check the libraries
-        for _ in range(1000):
+        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=1000)
+        progress_bar.start()
+        for i in range(1000):
             interpreter = PyDataInterpreter()
             histogram = PyDataHistograming()
             clusterizer = PyDataClusterizer()
             del interpreter
             del histogram
             del clusterizer
- 
+            progress_bar.update(i)
+        progress_bar.finish()
+
     def test_data_alignement(self):  # test if the data alignment is correct (important to detect 32/64 bit related issues)
         hits = np.empty((1,), dtype=[('eventNumber', np.uint64),
              ('triggerNumber', np.uint32),
