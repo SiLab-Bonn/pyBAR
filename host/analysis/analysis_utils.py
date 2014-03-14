@@ -3,16 +3,13 @@
 
 import logging
 import re
-import sys
 import os
-import itertools
 import time
 import collections
 import numpy as np
 import progressbar
 import glob
 import tables as tb
-import datetime
 import numexpr as ne
 from plotting import plotting
 from scipy.interpolate import interp1d
@@ -73,10 +70,11 @@ def get_profile_histogram(x, y, n_bins=100):
     return bin_centers, mean, std_mean
 
 
-def get_normalization(hit_file, parameter, reference='event', sort=False, plot=False):
+def get_rate_normalization(hit_file, parameter, reference='event', cluster_file=None, sort=False, plot=False, chunk_size=5000000):
     ''' Takes different hit files (hit_files), extracts the number of events or the scan time (reference) per scan parameter (parameter)
     and returns an array with a normalization factor. This normalization factor has the length of the number of different parameters.
     One can also sort the normalization by the parameter values.
+    If a cluster_file is specified
 
     Parameters
     ----------
@@ -90,37 +88,70 @@ def get_normalization(hit_file, parameter, reference='event', sort=False, plot=F
     numpy.ndarray
     '''
 
-    normalization = []
-    with tb.openFile(hit_file, mode="r") as in_hit_file_h5:  # open the hit file
+    with tb.openFile(hit_file, mode="r+") as in_hit_file_h5:  # open the hit file
         meta_data = in_hit_file_h5.root.meta_data[:]
         scan_parameter = get_scan_parameter(meta_data)[parameter]
+        event_numbers = get_meta_data_at_scan_parameter(meta_data, parameter)['event_number']  # get the event numbers in meta_data where the scan parameter changes
+        event_range = get_ranges_from_array(event_numbers)
+        normalization_rate = []
+        normalization_multiplicity = []
+        try:
+            event_range[-1, 1] = in_hit_file_h5.root.Hits[-1]['event_number']
+        except tb.NoSuchNodeError:
+            logging.error('Cannot find hits table')
+            return
+
+        # calculate rate normalization from the event rate for triggered data / measurement time for self triggered data for each scan parameter
         if reference == 'event':
-            event_numbers = get_meta_data_at_scan_parameter(meta_data, parameter)['event_number']  # get the event numbers in meta_data where the scan parameter changes
-            event_range = get_ranges_from_array(event_numbers)
-            try:
-                event_range[-1, 1] = in_hit_file_h5.root.Hits[-1]['event_number']
-            except tb.NoSuchNodeError:
-                logging.error('Cannot find hits table')
-                return
             n_events = event_range[:, 1] - event_range[:, 0]  # number of events for every parameter setting
-            normalization.extend(n_events)
+            normalization_rate.extend(n_events)
         elif reference == 'time':
-            try:
-                time_start = get_meta_data_at_scan_parameter(meta_data, parameter)['timestamp_start']
-                time_spend = np.diff(time_start)
-                time_spend = np.append(time_spend, meta_data[-1]['timestamp_stop'] - time_start[-1])  # TODO: needs check, add last missing entry
-            except ValueError:  # there is not necessarily a scan parameter given in the meta_data
-                time_spend = [meta_data[-1]['timestamp_stop'] - meta_data[0]['timestamp_start']]
-            normalization.extend(time_spend)
+            time_start = get_meta_data_at_scan_parameter(meta_data, parameter)['timestamp_start']
+            time_spend = np.diff(time_start)
+            time_spend = np.append(time_spend, meta_data[-1]['timestamp_stop'] - time_start[-1])  # TODO: needs check, add last missing entry
+            normalization_rate.extend(time_spend)
         else:
             raise NotImplementedError('The normalization reference ' + reference + ' is not implemented')
+
+        if cluster_file:
+            # calculate the rate normalization from the mean number of hits per event per scan parameter, needed for beam data since a beam since the multiplicity is rarely constant
+            cluster_table = in_hit_file_h5.root.Cluster
+            index_event_number(cluster_table)
+            index = 0  # index where to start the read out, 0 at the beginning, increased during looping, variable for read speed up
+            best_chunk_size = chunk_size  # variable for read speed up
+            total_cluster = 0
+            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', ETA(smoothing=0.8)], maxval=cluster_table.shape[0])
+            progress_bar.start()
+            for start_event, stop_event in event_range:  # loop over the selected events
+                readout_cluster_len = 0  # variable to calculate a optimal chunk size value from the number of hits for speed up
+                n_cluster_per_event = None
+                for clusters, index in data_aligned_at_events(cluster_table, start_event_number=start_event, stop_event_number=stop_event, start=index, chunk_size=best_chunk_size):
+                    if n_cluster_per_event is None:
+                        n_cluster_per_event = get_n_cluster_in_events(clusters['event_number'])[:, 1]  # array with the number of cluster per event, cluster per event are at least 1
+                    else:
+                        n_cluster_per_event = np.append(n_cluster_per_event, get_n_cluster_in_events(clusters['event_number'])[:, 1])
+                    readout_cluster_len += clusters.shape[0]
+                    total_cluster += len(clusters)
+                    progress_bar.update(index)
+                best_chunk_size = int(1.5 * readout_cluster_len) if int(1.05 * readout_cluster_len) < chunk_size else chunk_size  # to increase the readout speed, estimated the number of hits for one read instruction
+                normalization_multiplicity.append(np.mean(n_cluster_per_event))
+            if total_cluster != cluster_table.shape[0]:
+                logging.warning('Analysis shows inconsistent number of cluster. Check needed!')
+
     if plot:
         x = scan_parameter
         if reference == 'event':
-            plotting.plot_scatter(x, normalization, title='Events per ' + parameter + ' setting', x_label=parameter, y_label='# events', log_x=True)
+            plotting.plot_scatter(x, normalization_rate, title='Events per ' + parameter + ' setting', x_label=parameter, y_label='# events', log_x=True)
         elif reference == 'time':
-            plotting.plot_scatter(x, normalization, title='Measuring time per GDAC setting', x_label=parameter, y_label='time [s]', log_x=True)
-    return np.amax(np.array(normalization)).astype('f16') / np.array(normalization)
+            plotting.plot_scatter(x, normalization_rate, title='Measuring time per GDAC setting', x_label=parameter, y_label='time [s]', log_x=True)
+        if cluster_file:
+            plotting.plot_scatter(x, normalization_multiplicity, title='Mean number of hits per event', x_label=parameter, y_label='number of hits per event', log_x=True)
+    print len(normalization_rate), len(normalization_multiplicity)
+    if cluster_file:
+        normalization_rate = np.array(normalization_rate)
+        normalization_multiplicity = np.array(normalization_multiplicity)
+        return np.amax(normalization_rate * normalization_multiplicity).astype('f16') / (normalization_rate * normalization_multiplicity)
+    return np.amax(np.array(normalization_rate)).astype('f16') / np.array(normalization_rate)
 
 
 def get_occupancy_per_parameter(hit_analyzed_files, parameter='GDAC'):
@@ -345,7 +376,7 @@ def get_scan_parameter_names(scan_parameters):
     return scan_parameters.dtype.names if scan_parameters is not None else None
 
 
-def get_parameter_from_files(files, parameters=None, sort=True):
+def get_parameter_from_files(files, parameters=None, unique=False, sort=True):
     ''' Takes a list of files, searches for the parameter name in the file name and in the file.
     Returns a ordered dict with the file name in the first dimension and the corresponding parameter values in the second.
     If a scan parameter appears in the file name and in the file the first parameter setting has to be in the file name, otherwise a warning is shown.
@@ -355,6 +386,8 @@ def get_parameter_from_files(files, parameters=None, sort=True):
     ----------
     files : string, list of strings
     parameters : string, list of strings
+    unique : bool:
+        If set only one filer per scan parameter value is used.
     sort : bool
 
     Returns
@@ -368,7 +401,7 @@ def get_parameter_from_files(files, parameters=None, sort=True):
         files = (files, )
     if isinstance(parameters, basestring):
         parameters = (parameters, )
-    parameter_values_from_file_names_dict = get_parameter_value_from_file_names(files, parameters, sort=sort)  # get the parameter from the file name
+    parameter_values_from_file_names_dict = get_parameter_value_from_file_names(files, parameters, unique=unique, sort=sort)  # get the parameter from the file name
     for file_name in files:
         with tb.openFile(file_name, mode="r") as in_file_h5:  # open the actual file
             scan_parameter_values = {}
@@ -403,7 +436,19 @@ def get_parameter_from_files(files, parameters=None, sort=True):
                             logging.warning('Parameter values in the file name and in the file differ. Take ' + str(key) + ' parameters ' + str(value) + ' found in %s.' % file_name)
                 except KeyError:  # parameter does not exists in the file name
                     pass
-            files_dict[file_name] = scan_parameter_values
+            if unique:
+                existing = False
+                for parameter in scan_parameter_values:  # loop to determine if any value of any scan parameter exists already
+                    all_par_values = [values[parameter] for values in files_dict.values()]
+                    if any(x in [scan_parameter_values[parameter]] for x in all_par_values):
+                        existing = True
+                        break
+                if not existing:
+                    files_dict[file_name] = scan_parameter_values
+                else:
+                    logging.warning('Scan parameter value(s) from %s exists already, do not add to result' % file_name)
+            else:
+                files_dict[file_name] = scan_parameter_values
     return collections.OrderedDict(sorted(files_dict.iteritems(), key=itemgetter(1)) if sort else files_dict)
 
 
@@ -676,9 +721,10 @@ def get_hits_in_events(hits_array, events, assume_sorted=True):
         if assume_sorted:
             hits_in_events = hits_array[in1d_events(hits_array['event_number'], events)]
         else:
+            logging.warning('Events are usually sorted. Are you sure you want this?')
             hits_in_events = hits_array[np.in1d(hits_array['event_number'], events)]
     except MemoryError:
-        logging.error('There are too many hits to do in RAM operations. Use the write_hits_in_events function instead.')
+        logging.error('There are too many hits to do in RAM operations. Descrease chunk size and Use the write_hits_in_events function instead.')
         raise MemoryError
     return hits_in_events
 
@@ -1181,7 +1227,7 @@ def index_event_number(table_with_event_numer):
     else:
         logging.debug('Event_number index exists already, omit creation')
 
-# @profile
+
 def data_aligned_at_events(table, start_event_number=None, stop_event_number=None, start=None, stop=None, chunk_size=10000000):
     '''Takes the table with a event_number column and returns chunks with the size up to chunk_size. The chunks are chosen in a way that the events are not splitted. Additional
     parameters can be set to increase the readout speed. If only events between a certain event range are used one can specify this. Also the start and the
@@ -1374,12 +1420,13 @@ def get_pixel_thresholds_from_calibration_array(gdacs, calibration_gdacs, thresh
 
 class ETA(progressbar.Timer):
     'Widget which estimate the time of arrival for the progress bar via exponential moving average.'
-
     TIME_SENSITIVE = True
-    speed_smooth = None
-    SMOOTHING = 0.1
-    old_eta = None
-    n_refresh = 0
+
+    def __init__(self, smoothing=0.1):
+        self.speed_smooth = None
+        self.SMOOTHING = smoothing
+        self.old_eta = None
+        self.n_refresh = 0
 
     def update(self, pbar):
         'Updates the widget to show the ETA or total time when finished.'
