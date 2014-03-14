@@ -714,6 +714,7 @@ class AnalyzeRawData(object):
                 self.histograming.set_no_scan_parameter()
         except tb.exceptions.NoSuchNodeError:
             logging.info("No meta data provided")
+            self.histograming.set_no_scan_parameter()
 
         table_size = in_file_h5.root.Hits.shape[0]
         n_hits = 0  # number of hits in actual chunk
