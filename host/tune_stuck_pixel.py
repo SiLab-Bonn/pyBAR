@@ -70,7 +70,8 @@ class StuckPixelScan(ScanBase):
         self.inv_occ_mask = self.register_utils.invert_pixel_mask(self.occ_mask)
         self.disable_for_mask = disable_for_mask
         if overwrite_mask:
-            self.register.set_pixel_register_value(disable_for_mask, self.inv_occ_mask)
+            for mask in disable_for_mask:
+                self.register.set_pixel_register_value(mask, self.inv_occ_mask)
         else:
             for mask in disable_for_mask:
                 enable_mask = np.logical_and(self.inv_occ_mask, self.register.get_pixel_register_value(mask))
@@ -78,7 +79,8 @@ class StuckPixelScan(ScanBase):
 
         self.enable_for_mask = enable_for_mask
         if overwrite_mask:
-            self.register.set_pixel_register_value(enable_for_mask, self.occ_mask)
+            for mask in enable_for_mask:
+                self.register.set_pixel_register_value(mask, self.occ_mask)
         else:
             for mask in enable_for_mask:
                 disable_mask = np.logical_or(self.occ_mask, self.register.get_pixel_register_value(mask))
