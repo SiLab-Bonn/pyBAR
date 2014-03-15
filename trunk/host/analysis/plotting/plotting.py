@@ -307,11 +307,13 @@ def plot_tot(hist, title=None, filename=None):
 
 
 def plot_tdc(hist, title=None, filename=None):
-    plot_1d_hist(hist=hist, title='TDC Hit distribution (' + str(np.sum(hist)) + ' entries)' if title == None else title, plot_range=range(0, np.where(hist)[-1][-1] + 1) if np.sum(hist) > 1 else range(0, 4096), x_axis_title='hit TDC', y_axis_title='#', color='b', filename=filename, figure_name='Hit TDC')
+    masked_hist, indices = hist_quantiles(hist, prob=(0., 0.99), return_indices=True)
+    plot_1d_hist(hist=masked_hist, title='TDC Hit distribution (' + str(np.sum(hist)) + ' entries)' if title == None else title, plot_range=indices, x_axis_title='hit TDC', y_axis_title='#', color='b', filename=filename, figure_name='Hit TDC')
 
 
 def plot_tdc_counter(hist, title=None, filename=None):
-    plot_1d_hist(hist=hist, title='TDC counter distribution (' + str(np.sum(hist)) + ' entries)' if title == None else title, plot_range=range(0, np.where(hist)[-1][-1] + 1) if np.sum(hist) > 1 else range(0, 4096), x_axis_title='TDC value', y_axis_title='#', color='b', filename=filename, figure_name='Counter TDC')
+    masked_hist, indices = hist_quantiles(hist, prob=(0., 0.99), return_indices=True)
+    plot_1d_hist(hist=masked_hist, title='TDC counter distribution (' + str(np.sum(hist)) + ' entries)' if title == None else title, plot_range=indices, x_axis_title='TDC value', y_axis_title='#', color='b', filename=filename, figure_name='Counter TDC')
 
 
 def plot_event_errors(hist, filename=None):
@@ -711,6 +713,89 @@ def plot_correlations(filenames, limit=None):
             plt.savefig(colName[0] + '_' + colName[1] + '.pdf')
 #             print 'store as ', fileNames[int(index/2)]
             index += 1
+
+
+def hist_quantiles(hist, prob=(0.05, 0.95), return_indices=False, copy=False):
+    '''Calculate quantiles from histograms, cuts off hist below and above given quantile. This function will not cut off more than the given values.
+
+    Parameters
+    ----------
+    hist : array_like, iterable
+        Input histogram with dimension at most 1.
+    prob : float, list, tuple
+        List of quantiles to compute. Upper and lower limit. From 0 to 1. Default is 0.05 and 0.95.
+    return_indices : bool, optional
+        If true, return the indices of the hist.
+    copy : bool, optional
+        Whether to copy the input data (True), or to use a reference instead. Default is False.
+
+    Returns
+    -------
+    masked_hist : masked_array
+       Hist with masked elements.
+    masked_hist : masked_array, tuple
+        Hist with masked elements and indices.
+    '''
+    # make np array
+    hist_t = np.array(hist)
+    # calculate cumulative distribution
+    cdf = np.cumsum(hist_t)
+    # copy, convert and normalize
+    if cdf[-1] == 0:
+        normcdf = cdf.astype('float')
+    else:
+        normcdf = cdf.astype('float') / cdf[-1]
+    # calculate unique values from cumulative distribution and their indices
+    unormcdf, indices = np.unique(normcdf, return_index=True)
+    # calculate limits
+    try:
+        hp = np.where(unormcdf > 0.95)[0][0]
+        lp = np.where(unormcdf >= 0.00)[0][0]
+    except IndexError:
+        hp_index = hist_t.shape[0]
+        lp_index = 0
+    else:
+        hp_index = indices[hp]
+        lp_index = indices[lp]
+    # copy and create ma
+    masked_hist = np.ma.array(hist, copy=copy, mask=True)
+    masked_hist.mask[lp_index:hp_index + 1] = False
+    if return_indices:
+        return masked_hist, (lp_index, hp_index + 1)
+    else:
+        return masked_hist
+
+
+def hist_last_nonzero(hist, return_index=False, copy=False):
+    '''Find the last nonzero index and mask the remaining entries.
+
+    Parameters
+    ----------
+    hist : array_like, iterable
+        Input histogram with dimension at most 1.
+    return_index : bool, optional
+        If true, return the index.
+    copy : bool, optional
+        Whether to copy the input data (True), or to use a reference instead. Default is False.
+
+    Returns
+    -------
+    masked_hist : masked_array
+       Hist with masked elements.
+    masked_hist : masked_array, tuple
+        Hist with masked elements and index of the element after the last nonzero value.
+    '''
+    # make np array
+    hist_t = np.array(hist)
+    index = (np.where(hist_t)[-1][-1] + 1) if np.sum(hist_t) > 1 else hist_t.shape[0]
+    # copy and create ma
+    masked_hist = np.ma.array(hist, copy=copy, mask=True)
+    masked_hist.mask[index:] = False
+    if return_index:
+        return masked_hist, index
+    else:
+        return masked_hist
+
 
 if __name__ == "__main__":
     filename = "HitMap.txt"
