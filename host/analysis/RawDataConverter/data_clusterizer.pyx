@@ -1,6 +1,7 @@
 # distutils: language = c++
 # distutils: sources = Basis.cpp Clusterizer.cpp
-
+# cython: boundscheck=False
+# cython: wraparound=False
 import numpy as np
 cimport numpy as cnp
 cnp.import_array()  # if array is used it has to be imported, otherwise possible runtime error
@@ -59,7 +60,6 @@ cdef class PyDataClusterizer:
         self.thisptr = new Clusterizer()
     def __dealloc__(self):
         del self.thisptr
-
     def set_debug_output(self, toggle):
         self.thisptr.setDebugOutput(< bool > toggle)
     def set_info_output(self, toggle):
@@ -68,15 +68,12 @@ cdef class PyDataClusterizer:
         self.thisptr.setWarningOutput(< bool > toggle)
     def set_error_output(self, toggle):
         self.thisptr.setErrorOutput(< bool > toggle)
-
     def add_hits(self, cnp.ndarray[numpy_hit_info, ndim=1] hit_info):
         self.thisptr.addHits(< HitInfo *&> hit_info.data, < unsigned int > hit_info.shape[0])
-
     def create_cluster_hit_info_array(self, value=True):
         self.thisptr.createClusterHitInfoArray(< bool > value)
     def create_cluster_info_array(self, value=True):
         self.thisptr.createClusterInfoArray(< bool > value)
-
     def set_cluster_hit_info_array(self, cnp.ndarray[numpy_cluster_hit_info, ndim=1] cluster_hit_info):
         self.thisptr.setClusterHitInfoArray(< ClusterHitInfo *&> cluster_hit_info.data, < const unsigned int &> cluster_hit_info.shape[0])
     def set_cluster_info_array(self, cnp.ndarray[numpy_cluster_info, ndim=1] cluster_info):
@@ -95,16 +92,14 @@ cdef class PyDataClusterizer:
         self.thisptr.setMaxClusterHitTot(< const unsigned int &> value)
     def set_max_tot(self, value):
         self.thisptr.setMaxHitTot(<const unsigned int &> value)
-
     def get_cluster_size_hist(self, cnp.ndarray[cnp.uint32_t, ndim=1] cluster_size_hist, value=True):
-        cdef unsigned int rNparameterValues
+        rNparameterValues = 0
         self.thisptr.getClusterSizeHist(< unsigned int &> rNparameterValues, < unsigned int *&> cluster_size_hist.data, < bool > value)
         return rNparameterValues
     def get_cluster_tot_hist(self, cnp.ndarray[cnp.uint32_t, ndim=1] cluster_tot_hist, value=True):
-        cdef unsigned int rNparameterValues
+        rNparameterValues = 0
         self.thisptr.getClusterTotHist(< unsigned int &> rNparameterValues, < unsigned int *&> cluster_tot_hist.data, < bool > value)
         return rNparameterValues
-
     def get_n_clusters(self):
         return < unsigned int > self.thisptr.getNclusters()
     def reset(self):

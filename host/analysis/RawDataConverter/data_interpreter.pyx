@@ -1,22 +1,16 @@
 # distutils: language = c++
 # distutils: sources = Basis.cpp Interpret.cpp
-
+# cython: boundscheck=False
+# cython: wraparound=False
 import numpy as np
 cimport numpy as cnp
 cnp.import_array()  # if array is used it has to be imported, otherwise possible runtime error
 from numpy cimport ndarray
-
 from libcpp cimport bool  # to be able to use bool variables
-
 from data_struct cimport numpy_hit_info, numpy_meta_data, numpy_meta_data_v2, numpy_meta_word_data
-
 from data_struct import MetaTable, MetaTableV2
-
 from tables import dtype_from_descr
-
 from libc.stdint cimport uint64_t
-# cdef extern from "defines.h":
-#     ctypedef unsigned long long uint64_t  # http://stackoverflow.com/questions/3544240/conditional-ctypedef-with-cython
 
 cdef extern from "Basis.h":
     cdef cppclass Basis:
@@ -115,9 +109,9 @@ cdef class PyDataInterpreter:
 #         elif meta_data_dtype == np.dtype([('index_start', '<u4'), ('index_stop', '<u4'), ('data_length', '<u4'), ('timestamp_start', '<f8'), ('timestamp_stop', '<f8'), ('error', '<u4')]):
 #             self.thisptr.setMetaDataV2(<MetaInfoV2*&> meta_data.data, <const unsigned int&> meta_data.shape[0])
         else:
-            raise NotImplementedError('Unknown meta data type %s' % meta_data_dtype)
+            raise NotImplementedError('Unknown meta data type %s' % meta_data_dtype) 
     def set_meta_event_data(self, cnp.ndarray[cnp.uint64_t, ndim=1] meta_data_event_index):
-        self.thisptr.setMetaDataEventIndex(<uint64_t*&> meta_data_event_index.data, <const unsigned int&> meta_data_event_index.shape[0])
+        self.thisptr.setMetaDataEventIndex(<uint64_t*&> meta_data_event_index.data, <const unsigned int&> meta_data_event_index.shape[0])   
     def set_meta_data_word_index(self, cnp.ndarray[numpy_meta_word_data, ndim=1] meta_word_data):
         self.thisptr.setMetaDataWordIndex(<MetaWordInfoOut*&> meta_word_data.data, <const unsigned int&>  meta_word_data.shape[0])
     def get_service_records_counters(self, cnp.ndarray[cnp.uint32_t, ndim=1] service_records_counters):
@@ -171,17 +165,13 @@ cdef class PyDataInterpreter:
         self.thisptr.debugEvents(<const unsigned int&> start_event, <const unsigned int&> stop_event, <const bool&> toggle)
     def get_hit_size(self):
         return <unsigned int> self.thisptr.getHitSize()
-
     @property
     def fei4b(self):
         return <bool> self.thisptr.getFEI4B()
-
     @property
     def meta_table_v2(self):
         return <bool> self.thisptr.getMetaTableV2()
-
     def reset(self):
         self.thisptr.reset()
-
     def reset_meta_data_counter(self):
         self.thisptr.resetMetaDataCounter()
