@@ -1,6 +1,7 @@
 # distutils: language = c++
 # distutils: sources = Basis.cpp Histogram.cpp
-
+# cython: boundscheck=False
+# cython: wraparound=False
 import numpy as np
 cimport numpy as cnp
 cnp.import_array()  # if array is used it has to be imported, otherwise possible runtime error
@@ -65,7 +66,6 @@ cdef class PyDataHistograming:
         self.thisptr = new Histogram()
     def __dealloc__(self):
         del self.thisptr
-
     def set_debug_output(self,toggle):
         self.thisptr.setDebugOutput(<bool> toggle)
     def set_info_output(self,toggle):
@@ -74,7 +74,6 @@ cdef class PyDataHistograming:
         self.thisptr.setWarningOutput(<bool> toggle)
     def set_error_output(self,toggle):
         self.thisptr.setErrorOutput(<bool> toggle)
-
     def create_occupancy_hist(self,toggle):
         self.thisptr.createOccupancyHist(<bool> toggle)
     def create_rel_bcid_hist(self,toggle):
@@ -87,7 +86,6 @@ cdef class PyDataHistograming:
         self.thisptr.createTdcPixelHist(<bool> toggle)
     def set_max_tot(self, max_tot):
         self.thisptr.setMaxTot(<const unsigned int&> max_tot)
-
     def get_occupancy(self, cnp.ndarray[cnp.uint32_t, ndim=1] occupancy, copy = True):
         cdef unsigned int NparameterValues = 0
         self.thisptr.getOccupancy(NparameterValues, <unsigned int*&> occupancy.data, <bool> copy)
@@ -100,7 +98,6 @@ cdef class PyDataHistograming:
         self.thisptr.setTdcPixelHist(<unsigned short*&> tdc_pixel_hist.data)
     def get_rel_bcid_hist(self, cnp.ndarray[cnp.uint32_t, ndim=1] rel_bcid_hist, copy = True):
         self.thisptr.getRelBcidHist(<unsigned int*&> rel_bcid_hist.data, <bool> copy)
-
     def add_hits(self, cnp.ndarray[numpy_hit_info, ndim=1] hit_info, Nhits):
         self.thisptr.addHits(<HitInfo*&> hit_info.data, <const unsigned int&> Nhits)
     def add_cluster_seed_hits(self, cnp.ndarray[numpy_cluster_info, ndim=1] cluster_info, Ncluster):
@@ -113,11 +110,9 @@ cdef class PyDataHistograming:
         self.thisptr.addMetaEventIndex(<uint64_t*&> event_index.data, <unsigned int&> array_length)
     def get_n_parameters(self):
         return <unsigned int> self.thisptr.getNparameters()
-
     def calculate_threshold_scan_arrays(self, cnp.ndarray[cnp.float64_t, ndim=1] threshold, cnp.ndarray[cnp.float64_t, ndim=1] noise, n_injections, min_parameter, max_parameter):
         self.thisptr.calculateThresholdScanArrays(<double*> threshold.data, <double*> noise.data, <const unsigned int&> n_injections, <const unsigned int&> min_parameter, <const unsigned int&> max_parameter)
     def reset(self):
         self.thisptr.reset()
-
     def test(self):
         self.thisptr.test()
