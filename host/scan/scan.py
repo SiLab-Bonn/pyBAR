@@ -98,10 +98,12 @@ class ScanBase(object):
         self.readout = Readout(self.device)
         self.readout_utils = ReadoutUtils(self.device)
 
-        if isinstance(configuration_file, FEI4Register):
-            self.register = configuration_file
+        self.configuration_file = configuration_file
+
+        if isinstance(self.configuration_file, FEI4Register):
+            self.register = self.configuration_file
         else:
-            self.register = FEI4Register(configuration_file=configuration_file, definition_file=definition_file)
+            self.register = FEI4Register(configuration_file=self.configuration_file, definition_file=definition_file)
         self.register_utils = FEI4RegisterUtils(self.device, self.readout, self.register)
 
         # remove all non_word characters and whitespace characters to prevent problems with os.path.join
@@ -485,6 +487,9 @@ class ScanBase(object):
 
         for key, value in dict.iteritems(scan_configuration):
             row_scan_param[key] = str(value)
+
+        # add config file
+        row_scan_param['configuration_file'] = str(self.configuration_file)
 
         row_scan_param.append()
 
