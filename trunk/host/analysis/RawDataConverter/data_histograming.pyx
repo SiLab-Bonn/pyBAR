@@ -4,15 +4,11 @@
 # cython: wraparound=False
 import numpy as np
 cimport numpy as cnp
-cnp.import_array()  # if array is used it has to be imported, otherwise possible runtime error
-
-from libcpp cimport bool  # to be able to use bool variables
-
+from libcpp cimport bool as cpp_bool  # to be able to use bool variables, as cpp_bool according to http://code.google.com/p/cefpython/source/browse/cefpython/cefpython.pyx?spec=svne037c69837fa39ae220806c2faa1bbb6ae4500b9&r=e037c69837fa39ae220806c2faa1bbb6ae4500b9
 from data_struct cimport numpy_hit_info, numpy_meta_data, numpy_meta_data_v2, numpy_par_info, numpy_cluster_info
-
 from libc.stdint cimport uint64_t
-# cdef extern from "defines.h":
-#     ctypedef unsigned long long uint64_t  # http://stackoverflow.com/questions/3544240/conditional-ctypedef-with-cython
+
+cnp.import_array()  # if array is used it has to be imported, otherwise possible runtime error
 
 cdef extern from "Basis.h":
     cdef cppclass Basis:
@@ -27,22 +23,22 @@ cdef extern from "Histogram.h":
         ClusterInfo()
     cdef cppclass Histogram(Basis):
         Histogram() except +
-        void setErrorOutput(bool pToggle)
-        void setWarningOutput(bool pToggle)
-        void setInfoOutput(bool pToggle)
-        void setDebugOutput(bool pToggle)
+        void setErrorOutput(cpp_bool pToggle)
+        void setWarningOutput(cpp_bool pToggle)
+        void setInfoOutput(cpp_bool pToggle)
+        void setDebugOutput(cpp_bool pToggle)
 
-        void createOccupancyHist(bool CreateOccHist)
-        void createRelBCIDHist(bool CreateRelBCIDHist)
-        void createTotHist(bool CreateTotHist)
-        void createTdcHist(bool CreateTdcPixelHist)
-        void createTdcPixelHist(bool CreateTdcPixelHist)
+        void createOccupancyHist(cpp_bool CreateOccHist)
+        void createRelBCIDHist(cpp_bool CreateRelBCIDHist)
+        void createTotHist(cpp_bool CreateTotHist)
+        void createTdcHist(cpp_bool CreateTdcPixelHist)
+        void createTdcPixelHist(cpp_bool CreateTdcPixelHist)
         void setMaxTot(const unsigned int& rMaxTot)
 
-        void getOccupancy(unsigned int& rNparameterValues, unsigned int*& rOccupancy, bool copy)  # returns the occupancy histogram for all hits
-        void getTotHist(unsigned int*& rTotHist, bool copy)  # returns the tot histogram for all hits
-        void getTdcHist(unsigned int*& rTdcHist, bool copy)
-        void getRelBcidHist(unsigned int*& rRelBcidHist, bool copy)  # returns the relative BCID histogram for all hits
+        void getOccupancy(unsigned int& rNparameterValues, unsigned int*& rOccupancy, cpp_bool copy)  # returns the occupancy histogram for all hits
+        void getTotHist(unsigned int*& rTotHist, cpp_bool copy)  # returns the tot histogram for all hits
+        void getTdcHist(unsigned int*& rTdcHist, cpp_bool copy)
+        void getRelBcidHist(unsigned int*& rRelBcidHist, cpp_bool copy)  # returns the relative BCID histogram for all hits
         void setTdcPixelHist(unsigned short*& rTdcPixelHist)  # sets the tdc pixel histogram for all hits
 
         void addHits(HitInfo*& rHitInfo, const unsigned int& rNhits) except +
@@ -66,38 +62,38 @@ cdef class PyDataHistograming:
         self.thisptr = new Histogram()
     def __dealloc__(self):
         del self.thisptr
-    def set_debug_output(self,toggle):
-        self.thisptr.setDebugOutput(<bool> toggle)
+    def set_debug_output(self, toggle):
+        self.thisptr.setDebugOutput(<cpp_bool> toggle)
     def set_info_output(self,toggle):
-        self.thisptr.setInfoOutput(<bool> toggle)
+        self.thisptr.setInfoOutput(<cpp_bool> toggle)
     def set_warning_output(self,toggle):
-        self.thisptr.setWarningOutput(<bool> toggle)
+        self.thisptr.setWarningOutput(<cpp_bool> toggle)
     def set_error_output(self,toggle):
-        self.thisptr.setErrorOutput(<bool> toggle)
+        self.thisptr.setErrorOutput(<cpp_bool> toggle)
     def create_occupancy_hist(self,toggle):
-        self.thisptr.createOccupancyHist(<bool> toggle)
+        self.thisptr.createOccupancyHist(<cpp_bool> toggle)
     def create_rel_bcid_hist(self,toggle):
-        self.thisptr.createRelBCIDHist(<bool> toggle)
+        self.thisptr.createRelBCIDHist(<cpp_bool> toggle)
     def create_tot_hist(self,toggle):
-        self.thisptr.createTotHist(<bool> toggle)
+        self.thisptr.createTotHist(<cpp_bool> toggle)
     def create_tdc_hist(self,toggle):
-        self.thisptr.createTdcHist(<bool> toggle)
+        self.thisptr.createTdcHist(<cpp_bool> toggle)
     def create_tdc_pixel_hist(self,toggle):
-        self.thisptr.createTdcPixelHist(<bool> toggle)
+        self.thisptr.createTdcPixelHist(<cpp_bool> toggle)
     def set_max_tot(self, max_tot):
         self.thisptr.setMaxTot(<const unsigned int&> max_tot)
     def get_occupancy(self, cnp.ndarray[cnp.uint32_t, ndim=1] occupancy, copy = True):
         cdef unsigned int NparameterValues = 0
-        self.thisptr.getOccupancy(NparameterValues, <unsigned int*&> occupancy.data, <bool> copy)
+        self.thisptr.getOccupancy(NparameterValues, <unsigned int*&> occupancy.data, <cpp_bool> copy)
         return NparameterValues
     def get_tot_hist(self, cnp.ndarray[cnp.uint32_t, ndim=1] tot_hist, copy = True):
-        self.thisptr.getTotHist(<unsigned int*&> tot_hist.data, <bool> copy)
+        self.thisptr.getTotHist(<unsigned int*&> tot_hist.data, <cpp_bool> copy)
     def get_tdc_hist(self, cnp.ndarray[cnp.uint32_t, ndim=1] tdc_hist, copy = True):
-        self.thisptr.getTdcHist(<unsigned int*&> tdc_hist.data, <bool> copy)
+        self.thisptr.getTdcHist(<unsigned int*&> tdc_hist.data, <cpp_bool> copy)
     def set_tdc_pixel_hist(self, cnp.ndarray[cnp.uint16_t, ndim=1] tdc_pixel_hist):
         self.thisptr.setTdcPixelHist(<unsigned short*&> tdc_pixel_hist.data)
     def get_rel_bcid_hist(self, cnp.ndarray[cnp.uint32_t, ndim=1] rel_bcid_hist, copy = True):
-        self.thisptr.getRelBcidHist(<unsigned int*&> rel_bcid_hist.data, <bool> copy)
+        self.thisptr.getRelBcidHist(<unsigned int*&> rel_bcid_hist.data, <cpp_bool> copy)
     def add_hits(self, cnp.ndarray[numpy_hit_info, ndim=1] hit_info, Nhits):
         self.thisptr.addHits(<HitInfo*&> hit_info.data, <const unsigned int&> Nhits)
     def add_cluster_seed_hits(self, cnp.ndarray[numpy_cluster_info, ndim=1] cluster_info, Ncluster):
