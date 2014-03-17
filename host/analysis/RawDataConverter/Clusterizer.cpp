@@ -315,7 +315,7 @@ void Clusterizer::addHit(const unsigned int& pHitIndex)
 		_nHits++;
 	}
 	else
-		warning("addHit: event "+IntToStr(tEvent)+", attempt to add the same hit col/row/rel.bcid="+IntToStr(tCol)+"/"+IntToStr(tRow)+"/"+IntToStr(tRelBcid)+" again, ignored!");
+		warning("addHit: event "+LongIntToStr(tEvent)+", attempt to add the same hit col/row/rel.bcid="+IntToStr(tCol)+"/"+IntToStr(tRow)+"/"+IntToStr(tRelBcid)+" again, ignored!");
 
 	if (tCharge >= 0)
 		_chargeMap[(long)tCol + (long)tRow * (long)RAW_DATA_MAX_COLUMN + (long)tTot * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] = tCharge;
@@ -381,8 +381,8 @@ void Clusterizer::searchNextHits(const unsigned short& pCol, const unsigned shor
 
 	_actualClusterTot+=tTot;		//add tot of the hit to the cluster tot
 	_actualClusterCharge+=_chargeMap[(long)pCol + (long)pRow * (long)RAW_DATA_MAX_COLUMN + (long)tTot * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW];	//add charge of the hit to the cluster tot
-	_actualClusterX+=((float) pCol+0.5) * (float) __PIXELSIZEX * _chargeMap[(long)pCol + (long)pRow * (long)RAW_DATA_MAX_COLUMN + (long)tTot * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW];	//add x position of actual cluster weigthed by the charge
-	_actualClusterY+=((float) pRow+0.5) * (float) __PIXELSIZEY * _chargeMap[(long)pCol + (long)pRow * (long)RAW_DATA_MAX_COLUMN + (long)tTot * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW];	//add y position of actual cluster weigthed by the charge
+	_actualClusterX+=(float)((float) pCol+0.5) * (float) __PIXELSIZEX * _chargeMap[(long)pCol + (long)pRow * (long)RAW_DATA_MAX_COLUMN + (long)tTot * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW];	//add x position of actual cluster weigthed by the charge
+	_actualClusterY+=(float)((float) pRow+0.5) * (float) __PIXELSIZEY * _chargeMap[(long)pCol + (long)pRow * (long)RAW_DATA_MAX_COLUMN + (long)tTot * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW];	//add y position of actual cluster weigthed by the charge
 
 	if(Basis::debugSet()){
 //		std::cout<<"Clusterizer::searchNextHits"<<std::endl;
