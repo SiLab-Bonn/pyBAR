@@ -7,7 +7,7 @@ import numpy as np
 import os
 path = os.getcwd()  # current path
 
-copt = {'msvc': ['-I' + os.path.join(path, 'external')]}
+copt = {'msvc': ['-I' + os.path.join(path, 'external'), '/EHsc']}
 lopt = {}
 
 

@@ -1,7 +1,8 @@
 #ifndef DEFINES_H
 #define DEFINES_H
 
-#pragma pack(1) //data struct in memory alignement
+//#pragma pack(1) //data struct in memory alignement
+#pragma pack(push, 1)
 
 // for (u)int64_t event_number
 #ifdef _MSC_VER
@@ -244,4 +245,5 @@ typedef struct MetaWordInfoOut{
 
 #define __MAXTOTLOOKUP 14
 
+#pragma pack(pop)  // pop needed to suppress VS C4103 compiler warning
 #endif // DEFINES_H
