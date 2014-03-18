@@ -476,6 +476,9 @@ class ScanBase(object):
         # append to file if existing otherwise create new one
         self.raw_data_file_h5 = tb.openFile(h5_file, mode="a", title=((self.device_identifier + "_" + self.scan_identifier) if self.device_identifier else self.scan_identifier) + "_" + str(self.scan_number), **kwargs)
 
+        # add config file
+        scan_configuration['configuration_file'] = str(self.configuration_file)
+
         try:
             scan_param_descr = generate_scan_configuration_description(dict.iterkeys(scan_configuration))
             filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
@@ -487,9 +490,6 @@ class ScanBase(object):
 
         for key, value in dict.iteritems(scan_configuration):
             row_scan_param[key] = str(value)
-
-        # add config file
-        row_scan_param['configuration_file'] = str(self.configuration_file)
 
         row_scan_param.append()
 
