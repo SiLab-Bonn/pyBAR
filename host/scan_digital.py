@@ -53,7 +53,7 @@ class DigitalScan(ScanBase):
             analyze_raw_data.create_tot_hist = False
             analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
             analyze_raw_data.plot_histograms(scan_data_filename=scan.scan_data_filename)
-#             analyze_raw_data.interpreter.print_summary()
+            analyze_raw_data.interpreter.print_summary()
 
 if __name__ == "__main__":
     import configuration
