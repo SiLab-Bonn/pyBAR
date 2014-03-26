@@ -131,10 +131,7 @@ class AnalyzeRawData(object):
             self._analyzed_data_file = os.path.splitext(analyzed_data_file)[0] + ".h5"
         self.set_standard_settings()
         if raw_data_file is not None and create_pdf:
-            if os.path.splitext(raw_data_file)[1].strip().lower() != ".pdf":  # check for correct filename extension
-                output_pdf_filename = os.path.splitext(raw_data_file)[0] + ".pdf"
-            else:
-                output_pdf_filename = scan_data_filename
+            output_pdf_filename = os.path.splitext(raw_data_file)[0] + ".pdf"
             logging.info('Opening output file: %s' % output_pdf_filename)
             self.output_pdf = PdfPages(output_pdf_filename)
         else:
@@ -815,8 +812,8 @@ class AnalyzeRawData(object):
         else:
             out_file_h5 = None
         if scan_data_filename is not None:
-            if scan_data_filename[len(scan_data_filename) - 3:] != ".pdf":  # check for correct filename extension
-                output_pdf_filename = scan_data_filename + ".pdf"
+            if os.path.splitext(scan_data_filename)[1].strip().lower() != ".pdf":  # check for correct filename extension
+                output_pdf_filename = os.path.splitext(scan_data_filename)[0] + ".pdf"
             else:
                 output_pdf_filename = scan_data_filename
             logging.info('Opening output file: %s' % output_pdf_filename)
