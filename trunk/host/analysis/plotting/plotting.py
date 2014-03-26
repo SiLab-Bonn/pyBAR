@@ -125,7 +125,7 @@ def plot_occupancy(hist, title='Occupancy', z_max=None, filename=None):
 
     if filename is None:
         plt.show()
-    elif type(filename) == PdfPages:
+    elif isinstance(filename, PdfPages):
         filename.savefig()
     else:
         plt.savefig(filename)
@@ -165,12 +165,9 @@ def plot_profile_histogram(x, y, n_bins=100, title=None, x_label=None, y_label=N
     mean[np.isnan(mean)] = 0.
     std_mean[np.isnan(std_mean)] = 0.
 #     from scipy.special import erf
-# #     
 #     def scurve(x, A, mu, sigma):
 #         return 0.5 * A * erf((-x + mu) / (np.sqrt(2) * sigma)) + 0.5 * A
-#      
 #     popt, _ = curve_fit(scurve, bin_centers, mean, p0=[1.5, 9000, 500])
-
 #     polynom_fit = np.poly1d(np.polyfit(bin_centers, mean, deg=7))
 #     plt.plot(bin_centers, polynom_fit(bin_centers), 'r-')
     plt.errorbar(bin_centers, mean, yerr=std_mean, fmt='o')
@@ -184,7 +181,7 @@ def plot_profile_histogram(x, y, n_bins=100, title=None, x_label=None, y_label=N
     plt.grid(True)
     if filename is None:
         plt.show()
-    elif type(filename) == PdfPages:
+    elif isinstance(filename, PdfPages):
         filename.savefig()
         plt.close()
     else:
@@ -216,7 +213,7 @@ def plot_scatter(x, y, yerr=None, title=None, legend=None, plot_range=None, plot
     plt.grid(True)
     if filename is None:
         plt.show()
-    elif type(filename) == PdfPages:
+    elif isinstance(filename, PdfPages):
         filename.savefig()
     else:
         plt.savefig(filename)
@@ -241,7 +238,7 @@ def plot_correlation(hist, title="Hit correlation", xlabel=None, ylabel=None, fi
     plt.colorbar(boundaries=bounds, cmap=cmap, norm=norm, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True), cax=cax)
     if filename is None:
         plt.show()
-    elif type(filename) == PdfPages:
+    elif isinstance(filename, PdfPages):
         filename.savefig()
         plt.close()
     else:
@@ -265,7 +262,7 @@ def plot_pixel_matrix(hist, title="Hit correlation", filename=None):
     plt.colorbar(boundaries=bounds, cmap=cmap, norm=norm, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True), cax=cax)
     if filename is None:
         plt.show()
-    elif type(filename) == PdfPages:
+    elif isinstance(filename, PdfPages):
         filename.savefig()
         plt.close()
     else:
@@ -377,7 +374,7 @@ def plot_scurves(occupancy_hist, scan_parameters, title='S-Curves', ylabel='Occu
     plt.ylabel(ylabel)
     if filename is None:
         plt.show()
-    elif type(filename) == PdfPages:
+    elif isinstance(filename, PdfPages):
         filename.savefig()
         plt.close()
     else:
@@ -414,7 +411,7 @@ def plot_scatter_time(x, y, yerr=None, title=None, legend=None, plot_range=None,
     plt.grid(True)
     if filename is None:
         plt.show()
-    elif type(filename) == PdfPages:
+    elif isinstance(filename, PdfPages):
         filename.savefig()
     else:
         plt.savefig(filename)
@@ -435,7 +432,7 @@ def plot_cluster_tot_size(hist, median=False, z_max=None, filename=None):
     cmap = cm.get_cmap('jet')
     cmap.set_bad('w')
     norm = colors.BoundaryNorm(bounds, cmap.N)
-    im = ax.imshow(H, aspect="auto", interpolation='nearest', cmap=cmap, norm=norm, extent=extent) # for monitoring
+    im = ax.imshow(H, aspect="auto", interpolation='nearest', cmap=cmap, norm=norm, extent=extent)  # for monitoring
     plt.title('Cluster size and cluster ToT (' + str(np.sum(H) / 2) + ' entries)')
     ax.set_xlabel('cluster size')
     ax.set_ylabel('cluster ToT')
@@ -448,7 +445,7 @@ def plot_cluster_tot_size(hist, median=False, z_max=None, filename=None):
     fig.patch.set_facecolor('white')
     if filename is None:
         plt.show()
-    elif type(filename) == PdfPages:
+    elif isinstance(filename, PdfPages):
         filename.savefig()
         plt.close()
     else:
@@ -487,7 +484,7 @@ def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=No
     plt.grid(True)
     if filename is None:
         plt.show()
-    elif type(filename) == PdfPages:
+    elif isinstance(filename, PdfPages):
         filename.savefig()
         plt.close()
     else:
@@ -505,7 +502,7 @@ def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=No
 #     plt.colorbar(boundaries = bounds, cmap = cmap, norm = norm)  # FIXME: missing parameters
 #     if filename is None:
 #         plt.show()
-#     elif type(filename) == PdfPages:
+#     elif isinstance(filename, PdfPages):
 #         filename.savefig()
 #     else:
 #         plt.savefig(filename)
@@ -525,7 +522,7 @@ def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=No
 #     plt.colorbar(boundaries = bounds, cmap = cmap, norm = norm)
 #     if filename is None:
 #         plt.show()
-#     elif type(filename) == PdfPages:
+#     elif isinstance(filename, PdfPages):
 #         filename.savefig()
 #     else:
 #         plt.savefig(filename)
@@ -668,7 +665,7 @@ def plotThreeWay(hist, title, filename=None, x_axis_title=None, minimum=None, ma
     plt.tight_layout()
     if filename is None:
         plt.show()
-    elif type(filename) == PdfPages:
+    elif isinstance(filename, PdfPages):
         filename.savefig()
         plt.close()
     else:
