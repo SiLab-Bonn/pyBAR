@@ -45,6 +45,7 @@ public:
 	bool getMetaTableV2(){return _isMetaTableV2;};            //returns the MetaTable flavor (V1 or V2)
 	void useTriggerNumber(bool useTriggerNumber = true);      //new events are created if trigger number occurs
 	void useTdcWord(bool useTdcWord = true);      			  //new events are created if tdc word occurs and event structure of event before is complete
+	void useTriggerTimeStamp(bool useTriggerTimeStamp = true);//trigger number is giving you a clock count and not a total count
 
 	void addEvent();              //increases the event counter, adds the actual hits/error/SR codes
 
@@ -133,8 +134,9 @@ private:
 	bool _debugEvents;                          //true if some events have to have debug output
 	unsigned int _startDebugEvent;              //start event number to have debug output
 	unsigned int _stopDebugEvent;               //stop event number to have debug output
-	bool _useTriggerNumber;						//set to true to force event recognision by trigger numbe
+	bool _useTriggerNumber;						//set to true to force event recognision by trigger number
 	bool _useTdcWord;							//set to true to force event recognision by tdc word if event before is complete
+	bool _useTriggerTimeStamp;					//set to true to use the trigger value as a clock count
 
 	//one event variables
 	unsigned int tNdataHeader;					//number of data header per event

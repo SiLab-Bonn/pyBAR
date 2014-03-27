@@ -40,6 +40,7 @@ void Interpret::setStandardSettings()
 	_createMetaDataWordIndex = false;
 	_isMetaTableV2 = false;
 	_useTriggerNumber = false;
+	_useTriggerTimeStamp = false;
 	_useTdcWord=false;
 	_dataWordIndex = 0;
 }
@@ -67,6 +68,8 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 				setDebugOutput();
 			else
 				setDebugOutput(false);
+				setInfoOutput(false);
+				setWarningOutput(false);  // FIXME: do not unset this always
 		}
 
 //		correlateMetaWordIndex(_nEvents, _nDataWords);
@@ -130,28 +133,38 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 				addEvent();
 			}
 			tTriggerWord++;                     //trigger event counter increase
-			tTriggerNumber = TRIGGER_NUMBER_MACRO_NEW(tActualWord); //actual trigger number
+
+			if (!_useTriggerTimeStamp)
+				tTriggerNumber = TRIGGER_NUMBER_MACRO_NEW(tActualWord); //actual trigger number
+			else
+				tTriggerNumber = TRIGGER_TIME_STAMP_MACRO(tActualWord); //actual trigger number is a time stamp
+
 			if (Basis::debugSet())
-				debug(std::string(" ")+IntToStr(_nDataWords)+" TR NUMBER "+IntToStr(tTriggerNumber));
+				if (!_useTriggerTimeStamp)
+					debug(std::string(" ")+IntToStr(_nDataWords)+" TR NUMBER "+IntToStr(tTriggerNumber)+"\t"+LongIntToStr(_nEvents));
+				else
+					debug(std::string(" ")+IntToStr(_nDataWords)+" TR TIME STAMP "+IntToStr(tTriggerNumber)+"\t"+LongIntToStr(_nEvents));
 
 			//TLU error handling
 			if(!_firstTriggerNrSet)
 				_firstTriggerNrSet = true;
-			else if(_lastTriggerNumber + 1 != tTriggerNumber && !(_lastTriggerNumber == __MAXTLUTRGNUMBER && tTriggerNumber == 0)){
+			else if(!_useTriggerTimeStamp && _lastTriggerNumber + 1 != tTriggerNumber && !(_lastTriggerNumber == __MAXTLUTRGNUMBER && tTriggerNumber == 0)){
 				addTriggerErrorCode(__TRG_NUMBER_INC_ERROR);
 				if (Basis::warningSet())
 					warning("interpretRawData: Trigger Number not increasing by 1 (old/new): "+IntToStr(_lastTriggerNumber)+"/"+IntToStr(tTriggerNumber)+" at event "+LongIntToStr(_nEvents));
 			}
 
-			if ((tTriggerNumber & TRIGGER_ERROR_TRG_ACCEPT) == TRIGGER_ERROR_TRG_ACCEPT){
-				addTriggerErrorCode(__TRG_ERROR_TRG_ACCEPT);
-				if(Basis::warningSet())
-					warning(std::string("interpretRawData: TRIGGER_ERROR_TRG_ACCEPT at event "+LongIntToStr(_nEvents)));
-			}
-			if ((tTriggerNumber & TRIGGER_ERROR_LOW_TIMEOUT) == TRIGGER_ERROR_LOW_TIMEOUT){
-				addTriggerErrorCode(__TRG_ERROR_LOW_TIMEOUT);
-				if(Basis::warningSet())
-					warning(std::string("interpretRawData: TRIGGER_ERROR_LOW_TIMEOUT at event "+LongIntToStr(_nEvents)));
+			if (!_useTriggerTimeStamp){  // the high word shows the trigger status, except th e trigger word is used for time stamping
+				if ((tTriggerNumber & TRIGGER_ERROR_TRG_ACCEPT) == TRIGGER_ERROR_TRG_ACCEPT){
+					addTriggerErrorCode(__TRG_ERROR_TRG_ACCEPT);
+					if(Basis::warningSet())
+						warning(std::string("interpretRawData: TRIGGER_ERROR_TRG_ACCEPT at event "+LongIntToStr(_nEvents)));
+				}
+				if ((tTriggerNumber & TRIGGER_ERROR_LOW_TIMEOUT) == TRIGGER_ERROR_LOW_TIMEOUT){
+					addTriggerErrorCode(__TRG_ERROR_LOW_TIMEOUT);
+					if(Basis::warningSet())
+						warning(std::string("interpretRawData: TRIGGER_ERROR_LOW_TIMEOUT at event "+LongIntToStr(_nEvents)));
+				}
 			}
 			_lastTriggerNumber = tTriggerNumber;
 		}
@@ -385,6 +398,12 @@ void Interpret::useTdcWord(bool useTdcWord)
 	_useTdcWord = useTdcWord;
 }
 
+void Interpret::useTriggerTimeStamp(bool useTriggerTimeStamp)
+{
+	info("useTriggerTimeStamp()");
+	_useTriggerTimeStamp = useTriggerTimeStamp;
+}
+
 void Interpret::getServiceRecordsCounters(unsigned int*& rServiceRecordsCounter, unsigned int& rNserviceRecords, bool copy)
 {
 	debug("getServiceRecordsCounters(...)");
@@ -482,6 +501,7 @@ void Interpret::printStatus() {
 	std::cout << "_startDebugEvent "<<_startDebugEvent<<"\n";
 	std::cout << "_stopDebugEvent "<<_stopDebugEvent<<"\n";
 	std::cout << "_useTriggerNumber "<<_useTriggerNumber<<"\n";
+	std::cout << "_useTriggerTimeStamp "<<_useTriggerTimeStamp<<"\n";
 	std::cout << "_useTdcWord "<<_useTdcWord<<"\n";
 
 	std::cout << "\none event variables\n";
