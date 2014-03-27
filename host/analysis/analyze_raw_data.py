@@ -100,6 +100,7 @@ class AnalyzeRawData(object):
         self.histograming = PyDataHistograming()
         self.clusterizer = PyDataClusterizer()
         raw_data_files = []
+
         if isinstance(raw_data_file, (list, tuple)):
             for one_raw_data_file in raw_data_file:
                 if one_raw_data_file is not None and os.path.splitext(one_raw_data_file)[1].strip().lower() != ".h5":
@@ -178,6 +179,8 @@ class AnalyzeRawData(object):
         self.n_injections = 100
         self.n_bcid = 16
         self.max_tot_value = 13
+        self.use_trigger_number = False
+        self.use_trigger_time_stamp = False
 
     def reset(self):
         self.interpreter.reset()
@@ -416,6 +419,24 @@ class AnalyzeRawData(object):
     def create_cluster_tot_hist(self, value):
         self._create_cluster_tot_hist = value
 
+    @property
+    def use_trigger_number(self):
+        return self._use_trigger_number
+
+    @use_trigger_number.setter
+    def use_trigger_number(self, value):
+        self._use_trigger_number = value
+        self.interpreter.use_trigger_number(value)
+
+    @property
+    def use_trigger_time_stamp(self):
+        return self._use_trigger_time_stamp
+
+    @use_trigger_time_stamp.setter
+    def use_trigger_time_stamp(self, value):
+        self._use_trigger_time_stamp = value
+        self.interpreter.use_trigger_time_stamp(value)
+
     def interpret_word_table(self, raw_data_files=None, analyzed_data_file=None, fei4b=False):
         if(raw_data_files != None):
             raise NotImplemented('This is not supported yet.')
@@ -442,13 +463,19 @@ class AnalyzeRawData(object):
         if(self._analyzed_data_file != None):
             self.out_file_h5 = tb.openFile(self._analyzed_data_file, mode="w", title="Interpreted FE-I4 raw data")
             if (self._create_hit_table == True):
-                hit_table = self.out_file_h5.createTable(self.out_file_h5.root, name='Hits', description=data_struct.HitInfoTable, title='hit_data', filters=self._filter_table, chunkshape=(self._chunk_size / 100,))
+                description = data_struct.HitInfoTable().columns.copy()
+                if self.use_trigger_time_stamp:  # replace the column name if trigger gives you a time stamp
+                    description['trigger_time_stamp'] = description.pop('trigger_number')
+                hit_table = self.out_file_h5.createTable(self.out_file_h5.root, name='Hits', description=description, title='hit_data', filters=self._filter_table, chunkshape=(self._chunk_size / 100,))
             if (self._create_meta_word_index == True):
                 meta_word_index_table = self.out_file_h5.createTable(self.out_file_h5.root, name='EventMetaData', description=data_struct.MetaInfoWordTable, title='event_meta_data', filters=self._filter_table, chunkshape=(self._chunk_size / 10,))
             if(self._create_cluster_table):
                 cluster_table = self.out_file_h5.createTable(self.out_file_h5.root, name='Cluster', description=data_struct.ClusterInfoTable, title='cluster_hit_data', filters=self._filter_table, expectedrows=self._chunk_size)
             if(self._create_cluster_hit_table):
-                cluster_hit_table = self.out_file_h5.createTable(self.out_file_h5.root, name='ClusterHits', description=data_struct.ClusterHitInfoTable, title='cluster_hit_data', filters=self._filter_table, expectedrows=self._chunk_size)
+                description = data_struct.ClusterHitInfoTable().columns.copy()
+                if self.use_trigger_time_stamp:  # replace the column name if trigger gives you a time stamp
+                    description['trigger_time_stamp'] = description.pop('trigger_number')
+                cluster_hit_table = self.out_file_h5.createTable(self.out_file_h5.root, name='ClusterHits', description=description, title='cluster_hit_data', filters=self._filter_table, expectedrows=self._chunk_size)
 
         logging.info('Interpreting: ' + pprint.pformat(self.files_dict.keys()))
 
