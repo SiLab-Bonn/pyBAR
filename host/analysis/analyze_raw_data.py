@@ -114,6 +114,7 @@ class AnalyzeRawData(object):
                 raw_data_files.append(raw_data_file)
             else:
                 raw_data_files = None
+        self._analyzed_data_file = analyzed_data_file
 
         # create a scan parameter table from all raw data files
         if raw_data_files is not None:
