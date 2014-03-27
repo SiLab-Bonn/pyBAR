@@ -447,7 +447,7 @@ class AnalyzeRawData(object):
 
         self.fei4b = fei4b
 
-        hits = np.empty((self._chunk_size,), dtype=dtype_from_descr(data_struct.HitInfoTable))
+        hits = np.empty((2 * self._chunk_size,), dtype=dtype_from_descr(data_struct.HitInfoTable))
 
         if(self._create_meta_word_index):
             meta_word = np.empty((self._chunk_size,), dtype=dtype_from_descr(data_struct.MetaInfoWordTable))
