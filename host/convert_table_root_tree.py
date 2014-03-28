@@ -28,27 +28,6 @@ def init_hit_struct():
     return HitInfo()
 
 
-def init_hit_tree(chunk_size=1, hit_struct=None):
-    tree = TTree('Hits', 'Hits from PyBAR')
-    chunk_size_tree = None
-    if chunk_size > 1:
-        chunk_size_tree = ctypes.c_int(chunk_size) if chunk_size > 1 else 1
-        tree.Branch('chunk_size_tree', ctypes.addressof(chunk_size_tree), 'chunk_size_tree/I')  # needs to be added, otherwise one cannot access chunk_size_tree
-    tree.Branch('event_number', 'NULL' if hit_struct is None else AddressOf(hit_struct, 'event_number'), 'event_number[chunk_size_tree]/L' if chunk_size > 1 else 'event_number/L')
-    tree.Branch('trigger_number', 'NULL' if hit_struct is None else AddressOf(hit_struct, 'trigger_number'), 'trigger_number[chunk_size_tree]/i' if chunk_size > 1 else 'trigger_number/i')
-    tree.Branch('relative_BCID', 'NULL' if hit_struct is None else AddressOf(hit_struct, 'relative_BCID'), 'relative_BCID[chunk_size_tree]/b' if chunk_size > 1 else 'relative_BCID/b')
-    tree.Branch('LVL1ID', 'NULL' if hit_struct is None else AddressOf(hit_struct, 'LVL1ID'), 'LVL1ID[chunk_size_tree]/s' if chunk_size > 1 else 'LVL1ID/s')
-    tree.Branch('column', 'NULL' if hit_struct is None else AddressOf(hit_struct, 'column'), 'column[chunk_size_tree]/b' if chunk_size > 1 else 'column/b')
-    tree.Branch('row', 'NULL' if hit_struct is None else AddressOf(hit_struct, 'row'), 'row[chunk_size_tree]/s' if chunk_size > 1 else 'row/s')
-    tree.Branch('tot', 'NULL' if hit_struct is None else AddressOf(hit_struct, 'tot'), 'tot[chunk_size_tree]/b' if chunk_size > 1 else 'tot/b')
-    tree.Branch('BCID', 'NULL' if hit_struct is None else AddressOf(hit_struct, 'BCID'), 'BCID[chunk_size_tree]/s' if chunk_size > 1 else 'BCID/s')
-    tree.Branch('TDC', 'NULL' if hit_struct is None else AddressOf(hit_struct, 'TDC'), 'TDC[chunk_size_tree]/s' if chunk_size > 1 else 'TDC/s')
-    tree.Branch('trigger_status', 'NULL' if hit_struct is None else AddressOf(hit_struct, 'trigger_status'), 'trigger_status[chunk_size_tree]/b' if chunk_size > 1 else 'trigger_status/b')
-    tree.Branch('service_record', 'NULL' if hit_struct is None else AddressOf(hit_struct, 'service_record'), 'service_record[chunk_size_tree]/i' if chunk_size > 1 else 'service_record/i')
-    tree.Branch('event_status', 'NULL' if hit_struct is None else AddressOf(hit_struct, 'event_status'), 'event_status[chunk_size_tree]/s' if chunk_size > 1 else 'event_status/s')
-    return tree, chunk_size_tree
-
-
 def get_root_type_descriptor(numpy_type_descriptor):
     ''' Converts the numpy type descriptor to the ROOT type descriptor.
     Parameters
@@ -68,7 +47,7 @@ def get_root_type_descriptor(numpy_type_descriptor):
 
 
 def init_tree_from_table(table, chunk_size=1, tree_entry=None):
-    ''' Initializes a ROOT tree from a HDF5 table. 
+    ''' Initializes a ROOT tree from a HDF5 table.
     Takes the HDF5 table column names and types and creates corresponding branches. If a chunk size is specified the branches will have the length of the chunk size and
     an additional parameter is returned to change the chunk size at a later stage.
     If a tree_entry is defined (a ROOT c-struct) the new tree has the branches set to the corresponding tree entry address.
@@ -87,7 +66,6 @@ def init_tree_from_table(table, chunk_size=1, tree_entry=None):
         tree.Branch('chunk_size_tree', ctypes.addressof(chunk_size_tree), 'chunk_size_tree/I')  # needs to be added, otherwise one cannot access chunk_size_tree
 
     for column_name in table.dtype.names:
-        print column_name, table.dtype[column_name]
         tree.Branch(column_name, 'NULL' if tree_entry is None else AddressOf(tree_entry, column_name), column_name + '[chunk_size_tree]/' + get_root_type_descriptor(table.dtype[column_name]) if chunk_size > 1 else column_name + '/' + get_root_type_descriptor(table.dtype[column_name]))
 
     return tree, chunk_size_tree
@@ -186,5 +164,5 @@ def convert_hit_table_fast(input_filename, output_filename):
 
 if __name__ == "__main__":
     chunk_size = 50000  # chose this parameter as big as possible to increase speed, but not too big otherwise program crashed
-#     convert_hit_table('test.h5', 'output.root')
+    convert_hit_table('test.h5', 'output.root')
     convert_hit_table_fast('test.h5', 'output_fast.root')
