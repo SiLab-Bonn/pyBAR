@@ -1,7 +1,8 @@
-"""This is a slow and ugly script to convert the hdf5 hit table from pyBAR to a CERN ROOT Ttree.
-The speed is only about 45 kHz Hits.
+"""This script has different methods to convert the hdf5 hit table from pyBAR into a CERN ROOT Ttree.
 """
 import tables as tb
+import numpy as np
+import ctypes
 import progressbar
 from ROOT import TFile, TTree
 from ROOT import gROOT, AddressOf
@@ -26,29 +27,97 @@ def init_hit_struct():
     from ROOT import HitInfo
     return HitInfo()
 
+
+def init_hit_tree(chunk_size=1, hit_struct=None):
+    tree = TTree('Hits', 'Hits from PyBAR')
+    chunk_size_tree = None
+    if chunk_size > 1:
+        chunk_size_tree = ctypes.c_int(chunk_size) if chunk_size > 1 else 1
+        tree.Branch('chunk_size_tree', ctypes.addressof(chunk_size_tree), 'chunk_size_tree/I')  # needs to be added, otherwise one cannot access chunk_size_tree
+    tree.Branch('event_number', 'NULL' if hit_struct is None else AddressOf(hit_struct, 'event_number'), 'event_number[chunk_size_tree]/L' if chunk_size > 1 else 'event_number/L')
+    tree.Branch('trigger_number', 'NULL' if hit_struct is None else AddressOf(hit_struct, 'trigger_number'), 'trigger_number[chunk_size_tree]/i' if chunk_size > 1 else 'trigger_number/i')
+    tree.Branch('relative_BCID', 'NULL' if hit_struct is None else AddressOf(hit_struct, 'relative_BCID'), 'relative_BCID[chunk_size_tree]/b' if chunk_size > 1 else 'relative_BCID/b')
+    tree.Branch('LVL1ID', 'NULL' if hit_struct is None else AddressOf(hit_struct, 'LVL1ID'), 'LVL1ID[chunk_size_tree]/s' if chunk_size > 1 else 'LVL1ID/s')
+    tree.Branch('column', 'NULL' if hit_struct is None else AddressOf(hit_struct, 'column'), 'column[chunk_size_tree]/b' if chunk_size > 1 else 'column/b')
+    tree.Branch('row', 'NULL' if hit_struct is None else AddressOf(hit_struct, 'row'), 'row[chunk_size_tree]/s' if chunk_size > 1 else 'row/s')
+    tree.Branch('tot', 'NULL' if hit_struct is None else AddressOf(hit_struct, 'tot'), 'tot[chunk_size_tree]/b' if chunk_size > 1 else 'tot/b')
+    tree.Branch('BCID', 'NULL' if hit_struct is None else AddressOf(hit_struct, 'BCID'), 'BCID[chunk_size_tree]/s' if chunk_size > 1 else 'BCID/s')
+    tree.Branch('TDC', 'NULL' if hit_struct is None else AddressOf(hit_struct, 'TDC'), 'TDC[chunk_size_tree]/s' if chunk_size > 1 else 'TDC/s')
+    tree.Branch('trigger_status', 'NULL' if hit_struct is None else AddressOf(hit_struct, 'trigger_status'), 'trigger_status[chunk_size_tree]/b' if chunk_size > 1 else 'trigger_status/b')
+    tree.Branch('service_record', 'NULL' if hit_struct is None else AddressOf(hit_struct, 'service_record'), 'service_record[chunk_size_tree]/i' if chunk_size > 1 else 'service_record/i')
+    tree.Branch('event_status', 'NULL' if hit_struct is None else AddressOf(hit_struct, 'event_status'), 'event_status[chunk_size_tree]/s' if chunk_size > 1 else 'event_status/s')
+    return tree, chunk_size_tree
+
+
+def get_root_type_descriptor(numpy_type_descriptor):
+    ''' Converts the numpy type descriptor to the ROOT type descriptor.
+    Parameters
+    ----------
+    numpy_type_descriptor: np.dtype
+    '''
+    return{
+        'int64': 'L',
+        'uint64': 'l',
+        'int32': 'I',
+        'uint32': 'i',
+        'int16': 'S',
+        'uint16': 's',
+        'int8': 'B',
+        'uint8': 'b',
+    }[str(numpy_type_descriptor)]
+
+
+def init_tree_from_table(table, chunk_size=1, tree_entry=None):
+    ''' Initializes a ROOT tree from a HDF5 table. 
+    Takes the HDF5 table column names and types and creates corresponding branches. If a chunk size is specified the branches will have the length of the chunk size and
+    an additional parameter is returned to change the chunk size at a later stage.
+    If a tree_entry is defined (a ROOT c-struct) the new tree has the branches set to the corresponding tree entry address.
+
+    Parameters
+    ----------
+    numpy_type_descriptor: np.dtype
+    '''
+    if(chunk_size > 1 and tree_entry is not None):
+        raise NotImplementedError()
+
+    tree = TTree('Table', 'Converted HDF5 table')
+    chunk_size_tree = None
+    if chunk_size > 1:
+        chunk_size_tree = ctypes.c_int(chunk_size) if chunk_size > 1 else 1
+        tree.Branch('chunk_size_tree', ctypes.addressof(chunk_size_tree), 'chunk_size_tree/I')  # needs to be added, otherwise one cannot access chunk_size_tree
+
+    for column_name in table.dtype.names:
+        print column_name, table.dtype[column_name]
+        tree.Branch(column_name, 'NULL' if tree_entry is None else AddressOf(tree_entry, column_name), column_name + '[chunk_size_tree]/' + get_root_type_descriptor(table.dtype[column_name]) if chunk_size > 1 else column_name + '/' + get_root_type_descriptor(table.dtype[column_name]))
+
+    return tree, chunk_size_tree
+
+
 def convert_hit_table(input_filename, output_filename):
+    ''' Creates a ROOT Tree by looping over all entries of the table.
+    In each iteration all entries are type casting to int and appended to the ROOT Tree. This is straight forward but rather slow (45 kHz Hits).
+    The ROOT Tree has its addresses pointing to a hit struct members. The struct is defined in ROOT.
+
+    Parameters
+    ----------
+    input_filename: string
+        The file name of the hdf5 hit table.
+
+    output_filename: string
+        The filename of the created ROOT file
+
+    '''
     with tb.open_file(input_filename, 'r') as in_file_h5:
         hits = in_file_h5.root.Hits
 
         myHit = init_hit_struct()
         out_file_root = TFile(output_filename, 'RECREATE')
-        tree = TTree('Hits', 'Hits from PyBAR')
-
-        tree.Branch('event_number', AddressOf(myHit, 'event_number'), 'event_number/L')
-        tree.Branch('trigger_number', AddressOf(myHit, 'trigger_number'), 'trigger_number/i')
-        tree.Branch('relative_BCID', AddressOf(myHit, 'relative_BCID'), 'relative_BCID/b')
-        tree.Branch('LVL1ID', AddressOf(myHit, 'LVL1ID'), 'LVL1ID/s')
-        tree.Branch('column', AddressOf(myHit, 'column'), 'column/b')
-        tree.Branch('row', AddressOf(myHit, 'row'), 'row/s')
-        tree.Branch('tot', AddressOf(myHit, 'tot'), 'tot/b')
-        tree.Branch('BCID', AddressOf(myHit, 'BCID'), 'BCID/s')
-        tree.Branch('TDC', AddressOf(myHit, 'TDC'), 'TDC/s')
-        tree.Branch('trigger_status', AddressOf(myHit, 'trigger_status'), 'trigger_status/b')
-        tree.Branch('service_record', AddressOf(myHit, 'service_record'), 'service_record/i')
-        tree.Branch('event_status', AddressOf(myHit, 'event_status'), 'event_status/s')
+        tree, _ = init_tree_from_table(hits, 1, myHit)
 
         progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=hits.shape[0])
         progress_bar.start()
+
+        update_progressbar_index = hits.shape[0] / 1000
 
         for index, hit in enumerate(hits):
             myHit.event_number = int(hit['event_number'])
@@ -64,12 +133,58 @@ def convert_hit_table(input_filename, output_filename):
             myHit.service_record = int(hit['service_record'])
             myHit.event_status = int(hit['event_status'])
             tree.Fill()
-            progress_bar.update(index)
+            if (index % update_progressbar_index == 0):  # increase the progress bar update speed, otherwise progress_bar.update(index) is called too often
+                progress_bar.update(index)
         progress_bar.finish()
 
         out_file_root.Write()
         out_file_root.Close()
 
 
+def convert_hit_table_fast(input_filename, output_filename):
+    ''' Creates a ROOT Tree by looping over chunks of the hdf5 table. Some pointer magic is used to increase the conversion speed. Is 40x faster than convert_hit_table.
+
+    Parameters
+    ----------
+    input_filename: string
+        The file name of the hdf5 hit table.
+
+    output_filename: string
+        The filename of the created ROOT file
+
+    '''
+
+    with tb.open_file(input_filename, 'r') as in_file_h5:
+        hits_table = in_file_h5.root.Hits
+
+        out_file_root = TFile(output_filename, 'RECREATE')
+
+        tree, chunk_size_tree = init_tree_from_table(hits_table, chunk_size)
+
+        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=hits_table.shape[0])
+        progress_bar.start()
+
+        for index in range(0, hits_table.shape[0], chunk_size):
+            hits = hits_table.read(start=index, stop=index + chunk_size)
+
+            column_data = {}  # columns have to be in an additional python data container to prevent the carbage collector from deleting
+
+            for branch in tree.GetListOfBranches():  # loop over the branches
+                if branch.GetName() != 'chunk_size_tree':
+                    column_data[branch.GetName()] = hits[branch.GetName()].view(np.recarray).copy()  # a copy has to be made to get the correct memory alignement
+                    branch.SetAddress(column_data[branch.GetName()].data)  # get the column data pointer by name and tell its address to the tree
+
+            if index + chunk_size > hits_table.shape[0]:  # decrease tree leave size for the last chunk
+                chunk_size_tree.value = hits_table.shape[0] - index
+
+            tree.Fill()
+            progress_bar.update(index)
+
+        out_file_root.Write()
+        out_file_root.Close()
+
+
 if __name__ == "__main__":
-    convert_hit_table('test.h5', 'output.root')
+    chunk_size = 50000  # chose this parameter as big as possible to increase speed, but not too big otherwise program crashed
+#     convert_hit_table('test.h5', 'output.root')
+    convert_hit_table_fast('test.h5', 'output_fast.root')
