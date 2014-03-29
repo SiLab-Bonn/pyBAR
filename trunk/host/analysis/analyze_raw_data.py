@@ -182,6 +182,7 @@ class AnalyzeRawData(object):
         self.max_tot_value = 13
         self.use_trigger_number = False
         self.use_trigger_time_stamp = False
+        self.set_stop_mode = False  # the FE is read out with stop mode, therefore the BCID plot is different
 
     def reset(self):
         self.interpreter.reset()
@@ -438,6 +439,14 @@ class AnalyzeRawData(object):
         self._use_trigger_time_stamp = value
         self.interpreter.use_trigger_time_stamp(value)
 
+    @property
+    def set_stop_mode(self):
+        return self._set_stop_mode
+
+    @set_stop_mode.setter
+    def set_stop_mode(self, value):
+        self._set_stop_mode = value
+
     def interpret_word_table(self, raw_data_files=None, analyzed_data_file=None, fei4b=False):
         if(raw_data_files != None):
             raise NotImplemented('This is not supported yet.')
@@ -491,6 +500,9 @@ class AnalyzeRawData(object):
             self.histograming.add_scan_parameter(self.scan_parameter_index)  # just add an index for the different scan parameter combinations
 
         self.meta_data = analysis_utils.combine_meta_data(self.files_dict)
+        if self.meta_data is None:
+            raise RuntimeError('Meta data is empty, stop interpretation')
+
         self.interpreter.set_meta_data(self.meta_data)  # tell interpreter the word index per readout to be able to calculate the event number per read out
         meta_data_size = self.meta_data.shape[0]
         self.meta_event_index = np.zeros((meta_data_size,), dtype=[('metaEventIndex', np.uint64)])  # this array is filled by the interpreter and holds the event number per read out
@@ -630,11 +642,15 @@ class AnalyzeRawData(object):
                 tdc_pixel_hist_out = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistTdcPixel', title='Tdc Pixel Histogram', atom=tb.Atom.from_dtype(tdc_pixel_hist_array.dtype), shape=tdc_pixel_hist_array.shape, filters=self._filter_table)
                 tdc_pixel_hist_out[:] = tdc_pixel_hist_array
         if (self._create_rel_bcid_hist):
-            self.rel_bcid_hist = np.zeros(16, dtype=np.uint32)
+            self.rel_bcid_hist = np.zeros(256, dtype=np.uint32)
             self.histograming.get_rel_bcid_hist(self.rel_bcid_hist)
             if (self._analyzed_data_file != None):
-                rel_bcid_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistRelBcid', title='relative BCID Histogram', atom=tb.Atom.from_dtype(self.rel_bcid_hist.dtype), shape=self.rel_bcid_hist.shape, filters=self._filter_table)
-                rel_bcid_hist_table[:] = self.rel_bcid_hist
+                if not self.set_stop_mode:
+                    rel_bcid_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistRelBcid', title='relative BCID Histogram', atom=tb.Atom.from_dtype(self.rel_bcid_hist.dtype), shape=(16, ), filters=self._filter_table)
+                    rel_bcid_hist_table[:] = self.rel_bcid_hist[0:16]
+                else:
+                    rel_bcid_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistRelBcid', title='relative BCID Histogram', atom=tb.Atom.from_dtype(self.rel_bcid_hist.dtype), shape=self.rel_bcid_hist.shape, filters=self._filter_table)
+                    rel_bcid_hist_table[:] = self.rel_bcid_hist
         if (self._create_occupancy_hist):
             self.occupancy = np.zeros(80 * 336 * self.histograming.get_n_parameters(), dtype=np.uint32)  # create linear array as it is created in histogram class
             self.histograming.get_occupancy(self.occupancy)
@@ -904,7 +920,10 @@ class AnalyzeRawData(object):
         if (self._create_cluster_tot_hist and self._create_cluster_size_hist):
             plotting.plot_cluster_tot_size(hist=out_file_h5.root.HistClusterTot if out_file_h5 != None else self.cluster_tot_hist, filename=output_pdf)
         if (self._create_rel_bcid_hist):
-            plotting.plot_relative_bcid(hist=out_file_h5.root.HistRelBcid if out_file_h5 != None else self.rel_bcid_hist, filename=output_pdf)
+            if self.set_stop_mode:
+                plotting.plot_relative_bcid_stop_mode(hist=out_file_h5.root.HistRelBcid if out_file_h5 != None else self.rel_bcid_hist, filename=output_pdf)
+            else:
+                plotting.plot_relative_bcid(hist=out_file_h5.root.HistRelBcid[0:16] if out_file_h5 != None else self.rel_bcid_hist[0:16], filename=output_pdf)
         if (analyzed_data_file == None and self._create_error_hist):
             plotting.plot_event_errors(hist=out_file_h5.root.HistErrorCounter if out_file_h5 != None else self.error_counter_hist, filename=output_pdf)
         if (analyzed_data_file == None and self._create_service_record_hist):
