@@ -16,6 +16,84 @@ import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
+def plot_linear_relation(x, y, x_err=None, y_err=None, title=None, point_label=None, legend=None, plot_range=None, plot_range_y=None, x_label=None, y_label=None, y_2_label=None, marker_style='-o', log_x=False, log_y=False, filename=None):
+    ''' Takes point data (x,y) with errors(x,y) and fits a straight line. The deviation to this line is also plotted, showing the offset. 
+
+     Parameters
+    ----------
+    x, y, x_err, y_err: iterable
+
+    filename: string, PdfPages object or None
+        PdfPages file object: plot is appended to the pdf
+        string: new plot file with the given filename is created
+        None: the plot is printed to screen
+    '''
+    plt.clf()
+    fig = plt.figure(1)
+    ax = fig.add_subplot(111)
+    if x_err is not None:
+        x_err = [x_err, x_err]
+    if y_err is not None:
+        y_err = [y_err, y_err]
+    plt.title(title)
+    if y_label is not None:
+        plt.ylabel(y_label)
+    if log_x:
+        plt.xscale('log')
+    if log_y:
+        plt.yscale('log')
+    if plot_range:
+        plt.xlim((min(plot_range), max(plot_range)))
+    if plot_range_y:
+        plt.ylim((min(plot_range_y), max(plot_range_y)))
+    if legend:
+        plt.legend(legend, 0)
+    plt.grid(True)
+    plt.errorbar(x, y, xerr=x_err, yerr=y_err, fmt='o')  # plot points
+    # label points if needed
+    if point_label is not None:
+        for X, Y, Z in zip(x, y, point_label):
+            ax.annotate('{}'.format(Z), xy=(X, Y), xytext=(-5, 5), ha='right', textcoords='offset points')
+    # line fit
+    line_fit = np.polyfit(x, y, 1)
+    chi_squared = np.sum((np.polyval(line_fit, x) - y) ** 2)
+    fit_fn = np.poly1d(line_fit)
+    plt.plot(x, fit_fn(x), '-')
+    if line_fit[1] > 0:
+        line_fit_legend_entry = 'line fit\n%.2f x-%.2f\nX2/n.d.f=%d' % (line_fit[0], abs(line_fit[1]), chi_squared / len(x))
+    else:
+        line_fit_legend_entry = 'line fit\n%.2f x+%.2f' % (line_fit[0], abs(line_fit[1]))
+
+    plt.legend(["data", line_fit_legend_entry], 0)
+    plt.setp(ax.get_xticklabels(), visible=False)  # remove ticks at common border of both plots
+
+    divider = make_axes_locatable(ax)
+    ax_bottom_plot = divider.append_axes("bottom", 1.2, pad=0.0, sharex=ax)
+    ax_bottom_plot.bar(x, y - fit_fn(x), align='center', width=np.amin(np.diff(x)) / 2)
+#     plot(x, y - fit_fn(x))
+    ax_bottom_plot.grid(True)
+    if x_label is not None:
+        plt.xlabel(x_label)
+    if y_2_label is not None:
+        plt.ylabel(y_2_label)
+
+    plt.ylim((- np.amax(np.abs(y - fit_fn(x)))), (np.amax(np.abs(y - fit_fn(x)))))
+
+    plt.plot(plt.xlim(), [0, 0], '-', color='black')
+    plt.setp(ax_bottom_plot.get_yticklabels()[-2:-1], visible=False)
+#     print ax_bottom_plot.get_yticklabels()[1]
+
+    if filename is None:
+        plt.show()
+    elif type(filename) == PdfPages:
+        filename.savefig()
+        plt.close()
+    elif filename:
+        plt.savefig(filename)
+        plt.close()
+    return plt
+
+
 def plot_fancy_occupancy(hist, z_max=None, filename=None):
     plt.clf()
     if z_max == 'median':
@@ -189,12 +267,16 @@ def plot_profile_histogram(x, y, n_bins=100, title=None, x_label=None, y_label=N
         plt.close()
 
 
-def plot_scatter(x, y, yerr=None, title=None, legend=None, plot_range=None, plot_range_y=None, x_label=None, y_label=None, marker_style='-o', log_x=False, log_y=False, filename=None):
+def plot_scatter(x, y, x_err=None, y_err=None, title=None, legend=None, plot_range=None, plot_range_y=None, x_label=None, y_label=None, marker_style='-o', log_x=False, log_y=False, filename=None):
     logging.info("Plot scatter plot %s" % ((': ' + title) if title is not None else ''))
-    if yerr is not None:
-        plt.errorbar(x, y, yerr=[yerr, yerr], fmt=marker_style)
+    if x_err is not None:
+        x_err = [x_err, x_err]
+    if y_err is not None:
+        y_err = [y_err, y_err]
+    if x_err is not None or y_err is not None:
+        plt.errorbar(x, y, xerr=x_err, yerr=y_err, fmt=marker_style)
     else:
-        plt.plot(x, y, marker_style)
+        plt.plot(x, y, marker_style, markersize =1)
     plt.title(title)
     if x_label is not None:
         plt.xlabel(x_label)
@@ -297,6 +379,10 @@ def round_to_multiple(number, multiple):
 
 def plot_relative_bcid(hist, filename=None):
     plot_1d_hist(hist=hist, title='Relative BCID (former LVL1ID)', log_y=True, plot_range=range(0, 16), x_axis_title='Relative BCID [25 ns]', y_axis_title='#', filename=filename, figure_name='Relative BCID')
+
+
+def plot_relative_bcid_stop_mode(hist, filename=None):
+    plot_1d_hist(hist=hist, title='Latency window in stop mode', plot_range=range(0, np.where(hist[:] != 0)[0][-1] + 1), x_axis_title='Lantency window [BCID]', y_axis_title='#', filename=filename, figure_name='Latency window in stop mode')
 
 
 def plot_tot(hist, title=None, filename=None):
@@ -490,7 +576,6 @@ def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=No
     else:
         plt.savefig(filename)
         plt.close()
-
 
 # def plot_pixel_mask(mask, maskname, filename=None):
 #     plt.clf()
