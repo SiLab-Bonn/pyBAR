@@ -89,10 +89,10 @@ void Histogram::addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
 		if(tTot > 15)
 			throw std::out_of_range("Tot index out of range.");
 		unsigned int tTdc = rHitInfo[i].TDC;
-		if(tTdc > __N_TDC_VALUES - 1)
+		if(tTdc >= __N_TDC_VALUES)
 			throw std::out_of_range("TDC counter " + IntToStr(tTdc) + " index out of range.");
 		unsigned int tRelBcid = rHitInfo[i].relativeBCID;
-		if(tRelBcid > 15)
+		if(tRelBcid >= __MAXBCID)
 			throw std::out_of_range("Relative BCID index out of range.");
 
 		unsigned int tParIndex = getParIndex(rHitInfo[i].eventNumber);

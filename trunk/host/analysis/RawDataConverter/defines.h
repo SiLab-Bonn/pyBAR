@@ -236,7 +236,7 @@ typedef struct MetaWordInfoOut{
 #define SERVICE_RECORD_L1REQ_MACRO_FEI4B(X)	(SERVICE_RECORD_L1REQ_MASK_FEI4B & X)
 
 //Clusterizer definitions
-#define __MAXBCID 16			//maximum possible BCID window width
+#define __MAXBCID 256			//maximum possible BCID window width, 16 for the FE, 256 in FE stop mode
 #define __MAXTOTBINS 128		//number of TOT bins for the cluster tot histogram (in TOT = [0:31])
 #define __MAXCHARGEBINS 4096	//number of charge bins for the cluster charge histogram (in PlsrDAC)
 #define __MAXCLUSTERHITSBINS 1024	//number of for the cluster size (=# hits) histogram
