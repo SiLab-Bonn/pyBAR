@@ -74,7 +74,7 @@ def get_rate_normalization(hit_file, parameter, reference='event', cluster_file=
     ''' Takes different hit files (hit_files), extracts the number of events or the scan time (reference) per scan parameter (parameter)
     and returns an array with a normalization factor. This normalization factor has the length of the number of different parameters.
     One can also sort the normalization by the parameter values.
-    If a cluster_file is specified
+    If a cluster_file is specified.
 
     Parameters
     ----------
@@ -88,6 +88,7 @@ def get_rate_normalization(hit_file, parameter, reference='event', cluster_file=
     numpy.ndarray
     '''
 
+    logging.info('Calculate the rate normalization')
     with tb.openFile(hit_file, mode="r+") as in_hit_file_h5:  # open the hit file
         meta_data = in_hit_file_h5.root.meta_data[:]
         scan_parameter = get_scan_parameter(meta_data)[parameter]
@@ -135,6 +136,7 @@ def get_rate_normalization(hit_file, parameter, reference='event', cluster_file=
                     progress_bar.update(index)
                 best_chunk_size = int(1.5 * readout_cluster_len) if int(1.05 * readout_cluster_len) < chunk_size else chunk_size  # to increase the readout speed, estimated the number of hits for one read instruction
                 normalization_multiplicity.append(np.mean(n_cluster_per_event))
+            progress_bar.finish()
             if total_cluster != cluster_table.shape[0]:
                 logging.warning('Analysis shows inconsistent number of cluster. Check needed!')
 
@@ -331,6 +333,8 @@ def get_data_file_names_from_scan_base(scan_base, filter_file_words=None, parame
 
     """
     raw_data_files = []
+    if isinstance(scan_base, basestring):
+        scan_base = (scan_base, )
     for scan_name in scan_base:
         if parameter:
             data_files = glob.glob(scan_name + '_*.h5')
@@ -487,6 +491,8 @@ def combine_meta_data(files_dict):
                 in_file_h5.root.meta_data[0]['timestamp_stop']  # this only exists in the new data format, https://silab-redmine.physik.uni-bonn.de/news/7
             except KeyError:
                 meta_data_v2 = False
+            except IndexError:
+                return None
 
     if meta_data_v2:
         meta_data_combined = np.empty((total_length, ), dtype=[('index_start', np.uint32),
@@ -1437,21 +1443,23 @@ class ETA(progressbar.Timer):
             return 'Time: %s' % self.format_time(pbar.seconds_elapsed)
         else:
             elapsed = pbar.seconds_elapsed
-            speed = pbar.currval / elapsed
-            if self.speed_smooth is not None:
-                self.speed_smooth = (self.speed_smooth * (1 - self.SMOOTHING)) + (speed * self.SMOOTHING)
-            else:
-                self.speed_smooth = speed
+            try:
+                speed = pbar.currval / elapsed
+                if self.speed_smooth is not None:
+                    self.speed_smooth = (self.speed_smooth * (1 - self.SMOOTHING)) + (speed * self.SMOOTHING)
+                else:
+                    self.speed_smooth = speed
+                eta = float(pbar.maxval) / self.speed_smooth - elapsed + 1 if float(pbar.maxval) / self.speed_smooth - elapsed + 1 > 0 else 0
 
-            eta = float(pbar.maxval) / self.speed_smooth - elapsed + 1 if float(pbar.maxval) / self.speed_smooth - elapsed + 1 > 0 else 0
-
-            if float(pbar.currval) / pbar.maxval > 0.30 or self.n_refresh > 10:  # ETA only rather precise if > 30% is already finished or more than 10 times updated
-                return 'ETA:  %s' % self.format_time(eta)
-            if self.old_eta is not None and self.old_eta < eta:  # do not show jumping ETA if non precise mode is active
-                return 'ETA: ~%s' % self.format_time(self.old_eta)
-            else:
-                self.old_eta = eta
-                return 'ETA: ~%s' % self.format_time(eta)
+                if float(pbar.currval) / pbar.maxval > 0.30 or self.n_refresh > 10:  # ETA only rather precise if > 30% is already finished or more than 10 times updated
+                    return 'ETA:  %s' % self.format_time(eta)
+                if self.old_eta is not None and self.old_eta < eta:  # do not show jumping ETA if non precise mode is active
+                    return 'ETA: ~%s' % self.format_time(self.old_eta)
+                else:
+                    self.old_eta = eta
+                    return 'ETA: ~%s' % self.format_time(eta)
+            except ZeroDivisionError:
+                speed = 0
 
 
 if __name__ == "__main__":
