@@ -465,6 +465,56 @@ def analyze_cluster_size_per_scan_parameter(input_file_hits, output_file_cluster
             cluster_size_total_out[:] = cluster_size_total
 
 
+def analyze_tdc_events(input_file_hits, output_file=None, events=(0, ), max_latency=16, create_plots=True, output_pdf=None, overwrite_output_files=True, chunk_size=10000000, **kwarg):
+    ''' This method takes multiple hit files and determines the cluster size for different scan parameter values of
+
+     Parameters
+    ----------
+    input_files_hits: string
+    output_file: string
+    event: list of events to analyze
+    output_pdf: PdfPages
+        PdfPages file object, if none the plot is printed to screen, if False nothing is printed
+    '''
+    logging.info('Analyze %d TDC events' % len(events))
+    if os.path.isfile(output_file) and not overwrite_output_files:  # skip analysis if already done
+            logging.info('Analyzed cluster size file ' + output_file + ' already exists. Skip cluster size analysis.')
+    else:
+        with tb.openFile(output_file, mode="w") as out_file_h5:  # file to write the data into
+            filter_table = tb.Filters(complib='blosc', complevel=5, fletcher32=False)  # compression of the written data
+            with tb.openFile(input_file_hits, mode="r+") as in_hit_file_h5:  # open the actual hit file
+                hit_table = in_hit_file_h5.root.Hits
+                analysis_utils.index_event_number(hit_table)
+                progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=len(events))
+                progress_bar.start()
+                for index, event in enumerate(events):
+                    event_array = None
+                    col_row_relBCID_tot = None
+                    for hits, _ in analysis_utils.data_aligned_at_events(hit_table, start_event_number=event, stop_event_number=event + 1, chunk_size=chunk_size):
+                        col_row_relBCID = np.column_stack((hits['column'], hits['row'], hits['relative_BCID']))
+                        tot = hits['tot']
+                        if event_array is None:
+                            event_array = np.histogramdd(col_row_relBCID, weights=tot, bins=(80, 336, max_latency), range=[[0, 79], [0, 335], [0, max_latency - 1]])[0].astype(np.uint8)
+                        else:
+                            event_array += np.histogramdd(col_row_relBCID, bins=(80, 336, max_latency), range=[[0, 79], [0, 335], [0, max_latency - 1]])[0]
+                        if col_row_relBCID_tot is None:
+                            col_row_relBCID_tot = np.column_stack((hits['column'], hits['row'], hits['relative_BCID'], hits['tot']))
+                        else:
+                            col_row_relBCID_tot = np.append(col_row_relBCID_tot, np.column_stack((hits['column'], hits['row'], hits['relative_BCID'], hits['tot'])))
+                    if event_array is not None:
+                        actual_event_hits = out_file_h5.createCArray(out_file_h5.root, name='event_' + str(event), title='Event histogram ' + str(event), atom=tb.Atom.from_dtype(event_array.dtype), shape=event_array.shape, filters=filter_table)
+                        actual_event_hits[:] = event_array
+                        if create_plots:
+                            for bcid in range(0, max_latency):
+                                plotting.plot_occupancy(event_array[:, :, bcid], title='Event %d: BCID %d' % (event, bcid), z_max=16, filename=output_pdf)
+                            plotting.plot_tdc_event(col_row_relBCID_tot)
+                    else:
+                        logging.warning('Event %d does not exist' % event)
+                    progress_bar.update(index)
+                progress_bar.finish()
+
+
+
 def histogram_cluster_table(analyzed_data_file, output_file, chunk_size=10000000):
         '''Reads in the cluster info table in chunks and histograms the seed pixels into one occupancy array.
         The 3rd dimension of the occupancy array is the number of different scan parameters used
