@@ -27,18 +27,17 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 
 
 scan_configuration = {
-    "source": "Cd",
-    "bcid_window": 120,  # the time window hits are read from the pixel matrix, [0:256[ theoretically, [0:120] supported
+    "source": "TPC",
+    "bcid_window": 100,  # the time window hits are read from the pixel matrix, [0:256[ theoretically, [0:120] supported
     "trigger_mode": 0,
     "trigger_latency": 5,
-    "trigger_delay": 152,
-    "col_span": [4, 76],
-    "row_span": [5, 220],
+    "trigger_delay": 192,
+    "col_span": [2, 77],
+    "row_span": [2, 330],
     "timeout_no_data": 10,
     "scan_timeout": 1 * 60,
-    "max_triggers": 1000000,
+    "max_triggers": 100,
     "enable_hitbus": True,
-    "enable_tdc": True,
     "enable_all_pixel": False,
 }
 
@@ -100,41 +99,52 @@ class ExtTriggerScan(ScanBase):
             stop_clock_pulse_cmd_high = self.register.get_commands("wrregister", name=["StopClkPulse"])[0]
             self.register.set_global_register_value("StopClkPulse", 0)
             stop_clock_pulse_cmd_low = self.register.get_commands("wrregister", name=["StopClkPulse"])[0]
+#             read_register = self.register.get_commands("rdregister", name=["StopClkPulse"])[0]
 
-            # define the command sequence to read the hits of one latency count
-            one_latency_read = self.register_utils.concatenate_commands((self.register.get_commands("zeros", length=10)[0],
-                                                                        self.register.get_commands("runmode")[0],
+            start_sequence = self.register_utils.concatenate_commands((self.register.get_commands("zeros", length=trigger_delay)[0],
+                                                                        stop_mode_cmd,
                                                                         self.register.get_commands("zeros", length=10)[0],
-                                                                        self.register.get_commands("lv1")[0],
+#                                                                         read_register,
                                                                         self.register.get_commands("zeros", length=10)[0],
-                                                                        self.register.get_commands("confmode")[0],
-                                                                        self.register.get_commands("zeros", length=10)[0],
-                                                                        self.register.get_commands("globalpulse", width=0)[0]
+                                                                        stop_clock_pulse_cmd_high,
+                                                                        self.register.get_commands("zeros", length=50)[0],
+                                                                        self.register.get_commands("confmode")[0]
                                                                         ))
 
-            # build the command sequence to read bcid_window times hits of one latency value
-            latency_read = []
-            for _ in range(bcid_window):
-                latency_read.extend(one_latency_read)
+            stop_sequence = self.register_utils.concatenate_commands((self.register.get_commands("zeros", length=50)[0],
+                                                                        stop_clock_pulse_cmd_low,
+                                                                        self.register.get_commands("zeros", length=10)[0],
+                                                                        stop_mode_off_cmd,
+                                                                        self.register.get_commands("zeros", length=400)[0]
+                                                                        ))
+
+            # define the command sequence to read the hits of one latency count
+            one_latency_read = self.register_utils.concatenate_commands((self.register.get_commands("zeros", length=50)[0],
+                                                                        self.register.get_commands("runmode")[0],
+#                                                                         self.register.get_commands("ECR")[0],
+                                                                        self.register.get_commands("BCR")[0],
+                                                                        self.register.get_commands("zeros", length=50)[0],
+                                                                        self.register.get_commands("lv1")[0],
+                                                                        self.register.get_commands("zeros", length=2000)[0],
+                                                                        self.register.get_commands("confmode")[0],
+                                                                        self.register.get_commands("zeros", length=1000)[0],
+                                                                        self.register.get_commands("globalpulse", width=1)[0],
+                                                                        self.register.get_commands("zeros", length=100)[0]
+                                                                        ))
+
+            self.register_utils.set_hardware_repeat(bcid_window)
+            self.register_utils.set_repeat_mode_start_lenth(len(start_sequence))
+            self.register_utils.set_repeat_mode_end_lenth(len(stop_sequence) + 1)
 
             # preload the command to be send for each trigger
-            command = self.register_utils.concatenate_commands((self.register.get_commands("zeros", length=trigger_delay)[0],
-                                                                stop_mode_cmd,
-                                                                self.register.get_commands("zeros", length=100)[0],
-                                                                stop_clock_pulse_cmd_high,
-                                                                latency_read,
-                                                                self.register.get_commands("zeros", length=100)[0],
-                                                                stop_clock_pulse_cmd_low,
-                                                                self.register.get_commands("zeros", length=100)[0],
-                                                                stop_mode_off_cmd,
-                                                                self.register.get_commands("zeros", length=1000)[0]
-                                                                ))
+            command = self.register_utils.concatenate_commands((start_sequence, one_latency_read, stop_sequence))
+
             self.register_utils.set_command(command)
 
             # setting up TDC
             self.readout_utils.configure_tdc_fsm(enable_tdc=enable_tdc, **kwargs)
             # setting up external trigger
-            self.readout_utils.configure_trigger_fsm(trigger_mode=trigger_mode, reset_trigger_counter=True, **kwargs)
+            self.readout_utils.configure_trigger_fsm(trigger_mode=trigger_mode, reset_trigger_counter=True, write_tlu_timestamp=True, **kwargs)
             self.readout_utils.configure_command_fsm(enable_ext_trigger=True, **kwargs)
 
             show_trigger_message_at = 10 ** (int(math.floor(math.log10(max_triggers) - math.log10(3) / math.log10(10))))
@@ -226,6 +236,7 @@ class ExtTriggerScan(ScanBase):
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
         self.register.set_global_register_value("Trig_Lat", trig_latency)  # set trigger latency
         self.register.set_global_register_value("Trig_Count", 1)  # set number of consecutive triggers to one for stop mode readout
+
         commands.extend(self.register.get_commands("wrregister", name=["Trig_Lat", "Trig_Count"]))
         self.register_utils.send_commands(commands)
 
@@ -234,15 +245,14 @@ class ExtTriggerScan(ScanBase):
         output_file = self.scan_data_filename + "_interpreted.h5"
         with AnalyzeRawData(raw_data_file=scan.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
             analyze_raw_data.create_hit_table = True
-            analyze_raw_data.interpreter.set_trig_count(scan_configuration['bcid_window'])
+            analyze_raw_data.n_bcid = scan_configuration['bcid_window']
             analyze_raw_data.create_source_scan_hist = True
+            analyze_raw_data.use_trigger_time_stamp = True
             analyze_raw_data.set_stop_mode = True
+            analyze_raw_data.interpreter.use_trigger_number(True)
             analyze_raw_data.create_cluster_size_hist = True
-            if scan_configuration['enable_tdc']:
-                analyze_raw_data.create_tdc_counter_hist = True  # histogram all TDC words
-                analyze_raw_data.create_tdc_hist = True  # histogram the hit TDC information
-                analyze_raw_data.interpreter.use_tdc_word(True)  # align events at the TDC word
             analyze_raw_data.interpreter.set_warning_output(False)
+            analyze_raw_data.clusterizer.set_warning_output(False)
             analyze_raw_data.interpreter.debug_events(0, 10, True)  # events to be printed onto the console for debugging, usually deactivated
             analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
             analyze_raw_data.interpreter.print_summary()
