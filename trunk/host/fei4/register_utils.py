@@ -82,6 +82,16 @@ class FEI4RegisterUtils(object):
         bit_length_array = array.array('B', struct.pack('H', lenght))
         self.device.WriteExternal(address=0 + 3, data=bit_length_array)
 
+    def set_repeat_mode_end_lenth(self, lenght):
+        '''size of end sequence in bit in repetition mode (size-this)'''
+        bit_length_array = array.array('B', struct.pack('H', lenght))
+        self.device.WriteExternal(address=11, data=bit_length_array)
+
+    def set_repeat_mode_start_lenth(self, lenght):
+        '''size of beginning  sequence in bit in repetition mode '''
+        bit_length_array = array.array('B', struct.pack('H', lenght))
+        self.device.WriteExternal(address=9, data=bit_length_array)
+
     def set_command(self, command, set_length=True, byte_offset=0):
         command_length = command.length()
         # set command bit length
