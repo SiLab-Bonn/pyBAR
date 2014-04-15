@@ -121,14 +121,12 @@ class ExtTriggerScan(ScanBase):
             # define the command sequence to read the hits of one latency count
             one_latency_read = self.register_utils.concatenate_commands((self.register.get_commands("zeros", length=50)[0],
                                                                         self.register.get_commands("runmode")[0],
-#                                                                         self.register.get_commands("ECR")[0],
-                                                                        self.register.get_commands("BCR")[0],
                                                                         self.register.get_commands("zeros", length=50)[0],
                                                                         self.register.get_commands("lv1")[0],
                                                                         self.register.get_commands("zeros", length=2000)[0],
                                                                         self.register.get_commands("confmode")[0],
                                                                         self.register.get_commands("zeros", length=1000)[0],
-                                                                        self.register.get_commands("globalpulse", width=1)[0],
+                                                                        self.register.get_commands("globalpulse", width=0)[0],
                                                                         self.register.get_commands("zeros", length=100)[0]
                                                                         ))
 
