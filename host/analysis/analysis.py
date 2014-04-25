@@ -465,7 +465,7 @@ def analyze_cluster_size_per_scan_parameter(input_file_hits, output_file_cluster
             cluster_size_total_out[:] = cluster_size_total
 
 
-def analyze_tdc_events(input_file_hits, output_file=None, events=(0, ), max_latency=16, create_plots=True, output_pdf=None, overwrite_output_files=True, chunk_size=10000000, **kwarg):
+def analyze_tdc_events(input_file_hits, output_file, events=(0, ), max_latency=16, create_plots=True, output_pdf=None, overwrite_output_files=True, chunk_size=10000000, **kwarg):
     ''' This method takes multiple hit files and determines the cluster size for different scan parameter values of
 
      Parameters
@@ -507,12 +507,12 @@ def analyze_tdc_events(input_file_hits, output_file=None, events=(0, ), max_late
                         if create_plots:
                             for bcid in range(0, max_latency):
                                 plotting.plot_occupancy(event_array[:, :, bcid], title='Event %d: BCID %d' % (event, bcid), z_max=16, filename=output_pdf)
-                            plotting.plot_tdc_event(col_row_relBCID_tot)
+                            plotting.plot_occupancy(np.sum(event_array, axis=2), title='Event %d' % event, filename=output_pdf)
+                            plotting.plot_tdc_event(col_row_relBCID_tot, filename=output_pdf)
                     else:
                         logging.warning('Event %d does not exist' % event)
                     progress_bar.update(index)
                 progress_bar.finish()
-
 
 
 def histogram_cluster_table(analyzed_data_file, output_file, chunk_size=10000000):
