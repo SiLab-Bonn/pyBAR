@@ -1,7 +1,5 @@
 """This script takes the raw data file and can analyze it while it is still being filled. Thus this script can serve as an 'online monitor'
 """
-
-
 import tables as tb
 import numpy as np
 import logging
@@ -18,15 +16,15 @@ from analysis.RawDataConverter.data_histograming import PyDataHistograming
 from analysis.plotting import plotting
 # from analysis.RawDataConverter.data_clusterizer import PyDataClusterizer
 
-scan_configuration = {
-    "scan_name": 'input_copy',
-    "folder": 'data//',
+analysis_configuration = {
+    "scan_name": 'SCC_99_fei4_self_trigger_scan_259',
+    "folder": 'data//SCC_99//',
     "chip_flavor": 'fei4a',
-    "trig_count": 16,
-    "integrate" : False,
+    "trig_count": 4,
+    "integrate" : True,
     "chunk_size": 2000000,
     "no_data_wait_time": 1,
-    "warnings": True,
+    "warnings": False,
     "infos": False
 }
 
@@ -34,13 +32,13 @@ scan_configuration = {
 def analyze_raw_data(in_file_h5, start, stop):
     logging.info('Analyze raw data from word index ' + str(start) + ' to ' + str(stop))
     n_hits = 0
-    if not scan_configuration['integrate']:
+    if not analysis_configuration['integrate']:
         histograming.reset()
-    for iWord in range(start, stop, scan_configuration['chunk_size']):
-        if stop - start <= scan_configuration['chunk_size']:
+    for iWord in range(start, stop, analysis_configuration['chunk_size']):
+        if stop - start <= analysis_configuration['chunk_size']:
             stop_index = stop
         else:
-            stop_index = iWord + scan_configuration['chunk_size']
+            stop_index = iWord + analysis_configuration['chunk_size']
         try:
             logging.info('Take chunk from ' + str(iWord) + ' to ' + str(stop_index))
             raw_data = in_file_h5.root.raw_data.read(iWord, stop_index)
@@ -58,11 +56,15 @@ def analyze_raw_data(in_file_h5, start, stop):
     occupancy_array = np.reshape(a=occupancy.view(), newshape=(80, 336, histograming.get_n_parameters()), order='F')  # make linear array to 3d array (col,row,parameter)
     occupancy_array = np.swapaxes(occupancy_array, 0, 1)
     occupancy_array_ma = np.ma.array(occupancy_array)[:, :, 0]
-#     plotting.plot_fancy_occupancy(occupancy_array_ma)
-    plotting.plot_occupancy(occupancy_array_ma)
+    plotting.plot_fancy_occupancy(occupancy_array_ma, z_max='median')
+#     plotting.plot_occupancy(occupancy_array_ma)
     error_counter_hist = np.zeros(16, dtype=np.uint32)
     interpreter.get_error_counters(error_counter_hist)
     plotting.plot_event_errors(error_counter_hist)
+
+    rel_bcid_hist = np.empty(16, dtype=np.uint32)
+    histograming.get_rel_bcid_hist(rel_bcid_hist)
+    plotting.plot_relative_bcid(rel_bcid_hist)
     plt.pause(0.0001)
     return n_hits
 
@@ -98,9 +100,9 @@ def analyze_raw_data_file(input_file):
                     old_last_index_read = last_index_read
                 else:
                     if not wait_for_data:
-                        logging.info('No new data, wait %d seconds for new data' % scan_configuration['no_data_wait_time'])
+                        logging.info('No new data, wait %d seconds for new data' % analysis_configuration['no_data_wait_time'])
                         wait_for_data = True
-                        time.sleep(scan_configuration['no_data_wait_time'])
+                        time.sleep(analysis_configuration['no_data_wait_time'])
                     else:
                         break
         except tb.exceptions.HDF5ExtError:
@@ -110,18 +112,19 @@ if __name__ == "__main__":
     interpreter = PyDataInterpreter()
     histograming = PyDataHistograming()
 
-    interpreter.set_info_output(scan_configuration['infos'])
-    interpreter.set_warning_output(scan_configuration['warnings'])
-    interpreter.set_FEI4B(False if scan_configuration['chip_flavor'] == 'fei4a' else True)
-    interpreter.set_trig_count(scan_configuration['trig_count'])
+    interpreter.set_info_output(analysis_configuration['infos'])
+    interpreter.set_warning_output(analysis_configuration['warnings'])
+    interpreter.set_FEI4B(False if analysis_configuration['chip_flavor'] == 'fei4a' else True)
+    interpreter.set_trig_count(analysis_configuration['trig_count'])
     histograming.set_no_scan_parameter()
     histograming.create_occupancy_hist(True)
+    histograming.create_rel_bcid_hist(True)
     plt.ion()
 
-    hits = np.empty((scan_configuration['chunk_size'],), dtype=tb.dtype_from_descr(data_struct.HitInfoTable))  # hold the hits per analyze_raw_data call
+    hits = np.empty((analysis_configuration['chunk_size'],), dtype=tb.dtype_from_descr(data_struct.HitInfoTable))  # hold the hits per analyze_raw_data call
 
     start_time = datetime.now()
-    analyze_raw_data_file(input_file=scan_configuration['folder'] + scan_configuration['scan_name'] + '.h5')
+    analyze_raw_data_file(input_file=analysis_configuration['folder'] + analysis_configuration['scan_name'] + '.h5')
     logging.info('Script runtime %.1f seconds' % (datetime.now() - start_time).total_seconds())
 
     plt.ioff()
