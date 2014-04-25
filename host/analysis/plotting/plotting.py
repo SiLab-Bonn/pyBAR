@@ -3,6 +3,7 @@ import math
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.dates as mdates
 import pandas as pd
 from datetime import datetime
@@ -14,6 +15,41 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
+
+
+def plot_tdc_event(points, filename=None):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    xs = points[:, 0]
+    ys = points[:, 1]
+    zs = points[:, 2]
+    cs = points[:, 3]
+
+    p = ax.scatter(xs, ys, zs, c=cs, s=points[:, 3] **(2) / 5., marker='o')
+
+    ax.set_xlabel('x [250 um]')
+    ax.set_ylabel('y [50 um]')
+    ax.set_zlabel('t [25 ns]')
+    # ax.azim = 200
+    # ax.elev = -45
+
+    plt.title('Track of one TPC event')
+
+    plt.xlim(0, 80)
+    plt.ylim(0, 336)
+
+    c_bar = fig.colorbar(p)
+    c_bar.set_label('charge [TOT]')
+
+    if filename is None:
+        plt.show()
+    elif type(filename) == PdfPages:
+        filename.savefig()
+        plt.close()
+    elif filename:
+        plt.savefig(filename)
+        plt.close()
+    return plt
 
 
 def plot_linear_relation(x, y, x_err=None, y_err=None, title=None, point_label=None, legend=None, plot_range=None, plot_range_y=None, x_label=None, y_label=None, y_2_label=None, marker_style='-o', log_x=False, log_y=False, filename=None):
@@ -49,7 +85,7 @@ def plot_linear_relation(x, y, x_err=None, y_err=None, title=None, point_label=N
     if legend:
         plt.legend(legend, 0)
     plt.grid(True)
-    plt.errorbar(x, y, xerr=x_err, yerr=y_err, fmt='o')  # plot points
+    plt.errorbar(x, y, xerr=x_err, yerr=y_err, fmt='o', color='black')  # plot points
     # label points if needed
     if point_label is not None:
         for X, Y, Z in zip(x, y, point_label):
@@ -58,7 +94,7 @@ def plot_linear_relation(x, y, x_err=None, y_err=None, title=None, point_label=N
     line_fit = np.polyfit(x, y, 1)
     chi_squared = np.sum((np.polyval(line_fit, x) - y) ** 2)
     fit_fn = np.poly1d(line_fit)
-    plt.plot(x, fit_fn(x), '-')
+    plt.plot(x, fit_fn(x), '-', lw=2, color='gray')
     if line_fit[1] > 0:
         line_fit_legend_entry = 'line fit\n%.2f x-%.2f\nX2/n.d.f=%d' % (line_fit[0], abs(line_fit[1]), chi_squared / len(x))
     else:
@@ -66,10 +102,12 @@ def plot_linear_relation(x, y, x_err=None, y_err=None, title=None, point_label=N
 
     plt.legend(["data", line_fit_legend_entry], 0)
     plt.setp(ax.get_xticklabels(), visible=False)  # remove ticks at common border of both plots
+    
 
     divider = make_axes_locatable(ax)
-    ax_bottom_plot = divider.append_axes("bottom", 1.2, pad=0.0, sharex=ax)
-    ax_bottom_plot.bar(x, y - fit_fn(x), align='center', width=np.amin(np.diff(x)) / 2)
+    ax_bottom_plot = divider.append_axes("bottom", 2.0, pad=0.0, sharex=ax)
+
+    ax_bottom_plot.bar(x, y - fit_fn(x), align='center', width=np.amin(np.diff(x)) / 2, color='gray')
 #     plot(x, y - fit_fn(x))
     ax_bottom_plot.grid(True)
     if x_label is not None:
@@ -82,6 +120,9 @@ def plot_linear_relation(x, y, x_err=None, y_err=None, title=None, point_label=N
     plt.plot(plt.xlim(), [0, 0], '-', color='black')
     plt.setp(ax_bottom_plot.get_yticklabels()[-2:-1], visible=False)
 #     print ax_bottom_plot.get_yticklabels()[1]
+
+#     ax.set_aspect(2)
+#     ax_bottom_plot.set_aspect(2)
 
     if filename is None:
         plt.show()
@@ -382,7 +423,11 @@ def plot_relative_bcid(hist, filename=None):
 
 
 def plot_relative_bcid_stop_mode(hist, filename=None):
-    plot_1d_hist(hist=hist, title='Latency window in stop mode', plot_range=range(0, np.where(hist[:] != 0)[0][-1] + 1), x_axis_title='Lantency window [BCID]', y_axis_title='#', filename=filename, figure_name='Latency window in stop mode')
+    try:
+        max_plot_range = np.where(hist[:] != 0)[0][-1] + 1
+    except IndexError:
+        max_plot_range = 1
+    plot_1d_hist(hist=hist, title='Latency window in stop mode', plot_range=range(0, max_plot_range), x_axis_title='Lantency window [BCID]', y_axis_title='#', filename=filename, figure_name='Latency window in stop mode')
 
 
 def plot_tot(hist, title=None, filename=None):
