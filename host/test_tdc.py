@@ -46,6 +46,7 @@ class TdcTest(ScanBase):
         x = []
         y = []
         y_err = []
+        tdc_hist = None
 
         self.readout.read_data()  # clear data
         for pulse_width in [i for j in (range(10, 100, 5), range(100, 400, 10)) for i in j]:
@@ -53,19 +54,27 @@ class TdcTest(ScanBase):
             self.start_pulser(pulse_width, n_pulses)
             time.sleep(1)
             data = self.readout.read_data()
-            if len(is_tdc_data(data)) != n_pulses:
-                logging.warning('Too less TDC words %d instead of %d ' % (len(is_tdc_data(data)), n_pulses))
-            tdc_values = np.bitwise_and(data[is_tdc_data(data)], 0x00000FFF)
-            tdc_counter = np.bitwise_and(data[is_tdc_data(data)], 0x0FFFF000)
-            tdc_counter = np.right_shift(tdc_counter, 12)
-            if np.any(np.logical_and(tdc_counter[np.gradient(tdc_counter) != 1] != 0, tdc_counter[np.gradient(tdc_counter) != 1] != 65535)):
-                logging.warning('The counter did not count correctly')
-            x.append(pulse_width)
-            y.append(np.mean(tdc_values))
-            y_err.append(np.std(tdc_values))
+            if len(is_tdc_data(data)) != 0:
+                if len(is_tdc_data(data)) != n_pulses:
+                    logging.warning('Too less TDC words %d instead of %d ' % (len(is_tdc_data(data)), n_pulses))
+                tdc_values = np.bitwise_and(data[is_tdc_data(data)], 0x00000FFF)
+                tdc_counter = np.bitwise_and(data[is_tdc_data(data)], 0x0FFFF000)
+                tdc_counter = np.right_shift(tdc_counter, 12)
+                if np.any(np.logical_and(tdc_counter[np.gradient(tdc_counter) != 1] != 0, tdc_counter[np.gradient(tdc_counter) != 1] != 65535)):
+                    logging.warning('The counter did not count correctly')
+                x.append(pulse_width)
+                y.append(np.mean(tdc_values))
+                y_err.append(np.std(tdc_values))
+                if tdc_hist is None:
+                    tdc_hist = np.histogram(tdc_values, range=(0, 1023), bins=1024)[0]
+                else:
+                    tdc_hist += np.histogram(tdc_values, range=(0, 1023), bins=1024)[0]
+            else:
+                logging.warning('No TDC words, check connection!')
 
         plotting.plot_scatter(x, y, y_err, title='FPGA TDC linearity, ' + str(n_pulses) + ' each', x_label='pulse width [ns]', y_label='TDC value', filename=None)
-
+        plotting.plot_scatter(x, y_err, title='FPGA TDC RMS, ' + str(n_pulses) + ' each', x_label='pulse width [ns]', y_label='TDC RMS', filename=None)
+        plotting.plot_tdc_counter(tdc_hist, title='All TDC values', filename=None)
 
 if __name__ == "__main__":
     import configuration
