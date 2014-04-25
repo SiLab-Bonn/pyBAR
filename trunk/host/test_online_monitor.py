@@ -5,8 +5,8 @@ import tables as tb
 import numpy as np
 import time
 
-input_file = 'data//scan_threshold_fast_1.h5'
-output_file = 'data//scan_threshold_fast_1_copy.h5'
+input_file = 'data//input.h5'
+output_file = 'data//input_copy.h5'
 
 from analysis.RawDataConverter.data_struct import MetaTableV2 as MetaTable
 
@@ -32,10 +32,11 @@ with tb.openFile(input_file, mode="r") as in_file_h5:
         meta_data_table = out_file_h5.createTable(out_file_h5.root, name='meta_data', description=MetaTable, title='meta_data', filters=filter_tables)
         for index in range(0, len(read_indices) - 1):
             print 'time', meta_data['timestamp_start'][0] - timestamp_start[0]
-            meta_data = in_file_h5.root.meta_data.read(read_indices[index], stop_read_indices[index])
-            raw_data = in_file_h5.root.raw_data.read(meta_data['index_start'][0], meta_data['index_stop'][-1])
-            meta_data_table.append(meta_data[:])
-            raw_data_earray.append(raw_data[:])
-            meta_data_table.flush()
-            raw_data_earray.flush()
+            if read_indices[index] != stop_read_indices[index]:
+                meta_data = in_file_h5.root.meta_data.read(read_indices[index], stop_read_indices[index])
+                raw_data = in_file_h5.root.raw_data.read(meta_data['index_start'][0], meta_data['index_stop'][-1])
+                meta_data_table.append(meta_data[:])
+                raw_data_earray.append(raw_data[:])
+                meta_data_table.flush()
+                raw_data_earray.flush()
             time.sleep(0.18)
