@@ -83,7 +83,7 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 			_nDataHeaders++;
 			if (tNdataHeader > _NbCID-1){	                //maximum event window is reached (tNdataHeader > BCIDs, mostly tNdataHeader > 15), so create new event
 				if (_useTriggerNumber){
-					addEventErrorCode(__TRUNC_EVENT); //too many hits in the event, abort this event, add truncated flac
+					addEventErrorCode(__TRUNC_EVENT); //too many data header in the event, abort this event, add truncated flac
 					if(Basis::warningSet())
 						warning(std::string("addHit: Hit buffer overflow prevented by splitting events at event "+LongIntToStr(_nEvents)), __LINE__);
 				}
