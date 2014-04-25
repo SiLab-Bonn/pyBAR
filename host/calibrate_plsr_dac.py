@@ -60,7 +60,7 @@ class PlsrDacScan(ScanBase):
             self.set_scan_parameter(scan_parameter, plsr_dac)
             voltage, voltage_error = multimeter_device.get_voltage(unit='mV', with_error=True)
             self.data[index] = (plsr_dac, voltage, voltage_error)
-            logging.info('Measure (%f +- %f) uA ' % (voltage, voltage_error))
+            logging.info('Measure (%f +- %f) mV ' % (voltage, voltage_error))
 
         multimeter_device.enable_output(False)
 
@@ -81,7 +81,7 @@ class PlsrDacScan(ScanBase):
         plt.xlabel('PlsrDAC')
         plt.ylabel('voltage [V]')
         plt.grid(True)
-        plt.legend([data_plt, fit_plt], ["data", str(fit_fn)])
+        plt.legend([data_plt, fit_plt], ["data", str(fit_fn)], loc=0)
         if show:
             plt.show()
         else:
