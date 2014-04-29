@@ -108,9 +108,7 @@ class FEI4SelfTriggerScan(ScanBase):
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
         # generate ROI mask for Imon mask
         pixel_reg = "Imon"
-        mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span, default=1, value=0)
-        imon_mask = np.logical_or(mask, self.register.get_pixel_register_value(pixel_reg))
-        self.register.set_pixel_register_value(pixel_reg, imon_mask)
+        self.register.set_pixel_register_value(pixel_reg, 0)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
         # disable C_inj mask
         pixel_reg = "C_High"
