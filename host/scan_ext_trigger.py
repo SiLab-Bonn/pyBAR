@@ -95,7 +95,7 @@ class ExtTriggerScan(ScanBase):
 
         wait_for_first_trigger = True
 
-        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier, mode='w') as raw_data_file:
+        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier) as raw_data_file:
             self.readout.start()
             # preload command
             lvl1_command = self.register.get_commands("zeros", length=trigger_delay)[0] + self.register.get_commands("lv1")[0]  # + self.register.get_commands("zeros", length=200)[0]
