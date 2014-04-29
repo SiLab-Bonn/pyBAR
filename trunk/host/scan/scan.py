@@ -4,6 +4,7 @@ import logging
 import re
 import tables as tb
 import platform
+import inspect
 from analysis.RawDataConverter.data_struct import generate_scan_configuration_description
 
 from threading import Thread, Event, Lock, Timer
@@ -133,7 +134,11 @@ class ScanBase(object):
         self.use_thread = None
         self.restore_configuration = None
 
-        self.scan_kwargs = kwargs
+        # get scan args
+        frame = inspect.currentframe()
+        args, _, _, locals = inspect.getargvalues(frame)
+        self.scan_configuration = {key: locals[key] for key in args if key is not 'self'}
+        self.scan_configuration.update(kwargs)
 
     @property
     def is_running(self):
@@ -162,9 +167,12 @@ class ScanBase(object):
         self.scan_is_running = True
         self.scan_aborted = False
 
-        # copy and merge keyword arguments
-        scan_loop_kwargs = kwargs.copy()
-        scan_loop_kwargs.update(self.scan_kwargs)
+        # get scan loop args
+        frame = inspect.currentframe()
+        args, _, _, locals = inspect.getargvalues(frame)
+        scan_loop_kwargs = {key: locals[key] for key in args if key is not 'self'}
+        scan_loop_kwargs.update(kwargs)
+        scan_loop_kwargs.update(self.scan_configuration)
 
         self.write_scan_number()
 
@@ -176,10 +184,10 @@ class ScanBase(object):
             raise RuntimeError('Scan thread is already running')
 
         # setting FPGA register to default state
-        self.readout_utils.configure_rx_fsm(**self.scan_kwargs)
-        self.readout_utils.configure_command_fsm(**self.scan_kwargs)
-        self.readout_utils.configure_trigger_fsm(**self.scan_kwargs)
-        self.readout_utils.configure_tdc_fsm(**self.scan_kwargs)
+        self.readout_utils.configure_rx_fsm(**self.scan_configuration)
+        self.readout_utils.configure_command_fsm(**self.scan_configuration)
+        self.readout_utils.configure_trigger_fsm(**self.scan_configuration)
+        self.readout_utils.configure_tdc_fsm(**self.scan_configuration)
 
         if do_global_reset:
             self.register_utils.global_reset()
@@ -475,10 +483,9 @@ class ScanBase(object):
             h5_file = os.path.splitext(self.scan_data_filename)[0] + ".h5"
 
         # append to file if existing otherwise create new one
-        self.raw_data_file_h5 = tb.openFile(h5_file, mode="a", title=((self.device_identifier + "_" + self.scan_identifier) if self.device_identifier else self.scan_identifier) + "_" + str(self.scan_number), **kwargs)
-
-        # add config file
-        scan_configuration['configuration_file'] = str(self.configuration_file)
+        if os.path.isfile(h5_file):
+            logging.warning('File already exists: overwriting %s', h5_file)
+        self.raw_data_file_h5 = tb.openFile(h5_file, mode="w", title=((self.device_identifier + "_" + self.scan_identifier) if self.device_identifier else self.scan_identifier) + "_" + str(self.scan_number), **kwargs)
 
         try:
             scan_param_descr = generate_scan_configuration_description(dict.iterkeys(scan_configuration))
