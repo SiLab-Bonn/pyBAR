@@ -102,7 +102,7 @@ class Readout(object):
         logging.info('RX sync:                     %s', " | ".join(["YES".rjust(3) if status == True else "NO".rjust(3) for status in sync_status]))
         logging.info('RX FIFO discard counter:     %s', " | ".join([repr(count).rjust(3) for count in discard_count]))
         logging.info('RX FIFO 8b10b error counter: %s', " | ".join([repr(count).rjust(3) for count in error_count]))
-        if not any(self.readout.get_rx_sync_status()) or any(discard_count) or any(error_count):
+        if not any(self.get_rx_sync_status()) or any(discard_count) or any(error_count):
             logging.warning('RX errors detected')
 
     def worker(self):
