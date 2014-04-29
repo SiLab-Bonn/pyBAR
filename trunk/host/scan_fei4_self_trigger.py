@@ -43,7 +43,7 @@ class FEI4SelfTriggerScan(ScanBase):
 
         self.configure_fe(col_span, row_span, trig_latency, trig_count)
 
-        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier, mode='w') as raw_data_file:
+        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier) as raw_data_file:
             self.readout.start()
             self.set_self_trigger(True)
             wait_for_first_data = True
