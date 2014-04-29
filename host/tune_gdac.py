@@ -11,7 +11,7 @@ from scan.scan import ScanBase
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
-scan_configuration = {
+local_configuration = {
     "target_threshold": 5,  # target threshold in PlsrDAC to tune to
     "gdac_tune_bits": range(7, -1, -1),  # GDAC bits to change during tuning
     "n_injections": 50,  # number of injections per GDAC bit setting
@@ -188,8 +188,7 @@ class GdacTune(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = GdacTune(**configuration.scc30_configuration)
-    scan.start(use_thread=False, **scan_configuration)
+    scan = GdacTune(**configuration.default_configuration)
+    scan.start(use_thread=False, **local_configuration)
     scan.stop()
-#     scan.register.save_configuration(configuration.device_configuration['configuration_file'])
-#     scan.register.save_configuration('SCC_99_tuning_new')
+    scan.register.save_configuration(scan.device_configuration['configuration_file'])

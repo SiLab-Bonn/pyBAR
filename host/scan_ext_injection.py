@@ -10,7 +10,7 @@ from scan.scan import ScanBase
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
-scan_configuration = {
+local_configuration = {
     "mask_steps": 6,
     "repeat_command": 1000,
     "enable_double_columns": None
@@ -44,7 +44,7 @@ class ExtInjScan(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = ExtInjScan(**configuration.device_configuration)
-    scan.start(use_thread=False, **scan_configuration)
+    scan = ExtInjScan(**configuration.default_configuration)
+    scan.start(use_thread=False, **local_configuration)
     scan.stop()
     scan.analyze()

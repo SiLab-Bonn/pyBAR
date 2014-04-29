@@ -336,6 +336,6 @@ def test_pixel_register(self):
 
 if __name__ == "__main__":
     import configuration
-    scan = RegisterTest(**configuration.device_configuration)
+    scan = RegisterTest(**configuration.default_configuration)
     scan.start()
     scan.stop()

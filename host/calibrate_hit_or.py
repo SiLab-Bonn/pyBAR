@@ -16,7 +16,7 @@ import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
-scan_configuration = {
+local_configuration = {
     "repeat_command": 10000,
     "reject_small_tot": False,
     "scan_parameter": 'PlsrDAC',
@@ -107,13 +107,13 @@ class HitOrScan(ScanBase):
                 scan_parameter_values = analysis_utils.get_unique_scan_parameter_combinations(meta_data_array, selected_columns_only=True)  # get the PlsrDAC/col/row values
                 event_numbers = analysis_utils.get_unique_scan_parameter_combinations(meta_data_array)['event_number']  # get the event numbers in meta_data where the scan parameters have different settings
                 parameter_ranges = np.column_stack((scan_parameter_values, analysis_utils.get_ranges_from_array(event_numbers)))  # list with entries [scan_parameter_value, start_event_number, stop_event_number]
-                calibration_data = np.zeros(shape=(80, 336, len(scan_configuration['scan_parameter_values']), 4), dtype='f4')  # result of the calibration is a histogram with col_index, row_index, plsrDAC value, mean discrete tot, rms discrete tot, mean tot from TDC, rms tot from TDC
+                calibration_data = np.zeros(shape=(80, 336, len(scan.scan_configuration['scan_parameter_values']), 4), dtype='f4')  # result of the calibration is a histogram with col_index, row_index, plsrDAC value, mean discrete tot, rms discrete tot, mean tot from TDC, rms tot from TDC
                 start_index = 0
                 for scan_parameter_value, start_event_number, stop_event_number in parameter_ranges:  # loop over the different PlsrDAC/col/row settings
                     column = scan_parameter_value[1]
                     row = scan_parameter_value[2]
                     logging.info("Analyze TDC words for pixel " + str(column) + "/" + str(row) + " and PlsrDAC " + str(scan_parameter_value[0]))
-                    scan_parameter_index = scan_configuration['scan_parameter_values'].index(scan_parameter_value[0])  # translate the scan parameter value to an index for the result histogram
+                    scan_parameter_index = scan.scan_configuration['scan_parameter_values'].index(scan_parameter_value[0])  # translate the scan parameter value to an index for the result histogram
                     tot_mean = []
                     tdc_mean = []
                     for index, (hits, start_index) in enumerate(analysis_utils.data_aligned_at_events(in_hit_file_h5.root.Hits, start_event_number=start_event_number, stop_event_number=stop_event_number, start=start_index)):  # loop over hits for one PlsrDAC setting in chunks
@@ -124,7 +124,7 @@ class HitOrScan(ScanBase):
                         tdc_mean.append(np.mean(hits["TDC"]))
                         tot_std = np.std(hits["tot"])
                         tdc_std = np.std(hits["TDC"])
-                        if scan_configuration['plot_tdc_histograms']:
+                        if scan.scan_configuration['plot_tdc_histograms']:
                             plotting.plot_1d_hist(np.histogram(hits["TDC"], range=(0, 4095), bins=4096)[0], title="TDC histogram for pixel " + str(column) + "/" + str(row) + " and PlsrDAC " + str(scan_parameter_value[0]) + " (" + str(len(hits["TDC"])) + " entrie(s))", x_axis_title="TDC", y_axis_title="#", filename=output_pdf)
 
                     if len(tot_mean) != 0:
@@ -134,19 +134,19 @@ class HitOrScan(ScanBase):
                         calibration_data[column - 1, row - 1, scan_parameter_index, 3] = tdc_std
                     else:
                         logging.warning('No hits found, omit histograming')
-                self.plot_calibration(plsrdac=scan_configuration['scan_parameter_values'], calibration_data=calibration_data, filename=output_pdf)
+                self.plot_calibration(plsrdac=scan.scan_configuration['scan_parameter_values'], calibration_data=calibration_data, filename=output_pdf)
                 calibration_data_out = calibration_data_file.createCArray(calibration_data_file.root, name='HitOrCalibration', title='Hit OR calibration data', atom=tb.Atom.from_dtype(calibration_data.dtype), shape=calibration_data.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
                 calibration_data_out[:] = calibration_data
             output_pdf.close()
 
     def plot_calibration(self, plsrdac, calibration_data, filename=None):
-        for pixel in scan_configuration['pixels']:
+        for pixel in scan.scan_configuration['pixels']:
             column = pixel[0]
             row = pixel[1]
             logging.info("Plot calibration for pixel " + str(column) + '/' + str(row))
             plt.errorbar(plsrdac, calibration_data[column - 1, row - 1, :, 0] * 25. + 25., yerr=[calibration_data[column - 1, row - 1, :, 1] * 25, calibration_data[column - 1, row - 1, :, 1] * 25], fmt='o')
             plt.errorbar(plsrdac, calibration_data[column - 1, row - 1, :, 2], yerr=[calibration_data[column - 1, row - 1, :, 3], calibration_data[column - 1, row - 1, :, 3]], fmt='o')
-            plt.title('Calibration for pixel ' + str(column) + '/' + str(row) + '; ' + str(scan_configuration['repeat_command']) + ' injections per PlsrDAC')
+            plt.title('Calibration for pixel ' + str(column) + '/' + str(row) + '; ' + str(scan.scan_configuration['repeat_command']) + ' injections per PlsrDAC')
             plt.xlabel('charge [PlsrDAC]')
             plt.ylabel('TOT')
             plt.grid(True)
@@ -162,8 +162,8 @@ class HitOrScan(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = HitOrScan(**configuration.mdbm30_configuration)
-    scan.start(use_thread=False, **scan_configuration)
+    scan = HitOrScan(**configuration.default_configuration)
+    scan.start(use_thread=False, **local_configuration)
     scan.stop()
 #     scan.scan_data_filename='data//SCC_99//SCC_99_hit_or_scan_614'
     scan.analyze()

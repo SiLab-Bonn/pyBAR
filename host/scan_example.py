@@ -7,7 +7,7 @@ import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 # scan configuration dictionary to set up scan parameters
-scan_configuration = {
+local_configuration = {
     "some_keyword_parameter": "parameter was set",
     "some_other_keyword_parameter": "parameter was set"
 }
@@ -81,7 +81,6 @@ class ExampleScan(ScanBase):
             if datetime.now() - start_time > 600:  # abort after 10min runtime
                 break
 
-
         # example code: how to start readout
         self.readout.stop()
 
@@ -93,8 +92,8 @@ if __name__ == "__main__":
     import configuration
     # dereference device_configuration dictionary and use it for setting the parameters
     # open configuration.py to change device parameters
-    scan = ExampleScan(**configuration.device_configuration)
+    scan = ExampleScan(**configuration.default_configuration)
     # when use_thread is true (scan() runs in a thread), start() is non-blocking, otherwise blocking
-    scan.start(use_thread=True, configure=True, **scan_configuration)
+    scan.start(use_thread=True, configure=True, **local_configuration)
     # when use_thread is true (scan() runs in a thread), stop() is blocking until timeout is reached (if timeout is None, wait for scan has completed), otherwise non-blocking
     scan.stop(timeout=5)

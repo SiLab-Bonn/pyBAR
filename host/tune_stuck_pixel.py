@@ -11,7 +11,7 @@ from daq.readout import save_raw_data_from_data_dict_iterable
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
-scan_configuration = {
+local_configuration = {
     "mask_steps": 3,
     "repeat_command": 100,
     "disable_for_mask": ['Enable'],
@@ -111,8 +111,8 @@ class StuckPixelScan(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = StuckPixelScan(**configuration.device_configuration)
-    scan.start(use_thread=False, **scan_configuration)
+    scan = StuckPixelScan(**configuration.default_configuration)
+    scan.start(use_thread=False, **local_configuration)
     scan.stop()
     scan.analyze()
-    scan.register.save_configuration(configuration.device_configuration["configuration_file"])
+    scan.register.save_configuration(scan.device_configuration["configuration_file"])

@@ -8,7 +8,7 @@ import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
-scan_configuration = {
+local_configuration = {
     "mask_steps": 3,
     "repeat_command": 100,
     "scan_parameter": 'PlsrDAC',
@@ -49,11 +49,11 @@ class AnalogScan(ScanBase):
 
         cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0]
 
-        if scan_configuration['enable_tdc']:
+        if enable_tdc:
             tdc = lambda enable: self.readout_utils.configure_tdc_fsm(enable_tdc=enable, enable_tdc_arming=True)
             self.scan_loop(cal_lvl1_command, repeat_command=repeat_command, use_delay=True, hardware_repeat=True, mask_steps=mask_steps, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=True, bol_function=tdc(True), eol_function=tdc(False), digital_injection=False, enable_c_high=None, enable_c_low=None, enable_shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=False, mask=None)
         else:
-            self.scan_loop(cal_lvl1_command, repeat_command=repeat_command, use_delay=True, hardware_repeat=True, mask_steps=mask_steps, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=True, bol_function=tdc(True), digital_injection=False, enable_c_high=None, enable_c_low=None, enable_shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=False, mask=None)
+            self.scan_loop(cal_lvl1_command, repeat_command=repeat_command, use_delay=True, hardware_repeat=True, mask_steps=mask_steps, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=True, digital_injection=False, enable_c_high=None, enable_c_low=None, enable_shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=False, mask=None)
 
         self.readout.stop(timeout=10.0)
 
@@ -68,7 +68,7 @@ class AnalogScan(ScanBase):
         with AnalyzeRawData(raw_data_file=scan.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
             analyze_raw_data.interpreter.set_trig_count(self.register.get_global_register_value("Trig_Count"))
             analyze_raw_data.create_tot_hist = True
-            if scan_configuration['enable_tdc']:
+            if scan.scan_configuration['enable_tdc']:
                 analyze_raw_data.create_tdc_counter_hist = True  # histogram all TDC words
                 analyze_raw_data.create_tdc_hist = True  # histogram the hit TDC information
                 analyze_raw_data.interpreter.use_tdc_word(True)  # align events at the TDC word
@@ -78,7 +78,7 @@ class AnalogScan(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = AnalogScan(**configuration.device_configuration)
-    scan.start(use_thread=False, **scan_configuration)
+    scan = AnalogScan(**configuration.default_configuration)
+    scan.start(use_thread=False, **local_configuration)
     scan.stop()
     scan.analyze()

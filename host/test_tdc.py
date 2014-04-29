@@ -12,7 +12,7 @@ from analysis.plotting import plotting
 import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
-scan_configuration = {
+local_configuration = {
     "GPIB_prim_address": 1,
     "n_pulses": 10000
 }
@@ -78,6 +78,6 @@ class TdcTest(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = TdcTest(**configuration.device_configuration)
-    scan.start(**scan_configuration)
+    scan = TdcTest(**configuration.default_configuration)
+    scan.start(**local_configuration)
     scan.stop()

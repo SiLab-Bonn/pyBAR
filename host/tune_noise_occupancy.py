@@ -11,10 +11,10 @@ from daq.readout import open_raw_data_file
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
-scan_configuration = {
+local_configuration = {
     "occupancy_limit": 10 ** (-5),  # 0 will mask any pixel with occupancy greater than zero
     "triggers": 10000000,
-    "consecutive_lvl1": 1,
+    "trig_count": 1,
     "disable_for_mask": ['Enable'],
     "enable_for_mask": ['Imon'],
     "overwrite_mask": False,
@@ -27,7 +27,7 @@ scan_configuration = {
 class NoiseOccupancyScan(ScanBase):
     scan_identifier = "noise_occupancy_tuning"
 
-    def scan(self, occupancy_limit=10 ** (-7), triggers=10000000, consecutive_lvl1=1, disable_for_mask=['Enable'], enable_for_mask=['Imon'], overwrite_mask=False, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, **kwargs):
+    def scan(self, occupancy_limit=10 ** (-7), triggers=10000000, trig_count=1, disable_for_mask=['Enable'], enable_for_mask=['Imon'], overwrite_mask=False, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, **kwargs):
         '''Masking pixels with occupancy above certain limit.
 
         Parameters
@@ -36,8 +36,8 @@ class NoiseOccupancyScan(ScanBase):
             Occupancy limit which is multiplied with measured number of hits for each pixel. Any pixel above 1 will be masked.
         triggers : int
             Total number of triggers sent to FE. From 1 to 4294967295 (32-bit unsigned int).
-        consecutive_lvl1 : int
-            Number of consecutive LVL1 triggers. From 1 to 16.
+        trig_count : int
+            FE global register Trig_Count.
         disable_for_mask : list, tuple
             List of masks for which noisy pixels will be disabled.
         enable_for_mask : list, tuple
@@ -60,7 +60,10 @@ class NoiseOccupancyScan(ScanBase):
         '''
         # create restore point
         self.register.create_restore_point()
-
+        if trig_count == 0:
+            consecutive_lvl1 = (2 ** self.register.get_global_register_objects(name=['Trig_Count'])[0].bitlength)
+        else:
+            consecutive_lvl1 = trig_count
         if occupancy_limit * triggers * consecutive_lvl1 < 1:
             logging.warning('Number of triggers too low for given occupancy limit')
 
@@ -83,8 +86,7 @@ class NoiseOccupancyScan(ScanBase):
         self.register.set_pixel_register_value(pixel_reg, 0)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
 #         self.register.set_global_register_value("Trig_Lat", 232)  # set trigger latency
-        self.consecutive_lvl1 = consecutive_lvl1
-        self.register.set_global_register_value("Trig_Count", (0 if consecutive_lvl1 == 16 else consecutive_lvl1))  # set number of consecutive triggers
+        self.register.set_global_register_value("Trig_Count", trig_count)  # set number of consecutive triggers
         commands.extend(self.register.get_commands("wrregister", name=["Trig_Count"]))
         # setting FE into runmode
         commands.extend(self.register.get_commands("runmode"))
@@ -175,7 +177,7 @@ class NoiseOccupancyScan(ScanBase):
         from analysis.analyze_raw_data import AnalyzeRawData
         output_file = self.scan_data_filename + "_interpreted.h5"
         with AnalyzeRawData(raw_data_file=scan.scan_data_filename, analyzed_data_file=output_file, create_pdf=True) as analyze_raw_data:
-            analyze_raw_data.interpreter.set_trig_count(self.consecutive_lvl1)
+            analyze_raw_data.interpreter.set_trig_count(self.register.get_global_register_value("Trig_Count"))
             analyze_raw_data.create_source_scan_hist = True
 #             analyze_raw_data.create_hit_table = True
 #             analyze_raw_data.interpreter.debug_events(0, 0, True)  # events to be printed onto the console for debugging, usually deactivated
@@ -194,8 +196,8 @@ class NoiseOccupancyScan(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = NoiseOccupancyScan(**configuration.device_configuration)
-    scan.start(use_thread=False, **scan_configuration)
+    scan = NoiseOccupancyScan(**configuration.default_configuration)
+    scan.start(use_thread=False, **local_configuration)
     scan.stop()
     scan.analyze()
-    scan.register.save_configuration(configuration.device_configuration["configuration_file"])
+    scan.register.save_configuration(scan.device_configuration["configuration_file"])

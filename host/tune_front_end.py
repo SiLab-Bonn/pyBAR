@@ -16,7 +16,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
-scan_configuration = {
+local_configuration = {
     "cfg_name": 'tuned_config',
     "target_threshold": 50,
     "target_charge": 280,
@@ -57,7 +57,7 @@ def tune_front_end(cfg_name, target_threshold=20, target_charge=270, target_tot=
             2: TDAC/FDAC/TDAC/FDAC/TDAC
             ...
     '''
-    gdac_tune_scan = GdacTune(**configuration.device_configuration)
+    gdac_tune_scan = GdacTune(**configuration.default_configuration)
     feedback_tune_scan = FeedbackTune(**gdac_tune_scan.device_configuration)
     tdac_tune_scan = TdacTune(**gdac_tune_scan.device_configuration)
     fdac_tune_scan = FdacTune(**gdac_tune_scan.device_configuration)
@@ -77,13 +77,13 @@ def tune_front_end(cfg_name, target_threshold=20, target_charge=270, target_tot=
     for iteration in range(0, global_iterations):  # tune iteratively with decreasing range to save time
         start_bit = 7 - difference_bit * iteration
         logging.info("Global tuning iteration step %d" % iteration)
-        gdac_tune_scan.start(gdac_tune_bits=range(start_bit, -1, -1), configure=True, plots_filename=output_pdf, **scan_configuration)
+        gdac_tune_scan.start(gdac_tune_bits=range(start_bit, -1, -1), configure=True, plots_filename=output_pdf, **local_configuration)
         gdac_tune_scan.stop()
-        feedback_tune_scan.start(feedback_tune_bits=range(start_bit, -1, -1), configure=True, plots_filename=output_pdf, **scan_configuration)
+        feedback_tune_scan.start(feedback_tune_bits=range(start_bit, -1, -1), configure=True, plots_filename=output_pdf, **local_configuration)
         feedback_tune_scan.stop()
 
     if global_iterations >= 0:
-        gdac_tune_scan.start(gdac_tune_bits=range(start_bit, -1, -1), configure=True, plots_filename=output_pdf, **scan_configuration)
+        gdac_tune_scan.start(gdac_tune_bits=range(start_bit, -1, -1), configure=True, plots_filename=output_pdf, **local_configuration)
         gdac_tune_scan.stop()
 
     Vthin_AC = gdac_tune_scan.register.get_global_register_value("Vthin_AltCoarse")
@@ -97,13 +97,13 @@ def tune_front_end(cfg_name, target_threshold=20, target_charge=270, target_tot=
     for iteration in range(0, local_iterations):  # tune iteratively
         logging.info("Local tuning iteration step %d" % iteration)
         start_bit = 4  # -difference_bit*iteration
-        tdac_tune_scan.start(tdac_tune_bits=range(start_bit, -1, -1), configure=True, plots_filename=output_pdf, **scan_configuration)
+        tdac_tune_scan.start(tdac_tune_bits=range(start_bit, -1, -1), configure=True, plots_filename=output_pdf, **local_configuration)
         tdac_tune_scan.stop()
-        fdac_tune_scan.start(fdac_tune_bits=range(start_bit - 1, -1, -1), configure=True, plots_filename=output_pdf, **scan_configuration)
+        fdac_tune_scan.start(fdac_tune_bits=range(start_bit - 1, -1, -1), configure=True, plots_filename=output_pdf, **local_configuration)
         fdac_tune_scan.stop()
 
     if local_iterations >= 0:
-        tdac_tune_scan.start(tdac_tune_bits=range(start_bit, -1, -1), configure=True, plots_filename=output_pdf, **scan_configuration)
+        tdac_tune_scan.start(tdac_tune_bits=range(start_bit, -1, -1), configure=True, plots_filename=output_pdf, **local_configuration)
         tdac_tune_scan.stop()
 
     gdac_tune_scan.register.save_configuration(name=cfg_name)  # save the final config
@@ -119,5 +119,5 @@ def tune_front_end(cfg_name, target_threshold=20, target_charge=270, target_tot=
 
 if __name__ == "__main__":
     startTime = datetime.now()
-    tune_front_end(**scan_configuration)
+    tune_front_end(**local_configuration)
     logging.info("Tuning finished in " + str(datetime.now() - startTime))

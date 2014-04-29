@@ -137,8 +137,10 @@ class ScanBase(object):
         # get scan args
         frame = inspect.currentframe()
         args, _, _, locals = inspect.getargvalues(frame)
-        self.scan_configuration = {key: locals[key] for key in args if key is not 'self'}
-        self.scan_configuration.update(kwargs)
+        self._device_configuration = {key: locals[key] for key in args if key is not 'self'}
+        self._device_configuration.update(kwargs)
+
+        self._scan_configuration = {}
 
     @property
     def is_running(self):
@@ -146,7 +148,11 @@ class ScanBase(object):
 
     @property
     def device_configuration(self):
-        return {"configuration_file": self.register, "device": self.device, "scan_data_path": self.scan_data_path, "device_identifier": self.device_identifier}
+        return self._device_configuration
+
+    @property
+    def scan_configuration(self):
+        return self._scan_configuration
 
     def start(self, configure=True, restore_configuration=False, use_thread=False, do_global_reset=True, **kwargs):  # TODO: in Python 3 use def func(a,b,*args,kw1=None,**kwargs)
         '''Starting scan.
@@ -170,24 +176,32 @@ class ScanBase(object):
         # get scan loop args
         frame = inspect.currentframe()
         args, _, _, locals = inspect.getargvalues(frame)
-        scan_loop_kwargs = {key: locals[key] for key in args if key is not 'self'}
-        scan_loop_kwargs.update(kwargs)
-        scan_loop_kwargs.update(self.scan_configuration)
+        self._scan_configuration = {key: locals[key] for key in args if key is not 'self'}
+        self._scan_configuration.update(kwargs)
+
+        all_parameters = {}
+        all_parameters.update(self.scan_configuration)
+        all_parameters.update(self.device_configuration)
 
         self.write_scan_number()
 
-        if scan_loop_kwargs:
-            self.save_scan_configuration(scan_loop_kwargs)
+        if self.device_configuration:
+            print 'device'
+            print self.device_configuration
+            self.save_configuration('device_configuration', self.device_configuration)
+
+        if self.scan_configuration:
+            self.save_configuration('scan_configuration', self.scan_configuration)
 
         self.use_thread = use_thread
         if self.scan_thread != None:
             raise RuntimeError('Scan thread is already running')
 
         # setting FPGA register to default state
-        self.readout_utils.configure_rx_fsm(**self.scan_configuration)
-        self.readout_utils.configure_command_fsm(**self.scan_configuration)
-        self.readout_utils.configure_trigger_fsm(**self.scan_configuration)
-        self.readout_utils.configure_tdc_fsm(**self.scan_configuration)
+        self.readout_utils.configure_rx_fsm(**self.device_configuration)
+        self.readout_utils.configure_command_fsm(**self.device_configuration)
+        self.readout_utils.configure_trigger_fsm(**self.device_configuration)
+        self.readout_utils.configure_tdc_fsm(**self.device_configuration)
 
         if do_global_reset:
             self.register_utils.global_reset()
@@ -212,13 +226,13 @@ class ScanBase(object):
 
         logging.info('Starting scan %s with ID %d (output path: %s)' % (self.scan_identifier, self.scan_number, self.scan_data_output_path))
         if use_thread:
-            self.scan_thread = Thread(target=self.scan, name='%s with ID %d' % (self.scan_identifier, self.scan_number), kwargs=scan_loop_kwargs)  # , args=kwargs)
+            self.scan_thread = Thread(target=self.scan, name='%s with ID %d' % (self.scan_identifier, self.scan_number), kwargs=all_parameters)  # , args=kwargs)
             self.scan_thread.daemon = True  # Abruptly close thread when closing main thread. Resources may not be released properly.
             self.scan_thread.start()
             logging.info('Press Ctrl-C to stop scan loop')
             signal.signal(signal.SIGINT, self.signal_handler)
         else:
-            self.scan(**scan_loop_kwargs)
+            self.scan(**all_parameters)
 
     def stop(self, timeout=None):
         '''Stopping scan. Cleaning up of variables and joining thread (if existing).
@@ -478,25 +492,23 @@ class ScanBase(object):
         self.scan_aborted = False
         self.stop_thread_event.set()
 
-    def save_scan_configuration(self, scan_configuration, **kwargs):
+    def save_configuration(self, configuation_name, configuration, **kwargs):
         if os.path.splitext(self.scan_data_filename)[1].strip().lower() != ".h5":
             h5_file = os.path.splitext(self.scan_data_filename)[0] + ".h5"
 
         # append to file if existing otherwise create new one
-        if os.path.isfile(h5_file):
-            logging.warning('File already exists: overwriting %s', h5_file)
-        self.raw_data_file_h5 = tb.openFile(h5_file, mode="w", title=((self.device_identifier + "_" + self.scan_identifier) if self.device_identifier else self.scan_identifier) + "_" + str(self.scan_number), **kwargs)
+        self.raw_data_file_h5 = tb.openFile(h5_file, mode="a", title=((self.device_identifier + "_" + self.scan_identifier) if self.device_identifier else self.scan_identifier) + "_" + str(self.scan_number), **kwargs)
 
         try:
-            scan_param_descr = generate_scan_configuration_description(dict.iterkeys(scan_configuration))
+            scan_param_descr = generate_scan_configuration_description(dict.iterkeys(configuration))
             filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
-            self.scan_param_table = self.raw_data_file_h5.createTable(self.raw_data_file_h5.root, name='scan_configuration', description=scan_param_descr, title='scan_configuration', filters=filter_tables)
+            self.scan_param_table = self.raw_data_file_h5.createTable(self.raw_data_file_h5.root, name=configuation_name, description=scan_param_descr, title='device_configuration', filters=filter_tables)
         except tb.exceptions.NodeError:
-            self.scan_param_table = self.raw_data_file_h5.getNode(self.raw_data_file_h5.root, name='scan_configuration')
+            self.scan_param_table = self.raw_data_file_h5.getNode(self.raw_data_file_h5.root, name=configuation_name)
 
         row_scan_param = self.scan_param_table.row
 
-        for key, value in dict.iteritems(scan_configuration):
+        for key, value in dict.iteritems(configuration):
             row_scan_param[key] = str(value)
 
         row_scan_param.append()

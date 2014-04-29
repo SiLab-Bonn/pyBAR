@@ -24,7 +24,7 @@ with tb.openFile(input_file_calibration, mode="r") as in_file_calibration_h5:  #
     gdacs = in_file_calibration_h5.root.MeanThresholdCalibration[:]['gdac']
 
 
-scan_configuration = {
+local_configuration = {
     "source": 'not specified',
     "gdacs": gdacs,
     "trigger_mode": 0,
@@ -226,7 +226,7 @@ class ExtTriggerGdacScan(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = ExtTriggerGdacScan(**configuration.device_configuration)
-    scan.start(use_thread=True, **scan_configuration)
+    scan = ExtTriggerGdacScan(**configuration.default_configuration)
+    scan.start(use_thread=True, **local_configuration)
     scan.stop()
 #     scan.analyze()

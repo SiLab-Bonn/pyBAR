@@ -10,7 +10,7 @@ from utils import Keithley24xx
 from scan.scan import ScanBase
 import matplotlib.pyplot as plt
 
-scan_configuration = {
+local_configuration = {
     "multimeter_device_config": 'keithley.yaml',
     "colpr_addr": 20,
     "scan_parameter": 'PlsrDAC',
@@ -91,7 +91,7 @@ class PlsrDacScan(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = PlsrDacScan(**configuration.device_configuration)
-    scan.start(use_thread=False, **scan_configuration)
+    scan = PlsrDacScan(**configuration.default_configuration)
+    scan.start(use_thread=False, **local_configuration)
     scan.stop()
     scan.analyze()

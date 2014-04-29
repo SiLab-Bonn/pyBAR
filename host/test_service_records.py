@@ -46,7 +46,7 @@ class TestServiceRecords(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = TestServiceRecords(**configuration.device_configuration)
+    scan = TestServiceRecords(**configuration.default_configuration)
     scan.start(configure=False)
     scan.stop()
     scan.analyze()
