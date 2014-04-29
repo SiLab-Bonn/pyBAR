@@ -7,7 +7,7 @@ import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
-scan_configuration = {
+local_configuration = {
     "mask_steps": 3,
     "repeat_command": 100,
     "scan_parameter": 'PlsrDAC',
@@ -79,7 +79,7 @@ class ThresholdScan(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = ThresholdScan(**configuration.device_configuration)
-    scan.start(use_thread=True, **scan_configuration)
+    scan = ThresholdScan(**configuration.default_configuration)
+    scan.start(use_thread=True, **local_configuration)
     scan.stop()
     scan.analyze()

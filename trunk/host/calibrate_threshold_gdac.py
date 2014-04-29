@@ -164,7 +164,7 @@ if __name__ == "__main__":
 #     reanalyze()
     logging.info('Taking threshold data at following GDACs: %s' % str(calibration_configuration['gdacs']))
     scan_data_filenames = {}
-    scan_threshold_fast = FastThresholdScan(**configuration.device_configuration)
+    scan_threshold_fast = FastThresholdScan(**configuration.default_configuration)
     for i, gdac_value in enumerate(calibration_configuration['gdac_range']):
         scan_threshold_fast.register_utils.set_gdac(gdac_value)
         scan_threshold_fast.scan_identifier = calibration_configuration['scan_identifier'] + '_' + str(gdac_value)

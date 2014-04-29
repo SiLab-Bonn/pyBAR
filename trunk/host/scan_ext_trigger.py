@@ -9,7 +9,7 @@ from daq.readout import open_raw_data_file
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
-scan_configuration = {
+local_configuration = {
     "trigger_mode": 0,
     "trigger_latency": 232,
     "trigger_delay": 14,
@@ -173,7 +173,7 @@ class ExtTriggerScan(ScanBase):
             analyze_raw_data.create_source_scan_hist = True
             analyze_raw_data.create_cluster_size_hist = True
             analyze_raw_data.create_cluster_tot_hist = True
-            if scan_configuration['enable_tdc']:
+            if scan.scan_configuration['enable_tdc']:
                 analyze_raw_data.create_tdc_counter_hist = True  # histogram all TDC words
                 analyze_raw_data.create_tdc_hist = True  # histogram the hit TDC information
                 analyze_raw_data.interpreter.use_tdc_word(True)  # align events at the TDC word
@@ -185,7 +185,7 @@ class ExtTriggerScan(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = ExtTriggerScan(**configuration.device_configuration)
-    scan.start(use_thread=True, **scan_configuration)
+    scan = ExtTriggerScan(**configuration.default_configuration)
+    scan.start(use_thread=True, **local_configuration)
     scan.stop()
     scan.analyze()

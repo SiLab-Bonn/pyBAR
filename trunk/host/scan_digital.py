@@ -8,7 +8,7 @@ import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
-scan_configuration = {
+local_configuration = {
     "mask_steps": 3,
     "repeat_command": 100,
 }
@@ -57,7 +57,7 @@ class DigitalScan(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = DigitalScan(**configuration.device_configuration)
-    scan.start(use_thread=False, **scan_configuration)
+    scan = DigitalScan(**configuration.default_configuration)
+    scan.start(use_thread=False, **local_configuration)
     scan.stop()
     scan.analyze()

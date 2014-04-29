@@ -13,7 +13,7 @@ from analysis import analysis_utils
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
-scan_configuration = {
+local_configuration = {
     "source": 'Cd strong source',
     "GDAC_calibration_file": 'data//SCC_99//calibrate_threshold_gdac_SCC_99_new.h5',
     "gdacs": None,  # specifiy the GDACs to use here, if set to None they are taken from the GDAC_calibration_file
@@ -28,15 +28,15 @@ scan_configuration = {
 
 
 # load GDAC values from calibration file
-if scan_configuration['gdacs'] is None:
+if scan.scan_configuration['gdacs'] is None:
     def get_gdacs(thresholds, mean_threshold_calibration):  # interpolate the GDAC value at the chosen threshold positions
         interpolation = interp1d(mean_threshold_calibration['mean_threshold'], mean_threshold_calibration['gdac'], kind='slinear', bounds_error=True)
         return np.unique(interpolation(thresholds).astype(np.uint32))
-    with tb.openFile(scan_configuration['GDAC_calibration_file'], mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
-        if scan_configuration['threshold_range'] is not None:
-            scan_configuration['gdacs'] = get_gdacs(scan_configuration['threshold_range'], in_file_calibration_h5.root.MeanThresholdCalibration[:])
+    with tb.openFile(scan.scan_configuration['GDAC_calibration_file'], mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
+        if scan.scan_configuration['threshold_range'] is not None:
+            scan.scan_configuration['gdacs'] = get_gdacs(scan.scan_configuration['threshold_range'], in_file_calibration_h5.root.MeanThresholdCalibration[:])
         else:
-            scan_configuration['gdacs'] = in_file_calibration_h5.root.MeanThresholdCalibration[:]['gdac']
+            scan.scan_configuration['gdacs'] = in_file_calibration_h5.root.MeanThresholdCalibration[:]['gdac']
 
 
 class FEI4SelfTriggerGdacScan(ScanBase):
@@ -185,7 +185,7 @@ class FEI4SelfTriggerGdacScan(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = FEI4SelfTriggerGdacScan(**configuration.scc99_configuration)
-    scan.start(use_thread=True, **scan_configuration)
+    scan = FEI4SelfTriggerGdacScan(**configuration.default_configuration)
+    scan.start(use_thread=True, **local_configuration)
     scan.stop()
     # for analysis run analyze_source_scan_gdac_data

@@ -9,7 +9,7 @@ from daq.readout import open_raw_data_file
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
-scan_configuration = {
+local_configuration = {
     "col_span": [2, 77],
     "row_span": [2, 335],
     "timeout_no_data": 10,
@@ -140,7 +140,7 @@ class FEI4SelfTriggerScan(ScanBase):
         from analysis.analyze_raw_data import AnalyzeRawData
         output_file = self.scan_data_filename + "_interpreted.h5"
         with AnalyzeRawData(raw_data_file=scan.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
-            analyze_raw_data.interpreter.set_trig_count(scan_configuration['trig_count'])
+            analyze_raw_data.interpreter.set_trig_count(self.register.get_global_register_value("Trig_Count"))
             analyze_raw_data.create_cluster_size_hist = True  # can be set to false to omit cluster hit creation, can save some time, standard setting is false
             analyze_raw_data.create_source_scan_hist = True
             analyze_raw_data.create_cluster_tot_hist = True
@@ -152,7 +152,7 @@ class FEI4SelfTriggerScan(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = FEI4SelfTriggerScan(**configuration.device_configuration)
-    scan.start(use_thread=True, **scan_configuration)
+    scan = FEI4SelfTriggerScan(**configuration.default_configuration)
+    scan.start(use_thread=True, **local_configuration)
     scan.stop()
     scan.analyze()

@@ -10,7 +10,7 @@ from scan.scan import ScanBase
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
-scan_configuration = {
+local_configuration = {
     "target_threshold": 50,
     "tdac_tune_bits": range(4, -1, -1),
     "n_injections": 100,
@@ -146,7 +146,7 @@ class TdacTune(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = TdacTune(**configuration.device_configuration)
-    scan.start(use_thread=False, **scan_configuration)
+    scan = TdacTune(**configuration.default_configuration)
+    scan.start(use_thread=False, **local_configuration)
     scan.stop()
-    scan.register.save_configuration(configuration.device_configuration['configuration_file'])
+    scan.register.save_configuration(scan.device_configuration['configuration_file'])
