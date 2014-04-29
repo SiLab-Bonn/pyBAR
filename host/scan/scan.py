@@ -193,7 +193,8 @@ class ScanBase(object):
         self.readout.reset_rx()
 #        self.readout.reset_sram_fifo()
 
-        if not any(self.readout.print_readout_status()):
+        self.readout.print_readout_status()
+        if not any(self.readout.get_rx_sync_status()):
             self.device.dispose()  # free USB resources
             raise NoSyncError('No data sync on any input channel. Power? Cables?')
 #             logging.error('Stopping scan: no sync')

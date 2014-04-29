@@ -94,13 +94,16 @@ class Readout(object):
 
     def print_readout_status(self):
         sync_status = self.get_rx_sync_status()
+        discard_count = self.get_rx_fifo_discard_count()
+        error_count = self.get_rx_8b10b_error_count()
         logging.info('Data queue size: %d' % len(self.data))  # .qsize())
         logging.info('SRAM FIFO size: %d' % self.get_sram_fifo_size())
         logging.info('Channel:                     %s', " | ".join([('CH%d' % channel).rjust(3) for channel in range(1, 5, 1)]))
         logging.info('RX sync:                     %s', " | ".join(["YES".rjust(3) if status == True else "NO".rjust(3) for status in sync_status]))
-        logging.info('RX FIFO discard counter:     %s', " | ".join([repr(count).rjust(3) for count in self.get_rx_fifo_discard_count()]))
-        logging.info('RX FIFO 8b10b error counter: %s', " | ".join([repr(count).rjust(3) for count in self.get_rx_8b10b_error_count()]))
-        return sync_status
+        logging.info('RX FIFO discard counter:     %s', " | ".join([repr(count).rjust(3) for count in discard_count]))
+        logging.info('RX FIFO 8b10b error counter: %s', " | ".join([repr(count).rjust(3) for count in error_count]))
+        if not any(self.readout.get_rx_sync_status()) or any(discard_count) or any(error_count):
+            logging.warning('RX errors detected')
 
     def worker(self):
         '''Reading thread to continuously reading SRAM
