@@ -214,6 +214,9 @@ class FEI4Register(object):
 
         self.load_configuration(self.configuration_file)
 
+    def __repr__(self):
+        return self.configuration_file
+
     def is_chip_flavor(self, chip_flavor):
         chip_flavor = chip_flavor.translate(None, '_-').lower()
         if chip_flavor in self.chip_flavors:
