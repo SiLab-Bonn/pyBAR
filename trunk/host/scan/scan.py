@@ -148,11 +148,15 @@ class ScanBase(object):
 
     @property
     def device_configuration(self):
-        return self._device_configuration
+        tmp_device_configuration = self._device_configuration.copy()
+        # return objects for register and device, because they need special treatment
+        tmp_device_configuration["configuration_file"] = self.register
+        tmp_device_configuration["device"] = self.device
+        return tmp_device_configuration
 
     @property
     def scan_configuration(self):
-        return self._scan_configuration
+        return self._scan_configuration.copy()
 
     def start(self, configure=True, restore_configuration=False, use_thread=False, do_global_reset=True, **kwargs):  # TODO: in Python 3 use def func(a,b,*args,kw1=None,**kwargs)
         '''Starting scan.
@@ -186,8 +190,6 @@ class ScanBase(object):
         self.write_scan_number()
 
         if self.device_configuration:
-            print 'device'
-            print self.device_configuration
             self.save_configuration('device_configuration', self.device_configuration)
 
         if self.scan_configuration:
