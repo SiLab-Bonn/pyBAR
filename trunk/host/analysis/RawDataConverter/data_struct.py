@@ -145,3 +145,19 @@ class ThresholdCalibrationTable(tb.IsDescription):
     vthin_altfine = tb.UInt32Col(pos=3)
     vthin_altcoarse = tb.UInt32Col(pos=4)
     threshold = tb.Float64Col(pos=5)
+
+class MeanThresholdTable(tb.IsDescription):
+    parameter = tb.UInt32Col(pos=0)
+    vthin_altfine = tb.UInt32Col(pos=1)
+    vthin_altcoarse = tb.UInt32Col(pos=2)
+    mean_threshold = tb.Float64Col(pos=3)
+    threshold_rms = tb.Float64Col(pos=4)
+
+
+class ThresholdTable(tb.IsDescription):
+    column = tb.UInt8Col(pos=0)
+    row = tb.UInt16Col(pos=1)
+    parameter = tb.UInt32Col(pos=2)
+    vthin_altfine = tb.UInt32Col(pos=3)
+    vthin_altcoarse = tb.UInt32Col(pos=4)
+    threshold = tb.Float64Col(pos=5)
