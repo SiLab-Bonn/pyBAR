@@ -36,13 +36,14 @@ def analyze_raw_data(input_file, output_file_hits, chip_flavor, scan_data_filena
         analyze_raw_data.n_bcid = 16  # set the number of BCIDs per event, needed to judge the event structure
         analyze_raw_data.max_tot_value = 13  # set the maximum ToT value considered to be a hit, 14 is a late hit
         analyze_raw_data.use_trigger_number = False
+        analyze_raw_data.set_stop_mode = False  # special analysis if data was taken in stop mode
+        analyze_raw_data.interpreter.use_tdc_word(False)  # use the TDC word to align the events, assume that they are first words in the event
 
-        analyze_raw_data.clusterizer.set_warning_output(True)  # std. setting is True
-        analyze_raw_data.interpreter.set_debug_output(True)  # std. setting is True
-        analyze_raw_data.interpreter.set_warning_output(True)  # std. setting is True
+        analyze_raw_data.interpreter.set_debug_output(False)  # std. setting is False
         analyze_raw_data.interpreter.set_info_output(False)  # std. setting is False
+        analyze_raw_data.interpreter.set_warning_output(True)  # std. setting is True
+        analyze_raw_data.clusterizer.set_warning_output(True)  # std. setting is True
         analyze_raw_data.interpreter.debug_events(3832, 3850, False)  # events to be printed onto the console for debugging, usually deactivated
-        analyze_raw_data.interpreter.use_tdc_word(False)
         analyze_raw_data.interpret_word_table(fei4b=True if(chip_flavor == 'fei4b') else False)  # the actual start conversion command
         analyze_raw_data.interpreter.print_summary()  # prints the interpreter summary
         analyze_raw_data.plot_histograms(scan_data_filename=scan_data_filename)  # plots all activated histograms into one pdf
