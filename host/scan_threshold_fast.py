@@ -11,14 +11,14 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(leve
 
 
 local_configuration = {
-    "mask_steps": 3,
-    "repeat_command": 100,
-    "scan_parameter": 'PlsrDAC',
-    "scan_parameter_range": None,
-    "scan_parameter_stepsize": 2,
-    "search_distance": 10,
-    "minimum_data_points": 15,
-    "ignore_columns": (1, 78, 79, 80)
+    "mask_steps": 3,  # define how many pixels are injected to at once
+    "repeat_command": 100,  # how often one injects per PlsrDAC setting and pixel
+    "scan_parameter_range": (0, 100),  # the min/max PlsrDAC values used during scan
+    "enable_mask_steps": None,  # list of the mask steps to be used; None: use all pixels
+    "scan_parameter_stepsize": 2,  # the increase of the PlstrDAC if the Scurve start was found
+    "search_distance": 10,  # the increase of the PlstrDAC if the Scurve start is not found yet
+    "minimum_data_points": 15,  # the minimum PlsrDAC settings for one S-Curve
+    "ignore_columns": (1, 78, 79, 80)  # columns which data should be ignored
 }
 
 
@@ -27,7 +27,7 @@ class FastThresholdScan(ScanBase):
     scan_parameter_start = 0  # holding last start value (e.g. used in GDAC threshold scan)
     data_points = 10
 
-    def scan(self, mask_steps=3, repeat_command=100, scan_parameter='PlsrDAC', scan_parameter_range=None, scan_parameter_stepsize=2, search_distance=10, minimum_data_points=15, ignore_columns=(1, 78, 79, 80), **kwargs):
+    def scan(self, mask_steps=3, repeat_command=100, scan_parameter='PlsrDAC', scan_parameter_range=None, enable_mask_steps=None, scan_parameter_stepsize=2, search_distance=10, minimum_data_points=15, ignore_columns=(1, 78, 79, 80), command=None, **kwargs):
         '''Scan loop
 
         Parameters
@@ -36,8 +36,6 @@ class FastThresholdScan(ScanBase):
             Number of mask steps.
         repeat_command : int
             Number of injections per scan step.
-        scan_parameter : string
-            Name of global register.
         scan_parameter_range : list, tuple
             Specify the minimum and maximum value for scan parameter range. Upper value not included.
         scan_parameter_stepsize : int
@@ -97,8 +95,8 @@ class FastThresholdScan(ScanBase):
 
                 self.readout.start()
 
-                cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0]
-                self.scan_loop(cal_lvl1_command, repeat_command=repeat_command, hardware_repeat=True, use_delay=True, mask_steps=mask_steps, enable_mask_steps=None, enable_double_columns=enable_double_columns, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_c_high=None, enable_c_low=None, enable_shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=False, mask=None)
+                cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0] if command is None else command
+                self.scan_loop(cal_lvl1_command, repeat_command=repeat_command, hardware_repeat=True, use_delay=True, mask_steps=mask_steps, enable_mask_steps=[0], enable_double_columns=enable_double_columns, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_c_high=None, enable_c_low=None, enable_shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=False, mask=None)
 
                 self.readout.stop()
 
