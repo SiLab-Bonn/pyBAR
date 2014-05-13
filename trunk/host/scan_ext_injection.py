@@ -18,7 +18,7 @@ local_configuration = {
 
 
 class ExtInjScan(ScanBase):
-    scan_identifier = "ext_injection_scan"
+    scan_id = "ext_injection_scan"
 
     def scan(self, mask_steps=6, repeat_command=1000, enable_double_columns=None, **kwargs):
         self.readout.start()
@@ -28,7 +28,7 @@ class ExtInjScan(ScanBase):
 
         self.readout.stop()
 
-        save_raw_data_from_data_dict_iterable(self.readout.data, filename=self.scan_data_filename, title=self.scan_identifier)
+        save_raw_data_from_data_dict_iterable(self.readout.data, filename=self.scan_data_filename, title=self.scan_id)
 
     def analyze(self):
         from analysis.analyze_raw_data import AnalyzeRawData

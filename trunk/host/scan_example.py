@@ -19,7 +19,7 @@ class ExampleScan(ScanBase):
     some_class_varible = None
 
     # defining scan name
-    scan_identifier = "example_scan"
+    scan_id = "example_scan"
 
     # initializing the newly-created class instance
     # usually not needed

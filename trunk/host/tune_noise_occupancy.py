@@ -25,7 +25,7 @@ local_configuration = {
 
 
 class NoiseOccupancyScan(ScanBase):
-    scan_identifier = "noise_occupancy_tuning"
+    scan_id = "noise_occupancy_tuning"
 
     def scan(self, occupancy_limit=10 ** (-7), triggers=10000000, trig_count=1, disable_for_mask=['Enable'], enable_for_mask=['Imon'], overwrite_mask=False, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, **kwargs):
         '''Masking pixels with occupancy above certain limit.
@@ -95,7 +95,7 @@ class NoiseOccupancyScan(ScanBase):
         self.col_arr = np.array([], dtype=np.dtype('>u1'))
         self.row_arr = np.array([], dtype=np.dtype('>u1'))
 
-        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier) as raw_data_file:
+        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_id) as raw_data_file:
             self.readout.start()
 
             # preload command

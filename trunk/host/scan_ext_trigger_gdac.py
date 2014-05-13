@@ -40,7 +40,7 @@ local_configuration = {
 
 
 class ExtTriggerGdacScan(ScanBase):
-    scan_identifier = "ext_trigger_gdac_scan"
+    scan_id = "ext_trigger_gdac_scan"
 
     def scan(self, gdacs, trigger_mode=0, trigger_latency=232, trigger_delay=14, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=10000, enable_hitbus=False, **kwargs):
         '''Scan loop
@@ -119,7 +119,7 @@ class ExtTriggerGdacScan(ScanBase):
                 break
             self.repeat_scan_step = True
             while self.repeat_scan_step and not self.stop_thread_event.is_set():
-                with open_raw_data_file(filename=self.scan_data_filename + '_GDAC_' + str(gdac_value), title=self.scan_identifier, scan_parameters=["GDAC"], mode='w') as raw_data_file:
+                with open_raw_data_file(filename=self.scan_data_filename + '_GDAC_' + str(gdac_value), title=self.scan_id, scan_parameters=["GDAC"], mode='w') as raw_data_file:
                     self.repeat_scan_step = False
                     self.stop_loop_event.clear()
                     self.register_utils.set_gdac(gdac_value)

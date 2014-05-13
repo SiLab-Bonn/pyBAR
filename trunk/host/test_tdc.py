@@ -19,7 +19,7 @@ local_configuration = {
 
 
 class TdcTest(ScanBase):
-    scan_identifier = "tdc_test"
+    scan_id = "tdc_test"
 
     def init_pulser(self, GPIB_prim_address):
         try:

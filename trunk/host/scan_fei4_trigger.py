@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 
 
 class Fei4TriggerScan(ScanBase):
-    scan_identifier = "scan_fei4_trigger"
+    scan_id = "scan_fei4_trigger"
 
     def scan(self, config_file_trigger_fe, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=600, max_triggers=10000, invert_lemo_trigger_input=False, wait_for_first_trigger=True, channel_trigger_fe=3, channel_triggered_fe=4, **kwargs):
         '''Scan loop
@@ -36,8 +36,8 @@ class Fei4TriggerScan(ScanBase):
         self.configure_triggered_fe()
         self.configure_trigger_fe(config_file_trigger_fe, col_span, row_span)
 
-        with open_raw_data_file(filename=self.scan_data_filename + "_trigger_fe", title=self.scan_identifier) as raw_data_file_trigger_fe:
-            with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier) as raw_data_file:
+        with open_raw_data_file(filename=self.scan_data_filename + "_trigger_fe", title=self.scan_id) as raw_data_file_trigger_fe:
+            with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_id) as raw_data_file:
                 self.readout.start()
 
                 # preload command

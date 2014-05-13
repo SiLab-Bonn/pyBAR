@@ -24,7 +24,7 @@ local_configuration = {
 
 
 class ExtTriggerScan(ScanBase):
-    scan_identifier = "ext_trigger_scan"
+    scan_id = "ext_trigger_scan"
 
     def scan(self, trigger_mode=0, trigger_latency=232, trigger_delay=14, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=10000, enable_hitbus=False, enable_tdc=False, **kwargs):
         '''Scan loop
@@ -95,7 +95,7 @@ class ExtTriggerScan(ScanBase):
 
         wait_for_first_trigger = True
 
-        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier) as raw_data_file:
+        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_id) as raw_data_file:
             self.readout.start()
             # preload command
             lvl1_command = self.register.get_commands("zeros", length=trigger_delay)[0] + self.register.get_commands("lv1")[0]  # + self.register.get_commands("zeros", length=200)[0]

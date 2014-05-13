@@ -27,7 +27,7 @@ local_configuration = {
 
 
 class HitOrScan(ScanBase):
-    scan_identifier = "hit_or_scan"
+    scan_id = "hit_or_scan"
 
     def get_dc_and_mask_step(self, column, row):
         ''' Returns the double columns and the mask step for the given pixel in column, row coordinates '''
@@ -60,7 +60,7 @@ class HitOrScan(ScanBase):
 #         self.deactivate_tdc()
 #         self.activate_tdc()
 
-        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier, scan_parameters=[scan_parameter, 'column', 'row']) as raw_data_file:
+        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_id, scan_parameters=[scan_parameter, 'column', 'row']) as raw_data_file:
             for pixel in pixels:
                 column = pixel[0]
                 row = pixel[1]

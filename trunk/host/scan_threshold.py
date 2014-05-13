@@ -17,7 +17,7 @@ local_configuration = {
 
 
 class ThresholdScan(ScanBase):
-    scan_identifier = "threshold_scan"
+    scan_id = "threshold_scan"
 
     def scan(self, mask_steps=3, repeat_command=100, scan_parameter='PlsrDAC', scan_parameter_range=(0, 100), scan_parameter_stepsize=1, **kwargs):
         '''Scan loop
@@ -41,7 +41,7 @@ class ThresholdScan(ScanBase):
             scan_parameter_values = range(scan_parameter_range[0], scan_parameter_range[1], scan_parameter_stepsize)
         logging.info("Scanning %s from %d to %d" % (scan_parameter, scan_parameter_values[0], scan_parameter_values[-1]))
 
-        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier, scan_parameters=[scan_parameter]) as raw_data_file:
+        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_id, scan_parameters=[scan_parameter]) as raw_data_file:
 
             for scan_parameter_value in scan_parameter_values:
                 if self.stop_thread_event.is_set():

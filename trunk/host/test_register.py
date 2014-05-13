@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(leve
 
 
 class RegisterTest(ScanBase):
-    scan_identifier = "register_test"
+    scan_id = "register_test"
 
     def scan(self, **kwargs):
         '''Testing of FE global and pixel registers and reading of chip S/N.

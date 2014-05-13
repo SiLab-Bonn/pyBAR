@@ -18,7 +18,7 @@ local_configuration = {
 
 
 class AnalogScan(ScanBase):
-    scan_identifier = "analog_scan"
+    scan_id = "analog_scan"
 
     def scan(self, mask_steps=3, repeat_command=100, scan_parameter='PlsrDAC', scan_parameter_value=200, enable_tdc=False, **kwargs):
         '''Scan loop
@@ -61,7 +61,7 @@ class AnalogScan(ScanBase):
 #         plot_occupancy(hist=make_occupancy_hist(*convert_data_array(data_array_from_data_dict_iterable(self.readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)), z_max='median', filename=self.scan_data_filename + "_occupancy.pdf")
 
         # saving data
-        save_raw_data_from_data_dict_iterable(self.readout.data, filename=self.scan_data_filename, title=self.scan_identifier)
+        save_raw_data_from_data_dict_iterable(self.readout.data, filename=self.scan_data_filename, title=self.scan_id)
 
     def analyze(self):
         output_file = scan.scan_data_filename + "_interpreted.h5"

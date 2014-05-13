@@ -40,7 +40,7 @@ if scan.scan_configuration['gdacs'] is None:
 
 
 class FEI4SelfTriggerGdacScan(ScanBase):
-    scan_identifier = "fei4_self_trigger_gdac_scan"
+    scan_id = "fei4_self_trigger_gdac_scan"
 
     def scan(self, gdacs, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=1 * 60, trig_latency=239, trig_count=4, **kwargs):
         '''Scan loop
@@ -75,7 +75,7 @@ class FEI4SelfTriggerGdacScan(ScanBase):
                 break
             self.repeat_scan_step = True
             while self.repeat_scan_step and not self.stop_thread_event.is_set():
-                with open_raw_data_file(filename=self.scan_data_filename + '_GDAC_' + str(gdac_value), title=self.scan_identifier, scan_parameters=["GDAC"], mode='w') as raw_data_file:
+                with open_raw_data_file(filename=self.scan_data_filename + '_GDAC_' + str(gdac_value), title=self.scan_id, scan_parameters=["GDAC"], mode='w') as raw_data_file:
                     self.repeat_scan_step = False
                     self.stop_loop_event.clear()
                     self.register_utils.set_gdac(gdac_value)

@@ -24,7 +24,7 @@ local_configuration = {
 
 
 class GdacTune(ScanBase):
-    scan_identifier = "gdac_tune"
+    scan_id = "gdac_tune"
 
     def set_abort_precision(self, delta_occupancy=2):
         self.abort_precision = delta_occupancy
@@ -102,7 +102,7 @@ class GdacTune(ScanBase):
 
         scan_parameter = 'GDAC'
 
-        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier, scan_parameters=[scan_parameter]) as raw_data_file:
+        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_id, scan_parameters=[scan_parameter]) as raw_data_file:
             occupancy_best = 0
             vthin_af_best = self.register.get_global_register_value("Vthin_AltFine")
             vthin_ac_best = self.register.get_global_register_value("Vthin_AltCoarse")
