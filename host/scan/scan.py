@@ -28,9 +28,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 
 
 class ScanBase(object):
-    scan_identifier = "base_scan"
+    scan_id = "base_scan"
 
-    def __init__(self, configuration_file=None, definition_file=None, bit_file=None, force_download=False, device=None, scan_data_path=None, device_identifier="", **kwargs):
+    def __init__(self, configuration_file=None, register=None, definition_file=None, bit_file=None, force_download=False, device_id=None, device=None, scan_data_path=None, module_id="", **kwargs):
         '''
         configuration_file : str, FEI4Register
             Filename of FE configuration file or FEI4Register object.
@@ -42,7 +42,7 @@ class ScanBase(object):
             Force download of bitstream file, even if FPGA is configured.
         device : SiUSBDevice, int
             SiUSBDevice object or device ID. If None, any available USB device will be taken.
-        scan_identifier : str
+        scan_id : str
             Scan identifier string.
         scan_data_path : str
             Pathname of data output path.
@@ -58,23 +58,11 @@ class ScanBase(object):
             import win32api
             win32api.SetConsoleCtrlHandler(handler, 1)
 
-        if device is not None:
-            #if isinstance(device, usb.core.Device):
-            if isinstance(device, SiUSBDevice):
-                self.device = device
-            elif isinstance(device, int):
-                self.device = SiUSBDevice.from_board_id(device)
-            else:
-                raise TypeError('Device has wrong type')
-            try:
-                # avoid reading board ID and FW version a second time because this will crash the uC
-                if not self.device.XilinxAlreadyLoaded():
-                    logging.info('Using %s with ID %s (FW %s)', self.device.board_name, filter(type(self.device.board_id).isdigit, self.device.board_id), filter(type(self.device.fw_version).isdigit, self.device.fw_version))
-                else:
-                    logging.info('Using %s with ID %s', 'USBpix', str(device))
-            except USBError:
-                raise DeviceError('Can\'t communicate with USB board. Reset USB board!')
-        else:
+        self.device_id = device_id
+        self.device = device
+
+        if not self.device and not self.device_id:
+            # search for any available device
             try:
                 self.device = SiUSBDevice()
             except USBError:
@@ -85,6 +73,18 @@ class ScanBase(object):
                     logging.info('Found %s with ID %s (FW %s)', self.device.board_name, filter(type(self.device.board_id).isdigit, self.device.board_id), filter(type(self.device.fw_version).isdigit, self.device.fw_version))
             except USBError:
                 raise DeviceError('Can\'t communicate with USB board. Reset USB board!')
+        else:
+            if not self.device:
+                self.device = SiUSBDevice.from_board_id(device_id)
+            try:
+                # avoid reading board ID and FW version a second time because this will crash the uC
+                if not self.device.XilinxAlreadyLoaded():
+                    logging.info('Using %s with ID %s (FW %s)', self.device.board_name, filter(type(self.device.board_id).isdigit, self.device.board_id), filter(type(self.device.fw_version).isdigit, self.device.fw_version))
+                else:
+                    logging.info('Using %s with ID %s', 'USBpix', str(device))
+            except USBError:
+                raise DeviceError('Can\'t communicate with USB board. Reset USB board!')
+
         if bit_file != None:
             if self.device.XilinxAlreadyLoaded() and not force_download:
                 logging.info('FPGA already configured, skipping download of bitstream')
@@ -100,24 +100,23 @@ class ScanBase(object):
         self.readout_utils = ReadoutUtils(self.device)
 
         self.configuration_file = configuration_file
+        self.register = register
 
-        if isinstance(self.configuration_file, FEI4Register):
-            self.register = self.configuration_file
-        else:
+        if not self.register:
             self.register = FEI4Register(configuration_file=self.configuration_file, definition_file=definition_file)
         self.register_utils = FEI4RegisterUtils(self.device, self.readout, self.register)
 
         # remove all non_word characters and whitespace characters to prevent problems with os.path.join
-        self.device_identifier = re.sub(r"[^\w\s+]", '', device_identifier)
-        self.device_identifier = re.sub(r"\s+", '_', self.device_identifier)
-        self.scan_identifier = re.sub(r"[^\w\s+]", '', self.scan_identifier)
-        self.scan_identifier = re.sub(r"\s+", '_', self.scan_identifier)
+        self.module_id = re.sub(r"[^\w\s+]", '', module_id)
+        self.module_id = re.sub(r"\s+", '_', self.module_id)
+        self.scan_id = re.sub(r"[^\w\s+]", '', self.scan_id)
+        self.scan_id = re.sub(r"\s+", '_', self.scan_id)
         if scan_data_path == None:
             self.scan_data_path = os.getcwd()
         else:
             self.scan_data_path = scan_data_path
-        if self.device_identifier:
-            self.scan_data_output_path = os.path.join(self.scan_data_path, self.device_identifier)
+        if self.module_id:
+            self.scan_data_output_path = os.path.join(self.scan_data_path, self.module_id)
         else:
             self.scan_data_output_path = self.scan_data_path
 
@@ -137,8 +136,11 @@ class ScanBase(object):
         # get scan args
         frame = inspect.currentframe()
         args, _, _, locals = inspect.getargvalues(frame)
-        self._device_configuration = {key: locals[key] for key in args if key is not 'self'}
-        self._device_configuration.update(kwargs)
+        self._device_configuration = {key: locals[key] for key in args if key != 'self' and key != 'args' and key != 'kwargs'}
+        self._device_configuration["register"] = self.register
+        self._device_configuration["device"] = self.device
+        if kwargs:
+            self._device_configuration.update(kwargs)
 
         self._scan_configuration = {}
 
@@ -148,11 +150,7 @@ class ScanBase(object):
 
     @property
     def device_configuration(self):
-        tmp_device_configuration = self._device_configuration.copy()
-        # return objects for register and device, because they need special treatment
-        tmp_device_configuration["configuration_file"] = self.register
-        tmp_device_configuration["device"] = self.device
-        return tmp_device_configuration
+        return self._device_configuration.copy()
 
     @property
     def scan_configuration(self):
@@ -212,7 +210,7 @@ class ScanBase(object):
             self.register_utils.configure_all()
         self.restore_configuration = restore_configuration
         if self.restore_configuration:
-            self.register.create_restore_point(name=self.scan_identifier)
+            self.register.create_restore_point(name=self.scan_id)
 
         self.readout.reset_rx()
 #        self.readout.reset_sram_fifo()
@@ -226,9 +224,9 @@ class ScanBase(object):
 
         self.stop_thread_event.clear()
 
-        logging.info('Starting scan %s with ID %d (output path: %s)' % (self.scan_identifier, self.scan_number, self.scan_data_output_path))
+        logging.info('Starting scan %s with ID %d (output path: %s)' % (self.scan_id, self.scan_number, self.scan_data_output_path))
         if use_thread:
-            self.scan_thread = Thread(target=self.scan, name='%s with ID %d' % (self.scan_identifier, self.scan_number), kwargs=all_parameters)  # , args=kwargs)
+            self.scan_thread = Thread(target=self.scan, name='%s with ID %d' % (self.scan_id, self.scan_number), kwargs=all_parameters)  # , args=kwargs)
             self.scan_thread.daemon = True  # Abruptly close thread when closing main thread. Resources may not be released properly.
             self.scan_thread.start()
             logging.info('Press Ctrl-C to stop scan loop')
@@ -273,9 +271,9 @@ class ScanBase(object):
         self.use_thread = None
         if self.restore_configuration:
             logging.info('Restoring FE configuration')
-            self.register.restore(name=self.scan_identifier)
+            self.register.restore(name=self.scan_id)
             self.register_utils.configure_all()
-        logging.info('Stopped scan %s with ID %d' % (self.scan_identifier, self.scan_number))
+        logging.info('Stopped scan %s with ID %d' % (self.scan_id, self.scan_number))
         self.readout.print_readout_status()
 
         self.device.dispose()  # free USB resources
@@ -288,7 +286,7 @@ class ScanBase(object):
         if not os.path.exists(self.scan_data_output_path):
             os.makedirs(self.scan_data_output_path)
         # In Python 2.x, open on all POSIX systems ultimately just depends on fopen.
-        with open(os.path.join(self.scan_data_output_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), 'a+') as f:
+        with open(os.path.join(self.scan_data_output_path, (self.module_id if self.module_id else self.scan_id) + ".cfg"), 'a+') as f:
             f.seek(0)
             for line in f.readlines():
                 scan_number = int(re.findall(r'\d+\s*', line)[0])
@@ -299,17 +297,17 @@ class ScanBase(object):
             self.scan_number = 0
         else:
             self.scan_number = max(dict.iterkeys(scan_numbers)) + 1
-        scan_numbers[self.scan_number] = str(self.scan_number) + ' ' + self.scan_identifier + ' ' + 'NOT_FINISHED' + '\n'
-        with open(os.path.join(self.scan_data_output_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), "w") as f:
+        scan_numbers[self.scan_number] = str(self.scan_number) + ' ' + self.scan_id + ' ' + 'NOT_FINISHED' + '\n'
+        with open(os.path.join(self.scan_data_output_path, (self.module_id if self.module_id else self.scan_id) + ".cfg"), "w") as f:
             for value in dict.itervalues(scan_numbers):
                 f.write(value)
         self.lock.release()
-        self.scan_data_filename = os.path.join(self.scan_data_output_path, ((self.device_identifier + "_" + self.scan_identifier) if self.device_identifier else self.scan_identifier) + "_" + str(self.scan_number))
+        self.scan_data_filename = os.path.join(self.scan_data_output_path, ((self.module_id + "_" + self.scan_id) if self.module_id else self.scan_id) + "_" + str(self.scan_number))
 
     def write_scan_status(self, aborted=False):
         scan_numbers = {}
         self.lock.acquire()
-        with open(os.path.join(self.scan_data_output_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), 'a+') as f:
+        with open(os.path.join(self.scan_data_output_path, (self.module_id if self.module_id else self.scan_id) + ".cfg"), 'a+') as f:
             f.seek(0)
             for line in f.readlines():
                 scan_number = int(re.findall(r'\d+\s*', line)[0])
@@ -318,11 +316,11 @@ class ScanBase(object):
                 if scan_number != self.scan_number:
                     scan_numbers[scan_number] = line
                 else:
-                    scan_numbers[scan_number] = str(self.scan_number) + ' ' + self.scan_identifier + ' ' + ('ABORTED' if aborted else 'FINISHED') + '\n'
+                    scan_numbers[scan_number] = str(self.scan_number) + ' ' + self.scan_id + ' ' + ('ABORTED' if aborted else 'FINISHED') + '\n'
         if not scan_numbers:
-            scan_numbers[self.scan_number] = str(self.scan_number) + ' ' + self.scan_identifier + ' ' + ('ABORTED' if aborted else 'FINISHED') + '\n'
-            logging.warning('Configuration file was deleted: Restoring %s', os.path.join(self.scan_data_output_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"))
-        with open(os.path.join(self.scan_data_output_path, (self.device_identifier if self.device_identifier else self.scan_identifier) + ".cfg"), "w") as f:
+            scan_numbers[self.scan_number] = str(self.scan_number) + ' ' + self.scan_id + ' ' + ('ABORTED' if aborted else 'FINISHED') + '\n'
+            logging.warning('Configuration file was deleted: Restoring %s', os.path.join(self.scan_data_output_path, (self.module_id if self.module_id else self.scan_id) + ".cfg"))
+        with open(os.path.join(self.scan_data_output_path, (self.module_id if self.module_id else self.scan_id) + ".cfg"), "w") as f:
             for value in dict.itervalues(scan_numbers):
                 f.write(value)
         self.lock.release()
@@ -371,7 +369,7 @@ class ScanBase(object):
             raise TypeError
 
         # create restore point
-        restore_point_name = self.scan_identifier + '_scan_loop'
+        restore_point_name = self.scan_id + '_scan_loop'
         self.register.create_restore_point(name=restore_point_name)
 
         # pre-calculate often used commands
@@ -499,7 +497,7 @@ class ScanBase(object):
             h5_file = os.path.splitext(self.scan_data_filename)[0] + ".h5"
 
         # append to file if existing otherwise create new one
-        self.raw_data_file_h5 = tb.openFile(h5_file, mode="a", title=((self.device_identifier + "_" + self.scan_identifier) if self.device_identifier else self.scan_identifier) + "_" + str(self.scan_number), **kwargs)
+        self.raw_data_file_h5 = tb.openFile(h5_file, mode="a", title=((self.module_id + "_" + self.scan_id) if self.module_id else self.scan_id) + "_" + str(self.scan_number), **kwargs)
 
         try:
             scan_param_descr = generate_scan_configuration_description(dict.iterkeys(configuration))

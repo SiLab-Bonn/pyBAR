@@ -20,7 +20,7 @@ local_configuration = {
 
 
 class PlsrDacScan(ScanBase):
-    scan_identifier = "pulser_dac_calibration"
+    scan_id = "pulser_dac_calibration"
 
     def init_multimeter_device(self, multimeter_device_config):
         with open(multimeter_device_config, 'r') as config_file:

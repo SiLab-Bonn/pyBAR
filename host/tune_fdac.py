@@ -22,7 +22,7 @@ local_configuration = {
 
 
 class FdacTune(ScanBase):
-    scan_identifier = "fdac_tune"
+    scan_id = "fdac_tune"
 
     def set_target_charge(self, plsr_dac=30):
         self.target_charge = plsr_dac
@@ -79,7 +79,7 @@ class FdacTune(ScanBase):
 
         scan_parameter = 'FDAC'
 
-        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier, scan_parameters=[scan_parameter]) as raw_data_file:
+        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_id, scan_parameters=[scan_parameter]) as raw_data_file:
             fdac_mask = []
 
             tot_mean_best = np.empty(shape=(80, 336))  # array to store the best occupancy (closest to Ninjections/2) of the pixel

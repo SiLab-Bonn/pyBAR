@@ -23,7 +23,7 @@ local_configuration = {
 
 
 class FeedbackTune(ScanBase):
-    scan_identifier = "feedback_tune"
+    scan_id = "feedback_tune"
 
     def set_target_charge(self, plsr_dac=250):
         self.target_charge = plsr_dac
@@ -78,7 +78,7 @@ class FeedbackTune(ScanBase):
 
         scan_parameter = 'PrmpVbpf'
 
-        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier, scan_parameters=[scan_parameter]) as raw_data_file:
+        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_id, scan_parameters=[scan_parameter]) as raw_data_file:
             tot_mean_best = 0
             prmp_vbpf_best = self.register.get_global_register_value("PrmpVbpf")
             for PrmpVbpf_bit in self.FeedbackTuneBits:

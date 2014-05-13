@@ -159,7 +159,7 @@ def mask_columns(pixel_array, ignore_columns):
 
 
 if __name__ == "__main__":
-    scan_identifier = 'calibrate_threshold_gdac'
+    scan_id = 'calibrate_threshold_gdac'
     startTime = datetime.now()
 #     reanalyze()
     logging.info('Taking threshold data at following GDACs: %s' % str(calibration_configuration['gdacs']))
@@ -167,7 +167,7 @@ if __name__ == "__main__":
     scan_threshold_fast = FastThresholdScan(**configuration.default_configuration)
     for i, gdac_value in enumerate(calibration_configuration['gdac_range']):
         scan_threshold_fast.register_utils.set_gdac(gdac_value)
-        scan_threshold_fast.scan_identifier = calibration_configuration['scan_identifier'] + '_' + str(gdac_value)
+        scan_threshold_fast.scan_id = calibration_configuration['scan_id'] + '_' + str(gdac_value)
         scan_threshold_fast.start(configure=True, scan_parameter_range=(scan_threshold_fast.scan_parameter_start, 800), scan_parameter_stepsize=2, search_distance=10, minimum_data_points=scan_threshold_fast.data_points - 2, ignore_columns=calibration_configuration['ignore_columns'])
         scan_threshold_fast.stop()
         scan_data_filenames[gdac_value] = scan_threshold_fast.scan_data_filename
@@ -175,6 +175,6 @@ if __name__ == "__main__":
     logging.info("Calibration finished in " + str(datetime.now() - startTime))
 
 #     analyze and plot the data from all scans
-    create_calibration(calibration_configuration['scan_identifier'], scan_data_filenames=scan_data_filenames, ignore_columns=calibration_configuration['ignore_columns'], fei4b=scan_threshold_fast.register.fei4b)
+    create_calibration(calibration_configuration['scan_id'], scan_data_filenames=scan_data_filenames, ignore_columns=calibration_configuration['ignore_columns'], fei4b=scan_threshold_fast.register.fei4b)
 
     logging.info("Finished!")

@@ -20,7 +20,7 @@ local_configuration = {
 
 
 class TdacTune(ScanBase):
-    scan_identifier = "tdac_tune"
+    scan_id = "tdac_tune"
 
     def set_target_threshold(self, PlsrDAC=50):
         self.target_threshold = PlsrDAC
@@ -73,7 +73,7 @@ class TdacTune(ScanBase):
 
         scan_parameter = 'TDAC'
 
-        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier, scan_parameters=[scan_parameter]) as raw_data_file:
+        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_id, scan_parameters=[scan_parameter]) as raw_data_file:
             tdac_mask = []
 
             occupancy_best = np.empty(shape=(80, 336))  # array to store the best occupancy (closest to Ninjections/2) of the pixel

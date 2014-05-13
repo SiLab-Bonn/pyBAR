@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(leve
 
 
 class TestServiceRecords(ScanBase):
-    scan_identifier = "service_record_test"
+    scan_id = "service_record_test"
 
     def scan(self, **kwargs):
         self.register.create_restore_point()
@@ -21,7 +21,7 @@ class TestServiceRecords(ScanBase):
 
         # saving data
         data_dict = self.readout.read_data_dict()
-        save_raw_data_from_data_dict_iterable((data_dict,), filename=self.scan_data_filename, title=self.scan_identifier)
+        save_raw_data_from_data_dict_iterable((data_dict,), filename=self.scan_data_filename, title=self.scan_id)
 
         # debug
 #         for data in data_dict["data"]:

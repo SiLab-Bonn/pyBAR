@@ -23,7 +23,7 @@ local_configuration = {
 
 
 class FastThresholdScan(ScanBase):
-    scan_identifier = "fast_threshold_scan"
+    scan_id = "fast_threshold_scan"
     scan_parameter_start = 0  # holding last start value (e.g. used in GDAC threshold scan)
     data_points = 10
 
@@ -80,7 +80,7 @@ class FastThresholdScan(ScanBase):
 
         self.repeat_command = repeat_command
 
-        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier, scan_parameters=[scan_parameter]) as raw_data_file:
+        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_id, scan_parameters=[scan_parameter]) as raw_data_file:
             while self.scan_parameter_value < scan_parameter_range[1]:  # scan as long as scan parameter is smaller than defined maximum
                 if self.stop_thread_event.is_set():
                     break

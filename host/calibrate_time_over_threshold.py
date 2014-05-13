@@ -21,7 +21,7 @@ local_configuration = {
 
 
 class TimeOverThresholdScan(ScanBase):
-    scan_identifier = "time_over_threshold_calibration"
+    scan_id = "time_over_threshold_calibration"
 
     def scan(self, mask_steps=3, repeat_command=100, scan_parameter='PlsrDAC', scan_parameter_range=None, **kwargs):
         '''Scan loop
@@ -48,7 +48,7 @@ class TimeOverThresholdScan(ScanBase):
 
         output_pdf = PdfPages(os.path.join(self.scan_data_path, self.scan_data_filename) + '.pdf')
         tot_calibration = np.empty(shape=(80, 336, len(scan_parameter_range)), dtype='<f8')  # array to hold the analyzed data in ram
-        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier, scan_parameters=[scan_parameter]) as raw_data_file:
+        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_id, scan_parameters=[scan_parameter]) as raw_data_file:
             for index, scan_parameter_value in enumerate(scan_parameter_range):
                 logging.info('%s at %d %s' % (scan_parameter, scan_parameter_value, ('[%d - %d]' % (scan_parameter_range[0], scan_parameter_range[-1])) if len(scan_parameter_range) > 1 else ('[%d]' % scan_parameter_range[0])))
                 commands = []

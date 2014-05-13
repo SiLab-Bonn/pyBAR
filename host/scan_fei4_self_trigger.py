@@ -20,7 +20,7 @@ local_configuration = {
 
 
 class FEI4SelfTriggerScan(ScanBase):
-    scan_identifier = "fei4_self_trigger_scan"
+    scan_id = "fei4_self_trigger_scan"
 
     def scan(self, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=1 * 60, trig_latency=239, trig_count=4, **kwargs):
         '''Scan loop
@@ -43,7 +43,7 @@ class FEI4SelfTriggerScan(ScanBase):
 
         self.configure_fe(col_span, row_span, trig_latency, trig_count)
 
-        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier) as raw_data_file:
+        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_id) as raw_data_file:
             self.readout.start()
             self.set_self_trigger(True)
             wait_for_first_data = True

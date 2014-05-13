@@ -23,7 +23,7 @@ def get_gdacs(thresholds, mean_threshold_calibration):
 
 
 class Fei4TriggerGdacScan(ScanBase):
-    scan_identifier = "scan_fei4_trigger_gdac"
+    scan_id = "scan_fei4_trigger_gdac"
 
     def scan(self, gdac_range, config_file_trigger_fe, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=10000, invert_lemo_trigger_input=False, wait_for_first_trigger=True, channel_trigger_fe=3, channel_triggered_fe=4, **kwargs):
         '''Scan loop
@@ -52,8 +52,8 @@ class Fei4TriggerGdacScan(ScanBase):
 
         wait_for_first_trigger_setting = wait_for_first_trigger  # needed to reset this for a new GDAC
 
-        with open_raw_data_file(filename=self.scan_data_filename + "_trigger_fe", title=self.scan_identifier, scan_parameters=["GDAC"]) as raw_data_file_trigger_fe:
-            with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier, scan_parameters=["GDAC"]) as raw_data_file:
+        with open_raw_data_file(filename=self.scan_data_filename + "_trigger_fe", title=self.scan_id, scan_parameters=["GDAC"]) as raw_data_file_trigger_fe:
+            with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_id, scan_parameters=["GDAC"]) as raw_data_file:
                 for gdac_value in gdac_range:
                     if self.stop_thread_event.is_set():
                         break
