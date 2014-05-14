@@ -17,15 +17,15 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(leve
 
 
 local_configuration = {
-    "cfg_name": 'tuned_config',
-    "target_threshold": 50,
-    "target_charge": 280,
-    "target_tot": 5,
-    "abort_precision_occ": 2,
-    "abort_precision_tot": 0.1,
-    "global_iterations": 3,
-    "local_iterations": 2,
-    "create_plots": True,
+    "cfg_name": 'tuned_config',  # the name of the new config with the tuning
+    "target_threshold": 50,  # the threshold position in PlsrDAC (1 PlsDAC ~ 55 e)
+    "target_charge": 270,  # the charge to tune the TOT to in PlsrDAC (1 PlsDAC ~ 55 e)
+    "target_tot": 5,  # the target TOT to tune to
+    "abort_precision_occ": 2,  # the abort precision for the global threshold tuning
+    "abort_precision_tot": 0.1,  # the abort precision for the global feedback tuning
+    "global_iterations": 4,  # the number of iterations to do for the global tuning, 0 means only threshold is tuned, negative that no global tuning is done
+    "local_iterations": 3,  # the number of iterations to do for the local tuning, 0 means only threshold is tuned, negative that no local tuning is done
+    "create_plots": True  # plots for all scan steps are created
 }
 
 
