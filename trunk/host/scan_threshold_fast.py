@@ -1,23 +1,22 @@
 ''' The speed up version of the normal threshold scan where the first and the last PlsrDAC setting is determined automatically to minimize the scan time. The step size is changed automatically.
 '''
 import numpy as np
-from scan.scan import ScanBase
-from daq.readout import open_raw_data_file, get_col_row_array_from_data_record_array, convert_data_array, data_array_from_data_dict_iterable, is_data_record, is_data_from_channel, logical_and
+import logging
 
+from scan.scan import ScanBase
+from daq.readout import open_raw_data_file, get_col_row_array_from_data_record_array, convert_data_array, data_array_from_data_dict_iterable, is_data_record
 from analysis.analyze_raw_data import AnalyzeRawData
 
-import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
-
 local_configuration = {
-    "mask_steps": 3,  # define how many pixels are injected to at once
-    "repeat_command": 100,  # how often one injects per PlsrDAC setting and pixel
+    "n_injections": 100,  # how often one injects per PlsrDAC setting and pixel
     "scan_parameter_range": (0, 100),  # the min/max PlsrDAC values used during scan
+    "mask_steps": 3,  # define how many pixels are injected to at once, 3 means every 3rd pixel of a double column
     "enable_mask_steps": None,  # list of the mask steps to be used; None: use all pixels
     "scan_parameter_stepsize": 2,  # the increase of the PlstrDAC if the Scurve start was found
     "search_distance": 10,  # the increase of the PlstrDAC if the Scurve start is not found yet
-    "minimum_data_points": 15,  # the minimum PlsrDAC settings for one S-Curve
+    "minimum_data_points": 20,  # the minimum PlsrDAC settings for one S-Curve
     "ignore_columns": (1, 78, 79, 80)  # columns which data should be ignored
 }
 
@@ -25,19 +24,19 @@ local_configuration = {
 class FastThresholdScan(ScanBase):
     scan_id = "fast_threshold_scan"
     scan_parameter_start = 0  # holding last start value (e.g. used in GDAC threshold scan)
-    data_points = 10
+    data_points = 10  # holding the data points already recorded
 
-    def scan(self, mask_steps=3, repeat_command=100, scan_parameter='PlsrDAC', scan_parameter_range=None, enable_mask_steps=None, scan_parameter_stepsize=2, search_distance=10, minimum_data_points=15, ignore_columns=(1, 78, 79, 80), command=None, **kwargs):
+    def scan(self, mask_steps=3, n_injections=100, scan_parameter_range=None, enable_mask_steps=None, scan_parameter_stepsize=2, search_distance=10, minimum_data_points=15, ignore_columns=(1, 78, 79, 80), command=None, **kwargs):
         '''Scan loop
 
         Parameters
         ----------
         mask_steps : int
             Number of mask steps.
-        repeat_command : int
+        n_injections : int
             Number of injections per scan step.
         scan_parameter_range : list, tuple
-            Specify the minimum and maximum value for scan parameter range. Upper value not included.
+            Specify the minimum and maximum value for scan parameter range. Upper value not included. Takes all bit if None.
         scan_parameter_stepsize : int
             The minimum step size of the parameter. Used when start condition is not triggered.
         search_distance : int
@@ -46,7 +45,11 @@ class FastThresholdScan(ScanBase):
             The minimum data points that are taken for sure until scan finished. Saves also calculation time.
         ignore_columns : list, tuple
             All columns that are neither scanned nor taken into account to set the scan range are mentioned here. Usually the edge columns are ignored. From 1 to 80.
+        command : bitarray.bitarray
+            An arbitrary command can be defined to be send to the FE. If None: Inject + Delay + Trigger is used.
         '''
+
+        scan_parameter = 'PlsrDAC'
 
         self.start_condition_triggered = False  # set to true if the start condition is true once
         self.stop_condition_triggered = False  # set to true if the stop condition is true once
@@ -78,7 +81,7 @@ class FastThresholdScan(ScanBase):
         for column in ignore_columns:
             self.select_arr_columns.remove(column - 1)
 
-        self.repeat_command = repeat_command
+        self.n_injections = n_injections
 
         with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_id, scan_parameters=[scan_parameter]) as raw_data_file:
             while self.scan_parameter_value < scan_parameter_range[1]:  # scan as long as scan parameter is smaller than defined maximum
@@ -96,7 +99,7 @@ class FastThresholdScan(ScanBase):
                 self.readout.start()
 
                 cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0] if command is None else command
-                self.scan_loop(cal_lvl1_command, repeat_command=repeat_command, hardware_repeat=True, use_delay=True, mask_steps=mask_steps, enable_mask_steps=local_configuration['enable_mask_steps'], enable_double_columns=enable_double_columns, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_c_high=None, enable_c_low=None, enable_shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=False, mask=None)
+                self.scan_loop(cal_lvl1_command, repeat_command=self.n_injections, hardware_repeat=True, use_delay=True, mask_steps=mask_steps, enable_mask_steps=enable_mask_steps, enable_double_columns=enable_double_columns, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_c_high=None, enable_c_low=None, enable_shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=False, mask=None)
 
                 self.readout.stop()
 
@@ -137,11 +140,11 @@ class FastThresholdScan(ScanBase):
     def scan_condition(self, occupancy_array):
         occupancy_array_select = occupancy_array[self.select_arr_columns, :]  # only select not ignored columns
         # stop precise scanning actions
-        pixels_with_full_hits = np.ma.array(occupancy_array_select, mask=(occupancy_array_select >= self.repeat_command))  # select pixels that see all injections
+        pixels_with_full_hits = np.ma.array(occupancy_array_select, mask=(occupancy_array_select >= self.n_injections))  # select pixels that see all injections
         pixels_with_full_hits_count = np.ma.count_masked(pixels_with_full_hits)  # count pixels that see all injections
         stop_pixel_cnt = int(np.product(occupancy_array_select.shape) * self.stop_at)
         if pixels_with_full_hits_count >= stop_pixel_cnt and not self.stop_condition_triggered:  # stop precise scanning if this triggers
-            logging.info("Triggering stop condition: %d pixel(s) with %d hits or more >= %d pixel(s)" % (pixels_with_full_hits_count, self.repeat_command, stop_pixel_cnt))
+            logging.info("Triggering stop condition: %d pixel(s) with %d hits or more >= %d pixel(s)" % (pixels_with_full_hits_count, self.n_injections, stop_pixel_cnt))
             self.stop_condition_triggered = True
         # start precise scanning actions
         pixels_with_hits = np.ma.array(occupancy_array_select, mask=(occupancy_array_select != 0))  # select pixels that see at least one hit
@@ -158,7 +161,7 @@ class FastThresholdScan(ScanBase):
             analyze_raw_data.create_threshold_hists = True
             analyze_raw_data.create_fitted_threshold_hists = True
             analyze_raw_data.create_threshold_mask = True
-            analyze_raw_data.n_injections = 100
+            analyze_raw_data.n_injections = local_configuration["n_injections"]
             analyze_raw_data.interpreter.set_warning_output(False)  # so far the data structure in a threshold scan was always bad, too many warnings given
             analyze_raw_data.interpret_word_table(fei4b=self.register.fei4b)
             analyze_raw_data.interpreter.print_summary()
