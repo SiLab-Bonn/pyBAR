@@ -2,20 +2,21 @@
 Command sequence:
     arbitrary FE command + delay + CAL + fixed delay + LVL1
 """
-from datetime import datetime
-import configuration
+
+
 import progressbar
 import tables as tb
 import numpy as np
 import logging
 import os
+import math
+from datetime import datetime
+from matplotlib.backends.backend_pdf import PdfPages
 
+import configuration
 from scan_threshold_fast import FastThresholdScan
 from analysis import analysis_utils
-from analysis import analysis
 from analysis.RawDataConverter import data_struct
-
-from matplotlib.backends.backend_pdf import PdfPages
 from analysis.plotting import plotting
 from analysis.analyze_raw_data import AnalyzeRawData
 
@@ -23,12 +24,11 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(leve
 
 local_configuration = {
     "delays": [1, 10, 50] + (range(100, 3001, 300)),#range(0, 2000, 100),  # the delay between the arbitrary command and the CAL command
-    "data_file": 'data//SCC_85//SCC_85_test_threshold_stability',
-    "analysis_trigger_count": 7,
+    "n_injections": 100,  # how often one injects per PlsrDAC setting and pixel
+    "output_data_filename": 'threshold_stability',  # the file name to store the result data / plots to, no file suffix required
     "analysis_two_trigger": True,  # set to true if the analysis should be done per trigger
-    "ignore_columns": (1, 78, 79, 80),
+    "ignore_columns": (1, 2, 77, 78, 79, 80),
     "create_plots": True,
-    "scan_identifier": 'test_threshold_stability',
     "create_result_plots": True,
     "overwrite_output_files": False
 }
@@ -55,39 +55,43 @@ def select_trigger_hits(input_file_hits, output_file_hits_1, output_file_hits_2)
 
 def analyze(raw_data_file, analyzed_data_file, fei4b=False):
     if not os.path.isfile(analyzed_data_file) or local_configuration['overwrite_output_files']:
+        logging.info('Analyze all trigger')
         with AnalyzeRawData(raw_data_file=raw_data_file, analyzed_data_file=analyzed_data_file) as analyze_raw_data:
             if local_configuration['analysis_two_trigger']:
                 analyze_raw_data.create_hit_table = True
-            analyze_raw_data.n_injections = 200
+            analyze_raw_data.n_injections = local_configuration["n_injections"] * 2
             analyze_raw_data.create_threshold_hists = True
             analyze_raw_data.create_threshold_mask = True
             analyze_raw_data.create_fitted_threshold_hists = True
             analyze_raw_data.create_fitted_threshold_mask = True
-            analyze_raw_data.interpreter.set_trig_count(local_configuration['analysis_trigger_count'])
+            analyze_raw_data.interpreter.set_trig_count(scan_threshold_fast.register.get_global_register_value("Trig_Count"))
             analyze_raw_data.create_tot_hist = False
             analyze_raw_data.interpreter.set_warning_output(False)  # so far the data structure in a threshold scan was always bad, too many warnings given
             analyze_raw_data.interpret_word_table(fei4b=fei4b)
     else:
         logging.debug(analyzed_data_file + ' exists already, skip analysis.')
     if local_configuration['analysis_two_trigger']:
-        logging.info('Analyze per trigger')
+        logging.info('Analyze 1. trigger')
         select_trigger_hits(analyzed_data_file, analyzed_data_file[:-3] + '_1.h5', analyzed_data_file[:-3] + '_2.h5')
         if not os.path.isfile(analyzed_data_file[:-3] + '_analyzed_1.h5') or local_configuration['overwrite_output_files']:
             with AnalyzeRawData(raw_data_file=None, analyzed_data_file=analyzed_data_file[:-3] + '_1.h5') as analyze_raw_data:
+                analyze_raw_data.interpreter.set_trig_count(scan_threshold_fast.register.get_global_register_value("Trig_Count"))
                 analyze_raw_data.create_threshold_hists = True
                 analyze_raw_data.create_threshold_mask = True
                 analyze_raw_data.create_fitted_threshold_hists = True
                 analyze_raw_data.create_fitted_threshold_mask = True
-                analyze_raw_data.n_injections = 100
+                analyze_raw_data.n_injections = local_configuration["n_injections"]
                 analyze_raw_data.analyze_hit_table(analyzed_data_out_file=analyzed_data_file[:-3] + '_analyzed_1.h5')
                 analyze_raw_data.plot_histograms(scan_data_filename=analyzed_data_file[:-3] + '_analyzed_1.pdf', analyzed_data_file=analyzed_data_file[:-3] + '_analyzed_1.h5')
+        logging.info('Analyze 2. trigger')
         if not os.path.isfile(analyzed_data_file[:-3] + '_analyzed_2.h5') or local_configuration['overwrite_output_files']:
             with AnalyzeRawData(raw_data_file=None, analyzed_data_file=analyzed_data_file[:-3] + '_2.h5') as analyze_raw_data:
+                analyze_raw_data.interpreter.set_trig_count(scan_threshold_fast.register.get_global_register_value("Trig_Count"))
                 analyze_raw_data.create_threshold_hists = True
                 analyze_raw_data.create_threshold_mask = True
                 analyze_raw_data.create_fitted_threshold_hists = True
                 analyze_raw_data.create_fitted_threshold_mask = True
-                analyze_raw_data.n_injections = 100
+                analyze_raw_data.n_injections = local_configuration["n_injections"]
                 analyze_raw_data.analyze_hit_table(analyzed_data_out_file=analyzed_data_file[:-3] + '_analyzed_2.h5')
                 analyze_raw_data.plot_histograms(scan_data_filename=analyzed_data_file[:-3] + '_analyzed_2.pdf', analyzed_data_file=analyzed_data_file[:-3] + '_analyzed_2.h5')
 
@@ -139,39 +143,33 @@ def store_calibration_data_as_array(out_file_h5, mean_threshold_calibration, mea
 
 def analyze_data(scan_data_filenames, ignore_columns, fei4b=False):
     logging.info("Analyzing and plotting results...")
-    output_h5_filename = local_configuration['data_file'] + '.h5'
+    output_h5_filename = local_configuration['output_data_filename'] + '.h5'
     logging.info('Saving calibration in: %s' % output_h5_filename)
 
     if local_configuration['create_plots'] or local_configuration['create_result_plots']:
-        output_pdf_filename = local_configuration['data_file'] + '.pdf'
-        logging.info('Saving plot in: %s' % output_pdf_filename)
+        output_pdf_filename = local_configuration['output_data_filename'] + '.pdf'
+        logging.info('Saving plots in: %s' % output_pdf_filename)
         output_pdf = PdfPages(output_pdf_filename)
 
-    mean_threshold_calibration = np.empty(shape=(len(local_configuration['delays']),), dtype='<f8')  # array to hold the analyzed data in ram
-    mean_threshold_rms_calibration = np.empty(shape=(len(local_configuration['delays']),), dtype='<f8')  # array to hold the analyzed data in ram
-    threshold_calibration = np.empty(shape=(80, 336, len(local_configuration['delays'])), dtype='<f8')  # array to hold the analyzed data in ram
-    mean_noise_calibration = np.empty(shape=(len(local_configuration['delays']),), dtype='<f8')  # array to hold the analyzed data in ram
-    mean_noise_rms_calibration = np.empty(shape=(len(local_configuration['delays']),), dtype='<f8')  # array to hold the analyzed data in ram
-    noise_calibration = np.empty(shape=(80, 336, len(local_configuration['delays'])), dtype='<f8')  # array to hold the analyzed data in ram
-    
-    mean_threshold_calibration_1 = np.empty(shape=(len(local_configuration['delays']),), dtype='<f8')  # array to hold the analyzed data in ram
-    mean_threshold_rms_calibration_1 = np.empty(shape=(len(local_configuration['delays']),), dtype='<f8')  # array to hold the analyzed data in ram
-    threshold_calibration_1 = np.empty(shape=(80, 336, len(local_configuration['delays'])), dtype='<f8')  # array to hold the analyzed data in ram
-    mean_noise_calibration_1 = np.empty(shape=(len(local_configuration['delays']),), dtype='<f8')  # array to hold the analyzed data in ram
-    mean_noise_rms_calibration_1 = np.empty(shape=(len(local_configuration['delays']),), dtype='<f8')  # array to hold the analyzed data in ram
-    noise_calibration_1 = np.empty(shape=(80, 336, len(local_configuration['delays'])), dtype='<f8')  # array to hold the analyzed data in ram
-    
-    mean_threshold_calibration_2 = np.empty(shape=(len(local_configuration['delays']),), dtype='<f8')  # array to hold the analyzed data in ram
-    mean_threshold_rms_calibration_2 = np.empty(shape=(len(local_configuration['delays']),), dtype='<f8')  # array to hold the analyzed data in ram
-    threshold_calibration_2 = np.empty(shape=(80, 336, len(local_configuration['delays'])), dtype='<f8')  # array to hold the analyzed data in ram
-    mean_noise_calibration_2 = np.empty(shape=(len(local_configuration['delays']),), dtype='<f8')  # array to hold the analyzed data in ram
-    mean_noise_rms_calibration_2 = np.empty(shape=(len(local_configuration['delays']),), dtype='<f8')  # array to hold the analyzed data in ram
-    noise_calibration_2 = np.empty(shape=(80, 336, len(local_configuration['delays'])), dtype='<f8')  # array to hold the analyzed data in ram
-
+    # define output data structures
+    mean_threshold_calibration = np.zeros(shape=(len(local_configuration['delays']),), dtype='<f8')  # array to hold the analyzed data in ram
+    mean_threshold_rms_calibration = np.zeros_like(mean_threshold_calibration)  # array to hold the analyzed data in ram
+    mean_noise_calibration = np.zeros_like(mean_threshold_calibration)  # array to hold the analyzed data in ram
+    mean_noise_rms_calibration = np.zeros_like(mean_threshold_calibration)  # array to hold the analyzed data in ram
+    threshold_calibration = np.zeros(shape=(80, 336, len(local_configuration['delays'])), dtype='<f8')  # array to hold the analyzed data in ram
+    noise_calibration = np.zeros_like(threshold_calibration)  # array to hold the analyzed data in ram
+    mean_threshold_calibration_1 = np.zeros_like(mean_threshold_calibration)  # array to hold the analyzed data in ram
+    mean_threshold_rms_calibration_1 = np.zeros_like(mean_threshold_calibration)  # array to hold the analyzed data in ram
+    threshold_calibration_1 = np.zeros_like(threshold_calibration)  # array to hold the analyzed data in ram
+    mean_threshold_calibration_2 = np.zeros_like(mean_threshold_calibration)  # array to hold the analyzed data in ram
+    mean_threshold_rms_calibration_2 = np.zeros_like(mean_threshold_calibration)  # array to hold the analyzed data in ram
+    threshold_calibration_2 = np.zeros_like(threshold_calibration)  # array to hold the analyzed data in ram
+    # initialize progress bar
     progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=len(local_configuration['delays']))
     progress_bar.start()
-
+    # loop over all delay values and analyze the corresponding data
     for delay_index, delay_value in enumerate(local_configuration['delays']):
+        # interpret the raw data from the actual delay value
         raw_data_file = scan_data_filenames[delay_value]
         analyzed_data_file = raw_data_file[:-3] + '_interpreted.h5'
         analyze(raw_data_file=raw_data_file, analyzed_data_file=analyzed_data_file, fei4b=fei4b)
@@ -179,10 +177,10 @@ def analyze_data(scan_data_filenames, ignore_columns, fei4b=False):
         scan_parameters = None
         with tb.openFile(analyzed_data_file, mode="r") as in_file_h5:
             # mask the not scanned columns for analysis and plotting
+            mask = np.logical_or(mask_columns(pixel_array=in_file_h5.root.HistThresholdFitted[:], ignore_columns=ignore_columns), mask_pixel(steps=3, shift=0).T) == 0
             occupancy_masked = mask_columns(pixel_array=in_file_h5.root.HistOcc[:], ignore_columns=ignore_columns)
-#             thresholds_masked = mask_columns(pixel_array=in_file_h5.root.HistThresholdFitted[:], ignore_columns=ignore_columns)
-            thresholds_masked = np.ma.masked_array(in_file_h5.root.HistThresholdFitted[:], np.logical_or(mask_columns(pixel_array=in_file_h5.root.HistThresholdFitted[:], ignore_columns=ignore_columns), make_pixel_mask(steps=3, shift=0).T) == 0)
-            noise_masked = np.ma.masked_array(in_file_h5.root.HistNoiseFitted[:], np.logical_or(mask_columns(pixel_array=in_file_h5.root.HistThresholdFitted[:], ignore_columns=ignore_columns), make_pixel_mask(steps=3, shift=0).T) == 0)
+            thresholds_masked = np.ma.masked_array(in_file_h5.root.HistThresholdFitted[:], mask)
+            noise_masked = np.ma.masked_array(in_file_h5.root.HistNoiseFitted[:], mask)
             # plot the threshold distribution and the s curves
             if local_configuration['create_plots']:
                 plotting.plotThreeWay(hist=thresholds_masked * 55., title='Threshold Fitted for delay = ' + str(delay_value), x_axis_title='threshold [e]', filename=output_pdf)
@@ -201,21 +199,22 @@ def analyze_data(scan_data_filenames, ignore_columns, fei4b=False):
             mean_noise_rms_calibration[delay_index] = np.ma.std(noise_masked)
             noise_calibration[:, :, delay_index] = noise_masked.T
 
+        # if activated analyze also the trigger seperately
         if local_configuration['analysis_two_trigger']:
             with tb.openFile(analyzed_data_file[:-3] + '_analyzed_1.h5', mode="r") as in_file_1_h5:
                 with tb.openFile(analyzed_data_file[:-3] + '_analyzed_2.h5', mode="r") as in_file_2_h5:
                     # mask the not scanned columns for analysis and plotting
                     try:
-                        occupancy_masked_1 = mask_columns(pixel_array=in_file_1_h5.root.HistOcc[:], ignore_columns=ignore_columns)
-                        thresholds_masked_1 = np.ma.masked_array(in_file_1_h5.root.HistThresholdFitted[:], np.logical_or(mask_columns(pixel_array=in_file_1_h5.root.HistThresholdFitted[:], ignore_columns=ignore_columns), make_pixel_mask(steps=3, shift=0).T) == 0)
+                        occupancy_masked_1 = occupancy_masked = mask_columns(pixel_array=in_file_1_h5.root.HistOcc[:], ignore_columns=ignore_columns)
+                        thresholds_masked_1 = np.ma.masked_array(in_file_1_h5.root.HistThresholdFitted[:], mask)
                         rel_bcid_1 = in_file_1_h5.root.HistRelBcid[0:16]
                     except tb.exceptions.NoSuchNodeError:
                         occupancy_masked_1 = np.zeros(shape=(336, 80, 2))
                         thresholds_masked_1 = np.zeros(shape=(336, 80))
                         rel_bcid_1 = np.zeros(shape=(16, ))
                     try:
-                        occupancy_masked_2 = mask_columns(pixel_array=in_file_2_h5.root.HistOcc[:], ignore_columns=ignore_columns)
-                        thresholds_masked_2 = np.ma.masked_array(in_file_2_h5.root.HistThresholdFitted[:], np.logical_or(mask_columns(pixel_array=in_file_2_h5.root.HistThresholdFitted[:], ignore_columns=ignore_columns), make_pixel_mask(steps=3, shift=0).T) == 0)
+                        occupancy_masked_2 = occupancy_masked = mask_columns(pixel_array=in_file_2_h5.root.HistOcc[:], ignore_columns=ignore_columns)
+                        thresholds_masked_2 = np.ma.masked_array(in_file_2_h5.root.HistThresholdFitted[:], mask)
                         rel_bcid_2 = in_file_2_h5.root.HistRelBcid[0:16]
                     except tb.exceptions.NoSuchNodeError:
                         occupancy_masked_2 = np.zeros(shape=(336, 80, 2))
@@ -234,14 +233,13 @@ def analyze_data(scan_data_filenames, ignore_columns, fei4b=False):
                     mean_threshold_calibration_1[delay_index] = np.ma.mean(thresholds_masked_1)
                     mean_threshold_rms_calibration_1[delay_index] = np.ma.std(thresholds_masked_1)
                     threshold_calibration_1[:, :, delay_index] = thresholds_masked_1.T
-
                     mean_threshold_calibration_2[delay_index] = np.ma.mean(thresholds_masked_2)
                     mean_threshold_rms_calibration_2[delay_index] = np.ma.std(thresholds_masked_2)
                     threshold_calibration_2[:, :, delay_index] = thresholds_masked_2.T
-
         progress_bar.update(delay_index)
     progress_bar.finish()
 
+    # plot the parameter against delay plots
     if local_configuration['create_result_plots']:
         plotting.plot_scatter(x=local_configuration['delays'], y=mean_threshold_calibration * 55., title='Threshold as a function of the delay', x_label='delay [BCID]', y_label='Mean threshold [e]', log_x=False, filename=output_pdf)
         plotting.plot_scatter(x=local_configuration['delays'], y=mean_threshold_calibration * 55., title='Threshold as a function of the delay', x_label='delay [BCID]', y_label='Mean threshold [e]', log_x=True, filename=output_pdf)
@@ -283,16 +281,16 @@ def reanalyze(fei4b=False):
     analyze_data(scan_data_filenames=scan_data_filenames, ignore_columns=local_configuration['ignore_columns'], fei4b=fei4b)
 
 
-def make_pixel_mask(steps, shift, default=0, value=1, mask=None):
-    import math
+def mask_pixel(steps, shift, default=0, value=1, mask=None):
+
     def cartesian(arrays, out=None):
         arrays = [np.asarray(x) for x in arrays]
         dtype = arrays[0].dtype
-    
+
         n = np.prod([x.size for x in arrays])
         if out is None:
             out = np.zeros([n, len(arrays)], dtype=dtype)
-    
+
         m = n / arrays[0].size
         out[:, 0] = np.repeat(arrays[0], m)
         if arrays[1:]:
@@ -300,7 +298,7 @@ def make_pixel_mask(steps, shift, default=0, value=1, mask=None):
             for j in xrange(1, arrays[0].size):
                 out[j * m:(j + 1) * m, 1:] = out[0:m, 1:]
         return out
-    
+
     dimension = (80, 336)
     # value = np.zeros(dimension, dtype = np.uint8)
     mask_array = np.empty(dimension, dtype=np.uint8)
@@ -324,7 +322,7 @@ def make_pixel_mask(steps, shift, default=0, value=1, mask=None):
 def mask_columns(pixel_array, ignore_columns):
     idx = np.array(ignore_columns) - 1  # from FE to Array columns
     m = np.zeros_like(pixel_array)
-    m[:, idx] = 1    
+    m[:, idx] = 1
     return np.ma.masked_array(pixel_array, m)
 
 
@@ -333,17 +331,17 @@ if __name__ == "__main__":
 #     reanalyze()
     logging.info('Taking threshold data for following delay: %s' % str(local_configuration['delays']))
     scan_data_filenames = {}
-    scan_threshold_fast = FastThresholdScan(**configuration.scc85_configuration)
+    scan_threshold_fast = FastThresholdScan(**configuration.scc112_configuration)
     for i, delay_value in enumerate(local_configuration['delays']):
         logging.info('Taking threshold data for delay %s' % str(delay_value))
         command = scan_threshold_fast.register.get_commands("cal")[0] + scan_threshold_fast.register.get_commands("zeros", length=40)[0] + scan_threshold_fast.register.get_commands("lv1")[0] + scan_threshold_fast.register.get_commands("zeros", length=delay_value)[0] + scan_threshold_fast.register.get_commands("cal")[0] + scan_threshold_fast.register.get_commands("zeros", length=40)[0] + scan_threshold_fast.register.get_commands("lv1")[0] + scan_threshold_fast.register.get_commands("zeros", length=delay_value)[0]
-        scan_threshold_fast.scan_identifier = local_configuration['scan_identifier'] + '_' + str(delay_value)
+        scan_threshold_fast.scan_id = 'test_threshold_stability_' + str(delay_value)
         scan_threshold_fast.start(configure=True, scan_parameter_range=(0, 70), scan_parameter_stepsize=2, search_distance=10, minimum_data_points=15, ignore_columns=local_configuration['ignore_columns'], command=command)
         scan_threshold_fast.stop()
         scan_data_filenames[delay_value] = scan_threshold_fast.scan_data_filename
-    
+
     logging.info("Measurement finished in " + str(datetime.now() - startTime))
-    
+
 #     analyze and plot the data from all scans
     analyze_data(scan_data_filenames=scan_data_filenames, ignore_columns=local_configuration['ignore_columns'], fei4b=scan_threshold_fast.register.fei4b)
 
