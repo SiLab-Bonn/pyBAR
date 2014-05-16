@@ -497,25 +497,25 @@ class ScanBase(object):
             h5_file = os.path.splitext(self.scan_data_filename)[0] + ".h5"
 
         # append to file if existing otherwise create new one
-        self.raw_data_file_h5 = tb.openFile(h5_file, mode="a", title=((self.module_id + "_" + self.scan_id) if self.module_id else self.scan_id) + "_" + str(self.scan_number), **kwargs)
+        #raw_data_file_h5 = tb.openFile(h5_file, mode="a", title=((self.module_id + "_" + self.scan_id) if self.module_id else self.scan_id) + "_" + str(self.scan_number), **kwargs)
+        with tb.openFile(h5_file, mode="a", title=((self.module_id + "_" + self.scan_id) if self.module_id else self.scan_id) + "_" + str(self.scan_number), **kwargs) as raw_data_file_h5:
+            try:
+                scan_param_descr = generate_scan_configuration_description(dict.iterkeys(configuration))
+                filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
+                self.scan_param_table = raw_data_file_h5.createTable(raw_data_file_h5.root, name=configuation_name, description=scan_param_descr, title='device_configuration', filters=filter_tables)
+            except tb.exceptions.NodeError:
+                self.scan_param_table = raw_data_file_h5.getNode(raw_data_file_h5.root, name=configuation_name)
 
-        try:
-            scan_param_descr = generate_scan_configuration_description(dict.iterkeys(configuration))
-            filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
-            self.scan_param_table = self.raw_data_file_h5.createTable(self.raw_data_file_h5.root, name=configuation_name, description=scan_param_descr, title='device_configuration', filters=filter_tables)
-        except tb.exceptions.NodeError:
-            self.scan_param_table = self.raw_data_file_h5.getNode(self.raw_data_file_h5.root, name=configuation_name)
+            row_scan_param = self.scan_param_table.row
 
-        row_scan_param = self.scan_param_table.row
+            for key, value in dict.iteritems(configuration):
+                row_scan_param[key] = str(value)
 
-        for key, value in dict.iteritems(configuration):
-            row_scan_param[key] = str(value)
+            row_scan_param.append()
 
-        row_scan_param.append()
+            self.scan_param_table.flush()
 
-        self.scan_param_table.flush()
-
-        self.raw_data_file_h5.close()
+        #raw_data_file_h5.close()
 
 
 class NoSyncError(Exception):
