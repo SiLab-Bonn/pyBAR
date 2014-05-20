@@ -4,7 +4,7 @@
 
 `include "fei4_defines.sv"
 
-
+// FE commands
 `define CMD_LV1 5'b11101
 `define CMD_FIELD1 5'b10110
 
@@ -20,17 +20,21 @@
 `define CMD_GPULSE  4'b1001
 `define CMD_RUNMODE  4'b1010
 
- 
- 
+ // CMD
 `define CMD_BASE_ADD 16'h0000
 `define CMD_START_REG `CMD_BASE_ADD+1
-`define CMD_SIZE_REG `CMD_BASE_ADD+3
-`define CMD_REP_REG `CMD_BASE_ADD+5
+`define CMD_MODE_REG `CMD_MODE_ADD+2
+`define CMD_SIZE_REG `CMD_BASE_ADD+3 // 16bit
+`define CMD_REP_REG `CMD_BASE_ADD+5 // 32bit
+`define CMD_START_REPEAT_REG `CMD_BASE_ADD+9 // 16bit
+`define CMD_STOP_REPEAT_REG `CMD_BASE_ADD+11 // 16bit
 `define CMD_DATA_MEM `CMD_BASE_ADD+16
 
+// Rx
 `define RX_BASE_ADD 16'h8000
 `define RX_RESET_REG `RX_BASE_ADD
 
+// FIFO
 `define FIFO_BASE_ADD 16'h8100
 
 module top_tb;
@@ -286,15 +290,22 @@ module top_tb;
         sidev.WriteExternal( `CMD_START_REG,  0);
         
         repeat (100) @(posedge FCLK_IN);
+
+        sidev.WriteExternal( `CMD_SIZE_REG, 5);
+        sidev.WriteExternal( `CMD_SIZE_REG+1, 0 );
+        sidev.WriteExternal( `CMD_REP_REG, 1 );
+        sidev.WriteExternal( 16'h8200+1,  2); // set trigger mode
+        sidev.WriteExternal( 16'h8200+2,  144); // set trigger clock cycles, and write timestamp
+        sidev.WriteExternal( 16'h0000+2,  1); // enable ext command
         
-        sidev.WriteExternal( 16'h8700+1,  1); // TDC start
+        sidev.WriteExternal( 16'h8700+1,  5); // TDC start
         #50000
         MONHIT = 1;
         #150
         MONHIT = 0;
         #500 MONHIT = 1;
         #152 MONHIT = 0;
-        #494 MONHIT = 1; // small ToT: overlapping two data words 
+        #494 MONHIT = 1; // small ToT: overlapping two data words
         #7 MONHIT = 0;
         #489 MONHIT = 1; // small ToT: at the end of data
         #7 MONHIT = 0;
@@ -308,17 +319,11 @@ module top_tb;
         #40 MONHIT = 0;
         #10000
         @(posedge FCLK_IN);
-        
-        
-        sidev.WriteExternal( `CMD_SIZE_REG, 0);
-        sidev.WriteExternal( `CMD_SIZE_REG+1, 0 );
-        sidev.WriteExternal( 16'h8200+1,  2); // set trigger mode
-        sidev.WriteExternal( 16'h8200+2,  144); // set trigger clock cycles, and write timestamp
-        sidev.WriteExternal( 16'h0000+2,  1); // enable ext command
 
+        
         #20000
         RJ45_TRIGGER = 1;
-        #150
+        #60
         RJ45_TRIGGER = 0;
         #80000
         @(posedge FCLK_IN);
@@ -340,7 +345,35 @@ module top_tb;
         
         for(int i=0; i< data_size/2; i++)
             ReadFE();
-            
+
+
+        // CMD
+        repeat(2000) @(posedge FCLK_IN);
+        sidev.WriteExternal( `CMD_SIZE_REG,  64);
+        sidev.WriteExternal( `CMD_REP_REG,  2);
+        sidev.WriteExternal( `CMD_DATA_MEM,    8'h81);
+        sidev.WriteExternal( `CMD_DATA_MEM+1,  8'hc1);
+        sidev.WriteExternal( `CMD_DATA_MEM+2,  8'hFF);
+        sidev.WriteExternal( `CMD_DATA_MEM+3,  8'h00);
+        sidev.WriteExternal( `CMD_DATA_MEM+4,  8'hFF);
+        sidev.WriteExternal( `CMD_DATA_MEM+5,  8'hAA);
+        sidev.WriteExternal( `CMD_DATA_MEM+6,  8'h55);
+        sidev.WriteExternal( `CMD_DATA_MEM+7,  8'hFF);
+        
+        sidev.WriteExternal( `CMD_START_REPEAT_REG, 0); // 16bit
+        sidev.WriteExternal( `CMD_STOP_REPEAT_REG, 0); // 16bit
+        sidev.WriteExternal( `CMD_START_REG,  0);
+        repeat(200) @(posedge FCLK_IN);
+
+        sidev.WriteExternal( `CMD_START_REPEAT_REG, 8); // 16bit
+        sidev.WriteExternal( `CMD_STOP_REPEAT_REG, 0); // 16bit
+        sidev.WriteExternal( `CMD_START_REG,  0);
+        repeat(200) @(posedge FCLK_IN);
+        
+        sidev.WriteExternal( `CMD_START_REPEAT_REG, 8); // 16bit
+        sidev.WriteExternal( `CMD_STOP_REPEAT_REG, 16); // 16bit
+        sidev.WriteExternal( `CMD_START_REG,  0);
+        repeat(200) @(posedge FCLK_IN);
     end
     
     
