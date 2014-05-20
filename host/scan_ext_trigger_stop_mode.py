@@ -28,7 +28,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 
 scan_configuration = {
     "source": "TPC",
-    "bcid_window": 100,  # the time window hits are read from the pixel matrix, [0:256[ theoretically, [0:120] supported
+    "bcid_window": 100,  # the time window hits are read from the pixel matrix, [0:256[
     "trigger_mode": 0,
     "trigger_latency": 5,
     "trigger_delay": 192,
@@ -43,7 +43,7 @@ scan_configuration = {
 
 
 class ExtTriggerScan(ScanBase):
-    scan_identifier = "ext_trigger_scan_stop_mode"
+    scan_id = "ext_trigger_scan_stop_mode"
 
     def scan(self, trigger_mode=0, trigger_latency=232, trigger_delay=13, bcid_window=20, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=10000, enable_hitbus=False, enable_tdc=False, enable_all_pixel=False, **kwargs):
         '''Scan loop
@@ -86,7 +86,7 @@ class ExtTriggerScan(ScanBase):
 
         wait_for_first_trigger = True
 
-        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_identifier, mode='w') as raw_data_file:
+        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_id, mode='w') as raw_data_file:
             self.readout.start()
 
             # Stop mode related hacks to read all hits stored with stop mode
@@ -251,7 +251,7 @@ class ExtTriggerScan(ScanBase):
             analyze_raw_data.create_cluster_size_hist = True
             analyze_raw_data.interpreter.set_warning_output(False)
             analyze_raw_data.clusterizer.set_warning_output(False)
-            analyze_raw_data.interpreter.debug_events(0, 10, True)  # events to be printed onto the console for debugging, usually deactivated
+#             analyze_raw_data.interpreter.debug_events(0, 10, True)  # events to be printed onto the console for debugging, usually deactivated
             analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms(scan_data_filename=scan.scan_data_filename)
@@ -259,7 +259,7 @@ class ExtTriggerScan(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = ExtTriggerScan(**configuration.scc99_configuration)
+    scan = ExtTriggerScan(**configuration.default_configuration)
     scan.start(use_thread=True, **scan_configuration)
     scan.stop()
     scan.analyze()
