@@ -288,12 +288,13 @@ tdc_s3
 #(
     .BASEADDR(TDC_BASEADDR),
     .HIGHADDR(TDC_HIGHADDR),
+    .CLKDV(4),
     .DATA_IDENTIFIER(4'b0100) // one-hot
 ) i_tdc
 (
     .CLK320(RX_CLK2X),
     .CLK160(RX_CLK),
-    .CLK40(CLK_40),
+    .DV_CLK(CLK_40),
     .TDC_IN(MONHIT),
     .TDC_OUT(MONHIT_TDC),
 
@@ -309,6 +310,7 @@ tdc_s3
     .BUS_WR(BUS_WR),
 
     .ARM_TDC(CMD_START_FLAG), // arm TDC by sending commands
+    .EXT_EN(1'b0),
     
     .TIMESTAMP(TIMESTAMP[15:0])
 );
