@@ -494,8 +494,9 @@ class ScanBase(object):
         self.stop_thread_event.set()
 
     def save_configuration(self, configuation_name, configuration, **kwargs):
-        if os.path.splitext(self.scan_data_filename)[1].strip().lower() != ".h5":
-            h5_file = os.path.splitext(self.scan_data_filename)[0] + ".h5"
+        h5_file = self.scan_data_filename
+        if os.path.splitext(h5_file)[1].strip().lower() != ".h5":
+            h5_file = os.path.splitext(h5_file)[0] + ".h5"
 
         # append to file if existing otherwise create new one
         #raw_data_file_h5 = tb.openFile(h5_file, mode="a", title=((self.module_id + "_" + self.scan_id) if self.module_id else self.scan_id) + "_" + str(self.scan_number), **kwargs)
