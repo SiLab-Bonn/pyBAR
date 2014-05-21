@@ -85,13 +85,14 @@ class ScanBase(object):
             except USBError:
                 raise DeviceError('Can\'t communicate with USB board. Reset USB board!')
 
-        if bit_file != None:
+        if bit_file:
             if self.device.XilinxAlreadyLoaded() and not force_download:
                 logging.info('FPGA already configured, skipping download of bitstream')
             else:
                 logging.info('Downloading bitstream to FPGA: %s' % bit_file)
                 try:
-                    self.device.DownloadXilinx(bit_file)
+                    if not self.device.DownloadXilinx(bit_file):
+                        raise IOError('Can\'t program FPGA firmware. Reset USB board!')
                 except USBError:
                     raise DeviceError('Can\'t program FPGA firmware. Reset USB board!')
                 time.sleep(1)
