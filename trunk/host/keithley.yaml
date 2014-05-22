@@ -1,6 +1,6 @@
 Device:
     Configuration:
-        Port: 'COM7'
+        Port: 'COM0'
         Baudrate: 9600
         TimeOut: 2
         Source: 'A'
@@ -9,7 +9,7 @@ Device:
         SenseRange: 'OFF'
         TriggerCount: 10 
         TriggerDelay: 0.001   
-        WaitRead: 0.05
+        WaitRead: 0.5
         SettlingTime: 0.5
         SampleAutoRange: 'OFF'
         SourceAutoRange: 'OFF'
