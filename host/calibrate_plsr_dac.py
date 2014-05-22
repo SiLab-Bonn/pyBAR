@@ -79,7 +79,7 @@ class PlsrDacScan(ScanBase):
         fit_plt, = plt.plot(x, fit_fn(x), '--k')
         plt.title('PlsrDAC calibration')
         plt.xlabel('PlsrDAC')
-        plt.ylabel('voltage [V]')
+        plt.ylabel('voltage [mV]')
         plt.grid(True)
         plt.legend([data_plt, fit_plt], ["data", str(fit_fn)], loc=0)
         if show:
