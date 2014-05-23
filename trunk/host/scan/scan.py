@@ -194,6 +194,8 @@ class ScanBase(object):
         if self.scan_configuration:
             self.save_configuration('scan_configuration', self.scan_configuration)
 
+        self.register.save_configuration_to_hdf5(self.scan_data_filename)
+
         self.use_thread = use_thread
         if self.scan_thread != None:
             raise RuntimeError('Scan thread is already running')
@@ -501,12 +503,17 @@ class ScanBase(object):
         # append to file if existing otherwise create new one
         #raw_data_file_h5 = tb.openFile(h5_file, mode="a", title=((self.module_id + "_" + self.scan_id) if self.module_id else self.scan_id) + "_" + str(self.scan_number), **kwargs)
         with tb.openFile(h5_file, mode="a", title=((self.module_id + "_" + self.scan_id) if self.module_id else self.scan_id) + "_" + str(self.scan_number), **kwargs) as raw_data_file_h5:
+            scan_param_descr = generate_scan_configuration_description(dict.iterkeys(configuration))
+            filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
             try:
-                scan_param_descr = generate_scan_configuration_description(dict.iterkeys(configuration))
-                filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
-                self.scan_param_table = raw_data_file_h5.createTable(raw_data_file_h5.root, name=configuation_name, description=scan_param_descr, title='device_configuration', filters=filter_tables)
-            except tb.exceptions.NodeError:
-                self.scan_param_table = raw_data_file_h5.getNode(raw_data_file_h5.root, name=configuation_name)
+                raw_data_file_h5.removeNode(raw_data_file_h5.root.configuration, name=configuation_name)
+            except tb.NodeError:
+                pass
+            try:
+                configuration_group = raw_data_file_h5.create_group(raw_data_file_h5.root, "configuration")
+            except tb.NodeError:
+                configuration_group = raw_data_file_h5.root.configuration
+            self.scan_param_table = raw_data_file_h5.createTable(configuration_group, name=configuation_name, description=scan_param_descr, title=configuation_name, filters=filter_tables)
 
             row_scan_param = self.scan_param_table.row
 

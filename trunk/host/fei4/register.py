@@ -9,6 +9,7 @@ from collections import OrderedDict
 import hashlib
 import copy
 import struct
+import tables as tb
 
 import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
@@ -250,9 +251,18 @@ class FEI4Register(object):
             raise ValueError('Unknown chip flavor')
 
     def load_configuration(self, configuration_file=None, definition_file=None):
-        if configuration_file is not None:
+        '''Loading configuration from text files
+
+        Parameters
+        ----------
+        configuration_file : string
+            Full path (directory and filename) of the configuration file. If name is not given, reload configuration from file.
+        definition_file : string
+            Full path (directory and filename) of the definition file. If name is not given, flavor of FE chip will be taken from configuration file.
+        '''
+        if configuration_file:
             self.configuration_file = configuration_file
-        if definition_file is not None:
+        if definition_file:
             self.definition_file = definition_file
         if self.configuration_file is not None:
             print "Loading configuration file: %s" % self.configuration_file
@@ -265,12 +275,12 @@ class FEI4Register(object):
         else:
             print "No configuration file and/or definition file specified."
 
-    def save_configuration(self, name):
-        '''Saving configuration files to specific location
+    def save_configuration(self, configuration_file):
+        '''Saving configuration to text files
 
         Parameters
         ----------
-        name : string
+        configuration_file : string
             Filename of the configuration file (any file name extension will be ignored).
             Any path can be omitted. If path is not given, path will be taken from loaded configuration file.
 
@@ -280,7 +290,7 @@ class FEI4Register(object):
             Path to the main configuration file.
         '''
 
-        configuration_path, filename = os.path.split(name)
+        configuration_path, filename = os.path.split(configuration_file)
         filename = os.path.splitext(filename)[0].strip()
         if filename == '':
             print "Unknown filename: nothing saved"
@@ -345,6 +355,108 @@ class FEI4Register(object):
             f.writelines(lines)
 
         return self.configuration_file
+
+    def load_configuration_from_hdf5(self, configuration_file=None, definition_file=None):
+        '''Loading configuration from HDF5 file
+
+        Parameters
+        ----------
+        configuration_file : string
+            Full path (directory and filename) of the configuration file. If name is not given, reload configuration from file.
+        definition_file : string
+            Full path (directory and filename) of the definition file. If name is not given, flavor of FE chip will be taken from configuration file.
+        '''
+        if configuration_file:
+            self.configuration_file = configuration_file
+        if definition_file:
+            self.definition_file = definition_file
+        if self.configuration_file is not None:
+            print "Loading configuration file: %s" % self.configuration_file
+            self.parse_chip_parameters()  # get flavor, chip ID
+            self.parse_register_config()
+            self.parse_chip_config()
+        elif self.definition_file is not None:
+            print "Parsing definition file: %s" % self.definition_file
+            self.parse_register_config()
+        else:
+            print "No configuration file and/or definition file specified."
+
+    def save_configuration_to_hdf5(self, configuration_file, name='', **kwargs):
+        '''Saving configuration to HDF5 file
+
+        Parameters
+        ----------
+        configuration_file : string
+            Filename of the configuration file (any file name extension will be ignored).
+            Any path can be omitted. If path is not given, path will be taken from loaded configuration file.
+
+        Returns
+        -------
+        self.configuration_file : string
+            Path to the main configuration file.
+        '''
+        h5_file = configuration_file
+        if os.path.splitext(h5_file)[1].strip().lower() != ".h5":
+            h5_file = os.path.splitext(h5_file)[0] + ".h5"
+
+        class GlobalRegisterTable(tb.IsDescription):
+            name = tb.StringCol(256, pos=0)
+            value = tb.StringCol(1024, pos=0)
+
+        filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
+
+        # append to file if existing otherwise create new one
+        with tb.openFile(h5_file, mode="a", title='', **kwargs) as raw_data_file_h5:
+            # global
+            if name:
+                try:
+                    raw_data_file_h5.removeNode(raw_data_file_h5.root.configuration.name, name='Global_Register')
+                except tb.NodeError:
+                    pass
+            else:
+                try:
+                    raw_data_file_h5.removeNode(raw_data_file_h5.root.configuration, name='Global_Register')
+                except tb.NodeError:
+                    pass
+            try:
+                configuration_group = raw_data_file_h5.create_group(raw_data_file_h5.root, "configuration")
+            except tb.NodeError:
+                configuration_group = raw_data_file_h5.root.configuration
+            if name:
+                try:
+                    configuration_group = raw_data_file_h5.create_group(configuration_group, name)
+                except tb.NodeError:
+                    configuration_group = raw_data_file_h5.root.configuration.name
+            global_data_table = raw_data_file_h5.createTable(configuration_group, name='Global_Register', description=GlobalRegisterTable, title='Global_Register', filters=filter_tables)
+
+            global_data_table_row = global_data_table.row
+
+            reg_dict = {register.full_name: register.value for register in self.get_global_register_objects(readonly=False)}
+            for key in sorted(reg_dict):
+                global_data_table_row['name'] = key
+                global_data_table_row['value'] = str(reg_dict[key])  # TODO: some function that converts to bin, hex
+                global_data_table_row.append()
+
+            global_data_table.flush()
+
+            # pixel
+            for pixel_reg in self.pixel_registers:
+                if name:
+                    try:
+                        raw_data_file_h5.removeNode(raw_data_file_h5.root.configuration.name, name=pixel_reg.full_name)
+                    except tb.NodeError:
+                        pass
+                else:
+                    try:
+                        raw_data_file_h5.removeNode(raw_data_file_h5.root.configuration, name=pixel_reg.full_name)
+                    except tb.NodeError:
+                        pass
+                data = pixel_reg.value.T
+                atom = tb.Atom.from_dtype(data.dtype)
+                ds = raw_data_file_h5.createCArray(configuration_group, name=pixel_reg.full_name, atom=atom, shape=data.shape, title=pixel_reg.full_name, filters=filter_tables)
+                ds[:] = data
+
+        return h5_file
 
     def parse_register_config(self):
         # print "parse xml"
