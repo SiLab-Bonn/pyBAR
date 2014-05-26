@@ -10,6 +10,7 @@ import hashlib
 import copy
 import struct
 import tables as tb
+from analysis.RawDataConverter.data_struct import NameValue
 
 import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
@@ -481,10 +482,6 @@ class FEI4Register(object):
         if os.path.splitext(h5_file)[1].strip().lower() != ".h5":
             h5_file = os.path.splitext(h5_file)[0] + ".h5"
 
-        class GlobalRegisterTable(tb.IsDescription):
-            name = tb.StringCol(256, pos=0)
-            value = tb.StringCol(1024, pos=0)
-
         filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
 
         # append to file if existing otherwise create new one
@@ -505,7 +502,7 @@ class FEI4Register(object):
                 raw_data_file_h5.removeNode(configuration_group, name='miscellaneous')
             except tb.NodeError:
                 pass
-            misc_data_table = raw_data_file_h5.createTable(configuration_group, name='miscellaneous', description=GlobalRegisterTable, title='miscellaneous', filters=filter_tables)
+            misc_data_table = raw_data_file_h5.createTable(configuration_group, name='miscellaneous', description=NameValue, title='miscellaneous', filters=filter_tables)
 
             misc_data_row = misc_data_table.row
 
@@ -540,7 +537,7 @@ class FEI4Register(object):
                 raw_data_file_h5.removeNode(configuration_group, name='global_register')
             except tb.NodeError:
                 pass
-            global_data_table = raw_data_file_h5.createTable(configuration_group, name='global_register', description=GlobalRegisterTable, title='global_register', filters=filter_tables)
+            global_data_table = raw_data_file_h5.createTable(configuration_group, name='global_register', description=NameValue, title='global_register', filters=filter_tables)
 
             global_data_table_row = global_data_table.row
 
