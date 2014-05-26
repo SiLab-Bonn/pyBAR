@@ -66,6 +66,11 @@ def generate_scan_configuration_description(scan_parameters):
     return table_description
 
 
+class NameValue(tb.IsDescription):
+    name = tb.StringCol(256, pos=0)
+    value = tb.StringCol(1024, pos=0)
+
+
 class HitInfoTable(tb.IsDescription):
     event_number = tb.Int64Col(pos=0)
     trigger_number = tb.UInt32Col(pos=1)

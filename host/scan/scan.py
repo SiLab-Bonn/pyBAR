@@ -5,7 +5,8 @@ import re
 import tables as tb
 import platform
 import inspect
-from analysis.RawDataConverter.data_struct import generate_scan_configuration_description
+from analysis.RawDataConverter.data_struct import NameValue  # , generate_scan_configuration_description
+
 
 from threading import Thread, Event, Lock, Timer
 
@@ -503,7 +504,7 @@ class ScanBase(object):
         # append to file if existing otherwise create new one
         #raw_data_file_h5 = tb.openFile(h5_file, mode="a", title=((self.module_id + "_" + self.scan_id) if self.module_id else self.scan_id) + "_" + str(self.scan_number), **kwargs)
         with tb.openFile(h5_file, mode="a", title=((self.module_id + "_" + self.scan_id) if self.module_id else self.scan_id) + "_" + str(self.scan_number), **kwargs) as raw_data_file_h5:
-            scan_param_descr = generate_scan_configuration_description(dict.iterkeys(configuration))
+            #scan_param_descr = generate_scan_configuration_description(dict.iterkeys(configuration))
             filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
             try:
                 raw_data_file_h5.removeNode(raw_data_file_h5.root.configuration, name=configuation_name)
@@ -513,14 +514,14 @@ class ScanBase(object):
                 configuration_group = raw_data_file_h5.create_group(raw_data_file_h5.root, "configuration")
             except tb.NodeError:
                 configuration_group = raw_data_file_h5.root.configuration
-            self.scan_param_table = raw_data_file_h5.createTable(configuration_group, name=configuation_name, description=scan_param_descr, title=configuation_name, filters=filter_tables)
+            self.scan_param_table = raw_data_file_h5.createTable(configuration_group, name=configuation_name, description=NameValue, title=configuation_name, filters=filter_tables)
 
             row_scan_param = self.scan_param_table.row
 
             for key, value in dict.iteritems(configuration):
-                row_scan_param[key] = str(value)
-
-            row_scan_param.append()
+                row_scan_param['name'] = key
+                row_scan_param['value'] = str(value)
+                row_scan_param.append()
 
             self.scan_param_table.flush()
 
