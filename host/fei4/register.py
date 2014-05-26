@@ -260,6 +260,40 @@ class FEI4Register(object):
         definition_file : string
             Full path (directory and filename) of the definition file. If name is not given, flavor of FE chip will be taken from configuration file.
         '''
+        if os.path.splitext(configuration_file)[1].strip().lower() != ".h5":
+            self.load_configuration_from_text_file(configuration_file, definition_file)
+        else:
+            self.load_configuration_from_hdf5(configuration_file, definition_file)
+
+    def save_configuration(self, configuration_file):
+        '''Saving configuration to text files
+
+        Parameters
+        ----------
+        configuration_file : string
+            Filename of the configuration file (any file name extension will be ignored).
+            Any path can be omitted. If path is not given, path will be taken from loaded configuration file.
+
+        Returns
+        -------
+        self.configuration_file : string
+            Path to the main configuration file.
+        '''
+        if os.path.splitext(configuration_file)[1].strip().lower() != ".h5":
+            return self.save_configuration_to_text_file(configuration_file)
+        else:
+            return self.save_configuration_to_hdf5(configuration_file)
+
+    def load_configuration_from_text_file(self, configuration_file=None, definition_file=None):
+        '''Loading configuration from text files
+
+        Parameters
+        ----------
+        configuration_file : string
+            Full path (directory and filename) of the configuration file. If name is not given, reload configuration from file.
+        definition_file : string
+            Full path (directory and filename) of the definition file. If name is not given, flavor of FE chip will be taken from configuration file.
+        '''
         if configuration_file:
             self.configuration_file = configuration_file
         if definition_file:
@@ -275,7 +309,7 @@ class FEI4Register(object):
         else:
             print "No configuration file and/or definition file specified."
 
-    def save_configuration(self, configuration_file):
+    def save_configuration_to_text_file(self, configuration_file):
         '''Saving configuration to text files
 
         Parameters
@@ -356,25 +390,72 @@ class FEI4Register(object):
 
         return self.configuration_file
 
-    def load_configuration_from_hdf5(self, configuration_file=None, definition_file=None):
+    def load_configuration_from_hdf5(self, configuration_file=None, name='', definition_file=None, **kwargs):
         '''Loading configuration from HDF5 file
 
         Parameters
         ----------
         configuration_file : string
-            Full path (directory and filename) of the configuration file. If name is not given, reload configuration from file.
+            Filename of the HDF5 configuration file.
+        name : string
+            Additional identifier (subgroup). Useful when more than one configuration is stored inside a HDF5 file.
         definition_file : string
             Full path (directory and filename) of the definition file. If name is not given, flavor of FE chip will be taken from configuration file.
         '''
         if configuration_file:
-            self.configuration_file = configuration_file
+            h5_file = configuration_file
+            if os.path.splitext(h5_file)[1].strip().lower() != ".h5":
+                h5_file = os.path.splitext(h5_file)[0] + ".h5"
+            self.configuration_file = h5_file
         if definition_file:
             self.definition_file = definition_file
         if self.configuration_file is not None:
             print "Loading configuration file: %s" % self.configuration_file
-            self.parse_chip_parameters()  # get flavor, chip ID
-            self.parse_register_config()
-            self.parse_chip_config()
+
+            with tb.openFile(h5_file, mode="r", title='', **kwargs) as raw_data_file_h5:
+                if name:
+                    configuration_group = raw_data_file_h5.root.configuration.name
+                else:
+                    configuration_group = raw_data_file_h5.root.configuration
+
+                    # misc
+                    for row in configuration_group.miscellaneous:
+                        name = row['name']
+                        value = row['value']
+                        if name == 'Flavor':
+                            if value.translate(None, '_-').lower() == "fei4a":
+                                self.chip_flavor = "fei4a"
+                            elif value.translate(None, '_-').lower() == "fei4b":
+                                self.chip_flavor = "fei4b"
+                            else:
+                                raise ValueError("Can't detect chip flavor")
+                        elif name == 'Chip_ID':
+                            if (int(value) >= 0 and int(value) < 16):
+                                self.chip_id = int(value)
+                            else:
+                                raise ValueError('Value exceeds limits')
+                                self.chip_id = 8  # TODO default to 8
+                        elif name == 'C_Inj_Low':
+                            pass
+                        elif name == 'C_Inj_High':
+                            pass
+                        elif name == 'Vcal_Coeff_0':
+                            pass
+                        elif name == 'Vcal_Coeff_1':
+                            pass
+
+                    self.parse_register_config()  # init registers
+
+                    # global
+                    for row in configuration_group.global_register:
+                        name = row['name']
+                        value = row['value']
+                        self.set_global_register_value(name, value)
+
+                    #pixels
+                    for pixel_reg in self.pixel_registers:
+                        name = pixel_reg.full_name
+                        self.set_pixel_register_value(pixel_reg.name, np.asarray(raw_data_file_h5.getNode(configuration_group, name=name)).T)
         elif self.definition_file is not None:
             print "Parsing definition file: %s" % self.definition_file
             self.parse_register_config()
@@ -387,13 +468,14 @@ class FEI4Register(object):
         Parameters
         ----------
         configuration_file : string
-            Filename of the configuration file (any file name extension will be ignored).
-            Any path can be omitted. If path is not given, path will be taken from loaded configuration file.
+            Filename of the HDF5 configuration file.
+        name : string
+            Additional identifier (subgroup). Useful when storing more than one configuration inside a HDF5 file.
 
         Returns
         -------
-        self.configuration_file : string
-            Path to the main configuration file.
+        h5_file : string
+            Path to the HDF5 configuration file.
         '''
         h5_file = configuration_file
         if os.path.splitext(h5_file)[1].strip().lower() != ".h5":
@@ -407,17 +489,7 @@ class FEI4Register(object):
 
         # append to file if existing otherwise create new one
         with tb.openFile(h5_file, mode="a", title='', **kwargs) as raw_data_file_h5:
-            # global
-            if name:
-                try:
-                    raw_data_file_h5.removeNode(raw_data_file_h5.root.configuration.name, name='Global_Register')
-                except tb.NodeError:
-                    pass
-            else:
-                try:
-                    raw_data_file_h5.removeNode(raw_data_file_h5.root.configuration, name='Global_Register')
-                except tb.NodeError:
-                    pass
+
             try:
                 configuration_group = raw_data_file_h5.create_group(raw_data_file_h5.root, "configuration")
             except tb.NodeError:
@@ -427,7 +499,48 @@ class FEI4Register(object):
                     configuration_group = raw_data_file_h5.create_group(configuration_group, name)
                 except tb.NodeError:
                     configuration_group = raw_data_file_h5.root.configuration.name
-            global_data_table = raw_data_file_h5.createTable(configuration_group, name='Global_Register', description=GlobalRegisterTable, title='Global_Register', filters=filter_tables)
+
+            # miscellaneous
+            try:
+                raw_data_file_h5.removeNode(configuration_group, name='miscellaneous')
+            except tb.NodeError:
+                pass
+            misc_data_table = raw_data_file_h5.createTable(configuration_group, name='miscellaneous', description=GlobalRegisterTable, title='miscellaneous', filters=filter_tables)
+
+            misc_data_row = misc_data_table.row
+
+            misc_data_row['name'] = 'Flavor'
+            misc_data_row['value'] = self.chip_flavor.upper()
+            misc_data_row.append()
+            misc_data_row['name'] = 'Chip_ID'
+            misc_data_row['value'] = self.chip_id
+            misc_data_row.append()
+            misc_data_row['name'] = 'C_Inj_Low'
+            misc_data_row['value'] = str(0.0)
+            misc_data_row.append()
+            misc_data_row['name'] = 'C_Inj_High'
+            misc_data_row['value'] = str(0.0)
+            misc_data_row.append()
+            misc_data_row['name'] = 'Vcal_Coeff_0'
+            misc_data_row['value'] = str(0.0)
+            misc_data_row.append()
+            misc_data_row['name'] = 'Vcal_Coeff_1'
+            misc_data_row['value'] = str(0.0)
+            misc_data_row.append()
+
+#            for key in sorted(reg_dict):
+#                misc_data_row['name'] = key
+#                misc_data_row['value'] = str(reg_dict[key])  # TODO: some function that converts to bin, hex
+#                misc_data_row.append()
+
+            misc_data_table.flush()
+
+            # global
+            try:
+                raw_data_file_h5.removeNode(configuration_group, name='global_register')
+            except tb.NodeError:
+                pass
+            global_data_table = raw_data_file_h5.createTable(configuration_group, name='global_register', description=GlobalRegisterTable, title='global_register', filters=filter_tables)
 
             global_data_table_row = global_data_table.row
 
@@ -441,16 +554,10 @@ class FEI4Register(object):
 
             # pixel
             for pixel_reg in self.pixel_registers:
-                if name:
-                    try:
-                        raw_data_file_h5.removeNode(raw_data_file_h5.root.configuration.name, name=pixel_reg.full_name)
-                    except tb.NodeError:
-                        pass
-                else:
-                    try:
-                        raw_data_file_h5.removeNode(raw_data_file_h5.root.configuration, name=pixel_reg.full_name)
-                    except tb.NodeError:
-                        pass
+                try:
+                    raw_data_file_h5.removeNode(configuration_group, name=pixel_reg.full_name)
+                except tb.NodeError:
+                    pass
                 data = pixel_reg.value.T
                 atom = tb.Atom.from_dtype(data.dtype)
                 ds = raw_data_file_h5.createCArray(configuration_group, name=pixel_reg.full_name, atom=atom, shape=data.shape, title=pixel_reg.full_name, filters=filter_tables)
