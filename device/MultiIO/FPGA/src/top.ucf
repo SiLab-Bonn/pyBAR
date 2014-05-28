@@ -210,6 +210,7 @@ NET "MULTI_IO[1]" IOSTANDARD = LVCMOS33;
 NET "MULTI_IO[0]" LOC = K2;
 NET "MULTI_IO[0]" IOSTANDARD = LVCMOS33;
 
+# fix for USBpix cards below hardware version 1.04 which have I2C connection
 NET "SDA" LOC = D10 | IOSTANDARD = LVCMOS33 | FLOAT;
 NET "SCL" LOC = D14 | IOSTANDARD = LVCMOS33 | FLOAT;
 
