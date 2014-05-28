@@ -179,8 +179,8 @@ class Readout(object):
 
     def get_sram_fifo_size(self):
         retfifo = self.device.ReadExternal(address=self.sram_base_address[0] + 1, size=3)
-        retfifo.reverse()  # FIXME: enable for new firmware
-        return struct.unpack('I', retfifo.tostring() + '\x00')[0]
+        retfifo.append(0)  # 4 bytes
+        return struct.unpack_from('I', retfifo)[0]
 
     def reset_rx(self, channels=None):
         logging.info('Resetting RX')
