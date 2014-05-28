@@ -266,7 +266,7 @@ class FEI4Register(object):
         else:
             self.load_configuration_from_hdf5(configuration_file, definition_file)
 
-    def save_configuration(self, configuration_file):
+    def save_configuration(self, configuration_file=None):
         '''Saving configuration to text files
 
         Parameters
@@ -280,7 +280,9 @@ class FEI4Register(object):
         self.configuration_file : string
             Path to the main configuration file.
         '''
-        if os.path.splitext(configuration_file)[1].strip().lower() != ".h5":
+        if not configuration_file:
+            return self.save_configuration_to_text_file(configuration_file=self.configuration_file)
+        elif os.path.splitext(configuration_file)[1].strip().lower() != ".h5":
             return self.save_configuration_to_text_file(configuration_file)
         else:
             return self.save_configuration_to_hdf5(configuration_file)
