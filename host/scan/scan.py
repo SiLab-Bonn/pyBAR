@@ -59,10 +59,13 @@ class ScanBase(object):
             import win32api
             win32api.SetConsoleCtrlHandler(handler, 1)
 
-        if device and not device_id:
+        if device:  # prefer device object
             self.device = device
             logging.info('Using %s with ID %s (FW %s)' % (self.device.board_name, filter(type(self.device.board_id).isdigit, self.device.board_id), filter(type(self.device.fw_version).isdigit, self.device.fw_version)))
-        elif not device and not device_id:
+        elif not device and device_id:
+            self.device = SiUSBDevice.from_board_id(device_id)
+            logging.info('Using %s with ID %s (FW %s)' % (self.device.board_name, filter(type(self.device.board_id).isdigit, self.device.board_id), filter(type(self.device.fw_version).isdigit, self.device.fw_version)))
+        else:
             # search for any available device
             devices = GetUSBBoards()
             if not devices:
@@ -72,11 +75,6 @@ class ScanBase(object):
                 if len(devices) > 1:
                     raise ValueError('Please specify USB board')
                 self.device = devices[0]
-        elif not device and device_id:
-            self.device = SiUSBDevice.from_board_id(device_id)
-            logging.info('Using %s with ID %s (FW %s)' % (self.device.board_name, filter(type(self.device.board_id).isdigit, self.device.board_id), filter(type(self.device.fw_version).isdigit, self.device.fw_version)))
-        else:
-            raise ValueError('Unknown USB device')
 
         if bit_file:
             if self.device.XilinxAlreadyLoaded() and not force_download:
@@ -92,10 +90,8 @@ class ScanBase(object):
 
         if not register and configuration_file:
             self.register = FEI4Register(configuration_file=configuration_file, definition_file=definition_file)
-        elif register and not configuration_file:
+        elif register:  # prefer register object
             self.register = register
-        elif register and configuration_file:
-            self.register = register  # prefer register object
         else:
             raise ValueError('Unknown configuration')
 
