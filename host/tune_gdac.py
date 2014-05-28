@@ -142,7 +142,7 @@ class GdacTune(ScanBase):
                     break
 
                 if median_occupancy == 0 and decreased_threshold and all_bits_zero:
-                    logging.warning('Noisy FE detected, tuning will most likely fail!')
+                    logging.info('Maybe noisy FE? Please check!')
 
                 if(gdac_bit > 0):
                     if (median_occupancy < self.n_injections / 2):  # set GDAC bit to 0 if the occupancy is too lowm, thus decrease threshold
