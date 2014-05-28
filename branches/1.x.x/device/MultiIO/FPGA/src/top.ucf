@@ -64,9 +64,6 @@ TIMESPEC TS_FALSE_BUS_CLK_RX_CLK = FROM "tn_BUS_CLK" TO "tn_RX_CLK" TIG ;
 #TIMESPEC "TS_XCKR_IN" = PERIOD "TNM_XCKR_IN" 25 ns HIGH 50 %;
 
 
-# ------ Overrride clock placement problems with ISE 11.x ----------
-#NET "FCKR"     CLOCK_DEDICATED_ROUTE = FALSE;
-#NET "XCKR"     CLOCK_DEDICATED_ROUTE = FALSE;
 # ------ USB-Interface ---------------------------------------------
 
 NET "FCLK_IN" LOC = N10;
@@ -170,7 +167,6 @@ NET "FDATA[0]" IOSTANDARD = LVCMOS33;
 NET "FDATA[0]" LOC = V11;
 
 
-
 # ------ LED -------------------------------------------------------
 
 NET "LED5" IOSTANDARD = LVCMOS33;
@@ -183,7 +179,6 @@ NET "LED2" IOSTANDARD = LVCMOS33;
 NET "LED2" LOC = U16;
 NET "LED1" IOSTANDARD = LVCMOS33;
 NET "LED1" LOC = P13;
-
 
 
 # ------ Button & Spare & more -------------------------------------
@@ -214,6 +209,10 @@ NET "MULTI_IO[1]" LOC = K1;
 NET "MULTI_IO[1]" IOSTANDARD = LVCMOS33;
 NET "MULTI_IO[0]" LOC = K2;
 NET "MULTI_IO[0]" IOSTANDARD = LVCMOS33;
+
+# fix for USBpix cards below hardware version 1.04 which have I2C connection
+NET "SDA" LOC = D10 | IOSTANDARD = LVCMOS33 | FLOAT;
+NET "SCL" LOC = D14 | IOSTANDARD = LVCMOS33 | FLOAT;
 
 
 # ------ Trigger IOs ----------------------------------------------
@@ -373,7 +372,6 @@ NET "SRAM_IO[0]" LOC = D17;
 #NET RAM_CE_N  OFFSET = OUT 500 ps AFTER "TG_MClk";
 #NET SRAM_WE_B  OFFSET = OUT 500 ps AFTER "FCLK_IN";
 #NET RAM_OE_N  OFFSET = OUT 500 ps AFTER "TG_MClk";
-
 
 
 # ------ Debugging -------------------------------------------------

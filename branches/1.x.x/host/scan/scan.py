@@ -12,7 +12,7 @@ from threading import Thread, Event, Lock, Timer
 
 min_pysilibusb_version = '0.1.3'
 from usb.core import USBError
-from SiLibUSB import SiUSBDevice, __version__ as pysilibusb_version
+from SiLibUSB import GetUSBBoards, SiUSBDevice, __version__ as pysilibusb_version
 from distutils.version import StrictVersion as v
 if v(pysilibusb_version) < v(min_pysilibusb_version):
     raise ImportError('Wrong pySiLibUsb version (installed=%s, expected>=%s)' % (pysilibusb_version, min_pysilibusb_version))
@@ -59,53 +59,42 @@ class ScanBase(object):
             import win32api
             win32api.SetConsoleCtrlHandler(handler, 1)
 
-        self.device_id = device_id
-        self.device = device
-
-        if not self.device and not self.device_id:
-            # search for any available device
-            try:
-                self.device = SiUSBDevice()
-            except USBError:
-                raise NoDeviceError('Can\'t find USB board. Connect or reset USB board!')
-            try:
-                # avoid reading board ID and FW version a second time because this will crash the uC
-                if not self.device.XilinxAlreadyLoaded():
-                    logging.info('Found %s with ID %s (FW %s)', self.device.board_name, filter(type(self.device.board_id).isdigit, self.device.board_id), filter(type(self.device.fw_version).isdigit, self.device.fw_version))
-            except USBError:
-                raise DeviceError('Can\'t communicate with USB board. Reset USB board!')
+        if device:  # prefer device object
+            self.device = device
+            logging.info('Using %s with ID %s (FW %s)' % (self.device.board_name, filter(type(self.device.board_id).isdigit, self.device.board_id), filter(type(self.device.fw_version).isdigit, self.device.fw_version)))
+        elif not device and device_id:
+            self.device = SiUSBDevice.from_board_id(device_id)
+            logging.info('Using %s with ID %s (FW %s)' % (self.device.board_name, filter(type(self.device.board_id).isdigit, self.device.board_id), filter(type(self.device.fw_version).isdigit, self.device.fw_version)))
         else:
-            if not self.device:
-                self.device = SiUSBDevice.from_board_id(device_id)
-            try:
-                # avoid reading board ID and FW version a second time because this will crash the uC
-                if not self.device.XilinxAlreadyLoaded():
-                    logging.info('Using %s with ID %s (FW %s)', self.device.board_name, filter(type(self.device.board_id).isdigit, self.device.board_id), filter(type(self.device.fw_version).isdigit, self.device.fw_version))
-                else:
-                    logging.info('Using %s with ID %s', 'USBpix', str(device))
-            except USBError:
-                raise DeviceError('Can\'t communicate with USB board. Reset USB board!')
+            # search for any available device
+            devices = GetUSBBoards()
+            if not devices:
+                raise NoDeviceError('Can\'t find USB board. Connect or reset USB board!')
+            else:
+                logging.info('Found following USB boards: {}'.format(', '.join(('%s with ID %s (FW %s)' % (device.board_name, filter(type(device.board_id).isdigit, device.board_id), filter(type(device.fw_version).isdigit, device.fw_version))) for device in devices)))
+                if len(devices) > 1:
+                    raise ValueError('Please specify USB board')
+                self.device = devices[0]
 
         if bit_file:
             if self.device.XilinxAlreadyLoaded() and not force_download:
                 logging.info('FPGA already configured, skipping download of bitstream')
             else:
                 logging.info('Downloading bitstream to FPGA: %s' % bit_file)
-                try:
-                    if not self.device.DownloadXilinx(bit_file):
-                        raise IOError('Can\'t program FPGA firmware. Reset USB board!')
-                except USBError:
-                    raise DeviceError('Can\'t program FPGA firmware. Reset USB board!')
+                if not self.device.DownloadXilinx(bit_file):
+                    raise IOError('Can\'t program FPGA firmware. Reset USB board!')
                 time.sleep(1)
 
         self.readout = Readout(self.device)
         self.readout_utils = ReadoutUtils(self.device)
 
-        self.configuration_file = configuration_file
-        self.register = register
+        if not register and configuration_file:
+            self.register = FEI4Register(configuration_file=configuration_file, definition_file=definition_file)
+        elif register:  # prefer register object
+            self.register = register
+        else:
+            raise ValueError('Unknown configuration')
 
-        if not self.register:
-            self.register = FEI4Register(configuration_file=self.configuration_file, definition_file=definition_file)
         self.register_utils = FEI4RegisterUtils(self.device, self.readout, self.register)
 
         # remove all non_word characters and whitespace characters to prevent problems with os.path.join
