@@ -74,9 +74,13 @@ module top (
     output wire SEL1,
     output wire SEL2,
     output wire SEL3,
-    output wire SEL4
+    output wire SEL4,
     
     //input wire FPGA_BUTTON // switch S2 on MultiIO board, active low
+    
+    // I2C
+    inout SDA,
+    inout SCL
 );
 
 wire BUS_RST;
