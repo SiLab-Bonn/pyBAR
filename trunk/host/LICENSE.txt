@@ -1,7 +1,7 @@
-Copyright (c) 2013, Jens Janssen
-Copyright (c) 2013, David-Leon Pohl
-Copyright (c) 2013, Tomasz Hemperek
-Copyright (c) 2013, pyBAR maintainers
+Copyright (c) 2013-2014, Jens Janssen
+Copyright (c) 2013-2014, David-Leon Pohl
+Copyright (c) 2013-2014, Tomasz Hemperek
+Copyright (c) 2013-2014, pyBAR maintainers
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without 
