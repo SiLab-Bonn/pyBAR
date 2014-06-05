@@ -1,0 +1,66 @@
+#
+# ------------------------------------------------------------
+# Copyright (c) SILAB , Physics Institute of Bonn University
+# ------------------------------------------------------------
+#
+# SVN revision information:
+#  $Rev:: 113                   $:
+#  $Author:: TheresaObermann    $:
+#  $Date:: 2014-05-06 15:49:28 #$:
+#
+
+---
+name    : pyBAR 
+version : 2.0.0
+
+transfer_layer:
+    - name     : usb
+      type     : SiUsb
+      bit_file : "config/fpga/top.bit"
+      board_id : 101
+
+hw_drivers:
+  - name      : cmd
+    type      : cmd_seq
+    interface : usb
+    base_addr : 0x10000
+
+  - name      : sram
+    type      : sram_fifo
+    interface : usb
+    base_addr : 0x10100
+
+  - name      : tlu
+    type      : tlu
+    interface : usb
+    base_addr : 0x10200
+
+  - name      : rx_4
+    type      : fei4_rx
+    interface : usb
+    base_addr : 0x10300
+
+  - name      : rx_3
+    type      : fei4_rx
+    interface : usb
+    base_addr : 0x10400
+    
+  - name      : rx_2
+    type      : fei4_rx
+    interface : usb
+    base_addr : 0x10500
+
+  - name      : rx_1
+    type      : fei4_rx
+    interface : usb
+    base_addr : 0x10600
+
+  - name      : tdc_hitor
+    type      : tdc_s3
+    interface : usb
+    base_addr : 0x10700
+
+user_drivers:
+    
+registers:
+
