@@ -52,7 +52,7 @@ def plot_tdc_event(points, filename=None):
     return plt
 
 
-def plot_linear_relation(x, y, x_err=None, y_err=None, title=None, point_label=None, legend=None, plot_range=None, plot_range_y=None, x_label=None, y_label=None, y_2_label=None, marker_style='-o', log_x=False, log_y=False, filename=None):
+def plot_linear_relation(x, y, x_err=None, y_err=None, title=None, point_label=None, legend=None, plot_range=None, plot_range_y=None, x_label=None, y_label=None, y_2_label=None, marker_style='-o', log_x=False, log_y=False, size=None, filename=None):
     ''' Takes point data (x,y) with errors(x,y) and fits a straight line. The deviation to this line is also plotted, showing the offset. 
 
      Parameters
@@ -91,18 +91,15 @@ def plot_linear_relation(x, y, x_err=None, y_err=None, title=None, point_label=N
         for X, Y, Z in zip(x, y, point_label):
             ax.annotate('{}'.format(Z), xy=(X, Y), xytext=(-5, 5), ha='right', textcoords='offset points')
     # line fit
-    line_fit = np.polyfit(x, y, 1)
-    chi_squared = np.sum((np.polyval(line_fit, x) - y) ** 2)
+    line_fit, pcov = np.polyfit(x, y, 1, full=False, cov=True)
+    print pcov
+#     chi_squared = np.sum((np.polyval(line_fit, x) - y) ** 2)
     fit_fn = np.poly1d(line_fit)
     plt.plot(x, fit_fn(x), '-', lw=2, color='gray')
-    if line_fit[1] > 0:
-        line_fit_legend_entry = 'line fit\n%.2f x-%.2f\nX2/n.d.f=%d' % (line_fit[0], abs(line_fit[1]), chi_squared / len(x))
-    else:
-        line_fit_legend_entry = 'line fit\n%.2f x+%.2f' % (line_fit[0], abs(line_fit[1]))
+    line_fit_legend_entry = 'line fit: ax + b\na=$%.2f\pm%.2f$\nb=$%.2f\pm%.2f$' % (line_fit[0], np.absolute(pcov[0][0]) ** 0.5, abs(line_fit[1]), np.absolute(pcov[1][1]) ** 0.5)
 
     plt.legend(["data", line_fit_legend_entry], 0)
     plt.setp(ax.get_xticklabels(), visible=False)  # remove ticks at common border of both plots
-    
 
     divider = make_axes_locatable(ax)
     ax_bottom_plot = divider.append_axes("bottom", 2.0, pad=0.0, sharex=ax)
@@ -124,13 +121,16 @@ def plot_linear_relation(x, y, x_err=None, y_err=None, title=None, point_label=N
 #     ax.set_aspect(2)
 #     ax_bottom_plot.set_aspect(2)
 
+    if size is not None:
+        fig.set_size_inches(size)
+
     if filename is None:
         plt.show()
     elif type(filename) == PdfPages:
         filename.savefig()
         plt.close()
     elif filename:
-        plt.savefig(filename)
+        plt.savefig(filename, bbox_inches='tight')
         plt.close()
     return plt
 
@@ -418,8 +418,8 @@ def round_to_multiple(number, multiple):
     return int(ceil_mod_number)
 
 
-def plot_relative_bcid(hist, filename=None):
-    plot_1d_hist(hist=hist, title='Relative BCID (former LVL1ID)', log_y=True, plot_range=range(0, 16), x_axis_title='Relative BCID [25 ns]', y_axis_title='#', filename=filename, figure_name='Relative BCID')
+def plot_relative_bcid(hist, title=None, filename=None):
+    plot_1d_hist(hist=hist, title='Relative BCID (former LVL1ID)' if title is None else title, log_y=True, plot_range=range(0, 16), x_axis_title='Relative BCID [25 ns]', y_axis_title='#', filename=filename, figure_name='Relative BCID')
 
 
 def plot_relative_bcid_stop_mode(hist, filename=None):
@@ -444,8 +444,8 @@ def plot_tdc_counter(hist, title=None, filename=None):
     plot_1d_hist(hist=masked_hist, title='TDC counter distribution (' + str(np.sum(hist)) + ' entries)' if title == None else title, plot_range=range(*indices), x_axis_title='TDC value', y_axis_title='#', color='b', filename=filename, figure_name='Counter TDC')
 
 
-def plot_event_errors(hist, filename=None):
-    plot_1d_hist(hist=hist, title='Event status', plot_range=range(0, 11), x_ticks=('SR\noccured', 'No\ntrigger', 'LVL1ID\nnot const.', '#BCID\nwrong', 'unknown\nword', 'BCID\njump', 'trigger\nerror', 'truncated', 'TDC\nword', '> 1 TDC\nwords', 'TDC\noverflow'), color='g', y_axis_title='#', filename=filename, figure_name='Event Errors')
+def plot_event_errors(hist, title=None, filename=None):
+    plot_1d_hist(hist=hist, title='Event status' if title is None else title, plot_range=range(0, 11), x_ticks=('SR\noccured', 'No\ntrigger', 'LVL1ID\nnot const.', '#BCID\nwrong', 'unknown\nword', 'BCID\njump', 'trigger\nerror', 'truncated', 'TDC\nword', '> 1 TDC\nwords', 'TDC\noverflow'), color='g', y_axis_title='#', filename=filename, figure_name='Event Errors')
 
 
 def plot_trigger_errors(hist, filename=None):
@@ -496,7 +496,10 @@ def plot_scurves(occupancy_hist, scan_parameters, title='S-Curves', ylabel='Occu
     norm = colors.LogNorm()
     plt.imshow(hist, interpolation='nearest', aspect="auto", cmap=cmap, extent=extent, norm=norm)
     plt.gca().invert_yaxis()
-    plt.colorbar()
+    try:
+        plt.colorbar()
+    except ValueError:
+        logging.warning('Cannot plot clolor bar')
     plt.title(title + ' for %d pixel(s)' % (n_pixel - np.count_nonzero(occ_mask)))
     if scan_parameter_name is None:
         plt.xlabel('Scan parameter')
@@ -705,7 +708,7 @@ def create_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, bins=
             x_max = math.ceil(hist.max())
     hist_range = (x_min, x_max)
     # plot
-    _, _, _ = plt.hist(x=hist.ravel(), bins=hist_bins, range=hist_range)  # re-bin to 1d histogram
+    _, _, _ = plt.hist(x=np.ma.compressed(hist), bins=hist_bins, range=hist_range)  # re-bin to 1d histogram
     plt.xlim(hist_range)  # overwrite xlim
     if hist.all() is np.ma.masked or np.allclose(hist, 0.0):
         plt.ylim((0, 1))
