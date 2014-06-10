@@ -1,4 +1,4 @@
-from basil.pydaq import Dut
+from basil.dut import Dut
 
 import time
 import os
