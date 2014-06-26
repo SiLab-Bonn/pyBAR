@@ -77,9 +77,14 @@ class ScanBase(object):
 #                 if len(devices) > 1:
 #                     raise ValueError('Please specify USB board')
 #                 self.device = devices[0]
-        dut = Dut("pybar.yaml")
-        dut.init()
-        self.device = dut["usb"]._sidev
+        self.dut = Dut("pybar.yaml")
+        self.dut.init()
+        self.dut.set_configuration('configuration.yaml')
+        self.dut['POWER'].set_voltage('VDDA1', 1.500)
+        self.dut['POWER'].set_voltage('VDDA2', 1.500)
+        self.dut['POWER'].set_voltage('VDDD1', 1.200)
+        self.dut['POWER'].set_voltage('VDDD2', 1.200)
+        self.device = self.dut["USB"]._sidev
 
         if bit_file:
             if self.device.XilinxAlreadyLoaded() and not force_download:
