@@ -12,8 +12,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 
 
 local_configuration = {
-    "occupancy_limit": 10 ** (-5),  # 0 will mask any pixel with occupancy greater than zero
-    "triggers": 10000000,
+    "occupancy_limit": 0,  # 0 will mask any pixel with occupancy greater than zero
+    "triggers": 1000000,
     "trig_count": 1,
     "disable_for_mask": ['Enable'],
     "enable_for_mask": ['Imon'],
@@ -71,11 +71,11 @@ class NoiseOccupancyScan(ScanBase):
         mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
         pixel_reg = "Enable"
         commands.extend(self.register.get_commands("confmode"))
-        self.register.set_pixel_register_value(pixel_reg, mask)
+        if not overwrite_mask:
+            mask = np.logical_and(mask, self.register.get_pixel_register_value(pixel_reg))
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
         # generate mask for Imon mask
         pixel_reg = "Imon"
-#         mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span, default=1, value=0)
         self.register.set_pixel_register_value(pixel_reg, 1)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
         # disable C_inj mask
