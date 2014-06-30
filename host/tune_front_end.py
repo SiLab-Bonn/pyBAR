@@ -106,7 +106,7 @@ def tune_front_end(cfg_name, target_threshold=20, target_charge=270, target_tot=
         tdac_tune_scan.start(tdac_tune_bits=range(start_bit, -1, -1), configure=True, plots_filename=output_pdf, **local_configuration)
         tdac_tune_scan.stop()
 
-    gdac_tune_scan.register.save_configuration(name=cfg_name)  # save the final config
+    gdac_tune_scan.register.save_configuration(cfg_name)  # save the final config
 
     if create_plots:
         if(local_iterations > 0):
