@@ -159,6 +159,26 @@ class FEI4RegisterUtils(object):
         commands.extend(self.register.get_commands("runmode"))
         self.send_commands(commands)
 
+    def reset_bunch_counter(self):
+        '''Resetting Bunch Counter
+        '''
+        logging.info('Resetting Bunch Counter')
+        commands = []
+        commands.extend(self.register.get_commands("confmode"))
+        commands.extend(self.register.get_commands("BCR"))
+        commands.extend(self.register.get_commands("runmode"))
+        self.send_commands(commands)
+
+    def reset_event_counter(self):
+        '''Resetting Event Counter
+        '''
+        logging.info('Resetting Event Counter')
+        commands = []
+        commands.extend(self.register.get_commands("confmode"))
+        commands.extend(self.register.get_commands("ECR"))
+        commands.extend(self.register.get_commands("runmode"))
+        self.send_commands(commands)
+
     def configure_all(self, same_mask_for_all_dc=False):
         self.configure_global()
         self.configure_pixel(same_mask_for_all_dc=same_mask_for_all_dc)
