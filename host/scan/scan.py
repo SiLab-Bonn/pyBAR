@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 class ScanBase(object):
     scan_id = "base_scan"
 
-    def __init__(self, configuration_file=None, register=None, definition_file=None, bit_file=None, force_download=False, device_id=None, device=None, scan_data_path=None, module_id="", **kwargs):
+    def __init__(self, configuration_file=None, register=None, definition_file=None, bit_file=None, force_download=False, device_id=None, dut=None, device=None, scan_data_path=None, module_id="", **kwargs):
         '''
         configuration_file : str, FEI4Register
             Filename of FE configuration file or FEI4Register object.
@@ -77,13 +77,16 @@ class ScanBase(object):
 #                 if len(devices) > 1:
 #                     raise ValueError('Please specify USB board')
 #                 self.device = devices[0]
-        self.dut = Dut("pybar.yaml")
-        self.dut.init()
-        self.dut.set_configuration('configuration.yaml')
-        self.dut['POWER'].set_voltage('VDDA1', 1.500)
-        self.dut['POWER'].set_voltage('VDDA2', 1.500)
-        self.dut['POWER'].set_voltage('VDDD1', 1.200)
-        self.dut['POWER'].set_voltage('VDDD2', 1.200)
+
+        if dut:
+            self.dut = dut
+        else:
+            self.dut = Dut("pybar.yaml")
+            self.dut.init()
+            self.dut['POWER'].set_voltage('VDDA1', 1.500)
+            self.dut['POWER'].set_voltage('VDDA2', 1.500)
+            self.dut['POWER'].set_voltage('VDDD1', 1.200)
+            self.dut['POWER'].set_voltage('VDDD2', 1.200)
         self.device = self.dut["USB"]._sidev
 
         if bit_file:
@@ -112,7 +115,7 @@ class ScanBase(object):
         self.module_id = re.sub(r"\s+", '_', self.module_id)
         self.scan_id = re.sub(r"[^\w\s+]", '', self.scan_id)
         self.scan_id = re.sub(r"\s+", '_', self.scan_id)
-        if scan_data_path == None:
+        if scan_data_path is None:
             self.scan_data_path = os.getcwd()
         else:
             self.scan_data_path = scan_data_path
@@ -140,6 +143,7 @@ class ScanBase(object):
         self._device_configuration = {key: locals[key] for key in args if key != 'self' and key != 'args' and key != 'kwargs'}
         self._device_configuration["register"] = self.register
         self._device_configuration["device"] = self.device
+        self._device_configuration["dut"] = self.dut
         if kwargs:
             self._device_configuration.update(kwargs)
 
@@ -201,10 +205,13 @@ class ScanBase(object):
             raise RuntimeError('Scan thread is already running')
 
         # setting FPGA register to default state
+        #print self.device_configuration
         self.readout_utils.configure_rx_fsm(**self.device_configuration)
         self.readout_utils.configure_command_fsm(**self.device_configuration)
         self.readout_utils.configure_trigger_fsm(**self.device_configuration)
         self.readout_utils.configure_tdc_fsm(**self.device_configuration)
+        self.dut.set_configuration('configuration.yaml')
+        #print self.dut.get_configuration()
 
         if do_global_reset:
             self.register_utils.global_reset()
