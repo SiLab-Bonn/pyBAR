@@ -43,7 +43,7 @@ class NoiseOccupancyScan(ScanBase):
         enable_for_mask : list, tuple
             List of masks for which noisy pixels will be enabled.
         overwrite_mask : bool
-            Overwrite masks (disable_for_mask, enable_for_mask) if set to true. If set to false, make a combination of existing mask and new mask.
+            Overwrite masks (disable_for_mask, enable_for_mask) if set to true. If set to false, make a combination of existing mask (configuration file) and generated mask (selected columns and rows), otherwise only use generated mask.
         col_span : list, tuple
             Column range (from minimum to maximum value). From 1 to 80.
         row_span : list, tuple
@@ -64,20 +64,26 @@ class NoiseOccupancyScan(ScanBase):
             consecutive_lvl1 = (2 ** self.register.get_global_register_objects(name=['Trig_Count'])[0].bitlength)
         else:
             consecutive_lvl1 = trig_count
-        if occupancy_limit * triggers * consecutive_lvl1 < 1:
-            logging.warning('Number of triggers too low for given occupancy limit')
+        if occupancy_limit * triggers * consecutive_lvl1 < 1.0:
+            logging.warning('Number of triggers too low for given occupancy limit. Any noise hit will lead to a masked pixel.')
 
         commands = []
-        mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
-        pixel_reg = "Enable"
-        commands.extend(self.register.get_commands("confmode"))
-        self.register.set_pixel_register_value(pixel_reg, mask)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
-        # generate mask for Imon mask
-        pixel_reg = "Imon"
-#         mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span, default=1, value=0)
-        self.register.set_pixel_register_value(pixel_reg, 1)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
+        mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span)  # 1 for selected columns, else 0
+        for pixel_reg in disable_for_mask:  # enabled pixels set to 1
+            if overwrite_mask:
+                pixel_mask = mask
+            else:
+                pixel_mask = np.logical_and(mask, self.register.get_pixel_register_value(pixel_reg))
+            self.register.set_pixel_register_value(pixel_reg, pixel_mask)
+            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
+        mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span, default=1, value=0)  # 0 for selected columns, else 1
+        for pixel_reg in enable_for_mask:  # disabled pixels set to 1
+            if overwrite_mask:
+                pixel_mask = mask
+            else:
+                pixel_mask = np.logical_or(mask, self.register.get_pixel_register_value(pixel_reg))
+            self.register.set_pixel_register_value(pixel_reg, pixel_mask)
+            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
         # disable C_inj mask
         pixel_reg = "C_High"
         self.register.set_pixel_register_value(pixel_reg, 0)
