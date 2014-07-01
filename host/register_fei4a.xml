@@ -131,7 +131,7 @@
         </global>
         <pixel>
             <pixel_register name="Enable" bitlength="1" pxstrobe="0" description="Enabling/disabling readout." />
-            <pixel_register name="TDAC" bitlength="5" pxstrobe="1" littleendian="1" description="The higher the value, the lower the threshold." />
+            <pixel_register name="TDAC" bitlength="5" pxstrobe="1" littleendian="1" description="The higher the value, the lower the threshold. One step equivalent to 4 steps in Vthin_AltFine." />
             <pixel_register name="C_High" bitlength="1" pxstrobe="6" description="Big injection capacitor (nominally 3.8fF/ measured 4.1fF)." />
             <pixel_register name="C_Low" bitlength="1" pxstrobe="7" description="Big injection capacitor (nominally 1.9fF/ measured 2fF)." />
             <pixel_register name="Imon" bitlength="1" pxstrobe="8" description="Disabling Imon enables hit-OR." />
