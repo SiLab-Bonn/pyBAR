@@ -182,7 +182,7 @@ class ThresholdBaselineTuning(ScanBase):
                 print 'NOISY untuned pixels', self.occ_mask.sum(), 'Noisy pixels', noisy_pixels, 'Noisy tuned pixels', decrease_pixel_mask.sum(), 'limit', noisy_pixel_limit * occ_hist.shape[0] * occ_hist.shape[1]
                 if noisy_pixels > noisy_pixel_limit * occ_hist.shape[0] * occ_hist.shape[1]:
                     self.register.restore()
-                    self.register.set_global_register_value("Vthin_AltFine", reg_val - 1)
+                    self.register.set_global_register_value("Vthin_AltFine", reg_val + 1)
                     self.register.set_pixel_register_value('TDAC', tdac_reg)
                     scan.register.save_configuration(cfg_name)
                     break
