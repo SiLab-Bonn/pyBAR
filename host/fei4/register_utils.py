@@ -418,8 +418,6 @@ def parse_key_value_from_file(f, key, deletechars=''):
         key_value = re.split("\s+|[\s]*=[\s]*", line)
         if (key_value[0].translate(None, deletechars).lower() == key.translate(None, deletechars).lower()):
             if len(key_value) > 1:
-                print key_value
-                print len(key_value)
                 return key_value[0].translate(None, deletechars).lower(), key_value[1].translate(None, deletechars).lower()
             else:
                 raise ValueError('Value not found')
