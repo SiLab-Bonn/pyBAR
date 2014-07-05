@@ -373,7 +373,7 @@ class ScanBase(object):
         restore_shift_masks : bool
             Writing the initial (restored) FE pixel configuration into FE after finishing the scan loop.
         mask : array-like
-            Additional mask. Must be convertible to an array of booleans with the same shape as mask array. True indicates a masked (i.e. invalid) data. Masked pixels will be selected (enabled) during mask shifting.
+            Additional mask. Must be convertible to an array of booleans with the same shape as mask array. True indicates a masked pixel. Masked pixels will be disabled during shifting of the enable shift masks, and enabled during shifting disable shift mask.
         '''
         if not isinstance(command, bitarray):
             raise TypeError
