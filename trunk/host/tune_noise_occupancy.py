@@ -34,6 +34,8 @@ class NoiseOccupancyScan(ScanBase):
 
         Parameters
         ----------
+        cfg_name : string
+            File name of the configuration file. If None or not given, use default file name.
         occupancy_limit : float
             Occupancy limit which is multiplied with measured number of hits for each pixel. Any pixel above 1 will be masked.
         triggers : int
