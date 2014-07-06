@@ -2,6 +2,7 @@ import time
 import logging
 import numpy as np
 from math import ceil
+from os.path import splitext
 
 from analysis.plotting.plotting import plot_occupancy
 from daq.readout import get_col_row_array_from_data_record_array, convert_data_array, data_array_from_data_dict_iterable, is_data_record, is_data_from_channel
@@ -14,9 +15,10 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 
 local_configuration = {
     "cfg_name": 'threshold_baseline_tuning',  # the name of the new config with the tuning
-    "occupancy_limit": 10 ** (-6),  # 0 will mask any pixel with occupancy greater than zero
+    "occupancy_limit": 0,  # 0 will mask any pixel with occupancy greater than zero
     "disabled_pixels_limit": 0.01,  # in percent
     "repeat_tuning": False,
+    "use_enable_mask": False,
     "triggers": 100000,
     "trig_count": 1,
     "col_span": [1, 80],
@@ -28,17 +30,21 @@ local_configuration = {
 class ThresholdBaselineTuning(ScanBase):
     scan_id = "threshold_basline_tuning"
 
-    def scan(self, cfg_name='noise_occ_tuning', occupancy_limit=10 ** (-6), disabled_pixels_limit=0.01, repeat_tuning=False, triggers=100000, trig_count=1, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, **kwargs):
+    def scan(self, cfg_name='noise_occ_tuning', occupancy_limit=0, disabled_pixels_limit=0.01, repeat_tuning=False, use_enable_mask=False, triggers=100000, trig_count=1, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, **kwargs):
         '''Masking pixels with occupancy above certain limit.
 
         Parameters
         ----------
+        cfg_name : string
+            File name of the configuration file. If None or not given, use default file name.
         occupancy_limit : float
             Occupancy limit which for each pixel. Any pixel above the limit the TDAC will be decreased (the lower TDAC value, the higher the threshold).
         disabled_pixels_limit : float
             Limit percentage of pixels, which will be disabled during tuning. Pixels will be disables when noisy and TDAC is 0 (highest possible threshold). Abort condition for baseline tuning.
         repeat_tuning : bool
             Repeat TDAC tuning each global threshold step until no noisy pixels occur. Usually not needed, default is disabled.
+        use_enable_mask : bool
+            Use enable mask for masking pixels.
         triggers : int
             Total number of triggers sent to FE. From 1 to 4294967295 (32-bit unsigned int).
         trig_count : int
@@ -59,6 +65,7 @@ class ThresholdBaselineTuning(ScanBase):
         '''
         # create restore point
         self.register.create_restore_point()
+        self.trig_count = trig_count
         if trig_count == 0:
             consecutive_lvl1 = (2 ** self.register.get_global_register_objects(name=['Trig_Count'])[0].bitlength)
         else:
@@ -67,6 +74,7 @@ class ThresholdBaselineTuning(ScanBase):
             logging.warning('Number of triggers too low for given occupancy limit. Any noise hit will lead to a masked pixel.')
 
         commands = []
+        commands.extend(self.register.get_commands("confmode"))
         # TDAC
         tdac_median = np.median(self.register.get_pixel_register_value('TDAC'))
         tdac_max = 2 ** self.register.get_pixel_register_objects(name=['TDAC'])[0].bitlength - 1
@@ -74,13 +82,14 @@ class ThresholdBaselineTuning(ScanBase):
         if threshold_correction < 0.0:
             threshold_correction = 0.0
         pixel_reg = "TDAC"
-        commands.extend(self.register.get_commands("confmode"))
         self.register.set_pixel_register_value(pixel_reg, tdac_max)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
         mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
         pixel_reg = "Enable"
-        commands.extend(self.register.get_commands("confmode"))
-        self.register.set_pixel_register_value(pixel_reg, mask)
+        if use_enable_mask:
+            self.register.set_pixel_register_value(pixel_reg, np.logical_and(mask, self.register.get_pixel_register_value(pixel_reg)))
+        else:
+            self.register.set_pixel_register_value(pixel_reg, mask)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
         # generate mask for Imon mask
         pixel_reg = "Imon"
@@ -113,6 +122,7 @@ class ThresholdBaselineTuning(ScanBase):
             self.register.create_restore_point(name=str(reg_val))
             self.stop_thread_event.clear()
             logging.info('Scanning Vthin_AltFine %d' % reg_val)
+            commands = []
             commands.extend(self.register.get_commands("confmode"))
             self.register.set_global_register_value("Vthin_AltFine", reg_val)  # set number of consecutive triggers
             commands.extend(self.register.get_commands("wrregister", name=["Vthin_AltFine"]))
@@ -129,7 +139,7 @@ class ThresholdBaselineTuning(ScanBase):
                     self.readout.start()
 
                     # preload command
-                    command_delay = 400  # 100kHz
+                    command_delay = 500  # <100kHz
                     lvl1_command = self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", length=command_delay)[0]
                     commnd_lenght = lvl1_command.length()
                     logging.info('Estimated scan time: %ds' % int(commnd_lenght * 25 * (10 ** -9) * triggers))
@@ -216,14 +226,14 @@ class ThresholdBaselineTuning(ScanBase):
                 self.register.set_global_register_value("Vthin_AltFine", last_good_threshold)
                 self.register.set_pixel_register_value('TDAC', last_good_tdac)
                 self.register.set_pixel_register_value('Enable', last_good_enable_mask)
-                scan.register.save_configuration(cfg_name)
+                self.register.save_configuration(cfg_name if cfg_name else (splitext(self.device_configuration["configuration_file"])[0] + '_' + self.scan_id))
                 break
 
     def analyze(self):
         from analysis.analyze_raw_data import AnalyzeRawData
         output_file = self.scan_data_filename + "_interpreted.h5"
         with AnalyzeRawData(raw_data_file=scan.scan_data_filename, analyzed_data_file=output_file, create_pdf=True) as analyze_raw_data:
-            analyze_raw_data.interpreter.set_trig_count(self.register.get_global_register_value("Trig_Count"))
+            analyze_raw_data.interpreter.set_trig_count(self.trig_count)
             analyze_raw_data.create_source_scan_hist = True
 #             analyze_raw_data.create_hit_table = True
 #             analyze_raw_data.interpreter.debug_events(0, 0, True)  # events to be printed onto the console for debugging, usually deactivated
