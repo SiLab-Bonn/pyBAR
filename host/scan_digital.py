@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(leve
 local_configuration = {
     "mask_steps": 3,
     "repeat_command": 100,
-    "use_enable_mask": True
+    "use_enable_mask": False
 }
 
 
