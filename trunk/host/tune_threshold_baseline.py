@@ -183,7 +183,6 @@ class ThresholdBaselineTuning(ScanBase):
                     self.readout.stop()
 
                     occ_hist, _, _ = np.histogram2d(self.col_arr, self.row_arr, bins=(80, 336), range=[[1, 80], [1, 336]])
-                    print occ_hist
                     self.occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
                     # noisy pixels are set to 1
                     self.occ_mask[occ_hist > occupancy_limit * triggers * consecutive_lvl1] = 1
