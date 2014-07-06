@@ -200,8 +200,8 @@ class ThresholdBaselineTuning(ScanBase):
                         self.register.restore(name=str(reg_val))
                         break
                     else:
-                        logging.info('Tuned %d pixel(s)' % (decrease_pixel_mask.sum(),))
-                        logging.info('Disabled %d pixel(s)' % (diabled_pixels,))
+                        logging.info('Increasing threshold of %d pixel(s)' % (decrease_pixel_mask.sum(),))
+                        logging.info('Disabling %d pixel(s), total number of disabled pixel(s): %d' % (disable_pixel_mask.sum(), diabled_pixels))
                         tdac_reg[decrease_pixel_mask] -= 1  # TODO
                         self.register.set_pixel_register_value('TDAC', tdac_reg)
                         self.register.set_pixel_register_value('Enable', enable_mask)
