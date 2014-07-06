@@ -14,12 +14,11 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 
 local_configuration = {
     "cfg_name": 'threshold_baseline_tuning',  # the name of the new config with the tuning
-    "occupancy_limit": 10 ** (-5),  # 0 will mask any pixel with occupancy greater than zero
+    "occupancy_limit": 10 ** (-6),  # 0 will mask any pixel with occupancy greater than zero
+    "disabled_pixels_limit": 0.01,  # in percent
+    "repeat_tuning": False,
     "triggers": 100000,
     "trig_count": 1,
-    "disable_for_mask": ['Enable'],
-    "enable_for_mask": ['Imon'],
-    "overwrite_mask": False,
     "col_span": [1, 80],
     "row_span": [1, 336],
     "timeout_no_data": 10
@@ -29,13 +28,17 @@ local_configuration = {
 class ThresholdBaselineTuning(ScanBase):
     scan_id = "threshold_basline_tuning"
 
-    def scan(self, cfg_name='noise_occ_tuning', occupancy_limit=10 ** (-7), noisy_pixel_limit=0.01, triggers=1000000, trig_count=1, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, **kwargs):
+    def scan(self, cfg_name='noise_occ_tuning', occupancy_limit=10 ** (-6), disabled_pixels_limit=0.01, repeat_tuning=False, triggers=100000, trig_count=1, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, **kwargs):
         '''Masking pixels with occupancy above certain limit.
 
         Parameters
         ----------
         occupancy_limit : float
-            Occupancy limit which is multiplied with measured number of hits for each pixel. Any pixel above 1 will be masked.
+            Occupancy limit which for each pixel. Any pixel above the limit the TDAC will be decreased (the lower TDAC value, the higher the threshold).
+        disabled_pixels_limit : float
+            Limit percentage of pixels, which will be disabled during tuning. Pixels will be disables when noisy and TDAC is 0 (highest possible threshold). Abort condition for baseline tuning.
+        repeat_tuning : bool
+            Repeat TDAC tuning each global threshold step until no noisy pixels occur. Usually not needed, default is disabled.
         triggers : int
             Total number of triggers sent to FE. From 1 to 4294967295 (32-bit unsigned int).
         trig_count : int
@@ -72,7 +75,6 @@ class ThresholdBaselineTuning(ScanBase):
             threshold_correction = 0.0
         pixel_reg = "TDAC"
         commands.extend(self.register.get_commands("confmode"))
-        print 'TDAC max', tdac_max
         self.register.set_pixel_register_value(pixel_reg, tdac_max)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
         mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
@@ -98,15 +100,17 @@ class ThresholdBaselineTuning(ScanBase):
         commands.extend(self.register.get_commands("runmode"))
         self.register_utils.send_commands(commands)
 
-        print 'threshold', self.register.get_global_register_value("Vthin_AltFine"), 'correction', threshold_correction
         vthin_alt_fine_max = 2 ** self.register.get_global_register_objects(name=["Vthin_AltFine"])[0].bitlength - 1
         if self.register.get_global_register_value("Vthin_AltFine") + threshold_correction > vthin_alt_fine_max:
             corrected_threshold = vthin_alt_fine_max
         else:
             corrected_threshold = self.register.get_global_register_value("Vthin_AltFine") + threshold_correction
 
+        disabled_pixels_limit_cnt = int(disabled_pixels_limit * 336 * 80)
+        diabled_pixels = 0
+
         for reg_val in range(int(corrected_threshold), -1, -1):
-            print reg_val
+            self.register.create_restore_point(name=str(reg_val))
             self.stop_thread_event.clear()
             logging.info('Scanning Vthin_AltFine %d' % reg_val)
             commands.extend(self.register.get_commands("confmode"))
@@ -116,84 +120,104 @@ class ThresholdBaselineTuning(ScanBase):
             commands.extend(self.register.get_commands("runmode"))
             self.register_utils.send_commands(commands)
 
-            self.col_arr = np.array([], dtype=np.dtype('>u1'))
-            self.row_arr = np.array([], dtype=np.dtype('>u1'))
+            while True:
 
-            with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_id) as raw_data_file:
-                self.readout.start()
+                self.col_arr = np.array([], dtype=np.dtype('>u1'))
+                self.row_arr = np.array([], dtype=np.dtype('>u1'))
 
-                # preload command
-                command_delay = 400  # 100kHz
-                lvl1_command = self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", length=command_delay)[0]
-                commnd_lenght = lvl1_command.length()
-                logging.info('Estimated scan time: %ds' % int(commnd_lenght * 25 * (10 ** -9) * triggers))
-                logging.info('Please stand by...')
-                self.register_utils.send_command(lvl1_command, repeat=triggers, wait_for_finish=False, set_length=True, clear_memory=False)
+                with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_id) as raw_data_file:
+                    self.readout.start()
 
-                wait_for_first_data = False
-                last_iteration = time.time()
-                saw_no_data_at_time = last_iteration
-                saw_data_at_time = last_iteration
-                no_data_at_time = last_iteration
-                while not self.stop_thread_event.wait(self.readout.readout_interval):
+                    # preload command
+                    command_delay = 400  # 100kHz
+                    lvl1_command = self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", length=command_delay)[0]
+                    commnd_lenght = lvl1_command.length()
+                    logging.info('Estimated scan time: %ds' % int(commnd_lenght * 25 * (10 ** -9) * triggers))
+                    logging.info('Please stand by...')
+                    self.register_utils.send_command(lvl1_command, repeat=triggers, wait_for_finish=False, set_length=True, clear_memory=False)
+
+                    wait_for_first_data = False
                     last_iteration = time.time()
-                    try:
-                        data = (self.readout.data.popleft(), )
-                        raw_data_file.append(data)
-                        col_arr_tmp, row_arr_tmp = convert_data_array(data_array_from_data_dict_iterable(data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)
-                        self.col_arr = np.concatenate((self.col_arr, col_arr_tmp))
-                        self.row_arr = np.concatenate((self.row_arr, row_arr_tmp))
-                    except IndexError:  # no data
-                        no_data_at_time = last_iteration
-                        if self.register_utils.is_ready:
-                            self.stop_thread_event.set()
-                            logging.info('Finished sending %d triggers' % triggers)
-                        elif wait_for_first_data is False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
-                            logging.info('Reached no data timeout. Stopping Scan...')
-                            self.stop_thread_event.set()
-                        elif wait_for_first_data is False:
-                            saw_no_data_at_time = no_data_at_time
-                        elif self.reaout_utils.is_ready:
-                            self.stop_thread_event.set()
-
-                        continue
-
+                    saw_no_data_at_time = last_iteration
                     saw_data_at_time = last_iteration
+                    no_data_at_time = last_iteration
+                    while not self.stop_thread_event.wait(self.readout.readout_interval):
+                        last_iteration = time.time()
+                        try:
+                            data = (self.readout.data.popleft(), )
+                            raw_data_file.append(data)
+                            col_arr_tmp, row_arr_tmp = convert_data_array(data_array_from_data_dict_iterable(data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)
+                            self.col_arr = np.concatenate((self.col_arr, col_arr_tmp))
+                            self.row_arr = np.concatenate((self.row_arr, row_arr_tmp))
+                        except IndexError:  # no data
+                            no_data_at_time = last_iteration
+                            if self.register_utils.is_ready:
+                                self.stop_thread_event.set()
+                                logging.info('Finished sending %d triggers' % triggers)
+                            elif wait_for_first_data is False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
+                                logging.info('Reached no data timeout. Stopping Scan...')
+                                self.stop_thread_event.set()
+                            elif wait_for_first_data is False:
+                                saw_no_data_at_time = no_data_at_time
+                            elif self.reaout_utils.is_ready:
+                                self.stop_thread_event.set()
 
-                    if wait_for_first_data is True:
-                        logging.info('Taking data...')
-                        wait_for_first_data = False
+                            continue
 
-                self.readout.stop()
+                        saw_data_at_time = last_iteration
 
-                occ_hist, _, _ = np.histogram2d(self.col_arr, self.row_arr, bins=(80, 336), range=[[1, 80], [1, 336]])
-                print occ_hist
-                self.occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
-                # noisy pixels are set to 1
-                self.occ_mask[occ_hist > occupancy_limit * triggers * consecutive_lvl1] = 1
-                print self.occ_mask.sum()
-                plot_occupancy(occ_hist.T, title='Occupancy', filename=scan.scan_data_filename + '_noise_occ_' + str(reg_val) + '.pdf')
+                        if wait_for_first_data is True:
+                            logging.info('Taking data...')
+                            wait_for_first_data = False
 
-                tdac_reg = self.register.get_pixel_register_value('TDAC')
-                decrease_pixel_mask = np.logical_and(self.occ_mask > 0, tdac_reg > 0)
-                noise_pixel_mask = np.logical_and(self.occ_mask > 0, tdac_reg == 0)
-                plot_occupancy(tdac_reg.T, title='TDAC', filename=scan.scan_data_filename + '_TDAC_' + str(reg_val) + '.pdf')
-                noisy_pixels = noise_pixel_mask.sum()
-                print 'NOISY untuned pixels', self.occ_mask.sum(), 'Noisy pixels', noisy_pixels, 'Noisy tuned pixels', decrease_pixel_mask.sum(), 'limit', noisy_pixel_limit * occ_hist.shape[0] * occ_hist.shape[1]
-                if noisy_pixels > noisy_pixel_limit * occ_hist.shape[0] * occ_hist.shape[1]:
-                    self.register.restore()
-                    self.register.set_global_register_value("Vthin_AltFine", reg_val + 1)
-                    self.register.set_pixel_register_value('TDAC', tdac_reg)
-                    scan.register.save_configuration(cfg_name)
-                    break
-                else:
-                    tdac_reg[decrease_pixel_mask] -= 1  # TODO
-                    self.register.set_pixel_register_value('TDAC', tdac_reg)
-                    commands = []
-                    commands.extend(self.register.get_commands("confmode"))
-                    commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name='TDAC'))
-                    commands.extend(self.register.get_commands("runmode"))
-                    self.register_utils.send_commands(commands)
+                    self.readout.stop()
+
+                    occ_hist, _, _ = np.histogram2d(self.col_arr, self.row_arr, bins=(80, 336), range=[[1, 80], [1, 336]])
+                    print occ_hist
+                    self.occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
+                    # noisy pixels are set to 1
+                    self.occ_mask[occ_hist > occupancy_limit * triggers * consecutive_lvl1] = 1
+                    plot_occupancy(occ_hist.T, title='Occupancy', filename=scan.scan_data_filename + '_noise_occ_' + str(reg_val) + '.pdf')
+
+                    tdac_reg = self.register.get_pixel_register_value('TDAC')
+                    decrease_pixel_mask = np.logical_and(self.occ_mask > 0, tdac_reg > 0)
+                    disable_pixel_mask = np.logical_and(self.occ_mask > 0, tdac_reg == 0)
+                    enable_reg = self.register.get_pixel_register_value('Enable')
+                    enable_mask = np.logical_and(enable_reg, self.register_utils.invert_pixel_mask(disable_pixel_mask))
+                    diabled_pixels += disable_pixel_mask.sum()
+                    plot_occupancy(tdac_reg.T, title='TDAC', filename=scan.scan_data_filename + '_TDAC_' + str(reg_val) + '.pdf')
+                    if diabled_pixels > disabled_pixels_limit_cnt:
+                        logging.info('Limit of disabled pixels reached: %d (limit %d)... stopping scan' % (diabled_pixels, disabled_pixels_limit_cnt))
+                        self.register.restore(name=str(reg_val))
+                        break
+                    else:
+                        logging.info('Tuned %d pixel(s)' % (decrease_pixel_mask.sum(),))
+                        logging.info('Disabled %d pixel(s)' % (diabled_pixels,))
+                        tdac_reg[decrease_pixel_mask] -= 1  # TODO
+                        self.register.set_pixel_register_value('TDAC', tdac_reg)
+                        self.register.set_pixel_register_value('Enable', enable_mask)
+                        commands = []
+                        commands.extend(self.register.get_commands("confmode"))
+                        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name='TDAC'))
+                        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name='Enable'))
+                        commands.extend(self.register.get_commands("runmode"))
+                        self.register_utils.send_commands(commands)
+                        if not repeat_tuning or self.occ_mask.sum() == 0:
+                            self.register.clear_restore_points(name=str(reg_val))
+                            break
+                        else:
+                            logging.info('Found noisy pixels... repeat tuning step for Vthin_AltFine %d' % (reg_val,))
+
+            if diabled_pixels > disabled_pixels_limit_cnt:
+                last_good_threshold = self.register.get_global_register_value("Vthin_AltFine")
+                last_good_tdac = self.register.get_pixel_register_value('TDAC')
+                last_good_enable_mask = self.register.get_pixel_register_value('Enable')
+                self.register.restore()
+                self.register.set_global_register_value("Vthin_AltFine", last_good_threshold)
+                self.register.set_pixel_register_value('TDAC', last_good_tdac)
+                self.register.set_pixel_register_value('Enable', last_good_enable_mask)
+                scan.register.save_configuration(cfg_name)
+                break
 
     def analyze(self):
         from analysis.analyze_raw_data import AnalyzeRawData
