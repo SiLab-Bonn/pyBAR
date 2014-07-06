@@ -18,7 +18,7 @@ local_configuration = {
     "search_distance": 10,  # the increase of the PlstrDAC if the Scurve start is not found yet
     "minimum_data_points": 20,  # the minimum PlsrDAC settings for one S-Curve
     "ignore_columns": (1, 78, 79, 80),  # columns which data should be ignored
-    "use_enable_mask": True
+    "use_enable_mask": False
 }
 
 
