@@ -17,7 +17,8 @@ local_configuration = {
     "scan_parameter_stepsize": 2,  # the increase of the PlstrDAC if the Scurve start was found
     "search_distance": 10,  # the increase of the PlstrDAC if the Scurve start is not found yet
     "minimum_data_points": 20,  # the minimum PlsrDAC settings for one S-Curve
-    "ignore_columns": (1, 78, 79, 80)  # columns which data should be ignored
+    "ignore_columns": (1, 78, 79, 80),  # columns which data should be ignored
+    "use_enable_mask": True
 }
 
 
@@ -26,7 +27,7 @@ class FastThresholdScan(ScanBase):
     scan_parameter_start = 0  # holding last start value (e.g. used in GDAC threshold scan)
     data_points = 10  # holding the data points already recorded
 
-    def scan(self, mask_steps=3, n_injections=100, scan_parameter_range=None, enable_mask_steps=None, scan_parameter_stepsize=2, search_distance=10, minimum_data_points=15, ignore_columns=(1, 78, 79, 80), command=None, **kwargs):
+    def scan(self, mask_steps=3, n_injections=100, scan_parameter_range=None, enable_mask_steps=None, scan_parameter_stepsize=2, search_distance=10, minimum_data_points=15, ignore_columns=(1, 78, 79, 80), command=None, use_enable_mask=False, **kwargs):
         '''Scan loop
 
         Parameters
@@ -47,6 +48,8 @@ class FastThresholdScan(ScanBase):
             All columns that are neither scanned nor taken into account to set the scan range are mentioned here. Usually the edge columns are ignored. From 1 to 80.
         command : bitarray.bitarray
             An arbitrary command can be defined to be send to the FE. If None: Inject + Delay + Trigger is used.
+        use_enable_mask : bool
+            Use enable mask for masking pixels.
         '''
 
         scan_parameter = 'PlsrDAC'
@@ -99,7 +102,7 @@ class FastThresholdScan(ScanBase):
                 self.readout.start()
 
                 cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0] if command is None else command
-                self.scan_loop(cal_lvl1_command, repeat_command=self.n_injections, hardware_repeat=True, use_delay=True, mask_steps=mask_steps, enable_mask_steps=enable_mask_steps, enable_double_columns=enable_double_columns, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_c_high=None, enable_c_low=None, enable_shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=False, mask=None)
+                self.scan_loop(cal_lvl1_command, repeat_command=self.n_injections, hardware_repeat=True, use_delay=True, mask_steps=mask_steps, enable_mask_steps=enable_mask_steps, enable_double_columns=enable_double_columns, same_mask_for_all_dc=not use_enable_mask, eol_function=None, digital_injection=False, enable_c_high=None, enable_c_low=None, enable_shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=False, mask=self.register_utils.invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if use_enable_mask else None)
 
                 self.readout.stop()
 
