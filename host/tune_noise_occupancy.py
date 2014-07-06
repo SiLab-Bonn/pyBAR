@@ -3,7 +3,7 @@ import logging
 import numpy as np
 from os.path import splitext
 
-#from analysis.plotting.plotting import plot_occupancy, make_occupancy_hist
+from analysis.plotting.plotting import plot_occupancy, make_occupancy_hist
 from daq.readout import get_col_row_array_from_data_record_array, convert_data_array, data_array_from_data_dict_iterable, is_data_record, is_data_from_channel
 
 from scan.scan import ScanBase
