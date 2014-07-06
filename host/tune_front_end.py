@@ -68,6 +68,8 @@ def tune_front_end(cfg_name, target_threshold=20, target_charge=270, target_tot=
 
     difference_bit = 1
 
+    cfg_name = cfg_name if cfg_name else str(target_threshold) + '_' + target_tot + 'ToT_at_' + target_charge + '_' + 'tuning'
+
     output_pdf = None
     if create_plots:
         output_pdf_filename = os.path.join(gdac_tune_scan.scan_data_output_path, cfg_name)
