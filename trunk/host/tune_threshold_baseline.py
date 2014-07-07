@@ -17,7 +17,7 @@ local_configuration = {
     "cfg_name": 'threshold_baseline_tuning',  # the name of the new config with the tuning
     "occupancy_limit": 0,  # 0 will mask any pixel with occupancy greater than zero
     "disabled_pixels_limit": 0.01,  # in percent
-    "repeat_tuning": False,
+    "repeat_tuning": True,
     "use_enable_mask": False,
     "triggers": 100000,
     "trig_count": 1,
@@ -120,7 +120,6 @@ class ThresholdBaselineTuning(ScanBase):
 
         for reg_val in range(int(corrected_threshold), -1, -1):
             self.register.create_restore_point(name=str(reg_val))
-            self.stop_thread_event.clear()
             logging.info('Scanning Vthin_AltFine %d' % reg_val)
             commands = []
             commands.extend(self.register.get_commands("confmode"))
@@ -129,9 +128,10 @@ class ThresholdBaselineTuning(ScanBase):
             # setting FE into runmode
             commands.extend(self.register.get_commands("runmode"))
             self.register_utils.send_commands(commands)
-
+            step = 0
             while True:
-
+                self.stop_thread_event.clear()
+                step += 1
                 self.col_arr = np.array([], dtype=np.dtype('>u1'))
                 self.row_arr = np.array([], dtype=np.dtype('>u1'))
 
@@ -142,6 +142,8 @@ class ThresholdBaselineTuning(ScanBase):
                     command_delay = 500  # <100kHz
                     lvl1_command = self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", length=command_delay)[0]
                     commnd_lenght = lvl1_command.length()
+                    if repeat_tuning:
+                        logging.info('Step %d at Vthin_AltFine %d' % (step, reg_val))
                     logging.info('Estimated scan time: %ds' % int(commnd_lenght * 25 * (10 ** -9) * triggers))
                     logging.info('Please stand by...')
                     self.register_utils.send_command(lvl1_command, repeat=triggers, wait_for_finish=False, set_length=True, clear_memory=False)
@@ -186,7 +188,7 @@ class ThresholdBaselineTuning(ScanBase):
                     self.occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
                     # noisy pixels are set to 1
                     self.occ_mask[occ_hist > occupancy_limit * triggers * consecutive_lvl1] = 1
-                    plot_occupancy(occ_hist.T, title='Occupancy', filename=scan.scan_data_filename + '_noise_occ_' + str(reg_val) + '.pdf')
+#                     plot_occupancy(occ_hist.T, title='Occupancy', filename=scan.scan_data_filename + '_noise_occ_' + str(reg_val) + '_' + str(step) + '.pdf')
 
                     tdac_reg = self.register.get_pixel_register_value('TDAC')
                     decrease_pixel_mask = np.logical_and(self.occ_mask > 0, tdac_reg > 0)
@@ -194,7 +196,7 @@ class ThresholdBaselineTuning(ScanBase):
                     enable_reg = self.register.get_pixel_register_value('Enable')
                     enable_mask = np.logical_and(enable_reg, self.register_utils.invert_pixel_mask(disable_pixel_mask))
                     diabled_pixels += disable_pixel_mask.sum()
-                    plot_occupancy(tdac_reg.T, title='TDAC', filename=scan.scan_data_filename + '_TDAC_' + str(reg_val) + '.pdf')
+#                     plot_occupancy(tdac_reg.T, title='TDAC', filename=scan.scan_data_filename + '_TDAC_' + str(reg_val) + '_' + str(step) + '.pdf')
                     if diabled_pixels > disabled_pixels_limit_cnt:
                         logging.info('Limit of disabled pixels reached: %d (limit %d)... stopping scan' % (diabled_pixels, disabled_pixels_limit_cnt))
                         self.register.restore(name=str(reg_val))
