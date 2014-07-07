@@ -18,6 +18,7 @@ local_configuration = {
     "occupancy_limit": 0,  # 0 will mask any pixel with occupancy greater than zero
     "disabled_pixels_limit": 0.01,  # in percent
     "repeat_tuning": True,
+    "limit_repeat_tuning_steps": 5,
     "use_enable_mask": False,
     "triggers": 100000,
     "trig_count": 1,
@@ -30,7 +31,7 @@ local_configuration = {
 class ThresholdBaselineTuning(ScanBase):
     scan_id = "threshold_basline_tuning"
 
-    def scan(self, cfg_name='noise_occ_tuning', occupancy_limit=0, disabled_pixels_limit=0.01, repeat_tuning=False, use_enable_mask=False, triggers=100000, trig_count=1, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, **kwargs):
+    def scan(self, cfg_name='noise_occ_tuning', occupancy_limit=0, disabled_pixels_limit=0.01, repeat_tuning=False, limit_repeat_tuning_steps=5, use_enable_mask=False, triggers=100000, trig_count=1, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, **kwargs):
         '''Masking pixels with occupancy above certain limit.
 
         Parameters
@@ -40,9 +41,11 @@ class ThresholdBaselineTuning(ScanBase):
         occupancy_limit : float
             Occupancy limit which for each pixel. Any pixel above the limit the TDAC will be decreased (the lower TDAC value, the higher the threshold).
         disabled_pixels_limit : float
-            Limit percentage of pixels, which will be disabled during tuning. Pixels will be disables when noisy and TDAC is 0 (highest possible threshold). Abort condition for baseline tuning.
+            Limit percentage of pixels, which will be disabled during tuning. Pixels will be disables when noisy and TDAC is 0 (highest possible threshold). Abort condition for baseline tuning and repeat tuning steps.
         repeat_tuning : bool
             Repeat TDAC tuning each global threshold step until no noisy pixels occur. Usually not needed, default is disabled.
+        limit_repeat_tuning_steps : int
+            Limit the number of TDAC tuning steps at certain threshold. None is no limit.
         use_enable_mask : bool
             Use enable mask for masking pixels.
         triggers : int
@@ -213,7 +216,7 @@ class ThresholdBaselineTuning(ScanBase):
                         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name='Enable'))
                         commands.extend(self.register.get_commands("runmode"))
                         self.register_utils.send_commands(commands)
-                        if not repeat_tuning or self.occ_mask.sum() == 0:
+                        if not repeat_tuning or self.occ_mask.sum() == 0 or (repeat_tuning and limit_repeat_tuning_steps and step == limit_repeat_tuning_steps) or decrease_pixel_mask.sum() < disabled_pixels_limit_cnt:
                             self.register.clear_restore_points(name=str(reg_val))
                             break
                         else:
