@@ -1,7 +1,9 @@
 """This script uses the FE stop mode to recover all hits stored in the pixel array if a trigger is issued. 
 Can be used if there are correlated hits over a large time window (> 16 * 25 ns). Has the disadvantage to reduce the max trigger rate since the readout per trigger takes a rather long time.
 The FE config is:
-- FE in config mode
+- Some delay until hits are processed
+- Set FE to stop mode
+- Enable FE conf mode
 - FE trigger multiplication set to one
 - FE trigger latency set high (== low value) to store the hits for a long time
 - for each trigger do
@@ -28,10 +30,10 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 
 scan_configuration = {
     "source": "TPC",
-    "bcid_window": 100,  # the time window hits are read from the pixel matrix, [0:256[
     "trigger_mode": 0,
     "trigger_latency": 5,
     "trigger_delay": 192,
+    "bcid_window": 100,  # the time window hits are read from the pixel matrix, [0:256[
     "col_span": [2, 77],
     "row_span": [2, 330],
     "timeout_no_data": 10,
@@ -45,7 +47,7 @@ scan_configuration = {
 class ExtTriggerScan(ScanBase):
     scan_id = "ext_trigger_scan_stop_mode"
 
-    def scan(self, trigger_mode=0, trigger_latency=232, trigger_delay=13, bcid_window=20, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=10000, enable_hitbus=False, enable_tdc=False, enable_all_pixel=False, **kwargs):
+    def scan(self, trigger_mode=0, trigger_latency=5, trigger_delay=192, bcid_window=100, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=10000, enable_hitbus=False, enable_tdc=False, enable_all_pixel=False, **kwargs):
         '''Scan loop
 
         Parameters
@@ -57,15 +59,11 @@ class ExtTriggerScan(ScanBase):
             2: TLU simple handshake (automatic detection of TLU connection (TLU port/RJ45)).
             3: TLU trigger data handshake (automatic detection of TLU connection (TLU port/RJ45)).
         trigger_latency : int
-            FE global register Trig_Lat.
-            Some ballpark estimates:
-            External scintillator/TLU/Hitbus: 232 (default)
-            FE/USBpix Self-Trigger: 220
+            FE global register Trig_Lat. The lower the longer the hit will be stored in data buffers.
         trigger_delay : int
-            Delay between trigger and LVL1 command.
-            Some ballpark estimates:
-            Hitbus: 0
-            else: 14 (default)
+            Delay between trigger and stop mode command.
+        bcid_window : int
+            Number of trigger to be read out in stop mode.
         col_span : list, tuple
             Column range (from minimum to maximum value). From 1 to 80.
         row_span : list, tuple
@@ -103,10 +101,8 @@ class ExtTriggerScan(ScanBase):
 
             start_sequence = self.register_utils.concatenate_commands((self.register.get_commands("zeros", length=trigger_delay)[0],
                                                                         stop_mode_cmd,
-                                                                        self.register.get_commands("zeros", length=10)[0],
-#                                                                         read_register,
-                                                                        self.register.get_commands("zeros", length=10)[0],
-                                                                        stop_clock_pulse_cmd_high,
+                                                                        self.register.get_commands("zeros", length=20)[0],
+                                                                        stop_clock_pulse_cmd_high,  # FIXME: before confmode?
                                                                         self.register.get_commands("zeros", length=50)[0],
                                                                         self.register.get_commands("confmode")[0]
                                                                         ))
