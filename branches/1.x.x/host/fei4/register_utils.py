@@ -159,6 +159,34 @@ class FEI4RegisterUtils(object):
         commands.extend(self.register.get_commands("runmode"))
         self.send_commands(commands)
 
+    def reset_bunch_counter(self):
+        '''Resetting Bunch Counter
+        '''
+        logging.info('Resetting Bunch Counter')
+        commands = []
+        commands.extend(self.register.get_commands("confmode"))
+        commands.extend(self.register.get_commands("BCR"))
+        self.send_commands(commands)
+        time.sleep(0.1)
+        commands = []
+        commands.extend(self.register.get_commands("confmode"))
+        commands.extend(self.register.get_commands("runmode"))
+        self.send_commands(commands)
+
+    def reset_event_counter(self):
+        '''Resetting Event Counter
+        '''
+        logging.info('Resetting Event Counter')
+        commands = []
+        commands.extend(self.register.get_commands("confmode"))
+        commands.extend(self.register.get_commands("ECR"))  # wait some time after ECR
+        self.send_commands(commands)
+        time.sleep(0.1)
+        commands = []
+        commands.extend(self.register.get_commands("confmode"))
+        commands.extend(self.register.get_commands("runmode"))
+        self.send_commands(commands)
+
     def configure_all(self, same_mask_for_all_dc=False):
         self.configure_global()
         self.configure_pixel(same_mask_for_all_dc=same_mask_for_all_dc)
@@ -398,8 +426,6 @@ def parse_key_value_from_file(f, key, deletechars=''):
         key_value = re.split("\s+|[\s]*=[\s]*", line)
         if (key_value[0].translate(None, deletechars).lower() == key.translate(None, deletechars).lower()):
             if len(key_value) > 1:
-                print key_value
-                print len(key_value)
                 return key_value[0].translate(None, deletechars).lower(), key_value[1].translate(None, deletechars).lower()
             else:
                 raise ValueError('Value not found')

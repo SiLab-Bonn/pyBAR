@@ -5,6 +5,8 @@ import re
 import tables as tb
 import platform
 import inspect
+#import matplotlib.pyplot as plt
+#import numpy as np
 from analysis.RawDataConverter.data_struct import NameValue  # , generate_scan_configuration_description
 
 
@@ -356,7 +358,7 @@ class ScanBase(object):
         restore_shift_masks : bool
             Writing the initial (restored) FE pixel configuration into FE after finishing the scan loop.
         mask : array-like
-            Additional mask. Must be convertible to an array of booleans with the same shape as mask array. True indicates a masked (i.e. invalid) data. Masked pixels will be selected (enabled) during mask shifting.
+            Additional mask. Must be convertible to an array of booleans with the same shape as mask array. True indicates a masked pixel. Masked pixels will be disabled during shifting of the enable shift masks, and enabled during shifting disable shift mask.
         '''
         if not isinstance(command, bitarray):
             raise TypeError
@@ -411,10 +413,11 @@ class ScanBase(object):
                 commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=same_mask_for_all_dc, name=disable_shift_masks))
             if enable_shift_masks or digital_injection:
                 curr_en_mask = self.register_utils.make_pixel_mask(steps=mask_steps, shift=mask_step, mask=mask)
-#                 plt.imshow(np.transpose(curr_en_mask), interpolation='nearest', aspect="auto")
-#                 plt.pcolor(np.transpose(curr_en_mask))
+#                 plt.clf()
+#                 plt.imshow(curr_en_mask.T, interpolation='nearest', aspect="auto")
+#                 plt.pcolor(curr_en_mask.T)
 #                 plt.colorbar()
-#                 plt.savefig('mask_step'+str(mask_step)+'.eps')
+#                 plt.savefig('mask_step' + str(mask_step) + '.pdf')
                 map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_en_mask), [shift_mask_name for shift_mask_name in enable_shift_masks if (shift_mask_name.lower() != "EnableDigInj".lower())])
                 commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=same_mask_for_all_dc, name=enable_shift_masks))
                 if digital_injection == True:  # TODO: write EnableDigInj to FE or do it manually?

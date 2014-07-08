@@ -11,13 +11,14 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(leve
 local_configuration = {
     "mask_steps": 3,
     "repeat_command": 100,
+    "use_enable_mask": False
 }
 
 
 class DigitalScan(ScanBase):
     scan_id = "digital_scan"
 
-    def scan(self, mask_steps=3, repeat_command=100, **kwargs):
+    def scan(self, mask_steps=3, repeat_command=100, use_enable_mask=False, **kwargs):
         '''Scan loop
 
         Parameters
@@ -26,6 +27,8 @@ class DigitalScan(ScanBase):
             Number of mask steps.
         repeat : int
             Number of injections.
+        use_enable_mask : bool
+            Use enable mask for masking pixels.
         '''
         commands = []
         commands.extend(self.register.get_commands("confmode"))
@@ -36,7 +39,7 @@ class DigitalScan(ScanBase):
         self.readout.start()
 
         cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0]
-        self.scan_loop(cal_lvl1_command, repeat_command=repeat_command, hardware_repeat=True, use_delay=True, mask_steps=mask_steps, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=True, enable_c_high=False, enable_c_low=False, enable_shift_masks=["Enable"], restore_shift_masks=False, mask=None)
+        self.scan_loop(cal_lvl1_command, repeat_command=repeat_command, hardware_repeat=True, use_delay=True, mask_steps=mask_steps, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=not use_enable_mask, eol_function=None, digital_injection=True, enable_c_high=False, enable_c_low=False, enable_shift_masks=["Enable"], restore_shift_masks=False, mask=self.register_utils.invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if use_enable_mask else None)
 
         self.readout.stop(timeout=10.0)
 

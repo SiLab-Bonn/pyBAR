@@ -68,9 +68,12 @@ def tune_front_end(cfg_name, target_threshold=20, target_charge=270, target_tot=
 
     difference_bit = 1
 
+    pdf_name = cfg_name if cfg_name else (str(target_threshold) + '_' + target_tot + 'ToT_at_' + target_charge + '_' + 'tuning')
+    config_name = cfg_name if cfg_name else (gdac_tune_scan.module_id + str(target_threshold) + '_' + target_tot + 'ToT_at_' + target_charge + '_' + 'tuning')
+
     output_pdf = None
     if create_plots:
-        output_pdf_filename = os.path.join(gdac_tune_scan.scan_data_output_path, cfg_name)
+        output_pdf_filename = os.path.join(gdac_tune_scan.scan_data_output_path, pdf_name)
         output_pdf = PdfPages(output_pdf_filename + '.pdf')
 
     start_bit = 7
@@ -106,7 +109,7 @@ def tune_front_end(cfg_name, target_threshold=20, target_charge=270, target_tot=
         tdac_tune_scan.start(tdac_tune_bits=range(start_bit, -1, -1), configure=True, plots_filename=output_pdf, **local_configuration)
         tdac_tune_scan.stop()
 
-    gdac_tune_scan.register.save_configuration(name=cfg_name)  # save the final config
+    gdac_tune_scan.register.save_configuration(config_name)  # save the final config
 
     if create_plots:
         if(local_iterations > 0):

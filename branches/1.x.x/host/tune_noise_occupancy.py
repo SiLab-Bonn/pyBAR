@@ -1,8 +1,9 @@
 import time
 import logging
 import numpy as np
+from os.path import splitext
 
-from analysis.plotting.plotting import plot_occupancy
+from analysis.plotting.plotting import plot_occupancy, make_occupancy_hist
 from daq.readout import get_col_row_array_from_data_record_array, convert_data_array, data_array_from_data_dict_iterable, is_data_record, is_data_from_channel
 
 from scan.scan import ScanBase
@@ -12,8 +13,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 
 
 local_configuration = {
-    "occupancy_limit": 0,  # 0 will mask any pixel with occupancy greater than zero
-    "triggers": 1000000,
+    "cfg_name": 'noise_occupancy_tuning',  # the name of the new config with the tuning
+    "occupancy_limit": 10 ** (-5),  # 0 will mask any pixel with occupancy greater than zero
+    "triggers": 10000000,
     "trig_count": 1,
     "disable_for_mask": ['Enable'],
     "enable_for_mask": ['Imon'],
@@ -27,11 +29,13 @@ local_configuration = {
 class NoiseOccupancyScan(ScanBase):
     scan_id = "noise_occupancy_tuning"
 
-    def scan(self, occupancy_limit=10 ** (-7), triggers=10000000, trig_count=1, disable_for_mask=['Enable'], enable_for_mask=['Imon'], overwrite_mask=False, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, **kwargs):
+    def scan(self, cfg_name='noise_occupancy_tuning', occupancy_limit=10 ** (-5), triggers=10000000, trig_count=1, disable_for_mask=['Enable'], enable_for_mask=['Imon'], overwrite_mask=False, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, **kwargs):
         '''Masking pixels with occupancy above certain limit.
 
         Parameters
         ----------
+        cfg_name : string
+            File name of the configuration file. If None or not given, use default file name.
         occupancy_limit : float
             Occupancy limit which is multiplied with measured number of hits for each pixel. Any pixel above 1 will be masked.
         triggers : int
@@ -43,7 +47,7 @@ class NoiseOccupancyScan(ScanBase):
         enable_for_mask : list, tuple
             List of masks for which noisy pixels will be enabled.
         overwrite_mask : bool
-            Overwrite masks (disable_for_mask, enable_for_mask) if set to true. If set to false, make a combination of existing mask and new mask.
+            Overwrite masks (disable_for_mask, enable_for_mask) if set to true. If set to false, make a combination of existing mask (configuration file) and generated mask (selected columns and rows), otherwise only use generated mask.
         col_span : list, tuple
             Column range (from minimum to maximum value). From 1 to 80.
         row_span : list, tuple
@@ -60,24 +64,32 @@ class NoiseOccupancyScan(ScanBase):
         '''
         # create restore point
         self.register.create_restore_point()
+        self.trig_count = trig_count
         if trig_count == 0:
             consecutive_lvl1 = (2 ** self.register.get_global_register_objects(name=['Trig_Count'])[0].bitlength)
         else:
             consecutive_lvl1 = trig_count
-        if occupancy_limit * triggers * consecutive_lvl1 < 1:
-            logging.warning('Number of triggers too low for given occupancy limit')
+        if occupancy_limit * triggers * consecutive_lvl1 < 1.0:
+            logging.warning('Number of triggers too low for given occupancy limit. Any noise hit will lead to a masked pixel.')
 
         commands = []
-        mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
-        pixel_reg = "Enable"
         commands.extend(self.register.get_commands("confmode"))
-        if not overwrite_mask:
-            mask = np.logical_and(mask, self.register.get_pixel_register_value(pixel_reg))
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
-        # generate mask for Imon mask
-        pixel_reg = "Imon"
-        self.register.set_pixel_register_value(pixel_reg, 1)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
+        mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span)  # 1 for selected columns, else 0
+        for pixel_reg in disable_for_mask:  # enabled pixels set to 1
+            if overwrite_mask:
+                pixel_mask = mask
+            else:
+                pixel_mask = np.logical_and(mask, self.register.get_pixel_register_value(pixel_reg))
+            self.register.set_pixel_register_value(pixel_reg, pixel_mask)
+            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
+        mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span, default=1, value=0)  # 0 for selected columns, else 1
+        for pixel_reg in enable_for_mask:  # disabled pixels set to 1
+            if overwrite_mask:
+                pixel_mask = mask
+            else:
+                pixel_mask = np.logical_or(mask, self.register.get_pixel_register_value(pixel_reg))
+            self.register.set_pixel_register_value(pixel_reg, pixel_mask)
+            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
         # disable C_inj mask
         pixel_reg = "C_High"
         self.register.set_pixel_register_value(pixel_reg, 0)
@@ -99,7 +111,7 @@ class NoiseOccupancyScan(ScanBase):
             self.readout.start()
 
             # preload command
-            command_delay = 400  # 100kHz
+            command_delay = 500  # <100kHz
             lvl1_command = self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", length=command_delay)[0]
             commnd_lenght = lvl1_command.length()
             logging.info('Estimated scan time: %ds' % int(commnd_lenght * 25 * (10 ** -9) * triggers))
@@ -144,40 +156,41 @@ class NoiseOccupancyScan(ScanBase):
 
             self.readout.stop()
 
-            self.register.restore()
+        self.register.restore()
 
-            occ_hist, _, _ = np.histogram2d(self.col_arr, self.row_arr, bins=(80, 336), range=[[1, 80], [1, 336]])
+        occ_hist, _, _ = np.histogram2d(self.col_arr, self.row_arr, bins=(80, 336), range=[[1, 80], [1, 336]])
 
-            self.occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
-            # noisy pixels are set to 1
-            self.occ_mask[occ_hist > occupancy_limit * triggers * consecutive_lvl1] = 1
-            # make inverse
-            self.inv_occ_mask = self.register_utils.invert_pixel_mask(self.occ_mask)
-            self.disable_for_mask = disable_for_mask
-            if overwrite_mask:
-                for mask in disable_for_mask:
-                    self.register.set_pixel_register_value(mask, self.inv_occ_mask)
-            else:
-                for mask in disable_for_mask:
-                    enable_mask = np.logical_and(self.inv_occ_mask, self.register.get_pixel_register_value(mask))
-                    self.register.set_pixel_register_value(mask, enable_mask)
+        self.occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
+        # noisy pixels are set to 1
+        self.occ_mask[occ_hist > occupancy_limit * triggers * consecutive_lvl1] = 1
+        # make inverse
+        self.inv_occ_mask = self.register_utils.invert_pixel_mask(self.occ_mask)
+        self.disable_for_mask = disable_for_mask
+        if overwrite_mask:
+            for mask in disable_for_mask:
+                self.register.set_pixel_register_value(mask, self.inv_occ_mask)
+        else:
+            for mask in disable_for_mask:
+                enable_mask = np.logical_and(self.inv_occ_mask, self.register.get_pixel_register_value(mask))
+                self.register.set_pixel_register_value(mask, enable_mask)
 
-            self.enable_for_mask = enable_for_mask
-            if overwrite_mask:
-                for mask in enable_for_mask:
-                    self.register.set_pixel_register_value(mask, self.occ_mask)
-            else:
-                for mask in enable_for_mask:
-                    disable_mask = np.logical_or(self.occ_mask, self.register.get_pixel_register_value(mask))
-                    self.register.set_pixel_register_value(mask, disable_mask)
+        self.enable_for_mask = enable_for_mask
+        if overwrite_mask:
+            for mask in enable_for_mask:
+                self.register.set_pixel_register_value(mask, self.occ_mask)
+        else:
+            for mask in enable_for_mask:
+                disable_mask = np.logical_or(self.occ_mask, self.register.get_pixel_register_value(mask))
+                self.register.set_pixel_register_value(mask, disable_mask)
 
-#             plot_occupancy(self.col_arr, self.row_arr, max_occ=None, filename=self.scan_data_filename + "_occupancy.pdf")
+#         plot_occupancy(make_occupancy_hist(self.col_arr, self.row_arr), z_max=None, filename=self.scan_data_filename + "_occupancy.pdf")
+        self.register.save_configuration(cfg_name if cfg_name else (splitext(self.device_configuration["configuration_file"])[0] + '_' + self.scan_id))
 
     def analyze(self):
         from analysis.analyze_raw_data import AnalyzeRawData
         output_file = self.scan_data_filename + "_interpreted.h5"
         with AnalyzeRawData(raw_data_file=scan.scan_data_filename, analyzed_data_file=output_file, create_pdf=True) as analyze_raw_data:
-            analyze_raw_data.interpreter.set_trig_count(self.register.get_global_register_value("Trig_Count"))
+            analyze_raw_data.interpreter.set_trig_count(self.trig_count)
             analyze_raw_data.create_source_scan_hist = True
 #             analyze_raw_data.create_hit_table = True
 #             analyze_raw_data.interpreter.debug_events(0, 0, True)  # events to be printed onto the console for debugging, usually deactivated
@@ -200,4 +213,3 @@ if __name__ == "__main__":
     scan.start(use_thread=False, **local_configuration)
     scan.stop()
     scan.analyze()
-    scan.register.save_configuration(scan.device_configuration["configuration_file"])

@@ -255,7 +255,7 @@ def make_occupancy_hist(cols, rows, ncols=80, nrows=336):
     hist, xedges, yedges = np.histogram2d(rows, cols, bins=(nrows, ncols), range=[[1, nrows], [1, ncols]])
 #     extent = [yedges[0] - 0.5, yedges[-1] + 0.5, xedges[-1] + 0.5, xedges[0] - 0.5]
 
-    return hist  # , extent
+    return np.ma.masked_equal(hist, 0)  # , extent
 
 
 def plot_profile_histogram(x, y, n_bins=100, title=None, x_label=None, y_label=None, log_y=False, filename=None):

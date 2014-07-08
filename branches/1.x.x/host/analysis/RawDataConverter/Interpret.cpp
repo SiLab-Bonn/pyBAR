@@ -139,11 +139,12 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 			else
 				tTriggerNumber = TRIGGER_TIME_STAMP_MACRO(tActualWord); //actual trigger number is a time stamp
 
-			if (Basis::debugSet())
+			if (Basis::debugSet()){
 				if (!_useTriggerTimeStamp)
 					debug(std::string(" ")+IntToStr(_nDataWords)+" TR NUMBER "+IntToStr(tTriggerNumber)+"\t"+LongIntToStr(_nEvents));
 				else
 					debug(std::string(" ")+IntToStr(_nDataWords)+" TR TIME STAMP "+IntToStr(tTriggerNumber)+"\t"+LongIntToStr(_nEvents));
+			}
 
 			//TLU error handling
 			if(!_firstTriggerNrSet)
