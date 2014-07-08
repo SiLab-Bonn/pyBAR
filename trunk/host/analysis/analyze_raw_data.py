@@ -86,16 +86,35 @@ def generate_threshold_mask(hist):
     masked array
         Returns copy of the array with masked elements.
     '''
+    print hist
     masked_array = np.ma.masked_values(hist, 0)
     masked_array = np.ma.masked_greater(masked_array, 10 * np.ma.median(hist))
-#     masked_array = np.ma.array(hist, mask=((hist < 0.1) | (hist > 10 * np.median(hist))))
-#     logging.info('Masking %d pixel(s)' % np.ma.count_masked(masked_array))
+    logging.info('Masking %d pixel(s)' % np.ma.count_masked(masked_array))
     return np.ma.getmaskarray(masked_array)
 
 
 class AnalyzeRawData(object):
     """A class to analyze FE-I4 raw data"""
     def __init__(self, raw_data_file=None, analyzed_data_file=None, create_pdf=False, scan_parameter_name=None):
+        '''Initialize the AnalyzeRawData object:
+            - The c++ objects (Interpreter, Histogrammer, Clusterizer) are constructed
+            - Create one scan parameter table from all provided raw data files
+            - Create PdfPages object if needed
+
+        Parameters
+        ----------
+        raw_data_file : string or tuple, list
+            A string or a list of strings with the raw data file name(s). File ending (.h5)
+            does not matter. Does not have to be set.
+        analyzed_data_file : string
+            The file name of the output analyzed data file. File ending (.h5)
+            does not matter. Does not have to be set.
+        create_pdf : boolean
+            Creates interpretation plots into one pdf file. Only active if raw_data_file is given.
+        scan_parameter_name : string or iterable
+            The name/names of scan parameter(s) to be used during analysis. If not set the scan parameter
+            table is used to extract the scan parameters. Otherwise no scan parameter is set.
+        '''
         self.interpreter = PyDataInterpreter()
         self.histograming = PyDataHistograming()
         self.clusterizer = PyDataClusterizer()
@@ -133,7 +152,7 @@ class AnalyzeRawData(object):
         self.set_standard_settings()
         if raw_data_file is not None and create_pdf:
             output_pdf_filename = os.path.splitext(raw_data_file)[0] + ".pdf"
-            logging.info('Opening output file: %s' % output_pdf_filename)
+            logging.info('Opening output pdf file: %s' % output_pdf_filename)
             self.output_pdf = PdfPages(output_pdf_filename)
         else:
             self.output_pdf = None
@@ -151,24 +170,29 @@ class AnalyzeRawData(object):
             self.output_pdf.close()
 
     def set_standard_settings(self):
+        '''Set all settings to their standard values.
+        '''
+        self.chunk_size = 3000000
+        self.n_injections = 100
+        self.n_bcid = 16
+        self.max_tot_value = 13
+        self._filter_table = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
         self.out_file_h5 = None
         self.meta_event_index = None
-        self.chunk_size = 3000000
-        self._filter_table = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
         self.fei4b = False
         self.create_hit_table = False
         self.create_meta_event_index = True
-        self.create_meta_word_index = False
-        self.create_occupancy_hist = True
-        self.create_source_scan_hist = False
         self.create_tot_hist = True
-        self.create_tdc_hist = False
-        self.create_tdc_pixel_hist = False
         self.create_rel_bcid_hist = True
-        self.create_trigger_error_hist = False
         self.create_error_hist = True
         self.create_service_record_hist = True
+        self.create_occupancy_hist = True
+        self.create_meta_word_index = False
+        self.create_source_scan_hist = False
+        self.create_tdc_hist = False
         self.create_tdc_counter_hist = False
+        self.create_tdc_pixel_hist = False
+        self.create_trigger_error_hist = False
         self.create_threshold_hists = False
         self.create_threshold_mask = True  # threshold/noise histogram mask: masking all pixels out of bounds
         self.create_fitted_threshold_mask = True  # fitted threshold/noise histogram mask: masking all pixels out of bounds
@@ -177,14 +201,13 @@ class AnalyzeRawData(object):
         self.create_cluster_table = False
         self.create_cluster_size_hist = False
         self.create_cluster_tot_hist = False
-        self.n_injections = 100
-        self.n_bcid = 16
-        self.max_tot_value = 13
-        self.use_trigger_number = False
-        self.use_trigger_time_stamp = False
+        self.use_trigger_number = False  # use the trigger number to align the events
+        self.use_trigger_time_stamp = False  # the trigger number is a time stamp
         self.set_stop_mode = False  # the FE is read out with stop mode, therefore the BCID plot is different
 
     def reset(self):
+        '''Reset the c++ libraries for new analysis.
+        '''
         self.interpreter.reset()
         self.histograming.reset()
         self.clusterizer.reset()
@@ -447,9 +470,18 @@ class AnalyzeRawData(object):
     def set_stop_mode(self, value):
         self._set_stop_mode = value
 
-    def interpret_word_table(self, raw_data_files=None, analyzed_data_file=None, fei4b=False):
-        if(raw_data_files != None):
-            raise NotImplemented('This is not supported yet.')
+    def interpret_word_table(self, analyzed_data_file=None, fei4b=False):
+        '''Interprets the raw data word table of all given raw data files with the c++ library.
+        Creates the h5 output file and pdf plots.
+
+        Parameters
+        ----------
+        analyzed_data_file : string
+            The file name of the output analyzed data file. If not set the output analyzed data file
+            specified during initialization is taken.
+        fei4b : boolean
+            True if the raw data is from FE-I4B.
+        '''
 
         if(analyzed_data_file != None):
             self._analyzed_data_file = analyzed_data_file
@@ -518,7 +550,7 @@ class AnalyzeRawData(object):
             with tb.openFile(raw_data_file, mode="r") as in_file_h5:
                 table_size = in_file_h5.root.raw_data.shape[0]
 
-                for iWord in range(0, table_size, self._chunk_size):
+                for iWord in range(0, table_size, self._chunk_size):  # loop over all words in the actual raw data file
                     try:
                         raw_data = in_file_h5.root.raw_data.read(iWord, iWord + self._chunk_size)
                     except OverflowError, e:
@@ -529,8 +561,6 @@ class AnalyzeRawData(object):
                     Nhits = self.interpreter.get_n_array_hits()  # get the number of hits of the actual interpreted raw data chunk
                     if(self.scan_parameters != None):
                         nEventIndex = self.interpreter.get_n_meta_data_event()
-#                         if index == 0:
-#                             nEventIndex = 2
                         self.histograming.add_meta_event_index(self.meta_event_index, nEventIndex)
                     if self.is_histogram_hits():
                         self.histogram_hits(hits[:Nhits], stop_index=Nhits)
@@ -707,6 +737,17 @@ class AnalyzeRawData(object):
                 cluster_tot_hist_table[:] = self.cluster_tot_hist
 
     def analyze_hit_table(self, analyzed_data_file=None, analyzed_data_out_file=None):
+        '''Analyzes a hit table with the c++ histogramer/clusterizer.
+
+        Parameters
+        ----------
+        analyzed_data_file : string
+            The file name of the already analyzed data file. If not set the analyzed data file
+            specified during initialization is taken.
+        analyzed_data_out_file : string
+            The file name of the new analyzed data file. If not set the analyzed data file
+            specified during initialization is taken.
+        '''
         in_file_h5 = None
 
         # set output file if an output file name is given, otherwise check if an output file is already opened
@@ -761,6 +802,9 @@ class AnalyzeRawData(object):
 
         if table_size == 0:
             logging.warning('Hit table is empty.')
+            self._create_additional_hit_data()
+            self.out_file_h5.close()
+            in_file_h5.close()
             return
 
         logging.info('Analyze hits...')
