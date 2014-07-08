@@ -101,9 +101,7 @@ class TestAnalysis(unittest.TestCase):
         cls.interpreter = PyDataInterpreter()
         cls.histogram = PyDataHistograming()
         cls.clusterizer = PyDataClusterizer()
-
-        # analyze the digital scan raw data, do not show any feedback (no prints to console, no plots)
-        with AnalyzeRawData(raw_data_file='unittest_data//unit_test_data_1.h5', analyzed_data_file='unittest_data//unit_test_data_1_interpreted.h5') as analyze_raw_data:
+        with AnalyzeRawData(raw_data_file='unittest_data//unit_test_data_1.h5', analyzed_data_file='unittest_data//unit_test_data_1_interpreted.h5') as analyze_raw_data:  # analyze the digital scan raw data, do not show any feedback (no prints to console, no plots)
             analyze_raw_data.chunk_size = 3000017
             analyze_raw_data.create_hit_table = True  # can be set to false to omit hit table creation, std. setting is false
             analyze_raw_data.create_cluster_hit_table = True  # adds the cluster id and seed info to each hit, std. setting is false
@@ -119,17 +117,13 @@ class TestAnalysis(unittest.TestCase):
             analyze_raw_data.interpreter.set_debug_output(False)
             analyze_raw_data.histograming.set_warning_output(False)
             analyze_raw_data.interpret_word_table(fei4b=False)  # the actual start conversion command
-
-        # analyze the fast threshold scan raw data, do not show any feedback (no prints to console, no plots)
-        with AnalyzeRawData(raw_data_file='unittest_data//unit_test_data_2.h5', analyzed_data_file='unittest_data//unit_test_data_2_interpreted.h5') as analyze_raw_data:
+        with AnalyzeRawData(raw_data_file='unittest_data//unit_test_data_2.h5', analyzed_data_file='unittest_data//unit_test_data_2_interpreted.h5') as analyze_raw_data:  # analyze the fast threshold scan raw data, do not show any feedback (no prints to console, no plots)
             analyze_raw_data.chunk_size = 3000017
             analyze_raw_data.interpreter.set_debug_output(False)
             analyze_raw_data.histograming.set_warning_output(False)
             analyze_raw_data.create_threshold_hists = True  # makes only sense if threshold scan data is analyzed, std. setting is false
             analyze_raw_data.interpret_word_table(fei4b=False)  # the actual start conversion command
-
-        # analyze the digital scan hit data, do not show any feedback (no prints to console, no plots)
-        with AnalyzeRawData(raw_data_file=None, analyzed_data_file='unittest_data//unit_test_data_1_interpreted.h5') as analyze_raw_data:
+        with AnalyzeRawData(raw_data_file=None, analyzed_data_file='unittest_data//unit_test_data_1_interpreted.h5') as analyze_raw_data:   # analyze the digital scan hit data, do not show any feedback (no prints to console, no plots)
             analyze_raw_data.chunk_size = 3000017
             analyze_raw_data.clusterizer.set_warning_output(False)
             analyze_raw_data.clusterizer.set_warning_output(False)
@@ -138,9 +132,7 @@ class TestAnalysis(unittest.TestCase):
             analyze_raw_data.create_cluster_size_hist = True
             analyze_raw_data.create_cluster_tot_hist = True
             analyze_raw_data.analyze_hit_table(analyzed_data_out_file='unittest_data//unit_test_data_1_analyzed.h5')
-
-        # analyze the digital scan raw data per scan parameter, do not show any feedback (no prints to console, no plots)
-        with AnalyzeRawData(raw_data_file='unittest_data//unit_test_data_3.h5', analyzed_data_file='unittest_data//unit_test_data_3_interpreted.h5') as analyze_raw_data:
+        with AnalyzeRawData(raw_data_file='unittest_data//unit_test_data_3.h5', analyzed_data_file='unittest_data//unit_test_data_3_interpreted.h5') as analyze_raw_data:  # analyze the digital scan raw data per scan parameter, do not show any feedback (no prints to console, no plots)
             analyze_raw_data.chunk_size = 3000017
             analyze_raw_data.create_hit_table = True  # can be set to false to omit hit table creation, std. setting is false
             analyze_raw_data.create_cluster_hit_table = True  # adds the cluster id and seed info to each hit, std. setting is false
@@ -156,8 +148,7 @@ class TestAnalysis(unittest.TestCase):
             analyze_raw_data.interpreter.set_debug_output(False)
             analyze_raw_data.histograming.set_warning_output(False)
             analyze_raw_data.interpret_word_table(fei4b=False)  # the actual start conversion command
-        # analyze the fast threshold scan raw data, do not show any feedback (no prints to console, no plots)
-        with AnalyzeRawData(raw_data_file='unittest_data//unit_test_data_2.h5', analyzed_data_file='unittest_data//unit_test_data_2_hits.h5') as analyze_raw_data:
+        with AnalyzeRawData(raw_data_file='unittest_data//unit_test_data_2.h5', analyzed_data_file='unittest_data//unit_test_data_2_hits.h5') as analyze_raw_data:  # analyze the fast threshold scan raw data, do not show any feedback (no prints to console, no plots)
             analyze_raw_data.chunk_size = 3000017
             analyze_raw_data.create_hit_table = True
             analyze_raw_data.interpreter.set_debug_output(False)
@@ -196,7 +187,7 @@ class TestAnalysis(unittest.TestCase):
         os.remove('unittest_data//unit_test_data_4_interpreted.h5')
         os.remove('unittest_data//unit_test_data_4_interpreted_2.h5')
 
-    def test_libraries_stability(self):  # calls 10000 times the constructor and destructor to check the libraries
+    def test_libraries_stability(self):  # calls 50 times the constructor and destructor to check the libraries
         progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=50)
         progress_bar.start()
         for i in range(50):
@@ -251,19 +242,19 @@ class TestAnalysis(unittest.TestCase):
                 occupancy = second_h5_file.root.HistOcc[:]
                 self.assertTrue(np.all(occupancy_expected == occupancy), msg=error_msg)
 
-    def test_analysis_utils_get_n_cluster_in_events(self):
+    def test_analysis_utils_get_n_cluster_in_events(self):  # check compiled get_n_cluster_in_events function
         event_numbers = np.array([[0, 0, 1, 2, 2, 2, 4, 4000000000, 4000000000, 40000000000, 40000000000], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=np.int64)  # use data format with non linear memory alignment
         result = analysis_utils.get_n_cluster_in_events(event_numbers[0])
         self.assertListEqual([0, 1, 2, 4, 4000000000, 40000000000], result[:, 0].tolist())
         self.assertListEqual([2, 1, 3, 1, 2, 2], result[:, 1].tolist())
 
-    def test_analysis_utils_get_events_in_both_arrays(self):
+    def test_analysis_utils_get_events_in_both_arrays(self):  # check compiled get_events_in_both_arrays function
         event_numbers = np.array([[0, 0, 2, 2, 2, 4, 5, 5, 6, 7, 7, 7, 8], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=np.int64)
         event_numbers_2 = np.array([1, 1, 1, 2, 2, 2, 4, 4, 4, 7], dtype=np.int64)
         result = analysis_utils.get_events_in_both_arrays(event_numbers[0], event_numbers_2)
         self.assertListEqual([2, 4, 7], result.tolist())
 
-    def test_analysis_utils_in1d_events(self):
+    def test_analysis_utils_in1d_events(self):  # check compiled get_in1d_sorted function
         event_numbers = np.array([[0, 0, 2, 2, 2, 4, 5, 5, 6, 7, 7, 7, 8], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=np.int64)
         event_numbers_2 = np.array([1, 1, 1, 2, 2, 2, 4, 4, 4, 7], dtype=np.int64)
         result = event_numbers[0][analysis_utils.in1d_events(event_numbers[0], event_numbers_2)]
