@@ -394,8 +394,8 @@ class AnalyzeRawData(object):
     @n_bcid.setter
     def n_bcid(self, value):
         """Set the numbers of BCIDs (usually 16) of one event."""
-        _n_bcid = value
-        self.interpreter.set_trig_count(_n_bcid)
+        self._n_bcid = value if (value > 0 and value < 16) else 16
+        self.interpreter.set_trig_count(self._n_bcid)
 
     @property
     def max_tot_value(self):
@@ -470,7 +470,7 @@ class AnalyzeRawData(object):
     def set_stop_mode(self, value):
         self._set_stop_mode = value
 
-    def interpret_word_table(self, analyzed_data_file=None, fei4b=False):
+    def interpret_word_table(self, analyzed_data_file=None, fei4b=None):
         '''Interprets the raw data word table of all given raw data files with the c++ library.
         Creates the h5 output file and pdf plots.
 
@@ -549,7 +549,7 @@ class AnalyzeRawData(object):
             self.interpreter.reset_meta_data_counter()
             with tb.openFile(raw_data_file, mode="r") as in_file_h5:
                 table_size = in_file_h5.root.raw_data.shape[0]
-
+                self._deduce_settings_from_file(in_file_h5)
                 for iWord in range(0, table_size, self._chunk_size):  # loop over all words in the actual raw data file
                     try:
                         raw_data = in_file_h5.root.raw_data.read(iWord, iWord + self._chunk_size)
@@ -1018,6 +1018,17 @@ class AnalyzeRawData(object):
         if (self.create_cluster_hit_table or self.create_cluster_table or self.create_cluster_size_hist or self.create_cluster_tot_hist):
             return True
         return False
+
+    def _deduce_settings_from_file(self, opened_raw_data_file):
+        '''Tries to get the scan parameters needed for analysis from the raw data file
+        '''
+        try:  # take FE flavor info from raw data file, if this info is there
+            flavor = opened_raw_data_file.root.configuration.miscellaneous[:][np.where(opened_raw_data_file.root.configuration.miscellaneous[:]['name'] == 'Flavor')]['value'][0]
+            bcid = opened_raw_data_file.root.configuration.global_register[:][np.where(opened_raw_data_file.root.configuration.global_register[:]['name'] == 'Trig_Count')]['value'][0]
+            self.fei4b = False if str(flavor) == 'FEI4A' else True
+            self.n_bcid = int(bcid)
+        except tb.exceptions.NoSuchNodeError:
+            logging.warning('No settings stored in raw data file, use provided settings')
 
 if __name__ == "__main__":
     print '__main__'
