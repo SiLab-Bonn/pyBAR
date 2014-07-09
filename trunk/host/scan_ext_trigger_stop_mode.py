@@ -248,7 +248,7 @@ class ExtTriggerScan(ScanBase):
             analyze_raw_data.interpreter.set_warning_output(False)
             analyze_raw_data.clusterizer.set_warning_output(False)
 #             analyze_raw_data.interpreter.debug_events(0, 10, True)  # events to be printed onto the console for debugging, usually deactivated
-            analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
+            analyze_raw_data.interpret_word_table(use_settings_from_file=False)
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms(scan_data_filename=scan.scan_data_filename)
 
