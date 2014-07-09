@@ -341,7 +341,7 @@ def get_data_file_names_from_scan_base(scan_base, filter_file_words=None, parame
         else:
             data_files = glob.glob(scan_name + '*.h5')
         if not data_files:
-            raise RuntimeError('Cannot find any files for ' + scan_name)
+            raise RuntimeError('Cannot find any data files')
         if filter_file_words is not None:
             raw_data_files.extend(filter(lambda data_file: not any(x in data_file for x in filter_file_words), data_files))  # filter out already analyzed data
         else:
@@ -390,9 +390,9 @@ def get_parameter_from_files(files, parameters=None, unique=False, sort=True):
     ----------
     files : string, list of strings
     parameters : string, list of strings
-    unique : bool:
-        If set only one filer per scan parameter value is used.
-    sort : bool
+    unique : boolean
+        If set only one file per scan parameter value is used.
+    sort : boolean
 
     Returns
     -------
@@ -730,7 +730,7 @@ def get_hits_in_events(hits_array, events, assume_sorted=True):
             logging.warning('Events are usually sorted. Are you sure you want this?')
             hits_in_events = hits_array[np.in1d(hits_array['event_number'], events)]
     except MemoryError:
-        logging.error('There are too many hits to do in RAM operations. Descrease chunk size and Use the write_hits_in_events function instead.')
+        logging.error('There are too many hits to do in RAM operations. Descrease chunk size and use the write_hits_in_events function instead.')
         raise MemoryError
     return hits_in_events
 
@@ -846,7 +846,7 @@ def write_hits_with_condition(hit_table_in, hit_table_out, condition=None, start
         hit_table_out.append(selected_hits)
         progress_bar.update(iHit)
     progress_bar.finish()
-    
+
 #     for iHit in range(start_hit_word, table_size, chunk_size):
 #         hit_table_in.append_where(hit_table_out, condition, iHit, iHit + chunk_size)
 #     hit_table_in.append_where(hit_table_out, condition, start=start_hit_word)
@@ -918,6 +918,7 @@ def get_events_with_n_cluster(event_number, condition='n_cluster==1', condvar='n
     logging.debug("Calculate events with clusters where " + condition)
     n_cluster_in_events = get_n_cluster_in_events(event_number)
     n_cluster = n_cluster_in_events[:, 1]
+#     return np.take(n_cluster_in_events, ne.evaluate(condition), axis=0)  # does not return only one dimension, Bug?
     return n_cluster_in_events[ne.evaluate(condition), 0]
 
 
