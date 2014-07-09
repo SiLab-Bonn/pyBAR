@@ -190,12 +190,11 @@ class NoiseOccupancyScan(ScanBase):
         from analysis.analyze_raw_data import AnalyzeRawData
         output_file = self.scan_data_filename + "_interpreted.h5"
         with AnalyzeRawData(raw_data_file=scan.scan_data_filename, analyzed_data_file=output_file, create_pdf=True) as analyze_raw_data:
-            analyze_raw_data.interpreter.set_trig_count(self.trig_count)
             analyze_raw_data.create_source_scan_hist = True
 #             analyze_raw_data.create_hit_table = True
 #             analyze_raw_data.interpreter.debug_events(0, 0, True)  # events to be printed onto the console for debugging, usually deactivated
             analyze_raw_data.interpreter.set_warning_output(False)
-            analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
+            analyze_raw_data.interpret_word_table()
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms()
             plot_occupancy(self.occ_mask.T, title='Noisy Pixels', z_max=1, filename=analyze_raw_data.output_pdf)
