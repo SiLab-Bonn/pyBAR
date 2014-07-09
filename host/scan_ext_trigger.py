@@ -15,10 +15,11 @@ local_configuration = {
     "trigger_delay": 14,
     "col_span": [1, 80],
     "row_span": [1, 336],
-    "timeout_no_data": 10,
-    "scan_timeout": 1 * 60,
+    "overwrite_mask": False,
+    "use_enable_mask": True,
+    "timeout_no_data": 10,  # in seconds
+    "scan_timeout": 60,  # in seconds
     "max_triggers": 10000,
-    "enable_hitbus": False,
     "enable_tdc": False
 }
 
@@ -26,7 +27,7 @@ local_configuration = {
 class ExtTriggerScan(ScanBase):
     scan_id = "ext_trigger_scan"
 
-    def scan(self, trigger_mode=0, trigger_latency=232, trigger_delay=14, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=10000, enable_hitbus=False, enable_tdc=False, **kwargs):
+    def scan(self, trigger_mode=0, trigger_latency=232, trigger_delay=14, col_span=[1, 80], row_span=[1, 336], overwrite_mask=False, use_enable_mask=False, timeout_no_data=10, scan_timeout=10 * 60, max_triggers=10000, enable_tdc=False, **kwargs):
         '''Scan loop
 
         Parameters
@@ -51,33 +52,38 @@ class ExtTriggerScan(ScanBase):
             Column range (from minimum to maximum value). From 1 to 80.
         row_span : list, tuple
             Row range (from minimum to maximum value). From 1 to 336.
+        overwrite_mask : bool
+            If true the Enable and Imon (Hitbus/HitOR) mask will be overwritten by the mask defined by col_span and row_span.
+        use_enable_mask : bool
+            If true use Enable mask for Imon (Hitbus/HitOR) mask. Enable mask will be inverted, Hitbus will activated where pixels are enabled. Otherwise use mask from config file.
         timeout_no_data : int
             In seconds; if no data, stop scan after given time.
         scan_timeout : int
             In seconds; stop scan after given time.
         max_triggers : int
             Maximum number of triggers to be taken.
-        enable_hitbus : bool
-            Enable Hitbus (Hit OR) for columns and rows given by col_span and row_span.
         enable_tdc : bool
             Enable for Hit-OR TDC (time-to-digital-converter) measurement. In this mode the Hit-Or/Hitbus output of the FEI4 has to be connected to USBpix Hit-OR input on the Single Chip Adapter Card.
         '''
-        # generate mask for Enable mask
-        pixel_reg = "Enable"
-        mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
         commands = []
         commands.extend(self.register.get_commands("confmode"))
-        enable_mask = np.logical_and(mask, self.register.get_pixel_register_value(pixel_reg))
-        self.register.set_pixel_register_value(pixel_reg, enable_mask)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
-        # generate mask for Imon mask
-        pixel_reg = "Imon"
-        if enable_hitbus:
-            mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span, default=1, value=0)
-            imon_mask = np.logical_or(mask, self.register.get_pixel_register_value(pixel_reg))
+        pixel_reg = 'Enable'  # enabled pixels set to 1
+        mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span)  # 1 for selected columns, else 0
+        if overwrite_mask:
+            pixel_mask = mask
         else:
-            imon_mask = 1
-        self.register.set_pixel_register_value(pixel_reg, imon_mask)
+            pixel_mask = np.logical_and(mask, self.register.get_pixel_register_value(pixel_reg))
+        self.register.set_pixel_register_value(pixel_reg, pixel_mask)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
+        pixel_reg = 'Imon'  # disabled pixels set to 1
+        if use_enable_mask:
+            self.register.set_pixel_register_value(pixel_reg, self.register_utils.invert_pixel_mask(self.register.get_pixel_register_value('Enable')))
+        mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span, default=1, value=0)  # 0 for selected columns, else 1
+        if overwrite_mask:
+            pixel_mask = mask
+        else:
+            pixel_mask = np.logical_or(mask, self.register.get_pixel_register_value(pixel_reg))
+        self.register.set_pixel_register_value(pixel_reg, pixel_mask)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
         # disable C_inj mask
         pixel_reg = "C_High"
@@ -171,6 +177,7 @@ class ExtTriggerScan(ScanBase):
         with AnalyzeRawData(raw_data_file=scan.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
             analyze_raw_data.interpreter.set_trig_count(self.register.get_global_register_value("Trig_Count"))
             analyze_raw_data.create_source_scan_hist = True
+#             analyze_raw_data.create_hit_table = True
             analyze_raw_data.create_cluster_size_hist = True
             analyze_raw_data.create_cluster_tot_hist = True
             if scan.scan_configuration['enable_tdc']:
