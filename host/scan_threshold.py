@@ -69,14 +69,13 @@ class ThresholdScan(ScanBase):
 
     def analyze(self):
         with AnalyzeRawData(raw_data_file=scan.scan_data_filename + ".h5", analyzed_data_file=self.scan_data_filename + "_interpreted.h5") as analyze_raw_data:
-            analyze_raw_data.interpreter.set_trig_count(self.register.get_global_register_value("Trig_Count"))
             analyze_raw_data.create_tot_hist = False
             analyze_raw_data.create_threshold_hists = True
             analyze_raw_data.create_fitted_threshold_hists = True
             analyze_raw_data.create_threshold_mask = True
             analyze_raw_data.n_injections = 100
             analyze_raw_data.interpreter.set_warning_output(False)  # so far the data structure in a threshold scan was always bad, too many warnings given
-            analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
+            analyze_raw_data.interpret_word_table()
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms(scan_data_filename=scan.scan_data_filename)
 
