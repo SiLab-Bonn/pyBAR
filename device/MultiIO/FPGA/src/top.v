@@ -105,10 +105,10 @@ assign MULTI_IO = 11'b000_0000_0000;
 assign DEBUG_D = 16'ha5a5;
 
 
-wire LEMO_TRIGGER, LEMO_RESET, EXT_VETO, MONHIT_TDC; // , LEMO_TRIGGER_TDC;
+wire LEMO_TRIGGER, LEMO_RESET, TDC_IN, TDC_OUT;
 assign LEMO_TRIGGER = LEMO_RX[0];
 assign LEMO_RESET = LEMO_RX[1];
-assign EXT_VETO = LEMO_RX[2];
+assign TDC_IN = LEMO_RX[2];
 
 // TLU
 wire            RJ45_ENABLED;
@@ -124,7 +124,7 @@ wire            CMD_START_FLAG;         // for triggering external devices
 
 assign TX[0] = TLU_CLOCK; // trigger clock; also connected to RJ45 output
 assign TX[1] = TLU_BUSY | (CMD_START_FLAG/*CMD_CAL*/ & ~CMD_EXT_START_ENABLE); // TLU_BUSY signal; also connected to RJ45 output. Asserted when TLU FSM has accepted a trigger or when CMD FSM is busy. 
-assign TX[2] = (RJ45_ENABLED == 1'b1) ? RJ45_TRIGGER : (LEMO_TRIGGER | MONHIT_TDC); //LEMO_TRIGGER_TDC;
+assign TX[2] = (RJ45_ENABLED == 1'b1) ? RJ45_TRIGGER : (LEMO_TRIGGER | MONHIT | TDC_OUT); // to trigger on MONHIT or TDC_OUT use loop back cable from TX2 to RX0
 
 
 // ------- RESRT/CLOCK  ------- //
@@ -299,8 +299,8 @@ tdc_s3
     .CLK320(RX_CLK2X),
     .CLK160(RX_CLK),
     .DV_CLK(CLK_40),
-    .TDC_IN(MONHIT),
-    .TDC_OUT(MONHIT_TDC),
+    .TDC_IN(TDC_IN),
+    .TDC_OUT(TDC_OUT),
 
     .FIFO_READ(TDC_FIFO_READ),
     .FIFO_EMPTY(TDC_FIFO_EMPTY),
@@ -346,14 +346,14 @@ tlu_controller #(
     .FIFO_PREEMPT_REQ(TLU_FIFO_PEEMPT_REQ),
     
     .RJ45_TRIGGER(RJ45_TRIGGER),
-    .LEMO_TRIGGER(LEMO_TRIGGER | MONHIT_TDC),
+    .LEMO_TRIGGER(LEMO_TRIGGER),
     .RJ45_RESET(RJ45_RESET),
     .LEMO_RESET(LEMO_RESET),
     .RJ45_ENABLED(RJ45_ENABLED),
     .TLU_BUSY(TLU_BUSY),
     .TLU_CLOCK(TLU_CLOCK),
     
-    .EXT_VETO(EXT_VETO | FIFO_FULL),
+    .EXT_VETO(FIFO_FULL),
     
     .CMD_READY(CMD_READY),
     .CMD_EXT_START_FLAG(CMD_EXT_START_FLAG),
