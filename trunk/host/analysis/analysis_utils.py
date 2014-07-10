@@ -341,7 +341,7 @@ def get_data_file_names_from_scan_base(scan_base, filter_file_words=None, parame
         else:
             data_files = glob.glob(scan_name + '*.h5')
         if not data_files:
-            raise RuntimeError('Cannot find any data files')
+            raise RuntimeError('Cannot find any data files, please check data file names.')
         if filter_file_words is not None:
             raw_data_files.extend(filter(lambda data_file: not any(x in data_file for x in filter_file_words), data_files))  # filter out already analyzed data
         else:
@@ -702,7 +702,7 @@ def correlate_events(data_frame_fe_1, data_frame_fe_2):
     return data_frame_fe_1.merge(data_frame_fe_2, how='left', on='event_number')  # join in the events that the triggered fe sees, only these are interessting
 
 
-def get_hits_in_events(hits_array, events, assume_sorted=True):
+def get_hits_in_events(hits_array, events, assume_sorted=True, condition=None):
     '''Selects the hits that occurred in events. If a event range can be defined use the get_data_in_event_range function. It is much faster.
 
     Parameters
@@ -711,6 +711,8 @@ def get_hits_in_events(hits_array, events, assume_sorted=True):
     events : array
     assume_sorted : bool
         Is true if the events to select are sorted from low to high value. Increases speed by 35%.
+    condition : string
+        A condition that is applied to the hits in numexpr. Only if the expression evaluates to True the hit is taken.
 
     Returns
     -------
@@ -725,24 +727,32 @@ def get_hits_in_events(hits_array, events, assume_sorted=True):
             return hits_array[0:0]
     try:
         if assume_sorted:
-            hits_in_events = hits_array[in1d_events(hits_array['event_number'], events)]
+            selection = in1d_events(hits_array['event_number'], events)
         else:
             logging.warning('Events are usually sorted. Are you sure you want this?')
-            hits_in_events = hits_array[np.in1d(hits_array['event_number'], events)]
+            selection = np.in1d(hits_array['event_number'], events)
+        if condition is None:
+            hits_in_events = hits_array[selection]
+        else:
+            # bad hack to be able to use numexpr
+            for variable in set(re.findall(r'[a-zA-Z_]+', condition)):
+                exec(variable + ' = hits_array[\'' + variable + '\']')
+
+            hits_in_events = hits_array[ne.evaluate(condition + ' & selection')]
     except MemoryError:
-        logging.error('There are too many hits to do in RAM operations. Descrease chunk size and use the write_hits_in_events function instead.')
+        logging.error('There are too many hits to do in RAM operations. Consider decreasing chunk size and use the write_hits_in_events function instead.')
         raise MemoryError
     return hits_in_events
 
 
-def get_data_in_event_range(hits_array, event_start, event_stop, assume_sorted=True):
+def get_data_in_event_range(array, event_start=None, event_stop=None, assume_sorted=True):
     '''Selects the data (rows of a table) that occurred in the given event range [event_start, event_stop[
 
     Parameters
     ----------
-    hits_array : numpy.array
-    event_start : int
-    event_stop : int
+    array : numpy.array
+    event_start : int, None
+    event_stop : int, None
     assume_sorted : bool
         Set to true if the hits are sorted by the event_number. Increases speed.
 
@@ -752,35 +762,36 @@ def get_data_in_event_range(hits_array, event_start, event_stop, assume_sorted=T
         hit array with the hits in the event range.
     '''
     logging.debug("Calculate data of the the given event range [" + str(event_start) + ", " + str(event_stop) + "[")
-    event_number = hits_array['event_number']
+    event_number = array['event_number']
     if assume_sorted:
-        hits_event_start = hits_array['event_number'][0]
-        hits_event_stop = hits_array['event_number'][-1]
-        if (event_start != None and event_stop != None) and (hits_event_stop < event_start or hits_event_start > event_stop or event_start == event_stop):  # special case, no intersection at all
-            return hits_array[0:0]
+        data_event_start = event_number[0]
+        data_event_stop = event_number[-1]
+        if (event_start != None and event_stop != None) and (data_event_stop < event_start or data_event_start > event_stop or event_start == event_stop):  # special case, no intersection at all
+            return array[0:0]
 
         # get min/max indices with values that are also in the other array
         if event_start == None:
-            min_index_hits = 0
+            min_index_data = 0
         else:
-            min_index_hits = np.argmin(hits_array['event_number'] < event_start)
+            min_index_data = np.argmin(event_number < event_start)
 
         if event_stop == None:
-            max_index_hits = hits_array['event_number'].shape[0]
+            max_index_data = event_number.shape[0]
         else:
-            max_index_hits = np.argmax(hits_array['event_number'] >= event_stop)
+            max_index_data = np.argmax(event_number >= event_stop)
 
-        if min_index_hits < 0:
-            min_index_hits = 0
-        if max_index_hits == 0 or max_index_hits > hits_array['event_number'].shape[0]:
-            max_index_hits = hits_array['event_number'].shape[0]
-        return hits_array[min_index_hits:max_index_hits]
+        if min_index_data < 0:
+            min_index_data = 0
+        if max_index_data == 0 or max_index_data > event_number.shape[0]:
+            max_index_data = event_number.shape[0]
+        return array[min_index_data:max_index_data]
     else:
-        return hits_array[np.logical_and(event_number >= event_start, event_number < event_stop)]
+        return array[ne.evaluate('event_number >= event_start & event_number < event_stop')]
 
 
-def write_hits_in_events(hit_table_in, hit_table_out, events, start_hit_word=0, chunk_size=5000000):
-    '''Selects the hits that occurred in events and writes them to a pytable. This function reduces the in RAM operations and has to be used if the get_hits_in_events function raises a memory error.
+def write_hits_in_events(hit_table_in, hit_table_out, events, start_hit_word=0, chunk_size=5000000, condition=None):
+    '''Selects the hits that occurred in events and writes them to a pytable. This function reduces the in RAM operations and has to be 
+    used if the get_hits_in_events function raises a memory error. Also a condition can be set to select hits.
 
     Parameters
     ----------
@@ -789,10 +800,12 @@ def write_hits_in_events(hit_table_in, hit_table_out, events, start_hit_word=0, 
         functions need to be able to write to hit_table_out
     events : array like
         defines the events to be written from hit_table_in to hit_table_out. They do not have to exists at all.
-    chunk_size : int
-        defines how many hits are analyzed in RAM. Bigger numbers increase the speed, too big numbers let the program crash with a memory error.
     start_hit_word: int
         Index of the first hit word to be analyzed. Used for speed up.
+    chunk_size : int
+        defines how many hits are analyzed in RAM. Bigger numbers increase the speed, too big numbers let the program crash with a memory error.
+    condition : string
+        A condition that is applied to the hits in numexpr style. Only if the expression evaluates to True the hit is taken.
 
     Returns
     -------
@@ -808,76 +821,45 @@ def write_hits_in_events(hit_table_in, hit_table_out, events, start_hit_word=0, 
         for iHit in range(start_hit_word, table_size, chunk_size):
             hits = hit_table_in.read(iHit, iHit + chunk_size)
             last_event_number = hits[-1]['event_number']
-            hit_table_out.append(get_hits_in_events(hits, events=events))
+            hit_table_out.append(get_hits_in_events(hits, events=events, condition=condition))
             if last_event_number > max_event:  # speed up, use the fact that the hits are sorted by event_number
                 return iHit
     return start_hit_word
 
 
-def write_hits_with_condition(hit_table_in, hit_table_out, condition=None, start_hit_word=0, chunk_size=5000000):
-    '''Selects the hits that occurred in events and writes them to a pytable. This function reduces the in RAM operations and has to be used if the get_hits_in_events function raises a memory error.
+def write_hits_in_event_range(hit_table_in, hit_table_out, event_start=None, event_stop=None, start_hit_word=0, chunk_size=5000000, condition=None):
+    '''Selects the hits that occurred in given event range [event_start, event_stop[ and write them to a pytable. This function reduces the in RAM 
+       operations and has to be used if the get_data_in_event_range function raises a memory error. Also a condition can be set to select hits.
 
     Parameters
     ----------
     hit_table_in : pytable.table
     hit_table_out : pytable.table
         functions need to be able to write to hit_table_out
-    condition: string that satisfies np.numexp
+    event_start, event_stop : int, None
+        start/stop event numbers. Stop event number is excluded. If None start/stop is set automatically.
     chunk_size : int
         defines how many hits are analyzed in RAM. Bigger numbers increase the speed, too big numbers let the program crash with a memory error.
-    start_hit_word: int
-        Index of the first hit word to be analyzed. Used for speed up.
-
-    Returns
-    -------
-    start_hit_word: int
-        Index of the last hit word analyzed. Used to speed up the next call of write_hits_in_events.
-    '''
-    logging.debug("Write hits from hit number >= %d" % start_hit_word)
-    table_size = hit_table_in.shape[0]
-    iHit = 0
-
-    progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', ETA()], maxval=table_size)
-    progress_bar.start()
-
-    for iHit in range(start_hit_word, table_size, chunk_size):
-        hits = hit_table_in.read(iHit, iHit + chunk_size)
-        selected_hits = hits[hits["BCID"] > 128]
-        hit_table_out.append(selected_hits)
-        progress_bar.update(iHit)
-    progress_bar.finish()
-
-#     for iHit in range(start_hit_word, table_size, chunk_size):
-#         hit_table_in.append_where(hit_table_out, condition, iHit, iHit + chunk_size)
-#     hit_table_in.append_where(hit_table_out, condition, start=start_hit_word)
-#     return start_hit_word
-
-
-def write_hits_in_event_range(hit_table_in, hit_table_out, event_start, event_stop, start_hit_word=0, chunk_size=5000000):
-    '''Selects the hits that occurred in given event range [event_start, event_stop[ and write them to a pytable. This function reduces the in RAM operations and has to be used if the get_data_in_event_range
-        function raises a memory error.
-
-    Parameters
-    ----------
-    hit_table_in : pytable.table
-    hit_table_out : pytable.table
-        functions need to be able to write to hit_table_out
-    event_start, event_stop : int
-        start/stop event numbers
-    chunk_size : int
-        defines how many hits are analysed in RAM. Bigger numbers increase the speed, too big numbers let the program crash with a memory error.
+    condition : string
+        A condition that is applied to the hits in numexpr style. Only if the expression evaluates to True the hit is taken.
     Returns
     -------
     start_hit_word: int
         Index of the last hit word analyzed. Used to speed up the next call of write_hits_in_events.
     '''
 
-    logging.info("Write hits that exists in the given event range from %d to %d into a new hit table." % (event_start, event_stop))
+    logging.debug('Write hits that exists in the given event range from + ' + str(event_start) + ' to ' + str(event_stop) + ' into a new hit table')
     table_size = hit_table_in.shape[0]
     for iHit in range(0, table_size, chunk_size):
         hits = hit_table_in.read(iHit, iHit + chunk_size)
         last_event_number = hits[-1]['event_number']
-        hit_table_out.append(get_data_in_event_range(hits, event_start=event_start, event_stop=event_stop))
+        selected_hits = get_data_in_event_range(hits, event_start=event_start, event_stop=event_stop)
+        if not condition is None:
+            # bad hack to be able to use numexpr
+            for variable in set(re.findall(r'[a-zA-Z_]+', condition)):
+                exec(variable + ' = hits[\'' + variable + '\']')
+            selected_hits = selected_hits[ne.evaluate(condition)]
+        hit_table_out.append(selected_hits)
         if last_event_number > event_stop:  # speed up, use the fact that the hits are sorted by event_number
             return iHit + chunk_size
     return start_hit_word
@@ -903,7 +885,7 @@ def get_rms_from_histogram(counts, bin_positions):
     return np.std(values)
 
 
-def get_events_with_n_cluster(event_number, condition='n_cluster==1', condvar='n_cluster'):
+def get_events_with_n_cluster(event_number, condition='n_cluster==1'):
     '''Selects the events with a certain number of cluster.
 
     Parameters
