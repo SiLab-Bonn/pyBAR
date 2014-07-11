@@ -1095,6 +1095,7 @@ def get_scan_parameters_index(scan_parameter):
     numpy.Histogram
     '''
     _, index = np.unique(scan_parameter, return_index=True)
+    index = np.sort(index)
     values = np.array(range(0, len(index)), dtype='u4')
     index = np.append(index, len(scan_parameter))
     counts = np.diff(index)
