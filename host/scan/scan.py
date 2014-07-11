@@ -7,6 +7,7 @@ import re
 import tables as tb
 import platform
 import inspect
+import ast
 #import matplotlib.pyplot as plt
 #import numpy as np
 from analysis.RawDataConverter.data_struct import NameValue  # , generate_scan_configuration_description
@@ -30,6 +31,9 @@ import signal
 from bitarray import bitarray
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
+
+
+default_plsr_dac_correction = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
 
 class ScanBase(object):
@@ -337,7 +341,7 @@ class ScanBase(object):
                 f.write(value)
         self.lock.release()
 
-    def scan_loop(self, command, repeat_command=100, use_delay=True, hardware_repeat=True, mask_steps=3, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=False, bol_function=None, eol_function=None, digital_injection=False, enable_c_high=None, enable_c_low=None, enable_shift_masks=["Enable", "C_High", "C_Low"], disable_shift_masks=[], restore_shift_masks=True, mask=None):
+    def scan_loop(self, command, repeat_command=100, use_delay=True, hardware_repeat=True, mask_steps=3, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=False, bol_function=None, eol_function=None, digital_injection=False, enable_c_high=None, enable_c_low=None, enable_shift_masks=["Enable", "C_High", "C_Low"], disable_shift_masks=[], restore_shift_masks=True, mask=None, double_column_correction=False):
         '''Implementation of the scan loops (mask shifting, loop over double columns, repeatedly sending any arbitrary command).
 
         Parameters
@@ -376,10 +380,24 @@ class ScanBase(object):
             Writing the initial (restored) FE pixel configuration into FE after finishing the scan loop.
         mask : array-like
             Additional mask. Must be convertible to an array of booleans with the same shape as mask array. True indicates a masked pixel. Masked pixels will be disabled during shifting of the enable shift masks, and enabled during shifting disable shift mask.
+        double_column_correction : str, bool, list, tuple
+            Enables double column PlsrDAC correction. If value is a filename (string) or list/tuple, the default PlsrDAC correction will be overwritten. First line of the file must be a Python list ([0, 0, ...])
         '''
         if not isinstance(command, bitarray):
             raise TypeError
 
+        # get PlsrDAC correction
+        if isinstance(double_column_correction, basestring):  # from file
+            with open(double_column_correction) as fp:
+                plsr_dac_correction = list(ast.literal_eval(fp.readline().strip()))
+        elif isinstance(double_column_correction, (list, tuple)):  # from list/tuple
+            plsr_dac_correction = list(double_column_correction)
+        else:  # default
+            plsr_dac_correction = default_plsr_dac_correction
+        if len(plsr_dac_correction) != 40:
+            raise ValueError('Length of must be 40')
+        # initial PlsrDAC value for PlsrDAC correction
+        initial_plsr_dac = self.register.get_global_register_value("PlsrDAC")
         # create restore point
         restore_point_name = self.scan_id + '_scan_loop'
         self.register.create_restore_point(name=restore_point_name)
@@ -395,7 +413,11 @@ class ScanBase(object):
 
         def get_dc_address_command(dc):
             self.register.set_global_register_value("Colpr_Addr", dc)
-            return self.register_utils.concatenate_commands((conf_mode_command, self.register.get_commands("wrregister", name=["Colpr_Addr"])[0], run_mode_command), byte_padding=True)
+            if double_column_correction:
+                self.register.set_global_register_value("PlsrDAC", initial_plsr_dac + plsr_dac_correction[dc])
+                return self.register_utils.concatenate_commands((conf_mode_command, self.register.get_commands("wrregister", name=["Colpr_Addr"])[0], self.register.get_commands("wrregister", name=["PlsrDAC"])[0], run_mode_command), byte_padding=True)
+            else:
+                return self.register_utils.concatenate_commands((conf_mode_command, self.register.get_commands("wrregister", name=["Colpr_Addr"])[0], run_mode_command), byte_padding=True)
 
         if enable_mask_steps == None or not enable_mask_steps:
             enable_mask_steps = range(mask_steps)
