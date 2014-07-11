@@ -241,8 +241,8 @@ class ThresholdBaselineTuning(ScanBase):
             analyze_raw_data.create_source_scan_hist = True
 #             analyze_raw_data.create_hit_table = True
 #             analyze_raw_data.interpreter.debug_events(0, 0, True)  # events to be printed onto the console for debugging, usually deactivated
-            analyze_raw_data.interpreter.set_warning_output(False)
-            analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
+            analyze_raw_data.interpreter.set_warning_output(True)
+            analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b, use_settings_from_file=False)
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms()
             plot_occupancy(self.occ_mask.T, title='Noisy Pixels', z_max=1, filename=analyze_raw_data.output_pdf)
