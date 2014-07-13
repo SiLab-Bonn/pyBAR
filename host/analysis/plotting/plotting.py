@@ -178,7 +178,7 @@ def plot_fancy_occupancy(hist, z_max=None, filename=None):
     # make some labels invisible
     plt.setp(axHistx.get_xticklabels() + axHisty.get_yticklabels(), visible=False)
     hight = np.ma.sum(hist, axis=0)
-    hight[hight.mask] = 0
+    #hight[hight.mask] = 0
     axHistx.bar(left=range(1, 81), height=hight, align='center', linewidth=0)
     axHistx.set_xlim((0.5, 80.5))
     if hist.all() is np.ma.masked:
@@ -187,7 +187,7 @@ def plot_fancy_occupancy(hist, z_max=None, filename=None):
     axHistx.ticklabel_format(style='sci', scilimits=(0, 4), axis='y')
     axHistx.set_ylabel('#')
     width = np.ma.sum(hist, axis=1)
-    width[hight.mask] = 0
+    #width[hight.mask] = 0
     axHisty.barh(bottom=range(1, 337), width=width, align='center', linewidth=0)
     axHisty.set_ylim((336.5, 0.5))
     if hist.all() is np.ma.masked:
@@ -706,14 +706,15 @@ def create_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, bins=
             x_max = 1
         else:
             x_max = math.ceil(hist.max())
-    hist_range = (x_min, x_max)
+    hist_range = (x_min-0.5, x_max+0.5)
     # plot
-    _, _, _ = plt.hist(x=np.ma.compressed(hist), bins=hist_bins, range=hist_range)  # re-bin to 1d histogram
+    _, _, _ = plt.hist(x=np.ma.masked_array(hist).compressed(), bins=range(33), range=hist_range, align='left' )  # re-bin to 1d histogram, x argument needs to be 1D
+    # BUG: np.ma.compressed(np.ma.masked_array(hist)) (2D) is not equal to np.ma.masked_array(hist).compressed() (1D) if hist is ndarray
     plt.xlim(hist_range)  # overwrite xlim
     if hist.all() is np.ma.masked or np.allclose(hist, 0.0):
         plt.ylim((0, 1))
     # create histogram without masked elements, higher precision when calculating gauss
-    h_1d, h_bins = np.histogram(np.ma.compressed(hist), bins=hist_bins, range=hist_range)
+    h_1d, h_bins = np.histogram(np.ma.masked_array(hist).compressed(), bins=hist_bins, range=hist_range)
     if title is not None:
         plt.title(title)
     if x_axis_title is not None:
