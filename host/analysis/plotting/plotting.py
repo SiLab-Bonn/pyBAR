@@ -706,21 +706,19 @@ def create_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, bins=
         else:
             x_max = math.ceil(hist.max())
     hist_bins = int(x_max - x_min) + 1 if bins is None else bins
-    if bins and bins > 1:
+    if hist_bins > 1:
         bin_width = (x_max - x_min) / (hist_bins - 1.0)
-    elif bins:  # 1 bin
-        bin_width = x_max - x_min
     else:
         bin_width = 1.0
     hist_range = (x_min - bin_width / 2.0, x_max + bin_width / 2.0)
     # plot
-    _, _, _ = plt.hist(x=np.ma.masked_array(hist).compressed(), bins=range(hist_bins + 1), range=hist_range, align='left')  # re-bin to 1d histogram, x argument needs to be 1D
+    _, _, _ = plt.hist(x=np.ma.masked_array(hist).compressed(), bins=hist_bins, range=hist_range, align='mid')  # re-bin to 1d histogram, x argument needs to be 1D
     # BUG: np.ma.compressed(np.ma.masked_array(hist)) (2D) is not equal to np.ma.masked_array(hist).compressed() (1D) if hist is ndarray
     plt.xlim(hist_range)  # overwrite xlim
     if hist.all() is np.ma.masked or np.allclose(hist, 0.0):
         plt.ylim((0, 1))
     # create histogram without masked elements, higher precision when calculating gauss
-    h_1d, h_bins = np.histogram(np.ma.masked_array(hist).compressed(), bins=range(hist_bins + 1), range=hist_range)
+    h_1d, h_bins = np.histogram(np.ma.masked_array(hist).compressed(), bins=hist_bins + 1, range=hist_range)
     if title is not None:
         plt.title(title)
     if x_axis_title is not None:
