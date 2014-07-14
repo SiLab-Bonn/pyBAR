@@ -698,7 +698,6 @@ def create_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, bins=
         median = np.ma.median(hist)
         mean = np.ma.mean(hist)
         rms = np.ma.std(hist, dtype=np.float64)
-    hist_bins = 100 if bins is None else bins
     if x_min is None:
         x_min = 0
     if x_max is None:
@@ -706,9 +705,16 @@ def create_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, bins=
             x_max = 1
         else:
             x_max = math.ceil(hist.max())
-    hist_range = (x_min-0.5, x_max+0.5)
+    hist_bins = (x_max - x_min) if bins is None else bins
+    if bins and bins > 1:
+        bin_width = (x_max - x_min) / (hist_bins - 1)
+    elif bins:  # 1 bin
+        bin_width = x_max - x_min
+    else:
+        bin_width = 1
+    hist_range = (x_min - bin_width / 2, x_max + bin_width / 2)
     # plot
-    _, _, _ = plt.hist(x=np.ma.masked_array(hist).compressed(), bins=range(33), range=hist_range, align='left' )  # re-bin to 1d histogram, x argument needs to be 1D
+    _, _, _ = plt.hist(x=np.ma.masked_array(hist).compressed(), bins=hist_bins, range=hist_range, align='left')  # re-bin to 1d histogram, x argument needs to be 1D
     # BUG: np.ma.compressed(np.ma.masked_array(hist)) (2D) is not equal to np.ma.masked_array(hist).compressed() (1D) if hist is ndarray
     plt.xlim(hist_range)  # overwrite xlim
     if hist.all() is np.ma.masked or np.allclose(hist, 0.0):
