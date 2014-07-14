@@ -705,7 +705,7 @@ def create_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, bins=
             x_max = 1.0
         else:
             x_max = math.ceil(hist.max())
-    hist_bins = (x_max - x_min) + 1 if bins is None else bins
+    hist_bins = int(x_max - x_min) + 1 if bins is None else bins
     if bins and bins > 1:
         bin_width = (x_max - x_min) / (hist_bins - 1.0)
     elif bins:  # 1 bin
@@ -720,7 +720,7 @@ def create_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, bins=
     if hist.all() is np.ma.masked or np.allclose(hist, 0.0):
         plt.ylim((0, 1))
     # create histogram without masked elements, higher precision when calculating gauss
-    h_1d, h_bins = np.histogram(np.ma.masked_array(hist).compressed(), bins=hist_bins, range=hist_range)
+    h_1d, h_bins = np.histogram(np.ma.masked_array(hist).compressed(), bins=range(hist_bins + 1), range=hist_range)
     if title is not None:
         plt.title(title)
     if x_axis_title is not None:
