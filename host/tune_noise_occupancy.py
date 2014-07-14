@@ -3,7 +3,7 @@ import logging
 import numpy as np
 from os.path import splitext
 
-from analysis.plotting.plotting import plot_occupancy, make_occupancy_hist
+from analysis.plotting.plotting import plot_occupancy, plot_fancy_occupancy, make_occupancy_hist
 from daq.readout import get_col_row_array_from_data_record_array, convert_data_array, data_array_from_data_dict_iterable, is_data_record, is_data_from_channel
 
 from scan.scan import ScanBase
@@ -138,7 +138,7 @@ class NoiseOccupancyScan(ScanBase):
                     if self.register_utils.is_ready:
                         self.stop_thread_event.set()
                         logging.info('Finished sending %d triggers' % triggers)
-                    elif wait_for_first_data == False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
+                    elif wait_for_first_data is False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
                         logging.info('Reached no data timeout. Stopping Scan...')
                         self.stop_thread_event.set()
                     elif wait_for_first_data == False:
@@ -150,7 +150,7 @@ class NoiseOccupancyScan(ScanBase):
 
                 saw_data_at_time = last_iteration
 
-                if wait_for_first_data == True:
+                if wait_for_first_data is True:
                     logging.info('Taking data...')
                     wait_for_first_data = False
 
@@ -198,6 +198,7 @@ class NoiseOccupancyScan(ScanBase):
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms()
             plot_occupancy(self.occ_mask.T, title='Noisy Pixels', z_max=1, filename=analyze_raw_data.output_pdf)
+            plot_fancy_occupancy(self.occ_mask.T, z_max=1, filename=analyze_raw_data.output_pdf)
             for mask in self.disable_for_mask:
                 mask_name = self.register.get_pixel_register_attributes("full_name", do_sort=True, name=[mask])[0]
                 plot_occupancy(self.register.get_pixel_register_value(mask).T, title='%s Mask' % mask_name, z_max=1, filename=analyze_raw_data.output_pdf)
