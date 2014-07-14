@@ -4,7 +4,7 @@ import numpy as np
 from math import ceil
 from os.path import splitext
 
-from analysis.plotting.plotting import plot_occupancy
+from analysis.plotting.plotting import plot_occupancy, plot_fancy_occupancy, plotThreeWay
 from daq.readout import get_col_row_array_from_data_record_array, convert_data_array, data_array_from_data_dict_iterable, is_data_record, is_data_from_channel
 
 from scan.scan import ScanBase
@@ -138,7 +138,7 @@ class ThresholdBaselineTuning(ScanBase):
                 self.col_arr = np.array([], dtype=np.dtype('>u1'))
                 self.row_arr = np.array([], dtype=np.dtype('>u1'))
 
-                with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_id) as raw_data_file:
+                with open_raw_data_file(filename=self.scan_data_filename, scan_parameters=['Vthin_AltFine', 'Step'], title=self.scan_id) as raw_data_file:
                     self.readout.start()
 
                     # preload command
@@ -160,7 +160,7 @@ class ThresholdBaselineTuning(ScanBase):
                         last_iteration = time.time()
                         try:
                             data = (self.readout.data.popleft(), )
-                            raw_data_file.append(data)
+                            raw_data_file.append(data, scan_parameters={'Vthin_AltFine': reg_val, 'Step': step})
                             col_arr_tmp, row_arr_tmp = convert_data_array(data_array_from_data_dict_iterable(data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)
                             self.col_arr = np.concatenate((self.col_arr, col_arr_tmp))
                             self.row_arr = np.concatenate((self.row_arr, row_arr_tmp))
@@ -218,6 +218,11 @@ class ThresholdBaselineTuning(ScanBase):
                         self.register_utils.send_commands(commands)
                         if not repeat_tuning or self.occ_mask.sum() == 0 or (repeat_tuning and limit_repeat_tuning_steps and step == limit_repeat_tuning_steps) or decrease_pixel_mask.sum() < disabled_pixels_limit_cnt:
                             self.register.clear_restore_points(name=str(reg_val))
+                            self.last_tdac_distribution = self.register.get_pixel_register_value('TDAC')
+                            self.last_occupancy_hist = occ_hist.copy()
+                            self.last_occupancy_mask = self.occ_mask.copy()
+                            self.last_reg_val = reg_val
+                            self.last_step = step
                             break
                         else:
                             logging.info('Found noisy pixels... repeat tuning step for Vthin_AltFine %d' % (reg_val,))
@@ -241,17 +246,20 @@ class ThresholdBaselineTuning(ScanBase):
             analyze_raw_data.create_source_scan_hist = True
 #             analyze_raw_data.create_hit_table = True
 #             analyze_raw_data.interpreter.debug_events(0, 0, True)  # events to be printed onto the console for debugging, usually deactivated
-            analyze_raw_data.interpreter.set_warning_output(True)
+            analyze_raw_data.interpreter.set_warning_output(False)
             analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b, use_settings_from_file=False)
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms()
-            plot_occupancy(self.occ_mask.T, title='Noisy Pixels', z_max=1, filename=analyze_raw_data.output_pdf)
-
+            plot_occupancy(self.last_occupancy_hist.T, title='Noisy Pixels at Vthin_AltFine %d Step %d' % (self.last_reg_val, self.last_step), filename=analyze_raw_data.output_pdf)
+            plot_fancy_occupancy(self.last_occupancy_hist.T, filename=analyze_raw_data.output_pdf)
+            plot_occupancy(self.last_occupancy_mask.T, title='Enable Mask', z_max=1, filename=analyze_raw_data.output_pdf)
+            plot_fancy_occupancy(self.last_occupancy_mask.T, filename=analyze_raw_data.output_pdf)
+            plotThreeWay(self.last_tdac_distribution.T, title='TDAC at Vthin_AltFine %d Step %d' % (self.last_reg_val, self.last_step), x_axis_title="TDAC", filename=analyze_raw_data.output_pdf, maximum=31, bins=32)
+            plot_occupancy(self.last_tdac_distribution.T, title='TDAC at Vthin_AltFine %d Step %d' % (self.last_reg_val, self.last_step), z_max=31, filename=analyze_raw_data.output_pdf)
 
 if __name__ == "__main__":
     import configuration
     scan = ThresholdBaselineTuning(**configuration.default_configuration)
     scan.start(use_thread=False, **local_configuration)
     scan.stop()
-#     scan.analyze()
-#    scan.register.save_configuration()
+    scan.analyze()
