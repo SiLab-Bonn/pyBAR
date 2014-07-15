@@ -1,4 +1,4 @@
-"""A script that changes the PlsrDAC in a certain range for selected pixels and measures the length of the hit OR signal with the FPGA TDC.
+"""A script that changes a scan parameter (usually PlsrDAC) in a certain range for selected pixels and measures the length of the hit OR signal with the FPGA TDC.
     This calibration can be used to measure charge information for single pixels with higher precision than with the quantized TOT information.
 """
 import numpy as np
@@ -18,7 +18,6 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(leve
 
 local_configuration = {
     "repeat_command": 10000,
-    "reject_small_tot": False,
     "scan_parameter": 'PlsrDAC',
     "scan_parameter_values": [i for j in (range(40, 70, 5), range(70, 100, 10), range(100, 600, 20), range(600, 801, 40)) for i in j],  # list of scan parameters to use
     "plot_tdc_histograms": False,
@@ -34,14 +33,12 @@ class HitOrScan(ScanBase):
         return column / 2, 335 + row if column % 2 == 0 else row - 1
 
     def activate_tdc(self):
-        pass
         self.readout_utils.configure_tdc_fsm(enable_tdc=True, enable_tdc_arming=True)
 
     def deactivate_tdc(self):
-        pass
         self.readout_utils.configure_tdc_fsm(enable_tdc=False, enable_tdc_arming=True)
 
-    def scan(self, pixels, reject_small_tot=False, repeat_command=100, scan_parameter='PlsrDAC', scan_parameter_values=(55, 100, 150, 250), **kwarg):
+    def scan(self, pixels, repeat_command=100, scan_parameter='PlsrDAC', scan_parameter_values=(55, 100, 150, 250), **kwarg):
         '''Scan loop
 
         Parameters
@@ -55,10 +52,6 @@ class HitOrScan(ScanBase):
         scan_parameter_stepsize : int
             The minimum step size of the parameter. Used when start condition is not triggered.
         '''
-
-#         self.activate_tdc()
-#         self.deactivate_tdc()
-#         self.activate_tdc()
 
         with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_id, scan_parameters=[scan_parameter, 'column', 'row']) as raw_data_file:
             for pixel in pixels:
@@ -95,7 +88,7 @@ class HitOrScan(ScanBase):
             analyze_raw_data.create_hit_table = True
             analyze_raw_data.create_tdc_hist = True
             analyze_raw_data.interpreter.use_tdc_word(True)  # align events at TDC words, first word of event has to be a tdc word
-            analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
+            analyze_raw_data.interpret_word_table()
             analyze_raw_data.plot_histograms(scan_data_filename=self.scan_data_filename)
 
         with tb.openFile(scan.scan_data_filename + "_calibration.h5", mode="w") as calibration_data_file:  # creation of a calibration: charge [PlsrDAC] <-> TOT [ns] per pixel; TOT is taken from the discrete hit tot info and the Oszi histogram
@@ -165,5 +158,4 @@ if __name__ == "__main__":
     scan = HitOrScan(**configuration.default_configuration)
     scan.start(use_thread=False, **local_configuration)
     scan.stop()
-#     scan.scan_data_filename='data//SCC_99//SCC_99_hit_or_scan_614'
     scan.analyze()
