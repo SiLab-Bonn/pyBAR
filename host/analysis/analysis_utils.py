@@ -20,6 +20,48 @@ from RawDataConverter import analysis_functions
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
+def unique_row(array, use_columns=None, selected_columns_only=False):
+    '''Takes a numpy array and returns the array reduced to unique rows. If columns are defined only these columns are taken to define a unique row.
+    The returned array can have all columns of the original array or only the columns defined in use_columns.
+    Parameters
+    ----------
+    array : numpy.ndarray
+    use_columns : list
+        Index of columns to be used to define a unique row
+    selected_columns_only : bool
+        If true only the columns defined in use_columns are returned
+
+    Returns
+    -------
+    numpy.ndarray
+    '''
+    if array.dtype.names is None:  # normal array has no named dtype
+        if use_columns is not None:
+            a_cut = array[:, use_columns]
+        else:
+            a_cut = array
+        if len(use_columns) > 1:
+            b = np.ascontiguousarray(a_cut).view(np.dtype((np.void, a_cut.dtype.itemsize * a_cut.shape[1])))
+        else:
+            b = np.ascontiguousarray(a_cut)
+        _, index = np.unique(b, return_index=True)
+        if not selected_columns_only:
+            return array[np.sort(index)]  # sort to preserve order
+        else:
+            return a_cut[np.sort(index)]  # sort to preserve order
+    else:  # names for dtype founnd --> array is recarray
+        names = list(array.dtype.names)
+        if use_columns is not None:
+            new_names = [names[i] for i in use_columns]
+        else:
+            new_names = names
+        a_cut, index = np.unique(array[new_names], return_index=True)
+        if not selected_columns_only:
+            return array[np.sort(index)]  # sort to preserve order
+        else:
+            return array[np.sort(index)][new_names]  # sort to preserve order
+
+
 def get_ranges_from_array(array, append_last=True):
     '''Takes an array and calculates ranges [start, stop[. The last range end is none to keep the same length.
 
@@ -242,7 +284,7 @@ def create_parameter_table(files_dict):
     # create a parameter list for every read out
     for file_name, parameters in files_dict.iteritems():
         with tb.openFile(file_name, mode="r") as in_file_h5:  # open the actual file
-            n_parameter_settings = len(files_dict[file_name].values()[0])  # determine the number of different parameter settings from the list length of parameter values of the first parameter
+            n_parameter_settings = max([len(i) for i in files_dict[file_name].values()])  # determine the number of different parameter settings from the list length of parameter values of the first parameter
             if n_parameter_settings == 1:  # only one parameter setting used, therefore create a temporary parameter table with these parameter setting and append it to the final parameter table
                 read_out = in_file_h5.root.meta_data.shape[0]
                 if parameter_table is None:  # final parameter_table does not exists, so create is
@@ -979,7 +1021,8 @@ def get_scan_parameter(meta_data_array, unique=True):
 
     Returns
     -------
-    python.dict{string, numpy.Histogram}
+    python.dict{string, numpy.Histogram}:
+        A dictionary with the scan parameter name/values pairs
     '''
 
     try:
@@ -992,6 +1035,38 @@ def get_scan_parameter(meta_data_array, unique=True):
     for scan_par_name in meta_data_array.dtype.names[4:]:  # scan parameters are in columns 5 (= index 4) and above
         scan_parameters[scan_par_name] = np.unique(meta_data_array[scan_par_name]) if unique else meta_data_array[scan_par_name]
     return scan_parameters
+
+
+def get_scan_parameters_table_from_meta_data(meta_data_array, scan_parameters=None):
+    '''Takes the meta data array and returns the scan parameter values as a view of a numpy array only containing the parameter data .
+    Parameters
+    ----------
+    meta_data_array : numpy.ndarray
+        The array with the scan parameters.
+    scan_parameters : list of strings
+        The name of the scan parameters to take. If none all are used.
+
+    Returns
+    -------
+    numpy.Histogram
+    '''
+
+    if scan_parameters is None:
+        try:
+            last_not_parameter_column = meta_data_array.dtype.names.index('error_code')  # for interpreted meta_data
+        except ValueError:
+            return
+        if last_not_parameter_column == len(meta_data_array.dtype.names) - 1:  # no meta_data found
+            return
+        # http://stackoverflow.com/questions/15182381/how-to-return-a-view-of-several-columns-in-numpy-structured-array
+        scan_par_data = {name: meta_data_array.dtype.fields[name] for name in meta_data_array.dtype.names[last_not_parameter_column + 1:]}
+    else:
+#         scan_par_data = {}
+        scan_par_data = collections.OrderedDict()
+        for name in scan_parameters:
+            scan_par_data[name] = meta_data_array.dtype.fields[name]
+
+    return np.ndarray(meta_data_array.shape, np.dtype(scan_par_data), meta_data_array, 0, meta_data_array.strides)
 
 
 def get_scan_parameters_index(scan_parameter):
@@ -1013,37 +1088,16 @@ def get_scan_parameters_index(scan_parameter):
     return np.repeat(values, counts)
 
 
-def get_scan_parameters_table_from_meta_data(meta_data_array):
-    '''Takes the meta data array and creates a scan parameter index labeling the unique scan parameter combinations.
-    Parameters
-    ----------
-    scan_parameter : numpy.ndarray
-        The table with the scan parameters.
-
-    Returns
-    -------
-    numpy.Histogram
-    '''
-
-    try:
-        last_not_parameter_column = meta_data_array.dtype.names.index('error_code')  # for interpreted meta_data
-    except ValueError:
-        return
-    if last_not_parameter_column == len(meta_data_array.dtype.names) - 1:  # no meta_data found
-        return
-
-    # http://stackoverflow.com/questions/15182381/how-to-return-a-view-of-several-columns-in-numpy-structured-array
-    dtype2 = np.dtype({name: meta_data_array.dtype.fields[name] for name in meta_data_array.dtype.names[last_not_parameter_column + 1:]})
-    return np.ndarray(meta_data_array.shape, dtype2, meta_data_array, 0, meta_data_array.strides)
-
-
-def get_unique_scan_parameter_combinations(meta_data_array, scan_parameter_columns_only=False):
-    '''Takes the numpy meta data array and returns the rows with unique combinations of different scan parameter values for all scan parameters.
+def get_unique_scan_parameter_combinations(meta_data_array, scan_parameters=None, scan_parameter_columns_only=False):
+    '''Takes the numpy meta data array and returns the first rows with unique combinations of different scan parameter values for selected scan parameters.
         If selected columns only is true, the returned histogram only contains the selected columns.
 
     Parameters
     ----------
     meta_data_array : numpy.ndarray
+    scan_parameters : list of string, None
+        Scan parameter names taken. If None all are used.
+    selected_columns_only : bool
 
     Returns
     -------
@@ -1056,49 +1110,17 @@ def get_unique_scan_parameter_combinations(meta_data_array, scan_parameter_colum
         last_not_parameter_column = meta_data_array.dtype.names.index('error')  # for raw data file meta_data
     if last_not_parameter_column == len(meta_data_array.dtype.names) - 1:  # no meta_data found
         return
-    return unique_row(meta_data_array, use_columns=range(4, len(meta_data_array.dtype.names)), selected_columns_only=scan_parameter_columns_only)
-
-
-def unique_row(array, use_columns=None, selected_columns_only=False):
-    '''Takes a numpy array and returns the array reduced to unique rows. If columns are defined only these columns are taken to define a unique row.
-    The returned array can have all columns of the original array or only the columns defined in use_columns.
-    Parameters
-    ----------
-    array : numpy.ndarray
-    use_columns : list
-        Index of columns to be used to define a unique row
-    selected_columns_only : bool
-        If true only the columns defined in use_columns are returned
-
-    Returns
-    -------
-    numpy.ndarray
-    '''
-    if array.dtype.names is None:  # normal array has no named dtype
-        if use_columns is not None:
-            a_cut = array[:, use_columns]
-        else:
-            a_cut = array
-        if len(use_columns) > 1:
-            b = np.ascontiguousarray(a_cut).view(np.dtype((np.void, a_cut.dtype.itemsize * a_cut.shape[1])))
-        else:
-            b = np.ascontiguousarray(a_cut)
-        _, index = np.unique(b, return_index=True)
-        if not selected_columns_only:
-            return array[np.sort(index)]  # sort to preserve order
-        else:
-            return a_cut[np.sort(index)]  # sort to preserve order
-    else:  # names for dtype founnd --> array is recarray
-        names = list(array.dtype.names)
-        if use_columns is not None:
-            new_names = [names[i] for i in use_columns]
-        else:
-            new_names = names
-        a_cut, index = np.unique(array[new_names], return_index=True)
-        if not selected_columns_only:
-            return array[np.sort(index)]  # sort to preserve order
-        else:
-            return array[np.sort(index)][new_names]  # sort to preserve order
+    if scan_parameters is None:
+        return unique_row(meta_data_array, use_columns=range(4, len(meta_data_array.dtype.names)), selected_columns_only=scan_parameter_columns_only)
+    else:
+        use_columns = []
+        for scan_parameter in scan_parameters:
+            try:
+                use_columns.append(meta_data_array.dtype.names.index(scan_parameter))
+            except ValueError:
+                logging.error('No scan parameter ' + scan_parameter + ' found')
+                raise RuntimeError('Scan parameter not found')
+        return unique_row(meta_data_array, use_columns=use_columns, selected_columns_only=scan_parameter_columns_only)
 
 
 def index_event_number(table_with_event_numer):
