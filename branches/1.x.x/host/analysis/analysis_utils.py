@@ -20,27 +20,119 @@ from RawDataConverter import analysis_functions
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
-def get_data_statistics(interpreted_files):
-    '''Quick and dirty function to give as redmine compatible iverview table
+def unique_row(array, use_columns=None, selected_columns_only=False):
+    '''Takes a numpy array and returns the array reduced to unique rows. If columns are defined only these columns are taken to define a unique row.
+    The returned array can have all columns of the original array or only the columns defined in use_columns.
+    Parameters
+    ----------
+    array : numpy.ndarray
+    use_columns : list
+        Index of columns to be used to define a unique row
+    selected_columns_only : bool
+        If true only the columns defined in use_columns are returned
+
+    Returns
+    -------
+    numpy.ndarray
     '''
-    print '| *File Name* | *File Size* | *Times Stamp* | *Events* | *Bad Events* | *Measurement time* | *# SR* | *Hits* |'  # Mean Tot | Mean rel. BCID'
-    for interpreted_file in interpreted_files:
-        with tb.openFile(interpreted_file, mode="r") as in_file_h5:  # open the actual hit file
-            event_errors = in_file_h5.root.HistErrorCounter[:]
-            n_hits = np.sum(in_file_h5.root.HistOcc[:])
-            measurement_time = int(in_file_h5.root.meta_data[-1]['timestamp_stop'] - in_file_h5.root.meta_data[0]['timestamp_start'])
-#             mean_tot = np.average(in_file_h5.root.HistTot[:], weights=range(0,16) * np.sum(range(0,16)))# / in_file_h5.root.HistTot[:].shape[0]
-#             mean_bcid = np.average(in_file_h5.root.HistRelBcid[:], weights=range(0,16))
-            n_sr = np.sum(in_file_h5.root.HistServiceRecord[:])
-            n_bad_events = int(np.sum(in_file_h5.root.HistErrorCounter[2:]))
-            try:
-                n_events = str(in_file_h5.root.Hits[-1]['event_number'] + 1)
-            except tb.NoSuchNodeError:
-                n_events = '~' + str(in_file_h5.root.meta_data[-1]['event_number'] + (in_file_h5.root.meta_data[-1]['event_number'] - in_file_h5.root.meta_data[-2]['event_number']))
-#             if int(n_events) < 7800000 or n_sr > 4200 or n_bad_events > 40:
-#                 print '| %{color:red}', os.path.basename(interpreted_file) + '%', '|', int(os.path.getsize(interpreted_file) / (1024 * 1024.)), 'Mb |', time.ctime(os.path.getctime(interpreted_file)), '|',  n_events, '|', n_bad_events, '|', measurement_time, 's |', n_sr, '|', n_hits, '|'#, mean_tot, '|', mean_bcid, '|'
-            else:
-                print '|', os.path.basename(interpreted_file), '|', int(os.path.getsize(interpreted_file) / (1024 * 1024.)), 'Mb |', time.ctime(os.path.getctime(interpreted_file)), '|',  n_events, '|', n_bad_events, '|', measurement_time, 's |', n_sr, '|', n_hits, '|'#, mean_tot, '|', mean_bcid, '|'
+    if array.dtype.names is None:  # normal array has no named dtype
+        if use_columns is not None:
+            a_cut = array[:, use_columns]
+        else:
+            a_cut = array
+        if len(use_columns) > 1:
+            b = np.ascontiguousarray(a_cut).view(np.dtype((np.void, a_cut.dtype.itemsize * a_cut.shape[1])))
+        else:
+            b = np.ascontiguousarray(a_cut)
+        _, index = np.unique(b, return_index=True)
+        if not selected_columns_only:
+            return array[np.sort(index)]  # sort to preserve order
+        else:
+            return a_cut[np.sort(index)]  # sort to preserve order
+    else:  # names for dtype founnd --> array is recarray
+        names = list(array.dtype.names)
+        if use_columns is not None:
+            new_names = [names[i] for i in use_columns]
+        else:
+            new_names = names
+        a_cut, index = np.unique(array[new_names], return_index=True)
+        if not selected_columns_only:
+            return array[np.sort(index)]  # sort to preserve order
+        else:
+            return array[np.sort(index)][new_names]  # sort to preserve order
+
+
+def get_ranges_from_array(array, append_last=True):
+    '''Takes an array and calculates ranges [start, stop[. The last range end is none to keep the same length.
+
+    Parameters
+    ----------
+    events : array like
+    append_last: bool
+        If false the returned array has one entry less
+
+    Returns
+    -------
+    numpy.array
+    '''
+    left = array[:len(array)]
+    right = array[1:len(array)]
+    if append_last:
+        right = np.append(right, None)
+    return np.column_stack((left, right))
+
+
+def get_mean_from_histogram(counts, bin_positions):
+    return np.dot(counts, np.array(bin_positions)) / np.sum(counts).astype('f4')
+
+
+def get_median_from_histogram(counts, bin_positions):
+    values = []
+    for index, one_bin in enumerate(counts):
+        for _ in range(one_bin):
+            values.extend([bin_positions[index]])
+    return np.median(values)
+
+
+def get_rms_from_histogram(counts, bin_positions):
+    values = []
+    for index, one_bin in enumerate(counts):
+        for _ in range(one_bin):
+            values.extend([bin_positions[index]])
+    return np.std(values)
+
+
+def in1d_sorted(ar1, ar2):
+    """
+    Does the same than np.in1d but uses the fact that ar1 and ar2 are sorted. Is therefore much faster.
+
+    """
+    if ar1.shape[0] == 0 or ar2.shape[0] == 0:  # check for empty arrays to avoid crash
+        return []
+    inds = ar2.searchsorted(ar1)
+    inds[inds == len(ar2)] = 0
+    return ar2[inds] == ar1
+
+
+def central_difference(x, y):
+    '''Returns the dy/dx(x) via central difference method
+
+    Parameters
+    ----------
+    x : array like
+    y : array like
+
+    Returns
+    -------
+    dy/dx : array like
+    '''
+    if (len(x) != len(y)):
+        raise ValueError("x, y must have the same length")
+    z1 = np.hstack((y[0], y[:-1]))
+    z2 = np.hstack((y[1:], y[-1]))
+    dx1 = np.hstack((0, np.diff(x)))
+    dx2 = np.hstack((np.diff(x), 0))
+    return (z2 - z1) / (dx2 + dx1)
 
 
 def get_profile_histogram(x, y, n_bins=100):
@@ -156,66 +248,6 @@ def get_rate_normalization(hit_file, parameter, reference='event', cluster_file=
     return np.amax(np.array(normalization_rate)).astype('f16') / np.array(normalization_rate)
 
 
-def get_occupancy_per_parameter(hit_analyzed_files, parameter='GDAC'):
-    '''Takes the hit files mentioned in hit_analyzed_files, opens the occupancy hist of each file and combines theses occupancy hist to one occupancy hist, where
-    the third dimension is the number of scan parameters (col * row * n_parameter).
-    Every scan parameter value is checked to have only one corresponding occupancy histogram. The files can have a scan parameter, which is then extracted from the
-    meta data. If there is no scan parameter given the scan parameter is extracted from the file name.
-
-    Parameters
-    ----------
-    hit_analyzed_files : list of strings:
-        Absolute paths of the analyzed hit files containing the occupancy histograms.
-        data x positions
-    parameter : string:
-        The name of the scan parameter varied for the different occupancy histograms
-    '''
-    logging.info('Get and combine the occupancy hists from ' + str(len(hit_analyzed_files)) + ' files')
-    occupancy_combined = None
-    all_scan_parameters = []  # list with all scan parameters of all files, used to check for parameter values that occurs more than once
-    for index in range(0, len(hit_analyzed_files)):  # loop over all hit files
-        with tb.openFile(hit_analyzed_files[index], mode="r") as in_hit_analyzed_file_h5:  # open the actual hit file
-            scan_parameter = get_scan_parameter(in_hit_analyzed_file_h5.root.meta_data[:])  # get the scan parameters
-            if scan_parameter:  # scan parameter is not none, therefore the occupancy hist has more dimensions col*row*n_scan_parameter
-                scan_parameter_values = scan_parameter[parameter].tolist()  # get the scan parameters
-                if set(scan_parameter_values).intersection(all_scan_parameters):  # check that the scan parameters are unique
-                    logging.error('The following settings for ' + parameter + ' appear more than once: ' + str(set(scan_parameter_values).intersection(all_scan_parameters)))
-                    raise NotImplementedError('Every scan parameter has to have only one occupancy histogram')
-                all_scan_parameters.extend(scan_parameter_values)
-            else:  # scan parameter not in meta data, therefore it has to be in the file name
-                parameter_value = get_parameter_value_from_file_names([hit_analyzed_files[index]], parameter).values()[0]  # get the parameter value from the file name
-                if parameter_value in all_scan_parameters:  # check that the scan parameters are unique
-                    logging.error('The setting ' + str(parameter_value) + ' for ' + parameter + ' appears more than once')
-                    raise NotImplementedError('Every scan parameter has to have only one occupancy histogram')
-                all_scan_parameters.append(long(parameter_value))
-            if occupancy_combined is None:
-                occupancy_combined = in_hit_analyzed_file_h5.root.HistOcc[:]
-            else:
-                occupancy_combined = np.append(occupancy_combined, in_hit_analyzed_file_h5.root.HistOcc[:], axis=2)
-    return occupancy_combined, all_scan_parameters
-
-
-def central_difference(x, y):
-    '''Returns the dy/dx(x) via central difference method
-
-    Parameters
-    ----------
-    x : array like
-    y : array like
-
-    Returns
-    -------
-    dy/dx : array like
-    '''
-    if (len(x) != len(y)):
-        raise ValueError("x, y must have the same length")
-    z1 = np.hstack((y[0], y[:-1]))
-    z2 = np.hstack((y[1:], y[-1]))
-    dx1 = np.hstack((0, np.diff(x)))
-    dx2 = np.hstack((np.diff(x), 0))
-    return (z2 - z1) / (dx2 + dx1)
-
-
 def get_total_n_data_words(files_dict, precise=False):
     n_words = 0
     if precise:  # open all files and determine the total number of words precicely, can take some time
@@ -252,7 +284,7 @@ def create_parameter_table(files_dict):
     # create a parameter list for every read out
     for file_name, parameters in files_dict.iteritems():
         with tb.openFile(file_name, mode="r") as in_file_h5:  # open the actual file
-            n_parameter_settings = len(files_dict[file_name].values()[0])  # determine the number of different parameter settings from the list length of parameter values of the first parameter
+            n_parameter_settings = max([len(i) for i in files_dict[file_name].values()])  # determine the number of different parameter settings from the list length of parameter values of the first parameter
             if n_parameter_settings == 1:  # only one parameter setting used, therefore create a temporary parameter table with these parameter setting and append it to the final parameter table
                 read_out = in_file_h5.root.meta_data.shape[0]
                 if parameter_table is None:  # final parameter_table does not exists, so create is
@@ -341,7 +373,7 @@ def get_data_file_names_from_scan_base(scan_base, filter_file_words=None, parame
         else:
             data_files = glob.glob(scan_name + '*.h5')
         if not data_files:
-            raise RuntimeError('Cannot find any files for ' + scan_name)
+            raise RuntimeError('Cannot find any data files, please check data file names.')
         if filter_file_words is not None:
             raw_data_files.extend(filter(lambda data_file: not any(x in data_file for x in filter_file_words), data_files))  # filter out already analyzed data
         else:
@@ -390,9 +422,9 @@ def get_parameter_from_files(files, parameters=None, unique=False, sort=True):
     ----------
     files : string, list of strings
     parameters : string, list of strings
-    unique : bool:
-        If set only one filer per scan parameter value is used.
-    sort : bool
+    unique : boolean
+        If set only one file per scan parameter value is used.
+    sort : boolean
 
     Returns
     -------
@@ -527,18 +559,6 @@ def combine_meta_data(files_dict):
     if len(files_dict) > 10:
         progress_bar.finish()
     return meta_data_combined
-
-
-def in1d_sorted(ar1, ar2):
-    """
-    Does the same than np.in1d but uses the fact that ar1 and ar2 are sorted. Is therefore much faster.
-
-    """
-    if ar1.shape[0] == 0 or ar2.shape[0] == 0:  # check for empty arrays to avoid crash
-        return []
-    inds = ar2.searchsorted(ar1)
-    inds[inds == len(ar2)] = 0
-    return ar2[inds] == ar1
 
 
 def in1d_events(ar1, ar2):
@@ -686,23 +706,7 @@ def get_meta_data_at_scan_parameter(meta_data_array, scan_parameter_name):
     return meta_data_array[get_meta_data_index_at_scan_parameter(meta_data_array, scan_parameter_name)['index']]
 
 
-def correlate_events(data_frame_fe_1, data_frame_fe_2):
-    '''Correlates events from different Fe by the event number
-
-    Parameters
-    ----------
-    data_frame_fe_1 : pandas.dataframe
-    data_frame_fe_2 : pandas.dataframe
-
-    Returns
-    -------
-    Merged pandas dataframe.
-    '''
-    logging.info("Correlating events")
-    return data_frame_fe_1.merge(data_frame_fe_2, how='left', on='event_number')  # join in the events that the triggered fe sees, only these are interessting
-
-
-def get_hits_in_events(hits_array, events, assume_sorted=True):
+def get_hits_in_events(hits_array, events, assume_sorted=True, condition=None):
     '''Selects the hits that occurred in events. If a event range can be defined use the get_data_in_event_range function. It is much faster.
 
     Parameters
@@ -711,6 +715,8 @@ def get_hits_in_events(hits_array, events, assume_sorted=True):
     events : array
     assume_sorted : bool
         Is true if the events to select are sorted from low to high value. Increases speed by 35%.
+    condition : string
+        A condition that is applied to the hits in numexpr. Only if the expression evaluates to True the hit is taken.
 
     Returns
     -------
@@ -725,24 +731,32 @@ def get_hits_in_events(hits_array, events, assume_sorted=True):
             return hits_array[0:0]
     try:
         if assume_sorted:
-            hits_in_events = hits_array[in1d_events(hits_array['event_number'], events)]
+            selection = in1d_events(hits_array['event_number'], events)
         else:
             logging.warning('Events are usually sorted. Are you sure you want this?')
-            hits_in_events = hits_array[np.in1d(hits_array['event_number'], events)]
+            selection = np.in1d(hits_array['event_number'], events)
+        if condition is None:
+            hits_in_events = hits_array[selection]
+        else:
+            # bad hack to be able to use numexpr
+            for variable in set(re.findall(r'[a-zA-Z_]+', condition)):
+                exec(variable + ' = hits_array[\'' + variable + '\']')
+
+            hits_in_events = hits_array[ne.evaluate(condition + ' & selection')]
     except MemoryError:
-        logging.error('There are too many hits to do in RAM operations. Descrease chunk size and Use the write_hits_in_events function instead.')
+        logging.error('There are too many hits to do in RAM operations. Consider decreasing chunk size and use the write_hits_in_events function instead.')
         raise MemoryError
     return hits_in_events
 
 
-def get_data_in_event_range(hits_array, event_start, event_stop, assume_sorted=True):
+def get_data_in_event_range(array, event_start=None, event_stop=None, assume_sorted=True):
     '''Selects the data (rows of a table) that occurred in the given event range [event_start, event_stop[
 
     Parameters
     ----------
-    hits_array : numpy.array
-    event_start : int
-    event_stop : int
+    array : numpy.array
+    event_start : int, None
+    event_stop : int, None
     assume_sorted : bool
         Set to true if the hits are sorted by the event_number. Increases speed.
 
@@ -752,35 +766,36 @@ def get_data_in_event_range(hits_array, event_start, event_stop, assume_sorted=T
         hit array with the hits in the event range.
     '''
     logging.debug("Calculate data of the the given event range [" + str(event_start) + ", " + str(event_stop) + "[")
-    event_number = hits_array['event_number']
+    event_number = array['event_number']
     if assume_sorted:
-        hits_event_start = hits_array['event_number'][0]
-        hits_event_stop = hits_array['event_number'][-1]
-        if (event_start != None and event_stop != None) and (hits_event_stop < event_start or hits_event_start > event_stop or event_start == event_stop):  # special case, no intersection at all
-            return hits_array[0:0]
+        data_event_start = event_number[0]
+        data_event_stop = event_number[-1]
+        if (event_start != None and event_stop != None) and (data_event_stop < event_start or data_event_start > event_stop or event_start == event_stop):  # special case, no intersection at all
+            return array[0:0]
 
         # get min/max indices with values that are also in the other array
         if event_start == None:
-            min_index_hits = 0
+            min_index_data = 0
         else:
-            min_index_hits = np.argmin(hits_array['event_number'] < event_start)
+            min_index_data = np.argmin(event_number < event_start)
 
         if event_stop == None:
-            max_index_hits = hits_array['event_number'].shape[0]
+            max_index_data = event_number.shape[0]
         else:
-            max_index_hits = np.argmax(hits_array['event_number'] >= event_stop)
+            max_index_data = np.argmax(event_number >= event_stop)
 
-        if min_index_hits < 0:
-            min_index_hits = 0
-        if max_index_hits == 0 or max_index_hits > hits_array['event_number'].shape[0]:
-            max_index_hits = hits_array['event_number'].shape[0]
-        return hits_array[min_index_hits:max_index_hits]
+        if min_index_data < 0:
+            min_index_data = 0
+        if max_index_data == 0 or max_index_data > event_number.shape[0]:
+            max_index_data = event_number.shape[0]
+        return array[min_index_data:max_index_data]
     else:
-        return hits_array[np.logical_and(event_number >= event_start, event_number < event_stop)]
+        return array[ne.evaluate('event_number >= event_start & event_number < event_stop')]
 
 
-def write_hits_in_events(hit_table_in, hit_table_out, events, start_hit_word=0, chunk_size=5000000):
-    '''Selects the hits that occurred in events and writes them to a pytable. This function reduces the in RAM operations and has to be used if the get_hits_in_events function raises a memory error.
+def write_hits_in_events(hit_table_in, hit_table_out, events, start_hit_word=0, chunk_size=5000000, condition=None):
+    '''Selects the hits that occurred in events and writes them to a pytable. This function reduces the in RAM operations and has to be 
+    used if the get_hits_in_events function raises a memory error. Also a condition can be set to select hits.
 
     Parameters
     ----------
@@ -789,10 +804,12 @@ def write_hits_in_events(hit_table_in, hit_table_out, events, start_hit_word=0, 
         functions need to be able to write to hit_table_out
     events : array like
         defines the events to be written from hit_table_in to hit_table_out. They do not have to exists at all.
-    chunk_size : int
-        defines how many hits are analyzed in RAM. Bigger numbers increase the speed, too big numbers let the program crash with a memory error.
     start_hit_word: int
         Index of the first hit word to be analyzed. Used for speed up.
+    chunk_size : int
+        defines how many hits are analyzed in RAM. Bigger numbers increase the speed, too big numbers let the program crash with a memory error.
+    condition : string
+        A condition that is applied to the hits in numexpr style. Only if the expression evaluates to True the hit is taken.
 
     Returns
     -------
@@ -808,102 +825,51 @@ def write_hits_in_events(hit_table_in, hit_table_out, events, start_hit_word=0, 
         for iHit in range(start_hit_word, table_size, chunk_size):
             hits = hit_table_in.read(iHit, iHit + chunk_size)
             last_event_number = hits[-1]['event_number']
-            hit_table_out.append(get_hits_in_events(hits, events=events))
+            hit_table_out.append(get_hits_in_events(hits, events=events, condition=condition))
             if last_event_number > max_event:  # speed up, use the fact that the hits are sorted by event_number
                 return iHit
     return start_hit_word
 
 
-def write_hits_with_condition(hit_table_in, hit_table_out, condition=None, start_hit_word=0, chunk_size=5000000):
-    '''Selects the hits that occurred in events and writes them to a pytable. This function reduces the in RAM operations and has to be used if the get_hits_in_events function raises a memory error.
+def write_hits_in_event_range(hit_table_in, hit_table_out, event_start=None, event_stop=None, start_hit_word=0, chunk_size=5000000, condition=None):
+    '''Selects the hits that occurred in given event range [event_start, event_stop[ and write them to a pytable. This function reduces the in RAM 
+       operations and has to be used if the get_data_in_event_range function raises a memory error. Also a condition can be set to select hits.
 
     Parameters
     ----------
     hit_table_in : pytable.table
     hit_table_out : pytable.table
         functions need to be able to write to hit_table_out
-    condition: string that satisfies np.numexp
+    event_start, event_stop : int, None
+        start/stop event numbers. Stop event number is excluded. If None start/stop is set automatically.
     chunk_size : int
         defines how many hits are analyzed in RAM. Bigger numbers increase the speed, too big numbers let the program crash with a memory error.
-    start_hit_word: int
-        Index of the first hit word to be analyzed. Used for speed up.
-
-    Returns
-    -------
-    start_hit_word: int
-        Index of the last hit word analyzed. Used to speed up the next call of write_hits_in_events.
-    '''
-    logging.debug("Write hits from hit number >= %d" % start_hit_word)
-    table_size = hit_table_in.shape[0]
-    iHit = 0
-
-    progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', ETA()], maxval=table_size)
-    progress_bar.start()
-
-    for iHit in range(start_hit_word, table_size, chunk_size):
-        hits = hit_table_in.read(iHit, iHit + chunk_size)
-        selected_hits = hits[hits["BCID"] > 128]
-        hit_table_out.append(selected_hits)
-        progress_bar.update(iHit)
-    progress_bar.finish()
-    
-#     for iHit in range(start_hit_word, table_size, chunk_size):
-#         hit_table_in.append_where(hit_table_out, condition, iHit, iHit + chunk_size)
-#     hit_table_in.append_where(hit_table_out, condition, start=start_hit_word)
-#     return start_hit_word
-
-
-def write_hits_in_event_range(hit_table_in, hit_table_out, event_start, event_stop, start_hit_word=0, chunk_size=5000000):
-    '''Selects the hits that occurred in given event range [event_start, event_stop[ and write them to a pytable. This function reduces the in RAM operations and has to be used if the get_data_in_event_range
-        function raises a memory error.
-
-    Parameters
-    ----------
-    hit_table_in : pytable.table
-    hit_table_out : pytable.table
-        functions need to be able to write to hit_table_out
-    event_start, event_stop : int
-        start/stop event numbers
-    chunk_size : int
-        defines how many hits are analysed in RAM. Bigger numbers increase the speed, too big numbers let the program crash with a memory error.
+    condition : string
+        A condition that is applied to the hits in numexpr style. Only if the expression evaluates to True the hit is taken.
     Returns
     -------
     start_hit_word: int
         Index of the last hit word analyzed. Used to speed up the next call of write_hits_in_events.
     '''
 
-    logging.info("Write hits that exists in the given event range from %d to %d into a new hit table." % (event_start, event_stop))
+    logging.debug('Write hits that exists in the given event range from + ' + str(event_start) + ' to ' + str(event_stop) + ' into a new hit table')
     table_size = hit_table_in.shape[0]
     for iHit in range(0, table_size, chunk_size):
         hits = hit_table_in.read(iHit, iHit + chunk_size)
         last_event_number = hits[-1]['event_number']
-        hit_table_out.append(get_data_in_event_range(hits, event_start=event_start, event_stop=event_stop))
+        selected_hits = get_data_in_event_range(hits, event_start=event_start, event_stop=event_stop)
+        if not condition is None:
+            # bad hack to be able to use numexpr
+            for variable in set(re.findall(r'[a-zA-Z_]+', condition)):
+                exec(variable + ' = hits[\'' + variable + '\']')
+            selected_hits = selected_hits[ne.evaluate(condition)]
+        hit_table_out.append(selected_hits)
         if last_event_number > event_stop:  # speed up, use the fact that the hits are sorted by event_number
             return iHit + chunk_size
     return start_hit_word
 
 
-def get_mean_from_histogram(counts, bin_positions):
-    return np.dot(counts, np.array(bin_positions)) / np.sum(counts).astype('f4')
-
-
-def get_median_from_histogram(counts, bin_positions):
-    values = []
-    for index, one_bin in enumerate(counts):
-        for _ in range(one_bin):
-            values.extend([bin_positions[index]])
-    return np.median(values)
-
-
-def get_rms_from_histogram(counts, bin_positions):
-    values = []
-    for index, one_bin in enumerate(counts):
-        for _ in range(one_bin):
-            values.extend([bin_positions[index]])
-    return np.std(values)
-
-
-def get_events_with_n_cluster(event_number, condition='n_cluster==1', condvar='n_cluster'):
+def get_events_with_n_cluster(event_number, condition='n_cluster==1'):
     '''Selects the events with a certain number of cluster.
 
     Parameters
@@ -918,6 +884,7 @@ def get_events_with_n_cluster(event_number, condition='n_cluster==1', condvar='n
     logging.debug("Calculate events with clusters where " + condition)
     n_cluster_in_events = get_n_cluster_in_events(event_number)
     n_cluster = n_cluster_in_events[:, 1]
+#     return np.take(n_cluster_in_events, ne.evaluate(condition), axis=0)  # does not return only one dimension, Bug?
     return n_cluster_in_events[ne.evaluate(condition), 0]
 
 
@@ -982,37 +949,6 @@ def get_n_cluster_in_events(event_numbers):
     result_count = np.empty_like(event_numbers, dtype=np.uint32)
     result_size = analysis_functions.get_n_cluster_in_events(event_numbers, result_event_numbers, result_count)
     return np.vstack((result_event_numbers[:result_size], result_count[:result_size])).T
-
-# old python solution
-#     if (sys.maxint < 3000000000):  # on 32- bit operation systems max int is 2147483647 leading to numpy bugs that need workarounds
-#         event_number_array = event_numbers.astype('<i4')  # BUG in numpy, unint works with 64-bit, 32 bit needs reinterpretation
-#         event_number_array = event_numbers
-#         offset = np.amin(event_numbers)
-#         event_numbers = np.subtract(event_numbers, offset)  # BUG #225 for values > int32
-#         cluster_in_event = np.bincount(event_numbers)  # for one cluster one event number is given, counts how many different event_numbers are there for each event number from 0 to max event number
-#         selected_event_number_index = np.nonzero(cluster_in_event)[0]
-#         selected_event_number = np.add(selected_event_number_index, offset)
-#         return np.vstack((selected_event_number, cluster_in_event[selected_event_number_index])).T
-#     else:
-#         cluster_in_event = np.bincount(event_numbers)  # for one cluster one event number is given, counts how many different event_numbers are there for each event number from 0 to max event number
-#         selected_event_number = np.nonzero(cluster_in_event)[0]
-#         return np.vstack((selected_event_number, cluster_in_event[selected_event_number])).T
-
-
-def get_n_cluster_per_event_hist(cluster_table):
-    '''Calculates the number of cluster in every event.
-
-    Parameters
-    ----------
-    cluster_table : pytables.table
-
-    Returns
-    -------
-    numpy.Histogram
-    '''
-    logging.info("Histogram number of cluster per event")
-    cluster_in_events = get_n_cluster_in_events(cluster_table)[:, 1]  # get the number of cluster for every event
-    return np.histogram(cluster_in_events, bins=range(0, np.max(cluster_in_events) + 2))  # histogram the occurrence of n cluster per event
 
 
 def histogram_tot(array, label='tot'):
@@ -1085,7 +1021,8 @@ def get_scan_parameter(meta_data_array, unique=True):
 
     Returns
     -------
-    python.dict{string, numpy.Histogram}
+    python.dict{string, numpy.Histogram}:
+        A dictionary with the scan parameter name/values pairs
     '''
 
     try:
@@ -1100,6 +1037,38 @@ def get_scan_parameter(meta_data_array, unique=True):
     return scan_parameters
 
 
+def get_scan_parameters_table_from_meta_data(meta_data_array, scan_parameters=None):
+    '''Takes the meta data array and returns the scan parameter values as a view of a numpy array only containing the parameter data .
+    Parameters
+    ----------
+    meta_data_array : numpy.ndarray
+        The array with the scan parameters.
+    scan_parameters : list of strings
+        The name of the scan parameters to take. If none all are used.
+
+    Returns
+    -------
+    numpy.Histogram
+    '''
+
+    if scan_parameters is None:
+        try:
+            last_not_parameter_column = meta_data_array.dtype.names.index('error_code')  # for interpreted meta_data
+        except ValueError:
+            return
+        if last_not_parameter_column == len(meta_data_array.dtype.names) - 1:  # no meta_data found
+            return
+        # http://stackoverflow.com/questions/15182381/how-to-return-a-view-of-several-columns-in-numpy-structured-array
+        scan_par_data = {name: meta_data_array.dtype.fields[name] for name in meta_data_array.dtype.names[last_not_parameter_column + 1:]}
+    else:
+#         scan_par_data = {}
+        scan_par_data = collections.OrderedDict()
+        for name in scan_parameters:
+            scan_par_data[name] = meta_data_array.dtype.fields[name]
+
+    return np.ndarray(meta_data_array.shape, np.dtype(scan_par_data), meta_data_array, 0, meta_data_array.strides)
+
+
 def get_scan_parameters_index(scan_parameter):
     '''Takes the scan parameter array and creates a scan parameter index labeling the unique scan parameter combinations.
     Parameters
@@ -1112,43 +1081,23 @@ def get_scan_parameters_index(scan_parameter):
     numpy.Histogram
     '''
     _, index = np.unique(scan_parameter, return_index=True)
+    index = np.sort(index)
     values = np.array(range(0, len(index)), dtype='u4')
     index = np.append(index, len(scan_parameter))
     counts = np.diff(index)
     return np.repeat(values, counts)
 
 
-def get_scan_parameters_table_from_meta_data(meta_data_array):
-    '''Takes the meta data array and creates a scan parameter index labeling the unique scan parameter combinations.
-    Parameters
-    ----------
-    scan_parameter : numpy.ndarray
-        The table with the scan parameters.
-
-    Returns
-    -------
-    numpy.Histogram
-    '''
-
-    try:
-        last_not_parameter_column = meta_data_array.dtype.names.index('error_code')  # for interpreted meta_data
-    except ValueError:
-        return
-    if last_not_parameter_column == len(meta_data_array.dtype.names) - 1:  # no meta_data found
-        return
-
-    # http://stackoverflow.com/questions/15182381/how-to-return-a-view-of-several-columns-in-numpy-structured-array
-    dtype2 = np.dtype({name: meta_data_array.dtype.fields[name] for name in meta_data_array.dtype.names[last_not_parameter_column + 1:]})
-    return np.ndarray(meta_data_array.shape, dtype2, meta_data_array, 0, meta_data_array.strides)
-
-
-def get_unique_scan_parameter_combinations(meta_data_array, scan_parameter_columns_only=False):
-    '''Takes the numpy meta data array and returns the rows with unique combinations of different scan parameter values for all scan parameters.
+def get_unique_scan_parameter_combinations(meta_data_array, scan_parameters=None, scan_parameter_columns_only=False):
+    '''Takes the numpy meta data array and returns the first rows with unique combinations of different scan parameter values for selected scan parameters.
         If selected columns only is true, the returned histogram only contains the selected columns.
 
     Parameters
     ----------
     meta_data_array : numpy.ndarray
+    scan_parameters : list of string, None
+        Scan parameter names taken. If None all are used.
+    selected_columns_only : bool
 
     Returns
     -------
@@ -1161,69 +1110,17 @@ def get_unique_scan_parameter_combinations(meta_data_array, scan_parameter_colum
         last_not_parameter_column = meta_data_array.dtype.names.index('error')  # for raw data file meta_data
     if last_not_parameter_column == len(meta_data_array.dtype.names) - 1:  # no meta_data found
         return
-    return unique_row(meta_data_array, use_columns=range(4, len(meta_data_array.dtype.names)), selected_columns_only=scan_parameter_columns_only)
-
-
-def unique_row(array, use_columns=None, selected_columns_only=False):
-    '''Takes a numpy array and returns the array reduced to unique rows. If columns are defined only these columns are taken to define a unique row.
-    The returned array can have all columns of the original array or only the columns defined in use_columns.
-    Parameters
-    ----------
-    array : numpy.ndarray
-    use_columns : list
-        Index of columns to be used to define a unique row
-    selected_columns_only : bool
-        If true only the columns defined in use_columns are returned
-
-    Returns
-    -------
-    numpy.ndarray
-    '''
-    if array.dtype.names is None:  # normal array has no named dtype
-        if use_columns is not None:
-            a_cut = array[:, use_columns]
-        else:
-            a_cut = array
-        if len(use_columns) > 1:
-            b = np.ascontiguousarray(a_cut).view(np.dtype((np.void, a_cut.dtype.itemsize * a_cut.shape[1])))
-        else:
-            b = np.ascontiguousarray(a_cut)
-        _, index = np.unique(b, return_index=True)
-        if not selected_columns_only:
-            return array[np.sort(index)]  # sort to preserve order
-        else:
-            return a_cut[np.sort(index)]  # sort to preserve order
-    else:  # names for dtype founnd --> array is recarray
-        names = list(array.dtype.names)
-        if use_columns is not None:
-            new_names = [names[i] for i in use_columns]
-        else:
-            new_names = names
-        a_cut, index = np.unique(array[new_names], return_index=True)
-        if not selected_columns_only:
-            return array[np.sort(index)]  # sort to preserve order
-        else:
-            return array[np.sort(index)][new_names]  # sort to preserve order
-
-
-def get_ranges_from_array(array, append_last=True):
-    '''Takes an array and calculates ranges [start event, stop event[. The last range end is none to keep the same length.
-
-    Parameters
-    ----------
-    events : array like
-    append_last: bool
-        If false the returned array has one entry less
-
-    Returns
-    -------
-    numpy.array
-    '''
-    left = array[:len(array)]
-    right = array[1:len(array)]
-    if append_last:
-        right = np.append(right, None)
-    return np.column_stack((left, right))
+    if scan_parameters is None:
+        return unique_row(meta_data_array, use_columns=range(4, len(meta_data_array.dtype.names)), selected_columns_only=scan_parameter_columns_only)
+    else:
+        use_columns = []
+        for scan_parameter in scan_parameters:
+            try:
+                use_columns.append(meta_data_array.dtype.names.index(scan_parameter))
+            except ValueError:
+                logging.error('No scan parameter ' + scan_parameter + ' found')
+                raise RuntimeError('Scan parameter not found')
+        return unique_row(meta_data_array, use_columns=use_columns, selected_columns_only=scan_parameter_columns_only)
 
 
 def index_event_number(table_with_event_numer):
@@ -1460,6 +1357,62 @@ class ETA(progressbar.Timer):
                     return 'ETA: ~%s' % self.format_time(eta)
             except ZeroDivisionError:
                 speed = 0
+
+
+## old, maybe not needed functions
+def get_n_cluster_per_event_hist(cluster_table):
+    '''Calculates the number of cluster in every event.
+
+    Parameters
+    ----------
+    cluster_table : pytables.table
+
+    Returns
+    -------
+    numpy.Histogram
+    '''
+    logging.info("Histogram number of cluster per event")
+    cluster_in_events = get_n_cluster_in_events(cluster_table)[:, 1]  # get the number of cluster for every event
+    return np.histogram(cluster_in_events, bins=range(0, np.max(cluster_in_events) + 2))  # histogram the occurrence of n cluster per event
+
+
+def get_data_statistics(interpreted_files):
+    '''Quick and dirty function to give as redmine compatible iverview table
+    '''
+    print '| *File Name* | *File Size* | *Times Stamp* | *Events* | *Bad Events* | *Measurement time* | *# SR* | *Hits* |'  # Mean Tot | Mean rel. BCID'
+    for interpreted_file in interpreted_files:
+        with tb.openFile(interpreted_file, mode="r") as in_file_h5:  # open the actual hit file
+            event_errors = in_file_h5.root.HistErrorCounter[:]
+            n_hits = np.sum(in_file_h5.root.HistOcc[:])
+            measurement_time = int(in_file_h5.root.meta_data[-1]['timestamp_stop'] - in_file_h5.root.meta_data[0]['timestamp_start'])
+#             mean_tot = np.average(in_file_h5.root.HistTot[:], weights=range(0,16) * np.sum(range(0,16)))# / in_file_h5.root.HistTot[:].shape[0]
+#             mean_bcid = np.average(in_file_h5.root.HistRelBcid[:], weights=range(0,16))
+            n_sr = np.sum(in_file_h5.root.HistServiceRecord[:])
+            n_bad_events = int(np.sum(in_file_h5.root.HistErrorCounter[2:]))
+            try:
+                n_events = str(in_file_h5.root.Hits[-1]['event_number'] + 1)
+            except tb.NoSuchNodeError:
+                n_events = '~' + str(in_file_h5.root.meta_data[-1]['event_number'] + (in_file_h5.root.meta_data[-1]['event_number'] - in_file_h5.root.meta_data[-2]['event_number']))
+#             if int(n_events) < 7800000 or n_sr > 4200 or n_bad_events > 40:
+#                 print '| %{color:red}', os.path.basename(interpreted_file) + '%', '|', int(os.path.getsize(interpreted_file) / (1024 * 1024.)), 'Mb |', time.ctime(os.path.getctime(interpreted_file)), '|',  n_events, '|', n_bad_events, '|', measurement_time, 's |', n_sr, '|', n_hits, '|'#, mean_tot, '|', mean_bcid, '|'
+            else:
+                print '|', os.path.basename(interpreted_file), '|', int(os.path.getsize(interpreted_file) / (1024 * 1024.)), 'Mb |', time.ctime(os.path.getctime(interpreted_file)), '|',  n_events, '|', n_bad_events, '|', measurement_time, 's |', n_sr, '|', n_hits, '|'#, mean_tot, '|', mean_bcid, '|'
+
+
+def correlate_events(data_frame_fe_1, data_frame_fe_2):
+    '''Correlates events from different Fe by the event number
+
+    Parameters
+    ----------
+    data_frame_fe_1 : pandas.dataframe
+    data_frame_fe_2 : pandas.dataframe
+
+    Returns
+    -------
+    Merged pandas dataframe.
+    '''
+    logging.info("Correlating events")
+    return data_frame_fe_1.merge(data_frame_fe_2, how='left', on='event_number')  # join in the events that the triggered fe sees, only these are interessting
 
 
 if __name__ == "__main__":
