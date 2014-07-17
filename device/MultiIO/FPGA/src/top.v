@@ -34,11 +34,7 @@ module top (
     output wire [10:0] MULTI_IO, // Pin 1-11, 12: not connected, 13, 15: DGND, 14, 16: VCC_3.3V
     
     //LED
-    output wire LED1,
-    output wire LED2,
-    output wire LED3,
-    output wire LED4,
-    output wire LED5,
+    output wire [4:0] LED,
     
     //SRAM
     output wire [19:0] SRAM_A,
@@ -54,30 +50,39 @@ module top (
     input wire RJ45_RESET,
     input wire RJ45_TRIGGER,
     input wire MONHIT,
-    
+
+    // FE CLK (SCC and BIC)
     output wire CMD_CLK,
+
+    // FE DI (SCC and BIC)
     output wire CMD_DATA,
-    output wire EN_V1, // EN_VA1 on SCC, EN_VDD1 on BIC
-    output wire EN_V2, // EN_VA2 on SCC, EN_VDD2 on BIC
-    output wire EN_V3, // EN_VD2 on SCC, EN_VDD3 on BIC
-    output wire EN_V4, // EN_VD1 on SCC, EN_VDD4 on BIC
-    
-    input wire [3:0] DOBOUT, // BIC only, 0 - Ch1, 1 - Ch2, 2 - Ch3, 3 - DO on SCC, Ch4 on BIC
-    
+
+    // FE DOBOUT (SCC and BIC)
+    // DOBOUT[0]: Ch1
+    // DOBOUT[1]: Ch2
+    // DOBOUT[2]: Ch3
+    // DOBOUT[3]: Ch4 on BIC, DO on SCC
+    input wire [3:0] DOBOUT,
+
+    // Voltage Regulator Enable (SCC and BIC)
+    // EN[0]: EN_VA1 on SCC, EN_VDD1 on BIC
+    // EN[1]: EN_VA2 on SCC, EN_VDD2 on BIC
+    // EN[2]: EN_VD2 on SCC, EN_VDD3 on BIC
+    // EN[3]: EN_VD1 on SCC, EN_VDD4 on BIC
+    output wire [3:0] EN,
+
     // Over Current Protection (BIC only)
-    input wire OC1,
-    input wire OC2,
-    input wire OC3,
-    input wire OC4,
-    
+    input wire [3:0] OC,
+
     // Select (SEL) LED (BIC only)
-    output wire SEL1,
-    output wire SEL2,
-    output wire SEL3,
-    output wire SEL4,
-    
+    // SEL[0]: Ch1
+    // SEL[1]: Ch2
+    // SEL[2]: Ch3
+    // SEL[3]: Ch4 on BIC, DO on SCC
+    output wire [3:0] SEL,
+
     //input wire FPGA_BUTTON // switch S2 on MultiIO board, active low
-    
+
     // I2C
     inout SDA,
     inout SCL
@@ -91,15 +96,9 @@ wire RX_CLK2X;
 wire DATA_CLK;
 wire CLK_LOCKED;
 
-//assign EN_V1 = 1'b1;
-//assign EN_V2 = 1'b1;
-//assign EN_V3 = 1'b1;
-//assign EN_V4 = 1'b1;
+//assign EN = 4'b1111;
 
-assign SEL1 = 1'b1;
-assign SEL2 = 1'b1;
-assign SEL3 = 1'b1;
-assign SEL4 = 1'b1;
+//assign SEL = 4'b1111;
 
 assign MULTI_IO = 11'b000_0000_0000;
 assign DEBUG_D = 16'ha5a5;
@@ -112,7 +111,7 @@ assign TDC_IN = LEMO_RX[2];
 
 // TLU
 wire            RJ45_ENABLED;
-wire            TLU_BUSY;               // busy signal to TLU to deassert trigger
+wire            TLU_BUSY;               // busy signal to TLU to de-assert trigger
 wire            TLU_CLOCK;
 
 // CMD
@@ -193,8 +192,11 @@ localparam RX1_HIGHADDR = 16'h8700-1;
 localparam TDC_BASEADDR = 16'h8700;
 localparam TDC_HIGHADDR = 16'h8800-1;
 
-localparam GPIO_BASEADDR = 16'h8800;
-localparam GPIO_HIGHADDR = 16'h8900-1;
+localparam GPIO_RX_BASEADDR = 16'h8800;
+localparam GPIO_RX_HIGHADDR = 16'h8900-1;
+
+localparam GPIO_POWER_BASEADDR = 16'h8900;
+localparam GPIO_POWER_HIGHADDR = 16'h8A00-1;
 
 // -------  BUS SYGNALING  ------- //
 wire [15:0] BUS_ADD;
@@ -209,7 +211,6 @@ assign BUS_WR = ~WR_B;
 wire FIFO_NOT_EMPTY; // raised, when SRAM FIFO is not empty
 wire FIFO_FULL, FIFO_NEAR_FULL; // raised, when SRAM FIFO is full / near full
 wire FIFO_READ_ERROR; // raised, when attempting to read from SRAM FIFO when it is empty
-
 
 cmd_seq 
 #( 
@@ -322,22 +323,38 @@ tdc_s3
     .TIMESTAMP(TIMESTAMP[15:0])
 );
 
-wire [3:0] NOT_CONNECTED;
-
+wire [3:0] NOT_CONNECTED_RX;
 gpio 
 #( 
-    .BASEADDR(GPIO_BASEADDR), 
-    .HIGHADDR(GPIO_HIGHADDR),
+    .BASEADDR(GPIO_RX_BASEADDR), 
+    .HIGHADDR(GPIO_RX_HIGHADDR),
     .IO_WIDTH(8),
     .IO_DIRECTION(8'hff)
-) i_gpio (
+) i_gpio_rx (
     .BUS_CLK(BUS_CLK),
     .BUS_RST(BUS_RST),
     .BUS_ADD(BUS_ADD),
     .BUS_DATA(BUS_DATA),
     .BUS_RD(BUS_RD),
     .BUS_WR(BUS_WR),
-    .IO({NOT_CONNECTED, EN_V4, EN_V3, EN_V2, EN_V1})
+    .IO({NOT_CONNECTED_RX, SEL[3], SEL[2], SEL[1], SEL[0]})
+);
+
+wire [3:0] NOT_CONNECTED_POWER;
+gpio 
+#( 
+    .BASEADDR(GPIO_POWER_BASEADDR), 
+    .HIGHADDR(GPIO_POWER_HIGHADDR),
+    .IO_WIDTH(8),
+    .IO_DIRECTION(8'hff)
+) i_gpio_power (
+    .BUS_CLK(BUS_CLK),
+    .BUS_RST(BUS_RST),
+    .BUS_ADD(BUS_ADD),
+    .BUS_DATA(BUS_DATA),
+    .BUS_RD(BUS_RD),
+    .BUS_WR(BUS_WR),
+    .IO({NOT_CONNECTED_POWER, EN[3], EN[2], EN[1], EN[0]}) //OC[3], OC[2], OC[1], OC[0]
 );
 
 wire TLU_FIFO_READ;
@@ -395,7 +412,7 @@ rrp_arbiter
     .RST(BUS_RST),
     .CLK(BUS_CLK),
 
-    .WRITE_REQ({~FE_FIFO_EMPTY, ~TDC_FIFO_EMPTY, ~TLU_FIFO_EMPTY}),
+    .WRITE_REQ({~FE_FIFO_EMPTY & SEL, ~TDC_FIFO_EMPTY, ~TLU_FIFO_EMPTY}),
     .HOLD_REQ({5'b0, TLU_FIFO_PEEMPT_REQ}),
     .DATA_IN({FE_FIFO_DATA[3],FE_FIFO_DATA[2],FE_FIFO_DATA[1], FE_FIFO_DATA[0], TDC_FIFO_DATA, TLU_FIFO_DATA }),
     .READ_GRANT(READ_GRANT),
@@ -466,11 +483,11 @@ SRLC16E # (
 );
 
 // LED assignments
-assign LED1 = SHOW_VERSION? VERSION[0] : RX_READY[0] & ((RX_8B10B_DECODER_ERR[0]? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[0] | RX_FIFO_FULL[0]);
-assign LED2 = SHOW_VERSION? VERSION[1] : RX_READY[1] & ((RX_8B10B_DECODER_ERR[1]? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[1] | RX_FIFO_FULL[1]);
-assign LED3 = SHOW_VERSION? VERSION[2] : RX_READY[2] & ((RX_8B10B_DECODER_ERR[2]? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[2] | RX_FIFO_FULL[2]);
-assign LED4 = SHOW_VERSION? VERSION[3] : RX_READY[3] & ((RX_8B10B_DECODER_ERR[3]? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[3] | RX_FIFO_FULL[3]);
-assign LED5 = SHOW_VERSION? VERSION[4] : (((RJ45_ENABLED? CLK_2HZ : CLK_1HZ) | FIFO_FULL) & CLK_LOCKED);
+assign LED[0] = SHOW_VERSION? VERSION[0] : RX_READY[0] & ((RX_8B10B_DECODER_ERR[0]? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[0] | RX_FIFO_FULL[0]);
+assign LED[1] = SHOW_VERSION? VERSION[1] : RX_READY[1] & ((RX_8B10B_DECODER_ERR[1]? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[1] | RX_FIFO_FULL[1]);
+assign LED[2] = SHOW_VERSION? VERSION[2] : RX_READY[2] & ((RX_8B10B_DECODER_ERR[2]? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[2] | RX_FIFO_FULL[2]);
+assign LED[3] = SHOW_VERSION? VERSION[3] : RX_READY[3] & ((RX_8B10B_DECODER_ERR[3]? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[3] | RX_FIFO_FULL[3]);
+assign LED[4] = SHOW_VERSION? VERSION[4] : (((RJ45_ENABLED? CLK_2HZ : CLK_1HZ) | FIFO_FULL) & CLK_LOCKED);
 
 
 // Chipscope
