@@ -49,7 +49,6 @@ module top (
     output wire [2:0] TX, // TX[0] == RJ45 trigger clock output, TX[1] == RJ45 busy output
     input wire RJ45_RESET,
     input wire RJ45_TRIGGER,
-    input wire MONHIT,
 
     // FE CLK (SCC and BIC)
     output wire CMD_CLK,
@@ -80,6 +79,9 @@ module top (
     // SEL[2]: Ch3
     // SEL[3]: Ch4 on BIC, DO on SCC
     output wire [3:0] SEL,
+
+    // FE Hitbus (SCC only)
+    input wire MONHIT,
 
     //input wire FPGA_BUTTON // switch S2 on MultiIO board, active low
 
