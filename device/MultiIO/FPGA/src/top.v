@@ -91,10 +91,10 @@ wire RX_CLK2X;
 wire DATA_CLK;
 wire CLK_LOCKED;
 
-assign EN_V1 = 1'b1;
-assign EN_V2 = 1'b1;
-assign EN_V3 = 1'b1;
-assign EN_V4 = 1'b1;
+//assign EN_V1 = 1'b1;
+//assign EN_V2 = 1'b1;
+//assign EN_V3 = 1'b1;
+//assign EN_V4 = 1'b1;
 
 assign SEL1 = 1'b1;
 assign SEL2 = 1'b1;
@@ -192,6 +192,9 @@ localparam RX1_HIGHADDR = 16'h8700-1;
 
 localparam TDC_BASEADDR = 16'h8700;
 localparam TDC_HIGHADDR = 16'h8800-1;
+
+localparam GPIO_BASEADDR = 16'h8800;
+localparam GPIO_HIGHADDR = 16'h8900-1;
 
 // -------  BUS SYGNALING  ------- //
 wire [15:0] BUS_ADD;
@@ -317,6 +320,24 @@ tdc_s3
     .EXT_EN(1'b0),
     
     .TIMESTAMP(TIMESTAMP[15:0])
+);
+
+wire [3:0] NOT_CONNECTED;
+
+gpio 
+#( 
+    .BASEADDR(GPIO_BASEADDR), 
+    .HIGHADDR(GPIO_HIGHADDR),
+    .IO_WIDTH(8),
+    .IO_DIRECTION(8'hff)
+) i_gpio (
+    .BUS_CLK(BUS_CLK),
+    .BUS_RST(BUS_RST),
+    .BUS_ADD(BUS_ADD),
+    .BUS_DATA(BUS_DATA),
+    .BUS_RD(BUS_RD),
+    .BUS_WR(BUS_WR),
+    .IO({NOT_CONNECTED, EN_V4, EN_V3, EN_V2, EN_V1})
 );
 
 wire TLU_FIFO_READ;

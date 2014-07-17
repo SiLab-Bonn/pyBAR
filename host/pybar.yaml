@@ -17,7 +17,9 @@ transfer_layer:
     - name     : USB
       type     : SiUsb
       bit_file : "config/fpga/top.bit"
-      board_id : 
+      init:
+          board_id : 
+      
 
 hw_drivers:
   - name      : cmd
@@ -28,38 +30,43 @@ hw_drivers:
   - name      : sram
     type      : sram_fifo
     interface : USB
-    base_addr : 0x10100
+    base_addr : 0x18100
 
   - name      : tlu
     type      : tlu
     interface : USB
-    base_addr : 0x10200
+    base_addr : 0x18200
 
   - name      : rx_4
     type      : fei4_rx
     interface : USB
-    base_addr : 0x10300
+    base_addr : 0x18300
 
   - name      : rx_3
     type      : fei4_rx
     interface : USB
-    base_addr : 0x10400
+    base_addr : 0x18400
     
   - name      : rx_2
     type      : fei4_rx
     interface : USB
-    base_addr : 0x10500
+    base_addr : 0x18500
 
   - name      : rx_1
     type      : fei4_rx
     interface : USB
-    base_addr : 0x10600
+    base_addr : 0x18600
 
   - name      : tdc_hitor
     type      : tdc_s3
     interface : USB
-    base_addr : 0x10700
+    base_addr : 0x18700
 
+  - name      : gpio
+    type      : gpio
+    interface : USB
+    base_addr : 0x18800
+    
   - name      : POWER
     type      : FEI4AdapterCard
     interface : USB
@@ -68,4 +75,23 @@ hw_drivers:
 user_drivers:
     
 registers:
-
+  - name        : POWER_EN
+    type        : StdRegister
+    hw_driver   : gpio
+    size        : 8
+    fields:
+      - name    : VERSION
+        size    : 4
+        offset  : 7
+      - name    : EN_VD1
+        size    : 1
+        offset  : 3
+      - name    : EN_VD2
+        size    : 1
+        offset  : 2
+      - name    : EN_VA2
+        size    : 1
+        offset  : 1
+      - name    : EN_VA1
+        size    : 1
+        offset  : 0
