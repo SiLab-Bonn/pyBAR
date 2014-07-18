@@ -204,7 +204,7 @@ class ScanBase(object):
         if self.scan_configuration:
             self.save_configuration('scan_configuration', self.scan_configuration)
 
-        self.register.save_configuration_to_hdf5(self.scan_data_filename)
+        self.register.save_configuration_to_hdf5(self.scan_data_filename)  # save scan config at the beginning, will be overwritten after successfull stop of scan loop
 
         self.use_thread = use_thread
         if self.scan_thread != None:
@@ -221,6 +221,8 @@ class ScanBase(object):
 
         if do_global_reset:
             self.register_utils.global_reset()
+            self.register_utils.reset_bunch_counter()
+            self.register_utils.reset_event_counter()
         self.register_utils.reset_service_records()
         if configure:
             self.register_utils.configure_all()
@@ -285,6 +287,7 @@ class ScanBase(object):
             self.scan_thread.join()  # SIGINT will be suppressed here
             self.scan_thread = None
         self.use_thread = None
+        self.register.save_configuration_to_hdf5(self.scan_data_filename)  # save the config used last in the scan loop
         if self.restore_configuration:
             logging.info('Restoring FE configuration')
             self.register.restore(name=self.scan_id)
