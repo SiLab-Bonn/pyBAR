@@ -689,7 +689,7 @@ def create_2d_pixel_hist(hist2d, title=None, x_axis_title=None, y_axis_title=Non
     plt.colorbar(boundaries=bounds, cmap=cmap, norm=norm, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True), cax=cax)
 
 
-def create_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, bins=None, x_min=None, x_max=None):
+def create_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, bins=100, x_min=None, x_max=None):
     if hist.all() is np.ma.masked:
         median = 0.0
         mean = 0.0
