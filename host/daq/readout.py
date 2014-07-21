@@ -26,7 +26,8 @@ import tables as tb
 
 from utils.utils import get_float_time
 from analysis.RawDataConverter.data_struct import MetaTableV2 as MetaTable, generate_scan_parameter_description
-from bitstring import BitArray  # TODO: bitarray.bitarray() (in Python3 use int.from_bytes() to convert bitarray to integer)
+#from bitstring import BitArray  # TODO: bitarray.bitarray() (in Python3 use int.from_bytes() to convert bitarray to integer)
+from basil.utils.BitLogic import BitLogic
 from collections import OrderedDict
 
 from SiLibUSB import SiUSBDevice
@@ -673,40 +674,40 @@ class FEI4Record(object):
         self.chip_flavors = ['fei4a', 'fei4b']
         if self.chip_flavor not in self.chip_flavors:
             raise KeyError('Chip flavor is not of type {}'.format(', '.join('\'' + flav + '\'' for flav in self.chip_flavors)))
-        self.record_word = BitArray(uint=self.record_rawdata, length=24)
+        self.record_word = BitLogic.from_value(value=self.record_rawdata, size=24)
         self.record_dict = None
         if is_data_header(self.record_rawdata):
             self.record_type = "DH"
             if self.chip_flavor == "fei4a":
-                self.record_dict = OrderedDict([('start', self.record_word[0:5].uint), ('header', self.record_word[5:8].uint), ('flag', self.record_word[8:9].uint), ('lvl1id', self.record_word[9:16].uint), ('bcid', self.record_word[16:24].uint)])
+                self.record_dict = OrderedDict([('start', self.record_word[23:19].tovalue()), ('header', self.record_word[18:16].tovalue()), ('flag', self.record_word[15:15].tovalue()), ('lvl1id', self.record_word[14:8].tovalue()), ('bcid', self.record_word[7:0].tovalue())])
             elif self.chip_flavor == "fei4b":
-                self.record_dict = OrderedDict([('start', self.record_word[0:5].uint), ('header', self.record_word[5:8].uint), ('flag', self.record_word[8:9].uint), ('lvl1id', self.record_word[9:14].uint), ('bcid', self.record_word[14:24].uint)])
+                self.record_dict = OrderedDict([('start', self.record_word[23:19].tovalue()), ('header', self.record_word[18:16].tovalue()), ('flag', self.record_word[15:15].tovalue()), ('lvl1id', self.record_word[14:10].tovalue()), ('bcid', self.record_word[9:0].tovalue())])
         elif is_address_record(self.record_rawdata):
             self.record_type = "AR"
-            self.record_dict = OrderedDict([('start', self.record_word[0:5].uint), ('header', self.record_word[5:8].uint), ('type', self.record_word[8:9].uint), ('address', self.record_word[9:24].uint)])
+            self.record_dict = OrderedDict([('start', self.record_word[23:19].tovalue()), ('header', self.record_word[18:16].tovalue()), ('type', self.record_word[15:15].tovalue()), ('address', self.record_word[14:0].tovalue())])
         elif is_value_record(self.record_rawdata):
             self.record_type = "VR"
-            self.record_dict = OrderedDict([('start', self.record_word[0:5].uint), ('header', self.record_word[5:8].uint), ('value', self.record_word[8:24].uint)])
+            self.record_dict = OrderedDict([('start', self.record_word[23:19].tovalue()), ('header', self.record_word[18:16].tovalue()), ('value', self.record_word[15:0].tovalue())])
         elif is_service_record(self.record_rawdata):
             self.record_type = "SR"
             if self.chip_flavor == "fei4a":
-                self.record_dict = OrderedDict([('start', self.record_word[0:5].uint), ('header', self.record_word[5:8].uint), ('code', self.record_word[8:14].uint), ('counter', self.record_word[14:24].uint)])
+                self.record_dict = OrderedDict([('start', self.record_word[23:19].tovalue()), ('header', self.record_word[18:16].tovalue()), ('code', self.record_word[15:10].tovalue()), ('counter', self.record_word[9:0].tovalue())])
             elif self.chip_flavor == "fei4b":
-                if self.record_word[8:14].uint == 14:
-                    self.record_dict = OrderedDict([('start', self.record_word[0:5].uint), ('header', self.record_word[5:8].uint), ('code', self.record_word[8:14].uint), ('lvl1id', self.record_word[14:21].uint), ('bcid', self.record_word[21:24].uint)])
-                elif self.record_word[8:14].uint == 15:
-                    self.record_dict = OrderedDict([('start', self.record_word[0:5].uint), ('header', self.record_word[5:8].uint), ('code', self.record_word[8:14].uint), ('skipped', self.record_word[14:24].uint)])
-                elif self.record_word[8:14].uint == 16:
-                    self.record_dict = OrderedDict([('start', self.record_word[0:5].uint), ('header', self.record_word[5:8].uint), ('code', self.record_word[8:14].uint), ('truncation flag', self.record_word[14:15].uint), ('truncation counter', self.record_word[15:20].uint), ('l1req', self.record_word[20:24].uint)])
+                if self.record_word[15:10].tovalue() == 14:
+                    self.record_dict = OrderedDict([('start', self.record_word[23:19].tovalue()), ('header', self.record_word[18:16].tovalue()), ('code', self.record_word[15:10].tovalue()), ('lvl1id[11:5]', self.record_word[9:3].tovalue()), ('bcid[12:10]', self.record_word[2:0].tovalue())])
+                elif self.record_word[15:10].tovalue() == 15:
+                    self.record_dict = OrderedDict([('start', self.record_word[23:19].tovalue()), ('header', self.record_word[18:16].tovalue()), ('code', self.record_word[15:10].tovalue()), ('skipped', self.record_word[9:0].tovalue())])
+                elif self.record_word[15:10].tovalue() == 16:
+                    self.record_dict = OrderedDict([('start', self.record_word[23:19].tovalue()), ('header', self.record_word[18:16].tovalue()), ('code', self.record_word[15:10].tovalue()), ('truncation flag', self.record_word[9:9].tovalue()), ('truncation counter', self.record_word[8:4].tovalue()), ('l1req', self.record_word[3:0].tovalue())])
                 else:
-                    self.record_dict = OrderedDict([('start', self.record_word[0:5].uint), ('header', self.record_word[5:8].uint), ('code', self.record_word[8:14].uint), ('counter', self.record_word[14:24].uint)])
+                    self.record_dict = OrderedDict([('start', self.record_word[23:19].tovalue()), ('header', self.record_word[18:16].tovalue()), ('code', self.record_word[15:10].tovalue()), ('counter', self.record_word[9:0].tovalue())])
         elif is_data_record(self.record_rawdata):
             self.record_type = "DR"
-            self.record_dict = OrderedDict([('column', self.record_word[0:7].uint), ('row', self.record_word[7:16].uint), ('tot1', self.record_word[16:20].uint), ('tot2', self.record_word[20:24].uint)])
+            self.record_dict = OrderedDict([('column', self.record_word[23:17].tovalue()), ('row', self.record_word[16:8].tovalue()), ('tot1', self.record_word[7:4].tovalue()), ('tot2', self.record_word[3:0].tovalue())])
         else:
             self.record_type = "UNKNOWN"
-            self.record_dict = OrderedDict([('unknown', self.record_word.uint)])
-#             raise ValueError('Unknown data word: '+str(self.record_word.uint))
+            self.record_dict = OrderedDict([('unknown', self.record_word.tovalue())])
+#             raise ValueError('Unknown data word: ' + str(self.record_word.tovalue()))
 
     def __len__(self):
         return len(self.record_dict)
