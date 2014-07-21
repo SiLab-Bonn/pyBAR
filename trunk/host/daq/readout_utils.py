@@ -240,13 +240,16 @@ def interpret_pixel_data(self, data, dc, pixel_array):
     address_split = np.array_split(address, np.where(np.diff(address.astype(np.int32)) < 0)[0] + 1)
     value_split = np.array_split(value, np.where(np.diff(address.astype(np.int32)) < 0)[0] + 1)
 
-    mask = np.empty_like(pixel_array.mask)  # BUG in numpy: pixel_array is demasked
+    mask = np.empty_like(pixel_array.data)  # BUG in numpy: pixel_array is demasked
     mask[:] = len(address_split)
 
     for bit, (bit_address, bit_value) in enumerate(zip(address_split, value_split)):  # loop over all bits of the pixel data
         # error output, pixel data is often corrupt for FE-I4A
+        if len(bit_address) == 0:
+            logging.warning('No pixel data')
+            continue
         if len(bit_address) != 42:
-            logging.warning('Pixel data not complete')
+            logging.warning('Some pixel data missing')
         if (bit_address[bit_address > 672] != 0):
             RuntimeError('Pixel data corrupt')
         # set pixel that occurred in the data stream
@@ -266,10 +269,10 @@ def interpret_pixel_data(self, data, dc, pixel_array):
         else:
             bit_set = bit
 
-        pixel_array.data[dc * 2, pixel[pixel < 336]] = np.bitwise_or(pixel_array.data[dc * 2, pixel[pixel < 336]], np.left_shift(value_bit[pixel < 336], bit_set))
-        pixel_array.data[dc * 2 + 1, pixel[pixel >= 336] - 336] = np.bitwise_or(pixel_array.data[dc * 2 + 1, pixel[pixel >= 336] - 336], np.left_shift(value_bit[pixel >= 336], bit_set))
+        pixel_array.data[dc * 2, pixel[pixel >= 336] - 336] = np.bitwise_or(pixel_array.data[dc * 2, pixel[pixel >= 336] - 336], np.left_shift(value_bit[pixel >= 336], bit_set))
+        pixel_array.data[dc * 2 + 1, pixel[pixel < 336]] = np.bitwise_or(pixel_array.data[dc * 2 + 1, pixel[pixel < 336]], np.left_shift(value_bit[pixel < 336], bit_set)[::-1])
 
-        mask[dc * 2, pixel[pixel < 336]] = mask[dc * 2, pixel[pixel < 336]] - 1
-        mask[dc * 2 + 1, pixel[pixel >= 336] - 336] = mask[dc * 2 + 1, pixel[pixel >= 336] - 336] - 1
+        mask[dc * 2, pixel[pixel >= 336] - 336] = mask[dc * 2, pixel[pixel >= 336] - 336] - 1
+        mask[dc * 2 + 1, pixel[pixel < 336]] = mask[dc * 2 + 1, pixel[pixel < 336]] - 1
 
-    pixel_array.mask[np.equal(mask, 0)] = False  # mask pixel without data
+    pixel_array.mask[np.equal(mask, 0)] = False
