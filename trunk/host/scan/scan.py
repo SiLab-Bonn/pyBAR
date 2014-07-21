@@ -118,9 +118,9 @@ class ScanBase(object):
             self.dut['CCPD_Vdd'].set_voltage(0.0, unit='V')
             self.dut['CCPD_Vdd'].set_enable(True)
             # enabling V_in
-            self.dut['V_IN'].set_current_limit(2000, unit='mA')
-            self.dut['V_IN'].set_voltage(2.1, unit='V')
-            self.dut['V_IN'].set_enable(True)
+            self.dut['V_in'].set_current_limit(2000, unit='mA')
+            self.dut['V_in'].set_voltage(2.1, unit='V')
+            self.dut['V_in'].set_enable(True)
             self.device = self.dut["USB"]._sidev
         else:
             raise ValueError('Unknown DUT')
