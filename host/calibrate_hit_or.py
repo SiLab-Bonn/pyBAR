@@ -73,7 +73,7 @@ class HitOrScan(ScanBase):
                     double_column, mask_step = self.get_dc_and_mask_step(column=column, row=row)  # translate the selected pixel into DC, mask_step info to be able to used the scan_loop
 
                     cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0]  # + self.register.get_commands("zeros", length=12000)[0]
-                    self.scan_loop(cal_lvl1_command, bol_function=self.activate_tdc, eol_function=self.deactivate_tdc, repeat_command=repeat_command, use_delay=True, hardware_repeat=True, mask_steps=672, enable_mask_steps=[mask_step], enable_double_columns=[double_column], same_mask_for_all_dc=False, digital_injection=False, enable_c_high=None, enable_c_low=None, disable_shift_masks=["Imon"], enable_shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=False, mask=None)
+                    self.scan_loop(cal_lvl1_command, bol_function=self.activate_tdc, eol_function=self.deactivate_tdc, repeat_command=repeat_command, use_delay=True, hardware_repeat=True, mask_steps=672, enable_mask_steps=[mask_step], enable_double_columns=[double_column], same_mask_for_all_dc=False, digital_injection=False, disable_shift_masks=["Imon"], enable_shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=False, mask=None)
 
                     self.readout.stop(timeout=10)
 

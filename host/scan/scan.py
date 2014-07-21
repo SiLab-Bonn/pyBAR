@@ -5,19 +5,19 @@ import os
 import logging
 import re
 import tables as tb
-import platform
+# import platform
 import inspect
 import ast
-#import matplotlib.pyplot as plt
-#import numpy as np
+# import matplotlib.pyplot as plt
+# import numpy as np
 from analysis.RawDataConverter.data_struct import NameValue  # , generate_scan_configuration_description
 
 
 from threading import Thread, Event, Lock, Timer
 
 min_pysilibusb_version = '0.1.3'
-from usb.core import USBError
-from SiLibUSB import GetUSBBoards, SiUSBDevice, __version__ as pysilibusb_version
+# from usb.core import USBError
+from SiLibUSB import __version__ as pysilibusb_version
 from distutils.version import StrictVersion as v
 if v(pysilibusb_version) < v(min_pysilibusb_version):
     raise ImportError('Wrong pySiLibUsb version (installed=%s, expected>=%s)' % (pysilibusb_version, min_pysilibusb_version))
@@ -33,7 +33,11 @@ from bitarray import bitarray
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
-default_plsr_dac_correction = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+default_plsr_dac_c_high_c_low_correction = [2, 2, 2, 3, 3, 3, 2, 2, 3, 2, 2, 0, 0, 0, 0, 1, 1, 1, 2, 3, 3, 3, 3, 2, 2, 2, 4, 5, 5, 5, 5, 6, 6, 6, 6, 6, 5, 6, 6, 6]
+
+default_plsr_dac_c_high_correction = [3, 3, 3, 4, 4, 5, 4, 3, 4, 3, 3, 1, 0, 0, 0, 1, 1, 2, 2, 4, 4, 5, 4, 3, 3, 3, 5, 7, 7, 7, 8, 8, 8, 8, 8, 9, 8, 8, 8, 8]
+
+default_plsr_dac_c_low_correction = [7, 7, 7, 10, 9, 10, 8, 8, 9, 8, 6, 2, 1, 1, 0, 2, 3, 4, 4, 8, 8, 9, 7, 6, 6, 6, 11, 14, 15, 16, 16, 17, 18, 17, 18, 19, 17, 18, 18, 18]
 
 
 class ScanBase(object):
@@ -84,25 +88,51 @@ class ScanBase(object):
 #                     raise ValueError('Please specify USB board')
 #                 self.device = devices[0]
 
-        if dut:
+        if isinstance(dut, Dut):
             self.dut = dut
-        else:
-            self.dut = Dut("pybar.yaml")
+        elif isinstance(dut, basestring):
+            self.dut = Dut(dut)
             self.dut.init()
+        else:
+            raise ValueError('DUT not defined')
+
+        if self.dut.name == 'pyBAR':
             self.dut['POWER'].set_voltage('VDDA1', 1.500)
             self.dut['POWER'].set_voltage('VDDA2', 1.500)
             self.dut['POWER'].set_voltage('VDDD1', 1.200)
             self.dut['POWER'].set_voltage('VDDD2', 1.200)
-        self.device = self.dut["USB"]._sidev
+            self.dut['POWER_SCC']['EN_VD1'] = 1
+            self.dut['POWER_SCC']['EN_VD2'] = 1
+            self.dut['POWER_SCC']['EN_VA1'] = 1
+            self.dut['POWER_SCC']['EN_VA2'] = 1
+            self.dut['POWER_SCC'].write()
+            self.dut['RX']['CH1'] = 0
+            self.dut['RX']['CH2'] = 0
+            self.dut['RX']['CH3'] = 0
+            self.dut['RX']['CH4'] = 1
+            self.dut['RX'].write()
+            self.device = self.dut["USB"]._sidev
+        elif self.dut.name == 'pyBAR_GPAC':
+            # enabling LVDS transceivers
+            self.dut['CCPD_Vdd'].set_current_limit(1000, unit='mA')
+            self.dut['CCPD_Vdd'].set_voltage(0.0, unit='V')
+            self.dut['CCPD_Vdd'].set_enable(True)
+            # enabling V_in
+            self.dut['V_IN'].set_current_limit(2000, unit='mA')
+            self.dut['V_IN'].set_voltage(2.1, unit='V')
+            self.dut['V_IN'].set_enable(True)
+            self.device = self.dut["USB"]._sidev
+        else:
+            raise ValueError('Unknown DUT')
 
-        if bit_file:
-            if self.device.XilinxAlreadyLoaded() and not force_download:
-                logging.info('FPGA already configured, skipping download of bitstream')
-            else:
-                logging.info('Downloading bitstream to FPGA: %s' % bit_file)
-                if not self.device.DownloadXilinx(bit_file):
-                    raise IOError('Can\'t program FPGA firmware. Reset USB board!')
-                time.sleep(1)
+#         if bit_file:
+#             if self.device.XilinxAlreadyLoaded() and not force_download:
+#                 logging.info('FPGA already configured, skipping download of bitstream')
+#             else:
+#                 logging.info('Downloading bitstream to FPGA: %s' % bit_file)
+#                 if not self.device.DownloadXilinx(bit_file):
+#                     raise IOError('Can\'t program FPGA firmware. Reset USB board!')
+#                 time.sleep(1)
 
         self.readout = Readout(self.device)
         self.readout_utils = ReadoutUtils(self.device)
@@ -145,8 +175,8 @@ class ScanBase(object):
 
         # get scan args
         frame = inspect.currentframe()
-        args, _, _, locals = inspect.getargvalues(frame)
-        self._device_configuration = {key: locals[key] for key in args if key != 'self' and key != 'args' and key != 'kwargs'}
+        args, _, _, local = inspect.getargvalues(frame)
+        self._device_configuration = {key: local[key] for key in args if key != 'self' and key != 'args' and key != 'kwargs'}
         self._device_configuration["register"] = self.register
         self._device_configuration["device"] = self.device
         self._device_configuration["dut"] = self.dut
@@ -188,8 +218,8 @@ class ScanBase(object):
 
         # get scan loop args
         frame = inspect.currentframe()
-        args, _, _, locals = inspect.getargvalues(frame)
-        self._scan_configuration = {key: locals[key] for key in args if key is not 'self'}
+        args, _, _, local = inspect.getargvalues(frame)
+        self._scan_configuration = {key: local[key] for key in args if key is not 'self'}
         self._scan_configuration.update(kwargs)
 
         all_parameters = {}
@@ -207,17 +237,20 @@ class ScanBase(object):
         self.register.save_configuration_to_hdf5(self.scan_data_filename)  # save scan config at the beginning, will be overwritten after successfull stop of scan loop
 
         self.use_thread = use_thread
-        if self.scan_thread != None:
+        if self.scan_thread is not None:
             raise RuntimeError('Scan thread is already running')
 
         # setting FPGA register to default state
-        #print self.device_configuration
+#         print self.device_configuration
         self.readout_utils.configure_rx_fsm(**self.device_configuration)
         self.readout_utils.configure_command_fsm(**self.device_configuration)
         self.readout_utils.configure_trigger_fsm(**self.device_configuration)
         self.readout_utils.configure_tdc_fsm(**self.device_configuration)
-        self.dut.set_configuration('configuration.yaml')
-        #print self.dut.get_configuration()
+        if self.dut.name == 'pyBAR':
+            self.dut.set_configuration('configuration.yaml')
+        elif self.dut.name == 'pyBAR_GPAC':
+            self.dut.set_configuration('configuration_gpac.yaml')
+#         print self.dut.get_configuration()
 
         if do_global_reset:
             self.register_utils.global_reset()
@@ -259,8 +292,8 @@ class ScanBase(object):
         if (self.scan_thread is not None) ^ self.use_thread:
             if self.scan_thread is None:
                 pass
-                #logging.warning('Scan thread has already stopped')
-                #raise RuntimeError('Scan thread has already stopped')
+#                 logging.warning('Scan thread has already stopped')
+#                 raise RuntimeError('Scan thread has already stopped')
             else:
                 raise RuntimeError('Thread is running where no thread was expected')
         if self.scan_thread is not None:
@@ -344,7 +377,7 @@ class ScanBase(object):
                 f.write(value)
         self.lock.release()
 
-    def scan_loop(self, command, repeat_command=100, use_delay=True, hardware_repeat=True, mask_steps=3, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=False, bol_function=None, eol_function=None, digital_injection=False, enable_c_high=None, enable_c_low=None, enable_shift_masks=["Enable", "C_High", "C_Low"], disable_shift_masks=[], restore_shift_masks=True, mask=None, double_column_correction=False):
+    def scan_loop(self, command, repeat_command=100, use_delay=True, hardware_repeat=True, mask_steps=3, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=False, bol_function=None, eol_function=None, digital_injection=False, enable_shift_masks=["Enable", "C_High", "C_Low"], disable_shift_masks=[], restore_shift_masks=True, mask=None, double_column_correction=False):
         '''Implementation of the scan loops (mask shifting, loop over double columns, repeatedly sending any arbitrary command).
 
         Parameters
@@ -370,11 +403,7 @@ class ScanBase(object):
         eol_function : function
             End of loop function that will be called each time after sending command. Argument is a function pointer (without braces) or functor.
         digital_injection : bool
-            Enables digital injection.
-        enable_c_high : bool
-            Enables C_High pixel mask. No change if value is equal None. Note: will be overwritten during mask shifting if in enable_shift_masks.
-        enable_c_low : bool
-            Enables C_Low pixel mask. No change if value is equal None. Note: will be overwritten during mask shifting if in enable_shift_masks.
+            Enables digital injection. C_High and C_Low will be disabled.
         enable_shift_masks : list, tuple
             List of enable pixel masks which will be shifted during scan. Mask set to 1 for selected pixels else 0.
         disable_shift_masks : list, tuple
@@ -396,8 +425,13 @@ class ScanBase(object):
         elif isinstance(double_column_correction, (list, tuple)):  # from list/tuple
             plsr_dac_correction = list(double_column_correction)
         else:  # default
-            plsr_dac_correction = default_plsr_dac_correction
-        if len(plsr_dac_correction) != 40:
+            if "C_High".lower() in map(lambda x: x.lower(), enable_shift_masks) and "C_Low".lower() in map(lambda x: x.lower(), enable_shift_masks):
+                plsr_dac_correction = default_plsr_dac_c_high_c_low_correction
+            elif "C_High".lower() in map(lambda x: x.lower(), enable_shift_masks):
+                plsr_dac_correction = default_plsr_dac_c_high_correction
+            elif "C_Low".lower() in map(lambda x: x.lower(), enable_shift_masks):
+                plsr_dac_correction = default_plsr_dac_c_low_correction
+        if double_column_correction and len(plsr_dac_correction) != 40:
             raise ValueError('Length of must be 40')
         # initial PlsrDAC value for PlsrDAC correction
         initial_plsr_dac = self.register.get_global_register_value("PlsrDAC")
@@ -422,28 +456,33 @@ class ScanBase(object):
             else:
                 return self.register_utils.concatenate_commands((conf_mode_command, self.register.get_commands("wrregister", name=["Colpr_Addr"])[0], run_mode_command), byte_padding=True)
 
-        if enable_mask_steps == None or not enable_mask_steps:
+        if enable_mask_steps is None or not enable_mask_steps:
             enable_mask_steps = range(mask_steps)
 
-        if enable_double_columns == None or not enable_double_columns:
+        if enable_double_columns is None or not enable_double_columns:
             enable_double_columns = range(40)
 
         # preparing for scan
         commands = []
         commands.append(conf_mode_command)
-        if digital_injection == True:
-            #self.register.set_global_register_value("CalEn", 1) # for GlobalPulse instead Cal-Command
+        if digital_injection is True:
             self.register.set_global_register_value("DIGHITIN_SEL", 1)
+#             self.register.set_global_register_value("CalEn", 1)  # for GlobalPulse instead Cal-Command
+            # check if C_High and/or C_Low is in enable_shift_mask and/or disable_shift_mask
+            if "C_High".lower() in map(lambda x: x.lower(), enable_shift_masks) or "C_High".lower() in map(lambda x: x.lower(), disable_shift_masks):
+                raise ValueError('C_High must not be shift mask when using digital injection')
+            if "C_Low".lower() in map(lambda x: x.lower(), enable_shift_masks) or "C_Low".lower() in map(lambda x: x.lower(), disable_shift_masks):
+                raise ValueError('C_Low must not be shift mask when using digital injection')
         else:
             self.register.set_global_register_value("DIGHITIN_SEL", 0)
-            self.register.set_pixel_register_value("EnableDigInj", 0)
+            # setting EnableDigInj to 0 not necessary since DIGHITIN_SEL is turned off
+#             self.register.set_pixel_register_value("EnableDigInj", 0)
+        # turn off all capacitors by default
+        self.register.set_pixel_register_value("C_High", 0)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=["C_High"]))
+        self.register.set_pixel_register_value("C_Low", 0)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=["C_Low"]))
         commands.extend(self.register.get_commands("wrregister", name=["DIGHITIN_SEL"]))
-        if enable_c_high is not None:
-            self.register.set_pixel_register_value("C_High", 1 if enable_c_high else 0)
-            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=["C_High"]))
-        if enable_c_low is not None:
-            self.register.set_pixel_register_value("C_Low", 1 if enable_c_low else 0)
-            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=["C_Low"]))
         self.register_utils.send_commands(commands, concatenate=True)
 
         for mask_step in enable_mask_steps:
@@ -453,27 +492,28 @@ class ScanBase(object):
                 curr_dis_mask = self.register_utils.make_pixel_mask(steps=mask_steps, shift=mask_step, default=1, value=0, mask=mask)
                 map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_dis_mask), disable_shift_masks)
                 commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=same_mask_for_all_dc, name=disable_shift_masks))
-            if enable_shift_masks or digital_injection:
+            if enable_shift_masks:
                 curr_en_mask = self.register_utils.make_pixel_mask(steps=mask_steps, shift=mask_step, mask=mask)
+                map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_en_mask), [shift_mask_name for shift_mask_name in enable_shift_masks])
+                commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=same_mask_for_all_dc, name=enable_shift_masks))
 #                 plt.clf()
 #                 plt.imshow(curr_en_mask.T, interpolation='nearest', aspect="auto")
 #                 plt.pcolor(curr_en_mask.T)
 #                 plt.colorbar()
 #                 plt.savefig('mask_step' + str(mask_step) + '.pdf')
-                map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_en_mask), [shift_mask_name for shift_mask_name in enable_shift_masks if (shift_mask_name.lower() != "EnableDigInj".lower())])
-                commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=same_mask_for_all_dc, name=enable_shift_masks))
-                if digital_injection == True:  # TODO: write EnableDigInj to FE or do it manually?
-                    self.register.set_pixel_register_value("EnableDigInj", curr_en_mask)
-                    commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=same_mask_for_all_dc, name=["EnableDigInj"]))  # write EnableDigInj mask last
-                    self.register.set_global_register_value("DIGHITIN_SEL", 1)
-                    commands.extend(self.register.get_commands("wrregister", name=["DIGHITIN_SEL"]))
+            if digital_injection is True:
+                # write EnableDigInj last
+                commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=same_mask_for_all_dc, name=['EnableDigInj']))
+                # write DIGHITIN_SEL since after mask writing it is disabled
+                self.register.set_global_register_value("DIGHITIN_SEL", 1)
+                commands.extend(self.register.get_commands("wrregister", name=["DIGHITIN_SEL"]))
 #                 else:
 #                     commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=["EnableDigInj"]))
             self.register_utils.send_commands(commands, concatenate=True)
             logging.info('%d injection(s): mask step %d %s' % (repeat_command, mask_step, ('[%d - %d]' % (enable_mask_steps[0], enable_mask_steps[-1])) if len(enable_mask_steps) > 1 else ('[%d]' % enable_mask_steps[0])))
 
             # set repeat, should be 1 by default when arriving here
-            if hardware_repeat == True:
+            if hardware_repeat is True:
                 self.register_utils.set_hardware_repeat(repeat_command)
 
             # get DC command for the first DC in the list, DC command is byte padded
@@ -494,7 +534,7 @@ class ScanBase(object):
                 except TypeError:
                     pass
 
-                if hardware_repeat == True:
+                if hardware_repeat is True:
                     self.register_utils.start_command()
                 else:  # do this in software, much slower
                     for _ in range(repeat_command):
@@ -536,9 +576,9 @@ class ScanBase(object):
             h5_file = os.path.splitext(h5_file)[0] + ".h5"
 
         # append to file if existing otherwise create new one
-        #raw_data_file_h5 = tb.openFile(h5_file, mode="a", title=((self.module_id + "_" + self.scan_id) if self.module_id else self.scan_id) + "_" + str(self.scan_number), **kwargs)
+#         raw_data_file_h5 = tb.openFile(h5_file, mode="a", title=((self.module_id + "_" + self.scan_id) if self.module_id else self.scan_id) + "_" + str(self.scan_number), **kwargs)
         with tb.openFile(h5_file, mode="a", title=((self.module_id + "_" + self.scan_id) if self.module_id else self.scan_id) + "_" + str(self.scan_number), **kwargs) as raw_data_file_h5:
-            #scan_param_descr = generate_scan_configuration_description(dict.iterkeys(configuration))
+#             scan_param_descr = generate_scan_configuration_description(dict.iterkeys(configuration))
             filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
             try:
                 raw_data_file_h5.removeNode(raw_data_file_h5.root.configuration, name=configuation_name)
@@ -559,7 +599,7 @@ class ScanBase(object):
 
             self.scan_param_table.flush()
 
-        #raw_data_file_h5.close()
+#         raw_data_file_h5.close()
 
 
 class NoSyncError(Exception):
@@ -605,7 +645,7 @@ def set_event_when_keyboard_interrupt(_lambda):
             try:
                 f(self, *f_args, **f_kwargs)
             except KeyboardInterrupt:
-                #logging.info('Keyboard interrupt: setting %s' % _lambda(self).__name__)
+#                 logging.info('Keyboard interrupt: setting %s' % _lambda(self).__name__)
                 _lambda(self).set()
         return wrapped_f
     return wrapper
