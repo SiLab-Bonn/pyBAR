@@ -54,15 +54,14 @@ hw_drivers:
     base_addr : 0x0
 
 user_drivers:
-    
-registers:
+
 registers:
   - name        : CCPD_Vdd
     type        : FunctionalRegister
     hw_driver   : GPAC
     arg_names   : [ value ]
     arg_add     : { 'channel': 'PWR0'}
-  - name        : V_IN
+  - name        : V_in
     type        : FunctionalRegister
     hw_driver   : GPAC
     arg_names   : [ value ]
