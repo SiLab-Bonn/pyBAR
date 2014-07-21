@@ -10,7 +10,7 @@
 #  $Date::                      $:
 #
 
-name    : pyBAR 
+name    : pyBAR
 version : 2.0.0
 
 transfer_layer:
@@ -18,8 +18,8 @@ transfer_layer:
       type     : SiUsb
       bit_file : "config/fpga/top.bit"
       init:
-          board_id : 
-      
+          board_id       : 
+          force_download : True
 
 hw_drivers:
   - name      : cmd
@@ -62,11 +62,16 @@ hw_drivers:
     interface : USB
     base_addr : 0x18700
 
-  - name      : gpio
+  - name      : gpio_rx
     type      : gpio
     interface : USB
     base_addr : 0x18800
-    
+
+  - name      : gpio_power
+    type      : gpio
+    interface : USB
+    base_addr : 0x18900
+
   - name      : POWER
     type      : FEI4AdapterCard
     interface : USB
@@ -75,14 +80,29 @@ hw_drivers:
 user_drivers:
     
 registers:
-  - name        : POWER_EN
+  - name        : RX
     type        : StdRegister
-    hw_driver   : gpio
+    hw_driver   : gpio_rx
     size        : 8
     fields:
-      - name    : VERSION
-        size    : 4
-        offset  : 7
+      - name    : CH4
+        size    : 1
+        offset  : 3
+      - name    : CH3
+        size    : 1
+        offset  : 2
+      - name    : CH2
+        size    : 1
+        offset  : 1
+      - name    : CH1
+        size    : 1
+        offset  : 0
+
+  - name        : POWER_SCC
+    type        : StdRegister
+    hw_driver   : gpio_power
+    size        : 8
+    fields:
       - name    : EN_VD1
         size    : 1
         offset  : 3
