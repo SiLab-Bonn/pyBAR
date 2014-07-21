@@ -17,9 +17,8 @@ transfer_layer:
     - name     : USB
       type     : SiUsb
       bit_file : "config/fpga/top.bit"
-      init:
-          board_id       : 
-          force_download : True
+      board_id       : 
+      avoid_download : False
 
 hw_drivers:
   - name      : cmd
