@@ -84,6 +84,12 @@ registers:
     hw_driver   : gpio_rx
     size        : 8
     fields:
+      - name    : TDC
+        size    : 1
+        offset  : 5
+      - name    : TLU
+        size    : 1
+        offset  : 4
       - name    : CH4
         size    : 1
         offset  : 3

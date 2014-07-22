@@ -106,10 +106,13 @@ class ScanBase(object):
             self.dut['POWER_SCC']['EN_VA1'] = 1
             self.dut['POWER_SCC']['EN_VA2'] = 1
             self.dut['POWER_SCC'].write()
+            # enabling readout
             self.dut['RX']['CH1'] = 0
             self.dut['RX']['CH2'] = 0
             self.dut['RX']['CH3'] = 0
             self.dut['RX']['CH4'] = 1
+            self.dut['RX']['TLU'] = 1
+            self.dut['RX']['TDC'] = 1
             self.dut['RX'].write()
             self.device = self.dut["USB"]._sidev
         elif self.dut.name == 'pyBAR_GPAC':
@@ -121,6 +124,12 @@ class ScanBase(object):
             self.dut['V_in'].set_current_limit(2000, unit='mA')
             self.dut['V_in'].set_voltage(2.1, unit='V')
             self.dut['V_in'].set_enable(True)
+            # enabling readout
+            self.dut['RX']['FE'] = 1
+            self.dut['RX']['TLU'] = 1
+            self.dut['RX']['TDC'] = 1
+            self.dut['RX']['CCPD_TDC'] = 0
+            self.dut['RX'].write()
             self.device = self.dut["USB"]._sidev
         else:
             raise ValueError('Unknown DUT')
