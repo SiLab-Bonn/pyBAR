@@ -32,7 +32,7 @@ module top (
     //debug ports
     output wire [15:0] DEBUG_D,
     output wire [10:0] MULTI_IO, // Pin 1-11, 12: not connected, 13, 15: DGND, 14, 16: VCC_3.3V
-    
+  
     //LED
     output wire [4:0] LED,
     
@@ -62,6 +62,32 @@ module top (
     // FE Hitbus
     input wire MONHIT,
 
+    // CCPD
+    output wire CCPD_SHIFT_LD,
+    output wire CCPD_SHIFT_IN,
+    input wire CCPD_SHIFT_OUT,
+    input wire CCPD_TDC,
+    output wire CCPD_GLOBAL_SHIFT_CLK,
+    output wire CCPD_CONFIG_SHIFT_CLK,
+
+    //GPAC
+    input wire [11:0] DIN,
+    output wire [19:0] DOUT,
+    input [3:0] ADC_OUT_P,
+    input [3:0] ADC_OUT_N,
+    output ADC_CLK_N,
+    output ADC_CLK_P,
+    input ADC_FCO_N,
+    input ADC_FCO_P,
+    input ADC_DCO_N,
+    input ADC_DCO_P,
+    output ADC_SDI,
+    output ADC_SCLK,
+    output ADC_CS_B,
+    input ADC_SDO,
+
+    output INJ_STRB,
+
     //input wire FPGA_BUTTON // switch S2 on MultiIO board, active low
 
     // I2C
@@ -69,6 +95,26 @@ module top (
     inout SCL
 );
 
+// assignments for SCC_HVCMOS2FE-I4B_V1.0 and SCC_HVCMOS2FE-I4B_V1.1
+// CCPD
+wire CCPD_GLOBAL_SHIFT_OUT;
+assign CCPD_GLOBAL_SHIFT_OUT = CCPD_SHIFT_OUT;
+wire CCPD_CONFIG_SHIFT_OUT;
+assign CCPD_CONFIG_SHIFT_OUT = CCPD_SHIFT_OUT;
+wire CCPD_CONFIG_SHIFT_IN, CCPD_GLOBAL_SHIFT_IN;
+assign CCPD_SHIFT_IN = CCPD_CONFIG_SHIFT_IN | CCPD_GLOBAL_SHIFT_IN;
+wire CCPD_CONFIG_SHIFT_LD, CCPD_GLOBAL_SHIFT_LD;
+assign CCPD_SHIFT_LD = CCPD_CONFIG_SHIFT_LD | CCPD_GLOBAL_SHIFT_LD;
+wire INJECT_PULSE;
+assign INJ_STRB = INJECT_PULSE;
+wire ADC_ENC_P;
+assign ADC_CLK_P = ADC_ENC_P;
+wire ADC_ENC_N;
+assign ADC_CLK_N = ADC_ENC_N;
+wire ADC_CSN;
+assign ADC_CS_B = ADC_CSN;
+
+// Assignments
 wire BUS_RST;
 wire BUS_CLK;
 wire CLK_40;
@@ -79,7 +125,6 @@ wire CLK_LOCKED;
 
 assign MULTI_IO = 11'b000_0000_0000;
 assign DEBUG_D = 16'ha5a5;
-
 
 wire LEMO_TRIGGER, LEMO_RESET, TDC_IN, TDC_OUT;
 assign LEMO_TRIGGER = LEMO_RX[0];
@@ -143,7 +188,6 @@ clock_divider #(
     .CLOCK(CLK_2HZ)
 );
 
-
 // -------  MODULE ADREESSES  ------- //
 localparam CMD_BASEADDR = 16'h0000;
 localparam CMD_HIGHADDR = 16'h8000-1;
@@ -157,17 +201,46 @@ localparam TLU_HIGHADDR = 16'h8300-1;
 localparam RX4_BASEADDR = 16'h8300;
 localparam RX4_HIGHADDR = 16'h8400-1;
 
-localparam RX3_BASEADDR = 16'h8400;
-localparam RX3_HIGHADDR = 16'h8500-1;
+//localparam RX3_BASEADDR = 16'h8400;
+//localparam RX3_HIGHADDR = 16'h8500-1;
 
-localparam RX2_BASEADDR = 16'h8500;
-localparam RX2_HIGHADDR = 16'h8600-1;
+//localparam RX2_BASEADDR = 16'h8500;
+//localparam RX2_HIGHADDR = 16'h8600-1;
 
-localparam RX1_BASEADDR = 16'h8600;
-localparam RX1_HIGHADDR = 16'h8700-1;
+//localparam RX1_BASEADDR = 16'h8600;
+//localparam RX1_HIGHADDR = 16'h8700-1;
 
 localparam TDC_BASEADDR = 16'h8700;
 localparam TDC_HIGHADDR = 16'h8800-1;
+
+localparam GPIO_RX_BASEADDR = 16'h8800;
+localparam GPIO_RX_HIGHADDR = 16'h8900-1;
+
+// CCPD
+
+localparam GPAC_ADC_SPI_BASEADDR = 16'h8900;
+localparam GPAC_ADC_SPI_HIGHADDR = 16'h893f;
+
+localparam GPAC_ADC_RX_BASEADDR = 16'h8940;
+localparam GPAC_ADC_RX_HIGHADDR = 16'h894f;
+
+localparam GPAC_ADC_RX_BASEADDR_1 = 16'h8950;
+localparam GPAC_ADC_RX_HIGHADDR_1 = 16'h895f;
+
+localparam CCPD_GLOBAL_SPI_BASEADDR = 16'h8980;
+localparam CCPD_GLOBAL_SPI_HIGHADDR = 16'h89ff;
+
+localparam CCPD_PULSE_TDCGATE_BASEADDR = 16'h8A00;
+localparam CCPD_PULSE_TDCGATE_HIGHADDR = 16'h8A7f;
+
+localparam CCPD_PULSE_INJ_BASEADDR = 16'h8A80;
+localparam CCPD_PULSE_INJ_HIGHADDR = 16'h8Aff;
+
+localparam CCPD_CONFIG_SPI_BASEADDR = 16'h9000;
+localparam CCPD_CONFIG_SPI_HIGHADDR = 16'h907f;
+
+localparam CCPD_TDC_BASEADDR = 16'h9100;
+localparam CCPD_TDC_HIGHADDR = 16'h91ff;
 
 // -------  BUS SYGNALING  ------- //
 wire [15:0] BUS_ADD;
@@ -187,8 +260,7 @@ cmd_seq
 #( 
     .BASEADDR(CMD_BASEADDR),
     .HIGHADDR(CMD_HIGHADDR)
-)  icmd
-(
+) icmd (
     .BUS_CLK(BUS_CLK),
     .BUS_RST(BUS_RST),
     .BUS_ADD(BUS_ADD),
@@ -263,8 +335,7 @@ tdc_s3
     .HIGHADDR(TDC_HIGHADDR),
     .CLKDV(4),
     .DATA_IDENTIFIER(4'b0100) // one-hot
-) i_tdc
-(
+) i_tdc (
     .CLK320(RX_CLK2X),
     .CLK160(RX_CLK),
     .DV_CLK(CLK_40),
@@ -288,6 +359,24 @@ tdc_s3
     .TIMESTAMP(TIMESTAMP[15:0])
 );
 
+wire [3:0] NOT_CONNECTED_RX;
+wire SEL, TLU_SEL, TDC_SEL, CCPD_TDC_SEL;
+gpio 
+#( 
+    .BASEADDR(GPIO_RX_BASEADDR),
+    .HIGHADDR(GPIO_RX_HIGHADDR),
+    .IO_WIDTH(8),
+    .IO_DIRECTION(8'hff)
+) i_gpio_rx (
+    .BUS_CLK(BUS_CLK),
+    .BUS_RST(BUS_RST),
+    .BUS_ADD(BUS_ADD),
+    .BUS_DATA(BUS_DATA),
+    .BUS_RD(BUS_RD),
+    .BUS_WR(BUS_WR),
+    .IO({NOT_CONNECTED_RX, CCPD_TDC_SEL, TDC_SEL, TLU_SEL, SEL})
+);
+
 wire TLU_FIFO_READ;
 wire TLU_FIFO_EMPTY;
 wire [31:0] TLU_FIFO_DATA;
@@ -298,7 +387,6 @@ tlu_controller #(
     .HIGHADDR(TLU_HIGHADDR),
     .DIVISOR(8)
 ) i_tlu_controller (
-
     .BUS_CLK(BUS_CLK),
     .BUS_RST(BUS_RST),
     .BUS_ADD(BUS_ADD),
@@ -331,21 +419,279 @@ tlu_controller #(
     .TIMESTAMP(TIMESTAMP)
 );
 
+// CCPD
+wire SPI_CLK;
+
+reg [15:0] INJ_CNT;
+wire CCPD_TDC_FIFO_READ;
+wire CCPD_TDC_FIFO_EMPTY;
+wire [31:0] CCPD_TDC_FIFO_DATA;
+wire NOT_USED=1'b0;
+wire CCPD_TDCGATE;
+tdc_s3
+#(
+    .BASEADDR(CCPD_TDC_BASEADDR),
+    .HIGHADDR(CCPD_TDC_HIGHADDR),
+    .CLKDV(4),
+    .DATA_IDENTIFIER(4'b0101)
+) i_ccpd_tdc (
+    .CLK320(RX_CLK2X),
+    .CLK160(RX_CLK),
+    .DV_CLK(CLK_40),
+    .TDC_IN(CCPD_TDC),
+    .TDC_OUT(NOT_USED),
+
+    .FIFO_READ(CCPD_TDC_FIFO_READ),
+    .FIFO_EMPTY(CCPD_TDC_FIFO_EMPTY),
+    .FIFO_DATA(CCPD_TDC_FIFO_DATA),
+
+    .BUS_CLK(BUS_CLK),
+    .BUS_RST(BUS_RST),
+    .BUS_ADD(BUS_ADD),
+    .BUS_DATA(BUS_DATA),
+    .BUS_RD(BUS_RD),
+    .BUS_WR(BUS_WR),
+
+    .ARM_TDC(CMD_START_FLAG), // arm TDC by sending commands
+
+    .TIMESTAMP(INJ_CNT),
+    //.TIMESTAMP(TIMESTAMP[15:0]),
+    .EXT_EN(CCPD_TDCGATE) 
+);
+
+wire ADC_EN;
+wire ADC_ENC;
+clock_divider #(
+    .DIVISOR(16) // 2.5MHz
+) i_clock_divisor_40MHz_to_2500kHz (
+    .CLK(CLK_40),
+    .RESET(1'b0),
+    .CE(),
+    .CLOCK(ADC_ENC)
+);
+
+spi 
+#( 
+    .BASEADDR(GPAC_ADC_SPI_BASEADDR), 
+    .HIGHADDR(GPAC_ADC_SPI_HIGHADDR), 
+    .MEM_BYTES(2)
+) i_spi_gpac_adc (
+    .BUS_CLK(BUS_CLK),
+    .BUS_RST(BUS_RST),
+    .BUS_ADD(BUS_ADD),
+    .BUS_DATA(BUS_DATA),
+    .BUS_RD(BUS_RD),
+    .BUS_WR(BUS_WR),
+
+    .SPI_CLK(SPI_CLK),
+
+    .SCLK(ADC_SCLK),
+    .SDI(ADC_SDI),
+    .SDO(ADC_SDO),
+    .SEN(ADC_EN),
+    .SLD()
+);
+
+assign ADC_CSN = !ADC_EN;
+wire [3:0] ADC_IN;
+wire ADC_DCO, ADC_FCO;
+
+gpac_adc_iobuf i_gpac_adc_iobuf
+(
+    .ADC_DCO_P(ADC_DCO_P),
+    .ADC_DCO_N(ADC_DCO_N),
+    .ADC_DCO(ADC_DCO),
+
+    .ADC_FCO_P(ADC_FCO_P),
+    .ADC_FCO_N(ADC_FCO_N),
+    .ADC_FCO(ADC_FCO),
+
+    .ADC_ENC(ADC_ENC), 
+    .ADC_ENC_P(ADC_ENC_P),
+    .ADC_ENC_N(ADC_ENC_N),
+
+    .ADC_IN_P(ADC_OUT_P),
+    .ADC_IN_N(ADC_OUT_N),
+    .ADC_IN(ADC_IN)
+);
+
+wire FIFO_READ_ADC, FIFO_EMPTY_ADC;
+wire [31:0] FIFO_DATA_ADC;
+wire ADC_ERROR;
+
+gpac_adc_rx
+#(
+    .BASEADDR(GPAC_ADC_RX_BASEADDR),
+    .HIGHADDR(GPAC_ADC_RX_HIGHADDR),
+    .ADC_ID(0),
+    .HEADER_ID(6)
+) i_gpac_adc_rx (
+    .BUS_CLK(BUS_CLK),
+    .BUS_RST(BUS_RST),
+    .BUS_ADD(BUS_ADD),
+    .BUS_DATA(BUS_DATA),
+    .BUS_RD(BUS_RD),
+    .BUS_WR(BUS_WR),
+
+    .ADC_CLK(CLK_40),
+    .ADC_DCO(ADC_DCO),
+    .ADC_FCO(ADC_FCO),
+    .ADC_IN(ADC_IN[0]),
+
+    .ADC_SYNC(),
+    .ADC_TRIGGER(1'b0),
+
+    .FIFO_READ(1'b0),
+    .FIFO_EMPTY(FIFO_EMPTY_ADC),
+    .FIFO_DATA(FIFO_DATA_ADC),
+
+    .LOST_ERROR(ADC_ERROR)
+);
+
+wire FIFO_READ_ADC_1, FIFO_EMPTY_ADC_1;
+wire [31:0] FIFO_DATA_ADC_1;
+wire ADC_ERROR_1;
+
+gpac_adc_rx
+#(
+    .BASEADDR(GPAC_ADC_RX_BASEADDR_1),
+    .HIGHADDR(GPAC_ADC_RX_HIGHADDR_1),
+    .ADC_ID(1),
+    .HEADER_ID(7)
+) i_gpac_adc_rx_1 (
+    .BUS_CLK(BUS_CLK),
+    .BUS_RST(BUS_RST),
+    .BUS_ADD(BUS_ADD),
+    .BUS_DATA(BUS_DATA),
+    .BUS_RD(BUS_RD),
+    .BUS_WR(BUS_WR), 
+
+    .ADC_CLK(CLK_40),
+    .ADC_DCO(ADC_DCO),
+    .ADC_FCO(ADC_FCO),
+    .ADC_IN(ADC_IN[1]),
+
+    .ADC_SYNC(),
+    .ADC_TRIGGER(1'b0),
+
+    .FIFO_READ(1'b0),
+    .FIFO_EMPTY(FIFO_EMPTY_ADC_1),
+    .FIFO_DATA(FIFO_DATA_ADC_1),
+
+    .LOST_ERROR(ADC_ERROR_1)
+);
+
+clock_divider #(
+    .DIVISOR(40) // 1MHz
+) i_clock_divisor_40MHz_to_1kHz (
+    .CLK(CLK_40),
+    .RESET(1'b0),
+    .CE(),
+    .CLOCK(SPI_CLK)
+);
+
+spi 
+#(         
+    .BASEADDR(CCPD_GLOBAL_SPI_BASEADDR), 
+    .HIGHADDR(CCPD_GLOBAL_SPI_HIGHADDR),
+    .MEM_BYTES(15) 
+) i_ccpd_global_spi_pixel (
+    .BUS_CLK(BUS_CLK),
+    .BUS_RST(BUS_RST),
+    .BUS_ADD(BUS_ADD),
+    .BUS_DATA(BUS_DATA),
+    .BUS_RD(BUS_RD),
+    .BUS_WR(BUS_WR),
+
+    .SPI_CLK(SPI_CLK),
+
+    .SCLK(CCPD_GLOBAL_SHIFT_CLK),
+    .SDI(CCPD_GLOBAL_SHIFT_IN),
+    .SDO(CCPD_GLOBAL_SHIFT_OUT),
+    .SEN(),
+    .SLD(CCPD_GLOBAL_SHIFT_LD)
+);
+
+spi 
+#(         
+    .BASEADDR(CCPD_CONFIG_SPI_BASEADDR), 
+    .HIGHADDR(CCPD_CONFIG_SPI_HIGHADDR),
+    .MEM_BYTES(54) 
+) i_ccpd_config_spi_pixel (
+    .BUS_CLK(BUS_CLK),
+    .BUS_RST(BUS_RST),
+    .BUS_ADD(BUS_ADD),
+    .BUS_DATA(BUS_DATA),
+    .BUS_RD(BUS_RD),
+    .BUS_WR(BUS_WR),
+
+    .SPI_CLK(SPI_CLK),
+
+    .SCLK(CCPD_CONFIG_SHIFT_CLK),
+    .SDI(CCPD_CONFIG_SHIFT_IN),
+    .SDO(CCPD_CONFIG_SHIFT_OUT),
+    .SEN(),
+    .SLD(CCPD_CONFIG_SHIFT_LD)
+);
+
+pulse_gen
+#( 
+    .BASEADDR(CCPD_PULSE_INJ_BASEADDR), 
+    .HIGHADDR(CCPD_PULSE_INJ_HIGHADDR)
+) i_pulse_gen_inj (
+    .BUS_CLK(BUS_CLK),
+    .BUS_RST(BUS_RST),
+    .BUS_ADD(BUS_ADD),
+    .BUS_DATA(BUS_DATA),
+    .BUS_RD(BUS_RD),
+    .BUS_WR(BUS_WR),
+
+    .PULSE_CLK(SPI_CLK),
+    .EXT_START(CCPD_TDCGATE),
+    .PULSE(INJECT_PULSE)
+);
+
+pulse_gen
+#( 
+    .BASEADDR(CCPD_PULSE_TDCGATE_BASEADDR), 
+    .HIGHADDR(CCPD_PULSE_TDCGATE_HIGHADDR)
+) i_pulse_gen_tdcgate (
+    .BUS_CLK(BUS_CLK),
+    .BUS_RST(BUS_RST),
+    .BUS_ADD(BUS_ADD),
+    .BUS_DATA(BUS_DATA),
+    .BUS_RD(BUS_RD),
+    .BUS_WR(BUS_WR),
+
+    .PULSE_CLK(SPI_CLK),
+    .EXT_START(1'b0),
+    .PULSE(CCPD_TDCGATE)
+);
+
+// counter for tdc //
+always@(posedge SPI_CLK) begin
+    if(BUS_ADD==16'hff00 && BUS_WR)
+        INJ_CNT <= 0;
+    else if(CCPD_TDCGATE)
+        INJ_CNT <= INJ_CNT + 1;
+end
+
+// Arbiter
 wire ARB_READY_OUT, ARB_WRITE_OUT;
 wire [31:0] ARB_DATA_OUT;
-wire [5:0] READ_GRANT;
+wire [3:0] READ_GRANT;
 
 rrp_arbiter 
 #( 
-    .WIDTH(3)
+    .WIDTH(4)
 ) i_rrp_arbiter
 (
     .RST(BUS_RST),
     .CLK(BUS_CLK),
 
-    .WRITE_REQ({~FE_FIFO_EMPTY, ~TDC_FIFO_EMPTY, ~TLU_FIFO_EMPTY}),
-    .HOLD_REQ({2'b0, TLU_FIFO_PEEMPT_REQ}),
-    .DATA_IN({FE_FIFO_DATA, TDC_FIFO_DATA, TLU_FIFO_DATA}),
+    .WRITE_REQ({~CCPD_TDC_FIFO_EMPTY & CCPD_TDC_SEL, ~FE_FIFO_EMPTY & SEL, ~TDC_FIFO_EMPTY & TDC_SEL, ~TLU_FIFO_EMPTY & TLU_SEL}),
+    .HOLD_REQ({3'b0, TLU_FIFO_PEEMPT_REQ}),
+    .DATA_IN({CCPD_TDC_FIFO_DATA, FE_FIFO_DATA, TDC_FIFO_DATA, TLU_FIFO_DATA}),
     .READ_GRANT(READ_GRANT),
 
     .READY_OUT(ARB_READY_OUT),
@@ -354,10 +700,11 @@ rrp_arbiter
 );
 
 assign TLU_FIFO_READ = READ_GRANT[0];
-assign FE_FIFO_READ = READ_GRANT[2];
 assign TDC_FIFO_READ = READ_GRANT[1];
+assign FE_FIFO_READ = READ_GRANT[2];
+assign CCPD_TDC_FIFO_READ = READ_GRANT[3];
 
-
+// SRAM
 wire USB_READ;
 assign USB_READ = FREAD & FSTROBE;
 
