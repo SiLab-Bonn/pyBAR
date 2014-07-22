@@ -383,7 +383,7 @@ class FEI4RegisterUtils(object):
             for dc in dcs:
                 self.send_commands(self.register.get_commands("rdfrontend", name=[pix_reg], dc=[dc]))
                 data = self.readout.read_data()
-                interpret_pixel_data(self, data, dc, pixel_data)
+                interpret_pixel_data(self, data, dc, pixel_data, invert=False if pix_reg.lower()=="enablediginj" else True)
             if overwrite_config:
                 self.register.set_pixel_register(pix_reg, pixel_data.data)
             result.append(pixel_data)

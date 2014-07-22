@@ -213,7 +213,7 @@ class ReadoutUtils(object):
             logging.warning('Trigger counter is not %d (read %d)' % (value, read_value))
 
 
-def interpret_pixel_data(self, data, dc, pixel_array):
+def interpret_pixel_data(self, data, dc, pixel_array, invert=True):
     '''Takes the pixel raw data and interprets them. This includes consistency checks and pixel/data matching.
     The data has to come from one double column only but can have more than one pixel bit (e.g. TDAC = 5 bit)
 
@@ -225,6 +225,8 @@ def interpret_pixel_data(self, data, dc, pixel_array):
         The double column where the data is from.
     pixel_array : numpy.ma.ndarray
         The masked numpy.ndarrays to be filled. The masked is set to zero for pixels with valid data.
+    invert : boolean
+        Invert the read pixel data.
     '''
 
     # data validity cut, VR has to follow an AR
@@ -240,7 +242,7 @@ def interpret_pixel_data(self, data, dc, pixel_array):
     address_split = np.array_split(address, np.where(np.diff(address.astype(np.int32)) < 0)[0] + 1)
     value_split = np.array_split(value, np.where(np.diff(address.astype(np.int32)) < 0)[0] + 1)
 
-    mask = np.empty_like(pixel_array.data)  # BUG in numpy: pixel_array is demasked
+    mask = np.empty_like(pixel_array.data)  # BUG in numpy: pixel_array is demasked if not .data is used 
     mask[:] = len(address_split)
 
     for bit, (bit_address, bit_value) in enumerate(zip(address_split, value_split)):  # loop over all bits of the pixel data
@@ -250,7 +252,7 @@ def interpret_pixel_data(self, data, dc, pixel_array):
             continue
         if len(bit_address) != 42:
             logging.warning('Some pixel data missing')
-        if (bit_address[bit_address > 672] != 0):
+        if (np.any(bit_address > 672)):
             RuntimeError('Pixel data corrupt')
         # set pixel that occurred in the data stream
         pixel = []
@@ -260,7 +262,8 @@ def interpret_pixel_data(self, data, dc, pixel_array):
 
         # create bit set array
         value_new = bit_value.view(np.uint8)  # interpret 32 bit numpy array as uint8 to be able to use bit unpacking; byte unpacking is not supported yet
-        value_new = np.invert(value_new)  # read back values are inverted
+        if invert:
+            value_new = np.invert(value_new)  # read back values are inverted
         value_new = np.insert(value_new[::4], np.arange(len(value_new[1::4])), value_new[1::4])  # delete 0 padding
         value_bit = np.unpackbits(value_new, axis=0)
 
