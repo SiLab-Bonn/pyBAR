@@ -90,6 +90,7 @@ module top (
     inout SCL
 );
 
+// Assignments
 wire BUS_RST;
 wire BUS_CLK;
 wire CLK_40;
@@ -98,13 +99,8 @@ wire RX_CLK2X;
 wire DATA_CLK;
 wire CLK_LOCKED;
 
-//assign EN = 4'b1111;
-
-//assign SEL = 4'b1111;
-
 assign MULTI_IO = 11'b000_0000_0000;
 assign DEBUG_D = 16'ha5a5;
-
 
 wire LEMO_TRIGGER, LEMO_RESET, TDC_IN, TDC_OUT;
 assign LEMO_TRIGGER = LEMO_RX[0];
@@ -168,7 +164,6 @@ clock_divider #(
     .CLOCK(CLK_2HZ)
 );
 
-
 // -------  MODULE ADREESSES  ------- //
 localparam CMD_BASEADDR = 16'h0000;
 localparam CMD_HIGHADDR = 16'h8000-1;
@@ -218,8 +213,7 @@ cmd_seq
 #( 
     .BASEADDR(CMD_BASEADDR),
     .HIGHADDR(CMD_HIGHADDR)
-)  icmd
-(
+) icmd (
     .BUS_CLK(BUS_CLK),
     .BUS_RST(BUS_RST),
     .BUS_ADD(BUS_ADD),
@@ -261,8 +255,7 @@ generate
         .HIGHADDR(RX1_HIGHADDR-16'h0100*i),
         .DSIZE(DSIZE),
         .DATA_IDENTIFIER(i+1)
-    ) ifei4_rx
-    (
+    ) i_fei4_rx (
         .RX_CLK(RX_CLK),
         .RX_CLK2X(RX_CLK2X),
         .DATA_CLK(DATA_CLK),
@@ -300,8 +293,7 @@ tdc_s3
     .HIGHADDR(TDC_HIGHADDR),
     .CLKDV(4),
     .DATA_IDENTIFIER(4'b0100) // one-hot
-) i_tdc
-(
+) i_tdc (
     .CLK320(RX_CLK2X),
     .CLK160(RX_CLK),
     .DV_CLK(CLK_40),
@@ -325,10 +317,11 @@ tdc_s3
     .TIMESTAMP(TIMESTAMP[15:0])
 );
 
-wire [3:0] NOT_CONNECTED_RX;
+wire [1:0] NOT_CONNECTED_RX;
+wire TLU_SEL, TDC_SEL;
 gpio 
 #( 
-    .BASEADDR(GPIO_RX_BASEADDR), 
+    .BASEADDR(GPIO_RX_BASEADDR),
     .HIGHADDR(GPIO_RX_HIGHADDR),
     .IO_WIDTH(8),
     .IO_DIRECTION(8'hff)
@@ -339,13 +332,13 @@ gpio
     .BUS_DATA(BUS_DATA),
     .BUS_RD(BUS_RD),
     .BUS_WR(BUS_WR),
-    .IO({NOT_CONNECTED_RX, SEL[3], SEL[2], SEL[1], SEL[0]})
+    .IO({NOT_CONNECTED_RX, TDC_SEL, TLU_SEL, SEL[3], SEL[2], SEL[1], SEL[0]})
 );
 
 wire [3:0] NOT_CONNECTED_POWER;
 gpio 
 #( 
-    .BASEADDR(GPIO_POWER_BASEADDR), 
+    .BASEADDR(GPIO_POWER_BASEADDR),
     .HIGHADDR(GPIO_POWER_HIGHADDR),
     .IO_WIDTH(8),
     .IO_DIRECTION(8'hff)
@@ -369,7 +362,6 @@ tlu_controller #(
     .HIGHADDR(TLU_HIGHADDR),
     .DIVISOR(8)
 ) i_tlu_controller (
-
     .BUS_CLK(BUS_CLK),
     .BUS_RST(BUS_RST),
     .BUS_ADD(BUS_ADD),
@@ -402,6 +394,7 @@ tlu_controller #(
     .TIMESTAMP(TIMESTAMP)
 );
 
+// Arbiter
 wire ARB_READY_OUT, ARB_WRITE_OUT;
 wire [31:0] ARB_DATA_OUT;
 wire [5:0] READ_GRANT;
@@ -409,12 +402,11 @@ wire [5:0] READ_GRANT;
 rrp_arbiter 
 #( 
     .WIDTH(6)
-) i_rrp_arbiter
-(
+) i_rrp_arbiter (
     .RST(BUS_RST),
     .CLK(BUS_CLK),
 
-    .WRITE_REQ({~FE_FIFO_EMPTY & SEL, ~TDC_FIFO_EMPTY, ~TLU_FIFO_EMPTY}),
+    .WRITE_REQ({~FE_FIFO_EMPTY & SEL, ~TDC_FIFO_EMPTY & TDC_SEL, ~TLU_FIFO_EMPTY & TLU_SEL}),
     .HOLD_REQ({5'b0, TLU_FIFO_PEEMPT_REQ}),
     .DATA_IN({FE_FIFO_DATA[3],FE_FIFO_DATA[2],FE_FIFO_DATA[1], FE_FIFO_DATA[0], TDC_FIFO_DATA, TLU_FIFO_DATA }),
     .READ_GRANT(READ_GRANT),
@@ -425,10 +417,10 @@ rrp_arbiter
 );
 
 assign TLU_FIFO_READ = READ_GRANT[0];
-assign FE_FIFO_READ = READ_GRANT[5:2];
 assign TDC_FIFO_READ = READ_GRANT[1];
+assign FE_FIFO_READ = READ_GRANT[5:2];
 
-
+// SRAM
 wire USB_READ;
 assign USB_READ = FREAD & FSTROBE;
 
