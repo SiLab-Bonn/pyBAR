@@ -152,7 +152,7 @@ def test_global_register(self):
 def test_pixel_register(self, pix_regs=["EnableDigInj", "Imon", "Enable", "C_High", "C_Low", "TDAC", "FDAC"], dcs=range(40)):
     '''Test Pixel Register
     '''
-    logging.info('Running Pixel Register Test...')
+    logging.info('Running Pixel Register Test for %s' % str(pix_regs))
     self.register_utils.configure_pixel()
     commands = []
     commands.extend(self.register.get_commands("confmode"))
@@ -160,7 +160,6 @@ def test_pixel_register(self, pix_regs=["EnableDigInj", "Imon", "Enable", "C_Hig
     self.readout.reset_sram_fifo()
 
     plots = PdfPages(self.scan_data_filename + ".pdf")
-    logging.info("Reading pixel register %s" % str(pix_regs))
 
     for i, result in enumerate(self.register_utils.read_pixel_register(pix_regs=pix_regs, dcs=dcs)):
         result_array = np.ones_like(result)
