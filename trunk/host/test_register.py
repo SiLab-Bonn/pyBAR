@@ -1,11 +1,12 @@
+import numpy as np
+import struct
+import logging
+
 from scan.scan import ScanBase
 from daq.readout import FEI4Record
+from matplotlib.backends.backend_pdf import PdfPages
+from analysis.plotting import plotting
 
-import numpy as np
-from bitarray import bitarray
-import struct
-
-import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
@@ -148,7 +149,7 @@ def test_global_register(self):
     logging.info('Global Register Test: Found %d error(s)' % number_of_errors)
 
 
-def test_pixel_register(self):
+def test_pixel_register(self, pix_regs=["EnableDigInj", "Imon", "Enable", "C_High", "C_Low", "TDAC", "FDAC"], dcs=range(40)):
     '''Test Pixel Register
     '''
     logging.info('Running Pixel Register Test...')
@@ -158,181 +159,16 @@ def test_pixel_register(self):
     self.register_utils.send_commands(commands)
     self.readout.reset_sram_fifo()
 
-    commands = []
-    self.register.set_global_register_value('Conf_AddrEnable', 1)
-    self.register.set_global_register_value("S0", 0)
-    self.register.set_global_register_value("S1", 0)
-    self.register.set_global_register_value("SR_Clr", 0)
-    self.register.set_global_register_value("CalEn", 0)
-    self.register.set_global_register_value("DIGHITIN_SEL", 0)
-    self.register.set_global_register_value("GateHitOr", 0)
-    if self.register.is_chip_flavor('fei4a'):
-        self.register.set_global_register_value("ReadSkipped", 0)
-    self.register.set_global_register_value("ReadErrorReq", 0)
-    self.register.set_global_register_value("StopClkPulse", 0)
-    self.register.set_global_register_value("SR_Clock", 0)
-    self.register.set_global_register_value("Efuse_Sense", 0)
+    plots = PdfPages(self.scan_data_filename + ".pdf")
+    logging.info("Reading pixel register %s" % str(pix_regs))
 
-    self.register.set_global_register_value("HITLD_IN", 0)
-    self.register.set_global_register_value("Colpr_Mode", 0)  # write only the addressed double-column
-    self.register.set_global_register_value("Colpr_Addr", 0)
+    for i, result in enumerate(self.register_utils.read_pixel_register(pix_regs=pix_regs, dcs=dcs)):
+        result_array = np.ones_like(result)
+        result_array.data[result == self.register.get_pixel_register_value(pix_regs[i])] = 0
+        logging.info("Pixel register %s: %d pixel error" % (pix_regs[i], np.count_nonzero(result_array == 1)))
+        plotting.plotThreeWay(result_array.T, title=str(pix_regs[i]) + " register test with " + str(np.count_nonzero(result_array == 1)) + '/' + str(26880 - np.ma.count_masked(result_array)) + " pixel failing", x_axis_title="0:OK, 1:FAIL", maximum=1, filename=plots)
 
-    self.register.set_global_register_value("Latch_En", 0)
-    self.register.set_global_register_value("Pixel_Strobes", 0)
-
-    commands.extend(self.register.get_commands("wrregister", name=["Conf_AddrEnable", "S0", "S1", "SR_Clr", "CalEn", "DIGHITIN_SEL", "GateHitOr", "ReadSkipped", "ReadErrorReq", "StopClkPulse", "SR_Clock", "Efuse_Sense", "HITLD_IN", "Colpr_Mode", "Colpr_Addr", "Pixel_Strobes", "Latch_En"]))
-    self.register_utils.send_commands(commands)
-
-    register_objects = self.register.get_pixel_register_objects(True, name=["EnableDigInj"])  # check EnableDigInj first, because it is not latched
-    register_objects.extend(self.register.get_pixel_register_objects(True, name=["Imon", "Enable", "C_High", "C_Low", "TDAC", "FDAC"]))
-    # pprint.pprint(register_objects)
-    # print "register_objects", register_objects
-    number_of_errors = 0
-    for register_object in register_objects:
-        # pprint.pprint(register_object)
-        pxstrobe = register_object.pxstrobe
-        bitlength = register_object.bitlength
-        for pxstrobe_bit_no in range(bitlength):
-            logging.info('Testing Pixel Register %s Bit %d', register_object.full_name, pxstrobe_bit_no)
-            do_latch = True
-            commands = []
-            try:
-                self.register.set_global_register_value("Pixel_Strobes", 2 ** (pxstrobe + pxstrobe_bit_no))
-                # print register_object.name
-                # print "bit_no", bit_no
-                # print "pxstrobes", 2**(pxstrobe+pxstrobe_bit_no)
-
-            except TypeError:
-                self.register.set_global_register_value("Pixel_Strobes", 0)  # do not latch
-                do_latch = False
-                # print register_object.name
-                # print "bit_no", bit_no
-                # print "pxstrobes", 0
-            commands.extend(self.register.get_commands("wrregister", name=["Pixel_Strobes"]))
-            self.register_utils.send_commands(commands)
-
-            for dc_no in range(40):
-                commands = []
-                self.register.set_global_register_value("Colpr_Addr", dc_no)
-                commands.extend(self.register.get_commands("wrregister", name=["Colpr_Addr"]))
-                self.register_utils.send_commands(commands)
-
-                if do_latch == True:
-                    commands = []
-                    self.register.set_global_register_value("S0", 1)
-                    self.register.set_global_register_value("S1", 1)
-                    self.register.set_global_register_value("SR_Clock", 1)
-                    commands.extend(self.register.get_commands("wrregister", name=["S0", "S1", "SR_Clock"]))
-                    commands.extend(self.register.get_commands("globalpulse", width=0))
-                    self.register_utils.send_commands(commands)
-                commands = []
-                self.register.set_global_register_value("S0", 0)
-                self.register.set_global_register_value("S1", 0)
-                self.register.set_global_register_value("SR_Clock", 0)
-                commands.extend(self.register.get_commands("wrregister", name=["S0", "S1", "SR_Clock"]))
-                self.register_utils.send_commands(commands)
-
-                register_bitset = self.register.get_pixel_register_bitset(register_object, pxstrobe_bit_no if (register_object.littleendian == False) else register_object.bitlength - pxstrobe_bit_no - 1, dc_no)
-
-                commands = []
-                if self.register.fei4b:
-                    self.register.set_global_register_value("SR_Read", 1)
-                    commands.extend(self.register.get_commands("wrregister", name=["SR_Read"]))
-                commands.extend([self.register.build_command("wrfrontend", pixeldata=register_bitset, chipid=self.register.chip_id)])
-                if self.register.fei4b:
-                    self.register.set_global_register_value("SR_Read", 0)
-                    commands.extend(self.register.get_commands("wrregister", name=["SR_Read"]))
-                # print commands[0]
-                self.register_utils.send_commands(commands)
-                # time.sleep( 0.2 )
-
-                data = self.readout.read_data()
-                if data.shape[0] == 0:  # no data
-                    if do_latch:
-                        logging.error('Pixel Register Test: No data from PxStrobes Bit %d at DC %d' % (pxstrobe + pxstrobe_bit_no, dc_no))
-                    else:
-                        logging.error('Pixel Register Test: No data from PxStrobes Bit SR at DC %d' % dc_no)
-                    number_of_errors += 1
-                else:
-                    expected_addresses = range(15, 672, 16)
-                    seen_addresses = {}
-                    for index, word in enumerate(np.nditer(data)):
-                        fei4_data = FEI4Record(word, self.register.chip_flavor)
-                        # print fei4_data
-                        if fei4_data == 'AR':
-                            # print int(self.register.get_global_register_bitsets([fei4_data['address']])[0])
-                            #read_value = BitArray(uint=FEI4Record(data[index + 1], self.register.chip_flavor)['value'], length=16)
-                            read_value = bitarray()
-                            fei4_next_data_word = FEI4Record(data[index + 1], self.register.chip_flavor)
-                            if fei4_next_data_word == 'VR':
-                                read_value.frombytes(struct.pack('H', fei4_next_data_word['value']))
-                                if do_latch == True:
-                                    read_value.invert()
-                                read_value = struct.unpack('H', read_value.tobytes())[0]
-                                read_address = fei4_data['address']
-                                if read_address not in expected_addresses:
-                                    if do_latch:
-                                        logging.warning('Pixel Register Test: Wrong address for PxStrobes Bit %d at DC %d at address %d' % (pxstrobe + pxstrobe_bit_no, dc_no, read_address))
-                                    else:
-                                        logging.warning('Pixel Register Test: Wrong address for PxStrobes Bit SR at DC %d at address %d' % (dc_no, read_address))
-                                    number_of_errors += 1
-                                else:
-                                    if read_address not in seen_addresses:
-                                        seen_addresses[read_address] = 1
-                                        set_value = register_bitset[read_address - 15:read_address + 1]
-                                        set_value = struct.unpack('H', set_value.tobytes())[0]
-                                        if read_value == set_value:
-    #                                        if do_latch:
-    #                                            print 'Register Test:', 'PxStrobes Bit', pxstrobe+pxstrobe_bit_no, 'DC', dc_no, 'Address', read_address, 'PASSED'
-    #                                        else:
-    #                                            print 'Register Test:', 'PxStrobes Bit', 'SR', 'DC', dc_no, 'Address', read_address, 'PASSED'
-                                            pass
-                                        else:
-                                            number_of_errors += 1
-                                            if do_latch:
-                                                logging.warning('Pixel Register Test: Wrong value at PxStrobes Bit %d at DC %d at address %d (read: %d, expected: %d)' % (pxstrobe + pxstrobe_bit_no, dc_no, read_address, read_value, set_value))
-                                            else:
-                                                logging.warning('Pixel Register Test: Wrong value at PxStrobes Bit SR at DC %d at address %d (read: %d, expected: %d)' % (dc_no, read_address, read_value, set_value))
-                                    else:
-                                        seen_addresses[read_address] = seen_addresses[read_address] + 1
-                                        number_of_errors += 1
-                                        if do_latch:
-                                            logging.warning('Pixel Register Test: Multiple occurrence of data for PxStrobes Bit %d at DC %d at address %d' % (pxstrobe + pxstrobe_bit_no, dc_no, read_address))
-                                        else:
-                                            logging.warning('Pixel Register Test: Multiple occurrence of data for PxStrobes Bit SR at DC %d at address %d' % (dc_no, read_address))
-                            else:
-                                # number_of_errors += 1  # will be increased later
-                                logging.warning('Pixel Register Test: Expected Value Record but found %s' % fei4_next_data_word)
-
-                    not_read_addresses = set.difference(set(expected_addresses), seen_addresses.iterkeys())
-                    not_read_addresses = list(not_read_addresses)
-                    not_read_addresses.sort()
-                    for address in not_read_addresses:
-                        number_of_errors += 1
-                        if do_latch:
-                            logging.warning('Pixel Register Test: Missing data from PxStrobes Bit %d at DC %d at address %d' % (pxstrobe + pxstrobe_bit_no, dc_no, address))
-                        else:
-                            logging.warning('Pixel Register Test: Missing data at PxStrobes Bit SR at DC %d at address %d' % (dc_no, address))
-
-#                        for word in data:
-#                            print FEI4Record(word, self.register.chip_flavor)
-    commands = []
-    self.register.set_global_register_value("Pixel_Strobes", 0)
-    self.register.set_global_register_value("Colpr_Addr", 0)
-    self.register.set_global_register_value("S0", 0)
-    self.register.set_global_register_value("S1", 0)
-    self.register.set_global_register_value("SR_Clock", 0)
-    if self.register.fei4b:
-        self.register.set_global_register_value("SR_Read", 0)
-        commands.extend(self.register.get_commands("wrregister", name=["Colpr_Addr", "Pixel_Strobes", "S0", "S1", "SR_Clock", "SR_Read"]))
-    else:
-        commands.extend(self.register.get_commands("wrregister", name=["Colpr_Addr", "Pixel_Strobes", "S0", "S1", "SR_Clock"]))
-    # fixes bug in FEI4 (B only?): reading GR doesn't work after latching pixel register
-    commands.extend(self.register.get_commands("wrfrontend", name=["EnableDigInj"]))
-    commands.extend(self.register.get_commands("runmode"))
-    self.register_utils.send_commands(commands)
-
-    logging.info('Pixel Register Test: Found %d error(s)' % number_of_errors)
+    plots.close()
 
 if __name__ == "__main__":
     import configuration
