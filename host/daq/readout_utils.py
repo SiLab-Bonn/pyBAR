@@ -213,7 +213,7 @@ class ReadoutUtils(object):
             logging.warning('Trigger counter is not %d (read %d)' % (value, read_value))
 
 
-def interpret_pixel_data(self, data, dc, pixel_array, invert=True):
+def interpret_pixel_data(data, dc, pixel_array, invert=True):
     '''Takes the pixel raw data and interprets them. This includes consistency checks and pixel/data matching.
     The data has to come from one double column only but can have more than one pixel bit (e.g. TDAC = 5 bit)
 
