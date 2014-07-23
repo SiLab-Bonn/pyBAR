@@ -12,8 +12,8 @@
 # ----------------------------------------------------------------
 # set system environment XILINX to ISE directory
 # ----------------------------------------------------------------
-#set XILINX "C:/Xilinx/14.7/ISE_DS/ISE"
-set XILINX   $env(XILINX)
+set XILINX "C:/Xilinx/14.7/ISE_DS/ISE"
+#set XILINX   $env(XILINX)
 
 # ----------------------------------------------------------------
 #set path to basil
