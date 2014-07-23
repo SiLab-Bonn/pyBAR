@@ -112,16 +112,16 @@ wire RJ45_ENABLED;
 wire TLU_BUSY;               // busy signal to TLU to de-assert trigger
 wire TLU_CLOCK;
 
-// CMD
-wire CMD_EXT_START_FLAG;     // to CMD FSM
-wire CMD_EXT_START_ENABLE;   // from CMD FSM
-wire CMD_READY;              // to TLU FSM
-wire CMD_START_FLAG, TLU_CMD_START_FLAG; // sending FE command triggered by external devices
-assign CMD_START_FLAG = TLU_CMD_START_FLAG;
-//reg CMD_CAL;                // when CAL command is send
+wire CMD_EXT_START_FLAG, TLU_CMD_EXT_START_FLAG; // to CMD FSM
+assign CMD_EXT_START_FLAG = TLU_CMD_EXT_START_FLAG;
+wire CMD_EXT_START_ENABLE; // from CMD FSM
+wire CMD_READY; // to TLU FSM
+wire CMD_START_FLAG; // sending FE command triggered by external devices
+
+//reg CMD_CAL; // when CAL command is send
 
 assign TX[0] = TLU_CLOCK; // trigger clock; also connected to RJ45 output
-assign TX[1] = TLU_BUSY | (TLU_CMD_START_FLAG/*CMD_CAL*/ & ~CMD_EXT_START_ENABLE); // TLU_BUSY signal; also connected to RJ45 output. Asserted when TLU FSM has accepted a trigger or when CMD FSM is busy. 
+assign TX[1] = TLU_BUSY | (~CMD_READY/*CMD_CAL*/ & ~CMD_EXT_START_ENABLE); // TLU_BUSY signal; also connected to RJ45 output. Asserted when TLU FSM has accepted a trigger or when CMD FSM is busy (when CMD_EXT_START_ENABLE is disabled). 
 assign TX[2] = (RJ45_ENABLED == 1'b1) ? RJ45_TRIGGER : (LEMO_TRIGGER | MONHIT | TDC_OUT); // to trigger on MONHIT or TDC_OUT use loop back cable from TX2 to RX0
 
 
@@ -389,7 +389,7 @@ tlu_controller #(
     .EXT_VETO(FIFO_FULL),
     
     .CMD_READY(CMD_READY),
-    .CMD_EXT_START_FLAG(TLU_CMD_START_FLAG),
+    .CMD_EXT_START_FLAG(TLU_CMD_EXT_START_FLAG),
     .CMD_EXT_START_ENABLE(CMD_EXT_START_ENABLE),
     
     .TIMESTAMP(TIMESTAMP)
