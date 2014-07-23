@@ -132,19 +132,20 @@ assign LEMO_RESET = LEMO_RX[1];
 assign TDC_IN = LEMO_RX[2];
 
 // TLU
-wire            RJ45_ENABLED;
-wire            TLU_BUSY;               // busy signal to TLU to de-assert trigger
-wire            TLU_CLOCK;
+wire RJ45_ENABLED;
+wire TLU_BUSY;               // busy signal to TLU to de-assert trigger
+wire TLU_CLOCK;
 
 // CMD
-wire            CMD_EXT_START_FLAG;     // to CMD FSM
-wire            CMD_EXT_START_ENABLE;   // from CMD FSM
-wire            CMD_READY;              // to TLU FSM
-wire            CMD_START_FLAG;         // for triggering external devices
-//reg             CMD_CAL;                // when CAL command is send
+wire CMD_EXT_START_FLAG;     // to CMD FSM
+wire CMD_EXT_START_ENABLE;   // from CMD FSM
+wire CMD_READY;              // to TLU FSM
+wire CMD_START_FLAG, TLU_CMD_START_FLAG, INJ_CMD_START_FLAG; // sending FE command triggered by external devices
+assign CMD_START_FLAG = TLU_CMD_START_FLAG | INJ_CMD_START_FLAG;
+//reg CMD_CAL;                // when CAL command is send
 
 assign TX[0] = TLU_CLOCK; // trigger clock; also connected to RJ45 output
-assign TX[1] = TLU_BUSY | (CMD_START_FLAG/*CMD_CAL*/ & ~CMD_EXT_START_ENABLE); // TLU_BUSY signal; also connected to RJ45 output. Asserted when TLU FSM has accepted a trigger or when CMD FSM is busy. 
+assign TX[1] = TLU_BUSY | (TLU_CMD_START_FLAG/*CMD_CAL*/ & ~CMD_EXT_START_ENABLE); // TLU_BUSY signal; also connected to RJ45 output. Asserted when TLU FSM has accepted a trigger or when CMD FSM is busy. 
 assign TX[2] = (RJ45_ENABLED == 1'b1) ? RJ45_TRIGGER : (LEMO_TRIGGER | MONHIT | TDC_OUT); // to trigger on MONHIT or TDC_OUT use loop back cable from TX2 to RX0
 
 
@@ -413,14 +414,14 @@ tlu_controller #(
     .EXT_VETO(FIFO_FULL),
     
     .CMD_READY(CMD_READY),
-    .CMD_EXT_START_FLAG(CMD_EXT_START_FLAG),
+    .CMD_EXT_START_FLAG(TLU_CMD_START_FLAG),
     .CMD_EXT_START_ENABLE(CMD_EXT_START_ENABLE),
     
     .TIMESTAMP(TIMESTAMP)
 );
 
 // CCPD
-wire SPI_CLK;
+wire SPI_CLK, SPI_CLK_CE;
 
 reg [15:0] INJ_CNT;
 wire CCPD_TDC_FIFO_READ;
@@ -586,7 +587,7 @@ clock_divider #(
 ) i_clock_divisor_40MHz_to_1kHz (
     .CLK(CLK_40),
     .RESET(1'b0),
-    .CE(),
+    .CE(SPI_CLK_CE),
     .CLOCK(SPI_CLK)
 );
 
@@ -649,6 +650,27 @@ pulse_gen
     .PULSE_CLK(SPI_CLK),
     .EXT_START(CCPD_TDCGATE),
     .PULSE(INJECT_PULSE)
+);
+
+// inject pulse flag
+wire INJECT_FLAG;
+reg INJECT_PULSE_FF;
+always @ (posedge CLK_40)
+begin
+    if (SPI_CLK_CE)
+    begin
+        INJECT_PULSE_FF <= INJECT_PULSE;
+    end
+end
+assign INJECT_FLAG = INJECT_PULSE & ~INJECT_PULSE_FF;
+
+flag_domain_crossing_ce inject_flag_domain_crossing (
+    .CLK_A(CLK_40),
+    .CLK_A_CE(SPI_CLK_CE),
+    .CLK_B(CLK_40),
+    .CLK_B_CE(1'b1),
+    .FLAG_IN_CLK_A(INJECT_FLAG),
+    .FLAG_OUT_CLK_B(INJ_CMD_START_FLAG)
 );
 
 pulse_gen
