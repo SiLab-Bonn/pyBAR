@@ -112,12 +112,12 @@ wire RJ45_ENABLED;
 wire TLU_BUSY;               // busy signal to TLU to de-assert trigger
 wire TLU_CLOCK;
 
-// CMD
 wire CMD_EXT_START_FLAG, TLU_CMD_EXT_START_FLAG; // to CMD FSM
 assign CMD_EXT_START_FLAG = TLU_CMD_EXT_START_FLAG;
 wire CMD_EXT_START_ENABLE; // from CMD FSM
 wire CMD_READY; // to TLU FSM
 wire CMD_START_FLAG; // sending FE command triggered by external devices
+
 //reg CMD_CAL; // when CAL command is send
 
 assign TX[0] = TLU_CLOCK; // trigger clock; also connected to RJ45 output
