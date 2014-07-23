@@ -19,7 +19,7 @@
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="1"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="16"/>
     </file>
-    <file xil_pn:name="../../../../../../basil/trunk/device/modules/utils/reset_gen.v" xil_pn:type="FILE_VERILOG">
+    <file xil_pn:name="../../../../../../../basil/trunk/device/modules/utils/reset_gen.v" xil_pn:type="FILE_VERILOG">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="4"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="17"/>
     </file>
@@ -30,91 +30,91 @@
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="6"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="25"/>
     </file>
-    <file xil_pn:name="../../../../../../basil/trunk/device/modules/utils/clock_divider.v" xil_pn:type="FILE_VERILOG">
+    <file xil_pn:name="../../../../../../../basil/trunk/device/modules/utils/clock_divider.v" xil_pn:type="FILE_VERILOG">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="32"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="18"/>
     </file>
-    <file xil_pn:name="../../../../../../basil/trunk/device/modules/cmd_seq/cmd_seq_core.v" xil_pn:type="FILE_VERILOG">
+    <file xil_pn:name="../../../../../../../basil/trunk/device/modules/cmd_seq/cmd_seq_core.v" xil_pn:type="FILE_VERILOG">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="28"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="15"/>
     </file>
-    <file xil_pn:name="../../../../../../basil/trunk/device/modules/cmd_seq/cmd_seq.v" xil_pn:type="FILE_VERILOG">
+    <file xil_pn:name="../../../../../../../basil/trunk/device/modules/cmd_seq/cmd_seq.v" xil_pn:type="FILE_VERILOG">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="29"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="24"/>
     </file>
-    <file xil_pn:name="../../../../../../basil/trunk/device/modules/sram_fifo/sram_fifo.v" xil_pn:type="FILE_VERILOG">
+    <file xil_pn:name="../../../../../../../basil/trunk/device/modules/sram_fifo/sram_fifo.v" xil_pn:type="FILE_VERILOG">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="30"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="21"/>
     </file>
-    <file xil_pn:name="../../../../../../basil/trunk/device/modules/sram_fifo/sram_fifo_core.v" xil_pn:type="FILE_VERILOG">
+    <file xil_pn:name="../../../../../../../basil/trunk/device/modules/sram_fifo/sram_fifo_core.v" xil_pn:type="FILE_VERILOG">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="31"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="13"/>
     </file>
-    <file xil_pn:name="../../../../../../basil/trunk/device/modules/fei4_rx/decode_8b10b.v" xil_pn:type="FILE_VERILOG">
+    <file xil_pn:name="../../../../../../../basil/trunk/device/modules/fei4_rx/decode_8b10b.v" xil_pn:type="FILE_VERILOG">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="32"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="6"/>
     </file>
-    <file xil_pn:name="../../../../../../basil/trunk/device/modules/fei4_rx/fei4_rx_core.v" xil_pn:type="FILE_VERILOG">
+    <file xil_pn:name="../../../../../../../basil/trunk/device/modules/fei4_rx/fei4_rx_core.v" xil_pn:type="FILE_VERILOG">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="33"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="14"/>
     </file>
-    <file xil_pn:name="../../../../../../basil/trunk/device/modules/fei4_rx/fei4_rx.v" xil_pn:type="FILE_VERILOG">
+    <file xil_pn:name="../../../../../../../basil/trunk/device/modules/fei4_rx/fei4_rx.v" xil_pn:type="FILE_VERILOG">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="34"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="23"/>
     </file>
-    <file xil_pn:name="../../../../../../basil/trunk/device/modules/fei4_rx/rec_sync.v" xil_pn:type="FILE_VERILOG">
+    <file xil_pn:name="../../../../../../../basil/trunk/device/modules/fei4_rx/rec_sync.v" xil_pn:type="FILE_VERILOG">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="35"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="5"/>
     </file>
-    <file xil_pn:name="../../../../../../basil/trunk/device/modules/fei4_rx/receiver_logic.v" xil_pn:type="FILE_VERILOG">
+    <file xil_pn:name="../../../../../../../basil/trunk/device/modules/fei4_rx/receiver_logic.v" xil_pn:type="FILE_VERILOG">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="36"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="9"/>
     </file>
-    <file xil_pn:name="../../../../../../basil/trunk/device/modules/fei4_rx/sync_master.v" xil_pn:type="FILE_VERILOG">
+    <file xil_pn:name="../../../../../../../basil/trunk/device/modules/fei4_rx/sync_master.v" xil_pn:type="FILE_VERILOG">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="37"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="4"/>
     </file>
-    <file xil_pn:name="../../../../../../basil/trunk/device/modules/utils/bus_to_ip.v" xil_pn:type="FILE_VERILOG">
+    <file xil_pn:name="../../../../../../../basil/trunk/device/modules/utils/bus_to_ip.v" xil_pn:type="FILE_VERILOG">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="39"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="10"/>
     </file>
-    <file xil_pn:name="../../../../../../basil/trunk/device/modules/utils/3_stage_synchronizer.v" xil_pn:type="FILE_VERILOG">
+    <file xil_pn:name="../../../../../../../basil/trunk/device/modules/utils/3_stage_synchronizer.v" xil_pn:type="FILE_VERILOG">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="41"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="7"/>
     </file>
-    <file xil_pn:name="../../../../../../basil/trunk/device/modules/utils/flag_domain_crossing.v" xil_pn:type="FILE_VERILOG">
+    <file xil_pn:name="../../../../../../../basil/trunk/device/modules/utils/flag_domain_crossing.v" xil_pn:type="FILE_VERILOG">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="42"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="1"/>
     </file>
-    <file xil_pn:name="../../../../../../basil/trunk/device/modules/utils/generic_fifo.v" xil_pn:type="FILE_VERILOG">
+    <file xil_pn:name="../../../../../../../basil/trunk/device/modules/utils/generic_fifo.v" xil_pn:type="FILE_VERILOG">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="46"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="2"/>
     </file>
-    <file xil_pn:name="../../../../../../basil/trunk/device/modules/utils/cdc_syncfifo.v" xil_pn:type="FILE_VERILOG">
+    <file xil_pn:name="../../../../../../../basil/trunk/device/modules/utils/cdc_syncfifo.v" xil_pn:type="FILE_VERILOG">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="47"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="3"/>
     </file>
-    <file xil_pn:name="../../../../../../basil/trunk/device/modules/rrp_arbiter/rrp_arbiter.v" xil_pn:type="FILE_VERILOG">
+    <file xil_pn:name="../../../../../../../basil/trunk/device/modules/rrp_arbiter/rrp_arbiter.v" xil_pn:type="FILE_VERILOG">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="48"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="22"/>
     </file>
-    <file xil_pn:name="../../../../../../basil/trunk/device/modules/tdc_s3/tdc_s3.v" xil_pn:type="FILE_VERILOG">
+    <file xil_pn:name="../../../../../../../basil/trunk/device/modules/tdc_s3/tdc_s3.v" xil_pn:type="FILE_VERILOG">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="143"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="20"/>
     </file>
-    <file xil_pn:name="../../../../../../basil/trunk/device/modules/tdc_s3/tdc_s3_core.v" xil_pn:type="FILE_VERILOG">
+    <file xil_pn:name="../../../../../../../basil/trunk/device/modules/tdc_s3/tdc_s3_core.v" xil_pn:type="FILE_VERILOG">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="144"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="12"/>
     </file>
-    <file xil_pn:name="../../../../../../basil/trunk/device/modules/tlu/tlu_controller.v" xil_pn:type="FILE_VERILOG">
+    <file xil_pn:name="../../../../../../../basil/trunk/device/modules/tlu/tlu_controller.v" xil_pn:type="FILE_VERILOG">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="240"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="19"/>
     </file>
-    <file xil_pn:name="../../../../../../basil/trunk/device/modules/tlu/tlu_controller_core.v" xil_pn:type="FILE_VERILOG">
+    <file xil_pn:name="../../../../../../../basil/trunk/device/modules/tlu/tlu_controller_core.v" xil_pn:type="FILE_VERILOG">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="241"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="11"/>
     </file>
-    <file xil_pn:name="../../../../../../basil/trunk/device/modules/tlu/tlu_controller_fsm.v" xil_pn:type="FILE_VERILOG">
+    <file xil_pn:name="../../../../../../../basil/trunk/device/modules/tlu/tlu_controller_fsm.v" xil_pn:type="FILE_VERILOG">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="242"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="8"/>
     </file>
@@ -390,7 +390,7 @@
     <property xil_pn:name="Wait for DCI Match (Output Events) virtex2" xil_pn:value="Auto" xil_pn:valueState="default"/>
     <property xil_pn:name="Wait for DLL Lock (Output Events)" xil_pn:value="Default (NoWait)" xil_pn:valueState="default"/>
     <property xil_pn:name="Wave window" xil_pn:value="true" xil_pn:valueState="default"/>
-    <property xil_pn:name="Working Directory" xil_pn:value="." xil_pn:valueState="default"/>
+    <property xil_pn:name="Working Directory" xil_pn:value="." xil_pn:valueState="non-default"/>
     <property xil_pn:name="Write Timing Constraints" xil_pn:value="false" xil_pn:valueState="default"/>
     <property xil_pn:name="XOR Collapsing" xil_pn:value="true" xil_pn:valueState="default"/>
     <!--                                                                                  -->
@@ -405,10 +405,10 @@
     <property xil_pn:name="PROP_PostSynthSimTop" xil_pn:value="" xil_pn:valueState="default"/>
     <property xil_pn:name="PROP_PostXlateSimTop" xil_pn:value="" xil_pn:valueState="default"/>
     <property xil_pn:name="PROP_PreSynthesis" xil_pn:value="PreSynthesis" xil_pn:valueState="default"/>
-    <property xil_pn:name="PROP_intProjectCreationTimestamp" xil_pn:value="YYYY-MM-DDTHH:MM:SS" xil_pn:valueState="default"/>
-    <property xil_pn:name="PROP_intWbtProjectID" xil_pn:value="0" xil_pn:valueState="default"/>
-    <property xil_pn:name="PROP_intWorkingDirLocWRTProjDir" xil_pn:value="UnableToCalculate" xil_pn:valueState="default"/>
-    <property xil_pn:name="PROP_intWorkingDirUsed" xil_pn:value="Unknown" xil_pn:valueState="default"/>
+    <property xil_pn:name="PROP_intProjectCreationTimestamp" xil_pn:value="2014-07-23T14:55:47" xil_pn:valueState="non-default"/>
+    <property xil_pn:name="PROP_intWbtProjectID" xil_pn:value="6860FA8566E1408D8064253F89CBB9D4" xil_pn:valueState="non-default"/>
+    <property xil_pn:name="PROP_intWorkingDirLocWRTProjDir" xil_pn:value="Same" xil_pn:valueState="non-default"/>
+    <property xil_pn:name="PROP_intWorkingDirUsed" xil_pn:value="No" xil_pn:valueState="non-default"/>
   </properties>
 
   <bindings/>
@@ -422,6 +422,7 @@
     <!-- Do not hand-edit this section, as it will be overwritten when the    -->
     <!-- project is analyzed based on files automatically identified as       -->
     <!-- include files.                                                       -->
+    <file xil_pn:name="../../../../../../../basil/trunk/device/modules/includes/log2func.v" xil_pn:type="FILE_VERILOG"/>
   </autoManagedFiles>
 
 </project>

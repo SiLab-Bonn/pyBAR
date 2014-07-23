@@ -34,11 +34,7 @@ module top (
     output wire [10:0] MULTI_IO, // Pin 1-11, 12: not connected, 13, 15: DGND, 14, 16: VCC_3.3V
     
     //LED
-    output wire LED1,
-    output wire LED2,
-    output wire LED3,
-    output wire LED4,
-    output wire LED5,
+    output wire [4:0] LED,
     
     //SRAM
     output wire [19:0] SRAM_A,
@@ -53,36 +49,48 @@ module top (
     output wire [2:0] TX, // TX[0] == RJ45 trigger clock output, TX[1] == RJ45 busy output
     input wire RJ45_RESET,
     input wire RJ45_TRIGGER,
-    input wire MONHIT,
-    
+
+    // FE CLK (SCC and BIC)
     output wire CMD_CLK,
+
+    // FE DI (SCC and BIC)
     output wire CMD_DATA,
-    output wire EN_V1, // EN_VA1 on SCC, EN_VDD1 on BIC
-    output wire EN_V2, // EN_VA2 on SCC, EN_VDD2 on BIC
-    output wire EN_V3, // EN_VD2 on SCC, EN_VDD3 on BIC
-    output wire EN_V4, // EN_VD1 on SCC, EN_VDD4 on BIC
-    
-    input wire [3:0] DOBOUT, // BIC only, 0 - Ch1, 1 - Ch2, 2 - Ch3, 3 - DO on SCC, Ch4 on BIC
-    
+
+    // FE DOBOUT (SCC and BIC)
+    // DOBOUT[0]: Ch1
+    // DOBOUT[1]: Ch2
+    // DOBOUT[2]: Ch3
+    // DOBOUT[3]: Ch4 on BIC, DO on SCC
+    input wire [3:0] DOBOUT,
+
+    // Voltage Regulator Enable (SCC and BIC)
+    // EN[0]: EN_VA1 on SCC, EN_VDD1 on BIC
+    // EN[1]: EN_VA2 on SCC, EN_VDD2 on BIC
+    // EN[2]: EN_VD2 on SCC, EN_VDD3 on BIC
+    // EN[3]: EN_VD1 on SCC, EN_VDD4 on BIC
+    output wire [3:0] EN,
+
     // Over Current Protection (BIC only)
-    input wire OC1,
-    input wire OC2,
-    input wire OC3,
-    input wire OC4,
-    
+    input wire [3:0] OC,
+
     // Select (SEL) LED (BIC only)
-    output wire SEL1,
-    output wire SEL2,
-    output wire SEL3,
-    output wire SEL4,
-    
+    // SEL[0]: Ch1
+    // SEL[1]: Ch2
+    // SEL[2]: Ch3
+    // SEL[3]: Ch4 on BIC, DO on SCC
+    output wire [3:0] SEL,
+
+    // FE Hitbus (SCC only)
+    input wire MONHIT,
+
     //input wire FPGA_BUTTON // switch S2 on MultiIO board, active low
-    
+
     // I2C
     inout SDA,
     inout SCL
 );
 
+// Assignments
 wire BUS_RST;
 wire BUS_CLK;
 wire CLK_40;
@@ -91,19 +99,12 @@ wire RX_CLK2X;
 wire DATA_CLK;
 wire CLK_LOCKED;
 
-assign EN_V1 = 1'b1;
-assign EN_V2 = 1'b1;
-assign EN_V3 = 1'b1;
-assign EN_V4 = 1'b1;
+assign EN = 4'b1111;
 
-assign SEL1 = 1'b1;
-assign SEL2 = 1'b1;
-assign SEL3 = 1'b1;
-assign SEL4 = 1'b1;
+assign SEL = 4'b1111;
 
 assign MULTI_IO = 11'b000_0000_0000;
 assign DEBUG_D = 16'ha5a5;
-
 
 wire LEMO_TRIGGER, LEMO_RESET, TDC_IN, TDC_OUT;
 assign LEMO_TRIGGER = LEMO_RX[0];
@@ -111,19 +112,20 @@ assign LEMO_RESET = LEMO_RX[1];
 assign TDC_IN = LEMO_RX[2];
 
 // TLU
-wire            RJ45_ENABLED;
-wire            TLU_BUSY;               // busy signal to TLU to deassert trigger
-wire            TLU_CLOCK;
+wire RJ45_ENABLED;
+wire TLU_BUSY;               // busy signal to TLU to de-assert trigger
+wire TLU_CLOCK;
 
 // CMD
-wire            CMD_EXT_START_FLAG;     // to CMD FSM
-wire            CMD_EXT_START_ENABLE;   // from CMD FSM
-wire            CMD_READY;              // to TLU FSM
-wire            CMD_START_FLAG;         // for triggering external devices
-//reg             CMD_CAL;                // when CAL command is send
+wire CMD_EXT_START_FLAG, TLU_CMD_EXT_START_FLAG; // to CMD FSM
+assign CMD_EXT_START_FLAG = TLU_CMD_EXT_START_FLAG;
+wire CMD_EXT_START_ENABLE; // from CMD FSM
+wire CMD_READY; // to TLU FSM
+wire CMD_START_FLAG; // sending FE command triggered by external devices
+//reg CMD_CAL; // when CAL command is send
 
 assign TX[0] = TLU_CLOCK; // trigger clock; also connected to RJ45 output
-assign TX[1] = TLU_BUSY | (CMD_START_FLAG/*CMD_CAL*/ & ~CMD_EXT_START_ENABLE); // TLU_BUSY signal; also connected to RJ45 output. Asserted when TLU FSM has accepted a trigger or when CMD FSM is busy. 
+assign TX[1] = TLU_BUSY | (~CMD_READY/*CMD_CAL*/ & ~CMD_EXT_START_ENABLE); // TLU_BUSY signal; also connected to RJ45 output. Asserted when TLU FSM has accepted a trigger or when CMD FSM is busy (when CMD_EXT_START_ENABLE is disabled). 
 assign TX[2] = (RJ45_ENABLED == 1'b1) ? RJ45_TRIGGER : (LEMO_TRIGGER | MONHIT | TDC_OUT); // to trigger on MONHIT or TDC_OUT use loop back cable from TX2 to RX0
 
 
@@ -167,7 +169,6 @@ clock_divider #(
     .CLOCK(CLK_2HZ)
 );
 
-
 // -------  MODULE ADREESSES  ------- //
 localparam CMD_BASEADDR = 16'h0000;
 localparam CMD_HIGHADDR = 16'h8000-1;
@@ -207,13 +208,11 @@ wire FIFO_NOT_EMPTY; // raised, when SRAM FIFO is not empty
 wire FIFO_FULL, FIFO_NEAR_FULL; // raised, when SRAM FIFO is full / near full
 wire FIFO_READ_ERROR; // raised, when attempting to read from SRAM FIFO when it is empty
 
-
 cmd_seq 
 #( 
     .BASEADDR(CMD_BASEADDR),
     .HIGHADDR(CMD_HIGHADDR)
-)  icmd
-(
+) icmd (
     .BUS_CLK(BUS_CLK),
     .BUS_RST(BUS_RST),
     .BUS_ADD(BUS_ADD),
@@ -255,8 +254,7 @@ generate
         .HIGHADDR(RX1_HIGHADDR-16'h0100*i),
         .DSIZE(DSIZE),
         .DATA_IDENTIFIER(i+1)
-    ) ifei4_rx
-    (
+    ) i_fei4_rx (
         .RX_CLK(RX_CLK),
         .RX_CLK2X(RX_CLK2X),
         .DATA_CLK(DATA_CLK),
@@ -294,8 +292,7 @@ tdc_s3
     .HIGHADDR(TDC_HIGHADDR),
     .CLKDV(4),
     .DATA_IDENTIFIER(4'b0100) // one-hot
-) i_tdc
-(
+) i_tdc (
     .CLK320(RX_CLK2X),
     .CLK160(RX_CLK),
     .DV_CLK(CLK_40),
@@ -329,7 +326,6 @@ tlu_controller #(
     .HIGHADDR(TLU_HIGHADDR),
     .DIVISOR(8)
 ) i_tlu_controller (
-
     .BUS_CLK(BUS_CLK),
     .BUS_RST(BUS_RST),
     .BUS_ADD(BUS_ADD),
@@ -356,12 +352,13 @@ tlu_controller #(
     .EXT_VETO(FIFO_FULL),
     
     .CMD_READY(CMD_READY),
-    .CMD_EXT_START_FLAG(CMD_EXT_START_FLAG),
+    .CMD_EXT_START_FLAG(TLU_CMD_EXT_START_FLAG),
     .CMD_EXT_START_ENABLE(CMD_EXT_START_ENABLE),
     
     .TIMESTAMP(TIMESTAMP)
 );
 
+// Arbiter
 wire ARB_READY_OUT, ARB_WRITE_OUT;
 wire [31:0] ARB_DATA_OUT;
 wire [5:0] READ_GRANT;
@@ -369,8 +366,7 @@ wire [5:0] READ_GRANT;
 rrp_arbiter 
 #( 
     .WIDTH(6)
-) i_rrp_arbiter
-(
+) i_rrp_arbiter (
     .RST(BUS_RST),
     .CLK(BUS_CLK),
 
@@ -385,10 +381,10 @@ rrp_arbiter
 );
 
 assign TLU_FIFO_READ = READ_GRANT[0];
-assign FE_FIFO_READ = READ_GRANT[5:2];
 assign TDC_FIFO_READ = READ_GRANT[1];
+assign FE_FIFO_READ = READ_GRANT[5:2];
 
-
+// SRAM
 wire USB_READ;
 assign USB_READ = FREAD & FSTROBE;
 
@@ -445,11 +441,11 @@ SRLC16E # (
 );
 
 // LED assignments
-assign LED1 = SHOW_VERSION? VERSION[0] : RX_READY[0] & ((RX_8B10B_DECODER_ERR[0]? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[0] | RX_FIFO_FULL[0]);
-assign LED2 = SHOW_VERSION? VERSION[1] : RX_READY[1] & ((RX_8B10B_DECODER_ERR[1]? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[1] | RX_FIFO_FULL[1]);
-assign LED3 = SHOW_VERSION? VERSION[2] : RX_READY[2] & ((RX_8B10B_DECODER_ERR[2]? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[2] | RX_FIFO_FULL[2]);
-assign LED4 = SHOW_VERSION? VERSION[3] : RX_READY[3] & ((RX_8B10B_DECODER_ERR[3]? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[3] | RX_FIFO_FULL[3]);
-assign LED5 = SHOW_VERSION? VERSION[4] : (((RJ45_ENABLED? CLK_2HZ : CLK_1HZ) | FIFO_FULL) & CLK_LOCKED);
+assign LED[0] = SHOW_VERSION? VERSION[0] : RX_READY[0] & ((RX_8B10B_DECODER_ERR[0]? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[0] | RX_FIFO_FULL[0]);
+assign LED[1] = SHOW_VERSION? VERSION[1] : RX_READY[1] & ((RX_8B10B_DECODER_ERR[1]? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[1] | RX_FIFO_FULL[1]);
+assign LED[2] = SHOW_VERSION? VERSION[2] : RX_READY[2] & ((RX_8B10B_DECODER_ERR[2]? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[2] | RX_FIFO_FULL[2]);
+assign LED[3] = SHOW_VERSION? VERSION[3] : RX_READY[3] & ((RX_8B10B_DECODER_ERR[3]? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[3] | RX_FIFO_FULL[3]);
+assign LED[4] = SHOW_VERSION? VERSION[4] : (((RJ45_ENABLED? CLK_2HZ : CLK_1HZ) | FIFO_FULL) & CLK_LOCKED);
 
 
 // Chipscope
