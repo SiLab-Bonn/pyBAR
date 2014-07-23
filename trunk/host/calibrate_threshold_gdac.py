@@ -1,5 +1,7 @@
-"""A script that runs a threshold scan for different GDAC settings to get a calibration. To save time the PlsrDAC start position is the start position determined from the previous threshold scan.
-After the data taking the data is analyzed and the calibration is written to h5 files.
+"""A script that runs a threshold scan for different parameter (e.g. GDAC, TDACVbp) to get a calibration. 
+To save time the PlsrDAC start position is the start position determined from the previous threshold scan. So the
+scan parameter values should be chosen in a ways that the threshold increases for each step.
+After the data taking the data is analyzed and the calibration is written a h5 file.
 """
 from datetime import datetime
 import configuration
@@ -20,14 +22,15 @@ from analysis.analyze_raw_data import AnalyzeRawData
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 calibration_configuration = {
-    "gdacs": [66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159,160,161,162,163,164,165,166,167,168,169,170,171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,188,189,190,191,192,193,194,195,196,197,198,199,200,201,202,203,204,205,206,207,208,209,210,211,212,213,214,215,216,217,218,219,220,221,222,223,224,225,226,227,228,229,230,231,232,233,234,235,236,237,238,239,240,241,242,243,244,245,246,247,248,249,250,251,252,253,254,255,263,280,299,320,344,369,398,429,464,502,544,591,643,700,763,833,910,995,1089,1193,1308,1435,1576,1731,1903,2093,2302,2534,2790,3073,3385,3731,4113,4535,5002,5517,6000,6500,7000,7500,8000,8500,9000,9500,10000,10500,11000,11500,12000,12500,13000,13500,14000,14500,15000,15500,16000,16500,17000,17500,18000,18500,19000,19500,20000],
+    "parameter_name": 'GDAC',
+    "parameter_values": [66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159,160,161,162,163,164,165,166,167,168,169,170,171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,188,189,190,191,192,193,194,195,196,197,198,199,200,201,202,203,204,205,206,207,208,209,210,211,212,213,214,215,216,217,218,219,220,221,222,223,224,225,226,227,228,229,230,231,232,233,234,235,236,237,238,239,240,241,242,243,244,245,246,247,248,249,250,251,252,253,254,255,263,280,299,320,344,369,398,429,464,502,544,591,643,700,763,833,910,995,1089,1193,1308,1435,1576,1731,1903,2093,2302,2534,2790,3073,3385,3731,4113,4535,5002,5517,6000,6500,7000,7500,8000,8500,9000,9500,10000,10500,11000,11500,12000,12500,13000,13500,14000,14500,15000,15500,16000,16500,17000,17500,18000,18500,19000,19500,20000],
     "ignore_columns": (1, 78, 79, 80),
-    "ignore_gdacs": None,  # do not use data for these GDACs
-    "create_plots": False,
+    "ignore_parameter_values": None,  # do not use data for these parameter values for the calibration
+    "create_plots": True,
     "create_result_plots": True,
-    "scan_name": "K:\data\FE-I4\ChargeRecoMethod\source_SR90\calibration_new\calibrate_threshold_gdac_SCC_99",
-    "configuration_file": "K:\data\FE-I4\ChargeRecoMethod\source_SR90\calibration_new\calibrate_threshold_gdac_skipped_gdacs",
-    "overwrite_output_files": False
+    "configuration_file": "K:\\pyBAR\\host\\data\\threshold_calibration",  # output file with the calibration data
+    "overwrite_output_files": False,
+    "scan_name": "K:\\pyBAR\\host\\data\\test_module\\test_module_fast_threshold_scan"  # only needed for reanalyze of data
 }
 
 
@@ -53,16 +56,16 @@ def store_calibration_data_as_table(out_file_h5, mean_threshold_calibration, mea
     threshold_calib_table = out_file_h5.createTable(out_file_h5.root, name='ThresholdCalibration', description=data_struct.ThresholdCalibrationTable, title='threshold_calibration', filters=filter_table)
     for column in range(0, 80):
         for row in range(0, 336):
-            for gdac_index, gdac in enumerate(calibration_configuration['gdacs']):
+            for parameter_value_index, parameter_value in enumerate(calibration_configuration['parameter_values']):
                 threshold_calib_table.row['column'] = column
                 threshold_calib_table.row['row'] = row
-                threshold_calib_table.row['gdac'] = gdac
-                threshold_calib_table.row['threshold'] = threshold_calibration[column, row, gdac_index]
+                threshold_calib_table.row['parameter_value'] = parameter_value
+                threshold_calib_table.row['threshold'] = threshold_calibration[column, row, parameter_value_index]
                 threshold_calib_table.row.append()
-    for gdac_index, gdac in enumerate(calibration_configuration['gdacs']):
-        mean_threshold_calib_table.row['gdac'] = gdac
-        mean_threshold_calib_table.row['mean_threshold'] = mean_threshold_calibration[gdac_index]
-        mean_threshold_calib_table.row['threshold_rms'] = mean_threshold_rms_calibration[gdac_index]
+    for parameter_value_index, parameter_value in enumerate(calibration_configuration['parameter_values']):
+        mean_threshold_calib_table.row['parameter_value'] = parameter_value
+        mean_threshold_calib_table.row['mean_threshold'] = mean_threshold_calibration[parameter_value_index]
+        mean_threshold_calib_table.row['threshold_rms'] = mean_threshold_rms_calibration[parameter_value_index]
         mean_threshold_calib_table.row.append()
 
     threshold_calib_table.flush()
@@ -92,18 +95,18 @@ def create_calibration(scan_data_filenames, ignore_columns, fei4b=False):
         logging.info('Saving plot in: %s' % output_pdf_filename)
         output_pdf = PdfPages(output_pdf_filename)
 
-    mean_threshold_calibration = np.empty(shape=(len(calibration_configuration['gdacs']),), dtype='<f8')  # array to hold the analyzed data in ram
-    mean_threshold_rms_calibration = np.empty(shape=(len(calibration_configuration['gdacs']),), dtype='<f8')  # array to hold the analyzed data in ram
-    threshold_calibration = np.empty(shape=(80, 336, len(calibration_configuration['gdacs'])), dtype='<f8')  # array to hold the analyzed data in ram
+    mean_threshold_calibration = np.empty(shape=(len(calibration_configuration['parameter_values']),), dtype='<f8')  # array to hold the analyzed data in ram
+    mean_threshold_rms_calibration = np.empty(shape=(len(calibration_configuration['parameter_values']),), dtype='<f8')  # array to hold the analyzed data in ram
+    threshold_calibration = np.empty(shape=(80, 336, len(calibration_configuration['parameter_values'])), dtype='<f8')  # array to hold the analyzed data in ram
 
-    progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=len(calibration_configuration['gdacs']))
+    progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=len(calibration_configuration['parameter_values']))
     progress_bar.start()
 
-    for gdac_index, gdac in enumerate(calibration_configuration['gdacs']):
-        if calibration_configuration['ignore_gdacs'] is not None and gdac in calibration_configuration['ignore_gdacs']:
+    for parameter_value_index, parameter_value in enumerate(calibration_configuration['parameter_values']):
+        if calibration_configuration['ignore_parameter_values'] is not None and parameter_value in calibration_configuration['ignore_parameter_values']:
             continue
 
-        raw_data_file = scan_data_filenames[gdac]
+        raw_data_file = scan_data_filenames[parameter_value]
         analyzed_data_file = raw_data_file[:-3] + '_interpreted.h5'
         analyze(raw_data_file=raw_data_file, analyzed_data_file=analyzed_data_file, fei4b=fei4b)
 
@@ -113,24 +116,24 @@ def create_calibration(scan_data_filenames, ignore_columns, fei4b=False):
             thresholds_masked = mask_columns(pixel_array=in_file_h5.root.HistThresholdFitted[:], ignore_columns=ignore_columns)
             # plot the threshold distribution and the s curves
             if calibration_configuration['create_plots']:
-                plotThreeWay(hist=thresholds_masked, title='Threshold Fitted for GDAC = ' + str(gdac), filename=output_pdf)
+                plotThreeWay(hist=thresholds_masked, title='Threshold Fitted for ' + calibration_configuration['parameter_name'] + ' = ' + str(parameter_value), filename=output_pdf)
             meta_data_array = in_file_h5.root.meta_data[:]
             parameter_settings = analysis_utils.get_scan_parameter(meta_data_array=meta_data_array)
             scan_parameters = parameter_settings['PlsrDAC']
             if calibration_configuration['create_plots']:
                 plot_scurves(occupancy_hist=occupancy_masked, scan_parameters=scan_parameters, scan_parameter_name='PlsrDAC', filename=output_pdf)
             # fill the calibration data arrays
-            mean_threshold_calibration[gdac_index] = np.ma.mean(thresholds_masked)
-            mean_threshold_rms_calibration[gdac_index] = np.ma.std(thresholds_masked)
-            threshold_calibration[:, :, gdac_index] = thresholds_masked.T
-        progress_bar.update(gdac_index)
+            mean_threshold_calibration[parameter_value_index] = np.ma.mean(thresholds_masked)
+            mean_threshold_rms_calibration[parameter_value_index] = np.ma.std(thresholds_masked)
+            threshold_calibration[:, :, parameter_value_index] = thresholds_masked.T
+        progress_bar.update(parameter_value_index)
     progress_bar.finish()
 
     if calibration_configuration['create_result_plots']:
-        plot_scatter(x=calibration_configuration['gdacs'], y=mean_threshold_calibration, title='Threshold calibration', x_label='GDAC', y_label='Mean threshold', log_x=False, filename=output_pdf)
-        plot_scatter(x=calibration_configuration['gdacs'], y=mean_threshold_calibration, title='Threshold calibration', x_label='GDAC', y_label='Mean threshold', log_x=True, filename=output_pdf)
-        plot_scatter(x=calibration_configuration['gdacs'], y=mean_threshold_rms_calibration, title='Threshold calibration', x_label='GDAC', y_label='Threshold RMS', log_x=False, filename=output_pdf)
-        plot_scatter(x=calibration_configuration['gdacs'], y=mean_threshold_rms_calibration, title='Threshold calibration', x_label='GDAC', y_label='Threshold RMS', log_x=True, filename=output_pdf)
+        plot_scatter(x=calibration_configuration['parameter_values'], y=mean_threshold_calibration, title='Threshold calibration', x_label=calibration_configuration["parameter_name"], y_label='Mean threshold', log_x=False, filename=output_pdf)
+        plot_scatter(x=calibration_configuration['parameter_values'], y=mean_threshold_calibration, title='Threshold calibration', x_label=calibration_configuration["parameter_name"], y_label='Mean threshold', log_x=True, filename=output_pdf)
+        plot_scatter(x=calibration_configuration['parameter_values'], y=mean_threshold_rms_calibration, title='Threshold calibration', x_label=calibration_configuration["parameter_name"], y_label='Threshold RMS', log_x=False, filename=output_pdf)
+        plot_scatter(x=calibration_configuration['parameter_values'], y=mean_threshold_rms_calibration, title='Threshold calibration', x_label=calibration_configuration["parameter_name"], y_label='Threshold RMS', log_x=True, filename=output_pdf)
 
     if calibration_configuration['create_plots'] or calibration_configuration['create_result_plots']:
         output_pdf.close()
@@ -143,11 +146,11 @@ def create_calibration(scan_data_filenames, ignore_columns, fei4b=False):
 
 def reanalyze(fei4b=False):
     data_files = analysis_utils.get_data_file_names_from_scan_base(calibration_configuration['scan_name'], filter_file_words=['analyzed', 'interpreted', 'cut_', 'cluster_sizes', 'trigger_fe'], parameter=True)
-    data_files_par = analysis_utils.get_parameter_from_files(data_files, parameters='GDAC', unique=True, sort=True)
+    data_files_par = analysis_utils.get_parameter_from_files(data_files, parameters=calibration_configuration["parameter_name"], unique=True, sort=True)
     scan_data_filenames = {}
     for file_name, parameter in data_files_par.items():
-        scan_data_filenames[parameter['GDAC'][0]] = file_name
-    calibration_configuration['gdacs'] = sorted(scan_data_filenames.keys())
+        scan_data_filenames[parameter[calibration_configuration["parameter_name"]][0]] = file_name
+    calibration_configuration['parameter_values'] = sorted(scan_data_filenames.keys())
     create_calibration(scan_data_filenames=scan_data_filenames, ignore_columns=calibration_configuration['ignore_columns'], fei4b=fei4b)
 
 
@@ -159,22 +162,26 @@ def mask_columns(pixel_array, ignore_columns):
 
 
 if __name__ == "__main__":
-    scan_id = 'calibrate_threshold_gdac'
+    scan_id = 'calibrate_threshold_' + calibration_configuration["parameter_name"]
     startTime = datetime.now()
 #     reanalyze()
-    logging.info('Taking threshold data at following GDACs: %s' % str(calibration_configuration['gdacs']))
+    logging.info('Taking threshold data at following ' + calibration_configuration["parameter_name"] + ' values: %s' % str(calibration_configuration['parameter_values']))
     scan_data_filenames = {}
     scan_threshold_fast = FastThresholdScan(**configuration.default_configuration)
-    for i, gdac_value in enumerate(calibration_configuration['gdac_range']):
-        scan_threshold_fast.register_utils.set_gdac(gdac_value)
-        scan_threshold_fast.scan_id = calibration_configuration['scan_id'] + '_' + str(gdac_value)
+    scan_id = scan_threshold_fast.scan_id
+    for i, parameter_value in enumerate(calibration_configuration['parameter_values']):
+        if calibration_configuration['parameter_name'] == 'GDAC':
+            scan_threshold_fast.register_utils.set_gdac(parameter_value)
+        else:
+            scan_threshold_fast.register.set_global_register_value(calibration_configuration['parameter_name'], parameter_value)
+        scan_threshold_fast.scan_id = scan_id + '_' + calibration_configuration["parameter_name"] + '_' + str(parameter_value)
         scan_threshold_fast.start(configure=True, scan_parameter_range=(scan_threshold_fast.scan_parameter_start, 800), scan_parameter_stepsize=2, search_distance=10, minimum_data_points=scan_threshold_fast.data_points - 2, ignore_columns=calibration_configuration['ignore_columns'])
         scan_threshold_fast.stop()
-        scan_data_filenames[gdac_value] = scan_threshold_fast.scan_data_filename
+        scan_data_filenames[parameter_value] = scan_threshold_fast.scan_data_filename
 
     logging.info("Calibration finished in " + str(datetime.now() - startTime))
 
 #     analyze and plot the data from all scans
-    create_calibration(calibration_configuration['scan_id'], scan_data_filenames=scan_data_filenames, ignore_columns=calibration_configuration['ignore_columns'], fei4b=scan_threshold_fast.register.fei4b)
+    create_calibration(scan_data_filenames=scan_data_filenames, ignore_columns=calibration_configuration['ignore_columns'], fei4b=scan_threshold_fast.register.fei4b)
 
     logging.info("Finished!")
