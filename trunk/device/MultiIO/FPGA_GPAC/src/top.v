@@ -142,7 +142,6 @@ assign CMD_EXT_START_FLAG = TLU_CMD_EXT_START_FLAG | INJ_CMD_EXT_START_FLAG;
 wire CMD_EXT_START_ENABLE; // from CMD FSM
 wire CMD_READY; // to TLU FSM
 wire CMD_START_FLAG; // sending FE command triggered by external devices
-
 //reg CMD_CAL; // when CAL command is send
 
 assign TX[0] = TLU_CLOCK; // trigger clock; also connected to RJ45 output
