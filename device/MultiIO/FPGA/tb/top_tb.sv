@@ -319,35 +319,7 @@ module top_tb;
         #40 MONHIT = 0;
         #10000
         @(posedge FCLK_IN);
-        
-        
-        // CMD
-        repeat(2000) @(posedge FCLK_IN);
-        sidev.WriteExternal( `CMD_SIZE_REG,  64);
-        sidev.WriteExternal( `CMD_REP_REG,  3);
-        sidev.WriteExternal( `CMD_DATA_MEM,    8'hc3);
-        sidev.WriteExternal( `CMD_DATA_MEM+1,  8'h81);
-        sidev.WriteExternal( `CMD_DATA_MEM+2,  8'hFF);
-        sidev.WriteExternal( `CMD_DATA_MEM+3,  8'h00);
-        sidev.WriteExternal( `CMD_DATA_MEM+4,  8'hFF);
-        sidev.WriteExternal( `CMD_DATA_MEM+5,  8'hAA);
-        sidev.WriteExternal( `CMD_DATA_MEM+6,  8'h55);
-        sidev.WriteExternal( `CMD_DATA_MEM+7,  8'hFF);
-        
-        sidev.WriteExternal( `CMD_START_REPEAT_REG, 0); // 16bit
-        sidev.WriteExternal( `CMD_STOP_REPEAT_REG, 0); // 16bit
-        sidev.WriteExternal( `CMD_START_REG,  0);
-        repeat(500) @(posedge FCLK_IN);
 
-        sidev.WriteExternal( `CMD_START_REPEAT_REG, 2); // 16bit
-        sidev.WriteExternal( `CMD_STOP_REPEAT_REG, 0); // 16bit
-        sidev.WriteExternal( `CMD_START_REG,  0);
-        repeat(500) @(posedge FCLK_IN);
-        
-        sidev.WriteExternal( `CMD_START_REPEAT_REG, 8); // 16bit
-        sidev.WriteExternal( `CMD_STOP_REPEAT_REG, 2); // 16bit
-        sidev.WriteExternal( `CMD_START_REG,  0);
-        repeat(500) @(posedge FCLK_IN);
         
         #20000
         RJ45_TRIGGER = 1;
@@ -373,7 +345,35 @@ module top_tb;
         
         for(int i=0; i< data_size/2; i++)
             ReadFE();
-            
+
+
+        // CMD
+        repeat(2000) @(posedge FCLK_IN);
+        sidev.WriteExternal( `CMD_SIZE_REG,  64);
+        sidev.WriteExternal( `CMD_REP_REG,  2);
+        sidev.WriteExternal( `CMD_DATA_MEM,    8'h81);
+        sidev.WriteExternal( `CMD_DATA_MEM+1,  8'hc1);
+        sidev.WriteExternal( `CMD_DATA_MEM+2,  8'hFF);
+        sidev.WriteExternal( `CMD_DATA_MEM+3,  8'h00);
+        sidev.WriteExternal( `CMD_DATA_MEM+4,  8'hFF);
+        sidev.WriteExternal( `CMD_DATA_MEM+5,  8'hAA);
+        sidev.WriteExternal( `CMD_DATA_MEM+6,  8'h55);
+        sidev.WriteExternal( `CMD_DATA_MEM+7,  8'hFF);
+        
+        sidev.WriteExternal( `CMD_START_REPEAT_REG, 0); // 16bit
+        sidev.WriteExternal( `CMD_STOP_REPEAT_REG, 0); // 16bit
+        sidev.WriteExternal( `CMD_START_REG,  0);
+        repeat(200) @(posedge FCLK_IN);
+
+        sidev.WriteExternal( `CMD_START_REPEAT_REG, 8); // 16bit
+        sidev.WriteExternal( `CMD_STOP_REPEAT_REG, 0); // 16bit
+        sidev.WriteExternal( `CMD_START_REG,  0);
+        repeat(200) @(posedge FCLK_IN);
+        
+        sidev.WriteExternal( `CMD_START_REPEAT_REG, 8); // 16bit
+        sidev.WriteExternal( `CMD_STOP_REPEAT_REG, 16); // 16bit
+        sidev.WriteExternal( `CMD_START_REG,  0);
+        repeat(200) @(posedge FCLK_IN);
     end
     
     
