@@ -543,6 +543,7 @@ class ScanBase(object):
                         self.register_utils.start_command()
 
                 try:
+                    self.register_utils.wait_for_command()
                     eol_function()
                 except TypeError:
                     pass
