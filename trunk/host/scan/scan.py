@@ -1,6 +1,6 @@
 from basil.dut import Dut
 
-import time
+# import time
 import os
 import logging
 import re
@@ -31,13 +31,6 @@ import signal
 from bitarray import bitarray
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
-
-
-default_plsr_dac_c_high_c_low_correction = [2, 2, 2, 3, 3, 3, 2, 2, 3, 2, 2, 0, 0, 0, 0, 1, 1, 1, 2, 3, 3, 3, 3, 2, 2, 2, 4, 5, 5, 5, 5, 6, 6, 6, 6, 6, 5, 6, 6, 6]
-
-default_plsr_dac_c_high_correction = [3, 3, 3, 4, 4, 5, 4, 3, 4, 3, 3, 1, 0, 0, 0, 1, 1, 2, 2, 4, 4, 5, 4, 3, 3, 3, 5, 7, 7, 7, 8, 8, 8, 8, 8, 9, 8, 8, 8, 8]
-
-default_plsr_dac_c_low_correction = [7, 7, 7, 10, 9, 10, 8, 8, 9, 8, 6, 2, 1, 1, 0, 2, 3, 4, 4, 8, 8, 9, 7, 6, 6, 6, 11, 14, 15, 16, 16, 17, 18, 17, 18, 19, 17, 18, 18, 18]
 
 
 class ScanBase(object):
@@ -435,11 +428,11 @@ class ScanBase(object):
             plsr_dac_correction = list(double_column_correction)
         else:  # default
             if "C_High".lower() in map(lambda x: x.lower(), enable_shift_masks) and "C_Low".lower() in map(lambda x: x.lower(), enable_shift_masks):
-                plsr_dac_correction = default_plsr_dac_c_high_c_low_correction
+                plsr_dac_correction = self.register.calibration_config['Pulser_Corr_C_Inj_High']
             elif "C_High".lower() in map(lambda x: x.lower(), enable_shift_masks):
-                plsr_dac_correction = default_plsr_dac_c_high_correction
+                plsr_dac_correction = self.register.calibration_config['Pulser_Corr_C_Inj_Med']
             elif "C_Low".lower() in map(lambda x: x.lower(), enable_shift_masks):
-                plsr_dac_correction = default_plsr_dac_c_low_correction
+                plsr_dac_correction = self.register.calibration_config['Pulser_Corr_C_Inj_Low']
         if double_column_correction and len(plsr_dac_correction) != 40:
             raise ValueError('Length of must be 40')
         # initial PlsrDAC value for PlsrDAC correction
