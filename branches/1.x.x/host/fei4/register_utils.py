@@ -7,6 +7,7 @@ import re
 import logging
 
 from utils.utils import bitarray_to_array
+from daq.readout_utils import interpret_pixel_data
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
@@ -358,6 +359,35 @@ class FEI4RegisterUtils(object):
         commands.extend(self.register.get_commands("runmode"))
         self.send_commands(commands)
         logging.info("Set GDAC to %d (VthinAltCoarse / VthinAltFine = %d / %d)" % (value, self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine")))
+
+    def read_pixel_register(self, pix_regs=["EnableDigInj", "Imon", "Enable", "C_High", "C_Low", "TDAC", "FDAC"], dcs=range(40), overwrite_config=False):
+        '''Reads the pixel register, interprets the data and returns a masked numpy arrays with the data for the chosen pixel register.
+        Pixels without any data are masked.
+
+        Parameters
+        ----------
+        pix_regs : iterable, int
+            List of pixel register to read (e.g. enable, c_high, ...).
+        dcs : iterable, int
+            List of double columns to read.
+        overwrite_config : bool
+            The read values overwrite the config in RAM if true.
+
+        Returns
+        -------
+        list of masked numpy.ndarrays
+        '''
+        result = []
+        for pix_reg in pix_regs:
+            pixel_data = np.ma.masked_array(np.zeros(shape=(80, 336), dtype=np.uint32), mask=True)  # the result pixel array, only pixel with data are not masked
+            for dc in dcs:
+                self.send_commands(self.register.get_commands("rdfrontend", name=[pix_reg], dc=[dc]))
+                data = self.readout.read_data()
+                interpret_pixel_data(data, dc, pixel_data, invert=False if pix_reg.lower()=="enablediginj" else True)
+            if overwrite_config:
+                self.register.set_pixel_register(pix_reg, pixel_data.data)
+            result.append(pixel_data)
+        return result
 
 
 def cartesian(arrays, out=None):

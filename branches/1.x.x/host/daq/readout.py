@@ -442,7 +442,25 @@ def is_tdc_data(value):
     return np.equal(np.bitwise_and(value, 0xF0000000), 0x40000000)
 
 
+def get_address_record_address(value):
+    '''Returns the address in the address record
+    '''
+    return np.bitwise_and(value, 0x0000EFFF)
+
+
+def get_address_record_type(value):
+    '''Returns the type in the address record
+    '''
+    return np.right_shift(np.bitwise_and(value, 0x00008000), 14)
+
+
+def get_value_record(value):
+    '''Returns the value in the value record
+    '''
+    return np.bitwise_and(value, 0x0000FFFF)
+
 # def def get_col_row_tot_array_from_data_record_array(max_tot=14):
+
 
 def get_col_row_tot_array_from_data_record_array(array):
     '''Convert raw data array to column, row, and ToT array
