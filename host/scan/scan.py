@@ -322,7 +322,21 @@ class ScanBase(object):
             self.scan_thread.join()  # SIGINT will be suppressed here
             self.scan_thread = None
         self.use_thread = None
+        # do the following a second time
+        args, _, _, defaults = inspect.getargspec(self.scan)
+        print args, self.scan_configuration, self.device_configuration
+        if defaults:
+            args = args[-len(defaults):]
+        diff = set(args).difference(self.scan_configuration)
+        args_dict = dict(zip(args, defaults))
+        for item in diff:
+            self._scan_configuration[item] = args_dict[item]
+        if self.device_configuration:
+            self._save_configuration_dict('device_configuration', self.device_configuration)
+        if self.scan_configuration:
+            self._save_configuration_dict('scan_configuration', self.scan_configuration)
         self.register.save_configuration_to_hdf5(self.scan_data_filename)  # save the config used last in the scan loop
+
         if self.restore_configuration:
             logging.info('Restoring FE configuration')
             self.register.restore(name=self.scan_id)
