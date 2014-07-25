@@ -36,22 +36,20 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 class ScanBase(object):
     scan_id = "base_scan"
 
-    def __init__(self, configuration_file=None, register=None, definition_file=None, bit_file=None, force_download=False, device_id=None, dut=None, device=None, scan_data_path=None, module_id="", **kwargs):
+    def __init__(self, dut=None, configuration_file=None, register=None, definition_file=None, scan_data_path=None, module_id=""):
         '''
+        dut : str, file, dict, object
+            Device configuration or Dut object. See Basil wiki (https://silab-redmine.physik.uni-bonn.de/projects/basil/wiki) for more information.
         configuration_file : str, FEI4Register
             Filename of FE configuration file or FEI4Register object.
+        register : object
+            FEI4 register object. Will be preferred over configuration_file if given.
         definition_file : str
             Filename of FE definition file (XML file). Usually not needed.
-        bit_file : str
-            Filename of FPGA bitstream file (bit file).
-        force_download : bool
-            Force download of bitstream file, even if FPGA is configured.
-        device : SiUSBDevice, int
-            SiUSBDevice object or device ID. If None, any available USB device will be taken.
-        scan_id : str
-            Scan identifier string.
         scan_data_path : str
             Pathname of data output path.
+        module_id : str
+            Additional module identifier. An additional folder with the module ID will be created below scan_data_path.
         '''
         # fixing event handler: http://stackoverflow.com/questions/15457786/ctrl-c-crashes-python-after-importing-scipy-stats
         if os.name == 'nt':
@@ -64,30 +62,14 @@ class ScanBase(object):
             import win32api
             win32api.SetConsoleCtrlHandler(handler, 1)
 
-#         if device:  # prefer device object
-#             self.device = device
-#             logging.info('Using %s with ID %s (FW %s)' % (self.device.board_name, filter(type(self.device.board_id).isdigit, self.device.board_id), filter(type(self.device.fw_version).isdigit, self.device.fw_version)))
-#         elif not device and device_id:
-#             self.device = SiUSBDevice.from_board_id(device_id)
-#             logging.info('Using %s with ID %s (FW %s)' % (self.device.board_name, filter(type(self.device.board_id).isdigit, self.device.board_id), filter(type(self.device.fw_version).isdigit, self.device.fw_version)))
-#         else:
-#             # search for any available device
-#             devices = GetUSBBoards()
-#             if not devices:
-#                 raise NoDeviceError('Can\'t find USB board. Connect or reset USB board!')
-#             else:
-#                 logging.info('Found following USB boards: {}'.format(', '.join(('%s with ID %s (FW %s)' % (device.board_name, filter(type(device.board_id).isdigit, device.board_id), filter(type(device.fw_version).isdigit, device.fw_version))) for device in devices)))
-#                 if len(devices) > 1:
-#                     raise ValueError('Please specify USB board')
-#                 self.device = devices[0]
-
         if isinstance(dut, Dut):
             self.dut = dut
-        elif isinstance(dut, basestring):
-            self.dut = Dut(dut)
-            self.dut.init()
+            # assuming it is initialized
         else:
-            raise ValueError('DUT not defined')
+            self.dut = Dut(dut)
+            self.dut.init('configuration.yaml')
+        # for compatibility
+        self.device = self.dut["USB"]._sidev
 
         if self.dut.name == 'pyBAR':
             self.dut['POWER'].set_voltage('VDDA1', 1.500)
@@ -100,15 +82,15 @@ class ScanBase(object):
             self.dut['POWER_SCC']['EN_VA2'] = 1
             self.dut['POWER_SCC'].write()
             # enabling readout
-            self.dut['RX']['CH1'] = 0
-            self.dut['RX']['CH2'] = 0
-            self.dut['RX']['CH3'] = 0
-            self.dut['RX']['CH4'] = 1
-            self.dut['RX']['TLU'] = 1
-            self.dut['RX']['TDC'] = 1
-            self.dut['RX'].write()
-            self.device = self.dut["USB"]._sidev
+            self.dut['rx']['CH1'] = 0
+            self.dut['rx']['CH2'] = 0
+            self.dut['rx']['CH3'] = 0
+            self.dut['rx']['CH4'] = 1
+            self.dut['rx']['TLU'] = 1
+            self.dut['rx']['TDC'] = 1
+            self.dut['rx'].write()
         elif self.dut.name == 'pyBAR_GPAC':
+            self.dut.init('configuration_gpac.yaml')
             # enabling LVDS transceivers
             self.dut['CCPD_Vdd'].set_current_limit(1000, unit='mA')
             self.dut['CCPD_Vdd'].set_voltage(0.0, unit='V')
@@ -118,23 +100,13 @@ class ScanBase(object):
             self.dut['V_in'].set_voltage(2.1, unit='V')
             self.dut['V_in'].set_enable(True)
             # enabling readout
-            self.dut['RX']['FE'] = 1
-            self.dut['RX']['TLU'] = 1
-            self.dut['RX']['TDC'] = 1
-            self.dut['RX']['CCPD_TDC'] = 0
-            self.dut['RX'].write()
-            self.device = self.dut["USB"]._sidev
+            self.dut['rx']['FE'] = 1
+            self.dut['rx']['TLU'] = 1
+            self.dut['rx']['TDC'] = 1
+            self.dut['rx']['CCPD_TDC'] = 0
+            self.dut['rx'].write()
         else:
             raise ValueError('Unknown DUT')
-
-#         if bit_file:
-#             if self.device.XilinxAlreadyLoaded() and not force_download:
-#                 logging.info('FPGA already configured, skipping download of bitstream')
-#             else:
-#                 logging.info('Downloading bitstream to FPGA: %s' % bit_file)
-#                 if not self.device.DownloadXilinx(bit_file):
-#                     raise IOError('Can\'t program FPGA firmware. Reset USB board!')
-#                 time.sleep(1)
 
         self.readout = Readout(self.device)
         self.readout_utils = ReadoutUtils(self.device)
@@ -180,10 +152,7 @@ class ScanBase(object):
         args, _, _, local = inspect.getargvalues(frame)
         self._device_configuration = {key: local[key] for key in args if key != 'self' and key != 'args' and key != 'kwargs'}
         self._device_configuration["register"] = self.register
-        self._device_configuration["device"] = self.device
         self._device_configuration["dut"] = self.dut
-        if kwargs:
-            self._device_configuration.update(kwargs)
 
         self._scan_configuration = {}
 
@@ -242,18 +211,6 @@ class ScanBase(object):
         if self.scan_thread is not None:
             raise RuntimeError('Scan thread is already running')
 
-        # setting FPGA register to default state
-#         print self.device_configuration
-        self.readout_utils.configure_rx_fsm(**self.device_configuration)
-        self.readout_utils.configure_command_fsm(**self.device_configuration)
-        self.readout_utils.configure_trigger_fsm(**self.device_configuration)
-        self.readout_utils.configure_tdc_fsm(**self.device_configuration)
-        if self.dut.name == 'pyBAR':
-            self.dut.set_configuration('configuration.yaml')
-        elif self.dut.name == 'pyBAR_GPAC':
-            self.dut.set_configuration('configuration_gpac.yaml')
-#         print self.dut.get_configuration()
-
         if do_global_reset:
             self.register_utils.global_reset()
             self.register_utils.reset_bunch_counter()
@@ -265,8 +222,14 @@ class ScanBase(object):
         if self.restore_configuration:
             self.register.create_restore_point(name=self.scan_id)
 
-        self.readout.reset_rx()
-#        self.readout.reset_sram_fifo()
+        logging.info('Resetting RX')
+        if self.dut.name == 'pyBAR':
+            self.dut['rx_1']['SOFT_RESET']
+            self.dut['rx_2']['SOFT_RESET']
+            self.dut['rx_3']['SOFT_RESET']
+            self.dut['rx_4']['SOFT_RESET']
+        elif self.dut.name == 'pyBAR_GPAC':
+            self.dut['rx_fe']['SOFT_RESET']
 
         self.readout.print_readout_status()
         if not any(self.readout.get_rx_sync_status()):
@@ -324,13 +287,12 @@ class ScanBase(object):
         self.use_thread = None
         # do the following a second time
         args, _, _, defaults = inspect.getargspec(self.scan)
-        print args, self.scan_configuration, self.device_configuration
         if defaults:
             args = args[-len(defaults):]
-        diff = set(args).difference(self.scan_configuration)
-        args_dict = dict(zip(args, defaults))
-        for item in diff:
-            self._scan_configuration[item] = args_dict[item]
+            diff = set(args).difference(self.scan_configuration)
+            args_dict = dict(zip(args, defaults))
+            for item in diff:
+                self._scan_configuration[item] = args_dict[item]
         if self.device_configuration:
             self._save_configuration_dict('device_configuration', self.device_configuration)
         if self.scan_configuration:
