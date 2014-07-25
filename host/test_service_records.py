@@ -31,16 +31,15 @@ class TestServiceRecords(ScanBase):
         self.register_utils.configure_global()
 
     def analyze(self):
-        output_file = scan.scan_data_filename + "_interpreted.h5"
-        with AnalyzeRawData(raw_data_file=scan.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
-            analyze_raw_data.interpreter.set_trig_count(self.register.get_global_register_value("Trig_Count"))
+        output_file = self.scan_data_filename + "_interpreted.h5"
+        with AnalyzeRawData(raw_data_file=self.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
             analyze_raw_data.create_occupancy_hist = False  # creates a colxrow histogram with accumulated hits for each scan parameter
             analyze_raw_data.create_tot_hist = False  # creates a ToT histogram
             analyze_raw_data.create_rel_bcid_hist = False  # creates a histogram with the relative BCID of the hits
             analyze_raw_data.create_service_record_hist = True  # creates a histogram with all SR send out from the FE
             analyze_raw_data.create_error_hist = False  # creates a histogram summing up the event errors that occurred
-            analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
-            analyze_raw_data.plot_histograms(scan_data_filename=scan.scan_data_filename)
+            analyze_raw_data.interpret_word_table()
+            analyze_raw_data.plot_histograms(scan_data_filename=self.scan_data_filename)
 #             analyze_raw_data.interpreter.print_summary()
 
 

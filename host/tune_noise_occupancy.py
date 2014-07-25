@@ -12,7 +12,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 
 
 local_configuration = {
-    "cfg_name": 'noise_occupancy_tuning',  # the name of the new config with the tuning
+    "cfg_name": '',  # the name of the new config with the tuning
     "occupancy_limit": 10 ** (-5),  # 0 will mask any pixel with occupancy greater than zero
     "triggers": 10000000,
     "trig_count": 1,
@@ -28,7 +28,7 @@ local_configuration = {
 class NoiseOccupancyScan(ScanBase):
     scan_id = "noise_occupancy_tuning"
 
-    def scan(self, cfg_name='noise_occupancy_tuning', occupancy_limit=10 ** (-5), triggers=10000000, trig_count=1, disable_for_mask=['Enable'], enable_for_mask=['Imon'], overwrite_mask=False, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, **kwargs):
+    def scan(self, cfg_name='', occupancy_limit=10 ** (-5), triggers=10000000, trig_count=1, disable_for_mask=['Enable'], enable_for_mask=['Imon'], overwrite_mask=False, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, **kwargs):
         '''Masking pixels with occupancy above certain limit.
 
         Parameters

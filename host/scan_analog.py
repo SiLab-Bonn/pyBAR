@@ -69,15 +69,15 @@ class AnalogScan(ScanBase):
         save_raw_data_from_data_dict_iterable(self.readout.data, filename=self.scan_data_filename, title=self.scan_id)
 
     def analyze(self):
-        output_file = scan.scan_data_filename + "_interpreted.h5"
-        with AnalyzeRawData(raw_data_file=scan.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
+        output_file = self.scan_data_filename + "_interpreted.h5"
+        with AnalyzeRawData(raw_data_file=self.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
             analyze_raw_data.create_tot_hist = True
-            if scan.scan_configuration['enable_tdc']:
+            if self.enable_tdc:
                 analyze_raw_data.create_tdc_counter_hist = True  # histogram all TDC words
                 analyze_raw_data.create_tdc_hist = True  # histogram the hit TDC information
                 analyze_raw_data.interpreter.use_tdc_word(True)  # align events at the TDC word
             analyze_raw_data.interpret_word_table()
-            analyze_raw_data.plot_histograms(scan_data_filename=scan.scan_data_filename)
+            analyze_raw_data.plot_histograms(scan_data_filename=self.scan_data_filename)
 
 if __name__ == "__main__":
     import configuration
