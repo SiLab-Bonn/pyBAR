@@ -228,13 +228,13 @@ class ScanBase(object):
         all_parameters.update(self.scan_configuration)
         all_parameters.update(self.device_configuration)
 
-        self.write_scan_number()
+        self._write_scan_number()
 
         if self.device_configuration:
-            self.save_configuration('device_configuration', self.device_configuration)
+            self._save_configuration_dict('device_configuration', self.device_configuration)
 
         if self.scan_configuration:
-            self.save_configuration('scan_configuration', self.scan_configuration)
+            self._save_configuration_dict('scan_configuration', self.scan_configuration)
 
         self.register.save_configuration_to_hdf5(self.scan_data_filename)  # save scan config at the beginning, will be overwritten after successfull stop of scan loop
 
@@ -283,7 +283,7 @@ class ScanBase(object):
             self.scan_thread.daemon = True  # Abruptly close thread when closing main thread. Resources may not be released properly.
             self.scan_thread.start()
             logging.info('Press Ctrl-C to stop scan loop')
-            signal.signal(signal.SIGINT, self.signal_handler)
+            signal.signal(signal.SIGINT, self._signal_handler)
         else:
             self.scan(**all_parameters)
 
@@ -331,10 +331,10 @@ class ScanBase(object):
         self.readout.print_readout_status()
 
         self.device.dispose()  # free USB resources
-        self.write_scan_status(self.scan_aborted)
+        self._write_scan_status(self.scan_aborted)
         self.scan_is_running = False
 
-    def write_scan_number(self):
+    def _write_scan_number(self):
         scan_numbers = {}
         self.lock.acquire()
         if not os.path.exists(self.scan_data_output_path):
@@ -358,7 +358,7 @@ class ScanBase(object):
         self.lock.release()
         self.scan_data_filename = os.path.join(self.scan_data_output_path, ((self.module_id + "_" + self.scan_id) if self.module_id else self.scan_id) + "_" + str(self.scan_number))
 
-    def write_scan_status(self, aborted=False):
+    def _write_scan_status(self, aborted=False):
         scan_numbers = {}
         self.lock.acquire()
         with open(os.path.join(self.scan_data_output_path, (self.module_id if self.module_id else self.scan_id) + ".cfg"), 'a+') as f:
@@ -567,13 +567,22 @@ class ScanBase(object):
     def analyze(self, **kwargs):
         raise NotImplementedError('scan.analyze() not implemented')
 
-    def signal_handler(self, signum, frame):
+    def _signal_handler(self, signum, frame):
         signal.signal(signal.SIGINT, signal.SIG_DFL)  # setting default handler... pressing Ctrl-C a second time will kill application
         logging.info('Pressed Ctrl-C. Stopping scan...')
         self.scan_aborted = False
         self.stop_thread_event.set()
 
-    def save_configuration(self, configuation_name, configuration, **kwargs):
+    def _save_configuration_dict(self, configuation_name, configuration, **kwargs):
+        '''Stores any configuration dictionary to HDF5 file.
+
+        Parameters
+        ----------
+        configuation_name : str
+            Configuration name. Will be used for table name.
+        configuration : dict
+            Configuration dictionary.
+        '''
         h5_file = self.scan_data_filename
         if os.path.splitext(h5_file)[1].strip().lower() != ".h5":
             h5_file = os.path.splitext(h5_file)[0] + ".h5"
@@ -603,6 +612,38 @@ class ScanBase(object):
             self.scan_param_table.flush()
 
 #         raw_data_file_h5.close()
+
+    def save_configuration(self, name):
+        '''Stores FE configuration to text files.
+
+        Parameters
+        ----------
+        name : str
+            Name of the configuration file. None will overwrite existing configuration, empty string will use default configuration name composited from scan name and number.
+        '''
+        if name is None:
+            self.register.save_configuration()
+        elif name:
+            self.register.save_configuration(name)
+        else:
+            self.register.save_configuration(os.path.splitext(self.device_configuration["configuration_file"])[0] + '_' + self.scan_id)
+
+    def __getattr__(self, name):
+        '''called only on last resort if there are no attributes in the instance that match the name
+        '''
+        if name in self._device_configuration:
+            return self._device_configuration[name]
+        elif name in self._scan_configuration:
+            return self._scan_configuration[name]
+        else:
+            args, _, _, defaults = inspect.getargspec(self.scan)
+            if defaults:
+                args = args[-len(defaults):]
+            if name in args:
+                pos = args.index(name)
+                return defaults[pos]
+            else:
+                raise AttributeError("%r object has no attribute %r" % (self.__class__, name))
 
 
 class NoSyncError(Exception):
