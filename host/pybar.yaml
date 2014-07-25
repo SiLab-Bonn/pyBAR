@@ -14,12 +14,8 @@ name    : pyBAR
 version : 2.0.0
 
 transfer_layer:
-    - name     : USB
-      type     : SiUsb
-      init:
-          bit_file : "config/fpga/top.bit"
-          board_id       : 
-          avoid_download : False
+  - name     : USB
+    type     : SiUsb
 
 hw_drivers:
   - name      : cmd
@@ -81,7 +77,7 @@ hw_drivers:
 user_drivers:
     
 registers:
-  - name        : RX
+  - name        : rx
     type        : StdRegister
     hw_driver   : gpio_rx
     size        : 8
