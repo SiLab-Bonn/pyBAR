@@ -90,8 +90,8 @@ class HitOrScan(ScanBase):
             analyze_raw_data.interpret_word_table()
             analyze_raw_data.plot_histograms(scan_data_filename=self.scan_data_filename)
 
-        with tb.openFile(scan.scan_data_filename + "_calibration.h5", mode="w") as calibration_data_file:  # creation of a calibration: charge [PlsrDAC] <-> TOT [ns] per pixel; TOT is taken from the discrete hit tot info and the Oszi histogram
-            output_pdf = PdfPages(scan.scan_data_filename + "_calibration.pdf")
+        with tb.openFile(self.scan_data_filename + "_calibration.h5", mode="w") as calibration_data_file:  # creation of a calibration: charge [PlsrDAC] <-> TOT [ns] per pixel; TOT is taken from the discrete hit tot info and the Oszi histogram
+            output_pdf = PdfPages(self.scan_data_filename + "_calibration.pdf")
             logging.info('Calculate mean TOT from hit info and TDC')
             with tb.openFile(self.scan_data_filename + "_interpreted.h5", mode="r+") as in_hit_file_h5:  # open interpreted data file to access the hit table for tot histograming
                 analysis_utils.index_event_number(in_hit_file_h5.root.Hits)  # create index to efficiently work on data based on event numbers

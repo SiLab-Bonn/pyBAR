@@ -68,7 +68,6 @@ class ThresholdBaselineTuning(ScanBase):
         '''
         # create restore point
         self.register.create_restore_point()
-        self.trig_count = trig_count
         if trig_count == 0:
             consecutive_lvl1 = (2 ** self.register.get_global_register_objects(name=['Trig_Count'])[0].bitlength)
         else:
@@ -191,7 +190,7 @@ class ThresholdBaselineTuning(ScanBase):
                     self.occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
                     # noisy pixels are set to 1
                     self.occ_mask[occ_hist > occupancy_limit * triggers * consecutive_lvl1] = 1
-#                     plot_occupancy(occ_hist.T, title='Occupancy', filename=scan.scan_data_filename + '_noise_occ_' + str(reg_val) + '_' + str(step) + '.pdf')
+#                     plot_occupancy(occ_hist.T, title='Occupancy', filename=self.scan_data_filename + '_noise_occ_' + str(reg_val) + '_' + str(step) + '.pdf')
 
                     tdac_reg = self.register.get_pixel_register_value('TDAC')
                     decrease_pixel_mask = np.logical_and(self.occ_mask > 0, tdac_reg > 0)
@@ -199,7 +198,7 @@ class ThresholdBaselineTuning(ScanBase):
                     enable_reg = self.register.get_pixel_register_value('Enable')
                     enable_mask = np.logical_and(enable_reg, self.register_utils.invert_pixel_mask(disable_pixel_mask))
                     diabled_pixels += disable_pixel_mask.sum()
-#                     plot_occupancy(tdac_reg.T, title='TDAC', filename=scan.scan_data_filename + '_TDAC_' + str(reg_val) + '_' + str(step) + '.pdf')
+#                     plot_occupancy(tdac_reg.T, title='TDAC', filename=self.scan_data_filename + '_TDAC_' + str(reg_val) + '_' + str(step) + '.pdf')
                     if diabled_pixels > disabled_pixels_limit_cnt:
                         logging.info('Limit of disabled pixels reached: %d (limit %d)... stopping scan' % (diabled_pixels, disabled_pixels_limit_cnt))
                         self.register.restore(name=str(reg_val))
@@ -241,13 +240,12 @@ class ThresholdBaselineTuning(ScanBase):
     def analyze(self):
         from analysis.analyze_raw_data import AnalyzeRawData
         output_file = self.scan_data_filename + "_interpreted.h5"
-        with AnalyzeRawData(raw_data_file=scan.scan_data_filename, analyzed_data_file=output_file, create_pdf=True) as analyze_raw_data:
-            analyze_raw_data.interpreter.set_trig_count(self.trig_count)
+        with AnalyzeRawData(raw_data_file=self.scan_data_filename, analyzed_data_file=output_file, create_pdf=True) as analyze_raw_data:
             analyze_raw_data.create_source_scan_hist = True
 #             analyze_raw_data.create_hit_table = True
 #             analyze_raw_data.interpreter.debug_events(0, 0, True)  # events to be printed onto the console for debugging, usually deactivated
             analyze_raw_data.interpreter.set_warning_output(False)
-            analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b, use_settings_from_file=False)
+            analyze_raw_data.interpret_word_table()
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms()
             plot_occupancy(self.last_occupancy_hist.T, title='Noisy Pixels at Vthin_AltFine %d Step %d' % (self.last_reg_val, self.last_step), filename=analyze_raw_data.output_pdf)
