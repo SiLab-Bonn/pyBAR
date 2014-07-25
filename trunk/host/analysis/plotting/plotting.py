@@ -715,7 +715,7 @@ def create_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, bins=
     _, _, _ = plt.hist(x=np.ma.masked_array(hist).compressed(), bins=hist_bins, range=hist_range, align='mid')  # re-bin to 1d histogram, x argument needs to be 1D
     # BUG: np.ma.compressed(np.ma.masked_array(hist)) (2D) is not equal to np.ma.masked_array(hist).compressed() (1D) if hist is ndarray
     plt.xlim(hist_range)  # overwrite xlim
-    if hist.all() is np.ma.masked or np.allclose(hist, 0.0):
+    if hist.all() is np.ma.masked:  # or np.allclose(hist, 0.0):
         plt.ylim((0, 1))
     # create histogram without masked elements, higher precision when calculating gauss
     h_1d, h_bins = np.histogram(np.ma.masked_array(hist).compressed(), bins=hist_bins, range=hist_range)
@@ -745,8 +745,10 @@ def create_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, bins=
         textright = '$\mu=%.2f$\n$\sigma=%.2f$\n$\chi2=%.2f$' % (coeff[1], coeff[2], chi2)
         props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
         ax.text(0.85, 0.9, textright, transform=ax.transAxes, fontsize=8, verticalalignment='top', bbox=props)
-    except RuntimeError:
-        logging.info('Plot 1d histogram: gauss fit failed, do not draw curve')
+    except RuntimeError, e:
+        logging.info('Plot 1d histogram: gauss fit failed, %s' % e)
+    except TypeError, e:
+        logging.info('Plot 1d histogram: gauss fit failed, %s' % e)
     textleft = '$\mathrm{mean}=%.2f$\n$\mathrm{RMS}=%.2f$\n$\mathrm{median}=%.2f$' % (mean, rms, median)
     props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
     ax.text(0.1, 0.9, textleft, transform=ax.transAxes, fontsize=8, verticalalignment='top', bbox=props)
