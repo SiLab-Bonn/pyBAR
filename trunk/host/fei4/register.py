@@ -222,8 +222,8 @@ class FEI4Register(object):
         self.config_state = OrderedDict()
 
         self.parameter_config = OrderedDict([
-            ('Chip_ID', 8),  # This 4-bit field always exists and is the chip ID. The three least significant bits define the chip address and are compared with the geographical address of the chip (selected via wire bonding), while the most significant one, if set, means that the command is broadcasted to all FE chips receiving the data stream.
-            ('Flavor', None)
+            ('Flavor', None),  # This 4-bit field always exists and is the chip ID. The three least significant bits define the chip address and are compared with the geographical address of the chip (selected via wire bonding), while the most significant one, if set, means that the command is broadcasted to all FE chips receiving the data stream.
+            ('Chip_ID', 8)
         ])
         self.calibration_config = OrderedDict([
             ('C_Inj_Low', None),
@@ -254,30 +254,18 @@ class FEI4Register(object):
             raise ValueError("Unknown chip flavor")
 
     @property
-    def fei4a(self):
+    def chip_flavor(self):
         if not self.parameter_config['Flavor'] in chip_flavors:
             raise ValueError('Unknown chip flavor')
-        return True if self.parameter_config['Flavor'] == 'fei4a' else False
+        return self.parameter_config['Flavor']
 
-    @fei4a.setter
-    def fei4a(self, value):
-        if value:
-            self.parameter_config['Flavor'] = 'fei4a'
-        else:
-            raise ValueError('Unknown chip flavor')
+    @property
+    def fei4a(self):
+        return True if self.chip_flavor == 'fei4a' else False
 
     @property
     def fei4b(self):
-        if not self.parameter_config['Flavor'] in chip_flavors:
-            raise ValueError('Unknown chip flavor')
-        return True if self.parameter_config['Flavor'] == 'fei4b' else False
-
-    @fei4b.setter
-    def fei4b(self, value):
-        if value:
-            self.parameter_config['Flavor'] = 'fei4b'
-        else:
-            raise ValueError('Unknown chip flavor')
+        return True if self.chip_flavor == 'fei4b' else False
 
     @property
     def chip_id(self):
@@ -641,6 +629,8 @@ class FEI4Register(object):
                 if key_value[0] in parameters:
                     try:
                         parameters[key_value[0]] = ast.literal_eval(key_value[1].strip())
+                    except SyntaxError:  # for comma separated values, e.g. lists
+                        parameters[key_value[0]] = ast.literal_eval(line[len(key_value[0]):].strip())
                     except ValueError:
                         parameters[key_value[0]] = key_value[1].strip().lower()
 
@@ -649,7 +639,7 @@ class FEI4Register(object):
             lines = []
             if title:
                 lines.append("# %s\n" % title)
-            for key, value in dict.iteritems():
+            for key, value in parameters.iteritems():
                 lines.append('%s %s\n' % (key, str(value)))
             lines.append("\n")
             f.writelines(lines)
