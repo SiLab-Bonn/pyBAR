@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 
 
 local_configuration = {
-    "cfg_name": 'threshold_baseline_tuning',  # the name of the new config with the tuning
+    "cfg_name": '',  # the name of the new config with the tuning
     "occupancy_limit": 0,  # 0 will mask any pixel with occupancy greater than zero
     "disabled_pixels_limit": 0.01,  # in percent
     "repeat_tuning": True,
@@ -31,7 +31,7 @@ local_configuration = {
 class ThresholdBaselineTuning(ScanBase):
     scan_id = "threshold_basline_tuning"
 
-    def scan(self, cfg_name='noise_occ_tuning', occupancy_limit=0, disabled_pixels_limit=0.01, repeat_tuning=False, limit_repeat_tuning_steps=5, use_enable_mask=False, triggers=100000, trig_count=1, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, **kwargs):
+    def scan(self, cfg_name='', occupancy_limit=0, disabled_pixels_limit=0.01, repeat_tuning=False, limit_repeat_tuning_steps=5, use_enable_mask=False, triggers=100000, trig_count=1, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, **kwargs):
         '''Masking pixels with occupancy above certain limit.
 
         Parameters
@@ -234,7 +234,7 @@ class ThresholdBaselineTuning(ScanBase):
                 self.register.set_global_register_value("Vthin_AltFine", last_good_threshold)
                 self.register.set_pixel_register_value('TDAC', last_good_tdac)
                 self.register.set_pixel_register_value('Enable', last_good_enable_mask)
-                self.register.save_configuration(cfg_name if cfg_name else (splitext(self.device_configuration["configuration_file"])[0] + '_' + self.scan_id))
+                self.save_configuration(self.cfg_name)
                 break
 
     def analyze(self):
