@@ -27,7 +27,7 @@ local_configuration = {
 class ExtTriggerScan(ScanBase):
     scan_id = "ext_trigger_scan"
 
-    def scan(self, trigger_mode=0, trigger_latency=232, trigger_delay=14, col_span=[1, 80], row_span=[1, 336], overwrite_mask=False, use_enable_mask=False, timeout_no_data=10, scan_timeout=10 * 60, max_triggers=10000, enable_tdc=False, **kwargs):
+    def scan(self, trigger_mode=0, trigger_latency=232, trigger_delay=14, col_span=[1, 80], row_span=[1, 336], overwrite_mask=False, use_enable_mask=False, timeout_no_data=10, scan_timeout=10 * 60, max_triggers=10000, enable_tdc=False):
         '''Scan loop
 
         Parameters
@@ -106,11 +106,11 @@ class ExtTriggerScan(ScanBase):
             # preload command
             lvl1_command = self.register.get_commands("zeros", length=trigger_delay)[0] + self.register.get_commands("lv1")[0]  # + self.register.get_commands("zeros", length=200)[0]
             self.register_utils.set_command(lvl1_command)
-            # setting up TDC
-            self.readout_utils.configure_tdc_fsm(enable_tdc=enable_tdc, **kwargs)
-            # setting up external trigger
-            self.readout_utils.configure_trigger_fsm(trigger_mode=trigger_mode, reset_trigger_counter=True, **kwargs)
-            self.readout_utils.configure_command_fsm(enable_ext_trigger=True, **kwargs)
+
+            self.dut['tdc']['ENABLE'] = enable_tdc
+            self.dut['tlu']['TRIGGER_MODE'] = trigger_mode
+            self.dut['tlu']['TRIGGER_COUNTER'] = 0
+            self.dut['cmd']['EN_EXT_TRIGGER'] = True
 
             show_trigger_message_at = 10 ** (int(math.floor(math.log10(max_triggers) - math.log10(3) / math.log10(10))))
             time_current_iteration = time.time()
@@ -126,7 +126,7 @@ class ExtTriggerScan(ScanBase):
                 time_last_iteration = time_current_iteration
                 time_current_iteration = time.time()
                 time_from_last_iteration = time_current_iteration - time_last_iteration
-                current_trigger_number = self.readout_utils.get_trigger_number()
+                current_trigger_number = self.dut['tlu']['TRIGGER_COUNTER']
                 if (current_trigger_number % show_trigger_message_at < last_trigger_number % show_trigger_message_at):
                     logging.info('Collected triggers: %d', current_trigger_number)
                     if not any(self.readout.get_rx_sync_status()):
@@ -164,10 +164,10 @@ class ExtTriggerScan(ScanBase):
                         logging.info('Taking data...')
                         wait_for_first_trigger = False
 
-            self.readout_utils.configure_tdc_fsm(enable_tdc=False, enable_tdc_arming=False)
-            self.readout_utils.configure_command_fsm(enable_ext_trigger=False)
-            self.readout_utils.configure_trigger_fsm(trigger_mode=0)
-            logging.info('Total amount of triggers collected: %d', self.readout_utils.get_trigger_number())
+            self.dut['tdc']['ENABLE'] = False
+            self.dut['cmd']['EN_EXT_TRIGGER'] = False
+            self.dut['tlu']['TRIGGER_MODE'] = 0
+            logging.info('Total amount of triggers collected: %d', self.dut['tlu']['TRIGGER_COUNTER'])
             self.readout.stop()
             raw_data_file.append(self.readout.data)
 
