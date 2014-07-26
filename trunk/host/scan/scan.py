@@ -15,7 +15,7 @@ from analysis.RawDataConverter.data_struct import NameValue  # , generate_scan_c
 
 from threading import Thread, Event, Lock, Timer
 
-min_pysilibusb_version = '0.1.3'
+min_pysilibusb_version = '0.2.1'
 # from usb.core import USBError
 from SiLibUSB import __version__ as pysilibusb_version
 from distutils.version import StrictVersion as v
@@ -193,10 +193,6 @@ class ScanBase(object):
         self._scan_configuration = {key: local[key] for key in args if key is not 'self'}
         self._scan_configuration.update(kwargs)
 
-        all_parameters = {}
-        all_parameters.update(self.scan_configuration)
-        all_parameters.update(self.device_configuration)
-
         self._write_scan_number()
 
         if self.device_configuration:
@@ -242,13 +238,13 @@ class ScanBase(object):
 
         logging.info('Starting scan %s with ID %d (output path: %s)' % (self.scan_id, self.scan_number, self.scan_data_output_path))
         if use_thread:
-            self.scan_thread = Thread(target=self.scan, name='%s with ID %d' % (self.scan_id, self.scan_number), kwargs=all_parameters)  # , args=kwargs)
+            self.scan_thread = Thread(target=self.scan, name='%s with ID %d' % (self.scan_id, self.scan_number), kwargs=self._scan_configuration)  # , args=kwargs)
             self.scan_thread.daemon = True  # Abruptly close thread when closing main thread. Resources may not be released properly.
             self.scan_thread.start()
             logging.info('Press Ctrl-C to stop scan loop')
             signal.signal(signal.SIGINT, self._signal_handler)
         else:
-            self.scan(**all_parameters)
+            self.scan(**self._scan_configuration)
 
     def stop(self, timeout=None):
         '''Stopping scan. Cleaning up of variables and joining thread (if existing).
@@ -602,7 +598,7 @@ class ScanBase(object):
         elif name:
             self.register.save_configuration(name)
         else:
-            self.register.save_configuration(os.path.splitext(self.device_configuration["configuration_file"])[0] + '_' + self.scan_id)
+            self.register.save_configuration(self.scan_data_filename)
 
     def __getattr__(self, name):
         '''called only on last resort if there are no attributes in the instance that match the name
