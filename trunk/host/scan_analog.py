@@ -21,6 +21,12 @@ local_configuration = {
 class AnalogScan(ScanBase):
     scan_id = "analog_scan"
 
+    def activate_tdc(self):
+        self.dut['tdc_rx2']['ENABLE'] = True
+
+    def deactivate_tdc(self):
+        self.dut['tdc_rx2']['ENABLE'] = False
+
     def scan(self, mask_steps=3, repeat_command=100, scan_parameter='PlsrDAC', scan_parameter_value=200, enable_tdc=False, use_enable_mask=False, **kwargs):
         '''Scan loop
 
@@ -55,8 +61,9 @@ class AnalogScan(ScanBase):
         cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0]
 
         if enable_tdc:
-            tdc = lambda enable: self.readout_utils.configure_tdc_fsm(enable_tdc=enable, enable_tdc_arming=True)
-            self.scan_loop(cal_lvl1_command, repeat_command=repeat_command, use_delay=True, hardware_repeat=True, mask_steps=mask_steps, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=not use_enable_mask, bol_function=tdc(True), eol_function=tdc(False), digital_injection=False, enable_shift_masks=["Enable", "C_Low", "C_High"], restore_shift_masks=False, mask=self.register_utils.invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if use_enable_mask else None)
+            # activate TDC arming
+            self.dut['tdc_rx2']['EN_ARMING'] = True
+            self.scan_loop(cal_lvl1_command, repeat_command=repeat_command, use_delay=True, hardware_repeat=True, mask_steps=mask_steps, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=not use_enable_mask, bol_function=self.activate_tdc, eol_function=self.deactivate_tdc, digital_injection=False, enable_shift_masks=["Enable", "C_Low", "C_High"], restore_shift_masks=False, mask=self.register_utils.invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if use_enable_mask else None)
         else:
             self.scan_loop(cal_lvl1_command, repeat_command=repeat_command, use_delay=True, hardware_repeat=True, mask_steps=mask_steps, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=not use_enable_mask, digital_injection=False, enable_shift_masks=["Enable", "C_Low", "C_High"], restore_shift_masks=False, mask=self.register_utils.invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if use_enable_mask else None)
 

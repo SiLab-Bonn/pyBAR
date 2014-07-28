@@ -33,7 +33,7 @@ class ExtTriggerScan(ScanBase):
         Parameters
         ----------
         trigger_mode : int
-            Trigger mode. More details in daq.readout_utils. From 0 to 3.
+            Trigger mode. More details in basil.HL.tlu. From 0 to 3.
             0: External trigger (LEMO RX0 only, TLU port disabled (TLU port/RJ45)).
             1: TLU no handshake (automatic detection of TLU connection (TLU port/RJ45)).
             2: TLU simple handshake (automatic detection of TLU connection (TLU port/RJ45)).

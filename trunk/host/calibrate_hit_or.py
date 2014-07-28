@@ -33,10 +33,10 @@ class HitOrScan(ScanBase):
         return column / 2, 335 + row if column % 2 == 0 else row - 1
 
     def activate_tdc(self):
-        self.readout_utils.configure_tdc_fsm(enable_tdc=True, enable_tdc_arming=True)
+        self.dut['tdc_rx2']['ENABLE'] = True
 
     def deactivate_tdc(self):
-        self.readout_utils.configure_tdc_fsm(enable_tdc=False, enable_tdc_arming=True)
+        self.dut['tdc_rx2']['ENABLE'] = False
 
     def scan(self, pixels, repeat_command=100, scan_parameter='PlsrDAC', scan_parameter_values=(55, 100, 150, 250), **kwarg):
         '''Scan loop
@@ -67,6 +67,9 @@ class HitOrScan(ScanBase):
                     self.register.set_global_register_value(scan_parameter, scan_parameter_value)
                     commands.extend(self.register.get_commands("wrregister", name=[scan_parameter]))
                     self.register_utils.send_commands(commands)
+
+                    # activate TDC arming
+                    self.dut['tdc_rx2']['EN_ARMING'] = True
 
                     self.readout.start()
 

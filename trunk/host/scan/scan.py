@@ -24,7 +24,6 @@ if v(pysilibusb_version) < v(min_pysilibusb_version):
 
 from fei4.register import FEI4Register
 from fei4.register_utils import FEI4RegisterUtils
-from daq.readout_utils import ReadoutUtils
 from daq.readout import Readout
 
 import signal
@@ -109,7 +108,6 @@ class ScanBase(object):
             raise ValueError('Unknown DUT')
 
         self.readout = Readout(self.device)
-        self.readout_utils = ReadoutUtils(self.device)
 
         if not register and configuration_file:
             self.register = FEI4Register(configuration_file=configuration_file, definition_file=definition_file)

@@ -53,7 +53,7 @@ class ExtTriggerScan(ScanBase):
         Parameters
         ----------
         trigger_mode : int
-            Trigger mode. More details in daq.readout_utils. From 0 to 3.
+            Trigger mode. More details in basil.HL.tlu. From 0 to 3.
             0: External trigger (LEMO RX0 only, TLU port disabled (TLU port/RJ45)).
             1: TLU no handshake (automatic detection of TLU connection (TLU port/RJ45)).
             2: TLU simple handshake (automatic detection of TLU connection (TLU port/RJ45)).
@@ -135,11 +135,11 @@ class ExtTriggerScan(ScanBase):
 
             self.register_utils.set_command(command)
 
-            # setting up TDC
-            self.readout_utils.configure_tdc_fsm(enable_tdc=enable_tdc, **kwargs)
-            # setting up external trigger
-            self.readout_utils.configure_trigger_fsm(trigger_mode=trigger_mode, reset_trigger_counter=True, write_tlu_timestamp=True, **kwargs)
-            self.readout_utils.configure_command_fsm(enable_ext_trigger=True, **kwargs)
+            self.dut['tdc']['ENABLE'] = enable_tdc
+            self.dut['tlu']['TRIGGER_MODE'] = trigger_mode
+            self.dut['tlu']['TRIGGER_COUNTER'] = 0
+            self.dut['tlu']['EN_WRITE_TIMESTAMP'] = True
+            self.dut['cmd']['EN_EXT_TRIGGER'] = True
 
             show_trigger_message_at = 10 ** (int(math.floor(math.log10(max_triggers) - math.log10(3) / math.log10(10))))
             time_current_iteration = time.time()
@@ -193,10 +193,10 @@ class ExtTriggerScan(ScanBase):
                         logging.info('Taking data...')
                         wait_for_first_trigger = False
 
-            self.readout_utils.configure_tdc_fsm(enable_tdc=False, enable_tdc_arming=False)
-            self.readout_utils.configure_command_fsm(enable_ext_trigger=False)
-            self.readout_utils.configure_trigger_fsm(trigger_mode=0)
-            logging.info('Total amount of triggers collected: %d', self.readout_utils.get_trigger_number())
+            self.dut['tdc']['ENABLE'] = False
+            self.dut['cmd']['EN_EXT_TRIGGER'] = False
+            self.dut['tlu']['TRIGGER_MODE'] = 0
+            logging.info('Total amount of triggers collected: %d', self.dut['tlu']['TRIGGER_COUNTER'])
             self.readout.stop()
             raw_data_file.append(self.readout.data)
 
