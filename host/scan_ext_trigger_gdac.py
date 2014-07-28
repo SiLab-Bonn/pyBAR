@@ -50,7 +50,7 @@ class ExtTriggerGdacScan(ScanBase):
         gdacs : list, tuple
             List of GDACs to be scanned.
         trigger_mode : int
-            Trigger mode. More details in daq.readout_utils. From 0 to 3.
+            Trigger mode. More details in basil.HL.tlu. From 0 to 3.
             0: External trigger (LEMO RX0 only, TLU port disabled (TLU port/RJ45)).
             1: TLU no handshake (automatic detection of TLU connection (TLU port/RJ45)).
             2: TLU simple handshake (automatic detection of TLU connection (TLU port/RJ45)).
@@ -129,8 +129,9 @@ class ExtTriggerGdacScan(ScanBase):
                     lvl1_command = self.register.get_commands("zeros", length=trigger_delay)[0] + self.register.get_commands("lv1")[0]  # + self.register.get_commands("zeros", length=200)[0]
                     self.register_utils.set_command(lvl1_command)
                     # setting up external trigger
-                    self.readout_utils.configure_trigger_fsm(trigger_mode=trigger_mode, reset_trigger_counter=True, **kwargs)
-                    self.readout_utils.configure_command_fsm(enable_ext_trigger=True, **kwargs)
+                    self.dut['tlu']['TRIGGER_MODE'] = trigger_mode
+                    self.dut['tlu']['TRIGGER_COUNTER'] = 0
+                    self.dut['cmd']['EN_EXT_TRIGGER'] = True
 
                     show_trigger_message_at = 10 ** (int(math.floor(math.log10(max_triggers) - math.log10(3) / math.log10(10))))
                     time_current_iteration = time.time()
@@ -146,7 +147,7 @@ class ExtTriggerGdacScan(ScanBase):
                         time_last_iteration = time_current_iteration
                         time_current_iteration = time.time()
                         time_from_last_iteration = time_current_iteration - time_last_iteration
-                        current_trigger_number = self.readout_utils.get_trigger_number()
+                        current_trigger_number = self.dut['tlu']['TRIGGER_COUNTER']
                         if (current_trigger_number % show_trigger_message_at < last_trigger_number % show_trigger_message_at):
                             logging.info('Collected triggers: %d', current_trigger_number)
                             if not any(self.readout.get_rx_sync_status()):
@@ -188,7 +189,7 @@ class ExtTriggerGdacScan(ScanBase):
                                 logging.info('Taking data...')
                                 wait_for_first_trigger = False
 
-                    self.readout_utils.configure_command_fsm(enable_ext_trigger=False)
+                    self.dut['cmd']['EN_EXT_TRIGGER'] = False
 
                     self.readout.stop()
 
@@ -200,14 +201,11 @@ class ExtTriggerGdacScan(ScanBase):
                     else:
                         raw_data_file.append(self.readout.data, scan_parameters={"GDAC": gdac_value})
 
-                        logging.info('Total number of triggers for GDAC %d: %d' % (gdac_value, self.readout_utils.get_trigger_number()))
+                        logging.info('Total number of triggers for GDAC %d: %d' % (gdac_value, self.dut['tlu']['TRIGGER_COUNTER']))
 
         # set FPGA to default state
-        self.readout_utils.configure_command_fsm(enable_ext_trigger=False)
-        self.readout_utils.configure_trigger_fsm(mode=0)
-        # keep trigger FSM running
-#         self.register_utils.clear_command_memory()
-#         self.readout_utils.configure_command_fsm(enable_ext_trigger=True)
+        self.dut['cmd']['EN_EXT_TRIGGER'] = False
+        self.dut['tlu']['TRIGGER_MODE'] = 0
 
     def analyze(self):
         from analysis.analyze_raw_data import AnalyzeRawData
