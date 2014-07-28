@@ -34,6 +34,9 @@ def interpret_pixel_data(data, dc, pixel_array, invert=True):
     address_split = np.array_split(address, np.where(np.diff(address.astype(np.int32)) < 0)[0] + 1)
     value_split = np.array_split(value, np.where(np.diff(address.astype(np.int32)) < 0)[0] + 1)
 
+    if len(address_split) > 5:
+        raise NotImplementedError('Only the data from one double column can be interpreted at once!')
+
     mask = np.empty_like(pixel_array.data)  # BUG in numpy: pixel_array is de-masked if not .data is used
     mask[:] = len(address_split)
 
