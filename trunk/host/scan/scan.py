@@ -67,8 +67,6 @@ class ScanBase(object):
         else:
             self.dut = Dut(dut)
             self.dut.init('configuration.yaml')
-        # for compatibility
-        self.device = self.dut["USB"]._sidev
 
         if self.dut.name == 'pyBAR':
             self.dut['POWER'].set_voltage('VDDA1', 1.500)
@@ -107,7 +105,7 @@ class ScanBase(object):
         else:
             raise ValueError('Unknown DUT')
 
-        self.readout = Readout(self.device)
+        self.readout = Readout(self.dut)
 
         if not register and configuration_file:
             self.register = FEI4Register(configuration_file=configuration_file, definition_file=definition_file)
@@ -116,7 +114,7 @@ class ScanBase(object):
         else:
             raise ValueError('Unknown configuration')
 
-        self.register_utils = FEI4RegisterUtils(self.device, self.readout, self.register)
+        self.register_utils = FEI4RegisterUtils(self.dut, self.readout, self.register)
 
         # remove all non_word characters and whitespace characters to prevent problems with os.path.join
         self.module_id = re.sub(r"[^\w\s+]", '', module_id)
@@ -227,7 +225,7 @@ class ScanBase(object):
 
         self.readout.print_readout_status()
         if not any(self.readout.get_rx_sync_status()):
-            self.device.dispose()  # free USB resources
+            self.dut['USB'].close()  # free USB resources
             raise NoSyncError('No RX sync on any input channel. Power? Cables?')
 #             logging.error('Stopping scan: no sync')
 #             return
@@ -300,7 +298,7 @@ class ScanBase(object):
         logging.info('Stopped scan %s with ID %d' % (self.scan_id, self.scan_number))
         self.readout.print_readout_status()
 
-        self.device.dispose()  # free USB resources
+        self.dut['USB'].close()  # free USB resources
         self._write_scan_status(self.scan_aborted)
         self.scan_is_running = False
 
@@ -486,7 +484,7 @@ class ScanBase(object):
 
             # set repeat, should be 1 by default when arriving here
             if hardware_repeat is True:
-                self.register_utils.set_hardware_repeat(repeat_command)
+                self.dut['cmd']['CMD_REPEAT'] = repeat_command
 
             # get DC command for the first DC in the list, DC command is byte padded
             # fill CMD memory with DC command and scan loop command, inside the loop only overwrite DC command
@@ -507,10 +505,10 @@ class ScanBase(object):
                     pass
 
                 if hardware_repeat is True:
-                    self.register_utils.start_command()
+                    self.dut['cmd']['START']
                 else:  # do this in software, much slower
                     for _ in range(repeat_command):
-                        self.register_utils.start_command()
+                        self.dut['cmd']['START']
 
                 try:
                     self.register_utils.wait_for_command()
