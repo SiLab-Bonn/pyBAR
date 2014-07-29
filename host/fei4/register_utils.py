@@ -13,12 +13,11 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 
 
 class FEI4RegisterUtils(object):
-    def __init__(self, device, readout, register):
-        self.device = device
+    def __init__(self, dut, readout, register):
+        self.dut = dut
         self.readout = readout
         self.register = register
-        self.command_memory_byte_offset = 16
-        self.command_memory_byte_size = 2048 - self.command_memory_byte_offset  # 16 bytes of register data
+        self.command_memory_byte_size = 2048 - 16  # 16 bytes of register data
         self.zero_cmd_length = 1
         self.zero_cmd = self.register.get_commands("zeros", length=self.zero_cmd_length)[0]
         self.zero_cmd_padded = self.zero_cmd.copy()
@@ -55,7 +54,8 @@ class FEI4RegisterUtils(object):
             self.send_command(command=concatenated_cmd, repeat=repeat, wait_for_finish=wait_for_finish, set_length=True, clear_memory=clear_memory)
         else:
             max_length = 0
-            self.set_hardware_repeat(repeat)
+            if repeat:
+                self.dut['cmd']['CMD_REPEAT'] = repeat
             for command in commands:
                 max_length = max(command.length(), max_length)
                 self.send_command(command=command, repeat=None, wait_for_finish=wait_for_finish, set_length=True, clear_memory=False)
@@ -63,12 +63,12 @@ class FEI4RegisterUtils(object):
                 self.clear_command_memory(length=max_length)
 
     def send_command(self, command, repeat=1, wait_for_finish=True, set_length=True, clear_memory=False):
-        if repeat is not None:
-            self.set_hardware_repeat(repeat)
+        if repeat:
+            self.dut['cmd']['CMD_REPEAT'] = repeat
         # write command into memory
         command_length = self.set_command(command, set_length=set_length)
         # sending command
-        self.start_command()
+        self.dut['cmd']['START']
         # wait for command to be finished
         if wait_for_finish:
             self.wait_for_command(length=command_length, repeat=repeat)
@@ -78,10 +78,6 @@ class FEI4RegisterUtils(object):
 
     def clear_command_memory(self, length=None):
         self.set_command(self.register.get_commands("zeros", length=(self.command_memory_byte_size * 8) if length is None else length)[0], set_length=False)
-
-    def set_command_length(self, lenght):
-        bit_length_array = array.array('B', struct.pack('H', lenght))
-        self.device.WriteExternal(address=0 + 3, data=bit_length_array)
 
     def set_repeat_mode_end_lenth(self, lenght):
         '''size of end sequence in bit in repetition mode (size-this)'''
@@ -97,25 +93,13 @@ class FEI4RegisterUtils(object):
         command_length = command.length()
         # set command bit length
         if set_length:
-            self.set_command_length(command_length)
+            self.dut['cmd']['CMD_SIZE'] = command_length
         # set command
         data = bitarray_to_array(command)
-        if self.command_memory_byte_size < len(data) + byte_offset:
-            raise ValueError('Length of command or offset is too big')
-        self.device.WriteExternal(address=0 + self.command_memory_byte_offset + byte_offset, data=data)
+        self.dut['cmd'].set_data(data=data, addr=16 + byte_offset)
         return command_length
 
-    def start_command(self):
-        self.device.WriteExternal(address=0 + 1, data=(0, ))
-
-    def set_hardware_repeat(self, repeat=1):
-        if repeat is not None:
-            repeat_array = array.array('B', struct.pack('I', repeat))
-            self.device.WriteExternal(address=0 + 5, data=repeat_array)
-
     def wait_for_command(self, length=None, repeat=None):
-
-        # print self.device.ReadExternal(address = 0+1, size = 1)[0]
         if length is not None:
             if repeat is None:
                 repeat = 1
@@ -126,7 +110,7 @@ class FEI4RegisterUtils(object):
 
     @property
     def is_ready(self):
-        return (self.device.ReadExternal(address=0 + 1, size=1)[0] & 0x01) == 1
+        return True if self.dut['cmd']['READY'] else False
 
     def global_reset(self):
         '''FEI4 Global Reset

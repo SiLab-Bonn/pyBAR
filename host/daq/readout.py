@@ -38,11 +38,8 @@ data_deque_dict_names = ["data", "timestamp_start", "timestamp_stop", "error"]
 
 
 class Readout(object):
-    def __init__(self, device):
-        if isinstance(device, SiUSBDevice):
-            self.device = device
-        else:
-            raise ValueError('Device object is not compatible')
+    def __init__(self, dut):
+        self.dut = dut
         self.worker_thread = None
         self.data = deque()
         self.stop_thread_event = Event()
@@ -54,7 +51,7 @@ class Readout(object):
         self.update_timestamp()
 
     def start(self, reset_rx=False, empty_data_queue=True, reset_sram_fifo=True, filename=None):
-        if self.worker_thread != None:
+        if self.worker_thread is not None:
             raise RuntimeError('Thread is not None')
         if reset_rx:
             self.reset_rx()
@@ -70,7 +67,7 @@ class Readout(object):
         self.worker_thread.start()
 
     def stop(self, timeout=10):
-        if self.worker_thread == None:
+        if self.worker_thread is None:
             raise RuntimeError('Readout thread not existing: use start() before stop()')
         if timeout:
             def stop_thread():
@@ -80,11 +77,11 @@ class Readout(object):
             timeout_timer = Timer(timeout, stop_thread)
             timeout_timer.start()
 
-            fifo_size = self.get_sram_fifo_size()
+            fifo_size = self.dut['sram']['FIFO_SIZE']
             old_fifo_size = -1
             while (old_fifo_size != fifo_size or fifo_size != 0) and self.worker_thread.is_alive() and not self.stop_thread_event.wait(1.5 * self.readout_interval):
                 old_fifo_size = fifo_size
-                fifo_size = self.get_sram_fifo_size()
+                fifo_size = self.dut['sram']['FIFO_SIZE']
 
             timeout_timer.cancel()
 
@@ -98,9 +95,9 @@ class Readout(object):
         discard_count = self.get_rx_fifo_discard_count()
         error_count = self.get_rx_8b10b_error_count()
         logging.info('Data queue size: %d' % len(self.data))  # .qsize())
-        logging.info('SRAM FIFO size: %d' % self.get_sram_fifo_size())
-        logging.info('Channel:                     %s', " | ".join([('CH%d' % channel).rjust(3) for channel in range(1, 5, 1)]))
-        logging.info('RX sync:                     %s', " | ".join(["YES".rjust(3) if status == True else "NO".rjust(3) for status in sync_status]))
+        logging.info('SRAM FIFO size: %d' % self.dut['sram']['FIFO_SIZE'])
+        logging.info('Channel:                     %s', " | ".join([('CH%d' % channel).rjust(3) for channel in range(1, len(sync_status) + 1, 1)]))
+        logging.info('RX sync:                     %s', " | ".join(["YES".rjust(3) if status is True else "NO".rjust(3) for status in sync_status]))
         logging.info('RX FIFO discard counter:     %s', " | ".join([repr(count).rjust(3) for count in discard_count]))
         logging.info('RX FIFO 8b10b error counter: %s', " | ".join([repr(count).rjust(3) for count in error_count]))
         if not any(self.get_rx_sync_status()) or any(discard_count) or any(error_count):
@@ -113,7 +110,7 @@ class Readout(object):
         '''
         # TODO: check FIFO status (overflow) and check rx status (sync) once in a while
         while not self.stop_thread_event.wait(self.readout_interval):  # TODO: this is probably what you need to reduce processor cycles
-            self.device.lock.acquire()
+            self.dut['USB']._sidev.lock.acquire()
             try:
                 data = self.read_data_dict()
             except Exception as e:
@@ -121,7 +118,7 @@ class Readout(object):
                 self.stop_thread_event.set()  # stop readout on any occurring exception
                 continue
             finally:
-                self.device.lock.release()
+                self.dut['USB']._sidev.lock.release()
             if data["data"].shape[0] > 0:  # TODO: make it optional
                 self.data.append(data)  # put({'timestamp':get_float_time(), 'raw_data':filtered_data_words, 'error':0})
 
@@ -135,7 +132,7 @@ class Readout(object):
         dict with following keys: "data", "timestamp_start", "timestamp_stop", "error"
         '''
         last_time, curr_time = self.update_timestamp()
-        return {"data": self.read_data(), "timestamp_start": last_time, "timestamp_stop": curr_time, "error": self.read_status()}
+        return {"data": self.dut['sram'].get_data(), "timestamp_start": last_time, "timestamp_stop": curr_time, "error": self.read_status()}
 
     def update_timestamp(self):
         curr_time = get_float_time()
@@ -143,68 +140,54 @@ class Readout(object):
         self.timestamp = curr_time
         return last_time, curr_time
 
-    def read_data(self):
-        '''Read SRAM data words (array of 32-bit uint data words)
-
-        Can be used without threading
-
-        Returns
-        -------
-        numpy.array
-        '''
-        # TODO: check FIFO status (overflow) and check rx status (sync) once in a while
-
-        fifo_size = self.get_sram_fifo_size()
-        if fifo_size % 2 == 1:  # sometimes a read happens during writing, but we want to have a multiplicity of 32 bits
-            fifo_size -= 1
-            # print "FIFO size odd"
-        if fifo_size > 0:
-            # old style:
-            # fifo_data = self.device.FastBlockRead(4*fifo_size/2)
-            # data_words = struct.unpack('>'+fifo_size/2*'I', fifo_data)
-            return np.fromstring(self.device.FastBlockRead(4 * fifo_size / 2).tostring(), dtype=np.dtype('>u4'))
-        else:
-            return np.array([], dtype=np.dtype('>u4'))  # create empty array
-            # return np.empty(0, dtype=np.dtype('>u4')) # FIXME: faster?
-
     def read_status(self):
         return 0
 
     def reset_sram_fifo(self):
         logging.info('Resetting SRAM FIFO')
         self.update_timestamp()
-        self.device.WriteExternal(address=self.sram_base_address[0], data=[0])
+        self.dut['sram']['RESET']
         sleep(0.2)  # sleep here for a while
-        if self.get_sram_fifo_size() != 0:
+        if self.dut['sram']['FIFO_SIZE'] != 0:
             logging.warning('SRAM FIFO size not zero')
-
-    def get_sram_fifo_size(self):
-        retfifo = self.device.ReadExternal(address=self.sram_base_address[0] + 1, size=3)
-        retfifo.append(0)  # 4 bytes
-        return struct.unpack_from('I', retfifo)[0]
 
     def reset_rx(self, channels=None):
         logging.info('Resetting RX')
-        if channels == None:
-            channels = self.rx_base_address.iterkeys()
-        filter(lambda i: self.device.WriteExternal(address=self.rx_base_address[i] + 1, data=[0]), channels)  # reset RX counters
-        # since WriteExternal returns nothing, filter returns empty list
+        if channels:
+            filter(lambda channel: self.dut[channel]['SOFT_RESET'], channels)
+        else:
+            if self.dut.name == 'pyBAR':
+                filter(lambda channel: self.dut[channel]['SOFT_RESET'], ['rx_1', 'rx_2', 'rx_3', 'rx_4'])
+            elif self.dut.name == 'pyBAR_GPAC':
+                filter(lambda channel: self.dut[channel]['SOFT_RESET'], ['rx_fe'])
         sleep(0.1)  # sleep here for a while
 
     def get_rx_sync_status(self, channels=None):
-        if channels == None:
-            channels = self.rx_base_address.iterkeys()
-        return map(lambda i: True if (self.device.ReadExternal(address=self.rx_base_address[i] + 2, size=1)[0]) & 0x1 == 1 else False, channels)
+        if channels:
+            return map(lambda channel: True if self.dut[channel]['READY'] else False, channels)
+        else:
+            if self.dut.name == 'pyBAR':
+                return map(lambda channel: True if self.dut[channel]['READY'] else False, ['rx_1', 'rx_2', 'rx_3', 'rx_4'])
+            elif self.dut.name == 'pyBAR_GPAC':
+                return map(lambda channel: True if self.dut[channel]['READY'] else False, ['rx_fe'])
 
     def get_rx_8b10b_error_count(self, channels=None):
-        if channels == None:
-            channels = self.rx_base_address.iterkeys()
-        return map(lambda i: self.device.ReadExternal(address=self.rx_base_address[i] + 5, size=1)[0], channels)
+        if channels:
+            return map(lambda channel: self.dut[channel]['DECODER_ERROR_COUNTER'], channels)
+        else:
+            if self.dut.name == 'pyBAR':
+                return map(lambda channel: self.dut[channel]['DECODER_ERROR_COUNTER'], ['rx_1', 'rx_2', 'rx_3', 'rx_4'])
+            elif self.dut.name == 'pyBAR_GPAC':
+                return map(lambda channel: self.dut[channel]['DECODER_ERROR_COUNTER'], ['rx_fe'])
 
     def get_rx_fifo_discard_count(self, channels=None):
-        if channels == None:
-            channels = self.rx_base_address.iterkeys()
-        return map(lambda i: self.device.ReadExternal(address=self.rx_base_address[i] + 6, size=1)[0], channels)
+        if channels:
+            return map(lambda channel: self.dut[channel]['LOST_DATA_COUNTER'], channels)
+        else:
+            if self.dut.name == 'pyBAR':
+                return map(lambda channel: self.dut[channel]['LOST_DATA_COUNTER'], ['rx_1', 'rx_2', 'rx_3', 'rx_4'])
+            elif self.dut.name == 'pyBAR_GPAC':
+                return map(lambda channel: self.dut[channel]['LOST_DATA_COUNTER'], ['rx_fe'])
 
 
 def convert_data_array(array, filter_func=None, converter_func=None):
@@ -614,8 +597,6 @@ class RawDataFile(object):
         self.raw_data_file_h5.close()
 
     def append(self, data_dict_iterable, scan_parameters={}, clear_deque=False, flush=True, **kwargs):
-#         if not data_dict_iterable:
-#             logging.warning('Iterable is empty')
         row_meta = self.meta_data_table.row
         if scan_parameters:
             row_scan_param = self.scan_param_table.row
@@ -643,7 +624,8 @@ class RawDataFile(object):
                 for key, value in dict.iteritems(scan_parameters):
                     row_scan_param[key] = value
                 row_scan_param.append()
-
+#         if not data_dict_iterable:
+#             logging.warning('Iterable is empty')
 #         if clear_deque:
 #             while True:
 #                 try:
