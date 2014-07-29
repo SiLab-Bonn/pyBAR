@@ -96,7 +96,7 @@ class FEI4RegisterUtils(object):
             self.dut['cmd']['CMD_SIZE'] = command_length
         # set command
         data = bitarray_to_array(command)
-        self.dut['cmd'].set_data(data=data, addr=16 + byte_offset)
+        self.dut['cmd'].set_data(data=data, addr=byte_offset)
         return command_length
 
     def wait_for_command(self, length=None, repeat=None):
@@ -252,9 +252,9 @@ class FEI4RegisterUtils(object):
         # FE columns and rows are starting from 1
         odd_columns = np.arange(0, 80, 2)
         even_columns = np.arange(1, 80, 2)
-        odd_rows = np.arange((0 + shift) % steps, 336, steps)
-        even_row_offset = (int(math.floor(steps / 2) + shift)) % steps
-        even_rows = np.arange(0 + even_row_offset, 336, steps)
+        odd_rows = np.arange(shift % steps, 336, steps)
+        even_row_offset = ((steps // 2) + shift) % steps  # // integer devision
+        even_rows = np.arange(even_row_offset, 336, steps)
         odd_col_row = cartesian((odd_columns, odd_rows))  # get any combination of column and row, no for loop needed
         even_col_row = cartesian((even_columns, even_rows))
         mask_array[odd_col_row[:, 0], odd_col_row[:, 1]] = value  # advanced indexing
