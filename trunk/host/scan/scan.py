@@ -347,7 +347,7 @@ class ScanBase(object):
                 f.write(value)
         self.lock.release()
 
-    def scan_loop(self, command, repeat_command=100, use_delay=True, hardware_repeat=True, mask_steps=3, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=False, bol_function=None, eol_function=None, digital_injection=False, enable_shift_masks=["Enable", "C_High", "C_Low"], disable_shift_masks=[], restore_shift_masks=True, mask=None, double_column_correction=False):
+    def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=False, bol_function=None, eol_function=None, digital_injection=False, enable_shift_masks=["Enable", "C_High", "C_Low"], disable_shift_masks=[], restore_shift_masks=True, mask=None, double_column_correction=False):
         '''Implementation of the scan loops (mask shifting, loop over double columns, repeatedly sending any arbitrary command).
 
         Parameters
@@ -358,8 +358,6 @@ class ScanBase(object):
             The number of repetitions command will be sent out each mask step.
         use_delay : bool
             Add additional delay to the command (append zeros). This helps to avoid FE data errors because of sending to many commands to the FE chip.
-        hardware_repeat : bool
-            If true, use FPGA to repeat commands. In general this is much faster than doing this in software.
         mask_steps : int
             Number of mask steps.
         enable_mask_steps : list, tuple
@@ -401,8 +399,6 @@ class ScanBase(object):
                 plsr_dac_correction = self.register.calibration_config['Pulser_Corr_C_Inj_Med']
             elif "C_Low".lower() in map(lambda x: x.lower(), enable_shift_masks):
                 plsr_dac_correction = self.register.calibration_config['Pulser_Corr_C_Inj_Low']
-        if double_column_correction and len(plsr_dac_correction) != 40:
-            raise ValueError('Length of must be 40')
         # initial PlsrDAC value for PlsrDAC correction
         initial_plsr_dac = self.register.get_global_register_value("PlsrDAC")
         # create restore point
@@ -419,12 +415,15 @@ class ScanBase(object):
             scan_loop_command = command
 
         def get_dc_address_command(dc):
+            commands = []
+            commands.append(conf_mode_command)
             self.register.set_global_register_value("Colpr_Addr", dc)
+            commands.append(self.register.get_commands("wrregister", name=["Colpr_Addr"])[0])
             if double_column_correction:
                 self.register.set_global_register_value("PlsrDAC", initial_plsr_dac + plsr_dac_correction[dc])
-                return self.register_utils.concatenate_commands((conf_mode_command, self.register.get_commands("wrregister", name=["Colpr_Addr"])[0], self.register.get_commands("wrregister", name=["PlsrDAC"])[0], run_mode_command), byte_padding=True)
-            else:
-                return self.register_utils.concatenate_commands((conf_mode_command, self.register.get_commands("wrregister", name=["Colpr_Addr"])[0], run_mode_command), byte_padding=True)
+                commands.append(self.register.get_commands("wrregister", name=["PlsrDAC"])[0])
+            commands.append(run_mode_command)
+            return self.register_utils.concatenate_commands(commands, byte_padding=True)
 
         if enable_mask_steps is None or not enable_mask_steps:
             enable_mask_steps = range(mask_steps)
@@ -456,39 +455,41 @@ class ScanBase(object):
         self.register_utils.send_commands(commands, concatenate=True)
 
         for mask_step in enable_mask_steps:
-            commands = []
-            commands.append(conf_mode_command)
-            if disable_shift_masks:
-                curr_dis_mask = self.register_utils.make_pixel_mask(steps=mask_steps, shift=mask_step, default=1, value=0, mask=mask)
-                map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_dis_mask), disable_shift_masks)
-                commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=same_mask_for_all_dc, name=disable_shift_masks))
-            if enable_shift_masks:
-                curr_en_mask = self.register_utils.make_pixel_mask(steps=mask_steps, shift=mask_step, mask=mask)
-                map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_en_mask), [shift_mask_name for shift_mask_name in enable_shift_masks])
-                commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=same_mask_for_all_dc, name=enable_shift_masks))
-#                 plt.clf()
-#                 plt.imshow(curr_en_mask.T, interpolation='nearest', aspect="auto")
-#                 plt.pcolor(curr_en_mask.T)
-#                 plt.colorbar()
-#                 plt.savefig('mask_step' + str(mask_step) + '.pdf')
-            if digital_injection is True:
-                # write EnableDigInj last
-                commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=same_mask_for_all_dc, name=['EnableDigInj']))
-                # write DIGHITIN_SEL since after mask writing it is disabled
-                self.register.set_global_register_value("DIGHITIN_SEL", 1)
-                commands.extend(self.register.get_commands("wrregister", name=["DIGHITIN_SEL"]))
-#                 else:
-#                     commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=["EnableDigInj"]))
-            self.register_utils.send_commands(commands, concatenate=True)
+            if same_mask_for_all_dc:
+                commands = []
+                commands.append(conf_mode_command)
+                if disable_shift_masks:
+                    curr_dis_mask = self.register_utils.make_pixel_mask(steps=mask_steps, shift=mask_step, default=1, value=0, mask=mask)
+                    map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_dis_mask), disable_shift_masks)
+                    commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False if mask else True, name=disable_shift_masks))
+                if enable_shift_masks:
+                    curr_en_mask = self.register_utils.make_pixel_mask(steps=mask_steps, shift=mask_step, mask=mask)
+                    map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_en_mask), [shift_mask_name for shift_mask_name in enable_shift_masks])
+                    commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False if mask else True, name=enable_shift_masks))
+    #                 plt.clf()
+    #                 plt.imshow(curr_en_mask.T, interpolation='nearest', aspect="auto")
+    #                 plt.pcolor(curr_en_mask.T)
+    #                 plt.colorbar()
+    #                 plt.savefig('mask_step' + str(mask_step) + '.pdf')
+                if digital_injection is True:
+                    # write EnableDigInj last
+                    commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False if mask else True, name=['EnableDigInj']))
+                    # write DIGHITIN_SEL since after mask writing it is disabled
+                    self.register.set_global_register_value("DIGHITIN_SEL", 1)
+                    commands.extend(self.register.get_commands("wrregister", name=["DIGHITIN_SEL"]))
+    #                 else:
+    #                     commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=["EnableDigInj"]))
+                self.register_utils.send_commands(commands, concatenate=True)
             logging.info('%d injection(s): mask step %d %s' % (repeat_command, mask_step, ('[%d - %d]' % (enable_mask_steps[0], enable_mask_steps[-1])) if len(enable_mask_steps) > 1 else ('[%d]' % enable_mask_steps[0])))
 
             # set repeat, should be 1 by default when arriving here
-            if hardware_repeat is True:
-                self.dut['cmd']['CMD_REPEAT'] = repeat_command
+            self.dut['cmd']['CMD_REPEAT'] = repeat_command
 
             # get DC command for the first DC in the list, DC command is byte padded
             # fill CMD memory with DC command and scan loop command, inside the loop only overwrite DC command
-            self.register_utils.set_command(command=self.register_utils.concatenate_commands((get_dc_address_command(enable_double_columns[0]), scan_loop_command), byte_padding=False))
+            dc_address_command = get_dc_address_command(enable_double_columns[0])
+            self.dut['cmd']['START_SEQUENCE_LENGTH'] = len(dc_address_command)
+            self.register_utils.set_command(command=self.register_utils.concatenate_commands((dc_address_command, scan_loop_command), byte_padding=False))
 
             for index, dc in enumerate(enable_double_columns):
                 if index != 0:  # full command is already set before loop
@@ -504,11 +505,7 @@ class ScanBase(object):
                 except TypeError:
                     pass
 
-                if hardware_repeat is True:
-                    self.dut['cmd']['START']
-                else:  # do this in software, much slower
-                    for _ in range(repeat_command):
-                        self.dut['cmd']['START']
+                self.dut['cmd']['START']
 
                 try:
                     self.register_utils.wait_for_command()
