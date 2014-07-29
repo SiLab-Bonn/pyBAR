@@ -79,16 +79,6 @@ class FEI4RegisterUtils(object):
     def clear_command_memory(self, length=None):
         self.set_command(self.register.get_commands("zeros", length=(self.command_memory_byte_size * 8) if length is None else length)[0], set_length=False)
 
-    def set_repeat_mode_end_lenth(self, lenght):
-        '''size of end sequence in bit in repetition mode (size-this)'''
-        bit_length_array = array.array('B', struct.pack('H', lenght))
-        self.device.WriteExternal(address=11, data=bit_length_array)
-
-    def set_repeat_mode_start_lenth(self, lenght):
-        '''size of beginning  sequence in bit in repetition mode '''
-        bit_length_array = array.array('B', struct.pack('H', lenght))
-        self.device.WriteExternal(address=9, data=bit_length_array)
-
     def set_command(self, command, set_length=True, byte_offset=0):
         command_length = command.length()
         # set command bit length
@@ -211,7 +201,7 @@ class FEI4RegisterUtils(object):
         inverted_mask[mask >= 1] = 0
         return inverted_mask
 
-    def make_pixel_mask(self, steps, shift, default=0, value=1, mask=None):
+    def make_pixel_mask(self, steps, shift, default=0, value=1, enable_columns=None, mask=None):
         '''Generate pixel mask.
 
         Parameters
@@ -224,6 +214,8 @@ class FEI4RegisterUtils(object):
             Value of pixels that are not selected by the mask.
         value : int
             Value of pixels that are selected by the mask.
+        enable_columns : list
+            List of columns where the shift mask will be applied. List elements can range from 1 to 80.
         mask : array_like
             Additional mask. Must be convertible to an array of booleans with the same shape as mask array. True indicates a masked (i.e. invalid) data. Masked pixels will be set to default value.
 
@@ -250,8 +242,12 @@ class FEI4RegisterUtils(object):
         mask_array = np.empty(dimension, dtype=np.uint8)
         mask_array.fill(default)
         # FE columns and rows are starting from 1
-        odd_columns = np.arange(0, 80, 2)
-        even_columns = np.arange(1, 80, 2)
+        if enable_columns:
+            odd_columns = [odd - 1 for odd in enable_columns if odd % 2 != 0]
+            even_columns = [even - 1 for even in enable_columns if even % 2 == 0]
+        else:
+            odd_columns = np.arange(0, 80, 2)
+            even_columns = np.arange(1, 80, 2)
         odd_rows = np.arange(shift % steps, 336, steps)
         even_row_offset = ((steps // 2) + shift) % steps  # // integer devision
         even_rows = np.arange(even_row_offset, 336, steps)

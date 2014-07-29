@@ -127,8 +127,8 @@ class ExtTriggerScan(ScanBase):
                                                                         ))
 
             self.register_utils.set_hardware_repeat(bcid_window)
-            self.register_utils.set_repeat_mode_start_lenth(len(start_sequence))
-            self.register_utils.set_repeat_mode_end_lenth(len(stop_sequence) + 1)
+            self.dut['cmd']['START_SEQUENCE_LENGTH'] = len(start_sequence)
+            self.dut['cmd']['STOP_SEQUENCE_LENGTH'] = len(stop_sequence) + 1
 
             # preload the command to be send for each trigger
             command = self.register_utils.concatenate_commands((start_sequence, one_latency_read, stop_sequence))
