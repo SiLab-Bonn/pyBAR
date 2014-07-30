@@ -246,8 +246,8 @@ class FEI4RegisterUtils(object):
             odd_columns = [odd - 1 for odd in enable_columns if odd % 2 != 0]
             even_columns = [even - 1 for even in enable_columns if even % 2 == 0]
         else:
-            odd_columns = np.arange(0, 80, 2)
-            even_columns = np.arange(1, 80, 2)
+            odd_columns = range(0, 80, 2)
+            even_columns = range(1, 80, 2)
         odd_rows = np.arange(shift % steps, 336, steps)
         even_row_offset = ((steps // 2) + shift) % steps  # // integer devision
         even_rows = np.arange(even_row_offset, 336, steps)
