@@ -60,7 +60,7 @@ class TimeOverThresholdScan(ScanBase):
                 self.readout.start()
 
                 cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0]
-                self.scan_loop(cal_lvl1_command, repeat_command=repeat_command, use_delay=True, mask_steps=mask_steps, enable_mask_steps=None, enable_double_columns=range(1, 37), same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=False, mask=None)
+                self.scan_loop(cal_lvl1_command, repeat_command=repeat_command, use_delay=True, hardware_repeat=True, mask_steps=mask_steps, enable_mask_steps=None, enable_double_columns=range(1, 37), same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_c_high=None, enable_c_low=None, enable_shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=False, mask=None)
 
                 self.readout.stop()
 
@@ -77,10 +77,10 @@ class TimeOverThresholdScan(ScanBase):
             output_pdf.close()
 
     def analyze(self):
-        output_file = self.scan_data_filename + "_interpreted.h5"
-        with AnalyzeRawData(raw_data_file=self.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
-            analyze_raw_data.interpret_word_table()
-#             analyze_raw_data.plot_histograms(scan_data_filename=self.scan_data_filename)
+        output_file = scan.scan_data_filename + "_interpreted.h5"
+        with AnalyzeRawData(raw_data_file=scan.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
+            analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
+#             analyze_raw_data.plot_histograms(scan_data_filename=scan.scan_data_filename)
 #             analyze_raw_data.interpreter.print_summary()
 
 if __name__ == "__main__":

@@ -12,7 +12,6 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 
 
 local_configuration = {
-    "cfg_name": '',
     "mask_steps": 3,
     "repeat_command": 100,
     "disable_for_mask": ['Enable'],
@@ -24,7 +23,7 @@ local_configuration = {
 class StuckPixelScan(ScanBase):
     scan_id = "stuck_pixel_scan"
 
-    def scan(self, cfg_name='', mask_steps=3, repeat_command=100, disable_for_mask=['Enable'], enable_for_mask=['Imon'], overwrite_mask=False, **kwargs):
+    def scan(self, mask_steps=3, repeat_command=100, disable_for_mask=['Enable'], enable_for_mask=['Imon'], overwrite_mask=False, **kwargs):
         '''Disable stuck pixels (hitbus always high). Based on digital scan.
 
         Parameters
@@ -50,7 +49,7 @@ class StuckPixelScan(ScanBase):
         self.readout.start()
 
         cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0]
-        self.scan_loop(cal_lvl1_command, repeat_command=repeat_command, use_delay=True, mask_steps=mask_steps, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=True, enable_shift_masks=["Enable", "EnableDigInj"], restore_shift_masks=False, mask=None)
+        self.scan_loop(cal_lvl1_command, repeat_command=repeat_command, hardware_repeat=True, use_delay=True, mask_steps=mask_steps, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=True, enable_c_high=False, enable_c_low=False, enable_shift_masks=["Enable"], restore_shift_masks=False, mask=None)
 
         self.readout.stop()
 
@@ -92,12 +91,13 @@ class StuckPixelScan(ScanBase):
     def analyze(self):
         from analysis.analyze_raw_data import AnalyzeRawData
         output_file = self.scan_data_filename + "_interpreted.h5"
-        with AnalyzeRawData(raw_data_file=self.scan_data_filename, analyzed_data_file=output_file, create_pdf=True) as analyze_raw_data:
+        with AnalyzeRawData(raw_data_file=scan.scan_data_filename, analyzed_data_file=output_file, create_pdf=True) as analyze_raw_data:
+            analyze_raw_data.interpreter.set_trig_count(self.register.get_global_register_value("Trig_Count"))
             analyze_raw_data.create_source_scan_hist = True
 #             analyze_raw_data.create_hit_table = True
 #             analyze_raw_data.interpreter.debug_events(0, 0, True)  # events to be printed onto the console for debugging, usually deactivated
             analyze_raw_data.interpreter.set_warning_output(False)
-            analyze_raw_data.interpret_word_table()
+            analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms()
             plot_occupancy(self.occ_mask.T, title='Stuck Pixels', z_max=1, filename=analyze_raw_data.output_pdf)
@@ -115,4 +115,4 @@ if __name__ == "__main__":
     scan.start(use_thread=False, **local_configuration)
     scan.stop()
     scan.analyze()
-    scan.save_configuration(scan.cfg_name)
+    scan.register.save_configuration(scan.device_configuration["configuration_file"])

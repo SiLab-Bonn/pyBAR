@@ -99,6 +99,10 @@ wire RX_CLK2X;
 wire DATA_CLK;
 wire CLK_LOCKED;
 
+assign EN = 4'b1111;
+
+assign SEL = 4'b1111;
+
 assign MULTI_IO = 11'b000_0000_0000;
 assign DEBUG_D = 16'ha5a5;
 
@@ -189,12 +193,6 @@ localparam RX1_HIGHADDR = 16'h8700-1;
 
 localparam TDC_BASEADDR = 16'h8700;
 localparam TDC_HIGHADDR = 16'h8800-1;
-
-localparam GPIO_RX_BASEADDR = 16'h8800;
-localparam GPIO_RX_HIGHADDR = 16'h8900-1;
-
-localparam GPIO_POWER_BASEADDR = 16'h8900;
-localparam GPIO_POWER_HIGHADDR = 16'h8A00-1;
 
 // -------  BUS SYGNALING  ------- //
 wire [15:0] BUS_ADD;
@@ -318,41 +316,6 @@ tdc_s3
     .TIMESTAMP(TIMESTAMP[15:0])
 );
 
-wire [1:0] NOT_CONNECTED_RX;
-wire TLU_SEL, TDC_SEL;
-gpio 
-#( 
-    .BASEADDR(GPIO_RX_BASEADDR),
-    .HIGHADDR(GPIO_RX_HIGHADDR),
-    .IO_WIDTH(8),
-    .IO_DIRECTION(8'hff)
-) i_gpio_rx (
-    .BUS_CLK(BUS_CLK),
-    .BUS_RST(BUS_RST),
-    .BUS_ADD(BUS_ADD),
-    .BUS_DATA(BUS_DATA),
-    .BUS_RD(BUS_RD),
-    .BUS_WR(BUS_WR),
-    .IO({NOT_CONNECTED_RX, TDC_SEL, TLU_SEL, SEL[3], SEL[2], SEL[1], SEL[0]})
-);
-
-wire [3:0] NOT_CONNECTED_POWER;
-gpio 
-#( 
-    .BASEADDR(GPIO_POWER_BASEADDR),
-    .HIGHADDR(GPIO_POWER_HIGHADDR),
-    .IO_WIDTH(8),
-    .IO_DIRECTION(8'hff)
-) i_gpio_power (
-    .BUS_CLK(BUS_CLK),
-    .BUS_RST(BUS_RST),
-    .BUS_ADD(BUS_ADD),
-    .BUS_DATA(BUS_DATA),
-    .BUS_RD(BUS_RD),
-    .BUS_WR(BUS_WR),
-    .IO({NOT_CONNECTED_POWER, EN[3], EN[2], EN[1], EN[0]}) //OC[3], OC[2], OC[1], OC[0]
-);
-
 wire TLU_FIFO_READ;
 wire TLU_FIFO_EMPTY;
 wire [31:0] TLU_FIFO_DATA;
@@ -407,7 +370,7 @@ rrp_arbiter
     .RST(BUS_RST),
     .CLK(BUS_CLK),
 
-    .WRITE_REQ({~FE_FIFO_EMPTY & SEL, ~TDC_FIFO_EMPTY & TDC_SEL, ~TLU_FIFO_EMPTY & TLU_SEL}),
+    .WRITE_REQ({~FE_FIFO_EMPTY, ~TDC_FIFO_EMPTY, ~TLU_FIFO_EMPTY}),
     .HOLD_REQ({5'b0, TLU_FIFO_PEEMPT_REQ}),
     .DATA_IN({FE_FIFO_DATA[3],FE_FIFO_DATA[2],FE_FIFO_DATA[1], FE_FIFO_DATA[0], TDC_FIFO_DATA, TLU_FIFO_DATA }),
     .READ_GRANT(READ_GRANT),

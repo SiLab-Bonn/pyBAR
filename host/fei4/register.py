@@ -3,7 +3,6 @@ from bitarray import bitarray
 import xml.sax
 import re
 import os
-import ast
 import numpy as np
 import itertools
 from collections import OrderedDict
@@ -17,14 +16,6 @@ import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 from utils.utils import string_is_binary, flatten_iterable, iterable, str2bool
-
-chip_flavors = ['fei4a', 'fei4b']
-
-default_pulser_corr_high = [2, 2, 2, 3, 3, 3, 2, 2, 3, 2, 2, 0, 0, 0, 0, 1, 1, 1, 2, 3, 3, 3, 3, 2, 2, 2, 4, 5, 5, 5, 5, 6, 6, 6, 6, 6, 5, 6, 6, 6]
-
-default_pulser_corr_med = [3, 3, 3, 4, 4, 5, 4, 3, 4, 3, 3, 1, 0, 0, 0, 1, 1, 2, 2, 4, 4, 5, 4, 3, 3, 3, 5, 7, 7, 7, 8, 8, 8, 8, 8, 9, 8, 8, 8, 8]
-
-default_pulser_corr_low = [7, 7, 7, 10, 9, 10, 8, 8, 9, 8, 6, 2, 1, 1, 0, 2, 3, 4, 4, 8, 8, 9, 7, 6, 6, 6, 11, 14, 15, 16, 16, 17, 18, 17, 18, 19, 17, 18, 18, 18]
 
 
 def bitarray_from_value(value, size=None, fmt='Q'):
@@ -218,23 +209,10 @@ class FEI4Register(object):
 
         self.configuration_file = configuration_file
         self.definition_file = definition_file
-
+        self.chip_id = 8  # This 4-bit field always exists and is the chip ID. The three least significant bits define the chip address and are compared with the geographical address of the chip (selected via wire bonding), while the most significant one, if set, means that the command is broadcasted to all FE chips receiving the data stream.
+        self.chip_flavor = None
+        self.chip_flavors = ['fei4a', 'fei4b']
         self.config_state = OrderedDict()
-
-        self.parameter_config = OrderedDict([
-            ('Flavor', None),  # This 4-bit field always exists and is the chip ID. The three least significant bits define the chip address and are compared with the geographical address of the chip (selected via wire bonding), while the most significant one, if set, means that the command is broadcasted to all FE chips receiving the data stream.
-            ('Chip_ID', 8)
-        ])
-        self.calibration_config = OrderedDict([
-            ('C_Inj_Low', None),
-            ('C_Inj_Med', None),
-            ('C_Inj_High', None),
-            ('Vcal_Coeff_0', None),
-            ('Vcal_Coeff_1', None),
-            ('Pulser_Corr_C_Inj_Low', None),
-            ('Pulser_Corr_C_Inj_Med', None),
-            ('Pulser_Corr_C_Inj_High', None)
-        ])
 
         self.load_configuration(self.configuration_file)
 
@@ -243,10 +221,8 @@ class FEI4Register(object):
 
     def is_chip_flavor(self, chip_flavor):
         chip_flavor = chip_flavor.translate(None, '_-').lower()
-        if chip_flavor in chip_flavors:
-            if not self.parameter_config['Flavor'] in chip_flavors:
-                raise ValueError('Unknown chip flavor')
-            if chip_flavor == self.parameter_config['Flavor']:
+        if chip_flavor in self.chip_flavors:
+            if chip_flavor == self.chip_flavor:
                 return True
             else:
                 return False
@@ -254,24 +230,26 @@ class FEI4Register(object):
             raise ValueError("Unknown chip flavor")
 
     @property
-    def chip_flavor(self):
-        if not self.parameter_config['Flavor'] in chip_flavors:
-            raise ValueError('Unknown chip flavor')
-        return self.parameter_config['Flavor']
-
-    @property
     def fei4a(self):
         return True if self.chip_flavor == 'fei4a' else False
+
+    @fei4a.setter
+    def fei4a(self, value):
+        if value:
+            self.chip_flavor = 'fei4a'
+        else:
+            raise ValueError('Unknown chip flavor')
 
     @property
     def fei4b(self):
         return True if self.chip_flavor == 'fei4b' else False
 
-    @property
-    def chip_id(self):
-        if self.parameter_config['Chip_ID'] >= 16 or self.parameter_config['Chip_ID'] < 0:
-            raise ValueError('Invalid chip ID')
-        return self.parameter_config['Chip_ID']
+    @fei4b.setter
+    def fei4b(self, value):
+        if value:
+            self.chip_flavor = 'fei4b'
+        else:
+            raise ValueError('Unknown chip flavor')
 
     def load_configuration(self, configuration_file=None, definition_file=None):
         '''Loading configuration from text files
@@ -325,8 +303,7 @@ class FEI4Register(object):
             self.definition_file = definition_file
         if self.configuration_file is not None:
             print "Loading configuration file: %s" % self.configuration_file
-            self.parse_parameters(self.parameter_config)  # get flavor and chip ID
-            self.parse_parameters(self.calibration_config)  # calibration values
+            self.parse_chip_parameters()  # get flavor, chip ID
             self.parse_register_config()
             self.parse_chip_config()
         elif self.definition_file is not None:
@@ -371,14 +348,14 @@ class FEI4Register(object):
             configuration_file_path = os.path.join(configuration_path, path)
             if not os.path.exists(configuration_file_path):
                 os.makedirs(configuration_file_path)
-            if path == "configs":
+            if  path == "configs":
                 self.configuration_file = os.path.join(configuration_file_path, filename + ".cfg")
                 if os.path.isfile(self.configuration_file):
                     print "Overwriting configuration file:", self.configuration_file
                     os.remove(self.configuration_file)
                 else:
                     print "Saving configuration file:", self.configuration_file
-                self.write_parameters(self.parameter_config, title='Chip Parameters')
+                self.write_chip_parameters()
                 self.write_chip_config()
             elif path == "tdacs":
                 dac = self.get_pixel_register_objects(name="TDAC")[0]
@@ -405,7 +382,15 @@ class FEI4Register(object):
             lines.append("\n")
             f.writelines(lines)
 
-        self.write_parameters(self.calibration_config, title='Calibration Parameters')
+            lines = []
+            lines.append("# Calibration Parameters\n")
+            lines.append('C_Inj_Low %f\n' % 0.0)  # TODO:
+            lines.append('C_Inj_High %f\n' % 0.0)  # TODO:
+            lines.append('Vcal_Coeff_0 %f\n' % 0.0)  # TODO:
+            lines.append('Vcal_Coeff_1 %f\n' % 0.0)  # TODO:
+            lines.append("\n")
+            f.writelines(lines)
+
         return self.configuration_file
 
     def load_configuration_from_hdf5(self, configuration_file=None, name='', definition_file=None, **kwargs):
@@ -440,10 +425,27 @@ class FEI4Register(object):
                     for row in configuration_group.miscellaneous:
                         name = row['name']
                         value = row['value']
-                        if name in self.parameter_config:
-                            self.parameter_config[name] = list(ast.literal_eval(value.strip()))
-                        elif name in self.calibration_config:
-                            self.calibration_config[name] = list(ast.literal_eval(value.strip()))
+                        if name == 'Flavor':
+                            if value.translate(None, '_-').lower() == "fei4a":
+                                self.chip_flavor = "fei4a"
+                            elif value.translate(None, '_-').lower() == "fei4b":
+                                self.chip_flavor = "fei4b"
+                            else:
+                                raise ValueError("Can't detect chip flavor")
+                        elif name == 'Chip_ID':
+                            if (int(value) >= 0 and int(value) < 16):
+                                self.chip_id = int(value)
+                            else:
+                                raise ValueError('Value exceeds limits')
+                                self.chip_id = 8  # TODO default to 8
+                        elif name == 'C_Inj_Low':
+                            pass
+                        elif name == 'C_Inj_High':
+                            pass
+                        elif name == 'Vcal_Coeff_0':
+                            pass
+                        elif name == 'Vcal_Coeff_1':
+                            pass
 
                     self.parse_register_config()  # init registers
 
@@ -453,7 +455,7 @@ class FEI4Register(object):
                         value = row['value']
                         self.set_global_register_value(name, value)
 
-                    # pixels
+                    #pixels
                     for pixel_reg in self.pixel_registers:
                         name = pixel_reg.full_name
                         self.set_pixel_register_value(pixel_reg.name, np.asarray(raw_data_file_h5.getNode(configuration_group, name=name)).T)
@@ -506,15 +508,24 @@ class FEI4Register(object):
 
             misc_data_row = misc_data_table.row
 
-            for key, value in self.parameter_config.iteritems():
-                misc_data_row['name'] = key
-                misc_data_row['value'] = str(value)
-                misc_data_row.append()
-
-            for key, value in self.calibration_config.iteritems():
-                misc_data_row['name'] = key
-                misc_data_row['value'] = str(value)
-                misc_data_row.append()
+            misc_data_row['name'] = 'Flavor'
+            misc_data_row['value'] = self.chip_flavor.upper()
+            misc_data_row.append()
+            misc_data_row['name'] = 'Chip_ID'
+            misc_data_row['value'] = self.chip_id
+            misc_data_row.append()
+            misc_data_row['name'] = 'C_Inj_Low'
+            misc_data_row['value'] = str(0.0)
+            misc_data_row.append()
+            misc_data_row['name'] = 'C_Inj_High'
+            misc_data_row['value'] = str(0.0)
+            misc_data_row.append()
+            misc_data_row['name'] = 'Vcal_Coeff_0'
+            misc_data_row['value'] = str(0.0)
+            misc_data_row.append()
+            misc_data_row['name'] = 'Vcal_Coeff_1'
+            misc_data_row['value'] = str(0.0)
+            misc_data_row.append()
 
 #            for key in sorted(reg_dict):
 #                misc_data_row['name'] = key
@@ -577,17 +588,61 @@ class FEI4Register(object):
         # pprint.pprint(self.global_registers)
         # pprint.pprint(self.pixel_registers)
 
+    def parse_chip_parameters(self):
+        # print "load cfg"
+        with open(self.configuration_file, 'r') as f:
+            for line in f.readlines():
+                key_value = re.split("\s+|[\s]*=[\s]*", line)
+                if (key_value[0].lower() == "flavour" or key_value[0].lower() == "flavor" or key_value[0].translate(None, '_-').lower() == "chipflavour" or key_value[0].translate(None, '_-').lower() == "chipflavor"):
+                    if key_value[1].translate(None, '_-').lower() == "fei4a":
+                        self.chip_flavor = "fei4a"
+                    elif key_value[1].translate(None, '_-').lower() == "fei4b":
+                        self.chip_flavor = "fei4b"
+                    else:
+                        raise ValueError("Can't detect chip flavor")
+
+                if key_value[0].translate(None, '_-').lower() == "chipid":
+                    if (int(key_value[1]) >= 0 and int(key_value[1]) < 16):
+                        self.chip_id = int(key_value[1])
+                    else:
+                        raise ValueError('Value exceeds limits')
+                        self.chip_id = 8  # TODO default to 8
+
+                # if (key_value[0].lower() == "moduleid" or key_value[0].lower() == "module_id"):
+                #    pass
+
+            print "Flavor:", self.chip_flavor
+            print "Chip ID:", self.chip_id
+
+    def write_chip_parameters(self):
+#         lines = []
+#         search = ["flavour", "chip-flavour", "chip_flavour", "flavor", "chip-flavor", "chip_flavor", "chipid", "chip-id", "chip_id", "Parameters"]
+#         with open(self.configuration_file, 'r') as f:
+#             for line in f.readlines():
+#                 line_split = line.split()
+#                 if not any(x.lower() in line_split.lower() for x in search):
+#                     lines.append(line)
+        with open(self.configuration_file, 'a') as f:
+            lines = []
+            lines.append("# Chip Parameters" + "\n")
+            lines.append('Flavor %s\n' % self.chip_flavor.upper())
+            lines.append('Chip_ID %d\n' % self.chip_id)
+            lines.append("\n")
+            f.writelines(lines)
+
     def parse_chip_config(self):
+        # print "load cfg"
         all_config_keys = []
         all_config_keys_lower = []
         with open(self.configuration_file, 'r') as f:
             for line in f.readlines():
                 key_value = re.split("\s+|[\s]*=[\s]*", line)
                 if len(key_value) > 0 and ((len(key_value[0]) > 0 and key_value[0][0] == '#') or key_value[0] == '' or key_value[1] == ''):  # ignore line if empty line or starts with '#'
+                    # print key_value
                     continue
-                elif key_value[0] in self.parameter_config:
+                elif (key_value[0].lower() == "flavour" or key_value[0].lower() == "flavor" or key_value[0].translate(None, '_-').lower() == "chipflavour" or key_value[0].translate(None, '_-').lower() == "chipflavor"):
                     continue
-                elif key_value[0] in self.calibration_config:
+                elif key_value[0].translate(None, '_-').lower() == "chipid":
                     continue
                 else:
                     self.set_global_register_value(key_value[0], key_value[1], ignore_no_match=True)
@@ -598,19 +653,17 @@ class FEI4Register(object):
 
         all_config_keys_dict = dict(zip(all_config_keys_lower, all_config_keys))
         pixel_not_configured = []
-        pixel_not_configured.extend([x for x in self.pixel_registers if (x.not_set is True)])
+        pixel_not_configured.extend([x for x in self.pixel_registers if (x.not_set == True)])
         global_not_configured = []
-        global_not_configured.extend([x for x in self.global_registers if (x.not_set is True and x.readonly is False)])
+        global_not_configured.extend([x for x in self.global_registers if (x.not_set == True and x.readonly == False)])
         if len(global_not_configured) != 0:
             raise ValueError("Following global register(s) not configured: {}".format(', '.join('\'' + reg.full_name + '\'' for reg in global_not_configured)))
         if len(pixel_not_configured) != 0:
             raise ValueError("Following pixel register(s) not configured: {}".format(', '.join('\'' + reg.full_name + '\'' for reg in pixel_not_configured)))
         all_known_regs = []
         all_known_regs.extend([x.name for x in self.pixel_registers])
-        all_known_regs.extend([x.name for x in self.global_registers if x.readonly is False])
-        unknown_regs = set.difference(set(all_config_keys_dict.iterkeys()), all_known_regs)
-        if unknown_regs:
-            print "Found following unknown register(s): {}".format(', '.join('\'' + all_config_keys_dict[reg] + '\'' for reg in unknown_regs))
+        all_known_regs.extend([x.name for x in self.global_registers if x.readonly == False])
+        print "Found following unknown register(s): {}".format(', '.join('\'' + all_config_keys_dict[reg] + '\'' for reg in set.difference(set(all_config_keys_dict.iterkeys()), all_known_regs)))
 
     def write_chip_config(self):
         with open(self.configuration_file, 'a') as f:
@@ -619,28 +672,6 @@ class FEI4Register(object):
             reg_dict = {register.full_name: register.value for register in self.get_global_register_objects(readonly=False)}
             for key in sorted(reg_dict):
                 lines.append('%s %d\n' % (key, reg_dict[key]))
-            lines.append("\n")
-            f.writelines(lines)
-
-    def parse_parameters(self, parameters):
-        with open(self.configuration_file, 'r') as f:
-            for line in f.readlines():
-                key_value = re.split("\s+|[\s]*=[\s]*", line)
-                if key_value[0] in parameters:
-                    try:
-                        parameters[key_value[0]] = ast.literal_eval(key_value[1].strip())
-                    except SyntaxError:  # for comma separated values, e.g. lists
-                        parameters[key_value[0]] = ast.literal_eval(line[len(key_value[0]):].strip())
-                    except ValueError:
-                        parameters[key_value[0]] = key_value[1].strip().lower()
-
-    def write_parameters(self, parameters, title=None):
-        with open(self.configuration_file, 'a') as f:
-            lines = []
-            if title:
-                lines.append("# %s\n" % title)
-            for key, value in parameters.iteritems():
-                lines.append('%s %s\n' % (key, str(value)))
             lines.append("\n")
             f.writelines(lines)
 
@@ -734,7 +765,7 @@ class FEI4Register(object):
 
     def set_global_register_value(self, name, value, ignore_no_match=False):
         regs = [x for x in self.global_registers if x.name.lower() == name.lower()]
-        if ignore_no_match is False and len(regs) == 0:
+        if ignore_no_match == False and len(regs) == 0:
             raise ValueError('No matching register found')
         if ignore_no_match and len(regs) == 0:
             return
@@ -760,7 +791,7 @@ class FEI4Register(object):
 
     def set_pixel_register_value(self, name, value, ignore_no_match=False):
         regs = [x for x in self.pixel_registers if x.name.lower() == name.lower()]
-        if ignore_no_match is False and len(regs) == 0:
+        if ignore_no_match == False and len(regs) == 0:
             raise ValueError('No matching register found')
         if ignore_no_match and len(regs) == 0:
             return
@@ -798,7 +829,7 @@ class FEI4Register(object):
         for reg in regs:
             return reg.value.copy()
 
-    def get_commands(self, command_name, **kwargs):
+    def get_commands(self, command_name, same_mask_for_all_dc=False, **kwargs):
         """get fe_command from command name and keyword arguments
 
         wrapper for build_commands()
@@ -841,8 +872,6 @@ class FEI4Register(object):
             commands.extend([self.build_command(command_name, address=register_address, chipid=self.chip_id) for register_address in register_addresses])
 
         elif command_name.lower() == "wrfrontend":
-            dcs = kwargs.pop("dcs", range(40))  # set the double columns to latch
-            same_mask_for_all_dc = kwargs.pop("same_mask_for_all_dc", False)
             # print "wrfrontend"
             register_objects = self.get_pixel_register_objects(False, **kwargs)
             # pprint.pprint(register_objects)
@@ -867,7 +896,7 @@ class FEI4Register(object):
             for register_object in register_objects:
                 pxstrobe = register_object.pxstrobe
                 bitlength = register_object.bitlength
-                for bit_no, pxstrobe_bit_no in (enumerate(range(bitlength)) if (register_object.littleendian is False) else enumerate(reversed(range(bitlength)))):
+                for bit_no, pxstrobe_bit_no in (enumerate(range(bitlength)) if (register_object.littleendian == False) else enumerate(reversed(range(bitlength)))):
                     do_latch = True
                     try:
                         self.set_global_register_value("Pixel_Strobes", 2 ** (pxstrobe + bit_no))
@@ -882,12 +911,12 @@ class FEI4Register(object):
 #                         print "bit_no", bit_no
 #                         print "pxstrobes", 0
 
-                    if do_latch is True:
+                    if do_latch == True:
                         self.set_global_register_value("Latch_En", 1)
                     else:
                         self.set_global_register_value("Latch_En", 0)
                     commands.extend(self.get_commands("wrregister", name=["Pixel_Strobes", "Latch_En"]))
-                    for dc_no in (dcs[:1] if same_mask_for_all_dc else dcs):
+                    for dc_no in range(1 if same_mask_for_all_dc else 40):
                         self.set_global_register_value("Colpr_Addr", dc_no)
                         commands.extend(self.get_commands("wrregister", name=["Colpr_Addr"]))
                         register_bitset = self.get_pixel_register_bitset(register_object, pxstrobe_bit_no, dc_no)
@@ -895,7 +924,7 @@ class FEI4Register(object):
                         # print "dc_no", dc_no
                         # print register_bitset
                         commands.extend([self.build_command(command_name, pixeldata=register_bitset, chipid=self.chip_id, **kwargs)])
-                        if do_latch is True:
+                        if do_latch == True:
                             # self.set_global_register_value("Latch_En", 1)
                             # fe_command.extend(self.get_commands("wrregister", name = ["Latch_En"]))
                             commands.extend(self.get_commands("globalpulse", width=0))
@@ -907,7 +936,8 @@ class FEI4Register(object):
             self.set_global_register_value("Colpr_Addr", 0)
             commands.extend(self.get_commands("wrregister", name=["Pixel_Strobes", "Latch_En", "Colpr_Mode", "Colpr_Addr"]))
         elif command_name.lower() == "rdfrontend":
-            dcs = kwargs.pop("dcs", range(40))  # set the double columns to latch
+#             print "rdfrontend"
+
             self.set_global_register_value('Conf_AddrEnable', 1)
             self.set_global_register_value("S0", 0)
             self.set_global_register_value("S1", 0)
@@ -930,6 +960,7 @@ class FEI4Register(object):
             commands = []
             commands.extend(self.get_commands("wrregister", name=["Conf_AddrEnable", "S0", "S1", "SR_Clr", "CalEn", "DIGHITIN_SEL", "GateHitOr", "ReadSkipped", "ReadErrorReq", "StopClkPulse", "SR_Clock", "Efuse_Sense", "HITLD_IN", "Colpr_Mode", "Colpr_Addr", "Pixel_Strobes", "Latch_En"]))
 
+            dcs = kwargs.get("dc", range(40))  # set the double columns to latch
             register_name = kwargs.get("name", ["EnableDigInj", "Imon", "Enable", "C_High", "C_Low", "TDAC", "FDAC"])  # set the pixel config registers to latch
 
             register_objects = self.get_pixel_register_objects(False, **{'name': register_name})
@@ -940,6 +971,7 @@ class FEI4Register(object):
                     break
 
             for register_object in register_objects:
+              # pprint.pprint(register_object)
                 pxstrobe = register_object.pxstrobe
                 bitlength = register_object.bitlength
                 for pxstrobe_bit_no in range(bitlength):
@@ -953,10 +985,11 @@ class FEI4Register(object):
                     commands.extend(self.get_commands("wrregister", name=["Pixel_Strobes"]))
 
                     for dc_no in dcs:
+#                         print 'dc_no', dc_no
                         self.set_global_register_value("Colpr_Addr", dc_no)
                         commands.extend(self.get_commands("wrregister", name=["Colpr_Addr"]))
 
-                        if do_latch is True:
+                        if do_latch == True:
                             self.set_global_register_value("S0", 1)
                             self.set_global_register_value("S1", 1)
                             self.set_global_register_value("SR_Clock", 1)
@@ -967,7 +1000,7 @@ class FEI4Register(object):
                         self.set_global_register_value("SR_Clock", 0)
                         commands.extend(self.get_commands("wrregister", name=["S0", "S1", "SR_Clock"]))
 
-                        register_bitset = self.get_pixel_register_bitset(register_object, pxstrobe_bit_no if (register_object.littleendian is False) else register_object.bitlength - pxstrobe_bit_no - 1, dc_no)
+                        register_bitset = self.get_pixel_register_bitset(register_object, pxstrobe_bit_no if (register_object.littleendian == False) else register_object.bitlength - pxstrobe_bit_no - 1, dc_no)
 
 #                         commands = []
                         if self.fei4b:
@@ -1134,7 +1167,8 @@ class FEI4Register(object):
             for register_object in register_objects:
                 if register_object.register_littleendian:  # check for register endianness
                     register_littleendian = True
-                if (16 * register_object.address + register_object.offset < 16 * (register_address + 1) and 16 * register_object.address + register_object.offset + register_object.bitlength > 16 * register_address):
+                if (16 * register_object.address + register_object.offset < 16 * (register_address + 1) and
+                    16 * register_object.address + register_object.offset + register_object.bitlength > 16 * register_address):
                     reg = bitarray_from_value(value=register_object.value, size=register_object.bitlength)
                     if register_object.littleendian:
                         reg.reverse()

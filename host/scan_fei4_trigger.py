@@ -17,7 +17,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 class Fei4TriggerScan(ScanBase):
     scan_id = "scan_fei4_trigger"
 
-    def scan(self, config_file_trigger_fe, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=600, max_triggers=10000, wait_for_first_trigger=True, channel_trigger_fe=3, channel_triggered_fe=4, **kwargs):
+    def scan(self, config_file_trigger_fe, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=600, max_triggers=10000, invert_lemo_trigger_input=False, wait_for_first_trigger=True, channel_trigger_fe=3, channel_triggered_fe=4, **kwargs):
         '''Scan loop
 
         Parameters
@@ -44,9 +44,8 @@ class Fei4TriggerScan(ScanBase):
                 lvl1_command = self.register.get_commands("zeros", length=14)[0] + self.register.get_commands("lv1")[0]  # + self.register.get_commands("zeros", length=1000)[0]
                 self.register_utils.set_command(lvl1_command)
                 # setting up external trigger
-                self.dut['tlu']['TRIGGER_MODE'] = 0
-                self.dut['tlu']['TRIGGER_COUNTER'] = 0
-                self.dut['cmd']['EN_EXT_TRIGGER'] = True
+                self.readout_utils.configure_trigger_fsm(mode=0, reset_trigger_counter=True, invert_lemo_trigger_input=invert_lemo_trigger_input)
+                self.readout_utils.configure_command_fsm(enable_ext_trigger=True, diable_clock=False, disable_command_trigger=False)
 
                 show_trigger_message_at = 10 ** (int(math.ceil(math.log10(max_triggers))) - 1)
                 last_iteration = time.time()
@@ -59,7 +58,15 @@ class Fei4TriggerScan(ScanBase):
                 current_trigger_number = 0
                 last_trigger_number = 0
                 while not self.stop_thread_event.wait(self.readout.readout_interval):
-                    current_trigger_number = self.dut['tlu']['TRIGGER_COUNTER']
+
+    #                 if logger.isEnabledFor(logging.DEBUG):
+    #                     lost_data = self.readout.get_lost_data_count()
+    #                     if lost_data != 0:
+    #                         logging.debug('Lost data count: %d', lost_data)
+    #                         logging.debug('FIFO fill level: %4f', (float(fifo_size)/2**20)*100)
+    #                         logging.debug('Collected triggers: %d', self.readout.get_trigger_number())
+
+                    current_trigger_number = self.readout_utils.get_trigger_number()
                     if (current_trigger_number % show_trigger_message_at < last_trigger_number % show_trigger_message_at):
                         logging.info('Collected triggers: %d', current_trigger_number)
                     last_trigger_number = current_trigger_number
@@ -69,6 +76,16 @@ class Fei4TriggerScan(ScanBase):
                     if scan_start_time is not None and time.time() > scan_stop_time:
                         logging.info('Reached maximum scan time. Stopping Scan...')
                         self.stop_thread_event.set()
+                    # TODO: read 8b10b decoder err cnt
+    #                 if not self.readout.read_rx_status():
+    #                     logging.info('Lost data sync. Starting synchronization...')
+    #                     self.readout.configure_command_fsm(False)
+    #                     if not self.readout.reset_rx(1000):
+    #                         logging.info('Failed. Stopping scan...')
+    #                         self.stop_thread_event.set()
+    #                     else:
+    #                         logging.info('Done!')
+    #                         self.readout.configure_command_fsm(True)
 
                     time_from_last_iteration = time.time() - last_iteration
                     last_iteration = time.time()
@@ -81,10 +98,10 @@ class Fei4TriggerScan(ScanBase):
                             raw_data_file.append(raw_data_fe)
                         except IndexError:  # no data
                             no_data_at_time = last_iteration
-                            if wait_for_first_trigger is False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
+                            if wait_for_first_trigger == False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
                                 logging.info('Reached no data timeout. Stopping Scan...')
                                 self.stop_thread_event.set()
-                            elif wait_for_first_trigger is False:
+                            elif wait_for_first_trigger == False:
                                 saw_no_data_at_time = no_data_at_time
 
                             if no_data_at_time > (saw_data_at_time + 10):
@@ -94,14 +111,14 @@ class Fei4TriggerScan(ScanBase):
 
                         saw_data_at_time = last_iteration
 
-                        if wait_for_first_trigger is True:
+                        if wait_for_first_trigger == True:
                             logging.info('Taking data...')
                             wait_for_first_trigger = False
 
-                self.dut['cmd']['EN_EXT_TRIGGER'] = False
-                self.dut['tlu']['TRIGGER_MODE'] = 0
+                self.readout_utils.configure_command_fsm(enable_ext_trigger=False)
+                self.readout_utils.configure_trigger_fsm(mode=0)
 
-                logging.info('Total amount of triggers collected: %d', self.dut['tlu']['TRIGGER_COUNTER'])
+                logging.info('Total amount of triggers collected: %d', self.readout_utils.get_trigger_number())
 
         self.readout.stop()
 
@@ -167,7 +184,8 @@ class Fei4TriggerScan(ScanBase):
         from analysis.analyze_raw_data import AnalyzeRawData
         output_file = self.scan_data_filename + "_interpreted.h5"
         output_file_trigger_fe = self.scan_data_filename + "_trigger_fe_interpreted.h5"
-        with AnalyzeRawData(raw_data_file=self.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
+        with AnalyzeRawData(raw_data_file=scan.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
+            analyze_raw_data.interpreter.set_trig_count(self.register.get_global_register_value("Trig_Count"))
             analyze_raw_data.max_tot_value = 13
             analyze_raw_data.create_hit_table = True
             analyze_raw_data.create_source_scan_hist = True
@@ -175,10 +193,11 @@ class Fei4TriggerScan(ScanBase):
             analyze_raw_data.create_cluster_tot_hist = True
             analyze_raw_data.create_cluster_table = True
             analyze_raw_data.interpreter.set_warning_output(False)
-            analyze_raw_data.interpret_word_table()
+            analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
             analyze_raw_data.interpreter.print_summary()
-            analyze_raw_data.plot_histograms(scan_data_filename=self.scan_data_filename, maximum='maximum')
-        with AnalyzeRawData(raw_data_file=self.scan_data_filename + "_trigger_fe.h5", analyzed_data_file=output_file_trigger_fe) as analyze_raw_data:
+            analyze_raw_data.plot_histograms(scan_data_filename=scan.scan_data_filename, maximum='maximum')
+        with AnalyzeRawData(raw_data_file=scan.scan_data_filename + "_trigger_fe.h5", analyzed_data_file=output_file_trigger_fe) as analyze_raw_data:
+            analyze_raw_data.interpreter.set_trig_count(self.register_trigger_fe.get_global_register_value("Trig_Count"))
             analyze_raw_data.max_tot_value = 13
             analyze_raw_data.create_hit_table = True
             analyze_raw_data.create_source_scan_hist = True
@@ -186,9 +205,9 @@ class Fei4TriggerScan(ScanBase):
             analyze_raw_data.create_cluster_tot_hist = True
             analyze_raw_data.create_cluster_table = True
             analyze_raw_data.interpreter.set_warning_output(False)
-            analyze_raw_data.interpret_word_table()
+            analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
             analyze_raw_data.interpreter.print_summary()
-            analyze_raw_data.plot_histograms(scan_data_filename=self.scan_data_filename + '_trigger_fe', maximum='maximum')
+            analyze_raw_data.plot_histograms(scan_data_filename=scan.scan_data_filename + '_trigger_fe', maximum='maximum')
 
 
 if __name__ == "__main__":
@@ -198,8 +217,10 @@ if __name__ == "__main__":
     config_file_triggered_fe = os.path.join(os.getcwd(), r'config/fei4/configs/SCC_99_low_thr_tuning.cfg')  # Chip 1, GA 1
     config_file_trigger_fe = os.path.join(os.getcwd(), r'config/fei4/configs/SCC_30_tuning.cfg')  # Chip 2, GA 2
 
-    scan = Fei4TriggerScan(**configuration.default_configuration)  # configuration of triggered FE
-    scan.start(config_file_trigger_fe=config_file_trigger_fe, channel_triggered_fe=4, channel_trigger_fe=3, invert_lemo_trigger_input=True, configure=True, use_thread=True, col_span=[5, 75], row_span=[20, 310], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=1000000)
+#     config_file_trigger_fe = os.path.join(os.getcwd(), r'config/fei4/configs/SCC_50_tuning.cfg') # Chip 1, GA 1
+#     config_file_triggered_fe = os.path.join(os.getcwd(), r'config/fei4/configs/SCC_114_tuning.cfg') # Chip 2, GA 2
 
+    scan = Fei4TriggerScan(configuration_file=config_file_triggered_fe, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
+    scan.start(config_file_trigger_fe=config_file_trigger_fe, channel_triggered_fe=4, channel_trigger_fe=3, invert_lemo_trigger_input=True, configure=True, use_thread=True, col_span=[5, 75], row_span=[20, 310], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=1000000)
     scan.stop()
     scan.analyze()

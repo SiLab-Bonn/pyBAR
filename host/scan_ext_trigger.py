@@ -15,11 +15,10 @@ local_configuration = {
     "trigger_delay": 14,
     "col_span": [1, 80],
     "row_span": [1, 336],
-    "overwrite_mask": False,
-    "use_enable_mask": True,
-    "timeout_no_data": 10,  # in seconds
-    "scan_timeout": 60,  # in seconds
+    "timeout_no_data": 10,
+    "scan_timeout": 1 * 60,
     "max_triggers": 10000,
+    "enable_hitbus": False,
     "enable_tdc": False
 }
 
@@ -27,13 +26,13 @@ local_configuration = {
 class ExtTriggerScan(ScanBase):
     scan_id = "ext_trigger_scan"
 
-    def scan(self, trigger_mode=0, trigger_latency=232, trigger_delay=14, col_span=[1, 80], row_span=[1, 336], overwrite_mask=False, use_enable_mask=False, timeout_no_data=10, scan_timeout=10 * 60, max_triggers=10000, enable_tdc=False):
+    def scan(self, trigger_mode=0, trigger_latency=232, trigger_delay=14, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=10000, enable_hitbus=False, enable_tdc=False, **kwargs):
         '''Scan loop
 
         Parameters
         ----------
         trigger_mode : int
-            Trigger mode. More details in basil.HL.tlu. From 0 to 3.
+            Trigger mode. More details in daq.readout_utils. From 0 to 3.
             0: External trigger (LEMO RX0 only, TLU port disabled (TLU port/RJ45)).
             1: TLU no handshake (automatic detection of TLU connection (TLU port/RJ45)).
             2: TLU simple handshake (automatic detection of TLU connection (TLU port/RJ45)).
@@ -52,38 +51,33 @@ class ExtTriggerScan(ScanBase):
             Column range (from minimum to maximum value). From 1 to 80.
         row_span : list, tuple
             Row range (from minimum to maximum value). From 1 to 336.
-        overwrite_mask : bool
-            If true the Enable and Imon (Hitbus/HitOR) mask will be overwritten by the mask defined by col_span and row_span.
-        use_enable_mask : bool
-            If true use Enable mask for Imon (Hitbus/HitOR) mask. Enable mask will be inverted, Hitbus will activated where pixels are enabled. Otherwise use mask from config file.
         timeout_no_data : int
             In seconds; if no data, stop scan after given time.
         scan_timeout : int
             In seconds; stop scan after given time.
         max_triggers : int
             Maximum number of triggers to be taken.
+        enable_hitbus : bool
+            Enable Hitbus (Hit OR) for columns and rows given by col_span and row_span.
         enable_tdc : bool
             Enable for Hit-OR TDC (time-to-digital-converter) measurement. In this mode the Hit-Or/Hitbus output of the FEI4 has to be connected to USBpix Hit-OR input on the Single Chip Adapter Card.
         '''
+        # generate mask for Enable mask
+        pixel_reg = "Enable"
+        mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
         commands = []
         commands.extend(self.register.get_commands("confmode"))
-        pixel_reg = 'Enable'  # enabled pixels set to 1
-        mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span)  # 1 for selected columns, else 0
-        if overwrite_mask:
-            pixel_mask = mask
-        else:
-            pixel_mask = np.logical_and(mask, self.register.get_pixel_register_value(pixel_reg))
-        self.register.set_pixel_register_value(pixel_reg, pixel_mask)
+        enable_mask = np.logical_and(mask, self.register.get_pixel_register_value(pixel_reg))
+        self.register.set_pixel_register_value(pixel_reg, enable_mask)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
-        pixel_reg = 'Imon'  # disabled pixels set to 1
-        if use_enable_mask:
-            self.register.set_pixel_register_value(pixel_reg, self.register_utils.invert_pixel_mask(self.register.get_pixel_register_value('Enable')))
-        mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span, default=1, value=0)  # 0 for selected columns, else 1
-        if overwrite_mask:
-            pixel_mask = mask
+        # generate mask for Imon mask
+        pixel_reg = "Imon"
+        if enable_hitbus:
+            mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span, default=1, value=0)
+            imon_mask = np.logical_or(mask, self.register.get_pixel_register_value(pixel_reg))
         else:
-            pixel_mask = np.logical_or(mask, self.register.get_pixel_register_value(pixel_reg))
-        self.register.set_pixel_register_value(pixel_reg, pixel_mask)
+            imon_mask = 1
+        self.register.set_pixel_register_value(pixel_reg, imon_mask)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
         # disable C_inj mask
         pixel_reg = "C_High"
@@ -106,11 +100,11 @@ class ExtTriggerScan(ScanBase):
             # preload command
             lvl1_command = self.register.get_commands("zeros", length=trigger_delay)[0] + self.register.get_commands("lv1")[0]  # + self.register.get_commands("zeros", length=200)[0]
             self.register_utils.set_command(lvl1_command)
-
-            self.dut['tdc']['ENABLE'] = enable_tdc
-            self.dut['tlu']['TRIGGER_MODE'] = trigger_mode
-            self.dut['tlu']['TRIGGER_COUNTER'] = 0
-            self.dut['cmd']['EN_EXT_TRIGGER'] = True
+            # setting up TDC
+            self.readout_utils.configure_tdc_fsm(enable_tdc=enable_tdc, **kwargs)
+            # setting up external trigger
+            self.readout_utils.configure_trigger_fsm(trigger_mode=trigger_mode, reset_trigger_counter=True, **kwargs)
+            self.readout_utils.configure_command_fsm(enable_ext_trigger=True, **kwargs)
 
             show_trigger_message_at = 10 ** (int(math.floor(math.log10(max_triggers) - math.log10(3) / math.log10(10))))
             time_current_iteration = time.time()
@@ -126,7 +120,7 @@ class ExtTriggerScan(ScanBase):
                 time_last_iteration = time_current_iteration
                 time_current_iteration = time.time()
                 time_from_last_iteration = time_current_iteration - time_last_iteration
-                current_trigger_number = self.dut['tlu']['TRIGGER_COUNTER']
+                current_trigger_number = self.readout_utils.get_trigger_number()
                 if (current_trigger_number % show_trigger_message_at < last_trigger_number % show_trigger_message_at):
                     logging.info('Collected triggers: %d', current_trigger_number)
                     if not any(self.readout.get_rx_sync_status()):
@@ -164,29 +158,29 @@ class ExtTriggerScan(ScanBase):
                         logging.info('Taking data...')
                         wait_for_first_trigger = False
 
-            self.dut['tdc']['ENABLE'] = False
-            self.dut['cmd']['EN_EXT_TRIGGER'] = False
-            self.dut['tlu']['TRIGGER_MODE'] = 0
-            logging.info('Total amount of triggers collected: %d', self.dut['tlu']['TRIGGER_COUNTER'])
+            self.readout_utils.configure_tdc_fsm(enable_tdc=False, enable_tdc_arming=False)
+            self.readout_utils.configure_command_fsm(enable_ext_trigger=False)
+            self.readout_utils.configure_trigger_fsm(trigger_mode=0)
+            logging.info('Total amount of triggers collected: %d', self.readout_utils.get_trigger_number())
             self.readout.stop()
             raw_data_file.append(self.readout.data)
 
     def analyze(self):
         from analysis.analyze_raw_data import AnalyzeRawData
         output_file = self.scan_data_filename + "_interpreted.h5"
-        with AnalyzeRawData(raw_data_file=self.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
+        with AnalyzeRawData(raw_data_file=scan.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
+            analyze_raw_data.interpreter.set_trig_count(self.register.get_global_register_value("Trig_Count"))
             analyze_raw_data.create_source_scan_hist = True
-#             analyze_raw_data.create_hit_table = True
             analyze_raw_data.create_cluster_size_hist = True
             analyze_raw_data.create_cluster_tot_hist = True
-            if self.enable_tdc:
+            if scan.scan_configuration['enable_tdc']:
                 analyze_raw_data.create_tdc_counter_hist = True  # histogram all TDC words
                 analyze_raw_data.create_tdc_hist = True  # histogram the hit TDC information
                 analyze_raw_data.interpreter.use_tdc_word(True)  # align events at the TDC word
             analyze_raw_data.interpreter.set_warning_output(False)
-            analyze_raw_data.interpret_word_table()
+            analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
             analyze_raw_data.interpreter.print_summary()
-            analyze_raw_data.plot_histograms(scan_data_filename=self.scan_data_filename)
+            analyze_raw_data.plot_histograms(scan_data_filename=scan.scan_data_filename)
 
 
 if __name__ == "__main__":

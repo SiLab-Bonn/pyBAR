@@ -178,7 +178,7 @@ def plot_fancy_occupancy(hist, z_max=None, filename=None):
     # make some labels invisible
     plt.setp(axHistx.get_xticklabels() + axHisty.get_yticklabels(), visible=False)
     hight = np.ma.sum(hist, axis=0)
-    #hight[hight.mask] = 0
+    hight[hight.mask] = 0
     axHistx.bar(left=range(1, 81), height=hight, align='center', linewidth=0)
     axHistx.set_xlim((0.5, 80.5))
     if hist.all() is np.ma.masked:
@@ -187,7 +187,7 @@ def plot_fancy_occupancy(hist, z_max=None, filename=None):
     axHistx.ticklabel_format(style='sci', scilimits=(0, 4), axis='y')
     axHistx.set_ylabel('#')
     width = np.ma.sum(hist, axis=1)
-    #width[hight.mask] = 0
+    width[hight.mask] = 0
     axHisty.barh(bottom=range(1, 337), width=width, align='center', linewidth=0)
     axHisty.set_ylim((336.5, 0.5))
     if hist.all() is np.ma.masked:
@@ -689,49 +689,44 @@ def create_2d_pixel_hist(hist2d, title=None, x_axis_title=None, y_axis_title=Non
     plt.colorbar(boundaries=bounds, cmap=cmap, norm=norm, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True), cax=cax)
 
 
-def create_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, bins=100, x_min=None, x_max=None):
+def create_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, bins=None, x_min=None, x_max=None):
     if hist.all() is np.ma.masked:
-        median = 0.0
-        mean = 0.0
-        rms = 0.0
+        median = 0.
+        mean = 0.
+        rms = 0.
     else:
         median = np.ma.median(hist)
         mean = np.ma.mean(hist)
         rms = np.ma.std(hist, dtype=np.float64)
+    hist_bins = 100 if bins is None else bins
     if x_min is None:
-        x_min = 0.0
+        x_min = 0
     if x_max is None:
         if hist.all() is np.ma.masked:  # check if masked array is fully masked
-            x_max = 1.0
+            x_max = 1
         else:
             x_max = math.ceil(hist.max())
-    hist_bins = int(x_max - x_min) + 1 if bins is None else bins
-    if hist_bins > 1:
-        bin_width = (x_max - x_min) / (hist_bins - 1.0)
-    else:
-        bin_width = 1.0
-    hist_range = (x_min - bin_width / 2.0, x_max + bin_width / 2.0)
+    hist_range = (x_min, x_max)
     # plot
-    _, _, _ = plt.hist(x=np.ma.masked_array(hist).compressed(), bins=hist_bins, range=hist_range, align='mid')  # re-bin to 1d histogram, x argument needs to be 1D
-    # BUG: np.ma.compressed(np.ma.masked_array(hist)) (2D) is not equal to np.ma.masked_array(hist).compressed() (1D) if hist is ndarray
+    _, _, _ = plt.hist(x=np.ma.compressed(hist), bins=hist_bins, range=hist_range)  # re-bin to 1d histogram
     plt.xlim(hist_range)  # overwrite xlim
-    if hist.all() is np.ma.masked:  # or np.allclose(hist, 0.0):
+    if hist.all() is np.ma.masked or np.allclose(hist, 0.0):
         plt.ylim((0, 1))
     # create histogram without masked elements, higher precision when calculating gauss
-    h_1d, h_bins = np.histogram(np.ma.masked_array(hist).compressed(), bins=hist_bins, range=hist_range)
+    h_1d, h_bins = np.histogram(np.ma.compressed(hist), bins=hist_bins, range=hist_range)
     if title is not None:
         plt.title(title)
     if x_axis_title is not None:
         plt.xlabel(x_axis_title)
     if y_axis_title is not None:
         plt.ylabel(y_axis_title)
-    bin_centres = (h_bins[:-1] + h_bins[1:]) / 2.0
+    bin_centres = (h_bins[:-1] + h_bins[1:]) / 2
     amplitude = np.amax(h_1d)
 
     # defining gauss fit function
     def gauss(x, *p):
         A, mu, sigma = p
-        return A * np.exp(-(x - mu) ** 2.0 / (2.0 * sigma ** 2.0))
+        return A * np.exp(-(x - mu) ** 2 / (2.0 * sigma ** 2))
 
     p0 = (amplitude, mean, rms)  # p0 is the initial guess for the fitting coefficients (A, mu and sigma above)
     ax = plt.subplot(312)
@@ -739,16 +734,14 @@ def create_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, bins=
         coeff, _ = curve_fit(gauss, bin_centres, h_1d, p0=p0)
         hist_fit = gauss(bin_centres, *coeff)
         plt.plot(bin_centres, hist_fit, "r--", label='Gauss fit')
-        chi2 = 0.0
+        chi2 = 0
         for i in range(0, len(h_1d)):
-            chi2 += (h_1d[i] - gauss(h_bins[i], *coeff)) ** 2.0
+            chi2 += (h_1d[i] - gauss(h_bins[i], *coeff)) ** 2
         textright = '$\mu=%.2f$\n$\sigma=%.2f$\n$\chi2=%.2f$' % (coeff[1], coeff[2], chi2)
         props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
         ax.text(0.85, 0.9, textright, transform=ax.transAxes, fontsize=8, verticalalignment='top', bbox=props)
-    except RuntimeError, e:
-        logging.info('Plot 1d histogram: gauss fit failed, %s' % e)
-    except TypeError, e:
-        logging.info('Plot 1d histogram: gauss fit failed, %s' % e)
+    except RuntimeError:
+        logging.info('Plot 1d histogram: gauss fit failed, do not draw curve')
     textleft = '$\mathrm{mean}=%.2f$\n$\mathrm{RMS}=%.2f$\n$\mathrm{median}=%.2f$' % (mean, rms, median)
     props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
     ax.text(0.1, 0.9, textleft, transform=ax.transAxes, fontsize=8, verticalalignment='top', bbox=props)

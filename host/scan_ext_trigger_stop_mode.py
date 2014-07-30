@@ -53,7 +53,7 @@ class ExtTriggerScan(ScanBase):
         Parameters
         ----------
         trigger_mode : int
-            Trigger mode. More details in basil.HL.tlu. From 0 to 3.
+            Trigger mode. More details in daq.readout_utils. From 0 to 3.
             0: External trigger (LEMO RX0 only, TLU port disabled (TLU port/RJ45)).
             1: TLU no handshake (automatic detection of TLU connection (TLU port/RJ45)).
             2: TLU simple handshake (automatic detection of TLU connection (TLU port/RJ45)).
@@ -126,20 +126,20 @@ class ExtTriggerScan(ScanBase):
                                                                         self.register.get_commands("zeros", length=100)[0]
                                                                         ))
 
-            self.dut['cmd']['CMD_REPEAT'] = bcid_window
-            self.dut['cmd']['START_SEQUENCE_LENGTH'] = len(start_sequence)
-            self.dut['cmd']['STOP_SEQUENCE_LENGTH'] = len(stop_sequence) + 1
+            self.register_utils.set_hardware_repeat(bcid_window)
+            self.register_utils.set_repeat_mode_start_lenth(len(start_sequence))
+            self.register_utils.set_repeat_mode_end_lenth(len(stop_sequence) + 1)
 
             # preload the command to be send for each trigger
             command = self.register_utils.concatenate_commands((start_sequence, one_latency_read, stop_sequence))
 
             self.register_utils.set_command(command)
 
-            self.dut['tdc']['ENABLE'] = enable_tdc
-            self.dut['tlu']['TRIGGER_MODE'] = trigger_mode
-            self.dut['tlu']['TRIGGER_COUNTER'] = 0
-            self.dut['tlu']['EN_WRITE_TIMESTAMP'] = True
-            self.dut['cmd']['EN_EXT_TRIGGER'] = True
+            # setting up TDC
+            self.readout_utils.configure_tdc_fsm(enable_tdc=enable_tdc, **kwargs)
+            # setting up external trigger
+            self.readout_utils.configure_trigger_fsm(trigger_mode=trigger_mode, reset_trigger_counter=True, write_tlu_timestamp=True, **kwargs)
+            self.readout_utils.configure_command_fsm(enable_ext_trigger=True, **kwargs)
 
             show_trigger_message_at = 10 ** (int(math.floor(math.log10(max_triggers) - math.log10(3) / math.log10(10))))
             time_current_iteration = time.time()
@@ -193,10 +193,10 @@ class ExtTriggerScan(ScanBase):
                         logging.info('Taking data...')
                         wait_for_first_trigger = False
 
-            self.dut['tdc']['ENABLE'] = False
-            self.dut['cmd']['EN_EXT_TRIGGER'] = False
-            self.dut['tlu']['TRIGGER_MODE'] = 0
-            logging.info('Total amount of triggers collected: %d', self.dut['tlu']['TRIGGER_COUNTER'])
+            self.readout_utils.configure_tdc_fsm(enable_tdc=False, enable_tdc_arming=False)
+            self.readout_utils.configure_command_fsm(enable_ext_trigger=False)
+            self.readout_utils.configure_trigger_fsm(trigger_mode=0)
+            logging.info('Total amount of triggers collected: %d', self.readout_utils.get_trigger_number())
             self.readout.stop()
             raw_data_file.append(self.readout.data)
 
@@ -237,7 +237,7 @@ class ExtTriggerScan(ScanBase):
     def analyze(self):
         from analysis.analyze_raw_data import AnalyzeRawData
         output_file = self.scan_data_filename + "_interpreted.h5"
-        with AnalyzeRawData(raw_data_file=self.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
+        with AnalyzeRawData(raw_data_file=scan.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
             analyze_raw_data.create_hit_table = True
             analyze_raw_data.n_bcid = scan_configuration['bcid_window']
             analyze_raw_data.create_source_scan_hist = True
@@ -248,9 +248,9 @@ class ExtTriggerScan(ScanBase):
             analyze_raw_data.interpreter.set_warning_output(False)
             analyze_raw_data.clusterizer.set_warning_output(False)
 #             analyze_raw_data.interpreter.debug_events(0, 10, True)  # events to be printed onto the console for debugging, usually deactivated
-            analyze_raw_data.interpret_word_table(use_settings_from_file=False)
+            analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
             analyze_raw_data.interpreter.print_summary()
-            analyze_raw_data.plot_histograms(scan_data_filename=self.scan_data_filename)
+            analyze_raw_data.plot_histograms(scan_data_filename=scan.scan_data_filename)
 
 
 if __name__ == "__main__":

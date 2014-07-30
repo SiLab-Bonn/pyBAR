@@ -26,8 +26,7 @@ import tables as tb
 
 from utils.utils import get_float_time
 from analysis.RawDataConverter.data_struct import MetaTableV2 as MetaTable, generate_scan_parameter_description
-#from bitstring import BitArray  # TODO: bitarray.bitarray() (in Python3 use int.from_bytes() to convert bitarray to integer)
-from basil.utils.BitLogic import BitLogic
+from bitstring import BitArray  # TODO: bitarray.bitarray() (in Python3 use int.from_bytes() to convert bitarray to integer)
 from collections import OrderedDict
 
 from SiLibUSB import SiUSBDevice
@@ -38,8 +37,11 @@ data_deque_dict_names = ["data", "timestamp_start", "timestamp_stop", "error"]
 
 
 class Readout(object):
-    def __init__(self, dut):
-        self.dut = dut
+    def __init__(self, device):
+        if isinstance(device, SiUSBDevice):
+            self.device = device
+        else:
+            raise ValueError('Device object is not compatible')
         self.worker_thread = None
         self.data = deque()
         self.stop_thread_event = Event()
@@ -51,7 +53,7 @@ class Readout(object):
         self.update_timestamp()
 
     def start(self, reset_rx=False, empty_data_queue=True, reset_sram_fifo=True, filename=None):
-        if self.worker_thread is not None:
+        if self.worker_thread != None:
             raise RuntimeError('Thread is not None')
         if reset_rx:
             self.reset_rx()
@@ -67,7 +69,7 @@ class Readout(object):
         self.worker_thread.start()
 
     def stop(self, timeout=10):
-        if self.worker_thread is None:
+        if self.worker_thread == None:
             raise RuntimeError('Readout thread not existing: use start() before stop()')
         if timeout:
             def stop_thread():
@@ -77,11 +79,11 @@ class Readout(object):
             timeout_timer = Timer(timeout, stop_thread)
             timeout_timer.start()
 
-            fifo_size = self.dut['sram']['FIFO_SIZE']
+            fifo_size = self.get_sram_fifo_size()
             old_fifo_size = -1
             while (old_fifo_size != fifo_size or fifo_size != 0) and self.worker_thread.is_alive() and not self.stop_thread_event.wait(1.5 * self.readout_interval):
                 old_fifo_size = fifo_size
-                fifo_size = self.dut['sram']['FIFO_SIZE']
+                fifo_size = self.get_sram_fifo_size()
 
             timeout_timer.cancel()
 
@@ -95,9 +97,9 @@ class Readout(object):
         discard_count = self.get_rx_fifo_discard_count()
         error_count = self.get_rx_8b10b_error_count()
         logging.info('Data queue size: %d' % len(self.data))  # .qsize())
-        logging.info('SRAM FIFO size: %d' % self.dut['sram']['FIFO_SIZE'])
-        logging.info('Channel:                     %s', " | ".join([('CH%d' % channel).rjust(3) for channel in range(1, len(sync_status) + 1, 1)]))
-        logging.info('RX sync:                     %s', " | ".join(["YES".rjust(3) if status is True else "NO".rjust(3) for status in sync_status]))
+        logging.info('SRAM FIFO size: %d' % self.get_sram_fifo_size())
+        logging.info('Channel:                     %s', " | ".join([('CH%d' % channel).rjust(3) for channel in range(1, 5, 1)]))
+        logging.info('RX sync:                     %s', " | ".join(["YES".rjust(3) if status == True else "NO".rjust(3) for status in sync_status]))
         logging.info('RX FIFO discard counter:     %s', " | ".join([repr(count).rjust(3) for count in discard_count]))
         logging.info('RX FIFO 8b10b error counter: %s', " | ".join([repr(count).rjust(3) for count in error_count]))
         if not any(self.get_rx_sync_status()) or any(discard_count) or any(error_count):
@@ -110,7 +112,7 @@ class Readout(object):
         '''
         # TODO: check FIFO status (overflow) and check rx status (sync) once in a while
         while not self.stop_thread_event.wait(self.readout_interval):  # TODO: this is probably what you need to reduce processor cycles
-            self.dut['USB']._sidev.lock.acquire()
+            self.device.lock.acquire()
             try:
                 data = self.read_data_dict()
             except Exception as e:
@@ -118,7 +120,7 @@ class Readout(object):
                 self.stop_thread_event.set()  # stop readout on any occurring exception
                 continue
             finally:
-                self.dut['USB']._sidev.lock.release()
+                self.device.lock.release()
             if data["data"].shape[0] > 0:  # TODO: make it optional
                 self.data.append(data)  # put({'timestamp':get_float_time(), 'raw_data':filtered_data_words, 'error':0})
 
@@ -132,7 +134,7 @@ class Readout(object):
         dict with following keys: "data", "timestamp_start", "timestamp_stop", "error"
         '''
         last_time, curr_time = self.update_timestamp()
-        return {"data": self.dut['sram'].get_data(), "timestamp_start": last_time, "timestamp_stop": curr_time, "error": self.read_status()}
+        return {"data": self.read_data(), "timestamp_start": last_time, "timestamp_stop": curr_time, "error": self.read_status()}
 
     def update_timestamp(self):
         curr_time = get_float_time()
@@ -140,54 +142,68 @@ class Readout(object):
         self.timestamp = curr_time
         return last_time, curr_time
 
+    def read_data(self):
+        '''Read SRAM data words (array of 32-bit uint data words)
+
+        Can be used without threading
+
+        Returns
+        -------
+        numpy.array
+        '''
+        # TODO: check FIFO status (overflow) and check rx status (sync) once in a while
+
+        fifo_size = self.get_sram_fifo_size()
+        if fifo_size % 2 == 1:  # sometimes a read happens during writing, but we want to have a multiplicity of 32 bits
+            fifo_size -= 1
+            # print "FIFO size odd"
+        if fifo_size > 0:
+            # old style:
+            # fifo_data = self.device.FastBlockRead(4*fifo_size/2)
+            # data_words = struct.unpack('>'+fifo_size/2*'I', fifo_data)
+            return np.fromstring(self.device.FastBlockRead(4 * fifo_size / 2).tostring(), dtype=np.dtype('>u4'))
+        else:
+            return np.array([], dtype=np.dtype('>u4'))  # create empty array
+            # return np.empty(0, dtype=np.dtype('>u4')) # FIXME: faster?
+
     def read_status(self):
         return 0
 
     def reset_sram_fifo(self):
         logging.info('Resetting SRAM FIFO')
         self.update_timestamp()
-        self.dut['sram']['RESET']
+        self.device.WriteExternal(address=self.sram_base_address[0], data=[0])
         sleep(0.2)  # sleep here for a while
-        if self.dut['sram']['FIFO_SIZE'] != 0:
+        if self.get_sram_fifo_size() != 0:
             logging.warning('SRAM FIFO size not zero')
+
+    def get_sram_fifo_size(self):
+        retfifo = self.device.ReadExternal(address=self.sram_base_address[0] + 1, size=3)
+        retfifo.append(0)  # 4 bytes
+        return struct.unpack_from('I', retfifo)[0]
 
     def reset_rx(self, channels=None):
         logging.info('Resetting RX')
-        if channels:
-            filter(lambda channel: self.dut[channel]['SOFT_RESET'], channels)
-        else:
-            if self.dut.name == 'pyBAR':
-                filter(lambda channel: self.dut[channel]['SOFT_RESET'], ['rx_1', 'rx_2', 'rx_3', 'rx_4'])
-            elif self.dut.name == 'pyBAR_GPAC':
-                filter(lambda channel: self.dut[channel]['SOFT_RESET'], ['rx_fe'])
+        if channels == None:
+            channels = self.rx_base_address.iterkeys()
+        filter(lambda i: self.device.WriteExternal(address=self.rx_base_address[i] + 1, data=[0]), channels)  # reset RX counters
+        # since WriteExternal returns nothing, filter returns empty list
         sleep(0.1)  # sleep here for a while
 
     def get_rx_sync_status(self, channels=None):
-        if channels:
-            return map(lambda channel: True if self.dut[channel]['READY'] else False, channels)
-        else:
-            if self.dut.name == 'pyBAR':
-                return map(lambda channel: True if self.dut[channel]['READY'] else False, ['rx_1', 'rx_2', 'rx_3', 'rx_4'])
-            elif self.dut.name == 'pyBAR_GPAC':
-                return map(lambda channel: True if self.dut[channel]['READY'] else False, ['rx_fe'])
+        if channels == None:
+            channels = self.rx_base_address.iterkeys()
+        return map(lambda i: True if (self.device.ReadExternal(address=self.rx_base_address[i] + 2, size=1)[0]) & 0x1 == 1 else False, channels)
 
     def get_rx_8b10b_error_count(self, channels=None):
-        if channels:
-            return map(lambda channel: self.dut[channel]['DECODER_ERROR_COUNTER'], channels)
-        else:
-            if self.dut.name == 'pyBAR':
-                return map(lambda channel: self.dut[channel]['DECODER_ERROR_COUNTER'], ['rx_1', 'rx_2', 'rx_3', 'rx_4'])
-            elif self.dut.name == 'pyBAR_GPAC':
-                return map(lambda channel: self.dut[channel]['DECODER_ERROR_COUNTER'], ['rx_fe'])
+        if channels == None:
+            channels = self.rx_base_address.iterkeys()
+        return map(lambda i: self.device.ReadExternal(address=self.rx_base_address[i] + 5, size=1)[0], channels)
 
     def get_rx_fifo_discard_count(self, channels=None):
-        if channels:
-            return map(lambda channel: self.dut[channel]['LOST_DATA_COUNTER'], channels)
-        else:
-            if self.dut.name == 'pyBAR':
-                return map(lambda channel: self.dut[channel]['LOST_DATA_COUNTER'], ['rx_1', 'rx_2', 'rx_3', 'rx_4'])
-            elif self.dut.name == 'pyBAR_GPAC':
-                return map(lambda channel: self.dut[channel]['LOST_DATA_COUNTER'], ['rx_fe'])
+        if channels == None:
+            channels = self.rx_base_address.iterkeys()
+        return map(lambda i: self.device.ReadExternal(address=self.rx_base_address[i] + 6, size=1)[0], channels)
 
 
 def convert_data_array(array, filter_func=None, converter_func=None):
@@ -597,6 +613,8 @@ class RawDataFile(object):
         self.raw_data_file_h5.close()
 
     def append(self, data_dict_iterable, scan_parameters={}, clear_deque=False, flush=True, **kwargs):
+#         if not data_dict_iterable:
+#             logging.warning('Iterable is empty')
         row_meta = self.meta_data_table.row
         if scan_parameters:
             row_scan_param = self.scan_param_table.row
@@ -624,8 +642,7 @@ class RawDataFile(object):
                 for key, value in dict.iteritems(scan_parameters):
                     row_scan_param[key] = value
                 row_scan_param.append()
-#         if not data_dict_iterable:
-#             logging.warning('Iterable is empty')
+
 #         if clear_deque:
 #             while True:
 #                 try:
@@ -674,40 +691,40 @@ class FEI4Record(object):
         self.chip_flavors = ['fei4a', 'fei4b']
         if self.chip_flavor not in self.chip_flavors:
             raise KeyError('Chip flavor is not of type {}'.format(', '.join('\'' + flav + '\'' for flav in self.chip_flavors)))
-        self.record_word = BitLogic.from_value(value=self.record_rawdata, size=24)
+        self.record_word = BitArray(uint=self.record_rawdata, length=24)
         self.record_dict = None
         if is_data_header(self.record_rawdata):
             self.record_type = "DH"
             if self.chip_flavor == "fei4a":
-                self.record_dict = OrderedDict([('start', self.record_word[23:19].tovalue()), ('header', self.record_word[18:16].tovalue()), ('flag', self.record_word[15:15].tovalue()), ('lvl1id', self.record_word[14:8].tovalue()), ('bcid', self.record_word[7:0].tovalue())])
+                self.record_dict = OrderedDict([('start', self.record_word[0:5].uint), ('header', self.record_word[5:8].uint), ('flag', self.record_word[8:9].uint), ('lvl1id', self.record_word[9:16].uint), ('bcid', self.record_word[16:24].uint)])
             elif self.chip_flavor == "fei4b":
-                self.record_dict = OrderedDict([('start', self.record_word[23:19].tovalue()), ('header', self.record_word[18:16].tovalue()), ('flag', self.record_word[15:15].tovalue()), ('lvl1id', self.record_word[14:10].tovalue()), ('bcid', self.record_word[9:0].tovalue())])
+                self.record_dict = OrderedDict([('start', self.record_word[0:5].uint), ('header', self.record_word[5:8].uint), ('flag', self.record_word[8:9].uint), ('lvl1id', self.record_word[9:14].uint), ('bcid', self.record_word[14:24].uint)])
         elif is_address_record(self.record_rawdata):
             self.record_type = "AR"
-            self.record_dict = OrderedDict([('start', self.record_word[23:19].tovalue()), ('header', self.record_word[18:16].tovalue()), ('type', self.record_word[15:15].tovalue()), ('address', self.record_word[14:0].tovalue())])
+            self.record_dict = OrderedDict([('start', self.record_word[0:5].uint), ('header', self.record_word[5:8].uint), ('type', self.record_word[8:9].uint), ('address', self.record_word[9:24].uint)])
         elif is_value_record(self.record_rawdata):
             self.record_type = "VR"
-            self.record_dict = OrderedDict([('start', self.record_word[23:19].tovalue()), ('header', self.record_word[18:16].tovalue()), ('value', self.record_word[15:0].tovalue())])
+            self.record_dict = OrderedDict([('start', self.record_word[0:5].uint), ('header', self.record_word[5:8].uint), ('value', self.record_word[8:24].uint)])
         elif is_service_record(self.record_rawdata):
             self.record_type = "SR"
             if self.chip_flavor == "fei4a":
-                self.record_dict = OrderedDict([('start', self.record_word[23:19].tovalue()), ('header', self.record_word[18:16].tovalue()), ('code', self.record_word[15:10].tovalue()), ('counter', self.record_word[9:0].tovalue())])
+                self.record_dict = OrderedDict([('start', self.record_word[0:5].uint), ('header', self.record_word[5:8].uint), ('code', self.record_word[8:14].uint), ('counter', self.record_word[14:24].uint)])
             elif self.chip_flavor == "fei4b":
-                if self.record_word[15:10].tovalue() == 14:
-                    self.record_dict = OrderedDict([('start', self.record_word[23:19].tovalue()), ('header', self.record_word[18:16].tovalue()), ('code', self.record_word[15:10].tovalue()), ('lvl1id[11:5]', self.record_word[9:3].tovalue()), ('bcid[12:10]', self.record_word[2:0].tovalue())])
-                elif self.record_word[15:10].tovalue() == 15:
-                    self.record_dict = OrderedDict([('start', self.record_word[23:19].tovalue()), ('header', self.record_word[18:16].tovalue()), ('code', self.record_word[15:10].tovalue()), ('skipped', self.record_word[9:0].tovalue())])
-                elif self.record_word[15:10].tovalue() == 16:
-                    self.record_dict = OrderedDict([('start', self.record_word[23:19].tovalue()), ('header', self.record_word[18:16].tovalue()), ('code', self.record_word[15:10].tovalue()), ('truncation flag', self.record_word[9:9].tovalue()), ('truncation counter', self.record_word[8:4].tovalue()), ('l1req', self.record_word[3:0].tovalue())])
+                if self.record_word[8:14].uint == 14:
+                    self.record_dict = OrderedDict([('start', self.record_word[0:5].uint), ('header', self.record_word[5:8].uint), ('code', self.record_word[8:14].uint), ('lvl1id', self.record_word[14:21].uint), ('bcid', self.record_word[21:24].uint)])
+                elif self.record_word[8:14].uint == 15:
+                    self.record_dict = OrderedDict([('start', self.record_word[0:5].uint), ('header', self.record_word[5:8].uint), ('code', self.record_word[8:14].uint), ('skipped', self.record_word[14:24].uint)])
+                elif self.record_word[8:14].uint == 16:
+                    self.record_dict = OrderedDict([('start', self.record_word[0:5].uint), ('header', self.record_word[5:8].uint), ('code', self.record_word[8:14].uint), ('truncation flag', self.record_word[14:15].uint), ('truncation counter', self.record_word[15:20].uint), ('l1req', self.record_word[20:24].uint)])
                 else:
-                    self.record_dict = OrderedDict([('start', self.record_word[23:19].tovalue()), ('header', self.record_word[18:16].tovalue()), ('code', self.record_word[15:10].tovalue()), ('counter', self.record_word[9:0].tovalue())])
+                    self.record_dict = OrderedDict([('start', self.record_word[0:5].uint), ('header', self.record_word[5:8].uint), ('code', self.record_word[8:14].uint), ('counter', self.record_word[14:24].uint)])
         elif is_data_record(self.record_rawdata):
             self.record_type = "DR"
-            self.record_dict = OrderedDict([('column', self.record_word[23:17].tovalue()), ('row', self.record_word[16:8].tovalue()), ('tot1', self.record_word[7:4].tovalue()), ('tot2', self.record_word[3:0].tovalue())])
+            self.record_dict = OrderedDict([('column', self.record_word[0:7].uint), ('row', self.record_word[7:16].uint), ('tot1', self.record_word[16:20].uint), ('tot2', self.record_word[20:24].uint)])
         else:
             self.record_type = "UNKNOWN"
-            self.record_dict = OrderedDict([('unknown', self.record_word.tovalue())])
-#             raise ValueError('Unknown data word: ' + str(self.record_word.tovalue()))
+            self.record_dict = OrderedDict([('unknown', self.record_word.uint)])
+#             raise ValueError('Unknown data word: '+str(self.record_word.uint))
 
     def __len__(self):
         return len(self.record_dict)

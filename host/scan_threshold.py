@@ -13,16 +13,14 @@ local_configuration = {
     "scan_parameter": 'PlsrDAC',
     "scan_parameter_range": (0, 100),
     "scan_parameter_stepsize": 1,
-    "use_enable_mask": False,
-    "enable_shift_masks": ["Enable", "C_High", "C_Low"],
-    "disable_shift_masks": []
+    "use_enable_mask": False
 }
 
 
 class ThresholdScan(ScanBase):
     scan_id = "threshold_scan"
 
-    def scan(self, mask_steps=3, repeat_command=100, scan_parameter='PlsrDAC', scan_parameter_range=(0, 100), scan_parameter_stepsize=1, use_enable_mask=False, enable_shift_masks=["Enable", "C_High", "C_Low"], disable_shift_masks=[], **kwargs):
+    def scan(self, mask_steps=3, repeat_command=100, scan_parameter='PlsrDAC', scan_parameter_range=(0, 100), scan_parameter_stepsize=1, use_enable_mask=False, **kwargs):
         '''Scan loop
 
         Parameters
@@ -62,7 +60,7 @@ class ThresholdScan(ScanBase):
                 self.readout.start()
 
                 cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0]
-                self.scan_loop(cal_lvl1_command, repeat_command=repeat_command, use_delay=True, mask_steps=mask_steps, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=enable_shift_masks, disable_shift_masks=disable_shift_masks, restore_shift_masks=False, mask=self.register_utils.invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if use_enable_mask else None)
+                self.scan_loop(cal_lvl1_command, repeat_command=repeat_command, hardware_repeat=True, use_delay=True, mask_steps=mask_steps, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=not use_enable_mask, eol_function=None, digital_injection=False, enable_c_high=None, enable_c_low=None, enable_shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=False, mask=self.register_utils.invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if use_enable_mask else None)
 
                 self.readout.stop(timeout=10)
 
@@ -70,16 +68,17 @@ class ThresholdScan(ScanBase):
                 raw_data_file.append(self.readout.data, scan_parameters={scan_parameter: scan_parameter_value})
 
     def analyze(self):
-        with AnalyzeRawData(raw_data_file=self.scan_data_filename + ".h5", analyzed_data_file=self.scan_data_filename + "_interpreted.h5") as analyze_raw_data:
+        with AnalyzeRawData(raw_data_file=scan.scan_data_filename + ".h5", analyzed_data_file=self.scan_data_filename + "_interpreted.h5") as analyze_raw_data:
+            analyze_raw_data.interpreter.set_trig_count(self.register.get_global_register_value("Trig_Count"))
             analyze_raw_data.create_tot_hist = False
             analyze_raw_data.create_threshold_hists = True
             analyze_raw_data.create_fitted_threshold_hists = True
             analyze_raw_data.create_threshold_mask = True
             analyze_raw_data.n_injections = 100
             analyze_raw_data.interpreter.set_warning_output(False)  # so far the data structure in a threshold scan was always bad, too many warnings given
-            analyze_raw_data.interpret_word_table()
+            analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
             analyze_raw_data.interpreter.print_summary()
-            analyze_raw_data.plot_histograms(scan_data_filename=self.scan_data_filename)
+            analyze_raw_data.plot_histograms(scan_data_filename=scan.scan_data_filename)
 
 if __name__ == "__main__":
     import configuration

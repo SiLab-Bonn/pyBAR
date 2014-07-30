@@ -1,8 +1,9 @@
 import time
 import logging
 import numpy as np
+from os.path import splitext
 
-from analysis.plotting.plotting import plot_occupancy, plot_fancy_occupancy, make_occupancy_hist
+from analysis.plotting.plotting import plot_occupancy, make_occupancy_hist
 from daq.readout import get_col_row_array_from_data_record_array, convert_data_array, data_array_from_data_dict_iterable, is_data_record, is_data_from_channel
 
 from scan.scan import ScanBase
@@ -12,7 +13,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 
 
 local_configuration = {
-    "cfg_name": '',  # the name of the new config with the tuning
+    "cfg_name": 'noise_occupancy_tuning',  # the name of the new config with the tuning
     "occupancy_limit": 10 ** (-5),  # 0 will mask any pixel with occupancy greater than zero
     "triggers": 10000000,
     "trig_count": 1,
@@ -28,13 +29,13 @@ local_configuration = {
 class NoiseOccupancyScan(ScanBase):
     scan_id = "noise_occupancy_tuning"
 
-    def scan(self, cfg_name='', occupancy_limit=10 ** (-5), triggers=10000000, trig_count=1, disable_for_mask=['Enable'], enable_for_mask=['Imon'], overwrite_mask=False, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, **kwargs):
+    def scan(self, cfg_name='noise_occupancy_tuning', occupancy_limit=10 ** (-5), triggers=10000000, trig_count=1, disable_for_mask=['Enable'], enable_for_mask=['Imon'], overwrite_mask=False, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, **kwargs):
         '''Masking pixels with occupancy above certain limit.
 
         Parameters
         ----------
         cfg_name : string
-            File name of the configuration file. If '', use a file name generated from scan ID and number. If None, overwrite configuration file.
+            File name of the configuration file. If None or not given, use default file name.
         occupancy_limit : float
             Occupancy limit which is multiplied with measured number of hits for each pixel. Any pixel above 1 will be masked.
         triggers : int
@@ -63,6 +64,7 @@ class NoiseOccupancyScan(ScanBase):
         '''
         # create restore point
         self.register.create_restore_point()
+        self.trig_count = trig_count
         if trig_count == 0:
             consecutive_lvl1 = (2 ** self.register.get_global_register_objects(name=['Trig_Count'])[0].bitlength)
         else:
@@ -136,7 +138,7 @@ class NoiseOccupancyScan(ScanBase):
                     if self.register_utils.is_ready:
                         self.stop_thread_event.set()
                         logging.info('Finished sending %d triggers' % triggers)
-                    elif wait_for_first_data is False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
+                    elif wait_for_first_data == False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
                         logging.info('Reached no data timeout. Stopping Scan...')
                         self.stop_thread_event.set()
                     elif wait_for_first_data == False:
@@ -148,7 +150,7 @@ class NoiseOccupancyScan(ScanBase):
 
                 saw_data_at_time = last_iteration
 
-                if wait_for_first_data is True:
+                if wait_for_first_data == True:
                     logging.info('Taking data...')
                     wait_for_first_data = False
 
@@ -182,21 +184,21 @@ class NoiseOccupancyScan(ScanBase):
                 self.register.set_pixel_register_value(mask, disable_mask)
 
 #         plot_occupancy(make_occupancy_hist(self.col_arr, self.row_arr), z_max=None, filename=self.scan_data_filename + "_occupancy.pdf")
-        self.save_configuration(scan.cfg_name)
+        self.register.save_configuration(cfg_name if cfg_name else (splitext(self.device_configuration["configuration_file"])[0] + '_' + self.scan_id))
 
     def analyze(self):
         from analysis.analyze_raw_data import AnalyzeRawData
         output_file = self.scan_data_filename + "_interpreted.h5"
-        with AnalyzeRawData(raw_data_file=self.scan_data_filename, analyzed_data_file=output_file, create_pdf=True) as analyze_raw_data:
+        with AnalyzeRawData(raw_data_file=scan.scan_data_filename, analyzed_data_file=output_file, create_pdf=True) as analyze_raw_data:
+            analyze_raw_data.interpreter.set_trig_count(self.trig_count)
             analyze_raw_data.create_source_scan_hist = True
 #             analyze_raw_data.create_hit_table = True
 #             analyze_raw_data.interpreter.debug_events(0, 0, True)  # events to be printed onto the console for debugging, usually deactivated
             analyze_raw_data.interpreter.set_warning_output(False)
-            analyze_raw_data.interpret_word_table()
+            analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms()
             plot_occupancy(self.occ_mask.T, title='Noisy Pixels', z_max=1, filename=analyze_raw_data.output_pdf)
-            plot_fancy_occupancy(self.occ_mask.T, z_max=1, filename=analyze_raw_data.output_pdf)
             for mask in self.disable_for_mask:
                 mask_name = self.register.get_pixel_register_attributes("full_name", do_sort=True, name=[mask])[0]
                 plot_occupancy(self.register.get_pixel_register_value(mask).T, title='%s Mask' % mask_name, z_max=1, filename=analyze_raw_data.output_pdf)

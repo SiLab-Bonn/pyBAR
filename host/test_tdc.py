@@ -27,7 +27,7 @@ class TdcTest(ScanBase):
         except:
             logging.error('No device found ?!')
             raise
-        if 'Agilent Technologies,33250A' not in self.pulser.ask("*IDN?"):  # check if the correct pulserlloscope was found
+        if not 'Agilent Technologies,33250A' in self.pulser.ask("*IDN?"):  # check if the correct pulserlloscope was found
             raise RuntimeError('Reading of histogram data from ' + self.pulser.ask("*IDN?") + ' is not supported')
         logging.info('Initialized pulser')
         self.pulser.write('PULS:PER 1E-6')  # set fast aquisition
@@ -41,8 +41,7 @@ class TdcTest(ScanBase):
     def scan(self, GPIB_prim_address=1, n_pulses=100, **kwargs):
         self.init_pulser(GPIB_prim_address)
 
-        self.dut['tdc']['ENABLE'] = True
-        self.dut['tdc']['EN_ARMING'] = False
+        self.readout_utils.configure_tdc_fsm(enable_tdc=True, enable_tdc_arming=False)
 
         x = []
         y = []

@@ -25,7 +25,7 @@ def get_gdacs(thresholds, mean_threshold_calibration):
 class Fei4TriggerGdacScan(ScanBase):
     scan_id = "scan_fei4_trigger_gdac"
 
-    def scan(self, gdac_range, config_file_trigger_fe, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=10000, wait_for_first_trigger=True, channel_trigger_fe=3, channel_triggered_fe=4, **kwargs):
+    def scan(self, gdac_range, config_file_trigger_fe, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=10000, invert_lemo_trigger_input=False, wait_for_first_trigger=True, channel_trigger_fe=3, channel_triggered_fe=4, **kwargs):
         '''Scan loop
 
         Parameters
@@ -65,9 +65,8 @@ class Fei4TriggerGdacScan(ScanBase):
                     lvl1_command = self.register.get_commands("zeros", length=14)[0] + self.register.get_commands("lv1")[0]  # + self.register.get_commands("zeros", length=1000)[0]
                     self.register_utils.set_command(lvl1_command)
                     # setting up external trigger
-                    self.dut['tlu']['TRIGGER_MODE'] = 0
-                    self.dut['tlu']['TRIGGER_COUNTER'] = 0
-                    self.dut['cmd']['EN_EXT_TRIGGER'] = True
+                    self.readout_utils.configure_trigger_fsm(mode=0, reset_trigger_counter=True, invert_lemo_trigger_input=invert_lemo_trigger_input)
+                    self.readout_utils.configure_command_fsm(enable_ext_trigger=True, diable_clock=False, disable_command_trigger=False)
 
                     show_trigger_message_at = 10 ** (int(math.ceil(math.log10(max_triggers))) - 1)
                     last_iteration = time.time()
@@ -79,8 +78,9 @@ class Fei4TriggerGdacScan(ScanBase):
                     scan_stop_time = scan_start_time + scan_timeout
                     current_trigger_number = 0
                     last_trigger_number = 0
+                    self.readout_utils.set_trigger_number(0)
                     while not self.stop_loop_event.is_set() and not self.stop_thread_event.wait(self.readout.readout_interval):
-                        current_trigger_number = self.dut['tlu']['TRIGGER_COUNTER']
+                        current_trigger_number = self.readout_utils.get_trigger_number()
                         if (current_trigger_number % show_trigger_message_at < last_trigger_number % show_trigger_message_at):
                             logging.info('Collected triggers: %d', current_trigger_number)
                         last_trigger_number = current_trigger_number
@@ -102,10 +102,10 @@ class Fei4TriggerGdacScan(ScanBase):
 
                             except IndexError:  # no data
                                 no_data_at_time = last_iteration
-                                if wait_for_first_trigger is False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
+                                if wait_for_first_trigger == False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
                                     logging.info('Reached no data timeout. Stopping Scan...')
                                     self.stop_loop_event.set()
-                                elif wait_for_first_trigger is False:
+                                elif wait_for_first_trigger == False:
                                     saw_no_data_at_time = no_data_at_time
 
                                 if no_data_at_time > (saw_data_at_time + 10):
@@ -114,14 +114,14 @@ class Fei4TriggerGdacScan(ScanBase):
 
                             saw_data_at_time = last_iteration
 
-                            if wait_for_first_trigger is True:
+                            if wait_for_first_trigger == True:
                                 logging.info('Taking data...')
                                 wait_for_first_trigger = False
 
-                    self.dut['cmd']['EN_EXT_TRIGGER'] = False
-                    self.dut['tlu']['TRIGGER_MODE'] = 0
+                    self.readout_utils.configure_command_fsm(enable_ext_trigger=False)
+                    self.readout_utils.configure_trigger_fsm(mode=0)
 
-                    logging.info('Total amount of triggers collected: %d for GDAC %d' % (self.dut['tlu']['TRIGGER_COUNTER'], gdac_value))
+                    logging.info('Total amount of triggers collected: %d for GDAC %d' % (self.readout_utils.get_trigger_number(), gdac_value))
 
                     self.readout.stop()
 
@@ -192,7 +192,8 @@ class Fei4TriggerGdacScan(ScanBase):
         from analysis.analyze_raw_data import AnalyzeRawData
         output_file = self.scan_data_filename + "_interpreted.h5"
         output_file_trigger_fe = self.scan_data_filename + "_trigger_fe_interpreted.h5"
-        with AnalyzeRawData(raw_data_file=self.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
+        with AnalyzeRawData(raw_data_file=scan.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
+            analyze_raw_data.interpreter.set_trig_count(self.register.get_global_register_value("Trig_Count"))
             analyze_raw_data.max_tot_value = 13
             analyze_raw_data.create_hit_table = True
             analyze_raw_data.create_source_scan_hist = True
@@ -200,10 +201,11 @@ class Fei4TriggerGdacScan(ScanBase):
             analyze_raw_data.create_cluster_tot_hist = True
             analyze_raw_data.create_cluster_table = True
             analyze_raw_data.interpreter.set_warning_output(False)
-            analyze_raw_data.interpret_word_table()
+            analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
             analyze_raw_data.interpreter.print_summary()
-            analyze_raw_data.plot_histograms(scan_data_filename=self.scan_data_filename, maximum='maximum')
-        with AnalyzeRawData(raw_data_file=self.scan_data_filename + "_trigger_fe.h5", analyzed_data_file=output_file_trigger_fe) as analyze_raw_data:
+            analyze_raw_data.plot_histograms(scan_data_filename=scan.scan_data_filename, maximum='maximum')
+        with AnalyzeRawData(raw_data_file=scan.scan_data_filename + "_trigger_fe.h5", analyzed_data_file=output_file_trigger_fe) as analyze_raw_data:
+            analyze_raw_data.interpreter.set_trig_count(self.register_trigger_fe.get_global_register_value("Trig_Count"))
             analyze_raw_data.max_tot_value = 13
             analyze_raw_data.create_hit_table = True
             analyze_raw_data.create_source_scan_hist = True
@@ -211,9 +213,9 @@ class Fei4TriggerGdacScan(ScanBase):
             analyze_raw_data.create_cluster_tot_hist = True
             analyze_raw_data.create_cluster_table = True
             analyze_raw_data.interpreter.set_warning_output(False)
-            analyze_raw_data.interpret_word_table()
+            analyze_raw_data.interpret_word_table(fei4b=scan.register.fei4b)
             analyze_raw_data.interpreter.print_summary()
-            analyze_raw_data.plot_histograms(scan_data_filename=self.scan_data_filename + '_trigger_fe', maximum='maximum')
+            analyze_raw_data.plot_histograms(scan_data_filename=scan.scan_data_filename + '_trigger_fe', maximum='maximum')
 
 
 if __name__ == "__main__":
@@ -230,7 +232,7 @@ if __name__ == "__main__":
     with tb.openFile(input_file_calibration, mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
         gdac_range = get_gdacs(threshold_range, in_file_calibration_h5.root.MeanThresholdCalibration[:])
 
-    scan = Fei4TriggerGdacScan(**configuration.default_configuration)  # configuration of triggered FE
+    scan = Fei4TriggerGdacScan(configuration_file=config_file_triggered_fe, bit_file=configuration.bit_file, scan_data_path=configuration.scan_data_path)
     scan.start(use_thread=True, restore_configuration=True, gdac_range=gdac_range, config_file_trigger_fe=config_file_trigger_fe, col_span=[25, 55], row_span=[50, 250], timeout_no_data=1 * 60, scan_timeout=100, max_triggers=10000000, channel_triggered_fe=4, channel_trigger_fe=3, invert_lemo_trigger_input=True)
 
     scan.stop()

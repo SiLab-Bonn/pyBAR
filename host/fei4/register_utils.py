@@ -13,11 +13,12 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 
 
 class FEI4RegisterUtils(object):
-    def __init__(self, dut, readout, register):
-        self.dut = dut
+    def __init__(self, device, readout, register):
+        self.device = device
         self.readout = readout
         self.register = register
-        self.command_memory_byte_size = 2048 - 16  # 16 bytes of register data
+        self.command_memory_byte_offset = 16
+        self.command_memory_byte_size = 2048 - self.command_memory_byte_offset  # 16 bytes of register data
         self.zero_cmd_length = 1
         self.zero_cmd = self.register.get_commands("zeros", length=self.zero_cmd_length)[0]
         self.zero_cmd_padded = self.zero_cmd.copy()
@@ -54,8 +55,7 @@ class FEI4RegisterUtils(object):
             self.send_command(command=concatenated_cmd, repeat=repeat, wait_for_finish=wait_for_finish, set_length=True, clear_memory=clear_memory)
         else:
             max_length = 0
-            if repeat:
-                self.dut['cmd']['CMD_REPEAT'] = repeat
+            self.set_hardware_repeat(repeat)
             for command in commands:
                 max_length = max(command.length(), max_length)
                 self.send_command(command=command, repeat=None, wait_for_finish=wait_for_finish, set_length=True, clear_memory=False)
@@ -63,12 +63,12 @@ class FEI4RegisterUtils(object):
                 self.clear_command_memory(length=max_length)
 
     def send_command(self, command, repeat=1, wait_for_finish=True, set_length=True, clear_memory=False):
-        if repeat:
-            self.dut['cmd']['CMD_REPEAT'] = repeat
+        if repeat is not None:
+            self.set_hardware_repeat(repeat)
         # write command into memory
         command_length = self.set_command(command, set_length=set_length)
         # sending command
-        self.dut['cmd']['START']
+        self.start_command()
         # wait for command to be finished
         if wait_for_finish:
             self.wait_for_command(length=command_length, repeat=repeat)
@@ -79,17 +79,43 @@ class FEI4RegisterUtils(object):
     def clear_command_memory(self, length=None):
         self.set_command(self.register.get_commands("zeros", length=(self.command_memory_byte_size * 8) if length is None else length)[0], set_length=False)
 
+    def set_command_length(self, lenght):
+        bit_length_array = array.array('B', struct.pack('H', lenght))
+        self.device.WriteExternal(address=0 + 3, data=bit_length_array)
+
+    def set_repeat_mode_end_lenth(self, lenght):
+        '''size of end sequence in bit in repetition mode (size-this)'''
+        bit_length_array = array.array('B', struct.pack('H', lenght))
+        self.device.WriteExternal(address=11, data=bit_length_array)
+
+    def set_repeat_mode_start_lenth(self, lenght):
+        '''size of beginning  sequence in bit in repetition mode '''
+        bit_length_array = array.array('B', struct.pack('H', lenght))
+        self.device.WriteExternal(address=9, data=bit_length_array)
+
     def set_command(self, command, set_length=True, byte_offset=0):
         command_length = command.length()
         # set command bit length
         if set_length:
-            self.dut['cmd']['CMD_SIZE'] = command_length
+            self.set_command_length(command_length)
         # set command
         data = bitarray_to_array(command)
-        self.dut['cmd'].set_data(data=data, addr=byte_offset)
+        if self.command_memory_byte_size < len(data) + byte_offset:
+            raise ValueError('Length of command or offset is too big')
+        self.device.WriteExternal(address=0 + self.command_memory_byte_offset + byte_offset, data=data)
         return command_length
 
+    def start_command(self):
+        self.device.WriteExternal(address=0 + 1, data=(0, ))
+
+    def set_hardware_repeat(self, repeat=1):
+        if repeat is not None:
+            repeat_array = array.array('B', struct.pack('I', repeat))
+            self.device.WriteExternal(address=0 + 5, data=repeat_array)
+
     def wait_for_command(self, length=None, repeat=None):
+
+        # print self.device.ReadExternal(address = 0+1, size = 1)[0]
         if length is not None:
             if repeat is None:
                 repeat = 1
@@ -100,7 +126,7 @@ class FEI4RegisterUtils(object):
 
     @property
     def is_ready(self):
-        return True if self.dut['cmd']['READY'] else False
+        return (self.device.ReadExternal(address=0 + 1, size=1)[0] & 0x01) == 1
 
     def global_reset(self):
         '''FEI4 Global Reset
@@ -201,7 +227,7 @@ class FEI4RegisterUtils(object):
         inverted_mask[mask >= 1] = 0
         return inverted_mask
 
-    def make_pixel_mask(self, steps, shift, default=0, value=1, enable_columns=None, mask=None):
+    def make_pixel_mask(self, steps, shift, default=0, value=1, mask=None):
         '''Generate pixel mask.
 
         Parameters
@@ -214,8 +240,6 @@ class FEI4RegisterUtils(object):
             Value of pixels that are not selected by the mask.
         value : int
             Value of pixels that are selected by the mask.
-        enable_columns : list
-            List of columns where the shift mask will be applied. List elements can range from 1 to 80.
         mask : array_like
             Additional mask. Must be convertible to an array of booleans with the same shape as mask array. True indicates a masked (i.e. invalid) data. Masked pixels will be set to default value.
 
@@ -242,21 +266,15 @@ class FEI4RegisterUtils(object):
         mask_array = np.empty(dimension, dtype=np.uint8)
         mask_array.fill(default)
         # FE columns and rows are starting from 1
-        if enable_columns:
-            odd_columns = [odd - 1 for odd in enable_columns if odd % 2 != 0]
-            even_columns = [even - 1 for even in enable_columns if even % 2 == 0]
-        else:
-            odd_columns = range(0, 80, 2)
-            even_columns = range(1, 80, 2)
-        odd_rows = np.arange(shift % steps, 336, steps)
-        even_row_offset = ((steps // 2) + shift) % steps  # // integer devision
-        even_rows = np.arange(even_row_offset, 336, steps)
-        if odd_columns:
-            odd_col_row = cartesian((odd_columns, odd_rows))  # get any combination of column and row, no for loop needed
-            mask_array[odd_col_row[:, 0], odd_col_row[:, 1]] = value  # advanced indexing
-        if even_columns:
-            even_col_row = cartesian((even_columns, even_rows))
-            mask_array[even_col_row[:, 0], even_col_row[:, 1]] = value
+        odd_columns = np.arange(0, 80, 2)
+        even_columns = np.arange(1, 80, 2)
+        odd_rows = np.arange((0 + shift) % steps, 336, steps)
+        even_row_offset = (int(math.floor(steps / 2) + shift)) % steps
+        even_rows = np.arange(0 + even_row_offset, 336, steps)
+        odd_col_row = cartesian((odd_columns, odd_rows))  # get any combination of column and row, no for loop needed
+        even_col_row = cartesian((even_columns, even_rows))
+        mask_array[odd_col_row[:, 0], odd_col_row[:, 1]] = value  # advanced indexing
+        mask_array[even_col_row[:, 0], even_col_row[:, 1]] = value
         if mask is not None:
             mask_array = np.ma.array(mask_array, mask=mask, fill_value=default)
             mask_array = mask_array.filled()
@@ -363,7 +381,7 @@ class FEI4RegisterUtils(object):
         for pix_reg in pix_regs:
             pixel_data = np.ma.masked_array(np.zeros(shape=(80, 336), dtype=np.uint32), mask=True)  # the result pixel array, only pixel with data are not masked
             for dc in dcs:
-                self.send_commands(self.register.get_commands("rdfrontend", name=[pix_reg], dcs=[dc]))
+                self.send_commands(self.register.get_commands("rdfrontend", name=[pix_reg], dc=[dc]))
                 data = self.readout.read_data()
                 interpret_pixel_data(data, dc, pixel_data, invert=False if pix_reg.lower()=="enablediginj" else True)
             if overwrite_config:

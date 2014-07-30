@@ -87,7 +87,7 @@ class FastThresholdScan(ScanBase):
         self.n_injections = n_injections
 
         with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_id, scan_parameters=[scan_parameter]) as raw_data_file:
-            while self.scan_parameter_value <= scan_parameter_range[1]:  # scan as long as scan parameter is smaller than defined maximum
+            while self.scan_parameter_value < scan_parameter_range[1]:  # scan as long as scan parameter is smaller than defined maximum
                 if self.stop_thread_event.is_set():
                     break
                 if self.record_data:
@@ -102,7 +102,7 @@ class FastThresholdScan(ScanBase):
                 self.readout.start()
 
                 cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0] if command is None else command
-                self.scan_loop(cal_lvl1_command, repeat_command=self.n_injections, use_delay=True, mask_steps=mask_steps, enable_mask_steps=enable_mask_steps, enable_double_columns=enable_double_columns, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=["Enable", "C_Low", "C_High"], restore_shift_masks=False, mask=self.register_utils.invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if use_enable_mask else None, double_column_correction=False)
+                self.scan_loop(cal_lvl1_command, repeat_command=self.n_injections, hardware_repeat=True, use_delay=True, mask_steps=mask_steps, enable_mask_steps=enable_mask_steps, enable_double_columns=enable_double_columns, same_mask_for_all_dc=not use_enable_mask, eol_function=None, digital_injection=False, enable_c_high=None, enable_c_low=None, enable_shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=False, mask=self.register_utils.invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if use_enable_mask else None)
 
                 self.readout.stop()
 
@@ -140,9 +140,6 @@ class FastThresholdScan(ScanBase):
                 else:
                     self.scan_parameter_value = self.scan_parameter_value + scan_parameter_stepsize
 
-            if self.scan_parameter_value >= scan_parameter_range[1]:
-                logging.warning("Reached maximum of scan parameter range... stopping scan" % (scan_parameter_range[1],))
-
     def scan_condition(self, occupancy_array):
         occupancy_array_select = occupancy_array[self.select_arr_columns, :]  # only select not ignored columns
         # stop precise scanning actions
@@ -162,13 +159,14 @@ class FastThresholdScan(ScanBase):
 
     def analyze(self, create_plots=True):
         with AnalyzeRawData(raw_data_file=self.scan_data_filename + ".h5", analyzed_data_file=self.scan_data_filename + "_interpreted.h5") as analyze_raw_data:
+            analyze_raw_data.interpreter.set_trig_count(self.register.get_global_register_value("Trig_Count"))
             analyze_raw_data.create_tot_hist = False
             analyze_raw_data.create_threshold_hists = True
             analyze_raw_data.create_fitted_threshold_hists = True
             analyze_raw_data.create_threshold_mask = True
             analyze_raw_data.n_injections = local_configuration["n_injections"]
             analyze_raw_data.interpreter.set_warning_output(False)  # so far the data structure in a threshold scan was always bad, too many warnings given
-            analyze_raw_data.interpret_word_table()
+            analyze_raw_data.interpret_word_table(fei4b=self.register.fei4b)
             analyze_raw_data.interpreter.print_summary()
             if create_plots:
                 analyze_raw_data.plot_histograms(scan_data_filename=self.scan_data_filename)
