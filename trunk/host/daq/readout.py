@@ -123,16 +123,29 @@ class Readout(object):
                 self.data.append(data)  # put({'timestamp':get_float_time(), 'raw_data':filtered_data_words, 'error':0})
 
     def read_data_dict(self):
-        '''Read single to read SRAM once
+        '''Read SRAM and return data dict
 
         Can be used without threading.
 
         Returns
         -------
-        dict with following keys: "data", "timestamp_start", "timestamp_stop", "error"
+        data : dict
+            A dict with following keys: "data", "timestamp_start", "timestamp_stop", "error"
         '''
         last_time, curr_time = self.update_timestamp()
-        return {"data": self.dut['sram'].get_data(), "timestamp_start": last_time, "timestamp_stop": curr_time, "error": self.read_status()}
+        return {"data": self.read_data(), "timestamp_start": last_time, "timestamp_stop": curr_time, "error": self.read_status()}
+
+    def read_data(self):
+        '''Read SRAM and return data array
+
+        Can be used without threading.
+
+        Returns
+        -------
+        data : list
+            A list of SRAM data words.
+        '''
+        return self.dut['sram'].get_data()
 
     def update_timestamp(self):
         curr_time = get_float_time()
