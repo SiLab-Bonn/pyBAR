@@ -11,6 +11,7 @@ import hashlib
 import copy
 import struct
 import tables as tb
+import datetime
 from analysis.RawDataConverter.data_struct import NameValue
 
 import logging
@@ -807,7 +808,6 @@ class FEI4Register(object):
         """
         # TODO: fix behavior when register name does not exist
         commands = []
-
         if command_name.lower() == "zeros":
             if "length" in kwargs:
                 bv = bitarray(kwargs["length"], endian='little')  # all bits to zero
@@ -829,71 +829,53 @@ class FEI4Register(object):
             bv.setall(1)  # all bits to one
             commands.append(bv)
         elif command_name.lower() == "wrregister":
-            # print "wrregister"
             register_addresses = self.get_global_register_attributes("addresses", **kwargs)
             register_bitsets = self.get_global_register_bitsets(register_addresses)
-            # print register_addresses
             commands.extend([self.build_command(command_name, address=register_address, globaldata=register_bitset, chipid=self.chip_id, **kwargs) for register_address, register_bitset in zip(register_addresses, register_bitsets)])
-
         elif command_name.lower() == "rdregister":
-            # print "rdregister"
             register_addresses = self.get_global_register_attributes('addresses', **kwargs)
             commands.extend([self.build_command(command_name, address=register_address, chipid=self.chip_id) for register_address in register_addresses])
-
         elif command_name.lower() == "wrfrontend":
+            self.create_restore_point()
             dcs = kwargs.pop("dcs", range(40))  # set the double columns to latch
             same_mask_for_all_dc = kwargs.pop("same_mask_for_all_dc", False)
-            # print "wrfrontend"
             register_objects = self.get_pixel_register_objects(False, **kwargs)
-            # pprint.pprint(register_objects)
             self.set_global_register_value("S0", 0)
             self.set_global_register_value("S1", 0)
             self.set_global_register_value("SR_Clr", 0)
+            if self.fei4b:
+                self.set_global_register_value("SR_Read", 0)
             self.set_global_register_value("CalEn", 0)
             self.set_global_register_value("DIGHITIN_SEL", 0)
             self.set_global_register_value("GateHitOr", 0)
-            if self.is_chip_flavor('fei4a'):
+            if self.fei4a:
                 self.set_global_register_value("ReadSkipped", 0)
             self.set_global_register_value("ReadErrorReq", 0)
             self.set_global_register_value("StopClkPulse", 0)
             self.set_global_register_value("SR_Clock", 0)
             self.set_global_register_value("Efuse_Sense", 0)
-
             self.set_global_register_value("HITLD_IN", 0)
             self.set_global_register_value("Colpr_Mode", 3 if same_mask_for_all_dc else 0)  # write only the addressed double-column
             self.set_global_register_value("Colpr_Addr", 0)
-
-            commands.extend(self.get_commands("wrregister", name=["S0", "S1", "SR_Clr", "CalEn", "DIGHITIN_SEL", "GateHitOr", "ReadSkipped", "ReadErrorReq", "StopClkPulse", "SR_Clock", "Efuse_Sense", "HITLD_IN", "Colpr_Mode", "Colpr_Addr"]))
+            commands.extend(self.get_commands("wrregister", name=["S0", "S1", "SR_Clr", "SR_Read", "CalEn", "DIGHITIN_SEL", "GateHitOr", "ReadSkipped", "ReadErrorReq", "StopClkPulse", "SR_Clock", "Efuse_Sense", "HITLD_IN", "Colpr_Mode", "Colpr_Addr"]))
             for register_object in register_objects:
                 pxstrobe = register_object.pxstrobe
                 bitlength = register_object.bitlength
                 for bit_no, pxstrobe_bit_no in (enumerate(range(bitlength)) if (register_object.littleendian is False) else enumerate(reversed(range(bitlength)))):
-                    do_latch = True
                     try:
                         self.set_global_register_value("Pixel_Strobes", 2 ** (pxstrobe + bit_no))
-#                         print register_object.name
-#                         print "reg bit no", pxstrobe_bit_no
-#                         print "pxstrobes reg", 2**(pxstrobe+bit_no)
-
                     except TypeError:
                         self.set_global_register_value("Pixel_Strobes", 0)  # no latch
-                        do_latch = False
-#                         print register_object.name
-#                         print "bit_no", bit_no
-#                         print "pxstrobes", 0
-
-                    if do_latch is True:
-                        self.set_global_register_value("Latch_En", 1)
-                    else:
                         self.set_global_register_value("Latch_En", 0)
+                        do_latch = False
+                    else:
+                        self.set_global_register_value("Latch_En", 1)
+                        do_latch = True
                     commands.extend(self.get_commands("wrregister", name=["Pixel_Strobes", "Latch_En"]))
                     for dc_no in (dcs[:1] if same_mask_for_all_dc else dcs):
                         self.set_global_register_value("Colpr_Addr", dc_no)
                         commands.extend(self.get_commands("wrregister", name=["Colpr_Addr"]))
                         register_bitset = self.get_pixel_register_bitset(register_object, pxstrobe_bit_no, dc_no)
-                        # if dc_no == 0: print dc_no, register_bitset
-                        # print "dc_no", dc_no
-                        # print register_bitset
                         commands.extend([self.build_command(command_name, pixeldata=register_bitset, chipid=self.chip_id, **kwargs)])
                         if do_latch is True:
                             # self.set_global_register_value("Latch_En", 1)
@@ -901,21 +883,22 @@ class FEI4Register(object):
                             commands.extend(self.get_commands("globalpulse", width=0))
                             # self.set_global_register_value("Latch_En", 0)
                             # fe_command.extend(self.get_commands("wrregister", name = ["Latch_En"]))
-            self.set_global_register_value("Pixel_Strobes", 0)  # for SEU hardness set to zero
-            self.set_global_register_value("Latch_En", 0)
-            self.set_global_register_value("Colpr_Mode", 0)
-            self.set_global_register_value("Colpr_Addr", 0)
-            commands.extend(self.get_commands("wrregister", name=["Pixel_Strobes", "Latch_En", "Colpr_Mode", "Colpr_Addr"]))
+            self.restore(pixel_register=False)
+            commands.extend(self.get_commands("wrregister", name=["S0", "S1", "SR_Clr", "SR_Read", "CalEn", "DIGHITIN_SEL", "GateHitOr", "ReadSkipped", "ReadErrorReq", "StopClkPulse", "SR_Clock", "Efuse_Sense", "HITLD_IN", "Colpr_Mode", "Colpr_Addr", "Pixel_Strobes", "Latch_En"]))
         elif command_name.lower() == "rdfrontend":
+            self.create_restore_point()
             dcs = kwargs.pop("dcs", range(40))  # set the double columns to latch
+            register_objects = self.get_pixel_register_objects(False, **kwargs)
             self.set_global_register_value('Conf_AddrEnable', 1)
             self.set_global_register_value("S0", 0)
             self.set_global_register_value("S1", 0)
             self.set_global_register_value("SR_Clr", 0)
+            if self.fei4b:
+                self.set_global_register_value("SR_Read", 0)
             self.set_global_register_value("CalEn", 0)
             self.set_global_register_value("DIGHITIN_SEL", 0)
             self.set_global_register_value("GateHitOr", 0)
-            if self.is_chip_flavor('fei4a'):
+            if self.fei4a:
                 self.set_global_register_value("ReadSkipped", 0)
             self.set_global_register_value("ReadErrorReq", 0)
             self.set_global_register_value("StopClkPulse", 0)
@@ -926,19 +909,11 @@ class FEI4Register(object):
             self.set_global_register_value("Colpr_Addr", 0)
             self.set_global_register_value("Latch_En", 0)
             self.set_global_register_value("Pixel_Strobes", 0)
-
-            commands = []
-            commands.extend(self.get_commands("wrregister", name=["Conf_AddrEnable", "S0", "S1", "SR_Clr", "CalEn", "DIGHITIN_SEL", "GateHitOr", "ReadSkipped", "ReadErrorReq", "StopClkPulse", "SR_Clock", "Efuse_Sense", "HITLD_IN", "Colpr_Mode", "Colpr_Addr", "Pixel_Strobes", "Latch_En"]))
-
-            register_name = kwargs.get("name", ["EnableDigInj", "Imon", "Enable", "C_High", "C_Low", "TDAC", "FDAC"])  # set the pixel config registers to latch
-
-            register_objects = self.get_pixel_register_objects(False, **{'name': register_name})
-
+            commands.extend(self.get_commands("wrregister", name=["Conf_AddrEnable", "S0", "S1", "SR_Clr", "SR_Read", "CalEn", "DIGHITIN_SEL", "GateHitOr", "ReadSkipped", "ReadErrorReq", "StopClkPulse", "SR_Clock", "Efuse_Sense", "HITLD_IN", "Colpr_Mode", "Colpr_Addr", "Pixel_Strobes", "Latch_En"]))
             for index, register_object in enumerate(register_objects):  # make sure that EnableDigInj is first read back, because it is not latched
                 if register_object.name == 'enablediginj':
                     register_objects[0], register_objects[index] = register_objects[index], register_objects[0]
                     break
-
             for register_object in register_objects:
                 pxstrobe = register_object.pxstrobe
                 bitlength = register_object.bitlength
@@ -951,11 +926,9 @@ class FEI4Register(object):
                         self.set_global_register_value("Pixel_Strobes", 0)  # do not latch
                         do_latch = False
                     commands.extend(self.get_commands("wrregister", name=["Pixel_Strobes"]))
-
                     for dc_no in dcs:
                         self.set_global_register_value("Colpr_Addr", dc_no)
                         commands.extend(self.get_commands("wrregister", name=["Colpr_Addr"]))
-
                         if do_latch is True:
                             self.set_global_register_value("S0", 1)
                             self.set_global_register_value("S1", 1)
@@ -966,10 +939,7 @@ class FEI4Register(object):
                         self.set_global_register_value("S1", 0)
                         self.set_global_register_value("SR_Clock", 0)
                         commands.extend(self.get_commands("wrregister", name=["S0", "S1", "SR_Clock"]))
-
                         register_bitset = self.get_pixel_register_bitset(register_object, pxstrobe_bit_no if (register_object.littleendian is False) else register_object.bitlength - pxstrobe_bit_no - 1, dc_no)
-
-#                         commands = []
                         if self.fei4b:
                             self.set_global_register_value("SR_Read", 1)
                             commands.extend(self.get_commands("wrregister", name=["SR_Read"]))
@@ -977,6 +947,8 @@ class FEI4Register(object):
                         if self.fei4b:
                             self.set_global_register_value("SR_Read", 0)
                             commands.extend(self.get_commands("wrregister", name=["SR_Read"]))
+            self.restore(pixel_register=False)
+            commands.extend(self.get_commands("wrregister", name=["Conf_AddrEnable", "S0", "S1", "SR_Clr", "SR_Read", "CalEn", "DIGHITIN_SEL", "GateHitOr", "ReadSkipped", "ReadErrorReq", "StopClkPulse", "SR_Clock", "Efuse_Sense", "HITLD_IN", "Colpr_Mode", "Colpr_Addr", "Pixel_Strobes", "Latch_En"]))
         else:
             # print command_name.lower()
             commands.append(self.build_command(command_name, chipid=self.chip_id, **kwargs))
@@ -1287,8 +1259,7 @@ class FEI4Register(object):
         '''
         md5 = hashlib.md5()
         if name is None:
-            md5.update(repr(self.global_registers))
-            md5.update(repr(self.pixel_registers))
+            md5.update(datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S%f'))
             name = md5.hexdigest()
         self.config_state[name] = (copy.deepcopy(self.global_registers), copy.deepcopy(self.pixel_registers))
 
