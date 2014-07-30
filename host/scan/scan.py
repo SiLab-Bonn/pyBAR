@@ -425,6 +425,17 @@ class ScanBase(object):
                 else:
                     return [dc * 2, dc * 2 + 1]
 
+        def write_double_columns(dc):
+            if digital_injection:
+                return dc
+            else:  # analog injection
+                if dc == 0:
+                    return [0]
+                elif dc == 39:
+                    return [38, 39]
+                else:
+                    return [dc - 1, dc]
+
         def get_dc_address_command(dc):
             commands = []
             commands.append(conf_mode_command)
@@ -535,18 +546,20 @@ class ScanBase(object):
                 self.dut['cmd']['START_SEQUENCE_LENGTH'] = 0
             else:  # slow loop
                 dc = enable_double_columns[0]
+                ec = enable_columns(dc)
+                dcs = write_double_columns(dc)
                 commands = []
                 commands.append(conf_mode_command)
                 if disable_shift_masks:
-                    curr_dis_mask = self.register_utils.make_pixel_mask(steps=mask_steps, shift=mask_step, default=1, value=0, enable_columns=enable_columns(dc), mask=mask)
+                    curr_dis_mask = self.register_utils.make_pixel_mask(steps=mask_steps, shift=mask_step, default=1, value=0, enable_columns=ec, mask=mask)
                     map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_dis_mask), disable_shift_masks)
-                    commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, dcs=[dc], name=disable_shift_masks))
+                    commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, dcs=dcs, name=disable_shift_masks))
                 if enable_shift_masks:
-                    curr_en_mask = self.register_utils.make_pixel_mask(steps=mask_steps, shift=mask_step, enable_columns=enable_columns(dc), mask=mask)
+                    curr_en_mask = self.register_utils.make_pixel_mask(steps=mask_steps, shift=mask_step, enable_columns=ec, mask=mask)
                     map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_en_mask), [shift_mask_name for shift_mask_name in enable_shift_masks])
-                    commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, dcs=[dc], name=enable_shift_masks))
+                    commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, dcs=dcs, name=enable_shift_masks))
                 if digital_injection is True:
-                    commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, dcs=[dc], name=['EnableDigInj']))
+                    commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, dcs=dcs, name=['EnableDigInj']))
                     self.register.set_global_register_value("DIGHITIN_SEL", 1)
                     commands.extend(self.register.get_commands("wrregister", name=["DIGHITIN_SEL"]))
                 self.register_utils.send_commands(commands, concatenate=True)
@@ -558,18 +571,21 @@ class ScanBase(object):
 
                 for index, dc in enumerate(enable_double_columns):
                     if index != 0:  # full command is already set before loop
+                        ec = enable_columns(dc)
+                        dcs = write_double_columns(dc)
+                        dcs.extend(write_double_columns(enable_double_columns[index - 1]))
                         commands = []
                         commands.append(conf_mode_command)
                         if disable_shift_masks:
-                            curr_dis_mask = self.register_utils.make_pixel_mask(steps=mask_steps, shift=mask_step, default=1, value=0, enable_columns=enable_columns(dc), mask=mask)
+                            curr_dis_mask = self.register_utils.make_pixel_mask(steps=mask_steps, shift=mask_step, default=1, value=0, enable_columns=ec, mask=mask)
                             map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_dis_mask), disable_shift_masks)
-                            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, dcs=[enable_double_columns[index - 1], dc], name=disable_shift_masks))
+                            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, dcs=dcs, name=disable_shift_masks))
                         if enable_shift_masks:
-                            curr_en_mask = self.register_utils.make_pixel_mask(steps=mask_steps, shift=mask_step, enable_columns=enable_columns(dc), mask=mask)
+                            curr_en_mask = self.register_utils.make_pixel_mask(steps=mask_steps, shift=mask_step, enable_columns=ec, mask=mask)
                             map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_en_mask), [shift_mask_name for shift_mask_name in enable_shift_masks])
-                            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, dcs=[enable_double_columns[index - 1], dc], name=enable_shift_masks))
+                            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, dcs=dcs, name=enable_shift_masks))
                         if digital_injection is True:
-                            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, dcs=[enable_double_columns[index - 1], dc], name=['EnableDigInj']))
+                            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, dcs=dcs, name=['EnableDigInj']))
                             self.register.set_global_register_value("DIGHITIN_SEL", 1)
                             commands.extend(self.register.get_commands("wrregister", name=["DIGHITIN_SEL"]))
                         dc_address_command = get_dc_address_command(dc)
