@@ -21,7 +21,7 @@ local_configuration = {
     "scan_parameter": 'PlsrDAC',
     "scan_parameter_values": [i for j in (range(40, 70, 5), range(70, 100, 10), range(100, 600, 20), range(600, 801, 40)) for i in j],  # list of scan parameters to use
     "plot_tdc_histograms": False,
-    "pixels": [(50, 150), ]  # list of (col,row) tupel of pixels to use
+    "pixels": [(40, 225), ]  # list of (col,row) tupel of pixels to use
 }
 
 
@@ -116,6 +116,7 @@ class HitOrScan(ScanBase):
                         if index > 0:
                             logging.warning('Did not read the data of a parameter setting in one chunk, the calculated mean and RMS values will be wrong')
                             break
+                        hits = hits[(hits['event_status'] & 0b0000011110001000) == 0b0000000100000000]   # only take hits from good events (one TDC word only, no error)
                         tot_mean.append(np.mean(hits["tot"]))
                         tdc_mean.append(np.mean(hits["TDC"]))
                         tot_std = np.std(hits["tot"])
