@@ -52,7 +52,7 @@
             <register name="PrmpVbnLcc" address="12" bitlength="8" littleendian="1" description="" />
             <register name="PrmpVbpf" address="12" bitlength="8" littleendian="1" offset="8" description="" />
             <register name="spare_13" address="13" bitlength="1" readonly="1" description="" />
-            <register name="Pixel_Strobes" address="13" bitlength="13" littleendian="1" offset="1" description="" />
+            <register name="Pixel_Strobes" address="13" bitlength="13" littleendian="1" offset="1" description="For SEU hardness set to zero." />
             <register name="S0" address="13" bitlength="1" offset="14" description="" />
             <register name="S1" address="13" bitlength="1" offset="15" description="" />
             <register name="GADCCompBias" address="14" bitlength="8" littleendian="1" description="" />
