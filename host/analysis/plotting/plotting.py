@@ -779,7 +779,7 @@ def create_pixel_scatter_plot(hist, title=None, x_axis_title=None, y_axis_title=
         plt.ylabel(y_axis_title)
 
 
-def plotThreeWay(hist, title, filename=None, x_axis_title=None, minimum=None, maximum=None, bins=None):  # the famous 3 way plot (enhanced)
+def plotThreeWay(hist, title, filename=None, x_axis_title=None, minimum=None, maximum=None, bins=100):  # the famous 3 way plot (enhanced)
     if minimum is None:
         minimum = 0
     elif minimum == 'minimum':
