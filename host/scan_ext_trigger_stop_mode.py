@@ -126,7 +126,7 @@ class ExtTriggerScan(ScanBase):
                                                                         self.register.get_commands("zeros", length=100)[0]
                                                                         ))
 
-            self.register_utils.set_hardware_repeat(bcid_window)
+            self.dut['cmd']['CMD_REPEAT'] = bcid_window
             self.dut['cmd']['START_SEQUENCE_LENGTH'] = len(start_sequence)
             self.dut['cmd']['STOP_SEQUENCE_LENGTH'] = len(stop_sequence) + 1
 
