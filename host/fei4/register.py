@@ -798,7 +798,7 @@ class FEI4Register(object):
         for reg in regs:
             return reg.value.copy()
 
-    def get_commands(self, command_name, same_mask_for_all_dc=False, **kwargs):
+    def get_commands(self, command_name, **kwargs):
         """get fe_command from command name and keyword arguments
 
         wrapper for build_commands()
@@ -841,6 +841,8 @@ class FEI4Register(object):
             commands.extend([self.build_command(command_name, address=register_address, chipid=self.chip_id) for register_address in register_addresses])
 
         elif command_name.lower() == "wrfrontend":
+            dcs = kwargs.pop("dcs", range(40))  # set the double columns to latch
+            same_mask_for_all_dc = kwargs.pop("same_mask_for_all_dc", False)
             # print "wrfrontend"
             register_objects = self.get_pixel_register_objects(False, **kwargs)
             # pprint.pprint(register_objects)
@@ -885,7 +887,7 @@ class FEI4Register(object):
                     else:
                         self.set_global_register_value("Latch_En", 0)
                     commands.extend(self.get_commands("wrregister", name=["Pixel_Strobes", "Latch_En"]))
-                    for dc_no in range(1 if same_mask_for_all_dc else 40):
+                    for dc_no in (dcs[:1] if same_mask_for_all_dc else dcs):
                         self.set_global_register_value("Colpr_Addr", dc_no)
                         commands.extend(self.get_commands("wrregister", name=["Colpr_Addr"]))
                         register_bitset = self.get_pixel_register_bitset(register_object, pxstrobe_bit_no, dc_no)
@@ -905,6 +907,7 @@ class FEI4Register(object):
             self.set_global_register_value("Colpr_Addr", 0)
             commands.extend(self.get_commands("wrregister", name=["Pixel_Strobes", "Latch_En", "Colpr_Mode", "Colpr_Addr"]))
         elif command_name.lower() == "rdfrontend":
+            dcs = kwargs.pop("dcs", range(40))  # set the double columns to latch
             self.set_global_register_value('Conf_AddrEnable', 1)
             self.set_global_register_value("S0", 0)
             self.set_global_register_value("S1", 0)
@@ -927,7 +930,6 @@ class FEI4Register(object):
             commands = []
             commands.extend(self.get_commands("wrregister", name=["Conf_AddrEnable", "S0", "S1", "SR_Clr", "CalEn", "DIGHITIN_SEL", "GateHitOr", "ReadSkipped", "ReadErrorReq", "StopClkPulse", "SR_Clock", "Efuse_Sense", "HITLD_IN", "Colpr_Mode", "Colpr_Addr", "Pixel_Strobes", "Latch_En"]))
 
-            dcs = kwargs.get("dc", range(40))  # set the double columns to latch
             register_name = kwargs.get("name", ["EnableDigInj", "Imon", "Enable", "C_High", "C_Low", "TDAC", "FDAC"])  # set the pixel config registers to latch
 
             register_objects = self.get_pixel_register_objects(False, **{'name': register_name})

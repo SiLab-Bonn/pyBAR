@@ -251,10 +251,12 @@ class FEI4RegisterUtils(object):
         odd_rows = np.arange(shift % steps, 336, steps)
         even_row_offset = ((steps // 2) + shift) % steps  # // integer devision
         even_rows = np.arange(even_row_offset, 336, steps)
-        odd_col_row = cartesian((odd_columns, odd_rows))  # get any combination of column and row, no for loop needed
-        even_col_row = cartesian((even_columns, even_rows))
-        mask_array[odd_col_row[:, 0], odd_col_row[:, 1]] = value  # advanced indexing
-        mask_array[even_col_row[:, 0], even_col_row[:, 1]] = value
+        if odd_columns:
+            odd_col_row = cartesian((odd_columns, odd_rows))  # get any combination of column and row, no for loop needed
+            mask_array[odd_col_row[:, 0], odd_col_row[:, 1]] = value  # advanced indexing
+        if even_columns:
+            even_col_row = cartesian((even_columns, even_rows))
+            mask_array[even_col_row[:, 0], even_col_row[:, 1]] = value
         if mask is not None:
             mask_array = np.ma.array(mask_array, mask=mask, fill_value=default)
             mask_array = mask_array.filled()
@@ -361,7 +363,7 @@ class FEI4RegisterUtils(object):
         for pix_reg in pix_regs:
             pixel_data = np.ma.masked_array(np.zeros(shape=(80, 336), dtype=np.uint32), mask=True)  # the result pixel array, only pixel with data are not masked
             for dc in dcs:
-                self.send_commands(self.register.get_commands("rdfrontend", name=[pix_reg], dc=[dc]))
+                self.send_commands(self.register.get_commands("rdfrontend", name=[pix_reg], dcs=[dc]))
                 data = self.readout.read_data()
                 interpret_pixel_data(data, dc, pixel_data, invert=False if pix_reg.lower()=="enablediginj" else True)
             if overwrite_config:
