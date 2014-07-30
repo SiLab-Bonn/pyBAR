@@ -551,7 +551,7 @@ class ScanBase(object):
                     commands.extend(self.register.get_commands("wrregister", name=["DIGHITIN_SEL"]))
                 self.register_utils.send_commands(commands, concatenate=True)
 
-                dc_address_command = get_dc_address_command(0)
+                dc_address_command = get_dc_address_command(dc)
                 self.dut['cmd']['START_SEQUENCE_LENGTH'] = len(dc_address_command)
                 self.dut['cmd']['CMD_REPEAT'] = repeat_command
                 self.register_utils.set_command(command=self.register_utils.concatenate_commands((dc_address_command, scan_loop_command), byte_padding=False))
