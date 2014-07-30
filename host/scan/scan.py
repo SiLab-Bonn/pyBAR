@@ -35,7 +35,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 class ScanBase(object):
     scan_id = "base_scan"
 
-    def __init__(self, dut=None, configuration_file=None, register=None, definition_file=None, scan_data_path=None, module_id=""):
+    def __init__(self, dut, configuration_file=None, register=None, definition_file=None, scan_data_path=None, module_id=""):
         '''
         dut : str, file, dict, object
             Device configuration or Dut object. See Basil wiki (https://silab-redmine.physik.uni-bonn.de/projects/basil/wiki) for more information.
