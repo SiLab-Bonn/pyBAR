@@ -25,7 +25,7 @@ def plot_tdc_event(points, filename=None):
     zs = points[:, 2]
     cs = points[:, 3]
 
-    p = ax.scatter(xs, ys, zs, c=cs, s=points[:, 3] **(2) / 5., marker='o')
+    p = ax.scatter(xs, ys, zs, c=cs, s=points[:, 3] ** (2) / 5., marker='o')
 
     ax.set_xlabel('x [250 um]')
     ax.set_ylabel('y [50 um]')
@@ -112,7 +112,7 @@ def plot_linear_relation(x, y, x_err=None, y_err=None, title=None, point_label=N
     if y_2_label is not None:
         plt.ylabel(y_2_label)
 
-    plt.ylim((- np.amax(np.abs(y - fit_fn(x)))), (np.amax(np.abs(y - fit_fn(x)))))
+    plt.ylim((-np.amax(np.abs(y - fit_fn(x)))), (np.amax(np.abs(y - fit_fn(x)))))
 
     plt.plot(plt.xlim(), [0, 0], '-', color='black')
     plt.setp(ax_bottom_plot.get_yticklabels()[-2:-1], visible=False)
@@ -178,7 +178,7 @@ def plot_fancy_occupancy(hist, z_max=None, filename=None):
     # make some labels invisible
     plt.setp(axHistx.get_xticklabels() + axHisty.get_yticklabels(), visible=False)
     hight = np.ma.sum(hist, axis=0)
-    #hight[hight.mask] = 0
+    # hight[hight.mask] = 0
     axHistx.bar(left=range(1, 81), height=hight, align='center', linewidth=0)
     axHistx.set_xlim((0.5, 80.5))
     if hist.all() is np.ma.masked:
@@ -187,7 +187,7 @@ def plot_fancy_occupancy(hist, z_max=None, filename=None):
     axHistx.ticklabel_format(style='sci', scilimits=(0, 4), axis='y')
     axHistx.set_ylabel('#')
     width = np.ma.sum(hist, axis=1)
-    #width[hight.mask] = 0
+    # width[hight.mask] = 0
     axHisty.barh(bottom=range(1, 337), width=width, align='center', linewidth=0)
     axHisty.set_ylim((336.5, 0.5))
     if hist.all() is np.ma.masked:
@@ -207,7 +207,6 @@ def plot_fancy_occupancy(hist, z_max=None, filename=None):
 
 
 def plot_occupancy(hist, title='Occupancy', z_max=None, filename=None):
-#     plt.clf()
     if z_max == 'median':
         median = np.ma.median(hist)
         z_max = median * 2  # round_to_multiple(median * 2, math.floor(math.log10(median * 2)))
@@ -317,7 +316,7 @@ def plot_scatter(x, y, x_err=None, y_err=None, title=None, legend=None, plot_ran
     if x_err is not None or y_err is not None:
         plt.errorbar(x, y, xerr=x_err, yerr=y_err, fmt=marker_style)
     else:
-        plt.plot(x, y, marker_style, markersize =1)
+        plt.plot(x, y, marker_style, markersize=1)
     plt.title(title)
     if x_label is not None:
         plt.xlabel(x_label)
@@ -394,7 +393,7 @@ def plot_pixel_matrix(hist, title="Hit correlation", filename=None):
 
 
 def plot_n_cluster(hist, title=None, filename=None):
-    plot_1d_hist(hist=hist[0], title='Cluster per event (' + str(np.sum(hist[0])) + ' entries)' if title == None else title, log_y=True, x_axis_title='Cluster per event', y_axis_title='#', filename=filename)
+    plot_1d_hist(hist=hist[0], title='Cluster per event (' + str(np.sum(hist[0])) + ' entries)' if title is None else title, log_y=True, x_axis_title='Cluster per event', y_axis_title='#', filename=filename)
 
 
 def round_to_multiple(number, multiple):
@@ -431,17 +430,17 @@ def plot_relative_bcid_stop_mode(hist, filename=None):
 
 
 def plot_tot(hist, title=None, filename=None):
-    plot_1d_hist(hist=hist, title='Time-over-Threshold distribution (ToT code)' if title == None else title, plot_range=range(0, 16), x_axis_title='ToT [25 ns]', y_axis_title='#', color='b', filename=filename, figure_name='Hit Tot')
+    plot_1d_hist(hist=hist, title='Time-over-Threshold distribution (ToT code)' if title is None else title, plot_range=range(0, 16), x_axis_title='ToT [25 ns]', y_axis_title='#', color='b', filename=filename, figure_name='Hit Tot')
 
 
 def plot_tdc(hist, title=None, filename=None):
     masked_hist, indices = hist_quantiles(hist, prob=(0., 0.99), return_indices=True)
-    plot_1d_hist(hist=masked_hist, title='TDC Hit distribution (' + str(np.sum(hist)) + ' entries)' if title == None else title, plot_range=range(*indices), x_axis_title='hit TDC', y_axis_title='#', color='b', filename=filename, figure_name='Hit TDC')
+    plot_1d_hist(hist=masked_hist, title='TDC Hit distribution (' + str(np.sum(hist)) + ' entries)' if title is None else title, plot_range=range(*indices), x_axis_title='hit TDC', y_axis_title='#', color='b', filename=filename, figure_name='Hit TDC')
 
 
 def plot_tdc_counter(hist, title=None, filename=None):
     masked_hist, indices = hist_quantiles(hist, prob=(0., 0.99), return_indices=True)
-    plot_1d_hist(hist=masked_hist, title='TDC counter distribution (' + str(np.sum(hist)) + ' entries)' if title == None else title, plot_range=range(*indices), x_axis_title='TDC value', y_axis_title='#', color='b', filename=filename, figure_name='Counter TDC')
+    plot_1d_hist(hist=masked_hist, title='TDC counter distribution (' + str(np.sum(hist)) + ' entries)' if title is None else title, plot_range=range(*indices), x_axis_title='TDC value', y_axis_title='#', color='b', filename=filename, figure_name='Counter TDC')
 
 
 def plot_event_errors(hist, title=None, filename=None):
@@ -461,7 +460,7 @@ def plot_cluster_tot(hist, median=False, max_occ=None, filename=None):
 
 
 def plot_cluster_size(hist, title=None, filename=None):
-    plot_1d_hist(hist=hist, title='Cluster size (' + str(np.sum(hist)) + ' entries)' if title == None else title, log_y=True, plot_range=range(0, 32), x_axis_title='Cluster size', y_axis_title='#', filename=filename)
+    plot_1d_hist(hist=hist, title='Cluster size (' + str(np.sum(hist)) + ' entries)' if title is None else title, log_y=True, plot_range=range(0, 32), x_axis_title='Cluster size', y_axis_title='#', filename=filename)
 
 
 def plot_scurves(occupancy_hist, scan_parameters, title='S-Curves', ylabel='Occupancy', max_occ=None, scan_parameter_name=None, filename=None):  # tornado plot
@@ -570,7 +569,7 @@ def plot_cluster_tot_size(hist, median=False, z_max=None, filename=None):
     plt.title('Cluster size and cluster ToT (' + str(np.sum(H) / 2) + ' entries)')
     ax.set_xlabel('cluster size')
     ax.set_ylabel('cluster ToT')
-    #ax.colorbar(cmap=cmap)
+    # ax.colorbar(cmap=cmap)
     ax.invert_yaxis()
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.1)
@@ -591,7 +590,7 @@ def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=No
     logging.info("Plot 1d histogram%s" % ((': ' + title) if title is not None else ''))
 #     plt.clf()
 #     fig = plt.figure()
-    if figure_name != None:
+    if figure_name is not None:
         fig = plt.figure(figure_name)
         fig.clf()
 
@@ -608,7 +607,7 @@ def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=No
     if y_axis_title is not None:
         plt.ylabel(y_axis_title)
     if x_ticks is not None:
-        plt.xticks(range(0, len(hist[:])) if plot_range == None else plot_range, x_ticks)
+        plt.xticks(range(0, len(hist[:])) if plot_range is None else plot_range, x_ticks)
         plt.tick_params(axis='both', which='major', labelsize=8)
     if np.allclose(hist, 0.0):
         plt.ylim((0, 1))
@@ -624,41 +623,6 @@ def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=No
     else:
         plt.savefig(filename)
         plt.close()
-
-# def plot_pixel_mask(mask, maskname, filename=None):
-#     plt.clf()
-#     extent = [0.5, 80.5, 336.5, 0.5]
-#     plt.imshow(mask, interpolation='nearest', aspect="auto", extent=extent) # for monitoring
-#     plt.title(maskname+" mask")
-#     plt.xlabel('Column')
-#     plt.ylabel('Row')
-#     plt.colorbar(boundaries = bounds, cmap = cmap, norm = norm)  # FIXME: missing parameters
-#     if filename is None:
-#         plt.show()
-#     elif isinstance(filename, PdfPages):
-#         filename.savefig()
-#     else:
-#         plt.savefig(filename)
-#
-#
-# def plot_pixel_dac_config(dacconfig, dacname, filename = None):
-#     plt.clf()
-#     extent = [0.5, 80.5, 336.5, 0.5]
-#     cmap = cm.get_cmap('hot')
-#     ceil_number = dacconfig.max()  # TODO: get max value from register object
-#     bounds = range(0, ceil_number+1, ceil_number/255)
-#     norm = colors.BoundaryNorm(bounds, cmap.N)
-#     plt.imshow(dacconfig, interpolation='nearest', aspect="auto", cmap = cmap, norm = norm, extent=extent)
-#     plt.title(dacname+" distribution")
-#     plt.xlabel('Column')
-#     plt.ylabel('Row')
-#     plt.colorbar(boundaries = bounds, cmap = cmap, norm = norm)
-#     if filename is None:
-#         plt.show()
-#     elif isinstance(filename, PdfPages):
-#         filename.savefig()
-#     else:
-#         plt.savefig(filename)
 
 
 def create_2d_pixel_hist(hist2d, title=None, x_axis_title=None, y_axis_title=None, z_max=None):
