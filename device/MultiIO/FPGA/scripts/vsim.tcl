@@ -73,6 +73,7 @@ proc vlog_top {} {
     vlog -lint $BASIL/trunk/device/modules/rrp_arbiter/*.v +incdir+$BASIL/trunk/device/modules/rrp_arbiter
     vlog -lint $BASIL/trunk/device/modules/tlu/*.v
     vlog -lint $BASIL/trunk/device/modules/tdc_s3/*.v
+    vlog -lint $BASIL/trunk/device/modules/gpio/*.v
     
     vlog ../src/top.v
     vlog ../src/clk_gen.v
