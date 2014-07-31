@@ -209,7 +209,7 @@ class FEI4RegisterUtils(object):
         steps : int
             Number of mask steps, e.g. steps=3 (every third pixel is enabled), steps=336 (one pixel per column), steps=672 (one pixel per double column).
         shift : int
-            Shift mask by given value to the bottom (towards higher row numbers). From 0 to steps - 1.
+            Shift mask by given value to the bottom (towards higher row numbers). From 0 to (steps - 1).
         default : int
             Value of pixels that are not selected by the mask.
         value : int
