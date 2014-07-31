@@ -49,11 +49,7 @@ module top_tb;
     
     // Outputs
     wire [2:0] TX; // TX[0] == RJ45 trigger clock output, TX[1] == RJ45 busy output
-    wire LED1;
-    wire LED2;
-    wire LED3;
-    wire LED4;
-    wire LED5;
+    wire [4:0] LED;
     wire [19:0] SRAM_A;
     wire SRAM_BHE_B;
     wire SRAM_BLE_B;
@@ -87,11 +83,7 @@ module top_tb;
         
         .MONHIT(MONHIT),
         
-        .LED1(LED1),
-        .LED2(LED2),
-        .LED3(LED3),
-        .LED4(LED4),
-        .LED5(LED5),
+        .LED(LED),
         
         .SRAM_A(SRAM_A), 
         .SRAM_IO(SRAM_IO), 
