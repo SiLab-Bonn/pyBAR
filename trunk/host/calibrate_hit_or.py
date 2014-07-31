@@ -21,7 +21,7 @@ local_configuration = {
     "scan_parameter": 'PlsrDAC',
     "scan_parameter_values": [i for j in (range(40, 70, 5), range(70, 100, 10), range(100, 600, 20), range(600, 801, 40)) for i in j],  # list of scan parameters to use
     "plot_tdc_histograms": False,
-    "pixels": [(40, 225), ]  # list of (col,row) tupel of pixels to use
+    "pixels": [(78, 5)]  # list of (col,row) tupel of pixels to use
 }
 
 
@@ -29,7 +29,10 @@ class HitOrScan(ScanBase):
     scan_id = "hit_or_scan"
 
     def get_dc_and_mask_step(self, column, row):
-        ''' Returns the double columns and the mask step for the given pixel in column, row coordinates '''
+        ''' Returns the double columns and the mask step for the given pixel in column, row number (starting from 1) '''
+        assert (column >= 1 and row >= 1)
+        if column == 78:
+            logging.warning('Selected column 78 also enables column 80 (FE feature)')
         return column / 2, 335 + row if column % 2 == 0 else row - 1
 
     def activate_tdc(self):
@@ -123,7 +126,7 @@ class HitOrScan(ScanBase):
                         tdc_std = np.std(hits["TDC"])
                         if local_configuration['plot_tdc_histograms']:
                             plotting.plot_1d_hist(np.histogram(hits["TDC"], range=(0, 4095), bins=4096)[0], title="TDC histogram for pixel " + str(column) + "/" + str(row) + " and PlsrDAC " + str(scan_parameter_value[0]) + " (" + str(len(hits["TDC"])) + " entrie(s))", x_axis_title="TDC", y_axis_title="#", filename=output_pdf)
-
+ 
                     if len(tot_mean) != 0:
                         calibration_data[column - 1, row - 1, scan_parameter_index, 0] = tot_mean[0]  # just add data of the selected pixel
                         calibration_data[column - 1, row - 1, scan_parameter_index, 1] = tot_std
