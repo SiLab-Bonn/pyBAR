@@ -1,5 +1,7 @@
 # ----------------------------------------------------------------
 # TO RUN (in work directory):
+# cd into the directory where this file is located
+# set XILINX, BASIL, FEI4 variable (see below)
 # source vsim.tcl
 # vlog_libs (needed once)
 # vlog_top
@@ -12,8 +14,8 @@
 # ----------------------------------------------------------------
 # set system environment XILINX to ISE directory
 # ----------------------------------------------------------------
-#set XILINX "C:/Xilinx/14.7/ISE_DS/ISE"
-set XILINX   $env(XILINX)
+set XILINX "C:/Xilinx/14.7/ISE_DS/ISE"
+#set XILINX   $env(XILINX)
 
 # ----------------------------------------------------------------
 #set path to basil
@@ -64,7 +66,7 @@ proc vlog_top {} {
 
     vlog $XILINX/verilog/src/glbl.v
 
-    vlog -lint $BASIL/trunk/device/modules/utils/*.v
+    vlog -lint $BASIL/trunk/device/modules/utils/*.v +incdir+$BASIL/trunk/device/modules/includes
     vlog -lint $BASIL/trunk/device/modules/sram_fifo/*.v
     vlog -lint $BASIL/trunk/device/modules/fei4_rx/*.v
     vlog -lint $BASIL/trunk/device/modules/cmd_seq/*.v
