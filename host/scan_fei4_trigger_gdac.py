@@ -10,7 +10,7 @@ from scan.scan import ScanBase
 from daq.readout import open_raw_data_file
 
 from fei4.register import FEI4Register
-from fei4.register_utils import FEI4RegisterUtils
+from fei4.register_utils import FEI4RegisterUtils, make_box_pixel_mask_from_col_row
 
 from daq.readout import data_dict_list_from_data_dict_iterable, is_data_from_channel
 
@@ -133,20 +133,20 @@ class Fei4TriggerGdacScan(ScanBase):
     def configure_trigger_fe(self, config_file_trigger_fe, col_span, row_span):
         logging.info("Sending configuration to trigger FE")
         self.register_trigger_fe = FEI4Register(config_file_trigger_fe)
-        self.register_utils_trigger_fe = FEI4RegisterUtils(self.device, self.readout, self.register_trigger_fe)
+        self.register_utils_trigger_fe = FEI4RegisterUtils(self.dut, self.readout, self.register_trigger_fe)
         self.register_utils_trigger_fe.configure_all(same_mask_for_all_dc=True)
 
         commands = []
         # generate ROI mask for Enable mask
         pixel_reg = "Enable"
-        mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
+        mask = make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
         commands.extend(self.register_trigger_fe.get_commands("confmode"))
         enable_mask = np.logical_and(mask, self.register_trigger_fe.get_pixel_register_value(pixel_reg))
         self.register_trigger_fe.set_pixel_register_value(pixel_reg, enable_mask)
         commands.extend(self.register_trigger_fe.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
         # generate ROI mask for Imon mask
         pixel_reg = "Imon"
-        mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span, default=1, value=0)
+        mask = make_box_pixel_mask_from_col_row(column=col_span, row=row_span, default=1, value=0)
         imon_mask = np.logical_or(mask, self.register_trigger_fe.get_pixel_register_value(pixel_reg))
         self.register_trigger_fe.set_pixel_register_value(pixel_reg, imon_mask)
         commands.extend(self.register_trigger_fe.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))

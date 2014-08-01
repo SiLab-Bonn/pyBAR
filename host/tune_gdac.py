@@ -7,6 +7,7 @@ import logging
 from daq.readout import open_raw_data_file, get_col_row_array_from_data_record_array, convert_data_array, data_array_from_data_dict_iterable, is_data_record, is_data_from_channel, logical_and
 from analysis.plotting.plotting import plotThreeWay
 from scan.scan import ScanBase
+from fei4.register_utils import make_pixel_mask
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
@@ -95,7 +96,7 @@ class GdacTune(ScanBase):
         if enable_mask_steps is None or not enable_mask_steps:
             enable_mask_steps = range(mask_steps)
         for mask_step in enable_mask_steps:
-            select_mask_array += self.register_utils.make_pixel_mask(steps=mask_steps, shift=mask_step)
+            select_mask_array += make_pixel_mask(steps=mask_steps, shift=mask_step)
         for column in bits_set(self.register.get_global_register_value("DisableColumnCnfg")):
             logging.info('Deselect double column %d' % column)
             select_mask_array[column, :] = 0
