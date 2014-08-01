@@ -9,6 +9,7 @@ from daq.readout import get_col_row_array_from_data_record_array, convert_data_a
 
 from scan.scan import ScanBase
 from daq.readout import open_raw_data_file
+from fei4.register_utils import make_box_pixel_mask_from_col_row
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
@@ -86,7 +87,7 @@ class ThresholdBaselineTuning(ScanBase):
         pixel_reg = "TDAC"
         self.register.set_pixel_register_value(pixel_reg, tdac_max)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
-        mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
+        mask = make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
         pixel_reg = "Enable"
         if use_enable_mask:
             self.register.set_pixel_register_value(pixel_reg, np.logical_and(mask, self.register.get_pixel_register_value(pixel_reg)))

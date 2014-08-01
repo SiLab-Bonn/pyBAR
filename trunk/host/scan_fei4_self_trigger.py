@@ -5,6 +5,7 @@ import numpy as np
 
 from scan.scan import ScanBase
 from daq.readout import open_raw_data_file
+from fei4.register_utils import make_box_pixel_mask_from_col_row
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
@@ -100,7 +101,7 @@ class FEI4SelfTriggerScan(ScanBase):
     def configure_fe(self, col_span, row_span, trig_latency, trig_count):
         # generate ROI mask for Enable mask
         pixel_reg = "Enable"
-        mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
+        mask = make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
         commands = []
         commands.extend(self.register.get_commands("confmode"))
         enable_mask = np.logical_and(mask, self.register.get_pixel_register_value(pixel_reg))

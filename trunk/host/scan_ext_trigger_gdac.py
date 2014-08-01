@@ -5,6 +5,7 @@ import numpy as np
 import tables as tb
 from threading import Event
 from scipy.interpolate import interp1d
+from fei4.register_utils import make_box_pixel_mask_from_col_row
 
 from scan.scan import ScanBase
 from daq.readout import open_raw_data_file
@@ -83,7 +84,7 @@ class ExtTriggerGdacScan(ScanBase):
         self.repeat_scan_step = True
 
         pixel_reg = "Enable"
-        mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
+        mask = make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
         commands = []
         commands.extend(self.register.get_commands("confmode"))
         enable_mask = np.logical_and(mask, self.register.get_pixel_register_value(pixel_reg))
@@ -92,7 +93,7 @@ class ExtTriggerGdacScan(ScanBase):
         # generate mask for Imon mask
         pixel_reg = "Imon"
         if enable_hitbus:
-            mask = self.register_utils.make_box_pixel_mask_from_col_row(column=col_span, row=row_span, default=1, value=0)
+            mask = make_box_pixel_mask_from_col_row(column=col_span, row=row_span, default=1, value=0)
             imon_mask = np.logical_or(mask, self.register.get_pixel_register_value(pixel_reg))
         else:
             imon_mask = 1
