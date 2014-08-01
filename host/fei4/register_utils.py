@@ -1,6 +1,3 @@
-import struct
-import array
-import math
 import time
 import numpy as np
 import re
@@ -184,145 +181,6 @@ class FEI4RegisterUtils(object):
         commands.extend(self.register.get_commands("runmode"))
         self.send_commands(commands)
 
-    def invert_pixel_mask(self, mask):
-        '''Invert pixel mask (0->1, 1(and greater)->0).
-
-        Parameters
-        ----------
-        mask : array-like
-            Mask.
-
-        Returns
-        -------
-        inverted_mask : array-like
-            Inverted Mask.
-        '''
-        inverted_mask = np.ones(shape=(80, 336), dtype=np.dtype('>u1'))
-        inverted_mask[mask >= 1] = 0
-        return inverted_mask
-
-    def make_pixel_mask(self, steps, shift, default=0, value=1, enable_columns=None, mask=None):
-        '''Generate pixel mask.
-
-        Parameters
-        ----------
-        steps : int
-            Number of mask steps, e.g. steps=3 (every third pixel is enabled), steps=336 (one pixel per column), steps=672 (one pixel per double column).
-        shift : int
-            Shift mask by given value to the bottom (towards higher row numbers). From 0 to (steps - 1).
-        default : int
-            Value of pixels that are not selected by the mask.
-        value : int
-            Value of pixels that are selected by the mask.
-        enable_columns : list
-            List of columns where the shift mask will be applied. List elements can range from 1 to 80.
-        mask : array_like
-            Additional mask. Must be convertible to an array of booleans with the same shape as mask array. True indicates a masked (i.e. invalid) data. Masked pixels will be set to default value.
-
-        Returns
-        -------
-        mask_array : numpy.ndarray
-            Mask array.
-
-        Usage
-        -----
-        shift_mask = 'enable'
-        steps = 3 # three step mask
-        for mask_step in range(steps):
-            commands = []
-            commands.extend(self.register.get_commands("confmode"))
-            mask_array = self.register_utils.make_pixel_mask(steps=steps, step=mask_step)
-            self.register.set_pixel_register_value(shift_mask, mask_array)
-            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=shift_mask))
-            self.register_utils.send_commands(commands)
-            # do something here
-        '''
-        dimension = (80, 336)
-        # value = np.zeros(dimension, dtype = np.uint8)
-        mask_array = np.empty(dimension, dtype=np.uint8)
-        mask_array.fill(default)
-        # FE columns and rows are starting from 1
-        if enable_columns:
-            odd_columns = [odd - 1 for odd in enable_columns if odd % 2 != 0]
-            even_columns = [even - 1 for even in enable_columns if even % 2 == 0]
-        else:
-            odd_columns = range(0, 80, 2)
-            even_columns = range(1, 80, 2)
-        odd_rows = np.arange(shift % steps, 336, steps)
-        even_row_offset = ((steps // 2) + shift) % steps  # // integer devision
-        even_rows = np.arange(even_row_offset, 336, steps)
-        if odd_columns:
-            odd_col_row = cartesian((odd_columns, odd_rows))  # get any combination of column and row, no for loop needed
-            mask_array[odd_col_row[:, 0], odd_col_row[:, 1]] = value  # advanced indexing
-        if even_columns:
-            even_col_row = cartesian((even_columns, even_rows))
-            mask_array[even_col_row[:, 0], even_col_row[:, 1]] = value
-        if mask is not None:
-            mask_array = np.ma.array(mask_array, mask=mask, fill_value=default)
-            mask_array = mask_array.filled()
-        return mask_array
-
-    def make_pixel_mask_from_col_row(self, column, row, default=0, value=1):
-        '''Generate mask from column and row lists
-
-        Parameters
-        ----------
-        column : iterable, int
-            List of colums values.
-        row : iterable, int
-            List of row values.
-        default : int
-            Value of pixels that are not selected by the mask.
-        value : int
-            Value of pixels that are selected by the mask.
-
-        Returns
-        -------
-        mask : numpy.ndarray
-        '''
-        # FE columns and rows start from 1
-        col_array = np.array(column) - 1
-        row_array = np.array(row) - 1
-        if np.any(col_array >= 80) or np.any(col_array < 0) or np.any(row_array >= 336) or np.any(col_array < 0):
-            raise ValueError('Column and/or row out of range')
-        dimension = (80, 336)
-        # value = np.zeros(dimension, dtype = np.uint8)
-        mask = np.empty(dimension, dtype=np.uint8)
-        mask.fill(default)
-        mask[col_array, row_array] = value  # advanced indexing
-        return mask
-
-    def make_box_pixel_mask_from_col_row(self, column, row, default=0, value=1):
-        '''Generate box shaped mask from column and row lists. Takes the minimum and maximum value from each list.
-
-        Parameters
-        ----------
-        column : iterable, int
-            List of colums values.
-        row : iterable, int
-            List of row values.
-        default : int
-            Value of pixels that are not selected by the mask.
-        value : int
-            Value of pixels that are selected by the mask.
-
-        Returns
-        -------
-        numpy.ndarray
-        '''
-        # FE columns and rows start from 1
-        col_array = np.array(column) - 1
-        row_array = np.array(row) - 1
-        if np.any(col_array >= 80) or np.any(col_array < 0) or np.any(row_array >= 336) or np.any(col_array < 0):
-            raise ValueError('Column and/or row out of range')
-        dimension = (80, 336)
-        # value = np.zeros(dimension, dtype = np.uint8)
-        mask = np.empty(dimension, dtype=np.uint8)
-        mask.fill(default)
-        if column and row:
-            mask[col_array.min():col_array.max() + 1, row_array.min():row_array.max() + 1] = value  # advanced indexing
-        return mask
-
     def set_gdac(self, value):
         commands = []
         commands.extend(self.register.get_commands("confmode"))
@@ -365,11 +223,154 @@ class FEI4RegisterUtils(object):
             for dc in dcs:
                 self.send_commands(self.register.get_commands("rdfrontend", name=[pix_reg], dcs=[dc]))
                 data = self.readout.read_data()
-                interpret_pixel_data(data, dc, pixel_data, invert=False if pix_reg.lower()=="enablediginj" else True)
+                interpret_pixel_data(data, dc, pixel_data, invert=False if pix_reg.lower() == "enablediginj" else True)
             if overwrite_config:
                 self.register.set_pixel_register(pix_reg, pixel_data.data)
             result.append(pixel_data)
         return result
+
+
+def invert_pixel_mask(mask):
+    '''Invert pixel mask (0->1, 1(and greater)->0).
+
+    Parameters
+    ----------
+    mask : array-like
+        Mask.
+
+    Returns
+    -------
+    inverted_mask : array-like
+        Inverted Mask.
+    '''
+    inverted_mask = np.ones(shape=(80, 336), dtype=np.dtype('>u1'))
+    inverted_mask[mask >= 1] = 0
+    return inverted_mask
+
+
+def make_pixel_mask(steps, shift, default=0, value=1, enable_columns=None, mask=None):
+    '''Generate pixel mask.
+
+    Parameters
+    ----------
+    steps : int
+        Number of mask steps, e.g. steps=3 (every third pixel is enabled), steps=336 (one pixel per column), steps=672 (one pixel per double column).
+    shift : int
+        Shift mask by given value to the bottom (towards higher row numbers). From 0 to (steps - 1).
+    default : int
+        Value of pixels that are not selected by the mask.
+    value : int
+        Value of pixels that are selected by the mask.
+    enable_columns : list
+        List of columns where the shift mask will be applied. List elements can range from 1 to 80.
+    mask : array_like
+        Additional mask. Must be convertible to an array of booleans with the same shape as mask array. True indicates a masked (i.e. invalid) data. Masked pixels will be set to default value.
+
+    Returns
+    -------
+    mask_array : numpy.ndarray
+        Mask array.
+
+    Usage
+    -----
+    shift_mask = 'enable'
+    steps = 3 # three step mask
+    for mask_step in range(steps):
+        commands = []
+        commands.extend(self.register.get_commands("confmode"))
+        mask_array = make_pixel_mask(steps=steps, step=mask_step)
+        self.register.set_pixel_register_value(shift_mask, mask_array)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=shift_mask))
+        self.register_utils.send_commands(commands)
+        # do something here
+    '''
+    dimension = (80, 336)
+    # value = np.zeros(dimension, dtype = np.uint8)
+    mask_array = np.empty(dimension, dtype=np.uint8)
+    mask_array.fill(default)
+    # FE columns and rows are starting from 1
+    if enable_columns:
+        odd_columns = [odd - 1 for odd in enable_columns if odd % 2 != 0]
+        even_columns = [even - 1 for even in enable_columns if even % 2 == 0]
+    else:
+        odd_columns = range(0, 80, 2)
+        even_columns = range(1, 80, 2)
+    odd_rows = np.arange(shift % steps, 336, steps)
+    even_row_offset = ((steps // 2) + shift) % steps  # // integer devision
+    even_rows = np.arange(even_row_offset, 336, steps)
+    if odd_columns:
+        odd_col_row = cartesian((odd_columns, odd_rows))  # get any combination of column and row, no for loop needed
+        mask_array[odd_col_row[:, 0], odd_col_row[:, 1]] = value  # advanced indexing
+    if even_columns:
+        even_col_row = cartesian((even_columns, even_rows))
+        mask_array[even_col_row[:, 0], even_col_row[:, 1]] = value
+    if mask is not None:
+        mask_array = np.ma.array(mask_array, mask=mask, fill_value=default)
+        mask_array = mask_array.filled()
+    return mask_array
+
+
+def make_pixel_mask_from_col_row(column, row, default=0, value=1):
+    '''Generate mask from column and row lists
+
+    Parameters
+    ----------
+    column : iterable, int
+        List of colums values.
+    row : iterable, int
+        List of row values.
+    default : int
+        Value of pixels that are not selected by the mask.
+    value : int
+        Value of pixels that are selected by the mask.
+
+    Returns
+    -------
+    mask : numpy.ndarray
+    '''
+    # FE columns and rows start from 1
+    col_array = np.array(column) - 1
+    row_array = np.array(row) - 1
+    if np.any(col_array >= 80) or np.any(col_array < 0) or np.any(row_array >= 336) or np.any(col_array < 0):
+        raise ValueError('Column and/or row out of range')
+    dimension = (80, 336)
+    # value = np.zeros(dimension, dtype = np.uint8)
+    mask = np.empty(dimension, dtype=np.uint8)
+    mask.fill(default)
+    mask[col_array, row_array] = value  # advanced indexing
+    return mask
+
+
+def make_box_pixel_mask_from_col_row(column, row, default=0, value=1):
+    '''Generate box shaped mask from column and row lists. Takes the minimum and maximum value from each list.
+
+    Parameters
+    ----------
+    column : iterable, int
+        List of colums values.
+    row : iterable, int
+        List of row values.
+    default : int
+        Value of pixels that are not selected by the mask.
+    value : int
+        Value of pixels that are selected by the mask.
+
+    Returns
+    -------
+    numpy.ndarray
+    '''
+    # FE columns and rows start from 1
+    col_array = np.array(column) - 1
+    row_array = np.array(row) - 1
+    if np.any(col_array >= 80) or np.any(col_array < 0) or np.any(row_array >= 336) or np.any(col_array < 0):
+        raise ValueError('Column and/or row out of range')
+    dimension = (80, 336)
+    # value = np.zeros(dimension, dtype = np.uint8)
+    mask = np.empty(dimension, dtype=np.uint8)
+    mask.fill(default)
+    if column and row:
+        mask[col_array.min():col_array.max() + 1, row_array.min():row_array.max() + 1] = value  # advanced indexing
+    return mask
 
 
 def cartesian(arrays, out=None):
