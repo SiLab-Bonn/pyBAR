@@ -11,6 +11,7 @@ from analysis.analyze_raw_data import AnalyzeRawData
 from analysis import analysis_utils
 from analysis.plotting import plotting
 from matplotlib.backends.backend_pdf import PdfPages
+from fei4.register_utils import make_pixel_mask_from_col_row, make_box_pixel_mask_from_col_row
 
 import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
@@ -21,27 +22,16 @@ local_configuration = {
     "scan_parameter": 'PlsrDAC',
     "scan_parameter_values": [i for j in (range(40, 70, 5), range(70, 100, 10), range(100, 600, 20), range(600, 801, 40)) for i in j],  # list of scan parameters to use
     "plot_tdc_histograms": False,
-    "pixels": [(78, 5)]  # list of (col,row) tupel of pixels to use
+    "pixels": (np.dstack(np.where(make_box_pixel_mask_from_col_row([10, 10], [10, 10]) == 1)) + 1)[0],  # list of (col, row) tupels. From 1 to 80/336.
+    "enable_masks": ["Enable", "C_Low", "C_High"],
+    "disable_masks": ["Imon"]
 }
 
 
-class HitOrScan(ScanBase):
-    scan_id = "hit_or_scan"
+class HitOrCalibration(ScanBase):
+    scan_id = "hit_or_calibration"
 
-    def get_dc_and_mask_step(self, column, row):
-        ''' Returns the double columns and the mask step for the given pixel in column, row number (starting from 1) '''
-        assert (column >= 1 and row >= 1)
-        if column == 78:
-            logging.warning('Selected column 78 also enables column 80 (FE feature)')
-        return column / 2, 335 + row if column % 2 == 0 else row - 1
-
-    def activate_tdc(self):
-        self.dut['tdc_rx2']['ENABLE'] = True
-
-    def deactivate_tdc(self):
-        self.dut['tdc_rx2']['ENABLE'] = False
-
-    def scan(self, pixels, repeat_command=100, scan_parameter='PlsrDAC', scan_parameter_values=(55, 100, 150, 250), **kwarg):
+    def scan(self, pixels, repeat_command, scan_parameter, scan_parameter_values, plot_tdc_histograms, enable_masks, disable_masks, **kwarg):
         '''Scan loop
 
         Parameters
@@ -55,11 +45,39 @@ class HitOrScan(ScanBase):
         scan_parameter_stepsize : int
             The minimum step size of the parameter. Used when start condition is not triggered.
         '''
+        def write_double_column(column):
+            return (column - 1) / 2
 
+        def inject_double_column(column):
+            if column == 80:
+                return 39
+            else:
+                return (column) / 2
+
+        cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", length=600)[0]
         with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_id, scan_parameters=[scan_parameter, 'column', 'row']) as raw_data_file:
-            for pixel in pixels:
+            for index, pixel in enumerate(pixels):
                 column = pixel[0]
                 row = pixel[1]
+                logging.info('Scanning pixel: %d/%d (column/row)' % (column, row))
+                if index:
+                    dcs = [write_double_column(column)]
+                    dcs.append(write_double_column(pixels[index - 1][0]))
+                else:
+                    dcs = []
+                print dcs
+                commands = []
+                commands.extend(self.register.get_commands("confmode"))
+                single_pixel_enable_mask = make_pixel_mask_from_col_row([column], [row])
+                map(lambda mask_name: self.register.set_pixel_register_value(mask_name, single_pixel_enable_mask), enable_masks)
+                commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, dcs=dcs, name=enable_masks))
+                single_pixel_disable_mask = make_pixel_mask_from_col_row([column], [row], default=1, value=0)
+                map(lambda mask_name: self.register.set_pixel_register_value(mask_name, single_pixel_disable_mask), disable_masks)
+                commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, dcs=dcs, name=disable_masks))
+                print 'inject', inject_double_column(column)
+                self.register.set_global_register_value("Colpr_Addr", inject_double_column(column))
+                commands.append(self.register.get_commands("wrregister", name=["Colpr_Addr"])[0])
+                self.register_utils.send_commands(commands)
                 for scan_parameter_value in scan_parameter_values:
                     if self.stop_thread_event.is_set():
                         break
@@ -69,19 +87,15 @@ class HitOrScan(ScanBase):
                     commands.extend(self.register.get_commands("confmode"))
                     self.register.set_global_register_value(scan_parameter, scan_parameter_value)
                     commands.extend(self.register.get_commands("wrregister", name=[scan_parameter]))
+                    commands.extend(self.register.get_commands("runmode"))
                     self.register_utils.send_commands(commands)
-
                     # activate TDC arming
                     self.dut['tdc_rx2']['EN_ARMING'] = True
-
                     self.readout.start()
-
-                    double_column, mask_step = self.get_dc_and_mask_step(column=column, row=row)  # translate the selected pixel into DC, mask_step info to be able to used the scan_loop
-
-                    cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0]  # + self.register.get_commands("zeros", length=12000)[0]
-                    self.scan_loop(cal_lvl1_command, bol_function=self.activate_tdc, eol_function=self.deactivate_tdc, repeat_command=repeat_command, use_delay=True, mask_steps=672, enable_mask_steps=[mask_step], enable_double_columns=[double_column], same_mask_for_all_dc=False, digital_injection=False, disable_shift_masks=["Imon"], enable_shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=False, mask=None)
-
-                    self.readout.stop(timeout=10)
+                    self.dut['tdc_rx2']['ENABLE'] = True
+                    self.register_utils.send_command(command=cal_lvl1_command, repeat=repeat_command)
+                    self.dut['tdc_rx2']['ENABLE'] = False
+                    self.readout.stop()
 
                     # saving data
                     raw_data_file.append(self.readout.data, scan_parameters={scan_parameter: scan_parameter_value, 'column': column, 'row': row})
@@ -124,9 +138,9 @@ class HitOrScan(ScanBase):
                         tdc_mean.append(np.mean(hits["TDC"]))
                         tot_std = np.std(hits["tot"])
                         tdc_std = np.std(hits["TDC"])
-                        if local_configuration['plot_tdc_histograms']:
+                        if self.plot_tdc_histograms:
                             plotting.plot_1d_hist(np.histogram(hits["TDC"], range=(0, 4095), bins=4096)[0], title="TDC histogram for pixel " + str(column) + "/" + str(row) + " and PlsrDAC " + str(scan_parameter_value[0]) + " (" + str(len(hits["TDC"])) + " entrie(s))", x_axis_title="TDC", y_axis_title="#", filename=output_pdf)
- 
+
                     if len(tot_mean) != 0:
                         calibration_data[column - 1, row - 1, scan_parameter_index, 0] = tot_mean[0]  # just add data of the selected pixel
                         calibration_data[column - 1, row - 1, scan_parameter_index, 1] = tot_std
@@ -140,13 +154,13 @@ class HitOrScan(ScanBase):
             output_pdf.close()
 
     def plot_calibration(self, plsrdac, calibration_data, filename=None):
-        for pixel in local_configuration['pixels']:
+        for pixel in self.pixels:
             column = pixel[0]
             row = pixel[1]
             logging.info("Plot calibration for pixel " + str(column) + '/' + str(row))
             plt.errorbar(plsrdac, calibration_data[column - 1, row - 1, :, 0] * 25. + 25., yerr=[calibration_data[column - 1, row - 1, :, 1] * 25, calibration_data[column - 1, row - 1, :, 1] * 25], fmt='o')
             plt.errorbar(plsrdac, calibration_data[column - 1, row - 1, :, 2], yerr=[calibration_data[column - 1, row - 1, :, 3], calibration_data[column - 1, row - 1, :, 3]], fmt='o')
-            plt.title('Calibration for pixel ' + str(column) + '/' + str(row) + '; ' + str(local_configuration['repeat_command']) + ' injections per PlsrDAC')
+            plt.title('Calibration for pixel ' + str(column) + '/' + str(row) + '; ' + str(self.repeat_command) + ' injections per PlsrDAC')
             plt.xlabel('charge [PlsrDAC]')
             plt.ylabel('TOT')
             plt.grid(True)
@@ -162,7 +176,7 @@ class HitOrScan(ScanBase):
 
 if __name__ == "__main__":
     import configuration
-    scan = HitOrScan(**configuration.default_configuration)
+    scan = HitOrCalibration(**configuration.default_configuration)
     scan.start(use_thread=False, **local_configuration)
     scan.stop()
     scan.analyze()
