@@ -22,7 +22,7 @@ local_configuration = {
     "scan_parameter": 'PlsrDAC',
     "scan_parameter_values": [i for j in (range(40, 70, 5), range(70, 100, 10), range(100, 600, 20), range(600, 801, 40)) for i in j],  # list of scan parameters to use
     "plot_tdc_histograms": False,
-    "pixels": (np.dstack(np.where(make_box_pixel_mask_from_col_row([10, 10], [10, 10]) == 1)) + 1)[0],  # list of (col, row) tupels. From 1 to 80/336.
+    "pixels": (np.dstack(np.where(make_box_pixel_mask_from_col_row([40, 40], [150, 150]) == 1)) + 1)[0],  # list of (col, row) tupels. From 1 to 80/336.
     "enable_masks": ["Enable", "C_Low", "C_High"],
     "disable_masks": ["Imon"]
 }
@@ -65,7 +65,6 @@ class HitOrCalibration(ScanBase):
                     dcs.append(write_double_column(pixels[index - 1][0]))
                 else:
                     dcs = []
-                print dcs
                 commands = []
                 commands.extend(self.register.get_commands("confmode"))
                 single_pixel_enable_mask = make_pixel_mask_from_col_row([column], [row])
@@ -74,7 +73,6 @@ class HitOrCalibration(ScanBase):
                 single_pixel_disable_mask = make_pixel_mask_from_col_row([column], [row], default=1, value=0)
                 map(lambda mask_name: self.register.set_pixel_register_value(mask_name, single_pixel_disable_mask), disable_masks)
                 commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, dcs=dcs, name=disable_masks))
-                print 'inject', inject_double_column(column)
                 self.register.set_global_register_value("Colpr_Addr", inject_double_column(column))
                 commands.append(self.register.get_commands("wrregister", name=["Colpr_Addr"])[0])
                 self.register_utils.send_commands(commands)
