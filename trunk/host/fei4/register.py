@@ -838,6 +838,8 @@ class FEI4Register(object):
         elif command_name.lower() == "wrfrontend":
             self.create_restore_point()
             dcs = kwargs.pop("dcs", range(40))  # set the double columns to latch
+            if not dcs:
+                dcs = range(40)
             same_mask_for_all_dc = kwargs.pop("same_mask_for_all_dc", False)
             register_objects = self.get_pixel_register_objects(False, **kwargs)
             self.set_global_register_value("S0", 0)
@@ -888,6 +890,8 @@ class FEI4Register(object):
         elif command_name.lower() == "rdfrontend":
             self.create_restore_point()
             dcs = kwargs.pop("dcs", range(40))  # set the double columns to latch
+            if not dcs:
+                dcs = range(40)
             register_objects = self.get_pixel_register_objects(False, **kwargs)
             self.set_global_register_value('Conf_AddrEnable', 1)
             self.set_global_register_value("S0", 0)
