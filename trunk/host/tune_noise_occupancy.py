@@ -7,7 +7,7 @@ from daq.readout import get_col_row_array_from_data_record_array, convert_data_a
 
 from scan.scan import ScanBase
 from daq.readout import open_raw_data_file
-from fei4.register_utils import make_box_pixel_mask_from_col_row
+from fei4.register_utils import make_box_pixel_mask_from_col_row, invert_pixel_mask
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
@@ -163,7 +163,7 @@ class NoiseOccupancyScan(ScanBase):
         # noisy pixels are set to 1
         self.occ_mask[occ_hist > occupancy_limit * triggers * consecutive_lvl1] = 1
         # make inverse
-        self.inv_occ_mask = self.register_utils.invert_pixel_mask(self.occ_mask)
+        self.inv_occ_mask = invert_pixel_mask(self.occ_mask)
         self.disable_for_mask = disable_for_mask
         if overwrite_mask:
             for mask in disable_for_mask:

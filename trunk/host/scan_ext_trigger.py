@@ -5,7 +5,7 @@ import numpy as np
 
 from scan.scan import ScanBase
 from daq.readout import open_raw_data_file
-from fei4.register_utils import make_box_pixel_mask_from_col_row
+from fei4.register_utils import make_box_pixel_mask_from_col_row, invert_pixel_mask
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
@@ -78,7 +78,7 @@ class ExtTriggerScan(ScanBase):
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
         pixel_reg = 'Imon'  # disabled pixels set to 1
         if use_enable_mask:
-            self.register.set_pixel_register_value(pixel_reg, self.register_utils.invert_pixel_mask(self.register.get_pixel_register_value('Enable')))
+            self.register.set_pixel_register_value(pixel_reg, invert_pixel_mask(self.register.get_pixel_register_value('Enable')))
         mask = make_box_pixel_mask_from_col_row(column=col_span, row=row_span, default=1, value=0)  # 0 for selected columns, else 1
         if overwrite_mask:
             pixel_mask = mask

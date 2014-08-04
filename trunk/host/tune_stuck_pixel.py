@@ -1,12 +1,10 @@
-import time
 import logging
 import numpy as np
 
 from analysis.plotting.plotting import plot_occupancy, make_occupancy_hist
-from daq.readout import get_col_row_array_from_data_record_array, convert_data_array, data_array_from_data_dict_iterable, is_data_record, is_data_from_channel
-
+from daq.readout import save_raw_data_from_data_dict_iterable, get_col_row_array_from_data_record_array, convert_data_array, data_array_from_data_dict_iterable, is_data_record, is_data_from_channel
+from fei4.register_utils import invert_pixel_mask
 from scan.scan import ScanBase
-from daq.readout import save_raw_data_from_data_dict_iterable
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
@@ -68,7 +66,7 @@ class StuckPixelScan(ScanBase):
         # noisy pixels are set to 1
         self.occ_mask[occ_hist < repeat_command] = 1
         # make inverse
-        self.inv_occ_mask = self.register_utils.invert_pixel_mask(self.occ_mask)
+        self.inv_occ_mask = invert_pixel_mask(self.occ_mask)
         self.disable_for_mask = disable_for_mask
         if overwrite_mask:
             for mask in disable_for_mask:
