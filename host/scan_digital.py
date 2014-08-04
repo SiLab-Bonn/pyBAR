@@ -1,6 +1,7 @@
 from daq.readout import get_col_row_array_from_data_record_array, save_raw_data_from_data_dict_iterable, convert_data_array, data_array_from_data_dict_iterable, is_data_record
 from analysis.plotting.plotting import plot_occupancy, make_occupancy_hist
 from analysis.analyze_raw_data import AnalyzeRawData
+from fei4.register_utils import invert_pixel_mask
 
 from scan.scan import ScanBase
 
@@ -39,7 +40,7 @@ class DigitalScan(ScanBase):
         self.readout.start()
 
         cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0]
-        self.scan_loop(cal_lvl1_command, repeat_command=repeat_command, use_delay=True, mask_steps=mask_steps, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=True, enable_shift_masks=["Enable", "EnableDigInj"], restore_shift_masks=False, mask=self.register_utils.invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if use_enable_mask else None)
+        self.scan_loop(cal_lvl1_command, repeat_command=repeat_command, use_delay=True, mask_steps=mask_steps, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=True, enable_shift_masks=["Enable", "EnableDigInj"], restore_shift_masks=False, mask=invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if use_enable_mask else None)
 
         self.readout.stop(timeout=10.0)
 

@@ -6,6 +6,7 @@ import logging
 from scan.scan import ScanBase
 from daq.readout import open_raw_data_file, get_col_row_array_from_data_record_array, convert_data_array, data_array_from_data_dict_iterable, is_data_record
 from analysis.analyze_raw_data import AnalyzeRawData
+from fei4.register_utils import invert_pixel_mask
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
@@ -102,7 +103,7 @@ class FastThresholdScan(ScanBase):
                 self.readout.start()
 
                 cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0] if command is None else command
-                self.scan_loop(cal_lvl1_command, repeat_command=self.n_injections, use_delay=True, mask_steps=mask_steps, enable_mask_steps=enable_mask_steps, enable_double_columns=enable_double_columns, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=["Enable", "C_Low", "C_High"], restore_shift_masks=False, mask=self.register_utils.invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if use_enable_mask else None, double_column_correction=False)
+                self.scan_loop(cal_lvl1_command, repeat_command=self.n_injections, use_delay=True, mask_steps=mask_steps, enable_mask_steps=enable_mask_steps, enable_double_columns=enable_double_columns, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=["Enable", "C_Low", "C_High"], restore_shift_masks=False, mask=invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if use_enable_mask else None, double_column_correction=False)
 
                 self.readout.stop()
 

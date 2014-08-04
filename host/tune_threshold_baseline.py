@@ -9,7 +9,7 @@ from daq.readout import get_col_row_array_from_data_record_array, convert_data_a
 
 from scan.scan import ScanBase
 from daq.readout import open_raw_data_file
-from fei4.register_utils import make_box_pixel_mask_from_col_row
+from fei4.register_utils import make_box_pixel_mask_from_col_row, invert_pixel_mask
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
@@ -197,7 +197,7 @@ class ThresholdBaselineTuning(ScanBase):
                     decrease_pixel_mask = np.logical_and(self.occ_mask > 0, tdac_reg > 0)
                     disable_pixel_mask = np.logical_and(self.occ_mask > 0, tdac_reg == 0)
                     enable_reg = self.register.get_pixel_register_value('Enable')
-                    enable_mask = np.logical_and(enable_reg, self.register_utils.invert_pixel_mask(disable_pixel_mask))
+                    enable_mask = np.logical_and(enable_reg, invert_pixel_mask(disable_pixel_mask))
                     diabled_pixels += disable_pixel_mask.sum()
 #                     plot_occupancy(tdac_reg.T, title='TDAC', filename=self.scan_data_filename + '_TDAC_' + str(reg_val) + '_' + str(step) + '.pdf')
                     if diabled_pixels > disabled_pixels_limit_cnt:
