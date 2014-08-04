@@ -188,14 +188,14 @@ class ThresholdBaselineTuning(ScanBase):
                     self.readout.stop()
 
                     occ_hist, _, _ = np.histogram2d(self.col_arr, self.row_arr, bins=(80, 336), range=[[1, 80], [1, 336]])
-                    self.occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
+                    occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
                     # noisy pixels are set to 1
-                    self.occ_mask[occ_hist > occupancy_limit * triggers * consecutive_lvl1] = 1
+                    occ_mask[occ_hist > occupancy_limit * triggers * consecutive_lvl1] = 1
 #                     plot_occupancy(occ_hist.T, title='Occupancy', filename=self.scan_data_filename + '_noise_occ_' + str(reg_val) + '_' + str(step) + '.pdf')
 
                     tdac_reg = self.register.get_pixel_register_value('TDAC')
-                    decrease_pixel_mask = np.logical_and(self.occ_mask > 0, tdac_reg > 0)
-                    disable_pixel_mask = np.logical_and(self.occ_mask > 0, tdac_reg == 0)
+                    decrease_pixel_mask = np.logical_and(occ_mask > 0, tdac_reg > 0)
+                    disable_pixel_mask = np.logical_and(occ_mask > 0, tdac_reg == 0)
                     enable_reg = self.register.get_pixel_register_value('Enable')
                     enable_mask = np.logical_and(enable_reg, invert_pixel_mask(disable_pixel_mask))
                     diabled_pixels += disable_pixel_mask.sum()
@@ -216,11 +216,11 @@ class ThresholdBaselineTuning(ScanBase):
                         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name='Enable'))
                         commands.extend(self.register.get_commands("runmode"))
                         self.register_utils.send_commands(commands)
-                        if not repeat_tuning or self.occ_mask.sum() == 0 or (repeat_tuning and limit_repeat_tuning_steps and step == limit_repeat_tuning_steps) or decrease_pixel_mask.sum() < disabled_pixels_limit_cnt:
+                        if not repeat_tuning or occ_mask.sum() == 0 or (repeat_tuning and limit_repeat_tuning_steps and step == limit_repeat_tuning_steps) or decrease_pixel_mask.sum() < disabled_pixels_limit_cnt:
                             self.register.clear_restore_points(name=str(reg_val))
                             self.last_tdac_distribution = self.register.get_pixel_register_value('TDAC')
                             self.last_occupancy_hist = occ_hist.copy()
-                            self.last_occupancy_mask = self.occ_mask.copy()
+                            self.last_occupancy_mask = occ_mask.copy()
                             self.last_reg_val = reg_val
                             self.last_step = step
                             break
@@ -251,10 +251,12 @@ class ThresholdBaselineTuning(ScanBase):
             analyze_raw_data.plot_histograms()
             plot_occupancy(self.last_occupancy_hist.T, title='Noisy Pixels at Vthin_AltFine %d Step %d' % (self.last_reg_val, self.last_step), filename=analyze_raw_data.output_pdf)
             plot_fancy_occupancy(self.last_occupancy_hist.T, filename=analyze_raw_data.output_pdf)
-            plot_occupancy(self.last_occupancy_mask.T, title='Enable Mask', z_max=1, filename=analyze_raw_data.output_pdf)
+            plot_occupancy(self.last_occupancy_mask.T, title='Occupancy Mask at Vthin_AltFine %d Step %d' % (self.last_reg_val, self.last_step), z_max=1, filename=analyze_raw_data.output_pdf)
             plot_fancy_occupancy(self.last_occupancy_mask.T, filename=analyze_raw_data.output_pdf)
             plotThreeWay(self.last_tdac_distribution.T, title='TDAC at Vthin_AltFine %d Step %d' % (self.last_reg_val, self.last_step), x_axis_title="TDAC", filename=analyze_raw_data.output_pdf, maximum=31, bins=32)
             plot_occupancy(self.last_tdac_distribution.T, title='TDAC at Vthin_AltFine %d Step %d' % (self.last_reg_val, self.last_step), z_max=31, filename=analyze_raw_data.output_pdf)
+            plot_occupancy(self.register.get_pixel_register_value('Enable').T, title='Enable Mask', z_max=1, filename=analyze_raw_data.output_pdf)
+            plot_fancy_occupancy(self.register.get_pixel_register_value('Enable').T, filename=analyze_raw_data.output_pdf)
 
 if __name__ == "__main__":
     import configuration
