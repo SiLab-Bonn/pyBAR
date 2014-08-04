@@ -7,7 +7,6 @@ import ast
 import numpy as np
 import itertools
 from collections import OrderedDict
-import hashlib
 import copy
 import struct
 import tables as tb
@@ -1261,10 +1260,17 @@ class FEI4Register(object):
         name : str
             Name of the restore point. If not given, a md5 hash will be generated.
         '''
-        md5 = hashlib.md5()
         if name is None:
-            md5.update(datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S%f'))
-            name = md5.hexdigest()
+            for i in iter(int, 1):
+                name = datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S%f') + '_' + str(i)
+                try:
+                    val = self.config_state[name]
+                except KeyError:
+                    break
+                else:
+                    pass
+        if name in self.config_state:
+            raise ValueError('Restore point %s already exists' % name)
         self.config_state[name] = (copy.deepcopy(self.global_registers), copy.deepcopy(self.pixel_registers))
 
     def restore(self, name=None, keep=False, last=True, global_register=True, pixel_register=True):
@@ -1330,32 +1336,32 @@ class FEI4Register(object):
         else:
             return False
 
-    def has_changed(self, name=None, last=True):
-        '''Compare existing restore point to current configuration.
-
-        Parameters
-        ----------
-        name : str
-            Name of the restore point. If name is not given, the first/last restore point will be taken depending on last.
-        last : bool
-            If name is not given, the latest restore point will be taken.
-
-        Returns
-        -------
-        True if configuration is identical, else false.
-        '''
-        if name is None:
-            key = next(reversed(self.config_state) if last else iter(self.config_state))
-            global_registers, pixel_registers = self.config_state[key]
-        else:
-            global_registers, pixel_registers = self.config_state[name]
-        md5_state = hashlib.md5()
-        md5_state.update(global_registers)
-        md5_state.update(pixel_registers)
-        md5_curr = hashlib.md5()
-        md5_curr.update(self.global_registers)
-        md5_curr.update(self.pixel_registers)
-        if md5_state.digest() != md5_curr.digest():
-            return False
-        else:
-            return True
+#     def has_changed(self, name=None, last=True):
+#         '''Compare existing restore point to current configuration.
+#  
+#         Parameters
+#         ----------
+#         name : str
+#             Name of the restore point. If name is not given, the first/last restore point will be taken depending on last.
+#         last : bool
+#             If name is not given, the latest restore point will be taken.
+#  
+#         Returns
+#         -------
+#         True if configuration is identical, else false.
+#         '''
+#         if name is None:
+#             key = next(reversed(self.config_state) if last else iter(self.config_state))
+#             global_registers, pixel_registers = self.config_state[key]
+#         else:
+#             global_registers, pixel_registers = self.config_state[name]
+#         md5_state = hashlib.md5()
+#         md5_state.update(global_registers)
+#         md5_state.update(pixel_registers)
+#         md5_curr = hashlib.md5()
+#         md5_curr.update(self.global_registers)
+#         md5_curr.update(self.pixel_registers)
+#         if md5_state.digest() != md5_curr.digest():
+#             return False
+#         else:
+#             return True
