@@ -66,7 +66,10 @@ class ScanBase(object):
             # assuming it is initialized
         else:
             self.dut = Dut(dut)
-            self.dut.init('configuration.yaml')
+            if self.dut.name == 'pyBAR':
+                self.dut.init('configuration.yaml')
+            elif self.dut.name == 'pyBAR_GPAC':
+                self.dut.init('configuration_gpac.yaml')
 
         if self.dut.name == 'pyBAR':
             self.dut['POWER'].set_voltage('VDDA1', 1.500)
@@ -87,12 +90,13 @@ class ScanBase(object):
             self.dut['rx']['TDC'] = 1
             self.dut['rx'].write()
         elif self.dut.name == 'pyBAR_GPAC':
-            self.dut.init('configuration_gpac.yaml')
             # enabling LVDS transceivers
+            self.dut['CCPD_Vdd'].set_enable(False)
             self.dut['CCPD_Vdd'].set_current_limit(1000, unit='mA')
             self.dut['CCPD_Vdd'].set_voltage(0.0, unit='V')
             self.dut['CCPD_Vdd'].set_enable(True)
             # enabling V_in
+            self.dut['V_in'].set_enable(False)
             self.dut['V_in'].set_current_limit(2000, unit='mA')
             self.dut['V_in'].set_voltage(2.1, unit='V')
             self.dut['V_in'].set_enable(True)
