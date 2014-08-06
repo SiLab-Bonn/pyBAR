@@ -198,8 +198,10 @@ class ThresholdBaselineTuning(ScanBase):
                     disable_pixel_mask = np.logical_and(occ_mask > 0, tdac_reg == 0)
                     enable_reg = self.register.get_pixel_register_value('Enable')
                     enable_mask = np.logical_and(enable_reg, invert_pixel_mask(disable_pixel_mask))
-                    diabled_pixels += disable_pixel_mask.sum()
-#                     plot_occupancy(tdac_reg.T, title='TDAC', filename=self.scan_data_filename + '_TDAC_' + str(reg_val) + '_' + str(step) + '.pdf')
+                    if np.logical_and(occ_mask > 0, enable_reg == 0).sum():
+                        logging.warning('Received data from disabled pixels')
+                    #diabled_pixels += disable_pixel_mask.sum()  # can lead to wrong values if the enable reg is corrupted
+                    diabled_pixels = invert_pixel_mask(enable_mask).sum()
                     if diabled_pixels > disabled_pixels_limit_cnt:
                         logging.info('Limit of disabled pixels reached: %d (limit %d)... stopping scan' % (diabled_pixels, disabled_pixels_limit_cnt))
                         self.register.restore(name=str(reg_val))
