@@ -122,7 +122,7 @@ wire CMD_START_FLAG; // sending FE command triggered by external devices
 
 assign TX[0] = TLU_CLOCK; // trigger clock; also connected to RJ45 output
 assign TX[1] = TLU_BUSY | (~CMD_READY/*CMD_CAL*/ & ~CMD_EXT_START_ENABLE); // TLU_BUSY signal; also connected to RJ45 output. Asserted when TLU FSM has accepted a trigger or when CMD FSM is busy (when CMD_EXT_START_ENABLE is disabled). 
-assign TX[2] = (RJ45_ENABLED == 1'b1) ? RJ45_TRIGGER : (LEMO_TRIGGER | MONHIT | TDC_OUT); // to trigger on MONHIT or TDC_OUT use loop back cable from TX2 to RX0
+assign TX[2] = (RJ45_ENABLED == 1'b1) ? RJ45_TRIGGER : (MONHIT | TDC_OUT); // to trigger on MONHIT or TDC_OUT use loop back cable from TX2 to RX0
 
 
 // ------- RESRT/CLOCK  ------- //
