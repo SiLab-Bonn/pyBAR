@@ -488,18 +488,18 @@ class ScanBase(object):
                 if disable_shift_masks:
                     curr_dis_mask = make_pixel_mask(steps=mask_steps, shift=mask_step, default=1, value=0, mask=mask)
                     map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_dis_mask), disable_shift_masks)
-                    commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False if mask else True, name=disable_shift_masks))
+                    commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False if mask is not None else True, name=disable_shift_masks))
                 if enable_shift_masks:
                     curr_en_mask = make_pixel_mask(steps=mask_steps, shift=mask_step, mask=mask)
                     map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_en_mask), [shift_mask_name for shift_mask_name in enable_shift_masks])
-                    commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False if mask else True, name=enable_shift_masks))
+                    commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False if mask is not None else True, name=enable_shift_masks))
     #                 plt.clf()
     #                 plt.imshow(curr_en_mask.T, interpolation='nearest', aspect="auto")
     #                 plt.pcolor(curr_en_mask.T)
     #                 plt.colorbar()
     #                 plt.savefig('mask_step' + str(mask_step) + '.pdf')
                 if digital_injection is True:  # write EnableDigInj last
-                    commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False if mask else True, name=['EnableDigInj']))
+                    commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False if mask is not None else True, name=['EnableDigInj']))
                     # write DIGHITIN_SEL since after mask writing it is disabled
                     self.register.set_global_register_value("DIGHITIN_SEL", 1)
                     commands.extend(self.register.get_commands("wrregister", name=["DIGHITIN_SEL"]))
