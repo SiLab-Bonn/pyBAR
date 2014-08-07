@@ -140,11 +140,10 @@ class AnalyzeRawData(object):
             if not analysis_utils.check_parameter_similarity(self.files_dict):
                 raise NotImplementedError('Different scan parameters are not supported.')
             self.scan_parameters = analysis_utils.create_parameter_table(self.files_dict)
+            logging.info('Found scan parameter(s): ' + pprint.pformat(analysis_utils.get_scan_parameter_names(self.scan_parameters)) + ' in raw data file.')
         else:
             self.files_dict = None
             self.scan_parameters = None
-
-        logging.info('Found scan parameter(s): ' + pprint.pformat(analysis_utils.get_scan_parameter_names(self.scan_parameters)) + ' in raw data file.')
 
         if analyzed_data_file is not None and os.path.splitext(analyzed_data_file)[1].strip().lower() != ".h5":
             self._analyzed_data_file = os.path.splitext(analyzed_data_file)[0] + ".h5"
@@ -564,6 +563,8 @@ class AnalyzeRawData(object):
                     if(self.scan_parameters is not None):
                         nEventIndex = self.interpreter.get_n_meta_data_event()
                         self.histograming.add_meta_event_index(self.meta_event_index, nEventIndex)
+                    else:
+                        self.histograming.set_no_scan_parameter()
                     if self.is_histogram_hits():
                         self.histogram_hits(hits[:Nhits], stop_index=Nhits)
                     if self.is_cluster_hits():
@@ -858,7 +859,7 @@ class AnalyzeRawData(object):
         if scan_parameter is None:  # if nothing specified keep actual setting
             logging.debug('Keep scan parameter settings ')
         elif not scan_parameter:    # set no scan parameter
-            logging.info('No scan parameter used')
+            logging.debug('No scan parameter used')
             self.histograming.set_no_scan_parameter()
         else:
             logging.info('Setting a scan parameter')
@@ -945,7 +946,7 @@ class AnalyzeRawData(object):
             if(self._create_threshold_hists):
                 plotting.plot_scurves(occupancy_hist=out_file_h5.root.HistOcc[:, :, :] if out_file_h5 is not None else self.occupancy_array[:, :, :], filename=output_pdf, scan_parameters=np.linspace(np.amin(self.scan_parameters['PlsrDAC']), np.amax(self.scan_parameters['PlsrDAC']), num=self.histograming.get_n_parameters(), endpoint=True))
             else:
-                hist = out_file_h5.root.HistOcc[:, :, 0] if out_file_h5 != None else self.occupancy_array[:, :, 0]
+                hist = np.sum(out_file_h5.root.HistOcc[:], axis = 2) if out_file_h5 != None else np.sum(self.occupancy_array[:], axis = 2)
                 occupancy_array_masked = np.ma.masked_equal(hist, 0)
                 if self._create_source_scan_hist:
                     plotting.plot_fancy_occupancy(hist=occupancy_array_masked, filename=output_pdf, z_max='median')
