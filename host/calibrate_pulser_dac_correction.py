@@ -33,7 +33,8 @@ class PulserDacCorrectionCalibration(ThresholdScan):
 
         with tb.open_file(self.scan_data_filename + "_interpreted.h5") as t:
             thr = t.root.HistThresholdFitted[:]
-            corr = [thr[:, i * 2 + 1:i * 2 + 3].mean() for i in range(0, 38)]
+            thr_masked = np.ma.masked_where(np.isclose(thr, 0), thr)
+            corr = [thr_masked[:, i * 2 + 1:i * 2 + 3].mean() for i in range(0, 38)]
             corr = np.array(corr)
             corr -= corr.min()
             corr = np.around(corr).astype(int)
