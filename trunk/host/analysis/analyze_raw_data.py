@@ -484,7 +484,7 @@ class AnalyzeRawData(object):
             True if the needed parameters should be extracted from the raw data file
         '''
 
-        if(analyzed_data_file != None):
+        if(analyzed_data_file is not None):
             self._analyzed_data_file = analyzed_data_file
 
         self.fei4b = fei4b
@@ -503,7 +503,7 @@ class AnalyzeRawData(object):
 
         self._filter_table = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
 
-        if(self._analyzed_data_file != None):
+        if(self._analyzed_data_file is not None):
             self.out_file_h5 = tb.openFile(self._analyzed_data_file, mode="w", title="Interpreted FE-I4 raw data")
             if (self._create_hit_table == True):
                 description = data_struct.HitInfoTable().columns.copy()
@@ -561,7 +561,7 @@ class AnalyzeRawData(object):
                     if(index == len(self.files_dict.keys()) - 1 and iWord == range(0, table_size, self._chunk_size)[-1]):  # store hits of the latest event of the last file
                         self.interpreter.store_event()  # all actual buffered events in the interpreter are stored
                     Nhits = self.interpreter.get_n_array_hits()  # get the number of hits of the actual interpreted raw data chunk
-                    if(self.scan_parameters != None):
+                    if(self.scan_parameters is not None):
                         nEventIndex = self.interpreter.get_n_meta_data_event()
                         self.histograming.add_meta_event_index(self.meta_event_index, nEventIndex)
                     if self.is_histogram_hits():
@@ -573,26 +573,26 @@ class AnalyzeRawData(object):
                         if(self._create_cluster_table):
                             cluster_table.append(cluster[:self.clusterizer.get_n_clusters()])
 
-                    if (self._analyzed_data_file != None and self._create_hit_table == True):
+                    if (self._analyzed_data_file is not None and self._create_hit_table == True):
                         hit_table.append(hits[:Nhits])
-                    if (self._analyzed_data_file != None and self._create_meta_word_index == True):
+                    if (self._analyzed_data_file is not None and self._create_meta_word_index == True):
                         size = self.interpreter.get_n_meta_data_word()
                         meta_word_index_table.append(meta_word[:size])
 
                     if total_words + iWord < progress_bar.maxval:  # otherwise unwanted exception is thrown
                         progress_bar.update(total_words + iWord)
                 total_words += table_size
-                if (self._analyzed_data_file != None and self._create_hit_table == True):
+                if (self._analyzed_data_file is not None and self._create_hit_table == True):
                     hit_table.flush()
         progress_bar.finish()
         self._create_additional_data()
-        if(self._analyzed_data_file != None):
+        if(self._analyzed_data_file is not None):
             self.out_file_h5.close()
         del hits
 
     def _create_additional_data(self):
         logging.info('Create selected event histograms')
-        if (self._analyzed_data_file != None and self._create_meta_event_index):
+        if (self._analyzed_data_file is not None and self._create_meta_event_index):
             meta_data_size = self.meta_data.shape[0]
             n_event_index = self.interpreter.get_n_meta_data_event()
             if (meta_data_size == n_event_index):
@@ -601,7 +601,7 @@ class AnalyzeRawData(object):
                 else:
                     description = data_struct.MetaInfoEventTable().columns.copy()
                 last_pos = len(description)
-                if (self.scan_parameters != None):  # add additional column with the scan parameter
+                if (self.scan_parameters is not None):  # add additional column with the scan parameter
                     for scan_par_name in self.scan_parameters.dtype.names:
                         dtype, _ = self.scan_parameters.dtype.fields[scan_par_name][:2]
                         description[scan_par_name] = Col.from_dtype(dtype, dflt=0, pos=last_pos)
@@ -617,37 +617,37 @@ class AnalyzeRawData(object):
                         entry['event_number'] = self.meta_event_index[i][0]  # event index
                         entry['time_stamp'] = self.meta_data[i][3]  # time stamp
                         entry['error_code'] = self.meta_data[i][4]  # error code
-                    if (self.scan_parameters != None):  # scan parameter if available
+                    if (self.scan_parameters is not None):  # scan parameter if available
                         for scan_par_name in self.scan_parameters.dtype.names:
                             entry[scan_par_name] = self.scan_parameters[scan_par_name][i]
                     entry.append()
                 meta_data_out_table.flush()
-                if self.scan_parameters != None:
+                if self.scan_parameters is not None:
                     logging.info("Save meta data with scan parameter " + scan_par_name)
             else:
                 logging.error('Meta data analysis failed')
         if (self._create_service_record_hist):
             self.service_record_hist = np.zeros(32, dtype=np.uint32)  # IMPORTANT: has to be global to avoid deleting before c library is deleted
             self.interpreter.get_service_records_counters(self.service_record_hist)
-            if (self._analyzed_data_file != None):
+            if (self._analyzed_data_file is not None):
                 service_record_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistServiceRecord', title='Service Record Histogram', atom=tb.Atom.from_dtype(self.service_record_hist.dtype), shape=self.service_record_hist.shape, filters=self._filter_table)
                 service_record_hist_table[:] = self.service_record_hist
         if (self._create_tdc_counter_hist):
             self.tdc_counter_hist = np.zeros(4096, dtype=np.uint32)  # IMPORTANT: has to be global to avoid deleting before c library is deleted
             self.interpreter.get_tdc_counters(self.tdc_counter_hist)
-            if (self._analyzed_data_file != None):
+            if (self._analyzed_data_file is not None):
                 tdc_counter_hist = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistTdcCounter', title='All Tdc word counter values', atom=tb.Atom.from_dtype(self.tdc_counter_hist.dtype), shape=self.tdc_counter_hist.shape, filters=self._filter_table)
                 tdc_counter_hist[:] = self.tdc_counter_hist
         if (self._create_error_hist):
             self.error_counter_hist = np.zeros(16, dtype=np.uint32)
             self.interpreter.get_error_counters(self.error_counter_hist)
-            if (self._analyzed_data_file != None):
+            if (self._analyzed_data_file is not None):
                 error_counter_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistErrorCounter', title='Error Counter Histogram', atom=tb.Atom.from_dtype(self.error_counter_hist.dtype), shape=self.error_counter_hist.shape, filters=self._filter_table)
                 error_counter_hist_table[:] = self.error_counter_hist
         if (self._create_trigger_error_hist):
             self.trigger_error_counter_hist = np.zeros(8, dtype=np.uint32)
             self.interpreter.get_trigger_error_counters(self.trigger_error_counter_hist)
-            if (self._analyzed_data_file != None):
+            if (self._analyzed_data_file is not None):
                 trigger_error_counter_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistTriggerErrorCounter', title='Trigger Error Counter Histogram', atom=tb.Atom.from_dtype(self.trigger_error_counter_hist.dtype), shape=self.trigger_error_counter_hist.shape, filters=self._filter_table)
                 trigger_error_counter_hist_table[:] = self.trigger_error_counter_hist
 
@@ -659,24 +659,24 @@ class AnalyzeRawData(object):
         if (self._create_tot_hist):
             self.tot_hist = np.zeros(16, dtype=np.uint32)
             self.histograming.get_tot_hist(self.tot_hist)
-            if (self._analyzed_data_file != None):
+            if (self._analyzed_data_file is not None):
                 tot_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistTot', title='ToT Histogram', atom=tb.Atom.from_dtype(self.tot_hist.dtype), shape=self.tot_hist.shape, filters=self._filter_table)
                 tot_hist_table[:] = self.tot_hist
         if (self._create_tdc_hist):
             self.tdc_hist = np.zeros(4096, dtype=np.uint32)
             self.histograming.get_tdc_hist(self.tdc_hist)
-            if (self._analyzed_data_file != None):
+            if (self._analyzed_data_file is not None):
                 tdc_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistTdc', title='Tdc Histogram', atom=tb.Atom.from_dtype(self.tdc_hist.dtype), shape=self.tdc_hist.shape, filters=self._filter_table)
                 tdc_hist_table[:] = self.tdc_hist
         if (self._create_tdc_pixel_hist):
-            if (self._analyzed_data_file != None):
+            if (self._analyzed_data_file is not None):
                 tdc_pixel_hist_array = np.swapaxes(np.reshape(a=self.tdc_pixel_hist.view(), newshape=(80, 336, 4096), order='F'), 0, 1)  # make linear array to 3d array (col,row,parameter)
                 tdc_pixel_hist_out = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistTdcPixel', title='Tdc Pixel Histogram', atom=tb.Atom.from_dtype(tdc_pixel_hist_array.dtype), shape=tdc_pixel_hist_array.shape, filters=self._filter_table)
                 tdc_pixel_hist_out[:] = tdc_pixel_hist_array
         if (self._create_rel_bcid_hist):
             self.rel_bcid_hist = np.zeros(256, dtype=np.uint32)
             self.histograming.get_rel_bcid_hist(self.rel_bcid_hist)
-            if (self._analyzed_data_file != None):
+            if (self._analyzed_data_file is not None):
                 if not self.set_stop_mode:
                     rel_bcid_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistRelBcid', title='relative BCID Histogram', atom=tb.Atom.from_dtype(self.rel_bcid_hist.dtype), shape=(16, ), filters=self._filter_table)
                     rel_bcid_hist_table[:] = self.rel_bcid_hist[0:16]
@@ -688,7 +688,7 @@ class AnalyzeRawData(object):
             self.histograming.get_occupancy(self.occupancy)
             occupancy_array = np.reshape(a=self.occupancy.view(), newshape=(80, 336, self.histograming.get_n_parameters()), order='F')  # make linear array to 3d array (col,row,parameter)
             self.occupancy_array = np.swapaxes(occupancy_array, 0, 1)
-            if (self._analyzed_data_file != None):
+            if (self._analyzed_data_file is not None):
                 occupancy_array_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistOcc', title='Occupancy Histogram', atom=tb.Atom.from_dtype(self.occupancy.dtype), shape=(336, 80, self.histograming.get_n_parameters()), filters=self._filter_table)
                 occupancy_array_table[0:336, 0:80, 0:self.histograming.get_n_parameters()] = self.occupancy_array  # swap axis col,row,parameter --> row, col,parameter
         if (self._create_threshold_hists):
@@ -701,7 +701,7 @@ class AnalyzeRawData(object):
             noise_hist = np.reshape(a=noise.view(), newshape=(80, 336), order='F')
             self.threshold_hist = np.swapaxes(threshold_hist, 0, 1)
             self.noise_hist = np.swapaxes(noise_hist, 0, 1)
-            if (self._analyzed_data_file != None):
+            if (self._analyzed_data_file is not None):
 #                 if self._create_threshold_mask:
 #                     threshold_mask_table = self.out_file_h5.createCArray(self.out_file_h5.root, name = 'MaskThreshold', title = 'Threshold Mask', atom = tb.Atom.from_dtype(self.threshold_mask.dtype), shape = (336,80), filters = self._filter_table)
 #                     threshold_mask_table[0:336, 0:80] = self.threshold_mask
@@ -714,7 +714,7 @@ class AnalyzeRawData(object):
         if (self._create_fitted_threshold_hists):
             scan_parameters = np.linspace(np.amin(self.scan_parameters['PlsrDAC']), np.amax(self.scan_parameters['PlsrDAC']), num=self.histograming.get_n_parameters(), endpoint=True)
             self.scurve_fit_results = self.fit_scurves_multithread(self.out_file_h5, PlsrDAC=scan_parameters)
-            if (self._analyzed_data_file != None):
+            if (self._analyzed_data_file is not None):
                 fitted_threshold_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistThresholdFitted', title='Threshold Fitted Histogram', atom=tb.Atom.from_dtype(self.scurve_fit_results.dtype), shape=(336, 80), filters=self._filter_table)
                 fitted_threshold_hist_table[0:336, 0:80] = self.scurve_fit_results[:, :, 0]
                 fitted_noise_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistNoiseFitted', title='Noise Fitted Histogram', atom=tb.Atom.from_dtype(self.scurve_fit_results.dtype), shape=(336, 80), filters=self._filter_table)
@@ -727,14 +727,14 @@ class AnalyzeRawData(object):
         if(self._create_cluster_size_hist):
             self.cluster_size_hist = np.zeros(1024, dtype=np.uint32)
             self.clusterizer.get_cluster_size_hist(self.cluster_size_hist)
-            if (self._analyzed_data_file != None):
+            if (self._analyzed_data_file is not None):
                 cluster_size_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistClusterSize', title='Cluster Size Histogram', atom=tb.Atom.from_dtype(self.cluster_size_hist.dtype), shape=self.cluster_size_hist.shape, filters=self._filter_table)
                 cluster_size_hist_table[:] = self.cluster_size_hist
         if(self._create_cluster_tot_hist):
             cluster_tot_hist = np.zeros(128 * 1024, dtype=np.uint32)  # create linear array as it is created in histogram class
             self.clusterizer.get_cluster_tot_hist(cluster_tot_hist)
             self.cluster_tot_hist = np.reshape(a=cluster_tot_hist.view(), newshape=(128, 1024), order='F')  # make linear array to 2d array (tot, cluster size)
-            if (self._analyzed_data_file != None):
+            if (self._analyzed_data_file is not None):
                 cluster_tot_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistClusterTot', title='Cluster Tot Histogram', atom=tb.Atom.from_dtype(self.cluster_tot_hist.dtype), shape=self.cluster_tot_hist.shape, filters=self._filter_table)
                 cluster_tot_hist_table[:] = self.cluster_tot_hist
 
@@ -753,24 +753,24 @@ class AnalyzeRawData(object):
         in_file_h5 = None
 
         # set output file if an output file name is given, otherwise check if an output file is already opened
-        if analyzed_data_out_file != None:  # if an output file name is specified create new file for analyzed data
+        if analyzed_data_out_file is not None:  # if an output file name is specified create new file for analyzed data
             if self.is_open(self.out_file_h5):
                 self.out_file_h5.close()
             self.out_file_h5 = tb.openFile(analyzed_data_out_file, mode="w", title="Analyzed FE-I4 hits")
-        elif self._analyzed_data_file != None:  # if no output file is specified check if an output file is already open and write new data into the opened one
+        elif self._analyzed_data_file is not None:  # if no output file is specified check if an output file is already open and write new data into the opened one
             if not self.is_open(self.out_file_h5):
                 self.out_file_h5 = tb.openFile(self._analyzed_data_file, mode="r+")
                 in_file_h5 = self.out_file_h5  # input file is output file
         else:
             print self.out_file_h5
 
-        if analyzed_data_file != None:
+        if analyzed_data_file is not None:
             self._analyzed_data_file = analyzed_data_file
-        elif (self._analyzed_data_file == None):
+        elif (self._analyzed_data_file is None):
             logging.warning("No data file with analyzed data given, abort!")
             return
 
-        if in_file_h5 == None:
+        if in_file_h5 is None:
             in_file_h5 = tb.openFile(self._analyzed_data_file, mode="r")
 
         if(self._create_cluster_table):
@@ -822,9 +822,9 @@ class AnalyzeRawData(object):
             if (self.is_histogram_hits()):
                 self.histogram_hits(hits)
 
-            if(self._analyzed_data_file != None and self._create_cluster_hit_table):
+            if(self._analyzed_data_file is not None and self._create_cluster_hit_table):
                 cluster_hit_table.append(cluster_hits[:len(hits)])
-            if(self._analyzed_data_file != None and self._create_cluster_table):
+            if(self._analyzed_data_file is not None and self._create_cluster_table):
                 cluster_table.append(cluster[:self.clusterizer.get_n_clusters()])
 
             progress_bar.update(index)
@@ -875,28 +875,28 @@ class AnalyzeRawData(object):
         return cluster, cluster_hits
 
     def cluster_hits(self, hits, start_index=0, stop_index=None):
-        if stop_index != None:
+        if stop_index is not None:
             self.clusterizer.add_hits(hits[start_index:stop_index])
         else:
             self.clusterizer.add_hits(hits[start_index:])
 
     def histogram_hits(self, hits, start_index=0, stop_index=None):
-        if stop_index != None:
+        if stop_index is not None:
             self.histograming.add_hits(hits[start_index:stop_index], hits[start_index:stop_index].shape[0])
         else:
             self.histograming.add_hits(hits[start_index:], hits[start_index:].shape[0])
 
     def histogram_cluster_seed_hits(self, cluster, start_index=0, stop_index=None):
-        if stop_index != None:
+        if stop_index is not None:
             self.histograming.add_hits(cluster[start_index:stop_index], cluster[start_index:stop_index].shape[0])
         else:
             self.histograming.add_hits(cluster[start_index:], cluster[start_index:].shape[0])
 
     def plot_histograms(self, scan_data_filename=None, analyzed_data_file=None, maximum=None):  # plots the histogram from output file if available otherwise from ram
-        logging.info('Creating histograms%s' % ((' (source: %s)' % analyzed_data_file) if analyzed_data_file != None else ((' (source: %s)' % self._analyzed_data_file) if self._analyzed_data_file != None else '')))
-        if analyzed_data_file != None:
+        logging.info('Creating histograms%s' % ((' (source: %s)' % analyzed_data_file) if analyzed_data_file is not None else ((' (source: %s)' % self._analyzed_data_file) if self._analyzed_data_file is not None else '')))
+        if analyzed_data_file is not None:
             out_file_h5 = tb.openFile(analyzed_data_file, mode="r")
-        elif(self._analyzed_data_file != None):
+        elif(self._analyzed_data_file is not None):
             out_file_h5 = tb.openFile(self._analyzed_data_file, mode="r")
         else:
             out_file_h5 = None
@@ -913,37 +913,37 @@ class AnalyzeRawData(object):
         if (self._create_threshold_hists):
             # use threshold mask if possible
             if self._create_threshold_mask:
-                if out_file_h5 != None:
+                if out_file_h5 is not None:
                     self.threshold_mask = generate_threshold_mask(out_file_h5.root.HistNoise[:, :])
                 else:
                     self.threshold_mask = generate_threshold_mask(self.noise_hist)
-                threshold_hist = np.ma.array(out_file_h5.root.HistThreshold[:, :] if out_file_h5 != None else self.threshold_hist, mask=self.threshold_mask)
-                noise_hist = np.ma.array(out_file_h5.root.HistNoise[:, :] if out_file_h5 != None else self.noise_hist, mask=self.threshold_mask)
+                threshold_hist = np.ma.array(out_file_h5.root.HistThreshold[:, :] if out_file_h5 is not None else self.threshold_hist, mask=self.threshold_mask)
+                noise_hist = np.ma.array(out_file_h5.root.HistNoise[:, :] if out_file_h5 is not None else self.noise_hist, mask=self.threshold_mask)
                 mask_cnt = np.ma.count_masked(noise_hist)
                 logging.info('Fast algorithm: masking %d pixel(s)' % mask_cnt)
             else:
-                threshold_hist = out_file_h5.root.HistThreshold[:, :] if out_file_h5 != None else self.threshold_hist
-                noise_hist = out_file_h5.root.HistNoise[:, :] if out_file_h5 != None else self.noise_hist
+                threshold_hist = out_file_h5.root.HistThreshold[:, :] if out_file_h5 is not None else self.threshold_hist
+                noise_hist = out_file_h5.root.HistNoise[:, :] if out_file_h5 is not None else self.noise_hist
             plotting.plotThreeWay(hist=threshold_hist, title='Threshold%s' % ((' (masked %i pixel(s))' % mask_cnt) if self._create_threshold_mask else ''), x_axis_title="threshold [PlsrDAC]", filename=output_pdf, bins=100, minimum=0, maximum=maximum)
             plotting.plotThreeWay(hist=noise_hist, title='Noise%s' % ((' (masked %i pixel(s))' % mask_cnt) if self._create_threshold_mask else ''), x_axis_title="noise [PlsrDAC]", filename=output_pdf, bins=100, minimum=0, maximum=maximum)
         if (self._create_fitted_threshold_hists):
             if self._create_fitted_threshold_mask:
-                if out_file_h5 != None:
+                if out_file_h5 is not None:
                     self.fitted_threshold_mask = generate_threshold_mask(out_file_h5.root.HistNoiseFitted[:, :])
                 else:
                     self.fitted_threshold_mask = generate_threshold_mask(self.scurve_fit_results[:, :, 1])
-                threshold_hist = np.ma.array(out_file_h5.root.HistThresholdFitted[:, :] if out_file_h5 != None else self.scurve_fit_results[:, :, 0], mask=self.fitted_threshold_mask)
-                noise_hist = np.ma.array(out_file_h5.root.HistNoiseFitted[:, :] if out_file_h5 != None else self.scurve_fit_results[:, :, 1], mask=self.fitted_threshold_mask)
+                threshold_hist = np.ma.array(out_file_h5.root.HistThresholdFitted[:, :] if out_file_h5 is not None else self.scurve_fit_results[:, :, 0], mask=self.fitted_threshold_mask)
+                noise_hist = np.ma.array(out_file_h5.root.HistNoiseFitted[:, :] if out_file_h5 is not None else self.scurve_fit_results[:, :, 1], mask=self.fitted_threshold_mask)
                 mask_cnt = np.ma.count_masked(noise_hist)
                 logging.info('S-curve fit: masking %d pixel(s)' % mask_cnt)
             else:
-                threshold_hist = out_file_h5.root.HistThresholdFitted[:, :] if out_file_h5 != None else self.scurve_fit_results[:, :, 0]
-                noise_hist = out_file_h5.root.HistNoiseFitted[:, :] if out_file_h5 != None else self.scurve_fit_results[:, :, 1]
+                threshold_hist = out_file_h5.root.HistThresholdFitted[:, :] if out_file_h5 is not None else self.scurve_fit_results[:, :, 0]
+                noise_hist = out_file_h5.root.HistNoiseFitted[:, :] if out_file_h5 is not None else self.scurve_fit_results[:, :, 1]
             plotting.plotThreeWay(hist=threshold_hist, title='Threshold (S-curve fit%s' % ((', masked %i pixel(s))' % mask_cnt) if self._create_fitted_threshold_mask else ')'), x_axis_title="threshold [PlsrDAC]", filename=output_pdf, bins=100, minimum=0, maximum=maximum)
             plotting.plotThreeWay(hist=noise_hist, title='Noise (S-curve fit%s' % ((', masked %i pixel(s))' % mask_cnt) if self._create_fitted_threshold_mask else ')'), x_axis_title="noise [PlsrDAC]", filename=output_pdf, bins=100, minimum=0, maximum=maximum)
         if (self._create_occupancy_hist):
             if(self._create_threshold_hists):
-                plotting.plot_scurves(occupancy_hist=out_file_h5.root.HistOcc[:, :, :] if out_file_h5 != None else self.occupancy_array[:, :, :], filename=output_pdf, scan_parameters=np.linspace(np.amin(self.scan_parameters['PlsrDAC']), np.amax(self.scan_parameters['PlsrDAC']), num=self.histograming.get_n_parameters(), endpoint=True))
+                plotting.plot_scurves(occupancy_hist=out_file_h5.root.HistOcc[:, :, :] if out_file_h5 is not None else self.occupancy_array[:, :, :], filename=output_pdf, scan_parameters=np.linspace(np.amin(self.scan_parameters['PlsrDAC']), np.amax(self.scan_parameters['PlsrDAC']), num=self.histograming.get_n_parameters(), endpoint=True))
             else:
                 hist = out_file_h5.root.HistOcc[:, :, 0] if out_file_h5 != None else self.occupancy_array[:, :, 0]
                 occupancy_array_masked = np.ma.masked_equal(hist, 0)
@@ -954,43 +954,43 @@ class AnalyzeRawData(object):
                     plotting.plotThreeWay(hist=occupancy_array_masked, title="Occupancy", x_axis_title="occupancy", filename=output_pdf, maximum=maximum)
                     plotting.plot_occupancy(hist=occupancy_array_masked, filename=output_pdf, z_max='median')
         if (self._create_tot_hist):
-            plotting.plot_tot(hist=out_file_h5.root.HistTot if out_file_h5 != None else self.tot_hist, filename=output_pdf)
+            plotting.plot_tot(hist=out_file_h5.root.HistTot if out_file_h5 is not None else self.tot_hist, filename=output_pdf)
         if (self._create_tdc_counter_hist):
-            plotting.plot_tdc_counter(hist=out_file_h5.root.HistTdcCounter if out_file_h5 != None else self.tdc_hist_counter, filename=output_pdf)
+            plotting.plot_tdc_counter(hist=out_file_h5.root.HistTdcCounter if out_file_h5 is not None else self.tdc_hist_counter, filename=output_pdf)
         if (self._create_tdc_hist):
-            plotting.plot_tdc(hist=out_file_h5.root.HistTdc if out_file_h5 != None else self.tdc_hist, filename=output_pdf)
+            plotting.plot_tdc(hist=out_file_h5.root.HistTdc if out_file_h5 is not None else self.tdc_hist, filename=output_pdf)
         if (self._create_cluster_size_hist):
-            plotting.plot_cluster_size(hist=out_file_h5.root.HistClusterSize if out_file_h5 != None else self.cluster_size_hist, filename=output_pdf)
+            plotting.plot_cluster_size(hist=out_file_h5.root.HistClusterSize if out_file_h5 is not None else self.cluster_size_hist, filename=output_pdf)
         if (self._create_cluster_tot_hist):
-            plotting.plot_cluster_tot(hist=out_file_h5.root.HistClusterTot if out_file_h5 != None else self.cluster_tot_hist, filename=output_pdf)
+            plotting.plot_cluster_tot(hist=out_file_h5.root.HistClusterTot if out_file_h5 is not None else self.cluster_tot_hist, filename=output_pdf)
         if (self._create_cluster_tot_hist and self._create_cluster_size_hist):
-            plotting.plot_cluster_tot_size(hist=out_file_h5.root.HistClusterTot if out_file_h5 != None else self.cluster_tot_hist, filename=output_pdf)
+            plotting.plot_cluster_tot_size(hist=out_file_h5.root.HistClusterTot if out_file_h5 is not None else self.cluster_tot_hist, filename=output_pdf)
         if (self._create_rel_bcid_hist):
             if self.set_stop_mode:
-                plotting.plot_relative_bcid_stop_mode(hist=out_file_h5.root.HistRelBcid if out_file_h5 != None else self.rel_bcid_hist, filename=output_pdf)
+                plotting.plot_relative_bcid_stop_mode(hist=out_file_h5.root.HistRelBcid if out_file_h5 is not None else self.rel_bcid_hist, filename=output_pdf)
             else:
-                plotting.plot_relative_bcid(hist=out_file_h5.root.HistRelBcid[0:16] if out_file_h5 != None else self.rel_bcid_hist[0:16], filename=output_pdf)
-        if (analyzed_data_file == None and self._create_error_hist):
-            plotting.plot_event_errors(hist=out_file_h5.root.HistErrorCounter if out_file_h5 != None else self.error_counter_hist, filename=output_pdf)
-        if (analyzed_data_file == None and self._create_service_record_hist):
-            plotting.plot_service_records(hist=out_file_h5.root.HistServiceRecord if out_file_h5 != None else self.service_record_hist, filename=output_pdf)
-        if (analyzed_data_file == None and self._create_trigger_error_hist):
-            plotting.plot_trigger_errors(hist=out_file_h5.root.HistTriggerErrorCounter if out_file_h5 != None else self.trigger_error_counter_hist, filename=output_pdf)
-        if (self._analyzed_data_file != None):
+                plotting.plot_relative_bcid(hist=out_file_h5.root.HistRelBcid[0:16] if out_file_h5 is not None else self.rel_bcid_hist[0:16], filename=output_pdf)
+        if (analyzed_data_file is None and self._create_error_hist):
+            plotting.plot_event_errors(hist=out_file_h5.root.HistErrorCounter if out_file_h5 is not None else self.error_counter_hist, filename=output_pdf)
+        if (analyzed_data_file is None and self._create_service_record_hist):
+            plotting.plot_service_records(hist=out_file_h5.root.HistServiceRecord if out_file_h5 is not None else self.service_record_hist, filename=output_pdf)
+        if (analyzed_data_file is None and self._create_trigger_error_hist):
+            plotting.plot_trigger_errors(hist=out_file_h5.root.HistTriggerErrorCounter if out_file_h5 is not None else self.trigger_error_counter_hist, filename=output_pdf)
+        if (self._analyzed_data_file is not None):
             out_file_h5.close()
         if scan_data_filename is not None:
             logging.info('Closing output file: %s' % str(output_pdf._file.fh.name))
             output_pdf.close()
 
     def fit_scurves(self, hit_table_file=None, PlsrDAC=None):
-        occupancy_hist = hit_table_file.root.HistOcc[:, :, :] if hit_table_file != None else self.occupancy_array[:, :, :]  # take data from RAM if no file was opened
+        occupancy_hist = hit_table_file.root.HistOcc[:, :, :] if hit_table_file is not None else self.occupancy_array[:, :, :]  # take data from RAM if no file was opened
         occupancy_hist_shaped = occupancy_hist.reshape(occupancy_hist.shape[0] * occupancy_hist.shape[1], occupancy_hist.shape[2])
         result_array = np.array(fit_scurves_subset(occupancy_hist_shaped[:], PlsrDAC=PlsrDAC))
         return result_array.reshape(occupancy_hist.shape[0], occupancy_hist.shape[1], 2)
 
     def fit_scurves_multithread(self, hit_table_file=None, PlsrDAC=None):
         logging.info("Start S-curve fit on %d CPU core(s)" % mp.cpu_count())
-        occupancy_hist = hit_table_file.root.HistOcc[:, :, :] if hit_table_file != None else self.occupancy_array[:, :, :]  # take data from RAM if no file is opened
+        occupancy_hist = hit_table_file.root.HistOcc[:, :, :] if hit_table_file is not None else self.occupancy_array[:, :, :]  # take data from RAM if no file is opened
         occupancy_hist_shaped = occupancy_hist.reshape(occupancy_hist.shape[0] * occupancy_hist.shape[1], occupancy_hist.shape[2])
         partialfit_scurve = partial(fit_scurve, PlsrDAC=PlsrDAC)  # trick to give a function more than one parameter, needed for pool.map
         pool = mp.Pool(processes=mp.cpu_count())  # create as many workers as physical cores are available
