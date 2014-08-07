@@ -946,7 +946,7 @@ class AnalyzeRawData(object):
             if(self._create_threshold_hists):
                 plotting.plot_scurves(occupancy_hist=out_file_h5.root.HistOcc[:, :, :] if out_file_h5 is not None else self.occupancy_array[:, :, :], filename=output_pdf, scan_parameters=np.linspace(np.amin(self.scan_parameters['PlsrDAC']), np.amax(self.scan_parameters['PlsrDAC']), num=self.histograming.get_n_parameters(), endpoint=True))
             else:
-                hist = np.sum(out_file_h5.root.HistOcc[:], axis = 2) if out_file_h5 != None else np.sum(self.occupancy_array[:], axis = 2)
+                hist = np.sum(out_file_h5.root.HistOcc[:], axis=2) if out_file_h5 is not None else np.sum(self.occupancy_array[:], axis=2)
                 occupancy_array_masked = np.ma.masked_equal(hist, 0)
                 if self._create_source_scan_hist:
                     plotting.plot_fancy_occupancy(hist=occupancy_array_masked, filename=output_pdf, z_max='median')
