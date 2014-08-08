@@ -12,6 +12,7 @@ import tables as tb
 from plotting import plotting
 from analyze_raw_data import AnalyzeRawData
 from scipy.sparse import coo_matrix
+import re
 from RawDataConverter.data_histograming import PyDataHistograming
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
@@ -286,7 +287,7 @@ def select_hits_from_cluster_info(input_file_hits, output_file_hits, cluster_siz
             in_hit_file_h5.root.meta_data.copy(out_hit_file_h5.root)  # copy meta_data note to new file
 
 
-def select_hits(input_file_hits, output_file_hits, condition, cluster_size_condition=None, n_cluster_condition=None, chunk_size=5000000):
+def select_hits(input_file_hits, output_file_hits, condition=None, cluster_size_condition=None, n_cluster_condition=None, chunk_size=5000000):
     ''' Takes a hit table and stores only selected hits into a new table. The selection of hits is done with a numexp string. Only if
     this expression evaluates to true the hit is taken. One can also select hits from cluster conditions. This selection is done
     on an event basis, meaning events are selected where the cluster condition is true and then hits of these events are taken.
@@ -550,62 +551,121 @@ def analyze_tdc_events(input_file_hits, output_file, events=(0, ), max_latency=1
 
 
 def histogram_cluster_table(analyzed_data_file, output_file, chunk_size=10000000):
-        '''Reads in the cluster info table in chunks and histograms the seed pixels into one occupancy array.
-        The 3rd dimension of the occupancy array is the number of different scan parameters used
+    '''Reads in the cluster info table in chunks and histograms the seed pixels into one occupancy array.
+    The 3rd dimension of the occupancy array is the number of different scan parameters used
 
-        Parameters
-        ----------
-        analyzed_data_file : hdf5 file containing the cluster table. If a scan parameter is given in the meta data the occupancy
-                            histograming is done per scan parameter.
-        Returns
-        -------
-        occupancy_array: numpy.array with dimensions (col, row, #scan_parameter)
-        '''
+    Parameters
+    ----------
+    analyzed_data_file : hdf5 file containing the cluster table. If a scan parameter is given in the meta data the occupancy
+                        histograming is done per scan parameter.
+    Returns
+    -------
+    occupancy_array: numpy.array with dimensions (col, row, #scan_parameter)
+    '''
 
-        with tb.openFile(analyzed_data_file, mode="r") as in_file_h5:
-            with tb.openFile(output_file, mode="w") as out_file_h5:
-                histograming = PyDataHistograming()
-                histograming.create_occupancy_hist(True)
-                scan_parameters = None
-                event_number_indices = None
-                scan_parameter_indices = None
-                try:
-                    meta_data = in_file_h5.root.meta_data[:]
-                    scan_parameters = analysis_utils.get_unique_scan_parameter_combinations(meta_data)
-                    if scan_parameters is not None:
-                        scan_parameter_indices = np.array(range(0, len(scan_parameters)), dtype='u4')
-                        event_number_indices = np.ascontiguousarray(scan_parameters['event_number']).astype(np.uint64)
-                        histograming.add_meta_event_index(event_number_indices, array_length=len(scan_parameters['event_number']))
-                        histograming.add_scan_parameter(scan_parameter_indices)
-                        logging.info("Add %d different scan parameter(s) for analysis" % len(scan_parameters))
-                    else:
-                        logging.info("No scan parameter data provided")
-                        histograming.set_no_scan_parameter()
-                except tb.exceptions.NoSuchNodeError:
-                    logging.info("No meta data provided, use no scan parameter")
+    with tb.openFile(analyzed_data_file, mode="r") as in_file_h5:
+        with tb.openFile(output_file, mode="w") as out_file_h5:
+            histograming = PyDataHistograming()
+            histograming.create_occupancy_hist(True)
+            scan_parameters = None
+            event_number_indices = None
+            scan_parameter_indices = None
+            try:
+                meta_data = in_file_h5.root.meta_data[:]
+                scan_parameters = analysis_utils.get_unique_scan_parameter_combinations(meta_data)
+                if scan_parameters is not None:
+                    scan_parameter_indices = np.array(range(0, len(scan_parameters)), dtype='u4')
+                    event_number_indices = np.ascontiguousarray(scan_parameters['event_number']).astype(np.uint64)
+                    histograming.add_meta_event_index(event_number_indices, array_length=len(scan_parameters['event_number']))
+                    histograming.add_scan_parameter(scan_parameter_indices)
+                    logging.info("Add %d different scan parameter(s) for analysis" % len(scan_parameters))
+                else:
+                    logging.info("No scan parameter data provided")
                     histograming.set_no_scan_parameter()
+            except tb.exceptions.NoSuchNodeError:
+                logging.info("No meta data provided, use no scan parameter")
+                histograming.set_no_scan_parameter()
 
-                logging.info('Histogram cluster seeds...')
-                progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=in_file_h5.root.Cluster.shape[0])
-                progress_bar.start()
-                total_cluster = 0  # to check analysis
-                for cluster, index in analysis_utils.data_aligned_at_events(in_file_h5.root.Cluster, chunk_size=chunk_size):
-                    total_cluster += len(cluster)
-                    histograming.add_cluster_seed_hits(cluster, len(cluster))
-                    progress_bar.update(index)
-                progress_bar.finish()
+            logging.info('Histogram cluster seeds...')
+            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=in_file_h5.root.Cluster.shape[0])
+            progress_bar.start()
+            total_cluster = 0  # to check analysis
+            for cluster, index in analysis_utils.data_aligned_at_events(in_file_h5.root.Cluster, chunk_size=chunk_size):
+                total_cluster += len(cluster)
+                histograming.add_cluster_seed_hits(cluster, len(cluster))
+                progress_bar.update(index)
+            progress_bar.finish()
 
-                filter_table = tb.Filters(complib='blosc', complevel=5, fletcher32=False)  # compression of the written data
-                occupancy = np.zeros(80 * 336 * histograming.get_n_parameters(), dtype=np.uint32)  # create linear array as it is created in histogram class
-                histograming.get_occupancy(occupancy)
-                occupancy_array = np.reshape(a=occupancy.view(), newshape=(80, 336, histograming.get_n_parameters()), order='F')  # make linear array to 3d array (col,row,parameter)
-                occupancy_array = np.swapaxes(occupancy_array, 0, 1)
-                occupancy_array_table = out_file_h5.createCArray(out_file_h5.root, name='HistOcc', title='Occupancy Histogram', atom=tb.Atom.from_dtype(occupancy.dtype), shape=(336, 80, histograming.get_n_parameters()), filters=filter_table)
-                occupancy_array_table[0:336, 0:80, 0:histograming.get_n_parameters()] = occupancy_array
+            filter_table = tb.Filters(complib='blosc', complevel=5, fletcher32=False)  # compression of the written data
+            occupancy = np.zeros(80 * 336 * histograming.get_n_parameters(), dtype=np.uint32)  # create linear array as it is created in histogram class
+            histograming.get_occupancy(occupancy)
+            occupancy_array = np.reshape(a=occupancy.view(), newshape=(80, 336, histograming.get_n_parameters()), order='F')  # make linear array to 3d array (col,row,parameter)
+            occupancy_array = np.swapaxes(occupancy_array, 0, 1)
+            occupancy_array_table = out_file_h5.createCArray(out_file_h5.root, name='HistOcc', title='Occupancy Histogram', atom=tb.Atom.from_dtype(occupancy.dtype), shape=(336, 80, histograming.get_n_parameters()), filters=filter_table)
+            occupancy_array_table[0:336, 0:80, 0:histograming.get_n_parameters()] = occupancy_array
 
-                if total_cluster != np.sum(occupancy_array):
-                    logging.warning('Analysis shows inconsistent number of cluster used. Check needed!')
-                in_file_h5.root.meta_data.copy(out_file_h5.root)  # copy meta_data note to new file
+            if total_cluster != np.sum(occupancy_array):
+                logging.warning('Analysis shows inconsistent number of cluster used. Check needed!')
+            in_file_h5.root.meta_data.copy(out_file_h5.root)  # copy meta_data note to new file
+
+
+def analyze_hits_per_scan_parameter(analyze_data, scan_parameters=None, chunk_size=50000):
+    '''Takes the hit table and analyzes the hits per scan parameter
+
+    Parameters
+    ----------
+    analyze_data : analysis.analyze_raw_data.AnalyzeRawData object with an opened hit file (AnalyzeRawData.out_file_h5) or a
+    file name with the hit data given (AnalyzeRawData._analyzed_data_file)
+    scan_parameters : list of strings:
+        The names of the scan parameters to use
+    chunk_size : int:
+        The chunk size of one hit table read. The bigger the faster. Too big causes memory errors.
+    Returns
+    -------
+    yields the analysis.analyze_raw_data.AnalyzeRawData for each scan parameter
+    '''
+
+    if analyze_data.out_file_h5 is None or analyze_data.out_file_h5.isopen == 0:
+        in_hit_file_h5 = tb.open_file(analyze_data._analyzed_data_file, 'r+')
+        opened_file = True
+    else:
+        in_hit_file_h5 = analyze_data.out_file_h5
+        opened_file = False
+
+    meta_data = in_hit_file_h5.root.meta_data[:]  # get the meta data table
+    try:
+        hit_table = in_hit_file_h5.root.Hits  # get the hit table
+    except tb.NoSuchNodeError:
+        logging.error('analyze_hits_per_scan_parameter needs a hit table, but no hit table found.')
+        return
+
+    meta_data_table_at_scan_parameter = analysis_utils.get_unique_scan_parameter_combinations(meta_data, scan_parameters=scan_parameters)
+    parameter_values = analysis_utils.get_scan_parameters_table_from_meta_data(meta_data_table_at_scan_parameter, scan_parameters)
+    event_number_ranges = analysis_utils.get_ranges_from_array(meta_data_table_at_scan_parameter['event_number'])  # get the event number ranges for the different scan parameter settings
+
+    analysis_utils.index_event_number(hit_table)  # create a event_numer index to select the hits by their event number fast, no needed but important for speed up
+
+    # variables for read speed up
+    index = 0  # index where to start the read out of the hit table, 0 at the beginning, increased during looping
+    best_chunk_size = chunk_size  # number of hits to copy to RAM during looping, the optimal chunk size is determined during looping
+
+    # loop over the selected events
+    for parameter_index, (start_event_number, stop_event_number) in enumerate(event_number_ranges):
+        logging.info('Analyze hits for ' + str(scan_parameters) + ' = ' + str(parameter_values[parameter_index]))
+        analyze_data.reset()  # resets the front end data of the last analysis step but not the options
+        readout_hit_len = 0  # variable to calculate a optimal chunk size value from the number of hits for speed up
+        # loop over the hits in the actual selected events with optimizations: determine best chunk size, start word index given
+        for hits, index in analysis_utils.data_aligned_at_events(hit_table, start_event_number=start_event_number, stop_event_number=stop_event_number, start=index, chunk_size=best_chunk_size):
+            analyze_data.analyze_hits(hits, scan_parameter=False)  # analyze the selected hits in chunks
+            readout_hit_len += hits.shape[0]
+        best_chunk_size = int(1.5 * readout_hit_len) if int(1.05 * readout_hit_len) < chunk_size and int(1.05 * readout_hit_len) > 1e3 else chunk_size  # to increase the readout speed, estimated the number of hits for one read instruction
+        file_name = " ".join(re.findall("[a-zA-Z0-9]+", str(scan_parameters))) + '_' + " ".join(re.findall("[a-zA-Z0-9]+", str(parameter_values[parameter_index])))
+        analyze_data._create_additional_hit_data(safe_to_file=False)
+        analyze_data._create_additional_cluster_data(safe_to_file=False)
+        yield analyze_data, file_name
+
+    if opened_file:
+        in_hit_file_h5.close()
 
 if __name__ == "__main__":
     print 'run analysis as main'
