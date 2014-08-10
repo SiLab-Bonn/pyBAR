@@ -136,7 +136,7 @@ class ExtTriggerScan(ScanBase):
 
             self.register_utils.set_command(command)
 
-            self.dut['tdc']['ENABLE'] = enable_tdc
+            self.dut['tdc_rx2']['ENABLE'] = enable_tdc
             self.dut['tlu']['TRIGGER_MODE'] = trigger_mode
             self.dut['tlu']['TRIGGER_COUNTER'] = 0
             self.dut['tlu']['EN_WRITE_TIMESTAMP'] = True
@@ -194,7 +194,7 @@ class ExtTriggerScan(ScanBase):
                         logging.info('Taking data...')
                         wait_for_first_trigger = False
 
-            self.dut['tdc']['ENABLE'] = False
+            self.dut['tdc_rx2']['ENABLE'] = False
             self.dut['cmd']['EN_EXT_TRIGGER'] = False
             self.dut['tlu']['TRIGGER_MODE'] = 0
             logging.info('Total amount of triggers collected: %d', self.dut['tlu']['TRIGGER_COUNTER'])

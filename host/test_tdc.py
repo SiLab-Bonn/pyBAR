@@ -41,8 +41,8 @@ class TdcTest(ScanBase):
     def scan(self, GPIB_prim_address=1, n_pulses=100, **kwargs):
         self.init_pulser(GPIB_prim_address)
 
-        self.dut['tdc']['ENABLE'] = True
-        self.dut['tdc']['EN_ARMING'] = False
+        self.dut['tdc_rx2']['ENABLE'] = True
+        self.dut['tdc_rx2']['EN_ARMING'] = False
 
         x = []
         y = []
