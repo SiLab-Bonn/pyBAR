@@ -136,7 +136,7 @@ class ClusterInfoTable(tb.IsDescription):
 
 
 class MeanThresholdCalibrationTable(tb.IsDescription):
-    gdac = tb.UInt32Col(pos=0)
+    parameter_value = tb.UInt32Col(pos=0)
     vthin_altfine = tb.UInt32Col(pos=1)
     vthin_altcoarse = tb.UInt32Col(pos=2)
     mean_threshold = tb.Float64Col(pos=3)
@@ -146,7 +146,7 @@ class MeanThresholdCalibrationTable(tb.IsDescription):
 class ThresholdCalibrationTable(tb.IsDescription):
     column = tb.UInt8Col(pos=0)
     row = tb.UInt16Col(pos=1)
-    gdac = tb.UInt32Col(pos=2)
+    parameter_value = tb.UInt32Col(pos=2)
     vthin_altfine = tb.UInt32Col(pos=3)
     vthin_altcoarse = tb.UInt32Col(pos=4)
     threshold = tb.Float64Col(pos=5)
