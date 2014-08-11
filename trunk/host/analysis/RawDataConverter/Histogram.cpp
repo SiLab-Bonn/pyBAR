@@ -36,6 +36,7 @@ void Histogram::setStandardSettings()
 	_createTotHist = false;
 	_createTdcHist = false;
 	_createTdcPixelHist = false;
+	_createTotPixelHist = false;
 	_maxTot = 13;
 }
 
@@ -68,6 +69,11 @@ void Histogram::createTdcHist(bool CreateTdcHist)
 void Histogram::createTdcPixelHist(bool CreateTdcPixelHist)
 {
 	_createTdcPixelHist = CreateTdcPixelHist;
+}
+
+void Histogram::createTotPixelHist(bool CreateTotPixelHist)
+{
+	_createTotPixelHist = CreateTotPixelHist;
 }
 
 void Histogram::setMaxTot(const unsigned int& rMaxTot)
@@ -114,10 +120,19 @@ void Histogram::addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
 		if(_createTdcHist)
 			_tdc[tTdc] += 1;
 		if(_createTdcPixelHist){
-			if (_tdcPixel != 0)
+			if (_tdcPixel != 0){
+				 if(tTdc >= __N_TDC_VALUES){
+					info("TDC value out of range:" + IntToStr(tTdc) + ">" + IntToStr(__N_TDC_VALUES));
+					tTdc = 0;
+				}
 				_tdcPixel[(long)tColumnIndex + (long)tRowIndex * (long)RAW_DATA_MAX_COLUMN + (long)tTdc * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] += 1;
+			}
 			else
 				throw std::runtime_error("Output TDC pixel array array not set.");
+		}
+		if(_createTotPixelHist){
+			if (tTot <= _maxTot)
+				_totPixel[(long)tColumnIndex + (long)tRowIndex * (long)RAW_DATA_MAX_COLUMN + (long)tTot * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] += 1;
 		}
 	}
 	//std::cout<<"addHits done"<<std::endl;
@@ -248,6 +263,19 @@ void Histogram::resetTdcPixelArray()
   }
   else
 	  throw std::runtime_error("Output TDC pixel array array not set.");
+}
+
+void Histogram::resetTotPixelArray()
+{
+  info("resetTotPixelArray()");
+  if (_totPixel != 0){
+	  for (unsigned int i = 0; i < RAW_DATA_MAX_COLUMN; i++)
+		for (unsigned int j = 0; j < RAW_DATA_MAX_ROW; j++)
+		  for(unsigned int k = 0; k < 16;k++)
+			  _totPixel[(long)i + (long)j * (long)RAW_DATA_MAX_COLUMN + (long)k * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] = 0;
+  }
+  else
+	  throw std::runtime_error("Output TOT pixel array array not set.");
 }
 
 void Histogram::allocateTotArray()
@@ -394,6 +422,12 @@ void Histogram::setTdcPixelHist(unsigned short*& rTdcPixelHist)
 {
 	info("setTdcPixelHist(...)");
 	_tdcPixel = rTdcPixelHist;
+}
+
+void Histogram::setTotPixelHist(unsigned short*& rTotPixelHist)
+{
+	info("setTotPixelHist(...)");
+	_totPixel = rTotPixelHist;
 }
 
 void Histogram::getRelBcidHist(unsigned int*& rRelBcidHist, bool copy)
