@@ -23,6 +23,7 @@ public:
 
   //set external histograms to be filled
   void setTdcPixelHist(unsigned short*& rTdcPixelHist); //sets the pixel tdc histogram
+  void setTotPixelHist(unsigned short*& rTotPixelHist); //sets the pixel tot histogram
 
   //options set/get
   void createOccupancyHist(bool CreateOccHist = true);
@@ -30,6 +31,7 @@ public:
   void createTotHist(bool CreateTotHist = true);
   void createTdcHist(bool CreateTdcHist = true);
   void createTdcPixelHist(bool CreateTdcPixelHist = true);
+  void createTotPixelHist(bool CreateTotPixelHist = true);
   void setMaxTot(const unsigned int& rMaxTot);
 
   void addHits(HitInfo*& rHitInfo, const unsigned int& rNhits);
@@ -46,6 +48,7 @@ public:
   void resetTotArray();
   void resetTdcArray();
   void resetTdcPixelArray();
+  void resetTotPixelArray();
   void resetRelBcidArray();
 
   void reset();  // resets the histograms and keeps the settings
@@ -67,6 +70,7 @@ private:
   unsigned int* _tot;             //tot histogram
   unsigned int* _tdc;             //tdc histogram
   unsigned short* _tdcPixel;      //3d pixel tdc histogram  (in total 3d, linearly sorted via col, row, tdc value)
+  unsigned short* _totPixel;      //3d pixel tot histogram  (in total 3d, linearly sorted via col, row, tot value)
   unsigned int* _relBcid;         //realative BCID histogram
 
   unsigned int getParIndex(uint64_t& rEventNumber);      //returns the parameter index for the given event number
@@ -86,6 +90,7 @@ private:
   bool _createTotHist;
   bool _createTdcHist;
   bool _createTdcPixelHist;
+  bool _createTotPixelHist;
   unsigned int _maxTot;               //maximum ToT value (inclusive) considered to be a hit
   
   unsigned int* _parInfo;

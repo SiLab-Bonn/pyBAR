@@ -190,6 +190,7 @@ class AnalyzeRawData(object):
         self.create_tdc_hist = False
         self.create_tdc_counter_hist = False
         self.create_tdc_pixel_hist = False
+        self.create_tot_pixel_hist = False
         self.create_trigger_error_hist = False
         self.create_threshold_hists = False
         self.create_threshold_mask = True  # threshold/noise histogram mask: masking all pixels out of bounds
@@ -270,10 +271,24 @@ class AnalyzeRawData(object):
         self._create_tdc_pixel_hist = value
         self.histograming.create_tdc_pixel_hist(value)
         if value:
-            self.tdc_pixel_hist = np.zeros(80 * 336 * 4096, dtype=np.uint16)
+            self.tdc_pixel_hist = np.zeros(80 * 336 * 2048, dtype=np.uint16)
             self.histograming.set_tdc_pixel_hist(self.tdc_pixel_hist)
         else:
             self.tdc_pixel_hist = None
+
+    @property
+    def create_tot_pixel_hist(self):
+        return self._create_tot_pixel_hist
+
+    @create_tot_pixel_hist.setter
+    def create_tot_pixel_hist(self, value):
+        self._create_tot_pixel_hist = value
+        self.histograming.create_tot_pixel_hist(value)
+        if value:
+            self.tot_pixel_hist = np.zeros(80 * 336 * 16, dtype=np.uint16)
+            self.histograming.set_tot_pixel_hist(self.tot_pixel_hist)
+        else:
+            self.tot_pixel_hist = None
 
     @property
     def create_rel_bcid_hist(self):
@@ -663,6 +678,11 @@ class AnalyzeRawData(object):
             if (self._analyzed_data_file is not None and safe_to_file):
                 tot_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistTot', title='ToT Histogram', atom=tb.Atom.from_dtype(self.tot_hist.dtype), shape=self.tot_hist.shape, filters=self._filter_table)
                 tot_hist_table[:] = self.tot_hist
+        if (self._create_tot_pixel_hist):
+            if (self._analyzed_data_file is not None and safe_to_file):
+                self.tot_pixel_hist_array = np.swapaxes(np.reshape(a=self.tdc_pixel_hist.view(), newshape=(80, 336, 16), order='F'), 0, 1)  # make linear array to 3d array (col,row,parameter)
+                tot_pixel_hist_out = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistTotPixel', title='Tot Pixel Histogram', atom=tb.Atom.from_dtype(self.tot_pixel_hist_array.dtype), shape=self.tot_pixel_hist_array.shape, filters=self._filter_table)
+                tot_pixel_hist_out[:] = self.tot_pixel_hist_array
         if (self._create_tdc_hist):
             self.tdc_hist = np.zeros(4096, dtype=np.uint32)
             self.histograming.get_tdc_hist(self.tdc_hist)
@@ -671,9 +691,9 @@ class AnalyzeRawData(object):
                 tdc_hist_table[:] = self.tdc_hist
         if (self._create_tdc_pixel_hist):
             if (self._analyzed_data_file is not None and safe_to_file):
-                tdc_pixel_hist_array = np.swapaxes(np.reshape(a=self.tdc_pixel_hist.view(), newshape=(80, 336, 4096), order='F'), 0, 1)  # make linear array to 3d array (col,row,parameter)
-                tdc_pixel_hist_out = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistTdcPixel', title='Tdc Pixel Histogram', atom=tb.Atom.from_dtype(tdc_pixel_hist_array.dtype), shape=tdc_pixel_hist_array.shape, filters=self._filter_table)
-                tdc_pixel_hist_out[:] = tdc_pixel_hist_array
+                self.tdc_pixel_hist_array = np.swapaxes(np.reshape(a=self.tdc_pixel_hist.view(), newshape=(80, 336, 2048), order='F'), 0, 1)  # make linear array to 3d array (col,row,parameter)
+                tdc_pixel_hist_out = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistTdcPixel', title='Tdc Pixel Histogram', atom=tb.Atom.from_dtype(self.tdc_pixel_hist_array.dtype), shape=self.tdc_pixel_hist_array.shape, filters=self._filter_table)
+                tdc_pixel_hist_out[:] = self.tdc_pixel_hist_array
         if (self._create_rel_bcid_hist):
             self.rel_bcid_hist = np.zeros(256, dtype=np.uint32)
             self.histograming.get_rel_bcid_hist(self.rel_bcid_hist)
@@ -961,6 +981,10 @@ class AnalyzeRawData(object):
                     plotting.plot_occupancy(hist=occupancy_array_masked, filename=output_pdf, z_max='median')
         if (self._create_tot_hist):
             plotting.plot_tot(hist=out_file_h5.root.HistTot if out_file_h5 is not None else self.tot_hist, filename=output_pdf)
+        if (self._create_tot_pixel_hist):
+            tot_pixel_hist = out_file_h5.root.HistTotPixel[:] if out_file_h5 is not None else self.tot_pixel_hist_array
+            mean_pixel_tot = np.average(tot_pixel_hist, axis=2, weights=range(16)) * sum(range(0, 16))
+            plotting.plotThreeWay(mean_pixel_tot, title='Mean TOT', x_axis_title='mean TOT', filename=output_pdf)
         if (self._create_tdc_counter_hist):
             plotting.plot_tdc_counter(hist=out_file_h5.root.HistTdcCounter if out_file_h5 is not None else self.tdc_hist_counter, filename=output_pdf)
         if (self._create_tdc_hist):
@@ -976,7 +1000,10 @@ class AnalyzeRawData(object):
                 plotting.plot_relative_bcid_stop_mode(hist=out_file_h5.root.HistRelBcid if out_file_h5 is not None else self.rel_bcid_hist, filename=output_pdf)
             else:
                 plotting.plot_relative_bcid(hist=out_file_h5.root.HistRelBcid[0:16] if out_file_h5 is not None else self.rel_bcid_hist[0:16], filename=output_pdf)
-
+        if (self._create_tdc_pixel_hist):
+            tdc_pixel_hist = out_file_h5.root.HistTdcPixel[:] if out_file_h5 is not None else self.tdc_pixel_hist_array
+            mean_pixel_tdc = np.average(tdc_pixel_hist, axis=2, weights=range(2048)) * sum(range(0, 2048))
+            plotting.plotThreeWay(mean_pixel_tdc, title='Mean TDC', x_axis_title='mean TDC', filename=output_pdf)
         if not create_hit_hists_only:
             if (analyzed_data_file is None and self._create_error_hist):
                 plotting.plot_event_errors(hist=out_file_h5.root.HistErrorCounter if out_file_h5 is not None else self.error_counter_hist, filename=output_pdf)

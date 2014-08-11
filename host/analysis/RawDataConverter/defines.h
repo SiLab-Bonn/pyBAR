@@ -144,7 +144,7 @@ typedef struct MetaWordInfoOut{
 #define NFE_NUMBER_MACRO(X) ((NFE_NUMBER_MASK & X)  >> 24)
 
 //TDC macros
-#define __N_TDC_VALUES 4096
+#define __N_TDC_VALUES 2048
 #define TDC_HEADER 0x40000000
 #define TDC_HEADER_MASK 0xF0000000  //first bit 0 means FE number word
 #define TDC_COUNT_MASK 0x00000FFF
