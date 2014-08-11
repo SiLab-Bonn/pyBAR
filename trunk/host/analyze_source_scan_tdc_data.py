@@ -1,10 +1,10 @@
 ''' This script does the full analysis of the TDC values taken during a source scan.
 Several steps are done automatically:
 Step 1 Tnterpret the raw data:
-    This step interprets the raw data from the FE, creates and plots distributions for each data file seperately.
-    Everything is summed up per data file.
+    This step interprets the raw data from the FE, creates and plots distributions all provided raw data files.
+    Correct TDC analysis settings are set.
 Step 2 Analyze selected hits:
-    This step just takes events with usable TDC information and stores the corresponding hits and histograms them.
+    This step takes events with usable TDC information, stores the corresponding hits and histograms them.
 '''
 import os.path
 from analysis import analysis
@@ -15,11 +15,12 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(leve
 
 
 analysis_configuration = {
-    'scan_name': ['data//data_file_names'],  # the base file name(s) of the raw data file, no file suffix needed
+    'scan_name': ['data//tdc_data//SCC_30_ext_trigger_scan_226'],  # the base file name(s) of the raw data file, no file suffix needed
     'cluster_size_condition': 'cluster_size==1',  # only select hit with cluster_size_condition
     'n_cluster_condition': 'n_cluster==1',  # only select hit with n_cluster_condition
+    'hit_selection_condition': '(relative_BCID > 6) & (relative_BCID < 9)',  # an optional criterion for the hit selection based on hit properties (e.g. 'relative_BCID == 6')
     'input_file_calibration': None,  # the Plsr<->TDC calibration file
-    "analysis_steps": [1, 2],  # the analysis includes this selected steps. See explenation above.
+    "analysis_steps": [1, 2],  # the analysis includes this selected steps. See explanation above.
     "max_tot_value": 13,  # maximum tot value to use the hit
     "interpreter_plots": False,  # set to False to omit the Raw Data plots, saves time
     "interpreter_warnings": True,  # show interpreter warnings
@@ -33,11 +34,12 @@ def analyze_raw_data(input_files, output_file_hits, scan_data_filename):
         logging.info('Analyzed data file ' + output_file_hits + ' already exists. Skip analysis for this file.')
     else:
         with AnalyzeRawData(raw_data_file=input_files, analyzed_data_file=output_file_hits) as analyze_raw_data:
-            analyze_raw_data.interpreter.use_tdc_word(True)  # align events at TDC words, first word of event has to be a tdc word
+#             analyze_raw_data.interpreter.use_tdc_word(True)  # align events at TDC words, first word of event has to be a tdc word
+            analyze_raw_data.use_trigger_word = True
             analyze_raw_data.create_tdc_counter_hist = True  # create a histogram for all TDC words
             analyze_raw_data.create_tdc_hist = True  # histogram the hit TDC information
             analyze_raw_data.use_trigger_time_stamp = True
-            analyze_raw_data.create_hit_table = True  # can be set to false to omit hit table creation, std. setting is false
+            analyze_raw_data.create_hit_table = True  # can be set to false to omit hit table creation, std. setting is falsee
             analyze_raw_data.create_cluster_table = True  # enables the creation of a table with all clusters, std. setting is false
             analyze_raw_data.create_source_scan_hist = True  # create source scan hists
             analyze_raw_data.create_cluster_size_hist = True  # enables cluster size histogramming, can save some time, std. setting is false
@@ -57,7 +59,7 @@ def analyse_selected_hits(input_file_hits, output_file_hits, output_file_hits_an
     if os.path.isfile(output_file_hits) and not analysis_configuration["overwrite_output_files"]:  # skip analysis if already done
         logging.info('Selected hit data file ' + output_file_hits + ' already exists. Skip analysis for this file.')
     else:
-        analysis.select_hits_for_tdc_info(input_file_hits=input_file_hits, output_file_hits=output_file_hits, cluster_size_condition=analysis_configuration['cluster_size_condition'], n_cluster_condition=analysis_configuration['n_cluster_condition'], output_pdf=None)  # select hits and copy them into new file
+        analysis.select_hits_for_tdc_info(input_file_hits=input_file_hits, output_file_hits=output_file_hits, cluster_size_condition=analysis_configuration['cluster_size_condition'], n_cluster_condition=analysis_configuration['n_cluster_condition'], hit_selection_condition=analysis_configuration['hit_selection_condition'])  # select hits and copy them into new file
     if os.path.isfile(output_file_hits_analyzed) and not analysis_configuration["overwrite_output_files"]:  # skip analysis if already done
         logging.info('Selected hit data file ' + output_file_hits_analyzed + ' already exists. Skip analysis for this file.')
     else:
