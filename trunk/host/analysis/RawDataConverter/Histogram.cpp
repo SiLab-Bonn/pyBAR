@@ -459,5 +459,6 @@ void Histogram::reset()
 	resetTotArray();
 	resetTdcArray();
 	resetRelBcidArray();
+	_parInfo = 0;
 }
 

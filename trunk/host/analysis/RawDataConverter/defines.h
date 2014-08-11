@@ -148,8 +148,10 @@ typedef struct MetaWordInfoOut{
 #define TDC_HEADER 0x40000000
 #define TDC_HEADER_MASK 0xF0000000  //first bit 0 means FE number word
 #define TDC_COUNT_MASK 0x00000FFF
+#define TDC_TIME_STAMP_MASK 0x0FFFF000
 #define TDC_WORD_MACRO(X) (((TDC_HEADER_MASK & X) == TDC_HEADER) ? true : false)
 #define TDC_COUNT_MACRO(X) (TDC_COUNT_MASK & X)
+#define TDC_TIME_STAMP_MACRO(X) (TDC_TIME_STAMP_MASK & X)
 
 // Data Header (DH)
 #define DATA_HEADER						0x00E90000

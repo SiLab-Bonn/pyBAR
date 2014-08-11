@@ -726,7 +726,7 @@ void Clusterizer::addCluster()
 			_clusterInfo[_Nclusters].eventStatus = _actualEventStatus;
 		}
 		else
-			throw std::out_of_range("too many clusters attempt to be stored in cluster array");
+			throw std::out_of_range("Too many clusters attempt to be stored in cluster array");
 	}
 
 	_Nclusters++;
