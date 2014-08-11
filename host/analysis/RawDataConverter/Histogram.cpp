@@ -121,8 +121,8 @@ void Histogram::addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
 			_tdc[tTdc] += 1;
 		if(_createTdcPixelHist){
 			if (_tdcPixel != 0){
-				 if(tTdc >= __N_TDC_VALUES){
-					info("TDC value out of range:" + IntToStr(tTdc) + ">" + IntToStr(__N_TDC_VALUES));
+				 if(tTdc >= __N_TDC_PIXEL_VALUES){
+					info("TDC value out of range:" + IntToStr(tTdc) + ">" + IntToStr(__N_TDC_PIXEL_VALUES));
 					tTdc = 0;
 				}
 				_tdcPixel[(long)tColumnIndex + (long)tRowIndex * (long)RAW_DATA_MAX_COLUMN + (long)tTdc * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] += 1;
@@ -258,7 +258,7 @@ void Histogram::resetTdcPixelArray()
   if (_tdcPixel != 0){
 	  for (unsigned int i = 0; i < RAW_DATA_MAX_COLUMN; i++)
 		for (unsigned int j = 0; j < RAW_DATA_MAX_ROW; j++)
-		  for(unsigned int k = 0; k < __N_TDC_VALUES;k++)
+		  for(unsigned int k = 0; k < __N_TDC_PIXEL_VALUES;k++)
 			  _tdcPixel[(long)i + (long)j * (long)RAW_DATA_MAX_COLUMN + (long)k * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] = 0;
   }
   else
