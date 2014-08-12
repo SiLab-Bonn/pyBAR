@@ -40,7 +40,9 @@ def analyze_raw_data(input_files, output_file_hits, scan_data_filename):
             analyze_raw_data.use_trigger_word = True # align events at trigger words
             analyze_raw_data.create_tdc_counter_hist = True  # create a histogram for all TDC words
             analyze_raw_data.create_tdc_hist = True  # histogram the hit TDC information
-            analyze_raw_data.use_trigger_time_stamp = True # trigger numbers are time stamp
+#            analyze_raw_data.create_tdc_pixel_hist = True
+            analyze_raw_data.use_trigger_number = False  # use the trigger number to align the events
+#            analyze_raw_data.use_trigger_time_stamp = True # trigger numbers are time stamp
             analyze_raw_data.create_hit_table = True  # can be set to false to omit hit table creation, std. setting is falsee
             analyze_raw_data.create_cluster_table = True  # enables the creation of a table with all clusters, std. setting is false
             analyze_raw_data.create_source_scan_hist = True  # create source scan hists
