@@ -578,8 +578,8 @@ class AnalyzeRawData(object):
                     if(self.scan_parameters is not None):
                         nEventIndex = self.interpreter.get_n_meta_data_event()
                         self.histograming.add_meta_event_index(self.meta_event_index, nEventIndex)
-                    else:
-                        self.histograming.set_no_scan_parameter()
+#                     else:
+#                         self.histograming.set_no_scan_parameter()
                     if self.is_histogram_hits():
                         self.histogram_hits(hits[:Nhits], stop_index=Nhits)
                     if self.is_cluster_hits():
@@ -983,7 +983,7 @@ class AnalyzeRawData(object):
             plotting.plot_tot(hist=out_file_h5.root.HistTot if out_file_h5 is not None else self.tot_hist, filename=output_pdf)
         if (self._create_tot_pixel_hist):
             tot_pixel_hist = out_file_h5.root.HistTotPixel[:] if out_file_h5 is not None else self.tot_pixel_hist_array
-            mean_pixel_tot = np.average(tot_pixel_hist, axis=2, weights=range(16)) * sum(range(0, 16))
+            mean_pixel_tot = np.average(np.ma.masked_invalid(tot_pixel_hist), axis=2, weights=range(16)) * sum(range(0, 16)) / np.sum(tot_pixel_hist, axis=2)
             plotting.plotThreeWay(mean_pixel_tot, title='Mean TOT', x_axis_title='mean TOT', filename=output_pdf)
         if (self._create_tdc_counter_hist):
             plotting.plot_tdc_counter(hist=out_file_h5.root.HistTdcCounter if out_file_h5 is not None else self.tdc_hist_counter, filename=output_pdf)
@@ -1001,9 +1001,9 @@ class AnalyzeRawData(object):
             else:
                 plotting.plot_relative_bcid(hist=out_file_h5.root.HistRelBcid[0:16] if out_file_h5 is not None else self.rel_bcid_hist[0:16], filename=output_pdf)
         if (self._create_tdc_pixel_hist):
-            tdc_pixel_hist = out_file_h5.root.HistTdcPixel[:] if out_file_h5 is not None else self.tdc_pixel_hist_array
-            mean_pixel_tdc = np.average(tdc_pixel_hist, axis=2, weights=range(2048)) * sum(range(0, 2048))
-            plotting.plotThreeWay(mean_pixel_tdc, title='Mean TDC', x_axis_title='mean TDC', filename=output_pdf)
+            tdc_pixel_hist = out_file_h5.root.HistTdcPixel[:, :, :1024] if out_file_h5 is not None else self.tdc_pixel_hist_array[:, :, :1024]  # only take first 1024 values, otherwise memory error likely
+            mean_pixel_tdc = np.average(tdc_pixel_hist, axis=2, weights=range(1024)) * sum(range(0, 1024)) / np.sum(tdc_pixel_hist, axis=2)
+            plotting.plotThreeWay(np.ma.masked_invalid(mean_pixel_tdc), title='Mean TDC', x_axis_title='mean TDC', filename=output_pdf)
         if not create_hit_hists_only:
             if (analyzed_data_file is None and self._create_error_hist):
                 plotting.plot_event_errors(hist=out_file_h5.root.HistErrorCounter if out_file_h5 is not None else self.error_counter_hist, filename=output_pdf)
