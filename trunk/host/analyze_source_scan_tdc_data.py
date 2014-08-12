@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(leve
 
 
 analysis_configuration = {
-    'scan_name': ['data//MDBM_30_ext_trigger_scan_58'],  # the base file name(s) of the raw data file, no file suffix needed
+    'scan_name': ['data//MDBM_30//some_scan'],  # the base file name(s) of the raw data file, no file suffix needed
     'cluster_size_condition': 'cluster_size==1',  # only select hit with cluster_size_condition
     'n_cluster_condition': 'n_cluster==1',  # only select hit with n_cluster_condition
     'hit_selection_condition': '(relative_BCID > 2) & (relative_BCID < 9)',  # an optional criterion for the hit selection based on hit properties (e.g. 'relative_BCID == 6')
@@ -41,6 +41,7 @@ def analyze_raw_data(input_files, output_file_hits, scan_data_filename):
             analyze_raw_data.create_tdc_counter_hist = True  # create a histogram for all TDC words
             analyze_raw_data.create_tdc_hist = True  # histogram the hit TDC information
 #            analyze_raw_data.create_tdc_pixel_hist = True
+#            analyze_raw_data.create_tot_pixel_hist = True
             analyze_raw_data.use_trigger_number = False  # use the trigger number to align the events
 #            analyze_raw_data.use_trigger_time_stamp = True # trigger numbers are time stamp
             analyze_raw_data.create_hit_table = True  # can be set to false to omit hit table creation, std. setting is falsee
