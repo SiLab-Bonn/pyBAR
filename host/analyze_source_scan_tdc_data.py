@@ -15,15 +15,17 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(leve
 
 
 analysis_configuration = {
-    'scan_name': ['data//tdc_data//SCC_30_ext_trigger_scan_226'],  # the base file name(s) of the raw data file, no file suffix needed
+    'scan_name': ['data//MDBM_30_ext_trigger_scan_58'],  # the base file name(s) of the raw data file, no file suffix needed
     'cluster_size_condition': 'cluster_size==1',  # only select hit with cluster_size_condition
     'n_cluster_condition': 'n_cluster==1',  # only select hit with n_cluster_condition
-    'hit_selection_condition': '(relative_BCID > 6) & (relative_BCID < 9)',  # an optional criterion for the hit selection based on hit properties (e.g. 'relative_BCID == 6')
+    'hit_selection_condition': '(relative_BCID > 2) & (relative_BCID < 9)',  # an optional criterion for the hit selection based on hit properties (e.g. 'relative_BCID == 6')
+    'event_status_select_mask': 0b0000010111011110,  # the event status bits to cut on
+    'event_status_condition': 0b0000000100000000,  # the event status number after the event_status_select_mask is bitwise ORed with the event number
     'input_file_calibration': None,  # the Plsr<->TDC calibration file
     "analysis_steps": [1, 2],  # the analysis includes this selected steps. See explanation above.
     "max_tot_value": 13,  # maximum tot value to use the hit
-    "interpreter_plots": False,  # set to False to omit the Raw Data plots, saves time
-    "interpreter_warnings": True,  # show interpreter warnings
+    "interpreter_plots": True,  # set to False to omit the Raw Data plots, saves time
+    "interpreter_warnings": False,  # show interpreter warnings
     "overwrite_output_files": True  # overwrite already existing files from former analysis
 }
 
@@ -35,10 +37,10 @@ def analyze_raw_data(input_files, output_file_hits, scan_data_filename):
     else:
         with AnalyzeRawData(raw_data_file=input_files, analyzed_data_file=output_file_hits) as analyze_raw_data:
 #             analyze_raw_data.interpreter.use_tdc_word(True)  # align events at TDC words, first word of event has to be a tdc word
-            analyze_raw_data.use_trigger_word = True
+            analyze_raw_data.use_trigger_word = True # align events at trigger words
             analyze_raw_data.create_tdc_counter_hist = True  # create a histogram for all TDC words
             analyze_raw_data.create_tdc_hist = True  # histogram the hit TDC information
-            analyze_raw_data.use_trigger_time_stamp = True
+            analyze_raw_data.use_trigger_time_stamp = True # trigger numbers are time stamp
             analyze_raw_data.create_hit_table = True  # can be set to false to omit hit table creation, std. setting is falsee
             analyze_raw_data.create_cluster_table = True  # enables the creation of a table with all clusters, std. setting is false
             analyze_raw_data.create_source_scan_hist = True  # create source scan hists
@@ -59,13 +61,14 @@ def analyse_selected_hits(input_file_hits, output_file_hits, output_file_hits_an
     if os.path.isfile(output_file_hits) and not analysis_configuration["overwrite_output_files"]:  # skip analysis if already done
         logging.info('Selected hit data file ' + output_file_hits + ' already exists. Skip analysis for this file.')
     else:
-        analysis.select_hits_for_tdc_info(input_file_hits=input_file_hits, output_file_hits=output_file_hits, cluster_size_condition=analysis_configuration['cluster_size_condition'], n_cluster_condition=analysis_configuration['n_cluster_condition'], hit_selection_condition=analysis_configuration['hit_selection_condition'])  # select hits and copy them into new file
+        analysis.select_hits_for_tdc_info(input_file_hits=input_file_hits, output_file_hits=output_file_hits, cluster_size_condition=analysis_configuration['cluster_size_condition'], n_cluster_condition=analysis_configuration['n_cluster_condition'], hit_selection_condition=analysis_configuration['hit_selection_condition'], event_status_select_mask=analysis_configuration['event_status_select_mask'], event_status_condition=analysis_configuration['event_status_condition'])  # select hits and copy them into new file
     if os.path.isfile(output_file_hits_analyzed) and not analysis_configuration["overwrite_output_files"]:  # skip analysis if already done
         logging.info('Selected hit data file ' + output_file_hits_analyzed + ' already exists. Skip analysis for this file.')
     else:
         with AnalyzeRawData(raw_data_file=None, analyzed_data_file=output_file_hits) as analyze_data:
             analyze_data.create_tdc_hist = True
             analyze_data.create_tdc_pixel_hist = True
+            analyze_raw_data.use_trigger_time_stamp = True
             analyze_data.analyze_hit_table(analyzed_data_out_file=output_file_hits_analyzed)
             analyze_data.plot_histograms(scan_data_filename=output_file_hits_analyzed[:-3], analyzed_data_file=output_file_hits_analyzed)
 
