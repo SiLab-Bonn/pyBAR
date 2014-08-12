@@ -340,7 +340,7 @@ def select_hits(input_file_hits, output_file_hits, condition=None, cluster_size_
                 in_hit_file_h5.root.meta_data.copy(out_hit_file_h5.root)  # copy meta_data note to new file
 
 
-def select_hits_for_tdc_info(input_file_hits, output_file_hits, cluster_size_condition, n_cluster_condition, hit_selection_condition=None):
+def select_hits_for_tdc_info(input_file_hits, output_file_hits, cluster_size_condition, n_cluster_condition, hit_selection_condition=None, event_status_select_mask=0b0000011110011000,  event_status_condition=0b0000000100000000):
     ''' Takes a hit table and stores only hits that have a meaningful tdc info. The tdc info can be used if only one hit occurred in the event with one tdc word.
 
      Parameters
@@ -349,6 +349,19 @@ def select_hits_for_tdc_info(input_file_hits, output_file_hits, cluster_size_con
         the input file name with hits
     output_file_hits: str
         the output file name for the hits
+    cluster_size_condition: int
+        Hits of events with the given cluster size are selected.
+    n_cluster_condition: int
+        Hits of events with the given cluster number are selected.
+    hit_selection_condition: str
+        Numexpr string to select hits (e.g.: '(relative_BCID == 6) & (column == row)')
+        All hit infos can be used (column, row, ...)
+    event_status_select_mask: int
+        The mask to bitwise OR the event status number with before applying the event_status_condition
+        std. setting only selects the status bits: #BCID correct / unknown word / truncated event / tdc word / more than one TDC word / no tdc overflow
+    event_status_condition: int
+        Hit of events with the given event_status_condition are selected
+        std. setting only selects hits of events with TDC word bit set and all other event_status_select_mask bits = 0
     '''
     logging.info('Write hits of events from ' + str(input_file_hits) + ' with ' + cluster_size_condition + ' and ' + n_cluster_condition + ' into ' + str(output_file_hits))
     with tb.openFile(input_file_hits, mode="r+") as in_hit_file_h5:
@@ -363,7 +376,7 @@ def select_hits_for_tdc_info(input_file_hits, output_file_hits, cluster_size_con
             for data, index in analysis_utils.data_aligned_at_events(cluster_table, chunk_size=5000000):
                 selected_events_1 = analysis_utils.get_events_with_cluster_size(event_number=data['event_number'], cluster_size=data['size'], condition=cluster_size_condition)  # select the events with only 1 hit cluster
                 selected_events_2 = analysis_utils.get_events_with_n_cluster(event_number=data['event_number'], condition=n_cluster_condition)  # select the events with only 1 cluster
-                selected_events_3 = analysis_utils.get_events_with_error_code(event_number=data['event_number'], event_status=data['event_status'], select_mask=0b0000011110001000, condition=0b0000000100000000)  # select only complete events with one tdc word and no tdc overflow
+                selected_events_3 = analysis_utils.get_events_with_error_code(event_number=data['event_number'], event_status=data['event_status'], select_mask=event_status_select_mask, condition=event_status_condition)  # select only complete events with one tdc word and no tdc overflow
                 selected_events = selected_events_1[analysis_utils.in1d_events(selected_events_1, selected_events_2)]  # select events with the first two conditions above
                 selected_events = selected_events[analysis_utils.in1d_events(selected_events, selected_events_3)]  # select events with all conditions above
                 logging.debug('Selected ' + str(len(selected_events)) + ' events matching the TDC conditions')
