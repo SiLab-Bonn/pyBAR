@@ -680,7 +680,7 @@ class AnalyzeRawData(object):
                 tot_hist_table[:] = self.tot_hist
         if (self._create_tot_pixel_hist):
             if (self._analyzed_data_file is not None and safe_to_file):
-                self.tot_pixel_hist_array = np.swapaxes(np.reshape(a=self.tdc_pixel_hist.view(), newshape=(80, 336, 16), order='F'), 0, 1)  # make linear array to 3d array (col,row,parameter)
+                self.tot_pixel_hist_array = np.swapaxes(np.reshape(a=self.tot_pixel_hist.view(), newshape=(80, 336, 16), order='F'), 0, 1)  # make linear array to 3d array (col,row,parameter)
                 tot_pixel_hist_out = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistTotPixel', title='Tot Pixel Histogram', atom=tb.Atom.from_dtype(self.tot_pixel_hist_array.dtype), shape=self.tot_pixel_hist_array.shape, filters=self._filter_table)
                 tot_pixel_hist_out[:] = self.tot_pixel_hist_array
         if (self._create_tdc_hist):
