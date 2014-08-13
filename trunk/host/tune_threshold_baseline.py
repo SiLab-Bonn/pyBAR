@@ -119,7 +119,8 @@ class ThresholdBaselineTuning(ScanBase):
             corrected_threshold = self.register.get_global_register_value("Vthin_AltFine") + threshold_correction
 
         disabled_pixels_limit_cnt = int(disabled_pixels_limit * 336 * 80)
-        diabled_pixels = 0
+        preselected_pixels = invert_pixel_mask(self.register.get_pixel_register_value('Enable')).sum()
+        disabled_pixels = 0
 
         for reg_val in range(int(corrected_threshold), -1, -1):
             self.register.create_restore_point(name=str(reg_val))
@@ -200,15 +201,15 @@ class ThresholdBaselineTuning(ScanBase):
                     enable_mask = np.logical_and(enable_reg, invert_pixel_mask(disable_pixel_mask))
                     if np.logical_and(occ_mask > 0, enable_reg == 0).sum():
                         logging.warning('Received data from disabled pixels')
-                    #diabled_pixels += disable_pixel_mask.sum()  # can lead to wrong values if the enable reg is corrupted
-                    diabled_pixels = invert_pixel_mask(enable_mask).sum()
-                    if diabled_pixels > disabled_pixels_limit_cnt:
-                        logging.info('Limit of disabled pixels reached: %d (limit %d)... stopping scan' % (diabled_pixels, disabled_pixels_limit_cnt))
+#                     disabled_pixels += disable_pixel_mask.sum()  # can lead to wrong values if the enable reg is corrupted
+                    disabled_pixels = invert_pixel_mask(enable_mask).sum() - preselected_pixels
+                    if disabled_pixels > disabled_pixels_limit_cnt:
+                        logging.info('Limit of disabled pixels reached: %d (limit %d)... stopping scan' % (disabled_pixels, disabled_pixels_limit_cnt))
                         self.register.restore(name=str(reg_val))
                         break
                     else:
                         logging.info('Increasing threshold of %d pixel(s)' % (decrease_pixel_mask.sum(),))
-                        logging.info('Disabling %d pixel(s), total number of disabled pixel(s): %d' % (disable_pixel_mask.sum(), diabled_pixels))
+                        logging.info('Disabling %d pixel(s), total number of disabled pixel(s): %d' % (disable_pixel_mask.sum(), disabled_pixels))
                         tdac_reg[decrease_pixel_mask] -= 1  # TODO
                         self.register.set_pixel_register_value('TDAC', tdac_reg)
                         self.register.set_pixel_register_value('Enable', enable_mask)
@@ -229,7 +230,7 @@ class ThresholdBaselineTuning(ScanBase):
                         else:
                             logging.info('Found noisy pixels... repeat tuning step for Vthin_AltFine %d' % (reg_val,))
 
-            if diabled_pixels > disabled_pixels_limit_cnt:
+            if disabled_pixels > disabled_pixels_limit_cnt:
                 last_good_threshold = self.register.get_global_register_value("Vthin_AltFine")
                 last_good_tdac = self.register.get_pixel_register_value('TDAC')
                 last_good_enable_mask = self.register.get_pixel_register_value('Enable')
