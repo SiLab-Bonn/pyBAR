@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DARoots Version="1" Minor="30">
+  <FileSet Name="Block_RAM" Type="BlockSrcs" RelSrcDir="$PSRCDIR/Block_RAM">
+    <Config>
+      <Option Name="TopModule" Val="Block_RAM"/>
+      <Option Name="UseBlackboxStub" Val="1"/>
+    </Config>
+  </FileSet>
+</DARoots>
