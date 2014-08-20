@@ -670,8 +670,6 @@ def create_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, bins=
         else:
             x_max = math.ceil(hist.max())
     hist_bins = int(x_max - x_min) + 1 if bins is None else bins
-    if hist_bins > int(x_max - x_min) + 1:
-        hist_bins = int(x_max - x_min) + 1
     if hist_bins > 1:
         bin_width = (x_max - x_min) / (hist_bins - 1.0)
     else:
