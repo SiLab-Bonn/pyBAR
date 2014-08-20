@@ -383,7 +383,7 @@ def select_hits_for_tdc_info(input_file_hits, output_file_hits, cluster_size_con
                 last_word_number = analysis_utils.write_hits_in_events(hit_table_in=in_hit_file_h5.root.Hits, hit_table_out=hit_table_out, events=selected_events, start_hit_word=last_word_number, condition=hit_selection_condition)  # write the hits of the selected events into a new table
                 progress_bar.update(index)
             progress_bar.finish()
-            in_hit_file_h5.root.meta_data.copy(out_hit_file_h5.root)  # copy meta_data note to new file
+            in_hit_file_h5.root.meta_data.copy(out_hit_file_h5.root)  # copy meta_data node to new file
 
 
 def histogram_tdc_hits(scan_bases, output_pdf=None, **kwarg):
