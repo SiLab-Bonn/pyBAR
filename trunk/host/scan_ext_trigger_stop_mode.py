@@ -1,4 +1,4 @@
-"""This script uses the FE stop mode to recover all hits stored in the pixel array if a trigger is issued. 
+"""This script uses the FE stop mode to recover all hits stored in the pixel array if a trigger is issued.
 Can be used if there are correlated hits over a large time window (> 16 * 25 ns). Has the disadvantage to reduce the max trigger rate since the readout per trigger takes a rather long time.
 The FE config is:
 - Some delay until hits are processed
@@ -29,7 +29,7 @@ from daq.readout import open_raw_data_file
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
-scan_configuration = {
+local_configuration = {
     "source": "TPC",
     "trigger_mode": 0,
     "trigger_latency": 5,
@@ -48,7 +48,7 @@ scan_configuration = {
 class ExtTriggerScan(ScanBase):
     scan_id = "ext_trigger_scan_stop_mode"
 
-    def scan(self, trigger_mode=0, trigger_latency=5, trigger_delay=192, bcid_window=100, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=10000, enable_hitbus=False, enable_tdc=False, enable_all_pixel=False, **kwargs):
+    def scan(self):
         '''Scan loop
 
         Parameters
@@ -80,9 +80,6 @@ class ExtTriggerScan(ScanBase):
         enable_tdc : bool
             Enable for Hit-OR TDC (time-to-digital-converter) measurement. In this mode the Hit-Or/Hitbus output of the FEI4 has to be connected to USBpix Hit-OR input on the Single Chip Adapter Card.
         '''
-
-        self.configure_fe(col_span, row_span, enable_all_pixel, enable_hitbus, trig_latency=scan_configuration['trigger_latency'])
-
         wait_for_first_trigger = True
 
         with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_id, mode='w') as raw_data_file:
@@ -100,34 +97,34 @@ class ExtTriggerScan(ScanBase):
             stop_clock_pulse_cmd_low = self.register.get_commands("wrregister", name=["StopClkPulse"])[0]
 #             read_register = self.register.get_commands("rdregister", name=["StopClkPulse"])[0]
 
-            start_sequence = self.register_utils.concatenate_commands((self.register.get_commands("zeros", length=trigger_delay)[0],
-                                                                        stop_mode_cmd,
-                                                                        self.register.get_commands("zeros", length=20)[0],
-                                                                        stop_clock_pulse_cmd_high,  # FIXME: before confmode?
-                                                                        self.register.get_commands("zeros", length=50)[0],
-                                                                        self.register.get_commands("confmode")[0]
-                                                                        ))
+            start_sequence = self.register_utils.concatenate_commands((
+                self.register.get_commands("zeros", length=self.trigger_delay)[0],
+                stop_mode_cmd,
+                self.register.get_commands("zeros", length=20)[0],
+                stop_clock_pulse_cmd_high,  # FIXME: before confmode?
+                self.register.get_commands("zeros", length=50)[0],
+                self.register.get_commands("confmode")[0]))
 
-            stop_sequence = self.register_utils.concatenate_commands((self.register.get_commands("zeros", length=50)[0],
-                                                                        stop_clock_pulse_cmd_low,
-                                                                        self.register.get_commands("zeros", length=10)[0],
-                                                                        stop_mode_off_cmd,
-                                                                        self.register.get_commands("zeros", length=400)[0]
-                                                                        ))
+            stop_sequence = self.register_utils.concatenate_commands((
+                self.register.get_commands("zeros", length=50)[0],
+                stop_clock_pulse_cmd_low,
+                self.register.get_commands("zeros", length=10)[0],
+                stop_mode_off_cmd,
+                self.register.get_commands("zeros", length=400)[0]))
 
             # define the command sequence to read the hits of one latency count
-            one_latency_read = self.register_utils.concatenate_commands((self.register.get_commands("zeros", length=50)[0],
-                                                                        self.register.get_commands("runmode")[0],
-                                                                        self.register.get_commands("zeros", length=50)[0],
-                                                                        self.register.get_commands("lv1")[0],
-                                                                        self.register.get_commands("zeros", length=2000)[0],
-                                                                        self.register.get_commands("confmode")[0],
-                                                                        self.register.get_commands("zeros", length=1000)[0],
-                                                                        self.register.get_commands("globalpulse", width=0)[0],
-                                                                        self.register.get_commands("zeros", length=100)[0]
-                                                                        ))
+            one_latency_read = self.register_utils.concatenate_commands((
+                self.register.get_commands("zeros", length=50)[0],
+                self.register.get_commands("runmode")[0],
+                self.register.get_commands("zeros", length=50)[0],
+                self.register.get_commands("lv1")[0],
+                self.register.get_commands("zeros", length=2000)[0],
+                self.register.get_commands("confmode")[0],
+                self.register.get_commands("zeros", length=1000)[0],
+                self.register.get_commands("globalpulse", width=0)[0],
+                self.register.get_commands("zeros", length=100)[0]))
 
-            self.dut['cmd']['CMD_REPEAT'] = bcid_window
+            self.dut['cmd']['CMD_REPEAT'] = self.bcid_window
             self.dut['cmd']['START_SEQUENCE_LENGTH'] = len(start_sequence)
             self.dut['cmd']['STOP_SEQUENCE_LENGTH'] = len(stop_sequence) + 1
 
@@ -136,20 +133,20 @@ class ExtTriggerScan(ScanBase):
 
             self.register_utils.set_command(command)
 
-            self.dut['tdc_rx2']['ENABLE'] = enable_tdc
-            self.dut['tlu']['TRIGGER_MODE'] = trigger_mode
+            self.dut['tdc_rx2']['ENABLE'] = self.enable_tdc
+            self.dut['tlu']['TRIGGER_MODE'] = self.trigger_mode
             self.dut['tlu']['TRIGGER_COUNTER'] = 0
             self.dut['tlu']['EN_WRITE_TIMESTAMP'] = True
             self.dut['cmd']['EN_EXT_TRIGGER'] = True
 
-            show_trigger_message_at = 10 ** (int(math.floor(math.log10(max_triggers) - math.log10(3) / math.log10(10))))
+            show_trigger_message_at = 10 ** (int(math.floor(math.log10(self.max_triggers) - math.log10(3) / math.log10(10))))
             time_current_iteration = time.time()
             saw_no_data_at_time = time_current_iteration
             saw_data_at_time = time_current_iteration
             scan_start_time = time_current_iteration
             no_data_at_time = time_current_iteration
             time_from_last_iteration = 0
-            scan_stop_time = scan_start_time + scan_timeout
+            scan_stop_time = scan_start_time + self.scan_timeout
             current_trigger_number = 0
             last_trigger_number = 0
             while not self.stop_thread_event.wait(self.readout.readout_interval):
@@ -169,17 +166,17 @@ class ExtTriggerScan(ScanBase):
                         self.stop_thread_event.set()
                         logging.error('RX FIFO discard error(s) detected. Stopping Scan...')
                 last_trigger_number = current_trigger_number
-                if max_triggers is not None and current_trigger_number >= max_triggers:
+                if self.max_triggers is not None and current_trigger_number >= self.max_triggers:
                     logging.info('Reached maximum triggers. Stopping Scan...')
                     self.stop_thread_event.set()
-                if scan_timeout is not None and time_current_iteration > scan_stop_time:
+                if self.scan_timeout is not None and time_current_iteration > scan_stop_time:
                     logging.info('Reached maximum scan time. Stopping Scan...')
                     self.stop_thread_event.set()
                 try:
                     raw_data_file.append((self.readout.data.popleft(),))
                 except IndexError:  # no data
                     no_data_at_time = time_current_iteration
-                    if timeout_no_data is not None and not wait_for_first_trigger and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
+                    if self.timeout_no_data is not None and not wait_for_first_trigger and saw_no_data_at_time > (saw_data_at_time + self.timeout_no_data):
                         logging.info('Reached no data timeout. Stopping Scan...')
                         self.stop_thread_event.set()
                     elif not wait_for_first_trigger:
@@ -190,7 +187,7 @@ class ExtTriggerScan(ScanBase):
                 else:
                     saw_data_at_time = time_current_iteration
 
-                    if wait_for_first_trigger == True:
+                    if wait_for_first_trigger is True:
                         logging.info('Taking data...')
                         wait_for_first_trigger = False
 
@@ -201,22 +198,22 @@ class ExtTriggerScan(ScanBase):
             self.readout.stop()
             raw_data_file.append(self.readout.data)
 
-    def configure_fe(self, col_span, row_span, enable_all_pixel, enable_hitbus, trig_latency):
+    def configure(self):
         # generate mask for Enable mask
         pixel_reg = "Enable"
-        mask = make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
+        mask = make_box_pixel_mask_from_col_row(column=self.col_span, row=self.row_span)
         commands = []
         commands.extend(self.register.get_commands("confmode"))
         enable_mask = np.logical_and(mask, self.register.get_pixel_register_value(pixel_reg))
-        if enable_all_pixel:
+        if self.enable_all_pixel:
             self.register.set_pixel_register_value(pixel_reg, 1)
         else:
             self.register.set_pixel_register_value(pixel_reg, enable_mask)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
         # generate mask for Imon mask
         pixel_reg = "Imon"
-        if enable_hitbus:
-            mask = make_box_pixel_mask_from_col_row(column=col_span, row=row_span, default=1, value=0)
+        if self.enable_hitbus:
+            mask = make_box_pixel_mask_from_col_row(column=self.col_span, row=self.row_span, default=1, value=0)
             imon_mask = np.logical_or(mask, self.register.get_pixel_register_value(pixel_reg))
         else:
             imon_mask = 1
@@ -229,7 +226,7 @@ class ExtTriggerScan(ScanBase):
         pixel_reg = "C_Low"
         self.register.set_pixel_register_value(pixel_reg, 0)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
-        self.register.set_global_register_value("Trig_Lat", trig_latency)  # set trigger latency
+        self.register.set_global_register_value("Trig_Lat", self.trig_latency)  # set trigger latency
         self.register.set_global_register_value("Trig_Count", 1)  # set number of consecutive triggers to one for stop mode readout
 
         commands.extend(self.register.get_commands("wrregister", name=["Trig_Lat", "Trig_Count"]))
@@ -240,7 +237,7 @@ class ExtTriggerScan(ScanBase):
         output_file = self.scan_data_filename + "_interpreted.h5"
         with AnalyzeRawData(raw_data_file=self.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
             analyze_raw_data.create_hit_table = True
-            analyze_raw_data.n_bcid = scan_configuration['bcid_window']
+            analyze_raw_data.n_bcid = self.bcid_window
             analyze_raw_data.create_source_scan_hist = True
             analyze_raw_data.use_trigger_time_stamp = True
             analyze_raw_data.set_stop_mode = True
@@ -257,6 +254,5 @@ class ExtTriggerScan(ScanBase):
 if __name__ == "__main__":
     import configuration
     scan = ExtTriggerScan(**configuration.default_configuration)
-    scan.start(use_thread=True, **scan_configuration)
+    scan.start(run_configure=True, run_analyze=True, use_thread=True, **local_configuration)
     scan.stop()
-    scan.analyze()

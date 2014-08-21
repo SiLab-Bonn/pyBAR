@@ -28,7 +28,7 @@ class FastThresholdScan(ScanBase):
     scan_parameter_start = 0  # holding last start value (e.g. used in GDAC threshold scan)
     data_points = 10  # holding the data points already recorded
 
-    def scan(self, mask_steps=3, n_injections=100, scan_parameter_range=None, enable_mask_steps=None, scan_parameter_stepsize=2, search_distance=10, minimum_data_points=15, ignore_columns=(1, 78, 79, 80), command=None, use_enable_mask=False, **kwargs):
+    def scan(self):
         '''Scan loop
 
         Parameters
@@ -63,29 +63,29 @@ class FastThresholdScan(ScanBase):
 
         self.record_data = False  # set to true to activate data storage, so far not everything is recorded to ease data analysis
 
-        if scan_parameter_range is None or not scan_parameter_range:
+        if self.scan_parameter_range is None or not self.scan_parameter_range:
             scan_parameter_range = (0, (2 ** self.register.get_global_register_objects(name=[scan_parameter])[0].bitlength))
         logging.info("Scanning %s from %d to %d" % (scan_parameter, scan_parameter_range[0], scan_parameter_range[1]))
         self.scan_parameter_value = scan_parameter_range[0]  # set to start value
-        self.search_distance = search_distance
+        self.search_distance = self.search_distance
         self.data_points = 0  # counter variable to count the data points already recorded, have to be at least minimum_data_ponts
 
         # calculate DCs to scan from the columns to ignore
         enable_double_columns = range(0, 40)
-        if 1 in ignore_columns:
+        if 1 in self.ignore_columns:
             enable_double_columns.remove(0)
-        if set((78, 79, 80)).issubset(ignore_columns):
+        if set((78, 79, 80)).issubset(self.ignore_columns):
             enable_double_columns.remove(39)
         for double_column in range(1, 39):
-            if set((double_column * 2, (double_column * 2) + 1)).issubset(ignore_columns):
+            if set((double_column * 2, (double_column * 2) + 1)).issubset(self.ignore_columns):
                 enable_double_columns.remove(double_column)
         logging.info("Use DCs: %s" % str(enable_double_columns))
 
         self.select_arr_columns = range(0, 80)
-        for column in ignore_columns:
+        for column in self.ignore_columns:
             self.select_arr_columns.remove(column - 1)
 
-        self.n_injections = n_injections
+        self.n_injections = self.n_injections
 
         with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_id, scan_parameters=[scan_parameter]) as raw_data_file:
             while self.scan_parameter_value <= scan_parameter_range[1]:  # scan as long as scan parameter is smaller than defined maximum
@@ -102,12 +102,12 @@ class FastThresholdScan(ScanBase):
 
                 self.readout.start()
 
-                cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0] if command is None else command
-                self.scan_loop(cal_lvl1_command, repeat_command=self.n_injections, use_delay=True, mask_steps=mask_steps, enable_mask_steps=enable_mask_steps, enable_double_columns=enable_double_columns, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=["Enable", "C_Low", "C_High"], restore_shift_masks=False, mask=invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if use_enable_mask else None, double_column_correction=False)
+                cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0] if self.command is None else self.command
+                self.scan_loop(cal_lvl1_command, repeat_command=self.n_injections, use_delay=True, mask_steps=self.mask_steps, enable_mask_steps=self.enable_mask_steps, enable_double_columns=enable_double_columns, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=["Enable", "C_Low", "C_High"], restore_shift_masks=False, mask=invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if self.use_enable_mask else None, double_column_correction=False)
 
                 self.readout.stop()
 
-                if not self.start_condition_triggered or self.data_points > minimum_data_points:  # speed up, only create histograms when needed. Python is much too slow here.
+                if not self.start_condition_triggered or self.data_points > self.minimum_data_points:  # speed up, only create histograms when needed. Python is much too slow here.
                     if not self.start_condition_triggered and not self.record_data:
                         logging.info('Testing for start condition: %s %d' % (scan_parameter, self.scan_parameter_value))
                     if not self.stop_condition_triggered and self.record_data:
@@ -117,7 +117,7 @@ class FastThresholdScan(ScanBase):
 
                 # start condition is met for the first time
                 if self.start_condition_triggered and not self.record_data:
-                    self.scan_parameter_value = self.scan_parameter_value - self.search_distance + scan_parameter_stepsize
+                    self.scan_parameter_value = self.scan_parameter_value - self.search_distance + self.scan_parameter_stepsize
                     if self.scan_parameter_value < 0:
                         self.scan_parameter_value = 0
                     logging.info('Starting threshold scan at %s %d' % (scan_parameter, self.scan_parameter_value))
@@ -139,7 +139,7 @@ class FastThresholdScan(ScanBase):
                 if not self.start_condition_triggered:
                     self.scan_parameter_value = self.scan_parameter_value + self.search_distance
                 else:
-                    self.scan_parameter_value = self.scan_parameter_value + scan_parameter_stepsize
+                    self.scan_parameter_value = self.scan_parameter_value + self.scan_parameter_stepsize
 
             if self.scan_parameter_value >= scan_parameter_range[1]:
                 logging.warning("Reached maximum of scan parameter range... stopping scan" % (scan_parameter_range[1],))
@@ -178,6 +178,5 @@ class FastThresholdScan(ScanBase):
 if __name__ == "__main__":
     import configuration
     scan = FastThresholdScan(**configuration.default_configuration)
-    scan.start(use_thread=True, **local_configuration)
+    scan.start(run_configure=True, run_analyze=True, use_thread=True, **local_configuration)
     scan.stop()
-    scan.analyze()

@@ -29,7 +29,47 @@ local_configuration = {
 class NoiseOccupancyScan(ScanBase):
     scan_id = "noise_occupancy_tuning"
 
-    def scan(self, cfg_name='', occupancy_limit=10 ** (-5), triggers=10000000, trig_count=1, disable_for_mask=['Enable'], enable_for_mask=['Imon'], overwrite_mask=False, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, **kwargs):
+    def configure(self):
+        if self.trig_count == 0:
+            self.consecutive_lvl1 = (2 ** self.register.get_global_register_objects(name=['Trig_Count'])[0].bitlength)
+        else:
+            self.consecutive_lvl1 = self.trig_count
+        if self.occupancy_limit * self.triggers * self.consecutive_lvl1 < 1.0:
+            logging.warning('Number of triggers too low for given occupancy limit. Any noise hit will lead to a masked pixel.')
+
+        commands = []
+        commands.extend(self.register.get_commands("confmode"))
+        mask = make_box_pixel_mask_from_col_row(column=self.col_span, row=self.row_span)  # 1 for selected columns, else 0
+        for pixel_reg in self.disable_for_mask:  # enabled pixels set to 1
+            if self.overwrite_mask:
+                pixel_mask = mask
+            else:
+                pixel_mask = np.logical_and(mask, self.register.get_pixel_register_value(pixel_reg))
+            self.register.set_pixel_register_value(pixel_reg, pixel_mask)
+            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
+        mask = make_box_pixel_mask_from_col_row(column=self.col_span, row=self.row_span, default=1, value=0)  # 0 for selected columns, else 1
+        for pixel_reg in self.enable_for_mask:  # disabled pixels set to 1
+            if self.overwrite_mask:
+                pixel_mask = mask
+            else:
+                pixel_mask = np.logical_or(mask, self.register.get_pixel_register_value(pixel_reg))
+            self.register.set_pixel_register_value(pixel_reg, pixel_mask)
+            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
+        # disable C_inj mask
+        pixel_reg = "C_High"
+        self.register.set_pixel_register_value(pixel_reg, 0)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
+        pixel_reg = "C_Low"
+        self.register.set_pixel_register_value(pixel_reg, 0)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
+#         self.register.set_global_register_value("Trig_Lat", 232)  # set trigger latency
+        self.register.set_global_register_value("Trig_Count", self.trig_count)  # set number of consecutive triggers
+        commands.extend(self.register.get_commands("wrregister", name=["Trig_Count"]))
+        # setting FE into runmode
+        commands.extend(self.register.get_commands("runmode"))
+        self.register_utils.send_commands(commands)
+
+    def scan(self):
         '''Masking pixels with occupancy above certain limit.
 
         Parameters
@@ -62,47 +102,6 @@ class NoiseOccupancyScan(ScanBase):
         The total number of trigger is triggers * consecutive_lvl1.
         Please note that a high trigger rate leads to an effective lower threshold.
         '''
-        # create restore point
-        self.register.create_restore_point()
-        if trig_count == 0:
-            consecutive_lvl1 = (2 ** self.register.get_global_register_objects(name=['Trig_Count'])[0].bitlength)
-        else:
-            consecutive_lvl1 = trig_count
-        if occupancy_limit * triggers * consecutive_lvl1 < 1.0:
-            logging.warning('Number of triggers too low for given occupancy limit. Any noise hit will lead to a masked pixel.')
-
-        commands = []
-        commands.extend(self.register.get_commands("confmode"))
-        mask = make_box_pixel_mask_from_col_row(column=col_span, row=row_span)  # 1 for selected columns, else 0
-        for pixel_reg in disable_for_mask:  # enabled pixels set to 1
-            if overwrite_mask:
-                pixel_mask = mask
-            else:
-                pixel_mask = np.logical_and(mask, self.register.get_pixel_register_value(pixel_reg))
-            self.register.set_pixel_register_value(pixel_reg, pixel_mask)
-            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
-        mask = make_box_pixel_mask_from_col_row(column=col_span, row=row_span, default=1, value=0)  # 0 for selected columns, else 1
-        for pixel_reg in enable_for_mask:  # disabled pixels set to 1
-            if overwrite_mask:
-                pixel_mask = mask
-            else:
-                pixel_mask = np.logical_or(mask, self.register.get_pixel_register_value(pixel_reg))
-            self.register.set_pixel_register_value(pixel_reg, pixel_mask)
-            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
-        # disable C_inj mask
-        pixel_reg = "C_High"
-        self.register.set_pixel_register_value(pixel_reg, 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
-        pixel_reg = "C_Low"
-        self.register.set_pixel_register_value(pixel_reg, 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
-#         self.register.set_global_register_value("Trig_Lat", 232)  # set trigger latency
-        self.register.set_global_register_value("Trig_Count", trig_count)  # set number of consecutive triggers
-        commands.extend(self.register.get_commands("wrregister", name=["Trig_Count"]))
-        # setting FE into runmode
-        commands.extend(self.register.get_commands("runmode"))
-        self.register_utils.send_commands(commands)
-
         self.col_arr = np.array([], dtype=np.dtype('>u1'))
         self.row_arr = np.array([], dtype=np.dtype('>u1'))
 
@@ -113,9 +112,9 @@ class NoiseOccupancyScan(ScanBase):
             command_delay = 500  # <100kHz
             lvl1_command = self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", length=command_delay)[0]
             commnd_lenght = lvl1_command.length()
-            logging.info('Estimated scan time: %ds' % int(commnd_lenght * 25 * (10 ** -9) * triggers))
+            logging.info('Estimated scan time: %ds' % int(commnd_lenght * 25 * (10 ** -9) * self.triggers))
             logging.info('Please stand by...')
-            self.register_utils.send_command(lvl1_command, repeat=triggers, wait_for_finish=False, set_length=True, clear_memory=False)
+            self.register_utils.send_command(lvl1_command, repeat=self.triggers, wait_for_finish=False, set_length=True, clear_memory=False)
 
             wait_for_first_data = False
             last_iteration = time.time()
@@ -130,17 +129,15 @@ class NoiseOccupancyScan(ScanBase):
                     col_arr_tmp, row_arr_tmp = convert_data_array(data_array_from_data_dict_iterable(data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)
                     self.col_arr = np.concatenate((self.col_arr, col_arr_tmp))
                     self.row_arr = np.concatenate((self.row_arr, row_arr_tmp))
-                    #logging.info('data words')
                 except IndexError:  # no data
-                    #logging.info('no data words')
                     no_data_at_time = last_iteration
                     if self.register_utils.is_ready:
                         self.stop_thread_event.set()
-                        logging.info('Finished sending %d triggers' % triggers)
-                    elif wait_for_first_data is False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
+                        logging.info('Finished sending %d triggers' % self.triggers)
+                    elif wait_for_first_data is False and saw_no_data_at_time > (saw_data_at_time + self.timeout_no_data):
                         logging.info('Reached no data timeout. Stopping Scan...')
                         self.stop_thread_event.set()
-                    elif wait_for_first_data == False:
+                    elif wait_for_first_data is False:
                         saw_no_data_at_time = no_data_at_time
                     elif self.reaout_utils.is_ready:
                         self.stop_thread_event.set()
@@ -155,37 +152,34 @@ class NoiseOccupancyScan(ScanBase):
 
             self.readout.stop()
 
-        self.register.restore()
-
+    def analyze(self):
         occ_hist, _, _ = np.histogram2d(self.col_arr, self.row_arr, bins=(80, 336), range=[[1, 80], [1, 336]])
 
         self.occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
         # noisy pixels are set to 1
-        self.occ_mask[occ_hist > occupancy_limit * triggers * consecutive_lvl1] = 1
+        self.occ_mask[occ_hist > self.occupancy_limit * self.triggers * self.consecutive_lvl1] = 1
         # make inverse
         self.inv_occ_mask = invert_pixel_mask(self.occ_mask)
-        self.disable_for_mask = disable_for_mask
-        if overwrite_mask:
-            for mask in disable_for_mask:
+        self.disable_for_mask = self.disable_for_mask
+        if self.overwrite_mask:
+            for mask in self.disable_for_mask:
                 self.register.set_pixel_register_value(mask, self.inv_occ_mask)
         else:
-            for mask in disable_for_mask:
+            for mask in self.disable_for_mask:
                 enable_mask = np.logical_and(self.inv_occ_mask, self.register.get_pixel_register_value(mask))
                 self.register.set_pixel_register_value(mask, enable_mask)
 
-        self.enable_for_mask = enable_for_mask
-        if overwrite_mask:
-            for mask in enable_for_mask:
+        self.enable_for_mask = self.enable_for_mask
+        if self.overwrite_mask:
+            for mask in self.enable_for_mask:
                 self.register.set_pixel_register_value(mask, self.occ_mask)
         else:
-            for mask in enable_for_mask:
+            for mask in self.enable_for_mask:
                 disable_mask = np.logical_or(self.occ_mask, self.register.get_pixel_register_value(mask))
                 self.register.set_pixel_register_value(mask, disable_mask)
 
 #         plot_occupancy(make_occupancy_hist(self.col_arr, self.row_arr), z_max=None, filename=self.scan_data_filename + "_occupancy.pdf")
-        self.save_configuration(scan.cfg_name)
 
-    def analyze(self):
         from analysis.analyze_raw_data import AnalyzeRawData
         output_file = self.scan_data_filename + "_interpreted.h5"
         with AnalyzeRawData(raw_data_file=self.scan_data_filename, analyzed_data_file=output_file, create_pdf=True) as analyze_raw_data:
@@ -209,6 +203,6 @@ class NoiseOccupancyScan(ScanBase):
 if __name__ == "__main__":
     import configuration
     scan = NoiseOccupancyScan(**configuration.default_configuration)
-    scan.start(use_thread=False, **local_configuration)
+    scan.start(run_configure=True, run_analyze=True, use_thread=True, restore_configuration=True, **local_configuration)
     scan.stop()
-    scan.analyze()
+    scan.save_configuration(scan.cfg_name)

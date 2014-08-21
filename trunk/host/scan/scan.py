@@ -147,13 +147,14 @@ class ScanBase(object):
         self.use_thread = None
         self.restore_configuration = None
 
-        # get scan args
+        # get device configuration
         frame = inspect.currentframe()
         args, _, _, local = inspect.getargvalues(frame)
         self._device_configuration = {key: local[key] for key in args if key != 'self' and key != 'args' and key != 'kwargs'}
         self._device_configuration["register"] = self.register
         self._device_configuration["dut"] = self.dut
 
+        self._run_configuration = {}
         self._scan_configuration = {}
 
     @property
@@ -165,10 +166,14 @@ class ScanBase(object):
         return self._device_configuration.copy()
 
     @property
+    def run_configuration(self):
+        return self._run_configuration.copy()
+
+    @property
     def scan_configuration(self):
         return self._scan_configuration.copy()
 
-    def start(self, configure=True, restore_configuration=False, use_thread=False, do_global_reset=True, **kwargs):  # TODO: in Python 3 use def func(a,b,*args,kw1=None,**kwargs)
+    def start(self, run_configure=True, run_analyze=False, restore_configuration=False, use_thread=False, do_global_reset=True, **kwargs):  # TODO: in Python 3 use def func(a,b,*args,kw1=None,**kwargs)
         '''Starting scan.
 
         Parameters
@@ -187,11 +192,21 @@ class ScanBase(object):
         self.scan_is_running = True
         self.scan_aborted = False
 
-        # get scan loop args
+        # get run configuration
         frame = inspect.currentframe()
         args, _, _, local = inspect.getargvalues(frame)
-        self._scan_configuration = {key: local[key] for key in args if key is not 'self'}
-        self._scan_configuration.update(kwargs)
+        self._run_configuration = {key: local[key] for key in args if key is not 'self'}
+
+        # get scan configuration
+        self._scan_configuration = kwargs
+        # check for additional arguments which only exist as a function parameter
+        args, _, _, defaults = inspect.getargspec(self.scan)
+        if defaults:
+            args = args[-len(defaults):]
+            diff = set(args).difference(self.scan_configuration)
+            args_dict = dict(zip(args, defaults))
+            for item in diff:
+                self._scan_configuration[item] = args_dict[item]
 
         self._write_scan_number()
 
@@ -200,8 +215,6 @@ class ScanBase(object):
 
         if self.scan_configuration:
             self._save_configuration_dict('scan_configuration', self.scan_configuration)
-
-        self.register.save_configuration_to_hdf5(self.scan_data_filename)  # save scan config at the beginning, will be overwritten after successfull stop of scan loop
 
         self.use_thread = use_thread
         if self.scan_thread is not None:
@@ -212,11 +225,15 @@ class ScanBase(object):
             self.register_utils.reset_bunch_counter()
             self.register_utils.reset_event_counter()
         self.register_utils.reset_service_records()
-        if configure:
+        if self.run_configure:
             self.register_utils.configure_all()
         self.restore_configuration = restore_configuration
         if self.restore_configuration:
             self.register.create_restore_point(name=self.scan_id)
+        if self.run_configure:
+            self.configure()
+        # save scan config to HDF5 file after running configure
+        self.register.save_configuration_to_hdf5(self.scan_data_filename)  # save scan config at the beginning
 
         logging.info('Resetting RX')
         if self.dut.name == 'pyBAR':
@@ -238,13 +255,13 @@ class ScanBase(object):
 
         logging.info('Starting scan %s with ID %d (output path: %s)' % (self.scan_id, self.scan_number, self.scan_data_output_path))
         if use_thread:
-            self.scan_thread = Thread(target=self.scan, name='%s with ID %d' % (self.scan_id, self.scan_number), kwargs=self._scan_configuration)  # , args=kwargs)
+            self.scan_thread = Thread(target=self.scan, name='%s with ID %d' % (self.scan_id, self.scan_number), kwargs=None)  # kwargs=self._scan_configuration)
             self.scan_thread.daemon = True  # Abruptly close thread when closing main thread. Resources may not be released properly.
             self.scan_thread.start()
             logging.info('Press Ctrl-C to stop scan loop')
             signal.signal(signal.SIGINT, self._signal_handler)
         else:
-            self.scan(**self._scan_configuration)
+            self.scan()  # **self._scan_configuration)
 
     def stop(self, timeout=None):
         '''Stopping scan. Cleaning up of variables and joining thread (if existing).
@@ -281,19 +298,13 @@ class ScanBase(object):
             self.scan_thread.join()  # SIGINT will be suppressed here
             self.scan_thread = None
         self.use_thread = None
-        # do the following a second time
-        args, _, _, defaults = inspect.getargspec(self.scan)
-        if defaults:
-            args = args[-len(defaults):]
-            diff = set(args).difference(self.scan_configuration)
-            args_dict = dict(zip(args, defaults))
-            for item in diff:
-                self._scan_configuration[item] = args_dict[item]
+
         if self.device_configuration:
             self._save_configuration_dict('device_configuration', self.device_configuration)
+        if self.run_configuration:
+            self._save_configuration_dict('run_configuration', self.run_configuration)
         if self.scan_configuration:
             self._save_configuration_dict('scan_configuration', self.scan_configuration)
-        self.register.save_configuration_to_hdf5(self.scan_data_filename)  # save the config used last in the scan loop
 
         if self.restore_configuration:
             logging.info('Restoring FE configuration')
@@ -305,6 +316,9 @@ class ScanBase(object):
         self.dut['USB'].close()  # free USB resources
         self._write_scan_status(self.scan_aborted)
         self.scan_is_running = False
+
+        if self.run_analyze:
+            self.analyze()
 
     def _write_scan_number(self):
         scan_numbers = {}
@@ -328,7 +342,7 @@ class ScanBase(object):
             for value in dict.itervalues(scan_numbers):
                 f.write(value)
         self.lock.release()
-        self.scan_data_filename = os.path.join(self.scan_data_output_path, ((self.module_id + "_" + self.scan_id) if self.module_id else self.scan_id) + "_" + str(self.scan_number))
+        self.scan_data_filename = os.path.join(self.scan_data_output_path, ((self.module_id + "_") if self.module_id else "") + str(self.scan_number) + "_" + self.scan_id)
 
     def _write_scan_status(self, aborted=False):
         scan_numbers = {}
@@ -614,7 +628,6 @@ class ScanBase(object):
                     eol_function()
                 self.dut['cmd']['START_SEQUENCE_LENGTH'] = 0
 
-
         # restoring default values
         self.register.restore(name=restore_point_name)
         self.register_utils.configure_global()  # always restore global configuration
@@ -625,11 +638,26 @@ class ScanBase(object):
             commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name="EnableDigInj"))
             self.register_utils.send_commands(commands)
 
+    def configure(self, **kwargs):
+        '''Implementation of the scan configuration.
+
+        Will be executed before starting the scan routine.
+        '''
+        pass
+
     def scan(self, **kwargs):
+        '''Implementation of the scan routine.
+
+        Do you want to write your own scan? Here is the place to begin.
+        '''
         raise NotImplementedError('scan.scan() not implemented')
 
     def analyze(self, **kwargs):
-        raise NotImplementedError('scan.analyze() not implemented')
+        '''Implementation of scan data processing.
+
+        Will be executed after finishing the scan routine.
+        '''
+        pass
 
     def _signal_handler(self, signum, frame):
         signal.signal(signal.SIGINT, signal.SIG_DFL)  # setting default handler... pressing Ctrl-C a second time will kill application
@@ -653,7 +681,7 @@ class ScanBase(object):
 
         # append to file if existing otherwise create new one
 #         raw_data_file_h5 = tb.openFile(h5_file, mode="a", title=((self.module_id + "_" + self.scan_id) if self.module_id else self.scan_id) + "_" + str(self.scan_number), **kwargs)
-        with tb.openFile(h5_file, mode="a", title=((self.module_id + "_" + self.scan_id) if self.module_id else self.scan_id) + "_" + str(self.scan_number), **kwargs) as raw_data_file_h5:
+        with tb.openFile(h5_file, mode="a", title=((self.module_id + "_") if self.module_id else "") + str(self.scan_number) + "_" + self.scan_id, **kwargs) as raw_data_file_h5:
 #             scan_param_descr = generate_scan_configuration_description(dict.iterkeys(configuration))
             filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
             try:
@@ -697,17 +725,12 @@ class ScanBase(object):
         '''
         if name in self._device_configuration:
             return self._device_configuration[name]
+        elif name in self._run_configuration:
+            return self._run_configuration[name]
         elif name in self._scan_configuration:
             return self._scan_configuration[name]
         else:
-            args, _, _, defaults = inspect.getargspec(self.scan)
-            if defaults:
-                args = args[-len(defaults):]
-            if name in args:
-                pos = args.index(name)
-                return defaults[pos]
-            else:
-                raise AttributeError("%r object has no attribute %r" % (self.__class__, name))
+            raise AttributeError("%r object has no attribute %r" % (self.__class__, name))
 
 
 class NoSyncError(Exception):

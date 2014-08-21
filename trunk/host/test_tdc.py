@@ -27,10 +27,10 @@ class TdcTest(ScanBase):
         except:
             logging.error('No device found ?!')
             raise
-        if 'Agilent Technologies,33250A' not in self.pulser.ask("*IDN?"):  # check if the correct pulserlloscope was found
+        if 'Agilent Technologies,33250A' not in self.pulser.ask("*IDN?"):  # check if the correct pulser is connected
             raise RuntimeError('Reading of histogram data from ' + self.pulser.ask("*IDN?") + ' is not supported')
         logging.info('Initialized pulser')
-        self.pulser.write('PULS:PER 1E-6')  # set fast aquisition
+        self.pulser.write('PULS:PER 1E-6')  # set fast acquisition
         self.pulser.write('PULS:WIDT 10E-9')
 
     def start_pulser(self, pulse_width=100, n_pulses=100):
@@ -38,8 +38,8 @@ class TdcTest(ScanBase):
         self.pulser.write('BURS:NCYC ' + str(n_pulses))
         self.pulser.write('*TRG')
 
-    def scan(self, GPIB_prim_address=1, n_pulses=100, **kwargs):
-        self.init_pulser(GPIB_prim_address)
+    def scan(self):
+        self.init_pulser(self.GPIB_prim_address)
 
         self.dut['tdc_rx2']['ENABLE'] = True
         self.dut['tdc_rx2']['EN_ARMING'] = False
@@ -52,12 +52,12 @@ class TdcTest(ScanBase):
         self.readout.read_data()  # clear data
         for pulse_width in [i for j in (range(10, 100, 5), range(100, 400, 10)) for i in j]:
             logging.info('Test TDC for a pulse with of %d' % pulse_width)
-            self.start_pulser(pulse_width, n_pulses)
+            self.start_pulser(pulse_width, self.n_pulses)
             time.sleep(1)
             data = self.readout.read_data()
             if len(is_tdc_data(data)) != 0:
-                if len(is_tdc_data(data)) != n_pulses:
-                    logging.warning('Too less TDC words %d instead of %d ' % (len(is_tdc_data(data)), n_pulses))
+                if len(is_tdc_data(data)) != self.n_pulses:
+                    logging.warning('Too less TDC words %d instead of %d ' % (len(is_tdc_data(data)), self.n_pulses))
                 tdc_values = np.bitwise_and(data[is_tdc_data(data)], 0x00000FFF)
                 tdc_counter = np.bitwise_and(data[is_tdc_data(data)], 0x0FFFF000)
                 tdc_counter = np.right_shift(tdc_counter, 12)
@@ -73,12 +73,12 @@ class TdcTest(ScanBase):
             else:
                 logging.warning('No TDC words, check connection!')
 
-        plotting.plot_scatter(x, y, y_err, title='FPGA TDC linearity, ' + str(n_pulses) + ' each', x_label='pulse width [ns]', y_label='TDC value', filename=None)
-        plotting.plot_scatter(x, y_err, title='FPGA TDC RMS, ' + str(n_pulses) + ' each', x_label='pulse width [ns]', y_label='TDC RMS', filename=None)
+        plotting.plot_scatter(x, y, y_err, title='FPGA TDC linearity, ' + str(self.n_pulses) + ' each', x_label='pulse width [ns]', y_label='TDC value', filename=None)
+        plotting.plot_scatter(x, y_err, title='FPGA TDC RMS, ' + str(self.n_pulses) + ' each', x_label='pulse width [ns]', y_label='TDC RMS', filename=None)
         plotting.plot_tdc_counter(tdc_hist, title='All TDC values', filename=None)
 
 if __name__ == "__main__":
     import configuration
     scan = TdcTest(**configuration.default_configuration)
-    scan.start(**local_configuration)
+    scan.start(run_configure=True, run_analyze=True, use_thread=False, **local_configuration)
     scan.stop()

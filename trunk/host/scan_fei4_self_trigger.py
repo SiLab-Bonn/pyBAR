@@ -23,7 +23,7 @@ local_configuration = {
 class FEI4SelfTriggerScan(ScanBase):
     scan_id = "fei4_self_trigger_scan"
 
-    def scan(self, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=1 * 60, trig_latency=239, trig_count=4, **kwargs):
+    def scan(self):
         '''Scan loop
 
         Parameters
@@ -41,21 +41,18 @@ class FEI4SelfTriggerScan(ScanBase):
         trig_count : int
             FE global register Trig_Count.
         '''
-
-        self.configure_fe(col_span, row_span, trig_latency, trig_count)
-
         with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_id) as raw_data_file:
             self.readout.start()
             self.set_self_trigger(True)
             wait_for_first_data = True
-            show_trigger_message_at = 10 ** (int(math.floor(math.log10(scan_timeout) - math.log10(3) / math.log10(10))))
+            show_trigger_message_at = 10 ** (int(math.floor(math.log10(self.scan_timeout) - math.log10(3) / math.log10(10))))
             time_current_iteration = time.time()
             saw_no_data_at_time = time_current_iteration
             saw_data_at_time = time_current_iteration
             scan_start_time = time_current_iteration
             no_data_at_time = time_current_iteration
             time_from_last_iteration = 0
-            scan_stop_time = scan_start_time + scan_timeout
+            scan_stop_time = scan_start_time + self.scan_timeout
             while not self.stop_thread_event.wait(self.readout.readout_interval):
                 time_last_iteration = time_current_iteration
                 time_current_iteration = time.time()
@@ -71,17 +68,17 @@ class FEI4SelfTriggerScan(ScanBase):
                     if any(self.readout.get_rx_fifo_discard_count()):
                         self.stop_thread_event.set()
                         logging.error('RX FIFO discard error(s) detected. Stopping Scan...')
-                if scan_timeout is not None and time_current_iteration > scan_stop_time:
+                if self.scan_timeout is not None and time_current_iteration > scan_stop_time:
                     logging.info('Reached maximum scan time. Stopping Scan...')
                     self.stop_thread_event.set()
                 try:
                     raw_data_file.append((self.readout.data.popleft(),))
                 except IndexError:  # no data
                     no_data_at_time = time_current_iteration
-                    if timeout_no_data is not None and wait_for_first_data == False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
+                    if self.timeout_no_data is not None and wait_for_first_data is False and saw_no_data_at_time > (saw_data_at_time + self.timeout_no_data):
                         logging.info('Reached no data timeout. Stopping Scan...')
                         self.stop_thread_event.set()
-                    elif wait_for_first_data == False:
+                    elif wait_for_first_data is False:
                         saw_no_data_at_time = no_data_at_time
 
                     if no_data_at_time > (saw_data_at_time + 10):
@@ -89,7 +86,7 @@ class FEI4SelfTriggerScan(ScanBase):
                 else:
                     saw_data_at_time = time_current_iteration
 
-                    if wait_for_first_data == True:
+                    if wait_for_first_data is True:
                         logging.info('Taking data...')
                         wait_for_first_data = False
 
@@ -98,10 +95,10 @@ class FEI4SelfTriggerScan(ScanBase):
 
             raw_data_file.append(self.readout.data)
 
-    def configure_fe(self, col_span, row_span, trig_latency, trig_count):
+    def configure(self):
         # generate ROI mask for Enable mask
         pixel_reg = "Enable"
-        mask = make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
+        mask = make_box_pixel_mask_from_col_row(column=self.col_span, row=self.row_span)
         commands = []
         commands.extend(self.register.get_commands("confmode"))
         enable_mask = np.logical_and(mask, self.register.get_pixel_register_value(pixel_reg))
@@ -119,14 +116,14 @@ class FEI4SelfTriggerScan(ScanBase):
         self.register.set_pixel_register_value(pixel_reg, 0)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
         # enable GateHitOr that enables FE self-trigger mode
-        self.register.set_global_register_value("Trig_Lat", trig_latency)  # set trigger latency, this latency sets the hits at the first relative BCID bins
-        self.register.set_global_register_value("Trig_Count", trig_count)  # set number of consecutive triggers
+        self.register.set_global_register_value("Trig_Lat", self.trig_latency)  # set trigger latency, this latency sets the hits at the first relative BCID bins
+        self.register.set_global_register_value("Trig_Count", self.trig_count)  # set number of consecutive triggers
         commands.extend(self.register.get_commands("wrregister", name=["Trig_Lat", "Trig_Count"]))
         # send commands
         self.register_utils.send_commands(commands)
 
     def set_self_trigger(self, enable=True):
-        logging.info('%s FEI4 self-trigger' % ('Enable' if enable == True else "Disable"))
+        logging.info('%s FEI4 self-trigger' % ('Enable' if enable is True else "Disable"))
         commands = []
         commands.extend(self.register.get_commands("confmode"))
         self.register.set_global_register_value("GateHitOr", 1 if enable else 0)  # enable FE self-trigger mode
@@ -151,6 +148,5 @@ class FEI4SelfTriggerScan(ScanBase):
 if __name__ == "__main__":
     import configuration
     scan = FEI4SelfTriggerScan(**configuration.default_configuration)
-    scan.start(use_thread=True, **local_configuration)
+    scan.start(run_configure=True, run_analyze=True, use_thread=True, **local_configuration)
     scan.stop()
-    scan.analyze()

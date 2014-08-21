@@ -20,11 +20,11 @@ local_configuration = {
 class ExtInjScan(ScanBase):
     scan_id = "ext_injection_scan"
 
-    def scan(self, mask_steps=6, repeat_command=1000, enable_double_columns=None, **kwargs):
+    def scan(self):
         self.readout.start()
 
-        cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", mask_steps=mask_steps)[0]
-        self.scan_loop(cal_lvl1_command, repeat_command=repeat_command, mask_steps=mask_steps, enable_mask_steps=None, enable_double_columns=enable_double_columns, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=False, mask=None)
+        cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", mask_steps=self.mask_steps)[0]
+        self.scan_loop(cal_lvl1_command, repeat_command=self.repeat_command, mask_steps=self.mask_steps, enable_mask_steps=None, enable_double_columns=self.enable_double_columns, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=False, mask=None)
 
         self.readout.stop()
 
@@ -44,6 +44,5 @@ class ExtInjScan(ScanBase):
 if __name__ == "__main__":
     import configuration
     scan = ExtInjScan(**configuration.default_configuration)
-    scan.start(use_thread=False, **local_configuration)
+    scan.start(run_configure=True, run_analyze=True, use_thread=False, **local_configuration)
     scan.stop()
-    scan.analyze()

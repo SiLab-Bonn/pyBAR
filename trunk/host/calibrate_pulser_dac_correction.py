@@ -51,7 +51,6 @@ class PulserDacCorrectionCalibration(ThresholdScan):
 if __name__ == "__main__":
     import configuration
     scan = PulserDacCorrectionCalibration(**configuration.default_configuration)
-    scan.start(use_thread=True, restore_configuration=True, **local_configuration)
+    scan.start(run_configure=True, run_analyze=True, use_thread=True, restore_configuration=True, **local_configuration)
     scan.stop()
-    scan.analyze()
     scan.save_configuration(scan.cfg_name)

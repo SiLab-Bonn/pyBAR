@@ -42,22 +42,22 @@ class PlsrDacScan(ScanBase):
         commands.extend(self.register.get_commands("wrregister", name=['colpr_addr', 'colpr_mode', 'ExtAnaCalSW']))
         self.register_utils.send_commands(commands)
 
-    def scan(self, multimeter_device_config, colpr_addr, fit_range, scan_parameter='PlsrDAC', plsr_dac_steps=range(0, 1024, 93), **kwarg):
-        self.fit_range = fit_range
-        multimeter_device = self.init_multimeter_device(multimeter_device_config)
+    def scan(self):
+        self.fit_range = self.fit_range
+        multimeter_device = self.init_multimeter_device(self.multimeter_device_config)
 
         self.register.create_restore_point()
         self.register_utils.configure_all()
-        self.route_vcal_to_pin(colpr_addr)
+        self.route_vcal_to_pin(self.colpr_addr)
 
-        self.data = np.zeros(shape=(len(plsr_dac_steps), 3))  # data array with the measured values
+        self.data = np.zeros(shape=(len(self.plsr_dac_steps), 3))  # data array with the measured values
 
         multimeter_device.set_voltage(0, 'mV')  # better save than sorry
         multimeter_device.enable_output(True)
 
-        for index, plsr_dac in enumerate(plsr_dac_steps):
+        for index, plsr_dac in enumerate(self.plsr_dac_steps):
             logging.info('Set Plsr DAC to ' + str(plsr_dac))
-            self.set_scan_parameter(scan_parameter, plsr_dac)
+            self.set_scan_parameter(self.scan_parameter, plsr_dac)
             voltage, voltage_error = multimeter_device.get_voltage(unit='mV', with_error=True)
             self.data[index] = (plsr_dac, voltage, voltage_error)
             logging.info('Measure (%f +- %f) mV ' % (voltage, voltage_error))
@@ -92,6 +92,5 @@ class PlsrDacScan(ScanBase):
 if __name__ == "__main__":
     import configuration
     scan = PlsrDacScan(**configuration.default_configuration)
-    scan.start(use_thread=False, **local_configuration)
+    scan.start(run_configure=True, run_analyze=True, use_thread=False, **local_configuration)
     scan.stop()
-    scan.analyze()

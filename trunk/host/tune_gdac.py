@@ -62,12 +62,12 @@ class GdacTune(ScanBase):
     def set_n_injections(self, n_injections=50):
         self.n_injections = n_injections
 
-    def scan(self, target_threshold, gdac_tune_bits=range(7, -1, -1), n_injections=50, abort_precision_occ=2, enable_mask_steps=[0], mask_steps=3, plots_filename=None, plot_intermediate_steps=False, **kwargs):
+    def scan(self):
         #  set scan settings
-        self.set_target_threshold(target_threshold)
-        self.set_gdac_tune_bits(gdac_tune_bits)
-        self.set_n_injections(n_injections)
-        self.set_abort_precision(abort_precision_occ)
+        self.set_target_threshold(self.target_threshold)
+        self.set_gdac_tune_bits(self.gdac_tune_bits)
+        self.set_n_injections(self.n_injections)
+        self.set_abort_precision(self.abort_precision_occ)
 
         self.write_target_threshold()
         for gdac_bit in self.gdac_tune_bits:  # reset all GDAC bits
@@ -93,10 +93,10 @@ class GdacTune(ScanBase):
 
         # calculate selected pixels from the mask and the disabled columns
         select_mask_array = np.zeros(shape=(80, 336), dtype=np.uint8)
-        if enable_mask_steps is None or not enable_mask_steps:
-            enable_mask_steps = range(mask_steps)
+        if self.enable_mask_steps is None or not self.enable_mask_steps:
+            enable_mask_steps = range(self.mask_steps)
         for mask_step in enable_mask_steps:
-            select_mask_array += make_pixel_mask(steps=mask_steps, shift=mask_step)
+            select_mask_array += make_pixel_mask(steps=self.mask_steps, shift=mask_step)
         for column in bits_set(self.register.get_global_register_value("DisableColumnCnfg")):
             logging.info('Deselect double column %d' % column)
             select_mask_array[column, :] = 0
@@ -120,8 +120,8 @@ class GdacTune(ScanBase):
 
                 self.readout.start()
 
-                cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", mask_steps=mask_steps)[0]
-                self.scan_loop(cal_lvl1_command, repeat_command=self.n_injections, mask_steps=mask_steps, enable_mask_steps=enable_mask_steps, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=True, mask=None)
+                cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", mask_steps=self.mask_steps)[0]
+                self.scan_loop(cal_lvl1_command, repeat_command=self.n_injections, mask_steps=self.mask_steps, enable_mask_steps=enable_mask_steps, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=True, mask=None)
 
                 self.readout.stop()
 
@@ -135,8 +135,8 @@ class GdacTune(ScanBase):
                     vthin_af_best = self.register.get_global_register_value("Vthin_AltFine")
                     vthin_ac_best = self.register.get_global_register_value("Vthin_AltCoarse")
 
-                if plot_intermediate_steps:
-                    plotThreeWay(occ_array_sel_pixel.transpose(), title="Occupancy (GDAC " + str(scan_parameter_value) + " with tuning bit " + str(gdac_bit) + ")", x_axis_title='Occupancy', filename=plots_filename, maximum=self.n_injections)
+                if self.plot_intermediate_steps:
+                    plotThreeWay(occ_array_sel_pixel.transpose(), title="Occupancy (GDAC " + str(scan_parameter_value) + " with tuning bit " + str(gdac_bit) + ")", x_axis_title='Occupancy', filename=self.plots_filename, maximum=self.n_injections)
 
                 if(abs(median_occupancy - self.n_injections / 2) < self.abort_precision and gdac_bit > 0):  # abort if good value already found to save time
                     logging.info('Median = %f, good result already achieved (median - Ninj/2 < %f), skipping not varied bits' % (median_occupancy, self.abort_precision))
@@ -185,11 +185,11 @@ class GdacTune(ScanBase):
                 logging.info('Tuned GDAC to Vthin_AltCoarse/Vthin_AltFine = %d/%d' % (self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine")))
 
             self.result = occ_array_sel_pixel
-            plotThreeWay(occ_array_sel_pixel.transpose(), title="Occupancy after GDAC tuning (GDAC " + str(scan_parameter_value) + ")", x_axis_title='Occupancy', filename=plots_filename, maximum=self.n_injections)
+            plotThreeWay(occ_array_sel_pixel.transpose(), title="Occupancy after GDAC tuning (GDAC " + str(scan_parameter_value) + ")", x_axis_title='Occupancy', filename=self.plots_filename, maximum=self.n_injections)
 
 if __name__ == "__main__":
     import configuration
     scan = GdacTune(**configuration.default_configuration)
-    scan.start(use_thread=False, **local_configuration)
+    scan.start(run_configure=True, run_analyze=True, use_thread=False, **local_configuration)
     scan.stop()
-    scan.register.save_configuration(scan.device_configuration['configuration_file'])
+    scan.save_configuration()
