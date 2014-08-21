@@ -1,5 +1,5 @@
 """A script that changes a scan parameter (usually PlsrDAC) in a certain range for selected pixels and measures the length of the hit OR signal with the FPGA TDC.
-    This calibration can be used to measure charge information for single pixels with higher precision than with the quantized TOT information.
+This calibration can be used to measure charge information for single pixels with higher precision than with the quantized TOT information.
 """
 import numpy as np
 import tables as tb
@@ -31,7 +31,7 @@ local_configuration = {
 class HitOrCalibration(ScanBase):
     scan_id = "hit_or_calibration"
 
-    def scan(self, pixels, repeat_command, scan_parameter, scan_parameter_values, plot_tdc_histograms, enable_masks, disable_masks, **kwarg):
+    def scan(self):
         '''Scan loop
 
         Parameters
@@ -55,48 +55,48 @@ class HitOrCalibration(ScanBase):
                 return (column) / 2
 
         cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", length=600)[0]
-        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_id, scan_parameters=[scan_parameter, 'column', 'row']) as raw_data_file:
-            for index, pixel in enumerate(pixels):
+        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_id, scan_parameters=[self.scan_parameter, 'column', 'row']) as raw_data_file:
+            for index, pixel in enumerate(self.pixels):
                 column = pixel[0]
                 row = pixel[1]
                 logging.info('Scanning pixel: %d/%d (column/row)' % (column, row))
                 if index:
                     dcs = [write_double_column(column)]
-                    dcs.append(write_double_column(pixels[index - 1][0]))
+                    dcs.append(write_double_column(self.pixels[index - 1][0]))
                 else:
                     dcs = []
                 commands = []
                 commands.extend(self.register.get_commands("confmode"))
                 single_pixel_enable_mask = make_pixel_mask_from_col_row([column], [row])
-                map(lambda mask_name: self.register.set_pixel_register_value(mask_name, single_pixel_enable_mask), enable_masks)
-                commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, dcs=dcs, name=enable_masks))
+                map(lambda mask_name: self.register.set_pixel_register_value(mask_name, single_pixel_enable_mask), self.enable_masks)
+                commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, dcs=dcs, name=self.enable_masks))
                 single_pixel_disable_mask = make_pixel_mask_from_col_row([column], [row], default=1, value=0)
-                map(lambda mask_name: self.register.set_pixel_register_value(mask_name, single_pixel_disable_mask), disable_masks)
-                commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, dcs=dcs, name=disable_masks))
+                map(lambda mask_name: self.register.set_pixel_register_value(mask_name, single_pixel_disable_mask), self.disable_masks)
+                commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, dcs=dcs, name=self.disable_masks))
                 self.register.set_global_register_value("Colpr_Addr", inject_double_column(column))
                 commands.append(self.register.get_commands("wrregister", name=["Colpr_Addr"])[0])
                 self.register_utils.send_commands(commands)
-                for scan_parameter_value in scan_parameter_values:
+                for scan_parameter_value in self.scan_parameter_values:
                     if self.stop_thread_event.is_set():
                         break
-                    logging.info('Scan step: %s %d' % (scan_parameter, scan_parameter_value))
+                    logging.info('Scan step: %s %d' % (self.scan_parameter, scan_parameter_value))
 
                     commands = []
                     commands.extend(self.register.get_commands("confmode"))
-                    self.register.set_global_register_value(scan_parameter, scan_parameter_value)
-                    commands.extend(self.register.get_commands("wrregister", name=[scan_parameter]))
+                    self.register.set_global_register_value(self.scan_parameter, scan_parameter_value)
+                    commands.extend(self.register.get_commands("wrregister", name=[self.scan_parameter]))
                     commands.extend(self.register.get_commands("runmode"))
                     self.register_utils.send_commands(commands)
                     # activate TDC arming
                     self.dut['tdc_rx2']['EN_ARMING'] = True
                     self.readout.start()
                     self.dut['tdc_rx2']['ENABLE'] = True
-                    self.register_utils.send_command(command=cal_lvl1_command, repeat=repeat_command)
+                    self.register_utils.send_command(command=cal_lvl1_command, repeat=self.repeat_command)
                     self.dut['tdc_rx2']['ENABLE'] = False
                     self.readout.stop()
 
                     # saving data
-                    raw_data_file.append(self.readout.data, scan_parameters={scan_parameter: scan_parameter_value, 'column': column, 'row': row})
+                    raw_data_file.append(self.readout.data, scan_parameters={self.scan_parameter: scan_parameter_value, 'column': column, 'row': row})
 
     def analyze(self):
         logging.info('Analyze and plot results')
@@ -175,6 +175,5 @@ class HitOrCalibration(ScanBase):
 if __name__ == "__main__":
     import configuration
     scan = HitOrCalibration(**configuration.default_configuration)
-    scan.start(use_thread=False, **local_configuration)
+    scan.start(run_configure=True, run_analyze=True, use_thread=False, **local_configuration)
     scan.stop()
-    scan.analyze()

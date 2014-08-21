@@ -56,11 +56,11 @@ class TdacTune(ScanBase):
     def set_n_injections(self, Ninjections=100):
         self.Ninjections = Ninjections
 
-    def scan(self, target_threshold, tdac_tune_bits=range(4, -1, -1), n_injections=100, plots_filename=None, plot_intermediate_steps=False, **kwargs):
+    def scan(self):
         #  set scan settings
-        self.set_n_injections(n_injections)
-        self.set_target_threshold(target_threshold)
-        self.set_tdac_tune_bits(tdac_tune_bits)
+        self.set_n_injections(self.n_injections)
+        self.set_target_threshold(self.target_threshold)
+        self.set_tdac_tune_bits(self.tdac_tune_bits)
 
         self.write_target_threshold()
         addedAdditionalLastBitScan = False
@@ -105,8 +105,8 @@ class TdacTune(ScanBase):
                 pixel_with_too_high_occupancy_mask = occupancy_array > self.Ninjections / 2
                 occupancy_best[select_better_pixel_mask] = occupancy_array[select_better_pixel_mask]
 
-                if plot_intermediate_steps:
-                    plotThreeWay(occupancy_array.transpose(), title="Occupancy (TDAC tuning bit " + str(Tdac_bit) + ")", x_axis_title='Occupancy', filename=plots_filename, maximum=self.Ninjections)
+                if self.plot_intermediate_steps:
+                    plotThreeWay(occupancy_array.transpose(), title="Occupancy (TDAC tuning bit " + str(Tdac_bit) + ")", x_axis_title='Occupancy', filename=self.plots_filename, maximum=self.Ninjections)
 
                 tdac_mask = self.register.get_pixel_register_value("TDAC")
                 tdac_mask_best[select_better_pixel_mask] = tdac_mask[select_better_pixel_mask]
@@ -129,8 +129,8 @@ class TdacTune(ScanBase):
             self.register.set_pixel_register_value("TDAC", tdac_mask_best)
             self.result = occupancy_best
 
-            plotThreeWay(hist=self.result.transpose(), title="Occupancy after TDAC tuning", x_axis_title="Occupancy", filename=plots_filename, maximum=self.Ninjections)
-            plotThreeWay(hist=self.register.get_pixel_register_value("TDAC").transpose(), title="TDAC distribution after tuning", x_axis_title="TDAC", filename=plots_filename, maximum=32)
+            plotThreeWay(hist=self.result.transpose(), title="Occupancy after TDAC tuning", x_axis_title="Occupancy", filename=self.plots_filename, maximum=self.Ninjections)
+            plotThreeWay(hist=self.register.get_pixel_register_value("TDAC").transpose(), title="TDAC distribution after tuning", x_axis_title="TDAC", filename=self.plots_filename, maximum=32)
             logging.info('Tuned TDAC!')
 
             # additional analog scan to get final results, not needed, just for checking
@@ -147,6 +147,6 @@ class TdacTune(ScanBase):
 if __name__ == "__main__":
     import configuration
     scan = TdacTune(**configuration.default_configuration)
-    scan.start(use_thread=False, **local_configuration)
+    scan.start(run_configure=True, run_analyze=False, use_thread=False, **local_configuration)
     scan.stop()
-    scan.register.save_configuration(scan.device_configuration['configuration_file'])
+    scan.save_configuration()

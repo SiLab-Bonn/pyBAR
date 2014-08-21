@@ -57,13 +57,13 @@ class FeedbackTune(ScanBase):
     def set_n_injections(self, Ninjections=100):
         self.Ninjections = Ninjections
 
-    def scan(self, target_tot, target_charge, feedback_tune_bits=range(7, -1, -1), abort_precision_tot=0.1, n_injections=50, plots_filename=None, plot_intermediate_steps=False, **kwargs):
+    def scan(self):
         #  set scan settings
-        self.set_n_injections(n_injections)
-        self.set_target_charge(target_charge)
-        self.set_target_tot(target_tot)
-        self.set_abort_precision(abort_precision_tot)
-        self.set_feedback_tune_bits(feedback_tune_bits)
+        self.set_n_injections(self.n_injections)
+        self.set_target_charge(self.target_charge)
+        self.set_target_tot(self.target_tot)
+        self.set_abort_precision(self.abort_precision_tot)
+        self.set_feedback_tune_bits(self.feedback_tune_bits)
 
         self.write_target_charge()
 
@@ -111,8 +111,8 @@ class FeedbackTune(ScanBase):
 
                 logging.info('Mean ToT = %f' % mean_tot)
                 TotArray, _ = np.histogram(a=tots, range=(0, 16), bins=16)
-                if plot_intermediate_steps:
-                    plot_tot(hist=TotArray, title='Time-over-threshold distribution (PrmpVbpf ' + str(scan_parameter_value) + ')', filename=plots_filename)
+                if self.plot_intermediate_steps:
+                    plot_tot(hist=TotArray, title='Time-over-threshold distribution (PrmpVbpf ' + str(scan_parameter_value) + ')', filename=self.plots_filename)
 
                 if(abs(mean_tot - self.TargetTot) < self.abort_precision and PrmpVbpf_bit > 0):  # abort if good value already found to save time
                     logging.info('Good result already achieved, skipping missing bits')
@@ -149,11 +149,11 @@ class FeedbackTune(ScanBase):
                 logging.info('Tuned PrmpVbpf to %d' % self.register.get_global_register_value("PrmpVbpf"))
 
             self.result = TotArray
-            plot_tot(hist=TotArray, title='Time-over-threshold distribution after feedback tuning (PrmpVbpf %d)' % scan_parameter_value, filename=plots_filename)
+            plot_tot(hist=TotArray, title='Time-over-threshold distribution after feedback tuning (PrmpVbpf %d)' % scan_parameter_value, filename=self.plots_filename)
 
 if __name__ == "__main__":
     import configuration
     scan = FeedbackTune(**configuration.default_configuration)
-    scan.start(use_thread=False, **local_configuration)
+    scan.start(run_configure=True, run_analyze=True, use_thread=False, **local_configuration)
     scan.stop()
-    scan.register.save_configuration(scan.device_configuration['configuration_file'])
+    scan.save_configuration()

@@ -32,7 +32,47 @@ local_configuration = {
 class ThresholdBaselineTuning(ScanBase):
     scan_id = "threshold_basline_tuning"
 
-    def scan(self, cfg_name='', occupancy_limit=0, disabled_pixels_limit=0.01, repeat_tuning=False, limit_repeat_tuning_steps=5, use_enable_mask=False, triggers=100000, trig_count=1, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, **kwargs):
+    def configure(self):
+        if self.trig_count == 0:
+            self.consecutive_lvl1 = (2 ** self.register.get_global_register_objects(name=['Trig_Count'])[0].bitlength)
+        else:
+            self.consecutive_lvl1 = self.trig_count
+        if self.occupancy_limit * self.triggers * self.consecutive_lvl1 < 1.0:
+            logging.warning('Number of triggers too low for given occupancy limit. Any noise hit will lead to a masked pixel.')
+
+        commands = []
+        commands.extend(self.register.get_commands("confmode"))
+        # TDAC
+        tdac_max = 2 ** self.register.get_pixel_register_objects(name=['TDAC'])[0].bitlength - 1
+        pixel_reg = "TDAC"
+        self.register.set_pixel_register_value(pixel_reg, tdac_max)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
+        mask = make_box_pixel_mask_from_col_row(column=self.col_span, row=self.row_span)
+        pixel_reg = "Enable"
+        if self.use_enable_mask:
+            self.register.set_pixel_register_value(pixel_reg, np.logical_and(mask, self.register.get_pixel_register_value(pixel_reg)))
+        else:
+            self.register.set_pixel_register_value(pixel_reg, mask)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
+        # generate mask for Imon mask
+        pixel_reg = "Imon"
+        self.register.set_pixel_register_value(pixel_reg, 1)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
+        # disable C_inj mask
+        pixel_reg = "C_High"
+        self.register.set_pixel_register_value(pixel_reg, 0)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
+        pixel_reg = "C_Low"
+        self.register.set_pixel_register_value(pixel_reg, 0)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
+#         self.register.set_global_register_value("Trig_Lat", 232)  # set trigger latency
+        self.register.set_global_register_value("Trig_Count", self.trig_count)  # set number of consecutive triggers
+        commands.extend(self.register.get_commands("wrregister", name=["Trig_Count"]))
+        # setting FE into runmode
+        commands.extend(self.register.get_commands("runmode"))
+        self.register_utils.send_commands(commands)
+
+    def scan(self):
         '''Masking pixels with occupancy above certain limit.
 
         Parameters
@@ -67,62 +107,11 @@ class ThresholdBaselineTuning(ScanBase):
         The total number of trigger is triggers * consecutive_lvl1.
         Please note that a high trigger rate leads to an effective lower threshold.
         '''
-        # create restore point
-        self.register.create_restore_point()
-        if trig_count == 0:
-            consecutive_lvl1 = (2 ** self.register.get_global_register_objects(name=['Trig_Count'])[0].bitlength)
-        else:
-            consecutive_lvl1 = trig_count
-        if occupancy_limit * triggers * consecutive_lvl1 < 1.0:
-            logging.warning('Number of triggers too low for given occupancy limit. Any noise hit will lead to a masked pixel.')
-
-        commands = []
-        commands.extend(self.register.get_commands("confmode"))
-        # TDAC
-        tdac_median = np.median(self.register.get_pixel_register_value('TDAC'))
-        tdac_max = 2 ** self.register.get_pixel_register_objects(name=['TDAC'])[0].bitlength - 1
-        threshold_correction = 4 * ceil(tdac_max - tdac_median)
-        if threshold_correction < 0.0:
-            threshold_correction = 0.0
-        pixel_reg = "TDAC"
-        self.register.set_pixel_register_value(pixel_reg, tdac_max)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
-        mask = make_box_pixel_mask_from_col_row(column=col_span, row=row_span)
-        pixel_reg = "Enable"
-        if use_enable_mask:
-            self.register.set_pixel_register_value(pixel_reg, np.logical_and(mask, self.register.get_pixel_register_value(pixel_reg)))
-        else:
-            self.register.set_pixel_register_value(pixel_reg, mask)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
-        # generate mask for Imon mask
-        pixel_reg = "Imon"
-        self.register.set_pixel_register_value(pixel_reg, 1)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
-        # disable C_inj mask
-        pixel_reg = "C_High"
-        self.register.set_pixel_register_value(pixel_reg, 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
-        pixel_reg = "C_Low"
-        self.register.set_pixel_register_value(pixel_reg, 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
-#         self.register.set_global_register_value("Trig_Lat", 232)  # set trigger latency
-        self.register.set_global_register_value("Trig_Count", trig_count)  # set number of consecutive triggers
-        commands.extend(self.register.get_commands("wrregister", name=["Trig_Count"]))
-        # setting FE into runmode
-        commands.extend(self.register.get_commands("runmode"))
-        self.register_utils.send_commands(commands)
-
-        vthin_alt_fine_max = 2 ** self.register.get_global_register_objects(name=["Vthin_AltFine"])[0].bitlength - 1
-        if self.register.get_global_register_value("Vthin_AltFine") + threshold_correction > vthin_alt_fine_max:
-            corrected_threshold = vthin_alt_fine_max
-        else:
-            corrected_threshold = self.register.get_global_register_value("Vthin_AltFine") + threshold_correction
-
-        disabled_pixels_limit_cnt = int(disabled_pixels_limit * 336 * 80)
+        disabled_pixels_limit_cnt = int(self.disabled_pixels_limit * 336 * 80)
         preselected_pixels = invert_pixel_mask(self.register.get_pixel_register_value('Enable')).sum()
         disabled_pixels = 0
 
-        for reg_val in range(int(corrected_threshold), -1, -1):
+        for reg_val in range(self.register.get_global_register_value("Vthin_AltFine"), -1, -1):
             self.register.create_restore_point(name=str(reg_val))
             logging.info('Scanning Vthin_AltFine %d' % reg_val)
             commands = []
@@ -146,11 +135,11 @@ class ThresholdBaselineTuning(ScanBase):
                     command_delay = 500  # <100kHz
                     lvl1_command = self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", length=command_delay)[0]
                     commnd_lenght = lvl1_command.length()
-                    if repeat_tuning:
+                    if self.repeat_tuning:
                         logging.info('Step %d at Vthin_AltFine %d' % (step, reg_val))
-                    logging.info('Estimated scan time: %ds' % int(commnd_lenght * 25 * (10 ** -9) * triggers))
+                    logging.info('Estimated scan time: %ds' % int(commnd_lenght * 25 * (10 ** -9) * self.triggers))
                     logging.info('Please stand by...')
-                    self.register_utils.send_command(lvl1_command, repeat=triggers, wait_for_finish=False, set_length=True, clear_memory=False)
+                    self.register_utils.send_command(lvl1_command, repeat=self.triggers, wait_for_finish=False, set_length=True, clear_memory=False)
 
                     wait_for_first_data = False
                     last_iteration = time.time()
@@ -169,8 +158,8 @@ class ThresholdBaselineTuning(ScanBase):
                             no_data_at_time = last_iteration
                             if self.register_utils.is_ready:
                                 self.stop_thread_event.set()
-                                logging.info('Finished sending %d triggers' % triggers)
-                            elif wait_for_first_data is False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
+                                logging.info('Finished sending %d triggers' % self.triggers)
+                            elif wait_for_first_data is False and saw_no_data_at_time > (saw_data_at_time + self.timeout_no_data):
                                 logging.info('Reached no data timeout. Stopping Scan...')
                                 self.stop_thread_event.set()
                             elif wait_for_first_data is False:
@@ -191,7 +180,7 @@ class ThresholdBaselineTuning(ScanBase):
                     occ_hist, _, _ = np.histogram2d(self.col_arr, self.row_arr, bins=(80, 336), range=[[1, 80], [1, 336]])
                     occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
                     # noisy pixels are set to 1
-                    occ_mask[occ_hist > occupancy_limit * triggers * consecutive_lvl1] = 1
+                    occ_mask[occ_hist > self.occupancy_limit * self.triggers * self.consecutive_lvl1] = 1
 #                     plot_occupancy(occ_hist.T, title='Occupancy', filename=self.scan_data_filename + '_noise_occ_' + str(reg_val) + '_' + str(step) + '.pdf')
 
                     tdac_reg = self.register.get_pixel_register_value('TDAC')
@@ -219,7 +208,7 @@ class ThresholdBaselineTuning(ScanBase):
                         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name='Enable'))
                         commands.extend(self.register.get_commands("runmode"))
                         self.register_utils.send_commands(commands)
-                        if not repeat_tuning or occ_mask.sum() == 0 or (repeat_tuning and limit_repeat_tuning_steps and step == limit_repeat_tuning_steps) or decrease_pixel_mask.sum() < disabled_pixels_limit_cnt:
+                        if not self.repeat_tuning or occ_mask.sum() == 0 or (self.repeat_tuning and self.limit_repeat_tuning_steps and step == self.limit_repeat_tuning_steps) or decrease_pixel_mask.sum() < disabled_pixels_limit_cnt:
                             self.register.clear_restore_points(name=str(reg_val))
                             self.last_tdac_distribution = self.register.get_pixel_register_value('TDAC')
                             self.last_occupancy_hist = occ_hist.copy()
@@ -231,17 +220,16 @@ class ThresholdBaselineTuning(ScanBase):
                             logging.info('Found noisy pixels... repeat tuning step for Vthin_AltFine %d' % (reg_val,))
 
             if disabled_pixels > disabled_pixels_limit_cnt:
-                last_good_threshold = self.register.get_global_register_value("Vthin_AltFine")
-                last_good_tdac = self.register.get_pixel_register_value('TDAC')
-                last_good_enable_mask = self.register.get_pixel_register_value('Enable')
-                self.register.restore()
-                self.register.set_global_register_value("Vthin_AltFine", last_good_threshold)
-                self.register.set_pixel_register_value('TDAC', last_good_tdac)
-                self.register.set_pixel_register_value('Enable', last_good_enable_mask)
-                self.save_configuration(self.cfg_name)
+                self.last_good_threshold = self.register.get_global_register_value("Vthin_AltFine")
+                self.last_good_tdac = self.register.get_pixel_register_value('TDAC')
+                self.last_good_enable_mask = self.register.get_pixel_register_value('Enable')
                 break
 
     def analyze(self):
+        self.register.set_global_register_value("Vthin_AltFine", self.last_good_threshold)
+        self.register.set_pixel_register_value('TDAC', self.last_good_tdac)
+        self.register.set_pixel_register_value('Enable', self.last_good_enable_mask)
+
         from analysis.analyze_raw_data import AnalyzeRawData
         output_file = self.scan_data_filename + "_interpreted.h5"
         with AnalyzeRawData(raw_data_file=self.scan_data_filename, analyzed_data_file=output_file, create_pdf=True) as analyze_raw_data:
@@ -264,6 +252,6 @@ class ThresholdBaselineTuning(ScanBase):
 if __name__ == "__main__":
     import configuration
     scan = ThresholdBaselineTuning(**configuration.default_configuration)
-    scan.start(use_thread=False, **local_configuration)
+    scan.start(run_configure=True, run_analyze=True, use_thread=True, restore_configuration=True, **local_configuration)
     scan.stop()
-    scan.analyze()
+    scan.save_configuration(scan.cfg_name)

@@ -25,7 +25,7 @@ def get_gdacs(thresholds, mean_threshold_calibration):
 class Fei4TriggerGdacScan(ScanBase):
     scan_id = "scan_fei4_trigger_gdac"
 
-    def scan(self, gdac_range, config_file_trigger_fe, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=10000, wait_for_first_trigger=True, channel_trigger_fe=3, channel_triggered_fe=4, **kwargs):
+    def scan(self):
         '''Scan loop
 
         Parameters
@@ -42,15 +42,15 @@ class Fei4TriggerGdacScan(ScanBase):
         '''
 
         logging.info('Start GDAC source scan from %d to %d in %d steps' % (np.amin(gdac_range), np.amax(gdac_range), len(gdac_range)))
-        logging.info('Estimated scan time %dh' % (len(gdac_range) * scan_timeout / 3600.))
+        logging.info('Estimated scan time %dh' % (len(gdac_range) * self.scan_timeout / 3600.))
 
         self.stop_loop_event = Event()
         self.stop_loop_event.clear()
 
         self.configure_triggered_fe()
-        self.configure_trigger_fe(config_file_trigger_fe, col_span, row_span)
+        self.configure_trigger_fe(config_file_trigger_fe, self.col_span, self.row_span)
 
-        wait_for_first_trigger_setting = wait_for_first_trigger  # needed to reset this for a new GDAC
+        wait_for_first_trigger_setting = self.wait_for_first_trigger  # needed to reset this for a new GDAC
 
         with open_raw_data_file(filename=self.scan_data_filename + "_trigger_fe", title=self.scan_id, scan_parameters=["GDAC"]) as raw_data_file_trigger_fe:
             with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_id, scan_parameters=["GDAC"]) as raw_data_file:
@@ -69,14 +69,14 @@ class Fei4TriggerGdacScan(ScanBase):
                     self.dut['tlu']['TRIGGER_COUNTER'] = 0
                     self.dut['cmd']['EN_EXT_TRIGGER'] = True
 
-                    show_trigger_message_at = 10 ** (int(math.ceil(math.log10(max_triggers))) - 1)
+                    show_trigger_message_at = 10 ** (int(math.ceil(math.log10(self.max_triggers))) - 1)
                     last_iteration = time.time()
                     saw_no_data_at_time = last_iteration
                     saw_data_at_time = last_iteration
                     scan_start_time = last_iteration
                     no_data_at_time = last_iteration
                     time_from_last_iteration = 0
-                    scan_stop_time = scan_start_time + scan_timeout
+                    scan_stop_time = scan_start_time + self.scan_timeout
                     current_trigger_number = 0
                     last_trigger_number = 0
                     while not self.stop_loop_event.is_set() and not self.stop_thread_event.wait(self.readout.readout_interval):
@@ -84,7 +84,7 @@ class Fei4TriggerGdacScan(ScanBase):
                         if (current_trigger_number % show_trigger_message_at < last_trigger_number % show_trigger_message_at):
                             logging.info('Collected triggers: %d', current_trigger_number)
                         last_trigger_number = current_trigger_number
-                        if max_triggers is not None and current_trigger_number >= max_triggers:
+                        if self.max_triggers is not None and current_trigger_number >= self.max_triggers:
                             logging.info('Reached maximum triggers. Stopping Scan...')
                             self.stop_loop_event.set()
                         if scan_start_time is not None and time.time() > scan_stop_time:
@@ -95,14 +95,14 @@ class Fei4TriggerGdacScan(ScanBase):
                         while True:
                             try:
                                 data = self.readout.data.popleft()
-                                raw_data_trigger_fe = data_dict_list_from_data_dict_iterable(data_dict_iterable=(data,), filter_func=is_data_from_channel(channel_trigger_fe))
-                                raw_data_fe = data_dict_list_from_data_dict_iterable(data_dict_iterable=(data,), filter_func=is_data_from_channel(channel_triggered_fe))
+                                raw_data_trigger_fe = data_dict_list_from_data_dict_iterable(data_dict_iterable=(data,), filter_func=is_data_from_channel(self.channel_trigger_fe))
+                                raw_data_fe = data_dict_list_from_data_dict_iterable(data_dict_iterable=(data,), filter_func=is_data_from_channel(self.channel_triggered_fe))
                                 raw_data_file.append(raw_data_fe, scan_parameters={"GDAC": gdac_value})
                                 raw_data_file_trigger_fe.append(raw_data_trigger_fe, scan_parameters={"GDAC": gdac_value})
 
                             except IndexError:  # no data
                                 no_data_at_time = last_iteration
-                                if wait_for_first_trigger is False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
+                                if wait_for_first_trigger is False and saw_no_data_at_time > (saw_data_at_time + self.timeout_no_data):
                                     logging.info('Reached no data timeout. Stopping Scan...')
                                     self.stop_loop_event.set()
                                 elif wait_for_first_trigger is False:
@@ -125,8 +125,8 @@ class Fei4TriggerGdacScan(ScanBase):
 
                     self.readout.stop()
 
-                    raw_data_trigger_fe = data_dict_list_from_data_dict_iterable(data_dict_iterable=self.readout.data, filter_func=is_data_from_channel(channel_trigger_fe))
-                    raw_data_fe = data_dict_list_from_data_dict_iterable(data_dict_iterable=self.readout.data, filter_func=is_data_from_channel(channel_triggered_fe))
+                    raw_data_trigger_fe = data_dict_list_from_data_dict_iterable(data_dict_iterable=self.readout.data, filter_func=is_data_from_channel(self.channel_trigger_fe))
+                    raw_data_fe = data_dict_list_from_data_dict_iterable(data_dict_iterable=self.readout.data, filter_func=is_data_from_channel(self.channel_triggered_fe))
                     raw_data_file.append(raw_data_fe, scan_parameters={"GDAC": gdac_value})
                     raw_data_file_trigger_fe.append(raw_data_trigger_fe, scan_parameters={"GDAC": gdac_value})
 
@@ -232,6 +232,4 @@ if __name__ == "__main__":
 
     scan = Fei4TriggerGdacScan(**configuration.default_configuration)  # configuration of triggered FE
     scan.start(use_thread=True, restore_configuration=True, gdac_range=gdac_range, config_file_trigger_fe=config_file_trigger_fe, col_span=[25, 55], row_span=[50, 250], timeout_no_data=1 * 60, scan_timeout=100, max_triggers=10000000, channel_triggered_fe=4, channel_trigger_fe=3, invert_lemo_trigger_input=True)
-
     scan.stop()
-    scan.analyze()

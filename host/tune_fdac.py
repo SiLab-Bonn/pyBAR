@@ -61,12 +61,12 @@ class FdacTune(ScanBase):
     def set_n_injections(self, Ninjections=20):
         self.Ninjections = Ninjections
 
-    def scan(self, target_tot, target_charge, fdac_tune_bits=range(3, -1, -1), n_injections=30, plots_filename=None, plot_intermediate_steps=False, **kwargs):
+    def scan(self):
         #  set scan settings
-        self.set_target_charge(target_charge)
-        self.set_target_tot(target_tot)
-        self.set_n_injections(n_injections)
-        self.set_fdac_tune_bits(fdac_tune_bits)
+        self.set_target_charge(self.target_charge)
+        self.set_target_tot(self.target_tot)
+        self.set_n_injections(self.n_injections)
+        self.set_fdac_tune_bits(self.fdac_tune_bits)
 
         self.write_target_charge()
         addedAdditionalLastBitScan = False
@@ -113,8 +113,8 @@ class FdacTune(ScanBase):
                 pixel_with_too_small_mean_tot_mask = tot_mean_array < self.TargetTot
                 tot_mean_best[select_better_pixel_mask] = tot_mean_array[select_better_pixel_mask]
 
-                if plot_intermediate_steps:
-                    plotThreeWay(hist=tot_mean_array.transpose().transpose(), title="Mean ToT (FDAC tuning bit " + str(Fdac_bit) + ")", x_axis_title='mean ToT', filename=plots_filename, minimum=0, maximum=15)
+                if self.plot_intermediate_steps:
+                    plotThreeWay(hist=tot_mean_array.transpose().transpose(), title="Mean ToT (FDAC tuning bit " + str(Fdac_bit) + ")", x_axis_title='mean ToT', filename=self.plots_filename, minimum=0, maximum=15)
 
                 fdac_mask = self.register.get_pixel_register_value("FDAC")
                 fdac_mask_best[select_better_pixel_mask] = fdac_mask[select_better_pixel_mask]
@@ -136,14 +136,14 @@ class FdacTune(ScanBase):
             self.register.set_pixel_register_value("FDAC", fdac_mask_best)
             self.result = tot_mean_best
 
-            plotThreeWay(hist=self.result.transpose(), title="Mean ToT after FDAC tuning", x_axis_title="ToT mean", filename=plots_filename, minimum=0, maximum=15)
-            plotThreeWay(hist=self.register.get_pixel_register_value("FDAC").transpose(), title="FDAC distribution after tuning", x_axis_title="FDAC", filename=plots_filename, minimum=0, maximum=15)
+            plotThreeWay(hist=self.result.transpose(), title="Mean ToT after FDAC tuning", x_axis_title="ToT mean", filename=self.plots_filename, minimum=0, maximum=15)
+            plotThreeWay(hist=self.register.get_pixel_register_value("FDAC").transpose(), title="FDAC distribution after tuning", x_axis_title="FDAC", filename=self.plots_filename, minimum=0, maximum=15)
 
             logging.info('Tuned FDAC!')
 
 if __name__ == "__main__":
     import configuration
     scan = FdacTune(**configuration.default_configuration)
-    scan.start(use_thread=False, **local_configuration)
+    scan.start(run_configure=True, run_analyze=True, use_thread=True, **local_configuration)
     scan.stop()
-    scan.register.save_configuration(scan.device_configuration['configuration_file'])
+    scan.save_configuration()

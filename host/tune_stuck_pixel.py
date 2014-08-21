@@ -22,7 +22,18 @@ local_configuration = {
 class StuckPixelScan(ScanBase):
     scan_id = "stuck_pixel_scan"
 
-    def scan(self, cfg_name='', mask_steps=3, repeat_command=100, disable_for_mask=['Enable'], enable_for_mask=['Imon'], overwrite_mask=False, **kwargs):
+    def configure(self):
+        commands = []
+        commands.extend(self.register.get_commands("confmode"))
+        pixel_reg = "C_High"
+        self.register.set_pixel_register_value(pixel_reg, 0)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
+        pixel_reg = "C_Low"
+        self.register.set_pixel_register_value(pixel_reg, 0)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
+        self.register_utils.send_commands(commands)
+
+    def scan(self):
         '''Disable stuck pixels (hitbus always high). Based on digital scan.
 
         Parameters
@@ -38,56 +49,43 @@ class StuckPixelScan(ScanBase):
         overwrite_mask : bool
             Overwrite masks (disable_for_mask, enable_for_mask) if set to true. If set to false, make a combination of existing mask and new mask.
         '''
-        self.register.create_restore_point()
-        commands = []
-        commands.extend(self.register.get_commands("confmode"))
-        self.register.set_global_register_value("PlsrDAC", 0)  # has to be 0, otherwise you also have analog injections
-        commands.extend(self.register.get_commands("wrregister", name=["PlsrDAC"]))
-        self.register_utils.send_commands(commands)
-
         self.readout.start()
 
         cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0]
-        self.scan_loop(cal_lvl1_command, repeat_command=repeat_command, use_delay=True, mask_steps=mask_steps, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=True, enable_shift_masks=["Enable", "EnableDigInj"], restore_shift_masks=False, mask=None)
+        self.scan_loop(cal_lvl1_command, repeat_command=self.repeat_command, use_delay=True, mask_steps=self.mask_steps, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=True, enable_shift_masks=["Enable", "EnableDigInj"], restore_shift_masks=False, mask=None)
 
         self.readout.stop()
-
-        self.register.restore()
-
-        # plotting data
+        save_raw_data_from_data_dict_iterable(self.readout.data, filename=self.scan_data_filename, title=self.scan_id)
 #         plot_occupancy(hist=make_occupancy_hist(*convert_data_array(data_array_from_data_dict_iterable(self.readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)), z_max='median', filename=self.scan_data_filename + "_occupancy.pdf")
 
-        # saving data
-        save_raw_data_from_data_dict_iterable(self.readout.data, filename=self.scan_data_filename, title=self.scan_id)
-
+    def analyze(self):
         occ_hist = make_occupancy_hist(*convert_data_array(data_array_from_data_dict_iterable(self.readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)).T
 
         self.occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
         # noisy pixels are set to 1
-        self.occ_mask[occ_hist < repeat_command] = 1
+        self.occ_mask[occ_hist < self.repeat_command] = 1
         # make inverse
         self.inv_occ_mask = invert_pixel_mask(self.occ_mask)
-        self.disable_for_mask = disable_for_mask
-        if overwrite_mask:
-            for mask in disable_for_mask:
+        self.disable_for_mask = self.disable_for_mask
+        if self.overwrite_mask:
+            for mask in self.disable_for_mask:
                 self.register.set_pixel_register_value(mask, self.inv_occ_mask)
         else:
-            for mask in disable_for_mask:
+            for mask in self.disable_for_mask:
                 enable_mask = np.logical_and(self.inv_occ_mask, self.register.get_pixel_register_value(mask))
                 self.register.set_pixel_register_value(mask, enable_mask)
 
-        self.enable_for_mask = enable_for_mask
-        if overwrite_mask:
-            for mask in enable_for_mask:
+        self.enable_for_mask = self.enable_for_mask
+        if self.overwrite_mask:
+            for mask in self.enable_for_mask:
                 self.register.set_pixel_register_value(mask, self.occ_mask)
         else:
-            for mask in enable_for_mask:
+            for mask in self.enable_for_mask:
                 disable_mask = np.logical_or(self.occ_mask, self.register.get_pixel_register_value(mask))
                 self.register.set_pixel_register_value(mask, disable_mask)
 
 #             plot_occupancy(self.col_arr, self.row_arr, max_occ=None, filename=self.scan_data_filename + "_occupancy.pdf")
 
-    def analyze(self):
         from analysis.analyze_raw_data import AnalyzeRawData
         output_file = self.scan_data_filename + "_interpreted.h5"
         with AnalyzeRawData(raw_data_file=self.scan_data_filename, analyzed_data_file=output_file, create_pdf=True) as analyze_raw_data:
@@ -110,7 +108,6 @@ class StuckPixelScan(ScanBase):
 if __name__ == "__main__":
     import configuration
     scan = StuckPixelScan(**configuration.default_configuration)
-    scan.start(use_thread=False, **local_configuration)
+    scan.start(run_configure=True, run_analyze=True, use_thread=True, restore_configuration=True, **local_configuration)
     scan.stop()
-    scan.analyze()
     scan.save_configuration(scan.cfg_name)

@@ -28,7 +28,42 @@ local_configuration = {
 class ExtTriggerScan(ScanBase):
     scan_id = "ext_trigger_scan"
 
-    def scan(self, trigger_mode=0, trigger_latency=232, trigger_delay=14, col_span=[1, 80], row_span=[1, 336], overwrite_mask=False, use_enable_mask=False, timeout_no_data=10, scan_timeout=10 * 60, max_triggers=10000, enable_tdc=False):
+    def configure(self):
+        commands = []
+        commands.extend(self.register.get_commands("confmode"))
+        pixel_reg = 'Enable'  # enabled pixels set to 1
+        mask = make_box_pixel_mask_from_col_row(column=self.col_span, row=self.row_span)  # 1 for selected columns, else 0
+        if self.overwrite_mask:
+            pixel_mask = mask
+        else:
+            pixel_mask = np.logical_and(mask, self.register.get_pixel_register_value(pixel_reg))
+        self.register.set_pixel_register_value(pixel_reg, pixel_mask)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
+        pixel_reg = 'Imon'  # disabled pixels set to 1
+        if self.use_enable_mask:
+            self.register.set_pixel_register_value(pixel_reg, invert_pixel_mask(self.register.get_pixel_register_value('Enable')))
+        mask = make_box_pixel_mask_from_col_row(column=self.col_span, row=self.row_span, default=1, value=0)  # 0 for selected columns, else 1
+        if self.overwrite_mask:
+            pixel_mask = mask
+        else:
+            pixel_mask = np.logical_or(mask, self.register.get_pixel_register_value(pixel_reg))
+        self.register.set_pixel_register_value(pixel_reg, pixel_mask)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
+        # disable C_inj mask
+        pixel_reg = "C_High"
+        self.register.set_pixel_register_value(pixel_reg, 0)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
+        pixel_reg = "C_Low"
+        self.register.set_pixel_register_value(pixel_reg, 0)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
+        self.register.set_global_register_value("Trig_Lat", self.trigger_latency)  # set trigger latency
+#         self.register.set_global_register_value("Trig_Count", 0)  # set number of consecutive triggers
+        commands.extend(self.register.get_commands("wrregister", name=["Trig_Lat", "Trig_Count"]))
+        # setting FE into runmode
+        commands.extend(self.register.get_commands("runmode"))
+        self.register_utils.send_commands(commands)
+
+    def scan(self):
         '''Scan loop
 
         Parameters
@@ -66,61 +101,27 @@ class ExtTriggerScan(ScanBase):
         enable_tdc : bool
             Enable for Hit-OR TDC (time-to-digital-converter) measurement. In this mode the Hit-Or/Hitbus output of the FEI4 has to be connected to USBpix Hit-OR input on the Single Chip Adapter Card.
         '''
-        commands = []
-        commands.extend(self.register.get_commands("confmode"))
-        pixel_reg = 'Enable'  # enabled pixels set to 1
-        mask = make_box_pixel_mask_from_col_row(column=col_span, row=row_span)  # 1 for selected columns, else 0
-        if overwrite_mask:
-            pixel_mask = mask
-        else:
-            pixel_mask = np.logical_and(mask, self.register.get_pixel_register_value(pixel_reg))
-        self.register.set_pixel_register_value(pixel_reg, pixel_mask)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
-        pixel_reg = 'Imon'  # disabled pixels set to 1
-        if use_enable_mask:
-            self.register.set_pixel_register_value(pixel_reg, invert_pixel_mask(self.register.get_pixel_register_value('Enable')))
-        mask = make_box_pixel_mask_from_col_row(column=col_span, row=row_span, default=1, value=0)  # 0 for selected columns, else 1
-        if overwrite_mask:
-            pixel_mask = mask
-        else:
-            pixel_mask = np.logical_or(mask, self.register.get_pixel_register_value(pixel_reg))
-        self.register.set_pixel_register_value(pixel_reg, pixel_mask)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
-        # disable C_inj mask
-        pixel_reg = "C_High"
-        self.register.set_pixel_register_value(pixel_reg, 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
-        pixel_reg = "C_Low"
-        self.register.set_pixel_register_value(pixel_reg, 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
-        self.register.set_global_register_value("Trig_Lat", trigger_latency)  # set trigger latency
-#         self.register.set_global_register_value("Trig_Count", 0)  # set number of consecutive triggers
-        commands.extend(self.register.get_commands("wrregister", name=["Trig_Lat", "Trig_Count"]))
-        # setting FE into runmode
-        commands.extend(self.register.get_commands("runmode"))
-        self.register_utils.send_commands(commands)
-
         wait_for_first_trigger = True
 
         with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_id) as raw_data_file:
             self.readout.start()
             # preload command
-            lvl1_command = self.register.get_commands("zeros", length=trigger_delay)[0] + self.register.get_commands("lv1")[0]  # + self.register.get_commands("zeros", length=200)[0]
+            lvl1_command = self.register.get_commands("zeros", length=self.trigger_delay)[0] + self.register.get_commands("lv1")[0]  # + self.register.get_commands("zeros", length=200)[0]
             self.register_utils.set_command(lvl1_command)
 
-            self.dut['tdc_rx2']['ENABLE'] = enable_tdc
-            self.dut['tlu']['TRIGGER_MODE'] = trigger_mode
+            self.dut['tdc_rx2']['ENABLE'] = self.enable_tdc
+            self.dut['tlu']['TRIGGER_MODE'] = self.trigger_mode
             self.dut['tlu']['TRIGGER_COUNTER'] = 0
             self.dut['cmd']['EN_EXT_TRIGGER'] = True
 
-            show_trigger_message_at = 10 ** (int(math.floor(math.log10(max_triggers) - math.log10(3) / math.log10(10))))
+            show_trigger_message_at = 10 ** (int(math.floor(math.log10(self.max_triggers) - math.log10(3) / math.log10(10))))
             time_current_iteration = time.time()
             saw_no_data_at_time = time_current_iteration
             saw_data_at_time = time_current_iteration
             scan_start_time = time_current_iteration
             no_data_at_time = time_current_iteration
             time_from_last_iteration = 0
-            scan_stop_time = scan_start_time + scan_timeout
+            scan_stop_time = scan_start_time + self.scan_timeout
             current_trigger_number = 0
             last_trigger_number = 0
             while not self.stop_thread_event.wait(self.readout.readout_interval):
@@ -140,17 +141,17 @@ class ExtTriggerScan(ScanBase):
                         self.stop_thread_event.set()
                         logging.error('RX FIFO discard error(s) detected. Stopping Scan...')
                 last_trigger_number = current_trigger_number
-                if max_triggers is not None and current_trigger_number >= max_triggers:
+                if self.max_triggers is not None and current_trigger_number >= self.max_triggers:
                     logging.info('Reached maximum triggers. Stopping Scan...')
                     self.stop_thread_event.set()
-                if scan_timeout is not None and time_current_iteration > scan_stop_time:
+                if self.scan_timeout is not None and time_current_iteration > scan_stop_time:
                     logging.info('Reached maximum scan time. Stopping Scan...')
                     self.stop_thread_event.set()
                 try:
                     raw_data_file.append((self.readout.data.popleft(),))
                 except IndexError:  # no data
                     no_data_at_time = time_current_iteration
-                    if timeout_no_data is not None and not wait_for_first_trigger and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
+                    if self.timeout_no_data is not None and not wait_for_first_trigger and saw_no_data_at_time > (saw_data_at_time + self.timeout_no_data):
                         logging.info('Reached no data timeout. Stopping Scan...')
                         self.stop_thread_event.set()
                     elif not wait_for_first_trigger:
@@ -193,6 +194,5 @@ class ExtTriggerScan(ScanBase):
 if __name__ == "__main__":
     import configuration
     scan = ExtTriggerScan(**configuration.default_configuration)
-    scan.start(use_thread=True, **local_configuration)
+    scan.start(run_configure=True, run_analyze=True, use_thread=True, **local_configuration)
     scan.stop()
-    scan.analyze()

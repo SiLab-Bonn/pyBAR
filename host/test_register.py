@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(leve
 class RegisterTest(ScanBase):
     scan_id = "register_test"
 
-    def scan(self, **kwargs):
+    def scan(self):
         '''Testing of FE global and pixel registers and reading of chip S/N.
 
         Note
@@ -172,5 +172,5 @@ def test_pixel_register(self, pix_regs=["EnableDigInj", "Imon", "Enable", "C_Hig
 if __name__ == "__main__":
     import configuration
     scan = RegisterTest(**configuration.default_configuration)
-    scan.start()
+    scan.start(run_configure=True, run_analyze=False)
     scan.stop()

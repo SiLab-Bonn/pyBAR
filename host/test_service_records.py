@@ -12,7 +12,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(leve
 class TestServiceRecords(ScanBase):
     scan_id = "service_record_test"
 
-    def scan(self, **kwargs):
+    def scan(self):
         self.register.create_restore_point()
 
         self.readout.reset_sram_fifo()
@@ -46,6 +46,5 @@ class TestServiceRecords(ScanBase):
 if __name__ == "__main__":
     import configuration
     scan = TestServiceRecords(**configuration.default_configuration)
-    scan.start(configure=False)
+    scan.start(run_configure=False)
     scan.stop()
-    scan.analyze()

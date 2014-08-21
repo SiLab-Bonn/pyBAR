@@ -19,7 +19,22 @@ local_configuration = {
 class DigitalScan(ScanBase):
     scan_id = "digital_scan"
 
-    def scan(self, mask_steps=3, repeat_command=100, use_enable_mask=False, **kwargs):
+    def configure(self):
+        commands = []
+        commands.extend(self.register.get_commands("confmode"))
+        self.register.set_global_register_value("PrmpVbp", 0)
+        self.register.set_global_register_value("Amp2Vbp", 0)
+        self.register.set_global_register_value("DisVbn", 0)
+        commands.extend(self.register.get_commands("wrregister", name=["PrmpVbp", "Amp2Vbp", "DisVbn"]))
+        pixel_reg = "C_High"
+        self.register.set_pixel_register_value(pixel_reg, 0)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
+        pixel_reg = "C_Low"
+        self.register.set_pixel_register_value(pixel_reg, 0)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
+        self.register_utils.send_commands(commands)
+
+    def scan(self):
         '''Scan loop
 
         Parameters
@@ -31,16 +46,10 @@ class DigitalScan(ScanBase):
         use_enable_mask : bool
             Use enable mask for masking pixels.
         '''
-        commands = []
-        commands.extend(self.register.get_commands("confmode"))
-        self.register.set_global_register_value("PlsrDAC", 0)  # has to be 0, otherwise you also have analog injections
-        commands.extend(self.register.get_commands("wrregister", name=["PlsrDAC"]))
-        self.register_utils.send_commands(commands)
-
         self.readout.start()
 
         cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0]
-        self.scan_loop(cal_lvl1_command, repeat_command=repeat_command, use_delay=True, mask_steps=mask_steps, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=True, enable_shift_masks=["Enable", "EnableDigInj"], restore_shift_masks=False, mask=invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if use_enable_mask else None)
+        self.scan_loop(cal_lvl1_command, repeat_command=self.repeat_command, use_delay=True, mask_steps=self.mask_steps, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=True, enable_shift_masks=["Enable", "EnableDigInj"], restore_shift_masks=False, mask=invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if self.use_enable_mask else None)
 
         self.readout.stop(timeout=10.0)
 
@@ -61,6 +70,5 @@ class DigitalScan(ScanBase):
 if __name__ == "__main__":
     import configuration
     scan = DigitalScan(**configuration.default_configuration)
-    scan.start(use_thread=False, **local_configuration)
+    scan.start(run_configure=True, run_analyze=True, use_thread=False, **local_configuration)
     scan.stop()
-    scan.analyze()

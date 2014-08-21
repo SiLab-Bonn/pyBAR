@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 class Fei4TriggerScan(ScanBase):
     scan_id = "scan_fei4_trigger"
 
-    def scan(self, config_file_trigger_fe, col_span=[1, 80], row_span=[1, 336], timeout_no_data=10, scan_timeout=600, max_triggers=10000, wait_for_first_trigger=True, channel_trigger_fe=3, channel_triggered_fe=4, **kwargs):
+    def scan(self):
         '''Scan loop
 
         Parameters
@@ -35,7 +35,7 @@ class Fei4TriggerScan(ScanBase):
         '''
 
         self.configure_triggered_fe()
-        self.configure_trigger_fe(config_file_trigger_fe, col_span, row_span)
+        self.configure_trigger_fe(config_file_trigger_fe, self.col_span, self.row_span)
 
         with open_raw_data_file(filename=self.scan_data_filename + "_trigger_fe", title=self.scan_id) as raw_data_file_trigger_fe:
             with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_id) as raw_data_file:
@@ -49,14 +49,14 @@ class Fei4TriggerScan(ScanBase):
                 self.dut['tlu']['TRIGGER_COUNTER'] = 0
                 self.dut['cmd']['EN_EXT_TRIGGER'] = True
 
-                show_trigger_message_at = 10 ** (int(math.ceil(math.log10(max_triggers))) - 1)
+                show_trigger_message_at = 10 ** (int(math.ceil(math.log10(self.max_triggers))) - 1)
                 last_iteration = time.time()
                 saw_no_data_at_time = last_iteration
                 saw_data_at_time = last_iteration
                 scan_start_time = last_iteration
                 no_data_at_time = last_iteration
                 time_from_last_iteration = 0
-                scan_stop_time = scan_start_time + scan_timeout
+                scan_stop_time = scan_start_time + self.scan_timeout
                 current_trigger_number = 0
                 last_trigger_number = 0
                 while not self.stop_thread_event.wait(self.readout.readout_interval):
@@ -64,7 +64,7 @@ class Fei4TriggerScan(ScanBase):
                     if (current_trigger_number % show_trigger_message_at < last_trigger_number % show_trigger_message_at):
                         logging.info('Collected triggers: %d', current_trigger_number)
                     last_trigger_number = current_trigger_number
-                    if max_triggers is not None and current_trigger_number >= max_triggers:
+                    if self.max_triggers is not None and current_trigger_number >= self.max_triggers:
                         logging.info('Reached maximum triggers. Stopping Scan...')
                         self.stop_thread_event.set()
                     if scan_start_time is not None and time.time() > scan_stop_time:
@@ -76,16 +76,16 @@ class Fei4TriggerScan(ScanBase):
                     while True:
                         try:
                             data = self.readout.data.popleft()
-                            raw_data_trigger_fe = data_dict_list_from_data_dict_iterable(data_dict_iterable=(data,), filter_func=is_data_from_channel(channel_trigger_fe))
-                            raw_data_fe = data_dict_list_from_data_dict_iterable(data_dict_iterable=(data,), filter_func=is_data_from_channel(channel_triggered_fe))
+                            raw_data_trigger_fe = data_dict_list_from_data_dict_iterable(data_dict_iterable=(data,), filter_func=is_data_from_channel(self.channel_trigger_fe))
+                            raw_data_fe = data_dict_list_from_data_dict_iterable(data_dict_iterable=(data,), filter_func=is_data_from_channel(self.channel_triggered_fe))
                             raw_data_file_trigger_fe.append(raw_data_trigger_fe)
                             raw_data_file.append(raw_data_fe)
                         except IndexError:  # no data
                             no_data_at_time = last_iteration
-                            if wait_for_first_trigger is False and saw_no_data_at_time > (saw_data_at_time + timeout_no_data):
+                            if self.wait_for_first_trigger is False and saw_no_data_at_time > (saw_data_at_time + self.timeout_no_data):
                                 logging.info('Reached no data timeout. Stopping Scan...')
                                 self.stop_thread_event.set()
-                            elif wait_for_first_trigger is False:
+                            elif self.wait_for_first_trigger is False:
                                 saw_no_data_at_time = no_data_at_time
 
                             if no_data_at_time > (saw_data_at_time + 10):
@@ -95,9 +95,9 @@ class Fei4TriggerScan(ScanBase):
 
                         saw_data_at_time = last_iteration
 
-                        if wait_for_first_trigger is True:
+                        if self.wait_for_first_trigger is True:
                             logging.info('Taking data...')
-                            wait_for_first_trigger = False
+                            self.wait_for_first_trigger = False
 
                 self.dut['cmd']['EN_EXT_TRIGGER'] = False
                 self.dut['tlu']['TRIGGER_MODE'] = 0
@@ -203,4 +203,3 @@ if __name__ == "__main__":
     scan.start(config_file_trigger_fe=config_file_trigger_fe, channel_triggered_fe=4, channel_trigger_fe=3, invert_lemo_trigger_input=True, configure=True, use_thread=True, col_span=[5, 75], row_span=[20, 310], timeout_no_data=10, scan_timeout=10 * 60, max_triggers=1000000)
 
     scan.stop()
-    scan.analyze()
