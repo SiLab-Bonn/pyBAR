@@ -573,7 +573,6 @@ class AnalyzeRawData(object):
                     for scan_par_name in self.scan_parameters.dtype.names:
                         dtype, _ = self.scan_parameters.dtype.fields[scan_par_name][:2]
                         description[scan_par_name] = Col.from_dtype(dtype, dflt=0, pos=last_pos)
-                meta_data_out_table = self.out_file_h5.createTable(self.out_file_h5.root, name='meta_data', description=description, title='MetaData', filters=self._filter_table)
                 entry = meta_data_out_table.row
                 for i in range(0, n_event_index):
                     if self.interpreter.meta_table_v2:
