@@ -11,8 +11,10 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 
 
 local_configuration = {
-    "col_span": [2, 77],
-    "row_span": [2, 335],
+    "col_span": [1, 80],
+    "row_span": [1, 336],
+    "overwrite_mask": False,
+    "use_enable_mask": True,
     "timeout_no_data": 10,
     "scan_timeout": 1 * 60,
     "trig_latency": 239,
@@ -96,17 +98,27 @@ class FEI4SelfTriggerScan(ScanBase):
             raw_data_file.append(self.readout.data)
 
     def configure(self):
-        # generate ROI mask for Enable mask
-        pixel_reg = "Enable"
-        mask = make_box_pixel_mask_from_col_row(column=self.col_span, row=self.row_span)
         commands = []
         commands.extend(self.register.get_commands("confmode"))
-        enable_mask = np.logical_and(mask, self.register.get_pixel_register_value(pixel_reg))
-        self.register.set_pixel_register_value(pixel_reg, enable_mask)
+        pixel_reg = 'Enable'  # enabled pixels set to 1
+        mask = make_box_pixel_mask_from_col_row(column=self.col_span, row=self.row_span)  # 1 for selected columns, else 0
+        if self.overwrite_mask:
+            pixel_mask = mask
+        else:
+            pixel_mask = np.logical_and(mask, self.register.get_pixel_register_value(pixel_reg))
+        self.register.set_pixel_register_value(pixel_reg, pixel_mask)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
-        # generate ROI mask for Imon mask
-        pixel_reg = "Imon"
-        self.register.set_pixel_register_value(pixel_reg, 0)
+        pixel_reg = 'Imon'  # disabled pixels set to 1
+        if self.use_enable_mask:
+            self.register.set_pixel_register_value(pixel_reg, invert_pixel_mask(self.register.get_pixel_register_value('Enable')))
+        else:
+            self.register.set_pixel_register_value(pixel_reg, 0)
+        mask = make_box_pixel_mask_from_col_row(column=self.col_span, row=self.row_span, default=1, value=0)  # 0 for selected columns, else 1
+        if self.overwrite_mask:
+            pixel_mask = mask
+        else:
+            pixel_mask = np.logical_or(mask, self.register.get_pixel_register_value(pixel_reg))
+        self.register.set_pixel_register_value(pixel_reg, pixel_mask)
         commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
         # disable C_inj mask
         pixel_reg = "C_High"
