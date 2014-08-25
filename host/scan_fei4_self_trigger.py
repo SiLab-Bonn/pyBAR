@@ -5,7 +5,7 @@ import numpy as np
 
 from scan.scan import ScanBase
 from daq.readout import open_raw_data_file
-from fei4.register_utils import make_box_pixel_mask_from_col_row
+from fei4.register_utils import make_box_pixel_mask_from_col_row, invert_pixel_mask
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
