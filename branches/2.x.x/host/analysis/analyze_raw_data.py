@@ -984,7 +984,7 @@ class AnalyzeRawData(object):
         if (self._create_tot_pixel_hist):
             tot_pixel_hist = out_file_h5.root.HistTotPixel[:] if out_file_h5 is not None else self.tot_pixel_hist_array
             mean_pixel_tot = np.average(np.ma.masked_invalid(tot_pixel_hist), axis=2, weights=range(16)) * sum(range(0, 16)) / np.sum(tot_pixel_hist, axis=2)
-            plotting.plotThreeWay(mean_pixel_tot, title='Mean TOT', x_axis_title='mean TOT', filename=output_pdf)
+            plotting.plotThreeWay(mean_pixel_tot, title='Mean TOT', x_axis_title='mean TOT', filename=output_pdf, minimum=0, maximum=15)
         if (self._create_tdc_counter_hist):
             plotting.plot_tdc_counter(hist=out_file_h5.root.HistTdcCounter if out_file_h5 is not None else self.tdc_hist_counter, filename=output_pdf)
         if (self._create_tdc_hist):

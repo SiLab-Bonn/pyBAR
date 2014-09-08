@@ -92,7 +92,7 @@ def plot_linear_relation(x, y, x_err=None, y_err=None, title=None, point_label=N
             ax.annotate('{}'.format(Z), xy=(X, Y), xytext=(-5, 5), ha='right', textcoords='offset points')
     # line fit
     line_fit, pcov = np.polyfit(x, y, 1, full=False, cov=True)
-    print pcov
+#     print pcov
 #     chi_squared = np.sum((np.polyval(line_fit, x) - y) ** 2)
     fit_fn = np.poly1d(line_fit)
     plt.plot(x, fit_fn(x), '-', lw=2, color='gray')
@@ -670,8 +670,6 @@ def create_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, bins=
         else:
             x_max = math.ceil(hist.max())
     hist_bins = int(x_max - x_min) + 1 if bins is None else bins
-    if hist_bins > int(x_max - x_min) + 1:
-        hist_bins = int(x_max - x_min) + 1
     if hist_bins > 1:
         bin_width = (x_max - x_min) / (hist_bins - 1.0)
     else:
@@ -784,7 +782,7 @@ def plot_correlations(filenames, limit=None):
     DataFrame = pd.DataFrame()
     index = 0
     for fileName in filenames:
-        print 'open ', fileName
+        print 'Opening ', fileName
         with pd.get_store(fileName, 'r') as store:
             tempDataFrame = pd.DataFrame({'Event': store.Hits.Event[:15000], 'Row' + str(index): store.Hits.Row[:15000]})
             tempDataFrame = tempDataFrame.set_index('Event')
@@ -795,7 +793,7 @@ def plot_correlations(filenames, limit=None):
     DataFrame["index"] = DataFrame.index
     DataFrame.drop_duplicates(take_last=True, inplace=True)
     del DataFrame["index"]
-    print DataFrame.head(10)
+#     print DataFrame.head(10)
     correlationNames = ('Row')
     index = 0
     for corName in correlationNames:
@@ -852,8 +850,8 @@ def hist_quantiles(hist, prob=(0.05, 0.95), return_indices=False, copy=False):
     unormcdf, indices = np.unique(normcdf, return_index=True)
     # calculate limits
     try:
-        hp = np.where(unormcdf > 0.95)[0][0]
-        lp = np.where(unormcdf >= 0.00)[0][0]
+        hp = np.where(unormcdf > prob[1])[0][0]
+        lp = np.where(unormcdf >= prob[0])[0][0]
     except IndexError:
         hp_index = hist_t.shape[0]
         lp_index = 0
@@ -864,7 +862,7 @@ def hist_quantiles(hist, prob=(0.05, 0.95), return_indices=False, copy=False):
     masked_hist = np.ma.array(hist, copy=copy, mask=True)
     masked_hist.mask[lp_index:hp_index + 1] = False
     if return_indices:
-        return masked_hist, (lp_index, hp_index + 1)
+        return masked_hist, (lp_index, hp_index)
     else:
         return masked_hist
 
