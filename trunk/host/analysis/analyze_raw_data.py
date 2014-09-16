@@ -119,7 +119,7 @@ class AnalyzeRawData(object):
         self.clusterizer = PyDataClusterizer()
         raw_data_files = []
 
-        if isinstance(raw_data_file, (list, tuple)):
+        if isinstance(raw_data_file, (list, set, tuple)):
             for one_raw_data_file in raw_data_file:
                 if one_raw_data_file is not None and os.path.splitext(one_raw_data_file)[1].strip().lower() != ".h5":
                     raw_data_files.append(os.path.splitext(one_raw_data_file)[0] + ".h5")
@@ -132,7 +132,16 @@ class AnalyzeRawData(object):
                 raw_data_files.append(raw_data_file)
             else:
                 raw_data_files = None
-        self._analyzed_data_file = analyzed_data_file
+        if analyzed_data_file:
+            if os.path.splitext(analyzed_data_file)[1].strip().lower() != ".h5":
+                self._analyzed_data_file = os.path.splitext(analyzed_data_file)[0] + ".h5"
+            else:
+                self._analyzed_data_file = analyzed_data_file
+        else:
+            if len(raw_data_files) == 1:
+                self._analyzed_data_file = os.path.splitext(raw_data_files[0])[0] + '_interpreted.h5'
+            else:
+                raise ValueError('Parameter analyzed_data_file not given')
 
         # create a scan parameter table from all raw data files
         if raw_data_files is not None:
@@ -145,8 +154,6 @@ class AnalyzeRawData(object):
             self.files_dict = None
             self.scan_parameters = None
 
-        if analyzed_data_file is not None and os.path.splitext(analyzed_data_file)[1].strip().lower() != ".h5":
-            self._analyzed_data_file = os.path.splitext(analyzed_data_file)[0] + ".h5"
         self.set_standard_settings()
         if raw_data_file is not None and create_pdf:
             output_pdf_filename = os.path.splitext(raw_data_file)[0] + ".pdf"
@@ -935,7 +942,7 @@ class AnalyzeRawData(object):
         else:
             output_pdf = self.output_pdf
         if not output_pdf:
-            raise ValueError('No pdf_filename given')
+            raise ValueError('Parameter pdf_filename not given')
         logging.info('Saving histograms to file: %s' % str(output_pdf._file.fh.name))
 
         if (self._create_threshold_hists):
