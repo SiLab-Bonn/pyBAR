@@ -324,16 +324,16 @@ class FEI4Register(object):
         if definition_file:
             self.definition_file = definition_file
         if self.configuration_file is not None:
-            print "Loading configuration file: %s" % self.configuration_file
+            logging.info("Loading configuration file: %s" % self.configuration_file)
             self.parse_parameters(self.parameter_config)  # get flavor and chip ID
             self.parse_parameters(self.calibration_config)  # calibration values
             self.parse_register_config()
             self.parse_chip_config()
         elif self.definition_file is not None:
-            print "Parsing definition file: %s" % self.definition_file
+            logging.info("Parsing definition file: %s" % self.definition_file)
             self.parse_register_config()
         else:
-            print "No configuration file and/or definition file specified."
+            logging.warning("No configuration file and/or definition file specified.")
 
     def save_configuration_to_text_file(self, configuration_file):
         '''Saving configuration to text files
@@ -353,7 +353,7 @@ class FEI4Register(object):
         configuration_path, filename = os.path.split(configuration_file)
         filename = os.path.splitext(filename)[0].strip()
         if filename == '':
-            print "Unknown filename: nothing saved"
+            logging.warning("Unknown filename: nothing saved")
             return
         if configuration_path == '':
             if self.configuration_file is not None:
@@ -361,7 +361,7 @@ class FEI4Register(object):
                 configuration_path = os.path.dirname(configuration_path)
                 # filename, extension = os.path.splitext(configuration_file_name)
             else:
-                print "Unknown path: nothing saved"
+                logging.warning("Unknown path: nothing saved")
                 return
         if os.path.split(configuration_path)[1] == 'configs':
             configuration_path = os.path.split(configuration_path)[0]
@@ -374,10 +374,10 @@ class FEI4Register(object):
             if path == "configs":
                 self.configuration_file = os.path.join(configuration_file_path, filename + ".cfg")
                 if os.path.isfile(self.configuration_file):
-                    print "Overwriting configuration file:", self.configuration_file
+                    logging.info("Overwriting configuration file: %s" % self.configuration_file)
                     os.remove(self.configuration_file)
                 else:
-                    print "Saving configuration file:", self.configuration_file
+                    logging.info("Saving configuration file: %s" % self.configuration_file)
                 self.write_parameters(self.parameter_config, title='Chip Parameters')
                 self.write_chip_config()
             elif path == "tdacs":
@@ -428,9 +428,9 @@ class FEI4Register(object):
         if definition_file:
             self.definition_file = definition_file
         if self.configuration_file is not None:
-            print "Loading configuration file: %s" % self.configuration_file
+            logging.info("Loading configuration file: %s" % self.configuration_file)
 
-            with tb.openFile(h5_file, mode="r", title='', **kwargs) as raw_data_file_h5:
+            with tb.open_file(h5_file, mode="r", title='', **kwargs) as raw_data_file_h5:
                 if name:
                     configuration_group = raw_data_file_h5.root.configuration.name
                 else:
@@ -458,10 +458,10 @@ class FEI4Register(object):
                         name = pixel_reg.full_name
                         self.set_pixel_register_value(pixel_reg.name, np.asarray(raw_data_file_h5.getNode(configuration_group, name=name)).T)
         elif self.definition_file is not None:
-            print "Parsing definition file: %s" % self.definition_file
+            logging.info("Parsing definition file: %s" % self.definition_file)
             self.parse_register_config()
         else:
-            print "No configuration file and/or definition file specified."
+            logging.warning("No configuration file and/or definition file specified.")
 
     def save_configuration_to_hdf5(self, configuration_file, name='', **kwargs):
         '''Saving configuration to HDF5 file
@@ -485,7 +485,7 @@ class FEI4Register(object):
         filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
 
         # append to file if existing otherwise create new one
-        with tb.openFile(h5_file, mode="a", title='', **kwargs) as raw_data_file_h5:
+        with tb.open_file(h5_file, mode="a", title='', **kwargs) as raw_data_file_h5:
 
             try:
                 configuration_group = raw_data_file_h5.create_group(raw_data_file_h5.root, "configuration")
@@ -610,7 +610,7 @@ class FEI4Register(object):
         all_known_regs.extend([x.name for x in self.global_registers if x.readonly is False])
         unknown_regs = set.difference(set(all_config_keys_dict.iterkeys()), all_known_regs)
         if unknown_regs:
-            print "Found following unknown register(s): {}".format(', '.join('\'' + all_config_keys_dict[reg] + '\'' for reg in unknown_regs))
+            logging.warning("Found following unknown register(s): {}".format(', '.join('\'' + all_config_keys_dict[reg] + '\'' for reg in unknown_regs)))
 
     def write_chip_config(self):
         with open(self.configuration_file, 'a') as f:
@@ -673,7 +673,7 @@ class FEI4Register(object):
 
     def write_pixel_mask_config(self, filename, value):
         if os.path.isfile(filename):
-            print "Overwriting configuration file:", filename
+            logging.info("Overwriting configuration file: %s" % filename)
         with open(filename, 'w') as f:
             seq = []
             seq.append("###  1     6     11    16     21    26     31    36     41    46     51    56     61    66     71    76\n")
@@ -713,7 +713,7 @@ class FEI4Register(object):
 
     def write_pixel_dac_config(self, filename, value):
         if os.path.isfile(filename):
-            print "Overwriting configuration file:", filename
+            logging.info("Overwriting configuration file: %s" % filename)
         with open(filename, 'w') as f:
             seq = []
             seq.append("###    1  2  3  4  5  6  7  8  9 10   11 12 13 14 15 16 17 18 19 20   21 22 23 24 25 26 27 28 29 30   31 32 33 34 35 36 37 38 39 40\n")
@@ -735,11 +735,11 @@ class FEI4Register(object):
     def set_global_register_value(self, name, value, ignore_no_match=False):
         regs = [x for x in self.global_registers if x.name.lower() == name.lower()]
         if ignore_no_match is False and len(regs) == 0:
-            raise ValueError('No matching register found')
+            raise ValueError('No matching register found: %s' % name)
         if ignore_no_match and len(regs) == 0:
             return
         if len(regs) > 1:
-            raise ValueError('Found more than one matching register')
+            raise ValueError('Found more than one matching register: %s' % name)
         for reg in regs:
             old_value = reg.value
             value = long(str(value), 0)  # value is decimal string or number or BitVector
@@ -752,16 +752,16 @@ class FEI4Register(object):
     def get_global_register_value(self, name):
         regs = [x for x in self.global_registers if x.name.lower() == name.lower()]
         if len(regs) == 0:
-            raise ValueError('No matching register found')
+            raise ValueError('No matching register found: %s' % name)
         if len(regs) > 1:
-            raise ValueError('Found more than one matching register')
+            raise ValueError('Found more than one matching register: %s' % name)
         for reg in regs:
             return reg.value
 
     def set_pixel_register_value(self, name, value, ignore_no_match=False):
         regs = [x for x in self.pixel_registers if x.name.lower() == name.lower()]
         if ignore_no_match is False and len(regs) == 0:
-            raise ValueError('No matching register found')
+            raise ValueError('No matching register found: %s' % name)
         if ignore_no_match and len(regs) == 0:
             return
         if len(regs) > 1:
@@ -792,9 +792,9 @@ class FEI4Register(object):
     def get_pixel_register_value(self, name):
         regs = [x for x in self.pixel_registers if x.name.lower() == name.lower()]
         if len(regs) == 0:
-            raise ValueError('No matching register found')
+            raise ValueError('No matching register found: %s' % name)
         if len(regs) > 1:
-            raise ValueError('Found more than one matching register')
+            raise ValueError('Found more than one matching register: %s' % name)
         for reg in regs:
             return reg.value.copy()
 
