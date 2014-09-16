@@ -596,6 +596,8 @@ def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=No
 
     if plot_range is None:
         plot_range = range(0, len(hist))
+    if not plot_range:
+        plot_range = [0]
     if yerr is not None:
         plt.bar(left=plot_range, height=hist[plot_range], color=color, align='center', yerr=yerr)
     else:
