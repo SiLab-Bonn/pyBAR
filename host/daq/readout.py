@@ -1,5 +1,6 @@
 from functools import wraps
 from time import time, sleep
+from usb.core import USBError
 
 
 def timed(f):
@@ -15,7 +16,7 @@ def timed(f):
 import logging
 import struct
 import os.path
-from threading import Thread, Event, Timer
+from threading import Thread, Event, Timer, RLock
 from collections import deque
 # from multiprocessing import Process as Thread
 # from multiprocessing import Event
@@ -37,38 +38,70 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%
 data_deque_dict_names = ["data", "timestamp_start", "timestamp_stop", "error"]
 
 
+class RxSyncError(Exception):
+    pass
+
+
+class EightbTenbError(Exception):
+    pass
+
+
+class FifoError(Exception):
+    pass
+
+
 class Readout(object):
-    def __init__(self, dut):
+    def __init__(self, dut, callback=None, errback=None, **kwargs):
         self.dut = dut
-        self.worker_thread = None
+        self.callback = callback
+        self.errback = errback
+        self.worker_thread = Thread(target=self.worker, name='ReadoutThread')
+        self.worker_thread.daemon = True
+        if self.errback:
+            self.watchdog_thread = Thread(target=self.watchdog, name='WatchdogThread')
+            self.watchdog_thread.daemon = True
+        else:
+            self.watchdog_thread = None
         self.data = deque()
         self.stop_thread_event = Event()
         self.stop_thread_event.set()
         self.readout_interval = 0.05
-        self.rx_base_address = dict([(idx, addr) for idx, addr in enumerate(range(0x8600, 0x8200, -0x0100))])
-        self.sram_base_address = dict([(idx, addr) for idx, addr in enumerate(range(0x8100, 0x8200, 0x0100))])
         self.timestamp = None
         self.update_timestamp()
+        self._is_running = False
+        self.reset_rx()
+        self.reset_sram_fifo()
 
-    def start(self, reset_rx=False, empty_data_queue=True, reset_sram_fifo=True, filename=None):
-        if self.worker_thread is not None:
-            raise RuntimeError('Thread is not None')
+    @property
+    def is_running(self):
+        return self._is_running
+
+    @property
+    def is_alive(self):
+        return self.worker_thread.is_alive()
+
+    def start(self, reset_rx=False, reset_sram_fifo=False, empty_data_queue=False):
+        if self._is_running:
+            raise RuntimeError('Readout already running: use stop() before start()')
+        self._is_running = True
         if reset_rx:
             self.reset_rx()
+        if reset_sram_fifo:
+            self.reset_sram_fifo()
         if empty_data_queue:
             # self.data.empty()
             self.data.clear()
-        if reset_sram_fifo:
-            self.reset_sram_fifo()
         self.stop_thread_event.clear()
-        self.worker_thread = Thread(target=self.worker)
-        self.worker_thread.daemon = True
+        if self.errback:
+            logging.info('Starting watchdog')
+            self.watchdog_thread.start()
         logging.info('Starting readout')
         self.worker_thread.start()
 
     def stop(self, timeout=10):
-        if self.worker_thread is None:
-            raise RuntimeError('Readout thread not existing: use start() before stop()')
+        if not self._is_running:
+            raise RuntimeError('Readout not running: use start() before stop()')
+        self._is_running = False
         if timeout:
             def stop_thread():
                 logging.warning('Waiting for empty SRAM FIFO: timeout after %.1f second(s)' % timeout)
@@ -86,8 +119,10 @@ class Readout(object):
             timeout_timer.cancel()
 
         self.stop_thread_event.set()  # stop thread when no timeout is set
+        if self.errback:
+            self.watchdog_thread.join()
+            logging.info('Stopped watchdog')
         self.worker_thread.join()
-        self.worker_thread = None
         logging.info('Stopped readout')
 
     def print_readout_status(self):
@@ -108,19 +143,35 @@ class Readout(object):
 
         Worker thread function that uses read_data_dict() and appends data to self.data (collection.deque)
         '''
-        # TODO: check FIFO status (overflow) and check rx status (sync) once in a while
-        while not self.stop_thread_event.wait(self.readout_interval):  # TODO: this is probably what you need to reduce processor cycles
+        while not self.stop_thread_event.wait(self.readout_interval):
+            data = None
             self.dut['USB']._sidev.lock.acquire()
             try:
                 data = self.read_data_dict()
-            except Exception as e:
-                logging.error('Stopping readout: %s' % (e))
-                self.stop_thread_event.set()  # stop readout on any occurring exception
-                continue
+            except USBError as e:
+                if self.errback:
+                    self.errback(e)
+                else:
+                    raise
             finally:
                 self.dut['USB']._sidev.lock.release()
-            if data["data"].shape[0] > 0:  # TODO: make it optional
-                self.data.append(data)  # put({'timestamp':get_float_time(), 'raw_data':filtered_data_words, 'error':0})
+            if data and data["data"].shape[0] > 0:
+                if self.callback:
+                    self.callback(data)
+                else:
+                    self.data.append(data)
+
+    def watchdog(self):
+        while not self.stop_thread_event.wait(self.readout_interval * 10):
+            try:
+                if not any(self.get_rx_sync_status()):
+                    self.errback(RxSyncError('No RX sync'))
+                if any(self.get_rx_8b10b_error_count()):
+                    self.errback(EightbTenbError('RX 8b10b error(s) detected'))
+                if any(self.get_rx_fifo_discard_count()):
+                    self.errback(FifoError('RX FIFO discard error(s) detected'))
+            except USBError as e:
+                self.errback(e)
 
     def read_data_dict(self):
         '''Read SRAM and return data dict
@@ -162,16 +213,16 @@ class Readout(object):
         self.dut['sram']['RESET']
         sleep(0.2)  # sleep here for a while
         if self.dut['sram']['FIFO_SIZE'] != 0:
-            logging.warning('SRAM FIFO size not zero')
+            logging.warning('SRAM FIFO not empty after reset')
 
     def reset_rx(self, channels=None):
         logging.info('Resetting RX')
         if channels:
             filter(lambda channel: self.dut[channel]['SOFT_RESET'], channels)
         else:
-            if self.dut.name == 'pyBAR':
+            if self.dut.name == 'usbpix':
                 filter(lambda channel: self.dut[channel]['SOFT_RESET'], ['rx_1', 'rx_2', 'rx_3', 'rx_4'])
-            elif self.dut.name == 'pyBAR_GPAC':
+            elif self.dut.name == 'usbpix_gpac':
                 filter(lambda channel: self.dut[channel]['SOFT_RESET'], ['rx_fe'])
         sleep(0.1)  # sleep here for a while
 
@@ -179,28 +230,32 @@ class Readout(object):
         if channels:
             return map(lambda channel: True if self.dut[channel]['READY'] else False, channels)
         else:
-            if self.dut.name == 'pyBAR':
+            if self.dut.name == 'usbpix':
                 return map(lambda channel: True if self.dut[channel]['READY'] else False, ['rx_1', 'rx_2', 'rx_3', 'rx_4'])
-            elif self.dut.name == 'pyBAR_GPAC':
+            elif self.dut.name == 'usbpix_gpac':
                 return map(lambda channel: True if self.dut[channel]['READY'] else False, ['rx_fe'])
 
     def get_rx_8b10b_error_count(self, channels=None):
         if channels:
             return map(lambda channel: self.dut[channel]['DECODER_ERROR_COUNTER'], channels)
         else:
-            if self.dut.name == 'pyBAR':
+            if self.dut.name == 'usbpix':
                 return map(lambda channel: self.dut[channel]['DECODER_ERROR_COUNTER'], ['rx_1', 'rx_2', 'rx_3', 'rx_4'])
-            elif self.dut.name == 'pyBAR_GPAC':
+            elif self.dut.name == 'usbpix_gpac':
                 return map(lambda channel: self.dut[channel]['DECODER_ERROR_COUNTER'], ['rx_fe'])
 
     def get_rx_fifo_discard_count(self, channels=None):
         if channels:
             return map(lambda channel: self.dut[channel]['LOST_DATA_COUNTER'], channels)
         else:
-            if self.dut.name == 'pyBAR':
+            if self.dut.name == 'usbpix':
                 return map(lambda channel: self.dut[channel]['LOST_DATA_COUNTER'], ['rx_1', 'rx_2', 'rx_3', 'rx_4'])
-            elif self.dut.name == 'pyBAR_GPAC':
+            elif self.dut.name == 'usbpix_gpac':
                 return map(lambda channel: self.dut[channel]['LOST_DATA_COUNTER'], ['rx_fe'])
+
+
+class NoSyncError(Exception):
+    pass
 
 
 def convert_data_array(array, filter_func=None, converter_func=None):
@@ -420,6 +475,11 @@ def is_service_record(value):
 def is_data_record(value):
     return np.logical_and(np.logical_and(np.less_equal(np.bitwise_and(value, 0x00FE0000), 0x00A00000), np.less_equal(np.bitwise_and(value, 0x0001FF00), 0x00015000)), np.logical_and(np.not_equal(np.bitwise_and(value, 0x00FE0000), 0x00000000), np.not_equal(np.bitwise_and(value, 0x0001FF00), 0x00000000)))
 
+def is_trigger_word(value):
+    return np.equal(np.bitwise_and(value, 0x80000000), 0b10000000000000000000000000000000)
+
+def is_tdc_word(value):
+    return np.equal(np.bitwise_and(value, 0x40000000), 0b01000000000000000000000000000000)
 
 def is_status_data(value):
     '''Select status data
@@ -543,7 +603,7 @@ def get_tot_iterator_from_data_records(array):  # generator
             yield np.bitwise_and(item, 0x0000000F)  # ToT2
 
 
-def open_raw_data_file(filename, mode="a", title="", scan_parameters=[], **kwargs):
+def open_raw_data_file(filename, mode="a", title="", scan_parameters=None, **kwargs):
     '''Mimics pytables.open_file()/openFile()
 
     Returns:
@@ -562,7 +622,8 @@ class RawDataFile(object):
 
     TODO: Python 3.x support for contextlib.ContextDecorator
     '''
-    def __init__(self, filename, mode="a", title="", scan_parameters=[], **kwargs):  # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created):
+    def __init__(self, filename, mode="a", title="", scan_parameters=None, **kwargs):  # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created):
+        self.lock = RLock()
         self.filename = filename
         self.scan_parameters = scan_parameters
         self.raw_data_earray = None
@@ -605,67 +666,51 @@ class RawDataFile(object):
                 self.scan_param_table = self.raw_data_file_h5.getNode(self.raw_data_file_h5.root, name='scan_parameters')
 
     def close(self):
+        self.lock.acquire()
         self.flush()
         logging.info('Closing raw data file: %s' % self.filename)
         self.raw_data_file_h5.close()
+        self.lock.release()
 
-    def append(self, data_dict_iterable, scan_parameters={}, clear_deque=False, flush=True, **kwargs):
-        row_meta = self.meta_data_table.row
-        if scan_parameters:
-            row_scan_param = self.scan_param_table.row
-
-        total_words_before = self.raw_data_earray.nrows
-
-        def append_item(item):
-            total_words = self.raw_data_earray.nrows
-            raw_data = item["data"]
-            len_raw_data = raw_data.shape[0]
-            self.raw_data_earray.append(raw_data)
-#             row_meta['timestamp'] = item["timestamp_stop"]
-            row_meta['timestamp_start'] = item["timestamp_start"]
-            row_meta['timestamp_stop'] = item["timestamp_stop"]
-            row_meta['error'] = item["error"]
-#             row_meta['length'] = len_raw_data
-            row_meta['data_length'] = len_raw_data
-#             row_meta['start_index'] = total_words
-            row_meta['index_start'] = total_words
-            total_words += len_raw_data
-#             row_meta['stop_index'] = total_words
-            row_meta['index_stop'] = total_words
-            row_meta.append()
-            if self.scan_parameters:
-                for key, value in dict.iteritems(scan_parameters):
-                    row_scan_param[key] = value
-                row_scan_param.append()
-#         if not data_dict_iterable:
-#             logging.warning('Iterable is empty')
-#         if clear_deque:
-#             while True:
-#                 try:
-#                     item = data_dict_iterable.popleft()
-#                 except IndexError:
-#                     break
-#                 append_item(item)
-#
-#         else:
-        for item in data_dict_iterable:
-            append_item(item)
-
-        total_words_after = self.raw_data_earray.nrows
-        if total_words_after == total_words_before:
-            logging.info('Nothing to append: %s' % self.filename)
-
-        if clear_deque:
-            data_dict_iterable.clear()
-
+    def append_item(self, item, scan_parameters=None, flush=True):
+        self.lock.acquire()
+        total_words = self.raw_data_earray.nrows
+        raw_data = item["data"]
+        len_raw_data = raw_data.shape[0]
+        self.raw_data_earray.append(raw_data)
+        self.meta_data_table.row['timestamp_start'] = item["timestamp_start"]
+        self.meta_data_table.row['timestamp_stop'] = item["timestamp_stop"]
+        self.meta_data_table.row['error'] = item["error"]
+        self.meta_data_table.row['data_length'] = len_raw_data
+        self.meta_data_table.row['index_start'] = total_words
+        total_words += len_raw_data
+        self.meta_data_table.row['index_stop'] = total_words
+        self.meta_data_table.row.append()
+        if self.scan_parameters:
+            for key, value in dict.iteritems(scan_parameters):
+                self.scan_param_table.row[key] = value
+            self.scan_param_table.row.append()
         if flush:
             self.flush()
+        self.lock.release()
+
+    def append(self, data_dict_iterable, scan_parameters=None, clear_deque=False, flush=True, **kwargs):
+        self.lock.acquire()
+        for item in data_dict_iterable:
+            self.append_item(item, scan_parameters, flush=False)
+        if clear_deque:
+            data_dict_iterable.clear()
+        if flush:
+            self.flush()
+        self.lock.release()
 
     def flush(self):
+        self.lock.acquire()
         self.raw_data_earray.flush()
         self.meta_data_table.flush()
         if self.scan_parameters:
             self.scan_param_table.flush()
+        self.lock.release()
 
 
 def save_raw_data_from_data_dict_iterable(data_dict_iterable, filename, mode='a', title='', scan_parameters={}, **kwargs):  # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created
@@ -682,45 +727,50 @@ class FEI4Record(object):
 
     """
     def __init__(self, data_word, chip_flavor):
-        self.record_rawdata = int(data_word) & 0x00FFFFFF
-        self.chip_flavor = str(chip_flavor).lower()
-        self.chip_flavors = ['fei4a', 'fei4b']
-        if self.chip_flavor not in self.chip_flavors:
-            raise KeyError('Chip flavor is not of type {}'.format(', '.join('\'' + flav + '\'' for flav in self.chip_flavors)))
-        self.record_word = BitLogic.from_value(value=self.record_rawdata, size=24)
-        self.record_dict = None
-        if is_data_header(self.record_rawdata):
-            self.record_type = "DH"
-            if self.chip_flavor == "fei4a":
-                self.record_dict = OrderedDict([('start', self.record_word[23:19].tovalue()), ('header', self.record_word[18:16].tovalue()), ('flag', self.record_word[15:15].tovalue()), ('lvl1id', self.record_word[14:8].tovalue()), ('bcid', self.record_word[7:0].tovalue())])
-            elif self.chip_flavor == "fei4b":
-                self.record_dict = OrderedDict([('start', self.record_word[23:19].tovalue()), ('header', self.record_word[18:16].tovalue()), ('flag', self.record_word[15:15].tovalue()), ('lvl1id', self.record_word[14:10].tovalue()), ('bcid', self.record_word[9:0].tovalue())])
-        elif is_address_record(self.record_rawdata):
-            self.record_type = "AR"
-            self.record_dict = OrderedDict([('start', self.record_word[23:19].tovalue()), ('header', self.record_word[18:16].tovalue()), ('type', self.record_word[15:15].tovalue()), ('address', self.record_word[14:0].tovalue())])
-        elif is_value_record(self.record_rawdata):
-            self.record_type = "VR"
-            self.record_dict = OrderedDict([('start', self.record_word[23:19].tovalue()), ('header', self.record_word[18:16].tovalue()), ('value', self.record_word[15:0].tovalue())])
-        elif is_service_record(self.record_rawdata):
-            self.record_type = "SR"
-            if self.chip_flavor == "fei4a":
-                self.record_dict = OrderedDict([('start', self.record_word[23:19].tovalue()), ('header', self.record_word[18:16].tovalue()), ('code', self.record_word[15:10].tovalue()), ('counter', self.record_word[9:0].tovalue())])
-            elif self.chip_flavor == "fei4b":
-                if self.record_word[15:10].tovalue() == 14:
-                    self.record_dict = OrderedDict([('start', self.record_word[23:19].tovalue()), ('header', self.record_word[18:16].tovalue()), ('code', self.record_word[15:10].tovalue()), ('lvl1id[11:5]', self.record_word[9:3].tovalue()), ('bcid[12:10]', self.record_word[2:0].tovalue())])
-                elif self.record_word[15:10].tovalue() == 15:
-                    self.record_dict = OrderedDict([('start', self.record_word[23:19].tovalue()), ('header', self.record_word[18:16].tovalue()), ('code', self.record_word[15:10].tovalue()), ('skipped', self.record_word[9:0].tovalue())])
-                elif self.record_word[15:10].tovalue() == 16:
-                    self.record_dict = OrderedDict([('start', self.record_word[23:19].tovalue()), ('header', self.record_word[18:16].tovalue()), ('code', self.record_word[15:10].tovalue()), ('truncation flag', self.record_word[9:9].tovalue()), ('truncation counter', self.record_word[8:4].tovalue()), ('l1req', self.record_word[3:0].tovalue())])
-                else:
-                    self.record_dict = OrderedDict([('start', self.record_word[23:19].tovalue()), ('header', self.record_word[18:16].tovalue()), ('code', self.record_word[15:10].tovalue()), ('counter', self.record_word[9:0].tovalue())])
-        elif is_data_record(self.record_rawdata):
-            self.record_type = "DR"
-            self.record_dict = OrderedDict([('column', self.record_word[23:17].tovalue()), ('row', self.record_word[16:8].tovalue()), ('tot1', self.record_word[7:4].tovalue()), ('tot2', self.record_word[3:0].tovalue())])
+        self.record_rawdata = data_word
+        self.record_dict = OrderedDict()
+        if not (self.record_rawdata & 0xF0000000):  # FE data
+            self.record_dict.update([('channel', (self.record_rawdata & 0x0F000000) >> 24)])
+            self.chip_flavor = str(chip_flavor).lower()
+            self.chip_flavors = ['fei4a', 'fei4b']
+            if self.chip_flavor not in self.chip_flavors:
+                raise KeyError('Chip flavor is not of type {}'.format(', '.join('\'' + flav + '\'' for flav in self.chip_flavors)))
+            self.record_word = BitLogic.from_value(value=self.record_rawdata, size=24)
+            if is_data_header(self.record_rawdata):
+                self.record_type = "DH"
+                if self.chip_flavor == "fei4a":
+                    self.record_dict.update([('start', self.record_word[23:19].tovalue()), ('header', self.record_word[18:16].tovalue()), ('flag', self.record_word[15:15].tovalue()), ('lvl1id', self.record_word[14:8].tovalue()), ('bcid', self.record_word[7:0].tovalue())])
+                elif self.chip_flavor == "fei4b":
+                    self.record_dict.update([('start', self.record_word[23:19].tovalue()), ('header', self.record_word[18:16].tovalue()), ('flag', self.record_word[15:15].tovalue()), ('lvl1id', self.record_word[14:10].tovalue()), ('bcid', self.record_word[9:0].tovalue())])
+            elif is_address_record(self.record_rawdata):
+                self.record_type = "AR"
+                self.record_dict.update([('start', self.record_word[23:19].tovalue()), ('header', self.record_word[18:16].tovalue()), ('type', self.record_word[15:15].tovalue()), ('address', self.record_word[14:0].tovalue())])
+            elif is_value_record(self.record_rawdata):
+                self.record_type = "VR"
+                self.record_dict.update([('start', self.record_word[23:19].tovalue()), ('header', self.record_word[18:16].tovalue()), ('value', self.record_word[15:0].tovalue())])
+            elif is_service_record(self.record_rawdata):
+                self.record_type = "SR"
+                if self.chip_flavor == "fei4a":
+                    self.record_dict.update([('start', self.record_word[23:19].tovalue()), ('header', self.record_word[18:16].tovalue()), ('code', self.record_word[15:10].tovalue()), ('counter', self.record_word[9:0].tovalue())])
+                elif self.chip_flavor == "fei4b":
+                    if self.record_word[15:10].tovalue() == 14:
+                        self.record_dict.update([('start', self.record_word[23:19].tovalue()), ('header', self.record_word[18:16].tovalue()), ('code', self.record_word[15:10].tovalue()), ('lvl1id[11:5]', self.record_word[9:3].tovalue()), ('bcid[12:10]', self.record_word[2:0].tovalue())])
+                    elif self.record_word[15:10].tovalue() == 15:
+                        self.record_dict.update([('start', self.record_word[23:19].tovalue()), ('header', self.record_word[18:16].tovalue()), ('code', self.record_word[15:10].tovalue()), ('skipped', self.record_word[9:0].tovalue())])
+                    elif self.record_word[15:10].tovalue() == 16:
+                        self.record_dict.update([('start', self.record_word[23:19].tovalue()), ('header', self.record_word[18:16].tovalue()), ('code', self.record_word[15:10].tovalue()), ('truncation flag', self.record_word[9:9].tovalue()), ('truncation counter', self.record_word[8:4].tovalue()), ('l1req', self.record_word[3:0].tovalue())])
+                    else:
+                        self.record_dict.update([('start', self.record_word[23:19].tovalue()), ('header', self.record_word[18:16].tovalue()), ('code', self.record_word[15:10].tovalue()), ('counter', self.record_word[9:0].tovalue())])
+            elif is_data_record(self.record_rawdata):
+                self.record_type = "DR"
+                self.record_dict.update([('column', self.record_word[23:17].tovalue()), ('row', self.record_word[16:8].tovalue()), ('tot1', self.record_word[7:4].tovalue()), ('tot2', self.record_word[3:0].tovalue())])
+            else:
+                self.record_type = "UNKNOWN FE WORD"
+                self.record_dict.update([('word', self.record_word.tovalue())])
+    #             raise ValueError('Unknown data word: ' + str(self.record_word.tovalue()))
         else:
-            self.record_type = "UNKNOWN"
-            self.record_dict = OrderedDict([('unknown', self.record_word.tovalue())])
-#             raise ValueError('Unknown data word: ' + str(self.record_word.tovalue()))
+            self.record_type = "OTHER DATA WORD"
+            self.record_dict.update([('word', self.record_word.tovalue())])
 
     def __len__(self):
         return len(self.record_dict)
