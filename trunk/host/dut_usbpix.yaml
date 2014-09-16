@@ -10,7 +10,7 @@
 #  $Date::                      $:
 #
 
-name    : pyBAR
+name    : usbpix
 version : 2.0.0
 
 transfer_layer:
