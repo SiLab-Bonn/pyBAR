@@ -913,7 +913,7 @@ class AnalyzeRawData(object):
         else:
             self.histograming.add_hits(cluster[start_index:], cluster[start_index:].shape[0])
 
-    def plot_histograms(self, scan_data_filename=None, analyzed_data_file=None, maximum=None, create_hit_hists_only=False):  # plots the histogram from output file if available otherwise from ram
+    def plot_histograms(self, pdf_filename=None, analyzed_data_file=None, maximum=None, create_hit_hists_only=False):  # plots the histogram from output file if available otherwise from ram
         logging.info('Creating histograms%s' % ((' (source: %s)' % analyzed_data_file) if analyzed_data_file is not None else ((' (source: %s)' % self._analyzed_data_file) if self._analyzed_data_file is not None else '')))
         if analyzed_data_file is not None:
             out_file_h5 = tb.openFile(analyzed_data_file, mode="r")
@@ -925,15 +925,17 @@ class AnalyzeRawData(object):
                 out_file_h5 = None
         else:
             out_file_h5 = None
-        if scan_data_filename is not None:
-            if os.path.splitext(scan_data_filename)[1].strip().lower() != ".pdf":  # check for correct filename extension
-                output_pdf_filename = os.path.splitext(scan_data_filename)[0] + ".pdf"
+        if pdf_filename is not None:
+            if os.path.splitext(pdf_filename)[1].strip().lower() != ".pdf":  # check for correct filename extension
+                output_pdf_filename = os.path.splitext(pdf_filename)[0] + ".pdf"
             else:
-                output_pdf_filename = scan_data_filename
+                output_pdf_filename = pdf_filename
             logging.info('Opening output file: %s' % output_pdf_filename)
             output_pdf = PdfPages(output_pdf_filename)
         else:
             output_pdf = self.output_pdf
+        if not output_pdf:
+            raise ValueError('No pdf_filename given')
         logging.info('Saving histograms to file: %s' % str(output_pdf._file.fh.name))
 
         if (self._create_threshold_hists):
@@ -1014,7 +1016,7 @@ class AnalyzeRawData(object):
 
         if (out_file_h5 is not None):
             out_file_h5.close()
-        if scan_data_filename is not None:
+        if pdf_filename is not None:
             logging.info('Closing output file: %s' % str(output_pdf._file.fh.name))
             output_pdf.close()
 
