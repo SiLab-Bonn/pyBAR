@@ -1,9 +1,9 @@
 working_dir : 'data/'  # data output path
 
 dut_configuration:
-    dut : "dut_usbpix.yaml"  # set DUT (hardware configuration)
-    dut_configuration : "dut_configuration_usbpix.yaml"
+    dut : "dut_usbpix.yaml"  # DUT hardware configuration
+#    dut_configuration : "dut_configuration_usbpix.yaml"  # DUT configuration for initialization, can be omitted
 
 fe_configuration:
-    configuration : 'config/fei4/configs/std_cfg_fei4a.cfg'  # path to the FE configuration file, text (.cfg) or HDF5 (.h5) file
-    module_id : 'test module'  # additional module identifier, an extra sub-directory in data directory will be generated
+    configuration : config/fei4/configs/std_cfg_fei4a.cfg  # path to the FE configuration file, text (.cfg) or HDF5 (.h5) file, can be omitted
+    module_id : 'test module'  # module identifier/name, an extra subfolder in working directory will be created
