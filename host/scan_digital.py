@@ -4,20 +4,21 @@ from analysis.analyze_raw_data import AnalyzeRawData
 from fei4.register_utils import invert_pixel_mask
 
 from scan.scan import ScanBase
+from scan.scan_utils import scan_loop
+from scan.run_manager import RunManager
 
 import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
-local_configuration = {
-    "mask_steps": 3,
-    "repeat_command": 100,
-    "use_enable_mask": False
-}
-
-
 class DigitalScan(ScanBase):
-    scan_id = "digital_scan"
+    _scan_id = "digital_scan"
+
+    _default_scan_configuration = {
+        "mask_steps": 3,
+        "repeat_command": 100,
+        "use_enable_mask": False
+    }
 
     def configure(self):
         commands = []
@@ -46,29 +47,24 @@ class DigitalScan(ScanBase):
         use_enable_mask : bool
             Use enable mask for masking pixels.
         '''
-        self.readout.start()
+        self.start_readout()
 
         cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0]
-        self.scan_loop(cal_lvl1_command, repeat_command=self.repeat_command, use_delay=True, mask_steps=self.mask_steps, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=True, enable_shift_masks=["Enable", "EnableDigInj"], restore_shift_masks=False, mask=invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if self.use_enable_mask else None)
+        scan_loop(self, cal_lvl1_command, repeat_command=self.repeat_command, use_delay=True, mask_steps=self.mask_steps, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=True, enable_shift_masks=["Enable", "EnableDigInj"], restore_shift_masks=False, mask=invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if self.use_enable_mask else None)
 
-        self.readout.stop(timeout=10.0)
+        self.stop_readout()
 
         # plotting data
 #         plot_occupancy(hist=make_occupancy_hist(*convert_data_array(data_array_from_data_dict_iterable(self.readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)), z_max='median', filename=self.scan_data_filename + "_occupancy.pdf")
 
-        # saving data
-        save_raw_data_from_data_dict_iterable(self.readout.data, filename=self.scan_data_filename, title=self.scan_id)
-
     def analyze(self):
-        output_file = self.scan_data_filename + "_interpreted.h5"
-        with AnalyzeRawData(raw_data_file=self.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
+        with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
             analyze_raw_data.create_tot_hist = False
             analyze_raw_data.interpret_word_table()
-            analyze_raw_data.plot_histograms(scan_data_filename=self.scan_data_filename)
+            analyze_raw_data.plot_histograms()
             analyze_raw_data.interpreter.print_summary()
 
 if __name__ == "__main__":
-    import configuration
-    scan = DigitalScan(**configuration.default_configuration)
-    scan.start(run_configure=True, run_analyze=True, use_thread=False, **local_configuration)
-    scan.stop()
+    scan_mngr = RunManager('configuration.yaml')
+    scan = DigitalScan(**scan_mngr.conf)
+    scan()
