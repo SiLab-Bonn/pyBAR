@@ -50,7 +50,7 @@ class FifoError(Exception):
     pass
 
 
-class Readout(object):
+class DataReadout(object):
     def __init__(self, dut, callback=None, errback=None, **kwargs):
         self.dut = dut
         self.callback = callback
