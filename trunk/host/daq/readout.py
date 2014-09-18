@@ -55,12 +55,8 @@ class DataReadout(object):
         self.dut = dut
         self.callback = callback
         self.errback = errback
-        self.worker_thread = Thread(target=self.worker, name='ReadoutThread')
-        self.worker_thread.daemon = True
+        self.worker_thread = None
         if self.errback:
-            self.watchdog_thread = Thread(target=self.watchdog, name='WatchdogThread')
-            self.watchdog_thread.daemon = True
-        else:
             self.watchdog_thread = None
         self.data = deque()
         self.stop_thread_event = Event()
@@ -78,7 +74,10 @@ class DataReadout(object):
 
     @property
     def is_alive(self):
-        return self.worker_thread.is_alive()
+        if self.worker_thread:
+            return self.worker_thread.is_alive()
+        else:
+            False
 
     def start(self, reset_rx=False, reset_sram_fifo=False, empty_data_queue=False):
         if self._is_running:
@@ -94,8 +93,12 @@ class DataReadout(object):
         self.stop_thread_event.clear()
         if self.errback:
             logging.info('Starting watchdog')
+            self.watchdog_thread = Thread(target=self.watchdog, name='WatchdogThread')
+            self.watchdog_thread.daemon = True
             self.watchdog_thread.start()
         logging.info('Starting readout')
+        self.worker_thread = Thread(target=self.worker, name='ReadoutThread')
+        self.worker_thread.daemon = True
         self.worker_thread.start()
 
     def stop(self, timeout=10):
@@ -625,7 +628,10 @@ class RawDataFile(object):
     def __init__(self, filename, mode="a", title="", scan_parameters=None, **kwargs):  # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created):
         self.lock = RLock()
         self.filename = filename
-        self.scan_parameters = scan_parameters
+        if scan_parameters:
+            self.scan_parameters = scan_parameters
+        else:
+            self.scan_parameters = {}
         self.raw_data_earray = None
         self.meta_data_table = None
         self.scan_param_table = None
@@ -687,9 +693,11 @@ class RawDataFile(object):
         self.meta_data_table.row['index_stop'] = total_words
         self.meta_data_table.row.append()
         if self.scan_parameters:
-            for key, value in dict.iteritems(scan_parameters):
-                self.scan_param_table.row[key] = value
+            for key in self.scan_parameters.iterkeys():
+                self.scan_param_table.row[key] = scan_parameters[key]
             self.scan_param_table.row.append()
+        elif scan_parameters:
+            raise ValueError('Unknown scan parameters: %s' % ', '.join(scan_parameters.iterkeys()))
         if flush:
             self.flush()
         self.lock.release()
