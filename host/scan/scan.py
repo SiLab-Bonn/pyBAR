@@ -261,7 +261,8 @@ class ScanBase(RunBase):
                 return None
         for root, dirs, files in os.walk(self.working_dir):
             for cfgfile in files:
-                if cfgfile.startswith(''.join([str(run_number), '_', self.module_id])) and cfgfile.endswith(".cfg"):
+                cfg_root, cfg_ext = os.path.splitext(cfgfile)
+                if cfg_root.startswith(''.join([str(run_number), '_', self.module_id])) and cfg_ext.endswith(".cfg"):
                     return os.path.join(root, cfgfile)
         return None
 
@@ -291,7 +292,7 @@ class ScanBase(RunBase):
             h5_file = os.path.splitext(h5_file)[0] + ".h5"
 
         # append to file if existing otherwise create new one
-        with tb.openFile(h5_file, mode="a", title='put title', **kwargs) as raw_data_file_h5:
+        with tb.open_file(h5_file, mode="a", title='put title', **kwargs) as raw_data_file_h5:
             filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
             try:
                 raw_data_file_h5.removeNode(raw_data_file_h5.root.configuration, name=configuation_name)
