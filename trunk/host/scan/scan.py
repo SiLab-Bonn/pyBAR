@@ -13,8 +13,9 @@ from usb.core import USBError
 from basil.dut import Dut
 from fei4.register import FEI4Register
 from fei4.register_utils import FEI4RegisterUtils
-from daq.readout import Readout, RxSyncError, EightbTenbError, FifoError, open_raw_data_file
+from daq.readout import DataReadout, RxSyncError, EightbTenbError, FifoError, open_raw_data_file
 from collections import namedtuple, Mapping
+from contextlib import contextmanager
 
 from run_manager import RunBase, RunAborted
 import abc
@@ -51,7 +52,7 @@ class ScanBase(RunBase):
         self.stop_run = Event()
         self.err_queue = Queue()
 
-        self.readout = None
+        self.data_readout = None
         self.register_utils = None
         if self.module_id:
             super(ScanBase, self).__init__(os.path.join(working_dir, self.module_id))
@@ -184,10 +185,10 @@ class ScanBase(RunBase):
             else:
                 pass  # do nothing, already initialized
 
-            if not self.readout:
-                self.readout = Readout(self.dut, callback=self.handle_data, errback=self.handle_err)
+            if not self.data_readout:
+                self.data_readout = DataReadout(self.dut, callback=self.handle_data, errback=self.handle_err)
             if not self.register_utils:
-                self.register_utils = FEI4RegisterUtils(self.dut, self.readout, self.register)
+                self.register_utils = FEI4RegisterUtils(self.dut, self.data_readout, self.register)
             self._save_configuration_dict('dut_configuration', self.dut_configuration)
             self._save_configuration_dict('fe_configuration', self.fe_configuration)
             self._save_configuration_dict('scan_configuration', self.scan_configuration)
@@ -199,16 +200,16 @@ class ScanBase(RunBase):
             self.register.create_restore_point(name=self.run_number)
             self.configure()
             self.register.save_configuration_to_hdf5(self.output_filename)
-            self.readout.print_readout_status()
+            self.data_readout.print_readout_status()
             logging.info('Found scan parameter(s): %s' % (', '.join(['%s:%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None'))
             self.stop_run.clear()
             with open_raw_data_file(filename=self.output_filename, title=self.scan_id) as self.raw_data_file:
                 self.scan()
-            self.readout.print_readout_status()
+            self.data_readout.print_readout_status()
             self.register.restore(name=self.run_number)
-            if self.readout.is_running:
+            if self.data_readout.is_running:
                 logging.warning('ReadoutThread still running. Stopping readout...')
-                self.readout.stop()
+                self.data_readout.stop()
             self.raw_data_file = None
             self.dut['USB'].close()  # free USB resources
         except USBError as e:
@@ -269,13 +270,19 @@ class ScanBase(RunBase):
     def set_scan_parameters(self, **kwargs):
         self.scan_parameters = self.scan_parameters._replace(**kwargs)
 
+    @contextmanager
+    def readout(self, **kwargs):
+        self.start_readout(**kwargs)
+        yield
+        self.stop_readout()
+
     def start_readout(self, **kwargs):
         if kwargs:
             self.scan_parameters = self.scan_parameters._replace(**kwargs)
-        self.readout.start(reset_sram_fifo=True)
+        self.data_readout.start(reset_sram_fifo=True)
 
     def stop_readout(self):
-        self.readout.stop()
+        self.data_readout.stop()
 
     def _save_configuration_dict(self, configuation_name, configuration, **kwargs):
         '''Stores any configuration dictionary to HDF5 file.
