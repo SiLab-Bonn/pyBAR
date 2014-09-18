@@ -203,7 +203,7 @@ class ScanBase(RunBase):
             self.data_readout.print_readout_status()
             logging.info('Found scan parameter(s): %s' % (', '.join(['%s:%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None'))
             self.stop_run.clear()
-            with open_raw_data_file(filename=self.output_filename, title=self.scan_id) as self.raw_data_file:
+            with open_raw_data_file(filename=self.output_filename, title=self.scan_id, scan_parameters=self.scan_parameters._asdict()) as self.raw_data_file:
                 self.scan()
             self.data_readout.print_readout_status()
             self.register.restore(name=self.run_number)
@@ -278,7 +278,7 @@ class ScanBase(RunBase):
 
     def start_readout(self, **kwargs):
         if kwargs:
-            self.scan_parameters = self.scan_parameters._replace(**kwargs)
+            self.set_scan_parameters(**kwargs)
         self.data_readout.start(reset_sram_fifo=True)
 
     def stop_readout(self):
