@@ -11,10 +11,7 @@ import functools
 import traceback
 import signal
 import abc
-
 import logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
-
 
 RunStatus = collections.namedtuple('RunStatus', ['running', 'finished', 'aborted', 'crashed'])
 
@@ -41,7 +38,7 @@ class RunBase():
             self.run()
         except RunAborted as e:
             self._run_status = self._status.aborted
-            logging.warning('Abort run %s: %s' % (self.run_number, e))
+            logging.warning('Aborting run %s: %s' % (self.run_number, e))
         except Exception as e:
             self._run_status = self._status.crashed
             logging.error('Exception during run %s: %s' % (self.run_number, traceback.format_exc()))
@@ -165,7 +162,7 @@ def thunkify(f):
             except Exception, e:
                 exc[0] = True
                 exc[1] = sys.exc_info()
-                #logging.error("RunThread has thrown an exception (will be raised on thunk()):\n%s" % (traceback.format_exc()))
+                logging.error("RunThread has thrown an exception:\n%s" % (traceback.format_exc()))
             finally:
                 wait_event.set()
 
@@ -351,8 +348,6 @@ def set_event_when_keyboard_interrupt(_lambda):
 #                 logging.info('Keyboard interrupt: setting %s' % _lambda(self).__name__)
         return wrapped_f
     return wrapper
-
-
 
 
 if __name__ == "__main__":

@@ -2,13 +2,10 @@ from daq.readout import get_col_row_array_from_data_record_array, save_raw_data_
 from analysis.plotting.plotting import plot_occupancy, make_occupancy_hist
 from analysis.analyze_raw_data import AnalyzeRawData
 from fei4.register_utils import invert_pixel_mask
-
 from scan.scan import ScanBase
 from scan.scan_utils import scan_loop
 from scan.run_manager import RunManager
-
 import logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
 class AnalogScan(ScanBase):

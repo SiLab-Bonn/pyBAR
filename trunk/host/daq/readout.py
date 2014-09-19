@@ -1,40 +1,15 @@
-from functools import wraps
-from time import time, sleep
-from usb.core import USBError
-
-
-def timed(f):
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        start = time()
-        result = f(*args, **kwargs)
-        elapsed = time() - start
-        print "%s took %fs to finish" % (f.__name__, elapsed)
-        return result
-    return wrapper
-
+from time import sleep
 import logging
-import struct
 import os.path
 from threading import Thread, Event, Timer, RLock
 from collections import deque
-# from multiprocessing import Process as Thread
-# from multiprocessing import Event
-# from multiprocessing import Queue
-
 import numpy as np
 import tables as tb
-
 from utils.utils import get_float_time
 from analysis.RawDataConverter.data_struct import MetaTableV2 as MetaTable, generate_scan_parameter_description
-#from bitstring import BitArray  # TODO: bitarray.bitarray() (in Python3 use int.from_bytes() to convert bitarray to integer)
 from basil.utils.BitLogic import BitLogic
 from collections import OrderedDict
 import sys
-
-from SiLibUSB import SiUSBDevice
-
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 data_deque_dict_names = ["data", "timestamp_start", "timestamp_stop", "error"]
 
