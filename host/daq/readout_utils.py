@@ -2,8 +2,6 @@ import logging
 import numpy as np
 import readout
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
-
 
 def interpret_pixel_data(data, dc, pixel_array, invert=True):
     '''Takes the pixel raw data and interprets them. This includes consistency checks and pixel/data matching.

@@ -11,9 +11,6 @@ from scipy.special import erf
 import multiprocessing as mp
 from functools import partial
 import analysis_utils
-
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
-
 from RawDataConverter import data_struct
 from plotting import plotting
 from matplotlib.backends.backend_pdf import PdfPages
@@ -1078,4 +1075,4 @@ class AnalyzeRawData(object):
             logging.warning('No settings stored in raw data file, use provided settings')
 
 if __name__ == "__main__":
-    print '__main__'
+    pass

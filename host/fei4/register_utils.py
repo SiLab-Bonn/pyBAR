@@ -2,11 +2,8 @@ import time
 import numpy as np
 import re
 import logging
-
 from utils.utils import bitarray_to_array
 from daq.readout_utils import interpret_pixel_data
-
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
 class FEI4RegisterUtils(object):

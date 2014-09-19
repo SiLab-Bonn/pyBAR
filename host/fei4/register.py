@@ -1,4 +1,3 @@
-#import BitVector  # note: bitarray, bitstring, BitVector are packages with similar functionality
 from bitarray import bitarray
 import xml.sax
 import re
@@ -12,10 +11,7 @@ import struct
 import tables as tb
 import datetime
 from analysis.RawDataConverter.data_struct import NameValue
-
 import logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
-
 from utils.utils import string_is_binary, flatten_iterable, iterable, str2bool
 
 chip_flavors = ['fei4a', 'fei4b']

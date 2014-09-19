@@ -2,27 +2,21 @@ import re
 import os
 import sys
 from string import punctuation
-# import inspect
+from functools import wraps
 from threading import Event
 from Queue import Queue
-
+from time import time
 import tables as tb
 from analysis.RawDataConverter.data_struct import NameValue
-
-from usb.core import USBError
-
 from basil.dut import Dut
 from fei4.register import FEI4Register
 from fei4.register_utils import FEI4RegisterUtils
 from daq.readout import DataReadout, RxSyncError, EightbTenbError, FifoError, open_raw_data_file
 from collections import namedtuple, Mapping
 from contextlib import contextmanager
-
 from run_manager import RunBase, RunAborted
 import abc
-
 import logging
-#logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
 class ScanBase(RunBase):
@@ -208,9 +202,6 @@ class ScanBase(RunBase):
                 self.scan()
             self.data_readout.print_readout_status()
             self.register.restore(name=self.run_number)
-            if self.data_readout.is_running:
-                logging.warning('ReadoutThread still running. Stopping readout...')
-                self.data_readout.stop()
             self.raw_data_file = None
             self.dut['USB'].close()  # free USB resources
             self.analyze()
@@ -339,6 +330,17 @@ class ScanBase(RunBase):
         Will be executed after finishing the scan routine.
         '''
         pass
+
+
+def timed(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        start = time()
+        result = f(*args, **kwargs)
+        elapsed = time() - start
+        print "%s took %fs to finish" % (f.__name__, elapsed)
+        return result
+    return wrapper
 
 
 def namedtuple_with_defaults(typename, field_names, default_values=[]):
