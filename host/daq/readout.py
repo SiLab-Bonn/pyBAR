@@ -30,6 +30,7 @@ from analysis.RawDataConverter.data_struct import MetaTableV2 as MetaTable, gene
 #from bitstring import BitArray  # TODO: bitarray.bitarray() (in Python3 use int.from_bytes() to convert bitarray to integer)
 from basil.utils.BitLogic import BitLogic
 from collections import OrderedDict
+import sys
 
 from SiLibUSB import SiUSBDevice
 
@@ -92,11 +93,9 @@ class DataReadout(object):
             self.data.clear()
         self.stop_thread_event.clear()
         if self.errback:
-            logging.info('Starting watchdog')
             self.watchdog_thread = Thread(target=self.watchdog, name='WatchdogThread')
             self.watchdog_thread.daemon = True
             self.watchdog_thread.start()
-        logging.info('Starting readout')
         self.worker_thread = Thread(target=self.worker, name='ReadoutThread')
         self.worker_thread.daemon = True
         self.worker_thread.start()
@@ -124,9 +123,7 @@ class DataReadout(object):
         self.stop_thread_event.set()  # stop thread when no timeout is set
         if self.errback:
             self.watchdog_thread.join()
-            logging.info('Stopped watchdog')
         self.worker_thread.join()
-        logging.info('Stopped readout')
 
     def print_readout_status(self):
         sync_status = self.get_rx_sync_status()
@@ -146,14 +143,15 @@ class DataReadout(object):
 
         Worker thread function that uses read_data_dict() and appends data to self.data (collection.deque)
         '''
+        logging.info('Starting %s' % (self.worker_thread.name,))
         while not self.stop_thread_event.wait(self.readout_interval):
             data = None
             self.dut['USB']._sidev.lock.acquire()
             try:
                 data = self.read_data_dict()
-            except USBError as e:
+            except Exception as e:
                 if self.errback:
-                    self.errback(e)
+                    self.errback(sys.exc_info())
                 else:
                     raise
             finally:
@@ -163,18 +161,24 @@ class DataReadout(object):
                     self.callback(data)
                 else:
                     self.data.append(data)
+        logging.info('Stopped %s' % (self.worker_thread.name,))
 
     def watchdog(self):
+        logging.info('Starting %s' % (self.watchdog_thread.name,))
         while not self.stop_thread_event.wait(self.readout_interval * 10):
             try:
                 if not any(self.get_rx_sync_status()):
-                    self.errback(RxSyncError('No RX sync'))
+                    raise RxSyncError('No RX sync')
                 if any(self.get_rx_8b10b_error_count()):
-                    self.errback(EightbTenbError('RX 8b10b error(s) detected'))
+                    raise EightbTenbError('RX 8b10b error(s) detected')
                 if any(self.get_rx_fifo_discard_count()):
-                    self.errback(FifoError('RX FIFO discard error(s) detected'))
-            except USBError as e:
-                self.errback(e)
+                    raise FifoError('RX FIFO discard error(s) detected')
+            except Exception as e:
+                if self.errback:
+                    self.errback(sys.exc_info())
+                else:
+                    raise
+        logging.info('Stopped %s' % (self.watchdog_thread.name,))
 
     def read_data_dict(self):
         '''Read SRAM and return data dict

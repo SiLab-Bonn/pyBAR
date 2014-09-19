@@ -72,7 +72,7 @@ class AnalogScan(ScanBase):
 #         plot_occupancy(hist=make_occupancy_hist(*convert_data_array(data_array_from_data_dict_iterable(self.readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)), z_max='median', filename=self.scan_data_filename + "_occupancy.pdf")
 
     def analyze(self):
-        with AnalyzeRawData(raw_data_file=self.scan_data_filename, create_pdf=True) as analyze_raw_data:
+        with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
             analyze_raw_data.create_tot_hist = True
             if self.enable_tdc:
                 analyze_raw_data.create_tdc_counter_hist = True  # histogram all TDC words
@@ -82,6 +82,5 @@ class AnalogScan(ScanBase):
             analyze_raw_data.plot_histograms()
 
 if __name__ == "__main__":
-    scan_mngr = RunManager('configuration.yaml')
-    scan = AnalogScan(**scan_mngr.conf)
-    scan()
+    wait = RunManager.run_scan(AnalogScan, 'configuration.yaml')
+    wait()

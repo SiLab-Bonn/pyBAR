@@ -62,6 +62,5 @@ class DigitalScan(ScanBase):
             analyze_raw_data.interpreter.print_summary()
 
 if __name__ == "__main__":
-    scan_mngr = RunManager('configuration.yaml')
-    scan = DigitalScan(**scan_mngr.conf)
-    scan()
+    wait = RunManager.run_scan(DigitalScan, 'configuration.yaml')
+    wait()
