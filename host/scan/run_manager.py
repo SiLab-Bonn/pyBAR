@@ -142,49 +142,54 @@ class RunBase():
                     f.write(value)
 
 
-def thunkify(f):
+def thunkify(thread_name):
     """Make a function immediately return a function of no args which, when called,
     waits for the result, which will start being processed in another thread.
     Taken from https://wiki.python.org/moin/PythonDecoratorLibrary.
     """
 
-    @functools.wraps(f)
-    def thunked(*args, **kwargs):
-        wait_event = threading.Event()
+    def actual_decorator(f):
+        @functools.wraps(f)
+        def thunked(*args, **kwargs):
+            wait_event = threading.Event()
+            result = [None]
+            exc = [False, None]
 
-        result = [None]
-        exc = [False, None]
+            def worker_func():
+                try:
+                    func_result = f(*args, **kwargs)
+                    result[0] = func_result
+                except Exception as e:
+                    exc[0] = True
+                    exc[1] = sys.exc_info()
+                    logging.error("RunThread has thrown an exception:\n%s" % (traceback.format_exc()))
+                finally:
+                    wait_event.set()
 
-        def worker_func():
-            try:
-                func_result = f(*args, **kwargs)
-                result[0] = func_result
-            except Exception, e:
-                exc[0] = True
-                exc[1] = sys.exc_info()
-                logging.error("RunThread has thrown an exception:\n%s" % (traceback.format_exc()))
-            finally:
-                wait_event.set()
+            def thunk():
+                wait_event.wait()
+                if exc[0]:
+                    raise exc[1][0], exc[1][1], exc[1][2]
 
-        def thunk():
-            wait_event.wait()
-            if exc[0]:
-                raise exc[1][0], exc[1][1], exc[1][2]
+                return result[0]
 
-            return result[0]
+            threading.Thread(target=worker_func, name=thread_name if thread_name else None).start()
 
-        threading.Thread(target=worker_func, name='RunThread').start()
+            return thunk
 
-        return thunk
+        return thunked
 
-    return thunked
+    return actual_decorator
 
 
 class RunManager(object):
     def __init__(self, conf):
-        '''
-        conf : str, file, dict
-            Run configuration.
+        '''Run Manager is taking care of initialization and execution of runs.
+
+        Parameters
+        ----------
+        conf : str, dict, file
+            Configuration for the run.
         '''
         # fixing event handler: http://stackoverflow.com/questions/15457786/ctrl-c-crashes-python-after-importing-scipy-stats
         if os.name == 'nt':
@@ -200,11 +205,24 @@ class RunManager(object):
         self.conf = self.open_conf(conf)
 
     @staticmethod
-    @thunkify
-    def run_run(scan, conf):
+    @thunkify('RunThread')
+    def run_run(run, conf):
+        '''Runs a run in another thread. Non-blocking.
+
+        Parameters
+        ----------
+        run : class
+            Run class.
+        conf : str, dict, file
+            Configuration for the run.
+
+        Returns
+        -------
+        Function, which blocks when called, waits for the end of the run, and returns run status.
+        '''
         conf = RunManager.open_conf(conf)
-        scan = scan(**conf)
-        scan()
+        run = run(**conf)
+        run()
 
     @staticmethod
     def open_conf(conf):
