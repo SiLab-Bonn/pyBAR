@@ -1,6 +1,7 @@
 import re
 import os
 import sys
+from string import punctuation
 # import inspect
 from threading import Event
 from Queue import Queue
@@ -212,21 +213,16 @@ class ScanBase(RunBase):
                 self.data_readout.stop()
             self.raw_data_file = None
             self.dut['USB'].close()  # free USB resources
-        except USBError as e:
-            self.handle_err(e)
-        if not self.err_queue.empty():
-            err = self.err_queue.get()
-            if isinstance(err, (USBError,)):
-                raise err
-            elif isinstance(err, (RxSyncError, EightbTenbError, FifoError)):
-                raise RunAborted(str(err))
-            else:
-                raise err
-        try:
             self.analyze()
+            self.register.save_configuration(self.output_filename)
         except Exception as e:
-            logging.error('Analysis of data failed: %s' % e)
-        self.register.save_configuration(self.output_filename)
+            self.handle_err(sys.exc_info())
+        if not self.err_queue.empty():
+            exc = self.err_queue.get()
+            if isinstance(exc[1], (RxSyncError, EightbTenbError, FifoError)):
+                raise RunAborted(exc[1])
+            else:
+                raise exc[0], exc[1], exc[2]
 
     def retry(self):
         self.run()
@@ -246,9 +242,9 @@ class ScanBase(RunBase):
     def handle_data(self, data):
         self.raw_data_file.append_item(data, self.scan_parameters._asdict())
 
-    def handle_err(self, err):
-        logging.error('%s. Stopping scan...' % repr(err))
-        self.err_queue.put(err)
+    def handle_err(self, exc):
+        logging.error('%s%s Stopping scan...' % (exc[1], ('' if str(exc[1])[-1] in punctuation else '.')))
+        self.err_queue.put(exc)
         self.stop_run.set()
 
     def _get_configuration(self, run_number=None):

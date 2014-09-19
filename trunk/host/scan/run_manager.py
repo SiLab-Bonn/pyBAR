@@ -4,7 +4,11 @@ import os
 import re
 import collections
 from threading import Lock
-
+from multiprocessing import dummy as multiprocessing
+import threading
+import sys
+import functools
+import traceback
 import signal
 import abc
 
@@ -37,13 +41,14 @@ class RunBase():
             self.run()
         except RunAborted as e:
             self._run_status = self._status.aborted
-#             logging.error(e)
+            logging.warning('Abort run %s: %s' % (self.run_number, e))
         except Exception as e:
             self._run_status = self._status.crashed
-            logging.error('Unexpected exception: %s' % e)
-            logging.error('Stopped run %d in %s with status %s' % (self.run_number, self.working_dir, self.run_status))
-            self._write_run_status(self.run_status + ' ' + str(e))
-            raise
+            logging.error('Exception during run %s: %s' % (self.run_number, traceback.format_exc()))
+            with open(os.path.join(self.working_dir, "crash" + ".log"), 'a+') as f:
+                f.write('-------------------- Run %i --------------------\n' % self.run_number)
+                traceback.print_exc(file=f)
+                f.write('\n')
         else:
             self._run_status = self._status.finished
         self.cleanup()
@@ -75,7 +80,13 @@ class RunBase():
     def cleanup(self):
         """Cleanup after a new run."""
         self._write_run_status(self.run_status)
-        logging.log(logging.INFO if self.run_status == self._status.finished else logging.WARNING, 'Stopped run %d in %s with status %s' % (self.run_number, self.working_dir, self.run_status))
+        if self.run_status == self._status.finished:
+            log_status = logging.INFO
+        elif self.run_status == self._status.aborted:
+            log_status = logging.WARNING
+        else:
+            log_status = logging.ERROR
+        logging.log(log_status, 'Stopped run %d in %s with status %s' % (self.run_number, self.working_dir, self.run_status))
 
     @abc.abstractmethod
     def abort(self, msg=None):
@@ -88,7 +99,7 @@ class RunBase():
             if not os.path.exists(self.working_dir):
                 os.makedirs(self.working_dir)
             # In Python 2.x, open on all POSIX systems ultimately just depends on fopen.
-            with open(os.path.join(self.working_dir, "run" + ".cfg"), 'a+') as f:
+            with open(os.path.join(self.working_dir, "run" + ".cfg"), 'r') as f:
                 f.seek(0)
                 for line in f.readlines():
                     try:
@@ -134,6 +145,44 @@ class RunBase():
                     f.write(value)
 
 
+def thunkify(f):
+    """Make a function immediately return a function of no args which, when called,
+    waits for the result, which will start being processed in another thread.
+    Taken from https://wiki.python.org/moin/PythonDecoratorLibrary.
+    """
+
+    @functools.wraps(f)
+    def thunked(*args, **kwargs):
+        wait_event = threading.Event()
+
+        result = [None]
+        exc = [False, None]
+
+        def worker_func():
+            try:
+                func_result = f(*args, **kwargs)
+                result[0] = func_result
+            except Exception, e:
+                exc[0] = True
+                exc[1] = sys.exc_info()
+                #logging.error("RunThread has thrown an exception (will be raised on thunk()):\n%s" % (traceback.format_exc()))
+            finally:
+                wait_event.set()
+
+        def thunk():
+            wait_event.wait()
+            if exc[0]:
+                raise exc[1][0], exc[1][1], exc[1][2]
+
+            return result[0]
+
+        threading.Thread(target=worker_func, name='RunThread').start()
+
+        return thunk
+
+    return thunked
+
+
 class RunManager(object):
     def __init__(self, conf):
         '''
@@ -153,7 +202,15 @@ class RunManager(object):
 
         self.conf = self.open_conf(conf)
 
-    def open_conf(self, conf):
+    @staticmethod
+    @thunkify
+    def run_scan(scan, conf):
+        conf = RunManager.open_conf(conf)
+        scan = scan(**conf)
+        scan()
+
+    @staticmethod
+    def open_conf(conf):
         if not conf:
             return None
         elif isinstance(conf, basestring):  # parse the first YAML document in a stream
@@ -296,46 +353,7 @@ def set_event_when_keyboard_interrupt(_lambda):
     return wrapper
 
 
-import threading
-import sys
-import functools
-import traceback
 
 
-def thunkify(f):
-    """Make a function immediately return a function of no args which, when called,
-    waits for the result, which will start being processed in another thread.
-    Taken from https://wiki.python.org/moin/PythonDecoratorLibrary.
-    """
-
-    @functools.wraps(f)
-    def thunked(*args, **kwargs):
-        wait_event = threading.Event()
-
-        result = [None]
-        exc = [False, None]
-
-        def worker_func():
-            try:
-                func_result = f(*args, **kwargs)
-                result[0] = func_result
-            except Exception, e:
-                exc[0] = True
-                exc[1] = sys.exc_info()
-                print "Lazy thunk has thrown an exception (will be raised on thunk()):\n%s" % (
-                    traceback.format_exc())
-            finally:
-                wait_event.set()
-
-        def thunk():
-            wait_event.wait()
-            if exc[0]:
-                raise exc[1][0], exc[1][1], exc[1][2]
-
-            return result[0]
-
-        threading.Thread(target=worker_func).start()
-
-        return thunk
-
-    return thunked
+if __name__ == "__main__":
+    pass
