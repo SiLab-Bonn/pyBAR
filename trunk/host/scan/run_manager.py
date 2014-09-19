@@ -201,7 +201,7 @@ class RunManager(object):
 
     @staticmethod
     @thunkify
-    def run_scan(scan, conf):
+    def run_run(scan, conf):
         conf = RunManager.open_conf(conf)
         scan = scan(**conf)
         scan()
