@@ -1,11 +1,11 @@
-from daq.readout import get_col_row_array_from_data_record_array, save_raw_data_from_data_dict_iterable, convert_data_array, data_array_from_data_dict_iterable, is_data_record, is_data_from_channel
-from analysis.plotting.plotting import plot_occupancy, make_occupancy_hist
+# from daq.readout import get_col_row_array_from_data_record_array, save_raw_data_from_data_dict_iterable, convert_data_array, data_array_from_data_dict_iterable, is_data_record, is_data_from_channel
+# from analysis.plotting.plotting import plot_occupancy, make_occupancy_hist
 from analysis.analyze_raw_data import AnalyzeRawData
 from fei4.register_utils import invert_pixel_mask
 from scan.scan import ScanBase
 from scan.scan_utils import scan_loop
 from scan.run_manager import RunManager
-import logging
+# import logging
 
 
 class AnalogScan(ScanBase):
