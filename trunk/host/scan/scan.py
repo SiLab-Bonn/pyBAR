@@ -11,7 +11,7 @@ from analysis.RawDataConverter.data_struct import NameValue
 from basil.dut import Dut
 from fei4.register import FEI4Register
 from fei4.register_utils import FEI4RegisterUtils
-from daq.readout import DataReadout, RxSyncError, EightbTenbError, FifoError, open_raw_data_file
+from daq.readout import DataReadout, RxSyncError, EightbTenbError, FifoError, NoDataTimeout, StopTimeout, open_raw_data_file
 from collections import namedtuple, Mapping
 from contextlib import contextmanager
 from run_manager import RunBase, RunAborted
@@ -210,7 +210,7 @@ class ScanBase(RunBase):
             self.handle_err(sys.exc_info())
         if not self.err_queue.empty():
             exc = self.err_queue.get()
-            if isinstance(exc[1], (RxSyncError, EightbTenbError, FifoError)):
+            if isinstance(exc[1], (RxSyncError, EightbTenbError, FifoError, NoDataTimeout, StopTimeout)):
                 raise RunAborted(exc[1])
             else:
                 raise exc[0], exc[1], exc[2]
