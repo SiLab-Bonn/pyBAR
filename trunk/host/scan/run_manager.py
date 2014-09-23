@@ -96,7 +96,7 @@ class RunBase():
             if not os.path.exists(self.working_dir):
                 os.makedirs(self.working_dir)
             # In Python 2.x, open on all POSIX systems ultimately just depends on fopen.
-            with open(os.path.join(self.working_dir, "run" + ".cfg"), 'r') as f:
+            with open(os.path.join(self.working_dir, "run" + ".cfg"), 'a+') as f:
                 f.seek(0)
                 for line in f.readlines():
                     try:
