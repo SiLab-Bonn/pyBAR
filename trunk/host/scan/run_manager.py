@@ -151,9 +151,9 @@ def thunkify(thread_name):
     def actual_decorator(f):
         @functools.wraps(f)
         def thunked(*args, **kwargs):
-            wait_event = threading.Event()
             result = [None]
             exc = [False, None]
+#             wait_event = threading.Event()
 
             def worker_func():
                 try:
@@ -163,22 +163,23 @@ def thunkify(thread_name):
                     exc[0] = True
                     exc[1] = sys.exc_info()
                     logging.error("RunThread has thrown an exception:\n%s" % (traceback.format_exc()))
-                finally:
-                    wait_event.set()
+#                 finally:
+#                     wait_event.set()
+
+            worker_thread = threading.Thread(target=worker_func, name=thread_name if thread_name else None)
+            worker_thread.daemon = True
 
             def thunk():
-                wait_event.wait()
+                worker_thread.join()
+#                 wait_event.wait()
                 if exc[0]:
                     raise exc[1][0], exc[1][1], exc[1][2]
-
                 return result[0]
 
-            threading.Thread(target=worker_func, name=thread_name if thread_name else None).start()
-
+            worker_thread.start()
+#             threading.Thread(target=worker_func, name=thread_name if thread_name else None).start()
             return thunk
-
         return thunked
-
     return actual_decorator
 
 
@@ -205,7 +206,7 @@ class RunManager(object):
         self.conf = self.open_conf(conf)
 
     @staticmethod
-    @thunkify('RunThread')
+#     @thunkify('RunThread')
     def run_run(run, conf):
         '''Runs a run in another thread. Non-blocking.
 
@@ -222,7 +223,12 @@ class RunManager(object):
         '''
         conf = RunManager.open_conf(conf)
         run = run(**conf)
-        run()
+
+        @thunkify('RunThread')
+        def run_run_in_thread():
+            run()
+
+        return run_run_in_thread()
 
     @staticmethod
     def open_conf(conf):
