@@ -2,7 +2,7 @@ from time import sleep
 import logging
 import os.path
 from threading import Thread, Event, Timer, RLock
-from collections import deque
+from Queue import Queue, Empty
 import numpy as np
 import tables as tb
 from utils.utils import get_float_time
@@ -26,15 +26,23 @@ class FifoError(Exception):
     pass
 
 
+class NoDataTimeout(Exception):
+    pass
+
+
+class StopTimeout(Exception):
+    pass
+
+
 class DataReadout(object):
-    def __init__(self, dut, callback=None, errback=None):
+    def __init__(self, dut):
         self.dut = dut
-        self.callback = callback
-        self.errback = errback
+        self.callback = None
+        self.errback = None
+        self.readout_thread = None
         self.worker_thread = None
-        if self.errback:
-            self.watchdog_thread = None
-        self.data = deque()
+        self.watchdog_thread = None
+        self.data_queue = Queue()
         self.stop_thread_event = Event()
         self.stop_thread_event.set()
         self.readout_interval = 0.05
@@ -55,7 +63,9 @@ class DataReadout(object):
         else:
             False
 
-    def start(self, reset_rx=False, reset_sram_fifo=False, empty_data_queue=False):
+    def start(self, callback=None, errback=None, reset_rx=False, reset_sram_fifo=False, clear_data_queue=False, no_data_timeout=None):
+        self.callback = callback
+        self.errback = errback
         if self._is_running:
             raise RuntimeError('Readout already running: use stop() before start()')
         self._is_running = True
@@ -63,17 +73,20 @@ class DataReadout(object):
             self.reset_rx()
         if reset_sram_fifo:
             self.reset_sram_fifo()
-        if empty_data_queue:
-            # self.data.empty()
-            self.data.clear()
+        if clear_data_queue:
+            self.data_queue.queue.clear()
         self.stop_thread_event.clear()
         if self.errback:
             self.watchdog_thread = Thread(target=self.watchdog, name='WatchdogThread')
             self.watchdog_thread.daemon = True
             self.watchdog_thread.start()
-        self.worker_thread = Thread(target=self.worker, name='ReadoutThread')
-        self.worker_thread.daemon = True
-        self.worker_thread.start()
+        if self.callback:
+            self.worker_thread = Thread(target=self.worker, name='WorkerThread')
+            self.worker_thread.daemon = True
+            self.worker_thread.start()
+        self.readout_thread = Thread(target=self.readout, name='ReadoutThread', kwargs={'no_data_timeout': no_data_timeout})
+        self.readout_thread.daemon = True
+        self.readout_thread.start()
 
     def stop(self, timeout=10):
         if not self._is_running:
@@ -89,22 +102,27 @@ class DataReadout(object):
 
             fifo_size = self.dut['sram']['FIFO_SIZE']
             old_fifo_size = -1
-            while (old_fifo_size != fifo_size or fifo_size != 0) and self.worker_thread.is_alive() and not self.stop_thread_event.wait(1.5 * self.readout_interval):
+            while (old_fifo_size != fifo_size or fifo_size != 0) and self.readout_thread.is_alive() and not self.stop_thread_event.wait(1.5 * self.readout_interval):
                 old_fifo_size = fifo_size
                 fifo_size = self.dut['sram']['FIFO_SIZE']
 
             timeout_timer.cancel()
 
         self.stop_thread_event.set()  # stop thread when no timeout is set
+        self.readout_thread.join()
         if self.errback:
             self.watchdog_thread.join()
-        self.worker_thread.join()
+        if self.callback:
+            self.data_queue.join()
+            self.worker_thread.join()
+        self.callback = None
+        self.errback = None
 
     def print_readout_status(self):
         sync_status = self.get_rx_sync_status()
         discard_count = self.get_rx_fifo_discard_count()
         error_count = self.get_rx_8b10b_error_count()
-        logging.info('Data queue size: %d' % len(self.data))  # .qsize())
+        logging.info('Data queue size: %d' % self.data_queue.qsize())
         logging.info('SRAM FIFO size: %d' % self.dut['sram']['FIFO_SIZE'])
         logging.info('Channel:                     %s', " | ".join([('CH%d' % channel).rjust(3) for channel in range(1, len(sync_status) + 1, 1)]))
         logging.info('RX sync:                     %s', " | ".join(["YES".rjust(3) if status is True else "NO".rjust(3) for status in sync_status]))
@@ -113,34 +131,55 @@ class DataReadout(object):
         if not any(self.get_rx_sync_status()) or any(discard_count) or any(error_count):
             logging.warning('RX errors detected')
 
-    def worker(self):
+    def readout(self, no_data_timeout=None):
         '''Reading thread to continuously reading SRAM
 
-        Worker thread function that uses read_data_dict() and appends data to self.data (collection.deque)
+        Worker thread function that uses read_data_dict() and appends data to self.data_queue (collection.deque)
         '''
-        logging.info('Starting %s' % (self.worker_thread.name,))
+        logging.info('Starting %s' % (self.readout_thread.name,))
+        curr_time = get_float_time()
         while not self.stop_thread_event.wait(self.readout_interval):
-            data = None
-            self.dut['USB']._sidev.lock.acquire()
             try:
-                data = self.read_data_dict()
+                if no_data_timeout and curr_time + no_data_timeout < get_float_time():
+                    raise NoDataTimeout('Received no data for %f second(s)' % no_data_timeout)
+                data = self.read_data()
             except Exception as e:
                 if self.errback:
                     self.errback(sys.exc_info())
                 else:
                     raise
-            finally:
-                self.dut['USB']._sidev.lock.release()
-            if data and data["data"].shape[0] > 0:
-                if self.callback:
+            else:
+                if data.shape[0] > 0:
+                    last_time, curr_time = self.update_timestamp()
+                    status = 0
+                    self.data_queue.put((data, last_time, curr_time, status))
+        if self.callback:
+            self.data_queue.put(None)
+        logging.info('Stopped %s' % (self.readout_thread.name,))
+
+    def worker(self):
+        '''Reading thread to continuously reading SRAM
+
+        Worker thread function that uses read_data_dict() and appends data to self.data_queue (collection.deque)
+        '''
+        logging.info('Starting %s' % (self.worker_thread.name,))
+        while True:
+            try:
+                data = self.data_queue.get(timeout=self.readout_interval * 0.5)
+            except Empty as e:
+                pass
+            else:
+                self.data_queue.task_done()
+                if data:
                     self.callback(data)
                 else:
-                    self.data.append(data)
+                    break
+
         logging.info('Stopped %s' % (self.worker_thread.name,))
 
     def watchdog(self):
         logging.info('Starting %s' % (self.watchdog_thread.name,))
-        while not self.stop_thread_event.wait(self.readout_interval * 10):
+        while True:
             try:
                 if not any(self.get_rx_sync_status()):
                     raise RxSyncError('No RX sync')
@@ -149,24 +188,10 @@ class DataReadout(object):
                 if any(self.get_rx_fifo_discard_count()):
                     raise FifoError('RX FIFO discard error(s) detected')
             except Exception as e:
-                if self.errback:
                     self.errback(sys.exc_info())
-                else:
-                    raise
+            if self.stop_thread_event.wait(self.readout_interval * 10):
+                break
         logging.info('Stopped %s' % (self.watchdog_thread.name,))
-
-    def read_data_dict(self):
-        '''Read SRAM and return data dict
-
-        Can be used without threading.
-
-        Returns
-        -------
-        data : dict
-            A dict with following keys: "data", "timestamp_start", "timestamp_stop", "error"
-        '''
-        last_time, curr_time = self.update_timestamp()
-        return {"data": self.read_data(), "timestamp_start": last_time, "timestamp_stop": curr_time, "error": self.read_status()}
 
     def read_data(self):
         '''Read SRAM and return data array
@@ -187,7 +212,7 @@ class DataReadout(object):
         return last_time, curr_time
 
     def read_status(self):
-        return 0
+        raise NotImplementedError()
 
     def reset_sram_fifo(self):
         logging.info('Resetting SRAM FIFO')
@@ -457,11 +482,14 @@ def is_service_record(value):
 def is_data_record(value):
     return np.logical_and(np.logical_and(np.less_equal(np.bitwise_and(value, 0x00FE0000), 0x00A00000), np.less_equal(np.bitwise_and(value, 0x0001FF00), 0x00015000)), np.logical_and(np.not_equal(np.bitwise_and(value, 0x00FE0000), 0x00000000), np.not_equal(np.bitwise_and(value, 0x0001FF00), 0x00000000)))
 
+
 def is_trigger_word(value):
     return np.equal(np.bitwise_and(value, 0x80000000), 0b10000000000000000000000000000000)
 
+
 def is_tdc_word(value):
     return np.equal(np.bitwise_and(value, 0x40000000), 0b01000000000000000000000000000000)
+
 
 def is_status_data(value):
     '''Select status data
@@ -660,12 +688,12 @@ class RawDataFile(object):
     def append_item(self, item, scan_parameters=None, flush=True):
         self.lock.acquire()
         total_words = self.raw_data_earray.nrows
-        raw_data = item["data"]
+        raw_data = item[0]
         len_raw_data = raw_data.shape[0]
         self.raw_data_earray.append(raw_data)
-        self.meta_data_table.row['timestamp_start'] = item["timestamp_start"]
-        self.meta_data_table.row['timestamp_stop'] = item["timestamp_stop"]
-        self.meta_data_table.row['error'] = item["error"]
+        self.meta_data_table.row['timestamp_start'] = item[1]
+        self.meta_data_table.row['timestamp_stop'] = item[2]
+        self.meta_data_table.row['error'] = item[3]
         self.meta_data_table.row['data_length'] = len_raw_data
         self.meta_data_table.row['index_start'] = total_words
         total_words += len_raw_data
@@ -681,12 +709,10 @@ class RawDataFile(object):
             self.flush()
         self.lock.release()
 
-    def append(self, data_dict_iterable, scan_parameters=None, clear_deque=False, flush=True, **kwargs):
+    def append(self, data_queue, scan_parameters=None, flush=True):
         self.lock.acquire()
-        for item in data_dict_iterable:
-            self.append_item(item, scan_parameters, flush=False)
-        if clear_deque:
-            data_dict_iterable.clear()
+        while not data_queue.empty():
+                self.append_item(data_queue.get(), scan_parameters, flush=False)
         if flush:
             self.flush()
         self.lock.release()
