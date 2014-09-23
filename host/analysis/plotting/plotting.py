@@ -1,15 +1,24 @@
-﻿import numpy as np
+﻿# TODO: set color for bad pixels
+# set nan to special value
+# masked_array = np.ma.array (a, mask=np.isnan(a))
+# cmap = matplotlib.cm.jet
+# cmap.set_bad('w',1.)
+# ax.imshow(masked_array, interpolation='nearest', cmap=cmap)
+
+import numpy as np
 import math
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from scipy.optimize import curve_fit
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from mpl_toolkits.mplot3d import Axes3D
+# from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.dates as mdates
 import pandas as pd
 from datetime import datetime
 import itertools
-import re
-import operator
+# import re
+# import operator
 from matplotlib import colors, cm
 from matplotlib.backends.backend_pdf import PdfPages
 
@@ -18,7 +27,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(leve
 
 
 def plot_tdc_event(points, filename=None):
-    fig = plt.figure()
+    fig = Figure()
+    canvas = FigureCanvas(fig)
     ax = fig.add_subplot(111, projection='3d')
     xs = points[:, 0]
     ys = points[:, 1]
@@ -33,27 +43,25 @@ def plot_tdc_event(points, filename=None):
     # ax.azim = 200
     # ax.elev = -45
 
-    plt.title('Track of one TPC event')
+    ax.title('Track of one TPC event')
 
-    plt.xlim(0, 80)
-    plt.ylim(0, 336)
+    ax.set_xlim(0, 80)
+    ax.set_ylim(0, 336)
 
     c_bar = fig.colorbar(p)
     c_bar.set_label('charge [TOT]')
 
     if filename is None:
-        plt.show()
-    elif type(filename) == PdfPages:
-        filename.savefig()
-        plt.close()
+        fig.show()
+    elif isinstance(filename, PdfPages):
+        filename.savefig(fig)
     elif filename:
-        plt.savefig(filename)
-        plt.close()
-    return plt
+        fig.savefig(filename)
+    return fig
 
 
 def plot_linear_relation(x, y, x_err=None, y_err=None, title=None, point_label=None, legend=None, plot_range=None, plot_range_y=None, x_label=None, y_label=None, y_2_label=None, marker_style='-o', log_x=False, log_y=False, size=None, filename=None):
-    ''' Takes point data (x,y) with errors(x,y) and fits a straight line. The deviation to this line is also plotted, showing the offset. 
+    ''' Takes point data (x,y) with errors(x,y) and fits a straight line. The deviation to this line is also plotted, showing the offset.
 
      Parameters
     ----------
@@ -64,28 +72,28 @@ def plot_linear_relation(x, y, x_err=None, y_err=None, title=None, point_label=N
         string: new plot file with the given filename is created
         None: the plot is printed to screen
     '''
-    plt.clf()
-    fig = plt.figure(1)
+    fig = Figure()
+    canvas = FigureCanvas(fig)
     ax = fig.add_subplot(111)
     if x_err is not None:
         x_err = [x_err, x_err]
     if y_err is not None:
         y_err = [y_err, y_err]
-    plt.title(title)
+    ax.set_title(title)
     if y_label is not None:
-        plt.ylabel(y_label)
+        ax.set_ylabel(y_label)
     if log_x:
-        plt.xscale('log')
+        ax.set_xscale('log')
     if log_y:
-        plt.yscale('log')
+        ax.set_yscale('log')
     if plot_range:
-        plt.xlim((min(plot_range), max(plot_range)))
+        ax.set_xlim((min(plot_range), max(plot_range)))
     if plot_range_y:
-        plt.ylim((min(plot_range_y), max(plot_range_y)))
+        ax.set_ylim((min(plot_range_y), max(plot_range_y)))
     if legend:
-        plt.legend(legend, 0)
-    plt.grid(True)
-    plt.errorbar(x, y, xerr=x_err, yerr=y_err, fmt='o', color='black')  # plot points
+        fig.legend(legend, 0)
+    ax.grid(True)
+    fig.errorbar(x, y, xerr=x_err, yerr=y_err, fmt='o', color='black')  # plot points
     # label points if needed
     if point_label is not None:
         for X, Y, Z in zip(x, y, point_label):
@@ -95,11 +103,11 @@ def plot_linear_relation(x, y, x_err=None, y_err=None, title=None, point_label=N
 #     print pcov
 #     chi_squared = np.sum((np.polyval(line_fit, x) - y) ** 2)
     fit_fn = np.poly1d(line_fit)
-    plt.plot(x, fit_fn(x), '-', lw=2, color='gray')
+    fig.plot(x, fit_fn(x), '-', lw=2, color='gray')
     line_fit_legend_entry = 'line fit: ax + b\na=$%.2f\pm%.2f$\nb=$%.2f\pm%.2f$' % (line_fit[0], np.absolute(pcov[0][0]) ** 0.5, abs(line_fit[1]), np.absolute(pcov[1][1]) ** 0.5)
 
-    plt.legend(["data", line_fit_legend_entry], 0)
-    plt.setp(ax.get_xticklabels(), visible=False)  # remove ticks at common border of both plots
+    fig.legend(["data", line_fit_legend_entry], 0)
+    fig.setp(ax.get_xticklabels(), visible=False)  # remove ticks at common border of both plots
 
     divider = make_axes_locatable(ax)
     ax_bottom_plot = divider.append_axes("bottom", 2.0, pad=0.0, sharex=ax)
@@ -108,14 +116,14 @@ def plot_linear_relation(x, y, x_err=None, y_err=None, title=None, point_label=N
 #     plot(x, y - fit_fn(x))
     ax_bottom_plot.grid(True)
     if x_label is not None:
-        plt.xlabel(x_label)
+        ax.set_xlabel(x_label)
     if y_2_label is not None:
-        plt.ylabel(y_2_label)
+        ax.set_ylabel(y_2_label)
 
-    plt.ylim((-np.amax(np.abs(y - fit_fn(x)))), (np.amax(np.abs(y - fit_fn(x)))))
+    ax.set_ylim((-np.amax(np.abs(y - fit_fn(x)))), (np.amax(np.abs(y - fit_fn(x)))))
 
-    plt.plot(plt.xlim(), [0, 0], '-', color='black')
-    plt.setp(ax_bottom_plot.get_yticklabels()[-2:-1], visible=False)
+    fig.plot(ax.set_xlim(), [0, 0], '-', color='black')
+    fig.setp(ax_bottom_plot.get_yticklabels()[-2:-1], visible=False)
 #     print ax_bottom_plot.get_yticklabels()[1]
 
 #     ax.set_aspect(2)
@@ -125,18 +133,16 @@ def plot_linear_relation(x, y, x_err=None, y_err=None, title=None, point_label=N
         fig.set_size_inches(size)
 
     if filename is None:
-        plt.show()
-    elif type(filename) == PdfPages:
-        filename.savefig()
-        plt.close()
+        fig.show()
+    elif isinstance(filename, PdfPages):
+        filename.savefig(fig)
     elif filename:
-        plt.savefig(filename, bbox_inches='tight')
-        plt.close()
-    return plt
+        fig.savefig(filename, bbox_inches='tight')
+
+    return fig
 
 
 def plot_fancy_occupancy(hist, z_max=None, filename=None):
-    plt.clf()
     if z_max == 'median':
         median = np.ma.median(hist)
         z_max = median * 2  # round_to_multiple(median * 2, math.floor(math.log10(median * 2)))
@@ -146,8 +152,9 @@ def plot_fancy_occupancy(hist, z_max=None, filename=None):
     if z_max < 1 or hist.all() is np.ma.masked:
         z_max = 1
 
-#     plt.title('Occupancy (%d entries)' % np.sum(hist))
-    fig = plt.figure(1)
+#     ax.set_title('Occupancy (%d entries)' % np.sum(hist))
+    fig = Figure()
+    canvas = FigureCanvas(fig)
     ax = fig.add_subplot(111)
     extent = [0.5, 80.5, 336.5, 0.5]
     bounds = np.linspace(start=0, stop=z_max, num=255, endpoint=True)
@@ -159,7 +166,7 @@ def plot_fancy_occupancy(hist, z_max=None, filename=None):
     im = ax.imshow(hist, interpolation='nearest', aspect='auto', cmap=cmap, norm=norm, extent=extent)  # TODO: use pcolor or pcolormesh
     ax.set_ylim((336.5, 0.5))
     ax.set_xlim((0.5, 80.5))
-#     plt.title('Occupancy (%d entries)' % np.sum(hist))
+#     ax.set_title('Occupancy (%d entries)' % np.sum(hist))
     ax.set_xlabel('Column')
     ax.set_ylabel('Row')
 
@@ -171,12 +178,12 @@ def plot_fancy_occupancy(hist, z_max=None, filename=None):
     axHisty = divider.append_axes("right", 1.2, pad=0.2, sharey=ax)
 
     cax = divider.append_axes("right", size="5%", pad=0.1)
-    cb = plt.colorbar(im, cax=cax, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True))
-#     cb = plt.colorbar(im, cax=cax)
+    cb = ax.colorbar(im, cax=cax, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True))
+#     cb = fig.colorbar(im, cax=cax)
     cb.set_label("#")
 
     # make some labels invisible
-    plt.setp(axHistx.get_xticklabels() + axHisty.get_yticklabels(), visible=False)
+    ax.setp(axHistx.get_xticklabels() + axHisty.get_yticklabels(), visible=False)
     hight = np.ma.sum(hist, axis=0)
     # hight[hight.mask] = 0
     axHistx.bar(left=range(1, 81), height=hight, align='center', linewidth=0)
@@ -197,13 +204,11 @@ def plot_fancy_occupancy(hist, z_max=None, filename=None):
     axHisty.set_xlabel('#')
 
     if filename is None:
-        plt.show()
+        fig.show()
     elif isinstance(filename, PdfPages):
-        filename.savefig()
-        plt.close()
+        filename.savefig(fig)
     else:
-        plt.savefig(filename)
-        plt.close()
+        fig.savefig(filename)
 
 
 def plot_occupancy(hist, title='Occupancy', z_max=None, filename=None):
@@ -216,7 +221,8 @@ def plot_occupancy(hist, title='Occupancy', z_max=None, filename=None):
     if z_max < 1 or hist.all() is np.ma.masked:
         z_max = 1
 
-    fig = plt.figure('plot_occupancy')
+    fig = Figure()
+    canvas = FigureCanvas(fig)
     ax = fig.add_subplot(111)
     ax.set_adjustable('box-forced')
 #     extent = [yedges[0] - 0.5, yedges[-1] + 0.5, xedges[-1] + 0.5, xedges[0] - 0.5]
@@ -230,24 +236,23 @@ def plot_occupancy(hist, title='Occupancy', z_max=None, filename=None):
     im = ax.imshow(hist, interpolation='nearest', aspect='auto', cmap=cmap, norm=norm, extent=extent)  # TODO: use pcolor or pcolormesh
     ax.set_ylim((336.5, 0.5))
     ax.set_xlim((0.5, 80.5))
-    plt.title(title + ' (%d entrie(s))' % (0 if hist.all() is np.ma.masked else np.ma.sum(hist)))
-    plt.xlabel('Column')
-    plt.ylabel('Row')
+    ax.set_title(title + ' (%d entrie(s))' % (0 if hist.all() is np.ma.masked else np.ma.sum(hist)))
+    ax.set_xlabel('Column')
+    ax.set_ylabel('Row')
 
     divider = make_axes_locatable(ax)
 
     cax = divider.append_axes("right", size="5%", pad=0.1)
-    cb = plt.colorbar(im, cax=cax, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True))
-#     cb = plt.colorbar(im, cax=cax)
+    cb = fig.colorbar(im, cax=cax, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True))
+#     cb = fig.colorbar(im, cax=cax)
     cb.set_label("#")
 
     if filename is None:
-        plt.show()
+        fig.show()
     elif isinstance(filename, PdfPages):
-        filename.savefig()
+        filename.savefig(fig)
     else:
-        plt.savefig(filename)
-    plt.close()
+        fig.savefig(filename)
 
 
 def make_occupancy_hist(cols, rows, ncols=80, nrows=336):
@@ -287,109 +292,115 @@ def plot_profile_histogram(x, y, n_bins=100, title=None, x_label=None, y_label=N
 #         return 0.5 * A * erf((-x + mu) / (np.sqrt(2) * sigma)) + 0.5 * A
 #     popt, _ = curve_fit(scurve, bin_centers, mean, p0=[1.5, 9000, 500])
 #     polynom_fit = np.poly1d(np.polyfit(bin_centers, mean, deg=7))
-#     plt.plot(bin_centers, polynom_fit(bin_centers), 'r-')
-    plt.errorbar(bin_centers, mean, yerr=std_mean, fmt='o')
-    plt.title(title)
+#     fig.plot(bin_centers, polynom_fit(bin_centers), 'r-')
+
+    fig = Figure()
+    canvas = FigureCanvas(fig)
+    ax = fig.add_subplot(111)
+    ax.errorbar(bin_centers, mean, yerr=std_mean, fmt='o')
+    ax.set_title(title)
     if x_label is not None:
-        plt.xlabel(x_label)
+        ax.set_xlabel(x_label)
     if y_label is not None:
-        plt.ylabel(y_label)
+        ax.set_ylabel(y_label)
     if log_y:
-        plt.yscale('log')
-    plt.grid(True)
+        ax.yscale('log')
+    ax.grid(True)
     if filename is None:
-        plt.show()
+        fig.show()
     elif isinstance(filename, PdfPages):
-        filename.savefig()
-        plt.close()
+        filename.savefig(fig)
     else:
-        plt.savefig(filename)
-        plt.close()
+        fig.savefig(filename)
 
 
 def plot_scatter(x, y, x_err=None, y_err=None, title=None, legend=None, plot_range=None, plot_range_y=None, x_label=None, y_label=None, marker_style='-o', log_x=False, log_y=False, filename=None):
     logging.info("Plot scatter plot %s" % ((': ' + title) if title is not None else ''))
+    fig = Figure()
+    canvas = FigureCanvas(fig)
+    ax = fig.add_subplot(111)
     if x_err is not None:
         x_err = [x_err, x_err]
     if y_err is not None:
         y_err = [y_err, y_err]
     if x_err is not None or y_err is not None:
-        plt.errorbar(x, y, xerr=x_err, yerr=y_err, fmt=marker_style)
+        ax.errorbar(x, y, xerr=x_err, yerr=y_err, fmt=marker_style)
     else:
-        plt.plot(x, y, marker_style, markersize=1)
-    plt.title(title)
+        ax.plot(x, y, marker_style, markersize=1)
+    ax.set_title(title)
     if x_label is not None:
-        plt.xlabel(x_label)
+        ax.set_xlabel(x_label)
     if y_label is not None:
-        plt.ylabel(y_label)
+        ax.set_ylabel(y_label)
     if log_x:
-        plt.xscale('log')
+        ax.xscale('log')
     if log_y:
-        plt.yscale('log')
+        ax.yscale('log')
     if plot_range:
-        plt.xlim((min(plot_range), max(plot_range)))
+        ax.set_xlim((min(plot_range), max(plot_range)))
     if plot_range_y:
-        plt.ylim((min(plot_range_y), max(plot_range_y)))
+        ax.set_ylim((min(plot_range_y), max(plot_range_y)))
     if legend:
-        plt.legend(legend, 0)
-    plt.grid(True)
+        ax.legend(legend, 0)
+    ax.grid(True)
     if filename is None:
-        plt.show()
+        fig.show()
     elif isinstance(filename, PdfPages):
-        filename.savefig()
+        filename.savefig(fig)
     else:
-        plt.savefig(filename)
-    plt.close()
+        fig.savefig(filename)
 
 
 def plot_correlation(hist, title="Hit correlation", xlabel=None, ylabel=None, filename=None):
     logging.info("Plotting correlations")
+    fig = Figure()
+    canvas = FigureCanvas(fig)
+    ax = fig.add_subplot(1, 1, 1)
     cmap = cm.get_cmap('jet')
     extent = [hist[2][0] - 0.5, hist[2][-1] + 0.5, hist[1][-1] + 0.5, hist[1][0] - 0.5]
-    plt.title(title)
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
-    plt.imshow(hist[0], extent=extent, cmap=cmap, interpolation='nearest')
-    plt.gca().invert_yaxis()
+    ax.set_title(title)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.imshow(hist[0], extent=extent, cmap=cmap, interpolation='nearest')
+    ax.gca().invert_yaxis()
     # add colorbar
-    divider = make_axes_locatable(plt.gca())
+    divider = make_axes_locatable(fig.gca())
     cax = divider.append_axes("right", size="5%", pad=0.05)
     z_max = np.max(hist[0])
     bounds = np.linspace(start=0, stop=z_max, num=255, endpoint=True)
     norm = colors.BoundaryNorm(bounds, cmap.N)
-    plt.colorbar(boundaries=bounds, cmap=cmap, norm=norm, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True), cax=cax)
+    ax.colorbar(boundaries=bounds, cmap=cmap, norm=norm, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True), cax=cax)
     if filename is None:
-        plt.show()
+        fig.show()
     elif isinstance(filename, PdfPages):
-        filename.savefig()
-        plt.close()
+        filename.savefig(fig)
     else:
-        plt.savefig(filename)
-        plt.close()
+        fig.savefig(filename)
 
 
 def plot_pixel_matrix(hist, title="Hit correlation", filename=None):
     logging.info("Plotting pixel matrix: " + title)
-    plt.title(title)
-    plt.xlabel('Col')
-    plt.ylabel('Row')
+    fig = Figure()
+    canvas = FigureCanvas(fig)
+    ax = fig.add_subplot(111)
+    ax.set_title(title)
+    ax.set_xlabel('Col')
+    ax.set_ylabel('Row')
     cmap = cm.get_cmap('jet')
 #             extent = [hist_mean[2] - 0.5, hist_mean[2][-1] + 0.5, hist_mean[1][-1] + 0.5, hist_mean[1][0] - 0.5]
-    plt.imshow(hist.T, aspect='auto', cmap=cmap, interpolation='nearest')
-    divider = make_axes_locatable(plt.gca())
+    ax.imshow(hist.T, aspect='auto', cmap=cmap, interpolation='nearest')
+    divider = make_axes_locatable(fig.gca())
     cax = divider.append_axes("right", size="5%", pad=0.05)
     z_max = np.max(hist)
     bounds = np.linspace(start=0, stop=z_max, num=255, endpoint=True)
     norm = colors.BoundaryNorm(bounds, cmap.N)
-    plt.colorbar(boundaries=bounds, cmap=cmap, norm=norm, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True), cax=cax)
+    ax.colorbar(boundaries=bounds, cmap=cmap, norm=norm, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True), cax=cax)
     if filename is None:
-        plt.show()
+        fig.show()
     elif isinstance(filename, PdfPages):
-        filename.savefig()
-        plt.close()
+        filename.savefig(fig)
     else:
-        plt.savefig(filename)
-        plt.close()
+        fig.savefig(filename)
 
 
 def plot_n_cluster(hist, title=None, filename=None):
@@ -484,8 +495,9 @@ def plot_scurves(occupancy_hist, scan_parameters, title='S-Curves', ylabel='Occu
             hist = heatmap
         else:
             hist += heatmap
-    plt.clf()
-    fig = plt.figure()
+    fig = Figure()
+    canvas = FigureCanvas(fig)
+    ax = fig.add_subplot(111)
     fig.patch.set_facecolor('white')
     if len(scan_parameters) > 1:
         scan_parameter_dist = (np.amax(scan_parameters) - np.amin(scan_parameters)) / (len(scan_parameters) - 1)
@@ -493,72 +505,72 @@ def plot_scurves(occupancy_hist, scan_parameters, title='S-Curves', ylabel='Occu
         scan_parameter_dist = 0
     extent = [yedges[0] - scan_parameter_dist / 2, yedges[-1] + scan_parameter_dist / 2, xedges[-1] + 0.5, xedges[0] - 0.5]
     norm = colors.LogNorm()
-    plt.imshow(hist, interpolation='nearest', aspect="auto", cmap=cmap, extent=extent, norm=norm)
-    plt.gca().invert_yaxis()
+    fig.imshow(hist, interpolation='nearest', aspect="auto", cmap=cmap, extent=extent, norm=norm)
+    fig.gca().invert_yaxis()
     try:
-        plt.colorbar()
+        fig.colorbar()
     except ValueError:
         logging.warning('Cannot plot clolor bar')
-    plt.title(title + ' for %d pixel(s)' % (n_pixel - np.count_nonzero(occ_mask)))
+    ax.set_title(title + ' for %d pixel(s)' % (n_pixel - np.count_nonzero(occ_mask)))
     if scan_parameter_name is None:
-        plt.xlabel('Scan parameter')
+        ax.set_xlabel('Scan parameter')
     else:
-        plt.xlabel(scan_parameter_name)
-    plt.ylabel(ylabel)
+        ax.set_xlabel(scan_parameter_name)
+    ax.set_ylabel(ylabel)
     if filename is None:
-        plt.show()
+        fig.show()
     elif isinstance(filename, PdfPages):
-        filename.savefig()
-        plt.close()
+        filename.savefig(fig)
     else:
-        plt.savefig(filename)
-        plt.close()
+        fig.savefig(filename)
 
 
 def plot_scatter_time(x, y, yerr=None, title=None, legend=None, plot_range=None, plot_range_y=None, x_label=None, y_label=None, marker_style='-o', log_x=False, log_y=False, filename=None):
     logging.info("Plot time scatter plot %s" % ((': ' + title) if title is not None else ''))
-    ax = plt.gca()
+    fig = Figure()
+    canvas = FigureCanvas(fig)
+    ax = fig.add_subplot(111)
+#     ax = fig.gca()
     ax.format_xdata = mdates.DateFormatter('%Y-%m-%d')
     times = []
     for time in x:
         times.append(datetime.fromtimestamp(time))
     if yerr is not None:
-        plt.errorbar(times, y, yerr=[yerr, yerr], fmt=marker_style)
+        ax.errorbar(times, y, yerr=[yerr, yerr], fmt=marker_style)
     else:
-        plt.plot(times, y, marker_style)
-    plt.title(title)
+        ax.plot(times, y, marker_style)
+    ax.set_title(title)
     if x_label is not None:
-        plt.xlabel(x_label)
+        ax.set_xlabel(x_label)
     if y_label is not None:
-        plt.ylabel(y_label)
+        ax.set_ylabel(y_label)
     if log_x:
-        plt.xscale('log')
+        ax.xscale('log')
     if log_y:
-        plt.yscale('log')
+        ax.yscale('log')
     if plot_range:
-        plt.xlim((min(plot_range), max(plot_range)))
+        ax.set_xlim((min(plot_range), max(plot_range)))
     if plot_range_y:
-        plt.ylim((min(plot_range_y), max(plot_range_y)))
+        ax.set_ylim((min(plot_range_y), max(plot_range_y)))
     if legend:
-        plt.legend(legend, 0)
-    plt.grid(True)
+        ax.legend(legend, 0)
+    ax.grid(True)
     if filename is None:
-        plt.show()
+        fig.show()
     elif isinstance(filename, PdfPages):
-        filename.savefig()
+        filename.savefig(fig)
     else:
-        plt.savefig(filename)
-    plt.close()
+        fig.savefig(filename)
 
 
 def plot_cluster_tot_size(hist, median=False, z_max=None, filename=None):
-    plt.clf()
     H = hist[0:50, 0:20]
     if z_max is None:
         z_max = np.ma.max(H)
     if z_max < 1 or H.all() is np.ma.masked:
         z_max = 1
-    fig = plt.figure(1)
+    fig = Figure()
+    canvas = FigureCanvas(fig)
     ax = fig.add_subplot(111)
     extent = [-0.5, 20.5, 49.5, -0.5]
     bounds = np.linspace(start=0, stop=z_max, num=255, endpoint=True)
@@ -566,68 +578,61 @@ def plot_cluster_tot_size(hist, median=False, z_max=None, filename=None):
     cmap.set_bad('w')
     norm = colors.BoundaryNorm(bounds, cmap.N)
     im = ax.imshow(H, aspect="auto", interpolation='nearest', cmap=cmap, norm=norm, extent=extent)  # for monitoring
-    plt.title('Cluster size and cluster ToT (' + str(np.sum(H) / 2) + ' entries)')
+    ax.set_title('Cluster size and cluster ToT (' + str(np.sum(H) / 2) + ' entries)')
     ax.set_xlabel('cluster size')
     ax.set_ylabel('cluster ToT')
     # ax.colorbar(cmap=cmap)
     ax.invert_yaxis()
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.1)
-    cb = plt.colorbar(im, cax=cax, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True))
+    cb = fig.colorbar(im, cax=cax, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True))
     cb.set_label("#")
     fig.patch.set_facecolor('white')
     if filename is None:
-        plt.show()
+        fig.show()
     elif isinstance(filename, PdfPages):
-        filename.savefig()
-        plt.close()
+        filename.savefig(fig)
     else:
-        plt.savefig(filename)
-        plt.close()
+        fig.savefig(filename)
 
 
 def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=None, x_ticks=None, color='r', plot_range=None, log_y=False, filename=None, figure_name=None):
     logging.info("Plot 1d histogram%s" % ((': ' + title) if title is not None else ''))
-#     plt.clf()
-#     fig = plt.figure()
-    if figure_name is not None:
-        fig = plt.figure(figure_name)
-        fig.clf()
-
+    fig = Figure()
+    canvas = FigureCanvas(fig)
+    ax = fig.add_subplot(111)
     if plot_range is None:
         plot_range = range(0, len(hist))
     if not plot_range:
         plot_range = [0]
     if yerr is not None:
-        plt.bar(left=plot_range, height=hist[plot_range], color=color, align='center', yerr=yerr)
+        ax.bar(left=plot_range, height=hist[plot_range], color=color, align='center', yerr=yerr)
     else:
-        plt.bar(left=plot_range, height=hist[plot_range], color=color, align='center')
-    plt.xlim((min(plot_range) - 0.5, max(plot_range) + 0.5))
-    plt.title(title)
+        ax.bar(left=plot_range, height=hist[plot_range], color=color, align='center')
+    ax.set_xlim((min(plot_range) - 0.5, max(plot_range) + 0.5))
+    ax.set_title(title)
     if x_axis_title is not None:
-        plt.xlabel(x_axis_title)
+        ax.set_xlabel(x_axis_title)
     if y_axis_title is not None:
-        plt.ylabel(y_axis_title)
+        ax.set_ylabel(y_axis_title)
     if x_ticks is not None:
-        plt.xticks(range(0, len(hist[:])) if plot_range is None else plot_range, x_ticks)
-        plt.tick_params(axis='both', which='major', labelsize=8)
+        ax.set_xticks(range(0, len(hist[:])) if plot_range is None else plot_range, x_ticks)
+#         ax.set_tick_params(which='both', labelsize=8)
     if np.allclose(hist, 0.0):
-        plt.ylim((0, 1))
+        ax.set_ylim((0, 1))
     else:
         if log_y:
-            plt.yscale('log')
-    plt.grid(True)
+            ax.set_yscale('log')
+    ax.grid(True)
     if filename is None:
-        plt.show()
+        fig.show()
     elif isinstance(filename, PdfPages):
-        filename.savefig()
-        plt.close()
+        filename.savefig(fig)
     else:
-        plt.savefig(filename)
-        plt.close()
+        fig.savefig(filename)
 
 
-def create_2d_pixel_hist(hist2d, title=None, x_axis_title=None, y_axis_title=None, z_max=None):
+def create_2d_pixel_hist(fig, ax, hist2d, title=None, x_axis_title=None, y_axis_title=None, z_max=None):
     extent = [0.5, 80.5, 336.5, 0.5]
     if z_max is None:
         if hist2d.all() is np.ma.masked:  # check if masked array is fully masked
@@ -638,24 +643,19 @@ def create_2d_pixel_hist(hist2d, title=None, x_axis_title=None, y_axis_title=Non
     cmap = cm.get_cmap('jet')
     cmap.set_bad('w')
     norm = colors.BoundaryNorm(bounds, cmap.N)
-    # plot
-    plt.imshow(hist2d, interpolation='nearest', aspect="auto", cmap=cmap, norm=norm, extent=extent)
+    im = ax.imshow(hist2d, interpolation='nearest', aspect="auto", cmap=cmap, norm=norm, extent=extent)
     if title is not None:
-        plt.title(title)
+        ax.set_title(title)
     if x_axis_title is not None:
-        plt.xlabel(x_axis_title)
+        ax.set_xlabel(x_axis_title)
     if y_axis_title is not None:
-        plt.ylabel(y_axis_title)
-    ax = plt.subplot(311)
-#     ax = plt.plot()
+        ax.set_ylabel(y_axis_title)
     divider = make_axes_locatable(ax)
-#     ax = plt.plot()
-    ax = plt.subplot(311)
     cax = divider.append_axes("right", size="5%", pad=0.05)
-    plt.colorbar(boundaries=bounds, cmap=cmap, norm=norm, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True), cax=cax)
+    fig.colorbar(im, boundaries=bounds, cmap=cmap, norm=norm, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True), cax=cax)
 
 
-def create_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, bins=101, x_min=None, x_max=None):
+def create_1d_hist(fig, ax, hist, title=None, x_axis_title=None, y_axis_title=None, bins=101, x_min=None, x_max=None):
     if hist.all() is np.ma.masked:
         median = 0.0
         mean = 0.0
@@ -677,20 +677,19 @@ def create_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, bins=
     else:
         bin_width = 1.0
     hist_range = (x_min - bin_width / 2.0, x_max + bin_width / 2.0)
-    # plot
-    _, _, _ = plt.hist(x=np.ma.masked_array(hist).compressed(), bins=hist_bins, range=hist_range, align='mid')  # re-bin to 1d histogram, x argument needs to be 1D
+    _, _, _ = ax.hist(x=np.ma.masked_array(hist).compressed(), bins=hist_bins, range=hist_range, align='mid')  # re-bin to 1d histogram, x argument needs to be 1D
     # BUG: np.ma.compressed(np.ma.masked_array(hist)) (2D) is not equal to np.ma.masked_array(hist).compressed() (1D) if hist is ndarray
-    plt.xlim(hist_range)  # overwrite xlim
+    ax.set_xlim(hist_range)  # overwrite xlim
     if hist.all() is np.ma.masked:  # or np.allclose(hist, 0.0):
-        plt.ylim((0, 1))
+        ax.set_ylim((0, 1))
     # create histogram without masked elements, higher precision when calculating gauss
     h_1d, h_bins = np.histogram(np.ma.masked_array(hist).compressed(), bins=hist_bins, range=hist_range)
     if title is not None:
-        plt.title(title)
+        ax.set_title(title)
     if x_axis_title is not None:
-        plt.xlabel(x_axis_title)
+        ax.set_xlabel(x_axis_title)
     if y_axis_title is not None:
-        plt.ylabel(y_axis_title)
+        ax.set_ylabel(y_axis_title)
     bin_centres = (h_bins[:-1] + h_bins[1:]) / 2.0
     amplitude = np.amax(h_1d)
 
@@ -700,11 +699,10 @@ def create_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, bins=
         return A * np.exp(-(x - mu) ** 2.0 / (2.0 * sigma ** 2.0))
 
     p0 = (amplitude, mean, rms)  # p0 is the initial guess for the fitting coefficients (A, mu and sigma above)
-    ax = plt.subplot(312)
     try:
         coeff, _ = curve_fit(gauss, bin_centres, h_1d, p0=p0)
         hist_fit = gauss(bin_centres, *coeff)
-        plt.plot(bin_centres, hist_fit, "r--", label='Gauss fit')
+        ax.plot(bin_centres, hist_fit, "r--", label='Gauss fit')
         chi2 = 0.0
         for i in range(0, len(h_1d)):
             chi2 += (h_1d[i] - gauss(h_bins[i], *coeff)) ** 2.0
@@ -720,14 +718,14 @@ def create_1d_hist(hist, title=None, x_axis_title=None, y_axis_title=None, bins=
     ax.text(0.1, 0.9, textleft, transform=ax.transAxes, fontsize=8, verticalalignment='top', bbox=props)
 
 
-def create_pixel_scatter_plot(hist, title=None, x_axis_title=None, y_axis_title=None, y_min=None, y_max=None):
+def create_pixel_scatter_plot(fig, ax, hist, title=None, x_axis_title=None, y_axis_title=None, y_min=None, y_max=None):
     scatter_y_mean = np.ma.mean(hist, axis=0)
     scatter_y = hist.flatten('F')
-    plt.scatter(range(80 * 336), scatter_y, marker='o', s=0.8, rasterized=True)
-    p1, = plt.plot(range(336 / 2, 80 * 336 + 336 / 2, 336), scatter_y_mean, 'o')
-    plt.plot(range(336 / 2, 80 * 336 + 336 / 2, 336), scatter_y_mean, linewidth=2.0)
-    plt.legend([p1], ["column mean"], prop={'size': 6})
-    plt.xlim((0, 26880))
+    ax.scatter(range(80 * 336), scatter_y, marker='o', s=0.8, rasterized=True)
+    p1, = ax.plot(range(336 / 2, 80 * 336 + 336 / 2, 336), scatter_y_mean, 'o')
+    ax.plot(range(336 / 2, 80 * 336 + 336 / 2, 336), scatter_y_mean, linewidth=2.0)
+    ax.legend([p1], ["column mean"], prop={'size': 6})
+    ax.set_xlim((0, 26880))
     if y_min is None:
         y_min = 0
     if y_max is None:
@@ -735,14 +733,14 @@ def create_pixel_scatter_plot(hist, title=None, x_axis_title=None, y_axis_title=
             y_max = 1
         else:
             y_max = math.ceil(hist.max())  # np.max(scatter_y)
-    plt.ylim(ymin=y_min)
-    plt.ylim(ymax=y_max)
+    ax.set_ylim(ymin=y_min)
+    ax.set_ylim(ymax=y_max)
     if title is not None:
-        plt.title(title)
+        ax.title(title)
     if x_axis_title is not None:
-        plt.xlabel(x_axis_title)
+        ax.set_xlabel(x_axis_title)
     if y_axis_title is not None:
-        plt.ylabel(y_axis_title)
+        ax.set_ylabel(y_axis_title)
 
 
 def plotThreeWay(hist, title, filename=None, x_axis_title=None, minimum=None, maximum=None, bins=101):  # the famous 3 way plot (enhanced)
@@ -760,27 +758,25 @@ def plotThreeWay(hist, title, filename=None, x_axis_title=None, minimum=None, ma
         maximum = 1
 
     x_axis_title = '' if x_axis_title is None else x_axis_title
-    fig = plt.figure()
+    fig = Figure()
+    canvas = FigureCanvas(fig)
     fig.patch.set_facecolor('white')
-    plt.subplot(311)
-    create_2d_pixel_hist(hist, title=title, x_axis_title="column", y_axis_title="row", z_max=maximum)
-    plt.subplot(312)
-    create_1d_hist(hist, bins=bins, x_axis_title=x_axis_title, y_axis_title="#", x_min=minimum, x_max=maximum)
-    plt.subplot(313)
-    create_pixel_scatter_plot(hist, x_axis_title="channel=row + column*336", y_axis_title=x_axis_title, y_min=minimum, y_max=maximum)
-    plt.tight_layout()
+    ax1 = fig.add_subplot(311)
+    create_2d_pixel_hist(fig, ax1, hist, title=title, x_axis_title="column", y_axis_title="row", z_max=maximum)
+    ax2 = fig.add_subplot(312)
+    create_1d_hist(fig, ax2, hist, bins=bins, x_axis_title=x_axis_title, y_axis_title="#", x_min=minimum, x_max=maximum)
+    ax3 = fig.add_subplot(313)
+    create_pixel_scatter_plot(fig, ax3, hist, x_axis_title="channel=row + column*336", y_axis_title=x_axis_title, y_min=minimum, y_max=maximum)
+    fig.tight_layout()
     if filename is None:
-        plt.show()
+        fig.show()
     elif isinstance(filename, PdfPages):
-        filename.savefig()
-        plt.close()
+        filename.savefig(fig)
     else:
-        plt.savefig(filename)
-        plt.close()
+        fig.savefig(filename)
 
 
 def plot_correlations(filenames, limit=None):
-    plt.clf()
     DataFrame = pd.DataFrame()
     index = 0
     for fileName in filenames:
@@ -806,14 +802,16 @@ def plot_correlations(filenames, limit=None):
                 heatmap, xedges, yedges = np.histogram2d(DataFrame[colName[0]], DataFrame[colName[1]], bins=(336, 336), range=[[1, 336], [1, 336]])
             extent = [yedges[0] - 0.5, yedges[-1] + 0.5, xedges[-1] + 0.5, xedges[0] - 0.5]
 #             extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
-            plt.clf()
             cmap = cm.get_cmap('hot', 40)
-            plt.imshow(heatmap, extent=extent, cmap=cmap, interpolation='nearest')
-            plt.gca().invert_yaxis()
-            plt.xlabel(colName[0])
-            plt.ylabel(colName[1])
-            plt.title('Correlation plot(' + corName + ')')
-            plt.savefig(colName[0] + '_' + colName[1] + '.pdf')
+            fig = Figure()
+            canvas = FigureCanvas(fig)
+            ax = fig.add_subplot(111)
+            ax.imshow(heatmap, extent=extent, cmap=cmap, interpolation='nearest')
+            ax.gca().invert_yaxis()
+            ax.set_xlabel(colName[0])
+            ax.set_ylabel(colName[1])
+            ax.set_title('Correlation plot(' + corName + ')')
+            fig.savefig(colName[0] + '_' + colName[1] + '.pdf')
 #             print 'store as ', fileNames[int(index/2)]
             index += 1
 
@@ -901,26 +899,4 @@ def hist_last_nonzero(hist, return_index=False, copy=False):
 
 
 if __name__ == "__main__":
-    filename = "HitMap.txt"
-    with open(filename, 'r') as f:
-        H = np.empty(shape=(80, 336))
-        for line in f.readlines():
-            values = re.split("\s", line)
-            col = int(values[0])
-            row = int(values[1])
-            hits = int(values[2])
-            # print str(col)
-            H[col, row] = hits
-    plotThreeWay(H.transpose(), title='Occupancy', x_axis_title='occupancy', filename='SourceScanOccupancy.pdf')
-
-#     with tb.openFile('out.h5', 'r') as in_file:
-#         H=np.empty(shape=(336,80),dtype=in_file.root.HistOcc.dtype)
-#         H[:]=in_file.root.HistThreshold[:,:]
-#         plotThreeWay(hist = in_file.root.HistThreshold[:,:], title = "Threshold", filename = "Threshold.pdf", label = "noise[e]")
-
-# TODO: set color for bad pixels
-# set nan to special value
-# masked_array = np.ma.array (a, mask=np.isnan(a))
-# cmap = matplotlib.cm.jet
-# cmap.set_bad('w',1.)
-# ax.imshow(masked_array, interpolation='nearest', cmap=cmap)
+    pass
