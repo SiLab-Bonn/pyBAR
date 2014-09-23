@@ -181,7 +181,7 @@ class ScanBase(RunBase):
                 pass  # do nothing, already initialized
 
             if not self.data_readout:
-                self.data_readout = DataReadout(self.dut, callback=self.handle_data, errback=self.handle_err)
+                self.data_readout = DataReadout(self.dut)
             if not self.register_utils:
                 self.register_utils = FEI4RegisterUtils(self.dut, self.data_readout, self.register)
             self._save_configuration_dict('dut_configuration', self.dut_configuration)
@@ -231,7 +231,7 @@ class ScanBase(RunBase):
         self.stop_run.set()
 
     def handle_data(self, data):
-        self.raw_data_file.append_item(data, self.scan_parameters._asdict())
+        self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=False)
 
     def handle_err(self, exc):
         logging.error('%s%s Stopping scan...' % (exc[1], ('' if str(exc[1])[-1] in punctuation else '.')))
@@ -264,7 +264,7 @@ class ScanBase(RunBase):
     def start_readout(self, **kwargs):
         if kwargs:
             self.set_scan_parameters(**kwargs)
-        self.data_readout.start(reset_sram_fifo=True)
+        self.data_readout.start(reset_sram_fifo=True, clear_data_queue=True, callback=self.handle_data, errback=self.handle_err)
 
     def stop_readout(self):
         self.data_readout.stop()
