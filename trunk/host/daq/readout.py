@@ -43,8 +43,8 @@ class DataReadout(object):
         self.worker_thread = None
         self.watchdog_thread = None
         self.data_queue = Queue()
-        self.stop_thread_event = Event()
-        self.stop_thread_event.set()
+        self.stop_readout = Event()
+        self.stop_timeout = Event()
         self.readout_interval = 0.05
         self.timestamp = None
         self.update_timestamp()
@@ -75,7 +75,8 @@ class DataReadout(object):
             self.reset_sram_fifo()
         if clear_data_queue:
             self.data_queue.queue.clear()
-        self.stop_thread_event.clear()
+        self.stop_readout.clear()
+        self.stop_timeout.clear()
         if self.errback:
             self.watchdog_thread = Thread(target=self.watchdog, name='WatchdogThread')
             self.watchdog_thread.daemon = True
@@ -88,28 +89,22 @@ class DataReadout(object):
         self.readout_thread.daemon = True
         self.readout_thread.start()
 
-    def stop(self, timeout=10):
+    def stop(self, timeout=10.0):
         if not self._is_running:
             raise RuntimeError('Readout not running: use start() before stop()')
         self._is_running = False
-        if timeout:
-            def stop_thread():
-                logging.warning('Waiting for empty SRAM FIFO: timeout after %.1f second(s)' % timeout)
-                self.stop_thread_event.set()
-
-            timeout_timer = Timer(timeout, stop_thread)
-            timeout_timer.start()
-
-            fifo_size = self.dut['sram']['FIFO_SIZE']
-            old_fifo_size = -1
-            while (old_fifo_size != fifo_size or fifo_size != 0) and self.readout_thread.is_alive() and not self.stop_thread_event.wait(1.5 * self.readout_interval):
-                old_fifo_size = fifo_size
-                fifo_size = self.dut['sram']['FIFO_SIZE']
-
-            timeout_timer.cancel()
-
-        self.stop_thread_event.set()  # stop thread when no timeout is set
-        self.readout_thread.join()
+        self.stop_readout.set()
+        try:
+            self.readout_thread.join(timeout=timeout)
+            if self.readout_thread.is_alive():
+                raise StopTimeout('Reached data timeout after %f second(s)' % timeout)
+        except StopTimeout as e:
+                if self.errback:
+                    self.errback(sys.exc_info())
+                else:
+                    raise
+        finally:
+            self.stop_timeout.set()
         if self.errback:
             self.watchdog_thread.join()
         if self.callback:
@@ -138,7 +133,7 @@ class DataReadout(object):
         '''
         logging.info('Starting %s' % (self.readout_thread.name,))
         curr_time = get_float_time()
-        while not self.stop_thread_event.wait(self.readout_interval):
+        while not self.stop_readout.wait(self.readout_interval):
             try:
                 if no_data_timeout and curr_time + no_data_timeout < get_float_time():
                     raise NoDataTimeout('Received no data for %f second(s)' % no_data_timeout)
@@ -153,6 +148,8 @@ class DataReadout(object):
                     last_time, curr_time = self.update_timestamp()
                     status = 0
                     self.data_queue.put((data, last_time, curr_time, status))
+                elif self.stop_readout.is_set():
+                    break
         if self.callback:
             self.data_queue.put(None)
         logging.info('Stopped %s' % (self.readout_thread.name,))
@@ -165,7 +162,7 @@ class DataReadout(object):
         logging.info('Starting %s' % (self.worker_thread.name,))
         while True:
             try:
-                data = self.data_queue.get(timeout=self.readout_interval * 0.5)
+                data = self.data_queue.get(timeout=self.readout_interval)
             except Empty as e:
                 pass
             else:
@@ -189,7 +186,7 @@ class DataReadout(object):
                     raise FifoError('RX FIFO discard error(s) detected')
             except Exception as e:
                     self.errback(sys.exc_info())
-            if self.stop_thread_event.wait(self.readout_interval * 10):
+            if self.stop_readout.wait(self.readout_interval * 10):
                 break
         logging.info('Stopped %s' % (self.watchdog_thread.name,))
 
