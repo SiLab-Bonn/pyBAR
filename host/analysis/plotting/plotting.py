@@ -180,9 +180,7 @@ def plot_fancy_occupancy(hist, z_max=None, filename=None):
 
     cax = divider.append_axes("right", size="5%", pad=0.1)
     cb = ax.colorbar(im, cax=cax, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True))
-#     cb = fig.colorbar(im, cax=cax)
-    cb.set_label("#")
-
+    cb.set_labe
     # make some labels invisible
     ax.setp(axHistx.get_xticklabels() + axHisty.get_yticklabels(), visible=False)
     hight = np.ma.sum(hist, axis=0)
@@ -245,7 +243,6 @@ def plot_occupancy(hist, title='Occupancy', z_max=None, filename=None):
 
     cax = divider.append_axes("right", size="5%", pad=0.1)
     cb = fig.colorbar(im, cax=cax, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True))
-#     cb = fig.colorbar(im, cax=cax)
     cb.set_label("#")
 
     if filename is None:
@@ -362,15 +359,15 @@ def plot_correlation(hist, title="Hit correlation", xlabel=None, ylabel=None, fi
     ax.set_title(title)
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
-    ax.imshow(hist[0], extent=extent, cmap=cmap, interpolation='nearest')
-    ax.gca().invert_yaxis()
+    im = ax.imshow(hist[0], extent=extent, cmap=cmap, interpolation='nearest')
+    ax.invert_yaxis()
     # add colorbar
-    divider = make_axes_locatable(fig.gca())
+    divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     z_max = np.max(hist[0])
     bounds = np.linspace(start=0, stop=z_max, num=255, endpoint=True)
     norm = colors.BoundaryNorm(bounds, cmap.N)
-    ax.colorbar(boundaries=bounds, cmap=cmap, norm=norm, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True), cax=cax)
+    ax.colorbar(im, boundaries=bounds, cmap=cmap, norm=norm, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True), cax=cax)
     if filename is None:
         fig.show()
     elif isinstance(filename, PdfPages):
@@ -390,7 +387,7 @@ def plot_pixel_matrix(hist, title="Hit correlation", filename=None):
     cmap = cm.get_cmap('jet')
 #             extent = [hist_mean[2] - 0.5, hist_mean[2][-1] + 0.5, hist_mean[1][-1] + 0.5, hist_mean[1][0] - 0.5]
     ax.imshow(hist.T, aspect='auto', cmap=cmap, interpolation='nearest')
-    divider = make_axes_locatable(fig.gca())
+    divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     z_max = np.max(hist)
     bounds = np.linspace(start=0, stop=z_max, num=255, endpoint=True)
@@ -506,12 +503,9 @@ def plot_scurves(occupancy_hist, scan_parameters, title='S-Curves', ylabel='Occu
         scan_parameter_dist = 0
     extent = [yedges[0] - scan_parameter_dist / 2, yedges[-1] + scan_parameter_dist / 2, xedges[-1] + 0.5, xedges[0] - 0.5]
     norm = colors.LogNorm()
-    fig.imshow(hist, interpolation='nearest', aspect="auto", cmap=cmap, extent=extent, norm=norm)
-    fig.gca().invert_yaxis()
-    try:
-        fig.colorbar()
-    except ValueError:
-        logging.warning('Cannot plot clolor bar')
+    im = ax.imshow(hist, interpolation='nearest', aspect="auto", cmap=cmap, extent=extent, norm=norm)
+    ax.invert_yaxis()
+    fig.colorbar(im)
     ax.set_title(title + ' for %d pixel(s)' % (n_pixel - np.count_nonzero(occ_mask)))
     if scan_parameter_name is None:
         ax.set_xlabel('Scan parameter')
@@ -531,7 +525,6 @@ def plot_scatter_time(x, y, yerr=None, title=None, legend=None, plot_range=None,
     fig = Figure()
     canvas = FigureCanvas(fig)
     ax = fig.add_subplot(111)
-#     ax = fig.gca()
     ax.format_xdata = mdates.DateFormatter('%Y-%m-%d')
     times = []
     for time in x:
@@ -808,7 +801,7 @@ def plot_correlations(filenames, limit=None):
             canvas = FigureCanvas(fig)
             ax = fig.add_subplot(111)
             ax.imshow(heatmap, extent=extent, cmap=cmap, interpolation='nearest')
-            ax.gca().invert_yaxis()
+            ax.invert_yaxis()
             ax.set_xlabel(colName[0])
             ax.set_ylabel(colName[1])
             ax.set_title('Correlation plot(' + corName + ')')
