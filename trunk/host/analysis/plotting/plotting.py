@@ -8,6 +8,7 @@
 import numpy as np
 import math
 # import matplotlib.pyplot as plt
+# pyplot is not thread safe since it rely on global parameters: https://github.com/matplotlib/matplotlib/issues/757
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from scipy.optimize import curve_fit
