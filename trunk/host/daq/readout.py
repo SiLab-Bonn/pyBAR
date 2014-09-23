@@ -27,7 +27,7 @@ class FifoError(Exception):
 
 
 class DataReadout(object):
-    def __init__(self, dut, callback=None, errback=None, **kwargs):
+    def __init__(self, dut, callback=None, errback=None):
         self.dut = dut
         self.callback = callback
         self.errback = errback
