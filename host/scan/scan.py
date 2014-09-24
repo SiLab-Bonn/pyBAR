@@ -264,7 +264,7 @@ class ScanBase(RunBase):
     def start_readout(self, **kwargs):
         if kwargs:
             self.set_scan_parameters(**kwargs)
-        self.data_readout.start(reset_sram_fifo=True, clear_data_queue=True, callback=self.handle_data, errback=self.handle_err)
+        self.data_readout.start(reset_sram_fifo=True, clear_buffer=True, callback=self.handle_data, errback=self.handle_err)
 
     def stop_readout(self):
         self.data_readout.stop()
