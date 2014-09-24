@@ -2,31 +2,32 @@
 '''
 import numpy as np
 import logging
-
 from scan.scan import ScanBase
-from daq.readout import open_raw_data_file, get_col_row_array_from_data_record_array, convert_data_array, data_array_from_data_dict_iterable, is_data_record
+from daq.readout import get_col_row_array_from_data_record_array, convert_data_array, is_data_record, data_array_from_data_iterable
 from analysis.analyze_raw_data import AnalyzeRawData
 from fei4.register_utils import invert_pixel_mask
+from scan.scan_utils import scan_loop
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
-
-local_configuration = {
-    "n_injections": 100,  # how often one injects per PlsrDAC setting and pixel
-    "scan_parameter_range": (0, 100),  # the min/max PlsrDAC values used during scan
-    "mask_steps": 3,  # define how many pixels are injected to at once, 3 means every 3rd pixel of a double column
-    "enable_mask_steps": None,  # list of the mask steps to be used; None: use all pixels
-    "scan_parameter_stepsize": 2,  # the increase of the PlstrDAC if the Scurve start was found
-    "search_distance": 10,  # the increase of the PlstrDAC if the Scurve start is not found yet
-    "minimum_data_points": 20,  # the minimum PlsrDAC settings for one S-Curve
-    "ignore_columns": (1, 78, 79, 80),  # columns which data should be ignored
-    "use_enable_mask": False
-}
+from scan.run_manager import RunManager
 
 
 class FastThresholdScan(ScanBase):
-    scan_id = "fast_threshold_scan"
+    _scan_id = "fast_threshold_scan"
+    _default_scan_configuration = {
+        "n_injections": 100,  # how often one injects per PlsrDAC setting and pixel
+        "scan_parameters": {'PlsrDAC': (None, 100)},  # the min/max PlsrDAC values used during scan
+        "mask_steps": 3,  # define how many pixels are injected to at once, 3 means every 3rd pixel of a double column
+        "enable_mask_steps": None,  # list of the mask steps to be used; None: use all pixels
+        "step_size": 2,  # the increase of the PlstrDAC if the Scurve start was found
+        "search_distance": 10,  # the increase of the PlstrDAC if the Scurve start is not found yet
+        "minimum_data_points": 20,  # the minimum PlsrDAC settings for one S-Curve
+        "ignore_columns": (1, 78, 79, 80),  # columns which data should be ignored
+        "use_enable_mask": False
+    }
     scan_parameter_start = 0  # holding last start value (e.g. used in GDAC threshold scan)
-    data_points = 10  # holding the data points already recorded
+
+    def configure(self):
+        pass
 
     def scan(self):
         '''Scan loop
@@ -37,9 +38,9 @@ class FastThresholdScan(ScanBase):
             Number of mask steps.
         n_injections : int
             Number of injections per scan step.
-        scan_parameter_range : list, tuple
-            Specify the minimum and maximum value for scan parameter range. Upper value not included. Takes all bit if None.
-        scan_parameter_stepsize : int
+        scan_parameters : dict
+            Dictionary containing scan parameters.
+        step_size : int
             The minimum step size of the parameter. Used when start condition is not triggered.
         search_distance : int
             The parameter step size if the start condition is not triggered.
@@ -47,14 +48,9 @@ class FastThresholdScan(ScanBase):
             The minimum data points that are taken for sure until scan finished. Saves also calculation time.
         ignore_columns : list, tuple
             All columns that are neither scanned nor taken into account to set the scan range are mentioned here. Usually the edge columns are ignored. From 1 to 80.
-        command : bitarray.bitarray
-            An arbitrary command can be defined to be send to the FE. If None: Inject + Delay + Trigger is used.
         use_enable_mask : bool
             Use enable mask for masking pixels.
         '''
-
-        scan_parameter = 'PlsrDAC'
-
         self.start_condition_triggered = False  # set to true if the start condition is true once
         self.stop_condition_triggered = False  # set to true if the stop condition is true once
 
@@ -63,9 +59,12 @@ class FastThresholdScan(ScanBase):
 
         self.record_data = False  # set to true to activate data storage, so far not everything is recorded to ease data analysis
 
-        if self.scan_parameter_range is None or not self.scan_parameter_range:
-            scan_parameter_range = (0, (2 ** self.register.get_global_register_objects(name=[scan_parameter])[0].bitlength))
-        logging.info("Scanning %s from %d to %d" % (scan_parameter, scan_parameter_range[0], scan_parameter_range[1]))
+        scan_parameter_range = [0, (2 ** self.register.get_global_register_objects(name=['PlsrDAC'])[0].bitlength)]
+        if self.scan_parameters.PlsrDAC[0]:
+            scan_parameter_range[0] = self.scan_parameters.PlsrDAC[0]
+        if self.scan_parameters.PlsrDAC[1]:
+            scan_parameter_range[1] = self.scan_parameters.PlsrDAC[1]
+        logging.info("Scanning %s from %d to %d" % ('PlsrDAC', scan_parameter_range[0], scan_parameter_range[1]))
         self.scan_parameter_value = scan_parameter_range[0]  # set to start value
         self.search_distance = self.search_distance
         self.data_points = 0  # counter variable to count the data points already recorded, have to be at least minimum_data_ponts
@@ -85,64 +84,58 @@ class FastThresholdScan(ScanBase):
         for column in self.ignore_columns:
             self.select_arr_columns.remove(column - 1)
 
-        self.n_injections = self.n_injections
+        while self.scan_parameter_value <= scan_parameter_range[1]:  # scan as long as scan parameter is smaller than defined maximum
+            if self.stop_run.is_set():
+                break
+            if self.record_data:
+                logging.info("Scan step %d (%s %d)" % (self.data_points, 'PlsrDAC', self.scan_parameter_value))
 
-        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_id, scan_parameters=[scan_parameter]) as raw_data_file:
-            while self.scan_parameter_value <= scan_parameter_range[1]:  # scan as long as scan parameter is smaller than defined maximum
-                if self.stop_thread_event.is_set():
-                    break
-                if self.record_data:
-                    logging.info("Scan step %d (%s %d)" % (self.data_points, scan_parameter, self.scan_parameter_value))
+            commands = []
+            commands.extend(self.register.get_commands("confmode"))
+            self.register.set_global_register_value('PlsrDAC', self.scan_parameter_value)
+            commands.extend(self.register.get_commands("wrregister", name=['PlsrDAC']))
+            self.register_utils.send_commands(commands)
 
-                commands = []
-                commands.extend(self.register.get_commands("confmode"))
-                self.register.set_global_register_value(scan_parameter, self.scan_parameter_value)
-                commands.extend(self.register.get_commands("wrregister", name=[scan_parameter]))
-                self.register_utils.send_commands(commands)
+            with self.readout(PlsrDAC=self.scan_parameter_value):
+                cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0]
+                scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections, use_delay=True, mask_steps=self.mask_steps, enable_mask_steps=self.enable_mask_steps, enable_double_columns=enable_double_columns, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=["Enable", "C_Low", "C_High"], restore_shift_masks=False, mask=invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if self.use_enable_mask else None, double_column_correction=False)
 
-                self.readout.start()
+            if not self.start_condition_triggered or self.data_points > self.minimum_data_points:  # speed up, only create histograms when needed. Python is much too slow here.
+                if not self.start_condition_triggered and not self.record_data:
+                    logging.info('Testing for start condition: %s %d' % ('PlsrDAC', self.scan_parameter_value))
+                if not self.stop_condition_triggered and self.record_data:
+                    logging.info('Testing for stop condition: %s %d' % ('PlsrDAC', self.scan_parameter_value))
+                occupancy_array = np.histogram2d(*convert_data_array(data_array_from_data_iterable(self.data_readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array), bins=(80, 336), range=[[1, 80], [1, 336]])[0]
+                self.scan_condition(occupancy_array)
 
-                cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0] if self.command is None else self.command
-                self.scan_loop(cal_lvl1_command, repeat_command=self.n_injections, use_delay=True, mask_steps=self.mask_steps, enable_mask_steps=self.enable_mask_steps, enable_double_columns=enable_double_columns, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=["Enable", "C_Low", "C_High"], restore_shift_masks=False, mask=invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if self.use_enable_mask else None, double_column_correction=False)
+            # start condition is met for the first time
+            if self.start_condition_triggered and not self.record_data:
+                self.scan_parameter_value = self.scan_parameter_value - self.search_distance + self.step_size
+                if self.scan_parameter_value < 0:
+                    self.scan_parameter_value = 0
+                logging.info('Starting threshold scan at %s %d' % ('PlsrDAC', self.scan_parameter_value))
+                self.scan_parameter_start = self.scan_parameter_value
+                self.record_data = True
+                continue
 
-                self.readout.stop()
+            # saving data
+            if self.record_data:
+                self.data_points = self.data_points + 1
+                self.raw_data_file.append(self.data_readout.data, scan_parameters={'PlsrDAC': self.scan_parameter_value})
 
-                if not self.start_condition_triggered or self.data_points > self.minimum_data_points:  # speed up, only create histograms when needed. Python is much too slow here.
-                    if not self.start_condition_triggered and not self.record_data:
-                        logging.info('Testing for start condition: %s %d' % (scan_parameter, self.scan_parameter_value))
-                    if not self.stop_condition_triggered and self.record_data:
-                        logging.info('Testing for stop condition: %s %d' % (scan_parameter, self.scan_parameter_value))
-                    occupancy_array = np.histogram2d(*convert_data_array(data_array_from_data_dict_iterable(self.readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array), bins=(80, 336), range=[[1, 80], [1, 336]])[0]
-                    self.scan_condition(occupancy_array)
+            # stop condition is met for the first time
+            if self.stop_condition_triggered and self.record_data:
+                logging.info('Stopping threshold scan at %s %d' % ('PlsrDAC', self.scan_parameter_value))
+                break
 
-                # start condition is met for the first time
-                if self.start_condition_triggered and not self.record_data:
-                    self.scan_parameter_value = self.scan_parameter_value - self.search_distance + self.scan_parameter_stepsize
-                    if self.scan_parameter_value < 0:
-                        self.scan_parameter_value = 0
-                    logging.info('Starting threshold scan at %s %d' % (scan_parameter, self.scan_parameter_value))
-                    self.scan_parameter_start = self.scan_parameter_value
-                    self.record_data = True
-                    continue
+            # increase scan parameter value
+            if not self.start_condition_triggered:
+                self.scan_parameter_value = self.scan_parameter_value + self.search_distance
+            else:
+                self.scan_parameter_value = self.scan_parameter_value + self.step_size
 
-                # saving data
-                if self.record_data:
-                    self.data_points = self.data_points + 1
-                    raw_data_file.append(self.readout.data, scan_parameters={scan_parameter: self.scan_parameter_value})
-
-                # stop condition is met for the first time
-                if self.stop_condition_triggered and self.record_data:
-                    logging.info('Stopping threshold scan at %s %d' % (scan_parameter, self.scan_parameter_value))
-                    break
-
-                # increase scan parameter value
-                if not self.start_condition_triggered:
-                    self.scan_parameter_value = self.scan_parameter_value + self.search_distance
-                else:
-                    self.scan_parameter_value = self.scan_parameter_value + self.scan_parameter_stepsize
-
-            if self.scan_parameter_value >= scan_parameter_range[1]:
-                logging.warning("Reached maximum of scan parameter range... stopping scan" % (scan_parameter_range[1],))
+        if self.scan_parameter_value >= scan_parameter_range[1]:
+            logging.warning("Reached maximum of scan parameter range... stopping scan" % (scan_parameter_range[1],))
 
     def scan_condition(self, occupancy_array):
         occupancy_array_select = occupancy_array[self.select_arr_columns, :]  # only select not ignored columns
@@ -161,22 +154,25 @@ class FastThresholdScan(ScanBase):
             logging.info("Triggering start condition: %d pixel(s) with more than 0 hits >= %d pixel(s)" % (pixels_with_hits_count, start_pixel_cnt))
             self.start_condition_triggered = True
 
-    def analyze(self, create_plots=True):
-        with AnalyzeRawData(raw_data_file=self.scan_data_filename + ".h5", analyzed_data_file=self.scan_data_filename + "_interpreted.h5") as analyze_raw_data:
+    def start_readout(self, **kwargs):
+        if kwargs:
+            self.set_scan_parameters(**kwargs)
+        self.data_readout.start(reset_sram_fifo=True, clear_buffer=True, callback=None, errback=self.handle_err)
+
+    def analyze(self):
+        with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
             analyze_raw_data.create_tot_hist = False
             analyze_raw_data.create_threshold_hists = True
             analyze_raw_data.create_fitted_threshold_hists = True
             analyze_raw_data.create_threshold_mask = True
-            analyze_raw_data.n_injections = local_configuration["n_injections"]
-            analyze_raw_data.interpreter.set_warning_output(False)  # so far the data structure in a threshold scan was always bad, too many warnings given
+            analyze_raw_data.n_injections = self.n_injections
+            analyze_raw_data.interpreter.set_warning_output(True)  # so far the data structure in a threshold scan was always bad, too many warnings given
             analyze_raw_data.interpret_word_table()
             analyze_raw_data.interpreter.print_summary()
-            if create_plots:
-                analyze_raw_data.plot_histograms(scan_data_filename=self.scan_data_filename)
+            analyze_raw_data.plot_histograms()
 
 
 if __name__ == "__main__":
-    import configuration
-    scan = FastThresholdScan(**configuration.default_configuration)
-    scan.start(run_configure=True, run_analyze=True, use_thread=True, **local_configuration)
-    scan.stop()
+    scan_mngr = RunManager('configuration.yaml')
+    scan = FastThresholdScan(**scan_mngr.conf)
+    scan()
