@@ -1,17 +1,16 @@
 from time import sleep
 import logging
 import os.path
-from threading import Thread, Event, Timer, RLock
-from Queue import Queue, Empty
+from threading import Thread, Event, RLock
 import numpy as np
 import tables as tb
 from utils.utils import get_float_time
 from analysis.RawDataConverter.data_struct import MetaTableV2 as MetaTable, generate_scan_parameter_description
 from basil.utils.BitLogic import BitLogic
-from collections import OrderedDict
+from collections import OrderedDict, deque
 import sys
 
-data_deque_dict_names = ["data", "timestamp_start", "timestamp_stop", "error"]
+data_iterable = ("data", "timestamp_start", "timestamp_stop", "error")
 
 
 class RxSyncError(Exception):
@@ -42,7 +41,7 @@ class DataReadout(object):
         self.readout_thread = None
         self.worker_thread = None
         self.watchdog_thread = None
-        self.data_queue = Queue()
+        self._data_deque = deque()
         self.stop_readout = Event()
         self.stop_timeout = Event()
         self.readout_interval = 0.05
@@ -63,7 +62,11 @@ class DataReadout(object):
         else:
             False
 
-    def start(self, callback=None, errback=None, reset_rx=False, reset_sram_fifo=False, clear_data_queue=False, no_data_timeout=None):
+    @property
+    def data(self):
+        return self._data_deque
+
+    def start(self, callback=None, errback=None, reset_rx=False, reset_sram_fifo=False, clear_buffer=False, no_data_timeout=None):
         self.callback = callback
         self.errback = errback
         if self._is_running:
@@ -73,8 +76,8 @@ class DataReadout(object):
             self.reset_rx()
         if reset_sram_fifo:
             self.reset_sram_fifo()
-        if clear_data_queue:
-            self.data_queue.queue.clear()
+        if clear_buffer:
+            self._data_deque.clear()
         self.stop_readout.clear()
         self.stop_timeout.clear()
         if self.errback:
@@ -108,7 +111,6 @@ class DataReadout(object):
         if self.errback:
             self.watchdog_thread.join()
         if self.callback:
-            self.data_queue.join()
             self.worker_thread.join()
         self.callback = None
         self.errback = None
@@ -117,7 +119,7 @@ class DataReadout(object):
         sync_status = self.get_rx_sync_status()
         discard_count = self.get_rx_fifo_discard_count()
         error_count = self.get_rx_8b10b_error_count()
-        logging.info('Data queue size: %d' % self.data_queue.qsize())
+        logging.info('Data queue size: %d' % len(self._data_deque))
         logging.info('SRAM FIFO size: %d' % self.dut['sram']['FIFO_SIZE'])
         logging.info('Channel:                     %s', " | ".join([('CH%d' % channel).rjust(3) for channel in range(1, len(sync_status) + 1, 1)]))
         logging.info('RX sync:                     %s', " | ".join(["YES".rjust(3) if status is True else "NO".rjust(3) for status in sync_status]))
@@ -127,9 +129,9 @@ class DataReadout(object):
             logging.warning('RX errors detected')
 
     def readout(self, no_data_timeout=None):
-        '''Reading thread to continuously reading SRAM
+        '''Readout thread continuously reading SRAM.
 
-        Worker thread function that uses read_data_dict() and appends data to self.data_queue (collection.deque)
+        Readout thread, which uses read_data() and appends data to self._data_deque (collection.deque).
         '''
         logging.info('Starting %s' % (self.readout_thread.name,))
         curr_time = get_float_time()
@@ -147,26 +149,23 @@ class DataReadout(object):
                 if data.shape[0] > 0:
                     last_time, curr_time = self.update_timestamp()
                     status = 0
-                    self.data_queue.put((data, last_time, curr_time, status))
+                    self._data_deque.append((data, last_time, curr_time, status))
                 elif self.stop_readout.is_set():
                     break
         if self.callback:
-            self.data_queue.put(None)
+            self._data_deque.append(None)  # empty tuple
         logging.info('Stopped %s' % (self.readout_thread.name,))
 
     def worker(self):
-        '''Reading thread to continuously reading SRAM
-
-        Worker thread function that uses read_data_dict() and appends data to self.data_queue (collection.deque)
+        '''Worker thread continuously calling callback function when data is available.
         '''
         logging.info('Starting %s' % (self.worker_thread.name,))
         while True:
             try:
-                data = self.data_queue.get(timeout=self.readout_interval)
-            except Empty as e:
-                pass
+                data = self._data_deque.popleft()
+            except IndexError as e:
+                sleep(self.readout_interval)
             else:
-                self.data_queue.task_done()
                 if data:
                     self.callback(data)
                 else:
@@ -258,12 +257,8 @@ class DataReadout(object):
                 return map(lambda channel: self.dut[channel]['LOST_DATA_COUNTER'], ['rx_fe'])
 
 
-class NoSyncError(Exception):
-    pass
-
-
-def convert_data_array(array, filter_func=None, converter_func=None):
-    '''Filter and convert data array (numpy.ndarray)
+def convert_data_array(array, filter_func=None, converter_func=None):  # TODO: add copy parameter, otherwise in-place
+    '''Filter and convert raw data numpy array (numpy.ndarray)
 
     Parameters
     ----------
@@ -276,7 +271,8 @@ def convert_data_array(array, filter_func=None, converter_func=None):
 
     Returns
     -------
-    array of specified dimension (converter_func) and content (filter_func)
+    data_array : numpy.array
+        Data numpy array of specified dimension (converter_func) and content (filter_func)
     '''
 #     if filter_func != None:
 #         if not hasattr(filter_func, '__call__'):
@@ -291,56 +287,44 @@ def convert_data_array(array, filter_func=None, converter_func=None):
     return array
 
 
-def data_array_from_data_dict_iterable(data_dict_iterable, clear_deque=False):
-    '''Convert data dictionary iterable (e.g. data deque)
+def convert_data_iterable(data_iterable, filter_func=None, converter_func=None):  # TODO: add concatenate parameter
+    '''Convert raw data in data iterable.
 
     Parameters
     ----------
-    data_dict_iterable : iterable
-        Iterable (e.g. list, deque, ...) where each element is a dict with following keys: "data", "timestamp_start", "timestamp_stop", "error"
-    clear_deque : bool
-        Clear deque when returning.
+    data_iterable : iterable
+        Iterable where each element is a tuple with following content: (raw data, timestamp_start, timestamp_stop, status).
+    filter_func : function
+        Function that takes array and returns true or false for each item in array.
+    converter_func : function
+        Function that takes array and returns an array or tuple of arrays.
+
+    Returns
+    -------
+    data_list : list
+        Data list of the form [(converted data, timestamp_start, timestamp_stop, status), (...), ...]
+    '''
+    data_list = []
+    for item in data_iterable:
+        data_list.append((convert_data_array(item[0], filter_func=filter_func, converter_func=converter_func), item[1], item[2], item[3]))
+    return data_list
+
+
+def data_array_from_data_iterable(data_iterable):
+    '''Convert data iterable to raw data numpy array.
+
+    Parameters
+    ----------
+    data_iterable : iterable
+        Iterable where each element is a tuple with following content: (raw data, timestamp_start, timestamp_stop, status).
 
     Returns
     -------
     data_array : numpy.array
         concatenated data array
     '''
-    try:
-        data_array = np.concatenate([item["data"] for item in data_dict_iterable])
-    except ValueError:
-        data_array = np.array([], dtype=np.dtype('>u4'))
-    if clear_deque:
-        data_dict_iterable.clear()
+    data_array = np.concatenate([item[0] for item in data_iterable])
     return data_array
-
-
-def data_dict_list_from_data_dict_iterable(data_dict_iterable, filter_func=None, converter_func=None, concatenate=False, clear_deque=False):  # TODO: implement concatenate
-    '''Convert data dictionary iterable (e.g. data deque)
-
-    Parameters
-    ----------
-    data_dict_iterable : iterable
-        Iterable (e.g. list, deque, ...) where each element is a dict with following keys: "data", "timestamp_start", "timestamp_stop", "error"
-    filter_func : function
-        Function that takes array and returns true or false for each item in array.
-    converter_func : function
-        Function that takes array and returns an array or tuple of arrays.
-    concatenate: bool
-        Concatenate input arrays. If true, returns single dict.
-    clear_deque : bool
-        Clear deque when returning.
-
-    Returns
-    -------
-    data dictionary list of the form [{"data":converted_data, "timestamp_start":ts_start, "timestamp_stop":ts_stop, "error":error}, {...}, ...]
-    '''
-    data_dict_list = []
-    for item in data_dict_iterable:
-        data_dict_list.append({"data": convert_data_array(item["data"], filter_func=filter_func, converter_func=converter_func), "timestamp_start": item["timestamp_start"], "timestamp_stop": item["timestamp_stop"], "error": item["error"]})
-    if clear_deque:
-        data_dict_iterable.clear()
-    return data_dict_list
 
 
 def is_data_from_channel(channel=4):  # function factory
@@ -625,9 +609,7 @@ def open_raw_data_file(filename, mode="a", title="", scan_parameters=None, **kwa
 
 
 class RawDataFile(object):
-    '''Saving raw data file from data dictionary iterable (e.g. data deque)
-
-    TODO: Python 3.x support for contextlib.ContextDecorator
+    '''Raw data file object. Saving data queue to HDF5 file.
     '''
     def __init__(self, filename, mode="a", title="", scan_parameters=None, **kwargs):  # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created):
         self.lock = RLock()
@@ -676,60 +658,56 @@ class RawDataFile(object):
                 self.scan_param_table = self.raw_data_file_h5.getNode(self.raw_data_file_h5.root, name='scan_parameters')
 
     def close(self):
-        self.lock.acquire()
-        self.flush()
-        logging.info('Closing raw data file: %s' % self.filename)
-        self.raw_data_file_h5.close()
-        self.lock.release()
-
-    def append_item(self, item, scan_parameters=None, flush=True):
-        self.lock.acquire()
-        total_words = self.raw_data_earray.nrows
-        raw_data = item[0]
-        len_raw_data = raw_data.shape[0]
-        self.raw_data_earray.append(raw_data)
-        self.meta_data_table.row['timestamp_start'] = item[1]
-        self.meta_data_table.row['timestamp_stop'] = item[2]
-        self.meta_data_table.row['error'] = item[3]
-        self.meta_data_table.row['data_length'] = len_raw_data
-        self.meta_data_table.row['index_start'] = total_words
-        total_words += len_raw_data
-        self.meta_data_table.row['index_stop'] = total_words
-        self.meta_data_table.row.append()
-        if self.scan_parameters:
-            for key in self.scan_parameters.iterkeys():
-                self.scan_param_table.row[key] = scan_parameters[key]
-            self.scan_param_table.row.append()
-        elif scan_parameters:
-            raise ValueError('Unknown scan parameters: %s' % ', '.join(scan_parameters.iterkeys()))
-        if flush:
+        with self.lock:
             self.flush()
-        self.lock.release()
+            logging.info('Closing raw data file: %s' % self.filename)
+            self.raw_data_file_h5.close()
 
-    def append(self, data_queue, scan_parameters=None, flush=True):
-        self.lock.acquire()
-        while not data_queue.empty():
-                self.append_item(data_queue.get(), scan_parameters, flush=False)
-        if flush:
-            self.flush()
-        self.lock.release()
+    def append_item(self, data_tuple, scan_parameters=None, flush=True):
+        with self.lock:
+            total_words = self.raw_data_earray.nrows
+            raw_data = data_tuple[0]
+            len_raw_data = raw_data.shape[0]
+            self.raw_data_earray.append(raw_data)
+            self.meta_data_table.row['timestamp_start'] = data_tuple[1]
+            self.meta_data_table.row['timestamp_stop'] = data_tuple[2]
+            self.meta_data_table.row['error'] = data_tuple[3]
+            self.meta_data_table.row['data_length'] = len_raw_data
+            self.meta_data_table.row['index_start'] = total_words
+            total_words += len_raw_data
+            self.meta_data_table.row['index_stop'] = total_words
+            self.meta_data_table.row.append()
+            if self.scan_parameters:
+                for key in self.scan_parameters.iterkeys():
+                    self.scan_param_table.row[key] = scan_parameters[key]
+                self.scan_param_table.row.append()
+            elif scan_parameters:
+                raise ValueError('Unknown scan parameters: %s' % ', '.join(scan_parameters.iterkeys()))
+            if flush:
+                self.flush()
+
+    def append(self, data_iterable, scan_parameters=None, flush=True):
+        with self.lock:
+            for data_tuple in data_iterable:
+                self.append_item(data_tuple, scan_parameters, flush=False)
+            if flush:
+                self.flush()
 
     def flush(self):
-        self.lock.acquire()
-        self.raw_data_earray.flush()
-        self.meta_data_table.flush()
-        if self.scan_parameters:
-            self.scan_param_table.flush()
-        self.lock.release()
+        with self.lock:
+            self.raw_data_earray.flush()
+            self.meta_data_table.flush()
+            if self.scan_parameters:
+                self.scan_param_table.flush()
 
 
-def save_raw_data_from_data_dict_iterable(data_dict_iterable, filename, mode='a', title='', scan_parameters={}, **kwargs):  # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created
-    '''Writing raw data file from data dictionary iterable (e.g. data deque)
+def save_raw_data_from_data_queue(data_queue, filename, mode='a', title='', scan_parameters={}, **kwargs):  # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created
+    '''Writing raw data file from data queue
 
     If you need to write raw data once in a while this function may make it easy for you.
     '''
     with open_raw_data_file(filename, mode='a', title='', scan_parameters=list(dict.iterkeys(scan_parameters)), **kwargs) as raw_data_file:
-        raw_data_file.append(data_dict_iterable, scan_parameters=scan_parameters, **kwargs)
+        raw_data_file.append(data_queue, scan_parameters=scan_parameters, **kwargs)
 
 
 class FEI4Record(object):
