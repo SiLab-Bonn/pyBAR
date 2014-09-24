@@ -195,6 +195,8 @@ class ScanBase(RunBase):
             self.register.create_restore_point(name=self.run_number)
             self.configure()
             self.register.save_configuration_to_hdf5(self.output_filename)
+            self.data_readout.reset_rx()
+            self.data_readout.reset_sram_fifo()
             self.data_readout.print_readout_status()
             logging.info('Found scan parameter(s): %s' % (', '.join(['%s:%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None'))
             self.stop_run.clear()
@@ -264,7 +266,7 @@ class ScanBase(RunBase):
     def start_readout(self, **kwargs):
         if kwargs:
             self.set_scan_parameters(**kwargs)
-        self.data_readout.start(reset_sram_fifo=True, clear_buffer=True, callback=self.handle_data, errback=self.handle_err)
+        self.data_readout.start(reset_sram_fifo=False, clear_buffer=True, callback=self.handle_data, errback=self.handle_err)
 
     def stop_readout(self):
         self.data_readout.stop()
