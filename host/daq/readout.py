@@ -8,7 +8,9 @@ from utils.utils import get_float_time
 from analysis.RawDataConverter.data_struct import MetaTableV2 as MetaTable, generate_scan_parameter_description
 from basil.utils.BitLogic import BitLogic
 from collections import OrderedDict, deque
+from Queue import Queue, Empty
 import sys
+from cgi import maxlen
 
 data_iterable = ("data", "timestamp_start", "timestamp_stop", "error")
 
@@ -41,10 +43,14 @@ class DataReadout(object):
         self.readout_thread = None
         self.worker_thread = None
         self.watchdog_thread = None
+        self.readout_interval = 0.05
+        self._moving_average_time_period = 10.0
         self._data_deque = deque()
+        self._words_per_read = deque(maxlen=int(self._moving_average_time_period / self.readout_interval))
+        self._result = Queue(maxsize=1)
+        self._calculate = Event()
         self.stop_readout = Event()
         self.stop_timeout = Event()
-        self.readout_interval = 0.05
         self.timestamp = None
         self.update_timestamp()
         self._is_running = False
@@ -66,7 +72,19 @@ class DataReadout(object):
     def data(self):
         return self._data_deque
 
+    def data_words_per_second(self):
+        if self._result.full():
+            self._result.get()
+        self._calculate.set()
+        try:
+            result = self._result.get(timeout=2 * self.readout_interval)
+        except Empty:
+            self._calculate.clear()
+            return None
+        return result / float(self._moving_average_time_period)
+
     def start(self, callback=None, errback=None, reset_rx=False, reset_sram_fifo=False, clear_buffer=False, no_data_timeout=None):
+        logging.info('Starting data readout...')
         self.callback = callback
         self.errback = errback
         if self._is_running:
@@ -76,6 +94,11 @@ class DataReadout(object):
             self.reset_rx()
         if reset_sram_fifo:
             self.reset_sram_fifo()
+        else:
+            fifo_size = self.dut['sram']['FIFO_SIZE']
+            if fifo_size != 0:
+                logging.warning('SRAM FIFO not empty: size = %i' % fifo_size)
+        self._words_per_read.clear()
         if clear_buffer:
             self._data_deque.clear()
         self.stop_readout.clear()
@@ -114,6 +137,7 @@ class DataReadout(object):
             self.worker_thread.join()
         self.callback = None
         self.errback = None
+        logging.info('Stopped data readout')
 
     def print_readout_status(self):
         sync_status = self.get_rx_sync_status()
@@ -133,9 +157,9 @@ class DataReadout(object):
 
         Readout thread, which uses read_data() and appends data to self._data_deque (collection.deque).
         '''
-        logging.info('Starting %s' % (self.readout_thread.name,))
+        logging.debug('Starting %s' % (self.readout_thread.name,))
         curr_time = get_float_time()
-        while not self.stop_readout.wait(self.readout_interval):
+        while not self.stop_timeout.wait(self.readout_interval):
             try:
                 if no_data_timeout and curr_time + no_data_timeout < get_float_time():
                     raise NoDataTimeout('Received no data for %f second(s)' % no_data_timeout)
@@ -146,35 +170,42 @@ class DataReadout(object):
                 else:
                     raise
             else:
-                if data.shape[0] > 0:
+                data_words = data.shape[0]
+                if data_words > 0:
                     last_time, curr_time = self.update_timestamp()
                     status = 0
                     self._data_deque.append((data, last_time, curr_time, status))
+                    self._words_per_read.append(data_words)
                 elif self.stop_readout.is_set():
                     break
+                else:
+                    self._words_per_read.append(0)
+            if self._calculate.is_set():
+                self._calculate.clear()
+                self._result.put(sum(self._words_per_read))
         if self.callback:
             self._data_deque.append(None)  # empty tuple
-        logging.info('Stopped %s' % (self.readout_thread.name,))
+        logging.debug('Stopped %s' % (self.readout_thread.name,))
 
     def worker(self):
         '''Worker thread continuously calling callback function when data is available.
         '''
-        logging.info('Starting %s' % (self.worker_thread.name,))
+        logging.debug('Starting %s' % (self.worker_thread.name,))
         while True:
             try:
                 data = self._data_deque.popleft()
             except IndexError as e:
-                sleep(self.readout_interval)
+                self.stop_readout.wait(self.readout_interval)
             else:
                 if data:
                     self.callback(data)
                 else:
                     break
 
-        logging.info('Stopped %s' % (self.worker_thread.name,))
+        logging.debug('Stopped %s' % (self.worker_thread.name,))
 
     def watchdog(self):
-        logging.info('Starting %s' % (self.watchdog_thread.name,))
+        logging.debug('Starting %s' % (self.watchdog_thread.name,))
         while True:
             try:
                 if not any(self.get_rx_sync_status()):
@@ -187,7 +218,7 @@ class DataReadout(object):
                     self.errback(sys.exc_info())
             if self.stop_readout.wait(self.readout_interval * 10):
                 break
-        logging.info('Stopped %s' % (self.watchdog_thread.name,))
+        logging.debug('Stopped %s' % (self.watchdog_thread.name,))
 
     def read_data(self):
         '''Read SRAM and return data array
@@ -211,12 +242,14 @@ class DataReadout(object):
         raise NotImplementedError()
 
     def reset_sram_fifo(self):
-        logging.info('Resetting SRAM FIFO')
+        fifo_size = self.dut['sram']['FIFO_SIZE']
+        logging.info('Resetting SRAM FIFO: size = %i' % fifo_size)
         self.update_timestamp()
         self.dut['sram']['RESET']
         sleep(0.2)  # sleep here for a while
-        if self.dut['sram']['FIFO_SIZE'] != 0:
-            logging.warning('SRAM FIFO not empty after reset')
+        fifo_size = self.dut['sram']['FIFO_SIZE']
+        if fifo_size != 0:
+            logging.warning('SRAM FIFO not empty after reset: size = %i' % fifo_size)
 
     def reset_rx(self, channels=None):
         logging.info('Resetting RX')
@@ -715,7 +748,7 @@ class FEI4Record(object):
 
     """
     def __init__(self, data_word, chip_flavor):
-        self.record_rawdata = data_word
+        self.record_rawdata = int(data_word)
         self.record_dict = OrderedDict()
         if not (self.record_rawdata & 0xF0000000):  # FE data
             self.record_dict.update([('channel', (self.record_rawdata & 0x0F000000) >> 24)])
@@ -723,7 +756,7 @@ class FEI4Record(object):
             self.chip_flavors = ['fei4a', 'fei4b']
             if self.chip_flavor not in self.chip_flavors:
                 raise KeyError('Chip flavor is not of type {}'.format(', '.join('\'' + flav + '\'' for flav in self.chip_flavors)))
-            self.record_word = BitLogic.from_value(value=self.record_rawdata, size=24)
+            self.record_word = BitLogic.from_value(value=self.record_rawdata, size=28)
             if is_data_header(self.record_rawdata):
                 self.record_type = "DH"
                 if self.chip_flavor == "fei4a":
