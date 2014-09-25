@@ -97,7 +97,7 @@ proc wave_top {} {
     add wave -group cmd sim:/top_tb/uut/icmd/i_cmd_seq_core/*
     add wave -group fifo_sram sim:/top_tb/uut/i_out_fifo/i_sram_fifo/*
 
-    add wave -group fei4_rx_0 {sim:/top_tb/uut/rx_gen[0]/ifei4_rx/i_fei4_rx_core/*}
+    add wave -group fei4_rx_0 {sim:/top_tb/uut/rx_gen[0]/i_fei4_rx/i_fei4_rx_core/*}
     add wave -group tlu sim:/top_tb/uut/i_tlu_controller/i_tlu_controller_core/*
     add wave -group tlu_fsm sim:/top_tb/uut/i_tlu_controller/i_tlu_controller_core/tlu_controller_fsm_inst/*
     add wave -group tdc sim:/top_tb/uut/i_tdc/i_tdc_s3_core/*

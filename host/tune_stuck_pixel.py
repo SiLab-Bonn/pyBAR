@@ -9,18 +9,16 @@ from scan.scan import ScanBase
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
-local_configuration = {
-    "cfg_name": '',
-    "mask_steps": 3,
-    "repeat_command": 100,
-    "disable_for_mask": ['Enable'],
-    "enable_for_mask": ['Imon'],
-    "overwrite_mask": False
-}
-
-
 class StuckPixelScan(ScanBase):
     scan_id = "stuck_pixel_scan"
+
+    scan_configuration = {
+        "mask_steps": 3,
+        "repeat_command": 100,
+        "disable_for_mask": ['Enable'],
+        "enable_for_mask": ['Imon'],
+        "overwrite_mask": False
+    }
 
     def configure(self):
         commands = []
@@ -110,4 +108,3 @@ if __name__ == "__main__":
     scan = StuckPixelScan(**configuration.default_configuration)
     scan.start(run_configure=True, run_analyze=True, use_thread=True, restore_configuration=True, **local_configuration)
     scan.stop()
-    scan.save_configuration(scan.cfg_name)
