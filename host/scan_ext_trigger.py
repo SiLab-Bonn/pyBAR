@@ -2,6 +2,7 @@ import time
 import logging
 import math
 import numpy as np
+import progressbar
 from threading import Timer
 from scan.scan import ScanBase
 from scan.run_manager import RunManager
@@ -102,18 +103,19 @@ class ExtTriggerScan(ScanBase):
         lvl1_command = self.register.get_commands("zeros", length=self.trigger_delay)[0] + self.register.get_commands("lv1")[0]  # + self.register.get_commands("zeros", length=200)[0]
         self.register_utils.set_command(lvl1_command)
 
+#         show_trigger_message_at = 10 ** (int(math.floor(math.log10(self.max_triggers) - math.log10(3) / math.log10(10))))
+#         current_trigger_number = 0
+#         last_trigger_number = 0
+
         with self.readout():
-            show_trigger_message_at = 10 ** (int(math.floor(math.log10(self.max_triggers) - math.log10(3) / math.log10(10))))
-            current_trigger_number = 0
-            last_trigger_number = 0
             while not self.stop_run.wait(1.0):
-                print self.data_readout.data_words_per_second()
-                current_trigger_number = self.dut['tlu']['TRIGGER_COUNTER']
-                if (current_trigger_number % show_trigger_message_at < last_trigger_number % show_trigger_message_at):
-                    logging.info('Collected triggers: %d', current_trigger_number)
-                last_trigger_number = current_trigger_number
-                if self.max_triggers is not None and current_trigger_number >= self.max_triggers:
+                triggers = self.dut['tlu']['TRIGGER_COUNTER']
+                self.progressbar.update(triggers)
+                if self.max_triggers is not None and triggers >= self.max_triggers:
                     self.stop(msg='Trigger limit was reached: %i' % self.max_triggers)
+#                 print self.data_readout.data_words_per_second()
+#                 if (current_trigger_number % show_trigger_message_at < last_trigger_number % show_trigger_message_at):
+#                     logging.info('Collected triggers: %d', current_trigger_number)
 
         logging.info('Total amount of triggers collected: %d', self.dut['tlu']['TRIGGER_COUNTER'])
 
@@ -135,16 +137,18 @@ class ExtTriggerScan(ScanBase):
     def start_readout(self, **kwargs):
         if kwargs:
             self.set_scan_parameters(**kwargs)
-        self.timer = Timer(self.scan_timeout, self.stop, kwargs={'msg': 'Scan timeout was reached'})
         self.data_readout.start(reset_sram_fifo=False, clear_buffer=True, callback=self.handle_data, errback=self.handle_err, no_data_timeout=self.no_data_timeout)
         self.dut['tdc_rx2']['ENABLE'] = self.enable_tdc
         self.dut['tlu']['TRIGGER_MODE'] = self.trigger_mode
         self.dut['tlu']['TRIGGER_COUNTER'] = 0
         self.dut['cmd']['EN_EXT_TRIGGER'] = True
-        self.timer.start()
+        self.scan_timeout_timer = Timer(self.scan_timeout, self.stop, kwargs={'msg': 'Scan timeout was reached'})
+        self.scan_timeout_timer.start()
+        self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=self.max_triggers, poll=10).start()
 
     def stop_readout(self):
-        self.timer.cancel()
+        self.scan_timeout_timer.cancel()
+        self.progressbar.finish()
         self.dut['tdc_rx2']['ENABLE'] = False
         self.dut['cmd']['EN_EXT_TRIGGER'] = False
         self.dut['tlu']['TRIGGER_MODE'] = 0
