@@ -1,6 +1,7 @@
 import re
 import os
 import sys
+from string import punctuation
 from functools import wraps
 from threading import Event
 from Queue import Queue
@@ -16,8 +17,6 @@ from contextlib import contextmanager
 from run_manager import RunBase, RunAborted
 import abc
 import logging
-
-punctuation = """!,.:;?"""
 
 
 class ScanBase(RunBase):
@@ -241,9 +240,9 @@ class ScanBase(RunBase):
 
     def handle_err(self, exc):
         if exc[1]:
-            logging.error('%s%s%s' % (exc[1], ('' if str(exc[1])[-1] in punctuation else '.'), ('' if self.stop_run.is_set() else ' Stopping scan...')))
+            logging.error('%s%s Stopping scan...' % (exc[1], ('' if str(exc[1])[-1] in punctuation else '.')))
         else:
-            logging.error('Error.%s' % ('' if self.stop_run.is_set() else ' Stopping scan...'))
+            logging.error('Error. Stopping scan...')
         self.err_queue.put(exc)
         self.stop_run.set()
 

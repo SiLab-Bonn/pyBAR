@@ -351,14 +351,7 @@ module top_tb;
         sidev.WriteExternal( `CMD_DATA_MEM+5,  8'hAA);
         sidev.WriteExternal( `CMD_DATA_MEM+6,  8'h55);
         sidev.WriteExternal( `CMD_DATA_MEM+7,  8'hFF);
-
-        sidev.WriteExternal( `CMD_SIZE_REG,  2);
-        sidev.WriteExternal( `CMD_START_REPEAT_REG, 0); // 16bit
-        sidev.WriteExternal( `CMD_STOP_REPEAT_REG, 0); // 16bit
-        sidev.WriteExternal( `CMD_START_REG,  0);
-        repeat(200) @(posedge FCLK_IN);
-
-        sidev.WriteExternal( `CMD_SIZE_REG,  64);
+        
         sidev.WriteExternal( `CMD_START_REPEAT_REG, 0); // 16bit
         sidev.WriteExternal( `CMD_STOP_REPEAT_REG, 0); // 16bit
         sidev.WriteExternal( `CMD_START_REG,  0);
@@ -366,33 +359,11 @@ module top_tb;
 
         sidev.WriteExternal( `CMD_START_REPEAT_REG, 8); // 16bit
         sidev.WriteExternal( `CMD_STOP_REPEAT_REG, 0); // 16bit
-        sidev.WriteExternal( `CMD_START_REG,  0);
-        repeat(200) @(posedge FCLK_IN);
- 
-        sidev.WriteExternal( `CMD_START_REPEAT_REG, 7); // 16bit
-        sidev.WriteExternal( `CMD_STOP_REPEAT_REG, 0); // 16bit
-        sidev.WriteExternal( `CMD_START_REG,  0);
-        repeat(200) @(posedge FCLK_IN);
- 
-        sidev.WriteExternal( `CMD_START_REPEAT_REG, 8); // 16bit
-        sidev.WriteExternal( `CMD_STOP_REPEAT_REG, 48); // 16bit
-        sidev.WriteExternal( `CMD_START_REG,  0);
-        repeat(200) @(posedge FCLK_IN);
-
-        sidev.WriteExternal( `CMD_START_REPEAT_REG, 8); // 16bit
-        sidev.WriteExternal( `CMD_STOP_REPEAT_REG, 47); // 16bit
-        sidev.WriteExternal( `CMD_START_REG,  0);
-        repeat(200) @(posedge FCLK_IN);
-
-        sidev.WriteExternal( `CMD_SIZE_REG,  16);
-        sidev.WriteExternal( `CMD_START_REPEAT_REG, 5); // 16bit
-        sidev.WriteExternal( `CMD_STOP_REPEAT_REG, 6); // 16bit
         sidev.WriteExternal( `CMD_START_REG,  0);
         repeat(200) @(posedge FCLK_IN);
         
-        sidev.WriteExternal( `CMD_SIZE_REG,  10);
         sidev.WriteExternal( `CMD_START_REPEAT_REG, 8); // 16bit
-        sidev.WriteExternal( `CMD_STOP_REPEAT_REG, 1); // 16bit
+        sidev.WriteExternal( `CMD_STOP_REPEAT_REG, 16); // 16bit
         sidev.WriteExternal( `CMD_START_REG,  0);
         repeat(200) @(posedge FCLK_IN);
     end
