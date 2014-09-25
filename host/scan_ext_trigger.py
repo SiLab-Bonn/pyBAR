@@ -11,94 +11,56 @@ from analysis.analyze_raw_data import AnalyzeRawData
 
 
 class ExtTriggerScan(ScanBase):
+    '''External trigger scan with FE-I4
+
+    For use with external scintillator (user RX0), TLU (use RJ45), USBpix self-trigger (loop back TX2 into RX0.)
+    '''
     _scan_id = "ext_trigger_scan"
     _default_scan_configuration = {
-        "trigger_mode": 0,
-        "trigger_latency": 232,
-        "trigger_delay": 14,
-        "col_span": [1, 80],
-        "row_span": [1, 336],
-        "overwrite_mask": False,
-        "use_enable_mask": True,
-        "no_data_timeout": 10,  # in seconds
-        "scan_timeout": 60,  # in seconds
-        "max_triggers": 10000,
-        "enable_tdc": False
+        "trigger_mode": 0,  # trigger mode, more details in basil.HL.tlu, from 0 to 3
+        "trigger_latency": 232,  # FE-I4 trigger latency, in BCs, external scintillator / TLU / HitOR: 232, USBpix self-trigger: 220
+        "trigger_delay": 14,  # trigger delay, in BCs
+        "col_span": [1, 80],  # defining active column interval, 2-tuple, from 1 to 80
+        "row_span": [1, 336],  # defining active row interval, 2-tuple, from 1 to 336
+        "overwrite_enable_mask": False,  # if True, use col_span and row_span to define an active region regardless of the Enable pixel register. If False, use col_span and row_span to define active region by also taking Enable pixel register into account.
+        "use_enable_mask_for_imon": True,  # if True, apply inverted Enable pixel mask to Imon pixel mask
+        "no_data_timeout": 10,  # no data timeout after which the scan will be aborted, in seconds
+        "scan_timeout": 60,  # timeout for scan after which the scan will be stopped, in seconds
+        "max_triggers": 10000,  # maximum triggers after which the scan will be stopped, in seconds
+        "enable_tdc": False  # if True, enables TDC (use RX2)
     }
 
     def configure(self):
         commands = []
         commands.extend(self.register.get_commands("confmode"))
-        pixel_reg = 'Enable'  # enabled pixels set to 1
-        mask = make_box_pixel_mask_from_col_row(column=self.col_span, row=self.row_span)  # 1 for selected columns, else 0
-        if self.overwrite_mask:
-            pixel_mask = mask
+        # Enable
+        enable_pixel_mask = make_box_pixel_mask_from_col_row(column=self.col_span, row=self.row_span)
+        if not self.overwrite_enable_mask:
+            enable_pixel_mask = np.logical_and(enable_pixel_mask, self.register.get_pixel_register_value('Enable'))
+        self.register.set_pixel_register_value('Enable', enable_pixel_mask)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name='Enable'))
+        # Imon
+        if self.use_enable_mask_for_imon:
+            imon_pixel_mask = invert_pixel_mask(enable_pixel_mask)
         else:
-            pixel_mask = np.logical_and(mask, self.register.get_pixel_register_value(pixel_reg))
-        self.register.set_pixel_register_value(pixel_reg, pixel_mask)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
-        pixel_reg = 'Imon'  # disabled pixels set to 1
-        if self.use_enable_mask:
-            self.register.set_pixel_register_value(pixel_reg, invert_pixel_mask(self.register.get_pixel_register_value('Enable')))
-        mask = make_box_pixel_mask_from_col_row(column=self.col_span, row=self.row_span, default=1, value=0)  # 0 for selected columns, else 1
-        if self.overwrite_mask:
-            pixel_mask = mask
-        else:
-            pixel_mask = np.logical_or(mask, self.register.get_pixel_register_value(pixel_reg))
-        self.register.set_pixel_register_value(pixel_reg, pixel_mask)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
-        # disable C_inj mask
-        pixel_reg = "C_High"
-        self.register.set_pixel_register_value(pixel_reg, 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
-        pixel_reg = "C_Low"
-        self.register.set_pixel_register_value(pixel_reg, 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
+            imon_pixel_mask = make_box_pixel_mask_from_col_row(column=self.col_span, row=self.row_span, default=1, value=0)  # 0 for selected columns, else 1
+            imon_pixel_mask = np.logical_or(imon_pixel_mask, self.register.get_pixel_register_value('Imon'))
+        self.register.set_pixel_register_value('Imon', imon_pixel_mask)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name='Imon'))
+        # C_High
+        self.register.set_pixel_register_value('C_High', 0)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='C_High'))
+        # C_Low
+        self.register.set_pixel_register_value('C_Low', 0)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='C_Low'))
+        # Registers
         self.register.set_global_register_value("Trig_Lat", self.trigger_latency)  # set trigger latency
 #         self.register.set_global_register_value("Trig_Count", 0)  # set number of consecutive triggers
         commands.extend(self.register.get_commands("wrregister", name=["Trig_Lat", "Trig_Count"]))
-        # setting FE into runmode
         commands.extend(self.register.get_commands("runmode"))
         self.register_utils.send_commands(commands)
 
     def scan(self):
-        '''Scan loop
-
-        Parameters
-        ----------
-        trigger_mode : int
-            Trigger mode. More details in basil.HL.tlu. From 0 to 3.
-            0: External trigger (LEMO RX0 only, TLU port disabled (TLU port/RJ45)).
-            1: TLU no handshake (automatic detection of TLU connection (TLU port/RJ45)).
-            2: TLU simple handshake (automatic detection of TLU connection (TLU port/RJ45)).
-            3: TLU trigger data handshake (automatic detection of TLU connection (TLU port/RJ45)).
-        trigger_latency : int
-            FE global register Trig_Lat.
-            Some ballpark estimates:
-            External scintillator/TLU/Hitbus: 232 (default)
-            FE/USBpix Self-Trigger: 220
-        trigger_delay : int
-            Delay between trigger and LVL1 command.
-            Some ballpark estimates:
-            Hitbus: 0
-            else: 14 (default)
-        col_span : list, tuple
-            Column range (from minimum to maximum value). From 1 to 80.
-        row_span : list, tuple
-            Row range (from minimum to maximum value). From 1 to 336.
-        overwrite_mask : bool
-            If true the Enable and Imon (Hitbus/HitOR) mask will be overwritten by the mask defined by col_span and row_span.
-        use_enable_mask : bool
-            If true use Enable mask for Imon (Hitbus/HitOR) mask. Enable mask will be inverted, Hitbus will activated where pixels are enabled. Otherwise use mask from config file.
-        timeout_no_data : int
-            In seconds; if no data, stop scan after given time.
-        scan_timeout : int
-            In seconds; stop scan after given time.
-        max_triggers : int
-            Maximum number of triggers to be taken.
-        enable_tdc : bool
-            Enable for Hit-OR TDC (time-to-digital-converter) measurement. In this mode the Hit-Or/Hitbus output of the FEI4 has to be connected to USBpix Hit-OR input on the Single Chip Adapter Card.
-        '''
         # preload command
         lvl1_command = self.register.get_commands("zeros", length=self.trigger_delay)[0] + self.register.get_commands("lv1")[0]  # + self.register.get_commands("zeros", length=200)[0]
         self.register_utils.set_command(lvl1_command)
