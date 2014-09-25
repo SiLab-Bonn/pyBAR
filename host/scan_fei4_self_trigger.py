@@ -2,137 +2,85 @@ import time
 import logging
 import math
 import numpy as np
-
+import progressbar
+from threading import Timer
 from scan.scan import ScanBase
-from daq.readout import open_raw_data_file
+from scan.run_manager import RunManager
 from fei4.register_utils import make_box_pixel_mask_from_col_row, invert_pixel_mask
-
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
-
-
-local_configuration = {
-    "col_span": [1, 80],
-    "row_span": [1, 336],
-    "overwrite_mask": False,
-    "use_enable_mask": True,
-    "timeout_no_data": 10,
-    "scan_timeout": 1 * 60,
-    "trig_latency": 239,
-    "trig_count": 4
-}
+from analysis.analyze_raw_data import AnalyzeRawData
 
 
 class FEI4SelfTriggerScan(ScanBase):
-    scan_id = "fei4_self_trigger_scan"
+    '''FE-I4 self-trigger scan
 
-    def scan(self):
-        '''Scan loop
-
-        Parameters
-        ----------
-        col_span : list, tuple
-            Column range (from minimum to maximum value). From 1 to 80.
-        row_span : list, tuple
-            Row range (from minimum to maximum value). From 1 to 336.
-        timeout_no_data : int
-            In seconds; if no data, stop scan after given time.
-        scan_timeout : int
-            In seconds; stop scan after given time.
-        trig_latency : int
-            FE global register Trig_Lat.
-        trig_count : int
-            FE global register Trig_Count.
-        '''
-        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_id) as raw_data_file:
-            self.readout.start()
-            self.set_self_trigger(True)
-            wait_for_first_data = True
-            show_trigger_message_at = 10 ** (int(math.floor(math.log10(self.scan_timeout) - math.log10(3) / math.log10(10))))
-            time_current_iteration = time.time()
-            saw_no_data_at_time = time_current_iteration
-            saw_data_at_time = time_current_iteration
-            scan_start_time = time_current_iteration
-            no_data_at_time = time_current_iteration
-            time_from_last_iteration = 0
-            scan_stop_time = scan_start_time + self.scan_timeout
-            while not self.stop_thread_event.wait(self.readout.readout_interval):
-                time_last_iteration = time_current_iteration
-                time_current_iteration = time.time()
-                time_from_last_iteration = time_current_iteration - time_last_iteration
-                if ((time_current_iteration - scan_start_time) % show_trigger_message_at < (time_last_iteration - scan_start_time) % show_trigger_message_at):
-                    logging.info('Scan runtime: %d seconds', time_current_iteration - scan_start_time)
-                    if not any(self.readout.get_rx_sync_status()):
-                        self.stop_thread_event.set()
-                        logging.error('No RX sync. Stopping Scan...')
-                    if any(self.readout.get_rx_8b10b_error_count()):
-                        self.stop_thread_event.set()
-                        logging.error('RX 8b10b error(s) detected. Stopping Scan...')
-                    if any(self.readout.get_rx_fifo_discard_count()):
-                        self.stop_thread_event.set()
-                        logging.error('RX FIFO discard error(s) detected. Stopping Scan...')
-                if self.scan_timeout is not None and time_current_iteration > scan_stop_time:
-                    logging.info('Reached maximum scan time. Stopping Scan...')
-                    self.stop_thread_event.set()
-                try:
-                    raw_data_file.append((self.readout.data.popleft(),))
-                except IndexError:  # no data
-                    no_data_at_time = time_current_iteration
-                    if self.timeout_no_data is not None and wait_for_first_data is False and saw_no_data_at_time > (saw_data_at_time + self.timeout_no_data):
-                        logging.info('Reached no data timeout. Stopping Scan...')
-                        self.stop_thread_event.set()
-                    elif wait_for_first_data is False:
-                        saw_no_data_at_time = no_data_at_time
-
-                    if no_data_at_time > (saw_data_at_time + 10):
-                        scan_stop_time += time_from_last_iteration
-                else:
-                    saw_data_at_time = time_current_iteration
-
-                    if wait_for_first_data is True:
-                        logging.info('Taking data...')
-                        wait_for_first_data = False
-
-            self.set_self_trigger(False)
-            self.readout.stop()
-
-            raw_data_file.append(self.readout.data)
+    Implementation of the FE-I4 self-trigger scan, internally using HitOR for self-triggering.
+    '''
+    _scan_id = "fei4_self_trigger_scan"
+    _default_scan_configuration = {
+        "trig_count": 4,  # FE-I4 trigger count, number of consecutive BCs, from 0 to 15
+        "trigger_latency": 239,  # FE-I4 trigger latency, in BCs, external scintillator / TLU / HitOR: 232, USBpix self-trigger: 220, from 0 to 255
+        "col_span": [1, 80],  # defining active column interval, 2-tuple, from 1 to 80
+        "row_span": [1, 336],  # defining active row interval, 2-tuple, from 1 to 336
+        "overwrite_enable_mask": False,  # if True, use col_span and row_span to define an active region regardless of the Enable pixel register. If False, use col_span and row_span to define active region by also taking Enable pixel register into account.
+        "use_enable_mask_for_imon": False,  # if True, apply inverted Enable pixel mask to Imon pixel mask
+        "no_data_timeout": 10,  # no data timeout after which the scan will be aborted, in seconds
+        "scan_timeout": 60,  # timeout for scan after which the scan will be stopped, in seconds
+    }
 
     def configure(self):
         commands = []
         commands.extend(self.register.get_commands("confmode"))
-        pixel_reg = 'Enable'  # enabled pixels set to 1
-        mask = make_box_pixel_mask_from_col_row(column=self.col_span, row=self.row_span)  # 1 for selected columns, else 0
-        if self.overwrite_mask:
-            pixel_mask = mask
+        # Enable
+        enable_pixel_mask = make_box_pixel_mask_from_col_row(column=self.col_span, row=self.row_span)
+        if not self.overwrite_enable_mask:
+            enable_pixel_mask = np.logical_and(enable_pixel_mask, self.register.get_pixel_register_value('Enable'))
+        self.register.set_pixel_register_value('Enable', enable_pixel_mask)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name='Enable'))
+        # Imon
+        if self.use_enable_mask_for_imon:
+            imon_pixel_mask = invert_pixel_mask(enable_pixel_mask)
         else:
-            pixel_mask = np.logical_and(mask, self.register.get_pixel_register_value(pixel_reg))
-        self.register.set_pixel_register_value(pixel_reg, pixel_mask)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
-        pixel_reg = 'Imon'  # disabled pixels set to 1
-        if self.use_enable_mask:
-            self.register.set_pixel_register_value(pixel_reg, invert_pixel_mask(self.register.get_pixel_register_value('Enable')))
-        else:
-            self.register.set_pixel_register_value(pixel_reg, 0)
-        mask = make_box_pixel_mask_from_col_row(column=self.col_span, row=self.row_span, default=1, value=0)  # 0 for selected columns, else 1
-        if self.overwrite_mask:
-            pixel_mask = mask
-        else:
-            pixel_mask = np.logical_or(mask, self.register.get_pixel_register_value(pixel_reg))
-        self.register.set_pixel_register_value(pixel_reg, pixel_mask)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
-        # disable C_inj mask
-        pixel_reg = "C_High"
-        self.register.set_pixel_register_value(pixel_reg, 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
-        pixel_reg = "C_Low"
-        self.register.set_pixel_register_value(pixel_reg, 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
-        # enable GateHitOr that enables FE self-trigger mode
-        self.register.set_global_register_value("Trig_Lat", self.trig_latency)  # set trigger latency, this latency sets the hits at the first relative BCID bins
-        self.register.set_global_register_value("Trig_Count", self.trig_count)  # set number of consecutive triggers
+            imon_pixel_mask = make_box_pixel_mask_from_col_row(column=self.col_span, row=self.row_span, default=1, value=0)  # 0 for selected columns, else 1
+            imon_pixel_mask = np.logical_or(imon_pixel_mask, self.register.get_pixel_register_value('Imon'))
+        self.register.set_pixel_register_value('Imon', imon_pixel_mask)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name='Imon'))
+        # C_High
+        self.register.set_pixel_register_value('C_High', 0)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='C_High'))
+        # C_Low
+        self.register.set_pixel_register_value('C_Low', 0)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='C_Low'))
+        # Registers
+        self.register.set_global_register_value("Trig_Lat", self.trigger_latency)  # set trigger latency
+        self.register.set_global_register_value("Trig_Count", 0)  # set number of consecutive triggers
         commands.extend(self.register.get_commands("wrregister", name=["Trig_Lat", "Trig_Count"]))
-        # send commands
+        commands.extend(self.register.get_commands("runmode"))
         self.register_utils.send_commands(commands)
+
+    def scan(self):
+        with self.readout():
+            got_data = False
+            start = time.time()
+            while not self.stop_run.wait(1.0):
+                if not got_data:
+                    if self.data_readout.data_words_per_second() > 0:
+                        logging.info('Taking data...')
+                        got_data = True
+                now = time.time()
+                self.progressbar.update(now - start)
+
+        logging.info('Total amount of triggers collected: %d', self.dut['tlu']['TRIGGER_COUNTER'])
+
+    def analyze(self):
+        with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
+            analyze_raw_data.create_cluster_size_hist = True  # can be set to false to omit cluster hit creation, can save some time, standard setting is false
+            analyze_raw_data.create_source_scan_hist = True
+            analyze_raw_data.create_cluster_tot_hist = True
+            analyze_raw_data.interpreter.set_warning_output(False)
+            analyze_raw_data.clusterizer.set_warning_output(False)
+            analyze_raw_data.interpret_word_table()
+            analyze_raw_data.interpreter.print_summary()
+            analyze_raw_data.plot_histograms()
 
     def set_self_trigger(self, enable=True):
         logging.info('%s FEI4 self-trigger' % ('Enable' if enable is True else "Disable"))
@@ -144,21 +92,21 @@ class FEI4SelfTriggerScan(ScanBase):
             commands.extend(self.register.get_commands("runmode"))
         self.register_utils.send_commands(commands)
 
-    def analyze(self):
-        from analysis.analyze_raw_data import AnalyzeRawData
-        output_file = self.scan_data_filename + "_interpreted.h5"
-        with AnalyzeRawData(raw_data_file=self.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
-            analyze_raw_data.create_cluster_size_hist = True  # can be set to false to omit cluster hit creation, can save some time, standard setting is false
-            analyze_raw_data.create_source_scan_hist = True
-            analyze_raw_data.create_cluster_tot_hist = True
-            analyze_raw_data.interpreter.set_warning_output(False)
-            analyze_raw_data.clusterizer.set_warning_output(False)
-            analyze_raw_data.interpret_word_table()
-            analyze_raw_data.interpreter.print_summary()
-            analyze_raw_data.plot_histograms(scan_data_filename=self.scan_data_filename)
+    def start_readout(self, **kwargs):
+        if kwargs:
+            self.set_scan_parameters(**kwargs)
+        self.data_readout.start(reset_sram_fifo=False, clear_buffer=True, callback=self.handle_data, errback=self.handle_err, no_data_timeout=self.no_data_timeout)
+        self.set_self_trigger(True)
+        self.scan_timeout_timer = Timer(self.scan_timeout, self.stop, kwargs={'msg': 'Scan timeout was reached'})
+        self.scan_timeout_timer.start()
+        self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=self.scan_timeout, poll=10).start()
+
+    def stop_readout(self):
+        self.set_self_trigger(False)
+        self.scan_timeout_timer.cancel()
+        self.progressbar.finish()
+        self.data_readout.stop()
 
 if __name__ == "__main__":
-    import configuration
-    scan = FEI4SelfTriggerScan(**configuration.default_configuration)
-    scan.start(run_configure=True, run_analyze=True, use_thread=True, **local_configuration)
-    scan.stop()
+    join = RunManager.run_run(FEI4SelfTriggerScan, 'configuration.yaml')
+    join()
