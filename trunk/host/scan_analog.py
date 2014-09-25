@@ -78,5 +78,5 @@ class AnalogScan(ScanBase):
             analyze_raw_data.plot_histograms()
 
 if __name__ == "__main__":
-    wait = RunManager.run_run(AnalogScan, 'configuration.yaml')
-    wait()
+    join = RunManager.run_run(AnalogScan, 'configuration.yaml')
+    join()

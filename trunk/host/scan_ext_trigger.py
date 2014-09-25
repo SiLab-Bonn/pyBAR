@@ -156,5 +156,5 @@ class ExtTriggerScan(ScanBase):
 
 
 if __name__ == "__main__":
-    wait = RunManager.run_run(ExtTriggerScan, 'configuration.yaml')
-    wait()
+    join = RunManager.run_run(ExtTriggerScan, 'configuration.yaml')
+    join()

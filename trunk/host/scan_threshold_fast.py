@@ -173,6 +173,5 @@ class FastThresholdScan(ScanBase):
 
 
 if __name__ == "__main__":
-    scan_mngr = RunManager('configuration.yaml')
-    scan = FastThresholdScan(**scan_mngr.conf)
-    scan()
+    join = RunManager.run_run(FastThresholdScan, 'configuration.yaml')
+    join()
