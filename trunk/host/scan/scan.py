@@ -2,7 +2,7 @@ import re
 import os
 import sys
 from functools import wraps
-from threading import Event
+from threading import Event, Thread
 from Queue import Queue
 from time import time
 import tables as tb
@@ -348,6 +348,43 @@ def timed(f):
         print "%s took %fs to finish" % (f.__name__, elapsed)
         return result
     return wrapper
+
+
+def interval_timed(interval):
+    '''Interval timer decorator.
+
+    Taken from: http://stackoverflow.com/questions/12435211/python-threading-timer-repeat-function-every-n-seconds/12435256
+    '''
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            stopped = Event()
+
+            def loop():  # executed in another thread
+                while not stopped.wait(interval):  # until stopped
+                    f(*args, **kwargs)
+
+            t = Thread(name='IntervalTimerThread', target=loop)
+            t.daemon = True  # stop if the program exits
+            t.start()
+            return stopped.set
+        return wrapper
+    return decorator
+
+
+def interval_timer(interval, func, *args, **kwargs):
+    '''Interval timer function.
+
+    Taken from: http://stackoverflow.com/questions/22498038/improvement-on-interval-python/22498708
+    '''
+    stopped = Event()
+
+    def loop():
+        while not stopped.wait(interval):  # the first call is after interval
+            func(*args, **kwargs)
+
+    Thread(name='IntervalTimerThread', target=loop).start()
+    return stopped.set
 
 
 def namedtuple_with_defaults(typename, field_names, default_values=[]):
