@@ -1,6 +1,5 @@
 import time
 import logging
-import math
 import numpy as np
 import progressbar
 from threading import Timer
