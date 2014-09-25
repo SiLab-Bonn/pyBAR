@@ -12,17 +12,21 @@ from scan.run_manager import RunManager
 
 
 class FastThresholdScan(ScanBase):
+    '''Fast threshold scan
+
+    Implementation of a fast threshold scan checking for start and end of s-curve.
+    '''
     _scan_id = "fast_threshold_scan"
     _default_scan_configuration = {
-        "n_injections": 100,  # how often one injects per PlsrDAC setting and pixel
-        "scan_parameters": {'PlsrDAC': (None, 100)},  # the min/max PlsrDAC values used during scan
-        "mask_steps": 3,  # define how many pixels are injected to at once, 3 means every 3rd pixel of a double column
-        "enable_mask_steps": None,  # list of the mask steps to be used; None: use all pixels
-        "step_size": 2,  # the increase of the PlstrDAC if the Scurve start was found
-        "search_distance": 10,  # the increase of the PlstrDAC if the Scurve start is not found yet
-        "minimum_data_points": 20,  # the minimum PlsrDAC settings for one S-Curve
-        "ignore_columns": (1, 78, 79, 80),  # columns which data should be ignored
-        "use_enable_mask": False
+        "n_injections": 100,  # number of injections per PlsrDAC step
+        "scan_parameters": {'PlsrDAC': (None, 100)},  # the PlsrDAC range
+        "mask_steps": 3,  # mask steps
+        "enable_mask_steps": None,  # list of mask steps to be used, if None use all mask steps
+        "step_size": 2,  # step size of the PlsrDAC during scan
+        "search_distance": 10,  # step size of the PlsrDAC for testing start condition
+        "minimum_data_points": 20,  # PlsrDAC before testing stop condition
+        "ignore_columns": (1, 78, 79, 80),  # columns, which will be ignored during scan
+        "use_enable_mask": False  # if True, use Enable mask during scan, if False, all pixels will be enabled
     }
     scan_parameter_start = 0  # holding last start value (e.g. used in GDAC threshold scan)
 
@@ -30,27 +34,6 @@ class FastThresholdScan(ScanBase):
         pass
 
     def scan(self):
-        '''Scan loop
-
-        Parameters
-        ----------
-        mask_steps : int
-            Number of mask steps.
-        n_injections : int
-            Number of injections per scan step.
-        scan_parameters : dict
-            Dictionary containing scan parameters.
-        step_size : int
-            The minimum step size of the parameter. Used when start condition is not triggered.
-        search_distance : int
-            The parameter step size if the start condition is not triggered.
-        minimum_data_points : int
-            The minimum data points that are taken for sure until scan finished. Saves also calculation time.
-        ignore_columns : list, tuple
-            All columns that are neither scanned nor taken into account to set the scan range are mentioned here. Usually the edge columns are ignored. From 1 to 80.
-        use_enable_mask : bool
-            Use enable mask for masking pixels.
-        '''
         self.start_condition_triggered = False  # set to true if the start condition is true once
         self.stop_condition_triggered = False  # set to true if the stop condition is true once
 
@@ -137,6 +120,18 @@ class FastThresholdScan(ScanBase):
         if self.scan_parameter_value >= scan_parameter_range[1]:
             logging.warning("Reached maximum of scan parameter range... stopping scan" % (scan_parameter_range[1],))
 
+    def analyze(self):
+        with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
+            analyze_raw_data.create_tot_hist = False
+            analyze_raw_data.create_threshold_hists = True
+            analyze_raw_data.create_fitted_threshold_hists = True
+            analyze_raw_data.create_threshold_mask = True
+            analyze_raw_data.n_injections = self.n_injections
+            analyze_raw_data.interpreter.set_warning_output(True)  # so far the data structure in a threshold scan was always bad, too many warnings given
+            analyze_raw_data.interpret_word_table()
+            analyze_raw_data.interpreter.print_summary()
+            analyze_raw_data.plot_histograms()
+
     def scan_condition(self, occupancy_array):
         occupancy_array_select = occupancy_array[self.select_arr_columns, :]  # only select not ignored columns
         # stop precise scanning actions
@@ -158,19 +153,6 @@ class FastThresholdScan(ScanBase):
         if kwargs:
             self.set_scan_parameters(**kwargs)
         self.data_readout.start(reset_sram_fifo=True, clear_buffer=True, callback=None, errback=self.handle_err)
-
-    def analyze(self):
-        with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
-            analyze_raw_data.create_tot_hist = False
-            analyze_raw_data.create_threshold_hists = True
-            analyze_raw_data.create_fitted_threshold_hists = True
-            analyze_raw_data.create_threshold_mask = True
-            analyze_raw_data.n_injections = self.n_injections
-            analyze_raw_data.interpreter.set_warning_output(True)  # so far the data structure in a threshold scan was always bad, too many warnings given
-            analyze_raw_data.interpret_word_table()
-            analyze_raw_data.interpreter.print_summary()
-            analyze_raw_data.plot_histograms()
-
 
 if __name__ == "__main__":
     join = RunManager.run_run(FastThresholdScan, 'configuration.yaml')
