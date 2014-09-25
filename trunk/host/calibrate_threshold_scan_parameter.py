@@ -175,7 +175,7 @@ if __name__ == "__main__":
         else:
             scan_threshold_fast.register.set_global_register_value(calibration_configuration['parameter_name'], parameter_value)
         scan_threshold_fast.scan_id = scan_id + '_' + calibration_configuration["parameter_name"] + '_' + str(parameter_value)
-        scan_threshold_fast.start(configure=True, scan_parameters={'PlsrDAC': (None, 800)}, step_size=2, search_distance=10, minimum_data_points=scan_threshold_fast.data_points - 2, ignore_columns=calibration_configuration['ignore_columns'])
+        scan_threshold_fast.start(configure=True, scan_parameter_range=(scan_threshold_fast.scan_parameter_start, 800), scan_parameter_stepsize=2, search_distance=10, minimum_data_points=scan_threshold_fast.data_points - 2, ignore_columns=calibration_configuration['ignore_columns'])
         scan_threshold_fast.stop()
         scan_data_filenames[parameter_value] = scan_threshold_fast.scan_data_filename
 

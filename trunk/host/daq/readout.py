@@ -123,7 +123,7 @@ class DataReadout(object):
         try:
             self.readout_thread.join(timeout=timeout)
             if self.readout_thread.is_alive():
-                raise StopTimeout('Reached data timeout after %0.2f second(s)' % timeout)
+                raise StopTimeout('Reached data timeout after %f second(s)' % timeout)
         except StopTimeout as e:
                 if self.errback:
                     self.errback(sys.exc_info())
@@ -162,10 +162,9 @@ class DataReadout(object):
         while not self.stop_timeout.wait(self.readout_interval):
             try:
                 if no_data_timeout and curr_time + no_data_timeout < get_float_time():
-                    raise NoDataTimeout('Received no data for %0.2f second(s)' % no_data_timeout)
+                    raise NoDataTimeout('Received no data for %f second(s)' % no_data_timeout)
                 data = self.read_data()
             except Exception as e:
-                no_data_timeout = None  # raise exception only once
                 if self.errback:
                     self.errback(sys.exc_info())
                 else:
