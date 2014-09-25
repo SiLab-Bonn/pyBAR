@@ -2,31 +2,28 @@ import time
 import logging
 import math
 import numpy as np
-
+from threading import Timer
 from scan.scan import ScanBase
-from daq.readout import open_raw_data_file
+from scan.run_manager import RunManager
 from fei4.register_utils import make_box_pixel_mask_from_col_row, invert_pixel_mask
-
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
-
-
-local_configuration = {
-    "trigger_mode": 0,
-    "trigger_latency": 232,
-    "trigger_delay": 14,
-    "col_span": [1, 80],
-    "row_span": [1, 336],
-    "overwrite_mask": False,
-    "use_enable_mask": True,
-    "timeout_no_data": 10,  # in seconds
-    "scan_timeout": 60,  # in seconds
-    "max_triggers": 10000,
-    "enable_tdc": False
-}
+from analysis.analyze_raw_data import AnalyzeRawData
 
 
 class ExtTriggerScan(ScanBase):
-    scan_id = "ext_trigger_scan"
+    _scan_id = "ext_trigger_scan"
+    _default_scan_configuration = {
+        "trigger_mode": 0,
+        "trigger_latency": 232,
+        "trigger_delay": 14,
+        "col_span": [1, 80],
+        "row_span": [1, 336],
+        "overwrite_mask": False,
+        "use_enable_mask": True,
+        "no_data_timeout": 10,  # in seconds
+        "scan_timeout": 60,  # in seconds
+        "max_triggers": 10000,
+        "enable_tdc": False
+    }
 
     def configure(self):
         commands = []
@@ -101,82 +98,27 @@ class ExtTriggerScan(ScanBase):
         enable_tdc : bool
             Enable for Hit-OR TDC (time-to-digital-converter) measurement. In this mode the Hit-Or/Hitbus output of the FEI4 has to be connected to USBpix Hit-OR input on the Single Chip Adapter Card.
         '''
-        wait_for_first_trigger = True
+        # preload command
+        lvl1_command = self.register.get_commands("zeros", length=self.trigger_delay)[0] + self.register.get_commands("lv1")[0]  # + self.register.get_commands("zeros", length=200)[0]
+        self.register_utils.set_command(lvl1_command)
 
-        with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_id) as raw_data_file:
-            self.readout.start()
-            # preload command
-            lvl1_command = self.register.get_commands("zeros", length=self.trigger_delay)[0] + self.register.get_commands("lv1")[0]  # + self.register.get_commands("zeros", length=200)[0]
-            self.register_utils.set_command(lvl1_command)
-
-            self.dut['tdc_rx2']['ENABLE'] = self.enable_tdc
-            self.dut['tlu']['TRIGGER_MODE'] = self.trigger_mode
-            self.dut['tlu']['TRIGGER_COUNTER'] = 0
-            self.dut['cmd']['EN_EXT_TRIGGER'] = True
-
+        with self.readout():
             show_trigger_message_at = 10 ** (int(math.floor(math.log10(self.max_triggers) - math.log10(3) / math.log10(10))))
-            time_current_iteration = time.time()
-            saw_no_data_at_time = time_current_iteration
-            saw_data_at_time = time_current_iteration
-            scan_start_time = time_current_iteration
-            no_data_at_time = time_current_iteration
-            time_from_last_iteration = 0
-            scan_stop_time = scan_start_time + self.scan_timeout
             current_trigger_number = 0
             last_trigger_number = 0
-            while not self.stop_thread_event.wait(self.readout.readout_interval):
-                time_last_iteration = time_current_iteration
-                time_current_iteration = time.time()
-                time_from_last_iteration = time_current_iteration - time_last_iteration
+            while not self.stop_run.wait(1.0):
+                print self.data_readout.data_words_per_second()
                 current_trigger_number = self.dut['tlu']['TRIGGER_COUNTER']
                 if (current_trigger_number % show_trigger_message_at < last_trigger_number % show_trigger_message_at):
                     logging.info('Collected triggers: %d', current_trigger_number)
-                    if not any(self.readout.get_rx_sync_status()):
-                        self.stop_thread_event.set()
-                        logging.error('No RX sync. Stopping Scan...')
-                    if any(self.readout.get_rx_8b10b_error_count()):
-                        self.stop_thread_event.set()
-                        logging.error('RX 8b10b error(s) detected. Stopping Scan...')
-                    if any(self.readout.get_rx_fifo_discard_count()):
-                        self.stop_thread_event.set()
-                        logging.error('RX FIFO discard error(s) detected. Stopping Scan...')
                 last_trigger_number = current_trigger_number
                 if self.max_triggers is not None and current_trigger_number >= self.max_triggers:
-                    logging.info('Reached maximum triggers. Stopping Scan...')
-                    self.stop_thread_event.set()
-                if self.scan_timeout is not None and time_current_iteration > scan_stop_time:
-                    logging.info('Reached maximum scan time. Stopping Scan...')
-                    self.stop_thread_event.set()
-                try:
-                    raw_data_file.append((self.readout.data.popleft(),))
-                except IndexError:  # no data
-                    no_data_at_time = time_current_iteration
-                    if self.timeout_no_data is not None and not wait_for_first_trigger and saw_no_data_at_time > (saw_data_at_time + self.timeout_no_data):
-                        logging.info('Reached no data timeout. Stopping Scan...')
-                        self.stop_thread_event.set()
-                    elif not wait_for_first_trigger:
-                        saw_no_data_at_time = no_data_at_time
+                    self.stop(msg='Trigger limit was reached: %i' % self.max_triggers)
 
-                    if no_data_at_time > (saw_data_at_time + 10):
-                        scan_stop_time += time_from_last_iteration
-                else:
-                    saw_data_at_time = time_current_iteration
-
-                    if wait_for_first_trigger is True:
-                        logging.info('Taking data...')
-                        wait_for_first_trigger = False
-
-            self.dut['tdc_rx2']['ENABLE'] = False
-            self.dut['cmd']['EN_EXT_TRIGGER'] = False
-            self.dut['tlu']['TRIGGER_MODE'] = 0
-            logging.info('Total amount of triggers collected: %d', self.dut['tlu']['TRIGGER_COUNTER'])
-            self.readout.stop()
-            raw_data_file.append(self.readout.data)
+        logging.info('Total amount of triggers collected: %d', self.dut['tlu']['TRIGGER_COUNTER'])
 
     def analyze(self):
-        from analysis.analyze_raw_data import AnalyzeRawData
-        output_file = self.scan_data_filename + "_interpreted.h5"
-        with AnalyzeRawData(raw_data_file=self.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
+        with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
             analyze_raw_data.create_source_scan_hist = True
 #             analyze_raw_data.create_hit_table = True
             analyze_raw_data.create_cluster_size_hist = True
@@ -188,11 +130,27 @@ class ExtTriggerScan(ScanBase):
             analyze_raw_data.interpreter.set_warning_output(False)
             analyze_raw_data.interpret_word_table()
             analyze_raw_data.interpreter.print_summary()
-            analyze_raw_data.plot_histograms(scan_data_filename=self.scan_data_filename)
+            analyze_raw_data.plot_histograms()
+
+    def start_readout(self, **kwargs):
+        if kwargs:
+            self.set_scan_parameters(**kwargs)
+        self.timer = Timer(self.scan_timeout, self.stop, kwargs={'msg': 'Scan timeout was reached'})
+        self.data_readout.start(reset_sram_fifo=False, clear_buffer=True, callback=self.handle_data, errback=self.handle_err, no_data_timeout=None)#self.no_data_timeout)
+        self.dut['tdc_rx2']['ENABLE'] = self.enable_tdc
+        self.dut['tlu']['TRIGGER_MODE'] = self.trigger_mode
+        self.dut['tlu']['TRIGGER_COUNTER'] = 0
+        self.dut['cmd']['EN_EXT_TRIGGER'] = True
+        self.timer.start()
+
+    def stop_readout(self):
+        self.timer.cancel()
+        self.dut['tdc_rx2']['ENABLE'] = False
+        self.dut['cmd']['EN_EXT_TRIGGER'] = False
+        self.dut['tlu']['TRIGGER_MODE'] = 0
+        self.data_readout.stop()
 
 
 if __name__ == "__main__":
-    import configuration
-    scan = ExtTriggerScan(**configuration.default_configuration)
-    scan.start(run_configure=True, run_analyze=True, use_thread=True, **local_configuration)
-    scan.stop()
+    wait = RunManager.run_run(ExtTriggerScan, 'configuration.yaml')
+    wait()
