@@ -23,7 +23,7 @@ class ExtTriggerScan(ScanBase):
         "col_span": [1, 80],  # defining active column interval, 2-tuple, from 1 to 80
         "row_span": [1, 336],  # defining active row interval, 2-tuple, from 1 to 336
         "overwrite_enable_mask": False,  # if True, use col_span and row_span to define an active region regardless of the Enable pixel register. If False, use col_span and row_span to define active region by also taking Enable pixel register into account.
-        "use_enable_mask_for_imon": True,  # if True, apply inverted Enable pixel mask to Imon pixel mask
+        "use_enable_mask_for_imon": False,  # if True, apply inverted Enable pixel mask to Imon pixel mask
         "no_data_timeout": 10,  # no data timeout after which the scan will be aborted, in seconds
         "scan_timeout": 60,  # timeout for scan after which the scan will be stopped, in seconds
         "max_triggers": 10000,  # maximum triggers after which the scan will be stopped, in seconds
