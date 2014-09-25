@@ -70,7 +70,12 @@ class ExtTriggerScan(ScanBase):
 #         last_trigger_number = 0
 
         with self.readout():
+            got_data = False
             while not self.stop_run.wait(1.0):
+                if not got_data:
+                    if self.data_readout.data_words_per_second() > 0:
+                        logging.info('Taking data...')
+                        got_data = True
                 triggers = self.dut['tlu']['TRIGGER_COUNTER']
                 self.progressbar.update(triggers)
                 if self.max_triggers is not None and triggers >= self.max_triggers:
