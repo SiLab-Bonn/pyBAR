@@ -177,13 +177,13 @@ class DataReadout(object):
                     status = 0
                     self._data_deque.append((data, last_time, curr_time, status))
                     self._words_per_read.append(data_words)
+                elif self.stop_readout.is_set():
+                    break
                 else:
                     self._words_per_read.append(0)
             if self._calculate.is_set():
                 self._calculate.clear()
                 self._result.put(sum(self._words_per_read))
-            if self.stop_readout.is_set():
-                break
         if self.callback:
             self._data_deque.append(None)  # empty tuple
         logging.debug('Stopped %s' % (self.readout_thread.name,))
@@ -662,7 +662,6 @@ class RawDataFile(object):
         return self
 
     def __exit__(self, *exc_info):
-        print 'closing raw data file'
         self.close()
         return False  # do not hide exceptions
 
