@@ -50,7 +50,7 @@ class DataReadout(object):
         self._result = Queue(maxsize=1)
         self._calculate = Event()
         self.stop_readout = Event()
-        self.stop_timeout = Event()
+        self.force_stop = Event()
         self.timestamp = None
         self.update_timestamp()
         self._is_running = False
@@ -102,7 +102,7 @@ class DataReadout(object):
         if clear_buffer:
             self._data_deque.clear()
         self.stop_readout.clear()
-        self.stop_timeout.clear()
+        self.force_stop.clear()
         if self.errback:
             self.watchdog_thread = Thread(target=self.watchdog, name='WatchdogThread')
             self.watchdog_thread.daemon = True
@@ -125,12 +125,13 @@ class DataReadout(object):
             if self.readout_thread.is_alive():
                 raise StopTimeout('Reached data timeout after %0.1f second(s)' % timeout)
         except StopTimeout as e:
-                if self.errback:
-                    self.errback(sys.exc_info())
-                else:
-                    raise
-        finally:
-            self.stop_timeout.set()
+            self.force_stop.set()
+            if self.errback:
+                self.errback(sys.exc_info())
+            else:
+                raise
+        if self.readout_thread.is_alive():
+            self.readout_thread.join()
         if self.errback:
             self.watchdog_thread.join()
         if self.callback:
@@ -159,7 +160,7 @@ class DataReadout(object):
         '''
         logging.debug('Starting %s' % (self.readout_thread.name,))
         curr_time = get_float_time()
-        while not self.stop_timeout.wait(self.readout_interval):
+        while not self.force_stop.wait(self.readout_interval):
             try:
                 if no_data_timeout and curr_time + no_data_timeout < get_float_time():
                     raise NoDataTimeout('Received no data for %0.1f second(s)' % no_data_timeout)
@@ -170,6 +171,8 @@ class DataReadout(object):
                     self.errback(sys.exc_info())
                 else:
                     raise
+                if self.stop_readout.is_set():
+                    break
             else:
                 data_words = data.shape[0]
                 if data_words > 0:
@@ -199,7 +202,10 @@ class DataReadout(object):
                 self.stop_readout.wait(self.readout_interval)
             else:
                 if data:
-                    self.callback(data)
+                    try:
+                        self.callback(data)
+                    except Exception as e:
+                        self.errback(sys.exc_info())
                 else:
                     break
 
