@@ -206,11 +206,26 @@ class ScanBase(RunBase):
             self.data_readout.print_readout_status()
             self.register.restore(name=self.run_number)
             self.raw_data_file = None
-            self.dut['USB'].close()  # free USB resources
-            self.analyze()
-            self.register.save_configuration(self.output_filename)
         except Exception as e:
             self.handle_err(sys.exc_info())
+        else:
+            try:
+                self.analyze()
+            except Exception as e:
+                self.handle_err(sys.exc_info())
+            else:
+                self.register.save_configuration(self.output_filename)
+        finally:
+            print 'finally'
+            try:
+                if self.data_readout.is_running:
+                    self.data_readout.stop(timeout=0.0)
+            except AttributeError as e:
+                pass
+            try:
+                self.dut['USB'].close()  # free USB resources
+            except AttributeError as e:
+                pass
         if not self.err_queue.empty():
             exc = self.err_queue.get()
             if isinstance(exc[1], (RxSyncError, EightbTenbError, FifoError, NoDataTimeout, StopTimeout)):
@@ -230,22 +245,23 @@ class ScanBase(RunBase):
         self.stop_run.set()
 
     def stop(self, msg=None):
+        self.stop_run.set()
         if msg:
             logging.info('%s%s Stopping scan...' % (msg, ('' if msg[-1] in punctuation else '.')))
         else:
             logging.info('Stopping scan...')
-        self.stop_run.set()
 
     def handle_data(self, data):
         self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=False)
 
     def handle_err(self, exc):
+        self.err_queue.put(exc)
+        self.stop_run.set()
         if exc[1]:
             logging.error('%s%s%s' % (exc[1], ('' if str(exc[1])[-1] in punctuation else '.'), ('' if self.stop_run.is_set() else ' Stopping scan...')))
         else:
             logging.error('Error.%s' % ('' if self.stop_run.is_set() else ' Stopping scan...'))
-        self.err_queue.put(exc)
-        self.stop_run.set()
+
 
     def _get_configuration(self, run_number=None):
         if not run_number:
