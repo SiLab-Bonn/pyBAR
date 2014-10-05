@@ -183,10 +183,10 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
             self.dut['cmd']['START_SEQUENCE_LENGTH'] = len(dc_address_command)
             self.register_utils.set_command(command=self.register_utils.concatenate_commands((dc_address_command, scan_loop_command), byte_padding=False))
 
-            for index, dc in enumerate(enable_double_columns):
+            for dc in enable_double_columns:
                 if self.stop_run.is_set():
                     break
-                if index != 0:  # full command is already set before loop
+                if dc != 0:  # full command is already set before loop
                     # get DC command before wait to save some time
                     dc_address_command = get_dc_address_command(dc)
                     self.register_utils.wait_for_command()
@@ -231,13 +231,13 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
             self.dut['cmd']['CMD_REPEAT'] = repeat_command
             self.register_utils.set_command(command=self.register_utils.concatenate_commands((dc_address_command, scan_loop_command), byte_padding=False))
 
-            for index, dc in enumerate(enable_double_columns):
+            for dc in enable_double_columns:
                 if self.stop_run.is_set():
                     break
-                if index != 0:  # full command is already set before loop
+                if dc != 0:  # full command is already set before loop
                     ec = enable_columns(dc)
                     dcs = write_double_columns(dc)
-                    dcs.extend(write_double_columns(enable_double_columns[index - 1]))
+                    dcs.extend(write_double_columns(enable_double_columns[dc - 1]))
                     commands = []
                     commands.append(conf_mode_command)
                     if disable_shift_masks:
