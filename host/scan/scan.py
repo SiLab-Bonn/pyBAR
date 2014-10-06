@@ -216,7 +216,6 @@ class ScanBase(RunBase):
             else:
                 self.register.save_configuration(self.output_filename)
         finally:
-            print 'finally'
             try:
                 if self.data_readout.is_running:
                     self.data_readout.stop(timeout=0.0)
