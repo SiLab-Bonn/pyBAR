@@ -236,19 +236,20 @@ class ScanBase(RunBase):
         self.run()
 
     def abort(self, msg=None):
-        logging.error('%s. Stopping scan...' % msg)
         if msg:
+            logging.error('%s%s Stopping scan...' % (msg, ('' if msg[-1] in punctuation else '.')))
             self.err_queue.put(Exception(msg))
         else:
+            logging.error('Unknown exception: Stopping scan...')
             self.err_queue.put(Exception('Unknown exception'))
         self.stop_run.set()
 
     def stop(self, msg=None):
-        self.stop_run.set()
         if msg:
             logging.info('%s%s Stopping scan...' % (msg, ('' if msg[-1] in punctuation else '.')))
         else:
             logging.info('Stopping scan...')
+        self.stop_run.set()
 
     def handle_data(self, data):
         self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=False)
@@ -260,7 +261,6 @@ class ScanBase(RunBase):
             logging.error('%s%s%s' % (exc[1], ('' if str(exc[1])[-1] in punctuation else '.'), ('' if self.stop_run.is_set() else ' Stopping scan...')))
         else:
             logging.error('Error.%s' % ('' if self.stop_run.is_set() else ' Stopping scan...'))
-
 
     def _get_configuration(self, run_number=None):
         if not run_number:
