@@ -108,5 +108,5 @@ class FEI4SelfTriggerScan(Fei4RunBase):
         self.data_readout.stop()
 
 if __name__ == "__main__":
-    join = RunManager.run_run(FEI4SelfTriggerScan, 'configuration.yaml')
+    join = RunManager.run_run(FEI4SelfTriggerScan, '../configuration.yaml')
     join()

@@ -155,5 +155,5 @@ class FastThresholdScan(Fei4RunBase):
         self.data_readout.start(reset_sram_fifo=True, clear_buffer=True, callback=None, errback=self.handle_err)
 
 if __name__ == "__main__":
-    join = RunManager.run_run(FastThresholdScan, 'configuration.yaml')
+    join = RunManager.run_run(FastThresholdScan, '../configuration.yaml')
     join()
