@@ -1,3 +1,3 @@
-scan_digital
-scan_analog
-scan_threshold_fast;ignore_columns=(1, 78, 79, 80)
+pybar.scan.scan_digital
+pybar.scan.scan_analog
+pybar.scan.scan_threshold_fast;ignore_columns=(1, 78, 79, 80)

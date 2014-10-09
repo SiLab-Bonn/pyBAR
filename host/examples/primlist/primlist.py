@@ -1,4 +1,4 @@
-from scan.run_manager import RunManager
+from pybar.run_manager import RunManager
 
 if __name__ == "__main__":
     runmngr = RunManager('configuration.yaml')
