@@ -204,14 +204,12 @@ class ScanBase(RunBase):
             with open_raw_data_file(filename=self.output_filename, title=self.scan_id, scan_parameters=self.scan_parameters._asdict()) as self.raw_data_file:
                 self.scan()
             self.data_readout.print_readout_status()
-            self.register.restore(name=self.run_number)
-            self.raw_data_file = None
-        except Exception as e:
+        except Exception:
             self.handle_err(sys.exc_info())
         else:
             try:
                 self.analyze()
-            except Exception as e:
+            except Exception:
                 self.handle_err(sys.exc_info())
             else:
                 self.register.save_configuration(self.output_filename)
@@ -219,11 +217,16 @@ class ScanBase(RunBase):
             try:
                 if self.data_readout.is_running:
                     self.data_readout.stop(timeout=0.0)
-            except AttributeError as e:
+            except AttributeError:
                 pass
             try:
+                self.register.restore(name=self.run_number)
+            except Exception:
+                pass
+            self.raw_data_file = None
+            try:
                 self.dut['USB'].close()  # free USB resources
-            except AttributeError as e:
+            except AttributeError:
                 pass
         if not self.err_queue.empty():
             exc = self.err_queue.get()
