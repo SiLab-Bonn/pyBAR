@@ -123,7 +123,10 @@ class DataReadout(object):
         try:
             self.readout_thread.join(timeout=timeout)
             if self.readout_thread.is_alive():
-                raise StopTimeout('Reached data timeout after %0.1f second(s)' % timeout)
+                if timeout != 0.0:
+                    raise StopTimeout('Reached data timeout after %0.1f second(s). Forcing to stop readout.' % timeout)
+                else:
+                    raise StopTimeout('Forcing to stop readout.')
         except StopTimeout as e:
             self.force_stop.set()
             if self.errback:
