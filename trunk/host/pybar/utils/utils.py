@@ -4,9 +4,9 @@ import datetime
 import Queue
 import collections
 import itertools
-import array
+# import array
 import numpy as np
-from bitarray import bitarray
+# from bitarray import bitarray
 
 
 class Timer(object):
@@ -168,15 +168,15 @@ def bitvector_to_bytearray(bitvector, pad_to_n_bytes=4):
 
 
 def bitvector_to_array(bitvec):
+    bs = np.fromstring(bitvec.vector, dtype=np.uint8)
+    bs = (bs * 0x0202020202 & 0x010884422010) % 1023
+    return bs.astype(np.uint8).tostring()
 #     bs = array.array('B', bitvec.vector.tostring())  # no padding needed here, replaces bitvector.getTextFromBitVector()
 #     bitstream_swap = ''
 #     lsbits = lambda b: (b * 0x0202020202 & 0x010884422010) % 1023
 #     for b in bs:
 #         bitstream_swap += chr(lsbits(b))
 #     return bitstream_swap
-    bs = np.fromstring(bitvec.vector, dtype=np.uint8)
-    bs = (bs * 0x0202020202 & 0x010884422010) % 1023
-    return bs.astype(np.uint8).tostring()
 
 
 def bitarray_to_array(bitarr):
