@@ -20,7 +20,7 @@ import logging
 punctuation = """!,.:;?"""
 
 
-class ScanBase(RunBase):
+class Fei4RunBase(RunBase):
     '''Implementation of the base scan.
 
     Base class for scan- / tune- / analyze-classes.
