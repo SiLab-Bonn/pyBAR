@@ -10,6 +10,7 @@ import tables as tb
 from collections import namedtuple, Mapping
 from contextlib import contextmanager
 import abc
+import inspect
 from basil.dut import Dut
 
 from pybar.run_manager import RunBase, RunAborted
@@ -134,12 +135,13 @@ class Fei4RunBase(RunBase):
 
             if not isinstance(self.dut_configuration['dut'], Dut):
                 self.dut_configuration['dut'] = Dut(self.dut_configuration['dut'])
+                module_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
                 if 'dut_configuration' in self.dut_configuration and self.dut_configuration['dut_configuration']:
                     self.dut.init(self.dut_configuration['dut_configuration'])
                 elif self.dut.name == 'usbpix':
-                    self.dut.init('dut_configuration_usbpix.yaml')
+                    self.dut.init(os.path.join(module_path, 'dut_configuration_usbpix.yaml'))
                 elif self.dut.name == 'usbpix_gpac':
-                    self.dut.init('dut_configuration_usbpix_gpac.yaml')
+                    self.dut.init(os.path.join(module_path, 'dut_configuration_usbpix_gpac.yaml'))
                 else:
                     logging.warning('Omit initialization of DUT')
                 if self.dut.name == 'usbpix':
