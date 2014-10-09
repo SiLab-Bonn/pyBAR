@@ -284,7 +284,7 @@ class RunManager(object):
                 for line in f.readlines():
                     line = line.strip()
                     scan_configuration = {}
-                    parts = re.split('[^;]\s+[^,;]|\s*[;]\s*', line)  # TODO: do not split list, dict
+                    parts = re.split('\s*[;]\s*', line)  # TODO: do not split list, dict
                     try:
                         print parts
                         mod = import_module(parts[0])  # points to module
