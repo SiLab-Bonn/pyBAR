@@ -557,13 +557,13 @@ class FEI4Register(object):
         parser = xml.sax.make_parser()
         handler = FEI4Handler()
         parser.setContentHandler(handler)
-        curr_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+        module_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 
         if self.definition_file is None:
             if self.is_chip_flavor("fei4a"):
-                parser.parse(os.path.join(curr_path, "register_fei4a.xml"))
+                parser.parse(os.path.join(module_path, "register_fei4a.xml"))
             elif self.is_chip_flavor("fei4b"):
-                parser.parse(os.path.join(curr_path, "register_fei4b.xml"))
+                parser.parse(os.path.join(module_path, "register_fei4b.xml"))
             else:
                 raise ValueError("Unknown chip flavor")
         else:
