@@ -1,0 +1,3 @@
+scan_digital
+scan_analog
+scan_threshold_fast;ignore_columns=(1, 78, 79, 80)
