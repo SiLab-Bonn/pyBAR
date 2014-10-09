@@ -5,10 +5,11 @@ cimport numpy as cnp
 cnp.import_array()  # if array is used it has to be imported, otherwise possible runtime error
 from numpy cimport ndarray
 from libcpp cimport bool  # to be able to use bool variables
-from data_struct cimport numpy_hit_info, numpy_meta_data, numpy_meta_data_v2, numpy_meta_word_data
-from data_struct import MetaTable, MetaTableV2
 from tables import dtype_from_descr
 from libc.stdint cimport uint8_t, int64_t
+
+from pybar.analysis.RawDataConverter.data_struct cimport numpy_hit_info, numpy_meta_data, numpy_meta_data_v2, numpy_meta_word_data
+from pybar.analysis.RawDataConverter.data_struct import MetaTable, MetaTableV2
 
 cdef extern from "AnalysisFunctions.h":
     unsigned int getNclusterInEvents(int64_t*& rEventNumber, const unsigned int& rSize, int64_t*& rResultEventNumber, unsigned int*& rResultCount)

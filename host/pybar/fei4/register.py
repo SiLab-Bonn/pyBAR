@@ -3,6 +3,7 @@ from bitarray import bitarray
 import xml.sax
 import re
 import os
+import inspect
 import ast
 import numpy as np
 import itertools
@@ -556,12 +557,13 @@ class FEI4Register(object):
         parser = xml.sax.make_parser()
         handler = FEI4Handler()
         parser.setContentHandler(handler)
+        curr_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 
         if self.definition_file is None:
             if self.is_chip_flavor("fei4a"):
-                parser.parse("register_fei4a.xml")
+                parser.parse(os.path.join(curr_path, "register_fei4a.xml"))
             elif self.is_chip_flavor("fei4b"):
-                parser.parse("register_fei4b.xml")
+                parser.parse(os.path.join(curr_path, "register_fei4b.xml"))
             else:
                 raise ValueError("Unknown chip flavor")
         else:

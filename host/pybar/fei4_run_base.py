@@ -12,7 +12,7 @@ from contextlib import contextmanager
 import abc
 from basil.dut import Dut
 
-from pybar.scan.run_manager import RunBase, RunAborted
+from pybar.run_manager import RunBase, RunAborted
 from pybar.fei4.register import FEI4Register
 from pybar.fei4.register_utils import FEI4RegisterUtils
 from pybar.daq.fifo_readout import FifoReadout, RxSyncError, EightbTenbError, FifoError, NoDataTimeout, StopTimeout
@@ -228,7 +228,7 @@ class Fei4RunBase(RunBase):
             self.raw_data_file = None
             try:
                 self.dut['USB'].close()  # free USB resources
-            except AttributeError:
+            except (TypeError, AttributeError):
                 pass
         if not self.err_queue.empty():
             exc = self.err_queue.get()

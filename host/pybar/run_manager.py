@@ -285,7 +285,6 @@ class RunManager(object):
                     scan_configuration = {}
                     parts = re.split('\s*[;]\s*', line)  # TODO: do not split list, dict
                     try:
-                        print parts
                         mod = import_module(parts[0])  # points to module
                     except ImportError:
                         mod = import_module(parts[0].rsplit('.', 1)[0])  # points to class

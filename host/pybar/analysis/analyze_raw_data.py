@@ -10,13 +10,14 @@ from scipy.optimize import curve_fit
 from scipy.special import erf
 import multiprocessing as mp
 from functools import partial
-import analysis_utils
-from RawDataConverter import data_struct
-from plotting import plotting
 from matplotlib.backends.backend_pdf import PdfPages
-from RawDataConverter.data_interpreter import PyDataInterpreter
-from RawDataConverter.data_histograming import PyDataHistograming
-from RawDataConverter.data_clusterizer import PyDataClusterizer
+
+from pybar.analysis import analysis_utils
+from pybar.analysis.RawDataConverter import data_struct
+from pybar.analysis.plotting import plotting
+from pybar.analysis.RawDataConverter.data_interpreter import PyDataInterpreter
+from pybar.analysis.RawDataConverter.data_histograming import PyDataHistograming
+from pybar.analysis.RawDataConverter.data_clusterizer import PyDataClusterizer
 
 
 def scurve(x, A, mu, sigma):

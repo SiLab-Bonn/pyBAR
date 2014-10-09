@@ -1,14 +1,17 @@
-''' Script to check the correctness of the analysis. The analysis is done on raw data and all results are compared to a recorded analysis.'''
+''' Script to check the correctness of the analysis. The analysis is done on raw data and all results are compared to a recorded analysis.
+'''
+
 import unittest
 import os
 import tables as tb
 import numpy as np
 import progressbar
-from analyze_raw_data import AnalyzeRawData
-from RawDataConverter.data_interpreter import PyDataInterpreter
-from RawDataConverter.data_histograming import PyDataHistograming
-from RawDataConverter.data_clusterizer import PyDataClusterizer
-import analysis_utils
+
+from pybar.analysis.analyze_raw_data import AnalyzeRawData
+from pybar.analysis.RawDataConverter.data_interpreter import PyDataInterpreter
+from pybar.analysis.RawDataConverter.data_histograming import PyDataHistograming
+from pybar.analysis.RawDataConverter.data_clusterizer import PyDataClusterizer
+from pybar.analysis import analysis_utils
 
 
 def get_array_differences(first_array, second_array):

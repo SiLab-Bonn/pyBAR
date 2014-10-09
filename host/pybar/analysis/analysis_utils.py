@@ -11,13 +11,12 @@ import progressbar
 import glob
 import tables as tb
 import numexpr as ne
-from plotting import plotting
 from scipy.interpolate import interp1d
 from operator import itemgetter
 from scipy.interpolate import splrep, splev
-from RawDataConverter import analysis_functions
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
+from pybar.analysis.plotting import plotting
+from pybar.analysis.RawDataConverter import analysis_functions
 
 
 def unique_row(array, use_columns=None, selected_columns_only=False):
