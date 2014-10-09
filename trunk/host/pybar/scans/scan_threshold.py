@@ -1,15 +1,13 @@
-from scan.scan import ScanBase
-
-from analysis.analyze_raw_data import AnalyzeRawData
-from fei4.register_utils import invert_pixel_mask
-from scan.scan_utils import scan_loop
-
-from scan.run_manager import RunManager
-
 import logging
 
+from pybar.analysis.analyze_raw_data import AnalyzeRawData
+from pybar.fei4.register_utils import invert_pixel_mask
+from pybar.fei4_run_base import Fei4RunBase
+from pybar.fei4.register_utils import scan_loop
+from pybar.run_manager import RunManager
 
-class ThresholdScan(ScanBase):
+
+class ThresholdScan(Fei4RunBase):
     '''Fast threshold scan
 
     Implementation of a standard threshold scan.

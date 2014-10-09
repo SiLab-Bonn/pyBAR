@@ -1,16 +1,15 @@
-import time
 import logging
-import math
 import numpy as np
 import progressbar
 from threading import Timer
-from scan.scan import ScanBase
-from scan.run_manager import RunManager
-from fei4.register_utils import make_box_pixel_mask_from_col_row, invert_pixel_mask
-from analysis.analyze_raw_data import AnalyzeRawData
+
+from pybar.analysis.analyze_raw_data import AnalyzeRawData
+from pybar.fei4.register_utils import invert_pixel_mask, make_box_pixel_mask_from_col_row
+from pybar.fei4_run_base import Fei4RunBase
+from pybar.run_manager import RunManager
 
 
-class ExtTriggerScan(ScanBase):
+class ExtTriggerScan(Fei4RunBase):
     '''External trigger scan with FE-I4
 
     For use with external scintillator (user RX0), TLU (use RJ45), USBpix self-trigger (loop back TX2 into RX0.)

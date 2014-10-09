@@ -1,17 +1,17 @@
 ''' The speed up version of the normal threshold scan where the first and the last PlsrDAC setting is determined automatically to minimize the scan time. The step size is changed automatically.
 '''
-import numpy as np
 import logging
-from scan.scan import ScanBase
-from daq.readout import get_col_row_array_from_data_record_array, convert_data_array, is_data_record, data_array_from_data_iterable
-from analysis.analyze_raw_data import AnalyzeRawData
-from fei4.register_utils import invert_pixel_mask
-from scan.scan_utils import scan_loop
+import numpy as np
 
-from scan.run_manager import RunManager
+from pybar.analysis.analyze_raw_data import AnalyzeRawData
+from pybar.fei4.register_utils import invert_pixel_mask
+from pybar.fei4_run_base import Fei4RunBase
+from pybar.fei4.register_utils import scan_loop
+from pybar.run_manager import RunManager
+from pybar.daq.readout_utils import get_col_row_array_from_data_record_array, convert_data_array, is_data_record, data_array_from_data_iterable
 
 
-class FastThresholdScan(ScanBase):
+class FastThresholdScan(Fei4RunBase):
     '''Fast threshold scan
 
     Implementation of a fast threshold scan checking for start and end of s-curve.

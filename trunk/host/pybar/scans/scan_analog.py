@@ -1,13 +1,13 @@
-# from analysis.plotting.plotting import plot_occupancy, make_occupancy_hist
-from analysis.analyze_raw_data import AnalyzeRawData
-from fei4.register_utils import invert_pixel_mask
-from scan.scan import ScanBase
-from scan.scan_utils import scan_loop
-from scan.run_manager import RunManager
-# import logging
+import logging
+
+from pybar.analysis.analyze_raw_data import AnalyzeRawData
+from pybar.fei4.register_utils import invert_pixel_mask
+from pybar.fei4_run_base import Fei4RunBase
+from pybar.fei4.register_utils import scan_loop
+from pybar.run_manager import RunManager
 
 
-class AnalogScan(ScanBase):
+class AnalogScan(Fei4RunBase):
     '''Analog scan
     '''
     _scan_id = "analog_scan"
