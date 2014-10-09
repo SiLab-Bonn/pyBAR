@@ -12,6 +12,11 @@ import traceback
 import signal
 import abc
 import logging
+from importlib import import_module
+from inspect import getmembers
+from functools import partial
+from ast import literal_eval
+
 
 RunStatus = collections.namedtuple('RunStatus', ['running', 'finished', 'aborted', 'crashed'])
 
@@ -190,7 +195,7 @@ class RunManager(object):
         Parameters
         ----------
         conf : str, dict, file
-            Configuration for the run.
+            Configuration for the run(s).
         '''
         # fixing event handler: http://stackoverflow.com/questions/15457786/ctrl-c-crashes-python-after-importing-scipy-stats
         if os.name == 'nt':
@@ -204,9 +209,21 @@ class RunManager(object):
             win32api.SetConsoleCtrlHandler(handler, 1)
 
         self.conf = self.open_conf(conf)
+        self._current_run = None
 
     @staticmethod
-#     @thunkify('RunThread')
+    def open_conf(conf):
+        if not conf:
+            return {}
+        elif isinstance(conf, basestring):  # parse the first YAML document in a stream
+            stream = open(conf)
+            return safe_load(stream)
+        elif isinstance(conf, file):  # parse the first YAML document in a stream
+            return safe_load(conf)
+        else:  # conf is already a dict
+            return conf
+
+    @staticmethod
     def run_run(run, conf):
         '''Runs a run in another thread. Non-blocking.
 
@@ -226,115 +243,82 @@ class RunManager(object):
 
         @thunkify('RunThread')
         def run_run_in_thread():
-            run()
+            return run()
 
         return run_run_in_thread()
 
-    @staticmethod
-    def open_conf(conf):
-        if not conf:
-            return None
-        elif isinstance(conf, basestring):  # parse the first YAML document in a stream
-            stream = open(conf)
-            return safe_load(stream)
-        elif isinstance(conf, file):  # parse the first YAML document in a stream
-            return safe_load(conf)
-        else:  # conf is already a dict
-            return conf
-
-    def start(self):
-        '''Starting scan.
+    def run_primlist(self, primlist, skip_remaining=False):
+        '''Runs runs from a primlist.
 
         Parameters
         ----------
-        configure : bool
-            If true, configure FE before starting scan.scan().
-        restore_configuration : bool
-            Restore FE configuration after finishing scan.scan().
-        use_thread : bool
-            If true, scan.scan() is running in a separate thread. Only then Ctrl-C can be used to interrupt scan loop.
-        do_global_reset : bool
-            Do a FE Global Reset before sending FE configuration.
-        kwargs : any
-            Any keyword argument passed to scan.start() will be forwarded to scan.scan(). Please note: scan.start() keyword arguments will merged with class keyword arguments
+        primlist : string
+            Filename of primlist.
+        skip_remaining : bool
+            If True, skip remaining runs, if a run does not exit with status FINISHED.
         '''
-        pass
-#         self.scan_is_running = True
-#         self.scan_aborted = False
-# 
-#         self.use_thread = use_thread
-#         if self.scan_thread is not None:
-#             raise RuntimeError('Scan thread is already running')
-# 
-#         self.stop_thread_event.clear()
-# 
-#         logging.info('Starting scan %s with ID %d (output path: %s)' % (self.scan.scan_id, self.run_numbers, self.scan_data_output_path))
-#         if use_thread:
-#             self.scan_thread = Thread(target=self.scan.scan, name='%s with ID %d' % (self.scan.scan_id, self.run_numbers), kwargs=None)  # kwargs=self._scan_configuration)
-#             self.scan_thread.daemon = True  # Abruptly close thread when closing main thread. Resources may not be released properly.
-#             self.scan_thread.start()
-#             logging.info('Press Ctrl-C to stop scan loop')
-#             signal.signal(signal.SIGINT, self._signal_handler)
-#         else:
-#             self.scan.scan()  # **self._scan_configuration)
+        runlist = self.open_primlist(primlist)
+        for index, run in enumerate(runlist):
+            @thunkify('RunThread')
+            def run_run_in_thread():
+                return run()
+            join = run_run_in_thread()
+            self._current_run = run
+            logging.info('Running run %i/%i. Press Ctrl-C to stop run' % (index + 1, len(runlist)))
+            signal.signal(signal.SIGINT, self._signal_handler)
+            status = join()
+            signal.signal(signal.SIGINT, signal.SIG_DFL)  # setting default handler
+            self._current_run = None
+            if skip_remaining and not status == RunStatus.finished:
+                logging.error('Exited run %i with status %s: Skipping all remaining runs.' % (run.run_number, status))
+                break
 
-    def stop(self):
-        '''Stopping scan. Cleaning up of variables and joining thread (if existing).
+    def open_primlist(self, primlist):
+        def isrun(item, module):
+            return isinstance(item, RunBase.__metaclass__) and item.__module__ == module
 
-        '''
-        pass
-#         if (self.scan_thread is not None) ^ self.use_thread:
-#             if self.scan_thread is None:
-#                 pass
-# #                 logging.warning('Scan thread has already stopped')
-# #                 raise RuntimeError('Scan thread has already stopped')
-#             else:
-#                 raise RuntimeError('Thread is running where no thread was expected')
-#         if self.scan_thread is not None:
-# 
-#             def stop_thread():
-#                 logging.warning('Scan timeout after %.1f second(s)' % timeout)
-#                 self.stop_thread_event.set()
-#                 self.scan_aborted = True
-# 
-#             timeout_timer = Timer(timeout, stop_thread)  # could also use shed.scheduler() here
-#             if timeout:
-#                 timeout_timer.start()
-#             try:
-#                 while self.scan_thread.is_alive() and not self.stop_thread_event.wait(1):
-#                     pass
-#             except IOError:  # catching "IOError: [Errno4] Interrupted function call" because of wait_timeout_event.wait()
-#                 logging.exception('Event handler problems?')
-#                 raise
-# 
-#             timeout_timer.cancel()
-#             signal.signal(signal.SIGINT, signal.SIG_DFL)  # setting default handler
-#             self.stop_thread_event.set()
-# 
-#             self.scan_thread.join()  # SIGINT will be suppressed here
-#             self.scan_thread = None
-#         self.use_thread = None
-
-    def start_prim_list(self):
-        for scan in self.prim_list:
-            if isinstance(scan, collections.Iterable):
-                if len(scan) == 1:
-                    self.scan = scan[0](dut=self.dut, readout=self.readout, register=self.register, register_utils=self.register_utils)
-                    self.start()
-                elif len(scan) == 2:
-                    self.scan = scan[0](dut=self.dut, readout=self.readout, register=self.register, register_utils=self.register_utils, **scan[1])
-                    self.start(**scan[1])
-            else:
-                self.scan = scan(dut=self.dut, readout=self.readout, register=self.register, register_utils=self.register_utils)
-                self.start()
-            self.stop()
-            self.scan = None
+        if isinstance(primlist, basestring):
+            with open(primlist, 'r') as f:
+                f.seek(0)
+                srun_list = []
+                for line in f.readlines():
+                    line = line.strip()
+                    scan_configuration = {}
+                    parts = re.split('[^;]\s+[^,;]|\s*[;]\s*', line)  # TODO: do not split list, dict
+                    try:
+                        print parts
+                        mod = import_module(parts[0])  # points to module
+                    except ImportError:
+                        mod = import_module(parts[0].rsplit('.', 1)[0])  # points to class
+                        islocalrun = partial(isrun, module=parts[0].split('.')[-2])
+                        clsmembers = getmembers(mod, islocalrun)
+                        for cls in clsmembers:
+                            if cls[0] == parts[0].rsplit('.', 1)[1]:
+                                run_cls = cls[1]
+                                break
+                            else:
+                                run_cls = None
+                        if not run_cls:
+                            raise ValueError('Found no matching class: %s' % parts[0].rsplit('.', 1)[1])
+                    else:
+                        islocalrun = partial(isrun, module=parts[0])
+                        clsmembers = getmembers(mod, islocalrun)
+                        if len(clsmembers) > 1:
+                            raise ValueError('Found more than one matching class.')
+                        elif not len(clsmembers):
+                            raise ValueError('Found no matching class.')
+                        run_cls = clsmembers[0][1]
+                    for param in parts[1:]:
+                        key, value = re.split('\s*[=]\s*', param)  # TODO: do not split dict
+                        scan_configuration[key] = literal_eval(value)
+                    srun_list.append(run_cls(scan_configuration=scan_configuration, **self.conf))
+            return srun_list
+        else:
+            AttributeError('Primlist format not supported.')
 
     def _signal_handler(self, signum, frame):
         signal.signal(signal.SIGINT, signal.SIG_DFL)  # setting default handler... pressing Ctrl-C a second time will kill application
-        logging.info('Pressed Ctrl-C. Stopping scan...')
-        self.scan_aborted = False
-        self.stop_thread_event.set()
+        self._current_run.abort(msg='Pressed Ctrl-C')
 
 
 from functools import wraps
