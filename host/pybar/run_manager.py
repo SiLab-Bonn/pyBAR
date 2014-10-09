@@ -285,17 +285,17 @@ class RunManager(object):
                     scan_configuration = {}
                     parts = re.split('\s*[;]\s*', line)  # TODO: do not split list, dict
                     try:
+                        print parts
                         mod = import_module(parts[0])  # points to module
                     except ImportError:
                         mod = import_module(parts[0].rsplit('.', 1)[0])  # points to class
                         islocalrun = partial(isrun, module=parts[0].split('.')[-2])
                         clsmembers = getmembers(mod, islocalrun)
+                        run_cls = None
                         for cls in clsmembers:
                             if cls[0] == parts[0].rsplit('.', 1)[1]:
                                 run_cls = cls[1]
                                 break
-                            else:
-                                run_cls = None
                         if not run_cls:
                             raise ValueError('Found no matching class: %s' % parts[0].rsplit('.', 1)[1])
                     else:
