@@ -1,15 +1,16 @@
-import time
 import logging
+import time
 import numpy as np
 import progressbar
 from threading import Timer
-from scan.scan import ScanBase
-from scan.run_manager import RunManager
-from fei4.register_utils import make_box_pixel_mask_from_col_row, invert_pixel_mask
-from analysis.analyze_raw_data import AnalyzeRawData
+
+from pybar.analysis.analyze_raw_data import AnalyzeRawData
+from pybar.fei4.register_utils import invert_pixel_mask, make_box_pixel_mask_from_col_row
+from pybar.fei4_run_base import Fei4RunBase
+from pybar.run_manager import RunManager
 
 
-class FEI4SelfTriggerScan(ScanBase):
+class FEI4SelfTriggerScan(Fei4RunBase):
     '''FE-I4 self-trigger scan
 
     Implementation of the FE-I4 self-trigger scan, internally using HitOR for self-triggering.
