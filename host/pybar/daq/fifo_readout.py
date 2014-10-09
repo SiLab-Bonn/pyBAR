@@ -1,10 +1,11 @@
 import logging
 from time import sleep
 from threading import Thread, Event
-from pybar.utils.utils import get_float_time
 from collections import deque
 from Queue import Queue, Empty
 import sys
+
+from pybar.utils.utils import get_float_time
 
 
 data_iterable = ("data", "timestamp_start", "timestamp_stop", "error")

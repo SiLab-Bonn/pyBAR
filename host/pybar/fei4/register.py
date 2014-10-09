@@ -1,3 +1,4 @@
+import logging
 from bitarray import bitarray
 import xml.sax
 import re
@@ -10,9 +11,10 @@ import copy
 import struct
 import tables as tb
 import datetime
-from analysis.RawDataConverter.data_struct import NameValue
-import logging
-from utils.utils import string_is_binary, flatten_iterable, iterable, str2bool
+
+from pybar.analysis.RawDataConverter.data_struct import NameValue
+from pybar.utils.utils import string_is_binary, flatten_iterable, iterable, str2bool
+
 
 chip_flavors = ['fei4a', 'fei4b']
 
@@ -1260,7 +1262,7 @@ class FEI4Register(object):
             for i in iter(int, 1):
                 name = datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S%f') + '_' + str(i)
                 try:
-                    val = self.config_state[name]
+                    _ = self.config_state[name]
                 except KeyError:
                     break
                 else:
@@ -1334,14 +1336,14 @@ class FEI4Register(object):
 
 #     def has_changed(self, name=None, last=True):
 #         '''Compare existing restore point to current configuration.
-#  
+#
 #         Parameters
 #         ----------
 #         name : str
 #             Name of the restore point. If name is not given, the first/last restore point will be taken depending on last.
 #         last : bool
 #             If name is not given, the latest restore point will be taken.
-#  
+#
 #         Returns
 #         -------
 #         True if configuration is identical, else false.

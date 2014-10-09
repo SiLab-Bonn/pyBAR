@@ -1,21 +1,23 @@
+import logging
+from time import time
 import re
 import os
 import sys
 from functools import wraps
 from threading import Event, Thread
 from Queue import Queue
-from time import time
 import tables as tb
-from analysis.RawDataConverter.data_struct import NameValue
-from basil.dut import Dut
-from fei4.register import FEI4Register
-from fei4.register_utils import FEI4RegisterUtils
-from daq.readout import DataReadout, RxSyncError, EightbTenbError, FifoError, NoDataTimeout, StopTimeout, open_raw_data_file
 from collections import namedtuple, Mapping
 from contextlib import contextmanager
-from run_manager import RunBase, RunAborted
 import abc
-import logging
+from basil.dut import Dut
+
+from pybar.scan.run_manager import RunBase, RunAborted
+from pybar.fei4.register import FEI4Register
+from pybar.fei4.register_utils import FEI4RegisterUtils
+from pybar.daq.fifo_readout import FifoReadout, RxSyncError, EightbTenbError, FifoError, NoDataTimeout, StopTimeout
+from pybar.daq.fei4_raw_data import open_raw_data_file
+from pybar.analysis.RawDataConverter.data_struct import NameValue
 
 punctuation = """!,.:;?"""
 
@@ -51,9 +53,9 @@ class Fei4RunBase(RunBase):
         self.data_readout = None
         self.register_utils = None
         if self.module_id:
-            super(ScanBase, self).__init__(os.path.join(working_dir, self.module_id))
+            super(Fei4RunBase, self).__init__(os.path.join(working_dir, self.module_id))
         else:
-            super(ScanBase, self).__init__(working_dir)
+            super(Fei4RunBase, self).__init__(working_dir)
 
         self.raw_data_file = None
 
@@ -182,7 +184,7 @@ class Fei4RunBase(RunBase):
                 pass  # do nothing, already initialized
 
             if not self.data_readout:
-                self.data_readout = DataReadout(self.dut)
+                self.data_readout = FifoReadout(self.dut)
             if not self.register_utils:
                 self.register_utils = FEI4RegisterUtils(self.dut, self.data_readout, self.register)
             self._save_configuration_dict('dut_configuration', self.dut_configuration)

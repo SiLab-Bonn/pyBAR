@@ -1,17 +1,16 @@
+import logging
 from yaml import safe_load
 import datetime
 import os
 import re
 import collections
-from threading import Lock
-from multiprocessing import dummy as multiprocessing
-import threading
+from threading import Lock, Thread
+# from multiprocessing import dummy as multiprocessing
 import sys
 import functools
 import traceback
 import signal
 import abc
-import logging
 from importlib import import_module
 from inspect import getmembers
 from functools import partial
@@ -164,14 +163,14 @@ def thunkify(thread_name):
                 try:
                     func_result = f(*args, **kwargs)
                     result[0] = func_result
-                except Exception as e:
+                except Exception:
                     exc[0] = True
                     exc[1] = sys.exc_info()
                     logging.error("RunThread has thrown an exception:\n%s" % (traceback.format_exc()))
 #                 finally:
 #                     wait_event.set()
 
-            worker_thread = threading.Thread(target=worker_func, name=thread_name if thread_name else None)
+            worker_thread = Thread(target=worker_func, name=thread_name if thread_name else None)
             worker_thread.daemon = True
 
             def thunk():
