@@ -286,7 +286,6 @@ class RunManager(object):
                     scan_configuration = {}
                     parts = re.split('\s*[;]\s*', line)  # TODO: do not split list, dict
                     try:
-                        print parts
                         mod = import_module(parts[0])  # points to module
                     except ImportError:
                         mod = import_module(parts[0].rsplit('.', 1)[0])  # points to class
@@ -311,6 +310,8 @@ class RunManager(object):
                     for param in parts[1:]:
                         key, value = re.split('\s*[=]\s*', param)  # TODO: do not split dict
                         scan_configuration[key] = literal_eval(value)
+                    if 'scan_configuration' in self.conf:
+                        raise ValueError('Scan configuration taken from primlist. Configuration file must not contain scan configuration.')
                     srun_list.append(run_cls(scan_configuration=scan_configuration, **self.conf))
             return srun_list
         else:
