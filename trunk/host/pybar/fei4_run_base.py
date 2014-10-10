@@ -53,10 +53,11 @@ class Fei4RunBase(RunBase):
 
         self.data_readout = None
         self.register_utils = None
+        self.base_dir = working_dir
         if self.module_id:
-            super(Fei4RunBase, self).__init__(os.path.join(working_dir, self.module_id))
+            super(Fei4RunBase, self).__init__(os.path.join(self.base_dir, self.module_id))
         else:
-            super(Fei4RunBase, self).__init__(working_dir)
+            super(Fei4RunBase, self).__init__(self.base_dir)
 
         self.raw_data_file = None
 
@@ -123,7 +124,11 @@ class Fei4RunBase(RunBase):
             if 'configuration' in self.fe_configuration and self.fe_configuration['configuration']:
                 if not isinstance(self.fe_configuration['configuration'], FEI4Register):
                     if isinstance(self.fe_configuration['configuration'], basestring):
-                        self.fe_configuration['configuration'] = FEI4Register(configuration_file=self.fe_configuration['configuration'])
+                        if os.path.isabs(self.fe_configuration['configuration']):
+                            fe_configuration = self.fe_configuration['configuration']
+                        else:
+                            fe_configuration = os.path.join(self.base_dir, self.fe_configuration['configuration'])
+                        self.fe_configuration['configuration'] = FEI4Register(configuration_file=fe_configuration)
                     elif isinstance(self.fe_configuration['configuration'], (int, long)) and self.fe_configuration['configuration'] >= 0:
                         self.fe_configuration['configuration'] = FEI4Register(configuration_file=self._get_configuration(self.fe_configuration['configuration']))
                     else:
@@ -134,10 +139,24 @@ class Fei4RunBase(RunBase):
                 self.fe_configuration['configuration'] = FEI4Register(configuration_file=self._get_configuration())
 
             if not isinstance(self.dut_configuration['dut'], Dut):
-                self.dut_configuration['dut'] = Dut(self.dut_configuration['dut'])
+                if isinstance(self.dut_configuration['dut'], basestring):
+                    if os.path.isabs(self.dut_configuration['dut']):
+                        dut = self.dut_configuration['dut']
+                    else:
+                        dut = os.path.join(self.base_dir, self.dut_configuration['dut'])
+                    self.dut_configuration['dut'] = Dut(dut)
+                else:
+                    self.dut_configuration['dut'] = Dut(self.dut_configuration['dut'])
                 module_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
                 if 'dut_configuration' in self.dut_configuration and self.dut_configuration['dut_configuration']:
-                    self.dut.init(self.dut_configuration['dut_configuration'])
+                    if isinstance(self.dut_configuration['dut_configuration'], basestring):
+                        if os.path.isabs(self.dut_configuration['dut_configuration']):
+                            dut_configuration = self.dut_configuration['dut_configuration']
+                        else:
+                            dut_configuration = os.path.join(self.base_dir, self.dut_configuration['dut_configuration'])
+                        self.dut.init(dut_configuration)
+                    else:
+                        self.dut.init(self.dut_configuration['dut_configuration'])
                 elif self.dut.name == 'usbpix':
                     self.dut.init(os.path.join(module_path, 'dut_configuration_usbpix.yaml'))
                 elif self.dut.name == 'usbpix_gpac':

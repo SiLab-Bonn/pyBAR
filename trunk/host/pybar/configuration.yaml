@@ -1,4 +1,4 @@
-working_dir : 'data/'  # data output path
+# working_dir : 'data/'  # data output path, can be omitted; if not given, path of this file will be working directory
 
 dut_configuration:
     dut : "dut_usbpix.yaml"  # DUT hardware configuration
