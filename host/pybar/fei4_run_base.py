@@ -51,7 +51,7 @@ class Fei4RunBase(RunBase):
         self.stop_run = Event()
         self.err_queue = Queue()
 
-        self.data_readout = None
+        self.fifo_readout = None
         self.register_utils = None
         self.base_dir = working_dir
         if self.module_id:
@@ -204,10 +204,10 @@ class Fei4RunBase(RunBase):
             else:
                 pass  # do nothing, already initialized
 
-            if not self.data_readout:
-                self.data_readout = FifoReadout(self.dut)
+            if not self.fifo_readout:
+                self.fifo_readout = FifoReadout(self.dut)
             if not self.register_utils:
-                self.register_utils = FEI4RegisterUtils(self.dut, self.data_readout, self.register)
+                self.register_utils = FEI4RegisterUtils(self.dut, self.register)
             self._save_configuration_dict('dut_configuration', self.dut_configuration)
             self._save_configuration_dict('fe_configuration', self.fe_configuration)
             self._save_configuration_dict('scan_configuration', self.scan_configuration)
@@ -219,14 +219,14 @@ class Fei4RunBase(RunBase):
             self.register.create_restore_point(name=self.run_number)
             self.configure()
             self.register.save_configuration_to_hdf5(self.output_filename)
-            self.data_readout.reset_rx()
-            self.data_readout.reset_sram_fifo()
-            self.data_readout.print_readout_status()
+            self.fifo_readout.reset_rx()
+            self.fifo_readout.reset_sram_fifo()
+            self.fifo_readout.print_readout_status()
             logging.info('Found scan parameter(s): %s' % (', '.join(['%s:%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None'))
             self.stop_run.clear()
             with open_raw_data_file(filename=self.output_filename, title=self.scan_id, scan_parameters=self.scan_parameters._asdict()) as self.raw_data_file:
                 self.scan()
-            self.data_readout.print_readout_status()
+            self.fifo_readout.print_readout_status()
         except Exception:
             self.handle_err(sys.exc_info())
         else:
@@ -238,8 +238,8 @@ class Fei4RunBase(RunBase):
                 self.register.save_configuration(self.output_filename)
         finally:
             try:
-                if self.data_readout.is_running:
-                    self.data_readout.stop(timeout=0.0)
+                if self.fifo_readout.is_running:
+                    self.fifo_readout.stop(timeout=0.0)
             except AttributeError:
                 pass
             try:
@@ -314,10 +314,10 @@ class Fei4RunBase(RunBase):
     def start_readout(self, **kwargs):
         if kwargs:
             self.set_scan_parameters(**kwargs)
-        self.data_readout.start(reset_sram_fifo=False, clear_buffer=True, callback=self.handle_data, errback=self.handle_err)
+        self.fifo_readout.start(reset_sram_fifo=False, clear_buffer=True, callback=self.handle_data, errback=self.handle_err)
 
     def stop_readout(self):
-        self.data_readout.stop()
+        self.fifo_readout.stop()
 
     def _save_configuration_dict(self, configuation_name, configuration, **kwargs):
         '''Stores any configuration dictionary to HDF5 file.
