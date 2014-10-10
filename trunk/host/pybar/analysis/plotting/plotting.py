@@ -10,6 +10,7 @@ import math
 # import matplotlib.pyplot as plt
 # pyplot is not thread safe since it rely on global parameters: https://github.com/matplotlib/matplotlib/issues/757
 from matplotlib.figure import Figure
+from matplotlib.artist import setp
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from scipy.optimize import curve_fit
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -108,7 +109,7 @@ def plot_linear_relation(x, y, x_err=None, y_err=None, title=None, point_label=N
     line_fit_legend_entry = 'line fit: ax + b\na=$%.2f\pm%.2f$\nb=$%.2f\pm%.2f$' % (line_fit[0], np.absolute(pcov[0][0]) ** 0.5, abs(line_fit[1]), np.absolute(pcov[1][1]) ** 0.5)
 
     fig.legend(["data", line_fit_legend_entry], 0)
-    fig.setp(ax.get_xticklabels(), visible=False)  # remove ticks at common border of both plots
+    setp(ax.get_xticklabels(), visible=False)  # remove ticks at common border of both plots
 
     divider = make_axes_locatable(ax)
     ax_bottom_plot = divider.append_axes("bottom", 2.0, pad=0.0, sharex=ax)
@@ -124,7 +125,7 @@ def plot_linear_relation(x, y, x_err=None, y_err=None, title=None, point_label=N
     ax.set_ylim((-np.amax(np.abs(y - fit_fn(x)))), (np.amax(np.abs(y - fit_fn(x)))))
 
     fig.plot(ax.set_xlim(), [0, 0], '-', color='black')
-    fig.setp(ax_bottom_plot.get_yticklabels()[-2:-1], visible=False)
+    setp(ax_bottom_plot.get_yticklabels()[-2:-1], visible=False)
 #     print ax_bottom_plot.get_yticklabels()[1]
 
 #     ax.set_aspect(2)
@@ -179,10 +180,10 @@ def plot_fancy_occupancy(hist, z_max=None, filename=None):
     axHisty = divider.append_axes("right", 1.2, pad=0.2, sharey=ax)
 
     cax = divider.append_axes("right", size="5%", pad=0.1)
-    cb = ax.colorbar(im, cax=cax, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True))
-    cb.set_labe
+    cb = fig.colorbar(im, cax=cax, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True))
+    cb.set_label("#")
     # make some labels invisible
-    ax.setp(axHistx.get_xticklabels() + axHisty.get_yticklabels(), visible=False)
+    setp(axHistx.get_xticklabels() + axHisty.get_yticklabels(), visible=False)
     hight = np.ma.sum(hist, axis=0)
     # hight[hight.mask] = 0
     axHistx.bar(left=range(1, 81), height=hight, align='center', linewidth=0)
@@ -367,7 +368,7 @@ def plot_correlation(hist, title="Hit correlation", xlabel=None, ylabel=None, fi
     z_max = np.max(hist[0])
     bounds = np.linspace(start=0, stop=z_max, num=255, endpoint=True)
     norm = colors.BoundaryNorm(bounds, cmap.N)
-    ax.colorbar(im, boundaries=bounds, cmap=cmap, norm=norm, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True), cax=cax)
+    fig.colorbar(im, boundaries=bounds, cmap=cmap, norm=norm, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True), cax=cax)
     if filename is None:
         fig.show()
     elif isinstance(filename, PdfPages):
@@ -392,7 +393,7 @@ def plot_pixel_matrix(hist, title="Hit correlation", filename=None):
     z_max = np.max(hist)
     bounds = np.linspace(start=0, stop=z_max, num=255, endpoint=True)
     norm = colors.BoundaryNorm(bounds, cmap.N)
-    ax.colorbar(boundaries=bounds, cmap=cmap, norm=norm, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True), cax=cax)
+    fig.colorbar(boundaries=bounds, cmap=cmap, norm=norm, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True), cax=cax)
     if filename is None:
         fig.show()
     elif isinstance(filename, PdfPages):
@@ -575,7 +576,7 @@ def plot_cluster_tot_size(hist, median=False, z_max=None, filename=None):
     ax.set_title('Cluster size and cluster ToT (' + str(np.sum(H) / 2) + ' entries)')
     ax.set_xlabel('cluster size')
     ax.set_ylabel('cluster ToT')
-    # ax.colorbar(cmap=cmap)
+    # fig.colorbar(cmap=cmap)
     ax.invert_yaxis()
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.1)
