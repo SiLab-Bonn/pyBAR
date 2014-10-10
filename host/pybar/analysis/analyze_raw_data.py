@@ -488,7 +488,7 @@ class AnalyzeRawData(object):
     def set_stop_mode(self, value):
         self._set_stop_mode = value
 
-    def interpret_word_table(self, analyzed_data_file=None, fei4b=None, use_settings_from_file=True):
+    def interpret_word_table(self, analyzed_data_file=None, use_settings_from_file=True, fei4b=None):
         '''Interprets the raw data word table of all given raw data files with the c++ library.
         Creates the h5 output file and pdf plots.
 
@@ -503,10 +503,8 @@ class AnalyzeRawData(object):
             True if the needed parameters should be extracted from the raw data file
         '''
 
-        if(analyzed_data_file is not None):
+        if analyzed_data_file:
             self._analyzed_data_file = analyzed_data_file
-
-        self.fei4b = fei4b
 
         hits = np.empty((2 * self._chunk_size,), dtype=dtype_from_descr(data_struct.HitInfoTable))
 
@@ -524,12 +522,12 @@ class AnalyzeRawData(object):
 
         if(self._analyzed_data_file is not None):
             self.out_file_h5 = tb.openFile(self._analyzed_data_file, mode="w", title="Interpreted FE-I4 raw data")
-            if (self._create_hit_table == True):
+            if (self._create_hit_table is True):
                 description = data_struct.HitInfoTable().columns.copy()
                 if self.use_trigger_time_stamp:  # replace the column name if trigger gives you a time stamp
                     description['trigger_time_stamp'] = description.pop('trigger_number')
                 hit_table = self.out_file_h5.createTable(self.out_file_h5.root, name='Hits', description=description, title='hit_data', filters=self._filter_table, chunkshape=(self._chunk_size / 100,))
-            if (self._create_meta_word_index == True):
+            if (self._create_meta_word_index is True):
                 meta_word_index_table = self.out_file_h5.createTable(self.out_file_h5.root, name='EventMetaData', description=data_struct.MetaInfoWordTable, title='event_meta_data', filters=self._filter_table, chunkshape=(self._chunk_size / 10,))
             if(self._create_cluster_table):
                 cluster_table = self.out_file_h5.createTable(self.out_file_h5.root, name='Cluster', description=data_struct.ClusterInfoTable, title='cluster_hit_data', filters=self._filter_table, expectedrows=self._chunk_size)
@@ -571,6 +569,8 @@ class AnalyzeRawData(object):
                 table_size = in_file_h5.root.raw_data.shape[0]
                 if use_settings_from_file:
                     self._deduce_settings_from_file(in_file_h5)
+                else:
+                    self.fei4b = fei4b
                 for iWord in range(0, table_size, self._chunk_size):  # loop over all words in the actual raw data file
                     try:
                         raw_data = in_file_h5.root.raw_data.read(iWord, iWord + self._chunk_size)
@@ -594,16 +594,16 @@ class AnalyzeRawData(object):
                         if(self._create_cluster_table):
                             cluster_table.append(cluster[:self.clusterizer.get_n_clusters()])
 
-                    if (self._analyzed_data_file is not None and self._create_hit_table == True):
+                    if (self._analyzed_data_file is not None and self._create_hit_table is True):
                         hit_table.append(hits[:Nhits])
-                    if (self._analyzed_data_file is not None and self._create_meta_word_index == True):
+                    if (self._analyzed_data_file is not None and self._create_meta_word_index is True):
                         size = self.interpreter.get_n_meta_data_word()
                         meta_word_index_table.append(meta_word[:size])
 
                     if total_words + iWord < progress_bar.maxval:  # otherwise unwanted exception is thrown
                         progress_bar.update(total_words + iWord)
                 total_words += table_size
-                if (self._analyzed_data_file is not None and self._create_hit_table == True):
+                if (self._analyzed_data_file is not None and self._create_hit_table is True):
                     hit_table.flush()
         progress_bar.finish()
         self._create_additional_data()
@@ -728,13 +728,13 @@ class AnalyzeRawData(object):
             self.threshold_hist = np.swapaxes(threshold_hist, 0, 1)
             self.noise_hist = np.swapaxes(noise_hist, 0, 1)
             if (self._analyzed_data_file is not None and safe_to_file):
-#                 if self._create_threshold_mask:
-#                     threshold_mask_table = self.out_file_h5.createCArray(self.out_file_h5.root, name = 'MaskThreshold', title = 'Threshold Mask', atom = tb.Atom.from_dtype(self.threshold_mask.dtype), shape = (336,80), filters = self._filter_table)
-#                     threshold_mask_table[0:336, 0:80] = self.threshold_mask
                 threshold_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistThreshold', title='Threshold Histogram', atom=tb.Atom.from_dtype(self.threshold_hist.dtype), shape=(336, 80), filters=self._filter_table)
                 threshold_hist_table[0:336, 0:80] = self.threshold_hist
                 noise_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistNoise', title='Noise Histogram', atom=tb.Atom.from_dtype(self.noise_hist.dtype), shape=(336, 80), filters=self._filter_table)
                 noise_hist_table[0:336, 0:80] = self.noise_hist
+#                 if self._create_threshold_mask:
+#                     threshold_mask_table = self.out_file_h5.createCArray(self.out_file_h5.root, name = 'MaskThreshold', title = 'Threshold Mask', atom = tb.Atom.from_dtype(self.threshold_mask.dtype), shape = (336,80), filters = self._filter_table)
+#                     threshold_mask_table[0:336, 0:80] = self.threshold_mask
 #             if self._create_threshold_mask:
 #                 self.threshold_mask = generate_threshold_mask(self.noise_hist)
         if (self._create_fitted_threshold_hists):
