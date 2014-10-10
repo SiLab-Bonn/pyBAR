@@ -12,7 +12,7 @@ import traceback
 import signal
 import abc
 from importlib import import_module
-from inspect import getmembers
+from inspect import getmembers, isclass
 from functools import partial
 from ast import literal_eval
 
@@ -207,38 +207,52 @@ class RunManager(object):
             import win32api
             win32api.SetConsoleCtrlHandler(handler, 1)
 
-        self.conf = self.open_conf(conf)
+        self.conf = {}
         self._current_run = None
+        self._conf_path = None
+        self.load_conf(conf)
 
-    @staticmethod
-    def open_conf(conf):
+    def open_conf(self, conf):
+        conf_dict = {}
         if not conf:
-            return {}
+            pass
         elif isinstance(conf, basestring):  # parse the first YAML document in a stream
-            stream = open(conf)
-            return safe_load(stream)
+            with open(conf, 'r') as f:
+                conf_dict.update(safe_load(f))
         elif isinstance(conf, file):  # parse the first YAML document in a stream
-            return safe_load(conf)
+            conf_dict.update(safe_load(conf))
         else:  # conf is already a dict
-            return conf
+            conf_dict.update(conf)
+        return conf_dict
 
-    @staticmethod
-    def run_run(run, conf):
+    def load_conf(self, conf):
+        if isinstance(conf, basestring):
+                self._conf_path = conf
+        elif isinstance(conf, file):
+            self._conf_path = conf.name
+        else:
+            self._conf_path = None
+        self.conf = self.open_conf(conf)
+        if 'working_dir' in self.conf:
+            if self._conf_path and not os.path.abspath(self.conf['working_dir']):
+                self.conf['working_dir'] = os.path.join(os.path.dirname(self._conf_path), self.conf['working_dir'])
+        elif self._conf_path:
+            self.conf['working_dir'] = os.path.dirname(self._conf_path)
+
+    def run_run(self, run):
         '''Runs a run in another thread. Non-blocking.
 
         Parameters
         ----------
         run : class
             Run class.
-        conf : str, dict, file
-            Configuration for the run.
 
         Returns
         -------
         Function, which blocks when called, waits for the end of the run, and returns run status.
         '''
-        conf = RunManager.open_conf(conf)
-        run = run(**conf)
+        if isclass(run):
+            run = run(**self.conf)
 
         @thunkify('RunThread')
         def run_run_in_thread():
@@ -258,10 +272,7 @@ class RunManager(object):
         '''
         runlist = self.open_primlist(primlist)
         for index, run in enumerate(runlist):
-            @thunkify('RunThread')
-            def run_run_in_thread():
-                return run()
-            join = run_run_in_thread()
+            join = self.run_run(run)
             self._current_run = run
             logging.info('Running run %i/%i. Press Ctrl-C to stop run' % (index + 1, len(runlist)))
             signal.signal(signal.SIGINT, self._signal_handler)
@@ -281,7 +292,9 @@ class RunManager(object):
                 f.seek(0)
                 srun_list = []
                 for line in f.readlines():
-                    line = line.strip()
+                    line = line.partition('#')[0].strip()
+                    if not line:
+                        continue
                     scan_configuration = {}
                     parts = re.split('\s*[;]\s*', line)  # TODO: do not split list, dict
                     try:
