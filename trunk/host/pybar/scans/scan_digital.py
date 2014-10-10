@@ -45,5 +45,5 @@ class DigitalScan(Fei4RunBase):
             analyze_raw_data.interpreter.print_summary()
 
 if __name__ == "__main__":
-    join = RunManager.run_run(DigitalScan, '../configuration.yaml')
+    join = RunManager('../configuration.yaml').run_run(DigitalScan)
     join()

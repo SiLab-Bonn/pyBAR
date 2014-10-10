@@ -122,5 +122,5 @@ class ExtTriggerScan(Fei4RunBase):
 
 
 if __name__ == "__main__":
-    join = RunManager.run_run(ExtTriggerScan, '../configuration.yaml')
+    join = RunManager('../configuration.yaml').run_run(ExtTriggerScan)
     join()
