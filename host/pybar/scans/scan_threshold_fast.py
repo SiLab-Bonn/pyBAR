@@ -88,7 +88,7 @@ class FastThresholdScan(Fei4RunBase):
                     logging.info('Testing for start condition: %s %d' % ('PlsrDAC', self.scan_parameter_value))
                 if not self.stop_condition_triggered and self.record_data:
                     logging.info('Testing for stop condition: %s %d' % ('PlsrDAC', self.scan_parameter_value))
-                occupancy_array = np.histogram2d(*convert_data_array(data_array_from_data_iterable(self.data_readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array), bins=(80, 336), range=[[1, 80], [1, 336]])[0]
+                occupancy_array = np.histogram2d(*convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array), bins=(80, 336), range=[[1, 80], [1, 336]])[0]
                 self.scan_condition(occupancy_array)
 
             # start condition is met for the first time
@@ -104,7 +104,7 @@ class FastThresholdScan(Fei4RunBase):
             # saving data
             if self.record_data:
                 self.data_points = self.data_points + 1
-                self.raw_data_file.append(self.data_readout.data, scan_parameters={'PlsrDAC': self.scan_parameter_value})
+                self.raw_data_file.append(self.fifo_readout.data, scan_parameters={'PlsrDAC': self.scan_parameter_value})
 
             # stop condition is met for the first time
             if self.stop_condition_triggered and self.record_data:
@@ -152,7 +152,7 @@ class FastThresholdScan(Fei4RunBase):
     def start_readout(self, **kwargs):
         if kwargs:
             self.set_scan_parameters(**kwargs)
-        self.data_readout.start(reset_sram_fifo=True, clear_buffer=True, callback=None, errback=self.handle_err)
+        self.fifo_readout.start(reset_sram_fifo=True, clear_buffer=True, callback=None, errback=self.handle_err)
 
 if __name__ == "__main__":
     join = RunManager('../configuration.yaml').run_run(FastThresholdScan)
