@@ -1,5 +1,5 @@
 import logging
-import time
+from time import time
 import numpy as np
 import progressbar
 from threading import Timer
@@ -60,14 +60,18 @@ class FEI4SelfTriggerScan(Fei4RunBase):
     def scan(self):
         with self.readout():
             got_data = False
-            start = time.time()
+            start = time()
             while not self.stop_run.wait(1.0):
                 if not got_data:
-                    if self.data_readout.data_words_per_second() > 0:
-                        logging.info('Taking data...')
+                    if self.fifo_readout.data_words_per_second() > 0:
                         got_data = True
-                now = time.time()
-                self.progressbar.update(now - start)
+                        logging.info('Taking data...')
+                        self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.Timer()], maxval=self.scan_timeout, poll=10).start()
+                else:
+                    try:
+                        self.progressbar.update(time() - start)
+                    except ValueError:
+                        pass
 
         logging.info('Total amount of triggers collected: %d', self.dut['tlu']['TRIGGER_COUNTER'])
 
@@ -95,17 +99,23 @@ class FEI4SelfTriggerScan(Fei4RunBase):
     def start_readout(self, **kwargs):
         if kwargs:
             self.set_scan_parameters(**kwargs)
-        self.data_readout.start(reset_sram_fifo=False, clear_buffer=True, callback=self.handle_data, errback=self.handle_err, no_data_timeout=self.no_data_timeout)
+        self.fifo_readout.start(reset_sram_fifo=False, clear_buffer=True, callback=self.handle_data, errback=self.handle_err, no_data_timeout=self.no_data_timeout)
         self.set_self_trigger(True)
-        self.scan_timeout_timer = Timer(self.scan_timeout, self.stop, kwargs={'msg': 'Scan timeout was reached'})
+
+        def timeout():
+            try:
+                self.progressbar.finish()
+            except AttributeError:
+                pass
+            self.stop(msg='Scan timeout was reached')
+
+        self.scan_timeout_timer = Timer(self.scan_timeout, self.timeout)
         self.scan_timeout_timer.start()
-        self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=self.scan_timeout, poll=10).start()
 
     def stop_readout(self):
         self.set_self_trigger(False)
         self.scan_timeout_timer.cancel()
-        self.progressbar.finish()
-        self.data_readout.stop()
+        self.fifo_readout.stop()
 
 if __name__ == "__main__":
     join = RunManager('../configuration.yaml').run_run(FEI4SelfTriggerScan)

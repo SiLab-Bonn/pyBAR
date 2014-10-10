@@ -72,14 +72,20 @@ class ExtTriggerScan(Fei4RunBase):
             got_data = False
             while not self.stop_run.wait(1.0):
                 if not got_data:
-                    if self.data_readout.data_words_per_second() > 0:
-                        logging.info('Taking data...')
+                    if self.fifo_readout.data_words_per_second() > 0:
                         got_data = True
-                triggers = self.dut['tlu']['TRIGGER_COUNTER']
-                self.progressbar.update(triggers)
+                        logging.info('Taking data...')
+                        self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=self.max_triggers, poll=10).start()
+                else:
+                    triggers = self.dut['tlu']['TRIGGER_COUNTER']
+                    try:
+                        self.progressbar.update(triggers)
+                    except ValueError:
+                        pass
                 if self.max_triggers is not None and triggers >= self.max_triggers:
+                    self.progressbar.finish()
                     self.stop(msg='Trigger limit was reached: %i' % self.max_triggers)
-#                 print self.data_readout.data_words_per_second()
+#                 print self.fifo_readout.data_words_per_second()
 #                 if (current_trigger_number % show_trigger_message_at < last_trigger_number % show_trigger_message_at):
 #                     logging.info('Collected triggers: %d', current_trigger_number)
 
@@ -103,22 +109,28 @@ class ExtTriggerScan(Fei4RunBase):
     def start_readout(self, **kwargs):
         if kwargs:
             self.set_scan_parameters(**kwargs)
-        self.data_readout.start(reset_sram_fifo=False, clear_buffer=True, callback=self.handle_data, errback=self.handle_err, no_data_timeout=self.no_data_timeout)
+        self.fifo_readout.start(reset_sram_fifo=False, clear_buffer=True, callback=self.handle_data, errback=self.handle_err, no_data_timeout=self.no_data_timeout)
         self.dut['tdc_rx2']['ENABLE'] = self.enable_tdc
         self.dut['tlu']['TRIGGER_MODE'] = self.trigger_mode
         self.dut['tlu']['TRIGGER_COUNTER'] = 0
         self.dut['cmd']['EN_EXT_TRIGGER'] = True
-        self.scan_timeout_timer = Timer(self.scan_timeout, self.stop, kwargs={'msg': 'Scan timeout was reached'})
+
+        def timeout():
+            try:
+                self.progressbar.finish()
+            except AttributeError:
+                pass
+            self.stop(msg='Scan timeout was reached')
+
+        self.scan_timeout_timer = Timer(self.scan_timeout, self.timeout)
         self.scan_timeout_timer.start()
-        self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=self.max_triggers, poll=10).start()
 
     def stop_readout(self):
         self.scan_timeout_timer.cancel()
-        self.progressbar.finish()
         self.dut['tdc_rx2']['ENABLE'] = False
         self.dut['cmd']['EN_EXT_TRIGGER'] = False
         self.dut['tlu']['TRIGGER_MODE'] = 0
-        self.data_readout.stop()
+        self.fifo_readout.stop()
 
 
 if __name__ == "__main__":
