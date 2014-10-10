@@ -14,7 +14,10 @@ class RegisterTest(Fei4RunBase):
     Note
     ----
     Number of register errors is some arbitrary number.
-    FEI4A has timing issues when reading pixel registers. The data from pixel registers is corrupted. It is a known bug of the FEI4A. Lowering the digital voltage (VDDD) to 1.0V can improve results.
+
+    FEI4A specific features:
+    Register at address 41 will always fail (EOCHLskipped).
+    FEI4A has timing issues when reading pixel registers. The data from pixel registers is corrupted. It is a known bug of the FEI4A. Lowering the digital voltage (VDDD) to 1.0V may improve the result.
     '''
     _scan_id = "register_test"
     _default_scan_configuration = {
