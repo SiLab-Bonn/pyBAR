@@ -138,7 +138,6 @@ class NoiseOccupancyScan(Fei4RunBase):
         self.fifo_readout.start(reset_sram_fifo=False, clear_buffer=True, callback=self.handle_data, errback=self.handle_err, no_data_timeout=self.no_data_timeout)
 
     def stop_readout(self):
-        self.progressbar.finish()
         self.fifo_readout.stop()
 
 
