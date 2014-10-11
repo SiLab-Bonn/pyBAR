@@ -80,12 +80,12 @@ class FifoReadout(object):
         return result / float(self._moving_average_time_period)
 
     def start(self, callback=None, errback=None, reset_rx=False, reset_sram_fifo=False, clear_buffer=False, no_data_timeout=None):
-        logging.info('Starting data readout...')
-        self.callback = callback
-        self.errback = errback
         if self._is_running:
             raise RuntimeError('Readout already running: use stop() before start()')
         self._is_running = True
+        logging.info('Starting FIFO readout...')
+        self.callback = callback
+        self.errback = errback
         if reset_rx:
             self.reset_rx()
         if reset_sram_fifo:
@@ -120,7 +120,7 @@ class FifoReadout(object):
             self.readout_thread.join(timeout=timeout)
             if self.readout_thread.is_alive():
                 if timeout != 0.0:
-                    raise StopTimeout('Reached data timeout after %0.1f second(s). Forcing to stop readout.' % timeout)
+                    raise StopTimeout('Reached timeout after %0.1f second(s). Forcing to stop readout.' % timeout)
                 else:
                     raise StopTimeout('Forcing to stop readout.')
         except StopTimeout:
@@ -137,7 +137,7 @@ class FifoReadout(object):
             self.worker_thread.join()
         self.callback = None
         self.errback = None
-        logging.info('Stopped data readout')
+        logging.info('Stopped FIFO readout')
 
     def print_readout_status(self):
         sync_status = self.get_rx_sync_status()
