@@ -4,6 +4,9 @@
 from setuptools import setup
 from setuptools import find_packages
 
+# Building source distribution:
+# python setup.py sdist
+
 f = open('VERSION', 'r')
 version = f.readline().strip()
 f.close()
