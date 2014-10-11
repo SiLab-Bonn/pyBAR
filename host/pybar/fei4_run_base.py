@@ -304,12 +304,11 @@ class Fei4RunBase(RunBase):
         self.start_readout(**kwargs)
         try:
             yield
+            self.stop_readout()
         finally:
-            try:
-                self.stop_readout()
-            finally:
-                if self.fifo_readout.is_running:
-                    self.fifo_readout.stop(timeout=0.0)
+            # in case something fails, call this on last resort
+            if self.fifo_readout.is_running:
+                self.fifo_readout.stop(timeout=0.0)
 
     def start_readout(self, **kwargs):
         if kwargs:
