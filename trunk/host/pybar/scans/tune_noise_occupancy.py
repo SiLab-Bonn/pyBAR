@@ -8,7 +8,7 @@ from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.fei4.register_utils import make_box_pixel_mask_from_col_row, invert_pixel_mask
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.run_manager import RunManager
-from pybar.analysis.plotting.plotting import plot_occupancy, plot_fancy_occupancy, make_occupancy_hist
+from pybar.analysis.plotting.plotting import plot_occupancy, plot_fancy_occupancy
 
 
 class NoiseOccupancyScan(Fei4RunBase):
