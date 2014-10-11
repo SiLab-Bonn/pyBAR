@@ -12,6 +12,7 @@ import copy
 import struct
 import tables as tb
 import datetime
+from contextlib import contextmanager
 
 from pybar.analysis.RawDataConverter.data_struct import NameValue
 from pybar.utils.utils import string_is_binary, flatten_iterable, iterable, str2bool
@@ -1251,6 +1252,14 @@ class FEI4Register(object):
         # print bv
         # print bv.length()
         return bv1 + bv0
+
+    @contextmanager
+    def restored(self, name=None):
+        self.create_restore_point(name)
+        try:
+            yield
+        finally:
+            self.restore()
 
     def create_restore_point(self, name=None):
         '''Creating a configuration restore point.
