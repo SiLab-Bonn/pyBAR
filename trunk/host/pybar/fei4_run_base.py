@@ -216,17 +216,16 @@ class Fei4RunBase(RunBase):
             self.register_utils.reset_event_counter()
             self.register_utils.reset_service_records()
             self.register_utils.configure_all()
-            self.register.create_restore_point(name=self.run_number)
-            self.configure()
-            self.register.save_configuration_to_hdf5(self.output_filename)
-            self.fifo_readout.reset_rx()
-            self.fifo_readout.reset_sram_fifo()
-            self.fifo_readout.print_readout_status()
-            logging.info('Found scan parameter(s): %s' % (', '.join(['%s:%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None'))
-            self.stop_run.clear()
-            with open_raw_data_file(filename=self.output_filename, title=self.scan_id, scan_parameters=self.scan_parameters._asdict()) as self.raw_data_file:
-                self.scan()
-            self.fifo_readout.print_readout_status()
+            with self.register.restored(name=self.run_number):
+                self.configure()
+                self.register.save_configuration_to_hdf5(self.output_filename)
+                self.fifo_readout.reset_rx()
+                self.fifo_readout.reset_sram_fifo()
+                self.fifo_readout.print_readout_status()
+                logging.info('Found scan parameter(s): %s' % (', '.join(['%s:%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None'))
+                self.stop_run.clear()
+                with open_raw_data_file(filename=self.output_filename, title=self.scan_id, scan_parameters=self.scan_parameters._asdict()) as self.raw_data_file:
+                    self.scan()
         except Exception:
             self.handle_err(sys.exc_info())
         else:
@@ -237,20 +236,15 @@ class Fei4RunBase(RunBase):
             else:
                 self.register.save_configuration(self.output_filename)
         finally:
-            try:
-                if self.fifo_readout.is_running:
-                    self.fifo_readout.stop(timeout=0.0)
-            except AttributeError:
-                pass
-            try:
-                self.register.restore(name=self.run_number)
-            except Exception:
-                pass
             self.raw_data_file = None
             try:
-                self.dut['USB'].close()  # free USB resources
-            except (TypeError, AttributeError):
+                self.fifo_readout.print_readout_status()
+            except Exception:
                 pass
+            try:
+                self.dut['USB'].close()  # free USB resources
+            except Exception:
+                logging.error('Cannot close USB device')
         if not self.err_queue.empty():
             exc = self.err_queue.get()
             if isinstance(exc[1], (RxSyncError, EightbTenbError, FifoError, NoDataTimeout, StopTimeout)):
@@ -308,8 +302,14 @@ class Fei4RunBase(RunBase):
     @contextmanager
     def readout(self, **kwargs):
         self.start_readout(**kwargs)
-        yield
-        self.stop_readout()
+        try:
+            yield
+        finally:
+            try:
+                self.stop_readout()
+            finally:
+                if self.fifo_readout.is_running:
+                    self.fifo_readout.stop(timeout=0.0)
 
     def start_readout(self, **kwargs):
         if kwargs:
