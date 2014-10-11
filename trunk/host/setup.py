@@ -6,6 +6,7 @@ from setuptools import find_packages
 
 # Building source distribution:
 # python setup.py sdist
+# The generated source file is needed for installing by a tool like pip.
 
 f = open('VERSION', 'r')
 version = f.readline().strip()
