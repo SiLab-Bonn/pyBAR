@@ -269,6 +269,11 @@ class RunManager(object):
             Filename of primlist.
         skip_remaining : bool
             If True, skip remaining runs, if a run does not exit with status FINISHED.
+
+        Note
+        ----
+        Primlist is a text file of the following format (comment line by adding '#'):
+        <module name (containing class) or class (in either case use dot notation)>; <scan parameter>=<value>; <another scan parameter>=<another value>
         '''
         runlist = self.open_primlist(primlist)
         for index, run in enumerate(runlist):
