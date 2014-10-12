@@ -22,3 +22,13 @@ The features of the host software in Python and C++:
 - readout of full FE data including timestamps, storing of the compressed data to HDF5 file
 - ultra fast raw data analysis and validity checking
 - rapid development of new scan algorithms
+
+Build with:
+    python setup.py build_ext
+    
+Install with:
+    For users: python setup.py install
+    For developers: python setup.py develop
+
+Usage:
+    Please check the examples in the examples folder.
