@@ -110,7 +110,8 @@ class FEI4SelfTriggerScan(Fei4RunBase):
             self.stop(msg='Scan timeout was reached')
 
         self.scan_timeout_timer = Timer(self.scan_timeout, self.timeout)
-        self.scan_timeout_timer.start()
+        if self.scan_timeout:
+            self.scan_timeout_timer.start()
 
     def stop_readout(self):
         self.set_self_trigger(False)
