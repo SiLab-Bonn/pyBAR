@@ -1,5 +1,4 @@
 # distutils: language = c++
-# distutils: sources = Basis.cpp Interpret.cpp
 # cython: boundscheck=False
 # cython: wraparound=False
 import numpy as np
