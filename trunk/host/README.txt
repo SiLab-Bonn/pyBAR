@@ -23,12 +23,15 @@ The features of the host software in Python and C++:
 - ultra fast raw data analysis and validity checking
 - rapid development of new scan algorithms
 
-Build with:
+Installation:
+1. Build with:
     python setup.py build_ext
     
-Install with:
-    For users: python setup.py install
-    For developers: python setup.py develop
+2. Install with:
+For users: 
+    python setup.py install
+For developers (preferred):
+    python setup.py develop
 
 Usage:
-    Please check the examples in the examples folder.
+Please check the examples in the examples folder.
