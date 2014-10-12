@@ -10,7 +10,7 @@ from pybar.scans.scan_fei4_self_trigger import FEI4SelfTriggerScan
 
 
 class EudaqFEI4SelfTriggerScan(FEI4SelfTriggerScan):
-    _scan_id = "eudaq_ext_trigger_scan"
+    _scan_id = "eudaq_fei4_self_trigger_scan"
     _default_scan_configuration = FEI4SelfTriggerScan._default_scan_configuration
     _default_scan_configuration.update({
         "producer": "pyBAR",
