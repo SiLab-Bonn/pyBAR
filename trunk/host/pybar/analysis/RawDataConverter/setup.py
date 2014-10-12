@@ -26,6 +26,13 @@ class build_ext_opt(build_ext):
         build_ext.build_extensions(self)
 
 
+# extensions = [
+#     Extension("*", ["*.pyx"],
+#         include_dirs = [],
+#         libraries = [],
+#         library_dirs = [])
+# ]
+
 extensions = [Extension("data_interpreter", ["data_interpreter.pyx"]),
               Extension("data_histograming", ["data_histograming.pyx"]),
               Extension("data_clusterizer", ["data_clusterizer.pyx"]),
@@ -42,6 +49,8 @@ setup(name='RawDataInterpreter',
       ext_modules=cythonize(extensions),
       include_dirs=[np.get_include()],
       cmdclass = {'build_ext': build_ext_opt},
+      extra_compile_args=[],
+      define_macros=[],
       #language="c++",
       )
 
