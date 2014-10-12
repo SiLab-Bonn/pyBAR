@@ -73,8 +73,6 @@ class FEI4SelfTriggerScan(Fei4RunBase):
                     except ValueError:
                         pass
 
-        logging.info('Total amount of triggers collected: %d', self.dut['tlu']['TRIGGER_COUNTER'])
-
     def analyze(self):
         with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
             analyze_raw_data.create_cluster_size_hist = True  # can be set to false to omit cluster hit creation, can save some time, standard setting is false
