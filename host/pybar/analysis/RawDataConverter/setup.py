@@ -3,15 +3,23 @@ from distutils.extension import Extension
 from distutils.command.build_ext import build_ext
 from Cython.Build import cythonize
 import numpy as np
-
 import os
+
+
 path = os.getcwd()  # current path
+
 
 copt = {'msvc': ['-I' + os.path.join(path, 'external'), '/EHsc']}  # set additional include path and EHsc exception handling for VS
 lopt = {}
 
 
 class build_ext_opt(build_ext):
+    def initialize_options(self):
+        build_ext.initialize_options(self)
+#         self.force = 1  # does not work
+        self.inplace = 1
+        self.compiler = 'msvc' if os.name == 'nt' else None  # in Anaconda the libpython package includes the MinGW import libraries and a file (Lib/distutils/distutils.cfg) which sets the default compiler to mingw32. Alternatively try conda remove libpython.
+
     def build_extensions(self):
         c = self.compiler.compiler_type
         if c in copt:
@@ -20,24 +28,16 @@ class build_ext_opt(build_ext):
         if c in lopt:
             for e in self.extensions:
                 e.extra_link_args = lopt[c]
-        # new-style class
-        #super(build_ext_opt, self).build_extensions()
-        # old-style class
         build_ext.build_extensions(self)
 
 
-# extensions = [
-#     Extension("*", ["*.pyx"],
-#         include_dirs = [],
-#         libraries = [],
-#         library_dirs = [])
-# ]
+extensions = [
+    Extension("data_interpreter", ["data_interpreter.pyx"]),
+    Extension("data_histograming", ["data_histograming.pyx"]),
+    Extension("data_clusterizer", ["data_clusterizer.pyx"]),
+    Extension("analysis_functions", ["analysis_functions.pyx"])
+]
 
-extensions = [Extension("data_interpreter", ["data_interpreter.pyx"]),
-              Extension("data_histograming", ["data_histograming.pyx"]),
-              Extension("data_clusterizer", ["data_clusterizer.pyx"]),
-              Extension("analysis_functions", ["analysis_functions.pyx"])
-              ]
 
 setup(name='RawDataInterpreter',
       version='1.0',
@@ -48,27 +48,25 @@ setup(name='RawDataInterpreter',
       url='https://silab-redmine.physik.uni-bonn.de/projects/pybar',
       ext_modules=cythonize(extensions),
       include_dirs=[np.get_include()],
-      cmdclass = {'build_ext': build_ext_opt},
-      extra_compile_args=[],
-      define_macros=[],
-      #language="c++",
+      cmdclass={'build_ext': build_ext_opt},
+#       language="c++",
       )
 
-#check compilation/installation/data in memory alignement
-hits = np.empty((1,), dtype=
-        [('eventNumber', np.uint64),
-         ('triggerNumber', np.uint32),
-         ('relativeBCID', np.uint8),
-         ('LVLID', np.uint16),
-         ('column', np.uint8),
-         ('row', np.uint16),
-         ('tot', np.uint8),
-         ('BCID', np.uint16),
-         ('TDC', np.uint16),
-         ('triggerStatus', np.uint8),
-         ('serviceRecord', np.uint32),
-         ('eventStatus', np.uint16)
-         ])
+# check compilation/installation/data in memory alignment
+hits = np.empty((1,), dtype=[
+    ('eventNumber', np.uint64),
+    ('triggerNumber', np.uint32),
+    ('relativeBCID', np.uint8),
+    ('LVLID', np.uint16),
+    ('column', np.uint8),
+    ('row', np.uint16),
+    ('tot', np.uint8),
+    ('BCID', np.uint16),
+    ('TDC', np.uint16),
+    ('triggerStatus', np.uint8),
+    ('serviceRecord', np.uint32),
+    ('eventStatus', np.uint16)
+])
 
 try:
     from data_interpreter import PyDataInterpreter
