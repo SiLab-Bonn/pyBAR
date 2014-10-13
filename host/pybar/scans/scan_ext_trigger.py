@@ -83,7 +83,8 @@ class ExtTriggerScan(Fei4RunBase):
                     except ValueError:
                         pass
                 if self.max_triggers is not None and triggers >= self.max_triggers:
-                    self.progressbar.finish()
+                    if got_data:
+                        self.progressbar.finish()
                     self.stop(msg='Trigger limit was reached: %i' % self.max_triggers)
 #                 print self.fifo_readout.data_words_per_second()
 #                 if (current_trigger_number % show_trigger_message_at < last_trigger_number % show_trigger_message_at):

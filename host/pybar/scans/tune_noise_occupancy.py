@@ -21,7 +21,7 @@ class NoiseOccupancyScan(Fei4RunBase):
     _scan_id = "noise_occupancy_tuning"
     _default_scan_configuration = {
         "occupancy_limit": 10 ** (-5),  # 0 will mask any pixel with occupancy greater than zero
-        "triggers": 10000000,  # total number of triggers which will be sent to the FE. From 1 to 4294967295 (32-bit unsigned int).
+        "n_triggers": 10000000,  # total number of triggers which will be sent to the FE. From 1 to 4294967295 (32-bit unsigned int).
         "trig_count": 1,  # FE global register Trig_Count
         "disable_for_mask": ['Enable'],  # list of masks for which noisy pixels will be disabled
         "enable_for_mask": ['Imon'],  # list of masks for which noisy pixels will be disabled
@@ -34,6 +34,13 @@ class NoiseOccupancyScan(Fei4RunBase):
     }
 
     def configure(self):
+        if self.trig_count == 0:
+            self.consecutive_lvl1 = (2 ** self.register.get_global_register_objects(name=['Trig_Count'])[0].bitlength)
+        else:
+            self.consecutive_lvl1 = self.trig_count
+        if self.occupancy_limit * self.n_triggers * self.consecutive_lvl1 < 1.0:
+            logging.warning('Number of triggers too low for given occupancy limit. Any noise hit will lead to a masked pixel.')
+
         commands = []
         commands.extend(self.register.get_commands("confmode"))
         # Enable
@@ -67,17 +74,18 @@ class NoiseOccupancyScan(Fei4RunBase):
         # preload command
         command_delay = 500  # <100kHz
         lvl1_command = self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", length=command_delay)[0]
-        self.total_scan_time = int(lvl1_command.length() * 25 * (10 ** -9) * self.triggers)
+        self.total_scan_time = int(lvl1_command.length() * 25 * (10 ** -9) * self.n_triggers)
         logging.info('Estimated scan time: %ds' % self.total_scan_time)
 
         with self.readout():
             got_data = False
             start = time()
-            self.register_utils.send_command(lvl1_command, repeat=self.triggers, wait_for_finish=False, set_length=True, clear_memory=False)
+            self.register_utils.send_command(lvl1_command, repeat=self.n_triggers, wait_for_finish=False, set_length=True, clear_memory=False)
             while not self.stop_run.wait(1.0):
                 if self.register_utils.is_ready:
-                    self.progressbar.finish()
-                    self.stop('Finished sending %d triggers' % self.triggers)
+                    if got_data:
+                        self.progressbar.finish()
+                    self.stop('Finished sending %d triggers' % self.n_triggers)
                 if not got_data:
                     if self.fifo_readout.data_words_per_second() > 0:
                         got_data = True
@@ -105,7 +113,7 @@ class NoiseOccupancyScan(Fei4RunBase):
                 consecutive_lvl1 = (2 ** self.register.get_global_register_objects(name=['Trig_Count'])[0].bitlength)
             else:
                 consecutive_lvl1 = self.trig_count
-            self.occ_mask[occ_hist > self.occupancy_limit * self.triggers * consecutive_lvl1] = 1
+            self.occ_mask[occ_hist > self.occupancy_limit * self.n_triggers * consecutive_lvl1] = 1
             # make inverse
             self.inv_occ_mask = invert_pixel_mask(self.occ_mask)
             if self.overwrite_mask:
@@ -136,9 +144,6 @@ class NoiseOccupancyScan(Fei4RunBase):
         if kwargs:
             self.set_scan_parameters(**kwargs)
         self.fifo_readout.start(reset_sram_fifo=False, clear_buffer=True, callback=self.handle_data, errback=self.handle_err, no_data_timeout=self.no_data_timeout)
-
-    def stop_readout(self):
-        self.fifo_readout.stop()
 
 
 if __name__ == "__main__":
