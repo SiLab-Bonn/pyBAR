@@ -15,7 +15,7 @@ if __name__ == "__main__":
     #     ...
     #
     # The latest FE configuration (highest run number with status 'FINISHED') will be taken from module data folder if no FE configuration is given.
-    # Instead of a path to FE configuration file, a run number can be entered to load a specific FE configuration:
+    # Instead of a path to FE configuration file, a run number (e.g. 5) can be entered to load a specific FE configuration:
     #
     # (from configuration.yaml)
     # fe_configuration:
