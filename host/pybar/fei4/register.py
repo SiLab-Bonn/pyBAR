@@ -384,18 +384,18 @@ class FEI4Register(object):
                 dac = self.get_pixel_register_objects(name="TDAC")[0]
                 dac_config_path = os.path.join(configuration_file_path, "_".join([dac.name, filename]) + ".dat")
                 self.write_pixel_dac_config(dac_config_path, dac.value)
-                pixel_reg_dict[dac.full_name] = dac_config_path
+                pixel_reg_dict[dac.full_name] = os.path.relpath(dac_config_path, os.path.dirname(self.configuration_file))
             elif path == "fdacs":
                 dac = self.get_pixel_register_objects(name="FDAC")[0]
                 dac_config_path = os.path.join(configuration_file_path, "_".join([dac.name, filename]) + ".dat")
                 self.write_pixel_dac_config(dac_config_path, dac.value)
-                pixel_reg_dict[dac.full_name] = dac_config_path
+                pixel_reg_dict[dac.full_name] = os.path.relpath(dac_config_path, os.path.dirname(self.configuration_file))
             elif path == "masks":
                 masks = self.get_pixel_register_objects(bitlength=1)
                 for mask in masks:
                     dac_config_path = os.path.join(configuration_file_path, "_".join([mask.name, filename]) + ".dat")
                     self.write_pixel_mask_config(dac_config_path, mask.value)
-                    pixel_reg_dict[mask.full_name] = dac_config_path
+                    pixel_reg_dict[mask.full_name] = os.path.relpath(dac_config_path, os.path.dirname(self.configuration_file))
 
         with open(self.configuration_file, 'a') as f:
             lines = []
@@ -780,9 +780,9 @@ class FEI4Register(object):
                     inverted_mask[reg_value >= 1] = 0
                     reg.value = inverted_mask
                 else:
-                    reg.value = self.parse_pixel_mask_config(value)
+                    reg.value = self.parse_pixel_mask_config(os.path.join(os.path.dirname(self.configuration_file), value))
             else:
-                reg.value = self.parse_pixel_dac_config(value)
+                reg.value = self.parse_pixel_dac_config(os.path.join(os.path.dirname(self.configuration_file), value))
         finally:
             if (reg.value >= 2 ** reg.bitlength).any() or (reg.value < 0).any():
                 reg.value = old_value.copy()
