@@ -23,6 +23,7 @@ class NoiseOccupancyScan(Fei4RunBase):
         "occupancy_limit": 10 ** (-5),  # 0 will mask any pixel with occupancy greater than zero
         "n_triggers": 10000000,  # total number of triggers which will be sent to the FE. From 1 to 4294967295 (32-bit unsigned int).
         "trig_count": 1,  # FE global register Trig_Count
+        "trigger_rate_limit": 500,  # artificially limiting the trigger rate, in BCs (25ns)
         "disable_for_mask": ['Enable'],  # list of masks for which noisy pixels will be disabled
         "enable_for_mask": ['Imon'],  # list of masks for which noisy pixels will be disabled
         "col_span": [1, 80],  # defining active column interval, 2-tuple, from 1 to 80
@@ -72,8 +73,7 @@ class NoiseOccupancyScan(Fei4RunBase):
 
     def scan(self):
         # preload command
-        command_delay = 500  # <100kHz
-        lvl1_command = self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", length=command_delay)[0]
+        lvl1_command = self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", length=self.trigger_rate_limit)[0]
         self.total_scan_time = int(lvl1_command.length() * 25 * (10 ** -9) * self.n_triggers)
         logging.info('Estimated scan time: %ds' % self.total_scan_time)
 

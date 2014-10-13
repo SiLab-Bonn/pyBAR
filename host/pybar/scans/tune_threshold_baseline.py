@@ -23,6 +23,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
         "disabled_pixels_limit": 0.01,  # limit of disabled pixels, fraction of all pixels
         "use_enable_mask": False,  # if True, enable mask from config file anded with mask (from col_span and row_span), if False use mask only for enable mask
         "n_triggers": 100000,  # total number of trigger sent to FE
+        "trigger_rate_limit": 500,  # artificially limiting the trigger rate, in BCs (25ns)
         "trig_count": 1,  # FE global register Trig_Count
         "col_span": [1, 80],  # column range (from minimum to maximum value). From 1 to 80.
         "row_span": [1, 336],  # row range (from minimum to maximum value). From 1 to 336.
@@ -75,8 +76,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
         if self.scan_parameters.Step:
             steps = self.scan_parameters.Step
 
-        command_delay = 500  # <100kHz
-        lvl1_command = self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", length=command_delay)[0]
+        lvl1_command = self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", length=self.trigger_rate_limit)[0]
         self.total_scan_time = int(lvl1_command.length() * 25 * (10 ** -9) * self.n_triggers)
 
         disabled_pixels_limit_cnt = int(self.disabled_pixels_limit * 336 * 80)
