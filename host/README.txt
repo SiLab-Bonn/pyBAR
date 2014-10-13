@@ -24,14 +24,19 @@ The features of the host software in Python and C++:
 - rapid development of new scan algorithms
 
 Installation:
+------------
 1. Build with:
-    python setup.py build_ext
+python setup.py build_ext
     
 2. Install with:
 For users: 
-    python setup.py install
+python setup.py install
 For developers (preferred):
-    python setup.py develop
+python setup.py develop
+
+3. Testing built:
+Run test from tests folder.
 
 Usage:
+-----
 Please check the examples in the examples folder.
