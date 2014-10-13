@@ -11,7 +11,7 @@
 #
 
 USB:
-    bit_file       : "config/fpga/top_gpac.bit"
+    bit_file       : "top_gpac.bit"
     board_id       : 
     avoid_download : False
 
