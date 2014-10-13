@@ -24,5 +24,5 @@ if __name__ == "__main__":
     #
     # It is recommended to make copy of configuration.yaml for each module / specific hardware configuration.
     #
-    # Feel free to modify / change the code :-)
+    # Feel free to modify / change / update the code :-)
     #
