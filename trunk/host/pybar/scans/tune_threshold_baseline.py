@@ -1,117 +1,91 @@
-import time
 import logging
+from time import time
 import numpy as np
-from math import ceil
-from os.path import splitext
+import progressbar
 
-from analysis.plotting.plotting import plot_occupancy, plot_fancy_occupancy, plotThreeWay
-from daq.readout import get_col_row_array_from_data_record_array, convert_data_array, data_array_from_data_dict_iterable, is_data_record, is_data_from_channel
-
-from scan.scan import ScanBase
-from daq.readout import open_raw_data_file
-from fei4.register_utils import make_box_pixel_mask_from_col_row, invert_pixel_mask
-
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
+from pybar.analysis.analyze_raw_data import AnalyzeRawData
+from pybar.fei4.register_utils import make_box_pixel_mask_from_col_row, invert_pixel_mask
+from pybar.fei4_run_base import Fei4RunBase
+from pybar.run_manager import RunManager
+from pybar.analysis.plotting.plotting import plot_occupancy, plot_fancy_occupancy, plotThreeWay
+from pybar.daq.readout_utils import get_col_row_array_from_data_record_array, convert_data_array, data_array_from_data_iterable, is_data_record
 
 
-local_configuration = {
-    "cfg_name": '',  # the name of the new config with the tuning
-    "occupancy_limit": 0,  # 0 will mask any pixel with occupancy greater than zero
-    "disabled_pixels_limit": 0.01,  # in percent
-    "repeat_tuning": True,
-    "limit_repeat_tuning_steps": 5,
-    "use_enable_mask": False,
-    "triggers": 100000,
-    "trig_count": 1,
-    "col_span": [1, 80],
-    "row_span": [1, 336],
-    "timeout_no_data": 10
-}
+class ThresholdBaselineTuning(Fei4RunBase):
+    '''Threshold Baseline Tuning
 
-
-class ThresholdBaselineTuning(ScanBase):
-    scan_id = "threshold_basline_tuning"
+    Tuning the FEI4 to the lowest possible threshold (GDAC and TDAC). Feedback current will not be tuned.
+    '''
+    _scan_id = "threshold_basline_tuning"
+    _default_scan_configuration = {
+        "occupancy_limit": 0,  # occupancy limit, when reached the TDAC will be decreased (increasing threshold). 0 will mask any pixel with occupancy greater than zero
+        "scan_parameters": {'Vthin_AltFine': (120, None), 'Step': 5},  # the Vthin_AltFine range, number of steps (repetition at constant Vthin_AltFine)
+        "disabled_pixels_limit": 0.01,  # limit of disabled pixels, fraction of all pixels
+        "use_enable_mask": False,  # if True, enable mask from config file anded with mask (from col_span and row_span), if False use mask only for enable mask
+        "n_triggers": 100000,  # total number of trigger sent to FE
+        "trig_count": 1,  # FE global register Trig_Count
+        "col_span": [1, 80],  # column range (from minimum to maximum value). From 1 to 80.
+        "row_span": [1, 336],  # row range (from minimum to maximum value). From 1 to 336.
+    }
 
     def configure(self):
         if self.trig_count == 0:
             self.consecutive_lvl1 = (2 ** self.register.get_global_register_objects(name=['Trig_Count'])[0].bitlength)
         else:
             self.consecutive_lvl1 = self.trig_count
-        if self.occupancy_limit * self.triggers * self.consecutive_lvl1 < 1.0:
+        if self.occupancy_limit * self.n_triggers * self.consecutive_lvl1 < 1.0:
             logging.warning('Number of triggers too low for given occupancy limit. Any noise hit will lead to a masked pixel.')
 
         commands = []
         commands.extend(self.register.get_commands("confmode"))
         # TDAC
         tdac_max = 2 ** self.register.get_pixel_register_objects(name=['TDAC'])[0].bitlength - 1
-        pixel_reg = "TDAC"
-        self.register.set_pixel_register_value(pixel_reg, tdac_max)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
+        self.register.set_pixel_register_value("TDAC", tdac_max)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name="TDAC"))
         mask = make_box_pixel_mask_from_col_row(column=self.col_span, row=self.row_span)
-        pixel_reg = "Enable"
+        # Enable
         if self.use_enable_mask:
-            self.register.set_pixel_register_value(pixel_reg, np.logical_and(mask, self.register.get_pixel_register_value(pixel_reg)))
+            self.register.set_pixel_register_value("Enable", np.logical_and(mask, self.register.get_pixel_register_value("Enable")))
         else:
-            self.register.set_pixel_register_value(pixel_reg, mask)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
-        # generate mask for Imon mask
-        pixel_reg = "Imon"
-        self.register.set_pixel_register_value(pixel_reg, 1)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
-        # disable C_inj mask
-        pixel_reg = "C_High"
-        self.register.set_pixel_register_value(pixel_reg, 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
-        pixel_reg = "C_Low"
-        self.register.set_pixel_register_value(pixel_reg, 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
-#         self.register.set_global_register_value("Trig_Lat", 232)  # set trigger latency
+            self.register.set_pixel_register_value("Enable", mask)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name="Enable"))
+        # Imon
+        self.register.set_pixel_register_value('Imon', 1)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='Imon'))
+        # C_High
+        self.register.set_pixel_register_value('C_High', 0)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='C_High'))
+        # C_Low
+        self.register.set_pixel_register_value('C_Low', 0)
+        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='C_Low'))
+        # Registers
+#         self.register.set_global_register_value("Trig_Lat", self.trigger_latency)  # set trigger latency
         self.register.set_global_register_value("Trig_Count", self.trig_count)  # set number of consecutive triggers
         commands.extend(self.register.get_commands("wrregister", name=["Trig_Count"]))
-        # setting FE into runmode
         commands.extend(self.register.get_commands("runmode"))
         self.register_utils.send_commands(commands)
 
     def scan(self):
-        '''Masking pixels with occupancy above certain limit.
+        scan_parameter_range = [self.register.get_global_register_value("Vthin_AltFine"), 0]
+        if self.scan_parameters.Vthin_AltFine[0]:
+            scan_parameter_range[0] = self.scan_parameters.Vthin_AltFine[0]
+        if self.scan_parameters.Vthin_AltFine[1]:
+            scan_parameter_range[1] = self.scan_parameters.Vthin_AltFine[1]
+        steps = 1
+        if self.scan_parameters.Step:
+            steps = self.scan_parameters.Step
 
-        Parameters
-        ----------
-        cfg_name : string
-            File name of the configuration file. If None or not given, use default file name.
-        occupancy_limit : float
-            Occupancy limit which for each pixel. Any pixel above the limit the TDAC will be decreased (the lower TDAC value, the higher the threshold).
-        disabled_pixels_limit : float
-            Limit percentage of pixels, which will be disabled during tuning. Pixels will be disables when noisy and TDAC is 0 (highest possible threshold). Abort condition for baseline tuning and repeat tuning steps.
-        repeat_tuning : bool
-            Repeat TDAC tuning each global threshold step until no noisy pixels occur. Usually not needed, default is disabled.
-        limit_repeat_tuning_steps : int
-            Limit the number of TDAC tuning steps at certain threshold. None is no limit.
-        use_enable_mask : bool
-            Use enable mask for masking pixels.
-        triggers : int
-            Total number of triggers sent to FE. From 1 to 4294967295 (32-bit unsigned int).
-        trig_count : int
-            FE global register Trig_Count.
-        col_span : list, tuple
-            Column range (from minimum to maximum value). From 1 to 80.
-        row_span : list, tuple
-            Row range (from minimum to maximum value). From 1 to 336.
-        timeout_no_data : int
-            In seconds; if no data, stop scan after given time.
-        scan_timeout : int
-            In seconds; stop scan after given time.
+        command_delay = 500  # <100kHz
+        lvl1_command = self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", length=command_delay)[0]
+        self.total_scan_time = int(lvl1_command.length() * 25 * (10 ** -9) * self.n_triggers)
 
-        Note
-        ----
-        The total number of trigger is triggers * consecutive_lvl1.
-        Please note that a high trigger rate leads to an effective lower threshold.
-        '''
         disabled_pixels_limit_cnt = int(self.disabled_pixels_limit * 336 * 80)
         preselected_pixels = invert_pixel_mask(self.register.get_pixel_register_value('Enable')).sum()
         disabled_pixels = 0
 
-        for reg_val in range(self.register.get_global_register_value("Vthin_AltFine"), -1, -1):
+        for reg_val in range(scan_parameter_range[0], scan_parameter_range[1] - 1, -1):
+            if self.stop_run.is_set():
+                break
             self.register.create_restore_point(name=str(reg_val))
             logging.info('Scanning Vthin_AltFine %d' % reg_val)
             commands = []
@@ -123,101 +97,76 @@ class ThresholdBaselineTuning(ScanBase):
             self.register_utils.send_commands(commands)
             step = 0
             while True:
-                self.stop_thread_event.clear()
+                if self.stop_run.is_set():
+                    break
                 step += 1
-                self.col_arr = np.array([], dtype=np.dtype('>u1'))
-                self.row_arr = np.array([], dtype=np.dtype('>u1'))
+                logging.info('Step %d/%d at Vthin_AltFine %d' % (step, steps, reg_val))
+                logging.info('Estimated scan time: %ds' % self.total_scan_time)
 
-                with open_raw_data_file(filename=self.scan_data_filename, scan_parameters=['Vthin_AltFine', 'Step'], title=self.scan_id) as raw_data_file:
-                    self.readout.start()
+                with self.readout(Vthin_AltFine=reg_val, Step=step):
+                    got_data = False
+                    start = time()
+                    self.register_utils.send_command(lvl1_command, repeat=self.n_triggers, wait_for_finish=False, set_length=True, clear_memory=False)
+                    while not self.stop_run.wait(0.1):
+                        if self.register_utils.is_ready:
+                            if got_data:
+                                self.progressbar.finish()
+                            logging.info('Finished sending %d triggers' % self.n_triggers)
+                            break
+                        if not got_data:
+                            if self.fifo_readout.data_words_per_second() > 0:
+                                got_data = True
+                                logging.info('Taking data...')
+                                self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.Timer()], maxval=self.total_scan_time, poll=10).start()
+                        else:
+                            try:
+                                self.progressbar.update(time() - start)
+                            except ValueError:
+                                pass
 
-                    # preload command
-                    command_delay = 500  # <100kHz
-                    lvl1_command = self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", length=command_delay)[0]
-                    commnd_lenght = lvl1_command.length()
-                    if self.repeat_tuning:
-                        logging.info('Step %d at Vthin_AltFine %d' % (step, reg_val))
-                    logging.info('Estimated scan time: %ds' % int(commnd_lenght * 25 * (10 ** -9) * self.triggers))
-                    logging.info('Please stand by...')
-                    self.register_utils.send_command(lvl1_command, repeat=self.triggers, wait_for_finish=False, set_length=True, clear_memory=False)
-
-                    wait_for_first_data = False
-                    last_iteration = time.time()
-                    saw_no_data_at_time = last_iteration
-                    saw_data_at_time = last_iteration
-                    no_data_at_time = last_iteration
-                    while not self.stop_thread_event.wait(self.readout.readout_interval):
-                        last_iteration = time.time()
-                        try:
-                            data = (self.readout.data.popleft(), )
-                            raw_data_file.append(data, scan_parameters={'Vthin_AltFine': reg_val, 'Step': step})
-                            col_arr_tmp, row_arr_tmp = convert_data_array(data_array_from_data_dict_iterable(data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)
-                            self.col_arr = np.concatenate((self.col_arr, col_arr_tmp))
-                            self.row_arr = np.concatenate((self.row_arr, row_arr_tmp))
-                        except IndexError:  # no data
-                            no_data_at_time = last_iteration
-                            if self.register_utils.is_ready:
-                                self.stop_thread_event.set()
-                                logging.info('Finished sending %d triggers' % self.triggers)
-                            elif wait_for_first_data is False and saw_no_data_at_time > (saw_data_at_time + self.timeout_no_data):
-                                logging.info('Reached no data timeout. Stopping Scan...')
-                                self.stop_thread_event.set()
-                            elif wait_for_first_data is False:
-                                saw_no_data_at_time = no_data_at_time
-                            elif self.reaout_utils.is_ready:
-                                self.stop_thread_event.set()
-
-                            continue
-
-                        saw_data_at_time = last_iteration
-
-                        if wait_for_first_data is True:
-                            logging.info('Taking data...')
-                            wait_for_first_data = False
-
-                    self.readout.stop()
-
-                    occ_hist, _, _ = np.histogram2d(self.col_arr, self.row_arr, bins=(80, 336), range=[[1, 80], [1, 336]])
-                    occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
-                    # noisy pixels are set to 1
-                    occ_mask[occ_hist > self.occupancy_limit * self.triggers * self.consecutive_lvl1] = 1
+                self.raw_data_file.append(self.fifo_readout.data, scan_parameters=self.scan_parameters._asdict())
+                col_arr, row_arr = convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)
+                occ_hist, _, _ = np.histogram2d(col_arr, row_arr, bins=(80, 336), range=[[1, 80], [1, 336]])
+                occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
+                # noisy pixels are set to 1
+                occ_mask[occ_hist > self.occupancy_limit * self.n_triggers * self.consecutive_lvl1] = 1
 #                     plot_occupancy(occ_hist.T, title='Occupancy', filename=self.scan_data_filename + '_noise_occ_' + str(reg_val) + '_' + str(step) + '.pdf')
 
-                    tdac_reg = self.register.get_pixel_register_value('TDAC')
-                    decrease_pixel_mask = np.logical_and(occ_mask > 0, tdac_reg > 0)
-                    disable_pixel_mask = np.logical_and(occ_mask > 0, tdac_reg == 0)
-                    enable_reg = self.register.get_pixel_register_value('Enable')
-                    enable_mask = np.logical_and(enable_reg, invert_pixel_mask(disable_pixel_mask))
-                    if np.logical_and(occ_mask > 0, enable_reg == 0).sum():
-                        logging.warning('Received data from disabled pixels')
+                tdac_reg = self.register.get_pixel_register_value('TDAC')
+                decrease_pixel_mask = np.logical_and(occ_mask > 0, tdac_reg > 0)
+                disable_pixel_mask = np.logical_and(occ_mask > 0, tdac_reg == 0)
+                enable_reg = self.register.get_pixel_register_value('Enable')
+                enable_mask = np.logical_and(enable_reg, invert_pixel_mask(disable_pixel_mask))
+                if np.logical_and(occ_mask > 0, enable_reg == 0).sum():
+                    logging.warning('Received data from disabled pixels')
 #                     disabled_pixels += disable_pixel_mask.sum()  # can lead to wrong values if the enable reg is corrupted
-                    disabled_pixels = invert_pixel_mask(enable_mask).sum() - preselected_pixels
-                    if disabled_pixels > disabled_pixels_limit_cnt:
-                        logging.info('Limit of disabled pixels reached: %d (limit %d)... stopping scan' % (disabled_pixels, disabled_pixels_limit_cnt))
-                        self.register.restore(name=str(reg_val))
+                disabled_pixels = invert_pixel_mask(enable_mask).sum() - preselected_pixels
+                if disabled_pixels > disabled_pixels_limit_cnt:
+                    logging.info('Limit of disabled pixels reached: %d (limit %d)... stopping scan' % (disabled_pixels, disabled_pixels_limit_cnt))
+                    self.register.restore(name=str(reg_val))
+                    break
+                else:
+                    logging.info('Increasing threshold of %d pixel(s)' % (decrease_pixel_mask.sum(),))
+                    logging.info('Disabling %d pixel(s), total number of disabled pixel(s): %d' % (disable_pixel_mask.sum(), disabled_pixels))
+                    tdac_reg[decrease_pixel_mask] -= 1  # TODO
+                    self.register.set_pixel_register_value('TDAC', tdac_reg)
+                    self.register.set_pixel_register_value('Enable', enable_mask)
+                    commands = []
+                    commands.extend(self.register.get_commands("confmode"))
+                    commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name='TDAC'))
+                    commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name='Enable'))
+                    commands.extend(self.register.get_commands("runmode"))
+                    self.register_utils.send_commands(commands)
+                    if occ_mask.sum() == 0 or step == steps or decrease_pixel_mask.sum() < disabled_pixels_limit_cnt:
+                        self.register.clear_restore_points(name=str(reg_val))
+                        self.last_tdac_distribution = self.register.get_pixel_register_value('TDAC')
+                        self.last_occupancy_hist = occ_hist.copy()
+                        self.last_occupancy_mask = occ_mask.copy()
+                        self.last_reg_val = reg_val
+                        self.last_step = step
                         break
                     else:
-                        logging.info('Increasing threshold of %d pixel(s)' % (decrease_pixel_mask.sum(),))
-                        logging.info('Disabling %d pixel(s), total number of disabled pixel(s): %d' % (disable_pixel_mask.sum(), disabled_pixels))
-                        tdac_reg[decrease_pixel_mask] -= 1  # TODO
-                        self.register.set_pixel_register_value('TDAC', tdac_reg)
-                        self.register.set_pixel_register_value('Enable', enable_mask)
-                        commands = []
-                        commands.extend(self.register.get_commands("confmode"))
-                        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name='TDAC'))
-                        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name='Enable'))
-                        commands.extend(self.register.get_commands("runmode"))
-                        self.register_utils.send_commands(commands)
-                        if not self.repeat_tuning or occ_mask.sum() == 0 or (self.repeat_tuning and self.limit_repeat_tuning_steps and step == self.limit_repeat_tuning_steps) or decrease_pixel_mask.sum() < disabled_pixels_limit_cnt:
-                            self.register.clear_restore_points(name=str(reg_val))
-                            self.last_tdac_distribution = self.register.get_pixel_register_value('TDAC')
-                            self.last_occupancy_hist = occ_hist.copy()
-                            self.last_occupancy_mask = occ_mask.copy()
-                            self.last_reg_val = reg_val
-                            self.last_step = step
-                            break
-                        else:
-                            logging.info('Found noisy pixels... repeat tuning step for Vthin_AltFine %d' % (reg_val,))
+                        logging.info('Found noisy pixels... repeat tuning step for Vthin_AltFine %d' % (reg_val,))
 
             if disabled_pixels > disabled_pixels_limit_cnt:
                 self.last_good_threshold = self.register.get_global_register_value("Vthin_AltFine")
@@ -230,12 +179,8 @@ class ThresholdBaselineTuning(ScanBase):
         self.register.set_pixel_register_value('TDAC', self.last_good_tdac)
         self.register.set_pixel_register_value('Enable', self.last_good_enable_mask)
 
-        from analysis.analyze_raw_data import AnalyzeRawData
-        output_file = self.scan_data_filename + "_interpreted.h5"
-        with AnalyzeRawData(raw_data_file=self.scan_data_filename, analyzed_data_file=output_file, create_pdf=True) as analyze_raw_data:
+        with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
             analyze_raw_data.create_source_scan_hist = True
-#             analyze_raw_data.create_hit_table = True
-#             analyze_raw_data.interpreter.debug_events(0, 0, True)  # events to be printed onto the console for debugging, usually deactivated
             analyze_raw_data.interpreter.set_warning_output(False)
             analyze_raw_data.interpret_word_table()
             analyze_raw_data.interpreter.print_summary()
@@ -249,9 +194,11 @@ class ThresholdBaselineTuning(ScanBase):
             plot_occupancy(self.register.get_pixel_register_value('Enable').T, title='Enable Mask', z_max=1, filename=analyze_raw_data.output_pdf)
             plot_fancy_occupancy(self.register.get_pixel_register_value('Enable').T, filename=analyze_raw_data.output_pdf)
 
+    def start_readout(self, **kwargs):
+        if kwargs:
+            self.set_scan_parameters(**kwargs)
+        self.fifo_readout.start(reset_sram_fifo=True, reset_rx=False, clear_buffer=True, callback=None, errback=None)#self.handle_err)
+
 if __name__ == "__main__":
-    import configuration
-    scan = ThresholdBaselineTuning(**configuration.default_configuration)
-    scan.start(run_configure=True, run_analyze=True, use_thread=True, restore_configuration=True, **local_configuration)
-    scan.stop()
-    scan.save_configuration(scan.cfg_name)
+    join = RunManager('../configuration.yaml').run_run(ThresholdBaselineTuning)
+    join()

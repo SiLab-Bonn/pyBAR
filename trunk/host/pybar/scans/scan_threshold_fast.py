@@ -104,7 +104,7 @@ class FastThresholdScan(Fei4RunBase):
             # saving data
             if self.record_data:
                 self.data_points = self.data_points + 1
-                self.raw_data_file.append(self.fifo_readout.data, scan_parameters={'PlsrDAC': self.scan_parameter_value})
+                self.raw_data_file.append(self.fifo_readout.data, scan_parameters=self.scan_parameters._asdict())
 
             # stop condition is met for the first time
             if self.stop_condition_triggered and self.record_data:
@@ -118,7 +118,7 @@ class FastThresholdScan(Fei4RunBase):
                 self.scan_parameter_value = self.scan_parameter_value + self.step_size
 
         if self.scan_parameter_value >= scan_parameter_range[1]:
-            logging.warning("Reached maximum of scan parameter range... stopping scan" % (scan_parameter_range[1],))
+            logging.warning("Reached maximum of PlsrDAC range... stopping scan")
 
     def analyze(self):
         with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
@@ -153,6 +153,7 @@ class FastThresholdScan(Fei4RunBase):
         if kwargs:
             self.set_scan_parameters(**kwargs)
         self.fifo_readout.start(reset_sram_fifo=True, clear_buffer=True, callback=None, errback=self.handle_err)
+
 
 if __name__ == "__main__":
     join = RunManager('../configuration.yaml').run_run(FastThresholdScan)
