@@ -3,9 +3,10 @@ from pybar.run_manager import RunManager  # importing run manager
 if __name__ == "__main__":
     runmngr = RunManager('../../pybar/configuration.yaml')  # loading configuration file, specifying hardware configuration and module configuration.
     runmngr.run_primlist('primlist.plst')  # executing primlist.plst file, specific scan parameters are set inside the primlist file
+    # Each scan has a default configuration, which is defined inside the corresponding scan file in /host/pybar/scans/. It is not necessary to define scan parameters inside primlist file.
     #
-    # After finishing the primlist: you will find the module data relative to the configuration.yaml file
-    # If configuration.yaml is in /host/pybar/ the module data will be /host/pybar/<module_id> (where <module_id> is given from configuration.yaml)
+    # After finishing the primlist: you will find the module data relative to the configuration.yaml file.
+    # If configuration.yaml is in /host/pybar/ the module data will be /host/pybar/<module_id> (where <module_id> is given from configuration.yaml).
     # After finishing the first scan, FE configuration can be commented out in configuration.yaml (for that use '#'):
     #
     # (from configuration.yaml)
