@@ -18,6 +18,9 @@ class RegisterTest(Fei4RunBase):
     FEI4A specific features:
     Register at address 41 will always fail (EOCHLskipped).
     FEI4A has timing issues when reading pixel registers. The data from pixel registers is corrupted. It is a known bug of the FEI4A. Lowering the digital voltage (VDDD) to 1.0V may improve the result.
+
+    FEI4B specific features:
+    Register at address 40 will always fail (ADC output value).
     '''
     _scan_id = "register_test"
     _default_scan_configuration = {
