@@ -26,12 +26,32 @@ class FastThresholdScan(Fei4RunBase):
         "search_distance": 10,  # step size of the PlsrDAC for testing start condition
         "minimum_data_points": 20,  # PlsrDAC before testing stop condition
         "ignore_columns": (1, 78, 79, 80),  # columns, which will be ignored during scan
-        "use_enable_mask": False  # if True, use Enable mask during scan, if False, all pixels will be enabled
+        "use_enable_mask": False,  # if True, use Enable mask during scan, if False, all pixels will be enabled
+        "enable_shift_masks": ["Enable", "C_High", "C_Low"],  # enable masks shifted during scan
+        "disable_shift_masks": [],  # disable masks shifted during scan
+        "pulser_dac_correction": False # PlsrDAC correction for each double column
     }
     scan_parameter_start = 0  # holding last start value (e.g. used in GDAC threshold scan)
 
     def configure(self):
-        pass
+        commands = []
+        commands.extend(self.register.get_commands("confmode"))
+        # C_Low
+        if "C_Low".lower() in map(lambda x: x.lower(), self.enable_shift_masks):
+            self.register.set_pixel_register_value('C_Low', 1)
+            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='C_Low'))
+        else:
+            self.register.set_pixel_register_value('C_Low', 0)
+            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='C_Low'))
+        # C_High
+        if "C_High".lower() in map(lambda x: x.lower(), self.enable_shift_masks):
+            self.register.set_pixel_register_value('C_High', 1)
+            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='C_High'))
+        else:
+            self.register.set_pixel_register_value('C_High', 0)
+            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='C_High'))
+        commands.extend(self.register.get_commands("runmode"))
+        self.register_utils.send_commands(commands)
 
     def scan(self):
         self.start_condition_triggered = False  # set to true if the start condition is true once
@@ -81,7 +101,7 @@ class FastThresholdScan(Fei4RunBase):
 
             with self.readout(PlsrDAC=self.scan_parameter_value):
                 cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0]
-                scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections, use_delay=True, mask_steps=self.mask_steps, enable_mask_steps=self.enable_mask_steps, enable_double_columns=enable_double_columns, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=["Enable", "C_Low", "C_High"], restore_shift_masks=False, mask=invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if self.use_enable_mask else None, double_column_correction=False)
+                scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections, use_delay=True, mask_steps=self.mask_steps, enable_mask_steps=self.enable_mask_steps, enable_double_columns=enable_double_columns, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=self.enable_shift_masks, disable_shift_masks=self.disable_shift_masks, restore_shift_masks=False, mask=invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if self.use_enable_mask else None, double_column_correction=self.pulser_dac_correction)
 
             if not self.start_condition_triggered or self.data_points > self.minimum_data_points:  # speed up, only create histograms when needed. Python is much too slow here.
                 if not self.start_condition_triggered and not self.record_data:
