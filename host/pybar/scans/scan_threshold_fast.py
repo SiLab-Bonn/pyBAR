@@ -1,5 +1,3 @@
-''' The speed up version of the normal threshold scan where the first and the last PlsrDAC setting is determined automatically to minimize the scan time. The step size is changed automatically.
-'''
 import logging
 import numpy as np
 
