@@ -199,7 +199,7 @@ class FEI4RegisterUtils(object):
         commands.extend(self.register.get_commands("wrregister", name=["Vthin_AltFine", "Vthin_AltCoarse"]))
         commands.extend(self.register.get_commands("runmode"))
         self.send_commands(commands)
-        logging.info("Set GDAC to %d (VthinAltCoarse / VthinAltFine = %d / %d)" % (value, self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine")))
+        logging.info("Setting GDAC to %d (VthinAltCoarse / VthinAltFine = %d / %d)" % (value, self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine")))
 
 
 def read_chip_sn(self):
