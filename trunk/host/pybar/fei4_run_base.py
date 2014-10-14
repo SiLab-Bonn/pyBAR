@@ -106,11 +106,6 @@ class Fei4RunBase(RunBase):
             return os.path.join(self.working_dir, str(self.run_number) + "_" + self.scan_id)
 
     @property
-    def scan_data_filename(self):
-        logging.warning('scan_data_filename is deprecated, use output_filename')
-        return self.output_filename
-
-    @property
     def module_id(self):
         if 'module_id' in self.fe_configuration and self.fe_configuration['module_id']:
             module_id = self.fe_configuration['module_id']
