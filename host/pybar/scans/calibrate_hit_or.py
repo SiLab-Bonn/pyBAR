@@ -59,7 +59,7 @@ class HitOrCalibration(ScanBase):
             for index, pixel in enumerate(self.pixels):
                 column = pixel[0]
                 row = pixel[1]
-                logging.info('Scanning pixel: %d / %d (column / row)' % (column, row))
+                logging.info('Scanning pixel: %d/%d (column/row)' % (column, row))
                 if index:
                     dcs = [write_double_column(column)]
                     dcs.append(write_double_column(self.pixels[index - 1][0]))
