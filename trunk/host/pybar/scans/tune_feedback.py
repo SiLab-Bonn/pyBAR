@@ -79,7 +79,7 @@ class FeedbackTuning(Fei4RunBase):
 
             self.raw_data_file.append(self.fifo_readout.data, scan_parameters=self.scan_parameters._asdict())
 
-            tots = convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=is_data_record, converter_func=get_tot_array_from_data_record_array)
+            tots = convert_data_array(data_array_from_data_iterable(self.readout.data), filter_func=is_data_record, converter_func=get_tot_array_from_data_record_array)
             mean_tot = np.mean(tots)
             if np.isnan(mean_tot):
                 logging.error("No hits, ToT calculation not possible, tuning will fail")
@@ -123,7 +123,7 @@ class FeedbackTuning(Fei4RunBase):
             logging.warning('PrmpVbpf reached minimum/maximum value')
 
         if abs(mean_tot - self.target_tot) > 2 * self.max_delta_tot:
-            logging.warning('Global feedback tuning failed. Delta ToT = %f > %f. PrmpVbpf = %d' % (abs(mean_tot - self.target_tot), self.max_delta_tot, self.register.get_global_register_value("PrmpVbpf")))
+            logging.warning('Tuning of PrmpVbpf to %d ToT failed. Difference = %f ToT. PrmpVbpf = %d' % (self.target_tot, abs(mean_tot - self.target_tot), self.register.get_global_register_value("PrmpVbpf")))
         else:
             logging.info('Tuned PrmpVbpf to %d' % self.register.get_global_register_value("PrmpVbpf"))
 

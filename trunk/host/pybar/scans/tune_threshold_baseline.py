@@ -100,7 +100,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
                 if self.stop_run.is_set():
                     break
                 step += 1
-                logging.info('Step %d / %d at Vthin_AltFine %d' % (step, steps, reg_val))
+                logging.info('Step %d/%d at Vthin_AltFine %d' % (step, steps, reg_val))
                 logging.info('Estimated scan time: %ds' % self.total_scan_time)
 
                 with self.readout(Vthin_AltFine=reg_val, Step=step):
