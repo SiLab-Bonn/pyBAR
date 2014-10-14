@@ -26,7 +26,10 @@ class FdacTuning(Fei4RunBase):
         "fdac_tune_bits": range(3, -1, -1),
         "n_injections": 30,
         "plot_intermediate_steps": False,
-        "plots_filename": None
+        "plots_filename": None,
+        "enable_shift_masks": ["Enable", "C_High", "C_Low"],  # enable masks shifted during scan
+        "disable_shift_masks": [],  # disable masks shifted during scan
+        "pulser_dac_correction": False  # PlsrDAC correction for each double column
     }
 
     def configure(self):
@@ -59,7 +62,7 @@ class FdacTuning(Fei4RunBase):
             self.write_fdac_config()
 
             with self.readout(FDAC=scan_parameter_value):
-                scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections, mask_steps=mask_steps, enable_mask_steps=enable_mask_steps, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=True, mask=None)
+                scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections, mask_steps=mask_steps, enable_mask_steps=enable_mask_steps, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=self.enable_shift_masks, disable_shift_masks=self.disable_shift_masks, restore_shift_masks=True, mask=None, double_column_correction=self.pulser_dac_correction)
 
             self.raw_data_file.append(self.fifo_readout.data, scan_parameters=self.scan_parameters._asdict())
 
