@@ -77,9 +77,9 @@ class GdacTuning(Fei4RunBase):
 
         # calculate selected pixels from the mask and the disabled columns
         select_mask_array = np.zeros(shape=(80, 336), dtype=np.uint8)
-        if self.enable_mask_steps is None or not self.enable_mask_steps:
-            enable_mask_steps = range(self.mask_steps)
-        for mask_step in enable_mask_steps:
+        if not self.enable_mask_steps:
+            self.enable_mask_steps = range(self.mask_steps)
+        for mask_step in self.enable_mask_steps:
             select_mask_array += make_pixel_mask(steps=self.mask_steps, shift=mask_step)
         for column in bits_set(self.register.get_global_register_value("DisableColumnCnfg")):
             logging.info('Deselect double column %d' % column)
@@ -100,11 +100,11 @@ class GdacTuning(Fei4RunBase):
                 logging.info('GDAC setting: %d, bit %d = 0' % (scan_parameter_value, gdac_bit))
 
             with self.readout(GDAC=scan_parameter_value):
-                scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections, mask_steps=self.mask_steps, enable_mask_steps=enable_mask_steps, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=self.enable_shift_masks, disable_shift_masks=self.disable_shift_masks, restore_shift_masks=True, mask=None, double_column_correction=self.pulser_dac_correction)
+                scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections, mask_steps=self.mask_steps, enable_mask_steps=self.enable_mask_steps, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=self.enable_shift_masks, disable_shift_masks=self.disable_shift_masks, restore_shift_masks=True, mask=None, double_column_correction=self.pulser_dac_correction)
 
             self.raw_data_file.append(self.fifo_readout.data, scan_parameters=self.scan_parameters._asdict())
 
-            occupancy_array, _, _ = np.histogram2d(*convert_data_array(data_array_from_data_iterable(self.readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array), bins=(80, 336), range=[[1, 80], [1, 336]])
+            occupancy_array, _, _ = np.histogram2d(*convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array), bins=(80, 336), range=[[1, 80], [1, 336]])
             self.occ_array_sel_pixel = np.ma.array(occupancy_array, mask=np.logical_not(np.ma.make_mask(select_mask_array)))  # take only selected pixel into account by creating a mask
             median_occupancy = np.ma.median(self.occ_array_sel_pixel)
             if abs(median_occupancy - self.n_injections / 2) < abs(occupancy_best - self.n_injections / 2):
@@ -157,9 +157,9 @@ class GdacTuning(Fei4RunBase):
             logging.warning('GDAC reached minimum/maximum value')
 
         if abs(median_occupancy - self.n_injections / 2) > 2 * self.max_delta_threshold:
-            logging.warning('Tuning of Vthin_AltCoarse/Vthin_AltFine failed. Difference = %f. Vthin_AltCoarse/Vthin_AltFine = %d/%d' % (abs(median_occupancy - self.n_injections / 2), self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine")))
+            logging.warning('Global threshold tuning failed. Delta threshold = %f > %f. Vthin_AltCoarse / Vthin_AltFine = %d / %d' % (abs(median_occupancy - self.n_injections / 2), self.max_delta_threshold, self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine")))
         else:
-            logging.info('Tuned GDAC to Vthin_AltCoarse/Vthin_AltFine = %d/%d' % (self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine")))
+            logging.info('Tuned GDAC to Vthin_AltCoarse / Vthin_AltFine = %d / %d' % (self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine")))
 
         self.vthin_altfine_best = self.register.get_global_register_value("Vthin_AltFine")
         self.vthin_altcoarse_best = self.register.get_global_register_value("Vthin_AltCoarse")
