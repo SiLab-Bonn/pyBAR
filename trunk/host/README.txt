@@ -39,4 +39,11 @@ Run test from tests folder.
 
 Usage:
 -----
+Two methods are available:
+1. Directly run scans/tunings inside the /host/pybar/scans/ folder. Just double click the .py file or open them from IDE.
+   This is the quick and dirty method. Very effective. Configuration file (.yaml file) and default scan parameters has to be changed inside each .py file.
+2. Use RunManager to run scans from primlist (via run_primlist() method) or to run a scan solely (via run_run() method).
+   This is the preferred method for longer sessions. Once the RunManager is initialized, it eases the way to run multiple scans/tunings in a row.
+   An interactive python shell (e.g. IPython) makes the workflow even simpler.
+
 Please check the examples in the examples folder.
