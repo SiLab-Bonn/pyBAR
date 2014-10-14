@@ -42,7 +42,7 @@ class TimeOverThresholdScan(ScanBase):
         This scan is very similar to the threshold scan.
         This scan can also be used for ToT verification: change scan_parameter_value to desired injection charge (in units of PulsrDAC).
         '''
-        if self.scan_parameter_range is None or not self.scan_parameter_range:
+        if not self.scan_parameter_range:
             scan_parameter_range = range(0, (2 ** self.register.get_global_register_objects(name=[self.scan_parameter])[0].bitlength) - 1)
         logging.info("Scanning %s from %d to %d" % (self.scan_parameter, scan_parameter_range[0], scan_parameter_range[-1]))
 
