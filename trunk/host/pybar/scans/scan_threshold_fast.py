@@ -27,7 +27,7 @@ class FastThresholdScan(Fei4RunBase):
         "use_enable_mask": False,  # if True, use Enable mask during scan, if False, all pixels will be enabled
         "enable_shift_masks": ["Enable", "C_High", "C_Low"],  # enable masks shifted during scan
         "disable_shift_masks": [],  # disable masks shifted during scan
-        "pulser_dac_correction": False # PlsrDAC correction for each double column
+        "pulser_dac_correction": False  # PlsrDAC correction for each double column
     }
     scan_parameter_start = 0  # holding last start value (e.g. used in GDAC threshold scan)
 
