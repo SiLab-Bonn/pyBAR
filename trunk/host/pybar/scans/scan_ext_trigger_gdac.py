@@ -1,230 +1,74 @@
-import time
 import logging
-import math
 import numpy as np
 import tables as tb
-from threading import Event
+import progressbar
+from threading import Timer
 from scipy.interpolate import interp1d
-from fei4.register_utils import make_box_pixel_mask_from_col_row
 
-from scan.scan import ScanBase
-from daq.readout import open_raw_data_file
+from pybar.analysis.analyze_raw_data import AnalyzeRawData
+from pybar.fei4.register_utils import invert_pixel_mask, make_box_pixel_mask_from_col_row
+from pybar.scans.scan_ext_trigger import ExtTriggerScan
+from pybar.run_manager import RunManager
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
-
-def get_gdacs(thresholds, mean_threshold_calibration):
+def get_gdacs_from_mean_threshold_calibration(thresholds, mean_threshold_calibration):
     interpolation = interp1d(mean_threshold_calibration['mean_threshold'], mean_threshold_calibration['gdac'], kind='slinear', bounds_error=True)
     return np.unique(interpolation(thresholds).astype(np.uint32))
 
-# load GDAC values from calibration file
-input_file_calibration = 'data//example.h5'  # the file with the GDAC <-> PlsrDAC calibration
-with tb.openFile(input_file_calibration, mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
-#     threshold_range = np.arange(30, 600, 16)  # threshold range in PlsrDAC to scan
-#     gdacs = get_gdacs(threshold_range, in_file_calibration_h5.root.MeanThresholdCalibration[:])
-    gdacs = in_file_calibration_h5.root.MeanThresholdCalibration[:]['gdac']
 
+def get_gdacs_from_calibration_file(calibration_file):
+    # the file with the GDAC <-> PlsrDAC calibration
+    with tb.openFile(calibration_file, mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
+    #     threshold_range = np.arange(30, 600, 16)  # threshold range in PlsrDAC to scan
+    #     return get_gdacs_from_mean_threshold_calibration(threshold_range, in_file_calibration_h5.root.MeanThresholdCalibration[:])
+        return in_file_calibration_h5.root.MeanThresholdCalibration[:]['gdac']
+    
 
-local_configuration = {
-    "source": 'not specified',
-    "gdacs": gdacs,
-    "trigger_mode": 0,
-    "trigger_latency": 232,
-    "trigger_delay": 14,
-    "col_span": [1, 80],
-    "row_span": [1, 336],
-    "timeout_no_data": 10,
-    "scan_timeout": 1 * 60,
-    "max_triggers": 10000,
-    "enable_hitbus": False
-}
+class ExtTriggerGdacScan(ExtTriggerScan):
+    '''External trigger scan with FE-I4 and adjustable GDAC
 
-
-class ExtTriggerGdacScan(ScanBase):
-    scan_id = "ext_trigger_gdac_scan"
+    For use with external scintillator (user RX0), TLU (use RJ45), USBpix self-trigger (loop back TX2 into RX0.)
+    '''
+    _scan_id = "ext_trigger_gdac_scan"
+    _default_scan_configuration = ExtTriggerScan._default_scan_configuration
+    _default_scan_configuration.update({
+        "scan_parameters": {'GDAC': None},
+    })
 
     def configure(self):
-        pixel_reg = "Enable"
-        mask = make_box_pixel_mask_from_col_row(column=self.col_span, row=self.row_span)
-        commands = []
-        commands.extend(self.register.get_commands("confmode"))
-        enable_mask = np.logical_and(mask, self.register.get_pixel_register_value(pixel_reg))
-        self.register.set_pixel_register_value(pixel_reg, enable_mask)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
-        # generate mask for Imon mask
-        pixel_reg = "Imon"
-        if self.enable_hitbus:
-            mask = make_box_pixel_mask_from_col_row(column=self.col_span, row=self.row_span, default=1, value=0)
-            imon_mask = np.logical_or(mask, self.register.get_pixel_register_value(pixel_reg))
-        else:
-            imon_mask = 1
-        self.register.set_pixel_register_value(pixel_reg, imon_mask)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
-        # disable C_inj mask
-        pixel_reg = "C_High"
-        self.register.set_pixel_register_value(pixel_reg, 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
-        pixel_reg = "C_Low"
-        self.register.set_pixel_register_value(pixel_reg, 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
-        self.register.set_global_register_value("Trig_Lat", self.trigger_latency)  # set trigger latency
-#         self.register.set_global_register_value("Trig_Count", 0)  # set number of consecutive triggers
-        commands.extend(self.register.get_commands("wrregister", name=["Trig_Lat", "Trig_Count"]))
-        # setting FE into runmode
-        commands.extend(self.register.get_commands("runmode"))
-        self.register_utils.send_commands(commands)
+        super(ExtTriggerGdacScan, self).configure()
+        # GDAC
+        if self.scan_parameters.GDAC:
+            self.register_utils.set_gdac(self.scan_parameters.GDAC)
+            
 
     def scan(self):
-        '''Scan loop
+        # preload command
+        lvl1_command = self.register.get_commands("zeros", length=self.trigger_delay)[0] + self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", length=self.trigger_rate_limit)[0]
+        self.register_utils.set_command(lvl1_command)
 
-        Parameters
-        ----------
-        gdacs : list, tuple
-            List of GDACs to be scanned.
-        trigger_mode : int
-            Trigger mode. More details in basil.HL.tlu. From 0 to 3.
-            0: External trigger (LEMO RX0 only, TLU port disabled (TLU port/RJ45)).
-            1: TLU no handshake (automatic detection of TLU connection (TLU port/RJ45)).
-            2: TLU simple handshake (automatic detection of TLU connection (TLU port/RJ45)).
-            3: TLU trigger data handshake (automatic detection of TLU connection (TLU port/RJ45)).
-        trigger_latency : int
-            FE global register Trig_Lat.
-            Some ballpark estimates:
-            External scintillator/TLU: 232
-            FE Hit-OR: 216
-        trigger_delay : int
-            Delay between trigger and LVL1 command.
-        col_span : list, tuple
-            Column range (from minimum to maximum value). From 1 to 80.
-        row_span : list, tuple
-            Row range (from minimum to maximum value). From 1 to 336.
-        timeout_no_data : int
-            In seconds; if no data, stop scan after given time.
-        scan_timeout : int
-            In seconds; stop scan after given time.
-        max_triggers : int
-            Maximum number of triggers to be taken.
-        enable_hitbus : bool
-            Enable Hitbus (Hit OR) for columns and rows given by col_span and row_span.
-        '''
-        logging.info('Start GDAC source scan from %d to %d in %d steps' % (np.amin(gdacs), np.amax(gdacs), len(gdacs)))
-        logging.info('Estimated maximum scan time %dh' % (len(gdacs) * self.scan_timeout / 3600.))
+        with self.readout(**self.scan_parameters._asdict()):
+            got_data = False
+            while not self.stop_run.wait(1.0):
+                if not got_data:
+                    if self.fifo_readout.data_words_per_second() > 0:
+                        got_data = True
+                        logging.info('Taking data...')
+                        self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=self.max_triggers, poll=10).start()
+                else:
+                    triggers = self.dut['tlu']['TRIGGER_COUNTER']
+                    try:
+                        self.progressbar.update(triggers)
+                    except ValueError:
+                        pass
+                    if self.max_triggers is not None and triggers >= self.max_triggers:
+#                         if got_data:
+                        self.progressbar.finish()
+                        self.stop(msg='Trigger limit was reached: %i' % self.max_triggers)
 
-        self.stop_loop_event = Event()
-        self.stop_loop_event.clear()
-        self.repeat_scan_step = True
-
-        wait_for_first_trigger_setting = True  # needed to reset this for a new GDAC
-
-        for gdac_value in gdacs:
-            if self.stop_thread_event.is_set():
-                break
-            self.repeat_scan_step = True
-            while self.repeat_scan_step and not self.stop_thread_event.is_set():
-                with open_raw_data_file(filename=self.scan_data_filename + '_GDAC_' + str(gdac_value), title=self.scan_id, scan_parameters=["GDAC"], mode='w') as raw_data_file:
-                    self.repeat_scan_step = False
-                    self.stop_loop_event.clear()
-                    self.register_utils.set_gdac(gdac_value)
-                    self.readout.start()
-                    wait_for_first_trigger = wait_for_first_trigger_setting
-                    # preload command
-                    lvl1_command = self.register.get_commands("zeros", length=self.trigger_delay)[0] + self.register.get_commands("lv1")[0]  # + self.register.get_commands("zeros", length=200)[0]
-                    self.register_utils.set_command(lvl1_command)
-                    # setting up external trigger
-                    self.dut['tlu']['TRIGGER_MODE'] = self.trigger_mode
-                    self.dut['tlu']['TRIGGER_COUNTER'] = 0
-                    self.dut['cmd']['EN_EXT_TRIGGER'] = True
-
-                    show_trigger_message_at = 10 ** (int(math.floor(math.log10(self.max_triggers) - math.log10(3) / math.log10(10))))
-                    time_current_iteration = time.time()
-                    saw_no_data_at_time = time_current_iteration
-                    saw_data_at_time = time_current_iteration
-                    scan_start_time = time_current_iteration
-                    no_data_at_time = time_current_iteration
-                    time_from_last_iteration = 0
-                    scan_stop_time = scan_start_time + self.scan_timeout
-                    current_trigger_number = 0
-                    last_trigger_number = 0
-                    while not self.stop_loop_event.is_set() and not self.stop_thread_event.wait(self.readout.readout_interval):
-                        time_last_iteration = time_current_iteration
-                        time_current_iteration = time.time()
-                        time_from_last_iteration = time_current_iteration - time_last_iteration
-                        current_trigger_number = self.dut['tlu']['TRIGGER_COUNTER']
-                        if (current_trigger_number % show_trigger_message_at < last_trigger_number % show_trigger_message_at):
-                            logging.info('Collected triggers: %d', current_trigger_number)
-                            if not any(self.readout.get_rx_sync_status()):
-                                self.repeat_scan_step = True
-                                self.stop_loop_event.set()
-                                logging.error('No RX sync. Stopping Scan...')
-                            if any(self.readout.get_rx_8b10b_error_count()):
-                                self.repeat_scan_step = True
-                                self.stop_loop_event.set()
-                                logging.error('RX 8b10b error(s) detected. Stopping Scan...')
-                            if any(self.readout.get_rx_fifo_discard_count()):
-                                self.repeat_scan_step = True
-                                self.stop_loop_event.set()
-                                logging.error('RX FIFO discard error(s) detected. Stopping Scan...')
-                        last_trigger_number = current_trigger_number
-                        if self.max_triggers is not None and current_trigger_number >= self.max_triggers:
-                            logging.info('Reached maximum triggers. Stopping Scan...')
-                            self.stop_loop_event.set()
-                        if self.scan_timeout is not None and time_current_iteration > scan_stop_time:
-                            logging.info('Reached maximum scan time. Stopping Scan...')
-                            self.stop_loop_event.set()
-                        try:
-                            raw_data_file.append((self.readout.data.popleft(),), scan_parameters={"GDAC": gdac_value})
-                        except IndexError:  # no data
-                            no_data_at_time = time_current_iteration
-                            if self.timeout_no_data is not None and not wait_for_first_trigger and saw_no_data_at_time > (saw_data_at_time + self.timeout_no_data):
-                                logging.info('Reached no data timeout. Stopping Scan...')
-                                self.repeat_scan_step = True
-                                self.stop_loop_event.set()
-                            elif not wait_for_first_trigger:
-                                saw_no_data_at_time = no_data_at_time
-
-                            if no_data_at_time > (saw_data_at_time + 10):
-                                scan_stop_time += time_from_last_iteration
-                        else:
-                            saw_data_at_time = time_current_iteration
-
-                            if wait_for_first_trigger is True:
-                                logging.info('Taking data...')
-                                wait_for_first_trigger = False
-
-                    self.dut['cmd']['EN_EXT_TRIGGER'] = False
-
-                    self.readout.stop()
-
-                    if self.repeat_scan_step:
-                        self.readout.print_readout_status()
-                        logging.warning('Repeating scan for GDAC %d' % (gdac_value))
-                        self.register_utils.configure_all()
-                        self.readout.reset_rx()
-                    else:
-                        raw_data_file.append(self.readout.data, scan_parameters={"GDAC": gdac_value})
-
-                        logging.info('Total number of triggers for GDAC %d: %d' % (gdac_value, self.dut['tlu']['TRIGGER_COUNTER']))
-
-        # set FPGA to default state
-        self.dut['cmd']['EN_EXT_TRIGGER'] = False
-        self.dut['tlu']['TRIGGER_MODE'] = 0
-
-    def analyze(self):
-        from analysis.analyze_raw_data import AnalyzeRawData
-        output_file = self.scan_data_filename + "_interpreted.h5"
-        with AnalyzeRawData(raw_data_file=self.scan_data_filename + ".h5", analyzed_data_file=output_file) as analyze_raw_data:
-            analyze_raw_data.create_source_scan_hist = True
-            analyze_raw_data.create_cluster_size_hist = True
-            analyze_raw_data.create_cluster_tot_hist = True
-            analyze_raw_data.create_cluster_table = True
-            analyze_raw_data.interpreter.set_warning_output(False)
-            analyze_raw_data.interpret_word_table()
-            analyze_raw_data.interpreter.print_summary()
-            analyze_raw_data.plot_histograms(scan_data_filename=self.scan_data_filename, maximum='maximum')
+        logging.info('Total amount of triggers collected: %d', self.dut['tlu']['TRIGGER_COUNTER'])
 
 
 if __name__ == "__main__":
-    import configuration
-    scan = ExtTriggerGdacScan(**configuration.default_configuration)
-    scan.start(run_configure=True, run_analyze=True, use_thread=True, **local_configuration)
-    scan.stop()
+    join = RunManager('../configuration.yaml').run_run(ExtTriggerGdacScan)
+    join()
