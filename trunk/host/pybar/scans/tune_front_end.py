@@ -10,12 +10,13 @@ from pybar.scans.tune_fdac import FdacTuning
 from pybar.analysis.plotting.plotting import plotThreeWay
 
 
-class FeTuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
-    '''Full FE Tuning
+class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
+    '''Fully automatic FEI4 Tuning
 
+    This is a meta script implementing GDAC, TDAC, Feedback and FDAC tuning in a single tuning script.
     Values are given in units of PlsrDAC.
     '''
-    _scan_id = "fe_tuning"
+    _scan_id = "fei4_tuning"
     _default_scan_configuration = GdacTuning._default_scan_configuration
     _default_scan_configuration.update(TdacTuning._default_scan_configuration)
     _default_scan_configuration.update(FeedbackTuning._default_scan_configuration)
@@ -136,5 +137,5 @@ class FeTuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
             self.plots_filename.close()
 
 if __name__ == "__main__":
-    join = RunManager('../configuration.yaml').run_run(FeTuning)
+    join = RunManager('../configuration.yaml').run_run(Fei4Tuning)
     join()
