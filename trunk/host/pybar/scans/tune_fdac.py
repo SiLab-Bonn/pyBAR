@@ -24,7 +24,7 @@ class FdacTuning(Fei4RunBase):
         "target_charge": 280,
         "target_tot": 5,
         "fdac_tune_bits": range(3, -1, -1),
-        "n_injections": 30,
+        "n_injections_fdac": 30,
         "plot_intermediate_steps": False,
         "plots_filename": None,
         "enable_shift_masks": ["Enable", "C_High", "C_Low"],  # enable masks shifted during scan
@@ -79,13 +79,13 @@ class FdacTuning(Fei4RunBase):
             self.write_fdac_config()
 
             with self.readout(FDAC=scan_parameter_value):
-                scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections, mask_steps=mask_steps, enable_mask_steps=enable_mask_steps, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=self.enable_shift_masks, disable_shift_masks=self.disable_shift_masks, restore_shift_masks=True, mask=None, double_column_correction=self.pulser_dac_correction)
+                scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections_fdac, mask_steps=mask_steps, enable_mask_steps=enable_mask_steps, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=self.enable_shift_masks, disable_shift_masks=self.disable_shift_masks, restore_shift_masks=True, mask=None, double_column_correction=self.pulser_dac_correction)
 
             self.raw_data_file.append(self.fifo_readout.data, scan_parameters=self.scan_parameters._asdict())
 
             col_row_tot = np.column_stack(convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=is_data_record, converter_func=get_col_row_tot_array_from_data_record_array))
             tot_array = np.histogramdd(col_row_tot, bins=(80, 336, 16), range=[[1, 80], [1, 336], [0, 15]])[0]
-            tot_mean_array = np.average(tot_array, axis=2, weights=range(0, 16)) * sum(range(0, 16)) / self.n_injections
+            tot_mean_array = np.average(tot_array, axis=2, weights=range(0, 16)) * sum(range(0, 16)) / self.n_injections_fdac
             select_better_pixel_mask = abs(tot_mean_array - self.target_tot) <= abs(self.tot_mean_best - self.target_tot)
             pixel_with_too_small_mean_tot_mask = tot_mean_array < self.target_tot
             self.tot_mean_best[select_better_pixel_mask] = tot_mean_array[select_better_pixel_mask]
@@ -107,8 +107,8 @@ class FdacTuning(Fei4RunBase):
                 else:
                     fdac_mask[abs(tot_mean_array - self.target_tot) > abs(lastBitResult - self.target_tot)] = fdac_mask[abs(tot_mean_array - self.target_tot) > abs(lastBitResult - self.target_tot)] | (1 << fdac_bit)
                     tot_mean_array[abs(tot_mean_array - self.target_tot) > abs(lastBitResult - self.target_tot)] = lastBitResult[abs(tot_mean_array - self.target_tot) > abs(lastBitResult - self.target_tot)]
-                    self.tot_mean_best[abs(tot_mean_array - self.target_tot) <= abs(self.tot_mean_best - self.n_injections / 2)] = tot_mean_array[abs(tot_mean_array - self.target_tot) <= abs(self.tot_mean_best - self.n_injections / 2)]
-                    self.fdac_mask_best[abs(tot_mean_array - self.target_tot) <= abs(self.tot_mean_best - self.n_injections / 2)] = fdac_mask[abs(tot_mean_array - self.target_tot) <= abs(self.tot_mean_best - self.n_injections / 2)]
+                    self.tot_mean_best[abs(tot_mean_array - self.target_tot) <= abs(self.tot_mean_best - self.n_injections_fdac / 2)] = tot_mean_array[abs(tot_mean_array - self.target_tot) <= abs(self.tot_mean_best - self.n_injections_fdac / 2)]
+                    self.fdac_mask_best[abs(tot_mean_array - self.target_tot) <= abs(self.tot_mean_best - self.n_injections_fdac / 2)] = fdac_mask[abs(tot_mean_array - self.target_tot) <= abs(self.tot_mean_best - self.n_injections_fdac / 2)]
 
     def analyze(self):
         self.register.set_pixel_register_value("FDAC", self.fdac_mask_best)
