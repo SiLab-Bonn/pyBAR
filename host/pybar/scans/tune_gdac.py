@@ -19,7 +19,7 @@ class GdacTuning(Fei4RunBase):
         "scan_parameters": {'GDAC': None},
         "target_threshold": 5,  # target threshold in PlsrDAC to tune to
         "gdac_tune_bits": range(7, -1, -1),  # GDAC bits to change during tuning
-        "n_injections": 50,  # number of injections per GDAC bit setting
+        "n_injections_gdac": 50,  # number of injections per GDAC bit setting
         "max_delta_threshold": 2,  # minimum difference to the target_threshold to abort the tuning
         "mask_steps": 3,  # mask
         "enable_mask_steps": [0],  # mask steps to do per GDAC setting
@@ -58,7 +58,7 @@ class GdacTuning(Fei4RunBase):
             self.set_gdac_bit(gdac_bit, bit_value=0)
 
         additional_scan = False
-        last_bit_result = self.n_injections
+        last_bit_result = self.n_injections_gdac
         decreased_threshold = False  # needed to determine if the FE is noisy
         all_bits_zero = True
 
@@ -100,22 +100,22 @@ class GdacTuning(Fei4RunBase):
                 logging.info('GDAC setting: %d, bit %d = 0' % (scan_parameter_value, gdac_bit))
 
             with self.readout(GDAC=scan_parameter_value):
-                scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections, mask_steps=self.mask_steps, enable_mask_steps=self.enable_mask_steps, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=self.enable_shift_masks, disable_shift_masks=self.disable_shift_masks, restore_shift_masks=True, mask=None, double_column_correction=self.pulser_dac_correction)
+                scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections_gdac, mask_steps=self.mask_steps, enable_mask_steps=self.enable_mask_steps, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=self.enable_shift_masks, disable_shift_masks=self.disable_shift_masks, restore_shift_masks=True, mask=None, double_column_correction=self.pulser_dac_correction)
 
             self.raw_data_file.append(self.fifo_readout.data, scan_parameters=self.scan_parameters._asdict())
 
             occupancy_array, _, _ = np.histogram2d(*convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array), bins=(80, 336), range=[[1, 80], [1, 336]])
             self.occ_array_sel_pixel = np.ma.array(occupancy_array, mask=np.logical_not(np.ma.make_mask(select_mask_array)))  # take only selected pixel into account by creating a mask
             median_occupancy = np.ma.median(self.occ_array_sel_pixel)
-            if abs(median_occupancy - self.n_injections / 2) < abs(occupancy_best - self.n_injections / 2):
+            if abs(median_occupancy - self.n_injections_gdac / 2) < abs(occupancy_best - self.n_injections_gdac / 2):
                 occupancy_best = median_occupancy
                 vthin_af_best = self.register.get_global_register_value("Vthin_AltFine")
                 vthin_ac_best = self.register.get_global_register_value("Vthin_AltCoarse")
 
             if self.plot_intermediate_steps:
-                plotThreeWay(self.occ_array_sel_pixel.transpose(), title="Occupancy (GDAC " + str(scan_parameter_value) + " with tuning bit " + str(gdac_bit) + ")", x_axis_title='Occupancy', filename=self.plots_filename, maximum=self.n_injections)
+                plotThreeWay(self.occ_array_sel_pixel.transpose(), title="Occupancy (GDAC " + str(scan_parameter_value) + " with tuning bit " + str(gdac_bit) + ")", x_axis_title='Occupancy', filename=self.plots_filename, maximum=self.n_injections_gdac)
 
-            if abs(median_occupancy - self.n_injections / 2) < self.max_delta_threshold and gdac_bit > 0:  # abort if good value already found to save time
+            if abs(median_occupancy - self.n_injections_gdac / 2) < self.max_delta_threshold and gdac_bit > 0:  # abort if good value already found to save time
                 logging.info('Median = %f, good result already achieved (median - Ninj/2 < %f), skipping not varied bits' % (median_occupancy, self.max_delta_threshold))
                 break
 
@@ -123,12 +123,12 @@ class GdacTuning(Fei4RunBase):
                 logging.info('Maybe noisy FE? Please check!')
 
             if gdac_bit > 0:
-                if (median_occupancy < self.n_injections / 2):  # set GDAC bit to 0 if the occupancy is too lowm, thus decrease threshold
-                    logging.info('Median = %f < %f, set bit %d = 0' % (median_occupancy, self.n_injections / 2, gdac_bit))
+                if (median_occupancy < self.n_injections_gdac / 2):  # set GDAC bit to 0 if the occupancy is too lowm, thus decrease threshold
+                    logging.info('Median = %f < %f, set bit %d = 0' % (median_occupancy, self.n_injections_gdac / 2, gdac_bit))
                     self.set_gdac_bit(gdac_bit, bit_value=0)
                     decreased_threshold = True
                 else:  # set GDAC bit to 1 if the occupancy is too high, thus increase threshold
-                    logging.info('Median = %f > %f, leave bit %d = 1' % (median_occupancy, self.n_injections / 2, gdac_bit))
+                    logging.info('Median = %f > %f, leave bit %d = 1' % (median_occupancy, self.n_injections_gdac / 2, gdac_bit))
                     decreased_threshold = False
                     all_bits_zero = False
 
@@ -140,14 +140,14 @@ class GdacTuning(Fei4RunBase):
                 else:
                     last_bit_result_median = np.median(last_bit_result[select_mask_array > 0])
                     logging.info('Scanned bit 0 = 0 with %f instead of %f' % (median_occupancy, last_bit_result_median))
-                    if abs(median_occupancy - self.n_injections / 2) > abs(last_bit_result_median - self.n_injections / 2):  # if bit 0 = 0 is worse than bit 0 = 1, so go back
+                    if abs(median_occupancy - self.n_injections_gdac / 2) > abs(last_bit_result_median - self.n_injections_gdac / 2):  # if bit 0 = 0 is worse than bit 0 = 1, so go back
                         self.set_gdac_bit(gdac_bit, bit_value=1)
                         logging.info('Set bit 0 = 1')
                         self.occ_array_sel_pixel = last_bit_result
                         median_occupancy = np.ma.median(self.occ_array_sel_pixel)
                     else:
                         logging.info('Set bit 0 = 0')
-                    if abs(occupancy_best - self.n_injections / 2) < abs(median_occupancy - self.n_injections / 2):
+                    if abs(occupancy_best - self.n_injections_gdac / 2) < abs(median_occupancy - self.n_injections_gdac / 2):
                         logging.info("Binary search converged to non optimal value, take best measured value instead")
                         median_occupancy = occupancy_best
                         self.register.set_global_register_value("Vthin_AltFine", vthin_af_best)
@@ -156,8 +156,8 @@ class GdacTuning(Fei4RunBase):
         if (self.register.get_global_register_value("Vthin_AltFine") == 0 and self.register.get_global_register_value("Vthin_AltCoarse") == 0) or self.register.get_global_register_value("Vthin_AltFine") == 254:
             logging.warning('GDAC reached minimum/maximum value')
 
-        if abs(median_occupancy - self.n_injections / 2) > 2 * self.max_delta_threshold:
-            logging.warning('Global threshold tuning failed. Delta threshold = %f > %f. Vthin_AltCoarse / Vthin_AltFine = %d / %d' % (abs(median_occupancy - self.n_injections / 2), self.max_delta_threshold, self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine")))
+        if abs(median_occupancy - self.n_injections_gdac / 2) > 2 * self.max_delta_threshold:
+            logging.warning('Global threshold tuning failed. Delta threshold = %f > %f. Vthin_AltCoarse / Vthin_AltFine = %d / %d' % (abs(median_occupancy - self.n_injections_gdac / 2), self.max_delta_threshold, self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine")))
         else:
             logging.info('Tuned GDAC to Vthin_AltCoarse / Vthin_AltFine = %d / %d' % (self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine")))
 
@@ -168,7 +168,7 @@ class GdacTuning(Fei4RunBase):
         self.register.set_global_register_value("Vthin_AltFine", self.vthin_altfine_best)
         self.register.set_global_register_value("Vthin_AltCoarse", self.vthin_altcoarse_best)
 
-        plotThreeWay(self.occ_array_sel_pixel.transpose(), title="Occupancy after GDAC tuning (GDAC " + str(self.scan_parameters.GDAC) + ")", x_axis_title='Occupancy', filename=self.plots_filename, maximum=self.n_injections)
+        plotThreeWay(self.occ_array_sel_pixel.transpose(), title="Occupancy after GDAC tuning (GDAC " + str(self.scan_parameters.GDAC) + ")", x_axis_title='Occupancy', filename=self.plots_filename, maximum=self.n_injections_gdac)
 
     def write_target_threshold(self):
         commands = []

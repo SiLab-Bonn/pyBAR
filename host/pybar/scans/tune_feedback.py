@@ -20,7 +20,7 @@ class FeedbackTuning(Fei4RunBase):
         "target_charge": 280,
         "target_tot": 5,
         "feedback_tune_bits": range(7, -1, -1),
-        "n_injections": 50,
+        "n_injections_feedback": 50,
         "max_delta_tot": 0.1,
         "plot_intermediate_steps": False,
         "plots_filename": None,
@@ -60,7 +60,7 @@ class FeedbackTuning(Fei4RunBase):
             self.set_prmp_vbpf_bit(feedback_bit, bit_value=0)
 
         additional_scan = False
-        last_bit_result = self.n_injections
+        last_bit_result = self.n_injections_feedback
 
         tot_mean_best = 0
         feedback_best = self.register.get_global_register_value("PrmpVbpf")
@@ -75,7 +75,7 @@ class FeedbackTuning(Fei4RunBase):
             scan_parameter_value = self.register.get_global_register_value("PrmpVbpf")
 
             with self.readout(PrmpVbpf=scan_parameter_value):
-                scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections, mask_steps=mask_steps, enable_mask_steps=enable_mask_steps, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=self.enable_shift_masks, disable_shift_masks=self.disable_shift_masks, restore_shift_masks=True, mask=None, double_column_correction=self.pulser_dac_correction)
+                scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections_feedback, mask_steps=mask_steps, enable_mask_steps=enable_mask_steps, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=self.enable_shift_masks, disable_shift_masks=self.disable_shift_masks, restore_shift_masks=True, mask=None, double_column_correction=self.pulser_dac_correction)
 
             self.raw_data_file.append(self.fifo_readout.data, scan_parameters=self.scan_parameters._asdict())
 
