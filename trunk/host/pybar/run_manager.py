@@ -29,9 +29,11 @@ class RunBase():
 
     _status = RunStatus(running='RUNNING', finished='FINISHED', aborted='ABORTED', crashed='CRASHED')
 
-    def __init__(self, working_dir, **kwargs):
+    def __init__(self, working_dir, conf, run_conf):
         """Initialize object."""
         self._working_dir = working_dir
+        self._conf = conf
+        self._run_conf = run_conf
         self._run_number = None
         self._run_status = None
         self.file_lock = Lock()
@@ -188,13 +190,15 @@ def thunkify(thread_name):
 
 
 class RunManager(object):
-    def __init__(self, conf):
+    def __init__(self, conf, working_dir=None):
         '''Run Manager is taking care of initialization and execution of runs.
 
         Parameters
         ----------
         conf : str, dict, file
-            Configuration for the run(s).
+            Configuration for the run(s). Configuration will be passed to all scans.
+        working_dir : str
+            Run working directory. If empty or None, working directory will be deduced from configuration.
         '''
         # fixing event handler: http://stackoverflow.com/questions/15457786/ctrl-c-crashes-python-after-importing-scipy-stats
         if os.name == 'nt':
@@ -207,10 +211,36 @@ class RunManager(object):
             import win32api
             win32api.SetConsoleCtrlHandler(handler, 1)
 
-        self.conf = {}
+        self.working_dir = working_dir
+        self.conf = conf
         self._current_run = None
         self._conf_path = None
-        self.load_conf(conf)
+        self.init(conf)
+
+    def init(self, conf):
+        if isinstance(conf, basestring):
+                self._conf_path = conf
+        elif isinstance(conf, file):
+            self._conf_path = conf.name
+        else:
+            self._conf_path = None
+        self.conf = self.open_conf(conf)
+        if not self.working_dir and 'working_dir' in self.conf:
+            if self._conf_path and not os.path.abspath(self.conf['working_dir']):
+                self.working_dir = os.path.join(os.path.dirname(self._conf_path), self.conf.pop('working_dir'))
+            else:
+                self.working_dir = self.conf.pop('working_dir')
+        elif self.working_dir:
+            if 'working_dir' in self.conf:
+                raise ValueError('Working directory is given in multiple locations')
+            elif self._conf_path and not os.path.abspath(self.working_dir):
+                self.working_dir = os.path.join(os.path.dirname(self._conf_path), self.working_dir)
+            else:
+                pass
+        elif self._conf_path:
+            self.working_dir = os.path.dirname(self._conf_path)
+        else:
+            raise ValueError('Cannot deduce working directory from configuration')
 
     def open_conf(self, conf):
         conf_dict = {}
@@ -225,34 +255,26 @@ class RunManager(object):
             conf_dict.update(conf)
         return conf_dict
 
-    def load_conf(self, conf):
-        if isinstance(conf, basestring):
-                self._conf_path = conf
-        elif isinstance(conf, file):
-            self._conf_path = conf.name
-        else:
-            self._conf_path = None
-        self.conf = self.open_conf(conf)
-        if 'working_dir' in self.conf:
-            if self._conf_path and not os.path.abspath(self.conf['working_dir']):
-                self.conf['working_dir'] = os.path.join(os.path.dirname(self._conf_path), self.conf['working_dir'])
-        elif self._conf_path:
-            self.conf['working_dir'] = os.path.dirname(self._conf_path)
 
-    def run_run(self, run):
+
+    def run_run(self, run, run_conf=None):
         '''Runs a run in another thread. Non-blocking.
 
         Parameters
         ----------
-        run : class
+        run : class, object
             Run class.
+        run_conf : str, dict, file
+            Specific configuration for the run.
 
         Returns
         -------
         Function, which blocks when called, waits for the end of the run, and returns run status.
         '''
         if isclass(run):
-            run = run(**self.conf)
+            run = run(working_dir=self.working_dir, conf=self.conf, run_conf=self.open_conf(run_conf))
+        elif run_conf:
+            raise ValueError('Run object already initialized. Run configuration cannot be passed.')
 
         @thunkify('RunThread')
         def run_run_in_thread():
@@ -300,7 +322,7 @@ class RunManager(object):
                     line = line.partition('#')[0].strip()
                     if not line:
                         continue
-                    scan_configuration = {}
+                    run_conf = {}
                     parts = re.split('\s*[;]\s*', line)  # TODO: do not split list, dict
                     try:
                         mod = import_module(parts[0])  # points to module
@@ -325,10 +347,8 @@ class RunManager(object):
                         run_cls = clsmembers[0][1]
                     for param in parts[1:]:
                         key, value = re.split('\s*[=]\s*', param)  # TODO: do not split dict
-                        scan_configuration[key] = literal_eval(value)
-                    if 'scan_configuration' in self.conf:
-                        raise ValueError('Scan configuration taken from primlist. Configuration file must not contain scan configuration.')
-                    srun_list.append(run_cls(scan_configuration=scan_configuration, **self.conf))
+                        run_conf[key] = literal_eval(value)
+                    srun_list.append(run_cls(working_dir=self.working_dir, conf=self.conf, run_conf=run_conf))
             return srun_list
         else:
             AttributeError('Primlist format not supported.')
