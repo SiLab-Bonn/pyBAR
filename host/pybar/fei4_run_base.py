@@ -30,13 +30,13 @@ class Fei4RunBase(RunBase):
     '''
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, working_dir, fe_configuration=None, dut_configuration=None, scan_configuration=None, **kwargs):
-        self.fe_configuration = fe_configuration
-        self.dut_configuration = dut_configuration
+    def __init__(self, working_dir, conf, run_conf=None):
+        self.fe_configuration = conf['fe_configuration']
+        self.dut_configuration = conf['dut_configuration']
         sc = namedtuple('scan_configuration', field_names=self.default_scan_configuration.iterkeys())
         self.scan_configuration = sc(**self.default_scan_configuration)
-        if scan_configuration:
-            self.scan_configuration = self.scan_configuration._replace(**scan_configuration)._asdict()
+        if run_conf:
+            self.scan_configuration = self.scan_configuration._replace(**run_conf)._asdict()
         else:
             self.scan_configuration = self.scan_configuration._asdict()
         self.__dict__.update(self.scan_configuration)
@@ -55,9 +55,9 @@ class Fei4RunBase(RunBase):
         self.register_utils = None
         self.base_dir = working_dir
         if self.module_id:
-            super(Fei4RunBase, self).__init__(os.path.join(self.base_dir, self.module_id))
+            super(Fei4RunBase, self).__init__(working_dir=os.path.join(self.base_dir, self.module_id), conf=conf, run_conf=run_conf)
         else:
-            super(Fei4RunBase, self).__init__(self.base_dir)
+            super(Fei4RunBase, self).__init__(working_dir=self.base_dir, conf=conf, run_conf=run_conf)
 
         self.raw_data_file = None
 
