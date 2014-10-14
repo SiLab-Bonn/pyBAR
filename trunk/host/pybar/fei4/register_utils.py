@@ -847,10 +847,10 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
         commands.append(run_mode_command)
         return self.register_utils.concatenate_commands(commands, byte_padding=True)
 
-    if enable_mask_steps is None or not enable_mask_steps:
+    if not enable_mask_steps:
         enable_mask_steps = range(mask_steps)
 
-    if enable_double_columns is None or not enable_double_columns:
+    if not enable_double_columns:
         enable_double_columns = range(40)
 
     # preparing for scan
