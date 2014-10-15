@@ -123,7 +123,7 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
         start_bit = 7
         for iteration in range(0, self.global_iterations):  # tune iteratively with decreasing range to save time
             logging.info("Global tuning step %d / %d" % (iteration + 1, self.global_iterations))
-            start_bit = 7 - difference_bit * iteration
+            start_bit = 7  # - difference_bit * iteration
             self.set_scan_parameters(global_step=self.scan_parameters.global_step + 1)
             self.gdac_tune_bits = range(start_bit, -1, -1)
             GdacTuning.scan(self)
