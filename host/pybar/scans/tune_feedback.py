@@ -1,5 +1,6 @@
 import logging
 import numpy as np
+from matplotlib.backends.backend_pdf import PdfPages
 
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.fei4.register_utils import scan_loop
@@ -50,6 +51,11 @@ class FeedbackTuning(Fei4RunBase):
         self.register_utils.send_commands(commands)
 
     def scan(self):
+        if not self.plots_filename:
+            self.plots_filename = PdfPages(self.output_filename + '.pdf')
+            self.close_plots = True
+        else:
+            self.close_plots = False
         mask_steps = 3
         enable_mask_steps = [0]  # one mask step to increase speed, no effect on precision
         cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", mask_steps=mask_steps)[0]
@@ -132,6 +138,8 @@ class FeedbackTuning(Fei4RunBase):
     def analyze(self):
         self.register.set_global_register_value("PrmpVbpf", self.feedback_best)
         plot_tot(hist=self.tot_array, title='ToT distribution after feedback tuning (PrmpVbpf %d)' % self.scan_parameters.PrmpVbpf, filename=self.plots_filename)
+        if self.close_plots:
+            self.plots_filename.close()
 
     def write_target_charge(self):
         commands = []

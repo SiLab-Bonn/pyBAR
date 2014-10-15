@@ -1,5 +1,6 @@
 import logging
 import numpy as np
+from matplotlib.backends.backend_pdf import PdfPages
 
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.fei4.register_utils import scan_loop, make_pixel_mask
@@ -51,6 +52,11 @@ class GdacTuning(Fei4RunBase):
         self.register_utils.send_commands(commands)
 
     def scan(self):
+        if not self.plots_filename:
+            self.plots_filename = PdfPages(self.output_filename + '.pdf')
+            self.close_plots = True
+        else:
+            self.close_plots = False
         cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", mask_steps=self.mask_steps_gdac)[0]
 
         self.write_target_threshold()
@@ -169,6 +175,8 @@ class GdacTuning(Fei4RunBase):
         self.register.set_global_register_value("Vthin_AltCoarse", self.vthin_altcoarse_best)
 
         plotThreeWay(self.occ_array_sel_pixel.transpose(), title="Occupancy after GDAC tuning (GDAC " + str(self.scan_parameters.GDAC) + ")", x_axis_title='Occupancy', filename=self.plots_filename, maximum=self.n_injections_gdac)
+        if self.close_plots:
+            self.plots_filename.close()
 
     def write_target_threshold(self):
         commands = []

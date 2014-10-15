@@ -1,11 +1,13 @@
 import logging
 import numpy as np
+from matplotlib.backends.backend_pdf import PdfPages
 
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.fei4.register_utils import scan_loop
 from pybar.run_manager import RunManager
 from pybar.daq.readout_utils import convert_data_array, is_data_record, data_array_from_data_iterable, get_col_row_array_from_data_record_array
 from pybar.analysis.plotting.plotting import plotThreeWay
+from statsmodels.tsa.vector_ar.tests.test_var import close_plots
 
 
 class TdacTuning(Fei4RunBase):
@@ -14,7 +16,7 @@ class TdacTuning(Fei4RunBase):
     Tuning the TDAC to target threshold value (threshold is given in units of PlsrDAC).
     The tuning uses a binary search algorithm. Bit 0 is always scanned twice with value 1 and 0. Due to the nonlinearity it can happen that the binary search does not give the best result.
     '''
-    _scan_id = "_tdac_tuning"
+    _scan_id = "tdac_tuning"
     _default_scan_configuration = {
         "scan_parameters": {'TDAC': None},
         "target_threshold": 50,
@@ -48,6 +50,11 @@ class TdacTuning(Fei4RunBase):
         self.register_utils.send_commands(commands)
 
     def scan(self):
+        if not self.plots_filename:
+            self.plots_filename = PdfPages(self.output_filename + '.pdf')
+            self.close_plots = True
+        else:
+            self.close_plots = False
         mask_steps = 3
         enable_mask_steps = []
         cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", mask_steps=mask_steps)[0]
@@ -121,6 +128,8 @@ class TdacTuning(Fei4RunBase):
 
         plotThreeWay(hist=self.occupancy_best.transpose(), title="Occupancy after TDAC tuning", x_axis_title="Occupancy", filename=self.plots_filename, maximum=self.n_injections_tdac)
         plotThreeWay(hist=self.tdac_mask_best.transpose(), title="TDAC distribution after tuning", x_axis_title="TDAC", filename=self.plots_filename, maximum=32)
+        if self.close_plots:
+            self.plots_filename.close()
 
     def write_target_threshold(self):
         commands = []

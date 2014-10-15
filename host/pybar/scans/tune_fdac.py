@@ -1,5 +1,6 @@
 import logging
 import numpy as np
+from matplotlib.backends.backend_pdf import PdfPages
 
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.fei4.register_utils import scan_loop
@@ -53,6 +54,11 @@ class FdacTuning(Fei4RunBase):
         self.register_utils.send_commands(commands)
 
     def scan(self):
+        if not self.plots_filename:
+            self.plots_filename = PdfPages(self.output_filename + '.pdf')
+            self.close_plots = True
+        else:
+            self.close_plots = False
         mask_steps = 3
         enable_mask_steps = []
 
@@ -117,6 +123,8 @@ class FdacTuning(Fei4RunBase):
 
         plotThreeWay(hist=self.tot_mean_best.transpose(), title="Mean ToT after FDAC tuning", x_axis_title="Mean ToT", filename=self.plots_filename, minimum=0, maximum=15)
         plotThreeWay(hist=self.fdac_mask_best.transpose(), title="FDAC distribution after tuning", x_axis_title="FDAC", filename=self.plots_filename, minimum=0, maximum=15)
+        if self.close_plots:
+            self.plots_filename.close()
 
     def write_target_charge(self):
         commands = []
