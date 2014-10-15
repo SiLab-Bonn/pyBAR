@@ -28,8 +28,6 @@ class RunAborted(Exception):
 class RunBase():
     __metaclass__ = abc.ABCMeta
 
-    
-
     def __init__(self, working_dir, conf, run_conf):
         """Initialize object."""
         self._working_dir = working_dir
@@ -256,8 +254,6 @@ class RunManager(object):
             conf_dict.update(conf)
         return conf_dict
 
-
-
     def run_run(self, run, run_conf=None):
         '''Runs a run in another thread. Non-blocking.
 
@@ -307,7 +303,7 @@ class RunManager(object):
             status = join()
             signal.signal(signal.SIGINT, signal.SIG_DFL)  # setting default handler
             self._current_run = None
-            if skip_remaining and not status == RunStatus.finished:
+            if skip_remaining and not status == run_status.finished:
                 logging.error('Exited run %i with status %s: Skipping all remaining runs.' % (run.run_number, status))
                 break
 
