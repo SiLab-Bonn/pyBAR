@@ -17,7 +17,8 @@ from functools import partial
 from ast import literal_eval
 
 
-RunStatus = collections.namedtuple('RunStatus', ['running', 'finished', 'aborted', 'crashed'])
+_RunStatus = collections.namedtuple('RunStatus', ['running', 'finished', 'aborted', 'crashed'])
+run_status = _RunStatus(running='RUNNING', finished='FINISHED', aborted='ABORTED', crashed='CRASHED')
 
 
 class RunAborted(Exception):
@@ -27,7 +28,7 @@ class RunAborted(Exception):
 class RunBase():
     __metaclass__ = abc.ABCMeta
 
-    _status = RunStatus(running='RUNNING', finished='FINISHED', aborted='ABORTED', crashed='CRASHED')
+    
 
     def __init__(self, working_dir, conf, run_conf):
         """Initialize object."""
@@ -43,17 +44,17 @@ class RunBase():
         try:
             self.run()
         except RunAborted as e:
-            self._run_status = self._status.aborted
+            self._run_status = run_status.aborted
             logging.warning('Aborting run %s: %s' % (self.run_number, e))
         except Exception as e:
-            self._run_status = self._status.crashed
+            self._run_status = run_status.crashed
             logging.error('Exception during run %s: %s' % (self.run_number, traceback.format_exc()))
             with open(os.path.join(self.working_dir, "crash" + ".log"), 'a+') as f:
                 f.write('-------------------- Run %i --------------------\n' % self.run_number)
                 traceback.print_exc(file=f)
                 f.write('\n')
         else:
-            self._run_status = self._status.finished
+            self._run_status = run_status.finished
         self.cleanup()
         return self.run_status
 
@@ -71,7 +72,7 @@ class RunBase():
 
     def init(self):
         """Initialization before a new run."""
-        self._run_status = self._status.running
+        self._run_status = run_status.running
         self._write_run_number()
         logging.info('Starting run %d in %s' % (self.run_number, self.working_dir))
 
@@ -83,9 +84,9 @@ class RunBase():
     def cleanup(self):
         """Cleanup after a new run."""
         self._write_run_status(self.run_status)
-        if self.run_status == self._status.finished:
+        if self.run_status == run_status.finished:
             log_status = logging.INFO
-        elif self.run_status == self._status.aborted:
+        elif self.run_status == run_status.aborted:
             log_status = logging.WARNING
         else:
             log_status = logging.ERROR
