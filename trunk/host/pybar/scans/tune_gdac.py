@@ -14,6 +14,9 @@ class GdacTuning(Fei4RunBase):
 
     Tuning the global threshold to target threshold value (threshold is given in units of PlsrDAC).
     The tuning uses a binary search algorithm.
+
+    Note:
+    Use pybar.scans.tune_fei4 for full FE-I4 tuning.
     '''
     _scan_id = "gdac_tuning"
     _default_scan_configuration = {

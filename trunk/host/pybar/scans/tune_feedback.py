@@ -14,6 +14,9 @@ class FeedbackTuning(Fei4RunBase):
 
     Tuning the global feedback to target ToT at given charge (charge is given in units of PlsrDAC).
     The tuning uses a binary search algorithm.
+
+    Note:
+    Use pybar.scans.tune_fei4 for full FE-I4 tuning.
     '''
     _scan_id = "feedback_tuning"
     _default_scan_configuration = {

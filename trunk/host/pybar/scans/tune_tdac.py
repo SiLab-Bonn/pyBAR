@@ -15,6 +15,9 @@ class TdacTuning(Fei4RunBase):
 
     Tuning the TDAC to target threshold value (threshold is given in units of PlsrDAC).
     The tuning uses a binary search algorithm. Bit 0 is always scanned twice with value 1 and 0. Due to the nonlinearity it can happen that the binary search does not give the best result.
+
+    Note:
+    Use pybar.scans.tune_fei4 for full FE-I4 tuning.
     '''
     _scan_id = "tdac_tuning"
     _default_scan_configuration = {
