@@ -59,7 +59,7 @@ class FdacTuning(Fei4RunBase):
         cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", mask_steps=mask_steps)[0]
 
         self.write_target_charge()
-        additional_scan = False
+        additional_scan = True
         lastBitResult = np.zeros(shape=self.register.get_pixel_register_value("Fdac").shape, dtype=self.register.get_pixel_register_value("Fdac").dtype)
 
         self.set_start_fdac()
@@ -69,7 +69,7 @@ class FdacTuning(Fei4RunBase):
         self.fdac_mask_best = self.register.get_pixel_register_value("FDAC")
 
         for scan_parameter_value, fdac_bit in enumerate(self.fdac_tune_bits):
-            if not additional_scan:
+            if additional_scan:
                 self.set_fdac_bit(fdac_bit)
                 logging.info('FDAC setting: bit %d = 1' % fdac_bit)
             else:
@@ -100,8 +100,8 @@ class FdacTuning(Fei4RunBase):
                 self.register.set_pixel_register_value("FDAC", fdac_mask)
 
             if fdac_bit == 0:
-                if not(additional_scan):  # scan bit = 0 with the correct value again
-                    additional_scan = True
+                if additional_scan:  # scan bit = 0 with the correct value again
+                    additional_scan = False
                     lastBitResult = tot_mean_array.copy()
                     self.fdac_tune_bits.append(0)  # bit 0 has to be scanned twice
                 else:
@@ -109,6 +109,8 @@ class FdacTuning(Fei4RunBase):
                     tot_mean_array[abs(tot_mean_array - self.target_tot) > abs(lastBitResult - self.target_tot)] = lastBitResult[abs(tot_mean_array - self.target_tot) > abs(lastBitResult - self.target_tot)]
                     self.tot_mean_best[abs(tot_mean_array - self.target_tot) <= abs(self.tot_mean_best - self.n_injections_fdac / 2)] = tot_mean_array[abs(tot_mean_array - self.target_tot) <= abs(self.tot_mean_best - self.n_injections_fdac / 2)]
                     self.fdac_mask_best[abs(tot_mean_array - self.target_tot) <= abs(self.tot_mean_best - self.n_injections_fdac / 2)] = fdac_mask[abs(tot_mean_array - self.target_tot) <= abs(self.tot_mean_best - self.n_injections_fdac / 2)]
+
+        self.register.set_pixel_register_value("FDAC", self.fdac_mask_best)  # set value for meta scan
 
     def analyze(self):
         self.register.set_pixel_register_value("FDAC", self.fdac_mask_best)
