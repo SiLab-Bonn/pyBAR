@@ -15,9 +15,10 @@ class FdacTuning(Fei4RunBase):
     Tuning the FDAC to target ToT at given charge (charge is given in units of PlsrDAC).
 
     The tuning uses a binary search algorithm. Bit 0 is always scanned twice with value 1 and 0. Due to the nonlinearity it can happen that the binary search does not give the best result.
+    Pixel below threshold are set to ToT = 0.
 
     Note:
-    Pixel below threshold get ToT = 0.
+    Use pybar.scans.tune_fei4 for full FE-I4 tuning.
     '''
     _scan_id = "fdac_tuning"
     _default_scan_configuration = {
