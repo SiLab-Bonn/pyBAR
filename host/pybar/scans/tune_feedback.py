@@ -59,13 +59,13 @@ class FeedbackTuning(Fei4RunBase):
         for feedback_bit in self.feedback_tune_bits:  # reset all GDAC bits
             self.set_prmp_vbpf_bit(feedback_bit, bit_value=0)
 
-        additional_scan = False
+        additional_scan = True
         last_bit_result = self.n_injections_feedback
 
         tot_mean_best = 0
         feedback_best = self.register.get_global_register_value("PrmpVbpf")
         for feedback_bit in self.feedback_tune_bits:
-            if not additional_scan:
+            if additional_scan:
                 self.set_prmp_vbpf_bit(feedback_bit)
                 logging.info('PrmpVbpf setting: %d, bit %d = 1' % (self.register.get_global_register_value("PrmpVbpf"), feedback_bit))
             else:
@@ -102,8 +102,8 @@ class FeedbackTuning(Fei4RunBase):
                 logging.info('Mean ToT = %f < %d ToT, set bit %d = 0' % (mean_tot, self.target_tot, feedback_bit))
 
             if feedback_bit == 0:
-                if not additional_scan:  # scan bit = 0 with the correct value again
-                    additional_scan = True
+                if additional_scan:  # scan bit = 0 with the correct value again
+                    additional_scan = False
                     last_bit_result = mean_tot
                     self.feedback_tune_bits.append(0)  # bit 0 has to be scanned twice
                 else:

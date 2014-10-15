@@ -122,16 +122,18 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
             TdacTuning.scan(self)
 
     def analyze(self):
-        GdacTuning.analyze(self)
-        FeedbackTuning.analyze(self)
-        TdacTuning.analyze(self)
-        FdacTuning.analyze(self)
+        if self.global_iterations:
+            GdacTuning.analyze(self)
+            FeedbackTuning.analyze(self)
+        if self.local_iterations:
+            TdacTuning.analyze(self)
+            FdacTuning.analyze(self)
 
         if self.create_plots:
-            if(self.local_iterations > 0):
+            if self.local_iterations:
                 plotThreeWay(hist=self.register.get_pixel_register_value("FDAC").transpose(), title="FDAC distribution after last FDAC tuning", x_axis_title='FDAC', filename=self.plots_filename, maximum=16)
                 plotThreeWay(hist=self.tot_mean_best.transpose(), title="Mean ToT after last FDAC tuning", x_axis_title='mean ToT', filename=self.plots_filename)
-            if(self.global_iterations > 0):
+            if self.global_iterations:
                 plotThreeWay(hist=self.register.get_pixel_register_value("TDAC").transpose(), title="TDAC distribution after complete tuning", x_axis_title='TDAC', filename=self.plots_filename, maximum=32)
                 plotThreeWay(hist=self.occupancy_best.transpose(), title="Occupancy after complete tuning", x_axis_title='Occupancy', filename=self.plots_filename, maximum=100)
             self.plots_filename.close()

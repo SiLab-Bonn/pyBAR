@@ -57,7 +57,7 @@ class GdacTuning(Fei4RunBase):
         for gdac_bit in self.gdac_tune_bits:  # reset all GDAC bits
             self.set_gdac_bit(gdac_bit, bit_value=0)
 
-        additional_scan = False
+        additional_scan = True
         last_bit_result = self.n_injections_gdac
         decreased_threshold = False  # needed to determine if the FE is noisy
         all_bits_zero = True
@@ -90,7 +90,7 @@ class GdacTuning(Fei4RunBase):
         vthin_ac_best = self.register.get_global_register_value("Vthin_AltCoarse")
         for gdac_bit in self.gdac_tune_bits:
 
-            if not additional_scan:
+            if additional_scan:
                 self.set_gdac_bit(gdac_bit)
                 scan_parameter_value = (self.register.get_global_register_value("Vthin_AltCoarse") << 8) + self.register.get_global_register_value("Vthin_AltFine")
                 logging.info('GDAC setting: %d, bit %d = 1' % (scan_parameter_value, gdac_bit))
@@ -133,8 +133,8 @@ class GdacTuning(Fei4RunBase):
                     all_bits_zero = False
 
             if gdac_bit == 0:
-                if not additional_scan:  # scan bit = 0 with the correct value again
-                    additional_scan = True
+                if additional_scan:  # scan bit = 0 with the correct value again
+                    additional_scan = False
                     last_bit_result = self.occ_array_sel_pixel.copy()
                     self.gdac_tune_bits.append(0)  # bit 0 has to be scanned twice
                 else:

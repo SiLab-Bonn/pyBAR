@@ -53,7 +53,7 @@ class TdacTuning(Fei4RunBase):
         cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", mask_steps=mask_steps)[0]
 
         self.write_target_threshold()
-        additional_scan = False
+        additional_scan = True
         lastBitResult = np.zeros(shape=self.register.get_pixel_register_value("TDAC").shape, dtype=self.register.get_pixel_register_value("TDAC").dtype)
 
         self.set_start_tdac()
@@ -63,7 +63,7 @@ class TdacTuning(Fei4RunBase):
         self.tdac_mask_best = self.register.get_pixel_register_value("TDAC")
 
         for scan_parameter_value, tdac_bit in enumerate(self.tdac_tune_bits):
-            if not additional_scan:
+            if additional_scan:
                 self.set_tdac_bit(tdac_bit)
                 logging.info('TDAC setting: bit %d = 1' % tdac_bit)
             else:
@@ -93,8 +93,8 @@ class TdacTuning(Fei4RunBase):
                 self.register.set_pixel_register_value("TDAC", tdac_mask)
 
             if tdac_bit == 0:
-                if not additional_scan:  # scan bit = 0 with the correct value again
-                    additional_scan = True
+                if additional_scan:  # scan bit = 0 with the correct value again
+                    additional_scan = False
                     lastBitResult = occupancy_array.copy()
                     self.tdac_tune_bits.append(0)  # bit 0 has to be scanned twice
                 else:
@@ -102,6 +102,8 @@ class TdacTuning(Fei4RunBase):
                     occupancy_array[abs(occupancy_array - self.n_injections_tdac / 2) > abs(lastBitResult - self.n_injections_tdac / 2)] = lastBitResult[abs(occupancy_array - self.n_injections_tdac / 2) > abs(lastBitResult - self.n_injections_tdac / 2)]
                     self.occupancy_best[abs(occupancy_array - self.n_injections_tdac / 2) <= abs(self.occupancy_best - self.n_injections_tdac / 2)] = occupancy_array[abs(occupancy_array - self.n_injections_tdac / 2) <= abs(self.occupancy_best - self.n_injections_tdac / 2)]
                     self.tdac_mask_best[abs(occupancy_array - self.n_injections_tdac / 2) <= abs(self.occupancy_best - self.n_injections_tdac / 2)] = tdac_mask[abs(occupancy_array - self.n_injections_tdac / 2) <= abs(self.occupancy_best - self.n_injections_tdac / 2)]
+
+        self.register.set_pixel_register_value("TDAC", self.tdac_mask_best)  # set value for meta scan
 
 #         # additional analog scan to get final results, not needed, just for checking
 #         logging.info('Do analog scan with actual TDAC settings after TDAC tuning')
