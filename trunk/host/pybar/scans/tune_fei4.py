@@ -1,5 +1,4 @@
 import logging
-
 from matplotlib.backends.backend_pdf import PdfPages
 
 from pybar.run_manager import RunManager
@@ -25,7 +24,7 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
 #         "scan_parameters": {'GDAC': -1, 'TDAC': -1, 'PrmpVbpf': -1, 'FDAC': -1, 'global_step': 0, 'local_step': 0},
 #         "global_iterations": 4,  # the number of iterations to do for the global tuning, 0 means only threshold is tuned, negative that no global tuning is done
 #         "local_iterations": 0,  # the number of iterations to do for the local tuning, 0 means only threshold is tuned, negative that no local tuning is done
-#         "create_plots": True  # plots for all scan steps are created
+#         "make_plots": True  # plots for all scan steps are created
 #     })
     _default_scan_configuration = {
         # tuning parameters
@@ -56,7 +55,7 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
         "pulser_dac_correction": False,  # PlsrDAC correction for each double column
         "scan_parameters": {'GDAC': -1, 'TDAC': -1, 'PrmpVbpf': -1, 'FDAC': -1, 'global_step': 0, 'local_step': 0},
         # plotting
-        "create_plots": True,  # plots for all scan steps are created
+        "make_plots": True,  # plots for all scan steps are created
         "plot_intermediate_steps": False,  # plot intermediate steps (takes time)
         "plots_filename": None,  # file name to store the plot to, if None show on screen
     }
@@ -115,10 +114,10 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
             self.local_iterations = 0
         difference_bit = 1
 
-        if self.create_plots:
+        if self.make_plots:
             self.plots_filename = PdfPages(self.output_filename + '.pdf')
         else:
-            self.plots_filename
+            self.plots_filename = None
 
         start_bit = 7
         for iteration in range(0, self.global_iterations):  # tune iteratively with decreasing range to save time
@@ -165,7 +164,7 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
             TdacTuning.analyze(self)
             FdacTuning.analyze(self)
 
-        if self.create_plots:
+        if self.make_plots:
             if self.local_iterations:
                 plotThreeWay(hist=self.occupancy_best.transpose(), title="Occupancy after tuning", x_axis_title='Occupancy', filename=self.plots_filename, maximum=100)
                 plotThreeWay(hist=self.tot_mean_best.transpose(), title="Mean ToT after last FDAC tuning", x_axis_title='Mean ToT', filename=self.plots_filename)
