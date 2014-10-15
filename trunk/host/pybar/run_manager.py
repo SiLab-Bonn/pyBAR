@@ -124,7 +124,7 @@ class RunBase():
     def _write_run_number(self):
         run_numbers = self._get_run_numbers()
         if not run_numbers:
-            self._run_number = 0
+            self._run_number = 1
         else:
             self._run_number = max(dict.iterkeys(run_numbers)) + 1
         run_numbers[self.run_number] = str(self.run_number) + ' ' + 'RUNNING' + ' ' + str(datetime.datetime.now()) + '\n'
