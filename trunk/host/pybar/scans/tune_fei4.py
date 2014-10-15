@@ -76,7 +76,10 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
                 2: TDAC/FDAC/TDAC/FDAC/TDAC
                 ...
         '''
-
+        if self.global_iterations < 0:
+            self.global_iterations = 0
+        if self.local_iterations < 0:
+            self.local_iterations = 0
         difference_bit = 1
 
         if self.create_plots:
@@ -95,16 +98,16 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
             self.feedback_tune_bits = range(start_bit, -1, -1)
             FeedbackTuning.scan(self)
 
-        if self.global_iterations > 0:
+        if self.global_iterations:
             self.set_scan_parameters(global_step=self.scan_parameters.global_step + 1)
             self.gdac_tune_bits = range(start_bit, -1, -1)
             GdacTuning.scan(self)
 
-        Vthin_AC = self.register.get_global_register_value("Vthin_AltCoarse")
-        Vthin_AF = self.register.get_global_register_value("Vthin_AltFine")
-        PrmpVbpf = self.register.get_global_register_value("PrmpVbpf")
-        logging.info("Results of global threshold tuning: Vthin_AltCoarse / Vthin_AltFine = %d / %d" % (Vthin_AC, Vthin_AF))
-        logging.info("Results of global feedback tuning: PrmpVbpf = %d" % (PrmpVbpf,))
+            Vthin_AC = self.register.get_global_register_value("Vthin_AltCoarse")
+            Vthin_AF = self.register.get_global_register_value("Vthin_AltFine")
+            PrmpVbpf = self.register.get_global_register_value("PrmpVbpf")
+            logging.info("Results of global threshold tuning: Vthin_AltCoarse / Vthin_AltFine = %d / %d" % (Vthin_AC, Vthin_AF))
+            logging.info("Results of global feedback tuning: PrmpVbpf = %d" % (PrmpVbpf,))
 
         difference_bit = int(5 / (self.local_iterations if self.local_iterations > 0 else 1))
 
@@ -117,7 +120,7 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
             self.fdac_tune_bits = range(start_bit - 1, -1, -1)
             FdacTuning.scan(self)
 
-        if self.local_iterations > 0:
+        if self.local_iterations:
             self.tdac_tune_bits = range(start_bit, -1, -1)
             TdacTuning.scan(self)
 
@@ -131,11 +134,11 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
 
         if self.create_plots:
             if self.local_iterations:
-                plotThreeWay(hist=self.register.get_pixel_register_value("FDAC").transpose(), title="FDAC distribution after last FDAC tuning", x_axis_title='FDAC', filename=self.plots_filename, maximum=16)
-                plotThreeWay(hist=self.tot_mean_best.transpose(), title="Mean ToT after last FDAC tuning", x_axis_title='mean ToT', filename=self.plots_filename)
-            if self.global_iterations:
+                plotThreeWay(hist=self.occupancy_best.transpose(), title="Occupancy after tuning", x_axis_title='Occupancy', filename=self.plots_filename, maximum=100)
+                plotThreeWay(hist=self.tot_mean_best.transpose(), title="Mean ToT after last FDAC tuning", x_axis_title='Mean ToT', filename=self.plots_filename)
                 plotThreeWay(hist=self.register.get_pixel_register_value("TDAC").transpose(), title="TDAC distribution after complete tuning", x_axis_title='TDAC', filename=self.plots_filename, maximum=32)
-                plotThreeWay(hist=self.occupancy_best.transpose(), title="Occupancy after complete tuning", x_axis_title='Occupancy', filename=self.plots_filename, maximum=100)
+                plotThreeWay(hist=self.register.get_pixel_register_value("FDAC").transpose(), title="FDAC distribution after last FDAC tuning", x_axis_title='FDAC', filename=self.plots_filename, maximum=16)
+
             self.plots_filename.close()
 
 if __name__ == "__main__":
