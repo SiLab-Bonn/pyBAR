@@ -91,7 +91,7 @@ class FeedbackTuning(Fei4RunBase):
             logging.info('Mean ToT = %f' % mean_tot)
             self.tot_array, _ = np.histogram(a=tots, range=(0, 16), bins=16)
             if self.plot_intermediate_steps:
-                plot_tot(hist=self.tot_array, title='Time-over-threshold distribution (PrmpVbpf ' + str(scan_parameter_value) + ')', filename=self.plots_filename)
+                plot_tot(hist=self.tot_array, title='ToT distribution (PrmpVbpf ' + str(scan_parameter_value) + ')', filename=self.plots_filename)
 
             if abs(mean_tot - self.target_tot) < self.max_delta_tot and feedback_bit > 0:  # abort if good value already found to save time
                 logging.info('Good result already achieved, skipping missing bits')
@@ -131,7 +131,7 @@ class FeedbackTuning(Fei4RunBase):
 
     def analyze(self):
         self.register.set_global_register_value("PrmpVbpf", self.feedback_best)
-        plot_tot(hist=self.tot_array, title='Time-over-threshold distribution after feedback tuning (PrmpVbpf %d)' % self.scan_parameters.PrmpVbpf, filename=self.plots_filename)
+        plot_tot(hist=self.tot_array, title='ToT distribution after feedback tuning (PrmpVbpf %d)' % self.scan_parameters.PrmpVbpf, filename=self.plots_filename)
 
     def write_target_charge(self):
         commands = []

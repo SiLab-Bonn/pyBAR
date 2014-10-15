@@ -115,7 +115,7 @@ class FdacTuning(Fei4RunBase):
     def analyze(self):
         self.register.set_pixel_register_value("FDAC", self.fdac_mask_best)
 
-        plotThreeWay(hist=self.tot_mean_best.transpose(), title="Mean ToT after FDAC tuning", x_axis_title="ToT mean", filename=self.plots_filename, minimum=0, maximum=15)
+        plotThreeWay(hist=self.tot_mean_best.transpose(), title="Mean ToT after FDAC tuning", x_axis_title="Mean ToT", filename=self.plots_filename, minimum=0, maximum=15)
         plotThreeWay(hist=self.fdac_mask_best.transpose(), title="FDAC distribution after tuning", x_axis_title="FDAC", filename=self.plots_filename, minimum=0, maximum=15)
 
     def write_target_charge(self):
