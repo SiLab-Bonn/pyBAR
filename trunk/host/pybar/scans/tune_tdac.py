@@ -104,7 +104,6 @@ class TdacTuning(Fei4RunBase):
                     self.tdac_mask_best[abs(occupancy_array - self.n_injections_tdac / 2) <= abs(self.occupancy_best - self.n_injections_tdac / 2)] = tdac_mask[abs(occupancy_array - self.n_injections_tdac / 2) <= abs(self.occupancy_best - self.n_injections_tdac / 2)]
 
         self.register.set_pixel_register_value("TDAC", self.tdac_mask_best)  # set value for meta scan
-        print self.tdac_mask_best
 
 #         # additional analog scan to get final results, not needed, just for checking
 #         logging.info('Do analog scan with actual TDAC settings after TDAC tuning')
