@@ -53,7 +53,7 @@ def plot_tdc_event(points, filename=None):
     c_bar = fig.colorbar(p)
     c_bar.set_label('charge [TOT]')
 
-    if filename is None:
+    if not filename:
         fig.show()
     elif isinstance(filename, PdfPages):
         filename.savefig(fig)
@@ -134,7 +134,7 @@ def plot_linear_relation(x, y, x_err=None, y_err=None, title=None, point_label=N
     if size is not None:
         fig.set_size_inches(size)
 
-    if filename is None:
+    if not filename:
         fig.show()
     elif isinstance(filename, PdfPages):
         filename.savefig(fig)
@@ -203,7 +203,7 @@ def plot_fancy_occupancy(hist, z_max=None, filename=None):
     axHisty.ticklabel_format(style='sci', scilimits=(0, 4), axis='x')
     axHisty.set_xlabel('#')
 
-    if filename is None:
+    if not filename:
         fig.show()
     elif isinstance(filename, PdfPages):
         filename.savefig(fig)
@@ -246,7 +246,7 @@ def plot_occupancy(hist, title='Occupancy', z_max=None, filename=None):
     cb = fig.colorbar(im, cax=cax, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True))
     cb.set_label("#")
 
-    if filename is None:
+    if not filename:
         fig.show()
     elif isinstance(filename, PdfPages):
         filename.savefig(fig)
@@ -305,7 +305,7 @@ def plot_profile_histogram(x, y, n_bins=100, title=None, x_label=None, y_label=N
     if log_y:
         ax.yscale('log')
     ax.grid(True)
-    if filename is None:
+    if not filename:
         fig.show()
     elif isinstance(filename, PdfPages):
         filename.savefig(fig)
@@ -342,7 +342,7 @@ def plot_scatter(x, y, x_err=None, y_err=None, title=None, legend=None, plot_ran
     if legend:
         ax.legend(legend, 0)
     ax.grid(True)
-    if filename is None:
+    if not filename:
         fig.show()
     elif isinstance(filename, PdfPages):
         filename.savefig(fig)
@@ -369,7 +369,7 @@ def plot_correlation(hist, title="Hit correlation", xlabel=None, ylabel=None, fi
     bounds = np.linspace(start=0, stop=z_max, num=255, endpoint=True)
     norm = colors.BoundaryNorm(bounds, cmap.N)
     fig.colorbar(im, boundaries=bounds, cmap=cmap, norm=norm, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True), cax=cax)
-    if filename is None:
+    if not filename:
         fig.show()
     elif isinstance(filename, PdfPages):
         filename.savefig(fig)
@@ -394,7 +394,7 @@ def plot_pixel_matrix(hist, title="Hit correlation", filename=None):
     bounds = np.linspace(start=0, stop=z_max, num=255, endpoint=True)
     norm = colors.BoundaryNorm(bounds, cmap.N)
     fig.colorbar(boundaries=bounds, cmap=cmap, norm=norm, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True), cax=cax)
-    if filename is None:
+    if not filename:
         fig.show()
     elif isinstance(filename, PdfPages):
         filename.savefig(fig)
@@ -513,7 +513,7 @@ def plot_scurves(occupancy_hist, scan_parameters, title='S-Curves', ylabel='Occu
     else:
         ax.set_xlabel(scan_parameter_name)
     ax.set_ylabel(ylabel)
-    if filename is None:
+    if not filename:
         fig.show()
     elif isinstance(filename, PdfPages):
         filename.savefig(fig)
@@ -550,7 +550,7 @@ def plot_scatter_time(x, y, yerr=None, title=None, legend=None, plot_range=None,
     if legend:
         ax.legend(legend, 0)
     ax.grid(True)
-    if filename is None:
+    if not filename:
         fig.show()
     elif isinstance(filename, PdfPages):
         filename.savefig(fig)
@@ -583,7 +583,7 @@ def plot_cluster_tot_size(hist, median=False, z_max=None, filename=None):
     cb = fig.colorbar(im, cax=cax, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True))
     cb.set_label("#")
     fig.patch.set_facecolor('white')
-    if filename is None:
+    if not filename:
         fig.show()
     elif isinstance(filename, PdfPages):
         filename.savefig(fig)
@@ -619,7 +619,7 @@ def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=No
         if log_y:
             ax.set_yscale('log')
     ax.grid(True)
-    if filename is None:
+    if not filename:
         fig.show()
     elif isinstance(filename, PdfPages):
         filename.savefig(fig)
@@ -763,7 +763,7 @@ def plotThreeWay(hist, title, filename=None, x_axis_title=None, minimum=None, ma
     ax3 = fig.add_subplot(313)
     create_pixel_scatter_plot(fig, ax3, hist, x_axis_title="channel=row + column*336", y_axis_title=x_axis_title, y_min=minimum, y_max=maximum)
     fig.tight_layout()
-    if filename is None:
+    if not filename:
         fig.show()
     elif isinstance(filename, PdfPages):
         filename.savefig(fig)
