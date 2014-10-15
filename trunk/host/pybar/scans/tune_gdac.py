@@ -21,8 +21,8 @@ class GdacTuning(Fei4RunBase):
         "gdac_tune_bits": range(7, -1, -1),  # GDAC bits to change during tuning
         "n_injections_gdac": 50,  # number of injections per GDAC bit setting
         "max_delta_threshold": 2,  # minimum difference to the target_threshold to abort the tuning
-        "mask_steps": 3,  # mask
-        "enable_mask_steps": [0],  # mask steps to do per GDAC setting
+        "mask_steps_gdac": 3,  # mask
+        "enable_mask_steps_gdac": [0],  # mask steps to do per GDAC setting
         "plot_intermediate_steps": False,  # plot intermediate steps (takes time)
         "plots_filename": None,  # file name to store the plot to, if None show on screen
         "enable_shift_masks": ["Enable", "C_High", "C_Low"],  # enable masks shifted during scan
@@ -51,7 +51,7 @@ class GdacTuning(Fei4RunBase):
         self.register_utils.send_commands(commands)
 
     def scan(self):
-        cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", mask_steps=self.mask_steps)[0]
+        cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", mask_steps=self.mask_steps_gdac)[0]
 
         self.write_target_threshold()
         for gdac_bit in self.gdac_tune_bits:  # reset all GDAC bits
@@ -77,10 +77,10 @@ class GdacTuning(Fei4RunBase):
 
         # calculate selected pixels from the mask and the disabled columns
         select_mask_array = np.zeros(shape=(80, 336), dtype=np.uint8)
-        if not self.enable_mask_steps:
-            self.enable_mask_steps = range(self.mask_steps)
-        for mask_step in self.enable_mask_steps:
-            select_mask_array += make_pixel_mask(steps=self.mask_steps, shift=mask_step)
+        if not self.enable_mask_steps_gdac:
+            self.enable_mask_steps_gdac = range(self.mask_steps_gdac)
+        for mask_step in self.enable_mask_steps_gdac:
+            select_mask_array += make_pixel_mask(steps=self.mask_steps_gdac, shift=mask_step)
         for column in bits_set(self.register.get_global_register_value("DisableColumnCnfg")):
             logging.info('Deselect double column %d' % column)
             select_mask_array[column, :] = 0
@@ -100,7 +100,7 @@ class GdacTuning(Fei4RunBase):
                 logging.info('GDAC setting: %d, bit %d = 0' % (scan_parameter_value, gdac_bit))
 
             with self.readout(GDAC=scan_parameter_value):
-                scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections_gdac, mask_steps=self.mask_steps, enable_mask_steps=self.enable_mask_steps, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=self.enable_shift_masks, disable_shift_masks=self.disable_shift_masks, restore_shift_masks=True, mask=None, double_column_correction=self.pulser_dac_correction)
+                scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections_gdac, mask_steps=self.mask_steps_gdac, enable_mask_steps=self.enable_mask_steps_gdac, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=self.enable_shift_masks, disable_shift_masks=self.disable_shift_masks, restore_shift_masks=True, mask=None, double_column_correction=self.pulser_dac_correction)
 
             self.raw_data_file.append(self.fifo_readout.data, scan_parameters=self.scan_parameters._asdict())
 
