@@ -1,11 +1,26 @@
 from pybar.run_manager import RunManager  # importing run manager
+from pybar.scans.scan_analog import AnalogScan
+from pybar.scans.scan_ext_trigger_gdac import ExtTriggerGdacScan
+from pybar.run_manager import run_status
 
 if __name__ == "__main__":
     runmngr = RunManager('../../pybar/configuration.yaml')  # loading configuration file, specifying hardware configuration and module configuration.
+    #
+    # Running primlist:
     runmngr.run_primlist('primlist.plst')  # executing primlist.plst file, specific scan parameters are set inside the primlist file
     # Each scan has a default configuration, which is defined inside the corresponding scan file in /host/pybar/scans/. It is not necessary to define scan parameters inside primlist file.
     #
-    # After finishing the primlist: you will find the module data relative to the configuration.yaml file.
+    # Running single scan and changing scan parameters:
+    join = runmngr.run_run(run=AnalogScan, run_conf={"scan_parameters": {'PlsrDAC': 500}, "n_injections": 1000})  # run_run returns a function object
+    print join()  # will wait for scan to be finished and returns run status
+    #
+    # Example for a loop:
+    for gdac in range(50, 200, 10):
+        join = runmngr.run_run(ExtTriggerGdacScan, run_conf={'GDAC': gdac})
+        if join() != run_status.finished:  # status OK?
+            break
+    #
+    # After finishing the primlist/run: you will find the module data relative to the configuration.yaml file.
     # If configuration.yaml is in /host/pybar/ the module data will be /host/pybar/<module_id> (where <module_id> is given from configuration.yaml).
     # After finishing the first scan, FE configuration can be commented out in configuration.yaml (for that use '#'):
     #
