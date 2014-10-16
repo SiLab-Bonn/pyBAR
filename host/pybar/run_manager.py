@@ -37,20 +37,24 @@ class RunBase():
         self._run_status = None
         self.file_lock = Lock()
         self.stop_run = Event()
+        self.abort_run = Event()
 
     def __call__(self):
         self.stop_run.clear()
+        self.abort_run.clear()
         self.init()
         try:
-            if self.stop_run.is_set():
+            if self.abort_run.is_set():
                 raise RunAborted('Run aborted during initialization.')
+            if self.stop_run.is_set():
+                raise RunAborted('Run stopped during initialization.')
             self.run()
         except RunAborted as e:
             self._run_status = run_status.aborted
-            logging.warning('Aborting run %s: %s' % (self.run_number, e))
+            logging.warning('Run %s was aborted: %s' % (self.run_number, e))
         except Exception as e:
             self._run_status = run_status.crashed
-            logging.error('Exception during run %s: %s' % (self.run_number, traceback.format_exc()))
+            logging.error('Unexpected exception during run %s: %s' % (self.run_number, traceback.format_exc()))
             with open(os.path.join(self.working_dir, "crash" + ".log"), 'a+') as f:
                 f.write('-------------------- Run %i --------------------\n' % self.run_number)
                 traceback.print_exc(file=f)
@@ -96,6 +100,11 @@ class RunBase():
 
     def stop(self):
         """Stopping a run."""
+        self.stop_run.set()
+
+    def abort(self):
+        """Aborting a run."""
+        self.aboort_run.set()
         self.stop_run.set()
 
     def _get_run_numbers(self, status=None):
@@ -265,6 +274,12 @@ class RunManager(object):
         except AttributeError:
             pass
 
+    def abort_current_run(self):
+        try:
+            self._current_run.abort()
+        except AttributeError:
+            pass
+
     def run_run(self, run, run_conf=None):
         '''Runs a run in another thread. Non-blocking.
 
@@ -335,7 +350,7 @@ class RunManager(object):
                     if not line:
                         continue
                     run_conf = {}
-                    parts = re.split('\s*[;]\s*', line)  # TODO: do not split list, dict
+                    parts = re.split('\s*[;]\s*', line)
                     try:
                         mod = import_module(parts[0])  # points to module
                     except ImportError:
@@ -358,7 +373,7 @@ class RunManager(object):
                             raise ValueError('Found no matching class.')
                         run_cls = clsmembers[0][1]
                     for param in parts[1:]:
-                        key, value = re.split('\s*[=]\s*', param)  # TODO: do not split dict
+                        key, value = re.split('\s*[=:]\s*', param, 1)
                         run_conf[key] = literal_eval(value)
                     srun_list.append(run_cls(working_dir=self.working_dir, conf=self.conf, run_conf=run_conf))
             return srun_list
