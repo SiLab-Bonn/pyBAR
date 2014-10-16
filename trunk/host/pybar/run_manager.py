@@ -280,7 +280,10 @@ class RunManager(object):
         Function, which blocks when called, waits for the end of the run, and returns run status.
         '''
         if isclass(run):
-            run = run(working_dir=self.working_dir, conf=self.conf, run_conf=self.open_conf(run_conf))
+            run_conf = self.open_conf(run_conf)
+            if run_conf and run.__name__ in run_conf:
+                run_conf = run_conf[run.__name__]
+            run = run(working_dir=self.working_dir, conf=self.conf, run_conf=run_conf)
         elif run_conf:
             raise ValueError('Run object already initialized. Run configuration cannot be passed.')
 
