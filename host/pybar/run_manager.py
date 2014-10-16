@@ -258,7 +258,7 @@ class RunManager(object):
         else:  # conf is already a dict
             conf_dict.update(conf)
         return conf_dict
-    
+
     def stop_current_run(self):
         try:
             self._current_run.stop()
@@ -287,7 +287,7 @@ class RunManager(object):
         @thunkify('RunThread')
         def run_run_in_thread():
             return run()
-        
+
         self._current_run = run
         return run_run_in_thread()
 
