@@ -4,7 +4,7 @@ import datetime
 import os
 import re
 import collections
-from threading import Lock, Thread
+from threading import Lock, Thread, Event
 # from multiprocessing import dummy as multiprocessing
 import sys
 import functools
@@ -36,10 +36,14 @@ class RunBase():
         self._run_number = None
         self._run_status = None
         self.file_lock = Lock()
+        self.stop_run = Event()
 
     def __call__(self):
+        self.stop_run.clear()
         self.init()
         try:
+            if self.stop_run.is_set():
+                raise RunAborted('Run aborted during initialization.')
             self.run()
         except RunAborted as e:
             self._run_status = run_status.aborted
@@ -90,10 +94,9 @@ class RunBase():
             log_status = logging.ERROR
         logging.log(log_status, 'Stopped run %d in %s with status %s' % (self.run_number, self.working_dir, self.run_status))
 
-    @abc.abstractmethod
-    def abort(self, msg=None):
-        """Aborting a run."""
-        pass
+    def stop(self):
+        """Stopping a run."""
+        self.stop_run.set()
 
     def _get_run_numbers(self, status=None):
         run_numbers = {}
@@ -174,9 +177,11 @@ def thunkify(thread_name):
             worker_thread = Thread(target=worker_func, name=thread_name if thread_name else None)
             worker_thread.daemon = True
 
-            def thunk():
-                worker_thread.join()
+            def thunk(timeout=None):
+                worker_thread.join(timeout=timeout)
 #                 wait_event.wait()
+                if worker_thread.is_alive():
+                    return
                 if exc[0]:
                     raise exc[1][0], exc[1][1], exc[1][2]
                 return result[0]
@@ -253,6 +258,12 @@ class RunManager(object):
         else:  # conf is already a dict
             conf_dict.update(conf)
         return conf_dict
+    
+    def stop_current_run(self):
+        try:
+            self._current_run.stop()
+        except AttributeError:
+            pass
 
     def run_run(self, run, run_conf=None):
         '''Runs a run in another thread. Non-blocking.
@@ -276,7 +287,8 @@ class RunManager(object):
         @thunkify('RunThread')
         def run_run_in_thread():
             return run()
-
+        
+        self._current_run = run
         return run_run_in_thread()
 
     def run_primlist(self, primlist, skip_remaining=False):

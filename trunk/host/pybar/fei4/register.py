@@ -408,101 +408,85 @@ class FEI4Register(object):
         self.write_parameters(self.calibration_config, title='Calibration Parameters')
         return self.configuration_file
 
-    def load_configuration_from_hdf5(self, configuration_file=None, name='', definition_file=None, **kwargs):
+    def load_configuration_from_hdf5(self, h5_file, name='', **kwargs):
         '''Loading configuration from HDF5 file
 
         Parameters
         ----------
-        configuration_file : string
-            Filename of the HDF5 configuration file.
+        h5_file : string, file
+            Filename of the HDF5 configuration file or file object.
         name : string
             Additional identifier (subgroup). Useful when more than one configuration is stored inside a HDF5 file.
-        definition_file : string
-            Full path (directory and filename) of the definition file. If name is not given, flavor of FE chip will be taken from configuration file.
         '''
-        if configuration_file:
-            h5_file = configuration_file
+        
+        def load_conf():
+            logging.info("Loading configuration from HDF5 file: %s" % h5_file.filename)
+            if name:
+                configuration_group = h5_file.root.configuration.name
+            else:
+                configuration_group = h5_file.root.configuration
+
+                # misc
+                for row in configuration_group.miscellaneous:
+                    name = row['name']
+                    value = row['value']
+                    if name in self.parameter_config:
+                        self.parameter_config[name] = list(ast.literal_eval(value.strip()))
+                    elif name in self.calibration_config:
+                        self.calibration_config[name] = list(ast.literal_eval(value.strip()))
+
+                self.parse_register_config()  # init registers
+
+                # global
+                for row in configuration_group.global_register:
+                    name = row['name']
+                    value = row['value']
+                    self.set_global_register_value(name, value)
+
+                # pixels
+                for pixel_reg in self.pixel_registers:
+                    name = pixel_reg.full_name
+                    self.set_pixel_register_value(pixel_reg.name, np.asarray(h5_file.getNode(configuration_group, name=name)).T)
+        
+        if isinstance(h5_file, tb.file.File):
+            self.configuration_file = h5_file.filename
+            load_conf()
+        else:
             if os.path.splitext(h5_file)[1].strip().lower() != ".h5":
                 h5_file = os.path.splitext(h5_file)[0] + ".h5"
             self.configuration_file = h5_file
-        if definition_file:
-            self.definition_file = definition_file
-        if self.configuration_file is not None:
-            logging.info("Loading configuration file: %s" % self.configuration_file)
+            with tb.open_file(h5_file, mode="r", title='', **kwargs) as h5_file:
+                load_conf()
 
-            with tb.open_file(h5_file, mode="r", title='', **kwargs) as raw_data_file_h5:
-                if name:
-                    configuration_group = raw_data_file_h5.root.configuration.name
-                else:
-                    configuration_group = raw_data_file_h5.root.configuration
 
-                    # misc
-                    for row in configuration_group.miscellaneous:
-                        name = row['name']
-                        value = row['value']
-                        if name in self.parameter_config:
-                            self.parameter_config[name] = list(ast.literal_eval(value.strip()))
-                        elif name in self.calibration_config:
-                            self.calibration_config[name] = list(ast.literal_eval(value.strip()))
-
-                    self.parse_register_config()  # init registers
-
-                    # global
-                    for row in configuration_group.global_register:
-                        name = row['name']
-                        value = row['value']
-                        self.set_global_register_value(name, value)
-
-                    # pixels
-                    for pixel_reg in self.pixel_registers:
-                        name = pixel_reg.full_name
-                        self.set_pixel_register_value(pixel_reg.name, np.asarray(raw_data_file_h5.getNode(configuration_group, name=name)).T)
-        elif self.definition_file is not None:
-            logging.info("Parsing definition file: %s" % self.definition_file)
-            self.parse_register_config()
-        else:
-            logging.warning("No configuration file and/or definition file specified.")
-
-    def save_configuration_to_hdf5(self, configuration_file, name='', **kwargs):
+    def save_configuration_to_hdf5(self, h5_file, name='', **kwargs):
         '''Saving configuration to HDF5 file
 
         Parameters
         ----------
-        configuration_file : string
-            Filename of the HDF5 configuration file.
+        h5_file : string, file
+            Filename of the HDF5 configuration file or file object.
         name : string
             Additional identifier (subgroup). Useful when storing more than one configuration inside a HDF5 file.
-
-        Returns
-        -------
-        h5_file : string
-            Path to the HDF5 configuration file.
         '''
-        h5_file = configuration_file
-        if os.path.splitext(h5_file)[1].strip().lower() != ".h5":
-            h5_file = os.path.splitext(h5_file)[0] + ".h5"
-
-        filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
-
-        # append to file if existing otherwise create new one
-        with tb.open_file(h5_file, mode="a", title='', **kwargs) as raw_data_file_h5:
-
+        def save_conf():
+            logging.info("Saving configuration to HDF5 file: %s" % h5_file.filename)
             try:
-                configuration_group = raw_data_file_h5.create_group(raw_data_file_h5.root, "configuration")
+                configuration_group = h5_file.create_group(h5_file.root, "configuration")
             except tb.NodeError:
-                configuration_group = raw_data_file_h5.root.configuration
+                configuration_group = h5_file.root.configuration
             if name:
                 try:
-                    configuration_group = raw_data_file_h5.create_group(configuration_group, name)
+                    configuration_group = h5_file.create_group(configuration_group, name)
                 except tb.NodeError:
-                    configuration_group = raw_data_file_h5.root.configuration.name
+                    configuration_group = h5_file.root.configuration.name
 
             # miscellaneous
             try:
-                raw_data_file_h5.removeNode(configuration_group, name='miscellaneous')
+                h5_file.removeNode(configuration_group, name='miscellaneous')
             except tb.NodeError:
                 pass
-            misc_data_table = raw_data_file_h5.createTable(configuration_group, name='miscellaneous', description=NameValue, title='miscellaneous', filters=filter_tables)
+            misc_data_table = h5_file.createTable(configuration_group, name='miscellaneous', description=NameValue, title='miscellaneous')
 
             misc_data_row = misc_data_table.row
 
@@ -525,10 +509,10 @@ class FEI4Register(object):
 
             # global
             try:
-                raw_data_file_h5.removeNode(configuration_group, name='global_register')
+                h5_file.removeNode(configuration_group, name='global_register')
             except tb.NodeError:
                 pass
-            global_data_table = raw_data_file_h5.createTable(configuration_group, name='global_register', description=NameValue, title='global_register', filters=filter_tables)
+            global_data_table = h5_file.createTable(configuration_group, name='global_register', description=NameValue, title='global_register')
 
             global_data_table_row = global_data_table.row
 
@@ -543,15 +527,23 @@ class FEI4Register(object):
             # pixel
             for pixel_reg in self.pixel_registers:
                 try:
-                    raw_data_file_h5.removeNode(configuration_group, name=pixel_reg.full_name)
+                    h5_file.removeNode(configuration_group, name=pixel_reg.full_name)
                 except tb.NodeError:
                     pass
                 data = pixel_reg.value.T
                 atom = tb.Atom.from_dtype(data.dtype)
-                ds = raw_data_file_h5.createCArray(configuration_group, name=pixel_reg.full_name, atom=atom, shape=data.shape, title=pixel_reg.full_name, filters=filter_tables)
+                ds = h5_file.createCArray(configuration_group, name=pixel_reg.full_name, atom=atom, shape=data.shape, title=pixel_reg.full_name)
                 ds[:] = data
-
-        return h5_file
+        
+        if isinstance(h5_file, tb.file.File):
+            self.configuration_file = h5_file.filename
+            save_conf()
+        else:
+            if os.path.splitext(h5_file)[1].strip().lower() != ".h5":
+                h5_file = os.path.splitext(h5_file)[0] + ".h5"
+            self.configuration_file = h5_file
+            with tb.open_file(h5_file, mode="a", title='', **kwargs) as h5_file:
+                save_conf()
 
     def parse_register_config(self):
         # print "parse xml"
