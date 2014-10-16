@@ -31,6 +31,7 @@ class Fei4RunBase(RunBase):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, working_dir, conf, run_conf=None):
+        logging.info('Initializing %s' % self.__class__.__name__)
         self.fe_configuration = conf['fe_configuration']
         self.dut_configuration = conf['dut_configuration']
         sc = namedtuple('scan_configuration', field_names=self.default_scan_configuration.iterkeys())
@@ -47,8 +48,8 @@ class Fei4RunBase(RunBase):
         else:
             sp = namedtuple_with_defaults('scan_parameters', field_names=[])
             self.scan_parameters = sp()
+        logging.info('Scan parameter(s): %s' % (', '.join(['%s:%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None'))
 
-        self.stop_run = Event()
         self.err_queue = Queue()
 
         self.fifo_readout = None
@@ -203,23 +204,21 @@ class Fei4RunBase(RunBase):
                 self.fifo_readout = FifoReadout(self.dut)
             if not self.register_utils:
                 self.register_utils = FEI4RegisterUtils(self.dut, self.register)
-            self._save_configuration_dict('dut_configuration', self.dut_configuration)
-            self._save_configuration_dict('fe_configuration', self.fe_configuration)
-            self._save_configuration_dict('scan_configuration', self.scan_configuration)
-            self.register_utils.global_reset()
-            self.register_utils.reset_bunch_counter()
-            self.register_utils.reset_event_counter()
-            self.register_utils.reset_service_records()
-            self.register_utils.configure_all()
-            with self.register.restored(name=self.run_number):
-                self.configure()
-                self.register.save_configuration_to_hdf5(self.output_filename)
-                self.fifo_readout.reset_rx()
-                self.fifo_readout.reset_sram_fifo()
-                self.fifo_readout.print_readout_status()
-                logging.info('Found scan parameter(s): %s' % (', '.join(['%s:%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None'))
-                self.stop_run.clear()
-                with open_raw_data_file(filename=self.output_filename, title=self.scan_id, scan_parameters=self.scan_parameters._asdict()) as self.raw_data_file:
+            with open_raw_data_file(filename=self.output_filename, mode='w', title=self.scan_id, scan_parameters=self.scan_parameters._asdict()) as self.raw_data_file:
+                self.save_configuration_dict(self.raw_data_file.h5_file, 'dut_configuration', self.dut_configuration)
+                self.save_configuration_dict(self.raw_data_file.h5_file, 'fe_configuration', self.fe_configuration)
+                self.save_configuration_dict(self.raw_data_file.h5_file, 'scan_configuration', self.scan_configuration)
+                self.register_utils.global_reset()
+                self.register_utils.reset_bunch_counter()
+                self.register_utils.reset_event_counter()
+                self.register_utils.reset_service_records()
+                self.register_utils.configure_all()
+                with self.register.restored(name=self.run_number):
+                    self.configure()
+                    self.register.save_configuration_to_hdf5(self.raw_data_file.h5_file)
+                    self.fifo_readout.reset_rx()
+                    self.fifo_readout.reset_sram_fifo()
+                    self.fifo_readout.print_readout_status()
                     self.scan()
         except Exception:
             self.handle_err(sys.exc_info())
@@ -247,23 +246,20 @@ class Fei4RunBase(RunBase):
             else:
                 raise exc[0], exc[1], exc[2]
 
-    def retry(self):
-        self.run()
+    def stop(self, msg=None):
+        if msg:
+            logging.info('%s%s Stopping scan...' % (msg, ('' if msg[-1] in punctuation else '.')))
+        else:
+            logging.info('Stopping scan...')
+        self.stop_run.set()
 
     def abort(self, msg=None):
         if msg:
             logging.error('%s%s Stopping scan...' % (msg, ('' if msg[-1] in punctuation else '.')))
             self.err_queue.put(Exception(msg))
         else:
-            logging.error('Unknown exception: Stopping scan...')
+            logging.error('Unknown exception. Stopping scan...')
             self.err_queue.put(Exception('Unknown exception'))
-        self.stop_run.set()
-
-    def stop(self, msg=None):
-        if msg:
-            logging.info('%s%s Stopping scan...' % (msg, ('' if msg[-1] in punctuation else '.')))
-        else:
-            logging.info('Stopping scan...')
         self.stop_run.set()
 
     def handle_data(self, data):
@@ -313,32 +309,28 @@ class Fei4RunBase(RunBase):
     def stop_readout(self):
         self.fifo_readout.stop()
 
-    def _save_configuration_dict(self, configuation_name, configuration, **kwargs):
+    def save_configuration_dict(self, h5_file, configuation_name, configuration, **kwargs):
         '''Stores any configuration dictionary to HDF5 file.
 
         Parameters
         ----------
+        h5_file : string, file
+            Filename of the HDF5 configuration file or file object.
         configuation_name : str
             Configuration name. Will be used for table name.
         configuration : dict
             Configuration dictionary.
         '''
-        h5_file = self.output_filename
-        if os.path.splitext(h5_file)[1].strip().lower() != ".h5":
-            h5_file = os.path.splitext(h5_file)[0] + ".h5"
-
-        # append to file if existing otherwise create new one
-        with tb.open_file(h5_file, mode="a", title='put title', **kwargs) as raw_data_file_h5:
-            filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
+        def save_conf():
             try:
-                raw_data_file_h5.removeNode(raw_data_file_h5.root.configuration, name=configuation_name)
+                h5_file.removeNode(h5_file.root.configuration, name=configuation_name)
             except tb.NodeError:
                 pass
             try:
-                configuration_group = raw_data_file_h5.create_group(raw_data_file_h5.root, "configuration")
+                configuration_group = h5_file.create_group(h5_file.root, "configuration")
             except tb.NodeError:
-                configuration_group = raw_data_file_h5.root.configuration
-            self.scan_param_table = raw_data_file_h5.createTable(configuration_group, name=configuation_name, description=NameValue, title=configuation_name, filters=filter_tables)
+                configuration_group = h5_file.root.configuration
+            self.scan_param_table = h5_file.createTable(configuration_group, name=configuation_name, description=NameValue, title=configuation_name)
 
             row_scan_param = self.scan_param_table.row
 
@@ -348,6 +340,15 @@ class Fei4RunBase(RunBase):
                 row_scan_param.append()
 
             self.scan_param_table.flush()
+
+        if isinstance(h5_file, tb.file.File):
+            save_conf()
+        else:
+            if os.path.splitext(h5_file)[1].strip().lower() != ".h5":
+                h5_file = os.path.splitext(h5_file)[0] + ".h5"
+            with tb.open_file(h5_file, mode="a", title='', **kwargs) as h5_file:
+                save_conf()
+
 
     @abc.abstractmethod
     def configure(self):
