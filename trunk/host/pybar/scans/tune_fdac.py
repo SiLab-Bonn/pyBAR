@@ -118,6 +118,7 @@ class FdacTuning(Fei4RunBase):
                     self.fdac_mask_best[abs(tot_mean_array - self.target_tot) <= abs(self.tot_mean_best - self.n_injections_fdac / 2)] = fdac_mask[abs(tot_mean_array - self.target_tot) <= abs(self.tot_mean_best - self.n_injections_fdac / 2)]
 
         self.register.set_pixel_register_value("FDAC", self.fdac_mask_best)  # set value for meta scan
+        self.write_fdac_config()
 
     def analyze(self):
         self.register.set_pixel_register_value("FDAC", self.fdac_mask_best)
