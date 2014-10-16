@@ -21,7 +21,7 @@ class GdacTuning(Fei4RunBase):
     _scan_id = "gdac_tuning"
     _default_scan_configuration = {
         "scan_parameters": {'GDAC': None},
-        "target_threshold": 5,  # target threshold in PlsrDAC to tune to
+        "target_threshold": 50,  # target threshold in PlsrDAC to tune to
         "gdac_tune_bits": range(7, -1, -1),  # GDAC bits to change during tuning
         "n_injections_gdac": 50,  # number of injections per GDAC bit setting
         "max_delta_threshold": 2,  # minimum difference to the target_threshold to abort the tuning
