@@ -42,33 +42,6 @@ class ExtTriggerGdacScan(ExtTriggerScan):
             self.register_utils.set_gdac(self.scan_parameters.GDAC)
             
 
-    def scan(self):
-        # preload command
-        lvl1_command = self.register.get_commands("zeros", length=self.trigger_delay)[0] + self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", length=self.trigger_rate_limit)[0]
-        self.register_utils.set_command(lvl1_command)
-
-        with self.readout(**self.scan_parameters._asdict()):
-            got_data = False
-            while not self.stop_run.wait(1.0):
-                if not got_data:
-                    if self.fifo_readout.data_words_per_second() > 0:
-                        got_data = True
-                        logging.info('Taking data...')
-                        self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=self.max_triggers, poll=10).start()
-                else:
-                    triggers = self.dut['tlu']['TRIGGER_COUNTER']
-                    try:
-                        self.progressbar.update(triggers)
-                    except ValueError:
-                        pass
-                    if self.max_triggers is not None and triggers >= self.max_triggers:
-#                         if got_data:
-                        self.progressbar.finish()
-                        self.stop(msg='Trigger limit was reached: %i' % self.max_triggers)
-
-        logging.info('Total amount of triggers collected: %d', self.dut['tlu']['TRIGGER_COUNTER'])
-
-
 if __name__ == "__main__":
     join = RunManager('../configuration.yaml').run_run(ExtTriggerGdacScan)
     join()

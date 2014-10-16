@@ -69,7 +69,7 @@ class ExtTriggerScan(Fei4RunBase):
 #         current_trigger_number = 0
 #         last_trigger_number = 0
 
-        with self.readout():
+        with self.readout(**self.scan_parameters._asdict()):
             got_data = False
             while not self.stop_run.wait(1.0):
                 if not got_data:
