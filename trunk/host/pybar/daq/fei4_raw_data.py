@@ -7,7 +7,7 @@ from pybar.analysis.RawDataConverter.data_struct import MetaTableV2 as MetaTable
 
 
 def open_raw_data_file(filename, mode="a", title="", scan_parameters=None, **kwargs):
-    '''Mimics pytables.open_file()/openFile()
+    '''Mimics pytables.open_file()
 
     Returns:
     RawDataFile Object
@@ -33,7 +33,7 @@ class RawDataFile(object):
         self.raw_data_earray = None
         self.meta_data_table = None
         self.scan_param_table = None
-        self.raw_data_file_h5 = None
+        self.h5_file = None
         self.open(mode, title, **kwargs)
 
     def __enter__(self):
@@ -53,27 +53,27 @@ class RawDataFile(object):
 
         filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
         filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
-        self.raw_data_file_h5 = tb.openFile(self.filename, mode=mode, title=title, **kwargs)
+        self.h5_file = tb.open_file(self.filename, mode=mode, title=title, **kwargs)
         try:
-            self.raw_data_earray = self.raw_data_file_h5.createEArray(self.raw_data_file_h5.root, name='raw_data', atom=tb.UIntAtom(), shape=(0,), title='raw_data', filters=filter_raw_data)  # expectedrows = ???
+            self.raw_data_earray = self.h5_file.createEArray(self.h5_file.root, name='raw_data', atom=tb.UIntAtom(), shape=(0,), title='raw_data', filters=filter_raw_data)  # expectedrows = ???
         except tb.exceptions.NodeError:
-            self.raw_data_earray = self.raw_data_file_h5.getNode(self.raw_data_file_h5.root, name='raw_data')
+            self.raw_data_earray = self.h5_file.getNode(self.h5_file.root, name='raw_data')
         try:
-            self.meta_data_table = self.raw_data_file_h5.createTable(self.raw_data_file_h5.root, name='meta_data', description=MetaTable, title='meta_data', filters=filter_tables)
+            self.meta_data_table = self.h5_file.createTable(self.h5_file.root, name='meta_data', description=MetaTable, title='meta_data', filters=filter_tables)
         except tb.exceptions.NodeError:
-            self.meta_data_table = self.raw_data_file_h5.getNode(self.raw_data_file_h5.root, name='meta_data')
+            self.meta_data_table = self.h5_file.getNode(self.h5_file.root, name='meta_data')
         if self.scan_parameters:
             try:
                 scan_param_descr = generate_scan_parameter_description(self.scan_parameters)
-                self.scan_param_table = self.raw_data_file_h5.createTable(self.raw_data_file_h5.root, name='scan_parameters', description=scan_param_descr, title='scan_parameters', filters=filter_tables)
+                self.scan_param_table = self.h5_file.createTable(self.h5_file.root, name='scan_parameters', description=scan_param_descr, title='scan_parameters', filters=filter_tables)
             except tb.exceptions.NodeError:
-                self.scan_param_table = self.raw_data_file_h5.getNode(self.raw_data_file_h5.root, name='scan_parameters')
+                self.scan_param_table = self.h5_file.getNode(self.h5_file.root, name='scan_parameters')
 
     def close(self):
         with self.lock:
             self.flush()
             logging.info('Closing raw data file: %s' % self.filename)
-            self.raw_data_file_h5.close()
+            self.h5_file.close()
 
     def append_item(self, data_tuple, scan_parameters=None, flush=True):
         with self.lock:
