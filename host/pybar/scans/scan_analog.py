@@ -16,6 +16,9 @@ class AnalogScan(Fei4RunBase):
         "n_injections": 100,  # number of injections
         "scan_parameters": {'PlsrDAC': 200},  # the PlsrDAC setting
         "use_enable_mask": False,  # if True, use Enable mask during scan, if False, all pixels will be enabled
+        "enable_shift_masks": ["Enable", "C_High", "C_Low"],  # enable masks shifted during scan
+        "disable_shift_masks": [],  # disable masks shifted during scan
+        "pulser_dac_correction": False,  # PlsrDAC correction for each double column
         "enable_tdc": False  # if True, enables TDC (use RX2)
     }
 
@@ -24,6 +27,20 @@ class AnalogScan(Fei4RunBase):
         commands.extend(self.register.get_commands("confmode"))
         self.register.set_global_register_value('PlsrDAC', self.scan_parameters.PlsrDAC)
         commands.extend(self.register.get_commands("wrregister", name=['PlsrDAC']))
+        # C_Low
+        if "C_Low".lower() in map(lambda x: x.lower(), self.enable_shift_masks):
+            self.register.set_pixel_register_value('C_Low', 1)
+            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='C_Low'))
+        else:
+            self.register.set_pixel_register_value('C_Low', 0)
+            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='C_Low'))
+        # C_High
+        if "C_High".lower() in map(lambda x: x.lower(), self.enable_shift_masks):
+            self.register.set_pixel_register_value('C_High', 1)
+            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='C_High'))
+        else:
+            self.register.set_pixel_register_value('C_High', 0)
+            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='C_High'))
         self.register_utils.send_commands(commands)
 
     def scan(self):
@@ -33,9 +50,9 @@ class AnalogScan(Fei4RunBase):
             if self.enable_tdc:
                 # activate TDC arming
                 self.dut['tdc_rx2']['EN_ARMING'] = True
-                scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections, use_delay=True, mask_steps=self.mask_steps, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=True, bol_function=self.activate_tdc, eol_function=self.deactivate_tdc, digital_injection=False, enable_shift_masks=["Enable", "C_Low", "C_High"], restore_shift_masks=False, mask=invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if self.use_enable_mask else None)
+                scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections, use_delay=True, mask_steps=self.mask_steps, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=True, bol_function=self.activate_tdc, eol_function=self.deactivate_tdc, digital_injection=False, enable_shift_masks=self.enable_shift_masks, disable_shift_masks=self.disable_shift_masks, restore_shift_masks=False, mask=invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if self.use_enable_mask else None, double_column_correction=self.pulser_dac_correction)
             else:
-                scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections, use_delay=True, mask_steps=self.mask_steps, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=True, digital_injection=False, enable_shift_masks=["Enable", "C_Low", "C_High"], restore_shift_masks=False, mask=invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if self.use_enable_mask else None)
+                scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections, use_delay=True, mask_steps=self.mask_steps, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=True, digital_injection=False, enable_shift_masks=self.enable_shift_masks, disable_shift_masks=self.disable_shift_masks, restore_shift_masks=False, mask=invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if self.use_enable_mask else None, double_column_correction=self.pulser_dac_correction)
 
         # plotting data
 #         plot_occupancy(hist=make_occupancy_hist(*convert_data_array(data_array_from_data_dict_iterable(self.fifo_readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)), z_max='median', filename=self.scan_data_filename + "_occupancy.pdf")
