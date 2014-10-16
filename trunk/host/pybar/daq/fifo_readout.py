@@ -120,9 +120,9 @@ class FifoReadout(object):
             self.readout_thread.join(timeout=timeout)
             if self.readout_thread.is_alive():
                 if timeout != 0.0:
-                    raise StopTimeout('Reached timeout after %0.1f second(s). Forcing to stop readout.' % timeout)
+                    raise StopTimeout('Reached data timeout after %0.1f second(s). Stopping FIFO readout...' % timeout)
                 else:
-                    raise StopTimeout('Forcing to stop readout.')
+                    raise StopTimeout('Immediately stopping FIFO readout...')
         except StopTimeout:
             self.force_stop.set()
             if self.errback:

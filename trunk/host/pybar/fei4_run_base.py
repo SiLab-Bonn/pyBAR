@@ -24,7 +24,7 @@ punctuation = """!,.:;?"""
 
 
 class Fei4RunBase(RunBase):
-    '''Implementation of the base scan.
+    '''Implementation of the base run.
 
     Base class for scan- / tune- / analyze-classes.
     '''
@@ -81,13 +81,13 @@ class Fei4RunBase(RunBase):
 
     @abc.abstractproperty
     def _default_scan_configuration(self):
-        '''Default scan configuration dictionary
+        '''Default run configuration dictionary
         '''
         pass
 
     @property
     def default_scan_configuration(self):
-        '''Default scan configuration dictionary
+        '''Default run configuration dictionary
         '''
         return self._default_scan_configuration
 
@@ -224,6 +224,8 @@ class Fei4RunBase(RunBase):
             self.handle_err(sys.exc_info())
         else:
             try:
+                if self.abort_run.is_set():
+                    raise RunAborted('Do not analyze data.')
                 self.analyze()
             except Exception:
                 self.handle_err(sys.exc_info())
@@ -247,31 +249,28 @@ class Fei4RunBase(RunBase):
                 raise exc[0], exc[1], exc[2]
 
     def stop(self, msg=None):
-        if msg:
-            logging.info('%s%s Stopping scan...' % (msg, ('' if msg[-1] in punctuation else '.')))
-        else:
-            logging.info('Stopping scan...')
+        if not self.stop_run.is_set():
+            if msg:
+                logging.info('%s%s Stopping run...' % (msg, ('' if msg[-1] in punctuation else '.')))
+            else:
+                logging.info('Stopping run...')
         self.stop_run.set()
 
     def abort(self, msg=None):
-        if msg:
-            logging.error('%s%s Stopping scan...' % (msg, ('' if msg[-1] in punctuation else '.')))
-            self.err_queue.put(Exception(msg))
-        else:
-            logging.error('Unknown exception. Stopping scan...')
-            self.err_queue.put(Exception('Unknown exception'))
-        self.stop_run.set()
+        if not self.abort_run.is_set():
+            if msg:
+                logging.error('%s%s Aborting run...' % (msg, ('' if msg[-1] in punctuation else '.')))
+            else:
+                logging.error('Aborting run...')
+        self.abort_run.set()
+        self.stop_run.set()  # set stop_run in case abort_run is not used
 
     def handle_data(self, data):
         self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=False)
 
     def handle_err(self, exc):
         self.err_queue.put(exc)
-        self.stop_run.set()
-        if exc[1]:
-            logging.error('%s%s%s' % (exc[1], ('' if str(exc[1])[-1] in punctuation else '.'), ('' if self.stop_run.is_set() else ' Stopping scan...')))
-        else:
-            logging.error('Error.%s' % ('' if self.stop_run.is_set() else ' Stopping scan...'))
+        self.abort(msg='%s' % exc[1])
 
     def _get_configuration(self, run_number=None):
         if not run_number:
@@ -352,7 +351,7 @@ class Fei4RunBase(RunBase):
 
     @abc.abstractmethod
     def configure(self):
-        '''Implementation of the scan configuration.
+        '''Implementation of the run configuration.
 
         Will be executed before starting the scan routine.
         '''
@@ -368,7 +367,7 @@ class Fei4RunBase(RunBase):
 
     @abc.abstractmethod
     def analyze(self):
-        '''Implementation of scan data processing.
+        '''Implementation of run data processing.
 
         Will be executed after finishing the scan routine.
         '''
