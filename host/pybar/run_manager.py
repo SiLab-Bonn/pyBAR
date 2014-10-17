@@ -280,7 +280,7 @@ class RunManager(object):
         except AttributeError:
             pass
 
-    def run_run(self, run, run_conf=None):
+    def run_run(self, run, run_conf=None, use_thread=False):
         '''Runs a run in another thread. Non-blocking.
 
         Parameters
@@ -289,10 +289,14 @@ class RunManager(object):
             Run class.
         run_conf : str, dict, file
             Specific configuration for the run.
+        use_thread : bool
+            If True, run run in thread and returns blocking function.
+        
 
         Returns
         -------
-        Function, which blocks when called, waits for the end of the run, and returns run status.
+        If use_thread is True, returns function, which blocks until thread terminates, and which itself returns run status.
+        If use_thread is False, returns run status.
         '''
         if isclass(run):
             run_conf = self.open_conf(run_conf)
@@ -302,12 +306,17 @@ class RunManager(object):
         elif run_conf:
             raise ValueError('Run object already initialized. Run configuration cannot be passed.')
 
-        @thunkify('RunThread')
-        def run_run_in_thread():
-            return run()
-
-        self._current_run = run
-        return run_run_in_thread()
+        if use_thread:
+            @thunkify('RunThread')
+            def run_run_in_thread():
+                return run()
+    
+            self._current_run = run
+            return run_run_in_thread()
+        else:
+            self._current_run = run
+            status = run()
+            return status
 
     def run_primlist(self, primlist, skip_remaining=False):
         '''Runs runs from a primlist.
@@ -382,7 +391,7 @@ class RunManager(object):
 
     def _signal_handler(self, signum, frame):
         signal.signal(signal.SIGINT, signal.SIG_DFL)  # setting default handler... pressing Ctrl-C a second time will kill application
-        self._current_run.abort(msg='Pressed Ctrl-C')
+        self._current_run.abort()
 
 
 from functools import wraps
