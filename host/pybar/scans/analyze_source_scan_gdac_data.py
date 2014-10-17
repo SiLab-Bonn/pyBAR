@@ -12,50 +12,21 @@ Step 2.5 Histogram Cluster seeds:
 Step 4 Analyze the injected charge:
     Here the data from the previous steps is used to determine the injected charge. Plots of the results are shown.
 '''
+import logging
 import numpy as np
 import tables as tb
 import os.path
 import matplotlib.pyplot as plt
-from analysis import analysis
 
-from analysis.plotting import plotting
-from analysis import analysis_utils
-from analysis.analyze_raw_data import AnalyzeRawData
-
-import logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
+from pybar.analysis import analysis
+from pybar.analysis import analysis_utils
+from pybar.analysis.plotting import plotting
+from pybar.analysis.analyze_raw_data import AnalyzeRawData
 
 
 analysis_configuration = {
-#source at 20V
-#     "scan_name": ['K://data//FE-I4//ChargeRecoMethod//bias_20//scan_fei4_trigger_gdac_0'],
-#     20V
-    "scan_name": ['data//SCC_99//20V//SCC_99_ext_trigger_gdac_scan_432', 'data//SCC_99//20V//SCC_99_ext_trigger_gdac_scan_433', 'data//SCC_99//20V//SCC_99_ext_trigger_gdac_scan_434'],
-#     10V
-#     "scan_name": ['data//SCC_99//10V//SCC_99_ext_trigger_gdac_scan_438'],
-#     5V
-#     "scan_name": ['data//SCC_99//5V//SCC_99_ext_trigger_gdac_scan_437'],
-#     2V
-#     "scan_name": ['data//SCC_99//2V//SCC_99_ext_trigger_gdac_scan_435', 'data//SCC_99//2V//SCC_99_ext_trigger_gdac_scan_0'],
-#     0V
-#     "scan_name": ['data//SCC_99//0V//SCC_99_ext_trigger_gdac_scan_439'],
-#     20V Am point source
-#     "scan_name": ['data//SCC_99//Am_at_20V//SCC_99_fei4_self_trigger_gdac_scan_790', 'data//SCC_99//Am_at_20V//SCC_99_fei4_self_trigger_gdac_scan_795'],
-#     "scan_name": ['data//SCC_99//Am_at_20V//SCC_99_fei4_self_trigger_gdac_scan_802'],
-#     20V Cd strong source
-#     "scan_name": ['data//SCC_99//Cd_at_20V//SCC_99_fei4_self_trigger_gdac_scan_798'],
-#     "scan_name": ['data//SCC_99//SCC_99_fei4_self_trigger_gdac_scan_807'],
-    'input_file_calibration': 'data//SCC_99//calibrate_threshold_gdac_SCC_99_new.h5',
-#     500V
-#     "scan_name": ['MDBM30_ext_trigger_gdac_scan_dbm_489', 'MDBM30_ext_trigger_gdac_scan_dbm_508', 'MDBM30_ext_trigger_gdac_scan_dbm_509'],
-#     600V
-#     "scan_name": ['MDBM30_ext_trigger_gdac_scan_dbm_489', 'MDBM30_ext_trigger_gdac_scan_dbm_508', 'MDBM30_ext_trigger_gdac_scan_dbm_509'],
-#     "scan_name": ['MDBM30_ext_trigger_gdac_scan_dbm_492', 'MDBM30_ext_trigger_gdac_scan_dbm_498', 'MDBM30_ext_trigger_gdac_scan_dbm_499', 'MDBM30_ext_trigger_gdac_scan_dbm_515', 'MDBM30_ext_trigger_gdac_scan_dbm_516'],
-#     "scan_name": ['MDBM30_ext_trigger_gdac_scan_dbm_492', 'MDBM30_ext_trigger_gdac_scan_dbm_498', 'MDBM30_ext_trigger_gdac_scan_dbm_510', 'MDBM30_ext_trigger_gdac_scan_dbm_515', 'MDBM30_ext_trigger_gdac_scan_dbm_516'],
-#     700V
-#     "scan_name": ['MDBM30_ext_trigger_gdac_scan_dbm_517', 'MDBM30_ext_trigger_gdac_scan_dbm_523'],
-#     "folder": 'data//MDBM30//700V//',
-#     'input_file_calibration': 'data//MDBM30//calibrate_threshold_gdac_MDBM30.h5',
+    "scan_name": ['files from scan_ext_trigger_gdac'],
+    'input_file_calibration': 'file from calibrate_threshold_scan_parameter',
     "analysis_steps": [1, 2, 2.5, 3, 4],  # the analysis includes the selected steps here. See explanation above.
     "chip_flavor": 'fei4a',
     "n_bcid": 5,
