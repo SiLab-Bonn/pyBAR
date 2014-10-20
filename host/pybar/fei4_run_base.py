@@ -20,8 +20,6 @@ from pybar.daq.fifo_readout import FifoReadout, RxSyncError, EightbTenbError, Fi
 from pybar.daq.fei4_raw_data import open_raw_data_file
 from pybar.analysis.RawDataConverter.data_struct import NameValue
 
-punctuation = """!,.:;?"""
-
 
 class Fei4RunBase(RunBase):
     '''Implementation of the base run.
@@ -247,23 +245,6 @@ class Fei4RunBase(RunBase):
                 raise RunAborted(exc[1])
             else:
                 raise exc[0], exc[1], exc[2]
-
-    def stop(self, msg=None):
-        if not self.stop_run.is_set():
-            if msg:
-                logging.info('%s%s Stopping run...' % (msg, ('' if msg[-1] in punctuation else '.')))
-            else:
-                logging.info('Stopping run...')
-        self.stop_run.set()
-
-    def abort(self, msg=None):
-        if not self.abort_run.is_set():
-            if msg:
-                logging.error('%s%s Aborting run...' % (msg, ('' if msg[-1] in punctuation else '.')))
-            else:
-                logging.error('Aborting run...')
-        self.abort_run.set()
-        self.stop_run.set()  # set stop_run in case abort_run is not used
 
     def handle_data(self, data):
         self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=False)
