@@ -17,6 +17,9 @@ from functools import partial
 from ast import literal_eval
 
 
+punctuation = """!,.:;?"""
+
+
 _RunStatus = collections.namedtuple('RunStatus', ['running', 'finished', 'aborted', 'crashed'])
 run_status = _RunStatus(running='RUNNING', finished='FINISHED', aborted='ABORTED', crashed='CRASHED')
 
@@ -98,14 +101,24 @@ class RunBase():
             log_status = logging.ERROR
         logging.log(log_status, 'Stopped run %d in %s with status %s' % (self.run_number, self.working_dir, self.run_status))
 
-    def stop(self):
+    def stop(self, msg=None):
         """Stopping a run."""
+        if not self.stop_run.is_set():
+            if msg:
+                logging.info('%s%s Stopping run...' % (msg, ('' if msg[-1] in punctuation else '.')))
+            else:
+                logging.info('Stopping run...')
         self.stop_run.set()
 
-    def abort(self):
+    def abort(self, msg=None):
         """Aborting a run."""
-        self.aboort_run.set()
-        self.stop_run.set()
+        if not self.abort_run.is_set():
+            if msg:
+                logging.error('%s%s Aborting run...' % (msg, ('' if msg[-1] in punctuation else '.')))
+            else:
+                logging.error('Aborting run...')
+        self.abort_run.set()
+        self.stop_run.set()  # set stop_run in case abort_run event is not used
 
     def _get_run_numbers(self, status=None):
         run_numbers = {}
@@ -291,7 +304,6 @@ class RunManager(object):
             Specific configuration for the run.
         use_thread : bool
             If True, run run in thread and returns blocking function.
-        
 
         Returns
         -------
@@ -310,7 +322,7 @@ class RunManager(object):
             @thunkify('RunThread')
             def run_run_in_thread():
                 return run()
-    
+
             self._current_run = run
             return run_run_in_thread()
         else:
