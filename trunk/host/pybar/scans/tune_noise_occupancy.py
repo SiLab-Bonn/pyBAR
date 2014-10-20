@@ -147,5 +147,4 @@ class NoiseOccupancyScan(Fei4RunBase):
 
 
 if __name__ == "__main__":
-    join = RunManager('../configuration.yaml').run_run(NoiseOccupancyScan)
-    join()
+    RunManager('../configuration.yaml').run_run(NoiseOccupancyScan)

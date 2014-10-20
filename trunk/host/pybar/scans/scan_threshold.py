@@ -81,5 +81,4 @@ class ThresholdScan(Fei4RunBase):
             analyze_raw_data.plot_histograms()
 
 if __name__ == "__main__":
-    join = RunManager('../configuration.yaml').run_run(ThresholdScan)
-    join()
+    RunManager('../configuration.yaml').run_run(ThresholdScan)

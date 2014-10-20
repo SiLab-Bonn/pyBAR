@@ -74,5 +74,4 @@ class RegisterTest(Fei4RunBase):
         plots.close()
 
 if __name__ == "__main__":
-    join = RunManager('../configuration.yaml').run_run(RegisterTest)
-    join()
+    RunManager('../configuration.yaml').run_run(RegisterTest)
