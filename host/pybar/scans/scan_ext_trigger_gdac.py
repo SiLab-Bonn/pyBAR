@@ -1,12 +1,8 @@
 import logging
 import numpy as np
 import tables as tb
-import progressbar
-from threading import Timer
 from scipy.interpolate import interp1d
 
-from pybar.analysis.analyze_raw_data import AnalyzeRawData
-from pybar.fei4.register_utils import invert_pixel_mask, make_box_pixel_mask_from_col_row
 from pybar.scans.scan_ext_trigger import ExtTriggerScan
 from pybar.run_manager import RunManager
 
@@ -22,7 +18,7 @@ def get_gdacs_from_calibration_file(calibration_file):
     #     threshold_range = np.arange(30, 600, 16)  # threshold range in PlsrDAC to scan
     #     return get_gdacs_from_mean_threshold_calibration(threshold_range, in_file_calibration_h5.root.MeanThresholdCalibration[:])
         return in_file_calibration_h5.root.MeanThresholdCalibration[:]['gdac']
-    
+
 
 class ExtTriggerGdacScan(ExtTriggerScan):
     '''External trigger scan with FE-I4 and adjustable GDAC
@@ -40,8 +36,7 @@ class ExtTriggerGdacScan(ExtTriggerScan):
         # GDAC
         if self.scan_parameters.GDAC:
             self.register_utils.set_gdac(self.scan_parameters.GDAC)
-            
+
 
 if __name__ == "__main__":
-    join = RunManager('../configuration.yaml').run_run(ExtTriggerGdacScan)
-    join()
+    RunManager('../configuration.yaml').run_run(ExtTriggerGdacScan)

@@ -117,5 +117,4 @@ class FEI4SelfTriggerScan(Fei4RunBase):
         self.fifo_readout.stop()
 
 if __name__ == "__main__":
-    join = RunManager('../configuration.yaml').run_run(FEI4SelfTriggerScan)
-    join()
+    RunManager('../configuration.yaml').run_run(FEI4SelfTriggerScan)

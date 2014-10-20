@@ -200,5 +200,4 @@ class ThresholdBaselineTuning(Fei4RunBase):
         self.fifo_readout.start(reset_sram_fifo=True, reset_rx=False, clear_buffer=True, callback=None, errback=self.handle_err)
 
 if __name__ == "__main__":
-    join = RunManager('../configuration.yaml').run_run(ThresholdBaselineTuning)
-    join()
+    RunManager('../configuration.yaml').run_run(ThresholdBaselineTuning)

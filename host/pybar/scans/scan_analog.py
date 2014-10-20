@@ -74,5 +74,4 @@ class AnalogScan(Fei4RunBase):
         self.dut['tdc_rx2']['ENABLE'] = False
 
 if __name__ == "__main__":
-    join = RunManager('../configuration.yaml').run_run(AnalogScan)
-    join()
+    RunManager('../configuration.yaml').run_run(AnalogScan)

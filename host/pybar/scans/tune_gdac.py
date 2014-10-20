@@ -211,5 +211,4 @@ class GdacTuning(Fei4RunBase):
 
 
 if __name__ == "__main__":
-    join = RunManager('../configuration.yaml').run_run(GdacTuning)
-    join()
+    RunManager('../configuration.yaml').run_run(GdacTuning)
