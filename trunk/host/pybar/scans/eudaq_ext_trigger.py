@@ -82,7 +82,7 @@ if __name__ == "__main__":
         # check if we are starting:
         if pp.StartingRun:
             print "Ready to run!"
-            join = rmngr.run_run(use_thread=True)
+            join = rmngr.run_run(run_conf='../configuration.yaml', use_thread=True)
             pp.StartingRun = True  # set status and send BORE
         # starting to run
         status = False
