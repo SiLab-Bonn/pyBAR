@@ -14,18 +14,18 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
 
     This is a meta script implementing GDAC, TDAC, Feedback and FDAC tuning in a single tuning script.
     Values are given in units of PlsrDAC.
-    
+
     Note:
     C_Low: nominally 1.9fF / measured* 2fF
     C_High: nominally 3.8fF / measured* 4.1fF
     c_Low + C_High: nominally 5.7fF / measured* 6.1fF
-    
+
     PlsrDAC: ~1.5mV/DAC
-    
+
     C_Low: 18.7e / 19.7e
     C_High: 35.6e / 38.4e
     C_Low + C_High: 53e / 57e
-    
+
     *) measurements from IBL wafer probing
     '''
     _scan_id = "fei4_tuning"
