@@ -2,11 +2,13 @@
 
 import logging
 from optparse import OptionParser
+import numpy as np
 from PyEUDAQWrapper import PyProducer
 from time import time, strftime, gmtime, sleep
 
 from pybar.run_manager import RunManager, run_status
 from pybar.scans.scan_ext_trigger import ExtTriggerScan
+from pybar.daq.readout_utils import build_events_from_raw_data, is_trigger_word
 
 
 class EudaqExtTriggerScan(ExtTriggerScan):
@@ -23,6 +25,8 @@ class EudaqExtTriggerScan(ExtTriggerScan):
         lvl1_command = self.register.get_commands("zeros", length=self.trigger_delay)[0] + self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", length=self.trigger_rate_limit)[0]
         self.register_utils.set_command(lvl1_command)
 
+        self.remaining_data = np.ndarray((0,), dtype=np.uint32)
+
         with self.readout(**self.scan_parameters._asdict()):
             got_data = False
             while not self.stop_run.wait(1.0):
@@ -37,13 +41,28 @@ class EudaqExtTriggerScan(ExtTriggerScan):
                     if self.max_triggers is not None and triggers >= self.max_triggers:
                         self.stop(msg='Trigger limit was reached: %i' % self.max_triggers)
 
+        pp.SendEvent(self.remaining_data)
+
         logging.info('Total amount of triggers collected: %d', self.dut['tlu']['TRIGGER_COUNTER'])
 
 #     def analyze(self):
 #         pass
 
     def handle_data(self, data):
-        self.pp.SendEvent(data)  # send event off
+        events = build_events_from_raw_data(data[0])
+        for index, item in enumerate(events):
+            if item.shape[0] == 0:
+                continue
+            if index == 0:
+                if is_trigger_word(item[0]):
+                    pp.SendEvent(self.remaining_data)
+                    self.remaining_data = item
+                else:
+                    self.remaining_data = np.concatenate(self.remaining_data, item)
+            else:
+                pp.SendEvent(self.remaining_data)
+                self.remaining_data = item
+
         self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=True)
 
 
