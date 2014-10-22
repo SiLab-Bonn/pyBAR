@@ -185,8 +185,16 @@ def logical_xor(f1, f2):  # function factory
     return f
 
 
-def is_fe_record(value):
-    return not is_trigger_data(value) and not is_status_data(value)
+def is_trigger_word(value):
+    return np.equal(np.bitwise_and(value, 0x80000000), 0x80000000)
+
+
+def is_tdc_word(value):
+    return np.equal(np.bitwise_and(value, 0xC0000000), 0x40000000)
+
+
+def is_fe_word(value):
+    return np.equal(np.bitwise_and(value, 0xF0000000), 0)
 
 
 def is_data_header(value):
@@ -209,32 +217,6 @@ def is_data_record(value):
     return np.logical_and(np.logical_and(np.less_equal(np.bitwise_and(value, 0x00FE0000), 0x00A00000), np.less_equal(np.bitwise_and(value, 0x0001FF00), 0x00015000)), np.logical_and(np.not_equal(np.bitwise_and(value, 0x00FE0000), 0x00000000), np.not_equal(np.bitwise_and(value, 0x0001FF00), 0x00000000)))
 
 
-def is_trigger_word(value):
-    return np.equal(np.bitwise_and(value, 0x80000000), 0b10000000000000000000000000000000)
-
-
-def is_tdc_word(value):
-    return np.equal(np.bitwise_and(value, 0x40000000), 0b01000000000000000000000000000000)
-
-
-def is_status_data(value):
-    '''Select status data
-    '''
-    return np.equal(np.bitwise_and(value, 0xFF000000), 0x00000000)
-
-
-def is_trigger_data(value):
-    '''Select trigger data (trigger number)
-    '''
-    return np.equal(np.bitwise_and(value, 0xFF000000), 0x80000000)
-
-
-def is_tdc_data(value):
-    '''Select tdc data
-    '''
-    return np.equal(np.bitwise_and(value, 0xF0000000), 0x40000000)
-
-
 def get_address_record_address(value):
     '''Returns the address in the address record
     '''
@@ -252,10 +234,8 @@ def get_value_record(value):
     '''
     return np.bitwise_and(value, 0x0000FFFF)
 
-# def def get_col_row_tot_array_from_data_record_array(max_tot=14):
 
-
-def get_col_row_tot_array_from_data_record_array(array):
+def get_col_row_tot_array_from_data_record_array(array):  # TODO: max ToT
     '''Convert raw data array to column, row, and ToT array
 
     Parameters
@@ -337,6 +317,14 @@ def get_tot_iterator_from_data_records(array):  # generator
         yield np.right_shift(np.bitwise_and(item, 0x000000F0), 4)  # ToT1
         if np.not_equal(np.bitwise_and(item, 0x0000000F), 15):
             yield np.bitwise_and(item, 0x0000000F)  # ToT2
+
+
+def build_events_from_raw_data(array):
+    idx = np.where(is_trigger_word(array))[-1]
+    if idx.shape[0] == 0:
+        return [array]
+    else:
+        return np.split(array, idx)
 
 
 def interpret_pixel_data(data, dc, pixel_array, invert=True):
