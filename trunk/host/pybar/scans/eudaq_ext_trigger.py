@@ -67,18 +67,15 @@ class EudaqExtTriggerScan(ExtTriggerScan):
 
     def handle_data(self, data):
         events = build_events_from_raw_data(data[0])
-        for index, item in enumerate(events):
+        for item in events:
             if item.shape[0] == 0:
                 continue
-            if index == 0:
-                if is_trigger_word(item[0]):
+            if is_trigger_word(item[0]):
+                if self.remaining_data.shape[0] > 0:
                     pp.SendEvent(self.remaining_data)
-                    self.remaining_data = item
-                else:
-                    self.remaining_data = np.concatenate([self.remaining_data, item])
-            else:
-                pp.SendEvent(self.remaining_data)
                 self.remaining_data = item
+            else:
+                self.remaining_data = np.concatenate([self.remaining_data, item])
 
         self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=True)
 
