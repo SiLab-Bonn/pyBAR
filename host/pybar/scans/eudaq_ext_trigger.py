@@ -98,6 +98,8 @@ if __name__ == "__main__":
     while not pp.Error and not pp.Terminating:
         # wait for configure cmd from RunControl
         while not pp.Configuring and not pp.Terminating:
+            if pp.StartingRun:
+                break
             sleep(1)
         # check if configuration received
         if pp.Configuring:
