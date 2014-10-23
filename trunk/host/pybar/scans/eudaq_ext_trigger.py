@@ -16,12 +16,26 @@ from PyEUDAQWrapper import PyProducer
 
 class EudaqExtTriggerScan(ExtTriggerScan):
     _scan_id = "eudaq_ext_trigger_scan"
-    _default_scan_configuration = ExtTriggerScan._default_scan_configuration
-    _default_scan_configuration.update({
-        "trigger_mode": 3,
-        "no_data_timeout": 600,
-        "scan_timeout": 0,
-    })
+#     _default_scan_configuration = ExtTriggerScan._default_scan_configuration
+#     _default_scan_configuration.update({
+#         "trigger_mode": 3,
+#         "no_data_timeout": 600,
+#         "scan_timeout": 0,
+#     })
+    _default_scan_configuration = {
+        "trigger_mode": 3,  # trigger mode, more details in basil.HL.tlu, from 0 to 3
+        "trigger_latency": 232,  # FE-I4 trigger latency, in BCs, external scintillator / TLU / HitOR: 232, USBpix self-trigger: 220
+        "trigger_delay": 14,  # trigger delay, in BCs
+        "trigger_rate_limit": 1000,  # artificially limiting the trigger rate, in BCs (25ns)
+        "col_span": [1, 80],  # defining active column interval, 2-tuple, from 1 to 80
+        "row_span": [1, 336],  # defining active row interval, 2-tuple, from 1 to 336
+        "overwrite_enable_mask": False,  # if True, use col_span and row_span to define an active region regardless of the Enable pixel register. If False, use col_span and row_span to define active region by also taking Enable pixel register into account.
+        "use_enable_mask_for_imon": False,  # if True, apply inverted Enable pixel mask to Imon pixel mask
+        "no_data_timeout": 600,  # no data timeout after which the scan will be aborted, in seconds
+        "scan_timeout": None,  # timeout for scan after which the scan will be stopped, in seconds
+        "max_triggers": None,  # maximum triggers after which the scan will be stopped, in seconds
+        "enable_tdc": False  # if True, enables TDC (use RX2)
+    }
 
     def scan(self):
         start = time()
@@ -78,10 +92,10 @@ if __name__ == "__main__":
     options, args = parser.parse_args()
     if len(args) == 1:
         rcaddr = args[0]
-#         vars.update(vars(options))
+
     else:
         parser.error("incorrect number of arguments")
-
+    run_conf = vars(options)
     # create PyProducer instance
     pp = PyProducer("pyBAR", rcaddr)
     # wait for configure cmd from RunControl
@@ -90,9 +104,9 @@ if __name__ == "__main__":
     # check if configuration received
     if pp.Configuring:
         print "Ready to configure..."
-#         for item in vars:
+#         for item in run_conf:
 #             try:
-#                 vars[item] = pp.GetConfigParameter(item)
+#                 run_conf[item] = pp.GetConfigParameter(item)
 #             except:
 #                 pass
         rmngr = RunManager('../configuration.yaml')  # TODO: get conf from EUDAQ
@@ -104,7 +118,8 @@ if __name__ == "__main__":
         # check if we are starting:
         if pp.StartingRun:
             print "Ready to run!"
-            join = rmngr.run_run(EudaqExtTriggerScan, run_conf='../configuration.yaml', use_thread=True)
+#             join = rmngr.run_run(EudaqExtTriggerScan, run_conf=run_conf, use_thread=True)
+            join = rmngr.run_run(EudaqExtTriggerScan, use_thread=True)
             pp.StartingRun = True  # set status and send BORE
         # starting to run
         status = False
@@ -114,8 +129,9 @@ if __name__ == "__main__":
             if pp.StoppingRun:
                 rmngr.stop_current_run()
         status = join()
-        if status is not None:
-                break
         # check if the run is stopping regularly
-        if pp.StoppingRun and status == run_status.finished:
+        if pp.StoppingRun:
             pp.StoppingRun = True  # set status and send EORE
+        # abort conditions
+        if status is not run_status.finished or pp.Error or pp.Terminating:
+            break
