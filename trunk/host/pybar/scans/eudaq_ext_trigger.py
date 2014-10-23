@@ -75,7 +75,7 @@ class EudaqExtTriggerScan(ExtTriggerScan):
                     pp.SendEvent(self.remaining_data)
                     self.remaining_data = item
                 else:
-                    self.remaining_data = np.concatenate(self.remaining_data, item)
+                    self.remaining_data = np.concatenate([self.remaining_data, item])
             else:
                 pp.SendEvent(self.remaining_data)
                 self.remaining_data = item
