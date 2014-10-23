@@ -95,40 +95,42 @@ if __name__ == "__main__":
     run_conf = vars(options)
     # create PyProducer instance
     pp = PyProducer("pyBAR", rcaddr)
-    # wait for configure cmd from RunControl
-    while not pp.Configuring and not pp.Terminating:
-        sleep(1)
-    # check if configuration received
-    if pp.Configuring:
-        print "Ready to configure..."
-#         for item in run_conf:
-#             try:
-#                 run_conf[item] = pp.GetConfigParameter(item)
-#             except:
-#                 pass
-        rmngr = RunManager('../configuration.yaml')  # TODO: get conf from EUDAQ
-        pp.Configuring = True
-    # check for start of run cmd from RunControl
     while not pp.Error and not pp.Terminating:
+        # wait for configure cmd from RunControl
+        while not pp.Configuring and not pp.Terminating:
+            sleep(1)
+        # check if configuration received
+        if pp.Configuring:
+            print "Configuring..."
+    #         for item in run_conf:
+    #             try:
+    #                 run_conf[item] = pp.GetConfigParameter(item)
+    #             except:
+    #                 pass
+            rmngr = RunManager('../configuration.yaml')  # TODO: get conf from EUDAQ
+            pp.Configuring = True
+        # check for start of run cmd from RunControl
         while not pp.StartingRun and not pp.Terminating:
+            if pp.Configuring:
+                break
             sleep(1)
         # check if we are starting:
         if pp.StartingRun:
-            print "Ready to run!"
+            print "Starting run..."
 #             join = rmngr.run_run(EudaqExtTriggerScan, run_conf=run_conf, use_thread=True)
             join = rmngr.run_run(EudaqExtTriggerScan, use_thread=True)
             pp.StartingRun = True  # set status and send BORE
-        # starting to run
-        status = False
-        while join(timeout=1) is None:
-            if pp.Error or pp.Terminating:
-                rmngr.abort_current_run()
+            # starting to run
+            while join(timeout=1) is None:
+                if pp.Error or pp.Terminating:
+                    rmngr.abort_current_run()
+                if pp.StoppingRun:
+                    rmngr.stop_current_run()
+            status = join()
+            # abort conditions
+            if status is not run_status.finished or pp.Error or pp.Terminating:
+                pp.StoppingRun = False  # set status and send EORE
+            # check if the run is stopping regularly
             if pp.StoppingRun:
-                rmngr.stop_current_run()
-        status = join()
-        # check if the run is stopping regularly
-        if pp.StoppingRun:
-            pp.StoppingRun = True  # set status and send EORE
-        # abort conditions
-        if status is not run_status.finished or pp.Error or pp.Terminating:
-            break
+                pp.StoppingRun = True  # set status and send EORE
+
