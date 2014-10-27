@@ -17,6 +17,7 @@ class NoiseOccupancyScan(Fei4RunBase):
     Note
     ----
     The total number of triggers which will be sent to the FE are <triggers> * <trig_count> (consecutive LVL1).
+    To achieve a broader TDAC distribution it is necessary to decrease TdacVbp.
     '''
     _scan_id = "noise_occupancy_tuning"
     _default_scan_configuration = {
