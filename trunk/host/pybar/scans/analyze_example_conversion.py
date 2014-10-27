@@ -72,7 +72,7 @@ def analyze_raw_data_per_scan_parameter(input_file, output_file_hits, scan_data_
 
 if __name__ == "__main__":
     scan_name = 'test_module_hit_or_scan_405'
-    folder = 'data//'
+    folder = '..//'
     input_file = folder + scan_name + ".h5"
     output_file_hits = folder + scan_name + "_interpreted.h5"
     output_file_hits_analyzed = folder + scan_name + "_analyzed.h5"
