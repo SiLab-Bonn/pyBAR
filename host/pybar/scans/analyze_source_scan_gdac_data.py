@@ -37,8 +37,8 @@ analysis_configuration = {
     "smoothness": 400,  # the smoothness of the spline fit to the data
     "vcal_calibration": 55.,   # calibration electrons/PlsrDAC
     "n_bins": 300,  # number of bins for the profile histogram
-    "col_span": [54, 60],  # the column pixel range to use in the analysis
-    "row_span": [100, 150],  # the row pixel range to use in the analysis
+    "col_span": [1, 80],  # the column pixel range to use in the analysis
+    "row_span": [1, 336],  # the row pixel range to use in the analysis
     "min_cut_threshold": 0.8,  # the minimum cut threshold for the occupancy to define pixel to use in the analysis
     "max_cut_threshold": None,  # the maximum cut threshold for the occupancy to define pixel to use in the analysis
     "min_gdac": 0,  # minimum threshold position in gdac setting to be used for the analysis
