@@ -28,18 +28,17 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
 
     *) measurements from IBL wafer probing
     '''
-    _scan_id = "fei4_tuning"
-#     _default_scan_configuration = GdacTuning._default_scan_configuration
-#     _default_scan_configuration.update(TdacTuning._default_scan_configuration)
-#     _default_scan_configuration.update(FeedbackTuning._default_scan_configuration)
-#     _default_scan_configuration.update(FdacTuning._default_scan_configuration)
-#     _default_scan_configuration.update({
+#     _default_run_conf = GdacTuning._default_run_conf
+#     _default_run_conf.update(TdacTuning._default_run_conf)
+#     _default_run_conf.update(FeedbackTuning._default_run_conf)
+#     _default_run_conf.update(FdacTuning._default_run_conf)
+#     _default_run_conf.update({
 #         "scan_parameters": {'GDAC': -1, 'TDAC': -1, 'PrmpVbpf': -1, 'FDAC': -1, 'global_step': 0, 'local_step': 0},
 #         "global_iterations": 4,  # the number of iterations to do for the global tuning, 0 means only threshold is tuned, negative that no global tuning is done
 #         "local_iterations": 0,  # the number of iterations to do for the local tuning, 0 means only threshold is tuned, negative that no local tuning is done
 #         "make_plots": True  # plots for all scan steps are created
 #     })
-    _default_scan_configuration = {
+    _default_run_conf = {
         # tuning parameters
         "target_threshold": 50,  # target threshold
         "target_charge": 280,  # target charge

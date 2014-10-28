@@ -14,8 +14,7 @@ class FastThresholdScan(Fei4RunBase):
 
     Implementation of a fast threshold scan checking for start and end of s-curve.
     '''
-    _scan_id = "fast_threshold_scan"
-    _default_scan_configuration = {
+    _default_run_conf = {
         "n_injections": 100,  # number of injections per PlsrDAC step
         "scan_parameters": {'PlsrDAC': (None, 100)},  # the PlsrDAC range
         "mask_steps": 3,  # mask steps

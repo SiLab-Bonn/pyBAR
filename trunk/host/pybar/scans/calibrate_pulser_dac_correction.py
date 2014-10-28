@@ -6,9 +6,13 @@ from pybar.run_manager import RunManager
 from pybar.scans.scan_threshold import ThresholdScan
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 
-class PulserDacCorrectionCalibration(ThresholdScan):
-    _scan_id = "pulser_dac_correction_calibration"
 
+class PulserDacCorrectionCalibration(ThresholdScan):
+    '''Measure and write PlsrDAC correction to configuration file.
+
+    Note:
+    It is necessary to run threshold baseline tuning before running this calibration.
+    '''
     def analyze(self):
         with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
             analyze_raw_data.create_tot_hist = False

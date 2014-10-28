@@ -18,8 +18,7 @@ class GdacTuning(Fei4RunBase):
     Note:
     Use pybar.scans.tune_fei4 for full FE-I4 tuning.
     '''
-    _scan_id = "gdac_tuning"
-    _default_scan_configuration = {
+    _default_run_conf = {
         "scan_parameters": {'GDAC': None},
         "target_threshold": 50,  # target threshold in PlsrDAC to tune to
         "gdac_tune_bits": range(7, -1, -1),  # GDAC bits to change during tuning

@@ -19,8 +19,7 @@ class TdacTuning(Fei4RunBase):
     Note:
     Use pybar.scans.tune_fei4 for full FE-I4 tuning.
     '''
-    _scan_id = "tdac_tuning"
-    _default_scan_configuration = {
+    _default_run_conf = {
         "scan_parameters": {'TDAC': None},
         "target_threshold": 50,
         "tdac_tune_bits": range(4, -1, -1),

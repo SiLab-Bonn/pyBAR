@@ -15,14 +15,15 @@ from PyEUDAQWrapper import PyProducer
 
 
 class EudaqExtTriggerScan(ExtTriggerScan):
-    _scan_id = "eudaq_ext_trigger_scan"
-#     _default_scan_configuration = ExtTriggerScan._default_scan_configuration
-#     _default_scan_configuration.update({
+    '''EUDAQ producer
+    '''
+#     _default_run_conf = ExtTriggerScan._default_run_conf
+#     _default_run_conf.update({
 #         "trigger_mode": 3,
 #         "no_data_timeout": 600,
 #         "scan_timeout": 0,
 #     })
-    _default_scan_configuration = {
+    _default_run_conf = {
         "trigger_mode": 3,  # trigger mode, more details in basil.HL.tlu, from 0 to 3
         "trigger_latency": 232,  # FE-I4 trigger latency, in BCs, external scintillator / TLU / HitOR: 232, USBpix self-trigger: 220
         "trigger_delay": 14,  # trigger delay, in BCs

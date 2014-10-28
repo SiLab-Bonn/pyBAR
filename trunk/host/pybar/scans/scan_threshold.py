@@ -12,8 +12,7 @@ class ThresholdScan(Fei4RunBase):
 
     Implementation of a standard threshold scan.
     '''
-    _scan_id = "threshold_scan"
-    _default_scan_configuration = {
+    _default_run_conf = {
         "mask_steps": 3,  # number of injections per PlsrDAC step
         "n_injections": 100,  # number of injections per PlsrDAC step
         "scan_parameters": {'PlsrDAC': [None, 100]},  # the PlsrDAC range
