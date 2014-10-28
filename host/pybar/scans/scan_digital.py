@@ -10,8 +10,7 @@ from pybar.run_manager import RunManager
 class DigitalScan(Fei4RunBase):
     '''Digital scan
     '''
-    _scan_id = "digital_scan"
-    _default_scan_configuration = {
+    _default_run_conf = {
         "mask_steps": 3,  # mask steps
         "n_injections": 100,  # number of injections
         "use_enable_mask": False  # if True, use Enable mask during scan, if False, all pixels will be enabled

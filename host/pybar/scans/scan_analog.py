@@ -10,8 +10,7 @@ from pybar.run_manager import RunManager
 class AnalogScan(Fei4RunBase):
     '''Analog scan
     '''
-    _scan_id = "analog_scan"
-    _default_scan_configuration = {
+    _default_run_conf = {
         "mask_steps": 3,  # mask steps
         "n_injections": 100,  # number of injections
         "scan_parameters": {'PlsrDAC': 280},  # the PlsrDAC setting

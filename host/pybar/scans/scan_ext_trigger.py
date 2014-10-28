@@ -14,8 +14,7 @@ class ExtTriggerScan(Fei4RunBase):
 
     For use with external scintillator (user RX0), TLU (use RJ45), USBpix self-trigger (loop back TX2 into RX0.)
     '''
-    _scan_id = "ext_trigger_scan"
-    _default_scan_configuration = {
+    _default_run_conf = {
         "trigger_mode": 0,  # trigger mode, more details in basil.HL.tlu, from 0 to 3
         "trigger_latency": 232,  # FE-I4 trigger latency, in BCs, external scintillator / TLU / HitOR: 232, USBpix self-trigger: 220
         "trigger_delay": 14,  # trigger delay, in BCs

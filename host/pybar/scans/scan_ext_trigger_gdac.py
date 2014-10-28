@@ -25,9 +25,8 @@ class ExtTriggerGdacScan(ExtTriggerScan):
 
     For use with external scintillator (user RX0), TLU (use RJ45), USBpix self-trigger (loop back TX2 into RX0.)
     '''
-    _scan_id = "ext_trigger_gdac_scan"
-    _default_scan_configuration = ExtTriggerScan._default_scan_configuration
-    _default_scan_configuration.update({
+    _default_run_conf = ExtTriggerScan._default_run_conf
+    _default_run_conf.update({
         "scan_parameters": {'GDAC': None},
     })
 

@@ -16,8 +16,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
 
     Tuning the FEI4 to the lowest possible threshold (GDAC and TDAC). Feedback current will not be tuned.
     '''
-    _scan_id = "threshold_basline_tuning"
-    _default_scan_configuration = {
+    _default_run_conf = {
         "occupancy_limit": 0,  # occupancy limit, when reached the TDAC will be decreased (increasing threshold). 0 will mask any pixel with occupancy greater than zero
         "scan_parameters": {'Vthin_AltFine': (120, None), 'Step': 5},  # the Vthin_AltFine range, number of steps (repetition at constant Vthin_AltFine)
         "disabled_pixels_limit": 0.01,  # limit of disabled pixels, fraction of all pixels

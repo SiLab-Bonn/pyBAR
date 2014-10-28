@@ -12,8 +12,7 @@ from pybar.analysis.plotting.plotting import plot_occupancy
 class StuckPixelScan(DigitalScan):
     '''Stuck pixel scan to detect and disable stuck pixels (Hitbus/HitOR always high).
     '''
-    _scan_id = "stuck_pixel_scan"
-    _default_scan_configuration = {
+    _default_run_conf = {
         "mask_steps": 3,  # mask steps
         "n_injections": 100,  # number of injections
         "use_enable_mask": False,  # if True, use Enable mask during scan, if False, all pixels will be enabled

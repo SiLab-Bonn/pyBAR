@@ -22,8 +22,7 @@ class RegisterTest(Fei4RunBase):
     FEI4B specific features:
     Register at address 40 will always fail (ADC output value).
     '''
-    _scan_id = "register_test"
-    _default_scan_configuration = {
+    _default_run_conf = {
         "read_sn": True,
         "test_global": True,
         "test_pixel": True
