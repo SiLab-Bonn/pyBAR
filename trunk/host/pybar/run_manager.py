@@ -3,7 +3,7 @@ from yaml import safe_load
 import datetime
 import os
 import re
-import collections
+from collections import namedtuple
 from threading import Lock, Thread, Event
 # from multiprocessing import dummy as multiprocessing
 import sys
@@ -20,7 +20,7 @@ from ast import literal_eval
 punctuation = """!,.:;?"""
 
 
-_RunStatus = collections.namedtuple('RunStatus', ['running', 'finished', 'aborted', 'crashed'])
+_RunStatus = namedtuple('RunStatus', ['running', 'finished', 'aborted', 'crashed'])
 run_status = _RunStatus(running='RUNNING', finished='FINISHED', aborted='ABORTED', crashed='CRASHED')
 
 
@@ -29,29 +29,80 @@ class RunAborted(Exception):
 
 
 class RunBase():
+    '''Basic run meta class
+
+    Base class for run class.
+    '''
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, working_dir, conf, run_conf):
+    def __init__(self, conf):
         """Initialize object."""
-        self._working_dir = working_dir
+        logging.info('Initializing %s' % self.__class__.__name__)
         self._conf = conf
-        self._run_conf = run_conf
+        self._run_conf = None
         self._run_number = None
         self._run_status = None
         self.file_lock = Lock()
         self.stop_run = Event()
         self.abort_run = Event()
 
-    def __call__(self):
-        self.stop_run.clear()
-        self.abort_run.clear()
-        self.init()
+#     @abc.abstractproperty
+#     def _run_id(self):
+#         '''Defining run name
+#         '''
+#         pass
+
+    @property
+    def run_id(self):
+        '''Run name without whitespace
+        '''
+        s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', self.__class__.__name__)
+        return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+
+    @property
+    def conf(self):
+        '''Run configuration (dictionary)
+        '''
+        return self._conf
+
+    @property
+    def run_conf(self):
+        '''Run configuration (dictionary)
+        '''
+        return self._run_conf
+
+    @abc.abstractproperty
+    def _default_run_conf(self):
+        '''Defining default run configuration (dictionary)
+        '''
+        pass
+
+    @property
+    def default_run_conf(self):
+        '''Default run configuration (dictionary)
+        '''
+        return self._default_run_conf
+
+    @property
+    def working_dir(self):
+        return self.conf['working_dir']
+
+    @property
+    def run_number(self):
+        return self._run_number
+
+    @property
+    def run_status(self):
+        return self._run_status
+
+    def run(self, run_conf, run_number=None):
+        self._init(run_conf, run_number)
         try:
             if self.abort_run.is_set():
                 raise RunAborted('Run aborted during initialization.')
             if self.stop_run.is_set():
                 raise RunAborted('Run stopped during initialization.')
-            self.run()
+            self._run()
         except RunAborted as e:
             self._run_status = run_status.aborted
             logging.warning('Run %s was aborted: %s' % (self.run_number, e))
@@ -64,33 +115,30 @@ class RunBase():
                 f.write('\n')
         else:
             self._run_status = run_status.finished
-        self.cleanup()
+        self._cleanup()
         return self.run_status
 
-    @property
-    def working_dir(self):
-        return self._working_dir
-
-    @property
-    def run_number(self):
-        return self._run_number
-
-    @property
-    def run_status(self):
-        return self._run_status
-
-    def init(self):
+    def _init(self, run_conf, run_number=None):
         """Initialization before a new run."""
+        self.stop_run.clear()
+        self.abort_run.clear()
         self._run_status = run_status.running
-        self._write_run_number()
-        logging.info('Starting run %d in %s' % (self.run_number, self.working_dir))
+        self._write_run_number(run_number)
+        sc = namedtuple('run_configuration', field_names=self.default_run_conf.iterkeys())
+        default_run_conf = sc(**self.default_run_conf)
+        if run_conf:
+            self._run_conf = default_run_conf._replace(**run_conf)._asdict()
+        else:
+            self._run_conf = default_run_conf._asdict()
+        self.__dict__.update(self.run_conf)
+        logging.info('Starting run #%d (%s) in %s' % (self.run_number, self.__class__.__name__, self.working_dir))
 
     @abc.abstractmethod
-    def run(self):
+    def _run(self):
         """The run."""
         pass
 
-    def cleanup(self):
+    def _cleanup(self):
         """Cleanup after a new run."""
         self._write_run_status(self.run_status)
         if self.run_status == run_status.finished:
@@ -99,7 +147,7 @@ class RunBase():
             log_status = logging.WARNING
         else:
             log_status = logging.ERROR
-        logging.log(log_status, 'Stopped run %d in %s with status %s' % (self.run_number, self.working_dir, self.run_status))
+        logging.log(log_status, 'Stopped run #%d (%s) in %s. STATUS: %s' % (self.run_number, self.__class__.__name__, self.working_dir, self.run_status))
 
     def stop(self, msg=None):
         """Stopping a run."""
@@ -133,7 +181,7 @@ class RunBase():
                         number_parts = re.findall('\d+\s+', line)
                         parts = re.split('\s+', line)
                         if status:
-                            if parts[1] in status:
+                            if parts[2] in status:
                                 run_number = int(number_parts[0])
                             else:
                                 continue
@@ -146,13 +194,16 @@ class RunBase():
                     run_numbers[run_number] = line
         return run_numbers
 
-    def _write_run_number(self):
+    def _write_run_number(self, run_number=None):
         run_numbers = self._get_run_numbers()
-        if not run_numbers:
-            self._run_number = 1
+        if run_number:
+            self._run_number = run_number
         else:
-            self._run_number = max(dict.iterkeys(run_numbers)) + 1
-        run_numbers[self.run_number] = str(self.run_number) + ' ' + 'RUNNING' + ' ' + str(datetime.datetime.now()) + '\n'
+            if not run_numbers:
+                self._run_number = 1
+            else:
+                self._run_number = max(dict.iterkeys(run_numbers)) + 1
+        run_numbers[self.run_number] = str(self.run_number) + ' ' + self.__class__.__name__ + ' ' + 'RUNNING' + ' ' + str(datetime.datetime.now()) + '\n'
         with self.file_lock:
             with open(os.path.join(self.working_dir, "run" + ".cfg"), "w") as f:
                 for value in dict.itervalues(run_numbers):
@@ -161,10 +212,10 @@ class RunBase():
     def _write_run_status(self, status_msg):
         run_numbers = self._get_run_numbers()
         if not run_numbers:
-            run_numbers[self.run_number] = str(self.run_number) + ' ' + status_msg + ' ' + str(datetime.datetime.now()) + '\n'
+            run_numbers[self.run_number] = str(self.run_number) + ' ' + self.__class__.__name__ + ' ' + status_msg + ' ' + str(datetime.datetime.now()) + '\n'
         else:
             parts = re.split('\s+', run_numbers[self.run_number])
-            parts[1] = status_msg
+            parts[2] = status_msg
             run_numbers[self.run_number] = ' '.join(parts[:-1]) + ' ' + str(datetime.datetime.now()) + '\n'
         with self.file_lock:
             with open(os.path.join(self.working_dir, "run" + ".cfg"), "w") as f:
@@ -216,15 +267,13 @@ def thunkify(thread_name):
 
 
 class RunManager(object):
-    def __init__(self, conf, working_dir=None):
+    def __init__(self, conf):
         '''Run Manager is taking care of initialization and execution of runs.
 
         Parameters
         ----------
         conf : str, dict, file
             Configuration for the run(s). Configuration will be passed to all scans.
-        working_dir : str
-            Run working directory. If empty or None, working directory will be deduced from configuration.
         '''
         # fixing event handler: http://stackoverflow.com/questions/15457786/ctrl-c-crashes-python-after-importing-scipy-stats
         if os.name == 'nt':
@@ -237,7 +286,6 @@ class RunManager(object):
             import win32api
             win32api.SetConsoleCtrlHandler(handler, 1)
 
-        self.working_dir = working_dir
         self.conf = conf
         self._current_run = None
         self._conf_path = None
@@ -251,24 +299,20 @@ class RunManager(object):
         else:
             self._conf_path = None
         self.conf = self.open_conf(conf)
-        if not self.working_dir and 'working_dir' in self.conf:
-            if self._conf_path and not os.path.abspath(self.conf['working_dir']):
-                self.working_dir = os.path.join(os.path.dirname(self._conf_path), self.conf.pop('working_dir'))
+        if 'working_dir' in self.conf and self.conf['working_dir']:
+            if self._conf_path and not os.path.isabs(self.conf['working_dir']):
+                # if working_dir is relative path, join path to configuration file and working_dir
+                self.conf['working_dir'] = os.path.join(os.path.dirname(self._conf_path), self.conf['working_dir'])
             else:
-                self.working_dir = self.conf.pop('working_dir')
-        elif self.working_dir:
-            if 'working_dir' in self.conf:
-                raise ValueError('Working directory is given in multiple locations')
-            elif self._conf_path and not os.path.abspath(self.working_dir):
-                self.working_dir = os.path.join(os.path.dirname(self._conf_path), self.working_dir)
-            else:
+                # working_dir is absolute path, keep that
                 pass
         elif self._conf_path:
-            self.working_dir = os.path.dirname(self._conf_path)
+            self.conf['working_dir'] = os.path.dirname(self._conf_path)
         else:
             raise ValueError('Cannot deduce working directory from configuration')
 
-    def open_conf(self, conf):
+    @staticmethod
+    def open_conf(conf):
         conf_dict = {}
         if not conf:
             pass
@@ -299,7 +343,7 @@ class RunManager(object):
         Parameters
         ----------
         run : class, object
-            Run class.
+            Run class or object.
         run_conf : str, dict, file
             Specific configuration for the run.
         use_thread : bool
@@ -311,23 +355,24 @@ class RunManager(object):
         If use_thread is False, returns run status.
         '''
         if isclass(run):
-            run_conf = self.open_conf(run_conf)
-            if run_conf and run.__name__ in run_conf:
-                run_conf = run_conf[run.__name__]
-            run = run(working_dir=self.working_dir, conf=self.conf, run_conf=run_conf)
-        elif run_conf:
-            raise ValueError('Run object already initialized. Run configuration cannot be passed.')
+            run = run(conf=self.conf)
+
+        if run.__class__.__name__ in self.conf:
+            conf = self.conf[run.__class__.__name__]
+        else:
+            conf = {}
+        conf.update(self.open_conf(run_conf))
 
         if use_thread:
             @thunkify('RunThread')
             def run_run_in_thread():
-                return run()
+                return run.run(run_conf=conf)
 
             self._current_run = run
             return run_run_in_thread()
         else:
             self._current_run = run
-            status = run()
+            status = run.run(run_conf=conf)
             return status
 
     def run_primlist(self, primlist, skip_remaining=False):
@@ -396,7 +441,7 @@ class RunManager(object):
                     for param in parts[1:]:
                         key, value = re.split('\s*[=:]\s*', param, 1)
                         run_conf[key] = literal_eval(value)
-                    srun_list.append(run_cls(working_dir=self.working_dir, conf=self.conf, run_conf=run_conf))
+                    srun_list.append(run_cls(conf=self.conf, run_conf=run_conf))
             return srun_list
         else:
             AttributeError('Primlist format not supported.')

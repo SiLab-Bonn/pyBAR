@@ -22,135 +22,100 @@ from pybar.analysis.RawDataConverter.data_struct import NameValue
 
 
 class Fei4RunBase(RunBase):
-    '''Implementation of the base run.
+    '''Basic FEI4 run meta class.
 
-    Base class for scan- / tune- / analyze-classes.
+    Base class for scan- / tune- / analyze-class.
     '''
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, working_dir, conf, run_conf=None):
-        logging.info('Initializing %s' % self.__class__.__name__)
-        self.fe_configuration = conf['fe_configuration']
-        self.dut_configuration = conf['dut_configuration']
-        sc = namedtuple('scan_configuration', field_names=self.default_scan_configuration.iterkeys())
-        self.scan_configuration = sc(**self.default_scan_configuration)
-        if run_conf:
-            self.scan_configuration = self.scan_configuration._replace(**run_conf)._asdict()
-        else:
-            self.scan_configuration = self.scan_configuration._asdict()
-        self.__dict__.update(self.scan_configuration)
-        self.scan_parameters = {}
-        if 'scan_parameters' in self.scan_configuration:
-            sp = namedtuple('scan_parameters', field_names=self.scan_configuration['scan_parameters'].iterkeys())
-            self.scan_parameters = sp(**self.scan_configuration['scan_parameters'])
-        else:
-            sp = namedtuple_with_defaults('scan_parameters', field_names=[])
-            self.scan_parameters = sp()
-        logging.info('Scan parameter(s): %s' % (', '.join(['%s:%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None'))
+    def __init__(self, conf):
+        super(Fei4RunBase, self).__init__(conf=conf)
 
         self.err_queue = Queue()
 
         self.fifo_readout = None
         self.register_utils = None
-        self.base_dir = working_dir
-        if self.module_id:
-            super(Fei4RunBase, self).__init__(working_dir=os.path.join(self.base_dir, self.module_id), conf=conf, run_conf=run_conf)
-        else:
-            super(Fei4RunBase, self).__init__(working_dir=self.base_dir, conf=conf, run_conf=run_conf)
 
         self.raw_data_file = None
 
-    @abc.abstractproperty
-    def _scan_id(self):
-        '''Scan name
-        '''
-        pass
-
     @property
-    def scan_id(self):
-        '''Scan name
-        '''
-        if not self._scan_id:
-            return type(self).__name__
+    def working_dir(self):
+        if self.module_id:
+            return os.path.join(self.conf['working_dir'], self.module_id)
         else:
-            scan_id = self._scan_id
-            scan_id = re.sub(r"[^\w\s+]", '', scan_id)
-            return re.sub(r"\s+", '_', scan_id).lower()
-
-    @abc.abstractproperty
-    def _default_scan_configuration(self):
-        '''Default run configuration dictionary
-        '''
-        pass
-
-    @property
-    def default_scan_configuration(self):
-        '''Default run configuration dictionary
-        '''
-        return self._default_scan_configuration
+            return os.path.join(self.conf['working_dir'], self.run_id)
 
     @property
     def dut(self):
-        return self.dut_configuration['dut']
+        return self.conf['dut']
 
     @property
     def register(self):
-        return self.fe_configuration['configuration']
+        return self.conf['fe_configuration']
 
     @property
     def output_filename(self):
         if self.module_id:
-            return os.path.join(self.working_dir, str(self.run_number) + "_" + self.module_id + "_" + self.scan_id)
+            return os.path.join(self.working_dir, str(self.run_number) + "_" + self.module_id + "_" + self.run_id)
         else:
-            return os.path.join(self.working_dir, str(self.run_number) + "_" + self.scan_id)
+            return os.path.join(self.working_dir, str(self.run_number) + "_" + self.run_id)
 
     @property
     def module_id(self):
-        if 'module_id' in self.fe_configuration and self.fe_configuration['module_id']:
-            module_id = self.fe_configuration['module_id']
+        if 'module_id' in self.conf and self.conf['module_id']:
+            module_id = self.conf['module_id']
             module_id = re.sub(r"[^\w\s+]", '', module_id)
             return re.sub(r"\s+", '_', module_id).lower()
         else:
             return None
 
-    def run(self):
+    def _run(self):
+        self.scan_parameters = {}
+        if 'scan_parameters' in self.run_conf:
+            sp = namedtuple('scan_parameters', field_names=self.run_conf['scan_parameters'].iterkeys())
+            self.scan_parameters = sp(**self.run_conf['scan_parameters'])
+        else:
+            sp = namedtuple_with_defaults('scan_parameters', field_names=[])
+            self.scan_parameters = sp()
+        logging.info('Scan parameter(s): %s' % (', '.join(['%s:%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None'))
+
         try:
-            if 'configuration' in self.fe_configuration and self.fe_configuration['configuration']:
-                if not isinstance(self.fe_configuration['configuration'], FEI4Register):
-                    if isinstance(self.fe_configuration['configuration'], basestring):
-                        if os.path.isabs(self.fe_configuration['configuration']):
-                            fe_configuration = self.fe_configuration['configuration']
+            if 'fe_configuration' in self.conf and self.conf['fe_configuration']:
+                if not isinstance(self.conf['fe_configuration'], FEI4Register):
+                    if isinstance(self.conf['fe_configuration'], basestring):
+                        if os.path.isabs(self.conf['fe_configuration']):
+                            fe_configuration = self.conf['fe_configuration']
                         else:
-                            fe_configuration = os.path.join(self.base_dir, self.fe_configuration['configuration'])
-                        self.fe_configuration['configuration'] = FEI4Register(configuration_file=fe_configuration)
-                    elif isinstance(self.fe_configuration['configuration'], (int, long)) and self.fe_configuration['configuration'] >= 0:
-                        self.fe_configuration['configuration'] = FEI4Register(configuration_file=self._get_configuration(self.fe_configuration['configuration']))
+                            fe_configuration = os.path.join(self.conf['working_dir'], self.conf['fe_configuration'])
+                        self._conf['fe_configuration'] = FEI4Register(configuration_file=fe_configuration)
+                    elif isinstance(self.conf['fe_configuration'], (int, long)) and self.conf['fe_configuration'] >= 0:
+                        self._conf['fe_configuration'] = FEI4Register(configuration_file=self._get_configuration(self.conf['fe_configuration']))
                     else:
-                        self.fe_configuration['configuration'] = FEI4Register(configuration_file=self._get_configuration())
+                        self._conf['fe_configuration'] = FEI4Register(configuration_file=self._get_configuration())
                 else:
                     pass  # do nothing, already initialized
             else:
-                self.fe_configuration['configuration'] = FEI4Register(configuration_file=self._get_configuration())
+                self._conf['fe_configuration'] = FEI4Register(configuration_file=self._get_configuration())
 
-            if not isinstance(self.dut_configuration['dut'], Dut):
-                if isinstance(self.dut_configuration['dut'], basestring):
-                    if os.path.isabs(self.dut_configuration['dut']):
-                        dut = self.dut_configuration['dut']
+            if not isinstance(self.conf['dut'], Dut):
+                if isinstance(self.conf['dut'], basestring):
+                    if os.path.isabs(self.conf['dut']):
+                        dut = self.conf['dut']
                     else:
-                        dut = os.path.join(self.base_dir, self.dut_configuration['dut'])
-                    self.dut_configuration['dut'] = Dut(dut)
+                        dut = os.path.join(self.conf['working_dir'], self.conf['dut'])
+                    self._conf['dut'] = Dut(dut)
                 else:
-                    self.dut_configuration['dut'] = Dut(self.dut_configuration['dut'])
+                    self._conf['dut'] = Dut(self.conf['dut'])
                 module_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-                if 'dut_configuration' in self.dut_configuration and self.dut_configuration['dut_configuration']:
-                    if isinstance(self.dut_configuration['dut_configuration'], basestring):
-                        if os.path.isabs(self.dut_configuration['dut_configuration']):
-                            dut_configuration = self.dut_configuration['dut_configuration']
+                if 'dut_configuration' in self.conf and self.conf['dut_configuration']:
+                    if isinstance(self.conf['dut_configuration'], basestring):
+                        if os.path.isabs(self.conf['dut_configuration']):
+                            dut_configuration = self.conf['dut_configuration']
                         else:
-                            dut_configuration = os.path.join(self.base_dir, self.dut_configuration['dut_configuration'])
+                            dut_configuration = os.path.join(self.conf['working_dir'], self.conf['dut_configuration'])
                         self.dut.init(dut_configuration)
                     else:
-                        self.dut.init(self.dut_configuration['dut_configuration'])
+                        self.dut.init(self.conf['dut_configuration'])
                 elif self.dut.name == 'usbpix':
                     self.dut.init(os.path.join(module_path, 'dut_configuration_usbpix.yaml'))
                 elif self.dut.name == 'usbpix_gpac':
@@ -202,10 +167,9 @@ class Fei4RunBase(RunBase):
                 self.fifo_readout = FifoReadout(self.dut)
             if not self.register_utils:
                 self.register_utils = FEI4RegisterUtils(self.dut, self.register)
-            with open_raw_data_file(filename=self.output_filename, mode='w', title=self.scan_id, scan_parameters=self.scan_parameters._asdict()) as self.raw_data_file:
-                self.save_configuration_dict(self.raw_data_file.h5_file, 'dut_configuration', self.dut_configuration)
-                self.save_configuration_dict(self.raw_data_file.h5_file, 'fe_configuration', self.fe_configuration)
-                self.save_configuration_dict(self.raw_data_file.h5_file, 'scan_configuration', self.scan_configuration)
+            with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, scan_parameters=self.scan_parameters._asdict()) as self.raw_data_file:
+                self.save_configuration_dict(self.raw_data_file.h5_file, 'conf', self.conf)
+                self.save_configuration_dict(self.raw_data_file.h5_file, 'run_conf', self.run_conf)
                 self.register_utils.global_reset()
                 self.register_utils.reset_bunch_counter()
                 self.register_utils.reset_event_counter()
@@ -328,7 +292,6 @@ class Fei4RunBase(RunBase):
                 h5_file = os.path.splitext(h5_file)[0] + ".h5"
             with tb.open_file(h5_file, mode="a", title='', **kwargs) as h5_file:
                 save_conf()
-
 
     @abc.abstractmethod
     def configure(self):
