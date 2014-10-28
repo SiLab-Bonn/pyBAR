@@ -25,9 +25,21 @@ The features of the host software in Python and C++:
 
 Installation:
 ------------
+Prerequisites:
+- PyUSB (>=1.0.0rc1):
+  pip install https://github.com/walac/pyusb/archive/master.zip
+- pySiLibUSB (>=1.0.0):
+  pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/667/pySiLibUSB-2.0.0.zip
+- Basil (>=2.0.0):
+  pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/671/Basil-2.0.0.zip
+- progressbar (>=2.4):
+  pip install progressbar-latest
+
+Checkout pyBAR. From host folder run the following commands:
+
 1. Build with:
 python setup.py build_ext
-    
+
 2. Install with:
 For users: 
 python setup.py install
@@ -35,15 +47,15 @@ For developers (preferred):
 python setup.py develop
 
 3. Testing built:
-Run test from tests folder.
+Run tests from tests folder.
 
 Usage:
 -----
 Two methods are available:
-1. Directly run scans/tunings inside the /host/pybar/scans/ folder. Just double click the .py file or open them from IDE.
-   This is the quick and dirty method. Very effective. Configuration file (.yaml file) and default scan parameters has to be changed inside each .py file.
-2. Use RunManager to run scans from primlist (via run_primlist() method) or to run a scan solely (via run_run() method).
+1. Directly run scans/tunings inside the /host/pybar/scans/ folder. Just double click the .py file or run them from a IDE.
+   This is the quick and dirty method. Very effective. Change run parameters either inside each python file (_default_run_conf) or change configuration file (configuration.yaml).
+2. Use RunManager to run scans from primlist (via run_primlist() method) or to run a single scan (via run_run() method).
    This is the preferred method for longer sessions. Once the RunManager is initialized, it eases the way to run multiple scans/tunings in a row.
    An interactive python shell (e.g. IPython) makes the workflow even simpler.
 
-Please check the examples in the examples folder.
+Please read the examples in the examples folder.
