@@ -802,7 +802,7 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
     # initial PlsrDAC value for PlsrDAC correction
     initial_plsr_dac = self.register.get_global_register_value("PlsrDAC")
     # create restore point
-    restore_point_name = str(self.run_number) + self.scan_id + '_scan_loop'
+    restore_point_name = str(self.run_number) + self.run_id + '_scan_loop'
     self.register.create_restore_point(name=restore_point_name)
 
     # pre-calculate often used commands
