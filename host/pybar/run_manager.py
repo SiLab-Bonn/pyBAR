@@ -361,7 +361,11 @@ class RunManager(object):
             conf = self.conf[run.__class__.__name__]
         else:
             conf = {}
-        conf.update(self.open_conf(run_conf))
+        run_conf = self.open_conf(run_conf)
+        if run.__class__.__name__ in run_conf:
+            conf.update(run_conf[run.__class__.__name__])
+        else:
+            conf.update(run_conf)
 
         if use_thread:
             @thunkify('RunThread')
