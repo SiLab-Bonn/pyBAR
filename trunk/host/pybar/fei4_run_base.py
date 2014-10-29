@@ -28,8 +28,8 @@ class Fei4RunBase(RunBase):
     '''
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, conf):
-        super(Fei4RunBase, self).__init__(conf=conf)
+    def __init__(self, conf, conf, run_conf=None):
+        super(Fei4RunBase, self).__init__(conf=conf, run_conf=run_conf)
 
         self.err_queue = Queue()
 

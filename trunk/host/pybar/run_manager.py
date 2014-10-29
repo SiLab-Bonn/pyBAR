@@ -35,11 +35,11 @@ class RunBase():
     '''
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, conf):
+    def __init__(self, conf, run_conf=None):
         """Initialize object."""
         logging.info('Initializing %s' % self.__class__.__name__)
         self._conf = conf
-        self._run_conf = None
+        self._init_run_conf(run_conf)
         self._run_number = None
         self._run_status = None
         self.file_lock = Lock()
@@ -124,14 +124,20 @@ class RunBase():
         self.abort_run.clear()
         self._run_status = run_status.running
         self._write_run_number(run_number)
+        self._init_run_conf(run_conf, update=True)
+        logging.info('Starting run #%d (%s) in %s' % (self.run_number, self.__class__.__name__, self.working_dir))
+
+    def _init_run_conf(self, run_conf, update=False):
         sc = namedtuple('run_configuration', field_names=self.default_run_conf.iterkeys())
-        default_run_conf = sc(**self.default_run_conf)
+        if update:
+            default_run_conf = sc(**self.run_conf)
+        else:
+            default_run_conf = sc(**self.default_run_conf)
         if run_conf:
             self._run_conf = default_run_conf._replace(**run_conf)._asdict()
         else:
             self._run_conf = default_run_conf._asdict()
         self.__dict__.update(self.run_conf)
-        logging.info('Starting run #%d (%s) in %s' % (self.run_number, self.__class__.__name__, self.working_dir))
 
     @abc.abstractmethod
     def _run(self):
@@ -355,28 +361,25 @@ class RunManager(object):
         If use_thread is False, returns run status.
         '''
         if isclass(run):
-            run = run(conf=self.conf)
+            if run.__class__.__name__ in self.conf:
+                run = run(conf=self.conf, run_conf=self.conf[run.__class__.__name__])
+            else:
+                run = run(conf=self.conf)
 
-        if run.__class__.__name__ in self.conf:
-            conf = self.conf[run.__class__.__name__]
-        else:
-            conf = {}
         run_conf = self.open_conf(run_conf)
         if run.__class__.__name__ in run_conf:
-            conf.update(run_conf[run.__class__.__name__])
-        else:
-            conf.update(run_conf)
+            run_conf = run_conf[run.__class__.__name__]
 
         if use_thread:
             @thunkify('RunThread')
             def run_run_in_thread():
-                return run.run(run_conf=conf)
+                return run.run(run_conf=run_conf)
 
             self._current_run = run
             return run_run_in_thread()
         else:
             self._current_run = run
-            status = run.run(run_conf=conf)
+            status = run.run(run_conf=run_conf)
             return status
 
     def run_primlist(self, primlist, skip_remaining=False):
@@ -396,7 +399,7 @@ class RunManager(object):
         '''
         runlist = self.open_primlist(primlist)
         for index, run in enumerate(runlist):
-            join = self.run_run(run)
+            join = self.run_run(run, use_thread=True)
             self._current_run = run
             logging.info('Running run %i/%i. Press Ctrl-C to stop run' % (index + 1, len(runlist)))
             signal.signal(signal.SIGINT, self._signal_handler)
@@ -414,12 +417,11 @@ class RunManager(object):
         if isinstance(primlist, basestring):
             with open(primlist, 'r') as f:
                 f.seek(0)
-                srun_list = []
+                run_list = []
                 for line in f.readlines():
                     line = line.partition('#')[0].strip()
                     if not line:
                         continue
-                    run_conf = {}
                     parts = re.split('\s*[;]\s*', line)
                     try:
                         mod = import_module(parts[0])  # points to module
@@ -442,11 +444,15 @@ class RunManager(object):
                         elif not len(clsmembers):
                             raise ValueError('Found no matching class.')
                         run_cls = clsmembers[0][1]
+                    if run_cls.__class__.__name__ in self.conf:
+                        run_conf = self.conf[run_cls.__class__.__name__]
+                    else:
+                        run_conf = {}
                     for param in parts[1:]:
                         key, value = re.split('\s*[=:]\s*', param, 1)
                         run_conf[key] = literal_eval(value)
-                    srun_list.append(run_cls(conf=self.conf, run_conf=run_conf))
-            return srun_list
+                    run_list.append(run_cls(conf=self.conf, run_conf=run_conf))
+            return run_list
         else:
             AttributeError('Primlist format not supported.')
 
