@@ -1,6 +1,7 @@
 AnalogScan:
     enable_shift_masks : ["Enable", "C_High"]
     scan_parameters : {'PlsrDAC': 410}
+    n_injections : 50
 
 Fei4Tuning:
     enable_shift_masks : ["Enable", "C_High"]
