@@ -14,7 +14,6 @@ from matplotlib.backends.backend_pdf import PdfPages
 from fei4.register_utils import make_pixel_mask_from_col_row, make_box_pixel_mask_from_col_row
 
 import logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
 local_configuration = {
