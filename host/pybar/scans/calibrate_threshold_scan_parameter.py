@@ -19,7 +19,6 @@ from matplotlib.backends.backend_pdf import PdfPages
 from analysis.plotting.plotting import plotThreeWay, plot_scurves, plot_scatter
 from analysis.analyze_raw_data import AnalyzeRawData
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 calibration_configuration = {
     "parameter_name": 'GDAC',

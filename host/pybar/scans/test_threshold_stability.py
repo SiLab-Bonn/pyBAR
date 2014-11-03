@@ -20,7 +20,6 @@ from analysis.RawDataConverter import data_struct
 from analysis.plotting import plotting
 from analysis.analyze_raw_data import AnalyzeRawData
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 local_configuration = {
     "delays": [1, 10, 50] + (range(100, 3001, 300)),#range(0, 2000, 100),  # the delay between the arbitrary command and the CAL command

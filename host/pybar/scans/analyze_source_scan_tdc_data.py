@@ -11,7 +11,6 @@ from analysis import analysis
 from analysis import analysis_utils
 from analysis.analyze_raw_data import AnalyzeRawData
 import logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
 analysis_configuration = {
