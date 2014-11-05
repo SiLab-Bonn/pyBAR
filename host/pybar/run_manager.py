@@ -414,7 +414,7 @@ class RunManager(object):
 
     def open_primlist(self, primlist):
         def isrun(item, module):
-            return isinstance(item, RunBase.__metaclass__) and item.__module__ == module
+            return isinstance(item, RunBase.__metaclass__) and item.__module__ == module  # only class from module, not from other imports
 
         if isinstance(primlist, basestring):
             with open(primlist, 'r') as f:
