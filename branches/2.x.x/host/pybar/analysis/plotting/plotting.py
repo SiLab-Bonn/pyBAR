@@ -4,7 +4,7 @@
 # cmap = matplotlib.cm.jet
 # cmap.set_bad('w',1.)
 # ax.imshow(masked_array, interpolation='nearest', cmap=cmap)
-
+import logging
 import numpy as np
 import math
 # import matplotlib.pyplot as plt
@@ -23,9 +23,6 @@ import itertools
 # import operator
 from matplotlib import colors, cm
 from matplotlib.backends.backend_pdf import PdfPages
-
-import logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
 def plot_tdc_event(points, filename=None):

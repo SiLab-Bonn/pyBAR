@@ -4,7 +4,6 @@ import numpy as np
 import yaml
 from pylab import polyfit, poly1d
 import logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 from utils import Keithley24xx
 from scan.scan import ScanBase

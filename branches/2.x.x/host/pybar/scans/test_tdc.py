@@ -10,7 +10,7 @@ import numpy as np
 from analysis.plotting import plotting
 
 import logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
+
 
 local_configuration = {
     "GPIB_prim_address": 1,

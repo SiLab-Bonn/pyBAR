@@ -12,7 +12,6 @@ from threading import Event
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 configuration = {
     "path_to_monitor": 'data/SCC_99',  # the monitor the watchdog checks

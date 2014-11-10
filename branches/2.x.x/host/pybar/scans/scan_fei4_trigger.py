@@ -12,8 +12,6 @@ from fei4.register_utils import make_box_pixel_mask_from_col_row
 
 from daq.readout import convert_data_array, data_dict_list_from_data_dict_iterable, is_data_from_channel
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
-
 
 class Fei4TriggerScan(ScanBase):
     scan_id = "scan_fei4_trigger"

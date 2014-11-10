@@ -14,8 +14,6 @@ from fei4.register_utils import FEI4RegisterUtils, make_box_pixel_mask_from_col_
 
 from daq.readout import data_dict_list_from_data_dict_iterable, is_data_from_channel
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)-8s] (%(threadName)-10s) %(message)s")
-
 
 def get_gdacs(thresholds, mean_threshold_calibration):
     interpolation = interp1d(mean_threshold_calibration['mean_threshold'], mean_threshold_calibration['gdac'], kind='slinear', bounds_error=True)

@@ -7,7 +7,6 @@ from matplotlib.backends.backend_pdf import PdfPages
 from analysis import analysis
 from analysis import analysis_utils
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 analysis_configuration = {
     'scan_base': ['data//SCC_99//20V//SCC_99_ext_trigger_gdac_scan_432'],
