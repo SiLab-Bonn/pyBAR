@@ -19,6 +19,39 @@ from pybar.analysis.RawDataConverter.data_interpreter import PyDataInterpreter
 from pybar.analysis.RawDataConverter.data_histograming import PyDataHistograming
 from pybar.analysis.RawDataConverter.data_clusterizer import PyDataClusterizer
 
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
+
+
+class AnalysisError(Exception):
+    """Base class for exceptions in this module."""
+    pass
+
+
+class IncompleteInputError(AnalysisError):
+    """Exception raised for errors in the input.
+
+    Attributes:
+        expr -- input expression in which the error occurred
+        msg  -- explanation of the error
+    """
+
+    def __init__(self, expr, msg):
+        self.expr = expr
+        self.msg = msg
+
+
+class NotSupportedError(AnalysisError):
+    """Exception raised for errors in the input.
+
+    Attributes:
+        expr -- input expression in which the error occurred
+        msg  -- explanation of the error
+    """
+
+    def __init__(self, expr, msg):
+        self.expr = expr
+        self.msg = msg
+
 
 def scurve(x, A, mu, sigma):
     return 0.5 * A * erf((x - mu) / (np.sqrt(2) * sigma)) + 0.5 * A
@@ -105,7 +138,7 @@ class AnalyzeRawData(object):
             does not matter. Does not have to be set.
         analyzed_data_file : string
             The file name of the output analyzed data file. File ending (.h5)
-            does not matter. Does not have to be set.
+            Does not have to be set.
         create_pdf : boolean
             Creates interpretation plots into one pdf file. Only active if raw_data_file is given.
         scan_parameter_name : string or iterable
@@ -130,6 +163,7 @@ class AnalyzeRawData(object):
                 raw_data_files.append(raw_data_file)
             else:
                 raw_data_files = None
+
         if analyzed_data_file:
             if os.path.splitext(analyzed_data_file)[1].strip().lower() != ".h5":
                 self._analyzed_data_file = os.path.splitext(analyzed_data_file)[0] + ".h5"
@@ -139,13 +173,13 @@ class AnalyzeRawData(object):
             if len(raw_data_files) == 1:
                 self._analyzed_data_file = os.path.splitext(raw_data_files[0])[0] + '_interpreted.h5'
             else:
-                raise ValueError('Parameter analyzed_data_file not given')
+                raise IncompleteInputError('Output file name is not given.')
 
         # create a scan parameter table from all raw data files
         if raw_data_files is not None:
             self.files_dict = analysis_utils.get_parameter_from_files(raw_data_files, parameters=scan_parameter_name)
             if not analysis_utils.check_parameter_similarity(self.files_dict):
-                raise NotImplementedError('Different scan parameters are not supported.')
+                raise NotSupportedError('Different scan parameters in multiple files are not supported.')
             self.scan_parameters = analysis_utils.create_parameter_table(self.files_dict)
             logging.info('Found scan parameter(s): ' + pprint.pformat(analysis_utils.get_scan_parameter_names(self.scan_parameters)) + ' in raw data file.')
         else:
@@ -550,8 +584,9 @@ class AnalyzeRawData(object):
             self.histograming.add_scan_parameter(self.scan_parameter_index)  # just add an index for the different scan parameter combinations
 
         self.meta_data = analysis_utils.combine_meta_data(self.files_dict)
+
         if self.meta_data is None:
-            raise RuntimeError('Meta data is empty, stop interpretation')
+            raise IncompleteInputError('Meta data is empty. Stop interpretation.')
 
         self.interpreter.set_meta_data(self.meta_data)  # tell interpreter the word index per readout to be able to calculate the event number per read out
         meta_data_size = self.meta_data.shape[0]
@@ -940,7 +975,7 @@ class AnalyzeRawData(object):
         else:
             output_pdf = self.output_pdf
         if not output_pdf:
-            raise ValueError('Parameter pdf_filename not given')
+            raise IncompleteInputError('Output pdf file descriptor not given.')
         logging.info('Saving histograms to file: %s' % str(output_pdf._file.fh.name))
 
         if (self._create_threshold_hists):
@@ -1040,7 +1075,7 @@ class AnalyzeRawData(object):
         try:
             result_list = pool.map(partialfit_scurve, occupancy_hist_shaped.tolist())
         except TypeError:
-            raise Exception('S-curve fit needs at least three data points')
+            raise NotSupportedError('Less than 3 points found for S-curve fit.')
         pool.close()
         pool.join()  # blocking function until fit finished
         result_array = np.array(result_list)
