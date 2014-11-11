@@ -23,34 +23,18 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(leve
 
 
 class AnalysisError(Exception):
-    """Base class for exceptions in this module."""
-    pass
+    """Base class for exceptions in this module.
+    """
 
 
 class IncompleteInputError(AnalysisError):
     """Exception raised for errors in the input.
-
-    Attributes:
-        expr -- input expression in which the error occurred
-        msg  -- explanation of the error
     """
-
-    def __init__(self, expr, msg):
-        self.expr = expr
-        self.msg = msg
 
 
 class NotSupportedError(AnalysisError):
-    """Exception raised for errors in the input.
-
-    Attributes:
-        expr -- input expression in which the error occurred
-        msg  -- explanation of the error
+    """Exception raised for not supported actions.
     """
-
-    def __init__(self, expr, msg):
-        self.expr = expr
-        self.msg = msg
 
 
 def scurve(x, A, mu, sigma):
@@ -140,7 +124,7 @@ class AnalyzeRawData(object):
             The file name of the output analyzed data file. File ending (.h5)
             Does not have to be set.
         create_pdf : boolean
-            Creates interpretation plots into one pdf file. Only active if raw_data_file is given.
+            Creates interpretation plots into one PDF file. Only active if raw_data_file is given.
         scan_parameter_name : string or iterable
             The name/names of scan parameter(s) to be used during analysis. If not set the scan parameter
             table is used to extract the scan parameters. Otherwise no scan parameter is set.
@@ -189,7 +173,7 @@ class AnalyzeRawData(object):
         self.set_standard_settings()
         if raw_data_file is not None and create_pdf:
             output_pdf_filename = os.path.splitext(raw_data_file)[0] + ".pdf"
-            logging.info('Opening output pdf file: %s' % output_pdf_filename)
+            logging.info('Opening output PDF file: %s' % output_pdf_filename)
             self.output_pdf = PdfPages(output_pdf_filename)
         else:
             self.output_pdf = None
@@ -203,7 +187,7 @@ class AnalyzeRawData(object):
         del self.histograming
         del self.clusterizer
         if self.output_pdf is not None and isinstance(self.output_pdf, PdfPages):
-            logging.info('Closing output file: %s' % str(self.output_pdf._file.fh.name))
+            logging.info('Closing output PDF file: %s' % str(self.output_pdf._file.fh.name))
             self.output_pdf.close()
 
     def set_standard_settings(self):
@@ -524,7 +508,7 @@ class AnalyzeRawData(object):
 
     def interpret_word_table(self, analyzed_data_file=None, use_settings_from_file=True, fei4b=None):
         '''Interprets the raw data word table of all given raw data files with the c++ library.
-        Creates the h5 output file and pdf plots.
+        Creates the h5 output file and PDF plots.
 
         Parameters
         ----------
@@ -970,13 +954,13 @@ class AnalyzeRawData(object):
                 output_pdf_filename = os.path.splitext(pdf_filename)[0] + ".pdf"
             else:
                 output_pdf_filename = pdf_filename
-            logging.info('Opening output file: %s' % output_pdf_filename)
+            logging.info('Opening output PDF file: %s' % output_pdf_filename)
             output_pdf = PdfPages(output_pdf_filename)
         else:
             output_pdf = self.output_pdf
         if not output_pdf:
-            raise IncompleteInputError('Output pdf file descriptor not given.')
-        logging.info('Saving histograms to file: %s' % str(output_pdf._file.fh.name))
+            raise IncompleteInputError('Output PDF file descriptor not given.')
+        logging.info('Saving histograms to PDF file: %s' % str(output_pdf._file.fh.name))
 
         if (self._create_threshold_hists):
             # use threshold mask if possible
@@ -1057,7 +1041,7 @@ class AnalyzeRawData(object):
         if (out_file_h5 is not None):
             out_file_h5.close()
         if pdf_filename is not None:
-            logging.info('Closing output file: %s' % str(output_pdf._file.fh.name))
+            logging.info('Closing output PDF file: %s' % str(output_pdf._file.fh.name))
             output_pdf.close()
 
     def fit_scurves(self, hit_table_file=None, PlsrDAC=None):
