@@ -18,6 +18,7 @@ from pybar.fei4.register import FEI4Register
 from pybar.fei4.register_utils import FEI4RegisterUtils
 from pybar.daq.fifo_readout import FifoReadout, RxSyncError, EightbTenbError, FifoError, NoDataTimeout, StopTimeout
 from pybar.daq.fei4_raw_data import open_raw_data_file
+from pybar.analysis.analyze_raw_data import AnalysisError, IncompleteInputError, NotSupportedError
 from pybar.analysis.RawDataConverter.data_struct import NameValue
 
 
@@ -189,6 +190,8 @@ class Fei4RunBase(RunBase):
                 if self.abort_run.is_set():
                     raise RunAborted('Do not analyze data.')
                 self.analyze()
+            except (AnalysisError, IncompleteInputError, NotSupportedError) as e:
+                logging.error('Analysis of raw data failed: %s' % e)
             except Exception:
                 self.handle_err(sys.exc_info())
             else:
