@@ -65,6 +65,7 @@ class AnalogScan(Fei4RunBase):
                 analyze_raw_data.interpreter.use_tdc_word(True)  # align events at the TDC word
             analyze_raw_data.interpret_word_table()
             analyze_raw_data.plot_histograms()
+            analyze_raw_data.interpreter.print_summary()
 
     def activate_tdc(self):
         self.dut['tdc_rx2']['ENABLE'] = True
