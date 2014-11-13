@@ -120,6 +120,7 @@ class FEI4RegisterUtils(object):
         '''Resetting Service Records
 
         This will reset Service Record counters. This will also bring back alive some FE where the output FIFO is stuck (no data is coming out in run mode).
+        This should be only issues after power up, otherwise the timing (BCID counter) is worse.
         '''
         logging.info('Resetting Service Records')
         commands = []
@@ -519,6 +520,7 @@ def read_pixel_register(self, pix_regs=["EnableDigInj", "Imon", "Enable", "C_Hig
     list of masked numpy.ndarrays
     '''
     result = []
+
     for pix_reg in pix_regs:
         pixel_data = np.ma.masked_array(np.zeros(shape=(80, 336), dtype=np.uint32), mask=True)  # the result pixel array, only pixel with data are not masked
         for dc in dcs:
@@ -529,6 +531,39 @@ def read_pixel_register(self, pix_regs=["EnableDigInj", "Imon", "Enable", "C_Hig
             self.register.set_pixel_register(pix_reg, pixel_data.data)
         result.append(pixel_data)
     return result
+
+
+def set_configured(self, configured=True):
+    '''Set a global register bit to identify that this function has been called once. Even if a new scrip python script is used.
+    The bit is in the EmptyRecordCnfg register.
+
+    Parameters
+    ----------
+    configured : bool
+        Set the flag to 1 or 0.
+    '''
+
+    self.fifo_readout.reset_sram_fifo()
+    self.register.set_global_register_value('EmptyRecordCnfg', 1 if configured else 0)
+    commands = []
+    commands.extend(self.register.get_commands("confmode"))
+    commands.extend(self.register.get_commands("wrregister", name=['EmptyRecordCnfg']))
+    commands.extend(self.register.get_commands("runmode"))
+    self.register_utils.send_commands(commands)
+
+
+def get_configured(self):
+    self.fifo_readout.reset_sram_fifo()
+    commands = []
+    commands.extend(self.register.get_commands("confmode"))
+    commands.extend(self.register.get_commands("rdregister", name=['EmptyRecordCnfg']))
+    commands.extend(self.register.get_commands("runmode"))
+    self.register_utils.send_commands(commands)
+    data = self.fifo_readout.read_data()
+    if len(data == 2):  # AR + VR
+        fei4_data_word = FEI4Record(data[1], self.register.chip_flavor)
+        if fei4_data_word == 'VR':
+            return (fei4_data_word['value'] & 0b10000 == 0b10000)
 
 
 def invert_pixel_mask(mask):
