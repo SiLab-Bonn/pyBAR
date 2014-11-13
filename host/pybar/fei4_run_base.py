@@ -172,9 +172,10 @@ class Fei4RunBase(RunBase):
                 self.save_configuration_dict(self.raw_data_file.h5_file, 'run_conf', self.run_conf)
                 if not get_configured(self):  # reset_service_records should only called once after power up
                     self.register_utils.reset_service_records()
-                    set_configured(self)
+
                 self.register_utils.global_reset()
                 self.register_utils.configure_all()
+                set_configured(self)
                 self.register_utils.reset_bunch_counter()
                 self.register_utils.reset_event_counter()
 
