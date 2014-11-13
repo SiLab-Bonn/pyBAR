@@ -3,7 +3,6 @@ import tables as tb
 from tables import dtype_from_descr, Col
 import numpy as np
 import logging
-import pprint
 import progressbar
 import os
 from scipy.optimize import curve_fit
@@ -165,7 +164,7 @@ class AnalyzeRawData(object):
             if not analysis_utils.check_parameter_similarity(self.files_dict):
                 raise NotSupportedError('Different scan parameters in multiple files are not supported.')
             self.scan_parameters = analysis_utils.create_parameter_table(self.files_dict)
-            logging.info('Found scan parameter(s): ' + pprint.pformat(analysis_utils.get_scan_parameter_names(self.scan_parameters)) + ' in raw data file.')
+            logging.info('Scan parameter(s) from raw data file(s): ' + (', ').join(analysis_utils.get_scan_parameter_names(self.scan_parameters)))
         else:
             self.files_dict = None
             self.scan_parameters = None
@@ -555,7 +554,7 @@ class AnalyzeRawData(object):
                     description['trigger_time_stamp'] = description.pop('trigger_number')
                 cluster_hit_table = self.out_file_h5.createTable(self.out_file_h5.root, name='ClusterHits', description=description, title='cluster_hit_data', filters=self._filter_table, expectedrows=self._chunk_size)
 
-        logging.info('Interpreting: ' + pprint.pformat(self.files_dict.keys()))
+        logging.info('Interpreting raw data file(s): ' + (', ').join(self.files_dict.keys()))
 
         self.interpreter.reset_event_variables()
         self.interpreter.reset_counters()
@@ -836,7 +835,7 @@ class AnalyzeRawData(object):
                 self.histograming.add_meta_event_index(meta_event_index, array_length=len(meta_event_index))
                 self.scan_parameter_index = analysis_utils.get_scan_parameters_index(self.scan_parameters)  # a array that labels unique scan parameter combinations
                 self.histograming.add_scan_parameter(self.scan_parameter_index)  # just add an index for the different scan parameter combinations
-                logging.info('Add scan parameter(s): ' + pprint.pformat(analysis_utils.get_scan_parameter_names(self.scan_parameters)) + ' for analysis.')
+                logging.info('Adding scan parameter(s) for analysis: ' + (', ').join(analysis_utils.get_scan_parameter_names(self.scan_parameters)))
             else:
                 logging.info("No scan parameter data provided")
                 self.histograming.set_no_scan_parameter()
