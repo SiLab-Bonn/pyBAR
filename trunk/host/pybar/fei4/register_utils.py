@@ -533,37 +533,26 @@ def read_pixel_register(self, pix_regs=["EnableDigInj", "Imon", "Enable", "C_Hig
     return result
 
 
-def set_configured(self, configured=True):
-    '''Set a global register bit to identify that this function has been called once. Even if a new scrip python script is used.
-    The bit is in the EmptyRecordCnfg register.
+def is_fe_ready(self):
+    '''Get FEI4 status.
 
-    Parameters
-    ----------
-    configured : bool
-        Set the flag to 1 or 0.
+    If FEI4 is not ready, resetting service records is necessary to bring the FEI4 to a defined state.
+
+    Returns
+    -------
+    value : bool
+        True if FEI4 is ready, False if the FEI4 was powered up recently and is not ready.
     '''
-
-    self.fifo_readout.reset_sram_fifo()
-    self.register.set_global_register_value('EmptyRecordCnfg', 1 if configured else 0)
     commands = []
     commands.extend(self.register.get_commands("confmode"))
-    commands.extend(self.register.get_commands("wrregister", name=['EmptyRecordCnfg']))
-    commands.extend(self.register.get_commands("runmode"))
-    self.register_utils.send_commands(commands)
-
-
-def get_configured(self):
-    self.fifo_readout.reset_sram_fifo()
-    commands = []
-    commands.extend(self.register.get_commands("confmode"))
-    commands.extend(self.register.get_commands("rdregister", name=['EmptyRecordCnfg']))
+    commands.extend(self.register.get_commands("rdregister", address=[1]))
     commands.extend(self.register.get_commands("runmode"))
     self.register_utils.send_commands(commands)
     data = self.fifo_readout.read_data()
-    if len(data == 2):  # AR + VR
-        fei4_data_word = FEI4Record(data[1], self.register.chip_flavor)
-        if fei4_data_word == 'VR':
-            return (fei4_data_word['value'] & 0b10000 == 0b10000)
+    if len(data):
+        return True if FEI4Record(data[-1], self.register.chip_flavor) == 'VR' else False
+    else:
+        return False
 
 
 def invert_pixel_mask(mask):
