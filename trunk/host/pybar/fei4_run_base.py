@@ -172,10 +172,10 @@ class Fei4RunBase(RunBase):
                 self.save_configuration_dict(self.raw_data_file.h5_file, 'conf', self.conf)
                 self.save_configuration_dict(self.raw_data_file.h5_file, 'run_conf', self.run_conf)
                 self.register_utils.global_reset()
+                self.register_utils.configure_all()
                 self.register_utils.reset_bunch_counter()
                 self.register_utils.reset_event_counter()
                 self.register_utils.reset_service_records()
-                self.register_utils.configure_all()
                 with self.register.restored(name=self.run_number):
                     self.configure()
                     self.register.save_configuration_to_hdf5(self.raw_data_file.h5_file)
