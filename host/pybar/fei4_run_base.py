@@ -15,7 +15,7 @@ from basil.dut import Dut
 
 from pybar.run_manager import RunBase, RunAborted
 from pybar.fei4.register import FEI4Register
-from pybar.fei4.register_utils import FEI4RegisterUtils
+from pybar.fei4.register_utils import FEI4RegisterUtils, set_configured, get_configured
 from pybar.daq.fifo_readout import FifoReadout, RxSyncError, EightbTenbError, FifoError, NoDataTimeout, StopTimeout
 from pybar.daq.fei4_raw_data import open_raw_data_file
 from pybar.analysis.analyze_raw_data import AnalysisError, IncompleteInputError, NotSupportedError
@@ -170,11 +170,14 @@ class Fei4RunBase(RunBase):
             with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, scan_parameters=self.scan_parameters._asdict()) as self.raw_data_file:
                 self.save_configuration_dict(self.raw_data_file.h5_file, 'conf', self.conf)
                 self.save_configuration_dict(self.raw_data_file.h5_file, 'run_conf', self.run_conf)
+                if not get_configured(self):  # reset_service_records should only called once after power up
+                    self.register_utils.reset_service_records()
+                    set_configured(self)
                 self.register_utils.global_reset()
                 self.register_utils.configure_all()
                 self.register_utils.reset_bunch_counter()
                 self.register_utils.reset_event_counter()
-                self.register_utils.reset_service_records()
+
                 with self.register.restored(name=self.run_number):
                     self.configure()
                     self.register.save_configuration_to_hdf5(self.raw_data_file.h5_file)
