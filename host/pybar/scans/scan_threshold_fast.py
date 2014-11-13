@@ -16,7 +16,7 @@ class FastThresholdScan(Fei4RunBase):
     '''
     _default_run_conf = {
         "n_injections": 100,  # number of injections per PlsrDAC step
-        "scan_parameters": {'PlsrDAC': (None, 100)},  # the PlsrDAC range
+        "scan_parameters": [('PlsrDAC', (None, 100))],  # the PlsrDAC range
         "mask_steps": 3,  # mask steps
         "enable_mask_steps": None,  # list of mask steps to be used, if None use all mask steps
         "step_size": 2,  # step size of the PlsrDAC during scan
