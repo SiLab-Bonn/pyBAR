@@ -836,7 +836,8 @@ class AnalyzeRawData(object):
                 self.histograming.add_meta_event_index(meta_event_index, array_length=len(meta_event_index))
                 self.scan_parameter_index = analysis_utils.get_scan_parameters_index(self.scan_parameters)  # a array that labels unique scan parameter combinations
                 self.histograming.add_scan_parameter(self.scan_parameter_index)  # just add an index for the different scan parameter combinations
-                logging.info('Adding scan parameter(s) for analysis: ' + (', ').join(analysis_utils.get_scan_parameter_names(self.scan_parameters)))
+                scan_parameter_names = analysis_utils.get_scan_parameter_names(self.scan_parameters)
+                logging.info('Adding scan parameter(s) for analysis: %s' % ((', ').join(scan_parameter_names) if scan_parameter_names else 'None',))
             else:
                 logging.info("No scan parameter data provided")
                 self.histograming.set_no_scan_parameter()
