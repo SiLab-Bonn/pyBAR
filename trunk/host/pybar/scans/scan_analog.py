@@ -13,7 +13,7 @@ class AnalogScan(Fei4RunBase):
     _default_run_conf = {
         "mask_steps": 3,  # mask steps
         "n_injections": 100,  # number of injections
-        "scan_parameters": {'PlsrDAC': 280},  # the PlsrDAC setting
+        "scan_parameters": [('PlsrDAC', 280)],  # the PlsrDAC setting
         "use_enable_mask": False,  # if True, use Enable mask during scan, if False, all pixels will be enabled
         "enable_shift_masks": ["Enable", "C_High", "C_Low"],  # enable masks shifted during scan
         "disable_shift_masks": [],  # disable masks shifted during scan

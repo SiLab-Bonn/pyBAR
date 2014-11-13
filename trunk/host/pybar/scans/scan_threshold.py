@@ -15,7 +15,7 @@ class ThresholdScan(Fei4RunBase):
     _default_run_conf = {
         "mask_steps": 3,  # number of injections per PlsrDAC step
         "n_injections": 100,  # number of injections per PlsrDAC step
-        "scan_parameters": {'PlsrDAC': [None, 100]},  # the PlsrDAC range
+        "scan_parameters": [('PlsrDAC', [None, 100])],  # the PlsrDAC range
         "step_size": 1,  # step size of the PlsrDAC during scan
         "use_enable_mask": False,  # if True, use Enable mask during scan, if False, all pixels will be enabled
         "enable_shift_masks": ["Enable", "C_High", "C_Low"],  # enable masks shifted during scan

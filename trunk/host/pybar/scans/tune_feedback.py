@@ -19,7 +19,7 @@ class FeedbackTuning(Fei4RunBase):
     Use pybar.scans.tune_fei4 for full FE-I4 tuning.
     '''
     _default_run_conf = {
-        "scan_parameters": {'PrmpVbpf': None},
+        "scan_parameters": [('PrmpVbpf', None)],
         "target_charge": 280,
         "target_tot": 5,
         "feedback_tune_bits": range(7, -1, -1),
