@@ -119,13 +119,13 @@ class TestAnalysis(unittest.TestCase):
             analyze_raw_data.clusterizer.set_warning_output(False)
             analyze_raw_data.interpreter.set_debug_output(False)
             analyze_raw_data.histograming.set_warning_output(False)
-            analyze_raw_data.interpret_word_table(fei4b=False)  # the actual start conversion command
+            analyze_raw_data.interpret_word_table(use_settings_from_file=False, fei4b=False)  # the actual start conversion command
         with AnalyzeRawData(raw_data_file='test_analysis//unit_test_data_2.h5', analyzed_data_file='test_analysis//unit_test_data_2_interpreted.h5') as analyze_raw_data:  # analyze the fast threshold scan raw data, do not show any feedback (no prints to console, no plots)
             analyze_raw_data.chunk_size = 3000017
             analyze_raw_data.interpreter.set_debug_output(False)
             analyze_raw_data.histograming.set_warning_output(False)
             analyze_raw_data.create_threshold_hists = True  # makes only sense if threshold scan data is analyzed, std. setting is false
-            analyze_raw_data.interpret_word_table(fei4b=False)  # the actual start conversion command
+            analyze_raw_data.interpret_word_table(use_settings_from_file=False, fei4b=False)  # the actual start conversion command
         with AnalyzeRawData(raw_data_file=None, analyzed_data_file='test_analysis//unit_test_data_1_interpreted.h5') as analyze_raw_data:   # analyze the digital scan hit data, do not show any feedback (no prints to console, no plots)
             analyze_raw_data.chunk_size = 3000017
             analyze_raw_data.clusterizer.set_warning_output(False)
@@ -150,14 +150,14 @@ class TestAnalysis(unittest.TestCase):
             analyze_raw_data.clusterizer.set_warning_output(False)
             analyze_raw_data.interpreter.set_debug_output(False)
             analyze_raw_data.histograming.set_warning_output(False)
-            analyze_raw_data.interpret_word_table(fei4b=False)  # the actual start conversion command
+            analyze_raw_data.interpret_word_table(use_settings_from_file=False, fei4b=False)  # the actual start conversion command
         with AnalyzeRawData(raw_data_file='test_analysis//unit_test_data_2.h5', analyzed_data_file='test_analysis//unit_test_data_2_hits.h5') as analyze_raw_data:  # analyze the fast threshold scan raw data, do not show any feedback (no prints to console, no plots)
             analyze_raw_data.chunk_size = 3000017
             analyze_raw_data.create_hit_table = True
             analyze_raw_data.interpreter.set_debug_output(False)
             analyze_raw_data.histograming.set_warning_output(False)
             analyze_raw_data.create_threshold_hists = True  # makes only sense if threshold scan data is analyzed, std. setting is false
-            analyze_raw_data.interpret_word_table(fei4b=False)  # the actual start conversion command
+            analyze_raw_data.interpret_word_table(use_settings_from_file=False, fei4b=False)  # the actual start conversion command
         with AnalyzeRawData(raw_data_file=None, analyzed_data_file='test_analysis//unit_test_data_2_hits.h5') as analyze_raw_data:
             analyze_raw_data.chunk_size = 3000017
             analyze_raw_data.create_threshold_hists = True
@@ -167,13 +167,13 @@ class TestAnalysis(unittest.TestCase):
             analyze_raw_data.create_hit_table = True
             analyze_raw_data.interpreter.set_debug_output(False)
             analyze_raw_data.histograming.set_warning_output(False)
-            analyze_raw_data.interpret_word_table(fei4b=False)  # the actual start conversion command
+            analyze_raw_data.interpret_word_table(use_settings_from_file=False, fei4b=False)  # the actual start conversion command
         with AnalyzeRawData(raw_data_file=['test_analysis//unit_test_data_4_parameter_128.h5', 'test_analysis//unit_test_data_4_parameter_256.h5'], analyzed_data_file='test_analysis//unit_test_data_4_interpreted_2.h5', scan_parameter_name='parameter') as analyze_raw_data:
             analyze_raw_data.chunk_size = 3000017
             analyze_raw_data.create_hit_table = True
             analyze_raw_data.interpreter.set_debug_output(False)
             analyze_raw_data.histograming.set_warning_output(False)
-            analyze_raw_data.interpret_word_table(fei4b=False)  # the actual start conversion command
+            analyze_raw_data.interpret_word_table(use_settings_from_file=False, fei4b=False)  # the actual start conversion command
 
     @classmethod
     def tearDownClass(cls):  # remove created files

@@ -669,11 +669,14 @@ def create_1d_hist(fig, ax, hist, title=None, x_axis_title=None, y_axis_title=No
     else:
         bin_width = 1.0
     hist_range = (x_min - bin_width / 2.0, x_max + bin_width / 2.0)
-    _, _, _ = ax.hist(x=np.ma.masked_array(hist).compressed(), bins=hist_bins, range=hist_range, align='mid')  # re-bin to 1d histogram, x argument needs to be 1D
+    masked_hist = np.ma.masked_array(hist)
+    masked_hist[masked_hist.mask] = np.iinfo(masked_hist.dtype).max
+    _, _, _ = ax.hist(x=masked_hist.compressed(), bins=hist_bins, range=hist_range, align='mid')  # re-bin to 1d histogram, x argument needs to be 1D
     # BUG: np.ma.compressed(np.ma.masked_array(hist)) (2D) is not equal to np.ma.masked_array(hist).compressed() (1D) if hist is ndarray
     ax.set_xlim(hist_range)  # overwrite xlim
     if hist.all() is np.ma.masked:  # or np.allclose(hist, 0.0):
         ax.set_ylim((0, 1))
+        ax.set_xlim((-0.5, +0.5))
     # create histogram without masked elements, higher precision when calculating gauss
     h_1d, h_bins = np.histogram(np.ma.masked_array(hist).compressed(), bins=hist_bins, range=hist_range)
     if title is not None:

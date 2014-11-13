@@ -20,12 +20,6 @@ from pybar.utils.utils import string_is_binary, flatten_iterable, iterable, str2
 
 chip_flavors = ['fei4a', 'fei4b']
 
-default_pulser_corr_high = [2, 2, 2, 3, 3, 3, 2, 2, 3, 2, 2, 0, 0, 0, 0, 1, 1, 1, 2, 3, 3, 3, 3, 2, 2, 2, 4, 5, 5, 5, 5, 6, 6, 6, 6, 6, 5, 6, 6, 6]
-
-default_pulser_corr_med = [3, 3, 3, 4, 4, 5, 4, 3, 4, 3, 3, 1, 0, 0, 0, 1, 1, 2, 2, 4, 4, 5, 4, 3, 3, 3, 5, 7, 7, 7, 8, 8, 8, 8, 8, 9, 8, 8, 8, 8]
-
-default_pulser_corr_low = [7, 7, 7, 10, 9, 10, 8, 8, 9, 8, 6, 2, 1, 1, 0, 2, 3, 4, 4, 8, 8, 9, 7, 6, 6, 6, 11, 14, 15, 16, 16, 17, 18, 17, 18, 19, 17, 18, 18, 18]
-
 
 def bitarray_from_value(value, size=None, fmt='Q'):
     ba = bitarray(endian='little')
@@ -211,19 +205,18 @@ class FEI4Handler(xml.sax.ContentHandler):  # TODO separate handlers
 
 
 class FEI4Register(object):
-    def __init__(self, configuration_file=None, definition_file=None):
+    def __init__(self, configuration_file=None, flavor=None, chip_id=None):
         self.global_registers = {}
         self.pixel_registers = {}
         self.fe_command = {}
 
         self.configuration_file = configuration_file
-        self.definition_file = definition_file
 
         self.config_state = OrderedDict()
 
         self.parameter_config = OrderedDict([
-            ('Flavor', None),  # This 4-bit field always exists and is the chip ID. The three least significant bits define the chip address and are compared with the geographical address of the chip (selected via wire bonding), while the most significant one, if set, means that the command is broadcasted to all FE chips receiving the data stream.
-            ('Chip_ID', 8)
+            ('Flavor', None),
+            ('Chip_ID', 8)  # This 4-bit field always exists and is the chip ID. The three least significant bits define the chip address and are compared with the geographical address of the chip (selected via wire bonding), while the most significant one, if set, means that the command is broadcasted to all FE chips receiving the data stream.
         ])
         self.calibration_config = OrderedDict([
             ('C_Inj_Low', None),
@@ -273,20 +266,18 @@ class FEI4Register(object):
             raise ValueError('Invalid chip ID')
         return self.parameter_config['Chip_ID']
 
-    def load_configuration(self, configuration_file=None, definition_file=None):
+    def load_configuration(self, configuration_file=None):
         '''Loading configuration from text files
 
         Parameters
         ----------
         configuration_file : string
             Full path (directory and filename) of the configuration file. If name is not given, reload configuration from file.
-        definition_file : string
-            Full path (directory and filename) of the definition file. If name is not given, flavor of FE chip will be taken from configuration file.
         '''
         if os.path.splitext(configuration_file)[1].strip().lower() != ".h5":
-            self.load_configuration_from_text_file(configuration_file, definition_file)
+            self.load_configuration_from_text_file(configuration_file)
         else:
-            self.load_configuration_from_hdf5(configuration_file, definition_file)
+            self.load_configuration_from_hdf5(configuration_file)
 
     def save_configuration(self, configuration_file=None):
         '''Saving configuration to text files
@@ -309,31 +300,20 @@ class FEI4Register(object):
         else:
             return self.save_configuration_to_hdf5(configuration_file)
 
-    def load_configuration_from_text_file(self, configuration_file=None, definition_file=None):
+    def load_configuration_from_text_file(self, configuration_file=None):
         '''Loading configuration from text files
 
         Parameters
         ----------
         configuration_file : string
             Full path (directory and filename) of the configuration file. If name is not given, reload configuration from file.
-        definition_file : string
-            Full path (directory and filename) of the definition file. If name is not given, flavor of FE chip will be taken from configuration file.
         '''
-        if configuration_file:
-            self.configuration_file = configuration_file
-        if definition_file:
-            self.definition_file = definition_file
-        if self.configuration_file is not None:
-            logging.info("Loading configuration file: %s" % self.configuration_file)
-            self.parse_parameters(self.parameter_config)  # get flavor and chip ID
-            self.parse_parameters(self.calibration_config)  # calibration values
-            self.parse_register_config()
-            self.parse_chip_config()
-        elif self.definition_file is not None:
-            logging.info("Parsing definition file: %s" % self.definition_file)
-            self.parse_register_config()
-        else:
-            logging.warning("No configuration file and/or definition file specified.")
+        self.configuration_file = configuration_file
+        logging.info("Loading configuration file: %s" % self.configuration_file)
+        self.parse_parameters(self.parameter_config)  # get flavor and chip ID
+        self.parse_parameters(self.calibration_config)  # calibration values
+        self.parse_register_config()
+        self.parse_chip_config()
 
     def save_configuration_to_text_file(self, configuration_file):
         '''Saving configuration to text files
@@ -418,7 +398,6 @@ class FEI4Register(object):
         name : string
             Additional identifier (subgroup). Useful when more than one configuration is stored inside a HDF5 file.
         '''
-        
         def load_conf():
             logging.info("Loading configuration from HDF5 file: %s" % h5_file.filename)
             if name:
@@ -447,7 +426,7 @@ class FEI4Register(object):
                 for pixel_reg in self.pixel_registers:
                     name = pixel_reg.full_name
                     self.set_pixel_register_value(pixel_reg.name, np.asarray(h5_file.getNode(configuration_group, name=name)).T)
-        
+
         if isinstance(h5_file, tb.file.File):
             self.configuration_file = h5_file.filename
             load_conf()
@@ -457,7 +436,6 @@ class FEI4Register(object):
             self.configuration_file = h5_file
             with tb.open_file(h5_file, mode="r", title='', **kwargs) as h5_file:
                 load_conf()
-
 
     def save_configuration_to_hdf5(self, h5_file, name='', **kwargs):
         '''Saving configuration to HDF5 file
@@ -534,7 +512,7 @@ class FEI4Register(object):
                 atom = tb.Atom.from_dtype(data.dtype)
                 ds = h5_file.createCArray(configuration_group, name=pixel_reg.full_name, atom=atom, shape=data.shape, title=pixel_reg.full_name)
                 ds[:] = data
-        
+
         if isinstance(h5_file, tb.file.File):
             self.configuration_file = h5_file.filename
             save_conf()
@@ -551,18 +529,12 @@ class FEI4Register(object):
         handler = FEI4Handler()
         parser.setContentHandler(handler)
         module_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-
-        if self.definition_file is None:
-            if self.is_chip_flavor("fei4a"):
-                parser.parse(os.path.join(module_path, "register_fei4a.xml"))
-            elif self.is_chip_flavor("fei4b"):
-                parser.parse(os.path.join(module_path, "register_fei4b.xml"))
-            else:
-                raise ValueError("Unknown chip flavor")
+        if self.is_chip_flavor("fei4a"):
+            parser.parse(os.path.join(module_path, "register_fei4a.xml"))
+        elif self.is_chip_flavor("fei4b"):
+            parser.parse(os.path.join(module_path, "register_fei4b.xml"))
         else:
-            parser.parse(self.definition_file)
-            self.chip_flavor = handler.flavor
-
+            raise ValueError("Unknown chip flavor")
         self.global_registers = handler.global_registers
         self.pixel_registers = handler.pixel_registers
         self.fe_command = handler.fe_command

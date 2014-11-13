@@ -13,7 +13,7 @@ class AnalogScan(Fei4RunBase):
     _default_run_conf = {
         "mask_steps": 3,  # mask steps
         "n_injections": 100,  # number of injections
-        "scan_parameters": {'PlsrDAC': 280},  # the PlsrDAC setting
+        "scan_parameters": [('PlsrDAC', 280)],  # the PlsrDAC setting
         "use_enable_mask": False,  # if True, use Enable mask during scan, if False, all pixels will be enabled
         "enable_shift_masks": ["Enable", "C_High", "C_Low"],  # enable masks shifted during scan
         "disable_shift_masks": [],  # disable masks shifted during scan
@@ -65,6 +65,7 @@ class AnalogScan(Fei4RunBase):
                 analyze_raw_data.interpreter.use_tdc_word(True)  # align events at the TDC word
             analyze_raw_data.interpret_word_table()
             analyze_raw_data.plot_histograms()
+            analyze_raw_data.interpreter.print_summary()
 
     def activate_tdc(self):
         self.dut['tdc_rx2']['ENABLE'] = True

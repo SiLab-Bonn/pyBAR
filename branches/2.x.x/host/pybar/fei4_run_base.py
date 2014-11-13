@@ -15,9 +15,10 @@ from basil.dut import Dut
 
 from pybar.run_manager import RunBase, RunAborted
 from pybar.fei4.register import FEI4Register
-from pybar.fei4.register_utils import FEI4RegisterUtils
+from pybar.fei4.register_utils import FEI4RegisterUtils, set_configured, get_configured
 from pybar.daq.fifo_readout import FifoReadout, RxSyncError, EightbTenbError, FifoError, NoDataTimeout, StopTimeout
 from pybar.daq.fei4_raw_data import open_raw_data_file
+from pybar.analysis.analyze_raw_data import AnalysisError, IncompleteInputError, NotSupportedError
 from pybar.analysis.RawDataConverter.data_struct import NameValue
 
 
@@ -70,10 +71,9 @@ class Fei4RunBase(RunBase):
             return None
 
     def _run(self):
-        self.scan_parameters = {}
         if 'scan_parameters' in self.run_conf:
-            sp = namedtuple('scan_parameters', field_names=self.run_conf['scan_parameters'].iterkeys())
-            self.scan_parameters = sp(**self.run_conf['scan_parameters'])
+            sp = namedtuple('scan_parameters', field_names=zip(*self.run_conf['scan_parameters'])[0])
+            self.scan_parameters = sp(*zip(*self.run_conf['scan_parameters'])[1])
         else:
             sp = namedtuple_with_defaults('scan_parameters', field_names=[])
             self.scan_parameters = sp()
@@ -170,11 +170,14 @@ class Fei4RunBase(RunBase):
             with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, scan_parameters=self.scan_parameters._asdict()) as self.raw_data_file:
                 self.save_configuration_dict(self.raw_data_file.h5_file, 'conf', self.conf)
                 self.save_configuration_dict(self.raw_data_file.h5_file, 'run_conf', self.run_conf)
+                if not get_configured(self):  # reset_service_records should only called once after power up
+                    self.register_utils.reset_service_records()
+                    set_configured(self)
                 self.register_utils.global_reset()
+                self.register_utils.configure_all()
                 self.register_utils.reset_bunch_counter()
                 self.register_utils.reset_event_counter()
-                self.register_utils.reset_service_records()
-                self.register_utils.configure_all()
+
                 with self.register.restored(name=self.run_number):
                     self.configure()
                     self.register.save_configuration_to_hdf5(self.raw_data_file.h5_file)
@@ -189,6 +192,8 @@ class Fei4RunBase(RunBase):
                 if self.abort_run.is_set():
                     raise RunAborted('Do not analyze data.')
                 self.analyze()
+            except (AnalysisError, IncompleteInputError, NotSupportedError) as e:
+                logging.error('Analysis of raw data failed: %s' % e)
             except Exception:
                 self.handle_err(sys.exc_info())
             else:
@@ -231,12 +236,22 @@ class Fei4RunBase(RunBase):
                     return os.path.join(root, cfgfile)
         raise ValueError('Found no configuration with run number %s' % run_number)
 
-    def set_scan_parameters(self, **kwargs):
-        self.scan_parameters = self.scan_parameters._replace(**kwargs)
+    def set_scan_parameters(self, *args, **kwargs):
+        fields = dict(kwargs)
+        for index, field in enumerate(self.scan_parameters._fields):
+            try:
+                value = args[index]
+            except IndexError:
+                break
+            else:
+                if field in fields:
+                    raise TypeError('Got multiple values for keyword argument %s' % field)
+                fields[field] = value
+        self.scan_parameters = self.scan_parameters._replace(**fields)
 
     @contextmanager
-    def readout(self, **kwargs):
-        self.start_readout(**kwargs)
+    def readout(self, *args, **kwargs):
+        self.start_readout(*args, **kwargs)
         try:
             yield
             self.stop_readout()
@@ -245,9 +260,9 @@ class Fei4RunBase(RunBase):
             if self.fifo_readout.is_running:
                 self.fifo_readout.stop(timeout=0.0)
 
-    def start_readout(self, **kwargs):
+    def start_readout(self, *args, **kwargs):
         if kwargs:
-            self.set_scan_parameters(**kwargs)
+            self.set_scan_parameters(*args, **kwargs)
         self.fifo_readout.start(reset_sram_fifo=False, clear_buffer=True, callback=self.handle_data, errback=self.handle_err)
 
     def stop_readout(self):

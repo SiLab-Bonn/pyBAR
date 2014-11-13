@@ -18,7 +18,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
     '''
     _default_run_conf = {
         "occupancy_limit": 0,  # occupancy limit, when reached the TDAC will be decreased (increasing threshold). 0 will mask any pixel with occupancy greater than zero
-        "scan_parameters": {'Vthin_AltFine': (120, None), 'Step': 5},  # the Vthin_AltFine range, number of steps (repetition at constant Vthin_AltFine)
+        "scan_parameters": [('Vthin_AltFine', (120, None)), ('Step', 5)],  # the Vthin_AltFine range, number of steps (repetition at constant Vthin_AltFine)
         "disabled_pixels_limit": 0.01,  # limit of disabled pixels, fraction of all pixels
         "use_enable_mask": False,  # if True, enable mask from config file anded with mask (from col_span and row_span), if False use mask only for enable mask
         "n_triggers": 100000,  # total number of trigger sent to FE

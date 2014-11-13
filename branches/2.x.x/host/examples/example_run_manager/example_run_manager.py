@@ -11,7 +11,7 @@ if __name__ == "__main__":
     # Each scan has a default configuration, which is defined inside the corresponding scan file in /host/pybar/scans/. It is not necessary to define scan parameters inside primlist file.
     #
     # Running single scan and changing scan parameters:
-    join = runmngr.run_run(run=AnalogScan, run_conf={"scan_parameters": {'PlsrDAC': 500}, "n_injections": 1000}, use_thread=True)  # run_run returns a function object when use_thread is True
+    join = runmngr.run_run(run=AnalogScan, run_conf={"scan_parameters": [('PlsrDAC', 500)], "n_injections": 1000}, use_thread=True)  # run_run returns a function object when use_thread is True
     status = join()
     print 'Status:', status  # will wait for scan to be finished and returns run status
     #

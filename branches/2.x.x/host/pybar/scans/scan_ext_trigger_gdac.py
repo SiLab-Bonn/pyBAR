@@ -27,7 +27,7 @@ class ExtTriggerGdacScan(ExtTriggerScan):
     '''
     _default_run_conf = ExtTriggerScan._default_run_conf
     _default_run_conf.update({
-        "scan_parameters": {'GDAC': None},
+        "scan_parameters": [('GDAC', None)],
     })
 
     def configure(self):
