@@ -71,7 +71,6 @@ class Fei4RunBase(RunBase):
             return None
 
     def _run(self):
-        self.scan_parameters = {}
         if 'scan_parameters' in self.run_conf:
             sp = namedtuple('scan_parameters', field_names=self.run_conf['scan_parameters'].iterkeys())
             self.scan_parameters = sp(**self.run_conf['scan_parameters'])
