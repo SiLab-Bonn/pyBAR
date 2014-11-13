@@ -72,8 +72,8 @@ class Fei4RunBase(RunBase):
 
     def _run(self):
         if 'scan_parameters' in self.run_conf:
-            sp = namedtuple('scan_parameters', field_names=self.run_conf['scan_parameters'].iterkeys())
-            self.scan_parameters = sp(**self.run_conf['scan_parameters'])
+            sp = namedtuple('scan_parameters', field_names=zip(*self.run_conf['scan_parameters'])[0])
+            self.scan_parameters = sp(*zip(*self.run_conf['scan_parameters'])[1])
         else:
             sp = namedtuple_with_defaults('scan_parameters', field_names=[])
             self.scan_parameters = sp()
@@ -233,12 +233,22 @@ class Fei4RunBase(RunBase):
                     return os.path.join(root, cfgfile)
         raise ValueError('Found no configuration with run number %s' % run_number)
 
-    def set_scan_parameters(self, **kwargs):
-        self.scan_parameters = self.scan_parameters._replace(**kwargs)
+    def set_scan_parameters(self, *args, **kwargs):
+        fields = dict(kwargs)
+        for index, field in enumerate(self.scan_parameters._fields):
+            try:
+                value = args[index]
+            except IndexError:
+                break
+            else:
+                if field in fields:
+                    raise TypeError('Got multiple values for keyword argument %s' % field)
+                fields[field] = value
+        self.scan_parameters = self.scan_parameters._replace(**fields)
 
     @contextmanager
-    def readout(self, **kwargs):
-        self.start_readout(**kwargs)
+    def readout(self, *args, **kwargs):
+        self.start_readout(*args, **kwargs)
         try:
             yield
             self.stop_readout()
@@ -247,9 +257,9 @@ class Fei4RunBase(RunBase):
             if self.fifo_readout.is_running:
                 self.fifo_readout.stop(timeout=0.0)
 
-    def start_readout(self, **kwargs):
+    def start_readout(self, *args, **kwargs):
         if kwargs:
-            self.set_scan_parameters(**kwargs)
+            self.set_scan_parameters(*args, **kwargs)
         self.fifo_readout.start(reset_sram_fifo=False, clear_buffer=True, callback=self.handle_data, errback=self.handle_err)
 
     def stop_readout(self):
