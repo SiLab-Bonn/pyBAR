@@ -164,7 +164,8 @@ class AnalyzeRawData(object):
             if not analysis_utils.check_parameter_similarity(self.files_dict):
                 raise NotSupportedError('Different scan parameters in multiple files are not supported.')
             self.scan_parameters = analysis_utils.create_parameter_table(self.files_dict)
-            logging.info('Scan parameter(s) from raw data file(s): ' + (', ').join(analysis_utils.get_scan_parameter_names(self.scan_parameters)))
+            scan_parameter_names = analysis_utils.get_scan_parameter_names(self.scan_parameters)
+            logging.info('Scan parameter(s) from raw data file(s): %s' % ((', ').join(scan_parameter_names) if scan_parameter_names else 'None',))
         else:
             self.files_dict = None
             self.scan_parameters = None
