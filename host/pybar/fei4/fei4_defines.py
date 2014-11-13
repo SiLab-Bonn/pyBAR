@@ -1,7 +1,7 @@
 # FEI4A
 fei4a = {
     'flavor': 'fei4a',
-    'calibrations': {
+    'calibration_parameters': {
         'C_Inj_Low': 2.0,  # fF
         'C_Inj_Med': 4.1,  # fF
         'C_Inj_High': 6.1,  # fF
