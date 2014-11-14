@@ -670,7 +670,12 @@ def create_1d_hist(fig, ax, hist, title=None, x_axis_title=None, y_axis_title=No
         bin_width = 1.0
     hist_range = (x_min - bin_width / 2.0, x_max + bin_width / 2.0)
     masked_hist = np.ma.masked_array(hist)
-    masked_hist[masked_hist.mask] = np.iinfo(masked_hist.dtype).max
+    if masked_hist.dtype.kind in 'ui':
+        masked_hist[masked_hist.mask] = np.iinfo(masked_hist.dtype).max
+    elif masked_hist.dtype.kind in 'f':
+        masked_hist[masked_hist.mask] = np.finfo(masked_hist.dtype).max
+    else:
+        raise TypeError('Inappropriate type %s' % masked_hist.dtype)
     _, _, _ = ax.hist(x=masked_hist.compressed(), bins=hist_bins, range=hist_range, align='mid')  # re-bin to 1d histogram, x argument needs to be 1D
     # BUG: np.ma.compressed(np.ma.masked_array(hist)) (2D) is not equal to np.ma.masked_array(hist).compressed() (1D) if hist is ndarray
     ax.set_xlim(hist_range)  # overwrite xlim
