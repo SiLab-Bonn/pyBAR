@@ -583,6 +583,33 @@ def get_events_in_both_arrays(events_one, events_two):
     return event_result[:count]
 
 
+def hist_3d_index(x, y, z, shape):
+    """
+    Fast 3d histogram of 3D indices with C++ inner loop optimization.
+    Is more than 2 orders faster than np.histogramdd().
+    The indices are given in x, y, z coordinates and have to fit into a histogram of the dimensions shape.
+    Parameters
+    ----------
+    x : array like
+    y : array like
+    z : array like
+    shape : tuple
+        tuple with x,y,z dimensions: (x, y, z)
+
+    Returns
+    -------
+    np.ndarray with given shape
+
+    """
+    # change memory alignment for c++ library
+    x = np.ascontiguousarray(x.astype(np.int32))
+    y = np.ascontiguousarray(y.astype(np.int32))
+    z = np.ascontiguousarray(z.astype(np.int32))
+    result = np.zeros(shape=shape, dtype=np.uint8).ravel()  # ravel hist in c-style, 3D --> 1D
+    analysis_functions.hist_3d(x, y, z, shape[0], shape[1], shape[2], result)
+    return np.reshape(result, shape)  # rebuilt 3D hist from 1D hist
+
+
 def smooth_differentiation(x, y, weigths=None, order=5, smoothness=3, derivation=1):
     '''Returns the dy/dx(x) with the fit and differentiation of a spline curve
 
@@ -746,6 +773,51 @@ def get_hits_in_events(hits_array, events, assume_sorted=True, condition=None):
         logging.error('There are too many hits to do in RAM operations. Consider decreasing chunk size and use the write_hits_in_events function instead.')
         raise MemoryError
     return hits_in_events
+
+
+def get_hits_of_scan_parameter(input_file_hits, scan_parameters=None, try_speedup=False, chunk_size=10000000):
+    '''Takes the hit table of a hdf5 file and returns hits in chunks for each unique combination of scan_parameters.
+    Yields the hits in chunks, since they usually do not fit into memory.
+
+    Parameters
+    ----------
+    input_file_hits : pytable hdf5 file
+        Has to include a hits node
+    scan_parameters : iterable with strings
+    try_speedup : bool
+        If true a speed up by searching for the event numbers in the data is done. If the event numbers are not in the data
+        this slows down the search.
+    chunk_size : int
+        How many rows of data are read into ram.
+
+    Returns
+    -------
+    Yields tuple, numpy.array
+        Actual scan parameter tuple, hit array with the hits of a chunk of the given scan parameter tuple
+    '''
+
+    with tb.openFile(input_file_hits, mode="r+") as in_file_h5:
+        hit_table = in_file_h5.root.Hits
+        meta_data = in_file_h5.root.meta_data[:]
+        meta_data_table_at_scan_parameter = get_unique_scan_parameter_combinations(meta_data, scan_parameters=scan_parameters)
+        parameter_values = get_scan_parameters_table_from_meta_data(meta_data_table_at_scan_parameter, scan_parameters)
+        event_number_ranges = get_ranges_from_array(meta_data_table_at_scan_parameter['event_number'])  # get the event number ranges for the different scan parameter settings
+        index_event_number(hit_table)  # create a event_numer index to select the hits by their event number fast, no needed but important for speed up
+#
+        # variables for read speed up
+        index = 0  # index where to start the read out of the hit table, 0 at the beginning, increased during looping
+        best_chunk_size = chunk_size  # number of hits to copy to RAM during looping, the optimal chunk size is determined during looping
+
+        # loop over the selected events
+        for parameter_index, (start_event_number, stop_event_number) in enumerate(event_number_ranges):
+            logging.info('Read hits for ' + str(scan_parameters) + ' = ' + str(parameter_values[parameter_index]))
+
+            readout_hit_len = 0  # variable to calculate a optimal chunk size value from the number of hits for speed up
+            # loop over the hits in the actual selected events with optimizations: determine best chunk size, start word index given
+            for hits, index in data_aligned_at_events(hit_table, start_event_number=start_event_number, stop_event_number=stop_event_number, start=index, try_speedup=try_speedup, chunk_size=best_chunk_size):
+                yield parameter_values[parameter_index], hits
+                readout_hit_len += hits.shape[0]
+            best_chunk_size = int(1.5 * readout_hit_len) if int(1.05 * readout_hit_len) < chunk_size and int(1.05 * readout_hit_len) > 1e3 else chunk_size  # to increase the readout speed, estimated the number of hits for one read instruction
 
 
 def get_data_in_event_range(array, event_start=None, event_stop=None, assume_sorted=True):
@@ -1130,7 +1202,7 @@ def index_event_number(table_with_event_numer):
         logging.debug('Event_number index exists already, omit creation')
 
 
-def data_aligned_at_events(table, start_event_number=None, stop_event_number=None, start=None, stop=None, chunk_size=10000000):
+def data_aligned_at_events(table, start_event_number=None, stop_event_number=None, start=None, stop=None, try_speedup=True, chunk_size=10000000):
     '''Takes the table with a event_number column and returns chunks with the size up to chunk_size. The chunks are chosen in a way that the events are not splitted. Additional
     parameters can be set to increase the readout speed. If only events between a certain event range are used one can specify this. Also the start and the
     stop indices for the reading of the table can be specified for speed up.
@@ -1143,6 +1215,9 @@ def data_aligned_at_events(table, start_event_number=None, stop_event_number=Non
         The data read is corrected that only data starting from the start_event number is returned. Lower event numbers are discarded.
     stop_event_number : int
         The data read is corrected that only data up to the stop_event number is returned. The stop_event number is not included.
+    try_speedup : bool
+        Try to reduce the index range to read by searching for the indices of start and stop event number. If these event numbers are usually
+        not in the data this speedup can even slow down the function!
     Returns
     -------
     iterable to numpy.histogram
@@ -1168,20 +1243,20 @@ def data_aligned_at_events(table, start_event_number=None, stop_event_number=Non
     start_index = 0 if start == None else start
     stop_index = table.nrows if stop == None else stop
 
-    # set start stop indices from the event numbers for fast read if possible; not possible if the given event number does not exist
-    if start_event_number != None:
-        condition_1 = 'event_number==' + str(start_event_number)
-        start_indeces = table.get_where_list(condition_1)
-        if len(start_indeces) != 0:  # set start index if possible
-            start_index = start_indeces[0]
-            start_index_known = True
+    if try_speedup:  # set start stop indices from the event numbers for fast read if possible; not possible if the given event number does not exist in the data stream
+        if start_event_number != None:
+            condition_1 = 'event_number==' + str(start_event_number)
+            start_indeces = table.get_where_list(condition_1, start=start_index, stop=stop_index)
+            if len(start_indeces) != 0:  # set start index if possible
+                start_index = start_indeces[0]
+                start_index_known = True
 
-    if stop_event_number != None:
-        condition_2 = 'event_number==' + str(stop_event_number)
-        stop_indeces = table.get_where_list(condition_2)
-        if len(stop_indeces) != 0:  # set the stop index if possible, stop index is excluded
-            stop_index = stop_indeces[0]
-            stop_index_known = True
+        if stop_event_number != None:
+            condition_2 = 'event_number==' + str(stop_event_number)
+            stop_indeces = table.get_where_list(condition_2, start=start_index, stop=stop_index)
+            if len(stop_indeces) != 0:  # set the stop index if possible, stop index is excluded
+                stop_index = stop_indeces[0]
+                stop_index_known = True
 
     if (start_index_known and stop_index_known) and (start_index + chunk_size >= stop_index):  # special case, one read is enough, data not bigger than one chunk and the indices are known
             yield table.read(start=start_index, stop=stop_index), stop_index
