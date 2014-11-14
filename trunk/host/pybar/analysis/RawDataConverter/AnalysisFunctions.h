@@ -85,7 +85,10 @@ void histogram_3d(int*& x, int*& y, int*& z, const unsigned int& rSize, const un
 	for (unsigned int i = 0; i < rSize; ++i){
 		if (x[i] > rNbinsX - 1 || y[i] > rNbinsY - 1 || z[i] > rNbinsZ - 1)
 			throw std::out_of_range("The histogram indices are out of range");
-		++rResult[x[i] * rNbinsY * rNbinsZ + y[i] * rNbinsZ + z[i]];
+		if (rResult[x[i] * rNbinsY * rNbinsZ + y[i] * rNbinsZ + z[i]] < 255)
+			++rResult[x[i] * rNbinsY * rNbinsZ + y[i] * rNbinsZ + z[i]];
+		else
+			throw std::out_of_range("The histogram has more than 255 entries per bin. This is not supported.");
 	}
 }
 
