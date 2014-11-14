@@ -263,6 +263,23 @@ class TestAnalysis(unittest.TestCase):
         result = event_numbers[0][analysis_utils.in1d_events(event_numbers[0], event_numbers_2)]
         self.assertListEqual([2, 2, 2, 4, 7, 7, 7], result.tolist())
 
+    def test_3d_index_histograming(self):  # check compiled hist_3D_index function
+        with tb.open_file('test_analysis//hist_data.h5', mode="r") as in_file_h5:
+            xyz = in_file_h5.root.HistDataXYZ[:]
+            x, y, z = xyz[0], xyz[1], xyz[2]
+            shape = (100, 100, 100)
+            array_fast = analysis_utils.hist_3d_index(x, y, z, shape=shape)
+            array = np.histogramdd(np.column_stack((x, y, z)), bins=shape, range=[[0, shape[0] - 1], [0, shape[1] - 1], [0, shape[2] - 1]])[0]
+            shape = (50, 200, 200)  # shape that is too small for the indices to trigger exception
+            exception_ok = False
+            try:
+                array_fast = analysis_utils.hist_3d_index(x, y, z, shape=shape)
+            except IndexError:
+                exception_ok = True
+            except:  # other exception that should not occur
+                pass
+            self.assertTrue(exception_ok & np.all(array == array_fast))
+
 if __name__ == '__main__':
     suite = unittest.TestLoader().loadTestsFromTestCase(TestAnalysis)
     unittest.TextTestRunner(verbosity=2).run(suite)
