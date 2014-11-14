@@ -6,6 +6,7 @@
 #include <string>
 #include <ctime>
 #include <cmath>
+#include <exception>
 
 #include "Basis.h"
 #include "defines.h"
@@ -75,6 +76,19 @@ void in1d_sorted(int64_t*& rEventArrayOne, const unsigned int& rSizeArrayOne, in
 			rSelection[i] = 1;
 		else
 			rSelection[i] = 0;
+	}
+}
+
+// fast 3d histograming
+void histogram_3d(int*& x, int*& y, int*& z, const unsigned int& rSize, const unsigned int& rNbinsX, const unsigned int& rNbinsY, const unsigned int& rNbinsZ, uint8_t*& rResult)
+{
+	for (unsigned int i = 0; i < rSize; ++i){
+		if (x[i] > rNbinsX - 1 || y[i] > rNbinsY - 1 || z[i] > rNbinsZ - 1)
+			throw std::out_of_range("The histogram indices are out of range");
+		if (rResult[x[i] * rNbinsY * rNbinsZ + y[i] * rNbinsZ + z[i]] < 255)
+			++rResult[x[i] * rNbinsY * rNbinsZ + y[i] * rNbinsZ + z[i]];
+		else
+			throw std::out_of_range("The histogram has more than 255 entries per bin. This is not supported.");
 	}
 }
 

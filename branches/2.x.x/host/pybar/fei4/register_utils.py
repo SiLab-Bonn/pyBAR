@@ -851,7 +851,7 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
 
     def write_double_columns(dc):
         if digital_injection:
-            return dc
+            return [dc]
         else:  # analog injection
             if dc == 0:
                 return [0]

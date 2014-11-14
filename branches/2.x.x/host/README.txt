@@ -41,9 +41,6 @@ Checkout pyBAR. From host folder run the following commands:
 python setup.py build_ext
 
 2. Install with:
-For users: 
-python setup.py install
-For developers (preferred):
 python setup.py develop
 
 3. Testing built:
