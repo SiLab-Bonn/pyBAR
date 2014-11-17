@@ -1102,7 +1102,7 @@ def get_scan_parameter(meta_data_array, unique=True):
         last_not_parameter_column = meta_data_array.dtype.names.index('error')  # for raw data file meta_data
     if last_not_parameter_column == len(meta_data_array.dtype.names) - 1:  # no meta_data found
         return
-    scan_parameters = {}
+    scan_parameters = collections.OrderedDict()
     for scan_par_name in meta_data_array.dtype.names[4:]:  # scan parameters are in columns 5 (= index 4) and above
         scan_parameters[scan_par_name] = np.unique(meta_data_array[scan_par_name]) if unique else meta_data_array[scan_par_name]
     return scan_parameters
@@ -1265,6 +1265,10 @@ def data_aligned_at_events(table, start_event_number=None, stop_event_number=Non
             src_array = table.read(start=start_index, stop=start_index + chunk_size + 1)  # stop index is exclusive, so add 1
             first_event = src_array["event_number"][0]
             last_event = src_array["event_number"][-1]
+            if (start_event_number is not None and last_event < start_event_number):
+                start_index = start_index + src_array.shape[0]  # events fully read, increase start index and continue reading
+                continue
+
             last_event_start_index = np.argmax(src_array["event_number"] == last_event)  # get first index of last event
             if last_event_start_index == 0:
                 nrows = src_array.shape[0]
