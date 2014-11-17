@@ -8,6 +8,7 @@ import logging
 import progressbar
 import re
 import tables as tb
+from matplotlib.backends.backend_pdf import PdfPages
 
 from pybar.fei4.register_utils import invert_pixel_mask
 from pybar.fei4_run_base import Fei4RunBase
@@ -15,7 +16,7 @@ from pybar.fei4.register_utils import scan_loop
 from pybar.run_manager import RunManager
 from pybar.analysis.analysis_utils import get_hits_of_scan_parameter, hist_3d_index, get_scan_parameter, ETA
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
-from pybar.analysis.plotting.plotting import plot_scurves
+from pybar.analysis.plotting.plotting import plot_scurves, plotThreeWay
 
 import numpy as np
 
@@ -28,7 +29,7 @@ class HitDelayScan(Fei4RunBase):
     _default_run_conf = {
         "mask_steps": 3,  # number of injections per PlsrDAC step
         "n_injections": 20,  # number of injections per PlsrDAC step
-        "scan_parameters": [('PlsrDAC', range(50, 250, 8)), ('PlsrDelay', range(1, 43))],  # the scan parameter + the scan parameter range, only one scan parameter is supported
+        "scan_parameters": [('PlsrDAC', range(50, 250, 50)), ('PlsrDelay', range(1, 63))],  # the scan parameter + the scan parameter range, only one scan parameter is supported
         "step_size": 1,  # step size of the PlsrDelay during scan
         "use_enable_mask": False,  # if True, use Enable mask during scan, if False, all pixels will be enabled
         "enable_shift_masks": ["Enable", "C_High", "C_Low"],  # enable masks shifted during scan
@@ -88,6 +89,9 @@ class HitDelayScan(Fei4RunBase):
                     scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections, use_delay=True, mask_steps=self.mask_steps, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=self.enable_shift_masks, disable_shift_masks=self.disable_shift_masks, restore_shift_masks=False, mask=invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if self.use_enable_mask else None, double_column_correction=self.pulser_dac_correction)
 
     def analyze(self):
+#         plsr_dac_slope = self.register.calibration_parameters['C_Inj_High'] * self.register.calibration_parameters['Vcal_Coeff_1']
+        plsr_dac_slope = 55.
+
         # Interpret data and create hit table
         with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=False) as analyze_raw_data:
             analyze_raw_data.create_occupancy_hist = False  # too many scan parameters to do in ram histograming
@@ -129,7 +133,7 @@ class HitDelayScan(Fei4RunBase):
             progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', ETA()], maxval=max(plsr_dac))
             progress_bar.start()
 
-            for parameters, hits in get_hits_of_scan_parameter(self.output_filename + '_interpreted.h5', scan_parameters, verbosity=1, chunk_size=1e7):
+            for parameters, hits in get_hits_of_scan_parameter(self.output_filename + '_interpreted.h5', scan_parameters, chunk_size=1e7):
                 actual_plsr_dac, actual_injection_delay = parameters[0], parameters[1]
                 column, row, rel_bcid = hits['column'] - 1, hits['row'] - 1, hits['relative_BCID']
                 bcid_array_fast = hist_3d_index(column, row, rel_bcid, shape=(80, 336, 16))
@@ -152,12 +156,20 @@ class HitDelayScan(Fei4RunBase):
             plsr_dac_min = min(plsr_dac_values)
             plsr_dac_stepsize = plsr_dac_values[1] - plsr_dac_values[0]
             timewalk = np.zeros(shape=(80, 336, len(plsr_dac_values)), dtype=np.int8)
-
+            hit_delay = np.zeros(shape=(80, 336, len(plsr_dac_values)), dtype=np.int8)
             min_rel_bcid = np.zeros(shape=(80, 336), dtype=np.int8)
 
-            for node in in_file_h5.root.PixelHistsMeanRelBcid:
+            rel_bcid_min_injection = in_file_h5.get_node(in_file_h5.root.PixelHistsMeanRelBcid, 'HistPixelMeanRelBcidPerDelayPlsrDac_%03d' % plsr_dac_min)
+            injection_delay_min = np.where(np.array(rel_bcid_min_injection.attrs.injection_delay_values) > 0)[0][0]
+            bcid_min = int(np.mean(np.ma.masked_array(rel_bcid_min_injection[:, :, injection_delay_min], np.isnan(rel_bcid_min_injection[:, :, injection_delay_min]))))
+
+            logging.info('Create timewalk info for PlsrDACs ' + str(plsr_dac_values))
+            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', ETA()], maxval=len(plsr_dac_values))
+            progress_bar.start()
+
+            for index, node in enumerate(in_file_h5.root.PixelHistsMeanRelBcid):
+                progress_bar.update(index)
                 plsr_dac = int(re.search(r'\d+', node.name).group())
-                logging.info('Create timewalk info for PlsrDAC ' + str(plsr_dac))
                 pixel_data = node[:, :, :]
                 pixel_data_round = np.round(pixel_data)
                 pixel_data_round_diff = np.diff(pixel_data_round, axis=2)
@@ -165,36 +177,58 @@ class HitDelayScan(Fei4RunBase):
                 index_sel = np.where(pixel_data_round_diff > 0.)
 
                 first_scurve_mean = np.zeros(shape=(80, 336), dtype=np.int8)
-                second_scurve_mean = np.zeros(shape=(80, 336), dtype=np.int8)
+                a_scurve_mean = np.zeros(shape=(80, 336), dtype=np.int8)
 
                 for bcid_jump in np.column_stack((index_sel)):
-                    if pixel_data_round[bcid_jump[0], bcid_jump[1], bcid_jump[2]] and pixel_data_round[bcid_jump[0], bcid_jump[1], bcid_jump[2]] >= min_rel_bcid[bcid_jump[1], bcid_jump[0]]:
+                    if pixel_data_round[bcid_jump[0], bcid_jump[1], bcid_jump[2]] >= min_rel_bcid[bcid_jump[1], bcid_jump[0]]:
                         if first_scurve_mean[bcid_jump[1], bcid_jump[0]] == 0:
                             first_scurve_mean[bcid_jump[1], bcid_jump[0]] = bcid_jump[2]
                             min_rel_bcid[bcid_jump[1], bcid_jump[0]] = pixel_data_round[bcid_jump[0], bcid_jump[1], bcid_jump[2]]
-                        elif second_scurve_mean[bcid_jump[1], bcid_jump[0]] == 0:
-                            second_scurve_mean[bcid_jump[1], bcid_jump[0]] = bcid_jump[2]
-                timewalk[:, :, (plsr_dac - plsr_dac_min) / plsr_dac_stepsize] = first_scurve_mean
+                    if pixel_data_round[bcid_jump[0], bcid_jump[1], bcid_jump[2]] == bcid_min:
+                        if a_scurve_mean[bcid_jump[1], bcid_jump[0]] == 0:
+                            a_scurve_mean[bcid_jump[1], bcid_jump[0]] = bcid_jump[2]
+                timewalk[:, :, (plsr_dac - plsr_dac_min) / plsr_dac_stepsize] = first_scurve_mean  # Save the plsr delay of first s-curve (for time walk calc.)
+                hit_delay[:, :, (plsr_dac - plsr_dac_min) / plsr_dac_stepsize] = a_scurve_mean  # Save the plsr delay of s-curve of fixed rel. BCID (for hit delay calc.)
+            progress_bar.finish()
 
-        # Save the absolute time-walk (=hit delay)
+        #  Save time walk / hit delay hists
         with tb.open_file(self.output_filename + '_analyzed.h5', mode="r+") as out_file_h5:
             timewalk_result = np.swapaxes(timewalk, 0, 1)
+            hit_delay_result = np.swapaxes(hit_delay, 0, 1)
             out = out_file_h5.createCArray(out_file_h5.root, name='HistPixelTimewalkPerPlsrDac', title='Timewalk per pixel and PlsrDAC', atom=tb.Atom.from_dtype(timewalk_result.dtype), shape=timewalk_result.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+            out_2 = out_file_h5.createCArray(out_file_h5.root, name='HistPixelHitDelayPerPlsrDac', title='Hit delay per pixel and PlsrDAC', atom=tb.Atom.from_dtype(hit_delay_result.dtype), shape=hit_delay_result.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
             out.attrs.dimensions = 'column, row, PlsrDAC'
             out.attrs.plsr_dac_values = plsr_dac_values
+            out_2.attrs.dimensions = 'column, row, PlsrDAC'
+            out_2.attrs.plsr_dac_values = plsr_dac_values
             out[:] = timewalk_result
+            out_2[:] = hit_delay_result
 
         # Mask the pixels that have non valid data an create plot with the relative time walk for all pixels
         with tb.open_file(self.output_filename + '_analyzed.h5', mode="r") as in_file_h5:
             plsr_dac_values = in_file_h5.root.PixelHistsMeanRelBcid._v_attrs.plsr_dac_values
+            charge_values = np.array(plsr_dac_values)[:] * plsr_dac_slope
+            # Create mask for bad pixels
             mask = np.ones(shape=(336, 80), dtype=np.int8)
             for node in in_file_h5.root.PixelHistsMeanRelBcid:
                 pixel_data = node[:, :, :]
                 mask[np.where(np.isfinite(np.sum(pixel_data, axis=2)))] = 0
-            charge_values = np.array(in_file_h5.root.HistPixelTimewalkPerPlsrDac.attrs.plsr_dac_values)[:] * 55
+
             hist_timewalk = in_file_h5.root.HistPixelTimewalkPerPlsrDac[:, :, :]
             hist_rel_timewalk = np.amax(hist_timewalk, axis=2)[:, :, np.newaxis] - hist_timewalk
-            plot_scurves(np.swapaxes(hist_rel_timewalk, 0, 1), scan_parameters=charge_values, title='Timewalk of the FE-I4', scan_parameter_name='Charge [e]', ylabel='Timewalk [ns]', filename=self.output_filename + '_analyzed.pdf')
+            hist_rel_timewalk = np.ma.masked_array(hist_rel_timewalk, mask)
+
+            hist_hit_delay = in_file_h5.root.HistPixelHitDelayPerPlsrDac[:, :, :]
+            hist_hit_delay = np.ma.masked_array(hist_hit_delay, mask)
+
+            output_pdf = PdfPages('K:\\pyBAR\\host\\pybar\\scans\\result_2.pdf')
+            plot_scurves(np.swapaxes(hist_rel_timewalk, 0, 1), scan_parameters=charge_values, title='Timewalk of the FE-I4', scan_parameter_name='Charge [e]', ylabel='Timewalk [ns]', filename=output_pdf)
+            plot_scurves(np.swapaxes(hist_hit_delay[:, :, :], 0, 1), scan_parameters=charge_values, title='Hit delay (T0) with internal charge injection\nof the FE-I4', scan_parameter_name='Charge [e]', ylabel='Hit delay [ns]', filename=output_pdf)
+
+            for i in [0, len(plsr_dac_values) / 4, len(plsr_dac_values) / 2, -1]:  # plot 2d hist at min, 1/4, 1/2, max PlsrDAC setting
+                plotThreeWay(hist_rel_timewalk[:, :, i], title='Time walk at %.0f e' % (plsr_dac_values[i] * plsr_dac_slope), x_axis_title='Hit delay [ns]', filename=output_pdf)
+                plotThreeWay(hist_hit_delay[:, :, i], title='Hit delay (T0) with internal charge injection at %.0f e' % (plsr_dac_values[i] * 55), x_axis_title='Hit delay [ns]', minimum=np.amin(hist_hit_delay[:, :, i]), maximum=np.amax(hist_hit_delay[:, :, i]), filename=output_pdf)
+            output_pdf.close()
 
 
 if __name__ == "__main__":
