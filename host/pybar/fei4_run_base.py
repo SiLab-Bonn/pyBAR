@@ -264,7 +264,7 @@ class Fei4RunBase(RunBase):
                 self.fifo_readout.stop(timeout=0.0)
 
     def start_readout(self, *args, **kwargs):
-        if kwargs:
+        if args or kwargs:
             self.set_scan_parameters(*args, **kwargs)
         self.fifo_readout.start(reset_sram_fifo=False, clear_buffer=True, callback=self.handle_data, errback=self.handle_err)
 
