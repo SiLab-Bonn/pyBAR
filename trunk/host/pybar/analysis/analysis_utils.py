@@ -519,11 +519,13 @@ def combine_meta_data(files_dict):
         with tb.openFile(file_name, mode="r") as in_file_h5:  # open the actual file
             total_length += in_file_h5.root.meta_data.shape[0]
             try:
-                in_file_h5.root.meta_data[0]['timestamp_stop']  # this only exists in the new data format, https://silab-redmine.physik.uni-bonn.de/news/7
-            except KeyError:
-                meta_data_v2 = False
+                in_file_h5.root.meta_data[0]['data_length']
             except IndexError:
                 return None
+            try:
+                in_file_h5.root.meta_data[0]['timestamp_stop']  # this only exists in the new data format, https://silab-redmine.physik.uni-bonn.de/news/7
+            except IndexError:
+                meta_data_v2 = False
 
     if meta_data_v2:
         meta_data_combined = np.empty((total_length, ), dtype=[('index_start', np.uint32),
@@ -605,7 +607,7 @@ def hist_3d_index(x, y, z, shape):
     x = np.ascontiguousarray(x.astype(np.int32))
     y = np.ascontiguousarray(y.astype(np.int32))
     z = np.ascontiguousarray(z.astype(np.int32))
-    result = np.zeros(shape=shape, dtype=np.uint8).ravel()  # ravel hist in c-style, 3D --> 1D
+    result = np.zeros(shape=shape, dtype=np.uint16).ravel()  # ravel hist in c-style, 3D --> 1D
     analysis_functions.hist_3d(x, y, z, shape[0], shape[1], shape[2], result)
     return np.reshape(result, shape)  # rebuilt 3D hist from 1D hist
 
