@@ -35,7 +35,6 @@ class HitDelayScan(Fei4RunBase):
         "enable_shift_masks": ["Enable", "C_High", "C_Low"],  # enable masks shifted during scan
         "disable_shift_masks": [],  # disable masks shifted during scan
         "pulser_dac_correction": False,  # PlsrDAC correction for each double column
-        "pulser_dac_slope": 55.  # PlsrDAC calibration (charge / plsrDAC), usually 55.
     }
 
     def configure(self):
@@ -89,13 +88,14 @@ class HitDelayScan(Fei4RunBase):
                     scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections, use_delay=True, mask_steps=self.mask_steps, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=self.enable_shift_masks, disable_shift_masks=self.disable_shift_masks, restore_shift_masks=False, mask=invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if self.use_enable_mask else None, double_column_correction=self.pulser_dac_correction)
 
     def analyze(self):
-#         plsr_dac_slope = self.register.calibration_parameters['C_Inj_High'] * self.register.calibration_parameters['Vcal_Coeff_1']
+    #         plsr_dac_slope = self.register.calibration_parameters['C_Inj_High'] * self.register.calibration_parameters['Vcal_Coeff_1']
         plsr_dac_slope = 55.
 
         # Interpret data and create hit table
         with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=False) as analyze_raw_data:
             analyze_raw_data.create_occupancy_hist = False  # too many scan parameters to do in ram histograming
             analyze_raw_data.create_hit_table = True
+            analyze_raw_data.interpreter.set_warning_output(False)  # a lot of data produces unknown words
             analyze_raw_data.interpret_word_table()
             analyze_raw_data.interpreter.print_summary()
 
@@ -203,28 +203,31 @@ class HitDelayScan(Fei4RunBase):
             out_2.attrs.plsr_dac_values = plsr_dac_values
             out[:] = timewalk_result
             out_2[:] = hit_delay_result
-
+    
         # Mask the pixels that have non valid data an create plot with the relative time walk for all pixels
         with tb.open_file(self.output_filename + '_analyzed.h5', mode="r") as in_file_h5:
             plsr_dac_values = in_file_h5.root.PixelHistsMeanRelBcid._v_attrs.plsr_dac_values
             charge_values = np.array(plsr_dac_values)[:] * plsr_dac_slope
+            hist_timewalk = in_file_h5.root.HistPixelTimewalkPerPlsrDac[:, :, :]
+            hist_hit_delay = in_file_h5.root.HistPixelHitDelayPerPlsrDac[:, :, :]
+    
             # Create mask for bad pixels
-            mask = np.ones(shape=(336, 80), dtype=np.int8)
+            mask = np.ones_like(hist_timewalk, dtype=np.int8)
             for node in in_file_h5.root.PixelHistsMeanRelBcid:
                 pixel_data = node[:, :, :]
-                mask[np.where(np.isfinite(np.sum(pixel_data, axis=2)))] = 0
-
-            hist_timewalk = in_file_h5.root.HistPixelTimewalkPerPlsrDac[:, :, :]
+                mask[np.where(np.isfinite(np.sum(pixel_data, axis=2))), :] = 0
+    
+            mask[:, 0:1, :] = 1
+            mask[:, 77:80, :] = 1
             hist_rel_timewalk = np.amax(hist_timewalk, axis=2)[:, :, np.newaxis] - hist_timewalk
             hist_rel_timewalk = np.ma.masked_array(hist_rel_timewalk, mask)
-
-            hist_hit_delay = in_file_h5.root.HistPixelHitDelayPerPlsrDac[:, :, :]
+    
             hist_hit_delay = np.ma.masked_array(hist_hit_delay, mask)
-
-            output_pdf = PdfPages('K:\\pyBAR\\host\\pybar\\scans\\result_2.pdf')
+    
+            output_pdf = PdfPages(self.output_filename + '.pdf')
             plot_scurves(np.swapaxes(hist_rel_timewalk, 0, 1), scan_parameters=charge_values, title='Timewalk of the FE-I4', scan_parameter_name='Charge [e]', ylabel='Timewalk [ns]', filename=output_pdf)
             plot_scurves(np.swapaxes(hist_hit_delay[:, :, :], 0, 1), scan_parameters=charge_values, title='Hit delay (T0) with internal charge injection\nof the FE-I4', scan_parameter_name='Charge [e]', ylabel='Hit delay [ns]', filename=output_pdf)
-
+    
             for i in [0, len(plsr_dac_values) / 4, len(plsr_dac_values) / 2, -1]:  # plot 2d hist at min, 1/4, 1/2, max PlsrDAC setting
                 plotThreeWay(hist_rel_timewalk[:, :, i], title='Time walk at %.0f e' % (plsr_dac_values[i] * plsr_dac_slope), x_axis_title='Hit delay [ns]', filename=output_pdf)
                 plotThreeWay(hist_hit_delay[:, :, i], title='Hit delay (T0) with internal charge injection at %.0f e' % (plsr_dac_values[i] * 55), x_axis_title='Hit delay [ns]', minimum=np.amin(hist_hit_delay[:, :, i]), maximum=np.amax(hist_hit_delay[:, :, i]), filename=output_pdf)
