@@ -2,11 +2,11 @@
 fei4a = {
     'flavor': 'fei4a',
     'calibration_parameters': {
-        'C_Inj_Low': 2.0,  # fF
-        'C_Inj_Med': 4.1,  # fF
-        'C_Inj_High': 6.1,  # fF
-        'Vcal_Coeff_0': None,  # mV
-        'Vcal_Coeff_1': 1.5,  # mV/PlsrDAC
+        'C_Inj_Low': 2.0,  # fF, C_Low
+        'C_Inj_Med': 4.1,  # fF, C_High
+        'C_Inj_High': 6.1,  # fF, C_Low + C_High
+        'Vcal_Coeff_0': 0.0,  # mV, offset
+        'Vcal_Coeff_1': 1.5,  # mV/PlsrDAC, slope
         'Pulser_Corr_C_Inj_Low': None,
         'Pulser_Corr_C_Inj_Med': None,
         'Pulser_Corr_C_Inj_High': None
@@ -27,11 +27,11 @@ fei4a = {
         'RunMode': {'bitstream': 'Slow+1010+ChipID+111000', 'bitlength': 23, 'description': 'Run Mode'},
         'ConfMode': {'bitstream': 'Slow+1010+ChipID+000111', 'bitlength': 23, 'description': 'Configuration Mode (default for power-up or reset)'},
         # parts
-        'ChipID': {'value': 0, 'bitlength': 4, 'description': 'Read Register: read global memory register'},
-        'Address': {'value': 0, 'bitlength': 6, 'description': 'Write Register: write global memory register'},
-        'GlobalData': {'value': 0, 'bitlength': 16, 'description': 'Gloabal Register data: payload of WrRegister'},
-        'PixelData': {'value': 0, 'bitlength': 672, 'description': 'Pixel Register data: payload of WrFrontEnd'},
-        'Width': {'value': 0, 'bitlength': 6, 'description': 'Width of of Global Pulse'},
+        'ChipID': {'bitlength': 4, 'description': 'Read Register: read global memory register'},
+        'Address': {'bitlength': 6, 'description': 'Write Register: write global memory register'},
+        'GlobalData': {'bitlength': 16, 'description': 'Gloabal Register data: payload of WrRegister'},
+        'PixelData': {'bitlength': 672, 'description': 'Pixel Register data: payload of WrFrontEnd'},
+        'Width': {'bitlength': 6, 'description': 'Width of of Global Pulse'},
     },
     'global_registers': {
         'spare_1': {'value': 0, 'address': 1, 'bitlength': 16, 'readonly': True, 'description': ''},
