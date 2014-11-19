@@ -23,28 +23,28 @@ class AnalogScan(Fei4RunBase):
 
     def configure(self):
         commands = []
-        commands.extend(self.register.get_commands("confmode"))
+        commands.extend(self.register.get_commands("ConfMode"))
         self.register.set_global_register_value('PlsrDAC', self.scan_parameters.PlsrDAC)
-        commands.extend(self.register.get_commands("wrregister", name=['PlsrDAC']))
+        commands.extend(self.register.get_commands("WrRegister", name=['PlsrDAC']))
         # C_Low
         if "C_Low".lower() in map(lambda x: x.lower(), self.enable_shift_masks):
             self.register.set_pixel_register_value('C_Low', 1)
-            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='C_Low'))
+            commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_Low'))
         else:
             self.register.set_pixel_register_value('C_Low', 0)
-            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='C_Low'))
+            commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_Low'))
         # C_High
         if "C_High".lower() in map(lambda x: x.lower(), self.enable_shift_masks):
             self.register.set_pixel_register_value('C_High', 1)
-            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='C_High'))
+            commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_High'))
         else:
             self.register.set_pixel_register_value('C_High', 0)
-            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='C_High'))
+            commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_High'))
         self.register_utils.send_commands(commands)
 
     def scan(self):
         with self.readout():
-            cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0]
+            cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0]
 
             if self.enable_tdc:
                 # activate TDC arming
