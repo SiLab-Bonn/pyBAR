@@ -79,7 +79,20 @@ void in1d_sorted(int64_t*& rEventArrayOne, const unsigned int& rSizeArrayOne, in
 	}
 }
 
-// fast 3d histograming
+// fast 2d index histograming (bin size = 1, values starting from 0)
+void histogram_2d(int*& x, int*& y, const unsigned int& rSize, const unsigned int& rNbinsX, const unsigned int& rNbinsY, uint16_t*& rResult)
+{
+	for (unsigned int i = 0; i < rSize; ++i){
+		if (x[i] > rNbinsX - 1 || y[i] > rNbinsY - 1)
+			throw std::out_of_range("The histogram indices are out of range");
+		if (rResult[x[i] * rNbinsY + y[i]] < 65536)
+			++rResult[x[i] * rNbinsY + y[i]];
+		else
+			throw std::out_of_range("The histogram has more than 65536 entries per bin. This is not supported.");
+	}
+}
+
+// fast 3d index histograming (bin size = 1, values starting from 0)
 void histogram_3d(int*& x, int*& y, int*& z, const unsigned int& rSize, const unsigned int& rNbinsX, const unsigned int& rNbinsY, const unsigned int& rNbinsZ, uint16_t*& rResult)
 {
 	for (unsigned int i = 0; i < rSize; ++i){
