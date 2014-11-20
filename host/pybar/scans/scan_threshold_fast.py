@@ -2,6 +2,7 @@ import logging
 import numpy as np
 
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
+from pybar.analysis.analysis_utils import hist_2d_index
 from pybar.fei4.register_utils import invert_pixel_mask
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.fei4.register_utils import scan_loop
@@ -55,7 +56,7 @@ class FastThresholdScan(Fei4RunBase):
         self.stop_condition_triggered = False  # set to true if the stop condition is true once
 
         self.start_at = 0.01  # if more than start_at*activated_pixel see at least one hit the precise scanning is started
-        self.stop_at = 0.99  # if more than stop_at*activated_pixel see the maximum numbers of injection, the scan is stopped
+        self.stop_at = 0.95  # if more than stop_at*activated_pixel see the maximum numbers of injection, the scan is stopped
 
         self.record_data = False  # set to true to activate data storage, so far not everything is recorded to ease data analysis
 
@@ -105,7 +106,8 @@ class FastThresholdScan(Fei4RunBase):
                     logging.info('Testing for start condition: %s %d' % ('PlsrDAC', self.scan_parameter_value))
                 if not self.stop_condition_triggered and self.record_data:
                     logging.info('Testing for stop condition: %s %d' % ('PlsrDAC', self.scan_parameter_value))
-                occupancy_array = np.histogram2d(*convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array), bins=(80, 336), range=[[1, 80], [1, 336]])[0]
+                col, row = convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)
+                occupancy_array = hist_2d_index(col - 1, row - 1, shape=(80, 336))
                 self.scan_condition(occupancy_array)
 
             # start condition is met for the first time
@@ -173,4 +175,4 @@ class FastThresholdScan(Fei4RunBase):
 
 
 if __name__ == "__main__":
-    RunManager('../configuration.yaml').run_run(FastThresholdScan)
+    RunManager('K:\\pyBAR\\host\\pybar/configuration.yaml').run_run(FastThresholdScan)
