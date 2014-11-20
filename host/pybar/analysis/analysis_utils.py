@@ -519,7 +519,7 @@ def combine_meta_data(files_dict):
         with tb.openFile(file_name, mode="r") as in_file_h5:  # open the actual file
             total_length += in_file_h5.root.meta_data.shape[0]
             try:
-                in_file_h5.root.meta_data[0]['data_length']
+                in_file_h5.root.meta_data[0]['error']  # error column exists in old and new meta data format
             except IndexError:
                 return None
             try:
@@ -583,6 +583,31 @@ def get_events_in_both_arrays(events_one, events_two):
     event_result = np.empty_like(events_one)
     count = analysis_functions.get_events_in_both_arrays(events_one, events_two, event_result)
     return event_result[:count]
+
+
+def hist_2d_index(x, y, shape):
+    """
+    Fast 2d histogram of 2D indices with C++ inner loop optimization.
+    Is more than 2 orders faster than np.histogram2d().
+    The indices are given in x, y coordinates and have to fit into a histogram of the dimensions shape.
+    Parameters
+    ----------
+    x : array like
+    y : array like
+    shape : tuple
+        tuple with x,y dimensions: (x, y)
+
+    Returns
+    -------
+    np.ndarray with given shape
+
+    """
+    # change memory alignment for c++ library
+    x = np.ascontiguousarray(x.astype(np.int32))
+    y = np.ascontiguousarray(y.astype(np.int32))
+    result = np.zeros(shape=shape, dtype=np.uint16).ravel()  # ravel hist in c-style, 3D --> 1D
+    analysis_functions.hist_2d(x, y, shape[0], shape[1], result)
+    return np.reshape(result, shape)  # rebuilt 3D hist from 1D hist
 
 
 def hist_3d_index(x, y, z, shape):
@@ -812,7 +837,7 @@ def get_hits_of_scan_parameter(input_file_hits, scan_parameters=None, try_speedu
 
         # loop over the selected events
         for parameter_index, (start_event_number, stop_event_number) in enumerate(event_number_ranges):
-            logging.info('Read hits for ' + str(scan_parameters) + ' = ' + str(parameter_values[parameter_index]))
+            logging.debug('Read hits for ' + str(scan_parameters) + ' = ' + str(parameter_values[parameter_index]))
 
             readout_hit_len = 0  # variable to calculate a optimal chunk size value from the number of hits for speed up
             # loop over the hits in the actual selected events with optimizations: determine best chunk size, start word index given
