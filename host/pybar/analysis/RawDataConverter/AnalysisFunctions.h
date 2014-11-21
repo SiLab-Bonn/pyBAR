@@ -81,15 +81,15 @@ void in1d_sorted(int64_t*& rEventArrayOne, const unsigned int& rSizeArrayOne, in
 
 
 // fast 1d index histograming (bin size = 1, values starting from 0)
-void histogram_1d(int*& x, const unsigned int& rSize, const unsigned int& rNbinsX, uint16_t*& rResult)
+void histogram_1d(int*& x, const unsigned int& rSize, const unsigned int& rNbinsX, uint32_t*& rResult)
 {
 	for (unsigned int i = 0; i < rSize; ++i){
 		if (x[i] > rNbinsX - 1)
 			throw std::out_of_range("The histogram indices are out of range");
-		if (rResult[x[i]] < 65535)
+		if (rResult[x[i]] < 4294967295)
 			++rResult[x[i]];
 		else
-			throw std::out_of_range("The histogram has more than 65535 entries per bin. This is not supported.");
+			throw std::out_of_range("The histogram has more than 4294967295 entries per bin. This is not supported.");
 	}
 }
 
