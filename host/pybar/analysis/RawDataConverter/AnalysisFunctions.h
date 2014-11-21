@@ -79,16 +79,31 @@ void in1d_sorted(int64_t*& rEventArrayOne, const unsigned int& rSizeArrayOne, in
 	}
 }
 
+
+// fast 1d index histograming (bin size = 1, values starting from 0)
+void histogram_1d(int*& x, const unsigned int& rSize, const unsigned int& rNbinsX, uint16_t*& rResult)
+{
+	for (unsigned int i = 0; i < rSize; ++i){
+		if (x[i] > rNbinsX - 1)
+			throw std::out_of_range("The histogram indices are out of range");
+		if (rResult[x[i]] < 65535)
+			++rResult[x[i]];
+		else
+			throw std::out_of_range("The histogram has more than 65535 entries per bin. This is not supported.");
+	}
+}
+
+
 // fast 2d index histograming (bin size = 1, values starting from 0)
 void histogram_2d(int*& x, int*& y, const unsigned int& rSize, const unsigned int& rNbinsX, const unsigned int& rNbinsY, uint16_t*& rResult)
 {
 	for (unsigned int i = 0; i < rSize; ++i){
 		if (x[i] > rNbinsX - 1 || y[i] > rNbinsY - 1)
 			throw std::out_of_range("The histogram indices are out of range");
-		if (rResult[x[i] * rNbinsY + y[i]] < 65536)
+		if (rResult[x[i] * rNbinsY + y[i]] < 65535)
 			++rResult[x[i] * rNbinsY + y[i]];
 		else
-			throw std::out_of_range("The histogram has more than 65536 entries per bin. This is not supported.");
+			throw std::out_of_range("The histogram has more than 65535 entries per bin. This is not supported.");
 	}
 }
 
@@ -98,10 +113,10 @@ void histogram_3d(int*& x, int*& y, int*& z, const unsigned int& rSize, const un
 	for (unsigned int i = 0; i < rSize; ++i){
 		if (x[i] > rNbinsX - 1 || y[i] > rNbinsY - 1 || z[i] > rNbinsZ - 1)
 			throw std::out_of_range("The histogram indices are out of range");
-		if (rResult[x[i] * rNbinsY * rNbinsZ + y[i] * rNbinsZ + z[i]] < 65536)
+		if (rResult[x[i] * rNbinsY * rNbinsZ + y[i] * rNbinsZ + z[i]] < 65535)
 			++rResult[x[i] * rNbinsY * rNbinsZ + y[i] * rNbinsZ + z[i]];
 		else
-			throw std::out_of_range("The histogram has more than 65536 entries per bin. This is not supported.");
+			throw std::out_of_range("The histogram has more than 65535 entries per bin. This is not supported.");
 	}
 }
 

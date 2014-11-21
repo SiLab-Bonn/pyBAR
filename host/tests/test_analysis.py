@@ -263,12 +263,29 @@ class TestAnalysis(unittest.TestCase):
         result = event_numbers[0][analysis_utils.in1d_events(event_numbers[0], event_numbers_2)]
         self.assertListEqual([2, 2, 2, 4, 7, 7, 7], result.tolist())
 
+
+    def test_1d_index_histograming(self):  # check compiled hist_2D_index function
+        x = np.random.randint(0, 100, 100)
+        shape = (100, )
+        array_fast = analysis_utils.hist_1d_index(x, shape=shape)
+        array = np.histogram(x, bins=shape[0], range=(0, shape[0]))[0]
+        shape = (5, )  # shape that is too small for the indices to trigger exception
+        exception_ok = False
+        try:
+            array_fast = analysis_utils.hist_1d_index(x, shape=shape)
+        except IndexError:
+            exception_ok = True
+        except:  # other exception that should not occur
+            pass
+        self.assertTrue(exception_ok & np.all(array == array_fast))
+
+
     def test_2d_index_histograming(self):  # check compiled hist_2D_index function
         x, y = np.random.randint(0, 100, 100), np.random.randint(0, 100, 100)
         shape = (100, 100)
         array_fast = analysis_utils.hist_2d_index(x, y, shape=shape)
         array = np.histogram2d(x, y, bins=shape, range=[[0, shape[0]], [0, shape[1]]])[0]
-        shape = (50, 200)  # shape that is too small for the indices to trigger exception
+        shape = (5, 200)  # shape that is too small for the indices to trigger exception
         exception_ok = False
         try:
             array_fast = analysis_utils.hist_2d_index(x, y, shape=shape)
