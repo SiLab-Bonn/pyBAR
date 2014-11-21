@@ -195,8 +195,8 @@ class Fei4RunBase(RunBase):
                 if self.abort_run.is_set():
                     raise RunAborted('Do not analyze data.')
                 self.analyze()
-            except (AnalysisError, IncompleteInputError, NotSupportedError) as e:
-                logging.error('Analysis of raw data failed: %s' % e)
+            except AnalysisError as e:
+                logging.error('Analysis of data failed: %s' % e)
             except Exception:
                 self.handle_err(sys.exc_info())
             else:
