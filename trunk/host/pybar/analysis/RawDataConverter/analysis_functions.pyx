@@ -15,6 +15,7 @@ cdef extern from "AnalysisFunctions.h":
     unsigned int getNclusterInEvents(int64_t*& rEventNumber, const unsigned int& rSize, int64_t*& rResultEventNumber, unsigned int*& rResultCount)
     unsigned int getEventsInBothArrays(int64_t*& rEventArrayOne, const unsigned int& rSizeArrayOne, int64_t*& rEventArrayTwo, const unsigned int& rSizeArrayTwo, int64_t*& rEventArrayIntersection)
     void in1d_sorted(int64_t*& rEventArrayOne, const unsigned int& rSizeArrayOne, int64_t*& rEventArrayTwo, const unsigned int& rSizeArrayTwo, uint8_t*& rSelection)
+    void histogram_1d(int*& x, const unsigned int& rSize, const unsigned int& rNbinsX, uint16_t*& rResult) except +
     void histogram_2d(int*& x, int*& y, const unsigned int& rSize, const unsigned int& rNbinsX, const unsigned int& rNbinsY, uint16_t*& rResult) except +
     void histogram_3d(int*& x, int*& y, int*& z, const unsigned int& rSize, const unsigned int& rNbinsX, const unsigned int& rNbinsY, const unsigned int& rNbinsZ, uint16_t*& rResult) except +
 
@@ -29,6 +30,10 @@ def get_events_in_both_arrays(cnp.ndarray[cnp.int64_t, ndim=1] array_one, cnp.nd
 def get_in1d_sorted(cnp.ndarray[cnp.int64_t, ndim=1] array_one, cnp.ndarray[cnp.int64_t, ndim=1] array_two, cnp.ndarray[cnp.uint8_t, ndim=1] array_result):
     in1d_sorted(<int64_t*&> array_one.data, <const unsigned int&> array_one.shape[0], <int64_t*&> array_two.data, <const unsigned int&> array_two.shape[0], <uint8_t*&> array_result.data)
     return (array_result == 1)
+
+
+def hist_1d(cnp.ndarray[cnp.int32_t, ndim=1] x, const unsigned int& n_x, cnp.ndarray[cnp.uint16_t, ndim=1] array_result):
+    histogram_1d(<int*&> x.data, <const unsigned int&> x.shape[0], <const unsigned int&> n_x, <uint16_t*&> array_result.data) 
 
 
 def hist_2d(cnp.ndarray[cnp.int32_t, ndim=1] x, cnp.ndarray[cnp.int32_t, ndim=1] y, const unsigned int& n_x, const unsigned int& n_y, cnp.ndarray[cnp.uint16_t, ndim=1] array_result):

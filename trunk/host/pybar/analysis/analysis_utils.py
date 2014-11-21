@@ -19,6 +19,45 @@ from pybar.analysis.plotting import plotting
 from pybar.analysis.RawDataConverter import analysis_functions
 
 
+class AnalysisError(Exception):
+    """Base class for exceptions in this module.
+    """
+
+
+class IncompleteInputError(AnalysisError):
+    """Exception raised for errors in the input.
+    """
+
+
+class InvalidInputError(AnalysisError):
+    """Exception raised for errors in the input.
+    """
+
+
+class NotSupportedError(AnalysisError):
+    """Exception raised for not supported actions.
+    """
+    
+    
+def generate_threshold_mask(hist):
+    '''Masking array elements when equal 0.0 or greater than 10 times the median
+
+    Parameters
+    ----------
+    hist : array_like
+        Input data.
+
+    Returns
+    -------
+    masked array
+        Returns copy of the array with masked elements.
+    '''
+    masked_array = np.ma.masked_values(hist, 0)
+    masked_array = np.ma.masked_greater(masked_array, 10 * np.ma.median(hist))
+    logging.info('Masking %d pixel(s)' % np.ma.count_masked(masked_array))
+    return np.ma.getmaskarray(masked_array)
+
+
 def unique_row(array, use_columns=None, selected_columns_only=False):
     '''Takes a numpy array and returns the array reduced to unique rows. If columns are defined only these columns are taken to define a unique row.
     The returned array can have all columns of the original array or only the columns defined in use_columns.
@@ -585,6 +624,32 @@ def get_events_in_both_arrays(events_one, events_two):
     return event_result[:count]
 
 
+def hist_1d_index(x, shape):
+    """
+    Fast 1d histogram of 1D indices with C++ inner loop optimization.
+    Is more than 2 orders faster than np.histogram().
+    The indices are given in coordinates and have to fit into a histogram of the dimensions shape.
+    Parameters
+    ----------
+    x : array like
+    shape : tuple
+        tuple with x dimensions: (x,)
+
+    Returns
+    -------
+    np.ndarray with given shape
+
+    """
+    if len(shape) != 1:
+        raise InvalidInputError('The shape has to describe a 1-d histogram')
+
+    # change memory alignment for c++ library
+    x = np.ascontiguousarray(x.astype(np.int32))
+    result = np.zeros(shape=shape, dtype=np.uint16)
+    analysis_functions.hist_1d(x, shape[0], result)
+    return result
+
+
 def hist_2d_index(x, y, shape):
     """
     Fast 2d histogram of 2D indices with C++ inner loop optimization.
@@ -602,6 +667,9 @@ def hist_2d_index(x, y, shape):
     np.ndarray with given shape
 
     """
+    if len(shape) != 2:
+        raise InvalidInputError('The shape has to describe a 2-d histogram')
+
     # change memory alignment for c++ library
     x = np.ascontiguousarray(x.astype(np.int32))
     y = np.ascontiguousarray(y.astype(np.int32))
@@ -628,6 +696,8 @@ def hist_3d_index(x, y, z, shape):
     np.ndarray with given shape
 
     """
+    if len(shape) != 3:
+        raise InvalidInputError('The shape has to describe a 3-d histogram')
     # change memory alignment for c++ library
     x = np.ascontiguousarray(x.astype(np.int32))
     y = np.ascontiguousarray(y.astype(np.int32))
