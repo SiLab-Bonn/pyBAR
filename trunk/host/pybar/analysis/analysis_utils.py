@@ -645,7 +645,7 @@ def hist_1d_index(x, shape):
 
     # change memory alignment for c++ library
     x = np.ascontiguousarray(x.astype(np.int32))
-    result = np.zeros(shape=shape, dtype=np.uint16)
+    result = np.zeros(shape=shape, dtype=np.uint32)
     analysis_functions.hist_1d(x, shape[0], result)
     return result
 
