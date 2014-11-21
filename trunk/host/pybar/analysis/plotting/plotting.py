@@ -504,7 +504,7 @@ def plot_scurves(occupancy_hist, scan_parameters, title='S-Curves', ylabel='Occu
     im = ax.imshow(hist, interpolation='nearest', aspect="auto", cmap=cmap, extent=extent, norm=norm)
     ax.invert_yaxis()
     if min_x or max_x:
-        ax.set_xlim((min_x if min_x else np.amin(scan_parameters), max_x if max_x else np.amax(scan_parameters)))
+        ax.set_xlim((min_x if min_x is not None else np.amin(scan_parameters), max_x if max_x is not None else np.amax(scan_parameters)))
     fig.colorbar(im)
     ax.set_title(title + ' for %d pixel(s)' % (n_pixel - np.count_nonzero(occ_mask)))
     if scan_parameter_name is None:
