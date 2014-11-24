@@ -252,7 +252,6 @@ class FEI4Register(object):
         if self.miscellaneous:
             logging.warning("Found following unknown parameter(s): {}".format(', '.join('\'' + parameter + '\'' for parameter in self.miscellaneous.iterkeys())))
 
-
     def _save_configuration_to_text_file(self, configuration_file):
         '''Saving configuration to text files
 
@@ -614,7 +613,6 @@ class FEI4Register(object):
         implements FEI4 specific behavior
 
         """
-        # TODO: fix behavior when register name does not exist
         commands = []
         if command_name == "zeros":
             if "length" in kwargs:
@@ -701,7 +699,7 @@ class FEI4Register(object):
                     commands.extend(self.get_commands("WrRegister", name=["Colpr_Addr"]))
                     register_bitset = self.get_pixel_register_bitset(register_objects[0], 0, dc_no)
                     commands.extend([self.build_command(command_name, PixelData=register_bitset, ChipID=self.chip_id_bitarray, **kwargs)])
-                    commands.extend(self.get_commands("GlobalPulse", Width=0))  # TODO:
+                    commands.extend(self.get_commands("GlobalPulse", Width=0))
             else:
                 for register_object in register_objects:
                     pxstrobe = register_object['pxstrobe']
@@ -725,7 +723,7 @@ class FEI4Register(object):
                             if do_latch is True:
                                 # self.set_global_register_value("Latch_En", 1)
                                 # fe_command.extend(self.get_commands("WrRegister", name = ["Latch_En"]))
-                                commands.extend(self.get_commands("GlobalPulse", Width=0))  # TODO:
+                                commands.extend(self.get_commands("GlobalPulse", Width=0))
                                 # self.set_global_register_value("Latch_En", 0)
                                 # fe_command.extend(self.get_commands("WrRegister", name = ["Latch_En"]))
             self.restore(pixel_register=False)
@@ -787,7 +785,7 @@ class FEI4Register(object):
                             self.set_global_register_value("S1", 1)
                             self.set_global_register_value("SR_Clock", 1)
                             commands.extend(self.get_commands("WrRegister", name=["S0", "S1", "SR_Clock"]))
-                            commands.extend(self.get_commands("globalpulse", width=0))
+                            commands.extend(self.get_commands("GlobalPulse", Width=0))
                         self.set_global_register_value("S0", 0)
                         self.set_global_register_value("S1", 0)
                         self.set_global_register_value("SR_Clock", 0)
