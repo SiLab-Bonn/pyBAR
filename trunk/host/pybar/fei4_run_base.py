@@ -94,6 +94,8 @@ class Fei4RunBase(RunBase):
                         self._conf['fe_configuration'] = FEI4Register(configuration_file=self._get_configuration())
                 else:
                     pass  # do nothing, already initialized
+            elif 'fe_type' in self.conf and self.conf['fe_type']:
+                self._conf['fe_configuration'] = FEI4Register(fe_type=self.conf['fe_type'])
             else:
                 self._conf['fe_configuration'] = FEI4Register(configuration_file=self._get_configuration())
 
@@ -183,7 +185,7 @@ class Fei4RunBase(RunBase):
                     self.register_utils.reset_service_records()
                 with self.register.restored(name=self.run_number):
                     self.configure()
-                    self.register.save_configuration_to_hdf5(self.raw_data_file.h5_file)
+                    self.register.save_configuration(self.raw_data_file.h5_file)
                     self.fifo_readout.reset_rx()
                     self.fifo_readout.reset_sram_fifo()
                     self.fifo_readout.print_readout_status()
