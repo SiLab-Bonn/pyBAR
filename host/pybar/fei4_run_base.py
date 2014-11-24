@@ -80,6 +80,7 @@ class Fei4RunBase(RunBase):
         logging.info('Scan parameter(s): %s' % (', '.join(['%s:%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None'))
 
         try:
+            last_configuration = self._get_configuration()
             if 'fe_configuration' in self.conf and self.conf['fe_configuration']:
                 if not isinstance(self.conf['fe_configuration'], FEI4Register):
                     if isinstance(self.conf['fe_configuration'], basestring):
@@ -94,10 +95,19 @@ class Fei4RunBase(RunBase):
                         self._conf['fe_configuration'] = FEI4Register(configuration_file=self._get_configuration())
                 else:
                     pass  # do nothing, already initialized
-            elif 'fe_type' in self.conf and self.conf['fe_type']:
-                self._conf['fe_configuration'] = FEI4Register(fe_type=self.conf['fe_type'])
+            elif last_configuration:
+                self._conf['fe_configuration'] = FEI4Register(configuration_file=last_configuration)
             else:
-                self._conf['fe_configuration'] = FEI4Register(configuration_file=self._get_configuration())
+                if 'chip_address' in self.conf and self.conf['chip_address']:
+                    chip_address = self.conf['chip_address']
+                    broadcast = False
+                else:
+                    chip_address = 0
+                    broadcast = True
+                if 'fe_flavor' in self.conf and self.conf['fe_flavor']:
+                    self._conf['fe_configuration'] = FEI4Register(fe_type=self.conf['fe_flavor'], chip_address=chip_address, broadcast=broadcast)
+                else:
+                    raise ValueError('No valid configuration found')
 
             if not isinstance(self.conf['dut'], Dut):
                 if isinstance(self.conf['dut'], basestring):
@@ -233,7 +243,7 @@ class Fei4RunBase(RunBase):
             if run_numbers:
                 run_number = max(dict.iterkeys(run_numbers))
             else:
-                raise ValueError('Found no valid configuration')
+                return None
         for root, dirs, files in os.walk(self.working_dir):
             for cfgfile in files:
                 cfg_root, cfg_ext = os.path.splitext(cfgfile)
