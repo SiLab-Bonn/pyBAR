@@ -613,6 +613,7 @@ class FEI4Register(object):
         implements FEI4 specific behavior
 
         """
+        chip_id = kwargs.pop("ChipID", self.chip_id_bitarray)
         commands = []
         if command_name == "zeros":
             if "length" in kwargs:
@@ -637,10 +638,10 @@ class FEI4Register(object):
         elif command_name == "WrRegister":
             register_addresses = self.get_global_register_attributes("addresses", **kwargs)
             register_bitsets = self.get_global_register_bitsets(register_addresses)
-            commands.extend([self.build_command(command_name, Address=register_address, GlobalData=register_bitset, ChipID=self.chip_id_bitarray, **kwargs) for register_address, register_bitset in zip(register_addresses, register_bitsets)])
+            commands.extend([self.build_command(command_name, Address=register_address, GlobalData=register_bitset, ChipID=chip_id, **kwargs) for register_address, register_bitset in zip(register_addresses, register_bitsets)])
         elif command_name == "RdRegister":
             register_addresses = self.get_global_register_attributes('addresses', **kwargs)
-            commands.extend([self.build_command(command_name, Address=register_address, ChipID=self.chip_id_bitarray) for register_address in register_addresses])
+            commands.extend([self.build_command(command_name, Address=register_address, ChipID=chip_id) for register_address in register_addresses])
         elif command_name == "WrFrontEnd":
             registers = ["S0", "S1", "SR_Clr", "CalEn", "DIGHITIN_SEL", "GateHitOr", "ReadErrorReq", "StopClkPulse", "SR_Clock", "Efuse_Sense", "HITLD_IN", "Colpr_Mode", "Colpr_Addr"]
             if self.fei4a:
@@ -698,7 +699,7 @@ class FEI4Register(object):
                     self.set_global_register_value("Colpr_Addr", dc_no)
                     commands.extend(self.get_commands("WrRegister", name=["Colpr_Addr"]))
                     register_bitset = self.get_pixel_register_bitset(register_objects[0], 0, dc_no)
-                    commands.extend([self.build_command(command_name, PixelData=register_bitset, ChipID=self.chip_id_bitarray, **kwargs)])
+                    commands.extend([self.build_command(command_name, PixelData=register_bitset, ChipID=chip_id, **kwargs)])
                     commands.extend(self.get_commands("GlobalPulse", Width=0))
             else:
                 for register_object in register_objects:
@@ -719,7 +720,7 @@ class FEI4Register(object):
                             self.set_global_register_value("Colpr_Addr", dc_no)
                             commands.extend(self.get_commands("WrRegister", name=["Colpr_Addr"]))
                             register_bitset = self.get_pixel_register_bitset(register_object, pxstrobe_bit_no, dc_no)
-                            commands.extend([self.build_command(command_name, PixelData=register_bitset, ChipID=self.chip_id_bitarray, **kwargs)])
+                            commands.extend([self.build_command(command_name, PixelData=register_bitset, ChipID=chip_id, **kwargs)])
                             if do_latch is True:
                                 # self.set_global_register_value("Latch_En", 1)
                                 # fe_command.extend(self.get_commands("WrRegister", name = ["Latch_En"]))
@@ -794,14 +795,14 @@ class FEI4Register(object):
                         if self.fei4b:
                             self.set_global_register_value("SR_Read", 1)
                             commands.extend(self.get_commands("WrRegister", name=["SR_Read"]))
-                        commands.extend([self.build_command("WrFrontEnd", PixelData=register_bitset, ChipID=self.chip_id_bitarray)])
+                        commands.extend([self.build_command("WrFrontEnd", PixelData=register_bitset, ChipID=chip_id)])
                         if self.fei4b:
                             self.set_global_register_value("SR_Read", 0)
                             commands.extend(self.get_commands("WrRegister", name=["SR_Read"]))
             self.restore(pixel_register=False)
             commands.extend(self.get_commands("WrRegister", name=registers))
         else:
-            commands.append(self.build_command(command_name, ChipID=self.chip_id_bitarray, **kwargs))
+            commands.append(self.build_command(command_name, ChipID=chip_id, **kwargs))
         return commands
 
     def build_command(self, command_name, **kwargs):
