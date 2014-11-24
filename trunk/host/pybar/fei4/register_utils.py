@@ -982,11 +982,11 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
             if disable_shift_masks:
                 curr_dis_mask = make_pixel_mask(steps=mask_steps, shift=mask_step, default=1, value=0, enable_columns=ec, mask=mask)
                 map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_dis_mask), disable_shift_masks)
-                commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=disable_shift_masks))
+                commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=disable_shift_masks, joint_write=True))
             if enable_shift_masks:
                 curr_en_mask = make_pixel_mask(steps=mask_steps, shift=mask_step, enable_columns=ec, mask=mask)
                 map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_en_mask), [shift_mask_name for shift_mask_name in enable_shift_masks])
-                commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=enable_shift_masks))
+                commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=enable_shift_masks, joint_write=True))
             if digital_injection is True:
                 commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=['EnableDigInj']))
                 self.register.set_global_register_value("DIGHITIN_SEL", 1)
@@ -1010,11 +1010,11 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
                     if disable_shift_masks:
                         curr_dis_mask = make_pixel_mask(steps=mask_steps, shift=mask_step, default=1, value=0, enable_columns=ec, mask=mask)
                         map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_dis_mask), disable_shift_masks)
-                        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=disable_shift_masks))
+                        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=disable_shift_masks, joint_write=True))
                     if enable_shift_masks:
                         curr_en_mask = make_pixel_mask(steps=mask_steps, shift=mask_step, enable_columns=ec, mask=mask)
                         map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_en_mask), [shift_mask_name for shift_mask_name in enable_shift_masks])
-                        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=enable_shift_masks))
+                        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=enable_shift_masks, joint_write=True))
                     if digital_injection is True:
                         commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=['EnableDigInj']))
                         self.register.set_global_register_value("DIGHITIN_SEL", 1)
