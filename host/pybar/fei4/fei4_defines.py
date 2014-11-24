@@ -1,16 +1,18 @@
+from collections import OrderedDict
+
 # FEI4A
 fei4a = {
     'flavor': 'fei4a',
-    'calibration_parameters': {
-        'C_Inj_Low': 2.0,  # fF, C_Low
-        'C_Inj_Med': 4.1,  # fF, C_High
-        'C_Inj_High': 6.1,  # fF, C_Low + C_High
-        'Vcal_Coeff_0': 0.0,  # mV, offset
-        'Vcal_Coeff_1': 1.5,  # mV/PlsrDAC, slope
-        'Pulser_Corr_C_Inj_Low': None,
-        'Pulser_Corr_C_Inj_Med': None,
-        'Pulser_Corr_C_Inj_High': None
-    },
+    'calibration_parameters': OrderedDict([
+        ('C_Inj_Low', 2.0),  # fF, C_Low
+        ('C_Inj_Med', 4.1),  # fF, C_High
+        ('C_Inj_High', 6.1),  # fF, C_Low + C_High
+        ('Vcal_Coeff_0', 0.0),  # mV, offset
+        ('Vcal_Coeff_1', 1.5),  # mV/PlsrDAC, slope
+        ('Pulser_Corr_C_Inj_Low', None),
+        ('Pulser_Corr_C_Inj_Med', None),
+        ('Pulser_Corr_C_Inj_High', None)
+    ]),
     'commands': {
         # fast
         'LV1': {'bitstream': '11101', 'bitlength': 5, 'description': 'Level 1 Trigger: a single bit flip in the LV1 command will still result in a LV1 being decoded'},
