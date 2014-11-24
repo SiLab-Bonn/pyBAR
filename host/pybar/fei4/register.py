@@ -18,7 +18,7 @@ from pybar.analysis.RawDataConverter.data_struct import NameValue
 from pybar.utils.utils import string_is_binary, flatten_iterable, iterable, str2bool
 
 
-chip_flavors = ['fei4a', 'fei4b']
+flavors = ['fei4a', 'fei4b']
 
 
 def bitarray_from_value(value, size=None, fmt='Q'):
@@ -236,8 +236,8 @@ class FEI4Register(object):
 
     def is_chip_flavor(self, chip_flavor):
         chip_flavor = chip_flavor.translate(None, '_-').lower()
-        if chip_flavor in chip_flavors:
-            if not self.parameter_config['Flavor'] in chip_flavors:
+        if chip_flavor in flavors:
+            if not self.parameter_config['Flavor'] in flavors:
                 raise ValueError('Unknown chip flavor')
             if chip_flavor == self.parameter_config['Flavor']:
                 return True
@@ -248,7 +248,7 @@ class FEI4Register(object):
 
     @property
     def chip_flavor(self):
-        if not self.parameter_config['Flavor'] in chip_flavors:
+        if not self.parameter_config['Flavor'] in flavors:
             raise ValueError('Unknown chip flavor')
         return self.parameter_config['Flavor']
 
