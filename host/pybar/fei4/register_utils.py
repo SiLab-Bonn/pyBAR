@@ -818,11 +818,11 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
         plsr_dac_correction = list(double_column_correction)
     else:  # default
         if "C_High".lower() in map(lambda x: x.lower(), enable_shift_masks) and "C_Low".lower() in map(lambda x: x.lower(), enable_shift_masks):
-            plsr_dac_correction = self.register.calibration_config['Pulser_Corr_C_Inj_High']
+            plsr_dac_correction = self.register.calibration_parameters['Pulser_Corr_C_Inj_High']
         elif "C_High".lower() in map(lambda x: x.lower(), enable_shift_masks):
-            plsr_dac_correction = self.register.calibration_config['Pulser_Corr_C_Inj_Med']
+            plsr_dac_correction = self.register.calibration_parameters['Pulser_Corr_C_Inj_Med']
         elif "C_Low".lower() in map(lambda x: x.lower(), enable_shift_masks):
-            plsr_dac_correction = self.register.calibration_config['Pulser_Corr_C_Inj_Low']
+            plsr_dac_correction = self.register.calibration_parameters['Pulser_Corr_C_Inj_Low']
     # initial PlsrDAC value for PlsrDAC correction
     initial_plsr_dac = self.register.get_global_register_value("PlsrDAC")
     # create restore point
