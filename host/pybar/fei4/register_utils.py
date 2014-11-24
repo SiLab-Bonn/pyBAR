@@ -177,9 +177,7 @@ class FEI4RegisterUtils(object):
         logging.info('Sending pixel configuration to FE')
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))
-        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, name=["TDAC", "FDAC"]))  # same config for all DC is in general a not so good idea
-        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=same_mask_for_all_dc, name=["Imon", "Enable", "C_High", "C_Low"]))
-        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=same_mask_for_all_dc, name=["EnableDigInj"]))  # write EnableDigInj last
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=same_mask_for_all_dc, name=["TDAC", "FDAC", "Imon", "Enable", "C_High", "C_Low", "EnableDigInj"]))
         commands.extend(self.register.get_commands("RunMode"))
         self.send_commands(commands)
 
@@ -350,8 +348,7 @@ def test_pixel_register(self):
     commands.extend(self.register.get_commands("WrRegister", name=["Conf_AddrEnable", "S0", "S1", "SR_Clr", "CalEn", "DIGHITIN_SEL", "GateHitOr", "ReadSkipped", "ReadErrorReq", "StopClkPulse", "SR_Clock", "Efuse_Sense", "HITLD_IN", "Colpr_Mode", "Colpr_Addr", "Pixel_Strobes", "Latch_En"]))
     self.register_utils.send_commands(commands)
 
-    register_objects = self.register.get_pixel_register_objects(True, name=["EnableDigInj"])  # check EnableDigInj first, because it is not latched
-    register_objects.extend(self.register.get_pixel_register_objects(True, name=["Imon", "Enable", "C_High", "C_Low", "TDAC", "FDAC"]))
+    register_objects = self.register.get_pixel_register_objects(do_sort=['pxstrobe'], reverse=True, name=["EnableDigInj", "Imon", "Enable", "C_High", "C_Low", "TDAC", "FDAC"])  # check EnableDigInj first, because it is not latched
     # pprint.pprint(register_objects)
     # print "register_objects", register_objects
     number_of_errors = 0
@@ -524,9 +521,9 @@ def read_pixel_register(self, pix_regs=["EnableDigInj", "Imon", "Enable", "C_Hig
     for pix_reg in pix_regs:
         pixel_data = np.ma.masked_array(np.zeros(shape=(80, 336), dtype=np.uint32), mask=True)  # the result pixel array, only pixel with data are not masked
         for dc in dcs:
-            self.register_utils.send_commands(self.register.get_commands("rdfrontend", name=[pix_reg], dcs=[dc]))
+            self.register_utils.send_commands(self.register.get_commands("RdFrontEnd", name=[pix_reg], dcs=[dc]))
             data = self.fifo_readout.read_data()
-            interpret_pixel_data(data, dc, pixel_data, invert=False if pix_reg.lower() == "enablediginj" else True)
+            interpret_pixel_data(data, dc, pixel_data, invert=False if pix_reg == "EnableDigInj" else True)
         if overwrite_config:
             self.register.set_pixel_register(pix_reg, pixel_data.data)
         result.append(pixel_data)
@@ -897,6 +894,13 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
         # setting EnableDigInj to 0 not necessary since DIGHITIN_SEL is turned off
 #             self.register.set_pixel_register_value("EnableDigInj", 0)
 
+# plotting registers
+#     plt.clf()
+#     plt.imshow(curr_en_mask.T, interpolation='nearest', aspect="auto")
+#     plt.pcolor(curr_en_mask.T)
+#     plt.colorbar()
+#     plt.savefig('mask_step' + str(mask_step) + '.pdf')
+
     commands.extend(self.register.get_commands("WrRegister", name=["DIGHITIN_SEL"]))
     self.register_utils.send_commands(commands, concatenate=True)
 
@@ -914,15 +918,7 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
                 curr_en_mask = make_pixel_mask(steps=mask_steps, shift=mask_step, mask=mask)
                 map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_en_mask), enable_shift_masks)
                 commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False if mask is not None else True, name=enable_shift_masks, joint_write=True))
-#                 plt.clf()
-#                 plt.imshow(curr_en_mask.T, interpolation='nearest', aspect="auto")
-#                 plt.pcolor(curr_en_mask.T)
-#                 plt.colorbar()
-#                 plt.savefig('mask_step' + str(mask_step) + '.pdf')
             if digital_injection is True:  # write EnableDigInj last
-                curr_en_mask = make_pixel_mask(steps=mask_steps, shift=mask_step, mask=mask)
-                self.register.set_pixel_register_value('EnableDigInj', curr_en_mask)
-                commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False if mask is not None else True, name=['EnableDigInj']))
                 # write DIGHITIN_SEL since after mask writing it is disabled
                 self.register.set_global_register_value("DIGHITIN_SEL", 1)
                 commands.extend(self.register.get_commands("WrRegister", name=["DIGHITIN_SEL"]))
@@ -934,8 +930,6 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
                 map(lambda mask_name: self.register.set_pixel_register_value(mask_name, 0), enable_shift_masks)
                 commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name=enable_shift_masks, joint_write=True))
             if digital_injection is True:  # write EnableDigInj last
-                self.register.set_pixel_register_value('EnableDigInj', 0)
-                commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name=['EnableDigInj']))
                 # write DIGHITIN_SEL since after mask writing it is disabled
                 self.register.set_global_register_value("DIGHITIN_SEL", 1)
                 commands.extend(self.register.get_commands("WrRegister", name=["DIGHITIN_SEL"]))
@@ -990,9 +984,6 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
                 map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_en_mask), enable_shift_masks)
                 commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=enable_shift_masks, joint_write=True))
             if digital_injection is True:
-                curr_en_mask = make_pixel_mask(steps=mask_steps, shift=mask_step, enable_columns=ec, mask=mask)
-                self.register.set_pixel_register_value('EnableDigInj', curr_en_mask)
-                commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=['EnableDigInj']))
                 self.register.set_global_register_value("DIGHITIN_SEL", 1)
                 commands.extend(self.register.get_commands("WrRegister", name=["DIGHITIN_SEL"]))
             self.register_utils.send_commands(commands, concatenate=True)
@@ -1020,9 +1011,6 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
                         map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_en_mask), enable_shift_masks)
                         commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=enable_shift_masks, joint_write=True))
                     if digital_injection is True:
-                        curr_en_mask = make_pixel_mask(steps=mask_steps, shift=mask_step, enable_columns=ec, mask=mask)
-                        self.register.set_pixel_register_value('EnableDigInj', curr_en_mask)
-                        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=['EnableDigInj']))
                         self.register.set_global_register_value("DIGHITIN_SEL", 1)
                         commands.extend(self.register.get_commands("WrRegister", name=["DIGHITIN_SEL"]))
                     dc_address_command = get_dc_address_command(dc)

@@ -655,7 +655,7 @@ class FEI4Register(object):
                 dcs = range(40)
             joint_write = kwargs.pop("joint_write", False)
             same_mask_for_all_dc = kwargs.pop("same_mask_for_all_dc", False)
-            register_objects = self.get_pixel_register_objects(**kwargs)
+            register_objects = self.get_pixel_register_objects(do_sort=['pxstrobe'], **kwargs)
             self.set_global_register_value("S0", 0)
             self.set_global_register_value("S1", 0)
             self.set_global_register_value("SR_Clr", 0)
@@ -677,13 +677,14 @@ class FEI4Register(object):
             if joint_write:
                 pxstrobes = 0
                 first_read = True
+                do_latch = False
                 for register_object in register_objects:
                     if register_object['bitlength'] != 1:
                         raise ValueError('Pixel register %s: joint write not supported for pixel DACs' % register_object['name'])
-                    try:
+                    pxstrobe = register_object['pxstrobe']
+                    if not isinstance(pxstrobe, basestring):
+                        do_latch = True
                         pxstrobes += 2 ** register_object['pxstrobe']
-                    except TypeError:
-                        raise ValueError('Pixel register %s: joint write not supported' % register_object['name'])
                     if first_read:
                         pixel_reg_value = register_object['value']
                         first_read = False
@@ -691,42 +692,44 @@ class FEI4Register(object):
                         if np.array_equal(pixel_reg_value, register_object['value']):
                             pixel_reg_value = register_object['value']
                         else:
-                            raise ValueError('Pixel register %s: joint write not supported, pixel register values are not equal' % register_object['name'])
+                            raise ValueError('Pixel register %s: joint write not supported, pixel register values must be equal' % register_object['name'])
+                if do_latch:
+                    self.set_global_register_value("Latch_En", 1)
+                else:
+                    self.set_global_register_value("Latch_En", 0)
                 self.set_global_register_value("Pixel_Strobes", pxstrobes)
-                self.set_global_register_value("Latch_En", 1)
                 commands.extend(self.get_commands("WrRegister", name=["Pixel_Strobes", "Latch_En"]))
                 for dc_no in (dcs[:1] if same_mask_for_all_dc else dcs):
                     self.set_global_register_value("Colpr_Addr", dc_no)
                     commands.extend(self.get_commands("WrRegister", name=["Colpr_Addr"]))
                     register_bitset = self.get_pixel_register_bitset(register_objects[0], 0, dc_no)
                     commands.extend([self.build_command(command_name, PixelData=register_bitset, ChipID=chip_id, **kwargs)])
-                    commands.extend(self.get_commands("GlobalPulse", Width=0))
+                    if do_latch:
+                        commands.extend(self.get_commands("GlobalPulse", Width=0))
             else:
                 for register_object in register_objects:
                     pxstrobe = register_object['pxstrobe']
+                    if isinstance(pxstrobe, basestring):
+                        do_latch = False
+                        self.set_global_register_value("Pixel_Strobes", 0)  # no latch
+                        self.set_global_register_value("Latch_En", 0)
+                        commands.extend(self.get_commands("WrRegister", name=["Pixel_Strobes", "Latch_En"]))
+                    else:
+                        do_latch = True
+                        self.set_global_register_value("Latch_En", 1)
+                        commands.extend(self.get_commands("WrRegister", name=["Latch_En"]))
                     bitlength = register_object['bitlength']
                     for bit_no, pxstrobe_bit_no in (enumerate(range(bitlength)) if (register_object['littleendian'] is False) else enumerate(reversed(range(bitlength)))):
-                        try:
+                        if do_latch:
                             self.set_global_register_value("Pixel_Strobes", 2 ** (pxstrobe + bit_no))
-                        except TypeError:
-                            self.set_global_register_value("Pixel_Strobes", 0)  # no latch
-                            self.set_global_register_value("Latch_En", 0)
-                            do_latch = False
-                        else:
-                            self.set_global_register_value("Latch_En", 1)
-                            do_latch = True
-                        commands.extend(self.get_commands("WrRegister", name=["Pixel_Strobes", "Latch_En"]))
+                            commands.extend(self.get_commands("WrRegister", name=["Pixel_Strobes"]))
                         for dc_no in (dcs[:1] if same_mask_for_all_dc else dcs):
                             self.set_global_register_value("Colpr_Addr", dc_no)
                             commands.extend(self.get_commands("WrRegister", name=["Colpr_Addr"]))
                             register_bitset = self.get_pixel_register_bitset(register_object, pxstrobe_bit_no, dc_no)
                             commands.extend([self.build_command(command_name, PixelData=register_bitset, ChipID=chip_id, **kwargs)])
-                            if do_latch is True:
-                                # self.set_global_register_value("Latch_En", 1)
-                                # fe_command.extend(self.get_commands("WrRegister", name = ["Latch_En"]))
+                            if do_latch:
                                 commands.extend(self.get_commands("GlobalPulse", Width=0))
-                                # self.set_global_register_value("Latch_En", 0)
-                                # fe_command.extend(self.get_commands("WrRegister", name = ["Latch_En"]))
             self.restore(pixel_register=False)
             commands.extend(self.get_commands("WrRegister", name=registers))
         elif command_name == "RdFrontEnd":
@@ -888,7 +891,7 @@ class FEI4Register(object):
         else:
             return flatten_iterable(register_attribute_list)
 
-    def get_global_register_objects(self, do_sort=[], **kwargs):
+    def get_global_register_objects(self, do_sort=[], reverse=False, **kwargs):
         """Generate register objects (list) from register name list
 
         Usage: get_global_register_objects(name = ["Amp2Vbn", "GateHitOr", "DisableColumnCnfg"], address = [2, 3])
@@ -909,7 +912,7 @@ class FEI4Register(object):
         if not register_objects:
             raise ValueError('Global register objects empty')
         if do_sort:
-            return sorted(register_objects, key=itemgetter(*do_sort))
+            return sorted(register_objects, key=itemgetter(*do_sort), reverse=reverse)
         else:
             return register_objects
 
@@ -943,7 +946,7 @@ class FEI4Register(object):
             register_bitsets.append(register_bitset)
         return register_bitsets
 
-    def get_pixel_register_objects(self, do_sort=[], **kwargs):
+    def get_pixel_register_objects(self, do_sort=[], reverse=False, **kwargs):
         """Generate register objects (list) from register name list
 
         Usage: get_pixel_register_objects(name = ["TDAC", "FDAC"])
@@ -964,7 +967,7 @@ class FEI4Register(object):
         if not register_objects:
             raise ValueError('Pixel register objects empty')
         if do_sort:
-            return sorted(register_objects, key=itemgetter(*do_sort))
+            return sorted(register_objects, key=itemgetter(*do_sort), reverse=reverse)
         else:
             return register_objects
 
