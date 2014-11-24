@@ -676,6 +676,7 @@ class FEI4Register(object):
             commands.extend(self.get_commands("WrRegister", name=registers))
             if joint_write:
                 pxstrobes = 0
+                first_read = True
                 for register_object in register_objects:
                     if register_object['bitlength'] != 1:
                         raise ValueError('Pixel register %s: joint write not supported for pixel DACs' % register_object['name'])
@@ -683,6 +684,14 @@ class FEI4Register(object):
                         pxstrobes += 2 ** register_object['pxstrobe']
                     except TypeError:
                         raise ValueError('Pixel register %s: joint write not supported' % register_object['name'])
+                    if first_read:
+                        pixel_reg_value = register_object['value']
+                        first_read = False
+                    else:
+                        if np.array_equal(pixel_reg_value, register_object['value']):
+                            pixel_reg_value = register_object['value']
+                        else:
+                            raise ValueError('Pixel register %s: joint write not supported, pixel register values are not equal' % register_object['name'])
                 self.set_global_register_value("Pixel_Strobes", pxstrobes)
                 self.set_global_register_value("Latch_En", 1)
                 commands.extend(self.get_commands("WrRegister", name=["Pixel_Strobes", "Latch_En"]))
