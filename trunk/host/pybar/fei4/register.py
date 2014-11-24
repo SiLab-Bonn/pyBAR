@@ -44,14 +44,14 @@ class FEI4Register(object):
         '''
         self.broadcast = broadcast
         self.chip_address = None
-        if chip_address:
+        if chip_address is not None:
             self.set_chip_address(chip_address)
 
         self.flavor = None
         if fe_type:
             self.init_fe_type(fe_type)
 
-        self.configuration_file = None
+        self.configuration_file = fe_type
         if configuration_file:
             self.load_configuration_file(configuration_file)
 
@@ -85,6 +85,7 @@ class FEI4Register(object):
             raise ValueError('Unknown FEI4 flavor: %s' % fe_type['flavor'])
         else:
             self.flavor = fe_type['flavor']
+            logging.info('Initialize FEI4 registers (flavor: %s)' % self.flavor)
         for name, reg in fe_type['global_registers'].iteritems():
             address = reg.get('address')
             offset = reg.get('offset', 0)
@@ -295,8 +296,8 @@ class FEI4Register(object):
                     lines = []
                     lines.append("# FEI4 Flavor\n")
                     lines.append('%s %s\n' % ('Flavor', self.flavor))
-                    lines.append("\n# FEI4 Chip Address\n")
-                    lines.append('%s %d\n' % ('Chip_Address', self.chip_address))
+                    lines.append("\n# FEI4 Chip ID\n")
+                    lines.append('%s %d\n' % ('Chip_ID', self.chip_address))
                     lines.append("\n# FEI4 Global Registers\n")
                     global_regs = self.get_global_register_objects(readonly=False)
                     for global_reg in sorted(global_regs, key=itemgetter('name')):
@@ -433,8 +434,8 @@ class FEI4Register(object):
             miscellaneous_data_row['name'] = 'Flavor'
             miscellaneous_data_row['value'] = self.flavor
             miscellaneous_data_row.append()
-            miscellaneous_data_row['name'] = 'Chip_Address'
-            miscellaneous_data_row['value'] = self.chip_address
+            miscellaneous_data_row['name'] = 'Chip_ID'
+            miscellaneous_data_row['value'] = self.chip_id
             miscellaneous_data_row.append()
             for key, value in self.miscellaneous.iteritems():
                 miscellaneous_data_row['name'] = key
