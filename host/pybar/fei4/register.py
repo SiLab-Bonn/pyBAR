@@ -15,8 +15,6 @@ from operator import itemgetter
 
 from pybar.analysis.RawDataConverter.data_struct import NameValue
 from pybar.utils.utils import string_is_binary, flatten_iterable, iterable
-from colorama.initialise import init
-from tables.carray import CArray
 
 
 flavors = ('fei4a', 'fei4b')
