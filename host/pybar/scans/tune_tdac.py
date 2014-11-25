@@ -156,7 +156,7 @@ class TdacTuning(Fei4RunBase):
     def write_tdac_config(self):
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))
-        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, name=["Tdac"]))
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, name=["TDAC"]))
         self.register_utils.send_commands(commands)
 
     def start_readout(self, **kwargs):
