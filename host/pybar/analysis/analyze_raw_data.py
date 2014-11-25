@@ -135,6 +135,9 @@ class AnalyzeRawData(object):
         else:
             self.files_dict = None
             self.scan_parameters = None
+            
+        print self.scan_parameters
+        print self.files_dict
 
         self.set_standard_settings()
         if raw_data_file is not None and create_pdf:
@@ -534,6 +537,8 @@ class AnalyzeRawData(object):
             self.histograming.add_scan_parameter(self.scan_parameter_index)  # just add an index for the different scan parameter combinations
 
         self.meta_data = analysis_utils.combine_meta_data(self.files_dict)
+        
+        print self.meta_data
 
         if self.meta_data is None:
             raise analysis_utils.IncompleteInputError('Meta data is empty. Stop interpretation.')
@@ -608,9 +613,9 @@ class AnalyzeRawData(object):
                     description = data_struct.MetaInfoEventTable().columns.copy()
                 last_pos = len(description)
                 if (self.scan_parameters is not None):  # add additional column with the scan parameter
-                    for scan_par_name in self.scan_parameters.dtype.names:
+                    for index, scan_par_name in enumerate(self.scan_parameters.dtype.names):
                         dtype, _ = self.scan_parameters.dtype.fields[scan_par_name][:2]
-                        description[scan_par_name] = Col.from_dtype(dtype, dflt=0, pos=last_pos)
+                        description[scan_par_name] = Col.from_dtype(dtype, dflt=0, pos=last_pos + index)
                 meta_data_out_table = self.out_file_h5.createTable(self.out_file_h5.root, name='meta_data', description=description, title='MetaData', filters=self._filter_table)
                 entry = meta_data_out_table.row
                 for i in range(0, n_event_index):

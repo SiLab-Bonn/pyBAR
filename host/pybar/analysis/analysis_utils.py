@@ -128,7 +128,7 @@ def get_median_from_histogram(counts, bin_positions):
     values = []
     for index, one_bin in enumerate(counts):
         for _ in range(one_bin):
-            values.extend([bin_positions[index]])
+            values.append(bin_positions[index])
     return np.median(values)
 
 
@@ -136,7 +136,7 @@ def get_rms_from_histogram(counts, bin_positions):
     values = []
     for index, one_bin in enumerate(counts):
         for _ in range(one_bin):
-            values.extend([bin_positions[index]])
+            values.append(bin_positions[index])
     return np.std(values)
 
 
@@ -478,7 +478,7 @@ def get_parameter_from_files(files, parameters=None, unique=False, sort=True):
     parameter_values_from_file_names_dict = get_parameter_value_from_file_names(files, parameters, unique=unique, sort=sort)  # get the parameter from the file name
     for file_name in files:
         with tb.openFile(file_name, mode="r") as in_file_h5:  # open the actual file
-            scan_parameter_values = {}
+            scan_parameter_values = collections.OrderedDict()
             try:
                 scan_parameters = in_file_h5.root.scan_parameters[:]  # get the scan parameters from the scan parameter table
                 if parameters is None:
