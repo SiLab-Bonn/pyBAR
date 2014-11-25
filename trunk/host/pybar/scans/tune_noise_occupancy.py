@@ -36,7 +36,7 @@ class NoiseOccupancyScan(Fei4RunBase):
 
     def configure(self):
         if self.trig_count == 0:
-            self.consecutive_lvl1 = (2 ** self.register.get_global_register_objects(name=['Trig_Count'])[0].bitlength)
+            self.consecutive_lvl1 = (2 ** self.register.global_registers['Trig_Count']['bitlength'])
         else:
             self.consecutive_lvl1 = self.trig_count
         if self.occupancy_limit * self.n_triggers * self.consecutive_lvl1 < 1.0:
@@ -110,7 +110,7 @@ class NoiseOccupancyScan(Fei4RunBase):
             self.occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
             # noisy pixels are set to 1
             if self.trig_count == 0:
-                consecutive_lvl1 = (2 ** self.register.get_global_register_objects(name=['Trig_Count'])[0].bitlength)
+                consecutive_lvl1 = (2 ** self.register.global_registers['Trig_Count']['bitlength'])
             else:
                 consecutive_lvl1 = self.trig_count
             self.occ_mask[occ_hist > self.occupancy_limit * self.n_triggers * consecutive_lvl1] = 1
@@ -134,10 +134,10 @@ class NoiseOccupancyScan(Fei4RunBase):
             plot_occupancy(self.occ_mask.T, title='Noisy Pixels', z_max=1, filename=analyze_raw_data.output_pdf)
             plot_fancy_occupancy(self.occ_mask.T, z_max=1, filename=analyze_raw_data.output_pdf)
             for mask in self.disable_for_mask:
-                mask_name = self.register.get_pixel_register_attributes("full_name", do_sort=True, name=[mask])[0]
+                mask_name = self.register.pixel_registers[mask]['name']
                 plot_occupancy(self.register.get_pixel_register_value(mask).T, title='%s Mask' % mask_name, z_max=1, filename=analyze_raw_data.output_pdf)
             for mask in self.enable_for_mask:
-                mask_name = self.register.get_pixel_register_attributes("full_name", do_sort=True, name=[mask])[0]
+                mask_name = self.register.pixel_registers[mask]['name']
                 plot_occupancy(self.register.get_pixel_register_value(mask).T, title='%s Mask' % mask_name, z_max=1, filename=analyze_raw_data.output_pdf)
 
     def start_readout(self, **kwargs):

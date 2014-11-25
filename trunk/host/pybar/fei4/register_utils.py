@@ -354,10 +354,10 @@ def test_pixel_register(self):
     number_of_errors = 0
     for register_object in register_objects:
         # pprint.pprint(register_object)
-        pxstrobe = register_object.pxstrobe
-        bitlength = register_object.bitlength
+        pxstrobe = register_object['pxstrobe']
+        bitlength = register_object['bitlength']
         for pxstrobe_bit_no in range(bitlength):
-            logging.info('Testing Pixel Register %s Bit %d', register_object.full_name, pxstrobe_bit_no)
+            logging.info('Testing Pixel Register %s Bit %d', register_object['name'], pxstrobe_bit_no)
             do_latch = True
             commands = []
             try:
@@ -396,7 +396,7 @@ def test_pixel_register(self):
                 commands.extend(self.register.get_commands("WrRegister", name=["S0", "S1", "SR_Clock"]))
                 self.register_utils.send_commands(commands)
 
-                register_bitset = self.register.get_pixel_register_bitset(register_object, pxstrobe_bit_no if (register_object.littleendian is False) else register_object.bitlength - pxstrobe_bit_no - 1, dc_no)
+                register_bitset = self.register.get_pixel_register_bitset(register_object, pxstrobe_bit_no if (register_object['littleendian'] is False) else register_object['bitlength'] - pxstrobe_bit_no - 1, dc_no)
 
                 commands = []
                 if self.register.fei4b:

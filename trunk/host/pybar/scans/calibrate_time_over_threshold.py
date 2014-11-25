@@ -42,7 +42,7 @@ class TimeOverThresholdScan(ScanBase):
         This scan can also be used for ToT verification: change scan_parameter_value to desired injection charge (in units of PulsrDAC).
         '''
         if not self.scan_parameter_range:
-            scan_parameter_range = range(0, (2 ** self.register.get_global_register_objects(name=[self.scan_parameter])[0].bitlength) - 1)
+            scan_parameter_range = range(0, (2 ** self.register.global_registers[self.scan_parameter]['bitlength']) - 1)
         logging.info("Scanning %s from %d to %d" % (self.scan_parameter, scan_parameter_range[0], scan_parameter_range[-1]))
 
         output_pdf = PdfPages(os.path.join(self.scan_data_path, self.scan_data_filename) + '.pdf')

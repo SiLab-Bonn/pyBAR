@@ -588,7 +588,6 @@ class FEI4Register(object):
     def set_pixel_register_value(self, name, value):
         try:  # value is decimal string or number or array
             self.pixel_registers[name]['value'][:, :] = value
-            # reg.value.fill(value)
         except ValueError:  # value is path to pixel config
             if self.pixel_registers[name]['bitlength'] == 1:  # pixel mask
                 if value[0] == "~" or value[0] == "!":
