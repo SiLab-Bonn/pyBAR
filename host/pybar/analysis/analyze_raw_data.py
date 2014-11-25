@@ -135,9 +135,6 @@ class AnalyzeRawData(object):
         else:
             self.files_dict = None
             self.scan_parameters = None
-            
-        print self.scan_parameters
-        print self.files_dict
 
         self.set_standard_settings()
         if raw_data_file is not None and create_pdf:
@@ -537,8 +534,6 @@ class AnalyzeRawData(object):
             self.histograming.add_scan_parameter(self.scan_parameter_index)  # just add an index for the different scan parameter combinations
 
         self.meta_data = analysis_utils.combine_meta_data(self.files_dict)
-        
-        print self.meta_data
 
         if self.meta_data is None:
             raise analysis_utils.IncompleteInputError('Meta data is empty. Stop interpretation.')
