@@ -68,10 +68,10 @@ class StuckPixelScan(DigitalScan):
 
             plot_occupancy(self.occ_mask.T, title='Stuck Pixels', z_max=1, filename=analyze_raw_data.output_pdf)
             for mask in self.disable_for_mask:
-                mask_name = self.register.get_pixel_register_attributes("full_name", do_sort=True, name=[mask])[0]
+                mask_name = self.register.pixel_registers[mask]['name']
                 plot_occupancy(self.register.get_pixel_register_value(mask).T, title='%s Mask' % mask_name, z_max=1, filename=analyze_raw_data.output_pdf)
             for mask in self.enable_for_mask:
-                mask_name = self.register.get_pixel_register_attributes("full_name", do_sort=True, name=[mask])[0]
+                mask_name = self.register.pixel_registers[mask]['name']
                 plot_occupancy(self.register.get_pixel_register_value(mask).T, title='%s Mask' % mask_name, z_max=1, filename=analyze_raw_data.output_pdf)
 
 

@@ -60,7 +60,7 @@ class FastThresholdScan(Fei4RunBase):
 
         self.record_data = False  # set to true to activate data storage, so far not everything is recorded to ease data analysis
 
-        scan_parameter_range = [0, (2 ** self.register.get_global_register_objects(name=['PlsrDAC'])[0].bitlength)]
+        scan_parameter_range = [0, (2 ** self.register.global_registers['PlsrDAC']['bitlength'])]
         if self.scan_parameters.PlsrDAC[0]:
             scan_parameter_range[0] = self.scan_parameters.PlsrDAC[0]
         if self.scan_parameters.PlsrDAC[1]:

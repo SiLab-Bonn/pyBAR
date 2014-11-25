@@ -30,7 +30,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
 
     def configure(self):
         if self.trig_count == 0:
-            self.consecutive_lvl1 = (2 ** self.register.get_global_register_objects(name=['Trig_Count'])[0].bitlength)
+            self.consecutive_lvl1 = (2 ** self.register.global_registers['Trig_Count']['bitlength'])
         else:
             self.consecutive_lvl1 = self.trig_count
         if self.occupancy_limit * self.n_triggers * self.consecutive_lvl1 < 1.0:
@@ -39,7 +39,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))
         # TDAC
-        tdac_max = 2 ** self.register.get_pixel_register_objects(name=['TDAC'])[0].bitlength - 1
+        tdac_max = 2 ** self.register.pixel_registers['TDAC']['bitlength'] - 1
         self.register.set_pixel_register_value("TDAC", tdac_max)
         commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, name="TDAC"))
         mask = make_box_pixel_mask_from_col_row(column=self.col_span, row=self.row_span)
