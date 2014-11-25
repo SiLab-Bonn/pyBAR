@@ -42,18 +42,18 @@ class FEI4Register(object):
         Chip ID: This 4-bit field consists of broadcast bit and chip address. The broadcast bit, the most significant one, if set, means that the command is broadcasted to all FE chips receiving the data stream.
         Chip address: The three least significant bits of the chip ID define the chip address and are compared with the geographical address of the chip (selected via wire bonding/jumpers).
         '''
+        self.flavor = None
+        if fe_type:
+            self.init_fe_type(fe_type)
+
         self.broadcast = broadcast
         self.chip_address = None
         if chip_address is not None:
             self.set_chip_address(chip_address)
 
-        self.flavor = None
-        if fe_type:
-            self.init_fe_type(fe_type)
-
         self.configuration_file = fe_type
         if configuration_file:
-            self.load_configuration_file(configuration_file)
+            self.load_configuration(configuration_file)
 
         self.config_state = OrderedDict()
 
@@ -67,8 +67,9 @@ class FEI4Register(object):
         self.chip_address = chip_address
         self.chip_id = chip_address
         if self.broadcast:
-            self.chip_id += 0x1000
+            self.chip_id += 0x8
         self.chip_id_bitarray = bitarray_from_value(value=self.chip_id, size=4, fmt='I')
+        logging.info('Setting chip address to %d (broadcast bit %s)' % (self.chip_address, 'set' if self.broadcast else 'not set'))
 
     def init_fe_type(self, fe_type):
         self.flavor = None
@@ -85,7 +86,7 @@ class FEI4Register(object):
             raise ValueError('Unknown FEI4 flavor: %s' % fe_type['flavor'])
         else:
             self.flavor = fe_type['flavor']
-            logging.info('Initialize FEI4 registers (flavor: %s)' % self.flavor)
+            logging.info('Initializing FEI4 registers (flavor: %s)' % self.flavor)
         for name, reg in fe_type['global_registers'].iteritems():
             address = reg.get('address')
             offset = reg.get('offset', 0)
@@ -141,7 +142,7 @@ class FEI4Register(object):
     def fei4b(self):
         return True if self.flavor == 'fei4b' else False
 
-    def load_configuration_file(self, configuration_file):
+    def load_configuration(self, configuration_file):
         '''Loading configuration
 
         Parameters
@@ -213,8 +214,8 @@ class FEI4Register(object):
             if self.chip_address:
                 pass
             else:
-                self.broadcast = True if chip_id & 0x1000 else False
-                self.set_chip_address(chip_id & 0x0111)
+                self.broadcast = True if chip_id & 0x8 else False
+                self.set_chip_address(chip_id & 0x7)
         elif 'Chip_Address' in config_dict:
             chip_address = config_dict.pop('Chip_Address')
             if self.chip_address:
@@ -296,7 +297,7 @@ class FEI4Register(object):
                     lines.append("# FEI4 Flavor\n")
                     lines.append('%s %s\n' % ('Flavor', self.flavor))
                     lines.append("\n# FEI4 Chip ID\n")
-                    lines.append('%s %d\n' % ('Chip_ID', self.chip_address))
+                    lines.append('%s %d\n' % ('Chip_ID', self.chip_id))
                     lines.append("\n# FEI4 Global Registers\n")
                     global_regs = self.get_global_register_objects(readonly=False)
                     for global_reg in sorted(global_regs, key=itemgetter('name')):
@@ -344,8 +345,8 @@ class FEI4Register(object):
                     if self.chip_address:
                         pass
                     else:
-                        self.broadcast = True if value & 0x1000 else False
-                        self.set_chip_address(value & 0x0111)
+                        self.broadcast = True if value & 0x8 else False
+                        self.set_chip_address(value & 0x7)
                 elif name == 'Chip_Address':
                     if self.chip_address:
                         pass
@@ -378,7 +379,8 @@ class FEI4Register(object):
 
             # pixels
             for pixel_reg in h5_file.iter_nodes(configuration_group, 'CArray'):  # ['Enable', 'TDAC', 'C_High', 'C_Low', 'Imon', 'FDAC', 'EnableDigInj']:
-                self.set_pixel_register_value(pixel_reg.name, np.asarray(pixel_reg).T)  # np.asarray(h5_file.get_node(configuration_group, name=pixel_reg)).T
+                if pixel_reg in self.pixel_registers:
+                    self.set_pixel_register_value(pixel_reg.name, np.asarray(pixel_reg).T)  # np.asarray(h5_file.get_node(configuration_group, name=pixel_reg)).T
 
         if isinstance(configuration_file, tb.file.File):
             h5_file = configuration_file
