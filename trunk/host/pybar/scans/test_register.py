@@ -58,7 +58,7 @@ class RegisterTest(Fei4RunBase):
         logging.info('Running Pixel Register Test for %s' % str(pix_regs))
         self.register_utils.configure_pixel()
         commands = []
-        commands.extend(self.register.get_commands("confmode"))
+        commands.extend(self.register.get_commands("ConfMode"))
         self.register_utils.send_commands(commands)
         self.fifo_readout.reset_sram_fifo()
 

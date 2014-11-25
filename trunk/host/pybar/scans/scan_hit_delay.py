@@ -43,22 +43,22 @@ class HitDelayScan(Fei4RunBase):
 
     def configure(self):
         commands = []
-        commands.extend(self.register.get_commands("confmode"))
+        commands.extend(self.register.get_commands("ConfMode"))
         # C_Low
         if "C_Low".lower() in map(lambda x: x.lower(), self.enable_shift_masks):
             self.register.set_pixel_register_value('C_Low', 1)
-            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='C_Low'))
+            commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_Low'))
         else:
             self.register.set_pixel_register_value('C_Low', 0)
-            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='C_Low'))
+            commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_Low'))
         # C_High
         if "C_High".lower() in map(lambda x: x.lower(), self.enable_shift_masks):
             self.register.set_pixel_register_value('C_High', 1)
-            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='C_High'))
+            commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_High'))
         else:
             self.register.set_pixel_register_value('C_High', 0)
-            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='C_High'))
-        commands.extend(self.register.get_commands("runmode"))
+            commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_High'))
+        commands.extend(self.register.get_commands("RunMode"))
         self.register_utils.send_commands(commands)
 
     def scan(self):
@@ -71,9 +71,9 @@ class HitDelayScan(Fei4RunBase):
         for plsr_dac_value in plsr_dac_values:
             # Change the Plsr DAC parameter
             commands = []
-            commands.extend(self.register.get_commands("confmode"))
+            commands.extend(self.register.get_commands("ConfMode"))
             self.register.set_global_register_value('PlsrDAC', plsr_dac_value)
-            commands.extend(self.register.get_commands("wrregister", name=['PlsrDAC']))
+            commands.extend(self.register.get_commands("WrRegister", name=['PlsrDAC']))
             self.register_utils.send_commands(commands)
             for delay_parameter_value in delay_parameter_values:  # Loop over the Plsr delay parameter
                 if self.stop_run.is_set():
@@ -82,13 +82,13 @@ class HitDelayScan(Fei4RunBase):
 
                 # Change the Plsr delay parameter
                 commands = []
-                commands.extend(self.register.get_commands("confmode"))
+                commands.extend(self.register.get_commands("ConfMode"))
                 self.register.set_global_register_value(delay_parameter_name, delay_parameter_value)
-                commands.extend(self.register.get_commands("wrregister", name=[delay_parameter_name]))
+                commands.extend(self.register.get_commands("WrRegister", name=[delay_parameter_name]))
                 self.register_utils.send_commands(commands)
 
                 with self.readout(plsr_dac_value, delay_parameter_value):
-                    cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0]
+                    cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0]
                     scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections, use_delay=True, mask_steps=self.mask_steps, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=self.enable_shift_masks, disable_shift_masks=self.disable_shift_masks, restore_shift_masks=False, mask=invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if self.use_enable_mask else None, double_column_correction=self.pulser_dac_correction)
 
     def analyze(self):

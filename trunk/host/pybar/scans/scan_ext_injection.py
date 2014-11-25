@@ -21,7 +21,7 @@ class ExtInjScan(ScanBase):
     def scan(self):
         self.readout.start()
 
-        cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", mask_steps=self.mask_steps)[0]
+        cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", mask_steps=self.mask_steps)[0]
         self.scan_loop(cal_lvl1_command, repeat_command=self.repeat_command, mask_steps=self.mask_steps, enable_mask_steps=None, enable_double_columns=self.enable_double_columns, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=False, mask=None)
 
         self.readout.stop()

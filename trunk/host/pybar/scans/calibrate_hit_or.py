@@ -53,7 +53,7 @@ class HitOrCalibration(ScanBase):
             else:
                 return (column) / 2
 
-        cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", length=600)[0]
+        cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", length=600)[0]
         with open_raw_data_file(filename=self.scan_data_filename, title=self.scan_id, scan_parameters=[self.scan_parameter, 'column', 'row']) as raw_data_file:
             for index, pixel in enumerate(self.pixels):
                 column = pixel[0]
@@ -65,15 +65,15 @@ class HitOrCalibration(ScanBase):
                 else:
                     dcs = []
                 commands = []
-                commands.extend(self.register.get_commands("confmode"))
+                commands.extend(self.register.get_commands("ConfMode"))
                 single_pixel_enable_mask = make_pixel_mask_from_col_row([column], [row])
                 map(lambda mask_name: self.register.set_pixel_register_value(mask_name, single_pixel_enable_mask), self.enable_masks)
-                commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, dcs=dcs, name=self.enable_masks))
+                commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=self.enable_masks))
                 single_pixel_disable_mask = make_pixel_mask_from_col_row([column], [row], default=1, value=0)
                 map(lambda mask_name: self.register.set_pixel_register_value(mask_name, single_pixel_disable_mask), self.disable_masks)
-                commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, dcs=dcs, name=self.disable_masks))
+                commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=self.disable_masks))
                 self.register.set_global_register_value("Colpr_Addr", inject_double_column(column))
-                commands.append(self.register.get_commands("wrregister", name=["Colpr_Addr"])[0])
+                commands.append(self.register.get_commands("WrRegister", name=["Colpr_Addr"])[0])
                 self.register_utils.send_commands(commands)
                 for scan_parameter_value in self.scan_parameter_values:
                     if self.stop_thread_event.is_set():
@@ -81,10 +81,10 @@ class HitOrCalibration(ScanBase):
                     logging.info('Scan step: %s %d' % (self.scan_parameter, scan_parameter_value))
 
                     commands = []
-                    commands.extend(self.register.get_commands("confmode"))
+                    commands.extend(self.register.get_commands("ConfMode"))
                     self.register.set_global_register_value(self.scan_parameter, scan_parameter_value)
-                    commands.extend(self.register.get_commands("wrregister", name=[self.scan_parameter]))
-                    commands.extend(self.register.get_commands("runmode"))
+                    commands.extend(self.register.get_commands("WrRegister", name=[self.scan_parameter]))
+                    commands.extend(self.register.get_commands("RunMode"))
                     self.register_utils.send_commands(commands)
                     # activate TDC arming
                     self.dut['tdc_rx2']['EN_ARMING'] = True
