@@ -66,7 +66,7 @@ class FdacTuning(Fei4RunBase):
 
         self.write_target_charge()
         additional_scan = True
-        lastBitResult = np.zeros(shape=self.register.get_pixel_register_value("Fdac").shape, dtype=self.register.get_pixel_register_value("Fdac").dtype)
+        lastBitResult = np.zeros(shape=self.register.get_pixel_register_value("FDAC").shape, dtype=self.register.get_pixel_register_value("FDAC").dtype)
 
         self.set_start_fdac()
 
@@ -136,14 +136,14 @@ class FdacTuning(Fei4RunBase):
 
     def set_fdac_bit(self, bit_position, bit_value=1):
         if bit_value == 1:
-            self.register.set_pixel_register_value("Fdac", self.register.get_pixel_register_value("Fdac") | (1 << bit_position))
+            self.register.set_pixel_register_value("FDAC", self.register.get_pixel_register_value("FDAC") | (1 << bit_position))
         else:
-            self.register.set_pixel_register_value("Fdac", self.register.get_pixel_register_value("Fdac") & ~(1 << bit_position))
+            self.register.set_pixel_register_value("FDAC", self.register.get_pixel_register_value("FDAC") & ~(1 << bit_position))
 
     def write_fdac_config(self):
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))
-        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, name=["Fdac"]))
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, name=["FDAC"]))
         self.register_utils.send_commands(commands)
 
     def set_start_fdac(self):
