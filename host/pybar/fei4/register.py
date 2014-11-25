@@ -884,7 +884,7 @@ class FEI4Register(object):
                 register_attribute_list.extend(map(itemgetter(register_attribute), filter(lambda global_register: set(iterable(global_register[keyword])).intersection(allowed_values), self.global_registers.itervalues())))
             except AttributeError:
                 pass
-        if not register_attribute_list:
+        if not register_attribute_list and filter(None, kwargs.itervalues()):
             raise ValueError('Global register attribute %s empty' % register_attribute)
         if do_sort:
             return sorted(set(flatten_iterable(register_attribute_list)))
@@ -909,7 +909,7 @@ class FEI4Register(object):
         for keyword in kwargs.iterkeys():
             allowed_values = iterable(kwargs[keyword])
             register_objects.extend(filter(lambda global_register: set(iterable(global_register[keyword])).intersection(allowed_values), self.global_registers.itervalues()))
-        if not register_objects:
+        if not register_objects and filter(None, kwargs.itervalues()):
             raise ValueError('Global register objects empty')
         if do_sort:
             return sorted(register_objects, key=itemgetter(*do_sort), reverse=reverse)
@@ -964,7 +964,7 @@ class FEI4Register(object):
         for keyword in kwargs.iterkeys():
             allowed_values = iterable(kwargs[keyword])
             register_objects.extend(filter(lambda pixel_register: pixel_register[keyword] in allowed_values, self.pixel_registers.itervalues()))
-        if not register_objects:
+        if not register_objects and filter(None, kwargs.itervalues()):
             raise ValueError('Pixel register objects empty')
         if do_sort:
             return sorted(register_objects, key=itemgetter(*do_sort), reverse=reverse)
