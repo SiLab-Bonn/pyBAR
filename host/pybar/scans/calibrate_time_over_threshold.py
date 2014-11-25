@@ -51,14 +51,14 @@ class TimeOverThresholdScan(ScanBase):
             for index, scan_parameter_value in enumerate(scan_parameter_range):
                 logging.info('%s at %d %s' % (self.scan_parameter, scan_parameter_value, ('[%d - %d]' % (scan_parameter_range[0], scan_parameter_range[-1])) if len(scan_parameter_range) > 1 else ('[%d]' % scan_parameter_range[0])))
                 commands = []
-                commands.extend(self.register.get_commands("confmode"))
+                commands.extend(self.register.get_commands("ConfMode"))
                 self.register.set_global_register_value(self.scan_parameter, scan_parameter_value)
-                commands.extend(self.register.get_commands("wrregister", name=["PlsrDAC"]))
+                commands.extend(self.register.get_commands("WrRegister", name=["PlsrDAC"]))
                 self.register_utils.send_commands(commands)
 
                 self.readout.start()
 
-                cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0]
+                cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0]
                 self.scan_loop(cal_lvl1_command, repeat_command=self.repeat_command, use_delay=True, mask_steps=self.mask_steps, enable_mask_steps=None, enable_double_columns=range(1, 37), same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=False, mask=None)
 
                 self.readout.stop()

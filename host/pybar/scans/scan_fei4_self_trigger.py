@@ -28,13 +28,13 @@ class FEI4SelfTriggerScan(Fei4RunBase):
 
     def configure(self):
         commands = []
-        commands.extend(self.register.get_commands("confmode"))
+        commands.extend(self.register.get_commands("ConfMode"))
         # Enable
         enable_pixel_mask = make_box_pixel_mask_from_col_row(column=self.col_span, row=self.row_span)
         if not self.overwrite_enable_mask:
             enable_pixel_mask = np.logical_and(enable_pixel_mask, self.register.get_pixel_register_value('Enable'))
         self.register.set_pixel_register_value('Enable', enable_pixel_mask)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name='Enable'))
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, name='Enable'))
         # Imon
         if self.use_enable_mask_for_imon:
             imon_pixel_mask = invert_pixel_mask(enable_pixel_mask)
@@ -42,18 +42,18 @@ class FEI4SelfTriggerScan(Fei4RunBase):
             imon_pixel_mask = make_box_pixel_mask_from_col_row(column=self.col_span, row=self.row_span, default=1, value=0)  # 0 for selected columns, else 1
             imon_pixel_mask = np.logical_or(imon_pixel_mask, self.register.get_pixel_register_value('Imon'))
         self.register.set_pixel_register_value('Imon', imon_pixel_mask)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name='Imon'))
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, name='Imon'))
         # C_High
         self.register.set_pixel_register_value('C_High', 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='C_High'))
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_High'))
         # C_Low
         self.register.set_pixel_register_value('C_Low', 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='C_Low'))
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_Low'))
         # Registers
         self.register.set_global_register_value("Trig_Lat", self.trigger_latency)  # set trigger latency
         self.register.set_global_register_value("Trig_Count", 0)  # set number of consecutive triggers
-        commands.extend(self.register.get_commands("wrregister", name=["Trig_Lat", "Trig_Count"]))
-        commands.extend(self.register.get_commands("runmode"))
+        commands.extend(self.register.get_commands("WrRegister", name=["Trig_Lat", "Trig_Count"]))
+        commands.extend(self.register.get_commands("RunMode"))
         self.register_utils.send_commands(commands)
 
     def scan(self):
@@ -86,11 +86,11 @@ class FEI4SelfTriggerScan(Fei4RunBase):
     def set_self_trigger(self, enable=True):
         logging.info('%s FEI4 self-trigger' % ('Enable' if enable is True else "Disable"))
         commands = []
-        commands.extend(self.register.get_commands("confmode"))
+        commands.extend(self.register.get_commands("ConfMode"))
         self.register.set_global_register_value("GateHitOr", 1 if enable else 0)  # enable FE self-trigger mode
-        commands.extend(self.register.get_commands("wrregister", name=["GateHitOr"]))
+        commands.extend(self.register.get_commands("WrRegister", name=["GateHitOr"]))
         if enable:
-            commands.extend(self.register.get_commands("runmode"))
+            commands.extend(self.register.get_commands("RunMode"))
         self.register_utils.send_commands(commands)
 
     def start_readout(self, **kwargs):

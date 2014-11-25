@@ -40,7 +40,7 @@ class EudaqExtTriggerScan(ExtTriggerScan):
 
     def scan(self):
         start = time()
-        lvl1_command = self.register.get_commands("zeros", length=self.trigger_delay)[0] + self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", length=self.trigger_rate_limit)[0]
+        lvl1_command = self.register.get_commands("zeros", length=self.trigger_delay)[0] + self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", length=self.trigger_rate_limit)[0]
         self.register_utils.set_command(lvl1_command)
 
         self.remaining_data = np.ndarray((0,), dtype=np.uint32)

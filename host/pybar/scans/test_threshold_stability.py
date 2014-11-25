@@ -333,7 +333,7 @@ if __name__ == "__main__":
     scan_threshold_fast = FastThresholdScan(**configuration.scc112_configuration)
     for i, delay_value in enumerate(local_configuration['delays']):
         logging.info('Taking threshold data for delay %s' % str(delay_value))
-        command = scan_threshold_fast.register.get_commands("cal")[0] + scan_threshold_fast.register.get_commands("zeros", length=40)[0] + scan_threshold_fast.register.get_commands("lv1")[0] + scan_threshold_fast.register.get_commands("zeros", length=delay_value)[0] + scan_threshold_fast.register.get_commands("cal")[0] + scan_threshold_fast.register.get_commands("zeros", length=40)[0] + scan_threshold_fast.register.get_commands("lv1")[0] + scan_threshold_fast.register.get_commands("zeros", length=delay_value)[0]
+        command = scan_threshold_fast.register.get_commands("CAL")[0] + scan_threshold_fast.register.get_commands("zeros", length=40)[0] + scan_threshold_fast.register.get_commands("LV1")[0] + scan_threshold_fast.register.get_commands("zeros", length=delay_value)[0] + scan_threshold_fast.register.get_commands("CAL")[0] + scan_threshold_fast.register.get_commands("zeros", length=40)[0] + scan_threshold_fast.register.get_commands("LV1")[0] + scan_threshold_fast.register.get_commands("zeros", length=delay_value)[0]
         scan_threshold_fast.scan_id = 'test_threshold_stability_' + str(delay_value)
         scan_threshold_fast.start(configure=True, scan_parameter_range=(0, 70), scan_parameter_stepsize=2, search_distance=10, minimum_data_points=15, ignore_columns=local_configuration['ignore_columns'], command=command)
         scan_threshold_fast.stop()
