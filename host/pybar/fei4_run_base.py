@@ -239,17 +239,16 @@ class Fei4RunBase(RunBase):
 
     def _get_configuration(self, run_number=None):
         if not run_number:
-            run_numbers = self._get_run_numbers(status='FINISHED')
-            if run_numbers:
-                run_number = max(dict.iterkeys(run_numbers))
-            else:
-                return None
-        for root, dirs, files in os.walk(self.working_dir):
-            for cfgfile in files:
-                cfg_root, cfg_ext = os.path.splitext(cfgfile)
-                if cfg_root.startswith(''.join([str(run_number), '_', self.module_id])) and cfg_ext.endswith(".cfg"):
-                    return os.path.join(root, cfgfile)
-        raise ValueError('Found no configuration with run number %s' % run_number)
+            run_numbers = sorted(self._get_run_numbers(status='FINISHED').iterkeys(), reverse=True)
+        else:
+            run_numbers = [run_number]
+        for run_number in run_numbers:
+            for root, dirs, files in os.walk(self.working_dir):
+                for cfgfile in files:
+                    cfg_root, cfg_ext = os.path.splitext(cfgfile)
+                    if cfg_root.startswith(''.join([str(run_number), '_', self.module_id])) and cfg_ext.endswith(".cfg"):
+                        return os.path.join(root, cfgfile)
+#             logging.warning('Found no configuration with run number %s' % run_number)
 
     def set_scan_parameters(self, *args, **kwargs):
         fields = dict(kwargs)
