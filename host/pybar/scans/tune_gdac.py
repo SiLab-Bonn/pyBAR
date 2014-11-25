@@ -194,8 +194,6 @@ class GdacTuning(Fei4RunBase):
             if(bit_value == 1):
                 self.register.set_global_register_value("Vthin_AltFine", self.register.get_global_register_value("Vthin_AltFine") | (1 << bit_position))
             else:
-                print self.register.get_global_register_value("Vthin_AltFine")
-                print self.register.global_registers
                 self.register.set_global_register_value("Vthin_AltFine", self.register.get_global_register_value("Vthin_AltFine") & ~(1 << bit_position))
         else:
             if(bit_value == 1):
