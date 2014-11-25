@@ -583,7 +583,7 @@ class FEI4Register(object):
         self.global_registers[name]['value'] = value
 
     def get_global_register_value(self, name):
-        self.global_registers[name]['value']
+        return self.global_registers[name]['value']
 
     def set_pixel_register_value(self, name, value):
         try:  # value is decimal string or number or array
