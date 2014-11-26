@@ -98,7 +98,7 @@ class Fei4RunBase(RunBase):
             elif last_configuration:
                 self._conf['fe_configuration'] = FEI4Register(configuration_file=last_configuration)
             else:
-                if 'chip_address' in self.conf and self.conf['chip_address']:
+                if 'chip_address' in self.conf and isinstance(self.conf['chip_address'], (int, long)):
                     chip_address = self.conf['chip_address']
                     broadcast = False
                 else:
