@@ -603,7 +603,7 @@ class FEI4Register(object):
             raise ValueError("Pixel register %s: value exceeds limits" % name)
 
     def get_pixel_register_value(self, name):
-        return self.pixel_registers[name]['value']
+        return self.pixel_registers[name]['value'].copy()
 
     def get_commands(self, command_name, **kwargs):
         """get fe_command from command name and keyword arguments
