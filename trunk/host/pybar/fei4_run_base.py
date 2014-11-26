@@ -205,7 +205,7 @@ class Fei4RunBase(RunBase):
         else:
             try:
                 if self.abort_run.is_set():
-                    raise RunAborted('Do not analyze data.')
+                    raise RunAborted('Omitting data analysis: run was aborted')
                 self.analyze()
             except AnalysisError as e:
                 logging.error('Analysis of data failed: %s' % e)
