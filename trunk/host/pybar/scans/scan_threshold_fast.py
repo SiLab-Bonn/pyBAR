@@ -107,12 +107,11 @@ class FastThresholdScan(Fei4RunBase):
                 if not self.stop_condition_triggered and self.record_data:
                     logging.info('Testing for stop condition: %s %d' % ('PlsrDAC', self.scan_parameter_value))
 
-                # using numpy
-#                 occupancy_array = np.histogram2d(*convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array), bins=(80, 336), range=[[1, 80], [1, 336]])[0]
-
-                # using histogrammer in C++
                 col, row = convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)
+                # using self written histogrammer in C++
                 occupancy_array = hist_2d_index(col - 1, row - 1, shape=(80, 336))
+                # using numpy
+#                 occupancy_array = np.histogram2d(col, row, bins=(80, 336), range=[[1, 80], [1, 336]])[0]
 
                 self.scan_condition(occupancy_array)
 
