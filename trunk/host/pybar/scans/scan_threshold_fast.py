@@ -175,4 +175,4 @@ class FastThresholdScan(Fei4RunBase):
 
 
 if __name__ == "__main__":
-    RunManager('K:\\pyBAR\\host\\pybar/configuration.yaml').run_run(FastThresholdScan)
+    RunManager('../configuration.yaml').run_run(FastThresholdScan)
