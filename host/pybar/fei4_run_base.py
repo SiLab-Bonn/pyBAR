@@ -145,9 +145,9 @@ class Fei4RunBase(RunBase):
                     self.dut['POWER_SCC']['EN_VA2'] = 1
                     self.dut['POWER_SCC'].write()
                     # enabling readout
-                    self.dut['rx']['CH1'] = 0
-                    self.dut['rx']['CH2'] = 0
-                    self.dut['rx']['CH3'] = 0
+                    self.dut['rx']['CH1'] = 1
+                    self.dut['rx']['CH2'] = 1
+                    self.dut['rx']['CH3'] = 1
                     self.dut['rx']['CH4'] = 1
                     self.dut['rx']['TLU'] = 1
                     self.dut['rx']['TDC'] = 1
