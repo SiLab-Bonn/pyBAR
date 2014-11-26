@@ -485,7 +485,7 @@ def plot_scurves(occupancy_hist, scan_parameters, title='S-Curves', ylabel='Occu
 #     x = np.tile(scan_parameters, n_pixel)
     cmap = cm.get_cmap('jet', 200)
     for index, scan_parameter in enumerate(scan_parameters):
-        compressed_data = np.ma.masked_array(occupancy_hist[:, :, index], mask=occ_mask).compressed()
+        compressed_data = np.ma.masked_array(occupancy_hist[:, :, index], mask=occ_mask, copy=True).compressed()
         heatmap, xedges, yedges = np.histogram2d(compressed_data, [scan_parameter] * compressed_data.shape[0], range=[[0, max_occ], [scan_parameters[0], scan_parameters[-1]]], bins=(max_occ + 1, len(scan_parameters)))
         if index == 0:
             hist = heatmap
@@ -671,7 +671,7 @@ def create_1d_hist(fig, ax, hist, title=None, x_axis_title=None, y_axis_title=No
     else:
         bin_width = 1.0
     hist_range = (x_min - bin_width / 2.0, x_max + bin_width / 2.0)
-    masked_hist = np.ma.masked_array(hist)
+    masked_hist = np.ma.masked_array(hist, copy=True)
     if masked_hist.dtype.kind in 'ui':
         masked_hist[masked_hist.mask] = np.iinfo(masked_hist.dtype).max
     elif masked_hist.dtype.kind in 'f':
@@ -679,13 +679,13 @@ def create_1d_hist(fig, ax, hist, title=None, x_axis_title=None, y_axis_title=No
     else:
         raise TypeError('Inappropriate type %s' % masked_hist.dtype)
     _, _, _ = ax.hist(x=masked_hist.compressed(), bins=hist_bins, range=hist_range, align='mid')  # re-bin to 1d histogram, x argument needs to be 1D
-    # BUG: np.ma.compressed(np.ma.masked_array(hist)) (2D) is not equal to np.ma.masked_array(hist).compressed() (1D) if hist is ndarray
+    # BUG: np.ma.compressed(np.ma.masked_array(hist, copy=True)) (2D) is not equal to np.ma.masked_array(hist, copy=True).compressed() (1D) if hist is ndarray
     ax.set_xlim(hist_range)  # overwrite xlim
     if hist.all() is np.ma.masked:  # or np.allclose(hist, 0.0):
         ax.set_ylim((0, 1))
         ax.set_xlim((-0.5, +0.5))
     # create histogram without masked elements, higher precision when calculating gauss
-    h_1d, h_bins = np.histogram(np.ma.masked_array(hist).compressed(), bins=hist_bins, range=hist_range)
+    h_1d, h_bins = np.histogram(np.ma.masked_array(hist, copy=True).compressed(), bins=hist_bins, range=hist_range)
     if title is not None:
         ax.set_title(title)
     if x_axis_title is not None:
@@ -818,7 +818,7 @@ def plot_correlations(filenames, limit=None):
             index += 1
 
 
-def hist_quantiles(hist, prob=(0.05, 0.95), return_indices=False, copy=False):
+def hist_quantiles(hist, prob=(0.05, 0.95), return_indices=False, copy=True):
     '''Calculate quantiles from histograms, cuts off hist below and above given quantile. This function will not cut off more than the given values.
 
     Parameters
@@ -869,7 +869,7 @@ def hist_quantiles(hist, prob=(0.05, 0.95), return_indices=False, copy=False):
         return masked_hist
 
 
-def hist_last_nonzero(hist, return_index=False, copy=False):
+def hist_last_nonzero(hist, return_index=False, copy=True):
     '''Find the last nonzero index and mask the remaining entries.
 
     Parameters
