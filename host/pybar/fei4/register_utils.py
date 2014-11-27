@@ -40,16 +40,20 @@ class FEI4RegisterUtils(object):
     def send_commands(self, commands, repeat=1, wait_for_finish=True, concatenate=True, byte_padding=False, clear_memory=False):
         if concatenate:
             commands_iter = iter(commands)
-            concatenated_cmd = commands_iter.next()
-            for command in commands_iter:
-                concatenated_cmd_tmp = self.concatenate_commands((concatenated_cmd, command), byte_padding=byte_padding)
-                if concatenated_cmd_tmp.length() > self.command_memory_byte_size * 8:
-                    self.send_command(command=concatenated_cmd, repeat=repeat, wait_for_finish=wait_for_finish, set_length=True, clear_memory=clear_memory)
-                    concatenated_cmd = command
-                else:
-                    concatenated_cmd = concatenated_cmd_tmp
-            # send remaining commands
-            self.send_command(command=concatenated_cmd, repeat=repeat, wait_for_finish=wait_for_finish, set_length=True, clear_memory=clear_memory)
+            try:
+                concatenated_cmd = commands_iter.next()
+            except StopIteration:
+                logging.warning('No commands to be sent')
+            else:
+                for command in commands_iter:
+                    concatenated_cmd_tmp = self.concatenate_commands((concatenated_cmd, command), byte_padding=byte_padding)
+                    if concatenated_cmd_tmp.length() > self.command_memory_byte_size * 8:
+                        self.send_command(command=concatenated_cmd, repeat=repeat, wait_for_finish=wait_for_finish, set_length=True, clear_memory=clear_memory)
+                        concatenated_cmd = command
+                    else:
+                        concatenated_cmd = concatenated_cmd_tmp
+                # send remaining commands
+                self.send_command(command=concatenated_cmd, repeat=repeat, wait_for_finish=wait_for_finish, set_length=True, clear_memory=clear_memory)
         else:
             max_length = 0
             if repeat:
