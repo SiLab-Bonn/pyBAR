@@ -503,7 +503,7 @@ def plot_scurves(occupancy_hist, scan_parameters, title='S-Curves', ylabel='Occu
     norm = colors.LogNorm()
     im = ax.imshow(hist, interpolation='nearest', aspect="auto", cmap=cmap, extent=extent, norm=norm)
     ax.invert_yaxis()
-    if min_x or max_x:
+    if min_x is not None or max_x is not None:
         ax.set_xlim((min_x if min_x is not None else np.amin(scan_parameters), max_x if max_x is not None else np.amax(scan_parameters)))
     fig.colorbar(im)
     ax.set_title(title + ' for %d pixel(s)' % (n_pixel - np.count_nonzero(occ_mask)))
@@ -610,8 +610,9 @@ def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=No
     if y_axis_title is not None:
         ax.set_ylabel(y_axis_title)
     if x_ticks is not None:
-        ax.set_xticklabels(range(0, len(hist[:])) if plot_range is None else plot_range, x_ticks)
-#         ax.set_tick_params(which='both', labelsize=8)
+        ax.set_xticks(range(0, len(hist[:])) if plot_range is None else plot_range)
+        ax.set_xticklabels(x_ticks)
+        ax.tick_params(which='both', labelsize=8)
     if np.allclose(hist, 0.0):
         ax.set_ylim((0, 1))
     else:
