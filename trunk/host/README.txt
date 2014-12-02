@@ -29,7 +29,7 @@ Prerequisites:
 - PyUSB (>=1.0.0rc1):
   pip install https://github.com/walac/pyusb/archive/master.zip
 - pySiLibUSB (>=1.0.0):
-  pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/667/pySiLibUSB-2.0.0.zip
+  pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/693/pySiLibUSB-2.0.1.tar.gz
 - Basil (>=2.0.0):
   pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/671/Basil-2.0.0.zip
 - progressbar (>=2.4):
