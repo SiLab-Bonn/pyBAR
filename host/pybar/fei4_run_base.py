@@ -153,14 +153,13 @@ class Fei4RunBase(RunBase):
                     self.dut['rx']['TDC'] = 1
                     self.dut['rx'].write()
                 elif self.dut.name == 'usbpix_gpac':
+                    self.dut['V_in'].set_current_limit(1000, unit='mA')  # one for all
                     # enabling LVDS transceivers
                     self.dut['CCPD_Vdd'].set_enable(False)
-                    self.dut['CCPD_Vdd'].set_current_limit(1000, unit='mA')
                     self.dut['CCPD_Vdd'].set_voltage(0.0, unit='V')
                     self.dut['CCPD_Vdd'].set_enable(True)
                     # enabling V_in
                     self.dut['V_in'].set_enable(False)
-                    self.dut['V_in'].set_current_limit(2000, unit='mA')
                     self.dut['V_in'].set_voltage(2.1, unit='V')
                     self.dut['V_in'].set_enable(True)
                     # enabling readout
