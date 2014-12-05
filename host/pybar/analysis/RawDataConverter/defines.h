@@ -49,13 +49,15 @@ typedef struct ClusterHitInfo{
 
 //structure to store the cluster
 typedef struct ClusterInfo{
-  uint64_t eventNumber;  //event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
+  uint64_t eventNumber;  	  //event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
   unsigned short ID;	  	  //the cluster id of the cluster
   unsigned short size; 		  //sum tot of all cluster hits
   unsigned short Tot; 		  //sum tot of all cluster hits
   float charge; 		  	  //sum charge of all cluster hits
-  unsigned char seed_column;  //column value (unsigned char: 0 to 255)
-  unsigned short int seed_row;//row value (unsigned short int: 0 to 65.535)
+  unsigned char seed_column;  //seed pixel column value (unsigned char: 0 to 255)
+  unsigned short int seed_row;//seed pixel row value (unsigned short int: 0 to 65.535)
+  float mean_column;		  //column value (unsigned short int: 0 to 65.535)
+  float mean_row;			  //row value (unsigned short int: 0 to 65.535)
   unsigned short int eventStatus;  //event status value (unsigned char: 0 to 255)
 } ClusterInfo;
 
@@ -245,8 +247,6 @@ typedef struct MetaWordInfoOut{
 #define __MAXCLUSTERHITSBINS 1024	//number of for the cluster size (=# hits) histogram
 #define __MAXPOSXBINS 1000		//number of bins in x for the 2d hit position histogram
 #define __MAXPOSYBINS 1000		//number of bins in y for the 2d hit position histogram
-#define __PIXELSIZEX 250		//250 um
-#define __PIXELSIZEY 50			//50 um
 
 #define __MAXTOTLOOKUP 14
 

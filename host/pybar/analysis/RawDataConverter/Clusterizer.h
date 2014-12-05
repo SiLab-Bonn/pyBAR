@@ -2,7 +2,7 @@
  * 4 July 2012, Bonn, pohl@physik.uni-bonn.de
  * 17.10.2013 changes done to use the clusterizer into phython usable c++ code via cython
  *
- * This is a simple and fast clusterizer. With a run time that is linearily dependend from:
+ * This is a simple and fast clusterizer. With a run time that is linearily dependend of:
  * _dx*_dy*_DbCID*number of hits
  *   _dx,_dy are the x,y-step sizes in pixel to search around a hit for additional hits
  *   _DbCID is the BCID window hits are clustered together
@@ -114,7 +114,7 @@ private:
 	unsigned int* _clusterTots;		//array [__MAXTOTBINS][__MAXCLUSTERHITSBINS] containing the cluster tots/cluster size for histogramming
 	unsigned int* _clusterCharges;	//array [__MAXCHARGEBINS][__MAXCLUSTERHITSBINS] containing the cluster charge/cluster size for histogramming
 	unsigned int* _clusterHits;		//array [__MAXCLUSTERHITSBINS] containing the cluster number of hits for histogramming
-	unsigned int* _clusterPosition;	//array [__MAXPOSXBINS][__MAXPOSYBINS] containing the cluster x positions for histogramming
+	unsigned int* _clusterPosition;	//array [__MAXPOSXBINS][__MAXPOSYBINS] containing the cluster positions for histogramming
 
 	//data arrays for one event
 	short int* _hitMap;       											//2d hit histogram for each relative BCID (in total 3d, linearly sorted via col, row, rel. BCID)
