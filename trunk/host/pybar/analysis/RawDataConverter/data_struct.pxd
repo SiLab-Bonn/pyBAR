@@ -64,4 +64,6 @@ cdef packed struct numpy_cluster_info:
     cnp.float32_t charge  # sum charge of all cluster hits
     cnp.uint8_t seed_column  # column value (unsigned char: 0 to 255)
     cnp.uint16_t seed_row  # row value (unsigned short int: 0 to 65.535)
+    cnp.float32_t mean_column  # sum charge of all cluster hits
+    cnp.float32_t mean_row  # sum charge of all cluster hits
     cnp.uint16_t eventStatus  # event status value (unsigned char: 0 to 255)

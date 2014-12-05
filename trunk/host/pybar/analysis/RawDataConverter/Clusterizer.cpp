@@ -228,8 +228,8 @@ bool Clusterizer::clusterize()
 					_actualRelativeClusterBCID = iBCID;						//  set the minimum relative BCID [0:15] for the new cluster
 					searchNextHits(iCol, iRow, iBCID);						//  find hits next to the actual one and update the actual cluster values, here the clustering takes place
 					if (_actualClusterSize >= (int) _minClusterHits){		//  only add cluster if it has at least _minClusterHits hits
-						addClusterToResults();								//  add the actual cluster values to the result histograms
-						addCluster();
+						addCluster();										//  add cluster to output cluster array
+						addClusterToResults();								//  add the actual cluster values to the histograms
 						_actualClusterID++;									//  increase the cluster id for this event
 					}
 					else
@@ -381,8 +381,8 @@ void Clusterizer::searchNextHits(const unsigned short& pCol, const unsigned shor
 
 	_actualClusterTot+=tTot;		//add tot of the hit to the cluster tot
 	_actualClusterCharge+=_chargeMap[(long)pCol + (long)pRow * (long)RAW_DATA_MAX_COLUMN + (long)tTot * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW];	//add charge of the hit to the cluster tot
-	_actualClusterX+=(float)((float) pCol+0.5) * (float) __PIXELSIZEX * _chargeMap[(long)pCol + (long)pRow * (long)RAW_DATA_MAX_COLUMN + (long)tTot * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW];	//add x position of actual cluster weigthed by the charge
-	_actualClusterY+=(float)((float) pRow+0.5) * (float) __PIXELSIZEY * _chargeMap[(long)pCol + (long)pRow * (long)RAW_DATA_MAX_COLUMN + (long)tTot * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW];	//add y position of actual cluster weigthed by the charge
+	_actualClusterX+=(float)((float) pCol+0.5) * _chargeMap[(long)pCol + (long)pRow * (long)RAW_DATA_MAX_COLUMN + (long)tTot * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW];	//add x position of actual cluster weigthed by the charge
+	_actualClusterY+=(float)((float) pRow+0.5) * _chargeMap[(long)pCol + (long)pRow * (long)RAW_DATA_MAX_COLUMN + (long)tTot * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW];	//add y position of actual cluster weigthed by the charge
 
 	if(Basis::debugSet()){
 //		std::cout<<"Clusterizer::searchNextHits"<<std::endl;
@@ -479,7 +479,7 @@ void Clusterizer::initChargeCalibMap()
 	for(int iCol = 0; iCol < RAW_DATA_MAX_COLUMN; ++iCol){
 		for(int iRow = 0; iRow < RAW_DATA_MAX_ROW; ++iRow){
 			for(int iTot = 0; iTot < __MAXTOTLOOKUP; ++iTot)
-				_chargeMap[(long)iCol + (long)iRow * (long)RAW_DATA_MAX_COLUMN + (long)iTot * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] = 0;
+				_chargeMap[(long)iCol + (long)iRow * (long)RAW_DATA_MAX_COLUMN + (long)iTot * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] = (float) iTot + 1.;
 		}
 	}
 }
@@ -526,8 +526,6 @@ void Clusterizer::addClusterToResults()
 //			_clusterCharges[(int) _actualClusterCharge][_actualClusterSize]++;	//cluster size = 0 contains all cluster sizes
 //		}
 //		if(_actualClusterCharge > 0){	//avoid division by zero
-//			_actualClusterX/=_actualClusterCharge;
-//			_actualClusterY/=_actualClusterCharge;
 //			int tActualClusterXbin = (int) (_actualClusterX/(__PIXELSIZEX*RAW_DATA_MAX_COLUMN) * __MAXPOSXBINS);
 //			int tActualClusterYbin = (int) (_actualClusterY/(__PIXELSIZEY*RAW_DATA_MAX_ROW) * __MAXPOSYBINS);
 //			if(tActualClusterXbin < __MAXPOSXBINS && tActualClusterYbin < __MAXPOSYBINS)
@@ -714,6 +712,8 @@ void Clusterizer::showHits()
 
 void Clusterizer::addCluster()
 {
+	_actualClusterX/=_actualClusterCharge;  // normalize cluster x position
+	_actualClusterY/=_actualClusterCharge;  // normalize cluster y position
 	if(_createClusterInfoArray){
 		if(_Nclusters < _clusterInfoSize){
 			_clusterInfo[_Nclusters].eventNumber = _actualEventNumber;
@@ -723,6 +723,8 @@ void Clusterizer::addCluster()
 			_clusterInfo[_Nclusters].charge = _actualClusterCharge;
 			_clusterInfo[_Nclusters].seed_column = _actualClusterSeed_column+1;
 			_clusterInfo[_Nclusters].seed_row = _actualClusterSeed_row+1;
+			_clusterInfo[_Nclusters].mean_column = (float) (_actualClusterX+1.);
+			_clusterInfo[_Nclusters].mean_row = (float) (_actualClusterY+1.);
 			_clusterInfo[_Nclusters].eventStatus = _actualEventStatus;
 		}
 		else

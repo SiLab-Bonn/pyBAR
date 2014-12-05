@@ -42,6 +42,12 @@ def get_array_differences(first_array, second_array):
                 return_str += 'Column ' + column_name + ' has different data type. '
             if not (first_column == second_column).all():  # check if the data of the column is equal
                 return_str += 'Column ' + column_name + ' not equal. '
+        for column_name in second_array.dtype.names:
+            try:
+                first_array[column_name]
+            except ValueError:
+                return_str += 'Additional column ' + column_name + ' found. '
+                continue
         return ': ' + return_str
 
 
