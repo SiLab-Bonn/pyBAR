@@ -129,7 +129,7 @@ void Basis::error(std::string pText, int pLine)
 }
 bool Basis::getStringSeparated(std::string pLine, std::string pSeparator, std::string& pLeft, std::string& pRight)
 {
-	unsigned int tFound = 0;
+	size_t tFound = 0;
 	tFound = pLine.find_first_of(pSeparator);
 	if(tFound != pLine.npos){ //abort if no seperator found
 		pLeft = pLine.substr(0, tFound);
