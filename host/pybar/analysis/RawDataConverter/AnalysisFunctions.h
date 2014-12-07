@@ -7,6 +7,7 @@
 #include <ctime>
 #include <cmath>
 #include <exception>
+#include <algorithm>
 
 #include "Basis.h"
 #include "defines.h"
@@ -56,6 +57,97 @@ unsigned int getEventsInBothArrays(int64_t*& rEventArrayOne, const unsigned int&
 		}
 	}
 	return tActualResultIndex++;
+}
+
+//takes two event number arrays and returns a event number array with the maximum occurrence of each event number in array one and two
+unsigned int getMaxEventsInBothArrays(int64_t*& rEventArrayOne, const unsigned int& rSizeArrayOne, int64_t*& rEventArrayTwo, const unsigned int& rSizeArrayTwo, int64_t*& result, const unsigned int& rSizeArrayResult)
+{
+	int64_t tFirstActualEventNumber = rEventArrayOne[0];
+	int64_t tSecondActualEventNumber = rEventArrayTwo[0];
+	int64_t tFirstLastEventNumber = rEventArrayOne[rSizeArrayOne - 1];
+	int64_t tSecondLastEventNumber = rEventArrayTwo[rSizeArrayTwo - 1];
+	unsigned int i = 0;
+	unsigned int j = 0;
+	unsigned int tActualResultIndex = 0;
+	unsigned int tFirstActualOccurrence = 0;
+	unsigned int tSecondActualOccurrence = 0;
+
+	bool first_finished = false;
+	bool second_finished = false;
+
+//	std::cout<<"tFirstActualEventNumber "<<tFirstActualEventNumber<<std::endl;
+//	std::cout<<"tSecondActualEventNumber "<<tSecondActualEventNumber<<std::endl;
+//	std::cout<<"tFirstLastEventNumber "<<tFirstLastEventNumber<<std::endl;
+//	std::cout<<"tSecondLastEventNumber "<<tSecondLastEventNumber<<std::endl;
+//	std::cout<<"rSizeArrayOne "<<rSizeArrayOne<<std::endl;
+//	std::cout<<"rSizeArrayTwo "<<rSizeArrayTwo<<std::endl;
+//	std::cout<<"rSizeArrayResult "<<rSizeArrayResult<<std::endl;
+
+	while ( !(first_finished && second_finished) ){
+		if ( (tFirstActualEventNumber <= tSecondActualEventNumber) || second_finished ){
+			unsigned int ii;
+			for (ii = i; ii < rSizeArrayOne; ++ii){
+				if (rEventArrayOne[ii] == tFirstActualEventNumber)
+					tFirstActualOccurrence++;
+				else break;
+			}
+			i = ii;
+		}
+
+		if ( (tSecondActualEventNumber <= tFirstActualEventNumber) || first_finished ){
+			unsigned int jj;
+			for (jj=j; j < rSizeArrayTwo; ++jj){
+				if (rEventArrayTwo[jj] == tSecondActualEventNumber)
+					tSecondActualOccurrence++;
+				else break;
+			}
+			j = jj;
+		}
+
+//		std::cout<<"tFirstActualEventNumber "<<tFirstActualEventNumber<<" "<<tFirstActualOccurrence<<" "<<first_finished<<std::endl;
+//		std::cout<<"tSecondActualEventNumber"<<tSecondActualEventNumber<<" "<<tSecondActualOccurrence<<" "<<second_finished<<std::endl;
+
+		if (tFirstActualEventNumber == tSecondActualEventNumber){
+//			std::cout<<"==, add "<<std::max(tFirstActualOccurrence, tSecondActualOccurrence)<<" x "<<tFirstActualEventNumber<<std::endl;
+			if (tFirstActualEventNumber == tFirstLastEventNumber) first_finished = true;
+			if (tSecondActualEventNumber == tSecondLastEventNumber) second_finished = true;
+			for (unsigned int k = 0; k < std::max(tFirstActualOccurrence, tSecondActualOccurrence); ++k){
+				if (tActualResultIndex < rSizeArrayResult)
+					result[tActualResultIndex++] = tFirstActualEventNumber;
+				else
+					throw std::out_of_range("The result histogram is too small. Increase size.");
+			}
+		}
+		else if ( (!first_finished && tFirstActualEventNumber < tSecondActualEventNumber) || second_finished){
+//			std::cout<<"==, add "<<tFirstActualOccurrence<<" x "<<tFirstActualEventNumber<<std::endl;
+			if (tFirstActualEventNumber == tFirstLastEventNumber) first_finished = true;
+			for (unsigned int k = 0; k < tFirstActualOccurrence; ++k){
+				if (tActualResultIndex < rSizeArrayResult)
+					result[tActualResultIndex++] = tFirstActualEventNumber;
+				else
+					throw std::out_of_range("The result histogram is too small. Increase size.");
+			}
+		}
+		else if ( (!second_finished && tSecondActualEventNumber < tFirstActualEventNumber) || first_finished){
+//			std::cout<<"==, add "<<tSecondActualOccurrence<<" x "<<tSecondActualEventNumber<<std::endl;
+			if (tSecondActualEventNumber == tSecondLastEventNumber) second_finished = true;
+			for (unsigned int k = 0; k < tSecondActualOccurrence; ++k){
+				if (tActualResultIndex < rSizeArrayResult)
+					result[tActualResultIndex++] = tSecondActualEventNumber;
+				else
+					throw std::out_of_range("The result histogram is too small. Increase size.");
+			}
+		}
+
+		if (i < rSizeArrayOne)
+			tFirstActualEventNumber = rEventArrayOne[i];
+		if (j < rSizeArrayTwo)
+			tSecondActualEventNumber = rEventArrayTwo[j];
+		tFirstActualOccurrence = 0;
+		tSecondActualOccurrence = 0;
+	}
+
+	return tActualResultIndex;
 }
 
 //does the same as np.in1d but uses the fact that the arrays are sorted
