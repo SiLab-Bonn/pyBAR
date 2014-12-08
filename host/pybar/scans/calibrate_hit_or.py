@@ -167,8 +167,9 @@ class HitOrCalibration(Fei4RunBase):
                     tdc_data = np.array(tdc)
                     old_scan_parameters = actual_scan_parameters
                 else:
-                    tot_data.append(tot)
-                    tdc_data.append(tdc)
+                    np.concatenate((tot_data, tot))
+                    np.concatenate((tdc_data, tdc))
+
             else:
                 inner_loop_scan_parameter_index = np.where(old_scan_parameters[-1] == inner_loop_parameter_values)[0][0]  # translate the scan parameter value to an index for the result histogram
                 calibration_data[column - 1, row - 1, inner_loop_scan_parameter_index, 0] = np.mean(tot_data)
@@ -178,10 +179,12 @@ class HitOrCalibration(Fei4RunBase):
 
             calibration_data_out = calibration_data_file.createCArray(calibration_data_file.root, name='HitOrCalibration', title='Hit OR calibration data', atom=tb.Atom.from_dtype(calibration_data.dtype), shape=calibration_data.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
             calibration_data_out[:] = calibration_data
+            calibration_data_out.attrs.dimensions = scan_parameter_names
+            calibration_data_out.attrs.scan_parameter_values = inner_loop_parameter_values
             plot_calibration(col_row_combinations, scan_parameter=inner_loop_parameter_values, calibration_data=calibration_data, repeat_command=self.repeat_command, filename=output_pdf)
             output_pdf.close()
             progress_bar.finish()
 
 
 if __name__ == "__main__":
-    RunManager('...\configuration.yaml').run_run(HitOrCalibration)
+    RunManager('../configuration.yaml').run_run(HitOrCalibration)
