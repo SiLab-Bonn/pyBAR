@@ -1,24 +1,23 @@
 import logging
 from bitarray import bitarray
-import xml.sax
 import re
 import os
-import inspect
 import ast
 import numpy as np
-import itertools
 from collections import OrderedDict
 import copy
 import struct
 import tables as tb
 import datetime
 from contextlib import contextmanager
+from importlib import import_module
+from operator import itemgetter
 
 from pybar.analysis.RawDataConverter.data_struct import NameValue
-from pybar.utils.utils import string_is_binary, flatten_iterable, iterable, str2bool
+from pybar.utils.utils import string_is_binary, flatten_iterable, iterable
 
 
-chip_flavors = ['fei4a', 'fei4b']
+flavors = ('fei4a', 'fei4b')
 
 
 def bitarray_from_value(value, size=None, fmt='Q'):
@@ -33,422 +32,374 @@ def bitarray_from_value(value, size=None, fmt='Q'):
     return ba
 
 
-class FEI4GlobalRegister(object):
-    '''Object with named attributes
-
-    '''
-    def __init__(self, name, address=0, offset=0, bitlength=0, littleendian=False, register_littleendian=False, value=0, readonly=False, description=""):
-        self.name = str(name).lower()
-        self.full_name = str(name)
-        self.address = int(address)  # int() defaults to base 10 when base is not set
-        self.offset = int(offset)
-        self.bitlength = int(bitlength)
-        self.addresses = range(self.address, self.address + (self.offset + self.bitlength + 16 - 1) / 16)
-        self.littleendian = str2bool(littleendian)
-        self.register_littleendian = str2bool(register_littleendian)
-        self.value = long(str(value), 0)  # value is decimal string or number or BitVector
-        if self.value >= 2 ** self.bitlength or self.value < 0:
-            raise Exception("Value exceeds limits")
-        self.readonly = str2bool(readonly)
-        self.description = str(description)
-        self.not_set = True
-
-    def __repr__(self):
-        return repr((self.name,
-                     self.full_name,
-                     self.address,
-                     self.offset,
-                     self.bitlength,
-                     self.addresses,
-                     self.littleendian,
-                     self.register_littleendian,
-                     self.value,
-                     self.readonly,
-                     self.description,
-                     self.not_set))
-
-    def __add__(self, other):
-        """add: self + other
-
-        """
-        # other is FEI4GlobalRegister
-        try:
-            return bitarray_from_value(value=self.value, size=self.bitlength) + bitarray_from_value(value=other.value, size=other.bitlength)
-        except TypeError:
-            # other is bitarray.bitarray
-            try:
-                return bitarray_from_value(value=self.value, size=self.bitlength) + other
-            except TypeError:
-                # other is bit string
-                try:
-                    return bitarray_from_value(value=self.value, size=self.bitlength) + bitarray(other, endian='little')
-                except:
-                    raise Exception('Do not know how to add')
-
-    def __radd__(self, other):
-        """Reverse add: other + self
-
-        """
-        # other is FEI4GlobalRegister
-        try:
-            return bitarray_from_value(value=other.value, size=other.bitlength) + bitarray_from_value(value=self.value, size=self.bitlength)
-        except TypeError:
-            # other is bitarray.bitarray
-            try:
-                return other + bitarray_from_value(value=self.value, size=self.bitlength)
-            except TypeError:
-                # other is bit string
-                try:
-                    return bitarray(other, endian='little') + bitarray_from_value(value=self.value, size=self.bitlength)
-                except:
-                    raise Exception('Do not know how to radd')
-
-    # rich comparison:
-    def __eq__(self, other):
-        if (self.address * 16 + self.offset == other.address * 16 + other.offset):
-            return True
-        else:
-            return False
-
-    def __ne__(self, other):
-        if (self.address * 16 + self.offset != other.address * 16 + other.offset):
-            return True
-        else:
-            return False
-
-    def __cmp__(self, other):
-        if (other.address * 16 + other.offset < self.address * 16 + self.offset):
-            return (self.address * 16 + self.offset) - (other.address * 16 + other.offset)
-        elif (self.address * 16 + self.offset < other.address * 16 + other.offset):
-            return (self.address * 16 + self.offset) - (other.address * 16 + other.offset)
-        else:
-            return 0
-
-
-class FEI4PixelRegister(object):
-    def __init__(self, name, pxstrobe=0, bitlength=0, littleendian=False, value=0, description=""):
-        self.name = str(name).lower()
-        self.full_name = str(name)
-        try:
-            self.pxstrobe = int(pxstrobe)
-        except ValueError:
-            self.pxstrobe = str(pxstrobe)  # writing into SR, no latch
-            # raise
-        self.bitlength = int(bitlength)
-        if self.bitlength > 8:
-            raise Exception(name + "max. uint8 supported")  # numpy array dtype is uint8
-        self.littleendian = str2bool(littleendian)
-        dimension = (80, 336)
-        self.value = np.zeros(dimension, dtype=np.uint8)
-        try:  # value is decimal string or number or array
-            self.value[:, :] = value
-            # reg.value.fill(value)
-        except ValueError:  # value is path to pixel config
-            raise
-        finally:
-            if (self.value >= 2 ** self.bitlength).any() or (self.value < 0).any():
-                raise ValueError('Value exceeds limits')
-
-        self.description = str(description)
-        self.not_set = True
-
-    def __repr__(self):
-        return repr((self.name,
-                     self.full_name,
-                     self.pxstrobe,
-                     self.bitlength,
-                     self.littleendian,
-                     self.value,
-                     self.description,
-                     self.not_set))
-
-
-class FEI4Command(object):
-    def __init__(self, name, bitlength=0, bitstream="", description=""):
-        self.name = str(name).lower()
-        self.full_name = str(name)
-        self.bitlength = int(bitlength)
-        self.bitstream = str(bitstream)
-        self.description = str(description)
-
-    def __repr__(self):
-        return repr((self.name,
-                     self.full_name,
-                     self.bitlength,
-                     self.bitstream,
-                     self.description))
-
-
-class FEI4Handler(xml.sax.ContentHandler):  # TODO separate handlers
-    # contains some basic logic need to use within my program such as whether or not this module has been imported or not
-    def __init__(self):
-        # constructor to call sax constructor
-        xml.sax.ContentHandler.__init__(self)
-        # reset and assign all temp variables
-        self.global_registers = []
-        self.pixel_registers = []
-        self.fe_command = []
-        self.flavor = None
-
-    # this is executed after each element is terminated. elem is the tag element being read
-    def startElement(self, name, attrs):
-        # process the collected entry
-        # import models based on saved values
-        if (name == "register"):
-            self.global_registers.append(FEI4GlobalRegister(**attrs))
-        elif (name == "pixel_register"):
-            self.pixel_registers.append(FEI4PixelRegister(**attrs))
-        elif (name == "command"):
-            self.fe_command.append(FEI4Command(**attrs))
-        elif (name == "fei4"):
-            self.flavor = attrs["flavor"]
-
-
 class FEI4Register(object):
-    def __init__(self, configuration_file=None, flavor=None, chip_id=None):
-        self.global_registers = {}
-        self.pixel_registers = {}
-        self.fe_command = {}
+    def __init__(self, configuration_file=None, fe_type=None, chip_address=None, broadcast=False):
+        '''
 
-        self.configuration_file = configuration_file
+        Note:
+        Chip ID: This 4-bit field consists of broadcast bit and chip address. The broadcast bit, the most significant one, if set, means that the command is broadcasted to all FE chips receiving the data stream.
+        Chip address: The three least significant bits of the chip ID define the chip address and are compared with the geographical address of the chip (selected via wire bonding/jumpers).
+        '''
+        self.flavor = None
+        if fe_type:
+            self.init_fe_type(fe_type)
+
+        self.broadcast = broadcast
+        self.chip_address = None
+        if chip_address is not None:
+            self.set_chip_address(chip_address)
+
+        self.configuration_file = fe_type
+        if configuration_file:
+            self.load_configuration(configuration_file)
 
         self.config_state = OrderedDict()
-
-        self.parameter_config = OrderedDict([
-            ('Flavor', None),
-            ('Chip_ID', 8)  # This 4-bit field always exists and is the chip ID. The three least significant bits define the chip address and are compared with the geographical address of the chip (selected via wire bonding), while the most significant one, if set, means that the command is broadcasted to all FE chips receiving the data stream.
-        ])
-        self.calibration_config = OrderedDict([
-            ('C_Inj_Low', None),
-            ('C_Inj_Med', None),
-            ('C_Inj_High', None),
-            ('Vcal_Coeff_0', None),
-            ('Vcal_Coeff_1', None),
-            ('Pulser_Corr_C_Inj_Low', None),
-            ('Pulser_Corr_C_Inj_Med', None),
-            ('Pulser_Corr_C_Inj_High', None)
-        ])
-
-        self.load_configuration(self.configuration_file)
 
     def __repr__(self):
         return self.configuration_file
 
+    def set_chip_address(self, chip_address):
+        if 7 < chip_address < 0:
+            raise ValueError('Chip address out of range: %i' % chip_address)
+        self.chip_id_initialized = True
+        self.chip_address = chip_address
+        self.chip_id = chip_address
+        if self.broadcast:
+            self.chip_id += 0x8
+        self.chip_id_bitarray = bitarray_from_value(value=self.chip_id, size=4, fmt='I')
+        logging.info('Setting chip address to %d (broadcast bit %s)' % (self.chip_address, 'set' if self.broadcast else 'not set'))
+
+    def init_fe_type(self, fe_type):
+        self.flavor = None
+        self.global_registers = {}
+        self.pixel_registers = {}
+        self.calibration_parameters = OrderedDict()
+        self.miscellaneous = OrderedDict()
+        self.commands = {}
+        fei4_defines = import_module('pybar.fei4.fei4_defines')
+        fe_type = getattr(fei4_defines, fe_type)
+        if 'flavor' not in fe_type:
+            raise ValueError('FEI4 flavor not defined')
+        elif fe_type['flavor'] not in flavors:
+            raise ValueError('Unknown FEI4 flavor: %s' % fe_type['flavor'])
+        else:
+            self.flavor = fe_type['flavor']
+            logging.info('Initializing FEI4 registers (flavor: %s)' % self.flavor)
+        for name, reg in fe_type['global_registers'].iteritems():
+            address = reg.get('address')
+            offset = reg.get('offset', 0)
+            bitlength = reg.get('bitlength')
+            addresses = range(address, address + (offset + bitlength + 16 - 1) / 16)
+            littleendian = reg.get('littleendian', False)
+            register_littleendian = reg.get('register_littleendian', False)
+            value = reg.get('value', 0)
+            if not 0 <= value < 2 ** bitlength:
+                raise ValueError("Global register %s: value exceeds limits" % (name,))
+            readonly = reg.get('readonly', False)
+            description = reg.get('description', '')
+            self.global_registers[name] = dict(name=name, address=address, offset=offset, bitlength=bitlength, addresses=addresses, littleendian=littleendian, register_littleendian=register_littleendian, value=value, readonly=readonly, description=description)
+        for name, reg in fe_type['pixel_registers'].iteritems():
+            pxstrobe = reg.get('pxstrobe')
+            bitlength = reg.get('bitlength')
+            if bitlength > 8:
+                raise Exception('Pixel register %s: up to 8 bits supported' % (name,))  # numpy array dtype is uint8
+            littleendian = reg.get('littleendian', False)
+            if not 0 <= reg.get('value', 0) < 2 ** bitlength:
+                raise ValueError("Global register %s: value exceeds limits" % (name,))
+            value = np.full((80, 336), reg.get('value', 0), dtype=np.uint8)
+            description = reg.get('description', '')
+            self.pixel_registers[name] = dict(name=name, pxstrobe=pxstrobe, bitlength=bitlength, littleendian=littleendian, value=value, description=description)
+        for name, command in fe_type['commands'].iteritems():
+            bitlength = command.get('bitlength')
+            description = command.get('description', '')
+            if 'bitstream' in command:
+                bitstream = command.get('bitstream')
+                self.commands[name] = dict(name=name, bitstream=bitstream, bitlength=bitlength, description=description)
+            else:
+                self.commands[name] = dict(name=name, bitlength=bitlength, description=description)
+        self.calibration_parameters = fe_type['calibration_parameters'].copy()
+
     def is_chip_flavor(self, chip_flavor):
-        chip_flavor = chip_flavor.translate(None, '_-').lower()
-        if chip_flavor in chip_flavors:
-            if not self.parameter_config['Flavor'] in chip_flavors:
-                raise ValueError('Unknown chip flavor')
-            if chip_flavor == self.parameter_config['Flavor']:
+        if chip_flavor in flavors:
+            if chip_flavor == self.flavor:
                 return True
             else:
                 return False
         else:
-            raise ValueError("Unknown chip flavor")
+            raise ValueError('Unknown FEI4 flavor: %s' % chip_flavor)
 
     @property
     def chip_flavor(self):
-        if not self.parameter_config['Flavor'] in chip_flavors:
-            raise ValueError('Unknown chip flavor')
-        return self.parameter_config['Flavor']
+        return self.flavor
 
     @property
     def fei4a(self):
-        return True if self.chip_flavor == 'fei4a' else False
+        return True if self.flavor == 'fei4a' else False
 
     @property
     def fei4b(self):
-        return True if self.chip_flavor == 'fei4b' else False
+        return True if self.flavor == 'fei4b' else False
 
-    @property
-    def chip_id(self):
-        if self.parameter_config['Chip_ID'] >= 16 or self.parameter_config['Chip_ID'] < 0:
-            raise ValueError('Invalid chip ID')
-        return self.parameter_config['Chip_ID']
-
-    def load_configuration(self, configuration_file=None):
-        '''Loading configuration from text files
+    def load_configuration(self, configuration_file):
+        '''Loading configuration
 
         Parameters
         ----------
         configuration_file : string
-            Full path (directory and filename) of the configuration file. If name is not given, reload configuration from file.
+            Path to the configuration file (text or HDF5 file).
         '''
-        if os.path.splitext(configuration_file)[1].strip().lower() != ".h5":
-            self.load_configuration_from_text_file(configuration_file)
-        else:
-            self.load_configuration_from_hdf5(configuration_file)
-
-    def save_configuration(self, configuration_file=None):
-        '''Saving configuration to text files
-
-        Parameters
-        ----------
-        configuration_file : string
-            Filename of the configuration file (any file name extension will be ignored).
-            Any path can be omitted. If path is not given, path will be taken from loaded configuration file.
-
-        Returns
-        -------
-        self.configuration_file : string
-            Path to the main configuration file.
-        '''
-        if not configuration_file:
-            return self.save_configuration_to_text_file(configuration_file=self.configuration_file)
-        elif os.path.splitext(configuration_file)[1].strip().lower() != ".h5":
-            return self.save_configuration_to_text_file(configuration_file)
-        else:
-            return self.save_configuration_to_hdf5(configuration_file)
-
-    def load_configuration_from_text_file(self, configuration_file=None):
-        '''Loading configuration from text files
-
-        Parameters
-        ----------
-        configuration_file : string
-            Full path (directory and filename) of the configuration file. If name is not given, reload configuration from file.
-        '''
-        self.configuration_file = configuration_file
-        logging.info("Loading configuration file: %s" % self.configuration_file)
-        self.parse_parameters(self.parameter_config)  # get flavor and chip ID
-        self.parse_parameters(self.calibration_config)  # calibration values
-        self.parse_register_config()
-        self.parse_chip_config()
-
-    def save_configuration_to_text_file(self, configuration_file):
-        '''Saving configuration to text files
-
-        Parameters
-        ----------
-        configuration_file : string
-            Filename of the configuration file (any file name extension will be ignored).
-            Any path can be omitted. If path is not given, path will be taken from loaded configuration file.
-
-        Returns
-        -------
-        self.configuration_file : string
-            Path to the main configuration file.
-        '''
-
-        configuration_path, filename = os.path.split(configuration_file)
-        filename = os.path.splitext(filename)[0].strip()
-        if filename == '':
-            logging.warning("Unknown filename: nothing saved")
-            return
-        if configuration_path == '':
-            if self.configuration_file is not None:
-                configuration_path, _ = os.path.split(self.configuration_file)
-                configuration_path = os.path.dirname(configuration_path)
-                # filename, extension = os.path.splitext(configuration_file_name)
+        if os.path.isfile(configuration_file):
+            if not isinstance(configuration_file, tb.file.File) and os.path.splitext(configuration_file)[1].strip().lower() != ".h5":
+                self._load_configuration_from_text_file(configuration_file)
             else:
-                logging.warning("Unknown path: nothing saved")
-                return
+                self._load_configuration_from_hdf5(configuration_file)
+        else:
+            raise ValueError('Cannot find configuration file specified: %s' % configuration_file)
+
+    def save_configuration(self, configuration_file):
+        '''Saving configuration
+
+        Parameters
+        ----------
+        configuration_file : string
+            Filename of the configuration file.
+        '''
+        if not isinstance(configuration_file, tb.file.File) and os.path.splitext(configuration_file)[1].strip().lower() != ".h5":
+            return self._save_configuration_to_text_file(configuration_file)
+        else:
+            return self._save_configuration_to_hdf5(configuration_file)
+
+    def _load_configuration_from_text_file(self, configuration_file):
+        '''Loading configuration from text files
+
+        Parameters
+        ----------
+        configuration_file : string
+            Full path (directory and filename) of the configuration file. If name is not given, reload configuration from file.
+        '''
+        logging.info("Loading configuration: %s" % configuration_file)
+        self.configuration_file = configuration_file
+        with open(configuration_file, 'r') as f:
+            f.seek(0)
+            config_dict = {}
+            for line in f.readlines():
+                line = line.partition('#')[0].strip()
+                if not line:
+                    continue
+                parts = re.split(r'\s*[=]\s*|\s+', line)
+                if parts[0] in config_dict:
+                    logging.warning('Item %s in configuration file exists more than once' % parts[0])
+                try:
+                    config_dict[parts[0]] = ast.literal_eval(parts[1])
+                except SyntaxError:
+                    config_dict[parts[0]] = parts[1].strip()
+                except ValueError:
+                    config_dict[parts[0]] = parts[1].strip()
+
+        if 'Flavor' in config_dict:
+            flavor = config_dict.pop('Flavor')
+            if self.flavor:
+                pass
+            else:
+                self.init_fe_type(flavor)
+        else:
+            if self.flavor:
+                pass
+            else:
+                raise ValueError('Flavor not specified')
+        if 'Chip_ID' in config_dict:
+            chip_id = config_dict.pop('Chip_ID')
+            if self.chip_address:
+                pass
+            else:
+                self.broadcast = True if chip_id & 0x8 else False
+                self.set_chip_address(chip_id & 0x7)
+        elif 'Chip_Address' in config_dict:
+            chip_address = config_dict.pop('Chip_Address')
+            if self.chip_address:
+                pass
+            else:
+                self.set_chip_address(chip_address)
+        else:
+            if self.chip_id_initialized:
+                pass
+            else:
+                raise ValueError('Chip address not specified')
+        global_registers_configured = []
+        pixel_registers_configured = []
+        for key in config_dict.keys():
+            value = config_dict.pop(key)
+            if key in self.global_registers:
+                self.set_global_register_value(key, value)
+                global_registers_configured.append(key)
+            elif key in self.pixel_registers:
+                self.set_pixel_register_value(key, value)
+                pixel_registers_configured.append(key)
+            elif key in self.calibration_parameters:
+                self.calibration_parameters[key] = value
+            else:
+                self.miscellaneous[key] = value
+
+        global_registers = self.get_global_register_attributes('name', readonly=False)
+        pixel_registers = self.pixel_registers.keys()
+        global_registers_not_configured = set(global_registers).difference(global_registers_configured)
+        pixel_registers_not_configured = set(pixel_registers).difference(pixel_registers_configured)
+        if global_registers_not_configured:
+            logging.warning("Following global register(s) not configured: {}".format(', '.join('\'' + reg + '\'' for reg in global_registers_not_configured)))
+        if pixel_registers_not_configured:
+            logging.warning("Following pixel register(s) not configured: {}".format(', '.join('\'' + reg + '\'' for reg in pixel_registers_not_configured)))
+        if self.miscellaneous:
+            logging.warning("Found following unknown parameter(s): {}".format(', '.join('\'' + parameter + '\'' for parameter in self.miscellaneous.iterkeys())))
+
+    def _save_configuration_to_text_file(self, configuration_file):
+        '''Saving configuration to text files
+
+        Parameters
+        ----------
+        configuration_file : string
+            Filename of the configuration file.
+        '''
+        configuration_path, filename = os.path.split(configuration_file)
         if os.path.split(configuration_path)[1] == 'configs':
             configuration_path = os.path.split(configuration_path)[0]
-
+        filename = os.path.splitext(filename)[0].strip()
+        self.configuration_file = os.path.join(os.path.join(configuration_path, 'configs'), filename + ".cfg")
+        if os.path.isfile(self.configuration_file):
+            logging.warning("Overwriting configuration: %s" % self.configuration_file)
+        else:
+            logging.info("Saving configuration: %s" % self.configuration_file)
         pixel_reg_dict = {}
-        for path in ["configs", "tdacs", "fdacs", "masks"]:
+        for path in ["tdacs", "fdacs", "masks", "configs"]:
             configuration_file_path = os.path.join(configuration_path, path)
             if not os.path.exists(configuration_file_path):
                 os.makedirs(configuration_file_path)
-            if path == "configs":
-                self.configuration_file = os.path.join(configuration_file_path, filename + ".cfg")
-                if os.path.isfile(self.configuration_file):
-                    logging.info("Overwriting configuration file: %s" % self.configuration_file)
-                    os.remove(self.configuration_file)
-                else:
-                    logging.info("Saving configuration file: %s" % self.configuration_file)
-                self.write_parameters(self.parameter_config, title='Chip Parameters')
-                self.write_chip_config()
-            elif path == "tdacs":
+            if path == "tdacs":
                 dac = self.get_pixel_register_objects(name="TDAC")[0]
-                dac_config_path = os.path.join(configuration_file_path, "_".join([dac.name, filename]) + ".dat")
-                self.write_pixel_dac_config(dac_config_path, dac.value)
-                pixel_reg_dict[dac.full_name] = os.path.relpath(dac_config_path, os.path.dirname(self.configuration_file))
+                dac_config_path = os.path.join(configuration_file_path, "_".join([dac['name'].lower(), filename]) + ".dat")
+                self._write_pixel_dac_config(dac_config_path, dac['value'])
+                pixel_reg_dict[dac['name']] = os.path.relpath(dac_config_path, os.path.dirname(self.configuration_file))
             elif path == "fdacs":
                 dac = self.get_pixel_register_objects(name="FDAC")[0]
-                dac_config_path = os.path.join(configuration_file_path, "_".join([dac.name, filename]) + ".dat")
-                self.write_pixel_dac_config(dac_config_path, dac.value)
-                pixel_reg_dict[dac.full_name] = os.path.relpath(dac_config_path, os.path.dirname(self.configuration_file))
+                dac_config_path = os.path.join(configuration_file_path, "_".join([dac['name'].lower(), filename]) + ".dat")
+                self._write_pixel_dac_config(dac_config_path, dac['value'])
+                pixel_reg_dict[dac['name']] = os.path.relpath(dac_config_path, os.path.dirname(self.configuration_file))
             elif path == "masks":
                 masks = self.get_pixel_register_objects(bitlength=1)
                 for mask in masks:
-                    dac_config_path = os.path.join(configuration_file_path, "_".join([mask.name, filename]) + ".dat")
-                    self.write_pixel_mask_config(dac_config_path, mask.value)
-                    pixel_reg_dict[mask.full_name] = os.path.relpath(dac_config_path, os.path.dirname(self.configuration_file))
+                    dac_config_path = os.path.join(configuration_file_path, "_".join([mask['name'].lower(), filename]) + ".dat")
+                    self._write_pixel_mask_config(dac_config_path, mask['value'])
+                    pixel_reg_dict[mask['name']] = os.path.relpath(dac_config_path, os.path.dirname(self.configuration_file))
+            elif path == "configs":
+                with open(self.configuration_file, 'w') as f:
+                    lines = []
+                    lines.append("# FEI4 Flavor\n")
+                    lines.append('%s %s\n' % ('Flavor', self.flavor))
+                    lines.append("\n# FEI4 Chip ID\n")
+                    lines.append('%s %d\n' % ('Chip_ID', self.chip_id))
+                    lines.append("\n# FEI4 Global Registers\n")
+                    global_regs = self.get_global_register_objects(readonly=False)
+                    for global_reg in sorted(global_regs, key=itemgetter('name')):
+                        lines.append('%s %d\n' % (global_reg['name'], global_reg['value']))
+                    lines.append("\n# FEI4 Pixel Registers\n")
+                    for key in sorted(pixel_reg_dict):
+                        lines.append('%s %s\n' % (key, pixel_reg_dict[key]))
+                    if self.miscellaneous:
+                        lines.append("\n# Miscellaneous\n")
+                        for key, value in self.miscellaneous.iteritems():
+                            lines.append('%s %s\n' % (key, value))
+                    f.writelines(lines)
 
-        with open(self.configuration_file, 'a') as f:
-            lines = []
-            lines.append("# Pixel Registers\n")
-            for key in sorted(pixel_reg_dict):
-                lines.append('%s %s\n' % (key, pixel_reg_dict[key]))
-            lines.append("\n")
-            f.writelines(lines)
-
-        self.write_parameters(self.calibration_config, title='Calibration Parameters')
-        return self.configuration_file
-
-    def load_configuration_from_hdf5(self, h5_file, name='', **kwargs):
+    def _load_configuration_from_hdf5(self, configuration_file, node=''):
         '''Loading configuration from HDF5 file
 
         Parameters
         ----------
-        h5_file : string, file
+        configuration_file : string, file
             Filename of the HDF5 configuration file or file object.
-        name : string
+        node : string
             Additional identifier (subgroup). Useful when more than one configuration is stored inside a HDF5 file.
         '''
         def load_conf():
-            logging.info("Loading configuration from HDF5 file: %s" % h5_file.filename)
-            if name:
-                configuration_group = h5_file.root.configuration.name
+            logging.info("Loading configuration: %s" % h5_file.filename)
+            self.configuration_file = h5_file.filename
+            if node:
+                configuration_group = h5_file.root.configuration.node
             else:
                 configuration_group = h5_file.root.configuration
 
-                # misc
-                for row in configuration_group.miscellaneous:
-                    name = row['name']
+            # miscellaneous
+            for row in configuration_group.miscellaneous:
+                name = row['name']
+                try:
+                    value = ast.literal_eval(row['value'])
+                except ValueError:
                     value = row['value']
-                    if name in self.parameter_config:
-                        self.parameter_config[name] = list(ast.literal_eval(value.strip()))
-                    elif name in self.calibration_config:
-                        self.calibration_config[name] = list(ast.literal_eval(value.strip()))
+                if name == 'Flavor':
+                    if self.flavor:
+                        pass
+                    else:
+                        self.init_fe_type(value)
+                elif name == 'Chip_ID':
+                    if self.chip_address:
+                        pass
+                    else:
+                        self.broadcast = True if value & 0x8 else False
+                        self.set_chip_address(value & 0x7)
+                elif name == 'Chip_Address':
+                    if self.chip_address:
+                        pass
+                    else:
+                        self.set_chip_address(value)
+                else:
+                    self.miscellaneous[name] = value
 
-                self.parse_register_config()  # init registers
+            if self.flavor:
+                pass
+            else:
+                raise ValueError('Flavor not specified')
 
-                # global
-                for row in configuration_group.global_register:
-                    name = row['name']
-                    value = row['value']
-                    self.set_global_register_value(name, value)
+            if self.chip_id_initialized:
+                pass
+            else:
+                raise ValueError('Chip address not specified')
 
-                # pixels
-                for pixel_reg in self.pixel_registers:
-                    name = pixel_reg.full_name
-                    self.set_pixel_register_value(pixel_reg.name, np.asarray(h5_file.getNode(configuration_group, name=name)).T)
+            # calibration parameters
+            for row in configuration_group.calibration_parameters:
+                name = row['name']
+                value = row['value']
+                self.calibration_parameters[name] = ast.literal_eval(value)
 
-        if isinstance(h5_file, tb.file.File):
-            self.configuration_file = h5_file.filename
+            # global
+            for row in configuration_group.global_register:
+                name = row['name']
+                value = row['value']
+                self.set_global_register_value(name, ast.literal_eval(value))
+
+            # pixels
+            for pixel_reg in h5_file.iter_nodes(configuration_group, 'CArray'):  # ['Enable', 'TDAC', 'C_High', 'C_Low', 'Imon', 'FDAC', 'EnableDigInj']:
+                if pixel_reg in self.pixel_registers:
+                    self.set_pixel_register_value(pixel_reg.name, np.asarray(pixel_reg).T)  # np.asarray(h5_file.get_node(configuration_group, name=pixel_reg)).T
+
+        if isinstance(configuration_file, tb.file.File):
+            h5_file = configuration_file
             load_conf()
         else:
-            if os.path.splitext(h5_file)[1].strip().lower() != ".h5":
-                h5_file = os.path.splitext(h5_file)[0] + ".h5"
-            self.configuration_file = h5_file
-            with tb.open_file(h5_file, mode="r", title='', **kwargs) as h5_file:
+            with tb.open_file(configuration_file, mode="r", title='') as h5_file:
                 load_conf()
 
-    def save_configuration_to_hdf5(self, h5_file, name='', **kwargs):
+    def _save_configuration_to_hdf5(self, configuration_file, name=''):
         '''Saving configuration to HDF5 file
 
         Parameters
         ----------
-        h5_file : string, file
+        configuration_file : string, file
             Filename of the HDF5 configuration file or file object.
         name : string
             Additional identifier (subgroup). Useful when storing more than one configuration inside a HDF5 file.
         '''
         def save_conf():
-            logging.info("Saving configuration to HDF5 file: %s" % h5_file.filename)
+            logging.info("Saving configuration: %s" % h5_file.filename)
+            self.configuration_file = h5_file.filename
             try:
                 configuration_group = h5_file.create_group(h5_file.root, "configuration")
             except tb.NodeError:
@@ -459,138 +410,74 @@ class FEI4Register(object):
                 except tb.NodeError:
                     configuration_group = h5_file.root.configuration.name
 
-            # miscellaneous
+            # calibration_parameters
             try:
-                h5_file.removeNode(configuration_group, name='miscellaneous')
+                h5_file.remove_node(configuration_group, name='calibration_parameters')
             except tb.NodeError:
                 pass
-            misc_data_table = h5_file.createTable(configuration_group, name='miscellaneous', description=NameValue, title='miscellaneous')
+            calibration_data_table = h5_file.create_table(configuration_group, name='calibration_parameters', description=NameValue, title='calibration_parameters')
+            calibration_data_row = calibration_data_table.row
+            for key, value in self.calibration_parameters.iteritems():
+                calibration_data_row['name'] = key
+                calibration_data_row['value'] = value
+                calibration_data_row.append()
+            calibration_data_table.flush()
 
-            misc_data_row = misc_data_table.row
-
-            for key, value in self.parameter_config.iteritems():
-                misc_data_row['name'] = key
-                misc_data_row['value'] = str(value)
-                misc_data_row.append()
-
-            for key, value in self.calibration_config.iteritems():
-                misc_data_row['name'] = key
-                misc_data_row['value'] = str(value)
-                misc_data_row.append()
-
-#            for key in sorted(reg_dict):
-#                misc_data_row['name'] = key
-#                misc_data_row['value'] = str(reg_dict[key])  # TODO: some function that converts to bin, hex
-#                misc_data_row.append()
-
-            misc_data_table.flush()
+            # miscellaneous
+            try:
+                h5_file.remove_node(configuration_group, name='miscellaneous')
+            except tb.NodeError:
+                pass
+            miscellaneous_data_table = h5_file.create_table(configuration_group, name='miscellaneous', description=NameValue, title='miscellaneous')
+            miscellaneous_data_row = miscellaneous_data_table.row
+            miscellaneous_data_row['name'] = 'Flavor'
+            miscellaneous_data_row['value'] = self.flavor
+            miscellaneous_data_row.append()
+            miscellaneous_data_row['name'] = 'Chip_ID'
+            miscellaneous_data_row['value'] = self.chip_id
+            miscellaneous_data_row.append()
+            for key, value in self.miscellaneous.iteritems():
+                miscellaneous_data_row['name'] = key
+                miscellaneous_data_row['value'] = value
+                miscellaneous_data_row.append()
+            miscellaneous_data_table.flush()
 
             # global
             try:
-                h5_file.removeNode(configuration_group, name='global_register')
+                h5_file.remove_node(configuration_group, name='global_register')
             except tb.NodeError:
                 pass
-            global_data_table = h5_file.createTable(configuration_group, name='global_register', description=NameValue, title='global_register')
-
+            global_data_table = h5_file.create_table(configuration_group, name='global_register', description=NameValue, title='global_register')
             global_data_table_row = global_data_table.row
-
-            reg_dict = {register.full_name: register.value for register in self.get_global_register_objects(readonly=False)}
-            for key in sorted(reg_dict):
-                global_data_table_row['name'] = key
-                global_data_table_row['value'] = str(reg_dict[key])  # TODO: some function that converts to bin, hex
+            global_regs = self.get_global_register_objects(readonly=False)
+            for global_reg in sorted(global_regs, key=itemgetter('name')):
+                global_data_table_row['name'] = global_reg['name']
+                global_data_table_row['value'] = global_reg['value']  # TODO: some function that converts to bin, hex
                 global_data_table_row.append()
-
             global_data_table.flush()
 
             # pixel
-            for pixel_reg in self.pixel_registers:
+            for pixel_reg in self.pixel_registers.itervalues():
                 try:
-                    h5_file.removeNode(configuration_group, name=pixel_reg.full_name)
+                    h5_file.remove_node(configuration_group, name=pixel_reg['name'])
                 except tb.NodeError:
                     pass
-                data = pixel_reg.value.T
+                data = pixel_reg['value'].T
                 atom = tb.Atom.from_dtype(data.dtype)
-                ds = h5_file.createCArray(configuration_group, name=pixel_reg.full_name, atom=atom, shape=data.shape, title=pixel_reg.full_name)
+                ds = h5_file.createCArray(configuration_group, name=pixel_reg['name'], atom=atom, shape=data.shape, title=pixel_reg['name'])
                 ds[:] = data
 
-        if isinstance(h5_file, tb.file.File):
-            self.configuration_file = h5_file.filename
+        if isinstance(configuration_file, tb.file.File):
+            h5_file = configuration_file
             save_conf()
         else:
-            if os.path.splitext(h5_file)[1].strip().lower() != ".h5":
-                h5_file = os.path.splitext(h5_file)[0] + ".h5"
-            self.configuration_file = h5_file
-            with tb.open_file(h5_file, mode="a", title='', **kwargs) as h5_file:
+            with tb.open_file(configuration_file, mode="a", title='') as h5_file:
                 save_conf()
-
-    def parse_register_config(self):
-        # print "parse xml"
-        parser = xml.sax.make_parser()
-        handler = FEI4Handler()
-        parser.setContentHandler(handler)
-        module_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-        if self.is_chip_flavor("fei4a"):
-            parser.parse(os.path.join(module_path, "register_fei4a.xml"))
-        elif self.is_chip_flavor("fei4b"):
-            parser.parse(os.path.join(module_path, "register_fei4b.xml"))
-        else:
-            raise ValueError("Unknown chip flavor")
-        self.global_registers = handler.global_registers
-        self.pixel_registers = handler.pixel_registers
-        self.fe_command = handler.fe_command
-        # pprint.pprint(self.fe_command)
-        # pprint.pprint(self.global_registers)
-        # pprint.pprint(self.pixel_registers)
-
-    def parse_chip_config(self):
-        all_config_keys = []
-        all_config_keys_lower = []
-        with open(self.configuration_file, 'r') as f:
-            for line in f.readlines():
-                key_value = re.split("\s+|[\s]*=[\s]*", line)
-                if len(key_value) > 0 and ((len(key_value[0]) > 0 and key_value[0][0] == '#') or key_value[0] == '' or key_value[1] == ''):  # ignore line if empty line or starts with '#'
-                    continue
-                elif key_value[0] in self.parameter_config:
-                    continue
-                elif key_value[0] in self.calibration_config:
-                    continue
-                else:
-                    self.set_global_register_value(key_value[0], key_value[1], ignore_no_match=True)
-                    self.set_pixel_register_value(key_value[0], key_value[1], ignore_no_match=True)
-
-                    all_config_keys.append(key_value[0])
-                    all_config_keys_lower.append(key_value[0].lower())
-
-        all_config_keys_dict = dict(zip(all_config_keys_lower, all_config_keys))
-        pixel_not_configured = []
-        pixel_not_configured.extend([x for x in self.pixel_registers if (x.not_set is True)])
-        global_not_configured = []
-        global_not_configured.extend([x for x in self.global_registers if (x.not_set is True and x.readonly is False)])
-        if len(global_not_configured) != 0:
-            raise ValueError("Following global register(s) not configured: {}".format(', '.join('\'' + reg.full_name + '\'' for reg in global_not_configured)))
-        if len(pixel_not_configured) != 0:
-            raise ValueError("Following pixel register(s) not configured: {}".format(', '.join('\'' + reg.full_name + '\'' for reg in pixel_not_configured)))
-        all_known_regs = []
-        all_known_regs.extend([x.name for x in self.pixel_registers])
-        all_known_regs.extend([x.name for x in self.global_registers if x.readonly is False])
-        unknown_regs = set.difference(set(all_config_keys_dict.iterkeys()), all_known_regs)
-        if unknown_regs:
-            logging.warning("Found following unknown register(s): {}".format(', '.join('\'' + all_config_keys_dict[reg] + '\'' for reg in unknown_regs)))
-
-    def write_chip_config(self):
-        with open(self.configuration_file, 'a') as f:
-            lines = []
-            lines.append("# Global Registers\n")
-            reg_dict = {register.full_name: register.value for register in self.get_global_register_objects(readonly=False)}
-            for key in sorted(reg_dict):
-                lines.append('%s %d\n' % (key, reg_dict[key]))
-            lines.append("\n")
-            f.writelines(lines)
 
     def parse_parameters(self, parameters):
         with open(self.configuration_file, 'r') as f:
             for line in f.readlines():
-                key_value = re.split("\s+|[\s]*=[\s]*", line)
+                key_value = re.split(r'\s*[=]\s*|\s+', line)
                 if key_value[0] in parameters:
                     try:
                         parameters[key_value[0]] = ast.literal_eval(key_value[1].strip())
@@ -609,10 +496,8 @@ class FEI4Register(object):
             lines.append("\n")
             f.writelines(lines)
 
-    def parse_pixel_mask_config(self, filename):
-        dimension = (80, 336)
-        mask = np.empty(dimension, dtype=np.uint8)
-
+    def _parse_pixel_mask_config(self, filename):
+        mask = np.empty((80, 336), dtype=np.uint8)
         with open(filename, 'r') as f:
             row = 0
             for line in f.readlines():
@@ -633,12 +518,9 @@ class FEI4Register(object):
                 row += 1
             if row != 336:
                 raise ValueError('Dimension of row')
-        # print filename, mask
         return mask
 
-    def write_pixel_mask_config(self, filename, value):
-        if os.path.isfile(filename):
-            logging.info("Overwriting configuration file: %s" % filename)
+    def _write_pixel_mask_config(self, filename, value):
         with open(filename, 'w') as f:
             seq = []
             seq.append("###  1     6     11    16     21    26     31    36     41    46     51    56     61    66     71    76\n")
@@ -646,10 +528,8 @@ class FEI4Register(object):
             seq.append("\n")
             f.writelines(seq)
 
-    def parse_pixel_dac_config(self, filename):
-        dimension = (80, 336)
-        mask = np.empty(dimension, dtype=np.uint8)
-
+    def _parse_pixel_dac_config(self, filename):
+        mask = np.empty((80, 336), dtype=np.uint8)
         with open(filename, 'r') as f:
             row = 0
             read_line = 0
@@ -673,12 +553,9 @@ class FEI4Register(object):
                 read_line += 1
             if row != 336:
                 raise ValueError('Dimension of row')
-        # print mask
         return mask
 
-    def write_pixel_dac_config(self, filename, value):
-        if os.path.isfile(filename):
-            logging.info("Overwriting configuration file: %s" % filename)
+    def _write_pixel_dac_config(self, filename, value):
         with open(filename, 'w') as f:
             seq = []
             seq.append("###    1  2  3  4  5  6  7  8  9 10   11 12 13 14 15 16 17 18 19 20   21 22 23 24 25 26 27 28 29 30   31 32 33 34 35 36 37 38 39 40\n")
@@ -697,71 +574,36 @@ class FEI4Register(object):
     Use next(iterator[, default]).
     '''
 
-    def set_global_register_value(self, name, value, ignore_no_match=False):
-        regs = [x for x in self.global_registers if x.name.lower() == name.lower()]
-        if ignore_no_match is False and len(regs) == 0:
-            raise ValueError('No matching register found: %s' % name)
-        if ignore_no_match and len(regs) == 0:
-            return
-        if len(regs) > 1:
-            raise ValueError('Found more than one matching register: %s' % name)
-        for reg in regs:
-            old_value = reg.value
-            value = long(str(value), 0)  # value is decimal string or number or BitVector
-            if value >= 2 ** reg.bitlength or value < 0:
-                raise ValueError('Value exceeds limits')
-            reg.value = value
-            reg.not_set = False
-            return old_value
+    def set_global_register_value(self, name, value):
+        if self.global_registers[name]['readonly']:
+            raise ValueError('Global register %s: register is read-only' % name)
+        value = long(str(value), 0)  # value is decimal string or number or BitVector
+        if not 0 <= self.global_registers[name]['value'] < 2 ** self.global_registers[name]['bitlength']:
+            raise ValueError('Global register %s: value exceeds limits' % name)
+        self.global_registers[name]['value'] = value
 
     def get_global_register_value(self, name):
-        regs = [x for x in self.global_registers if x.name.lower() == name.lower()]
-        if len(regs) == 0:
-            raise ValueError('No matching register found: %s' % name)
-        if len(regs) > 1:
-            raise ValueError('Found more than one matching register: %s' % name)
-        for reg in regs:
-            return reg.value
+        return self.global_registers[name]['value']
 
-    def set_pixel_register_value(self, name, value, ignore_no_match=False):
-        regs = [x for x in self.pixel_registers if x.name.lower() == name.lower()]
-        if ignore_no_match is False and len(regs) == 0:
-            raise ValueError('No matching register found: %s' % name)
-        if ignore_no_match and len(regs) == 0:
-            return
-        if len(regs) > 1:
-            raise NotImplementedError('Cannot set more than one register at once')
-        reg = regs[0]
-        old_value = reg.value.copy()
+    def set_pixel_register_value(self, name, value):
         try:  # value is decimal string or number or array
-            reg.value[:, :] = value
-            # reg.value.fill(value)
+            self.pixel_registers[name]['value'][:, :] = value
         except ValueError:  # value is path to pixel config
-            if reg.bitlength == 1:
+            if self.pixel_registers[name]['bitlength'] == 1:  # pixel mask
                 if value[0] == "~" or value[0] == "!":
-                    reg_value = self.parse_pixel_mask_config(value[1:])
+                    reg_value = self._parse_pixel_mask_config(os.path.join(os.path.dirname(self.configuration_file), value[1:]))
                     inverted_mask = np.ones(shape=(80, 336), dtype=np.dtype('>u1'))
                     inverted_mask[reg_value >= 1] = 0
-                    reg.value = inverted_mask
+                    self.pixel_registers[name]['value'][:, :] = inverted_mask
                 else:
-                    reg.value = self.parse_pixel_mask_config(os.path.join(os.path.dirname(self.configuration_file), value))
-            else:
-                reg.value = self.parse_pixel_dac_config(os.path.join(os.path.dirname(self.configuration_file), value))
-        finally:
-            if (reg.value >= 2 ** reg.bitlength).any() or (reg.value < 0).any():
-                reg.value = old_value.copy()
-                raise ValueError("Value exceeds limits: " + reg.full_name)
-        reg.not_set = False
-        return old_value
+                    self.pixel_registers[name]['value'][:, :] = self._parse_pixel_mask_config(os.path.join(os.path.dirname(self.configuration_file), value))
+            else:  # pixel dac
+                self.pixel_registers[name]['value'][:, :] = self._parse_pixel_dac_config(os.path.join(os.path.dirname(self.configuration_file), value))
+        if (self.pixel_registers[name]['value'] >= 2 ** self.pixel_registers[name]['bitlength']).any() or (self.pixel_registers[name]['value'] < 0).any():
+            raise ValueError("Pixel register %s: value exceeds limits" % name)
 
     def get_pixel_register_value(self, name):
-        regs = [x for x in self.pixel_registers if x.name.lower() == name.lower()]
-        if len(regs) == 0:
-            raise ValueError('No matching register found: %s' % name)
-        if len(regs) > 1:
-            raise ValueError('Found more than one matching register: %s' % name)
-        for reg in regs:
-            return reg.value.copy()
+        return self.pixel_registers[name]['value'].copy()
 
     def get_commands(self, command_name, **kwargs):
         """get fe_command from command name and keyword arguments
@@ -770,9 +612,9 @@ class FEI4Register(object):
         implements FEI4 specific behavior
 
         """
-        # TODO: fix behavior when register name does not exist
+        chip_id = kwargs.pop("ChipID", self.chip_id_bitarray)
         commands = []
-        if command_name.lower() == "zeros":
+        if command_name == "zeros":
             if "length" in kwargs:
                 bv = bitarray(kwargs["length"], endian='little')  # all bits to zero
             elif "mask_steps" in kwargs:
@@ -783,7 +625,7 @@ class FEI4Register(object):
                 raise ValueError('Cannot calculate length')
             bv.setall(0)
             commands.append(bv)
-        elif command_name.lower() == "ones":
+        elif command_name == "ones":
             if "length" in kwargs:
                 bv = bitarray(kwargs["length"], endian='little')  # all bits to zero
             elif "mask_steps" in kwargs:
@@ -792,30 +634,33 @@ class FEI4Register(object):
                 raise ValueError('cannot calculate length')
             bv.setall(1)  # all bits to one
             commands.append(bv)
-        elif command_name.lower() == "wrregister":
+        elif command_name == "WrRegister":
             register_addresses = self.get_global_register_attributes("addresses", **kwargs)
             register_bitsets = self.get_global_register_bitsets(register_addresses)
-            commands.extend([self.build_command(command_name, address=register_address, globaldata=register_bitset, chipid=self.chip_id, **kwargs) for register_address, register_bitset in zip(register_addresses, register_bitsets)])
-        elif command_name.lower() == "rdregister":
+            commands.extend([self.build_command(command_name, Address=register_address, GlobalData=register_bitset, ChipID=chip_id, **kwargs) for register_address, register_bitset in zip(register_addresses, register_bitsets)])
+        elif command_name == "RdRegister":
             register_addresses = self.get_global_register_attributes('addresses', **kwargs)
-            commands.extend([self.build_command(command_name, address=register_address, chipid=self.chip_id) for register_address in register_addresses])
-        elif command_name.lower() == "wrfrontend":
+            commands.extend([self.build_command(command_name, Address=register_address, ChipID=chip_id) for register_address in register_addresses])
+        elif command_name == "WrFrontEnd":
+            registers = ["S0", "S1", "SR_Clr", "CalEn", "DIGHITIN_SEL", "GateHitOr", "ReadErrorReq", "StopClkPulse", "SR_Clock", "Efuse_Sense", "HITLD_IN", "Colpr_Mode", "Colpr_Addr"]
+            if self.fei4a:
+                registers.append("ReadSkipped")
+            elif self.fei4b:
+                registers.append("SR_Read")
             self.create_restore_point()
             dcs = kwargs.pop("dcs", range(40))  # set the double columns to latch
+            # in case of empty list
             if not dcs:
                 dcs = range(40)
+            joint_write = kwargs.pop("joint_write", False)
             same_mask_for_all_dc = kwargs.pop("same_mask_for_all_dc", False)
-            register_objects = self.get_pixel_register_objects(False, **kwargs)
+            register_objects = self.get_pixel_register_objects(do_sort=['pxstrobe'], **kwargs)
             self.set_global_register_value("S0", 0)
             self.set_global_register_value("S1", 0)
             self.set_global_register_value("SR_Clr", 0)
-            if self.fei4b:
-                self.set_global_register_value("SR_Read", 0)
             self.set_global_register_value("CalEn", 0)
             self.set_global_register_value("DIGHITIN_SEL", 0)
             self.set_global_register_value("GateHitOr", 0)
-            if self.fei4a:
-                self.set_global_register_value("ReadSkipped", 0)
             self.set_global_register_value("ReadErrorReq", 0)
             self.set_global_register_value("StopClkPulse", 0)
             self.set_global_register_value("SR_Clock", 0)
@@ -823,40 +668,81 @@ class FEI4Register(object):
             self.set_global_register_value("HITLD_IN", 0)
             self.set_global_register_value("Colpr_Mode", 3 if same_mask_for_all_dc else 0)  # write only the addressed double-column
             self.set_global_register_value("Colpr_Addr", 0)
-            commands.extend(self.get_commands("wrregister", name=["S0", "S1", "SR_Clr", "SR_Read", "CalEn", "DIGHITIN_SEL", "GateHitOr", "ReadSkipped", "ReadErrorReq", "StopClkPulse", "SR_Clock", "Efuse_Sense", "HITLD_IN", "Colpr_Mode", "Colpr_Addr"]))
-            for register_object in register_objects:
-                pxstrobe = register_object.pxstrobe
-                bitlength = register_object.bitlength
-                for bit_no, pxstrobe_bit_no in (enumerate(range(bitlength)) if (register_object.littleendian is False) else enumerate(reversed(range(bitlength)))):
-                    try:
-                        self.set_global_register_value("Pixel_Strobes", 2 ** (pxstrobe + bit_no))
-                    except TypeError:
+            if self.fei4a:
+                self.set_global_register_value("ReadSkipped", 0)
+            elif self.fei4b:
+                self.set_global_register_value("SR_Read", 0)
+            commands.extend(self.get_commands("WrRegister", name=registers))
+            if joint_write:
+                pxstrobes = 0
+                first_read = True
+                do_latch = False
+                for register_object in register_objects:
+                    if register_object['bitlength'] != 1:
+                        raise ValueError('Pixel register %s: joint write not supported for pixel DACs' % register_object['name'])
+                    pxstrobe = register_object['pxstrobe']
+                    if not isinstance(pxstrobe, basestring):
+                        do_latch = True
+                        pxstrobes += 2 ** register_object['pxstrobe']
+                    if first_read:
+                        pixel_reg_value = register_object['value']
+                        first_read = False
+                    else:
+                        if np.array_equal(pixel_reg_value, register_object['value']):
+                            pixel_reg_value = register_object['value']
+                        else:
+                            raise ValueError('Pixel register %s: joint write not supported, pixel register values must be equal' % register_object['name'])
+                if do_latch:
+                    self.set_global_register_value("Latch_En", 1)
+                else:
+                    self.set_global_register_value("Latch_En", 0)
+                self.set_global_register_value("Pixel_Strobes", pxstrobes)
+                commands.extend(self.get_commands("WrRegister", name=["Pixel_Strobes", "Latch_En"]))
+                for dc_no in (dcs[:1] if same_mask_for_all_dc else dcs):
+                    self.set_global_register_value("Colpr_Addr", dc_no)
+                    commands.extend(self.get_commands("WrRegister", name=["Colpr_Addr"]))
+                    register_bitset = self.get_pixel_register_bitset(register_objects[0], 0, dc_no)
+                    commands.extend([self.build_command(command_name, PixelData=register_bitset, ChipID=chip_id, **kwargs)])
+                    if do_latch:
+                        commands.extend(self.get_commands("GlobalPulse", Width=0))
+            else:
+                for register_object in register_objects:
+                    pxstrobe = register_object['pxstrobe']
+                    if isinstance(pxstrobe, basestring):
+                        do_latch = False
                         self.set_global_register_value("Pixel_Strobes", 0)  # no latch
                         self.set_global_register_value("Latch_En", 0)
-                        do_latch = False
+                        commands.extend(self.get_commands("WrRegister", name=["Pixel_Strobes", "Latch_En"]))
                     else:
-                        self.set_global_register_value("Latch_En", 1)
                         do_latch = True
-                    commands.extend(self.get_commands("wrregister", name=["Pixel_Strobes", "Latch_En"]))
-                    for dc_no in (dcs[:1] if same_mask_for_all_dc else dcs):
-                        self.set_global_register_value("Colpr_Addr", dc_no)
-                        commands.extend(self.get_commands("wrregister", name=["Colpr_Addr"]))
-                        register_bitset = self.get_pixel_register_bitset(register_object, pxstrobe_bit_no, dc_no)
-                        commands.extend([self.build_command(command_name, pixeldata=register_bitset, chipid=self.chip_id, **kwargs)])
-                        if do_latch is True:
-                            # self.set_global_register_value("Latch_En", 1)
-                            # fe_command.extend(self.get_commands("wrregister", name = ["Latch_En"]))
-                            commands.extend(self.get_commands("globalpulse", width=0))
-                            # self.set_global_register_value("Latch_En", 0)
-                            # fe_command.extend(self.get_commands("wrregister", name = ["Latch_En"]))
+                        self.set_global_register_value("Latch_En", 1)
+                        commands.extend(self.get_commands("WrRegister", name=["Latch_En"]))
+                    bitlength = register_object['bitlength']
+                    for bit_no, pxstrobe_bit_no in (enumerate(range(bitlength)) if (register_object['littleendian'] is False) else enumerate(reversed(range(bitlength)))):
+                        if do_latch:
+                            self.set_global_register_value("Pixel_Strobes", 2 ** (pxstrobe + bit_no))
+                            commands.extend(self.get_commands("WrRegister", name=["Pixel_Strobes"]))
+                        for dc_no in (dcs[:1] if same_mask_for_all_dc else dcs):
+                            self.set_global_register_value("Colpr_Addr", dc_no)
+                            commands.extend(self.get_commands("WrRegister", name=["Colpr_Addr"]))
+                            register_bitset = self.get_pixel_register_bitset(register_object, pxstrobe_bit_no, dc_no)
+                            commands.extend([self.build_command(command_name, PixelData=register_bitset, ChipID=chip_id, **kwargs)])
+                            if do_latch:
+                                commands.extend(self.get_commands("GlobalPulse", Width=0))
             self.restore(pixel_register=False)
-            commands.extend(self.get_commands("wrregister", name=["S0", "S1", "SR_Clr", "SR_Read", "CalEn", "DIGHITIN_SEL", "GateHitOr", "ReadSkipped", "ReadErrorReq", "StopClkPulse", "SR_Clock", "Efuse_Sense", "HITLD_IN", "Colpr_Mode", "Colpr_Addr", "Pixel_Strobes", "Latch_En"]))
-        elif command_name.lower() == "rdfrontend":
+            commands.extend(self.get_commands("WrRegister", name=registers))
+        elif command_name == "RdFrontEnd":
+            registers = ["Conf_AddrEnable", "S0", "S1", "SR_Clr", "CalEn", "DIGHITIN_SEL", "GateHitOr", "ReadErrorReq", "StopClkPulse", "SR_Clock", "Efuse_Sense", "HITLD_IN", "Colpr_Mode", "Colpr_Addr", "Pixel_Strobes", "Latch_En"]
+            if self.fei4a:
+                registers.append("ReadSkipped")
+            elif self.fei4b:
+                registers.append("SR_Read")
             self.create_restore_point()
             dcs = kwargs.pop("dcs", range(40))  # set the double columns to latch
+            # in case of empty list
             if not dcs:
                 dcs = range(40)
-            register_objects = self.get_pixel_register_objects(False, **kwargs)
+            register_objects = self.get_pixel_register_objects(**kwargs)
             self.set_global_register_value('Conf_AddrEnable', 1)
             self.set_global_register_value("S0", 0)
             self.set_global_register_value("S1", 0)
@@ -877,50 +763,48 @@ class FEI4Register(object):
             self.set_global_register_value("Colpr_Addr", 0)
             self.set_global_register_value("Latch_En", 0)
             self.set_global_register_value("Pixel_Strobes", 0)
-            commands.extend(self.get_commands("wrregister", name=["Conf_AddrEnable", "S0", "S1", "SR_Clr", "SR_Read", "CalEn", "DIGHITIN_SEL", "GateHitOr", "ReadSkipped", "ReadErrorReq", "StopClkPulse", "SR_Clock", "Efuse_Sense", "HITLD_IN", "Colpr_Mode", "Colpr_Addr", "Pixel_Strobes", "Latch_En"]))
+            commands.extend(self.get_commands("WrRegister", name=registers))
             for index, register_object in enumerate(register_objects):  # make sure that EnableDigInj is first read back, because it is not latched
-                if register_object.name == 'enablediginj':
+                if register_object['name'] == 'EnableDigInj':
                     register_objects[0], register_objects[index] = register_objects[index], register_objects[0]
                     break
             for register_object in register_objects:
-                pxstrobe = register_object.pxstrobe
-                bitlength = register_object.bitlength
+                pxstrobe = register_object['pxstrobe']
+                bitlength = register_object['bitlength']
                 for pxstrobe_bit_no in range(bitlength):
-                    logging.debug('Pixel Register %s Bit %d', register_object.full_name, pxstrobe_bit_no)
+                    logging.debug('Pixel Register %s Bit %d', register_object['name'], pxstrobe_bit_no)
                     do_latch = True
                     try:
                         self.set_global_register_value("Pixel_Strobes", 2 ** (pxstrobe + pxstrobe_bit_no))
                     except TypeError:  # thrown for not latched digInjection
                         self.set_global_register_value("Pixel_Strobes", 0)  # do not latch
                         do_latch = False
-                    commands.extend(self.get_commands("wrregister", name=["Pixel_Strobes"]))
+                    commands.extend(self.get_commands("WrRegister", name=["Pixel_Strobes"]))
                     for dc_no in dcs:
                         self.set_global_register_value("Colpr_Addr", dc_no)
-                        commands.extend(self.get_commands("wrregister", name=["Colpr_Addr"]))
+                        commands.extend(self.get_commands("WrRegister", name=["Colpr_Addr"]))
                         if do_latch is True:
                             self.set_global_register_value("S0", 1)
                             self.set_global_register_value("S1", 1)
                             self.set_global_register_value("SR_Clock", 1)
-                            commands.extend(self.get_commands("wrregister", name=["S0", "S1", "SR_Clock"]))
-                            commands.extend(self.get_commands("globalpulse", width=0))
+                            commands.extend(self.get_commands("WrRegister", name=["S0", "S1", "SR_Clock"]))
+                            commands.extend(self.get_commands("GlobalPulse", Width=0))
                         self.set_global_register_value("S0", 0)
                         self.set_global_register_value("S1", 0)
                         self.set_global_register_value("SR_Clock", 0)
-                        commands.extend(self.get_commands("wrregister", name=["S0", "S1", "SR_Clock"]))
-                        register_bitset = self.get_pixel_register_bitset(register_object, pxstrobe_bit_no if (register_object.littleendian is False) else register_object.bitlength - pxstrobe_bit_no - 1, dc_no)
+                        commands.extend(self.get_commands("WrRegister", name=["S0", "S1", "SR_Clock"]))
+                        register_bitset = self.get_pixel_register_bitset(register_object, pxstrobe_bit_no if (register_object['littleendian'] is False) else register_object['bitlength'] - pxstrobe_bit_no - 1, dc_no)
                         if self.fei4b:
                             self.set_global_register_value("SR_Read", 1)
-                            commands.extend(self.get_commands("wrregister", name=["SR_Read"]))
-                        commands.extend([self.build_command("wrfrontend", pixeldata=register_bitset, chipid=self.chip_id)])
+                            commands.extend(self.get_commands("WrRegister", name=["SR_Read"]))
+                        commands.extend([self.build_command("WrFrontEnd", PixelData=register_bitset, ChipID=chip_id)])
                         if self.fei4b:
                             self.set_global_register_value("SR_Read", 0)
-                            commands.extend(self.get_commands("wrregister", name=["SR_Read"]))
+                            commands.extend(self.get_commands("WrRegister", name=["SR_Read"]))
             self.restore(pixel_register=False)
-            commands.extend(self.get_commands("wrregister", name=["Conf_AddrEnable", "S0", "S1", "SR_Clr", "SR_Read", "CalEn", "DIGHITIN_SEL", "GateHitOr", "ReadSkipped", "ReadErrorReq", "StopClkPulse", "SR_Clock", "Efuse_Sense", "HITLD_IN", "Colpr_Mode", "Colpr_Addr", "Pixel_Strobes", "Latch_En"]))
+            commands.extend(self.get_commands("WrRegister", name=registers))
         else:
-            # print command_name.lower()
-            commands.append(self.build_command(command_name, chipid=self.chip_id, **kwargs))
-        # pprint.pprint(fe_command)
+            commands.append(self.build_command(command_name, ChipID=chip_id, **kwargs))
         return commands
 
     def build_command(self, command_name, **kwargs):
@@ -935,65 +819,48 @@ class FEI4Register(object):
         -----
         Receives: command name as defined inside xml file, key-value-pairs as defined inside bit stream filed for each command
         """
-        command_name = command_name.lower()
+#         command_name = command_name.lower()
         command_bitvector = bitarray(0, endian='little')
-        try:
-            command_object = self.get_command_objects(name=command_name)[0]
-        except IndexError:
-            command_object = None
-        if command_object:
-            command_parts = re.split("[\s]*\+[\s]*", command_object.bitstream.lower())
-            # for index, part in enumerate(command_parts, start = 1): # loop over command parts
-            for part in command_parts:  # loop over command parts
+        if command_name not in self.commands:
+            raise ValueError('Unknown command %s' % command_name)
+        command_object = self.commands[command_name]
+        command_parts = re.split(r'\s*[+]\s*', command_object['bitstream'])
+        # for index, part in enumerate(command_parts, start = 1): # loop over command parts
+        for part in command_parts:  # loop over command parts
+            try:
+                command_part_object = self.commands[part]
+            except KeyError:
+                command_part_object = None
+            if command_part_object and 'bitstream'in command_part_object:  # command parts of defined content and length, e.g. Slow, ...
+                if string_is_binary(command_part_object['bitstream']):
+                    command_bitvector += bitarray(command_part_object['bitstream'], endian='little')
+                else:
+                    command_bitvector += self.build_command(part, **kwargs)
+            elif command_part_object:  # Command parts with any content of defined length, e.g. ChipID, Address, ...
+                if part in kwargs:
+                    value = kwargs[part]
+                else:
+                    raise ValueError('Value of command part %s not given' % part)
                 try:
-                    command_part_object = self.get_command_objects(name=part)[0]
-                except IndexError:
-                    command_part_object = None
-                if command_part_object and len(command_part_object.bitstream) != 0:  # command parts of defined content and length, e.g. Slow, ...
-                    if string_is_binary(command_part_object.bitstream):
-                        command_bitvector += bitarray(command_part_object.bitstream, endian='little')
-                    else:
-                        command_bitvector += self.build_command(part, **kwargs)
-                elif command_part_object and len(command_part_object.bitstream) == 0:  # Command parts with any content of defined length, e.g. ChipID, Address, ...
-                    value = None
-                    if part in kwargs.keys():
-                        value = kwargs[part]
+                    command_bitvector += value
+                except TypeError:  # value is no bitarray
+                    if string_is_binary(value):
+                        value = int(value, 2)
                     try:
-                        command_bitvector += value
-                    except TypeError:  # value is no bitarray
-                        if string_is_binary(value):
-                            value = int(value, 2)
-                        try:
-                            command_bitvector += bitarray_from_value(value=int(value), size=command_part_object.bitlength, fmt='I')
-                        except:
-                            raise Exception("unknown type")
-                elif string_is_binary(part):
-                    command_bitvector += bitarray(part, endian='little')
-                # elif part in kwargs.keys():
-                #    command_bitvector += kwargs[command_name]
-            if command_bitvector.length() != command_object.bitlength:
-                raise Exception("command has wrong length")
+                        command_bitvector += bitarray_from_value(value=int(value), size=command_part_object['bitlength'], fmt='I')
+                    except:
+                        raise TypeError("Type of value not supported")
+            elif string_is_binary(part):
+                command_bitvector += bitarray(part, endian='little')
+            # elif part in kwargs.keys():
+            #    command_bitvector += kwargs[command_name]
+            else:
+                raise ValueError("Cannot process command part %s" % part)
+        if command_bitvector.length() != command_object['bitlength']:
+            raise ValueError("Command has unexpected length")
         if command_bitvector.length() == 0:
-            raise Exception("unknown command name")
+            raise ValueError("Command has length 0")
         return command_bitvector
-
-    def add_global_registers(self, x, y):
-        """Adding up bitvectors.
-
-        Usage: reduce(self.add_global_registers, [bitvector_1, bitvector_2, ...])
-        Receives: list of bitvectors, FEI4GlobalRegister objects
-        Returns: single bitvector
-
-        """
-        try:
-            return x + y
-        except AttributeError:
-            pass
-
-        try:
-            return x + bitarray_from_value(value=y.value, size=y.bitlength, fmt='I')
-        except AttributeError:
-            pass
 
     def get_global_register_attributes(self, register_attribute, do_sort=True, **kwargs):
         """Calculating register numbers from register names.
@@ -1003,30 +870,27 @@ class FEI4Register(object):
         Returns: list of attribute values that matches dictionaries of attributes
 
         """
-        register_attribute_list = []
+        # speed up of the most often used keyword name
+        try:
+            names = iterable(kwargs.pop('name'))
+        except KeyError:
+            register_attribute_list = []
+        else:
+            register_attribute_list = [self.global_registers[reg][register_attribute] for reg in names]
         for keyword in kwargs.keys():
-            # make keyword value list
-            import collections
-
-            # make keyword values iterable
-            if not isinstance(kwargs[keyword], collections.Iterable):
-                kwargs[keyword] = iterable(kwargs[keyword])
-
-            # lowercase letters for string keyword values
+            allowed_values = iterable(kwargs[keyword])
             try:
-                keyword_values = [x.lower() for x in iterable(kwargs[keyword])]
-            except AttributeError:
-                keyword_values = kwargs[keyword]
-            try:
-                register_attribute_list.extend([getattr(x, register_attribute) for x in self.global_registers if set(iterable(getattr(x, keyword))).intersection(keyword_values)])
+                register_attribute_list.extend(map(itemgetter(register_attribute), filter(lambda global_register: set(iterable(global_register[keyword])).intersection(allowed_values), self.global_registers.itervalues())))
             except AttributeError:
                 pass
+        if not register_attribute_list and filter(None, kwargs.itervalues()):
+            raise ValueError('Global register attribute %s empty' % register_attribute)
         if do_sort:
             return sorted(set(flatten_iterable(register_attribute_list)))
         else:
             return flatten_iterable(register_attribute_list)
 
-    def get_global_register_objects(self, do_sort=True, **kwargs):
+    def get_global_register_objects(self, do_sort=[], reverse=False, **kwargs):
         """Generate register objects (list) from register name list
 
         Usage: get_global_register_objects(name = ["Amp2Vbn", "GateHitOr", "DisableColumnCnfg"], address = [2, 3])
@@ -1034,30 +898,24 @@ class FEI4Register(object):
         Returns: list of register objects
 
         """
-        register_objects = []
-        for keyword in kwargs.keys():
-            # make keyword value list
-            import collections
-
-            # make keyword values iterable
-            if not isinstance(kwargs[keyword], collections.Iterable):
-                kwargs[keyword] = iterable(kwargs[keyword])
-
-            # lowercase letters for string keyword values
-            try:
-                keyword_values = [x.lower() for x in iterable(kwargs[keyword])]
-            except AttributeError:
-                keyword_values = kwargs[keyword]
-            try:
-                register_objects.extend([x for x in self.global_registers if set(iterable(getattr(x, keyword))).intersection(keyword_values)])  # any(set([False]).intersection([False])) returns False
-            except AttributeError:
-                pass
+        # speed up of the most often used keyword name
+        try:
+            names = iterable(kwargs.pop('name'))
+        except KeyError:
+            register_objects = []
+        else:
+            register_objects = [self.pixel_registers[reg] for reg in names]
+        for keyword in kwargs.iterkeys():
+            allowed_values = iterable(kwargs[keyword])
+            register_objects.extend(filter(lambda global_register: set(iterable(global_register[keyword])).intersection(allowed_values), self.global_registers.itervalues()))
+        if not register_objects and filter(None, kwargs.itervalues()):
+            raise ValueError('Global register objects empty')
         if do_sort:
-            return sorted(register_objects)
+            return sorted(register_objects, key=itemgetter(*do_sort), reverse=reverse)
         else:
             return register_objects
 
-    def get_global_register_bitsets(self, register_addresses, do_sort=True):  # TODO instead of register_names use
+    def get_global_register_bitsets(self, register_addresses, do_sort=True):
         """Calculating register bitsets from register addresses.
 
         Usage: get_global_register_bitsets([regaddress_1, regaddress_2, ...])
@@ -1072,14 +930,14 @@ class FEI4Register(object):
             register_bitset.setall(0)
             register_littleendian = False
             for register_object in register_objects:
-                if register_object.register_littleendian:  # check for register endianness
+                if register_object['register_littleendian']:  # check for register endianness
                     register_littleendian = True
-                if (16 * register_object.address + register_object.offset < 16 * (register_address + 1) and 16 * register_object.address + register_object.offset + register_object.bitlength > 16 * register_address):
-                    reg = bitarray_from_value(value=register_object.value, size=register_object.bitlength)
-                    if register_object.littleendian:
+                if (16 * register_object['address'] + register_object['offset'] < 16 * (register_address + 1) and 16 * register_object['address'] + register_object['offset'] + register_object['bitlength'] > 16 * register_address):
+                    reg = bitarray_from_value(value=register_object['value'], size=register_object['bitlength'])
+                    if register_object['littleendian']:
                         reg.reverse()
-                    # register_bitset[max(0, 16*(register_object.address-register_address)+register_object.offset):min(16, 16*(register_object.address-register_address)+register_object.offset+register_object.bitlength)] |= reg[max(0, 16*(register_address-register_object.address)-register_object.offset):min(register_object.bitlength,16*(register_address-register_object.address+1)-register_object.offset)] # [ bit(n) bit(n-1)... bit(0) ]
-                    register_bitset[max(0, 16 - 16 * (register_object.address - register_address) - register_object.offset - register_object.bitlength):min(16, 16 - 16 * (register_object.address - register_address) - register_object.offset)] |= reg[max(0, register_object.bitlength - 16 - 16 * (register_address - register_object.address) + register_object.offset):min(register_object.bitlength, register_object.bitlength + 16 - 16 * (register_address - register_object.address + 1) + register_object.offset)]  # [ bit(0)... bit(n-1) bit(n) ]
+#                     register_bitset[max(0, 16 * (register_object['address'] - register_address) + register_object['offset']):min(16, 16 * (register_object['address'] - register_address) + register_object['offset'] + register_object['bitlength'])] |= reg[max(0, 16 * (register_address - register_object['address']) - register_object['offset']):min(register_object['bitlength'], 16 * (register_address - register_object['address'] + 1) - register_object['offset'])]  # [ bit(n) bit(n-1)... bit(0) ]
+                    register_bitset[max(0, 16 - 16 * (register_object['address'] - register_address) - register_object['offset'] - register_object['bitlength']):min(16, 16 - 16 * (register_object['address'] - register_address) - register_object['offset'])] |= reg[max(0, register_object['bitlength'] - 16 - 16 * (register_address - register_object['address']) + register_object['offset']):min(register_object['bitlength'], register_object['bitlength'] + 16 - 16 * (register_address - register_object['address'] + 1) + register_object['offset'])]  # [ bit(0)... bit(n-1) bit(n) ]
                 else:
                     raise Exception("wrong register object")
             if register_littleendian:
@@ -1087,108 +945,30 @@ class FEI4Register(object):
             register_bitsets.append(register_bitset)
         return register_bitsets
 
-    def get_command_objects(self, **kwargs):
+    def get_pixel_register_objects(self, do_sort=[], reverse=False, **kwargs):
         """Generate register objects (list) from register name list
 
-        Usage: get_global_register_objects(name = ["Amp2Vbn", "GateHitOr", "DisableColumnCnfg"], address = [2, 3])
-        Receives: keyword lists of register names, adresses, ...
+        Usage: get_pixel_register_objects(name = ["TDAC", "FDAC"])
+        Receives: keyword lists of register names, addresses,...
         Returns: list of register objects
 
         """
-        command_objects = []
-        for keyword in kwargs.keys():
-            # make keyword value list
-            import collections
-
-            # make keyword values iterable
-            if not isinstance(kwargs[keyword], collections.Iterable):
-                kwargs[keyword] = iterable(kwargs[keyword])
-
-            # lowercase letters for string keyword values
-            try:
-                keyword_values = [x.lower() for x in iterable(kwargs[keyword])]
-            except AttributeError:
-                keyword_values = kwargs[keyword]
-            try:
-                command_objects.extend([x for x in self.fe_command if set(iterable(getattr(x, keyword))).intersection(keyword_values)])
-            except AttributeError:
-                pass
-        return command_objects
-
-    def get_pixel_register_attributes(self, register_attribute, do_sort=True, **kwargs):
-        """Calculating register numbers from register names.
-
-        Usage: get_pixel_register_attributes("attribute_name", name = [regname_1, regname_2, ...], addresses = 2)
-        Receives: attribute name to be returned, dictionaries (kwargs) of register attributes and values for making cuts
-        Returns: list of attribute values that matches dictionaries of attributes
-
-        """
-        register_attribute_list = []
-        for keyword in kwargs.keys():
-            # make keyword value list
-            import collections
-
-            # make keyword values iterable
-            if not isinstance(kwargs[keyword], collections.Iterable):
-                kwargs[keyword] = iterable(kwargs[keyword])
-
-            # lowercase letters for string keyword values
-            try:
-                keyword_values = [x.lower() for x in iterable(kwargs[keyword])]
-            except AttributeError:
-                keyword_values = kwargs[keyword]
-            try:
-                register_attribute_list.extend([getattr(x, register_attribute) for x in self.pixel_registers if set(iterable(getattr(x, keyword))).intersection(keyword_values)])
-            except AttributeError:
-                pass
-        if do_sort:
-            return sorted(set(flatten_iterable(register_attribute_list)))
+        # speed up of the most often used keyword name
+        try:
+            names = iterable(kwargs.pop('name'))
+        except KeyError:
+            register_objects = []
         else:
-            return flatten_iterable(register_attribute_list)
-
-    def get_pixel_register_objects(self, do_sort=True, **kwargs):
-        """Generate register objects (list) from register name list
-
-        Usage: get_pixel_register_objects(name = ["TDAC"], address = [2, 3])
-        Receives: keyword lists of register names, addresses,... for making cuts
-        Returns: list of register objects
-
-        """
-        register_objects = []
-        for keyword in kwargs.keys():
-            keyword_values = iterable(kwargs[keyword])
-            try:
-                keyword_values = [x.lower() for x in keyword_values]
-            except AttributeError:
-                pass
-            register_objects.extend(itertools.ifilter(lambda pixel_register: set.intersection(set(iterable(getattr(pixel_register, keyword))), keyword_values), self.pixel_registers))
+            register_objects = [self.pixel_registers[reg] for reg in names]
+        for keyword in kwargs.iterkeys():
+            allowed_values = iterable(kwargs[keyword])
+            register_objects.extend(filter(lambda pixel_register: pixel_register[keyword] in allowed_values, self.pixel_registers.itervalues()))
+        if not register_objects and filter(None, kwargs.itervalues()):
+            raise ValueError('Pixel register objects empty')
         if do_sort:
-            return sorted(register_objects)
+            return sorted(register_objects, key=itemgetter(*do_sort), reverse=reverse)
         else:
             return register_objects
-
-#        register_objects = []
-#        for keyword in kwargs.keys():
-#            # make keyword value list
-#            import collections
-#
-#            # make keyword values iterable
-#            if not isinstance(kwargs[keyword], collections.Iterable):
-#                kwargs[keyword] = iterable(kwargs[keyword])
-#
-#            # lowercase letters for string keyword values
-#            try:
-#                keyword_values = [x.lower() for x in iterable(kwargs[keyword])]
-#            except AttributeError:
-#                keyword_values = kwargs[keyword]
-#            try:
-#                register_objects.extend([x for x in self.pixel_registers if set(iterable(getattr(x, keyword))).intersection(keyword_values)]) # any(set([False]).intersection([False])) returns False
-#            except AttributeError:
-#                pass
-#        if do_sort:
-#            return sorted(register_objects)
-#        else:
-#            return register_objects
 
     def get_pixel_register_bitset(self, register_object, bit_no, dc_no):
         """Calculating pixel register bitsets from pixel register addresses.
@@ -1198,23 +978,20 @@ class FEI4Register(object):
         Returns: double column bitset
 
         """
-        # pprint.pprint(register_object)
-        if not (dc_no >= 0 and dc_no < 40):
-            raise Exception("wrong DC number")
-        if not (bit_no >= 0 and bit_no < register_object.bitlength):
-            raise Exception("wrong bit number")
-        col0 = register_object.value[dc_no * 2, :]
+        if not 0 <= dc_no < 40:
+            raise ValueError("Pixel register %s: DC out of range" % register_object['name'])
+        if not 0 <= bit_no < register_object['bitlength']:
+            raise ValueError("Pixel register %s: bit number out of range" % register_object['name'])
+        col0 = register_object['value'][dc_no * 2, :]
         sel0 = (2 ** bit_no == (col0 & 2 ** bit_no))
         bv0 = bitarray(sel0.tolist(), endian='little')
-        col1 = register_object.value[dc_no * 2 + 1, :]
+        col1 = register_object['value'][dc_no * 2 + 1, :]
         sel1 = (2 ** bit_no == (col1 & 2 ** bit_no))
         # sel1 = sel1.astype(numpy.uint8) # copy of array
         # sel1 = sel1.view(dtype=np.uint8) # in-place type conversion
         bv1 = bitarray(sel1.tolist(), endian='little')
         bv1.reverse()  # shifted first
         # bv = bv1+bv0
-        # print bv
-        # print bv.length()
         return bv1 + bv0
 
     @contextmanager

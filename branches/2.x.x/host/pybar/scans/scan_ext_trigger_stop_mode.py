@@ -85,23 +85,23 @@ class ExtTriggerScan(ScanBase):
 
             # Stop mode related hacks to read all hits stored with stop mode
             self.register.set_global_register_value("StopModeCnfg", 1)
-            stop_mode_cmd = self.register.get_commands("wrregister", name=["StopModeCnfg"])[0]
+            stop_mode_cmd = self.register.get_commands("WrRegister", name=["StopModeCnfg"])[0]
             self.register.set_global_register_value("StopModeCnfg", 0)
-            stop_mode_off_cmd = self.register.get_commands("wrregister", name=["StopModeCnfg"])[0]
+            stop_mode_off_cmd = self.register.get_commands("WrRegister", name=["StopModeCnfg"])[0]
 
             self.register.set_global_register_value("StopClkPulse", 1)
-            stop_clock_pulse_cmd_high = self.register.get_commands("wrregister", name=["StopClkPulse"])[0]
+            stop_clock_pulse_cmd_high = self.register.get_commands("WrRegister", name=["StopClkPulse"])[0]
             self.register.set_global_register_value("StopClkPulse", 0)
-            stop_clock_pulse_cmd_low = self.register.get_commands("wrregister", name=["StopClkPulse"])[0]
+            stop_clock_pulse_cmd_low = self.register.get_commands("WrRegister", name=["StopClkPulse"])[0]
 #             read_register = self.register.get_commands("rdregister", name=["StopClkPulse"])[0]
 
             start_sequence = self.register_utils.concatenate_commands((
                 self.register.get_commands("zeros", length=self.trigger_delay)[0],
                 stop_mode_cmd,
                 self.register.get_commands("zeros", length=20)[0],
-                stop_clock_pulse_cmd_high,  # FIXME: before confmode?
+                stop_clock_pulse_cmd_high,  # FIXME: before ConfMode?
                 self.register.get_commands("zeros", length=50)[0],
-                self.register.get_commands("confmode")[0]))
+                self.register.get_commands("ConfMode")[0]))
 
             stop_sequence = self.register_utils.concatenate_commands((
                 self.register.get_commands("zeros", length=50)[0],
@@ -113,11 +113,11 @@ class ExtTriggerScan(ScanBase):
             # define the command sequence to read the hits of one latency count
             one_latency_read = self.register_utils.concatenate_commands((
                 self.register.get_commands("zeros", length=50)[0],
-                self.register.get_commands("runmode")[0],
+                self.register.get_commands("RunMode")[0],
                 self.register.get_commands("zeros", length=50)[0],
-                self.register.get_commands("lv1")[0],
+                self.register.get_commands("LV1")[0],
                 self.register.get_commands("zeros", length=2000)[0],
-                self.register.get_commands("confmode")[0],
+                self.register.get_commands("ConfMode")[0],
                 self.register.get_commands("zeros", length=1000)[0],
                 self.register.get_commands("globalpulse", width=0)[0],
                 self.register.get_commands("zeros", length=100)[0]))
@@ -201,13 +201,13 @@ class ExtTriggerScan(ScanBase):
         pixel_reg = "Enable"
         mask = make_box_pixel_mask_from_col_row(column=self.col_span, row=self.row_span)
         commands = []
-        commands.extend(self.register.get_commands("confmode"))
+        commands.extend(self.register.get_commands("ConfMode"))
         enable_mask = np.logical_and(mask, self.register.get_pixel_register_value(pixel_reg))
         if self.enable_all_pixel:
             self.register.set_pixel_register_value(pixel_reg, 1)
         else:
             self.register.set_pixel_register_value(pixel_reg, enable_mask)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, name=pixel_reg))
         # generate mask for Imon mask
         pixel_reg = "Imon"
         if self.enable_hitbus:
@@ -216,18 +216,18 @@ class ExtTriggerScan(ScanBase):
         else:
             imon_mask = 1
         self.register.set_pixel_register_value(pixel_reg, imon_mask)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=pixel_reg))
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, name=pixel_reg))
         # disable C_inj mask
         pixel_reg = "C_High"
         self.register.set_pixel_register_value(pixel_reg, 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name=pixel_reg))
         pixel_reg = "C_Low"
         self.register.set_pixel_register_value(pixel_reg, 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name=pixel_reg))
         self.register.set_global_register_value("Trig_Lat", self.trig_latency)  # set trigger latency
         self.register.set_global_register_value("Trig_Count", 1)  # set number of consecutive triggers to one for stop mode readout
 
-        commands.extend(self.register.get_commands("wrregister", name=["Trig_Lat", "Trig_Count"]))
+        commands.extend(self.register.get_commands("WrRegister", name=["Trig_Lat", "Trig_Count"]))
         self.register_utils.send_commands(commands)
 
     def analyze(self):

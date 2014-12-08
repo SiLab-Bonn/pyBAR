@@ -40,16 +40,20 @@ class FEI4RegisterUtils(object):
     def send_commands(self, commands, repeat=1, wait_for_finish=True, concatenate=True, byte_padding=False, clear_memory=False):
         if concatenate:
             commands_iter = iter(commands)
-            concatenated_cmd = commands_iter.next()
-            for command in commands_iter:
-                concatenated_cmd_tmp = self.concatenate_commands((concatenated_cmd, command), byte_padding=byte_padding)
-                if concatenated_cmd_tmp.length() > self.command_memory_byte_size * 8:
-                    self.send_command(command=concatenated_cmd, repeat=repeat, wait_for_finish=wait_for_finish, set_length=True, clear_memory=clear_memory)
-                    concatenated_cmd = command
-                else:
-                    concatenated_cmd = concatenated_cmd_tmp
-            # send remaining commands
-            self.send_command(command=concatenated_cmd, repeat=repeat, wait_for_finish=wait_for_finish, set_length=True, clear_memory=clear_memory)
+            try:
+                concatenated_cmd = commands_iter.next()
+            except StopIteration:
+                logging.warning('No commands to be sent')
+            else:
+                for command in commands_iter:
+                    concatenated_cmd_tmp = self.concatenate_commands((concatenated_cmd, command), byte_padding=byte_padding)
+                    if concatenated_cmd_tmp.length() > self.command_memory_byte_size * 8:
+                        self.send_command(command=concatenated_cmd, repeat=repeat, wait_for_finish=wait_for_finish, set_length=True, clear_memory=clear_memory)
+                        concatenated_cmd = command
+                    else:
+                        concatenated_cmd = concatenated_cmd_tmp
+                # send remaining commands
+                self.send_command(command=concatenated_cmd, repeat=repeat, wait_for_finish=wait_for_finish, set_length=True, clear_memory=clear_memory)
         else:
             max_length = 0
             if repeat:
@@ -107,13 +111,13 @@ class FEI4RegisterUtils(object):
         '''
         logging.info('Sending Global Reset')
         commands = []
-        commands.extend(self.register.get_commands("confmode"))
-        commands.extend(self.register.get_commands("globalreset"))
+        commands.extend(self.register.get_commands("ConfMode"))
+        commands.extend(self.register.get_commands("GlobalReset"))
         self.send_commands(commands)
         time.sleep(0.1)
         commands = []
-        commands.extend(self.register.get_commands("confmode"))
-        commands.extend(self.register.get_commands("runmode"))
+        commands.extend(self.register.get_commands("ConfMode"))
+        commands.extend(self.register.get_commands("RunMode"))
         self.send_commands(commands)
 
     def reset_service_records(self):
@@ -124,13 +128,13 @@ class FEI4RegisterUtils(object):
         '''
         logging.info('Resetting Service Records')
         commands = []
-        commands.extend(self.register.get_commands("confmode"))
+        commands.extend(self.register.get_commands("ConfMode"))
         self.register.set_global_register_value('ReadErrorReq', 1)
-        commands.extend(self.register.get_commands("wrregister", name=['ReadErrorReq']))
-        commands.extend(self.register.get_commands("globalpulse", width=0))
+        commands.extend(self.register.get_commands("WrRegister", name=['ReadErrorReq']))
+        commands.extend(self.register.get_commands("GlobalPulse", Width=0))
         self.register.set_global_register_value('ReadErrorReq', 0)
-        commands.extend(self.register.get_commands("wrregister", name=['ReadErrorReq']))
-        commands.extend(self.register.get_commands("runmode"))
+        commands.extend(self.register.get_commands("WrRegister", name=['ReadErrorReq']))
+        commands.extend(self.register.get_commands("RunMode"))
         self.send_commands(commands)
 
     def reset_bunch_counter(self):
@@ -138,13 +142,13 @@ class FEI4RegisterUtils(object):
         '''
         logging.info('Resetting Bunch Counter')
         commands = []
-        commands.extend(self.register.get_commands("confmode"))
+        commands.extend(self.register.get_commands("ConfMode"))
         commands.extend(self.register.get_commands("BCR"))
         self.send_commands(commands)
         time.sleep(0.1)
         commands = []
-        commands.extend(self.register.get_commands("confmode"))
-        commands.extend(self.register.get_commands("runmode"))
+        commands.extend(self.register.get_commands("ConfMode"))
+        commands.extend(self.register.get_commands("RunMode"))
         self.send_commands(commands)
 
     def reset_event_counter(self):
@@ -152,13 +156,13 @@ class FEI4RegisterUtils(object):
         '''
         logging.info('Resetting Event Counter')
         commands = []
-        commands.extend(self.register.get_commands("confmode"))
+        commands.extend(self.register.get_commands("ConfMode"))
         commands.extend(self.register.get_commands("ECR"))  # wait some time after ECR
         self.send_commands(commands)
         time.sleep(0.1)
         commands = []
-        commands.extend(self.register.get_commands("confmode"))
-        commands.extend(self.register.get_commands("runmode"))
+        commands.extend(self.register.get_commands("ConfMode"))
+        commands.extend(self.register.get_commands("RunMode"))
         self.send_commands(commands)
 
     def configure_all(self, same_mask_for_all_dc=False):
@@ -168,24 +172,22 @@ class FEI4RegisterUtils(object):
     def configure_global(self):
         logging.info('Sending global configuration to FE')
         commands = []
-        commands.extend(self.register.get_commands("confmode"))
-        commands.extend(self.register.get_commands("wrregister", readonly=False))
-        commands.extend(self.register.get_commands("runmode"))
+        commands.extend(self.register.get_commands("ConfMode"))
+        commands.extend(self.register.get_commands("WrRegister", readonly=False))
+        commands.extend(self.register.get_commands("RunMode"))
         self.send_commands(commands, concatenate=True)
 
     def configure_pixel(self, same_mask_for_all_dc=False):
         logging.info('Sending pixel configuration to FE')
         commands = []
-        commands.extend(self.register.get_commands("confmode"))
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=["TDAC", "FDAC"]))  # same config for all DC is in general a not so good idea
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=same_mask_for_all_dc, name=["Imon", "Enable", "c_high", "c_low"]))
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=same_mask_for_all_dc, name=["EnableDigInj"]))  # write EnableDigInj last
-        commands.extend(self.register.get_commands("runmode"))
+        commands.extend(self.register.get_commands("ConfMode"))
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=same_mask_for_all_dc, name=["TDAC", "FDAC", "Imon", "Enable", "C_High", "C_Low", "EnableDigInj"]))
+        commands.extend(self.register.get_commands("RunMode"))
         self.send_commands(commands)
 
     def set_gdac(self, value):
         commands = []
-        commands.extend(self.register.get_commands("confmode"))
+        commands.extend(self.register.get_commands("ConfMode"))
         if self.register.fei4b:
             altf = value & 0xff
             altc = (value >> 7)
@@ -197,8 +199,8 @@ class FEI4RegisterUtils(object):
             altc = (value >> 8)
             self.register.set_global_register_value("Vthin_AltCoarse", altc)  # take high word
             self.register.set_global_register_value("Vthin_AltFine", altf)  # take low word
-        commands.extend(self.register.get_commands("wrregister", name=["Vthin_AltFine", "Vthin_AltCoarse"]))
-        commands.extend(self.register.get_commands("runmode"))
+        commands.extend(self.register.get_commands("WrRegister", name=["Vthin_AltFine", "Vthin_AltCoarse"]))
+        commands.extend(self.register.get_commands("RunMode"))
         self.send_commands(commands)
         logging.info("Setting GDAC to %d (VthinAltCoarse / VthinAltFine = %d / %d)" % (value, self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine")))
 
@@ -212,23 +214,23 @@ def read_chip_sn(self):
     Content        | reserved   | wafer number | chip number
     '''
     commands = []
-    commands.extend(self.register.get_commands("confmode"))
+    commands.extend(self.register.get_commands("ConfMode"))
     self.register_utils.send_commands(commands)
     self.fifo_readout.reset_sram_fifo()
     if self.register.fei4b:
         commands = []
         self.register.set_global_register_value('Efuse_Sense', 1)
-        commands.extend(self.register.get_commands("wrregister", name=['Efuse_Sense']))
-        commands.extend(self.register.get_commands("globalpulse", width=0))
+        commands.extend(self.register.get_commands("WrRegister", name=['Efuse_Sense']))
+        commands.extend(self.register.get_commands("GlobalPulse", Width=0))
         self.register.set_global_register_value('Efuse_Sense', 0)
-        commands.extend(self.register.get_commands("wrregister", name=['Efuse_Sense']))
+        commands.extend(self.register.get_commands("WrRegister", name=['Efuse_Sense']))
         self.register_utils.send_commands(commands)
     commands = []
     self.register.set_global_register_value('Conf_AddrEnable', 1)
-    commands.extend(self.register.get_commands("wrregister", name=['Conf_AddrEnable']))
+    commands.extend(self.register.get_commands("WrRegister", name=['Conf_AddrEnable']))
     chip_sn_address = self.register.get_global_register_attributes("addresses", name="Chip_SN")
     # print chip_sn_address
-    commands.extend(self.register.get_commands("rdregister", addresses=chip_sn_address))
+    commands.extend(self.register.get_commands("RdRegister", addresses=chip_sn_address))
     self.register_utils.send_commands(commands)
 
     data = self.fifo_readout.read_data()
@@ -246,7 +248,7 @@ def read_chip_sn(self):
                 read_values.append(read_value)
 
     commands = []
-    commands.extend(self.register.get_commands("runmode"))
+    commands.extend(self.register.get_commands("RunMode"))
     self.register_utils.send_commands(commands)
 
     if len(read_values) == 0:
@@ -263,16 +265,16 @@ def test_global_register(self):
     logging.info('Running Global Register Test...')
     self.register_utils.configure_global()
     commands = []
-    commands.extend(self.register.get_commands("confmode"))
+    commands.extend(self.register.get_commands("ConfMode"))
     self.register_utils.send_commands(commands)
     commands = []
     self.register.set_global_register_value('Conf_AddrEnable', 1)
-    commands.extend(self.register.get_commands("wrregister", name='Conf_AddrEnable'))
+    commands.extend(self.register.get_commands("WrRegister", name='Conf_AddrEnable'))
     read_from_address = range(1, 64)
     self.register_utils.send_commands(commands)
     self.fifo_readout.reset_sram_fifo()
     commands = []
-    commands.extend(self.register.get_commands("rdregister", addresses=read_from_address))
+    commands.extend(self.register.get_commands("RdRegister", addresses=read_from_address))
     self.register_utils.send_commands(commands)
 
     data = self.fifo_readout.read_data()
@@ -304,7 +306,7 @@ def test_global_register(self):
                 logging.warning('Global Register Test: Expected Value Record but found %s' % fei4_next_data_word)
 
     commands = []
-    commands.extend(self.register.get_commands("runmode"))
+    commands.extend(self.register.get_commands("RunMode"))
     self.register_utils.send_commands(commands)
     not_read_registers = set.difference(set(read_from_address), checked_address)
     not_read_registers = list(not_read_registers)
@@ -321,7 +323,7 @@ def test_pixel_register(self):
     logging.info('Running Pixel Register Test...')
     self.register_utils.configure_pixel()
     commands = []
-    commands.extend(self.register.get_commands("confmode"))
+    commands.extend(self.register.get_commands("ConfMode"))
     self.register_utils.send_commands(commands)
     self.fifo_readout.reset_sram_fifo()
 
@@ -347,20 +349,19 @@ def test_pixel_register(self):
     self.register.set_global_register_value("Latch_En", 0)
     self.register.set_global_register_value("Pixel_Strobes", 0)
 
-    commands.extend(self.register.get_commands("wrregister", name=["Conf_AddrEnable", "S0", "S1", "SR_Clr", "CalEn", "DIGHITIN_SEL", "GateHitOr", "ReadSkipped", "ReadErrorReq", "StopClkPulse", "SR_Clock", "Efuse_Sense", "HITLD_IN", "Colpr_Mode", "Colpr_Addr", "Pixel_Strobes", "Latch_En"]))
+    commands.extend(self.register.get_commands("WrRegister", name=["Conf_AddrEnable", "S0", "S1", "SR_Clr", "CalEn", "DIGHITIN_SEL", "GateHitOr", "ReadSkipped", "ReadErrorReq", "StopClkPulse", "SR_Clock", "Efuse_Sense", "HITLD_IN", "Colpr_Mode", "Colpr_Addr", "Pixel_Strobes", "Latch_En"]))
     self.register_utils.send_commands(commands)
 
-    register_objects = self.register.get_pixel_register_objects(True, name=["EnableDigInj"])  # check EnableDigInj first, because it is not latched
-    register_objects.extend(self.register.get_pixel_register_objects(True, name=["Imon", "Enable", "C_High", "C_Low", "TDAC", "FDAC"]))
+    register_objects = self.register.get_pixel_register_objects(do_sort=['pxstrobe'], reverse=True, name=["EnableDigInj", "Imon", "Enable", "C_High", "C_Low", "TDAC", "FDAC"])  # check EnableDigInj first, because it is not latched
     # pprint.pprint(register_objects)
     # print "register_objects", register_objects
     number_of_errors = 0
     for register_object in register_objects:
         # pprint.pprint(register_object)
-        pxstrobe = register_object.pxstrobe
-        bitlength = register_object.bitlength
+        pxstrobe = register_object['pxstrobe']
+        bitlength = register_object['bitlength']
         for pxstrobe_bit_no in range(bitlength):
-            logging.info('Testing Pixel Register %s Bit %d', register_object.full_name, pxstrobe_bit_no)
+            logging.info('Testing Pixel Register %s Bit %d', register_object['name'], pxstrobe_bit_no)
             do_latch = True
             commands = []
             try:
@@ -375,13 +376,13 @@ def test_pixel_register(self):
                 # print register_object.name
                 # print "bit_no", bit_no
                 # print "pxstrobes", 0
-            commands.extend(self.register.get_commands("wrregister", name=["Pixel_Strobes"]))
+            commands.extend(self.register.get_commands("WrRegister", name=["Pixel_Strobes"]))
             self.register_utils.send_commands(commands)
 
             for dc_no in range(40):
                 commands = []
                 self.register.set_global_register_value("Colpr_Addr", dc_no)
-                commands.extend(self.register.get_commands("wrregister", name=["Colpr_Addr"]))
+                commands.extend(self.register.get_commands("WrRegister", name=["Colpr_Addr"]))
                 self.register_utils.send_commands(commands)
 
                 if do_latch is True:
@@ -389,26 +390,26 @@ def test_pixel_register(self):
                     self.register.set_global_register_value("S0", 1)
                     self.register.set_global_register_value("S1", 1)
                     self.register.set_global_register_value("SR_Clock", 1)
-                    commands.extend(self.register.get_commands("wrregister", name=["S0", "S1", "SR_Clock"]))
-                    commands.extend(self.register.get_commands("globalpulse", width=0))
+                    commands.extend(self.register.get_commands("WrRegister", name=["S0", "S1", "SR_Clock"]))
+                    commands.extend(self.register.get_commands("GlobalPulse", Width=0))
                     self.register_utils.send_commands(commands)
                 commands = []
                 self.register.set_global_register_value("S0", 0)
                 self.register.set_global_register_value("S1", 0)
                 self.register.set_global_register_value("SR_Clock", 0)
-                commands.extend(self.register.get_commands("wrregister", name=["S0", "S1", "SR_Clock"]))
+                commands.extend(self.register.get_commands("WrRegister", name=["S0", "S1", "SR_Clock"]))
                 self.register_utils.send_commands(commands)
 
-                register_bitset = self.register.get_pixel_register_bitset(register_object, pxstrobe_bit_no if (register_object.littleendian is False) else register_object.bitlength - pxstrobe_bit_no - 1, dc_no)
+                register_bitset = self.register.get_pixel_register_bitset(register_object, pxstrobe_bit_no if (register_object['littleendian'] is False) else register_object['bitlength'] - pxstrobe_bit_no - 1, dc_no)
 
                 commands = []
                 if self.register.fei4b:
                     self.register.set_global_register_value("SR_Read", 1)
-                    commands.extend(self.register.get_commands("wrregister", name=["SR_Read"]))
-                commands.extend([self.register.build_command("wrfrontend", pixeldata=register_bitset, chipid=self.register.chip_id)])
+                    commands.extend(self.register.get_commands("WrRegister", name=["SR_Read"]))
+                commands.extend([self.register.build_command("WrFrontEnd", pixeldata=register_bitset, chipid=self.register.chip_id)])
                 if self.register.fei4b:
                     self.register.set_global_register_value("SR_Read", 0)
-                    commands.extend(self.register.get_commands("wrregister", name=["SR_Read"]))
+                    commands.extend(self.register.get_commands("WrRegister", name=["SR_Read"]))
                 # print commands[0]
                 self.register_utils.send_commands(commands)
                 # time.sleep( 0.2 )
@@ -491,12 +492,12 @@ def test_pixel_register(self):
     self.register.set_global_register_value("SR_Clock", 0)
     if self.register.fei4b:
         self.register.set_global_register_value("SR_Read", 0)
-        commands.extend(self.register.get_commands("wrregister", name=["Colpr_Addr", "Pixel_Strobes", "S0", "S1", "SR_Clock", "SR_Read"]))
+        commands.extend(self.register.get_commands("WrRegister", name=["Colpr_Addr", "Pixel_Strobes", "S0", "S1", "SR_Clock", "SR_Read"]))
     else:
-        commands.extend(self.register.get_commands("wrregister", name=["Colpr_Addr", "Pixel_Strobes", "S0", "S1", "SR_Clock"]))
+        commands.extend(self.register.get_commands("WrRegister", name=["Colpr_Addr", "Pixel_Strobes", "S0", "S1", "SR_Clock"]))
     # fixes bug in FEI4 (B only?): reading GR doesn't work after latching pixel register
-    commands.extend(self.register.get_commands("wrfrontend", name=["EnableDigInj"]))
-    commands.extend(self.register.get_commands("runmode"))
+    commands.extend(self.register.get_commands("WrFrontEnd", name=["EnableDigInj"]))
+    commands.extend(self.register.get_commands("RunMode"))
     self.register_utils.send_commands(commands)
 
     logging.info('Pixel Register Test: Found %d error(s)' % number_of_errors)
@@ -509,7 +510,7 @@ def read_pixel_register(self, pix_regs=["EnableDigInj", "Imon", "Enable", "C_Hig
     Parameters
     ----------
     pix_regs : iterable, int
-        List of pixel register to read (e.g. enable, c_high, ...).
+        List of pixel register to read (e.g. Enable, C_High, ...).
     dcs : iterable, int
         List of double columns to read.
     overwrite_config : bool
@@ -524,9 +525,9 @@ def read_pixel_register(self, pix_regs=["EnableDigInj", "Imon", "Enable", "C_Hig
     for pix_reg in pix_regs:
         pixel_data = np.ma.masked_array(np.zeros(shape=(80, 336), dtype=np.uint32), mask=True)  # the result pixel array, only pixel with data are not masked
         for dc in dcs:
-            self.register_utils.send_commands(self.register.get_commands("rdfrontend", name=[pix_reg], dcs=[dc]))
+            self.register_utils.send_commands(self.register.get_commands("RdFrontEnd", name=[pix_reg], dcs=[dc]))
             data = self.fifo_readout.read_data()
-            interpret_pixel_data(data, dc, pixel_data, invert=False if pix_reg.lower() == "enablediginj" else True)
+            interpret_pixel_data(data, dc, pixel_data, invert=False if pix_reg == "EnableDigInj" else True)
         if overwrite_config:
             self.register.set_pixel_register(pix_reg, pixel_data.data)
         result.append(pixel_data)
@@ -544,9 +545,9 @@ def is_fe_ready(self):
         True if FEI4 is ready, False if the FEI4 was powered up recently and is not ready.
     '''
     commands = []
-    commands.extend(self.register.get_commands("confmode"))
-    commands.extend(self.register.get_commands("rdregister", address=[1]))
-    commands.extend(self.register.get_commands("runmode"))
+    commands.extend(self.register.get_commands("ConfMode"))
+    commands.extend(self.register.get_commands("RdRegister", address=[1]))
+    commands.extend(self.register.get_commands("RunMode"))
     self.register_utils.send_commands(commands)
     data = self.fifo_readout.read_data()
     if len(data):
@@ -602,10 +603,10 @@ def make_pixel_mask(steps, shift, default=0, value=1, enable_columns=None, mask=
     steps = 3 # three step mask
     for mask_step in range(steps):
         commands = []
-        commands.extend(self.register.get_commands("confmode"))
+        commands.extend(self.register.get_commands("ConfMode"))
         mask_array = make_pixel_mask(steps=steps, step=mask_step)
         self.register.set_pixel_register_value(shift_mask, mask_array)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=shift_mask))
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name=shift_mask))
         self.register_utils.send_commands(commands)
         # do something here
     '''
@@ -818,11 +819,11 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
         plsr_dac_correction = list(double_column_correction)
     else:  # default
         if "C_High".lower() in map(lambda x: x.lower(), enable_shift_masks) and "C_Low".lower() in map(lambda x: x.lower(), enable_shift_masks):
-            plsr_dac_correction = self.register.calibration_config['Pulser_Corr_C_Inj_High']
+            plsr_dac_correction = self.register.calibration_parameters['Pulser_Corr_C_Inj_High']
         elif "C_High".lower() in map(lambda x: x.lower(), enable_shift_masks):
-            plsr_dac_correction = self.register.calibration_config['Pulser_Corr_C_Inj_Med']
+            plsr_dac_correction = self.register.calibration_parameters['Pulser_Corr_C_Inj_Med']
         elif "C_Low".lower() in map(lambda x: x.lower(), enable_shift_masks):
-            plsr_dac_correction = self.register.calibration_config['Pulser_Corr_C_Inj_Low']
+            plsr_dac_correction = self.register.calibration_parameters['Pulser_Corr_C_Inj_Low']
     # initial PlsrDAC value for PlsrDAC correction
     initial_plsr_dac = self.register.get_global_register_value("PlsrDAC")
     # create restore point
@@ -830,8 +831,8 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
     self.register.create_restore_point(name=restore_point_name)
 
     # pre-calculate often used commands
-    conf_mode_command = self.register.get_commands("confmode")[0]
-    run_mode_command = self.register.get_commands("runmode")[0]
+    conf_mode_command = self.register.get_commands("ConfMode")[0]
+    run_mode_command = self.register.get_commands("RunMode")[0]
     delay = self.register.get_commands("zeros", mask_steps=mask_steps)[0]
     if use_delay:
         scan_loop_command = command + delay
@@ -864,10 +865,10 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
         commands = []
         commands.append(conf_mode_command)
         self.register.set_global_register_value("Colpr_Addr", dc)
-        commands.append(self.register.get_commands("wrregister", name=["Colpr_Addr"])[0])
+        commands.append(self.register.get_commands("WrRegister", name=["Colpr_Addr"])[0])
         if double_column_correction:
             self.register.set_global_register_value("PlsrDAC", initial_plsr_dac + plsr_dac_correction[dc])
-            commands.append(self.register.get_commands("wrregister", name=["PlsrDAC"])[0])
+            commands.append(self.register.get_commands("WrRegister", name=["PlsrDAC"])[0])
         commands.append(run_mode_command)
         return self.register_utils.concatenate_commands(commands, byte_padding=True)
 
@@ -888,9 +889,8 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
             raise ValueError('C_Low must not be shift mask when using digital injection')
         # turn off all injection capacitors by default
         self.register.set_pixel_register_value("C_High", 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=["C_High"]))
         self.register.set_pixel_register_value("C_Low", 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=["C_Low"]))
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name=["C_Low", "C_High"], joint_write=True))
         self.register.set_global_register_value("DIGHITIN_SEL", 1)
 #             self.register.set_global_register_value("CalEn", 1)  # for GlobalPulse instead Cal-Command
     else:
@@ -898,7 +898,14 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
         # setting EnableDigInj to 0 not necessary since DIGHITIN_SEL is turned off
 #             self.register.set_pixel_register_value("EnableDigInj", 0)
 
-    commands.extend(self.register.get_commands("wrregister", name=["DIGHITIN_SEL"]))
+# plotting registers
+#     plt.clf()
+#     plt.imshow(curr_en_mask.T, interpolation='nearest', aspect="auto")
+#     plt.pcolor(curr_en_mask.T)
+#     plt.colorbar()
+#     plt.savefig('mask_step' + str(mask_step) + '.pdf')
+
+    commands.extend(self.register.get_commands("WrRegister", name=["DIGHITIN_SEL"]))
     self.register_utils.send_commands(commands, concatenate=True)
 
     for mask_step in enable_mask_steps:
@@ -910,33 +917,26 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
             if disable_shift_masks:
                 curr_dis_mask = make_pixel_mask(steps=mask_steps, shift=mask_step, default=1, value=0, mask=mask)
                 map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_dis_mask), disable_shift_masks)
-                commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False if mask is not None else True, name=disable_shift_masks))
+                commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False if mask is not None else True, name=disable_shift_masks, joint_write=True))
             if enable_shift_masks:
                 curr_en_mask = make_pixel_mask(steps=mask_steps, shift=mask_step, mask=mask)
-                map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_en_mask), [shift_mask_name for shift_mask_name in enable_shift_masks])
-                commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False if mask is not None else True, name=enable_shift_masks))
-#                 plt.clf()
-#                 plt.imshow(curr_en_mask.T, interpolation='nearest', aspect="auto")
-#                 plt.pcolor(curr_en_mask.T)
-#                 plt.colorbar()
-#                 plt.savefig('mask_step' + str(mask_step) + '.pdf')
+                map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_en_mask), enable_shift_masks)
+                commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False if mask is not None else True, name=enable_shift_masks, joint_write=True))
             if digital_injection is True:  # write EnableDigInj last
-                commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False if mask is not None else True, name=['EnableDigInj']))
                 # write DIGHITIN_SEL since after mask writing it is disabled
                 self.register.set_global_register_value("DIGHITIN_SEL", 1)
-                commands.extend(self.register.get_commands("wrregister", name=["DIGHITIN_SEL"]))
+                commands.extend(self.register.get_commands("WrRegister", name=["DIGHITIN_SEL"]))
         else:  # set masks to default values
             if disable_shift_masks:
                 map(lambda mask_name: self.register.set_pixel_register_value(mask_name, 1), disable_shift_masks)
-                commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=disable_shift_masks))
+                commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name=disable_shift_masks, joint_write=True))
             if enable_shift_masks:
-                map(lambda mask_name: self.register.set_pixel_register_value(mask_name, 0), [shift_mask_name for shift_mask_name in enable_shift_masks])
-                commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=enable_shift_masks))
+                map(lambda mask_name: self.register.set_pixel_register_value(mask_name, 0), enable_shift_masks)
+                commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name=enable_shift_masks, joint_write=True))
             if digital_injection is True:  # write EnableDigInj last
-                commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=['EnableDigInj']))
                 # write DIGHITIN_SEL since after mask writing it is disabled
                 self.register.set_global_register_value("DIGHITIN_SEL", 1)
-                commands.extend(self.register.get_commands("wrregister", name=["DIGHITIN_SEL"]))
+                commands.extend(self.register.get_commands("WrRegister", name=["DIGHITIN_SEL"]))
         self.register_utils.send_commands(commands, concatenate=True)
         logging.info('%d injection(s): mask step %d %s' % (repeat_command, mask_step, ('[%d - %d]' % (enable_mask_steps[0], enable_mask_steps[-1])) if len(enable_mask_steps) > 1 else ('[%d]' % enable_mask_steps[0])))
 
@@ -982,15 +982,14 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
             if disable_shift_masks:
                 curr_dis_mask = make_pixel_mask(steps=mask_steps, shift=mask_step, default=1, value=0, enable_columns=ec, mask=mask)
                 map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_dis_mask), disable_shift_masks)
-                commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, dcs=dcs, name=disable_shift_masks))
+                commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=disable_shift_masks, joint_write=True))
             if enable_shift_masks:
                 curr_en_mask = make_pixel_mask(steps=mask_steps, shift=mask_step, enable_columns=ec, mask=mask)
-                map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_en_mask), [shift_mask_name for shift_mask_name in enable_shift_masks])
-                commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, dcs=dcs, name=enable_shift_masks))
+                map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_en_mask), enable_shift_masks)
+                commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=enable_shift_masks, joint_write=True))
             if digital_injection is True:
-                commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, dcs=dcs, name=['EnableDigInj']))
                 self.register.set_global_register_value("DIGHITIN_SEL", 1)
-                commands.extend(self.register.get_commands("wrregister", name=["DIGHITIN_SEL"]))
+                commands.extend(self.register.get_commands("WrRegister", name=["DIGHITIN_SEL"]))
             self.register_utils.send_commands(commands, concatenate=True)
 
             dc_address_command = get_dc_address_command(dc)
@@ -1010,15 +1009,14 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
                     if disable_shift_masks:
                         curr_dis_mask = make_pixel_mask(steps=mask_steps, shift=mask_step, default=1, value=0, enable_columns=ec, mask=mask)
                         map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_dis_mask), disable_shift_masks)
-                        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, dcs=dcs, name=disable_shift_masks))
+                        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=disable_shift_masks, joint_write=True))
                     if enable_shift_masks:
                         curr_en_mask = make_pixel_mask(steps=mask_steps, shift=mask_step, enable_columns=ec, mask=mask)
-                        map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_en_mask), [shift_mask_name for shift_mask_name in enable_shift_masks])
-                        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, dcs=dcs, name=enable_shift_masks))
+                        map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_en_mask), enable_shift_masks)
+                        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=enable_shift_masks, joint_write=True))
                     if digital_injection is True:
-                        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, dcs=dcs, name=['EnableDigInj']))
                         self.register.set_global_register_value("DIGHITIN_SEL", 1)
-                        commands.extend(self.register.get_commands("wrregister", name=["DIGHITIN_SEL"]))
+                        commands.extend(self.register.get_commands("WrRegister", name=["DIGHITIN_SEL"]))
                     dc_address_command = get_dc_address_command(dc)
 
                     self.register_utils.wait_for_command()
@@ -1045,7 +1043,7 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
     self.register_utils.configure_global()  # always restore global configuration
     if restore_shift_masks:
         commands = []
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=disable_shift_masks))
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=enable_shift_masks))
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name="EnableDigInj"))
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, name=disable_shift_masks))
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, name=enable_shift_masks))
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, name="EnableDigInj"))
         self.register_utils.send_commands(commands)

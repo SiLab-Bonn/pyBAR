@@ -23,13 +23,13 @@ class StuckPixelScan(DigitalScan):
 
     def configure(self):
         commands = []
-        commands.extend(self.register.get_commands("confmode"))
+        commands.extend(self.register.get_commands("ConfMode"))
         pixel_reg = "C_High"
         self.register.set_pixel_register_value(pixel_reg, 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name=pixel_reg))
         pixel_reg = "C_Low"
         self.register.set_pixel_register_value(pixel_reg, 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name=pixel_reg))
         self.register_utils.send_commands(commands)
 
     def analyze(self):
@@ -68,10 +68,10 @@ class StuckPixelScan(DigitalScan):
 
             plot_occupancy(self.occ_mask.T, title='Stuck Pixels', z_max=1, filename=analyze_raw_data.output_pdf)
             for mask in self.disable_for_mask:
-                mask_name = self.register.get_pixel_register_attributes("full_name", do_sort=True, name=[mask])[0]
+                mask_name = self.register.pixel_registers[mask]['name']
                 plot_occupancy(self.register.get_pixel_register_value(mask).T, title='%s Mask' % mask_name, z_max=1, filename=analyze_raw_data.output_pdf)
             for mask in self.enable_for_mask:
-                mask_name = self.register.get_pixel_register_attributes("full_name", do_sort=True, name=[mask])[0]
+                mask_name = self.register.pixel_registers[mask]['name']
                 plot_occupancy(self.register.get_pixel_register_value(mask).T, title='%s Mask' % mask_name, z_max=1, filename=analyze_raw_data.output_pdf)
 
 

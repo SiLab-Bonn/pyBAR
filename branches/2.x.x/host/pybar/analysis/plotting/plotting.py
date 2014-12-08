@@ -92,7 +92,7 @@ def plot_linear_relation(x, y, x_err=None, y_err=None, title=None, point_label=N
     if legend:
         fig.legend(legend, 0)
     ax.grid(True)
-    fig.errorbar(x, y, xerr=x_err, yerr=y_err, fmt='o', color='black')  # plot points
+    ax.errorbar(x, y, xerr=x_err, yerr=y_err, fmt='o', color='black')  # plot points
     # label points if needed
     if point_label is not None:
         for X, Y, Z in zip(x, y, point_label):
@@ -102,10 +102,10 @@ def plot_linear_relation(x, y, x_err=None, y_err=None, title=None, point_label=N
 #     print pcov
 #     chi_squared = np.sum((np.polyval(line_fit, x) - y) ** 2)
     fit_fn = np.poly1d(line_fit)
-    fig.plot(x, fit_fn(x), '-', lw=2, color='gray')
+    ax.plot(x, fit_fn(x), '-', lw=2, color='gray')
     line_fit_legend_entry = 'line fit: ax + b\na=$%.2f\pm%.2f$\nb=$%.2f\pm%.2f$' % (line_fit[0], np.absolute(pcov[0][0]) ** 0.5, abs(line_fit[1]), np.absolute(pcov[1][1]) ** 0.5)
 
-    fig.legend(["data", line_fit_legend_entry], 0)
+#     fig.legend(["data", line_fit_legend_entry], 0)
     setp(ax.get_xticklabels(), visible=False)  # remove ticks at common border of both plots
 
     divider = make_axes_locatable(ax)
@@ -121,7 +121,7 @@ def plot_linear_relation(x, y, x_err=None, y_err=None, title=None, point_label=N
 
     ax.set_ylim((-np.amax(np.abs(y - fit_fn(x)))), (np.amax(np.abs(y - fit_fn(x)))))
 
-    fig.plot(ax.set_xlim(), [0, 0], '-', color='black')
+    ax.plot(ax.set_xlim(), [0, 0], '-', color='black')
     setp(ax_bottom_plot.get_yticklabels()[-2:-1], visible=False)
 #     print ax_bottom_plot.get_yticklabels()[1]
 
@@ -470,7 +470,7 @@ def plot_cluster_size(hist, title=None, filename=None):
     plot_1d_hist(hist=hist, title='Cluster size (' + str(np.sum(hist)) + ' entries)' if title is None else title, log_y=True, plot_range=range(0, 32), x_axis_title='Cluster size', y_axis_title='#', filename=filename)
 
 
-def plot_scurves(occupancy_hist, scan_parameters, title='S-Curves', ylabel='Occupancy', max_occ=None, scan_parameter_name=None, filename=None):  # tornado plot
+def plot_scurves(occupancy_hist, scan_parameters, title='S-Curves', ylabel='Occupancy', max_occ=None, scan_parameter_name=None, min_x=None, max_x=None, x_scale=1.0, y_scale=1., filename=None):  # tornado plot
     occ_mask = np.all(occupancy_hist == 0, axis=2)
     if max_occ is None:
         max_occ = 2 * np.median(np.amax(occupancy_hist, axis=2))
@@ -485,7 +485,7 @@ def plot_scurves(occupancy_hist, scan_parameters, title='S-Curves', ylabel='Occu
 #     x = np.tile(scan_parameters, n_pixel)
     cmap = cm.get_cmap('jet', 200)
     for index, scan_parameter in enumerate(scan_parameters):
-        compressed_data = np.ma.masked_array(occupancy_hist[:, :, index], mask=occ_mask).compressed()
+        compressed_data = np.ma.masked_array(occupancy_hist[:, :, index], mask=occ_mask, copy=True).compressed()
         heatmap, xedges, yedges = np.histogram2d(compressed_data, [scan_parameter] * compressed_data.shape[0], range=[[0, max_occ], [scan_parameters[0], scan_parameters[-1]]], bins=(max_occ + 1, len(scan_parameters)))
         if index == 0:
             hist = heatmap
@@ -499,10 +499,12 @@ def plot_scurves(occupancy_hist, scan_parameters, title='S-Curves', ylabel='Occu
         scan_parameter_dist = (np.amax(scan_parameters) - np.amin(scan_parameters)) / (len(scan_parameters) - 1)
     else:
         scan_parameter_dist = 0
-    extent = [yedges[0] - scan_parameter_dist / 2, yedges[-1] + scan_parameter_dist / 2, xedges[-1] + 0.5, xedges[0] - 0.5]
+    extent = [yedges[0] - scan_parameter_dist / 2, yedges[-1] * x_scale + scan_parameter_dist / 2, xedges[-1] * y_scale + 0.5, xedges[0] - 0.5]
     norm = colors.LogNorm()
     im = ax.imshow(hist, interpolation='nearest', aspect="auto", cmap=cmap, extent=extent, norm=norm)
     ax.invert_yaxis()
+    if min_x is not None or max_x is not None:
+        ax.set_xlim((min_x if min_x is not None else np.amin(scan_parameters), max_x if max_x is not None else np.amax(scan_parameters)))
     fig.colorbar(im)
     ax.set_title(title + ' for %d pixel(s)' % (n_pixel - np.count_nonzero(occ_mask)))
     if scan_parameter_name is None:
@@ -608,8 +610,9 @@ def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=No
     if y_axis_title is not None:
         ax.set_ylabel(y_axis_title)
     if x_ticks is not None:
-        ax.set_xticks(range(0, len(hist[:])) if plot_range is None else plot_range, x_ticks)
-#         ax.set_tick_params(which='both', labelsize=8)
+        ax.set_xticks(range(0, len(hist[:])) if plot_range is None else plot_range)
+        ax.set_xticklabels(x_ticks)
+        ax.tick_params(which='both', labelsize=8)
     if np.allclose(hist, 0.0):
         ax.set_ylim((0, 1))
     else:
@@ -624,14 +627,14 @@ def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=No
         fig.savefig(filename)
 
 
-def create_2d_pixel_hist(fig, ax, hist2d, title=None, x_axis_title=None, y_axis_title=None, z_max=None):
+def create_2d_pixel_hist(fig, ax, hist2d, title=None, x_axis_title=None, y_axis_title=None, z_min=0, z_max=None):
     extent = [0.5, 80.5, 336.5, 0.5]
     if z_max is None:
         if hist2d.all() is np.ma.masked:  # check if masked array is fully masked
             z_max = 1
         else:
             z_max = 2 * math.ceil(hist2d.max())
-    bounds = np.linspace(start=0, stop=z_max, num=255, endpoint=True)
+    bounds = np.linspace(start=z_min, stop=z_max, num=255, endpoint=True)
     cmap = cm.get_cmap('jet')
     cmap.set_bad('w')
     norm = colors.BoundaryNorm(bounds, cmap.N)
@@ -669,7 +672,7 @@ def create_1d_hist(fig, ax, hist, title=None, x_axis_title=None, y_axis_title=No
     else:
         bin_width = 1.0
     hist_range = (x_min - bin_width / 2.0, x_max + bin_width / 2.0)
-    masked_hist = np.ma.masked_array(hist)
+    masked_hist = np.ma.masked_array(hist, copy=True)
     if masked_hist.dtype.kind in 'ui':
         masked_hist[masked_hist.mask] = np.iinfo(masked_hist.dtype).max
     elif masked_hist.dtype.kind in 'f':
@@ -677,13 +680,13 @@ def create_1d_hist(fig, ax, hist, title=None, x_axis_title=None, y_axis_title=No
     else:
         raise TypeError('Inappropriate type %s' % masked_hist.dtype)
     _, _, _ = ax.hist(x=masked_hist.compressed(), bins=hist_bins, range=hist_range, align='mid')  # re-bin to 1d histogram, x argument needs to be 1D
-    # BUG: np.ma.compressed(np.ma.masked_array(hist)) (2D) is not equal to np.ma.masked_array(hist).compressed() (1D) if hist is ndarray
+    # BUG: np.ma.compressed(np.ma.masked_array(hist, copy=True)) (2D) is not equal to np.ma.masked_array(hist, copy=True).compressed() (1D) if hist is ndarray
     ax.set_xlim(hist_range)  # overwrite xlim
     if hist.all() is np.ma.masked:  # or np.allclose(hist, 0.0):
         ax.set_ylim((0, 1))
         ax.set_xlim((-0.5, +0.5))
     # create histogram without masked elements, higher precision when calculating gauss
-    h_1d, h_bins = np.histogram(np.ma.masked_array(hist).compressed(), bins=hist_bins, range=hist_range)
+    h_1d, h_bins = np.histogram(np.ma.masked_array(hist, copy=True).compressed(), bins=hist_bins, range=hist_range)
     if title is not None:
         ax.set_title(title)
     if x_axis_title is not None:
@@ -762,7 +765,7 @@ def plotThreeWay(hist, title, filename=None, x_axis_title=None, minimum=None, ma
     canvas = FigureCanvas(fig)
     fig.patch.set_facecolor('white')
     ax1 = fig.add_subplot(311)
-    create_2d_pixel_hist(fig, ax1, hist, title=title, x_axis_title="column", y_axis_title="row", z_max=maximum)
+    create_2d_pixel_hist(fig, ax1, hist, title=title, x_axis_title="column", y_axis_title="row", z_min = minimum if minimum else 0, z_max=maximum)
     ax2 = fig.add_subplot(312)
     create_1d_hist(fig, ax2, hist, bins=bins, x_axis_title=x_axis_title, y_axis_title="#", x_min=minimum, x_max=maximum)
     ax3 = fig.add_subplot(313)
@@ -816,7 +819,7 @@ def plot_correlations(filenames, limit=None):
             index += 1
 
 
-def hist_quantiles(hist, prob=(0.05, 0.95), return_indices=False, copy=False):
+def hist_quantiles(hist, prob=(0.05, 0.95), return_indices=False, copy=True):
     '''Calculate quantiles from histograms, cuts off hist below and above given quantile. This function will not cut off more than the given values.
 
     Parameters
@@ -867,7 +870,7 @@ def hist_quantiles(hist, prob=(0.05, 0.95), return_indices=False, copy=False):
         return masked_hist
 
 
-def hist_last_nonzero(hist, return_index=False, copy=False):
+def hist_last_nonzero(hist, return_index=False, copy=True):
     '''Find the last nonzero index and mask the remaining entries.
 
     Parameters

@@ -18,22 +18,20 @@ class DigitalScan(Fei4RunBase):
 
     def configure(self):
         commands = []
-        commands.extend(self.register.get_commands("confmode"))
+        commands.extend(self.register.get_commands("ConfMode"))
         self.register.set_global_register_value("PrmpVbp", 0)
         self.register.set_global_register_value("Amp2Vbp", 0)
         self.register.set_global_register_value("DisVbn", 0)
-        commands.extend(self.register.get_commands("wrregister", name=["PrmpVbp", "Amp2Vbp", "DisVbn"]))
-        pixel_reg = "C_High"
-        self.register.set_pixel_register_value(pixel_reg, 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
-        pixel_reg = "C_Low"
-        self.register.set_pixel_register_value(pixel_reg, 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name=pixel_reg))
+        commands.extend(self.register.get_commands("WrRegister", name=["PrmpVbp", "Amp2Vbp", "DisVbn"]))
+        self.register.set_pixel_register_value("C_High", 0)
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name="C_High"))
+        self.register.set_pixel_register_value("C_Low", 0)
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name="C_Low"))
         self.register_utils.send_commands(commands)
 
     def scan(self):
         with self.readout():
-            cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0]
+            cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0]
             scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections, use_delay=True, mask_steps=self.mask_steps, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=True, enable_shift_masks=["Enable", "EnableDigInj"], restore_shift_masks=False, mask=invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if self.use_enable_mask else None)
 
     def analyze(self):

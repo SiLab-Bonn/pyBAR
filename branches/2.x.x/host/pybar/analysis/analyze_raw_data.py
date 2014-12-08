@@ -21,21 +21,6 @@ from pybar.analysis.RawDataConverter.data_clusterizer import PyDataClusterizer
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
 
-class AnalysisError(Exception):
-    """Base class for exceptions in this module.
-    """
-
-
-class IncompleteInputError(AnalysisError):
-    """Exception raised for errors in the input.
-    """
-
-
-class NotSupportedError(AnalysisError):
-    """Exception raised for not supported actions.
-    """
-
-
 def scurve(x, A, mu, sigma):
     return 0.5 * A * erf((x - mu) / (np.sqrt(2) * sigma)) + 0.5 * A
 
@@ -85,25 +70,6 @@ def fit_scurves_subset(hist, PlsrDAC):
     logging.info('Fitting S-curve: 100%')
     logging.info('S-curve fit failed for %d pixel' % n_failed_pxel_fits)
     return result
-
-
-def generate_threshold_mask(hist):
-    '''Masking array elements when equal 0.0 or greater than 10 times the median
-
-    Parameters
-    ----------
-    hist : array_like
-        Input data.
-
-    Returns
-    -------
-    masked array
-        Returns copy of the array with masked elements.
-    '''
-    masked_array = np.ma.masked_values(hist, 0)
-    masked_array = np.ma.masked_greater(masked_array, 10 * np.ma.median(hist))
-    logging.info('Masking %d pixel(s)' % np.ma.count_masked(masked_array))
-    return np.ma.getmaskarray(masked_array)
 
 
 class AnalyzeRawData(object):
@@ -156,13 +122,13 @@ class AnalyzeRawData(object):
             if len(raw_data_files) == 1:
                 self._analyzed_data_file = os.path.splitext(raw_data_files[0])[0] + '_interpreted.h5'
             else:
-                raise IncompleteInputError('Output file name is not given.')
+                raise analysis_utils.IncompleteInputError('Output file name is not given.')
 
         # create a scan parameter table from all raw data files
         if raw_data_files is not None:
             self.files_dict = analysis_utils.get_parameter_from_files(raw_data_files, parameters=scan_parameter_name)
             if not analysis_utils.check_parameter_similarity(self.files_dict):
-                raise NotSupportedError('Different scan parameters in multiple files are not supported.')
+                raise analysis_utils.NotSupportedError('Different scan parameters in multiple files are not supported.')
             self.scan_parameters = analysis_utils.create_parameter_table(self.files_dict)
             scan_parameter_names = analysis_utils.get_scan_parameter_names(self.scan_parameters)
             logging.info('Scan parameter(s) from raw data file(s): %s' % ((', ').join(scan_parameter_names) if scan_parameter_names else 'None',))
@@ -570,7 +536,7 @@ class AnalyzeRawData(object):
         self.meta_data = analysis_utils.combine_meta_data(self.files_dict)
 
         if self.meta_data is None:
-            raise IncompleteInputError('Meta data is empty. Stop interpretation.')
+            raise analysis_utils.IncompleteInputError('Meta data is empty. Stop interpretation.')
 
         self.interpreter.set_meta_data(self.meta_data)  # tell interpreter the word index per readout to be able to calculate the event number per read out
         meta_data_size = self.meta_data.shape[0]
@@ -578,7 +544,7 @@ class AnalyzeRawData(object):
         self.interpreter.set_meta_event_data(self.meta_event_index)  # tell the interpreter the data container to write the meta event index to
 
         logging.info("Interpreting...")
-        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=analysis_utils.get_total_n_data_words(self.files_dict))
+        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=analysis_utils.get_total_n_data_words(self.files_dict))
         progress_bar.start()
         total_words = 0
 
@@ -642,9 +608,9 @@ class AnalyzeRawData(object):
                     description = data_struct.MetaInfoEventTable().columns.copy()
                 last_pos = len(description)
                 if (self.scan_parameters is not None):  # add additional column with the scan parameter
-                    for scan_par_name in self.scan_parameters.dtype.names:
+                    for index, scan_par_name in enumerate(self.scan_parameters.dtype.names):
                         dtype, _ = self.scan_parameters.dtype.fields[scan_par_name][:2]
-                        description[scan_par_name] = Col.from_dtype(dtype, dflt=0, pos=last_pos)
+                        description[scan_par_name] = Col.from_dtype(dtype, dflt=0, pos=last_pos + index)
                 meta_data_out_table = self.out_file_h5.createTable(self.out_file_h5.root, name='meta_data', description=description, title='MetaData', filters=self._filter_table)
                 entry = meta_data_out_table.row
                 for i in range(0, n_event_index):
@@ -755,7 +721,7 @@ class AnalyzeRawData(object):
 #                     threshold_mask_table = self.out_file_h5.createCArray(self.out_file_h5.root, name = 'MaskThreshold', title = 'Threshold Mask', atom = tb.Atom.from_dtype(self.threshold_mask.dtype), shape = (336,80), filters = self._filter_table)
 #                     threshold_mask_table[0:336, 0:80] = self.threshold_mask
 #             if self._create_threshold_mask:
-#                 self.threshold_mask = generate_threshold_mask(self.noise_hist)
+#                 self.threshold_mask = analysis_utils.generate_threshold_mask(self.noise_hist)
         if (self._create_fitted_threshold_hists):
             scan_parameters = np.linspace(np.amin(self.scan_parameters['PlsrDAC']), np.amax(self.scan_parameters['PlsrDAC']), num=self.histograming.get_n_parameters(), endpoint=True)
             self.scurve_fit_results = self.fit_scurves_multithread(self.out_file_h5, PlsrDAC=scan_parameters)
@@ -765,7 +731,7 @@ class AnalyzeRawData(object):
                 fitted_noise_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistNoiseFitted', title='Noise Fitted Histogram', atom=tb.Atom.from_dtype(self.scurve_fit_results.dtype), shape=(336, 80), filters=self._filter_table)
                 fitted_noise_hist_table[0:336, 0:80] = self.scurve_fit_results[:, :, 1]
 #             if self._create_fitted_threshold_mask:
-#                 self.fitted_threshold_mask = generate_threshold_mask(self.scurve_fit_results[:, :, 1])
+#                 self.fitted_threshold_mask = analysis_utils.generate_threshold_mask(self.scurve_fit_results[:, :, 1])
 
     def _create_additional_cluster_data(self, safe_to_file=True):
         logging.info('Create selected cluster histograms')
@@ -960,16 +926,16 @@ class AnalyzeRawData(object):
         else:
             output_pdf = self.output_pdf
         if not output_pdf:
-            raise IncompleteInputError('Output PDF file descriptor not given.')
+            raise analysis_utils.IncompleteInputError('Output PDF file descriptor not given.')
         logging.info('Saving histograms to PDF file: %s' % str(output_pdf._file.fh.name))
 
         if (self._create_threshold_hists):
             # use threshold mask if possible
             if self._create_threshold_mask:
                 if out_file_h5 is not None:
-                    self.threshold_mask = generate_threshold_mask(out_file_h5.root.HistNoise[:, :])
+                    self.threshold_mask = analysis_utils.generate_threshold_mask(out_file_h5.root.HistNoise[:, :])
                 else:
-                    self.threshold_mask = generate_threshold_mask(self.noise_hist)
+                    self.threshold_mask = analysis_utils.generate_threshold_mask(self.noise_hist)
                 threshold_hist = np.ma.array(out_file_h5.root.HistThreshold[:, :] if out_file_h5 is not None else self.threshold_hist, mask=self.threshold_mask)
                 noise_hist = np.ma.array(out_file_h5.root.HistNoise[:, :] if out_file_h5 is not None else self.noise_hist, mask=self.threshold_mask)
                 mask_cnt = np.ma.count_masked(noise_hist)
@@ -982,9 +948,9 @@ class AnalyzeRawData(object):
         if (self._create_fitted_threshold_hists):
             if self._create_fitted_threshold_mask:
                 if out_file_h5 is not None:
-                    self.fitted_threshold_mask = generate_threshold_mask(out_file_h5.root.HistNoiseFitted[:, :])
+                    self.fitted_threshold_mask = analysis_utils.generate_threshold_mask(out_file_h5.root.HistNoiseFitted[:, :])
                 else:
-                    self.fitted_threshold_mask = generate_threshold_mask(self.scurve_fit_results[:, :, 1])
+                    self.fitted_threshold_mask = analysis_utils.generate_threshold_mask(self.scurve_fit_results[:, :, 1])
                 threshold_hist = np.ma.array(out_file_h5.root.HistThresholdFitted[:, :] if out_file_h5 is not None else self.scurve_fit_results[:, :, 0], mask=self.fitted_threshold_mask)
                 noise_hist = np.ma.array(out_file_h5.root.HistNoiseFitted[:, :] if out_file_h5 is not None else self.scurve_fit_results[:, :, 1], mask=self.fitted_threshold_mask)
                 mask_cnt = np.ma.count_masked(noise_hist)
@@ -1060,7 +1026,7 @@ class AnalyzeRawData(object):
         try:
             result_list = pool.map(partialfit_scurve, occupancy_hist_shaped.tolist())
         except TypeError:
-            raise NotSupportedError('Less than 3 points found for S-curve fit.')
+            raise analysis_utils.NotSupportedError('Less than 3 points found for S-curve fit.')
         pool.close()
         pool.join()  # blocking function until fit finished
         result_array = np.array(result_list)

@@ -2,6 +2,7 @@ import logging
 import numpy as np
 
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
+from pybar.analysis.analysis_utils import hist_2d_index
 from pybar.fei4.register_utils import invert_pixel_mask
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.fei4.register_utils import scan_loop
@@ -32,22 +33,22 @@ class FastThresholdScan(Fei4RunBase):
 
     def configure(self):
         commands = []
-        commands.extend(self.register.get_commands("confmode"))
+        commands.extend(self.register.get_commands("ConfMode"))
         # C_Low
         if "C_Low".lower() in map(lambda x: x.lower(), self.enable_shift_masks):
             self.register.set_pixel_register_value('C_Low', 1)
-            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='C_Low'))
+            commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_Low'))
         else:
             self.register.set_pixel_register_value('C_Low', 0)
-            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='C_Low'))
+            commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_Low'))
         # C_High
         if "C_High".lower() in map(lambda x: x.lower(), self.enable_shift_masks):
             self.register.set_pixel_register_value('C_High', 1)
-            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='C_High'))
+            commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_High'))
         else:
             self.register.set_pixel_register_value('C_High', 0)
-            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='C_High'))
-        commands.extend(self.register.get_commands("runmode"))
+            commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_High'))
+        commands.extend(self.register.get_commands("RunMode"))
         self.register_utils.send_commands(commands)
 
     def scan(self):
@@ -55,11 +56,11 @@ class FastThresholdScan(Fei4RunBase):
         self.stop_condition_triggered = False  # set to true if the stop condition is true once
 
         self.start_at = 0.01  # if more than start_at*activated_pixel see at least one hit the precise scanning is started
-        self.stop_at = 0.99  # if more than stop_at*activated_pixel see the maximum numbers of injection, the scan is stopped
+        self.stop_at = 0.95  # if more than stop_at*activated_pixel see the maximum numbers of injection, the scan is stopped
 
         self.record_data = False  # set to true to activate data storage, so far not everything is recorded to ease data analysis
 
-        scan_parameter_range = [0, (2 ** self.register.get_global_register_objects(name=['PlsrDAC'])[0].bitlength)]
+        scan_parameter_range = [0, (2 ** self.register.global_registers['PlsrDAC']['bitlength'])]
         if self.scan_parameters.PlsrDAC[0]:
             scan_parameter_range[0] = self.scan_parameters.PlsrDAC[0]
         if self.scan_parameters.PlsrDAC[1]:
@@ -91,13 +92,13 @@ class FastThresholdScan(Fei4RunBase):
                 logging.info("Scan step %d (%s %d)" % (self.data_points, 'PlsrDAC', self.scan_parameter_value))
 
             commands = []
-            commands.extend(self.register.get_commands("confmode"))
+            commands.extend(self.register.get_commands("ConfMode"))
             self.register.set_global_register_value('PlsrDAC', self.scan_parameter_value)
-            commands.extend(self.register.get_commands("wrregister", name=['PlsrDAC']))
+            commands.extend(self.register.get_commands("WrRegister", name=['PlsrDAC']))
             self.register_utils.send_commands(commands)
 
             with self.readout(PlsrDAC=self.scan_parameter_value):
-                cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0]
+                cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0]
                 scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections, use_delay=True, mask_steps=self.mask_steps, enable_mask_steps=self.enable_mask_steps, enable_double_columns=enable_double_columns, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=self.enable_shift_masks, disable_shift_masks=self.disable_shift_masks, restore_shift_masks=False, mask=invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if self.use_enable_mask else None, double_column_correction=self.pulser_dac_correction)
 
             if not self.start_condition_triggered or self.data_points > self.minimum_data_points:  # speed up, only create histograms when needed. Python is much too slow here.
@@ -105,7 +106,13 @@ class FastThresholdScan(Fei4RunBase):
                     logging.info('Testing for start condition: %s %d' % ('PlsrDAC', self.scan_parameter_value))
                 if not self.stop_condition_triggered and self.record_data:
                     logging.info('Testing for stop condition: %s %d' % ('PlsrDAC', self.scan_parameter_value))
-                occupancy_array = np.histogram2d(*convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array), bins=(80, 336), range=[[1, 80], [1, 336]])[0]
+
+                col, row = convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)
+                # using self written histogrammer in C++
+                occupancy_array = hist_2d_index(col - 1, row - 1, shape=(80, 336))
+                # using numpy
+#                 occupancy_array = np.histogram2d(col, row, bins=(80, 336), range=[[1, 80], [1, 336]])[0]
+
                 self.scan_condition(occupancy_array)
 
             # start condition is met for the first time

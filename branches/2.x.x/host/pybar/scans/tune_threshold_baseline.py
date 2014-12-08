@@ -30,39 +30,39 @@ class ThresholdBaselineTuning(Fei4RunBase):
 
     def configure(self):
         if self.trig_count == 0:
-            self.consecutive_lvl1 = (2 ** self.register.get_global_register_objects(name=['Trig_Count'])[0].bitlength)
+            self.consecutive_lvl1 = (2 ** self.register.global_registers['Trig_Count']['bitlength'])
         else:
             self.consecutive_lvl1 = self.trig_count
         if self.occupancy_limit * self.n_triggers * self.consecutive_lvl1 < 1.0:
             logging.warning('Number of triggers too low for given occupancy limit. Any noise hit will lead to a masked pixel.')
 
         commands = []
-        commands.extend(self.register.get_commands("confmode"))
+        commands.extend(self.register.get_commands("ConfMode"))
         # TDAC
-        tdac_max = 2 ** self.register.get_pixel_register_objects(name=['TDAC'])[0].bitlength - 1
+        tdac_max = 2 ** self.register.pixel_registers['TDAC']['bitlength'] - 1
         self.register.set_pixel_register_value("TDAC", tdac_max)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name="TDAC"))
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, name="TDAC"))
         mask = make_box_pixel_mask_from_col_row(column=self.col_span, row=self.row_span)
         # Enable
         if self.use_enable_mask:
             self.register.set_pixel_register_value("Enable", np.logical_and(mask, self.register.get_pixel_register_value("Enable")))
         else:
             self.register.set_pixel_register_value("Enable", mask)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name="Enable"))
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, name="Enable"))
         # Imon
         self.register.set_pixel_register_value('Imon', 1)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='Imon'))
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='Imon'))
         # C_High
         self.register.set_pixel_register_value('C_High', 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='C_High'))
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_High'))
         # C_Low
         self.register.set_pixel_register_value('C_Low', 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='C_Low'))
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_Low'))
         # Registers
 #         self.register.set_global_register_value("Trig_Lat", self.trigger_latency)  # set trigger latency
         self.register.set_global_register_value("Trig_Count", self.trig_count)  # set number of consecutive triggers
-        commands.extend(self.register.get_commands("wrregister", name=["Trig_Count"]))
-        commands.extend(self.register.get_commands("runmode"))
+        commands.extend(self.register.get_commands("WrRegister", name=["Trig_Count"]))
+        commands.extend(self.register.get_commands("RunMode"))
         self.register_utils.send_commands(commands)
 
     def scan(self):
@@ -75,7 +75,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
         if self.scan_parameters.Step:
             steps = self.scan_parameters.Step
 
-        lvl1_command = self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", length=self.trigger_rate_limit)[0]
+        lvl1_command = self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", length=self.trigger_rate_limit)[0]
         self.total_scan_time = int(lvl1_command.length() * 25 * (10 ** -9) * self.n_triggers)
 
         disabled_pixels_limit_cnt = int(self.disabled_pixels_limit * 336 * 80)
@@ -88,11 +88,11 @@ class ThresholdBaselineTuning(Fei4RunBase):
             self.register.create_restore_point(name=str(reg_val))
             logging.info('Scanning Vthin_AltFine %d' % reg_val)
             commands = []
-            commands.extend(self.register.get_commands("confmode"))
+            commands.extend(self.register.get_commands("ConfMode"))
             self.register.set_global_register_value("Vthin_AltFine", reg_val)  # set number of consecutive triggers
-            commands.extend(self.register.get_commands("wrregister", name=["Vthin_AltFine"]))
-            # setting FE into runmode
-            commands.extend(self.register.get_commands("runmode"))
+            commands.extend(self.register.get_commands("WrRegister", name=["Vthin_AltFine"]))
+            # setting FE into RunMode
+            commands.extend(self.register.get_commands("RunMode"))
             self.register_utils.send_commands(commands)
             step = 0
             while True:
@@ -151,10 +151,10 @@ class ThresholdBaselineTuning(Fei4RunBase):
                     self.register.set_pixel_register_value('TDAC', tdac_reg)
                     self.register.set_pixel_register_value('Enable', enable_mask)
                     commands = []
-                    commands.extend(self.register.get_commands("confmode"))
-                    commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name='TDAC'))
-                    commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name='Enable'))
-                    commands.extend(self.register.get_commands("runmode"))
+                    commands.extend(self.register.get_commands("ConfMode"))
+                    commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, name='TDAC'))
+                    commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, name='Enable'))
+                    commands.extend(self.register.get_commands("RunMode"))
                     self.register_utils.send_commands(commands)
                     if occ_mask.sum() == 0 or step == steps or decrease_pixel_mask.sum() < disabled_pixels_limit_cnt:
                         self.register.clear_restore_points(name=str(reg_val))

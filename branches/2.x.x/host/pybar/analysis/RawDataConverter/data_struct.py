@@ -4,9 +4,12 @@ import numpy as np
 
 
 class MetaTable(tb.IsDescription):
-    start_index = tb.UInt32Col(pos=0)
-    stop_index = tb.UInt32Col(pos=1)
-    length = tb.UInt32Col(pos=2)
+    index_start = tb.UInt32Col(pos=0)
+#     start_index
+    index_stop = tb.UInt32Col(pos=1)
+#     stop_index
+    data_length = tb.UInt32Col(pos=2)
+#     length = tb.UInt32Col(pos=2)
     # https://github.com/PyTables/PyTables/issues/230
     #timestamp = tb.Time64Col(pos=3)
     timestamp = tb.Float64Col(pos=3)
@@ -132,7 +135,9 @@ class ClusterInfoTable(tb.IsDescription):
     charge = tb.Float32Col(pos=4)
     seed_column = tb.UInt8Col(pos=5)
     seed_row = tb.UInt16Col(pos=6)
-    event_status = tb.UInt16Col(pos=7)
+    mean_column = tb.Float32Col(pos=7)
+    mean_row = tb.Float32Col(pos=8)
+    event_status = tb.UInt16Col(pos=9)
 
 
 class MeanThresholdCalibrationTable(tb.IsDescription):

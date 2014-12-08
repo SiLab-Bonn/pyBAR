@@ -3,8 +3,10 @@ working_dir : # data/  # path to DUT hardware configuration file (.yaml), DUT in
 dut : dut_usbpix.yaml  # DUT hardware configuration (.yaml). Change to dut_usbpix_gpac.yaml for GPAC card.
 dut_configuration : # dut_configuration_usbpix.yaml  # DUT init configuration (.yaml). Default: not given / empty
 
-fe_configuration : config/fei4/configs/std_cfg_fei4a.cfg  # FE configuration file, text (.cfg) or HDF5 (.h5) file. If not given, latest valid configuration (run status FINISHED) will be taken. If a number is given, configuration from run with specified number will be taken.
-module_id : test_module  # module identifier / name, sub-folder with given name will be created inside working_dir
+fe_configuration :  # FE configuration file, text (.cfg) or HDF5 (.h5) file. If not given, latest valid configuration (run status FINISHED) will be taken. If a number is given, configuration from run with specified number will be taken.
+fe_flavor : fei4a  # FEI4 flavor/type for initial configuration. Valid values: 'fei4a' or 'fei4b'
+chip_address :  # Chip Address for initial configuration, if not given, broadcast bit will be set
+module_id : module_test  # module identifier / name, sub-folder with given name will be created inside working_dir
 
 #
 # *** run configuration can be added here ***

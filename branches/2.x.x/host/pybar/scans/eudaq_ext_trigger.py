@@ -40,7 +40,7 @@ class EudaqExtTriggerScan(ExtTriggerScan):
 
     def scan(self):
         start = time()
-        lvl1_command = self.register.get_commands("zeros", length=self.trigger_delay)[0] + self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", length=self.trigger_rate_limit)[0]
+        lvl1_command = self.register.get_commands("zeros", length=self.trigger_delay)[0] + self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", length=self.trigger_rate_limit)[0]
         self.register_utils.set_command(lvl1_command)
 
         self.remaining_data = np.ndarray((0,), dtype=np.uint32)
@@ -95,7 +95,7 @@ if __name__ == "__main__":
         parser.error("incorrect number of arguments")
     run_conf = vars(options)
     # create PyProducer instance
-    pp = PyProducer("pyBAR", rcaddr)
+    pp = PyProducer("PyBAR", rcaddr)
     while not pp.Error and not pp.Terminating:
         # wait for configure cmd from RunControl
         while not pp.Configuring and not pp.Terminating:
@@ -122,6 +122,7 @@ if __name__ == "__main__":
             print "Starting run..."
 #             join = rmngr.run_run(EudaqExtTriggerScan, run_conf=run_conf, use_thread=True)
             join = rmngr.run_run(EudaqExtTriggerScan, use_thread=True)
+            sleep(5)
             pp.StartingRun = True  # set status and send BORE
             # starting to run
             while join(timeout=1) is None:

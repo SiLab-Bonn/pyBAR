@@ -19,6 +19,45 @@ from pybar.analysis.plotting import plotting
 from pybar.analysis.RawDataConverter import analysis_functions
 
 
+class AnalysisError(Exception):
+    """Base class for exceptions in this module.
+    """
+
+
+class IncompleteInputError(AnalysisError):
+    """Exception raised for errors in the input.
+    """
+
+
+class InvalidInputError(AnalysisError):
+    """Exception raised for errors in the input.
+    """
+
+
+class NotSupportedError(AnalysisError):
+    """Exception raised for not supported actions.
+    """
+    
+    
+def generate_threshold_mask(hist):
+    '''Masking array elements when equal 0.0 or greater than 10 times the median
+
+    Parameters
+    ----------
+    hist : array_like
+        Input data.
+
+    Returns
+    -------
+    masked array
+        Returns copy of the array with masked elements.
+    '''
+    masked_array = np.ma.masked_values(hist, 0)
+    masked_array = np.ma.masked_greater(masked_array, 10 * np.ma.median(hist))
+    logging.info('Masking %d pixel(s)' % np.ma.count_masked(masked_array))
+    return np.ma.getmaskarray(masked_array)
+
+
 def unique_row(array, use_columns=None, selected_columns_only=False):
     '''Takes a numpy array and returns the array reduced to unique rows. If columns are defined only these columns are taken to define a unique row.
     The returned array can have all columns of the original array or only the columns defined in use_columns.
@@ -89,7 +128,7 @@ def get_median_from_histogram(counts, bin_positions):
     values = []
     for index, one_bin in enumerate(counts):
         for _ in range(one_bin):
-            values.extend([bin_positions[index]])
+            values.append(bin_positions[index])
     return np.median(values)
 
 
@@ -97,7 +136,7 @@ def get_rms_from_histogram(counts, bin_positions):
     values = []
     for index, one_bin in enumerate(counts):
         for _ in range(one_bin):
-            values.extend([bin_positions[index]])
+            values.append(bin_positions[index])
     return np.std(values)
 
 
@@ -439,7 +478,7 @@ def get_parameter_from_files(files, parameters=None, unique=False, sort=True):
     parameter_values_from_file_names_dict = get_parameter_value_from_file_names(files, parameters, unique=unique, sort=sort)  # get the parameter from the file name
     for file_name in files:
         with tb.openFile(file_name, mode="r") as in_file_h5:  # open the actual file
-            scan_parameter_values = {}
+            scan_parameter_values = collections.OrderedDict()
             try:
                 scan_parameters = in_file_h5.root.scan_parameters[:]  # get the scan parameters from the scan parameter table
                 if parameters is None:
@@ -519,11 +558,13 @@ def combine_meta_data(files_dict):
         with tb.openFile(file_name, mode="r") as in_file_h5:  # open the actual file
             total_length += in_file_h5.root.meta_data.shape[0]
             try:
-                in_file_h5.root.meta_data[0]['timestamp_stop']  # this only exists in the new data format, https://silab-redmine.physik.uni-bonn.de/news/7
-            except KeyError:
-                meta_data_v2 = False
+                in_file_h5.root.meta_data[0]['error']  # error column exists in old and new meta data format
             except IndexError:
                 return None
+            try:
+                in_file_h5.root.meta_data[0]['timestamp_stop']  # this only exists in the new data format, https://silab-redmine.physik.uni-bonn.de/news/7
+            except IndexError:
+                meta_data_v2 = False
 
     if meta_data_v2:
         meta_data_combined = np.empty((total_length, ), dtype=[('index_start', np.uint32),
@@ -583,6 +624,60 @@ def get_events_in_both_arrays(events_one, events_two):
     return event_result[:count]
 
 
+def hist_1d_index(x, shape):
+    """
+    Fast 1d histogram of 1D indices with C++ inner loop optimization.
+    Is more than 2 orders faster than np.histogram().
+    The indices are given in coordinates and have to fit into a histogram of the dimensions shape.
+    Parameters
+    ----------
+    x : array like
+    shape : tuple
+        tuple with x dimensions: (x,)
+
+    Returns
+    -------
+    np.ndarray with given shape
+
+    """
+    if len(shape) != 1:
+        raise InvalidInputError('The shape has to describe a 1-d histogram')
+
+    # change memory alignment for c++ library
+    x = np.ascontiguousarray(x.astype(np.int32))
+    result = np.zeros(shape=shape, dtype=np.uint32)
+    analysis_functions.hist_1d(x, shape[0], result)
+    return result
+
+
+def hist_2d_index(x, y, shape):
+    """
+    Fast 2d histogram of 2D indices with C++ inner loop optimization.
+    Is more than 2 orders faster than np.histogram2d().
+    The indices are given in x, y coordinates and have to fit into a histogram of the dimensions shape.
+    Parameters
+    ----------
+    x : array like
+    y : array like
+    shape : tuple
+        tuple with x,y dimensions: (x, y)
+
+    Returns
+    -------
+    np.ndarray with given shape
+
+    """
+    if len(shape) != 2:
+        raise InvalidInputError('The shape has to describe a 2-d histogram')
+
+    # change memory alignment for c++ library
+    x = np.ascontiguousarray(x.astype(np.int32))
+    y = np.ascontiguousarray(y.astype(np.int32))
+    result = np.zeros(shape=shape, dtype=np.uint32).ravel()  # ravel hist in c-style, 3D --> 1D
+    analysis_functions.hist_2d(x, y, shape[0], shape[1], result)
+    return np.reshape(result, shape)  # rebuilt 3D hist from 1D hist
+
+
 def hist_3d_index(x, y, z, shape):
     """
     Fast 3d histogram of 3D indices with C++ inner loop optimization.
@@ -601,11 +696,13 @@ def hist_3d_index(x, y, z, shape):
     np.ndarray with given shape
 
     """
+    if len(shape) != 3:
+        raise InvalidInputError('The shape has to describe a 3-d histogram')
     # change memory alignment for c++ library
     x = np.ascontiguousarray(x.astype(np.int32))
     y = np.ascontiguousarray(y.astype(np.int32))
     z = np.ascontiguousarray(z.astype(np.int32))
-    result = np.zeros(shape=shape, dtype=np.uint8).ravel()  # ravel hist in c-style, 3D --> 1D
+    result = np.zeros(shape=shape, dtype=np.uint16).ravel()  # ravel hist in c-style, 3D --> 1D
     analysis_functions.hist_3d(x, y, z, shape[0], shape[1], shape[2], result)
     return np.reshape(result, shape)  # rebuilt 3D hist from 1D hist
 
@@ -810,7 +907,7 @@ def get_hits_of_scan_parameter(input_file_hits, scan_parameters=None, try_speedu
 
         # loop over the selected events
         for parameter_index, (start_event_number, stop_event_number) in enumerate(event_number_ranges):
-            logging.info('Read hits for ' + str(scan_parameters) + ' = ' + str(parameter_values[parameter_index]))
+            logging.debug('Read hits for ' + str(scan_parameters) + ' = ' + str(parameter_values[parameter_index]))
 
             readout_hit_len = 0  # variable to calculate a optimal chunk size value from the number of hits for speed up
             # loop over the hits in the actual selected events with optimizations: determine best chunk size, start word index given
@@ -1102,7 +1199,7 @@ def get_scan_parameter(meta_data_array, unique=True):
         last_not_parameter_column = meta_data_array.dtype.names.index('error')  # for raw data file meta_data
     if last_not_parameter_column == len(meta_data_array.dtype.names) - 1:  # no meta_data found
         return
-    scan_parameters = {}
+    scan_parameters = collections.OrderedDict()
     for scan_par_name in meta_data_array.dtype.names[4:]:  # scan parameters are in columns 5 (= index 4) and above
         scan_parameters[scan_par_name] = np.unique(meta_data_array[scan_par_name]) if unique else meta_data_array[scan_par_name]
     return scan_parameters
@@ -1265,6 +1362,10 @@ def data_aligned_at_events(table, start_event_number=None, stop_event_number=Non
             src_array = table.read(start=start_index, stop=start_index + chunk_size + 1)  # stop index is exclusive, so add 1
             first_event = src_array["event_number"][0]
             last_event = src_array["event_number"][-1]
+            if (start_event_number is not None and last_event < start_event_number):
+                start_index = start_index + src_array.shape[0]  # events fully read, increase start index and continue reading
+                continue
+
             last_event_start_index = np.argmax(src_array["event_number"] == last_event)  # get first index of last event
             if last_event_start_index == 0:
                 nrows = src_array.shape[0]

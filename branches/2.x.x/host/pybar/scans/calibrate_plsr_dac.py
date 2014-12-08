@@ -26,20 +26,20 @@ class PlsrDacScan(Fei4RunBase):
 
     def set_scan_parameter(self, parameter, value):
         commands = []
-        commands.extend(self.register.get_commands("confmode"))
+        commands.extend(self.register.get_commands("ConfMode"))
         self.register.set_global_register_value(parameter, value)
-        commands.extend(self.register.get_commands("wrregister", name=[parameter]))
+        commands.extend(self.register.get_commands("WrRegister", name=[parameter]))
         self.register_utils.send_commands(commands)
 
     def configure(self):
         # Route Vcal to external pin
         commands = []
-        commands.extend(self.register.get_commands("confmode"))
+        commands.extend(self.register.get_commands("ConfMode"))
         self.register.set_global_register_value('colpr_addr', self.colpr_addr)
         self.register.set_global_register_value('colpr_mode', 0)
         self.register.set_global_register_value('ExtDigCalSW', 0)
         self.register.set_global_register_value('ExtAnaCalSW', 1)
-        commands.extend(self.register.get_commands("wrregister", name=['colpr_addr', 'colpr_mode', 'ExtDigCalSW', 'ExtAnaCalSW']))
+        commands.extend(self.register.get_commands("WrRegister", name=['colpr_addr', 'colpr_mode', 'ExtDigCalSW', 'ExtAnaCalSW']))
         self.register_utils.send_commands(commands)
 
     def scan(self):

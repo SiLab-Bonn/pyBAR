@@ -42,6 +42,12 @@ def get_array_differences(first_array, second_array):
                 return_str += 'Column ' + column_name + ' has different data type. '
             if not (first_column == second_column).all():  # check if the data of the column is equal
                 return_str += 'Column ' + column_name + ' not equal. '
+        for column_name in second_array.dtype.names:
+            try:
+                first_array[column_name]
+            except ValueError:
+                return_str += 'Additional column ' + column_name + ' found. '
+                continue
         return ': ' + return_str
 
 
@@ -256,12 +262,50 @@ class TestAnalysis(unittest.TestCase):
         event_numbers_2 = np.array([1, 1, 1, 2, 2, 2, 4, 4, 4, 7], dtype=np.int64)
         result = analysis_utils.get_events_in_both_arrays(event_numbers[0], event_numbers_2)
         self.assertListEqual([2, 4, 7], result.tolist())
+        
+    def test_analysis_utils_get_max_events_in_both_arrays(self):  # check compiled get_max_events_in_both_arrays function       
+        event_numbers = np.array([[0, 0, 1, 1, 2], [0, 0, 0, 0, 0]], dtype=np.int64)
+        event_numbers_2 = np.array([0, 3, 3, 4], dtype=np.int64)
+        result = analysis_utils.get_max_events_in_both_arrays(event_numbers[0], event_numbers_2)
+        self.assertListEqual([0, 0, 1, 1, 2, 3, 3, 4], result.tolist())
 
     def test_analysis_utils_in1d_events(self):  # check compiled get_in1d_sorted function
         event_numbers = np.array([[0, 0, 2, 2, 2, 4, 5, 5, 6, 7, 7, 7, 8], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=np.int64)
         event_numbers_2 = np.array([1, 1, 1, 2, 2, 2, 4, 4, 4, 7], dtype=np.int64)
         result = event_numbers[0][analysis_utils.in1d_events(event_numbers[0], event_numbers_2)]
         self.assertListEqual([2, 2, 2, 4, 7, 7, 7], result.tolist())
+
+
+    def test_1d_index_histograming(self):  # check compiled hist_2D_index function
+        x = np.random.randint(0, 100, 100)
+        shape = (100, )
+        array_fast = analysis_utils.hist_1d_index(x, shape=shape)
+        array = np.histogram(x, bins=shape[0], range=(0, shape[0]))[0]
+        shape = (5, )  # shape that is too small for the indices to trigger exception
+        exception_ok = False
+        try:
+            array_fast = analysis_utils.hist_1d_index(x, shape=shape)
+        except IndexError:
+            exception_ok = True
+        except:  # other exception that should not occur
+            pass
+        self.assertTrue(exception_ok & np.all(array == array_fast))
+
+
+    def test_2d_index_histograming(self):  # check compiled hist_2D_index function
+        x, y = np.random.randint(0, 100, 100), np.random.randint(0, 100, 100)
+        shape = (100, 100)
+        array_fast = analysis_utils.hist_2d_index(x, y, shape=shape)
+        array = np.histogram2d(x, y, bins=shape, range=[[0, shape[0]], [0, shape[1]]])[0]
+        shape = (5, 200)  # shape that is too small for the indices to trigger exception
+        exception_ok = False
+        try:
+            array_fast = analysis_utils.hist_2d_index(x, y, shape=shape)
+        except IndexError:
+            exception_ok = True
+        except:  # other exception that should not occur
+            pass
+        self.assertTrue(exception_ok & np.all(array == array_fast))
 
     def test_3d_index_histograming(self):  # check compiled hist_3D_index function
         with tb.open_file('test_analysis//hist_data.h5', mode="r") as in_file_h5:

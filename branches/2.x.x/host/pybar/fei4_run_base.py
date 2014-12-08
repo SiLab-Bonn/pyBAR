@@ -18,7 +18,7 @@ from pybar.fei4.register import FEI4Register
 from pybar.fei4.register_utils import FEI4RegisterUtils, is_fe_ready
 from pybar.daq.fifo_readout import FifoReadout, RxSyncError, EightbTenbError, FifoError, NoDataTimeout, StopTimeout
 from pybar.daq.fei4_raw_data import open_raw_data_file
-from pybar.analysis.analyze_raw_data import AnalysisError, IncompleteInputError, NotSupportedError
+from pybar.analysis.analysis_utils import AnalysisError
 from pybar.analysis.RawDataConverter.data_struct import NameValue
 
 
@@ -80,6 +80,7 @@ class Fei4RunBase(RunBase):
         logging.info('Scan parameter(s): %s' % (', '.join(['%s:%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None'))
 
         try:
+            last_configuration = self._get_configuration()
             if 'fe_configuration' in self.conf and self.conf['fe_configuration']:
                 if not isinstance(self.conf['fe_configuration'], FEI4Register):
                     if isinstance(self.conf['fe_configuration'], basestring):
@@ -94,8 +95,19 @@ class Fei4RunBase(RunBase):
                         self._conf['fe_configuration'] = FEI4Register(configuration_file=self._get_configuration())
                 else:
                     pass  # do nothing, already initialized
+            elif last_configuration:
+                self._conf['fe_configuration'] = FEI4Register(configuration_file=last_configuration)
             else:
-                self._conf['fe_configuration'] = FEI4Register(configuration_file=self._get_configuration())
+                if 'chip_address' in self.conf and isinstance(self.conf['chip_address'], (int, long)):
+                    chip_address = self.conf['chip_address']
+                    broadcast = False
+                else:
+                    chip_address = 0
+                    broadcast = True
+                if 'fe_flavor' in self.conf and self.conf['fe_flavor']:
+                    self._conf['fe_configuration'] = FEI4Register(fe_type=self.conf['fe_flavor'], chip_address=chip_address, broadcast=broadcast)
+                else:
+                    raise ValueError('No valid configuration found')
 
             if not isinstance(self.conf['dut'], Dut):
                 if isinstance(self.conf['dut'], basestring):
@@ -133,22 +145,21 @@ class Fei4RunBase(RunBase):
                     self.dut['POWER_SCC']['EN_VA2'] = 1
                     self.dut['POWER_SCC'].write()
                     # enabling readout
-                    self.dut['rx']['CH1'] = 0
-                    self.dut['rx']['CH2'] = 0
-                    self.dut['rx']['CH3'] = 0
+                    self.dut['rx']['CH1'] = 1
+                    self.dut['rx']['CH2'] = 1
+                    self.dut['rx']['CH3'] = 1
                     self.dut['rx']['CH4'] = 1
                     self.dut['rx']['TLU'] = 1
                     self.dut['rx']['TDC'] = 1
                     self.dut['rx'].write()
                 elif self.dut.name == 'usbpix_gpac':
+                    self.dut['V_in'].set_current_limit(1000, unit='mA')  # one for all
                     # enabling LVDS transceivers
                     self.dut['CCPD_Vdd'].set_enable(False)
-                    self.dut['CCPD_Vdd'].set_current_limit(1000, unit='mA')
                     self.dut['CCPD_Vdd'].set_voltage(0.0, unit='V')
                     self.dut['CCPD_Vdd'].set_enable(True)
                     # enabling V_in
                     self.dut['V_in'].set_enable(False)
-                    self.dut['V_in'].set_current_limit(2000, unit='mA')
                     self.dut['V_in'].set_voltage(2.1, unit='V')
                     self.dut['V_in'].set_enable(True)
                     # enabling readout
@@ -183,7 +194,7 @@ class Fei4RunBase(RunBase):
                     self.register_utils.reset_service_records()
                 with self.register.restored(name=self.run_number):
                     self.configure()
-                    self.register.save_configuration_to_hdf5(self.raw_data_file.h5_file)
+                    self.register.save_configuration(self.raw_data_file.h5_file)
                     self.fifo_readout.reset_rx()
                     self.fifo_readout.reset_sram_fifo()
                     self.fifo_readout.print_readout_status()
@@ -193,10 +204,10 @@ class Fei4RunBase(RunBase):
         else:
             try:
                 if self.abort_run.is_set():
-                    raise RunAborted('Do not analyze data.')
+                    raise RunAborted('Omitting data analysis: run was aborted')
                 self.analyze()
-            except (AnalysisError, IncompleteInputError, NotSupportedError) as e:
-                logging.error('Analysis of raw data failed: %s' % e)
+            except AnalysisError as e:
+                logging.error('Analysis of data failed: %s' % e)
             except Exception:
                 self.handle_err(sys.exc_info())
             else:
@@ -226,18 +237,25 @@ class Fei4RunBase(RunBase):
         self.abort(msg='%s' % exc[1])
 
     def _get_configuration(self, run_number=None):
+        def find_file(run_number):
+            for root, dirs, files in os.walk(self.working_dir):
+                for cfgfile in files:
+                    cfg_root, cfg_ext = os.path.splitext(cfgfile)
+                    if cfg_root.startswith(''.join([str(run_number), '_', self.module_id])) and cfg_ext.endswith(".cfg"):
+                        return os.path.join(root, cfgfile)
+
         if not run_number:
-            run_numbers = self._get_run_numbers(status='FINISHED')
-            if run_numbers:
-                run_number = max(dict.iterkeys(run_numbers))
+            run_numbers = sorted(self._get_run_numbers(status='FINISHED').iterkeys(), reverse=True)
+            for run_number in run_numbers:
+                cfg_file = find_file(run_number)
+                if cfg_file:
+                    return cfg_file
+        else:
+            cfg_file = find_file(run_number)
+            if cfg_file:
+                return cfg_file
             else:
-                raise ValueError('Found no valid configuration')
-        for root, dirs, files in os.walk(self.working_dir):
-            for cfgfile in files:
-                cfg_root, cfg_ext = os.path.splitext(cfgfile)
-                if cfg_root.startswith(''.join([str(run_number), '_', self.module_id])) and cfg_ext.endswith(".cfg"):
-                    return os.path.join(root, cfgfile)
-        raise ValueError('Found no configuration with run number %s' % run_number)
+                raise ValueError('Found no configuration with run number %s' % run_number)
 
     def set_scan_parameters(self, *args, **kwargs):
         fields = dict(kwargs)
@@ -264,7 +282,7 @@ class Fei4RunBase(RunBase):
                 self.fifo_readout.stop(timeout=0.0)
 
     def start_readout(self, *args, **kwargs):
-        if kwargs:
+        if args or kwargs:
             self.set_scan_parameters(*args, **kwargs)
         self.fifo_readout.start(reset_sram_fifo=False, clear_buffer=True, callback=self.handle_data, errback=self.handle_err)
 

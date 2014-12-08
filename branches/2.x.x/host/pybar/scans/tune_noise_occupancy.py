@@ -36,20 +36,20 @@ class NoiseOccupancyScan(Fei4RunBase):
 
     def configure(self):
         if self.trig_count == 0:
-            self.consecutive_lvl1 = (2 ** self.register.get_global_register_objects(name=['Trig_Count'])[0].bitlength)
+            self.consecutive_lvl1 = (2 ** self.register.global_registers['Trig_Count']['bitlength'])
         else:
             self.consecutive_lvl1 = self.trig_count
         if self.occupancy_limit * self.n_triggers * self.consecutive_lvl1 < 1.0:
             logging.warning('Number of triggers too low for given occupancy limit. Any noise hit will lead to a masked pixel.')
 
         commands = []
-        commands.extend(self.register.get_commands("confmode"))
+        commands.extend(self.register.get_commands("ConfMode"))
         # Enable
         enable_pixel_mask = make_box_pixel_mask_from_col_row(column=self.col_span, row=self.row_span)
         if not self.overwrite_enable_mask:
             enable_pixel_mask = np.logical_and(enable_pixel_mask, self.register.get_pixel_register_value('Enable'))
         self.register.set_pixel_register_value('Enable', enable_pixel_mask)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name='Enable'))
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, name='Enable'))
         # Imon
         if self.use_enable_mask_for_imon:
             imon_pixel_mask = invert_pixel_mask(enable_pixel_mask)
@@ -57,23 +57,23 @@ class NoiseOccupancyScan(Fei4RunBase):
             imon_pixel_mask = make_box_pixel_mask_from_col_row(column=self.col_span, row=self.row_span, default=1, value=0)  # 0 for selected columns, else 1
             imon_pixel_mask = np.logical_or(imon_pixel_mask, self.register.get_pixel_register_value('Imon'))
         self.register.set_pixel_register_value('Imon', imon_pixel_mask)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name='Imon'))
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, name='Imon'))
         # C_High
         self.register.set_pixel_register_value('C_High', 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='C_High'))
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_High'))
         # C_Low
         self.register.set_pixel_register_value('C_Low', 0)
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='C_Low'))
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_Low'))
         # Registers
 #         self.register.set_global_register_value("Trig_Lat", self.trigger_latency)  # set trigger latency
         self.register.set_global_register_value("Trig_Count", self.trig_count)  # set number of consecutive triggers
-        commands.extend(self.register.get_commands("wrregister", name=["Trig_Count"]))
-        commands.extend(self.register.get_commands("runmode"))
+        commands.extend(self.register.get_commands("WrRegister", name=["Trig_Count"]))
+        commands.extend(self.register.get_commands("RunMode"))
         self.register_utils.send_commands(commands)
 
     def scan(self):
         # preload command
-        lvl1_command = self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", length=self.trigger_rate_limit)[0]
+        lvl1_command = self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", length=self.trigger_rate_limit)[0]
         self.total_scan_time = int(lvl1_command.length() * 25 * (10 ** -9) * self.n_triggers)
         logging.info('Estimated scan time: %ds' % self.total_scan_time)
 
@@ -110,7 +110,7 @@ class NoiseOccupancyScan(Fei4RunBase):
             self.occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
             # noisy pixels are set to 1
             if self.trig_count == 0:
-                consecutive_lvl1 = (2 ** self.register.get_global_register_objects(name=['Trig_Count'])[0].bitlength)
+                consecutive_lvl1 = (2 ** self.register.global_registers['Trig_Count']['bitlength'])
             else:
                 consecutive_lvl1 = self.trig_count
             self.occ_mask[occ_hist > self.occupancy_limit * self.n_triggers * consecutive_lvl1] = 1
@@ -134,10 +134,10 @@ class NoiseOccupancyScan(Fei4RunBase):
             plot_occupancy(self.occ_mask.T, title='Noisy Pixels', z_max=1, filename=analyze_raw_data.output_pdf)
             plot_fancy_occupancy(self.occ_mask.T, z_max=1, filename=analyze_raw_data.output_pdf)
             for mask in self.disable_for_mask:
-                mask_name = self.register.get_pixel_register_attributes("full_name", do_sort=True, name=[mask])[0]
+                mask_name = self.register.pixel_registers[mask]['name']
                 plot_occupancy(self.register.get_pixel_register_value(mask).T, title='%s Mask' % mask_name, z_max=1, filename=analyze_raw_data.output_pdf)
             for mask in self.enable_for_mask:
-                mask_name = self.register.get_pixel_register_attributes("full_name", do_sort=True, name=[mask])[0]
+                mask_name = self.register.pixel_registers[mask]['name']
                 plot_occupancy(self.register.get_pixel_register_value(mask).T, title='%s Mask' % mask_name, z_max=1, filename=analyze_raw_data.output_pdf)
 
     def start_readout(self, **kwargs):

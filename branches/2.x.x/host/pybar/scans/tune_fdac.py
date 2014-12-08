@@ -35,22 +35,22 @@ class FdacTuning(Fei4RunBase):
 
     def configure(self):
         commands = []
-        commands.extend(self.register.get_commands("confmode"))
+        commands.extend(self.register.get_commands("ConfMode"))
         # C_Low
         if "C_Low".lower() in map(lambda x: x.lower(), self.enable_shift_masks):
             self.register.set_pixel_register_value('C_Low', 1)
-            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='C_Low'))
+            commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_Low'))
         else:
             self.register.set_pixel_register_value('C_Low', 0)
-            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='C_Low'))
+            commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_Low'))
         # C_High
         if "C_High".lower() in map(lambda x: x.lower(), self.enable_shift_masks):
             self.register.set_pixel_register_value('C_High', 1)
-            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='C_High'))
+            commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_High'))
         else:
             self.register.set_pixel_register_value('C_High', 0)
-            commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=True, name='C_High'))
-        commands.extend(self.register.get_commands("runmode"))
+            commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_High'))
+        commands.extend(self.register.get_commands("RunMode"))
         self.register_utils.send_commands(commands)
 
     def scan(self):
@@ -62,11 +62,11 @@ class FdacTuning(Fei4RunBase):
         mask_steps = 3
         enable_mask_steps = []
 
-        cal_lvl1_command = self.register.get_commands("cal")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("lv1")[0] + self.register.get_commands("zeros", mask_steps=mask_steps)[0]
+        cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", mask_steps=mask_steps)[0]
 
         self.write_target_charge()
         additional_scan = True
-        lastBitResult = np.zeros(shape=self.register.get_pixel_register_value("Fdac").shape, dtype=self.register.get_pixel_register_value("Fdac").dtype)
+        lastBitResult = np.zeros(shape=self.register.get_pixel_register_value("FDAC").shape, dtype=self.register.get_pixel_register_value("FDAC").dtype)
 
         self.set_start_fdac()
 
@@ -129,21 +129,21 @@ class FdacTuning(Fei4RunBase):
 
     def write_target_charge(self):
         commands = []
-        commands.extend(self.register.get_commands("confmode"))
+        commands.extend(self.register.get_commands("ConfMode"))
         self.register.set_global_register_value("PlsrDAC", self.target_charge)
-        commands.extend(self.register.get_commands("wrregister", name="PlsrDAC"))
+        commands.extend(self.register.get_commands("WrRegister", name="PlsrDAC"))
         self.register_utils.send_commands(commands)
 
     def set_fdac_bit(self, bit_position, bit_value=1):
         if bit_value == 1:
-            self.register.set_pixel_register_value("Fdac", self.register.get_pixel_register_value("Fdac") | (1 << bit_position))
+            self.register.set_pixel_register_value("FDAC", self.register.get_pixel_register_value("FDAC") | (1 << bit_position))
         else:
-            self.register.set_pixel_register_value("Fdac", self.register.get_pixel_register_value("Fdac") & ~(1 << bit_position))
+            self.register.set_pixel_register_value("FDAC", self.register.get_pixel_register_value("FDAC") & ~(1 << bit_position))
 
     def write_fdac_config(self):
         commands = []
-        commands.extend(self.register.get_commands("confmode"))
-        commands.extend(self.register.get_commands("wrfrontend", same_mask_for_all_dc=False, name=["Fdac"]))
+        commands.extend(self.register.get_commands("ConfMode"))
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, name=["FDAC"]))
         self.register_utils.send_commands(commands)
 
     def set_start_fdac(self):
