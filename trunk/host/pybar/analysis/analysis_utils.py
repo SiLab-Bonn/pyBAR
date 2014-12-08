@@ -612,6 +612,18 @@ def in1d_events(ar1, ar2):
     return analysis_functions.get_in1d_sorted(ar1, ar2, tmp)
 
 
+def get_max_events_in_both_arrays(events_one, events_two):
+    """
+    Calculates the events that exist in both arrays.
+
+    """
+    events_one = np.ascontiguousarray(events_one)  # change memory alignement for c++ library
+    events_two = np.ascontiguousarray(events_two)  # change memory alignement for c++ library
+    event_result = np.empty(shape=(events_one.shape[0] + events_two.shape[0], ), dtype=events_one.dtype)
+    count = analysis_functions.get_max_events_in_both_arrays(events_one, events_two, event_result)
+    return event_result[:count]
+
+
 def get_events_in_both_arrays(events_one, events_two):
     """
     Calculates the events that exist in both arrays.
