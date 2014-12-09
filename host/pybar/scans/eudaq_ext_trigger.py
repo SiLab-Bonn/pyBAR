@@ -100,9 +100,12 @@ class EudaqExtTriggerScan(ExtTriggerScan):
                                 for missing_trigger_number in range(self.last_trigger_number + 1, self.last_trigger_number + missing_trigger_numbers + 1):
                                     pp.SendEvent(np.asarray([missing_trigger_number & (self.max_trigger_counter - 1)], np.uint32))
                                 self.data_error_occurred = False
+                                self.last_trigger_number = trigger_number
                             else:
                                 logging.warning('Trigger number not increasing: read: %d, expected: %d' % (trigger_number, 0 if (self.last_trigger_number + 1 == self.max_trigger_counter) else (self.last_trigger_number + 1)))
-                        self.last_trigger_number = trigger_number
+                                self.last_trigger_number = (self.last_trigger_number + 1) & (self.max_trigger_counter - 1)
+                        else:
+                            self.last_trigger_number = trigger_number
                     pp.SendEvent(self.remaining_data)
                 self.remaining_data = item
             else:
