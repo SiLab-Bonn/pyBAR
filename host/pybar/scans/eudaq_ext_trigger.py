@@ -38,12 +38,9 @@ class EudaqExtTriggerScan(ExtTriggerScan):
         "enable_tdc": False  # if True, enables TDC (use RX2)
     }
 
-    def __init__(self):
-        super(EudaqExtTriggerScan, self).__init__()
+    def scan(self):
         self.data_error_occurred = False
         self.last_trigger_number = None
-
-    def scan(self):
         clock_cycles = self.dut['tlu']['TRIGGER_CLOCK_CYCLES']
         if clock_cycles:
             self.max_trigger_counter = 2 ** (clock_cycles - 1)
@@ -92,8 +89,8 @@ class EudaqExtTriggerScan(ExtTriggerScan):
                 if self.remaining_data.shape[0] > 0:
                     # check trigger number
                     if is_trigger_word(self.remaining_data[0]):
-                        trigger_number = self.remaining_data[0] & 0x7FFFFFFF
-                        if (self.last_trigger_number + 1 != trigger_number and self.last_trigger_number + 1 != self.max_trigger_counter) or (self.last_trigger_number + 1 == self.max_trigger_counter and trigger_number != 0):
+                        trigger_number = self.remaining_data[0] & (self.max_trigger_counter - 1)
+                        if self.last_trigger_number is not None and ((self.last_trigger_number + 1 != trigger_number and self.last_trigger_number + 1 != self.max_trigger_counter) or (self.last_trigger_number + 1 == self.max_trigger_counter and trigger_number != 0)):
                             if self.data_error_occurred:
                                 if trigger_number > self.last_trigger_number:
                                     missing_trigger_numbers = trigger_number - self.last_trigger_number - 1
