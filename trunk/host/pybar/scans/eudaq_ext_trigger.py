@@ -38,7 +38,17 @@ class EudaqExtTriggerScan(ExtTriggerScan):
         "enable_tdc": False  # if True, enables TDC (use RX2)
     }
 
+    def __init__(self):
+        super(EudaqExtTriggerScan, self).__init__()
+        self.data_error_occurred = False
+        self.last_trigger_number = None
+
     def scan(self):
+        clock_cycles = self.dut['tlu']['TRIGGER_CLOCK_CYCLES']
+        if clock_cycles:
+            self.max_trigger_counter = 2 ** (clock_cycles - 1)
+        else:
+            self.max_trigger_counter = 2 ** 31
         start = time()
         lvl1_command = self.register.get_commands("zeros", length=self.trigger_delay)[0] + self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", length=self.trigger_rate_limit)[0]
         self.register_utils.set_command(lvl1_command)
@@ -66,6 +76,13 @@ class EudaqExtTriggerScan(ExtTriggerScan):
 #     def analyze(self):
 #         pass
 
+    def handle_err(self, exc):
+        self.err_queue.put(exc)
+#         self.abort(msg='%s' % exc[1])
+#         pp.logging(...)
+        logging.warning(exc[1])
+        self.data_error_occurred = True
+
     def handle_data(self, data):
         events = build_events_from_raw_data(data[0])
         for item in events:
@@ -73,6 +90,22 @@ class EudaqExtTriggerScan(ExtTriggerScan):
                 continue
             if is_trigger_word(item[0]):
                 if self.remaining_data.shape[0] > 0:
+                    # check trigger number
+                    if is_trigger_word(self.remaining_data[0]):
+                        trigger_number = self.remaining_data[0] & 0x7FFFFFFF
+                        if (self.last_trigger_number + 1 != trigger_number and self.last_trigger_number + 1 != self.max_trigger_counter) or (self.last_trigger_number + 1 == self.max_trigger_counter and trigger_number != 0):
+                            if self.data_error_occurred:
+                                if trigger_number > self.last_trigger_number:
+                                    missing_trigger_numbers = trigger_number - self.last_trigger_number - 1
+                                else:
+                                    missing_trigger_numbers = self.max_trigger_counter - (self.last_trigger_number - trigger_number) - 1
+                                logging.warning('Data errors detected: trigger number read: %d, expected: %d, sending %d empty events' % (trigger_number, 0 if (self.last_trigger_number + 1 == self.max_trigger_counter) else (self.last_trigger_number + 1), missing_trigger_numbers))
+                                for missing_trigger_number in range(self.last_trigger_number + 1, self.last_trigger_number + missing_trigger_numbers + 1):
+                                    pp.SendEvent(np.asarray([missing_trigger_number & (self.max_trigger_counter - 1)], np.uint32))
+                                self.data_error_occurred = False
+                            else:
+                                logging.warning('Trigger number not increasing: read: %d, expected: %d' % (trigger_number, 0 if (self.last_trigger_number + 1 == self.max_trigger_counter) else (self.last_trigger_number + 1)))
+                        self.last_trigger_number = trigger_number
                     pp.SendEvent(self.remaining_data)
                 self.remaining_data = item
             else:
