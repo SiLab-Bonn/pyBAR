@@ -536,7 +536,7 @@ class AnalyzeRawData(object):
         self.meta_data = analysis_utils.combine_meta_data(self.files_dict)
 
         if self.meta_data is None:
-            raise analysis_utils.IncompleteInputError('Meta data is empty. Stop interpretation.')
+            raise analysis_utils.IncompleteInputError('Meta data is empty. Stopping interpretation.')
 
         self.interpreter.set_meta_data(self.meta_data)  # tell interpreter the word index per readout to be able to calculate the event number per read out
         meta_data_size = self.meta_data.shape[0]
