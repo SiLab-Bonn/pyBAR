@@ -510,6 +510,8 @@ def get_parameter_from_files(files, parameters=None, unique=False, sort=True):
                             logging.warning('Parameter values in the file name and in the file differ. Take ' + str(key) + ' parameters ' + str(value) + ' found in %s.' % file_name)
                 except KeyError:  # parameter does not exists in the file name
                     pass
+                except IndexError:
+                    raise IncompleteInputError('Meta data is empty. Stopping interpretation.')
             if unique and scan_parameter_values is not None:
                 existing = False
                 for parameter in scan_parameter_values:  # loop to determine if any value of any scan parameter exists already
