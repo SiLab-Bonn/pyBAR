@@ -749,10 +749,12 @@ void Clusterizer::addCluster()
 
 void Clusterizer::addHitClusterInfo(const unsigned int& pHitIndex)
 {
-	for(unsigned int iHitIndex = pHitIndex - _nEventHits; iHitIndex < pHitIndex; ++iHitIndex){   // loop over cluster hits of actual event
-		unsigned int clusterIndex = _Nclusters - _actualClusterID + _clusterHitInfo[iHitIndex].clusterID;
-		_clusterHitInfo[iHitIndex].clusterSize = _clusterInfo[clusterIndex].size;
-		_clusterHitInfo[iHitIndex].nCluster = _actualClusterID;
+	if(_createClusterHitInfoArray){
+		for(unsigned int iHitIndex = pHitIndex - _nEventHits; iHitIndex < pHitIndex; ++iHitIndex){   // loop over cluster hits of actual event
+			unsigned int clusterIndex = _Nclusters - _actualClusterID + _clusterHitInfo[iHitIndex].clusterID;
+			_clusterHitInfo[iHitIndex].clusterSize = _clusterInfo[clusterIndex].size;
+			_clusterHitInfo[iHitIndex].nCluster = _actualClusterID;
+		}
 	}
 }
 
