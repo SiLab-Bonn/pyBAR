@@ -156,6 +156,7 @@ private:
 	//actual event variables
 	uint64_t _actualEventNumber;  										//event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
 	unsigned int _actualEventStatus;
+	unsigned int _nEventHits;											//number of hits of actual event
 
 	bool _abortCluster;													//set to true if one cluster TOT hit exeeds _maxClusterHitTot, cluster is not added to the result array
 };
