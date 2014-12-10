@@ -96,7 +96,7 @@ unsigned int getMaxEventsInBothArrays(int64_t*& rEventArrayOne, const unsigned i
 
 		if ( (tSecondActualEventNumber <= tFirstActualEventNumber) || first_finished ){
 			unsigned int jj;
-			for (jj=j; j < rSizeArrayTwo; ++jj){
+			for (jj=j; jj < rSizeArrayTwo; ++jj){
 				if (rEventArrayTwo[jj] == tSecondActualEventNumber)
 					tSecondActualOccurrence++;
 				else break;
@@ -105,7 +105,7 @@ unsigned int getMaxEventsInBothArrays(int64_t*& rEventArrayOne, const unsigned i
 		}
 
 //		std::cout<<"tFirstActualEventNumber "<<tFirstActualEventNumber<<" "<<tFirstActualOccurrence<<" "<<first_finished<<std::endl;
-//		std::cout<<"tSecondActualEventNumber"<<tSecondActualEventNumber<<" "<<tSecondActualOccurrence<<" "<<second_finished<<std::endl;
+//		std::cout<<"tSecondActualEventNumber "<<tSecondActualEventNumber<<" "<<tSecondActualOccurrence<<" "<<second_finished<<std::endl;
 
 		if (tFirstActualEventNumber == tSecondActualEventNumber){
 //			std::cout<<"==, add "<<std::max(tFirstActualOccurrence, tSecondActualOccurrence)<<" x "<<tFirstActualEventNumber<<std::endl;
