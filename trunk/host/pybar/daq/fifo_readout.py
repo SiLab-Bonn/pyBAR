@@ -1,5 +1,5 @@
 import logging
-from time import sleep
+from time import sleep, time
 from threading import Thread, Event
 from collections import deque
 from Queue import Queue, Empty
@@ -159,8 +159,10 @@ class FifoReadout(object):
         '''
         logging.debug('Starting %s' % (self.readout_thread.name,))
         curr_time = get_float_time()
-        while not self.force_stop.wait(self.readout_interval):
+        time_wait = 0.0
+        while not self.force_stop.wait(time_wait if time_wait >= 0.0 else 0.0):
             try:
+                time_read = time()
                 if no_data_timeout and curr_time + no_data_timeout < get_float_time():
                     raise NoDataTimeout('Received no data for %0.1f second(s)' % no_data_timeout)
                 data = self.read_data()
@@ -183,6 +185,8 @@ class FifoReadout(object):
                     break
                 else:
                     self._words_per_read.append(0)
+            finally:
+                time_wait = self.readout_interval - (time() - time_read)
             if self._calculate.is_set():
                 self._calculate.clear()
                 self._result.put(sum(self._words_per_read))
