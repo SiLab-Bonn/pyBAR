@@ -270,7 +270,7 @@ class TestAnalysis(unittest.TestCase):
         result = analysis_utils.get_max_events_in_both_arrays(event_numbers[0], event_numbers_2)
         self.assertListEqual([0, 0, 1, 1, 2, 3, 3, 4], result.tolist())
         
-    def test_map_cluster_hits(self):  # check the compiled function against result
+    def test_map_cluster(self):  # check the compiled function against result
         cluster = np.zeros((20, ), dtype=tb.dtype_from_descr(data_struct.ClusterInfoTable))
         result = np.zeros((20, ), dtype=tb.dtype_from_descr(data_struct.ClusterInfoTable))
         result[1]["event_number"], result[3]["event_number"], result[4]["event_number"], result[7]["event_number"] = 1, 2, 3, 4
