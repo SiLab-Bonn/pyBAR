@@ -17,7 +17,7 @@ class StopModeExtTriggerScan(Fei4RunBase):
     The FE configuration sequence:
     - Set FE trigger latency (Trig_Lat) to store the hits for a long time
     - Set FE trigger multiplication (Trig_Count) to one
-    
+
     When a trigger arrives:
     - Fixed delay until all hits are processed and stored
     - Enable FE to stop mode and stop clock pulse
@@ -32,8 +32,8 @@ class StopModeExtTriggerScan(Fei4RunBase):
     '''
     _default_run_conf = {
         "trigger_mode": 0,  # trigger mode, more details in basil.HL.tlu, from 0 to 3
-        "trigger_latency": 5, # FE global register Trig_Lat. The lower the value the longer the hit data will be stored in data buffer.
-        "trigger_delay": 192, # Delay between trigger and stop mode command.
+        "trigger_latency": 5,  # FE global register Trig_Lat. The lower the value the longer the hit data will be stored in data buffer
+        "trigger_delay": 192,  # delay between trigger and stop mode command
         "bcid_window": 100,  # Number of consecurive time slices to be read, from 0 to 255
         "col_span": [1, 80],  # defining active column interval, 2-tuple, from 1 to 80
         "row_span": [1, 336],  # defining active row interval, 2-tuple, from 1 to 336
@@ -73,7 +73,7 @@ class StopModeExtTriggerScan(Fei4RunBase):
         self.register.set_global_register_value("Trig_Count", 1)  # set number of consecutive triggers
         commands.extend(self.register.get_commands("WrRegister", name=["Trig_Lat", "Trig_Count"]))
         commands.extend(self.register.get_commands("RunMode"))
-    self.register_utils.send_commands(commands)
+        self.register_utils.send_commands(commands)
 
     def scan(self):
         # Stop mode related hacks to read all hits stored with stop mode
@@ -129,21 +129,18 @@ class StopModeExtTriggerScan(Fei4RunBase):
                 if not got_data:
                     if self.fifo_readout.data_words_per_second() > 0:
                         got_data = True
-                            logging.info('Taking data...')
-                            self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=self.max_triggers, poll=10).start()
-                    else:
-                        triggers = self.dut['tlu']['TRIGGER_COUNTER']
-                        try:
-                            self.progressbar.update(triggers)
-                        except ValueError:
-                            pass
-                        if self.max_triggers is not None and triggers >= self.max_triggers:
-                            #                         if got_data:
-                            self.progressbar.finish()
-                            self.stop(msg='Trigger limit was reached: %i' % self.max_triggers)
-#                     print self.fifo_readout.data_words_per_second()
-#                     if (current_trigger_number % show_trigger_message_at < last_trigger_number % show_trigger_message_at):
-#                         logging.info('Collected triggers: %d', current_trigger_number)
+                        logging.info('Taking data...')
+                        self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=self.max_triggers, poll=10).start()
+                else:
+                    triggers = self.dut['tlu']['TRIGGER_COUNTER']
+                    try:
+                        self.progressbar.update(triggers)
+                    except ValueError:
+                        pass
+                    if self.max_triggers is not None and triggers >= self.max_triggers:
+                        #                         if got_data:
+                        self.progressbar.finish()
+                        self.stop(msg='Trigger limit was reached: %i' % self.max_triggers)
 
         logging.info('Total amount of triggers collected: %d', self.dut['tlu']['TRIGGER_COUNTER'])
 
@@ -163,7 +160,6 @@ class StopModeExtTriggerScan(Fei4RunBase):
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms(scan_data_filename=self.scan_data_filename)
 
-
     def start_readout(self, **kwargs):
         if kwargs:
             self.set_scan_parameters(**kwargs)
@@ -173,14 +169,14 @@ class StopModeExtTriggerScan(Fei4RunBase):
         self.dut['tlu']['TRIGGER_COUNTER'] = 0
         self.dut['tlu']['EN_WRITE_TIMESTAMP'] = True
         self.dut['cmd']['EN_EXT_TRIGGER'] = True
-        
+
         def timeout():
             try:
                 self.progressbar.finish()
             except AttributeError:
                 pass
             self.stop(msg='Scan timeout was reached')
-        
+
         self.scan_timeout_timer = Timer(self.scan_timeout, timeout)
         if self.scan_timeout:
             self.scan_timeout_timer.start()
