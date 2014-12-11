@@ -473,7 +473,6 @@ NET "SEL[3]" IOSTANDARD = LVCMOS33;
 # Hit-OR input
 NET "MONHIT" LOC = E13;
 NET "MONHIT" IOSTANDARD = LVCMOS33;
-NET "MONHIT" PULLDOWN;
 
 # input of data to clock phase alignment
 #NET "*DOBOUT_0_IBUF" MAXSKEW = 500 pS ;
