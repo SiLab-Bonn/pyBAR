@@ -1,9 +1,10 @@
 """This script does a full test beam analysis (not completed yet). As an input raw data files with a trigger number from one
 run are expected.
 The analysis flow is:
-- Create a hit tables from the raw data for each DUT
-- Align the hit table event number to the trigger number to be able to correlate hits in time for each DUT
-- Cluster the hit table for each DUT
+- Do for each DUT in parallel
+  - Create a hit tables from the raw data
+  - Align the hit table event number to the trigger number to be able to correlate hits in time
+  - Cluster the hit table
 - Create hit position correlations from the hit maps and store the arrays
 - Plot the correlations as 2d heatmaps
 - Take the correlation arrays and extract an offset/slope to the first DUT
@@ -20,6 +21,7 @@ import re
 import numpy as np
 import pandas as pd
 import tables as tb
+from multiprocessing import Pool
 from scipy.optimize import curve_fit
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib import colors, cm
@@ -31,7 +33,7 @@ from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.analysis.RawDataConverter import data_struct
 
 
-def analyze_raw_data(input_file, output_file_hits):
+def analyze_raw_data(input_file):
     '''Std. raw data analysis of FE-I4 data. A hit table is ceated for further analysis.
 
     Parameters
@@ -39,7 +41,7 @@ def analyze_raw_data(input_file, output_file_hits):
     input_file : pytables file
     output_file_hits : pytables file
     '''
-    with AnalyzeRawData(raw_data_file=input_file, analyzed_data_file=output_file_hits, create_pdf=True) as analyze_raw_data:
+    with AnalyzeRawData(raw_data_file=input_file, create_pdf=True) as analyze_raw_data:
         analyze_raw_data.use_trigger_number = False
         analyze_raw_data.interpreter.use_tdc_word(False)
         analyze_raw_data.create_hit_table = True
@@ -111,6 +113,11 @@ def align_events(input_file, output_file, chunk_size = 10000000):
         
         jumps = np.unique(np.array(jumps))
         logging.info('Found %d inconsistencies in the event number. %d events had to be corrected.' % (jumps[jumps != 0].shape[0], n_fixed_events))
+
+def process_dut(raw_data_file):  # called for each DUT on different CPUs in parallel
+    analyze_raw_data(raw_data_file)
+    align_events(raw_data_file[:-3] + '_interpreted.h5', raw_data_file[:-3] + '_aligned.h5')
+    analyze_hits(raw_data_file[:-3] + '_aligned.h5', raw_data_file[:-3] + '_cluster.h5', pdf_filename=raw_data_file[:-3] + '.pdf')
 
 def correlate_hits(hit_files, correlation_file):
     '''Histograms the hit column (row)  of two different devices on an event basis. If the hits are correlated a line should be seen.
@@ -346,18 +353,12 @@ if __name__ == "__main__":
     correlation_file = 'C:\\Users\\DavidLP\\Desktop\\tb\\Correlations.h5'
     track_candidates_file = 'C:\\Users\\DavidLP\\Desktop\\tb\\TrackCandidates.h5'
     output_pdf = PdfPages(correlation_file[:-3] + '.pdf')
-    hit_files_aligned = []
-    cluster_files = []
+    hit_files_aligned = [raw_data_file[:-3] + '_aligned.h5' for raw_data_file in raw_data_files]
+    cluster_files = [raw_data_file[:-3] + '_cluster.h5' for raw_data_file in raw_data_files]
 
-    for raw_data_file in raw_data_files:
-        hit_file = raw_data_file[:-3] + '_interpreted.h5'
-        hit_file_aligned = raw_data_file[:-3] + '_aligned.h5'
-        cluster_file = raw_data_file[:-3] + '_cluster.h5'
-        analyze_raw_data(raw_data_file, output_file_hits=hit_file)
-        align_events(hit_file, hit_file_aligned)
-        analyze_hits(hit_file_aligned, cluster_file, pdf_filename=cluster_file[:-3] + '.pdf')
-        hit_files_aligned.append(hit_file_aligned)
-        cluster_files.append(cluster_file)
+    # Do seperate DUT data processing in parallel
+    pool = Pool()
+    pool.map(process_dut, raw_data_files)
          
     correlate_hits(hit_files_aligned, correlation_file)    
     plot_correlations(correlation_file, output_pdf)
