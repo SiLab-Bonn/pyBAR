@@ -25,7 +25,7 @@ cdef extern from "AnalysisFunctions.h":
     void histogram_1d(int*& x, const unsigned int& rSize, const unsigned int& rNbinsX, uint32_t*& rResult) except +
     void histogram_2d(int*& x, int*& y, const unsigned int& rSize, const unsigned int& rNbinsX, const unsigned int& rNbinsY, uint32_t*& rResult) except +
     void histogram_3d(int*& x, int*& y, int*& z, const unsigned int& rSize, const unsigned int& rNbinsX, const unsigned int& rNbinsY, const unsigned int& rNbinsZ, uint16_t*& rResult) except +
-    void mapClusterHits(int64_t*& rEventArray, const unsigned int& rEventArraySize, ClusterInfo*& rClusterInfo, const unsigned int& rClusterInfoSize, ClusterInfo*& rMappedClusterInfo, const unsigned int& rMappedClusterInfoSize) except +
+    void mapCluster(int64_t*& rEventArray, const unsigned int& rEventArraySize, ClusterInfo*& rClusterInfo, const unsigned int& rClusterInfoSize, ClusterInfo*& rMappedClusterInfo, const unsigned int& rMappedClusterInfoSize) except +
 
 def get_n_cluster_in_events(cnp.ndarray[cnp.int64_t, ndim=1] event_numbers, cnp.ndarray[cnp.int64_t, ndim=1] result_event_numbers, cnp.ndarray[cnp.uint32_t, ndim=1] result_cluster_count):
     return getNclusterInEvents(<int64_t*&> event_numbers.data, <const unsigned int&> event_numbers.shape[0], <int64_t*&> result_event_numbers.data, <unsigned int*&> result_cluster_count.data)
@@ -49,8 +49,8 @@ def hist_2d(cnp.ndarray[cnp.int32_t, ndim=1] x, cnp.ndarray[cnp.int32_t, ndim=1]
 def hist_3d(cnp.ndarray[cnp.int32_t, ndim=1] x, cnp.ndarray[cnp.int32_t, ndim=1] y, cnp.ndarray[cnp.int32_t, ndim=1] z, const unsigned int& n_x, const unsigned int& n_y, const unsigned int& n_z, cnp.ndarray[cnp.uint16_t, ndim=1] array_result, throw_exception = True):
     histogram_3d(<int*&> x.data, <int*&> y.data, <int*&> z.data, <const unsigned int&> x.shape[0], <const unsigned int&> n_x, <const unsigned int&> n_y, <const unsigned int&> n_z, <uint16_t*&> array_result.data)
     
-def map_cluster_hits(cnp.ndarray[cnp.int64_t, ndim=1] event_array, cnp.ndarray[numpy_cluster_info, ndim=1] cluster_hit_info, cnp.ndarray[numpy_cluster_info, ndim=1] mapped_cluster_hit_info):    
-    mapClusterHits(<int64_t*&> event_array.data, <const unsigned int&> event_array.shape[0], <ClusterInfo *&> cluster_hit_info.data, <const unsigned int &> cluster_hit_info.shape[0], <ClusterInfo *&> mapped_cluster_hit_info.data, <const unsigned int &> mapped_cluster_hit_info.shape[0])
+def map_cluster(cnp.ndarray[cnp.int64_t, ndim=1] event_array, cnp.ndarray[numpy_cluster_info, ndim=1] cluster_hit_info, cnp.ndarray[numpy_cluster_info, ndim=1] mapped_cluster_hit_info):    
+    mapCluster(<int64_t*&> event_array.data, <const unsigned int&> event_array.shape[0], <ClusterInfo *&> cluster_hit_info.data, <const unsigned int &> cluster_hit_info.shape[0], <ClusterInfo *&> mapped_cluster_hit_info.data, <const unsigned int &> mapped_cluster_hit_info.shape[0])
     
     
     
