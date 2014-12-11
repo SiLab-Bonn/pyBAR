@@ -111,7 +111,7 @@ class StopModeExtTriggerScan(Fei4RunBase):
             self.register.get_commands("zeros", length=2000)[0],
             self.register.get_commands("ConfMode")[0],
             self.register.get_commands("zeros", length=1000)[0],
-            self.register.get_commands("globalpulse", width=0)[0],
+            self.register.get_commands("GlobalPulse", Width=0)[0],
             self.register.get_commands("zeros", length=100)[0]))
 
         self.dut['cmd']['CMD_REPEAT'] = self.bcid_window
@@ -158,7 +158,7 @@ class StopModeExtTriggerScan(Fei4RunBase):
 #             analyze_raw_data.interpreter.debug_events(0, 10, True)  # events to be printed onto the console for debugging, usually deactivated
             analyze_raw_data.interpret_word_table(use_settings_from_file=False)
             analyze_raw_data.interpreter.print_summary()
-            analyze_raw_data.plot_histograms(scan_data_filename=self.scan_data_filename)
+            analyze_raw_data.plot_histograms()
 
     def start_readout(self, **kwargs):
         if kwargs:
