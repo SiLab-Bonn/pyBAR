@@ -279,7 +279,7 @@ class TestAnalysis(unittest.TestCase):
             cluster[index]["event_number"] = index
     
         common_event_number = np.array([0, 1, 1, 2, 3, 3, 3, 4, 4], dtype = np.int64)
-        self.assertTrue(np.all(analysis_utils.map_cluster_hits(common_event_number, cluster) == result[:common_event_number.shape[0]]))
+        self.assertTrue(np.all(analysis_utils.map_cluster(common_event_number, cluster) == result[:common_event_number.shape[0]]))
 
     def test_analysis_utils_in1d_events(self):  # check compiled get_in1d_sorted function
         event_numbers = np.array([[0, 0, 2, 2, 2, 4, 5, 5, 6, 7, 7, 7, 8], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=np.int64)

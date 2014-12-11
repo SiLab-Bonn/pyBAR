@@ -213,7 +213,7 @@ void histogram_3d(int*& x, int*& y, int*& z, const unsigned int& rSize, const un
 }
 
 // fast mapping of cluster hits to event numbers
-void mapClusterHits(int64_t*& rEventArray, const unsigned int& rEventArraySize, ClusterInfo*& rClusterInfo, const unsigned int& rClusterInfoSize, ClusterInfo*& rMappedClusterInfo, const unsigned int& rMappedClusterInfoSize)
+void mapCluster(int64_t*& rEventArray, const unsigned int& rEventArraySize, ClusterInfo*& rClusterInfo, const unsigned int& rClusterInfoSize, ClusterInfo*& rMappedClusterInfo, const unsigned int& rMappedClusterInfoSize)
 {
 	unsigned int j = 0;
 	for (unsigned int i = 0; i < rEventArraySize; ++i){
