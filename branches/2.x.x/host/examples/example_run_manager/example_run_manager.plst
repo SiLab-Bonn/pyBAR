@@ -1,0 +1,4 @@
+# use '#' for comments
+pybar.scans.scan_digital # default run parameters will be used
+pybar.scans.scan_analog;enable_shift_masks=["Enable", "C_High"];scan_parameters:[('PlsrDAC', 410)] # use ';' for separation of fields, either use '=' or ':' as delimiter for key and value
+pybar.scans.scan_threshold_fast; enable_shift_masks : ["Enable", "C_High"]; scan_parameters : [('PlsrDAC', [0, 100])] # white spaces do not harm

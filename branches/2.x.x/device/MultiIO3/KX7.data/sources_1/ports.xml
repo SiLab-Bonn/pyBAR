@@ -1,0 +1,122 @@
+<?xml version="1.0"?>
+<Interface Version="1" Minor="2">
+	<Ifc Id="ROOT" Top="1">
+		<Bus Id="fx3_bus">
+			<Port Id="31" Dir="INOUT"/>
+			<Port Id="30" Dir="INOUT"/>
+			<Port Id="29" Dir="INOUT"/>
+			<Port Id="28" Dir="INOUT"/>
+			<Port Id="27" Dir="INOUT"/>
+			<Port Id="26" Dir="INOUT"/>
+			<Port Id="25" Dir="INOUT"/>
+			<Port Id="24" Dir="INOUT"/>
+			<Port Id="23" Dir="INOUT"/>
+			<Port Id="22" Dir="INOUT"/>
+			<Port Id="21" Dir="INOUT"/>
+			<Port Id="20" Dir="INOUT"/>
+			<Port Id="19" Dir="INOUT"/>
+			<Port Id="18" Dir="INOUT"/>
+			<Port Id="17" Dir="INOUT"/>
+			<Port Id="16" Dir="INOUT"/>
+			<Port Id="15" Dir="INOUT"/>
+			<Port Id="14" Dir="INOUT"/>
+			<Port Id="13" Dir="INOUT"/>
+			<Port Id="12" Dir="INOUT"/>
+			<Port Id="11" Dir="INOUT"/>
+			<Port Id="10" Dir="INOUT"/>
+			<Port Id="9" Dir="INOUT"/>
+			<Port Id="8" Dir="INOUT"/>
+			<Port Id="7" Dir="INOUT"/>
+			<Port Id="6" Dir="INOUT"/>
+			<Port Id="5" Dir="INOUT"/>
+			<Port Id="4" Dir="INOUT"/>
+			<Port Id="3" Dir="INOUT"/>
+			<Port Id="2" Dir="INOUT"/>
+			<Port Id="1" Dir="INOUT"/>
+			<Port Id="0" Dir="INOUT"/>
+		</Bus>
+		<Bus Id="ddr3_dq">
+			<Port Id="7" Dir="INOUT"/>
+			<Port Id="6" Dir="INOUT"/>
+			<Port Id="5" Dir="INOUT"/>
+			<Port Id="4" Dir="INOUT"/>
+			<Port Id="3" Dir="INOUT"/>
+			<Port Id="2" Dir="INOUT"/>
+			<Port Id="1" Dir="INOUT"/>
+			<Port Id="0" Dir="INOUT"/>
+		</Bus>
+		<Bus Id="ddr3_addr">
+			<Port Id="14" Dir="OUT"/>
+			<Port Id="13" Dir="OUT"/>
+			<Port Id="12" Dir="OUT"/>
+			<Port Id="11" Dir="OUT"/>
+			<Port Id="10" Dir="OUT"/>
+			<Port Id="9" Dir="OUT"/>
+			<Port Id="8" Dir="OUT"/>
+			<Port Id="7" Dir="OUT"/>
+			<Port Id="6" Dir="OUT"/>
+			<Port Id="5" Dir="OUT"/>
+			<Port Id="4" Dir="OUT"/>
+			<Port Id="3" Dir="OUT"/>
+			<Port Id="2" Dir="OUT"/>
+			<Port Id="1" Dir="OUT"/>
+			<Port Id="0" Dir="OUT"/>
+		</Bus>
+		<Bus Id="ddr3_dqs_p">
+			<Port Id="0" Dir="INOUT"/>
+		</Bus>
+		<Bus Id="ddr3_dqs_n">
+			<Port Id="0" Dir="INOUT"/>
+		</Bus>
+		<Bus Id="ddr3_ba">
+			<Port Id="2" Dir="OUT"/>
+			<Port Id="1" Dir="OUT"/>
+			<Port Id="0" Dir="OUT"/>
+		</Bus>
+		<Bus Id="ddr3_ck_p">
+			<Port Id="0" Dir="OUT"/>
+		</Bus>
+		<Bus Id="ddr3_ck_n">
+			<Port Id="0" Dir="OUT"/>
+		</Bus>
+		<Bus Id="ddr3_cke">
+			<Port Id="0" Dir="OUT"/>
+		</Bus>
+		<Bus Id="ddr3_odt">
+			<Port Id="0" Dir="OUT"/>
+		</Bus>
+		<Bus Id="ddr3_cs_n">
+			<Port Id="0" Dir="OUT"/>
+		</Bus>
+		<Bus Id="led">
+			<Port Id="8" Dir="OUT"/>
+			<Port Id="7" Dir="OUT"/>
+			<Port Id="6" Dir="OUT"/>
+			<Port Id="5" Dir="OUT"/>
+			<Port Id="4" Dir="OUT"/>
+			<Port Id="3" Dir="OUT"/>
+			<Port Id="2" Dir="OUT"/>
+			<Port Id="1" Dir="OUT"/>
+		</Bus>
+		<Port Id="fx3_pclk_100MHz" Dir="OUT"/>
+		<Port Id="fx3_wr" Dir="IN"/>
+		<Port Id="fx3_cs" Dir="IN"/>
+		<Port Id="fx3_oe" Dir="IN"/>
+		<Port Id="fx3_rst" Dir="IN"/>
+		<Port Id="fx3_ack" Dir="OUT"/>
+		<Port Id="fx3_rdy" Dir="OUT"/>
+		<Port Id="reset_fx3" Dir="OUT"/>
+		<Port Id="ddr3_ras_n" Dir="OUT"/>
+		<Port Id="ddr3_cas_n" Dir="OUT"/>
+		<Port Id="ddr3_we_n" Dir="OUT"/>
+		<Port Id="ddr3_reset_n" Dir="OUT"/>
+		<Port Id="sys_clk_p" Dir="IN"/>
+		<Port Id="sys_clk_n" Dir="IN"/>
+		<Port Id="Clk100" Dir="IN"/>
+		<Port Id="INIT_COMPLETE" Dir="OUT"/>
+		<Port Id="DDR3_VSEL" Dir="OUT"/>
+		<Port Id="test_fx3" Dir="IN"/>
+		<Port Id="Reset_button2" Dir="IN"/>
+	</Ifc>
+</Interface>
+
