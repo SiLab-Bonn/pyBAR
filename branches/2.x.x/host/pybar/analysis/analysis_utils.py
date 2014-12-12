@@ -37,8 +37,8 @@ class InvalidInputError(AnalysisError):
 class NotSupportedError(AnalysisError):
     """Exception raised for not supported actions.
     """
-    
-    
+
+
 def generate_threshold_mask(hist):
     '''Masking array elements when equal 0.0 or greater than 10 times the median
 
@@ -510,7 +510,9 @@ def get_parameter_from_files(files, parameters=None, unique=False, sort=True):
                             logging.warning('Parameter values in the file name and in the file differ. Take ' + str(key) + ' parameters ' + str(value) + ' found in %s.' % file_name)
                 except KeyError:  # parameter does not exists in the file name
                     pass
-            if unique and not scan_parameter_values is None:
+                except IndexError:
+                    raise IncompleteInputError('Meta data is empty. Stopping interpretation.')
+            if unique and scan_parameter_values is not None:
                 existing = False
                 for parameter in scan_parameter_values:  # loop to determine if any value of any scan parameter exists already
                     all_par_values = [values[parameter] for values in files_dict.values()]
@@ -567,20 +569,20 @@ def combine_meta_data(files_dict):
                 meta_data_v2 = False
 
     if meta_data_v2:
-        meta_data_combined = np.empty((total_length, ), dtype=[('index_start', np.uint32),
-             ('index_stop', np.uint32),
-             ('data_length', np.uint32),
-             ('timestamp_start', np.float64),
-             ('timestamp_stop', np.float64),
-             ('error', np.uint32)
-             ])
+        meta_data_combined = np.empty((total_length, ), dtype=[
+            ('index_start', np.uint32),
+            ('index_stop', np.uint32),
+            ('data_length', np.uint32),
+            ('timestamp_start', np.float64),
+            ('timestamp_stop', np.float64),
+            ('error', np.uint32)])
     else:
-        meta_data_combined = np.empty((total_length, ), dtype=[('index_start', np.uint32),
-             ('index_stop', np.uint32),
-             ('data_length', np.uint32),
-             ('timestamp', np.float64),
-             ('error', np.uint32)
-             ])
+        meta_data_combined = np.empty((total_length, ), dtype=[
+            ('index_start', np.uint32),
+            ('index_stop', np.uint32),
+            ('data_length', np.uint32),
+            ('timestamp', np.float64),
+            ('error', np.uint32)])
 
     if len(files_dict) > 10:
         progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', ETA()], maxval=total_length)
@@ -610,6 +612,18 @@ def in1d_events(ar1, ar2):
     ar2 = np.ascontiguousarray(ar2)  # change memory alignement for c++ library
     tmp = np.empty_like(ar1, dtype=np.uint8)  # temporary result array filled by c++ library, bool type is not supported with cython/numpy
     return analysis_functions.get_in1d_sorted(ar1, ar2, tmp)
+
+
+def get_max_events_in_both_arrays(events_one, events_two):
+    """
+    Calculates the events that exist in both arrays.
+
+    """
+    events_one = np.ascontiguousarray(events_one)  # change memory alignement for c++ library
+    events_two = np.ascontiguousarray(events_two)  # change memory alignement for c++ library
+    event_result = np.empty(shape=(events_one.shape[0] + events_two.shape[0], ), dtype=events_one.dtype)
+    count = analysis_functions.get_max_events_in_both_arrays(events_one, events_two, event_result)
+    return event_result[:count]
 
 
 def get_events_in_both_arrays(events_one, events_two):
@@ -938,16 +952,16 @@ def get_data_in_event_range(array, event_start=None, event_stop=None, assume_sor
     if assume_sorted:
         data_event_start = event_number[0]
         data_event_stop = event_number[-1]
-        if (event_start != None and event_stop != None) and (data_event_stop < event_start or data_event_start > event_stop or event_start == event_stop):  # special case, no intersection at all
+        if (event_start is not None and event_stop is not None) and (data_event_stop < event_start or data_event_start > event_stop or event_start == event_stop):  # special case, no intersection at all
             return array[0:0]
 
         # get min/max indices with values that are also in the other array
-        if event_start == None:
+        if event_start is None:
             min_index_data = 0
         else:
             min_index_data = np.argmin(event_number < event_start)
 
-        if event_stop == None:
+        if event_stop is None:
             max_index_data = event_number.shape[0]
         else:
             max_index_data = np.argmax(event_number >= event_stop)
@@ -962,7 +976,7 @@ def get_data_in_event_range(array, event_start=None, event_stop=None, assume_sor
 
 
 def write_hits_in_events(hit_table_in, hit_table_out, events, start_hit_word=0, chunk_size=5000000, condition=None):
-    '''Selects the hits that occurred in events and writes them to a pytable. This function reduces the in RAM operations and has to be 
+    '''Selects the hits that occurred in events and writes them to a pytable. This function reduces the in RAM operations and has to be
     used if the get_hits_in_events function raises a memory error. Also a condition can be set to select hits.
 
     Parameters
@@ -1000,7 +1014,7 @@ def write_hits_in_events(hit_table_in, hit_table_out, events, start_hit_word=0, 
 
 
 def write_hits_in_event_range(hit_table_in, hit_table_out, event_start=None, event_stop=None, start_hit_word=0, chunk_size=5000000, condition=None):
-    '''Selects the hits that occurred in given event range [event_start, event_stop[ and write them to a pytable. This function reduces the in RAM 
+    '''Selects the hits that occurred in given event range [event_start, event_stop[ and write them to a pytable. This function reduces the in RAM
        operations and has to be used if the get_data_in_event_range function raises a memory error. Also a condition can be set to select hits.
 
     Parameters
@@ -1026,7 +1040,7 @@ def write_hits_in_event_range(hit_table_in, hit_table_out, event_start=None, eve
         hits = hit_table_in.read(iHit, iHit + chunk_size)
         last_event_number = hits[-1]['event_number']
         selected_hits = get_data_in_event_range(hits, event_start=event_start, event_stop=event_stop)
-        if not condition is None:
+        if condition is not None:
             # bad hack to be able to use numexpr
             for variable in set(re.findall(r'[a-zA-Z_]+', condition)):
                 exec(variable + ' = hits[\'' + variable + '\']')
@@ -1096,7 +1110,7 @@ def get_events_with_error_code(event_number, event_status, select_mask=0b1111111
 
 
 def get_n_cluster_in_events(event_numbers):
-    '''Calculates the number of cluster in every given event. 
+    '''Calculates the number of cluster in every given event.
     An external C++ library is used since there is no sufficient solution in python possible.
     Because of np.bincount # BUG #225 for values > int32 and the different handling under 32/64 bit operating systems.
 
@@ -1229,7 +1243,6 @@ def get_scan_parameters_table_from_meta_data(meta_data_array, scan_parameters=No
         # http://stackoverflow.com/questions/15182381/how-to-return-a-view-of-several-columns-in-numpy-structured-array
         scan_par_data = {name: meta_data_array.dtype.fields[name] for name in meta_data_array.dtype.names[last_not_parameter_column + 1:]}
     else:
-#         scan_par_data = {}
         scan_par_data = collections.OrderedDict()
         for name in scan_parameters:
             scan_par_data[name] = meta_data_array.dtype.fields[name]
@@ -1337,18 +1350,18 @@ def data_aligned_at_events(table, start_event_number=None, stop_event_number=Non
     start_index_known = False
     stop_index_known = False
     last_event_start_index = 0
-    start_index = 0 if start == None else start
-    stop_index = table.nrows if stop == None else stop
+    start_index = 0 if start is None else start
+    stop_index = table.nrows if stop is None else stop
 
     if try_speedup:  # set start stop indices from the event numbers for fast read if possible; not possible if the given event number does not exist in the data stream
-        if start_event_number != None:
+        if start_event_number is not None:
             condition_1 = 'event_number==' + str(start_event_number)
             start_indeces = table.get_where_list(condition_1, start=start_index, stop=stop_index)
             if len(start_indeces) != 0:  # set start index if possible
                 start_index = start_indeces[0]
                 start_index_known = True
 
-        if stop_event_number != None:
+        if stop_event_number is not None:
             condition_2 = 'event_number==' + str(stop_event_number)
             stop_indeces = table.get_where_list(condition_2, start=start_index, stop=stop_index)
             if len(stop_indeces) != 0:  # set the stop index if possible, stop index is excluded
@@ -1377,13 +1390,13 @@ def data_aligned_at_events(table, start_event_number=None, stop_event_number=Non
                 else:
                     nrows = last_event_start_index
 
-            if (start_event_number != None or stop_event_number != None) and (last_event > stop_event_number or first_event < start_event_number):  # too many events read, get only the selected ones if specified
+            if (start_event_number is not None or stop_event_number is not None) and (last_event > stop_event_number or first_event < start_event_number):  # too many events read, get only the selected ones if specified
                 selected_rows = get_data_in_event_range(src_array[0:nrows], event_start=start_event_number, event_stop=stop_event_number, assume_sorted=True)
                 if len(selected_rows) != 0:  # only return non empty data
                     yield selected_rows, start_index + len(selected_rows)
             else:
                 yield src_array[0:nrows], start_index + nrows  # no events specified or selected event range is larger than read chunk, thus return the whole chunk minus the little part for event alignment
-            if stop_event_number != None and last_event > stop_event_number:  # events are sorted, thus stop here to save time
+            if stop_event_number is not None and last_event > stop_event_number:  # events are sorted, thus stop here to save time
                 break
             start_index = start_index + nrows  # events fully read, increase start index and continue reading
 
@@ -1534,7 +1547,7 @@ class ETA(progressbar.Timer):
                 speed = 0
 
 
-## old, maybe not needed functions
+# old, maybe not needed functions
 def get_n_cluster_per_event_hist(cluster_table):
     '''Calculates the number of cluster in every event.
 
@@ -1571,7 +1584,7 @@ def get_data_statistics(interpreted_files):
 #             if int(n_events) < 7800000 or n_sr > 4200 or n_bad_events > 40:
 #                 print '| %{color:red}', os.path.basename(interpreted_file) + '%', '|', int(os.path.getsize(interpreted_file) / (1024 * 1024.)), 'Mb |', time.ctime(os.path.getctime(interpreted_file)), '|',  n_events, '|', n_bad_events, '|', measurement_time, 's |', n_sr, '|', n_hits, '|'#, mean_tot, '|', mean_bcid, '|'
             else:
-                print '|', os.path.basename(interpreted_file), '|', int(os.path.getsize(interpreted_file) / (1024 * 1024.)), 'Mb |', time.ctime(os.path.getctime(interpreted_file)), '|',  n_events, '|', n_bad_events, '|', measurement_time, 's |', n_sr, '|', n_hits, '|'#, mean_tot, '|', mean_bcid, '|'
+                print '|', os.path.basename(interpreted_file), '|', int(os.path.getsize(interpreted_file) / (1024 * 1024.)), 'Mb |', time.ctime(os.path.getctime(interpreted_file)), '|', n_events, '|', n_bad_events, '|', measurement_time, 's |', n_sr, '|', n_hits, '|'  # , mean_tot, '|', mean_bcid, '|'
 
 
 def correlate_events(data_frame_fe_1, data_frame_fe_2):

@@ -12,6 +12,7 @@ from pybar.analysis.RawDataConverter.data_interpreter import PyDataInterpreter
 from pybar.analysis.RawDataConverter.data_histograming import PyDataHistograming
 from pybar.analysis.RawDataConverter.data_clusterizer import PyDataClusterizer
 from pybar.analysis import analysis_utils
+from pybar.analysis.RawDataConverter import data_struct
 
 
 def get_array_differences(first_array, second_array):
@@ -268,6 +269,17 @@ class TestAnalysis(unittest.TestCase):
         event_numbers_2 = np.array([0, 3, 3, 4], dtype=np.int64)
         result = analysis_utils.get_max_events_in_both_arrays(event_numbers[0], event_numbers_2)
         self.assertListEqual([0, 0, 1, 1, 2, 3, 3, 4], result.tolist())
+        
+    def test_map_cluster(self):  # check the compiled function against result
+        cluster = np.zeros((20, ), dtype=tb.dtype_from_descr(data_struct.ClusterInfoTable))
+        result = np.zeros((20, ), dtype=tb.dtype_from_descr(data_struct.ClusterInfoTable))
+        result[1]["event_number"], result[3]["event_number"], result[4]["event_number"], result[7]["event_number"] = 1, 2, 3, 4
+    
+        for index in range(cluster.shape[0]):
+            cluster[index]["event_number"] = index
+    
+        common_event_number = np.array([0, 1, 1, 2, 3, 3, 3, 4, 4], dtype = np.int64)
+        self.assertTrue(np.all(analysis_utils.map_cluster(common_event_number, cluster) == result[:common_event_number.shape[0]]))
 
     def test_analysis_utils_in1d_events(self):  # check compiled get_in1d_sorted function
         event_numbers = np.array([[0, 0, 2, 2, 2, 4, 5, 5, 6, 7, 7, 7, 8], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=np.int64)

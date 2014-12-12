@@ -96,7 +96,7 @@ unsigned int getMaxEventsInBothArrays(int64_t*& rEventArrayOne, const unsigned i
 
 		if ( (tSecondActualEventNumber <= tFirstActualEventNumber) || first_finished ){
 			unsigned int jj;
-			for (jj=j; j < rSizeArrayTwo; ++jj){
+			for (jj=j; jj < rSizeArrayTwo; ++jj){
 				if (rEventArrayTwo[jj] == tSecondActualEventNumber)
 					tSecondActualOccurrence++;
 				else break;
@@ -105,7 +105,7 @@ unsigned int getMaxEventsInBothArrays(int64_t*& rEventArrayOne, const unsigned i
 		}
 
 //		std::cout<<"tFirstActualEventNumber "<<tFirstActualEventNumber<<" "<<tFirstActualOccurrence<<" "<<first_finished<<std::endl;
-//		std::cout<<"tSecondActualEventNumber"<<tSecondActualEventNumber<<" "<<tSecondActualOccurrence<<" "<<second_finished<<std::endl;
+//		std::cout<<"tSecondActualEventNumber "<<tSecondActualEventNumber<<" "<<tSecondActualOccurrence<<" "<<second_finished<<std::endl;
 
 		if (tFirstActualEventNumber == tSecondActualEventNumber){
 //			std::cout<<"==, add "<<std::max(tFirstActualOccurrence, tSecondActualOccurrence)<<" x "<<tFirstActualEventNumber<<std::endl;
@@ -209,6 +209,26 @@ void histogram_3d(int*& x, int*& y, int*& z, const unsigned int& rSize, const un
 			++rResult[x[i] * rNbinsY * rNbinsZ + y[i] * rNbinsZ + z[i]];
 		else
 			throw std::out_of_range("The histogram has more than 65535 entries per bin. This is not supported.");
+	}
+}
+
+// fast mapping of cluster hits to event numbers
+void mapCluster(int64_t*& rEventArray, const unsigned int& rEventArraySize, ClusterInfo*& rClusterInfo, const unsigned int& rClusterInfoSize, ClusterInfo*& rMappedClusterInfo, const unsigned int& rMappedClusterInfoSize)
+{
+	unsigned int j = 0;
+	for (unsigned int i = 0; i < rEventArraySize; ++i){
+		for (j; j < rClusterInfoSize; ++j){
+			if (rClusterInfo[j].eventNumber == rEventArray[i]){
+				if (i < rEventArraySize){
+					rMappedClusterInfo[i] = rClusterInfo[j];
+					++i;
+				}
+				else
+					return;
+			}
+			else
+				break;
+		}
 	}
 }
 
