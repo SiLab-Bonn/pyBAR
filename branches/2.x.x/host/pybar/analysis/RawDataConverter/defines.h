@@ -44,7 +44,7 @@ typedef struct ClusterHitInfo{
   unsigned short clusterID;	  //the cluster id of the hit
   unsigned char isSeed;	  	  //flag to mark seed pixel
   unsigned short clusterSize; //the cluster size of the cluster belonging to the hit
-  unsigned short nCluster;	  //the number of cluster in the event
+  unsigned short nCluster;	  //the number of hits of the cluster belonging to the hit
 } ClusterHitInfo;
 
 //structure to store the cluster

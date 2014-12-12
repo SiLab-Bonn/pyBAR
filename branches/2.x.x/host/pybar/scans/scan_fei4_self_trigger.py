@@ -51,7 +51,7 @@ class FEI4SelfTriggerScan(Fei4RunBase):
         commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_Low'))
         # Registers
         self.register.set_global_register_value("Trig_Lat", self.trigger_latency)  # set trigger latency
-        self.register.set_global_register_value("Trig_Count", self.trig_count)  # set number of consecutive triggers
+        self.register.set_global_register_value("Trig_Count", 0)  # set number of consecutive triggers
         commands.extend(self.register.get_commands("WrRegister", name=["Trig_Lat", "Trig_Count"]))
         commands.extend(self.register.get_commands("RunMode"))
         self.register_utils.send_commands(commands)

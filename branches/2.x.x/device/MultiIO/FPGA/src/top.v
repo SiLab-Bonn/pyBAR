@@ -14,14 +14,15 @@
 `default_nettype none
 
 module top (
+    
     input wire FCLK_IN, // 48MHz
-
+    
     //full speed 
     inout wire [7:0] BUS_DATA,
     input wire [15:0] ADD,
     input wire RD_B,
     input wire WR_B,
-
+    
     //high speed
     inout wire [7:0] FDATA,
     input wire FREAD,
@@ -31,10 +32,10 @@ module top (
     //debug ports
     output wire [15:0] DEBUG_D,
     output wire [10:0] MULTI_IO, // Pin 1-11, 12: not connected, 13, 15: DGND, 14, 16: VCC_3.3V
-
+    
     //LED
     output wire [4:0] LED,
-
+    
     //SRAM
     output wire [19:0] SRAM_A,
     inout wire [15:0] SRAM_IO,
@@ -43,7 +44,7 @@ module top (
     output wire SRAM_CE1_B,
     output wire SRAM_OE_B,
     output wire SRAM_WE_B,
-
+    
     input wire [2:0] LEMO_RX,
     output wire [2:0] TX, // TX[0] == RJ45 trigger clock output, TX[1] == RJ45 busy output
     input wire RJ45_RESET,
@@ -108,7 +109,7 @@ assign TDC_IN = LEMO_RX[2];
 
 // TLU
 wire RJ45_ENABLED;
-wire TLU_BUSY; // busy signal to TLU to de-assert trigger
+wire TLU_BUSY;               // busy signal to TLU to de-assert trigger
 wire TLU_CLOCK;
 
 // CMD
@@ -209,8 +210,8 @@ wire FIFO_NOT_EMPTY; // raised, when SRAM FIFO is not empty
 wire FIFO_FULL, FIFO_NEAR_FULL; // raised, when SRAM FIFO is full / near full
 wire FIFO_READ_ERROR; // raised, when attempting to read from SRAM FIFO when it is empty
 
-cmd_seq
-#(
+cmd_seq 
+#( 
     .BASEADDR(CMD_BASEADDR),
     .HIGHADDR(CMD_HIGHADDR)
 ) icmd (
@@ -220,7 +221,7 @@ cmd_seq
     .BUS_DATA(BUS_DATA),
     .BUS_RD(BUS_RD),
     .BUS_WR(BUS_WR),
-
+    
     .CMD_CLK_OUT(CMD_CLK),
     .CMD_CLK_IN(CLK_40),
     .CMD_EXT_START_FLAG(CMD_EXT_START_FLAG),
@@ -249,7 +250,7 @@ wire [31:0] FE_FIFO_DATA [3:0];
 genvar i;
 generate
   for (i = 0; i < 4; i = i + 1) begin: rx_gen
-    fei4_rx
+    fei4_rx 
     #(
         .BASEADDR(RX1_BASEADDR-16'h0100*i),
         .HIGHADDR(RX1_HIGHADDR-16'h0100*i),
@@ -259,26 +260,26 @@ generate
         .RX_CLK(RX_CLK),
         .RX_CLK2X(RX_CLK2X),
         .DATA_CLK(DATA_CLK),
-
+        
         .RX_DATA(DOBOUT[i]),
-
+        
         .RX_READY(RX_READY[i]),
         .RX_8B10B_DECODER_ERR(RX_8B10B_DECODER_ERR[i]),
         .RX_FIFO_OVERFLOW_ERR(RX_FIFO_OVERFLOW_ERR[i]),
-
+         
         .FIFO_READ(FE_FIFO_READ[i]),
         .FIFO_EMPTY(FE_FIFO_EMPTY[i]),
         .FIFO_DATA(FE_FIFO_DATA[i]),
-
+        
         .RX_FIFO_FULL(RX_FIFO_FULL[i]),
-
+         
         .BUS_CLK(BUS_CLK),
         .BUS_RST(BUS_RST),
         .BUS_ADD(BUS_ADD),
         .BUS_DATA(BUS_DATA),
         .BUS_RD(BUS_RD),
         .BUS_WR(BUS_WR)
-    );
+    ); 
   end
 endgenerate
 
@@ -319,8 +320,8 @@ tdc_s3
 
 wire [1:0] NOT_CONNECTED_RX;
 wire TLU_SEL, TDC_SEL;
-gpio
-#(
+gpio 
+#( 
     .BASEADDR(GPIO_RX_BASEADDR),
     .HIGHADDR(GPIO_RX_HIGHADDR),
     .IO_WIDTH(8),
@@ -336,8 +337,8 @@ gpio
 );
 
 wire [3:0] NOT_CONNECTED_POWER;
-gpio
-#(
+gpio 
+#( 
     .BASEADDR(GPIO_POWER_BASEADDR),
     .HIGHADDR(GPIO_POWER_HIGHADDR),
     .IO_WIDTH(8),
@@ -368,15 +369,15 @@ tlu_controller #(
     .BUS_DATA(BUS_DATA),
     .BUS_RD(BUS_RD),
     .BUS_WR(BUS_WR),
-
+    
     .CMD_CLK(CLK_40),
-
+    
     .FIFO_READ(TLU_FIFO_READ),
     .FIFO_EMPTY(TLU_FIFO_EMPTY),
     .FIFO_DATA(TLU_FIFO_DATA),
-
+    
     .FIFO_PREEMPT_REQ(TLU_FIFO_PEEMPT_REQ),
-
+    
     .RJ45_TRIGGER(RJ45_TRIGGER),
     .LEMO_TRIGGER(LEMO_TRIGGER),
     .RJ45_RESET(RJ45_RESET),
@@ -399,7 +400,7 @@ wire ARB_READY_OUT, ARB_WRITE_OUT;
 wire [31:0] ARB_DATA_OUT;
 wire [5:0] READ_GRANT;
 
-rrp_arbiter
+rrp_arbiter 
 #( 
     .WIDTH(6)
 ) i_rrp_arbiter (
@@ -424,7 +425,7 @@ assign FE_FIFO_READ = READ_GRANT[5:2];
 wire USB_READ;
 assign USB_READ = FREAD & FSTROBE;
 
-sram_fifo
+sram_fifo 
 #(
     .BASEADDR(FIFO_BASEADDR),
     .HIGHADDR(FIFO_HIGHADDR)
@@ -456,7 +457,7 @@ sram_fifo
     .FIFO_NEAR_FULL(FIFO_NEAR_FULL),
     .FIFO_READ_ERROR(FIFO_READ_ERROR)
 );
-
+    
 // ------- LEDs  ------- //
 parameter VERSION = 4; // all on: 31
 wire SHOW_VERSION;

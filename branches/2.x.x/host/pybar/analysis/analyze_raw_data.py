@@ -396,7 +396,7 @@ class AnalyzeRawData(object):
     @n_bcid.setter
     def n_bcid(self, value):
         """Set the numbers of BCIDs (usually 16) of one event."""
-        self._n_bcid = value if 0 < value < 16 else 16
+        self._n_bcid = value if (value > 0 and value < 16) else 16
         self.interpreter.set_trig_count(self._n_bcid)
 
     @property
@@ -536,7 +536,7 @@ class AnalyzeRawData(object):
         self.meta_data = analysis_utils.combine_meta_data(self.files_dict)
 
         if self.meta_data is None:
-            raise analysis_utils.IncompleteInputError('Meta data is empty. Stopping interpretation.')
+            raise analysis_utils.IncompleteInputError('Meta data is empty. Stop interpretation.')
 
         self.interpreter.set_meta_data(self.meta_data)  # tell interpreter the word index per readout to be able to calculate the event number per read out
         meta_data_size = self.meta_data.shape[0]
@@ -1056,9 +1056,8 @@ class AnalyzeRawData(object):
         try:  # take FE flavor info from raw data file, if this info is there
             flavor = opened_raw_data_file.root.configuration.miscellaneous[:][np.where(opened_raw_data_file.root.configuration.miscellaneous[:]['name'] == 'Flavor')]['value'][0]
             bcid = opened_raw_data_file.root.configuration.global_register[:][np.where(opened_raw_data_file.root.configuration.global_register[:]['name'] == 'Trig_Count')]['value'][0]
-            self.fei4b = False if str(flavor) == 'fei4a' else True
+            self.fei4b = False if str(flavor) == 'FEI4A' else True
             self.n_bcid = int(bcid)
-            logging.info('Use settings from raw data file: flavor: %s, consecutive triggers: %d' % ('fei4b' if self.fei4b else 'fei4a', self.n_bcid))
         except tb.exceptions.NoSuchNodeError:
             logging.warning('No settings stored in raw data file, use provided settings')
 

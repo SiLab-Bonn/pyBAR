@@ -13,7 +13,6 @@ Clusterizer::Clusterizer(void)
 	_clusterCharges = 0;
 	_clusterHits = 0;
 	_clusterPosition = 0;
-	_nEventHits = 0;
 	allocateHitMap();
 	allocateHitIndexMap();
 	allocateChargeMap();
@@ -190,7 +189,7 @@ void Clusterizer::addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
   _Nclusters = 0;
 
   if(rNhits>0 && _actualEventNumber != 0 && rHitInfo[0].eventNumber == _actualEventNumber)
-	  warning("addHits: Hit chunks not aligned at events. Clusterizer will not work properly");
+	  warning("addHits: hits not aligned at events, clusterizer will not work properly");
 
   for(unsigned int i = 0; i<rNhits; i++){
 	  if(_actualEventNumber != rHitInfo[i].eventNumber){
@@ -203,7 +202,7 @@ void Clusterizer::addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
   }
   //manually add remaining hit data
   clusterize();
-  addHitClusterInfo(rNhits);
+  addHitClusterInfo(rNhits-1);
 }
 
 bool Clusterizer::clusterize()
@@ -291,8 +290,6 @@ void Clusterizer::addHit(const unsigned int& pHitIndex)
 	float tCharge = -1;
 
 	_actualEventStatus = _hitInfo[pHitIndex].eventStatus | _actualEventStatus;
-
-	_nEventHits++;
 
 	if(tTot>_maxHitTot)	// ommit hits with a tot that is too high
 		return;
@@ -524,7 +521,6 @@ void Clusterizer::addClusterToResults()
 			tInfo<<"Clusterizer::addClusterToResults: cluster tot "<<_actualClusterTot<<" with cluster size "<<_actualClusterSize<<" does not fit into cluster tot histogram.";
 			throw std::out_of_range(tInfo.str());
 		}
-
 //		if((int) _actualClusterCharge<__MAXCHARGEBINS && _actualClusterSize<__MAXCLUSTERHITSBINS){
 //			_clusterCharges[(int) _actualClusterCharge][0]++;
 //			_clusterCharges[(int) _actualClusterCharge][_actualClusterSize]++;	//cluster size = 0 contains all cluster sizes
@@ -695,7 +691,6 @@ void Clusterizer::clearActualEventVariables()
 	_actualEventNumber = 0;
 	_actualEventStatus = 0;
 	_actualClusterID = 0;
-	_nEventHits = 0;
 }
 
 void Clusterizer::showHits()
@@ -738,7 +733,7 @@ void Clusterizer::addCluster()
 
 	_Nclusters++;
 
-	//set cluster seed infos
+	//set seed
 	if(_createClusterHitInfoArray){
 		if(_hitIndexMap[(long)_actualClusterSeed_column + (long)_actualClusterSeed_row * (long)RAW_DATA_MAX_COLUMN + (long)_actualClusterSeed_relbcid * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] < _clusterHitInfoSize)
 			_clusterHitInfo[_hitIndexMap[(long)_actualClusterSeed_column + (long)_actualClusterSeed_row * (long)RAW_DATA_MAX_COLUMN + (long)_actualClusterSeed_relbcid * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW]].isSeed = 1;
@@ -749,12 +744,7 @@ void Clusterizer::addCluster()
 
 void Clusterizer::addHitClusterInfo(const unsigned int& pHitIndex)
 {
-	if(_createClusterHitInfoArray){
-		for(unsigned int iHitIndex = pHitIndex - _nEventHits; iHitIndex < pHitIndex; ++iHitIndex){   // loop over cluster hits of actual event
-			unsigned int clusterIndex = _Nclusters - _actualClusterID + _clusterHitInfo[iHitIndex].clusterID;
-			_clusterHitInfo[iHitIndex].clusterSize = _clusterInfo[clusterIndex].size;
-			_clusterHitInfo[iHitIndex].nCluster = _actualClusterID;
-		}
-	}
+//	for (unsigned int i = 0; i < )
+//	std::cout<<"add cluster "<<_Nclusters<<" with id "<<_actualClusterID<<"\n";
 }
 

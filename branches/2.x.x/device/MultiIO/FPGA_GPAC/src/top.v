@@ -494,7 +494,7 @@ spi
 );
 
 assign ADC_CSN = !ADC_EN;
-wire [13:0] ADC_IN0, ADC_IN1, ADC_IN2, ADC_IN3;
+wire [3:0] ADC_IN;
 wire ADC_DCO, ADC_FCO;
 
 gpac_adc_iobuf i_gpac_adc_iobuf
@@ -513,11 +513,7 @@ gpac_adc_iobuf i_gpac_adc_iobuf
 
     .ADC_IN_P(ADC_OUT_P),
     .ADC_IN_N(ADC_OUT_N),
-    
-	.ADC_IN0(ADC_IN0),
-	.ADC_IN1(ADC_IN1),
-	.ADC_IN2(ADC_IN2),
-	.ADC_IN3(ADC_IN3)
+    .ADC_IN(ADC_IN)
 );
 
 wire FIFO_READ_ADC, FIFO_EMPTY_ADC;
@@ -538,8 +534,10 @@ gpac_adc_rx
     .BUS_RD(BUS_RD),
     .BUS_WR(BUS_WR),
 
-    .ADC_ENC(CLK_40),
-    .ADC_IN(ADC_IN0),
+    .ADC_CLK(CLK_40),
+    .ADC_DCO(ADC_DCO),
+    .ADC_FCO(ADC_FCO),
+    .ADC_IN(ADC_IN[0]),
 
     .ADC_SYNC(),
     .ADC_TRIGGER(1'b0),
@@ -569,8 +567,10 @@ gpac_adc_rx
     .BUS_RD(BUS_RD),
     .BUS_WR(BUS_WR), 
 
-    .ADC_ENC(CLK_40),
-    .ADC_IN(ADC_IN1),
+    .ADC_CLK(CLK_40),
+    .ADC_DCO(ADC_DCO),
+    .ADC_FCO(ADC_FCO),
+    .ADC_IN(ADC_IN[1]),
 
     .ADC_SYNC(),
     .ADC_TRIGGER(1'b0),
