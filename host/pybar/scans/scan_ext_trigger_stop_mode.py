@@ -42,7 +42,7 @@ class StopModeExtTriggerScan(Fei4RunBase):
         "no_data_timeout": 30,  # no data timeout after which the scan will be aborted, in seconds
         "scan_timeout": 60,  # timeout for scan after which the scan will be stopped, in seconds
         "max_triggers": 10,  # maximum triggers after which the scan will be stopped, in seconds
-        "enable_tdc": False  # if True, enables TDC (use RX2)
+        "enable_tdc": True  # if True, enables TDC (use RX2)
     }
 
     def configure(self):
