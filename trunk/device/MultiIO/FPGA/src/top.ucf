@@ -13,26 +13,17 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with pyBAR.  If not, see <http://www.gnu.org/licenses/>.
 
-
-#...............................................................................
-#  Constraints File - Xilinx UCF format
 #
-#       Device  :       XC3S1000-4FGG320C
-#       Board   :       S3-Multi-IO-Board V1.03
-#       Project :       S3_Multi_IO_USB
+# ------------------------------------------------------------
+# Copyright (c) All rights reserved
+# SiLab, Institute of Physics, University of Bonn
+# ------------------------------------------------------------
 #
-#       Autor   :       Johannes Schneider
-#       Created :       09.12.2008
+# SVN revision information:
+#  $Rev::                       $:
+#  $Author::                    $:
+#  $Date::                      $:
 #
-#...............................................................................
-#
-#     TargetId=XC3S1000-4FGG320C
-#
-#   Msel_0 = "0";       # Programming Mode
-#   Msel_1 = "1";       # Programming Mode
-#   Msel_2 = "1";       # Programming Mode
-#
-#...............................................................................
 
 
 # ------ Constraints -----------------------------------------------
