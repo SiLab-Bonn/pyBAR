@@ -11,12 +11,14 @@ import progressbar
 import glob
 import tables as tb
 import numexpr as ne
-from scipy.interpolate import interp1d
 from operator import itemgetter
+from scipy.interpolate import interp1d
 from scipy.interpolate import splrep, splev
+from tables import dtype_from_descr
 
 from pybar.analysis.plotting import plotting
 from pybar.analysis.RawDataConverter import analysis_functions
+from pybar.analysis.RawDataConverter import data_struct
 
 
 class AnalysisError(Exception):
@@ -511,7 +513,7 @@ def get_parameter_from_files(files, parameters=None, unique=False, sort=True):
                 except KeyError:  # parameter does not exists in the file name
                     pass
                 except IndexError:
-                    raise IncompleteInputError('Meta data is empty. Stopping interpretation.')
+                    raise IncompleteInputError('Something wrong check!')
             if unique and scan_parameter_values is not None:
                 existing = False
                 for parameter in scan_parameter_values:  # loop to determine if any value of any scan parameter exists already
@@ -624,6 +626,19 @@ def get_max_events_in_both_arrays(events_one, events_two):
     event_result = np.empty(shape=(events_one.shape[0] + events_two.shape[0], ), dtype=events_one.dtype)
     count = analysis_functions.get_max_events_in_both_arrays(events_one, events_two, event_result)
     return event_result[:count]
+
+
+def map_cluster(events, cluster):
+    """
+    Maps the cluster hits on events. Not existing hits in events have all values set to 0
+
+    """
+    cluster = np.ascontiguousarray(cluster)
+    events =  np.ascontiguousarray(events)
+    mapped_cluster = np.zeros((events.shape[0], ), dtype=dtype_from_descr(data_struct.ClusterInfoTable))
+    mapped_cluster = np.ascontiguousarray(mapped_cluster)
+    analysis_functions.map_cluster(events, cluster, mapped_cluster)
+    return mapped_cluster
 
 
 def get_events_in_both_arrays(events_one, events_two):
@@ -843,8 +858,32 @@ def get_meta_data_at_scan_parameter(meta_data_array, scan_parameter_name):
     return meta_data_array[get_meta_data_index_at_scan_parameter(meta_data_array, scan_parameter_name)['index']]
 
 
+def select_hits(hits_array, condition=None):
+    '''Selects the hits with condition.
+    E.g.: condition = 'rel_BCID == 7 & event_number < 1000'
+
+    Parameters
+    ----------
+    hits_array : numpy.array
+    condition : string
+        A condition that is applied to the hits in numexpr. Only if the expression evaluates to True the hit is taken.
+
+    Returns
+    -------
+    numpy.array
+        hit array with the selceted hits
+    '''
+    if condition is None:
+        return hits_array
+    
+    for variable in set(re.findall(r'[a-zA-Z_]+', condition)):
+        exec(variable + ' = hits_array[\'' + variable + '\']')
+
+    return hits_array[ne.evaluate(condition)]
+
 def get_hits_in_events(hits_array, events, assume_sorted=True, condition=None):
-    '''Selects the hits that occurred in events. If a event range can be defined use the get_data_in_event_range function. It is much faster.
+    '''Selects the hits that occurred in events and optional selection criterion.
+        If a event range can be defined use the get_data_in_event_range function. It is much faster.
 
     Parameters
     ----------
