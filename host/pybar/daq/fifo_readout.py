@@ -191,7 +191,7 @@ class FifoReadout(object):
                 self._calculate.clear()
                 self._result.put(sum(self._words_per_read))
         if self.callback:
-            self._data_deque.append(None)  # empty tuple
+            self._data_deque.append(None)  # last item, will stop worker
         logging.debug('Stopped %s' % (self.readout_thread.name,))
 
     def worker(self):
@@ -202,15 +202,15 @@ class FifoReadout(object):
             try:
                 data = self._data_deque.popleft()
             except IndexError:
-                self.stop_readout.wait(self.readout_interval)
+                self.stop_readout.wait(self.readout_interval)  # sleep a little bit, reducing CPU usage
             else:
-                if data:
+                if data is None:  # if None then exit
+                    break
+                else:
                     try:
                         self.callback(data)
                     except Exception:
                         self.errback(sys.exc_info())
-                else:
-                    break
 
         logging.debug('Stopped %s' % (self.worker_thread.name,))
 
