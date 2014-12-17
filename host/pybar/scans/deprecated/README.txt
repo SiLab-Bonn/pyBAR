@@ -1,0 +1,1 @@
+This folder contains old scans that are neither frequently used nor do they work out of the box due to reorganization of pyBAR.
