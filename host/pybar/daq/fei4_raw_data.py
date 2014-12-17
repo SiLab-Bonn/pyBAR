@@ -29,7 +29,7 @@ class RawDataFile(object):
         if scan_parameters:
             self.scan_parameters = scan_parameters
         else:
-            self.scan_parameters = {}
+            self.scan_parameters = []
         self.raw_data_earray = None
         self.meta_data_table = None
         self.scan_param_table = None
@@ -75,7 +75,7 @@ class RawDataFile(object):
             logging.info('Closing raw data file: %s' % self.filename)
             self.h5_file.close()
 
-    def append_item(self, data_tuple, scan_parameters=None, flush=True):
+    def append_item(self, data_tuple, scan_parameters=None, new_file=False, flush=True):
         with self.lock:
             total_words = self.raw_data_earray.nrows
             raw_data = data_tuple[0]
@@ -90,11 +90,11 @@ class RawDataFile(object):
             self.meta_data_table.row['index_stop'] = total_words
             self.meta_data_table.row.append()
             if self.scan_parameters:
-                for key in self.scan_parameters.iterkeys():
+                for key in self.scan_parameters:
                     self.scan_param_table.row[key] = scan_parameters[key]
                 self.scan_param_table.row.append()
             elif scan_parameters:
-                raise ValueError('Unknown scan parameters: %s' % ', '.join(scan_parameters.iterkeys()))
+                raise ValueError('Unknown scan parameters: %s' % ', '.join(scan_parameters))
             if flush:
                 self.flush()
 
