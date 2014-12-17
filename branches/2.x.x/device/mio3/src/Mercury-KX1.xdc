@@ -23,6 +23,7 @@ set_property IOSTANDARD LVCMOS33 [get_ports fx3_pclk_100MHz]
 # The conversion of 'SLEW' constraint on 'net' object 'fx3_pclk_100MHz' has been applied to the port object 'fx3_pclk_100MHz'.
 set_property SLEW FAST [get_ports fx3_pclk_100MHz]
 
+
 set_property PACKAGE_PIN A23 [get_ports {fx3_bus[0]}]
 # D:/redmine_svn/usb/FX3device/branches/Hans/KX7 firmware/Mercury KX1.ucf:3
 # The conversion of 'IOSTANDARD' constraint on 'net' object 'fx3_bus[0]' has been applied to the port object 'fx3_bus[0]'.
@@ -414,6 +415,21 @@ set_property PACKAGE_PIN A15 [get_ports EN_VA1]
 set_property SLEW FAST [get_ports EN_VA2]
 set_property IOSTANDARD LVCMOS33 [get_ports EN_VA2]
 set_property PACKAGE_PIN A12 [get_ports EN_VA2]
+
+# Command sequencer signals
+set_property SLEW SLOW [get_ports CMD_CLK_OUT]
+set_property IOSTANDARD LVCMOS33 [get_ports CMD_CLK_OUT]
+set_property PACKAGE_PIN N26 [get_ports CMD_CLK_OUT]
+
+set_property SLEW SLOW [get_ports CMD_DATA]
+set_property IOSTANDARD LVCMOS33 [get_ports CMD_DATA]
+set_property PACKAGE_PIN U24 [get_ports CMD_DATA]
+
+# FE-I4_rx signals
+set_property SLEW SLOW [get_ports DOBOUT]
+set_property IOSTANDARD LVCMOS33 [get_ports DOBOUT]
+set_property PACKAGE_PIN U25 [get_ports DOBOUT]
+
 #####################################
 
 #create_clock -name Clk100 -period 10.000 [get_ports Clk100]
@@ -428,3 +444,15 @@ create_clock -period 10.000 -name fx3_pclk_100MHz [get_ports fx3_pclk_100MHz]
 
 set_property PACKAGE_PIN J23 [get_ports fx3_ack]
 set_property PACKAGE_PIN K23 [get_ports fx3_rdy]
+
+#create_clock -period 25.000 -name clk40mhz [get_nets clk40mhz]
+
+set_false_path -from [get_clocks fx3_pclk_100MHz] -to [get_clocks clk40mhz_pll]
+set_false_path -from [get_clocks fx3_pclk_100MHz] -to [get_clocks clk320mhz_pll]
+set_false_path -from [get_clocks fx3_pclk_100MHz] -to [get_clocks clk160mhz_pll]
+set_false_path -from [get_clocks fx3_pclk_100MHz] -to [get_clocks clk16mhz_pll]
+
+set_false_path -from [get_clocks clk40mhz_pll] -to [get_clocks fx3_pclk_100MHz]
+set_false_path -from [get_clocks clk320mhz_pll] -to [get_clocks fx3_pclk_100MHz]
+set_false_path -from [get_clocks clk160mhz_pll] -to [get_clocks fx3_pclk_100MHz]
+set_false_path -from [get_clocks clk16mhz_pll] -to [get_clocks fx3_pclk_100MHz]
