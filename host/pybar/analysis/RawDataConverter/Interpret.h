@@ -45,6 +45,7 @@ public:
 	bool getMetaTableV2(){return _isMetaTableV2;};            //returns the MetaTable flavor (V1 or V2)
 	void useTriggerNumber(bool useTriggerNumber = true);      //new events are created if trigger number occurs
 	void useTdcWord(bool useTdcWord = true);      			  //new events are created if tdc word occurs and event structure of event before is complete
+	void useTdcTriggerTimeStamp(bool useTdcTriggerTimeStamp = true);//true: tdc time stamp is the delay between trigger/TDC leading edge, False: time stamp counter
 	void useTriggerTimeStamp(bool useTriggerTimeStamp = true);//trigger number is giving you a clock count and not a total count
 
 	void addEvent();              //increases the event counter, adds the actual hits/error/SR codes
@@ -136,6 +137,7 @@ private:
 	unsigned int _stopDebugEvent;               //stop event number to have debug output
 	bool _useTriggerNumber;						//set to true to force event recognision by trigger number
 	bool _useTdcWord;							//set to true to force event recognision by tdc word if event before is complete
+	bool _useTdcTriggerTimeStamp;				//set to true to use the TDC trigger distance to fill the TDC time stamp otherwise use counter
 	bool _useTriggerTimeStamp;					//set to true to use the trigger value as a clock count
 
 	//one event variables
@@ -155,6 +157,7 @@ private:
 	unsigned int _lastTriggerNumber;            //trigger number of last event
 	unsigned int _startWordIndex;				//the absolute word index of the first word of the actual event
 	unsigned short tTdcCount;					//the TDC count value of the actual event, if no TDC word occured this value is zero
+	unsigned short tTdcTimeStamp;				//the TDC count value of the actual event, if no TDC word occured this value is zero
 
 	//counters/flags for the total raw data processing
 	unsigned int _nTriggers;					//total number of trigger words found
