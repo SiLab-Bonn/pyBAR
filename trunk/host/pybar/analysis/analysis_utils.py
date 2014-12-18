@@ -389,14 +389,14 @@ def get_parameter_value_from_file_names(files, parameters=None, unique=False, so
     return collections.OrderedDict(sorted(result.iteritems(), key=itemgetter(1)) if sort else files_dict)  # with PEP 265 solution of sorting a dict by value
 
 
-def get_data_file_names_from_scan_base(scan_base, filter_file_words=None, parameter=False):
+def get_data_file_names_from_scan_base(scan_base, filter_file_words=None, parameter=True):
     """
     Takes a list of scan base names and returns all file names that have this scan base within their name. File names that have a word of filter_file_words
     in their name are excluded.
 
     Parameters
     ----------
-    scan_base : list of strings
+    scan_base : list of strings, string
     filter_file_words : list of strings
         Return only file names without a filter_file_word. Deactivate feature by setting filter_file_words to None.
     Returns
@@ -412,8 +412,8 @@ def get_data_file_names_from_scan_base(scan_base, filter_file_words=None, parame
             data_files = glob.glob(scan_name + '_*.h5')
         else:
             data_files = glob.glob(scan_name + '*.h5')
-        if not data_files:
-            raise RuntimeError('Cannot find any data files, please check data file names.')
+#         if not data_files:
+#             raise RuntimeError('Cannot find any data files, please check data file names.')
         if filter_file_words is not None:
             raw_data_files.extend(filter(lambda data_file: not any(x in data_file for x in filter_file_words), data_files))  # filter out already analyzed data
         else:

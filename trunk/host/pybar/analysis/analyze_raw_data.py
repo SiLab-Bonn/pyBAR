@@ -106,7 +106,10 @@ class AnalyzeRawData(object):
                 else:
                     raw_data_files.append(one_raw_data_file)
         else:
-            if raw_data_file is not None and os.path.splitext(raw_data_file)[1].strip().lower() != ".h5":
+            f_list = analysis_utils.get_data_file_names_from_scan_base(raw_data_file, filter_file_words=None, parameter=True)
+            if f_list:
+                raw_data_files = f_list
+            elif raw_data_file is not None and os.path.splitext(raw_data_file)[1].strip().lower() != ".h5":
                 raw_data_files.append(os.path.splitext(raw_data_file)[0] + ".h5")
             elif raw_data_file is not None:
                 raw_data_files.append(raw_data_file)
@@ -119,8 +122,8 @@ class AnalyzeRawData(object):
             else:
                 self._analyzed_data_file = analyzed_data_file
         else:
-            if len(raw_data_files) == 1:
-                self._analyzed_data_file = os.path.splitext(raw_data_files[0])[0] + '_interpreted.h5'
+            if isinstance(raw_data_file, basestring):
+                self._analyzed_data_file = os.path.splitext(raw_data_file)[0] + '_interpreted.h5'
             else:
                 raise analysis_utils.IncompleteInputError('Output file name is not given.')
 
@@ -1058,7 +1061,7 @@ class AnalyzeRawData(object):
             bcid = opened_raw_data_file.root.configuration.global_register[:][np.where(opened_raw_data_file.root.configuration.global_register[:]['name'] == 'Trig_Count')]['value'][0]
             self.fei4b = False if str(flavor) == 'fei4a' else True
             self.n_bcid = int(bcid)
-            logging.info('Use settings from raw data file: flavor: %s, consecutive triggers: %d' % ('fei4b' if self.fei4b else 'fei4a', self.n_bcid))
+#             logging.info('Use settings from raw data file: flavor: %s, consecutive triggers: %d' % ('fei4b' if self.fei4b else 'fei4a', self.n_bcid))
         except tb.exceptions.NoSuchNodeError:
             logging.warning('No settings stored in raw data file, use provided settings')
 
