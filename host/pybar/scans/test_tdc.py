@@ -1,29 +1,42 @@
-''' Script to test the FPGA TDC
+''' Script to test the FPGA TDC with a Agilent Technologies,33250A pulser.
 '''
 
-from scan.scan import ScanBase
-import visa
+import serial
 import time
-from daq.readout import is_tdc_data
-
-import numpy as np
-from analysis.plotting import plotting
-
 import logging
+import numpy as np
+
+from pybar.fei4_run_base import Fei4RunBase
+from pybar.daq.readout_utils import is_tdc_word, data_array_from_data_iterable
+from pybar.analysis.plotting import plotting
+from pybar.run_manager import RunManager
 
 
-local_configuration = {
-    "GPIB_prim_address": 1,
-    "n_pulses": 10000
-}
+# Subclass pyserial to make it more usable, define termination characters here
+class my_serial(serial.Serial):
+    def __init__(self, *args, **kwargs):
+        super(my_serial, self).__init__(*args, **kwargs)
+        self.eol = '\r\n'
+ 
+    def write(self, data):
+        super(my_serial, self).write(data + self.eol)
+
+    def ask(self, data):
+        self.write(data)
+        return self.readline()
 
 
-class TdcTest(ScanBase):
-    scan_id = "tdc_test"
+class TdcTest(Fei4RunBase):
+    '''Test TDC scan
+    '''
+    _default_run_conf = {
+        "COM_port": 3,
+        "n_pulses": 10000
+    }
 
-    def init_pulser(self, GPIB_prim_address):
+    def configure(self):  # init pulser
         try:
-            self.pulser = visa.instrument("GPIB::" + str(GPIB_prim_address))
+            self.pulser = my_serial('COM%d' % self.COM_port, 19200, timeout=1)
         except:
             logging.error('No device found ?!')
             raise
@@ -39,8 +52,6 @@ class TdcTest(ScanBase):
         self.pulser.write('*TRG')
 
     def scan(self):
-        self.init_pulser(self.GPIB_prim_address)
-
         self.dut['tdc_rx2']['ENABLE'] = True
         self.dut['tdc_rx2']['EN_ARMING'] = False
 
@@ -49,20 +60,25 @@ class TdcTest(ScanBase):
         y_err = []
         tdc_hist = None
 
-        self.readout.read_data()  # clear data
+        self.fifo_readout.reset_sram_fifo()  # clear fifo data
         for pulse_width in [i for j in (range(10, 100, 5), range(100, 400, 10)) for i in j]:
             logging.info('Test TDC for a pulse with of %d' % pulse_width)
             self.start_pulser(pulse_width, self.n_pulses)
             time.sleep(1)
-            data = self.readout.read_data()
-            if len(is_tdc_data(data)) != 0:
-                if len(is_tdc_data(data)) != self.n_pulses:
-                    logging.warning('Too less TDC words %d instead of %d ' % (len(is_tdc_data(data)), self.n_pulses))
-                tdc_values = np.bitwise_and(data[is_tdc_data(data)], 0x00000FFF)
-                tdc_counter = np.bitwise_and(data[is_tdc_data(data)], 0x0FFFF000)
+            data = self.fifo_readout.read_data()
+            if data[is_tdc_word(data)].shape[0] != 0:
+                if len(is_tdc_word(data)) != self.n_pulses:
+                    logging.warning('Too less TDC words %d instead of %d ' % (len(is_tdc_word(data)), self.n_pulses))
+                tdc_values = np.bitwise_and(data[is_tdc_word(data)], 0x00000FFF)
+                tdc_counter = np.bitwise_and(data[is_tdc_word(data)], 0x000FF000)
+                tdc_trig_delay = np.bitwise_and(data[is_tdc_word(data)], 0x0FF00000)
                 tdc_counter = np.right_shift(tdc_counter, 12)
-                if np.any(np.logical_and(tdc_counter[np.gradient(tdc_counter) != 1] != 0, tdc_counter[np.gradient(tdc_counter) != 1] != 65535)):
+                try:
+                    if np.any(np.logical_and(tdc_counter[np.gradient(tdc_counter) != 1] != 0, tdc_counter[np.gradient(tdc_counter) != 1] != 255)):
+                        logging.warning('The counter did not count correctly')
+                except ValueError:
                     logging.warning('The counter did not count correctly')
+
                 x.append(pulse_width)
                 y.append(np.mean(tdc_values))
                 y_err.append(np.std(tdc_values))
@@ -77,8 +93,8 @@ class TdcTest(ScanBase):
         plotting.plot_scatter(x, y_err, title='FPGA TDC RMS, ' + str(self.n_pulses) + ' each', x_label='pulse width [ns]', y_label='TDC RMS', filename=None)
         plotting.plot_tdc_counter(tdc_hist, title='All TDC values', filename=None)
 
+    def analyze(self):
+        pass
+
 if __name__ == "__main__":
-    import configuration
-    scan = TdcTest(**configuration.default_configuration)
-    scan.start(run_configure=True, run_analyze=True, use_thread=False, **local_configuration)
-    scan.stop()
+    RunManager('../configuration.yaml').run_run(TdcTest)
