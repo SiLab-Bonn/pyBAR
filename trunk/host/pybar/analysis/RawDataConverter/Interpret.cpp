@@ -41,6 +41,7 @@ void Interpret::setStandardSettings()
 	_isMetaTableV2 = false;
 	_useTriggerNumber = false;
 	_useTriggerTimeStamp = false;
+	_useTdcTriggerTimeStamp = false;
 	_useTdcWord=false;
 	_dataWordIndex = 0;
 }
@@ -155,7 +156,7 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 					warning("interpretRawData: Trigger Number not increasing by 1 (old/new): "+IntToStr(_lastTriggerNumber)+"/"+IntToStr(tTriggerNumber)+" at event "+LongIntToStr(_nEvents));
 			}
 
-			if (!_useTriggerTimeStamp){  // the high word shows the trigger status, except th e trigger word is used for time stamping
+			if (!_useTriggerTimeStamp){  // the high word shows the trigger status, except the trigger word is used for time stamping
 				if ((tTriggerNumber & TRIGGER_ERROR_TRG_ACCEPT) == TRIGGER_ERROR_TRG_ACCEPT){
 					addTriggerErrorCode(__TRG_ERROR_TRG_ACCEPT);
 					if(Basis::warningSet())
@@ -192,11 +193,15 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 			else{
 				addEventErrorCode(__TDC_WORD);
 				tTdcCount = TDC_COUNT_MACRO(tActualWord);
+				if (_useTdcTriggerTimeStamp)
+					tTdcTimeStamp = TDC_TRIG_DIST_MACRO(tActualWord);
+				else
+					tTdcTimeStamp = TDC_TIME_STAMP_MACRO(tActualWord);
 			}
 			if (tTdcCount == 0)
 				addEventErrorCode(__TDC_OVERFLOW);
 			if (Basis::debugSet())
-				debug(std::string(" ")+IntToStr(_nDataWords)+" TDC COUNT "+IntToStr(tTdcCount)+"\t"+LongIntToStr(_nEvents));
+				debug(std::string(" ")+IntToStr(_nDataWords)+" TDC COUNT "+IntToStr(tTdcCount)+"\t"+LongIntToStr(_nEvents) + "\t TIME STAMP " + IntToStr(tTdcTimeStamp));
 		}
 		else if (isDataRecord(tActualWord)){	//data word is data record if true is returned
 			if (getHitsfromDataRecord(tActualWord, tActualCol1, tActualRow1, tActualTot1, tActualCol2, tActualRow2, tActualTot2)){
@@ -214,15 +219,7 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 			}
 		}
 		else{
-			if (!isOtherWord(tActualWord)){			//other for hit interpreting uninteressting data, else data word unknown
-				addEventErrorCode(__UNKNOWN_WORD);
-				_nUnknownWords++;
-				if(Basis::warningSet())
-					warning("interpretRawData: "+IntToStr(_nDataWords)+" UNKNOWN WORD "+IntToStr(tActualWord)+" at event "+LongIntToStr(_nEvents));
-				if (Basis::debugSet())
-					debug(std::string(" ")+IntToStr(_nDataWords)+" UNKNOWN WORD "+IntToStr(tActualWord)+" at event "+LongIntToStr(_nEvents));
-			}
-			else{
+			if (isOtherWord(tActualWord)){			//other for hit interpreting uninteressting data, else data word unknown
 				_nOtherWords++;
 				if (Basis::debugSet()){
 					unsigned int tAddress = 0;
@@ -238,6 +235,14 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 						debug(std::string(" ")+IntToStr(_nDataWords)+" VALUE RECORD "+IntToStr(tValue)+"\t"+LongIntToStr(_nEvents));
 					}
 				}
+			}
+			else{
+				addEventErrorCode(__UNKNOWN_WORD);
+				_nUnknownWords++;
+				if(Basis::warningSet())
+					warning("interpretRawData: "+IntToStr(_nDataWords)+" UNKNOWN WORD "+IntToStr(tActualWord)+" at event "+LongIntToStr(_nEvents));
+				if (Basis::debugSet())
+					debug(std::string(" ")+IntToStr(_nDataWords)+" UNKNOWN WORD "+IntToStr(tActualWord)+" at event "+LongIntToStr(_nEvents));
 			}
 		}
 
@@ -364,6 +369,7 @@ void Interpret::resetEventVariables()
 //	tLVL1IDisConst = true;
 	tTriggerWord = 0;
 	tTdcCount = 0;
+	tTdcTimeStamp = 0;
 	tTriggerNumber = 0;
 	tStartBCID = 0;
 	tStartLVL1ID = 0;
@@ -403,6 +409,12 @@ void Interpret::useTriggerTimeStamp(bool useTriggerTimeStamp)
 {
 	info("useTriggerTimeStamp()");
 	_useTriggerTimeStamp = useTriggerTimeStamp;
+}
+
+void Interpret::useTdcTriggerTimeStamp(bool useTdcTriggerTimeStamp)
+{
+	info("useTdcTriggerTimeStamp()");
+	_useTdcTriggerTimeStamp = useTdcTriggerTimeStamp;
 }
 
 void Interpret::getServiceRecordsCounters(unsigned int*& rServiceRecordsCounter, unsigned int& rNserviceRecords, bool copy)
@@ -503,6 +515,7 @@ void Interpret::printStatus() {
 	std::cout << "_stopDebugEvent "<<_stopDebugEvent<<"\n";
 	std::cout << "_useTriggerNumber "<<_useTriggerNumber<<"\n";
 	std::cout << "_useTriggerTimeStamp "<<_useTriggerTimeStamp<<"\n";
+	std::cout << "_useTdcTriggerTimeStamp "<<_useTdcTriggerTimeStamp<<"\n";
 	std::cout << "_useTdcWord "<<_useTdcWord<<"\n";
 
 	std::cout << "\none event variables\n";
@@ -520,6 +533,7 @@ void Interpret::printStatus() {
 	std::cout << "tBCIDerror "<<tBCIDerror<<"\n";
 	std::cout << "tTriggerWord "<<tTriggerWord<<"\n";
 	std::cout << "tTdcCount "<<tTdcCount<<"\n";
+	std::cout << "tTdcTimeStamp"<<tTdcTimeStamp<<"\n";
 	std::cout << "_lastTriggerNumber "<<_lastTriggerNumber<<"\n";
 
 	std::cout << "\ncounters/flags for the total raw data processing\n";
@@ -594,6 +608,7 @@ void Interpret::addHit(const unsigned char& pRelBCID, const unsigned short int& 
 		_hitBuffer[tHitBufferIndex].tot = pTot;
 		_hitBuffer[tHitBufferIndex].BCID = pBCID;
 		_hitBuffer[tHitBufferIndex].TDC = tTdcCount;
+		_hitBuffer[tHitBufferIndex].TDCtimeStamp = tTdcTimeStamp;
 		_hitBuffer[tHitBufferIndex].serviceRecord = tServiceRecord;
 		_hitBuffer[tHitBufferIndex].triggerStatus = tTriggerError;
 		_hitBuffer[tHitBufferIndex].eventStatus = tErrorCode;
