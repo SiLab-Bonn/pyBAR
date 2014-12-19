@@ -405,6 +405,8 @@ def get_data_file_names_from_scan_base(scan_base, filter_file_words=None, parame
 
     """
     raw_data_files = []
+    if scan_base is None:
+        return raw_data_files
     if isinstance(scan_base, basestring):
         scan_base = (scan_base, )
     for scan_name in scan_base:
@@ -618,7 +620,7 @@ def in1d_events(ar1, ar2):
 
 def get_max_events_in_both_arrays(events_one, events_two):
     """
-    Calculates the events that exist in both arrays.
+    Calculates the maximum count of events that exist in both arrays.
 
     """
     events_one = np.ascontiguousarray(events_one)  # change memory alignement for c++ library
