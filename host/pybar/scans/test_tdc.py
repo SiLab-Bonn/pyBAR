@@ -38,14 +38,14 @@ class TdcTest(Fei4RunBase):
     '''Test TDC scan
     '''
     _default_run_conf = {
-        "COM_port": 3,
+        "COM_port": '/dev/ttyUSB0', # in Windows 'COM?' where ? is the COM port
         "n_pulses": 10000,
         "test_trigger_delay": False
     }
 
     def configure(self):  # init pulser
         try:
-            self.pulser = my_serial('COM%d' % self.COM_port, 19200, timeout=1)
+            self.pulser = my_serial(self.COM_port, 19200, timeout=1)
         except:
             logging.error('No device found ?!')
             raise
