@@ -1,5 +1,5 @@
 """This script does a full test beam analysis (not completed yet). As an input raw data files with a trigger number from one
-run are expected. This script does in RAM calculations on multiple cores in parallel. 8 Gb of free RAM are recommended. 
+run are expected. This script does in RAM calculations on multiple cores in parallel. 8 Gb of free RAM are recommended.
 The analysis flow is:
 - Do for each DUT in parallel
   - Create a hit tables from the raw data
@@ -66,7 +66,8 @@ def analyze_raw_data(input_file):
         analyze_raw_data.interpret_word_table()
         analyze_raw_data.interpreter.print_summary()
         analyze_raw_data.plot_histograms()
-        
+
+
 def analyze_hits(input_file, output_file_hits_analyzed, pdf_filename):
     '''Std. analysis of a hit table. Clusters are created.
 
@@ -83,11 +84,12 @@ def analyze_hits(input_file, output_file_hits_analyzed, pdf_filename):
         analyze_raw_data.create_cluster_tot_hist = True
         analyze_raw_data.analyze_hit_table(analyzed_data_out_file=output_file_hits_analyzed)
         analyze_raw_data.plot_histograms(pdf_filename=pdf_filename, analyzed_data_file=output_file_hits_analyzed)
-        
-def align_events(input_file, output_file, chunk_size = 10000000):
-    ''' Selects only hits from good events and checks the distance between event number and trigger number for each hit. 
-    If the FE data allowed a successfull event recognizion the distance is always constant (besides the fact that the trigger number overflows). 
-    Otherwise the event number is corrected by the trigger number. How often an inconstistency occurs is counted as well as the number of events that had to be corrected. 
+
+
+def align_events(input_file, output_file, chunk_size=10000000):
+    ''' Selects only hits from good events and checks the distance between event number and trigger number for each hit.
+    If the FE data allowed a successfull event recognizion the distance is always constant (besides the fact that the trigger number overflows).
+    Otherwise the event number is corrected by the trigger number. How often an inconstistency occurs is counted as well as the number of events that had to be corrected.
     Remark: Only one event analyzed wrong shifts all event numbers leading to no correlation! But usually data does not have to be corrected.
 
     Parameters
@@ -98,7 +100,7 @@ def align_events(input_file, output_file, chunk_size = 10000000):
         How many events are read at once into RAM for correction.
     '''
     logging.info('Align events to trigger number in %s' % input_file)
-    
+
     with tb.open_file(input_file, 'r+') as in_file_h5:
         hit_table = in_file_h5.root.Hits
         jumps = []  # variable to determine the jumps in the event-number to trigger-number offset
@@ -112,16 +114,18 @@ def align_events(input_file, output_file, chunk_size = 10000000):
                 selector = np.array((np.mod(selected_hits['event_number'], 32768) - selected_hits['trigger_number']), dtype=np.int32)
                 jumps.extend(np.unique(selector).tolist())
                 n_fixed_events += np.count_nonzero(selector)
-                selected_hits['event_number'] = np.divide(selected_hits['event_number'], 32768) * 32768 + selected_hits['trigger_number']    
+                selected_hits['event_number'] = np.divide(selected_hits['event_number'], 32768) * 32768 + selected_hits['trigger_number']
                 hit_table_out.append(selected_hits)
-        
+
         jumps = np.unique(np.array(jumps))
         logging.info('Found %d inconsistencies in the event number. %d events had to be corrected.' % (jumps[jumps != 0].shape[0], n_fixed_events))
+
 
 def process_dut(raw_data_file):  # called for each DUT on different CPUs in parallel
     analyze_raw_data(raw_data_file)
     align_events(raw_data_file[:-3] + '_interpreted.h5', raw_data_file[:-3] + '_aligned.h5')
     analyze_hits(raw_data_file[:-3] + '_aligned.h5', raw_data_file[:-3] + '_cluster.h5', pdf_filename=raw_data_file[:-3] + '.pdf')
+
 
 def correlate_hits(hit_files, alignment_file, max_column, max_row):
     '''Histograms the hit column (row)  of two different devices on an event basis. If the hits are correlated a line should be seen.
@@ -140,10 +144,10 @@ def correlate_hits(hit_files, alignment_file, max_column, max_row):
             with tb.open_file(hit_file, 'r') as in_file_h5:
                 hit_table = in_file_h5.root.Hits[:]
                 if index == 0:
-                    first_reference = pd.DataFrame({'event_number':hit_table[:]['event_number'], 'column_%d' % index:hit_table[:]['column'],'row_%d' % index:hit_table[:]['row'],'tot_%d' % index:hit_table[:]['tot']})
+                    first_reference = pd.DataFrame({'event_number': hit_table[:]['event_number'], 'column_%d' % index: hit_table[:]['column'], 'row_%d' % index: hit_table[:]['row'], 'tot_%d' % index: hit_table[:]['tot']})
                 else:
                     logging.info('Correlate detector %d with detector %d' % (index, 0))
-                    dut = pd.DataFrame({'event_number':hit_table[:]['event_number'], 'column_1':hit_table[:]['column'],'row_1':hit_table[:]['row'],'tot_1':hit_table[:]['tot']})
+                    dut = pd.DataFrame({'event_number': hit_table[:]['event_number'], 'column_1': hit_table[:]['column'], 'row_1': hit_table[:]['row'], 'tot_1': hit_table[:]['tot']})
                     df = first_reference.merge(dut, how='left', on='event_number')
                     df.dropna(inplace=True)
                     col_corr = analysis_utils.hist_2d_index(df['column_0'] - 1, df['column_1'] - 1, shape=(max_column, max_column))
@@ -151,10 +155,11 @@ def correlate_hits(hit_files, alignment_file, max_column, max_row):
                     out = out_file_h5.createCArray(out_file_h5.root, name='CorrelationColumn_0_%d' % index, title='Column Correlation between DUT %d and %d' % (0, index), atom=tb.Atom.from_dtype(col_corr.dtype), shape=col_corr.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
                     out_2 = out_file_h5.createCArray(out_file_h5.root, name='CorrelationRow_0_%d' % index, title='Row Correlation between DUT %d and %d' % (0, index), atom=tb.Atom.from_dtype(row_corr.dtype), shape=row_corr.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
                     out.attrs.filenames = [str(hit_files[0]), str(hit_files[index])]
-                    out_2.attrs.filenames = [str(hit_files[0]), str(hit_files[index])]             
+                    out_2.attrs.filenames = [str(hit_files[0]), str(hit_files[index])]
                     out[:] = col_corr.T
                     out_2[:] = row_corr.T
-                                       
+
+
 def align_hits(alignment_file, output_pdf):
     '''Takes the correlation histograms, determines usefull ranges with valid data, fits the correlations and stores the correlation parameters. With the
     correlation parameters one can calculate the hit position of each DUT in the master reference coordinate system. The fits are
@@ -170,29 +175,29 @@ def align_hits(alignment_file, output_pdf):
 
     def gauss(x, *p):
         A, mu, sigma, offset = p
-        return A*np.exp(-(x-mu)**2/(2.*sigma**2)) + offset
+        return A * np.exp(-(x - mu) ** 2 / (2. * sigma ** 2)) + offset
 
-    with tb.open_file(alignment_file, mode="r+") as in_file_h5: 
+    with tb.open_file(alignment_file, mode="r+") as in_file_h5:
         n_nodes = sum(1 for _ in enumerate(in_file_h5.root))  # Determine number of nodes, is there a better way?
-        result = np.zeros(shape=(n_nodes, ), dtype=[('dut_x', np.uint8), ('dut_y', np.uint8), ('offset', np.float), ('offset_error', np.float), ('slope', np.float), ('slope_error', np.float), ('sigma', np.float), ('sigma_error', np.float), ('description', np.str_, 40)]) 
+        result = np.zeros(shape=(n_nodes,), dtype=[('dut_x', np.uint8), ('dut_y', np.uint8), ('offset', np.float), ('offset_error', np.float), ('slope', np.float), ('slope_error', np.float), ('sigma', np.float), ('sigma_error', np.float), ('description', np.str_, 40)])
         for node_index, node in enumerate(in_file_h5.root):
             try:
                 result[node_index]['dut_x'], result[node_index]['dut_y'] = int(re.search(r'\d+', node.name).group()), node.name[-1:]
             except AttributeError:
                 continue
-            
+
             data = node[:]
             x = np.arange(data.shape[0])  # The column/row index
 
             # Start values for fitting
             mus = np.argmax(data, axis=1)
             As = np.max(data, axis=1)
-            
+
             # Determine boundaries of pixels that do not overlap at all
             select_min, select_max = 0, np.amax(x)
             # FIXME: does not work with diamond data
 #             select_no_data = np.where(np.sum(data, axis=0) < 0.5 * np.mean(np.sum(data, axis=0)))[0]
-#             
+#
 #             if len(select_no_data) > 1:
 #                 try:
 #                     select_min, select_max = select_no_data[np.gradient(select_no_data) > 1][0], select_no_data[np.gradient(select_no_data) > 1][-1]
@@ -216,7 +221,7 @@ def align_hits(alignment_file, output_pdf):
                         # Plot example fit
                         if index == (select_max - select_min) / 2:
                             plt.clf()
-                            gauss_fit_legend_entry = 'gaus fit: \nA=$%.1f\pm%.1f$\nmu=$%.1f\pm%.1f$\nsigma=$%.1f\pm%.1f$' % (coeff[0], np.absolute(var_matrix[0][0] ** 0.5), coeff[1],np.absolute(var_matrix[1][1] ** 0.5), coeff[2], np.absolute(var_matrix[2][2] ** 0.5))
+                            gauss_fit_legend_entry = 'gaus fit: \nA=$%.1f\pm%.1f$\nmu=$%.1f\pm%.1f$\nsigma=$%.1f\pm%.1f$' % (coeff[0], np.absolute(var_matrix[0][0] ** 0.5), coeff[1], np.absolute(var_matrix[1][1] ** 0.5), coeff[2], np.absolute(var_matrix[2][2] ** 0.5))
                             plt.plot(x, data[index, :], 'o', label='data')
                             plt.plot(np.arange(np.amin(x), np.amax(x), 0.1), gauss(np.arange(np.amin(x), np.amax(x), 0.1), *coeff), '-', label=gauss_fit_legend_entry)
                             plt.plot([select_min, select_min], [np.amax(data[index, :]), np.amax(data[index, :])], "-")
@@ -233,14 +238,14 @@ def align_hits(alignment_file, output_pdf):
             # Select only good data points for fitting
             y = mean_fitted
             y_err = mean_error_fitted
-            selected_data = np.logical_and(y >= 0., y_err < 1.)       
+            selected_data = np.logical_and(y >= 0., y_err < 1.)
 
             # Fit data and create fit result function
-            f = lambda x, a, b: a*x + b
-            
+            f = lambda x, a, b: a * x + b
+
             line_fit, pcov = curve_fit(f, x[selected_data], y[selected_data], sigma=y_err[selected_data], absolute_sigma=True)
             fit_fn = np.poly1d(line_fit)
-            
+
             # Calculate mean sigma (is somwhat a residual) and store the actual data in result array
             mean_sigma = np.mean(np.array(sigma_fitted)[selected_data])
             mean_sigma_error = np.std(np.array(sigma_fitted)[selected_data]) / np.sqrt(x[selected_data].shape[0])
@@ -248,7 +253,7 @@ def align_hits(alignment_file, output_pdf):
             result[node_index]['slope'], result[node_index]['slope_error'] = line_fit[0], np.absolute(pcov[0][0]) ** 0.5
             result[node_index]['sigma'], result[node_index]['sigma_error'] = mean_sigma, mean_sigma_error
             result[node_index]['description'] = node.title
-            
+
             # Plot selected data with fit
             plt.clf()
             plt.errorbar(x[selected_data], y[selected_data], y_err[selected_data], fmt='.')
@@ -260,12 +265,13 @@ def align_hits(alignment_file, output_pdf):
             plt.ylabel('DUT %s' % result[node_index]['dut_y'])
             plt.grid()
             output_pdf.savefig()
-        
-        try: 
+
+        try:
             result_table = in_file_h5.create_table(in_file_h5.root, name='Correlation', description=result.dtype, title='Correlation data', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
             result_table.append(result)
         except tb.exceptions.NodeError:
             logging.info('Correlation table exists already. Do not create new.')
+
 
 def plot_correlations(alignment_file, output_pdf):
     '''Takes the correlation histograms and plots them
@@ -289,7 +295,6 @@ def plot_correlations(alignment_file, output_pdf):
             cmap.set_bad('w')
             norm = colors.LogNorm()
             z_max = np.amax(data)
-            bounds = np.linspace(start=0, stop=z_max, num=255, endpoint=True)
             im = plt.imshow(data, cmap=cmap, norm=norm, interpolation='nearest')
             divider = make_axes_locatable(plt.gca())
             plt.gca().invert_yaxis()
@@ -297,9 +302,10 @@ def plot_correlations(alignment_file, output_pdf):
             plt.xlabel('DUT %s' % first)
             plt.ylabel('DUT %s' % second)
             cax = divider.append_axes("right", size="5%", pad=0.1)
-            plt.colorbar(im, cax=cax, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True)) 
+            plt.colorbar(im, cax=cax, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True))
             output_pdf.savefig()
-            
+
+
 def merge_cluster_data(cluster_files, alignment_file, tracklets_file):
     '''Takes the cluster from all cluster files and merges them into one big table. The position is
     referenced from the correlation data to the first plane. Function uses easily 8 Gb of RAM.
@@ -307,7 +313,7 @@ def merge_cluster_data(cluster_files, alignment_file, tracklets_file):
 
     Parameters
     ----------
-    cluster_files : list of pytables files 
+    cluster_files : list of pytables files
         Files with cluster data
     alignment_file : pytables files
         The file with the correlation data
@@ -316,13 +322,13 @@ def merge_cluster_data(cluster_files, alignment_file, tracklets_file):
     logging.info('Merge cluster to tracklets')
     with tb.open_file(alignment_file, mode="r") as in_file_h5:
         correlation = in_file_h5.root.Correlation[:]
-      
+
     # Calculate a event number index to map the cluster of all files to
     common_event_number = None
     for cluster_file in cluster_files:
         with tb.open_file(cluster_file, mode='r') as in_file_h5:
             common_event_number = in_file_h5.root.Cluster[:]['event_number'] if common_event_number is None else analysis_utils.get_max_events_in_both_arrays(common_event_number, in_file_h5.root.Cluster[:]['event_number'])
-  
+
     # Create result array description, depends on the number of DUTs
     description = [('event_number', np.int64)]
     for index, _ in enumerate(cluster_files):
@@ -332,13 +338,13 @@ def merge_cluster_data(cluster_files, alignment_file, tracklets_file):
     for index, _ in enumerate(cluster_files):
         description.append(('charge_dut_%d' % index, np.float))
     description.extend([('track_quality', np.uint32), ('n_tracks', np.uint8)])
-  
+
     # Merge the cluster data from different DUTs into one table
     with tb.open_file(tracklets_file, mode='w') as out_file_h5:
-        tracklets_table = out_file_h5.create_table(out_file_h5.root, name='Tracklets', description=np.zeros((1, ), dtype=description).dtype, title='Tracklets', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
-        tracklets_array = np.zeros((common_event_number.shape[0], ), dtype=description)
+        tracklets_table = out_file_h5.create_table(out_file_h5.root, name='Tracklets', description=np.zeros((1,), dtype=description).dtype, title='Tracklets', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+        tracklets_array = np.zeros((common_event_number.shape[0],), dtype=description)
         for index, cluster_file in enumerate(cluster_files):
-            logging.info('Add cluster file ' + str(cluster_file)) 
+            logging.info('Add cluster file ' + str(cluster_file))
             with tb.open_file(cluster_file, mode='r') as in_file_h5:
                 actual_cluster = analysis_utils.map_cluster(common_event_number, in_file_h5.root.Cluster[:])
                 if index == 0:  # Position corrections are normalized to the first reference
@@ -366,22 +372,22 @@ def find_tracks_loop(tracklets, correlations, n_duts, column_sigma, row_sigma):
     hit_distance = 0.
     tmp_column, tmp_row = 0., 0.
     best_hit_distance = 0.
-    
+
     progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=n_tracks)
     progress_bar.start()
-     
+
     for track_index, actual_track in enumerate(tracklets):
         progress_bar.update(track_index)
-         
+
         if actual_track['event_number'] != actual_event_number:
             actual_event_number = actual_track['event_number']
             for i in range(n_actual_tracks):
                 tracklets[track_index - 1 - i]['n_tracks'] = n_actual_tracks
             n_actual_tracks = 0
-              
+
         n_actual_tracks += 1
         first_hit_set = False
-          
+
         for dut_index in xrange(n_duts):
             actual_column_sigma, actual_row_sigma = column_sigma[dut_index], row_sigma[dut_index]
             if not first_hit_set and actual_track['row_dut_%d' % dut_index] != 0:
@@ -394,13 +400,13 @@ def find_tracks_loop(tracklets, correlations, n_duts, column_sigma, row_sigma):
                 for hit_index in xrange(track_index, tracklets.shape[0]):  # loop over all not sorted hits of actual DUT
                     if tracklets[hit_index]['event_number'] != actual_event_number:
                         break
-                    column, row = tracklets[hit_index]['column_dut_%d' % dut_index], tracklets[hit_index]['row_dut_%d' % dut_index]                   
+                    column, row = tracklets[hit_index]['column_dut_%d' % dut_index], tracklets[hit_index]['row_dut_%d' % dut_index]
                     column_distance, row_distance = abs(column - actual_track_column), abs(row - actual_track_row)
                     hit_distance = sqrt((column_distance * 5) * (column_distance * 5) + row_distance * row_distance)
-                       
+
                     if row != 0:  # Track hit found
                         actual_track['track_quality'] |= (1 << (n_duts - dut_index - 1))
-                       
+
                     if row != 0 and not close_hit_found and column_distance < 5 * actual_column_sigma and row_distance < 5 * actual_row_sigma:  # good track hit (5 sigma search region)
                         tmp_column, tmp_row = tracklets[track_index]['column_dut_%d' % dut_index], tracklets[track_index]['row_dut_%d' % dut_index]
                         tracklets[track_index]['column_dut_%d' % dut_index], tracklets[track_index]['row_dut_%d' % dut_index] = column, row
@@ -416,7 +422,7 @@ def find_tracks_loop(tracklets, correlations, n_duts, column_sigma, row_sigma):
                         tmp_column, tmp_row = tracklets[track_index]['column_dut_%d' % dut_index], tracklets[track_index]['row_dut_%d' % dut_index]
                         tracklets[track_index]['column_dut_%d' % dut_index], tracklets[track_index]['row_dut_%d' % dut_index] = column, row
                         tracklets[hit_index]['column_dut_%d' % dut_index], tracklets[hit_index]['row_dut_%d' % dut_index] = tmp_column, tmp_row
-                   
+
                 # Set track quality of actual DUT from closest DUT hit
                 column, row = tracklets[track_index]['column_dut_%d' % dut_index], tracklets[track_index]['row_dut_%d' % dut_index]
                 column_distance, row_distance = abs(column - actual_track_column), abs(row - actual_track_row)
@@ -427,13 +433,15 @@ def find_tracks_loop(tracklets, correlations, n_duts, column_sigma, row_sigma):
     else:
         for i in range(n_actual_tracks):
             tracklets[track_index - i]['n_tracks'] = n_actual_tracks
-            
+
     progress_bar.finish()
     return tracklets
-    
+
+
 def function_wrapper_find_tracks_loop(args):
     return find_tracks_loop(*args)
-       
+
+
 def find_tracks(tracklets_file, alignment_file, track_candidates_file):
     '''Takes first DUT track hit and tries to find matching hits in subsequent DUTs.
     The output is the same array with resorted hits into tracks. A track quality is given to
@@ -446,16 +454,16 @@ def find_tracks(tracklets_file, alignment_file, track_candidates_file):
     alignment_file : pytables file
     '''
     logging.info('Build tracks from tracklets')
-    
+
     with tb.open_file(alignment_file, mode='r') as in_file_h5:
         correlations = in_file_h5.root.Correlation[:]
-        column_sigma = np.zeros(shape=(correlations.shape[0] / 2) + 1)     
+        column_sigma = np.zeros(shape=(correlations.shape[0] / 2) + 1)
         row_sigma = np.zeros(shape=(correlations.shape[0] / 2) + 1)
         column_sigma[0], row_sigma[0] = 0, 0  # DUT0 has no correlation error
         for index in range(1, correlations.shape[0] / 2 + 1):
             column_sigma[index] = correlations['sigma'][np.where(correlations['dut_y'] == index)[0][0]]
             row_sigma[index] = correlations['sigma'][np.where(correlations['dut_y'] == index)[0][1]]
-    
+
     with tb.open_file(tracklets_file, mode='r') as in_file_h5:
         tracklets = in_file_h5.root.Tracklets
         n_duts = sum(['column' in col for col in tracklets.dtype.names])
@@ -463,22 +471,24 @@ def find_tracks(tracklets_file, alignment_file, track_candidates_file):
         n_tracks = tracklets.nrows
         slice_length = n_tracks / n_slices
         slices = [tracklets[i:i + slice_length] for i in range(0, n_tracks, slice_length)]
-    
+
         pool = Pool(n_slices)  # let all cores work the array
-        arg = [(one_slice, correlations, n_duts, column_sigma, row_sigma) for one_slice in slices]  #FIXME: slices are not aligned at event numbers, up to n_slices * 2 tracks are found wrong
+        arg = [(one_slice, correlations, n_duts, column_sigma, row_sigma) for one_slice in slices]  # FIXME: slices are not aligned at event numbers, up to n_slices * 2 tracks are found wrong
         results = pool.map(function_wrapper_find_tracks_loop, arg)
         result = np.concatenate(results)
-        #     find_tracks_loop(tracklets, correlations, n_duts, column_sigma, row_sigma)
+    #     find_tracks_loop(tracklets, correlations, n_duts, column_sigma, row_sigma)
 #         print(in_file_h5.root.Tracklets.nrows)
         with tb.open_file(track_candidates_file, mode='w') as out_file_h5:
             track_candidates = out_file_h5.create_table(out_file_h5.root, name='TrackCandidates', description=tracklets.description, title='Track candidates', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
             track_candidates.append(result)
 
+
 def align_z(track_candidates_file, alignment_file, output_pdf, track_quality=0):
     logging.info('Find relative z-position')
+
     def pos_error(z, dut, first_reference, last_reference):
         return np.mean(np.square(z * (last_reference - first_reference) + first_reference - dut))
-    
+
     with tb.open_file(track_candidates_file, mode='r') as in_file_h5:
         n_duts = sum(['column' in col for col in in_file_h5.root.TrackCandidates.dtype.names])
         track_candidates = in_file_h5.root.TrackCandidates[::10]  # take only every 10th track
@@ -486,20 +496,20 @@ def align_z(track_candidates_file, alignment_file, output_pdf, track_quality=0):
             dut_selection = (1 << (n_duts - 1)) | 1 | ((1 << (n_duts - 1)) >> dut_index)
             good_track_selection = np.logical_and((track_candidates['track_quality'] & (dut_selection << track_quality)) == (dut_selection << track_quality), track_candidates['n_tracks'] == 1)
             good_track_candidates = track_candidates[good_track_selection]
-             
+
             first_reference_row, last_reference_row = good_track_candidates['row_dut_0'], good_track_candidates['row_dut_%d' % (n_duts - 1)]
             first_reference_col, last_reference_col = good_track_candidates['column_dut_0'], good_track_candidates['column_dut_%d' % (n_duts - 1)]
-              
+
             z = np.arange(0, 1., 0.01)
             dut_row = good_track_candidates['row_dut_%d' % dut_index]
             dut_col = good_track_candidates['column_dut_%d' % dut_index]
             dut_z_col = minimize_scalar(pos_error, args=(dut_col, first_reference_col, last_reference_col), bounds=(0., 1.), method='bounded')
             dut_z_row = minimize_scalar(pos_error, args=(dut_row, first_reference_row, last_reference_row), bounds=(0., 1.), method='bounded')
-            dut_z_col_pos_errors,  dut_z_row_pos_errors = [pos_error(i, dut_col, first_reference_col, last_reference_col) for i in z], [pos_error(i, dut_row, first_reference_row, last_reference_row) for i in z]
+            dut_z_col_pos_errors, dut_z_row_pos_errors = [pos_error(i, dut_col, first_reference_col, last_reference_col) for i in z], [pos_error(i, dut_row, first_reference_row, last_reference_row) for i in z]
             plt.plot([dut_z_col.x, dut_z_col.x], [0., 1.], "--", label="DUT%d, col, z=%1.4f" % (dut_index, dut_z_col.x))
             plt.plot([dut_z_row.x, dut_z_row.x], [0., 1.], "--", label="DUT%d, row, z=%1.4f" % (dut_index, dut_z_row.x))
             plt.plot(z, dut_z_col_pos_errors / np.amax(dut_z_col_pos_errors), "-", label="DUT%d, column" % dut_index)
-            plt.plot(z, dut_z_row_pos_errors / np.amax(dut_z_row_pos_errors), "-", label="DUT%d, row" % dut_index)   
+            plt.plot(z, dut_z_row_pos_errors / np.amax(dut_z_row_pos_errors), "-", label="DUT%d, row" % dut_index)
             plt.grid()
             plt.legend(loc=1)
             plt.ylim((np.amin(dut_z_col_pos_errors / np.amax(dut_z_col_pos_errors)), 1.))
@@ -511,39 +521,39 @@ def align_z(track_candidates_file, alignment_file, output_pdf, track_quality=0):
 #     with tb.open_file(alignment_file, mode='r+') as out_file_h5:
 #         description = []
 #         values = []
-#         for dut_index in range(1, n_duts - 1):            
+#         for dut_index in range(1, n_duts - 1):
 #             description.extend(('dut_%d' % dut_index, np.float))
 #         z_positions = np.array((1,), description)
 #         z_table_out = out_file_h5.createTable(out_file_h5.root, name='Zposition', description=np.array((1,), dtype=description).dtype, title='Relative z positions of the DUTs without references', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False), chunkshape=(chunk_size,))
-#         z_table_out[:] 
-    
+#         z_table_out[:]
+
 if __name__ == "__main__":
     raw_data_files = ['C:\\Users\\DavidLP\\Desktop\\tb\\BOARD_ID_132_SCC_29_3.4_GeV_0.h5',  # the first DUT is the master reference DUT
                       'C:\\Users\\DavidLP\\Desktop\\tb\\BOARD_ID_213_SCC_99_3.4_GeV_0.h5',
                       'C:\\Users\\DavidLP\\Desktop\\tb\\BOARD_ID_214_SCC_146_3.4_GeV_0.h5',
-                      'C:\\Users\\DavidLP\\Desktop\\tb\\BOARD_ID_201_SCC_166_3.4_GeV_0.h5', 
+                      'C:\\Users\\DavidLP\\Desktop\\tb\\BOARD_ID_201_SCC_166_3.4_GeV_0.h5',
                       'C:\\Users\\DavidLP\\Desktop\\tb\\BOARD_ID_207_SCC_112_3.4_GeV_0.h5',
                       'C:\\Users\\DavidLP\\Desktop\\tb\\BOARD_ID_216_SCC_45_3.4_GeV_0.h5']
 
     alignment_file = 'C:\\Users\\DavidLP\\Desktop\\tb\\Alignment.h5'
     tracklets_file = 'C:\\Users\\DavidLP\\Desktop\\tb\\Tracklets.h5'
     track_candidates_file = 'C:\\Users\\DavidLP\\Desktop\\tb\\TrackCandidates.h5'
-    
+
     hit_files_aligned = [raw_data_file[:-3] + '_aligned.h5' for raw_data_file in raw_data_files]
     cluster_files = [raw_data_file[:-3] + '_cluster.h5' for raw_data_file in raw_data_files]
-    
+
     with PdfPages(alignment_file[:-3] + '.pdf') as output_pdf:
-    
+
         pool = Pool()  # Do seperate DUT data processing in parallel
         pool.map(process_dut, raw_data_files)
-     
-        correlate_hits(hit_files_aligned, alignment_file, max_column=80, max_row=336)    
+
+        correlate_hits(hit_files_aligned, alignment_file, max_column=80, max_row=336)
         plot_correlations(alignment_file, output_pdf)
-      
+
         align_hits(alignment_file, output_pdf)
-           
+
         merge_cluster_data(cluster_files, alignment_file, tracklets_file)
-           
+
         find_tracks(tracklets_file, alignment_file, track_candidates_file)
-     
+
         align_z(track_candidates_file, alignment_file, output_pdf)
