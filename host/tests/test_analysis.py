@@ -220,6 +220,7 @@ class TestAnalysis(unittest.TestCase):
              ('tot', np.uint8),
              ('BCID', np.uint16),
              ('TDC', np.uint16),
+             ('TDCtimeStamp', np.uint8),
              ('triggerStatus', np.uint8),
              ('serviceRecord', np.uint32),
              ('eventStatus', np.uint16)
