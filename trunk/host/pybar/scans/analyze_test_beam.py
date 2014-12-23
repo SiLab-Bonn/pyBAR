@@ -17,8 +17,9 @@ TBD:
 - Create efficiency maps
 """
 
-from __future__ import print_function
+# from __future__ import print_function
 import logging
+import progressbar
 import re
 import numpy as np
 from math import sqrt
@@ -30,7 +31,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib import colors, cm
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-import progressbar
+# from numba import jit, numpy_support, types
 
 from pybar.analysis import analysis_utils
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
@@ -359,7 +360,7 @@ def merge_cluster_data(cluster_files, alignment_file, tracklets_file):
         tracklets_array['event_number'] = common_event_number
         tracklets_table.append(tracklets_array)
 
-# @nb.jit()  # more slow than p[ython, structured arrays force slow python objects, structs are not supported now, stay away from numba its not worth it YET!
+
 def find_tracks_loop(tracklets, correlations, n_duts, column_sigma, row_sigma):
     actual_event_number = tracklets[0]['event_number']
     n_tracks = tracklets.shape[0]
@@ -476,14 +477,31 @@ def find_tracks(tracklets_file, alignment_file, track_candidates_file):
         arg = [(one_slice, correlations, n_duts, column_sigma, row_sigma) for one_slice in slices]  # FIXME: slices are not aligned at event numbers, up to n_slices * 2 tracks are found wrong
         results = pool.map(function_wrapper_find_tracks_loop, arg)
         result = np.concatenate(results)
-    #     find_tracks_loop(tracklets, correlations, n_duts, column_sigma, row_sigma)
-#         print(in_file_h5.root.Tracklets.nrows)
+
+#         find_tracks_loop_compiled = jit((numpy_support.from_dtype(tracklets.dtype)[:], types.int32, types.float64, types.float64), nopython=True)(find_tracks_loop)
+#         find_tracks_loop(tracklets, correlations, n_duts, column_sigma, row_sigma)
+#         result = tracklets
+
         with tb.open_file(track_candidates_file, mode='w') as out_file_h5:
-            track_candidates = out_file_h5.create_table(out_file_h5.root, name='TrackCandidates', description=tracklets.description, title='Track candidates', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+            track_candidates = out_file_h5.create_table(out_file_h5.root, name='TrackCandidates', description=in_file_h5.root.Tracklets.description, title='Track candidates', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
             track_candidates.append(result)
 
 
-def align_z(track_candidates_file, alignment_file, output_pdf, track_quality=0):
+def align_z(track_candidates_file, alignment_file, output_pdf, z_positions=None, track_quality=1):
+    '''Minimizes the squared distance between track hit and measured hit by changing the z position.
+    In a perfect measurement the function should be minimal at the real DUT position. The tracks is given
+    by the first and last reference hit. A track quality cut is applied to all cuts first.
+
+    Parameters
+    ----------
+    track_candidates_file : pytables file
+    alignment_file : pytables file
+    output_pdf : PdfPager file object
+    track_quality : int
+        0: All tracks with hits in DUT and references are taken
+        1: The track hits in DUT and reference are within 5-sigma of the correlation
+        2: The track hits in DUT and reference are within 2-sigma of the correlation
+    '''
     logging.info('Find relative z-position')
 
     def pos_error(z, dut, first_reference, last_reference):
@@ -492,9 +510,13 @@ def align_z(track_candidates_file, alignment_file, output_pdf, track_quality=0):
     with tb.open_file(track_candidates_file, mode='r') as in_file_h5:
         n_duts = sum(['column' in col for col in in_file_h5.root.TrackCandidates.dtype.names])
         track_candidates = in_file_h5.root.TrackCandidates[::10]  # take only every 10th track
+
+        results = np.zeros((n_duts - 2,), dtype=[('DUT', np.uint8), ('z_position_column', np.float32), ('z_position_row', np.float32)])
+
         for dut_index in range(1, n_duts - 1):
+            logging.info('Find best z-position for DUT %d' % dut_index)
             dut_selection = (1 << (n_duts - 1)) | 1 | ((1 << (n_duts - 1)) >> dut_index)
-            good_track_selection = np.logical_and((track_candidates['track_quality'] & (dut_selection << track_quality)) == (dut_selection << track_quality), track_candidates['n_tracks'] == 1)
+            good_track_selection = np.logical_and((track_candidates['track_quality'] & (dut_selection << (track_quality * 8))) == (dut_selection << (track_quality * 8)), track_candidates['n_tracks'] == 1)
             good_track_candidates = track_candidates[good_track_selection]
 
             first_reference_row, last_reference_row = good_track_candidates['row_dut_0'], good_track_candidates['row_dut_%d' % (n_duts - 1)]
@@ -506,6 +528,12 @@ def align_z(track_candidates_file, alignment_file, output_pdf, track_quality=0):
             dut_z_col = minimize_scalar(pos_error, args=(dut_col, first_reference_col, last_reference_col), bounds=(0., 1.), method='bounded')
             dut_z_row = minimize_scalar(pos_error, args=(dut_row, first_reference_row, last_reference_row), bounds=(0., 1.), method='bounded')
             dut_z_col_pos_errors, dut_z_row_pos_errors = [pos_error(i, dut_col, first_reference_col, last_reference_col) for i in z], [pos_error(i, dut_row, first_reference_row, last_reference_row) for i in z]
+            results[dut_index - 1]['DUT'] = dut_index
+            results[dut_index - 1]['z_position_column'] = dut_z_col.x
+            results[dut_index - 1]['z_position_row'] = dut_z_row.x
+
+            # Plot actual DUT data
+            plt.clf()
             plt.plot([dut_z_col.x, dut_z_col.x], [0., 1.], "--", label="DUT%d, col, z=%1.4f" % (dut_index, dut_z_col.x))
             plt.plot([dut_z_row.x, dut_z_row.x], [0., 1.], "--", label="DUT%d, row, z=%1.4f" % (dut_index, dut_z_row.x))
             plt.plot(z, dut_z_col_pos_errors / np.amax(dut_z_col_pos_errors), "-", label="DUT%d, column" % dut_index)
@@ -518,14 +546,29 @@ def align_z(track_candidates_file, alignment_file, output_pdf, track_quality=0):
             plt.gca().set_yscale('log')
             plt.gca().get_yaxis().set_ticks([])
             output_pdf.savefig()
-#     with tb.open_file(alignment_file, mode='r+') as out_file_h5:
-#         description = []
-#         values = []
-#         for dut_index in range(1, n_duts - 1):
-#             description.extend(('dut_%d' % dut_index, np.float))
-#         z_positions = np.array((1,), description)
-#         z_table_out = out_file_h5.createTable(out_file_h5.root, name='Zposition', description=np.array((1,), dtype=description).dtype, title='Relative z positions of the DUTs without references', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False), chunkshape=(chunk_size,))
-#         z_table_out[:]
+
+    with tb.open_file(alignment_file, mode='r+') as out_file_h5:
+        z_table_out = out_file_h5.createTable(out_file_h5.root, name='Zposition', description=results.dtype, title='Relative z positions of the DUTs without references', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+        z_table_out.append(results)
+
+    z_positions_rec = [0.] + results[:]['z_position_row'].tolist() + [1.]
+
+    if z_positions is not None:  # check reconstructed z against measured z
+        warn_at = 1.  # difference in cm
+        z_positions_rec_abs = [i * z_positions[-1] for i in z_positions_rec]
+        z_differences = [abs(i - j) for i, j in zip(z_positions, z_positions_rec_abs)]
+        failing_duts = [j for (i, j) in zip(z_differences, range(5)) if i >= warn_at]
+        if failing_duts:
+            logging.warning('The reconstructed z postions is more than 1 cm off for DUTS %s' % str(failing_duts))
+        else:
+            logging.info('Absoulte reconstructed z-positions %s' % str(z_positions_rec_abs))
+            logging.info('Difference between measured and reconstructed z-positions %s' % str(z_differences))
+
+    return z_positions_rec_abs if z_positions is not None else z_positions_rec
+
+
+def event_monitor(track_candidates_file, output_pdf):
+    pass
 
 if __name__ == "__main__":
     raw_data_files = ['C:\\Users\\DavidLP\\Desktop\\tb\\BOARD_ID_132_SCC_29_3.4_GeV_0.h5',  # the first DUT is the master reference DUT
@@ -533,7 +576,9 @@ if __name__ == "__main__":
                       'C:\\Users\\DavidLP\\Desktop\\tb\\BOARD_ID_214_SCC_146_3.4_GeV_0.h5',
                       'C:\\Users\\DavidLP\\Desktop\\tb\\BOARD_ID_201_SCC_166_3.4_GeV_0.h5',
                       'C:\\Users\\DavidLP\\Desktop\\tb\\BOARD_ID_207_SCC_112_3.4_GeV_0.h5',
-                      'C:\\Users\\DavidLP\\Desktop\\tb\\BOARD_ID_216_SCC_45_3.4_GeV_0.h5']
+                      'C:\\Users\\DavidLP\\Desktop\\tb\\BOARD_ID_216_SCC_45_3.4_GeV_0.h5']  # the last DUT is the second reference DUT
+
+    z_positions = [0., 1.95, 5.05, 7.2, 10.88, 12.83]  # in cm
 
     alignment_file = 'C:\\Users\\DavidLP\\Desktop\\tb\\Alignment.h5'
     tracklets_file = 'C:\\Users\\DavidLP\\Desktop\\tb\\Tracklets.h5'
@@ -552,8 +597,8 @@ if __name__ == "__main__":
 
         align_hits(alignment_file, output_pdf)
 
-        merge_cluster_data(cluster_files, alignment_file, tracklets_file)
-
         find_tracks(tracklets_file, alignment_file, track_candidates_file)
 
-        align_z(track_candidates_file, alignment_file, output_pdf)
+        align_z(track_candidates_file, alignment_file, output_pdf, z_positions, track_quality=1)
+
+        event_monitor(track_candidates_file, event_range=(0, None), output_pdf)
