@@ -1,9 +1,9 @@
 ''' Script to test the FPGA TDC with pulser. SCPI commands are send via RS232.
 To measure the TDC values connect a pulser with 3 V amplitude to the RX2 plug
-of the Multi IO board (without TDC modification). 
+of the Multi IO board (without TDC modification).
 To test the additional timing feature connect an additional
-pulser to RX0. Synchronize and trigger the additional pulser with the 
-first pulser with about 10 ns - 50 ns delay.
+pulser to RX0. Synchronize the clocks and trigger the additional pulser with the
+first pulser with about 10 ns delay.
 '''
 
 import serial
@@ -18,7 +18,7 @@ from pybar.analysis.plotting import plotting
 from pybar.run_manager import RunManager
 
 
-# Subclass pyserial to make it more usable, define termination characters here
+# Subclass pyserial to make it more usable, define termination characters (eol) here
 class my_serial(serial.Serial):
 
     def __init__(self, *args, **kwargs):
@@ -38,7 +38,7 @@ class TdcTest(Fei4RunBase):
     '''Test TDC scan
     '''
     _default_run_conf = {
-        "COM_port": '/dev/ttyUSB0', # in Windows 'COM?' where ? is the COM port
+        "COM_port": '/dev/ttyUSB0',  # in Windows 'COM?' where ? is the COM port
         "n_pulses": 10000,
         "test_trigger_delay": False
     }
@@ -49,8 +49,9 @@ class TdcTest(Fei4RunBase):
         except:
             logging.error('No device found ?!')
             raise
-        if 'Agilent Technologies,33250A' not in self.pulser.ask("*IDN?"):  # check if the correct pulser is connected
-            raise RuntimeError('Reading of histogram data from ' + self.pulser.ask("*IDN?") + ' is not supported')
+        identifier = self.pulser.ask("*IDN?")
+        if 'Agilent Technologies,33250A' not in identifier and 'new_pulser_add_here' not in identifier:  # check if the correct pulser is connected
+            raise NotImplementedError('Pulser ' + str(identifier) + ' is not supported. If SCPI commands are understood, just add its name here.')
         logging.info('Initialized pulser')
         self.pulser.write('PULS:PER 1E-6')  # set fast acquisition
         self.pulser.write('PULS:WIDT 10E-9')
@@ -64,6 +65,7 @@ class TdcTest(Fei4RunBase):
     def scan(self):
         self.dut['tdc_rx2']['ENABLE'] = True
         self.dut['tdc_rx2']['EN_ARMING'] = False
+        self.dut['tdc_rx2']['EN_TRIGGER_COUNT'] = True
 
         x, y, y_err = [], [], []
         tdc_hist = None
@@ -104,16 +106,17 @@ class TdcTest(Fei4RunBase):
             if self.test_trigger_delay:
                 x, y, y_err = [], [], []
                 self.fifo_readout.reset_sram_fifo()  # clear fifo data
-                for pulse_delay in [i for j in (range(10, 100, 5), range(100, 400, 10)) for i in j]:
+                for pulse_delay in [i for j in (range(0, 100, 5), range(100, 400, 10)) for i in j]:
                     logging.info('Test TDC for a pulse delay of %d' % pulse_delay)
                     for _ in range(10):
                         self.start_pulser(pulse_width=100, n_pulses=1, pulse_delay=pulse_delay)
                         time.sleep(0.1)
                     data = self.fifo_readout.read_data()
                     if data[is_tdc_word(data)].shape[0] != 0:
-                        if len(is_tdc_word(data)) != self.n_pulses:
+                        if len(is_tdc_word(data)) != 10:
                             logging.warning('%d TDC words instead of %d ' % (len(is_tdc_word(data)), 10))
                         tdc_delay = np.bitwise_and(data[is_tdc_word(data)], 0x0FF00000)
+                        tdc_delay = np.right_shift(tdc_delay, 20)
 
                         x.append(pulse_delay)
                         y.append(np.mean(tdc_delay))
