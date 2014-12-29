@@ -77,7 +77,7 @@ class Fei4RunBase(RunBase):
         else:
             sp = namedtuple_with_defaults('scan_parameters', field_names=[])
             self.scan_parameters = sp()
-        logging.info('Scan parameter(s): %s' % (', '.join(['%s:%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None'))
+        logging.info('Scan parameter(s): %s' % (', '.join(['%s=%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None'))
 
         try:
             last_configuration = self._get_configuration()
@@ -268,6 +268,7 @@ class Fei4RunBase(RunBase):
                 if field in fields:
                     raise TypeError('Got multiple values for keyword argument %s' % field)
                 fields[field] = value
+        logging.info('Setting scan parameter(s): %s' % (', '.join(['%s=%s' % (key, value) for (key, value) in fields.items()])))
         self.scan_parameters = self.scan_parameters._replace(**fields)
 
     @contextmanager
