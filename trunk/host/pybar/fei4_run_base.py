@@ -268,8 +268,11 @@ class Fei4RunBase(RunBase):
                 if field in fields:
                     raise TypeError('Got multiple values for keyword argument %s' % field)
                 fields[field] = value
-        logging.info('Setting scan parameter(s): %s' % (', '.join(['%s=%s' % (key, value) for (key, value) in fields.items()])))
+        scan_parameters_old = self.scan_parameters._asdict()
         self.scan_parameters = self.scan_parameters._replace(**fields)
+        scan_parameters_new = self.scan_parameters._asdict()
+        if scan_parameters_new != scan_parameters_old:
+            logging.info('Changing scan parameter(s): %s' % (', '.join(['%s=%s' % (key, value) for (key, value) in fields.items()])))
 
     @contextmanager
     def readout(self, *args, **kwargs):
