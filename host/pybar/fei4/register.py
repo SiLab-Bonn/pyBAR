@@ -377,7 +377,7 @@ class FEI4Register(object):
 
             # pixels
             for pixel_reg in h5_file.iter_nodes(configuration_group, 'CArray'):  # ['Enable', 'TDAC', 'C_High', 'C_Low', 'Imon', 'FDAC', 'EnableDigInj']:
-                if pixel_reg in self.pixel_registers:
+                if pixel_reg.name in self.pixel_registers:
                     self.set_pixel_register_value(pixel_reg.name, np.asarray(pixel_reg).T)  # np.asarray(h5_file.get_node(configuration_group, name=pixel_reg)).T
 
         if isinstance(configuration_file, tb.file.File):
