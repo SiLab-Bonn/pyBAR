@@ -182,11 +182,11 @@ class Fei4RunBase(RunBase):
                 self.save_configuration_dict(self.raw_data_file.h5_file, 'conf', self.conf)
                 self.save_configuration_dict(self.raw_data_file.h5_file, 'run_conf', self.run_conf)
                 self.register_utils.global_reset()
+                self.register_utils.configure_all()
                 if is_fe_ready(self):
                     reset_service_records = False
                 else:
                     reset_service_records = True
-                self.register_utils.configure_all()
                 self.register_utils.reset_bunch_counter()
                 self.register_utils.reset_event_counter()
                 if reset_service_records:
