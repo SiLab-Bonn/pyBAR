@@ -204,6 +204,19 @@ class FEI4RegisterUtils(object):
         self.send_commands(commands)
         logging.info("Setting GDAC to %d (VthinAltCoarse / VthinAltFine = %d / %d)" % (value, self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine")))
 
+    def get_gdac(self, altc, altf):
+#         altc = self.register.get_global_register_value("Vthin_AltCoarse")  # take every second AltCoarse value
+#         altf = self.register.get_global_register_value("Vthin_AltFine")  # take low word
+        if self.register.fei4b:
+            value = altf & 0xff
+            altc &= ~0x01
+            value += (altc << 7)
+            return value
+        else:
+            value = altf & 0xff
+            value += (altc << 8)
+            return value
+
 
 def read_chip_sn(self):
     '''Reading Chip S/N
