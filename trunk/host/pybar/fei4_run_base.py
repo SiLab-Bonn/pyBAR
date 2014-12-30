@@ -271,8 +271,9 @@ class Fei4RunBase(RunBase):
         scan_parameters_old = self.scan_parameters._asdict()
         self.scan_parameters = self.scan_parameters._replace(**fields)
         scan_parameters_new = self.scan_parameters._asdict()
-        if scan_parameters_new != scan_parameters_old:
-            logging.info('Changing scan parameter(s): %s' % (', '.join(['%s=%s' % (key, value) for (key, value) in fields.items()])))
+        diff = [name for name in scan_parameters_old.keys() if scan_parameters_old[name] != scan_parameters_new[name]]
+        if diff:
+            logging.info('Changing scan parameter(s): %s' % (', '.join([('%s=%s' % (name, fields[name])) for name in diff])))
 
     @contextmanager
     def readout(self, *args, **kwargs):
