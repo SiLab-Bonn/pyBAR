@@ -26,8 +26,10 @@ class RawDataFile(object):
     def __init__(self, filename, mode="w", title='', scan_parameters=None, **kwargs):  # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created):
         self.lock = RLock()
         self.filename = filename
-        if scan_parameters:
+        if isinstance(scan_parameters, dict):
             self.scan_parameters = scan_parameters
+        elif isinstance(scan_parameters, (list, tuple)):
+            self.scan_parameters = dict.fromkeys(scan_parameters)
         else:
             self.scan_parameters = {}
         self.raw_data_earray = None
@@ -77,15 +79,23 @@ class RawDataFile(object):
 
     def append_item(self, data_tuple, scan_parameters=None, new_file=False, flush=True):
         with self.lock:
-            if new_file and scan_parameters and scan_parameters != self.scan_parameters:
-                filename = os.path.splitext(self.filename)[0].strip().lower() + '_' + '_'.join([str(item) for item in reduce(lambda x, y: x + y, scan_parameters.items())]) + '.h5'
-                # copy nodes to new file
-                nodes = self.h5_file.list_nodes('/', classname='Group')
-                with tb.open_file(filename, mode='w', title=filename) as h5_file:
-                    for node in nodes:
-                        self.h5_file.copy_node(node, h5_file.root, overwrite=True, recursive=True)
-                self.close()
-                self.open(filename, 'a', filename)
+            if scan_parameters:
+                # check for not existing keys
+                diff = set(scan_parameters).difference(set(self.scan_parameters))
+                if diff:
+                    raise ValueError('Unknown scan parameter(s): %s' % ', '.join(diff))
+                # parameters that have changed
+                diff = [name for name in scan_parameters.keys() if scan_parameters[name] != self.scan_parameters[name]]
+                self.scan_parameters.update(scan_parameters)
+                if (new_file is True and diff) or (isinstance(new_file, (list, tuple)) and len([name for name in diff if name in new_file]) != 0):
+                    filename = os.path.splitext(self.filename)[0].strip().lower() + '_' + '_'.join([str(item) for item in reduce(lambda x, y: x + y, [(key, value) for key, value in scan_parameters.items() if (new_file is True or (isinstance(new_file, (list, tuple)) and key in new_file))])]) + '.h5'
+                    # copy nodes to new file
+                    nodes = self.h5_file.list_nodes('/', classname='Group')
+                    with tb.open_file(filename, mode='w', title=filename) as h5_file:
+                        for node in nodes:
+                            self.h5_file.copy_node(node, h5_file.root, overwrite=True, recursive=True)
+                    self.close()
+                    self.open(filename, 'a', filename)
             total_words = self.raw_data_earray.nrows
             raw_data = data_tuple[0]
             len_raw_data = raw_data.shape[0]
@@ -98,19 +108,10 @@ class RawDataFile(object):
             total_words += len_raw_data
             self.meta_data_table.row['index_stop'] = total_words
             self.meta_data_table.row.append()
-            if scan_parameters:
-                diff = set(scan_parameters).difference(set(self.scan_parameters))
-                if diff:
-                    raise ValueError('Unknown scan parameter(s): %s' % ', '.join(diff))
             if self.scan_parameters:
                 for key in self.scan_parameters:
-                    try:
-                        self.scan_param_table.row[key] = scan_parameters[key]
-                    except KeyError:
-                        diff = set(self.scan_parameters).difference(set(scan_parameters))
-                        raise ValueError('Scan parameter(s) not given: %s' % ', '.join(diff))
+                    self.scan_param_table.row[key] = self.scan_parameters[key]
                 self.scan_param_table.row.append()
-                self.scan_parameters = scan_parameters
             if flush:
                 self.flush()
 
