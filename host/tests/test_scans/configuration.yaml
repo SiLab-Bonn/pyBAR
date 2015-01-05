@@ -1,0 +1,9 @@
+working_dir : test_scans/  # path to DUT hardware configuration file (.yaml), DUT init configuration file (.yaml) and FPGA bit file (.bit). Data will be written to this path. If not given, path of this file is taken. Default: not given / empty
+
+dut : D:\pyBAR\host\pybar\dut_usbpix.yaml  # DUT hardware configuration (.yaml). Change to dut_usbpix_gpac.yaml for GPAC card.
+dut_configuration : D:\pyBAR\host\pybar\dut_configuration_usbpix.yaml  # DUT init configuration (.yaml). Default: not given / empty
+
+fe_configuration :  # FE configuration file, text (.cfg) or HDF5 (.h5) file. If not given, latest valid configuration (run status FINISHED) will be taken. If a number is given, configuration from run with specified number will be taken.
+module_id : scan_unittests  # module identifier / name, sub-folder with given name will be created inside working_dir
+fe_flavor : fei4a  # FEI4 flavor/type for initial configuration. Valid values: 'fei4a' or 'fei4b'
+chip_address :  # Chip Address for initial configuration, if not given, broadcast bit will be set
