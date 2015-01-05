@@ -17,6 +17,79 @@ from pybar.analysis.RawDataConverter.data_struct import NameValue
 from pybar.utils.utils import string_is_binary, flatten_iterable, iterable
 
 
+def parse_pixel_mask_config(filename):
+    mask = np.empty((80, 336), dtype=np.uint8)
+    with open(filename, 'r') as f:
+        row = 0
+        for line in f.readlines():
+            line = line.split()
+            if len(line) == 0 or line[0][0] == '#':
+                continue
+            try:
+                int(line[0])
+            except ValueError:
+                line = ''.join(line).translate(None, '_-')
+            else:
+                line = ''.join(line[1:]).translate(None, '_-')
+            if len(line) != 80:
+                raise ValueError('Dimension of column')
+            # for col, value in enumerate(line):
+            #    mask[col][row] = value
+            mask[:, row] = list(line)
+            row += 1
+        if row != 336:
+            raise ValueError('Dimension of row')
+    return mask
+
+
+def write_pixel_mask_config(filename, value):
+    with open(filename, 'w') as f:
+        seq = []
+        seq.append("###  1     6     11    16     21    26     31    36     41    46     51    56     61    66     71    76\n")
+        seq.append("\n".join([(repr(row + 1).rjust(3) + "  ") + "  ".join(["-".join(["".join([repr(value[col, row]) for col in range(col_fine, col_fine + 5)]) for col_fine in range(col_coarse, col_coarse + 10, 5)]) for col_coarse in range(0, 80, 10)]) for row in range(336)]))
+        seq.append("\n")
+        f.writelines(seq)
+
+
+def parse_pixel_dac_config(filename):
+    mask = np.empty((80, 336), dtype=np.uint8)
+    with open(filename, 'r') as f:
+        row = 0
+        read_line = 0
+        for line in f.readlines():
+            line = line.split()
+            if len(line) == 0 or line[0][0] == '#':
+                continue
+            try:
+                int(line[0])
+            except ValueError:
+                line = line[1:]
+            else:
+                pass  # nothing to do
+            if len(line) != 40:
+                raise ValueError('Dimension of column')
+            if read_line % 2 == 0:
+                mask[:40, row] = line
+            else:
+                mask[40:, row] = line
+                row += 1
+            read_line += 1
+        if row != 336:
+            raise ValueError('Dimension of row')
+    return mask
+
+
+def write_pixel_dac_config(filename, value):
+    with open(filename, 'w') as f:
+        seq = []
+        seq.append("###    1  2  3  4  5  6  7  8  9 10   11 12 13 14 15 16 17 18 19 20   21 22 23 24 25 26 27 28 29 30   31 32 33 34 35 36 37 38 39 40\n")
+        seq.append("###   41 42 43 44 45 46 47 48 49 50   51 52 53 54 55 56 57 58 59 60   61 62 63 64 65 66 67 68 69 70   71 72 73 74 75 76 77 78 79 80\n")
+        seq.append("\n".join(["\n".join([((repr(row + 1).rjust(3) + ("a" if col_coarse == 0 else "b") + "  ") + "   ".join([" ".join([repr(value[col, row]).rjust(2) for col in range(col_fine, col_fine + 10)]) for col_fine in range(col_coarse, col_coarse + 40, 10)])) for col_coarse in range(0, 80, 40)]) for row in range(336)]))
+        seq.append("\n")
+        f.writelines(seq)
+
+
+
 flavors = ('fei4a', 'fei4b')
 
 
@@ -276,18 +349,18 @@ class FEI4Register(object):
             if path == "tdacs":
                 dac = self.get_pixel_register_objects(name="TDAC")[0]
                 dac_config_path = os.path.join(configuration_file_path, "_".join([dac['name'].lower(), filename]) + ".dat")
-                self._write_pixel_dac_config(dac_config_path, dac['value'])
+                write_pixel_dac_config(dac_config_path, dac['value'])
                 pixel_reg_dict[dac['name']] = os.path.relpath(dac_config_path, os.path.dirname(self.configuration_file))
             elif path == "fdacs":
                 dac = self.get_pixel_register_objects(name="FDAC")[0]
                 dac_config_path = os.path.join(configuration_file_path, "_".join([dac['name'].lower(), filename]) + ".dat")
-                self._write_pixel_dac_config(dac_config_path, dac['value'])
+                write_pixel_dac_config(dac_config_path, dac['value'])
                 pixel_reg_dict[dac['name']] = os.path.relpath(dac_config_path, os.path.dirname(self.configuration_file))
             elif path == "masks":
                 masks = self.get_pixel_register_objects(bitlength=1)
                 for mask in masks:
                     dac_config_path = os.path.join(configuration_file_path, "_".join([mask['name'].lower(), filename]) + ".dat")
-                    self._write_pixel_mask_config(dac_config_path, mask['value'])
+                    write_pixel_mask_config(dac_config_path, mask['value'])
                     pixel_reg_dict[mask['name']] = os.path.relpath(dac_config_path, os.path.dirname(self.configuration_file))
             elif path == "configs":
                 with open(self.configuration_file, 'w') as f:
@@ -496,74 +569,6 @@ class FEI4Register(object):
             lines.append("\n")
             f.writelines(lines)
 
-    def _parse_pixel_mask_config(self, filename):
-        mask = np.empty((80, 336), dtype=np.uint8)
-        with open(filename, 'r') as f:
-            row = 0
-            for line in f.readlines():
-                line = line.split()
-                if len(line) == 0 or line[0][0] == '#':
-                    continue
-                try:
-                    int(line[0])
-                except ValueError:
-                    line = ''.join(line).translate(None, '_-')
-                else:
-                    line = ''.join(line[1:]).translate(None, '_-')
-                if len(line) != 80:
-                    raise ValueError('Dimension of column')
-                # for col, value in enumerate(line):
-                #    mask[col][row] = value
-                mask[:, row] = list(line)
-                row += 1
-            if row != 336:
-                raise ValueError('Dimension of row')
-        return mask
-
-    def _write_pixel_mask_config(self, filename, value):
-        with open(filename, 'w') as f:
-            seq = []
-            seq.append("###  1     6     11    16     21    26     31    36     41    46     51    56     61    66     71    76\n")
-            seq.append("\n".join([(repr(row + 1).rjust(3) + "  ") + "  ".join(["-".join(["".join([repr(value[col, row]) for col in range(col_fine, col_fine + 5)]) for col_fine in range(col_coarse, col_coarse + 10, 5)]) for col_coarse in range(0, 80, 10)]) for row in range(336)]))
-            seq.append("\n")
-            f.writelines(seq)
-
-    def _parse_pixel_dac_config(self, filename):
-        mask = np.empty((80, 336), dtype=np.uint8)
-        with open(filename, 'r') as f:
-            row = 0
-            read_line = 0
-            for line in f.readlines():
-                line = line.split()
-                if len(line) == 0 or line[0][0] == '#':
-                    continue
-                try:
-                    int(line[0])
-                except ValueError:
-                    line = line[1:]
-                else:
-                    pass  # nothing to do
-                if len(line) != 40:
-                    raise ValueError('Dimension of column')
-                if read_line % 2 == 0:
-                    mask[:40, row] = line
-                else:
-                    mask[40:, row] = line
-                    row += 1
-                read_line += 1
-            if row != 336:
-                raise ValueError('Dimension of row')
-        return mask
-
-    def _write_pixel_dac_config(self, filename, value):
-        with open(filename, 'w') as f:
-            seq = []
-            seq.append("###    1  2  3  4  5  6  7  8  9 10   11 12 13 14 15 16 17 18 19 20   21 22 23 24 25 26 27 28 29 30   31 32 33 34 35 36 37 38 39 40\n")
-            seq.append("###   41 42 43 44 45 46 47 48 49 50   51 52 53 54 55 56 57 58 59 60   61 62 63 64 65 66 67 68 69 70   71 72 73 74 75 76 77 78 79 80\n")
-            seq.append("\n".join(["\n".join([((repr(row + 1).rjust(3) + ("a" if col_coarse == 0 else "b") + "  ") + "   ".join([" ".join([repr(value[col, row]).rjust(2) for col in range(col_fine, col_fine + 10)]) for col_fine in range(col_coarse, col_coarse + 40, 10)])) for col_coarse in range(0, 80, 40)]) for row in range(336)]))
-            seq.append("\n")
-            f.writelines(seq)
-
     '''
     TODO:
     for the following functions use
@@ -591,14 +596,14 @@ class FEI4Register(object):
         except ValueError:  # value is path to pixel config
             if self.pixel_registers[name]['bitlength'] == 1:  # pixel mask
                 if value[0] == "~" or value[0] == "!":
-                    reg_value = self._parse_pixel_mask_config(os.path.join(os.path.dirname(self.configuration_file), value[1:]))
+                    reg_value = parse_pixel_mask_config(os.path.join(os.path.dirname(self.configuration_file), value[1:]))
                     inverted_mask = np.ones(shape=(80, 336), dtype=np.dtype('>u1'))
                     inverted_mask[reg_value >= 1] = 0
                     self.pixel_registers[name]['value'][:, :] = inverted_mask
                 else:
-                    self.pixel_registers[name]['value'][:, :] = self._parse_pixel_mask_config(os.path.join(os.path.dirname(self.configuration_file), value))
+                    self.pixel_registers[name]['value'][:, :] = parse_pixel_mask_config(os.path.join(os.path.dirname(self.configuration_file), value))
             else:  # pixel dac
-                self.pixel_registers[name]['value'][:, :] = self._parse_pixel_dac_config(os.path.join(os.path.dirname(self.configuration_file), value))
+                self.pixel_registers[name]['value'][:, :] = parse_pixel_dac_config(os.path.join(os.path.dirname(self.configuration_file), value))
         if (self.pixel_registers[name]['value'] >= 2 ** self.pixel_registers[name]['bitlength']).any() or (self.pixel_registers[name]['value'] < 0).any():
             raise ValueError("Pixel register %s: value exceeds limits" % name)
 
