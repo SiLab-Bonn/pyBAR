@@ -138,7 +138,7 @@ class HitOrCalibration(Fei4RunBase):
             output_pdf = PdfPages(self.output_filename + "_calibration.pdf")
             calibration_data = np.zeros(shape=(80, 336, len(inner_loop_parameter_values), 4), dtype='f4')  # result of the calibration is a histogram with col_index, row_index, plsrDAC value, mean discrete tot, rms discrete tot, mean tot from TDC, rms tot from TDC
 
-            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=n_par_combinations)
+            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=n_par_combinations, term_width=80)
             old_scan_parameters = None
             tot_data = None
             tdc_data = None

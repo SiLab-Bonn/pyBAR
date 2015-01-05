@@ -199,7 +199,7 @@ class TestAnalysis(unittest.TestCase):
         os.remove('test_analysis//unit_test_data_4_interpreted_2.h5')
 
     def test_libraries_stability(self):  # calls 50 times the constructor and destructor to check the libraries
-        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=50)
+        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=50, term_width=80)
         progress_bar.start()
         for i in range(50):
             interpreter = PyDataInterpreter()

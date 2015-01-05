@@ -547,7 +547,7 @@ class AnalyzeRawData(object):
         self.interpreter.set_meta_event_data(self.meta_event_index)  # tell the interpreter the data container to write the meta event index to
 
         logging.info("Interpreting...")
-        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=analysis_utils.get_total_n_data_words(self.files_dict))
+        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=analysis_utils.get_total_n_data_words(self.files_dict), term_width=80)
         progress_bar.start()
         total_words = 0
 
@@ -825,7 +825,7 @@ class AnalyzeRawData(object):
             return
 
         logging.info('Analyze hits...')
-        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=table_size)
+        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=table_size, term_width=80)
         progress_bar.start()
 
         for hits, index in analysis_utils.data_aligned_at_events(in_file_h5.root.Hits, chunk_size=self._chunk_size):

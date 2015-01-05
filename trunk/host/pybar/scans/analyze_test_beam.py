@@ -374,7 +374,7 @@ def find_tracks_loop(tracklets, correlations, n_duts, column_sigma, row_sigma):
     tmp_column, tmp_row = 0., 0.
     best_hit_distance = 0.
 
-    progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=n_tracks)
+    progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=n_tracks, term_width=80)
     progress_bar.start()
 
     for track_index, actual_track in enumerate(tracklets):
