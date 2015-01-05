@@ -22,6 +22,7 @@ _configuration_folder = 'test_scans/configuration.yaml'
 # Cut values
 _upper_noise_cut = 3.5
 _upper_noise_std_cut = 0.5
+_upper_pixel_fail_cut = 10
 
 
 def run_scan(scan, run_conf=None):
@@ -119,7 +120,7 @@ class TestScans(unittest.TestCase):
             result = np.ones((336, 80), np.uint32) * default_cfg['n_injections']
             select_mask = np.ones((336, 80), dtype=np.bool)
             failing_pixel = check_hit_map(digital_scan_file, 'HistOcc', select_mask, result, '==')
-            if failing_pixel != 0:
+            if failing_pixel > _upper_pixel_fail_cut:
                 ok = False
                 error_msg += ' There are %s pixels without exactly %s hits' % (failing_pixel, default_cfg['n_injections'])
         self.assertTrue(ok, msg=error_msg)
