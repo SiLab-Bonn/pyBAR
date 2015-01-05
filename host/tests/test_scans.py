@@ -1,5 +1,6 @@
-''' Script to check scans and for well known errors. A working (and biased) FE-I4 is needed. If these unit tests pass
-there is a high propability that the readout system and the FE-I4 work as expected.
+''' Script to check that the readout system works. A working (and biased) FE-I4 is needed. Otherwise the results
+tell also how good the FE works. If these tests pass there is a high propability that the readout system 
+and the FE-I4 work fine. The tests take about 10 min.
 '''
 
 import unittest
@@ -15,14 +16,25 @@ from pybar.scans.scan_digital import DigitalScan
 from pybar.scans.scan_analog import AnalogScan
 from pybar.scans.scan_threshold_fast import FastThresholdScan
 from pybar.scans.scan_threshold import ThresholdScan
+from pybar.scans.tune_fei4 import Fei4Tuning
 
-_data_folder = 'test_scans//test_scans//scan_unittests'
+from pybar.fei4.register import parse_pixel_dac_config
+
+_data_folder = 'test_scans//scan_unittests'
 _configuration_folder = 'test_scans/configuration.yaml'
 
 # Cut values
 _upper_noise_cut = 3.5
 _upper_noise_std_cut = 0.5
 _upper_pixel_fail_cut = 10
+_lower_tdac_mean_cut = 15.
+_upper_tdac_mean_cut = 16.
+_lower_tdac_std_cut = 3.
+_upper_tdac_std_cut = 6.
+_lower_fdac_mean_cut = 7.
+_upper_fdac_mean_cut = 8.
+_lower_fdac_std_cut = 1.
+_upper_fdac_std_cut = 2.
 
 
 def run_scan(scan, run_conf=None):
@@ -97,6 +109,31 @@ def check_threshold_scan(filename):
         return threshold_mean, threshold_std, noise_mean, noise_std
 
 
+def check_tuning_result(filename):
+    ok = True
+    error_string = ' FAIL tuning '
+    fdac_file = find('*_tuning.dat', _data_folder + '//fdacs')[0]
+    tdac_file = find('*_tuning.dat', _data_folder + '//tdacs')[0]
+    tdacs, fdacs = parse_pixel_dac_config(tdac_file)[1:77, :], parse_pixel_dac_config(fdac_file)[1:77, :]
+    tdac_mean, tdac_std = np.mean(tdacs), np.std(tdacs)
+    fdac_mean, fdac_std = np.mean(fdacs), np.std(fdacs)
+
+    if tdac_mean < _lower_tdac_mean_cut or tdac_mean > _upper_tdac_mean_cut:
+        error_string += 'TDAC mean = %2.1f' % tdac_mean
+        ok = False
+    if tdac_std < _lower_tdac_std_cut or tdac_std > _upper_tdac_std_cut:
+        error_string += 'TDAC std = %2.1f' % tdac_std
+        ok = False
+    if fdac_mean < _lower_fdac_mean_cut or fdac_mean > _upper_fdac_mean_cut:
+        error_string += 'FDAC mean = %2.1f' % fdac_mean
+        ok = False
+    if fdac_std < _lower_fdac_std_cut or fdac_std > _upper_fdac_std_cut:
+        error_string += 'FDAC std = %2.1f' % fdac_std
+        ok = False
+
+    return ok, error_string
+
+
 class TestScans(unittest.TestCase):
 
     @classmethod
@@ -105,11 +142,11 @@ class TestScans(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        shutil.rmtree('test_scans//test_scans', ignore_errors=True)
+        shutil.rmtree('test_scans//scan_unittests', ignore_errors=True)
 
-    def test_system_status(self):  # Does a digital scan and checks the data for errors (event status, number of hits)s
+    def test_system_status(self):  # does a digital scan and checks the data for errors (event status, number of hits)s
         ok, error_msg, output_filename, default_cfg, _ = run_scan(DigitalScan)
-        if ok:  # only analze if scan finished normal
+        if ok:  # only analyze if scan finished normal
             digital_scan_file = (output_filename + '_interpreted.h5').encode('string-escape')  # the digital interpreted data file
             #  Check event status histogram
             operation = np.array(['==', '==', '==', '==', '==', '==', '==', '==', '==', '==', '==', '==', '==', '==', '==', '=='])
@@ -125,7 +162,7 @@ class TestScans(unittest.TestCase):
                 error_msg += ' There are %s pixels without exactly %s hits' % (failing_pixel, default_cfg['n_injections'])
         self.assertTrue(ok, msg=error_msg)
 
-    def test_standard_scans(self):  # Check if the scans works and data integrity
+    def test_standard_scans(self):  # check if the scans work and the data integrity
         scans = [DigitalScan, AnalogScan, ThresholdScan, FastThresholdScan]  # list of scans to check
         ok = True
         error_msg = ' '
@@ -137,14 +174,14 @@ class TestScans(unittest.TestCase):
                 error_msg += ' FAIL ' + str(scan_name) + ' ' + scan_error_msg
 
             data_file = (output_filename + '_interpreted.h5').encode('string-escape')  # the digital interpreted data file
-            if 'ThresholdScan' not in scan_name:  # Check event status histogram
+            if 'ThresholdScan' not in scan_name:  # check event status histogram of all scans but threshold scans
                 operation = np.array(['==', '==', '==', '==', '==', '==', '==', '==', '>=', '>=', '>='])
                 select_mask, result = np.ones(11, dtype=np.bool), np.zeros(11, dtype=np.uint32)
                 select_mask[1], result[1] = True, 40 * run_conf['mask_steps'] * run_conf['n_injections']  # all events with no trigger word expected
                 data_ok, data_error_msg = check_1d_histogram(data_file, 'HistErrorCounter', select_mask, result, operation)
                 if not data_ok:
                     error_msg += ' ' + str(scan_name) + ': ' + data_error_msg
-            else:  # Check threshold scan results
+            else:  # check threshold scan results
                 data_ok = True
                 threshold_mean, threshold_std, noise_mean, noise_std = check_threshold_scan(data_file)
                 if noise_mean > _upper_noise_cut or noise_std > _upper_noise_std_cut:
@@ -153,6 +190,23 @@ class TestScans(unittest.TestCase):
 
             ok &= (scan_ok & data_ok)
         self.assertTrue(ok, msg=error_msg)
+
+    def test_tuning(self):  # run a full tuning and check results
+        error_msg = ' '
+        data_ok = False
+        run_conf = {'global_iterations': 2, 'local_iterations': 1}  # Save time by taking less iterations
+        scan_ok, scan_error_msg, output_filename, _, _ = run_scan(Fei4Tuning, run_conf=run_conf)
+        scan_file = (output_filename + '_interpreted.h5').encode('string-escape')  # the digital interpreted data file
+
+        if not scan_ok:
+            error_msg += scan_error_msg
+        else:
+            data_ok, error_msg_data = check_tuning_result(scan_file)
+            if not data_ok:
+                error_msg += error_msg_data
+
+        self.assertTrue(scan_ok & data_ok, msg=error_msg)
+
 
 if __name__ == '__main__':
     suite = unittest.TestLoader().loadTestsFromTestCase(TestScans)
