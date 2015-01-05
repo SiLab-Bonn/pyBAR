@@ -106,6 +106,7 @@ def compare_h5_files(first_file, second_file, expected_nodes=None, detailed_comp
 
 
 class TestAnalysis(unittest.TestCase):
+
     @classmethod
     def setUpClass(cls):
         cls.interpreter = PyDataInterpreter()
@@ -212,19 +213,19 @@ class TestAnalysis(unittest.TestCase):
 
     def test_data_alignement(self):  # test if the data alignment is correct (important to detect 32/64 bit related issues)
         hits = np.empty((1,), dtype=[('eventNumber', np.uint64),
-             ('triggerNumber', np.uint32),
-             ('relativeBCID', np.uint8),
-             ('LVLID', np.uint16),
-             ('column', np.uint8),
-             ('row', np.uint16),
-             ('tot', np.uint8),
-             ('BCID', np.uint16),
-             ('TDC', np.uint16),
-             ('TDCtimeStamp', np.uint8),
-             ('triggerStatus', np.uint8),
-             ('serviceRecord', np.uint32),
-             ('eventStatus', np.uint16)
-             ])
+                                     ('triggerNumber', np.uint32),
+                                     ('relativeBCID', np.uint8),
+                                     ('LVLID', np.uint16),
+                                     ('column', np.uint8),
+                                     ('row', np.uint16),
+                                     ('tot', np.uint8),
+                                     ('BCID', np.uint16),
+                                     ('TDC', np.uint16),
+                                     ('TDCtimeStamp', np.uint8),
+                                     ('triggerStatus', np.uint8),
+                                     ('serviceRecord', np.uint32),
+                                     ('eventStatus', np.uint16)
+                                     ])
         self.assertTrue(self.interpreter.get_hit_size() == hits.itemsize)
 
     def test_raw_data_analysis(self):  # test the created interpretation file against the stored one
@@ -264,22 +265,22 @@ class TestAnalysis(unittest.TestCase):
         event_numbers_2 = np.array([1, 1, 1, 2, 2, 2, 4, 4, 4, 7], dtype=np.int64)
         result = analysis_utils.get_events_in_both_arrays(event_numbers[0], event_numbers_2)
         self.assertListEqual([2, 4, 7], result.tolist())
-        
-    def test_analysis_utils_get_max_events_in_both_arrays(self):  # check compiled get_max_events_in_both_arrays function       
+
+    def test_analysis_utils_get_max_events_in_both_arrays(self):  # check compiled get_max_events_in_both_arrays function
         event_numbers = np.array([[0, 0, 1, 1, 2], [0, 0, 0, 0, 0]], dtype=np.int64)
         event_numbers_2 = np.array([0, 3, 3, 4], dtype=np.int64)
         result = analysis_utils.get_max_events_in_both_arrays(event_numbers[0], event_numbers_2)
         self.assertListEqual([0, 0, 1, 1, 2, 3, 3, 4], result.tolist())
-        
+
     def test_map_cluster(self):  # check the compiled function against result
         cluster = np.zeros((20, ), dtype=tb.dtype_from_descr(data_struct.ClusterInfoTable))
         result = np.zeros((20, ), dtype=tb.dtype_from_descr(data_struct.ClusterInfoTable))
         result[1]["event_number"], result[3]["event_number"], result[4]["event_number"], result[7]["event_number"] = 1, 2, 3, 4
-    
+
         for index in range(cluster.shape[0]):
             cluster[index]["event_number"] = index
-    
-        common_event_number = np.array([0, 1, 1, 2, 3, 3, 3, 4, 4], dtype = np.int64)
+
+        common_event_number = np.array([0, 1, 1, 2, 3, 3, 3, 4, 4], dtype=np.int64)
         self.assertTrue(np.all(analysis_utils.map_cluster(common_event_number, cluster) == result[:common_event_number.shape[0]]))
 
     def test_analysis_utils_in1d_events(self):  # check compiled get_in1d_sorted function
@@ -287,7 +288,6 @@ class TestAnalysis(unittest.TestCase):
         event_numbers_2 = np.array([1, 1, 1, 2, 2, 2, 4, 4, 4, 7], dtype=np.int64)
         result = event_numbers[0][analysis_utils.in1d_events(event_numbers[0], event_numbers_2)]
         self.assertListEqual([2, 2, 2, 4, 7, 7, 7], result.tolist())
-
 
     def test_1d_index_histograming(self):  # check compiled hist_2D_index function
         x = np.random.randint(0, 100, 100)
@@ -303,7 +303,6 @@ class TestAnalysis(unittest.TestCase):
         except:  # other exception that should not occur
             pass
         self.assertTrue(exception_ok & np.all(array == array_fast))
-
 
     def test_2d_index_histograming(self):  # check compiled hist_2D_index function
         x, y = np.random.randint(0, 100, 100), np.random.randint(0, 100, 100)
