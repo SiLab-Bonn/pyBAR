@@ -104,7 +104,6 @@ class TestScans(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        pass
         shutil.rmtree('test_scans//test_scans', ignore_errors=True)
 
     def test_system_status(self):  # Does a digital scan and checks the data for errors (event status, number of hits)s
