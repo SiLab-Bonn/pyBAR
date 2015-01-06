@@ -1,19 +1,21 @@
 """This script does a full test beam analysis (not completed yet). As an input raw data files with a trigger number from one
-run are expected. This script does in RAM calculations on multiple cores in parallel. 8 Gb of free RAM are recommended.
+run are expected. This script does in-RAM calculations on multiple cores in parallel. 8 Gb of free RAM and 8 cores are recommended.
 The analysis flow is:
 - Do for each DUT in parallel
   - Create a hit tables from the raw data
   - Align the hit table event number to the trigger number to be able to correlate hits in time
   - Cluster the hit table
 - Create hit position correlations from the hit maps and store the arrays
-- Plot the correlations as 2d heatmaps
-- Take the correlation arrays and extract an offset/slope to the first DUT
+- Plot the correlations as 2d heatmaps (optional)
+- Take the correlation arrays and extract an offset/slope aligned to the first DUT
 - Merge the cluster tables from all DUTs to one big cluster table and reference the cluster positions to the reference (DUT0) position
 - Find tracks
-- Align the DUT positions in z
+- Align the DUT positions in z (optional)
+- Fit tracks
+- Plot event tracks (optional)
 
 TBD:
-- Fit tracks
+- Calculate residuals
 - Create efficiency maps
 """
 
@@ -25,11 +27,16 @@ import numpy as np
 from math import sqrt
 import pandas as pd
 import tables as tb
+from time import sleep
 from multiprocessing import Pool, cpu_count
 from scipy.optimize import curve_fit, minimize_scalar
+
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib import colors, cm
+import matplotlib as mpl
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+import mpl_toolkits.mplot3d as m3d
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 # from numba import jit, numpy_support, types
 
@@ -567,10 +574,201 @@ def align_z(track_candidates_file, alignment_file, output_pdf, z_positions=None,
     return z_positions_rec_abs if z_positions is not None else z_positions_rec
 
 
-def event_monitor(track_candidates_file, output_pdf):
-    pass
+def event_display(track_file, z_positions, event_range, pixel_size=(250, 50), dut=None, output_pdf=None):
+    '''Plots the tracks (or track candidates) of the events in the given event range.
+
+    Parameters
+    ----------
+    track_file : pytables file with tracks
+    z_positions : iterable
+    event_range : iterable:
+        (start event number, stop event number(
+    pixel_size : iterable:
+        (column size, row size) in um
+    output_pdf : PdfPager file object or None
+    '''
+    with tb.open_file(track_file, "r") as in_file_h5:
+        fitted_tracks = False
+        try:  # data has track candidates
+            table = in_file_h5.root.TrackCandidates
+        except tb.NoSuchNodeError:  # data has fitted tracks
+            table = in_file_h5.getNode(in_file_h5.root, name='Tracks_DUT_%d' % dut)
+            fitted_tracks = True
+
+        n_duts = sum(['column' in col for col in table.dtype.names])
+        array = table[:]
+        tracks = analysis_utils.get_data_in_event_range(array, event_range[0], event_range[-1])
+        mpl.rcParams['legend.fontsize'] = 10
+        fig = plt.figure()
+        ax = fig.gca(projection='3d')
+        for track in tracks:
+            x, y, z = [], [], []
+            for dut_index in range(0, n_duts):
+                if track['row_dut_%d' % dut_index] != 0:  # No hit has row = 0
+                    x.append(track['column_dut_%d' % dut_index] * pixel_size[0] * 1e-3)
+                    y.append(track['row_dut_%d' % dut_index] * pixel_size[1] * 1e-3)
+                    z.append(z_positions[dut_index])
+            if fitted_tracks:
+                scale = np.array((pixel_size[0] * 1e-3, pixel_size[1] * 1e-3, 1))
+                offset = np.array((track['offset_0'], track['offset_1'], track['offset_2'])) * scale
+                slope = np.array((track['slope_0'], track['slope_1'], track['slope_2'])) * scale
+                linepts = offset + slope * np.mgrid[-10:10:2j][:, np.newaxis]
+
+            n_hits = bin(track['track_quality'] & 0xFF).count('1')
+            n_very_good_hits = bin(track['track_quality'] & 0xFF0000).count('1')
+
+            if n_hits > 2:  # only plot tracks with more than 2 hits
+                if fitted_tracks:
+                    ax.plot(x, y, z, '.' if n_hits == n_very_good_hits else 'o')
+                    ax.plot3D(*linepts.T)
+                else:
+                    ax.plot(x, y, z, '.-' if n_hits == n_very_good_hits else '.--')
+
+        ax.set_xlim(0, 20)
+        ax.set_ylim(0, 20)
+        ax.set_zlim(z_positions[0], z_positions[-1])
+        ax.set_xlabel('x [mm]')
+        ax.set_ylabel('y [mm]')
+        ax.set_zlabel('z [cm]')
+        plt.title('Events %d - %d' % (event_range[0], event_range[-1] - 1))
+        if output_pdf is not None:
+            output_pdf.savefig()
+        else:
+            plt.show()
+
+
+def fit_tracks_loop(track_hits):
+    def line_fit_3d(data):
+        datamean = data.mean(axis=0)  # Calculate the mean of the points, i.e. the 'center' of the cloud
+        return datamean, np.linalg.svd(data - datamean)[2][0]
+
+    slope = np.zeros((track_hits.shape[0], 3, ))
+    offset = np.zeros((track_hits.shape[0], 3, ))
+
+    for index, actual_hits in enumerate(track_hits):  # loop over selected track candidate hits and fit
+        offset[index], slope[index] = line_fit_3d(actual_hits)
+#         ax = m3d.Axes3D(plt.figure())
+#         ax.set_xlim(0, 80)
+#         ax.set_ylim(0, 336)
+#         ax.set_zlim(0, 13)
+#         plot_hits = np.column_stack(actual_hits)
+#         ax.plot3D(plot_hits[0], plot_hits[1], plot_hits[2], 'o')
+#         linepts = offset[index] + slope[index] * np.mgrid[-10:10:2j][:, np.newaxis]
+# 
+#         print plot_hits[0], plot_hits[1], plot_hits[2]
+#         print linepts
+#         
+#         ax.plot3D(*linepts.T)
+#         plt.show()
+#         break
+
+    return offset, slope
+
+
+def fit_tracks(track_candidates_file, tracks_file, z_positions, include_duts=[-3, -2, -1, 1, 2, 3], fit_duts=None, ignore_duts=None, max_tracks=1, track_quality=1):
+    '''Fits a line through selected DUT hits for selected DUTs. The selection criterion for the track candidates to fit is the track quality and the number of hits per event.
+    The fit is done for specified DUTs only (fit_duts). This DUT is then not included in the fit (include_duts). Bad DUTs can be always ignored in the fit (ignore_duts).
+
+    Parameters
+    ----------
+    track_candidates_file : pytables file
+    output_pdf : PdfPager file object
+    track_quality : int
+        0: All tracks with hits in DUT and references are taken
+        1: The track hits in DUT and reference are within 5-sigma of the correlation
+        2: The track hits in DUT and reference are within 2-sigma of the correlation
+    '''
+
+    def create_results_array(good_track_candidates, slopes, offsets, n_duts):
+        description = [('event_number', np.int64)]
+        for index in range(n_duts):
+            description.append(('column_dut_%d' % index, np.float))
+        for index in range(n_duts):
+            description.append(('row_dut_%d' % index, np.float))
+        for index in range(n_duts):
+            description.append(('charge_dut_%d' % index, np.float))
+        for dimension in range(3):
+            description.append(('offset_%d' % dimension, np.float))
+        for dimension in range(3):
+            description.append(('slope_%d' % dimension, np.float))
+        description.extend([('track_quality', np.uint32), ('n_tracks', np.uint8)])
+
+        tracks_array = np.zeros((n_tracks,), dtype=description)
+        tracks_array['event_number'] = good_track_candidates['event_number']
+        tracks_array['track_quality'] = good_track_candidates['track_quality']
+        tracks_array['n_tracks'] = good_track_candidates['n_tracks']
+        for index in range(n_duts):
+            tracks_array['column_dut_%d' % index] = good_track_candidates['column_dut_%d' % index]
+            tracks_array['row_dut_%d' % index] = good_track_candidates['row_dut_%d' % index]
+            tracks_array['charge_dut_%d' % index] = good_track_candidates['charge_dut_%d' % index]
+        for dimension in range(3):
+            tracks_array['offset_%d' % dimension] = offsets[:, dimension]
+            tracks_array['slope_%d' % dimension] = slopes[:, dimension]
+
+        return tracks_array
+
+    with tb.open_file(track_candidates_file, mode='r') as in_file_h5:
+        with tb.open_file(tracks_file, mode='w') as out_file_h5:
+            n_duts = sum(['column' in col for col in in_file_h5.root.TrackCandidates.dtype.names])
+            track_candidates = in_file_h5.root.TrackCandidates[:1e4]
+            fit_duts = fit_duts if fit_duts else range(n_duts)
+            for fit_dut_index in fit_duts:  # loop over the duts to fit the tracks for
+                logging.info('Fit tracks for DUT %d' % fit_dut_index)
+
+                # Select track candidates
+                dut_selection = (1 << (n_duts - 1)) | 1 | ((1 << (n_duts - 1)) >> fit_dut_index)
+                for include_dut in include_duts:  # calculate mask to select DUT hits for fitting
+                    if fit_dut_index + include_dut < 0 or (ignore_duts and fit_dut_index + include_dut in ignore_duts):
+                        continue
+                    if include_dut >= 0:
+                        dut_selection |= ((1 << (n_duts - 1)) >> fit_dut_index) >> include_dut
+                    else:
+                        dut_selection |= ((1 << (n_duts - 1)) >> fit_dut_index) << abs(include_dut)
+                good_track_selection = np.logical_and((track_candidates['track_quality'] & (dut_selection << (track_quality * 8))) == (dut_selection << (track_quality * 8)), track_candidates['n_tracks'] <= max_tracks)
+                good_track_candidates = track_candidates[good_track_selection]
+
+                # Prepare track hits array to be fitted
+                n_fit_duts = n_duts - len(ignore_duts) - 1 if ignore_duts else n_duts - 1
+                n_fit_duts += 1 if ignore_duts and fit_dut_index in ignore_duts else 0
+                n_fit_duts += 1 if 0 in include_duts else 0
+                tmp_dut_index, n_tracks = 0, good_track_candidates['event_number'].shape[0]
+                track_hits = np.zeros((n_tracks, n_fit_duts, 3))
+                for dut_index in range(0, n_duts):
+                    if (ignore_duts and dut_index in ignore_duts) or (0 not in include_duts and dut_index == fit_dut_index):
+                        continue
+                    xyz = np.column_stack((good_track_candidates['column_dut_%s' % dut_index], good_track_candidates['row_dut_%s' % dut_index], np.repeat(z_positions[dut_index], n_tracks)))
+                    track_hits[:, tmp_dut_index, :] = xyz
+                    tmp_dut_index += 1
+
+                # Split data and fit on all available cores
+                n_slices = cpu_count() - 1
+                slice_length = n_tracks / n_slices
+                slices = [track_hits[i:i + slice_length] for i in range(0, n_tracks, slice_length)]
+                pool = Pool(n_slices)
+                results = pool.map(fit_tracks_loop, slices)
+                del track_hits
+                offsets = np.concatenate([i[0] for i in results])  # merge offsets from all cores in results
+                slopes = np.concatenate([i[1] for i in results])  # merge slopes from all cores in results
+
+                tracks_array = create_results_array(good_track_candidates, slopes, offsets, n_duts)
+
+                tracklets_table = out_file_h5.create_table(out_file_h5.root, name='Tracks_DUT_%d' % fit_dut_index, description=np.zeros((1,), dtype=tracks_array.dtype).dtype, title='Tracks fitted for DUT_%d' % fit_dut_index, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+                tracklets_table.append(tracks_array)
+
+
+def calculate_residuals(tracks_file, z_positions, output_pdf, track_quality=1):
+    '''Takes the tracks and calculates residuals for selected DUTs in x, y.
+    '''
+    logging.info('Calculate residuals')
+
+#     with tb.open_file(track_candidates_file, mode='r') as in_file_h5:
+#         n_duts = sum(['column' in col for col in in_file_h5.root.TrackCandidates.dtype.names])
+# track_candidates = in_file_h5.root.TrackCandidates[:1000000]  # take only every 10th track
+#         fit_tracks(track_candidates, z_positions, n_duts)
+
 
 if __name__ == "__main__":
+    # Input file names
     raw_data_files = ['C:\\Users\\DavidLP\\Desktop\\tb\\BOARD_ID_132_SCC_29_3.4_GeV_0.h5',  # the first DUT is the master reference DUT
                       'C:\\Users\\DavidLP\\Desktop\\tb\\BOARD_ID_213_SCC_99_3.4_GeV_0.h5',
                       'C:\\Users\\DavidLP\\Desktop\\tb\\BOARD_ID_214_SCC_146_3.4_GeV_0.h5',
@@ -578,17 +776,19 @@ if __name__ == "__main__":
                       'C:\\Users\\DavidLP\\Desktop\\tb\\BOARD_ID_207_SCC_112_3.4_GeV_0.h5',
                       'C:\\Users\\DavidLP\\Desktop\\tb\\BOARD_ID_216_SCC_45_3.4_GeV_0.h5']  # the last DUT is the second reference DUT
 
-    z_positions = [0., 1.95, 5.05, 7.2, 10.88, 12.83]  # in cm
-
+    # Output file names
     alignment_file = 'C:\\Users\\DavidLP\\Desktop\\tb\\Alignment.h5'
     tracklets_file = 'C:\\Users\\DavidLP\\Desktop\\tb\\Tracklets.h5'
     track_candidates_file = 'C:\\Users\\DavidLP\\Desktop\\tb\\TrackCandidates.h5'
+    tracks_file = 'C:\\Users\\DavidLP\\Desktop\\tb\\Tracks.h5'
+
+    # Measured z positions (optional)
+    z_positions = [0., 1.95, 5.05, 7.2, 10.88, 12.83]  # in cm
 
     hit_files_aligned = [raw_data_file[:-3] + '_aligned.h5' for raw_data_file in raw_data_files]
     cluster_files = [raw_data_file[:-3] + '_cluster.h5' for raw_data_file in raw_data_files]
 
     with PdfPages(alignment_file[:-3] + '.pdf') as output_pdf:
-
         pool = Pool()  # Do seperate DUT data processing in parallel
         pool.map(process_dut, raw_data_files)
 
@@ -601,4 +801,8 @@ if __name__ == "__main__":
 
         align_z(track_candidates_file, alignment_file, output_pdf, z_positions, track_quality=1)
 
-        event_monitor(track_candidates_file, event_range=(0, None), output_pdf)
+        fit_tracks(track_candidates_file, tracks_file, z_positions, fit_duts=range(1, 5), ignore_duts=[2, 3], max_tracks=3, track_quality=1)
+
+        event_display(tracks_file, z_positions, event_range=(40, 41), dut=1, output_pdf=None)
+
+#         calculate_residuals(tracks_file, z_positions, output_pdf, track_quality=1)
