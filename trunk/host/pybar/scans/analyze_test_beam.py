@@ -638,8 +638,8 @@ def event_display(track_file, z_positions, event_range, pixel_size=(250, 50), du
 
 
 def fit_tracks_loop(track_hits):
-    def line_fit_3d(data):
-        datamean = data.mean(axis=0)  # Calculate the mean of the points, i.e. the 'center' of the cloud
+    def line_fit_3d(data):  # http://stackoverflow.com/questions/2298390/fitting-a-line-in-3d
+        datamean = data.mean(axis=0)
         return datamean, np.linalg.svd(data - datamean)[2][0]
 
     slope = np.zeros((track_hits.shape[0], 3, ))
@@ -710,7 +710,7 @@ def fit_tracks(track_candidates_file, tracks_file, z_positions, include_duts=[-3
     with tb.open_file(track_candidates_file, mode='r') as in_file_h5:
         with tb.open_file(tracks_file, mode='w') as out_file_h5:
             n_duts = sum(['column' in col for col in in_file_h5.root.TrackCandidates.dtype.names])
-            track_candidates = in_file_h5.root.TrackCandidates[:1e4]
+            track_candidates = in_file_h5.root.TrackCandidates[:]
             fit_duts = fit_duts if fit_duts else range(n_duts)
             for fit_dut_index in fit_duts:  # loop over the duts to fit the tracks for
                 logging.info('Fit tracks for DUT %d' % fit_dut_index)
@@ -756,15 +756,36 @@ def fit_tracks(track_candidates_file, tracks_file, z_positions, include_duts=[-3
                 tracklets_table.append(tracks_array)
 
 
-def calculate_residuals(tracks_file, z_positions, output_pdf, track_quality=1):
-    '''Takes the tracks and calculates residuals for selected DUTs in x, y.
+def calculate_residuals(tracks_file, z_positions, output_pdf=None, use_duts=None, track_quality=1):
+    '''Takes the tracks and calculates residuals for selected DUTs in col, row direction.
     '''
-    logging.info('Calculate residuals')
+    with tb.open_file(tracks_file, mode='r') as in_file_h5:
+        for node in in_file_h5.root:
+            actual_dut = int(node.name[-1:])
+            if use_duts and actual_dut not in use_duts:
+                continue
+            logging.info('Calculate residuals for DUT %d' % actual_dut)
 
-#     with tb.open_file(track_candidates_file, mode='r') as in_file_h5:
-#         n_duts = sum(['column' in col for col in in_file_h5.root.TrackCandidates.dtype.names])
-# track_candidates = in_file_h5.root.TrackCandidates[:1000000]  # take only every 10th track
-#         fit_tracks(track_candidates, z_positions, n_duts)
+            track_array = node[:]
+            track_array = track_array[track_array['charge_dut_%d' % actual_dut] != 0]
+            hits, offset, slope = np.column_stack((track_array['column_dut_%d' % actual_dut], track_array['row_dut_%d' % actual_dut], np.repeat(z_positions[actual_dut], track_array.shape[0]))), np.column_stack((track_array['offset_0'], track_array['offset_1'], track_array['offset_2'])), np.column_stack((track_array['slope_0'], track_array['slope_1'], track_array['slope_2']))
+            intersection = offset + slope / slope[:, 2, np.newaxis] * (z_positions[actual_dut] - offset[:, 2, np.newaxis])  # intersection track with DUT plane
+            difference = intersection - hits
+
+            for i in range(2):
+                for plot_log in [False, True]:
+                    plot_range = (-i - 1.5, i + 1.5)
+                    plt.xlim(plot_range)
+                    plt.grid()
+                    plt.title('Residuals for DUT %d' % actual_dut)
+                    plt.xlabel('Residual [Column]' if i == 0 else 'Residual [Row]')
+                    plt.ylabel('#')
+                    plt.hist(difference[:, 0], range=plot_range, bins=200, log=plot_log)
+                    if output_pdf is not None:
+                        output_pdf.savefig()
+                    else:
+                        plt.show()
+                    plt.clf()
 
 
 if __name__ == "__main__":
@@ -781,6 +802,7 @@ if __name__ == "__main__":
     tracklets_file = 'C:\\Users\\DavidLP\\Desktop\\tb\\Tracklets.h5'
     track_candidates_file = 'C:\\Users\\DavidLP\\Desktop\\tb\\TrackCandidates.h5'
     tracks_file = 'C:\\Users\\DavidLP\\Desktop\\tb\\Tracks.h5'
+    pdf_file = 'C:\\Users\\DavidLP\\Desktop\\tb\\Plots.pdf'
 
     # Measured z positions (optional)
     z_positions = [0., 1.95, 5.05, 7.2, 10.88, 12.83]  # in cm
@@ -788,21 +810,14 @@ if __name__ == "__main__":
     hit_files_aligned = [raw_data_file[:-3] + '_aligned.h5' for raw_data_file in raw_data_files]
     cluster_files = [raw_data_file[:-3] + '_cluster.h5' for raw_data_file in raw_data_files]
 
-    with PdfPages(alignment_file[:-3] + '.pdf') as output_pdf:
+    with PdfPages(pdf_file) as output_pdf:
         pool = Pool()  # Do seperate DUT data processing in parallel
         pool.map(process_dut, raw_data_files)
-
         correlate_hits(hit_files_aligned, alignment_file, max_column=80, max_row=336)
         plot_correlations(alignment_file, output_pdf)
-
         align_hits(alignment_file, output_pdf)
-
         find_tracks(tracklets_file, alignment_file, track_candidates_file)
-
         align_z(track_candidates_file, alignment_file, output_pdf, z_positions, track_quality=1)
-
-        fit_tracks(track_candidates_file, tracks_file, z_positions, fit_duts=range(1, 5), ignore_duts=[2, 3], max_tracks=3, track_quality=1)
-
-        event_display(tracks_file, z_positions, event_range=(40, 41), dut=1, output_pdf=None)
-
-#         calculate_residuals(tracks_file, z_positions, output_pdf, track_quality=1)
+        fit_tracks(track_candidates_file, tracks_file, z_positions, fit_duts=None, ignore_duts=[2, 3], max_tracks=1, track_quality=1)
+        event_display(tracks_file, z_positions, event_range=(10), dut=1, output_pdf=output_pdf)
+        calculate_residuals(tracks_file, z_positions, use_duts=None, output_pdf=output_pdf)
