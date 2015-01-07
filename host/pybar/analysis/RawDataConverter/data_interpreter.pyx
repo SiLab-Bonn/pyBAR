@@ -62,6 +62,7 @@ cdef extern from "Interpret.h":
         void useTriggerNumber(cpp_bool useTriggerNumber)
         void useTdcWord(cpp_bool useTdcWord)
         void useTriggerTimeStamp(cpp_bool useTriggerTimeStamp)
+        void useTdcTriggerTimeStamp(cpp_bool useTdcTriggerTimeStamp)
 
         void resetEventVariables()
         void resetCounters()
@@ -141,6 +142,8 @@ cdef class PyDataInterpreter:
         self.thisptr.useTdcWord(<cpp_bool> use_tdc_word)
     def use_trigger_time_stamp(self, use_trigger_time_stamp):
         self.thisptr.useTriggerTimeStamp(<cpp_bool> use_trigger_time_stamp)
+    def use_tdc_trigger_time_stamp(self, use_tdc_trigger_time_stamp):
+        self.thisptr.useTdcTriggerTimeStamp(<cpp_bool> use_tdc_trigger_time_stamp)
     def get_n_meta_data_event(self):
         return <unsigned int> self.thisptr.getNmetaDataEvent()
 #     def get_meta_event_index(self, cnp.ndarray[cnp.uint32_t, ndim=1] event_index):
