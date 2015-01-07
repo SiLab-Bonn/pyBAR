@@ -194,6 +194,7 @@ class AnalyzeRawData(object):
         self.create_cluster_tot_hist = False
         self.use_trigger_number = False  # use the trigger number to align the events
         self.use_trigger_time_stamp = False  # the trigger number is a time stamp
+        self.use_tdc_trigger_time_stamp = False  # the tdc time stamp is the difference between trigger and tdc rising edge
         self.set_stop_mode = False  # the FE is read out with stop mode, therefore the BCID plot is different
 
     def reset(self):
@@ -423,6 +424,8 @@ class AnalyzeRawData(object):
     def create_cluster_hit_table(self, value):
         self._create_cluster_hit_table = value
         self.clusterizer.create_cluster_hit_info_array(value)
+        if value:
+            self.create_cluster_table = value
 
     @property
     def create_cluster_table(self):
@@ -432,6 +435,9 @@ class AnalyzeRawData(object):
     def create_cluster_table(self, value):
         self._create_cluster_table = value
         self.clusterizer.create_cluster_info_array(value)
+        if not value and self.create_cluster_hit_table:
+            logging.warning('The cluster hit table can only be created if the cluster table is activated. Deactivate cluster hit table.')
+            self.create_cluster_hit_table = value
 
     @property
     def create_cluster_size_hist(self):
@@ -466,6 +472,15 @@ class AnalyzeRawData(object):
     def use_trigger_time_stamp(self, value):
         self._use_trigger_time_stamp = value
         self.interpreter.use_trigger_time_stamp(value)
+
+    @property
+    def use_tdc_trigger_time_stamp(self):
+        return self._use_tdc_trigger_time_stamp
+
+    @use_tdc_trigger_time_stamp.setter
+    def use_tdc_trigger_time_stamp(self, value):
+        self._use_tdc_trigger_time_stamp = value
+        self.interpreter.use_tdc_trigger_time_stamp(value)
 
     @property
     def set_stop_mode(self):
@@ -513,16 +528,16 @@ class AnalyzeRawData(object):
                 description = data_struct.HitInfoTable().columns.copy()
                 if self.use_trigger_time_stamp:  # replace the column name if trigger gives you a time stamp
                     description['trigger_time_stamp'] = description.pop('trigger_number')
-                hit_table = self.out_file_h5.createTable(self.out_file_h5.root, name='Hits', description=description, title='hit_data', filters=self._filter_table, chunkshape=(self._chunk_size / 100,))
+                hit_table = self.out_file_h5.create_table(self.out_file_h5.root, name='Hits', description=description, title='hit_data', filters=self._filter_table, chunkshape=(self._chunk_size / 100,))
             if (self._create_meta_word_index is True):
-                meta_word_index_table = self.out_file_h5.createTable(self.out_file_h5.root, name='EventMetaData', description=data_struct.MetaInfoWordTable, title='event_meta_data', filters=self._filter_table, chunkshape=(self._chunk_size / 10,))
+                meta_word_index_table = self.out_file_h5.create_table(self.out_file_h5.root, name='EventMetaData', description=data_struct.MetaInfoWordTable, title='event_meta_data', filters=self._filter_table, chunkshape=(self._chunk_size / 10,))
             if(self._create_cluster_table):
-                cluster_table = self.out_file_h5.createTable(self.out_file_h5.root, name='Cluster', description=data_struct.ClusterInfoTable, title='cluster_hit_data', filters=self._filter_table, expectedrows=self._chunk_size)
+                cluster_table = self.out_file_h5.create_table(self.out_file_h5.root, name='Cluster', description=data_struct.ClusterInfoTable, title='cluster_hit_data', filters=self._filter_table, expectedrows=self._chunk_size)
             if(self._create_cluster_hit_table):
                 description = data_struct.ClusterHitInfoTable().columns.copy()
                 if self.use_trigger_time_stamp:  # replace the column name if trigger gives you a time stamp
                     description['trigger_time_stamp'] = description.pop('trigger_number')
-                cluster_hit_table = self.out_file_h5.createTable(self.out_file_h5.root, name='ClusterHits', description=description, title='cluster_hit_data', filters=self._filter_table, expectedrows=self._chunk_size)
+                cluster_hit_table = self.out_file_h5.create_table(self.out_file_h5.root, name='ClusterHits', description=description, title='cluster_hit_data', filters=self._filter_table, expectedrows=self._chunk_size)
 
         logging.info('Interpreting raw data file(s): ' + (', ').join(self.files_dict.keys()))
 
@@ -614,7 +629,7 @@ class AnalyzeRawData(object):
                     for index, scan_par_name in enumerate(self.scan_parameters.dtype.names):
                         dtype, _ = self.scan_parameters.dtype.fields[scan_par_name][:2]
                         description[scan_par_name] = Col.from_dtype(dtype, dflt=0, pos=last_pos + index)
-                meta_data_out_table = self.out_file_h5.createTable(self.out_file_h5.root, name='meta_data', description=description, title='MetaData', filters=self._filter_table)
+                meta_data_out_table = self.out_file_h5.create_table(self.out_file_h5.root, name='meta_data', description=description, title='MetaData', filters=self._filter_table)
                 entry = meta_data_out_table.row
                 for i in range(0, n_event_index):
                     if self.interpreter.meta_table_v2:
@@ -789,11 +804,11 @@ class AnalyzeRawData(object):
 
         if(self._create_cluster_table):
             cluster = np.empty((2 * self._chunk_size,), dtype=dtype_from_descr(data_struct.ClusterInfoTable))
-            cluster_table = self.out_file_h5.createTable(self.out_file_h5.root, name='Cluster', description=data_struct.ClusterInfoTable, title='cluster_hit_data', filters=self._filter_table, expectedrows=self._chunk_size)
+            cluster_table = self.out_file_h5.create_table(self.out_file_h5.root, name='Cluster', description=data_struct.ClusterInfoTable, title='cluster_hit_data', filters=self._filter_table, expectedrows=self._chunk_size)
             self.clusterizer.set_cluster_info_array(cluster)
         if(self._create_cluster_hit_table):
             cluster_hits = np.empty((2 * self._chunk_size,), dtype=dtype_from_descr(data_struct.ClusterHitInfoTable))
-            cluster_hit_table = self.out_file_h5.createTable(self.out_file_h5.root, name='ClusterHits', description=data_struct.ClusterHitInfoTable, title='cluster_hit_data', filters=self._filter_table, expectedrows=self._chunk_size)
+            cluster_hit_table = self.out_file_h5.create_table(self.out_file_h5.root, name='ClusterHits', description=data_struct.ClusterHitInfoTable, title='cluster_hit_data', filters=self._filter_table, expectedrows=self._chunk_size)
             self.clusterizer.set_cluster_hit_info_array(cluster_hits)
 
         try:
