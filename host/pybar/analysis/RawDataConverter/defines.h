@@ -148,12 +148,12 @@ typedef struct MetaWordInfoOut{
 #define TDC_HEADER 0x40000000
 #define TDC_HEADER_MASK 0xF0000000  //first bit 0 means FE number word
 #define TDC_COUNT_MASK 0x00000FFF
-#define TDC_TIME_STAMP_MASK 0x000FF000  // time stamp (running counter) to compare e.g. with trigger time stamp
+#define TDC_TIME_STAMP_MASK 0x0FFFF000  // time stamp (running counter) to compare e.g. with trigger time stamp or TDC word counter, 16 bit, 8 bit if the TDC distribution macro is activated
 #define TDC_TRIG_DIST_MASK 0x0FF00000  // delay between trigger and TDC leading edge
 #define TDC_WORD_MACRO(X) (((TDC_HEADER_MASK & X) == TDC_HEADER) ? true : false)
 #define TDC_COUNT_MACRO(X) (TDC_COUNT_MASK & X)
-#define TDC_TIME_STAMP_MACRO(X) (TDC_TIME_STAMP_MASK & X)
-#define TDC_TRIG_DIST_MACRO(X) (TDC_TRIG_DIST_MASK & X)
+#define TDC_TIME_STAMP_MACRO(X) ((TDC_TIME_STAMP_MASK & X) >> 12)
+#define TDC_TRIG_DIST_MACRO(X) ((TDC_TRIG_DIST_MASK & X) >> 20)
 
 // Data Header (DH)
 #define DATA_HEADER						0x00E90000
