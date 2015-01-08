@@ -180,7 +180,7 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 		else if (isTdcWord(tActualWord)){	//data word is a tdc word
 			addTdcValue(TDC_COUNT_MACRO(tActualWord));
 			_nTDCWords++;
-			//create new event if the option to align at TDC words is active AND the previous event has seen already all needed data headers OR the prvious event was not aligned at a TDC word
+			//create new event if the option to align at TDC words is active AND the previous event has seen already all needed data headers OR the previous event was not aligned at a TDC word
 			if (_useTdcWord && _firstTdcSet && ((tNdataHeader > _NbCID-1) || (tErrorCode & __TDC_WORD) != __TDC_WORD)){
 				addEvent();
 			}
@@ -202,9 +202,9 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 				addEventErrorCode(__TDC_OVERFLOW);
 			if (Basis::debugSet()){
 				if (_useTdcTriggerTimeStamp)
-					debug(std::string(" ")+IntToStr(_nDataWords)+" TDC COUNT "+IntToStr(tTdcCount)+"\t"+LongIntToStr(_nEvents) + "\t TRG DIST TIME STAMP " + IntToStr(tTdcTimeStamp));
+					debug(std::string(" ")+IntToStr(_nDataWords)+" TDC COUNT "+IntToStr(TDC_COUNT_MACRO(tActualWord))+"\t"+LongIntToStr(_nEvents) + "\t TRG DIST TIME STAMP " + IntToStr(TDC_TRIG_DIST_MACRO(tActualWord)) + "\t WORD " + IntToStr(tActualWord));
 				else
-					debug(std::string(" ")+IntToStr(_nDataWords)+" TDC COUNT "+IntToStr(tTdcCount)+"\t"+LongIntToStr(_nEvents) + "\t TIME STAMP " + IntToStr(tTdcTimeStamp));
+					debug(std::string(" ")+IntToStr(_nDataWords)+" TDC COUNT "+IntToStr(TDC_COUNT_MACRO(tActualWord))+"\t"+LongIntToStr(_nEvents) + "\t TIME STAMP " + IntToStr(TDC_TIME_STAMP_MACRO(tActualWord)) + "\t WORD " + IntToStr(tActualWord));
 			}
 		}
 		else if (isDataRecord(tActualWord)){	//data word is data record if true is returned
