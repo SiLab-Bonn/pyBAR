@@ -41,9 +41,10 @@ def analyze_raw_data(input_files, output_file_hits, interpreter_plots, pdf_filen
         logging.info('Analyzed data file ' + output_file_hits + ' already exists. Skip analysis for this file.')
     else:
         with AnalyzeRawData(raw_data_file=input_files, analyzed_data_file=output_file_hits) as analyze_raw_data:
-#             analyze_raw_data.use_trigger_word = True # align events at trigger words
-#             analyze_raw_data.use_trigger_number = False  # use the trigger number to align the events
-#             analyze_raw_data.use_trigger_time_stamp = True # trigger numbers are time stamp
+            # analyze_raw_data.use_trigger_word = True # align events at trigger words
+            # analyze_raw_data.use_trigger_number = False  # use the trigger number to align the events
+            # analyze_raw_data.use_trigger_time_stamp = True # trigger numbers are time stamp
+            analyze_raw_data.use_tdc_trigger_time_stamp = False  # if you want to also measure the delay between trigger / hit-bus
             analyze_raw_data.interpreter.debug_events(0, 4, True)
             analyze_raw_data.interpreter.use_tdc_word(True)  # align events at TDC words, first word of event has to be a tdc word
             analyze_raw_data.create_tdc_counter_hist = True  # create a histogram for all TDC words
@@ -63,7 +64,7 @@ def analyze_raw_data(input_files, output_file_hits, interpreter_plots, pdf_filen
                 analyze_raw_data.plot_histograms(pdf_filename=pdf_filename)  # plots all activated histograms into one pdf
 
 
-def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_select_mask, event_status_condition, calibation_file=None, max_tdc=2000):   
+def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_select_mask, event_status_condition, calibation_file=None, max_tdc=2000):
     for condition in hit_selection_conditions:
         logging.info('Histogram tdc hits with %s' % condition)
 
@@ -134,7 +135,7 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
 
 
 if __name__ == "__main__":
-    raw_data_files = analysis_utils.get_data_file_names_from_scan_base(analysis_configuration['scan_name'], filter_file_words=['analyzed', 'interpreted', 'cut_', 'cluster_sizes', 'trigger_fe'])
+    raw_data_files = analysis_utils.get_data_file_names_from_scan_base(analysis_configuration['scan_name'], filter_file_words=['analyzed', 'interpreted', 'cut_', 'cluster_sizes', 'trigger_fe'], parameter=False)
     logging.info('Found ' + str(len(raw_data_files)) + ' raw data file(s)')
 
     hit_file = analysis_configuration['scan_name'][0] + '_interpreted.h5'
