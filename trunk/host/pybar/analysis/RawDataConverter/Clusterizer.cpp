@@ -332,6 +332,7 @@ void Clusterizer::addHit(const unsigned int& pHitIndex)
 		_clusterHitInfo[pHitIndex].row = _hitInfo[pHitIndex].row;
 		_clusterHitInfo[pHitIndex].tot = _hitInfo[pHitIndex].tot;
 		_clusterHitInfo[pHitIndex].TDC = _hitInfo[pHitIndex].TDC;
+		_clusterHitInfo[pHitIndex].TDCtimeStamp = _hitInfo[pHitIndex].TDCtimeStamp;
 		_clusterHitInfo[pHitIndex].BCID = _hitInfo[pHitIndex].BCID;
 		_clusterHitInfo[pHitIndex].triggerStatus = _hitInfo[pHitIndex].triggerStatus;
 		_clusterHitInfo[pHitIndex].serviceRecord = _hitInfo[pHitIndex].serviceRecord;
