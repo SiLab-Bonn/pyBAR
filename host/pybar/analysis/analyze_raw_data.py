@@ -173,6 +173,7 @@ class AnalyzeRawData(object):
         self.create_hit_table = False
         self.create_meta_event_index = True
         self.create_tot_hist = True
+        self.create_tot_pixel_hist = True
         self.create_rel_bcid_hist = True
         self.create_error_hist = True
         self.create_service_record_hist = True
@@ -182,7 +183,6 @@ class AnalyzeRawData(object):
         self.create_tdc_hist = False
         self.create_tdc_counter_hist = False
         self.create_tdc_pixel_hist = False
-        self.create_tot_pixel_hist = False
         self.create_trigger_error_hist = False
         self.create_threshold_hists = False
         self.create_threshold_mask = True  # threshold/noise histogram mask: masking all pixels out of bounds
