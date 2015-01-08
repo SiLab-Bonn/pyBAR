@@ -1,6 +1,6 @@
-"""This script does a full test beam analysis (not completed yet). As an input raw data files with a trigger number from one
-run are expected. This script does in-RAM calculations on multiple cores in parallel. 8 Gb of free RAM and 8 cores are recommended.
-The analysis flow is:
+"""This script does a full test beam analysis. As an input raw data files with a trigger number from one
+run are expected. This script does in-RAM calculations on multiple cores in parallel. 12 Gb of free RAM and 8 cores are recommended.
+The analysis flow is (also mentioned again in the main section):
 - Do for each DUT in parallel
   - Create a hit tables from the raw data
   - Align the hit table event number to the trigger number to be able to correlate hits in time
@@ -13,10 +13,8 @@ The analysis flow is:
 - Align the DUT positions in z (optional)
 - Fit tracks
 - Plot event tracks (optional)
-
-TBD:
 - Calculate residuals
-- Create efficiency maps
+- Create efficiency / distance maps
 """
 
 # from __future__ import print_function
@@ -27,19 +25,16 @@ import numpy as np
 from math import sqrt, ceil
 import pandas as pd
 import tables as tb
-from time import sleep
 from multiprocessing import Pool, cpu_count
 from scipy.optimize import curve_fit, minimize_scalar
 
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.figure import Figure
-from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib import colors, cm
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-import mpl_toolkits.mplot3d as m3d
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from mpl_toolkits.mplot3d import Axes3D  # needed for 3d plotting
 # from numba import jit, numpy_support, types
 
 from pybar.analysis import analysis_utils
@@ -47,7 +42,7 @@ from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.analysis.RawDataConverter import data_struct
 
 
-def create_2d_pixel_hist(fig, ax, hist2d, title=None, x_axis_title=None, y_axis_title=None, z_min=0, z_max=None):
+def _create_2d_pixel_hist(fig, ax, hist2d, title=None, x_axis_title=None, y_axis_title=None, z_min=0, z_max=None):
     extent = [0.5, 80.5, 336.5, 0.5]
     if z_max is None:
         if hist2d.all() is np.ma.masked:  # check if masked array is fully masked
@@ -70,6 +65,7 @@ def create_2d_pixel_hist(fig, ax, hist2d, title=None, x_axis_title=None, y_axis_
     fig.colorbar(im, boundaries=bounds, cmap=cmap, norm=norm, ticks=np.linspace(start=z_min, stop=z_max, num=9, endpoint=True), cax=cax)
 
 
+# FE-I4 data analysis
 def analyze_raw_data(input_file):
     '''Std. raw data analysis of FE-I4 data. A hit table is ceated for further analysis.
 
@@ -119,6 +115,14 @@ def analyze_hits(input_file, output_file_hits_analyzed, pdf_filename):
         analyze_raw_data.plot_histograms(pdf_filename=pdf_filename, analyzed_data_file=output_file_hits_analyzed)
 
 
+# Common test beam analysis functions to be called in consecutive order
+def process_dut(raw_data_file):
+    ''' Process the raw data and create cluster. This is different for all devices '''
+    analyze_raw_data(raw_data_file)
+    align_events(raw_data_file[:-3] + '_interpreted.h5', raw_data_file[:-3] + '_aligned.h5')
+    analyze_hits(raw_data_file[:-3] + '_aligned.h5', raw_data_file[:-3] + '_cluster.h5', pdf_filename=raw_data_file[:-3] + '.pdf')
+
+
 def align_events(input_file, output_file, chunk_size=10000000):
     ''' Selects only hits from good events and checks the distance between event number and trigger number for each hit.
     If the FE data allowed a successfull event recognizion the distance is always constant (besides the fact that the trigger number overflows).
@@ -152,12 +156,6 @@ def align_events(input_file, output_file, chunk_size=10000000):
 
         jumps = np.unique(np.array(jumps))
         logging.info('Found %d inconsistencies in the event number. %d events had to be corrected.' % (jumps[jumps != 0].shape[0], n_fixed_events))
-
-
-def process_dut(raw_data_file):  # called for each DUT on different CPUs in parallel
-    analyze_raw_data(raw_data_file)
-    align_events(raw_data_file[:-3] + '_interpreted.h5', raw_data_file[:-3] + '_aligned.h5')
-    analyze_hits(raw_data_file[:-3] + '_aligned.h5', raw_data_file[:-3] + '_cluster.h5', pdf_filename=raw_data_file[:-3] + '.pdf')
 
 
 def correlate_hits(hit_files, alignment_file, max_column, max_row):
@@ -340,9 +338,9 @@ def plot_correlations(alignment_file, output_pdf):
 
 
 def merge_cluster_data(cluster_files, alignment_file, tracklets_file):
-    '''Takes the cluster from all cluster files and merges them into one big table. The position is
-    referenced from the correlation data to the first plane. Function uses easily 8 Gb of RAM.
-    If memory errors occur buy a better PC or chunk this function.
+    '''Takes the cluster from all cluster files and merges them into one big table onto the event number.
+    Empty entries are signalled with charge = 0. The position is referenced from the correlation data to the first plane.
+    Function uses easily several Gb of RAM. If memory errors occur buy a better PC or chunk this function.
 
     Parameters
     ----------
@@ -393,98 +391,21 @@ def merge_cluster_data(cluster_files, alignment_file, tracklets_file):
         tracklets_table.append(tracklets_array)
 
 
-def find_tracks_loop(tracklets, correlations, n_duts, column_sigma, row_sigma):
-    actual_event_number = tracklets[0]['event_number']
-    n_tracks = tracklets.shape[0]
-    # Numba does not understand python scopes, define all used variables here
-    n_actual_tracks = 0
-    track_index = 0
-    column, row = 0., 0.
-    actual_track_column, actual_track_row = 0., 0.
-    column_distance, row_distance = 0., 0.
-    hit_distance = 0.
-    tmp_column, tmp_row = 0., 0.
-    best_hit_distance = 0.
-
-    progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=n_tracks, term_width=80)
-    progress_bar.start()
-
-    for track_index, actual_track in enumerate(tracklets):
-        progress_bar.update(track_index)
-
-        if actual_track['event_number'] != actual_event_number:
-            actual_event_number = actual_track['event_number']
-            for i in range(n_actual_tracks):
-                tracklets[track_index - 1 - i]['n_tracks'] = n_actual_tracks
-            n_actual_tracks = 0
-
-        n_actual_tracks += 1
-        first_hit_set = False
-
-        for dut_index in xrange(n_duts):
-            actual_column_sigma, actual_row_sigma = column_sigma[dut_index], row_sigma[dut_index]
-            if not first_hit_set and actual_track['row_dut_%d' % dut_index] != 0:
-                actual_track_column, actual_track_row = actual_track['column_dut_%d' % dut_index], actual_track['row_dut_%d' % dut_index]
-                first_hit_set = True
-                actual_track['track_quality'] |= (65793 << (n_duts - dut_index - 1))  # first track hit has best quality by definition
-            else:
-                # Find best (closest) DUT hit
-                close_hit_found = False
-                for hit_index in xrange(track_index, tracklets.shape[0]):  # loop over all not sorted hits of actual DUT
-                    if tracklets[hit_index]['event_number'] != actual_event_number:
-                        break
-                    column, row = tracklets[hit_index]['column_dut_%d' % dut_index], tracklets[hit_index]['row_dut_%d' % dut_index]
-                    column_distance, row_distance = abs(column - actual_track_column), abs(row - actual_track_row)
-                    hit_distance = sqrt((column_distance * 5) * (column_distance * 5) + row_distance * row_distance)
-
-                    if row != 0:  # Track hit found
-                        actual_track['track_quality'] |= (1 << (n_duts - dut_index - 1))
-
-                    if row != 0 and not close_hit_found and column_distance < 5 * actual_column_sigma and row_distance < 5 * actual_row_sigma:  # good track hit (5 sigma search region)
-                        tmp_column, tmp_row = tracklets[track_index]['column_dut_%d' % dut_index], tracklets[track_index]['row_dut_%d' % dut_index]
-                        tracklets[track_index]['column_dut_%d' % dut_index], tracklets[track_index]['row_dut_%d' % dut_index] = column, row
-                        tracklets[hit_index]['column_dut_%d' % dut_index], tracklets[hit_index]['row_dut_%d' % dut_index] = tmp_column, tmp_row
-                        best_hit_distance = hit_distance
-                        close_hit_found = True
-                    elif row != 0 and close_hit_found and hit_distance < best_hit_distance:  # found better track hit
-                        tmp_column, tmp_row = tracklets[track_index]['column_dut_%d' % dut_index], tracklets[track_index]['row_dut_%d' % dut_index]
-                        tracklets[track_index]['column_dut_%d' % dut_index], tracklets[track_index]['row_dut_%d' % dut_index] = column, row
-                        tracklets[hit_index]['column_dut_%d' % dut_index], tracklets[hit_index]['row_dut_%d' % dut_index] = tmp_column, tmp_row
-                        best_hit_distance = hit_distance
-                    elif row == 0 and not close_hit_found:  # take no hit if no good hit is found
-                        tmp_column, tmp_row = tracklets[track_index]['column_dut_%d' % dut_index], tracklets[track_index]['row_dut_%d' % dut_index]
-                        tracklets[track_index]['column_dut_%d' % dut_index], tracklets[track_index]['row_dut_%d' % dut_index] = column, row
-                        tracklets[hit_index]['column_dut_%d' % dut_index], tracklets[hit_index]['row_dut_%d' % dut_index] = tmp_column, tmp_row
-
-                # Set track quality of actual DUT from closest DUT hit
-                column, row = tracklets[track_index]['column_dut_%d' % dut_index], tracklets[track_index]['row_dut_%d' % dut_index]
-                column_distance, row_distance = abs(column - actual_track_column), abs(row - actual_track_row)
-                if column_distance < 2 * actual_column_sigma and row_distance < 2 * actual_row_sigma:  # high quality track hits
-                    actual_track['track_quality'] |= (65793 << (n_duts - dut_index - 1))
-                elif column_distance < 5 * actual_column_sigma and row_distance < 5 * actual_row_sigma:  # low quality track hits
-                    actual_track['track_quality'] |= (257 << (n_duts - dut_index - 1))
-    else:
-        for i in range(n_actual_tracks):
-            tracklets[track_index - i]['n_tracks'] = n_actual_tracks
-
-    progress_bar.finish()
-    return tracklets
-
-
-def function_wrapper_find_tracks_loop(args):
-    return find_tracks_loop(*args)
-
-
 def find_tracks(tracklets_file, alignment_file, track_candidates_file):
     '''Takes first DUT track hit and tries to find matching hits in subsequent DUTs.
     The output is the same array with resorted hits into tracks. A track quality is given to
     be able to cut on good tracks.
-    This function is slow since the main loop happens in Python (< 1e5 tracks / second).
+    This function is slow since the main loop happens in Python (< 1e5 tracks / second) but does the track finding
+    loop on all cores in parallel (_find_tracks_loop()).
 
     Parameters
     ----------
-    track_candidates_file : pytables file
-    alignment_file : pytables file
+    tracklets_file : string
+        Input file name with merged cluster hit table from all DUTs
+    alignment_file : string
+        File containing the alignment information
+    track_candidates_file : string
+        Output file name for track candidate array
     '''
     logging.info('Build tracks from tracklets')
 
@@ -507,11 +428,11 @@ def find_tracks(tracklets_file, alignment_file, track_candidates_file):
 
         pool = Pool(n_slices)  # let all cores work the array
         arg = [(one_slice, correlations, n_duts, column_sigma, row_sigma) for one_slice in slices]  # FIXME: slices are not aligned at event numbers, up to n_slices * 2 tracks are found wrong
-        results = pool.map(function_wrapper_find_tracks_loop, arg)
+        results = pool.map(_function_wrapper_find_tracks_loop, arg)
         result = np.concatenate(results)
 
-#         find_tracks_loop_compiled = jit((numpy_support.from_dtype(tracklets.dtype)[:], types.int32, types.float64, types.float64), nopython=True)(find_tracks_loop)
-#         find_tracks_loop(tracklets, correlations, n_duts, column_sigma, row_sigma)
+#         _find_tracks_loop_compiled = jit((numpy_support.from_dtype(tracklets.dtype)[:], types.int32, types.float64, types.float64), nopython=True)(_find_tracks_loop)
+#         _find_tracks_loop(tracklets, correlations, n_duts, column_sigma, row_sigma)
 #         result = tracklets
 
         with tb.open_file(track_candidates_file, mode='w') as out_file_h5:
@@ -586,7 +507,6 @@ def align_z(track_candidates_file, alignment_file, output_pdf, z_positions=None,
     z_positions_rec = [0.] + results[:]['z_position_row'].tolist() + [1.]
 
     if z_positions is not None:  # check reconstructed z against measured z
-        warn_at = 1.  # difference in cm
         z_positions_rec_abs = [i * z_positions[-1] for i in z_positions_rec]
         z_differences = [abs(i - j) for i, j in zip(z_positions, z_positions_rec_abs)]
         failing_duts = [j for (i, j) in zip(z_differences, range(5)) if i >= warn_at]
@@ -662,49 +582,31 @@ def event_display(track_file, z_positions, event_range, pixel_size=(250, 50), du
             plt.show()
 
 
-def fit_tracks_loop(track_hits, pixel_dimension):
-    def line_fit_3d(data, scale):
-        datamean = data.mean(axis=0)
-        offset, slope = datamean, np.linalg.svd(data - datamean)[2][0]  # http://stackoverflow.com/questions/2298390/fitting-a-line-in-3d
-        intersections = offset + slope / slope[2] * (data.T[2][:, np.newaxis] - offset[2])  # fitted line and dut plane intersections (here: points)
-        chi2 = np.sum(np.dot(np.square(data - intersections), scale), dtype=np.uint32)  # chi2 of the fit in pixel dimension units
-        return datamean, slope, chi2
-
-    slope = np.zeros((track_hits.shape[0], 3, ))
-    offset = np.zeros((track_hits.shape[0], 3, ))
-    chi2 = np.zeros((track_hits.shape[0], ))
-
-    scale = np.square(np.array((pixel_dimension[0], pixel_dimension[-1], 0)))
-
-    for index, actual_hits in enumerate(track_hits):  # loop over selected track candidate hits and fit
-        offset[index], slope[index], chi2[index] = line_fit_3d(actual_hits, scale)
-#         if chi2[index] < 1e1:
-#             print chi2[index]
-#             ax = m3d.Axes3D(plt.figure())
-#             ax.set_xlim(0, 80)
-#             ax.set_ylim(0, 336)
-#             ax.set_zlim(0, 13)
-#             plot_hits = np.column_stack(actual_hits)
-#             ax.plot3D(plot_hits[0], plot_hits[1], plot_hits[2], 'o')
-#             linepts = offset[index] + slope[index] * np.mgrid[-10:10:2j][:, np.newaxis]
-#             ax.plot3D(*linepts.T)
-#             plt.show()
-
-    return offset, slope, chi2
-
-
-def function_wrapper_fit_tracks_loop(args):
-    return fit_tracks_loop(*args)
-
-
 def fit_tracks(track_candidates_file, tracks_file, z_positions, fit_duts=None, ignore_duts=None, include_duts=[-5, -4, -3, -2, -1, 1, 2, 3, 4, 5], max_tracks=1, track_quality=1, pixel_size=(250, 50), output_pdf=None):
-    '''Fits a line through selected DUT hits for selected DUTs. The selection criterion for the track candidates to fit is the track quality and the number of hits per event.
+    '''Fits a line through selected DUT hits for selected DUTs. The selection criterion for the track candidates to fit is the track quality and the maximum number of hits per event.
     The fit is done for specified DUTs only (fit_duts). This DUT is then not included in the fit (include_duts). Bad DUTs can be always ignored in the fit (ignore_duts).
 
     Parameters
     ----------
-    track_candidates_file : pytables file
+    track_candidates_file : string
+        file name with the track candidates table
+    tracks_file : string
+        file name of the created track file having the track table
+    z_position : iterable
+        the positions of the devices in z in cm
+    fit_duts : iterable
+        the duts to fit tracks for. If None all duts are used
+    ignore_duts : iterable
+        the duts that are not taken in a fit. Needed to exclude bad planes from track fit.
+    include_duts : iterable
+        the relative dut positions of dut to use in the track fit. The position is relative to the actual dut the tracks are fitted for
+        e.g. actual track fit dut = 2, include_duts = [-3, -2, -1, 1] means that duts 0, 1, 3 are used for the track fit
     output_pdf : PdfPager file object
+        if None plots are printed to screen
+    max_tracks : int
+        only events with tracks <= max tracks are taken
+    pixel_size : iterable, (x dimensions, y dimension)
+        the size in um of the pixels
     track_quality : int
         0: All tracks with hits in DUT and references are taken
         1: The track hits in DUT and reference are within 5-sigma of the correlation
@@ -783,7 +685,7 @@ def fit_tracks(track_candidates_file, tracks_file, z_positions, fit_duts=None, i
                 slices = [track_hits[i:i + slice_length] for i in range(0, n_tracks, slice_length)]
                 pool = Pool(n_slices)
                 arg = [(one_slice, pixel_size) for one_slice in slices]  # FIXME: slices are not aligned at event numbers, up to n_slices * 2 tracks are found wrong
-                results = pool.map(function_wrapper_fit_tracks_loop, arg)
+                results = pool.map(_function_wrapper_fit_tracks_loop, arg)
                 del track_hits
 
                 # Store results
@@ -812,6 +714,20 @@ def fit_tracks(track_candidates_file, tracks_file, z_positions, fit_duts=None, i
 
 def calculate_residuals(tracks_file, z_positions, output_pdf=None, use_duts=None, track_quality=1):
     '''Takes the tracks and calculates residuals for selected DUTs in col, row direction.
+    Parameters
+    ----------
+    tracks_file : string
+        file name with the tracks table
+    z_position : iterable
+        the positions of the devices in z in cm
+    use_duts : iterable
+        the duts to calculate residuals for. If None all duts are used
+    output_pdf : PdfPager file object
+        if None plots are printed to screen
+    track_quality : int
+        0: All tracks with hits in DUT and references are taken
+        1: The track hits in DUT and reference are within 5-sigma of the correlation
+        2: The track hits in DUT and reference are within 2-sigma of the correlation
     '''
     logging.info('Calculate residuals')
     with tb.open_file(tracks_file, mode='r') as in_file_h5:
@@ -830,6 +746,7 @@ def calculate_residuals(tracks_file, z_positions, output_pdf=None, use_duts=None
 
             for i in range(2):  # col / row
                 for plot_log in [False, True]:  # plot with log y or not
+                    plt.clf()
                     plot_range = (-i - 1.5, i + 1.5)
                     plt.xlim(plot_range)
                     plt.grid()
@@ -841,10 +758,20 @@ def calculate_residuals(tracks_file, z_positions, output_pdf=None, use_duts=None
                         output_pdf.savefig()
                     else:
                         plt.show()
-                    plt.clf()
 
 
 def plot_track_density(tracks_file, output_pdf, use_duts=None, max_chi2=None):
+    '''Takes the tracks and calculates the track density projected on selected DUTs.
+    Parameters
+    ----------
+    tracks_file : string
+        file name with the tracks table
+    use_duts : iterable
+        the duts to calculate residuals for. If None all duts are used
+    output_pdf : PdfPager file object
+    max_chi2 : int
+        only use track with a chi2 <= max_chi2
+    '''
     logging.info('Plot track density')
     with tb.open_file(tracks_file, mode='r') as in_file_h5:
         for node in in_file_h5.root:
@@ -854,7 +781,7 @@ def plot_track_density(tracks_file, output_pdf, use_duts=None, max_chi2=None):
             logging.info('Plot track density for DUT %d' % actual_dut)
 
             track_array = node[:]
-            hits, offset, slope = np.column_stack((track_array['column_dut_%d' % actual_dut], track_array['row_dut_%d' % actual_dut], np.repeat(z_positions[actual_dut], track_array.shape[0]))), np.column_stack((track_array['offset_0'], track_array['offset_1'], track_array['offset_2'])), np.column_stack((track_array['slope_0'], track_array['slope_1'], track_array['slope_2']))
+            offset, slope = np.column_stack((track_array['offset_0'], track_array['offset_1'], track_array['offset_2'])), np.column_stack((track_array['slope_0'], track_array['slope_1'], track_array['slope_2']))
             intersection = offset + slope / slope[:, 2, np.newaxis] * (z_positions[actual_dut] - offset[:, 2, np.newaxis])  # intersection track with DUT plane
             if max_chi2:
                 intersection = intersection[track_array['track_chi2'] <= max_chi2]
@@ -864,12 +791,23 @@ def plot_track_density(tracks_file, output_pdf, use_duts=None, max_chi2=None):
             fig = Figure()
             fig.patch.set_facecolor('white')
             ax = fig.add_subplot(111)
-            create_2d_pixel_hist(fig, ax, heatmap.T, title='Track densitiy for DUT %d tracks' % actual_dut, x_axis_title="column", y_axis_title="row")
+            _create_2d_pixel_hist(fig, ax, heatmap.T, title='Track densitiy for DUT %d tracks' % actual_dut, x_axis_title="column", y_axis_title="row")
             fig.tight_layout()
             output_pdf.savefig(fig)
 
 
 def calculate_efficiency(tracks_file, output_pdf, use_duts=None, max_chi2=None):
+    '''Takes the tracks and calculates the hit efficiency and hit/track hit distance for selected DUTs.
+    Parameters
+    ----------
+    tracks_file : string
+        file name with the tracks table
+    use_duts : iterable
+        the duts to calculate residuals for. If None all duts are used
+    output_pdf : PdfPager file object
+    max_chi2 : int
+        only use track with a chi2 <= max_chi2
+    '''
     logging.info('Calculate efficiency')
     with tb.open_file(tracks_file, mode='r') as in_file_h5:
         for node in in_file_h5.root:
@@ -895,7 +833,7 @@ def calculate_efficiency(tracks_file, output_pdf, use_duts=None, max_chi2=None):
             fig = Figure()
             fig.patch.set_facecolor('white')
             ax = fig.add_subplot(111)
-            create_2d_pixel_hist(fig, ax, distance_mean_array.T, title='Distance for DUT %d' % actual_dut, x_axis_title="column", y_axis_title="row", z_min=0, z_max=150)
+            _create_2d_pixel_hist(fig, ax, distance_mean_array.T, title='Distance for DUT %d' % actual_dut, x_axis_title="column", y_axis_title="row", z_min=0, z_max=150)
             fig.tight_layout()
             output_pdf.savefig(fig)
 
@@ -907,7 +845,7 @@ def calculate_efficiency(tracks_file, output_pdf, use_duts=None, max_chi2=None):
             ax = fig.add_subplot(111)
             efficiency = track_density_with_DUT_hit.astype(np.float) / track_density.astype(np.float) * 100.
             efficiency = np.ma.array(efficiency, mask=track_density < 10)
-            create_2d_pixel_hist(fig, ax, efficiency.T, title='Efficiency for DUT %d' % actual_dut, x_axis_title="column", y_axis_title="row", z_min=94., z_max=100.)
+            _create_2d_pixel_hist(fig, ax, efficiency.T, title='Efficiency for DUT %d' % actual_dut, x_axis_title="column", y_axis_title="row", z_min=94., z_max=100.)
             fig.tight_layout()
             output_pdf.savefig(fig)
             plt.clf()
@@ -919,7 +857,131 @@ def calculate_efficiency(tracks_file, output_pdf, use_duts=None, max_chi2=None):
             plt.title('Efficiency for DUT %d' % actual_dut)
             plt.hist(efficiency.ravel(), bins=100, range=(94, 104))
             output_pdf.savefig()
- 
+
+
+# Helper functions that are not ment to be called during analysis
+def _find_tracks_loop(tracklets, correlations, n_duts, column_sigma, row_sigma):
+    ''' Complex loop to resort the tracklets array inplace to form track candidates. Each track candidate
+    is given a quality identifier. Not ment to be called stand alone.
+    Optimizations included to make it easily compile with numba in the future. Can be called from
+    several real threads if they work on different areas of the array'''
+
+    actual_event_number = tracklets[0]['event_number']
+    n_tracks = tracklets.shape[0]
+    # Numba does not understand python scopes, define all used variables here
+    n_actual_tracks = 0
+    track_index = 0
+    column, row = 0., 0.
+    actual_track_column, actual_track_row = 0., 0.
+    column_distance, row_distance = 0., 0.
+    hit_distance = 0.
+    tmp_column, tmp_row = 0., 0.
+    best_hit_distance = 0.
+
+    progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=n_tracks, term_width=80)
+    progress_bar.start()
+
+    for track_index, actual_track in enumerate(tracklets):
+        progress_bar.update(track_index)
+
+        if actual_track['event_number'] != actual_event_number:
+            actual_event_number = actual_track['event_number']
+            for i in range(n_actual_tracks):
+                tracklets[track_index - 1 - i]['n_tracks'] = n_actual_tracks
+            n_actual_tracks = 0
+
+        n_actual_tracks += 1
+        first_hit_set = False
+
+        for dut_index in xrange(n_duts):
+            actual_column_sigma, actual_row_sigma = column_sigma[dut_index], row_sigma[dut_index]
+            if not first_hit_set and actual_track['row_dut_%d' % dut_index] != 0:
+                actual_track_column, actual_track_row = actual_track['column_dut_%d' % dut_index], actual_track['row_dut_%d' % dut_index]
+                first_hit_set = True
+                actual_track['track_quality'] |= (65793 << (n_duts - dut_index - 1))  # first track hit has best quality by definition
+            else:
+                # Find best (closest) DUT hit
+                close_hit_found = False
+                for hit_index in xrange(track_index, tracklets.shape[0]):  # loop over all not sorted hits of actual DUT
+                    if tracklets[hit_index]['event_number'] != actual_event_number:
+                        break
+                    column, row = tracklets[hit_index]['column_dut_%d' % dut_index], tracklets[hit_index]['row_dut_%d' % dut_index]
+                    column_distance, row_distance = abs(column - actual_track_column), abs(row - actual_track_row)
+                    hit_distance = sqrt((column_distance * 5) * (column_distance * 5) + row_distance * row_distance)
+
+                    if row != 0:  # Track hit found
+                        actual_track['track_quality'] |= (1 << (n_duts - dut_index - 1))
+
+                    if row != 0 and not close_hit_found and column_distance < 5 * actual_column_sigma and row_distance < 5 * actual_row_sigma:  # good track hit (5 sigma search region)
+                        tmp_column, tmp_row = tracklets[track_index]['column_dut_%d' % dut_index], tracklets[track_index]['row_dut_%d' % dut_index]
+                        tracklets[track_index]['column_dut_%d' % dut_index], tracklets[track_index]['row_dut_%d' % dut_index] = column, row
+                        tracklets[hit_index]['column_dut_%d' % dut_index], tracklets[hit_index]['row_dut_%d' % dut_index] = tmp_column, tmp_row
+                        best_hit_distance = hit_distance
+                        close_hit_found = True
+                    elif row != 0 and close_hit_found and hit_distance < best_hit_distance:  # found better track hit
+                        tmp_column, tmp_row = tracklets[track_index]['column_dut_%d' % dut_index], tracklets[track_index]['row_dut_%d' % dut_index]
+                        tracklets[track_index]['column_dut_%d' % dut_index], tracklets[track_index]['row_dut_%d' % dut_index] = column, row
+                        tracklets[hit_index]['column_dut_%d' % dut_index], tracklets[hit_index]['row_dut_%d' % dut_index] = tmp_column, tmp_row
+                        best_hit_distance = hit_distance
+                    elif row == 0 and not close_hit_found:  # take no hit if no good hit is found
+                        tmp_column, tmp_row = tracklets[track_index]['column_dut_%d' % dut_index], tracklets[track_index]['row_dut_%d' % dut_index]
+                        tracklets[track_index]['column_dut_%d' % dut_index], tracklets[track_index]['row_dut_%d' % dut_index] = column, row
+                        tracklets[hit_index]['column_dut_%d' % dut_index], tracklets[hit_index]['row_dut_%d' % dut_index] = tmp_column, tmp_row
+
+                # Set track quality of actual DUT from closest DUT hit
+                column, row = tracklets[track_index]['column_dut_%d' % dut_index], tracklets[track_index]['row_dut_%d' % dut_index]
+                column_distance, row_distance = abs(column - actual_track_column), abs(row - actual_track_row)
+                if column_distance < 2 * actual_column_sigma and row_distance < 2 * actual_row_sigma:  # high quality track hits
+                    actual_track['track_quality'] |= (65793 << (n_duts - dut_index - 1))
+                elif column_distance < 5 * actual_column_sigma and row_distance < 5 * actual_row_sigma:  # low quality track hits
+                    actual_track['track_quality'] |= (257 << (n_duts - dut_index - 1))
+    else:
+        for i in range(n_actual_tracks):
+            tracklets[track_index - i]['n_tracks'] = n_actual_tracks
+
+    progress_bar.finish()
+    return tracklets
+
+
+def _fit_tracks_loop(track_hits, pixel_dimension):
+    ''' Do 3d line fit and calculate chi2 for each fit. '''
+    def line_fit_3d(data, scale):
+        datamean = data.mean(axis=0)
+        offset, slope = datamean, np.linalg.svd(data - datamean)[2][0]  # http://stackoverflow.com/questions/2298390/fitting-a-line-in-3d
+        intersections = offset + slope / slope[2] * (data.T[2][:, np.newaxis] - offset[2])  # fitted line and dut plane intersections (here: points)
+        chi2 = np.sum(np.dot(np.square(data - intersections), scale), dtype=np.uint32)  # chi2 of the fit in pixel dimension units
+        return datamean, slope, chi2
+
+    slope = np.zeros((track_hits.shape[0], 3, ))
+    offset = np.zeros((track_hits.shape[0], 3, ))
+    chi2 = np.zeros((track_hits.shape[0], ))
+
+    scale = np.square(np.array((pixel_dimension[0], pixel_dimension[-1], 0)))
+
+    for index, actual_hits in enumerate(track_hits):  # loop over selected track candidate hits and fit
+        offset[index], slope[index], chi2[index] = line_fit_3d(actual_hits, scale)
+#         if chi2[index] < 1e1:
+#             print chi2[index]
+#             ax = m3d.Axes3D(plt.figure())
+#             ax.set_xlim(0, 80)
+#             ax.set_ylim(0, 336)
+#             ax.set_zlim(0, 13)
+#             plot_hits = np.column_stack(actual_hits)
+#             ax.plot3D(plot_hits[0], plot_hits[1], plot_hits[2], 'o')
+#             linepts = offset[index] + slope[index] * np.mgrid[-10:10:2j][:, np.newaxis]
+#             ax.plot3D(*linepts.T)
+#             plt.show()
+
+    return offset, slope, chi2
+
+
+def _function_wrapper_find_tracks_loop(args):  # needed for multiprocessing call with arguments
+    return _find_tracks_loop(*args)
+
+
+def _function_wrapper_fit_tracks_loop(args):  # needed for multiprocessing call with arguments
+    return _fit_tracks_loop(*args)
+
 
 if __name__ == "__main__":
     # Input file names
@@ -935,24 +997,38 @@ if __name__ == "__main__":
     tracklets_file = 'C:\\Users\\DavidLP\\Desktop\\tb\\Tracklets.h5'
     track_candidates_file = 'C:\\Users\\DavidLP\\Desktop\\tb\\TrackCandidates.h5'
     tracks_file = 'C:\\Users\\DavidLP\\Desktop\\tb\\Tracks.h5'
-    pdf_file = 'C:\\Users\\DavidLP\\Desktop\\tb\\TrackRes.pdf'
+    pdf_file = 'C:\\Users\\DavidLP\\Desktop\\tb\\Plots_2.pdf'
 
     # Measured z positions (optional)
     z_positions = [0., 1.95, 5.05, 7.2, 10.88, 12.83]  # in cm
+    warn_at = 1.  # difference in cm between measure / reconstructed z position
 
     hit_files_aligned = [raw_data_file[:-3] + '_aligned.h5' for raw_data_file in raw_data_files]
     cluster_files = [raw_data_file[:-3] + '_cluster.h5' for raw_data_file in raw_data_files]
 
+    # The following shows a complete test beam analysis by calling the seperate function in correct order
     with PdfPages(pdf_file) as output_pdf:
-        pool = Pool()  # Do seperate DUT data processing in parallel
+        # Do seperate DUT data processing in parallel. The output is a cluster table.
+        pool = Pool()
         pool.map(process_dut, raw_data_files)
+        # Correlate the row/col of each DUT
         correlate_hits(hit_files_aligned, alignment_file, max_column=80, max_row=336)
         plot_correlations(alignment_file, output_pdf)
+        # Create alignment data for the DUT positions to the first DUT from the correlation data
         align_hits(alignment_file, output_pdf)
+        # Correct all DUT hits via alignment information and merge the cluster tables to one tracklets table aligned at the event number
+        merge_cluster_data(cluster_files, alignment_file, tracklets_file)
+        # Find tracks from the tracklets and stores the with quality indicator into track candidates table
         find_tracks(tracklets_file, alignment_file, track_candidates_file)
+        # optional: try to deduce the devices z positions. Difficult for parallel tracks / bad resolution
         align_z(track_candidates_file, alignment_file, output_pdf, z_positions, track_quality=1)
+        # Fit the track candidates and create new track table
         fit_tracks(track_candidates_file, tracks_file, z_positions, fit_duts=None, ignore_duts=[2, 3], max_tracks=1, track_quality=1, pixel_size=(250, 50), output_pdf=output_pdf)
-        event_display(tracks_file, z_positions, event_range=(10), pixel_size=(250, 50), dut=1, output_pdf=output_pdf)
+        # optional: plot some tracks (or track candidates) of selected events
+        event_display(tracks_file, z_positions, event_range=(0, 10), pixel_size=(250, 50), dut=1, output_pdf=output_pdf)
+        # Calculate the residuals to check the alignment
         calculate_residuals(tracks_file, z_positions, use_duts=None, output_pdf=output_pdf)
-        plot_track_density(tracks_file, output_pdf=output_pdf, use_duts=[2], max_chi2=200000)
+        # Plot the track density on selected DUT planes
+        plot_track_density(tracks_file, output_pdf=output_pdf, use_duts=None, max_chi2=200000)
+        # Calculate the efficiency and mean hit/track hit distance
         calculate_efficiency(tracks_file, output_pdf=output_pdf, use_duts=None, max_chi2=200000)
