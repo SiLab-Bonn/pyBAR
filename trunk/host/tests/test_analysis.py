@@ -237,7 +237,7 @@ class TestAnalysis(unittest.TestCase):
         self.assertTrue(data_equal, msg=error_msg)
 
     def test_hit_data_analysis(self):  # test the hit histograming/clustering starting from the predefined interpreted data
-        data_equal, error_msg = compare_h5_files('test_analysis//unit_test_data_1_result.h5', 'test_analysis//unit_test_data_1_analyzed.h5', expected_nodes=7)
+        data_equal, error_msg = compare_h5_files('test_analysis//unit_test_data_1_result.h5', 'test_analysis//unit_test_data_1_analyzed.h5', expected_nodes=8)
         self.assertTrue(data_equal, msg=error_msg)
 
     def test_analysis_per_scan_parameter(self):  # check if the data per scan parameter is correctly analyzed
