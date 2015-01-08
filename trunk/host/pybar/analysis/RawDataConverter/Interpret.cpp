@@ -188,15 +188,24 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 			_firstTdcSet = true;
 
 			if ((tErrorCode & __TDC_WORD) == __TDC_WORD){  //if the event has already a TDC word set __MANY_TDC_WORDS
-				addEventErrorCode(__MANY_TDC_WORDS);
+				if (!_useTdcTriggerTimeStamp)  // the first TDC word defines the event TDC value
+					addEventErrorCode(__MANY_TDC_WORDS);
+				else if (TDC_TRIG_DIST_MACRO(tActualWord) != 255){  // in trigger time measurement mode the valid TDC word (tTdcTimeStamp != 255) defines the event TDC value
+					if (tTdcTimeStamp != 255)  // there is already a valid TDC word for this event
+						addEventErrorCode(__MANY_TDC_WORDS);
+					else{
+						tTdcTimeStamp = TDC_TRIG_DIST_MACRO(tActualWord);
+						tTdcCount = TDC_COUNT_MACRO(tActualWord);
+					}
+				}
 			}
 			else{
 				addEventErrorCode(__TDC_WORD);
 				tTdcCount = TDC_COUNT_MACRO(tActualWord);
-				if (_useTdcTriggerTimeStamp)
-					tTdcTimeStamp = TDC_TRIG_DIST_MACRO(tActualWord);
-				else
+				if (!_useTdcTriggerTimeStamp)
 					tTdcTimeStamp = TDC_TIME_STAMP_MACRO(tActualWord);
+				else
+					tTdcTimeStamp = TDC_TRIG_DIST_MACRO(tActualWord);
 			}
 			if (tTdcCount == 0)
 				addEventErrorCode(__TDC_OVERFLOW);
@@ -663,6 +672,9 @@ void Interpret::addEvent()
 		if(Basis::warningSet())
 			warning(std::string("addEvent: # trigger words > 1 at event "+LongIntToStr(_nEvents)));
 	}
+	if (_useTdcTriggerTimeStamp && tTdcTimeStamp >= 254)
+		addEventErrorCode(__TDC_OVERFLOW);
+
 	storeEventHits();
 	if(tTotalHits > _nMaxHitsPerEvent)
 		_nMaxHitsPerEvent = tTotalHits;
@@ -905,11 +917,11 @@ void Interpret::addEventErrorCode(const unsigned short& pErrorCode)
 					break;
 				}
 				case __MANY_TDC_WORDS:{
-					tDebug<<"EVENT HAS MORE THAN ONE TDC WORD";
+					tDebug<<"EVENT HAS MORE THAN ONE VALID TDC WORD";
 					break;
 				}
 				case __TDC_OVERFLOW:{
-					tDebug<<"EVENT HAS TDC COUNTER OVERFLOW";
+					tDebug<<"EVENT HAS TDC OVERFLOW";
 					break;
 				}
 			}

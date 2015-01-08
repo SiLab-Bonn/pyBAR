@@ -115,8 +115,8 @@ typedef struct MetaWordInfoOut{
 #define __TRG_ERROR 64                //a trigger error occured
 #define __TRUNC_EVENT 128             //Event had to many hits (>__MAXHITBUFFERSIZE) and was therefore truncated
 #define __TDC_WORD 256             	  //Event has a TDC word
-#define __MANY_TDC_WORDS 512          //Event has more than one TDC word
-#define __TDC_OVERFLOW 1024           //Event has TDC word indicating a TDC overflow
+#define __MANY_TDC_WORDS 512          //Event has more than one valid TDC word (event has more than one TDC word in normal use mode or event has more than one valid TDC word in TRG delay mode)
+#define __TDC_OVERFLOW 1024           //Event has TDC word indicating a TDC overflow (value overflow in normal use mode and +no in time TDC in TRG delay use mode)
 
 //trigger error codes
 #define __TRG_N_ERROR_CODES 8         //number of trigger error codes
