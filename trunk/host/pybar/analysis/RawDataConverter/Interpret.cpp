@@ -200,8 +200,12 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 			}
 			if (tTdcCount == 0)
 				addEventErrorCode(__TDC_OVERFLOW);
-			if (Basis::debugSet())
-				debug(std::string(" ")+IntToStr(_nDataWords)+" TDC COUNT "+IntToStr(tTdcCount)+"\t"+LongIntToStr(_nEvents) + "\t TIME STAMP " + IntToStr(tTdcTimeStamp));
+			if (Basis::debugSet()){
+				if (_useTdcTriggerTimeStamp)
+					debug(std::string(" ")+IntToStr(_nDataWords)+" TDC COUNT "+IntToStr(tTdcCount)+"\t"+LongIntToStr(_nEvents) + "\t TRG DIST TIME STAMP " + IntToStr(tTdcTimeStamp));
+				else
+					debug(std::string(" ")+IntToStr(_nDataWords)+" TDC COUNT "+IntToStr(tTdcCount)+"\t"+LongIntToStr(_nEvents) + "\t TIME STAMP " + IntToStr(tTdcTimeStamp));
+			}
 		}
 		else if (isDataRecord(tActualWord)){	//data word is data record if true is returned
 			if (getHitsfromDataRecord(tActualWord, tActualCol1, tActualRow1, tActualTot1, tActualCol2, tActualRow2, tActualTot2)){
