@@ -9,21 +9,21 @@ from ROOT import gROOT, AddressOf
 
 
 def init_hit_struct():
-    gROOT.ProcessLine(\
-    "struct HitInfo{\
-      ULong64_t event_number;\
-      UInt_t trigger_number;\
-      UChar_t relative_BCID;\
-      UShort_t LVL1ID;\
-      UChar_t column;\
-      UShort_t row;\
-      UChar_t tot;\
-      UShort_t BCID;\
-      UShort_t TDC;\
-      UChar_t trigger_status;\
-      UInt_t service_record;\
-      UShort_t event_status;\
-    };");
+    gROOT.ProcessLine(
+        "struct HitInfo{\
+        ULong64_t event_number;\
+        UInt_t trigger_number;\
+        UChar_t relative_BCID;\
+        UShort_t LVL1ID;\
+        UChar_t column;\
+        UShort_t row;\
+        UChar_t tot;\
+        UShort_t BCID;\
+        UShort_t TDC;\
+        UChar_t trigger_status;\
+        UInt_t service_record;\
+        UShort_t event_status;\
+    };")
     from ROOT import HitInfo
     return HitInfo()
 
@@ -110,7 +110,7 @@ def convert_hit_table(input_filename, output_filename):
         out_file_root = TFile(output_filename, 'RECREATE')
         tree, _ = init_tree_from_table(hits, 1, myHit)
 
-        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=hits.shape[0])
+        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=hits.shape[0], term_width=80)
         progress_bar.start()
 
         update_progressbar_index = hits.shape[0] / 1000
@@ -157,7 +157,7 @@ def convert_hit_table_fast(input_filename, output_filename):
 
         tree, chunk_size_tree = init_tree_from_table(hits_table, chunk_size)
 
-        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=hits_table.shape[0])
+        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=hits_table.shape[0], term_width=80)
         progress_bar.start()
 
         for index in range(0, hits_table.shape[0], chunk_size):
@@ -182,36 +182,36 @@ def convert_hit_table_fast(input_filename, output_filename):
 
 # def convert_table_event_based(input_filename, output_filename):
 #     ''' Creates a ROOT Tree by looping over chunks of the hdf5 table. Some pointer magic is used to increase the conversion speed. Is 40x faster than convert_hit_table.
-# 
+#
 #     Parameters
 #     ----------
 #     input_filename: string
 #         The file name of the hdf5 hit table.
-# 
+#
 #     output_filename: string
 #         The filename of the created ROOT file
-# 
+#
 #     '''
-# 
+#
 #     from analysis import analysis_utils
-# 
+#
 #     with tb.open_file(input_filename, 'r') as in_file_h5:
 #         hits_table = in_file_h5.root.Hits
-# 
+#
 #         out_file_root = TFile(output_filename, 'RECREATE')
-# 
+#
 #         tree, n_entries = init_tree_from_table(hits_table, chunk_size)
-# 
+#
 #         for index in range(0, hits_table.shape[0], chunk_size):
 #             hits = hits_table.read(start=index, stop=index + chunk_size)
-# 
-#             column_data = {}  # columns have to be in an additional python data container to prevent the carbage collector from deleting
+#
+# column_data = {}  # columns have to be in an additional python data container to prevent the carbage collector from deleting
 #             column_data_pointer = {}
-#             for branch in tree.GetListOfBranches():  # loop over the branches
+# for branch in tree.GetListOfBranches():  # loop over the branches
 #                 if branch.GetName() != 'n_entries':
-#                     column_data[branch.GetName()] = hits[branch.GetName()].view(np.recarray).copy()  # a copy has to be made to get the correct memory alignement
-# 
-#             hit_index = 0  # needed to access the correct posittion in the hit array
+# column_data[branch.GetName()] = hits[branch.GetName()].view(np.recarray).copy()  # a copy has to be made to get the correct memory alignement
+#
+# hit_index = 0  # needed to access the correct posittion in the hit array
 #             for event_info in analysis_utils.get_n_cluster_in_events(hits['event_number']):
 #                 n_hits = event_info[1]
 #                 n_entries.value = n_hits
@@ -222,26 +222,26 @@ def convert_hit_table_fast(input_filename, output_filename):
 #                 hit_index += n_hits
 #                 tree.Fill()
 #             break
-# # 
+# #
 # #         progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=hits_table.shape[0])
 # #         progress_bar.start()
-# # 
+# #
 # #         for index in range(0, hits_table.shape[0], chunk_size):
 # #             hits = hits_table.read(start=index, stop=index + chunk_size)
-# # 
+# #
 # #             column_data = {}  # columns have to be in an additional python data container to prevent the carbage collector from deleting
-# # 
+# #
 # #             for branch in tree.GetListOfBranches():  # loop over the branches
 # #                 if branch.GetName() != 'chunk_size_tree':
 # #                     column_data[branch.GetName()] = hits[branch.GetName()].view(np.recarray).copy()  # a copy has to be made to get the correct memory alignement
 # #                     branch.SetAddress(column_data[branch.GetName()].data)  # get the column data pointer by name and tell its address to the tree
-# # 
+# #
 # #             if index + chunk_size > hits_table.shape[0]:  # decrease tree leave size for the last chunk
 # #                 chunk_size_tree.value = hits_table.shape[0] - index
-# # 
+# #
 # #             tree.Fill()
 # #             progress_bar.update(index)
-# 
+#
 #         out_file_root.Write()
 #         out_file_root.Close()
 

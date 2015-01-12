@@ -158,7 +158,7 @@ class HitDelayScan(Fei4RunBase):
             tot_array = np.zeros((16,), dtype=np.int32)  # tot array of actual PlsrDAC
 
             logging.info('Store histograms for PlsrDAC values ' + str(plsr_dac))
-            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=max(plsr_dac) - min(plsr_dac))
+            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=max(plsr_dac) - min(plsr_dac), term_width=80)
 
             for index, (parameters, hits) in enumerate(get_hits_of_scan_parameter(self.output_filename + '_interpreted.h5', scan_parameters, chunk_size=1.5e7)):
                 if index == 0:
@@ -206,7 +206,7 @@ class HitDelayScan(Fei4RunBase):
 
             # Info output with progressbar
             logging.info('Create timewalk info for PlsrDACs ' + str(plsr_dac_values))
-            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=len(plsr_dac_values))
+            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=len(plsr_dac_values), term_width=80)
             progress_bar.start()
 
             for index, node in enumerate(in_file_h5.root.PixelHistsMeanRelBcid):  # loop over all mean relative BCID hists for all PlsrDAC values

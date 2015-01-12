@@ -22,6 +22,7 @@ typedef struct HitInfo{
   unsigned char tot;          //tot value (unsigned char: 0 to 255)
   unsigned short int BCID;    //absolute BCID value (unsigned short int: 0 to 65.535)
   unsigned short int TDC; 	  //the TDC count (12-bit value)
+  unsigned char TDCtimeStamp; //a TDC time stamp value (8-bit value), either trigger distance (640 MHz) or time stamp (40 MHz)
   unsigned char triggerStatus;//event service records
   unsigned int serviceRecord; //event service records
   unsigned short int eventStatus;  //event status value (unsigned short int: 0 to 65.535)
@@ -38,6 +39,7 @@ typedef struct ClusterHitInfo{
   unsigned char tot;          //tot value (unsigned char: 0 to 255)
   unsigned short int BCID;    //absolute BCID value (unsigned short int: 0 to 65.535)
   unsigned short int TDC; 	  //the TDC count (12-bit value)
+  unsigned char TDCtimeStamp; //a TDC time stamp value (8-bit value), either trigger distance (640 MHz) or time stamp (40 MHz)
   unsigned char triggerStatus;//event service records
   unsigned int serviceRecord; //event service records
   unsigned short int eventStatus;  //event status value (unsigned short int: 0 to 65.535)
@@ -93,11 +95,6 @@ typedef struct MetaWordInfoOut{
   unsigned int stopWordIdex; //stop word index
 } MetaWordInfoOut;
 
-////structure to read the parameter information table
-//typedef struct ParInfo{
-//  unsigned int scanParameter;     //parameter setting
-//} ParInfo;
-
 //DUT and TLU defines
 #define __BCIDCOUNTERSIZE_FEI4A 256	  //BCID counter for FEI4A has 8 bit
 #define __BCIDCOUNTERSIZE_FEI4B 1024  //BCID counter for FEI4B has 10 bit
@@ -118,8 +115,8 @@ typedef struct MetaWordInfoOut{
 #define __TRG_ERROR 64                //a trigger error occured
 #define __TRUNC_EVENT 128             //Event had to many hits (>__MAXHITBUFFERSIZE) and was therefore truncated
 #define __TDC_WORD 256             	  //Event has a TDC word
-#define __MANY_TDC_WORDS 512          //Event has more than one TDC word
-#define __TDC_OVERFLOW 1024           //Event has TDC word indicating a TDC overflow
+#define __MANY_TDC_WORDS 512          //Event has more than one valid TDC word (event has more than one TDC word in normal use mode or event has more than one valid TDC word in TRG delay mode)
+#define __TDC_OVERFLOW 1024           //Event has TDC word indicating a TDC overflow (value overflow in normal use mode and +no in time TDC in TRG delay use mode)
 
 //trigger error codes
 #define __TRG_N_ERROR_CODES 8         //number of trigger error codes
@@ -151,10 +148,12 @@ typedef struct MetaWordInfoOut{
 #define TDC_HEADER 0x40000000
 #define TDC_HEADER_MASK 0xF0000000  //first bit 0 means FE number word
 #define TDC_COUNT_MASK 0x00000FFF
-#define TDC_TIME_STAMP_MASK 0x0FFFF000
+#define TDC_TIME_STAMP_MASK 0x0FFFF000  // time stamp (running counter) to compare e.g. with trigger time stamp or TDC word counter, 16 bit, 8 bit if the TDC distribution macro is activated
+#define TDC_TRIG_DIST_MASK 0x0FF00000  // delay between trigger and TDC leading edge
 #define TDC_WORD_MACRO(X) (((TDC_HEADER_MASK & X) == TDC_HEADER) ? true : false)
 #define TDC_COUNT_MACRO(X) (TDC_COUNT_MASK & X)
-#define TDC_TIME_STAMP_MACRO(X) (TDC_TIME_STAMP_MASK & X)
+#define TDC_TIME_STAMP_MACRO(X) ((TDC_TIME_STAMP_MASK & X) >> 12)
+#define TDC_TRIG_DIST_MACRO(X) ((TDC_TRIG_DIST_MASK & X) >> 20)
 
 // Data Header (DH)
 #define DATA_HEADER						0x00E90000

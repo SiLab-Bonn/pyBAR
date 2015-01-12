@@ -311,6 +311,9 @@ void Clusterizer::addHit(const unsigned int& pHitIndex)
 		_minRowHitPos = tRow;
 	if(tRow > _maxRowHitPos)
 		_maxRowHitPos = tRow;
+		
+	if ((tCol > RAW_DATA_MAX_COLUMN) || (tRow > RAW_DATA_MAX_ROW))
+		throw std::out_of_range("The column/row value is out of range. They have to start at 1!");
 
 	if(_hitMap[(long)tCol + (long)tRow * (long)RAW_DATA_MAX_COLUMN + (long)tRelBcid * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] == -1){
 		_hitMap[(long)tCol + (long)tRow * (long)RAW_DATA_MAX_COLUMN + (long)tRelBcid * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] = tTot;
@@ -324,6 +327,8 @@ void Clusterizer::addHit(const unsigned int& pHitIndex)
 		_chargeMap[(long)tCol + (long)tRow * (long)RAW_DATA_MAX_COLUMN + (long)tTot * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] = tCharge;
 
 	if(_createClusterHitInfoArray){
+		if (_clusterHitInfo == 0)
+			throw std::runtime_error("Cluster hit array is not defined and cannot be filled");
 		_clusterHitInfo[pHitIndex].eventNumber = _hitInfo[pHitIndex].eventNumber;
 		_clusterHitInfo[pHitIndex].triggerNumber = _hitInfo[pHitIndex].triggerNumber;
 		_clusterHitInfo[pHitIndex].relativeBCID = _hitInfo[pHitIndex].relativeBCID;
@@ -332,6 +337,7 @@ void Clusterizer::addHit(const unsigned int& pHitIndex)
 		_clusterHitInfo[pHitIndex].row = _hitInfo[pHitIndex].row;
 		_clusterHitInfo[pHitIndex].tot = _hitInfo[pHitIndex].tot;
 		_clusterHitInfo[pHitIndex].TDC = _hitInfo[pHitIndex].TDC;
+		_clusterHitInfo[pHitIndex].TDCtimeStamp = _hitInfo[pHitIndex].TDCtimeStamp;
 		_clusterHitInfo[pHitIndex].BCID = _hitInfo[pHitIndex].BCID;
 		_clusterHitInfo[pHitIndex].triggerStatus = _hitInfo[pHitIndex].triggerStatus;
 		_clusterHitInfo[pHitIndex].serviceRecord = _hitInfo[pHitIndex].serviceRecord;
@@ -367,6 +373,8 @@ void Clusterizer::searchNextHits(const unsigned short& pCol, const unsigned shor
 	}
 
 	if(_createClusterHitInfoArray){
+		if (_clusterHitInfo == 0)
+			throw std::runtime_error("Cluster hit array is not defined and cannot be filled");
 		if( _hitIndexMap[(long)pCol + (long)pRow * (long)RAW_DATA_MAX_COLUMN + (long)pRelBcid * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] < _clusterHitInfoSize)
 			_clusterHitInfo[_hitIndexMap[(long)pCol + (long)pRow * (long)RAW_DATA_MAX_COLUMN + (long)pRelBcid * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW]].clusterID = _actualClusterID;
 		else{
@@ -720,6 +728,8 @@ void Clusterizer::addCluster()
 	_actualClusterX/=_actualClusterCharge;  // normalize cluster x position
 	_actualClusterY/=_actualClusterCharge;  // normalize cluster y position
 	if(_createClusterInfoArray){
+		if (_clusterInfo == 0)
+			throw std::runtime_error("Cluster info array is not defined and cannot be filled");
 		if(_Nclusters < _clusterInfoSize){
 			_clusterInfo[_Nclusters].eventNumber = _actualEventNumber;
 			_clusterInfo[_Nclusters].ID = _actualClusterID;
@@ -750,6 +760,10 @@ void Clusterizer::addCluster()
 void Clusterizer::addHitClusterInfo(const unsigned int& pHitIndex)
 {
 	if(_createClusterHitInfoArray){
+		if (_clusterInfo == 0)
+			throw std::runtime_error("Cluster info array is not defined but needed");
+		if (_clusterHitInfo == 0)
+			throw std::runtime_error("Cluster hit array is not defined and cannot be filled");
 		for(unsigned int iHitIndex = pHitIndex - _nEventHits; iHitIndex < pHitIndex; ++iHitIndex){   // loop over cluster hits of actual event
 			unsigned int clusterIndex = _Nclusters - _actualClusterID + _clusterHitInfo[iHitIndex].clusterID;
 			_clusterHitInfo[iHitIndex].clusterSize = _clusterInfo[clusterIndex].size;

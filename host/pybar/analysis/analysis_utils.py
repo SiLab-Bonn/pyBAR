@@ -253,7 +253,7 @@ def get_rate_normalization(hit_file, parameter, reference='event', cluster_file=
             index = 0  # index where to start the read out, 0 at the beginning, increased during looping, variable for read speed up
             best_chunk_size = chunk_size  # variable for read speed up
             total_cluster = 0
-            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', ETA(smoothing=0.8)], maxval=cluster_table.shape[0])
+            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', ETA(smoothing=0.8)], maxval=cluster_table.shape[0], term_width=80)
             progress_bar.start()
             for start_event, stop_event in event_range:  # loop over the selected events
                 readout_cluster_len = 0  # variable to calculate a optimal chunk size value from the number of hits for speed up
@@ -292,7 +292,7 @@ def get_total_n_data_words(files_dict, precise=False):
     n_words = 0
     if precise:  # open all files and determine the total number of words precicely, can take some time
         if len(files_dict) > 10:
-            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', ETA()], maxval=len(files_dict))
+            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', ETA()], maxval=len(files_dict), term_width=80)
             progress_bar.start()
         for index, file_name in enumerate(files_dict.iterkeys()):
             with tb.openFile(file_name, mode="r") as in_file_h5:  # open the actual file
@@ -389,14 +389,14 @@ def get_parameter_value_from_file_names(files, parameters=None, unique=False, so
     return collections.OrderedDict(sorted(result.iteritems(), key=itemgetter(1)) if sort else files_dict)  # with PEP 265 solution of sorting a dict by value
 
 
-def get_data_file_names_from_scan_base(scan_base, filter_file_words=None, parameter=False):
+def get_data_file_names_from_scan_base(scan_base, filter_file_words=None, parameter=True):
     """
     Takes a list of scan base names and returns all file names that have this scan base within their name. File names that have a word of filter_file_words
     in their name are excluded.
 
     Parameters
     ----------
-    scan_base : list of strings
+    scan_base : list of strings, string
     filter_file_words : list of strings
         Return only file names without a filter_file_word. Deactivate feature by setting filter_file_words to None.
     Returns
@@ -405,6 +405,8 @@ def get_data_file_names_from_scan_base(scan_base, filter_file_words=None, parame
 
     """
     raw_data_files = []
+    if scan_base is None:
+        return raw_data_files
     if isinstance(scan_base, basestring):
         scan_base = (scan_base, )
     for scan_name in scan_base:
@@ -412,8 +414,8 @@ def get_data_file_names_from_scan_base(scan_base, filter_file_words=None, parame
             data_files = glob.glob(scan_name + '_*.h5')
         else:
             data_files = glob.glob(scan_name + '*.h5')
-        if not data_files:
-            raise RuntimeError('Cannot find any data files, please check data file names.')
+#         if not data_files:
+#             raise RuntimeError('Cannot find any data files, please check data file names.')
         if filter_file_words is not None:
             raw_data_files.extend(filter(lambda data_file: not any(x in data_file for x in filter_file_words), data_files))  # filter out already analyzed data
         else:
@@ -587,7 +589,7 @@ def combine_meta_data(files_dict):
             ('error', np.uint32)])
 
     if len(files_dict) > 10:
-        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', ETA()], maxval=total_length)
+        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', ETA()], maxval=total_length, term_width=80)
         progress_bar.start()
 
     index = 0
@@ -618,7 +620,7 @@ def in1d_events(ar1, ar2):
 
 def get_max_events_in_both_arrays(events_one, events_two):
     """
-    Calculates the events that exist in both arrays.
+    Calculates the maximum count of events that exist in both arrays.
 
     """
     events_one = np.ascontiguousarray(events_one)  # change memory alignement for c++ library
