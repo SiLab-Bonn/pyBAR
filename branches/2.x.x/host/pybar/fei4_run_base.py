@@ -77,7 +77,7 @@ class Fei4RunBase(RunBase):
         else:
             sp = namedtuple_with_defaults('scan_parameters', field_names=[])
             self.scan_parameters = sp()
-        logging.info('Scan parameter(s): %s' % (', '.join(['%s:%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None'))
+        logging.info('Scan parameter(s): %s' % (', '.join(['%s=%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None'))
 
         try:
             last_configuration = self._get_configuration()
@@ -182,11 +182,11 @@ class Fei4RunBase(RunBase):
                 self.save_configuration_dict(self.raw_data_file.h5_file, 'conf', self.conf)
                 self.save_configuration_dict(self.raw_data_file.h5_file, 'run_conf', self.run_conf)
                 self.register_utils.global_reset()
+                self.register_utils.configure_all()
                 if is_fe_ready(self):
                     reset_service_records = False
                 else:
                     reset_service_records = True
-                self.register_utils.configure_all()
                 self.register_utils.reset_bunch_counter()
                 self.register_utils.reset_event_counter()
                 if reset_service_records:
@@ -268,7 +268,12 @@ class Fei4RunBase(RunBase):
                 if field in fields:
                     raise TypeError('Got multiple values for keyword argument %s' % field)
                 fields[field] = value
+        scan_parameters_old = self.scan_parameters._asdict()
         self.scan_parameters = self.scan_parameters._replace(**fields)
+        scan_parameters_new = self.scan_parameters._asdict()
+        diff = [name for name in scan_parameters_old.keys() if scan_parameters_old[name] != scan_parameters_new[name]]
+        if diff:
+            logging.info('Changing scan parameter(s): %s' % (', '.join([('%s=%s' % (name, fields[name])) for name in diff])))
 
     @contextmanager
     def readout(self, *args, **kwargs):

@@ -65,7 +65,7 @@ class FEI4SelfTriggerScan(Fei4RunBase):
                     if self.fifo_readout.data_words_per_second() > 0:
                         got_data = True
                         logging.info('Taking data...')
-                        self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.Timer()], maxval=self.scan_timeout, poll=10).start()
+                        self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.Timer()], maxval=self.scan_timeout, poll=10, term_width=80).start()
                 else:
                     try:
                         self.progressbar.update(time() - start)

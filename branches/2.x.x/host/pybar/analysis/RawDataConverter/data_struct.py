@@ -84,9 +84,10 @@ class HitInfoTable(tb.IsDescription):
     tot = tb.UInt8Col(pos=6)
     BCID = tb.UInt16Col(pos=7)
     TDC = tb.UInt16Col(pos=8)
-    trigger_status = tb.UInt8Col(pos=9)
-    service_record = tb.UInt32Col(pos=10)
-    event_status = tb.UInt16Col(pos=11)
+    TDC_time_stamp = tb.UInt8Col(pos=9)
+    trigger_status = tb.UInt8Col(pos=10)
+    service_record = tb.UInt32Col(pos=11)
+    event_status = tb.UInt16Col(pos=12)
 
 
 class MetaInfoEventTable(tb.IsDescription):
@@ -118,13 +119,14 @@ class ClusterHitInfoTable(tb.IsDescription):
     tot = tb.UInt8Col(pos=6)
     BCID = tb.UInt16Col(pos=7)
     TDC = tb.UInt16Col(pos=8)
-    trigger_status = tb.UInt8Col(pos=9)
-    service_record = tb.UInt32Col(pos=10)
-    event_status = tb.UInt16Col(pos=11)
-    cluster_id = tb.UInt16Col(pos=12)
-    is_seed = tb.UInt8Col(pos=13)
-    cluster_size = tb.UInt16Col(pos=14)
-    n_cluster = tb.UInt16Col(pos=15)
+    TDC_time_stamp = tb.UInt8Col(pos=9)
+    trigger_status = tb.UInt8Col(pos=10)
+    service_record = tb.UInt32Col(pos=11)
+    event_status = tb.UInt16Col(pos=12)
+    cluster_id = tb.UInt16Col(pos=13)
+    is_seed = tb.UInt8Col(pos=14)
+    cluster_size = tb.UInt16Col(pos=15)
+    n_cluster = tb.UInt16Col(pos=16)
 
 
 class ClusterInfoTable(tb.IsDescription):

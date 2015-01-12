@@ -61,7 +61,7 @@ def analyze_beam_spot(scan_base, combine_n_readouts=1000, chunk_size=10000000, p
             # result data
             occupancy = np.zeros(80 * 336 * 1, dtype=np.uint32)  # create linear array as it is created in histogram class
 
-            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=hit_table.shape[0])
+            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=hit_table.shape[0], term_width=80)
             progress_bar.start()
 
             # loop over the selected events
@@ -194,7 +194,7 @@ def analyse_n_cluster_per_event(scan_base, include_no_cluster=False, time_line_a
 
             total_cluster = cluster_table.shape[0]
 
-            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=total_cluster)
+            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=total_cluster, term_width=80)
             progress_bar.start()
 
             # loop over the selected events
@@ -273,7 +273,7 @@ def select_hits_from_cluster_info(input_file_hits, output_file_hits, cluster_siz
             hit_table_out = out_hit_file_h5.createTable(out_hit_file_h5.root, name='Hits', description=data_struct.HitInfoTable, title='hit_data', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
             cluster_table = in_hit_file_h5.root.Cluster
             last_word_number = 0
-            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=cluster_table.shape[0])
+            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=cluster_table.shape[0], term_width=80)
             progress_bar.start()
             for data, index in analysis_utils.data_aligned_at_events(cluster_table, chunk_size=chunk_size):
                 selected_events_1 = analysis_utils.get_events_with_cluster_size(event_number=data['event_number'], cluster_size=data['size'], condition=cluster_size_condition)  # select the events with clusters of a certain size
@@ -321,7 +321,7 @@ def select_hits(input_file_hits, output_file_hits, condition=None, cluster_size_
                 hit_table_out = out_hit_file_h5.createTable(out_hit_file_h5.root, name='Hits', description=data_struct.HitInfoTable, title='hit_data', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
                 cluster_table = in_hit_file_h5.root.Cluster
                 last_word_number = 0
-                progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=cluster_table.shape[0])
+                progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=cluster_table.shape[0], term_width=80)
                 progress_bar.start()
                 for data, index in analysis_utils.data_aligned_at_events(cluster_table, chunk_size=chunk_size):
                     if not cluster_size_condition is None:
@@ -386,7 +386,7 @@ def analyze_cluster_size_per_scan_parameter(input_file_hits, output_file_cluster
                         analyze_data.create_cluster_size_hist = True
                         analyze_data.create_cluster_tot_hist = True
                         analyze_data.histograming.set_no_scan_parameter()  # one has to tell the histogramer the # of scan parameters for correct occupancy hist allocation
-                        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=hit_table.shape[0])
+                        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=hit_table.shape[0], term_width=80)
                         progress_bar.start()
                         for parameter_index, parameter_range in enumerate(parameter_ranges):  # loop over the selected events
                             analyze_data.reset()  # resets the data of the last analysis
@@ -450,7 +450,7 @@ def analyze_tdc_events(input_file_hits, output_file, events=(0, ), max_latency=1
             with tb.openFile(input_file_hits, mode="r+") as in_hit_file_h5:  # open the actual hit file
                 hit_table = in_hit_file_h5.root.Hits
                 analysis_utils.index_event_number(hit_table)
-                progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=len(events))
+                progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=len(events), term_width=80)
                 progress_bar.start()
                 for index, event in enumerate(events):
                     event_array = None
@@ -517,7 +517,7 @@ def histogram_cluster_table(analyzed_data_file, output_file, chunk_size=10000000
                 histograming.set_no_scan_parameter()
 
             logging.info('Histogram cluster seeds...')
-            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=in_file_h5.root.Cluster.shape[0])
+            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=in_file_h5.root.Cluster.shape[0], term_width=80)
             progress_bar.start()
             total_cluster = 0  # to check analysis
             for cluster, index in analysis_utils.data_aligned_at_events(in_file_h5.root.Cluster, chunk_size=chunk_size):

@@ -75,7 +75,7 @@ class ExtTriggerScan(Fei4RunBase):
                     if self.fifo_readout.data_words_per_second() > 0:
                         got_data = True
                         logging.info('Taking data...')
-                        self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=self.max_triggers, poll=10).start()
+                        self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=self.max_triggers, poll=10, term_width=80).start()
                 else:
                     triggers = self.dut['tlu']['TRIGGER_COUNTER']
                     try:
@@ -112,8 +112,8 @@ class ExtTriggerScan(Fei4RunBase):
             self.set_scan_parameters(**kwargs)
         self.fifo_readout.start(reset_sram_fifo=False, clear_buffer=True, callback=self.handle_data, errback=self.handle_err, no_data_timeout=self.no_data_timeout)
         self.dut['tdc_rx2']['ENABLE'] = self.enable_tdc
+        self.dut['tlu'].RESET
         self.dut['tlu']['TRIGGER_MODE'] = self.trigger_mode
-        self.dut['tlu']['TRIGGER_COUNTER'] = 0
         self.dut['cmd']['EN_EXT_TRIGGER'] = True
 
         def timeout():
