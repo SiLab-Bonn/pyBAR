@@ -63,8 +63,8 @@ class Fei4TriggerGdacScan(ScanBase):
                     lvl1_command = self.register.get_commands("zeros", length=14)[0] + self.register.get_commands("LV1")[0]  # + self.register.get_commands("zeros", length=1000)[0]
                     self.register_utils.set_command(lvl1_command)
                     # setting up external trigger
+                    self.dut['tlu'].RESET
                     self.dut['tlu']['TRIGGER_MODE'] = 0
-                    self.dut['tlu']['TRIGGER_COUNTER'] = 0
                     self.dut['cmd']['EN_EXT_TRIGGER'] = True
 
                     show_trigger_message_at = 10 ** (int(math.ceil(math.log10(self.max_triggers))) - 1)
