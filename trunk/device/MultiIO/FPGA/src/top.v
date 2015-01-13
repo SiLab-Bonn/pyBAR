@@ -566,7 +566,7 @@ tdc_s3 #(
     .DV_CLK(CLK_40),
     .TDC_IN(CCPD_TDC),
     .TDC_OUT(),
-    .TRIG_IN(),
+    .TRIG_IN(1'b0),
     .TRIG_OUT(),
 
     .FIFO_READ(CCPD_TDC_FIFO_READ),
@@ -587,12 +587,13 @@ tdc_s3 #(
     .EXT_EN(CCPD_TDCGATE) 
 );
 
+/*
 wire ADC_EN;
 wire ADC_ENC;
 clock_divider #(
-    .DIVISOR(16) // 2.5MHz
+    .DIVISOR(16) // 10MHz
 ) i_clock_divisor_40MHz_to_2500kHz (
-    .CLK(CLK_40),
+    .CLK(RX_CLK),
     .RESET(1'b0),
     .CE(),
     .CLOCK(ADC_ENC)
@@ -624,6 +625,8 @@ wire [13:0] ADC_IN0, ADC_IN1, ADC_IN2, ADC_IN3;
 wire ADC_DCO, ADC_FCO;
 
 gpac_adc_iobuf i_gpac_adc_iobuf (
+    .ADC_CLK(RX_CLK),
+
     .ADC_DCO_P(ADC_DCO_P),
     .ADC_DCO_N(ADC_DCO_N),
     .ADC_DCO(ADC_DCO),
@@ -632,7 +635,7 @@ gpac_adc_iobuf i_gpac_adc_iobuf (
     .ADC_FCO_N(ADC_FCO_N),
     .ADC_FCO(ADC_FCO),
 
-    .ADC_ENC(ADC_ENC), 
+    .ADC_ENC(ADC_ENC),
     .ADC_ENC_P(ADC_ENC_P),
     .ADC_ENC_N(ADC_ENC_N),
 
@@ -662,10 +665,10 @@ gpac_adc_rx #(
     .BUS_RD(BUS_RD),
     .BUS_WR(BUS_WR),
 
-    .ADC_ENC(CLK_40),
+    .ADC_ENC(ADC_ENC),
     .ADC_IN(ADC_IN0),
 
-    .ADC_SYNC(),
+    .ADC_SYNC(1'b0),
     .ADC_TRIGGER(1'b0),
 
     .FIFO_READ(1'b0),
@@ -692,10 +695,10 @@ gpac_adc_rx #(
     .BUS_RD(BUS_RD),
     .BUS_WR(BUS_WR), 
 
-    .ADC_ENC(CLK_40),
+    .ADC_ENC(ADC_ENC),
     .ADC_IN(ADC_IN1),
 
-    .ADC_SYNC(),
+    .ADC_SYNC(1'b0),
     .ADC_TRIGGER(1'b0),
 
     .FIFO_READ(1'b0),
@@ -704,7 +707,7 @@ gpac_adc_rx #(
 
     .LOST_ERROR(ADC_ERROR_1)
 );
-
+*/
 clock_divider #(
     .DIVISOR(40) // 1MHz
 ) i_clock_divisor_40MHz_to_1kHz (
