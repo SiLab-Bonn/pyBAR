@@ -84,7 +84,7 @@ class AnalyzeRawData(object):
         ----------
         raw_data_file : string or tuple, list
             A string or a list of strings with the raw data file name(s). File ending (.h5)
-            does not matter. Does not have to be set.
+            does not not have to be set.
         analyzed_data_file : string
             The file name of the output analyzed data file. File ending (.h5)
             Does not have to be set.
@@ -106,7 +106,7 @@ class AnalyzeRawData(object):
                 else:
                     raw_data_files.append(one_raw_data_file)
         else:
-            f_list = analysis_utils.get_data_file_names_from_scan_base(raw_data_file, filter_file_words=None, parameter=True)
+            f_list = analysis_utils.get_data_file_names_from_scan_base(raw_data_file, filter_file_words=['analyzed', 'interpreted'], parameter=True)
             if f_list:
                 raw_data_files = f_list
             elif raw_data_file is not None and os.path.splitext(raw_data_file)[1].strip().lower() != ".h5":

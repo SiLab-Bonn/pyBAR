@@ -426,9 +426,38 @@ set_property IOSTANDARD LVCMOS33 [get_ports CMD_DATA]
 set_property PACKAGE_PIN U24 [get_ports CMD_DATA]
 
 # FE-I4_rx signals
-set_property SLEW SLOW [get_ports DOBOUT]
-set_property IOSTANDARD LVCMOS33 [get_ports DOBOUT]
-set_property PACKAGE_PIN U25 [get_ports DOBOUT]
+set_property SLEW SLOW [get_ports DOBOUT[3]]
+set_property IOSTANDARD LVCMOS33 [get_ports DOBOUT[3]]
+set_property PACKAGE_PIN U25 [get_ports DOBOUT[3]]
+
+set_property SLEW SLOW [get_ports DOBOUT[2]]
+set_property IOSTANDARD LVCMOS33 [get_ports DOBOUT[2]]
+set_property PACKAGE_PIN M26 [get_ports DOBOUT[2]]
+
+set_property SLEW SLOW [get_ports DOBOUT[1]]
+set_property IOSTANDARD LVCMOS33 [get_ports DOBOUT[1]]
+set_property PACKAGE_PIN AC26 [get_ports DOBOUT[1]]
+
+set_property SLEW SLOW [get_ports DOBOUT[0]]
+set_property IOSTANDARD LVCMOS33 [get_ports DOBOUT[0]]
+set_property PACKAGE_PIN AE21 [get_ports DOBOUT[0]]
+
+# OC signals
+set_property SLEW SLOW [get_ports OC[3]]
+set_property IOSTANDARD LVCMOS33 [get_ports OC[3]]
+set_property PACKAGE_PIN C19 [get_ports OC[3]]
+
+set_property SLEW SLOW [get_ports OC[2]]
+set_property IOSTANDARD LVCMOS33 [get_ports OC[2]]
+set_property PACKAGE_PIN B17 [get_ports OC[2]]
+
+set_property SLEW SLOW [get_ports OC[1]]
+set_property IOSTANDARD LVCMOS33 [get_ports OC[1]]
+set_property PACKAGE_PIN B15 [get_ports OC[1]]
+
+set_property SLEW SLOW [get_ports OC[0]]
+set_property IOSTANDARD LVCMOS33 [get_ports OC[0]]
+set_property PACKAGE_PIN B12 [get_ports OC[0]]
 
 #####################################
 
