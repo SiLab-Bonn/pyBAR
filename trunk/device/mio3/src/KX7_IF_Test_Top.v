@@ -59,7 +59,10 @@ module KX7_IF_Test_Top(
 (* IOB = "FORCE" *) output wire CMD_DATA,
     
 // FE-I4_rx signals
-(* IOB = "FORCE" *) input wire DOBOUT
+(* IOB = "FORCE" *) input wire [3:0] DOBOUT,
+
+// Over Current Protection (BIC only)
+    input wire [3:0] OC
     
 );
 
@@ -208,6 +211,7 @@ PLLE2_BASE #(
  
  localparam ABUSWIDTH = 32;
  
+// Command sequencer
 wire CMD_EXT_START_FLAG;
 assign CMD_EXT_START_FLAG = 0;
 
@@ -233,14 +237,15 @@ cmd_seq
     .CMD_START_FLAG()
 );
 
+// FE-I4 RXs
 parameter DSIZE = 10;
-wire FIFO_READ, FIFO_EMPTY;
-wire [31:0] FIFO_DATA;
+wire [3:0] FIFO_READ, FIFO_EMPTY;
+wire [31:0] FIFO_DATA [3:0];
 //assign FIFO_READ = 0;
 
 genvar i;
 generate
-  for (i = 3; i < 4; i = i + 1) begin: rx_gen
+  for (i = 0; i < 4; i = i + 1) begin: rx_gen
     fei4_rx 
     #(
         .BASEADDR(RX1_BASEADDR-32'h0100*i),
@@ -253,17 +258,17 @@ generate
         .RX_CLK2X(clk320mhz),
         .DATA_CLK(clk16mhz),
         
-        .RX_DATA(DOBOUT),
+        .RX_DATA(DOBOUT[i]),
         
-        .RX_READY(led[1]),
-        .RX_8B10B_DECODER_ERR(led[2]),
-        .RX_FIFO_OVERFLOW_ERR(led[3]),
+        .RX_READY(led[i+1]),
+        .RX_8B10B_DECODER_ERR(),
+        .RX_FIFO_OVERFLOW_ERR(),
          
-        .FIFO_READ(FIFO_READ),
-        .FIFO_EMPTY(FIFO_EMPTY),
-        .FIFO_DATA(FIFO_DATA),
+        .FIFO_READ(FIFO_READ[i]),
+        .FIFO_EMPTY(FIFO_EMPTY[i]),
+        .FIFO_DATA(FIFO_DATA[i]),
         
-        .RX_FIFO_FULL(led[4]),
+        .RX_FIFO_FULL(),
          
         .BUS_CLK(BUS_CLK),
         .BUS_RST(BUS_RST),
@@ -275,6 +280,31 @@ generate
   end
 endgenerate
 
+// Arbiter
+wire ARB_READY_OUT, ARB_WRITE_OUT;
+wire [31:0] ARB_DATA_OUT;
+wire [3:0] READ_GRANT;
+
+rrp_arbiter
+#( 
+    .WIDTH(4)
+) i_rrp_arbiter (
+    .RST(BUS_RST),
+    .CLK(BUS_CLK),
+
+    .WRITE_REQ(~FIFO_EMPTY),
+    .HOLD_REQ({4'b0}),
+    .DATA_IN({FIFO_DATA[3],FIFO_DATA[2],FIFO_DATA[1], FIFO_DATA[0]}),
+    .READ_GRANT(READ_GRANT),
+
+    .READY_OUT(ARB_READY_OUT),
+    .WRITE_OUT(ARB_WRITE_OUT),
+    .DATA_OUT(ARB_DATA_OUT)
+);
+
+assign FIFO_READ = READ_GRANT[3:0];
+
+// BRAM
 wire FIFO_NOT_EMPTY, FIFO_FULL, FIFO_NEAR_FULL, FIFO_READ_ERROR;
 
 bram_fifo 
@@ -292,9 +322,9 @@ bram_fifo
     .BUS_RD(BUS_RD),
     .BUS_WR(BUS_WR),
 
-    .FIFO_READ_NEXT_OUT(FIFO_READ),
-    .FIFO_EMPTY_IN(FIFO_EMPTY),
-    .FIFO_DATA(FIFO_DATA),
+    .FIFO_READ_NEXT_OUT(ARB_READY_OUT),
+    .FIFO_EMPTY_IN(!ARB_WRITE_OUT),
+    .FIFO_DATA(ARB_DATA_OUT),
 
     .FIFO_NOT_EMPTY(FIFO_NOT_EMPTY),
     .FIFO_FULL(FIFO_FULL),
