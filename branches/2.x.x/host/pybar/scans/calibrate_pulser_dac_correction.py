@@ -31,14 +31,14 @@ class PulserDacCorrectionCalibration(ThresholdScan):
                 corr = [thr_masked[:, i * 2 + 1:i * 2 + 3].mean() for i in range(0, 38)]
                 corr = np.array(corr)
                 corr -= corr.min()
-                corr = np.around(corr).astype(int)
+#                 corr = np.around(corr).astype(int)
 
         if "C_High".lower() in map(lambda x: x.lower(), self.enable_shift_masks) and "C_Low".lower() in map(lambda x: x.lower(), self.enable_shift_masks):
-            self.register.calibration_config['Pulser_Corr_C_Inj_High'] = list(corr)
+            self.register.calibration_parameters['Pulser_Corr_C_Inj_High'] = list(corr)
         elif "C_High".lower() in map(lambda x: x.lower(), self.enable_shift_masks):
-            self.register.calibration_config['Pulser_Corr_C_Inj_Med'] = list(corr)
+            self.register.calibration_parameters['Pulser_Corr_C_Inj_Med'] = list(corr)
         elif "C_Low".lower() in map(lambda x: x.lower(), self.enable_shift_masks):
-            self.register.calibration_config['Pulser_Corr_C_Inj_Low'] = list(corr)
+            self.register.calibration_parameters['Pulser_Corr_C_Inj_Low'] = list(corr)
         else:
             raise ValueError('Unknown C_Inj')
 

@@ -376,6 +376,9 @@ class FEI4Register(object):
                     lines.append("\n# FEI4 Pixel Registers\n")
                     for key in sorted(pixel_reg_dict):
                         lines.append('%s %s\n' % (key, pixel_reg_dict[key]))
+                    lines.append("\n# FEI4 Calibration Parameters\n")
+                    for key in self.calibration_parameters:
+                        lines.append('%s %s\n' % (key, self.calibration_parameters[key]))
                     if self.miscellaneous:
                         lines.append("\n# Miscellaneous\n")
                         for key, value in self.miscellaneous.iteritems():

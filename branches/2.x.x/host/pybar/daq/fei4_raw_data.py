@@ -1,7 +1,10 @@
 import logging
+from sys import maxint
+import glob
 from threading import RLock
 import tables as tb
 import os.path
+from os import remove
 
 from pybar.analysis.RawDataConverter.data_struct import MetaTableV2 as MetaTable, generate_scan_parameter_description
 
@@ -25,7 +28,10 @@ class RawDataFile(object):
     '''
     def __init__(self, filename, mode="w", title='', scan_parameters=None, **kwargs):  # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created):
         self.lock = RLock()
-        self.filename = filename
+        if os.path.splitext(filename)[1].strip().lower() != '.h5':
+            self.base_filename = filename
+        else:
+            self.base_filename = os.path.splitext(filename)[0]
         if isinstance(scan_parameters, dict):
             self.scan_parameters = scan_parameters
         elif isinstance(scan_parameters, (list, tuple)):
@@ -36,7 +42,16 @@ class RawDataFile(object):
         self.meta_data_table = None
         self.scan_param_table = None
         self.h5_file = None
-        self.open(self.filename, mode, title, **kwargs)
+        if mode and mode[0] == 'w':
+            h5_files = glob.glob(os.path.splitext(filename)[0] + '*.h5')
+            if h5_files:
+                logging.info('Removing following file(s): %s' % ', '.join(h5_files))
+            for h5_file in h5_files:
+                remove(h5_file)
+        # list of filenames and index
+        self.curr_filename = self.base_filename
+        self.filenames = {self.curr_filename: 0}
+        self.open(self.curr_filename, mode, title, **kwargs)
 
     def __enter__(self):
         return self
@@ -88,10 +103,16 @@ class RawDataFile(object):
                 diff = [name for name in scan_parameters.keys() if scan_parameters[name] != self.scan_parameters[name]]
                 self.scan_parameters.update(scan_parameters)
                 if (new_file is True and diff) or (isinstance(new_file, (list, tuple)) and len([name for name in diff if name in new_file]) != 0):
-                    filename = os.path.splitext(self.filename)[0].strip().lower() + '_' + '_'.join([str(item) for item in reduce(lambda x, y: x + y, [(key, value) for key, value in scan_parameters.items() if (new_file is True or (isinstance(new_file, (list, tuple)) and key in new_file))])]) + '.h5'
+                    self.curr_filename = os.path.splitext(self.base_filename)[0].strip().lower() + '_' + '_'.join([str(item) for item in reduce(lambda x, y: x + y, [(key, value) for key, value in scan_parameters.items() if (new_file is True or (isinstance(new_file, (list, tuple)) and key in new_file))])])
+                    index = self.filenames.get(self.curr_filename, 0)
+                    if index == 0:
+                        filename = self.curr_filename + '.h5'
+                        self.filenames[self.curr_filename] = 0  # add to dict
+                    else:
+                        filename = self.curr_filename + '_' + str(index) + '.h5'
                     # copy nodes to new file
                     nodes = self.h5_file.list_nodes('/', classname='Group')
-                    with tb.open_file(filename, mode='w', title=filename) as h5_file:
+                    with tb.open_file(filename, mode='a', title=filename) as h5_file:  # append, since file can already exists when scan parameters are jumping back and forth
                         for node in nodes:
                             self.h5_file.copy_node(node, h5_file.root, overwrite=True, recursive=True)
                     self.close()
@@ -99,6 +120,18 @@ class RawDataFile(object):
             total_words = self.raw_data_earray.nrows
             raw_data = data_tuple[0]
             len_raw_data = raw_data.shape[0]
+            if total_words + len_raw_data > maxint:
+                    index = self.filenames.get(self.curr_filename, 0) + 1  # reached file size limit, increase index by one
+                    self.filenames[self.curr_filename] = index  # update dict
+                    filename = self.curr_filename + '_' + str(index) + '.h5'
+                    # copy nodes to new file
+                    nodes = self.h5_file.list_nodes('/', classname='Group')
+                    with tb.open_file(filename, mode='a', title=filename) as h5_file:  # append, since file can already exists when scan parameters are jumping back and forth
+                        for node in nodes:
+                            self.h5_file.copy_node(node, h5_file.root, overwrite=True, recursive=True)
+                    self.close()
+                    self.open(filename, 'a', filename)
+                    total_words = self.raw_data_earray.nrows  # in case of re-opening existing file
             self.raw_data_earray.append(raw_data)
             self.meta_data_table.row['timestamp_start'] = data_tuple[1]
             self.meta_data_table.row['timestamp_stop'] = data_tuple[2]
