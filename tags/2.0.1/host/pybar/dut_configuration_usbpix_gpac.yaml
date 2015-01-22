@@ -1,0 +1,25 @@
+#
+# ------------------------------------------------------------
+# Copyright (c) All rights reserved
+# SiLab, Institute of Physics, University of Bonn
+# ------------------------------------------------------------
+#
+# SVN revision information:
+#  $Rev::                       $:
+#  $Author::                    $:
+#  $Date::                      $:
+#
+
+USB:
+    bit_file       : "mio_gpac.bit"
+    board_id       : 
+    avoid_download : False
+
+cmd:
+    OUTPUT_MODE : 0  # 0: positive edge (default), 2: Manchester code
+
+tlu:
+    TRIGGER_MODE        : 0
+    EN_INVERT_TRIGGER   : 0
+    EN_WRITE_TIMESTAMP  : 0
+    TRIGGER_LOW_TIMEOUT : 255
