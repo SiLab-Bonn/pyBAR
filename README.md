@@ -29,12 +29,20 @@ The features of the host software in Python and C++:
 Installation:
 ------------
 Prerequisites:
-- PyUSB (>=1.0.0rc1):pip install https://github.com/walac/pyusb/archive/master.zip
+- PyUSB (>=1.0.0rc1):
+
+  pip install https://github.com/walac/pyusb/archive/master.zip
+
 - pySiLibUSB (>=1.0.0):
+
   pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/695/pySiLibUSB-2.0.2.tar.gz
+
 - Basil (>=2.0.2):
+
   pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/719/Basil-2.0.2.tar.gz
+
 - progressbar (>=2.4):
+
   pip install progressbar-latest
 
 Checkout pyBAR. From host folder run the following commands:
