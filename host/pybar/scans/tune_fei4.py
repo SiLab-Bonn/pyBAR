@@ -28,16 +28,6 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
 
     *) measurements from IBL wafer probing
     '''
-#     _default_run_conf = GdacTuning._default_run_conf
-#     _default_run_conf.update(TdacTuning._default_run_conf)
-#     _default_run_conf.update(FeedbackTuning._default_run_conf)
-#     _default_run_conf.update(FdacTuning._default_run_conf)
-#     _default_run_conf.update({
-#         "scan_parameters": [('GDAC', -1), ('TDAC', -1), ('PrmpVbpf', -1), ('FDAC', -1), ('global_step', 0), ('local_step', 0)],
-#         "global_iterations": 4,  # the number of iterations to do for the global tuning, 0 means only threshold is tuned, negative that no global tuning is done
-#         "local_iterations": 0,  # the number of iterations to do for the local tuning, 0 means only threshold is tuned, negative that no local tuning is done
-#         "make_plots": True  # plots for all scan steps are created
-#     })
     _default_run_conf = {
         # tuning parameters
         "target_threshold": 50,  # target threshold
@@ -142,7 +132,7 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
             self.feedback_tune_bits = range(start_bit, -1, -1)
             FeedbackTuning.scan(self)
 
-        if self.global_iterations:
+        if self.global_iterations >= 0:
             self.set_scan_parameters(global_step=self.scan_parameters.global_step + 1)
             self.gdac_tune_bits = range(start_bit, -1, -1)
             GdacTuning.scan(self)
@@ -164,7 +154,7 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
             self.fdac_tune_bits = range(start_bit - 1, -1, -1)
             FdacTuning.scan(self)
 
-        if self.local_iterations:
+        if self.local_iterations >= 0:
             self.tdac_tune_bits = range(start_bit, -1, -1)
             TdacTuning.scan(self)
 
@@ -178,10 +168,11 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
 
         if self.make_plots:
             if self.local_iterations:
-                plotThreeWay(hist=self.occupancy_best.transpose(), title="Occupancy after tuning", x_axis_title='Occupancy', filename=self.plots_filename, maximum=100)
                 plotThreeWay(hist=self.tot_mean_best.transpose(), title="Mean ToT after last FDAC tuning", x_axis_title='Mean ToT', filename=self.plots_filename)
-                plotThreeWay(hist=self.register.get_pixel_register_value("TDAC").transpose(), title="TDAC distribution after complete tuning", x_axis_title='TDAC', filename=self.plots_filename, maximum=32)
                 plotThreeWay(hist=self.register.get_pixel_register_value("FDAC").transpose(), title="FDAC distribution after last FDAC tuning", x_axis_title='FDAC', filename=self.plots_filename, maximum=16)
+            if self.local_iterations >= 0:
+                plotThreeWay(hist=self.occupancy_best.transpose(), title="Occupancy after tuning", x_axis_title='Occupancy', filename=self.plots_filename, maximum=100)
+                plotThreeWay(hist=self.register.get_pixel_register_value("TDAC").transpose(), title="TDAC distribution after complete tuning", x_axis_title='TDAC', filename=self.plots_filename, maximum=32)
 
             self.plots_filename.close()
 
