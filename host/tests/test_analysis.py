@@ -14,6 +14,8 @@ from pybar.analysis.RawDataConverter.data_clusterizer import PyDataClusterizer
 from pybar.analysis import analysis_utils
 from pybar.analysis.RawDataConverter import data_struct
 
+tests_data_folder = 'tests//test_analysis//'
+
 
 def get_array_differences(first_array, second_array):
     '''Takes two numpy.ndarrays and compares them on a column basis.
@@ -112,7 +114,7 @@ class TestAnalysis(unittest.TestCase):
         cls.interpreter = PyDataInterpreter()
         cls.histogram = PyDataHistograming()
         cls.clusterizer = PyDataClusterizer()
-        with AnalyzeRawData(raw_data_file='test_analysis//unit_test_data_1.h5', analyzed_data_file='test_analysis//unit_test_data_1_interpreted.h5') as analyze_raw_data:  # analyze the digital scan raw data, do not show any feedback (no prints to console, no plots)
+        with AnalyzeRawData(raw_data_file=tests_data_folder + 'unit_test_data_1.h5', analyzed_data_file=tests_data_folder + 'unit_test_data_1_interpreted.h5') as analyze_raw_data:  # analyze the digital scan raw data, do not show any feedback (no prints to console, no plots)
             analyze_raw_data.chunk_size = 3000017
             analyze_raw_data.create_hit_table = True  # can be set to false to omit hit table creation, std. setting is false
             analyze_raw_data.create_cluster_hit_table = True  # adds the cluster id and seed info to each hit, std. setting is false
@@ -128,13 +130,13 @@ class TestAnalysis(unittest.TestCase):
             analyze_raw_data.interpreter.set_debug_output(False)
             analyze_raw_data.histograming.set_warning_output(False)
             analyze_raw_data.interpret_word_table(use_settings_from_file=False, fei4b=False)  # the actual start conversion command
-        with AnalyzeRawData(raw_data_file='test_analysis//unit_test_data_2.h5', analyzed_data_file='test_analysis//unit_test_data_2_interpreted.h5') as analyze_raw_data:  # analyze the fast threshold scan raw data, do not show any feedback (no prints to console, no plots)
+        with AnalyzeRawData(raw_data_file=tests_data_folder + 'unit_test_data_2.h5', analyzed_data_file=tests_data_folder + 'unit_test_data_2_interpreted.h5') as analyze_raw_data:  # analyze the fast threshold scan raw data, do not show any feedback (no prints to console, no plots)
             analyze_raw_data.chunk_size = 3000017
             analyze_raw_data.interpreter.set_debug_output(False)
             analyze_raw_data.histograming.set_warning_output(False)
             analyze_raw_data.create_threshold_hists = True  # makes only sense if threshold scan data is analyzed, std. setting is false
             analyze_raw_data.interpret_word_table(use_settings_from_file=False, fei4b=False)  # the actual start conversion command
-        with AnalyzeRawData(raw_data_file=None, analyzed_data_file='test_analysis//unit_test_data_1_interpreted.h5') as analyze_raw_data:   # analyze the digital scan hit data, do not show any feedback (no prints to console, no plots)
+        with AnalyzeRawData(raw_data_file=None, analyzed_data_file=tests_data_folder + 'unit_test_data_1_interpreted.h5') as analyze_raw_data:   # analyze the digital scan hit data, do not show any feedback (no prints to console, no plots)
             analyze_raw_data.chunk_size = 3000017
             analyze_raw_data.clusterizer.set_warning_output(False)
             analyze_raw_data.clusterizer.set_warning_output(False)
@@ -142,8 +144,8 @@ class TestAnalysis(unittest.TestCase):
             analyze_raw_data.create_cluster_table = True
             analyze_raw_data.create_cluster_size_hist = True
             analyze_raw_data.create_cluster_tot_hist = True
-            analyze_raw_data.analyze_hit_table(analyzed_data_out_file='test_analysis//unit_test_data_1_analyzed.h5')
-        with AnalyzeRawData(raw_data_file='test_analysis//unit_test_data_3.h5', analyzed_data_file='test_analysis//unit_test_data_3_interpreted.h5') as analyze_raw_data:  # analyze the digital scan raw data per scan parameter, do not show any feedback (no prints to console, no plots)
+            analyze_raw_data.analyze_hit_table(analyzed_data_out_file=tests_data_folder + 'unit_test_data_1_analyzed.h5')
+        with AnalyzeRawData(raw_data_file=tests_data_folder + 'unit_test_data_3.h5', analyzed_data_file=tests_data_folder + 'unit_test_data_3_interpreted.h5') as analyze_raw_data:  # analyze the digital scan raw data per scan parameter, do not show any feedback (no prints to console, no plots)
             analyze_raw_data.chunk_size = 3000017
             analyze_raw_data.create_hit_table = True  # can be set to false to omit hit table creation, std. setting is false
             analyze_raw_data.create_cluster_hit_table = True  # adds the cluster id and seed info to each hit, std. setting is false
@@ -159,24 +161,24 @@ class TestAnalysis(unittest.TestCase):
             analyze_raw_data.interpreter.set_debug_output(False)
             analyze_raw_data.histograming.set_warning_output(False)
             analyze_raw_data.interpret_word_table(use_settings_from_file=False, fei4b=False)  # the actual start conversion command
-        with AnalyzeRawData(raw_data_file='test_analysis//unit_test_data_2.h5', analyzed_data_file='test_analysis//unit_test_data_2_hits.h5') as analyze_raw_data:  # analyze the fast threshold scan raw data, do not show any feedback (no prints to console, no plots)
+        with AnalyzeRawData(raw_data_file=tests_data_folder + 'unit_test_data_2.h5', analyzed_data_file=tests_data_folder + 'unit_test_data_2_hits.h5') as analyze_raw_data:  # analyze the fast threshold scan raw data, do not show any feedback (no prints to console, no plots)
             analyze_raw_data.chunk_size = 3000017
             analyze_raw_data.create_hit_table = True
             analyze_raw_data.interpreter.set_debug_output(False)
             analyze_raw_data.histograming.set_warning_output(False)
             analyze_raw_data.create_threshold_hists = True  # makes only sense if threshold scan data is analyzed, std. setting is false
             analyze_raw_data.interpret_word_table(use_settings_from_file=False, fei4b=False)  # the actual start conversion command
-        with AnalyzeRawData(raw_data_file=None, analyzed_data_file='test_analysis//unit_test_data_2_hits.h5') as analyze_raw_data:
+        with AnalyzeRawData(raw_data_file=None, analyzed_data_file=tests_data_folder + 'unit_test_data_2_hits.h5') as analyze_raw_data:
             analyze_raw_data.chunk_size = 3000017
             analyze_raw_data.create_threshold_hists = True
-            analyze_raw_data.analyze_hit_table(analyzed_data_out_file='test_analysis//unit_test_data_2_analyzed.h5')
-        with AnalyzeRawData(raw_data_file='test_analysis//unit_test_data_4.h5', analyzed_data_file='test_analysis//unit_test_data_4_interpreted.h5') as analyze_raw_data:
+            analyze_raw_data.analyze_hit_table(analyzed_data_out_file=tests_data_folder + 'unit_test_data_2_analyzed.h5')
+        with AnalyzeRawData(raw_data_file=tests_data_folder + 'unit_test_data_4.h5', analyzed_data_file=tests_data_folder + 'unit_test_data_4_interpreted.h5') as analyze_raw_data:
             analyze_raw_data.chunk_size = 3000017
             analyze_raw_data.create_hit_table = True
             analyze_raw_data.interpreter.set_debug_output(False)
             analyze_raw_data.histograming.set_warning_output(False)
             analyze_raw_data.interpret_word_table(use_settings_from_file=False, fei4b=False)  # the actual start conversion command
-        with AnalyzeRawData(raw_data_file=['test_analysis//unit_test_data_4_parameter_128.h5', 'test_analysis//unit_test_data_4_parameter_256.h5'], analyzed_data_file='test_analysis//unit_test_data_4_interpreted_2.h5', scan_parameter_name='parameter') as analyze_raw_data:
+        with AnalyzeRawData(raw_data_file=[tests_data_folder + 'unit_test_data_4_parameter_128.h5', tests_data_folder + 'unit_test_data_4_parameter_256.h5'], analyzed_data_file=tests_data_folder + 'unit_test_data_4_interpreted_2.h5', scan_parameter_name='parameter') as analyze_raw_data:
             analyze_raw_data.chunk_size = 3000017
             analyze_raw_data.create_hit_table = True
             analyze_raw_data.interpreter.set_debug_output(False)
@@ -189,14 +191,14 @@ class TestAnalysis(unittest.TestCase):
         del cls.interpreter
         del cls.histogram
         del cls.clusterizer
-        os.remove('test_analysis//unit_test_data_1_interpreted.h5')
-        os.remove('test_analysis//unit_test_data_1_analyzed.h5')
-        os.remove('test_analysis//unit_test_data_2_interpreted.h5')
-        os.remove('test_analysis//unit_test_data_2_analyzed.h5')
-        os.remove('test_analysis//unit_test_data_2_hits.h5')
-        os.remove('test_analysis//unit_test_data_3_interpreted.h5')
-        os.remove('test_analysis//unit_test_data_4_interpreted.h5')
-        os.remove('test_analysis//unit_test_data_4_interpreted_2.h5')
+        os.remove(tests_data_folder + 'unit_test_data_1_interpreted.h5')
+        os.remove(tests_data_folder + 'unit_test_data_1_analyzed.h5')
+        os.remove(tests_data_folder + 'unit_test_data_2_interpreted.h5')
+        os.remove(tests_data_folder + 'unit_test_data_2_analyzed.h5')
+        os.remove(tests_data_folder + 'unit_test_data_2_hits.h5')
+        os.remove(tests_data_folder + 'unit_test_data_3_interpreted.h5')
+        os.remove(tests_data_folder + 'unit_test_data_4_interpreted.h5')
+        os.remove(tests_data_folder + 'unit_test_data_4_interpreted_2.h5')
 
     def test_libraries_stability(self):  # calls 50 times the constructor and destructor to check the libraries
         progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=50, term_width=80)
@@ -229,27 +231,27 @@ class TestAnalysis(unittest.TestCase):
         self.assertTrue(self.interpreter.get_hit_size() == hits.itemsize)
 
     def test_raw_data_analysis(self):  # test the created interpretation file against the stored one
-        data_equal, error_msg = compare_h5_files('test_analysis//unit_test_data_1_result.h5', 'test_analysis//unit_test_data_1_interpreted.h5')
+        data_equal, error_msg = compare_h5_files(tests_data_folder + 'unit_test_data_1_result.h5', tests_data_folder + 'unit_test_data_1_interpreted.h5')
         self.assertTrue(data_equal, msg=error_msg)
 
     def test_threshold_analysis(self):  # test the created interpretation file of the threshold data against the stored one
-        data_equal, error_msg = compare_h5_files('test_analysis//unit_test_data_2_result.h5', 'test_analysis//unit_test_data_2_interpreted.h5')
+        data_equal, error_msg = compare_h5_files(tests_data_folder + 'unit_test_data_2_result.h5', tests_data_folder + 'unit_test_data_2_interpreted.h5')
         self.assertTrue(data_equal, msg=error_msg)
 
     def test_hit_data_analysis(self):  # test the hit histograming/clustering starting from the predefined interpreted data
-        data_equal, error_msg = compare_h5_files('test_analysis//unit_test_data_1_result.h5', 'test_analysis//unit_test_data_1_analyzed.h5', expected_nodes=8)
+        data_equal, error_msg = compare_h5_files(tests_data_folder + 'unit_test_data_1_result.h5', tests_data_folder + 'unit_test_data_1_analyzed.h5', expected_nodes=8)
         self.assertTrue(data_equal, msg=error_msg)
 
     def test_analysis_per_scan_parameter(self):  # check if the data per scan parameter is correctly analyzed
         # check if the data with more than one scan parameter is correctly analyzed
-        data_equal, error_msg = compare_h5_files('test_analysis//unit_test_data_3_result.h5', 'test_analysis//unit_test_data_3_interpreted.h5')
+        data_equal, error_msg = compare_h5_files(tests_data_folder + 'unit_test_data_3_result.h5', tests_data_folder + 'unit_test_data_3_interpreted.h5')
         self.assertTrue(data_equal, msg=error_msg)
         # check the data from two files with one scan parameter each with the previous file containing two scan parameters
-        data_equal, error_msg = compare_h5_files('test_analysis//unit_test_data_4_interpreted.h5', 'test_analysis//unit_test_data_4_interpreted_2.h5')
+        data_equal, error_msg = compare_h5_files(tests_data_folder + 'unit_test_data_4_interpreted.h5', tests_data_folder + 'unit_test_data_4_interpreted_2.h5')
         self.assertTrue(data_equal, msg=error_msg)
         # check if the occupancy hist from the threshold scan hit data is correctly created
-        with tb.open_file('test_analysis//unit_test_data_2_interpreted.h5', 'r') as first_h5_file:
-            with tb.open_file('test_analysis//unit_test_data_2_analyzed.h5', 'r') as second_h5_file:
+        with tb.open_file(tests_data_folder + 'unit_test_data_2_interpreted.h5', 'r') as first_h5_file:
+            with tb.open_file(tests_data_folder + 'unit_test_data_2_analyzed.h5', 'r') as second_h5_file:
                 occupancy_expected = first_h5_file.root.HistOcc[:]
                 occupancy = second_h5_file.root.HistOcc[:]
                 self.assertTrue(np.all(occupancy_expected == occupancy), msg=error_msg)
@@ -320,7 +322,7 @@ class TestAnalysis(unittest.TestCase):
         self.assertTrue(exception_ok & np.all(array == array_fast))
 
     def test_3d_index_histograming(self):  # check compiled hist_3D_index function
-        with tb.open_file('test_analysis//hist_data.h5', mode="r") as in_file_h5:
+        with tb.open_file(tests_data_folder + 'hist_data.h5', mode="r") as in_file_h5:
             xyz = in_file_h5.root.HistDataXYZ[:]
             x, y, z = xyz[0], xyz[1], xyz[2]
             shape = (100, 100, 100)
