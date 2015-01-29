@@ -48,13 +48,16 @@ Prerequisites:
 Checkout pyBAR. From host folder run the following commands:
 
 1. Build with:
-python setup.py build_ext
+   python setup.py build_ext
 
 2. Install with:
-python setup.py develop
+   python setup.py develop
 
 3. Testing:
-Run tests from tests folder.
+   nosetests tests
+
+   The scan test needs a working FE-I4.
+
 
 Usage:
 -----
