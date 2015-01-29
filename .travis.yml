@@ -1,6 +1,9 @@
 language: python
 python:
   - 2.7
+branches:
+  only:
+    - development
 notifications:
   email:
     - pfuideibel@gmx.net
@@ -13,8 +16,8 @@ before_install:
   - export PATH=/home/travis/anaconda/bin:$PATH
   - conda update --yes conda
   - conda update --yes anaconda
-  - conda create --yes -n anacondaenv python=$TRAVIS_PYTHON_VERSION
-  - source activate anacondaenv
+#  - conda create --yes -n anacondaenv python=$TRAVIS_PYTHON_VERSION
+#  - source activate anacondaenv
   - cd host
 # The next couple lines fix a crash with multiprocessing on Travis and are not specific to using Miniconda
   - sudo rm -rf /dev/shm
@@ -30,4 +33,4 @@ install:
  
 # Run test
 script:
-- nosetests host/tests/test_analysis.py --logging-level=INFO
+- nosetests tests/test_analysis.py --logging-level=INFO
