@@ -2,7 +2,8 @@
 
 pyBAR - Bonn ATLAS Readout in Python and C++
 
-Please check https://silab-redmine.physik.uni-bonn.de/projects/pybar for more information.
+Master / development branch: [![Build Status](https://travis-ci.org/SiLab-Bonn/pyBAR.svg?branch=master)](https://travis-ci.org/SiLab-Bonn/pyBAR)
+[![Build Status](https://travis-ci.org/SiLab-Bonn/pyBAR.svg?branch=development)](https://travis-ci.org/SiLab-Bonn/pyBAR)
 
 pyBAR is a versatile readout and test system for the ATLAS FE-I4(A/B) pixel readout chip. It uses the Basil framework to access the hardware.
 pyBAR FPGA firmware and host software supports USBpix and USBpix 3.0 as well as Single Chip Adapter Card, Burn-in Card (4-chip Adapter Card) and GPAC adapter card. 
@@ -48,13 +49,16 @@ Prerequisites:
 Checkout pyBAR. From host folder run the following commands:
 
 1. Build with:
-python setup.py build_ext
+   python setup.py build_ext
 
 2. Install with:
-python setup.py develop
+   python setup.py develop
 
 3. Testing:
-Run tests from tests folder.
+   nosetests tests
+
+   The scan test needs a working FE-I4.
+
 
 Usage:
 -----
