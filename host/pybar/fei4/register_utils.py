@@ -142,7 +142,7 @@ class FEI4RegisterUtils(object):
         '''
         logging.info('Resetting Bunch Counter')
         commands = []
-        commands.extend(self.register.get_commands("ConfMode"))
+        commands.extend(self.register.get_commands("RunMode"))
         commands.extend(self.register.get_commands("BCR"))
         self.send_commands(commands)
         time.sleep(0.1)
@@ -156,7 +156,7 @@ class FEI4RegisterUtils(object):
         '''
         logging.info('Resetting Event Counter')
         commands = []
-        commands.extend(self.register.get_commands("ConfMode"))
+        commands.extend(self.register.get_commands("RunMode"))
         commands.extend(self.register.get_commands("ECR"))  # wait some time after ECR
         self.send_commands(commands)
         time.sleep(0.1)
