@@ -17,6 +17,11 @@ export SIMULATION_PORT
 export SIMULATION_BUS
 export SIMULATION_END_ON_DISCONNECT
 
+#to make life bit easier
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(shell python -c 'from distutils import sysconfig; print(sysconfig.get_config_var("LIBDIR"))')
+export PYTHONPATH=$PYTHONPATH:$(shell python -c "from distutils import sysconfig; print(sysconfig.get_python_lib())"):$(COCOTB)
+export PYTHONHOME=$(shell python -c "from distutils.sysconfig import get_config_var; print(get_config_var('prefix'))")
+
 # Must have XILINX set as an environment variable.
 # i.e. export XILINX=~/Xilinx/14.7/ISE_DS
 XILINX_SRC?=$(XILINX)/ISE/verilog/src
