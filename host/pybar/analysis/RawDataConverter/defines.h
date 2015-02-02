@@ -13,7 +13,7 @@
 
 //structure to store the hits
 typedef struct HitInfo{
-  uint64_t eventNumber;   //event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
+  int64_t eventNumber;   //event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
   unsigned int triggerNumber; //external trigger number for read out system
   unsigned char relativeBCID; //relative BCID value (unsigned char: 0 to 255)
   unsigned short int LVLID;   //LVL1ID (unsigned short int: 0 to 65.535)
@@ -30,7 +30,7 @@ typedef struct HitInfo{
 
 //structure to store the hits with cluster info
 typedef struct ClusterHitInfo{
-  uint64_t eventNumber;   //event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
+  int64_t eventNumber;   //event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
   unsigned int triggerNumber; //external trigger number for read out system
   unsigned char relativeBCID; //relative BCID value (unsigned char: 0 to 255)
   unsigned short int LVLID;   //LVL1ID (unsigned short int: 0 to 65.535)
@@ -51,7 +51,7 @@ typedef struct ClusterHitInfo{
 
 //structure to store the cluster
 typedef struct ClusterInfo{
-  uint64_t eventNumber;  	  //event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
+  int64_t eventNumber;  	  //event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
   unsigned short ID;	  	  //the cluster id of the cluster
   unsigned short size; 		  //sum tot of all cluster hits
   unsigned short Tot; 		  //sum tot of all cluster hits
@@ -84,13 +84,13 @@ typedef struct MetaInfoV2{
 
 //structures for the output meta data
 typedef struct MetaInfoOut{
-  uint64_t eventIndex;    //event number of the read out
+  int64_t eventIndex;    //event number of the read out
   double timeStamp;           //time stamp of the readout
   unsigned int errorCode;     //error code for the read out (0: no error)
 } MetaInfoOut;
 
 typedef struct MetaWordInfoOut{
-  uint64_t eventIndex;   //event number
+  int64_t eventIndex;   //event number
   unsigned int startWordIdex;//start word index
   unsigned int stopWordIdex; //stop word index
 } MetaWordInfoOut;
