@@ -21,9 +21,9 @@ public:
 	bool interpretRawData(unsigned int* pDataWords, const unsigned int& pNdataWords); //starts to interpret the actual raw data pDataWords and saves result to _hitInfo
 	bool setMetaData(MetaInfo* &rMetaInfo, const unsigned int& tLength);         	  //sets the meta words for word number/event correlation
 	bool setMetaDataV2(MetaInfoV2* &rMetaInfo, const unsigned int& tLength);       	  //sets the meta words for word number/event correlation
+	void getHits(HitInfo*& rHitInfo, unsigned int& rSize, bool copy = false);    //returns the hit histogram
 
 	//set arrays to be filled
-	void setHitsArray(HitInfo*& rHitInfo, const unsigned int &rSize);   			  //set the hit array to be filled
 	void setMetaDataEventIndex(uint64_t*& rEventNumber, const unsigned int& rSize);  //set the meta event index array to be filled
 	void setMetaDataWordIndex(MetaWordInfoOut*& rWordNumber, const unsigned int& rSize);  //set the meta word index array to be filled
 
@@ -37,6 +37,7 @@ public:
 	void resetEventVariables();											              //resets event variables before starting new event
 
 	//options set/get
+	void setHitsArraySize(const unsigned int &rSize);   			  //set the siye of the hit array, has to be able to hold hits of one event
 	void createMetaDataWordIndex(bool CreateMetaDataWordIndex = true);
 	void setNbCIDs(const unsigned int& NbCIDs);				  //set the number of BCIDs with hits for the actual trigger
 	void setMaxTot(const unsigned int& rMaxTot);			  //sets the maximum tot code that is considered to be a hit
@@ -51,10 +52,10 @@ public:
 	void addEvent();              //increases the event counter, adds the actual hits/error/SR codes
 
 	//get function to global counters
-	void getServiceRecordsCounters(unsigned int*& rServiceRecordsCounter, unsigned int &rNserviceRecords, bool copy = true);   //returns the total service record counter array
-	void getErrorCounters(unsigned int*& rErrorCounter, unsigned int &rNerrorCounters, bool copy = true);                      //returns the total errors counter array
-	void getTriggerErrorCounters(unsigned int*& rTriggerErrorCounter, unsigned int &rNTriggerErrorCounters, bool copy = true); //returns the total trigger errors counter array
-	void getTdcCounters(unsigned int*& rTdcCounter, unsigned int& rNtdcCounters, bool copy); //returns the TDC counter array
+	void getServiceRecordsCounters(unsigned int*& rServiceRecordsCounter, unsigned int &rNserviceRecords, bool copy = false);   //returns the total service record counter array
+	void getErrorCounters(unsigned int*& rErrorCounter, unsigned int &rNerrorCounters, bool copy = false);                      //returns the total errors counter array
+	void getTriggerErrorCounters(unsigned int*& rTriggerErrorCounter, unsigned int &rNTriggerErrorCounters, bool copy = false); //returns the total trigger errors counter array
+	void getTdcCounters(unsigned int*& rTdcCounter, unsigned int& rNtdcCounters, bool copy = false); //returns the TDC counter array
 	unsigned int getNhits(){return _nHits;};                 //returns the total numbers of hits found (global counter)
 	unsigned int getNwords();                                //returns the total numbers of words analyzed (global counter)
 	unsigned int getNunknownWords(){return _nUnknownWords;}; //returns the total numbers of unknown words found (global counter)
@@ -101,6 +102,8 @@ private:
 
 	//memory allocation/initialization
 	void setStandardSettings();
+	void allocateHitArray();
+	void deleteHitArray();
 	void allocateHitBufferArray();
 	void deleteHitBufferArray();
 	void allocateTriggerErrorCounterArray();
@@ -157,7 +160,7 @@ private:
 	unsigned int _lastTriggerNumber;            //trigger number of last event
 	unsigned int _startWordIndex;				//the absolute word index of the first word of the actual event
 	unsigned short tTdcCount;					//the TDC count value of the actual event, if no TDC word occured this value is zero
-	unsigned short tTdcTimeStamp;				//the TDC count value of the actual event, if no TDC word occured this value is zero
+	unsigned char tTdcTimeStamp;				//the TDC count value of the actual event, if no TDC word occured this value is zero
 
 	//counters/flags for the total raw data processing
 	unsigned int _nTriggers;					//total number of trigger words found

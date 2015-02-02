@@ -39,8 +39,8 @@ cdef extern from "Histogram.h":
         void getTotHist(unsigned int*& rTotHist, cpp_bool copy)  # returns the tot histogram for all hits
         void getTdcHist(unsigned int*& rTdcHist, cpp_bool copy)
         void getRelBcidHist(unsigned int*& rRelBcidHist, cpp_bool copy)  # returns the relative BCID histogram for all hits
-        void setTdcPixelHist(unsigned short*& rTdcPixelHist)  # sets the tdc pixel histogram for all hits
-        void setTotPixelHist(unsigned short*& rTotPixelHist)  # sets the tot pixel histogram for all hits
+        void getTdcPixelHist(unsigned short*& rTdcPixelHist, cpp_bool copy)  # returns the tdc pixel histogram for all hits
+        void getTotPixelHist(unsigned short*& rTotPixelHist, cpp_bool copy)  # returns the tot pixel histogram for all hits
 
         void addHits(HitInfo*& rHitInfo, const unsigned int& rNhits) except +
         void addClusterSeedHits(ClusterInfo*& rClusterInfo, const unsigned int& rNcluster) except +
@@ -56,6 +56,20 @@ cdef extern from "Histogram.h":
 
         void reset()
         void test()
+
+cdef data_to_numpy_array_uint16(cnp.uint16_t* ptr, cnp.npy_intp N):
+    cdef cnp.ndarray[cnp.uint16_t, ndim=1] arr = cnp.PyArray_SimpleNewFromData(1, <cnp.npy_intp*> &N, cnp.NPY_UINT16, <cnp.uint16_t*> ptr)
+    #PyArray_ENABLEFLAGS(arr, np.NPY_OWNDATA)
+    return arr
+
+cdef data_to_numpy_array_uint32(cnp.uint32_t* ptr, cnp.npy_intp N):
+    cdef cnp.ndarray[cnp.uint32_t, ndim=1] arr = cnp.PyArray_SimpleNewFromData(1, <cnp.npy_intp*> &N, cnp.NPY_UINT32, <cnp.uint32_t*> ptr)
+    #PyArray_ENABLEFLAGS(arr, np.NPY_OWNDATA)
+    return arr
+
+cdef cnp.uint16_t* data_16
+cdef cnp.uint32_t* data_32
+cdef unsigned int Nparameter = 0
 
 cdef class PyDataHistograming:
     cdef Histogram* thisptr  # hold a C++ instance which we're wrapping
@@ -85,22 +99,35 @@ cdef class PyDataHistograming:
         self.thisptr.createTotPixelHist(<cpp_bool> toggle)
     def set_max_tot(self, max_tot):
         self.thisptr.setMaxTot(<const unsigned int&> max_tot)
-    def get_occupancy(self, cnp.ndarray[cnp.uint32_t, ndim=1] occupancy, copy = True):
-        cdef unsigned int NparameterValues = 0
-        self.thisptr.getOccupancy(NparameterValues, <unsigned int*&> occupancy.data, <cpp_bool> copy)
-        return NparameterValues
-    def get_tot_hist(self, cnp.ndarray[cnp.uint32_t, ndim=1] tot_hist, copy = True):
-        self.thisptr.getTotHist(<unsigned int*&> tot_hist.data, <cpp_bool> copy)
-    def get_tdc_hist(self, cnp.ndarray[cnp.uint32_t, ndim=1] tdc_hist, copy = True):
-        self.thisptr.getTdcHist(<unsigned int*&> tdc_hist.data, <cpp_bool> copy)
-    def set_tdc_pixel_hist(self, cnp.ndarray[cnp.uint16_t, ndim=1] tdc_pixel_hist):
-        self.thisptr.setTdcPixelHist(<unsigned short*&> tdc_pixel_hist.data)
-    def set_tot_pixel_hist(self, cnp.ndarray[cnp.uint16_t, ndim=1] tot_pixel_hist):
-        self.thisptr.setTotPixelHist(<unsigned short*&> tot_pixel_hist.data)
-    def get_rel_bcid_hist(self, cnp.ndarray[cnp.uint32_t, ndim=1] rel_bcid_hist, copy = True):
-        self.thisptr.getRelBcidHist(<unsigned int*&> rel_bcid_hist.data, <cpp_bool> copy)
-    def add_hits(self, cnp.ndarray[numpy_hit_info, ndim=1] hit_info, Nhits):
-        self.thisptr.addHits(<HitInfo*&> hit_info.data, <const unsigned int&> Nhits)
+    def get_occupancy(self):
+        self.thisptr.getOccupancy(Nparameter, <unsigned int*&> data_32, <cpp_bool> False)
+        if data_32 != NULL:
+            array = data_to_numpy_array_uint32(data_32, 80 * 336 * Nparameter)
+            return array.reshape((80, 336, Nparameter), order='F')  # make linear array to 3d array (col,row,parameter)
+    def get_tot_hist(self):
+        self.thisptr.getTotHist(<unsigned int*&> data_32, <cpp_bool> False)
+        if data_32 != NULL:
+            return data_to_numpy_array_uint32(data_32, 16)
+    def get_tdc_hist(self):
+        self.thisptr.getTdcHist(<unsigned int*&> data_32, <cpp_bool> False)
+        if data_32 != NULL:
+            return data_to_numpy_array_uint32(data_32, 4096)
+    def get_rel_bcid_hist(self):
+        self.thisptr.getRelBcidHist(<unsigned int*&> data_32, <cpp_bool> False)
+        if data_32 != NULL:
+            return data_to_numpy_array_uint32(data_32, 16)
+    def get_tot_pixel_hist(self):
+        self.thisptr.getTotPixelHist(<cnp.uint16_t*&> data_16, <cpp_bool> False)
+        if data_16 != NULL:
+            array = data_to_numpy_array_uint16(data_16, 80 * 336 * 16)
+            return array.reshape((80, 336, 16), order='F')  # make linear array to 3d array (col,row,parameter)
+    def get_tdc_pixel_hist(self):
+        self.thisptr.getTdcPixelHist(<cnp.uint16_t*&> data_16, <cpp_bool> False)
+        if data_16 != NULL:
+            array = data_to_numpy_array_uint16(data_16, 80 * 336 * 4096)
+            return array.reshape((80, 336, 4096), order='F')
+    def add_hits(self, cnp.ndarray[numpy_hit_info, ndim=1] hit_info):
+        self.thisptr.addHits(<HitInfo*&> hit_info.data, <const unsigned int&> hit_info.shape[0])
     def add_cluster_seed_hits(self, cnp.ndarray[numpy_cluster_info, ndim=1] cluster_info, Ncluster):
         self.thisptr.addClusterSeedHits(<ClusterInfo*&> cluster_info.data, <const unsigned int&> Ncluster)
     def add_scan_parameter(self, cnp.ndarray[cnp.uint32_t, ndim=1] parameter_info):

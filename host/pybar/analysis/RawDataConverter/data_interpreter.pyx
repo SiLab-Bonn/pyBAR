@@ -16,7 +16,6 @@ cdef extern from "Basis.h":
     cdef cppclass Basis:
         Basis()
 
-
 cdef extern from "Interpret.h":
     cdef cppclass MetaInfo:
         MetaInfo()
@@ -40,7 +39,7 @@ cdef extern from "Interpret.h":
         cpp_bool getFEI4B()
         cpp_bool getMetaTableV2()
 
-        void setHitsArray(HitInfo* &rHitInfo, const unsigned int &rSize)
+        void setHitsArraySize(const unsigned int &rSize)
 
         void setMetaData(MetaInfo*& rMetaInfo, const unsigned int& tLength) except +
         void setMetaDataV2(MetaInfoV2*& rMetaInfo, const unsigned int& tLength) except +
@@ -50,7 +49,7 @@ cdef extern from "Interpret.h":
 
         void interpretRawData(unsigned int* pDataWords, const unsigned int& pNdataWords) except +
 #         void getMetaEventIndex(unsigned int& rEventNumberIndex, unsigned int*& rEventNumber)
-        void getHits(unsigned int &rNhits, HitInfo* &rHitInfo)
+        void getHits(HitInfo*& rHitInfo, unsigned int& rSize, cpp_bool copy)
 
         void getServiceRecordsCounters(unsigned int*& rServiceRecordsCounter, unsigned int& rNserviceRecords, cpp_bool copy)  # returns the total service record counter array
         void getErrorCounters(unsigned int*& rErrorCounter, unsigned int& rNerrorCounters, cpp_bool copy)  # returns the total errors counter array
@@ -78,6 +77,18 @@ cdef extern from "Interpret.h":
         void reset()
         void resetMetaDataCounter()
 
+cdef cnp.uint32_t* data_32
+cdef HitInfo* hits
+cdef unsigned int n_entries = 0
+cdef data_to_numpy_array_uint32(cnp.uint32_t* ptr, cnp.npy_intp N):
+    cdef cnp.ndarray[cnp.uint32_t, ndim=1] arr = cnp.PyArray_SimpleNewFromData(1, <cnp.npy_intp*> &N, cnp.NPY_UINT32, <cnp.uint32_t*> ptr)
+    #PyArray_ENABLEFLAGS(arr, np.NPY_OWNDATA)
+    return arr
+cdef hit_dt = cnp.dtype([('eventNumber', '<i8'), ('triggerNumber', '<u4'), ('relativeBCID', '<u1'), ('LVLID', '<u2'), ('column', '<u1'), ('row', '<u2'), ('tot', '<u1'), ('BCID', '<u2'), ('TDC', '<u2'), ('TDCtimeStamp', '<u1'), ('triggerStatus', '<u1'), ('serviceRecord', '<u4'), ('eventStatus', '<u2')])
+cdef hit_data_to_numpy_array(void* ptr, cnp.npy_intp N):
+    cdef cnp.ndarray[numpy_hit_info, ndim=1] arr = cnp.PyArray_SimpleNewFromData(1, <cnp.npy_intp*> &N, cnp.NPY_INT8, <void*> ptr).view(hit_dt)
+    arr.setflags(write=False)  # protect the hit data
+    return arr
 
 cdef class PyDataInterpreter:
     cdef Interpret* thisptr  # hold a C++ instance which we're wrapping
@@ -95,11 +106,16 @@ cdef class PyDataInterpreter:
         self.thisptr.setWarningOutput(<cpp_bool> toggle)
     def set_error_output(self,toggle):
         self.thisptr.setErrorOutput(<cpp_bool> toggle)
-    def set_hits_array(self, cnp.ndarray[numpy_hit_info, ndim=1] hit_info):
-        self.thisptr.setHitsArray(<HitInfo*&> hit_info.data, <const unsigned int&> hit_info.shape[0])
+    def set_hits_array_size(self, size):
+        self.thisptr.setHitsArraySize(<const unsigned int&> size)
     def interpret_raw_data(self, cnp.ndarray[cnp.uint32_t, ndim=1] data):
         self.thisptr.interpretRawData(<unsigned int*> data.data, <unsigned int> data.shape[0])
         return data, data.shape[0]
+    def get_hits(self):
+        self.thisptr.getHits(<HitInfo*&> hits, <unsigned int&> n_entries, <cpp_bool> False)
+        if hits != NULL:
+            array = hit_data_to_numpy_array(hits, sizeof(HitInfo) * n_entries)
+            return array
     def set_meta_data(self, ndarray meta_data):  # set_meta_data(self, cnp.ndarray[numpy_meta_data, ndim=1] meta_data)
         meta_data_dtype = meta_data.dtype
         if meta_data_dtype == dtype_from_descr(MetaTable):
@@ -116,22 +132,22 @@ cdef class PyDataInterpreter:
         self.thisptr.setMetaDataEventIndex(<uint64_t*&> meta_data_event_index.data, <const unsigned int&> meta_data_event_index.shape[0])   
     def set_meta_data_word_index(self, cnp.ndarray[numpy_meta_word_data, ndim=1] meta_word_data):
         self.thisptr.setMetaDataWordIndex(<MetaWordInfoOut*&> meta_word_data.data, <const unsigned int&>  meta_word_data.shape[0])
-    def get_service_records_counters(self, cnp.ndarray[cnp.uint32_t, ndim=1] service_records_counters):
-        cdef unsigned int Ncounters = 0
-        self.thisptr.getServiceRecordsCounters(<unsigned int*&> service_records_counters.data, <unsigned int&> Ncounters, <cpp_bool> True)
-        return Ncounters
-    def get_error_counters(self, cnp.ndarray[cnp.uint32_t, ndim=1] error_counters):
-        cdef unsigned int NerrorCodes = 0
-        self.thisptr.getErrorCounters(<unsigned int*&> error_counters.data, <unsigned int&> NerrorCodes, <cpp_bool> True)
-        return NerrorCodes
-    def get_trigger_error_counters(self, cnp.ndarray[cnp.uint32_t, ndim=1] trigger_error_counters):
-        cdef unsigned int NtriggerErrorCodes = 0
-        self.thisptr.getTriggerErrorCounters(<unsigned int*&> trigger_error_counters.data, <unsigned int&> NtriggerErrorCodes, <cpp_bool> True)
-        return NtriggerErrorCodes
-    def get_tdc_counters(self, cnp.ndarray[cnp.uint32_t, ndim=1] tdc_counters):
-        cdef unsigned int NtdcCounters = 0
-        self.thisptr.getTdcCounters(<unsigned int*&> tdc_counters.data, <unsigned int&> NtdcCounters, <cpp_bool> True)
-        return NtdcCounters
+    def get_service_records_counters(self):
+        self.thisptr.getServiceRecordsCounters(<unsigned int*&> data_32, <unsigned int&> n_entries, <cpp_bool> False)
+        if data_32 != NULL:
+            return data_to_numpy_array_uint32(data_32, n_entries)
+    def get_error_counters(self):
+        self.thisptr.getErrorCounters(<unsigned int*&> data_32, <unsigned int&> n_entries, <cpp_bool> False)
+        if data_32 != NULL:
+            return data_to_numpy_array_uint32(data_32, n_entries)
+    def get_trigger_error_counters(self):
+        self.thisptr.getTriggerErrorCounters(<unsigned int*&> data_32, <unsigned int&> n_entries, <cpp_bool> False)
+        if data_32 != NULL:
+            return data_to_numpy_array_uint32(data_32, n_entries)
+    def get_tdc_counters(self):
+        self.thisptr.getTdcCounters(<unsigned int*&> data_32, <unsigned int&> n_entries, <cpp_bool> False)
+        if data_32 != NULL:
+            return data_to_numpy_array_uint32(data_32, n_entries)
     def get_n_array_hits(self):
         return <unsigned int> self.thisptr.getNarrayHits()
     def get_n_meta_data_word(self):
@@ -156,6 +172,8 @@ cdef class PyDataInterpreter:
         self.thisptr.resetCounters()
     def create_meta_data_word_index(self, value = True):
         self.thisptr.createMetaDataWordIndex(<cpp_bool> value)
+    def set_hit_array_size(self, size):
+        self.thisptr.setHitsArraySize(<const unsigned int&> size)
     def print_summary(self):
         self.thisptr.printSummary()
     def set_trig_count(self, trig_count):

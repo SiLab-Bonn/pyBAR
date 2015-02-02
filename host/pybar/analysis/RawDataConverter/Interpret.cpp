@@ -4,18 +4,19 @@ Interpret::Interpret(void)
 {
 	setSourceFileName("Interpret");
 	setStandardSettings();
+	allocateHitArray();
 	allocateHitBufferArray();
 	allocateTriggerErrorCounterArray();
 	allocateErrorCounterArray();
 	allocateTdcCounterArray();
 	allocateServiceRecordCounterArray();
 	reset();
-	_hitInfo = 0;
 }
 
 Interpret::~Interpret(void)
 {
 	debug("~Interpret(void): destructor called");
+	deleteHitArray();
 	deleteHitBufferArray();
 	deleteTriggerErrorCounterArray();
 	deleteErrorCounterArray();
@@ -26,6 +27,8 @@ Interpret::~Interpret(void)
 void Interpret::setStandardSettings()
 {
 	info("setStandardSettings()");
+	_hitInfoSize = 6e6;
+	_hitInfo = 0;
 	_hitIndex = 0;
 	_NbCID = 16;
 	_maxTot = 14;
@@ -323,11 +326,22 @@ bool Interpret::setMetaDataV2(MetaInfoV2* &rMetaInfo, const unsigned int& tLengt
 	return true;
 }
 
-void Interpret::setHitsArray(HitInfo* &rHitInfo, const unsigned int &rSize)
+void Interpret::getHits(HitInfo*& rHitInfo, unsigned int& rSize, bool copy)
 {
-	info("setHitsArray(...) with length "+IntToStr(rSize));
+    debug("getHits(...)");
+    if(copy)
+ 	    std::copy(_hitInfo, _hitInfo+_hitInfoSize, rHitInfo);
+    else
+	    rHitInfo = _hitInfo;
+    rSize = _hitIndex;
+}
+
+void Interpret::setHitsArraySize(const unsigned int &rSize)
+{
+	info("setHitsArraySize(...) with size "+IntToStr(rSize));
+	deleteHitArray();
 	_hitInfoSize = rSize;
-	_hitInfo = rHitInfo;
+	allocateHitArray();
 }
 
 void Interpret::setMetaDataEventIndex(uint64_t*& rEventNumber, const unsigned int& rSize)
@@ -644,7 +658,6 @@ void Interpret::storeHit(HitInfo& rHit)
 			_hitIndex++;
 		}
 		else{
-			error("storeHit: output hit array not set");
 			throw std::runtime_error("Output hit array not set.");
 		}
 	}
@@ -964,6 +977,27 @@ void Interpret::addTdcValue(const unsigned short& pTdcCode)
 		_tdcCounter[pTdcCode]+=1;
 }
 
+void Interpret::allocateHitArray()
+{
+	debug(std::string("allocateHitArray()"));
+	try{
+		_hitInfo = new HitInfo[_hitInfoSize];
+	}
+	catch(std::bad_alloc& exception){
+		error(std::string("allocateHitArray(): ")+std::string(exception.what()));
+		throw;
+	}
+}
+
+void Interpret::deleteHitArray()
+{
+	debug(std::string("deleteHitArray()"));
+	if (_hitInfo == 0)
+		return;
+	delete[] _hitInfo;
+	_hitInfo = 0;
+}
+
 void Interpret::allocateHitBufferArray()
 {
 	debug(std::string("allocateHitBufferArray()"));
@@ -972,6 +1006,7 @@ void Interpret::allocateHitBufferArray()
 	}
 	catch(std::bad_alloc& exception){
 		error(std::string("allocateHitBufferArray(): ")+std::string(exception.what()));
+		throw;
 	}
 }
 
