@@ -3,6 +3,7 @@ from time import time
 import re
 import os
 import sys
+import numpy as np
 from functools import wraps
 from threading import Event, Thread
 from Queue import Queue
@@ -11,6 +12,7 @@ from collections import namedtuple, Mapping
 from contextlib import contextmanager
 import abc
 import inspect
+import zmq
 from basil.dut import Dut
 
 from pybar.run_manager import RunBase, RunAborted
@@ -20,6 +22,16 @@ from pybar.daq.fifo_readout import FifoReadout, RxSyncError, EightbTenbError, Fi
 from pybar.daq.fei4_raw_data import open_raw_data_file
 from pybar.analysis.analysis_utils import AnalysisError
 from pybar.analysis.RawDataConverter.data_struct import NameValue
+
+
+def send_array(socket, array, name='not defined', flags=0, copy=True, track=False):
+    array_meta_data = dict(
+        name=name,
+        dtype=str(array.dtype),
+        shape=array.shape,
+    )
+    socket.send_json(array_meta_data, flags | zmq.SNDMORE | zmq.NOBLOCK)
+    return socket.send(array.tostring(), flags, copy=copy, track=track)
 
 
 class Fei4RunBase(RunBase):
@@ -38,6 +50,14 @@ class Fei4RunBase(RunBase):
         self.register_utils = None
 
         self.raw_data_file = None
+
+        try:
+            client_addr = self._run_conf['send_data']
+            self.socket = zmq.Context().socket(zmq.PUSH)
+            self.socket.bind(client_addr)
+            logging.info('Send data to %s' % client_addr)
+        except KeyError:
+            self.socket = None
 
     @property
     def working_dir(self):
@@ -231,6 +251,12 @@ class Fei4RunBase(RunBase):
 
     def handle_data(self, data):
         self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=False)
+        if self.socket:  # if socket is defined send the data
+            try:
+                if np.any(data[0]):
+                    send_array(self.socket, data[0], 'RawData')
+            except zmq.ZMQError:
+                pass
 
     def handle_err(self, exc):
         self.err_queue.put(exc)
@@ -271,7 +297,7 @@ class Fei4RunBase(RunBase):
         scan_parameters_old = self.scan_parameters._asdict()
         self.scan_parameters = self.scan_parameters._replace(**fields)
         scan_parameters_new = self.scan_parameters._asdict()
-        diff = [name for name in scan_parameters_old.keys() if scan_parameters_old[name] != scan_parameters_new[name]]
+        diff = [name for name in scan_parameters_old.keys() if np.any(scan_parameters_old[name] != scan_parameters_new[name])]
         if diff:
             logging.info('Changing scan parameter(s): %s' % (', '.join([('%s=%s' % (name, fields[name])) for name in diff])))
 
