@@ -3,7 +3,7 @@
 Histogram::Histogram(void)
 {
   setSourceFileName("Histogram");
-  //setDebugOutput(true);
+//  setDebugOutput(true);
   setStandardSettings();
 }
 
@@ -24,7 +24,6 @@ void Histogram::setStandardSettings()
     _metaEventIndex = 0;
 	_parInfo = 0;
 	_lastMetaEventIndex = 0;
-	_parInfo = 0;
 	_metaEventIndex = 0;
 	_occupancy = 0;
 	_relBcid = 0;
@@ -237,8 +236,10 @@ void Histogram::addScanParameter(unsigned int*& rParInfo, const unsigned int& rN
 
 	_NparameterValues = std::unique(tParameterValues.begin(), tParameterValues.end()) - tParameterValues.begin();
 
-	allocateOccupancyArray();
-	resetOccupancyArray();
+	if (_createOccHist){
+		allocateOccupancyArray();
+		resetOccupancyArray();
+	}
 	if (Basis::debugSet()){
 	  for(unsigned int i=0; i<_nParInfoLength; ++i)
 		 std::cout<<"index "<<i<<"\t parameter index "<<_parInfo[i]<<"\n";
@@ -289,27 +290,31 @@ void Histogram::resetOccupancyArray()
 void Histogram::resetTdcPixelArray()
 {
   info("resetTdcPixelArray()");
-  if (_tdcPixel != 0){
-	  for (unsigned int i = 0; i < RAW_DATA_MAX_COLUMN; i++)
-		for (unsigned int j = 0; j < RAW_DATA_MAX_ROW; j++)
-		  for(unsigned int k = 0; k < __N_TDC_PIXEL_VALUES;k++)
-			  _tdcPixel[(long)i + (long)j * (long)RAW_DATA_MAX_COLUMN + (long)k * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] = 0;
+  if (_createTdcPixelHist){
+	  if (_tdcPixel != 0){
+		  for (unsigned int i = 0; i < RAW_DATA_MAX_COLUMN; i++)
+			for (unsigned int j = 0; j < RAW_DATA_MAX_ROW; j++)
+			  for(unsigned int k = 0; k < __N_TDC_PIXEL_VALUES;k++)
+				  _tdcPixel[(long)i + (long)j * (long)RAW_DATA_MAX_COLUMN + (long)k * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] = 0;
+	  }
+	  else
+		  throw std::runtime_error("Output TDC pixel array array not set.");
   }
-  else
-	  throw std::runtime_error("Output TDC pixel array array not set.");
 }
 
 void Histogram::resetTotPixelArray()
 {
   info("resetTotPixelArray()");
-  if (_totPixel != 0){
-	  for (unsigned int i = 0; i < RAW_DATA_MAX_COLUMN; i++)
-		for (unsigned int j = 0; j < RAW_DATA_MAX_ROW; j++)
-		  for(unsigned int k = 0; k < 16;k++)
-			  _totPixel[(long)i + (long)j * (long)RAW_DATA_MAX_COLUMN + (long)k * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] = 0;
+  if (_createTotPixelHist){
+	  if (_totPixel != 0){
+		  for (unsigned int i = 0; i < RAW_DATA_MAX_COLUMN; i++)
+			for (unsigned int j = 0; j < RAW_DATA_MAX_ROW; j++)
+			  for(unsigned int k = 0; k < 16;k++)
+				  _totPixel[(long)i + (long)j * (long)RAW_DATA_MAX_COLUMN + (long)k * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] = 0;
+	  }
+	  else
+		  throw std::runtime_error("Output TOT pixel array array not set.");
   }
-  else
-	  throw std::runtime_error("Output TOT pixel array array not set.");
 }
 
 void Histogram::allocateTotArray()
@@ -339,18 +344,22 @@ void Histogram::allocateTdcArray()
 void Histogram::resetTotArray()
 {
   info("resetTotArray()");
-  if (_tot != 0){
-	  for (unsigned int i = 0; i < 16; i++)
-		_tot[(long)i] = 0;
+  if (_createTotHist){
+	  if (_tot != 0){
+		  for (unsigned int i = 0; i < 16; i++)
+			_tot[(long)i] = 0;
+	  }
   }
 }
 
 void Histogram::resetTdcArray()
 {
   info("resetTdcArray()");
-  if (_tdc != 0){
-	  for (unsigned int i = 0; i < __N_TDC_VALUES; i++)
-		_tdc[(long)i] = 0;
+  if (_createTdcHist){
+	  if (_tdc != 0){
+		  for (unsigned int i = 0; i < __N_TDC_VALUES; i++)
+			_tdc[(long)i] = 0;
+	  }
   }
 }
   
@@ -385,9 +394,11 @@ void Histogram::allocateRelBcidArray()
 void Histogram::resetRelBcidArray()
 {
   info("resetRelBcidArray()");
-  if (_relBcid != 0){
-	  for (unsigned int i = 0; i < __MAXBCID; i++)
-		_relBcid[(long)i] = 0;
+  if (_createRelBCIDhist){
+	  if (_relBcid != 0){
+		  for (unsigned int i = 0; i < __MAXBCID; i++)
+			_relBcid[(long)i] = 0;
+	  }
   }
 }
   

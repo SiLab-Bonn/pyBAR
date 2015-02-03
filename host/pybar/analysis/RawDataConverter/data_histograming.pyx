@@ -54,7 +54,7 @@ cdef extern from "Histogram.h":
 
         void calculateThresholdScanArrays(double rMuArray[], double rSigmaArray[], const unsigned int& rMaxInjections, const unsigned int& min_parameter, const unsigned int& max_parameter)  # takes the occupancy histograms for different parameters for the threshold arrays
 
-        void reset()
+        void reset() except +
         void test()
 
 cdef data_to_numpy_array_uint16(cnp.uint16_t* ptr, cnp.npy_intp N):
