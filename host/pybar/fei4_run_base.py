@@ -24,14 +24,22 @@ from pybar.analysis.analysis_utils import AnalysisError
 from pybar.analysis.RawDataConverter.data_struct import NameValue
 
 
-def send_array(socket, array, name='not defined', flags=0, copy=True, track=False):
-    array_meta_data = dict(
-        name=name,
-        dtype=str(array.dtype),
-        shape=array.shape,
-    )
-    socket.send_json(array_meta_data, flags | zmq.SNDMORE | zmq.NOBLOCK)
-    return socket.send(array.tostring(), flags, copy=copy, track=track)
+def send_data(socket, data, scan_parameters, name='FEI4readoutData', flags=0, copy=True, track=False):
+    if socket and data:  # if socket is defined send the data
+        try:
+            data_meta_data = dict(
+                name=name,
+                dtype=str(data[0].dtype),
+                shape=data[0].shape,
+                timestamp_start=data[1],
+                timestamp_stop=data[2],
+                readout_error=float(data[3]),
+                scan_parameters=scan_parameters
+            )
+            socket.send_json(data_meta_data, flags | zmq.SNDMORE | zmq.NOBLOCK)
+            return socket.send(data[0].tostring(), flags, copy=copy, track=track)
+        except zmq.ZMQError:
+            pass
 
 
 class Fei4RunBase(RunBase):
@@ -251,12 +259,7 @@ class Fei4RunBase(RunBase):
 
     def handle_data(self, data):
         self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=False)
-        if self.socket:  # if socket is defined send the data
-            try:
-                if np.any(data[0]):
-                    send_array(self.socket, data[0], 'RawData')
-            except zmq.ZMQError:
-                pass
+        send_data(self.socket, data, self.scan_parameters._asdict())
 
     def handle_err(self, exc):
         self.err_queue.put(exc)
