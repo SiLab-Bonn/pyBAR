@@ -5,6 +5,10 @@ branches:
   only:
     - master
     - development
+notifications:
+  email:
+    - janssen@physik.uni-bonn.de
+    - pohl@physik.uni-bonn.de
  
 # Setup anaconda in a new virtual environment
 before_install:
