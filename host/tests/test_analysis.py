@@ -343,5 +343,6 @@ class TestAnalysis(unittest.TestCase):
             self.assertTrue(exception_ok & np.all(array == array_fast))
 
 if __name__ == '__main__':
+    tests_data_folder = 'test_analysis//'
     suite = unittest.TestLoader().loadTestsFromTestCase(TestAnalysis)
     unittest.TextTestRunner(verbosity=2).run(suite)
