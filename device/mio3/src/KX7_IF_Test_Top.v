@@ -25,10 +25,10 @@ module KX7_IF_Test_Top(
 (* IOB = "FORCE" *)  input wire fx3_wr,  // force IOB register
 (* IOB = "FORCE" *)	 input wire fx3_cs, // async. signal
 (* IOB = "FORCE" *)	 input wire fx3_oe, // async. signal
-	input wire fx3_rst,// async. signal; currently comes from button, not from FX3
+	input wire fx3_rst, // async. signal from FX3, active high
 (* IOB = "FORCE" *)  output wire fx3_ack,// force IOB register
 (* IOB = "FORCE" *)	 output wire fx3_rdy,// force IOB register
-    output wire reset_fx3,
+//    output wire reset_fx3,
     inout wire [31:0] fx3_bus, // 32 bit databus
 
 // 200 MHz oscillator
@@ -43,7 +43,7 @@ module KX7_IF_Test_Top(
    
 (* IOB = "FORCE" *) output wire fx3_rd_finish,
    
-    input wire Reset_button2,// async. signal
+    input wire Reset_button,// async. signal
    
     input wire FLAG1, // was DMA Flag; currently connected to TEST signal from FX3
 (* IOB = "FORCE" *) input wire FLAG2, // DMA watermark flag for thread 2 of FX3
@@ -66,7 +66,7 @@ module KX7_IF_Test_Top(
     
 );
 
-assign reset_fx3 = 1; // not to reset fx3 while loading fpga
+//assign reset_fx3 = 1; // not to reset fx3 while loading fpga
 
 assign EN_VD1 = 1;
 assign EN_VD2 = 1;
@@ -82,8 +82,8 @@ wire BUS_RD, BUS_WR, BUS_RST, BUS_CLK;
 wire BUS_BYTE_ACCESS;
 assign BUS_BYTE_ACCESS = (BUS_ADD < 32'h8000_0000) ? 1'b1 : 1'b0;
 
-wire PLL_RST;
-assign PLL_RST = ((!fx3_rst)|(!LOCKED));
+wire RST;
+assign RST = ((fx3_rst)|(!LOCKED)|(!Reset_button)); // Button is acticve low
 
 FX3_IF  FX3_IF_inst (
     .fx3_bus(fx3_bus),
@@ -94,8 +94,7 @@ FX3_IF  FX3_IF_inst (
     .fx3_rdy(fx3_rdy),
     .fx3_ack(fx3_ack),
     .fx3_rd_finish(fx3_rd_finish),
-    .fx3_rst(PLL_RST), // PLL is reset first
-//    .fx3_rst(fx3_rst), // Comment before synthesis and uncomment previous line
+    .fx3_rst(RST), // PLL is reset first
 
     .BUS_CLK(BUS_CLK),
     .BUS_RST(BUS_RST),
@@ -111,9 +110,6 @@ FX3_IF  FX3_IF_inst (
 
 wire clk40mhz_pll, clk320mhz_pll, clk160mhz_pll, clk16mhz_pll;
 wire pll_feedback, LOCKED;
-
-wire fx3_rst_bar;
-assign fx3_rst_bar = (!fx3_rst);
 
 PLLE2_BASE #(
     .BANDWIDTH("OPTIMIZED"),  // OPTIMIZED, HIGH, LOW
@@ -159,7 +155,7 @@ PLLE2_BASE #(
     
      // Control Ports
      .PWRDWN(0),
-     .RST(fx3_rst_bar), // Button is active low
+     .RST(fx3_rst), // Reset from FX3
     
      // Feedback
      .CLKFBIN(pll_feedback)
