@@ -293,9 +293,9 @@ set_property SLEW FAST [get_ports fx3_oe]
 # The conversion of 'SLEW' constraint on 'net' object 'fx3_aden' has been applied to the port object 'fx3_aden'.
 #set_property SLEW FAST [get_ports fx3_aden]
 # GPIO28 (AD1)
-#set_property PACKAGE_PIN J25 [get_ports fx3_rst]
+set_property PACKAGE_PIN J25 [get_ports fx3_rst]
 # Button!
-set_property PACKAGE_PIN AF22 [get_ports fx3_rst]
+#set_property PACKAGE_PIN AF22 [get_ports fx3_rst]
 # D:/redmine_svn/usb/FX3device/branches/Hans/KX7 firmware/Mercury KX1.ucf:41
 # The conversion of 'IOSTANDARD' constraint on 'net' object 'fx3_rst' has been applied to the port object 'fx3_rst'.
 set_property IOSTANDARD LVCMOS33 [get_ports fx3_rst]
@@ -375,9 +375,9 @@ set_property IOSTANDARD LVCMOS33 [get_ports {led[8]}]
 # The conversion of 'SLEW' constraint on 'net' object 'led[8]' has been applied to the port object 'led[8]'.
 set_property SLEW SLOW [get_ports {led[8]}]
 
-set_property PACKAGE_PIN P20 [get_ports reset_fx3]
-set_property IOSTANDARD LVCMOS33 [get_ports reset_fx3]
-set_property SLEW SLOW [get_ports reset_fx3]
+#set_property PACKAGE_PIN P20 [get_ports reset_fx3]
+#set_property IOSTANDARD LVCMOS33 [get_ports reset_fx3]
+#set_property SLEW SLOW [get_ports reset_fx3]
 
 set_property PACKAGE_PIN K22 [get_ports fx3_rd_finish]
 set_property IOSTANDARD LVCMOS33 [get_ports fx3_rd_finish]
@@ -387,9 +387,9 @@ set_property SLEW FAST [get_ports fx3_rd_finish]
 #set_property IOSTANDARD LVCMOS33 [get_ports fx3_dma_rdy]
 #set_property SLEW FAST [get_ports fx3_dma_rdy]
 
-set_property PACKAGE_PIN K25 [get_ports Reset_button2]
-set_property IOSTANDARD LVCMOS33 [get_ports Reset_button2]
-set_property SLEW FAST [get_ports Reset_button2]
+set_property PACKAGE_PIN AF22 [get_ports Reset_button]
+set_property IOSTANDARD LVCMOS33 [get_ports Reset_button]
+set_property SLEW FAST [get_ports Reset_button]
 
 set_property PACKAGE_PIN J24 [get_ports FLAG1]
 set_property IOSTANDARD LVCMOS33 [get_ports FLAG1]
@@ -426,38 +426,38 @@ set_property IOSTANDARD LVCMOS33 [get_ports CMD_DATA]
 set_property PACKAGE_PIN U24 [get_ports CMD_DATA]
 
 # FE-I4_rx signals
-set_property SLEW SLOW [get_ports DOBOUT[3]]
-set_property IOSTANDARD LVCMOS33 [get_ports DOBOUT[3]]
-set_property PACKAGE_PIN U25 [get_ports DOBOUT[3]]
+set_property SLEW SLOW [get_ports {DOBOUT[3]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {DOBOUT[3]}]
+set_property PACKAGE_PIN U25 [get_ports {DOBOUT[3]}]
 
-set_property SLEW SLOW [get_ports DOBOUT[2]]
-set_property IOSTANDARD LVCMOS33 [get_ports DOBOUT[2]]
-set_property PACKAGE_PIN M26 [get_ports DOBOUT[2]]
+set_property SLEW SLOW [get_ports {DOBOUT[2]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {DOBOUT[2]}]
+set_property PACKAGE_PIN M26 [get_ports {DOBOUT[2]}]
 
-set_property SLEW SLOW [get_ports DOBOUT[1]]
-set_property IOSTANDARD LVCMOS33 [get_ports DOBOUT[1]]
-set_property PACKAGE_PIN AC26 [get_ports DOBOUT[1]]
+set_property SLEW SLOW [get_ports {DOBOUT[1]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {DOBOUT[1]}]
+set_property PACKAGE_PIN AC26 [get_ports {DOBOUT[1]}]
 
-set_property SLEW SLOW [get_ports DOBOUT[0]]
-set_property IOSTANDARD LVCMOS33 [get_ports DOBOUT[0]]
-set_property PACKAGE_PIN AE21 [get_ports DOBOUT[0]]
+set_property SLEW SLOW [get_ports {DOBOUT[0]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {DOBOUT[0]}]
+set_property PACKAGE_PIN AE21 [get_ports {DOBOUT[0]}]
 
 # OC signals
-set_property SLEW SLOW [get_ports OC[3]]
-set_property IOSTANDARD LVCMOS33 [get_ports OC[3]]
-set_property PACKAGE_PIN C19 [get_ports OC[3]]
+set_property SLEW SLOW [get_ports {OC[3]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {OC[3]}]
+set_property PACKAGE_PIN C19 [get_ports {OC[3]}]
 
-set_property SLEW SLOW [get_ports OC[2]]
-set_property IOSTANDARD LVCMOS33 [get_ports OC[2]]
-set_property PACKAGE_PIN B17 [get_ports OC[2]]
+set_property SLEW SLOW [get_ports {OC[2]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {OC[2]}]
+set_property PACKAGE_PIN B17 [get_ports {OC[2]}]
 
-set_property SLEW SLOW [get_ports OC[1]]
-set_property IOSTANDARD LVCMOS33 [get_ports OC[1]]
-set_property PACKAGE_PIN B15 [get_ports OC[1]]
+set_property SLEW SLOW [get_ports {OC[1]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {OC[1]}]
+set_property PACKAGE_PIN B15 [get_ports {OC[1]}]
 
-set_property SLEW SLOW [get_ports OC[0]]
-set_property IOSTANDARD LVCMOS33 [get_ports OC[0]]
-set_property PACKAGE_PIN B12 [get_ports OC[0]]
+set_property SLEW SLOW [get_ports {OC[0]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {OC[0]}]
+set_property PACKAGE_PIN B12 [get_ports {OC[0]}]
 
 #####################################
 
@@ -485,3 +485,6 @@ set_false_path -from [get_clocks clk40mhz_pll] -to [get_clocks fx3_pclk_100MHz]
 set_false_path -from [get_clocks clk320mhz_pll] -to [get_clocks fx3_pclk_100MHz]
 set_false_path -from [get_clocks clk160mhz_pll] -to [get_clocks fx3_pclk_100MHz]
 set_false_path -from [get_clocks clk16mhz_pll] -to [get_clocks fx3_pclk_100MHz]
+
+
+set_property BITSTREAM.CONFIG.UNUSEDPIN PULLUP [current_design]
