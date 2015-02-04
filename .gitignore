@@ -54,3 +54,4 @@ scc_*/
 # PyDev files
 .project
 .pydevproject
+mio3.cache
