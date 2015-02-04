@@ -30,8 +30,8 @@ Prerequisites:
   pip install https://github.com/walac/pyusb/archive/master.zip
 - pySiLibUSB (>=1.0.0):
   pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/695/pySiLibUSB-2.0.2.tar.gz
-- Basil (>=2.0.0):
-  pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/671/Basil-2.0.0.zip
+- Basil (>=2.0.2):
+  pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/719/Basil-2.0.2.tar.gz
 - progressbar (>=2.4):
   pip install progressbar-latest
 
@@ -49,10 +49,8 @@ Run tests from tests folder.
 Usage:
 -----
 Two methods are available:
-1. Directly run scans/tunings inside the /host/pybar/scans/ folder. Just double click the .py file or run them from a IDE.
-   This is the quick and dirty method. Very effective. Change run parameters either inside each python file (_default_run_conf) or change configuration file (configuration.yaml).
-2. Use RunManager to run scans from primlist (via run_primlist() method) or to run a single scan (via run_run() method).
-   This is the preferred method for longer sessions. Once the RunManager is initialized, it eases the way to run multiple scans/tunings in a row.
-   An interactive python shell (e.g. IPython) makes the workflow even simpler.
 
-Please read the examples in the examples folder.
+Directly run scans/tunings inside the /host/pybar/scans/ folder. Just double click the .py file or run them from a IDE. This is the quick and dirty method. Very effective. Change run parameters either inside each python file (_default_run_conf dictionary) or change configuration file (configuration.yaml).
+Use RunManager to run scans from primlist (via run_primlist() method) or to run a single scan (via run_run() method). This is the preferred method for longer sessions. Once the RunManager is initialized, it eases the way to run multiple scans/tunings in a row.
+
+Please note the examples in the examples folder.
