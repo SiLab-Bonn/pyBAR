@@ -5,6 +5,8 @@ import unittest
 import shutil
 import mock
 from Queue import Empty
+import subprocess
+import time
 
 from pybar.run_manager import RunManager
 from pybar.scans.test_register import RegisterTest
@@ -43,8 +45,11 @@ class TestInterface(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        pass
-
+        
+        subprocess.call('unzip -o test_interface//sim_build.zip', shell=True)
+        subprocess.Popen(['make','-f','..//..//device//MultiIO//FPGA//cosim//Makefile','sim_only'])
+        time.sleep(180) #some time for simulator to start
+        
     @classmethod
     def tearDownClass(cls):
         shutil.rmtree('test_interface//scan_unittests', ignore_errors=True)

@@ -12,6 +12,8 @@ notifications:
  
 # Setup anaconda in a new virtual environment
 before_install:
+  - sudo add-apt-repository -y ppa:team-electronics/ppa
+  - sudo apt-get update -qq
   - wget http://repo.continuum.io/archive/Anaconda-2.1.0-Linux-x86_64.sh -O anaconda.sh
   - chmod +x anaconda.sh
   - ./anaconda.sh -b
@@ -20,19 +22,22 @@ before_install:
   - conda update --yes anaconda
 #  - conda create --yes -n anacondaenv python=$TRAVIS_PYTHON_VERSION
 #  - source activate anacondaenv
+  - wget -O cocotb-master.zip https://github.com/potentialventures/cocotb/archive/master.zip 
+  - unzip cocotb-master.zip
+  - export COCOTB=$(pwd)/cocotb-master
   - cd host
 # The next couple lines fix a crash with multiprocessing on Travis and are not specific to using Miniconda
   - sudo rm -rf /dev/shm
   - sudo ln -s /run/shm /dev/shm
-
 # Install pybar with needed packages
 install:
   - pip install https://github.com/walac/pyusb/archive/master.zip
   - pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/695/pySiLibUSB-2.0.2.tar.gz
   - pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/719/Basil-2.0.2.tar.gz
   - pip install progressbar-latest
+  - sudo apt-get install -qq iverilog-daily
   - python setup.py develop
  
 # Run test
 script:
-- nosetests tests/test_analysis.py --logging-level=INFO
+- cd test; nosetests test_analysis.py test_interface.py --logging-level=INFO
