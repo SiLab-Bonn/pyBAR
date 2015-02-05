@@ -266,7 +266,7 @@ class FifoReadout(object):
         if channels:
             filter(lambda channel: self.dut[channel]['SOFT_RESET'], channels)
         else:
-            if self.dut.name == 'usbpix':
+            if self.dut.name == 'usbpix' or self.dut.name == 'usbpix_sim':
                 filter(lambda channel: self.dut[channel]['SOFT_RESET'], ['rx_1', 'rx_2', 'rx_3', 'rx_4'])
             elif self.dut.name == 'usbpix_gpac':
                 filter(lambda channel: self.dut[channel]['SOFT_RESET'], ['rx_fe'])
@@ -276,7 +276,7 @@ class FifoReadout(object):
         if channels:
             return map(lambda channel: True if self.dut[channel]['READY'] else False, channels)
         else:
-            if self.dut.name == 'usbpix':
+            if self.dut.name == 'usbpix' or self.dut.name == 'usbpix_sim':
                 return map(lambda channel: True if self.dut[channel]['READY'] else False, ['rx_1', 'rx_2', 'rx_3', 'rx_4'])
             elif self.dut.name == 'usbpix_gpac':
                 return map(lambda channel: True if self.dut[channel]['READY'] else False, ['rx_fe'])
@@ -285,7 +285,7 @@ class FifoReadout(object):
         if channels:
             return map(lambda channel: self.dut[channel]['DECODER_ERROR_COUNTER'], channels)
         else:
-            if self.dut.name == 'usbpix':
+            if self.dut.name == 'usbpix' or self.dut.name == 'usbpix_sim':
                 return map(lambda channel: self.dut[channel]['DECODER_ERROR_COUNTER'], ['rx_1', 'rx_2', 'rx_3', 'rx_4'])
             elif self.dut.name == 'usbpix_gpac':
                 return map(lambda channel: self.dut[channel]['DECODER_ERROR_COUNTER'], ['rx_fe'])
@@ -294,7 +294,7 @@ class FifoReadout(object):
         if channels:
             return map(lambda channel: self.dut[channel]['LOST_DATA_COUNTER'], channels)
         else:
-            if self.dut.name == 'usbpix':
+            if self.dut.name == 'usbpix' or self.dut.name == 'usbpix_sim':
                 return map(lambda channel: self.dut[channel]['LOST_DATA_COUNTER'], ['rx_1', 'rx_2', 'rx_3', 'rx_4'])
             elif self.dut.name == 'usbpix_gpac':
                 return map(lambda channel: self.dut[channel]['LOST_DATA_COUNTER'], ['rx_fe'])

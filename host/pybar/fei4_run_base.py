@@ -156,7 +156,7 @@ class Fei4RunBase(RunBase):
                         self.dut.init(dut_configuration)
                     else:
                         self.dut.init(self.conf['dut_configuration'])
-                elif self.dut.name == 'usbpix':
+                elif self.dut.name == 'usbpix' or self.dut.name == 'usbpix_sim':
                     self.dut.init(os.path.join(module_path, 'dut_configuration_usbpix.yaml'))
                 elif self.dut.name == 'usbpix_gpac':
                     self.dut.init(os.path.join(module_path, 'dut_configuration_usbpix_gpac.yaml'))
@@ -195,6 +195,14 @@ class Fei4RunBase(RunBase):
                     self.dut['rx']['TLU'] = 1
                     self.dut['rx']['TDC'] = 1
                     self.dut['rx']['CCPD_TDC'] = 0
+                    self.dut['rx'].write()
+                elif self.dut.name == 'usbpix_sim':
+                    self.dut['rx']['CH1'] = 1
+                    self.dut['rx']['CH2'] = 0
+                    self.dut['rx']['CH3'] = 0
+                    self.dut['rx']['CH4'] = 0
+                    self.dut['rx']['TLU'] = 0
+                    self.dut['rx']['TDC'] = 0
                     self.dut['rx'].write()
                 else:
                     logging.warning('Unknown DUT name: %s. DUT may not be set up properly' % self.dut.name)
