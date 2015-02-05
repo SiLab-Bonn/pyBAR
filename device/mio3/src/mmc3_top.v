@@ -19,7 +19,7 @@
 //
 //////////////////////////////////////////////////////////////////////////////////
 
-module KX7_IF_Test_Top(
+module mmc3_top(
 // FX 3 interface
 	input wire fx3_pclk_100MHz,
 (* IOB = "FORCE" *)  input wire fx3_wr,  // force IOB register
@@ -40,6 +40,8 @@ module KX7_IF_Test_Top(
 
 // GPIO	 
     output wire [8:1] led,
+    
+    output wire [3:0] PWR_EN,
    
 (* IOB = "FORCE" *) output wire fx3_rd_finish,
    
@@ -59,10 +61,7 @@ module KX7_IF_Test_Top(
 (* IOB = "FORCE" *) output wire CMD_DATA,
     
 // FE-I4_rx signals
-(* IOB = "FORCE" *) input wire [3:0] DOBOUT,
-
-// Over Current Protection (BIC only)
-    input wire [3:0] OC
+(* IOB = "FORCE" *) input wire DOBOUT
     
 );
 
@@ -185,8 +184,14 @@ PLLE2_BASE #(
  
 // -------  MODULE ADREESSES  ------- //
  localparam CMD_BASEADDR = 32'h0000;
- localparam CMD_HIGHADDR = 32'h8000-1;
+ localparam CMD_HIGHADDR = 32'h1000-1;
  
+ localparam GPIO1_BASEADDR = 32'h1000;
+ localparam GPIO1_HIGHADDR = 32'h1003; 
+ 
+ localparam GPIO2_BASEADDR = 32'h1004;
+ localparam GPIO2_HIGHADDR = 32'h1007;
+  
  localparam FIFO_BASEADDR = 32'h8100;
  localparam FIFO_HIGHADDR = 32'h8200-1;
 
@@ -207,9 +212,45 @@ PLLE2_BASE #(
  
  localparam ABUSWIDTH = 32;
  
-// Command sequencer
 wire CMD_EXT_START_FLAG;
 assign CMD_EXT_START_FLAG = 0;
+
+
+gpio
+#(
+    .BASEADDR(GPIO1_BASEADDR),
+    .HIGHADDR(GPIO1_HIGHADDR),
+    .ABUSWIDTH(ABUSWIDTH),
+    .IO_WIDTH(8),
+    .IO_DIRECTION(8'hff),
+    .IO_TRI(0)
+)gpio1(
+    .BUS_CLK(BUS_CLK), 
+    .BUS_RST(BUS_RST),
+    .BUS_ADD(BUS_ADD),
+    .BUS_DATA(BUS_DATA[7:0]),
+    .BUS_RD(BUS_RD),
+    .BUS_WR(BUS_WR),
+    .IO(led)
+);
+
+gpio
+#(
+    .BASEADDR(GPIO2_BASEADDR),
+    .HIGHADDR(GPIO2_HIGHADDR),
+    .ABUSWIDTH(ABUSWIDTH),
+    .IO_WIDTH(8),
+    .IO_DIRECTION(8'hff),
+    .IO_TRI(0)
+)gpio2(
+    .BUS_CLK(BUS_CLK), 
+    .BUS_RST(BUS_RST),
+    .BUS_ADD(BUS_ADD),
+    .BUS_DATA(BUS_DATA[7:0]),
+    .BUS_RD(BUS_RD),
+    .BUS_WR(BUS_WR),
+    .IO(PWR_EN[3:0])
+);
 
 cmd_seq 
 #( 
@@ -233,15 +274,14 @@ cmd_seq
     .CMD_START_FLAG()
 );
 
-// FE-I4 RXs
 parameter DSIZE = 10;
-wire [3:0] FIFO_READ, FIFO_EMPTY;
-wire [31:0] FIFO_DATA [3:0];
+wire FIFO_READ, FIFO_EMPTY;
+wire [31:0] FIFO_DATA;
 //assign FIFO_READ = 0;
 
 genvar i;
 generate
-  for (i = 0; i < 4; i = i + 1) begin: rx_gen
+  for (i = 3; i < 4; i = i + 1) begin: rx_gen
     fei4_rx 
     #(
         .BASEADDR(RX1_BASEADDR-32'h0100*i),
@@ -254,15 +294,15 @@ generate
         .RX_CLK2X(clk320mhz),
         .DATA_CLK(clk16mhz),
         
-        .RX_DATA(DOBOUT[i]),
+        .RX_DATA(DOBOUT),
         
-        .RX_READY(led[i+1]),
+        .RX_READY(),
         .RX_8B10B_DECODER_ERR(),
         .RX_FIFO_OVERFLOW_ERR(),
          
-        .FIFO_READ(FIFO_READ[i]),
-        .FIFO_EMPTY(FIFO_EMPTY[i]),
-        .FIFO_DATA(FIFO_DATA[i]),
+        .FIFO_READ(FIFO_READ),
+        .FIFO_EMPTY(FIFO_EMPTY),
+        .FIFO_DATA(FIFO_DATA),
         
         .RX_FIFO_FULL(),
          
@@ -276,31 +316,6 @@ generate
   end
 endgenerate
 
-// Arbiter
-wire ARB_READY_OUT, ARB_WRITE_OUT;
-wire [31:0] ARB_DATA_OUT;
-wire [3:0] READ_GRANT;
-
-rrp_arbiter
-#( 
-    .WIDTH(4)
-) i_rrp_arbiter (
-    .RST(BUS_RST),
-    .CLK(BUS_CLK),
-
-    .WRITE_REQ(~FIFO_EMPTY),
-    .HOLD_REQ({4'b0}),
-    .DATA_IN({FIFO_DATA[3],FIFO_DATA[2],FIFO_DATA[1], FIFO_DATA[0]}),
-    .READ_GRANT(READ_GRANT),
-
-    .READY_OUT(ARB_READY_OUT),
-    .WRITE_OUT(ARB_WRITE_OUT),
-    .DATA_OUT(ARB_DATA_OUT)
-);
-
-assign FIFO_READ = READ_GRANT[3:0];
-
-// BRAM
 wire FIFO_NOT_EMPTY, FIFO_FULL, FIFO_NEAR_FULL, FIFO_READ_ERROR;
 
 bram_fifo 
@@ -318,9 +333,9 @@ bram_fifo
     .BUS_RD(BUS_RD),
     .BUS_WR(BUS_WR),
 
-    .FIFO_READ_NEXT_OUT(ARB_READY_OUT),
-    .FIFO_EMPTY_IN(!ARB_WRITE_OUT),
-    .FIFO_DATA(ARB_DATA_OUT),
+    .FIFO_READ_NEXT_OUT(FIFO_READ),
+    .FIFO_EMPTY_IN(FIFO_EMPTY),
+    .FIFO_DATA(FIFO_DATA),
 
     .FIFO_NOT_EMPTY(FIFO_NOT_EMPTY),
     .FIFO_FULL(FIFO_FULL),
@@ -328,10 +343,10 @@ bram_fifo
     .FIFO_READ_ERROR(FIFO_READ_ERROR)
 );
 
-assign led[5] = FIFO_NOT_EMPTY;
-assign led[6] = FIFO_FULL;
-assign led[7] = FIFO_NEAR_FULL;
-assign led[8] = FIFO_READ_ERROR;
+//assign led[5] = FIFO_NOT_EMPTY;
+//assign led[6] = FIFO_FULL;
+//assign led[7] = FIFO_NEAR_FULL;
+//assign led[8] = FIFO_READ_ERROR;
 
 /*always @ (posedge BUS_CLK)
 begin

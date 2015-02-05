@@ -24,7 +24,8 @@ The features of the host software in Python and C++:
 - full control over FE command generation
 - sending an arbitrary bit stream/configuration sequence to FE of any desired frame length and/or format
 - readout of full FE data including timestamps, storing of the compressed data to HDF5 file
-- ultra fast raw data analysis and validity checking
+- ultra fast raw data analysis, event-, cluster building and validity checking
+- real time online monitor (< 100 ms latency)
 - rapid development of new scan algorithms
 
 Installation:

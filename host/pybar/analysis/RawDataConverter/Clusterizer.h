@@ -39,18 +39,22 @@ class Clusterizer: public Basis
 public:
 	Clusterizer(void);
 	~Clusterizer(void);
+	//main functions
+	void addHits(HitInfo*& rHitInfo, const unsigned int& rNhits);		//add hits to cluster, starts clustering, warning hits have to be aligned at events
+	void getHitCluster(ClusterHitInfo*& rClusterHitInfo, unsigned int& rSize, bool copy=false);
+	void getCluster(ClusterInfo*& rClusterHitInfo, unsigned int& rSize, bool copy=false);
+	void reset();														//resets all data but keeps the settings and the charge calibration
+	// get result histograms
+	void getClusterSizeHist(unsigned int& rNparameterValues, unsigned int*& rClusterSize, bool copy = false);
+	void getClusterTotHist(unsigned int& rNparameterValues, unsigned int*& rClusterTot, bool copy = false);
+	void getClusterChargeHist(unsigned int& rNparameterValues, unsigned int*& rClusterCharge, bool copy = false);  // no rested in reset function, deactivated at the moment since not used
+	void getClusterPositionHist(unsigned int& rNparameterValues, unsigned int*& rClusterPosition, bool copy = false);  // no rested in reset function, deactivated at the moment since not used
 
+	//options
 	void createClusterHitInfoArray(bool toggle = true){_createClusterHitInfoArray = toggle;};
 	void createClusterInfoArray(bool toggle = true){_createClusterInfoArray = toggle;};
-
-	void setClusterHitInfoArray(ClusterHitInfo*& rClusterHitInfo, const unsigned int& rSize);	//set pointer to the cluster hit array to be filled
-	void setClusterInfoArray(ClusterInfo*& rClusterHitInfo, const unsigned int& rSize);			//set pointer to the cluster array to be filled
-
-	void getClusterSizeHist(unsigned int& rNparameterValues, unsigned int*& rClusterSize, bool copy = true);
-	void getClusterTotHist(unsigned int& rNparameterValues, unsigned int*& rClusterTot, bool copy = true);
-	void getClusterChargeHist(unsigned int& rNparameterValues, unsigned int*& rClusterCharge, bool copy = true);  // no rested in reset function, deactivated at the moment since not used
-	void getClusterPositionHist(unsigned int& rNparameterValues, unsigned int*& rClusterPosition, bool copy = true);  // no rested in reset function, deactivated at the moment since not used
-
+	void setClusterHitInfoArraySize(const unsigned int& rSize);	//set the cluster hit array size
+	void setClusterInfoArraySize(const unsigned int& rSize);	//set the cluster array size
 	void setXclusterDistance(const unsigned int& pDx);					//sets the x distance between two hits that they belong to one cluster
 	void setYclusterDistance(const unsigned int& pDy);					//sets the x distance between two hits that they belong to one cluster
 	void setBCIDclusterDistance(const unsigned int& pDbCID);			//sets the BCID depth between two hits that they belong to one cluster
@@ -59,11 +63,7 @@ public:
 	void setMaxClusterHitTot(const unsigned int&  pMaxClusterHitTot);	//maximal tot for a cluster hit, otherwise cluster omitted
 	void setMaxHitTot(const unsigned int&  pMaxHitTot);					//minimum tot a hit is considered to be a hit
 
-	void addHits(HitInfo*& rHitInfo, const unsigned int& rNhits);		//add hits to cluster, starts clustering, warning hits have to be aligned at events
-
 	unsigned int getNclusters();										//returns the number of clusters//main function to start the clustering of the hit array
-
-	void reset();														//resets all data but keeps the settings and the charge calibration
 	void test();
 
 private:
@@ -76,6 +76,11 @@ private:
 	bool clusterize();
 
 	void setStandardSettings();
+
+	void allocateClusterHitArray();
+	void allocateClusterInfoArray();
+	void deleteClusterHitArray();
+	void deleteClusterInfoArray();
 
 	void clearActualClusterData();
 	void clearActualEventVariables();
@@ -102,7 +107,7 @@ private:
 	//input data structure
 	HitInfo* _hitInfo;
 
-	//output data structures, have to be allocated externally
+	//output data structures
 	ClusterHitInfo* _clusterHitInfo;
 	unsigned int _clusterHitInfoSize;
 	unsigned int _NclustersHits;

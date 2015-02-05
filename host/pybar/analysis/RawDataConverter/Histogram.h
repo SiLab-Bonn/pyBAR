@@ -16,14 +16,12 @@ public:
   ~Histogram(void);
 
   //get histograms
-  void getOccupancy(unsigned int& rNparameterValues, unsigned int*& rOccupancy, bool copy = true);  //returns the occupancy histogram for all hits
-  void getTotHist(unsigned int*& rTotHist, bool copy = true);           //returns the tot histogram for all hits
-  void getTdcHist(unsigned int*& rTdcHist, bool copy = true);           //returns the tdc histogram for all hits
-  void getRelBcidHist(unsigned int*& rRelBcidHist, bool copy = true);   //returns the relative BCID histogram for all hits
-
-  //set external histograms to be filled
-  void setTdcPixelHist(unsigned short*& rTdcPixelHist); //sets the pixel tdc histogram
-  void setTotPixelHist(unsigned short*& rTotPixelHist); //sets the pixel tot histogram
+  void getOccupancy(unsigned int& rNparameterValues, unsigned int*& rOccupancy, bool copy = false);  //returns the occupancy histogram for all hits
+  void getTotHist(unsigned int*& rTotHist, bool copy = false);           //returns the tot histogram for all hits
+  void getTdcHist(unsigned int*& rTdcHist, bool copy = false);           //returns the tdc histogram for all hits
+  void getRelBcidHist(unsigned int*& rRelBcidHist, bool copy = false);   //returns the relative BCID histogram for all hits
+  void getTotPixelHist(unsigned short*& rTotPixelHist, bool copy = false); //returns the tot pixel histogram
+  void getTdcPixelHist(unsigned short*& rTdcPixelHist, bool copy = false); //returns the tdc pixel histogram
 
   //options set/get
   void createOccupancyHist(bool CreateOccHist = true);
@@ -65,6 +63,10 @@ private:
   void deleteTdcArray();
   void allocateRelBcidArray();
   void deleteRelBcidArray();
+  void allocateTotPixelArray();
+  void allocateTdcPixelArray();
+  void deleteTotPixelArray();
+  void deleteTdcPixelArray();
   
   unsigned int* _occupancy;       //2d hit histogram for each parameter (in total 3d, linearly sorted via col, row, parameter)
   unsigned int* _tot;             //tot histogram
@@ -73,7 +75,7 @@ private:
   unsigned short* _totPixel;      //3d pixel tot histogram  (in total 3d, linearly sorted via col, row, tot value)
   unsigned int* _relBcid;         //realative BCID histogram
 
-  unsigned int getParIndex(uint64_t& rEventNumber);      //returns the parameter index for the given event number
+  unsigned int getParIndex(int64_t& rEventNumber);      //returns the parameter index for the given event number
 
   unsigned int _nMetaEventIndexLength;//length of the meta data event index array
   uint64_t* _metaEventIndex;      	  //event index of meta data array

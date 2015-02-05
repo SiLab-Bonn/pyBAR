@@ -3,28 +3,22 @@
 Clusterizer::Clusterizer(void)
 {
 	setSourceFileName("Clusterizer");
-//	set NULL pointer
-	_clusterHitInfo = 0;
-	_clusterInfo = 0;
-	_hitMap = 0;
-	_hitIndexMap = 0;
-	_chargeMap = 0;
-	_clusterTots = 0;
-	_clusterCharges = 0;
-	_clusterHits = 0;
-	_clusterPosition = 0;
-	_nEventHits = 0;
+	setStandardSettings();
+	allocateClusterHitArray();
+	allocateClusterInfoArray();
 	allocateHitMap();
 	allocateHitIndexMap();
 	allocateChargeMap();
 	allocateResultHistograms();
-	setStandardSettings();
+	initChargeCalibMap();
 	reset();
 }
 
 Clusterizer::~Clusterizer(void)
 {
 	debug("~Clusterizer(void): destructor called");
+	deleteClusterHitArray();
+	deleteClusterInfoArray();
 	deleteHitMap();
 	deleteHitIndexMap();
 	deleteChargeMap();
@@ -34,7 +28,18 @@ Clusterizer::~Clusterizer(void)
 void Clusterizer::setStandardSettings()
 {
 	info("setStandardSettings()");
-	initChargeCalibMap();
+	_clusterHitInfo = 0;
+	_clusterInfo = 0;
+	_clusterHitInfoSize = 6e6;
+	_clusterInfoSize = 6e6;
+	_hitMap = 0;
+	_hitIndexMap = 0;
+	_chargeMap = 0;
+	_clusterTots = 0;
+	_clusterCharges = 0;
+	_clusterHits = 0;
+	_clusterPosition = 0;
+	_nEventHits = 0;
 	_dx = 1; // column
 	_dy = 2; // row
 	_DbCID = 4; // timewalk
@@ -52,20 +57,22 @@ void Clusterizer::setStandardSettings()
 	_maxHitTot = 13;
 }
 
-void Clusterizer::setClusterHitInfoArray(ClusterHitInfo*& rClusterHitInfo, const unsigned int& rSize)
+void Clusterizer::setClusterHitInfoArraySize(const unsigned int& rSize)
 {
-	info("setClusterHitInfoArray()");
-	_clusterHitInfo = rClusterHitInfo;
+	info("setClusterHitInfoArraySize()");
+	deleteClusterHitArray();
 	_clusterHitInfoSize = rSize;
 	_NclustersHits = 0;
+	allocateClusterHitArray();
 }
 
-void Clusterizer::setClusterInfoArray(ClusterInfo*& rClusterHitInfo, const unsigned int& rSize)
+void Clusterizer::setClusterInfoArraySize(const unsigned int& rSize)
 {
-	info("setClusterInfoArray()");
-	_clusterInfo = rClusterHitInfo;
+	info("setClusterInfoArraySize()");
+	deleteClusterInfoArray();
 	_clusterInfoSize = rSize;
 	_Nclusters = 0;
+	allocateClusterInfoArray();
 }
 
 void Clusterizer::getClusterSizeHist(unsigned int& rNparameterValues, unsigned int*& rClusterSize, bool copy)
@@ -83,9 +90,8 @@ void Clusterizer::getClusterSizeHist(unsigned int& rNparameterValues, unsigned i
 void Clusterizer::getClusterTotHist(unsigned int& rNparameterValues, unsigned int*& rClusterTot, bool copy)
 {
 	info("getClusterTotHist(...)");
-	unsigned int tArrayLength = 0;
+	unsigned int tArrayLength = (long)(__MAXTOTBINS-1) + (long)(__MAXCLUSTERHITSBINS-1) * (long)__MAXTOTBINS +1;
 	if(copy){
-		tArrayLength = (long)(__MAXTOTBINS-1) + (long)(__MAXCLUSTERHITSBINS-1) * (long)__MAXTOTBINS +1;
 		std::copy(_clusterTots, _clusterTots+tArrayLength, rClusterTot);
 	}
 	else
@@ -97,9 +103,8 @@ void Clusterizer::getClusterTotHist(unsigned int& rNparameterValues, unsigned in
 void Clusterizer::getClusterChargeHist(unsigned int& rNparameterValues, unsigned int*& rClusterCharge, bool copy)
 {
 	info("getClusterChargeHist(...)");
-	unsigned int tArrayLength = 0;
+	unsigned int tArrayLength = (long)(__MAXCHARGEBINS-1) + (long)(__MAXCLUSTERHITSBINS-1) * (long)__MAXCHARGEBINS +1;
 	if(copy){
-		tArrayLength = (long)(__MAXCHARGEBINS-1) + (long)(__MAXCLUSTERHITSBINS-1) * (long)__MAXCHARGEBINS +1;
 		std::copy(_clusterCharges, _clusterCharges+tArrayLength, rClusterCharge);
 	}
 	else
@@ -110,9 +115,8 @@ void Clusterizer::getClusterChargeHist(unsigned int& rNparameterValues, unsigned
 void Clusterizer::getClusterPositionHist(unsigned int& rNparameterValues, unsigned int*& rClusterPosition, bool copy)
 {
 	info("getClusterPositionHist(...)");
-	unsigned int tArrayLength = 0;
+	unsigned int tArrayLength = (long)(__MAXPOSXBINS-1) + (long)(__MAXPOSYBINS-1) * (long)__MAXPOSXBINS +1;
 	if(copy){
-		tArrayLength = (long)(__MAXPOSXBINS-1) + (long)(__MAXPOSYBINS-1) * (long)__MAXPOSXBINS +1;
 		std::copy(_clusterPosition, _clusterPosition+tArrayLength, rClusterPosition);
 	}
 	else
@@ -188,6 +192,7 @@ void Clusterizer::addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
 
   _hitInfo = rHitInfo;
   _Nclusters = 0;
+  _NclustersHits = 0;
 
   if(rNhits>0 && _actualEventNumber != 0 && rHitInfo[0].eventNumber == _actualEventNumber)
 	  warning("addHits: Hit chunks not aligned at events. Clusterizer will not work properly");
@@ -204,6 +209,26 @@ void Clusterizer::addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
   //manually add remaining hit data
   clusterize();
   addHitClusterInfo(rNhits);
+}
+
+void Clusterizer::getHitCluster(ClusterHitInfo*& rClusterHitInfo, unsigned int& rSize, bool copy)
+{
+    debug("getHitCluster(...)");
+    if(copy)
+ 	    std::copy(_clusterHitInfo, _clusterHitInfo+_clusterHitInfoSize, rClusterHitInfo);
+    else
+    	rClusterHitInfo = _clusterHitInfo;
+    rSize = _NclustersHits;
+}
+
+void Clusterizer::getCluster(ClusterInfo*& rClusterInfo, unsigned int& rSize, bool copy)
+{
+    debug("getCluster(...)");
+    if(copy)
+ 	    std::copy(_clusterInfo, _clusterInfo+_clusterInfoSize, rClusterInfo);
+    else
+    	rClusterInfo = _clusterInfo;
+    rSize = _Nclusters;
 }
 
 bool Clusterizer::clusterize()
@@ -329,6 +354,7 @@ void Clusterizer::addHit(const unsigned int& pHitIndex)
 	if(_createClusterHitInfoArray){
 		if (_clusterHitInfo == 0)
 			throw std::runtime_error("Cluster hit array is not defined and cannot be filled");
+		_NclustersHits++;
 		_clusterHitInfo[pHitIndex].eventNumber = _hitInfo[pHitIndex].eventNumber;
 		_clusterHitInfo[pHitIndex].triggerNumber = _hitInfo[pHitIndex].triggerNumber;
 		_clusterHitInfo[pHitIndex].relativeBCID = _hitInfo[pHitIndex].relativeBCID;
@@ -544,6 +570,48 @@ void Clusterizer::addClusterToResults()
 //				_clusterPosition[tActualClusterXbin][tActualClusterYbin]++;
 //		}
 	}
+}
+
+void Clusterizer::allocateClusterHitArray()
+{
+	debug(std::string("allocateClusterHitArray()"));
+	try{
+		_clusterHitInfo = new ClusterHitInfo[_clusterHitInfoSize];
+	}
+	catch(std::bad_alloc& exception){
+		error(std::string("allocateClusterHitArray(): ")+std::string(exception.what()));
+		throw;
+	}
+}
+
+void Clusterizer::deleteClusterHitArray()
+{
+	debug(std::string("deleteClusterHitArray()"));
+	if (_clusterHitInfo == 0)
+		return;
+	delete[] _clusterHitInfo;
+	_clusterHitInfo = 0;
+}
+
+void Clusterizer::allocateClusterInfoArray()
+{
+	debug(std::string("allocateClusterInfoArray()"));
+	try{
+		_clusterInfo = new ClusterInfo[_clusterInfoSize];
+	}
+	catch(std::bad_alloc& exception){
+		error(std::string("allocateClusterInfoArray(): ")+std::string(exception.what()));
+		throw;
+	}
+}
+
+void Clusterizer::deleteClusterInfoArray()
+{
+	debug(std::string("deleteClusterInfoArray()"));
+	if (_clusterInfo == 0)
+		return;
+	delete[] _clusterInfo;
+	_clusterInfo = 0;
 }
 
 void Clusterizer::allocateHitMap()

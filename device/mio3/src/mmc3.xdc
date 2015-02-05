@@ -419,52 +419,55 @@ set_property PACKAGE_PIN A12 [get_ports EN_VA2]
 # Command sequencer signals
 set_property SLEW SLOW [get_ports CMD_CLK_OUT]
 set_property IOSTANDARD LVCMOS33 [get_ports CMD_CLK_OUT]
-set_property PACKAGE_PIN N26 [get_ports CMD_CLK_OUT]
+set_property PACKAGE_PIN C9 [get_ports CMD_CLK_OUT]
 
 set_property SLEW SLOW [get_ports CMD_DATA]
 set_property IOSTANDARD LVCMOS33 [get_ports CMD_DATA]
-set_property PACKAGE_PIN U24 [get_ports CMD_DATA]
 
 # FE-I4_rx signals
-set_property SLEW SLOW [get_ports {DOBOUT[3]}]
-set_property IOSTANDARD LVCMOS33 [get_ports {DOBOUT[3]}]
-set_property PACKAGE_PIN U25 [get_ports {DOBOUT[3]}]
+<<<<<<< .mine
+set_property SLEW SLOW [get_ports DOBOUT]
+set_property IOSTANDARD LVCMOS33 [get_ports DOBOUT]
+=======
+set_property SLEW SLOW [get_ports DOBOUT[3]]
+set_property IOSTANDARD LVCMOS33 [get_ports DOBOUT[3]]
+set_property PACKAGE_PIN U25 [get_ports DOBOUT[3]]
+>>>>>>> .r1946
 
-set_property SLEW SLOW [get_ports {DOBOUT[2]}]
-set_property IOSTANDARD LVCMOS33 [get_ports {DOBOUT[2]}]
-set_property PACKAGE_PIN M26 [get_ports {DOBOUT[2]}]
+set_property SLEW SLOW [get_ports DOBOUT[2]]
+set_property IOSTANDARD LVCMOS33 [get_ports DOBOUT[2]]
+set_property PACKAGE_PIN M26 [get_ports DOBOUT[2]]
 
-set_property SLEW SLOW [get_ports {DOBOUT[1]}]
-set_property IOSTANDARD LVCMOS33 [get_ports {DOBOUT[1]}]
-set_property PACKAGE_PIN AC26 [get_ports {DOBOUT[1]}]
+set_property SLEW SLOW [get_ports DOBOUT[1]]
+set_property IOSTANDARD LVCMOS33 [get_ports DOBOUT[1]]
+set_property PACKAGE_PIN AC26 [get_ports DOBOUT[1]]
 
-set_property SLEW SLOW [get_ports {DOBOUT[0]}]
-set_property IOSTANDARD LVCMOS33 [get_ports {DOBOUT[0]}]
-set_property PACKAGE_PIN AE21 [get_ports {DOBOUT[0]}]
+set_property SLEW SLOW [get_ports DOBOUT[0]]
+set_property IOSTANDARD LVCMOS33 [get_ports DOBOUT[0]]
+set_property PACKAGE_PIN AE21 [get_ports DOBOUT[0]]
 
 # OC signals
-set_property SLEW SLOW [get_ports {OC[3]}]
-set_property IOSTANDARD LVCMOS33 [get_ports {OC[3]}]
-set_property PACKAGE_PIN C19 [get_ports {OC[3]}]
+set_property SLEW SLOW [get_ports OC[3]]
+set_property IOSTANDARD LVCMOS33 [get_ports OC[3]]
+set_property PACKAGE_PIN C19 [get_ports OC[3]]
 
-set_property SLEW SLOW [get_ports {OC[2]}]
-set_property IOSTANDARD LVCMOS33 [get_ports {OC[2]}]
-set_property PACKAGE_PIN B17 [get_ports {OC[2]}]
+set_property SLEW SLOW [get_ports OC[2]]
+set_property IOSTANDARD LVCMOS33 [get_ports OC[2]]
+set_property PACKAGE_PIN B17 [get_ports OC[2]]
 
-set_property SLEW SLOW [get_ports {OC[1]}]
-set_property IOSTANDARD LVCMOS33 [get_ports {OC[1]}]
-set_property PACKAGE_PIN B15 [get_ports {OC[1]}]
+set_property SLEW SLOW [get_ports OC[1]]
+set_property IOSTANDARD LVCMOS33 [get_ports OC[1]]
+set_property PACKAGE_PIN B15 [get_ports OC[1]]
 
-set_property SLEW SLOW [get_ports {OC[0]}]
-set_property IOSTANDARD LVCMOS33 [get_ports {OC[0]}]
-set_property PACKAGE_PIN B12 [get_ports {OC[0]}]
+set_property SLEW SLOW [get_ports OC[0]]
+set_property IOSTANDARD LVCMOS33 [get_ports OC[0]]
+set_property PACKAGE_PIN B12 [get_ports OC[0]]
 
 #####################################
 
 #create_clock -name Clk100 -period 10.000 [get_ports Clk100]
 
 # D:/redmine_svn/usb/FX3device/branches/Hans/KX7 firmware/Mercury KX1.ucf:59
-create_clock -period 10.000 -name fx3_pclk_100MHz [get_ports fx3_pclk_100MHz]
 #Created by Constraints Editor (xc6slx45-fgg484-2) - 2013/01/25
 #OFFSET = OUT AFTER "fx3_pclk_100mhz";
 #Created by Constraints Editor (xc6slx45-fgg484-2) - 2013/02/25
@@ -476,15 +479,29 @@ set_property PACKAGE_PIN K23 [get_ports fx3_rdy]
 
 #create_clock -period 25.000 -name clk40mhz [get_nets clk40mhz]
 
-set_false_path -from [get_clocks fx3_pclk_100MHz] -to [get_clocks clk40mhz_pll]
-set_false_path -from [get_clocks fx3_pclk_100MHz] -to [get_clocks clk320mhz_pll]
-set_false_path -from [get_clocks fx3_pclk_100MHz] -to [get_clocks clk160mhz_pll]
-set_false_path -from [get_clocks fx3_pclk_100MHz] -to [get_clocks clk16mhz_pll]
 
-set_false_path -from [get_clocks clk40mhz_pll] -to [get_clocks fx3_pclk_100MHz]
-set_false_path -from [get_clocks clk320mhz_pll] -to [get_clocks fx3_pclk_100MHz]
-set_false_path -from [get_clocks clk160mhz_pll] -to [get_clocks fx3_pclk_100MHz]
-set_false_path -from [get_clocks clk16mhz_pll] -to [get_clocks fx3_pclk_100MHz]
 
+set_property PACKAGE_PIN D9 [get_ports CMD_DATA]
+set_property PACKAGE_PIN J11 [get_ports DOBOUT]
+set_property PACKAGE_PIN AD18 [get_ports sys_clk_n]
+set_property PACKAGE_PIN AC18 [get_ports sys_clk_p]
+set_property IOSTANDARD SSTL15 [get_ports sys_clk_n]
+set_property IOSTANDARD SSTL15 [get_ports sys_clk_p]
+
+set_property PACKAGE_PIN AD21 [get_ports {PWR_EN[0]}]
+set_property PACKAGE_PIN AE21 [get_ports {PWR_EN[1]}]
+set_property PACKAGE_PIN AE23 [get_ports {PWR_EN[2]}]
+set_property PACKAGE_PIN AF23 [get_ports {PWR_EN[3]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {PWR_EN[3]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {PWR_EN[2]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {PWR_EN[1]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {PWR_EN[0]}]
+
+
+create_clock -period 10.000 -name fx3_pclk_100MHz -waveform {0.000 5.000} [get_ports fx3_pclk_100MHz]
+create_generated_clock -name CMD_CLK_OUT -source [get_pins icmd/i_cmd_seq_core/CMD_CLK_FORWARDING_INST/C] -divide_by 1 [get_ports CMD_CLK_OUT]
+
+set_false_path -from [get_clocks fx3_pclk_100MHz] -to [get_clocks {clk16mhz_pll clk40mhz_pll clk160mhz_pll clk320mhz_pll CMD_CLK_OUT}]
+set_false_path -from [get_clocks fx3_pclk_100MHz] -to [get_clocks {clk16mhz_pll clk40mhz_pll clk160mhz_pll clk320mhz_pll CMD_CLK_OUT}]
 
 set_property BITSTREAM.CONFIG.UNUSEDPIN PULLUP [current_design]
