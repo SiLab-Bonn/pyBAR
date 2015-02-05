@@ -35,9 +35,14 @@ install:
   - pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/695/pySiLibUSB-2.0.2.tar.gz
   - pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/719/Basil-2.0.2.tar.gz
   - pip install progressbar-latest
-  - sudo apt-get install -qq iverilog-daily
+#  - sudo apt-get install -qq iverilog-daily
+  #  Build iverilog from source
+  - sudo apt-get install gperf
+  - wget -O iverilog-master.zip  https://github.com/steveicarus/iverilog/archive/master.zip
+  - unzip iverilog-master.zip
+  - cd iverilog-master && autoconf && ./configure && make && sudo make install && cd ..
+  # Install pybar
   - python setup.py develop
- 
 # Run test
 script:
 - cd tests; nosetests test_analysis.py test_interface.py --logging-level=INFO
