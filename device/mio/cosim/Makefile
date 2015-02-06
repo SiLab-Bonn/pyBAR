@@ -31,7 +31,7 @@ XILINX_SRC?=$(XILINX)/ISE/verilog/src
 BASIL?=../../../../../../basil
 BASIL_MODULES?=$(BASIL)/trunk/device/modules
 FEI4_SOURCES?=../../../../../../fei4/trunk/models/fei4a
-PYBAR_SOURCES?=../../device/MultiIO/FPGA
+PYBAR_SOURCES?=../../device/mio
 
 VERILOG_SOURCES = \
                   $(PYBAR_SOURCES)/cosim/tb.sv $(PYBAR_SOURCES)/src/top.v $(PYBAR_SOURCES)/src/clk_gen.v \

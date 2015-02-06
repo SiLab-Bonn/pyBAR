@@ -47,7 +47,7 @@ class TestInterface(unittest.TestCase):
     def setUpClass(cls):
         
         subprocess.call('unzip -o test_interface//sim_build.zip', shell=True)
-        subprocess.Popen(['make','-f','..//..//device//MultiIO//FPGA//cosim//Makefile','sim_only'])
+        subprocess.Popen(['make','-f','..//..//device//mio//cosim//Makefile','sim_only'])
         time.sleep(180) #some time for simulator to start
         
     @classmethod
