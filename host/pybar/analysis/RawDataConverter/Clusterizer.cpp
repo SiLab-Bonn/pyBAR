@@ -30,6 +30,8 @@ void Clusterizer::setStandardSettings()
 	info("setStandardSettings()");
 	_clusterHitInfo = 0;
 	_clusterInfo = 0;
+	_clusterHitInfoSize = 6e6;
+	_clusterInfoSize = 6e6;
 	_hitMap = 0;
 	_hitIndexMap = 0;
 	_chargeMap = 0;

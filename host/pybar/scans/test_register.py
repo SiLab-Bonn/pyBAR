@@ -9,6 +9,7 @@ from pybar.analysis.plotting import plotting
 
 
 class RegisterTest(Fei4RunBase):
+
     '''Testing of FEI4(A/B) global and pixel register and reading of chip S/N.
 
     Note
@@ -32,22 +33,18 @@ class RegisterTest(Fei4RunBase):
         pass
 
     def scan(self):
-        self.register.create_restore_point()
-
         if self.read_sn:
             read_chip_sn(self)
 
         if self.test_global:
-            self.register.restore(keep=True)
-            self.register_utils.configure_global()
-            test_global_register(self)
+            global_register_errors = test_global_register(self)
+            if global_register_errors:
+                raise Exception('Global register test finished with %d errors' % global_register_errors)
 
         if self.test_pixel:
-            self.register.restore(keep=True)
-            self.register_utils.configure_all()
-            self.test_pixel_register()
-
-        self.register.restore()
+            pixel_register_errors = self.test_pixel_register()
+            if pixel_register_errors:
+                raise Exception('Pixel register test finished with %d errors' % pixel_register_errors)
 
     def analyze(self):
         pass
@@ -62,15 +59,19 @@ class RegisterTest(Fei4RunBase):
         self.register_utils.send_commands(commands)
         self.fifo_readout.reset_sram_fifo()
 
+        pixel_register_errors = 0
+
         plots = PdfPages(self.output_filename + ".pdf")
 
         for i, result in enumerate(read_pixel_register(self, pix_regs=pix_regs, dcs=dcs)):
             result_array = np.ones_like(result)
             result_array.data[result == self.register.get_pixel_register_value(pix_regs[i])] = 0
+            pixel_register_errors += np.count_nonzero(result_array == 1)
             logging.info("Pixel register %s: %d pixel error" % (pix_regs[i], np.count_nonzero(result_array == 1)))
             plotting.plotThreeWay(result_array.T, title=str(pix_regs[i]) + " register test with " + str(np.count_nonzero(result_array == 1)) + '/' + str(26880 - np.ma.count_masked(result_array)) + " pixel failing", x_axis_title="0:OK, 1:FAIL", maximum=1, filename=plots)
 
         plots.close()
+        return pixel_register_errors
 
 if __name__ == "__main__":
     RunManager('../configuration.yaml').run_run(RegisterTest)

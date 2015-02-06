@@ -18,20 +18,23 @@ export SIMULATION_BUS
 export SIMULATION_END_ON_DISCONNECT
 
 #to make life bit easier
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(shell python -c 'from distutils import sysconfig; print(sysconfig.get_config_var("LIBDIR"))')
-export PYTHONPATH=$PYTHONPATH:$(shell python -c "from distutils import sysconfig; print(sysconfig.get_python_lib())"):$(COCOTB)
+PYTHONLIBS=$(shell python -c 'from distutils import sysconfig; print(sysconfig.get_config_var("LIBDIR"))')
+export LD_LIBRARY_PATH+=$(PYTHONLIBS)
+export PYTHONPATH+=$(shell python -c "from distutils import sysconfig; print(sysconfig.get_python_lib())"):$(COCOTB)
 export PYTHONHOME=$(shell python -c "from distutils.sysconfig import get_config_var; print(get_config_var('prefix'))")
+
 
 # Must have XILINX set as an environment variable.
 # i.e. export XILINX=~/Xilinx/14.7/ISE_DS
 XILINX_SRC?=$(XILINX)/ISE/verilog/src
    
 BASIL?=../../../../../../basil
-BASIL_MODULES=$(BASIL)/trunk/device/modules
+BASIL_MODULES?=$(BASIL)/trunk/device/modules
 FEI4_SOURCES?=../../../../../../fei4/trunk/models/fei4a
+PYBAR_SOURCES?=../../device/MultiIO/FPGA
 
 VERILOG_SOURCES = \
-                  tb.sv ../src/top.v ../src/clk_gen.v \
+                  $(PYBAR_SOURCES)/cosim/tb.sv $(PYBAR_SOURCES)/src/top.v $(PYBAR_SOURCES)/src/clk_gen.v \
                   $(XILINX_SRC)/unisims/IFDDRRSE.v \
                   $(XILINX_SRC)/unisims/BUFG.v \
                   $(XILINX_SRC)/unisims/OFDDRRSE.v \
@@ -85,4 +88,8 @@ MODULE   = basil.utils.sim.Test
 
 include $(COCOTB)/makefiles/Makefile.inc
 include $(COCOTB)/makefiles/Makefile.sim
- 
+
+sim_only: $(CUSTOM_SIM_DEPS) $(COCOTB_LIBS) $(COCOTB_VPI_LIB) $(CUSTOM_COMPILE_DEPS)
+	PYTHONPATH=$(LIB_DIR):$(SIM_ROOT):$(PWD):$(PYTHONPATH) LD_LIBRARY_PATH=/lib/x86_64-linux-gnu:$(LIB_DIR):$(PYTHONLIBS) MODULE=$(MODULE) \
+        TESTCASE=$(TESTCASE) TOPLEVEL=$(TOPLEVEL) \
+        vvp -M $(LIB_DIR) -m gpivpi $(SIM_BUILD)/sim.vvp $(SIM_ARGS) $(EXTRA_ARGS) $(PLUSARGS)

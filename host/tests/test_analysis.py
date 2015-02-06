@@ -14,7 +14,7 @@ from pybar.analysis.RawDataConverter.data_clusterizer import PyDataClusterizer
 from pybar.analysis import analysis_utils
 from pybar.analysis.RawDataConverter import data_struct
 
-tests_data_folder = 'tests//test_analysis//'
+tests_data_folder = 'test_analysis//'
 
 
 def get_array_differences(first_array, second_array):
@@ -343,5 +343,6 @@ class TestAnalysis(unittest.TestCase):
             self.assertTrue(exception_ok & np.all(array == array_fast))
 
 if __name__ == '__main__':
+    tests_data_folder = 'test_analysis//'
     suite = unittest.TestLoader().loadTestsFromTestCase(TestAnalysis)
     unittest.TextTestRunner(verbosity=2).run(suite)
