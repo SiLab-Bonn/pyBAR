@@ -17,6 +17,9 @@ from pybar.analysis.RawDataConverter.data_struct import NameValue
 from pybar.utils.utils import string_is_binary, flatten_iterable, iterable
 
 
+flavors = ('fei4a', 'fei4b')
+
+
 def parse_pixel_mask_config(filename):
     mask = np.empty((80, 336), dtype=np.uint8)
     with open(filename, 'r') as f:
@@ -87,10 +90,6 @@ def write_pixel_dac_config(filename, value):
         seq.append("\n".join(["\n".join([((repr(row + 1).rjust(3) + ("a" if col_coarse == 0 else "b") + "  ") + "   ".join([" ".join([repr(value[col, row]).rjust(2) for col in range(col_fine, col_fine + 10)]) for col_fine in range(col_coarse, col_coarse + 40, 10)])) for col_coarse in range(0, 80, 40)]) for row in range(336)]))
         seq.append("\n")
         f.writelines(seq)
-
-
-
-flavors = ('fei4a', 'fei4b')
 
 
 def bitarray_from_value(value, size=None, fmt='Q'):
