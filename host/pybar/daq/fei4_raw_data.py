@@ -71,7 +71,6 @@ class RawDataFile(object):
         self.curr_filename = self.base_filename
         self.filenames = {self.curr_filename: 0}
         self.open(self.curr_filename, mode, title, **kwargs)
-        print 'socket_addr', socket_addr
         if socket_addr:
             self.socket = zmq.Context().socket(zmq.PUSH)
             self.socket.bind(socket_addr)
