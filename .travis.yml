@@ -45,4 +45,4 @@ install:
   - python setup.py develop
 # Run test
 script:
-- cd tests; nosetests test_analysis.py --logging-level=INFO
+- cd tests; nosetests test_analysis.py test_interface.py --logging-level=INFO
