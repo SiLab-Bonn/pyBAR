@@ -27,7 +27,7 @@ hw_drivers:
     type      : sram_fifo
     interface : USB
     base_addr : 0x18100
-    base_data_addr : 0x0001000000000000
+    base_data_addr : 0x0001000080000000
 
   - name      : tlu
     type      : tlu
