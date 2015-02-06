@@ -71,7 +71,7 @@ setup(
     maintainer=author,
     author_email=author_email,
     maintainer_email=author_email,
-    install_requires=['cython', 'pySiLibUSB>=1.0.0', 'bitarray>=0.8.1', 'progressbar-latest>=2.4', 'basil>=2.0.2'],
+    install_requires=['cython', 'pySiLibUSB>=1.0.0', 'bitarray>=0.8.1', 'progressbar-latest>=2.4', 'basil>=2.0.0'],
     packages=find_packages(),  # exclude=['*.tests', '*.test']),
     include_package_data=True,  # accept all data files and directories matched by MANIFEST.in or found in source control
     package_data={'': ['*.txt', 'VERSION'], 'docs': ['*'], 'examples': ['*'], 'pybar': ['*.yaml', '*.bit'], 'pybar/fei4': ['*.xml']},

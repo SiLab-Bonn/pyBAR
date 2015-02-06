@@ -83,6 +83,7 @@ class OnlineMonitorApplication(Qt.QApplication):
         self.addWidgets()
         self.fps = 0
         self.plot_delay = 0
+        self.plot_count = 0
         self.updateTime = ptime.time()
         self.thread.start()
         self.exec_()
@@ -201,13 +202,15 @@ class OnlineMonitorApplication(Qt.QApplication):
         self.rate_label.setText("Readouts\n%d Hz" % self.fps)
 
     def update_plots(self, data):
-        self.occupancy_img.setImage(data[0][:, ::-1, 0], autoDownsample=True)
-        self.tot_plot.setData(x=np.linspace(-0.5, 15.5, 17), y=data[1], fillLevel=0, brush=(0, 0, 255, 150))
-        self.tdc_plot.setData(x=np.linspace(-0.5, 4096.5, 4097), y=data[2], fillLevel=0, brush=(0, 0, 255, 150))
-        self.event_status_plot.setData(x=np.linspace(-0.5, 15.5, 17), y=data[3], stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
-        self.service_record_plot.setData(x=np.linspace(-0.5, 31.5, 33), y=data[4], stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
-        self.trigger_status_plot.setData(x=np.linspace(-0.5, 7.5, 9), y=data[5], stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
-        self.hit_timing_plot.setData(x=np.linspace(-0.5, 15.5, 17), y=data[6], stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
+        self.plot_count += 1
+        if self.plot_count % 10 == 0:
+            self.occupancy_img.setImage(data[0][:, ::-1, 0], autoDownsample=True)
+            self.tot_plot.setData(x=np.linspace(-0.5, 15.5, 17), y=data[1], fillLevel=0, brush=(0, 0, 255, 150))
+            self.tdc_plot.setData(x=np.linspace(-0.5, 4096.5, 4097), y=data[2], fillLevel=0, brush=(0, 0, 255, 150))
+            self.event_status_plot.setData(x=np.linspace(-0.5, 15.5, 17), y=data[3], stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
+            self.service_record_plot.setData(x=np.linspace(-0.5, 31.5, 33), y=data[4], stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
+            self.trigger_status_plot.setData(x=np.linspace(-0.5, 7.5, 9), y=data[5], stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
+            self.hit_timing_plot.setData(x=np.linspace(-0.5, 15.5, 17), y=data[6], stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
 
     def __del__(self):
         self.thread.wait(1000)  # give worker thread time to stop, is there a better way? stackoverflow has only worse hacks

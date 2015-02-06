@@ -18,7 +18,8 @@ class AnalogScan(Fei4RunBase):
         "enable_shift_masks": ["Enable", "C_High", "C_Low"],  # enable masks shifted during scan
         "disable_shift_masks": [],  # disable masks shifted during scan
         "pulser_dac_correction": False,  # PlsrDAC correction for each double column
-        "enable_tdc": False  # if True, enables TDC (use RX2)
+        "enable_tdc": False,  # if True, enables TDC (use RX2)
+        "send_data": 'tcp://127.0.0.1:5678'
     }
 
     def configure(self):
