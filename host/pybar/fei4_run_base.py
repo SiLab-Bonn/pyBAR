@@ -12,7 +12,6 @@ from collections import namedtuple, Mapping
 from contextlib import contextmanager
 import abc
 import inspect
-import zmq
 from basil.dut import Dut
 
 from pybar.run_manager import RunBase, RunAborted
@@ -22,24 +21,6 @@ from pybar.daq.fifo_readout import FifoReadout, RxSyncError, EightbTenbError, Fi
 from pybar.daq.fei4_raw_data import open_raw_data_file
 from pybar.analysis.analysis_utils import AnalysisError
 from pybar.analysis.RawDataConverter.data_struct import NameValue
-
-
-def send_data(socket, data, scan_parameters, name='FEI4readoutData', flags=0, copy=True, track=False):
-    if socket and data:  # if socket is defined send the data
-        try:
-            data_meta_data = dict(
-                name=name,
-                dtype=str(data[0].dtype),
-                shape=data[0].shape,
-                timestamp_start=data[1],
-                timestamp_stop=data[2],
-                readout_error=float(data[3]),
-                scan_parameters=scan_parameters
-            )
-            socket.send_json(data_meta_data, flags | zmq.SNDMORE | zmq.NOBLOCK)
-            return socket.send(data[0].tostring(), flags, copy=copy, track=track)
-        except zmq.ZMQError:
-            pass
 
 
 class Fei4RunBase(RunBase):
@@ -60,12 +41,10 @@ class Fei4RunBase(RunBase):
         self.raw_data_file = None
 
         try:
-            client_addr = self._run_conf['send_data']
-            self.socket = zmq.Context().socket(zmq.PUSH)
-            self.socket.bind(client_addr)
-            logging.info('Send data to %s' % client_addr)
+            self.socket_addr = self._run_conf['send_data']
+            logging.info('Send data to %s' % self.socket_addr)
         except KeyError:
-            self.socket = None
+            self.socket_addr = None
 
     @property
     def working_dir(self):
@@ -214,7 +193,7 @@ class Fei4RunBase(RunBase):
                 self.fifo_readout = FifoReadout(self.dut)
             if not self.register_utils:
                 self.register_utils = FEI4RegisterUtils(self.dut, self.register)
-            with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, scan_parameters=self.scan_parameters._asdict()) as self.raw_data_file:
+            with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, scan_parameters=self.scan_parameters._asdict(), socket_addr=self.socket_addr) as self.raw_data_file:
                 self.save_configuration_dict(self.raw_data_file.h5_file, 'conf', self.conf)
                 self.save_configuration_dict(self.raw_data_file.h5_file, 'run_conf', self.run_conf)
                 self.register_utils.global_reset()
@@ -267,7 +246,6 @@ class Fei4RunBase(RunBase):
 
     def handle_data(self, data):
         self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=False)
-        send_data(self.socket, data, self.scan_parameters._asdict())
 
     def handle_err(self, exc):
         self.err_queue.put(exc)
