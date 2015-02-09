@@ -640,7 +640,7 @@ class AnalyzeRawData(object):
                 service_record_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistServiceRecord', title='Service Record Histogram', atom=tb.Atom.from_dtype(self.service_record_hist.dtype), shape=self.service_record_hist.shape, filters=self._filter_table)
                 service_record_hist_table[:] = self.service_record_hist
         if (self._create_tdc_counter_hist):
-            self.tdc_counter_hist = self.interpreter.get_tdc_counters(self.tdc_counter_hist)
+            self.tdc_counter_hist = self.interpreter.get_tdc_counters()
             if (self._analyzed_data_file is not None):
                 tdc_counter_hist = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistTdcCounter', title='All Tdc word counter values', atom=tb.Atom.from_dtype(self.tdc_counter_hist.dtype), shape=self.tdc_counter_hist.shape, filters=self._filter_table)
                 tdc_counter_hist[:] = self.tdc_counter_hist
@@ -671,13 +671,13 @@ class AnalyzeRawData(object):
                 tot_pixel_hist_out = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistTotPixel', title='Tot Pixel Histogram', atom=tb.Atom.from_dtype(self.tot_pixel_hist_array.dtype), shape=self.tot_pixel_hist_array.shape, filters=self._filter_table)
                 tot_pixel_hist_out[:] = self.tot_pixel_hist_array
         if (self._create_tdc_hist):
-            self.tdc_hist = np.swapaxes(self.histograming.get_tdc_pixel_hist(), 0, 1)
+            self.tdc_hist = self.interpreter.get_tdc_counters()
             if (self._analyzed_data_file is not None and safe_to_file):
                 tdc_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistTdc', title='Tdc Histogram', atom=tb.Atom.from_dtype(self.tdc_hist.dtype), shape=self.tdc_hist.shape, filters=self._filter_table)
                 tdc_hist_table[:] = self.tdc_hist
         if (self._create_tdc_pixel_hist):
             if (self._analyzed_data_file is not None and safe_to_file):
-                self.tdc_pixel_hist_array = self.histograming.get_tdc_pixel_hist()
+                self.tdc_pixel_hist_array = np.swapaxes(self.histograming.get_tdc_pixel_hist(), 0, 1)
                 tdc_pixel_hist_out = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistTdcPixel', title='Tdc Pixel Histogram', atom=tb.Atom.from_dtype(self.tdc_pixel_hist_array.dtype), shape=self.tdc_pixel_hist_array.shape, filters=self._filter_table)
                 tdc_pixel_hist_out[:] = self.tdc_pixel_hist_array
         if (self._create_rel_bcid_hist):

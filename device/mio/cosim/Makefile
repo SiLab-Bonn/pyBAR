@@ -23,15 +23,14 @@ export LD_LIBRARY_PATH+=$(PYTHONLIBS)
 export PYTHONPATH+=$(shell python -c "from distutils import sysconfig; print(sysconfig.get_python_lib())"):$(COCOTB)
 export PYTHONHOME=$(shell python -c "from distutils.sysconfig import get_config_var; print(get_config_var('prefix'))")
 
-
 # Must have XILINX set as an environment variable.
 # i.e. export XILINX=~/Xilinx/14.7/ISE_DS
 XILINX_SRC?=$(XILINX)/ISE/verilog/src
    
-BASIL?=../../../../../../basil
+BASIL?=../../../../../basil
 BASIL_MODULES?=$(BASIL)/trunk/device/modules
-FEI4_SOURCES?=../../../../../../fei4/trunk/models/fei4a
-PYBAR_SOURCES?=../../device/MultiIO/FPGA
+FEI4_SOURCES?=../../../../../fei4/trunk/models/fei4a
+PYBAR_SOURCES?=../device/mio
 
 VERILOG_SOURCES = \
                   $(PYBAR_SOURCES)/cosim/tb.sv $(PYBAR_SOURCES)/src/top.v $(PYBAR_SOURCES)/src/clk_gen.v \
