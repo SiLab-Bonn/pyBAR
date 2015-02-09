@@ -24,11 +24,9 @@ class ThresholdCalibration(FastThresholdScan):
     ''' Threshold calibration scan
     '''
     _default_run_conf = FastThresholdScan._default_run_conf
-
-    _default_run_conf['scan_parameters'].extend([('GDAC', np.linspace(0., 25000., num=51, dtype=np.uint32))])
-
+    _default_run_conf['scan_parameters'] = [('PlsrDAC', (0, None)), ('GDAC', np.linspace(60., 80., num=2, dtype=np.uint32).tolist())]
+#     _default_run_conf['scan_parameters'].extend([('GDAC', np.linspace(50., 100., num=2, dtype=np.uint32).tolist())])
     _default_run_conf.update({
-#         "scan_parameters": scan_parameters,
         "ignore_columns": (1, 78, 79, 80),
         "ignore_parameter_values": None,  # do not use data for these parameter values for the calibration
         "create_plots": True,
@@ -39,30 +37,20 @@ class ThresholdCalibration(FastThresholdScan):
 
     def scan(self):
         logging.info('Taking threshold data at following ' + self.scan_parameters._fields[1] + ' values: %s' % str(self.scan_parameters[1]))
-        
-#         scan_data_filenames = {}
-#         scan_threshold_fast = FastThresholdScan(**configuration.default_configuration)
-#         scan_id = scan_threshold_fast.scan_id
-        for i, parameter_value in enumerate(self.scan_parameters[1]):
+
+        for index, parameter_value in enumerate(self.scan_parameters[1]):
             if self.scan_parameters._fields[1] == 'GDAC':
                 self.register_utils.set_gdac(parameter_value)
             else:
                 self.register.set_global_register_value(self.scan_parameters._fields[1], parameter_value)
 
-            dict_ = {self.scan_parameters._fields[1]: parameter_value}
-            self.set_scan_parameters(**dict_)
-            print self.scan_parameters
-
-#             scan_threshold_fast.scan_id = scan_id + '_' + calibration_configuration["parameter_name"] + '_' + str(parameter_value)
-#             scan_threshold_fast.start(configure=True, scan_parameter_range=(scan_threshold_fast.scan_parameter_start, 800), scan_parameter_stepsize=2, search_distance=10, minimum_data_points=scan_threshold_fast.data_points - 2, ignore_columns=calibration_configuration['ignore_columns'])
-#             scan_threshold_fast.stop()
-#             scan_data_filenames[parameter_value] = scan_threshold_fast.scan_data_filename
-#      
-#         logging.info("Calibration finished in " + str(datetime.now() - startTime))
-#      
-#     #     analyze and plot the data from all scans
-#         create_calibration(scan_data_filenames=scan_data_filenames, ignore_columns=calibration_configuration['ignore_columns'], fei4b=scan_threshold_fast.register.fei4b)
-
+            if index == 0:
+                actual_scan_parameters = {'PlsrDAC': self.scan_parameters.PlsrDAC, self.scan_parameters._fields[1]: parameter_value}
+            else:
+                self.minimum_data_points = self.data_points
+                actual_scan_parameters = {'PlsrDAC': (self.scan_parameter_start, None), self.scan_parameters._fields[1]: parameter_value}
+            self.set_scan_parameters(**actual_scan_parameters)
+            super(ThresholdCalibration, self).scan()
         logging.info("Finished!")
 
     def handle_data(self, data):

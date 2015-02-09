@@ -1,6 +1,7 @@
 import logging
 from sys import maxint
 import glob
+import zmq
 from threading import RLock
 import tables as tb
 import os.path
@@ -9,7 +10,25 @@ from os import remove
 from pybar.analysis.RawDataConverter.data_struct import MetaTableV2 as MetaTable, generate_scan_parameter_description
 
 
-def open_raw_data_file(filename, mode="w", title="", scan_parameters=None, **kwargs):
+def send_data(socket, data, scan_parameters, name='FEI4readoutData', flags=0, copy=False, track=False):
+    if socket and data:  # if socket is defined send the data
+        try:
+            data_meta_data = dict(
+                name=name,
+                dtype=str(data[0].dtype),
+                shape=data[0].shape,
+                timestamp_start=data[1],
+                timestamp_stop=data[2],
+                readout_error=float(data[3]),
+                scan_parameters=scan_parameters
+            )
+            socket.send_json(data_meta_data, flags | zmq.SNDMORE | zmq.NOBLOCK)
+            return socket.send(data[0].tostring(), flags, copy=copy, track=track)
+        except zmq.ZMQError:
+            pass
+
+
+def open_raw_data_file(filename, mode="w", title="", scan_parameters=None, socket_addr=None, **kwargs):
     '''Mimics pytables.open_file()
 
     Returns:
@@ -20,13 +39,13 @@ def open_raw_data_file(filename, mode="w", title="", scan_parameters=None, **kwa
         # do something here
         raw_data_file.append(self.readout.data, scan_parameters={scan_parameter:scan_parameter_value})
     '''
-    return RawDataFile(filename=filename, mode=mode, title=title, scan_parameters=scan_parameters, **kwargs)
+    return RawDataFile(filename=filename, mode=mode, title=title, scan_parameters=scan_parameters, socket_addr=socket_addr, **kwargs)
 
 
 class RawDataFile(object):
     '''Raw data file object. Saving data queue to HDF5 file.
     '''
-    def __init__(self, filename, mode="w", title='', scan_parameters=None, **kwargs):  # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created):
+    def __init__(self, filename, mode="w", title='', scan_parameters=None, socket_addr=None, **kwargs):  # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created):
         self.lock = RLock()
         if os.path.splitext(filename)[1].strip().lower() != '.h5':
             self.base_filename = filename
@@ -52,6 +71,11 @@ class RawDataFile(object):
         self.curr_filename = self.base_filename
         self.filenames = {self.curr_filename: 0}
         self.open(self.curr_filename, mode, title, **kwargs)
+        if socket_addr:
+            self.socket = zmq.Context().socket(zmq.PUSH)
+            self.socket.bind(socket_addr)
+        else:
+            self.socket = None
 
     def __enter__(self):
         return self
@@ -147,6 +171,7 @@ class RawDataFile(object):
                 self.scan_param_table.row.append()
             if flush:
                 self.flush()
+            send_data(self.socket, data_tuple, self.scan_parameters)
 
     def append(self, data_iterable, scan_parameters=None, flush=True):
         with self.lock:
