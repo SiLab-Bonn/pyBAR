@@ -46,13 +46,17 @@ class TestInterface(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         
-        subprocess.call('unzip -o test_interface//sim_build.zip', shell=True)
-        subprocess.Popen(['make','-f','..//..//device//mio//cosim//Makefile','sim_only'])
+        # to build from source:
+        #make -f ../../device/mio/cosim/Makefile results.xml
+        # zip sim_build directory and place in tests/test_interface directory
+
+        subprocess.call('unzip -o test_interface/sim_build.zip', shell=True)
+        subprocess.Popen(['make','-f','../../device/mio/cosim/Makefile','sim_only'])
         time.sleep(180) #some time for simulator to start
         
     @classmethod
     def tearDownClass(cls):
-        shutil.rmtree('test_interface//scan_unittests', ignore_errors=True)
+        shutil.rmtree('test_interface/scan_unittests', ignore_errors=True)
 
     @mock.patch('pybar.fei4.register_utils.FEI4RegisterUtils.configure_pixel', side_effect=lambda *args, **kwargs: None)  # do not configure pixel registers to safe time
     @mock.patch('pybar.fei4.register_utils.FEI4RegisterUtils.send_commands', autospec=True, side_effect=lambda *args, **kwargs: send_commands(*args, **kwargs))  # do not configure pixel registers to safe time
