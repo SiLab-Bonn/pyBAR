@@ -329,9 +329,9 @@ def plot_scatter(x, y, x_err=None, y_err=None, title=None, legend=None, plot_ran
     if y_label is not None:
         ax.set_ylabel(y_label)
     if log_x:
-        ax.xscale('log')
+        ax.set_xscale('log')
     if log_y:
-        ax.yscale('log')
+        ax.set_yscale('log')
     if plot_range:
         ax.set_xlim((min(plot_range), max(plot_range)))
     if plot_range_y:
