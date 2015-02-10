@@ -259,17 +259,21 @@ class FEI4Register(object):
                 if not line:
                     continue
                 parts = re.split(r'\s*[=]\s*|\s+', line)
-                if parts[0] in config_dict:
+                key = parts[0].strip()
+                if key in config_dict:
                     logging.warning('Item %s in configuration file exists more than once' % parts[0])
                 try:
-                    config_dict[parts[0]] = ast.literal_eval(parts[1])
-                except SyntaxError:
-                    config_dict[parts[0]] = parts[1].strip()
+                    config_dict[key] = ast.literal_eval(parts[1].strip())
+                except SyntaxError:  # for comma separated values, e.g. lists
+                    try:
+                        config_dict[key] = ast.literal_eval(line[len(parts[0]):].strip())
+                    except SyntaxError:
+                        config_dict[key] = line[len(parts[0]):].strip()
                 except ValueError:
-                    config_dict[parts[0]] = parts[1].strip()
+                    config_dict[key] = parts[1].strip()
 
         if 'Flavor' in config_dict:
-            flavor = config_dict.pop('Flavor')
+            flavor = config_dict.pop('Flavor').lower()
             if self.flavor:
                 pass
             else:
@@ -377,7 +381,14 @@ class FEI4Register(object):
                         lines.append('%s %s\n' % (key, pixel_reg_dict[key]))
                     lines.append("\n# FEI4 Calibration Parameters\n")
                     for key in self.calibration_parameters:
-                        lines.append('%s %s\n' % (key, self.calibration_parameters[key]))
+                        if self.calibration_parameters[key] is None:
+                            lines.append('%s %s\n' % (key, self.calibration_parameters[key]))
+                        elif isinstance(self.calibration_parameters[key], (float, int, long)):
+                            lines.append('%s %s\n' % (key, round(self.calibration_parameters[key], 4)))
+                        elif isinstance(self.calibration_parameters[key], list):
+                            lines.append('%s %s\n' % (key, [round(elem, 2) for elem in self.calibration_parameters[key]]))
+                        else:
+                            raise ValueError('type %s not supported' % type(self.calibration_parameters[key]))
                     if self.miscellaneous:
                         lines.append("\n# Miscellaneous\n")
                         for key, value in self.miscellaneous.iteritems():
@@ -494,7 +505,7 @@ class FEI4Register(object):
             calibration_data_row = calibration_data_table.row
             for key, value in self.calibration_parameters.iteritems():
                 calibration_data_row['name'] = key
-                calibration_data_row['value'] = value
+                calibration_data_row['value'] = str(value)
                 calibration_data_row.append()
             calibration_data_table.flush()
 
@@ -548,28 +559,6 @@ class FEI4Register(object):
         else:
             with tb.open_file(configuration_file, mode="a", title='') as h5_file:
                 save_conf()
-
-    def parse_parameters(self, parameters):
-        with open(self.configuration_file, 'r') as f:
-            for line in f.readlines():
-                key_value = re.split(r'\s*[=]\s*|\s+', line)
-                if key_value[0] in parameters:
-                    try:
-                        parameters[key_value[0]] = ast.literal_eval(key_value[1].strip())
-                    except SyntaxError:  # for comma separated values, e.g. lists
-                        parameters[key_value[0]] = ast.literal_eval(line[len(key_value[0]):].strip())
-                    except ValueError:
-                        parameters[key_value[0]] = key_value[1].strip().lower()
-
-    def write_parameters(self, parameters, title=None):
-        with open(self.configuration_file, 'a') as f:
-            lines = []
-            if title:
-                lines.append("# %s\n" % title)
-            for key, value in parameters.iteritems():
-                lines.append('%s %s\n' % (key, str(value)))
-            lines.append("\n")
-            f.writelines(lines)
 
     '''
     TODO:
