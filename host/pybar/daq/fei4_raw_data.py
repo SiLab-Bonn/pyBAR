@@ -20,7 +20,7 @@ def send_data(socket, data, scan_parameters, name='FEI4readoutData', flags=0, co
                 timestamp_start=data[1],
                 timestamp_stop=data[2],
                 readout_error=float(data[3]),
-                scan_parameters=scan_parameters
+                scan_parameters=str(scan_parameters)
             )
             socket.send_json(data_meta_data, flags | zmq.SNDMORE | zmq.NOBLOCK)
             return socket.send(data[0].tostring(), flags, copy=copy, track=track)
