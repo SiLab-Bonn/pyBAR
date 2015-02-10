@@ -97,7 +97,7 @@ class FastThresholdScan(Fei4RunBase):
             commands.extend(self.register.get_commands("WrRegister", name=['PlsrDAC']))
             self.register_utils.send_commands(commands)
 
-            with self.readout(PlsrDAC=self.scan_parameter_value):
+            with self.readout(PlsrDAC=self.scan_parameter_value, reset_sram_fifo=True, fill_buffer=True, clear_buffer=True, callback=self.handle_data if self.record_data else None):
                 cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0]
                 scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections, use_delay=True, mask_steps=self.mask_steps, enable_mask_steps=self.enable_mask_steps, enable_double_columns=enable_double_columns, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=self.enable_shift_masks, disable_shift_masks=self.disable_shift_masks, restore_shift_masks=False, mask=invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if self.use_enable_mask else None, double_column_correction=self.pulser_dac_correction)
 
@@ -108,11 +108,7 @@ class FastThresholdScan(Fei4RunBase):
                     logging.info('Testing for stop condition: %s %d' % ('PlsrDAC', self.scan_parameter_value))
 
                 col, row = convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)
-                # using self written histogrammer in C++
                 occupancy_array = hist_2d_index(col - 1, row - 1, shape=(80, 336))
-                # using numpy
-#                 occupancy_array = np.histogram2d(col, row, bins=(80, 336), range=[[1, 80], [1, 336]])[0]
-
                 self.scan_condition(occupancy_array)
 
             # start condition is met for the first time
@@ -128,7 +124,6 @@ class FastThresholdScan(Fei4RunBase):
             # saving data
             if self.record_data:
                 self.data_points = self.data_points + 1
-                self.raw_data_file.append(self.fifo_readout.data, scan_parameters=self.scan_parameters._asdict())
 
             # stop condition is met for the first time
             if self.stop_condition_triggered and self.record_data:
@@ -172,12 +167,6 @@ class FastThresholdScan(Fei4RunBase):
         if pixels_with_hits_count >= start_pixel_cnt and not self.start_condition_triggered:  # start precise scanning if this is true
             logging.info("Triggering start condition: %d pixel(s) with more than 0 hits >= %d pixel(s)" % (pixels_with_hits_count, start_pixel_cnt))
             self.start_condition_triggered = True
-
-    def start_readout(self, **kwargs):
-        if kwargs:
-            self.set_scan_parameters(**kwargs)
-        self.fifo_readout.start(reset_sram_fifo=True, clear_buffer=True, callback=None, errback=self.handle_err)
-
 
 if __name__ == "__main__":
     RunManager('../configuration.yaml').run_run(FastThresholdScan)
