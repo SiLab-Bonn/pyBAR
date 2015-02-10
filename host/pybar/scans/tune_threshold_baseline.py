@@ -102,7 +102,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
                 logging.info('Step %d / %d at Vthin_AltFine %d' % (step, steps, reg_val))
                 logging.info('Estimated scan time: %ds' % self.total_scan_time)
 
-                with self.readout(Vthin_AltFine=reg_val, Step=step):
+                with self.readout(Vthin_AltFine=reg_val, Step=step, reset_sram_fifo=True, fill_buffer=True, clear_buffer=True, callback=self.handle_data):
                     got_data = False
                     start = time()
                     self.register_utils.send_command(lvl1_command, repeat=self.n_triggers, wait_for_finish=False, set_length=True, clear_memory=False)
@@ -192,11 +192,6 @@ class ThresholdBaselineTuning(Fei4RunBase):
             plot_occupancy(self.last_tdac_distribution.T, title='TDAC at Vthin_AltFine %d Step %d' % (self.last_reg_val, self.last_step), z_max=31, filename=analyze_raw_data.output_pdf)
             plot_occupancy(self.register.get_pixel_register_value('Enable').T, title='Enable Mask', z_max=1, filename=analyze_raw_data.output_pdf)
             plot_fancy_occupancy(self.register.get_pixel_register_value('Enable').T, filename=analyze_raw_data.output_pdf)
-
-    def start_readout(self, **kwargs):
-        if kwargs:
-            self.set_scan_parameters(**kwargs)
-        self.fifo_readout.start(reset_sram_fifo=True, reset_rx=False, clear_buffer=True, callback=None, errback=self.handle_err)
 
 if __name__ == "__main__":
     RunManager('../configuration.yaml').run_run(ThresholdBaselineTuning)

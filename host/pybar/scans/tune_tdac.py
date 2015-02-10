@@ -81,7 +81,7 @@ class TdacTuning(Fei4RunBase):
 
             self.write_tdac_config()
 
-            with self.readout(TDAC=scan_parameter_value):
+            with self.readout(TDAC=scan_parameter_value, reset_sram_fifo=True, fill_buffer=True, clear_buffer=True, callback=self.handle_data):
                 scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections_tdac, mask_steps=mask_steps, enable_mask_steps=enable_mask_steps, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=self.enable_shift_masks, disable_shift_masks=self.disable_shift_masks, restore_shift_masks=True, mask=None, double_column_correction=self.pulser_dac_correction)
 
             self.raw_data_file.append(self.fifo_readout.data, scan_parameters=self.scan_parameters._asdict())
@@ -158,12 +158,6 @@ class TdacTuning(Fei4RunBase):
         commands.extend(self.register.get_commands("ConfMode"))
         commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, name=["TDAC"]))
         self.register_utils.send_commands(commands)
-
-    def start_readout(self, **kwargs):
-        if kwargs:
-            self.set_scan_parameters(**kwargs)
-        self.fifo_readout.start(reset_sram_fifo=True, clear_buffer=True, callback=None, errback=self.handle_err)
-
 
 if __name__ == "__main__":
     RunManager('../configuration.yaml').run_run(TdacTuning)
