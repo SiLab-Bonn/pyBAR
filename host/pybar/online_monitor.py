@@ -1,4 +1,5 @@
 import sys
+import re
 import zmq
 import time
 import numpy as np
@@ -50,7 +51,7 @@ class DataWorker(QtCore.QObject):
             meta_data = self.socket.recv_json(flags=flags)
             msg = self.socket.recv(flags=flags, copy=copy, track=track)
             array = np.fromstring(msg, dtype=meta_data['dtype'])
-            return array.reshape(meta_data['shape']), meta_data['timestamp_start'], meta_data['timestamp_stop'], meta_data['readout_error'], meta_data['scan_parameters']
+            return array.reshape(meta_data['shape']), meta_data['timestamp_start'], meta_data['timestamp_stop'], meta_data['readout_error'], re.sub(r'\bOrderedDict\b|[()\[\],\']', '', meta_data['scan_parameters'])
         else:
             return None, None, None, None, None
 
