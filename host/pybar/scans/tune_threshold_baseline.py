@@ -19,7 +19,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
     _default_run_conf = {
         "occupancy_limit": 0,  # occupancy limit, when reached the TDAC will be decreased (increasing threshold). 0 will mask any pixel with occupancy greater than zero
         "scan_parameters": [('Vthin_AltFine', (120, None)), ('Step', 30)],  # the Vthin_AltFine range, number of steps (repetition at constant Vthin_AltFine)
-        "increase_threshold": 0,  # increase the threshold in VthinAF after tuning
+        "increase_threshold": 5,  # increase the threshold in VthinAF after tuning
         "disabled_pixels_limit": 0.01,  # limit of disabled pixels, fraction of all pixels
         "use_enable_mask": False,  # if True, enable mask from config file anded with mask (from col_span and row_span), if False use mask only for enable mask
         "n_triggers": 100000,  # total number of trigger sent to FE
@@ -124,7 +124,6 @@ class ThresholdBaselineTuning(Fei4RunBase):
                             except ValueError:
                                 pass
 
-                self.raw_data_file.append(self.fifo_readout.data, scan_parameters=self.scan_parameters._asdict())
                 col_arr, row_arr = convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)
                 occ_hist, _, _ = np.histogram2d(col_arr, row_arr, bins=(80, 336), range=[[1, 80], [1, 336]])
                 occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
