@@ -31,6 +31,10 @@ class Fei4RunBase(RunBase):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, conf, run_conf=None):
+        # adding default run conf parameters valid for all scans
+        if 'send_data' not in self._default_run_conf:
+            self._default_run_conf.update({'send_data': None})
+
         super(Fei4RunBase, self).__init__(conf=conf, run_conf=run_conf)
 
         self.err_queue = Queue()
@@ -39,12 +43,6 @@ class Fei4RunBase(RunBase):
         self.register_utils = None
 
         self.raw_data_file = None
-
-        try:
-            self.socket_addr = self._run_conf['send_data']
-            logging.info('Send data to %s' % self.socket_addr)
-        except KeyError:
-            self.socket_addr = None
 
     @property
     def working_dir(self):
@@ -78,6 +76,10 @@ class Fei4RunBase(RunBase):
             return None
 
     def _run(self):
+        self.socket_addr = self._run_conf['send_data']
+        if self.socket_addr:
+            logging.info('Send data to %s' % self.socket_addr)
+
         if 'scan_parameters' in self.run_conf:
             sp = namedtuple('scan_parameters', field_names=zip(*self.run_conf['scan_parameters'])[0])
             self.scan_parameters = sp(*zip(*self.run_conf['scan_parameters'])[1])
