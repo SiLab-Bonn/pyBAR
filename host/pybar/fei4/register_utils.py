@@ -286,7 +286,7 @@ def test_global_register(self):
     commands = []
     commands.extend(self.register.get_commands("RdRegister", addresses=read_from_address))
     self.register_utils.send_commands(commands)
-
+    time.sleep(1.0)  # wait for data
     data = self.fifo_readout.read_data()
     if data.shape[0] == 0:
         logging.error('Global Register Test: No data')
@@ -304,7 +304,7 @@ def test_global_register(self):
                 set_value = struct.unpack('H', set_value_bitarray.tobytes())[0]
                 checked_address.append(fei4_data_word['address'])
                 if read_value == set_value:
-                    # print 'Register Test:', 'Address', fei4_data_word['address'], 'PASSED'
+#                     print 'Register Test:', 'Address', fei4_data_word['address'], 'PASSED'
                     pass
                 else:
                     number_of_errors += 1
@@ -359,7 +359,7 @@ def test_pixel_register(self):
 
     commands.extend(self.register.get_commands("WrRegister", name=["Conf_AddrEnable", "S0", "S1", "SR_Clr", "CalEn", "DIGHITIN_SEL", "GateHitOr", "ReadSkipped", "ReadErrorReq", "StopClkPulse", "SR_Clock", "Efuse_Sense", "HITLD_IN", "Colpr_Mode", "Colpr_Addr", "Pixel_Strobes", "Latch_En"]))
     self.register_utils.send_commands(commands)
-
+    time.sleep(1)
     register_objects = self.register.get_pixel_register_objects(do_sort=['pxstrobe'], reverse=True, name=["EnableDigInj", "Imon", "Enable", "C_High", "C_Low", "TDAC", "FDAC"])  # check EnableDigInj first, because it is not latched
     number_of_errors = 0
     for register_object in register_objects:
