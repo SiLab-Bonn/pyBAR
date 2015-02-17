@@ -13,7 +13,7 @@ class ExtTriggerGdacScan(ExtTriggerScan):
 
     For use with external scintillator (user RX0), TLU (use RJ45), USBpix self-trigger (loop back TX2 into RX0.)
     '''
-    _default_run_conf = ExtTriggerScan._default_run_conf
+    _default_run_conf = ExtTriggerScan._default_run_conf.copy()
     _default_run_conf.update({
         "scan_parameters": [('GDAC', None)],  # list of values, string with calibration file name, None: use 50 GDAC values
         "interpolate_calibration": True,  # interpolate GDAC values to have equally spaced thresholds, otherwise take GDACs used during calibration

@@ -26,7 +26,7 @@ class ThresholdCalibration(FastThresholdScan):
 
     ''' Threshold calibration scan
     '''
-    _default_run_conf = FastThresholdScan._default_run_conf
+    _default_run_conf = FastThresholdScan._default_run_conf.copy()
     _default_run_conf['scan_parameters'] = [('PlsrDAC', (0, None)), ('GDAC', np.unique(np.logspace(1.7, 4.0, 10).astype(np.int)).tolist())]
     _default_run_conf.update({
         "ignore_columns": (1, 78, 79, 80),

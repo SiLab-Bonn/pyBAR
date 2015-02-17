@@ -17,7 +17,7 @@ from PyEUDAQWrapper import PyProducer
 class EudaqExtTriggerScan(ExtTriggerScan):
     '''EUDAQ producer
     '''
-#     _default_run_conf = ExtTriggerScan._default_run_conf
+#     _default_run_conf = ExtTriggerScan._default_run_conf.copy()
 #     _default_run_conf.update({
 #         "trigger_mode": 3,
 #         "no_data_timeout": 600,
