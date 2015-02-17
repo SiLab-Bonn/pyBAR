@@ -11,6 +11,7 @@ import tables as tb
 from collections import namedtuple, Mapping
 from contextlib import contextmanager
 import abc
+import ast
 import inspect
 from basil.dut import Dut
 
@@ -79,8 +80,9 @@ class Fei4RunBase(RunBase):
         self.socket_addr = self._run_conf['send_data']
         if self.socket_addr:
             logging.info('Send data to %s' % self.socket_addr)
-
         if 'scan_parameters' in self.run_conf:
+            if isinstance(self.run_conf['scan_parameters'], basestring):
+                self.run_conf['scan_parameters'] = ast.literal_eval(self.run_conf['scan_parameters'])
             sp = namedtuple('scan_parameters', field_names=zip(*self.run_conf['scan_parameters'])[0])
             self.scan_parameters = sp(*zip(*self.run_conf['scan_parameters'])[1])
         else:
