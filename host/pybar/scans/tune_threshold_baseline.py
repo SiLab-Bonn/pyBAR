@@ -8,22 +8,26 @@ from pybar.fei4.register_utils import make_box_pixel_mask_from_col_row, invert_p
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.run_manager import RunManager
 from pybar.analysis.plotting.plotting import plot_occupancy, plot_fancy_occupancy, plotThreeWay
-from pybar.daq.readout_utils import get_col_row_array_from_data_record_array, convert_data_array, data_array_from_data_iterable, is_data_record
+from pybar.daq.readout_utils import data_array_from_data_iterable
+from pybar.analysis.RawDataConverter.data_interpreter import PyDataInterpreter
+from pybar.analysis.RawDataConverter.data_histograming import PyDataHistograming
 
 
 class ThresholdBaselineTuning(Fei4RunBase):
     '''Threshold Baseline Tuning
 
     Tuning the FEI4 to the lowest possible threshold (GDAC and TDAC). Feedback current will not be tuned.
+    NOTE: In case of RX errors decrease the trigger frequency (= increase trigger_rate_limit)
     '''
     _default_run_conf = {
         "occupancy_limit": 0,  # occupancy limit, when reached the TDAC will be decreased (increasing threshold). 0 will mask any pixel with occupancy greater than zero
-        "scan_parameters": [('Vthin_AltFine', (120, None)), ('Step', 5)],  # the Vthin_AltFine range, number of steps (repetition at constant Vthin_AltFine)
+        "scan_parameters": [('Vthin_AltFine', (120, None)), ('Step', 60)],  # the Vthin_AltFine range, number of steps (repetition at constant Vthin_AltFine)
+        "increase_threshold": 5,  # increase the threshold in VthinAF after tuning
         "disabled_pixels_limit": 0.01,  # limit of disabled pixels, fraction of all pixels
         "use_enable_mask": False,  # if True, enable mask from config file anded with mask (from col_span and row_span), if False use mask only for enable mask
-        "n_triggers": 100000,  # total number of trigger sent to FE
+        "n_triggers": 10000,  # total number of trigger sent to FE
         "trigger_rate_limit": 500,  # artificially limiting the trigger rate, in BCs (25ns)
-        "trig_count": 1,  # FE global register Trig_Count
+        "trig_count": 15,  # FE global register Trig_Count
         "col_span": [1, 80],  # column range (from minimum to maximum value). From 1 to 80.
         "row_span": [1, 336],  # row range (from minimum to maximum value). From 1 to 336.
     }
@@ -65,6 +69,13 @@ class ThresholdBaselineTuning(Fei4RunBase):
         commands.extend(self.register.get_commands("RunMode"))
         self.register_utils.send_commands(commands)
 
+        self.interpreter = PyDataInterpreter()
+        self.histograming = PyDataHistograming()
+        self.interpreter.set_trig_count(self.trig_count)
+        self.interpreter.set_warning_output(False)
+        self.histograming.set_no_scan_parameter()
+        self.histograming.create_occupancy_hist(True)
+
     def scan(self):
         scan_parameter_range = [self.register.get_global_register_value("Vthin_AltFine"), 0]
         if self.scan_parameters.Vthin_AltFine[0]:
@@ -98,11 +109,12 @@ class ThresholdBaselineTuning(Fei4RunBase):
             while True:
                 if self.stop_run.is_set():
                     break
+                self.histograming.reset()
                 step += 1
                 logging.info('Step %d / %d at Vthin_AltFine %d' % (step, steps, reg_val))
                 logging.info('Estimated scan time: %ds' % self.total_scan_time)
 
-                with self.readout(Vthin_AltFine=reg_val, Step=step):
+                with self.readout(Vthin_AltFine=reg_val, Step=step, reset_sram_fifo=True, fill_buffer=True, clear_buffer=True, callback=self.handle_data):
                     got_data = False
                     start = time()
                     self.register_utils.send_command(lvl1_command, repeat=self.n_triggers, wait_for_finish=False, set_length=True, clear_memory=False)
@@ -122,14 +134,15 @@ class ThresholdBaselineTuning(Fei4RunBase):
                                 self.progressbar.update(time() - start)
                             except ValueError:
                                 pass
-
-                self.raw_data_file.append(self.fifo_readout.data, scan_parameters=self.scan_parameters._asdict())
-                col_arr, row_arr = convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)
-                occ_hist, _, _ = np.histogram2d(col_arr, row_arr, bins=(80, 336), range=[[1, 80], [1, 336]])
-                occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
+                # Use fast C++ hit histograming to save time
+                raw_data = np.ascontiguousarray(data_array_from_data_iterable(self.fifo_readout.data), dtype=np.uint32)
+                self.interpreter.interpret_raw_data(raw_data)
+                self.interpreter.store_event()  # force to create latest event
+                self.histograming.add_hits(self.interpreter.get_hits())
+                occ_hist = self.histograming.get_occupancy()[:, :, 0]
                 # noisy pixels are set to 1
+                occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
                 occ_mask[occ_hist > self.occupancy_limit * self.n_triggers * self.consecutive_lvl1] = 1
-#                     plot_occupancy(occ_hist.T, title='Occupancy', filename=self.scan_data_filename + '_noise_occ_' + str(reg_val) + '_' + str(step) + '.pdf')
 
                 tdac_reg = self.register.get_pixel_register_value('TDAC')
                 decrease_pixel_mask = np.logical_and(occ_mask > 0, tdac_reg > 0)
@@ -147,7 +160,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
                 else:
                     logging.info('Increasing threshold of %d pixel(s)' % (decrease_pixel_mask.sum(),))
                     logging.info('Disabling %d pixel(s), total number of disabled pixel(s): %d' % (disable_pixel_mask.sum(), disabled_pixels))
-                    tdac_reg[decrease_pixel_mask] -= 1  # TODO
+                    tdac_reg[decrease_pixel_mask] -= 1
                     self.register.set_pixel_register_value('TDAC', tdac_reg)
                     self.register.set_pixel_register_value('Enable', enable_mask)
                     commands = []
@@ -165,7 +178,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
                         self.last_step = step
                         break
                     else:
-                        logging.info('Found noisy pixels... repeat tuning step for Vthin_AltFine %d' % (reg_val,))
+                        logging.info('Found %d noisy pixels... repeat tuning step for Vthin_AltFine %d' % (occ_mask.sum(), reg_val))
 
             if disabled_pixels > disabled_pixels_limit_cnt:
                 self.last_good_threshold = self.register.get_global_register_value("Vthin_AltFine")
@@ -174,7 +187,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
                 break
 
     def analyze(self):
-        self.register.set_global_register_value("Vthin_AltFine", self.last_good_threshold)
+        self.register.set_global_register_value("Vthin_AltFine", self.last_good_threshold + self.increase_threshold)
         self.register.set_pixel_register_value('TDAC', self.last_good_tdac)
         self.register.set_pixel_register_value('Enable', self.last_good_enable_mask)
 
@@ -192,11 +205,6 @@ class ThresholdBaselineTuning(Fei4RunBase):
             plot_occupancy(self.last_tdac_distribution.T, title='TDAC at Vthin_AltFine %d Step %d' % (self.last_reg_val, self.last_step), z_max=31, filename=analyze_raw_data.output_pdf)
             plot_occupancy(self.register.get_pixel_register_value('Enable').T, title='Enable Mask', z_max=1, filename=analyze_raw_data.output_pdf)
             plot_fancy_occupancy(self.register.get_pixel_register_value('Enable').T, filename=analyze_raw_data.output_pdf)
-
-    def start_readout(self, **kwargs):
-        if kwargs:
-            self.set_scan_parameters(**kwargs)
-        self.fifo_readout.start(reset_sram_fifo=True, reset_rx=False, clear_buffer=True, callback=None, errback=self.handle_err)
 
 if __name__ == "__main__":
     RunManager('../configuration.yaml').run_run(ThresholdBaselineTuning)

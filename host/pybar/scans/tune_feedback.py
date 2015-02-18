@@ -82,10 +82,8 @@ class FeedbackTuning(Fei4RunBase):
 
             scan_parameter_value = self.register.get_global_register_value("PrmpVbpf")
 
-            with self.readout(PrmpVbpf=scan_parameter_value):
+            with self.readout(PrmpVbpf=scan_parameter_value, reset_sram_fifo=True, fill_buffer=True, clear_buffer=True, callback=self.handle_data):
                 scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections_feedback, mask_steps=mask_steps, enable_mask_steps=enable_mask_steps, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=self.enable_shift_masks, disable_shift_masks=self.disable_shift_masks, restore_shift_masks=True, mask=None, double_column_correction=self.pulser_dac_correction)
-
-            self.raw_data_file.append(self.fifo_readout.data, scan_parameters=self.scan_parameters._asdict())
 
             tots = convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=is_data_record, converter_func=get_tot_array_from_data_record_array)
             mean_tot = np.mean(tots)
@@ -159,11 +157,6 @@ class FeedbackTuning(Fei4RunBase):
             self.register.set_global_register_value("PrmpVbpf", self.register.get_global_register_value("PrmpVbpf") & ~(1 << bit_position))
         commands.extend(self.register.get_commands("WrRegister", name=["PrmpVbpf"]))
         self.register_utils.send_commands(commands)
-
-    def start_readout(self, **kwargs):
-        if kwargs:
-            self.set_scan_parameters(**kwargs)
-        self.fifo_readout.start(reset_sram_fifo=True, clear_buffer=True, callback=None, errback=self.handle_err)
 
 
 if __name__ == "__main__":

@@ -39,9 +39,11 @@ class FifoReadout(object):
         self.readout_thread = None
         self.worker_thread = None
         self.watchdog_thread = None
+        self.fill_buffer = False
         self.readout_interval = 0.05
         self._moving_average_time_period = 10.0
         self._data_deque = deque()
+        self._data_buffer = deque()
         self._words_per_read = deque(maxlen=int(self._moving_average_time_period / self.readout_interval))
         self._result = Queue(maxsize=1)
         self._calculate = Event()
@@ -66,7 +68,10 @@ class FifoReadout(object):
 
     @property
     def data(self):
-        return self._data_deque
+        if self.fill_buffer:
+            return self._data_buffer
+        else:
+            logging.warning('Data requested but software data buffer not active')
 
     def data_words_per_second(self):
         if self._result.full():
@@ -79,13 +84,14 @@ class FifoReadout(object):
             return None
         return result / float(self._moving_average_time_period)
 
-    def start(self, callback=None, errback=None, reset_rx=False, reset_sram_fifo=False, clear_buffer=False, no_data_timeout=None):
+    def start(self, callback=None, errback=None, reset_rx=False, reset_sram_fifo=False, clear_buffer=False, fill_buffer=False, no_data_timeout=None):
         if self._is_running:
             raise RuntimeError('Readout already running: use stop() before start()')
         self._is_running = True
         logging.info('Starting FIFO readout...')
         self.callback = callback
         self.errback = errback
+        self.fill_buffer = fill_buffer
         if reset_rx:
             self.reset_rx()
         if reset_sram_fifo:
@@ -97,6 +103,7 @@ class FifoReadout(object):
         self._words_per_read.clear()
         if clear_buffer:
             self._data_deque.clear()
+            self._data_buffer.clear()
         self.stop_readout.clear()
         self.force_stop.clear()
         if self.errback:
@@ -179,7 +186,10 @@ class FifoReadout(object):
                 if data_words > 0:
                     last_time, curr_time = self.update_timestamp()
                     status = 0
-                    self._data_deque.append((data, last_time, curr_time, status))
+                    if self.callback:
+                        self._data_deque.append((data, last_time, curr_time, status))
+                    if self.fill_buffer:
+                        self._data_buffer.append((data, last_time, curr_time, status))
                     self._words_per_read.append(data_words)
                 elif self.stop_readout.is_set():
                     break

@@ -84,10 +84,8 @@ class FdacTuning(Fei4RunBase):
 
             self.write_fdac_config()
 
-            with self.readout(FDAC=scan_parameter_value):
+            with self.readout(FDAC=scan_parameter_value, reset_sram_fifo=True, fill_buffer=True, clear_buffer=True, callback=self.handle_data):
                 scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections_fdac, mask_steps=mask_steps, enable_mask_steps=enable_mask_steps, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=self.enable_shift_masks, disable_shift_masks=self.disable_shift_masks, restore_shift_masks=True, mask=None, double_column_correction=self.pulser_dac_correction)
-
-            self.raw_data_file.append(self.fifo_readout.data, scan_parameters=self.scan_parameters._asdict())
 
             col_row_tot = np.column_stack(convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=is_data_record, converter_func=get_col_row_tot_array_from_data_record_array))
             tot_array = np.histogramdd(col_row_tot, bins=(80, 336, 16), range=[[1, 80], [1, 336], [0, 15]])[0]
@@ -151,12 +149,6 @@ class FdacTuning(Fei4RunBase):
         for bit_position in self.fdac_tune_bits:  # reset all FDAC bits, TODO: speed up
             start_fdac_setting = start_fdac_setting & ~(1 << bit_position)
         self.register.set_pixel_register_value("FDAC", start_fdac_setting)
-
-    def start_readout(self, **kwargs):
-        if kwargs:
-            self.set_scan_parameters(**kwargs)
-        self.fifo_readout.start(reset_sram_fifo=True, clear_buffer=True, callback=None, errback=self.handle_err)
-
 
 if __name__ == "__main__":
     RunManager('../configuration.yaml').run_run(FdacTuning)

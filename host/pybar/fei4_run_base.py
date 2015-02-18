@@ -11,6 +11,7 @@ import tables as tb
 from collections import namedtuple, Mapping
 from contextlib import contextmanager
 import abc
+import ast
 import inspect
 from basil.dut import Dut
 
@@ -31,6 +32,10 @@ class Fei4RunBase(RunBase):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, conf, run_conf=None):
+        # adding default run conf parameters valid for all scans
+        if 'send_data' not in self._default_run_conf:
+            self._default_run_conf.update({'send_data': None})
+
         super(Fei4RunBase, self).__init__(conf=conf, run_conf=run_conf)
 
         self.err_queue = Queue()
@@ -39,12 +44,6 @@ class Fei4RunBase(RunBase):
         self.register_utils = None
 
         self.raw_data_file = None
-
-        try:
-            self.socket_addr = self._run_conf['send_data']
-            logging.info('Send data to %s' % self.socket_addr)
-        except KeyError:
-            self.socket_addr = None
 
     @property
     def working_dir(self):
@@ -78,7 +77,12 @@ class Fei4RunBase(RunBase):
             return None
 
     def _run(self):
+        self.socket_addr = self._run_conf['send_data']
+        if self.socket_addr:
+            logging.info('Send data to %s' % self.socket_addr)
         if 'scan_parameters' in self.run_conf:
+            if isinstance(self.run_conf['scan_parameters'], basestring):
+                self.run_conf['scan_parameters'] = ast.literal_eval(self.run_conf['scan_parameters'])
             sp = namedtuple('scan_parameters', field_names=zip(*self.run_conf['scan_parameters'])[0])
             self.scan_parameters = sp(*zip(*self.run_conf['scan_parameters'])[1])
         else:
@@ -302,9 +306,16 @@ class Fei4RunBase(RunBase):
                 self.fifo_readout.stop(timeout=0.0)
 
     def start_readout(self, *args, **kwargs):
+        # Pop parameters for fifo_readout.start
+        callback = kwargs.pop('callback', self.handle_data)
+        clear_buffer = kwargs.pop('clear_buffer', False)
+        fill_buffer = kwargs.pop('fill_buffer', False)
+        reset_sram_fifo = kwargs.pop('reset_sram_fifo', False)
+        errback = kwargs.pop('errback', self.handle_err)
+        no_data_timeout = kwargs.pop('no_data_timeout', None)
         if args or kwargs:
             self.set_scan_parameters(*args, **kwargs)
-        self.fifo_readout.start(reset_sram_fifo=False, clear_buffer=True, callback=self.handle_data, errback=self.handle_err)
+        self.fifo_readout.start(reset_sram_fifo=reset_sram_fifo, fill_buffer=fill_buffer, clear_buffer=clear_buffer, callback=callback, errback=errback, no_data_timeout=no_data_timeout)
 
     def stop_readout(self):
         self.fifo_readout.stop()

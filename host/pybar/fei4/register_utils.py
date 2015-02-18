@@ -95,7 +95,6 @@ class FEI4RegisterUtils(object):
         if length is not None:
             if repeat is None:
                 repeat = 1
-            # print 'sleeping'
             time.sleep((length + 500) * 0.000000025 * repeat)  # TODO: optimize wait time
         while not self.is_ready:
             pass
@@ -242,7 +241,6 @@ def read_chip_sn(self):
     self.register.set_global_register_value('Conf_AddrEnable', 1)
     commands.extend(self.register.get_commands("WrRegister", name=['Conf_AddrEnable']))
     chip_sn_address = self.register.get_global_register_attributes("addresses", name="Chip_SN")
-    # print chip_sn_address
     commands.extend(self.register.get_commands("RdRegister", addresses=chip_sn_address))
     self.register_utils.send_commands(commands)
 
@@ -257,7 +255,6 @@ def read_chip_sn(self):
             fei4_next_data_word = FEI4Record(data[index + 1], self.register.chip_flavor)
             if fei4_next_data_word == 'VR':
                 read_value = fei4_next_data_word['value']
-                # print read_value
                 read_values.append(read_value)
 
     commands = []
@@ -289,7 +286,7 @@ def test_global_register(self):
     commands = []
     commands.extend(self.register.get_commands("RdRegister", addresses=read_from_address))
     self.register_utils.send_commands(commands)
-
+    time.sleep(1.0)  # wait for data
     data = self.fifo_readout.read_data()
     if data.shape[0] == 0:
         logging.error('Global Register Test: No data')
@@ -298,7 +295,6 @@ def test_global_register(self):
     number_of_errors = 0
     for index, word in enumerate(np.nditer(data)):
         fei4_data_word = FEI4Record(word, self.register.chip_flavor)
-        # print fei4_data_word
         if fei4_data_word == 'AR':
             fei4_next_data_word = FEI4Record(data[index + 1], self.register.chip_flavor)
             if fei4_next_data_word == 'VR':
@@ -307,9 +303,8 @@ def test_global_register(self):
                 set_value_bitarray.reverse()
                 set_value = struct.unpack('H', set_value_bitarray.tobytes())[0]
                 checked_address.append(fei4_data_word['address'])
-                # print int(self.register.get_global_register_bitsets([fei4_data_word['address']])[0])
                 if read_value == set_value:
-                    # print 'Register Test:', 'Address', fei4_data_word['address'], 'PASSED'
+#                     print 'Register Test:', 'Address', fei4_data_word['address'], 'PASSED'
                     pass
                 else:
                     number_of_errors += 1
@@ -364,13 +359,10 @@ def test_pixel_register(self):
 
     commands.extend(self.register.get_commands("WrRegister", name=["Conf_AddrEnable", "S0", "S1", "SR_Clr", "CalEn", "DIGHITIN_SEL", "GateHitOr", "ReadSkipped", "ReadErrorReq", "StopClkPulse", "SR_Clock", "Efuse_Sense", "HITLD_IN", "Colpr_Mode", "Colpr_Addr", "Pixel_Strobes", "Latch_En"]))
     self.register_utils.send_commands(commands)
-
+    time.sleep(1)
     register_objects = self.register.get_pixel_register_objects(do_sort=['pxstrobe'], reverse=True, name=["EnableDigInj", "Imon", "Enable", "C_High", "C_Low", "TDAC", "FDAC"])  # check EnableDigInj first, because it is not latched
-    # pprint.pprint(register_objects)
-    # print "register_objects", register_objects
     number_of_errors = 0
     for register_object in register_objects:
-        # pprint.pprint(register_object)
         pxstrobe = register_object['pxstrobe']
         bitlength = register_object['bitlength']
         for pxstrobe_bit_no in range(bitlength):
@@ -379,19 +371,11 @@ def test_pixel_register(self):
             commands = []
             try:
                 self.register.set_global_register_value("Pixel_Strobes", 2 ** (pxstrobe + pxstrobe_bit_no))
-                # print register_object.name
-                # print "bit_no", bit_no
-                # print "pxstrobes", 2**(pxstrobe+pxstrobe_bit_no)
-
             except TypeError:
                 self.register.set_global_register_value("Pixel_Strobes", 0)  # do not latch
                 do_latch = False
-                # print register_object.name
-                # print "bit_no", bit_no
-                # print "pxstrobes", 0
             commands.extend(self.register.get_commands("WrRegister", name=["Pixel_Strobes"]))
             self.register_utils.send_commands(commands)
-
             for dc_no in range(40):
                 commands = []
                 self.register.set_global_register_value("Colpr_Addr", dc_no)
@@ -423,10 +407,7 @@ def test_pixel_register(self):
                 if self.register.fei4b:
                     self.register.set_global_register_value("SR_Read", 0)
                     commands.extend(self.register.get_commands("WrRegister", name=["SR_Read"]))
-                # print commands[0]
                 self.register_utils.send_commands(commands)
-                # time.sleep( 0.2 )
-
                 data = self.fifo_readout.read_data()
                 if data.shape[0] == 0:  # no data
                     if do_latch:
@@ -439,10 +420,7 @@ def test_pixel_register(self):
                     seen_addresses = {}
                     for index, word in enumerate(np.nditer(data)):
                         fei4_data = FEI4Record(word, self.register.chip_flavor)
-                        # print fei4_data
                         if fei4_data == 'AR':
-                            # print int(self.register.get_global_register_bitsets([fei4_data['address']])[0])
-                            # read_value = BitArray(uint=FEI4Record(data[index + 1], self.register.chip_flavor)['value'], length=16)
                             read_value = bitarray()
                             fei4_next_data_word = FEI4Record(data[index + 1], self.register.chip_flavor)
                             if fei4_next_data_word == 'VR':
@@ -880,7 +858,7 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
         self.register.set_global_register_value("Colpr_Addr", dc)
         commands.append(self.register.get_commands("WrRegister", name=["Colpr_Addr"])[0])
         if double_column_correction:
-            self.register.set_global_register_value("PlsrDAC", initial_plsr_dac + plsr_dac_correction[dc])
+            self.register.set_global_register_value("PlsrDAC", initial_plsr_dac + int(round(plsr_dac_correction[dc])))
             commands.append(self.register.get_commands("WrRegister", name=["PlsrDAC"])[0])
         commands.append(run_mode_command)
         return self.register_utils.concatenate_commands(commands, byte_padding=True)
