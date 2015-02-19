@@ -167,7 +167,7 @@ d.update({
         'PrmpVbp': {'value': 43, 'address': 6, 'bitlength': 8, 'littleendian': True, 'description': ''},
         'spare_6': {'value': 0, 'address': 6, 'bitlength': 8, 'offset': 8, 'readonly': True, 'description': ''},
         'DisVbn': {'value': 26, 'address': 7, 'bitlength': 8, 'littleendian': True, 'description': ''},
-        'TdacVbp': {'value': 120, 'address': 7, 'bitlength': 8, 'littleendian': True, 'offset': 8, 'description': ''},
+        'TdacVbp': {'value': 100, 'address': 7, 'bitlength': 8, 'littleendian': True, 'offset': 8, 'description': ''},
         'Amp2VbpFol': {'value': 26, 'address': 8, 'bitlength': 8, 'littleendian': True, 'description': ''},
         'Amp2Vbn': {'value': 79, 'address': 8, 'bitlength': 8, 'littleendian': True, 'offset': 8, 'description': ''},
         'Amp2Vbp': {'value': 85, 'address': 9, 'bitlength': 8, 'littleendian': True, 'description': ''},
