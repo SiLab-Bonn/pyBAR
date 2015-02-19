@@ -277,9 +277,7 @@ class FifoReadout(object):
             filter(lambda channel: self.dut[channel]['RESET'], channels)
         else:
             if self.dut.name == 'usbpix' or self.dut.name == 'usbpix_sim':
-                invert_rx = map(lambda channel: self.dut[channel].INVERT_RX, ['rx_1', 'rx_2', 'rx_3', 'rx_4'])
                 filter(lambda channel: self.dut[channel]['RESET'], ['rx_1', 'rx_2', 'rx_3', 'rx_4'])
-                filter(lambda ch_inv: self.dut[ch_inv[0]].set_INVERT_RX(ch_inv[1]), zip(['rx_1', 'rx_2', 'rx_3', 'rx_4'], invert_rx))
             elif self.dut.name == 'usbpix_gpac':
                 filter(lambda channel: self.dut[channel]['RESET'], ['rx_fe'])
         sleep(0.1)  # sleep here for a while
