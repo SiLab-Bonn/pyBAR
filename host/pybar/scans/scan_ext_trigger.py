@@ -15,6 +15,7 @@ class ExtTriggerScan(Fei4RunBase):
     For use with external scintillator (user RX0), TLU (use RJ45), USBpix self-trigger (loop back TX2 into RX0.)
     '''
     _default_run_conf = {
+        "trig_count": 0,  # FE-I4 trigger count, number of consecutive BCs, from 0 to 15
         "trigger_mode": 0,  # trigger mode, more details in basil.HL.tlu, from 0 to 3
         "trigger_latency": 232,  # FE-I4 trigger latency, in BCs, external scintillator / TLU / HitOR: 232, USBpix self-trigger: 220
         "trigger_delay": 14,  # trigger delay, in BCs
@@ -54,7 +55,7 @@ class ExtTriggerScan(Fei4RunBase):
         commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_Low'))
         # Registers
         self.register.set_global_register_value("Trig_Lat", self.trigger_latency)  # set trigger latency
-#         self.register.set_global_register_value("Trig_Count", 0)  # set number of consecutive triggers
+        self.register.set_global_register_value("Trig_Count", self.trig_count)  # set number of consecutive triggers
         commands.extend(self.register.get_commands("WrRegister", name=["Trig_Lat", "Trig_Count"]))
         commands.extend(self.register.get_commands("RunMode"))
         self.register_utils.send_commands(commands)
