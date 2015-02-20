@@ -563,7 +563,7 @@ class AnalyzeRawData(object):
                     self.interpreter.interpret_raw_data(raw_data)  # interpret the raw data
                     if(index == len(self.files_dict.keys()) - 1 and iWord == range(0, table_size, self._chunk_size)[-1]):  # store hits of the latest event of the last file
                         self.interpreter.store_event()  # all actual buffered events in the interpreter are stored
-                    Nhits = self.interpreter.get_n_array_hits()  # get the number of hits of the actual interpreted raw data chunk
+#                     Nhits = self.interpreter.get_n_array_hits()  # get the number of hits of the actual interpreted raw data chunk
                     hits = self.interpreter.get_hits()
                     if(self.scan_parameters is not None):
                         nEventIndex = self.interpreter.get_n_meta_data_event()
@@ -596,7 +596,6 @@ class AnalyzeRawData(object):
         self._create_additional_data()
         if(self._analyzed_data_file is not None):
             self.out_file_h5.close()
-
 
     def _create_additional_data(self):
         logging.info('Create selected event histograms')
@@ -640,7 +639,7 @@ class AnalyzeRawData(object):
                 service_record_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistServiceRecord', title='Service Record Histogram', atom=tb.Atom.from_dtype(self.service_record_hist.dtype), shape=self.service_record_hist.shape, filters=self._filter_table)
                 service_record_hist_table[:] = self.service_record_hist
         if (self._create_tdc_counter_hist):
-            self.tdc_counter_hist = self.interpreter.get_tdc_counters(self.tdc_counter_hist)
+            self.tdc_counter_hist = self.interpreter.get_tdc_counters()
             if (self._analyzed_data_file is not None):
                 tdc_counter_hist = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistTdcCounter', title='All Tdc word counter values', atom=tb.Atom.from_dtype(self.tdc_counter_hist.dtype), shape=self.tdc_counter_hist.shape, filters=self._filter_table)
                 tdc_counter_hist[:] = self.tdc_counter_hist
