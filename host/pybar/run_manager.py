@@ -15,6 +15,7 @@ from importlib import import_module
 from inspect import getmembers, isclass
 from functools import partial
 from ast import literal_eval
+from time import time
 
 
 punctuation = """!,.:;?"""
@@ -236,7 +237,6 @@ def thunkify(thread_name):
     waits for the result, which will start being processed in another thread.
     Taken from https://wiki.python.org/moin/PythonDecoratorLibrary.
     """
-
     def actual_decorator(f):
         @functools.wraps(f)
         def thunked(*args, **kwargs):
@@ -259,7 +259,12 @@ def thunkify(thread_name):
             worker_thread.daemon = True
 
             def thunk(timeout=None):
-                worker_thread.join(timeout=timeout)
+                start_time = time()
+                while True:
+                    worker_thread.join(timeout=1.0)
+                    if (timeout and timeout < time() - start_time) or not worker_thread.is_alive():
+                        break
+#                 worker_thread.join(timeout=timeout)
 #                 wait_event.wait()
                 if worker_thread.is_alive():
                     return
@@ -378,6 +383,10 @@ class RunManager(object):
                 return run.run(run_conf=run_conf)
 
             self._current_run = run
+
+            signal.signal(signal.SIGINT, self._signal_handler)
+            logging.info('Press Ctrl-C to stop run')
+
             return run_run_in_thread()
         else:
             self._current_run = run
@@ -403,10 +412,8 @@ class RunManager(object):
         for index, run in enumerate(runlist):
             join = self.run_run(run, use_thread=True)
             self._current_run = run
-            logging.info('Running run %i/%i. Press Ctrl-C to stop run' % (index + 1, len(runlist)))
-            signal.signal(signal.SIGINT, self._signal_handler)
+            logging.info('Starting run %i/%i...' % (index + 1, len(runlist)))
             status = join()
-            signal.signal(signal.SIGINT, signal.SIG_DFL)  # setting default handler
             self._current_run = None
             if skip_remaining and not status == run_status.finished:
                 logging.error('Exited run %i with status %s: Skipping all remaining runs.' % (run.run_number, status))
@@ -460,7 +467,7 @@ class RunManager(object):
 
     def _signal_handler(self, signum, frame):
         signal.signal(signal.SIGINT, signal.SIG_DFL)  # setting default handler... pressing Ctrl-C a second time will kill application
-        self._current_run.abort()
+        self._current_run.abort('Pressed Ctrl-C')
 
 
 from functools import wraps
