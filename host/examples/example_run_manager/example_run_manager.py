@@ -11,9 +11,9 @@ if __name__ == "__main__":
     runmngr.run_primlist('example_run_manager.plst', skip_remaining=True)  # executing primlist.plst file, specific scan parameters are set inside the primlist file, skip remaining scans on error
     # Each scan has a default run configuration, which is defined inside the corresponding scan file in /host/pybar/scans/. It is not necessary to define scan parameters inside primlist file.
     #
-    # Running single scan and changing scan parameters:
+    # Running a single scan and changing scan parameters:
     join = runmngr.run_run(run=AnalogScan, run_conf={"scan_parameters": [('PlsrDAC', 500)], "n_injections": 1000}, use_thread=True)  # run_run returns a function object when use_thread is True
-    status = join()
+    status = join()  # waiting here for finishing the scan, press Ctrl-C to abort the scan at any time
     print 'Status:', status  # will wait for scan to be finished and returns run status
     #
     # Or use a run configuration file:
@@ -24,7 +24,7 @@ if __name__ == "__main__":
     for delay in range(14, 50, 16):
         join = runmngr.run_run(ExtTriggerScan, run_conf={"trigger_delay": delay, "no_data_timeout": 60}, use_thread=True)  # use thread
         print 'Status:', join(timeout=5)  # join has a timeout, return None if run has not yet finished
-        runmngr.abort_current_run()  # stopping/aborting run from outside
+        runmngr.abort_current_run()  # stopping/aborting run from outside (same effect has Ctrl-C)
         if join() != run_status.finished:  # status OK?
             print 'ERROR!'
             break  # jump out
