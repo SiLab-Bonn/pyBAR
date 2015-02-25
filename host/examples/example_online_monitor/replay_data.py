@@ -22,7 +22,7 @@ def send_data(socket, data, scan_parameters, name='FEI4readoutData', flags=0, co
         timestamp_start=data[1],
         timestamp_stop=data[2],
         readout_error=float(data[3]),
-        scan_parameters=scan_parameters
+        scan_parameters=str(scan_parameters)
     )
     socket.send_json(data_meta_data, flags | zmq.SNDMORE | zmq.NOBLOCK)
     return socket.send(data[0].tostring(), flags, copy=copy, track=track)
@@ -32,8 +32,11 @@ def transfer_file(file_name, socket):  # Function to open the raw data file and 
     with tb.openFile(file_name, mode="r") as in_file_h5:
         meta_data = in_file_h5.root.meta_data[:]
         raw_data = in_file_h5.root.raw_data[:]
-        scan_parameter = in_file_h5.root.scan_parameters[:]
-        scan_parameter_name = scan_parameter.dtype.names[0]
+        try:
+            scan_parameter = in_file_h5.root.scan_parameters[:]
+            scan_parameter_name = scan_parameter.dtype.names[0]
+        except tb.NoSuchNodeError:
+            scan_parameter = None
         progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=meta_data.shape[0], term_width=80)
         progress_bar.start()
         for index, (index_start, index_stop) in enumerate(np.column_stack((meta_data['index_start'], meta_data['index_stop']))):
@@ -42,7 +45,10 @@ def transfer_file(file_name, socket):  # Function to open the raw data file and 
                 data = []
                 data.append(raw_data[index_start:index_stop])
                 data.extend((meta_data[index]['timestamp_start'], meta_data[index]['timestamp_stop'], meta_data[index]['error']))
-                send_data(socket, data, scan_parameters={scan_parameter_name: float(scan_parameter[index][0])})
+                if scan_parameter is not None:
+                    send_data(socket, data, scan_parameters={scan_parameter_name: float(scan_parameter[index][0])})
+                else:
+                    send_data(socket, data, scan_parameters='')
             except zmq.ZMQError:
                 time.sleep(0.01)
             progress_bar.update(index)
