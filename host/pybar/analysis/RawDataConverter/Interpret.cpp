@@ -27,7 +27,7 @@ Interpret::~Interpret(void)
 void Interpret::setStandardSettings()
 {
 	info("setStandardSettings()");
-	_hitInfoSize = 6e6;
+	_hitInfoSize = 1e6;
 	_hitInfo = 0;
 	_hitIndex = 0;
 	_NbCID = 16;

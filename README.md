@@ -39,7 +39,7 @@ Prerequisites:
 
 - pySiLibUSB (>=1.0.0):
 
-  pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/695/pySiLibUSB-2.0.2.tar.gz
+  pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/735/pySiLibUSB-2.0.3.tar.gz
 
 - Basil (>=2.0.2):
 

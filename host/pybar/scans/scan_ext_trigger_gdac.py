@@ -40,9 +40,12 @@ class ExtTriggerGdacScan(ExtTriggerScan):
 
     def scan(self):
         for gdac in self.gdacs:
+            if self.stop_run.is_set():
+                break
             self.register_utils.set_gdac(gdac)
             self.set_scan_parameters(GDAC=gdac)
             ExtTriggerScan.scan(self)
+            self.stop_run.clear()
 
     def handle_data(self, data):
         self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), new_file=True, flush=False)
