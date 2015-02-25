@@ -11,7 +11,7 @@ The features of the FPGA firmware in a nutshell:
 - support of up to 4 FE, simultaneous readout
 - continuous data taking (no interrupts during data taking, preserving all information)
 - automatic data to clock phase alignment on each channel individually
-- full support of EUDAQ TLU (including trigger number)
+- full support of EUDAQ Telescope/TLU
 - 200kHz peak trigger rate, 50kHz continuous trigger rate (full 16 BC readout, single FE-I4)
 
 The features of the host software in Python and C++:
@@ -23,7 +23,7 @@ The features of the host software in Python and C++:
 - sending an arbitrary bit stream/configuration sequence to FE of any desired frame length and/or format
 - readout of full FE data including timestamps, storing of the compressed data to HDF5 file
 - ultra fast raw data analysis, event-, cluster building and validity checking
-- real time online monitor (< 100 ms latency)
+- real-time online monitor (< 100 ms latency)
 - rapid development of new scan algorithms
 
 ## Installation
