@@ -65,7 +65,7 @@ Checkout pyBAR. From host folder run the following commands:
 
 Two methods are available:
 
-1. Directly run scans and tunings from the [scan](/host/pybar/scans) folder. Just double click the .py file or run the script from an IDE or use a shell. This is the quick and dirty method. Very effective. To change run parameters, two methods are supported: either change _default_run_conf dictionary of the run script inside the [scan](/host/pybar/scans) folder or change the [configuration.yaml](/host/pybar/configuration.yaml) (examples are inside the file).
+1. Directly run scans and tunings from the [scans](/host/pybar/scans) folder. Just double click the .py file or run the script from an IDE or use a shell. This is the quick and dirty method. Very effective. To change run parameters, two methods are supported: either change _default_run_conf dictionary of the run script inside the [scans](/host/pybar/scans) folder or change the [configuration.yaml](/host/pybar/configuration.yaml) (examples are inside the file).
 2. Use RunManager to run scans from primlist (via run_primlist() method) or to run a single scan (via run_run() method). This is the preferred method for longer sessions. Once the RunManager is initialized, it eases the way to run multiple scans/tunings in a row.
 
 Please note the examples in the [examples](/host/examples) folder.
