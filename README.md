@@ -26,8 +26,8 @@ The features of the host software in Python and C++:
 - real time online monitor (< 100 ms latency)
 - rapid development of new scan algorithms
 
-Installation:
-------------
+## Installation
+
 Prerequisites:
 - PyUSB (>=1.0.0rc1):
 
@@ -59,8 +59,8 @@ Checkout pyBAR. From host folder run the following commands:
    The scan test needs a working FE-I4.
 
 
-Usage:
------
+## Usage
+
 Two methods are available:
 
 1. Directly run scans/tunings inside the /host/pybar/scans/ folder. Just double click the .py file or run them from a IDE. This is the quick and dirty method. Very effective. Change run parameters either inside each python file (_default_run_conf dictionary) or change configuration file (configuration.yaml).
@@ -70,7 +70,7 @@ Please note the examples in the examples folder.
 
 Also note our [Wiki](https://github.com/SiLab-Bonn/pyBAR/wiki).
 
-Support:
--------
+## Support
+
 To subscribe to the pyBAR mailing list, click [here](https://e-groups.cern.ch/e-groups/EgroupsSubscription.do?egroupName=pybar-devel). Please ask questions on the pyBAR mailing list [pybar-devel@cern.ch](mailto:pybar-devel@cern.ch?subject=bug%20report%20%2F%20feature%20request) (subscription required) or file a new bug report / feature request [here](https://github.com/SiLab-Bonn/pyBAR/issues/new).
 
