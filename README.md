@@ -3,7 +3,7 @@
 
 pyBAR - Bonn ATLAS Readout in Python and C++
 
-pyBAR is a versatile readout and test system for the ATLAS FE-I4(A/B) pixel readout chip. It uses the Basil framework to access the hardware.
+pyBAR is a versatile readout and test system for the ATLAS FE-I4(A/B) pixel readout chip. It uses the [basil](https://github.com/SiLab-Bonn/basil) framework to access the hardware.
 pyBAR FPGA firmware and host software supports USBpix and USBpix 3.0 as well as Single Chip Adapter Card, Burn-in Card (4-chip Adapter Card) and GPAC adapter card. 
 
 The features of the FPGA firmware in a nutshell:
