@@ -194,11 +194,11 @@ class OnlineMonitorApplication(Qt.QApplication):
         self.update_plots(data)
         now = ptime.time()
         self.plot_timestamp_label.setText("Plot timestamp\n%s" % time.asctime(time.localtime(now)))
-        self.plot_delay = self.plot_delay * 0.9 + (now - meta_data[1]) * 0.1
+        self.plot_delay = (now - meta_data[1]) * 1.# self.plot_delay * 0.9 + (now - meta_data[1]) * 0.1
         self.plot_delay_label.setText("Plot delay\n%s" % ((time.strftime('%H:%M:%S', time.gmtime(self.plot_delay))) if self.plot_delay > 5 else "%1.2f ms" % (self.plot_delay * 1.e3)))
         fps2 = 1.0 / (now - self.updateTime)
         self.updateTime = now
-        self.fps = self.fps * 0.9 + fps2 * 0.1
+        self.fps = fps2 * 1.0#self.fps * 0.9 + fps2 * 0.1
         self.rate_label.setText("Readouts\n%d Hz" % self.fps)
 
     def update_plots(self, data):

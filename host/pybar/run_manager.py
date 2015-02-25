@@ -16,6 +16,7 @@ from inspect import getmembers, isclass
 from functools import partial
 from ast import literal_eval
 from time import time
+from threading import current_thread
 
 
 punctuation = """!,.:;?"""
@@ -125,6 +126,9 @@ class RunBase():
         """Initialization before a new run."""
         self.stop_run.clear()
         self.abort_run.clear()
+        if current_thread().name == 'MainThread':
+            logging.info('Press Ctrl-C to stop run')
+            signal.signal(signal.SIGINT, self._signal_handler)
         self._run_status = run_status.running
         self._write_run_number(run_number)
         self._init_run_conf(run_conf, update=True)
@@ -149,6 +153,8 @@ class RunBase():
 
     def _cleanup(self):
         """Cleanup after a new run."""
+        if current_thread().name == 'MainThread':
+            signal.signal(signal.SIGINT, signal.SIG_DFL)
         self._write_run_status(self.run_status)
         if self.run_status == run_status.finished:
             log_status = logging.INFO
@@ -231,6 +237,10 @@ class RunBase():
                 for value in dict.itervalues(run_numbers):
                     f.write(value)
 
+    def _signal_handler(self, signum, frame):
+        signal.signal(signal.SIGINT, signal.SIG_DFL)  # setting default handler... pressing Ctrl-C a second time will kill application
+        self.abort('Pressed Ctrl-C')
+
 
 def thunkify(thread_name):
     """Make a function immediately return a function of no args which, when called,
@@ -259,6 +269,7 @@ def thunkify(thread_name):
             worker_thread.daemon = True
 
             def thunk(timeout=None):
+                # avoid blocking MainThread
                 start_time = time()
                 while True:
                     worker_thread.join(timeout=1.0)
@@ -268,6 +279,7 @@ def thunkify(thread_name):
 #                 wait_event.wait()
                 if worker_thread.is_alive():
                     return
+                signal.signal(signal.SIGINT, signal.SIG_DFL)
                 if exc[0]:
                     raise exc[1][0], exc[1][1], exc[1][2]
                 return result[0]
@@ -410,11 +422,9 @@ class RunManager(object):
         '''
         runlist = self.open_primlist(primlist)
         for index, run in enumerate(runlist):
+            logging.info('Progressing with run %i out of %i...' % (index + 1, len(runlist)))
             join = self.run_run(run, use_thread=True)
-            self._current_run = run
-            logging.info('Starting run %i/%i...' % (index + 1, len(runlist)))
             status = join()
-            self._current_run = None
             if skip_remaining and not status == run_status.finished:
                 logging.error('Exited run %i with status %s: Skipping all remaining runs.' % (run.run_number, status))
                 break
