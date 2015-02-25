@@ -1,11 +1,7 @@
-# pyBAR
+
+# pyBAR [![Build Status](https://travis-ci.org/SiLab-Bonn/pyBAR.svg?branch=master)](https://travis-ci.org/SiLab-Bonn/pyBAR) [![Build Status](https://travis-ci.org/SiLab-Bonn/pyBAR.svg?branch=development)](https://travis-ci.org/SiLab-Bonn/pyBAR)
 
 pyBAR - Bonn ATLAS Readout in Python and C++
-
-Wiki page: https://github.com/SiLab-Bonn/pyBAR/wiki
-
-Master / development branch: [![Build Status](https://travis-ci.org/SiLab-Bonn/pyBAR.svg?branch=master)](https://travis-ci.org/SiLab-Bonn/pyBAR)
-[![Build Status](https://travis-ci.org/SiLab-Bonn/pyBAR.svg?branch=development)](https://travis-ci.org/SiLab-Bonn/pyBAR)
 
 pyBAR is a versatile readout and test system for the ATLAS FE-I4(A/B) pixel readout chip. It uses the Basil framework to access the hardware.
 pyBAR FPGA firmware and host software supports USBpix and USBpix 3.0 as well as Single Chip Adapter Card, Burn-in Card (4-chip Adapter Card) and GPAC adapter card. 
@@ -72,7 +68,9 @@ Two methods are available:
 
 Please note the examples in the examples folder.
 
-Support
+Also note our [Wiki](https://github.com/SiLab-Bonn/pyBAR/wiki).
+
+Support:
 -------
 To subscribe to the pyBAR mailing list, click [here](https://e-groups.cern.ch/e-groups/EgroupsSubscription.do?egroupName=pybar-devel). Please ask questions on the pyBAR mailing list [pybar-devel@cern.ch](mailto:pybar-devel@cern.ch?subject=bug%20report%20%2F%20feature%20request) (subscription required) or file a new bug report / feature request [here](https://github.com/SiLab-Bonn/pyBAR/issues/new).
 
