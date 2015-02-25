@@ -66,7 +66,7 @@ Two methods are available:
 1. Directly run scans/tunings inside the /host/pybar/scans/ folder. Just double click the .py file or run them from a IDE. This is the quick and dirty method. Very effective. Change run parameters either inside each python file (_default_run_conf dictionary) or change configuration file (configuration.yaml).
 2. Use RunManager to run scans from primlist (via run_primlist() method) or to run a single scan (via run_run() method). This is the preferred method for longer sessions. Once the RunManager is initialized, it eases the way to run multiple scans/tunings in a row.
 
-Please note the examples in the examples folder.
+Please note the examples in the [examples](/host/examples) folder.
 
 Also note our [Wiki](https://github.com/SiLab-Bonn/pyBAR/wiki).
 
