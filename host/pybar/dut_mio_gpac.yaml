@@ -43,11 +43,11 @@ hw_drivers:
     interface : USB
     base_addr : 0x18800
 
-  - name      : GPAC_SPI
-    type      : spi
-    interface : USB
-    base_addr : 0x18900
-    mem_bytes : 2
+#  - name      : GPAC_SPI
+#    type      : spi
+#    interface : USB
+#    base_addr : 0x18900
+#    mem_bytes : 2
 
 #  - name      : GPAC_ADC
 #    type      : fadc_rx
