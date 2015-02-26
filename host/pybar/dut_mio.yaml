@@ -10,12 +10,12 @@
 #  $Date::                      $:
 #
 
-name    : usbpix_sim
+name    : mio
 version : 2.0.0
 
 transfer_layer:
   - name     : USB
-    type     : SiSim
+    type     : SiUsb
 
 hw_drivers:
   - name      : cmd
@@ -69,6 +69,10 @@ hw_drivers:
     interface : USB
     base_addr : 0x18900
 
+  - name      : POWER
+    type      : FEI4AdapterCard
+    interface : USB
+    base_addr : 0x0
 
 user_drivers:
     

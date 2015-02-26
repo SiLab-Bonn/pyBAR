@@ -139,13 +139,13 @@ class Fei4RunBase(RunBase):
                         self.dut.init(dut_configuration)
                     else:
                         self.dut.init(self.conf['dut_configuration'])
-                elif self.dut.name == 'usbpix' or self.dut.name == 'usbpix_sim':
-                    self.dut.init(os.path.join(module_path, 'dut_configuration_usbpix.yaml'))
-                elif self.dut.name == 'usbpix_gpac':
-                    self.dut.init(os.path.join(module_path, 'dut_configuration_usbpix_gpac.yaml'))
+                elif self.dut.name == 'mio' or self.dut.name == 'mio_sim':
+                    self.dut.init(os.path.join(module_path, 'dut_configuration_mio.yaml'))
+                elif self.dut.name == 'mio_gpac':
+                    self.dut.init(os.path.join(module_path, 'dut_configuration_mio_gpac.yaml'))
                 else:
                     logging.warning('Omit initialization of DUT')
-                if self.dut.name == 'usbpix':
+                if self.dut.name == 'mio':
                     self.dut['POWER'].set_voltage('VDDA1', 1.500)
                     self.dut['POWER'].set_voltage('VDDA2', 1.500)
                     self.dut['POWER'].set_voltage('VDDD1', 1.200)
@@ -163,7 +163,7 @@ class Fei4RunBase(RunBase):
                     self.dut['rx']['TLU'] = 1
                     self.dut['rx']['TDC'] = 1
                     self.dut['rx'].write()
-                elif self.dut.name == 'usbpix_gpac':
+                elif self.dut.name == 'mio_gpac':
                     self.dut['V_in'].set_current_limit(1000, unit='mA')  # one for all
                     # enabling LVDS transceivers
                     self.dut['CCPD_Vdd'].set_enable(False)
@@ -177,15 +177,7 @@ class Fei4RunBase(RunBase):
                     self.dut['rx']['FE'] = 1
                     self.dut['rx']['TLU'] = 1
                     self.dut['rx']['TDC'] = 1
-                    self.dut['rx']['CCPD_TDC'] = 0
-                    self.dut['rx'].write()
-                elif self.dut.name == 'usbpix_sim':
-                    self.dut['rx']['CH1'] = 1
-                    self.dut['rx']['CH2'] = 0
-                    self.dut['rx']['CH3'] = 0
-                    self.dut['rx']['CH4'] = 0
-                    self.dut['rx']['TLU'] = 0
-                    self.dut['rx']['TDC'] = 0
+                    self.dut['rx']['CCPD_TDC'] = 1
                     self.dut['rx'].write()
                 else:
                     logging.warning('Unknown DUT name: %s. DUT may not be set up properly' % self.dut.name)
