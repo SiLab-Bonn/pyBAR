@@ -41,8 +41,8 @@ module top (
     input wire FMODE,
 
     //debug ports
-    output wire [15:0] DEBUG_D,
-    output wire [10:0] MULTI_IO, // Pin 1-11, 12: not connected, 13, 15: DGND, 14, 16: VCC_3.3V
+//    output wire [15:0] DEBUG_D,
+//    output wire [10:0] MULTI_IO, // Pin 1-11, 12: not connected, 13, 15: DGND, 14, 16: VCC_3.3V
 
     //LED
     output wire [4:0] LED,
@@ -82,18 +82,18 @@ module top (
     //GPAC
     input wire [11:0] DIN,
     output wire [19:0] DOUT,
-    input [3:0] ADC_OUT_P,
-    input [3:0] ADC_OUT_N,
-    output ADC_CLK_N,
-    output ADC_CLK_P,
-    input ADC_FCO_N,
-    input ADC_FCO_P,
-    input ADC_DCO_N,
-    input ADC_DCO_P,
-    output ADC_SDI,
-    output ADC_SCLK,
-    output ADC_CS_B,
-    input ADC_SDO,
+//    input [3:0] ADC_OUT_P,
+//    input [3:0] ADC_OUT_N,
+//    output ADC_CLK_N,
+//    output ADC_CLK_P,
+//    input ADC_FCO_N,
+//    input ADC_FCO_P,
+//    input ADC_DCO_N,
+//    input ADC_DCO_P,
+//    output ADC_SDI,
+//    output ADC_SCLK,
+//    output ADC_CS_B,
+//    input ADC_SDO,
 
     output INJ_STRB,
 `else
@@ -145,12 +145,12 @@ wire CCPD_CONFIG_SHIFT_LD, CCPD_GLOBAL_SHIFT_LD;
 assign CCPD_SHIFT_LD = CCPD_CONFIG_SHIFT_LD | CCPD_GLOBAL_SHIFT_LD;
 wire INJECT_PULSE;
 assign INJ_STRB = INJECT_PULSE;
-wire ADC_ENC_P;
-assign ADC_CLK_P = ADC_ENC_P;
-wire ADC_ENC_N;
-assign ADC_CLK_N = ADC_ENC_N;
-wire ADC_CSN;
-assign ADC_CS_B = ADC_CSN;
+//wire ADC_ENC_P;
+//assign ADC_CLK_P = ADC_ENC_P;
+//wire ADC_ENC_N;
+//assign ADC_CLK_N = ADC_ENC_N;
+//wire ADC_CSN;
+//assign ADC_CS_B = ADC_CSN;
 `endif
 
 // Assignments
@@ -162,8 +162,8 @@ wire RX_CLK2X;
 wire DATA_CLK;
 wire CLK_LOCKED;
 
-assign MULTI_IO = 11'b000_0000_0000;
-assign DEBUG_D = 16'ha5a5;
+//assign MULTI_IO = 11'b000_0000_0000;
+//assign DEBUG_D = 16'ha5a5;
 
 wire LEMO_TRIGGER, LEMO_TRIGGER_OUT, LEMO_RESET, TDC_IN, TDC_OUT;
 assign LEMO_TRIGGER = LEMO_RX[0];
@@ -469,6 +469,49 @@ gpio #(
     .BUS_WR(BUS_WR),
     .IO({NOT_CONNECTED_RX, CCPD_TDC_SEL, TDC_SEL, TLU_SEL, SEL})
 );
+
+wire TLU_FIFO_READ;
+wire TLU_FIFO_EMPTY;
+wire LEMO_RESET_TDC;
+wire [31:0] TLU_FIFO_DATA;
+wire TLU_FIFO_PEEMPT_REQ;
+
+tlu_controller #(
+    .BASEADDR(TLU_BASEADDR),
+    .HIGHADDR(TLU_HIGHADDR),
+    .DIVISOR(8)
+) i_tlu_controller (
+    .BUS_CLK(BUS_CLK),
+    .BUS_RST(BUS_RST),
+    .BUS_ADD(BUS_ADD),
+    .BUS_DATA(BUS_DATA),
+    .BUS_RD(BUS_RD),
+    .BUS_WR(BUS_WR),
+
+    .CMD_CLK(CLK_40),
+
+    .FIFO_READ(TLU_FIFO_READ),
+    .FIFO_EMPTY(TLU_FIFO_EMPTY),
+    .FIFO_DATA(TLU_FIFO_DATA),
+
+    .FIFO_PREEMPT_REQ(TLU_FIFO_PEEMPT_REQ),
+
+    .RJ45_TRIGGER(RJ45_TRIGGER),
+    .LEMO_TRIGGER(LEMO_TRIGGER_OUT),
+    .RJ45_RESET(RJ45_RESET),
+    .LEMO_RESET(LEMO_RESET_TDC),
+    .RJ45_ENABLED(RJ45_ENABLED),
+    .TLU_BUSY(TLU_BUSY),
+    .TLU_CLOCK(TLU_CLOCK),
+    
+    .EXT_VETO(FIFO_FULL),
+    
+    .CMD_READY(CMD_READY),
+    .CMD_EXT_START_FLAG(TLU_CMD_EXT_START_FLAG),
+    .CMD_EXT_START_ENABLE(CMD_EXT_START_ENABLE),
+    
+    .TIMESTAMP(TIMESTAMP)
+);
 `else
 wire [1:0] NOT_CONNECTED_RX;
 wire TLU_SEL, TDC_SEL;
@@ -502,7 +545,6 @@ gpio #(
     .BUS_WR(BUS_WR),
     .IO({NOT_CONNECTED_POWER, EN[3], EN[2], EN[1], EN[0]}) //OC[3], OC[2], OC[1], OC[0]
 );
-`endif
 
 wire TLU_FIFO_READ;
 wire TLU_FIFO_EMPTY;
@@ -545,6 +587,7 @@ tlu_controller #(
     
     .TIMESTAMP(TIMESTAMP)
 );
+`endif
 
 `ifdef GPAC
 // CCPD
@@ -566,8 +609,8 @@ tdc_s3 #(
     .DV_CLK(CLK_40),
     .TDC_IN(CCPD_TDC),
     .TDC_OUT(),
-    .TRIG_IN(1'b0),
-    .TRIG_OUT(),
+    .TRIG_IN(LEMO_RESET),
+    .TRIG_OUT(LEMO_RESET_TDC),
 
     .FIFO_READ(CCPD_TDC_FIFO_READ),
     .FIFO_EMPTY(CCPD_TDC_FIFO_EMPTY),
