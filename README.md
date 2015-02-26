@@ -62,7 +62,7 @@ Checkout pyBAR. From host folder run the following commands:
 3. Testing:
    nosetests tests
 
-   The scan test needs a working FE-I4.
+   Note: the tests need a working FE-I4 setup.
 
 
 ## Usage
