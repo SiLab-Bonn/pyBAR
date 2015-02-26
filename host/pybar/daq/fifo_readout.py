@@ -277,9 +277,9 @@ class FifoReadout(object):
             filter(lambda channel: self.dut[channel]['RESET'], channels)
         else:
             if self.dut.name == 'usbpix' or self.dut.name == 'usbpix_sim':
-                filter(lambda channel: self.dut[channel]['RESET'], ['rx_1', 'rx_2', 'rx_3', 'rx_4'])
+                filter(lambda channel: self.dut[channel]['RX_RESET'], ['rx_1', 'rx_2', 'rx_3', 'rx_4'])
             elif self.dut.name == 'usbpix_gpac':
-                filter(lambda channel: self.dut[channel]['RESET'], ['rx_fe'])
+                filter(lambda channel: self.dut[channel]['RX_RESET'], ['rx_fe'])
         sleep(0.1)  # sleep here for a while
 
     def get_rx_sync_status(self, channels=None):
