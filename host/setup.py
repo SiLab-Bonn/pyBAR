@@ -64,7 +64,7 @@ setup(
     name='pyBAR',
     version=version,
     description='pyBAR: Bonn ATLAS Readout in Pyhton',
-    url='https://silab-redmine.physik.uni-bonn.de/projects/pybar',
+    url='https://github.com/SiLab-Bonn/pyBAR',
     license='BSD 3-Clause ("BSD New" or "BSD Simplified") License',
     long_description='',
     author=author,
