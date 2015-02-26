@@ -1,4 +1,4 @@
-include *.txt VERSION
+include README.* VERSION
 recursive-include docs *
 recursive-include examples *
 #recursive-include tests *
