@@ -1,0 +1,17 @@
+AnalogScan:
+    enable_shift_masks : ["Enable", "C_High"]
+    scan_parameters : '[("PlsrDAC", 410)]' # use string here due to limitations of YAML, string will be parsed, use double-quoted strings inside single quotes
+    n_injections : 50
+
+Fei4Tuning:
+    enable_shift_masks : ["Enable", "C_High"]
+    target_threshold : 55
+    target_charge : 410
+    target_tot : 8
+    global_iterations : 4
+    local_iterations : 3
+
+ThresholdScan:
+    enable_shift_masks : ["Enable", "C_High"]
+    scan_parameters : '[("PlsrDAC", [0, 100])]' # nested, see comment above
+
