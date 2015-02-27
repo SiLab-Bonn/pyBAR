@@ -25,13 +25,13 @@ tlu:
     TRIGGER_LOW_TIMEOUT : 0
 
 rx_4:
-    INVERT_RX : 0  # 0: IBL modules (default), 1: DBM modules
+    INVERT_RX : 1  # 0: IBL modules (default), 1: DBM modules
 
 rx_3:
-    INVERT_RX : 0
+    INVERT_RX : 1
     
 rx_2:
-    INVERT_RX : 0
+    INVERT_RX : 1
 
 rx_1:
-    INVERT_RX : 0
+    INVERT_RX : 1
