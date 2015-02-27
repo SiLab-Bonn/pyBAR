@@ -3,16 +3,12 @@ python:
   - 2.7
 branches:
   only:
-<<<<<<< HEAD
-    - mio3
-=======
     - master
     - development
 notifications:
   email:
     - janssen@physik.uni-bonn.de
     - pohl@physik.uni-bonn.de
->>>>>>> refs/remotes/origin/development
  
 # Setup anaconda in a new virtual environment
 before_install:
