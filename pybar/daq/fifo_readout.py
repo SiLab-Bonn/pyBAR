@@ -235,7 +235,7 @@ class FifoReadout(object):
                 if any(self.get_rx_fifo_discard_count()):
                     raise FifoError('RX FIFO discard error(s) detected')
             except Exception:
-                    self.errback(sys.exc_info())
+                self.errback(sys.exc_info())
             if self.stop_readout.wait(self.readout_interval * 10):
                 break
         logging.debug('Stopped %s' % (self.watchdog_thread.name,))

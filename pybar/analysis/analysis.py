@@ -358,7 +358,7 @@ def analyze_cluster_size_per_scan_parameter(input_file_hits, output_file_cluster
     '''
     logging.info('Analyze the cluster sizes for different ' + parameter + ' settings for ' + input_file_hits)
     if os.path.isfile(output_file_cluster_size) and not overwrite_output_files:  # skip analysis if already done
-            logging.info('Analyzed cluster size file ' + output_file_cluster_size + ' already exists. Skip cluster size analysis.')
+        logging.info('Analyzed cluster size file ' + output_file_cluster_size + ' already exists. Skip cluster size analysis.')
     else:
         with tb.openFile(output_file_cluster_size, mode="w") as out_file_h5:  # file to write the data into
             filter_table = tb.Filters(complib='blosc', complevel=5, fletcher32=False)  # compression of the written data
@@ -443,7 +443,7 @@ def analyze_tdc_events(input_file_hits, output_file, events=(0, ), max_latency=1
     '''
     logging.info('Analyze %d TDC events' % len(events))
     if os.path.isfile(output_file) and not overwrite_output_files:  # skip analysis if already done
-            logging.info('Analyzed cluster size file ' + output_file + ' already exists. Skip cluster size analysis.')
+        logging.info('Analyzed cluster size file ' + output_file + ' already exists. Skip cluster size analysis.')
     else:
         with tb.openFile(output_file, mode="w") as out_file_h5:  # file to write the data into
             filter_table = tb.Filters(complib='blosc', complevel=5, fletcher32=False)  # compression of the written data

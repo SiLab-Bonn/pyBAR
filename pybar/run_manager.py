@@ -318,7 +318,7 @@ class RunManager(object):
 
     def init(self, conf):
         if isinstance(conf, basestring):
-                self._conf_path = conf
+            self._conf_path = conf
         elif isinstance(conf, file):
             self._conf_path = conf.name
         else:

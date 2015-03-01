@@ -121,9 +121,9 @@ class FeedbackTuning(Fei4RunBase):
                     else:
                         logging.info('Set bit 0 = 0')
                 if abs(mean_tot - self.target_tot) > abs(tot_mean_best - self.target_tot):
-                        logging.info("Binary search converged to non optimal value, take best measured value instead")
-                        mean_tot = tot_mean_best
-                        self.register.set_global_register_value("PrmpVbpf", feedback_best)
+                    logging.info("Binary search converged to non optimal value, take best measured value instead")
+                    mean_tot = tot_mean_best
+                    self.register.set_global_register_value("PrmpVbpf", feedback_best)
 
         if self.register.get_global_register_value("PrmpVbpf") == 0 or self.register.get_global_register_value("PrmpVbpf") == 254:
             logging.warning('PrmpVbpf reached minimum/maximum value')

@@ -145,17 +145,17 @@ class RawDataFile(object):
             raw_data = data_tuple[0]
             len_raw_data = raw_data.shape[0]
             if total_words + len_raw_data > maxint:
-                    index = self.filenames.get(self.curr_filename, 0) + 1  # reached file size limit, increase index by one
-                    self.filenames[self.curr_filename] = index  # update dict
-                    filename = self.curr_filename + '_' + str(index) + '.h5'
-                    # copy nodes to new file
-                    nodes = self.h5_file.list_nodes('/', classname='Group')
-                    with tb.open_file(filename, mode='a', title=filename) as h5_file:  # append, since file can already exists when scan parameters are jumping back and forth
-                        for node in nodes:
-                            self.h5_file.copy_node(node, h5_file.root, overwrite=True, recursive=True)
-                    self.close()
-                    self.open(filename, 'a', filename)
-                    total_words = self.raw_data_earray.nrows  # in case of re-opening existing file
+                index = self.filenames.get(self.curr_filename, 0) + 1  # reached file size limit, increase index by one
+                self.filenames[self.curr_filename] = index  # update dict
+                filename = self.curr_filename + '_' + str(index) + '.h5'
+                # copy nodes to new file
+                nodes = self.h5_file.list_nodes('/', classname='Group')
+                with tb.open_file(filename, mode='a', title=filename) as h5_file:  # append, since file can already exists when scan parameters are jumping back and forth
+                    for node in nodes:
+                        self.h5_file.copy_node(node, h5_file.root, overwrite=True, recursive=True)
+                self.close()
+                self.open(filename, 'a', filename)
+                total_words = self.raw_data_earray.nrows  # in case of re-opening existing file
             self.raw_data_earray.append(raw_data)
             self.meta_data_table.row['timestamp_start'] = data_tuple[1]
             self.meta_data_table.row['timestamp_stop'] = data_tuple[2]

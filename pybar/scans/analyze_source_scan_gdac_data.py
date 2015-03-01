@@ -114,7 +114,7 @@ def plot_result(x_p, y_p, y_p_e):
 def analyze_raw_data(input_files, output_file_hits, chip_flavor, scan_parameter):
     logging.info('Analyze the raw FE data given in ' + str(len(input_files)) + ' files and store the needed data')
     if os.path.isfile(output_file_hits) and not analysis_configuration['overwrite_output_files']:  # skip analysis if already done
-            logging.info('Analyzed data file ' + output_file_hits + ' already exists. Skip analysis for this file.')
+        logging.info('Analyzed data file ' + output_file_hits + ' already exists. Skip analysis for this file.')
     else:
         with AnalyzeRawData(raw_data_file=input_files, analyzed_data_file=output_file_hits, scan_parameter_name=scan_parameter) as analyze_raw_data:
             analyze_raw_data.create_hit_table = True  # can be set to false to omit hit table creation, std. setting is false
