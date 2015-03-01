@@ -159,11 +159,19 @@ class Fei4RunBase(RunBase):
                     raise ValueError('No valid configuration found')
 
             if not isinstance(self.conf['dut'], Dut):
+                module_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
                 if isinstance(self.conf['dut'], basestring):
+                    # abs path
                     if os.path.isabs(self.conf['dut']):
                         dut = self.conf['dut']
-                    else:
+                    # working dir
+                    elif os.path.exists(os.path.join(self.conf['working_dir'], self.conf['dut'])):
                         dut = os.path.join(self.conf['working_dir'], self.conf['dut'])
+                    # path of this file
+                    elif os.path.exists(os.path.join(module_path, self.conf['dut'])):
+                        dut = os.path.join(module_path, self.conf['dut'])
+                    else:
+                        raise ValueError('%s: dut file not found' % self.conf['dut'])
                     self._conf['dut'] = Dut(dut)
                 else:
                     self._conf['dut'] = Dut(self.conf['dut'])
@@ -171,21 +179,20 @@ class Fei4RunBase(RunBase):
                 # only initialize when DUT was not initialized before
                 if 'dut_configuration' in self.conf and self.conf['dut_configuration']:
                     if isinstance(self.conf['dut_configuration'], basestring):
-                        module_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
                         # abs path
                         if os.path.isabs(self.conf['dut_configuration']):
                             dut_configuration = self.conf['dut_configuration']
                         # working dir
                         elif os.path.exists(os.path.join(self.conf['working_dir'], self.conf['dut_configuration'])):
                             dut_configuration = os.path.join(self.conf['working_dir'], self.conf['dut_configuration'])
-                        # path of dut YAML
+                        # path of dut file
                         elif os.path.exists(os.path.join(os.path.dirname(self.dut.conf_path), self.conf['dut_configuration'])):
                             dut_configuration = os.path.join(os.path.dirname(self.dut.conf_path), self.conf['dut_configuration'])
                         # path of this file
                         elif os.path.exists(os.path.join(module_path, self.conf['dut_configuration'])):
                             dut_configuration = os.path.join(module_path, self.conf['dut_configuration'])
                         else:
-                            raise ValueError('dut_configuration not found')
+                            raise ValueError('%s: dut_configuration file not found' % self.conf['dut_configuration'])
                         self.dut.init(dut_configuration)
                     else:
                         self.dut.init(self.conf['dut_configuration'])
