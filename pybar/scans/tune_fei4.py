@@ -115,7 +115,7 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
             self.global_iterations = 0
         if self.local_iterations < 0:
             self.local_iterations = 0
-        difference_bit = 1
+#         difference_bit = 1
 
         if self.make_plots:
             self.plots_filename = PdfPages(self.output_filename + '.pdf')

@@ -72,7 +72,6 @@ class GdacTuning(Fei4RunBase):
 
         def bits_set(int_type):
             int_type = int(int_type)
-            count = 0
             position = 0
             bits_set = []
             while(int_type):
@@ -80,7 +79,6 @@ class GdacTuning(Fei4RunBase):
                     bits_set.append(position)
                 position += 1
                 int_type = int_type >> 1
-                count += 1
             return bits_set
 
         # calculate selected pixels from the mask and the disabled columns

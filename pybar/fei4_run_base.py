@@ -260,7 +260,7 @@ class Fei4RunBase(RunBase):
 
     def _get_configuration(self, run_number=None):
         def find_file(run_number):
-            for root, dirs, files in os.walk(self.working_dir):
+            for root, _, files in os.walk(self.working_dir):
                 for cfgfile in files:
                     cfg_root, cfg_ext = os.path.splitext(cfgfile)
                     if cfg_root.startswith(''.join([str(run_number), '_', self.module_id])) and cfg_ext.endswith(".cfg"):

@@ -299,7 +299,7 @@ class HitDelayScan(Fei4RunBase):
                 y_err = np.std(array, axis=1)
 
                 fig = Figure()
-                canvas = FigureCanvas(fig)
+#                 canvas = FigureCanvas(fig)
                 ax = fig.add_subplot(111)
                 fig.patch.set_facecolor('white')
                 ax.grid(True)

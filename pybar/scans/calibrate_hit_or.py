@@ -103,7 +103,7 @@ class HitOrCalibration(Fei4RunBase):
             for index, (column, row) in enumerate(col_row_combinations):
                 logging.info("Plot calibration for pixel " + str(column) + '/' + str(row))
                 fig = Figure()
-                canvas = FigureCanvas(fig)
+#                 canvas = FigureCanvas(fig)
                 ax = fig.add_subplot(111)
                 fig.patch.set_facecolor('white')
                 ax.grid(True)
