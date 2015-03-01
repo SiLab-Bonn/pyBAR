@@ -22,14 +22,14 @@ class FEI4RegisterUtils(object):
         self.zero_cmd_padded.fill()
 
     def add_commands(self, x, y):
-            return x + self.zero_cmd + y  # FE needs a zero bits between commands
+        return x + self.zero_cmd + y  # FE needs a zero bits between commands
 
     def add_byte_padded_commands(self, x, y):
-            x_fill = x.copy()
-            x_fill.fill()
-            y_fill = y.copy()
-            y_fill.fill()
-            return x_fill + self.zero_cmd_padded + y_fill  # FE needs a zero between commands
+        x_fill = x.copy()
+        x_fill.fill()
+        y_fill = y.copy()
+        y_fill.fill()
+        return x_fill + self.zero_cmd_padded + y_fill  # FE needs a zero between commands
 
     def concatenate_commands(self, commands, byte_padding=False):
         if byte_padding:
