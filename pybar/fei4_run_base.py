@@ -129,35 +129,6 @@ class Fei4RunBase(RunBase):
         logging.info('Scan parameter(s): %s' % (', '.join(['%s=%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None'))
 
         try:
-            last_configuration = self._get_configuration()
-            if 'fe_configuration' in self.conf and self.conf['fe_configuration']:
-                if not isinstance(self.conf['fe_configuration'], FEI4Register):
-                    if isinstance(self.conf['fe_configuration'], basestring):
-                        if os.path.isabs(self.conf['fe_configuration']):
-                            fe_configuration = self.conf['fe_configuration']
-                        else:
-                            fe_configuration = os.path.join(self.conf['working_dir'], self.conf['fe_configuration'])
-                        self._conf['fe_configuration'] = FEI4Register(configuration_file=fe_configuration)
-                    elif isinstance(self.conf['fe_configuration'], (int, long)) and self.conf['fe_configuration'] >= 0:
-                        self._conf['fe_configuration'] = FEI4Register(configuration_file=self._get_configuration(self.conf['fe_configuration']))
-                    else:
-                        self._conf['fe_configuration'] = FEI4Register(configuration_file=self._get_configuration())
-                else:
-                    pass  # do nothing, already initialized
-            elif last_configuration:
-                self._conf['fe_configuration'] = FEI4Register(configuration_file=last_configuration)
-            else:
-                if 'chip_address' in self.conf and isinstance(self.conf['chip_address'], (int, long)):
-                    chip_address = self.conf['chip_address']
-                    broadcast = False
-                else:
-                    chip_address = 0
-                    broadcast = True
-                if 'fe_flavor' in self.conf and self.conf['fe_flavor']:
-                    self._conf['fe_configuration'] = FEI4Register(fe_type=self.conf['fe_flavor'], chip_address=chip_address, broadcast=broadcast)
-                else:
-                    raise ValueError('No valid configuration found')
-
             if not isinstance(self.conf['dut'], Dut):
                 module_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
                 if isinstance(self.conf['dut'], basestring):
@@ -203,8 +174,34 @@ class Fei4RunBase(RunBase):
             else:
                 pass  # do nothing, already initialized
 
-            if not self.fifo_readout:
-                self.fifo_readout = FifoReadout(self.dut)
+            last_configuration = self._get_configuration()
+            if 'fe_configuration' in self.conf and self.conf['fe_configuration']:
+                if not isinstance(self.conf['fe_configuration'], FEI4Register):
+                    if isinstance(self.conf['fe_configuration'], basestring):
+                        if os.path.isabs(self.conf['fe_configuration']):
+                            fe_configuration = self.conf['fe_configuration']
+                        else:
+                            fe_configuration = os.path.join(self.conf['working_dir'], self.conf['fe_configuration'])
+                        self._conf['fe_configuration'] = FEI4Register(configuration_file=fe_configuration)
+                    elif isinstance(self.conf['fe_configuration'], (int, long)) and self.conf['fe_configuration'] >= 0:
+                        self._conf['fe_configuration'] = FEI4Register(configuration_file=self._get_configuration(self.conf['fe_configuration']))
+                    else:
+                        self._conf['fe_configuration'] = FEI4Register(configuration_file=self._get_configuration())
+                else:
+                    pass  # do nothing, already initialized
+            elif last_configuration:
+                self._conf['fe_configuration'] = FEI4Register(configuration_file=last_configuration)
+            else:
+                if 'chip_address' in self.conf and isinstance(self.conf['chip_address'], (int, long)):
+                    chip_address = self.conf['chip_address']
+                    broadcast = False
+                else:
+                    chip_address = 0
+                    broadcast = True
+                if 'fe_flavor' in self.conf and self.conf['fe_flavor']:
+                    self._conf['fe_configuration'] = FEI4Register(fe_type=self.conf['fe_flavor'], chip_address=chip_address, broadcast=broadcast)
+                else:
+                    raise ValueError('No valid configuration found')
             if not self.register_utils:
                 self.register_utils = FEI4RegisterUtils(self.dut, self.register)
             with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, scan_parameters=self.scan_parameters._asdict(), socket_addr=self.socket_addr) as self.raw_data_file:
@@ -222,11 +219,15 @@ class Fei4RunBase(RunBase):
                     # resetting service records must be done once after power up
                     self.register_utils.reset_service_records()
                 with self.register.restored(name=self.run_number):
+                    # configure for scan
                     self.configure()
                     self.register.save_configuration(self.raw_data_file.h5_file)
+                    if not self.fifo_readout:
+                        self.fifo_readout = FifoReadout(self.dut)
                     self.fifo_readout.reset_rx()
                     self.fifo_readout.reset_sram_fifo()
                     self.fifo_readout.print_readout_status()
+                    # scan
                     self.scan()
         except Exception:
             self.handle_err(sys.exc_info())
@@ -234,6 +235,7 @@ class Fei4RunBase(RunBase):
             try:
                 if self.abort_run.is_set():
                     raise RunAborted('Omitting data analysis: run was aborted')
+                # analyze data
                 self.analyze()
             except AnalysisError as e:
                 logging.error('Analysis of data failed: %s' % e)
