@@ -1611,7 +1611,6 @@ def get_data_statistics(interpreted_files):
     print '| *File Name* | *File Size* | *Times Stamp* | *Events* | *Bad Events* | *Measurement time* | *# SR* | *Hits* |'  # Mean Tot | Mean rel. BCID'
     for interpreted_file in interpreted_files:
         with tb.openFile(interpreted_file, mode="r") as in_file_h5:  # open the actual hit file
-#             event_errors = in_file_h5.root.HistErrorCounter[:]
             n_hits = np.sum(in_file_h5.root.HistOcc[:])
             measurement_time = int(in_file_h5.root.meta_data[-1]['timestamp_stop'] - in_file_h5.root.meta_data[0]['timestamp_start'])
 #             mean_tot = np.average(in_file_h5.root.HistTot[:], weights=range(0,16) * np.sum(range(0,16)))# / in_file_h5.root.HistTot[:].shape[0]

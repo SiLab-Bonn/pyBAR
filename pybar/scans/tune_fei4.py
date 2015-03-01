@@ -144,7 +144,7 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
             logging.info("Results of global threshold tuning: Vthin_AltCoarse / Vthin_AltFine = %d / %d" % (Vthin_AC, Vthin_AF))
             logging.info("Results of global feedback tuning: PrmpVbpf = %d" % (PrmpVbpf,))
 
-        difference_bit = int(5 / (self.local_iterations if self.local_iterations > 0 else 1))
+#         difference_bit = int(5 / (self.local_iterations if self.local_iterations > 0 else 1))
 
         start_bit = 4
         for iteration in range(0, self.local_iterations):
