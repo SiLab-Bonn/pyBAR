@@ -2,7 +2,6 @@ import logging
 from time import time
 import re
 import os
-import sys
 import numpy as np
 from functools import wraps
 from threading import Event, Thread
@@ -164,7 +163,6 @@ class Fei4RunBase(RunBase):
         self.socket_addr = self._run_conf['send_data']
         if self.socket_addr:
             logging.info('Send data to %s' % self.socket_addr)
-
         # scan parameters
         if 'scan_parameters' in self.run_conf:
             if isinstance(self.run_conf['scan_parameters'], basestring):
@@ -217,12 +215,12 @@ class Fei4RunBase(RunBase):
                     self.dut.init(self.conf['dut_configuration'])
 #             else:
 #                 raise ValueError('dut_configuration not given')
-
             # additional init of the DUT
             self.init_dut()
         else:
             pass  # do nothing, already initialized
-        
+        # FIFO readout
+        self.fifo_readout = FifoReadout(self.dut)
         # initialize the FE
         self.init_fe()
 
@@ -235,8 +233,6 @@ class Fei4RunBase(RunBase):
                 # configure for scan
                 self.configure()
                 self.register.save_configuration(self.raw_data_file.h5_file)
-                if not self.fifo_readout:
-                    self.fifo_readout = FifoReadout(self.dut)
                 self.fifo_readout.reset_rx()
                 self.fifo_readout.reset_sram_fifo()
                 self.fifo_readout.print_readout_status()
