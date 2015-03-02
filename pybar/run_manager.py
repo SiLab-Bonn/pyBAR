@@ -11,6 +11,7 @@ import functools
 import traceback
 import signal
 import abc
+from contextlib import contextmanager
 from importlib import import_module
 from inspect import getmembers, isclass
 from functools import partial
@@ -32,6 +33,10 @@ class RunAborted(Exception):
     pass
 
 
+class RunStopped(Exception):
+    pass
+
+
 class RunBase():
     '''Basic run meta class
 
@@ -47,7 +52,7 @@ class RunBase():
         self._run_number = None
         self._run_status = None
         self.file_lock = Lock()
-        self.stop_run = Event()
+        self.stop_run = Event()  # abort condition for loops
         self.abort_run = Event()
 
 #     @abc.abstractproperty
@@ -102,14 +107,14 @@ class RunBase():
     def run(self, run_conf, run_number=None):
         self._init(run_conf, run_number)
         try:
-            if self.abort_run.is_set():
-                raise RunAborted('Run aborted during initialization.')
-            if self.stop_run.is_set():
-                raise RunAborted('Run stopped during initialization.')
-            self._run()
+            with self._run():
+                self.do_run()
         except RunAborted as e:
             self._run_status = run_status.aborted
             logging.warning('Run %s was aborted: %s' % (self.run_number, e))
+        except RunStopped:
+            self._run_status = run_status.finished
+            logging.warning('Run %s was stopped' % (self.run_number,))
         except Exception as e:
             self._run_status = run_status.crashed
             logging.error('Unexpected exception during run %s: %s' % (self.run_number, traceback.format_exc()))
@@ -146,9 +151,34 @@ class RunBase():
             self._run_conf = default_run_conf._asdict()
         self.__dict__.update(self.run_conf)
 
-    @abc.abstractmethod
+    @contextmanager
     def _run(self):
+        try:
+            self.pre_run()
+            yield
+            self.post_run()
+        finally:
+            self.cleanup_run()
+
+    @abc.abstractmethod
+    def pre_run(self):
+        """Before run."""
+        pass
+
+    @abc.abstractmethod
+    def do_run(self):
         """The run."""
+        pass
+
+    @abc.abstractmethod
+    def post_run(self):
+        """After run."""
+        pass
+
+    @abc.abstractmethod
+    def cleanup_run(self):
+        """Cleanup after run, will be executed always, even after exception. Avoid throwing exceptions here.
+        """
         pass
 
     def _cleanup(self):
@@ -165,7 +195,8 @@ class RunBase():
         logging.log(log_status, 'Stopped run #%d (%s) in %s. STATUS: %s' % (self.run_number, self.__class__.__name__, self.working_dir, self.run_status))
 
     def stop(self, msg=None):
-        """Stopping a run."""
+        """Stopping a run. Control for loops.
+        """
         if not self.stop_run.is_set():
             if msg:
                 logging.info('%s%s Stopping run...' % (msg, ('' if msg[-1] in punctuation else '.')))
@@ -174,7 +205,8 @@ class RunBase():
         self.stop_run.set()
 
     def abort(self, msg=None):
-        """Aborting a run."""
+        """Aborting a run. Control for loops. Immediate abort.
+        """
         if not self.abort_run.is_set():
             if msg:
                 logging.error('%s%s Aborting run...' % (msg, ('' if msg[-1] in punctuation else '.')))
@@ -350,17 +382,15 @@ class RunManager(object):
             conf_dict.update(conf)
         return conf_dict
 
-    def stop_current_run(self):
-        try:
-            self._current_run.stop()
-        except AttributeError:
-            pass
+    def stop_current_run(self, msg=None):
+        '''Control for runs.
+        '''
+        self._current_run.stop(msg)
 
-    def abort_current_run(self):
-        try:
-            self._current_run.abort()
-        except AttributeError:
-            pass
+    def abort_current_run(self, msg=None):
+        '''Control for runs. Immediate abort.
+        '''
+        self._current_run.abort(msg)
 
     def run_run(self, run, run_conf=None, use_thread=False):
         '''Runs a run in another thread. Non-blocking.
@@ -477,7 +507,7 @@ class RunManager(object):
 
     def _signal_handler(self, signum, frame):
         signal.signal(signal.SIGINT, signal.SIG_DFL)  # setting default handler... pressing Ctrl-C a second time will kill application
-        self._current_run.abort('Pressed Ctrl-C')
+        self.abort_current_run('Pressed Ctrl-C')
 
 
 from functools import wraps
