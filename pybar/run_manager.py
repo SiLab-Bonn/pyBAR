@@ -192,7 +192,7 @@ class RunBase():
             log_status = logging.WARNING
         else:
             log_status = logging.ERROR
-        logging.log(log_status, 'Stopped run #%d (%s) in %s. STATUS: %s' % (self.run_number, self.__class__.__name__, self.working_dir, self.run_status))
+        logging.log(log_status, 'Finished run #%d (%s) in %s. STATUS: %s' % (self.run_number, self.__class__.__name__, self.working_dir, self.run_status))
 
     def stop(self, msg=None):
         """Stopping a run. Control for loops.
