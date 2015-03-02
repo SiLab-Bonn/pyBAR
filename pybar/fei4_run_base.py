@@ -215,8 +215,8 @@ class Fei4RunBase(RunBase):
                     self.dut.init(dut_configuration)
                 else:
                     self.dut.init(self.conf['dut_configuration'])
-            else:
-                raise ValueError('dut_configuration not given')
+#             else:
+#                 raise ValueError('dut_configuration not given')
 
             # additional init of the DUT
             self.init_dut()
