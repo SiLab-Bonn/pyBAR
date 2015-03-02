@@ -14,7 +14,7 @@ from scipy.optimize import curve_fit
 from scipy.interpolate import interp1d
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.figure import Figure
-# from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
 from pybar.fei4.register_utils import invert_pixel_mask
 from pybar.fei4_run_base import Fei4RunBase
@@ -299,7 +299,7 @@ class HitDelayScan(Fei4RunBase):
                 y_err = np.std(array, axis=1)
 
                 fig = Figure()
-#                 canvas = FigureCanvas(fig)
+                canvas = FigureCanvas(fig)
                 ax = fig.add_subplot(111)
                 fig.patch.set_facecolor('white')
                 ax.grid(True)

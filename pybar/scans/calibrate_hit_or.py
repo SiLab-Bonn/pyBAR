@@ -8,7 +8,7 @@ import progressbar
 
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.figure import Figure
-# from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
 from pybar.fei4.register_utils import make_pixel_mask_from_col_row, make_box_pixel_mask_from_col_row
 from pybar.fei4_run_base import Fei4RunBase
@@ -103,7 +103,7 @@ class HitOrCalibration(Fei4RunBase):
             for index, (column, row) in enumerate(col_row_combinations):
                 logging.info("Plot calibration for pixel " + str(column) + '/' + str(row))
                 fig = Figure()
-#                 canvas = FigureCanvas(fig)
+                canvas = FigureCanvas(fig)
                 ax = fig.add_subplot(111)
                 fig.patch.set_facecolor('white')
                 ax.grid(True)
