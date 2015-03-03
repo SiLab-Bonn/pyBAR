@@ -1,5 +1,5 @@
 
-# pyBAR [![Build Status](https://travis-ci.org/SiLab-Bonn/pyBAR.svg?branch=master)](https://travis-ci.org/SiLab-Bonn/pyBAR) [![Build Status](https://travis-ci.org/SiLab-Bonn/pyBAR.svg?branch=development)](https://travis-ci.org/SiLab-Bonn/pyBAR)
+# pyBAR [![Build Status](https://travis-ci.org/SiLab-Bonn/pyBAR.svg?branch=development)](https://travis-ci.org/SiLab-Bonn/pyBAR) [![Code Status](https://landscape.io/github/SiLab-Bonn/pyBAR/development/landscape.svg?style=flat)](https://landscape.io/github/SiLab-Bonn/basil/development)
 
 pyBAR - Bonn ATLAS Readout in Python and C++
 
