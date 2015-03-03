@@ -4,10 +4,11 @@ Some serial port utilities for Windows and PySerial
 Eli Bendersky (eliben@gmail.com)
 License: this code is in the public domain
 """
-import re, itertools
+import re
+import itertools
 import _winreg as winreg
 
-   
+
 def full_port_name(portname):
     """ Given a port-name (of the form COM7, 
         COM12, CNCA0, etc.) returns a full 
@@ -16,9 +17,9 @@ def full_port_name(portname):
     """
     m = re.match('^COM(\d+)$', portname)
     if m and int(m.group(1)) < 10:
-        return portname    
-    return '\\\\.\\' + portname    
-    
+        return portname
+    return '\\\\.\\' + portname
+
 
 def enumerate_serial_ports():
     """ Uses the Win32 registry to return an 
@@ -43,7 +44,3 @@ if __name__ == "__main__":
     import serial
     for p in enumerate_serial_ports():
         print p, full_port_name(p)
-        
-
-
-
