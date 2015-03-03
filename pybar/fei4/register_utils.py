@@ -306,7 +306,7 @@ def test_global_register(self):
                     pass
                 else:
                     number_of_errors += 1
-                    logging.warning('Global Register Test: Wrong data for Global Register at address %d (read: %d, expected: %d)', (fei4_data_word['address'], read_value, set_value))
+                    logging.warning('Global Register Test: Wrong data for Global Register at address %d (read: %d, expected: %d)', fei4_data_word['address'], read_value, set_value)
             else:
                 number_of_errors += 1
                 logging.warning('Global Register Test: Expected Value Record but found %s', fei4_next_data_word)
