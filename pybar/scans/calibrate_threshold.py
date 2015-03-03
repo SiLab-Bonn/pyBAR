@@ -3,13 +3,11 @@ To save time the PlsrDAC start position is the start position determined from th
 scan parameter values should be chosen in a ways that the threshold increases for each step.
 After the data taking the data is analyzed and the calibration is written into a h5 file.
 """
-from datetime import datetime
-import progressbar
+
 import tables as tb
 import numpy as np
 import logging
 import ast
-from multiprocessing import Pool, cpu_count
 
 from matplotlib.backends.backend_pdf import PdfPages
 
@@ -19,7 +17,6 @@ from pybar.analysis import analysis_utils
 from pybar.analysis.RawDataConverter import data_struct
 from pybar.analysis.plotting.plotting import plotThreeWay, plot_scurves, plot_scatter
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
-from pybar.analysis import analysis_utils
 
 
 class ThresholdCalibration(FastThresholdScan):
