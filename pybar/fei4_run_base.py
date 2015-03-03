@@ -108,7 +108,7 @@ class Fei4RunBase(RunBase):
             self.dut['rx']['CCPD_TDC'] = 1
             self.dut['rx'].write()
         else:
-            logging.warning('Omit initialization of DUT %s' % self.dut.name)
+            logging.warning('Omit initialization of DUT %s', self.dut.name)
 
     def init_fe(self):
         if 'fe_configuration' in self.conf:
@@ -262,7 +262,7 @@ class Fei4RunBase(RunBase):
             self.analyze()
         # known errors
         except AnalysisError as e:
-            logging.error('Analysis of data failed: %s' % e)
+            logging.error('Analysis of data failed: %s', e)
             raise RunAborted('Read the log')
         # analyzed data, save config
         else:

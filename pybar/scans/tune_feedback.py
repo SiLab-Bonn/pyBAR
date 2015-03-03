@@ -129,7 +129,7 @@ class FeedbackTuning(Fei4RunBase):
             logging.warning('PrmpVbpf reached minimum/maximum value')
 
         if abs(mean_tot - self.target_tot) > 2 * self.max_delta_tot:
-            logging.warning('Global feedback tuning failed. Delta ToT = %f > %f. PrmpVbpf = %d' % (abs(mean_tot - self.target_tot), self.max_delta_tot, self.register.get_global_register_value("PrmpVbpf")))
+            logging.warning('Global feedback tuning failed. Delta ToT = %f > %f. PrmpVbpf = %d', abs(mean_tot - self.target_tot), self.max_delta_tot, self.register.get_global_register_value("PrmpVbpf"))
         else:
             logging.info('Tuned PrmpVbpf to %d', self.register.get_global_register_value("PrmpVbpf"))
 

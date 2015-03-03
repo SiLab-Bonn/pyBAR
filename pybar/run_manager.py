@@ -111,10 +111,10 @@ class RunBase():
                 self.do_run()
         except RunAborted as e:
             self._run_status = run_status.aborted
-            logging.warning('Run %s was aborted: %s' % (self.run_number, e))
+            logging.warning('Run %s was aborted: %s', self.run_number, e)
         except RunStopped:
             self._run_status = run_status.finished
-            logging.warning('Run %s was stopped' % (self.run_number,))
+            logging.warning('Run %s was stopped', self.run_number)
         except Exception as e:
             self._run_status = run_status.crashed
             logging.error('Unexpected exception during run %s: %s' % (self.run_number, traceback.format_exc()))
@@ -293,7 +293,7 @@ def thunkify(thread_name):
                 except Exception:
                     exc[0] = True
                     exc[1] = sys.exc_info()
-                    logging.error("RunThread has thrown an exception:\n%s" % (traceback.format_exc()))
+                    logging.error("RunThread has thrown an exception:\n%s", traceback.format_exc())
 #                 finally:
 #                     wait_event.set()
 

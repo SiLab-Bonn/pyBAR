@@ -559,7 +559,7 @@ class AnalyzeRawData(object):
                     try:
                         raw_data = in_file_h5.root.raw_data.read(iWord, iWord + self._chunk_size)
                     except OverflowError, e:
-                        logging.error('%s: 2^31 xrange() limitation in 32-bit Python' % e)
+                        logging.error('%s: 2^31 xrange() limitation in 32-bit Python', e)
                     self.interpreter.interpret_raw_data(raw_data)  # interpret the raw data
                     if(index == len(self.files_dict.keys()) - 1 and iWord == range(0, table_size, self._chunk_size)[-1]):  # store hits of the latest event of the last file
                         self.interpreter.store_event()  # all actual buffered events in the interpreter are stored

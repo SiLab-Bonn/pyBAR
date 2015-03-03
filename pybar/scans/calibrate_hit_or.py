@@ -150,7 +150,7 @@ class HitOrCalibration(Fei4RunBase):
                 actual_col, actual_row, _ = actual_scan_parameters
 
                 if len(hits[np.logical_and(hits['column'] != actual_col, hits['row'] != actual_row)]):
-                    logging.warning('There are %d hits from not selected pixels in the data' % len(hits[np.logical_and(hits['column'] != actual_col, hits['row'] != actual_row)]))
+                    logging.warning('There are %d hits from not selected pixels in the data', len(hits[np.logical_and(hits['column'] != actual_col, hits['row'] != actual_row)]))
 
                 hits = hits[(hits['event_status'] & 0b0000011110001000) == 0b0000000100000000]  # only take hits from good events (one TDC word only, no error)
                 column, row, tot, tdc = hits['column'], hits['row'], hits['tot'], hits['TDC']

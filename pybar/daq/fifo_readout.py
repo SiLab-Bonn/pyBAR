@@ -99,7 +99,7 @@ class FifoReadout(object):
         else:
             fifo_size = self.dut['sram']['FIFO_SIZE']
             if fifo_size != 0:
-                logging.warning('SRAM FIFO not empty when starting FIFO readout: size = %i' % fifo_size)
+                logging.warning('SRAM FIFO not empty when starting FIFO readout: size = %i', fifo_size)
         self._words_per_read.clear()
         if clear_buffer:
             self._data_deque.clear()
@@ -269,7 +269,7 @@ class FifoReadout(object):
         sleep(0.2)  # sleep here for a while
         fifo_size = self.dut['sram']['FIFO_SIZE']
         if fifo_size != 0:
-            logging.warning('SRAM FIFO not empty after reset: size = %i' % fifo_size)
+            logging.warning('SRAM FIFO not empty after reset: size = %i', fifo_size)
 
     def reset_rx(self, channels=None):
         logging.info('Resetting RX')

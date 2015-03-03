@@ -202,10 +202,9 @@ def get_profile_histogram(x, y, n_bins=100):
     return bin_centers, mean, std_mean
 
 
-def get_rate_normalization(hit_file, parameter, reference='event', cluster_file=None, sort=False, plot=False, chunk_size=5000000):
+def get_rate_normalization(hit_file, parameter, reference='event', cluster_file=None, plot=False, chunk_size=5000000):
     ''' Takes different hit files (hit_files), extracts the number of events or the scan time (reference) per scan parameter (parameter)
     and returns an array with a normalization factor. This normalization factor has the length of the number of different parameters.
-    One can also sort the normalization by the parameter values.
     If a cluster_file is specified.
 
     Parameters
@@ -511,7 +510,7 @@ def get_parameter_from_files(files, parameters=None, unique=False, sort=True):
                 try:
                     for key, value in scan_parameter_values.items():
                         if value[0] != parameter_values_from_file_names_dict[file_name][key][0]:
-                            logging.warning('Parameter values in the file name and in the file differ. Take ' + str(key) + ' parameters ' + str(value) + ' found in %s.' % file_name)
+                            logging.warning('Parameter values in the file name and in the file differ. Take ' + str(key) + ' parameters ' + str(value) + ' found in %s.', file_name)
                 except KeyError:  # parameter does not exists in the file name
                     pass
                 except IndexError:
@@ -526,7 +525,7 @@ def get_parameter_from_files(files, parameters=None, unique=False, sort=True):
                 if not existing:
                     files_dict[file_name] = scan_parameter_values
                 else:
-                    logging.warning('Scan parameter value(s) from %s exists already, do not add to result' % file_name)
+                    logging.warning('Scan parameter value(s) from %s exists already, do not add to result', file_name)
             else:
                 files_dict[file_name] = scan_parameter_values
     return collections.OrderedDict(sorted(files_dict.iteritems(), key=itemgetter(1)) if sort else files_dict)

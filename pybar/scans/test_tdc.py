@@ -84,7 +84,7 @@ class TdcTest(Fei4RunBase):
                         tdc_counter = np.bitwise_and(data[is_tdc_word(data)], 0x000FF000)
                         tdc_counter = np.right_shift(tdc_counter, 12)
                         if len(is_tdc_word(data)) != self.n_pulses:
-                            logging.warning('%d TDC words instead of %d ' % (len(is_tdc_word(data)), self.n_pulses))
+                            logging.warning('%d TDC words instead of %d ', len(is_tdc_word(data)), self.n_pulses)
                         try:
                             if np.any(np.logical_and(tdc_counter[np.gradient(tdc_counter) != 1] != 0, tdc_counter[np.gradient(tdc_counter) != 1] != 255)):
                                 logging.warning('The counter did not count correctly')
@@ -117,7 +117,7 @@ class TdcTest(Fei4RunBase):
                     data = self.fifo_readout.read_data()
                     if data[is_tdc_word(data)].shape[0] != 0:
                         if len(is_tdc_word(data)) != 10:
-                            logging.warning('%d TDC words instead of %d ' % (len(is_tdc_word(data)), 10))
+                            logging.warning('%d TDC words instead of %d ', len(is_tdc_word(data)), 10)
                         tdc_delay = np.bitwise_and(data[is_tdc_word(data)], 0x0FF00000)
                         tdc_delay = np.right_shift(tdc_delay, 20)
 

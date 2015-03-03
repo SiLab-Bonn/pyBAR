@@ -511,10 +511,10 @@ def align_z(track_candidates_file, alignment_file, output_pdf, z_positions=None,
         z_differences = [abs(i - j) for i, j in zip(z_positions, z_positions_rec_abs)]
         failing_duts = [j for (i, j) in zip(z_differences, range(5)) if i >= warn_at]
         if failing_duts:
-            logging.warning('The reconstructed z postions is more than 1 cm off for DUTS %s' % str(failing_duts))
+            logging.warning('The reconstructed z postions is more than 1 cm off for DUTS %s', str(failing_duts))
         else:
-            logging.info('Absoulte reconstructed z-positions %s' % str(z_positions_rec_abs))
-            logging.info('Difference between measured and reconstructed z-positions %s' % str(z_differences))
+            logging.info('Absoulte reconstructed z-positions %s', str(z_positions_rec_abs))
+            logging.info('Difference between measured and reconstructed z-positions %s', str(z_differences))
 
     return z_positions_rec_abs if z_positions is not None else z_positions_rec
 
