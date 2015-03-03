@@ -886,7 +886,7 @@ class FEI4Register(object):
         else:
             return flatten_iterable(register_attribute_list)
 
-    def get_global_register_objects(self, do_sort=[], reverse=False, **kwargs):
+    def get_global_register_objects(self, do_sort=None, reverse=False, **kwargs):
         """Generate register objects (list) from register name list
 
         Usage: get_global_register_objects(name = ["Amp2Vbn", "GateHitOr", "DisableColumnCnfg"], address = [2, 3])
@@ -941,7 +941,7 @@ class FEI4Register(object):
             register_bitsets.append(register_bitset)
         return register_bitsets
 
-    def get_pixel_register_objects(self, do_sort=[], reverse=False, **kwargs):
+    def get_pixel_register_objects(self, do_sort=None, reverse=False, **kwargs):
         """Generate register objects (list) from register name list
 
         Usage: get_pixel_register_objects(name = ["TDAC", "FDAC"])

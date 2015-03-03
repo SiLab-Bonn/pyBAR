@@ -767,7 +767,7 @@ def parse_key_value_from_file(f, key, deletechars=''):
             return None
 
 
-def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=False, bol_function=None, eol_function=None, digital_injection=False, enable_shift_masks=None, disable_shift_masks=[], restore_shift_masks=True, mask=None, double_column_correction=False):
+def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=False, bol_function=None, eol_function=None, digital_injection=False, enable_shift_masks=None, disable_shift_masks=None, restore_shift_masks=True, mask=None, double_column_correction=False):
     '''Implementation of the scan loops (mask shifting, loop over double columns, repeatedly sending any arbitrary command).
 
     Parameters
@@ -795,7 +795,7 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
     enable_shift_masks : list, tuple
         List of enable pixel masks which will be shifted during scan. Mask set to 1 for selected pixels else 0. None will select "Enable", "C_High", "C_Low".
     disable_shift_masks : list, tuple
-        List of disable pixel masks which will be shifted during scan. Mask set to 0 for selected pixels else 1.
+        List of disable pixel masks which will be shifted during scan. Mask set to 0 for selected pixels else 1. None will disable no mask.
     restore_shift_masks : bool
         Writing the initial (restored) FE pixel configuration into FE after finishing the scan loop.
     mask : array-like
@@ -808,6 +808,9 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
 
     if enable_shift_masks is None:
         enable_shift_masks = ["Enable", "C_High", "C_Low"]
+
+    if disable_shift_masks is None:
+        disable_shift_masks = []
 
     # get PlsrDAC correction
     if isinstance(double_column_correction, basestring):  # from file
