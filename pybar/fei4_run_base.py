@@ -466,7 +466,7 @@ def interval_timer(interval, func, *args, **kwargs):
     return stopped.set
 
 
-def namedtuple_with_defaults(typename, field_names, default_values=[]):
+def namedtuple_with_defaults(typename, field_names, default_values=None):
     '''
     Namedtuple with defaults
 
@@ -487,6 +487,8 @@ def namedtuple_with_defaults(typename, field_names, default_values=[]):
     >>> Node(4)
     Node(val=4, left=None, right=7)
     '''
+    if default_values is None:
+        default_values = []
     T = namedtuple(typename, field_names)
     T.__new__.__defaults__ = (None,) * len(T._fields)
     if isinstance(default_values, Mapping):
