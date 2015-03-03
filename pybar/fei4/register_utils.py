@@ -494,14 +494,15 @@ def test_pixel_register(self):
     logging.info('Pixel Register Test: Found %d error(s)' % number_of_errors)
 
 
-def read_pixel_register(self, pix_regs=["EnableDigInj", "Imon", "Enable", "C_High", "C_Low", "TDAC", "FDAC"], dcs=range(40), overwrite_config=False):
+def read_pixel_register(self, pix_regs=None, dcs=range(40), overwrite_config=False):
     '''Reads the pixel register, interprets the data and returns a masked numpy arrays with the data for the chosen pixel register.
     Pixels without any data are masked.
 
     Parameters
     ----------
-    pix_regs : iterable, int
+    pix_regs : iterable, string
         List of pixel register to read (e.g. Enable, C_High, ...).
+        If None all are read: "EnableDigInj", "Imon", "Enable", "C_High", "C_Low", "TDAC", "FDAC"
     dcs : iterable, int
         List of double columns to read.
     overwrite_config : bool
@@ -512,6 +513,9 @@ def read_pixel_register(self, pix_regs=["EnableDigInj", "Imon", "Enable", "C_Hig
     list of masked numpy.ndarrays
     '''
     result = []
+
+    if pix_regs is None:
+        pix_regs = ["EnableDigInj", "Imon", "Enable", "C_High", "C_Low", "TDAC", "FDAC"]
 
     for pix_reg in pix_regs:
         pixel_data = np.ma.masked_array(np.zeros(shape=(80, 336), dtype=np.uint32), mask=True)  # the result pixel array, only pixel with data are not masked
@@ -763,7 +767,7 @@ def parse_key_value_from_file(f, key, deletechars=''):
             return None
 
 
-def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=False, bol_function=None, eol_function=None, digital_injection=False, enable_shift_masks=["Enable", "C_High", "C_Low"], disable_shift_masks=[], restore_shift_masks=True, mask=None, double_column_correction=False):
+def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=False, bol_function=None, eol_function=None, digital_injection=False, enable_shift_masks=None, disable_shift_masks=[], restore_shift_masks=True, mask=None, double_column_correction=False):
     '''Implementation of the scan loops (mask shifting, loop over double columns, repeatedly sending any arbitrary command).
 
     Parameters
@@ -789,7 +793,7 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
     digital_injection : bool
         Enables digital injection. C_High and C_Low will be disabled.
     enable_shift_masks : list, tuple
-        List of enable pixel masks which will be shifted during scan. Mask set to 1 for selected pixels else 0.
+        List of enable pixel masks which will be shifted during scan. Mask set to 1 for selected pixels else 0. None will select "Enable", "C_High", "C_Low".
     disable_shift_masks : list, tuple
         List of disable pixel masks which will be shifted during scan. Mask set to 0 for selected pixels else 1.
     restore_shift_masks : bool
@@ -801,6 +805,9 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
     '''
     if not isinstance(command, bitarray):
         raise TypeError
+
+    if enable_shift_masks is None:
+        enable_shift_masks = ["Enable", "C_High", "C_Low"]
 
     # get PlsrDAC correction
     if isinstance(double_column_correction, basestring):  # from file
