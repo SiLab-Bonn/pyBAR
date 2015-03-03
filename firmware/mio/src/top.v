@@ -763,7 +763,7 @@ clock_divider #(
 spi #(
     .BASEADDR(CCPD_GLOBAL_SPI_BASEADDR),
     .HIGHADDR(CCPD_GLOBAL_SPI_HIGHADDR),
-    .MEM_BYTES(15)
+    .MEM_BYTES(17)
 ) i_ccpd_global_spi_pixel (
     .BUS_CLK(BUS_CLK),
     .BUS_RST(BUS_RST),
