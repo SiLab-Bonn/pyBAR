@@ -527,12 +527,9 @@ def histogram_cluster_table(analyzed_data_file, output_file, chunk_size=10000000
             progress_bar.finish()
 
             filter_table = tb.Filters(complib='blosc', complevel=5, fletcher32=False)  # compression of the written data
-            occupancy = np.zeros(80 * 336 * histograming.get_n_parameters(), dtype=np.uint32)  # create linear array as it is created in histogram class
-            histograming.get_occupancy(occupancy)
-            occupancy_array = np.reshape(a=occupancy.view(), newshape=(80, 336, histograming.get_n_parameters()), order='F')  # make linear array to 3d array (col,row,parameter)
-            occupancy_array = np.swapaxes(occupancy_array, 0, 1)
-            occupancy_array_table = out_file_h5.createCArray(out_file_h5.root, name='HistOcc', title='Occupancy Histogram', atom=tb.Atom.from_dtype(occupancy.dtype), shape=(336, 80, histograming.get_n_parameters()), filters=filter_table)
-            occupancy_array_table[0:336, 0:80, 0:histograming.get_n_parameters()] = occupancy_array
+            occupancy_array = histograming.get_occupancy().T
+            occupancy_array_table = out_file_h5.createCArray(out_file_h5.root, name='HistOcc', title='Occupancy Histogram', atom=tb.Atom.from_dtype(occupancy_array.dtype), shape=occupancy_array.shape, filters=filter_table)
+            occupancy_array_table[:] = occupancy_array
 
             if total_cluster != np.sum(occupancy_array):
                 logging.warning('Analysis shows inconsistent number of cluster used. Check needed!')
