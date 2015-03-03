@@ -137,7 +137,7 @@ def analyse_selected_hits(input_file_hits, output_file_hits, output_file_hits_an
     if os.path.isfile(output_file_hits) and not analysis_configuration["overwrite_output_files"]:  # skip analysis if already done
         logging.info('Selected hit data file ' + output_file_hits + ' already exists. Skip analysis for this file.')
     else:
-        analysis.select_hits_from_cluster_info(input_file_hits=input_file_hits, output_file_hits=output_file_hits, cluster_size_condition=cluster_size_condition, n_cluster_condition=n_cluster_condition, output_pdf=None)  # select hits and copy the mto new file
+        analysis.select_hits_from_cluster_info(input_file_hits=input_file_hits, output_file_hits=output_file_hits, cluster_size_condition=cluster_size_condition, n_cluster_condition=n_cluster_condition)  # select hits and copy the mto new file
     if os.path.isfile(output_file_hits_analyzed) and not analysis_configuration["overwrite_output_files"]:  # skip analysis if already done
         logging.info('Analyzed selected hit data file ' + output_file_hits_analyzed + ' already exists. Skip analysis for this file.')
     else:
