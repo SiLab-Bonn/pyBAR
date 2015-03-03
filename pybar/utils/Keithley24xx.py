@@ -1,6 +1,5 @@
 import serial
 import time
-import sys
 
 Units = {
     'Voltage':
@@ -43,7 +42,7 @@ Modi = {
 # User defined data point with errors
 
 
-class DataPoint:
+class DataPoint(object):
 
     def __init__(self, x_value, y_value, x_error, y_error):
         self.x = x_value
@@ -65,7 +64,7 @@ class DataPoint:
 
 
 # Class for the Keithley SMU 2400/2410 series
-class Keithley24xx:
+class Keithley24xx(object):
     ser = None
 
     def __init__(self, conf):
@@ -179,7 +178,7 @@ class Keithley24xx:
         self.sample()
         self.get_mean()
         dmean = eval(self.read(self.configuration_file["Device"]["Configuration"]["WaitRead"]))
-        if(with_error == True):
+        if with_error:
             self.get_std()
             dstd = eval(self.read(self.configuration_file["Device"]["Configuration"]["WaitRead"]))
             return dmean, dstd
@@ -190,7 +189,7 @@ class Keithley24xx:
         self.sample()
         self.get_mean()
         d = eval(self.read(self.configuration_file["Device"]["Configuration"]["WaitRead"]))
-        if(with_error == True):
+        if with_error:
             self.get_std()
             derr = eval(self.read(self.configuration_file["Device"]["Configuration"]["WaitRead"]))
             return d[0] / Units['Voltage'][unit], derr[0] / Units['Voltage'][unit]
@@ -201,7 +200,7 @@ class Keithley24xx:
         self.sample()
         self.get_mean()
         d = eval(self.read(self.configuration_file["Device"]["Configuration"]["WaitRead"]))
-        if(with_error == True):
+        if with_error:
             self.get_std()
             derr = eval(self.read(self.configuration_file["Device"]["Configuration"]["WaitRead"]))
             return d[1] / Units['Current'][unit], derr[1] / Units['Current'][unit]
