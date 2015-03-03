@@ -156,12 +156,12 @@ def in1d_sorted(ar1, ar2):
 
 def central_difference(x, y):
     '''Returns the dy/dx(x) via central difference method
-
+ 
     Parameters
     ----------
     x : array like
     y : array like
-
+ 
     Returns
     -------
     dy/dx : array like
@@ -246,8 +246,7 @@ def get_rate_normalization(hit_file, parameter, reference='event', cluster_file=
         else:
             raise NotImplementedError('The normalization reference ' + reference + ' is not implemented')
 
-        if cluster_file:
-            # calculate the rate normalization from the mean number of hits per event per scan parameter, needed for beam data since a beam since the multiplicity is rarely constant
+        if cluster_file:  # calculate the rate normalization from the mean number of hits per event per scan parameter, needed for beam data since a beam since the multiplicity is rarely constant
             cluster_table = in_hit_file_h5.root.Cluster
             index_event_number(cluster_table)
             index = 0  # index where to start the read out, 0 at the beginning, increased during looping, variable for read speed up
@@ -425,16 +424,16 @@ def get_data_file_names_from_scan_base(scan_base, filter_file_words=None, parame
 
 def get_parameter_scan_bases_from_scan_base(scan_base):
     """ Takes a list of scan base names and returns all scan base names that have this scan base within their name.
-
+ 
     Parameters
     ----------
     scan_base : list of strings
     filter_file_words : list of strings
-
+ 
     Returns
     -------
     list of strings
-
+ 
     """
     return [scan_bases[:-3] for scan_bases in get_data_file_names_from_scan_base(scan_base, filter_file_words=['interpreted', 'cut_', 'cluster_sizes', 'histograms'])]
 
@@ -445,6 +444,7 @@ def get_scan_parameter_names(scan_parameters):
     Parameters
     ----------
     scan_parameters : numpy.array
+        Can be None
 
     Returns
     -------
@@ -1172,65 +1172,6 @@ def get_n_cluster_in_events(event_numbers):
     result_count = np.empty_like(event_numbers, dtype=np.uint32)
     result_size = analysis_functions.get_n_cluster_in_events(event_numbers, result_event_numbers, result_count)
     return np.vstack((result_event_numbers[:result_size], result_count[:result_size])).T
-
-
-def histogram_tot(array, label='tot'):
-    '''Takes the numpy hit/cluster array and histograms the ToT values.
-
-    Parameters
-    ----------
-    hit_array : numpy.ndarray
-    label: string
-
-    Returns
-    -------
-    numpy.Histogram
-    '''
-    logging.info("Histograming ToT values")
-    return np.histogram(a=array[label], bins=16, range=(0, 16))
-
-
-def histogram_tot_per_pixel(array, labels=['column', 'row', 'tot']):
-    '''Takes the numpy hit/cluster array and histograms the ToT values for each pixel
-
-    Parameters
-    ----------
-    hit_array : numpy.ndarray
-    label: string list
-
-    Returns
-    -------
-    numpy.Histogram
-    '''
-    logging.info("Histograming ToT values for each pixel")
-    return np.histogramdd(sample=(array[labels[0]], array[labels[1]], array[labels[2]]), bins=(80, 336, 16), range=[[0, 80], [0, 336], [0, 16]])
-
-
-def histogram_mean_tot_per_pixel(array, labels=['column', 'row', 'tot']):
-    '''Takes the numpy hit/cluster array and histograms the mean ToT values for each pixel
-
-    Parameters
-    ----------
-    hit_array : numpy.ndarray
-    label: string list
-
-    Returns
-    -------
-    numpy.Histogram
-    '''
-    tot_array = histogram_tot_per_pixel(array=array, labels=labels)[0]
-    occupancy = histogram_occupancy_per_pixel(array=array)[0]  # needed for normalization
-    tot_avr = np.average(tot_array, axis=2, weights=range(0, 16)) * sum(range(0, 16))
-    tot_avr = np.divide(tot_avr, occupancy)
-    return np.ma.array(tot_avr, mask=(occupancy == 0))  # return array with masked pixel without any hit
-
-
-def histogram_occupancy_per_pixel(array, labels=['column', 'row'], mask_no_hit=False, fast=False):
-    occupancy = np.histogram2d(x=array[labels[0]], y=array[labels[1]], bins=(80, 336), range=[[0, 80], [0, 336]])
-    if mask_no_hit:
-        return np.ma.array(occupancy[0], mask=(occupancy[0] == 0)), occupancy[1], occupancy[2]
-    else:
-        return occupancy
 
 
 def get_scan_parameter(meta_data_array, unique=True):
