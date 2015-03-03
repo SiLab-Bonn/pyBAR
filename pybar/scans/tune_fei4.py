@@ -148,7 +148,7 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
 
         start_bit = 4
         for iteration in range(0, self.local_iterations):
-            logging.info("Local tuning step %d / %d" iteration + 1, self.local_iterations)
+            logging.info("Local tuning step %d / %d", iteration + 1, self.local_iterations)
             start_bit = 4  # - difference_bit * iteration
             self.tdac_tune_bits = range(start_bit, -1, -1)
             TdacTuning.scan(self)
