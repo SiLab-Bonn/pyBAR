@@ -1,1 +1,5 @@
 max-line-length: 300
+ignore-paths:
+    - pybar/ViTablesPlugin
+ignore-patterns:
+    - analyze_test_beam
