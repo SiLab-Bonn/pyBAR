@@ -162,7 +162,7 @@ class Fei4RunBase(RunBase):
         # sending data
         self.socket_addr = self._run_conf['send_data']
         if self.socket_addr:
-            logging.info('Send data to %s' % self.socket_addr)
+            logging.info('Send data to %s', self.socket_addr)
         # scan parameters
         if 'scan_parameters' in self.run_conf:
             if isinstance(self.run_conf['scan_parameters'], basestring):
@@ -172,7 +172,7 @@ class Fei4RunBase(RunBase):
         else:
             sp = namedtuple_with_defaults('scan_parameters', field_names=[])
             self.scan_parameters = sp()
-        logging.info('Scan parameter(s): %s' % (', '.join(['%s=%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None'))
+        logging.info('Scan parameter(s): %s', ', '.join(['%s=%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None')
 
         # init DUT
         if not isinstance(self.conf['dut'], Dut):
@@ -325,7 +325,7 @@ class Fei4RunBase(RunBase):
         scan_parameters_new = self.scan_parameters._asdict()
         diff = [name for name in scan_parameters_old.keys() if np.any(scan_parameters_old[name] != scan_parameters_new[name])]
         if diff:
-            logging.info('Changing scan parameter(s): %s' % (', '.join([('%s=%s' % (name, fields[name])) for name in diff])))
+            logging.info('Changing scan parameter(s): %s', ', '.join([('%s=%s' % (name, fields[name])) for name in diff]))
 
     @contextmanager
     def readout(self, *args, **kwargs):

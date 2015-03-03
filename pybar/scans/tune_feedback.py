@@ -75,10 +75,10 @@ class FeedbackTuning(Fei4RunBase):
         for feedback_bit in self.feedback_tune_bits:
             if additional_scan:
                 self.set_prmp_vbpf_bit(feedback_bit)
-                logging.info('PrmpVbpf setting: %d, bit %d = 1' % (self.register.get_global_register_value("PrmpVbpf"), feedback_bit))
+                logging.info('PrmpVbpf setting: %d, bit %d = 1', self.register.get_global_register_value("PrmpVbpf"), feedback_bit)
             else:
                 self.set_prmp_vbpf_bit(feedback_bit, bit_value=0)
-                logging.info('PrmpVbpf setting: %d, bit %d = 0' % (self.register.get_global_register_value("PrmpVbpf"), feedback_bit))
+                logging.info('PrmpVbpf setting: %d, bit %d = 0', self.register.get_global_register_value("PrmpVbpf"), feedback_bit)
 
             scan_parameter_value = self.register.get_global_register_value("PrmpVbpf")
 
@@ -94,7 +94,7 @@ class FeedbackTuning(Fei4RunBase):
                 tot_mean_best = mean_tot
                 feedback_best = self.register.get_global_register_value("PrmpVbpf")
 
-            logging.info('Mean ToT = %f' % mean_tot)
+            logging.info('Mean ToT = %f', mean_tot)
             self.tot_array, _ = np.histogram(a=tots, range=(0, 16), bins=16)
             if self.plot_intermediate_steps:
                 plot_tot(hist=self.tot_array, title='ToT distribution (PrmpVbpf ' + str(scan_parameter_value) + ')', filename=self.plots_filename)
@@ -105,7 +105,7 @@ class FeedbackTuning(Fei4RunBase):
 
             if feedback_bit > 0 and mean_tot < self.target_tot:
                 self.set_prmp_vbpf_bit(feedback_bit, bit_value=0)
-                logging.info('Mean ToT = %f < %d ToT, set bit %d = 0' % (mean_tot, self.target_tot, feedback_bit))
+                logging.info('Mean ToT = %f < %d ToT, set bit %d = 0', mean_tot, self.target_tot, feedback_bit)
 
             if feedback_bit == 0:
                 if additional_scan:  # scan bit = 0 with the correct value again
@@ -113,7 +113,7 @@ class FeedbackTuning(Fei4RunBase):
                     last_bit_result = mean_tot
                     self.feedback_tune_bits.append(0)  # bit 0 has to be scanned twice
                 else:
-                    logging.info('Scanned bit 0 = 0 with %f instead of %f for scanned bit 0 = 1' % (mean_tot, last_bit_result))
+                    logging.info('Scanned bit 0 = 0 with %f instead of %f for scanned bit 0 = 1', mean_tot, last_bit_result)
                     if(abs(mean_tot - self.target_tot) > abs(last_bit_result - self.target_tot)):  # if bit 0 = 0 is worse than bit 0 = 1, so go back
                         self.set_prmp_vbpf_bit(feedback_bit, bit_value=1)
                         mean_tot = last_bit_result
@@ -131,7 +131,7 @@ class FeedbackTuning(Fei4RunBase):
         if abs(mean_tot - self.target_tot) > 2 * self.max_delta_tot:
             logging.warning('Global feedback tuning failed. Delta ToT = %f > %f. PrmpVbpf = %d' % (abs(mean_tot - self.target_tot), self.max_delta_tot, self.register.get_global_register_value("PrmpVbpf")))
         else:
-            logging.info('Tuned PrmpVbpf to %d' % self.register.get_global_register_value("PrmpVbpf"))
+            logging.info('Tuned PrmpVbpf to %d', self.register.get_global_register_value("PrmpVbpf"))
 
         self.feedback_best = self.register.get_global_register_value("PrmpVbpf")
 

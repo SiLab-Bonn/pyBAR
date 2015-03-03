@@ -77,10 +77,10 @@ class FdacTuning(Fei4RunBase):
         for scan_parameter_value, fdac_bit in enumerate(self.fdac_tune_bits):
             if additional_scan:
                 self.set_fdac_bit(fdac_bit)
-                logging.info('FDAC setting: bit %d = 1' % fdac_bit)
+                logging.info('FDAC setting: bit %d = 1', fdac_bit)
             else:
                 self.set_fdac_bit(fdac_bit, bit_value=0)
-                logging.info('FDAC setting: bit %d = 0' % fdac_bit)
+                logging.info('FDAC setting: bit %d = 0', fdac_bit)
 
             self.write_fdac_config()
 

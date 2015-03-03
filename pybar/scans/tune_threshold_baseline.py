@@ -97,7 +97,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
             if self.stop_run.is_set():
                 break
             self.register.create_restore_point(name=str(reg_val))
-            logging.info('Scanning Vthin_AltFine %d' % reg_val)
+            logging.info('Scanning Vthin_AltFine %d', reg_val)
             commands = []
             commands.extend(self.register.get_commands("ConfMode"))
             self.register.set_global_register_value("Vthin_AltFine", reg_val)  # set number of consecutive triggers
@@ -111,8 +111,8 @@ class ThresholdBaselineTuning(Fei4RunBase):
                     break
                 self.histograming.reset()
                 step += 1
-                logging.info('Step %d / %d at Vthin_AltFine %d' % (step, steps, reg_val))
-                logging.info('Estimated scan time: %ds' % self.total_scan_time)
+                logging.info('Step %d / %d at Vthin_AltFine %d', (step, steps, reg_val))
+                logging.info('Estimated scan time: %ds', self.total_scan_time)
 
                 with self.readout(Vthin_AltFine=reg_val, Step=step, reset_sram_fifo=True, fill_buffer=True, clear_buffer=True, callback=self.handle_data):
                     got_data = False
@@ -122,7 +122,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
                         if self.register_utils.is_ready:
                             if got_data:
                                 self.progressbar.finish()
-                            logging.info('Finished sending %d triggers' % self.n_triggers)
+                            logging.info('Finished sending %d triggers', self.n_triggers)
                             break
                         if not got_data:
                             if self.fifo_readout.data_words_per_second() > 0:
@@ -158,8 +158,8 @@ class ThresholdBaselineTuning(Fei4RunBase):
                     self.register.restore(name=str(reg_val))
                     break
                 else:
-                    logging.info('Increasing threshold of %d pixel(s)' % (decrease_pixel_mask.sum(),))
-                    logging.info('Disabling %d pixel(s), total number of disabled pixel(s): %d' % (disable_pixel_mask.sum(), disabled_pixels))
+                    logging.info('Increasing threshold of %d pixel(s)', decrease_pixel_mask.sum())
+                    logging.info('Disabling %d pixel(s), total number of disabled pixel(s): %d', disable_pixel_mask.sum(), disabled_pixels)
                     tdac_reg[decrease_pixel_mask] -= 1
                     self.register.set_pixel_register_value('TDAC', tdac_reg)
                     self.register.set_pixel_register_value('Enable', enable_mask)
@@ -178,7 +178,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
                         self.last_step = step
                         break
                     else:
-                        logging.info('Found %d noisy pixels... repeat tuning step for Vthin_AltFine %d' % (occ_mask.sum(), reg_val))
+                        logging.info('Found %d noisy pixels... repeat tuning step for Vthin_AltFine %d', occ_mask.sum(), reg_val)
 
             if disabled_pixels > disabled_pixels_limit_cnt:
                 self.last_good_threshold = self.register.get_global_register_value("Vthin_AltFine")

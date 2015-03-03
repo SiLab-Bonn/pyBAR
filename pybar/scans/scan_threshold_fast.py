@@ -65,7 +65,7 @@ class FastThresholdScan(Fei4RunBase):
             scan_parameter_range[0] = self.scan_parameters.PlsrDAC[0]
         if self.scan_parameters.PlsrDAC[1]:
             scan_parameter_range[1] = self.scan_parameters.PlsrDAC[1]
-        logging.info("Scanning %s from %d to %d" % ('PlsrDAC', scan_parameter_range[0], scan_parameter_range[1]))
+        logging.info("Scanning %s from %d to %d", 'PlsrDAC', scan_parameter_range[0], scan_parameter_range[1])
         self.scan_parameter_value = scan_parameter_range[0]  # set to start value
         self.search_distance = self.search_distance
         self.data_points = 0  # counter variable to count the data points already recorded, have to be at least minimum_data_ponts
@@ -79,7 +79,7 @@ class FastThresholdScan(Fei4RunBase):
         for double_column in range(1, 39):
             if set((double_column * 2, (double_column * 2) + 1)).issubset(self.ignore_columns):
                 enable_double_columns.remove(double_column)
-        logging.info("Use DCs: %s" % str(enable_double_columns))
+        logging.info("Use DCs: %s", str(enable_double_columns))
 
         self.select_arr_columns = range(0, 80)
         for column in self.ignore_columns:
@@ -89,7 +89,7 @@ class FastThresholdScan(Fei4RunBase):
             if self.stop_run.is_set():
                 break
             if self.record_data:
-                logging.info("Scan step %d (%s %d)" % (self.data_points, 'PlsrDAC', self.scan_parameter_value))
+                logging.info("Scan step %d (%s %d)", self.data_points, 'PlsrDAC', self.scan_parameter_value)
 
             commands = []
             commands.extend(self.register.get_commands("ConfMode"))
@@ -103,9 +103,9 @@ class FastThresholdScan(Fei4RunBase):
 
             if not self.start_condition_triggered or self.data_points > self.minimum_data_points:  # speed up, only create histograms when needed. Python is much too slow here.
                 if not self.start_condition_triggered and not self.record_data:
-                    logging.info('Testing for start condition: %s %d' % ('PlsrDAC', self.scan_parameter_value))
+                    logging.info('Testing for start condition: %s %d', 'PlsrDAC', self.scan_parameter_value)
                 if not self.stop_condition_triggered and self.record_data:
-                    logging.info('Testing for stop condition: %s %d' % ('PlsrDAC', self.scan_parameter_value))
+                    logging.info('Testing for stop condition: %s %d', 'PlsrDAC', self.scan_parameter_value)
 
                 col, row = convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)
                 occupancy_array = hist_2d_index(col - 1, row - 1, shape=(80, 336))
@@ -116,7 +116,7 @@ class FastThresholdScan(Fei4RunBase):
                 self.scan_parameter_value = self.scan_parameter_value - self.search_distance + self.step_size
                 if self.scan_parameter_value < 0:
                     self.scan_parameter_value = 0
-                logging.info('Starting threshold scan at %s %d' % ('PlsrDAC', self.scan_parameter_value))
+                logging.info('Starting threshold scan at %s %d', 'PlsrDAC', self.scan_parameter_value)
                 self.scan_parameter_start = self.scan_parameter_value
                 self.record_data = True
                 continue
@@ -127,7 +127,7 @@ class FastThresholdScan(Fei4RunBase):
 
             # stop condition is met for the first time
             if self.stop_condition_triggered and self.record_data:
-                logging.info('Stopping threshold scan at %s %d' % ('PlsrDAC', self.scan_parameter_value))
+                logging.info('Stopping threshold scan at %s %d', 'PlsrDAC', self.scan_parameter_value)
                 break
 
             # increase scan parameter value
@@ -158,14 +158,14 @@ class FastThresholdScan(Fei4RunBase):
         pixels_with_full_hits_count = np.ma.count_masked(pixels_with_full_hits)  # count pixels that see all injections
         stop_pixel_cnt = int(np.product(occupancy_array_select.shape) * self.stop_at)
         if pixels_with_full_hits_count >= stop_pixel_cnt and not self.stop_condition_triggered:  # stop precise scanning if this triggers
-            logging.info("Triggering stop condition: %d pixel(s) with %d hits or more >= %d pixel(s)" % (pixels_with_full_hits_count, self.n_injections, stop_pixel_cnt))
+            logging.info("Triggering stop condition: %d pixel(s) with %d hits or more >= %d pixel(s)", pixels_with_full_hits_count, self.n_injections, stop_pixel_cnt)
             self.stop_condition_triggered = True
         # start precise scanning actions
         pixels_with_hits = np.ma.array(occupancy_array_select, mask=(occupancy_array_select != 0))  # select pixels that see at least one hit
         pixels_with_hits_count = np.ma.count_masked(pixels_with_hits)  # count pixels that see hits
         start_pixel_cnt = int(np.product(occupancy_array_select.shape) * self.start_at)
         if pixels_with_hits_count >= start_pixel_cnt and not self.start_condition_triggered:  # start precise scanning if this is true
-            logging.info("Triggering start condition: %d pixel(s) with more than 0 hits >= %d pixel(s)" % (pixels_with_hits_count, start_pixel_cnt))
+            logging.info("Triggering start condition: %d pixel(s) with more than 0 hits >= %d pixel(s)", pixels_with_hits_count, start_pixel_cnt)
             self.start_condition_triggered = True
 
 if __name__ == "__main__":

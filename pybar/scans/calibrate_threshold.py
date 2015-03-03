@@ -33,7 +33,7 @@ class ThresholdCalibration(FastThresholdScan):
     })
 
     def scan(self):
-        logging.info('Taking threshold data at following ' + self.scan_parameters._fields[1] + ' values: %s' % str(self.scan_parameters[1]))
+        logging.info('Taking threshold data at following ' + self.scan_parameters._fields[1] + ' values: %s', str(self.scan_parameters[1]))
 
         for index, parameter_value in enumerate(self.scan_parameters[1]):
             if self.scan_parameters._fields[1] == 'GDAC':
@@ -120,7 +120,7 @@ class ThresholdCalibration(FastThresholdScan):
         threshold_calibration = np.empty(shape=(80, 336, len(raw_data_files)), dtype='<f8')
 
         if self.create_plots:
-            logging.info('Saving calibration plots in: %s' % (calibration_file + '.pdf'))
+            logging.info('Saving calibration plots in: %s', calibration_file + '.pdf')
             output_pdf = PdfPages(calibration_file + '.pdf')
 
         parameter_values = []

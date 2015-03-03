@@ -46,7 +46,7 @@ class RunBase():
 
     def __init__(self, conf, run_conf=None):
         """Initialize object."""
-        logging.info('Initializing %s' % self.__class__.__name__)
+        logging.info('Initializing %s', self.__class__.__name__)
         self._conf = conf
         self._init_run_conf(run_conf)
         self._run_number = None
@@ -137,7 +137,7 @@ class RunBase():
         self._run_status = run_status.running
         self._write_run_number(run_number)
         self._init_run_conf(run_conf, update=True)
-        logging.info('Starting run #%d (%s) in %s' % (self.run_number, self.__class__.__name__, self.working_dir))
+        logging.info('Starting run #%d (%s) in %s', self.run_number, self.__class__.__name__, self.working_dir)
 
     def _init_run_conf(self, run_conf, update=False):
         sc = namedtuple('run_configuration', field_names=self.default_run_conf.iterkeys())
@@ -199,7 +199,7 @@ class RunBase():
         """
         if not self.stop_run.is_set():
             if msg:
-                logging.info('%s%s Stopping run...' % (msg, ('' if msg[-1] in punctuation else '.')))
+                logging.info('%s%s Stopping run...', msg, ('' if msg[-1] in punctuation else '.'))
             else:
                 logging.info('Stopping run...')
         self.stop_run.set()
@@ -209,7 +209,7 @@ class RunBase():
         """
         if not self.abort_run.is_set():
             if msg:
-                logging.error('%s%s Aborting run...' % (msg, ('' if msg[-1] in punctuation else '.')))
+                logging.error('%s%s Aborting run...', msg, ('' if msg[-1] in punctuation else '.'))
             else:
                 logging.error('Aborting run...')
         self.abort_run.set()
@@ -452,11 +452,11 @@ class RunManager(object):
         '''
         runlist = self.open_primlist(primlist)
         for index, run in enumerate(runlist):
-            logging.info('Progressing with run %i out of %i...' % (index + 1, len(runlist)))
+            logging.info('Progressing with run %i out of %i...', index + 1, len(runlist))
             join = self.run_run(run, use_thread=True)
             status = join()
             if skip_remaining and not status == run_status.finished:
-                logging.error('Exited run %i with status %s: Skipping all remaining runs.' % (run.run_number, status))
+                logging.error('Exited run %i with status %s: Skipping all remaining runs.', run.run_number, status)
                 break
 
     def open_primlist(self, primlist):

@@ -75,7 +75,7 @@ class TdcTest(Fei4RunBase):
 
                 self.fifo_readout.reset_sram_fifo()  # clear fifo data
                 for pulse_width in [i for j in (range(10, 100, 5), range(100, 400, 10)) for i in j]:
-                    logging.info('Test TDC for a pulse with of %d' % pulse_width)
+                    logging.info('Test TDC for a pulse with of %d', pulse_width)
                     self.start_pulser(pulse_width, self.n_pulses)
                     time.sleep(self.n_pulses * pulse_width * 1e-9 + 0.1)
                     data = self.fifo_readout.read_data()
@@ -110,7 +110,7 @@ class TdcTest(Fei4RunBase):
                 x, y, y_err = [], [], []
                 self.fifo_readout.reset_sram_fifo()  # clear fifo data
                 for pulse_delay in [i for j in (range(0, 100, 5), range(100, 500, 500)) for i in j]:
-                    logging.info('Test TDC for a pulse delay of %d' % pulse_delay)
+                    logging.info('Test TDC for a pulse delay of %d', pulse_delay)
                     for _ in range(10):
                         self.start_pulser(pulse_width=100, n_pulses=1, pulse_delay=pulse_delay)
                         time.sleep(0.1)

@@ -150,8 +150,8 @@ class FifoReadout(object):
         sync_status = self.get_rx_sync_status()
         discard_count = self.get_rx_fifo_discard_count()
         error_count = self.get_rx_8b10b_error_count()
-        logging.info('Data queue size: %d' % len(self._data_deque))
-        logging.info('SRAM FIFO size: %d' % self.dut['sram']['FIFO_SIZE'])
+        logging.info('Data queue size: %d', len(self._data_deque))
+        logging.info('SRAM FIFO size: %d', self.dut['sram']['FIFO_SIZE'])
         logging.info('Channel:                     %s', " | ".join([('CH%d' % channel).rjust(3) for channel in range(1, len(sync_status) + 1, 1)]))
         logging.info('RX sync:                     %s', " | ".join(["YES".rjust(3) if status is True else "NO".rjust(3) for status in sync_status]))
         logging.info('RX FIFO discard counter:     %s', " | ".join([repr(count).rjust(3) for count in discard_count]))
@@ -263,7 +263,7 @@ class FifoReadout(object):
 
     def reset_sram_fifo(self):
         fifo_size = self.dut['sram']['FIFO_SIZE']
-        logging.info('Resetting SRAM FIFO: size = %i' % fifo_size)
+        logging.info('Resetting SRAM FIFO: size = %i', fifo_size)
         self.update_timestamp()
         self.dut['sram']['RESET']
         sleep(0.2)  # sleep here for a while

@@ -64,7 +64,7 @@ class RawDataFile(object):
         if mode and mode[0] == 'w':
             h5_files = glob.glob(os.path.splitext(filename)[0] + '*.h5')
             if h5_files:
-                logging.info('Removing following file(s): %s' % ', '.join(h5_files))
+                logging.info('Removing following file(s): %s', ', '.join(h5_files))
             for h5_file in h5_files:
                 remove(h5_file)
         # list of filenames and index
@@ -88,9 +88,9 @@ class RawDataFile(object):
         if os.path.splitext(filename)[1].strip().lower() != '.h5':
             filename = os.path.splitext(filename)[0] + '.h5'
         if os.path.isfile(filename) and mode in ('r+', 'a'):
-            logging.info('Opening existing raw data file: %s' % filename)
+            logging.info('Opening existing raw data file: %s', filename)
         else:
-            logging.info('Opening new raw data file: %s' % filename)
+            logging.info('Opening new raw data file: %s', filename)
 
         filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
         filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
@@ -113,7 +113,7 @@ class RawDataFile(object):
     def close(self):
         with self.lock:
             self.flush()
-            logging.info('Closing raw data file: %s' % self.h5_file.filename)
+            logging.info('Closing raw data file: %s', self.h5_file.filename)
             self.h5_file.close()
 
     def append_item(self, data_tuple, scan_parameters=None, new_file=False, flush=True):

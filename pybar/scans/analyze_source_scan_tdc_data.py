@@ -68,7 +68,7 @@ def analyze_raw_data(input_files, output_file_hits, interpreter_plots, pdf_filen
 
 def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_select_mask, event_status_condition, calibation_file=None, max_tdc=2000):
     for condition in hit_selection_conditions:
-        logging.info('Histogram tdc hits with %s' % condition)
+        logging.info('Histogram tdc hits with %s', condition)
 
     def get_charge(max_tdc, tdc_calibration_values, tdc_pixel_calibration):  # return the charge from calibration
         charge_calibration = np.zeros(shape=(80, 336, max_tdc))
@@ -125,7 +125,7 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
                 out_2[:] = tdc_timestamp_hist_result
 
     with PdfPages(input_file_hits[:-3] + '_calibrated_tdc_hists.pdf') as output_pdf:
-        logging.info('Create hits selection efficiency histogram for %d conditions' % (len(hit_selection_conditions) + 2))
+        logging.info('Create hits selection efficiency histogram for %d conditions', len(hit_selection_conditions) + 2)
         labels = ['All Hits', 'Hits of\ngood events']
         for condition in hit_selection_conditions:
             condition = re.sub('[&]', '\n', condition)
@@ -149,7 +149,7 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
             plt.clf()
 
             with tb.openFile(input_file_hits[:-3] + '_calibrated_tdc_hists.h5', mode="w") as out_file_h5:
-                logging.info('Create corrected TDC histogram for %d conditions' % len(hit_selection_conditions))
+                logging.info('Create corrected TDC histogram for %d conditions', len(hit_selection_conditions))
                 for index, condition in enumerate(hit_selection_conditions):
                     c_str = re.sub('[&]', '\n', condition)
                     x, y = [], []

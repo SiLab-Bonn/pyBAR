@@ -52,7 +52,7 @@ class RegisterTest(Fei4RunBase):
     def test_pixel_register(self, pix_regs=["EnableDigInj", "Imon", "Enable", "C_High", "C_Low", "TDAC", "FDAC"], dcs=range(40)):
         '''Test Pixel Register
         '''
-        logging.info('Running Pixel Register Test for %s' % str(pix_regs))
+        logging.info('Running Pixel Register Test for %s', str(pix_regs))
         self.register_utils.configure_pixel()
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))
@@ -67,7 +67,7 @@ class RegisterTest(Fei4RunBase):
             result_array = np.ones_like(result)
             result_array.data[result == self.register.get_pixel_register_value(pix_regs[i])] = 0
             pixel_register_errors += np.count_nonzero(result_array == 1)
-            logging.info("Pixel register %s: %d pixel error" % (pix_regs[i], np.count_nonzero(result_array == 1)))
+            logging.info("Pixel register %s: %d pixel error", pix_regs[i], np.count_nonzero(result_array == 1))
             plotting.plotThreeWay(result_array.T, title=str(pix_regs[i]) + " register test with " + str(np.count_nonzero(result_array == 1)) + '/' + str(26880 - np.ma.count_masked(result_array)) + " pixel failing", x_axis_title="0:OK, 1:FAIL", maximum=1, filename=plots)
 
         plots.close()

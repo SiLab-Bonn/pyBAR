@@ -136,7 +136,7 @@ def align_events(input_file, output_file, chunk_size=10000000):
     chunk_size :  int
         How many events are read at once into RAM for correction.
     '''
-    logging.info('Align events to trigger number in %s' % input_file)
+    logging.info('Align events to trigger number in %s', input_file)
 
     with tb.open_file(input_file, 'r+') as in_file_h5:
         hit_table = in_file_h5.root.Hits
@@ -155,7 +155,7 @@ def align_events(input_file, output_file, chunk_size=10000000):
                 hit_table_out.append(selected_hits)
 
         jumps = np.unique(np.array(jumps))
-        logging.info('Found %d inconsistencies in the event number. %d events had to be corrected.' % (jumps[jumps != 0].shape[0], n_fixed_events))
+        logging.info('Found %d inconsistencies in the event number. %d events had to be corrected.', jumps[jumps != 0].shape[0], n_fixed_events)
 
 
 def correlate_hits(hit_files, alignment_file, max_column, max_row):
@@ -169,7 +169,7 @@ def correlate_hits(hit_files, alignment_file, max_column, max_row):
     alignment_file : pytables file
         Output file with the correlation data
     '''
-    logging.info('Correlate the position of %d DUTs' % len(hit_files))
+    logging.info('Correlate the position of %d DUTs', len(hit_files))
     with tb.open_file(alignment_file, mode="w") as out_file_h5:
         for index, hit_file in enumerate(hit_files):
             with tb.open_file(hit_file, 'r') as in_file_h5:
@@ -177,7 +177,7 @@ def correlate_hits(hit_files, alignment_file, max_column, max_row):
                 if index == 0:
                     first_reference = pd.DataFrame({'event_number': hit_table[:]['event_number'], 'column_%d' % index: hit_table[:]['column'], 'row_%d' % index: hit_table[:]['row'], 'tot_%d' % index: hit_table[:]['tot']})
                 else:
-                    logging.info('Correlate detector %d with detector %d' % (index, 0))
+                    logging.info('Correlate detector %d with detector %d', index, 0)
                     dut = pd.DataFrame({'event_number': hit_table[:]['event_number'], 'column_1': hit_table[:]['column'], 'row_1': hit_table[:]['row'], 'tot_1': hit_table[:]['tot']})
                     df = first_reference.merge(dut, how='left', on='event_number')
                     df.dropna(inplace=True)
@@ -467,7 +467,7 @@ def align_z(track_candidates_file, alignment_file, output_pdf, z_positions=None,
         results = np.zeros((n_duts - 2,), dtype=[('DUT', np.uint8), ('z_position_column', np.float32), ('z_position_row', np.float32)])
 
         for dut_index in range(1, n_duts - 1):
-            logging.info('Find best z-position for DUT %d' % dut_index)
+            logging.info('Find best z-position for DUT %d', dut_index)
             dut_selection = (1 << (n_duts - 1)) | 1 | ((1 << (n_duts - 1)) >> dut_index)
             good_track_selection = np.logical_and((track_candidates['track_quality'] & (dut_selection << (track_quality * 8))) == (dut_selection << (track_quality * 8)), track_candidates['n_tracks'] == 1)
             good_track_candidates = track_candidates[good_track_selection]

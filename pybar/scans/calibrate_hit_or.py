@@ -57,7 +57,7 @@ class HitOrCalibration(Fei4RunBase):
         for pixel_index, pixel in enumerate(self.pixels):
             column = pixel[0]
             row = pixel[1]
-            logging.info('Scanning pixel: %d / %d (column / row)' % (column, row))
+            logging.info('Scanning pixel: %d / %d (column / row)', column, row)
             if pixel_index:
                 dcs = [write_double_column(column)]
                 dcs.append(write_double_column(self.pixels[pixel_index - 1][0]))
@@ -80,7 +80,7 @@ class HitOrCalibration(Fei4RunBase):
             for scan_parameter_value in scan_parameters_values:
                 if self.stop_run.is_set():
                     break
-                logging.info('Scan step: %s %d' % (scan_par_name, scan_parameter_value))
+                logging.info('Scan step: %s %d', scan_par_name, scan_parameter_value)
 
                 commands = []
                 commands.extend(self.register.get_commands("ConfMode"))

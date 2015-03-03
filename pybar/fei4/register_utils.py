@@ -201,11 +201,9 @@ class FEI4RegisterUtils(object):
         commands.extend(self.register.get_commands("WrRegister", name=["Vthin_AltFine", "Vthin_AltCoarse"]))
         commands.extend(self.register.get_commands("RunMode"))
         self.send_commands(commands)
-        logging.info("Setting GDAC to %d (VthinAltCoarse / VthinAltFine = %d / %d)" % (value, self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine")))
+        logging.info("Setting GDAC to %d (VthinAltCoarse / VthinAltFine = %d / %d)", value, self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine"))
 
     def get_gdac(self, altc, altf):
-#         altc = self.register.get_global_register_value("Vthin_AltCoarse")  # take every second AltCoarse value
-#         altf = self.register.get_global_register_value("Vthin_AltFine")  # take low word
         if self.register.fei4b:
             value = altf & 0xff
             altc &= ~0x01
@@ -264,7 +262,7 @@ def read_chip_sn(self):
     if len(read_values) == 0:
         logging.error('No Chip S/N was found')
     elif len(read_values) == 1:
-        logging.info('Chip S/N: %d' % read_values[0])
+        logging.info('Chip S/N: %d', read_values[0])
     else:
         logging.warning('Ambiguous Chip S/N: %s' % read_values)
 
@@ -491,7 +489,7 @@ def test_pixel_register(self):
     commands.extend(self.register.get_commands("RunMode"))
     self.register_utils.send_commands(commands)
 
-    logging.info('Pixel Register Test: Found %d error(s)' % number_of_errors)
+    logging.info('Pixel Register Test: Found %d error(s)', number_of_errors)
 
 
 def read_pixel_register(self, pix_regs=None, dcs=range(40), overwrite_config=False):
@@ -939,7 +937,7 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
                 self.register.set_global_register_value("DIGHITIN_SEL", 1)
                 commands.extend(self.register.get_commands("WrRegister", name=["DIGHITIN_SEL"]))
         self.register_utils.send_commands(commands, concatenate=True)
-        logging.info('%d injection(s): mask step %d %s' % (repeat_command, mask_step, ('[%d - %d]' % (enable_mask_steps[0], enable_mask_steps[-1])) if len(enable_mask_steps) > 1 else ('[%d]' % enable_mask_steps[0])))
+        logging.info('%d injection(s): mask step %d %s', repeat_command, mask_step, ('[%d - %d]' % (enable_mask_steps[0], enable_mask_steps[-1])) if len(enable_mask_steps) > 1 else ('[%d]' % enable_mask_steps[0]))
 
         if same_mask_for_all_dc:  # fast loop
             # set repeat, should be 1 by default when arriving here

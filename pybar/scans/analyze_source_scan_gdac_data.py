@@ -166,8 +166,8 @@ def analyze_injected_charge(data_analyzed_file):
             gdac_range_calibration = mean_threshold_calibration['gdac']
             gdac_range_source_scan = gdacs
 
-            logging.info('Analyzing source scan data with %d GDAC settings from %d to %d with minimum step sizes from %d to %d' % (len(gdac_range_source_scan), np.min(gdac_range_source_scan), np.max(gdac_range_source_scan), np.min(np.gradient(gdac_range_source_scan)), np.max(np.gradient(gdac_range_source_scan))))
-            logging.info('Use calibration data with %d GDAC settings from %d to %d with minimum step sizes from %d to %d' % (len(gdac_range_calibration), np.min(gdac_range_calibration), np.max(gdac_range_calibration), np.min(np.gradient(gdac_range_calibration)), np.max(np.gradient(gdac_range_calibration))))
+            logging.info('Analyzing source scan data with %d GDAC settings from %d to %d with minimum step sizes from %d to %d', len(gdac_range_source_scan), np.min(gdac_range_source_scan), np.max(gdac_range_source_scan), np.min(np.gradient(gdac_range_source_scan)), np.max(np.gradient(gdac_range_source_scan)))
+            logging.info('Use calibration data with %d GDAC settings from %d to %d with minimum step sizes from %d to %d', len(gdac_range_calibration), np.min(gdac_range_calibration), np.max(gdac_range_calibration), np.min(np.gradient(gdac_range_calibration)), np.max(np.gradient(gdac_range_calibration)))
 
             # rate_normalization of the total hit number for each GDAC setting
             rate_normalization = 1.
