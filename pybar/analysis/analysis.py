@@ -7,7 +7,6 @@ import time
 import progressbar
 import numpy as np
 import tables as tb
-from scipy.sparse import coo_matrix
 import re
 
 from pybar.analysis import analysis_utils
@@ -17,7 +16,7 @@ from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.analysis.RawDataConverter.data_histograming import PyDataHistograming
 
 
-def analyze_beam_spot(scan_base, combine_n_readouts=1000, chunk_size=10000000, plot_occupancy_hists=False, output_pdf=None, output_file=None, **kwarg):
+def analyze_beam_spot(scan_base, combine_n_readouts=1000, chunk_size=10000000, plot_occupancy_hists=False, output_pdf=None, output_file=None):
     ''' Determines the mean x and y beam spot position as a function of time. Therefore the data of a fixed number of read outs are combined ('combine_n_readouts'). The occupancy is determined
     for the given combined events and stored into a pdf file. At the end the beam x and y is plotted into a scatter plot with absolute positions in um.
 
@@ -58,9 +57,6 @@ def analyze_beam_spot(scan_base, combine_n_readouts=1000, chunk_size=10000000, p
             index = 0  # index where to start the read out, 0 at the beginning, increased during looping
             best_chunk_size = chunk_size
 
-            # result data
-            occupancy = np.zeros(80 * 336 * 1, dtype=np.uint32)  # create linear array as it is created in histogram class
-
             progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=hit_table.shape[0], term_width=80)
             progress_bar.start()
 
@@ -78,9 +74,7 @@ def analyze_beam_spot(scan_base, combine_n_readouts=1000, chunk_size=10000000, p
                 best_chunk_size = int(1.5 * readout_hit_len) if int(1.05 * readout_hit_len) < chunk_size else chunk_size  # to increase the readout speed, estimated the number of hits for one read instruction
 
                 # get and store results
-                analyze_data.histograming.get_occupancy(occupancy)
-                occupancy_array = np.reshape(a=occupancy.view(), newshape=(80, 336, analyze_data.histograming.get_n_parameters()), order='F')  # make linear array to 3d array (col,row,parameter)
-                occupancy_array = np.swapaxes(occupancy_array, 0, 1)
+                occupancy_array = analyze_data.histograming.get_occupancy()
                 projection_x = np.sum(occupancy_array, axis=0).ravel()
                 projection_y = np.sum(occupancy_array, axis=1).ravel()
                 x.append(analysis_utils.get_mean_from_histogram(projection_x, bin_positions=range(0, 80)))
@@ -101,7 +95,7 @@ def analyze_beam_spot(scan_base, combine_n_readouts=1000, chunk_size=10000000, p
     return time_stamp, x, y
 
 
-def analyze_event_rate(scan_base, combine_n_readouts=1000, time_line_absolute=True, plot_occupancy_hists=False, output_pdf=None, output_file=None, **kwarg):
+def analyze_event_rate(scan_base, combine_n_readouts=1000, time_line_absolute=True, output_pdf=None, output_file=None):
     ''' Determines the number of events as a function of time. Therefore the data of a fixed number of read outs are combined ('combine_n_readouts'). The number of events is taken from the meta data info
     and stored into a pdf file.
 
@@ -149,7 +143,7 @@ def analyze_event_rate(scan_base, combine_n_readouts=1000, time_line_absolute=Tr
     return time_stamp, rate
 
 
-def analyse_n_cluster_per_event(scan_base, include_no_cluster=False, time_line_absolute=True, combine_n_readouts=1000, chunk_size=10000000, plot_n_cluster_hists=False, output_pdf=None, output_file=None, **kwarg):
+def analyse_n_cluster_per_event(scan_base, include_no_cluster=False, time_line_absolute=True, combine_n_readouts=1000, chunk_size=10000000, plot_n_cluster_hists=False, output_pdf=None, output_file=None):
     ''' Determines the number of cluster per event as a function of time. Therefore the data of a fixed number of read outs are combined ('combine_n_readouts').
 
     Parameters
@@ -180,7 +174,7 @@ def analyse_n_cluster_per_event(scan_base, include_no_cluster=False, time_line_a
             # determine the event ranges to analyze (timestamp_start, start_event_number, stop_event_number)
             parameter_ranges = np.column_stack((analysis_utils.get_ranges_from_array(meta_data_array['timestamp_start'][::combine_n_readouts]), analysis_utils.get_ranges_from_array(meta_data_array['event_number'][::combine_n_readouts])))
 
-            # create a event_numer index (important)
+            # create a event_numer index (important for speed)
             analysis_utils.index_event_number(cluster_table)
 
             # initialize the analysis and set settings
@@ -250,9 +244,10 @@ def analyse_n_cluster_per_event(scan_base, include_no_cluster=False, time_line_a
     return time_stamp, n_cluster
 
 
-def select_hits_from_cluster_info(input_file_hits, output_file_hits, cluster_size_condition, n_cluster_condition, chunk_size=4000000, output_pdf=None, **kwarg):
+def select_hits_from_cluster_info(input_file_hits, output_file_hits, cluster_size_condition, n_cluster_condition, chunk_size=4000000):
     ''' Takes a hit table and stores only selected hits into a new table. The selection is done on an event base and events are selected if they have a certain number of cluster or cluster size.
-    To increase the analysis speed a event index for the input hit file is created first.
+    To increase the analysis speed a event index for the input hit file is created first. Since a cluster hit table can be created to this way of hit selection is
+    not needed anymore.
 
      Parameters
     ----------
@@ -324,12 +319,12 @@ def select_hits(input_file_hits, output_file_hits, condition=None, cluster_size_
                 progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=cluster_table.shape[0], term_width=80)
                 progress_bar.start()
                 for data, index in analysis_utils.data_aligned_at_events(cluster_table, chunk_size=chunk_size):
-                    if not cluster_size_condition is None:
+                    if cluster_size_condition is not None:
                         selected_events = analysis_utils.get_events_with_cluster_size(event_number=data['event_number'], cluster_size=data['size'], condition='cluster_size == ' + str(cluster_size_condition))  # select the events with only 1 hit cluster
-                        if not n_cluster_condition is None:
+                        if n_cluster_condition is not None:
                             selected_events_2 = analysis_utils.get_events_with_n_cluster(event_number=data['event_number'], condition='n_cluster == ' + str(n_cluster_condition))  # select the events with only 1 cluster
                             selected_events = selected_events[analysis_utils.in1d_events(selected_events, selected_events_2)]  # select events with the first two conditions above
-                    elif not n_cluster_condition is None:
+                    elif n_cluster_condition is not None:
                         selected_events = analysis_utils.get_events_with_n_cluster(event_number=data['event_number'], condition='n_cluster == ' + str(n_cluster_condition))
                     else:
                         raise RuntimeError('Cannot understand cluster selection criterion')
@@ -339,7 +334,7 @@ def select_hits(input_file_hits, output_file_hits, condition=None, cluster_size_
                 in_hit_file_h5.root.meta_data.copy(out_hit_file_h5.root)  # copy meta_data note to new file
 
 
-def analyze_cluster_size_per_scan_parameter(input_file_hits, output_file_cluster_size, parameter='GDAC', max_chunk_size=10000000, overwrite_output_files=False, output_pdf=None, **kwarg):
+def analyze_cluster_size_per_scan_parameter(input_file_hits, output_file_cluster_size, parameter='GDAC', max_chunk_size=10000000, overwrite_output_files=False, output_pdf=None):
     ''' This method takes multiple hit files and determines the cluster size for different scan parameter values of
 
      Parameters
@@ -377,9 +372,7 @@ def analyze_cluster_size_per_scan_parameter(input_file_hits, output_file_cluster
                         parameter_ranges = np.column_stack((scan_parameter_values, analysis_utils.get_ranges_from_array(event_numbers)))
                         hit_table = in_hit_file_h5.root.Hits
                         analysis_utils.index_event_number(hit_table)
-                        total_hits = 0
-                        total_hits_2 = 0
-                        index = 0  # index where to start the read out, 0 at the beginning
+                        total_hits, total_hits_2, index = 0, 0, 0
                         chunk_size = max_chunk_size
                         # initialize the analysis and set settings
                         analyze_data = AnalyzeRawData()
@@ -406,12 +399,10 @@ def analyze_cluster_size_per_scan_parameter(input_file_hits, output_file_cluster
                             if chunk_size < 50:  # limit the lower chunk size, there can always be a crazy event with more than 20 hits
                                 chunk_size = 50
                             # get occupancy hist
-                            occupancy = np.zeros(80 * 336 * analyze_data.histograming.get_n_parameters(), dtype=np.uint32)  # create linear array as it is created in histogram class
-                            analyze_data.histograming.get_occupancy(occupancy)  # just here to check histograming is consistend
+                            occupancy = analyze_data.histograming.get_occupancy()  # just here to check histograming is consistend
 
                             # store and plot cluster size hist
-                            cluster_size_hist = np.zeros(1024, dtype=np.uint32)
-                            analyze_data.clusterizer.get_cluster_size_hist(cluster_size_hist)
+                            cluster_size_hist = analyze_data.clusterizer.get_cluster_size_hist()
                             cluster_size_hist_table = out_file_h5.createCArray(actual_parameter_group, name='HistClusterSize', title='Cluster Size Histogram', atom=tb.Atom.from_dtype(cluster_size_hist.dtype), shape=cluster_size_hist.shape, filters=filter_table)
                             cluster_size_hist_table[:] = cluster_size_hist
                             if output_pdf is not False:
@@ -425,59 +416,9 @@ def analyze_cluster_size_per_scan_parameter(input_file_hits, output_file_cluster
                         progress_bar.finish()
                         if total_hits != total_hits_2:
                             logging.warning('Analysis shows inconsistent number of hits. Check needed!')
-                        logging.info('Analyzed %d hits!' % total_hits)
+                        logging.info('Analyzed %d hits!', total_hits)
             cluster_size_total_out = out_file_h5.createCArray(out_file_h5.root, name='AllHistClusterSize', title='All Cluster Size Histograms', atom=tb.Atom.from_dtype(cluster_size_total.dtype), shape=cluster_size_total.shape, filters=filter_table)
             cluster_size_total_out[:] = cluster_size_total
-
-
-def analyze_tdc_events(input_file_hits, output_file, events=(0, ), max_latency=16, create_plots=True, output_pdf=None, overwrite_output_files=True, chunk_size=10000000, **kwarg):
-    ''' This method takes multiple hit files and determines the cluster size for different scan parameter values of
-
-     Parameters
-    ----------
-    input_files_hits: string
-    output_file: string
-    event: list of events to analyze
-    output_pdf: PdfPages
-        PdfPages file object, if none the plot is printed to screen, if False nothing is printed
-    '''
-    logging.info('Analyze %d TDC events' % len(events))
-    if os.path.isfile(output_file) and not overwrite_output_files:  # skip analysis if already done
-        logging.info('Analyzed cluster size file ' + output_file + ' already exists. Skip cluster size analysis.')
-    else:
-        with tb.openFile(output_file, mode="w") as out_file_h5:  # file to write the data into
-            filter_table = tb.Filters(complib='blosc', complevel=5, fletcher32=False)  # compression of the written data
-            with tb.openFile(input_file_hits, mode="r+") as in_hit_file_h5:  # open the actual hit file
-                hit_table = in_hit_file_h5.root.Hits
-                analysis_utils.index_event_number(hit_table)
-                progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=len(events), term_width=80)
-                progress_bar.start()
-                for index, event in enumerate(events):
-                    event_array = None
-                    col_row_relBCID_tot = None
-                    for hits, _ in analysis_utils.data_aligned_at_events(hit_table, start_event_number=event, stop_event_number=event + 1, chunk_size=chunk_size):
-                        col_row_relBCID = np.column_stack((hits['column'], hits['row'], hits['relative_BCID']))
-                        tot = hits['tot']
-                        if event_array is None:
-                            event_array = np.histogramdd(col_row_relBCID, weights=tot, bins=(80, 336, max_latency), range=[[0, 79], [0, 335], [0, max_latency - 1]])[0].astype(np.uint8)
-                        else:
-                            event_array += np.histogramdd(col_row_relBCID, bins=(80, 336, max_latency), range=[[0, 79], [0, 335], [0, max_latency - 1]])[0]
-                        if col_row_relBCID_tot is None:
-                            col_row_relBCID_tot = np.column_stack((hits['column'], hits['row'], hits['relative_BCID'], hits['tot']))
-                        else:
-                            col_row_relBCID_tot = np.append(col_row_relBCID_tot, np.column_stack((hits['column'], hits['row'], hits['relative_BCID'], hits['tot'])))
-                    if event_array is not None:
-                        actual_event_hits = out_file_h5.createCArray(out_file_h5.root, name='event_' + str(event), title='Event histogram ' + str(event), atom=tb.Atom.from_dtype(event_array.dtype), shape=event_array.shape, filters=filter_table)
-                        actual_event_hits[:] = event_array
-                        if create_plots:
-                            for bcid in range(0, max_latency):
-                                plotting.plot_occupancy(event_array[:, :, bcid], title='Event %d: BCID %d' % (event, bcid), z_max=16, filename=output_pdf)
-                            plotting.plot_occupancy(np.sum(event_array, axis=2), title='Event %d' % event, filename=output_pdf)
-                            plotting.plot_tdc_event(col_row_relBCID_tot, filename=output_pdf)
-                    else:
-                        logging.warning('Event %d does not exist' % event)
-                    progress_bar.update(index)
-                progress_bar.finish()
 
 
 def histogram_cluster_table(analyzed_data_file, output_file, chunk_size=10000000):
