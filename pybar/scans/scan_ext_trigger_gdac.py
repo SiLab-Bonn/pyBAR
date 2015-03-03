@@ -26,7 +26,7 @@ class ExtTriggerGdacScan(ExtTriggerScan):
         if not self.scan_parameters.GDAC:  # distribute logarithmically if no GDAC was specified
             altc = self.register.get_global_register_value("Vthin_AltCoarse")
             altf = self.register.get_global_register_value("Vthin_AltFine")
-            curr_gdac = self.register_utils.get_gdac(self, altc, altf)
+            curr_gdac = self.register_utils.get_gdac(self, altc=altc, altf=altf)
             self.gdacs = np.logspace(curr_gdac, 25000, num=50)
         elif isinstance(self.scan_parameters.GDAC, basestring):  # deduce GDACs from calibration file
             if self.interpolate_calibration:
