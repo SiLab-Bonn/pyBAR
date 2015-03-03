@@ -56,7 +56,7 @@ def generate_threshold_mask(hist):
     '''
     masked_array = np.ma.masked_values(hist, 0)
     masked_array = np.ma.masked_greater(masked_array, 10 * np.ma.median(hist))
-    logging.info('Masking %d pixel(s)' % np.ma.count_masked(masked_array))
+    logging.info('Masking %d pixel(s)', np.ma.count_masked(masked_array))
     return np.ma.getmaskarray(masked_array)
 
 
@@ -556,7 +556,7 @@ def combine_meta_data(files_dict):
 
     """
     if len(files_dict) > 10:
-        logging.info("Combine the meta data from %d files" % len(files_dict))
+        logging.info("Combine the meta data from %d files", len(files_dict))
     # determine total length needed for the new combined array, thats the fastest way to combine arrays
     total_length = 0  # the total length of the new table
     meta_data_v2 = True
@@ -1433,7 +1433,7 @@ def get_hit_rate_correction(gdacs, calibration_gdacs, cluster_size_histogram):
     numpy.array, shape=(80,336,# of GDACs during calibration)
         The threshold values for each pixel at gdacs.
     '''
-    logging.info('Calculate the correction factor for the single hit cluster rate at %d given GDAC settings' % len(gdacs))
+    logging.info('Calculate the correction factor for the single hit cluster rate at %d given GDAC settings', len(gdacs))
     if len(calibration_gdacs) != cluster_size_histogram.shape[0]:
         raise ValueError('Length of the provided pixel GDACs does not match the dimension of the cluster size array')
     hist_sum = np.sum(cluster_size_histogram, axis=1)

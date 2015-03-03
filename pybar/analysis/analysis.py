@@ -449,7 +449,7 @@ def histogram_cluster_table(analyzed_data_file, output_file, chunk_size=10000000
                     event_number_indices = np.ascontiguousarray(scan_parameters['event_number']).astype(np.uint64)
                     histograming.add_meta_event_index(event_number_indices, array_length=len(scan_parameters['event_number']))
                     histograming.add_scan_parameter(scan_parameter_indices)
-                    logging.info("Add %d different scan parameter(s) for analysis" % len(scan_parameters))
+                    logging.info("Add %d different scan parameter(s) for analysis", len(scan_parameters))
                 else:
                     logging.info("No scan parameter data provided")
                     histograming.set_no_scan_parameter()
