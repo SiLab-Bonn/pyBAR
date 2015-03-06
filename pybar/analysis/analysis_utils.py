@@ -190,6 +190,7 @@ def get_profile_histogram(x, y, n_bins=100):
     '''
     if len(x) != len(y):
         raise ValueError('x and y dimensions have to be the same')
+    y = y.astype(np.float32)
     n, bin_edges = np.histogram(x, bins=n_bins)  # needed to calculate the number of points per bin
     sy = np.histogram(x, bins=n_bins, weights=y)[0]  # the sum of the bin values
     sy2 = np.histogram(x, bins=n_bins, weights=y * y)[0]  # the quadratic sum of the bin values
