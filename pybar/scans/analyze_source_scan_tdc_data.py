@@ -32,7 +32,7 @@ analysis_configuration = {
     'event_status_select_mask': 0b0000011111011110,  # the event status bits to cut on
     'event_status_condition': 0b0000000100000010,  # the event status number after the event_status_select_mask is bitwise ORed with the event number
     'min_pixel_hits': 1e3,  # minimum number of hits a pixel must see to contribute to the 1d corrected TDC histogram
-    "analysis_steps": [2],  # the analysis includes this selected steps only. See explanation above.
+    "analysis_steps": [1, 2],  # the analysis includes this selected steps only. See explanation above.
     "max_tot_value": 13,  # maximum tot value to use the hit
     "interpreter_plots": True,  # set to False to omit the Raw Data plots, saves time
     "interpreter_warnings": False,  # show interpreter warnings
@@ -140,8 +140,8 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
         # Take TDC calibration if available and calculate charge for each TDC value and pixel
         if calibation_file is not None:
             with tb.openFile(calibation_file, mode="r") as in_file_calibration_h5:
-                tdc_calibration = in_file_calibration_h5.root.HitOrCalibration[:, :, 1:, 1]
-                tdc_calibration_values = in_file_calibration_h5.root.HitOrCalibration.attrs.scan_parameter_values[1:]
+                tdc_calibration = in_file_calibration_h5.root.HitOrCalibration[:, :, :, 1]
+                tdc_calibration_values = in_file_calibration_h5.root.HitOrCalibration.attrs.scan_parameter_values[:]
             charge_calibration = get_charge(max_tdc, tdc_calibration_values, tdc_calibration)
         else:
             charge_calibration = None
@@ -192,7 +192,8 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
                     hist_3d = node[:]
                     max_index = np.amax(np.where(hist_3d.sum(axis=(0, 1)) != 0))
                     best_pixel_index = np.where(hist_3d.sum(axis=2) == np.amax(node[:].sum(axis=2)))
-                    plot_1d_hist(hist_3d[best_pixel_index[0], best_pixel_index[1], :max_index][0], title='TDC histogram of pixel %d, %d' % (best_pixel_index[1], best_pixel_index[0]) if 'Timestamp' not in node.name else 'TDC time stamp histogram, hits of pixel %d, %d' % (best_pixel_index[1], best_pixel_index[0]), x_axis_title='TDC' if 'Timestamp' not in node.name else 'TDC time stamp', filename=output_pdf)
+                    if best_pixel_index[0].shape[0] == 1:
+                        plot_1d_hist(hist_3d[best_pixel_index[0], best_pixel_index[1], :max_index][0], title='TDC histogram of pixel %d, %d' % (best_pixel_index[1], best_pixel_index[0]) if 'Timestamp' not in node.name else 'TDC time stamp histogram, hits of pixel %d, %d' % (best_pixel_index[1], best_pixel_index[0]), x_axis_title='TDC' if 'Timestamp' not in node.name else 'TDC time stamp', filename=output_pdf)
                 elif 'HistTdcCalibratedCondition' in node.name:
                     plot_corrected_tdc_hist(node[:]['charge'], node[:]['count'], title='TDC histogram, per pixel charge calibration, %s' % node._v_attrs.condition, output_pdf=output_pdf)
 
