@@ -1,5 +1,4 @@
 import logging
-from sys import maxint
 import glob
 import zmq
 from threading import RLock
@@ -144,7 +143,7 @@ class RawDataFile(object):
             total_words = self.raw_data_earray.nrows
             raw_data = data_tuple[0]
             len_raw_data = raw_data.shape[0]
-            if total_words + len_raw_data > maxint:
+            if total_words + len_raw_data > 4000000000:  # our read out does support 2^32 long raw data arrays
                 index = self.filenames.get(self.curr_filename, 0) + 1  # reached file size limit, increase index by one
                 self.filenames[self.curr_filename] = index  # update dict
                 filename = self.curr_filename + '_' + str(index) + '.h5'
