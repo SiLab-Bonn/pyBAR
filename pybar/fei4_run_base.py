@@ -99,7 +99,7 @@ class Fei4RunBase(RunBase):
             self.dut['CCPD_Vdd'].set_enable(True)
             # enabling V_in
             self.dut['V_in'].set_enable(False)
-            self.dut['V_in'].set_voltage(2.1, unit='V')
+            self.dut['V_in'].set_voltage(0.0, unit='V')
             self.dut['V_in'].set_enable(True)
             # enabling readout
             self.dut['rx']['FE'] = 1
