@@ -279,7 +279,6 @@ class FifoReadout(object):
             if self.dut.name == 'mio':
                 filter(lambda channel: self.dut[channel]['RX_RESET'], ['rx_1', 'rx_2', 'rx_3', 'rx_4'])
             elif self.dut.name == 'mio_gpac':
-                print 'rx reset'
                 filter(lambda channel: self.dut[channel]['RX_RESET'], ['rx_fe'])
         sleep(0.1)  # sleep here for a while
 
