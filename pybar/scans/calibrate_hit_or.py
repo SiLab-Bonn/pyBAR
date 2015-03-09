@@ -13,18 +13,19 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from pybar.fei4.register_utils import make_pixel_mask_from_col_row, make_box_pixel_mask_from_col_row
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.run_manager import RunManager
-from pybar.analysis.analysis_utils import get_scan_parameter, get_hits_of_scan_parameter, get_unique_scan_parameter_combinations
+from pybar.analysis.analysis_utils import get_scan_parameter, get_hits_of_scan_parameter, get_unique_scan_parameter_combinations, get_scan_parameters_table_from_meta_data, get_ranges_from_array, get_data_in_event_range
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 
 
 class HitOrCalibration(Fei4RunBase):
+
     ''' Hit Or calibration scan
     '''
     _default_run_conf = {
         "repeat_command": 1000,
         "scan_parameters": [('column', None),
-                             ('row', None),
-                             ('PlsrDAC', [i for j in (range(26, 70, 10), range(80, 200, 50), range(240, 400, 100)) for i in j])],  # 0 400 sufficient
+                            ('row', None),
+                            ('PlsrDAC', [i for j in (range(26, 70, 10), range(80, 200, 50), range(240, 400, 100)) for i in j])],  # 0 400 sufficient
         "plot_tdc_histograms": False,
         "pixels": (np.dstack(np.where(make_box_pixel_mask_from_col_row([40, 45], [150, 155]) == 1)) + 1)[0],  # list of (col, row) tupels. From 1 to 80/336.
         "enable_masks": ["Enable", "C_Low", "C_High"],
@@ -57,7 +58,7 @@ class HitOrCalibration(Fei4RunBase):
         for pixel_index, pixel in enumerate(self.pixels):
             column = pixel[0]
             row = pixel[1]
-            logging.info('Scanning pixel: %d / %d (column / row)' % (column, row))
+            logging.info('Scanning pixel: %d / %d (column / row)', column, row)
             if pixel_index:
                 dcs = [write_double_column(column)]
                 dcs.append(write_double_column(self.pixels[pixel_index - 1][0]))
@@ -74,13 +75,13 @@ class HitOrCalibration(Fei4RunBase):
             self.register.set_global_register_value("Colpr_Addr", inject_double_column(column))
             commands.append(self.register.get_commands("WrRegister", name=["Colpr_Addr"])[0])
             self.register_utils.send_commands(commands)
-#             self.fifo_readout.reset_sram_fifo()  # after mask shifting you have AR VR in Sram that are not of interest but reset takes a long time
+            # self.fifo_readout.reset_sram_fifo()  # after mask shifting you have AR VR in SRAM that are not of interest but reset takes a long time, so ignore the warning
 
             self.dut['tdc_rx2']['ENABLE'] = True
             for scan_parameter_value in scan_parameters_values:
                 if self.stop_run.is_set():
                     break
-                logging.info('Scan step: %s %d' % (scan_par_name, scan_parameter_value))
+                logging.info('Scan step: %s %d', scan_par_name, scan_parameter_value)
 
                 commands = []
                 commands.extend(self.register.get_commands("ConfMode"))
@@ -97,13 +98,14 @@ class HitOrCalibration(Fei4RunBase):
             self.dut['tdc_rx2']['ENABLE'] = False
 
     def analyze(self):
-        logging.info('Analyze and plot results')
+        output_filename = self.output_filename
+        logging.info('Analyze and plot results of %s', output_filename)
 
         def plot_calibration(col_row_combinations, scan_parameter, calibration_data, repeat_command, filename):  # Result calibration plot function
             for index, (column, row) in enumerate(col_row_combinations):
                 logging.info("Plot calibration for pixel " + str(column) + '/' + str(row))
                 fig = Figure()
-                canvas = FigureCanvas(fig)
+                FigureCanvas(fig)
                 ax = fig.add_subplot(111)
                 fig.patch.set_facecolor('white')
                 ax.grid(True)
@@ -115,9 +117,10 @@ class HitOrCalibration(Fei4RunBase):
                 ax.legend(loc=0)
                 filename.savefig(fig)
                 if index > 100:  # stop for too many plots
+                    logging.info('Do not create pixel plots for more than 100 pixels to safe time')
                     break
 
-        with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:  # Interpret the raw data file
+        with AnalyzeRawData(raw_data_file=output_filename, create_pdf=True) as analyze_raw_data:  # Interpret the raw data file
             analyze_raw_data.create_occupancy_hist = False  # too many scan parameters to do in ram histograming
             analyze_raw_data.create_hit_table = True
             analyze_raw_data.create_tdc_hist = True
@@ -126,64 +129,55 @@ class HitOrCalibration(Fei4RunBase):
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms()
 
-        with tb.open_file(self.output_filename + '_interpreted.h5', 'r') as in_file_h5:  # Get scan parameters from interpreted file
-            scan_parameters_dict = get_scan_parameter(in_file_h5.root.meta_data[:])
+        with tb.open_file(output_filename + '_interpreted.h5', 'r') as in_file_h5:  # Get scan parameters from interpreted file
+            meta_data = in_file_h5.root.meta_data[:]
+            hits = in_file_h5.root.Hits[:]
+            scan_parameters_dict = get_scan_parameter(meta_data)
             inner_loop_parameter_values = scan_parameters_dict[next(reversed(scan_parameters_dict))]  # inner loop parameter name is unknown
             scan_parameter_names = scan_parameters_dict.keys()
-            n_par_combinations = len(get_unique_scan_parameter_combinations(in_file_h5.root.meta_data[:]))
             col_row_combinations = get_unique_scan_parameter_combinations(in_file_h5.root.meta_data[:], scan_parameters=('column', 'row'), scan_parameter_columns_only=True)
 
-        with tb.openFile(self.output_filename + "_calibration.h5", mode="w") as calibration_data_file:
-            logging.info('Create calibration')
-            output_pdf = PdfPages(self.output_filename + "_calibration.pdf")
-            calibration_data = np.zeros(shape=(80, 336, len(inner_loop_parameter_values), 4), dtype='f4')  # result of the calibration is a histogram with col_index, row_index, plsrDAC value, mean discrete tot, rms discrete tot, mean tot from TDC, rms tot from TDC
+            meta_data_table_at_scan_parameter = get_unique_scan_parameter_combinations(meta_data, scan_parameters=scan_parameter_names)
+            parameter_values = get_scan_parameters_table_from_meta_data(meta_data_table_at_scan_parameter, scan_parameter_names)
+            event_number_ranges = get_ranges_from_array(meta_data_table_at_scan_parameter['event_number'])
+            event_ranges_per_parameter = np.column_stack((parameter_values, event_number_ranges))
+            event_numbers = hits['event_number'].copy()  # create contigous array, otherwise np.searchsorted too slow, http://stackoverflow.com/questions/15139299/performance-of-numpy-searchsorted-is-poor-on-structured-arrays
 
-            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=n_par_combinations, term_width=80)
-            old_scan_parameters = None
-            tot_data = None
-            tdc_data = None
+            with tb.openFile(output_filename + "_calibration.h5", mode="w") as calibration_data_file:
+                logging.info('Create calibration')
+                output_pdf = PdfPages(output_filename + "_calibration.pdf")
+                calibration_data = np.zeros(shape=(80, 336, len(inner_loop_parameter_values), 4), dtype='f4')  # result of the calibration is a histogram with col_index, row_index, plsrDAC value, mean discrete tot, rms discrete tot, mean tot from TDC, rms tot from TDC
 
-            for index, (actual_scan_parameters, hits) in enumerate(get_hits_of_scan_parameter(self.output_filename + '_interpreted.h5', scan_parameter_names, chunk_size=1.5e7)):
-                if index == 0:
-                    progress_bar.start()  # start after the event index is created to get reasonable ETA
+                progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=len(event_ranges_per_parameter), term_width=80)
+                progress_bar.start()
 
-                actual_col, actual_row, _ = actual_scan_parameters
+                for index, (parameter_values, event_start, event_stop) in enumerate(event_ranges_per_parameter):
+                    array_index = np.searchsorted(event_numbers, np.array([event_start, event_stop]))
+                    actual_hits = hits[array_index[0]:array_index[1]]
+                    actual_col, actual_row, parameter_value = parameter_values
 
-                if len(hits[np.logical_and(hits['column'] != actual_col, hits['row'] != actual_row)]):
-                    logging.warning('There are %d hits from not selected pixels in the data' % len(hits[np.logical_and(hits['column'] != actual_col, hits['row'] != actual_row)]))
+                    if len(hits[np.logical_and(actual_hits['column'] != actual_col, actual_hits['row'] != actual_row)]):
+                        logging.warning('There are %d hits from not selected pixels in the data', len(actual_hits[np.logical_and(actual_hits['column'] != actual_col, actual_hits['row'] != actual_row)]))
 
-                hits = hits[(hits['event_status'] & 0b0000011110001000) == 0b0000000100000000]  # only take hits from good events (one TDC word only, no error)
-                column, row, tot, tdc = hits['column'], hits['row'], hits['tot'], hits['TDC']
+                    actual_hits = actual_hits[(actual_hits['event_status'] & 0b0000011110001000) == 0b0000000100000000]  # only take hits from good events (one TDC word only, no error)
+                    actual_hits = actual_hits[np.logical_and(actual_hits['column'] == actual_col, actual_hits['row'] == actual_row)]
+                    tot, tdc = actual_hits['tot'], actual_hits['TDC']
 
-                if old_scan_parameters != actual_scan_parameters:  # Store the data of the actual PlsrDAC value
-                    if old_scan_parameters:  # Special case for the first PlsrDAC setting
-                        inner_loop_scan_parameter_index = np.where(old_scan_parameters[-1] == inner_loop_parameter_values)[0][0]  # translate the scan parameter value to an index for the result histogram
-                        calibration_data[column - 1, row - 1, inner_loop_scan_parameter_index, 0] = np.mean(tot_data)
-                        calibration_data[column - 1, row - 1, inner_loop_scan_parameter_index, 1] = np.mean(tdc_data)
-                        calibration_data[column - 1, row - 1, inner_loop_scan_parameter_index, 2] = np.std(tot_data)
-                        calibration_data[column - 1, row - 1, inner_loop_scan_parameter_index, 3] = np.std(tdc_data)
-                        progress_bar.update(index)
-                    tot_data = np.array(tot)
-                    tdc_data = np.array(tdc)
-                    old_scan_parameters = actual_scan_parameters
-                else:
-                    np.concatenate((tot_data, tot))
-                    np.concatenate((tdc_data, tdc))
+                    inner_loop_scan_parameter_index = np.where(parameter_value == inner_loop_parameter_values)[0][0]  # translate the scan parameter value to an index for the result histogram
+                    calibration_data[actual_col - 1, actual_row - 1, inner_loop_scan_parameter_index, 0] = np.mean(tot)
+                    calibration_data[actual_col - 1, actual_row - 1, inner_loop_scan_parameter_index, 1] = np.mean(tdc)
+                    calibration_data[actual_col - 1, actual_row - 1, inner_loop_scan_parameter_index, 2] = np.std(tot)
+                    calibration_data[actual_col - 1, actual_row - 1, inner_loop_scan_parameter_index, 3] = np.std(tdc)
 
-            else:
-                inner_loop_scan_parameter_index = np.where(old_scan_parameters[-1] == inner_loop_parameter_values)[0][0]  # translate the scan parameter value to an index for the result histogram
-                calibration_data[column - 1, row - 1, inner_loop_scan_parameter_index, 0] = np.mean(tot_data)
-                calibration_data[column - 1, row - 1, inner_loop_scan_parameter_index, 1] = np.mean(tdc_data)
-                calibration_data[column - 1, row - 1, inner_loop_scan_parameter_index, 2] = np.std(tot_data)
-                calibration_data[column - 1, row - 1, inner_loop_scan_parameter_index, 3] = np.std(tdc_data)
+                    progress_bar.update(index)
 
-            calibration_data_out = calibration_data_file.createCArray(calibration_data_file.root, name='HitOrCalibration', title='Hit OR calibration data', atom=tb.Atom.from_dtype(calibration_data.dtype), shape=calibration_data.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
-            calibration_data_out[:] = calibration_data
-            calibration_data_out.attrs.dimensions = scan_parameter_names
-            calibration_data_out.attrs.scan_parameter_values = inner_loop_parameter_values
-            plot_calibration(col_row_combinations, scan_parameter=inner_loop_parameter_values, calibration_data=calibration_data, repeat_command=self.repeat_command, filename=output_pdf)
-            output_pdf.close()
-            progress_bar.finish()
+                calibration_data_out = calibration_data_file.createCArray(calibration_data_file.root, name='HitOrCalibration', title='Hit OR calibration data', atom=tb.Atom.from_dtype(calibration_data.dtype), shape=calibration_data.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+                calibration_data_out[:] = calibration_data
+                calibration_data_out.attrs.dimensions = scan_parameter_names
+                calibration_data_out.attrs.scan_parameter_values = inner_loop_parameter_values
+                plot_calibration(col_row_combinations, scan_parameter=inner_loop_parameter_values, calibration_data=calibration_data, repeat_command=self.repeat_command, filename=output_pdf)
+                output_pdf.close()
+                progress_bar.finish()
 
 
 if __name__ == "__main__":

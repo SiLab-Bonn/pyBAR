@@ -52,9 +52,9 @@ if __name__ == "__main__":
     for delay in range(14, 50, 16):
         join = runmngr.run_run(ExtTriggerScan, run_conf={"trigger_delay": delay, "no_data_timeout": 60}, use_thread=True)  # use thread
         print 'Status:', join(timeout=5)  # join has a timeout, return None if run has not yet finished
-        runmngr.abort_current_run()  # stopping/aborting run from outside (same effect has Ctrl-C)
+        runmngr.abort_current_run("Calling abort_current_run(). This scan was aborted by intention")  # stopping/aborting run from outside (same effect has Ctrl-C)
         if join() != run_status.finished:  # status OK?
-            print 'ERROR!'
+            print 'ERROR! This error was made by intention!'
             break  # jump out
     #
     # The configuration.yaml can be extended to change the default run parameters for each scan:

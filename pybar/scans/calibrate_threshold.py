@@ -3,13 +3,11 @@ To save time the PlsrDAC start position is the start position determined from th
 scan parameter values should be chosen in a ways that the threshold increases for each step.
 After the data taking the data is analyzed and the calibration is written into a h5 file.
 """
-from datetime import datetime
-import progressbar
+
 import tables as tb
 import numpy as np
 import logging
 import ast
-from multiprocessing import Pool, cpu_count
 
 from matplotlib.backends.backend_pdf import PdfPages
 
@@ -19,7 +17,6 @@ from pybar.analysis import analysis_utils
 from pybar.analysis.RawDataConverter import data_struct
 from pybar.analysis.plotting.plotting import plotThreeWay, plot_scurves, plot_scatter
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
-from pybar.analysis import analysis_utils
 
 
 class ThresholdCalibration(FastThresholdScan):
@@ -36,7 +33,7 @@ class ThresholdCalibration(FastThresholdScan):
     })
 
     def scan(self):
-        logging.info('Taking threshold data at following ' + self.scan_parameters._fields[1] + ' values: %s' % str(self.scan_parameters[1]))
+        logging.info('Taking threshold data at following ' + self.scan_parameters._fields[1] + ' values: %s', str(self.scan_parameters[1]))
 
         for index, parameter_value in enumerate(self.scan_parameters[1]):
             if self.scan_parameters._fields[1] == 'GDAC':
@@ -123,7 +120,7 @@ class ThresholdCalibration(FastThresholdScan):
         threshold_calibration = np.empty(shape=(80, 336, len(raw_data_files)), dtype='<f8')
 
         if self.create_plots:
-            logging.info('Saving calibration plots in: %s' % (calibration_file + '.pdf'))
+            logging.info('Saving calibration plots in: %s', calibration_file + '.pdf')
             output_pdf = PdfPages(calibration_file + '.pdf')
 
         parameter_values = []

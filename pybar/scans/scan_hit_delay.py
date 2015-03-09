@@ -63,7 +63,7 @@ class HitDelayScan(Fei4RunBase):
 
     def scan(self):
         delay_parameter_name = self.scan_parameters._fields[1]
-        logging.info("Scanning PlsrDAC = %s and %s = %s" % (str(self.scan_parameters[0]), delay_parameter_name, str(self.scan_parameters[1])))
+        logging.info("Scanning PlsrDAC = %s and %s = %s", str(self.scan_parameters[0]), delay_parameter_name, str(self.scan_parameters[1]))
 
         plsr_dac_values = self.scan_parameters.PlsrDAC[:]  # create deep copy of scan_parameters, they are overwritten in self.readout
         delay_parameter_values = self.scan_parameters.PlsrDelay[:]  # create deep copy of scan_parameters, they are overwritten in self.readout
@@ -78,7 +78,7 @@ class HitDelayScan(Fei4RunBase):
             for delay_parameter_value in delay_parameter_values:  # Loop over the Plsr delay parameter
                 if self.stop_run.is_set():
                     break
-                logging.info('Scan step: PlsrDAC %s, %s %d' % (plsr_dac_value, delay_parameter_name, delay_parameter_value))
+                logging.info('Scan step: PlsrDAC %s, %s %d', plsr_dac_value, delay_parameter_name, delay_parameter_value)
 
                 # Change the Plsr delay parameter
                 commands = []

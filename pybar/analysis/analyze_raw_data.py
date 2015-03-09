@@ -66,9 +66,9 @@ def fit_scurves_subset(hist, PlsrDAC):
             n_failed_pxel_fits = n_failed_pxel_fits + 1
         result.append(popt[1:3])
         if(iPixel % 2000 == 0):
-            logging.info('Fitting S-curve: %d%%' % (iPixel * 100. / 26880.))
+            logging.info('Fitting S-curve: %d%%', iPixel * 100. / 26880.)
     logging.info('Fitting S-curve: 100%')
-    logging.info('S-curve fit failed for %d pixel' % n_failed_pxel_fits)
+    logging.info('S-curve fit failed for %d pixel', n_failed_pxel_fits)
     return result
 
 
@@ -134,7 +134,7 @@ class AnalyzeRawData(object):
                 raise analysis_utils.NotSupportedError('Different scan parameters in multiple files are not supported.')
             self.scan_parameters = analysis_utils.create_parameter_table(self.files_dict)
             scan_parameter_names = analysis_utils.get_scan_parameter_names(self.scan_parameters)
-            logging.info('Scan parameter(s) from raw data file(s): %s' % ((', ').join(scan_parameter_names) if scan_parameter_names else 'None',))
+            logging.info('Scan parameter(s) from raw data file(s): %s', (', ').join(scan_parameter_names) if scan_parameter_names else 'None',)
         else:
             self.files_dict = None
             self.scan_parameters = None
@@ -142,7 +142,7 @@ class AnalyzeRawData(object):
         self.set_standard_settings()
         if raw_data_file is not None and create_pdf:
             output_pdf_filename = os.path.splitext(raw_data_file)[0] + ".pdf"
-            logging.info('Opening output PDF file: %s' % output_pdf_filename)
+            logging.info('Opening output PDF file: %s', output_pdf_filename)
             self.output_pdf = PdfPages(output_pdf_filename)
         else:
             self.output_pdf = None
@@ -156,7 +156,7 @@ class AnalyzeRawData(object):
         del self.histograming
         del self.clusterizer
         if self.output_pdf is not None and isinstance(self.output_pdf, PdfPages):
-            logging.info('Closing output PDF file: %s' % str(self.output_pdf._file.fh.name))
+            logging.info('Closing output PDF file: %s', str(self.output_pdf._file.fh.name))
             self.output_pdf.close()
 
     def set_standard_settings(self):
@@ -559,7 +559,7 @@ class AnalyzeRawData(object):
                     try:
                         raw_data = in_file_h5.root.raw_data.read(iWord, iWord + self._chunk_size)
                     except OverflowError, e:
-                        logging.error('%s: 2^31 xrange() limitation in 32-bit Python' % e)
+                        logging.error('%s: 2^31 xrange() limitation in 32-bit Python', e)
                     self.interpreter.interpret_raw_data(raw_data)  # interpret the raw data
                     if(index == len(self.files_dict.keys()) - 1 and iWord == range(0, table_size, self._chunk_size)[-1]):  # store hits of the latest event of the last file
                         self.interpreter.store_event()  # all actual buffered events in the interpreter are stored
@@ -788,7 +788,7 @@ class AnalyzeRawData(object):
                 self.scan_parameter_index = analysis_utils.get_scan_parameters_index(self.scan_parameters)  # a array that labels unique scan parameter combinations
                 self.histograming.add_scan_parameter(self.scan_parameter_index)  # just add an index for the different scan parameter combinations
                 scan_parameter_names = analysis_utils.get_scan_parameter_names(self.scan_parameters)
-                logging.info('Adding scan parameter(s) for analysis: %s' % ((', ').join(scan_parameter_names) if scan_parameter_names else 'None',))
+                logging.info('Adding scan parameter(s) for analysis: %s', (', ').join(scan_parameter_names) if scan_parameter_names else 'None',)
             else:
                 logging.info("No scan parameter data provided")
                 self.histograming.set_no_scan_parameter()
@@ -892,7 +892,7 @@ class AnalyzeRawData(object):
             self.histograming.add_hits(cluster[start_index:])
 
     def plot_histograms(self, pdf_filename=None, analyzed_data_file=None, maximum=None, create_hit_hists_only=False):  # plots the histogram from output file if available otherwise from ram
-        logging.info('Creating histograms%s' % ((' (source: %s)' % analyzed_data_file) if analyzed_data_file is not None else ((' (source: %s)' % self._analyzed_data_file) if self._analyzed_data_file is not None else '')))
+        logging.info('Creating histograms%s', (' (source: %s)' % analyzed_data_file) if analyzed_data_file is not None else (' (source: %s)' % self._analyzed_data_file) if self._analyzed_data_file is not None else '')
         if analyzed_data_file is not None:
             out_file_h5 = tb.openFile(analyzed_data_file, mode="r")
         elif(self._analyzed_data_file is not None):
@@ -908,13 +908,13 @@ class AnalyzeRawData(object):
                 output_pdf_filename = os.path.splitext(pdf_filename)[0] + ".pdf"
             else:
                 output_pdf_filename = pdf_filename
-            logging.info('Opening output PDF file: %s' % output_pdf_filename)
+            logging.info('Opening output PDF file: %s', output_pdf_filename)
             output_pdf = PdfPages(output_pdf_filename)
         else:
             output_pdf = self.output_pdf
         if not output_pdf:
             raise analysis_utils.IncompleteInputError('Output PDF file descriptor not given.')
-        logging.info('Saving histograms to PDF file: %s' % str(output_pdf._file.fh.name))
+        logging.info('Saving histograms to PDF file: %s', str(output_pdf._file.fh.name))
 
         if (self._create_threshold_hists):
             # use threshold mask if possible
@@ -926,7 +926,7 @@ class AnalyzeRawData(object):
                 threshold_hist = np.ma.array(out_file_h5.root.HistThreshold[:, :] if out_file_h5 is not None else self.threshold_hist, mask=self.threshold_mask)
                 noise_hist = np.ma.array(out_file_h5.root.HistNoise[:, :] if out_file_h5 is not None else self.noise_hist, mask=self.threshold_mask)
                 mask_cnt = np.ma.count_masked(noise_hist)
-                logging.info('Fast algorithm: masking %d pixel(s)' % mask_cnt)
+                logging.info('Fast algorithm: masking %d pixel(s)', mask_cnt)
             else:
                 threshold_hist = out_file_h5.root.HistThreshold[:, :] if out_file_h5 is not None else self.threshold_hist
                 noise_hist = out_file_h5.root.HistNoise[:, :] if out_file_h5 is not None else self.noise_hist
@@ -941,7 +941,7 @@ class AnalyzeRawData(object):
                 threshold_hist = np.ma.array(out_file_h5.root.HistThresholdFitted[:, :] if out_file_h5 is not None else self.scurve_fit_results[:, :, 0], mask=self.fitted_threshold_mask)
                 noise_hist = np.ma.array(out_file_h5.root.HistNoiseFitted[:, :] if out_file_h5 is not None else self.scurve_fit_results[:, :, 1], mask=self.fitted_threshold_mask)
                 mask_cnt = np.ma.count_masked(noise_hist)
-                logging.info('S-curve fit: masking %d pixel(s)' % mask_cnt)
+                logging.info('S-curve fit: masking %d pixel(s)', mask_cnt)
             else:
                 threshold_hist = out_file_h5.root.HistThresholdFitted[:, :] if out_file_h5 is not None else self.scurve_fit_results[:, :, 0]
                 noise_hist = out_file_h5.root.HistNoiseFitted[:, :] if out_file_h5 is not None else self.scurve_fit_results[:, :, 1]
@@ -995,7 +995,7 @@ class AnalyzeRawData(object):
         if (out_file_h5 is not None):
             out_file_h5.close()
         if pdf_filename is not None:
-            logging.info('Closing output PDF file: %s' % str(output_pdf._file.fh.name))
+            logging.info('Closing output PDF file: %s', str(output_pdf._file.fh.name))
             output_pdf.close()
 
     def fit_scurves(self, hit_table_file=None, PlsrDAC=None):
@@ -1005,7 +1005,7 @@ class AnalyzeRawData(object):
         return result_array.reshape(occupancy_hist.shape[0], occupancy_hist.shape[1], 2)
 
     def fit_scurves_multithread(self, hit_table_file=None, PlsrDAC=None):
-        logging.info("Start S-curve fit on %d CPU core(s)" % mp.cpu_count())
+        logging.info("Start S-curve fit on %d CPU core(s)", mp.cpu_count())
         occupancy_hist = hit_table_file.root.HistOcc[:, :, :] if hit_table_file is not None else self.occupancy_array[:, :, :]  # take data from RAM if no file is opened
         occupancy_hist_shaped = occupancy_hist.reshape(occupancy_hist.shape[0] * occupancy_hist.shape[1], occupancy_hist.shape[2])
         partialfit_scurve = partial(fit_scurve, PlsrDAC=PlsrDAC)  # trick to give a function more than one parameter, needed for pool.map
@@ -1045,7 +1045,6 @@ class AnalyzeRawData(object):
             bcid = opened_raw_data_file.root.configuration.global_register[:][np.where(opened_raw_data_file.root.configuration.global_register[:]['name'] == 'Trig_Count')]['value'][0]
             self.fei4b = False if str(flavor) == 'fei4a' else True
             self.n_bcid = int(bcid)
-#             logging.info('Use settings from raw data file: flavor: %s, consecutive triggers: %d' % ('fei4b' if self.fei4b else 'fei4a', self.n_bcid))
         except tb.exceptions.NoSuchNodeError:
             logging.warning('No settings stored in raw data file, use provided settings')
 

@@ -50,12 +50,12 @@ class ThresholdScan(Fei4RunBase):
         if self.scan_parameters.PlsrDAC[1]:
             scan_parameter_range[1] = self.scan_parameters.PlsrDAC[1]
         scan_parameter_range = range(scan_parameter_range[0], scan_parameter_range[1] + 1, self.step_size)
-        logging.info("Scanning %s from %d to %d" % ('PlsrDAC', scan_parameter_range[0], scan_parameter_range[-1]))
+        logging.info("Scanning %s from %d to %d", 'PlsrDAC', scan_parameter_range[0], scan_parameter_range[-1])
 
         for scan_parameter_value in scan_parameter_range:
             if self.stop_run.is_set():
                 break
-            logging.info('Scan step: %s %d' % ('PlsrDAC', scan_parameter_value))
+            logging.info('Scan step: %s %d', 'PlsrDAC', scan_parameter_value)
 
             commands = []
             commands.extend(self.register.get_commands("ConfMode"))

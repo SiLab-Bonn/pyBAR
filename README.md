@@ -1,5 +1,5 @@
 
-# pyBAR [![Build Status](https://travis-ci.org/SiLab-Bonn/pyBAR.svg?branch=master)](https://travis-ci.org/SiLab-Bonn/pyBAR) [![Build Status](https://travis-ci.org/SiLab-Bonn/pyBAR.svg?branch=development)](https://travis-ci.org/SiLab-Bonn/pyBAR)
+# pyBAR [![Build Status](https://travis-ci.org/SiLab-Bonn/pyBAR.svg?branch=development)](https://travis-ci.org/SiLab-Bonn/pyBAR) [![Code Status](https://landscape.io/github/SiLab-Bonn/pyBAR/development/landscape.svg?style=flat)](https://landscape.io/github/SiLab-Bonn/pyBAR/development)
 
 pyBAR - Bonn ATLAS Readout in Python and C++
 
@@ -20,13 +20,13 @@ The features of the host software in Python and C++:
 - very minimalistic interface, script based, no GUI
 - support for Windows/Linux/OSX
 - support for FE-I4A and B
-- reading configuration files from RCE/HSIO (natively) and STcontrol (converter available)
+- configuration files human readable (compatible to RCE/HSIO)
 - full control over FE command generation
-- sending an arbitrary bit stream/configuration sequence to FE of any desired frame length and/or format
+- sending any arbitrary bit stream/configuration sequence to the FE of any desired frame length and/or format
 - readout of full FE data including timestamps, storing of the compressed data to HDF5 file
 - ultra fast raw data analysis, event-, cluster building and validity checking
 - real-time online monitor (< 100 ms latency)
-- rapid development of new scan algorithms
+- rapid development and implementation of new scan algorithms
 
 ## Installation
 

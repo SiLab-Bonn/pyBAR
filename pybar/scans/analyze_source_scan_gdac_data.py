@@ -114,7 +114,7 @@ def plot_result(x_p, y_p, y_p_e):
 def analyze_raw_data(input_files, output_file_hits, chip_flavor, scan_parameter):
     logging.info('Analyze the raw FE data given in ' + str(len(input_files)) + ' files and store the needed data')
     if os.path.isfile(output_file_hits) and not analysis_configuration['overwrite_output_files']:  # skip analysis if already done
-            logging.info('Analyzed data file ' + output_file_hits + ' already exists. Skip analysis for this file.')
+        logging.info('Analyzed data file ' + output_file_hits + ' already exists. Skip analysis for this file.')
     else:
         with AnalyzeRawData(raw_data_file=input_files, analyzed_data_file=output_file_hits, scan_parameter_name=scan_parameter) as analyze_raw_data:
             analyze_raw_data.create_hit_table = True  # can be set to false to omit hit table creation, std. setting is false
@@ -137,7 +137,7 @@ def analyse_selected_hits(input_file_hits, output_file_hits, output_file_hits_an
     if os.path.isfile(output_file_hits) and not analysis_configuration["overwrite_output_files"]:  # skip analysis if already done
         logging.info('Selected hit data file ' + output_file_hits + ' already exists. Skip analysis for this file.')
     else:
-        analysis.select_hits_from_cluster_info(input_file_hits=input_file_hits, output_file_hits=output_file_hits, cluster_size_condition=cluster_size_condition, n_cluster_condition=n_cluster_condition, output_pdf=None)  # select hits and copy the mto new file
+        analysis.select_hits_from_cluster_info(input_file_hits=input_file_hits, output_file_hits=output_file_hits, cluster_size_condition=cluster_size_condition, n_cluster_condition=n_cluster_condition)  # select hits and copy the mto new file
     if os.path.isfile(output_file_hits_analyzed) and not analysis_configuration["overwrite_output_files"]:  # skip analysis if already done
         logging.info('Analyzed selected hit data file ' + output_file_hits_analyzed + ' already exists. Skip analysis for this file.')
     else:
@@ -166,8 +166,8 @@ def analyze_injected_charge(data_analyzed_file):
             gdac_range_calibration = mean_threshold_calibration['gdac']
             gdac_range_source_scan = gdacs
 
-            logging.info('Analyzing source scan data with %d GDAC settings from %d to %d with minimum step sizes from %d to %d' % (len(gdac_range_source_scan), np.min(gdac_range_source_scan), np.max(gdac_range_source_scan), np.min(np.gradient(gdac_range_source_scan)), np.max(np.gradient(gdac_range_source_scan))))
-            logging.info('Use calibration data with %d GDAC settings from %d to %d with minimum step sizes from %d to %d' % (len(gdac_range_calibration), np.min(gdac_range_calibration), np.max(gdac_range_calibration), np.min(np.gradient(gdac_range_calibration)), np.max(np.gradient(gdac_range_calibration))))
+            logging.info('Analyzing source scan data with %d GDAC settings from %d to %d with minimum step sizes from %d to %d', len(gdac_range_source_scan), np.min(gdac_range_source_scan), np.max(gdac_range_source_scan), np.min(np.gradient(gdac_range_source_scan)), np.max(np.gradient(gdac_range_source_scan)))
+            logging.info('Use calibration data with %d GDAC settings from %d to %d with minimum step sizes from %d to %d', len(gdac_range_calibration), np.min(gdac_range_calibration), np.max(gdac_range_calibration), np.min(np.gradient(gdac_range_calibration)), np.max(np.gradient(gdac_range_calibration)))
 
             # rate_normalization of the total hit number for each GDAC setting
             rate_normalization = 1.

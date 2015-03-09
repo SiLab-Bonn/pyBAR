@@ -84,7 +84,7 @@ class FEI4SelfTriggerScan(Fei4RunBase):
             analyze_raw_data.plot_histograms()
 
     def set_self_trigger(self, enable=True):
-        logging.info('%s FEI4 self-trigger' % ('Enable' if enable is True else "Disable"))
+        logging.info('%s FEI4 self-trigger', 'Enable' if enable is True else "Disable")
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))
         self.register.set_global_register_value("GateHitOr", 1 if enable else 0)  # enable FE self-trigger mode

@@ -75,7 +75,7 @@ class TdcTest(Fei4RunBase):
 
                 self.fifo_readout.reset_sram_fifo()  # clear fifo data
                 for pulse_width in [i for j in (range(10, 100, 5), range(100, 400, 10)) for i in j]:
-                    logging.info('Test TDC for a pulse with of %d' % pulse_width)
+                    logging.info('Test TDC for a pulse with of %d', pulse_width)
                     self.start_pulser(pulse_width, self.n_pulses)
                     time.sleep(self.n_pulses * pulse_width * 1e-9 + 0.1)
                     data = self.fifo_readout.read_data()
@@ -84,7 +84,7 @@ class TdcTest(Fei4RunBase):
                         tdc_counter = np.bitwise_and(data[is_tdc_word(data)], 0x000FF000)
                         tdc_counter = np.right_shift(tdc_counter, 12)
                         if len(is_tdc_word(data)) != self.n_pulses:
-                            logging.warning('%d TDC words instead of %d ' % (len(is_tdc_word(data)), self.n_pulses))
+                            logging.warning('%d TDC words instead of %d ', len(is_tdc_word(data)), self.n_pulses)
                         try:
                             if np.any(np.logical_and(tdc_counter[np.gradient(tdc_counter) != 1] != 0, tdc_counter[np.gradient(tdc_counter) != 1] != 255)):
                                 logging.warning('The counter did not count correctly')
@@ -110,14 +110,14 @@ class TdcTest(Fei4RunBase):
                 x, y, y_err = [], [], []
                 self.fifo_readout.reset_sram_fifo()  # clear fifo data
                 for pulse_delay in [i for j in (range(0, 100, 5), range(100, 500, 500)) for i in j]:
-                    logging.info('Test TDC for a pulse delay of %d' % pulse_delay)
+                    logging.info('Test TDC for a pulse delay of %d', pulse_delay)
                     for _ in range(10):
                         self.start_pulser(pulse_width=100, n_pulses=1, pulse_delay=pulse_delay)
                         time.sleep(0.1)
                     data = self.fifo_readout.read_data()
                     if data[is_tdc_word(data)].shape[0] != 0:
                         if len(is_tdc_word(data)) != 10:
-                            logging.warning('%d TDC words instead of %d ' % (len(is_tdc_word(data)), 10))
+                            logging.warning('%d TDC words instead of %d ', len(is_tdc_word(data)), 10)
                         tdc_delay = np.bitwise_and(data[is_tdc_word(data)], 0x0FF00000)
                         tdc_delay = np.right_shift(tdc_delay, 20)
 

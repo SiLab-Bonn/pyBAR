@@ -261,7 +261,7 @@ class FEI4Register(object):
                 parts = re.split(r'\s*[=]\s*|\s+', line)
                 key = parts[0].strip()
                 if key in config_dict:
-                    logging.warning('Item %s in configuration file exists more than once' % parts[0])
+                    logging.warning('Item %s in configuration file exists more than once', parts[0])
                 try:
                     config_dict[key] = ast.literal_eval(parts[1].strip())
                 except SyntaxError:  # for comma separated values, e.g. lists
@@ -341,7 +341,7 @@ class FEI4Register(object):
         filename = os.path.splitext(filename)[0].strip()
         self.configuration_file = os.path.join(os.path.join(configuration_path, 'configs'), filename + ".cfg")
         if os.path.isfile(self.configuration_file):
-            logging.warning("Overwriting configuration: %s" % self.configuration_file)
+            logging.warning("Overwriting configuration: %s", self.configuration_file)
         else:
             logging.info("Saving configuration: %s" % self.configuration_file)
         pixel_reg_dict = {}
@@ -886,7 +886,7 @@ class FEI4Register(object):
         else:
             return flatten_iterable(register_attribute_list)
 
-    def get_global_register_objects(self, do_sort=[], reverse=False, **kwargs):
+    def get_global_register_objects(self, do_sort=None, reverse=False, **kwargs):
         """Generate register objects (list) from register name list
 
         Usage: get_global_register_objects(name = ["Amp2Vbn", "GateHitOr", "DisableColumnCnfg"], address = [2, 3])
@@ -941,7 +941,7 @@ class FEI4Register(object):
             register_bitsets.append(register_bitset)
         return register_bitsets
 
-    def get_pixel_register_objects(self, do_sort=[], reverse=False, **kwargs):
+    def get_pixel_register_objects(self, do_sort=None, reverse=False, **kwargs):
         """Generate register objects (list) from register name list
 
         Usage: get_pixel_register_objects(name = ["TDAC", "FDAC"])

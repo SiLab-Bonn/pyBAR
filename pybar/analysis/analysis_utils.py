@@ -56,7 +56,7 @@ def generate_threshold_mask(hist):
     '''
     masked_array = np.ma.masked_values(hist, 0)
     masked_array = np.ma.masked_greater(masked_array, 10 * np.ma.median(hist))
-    logging.info('Masking %d pixel(s)' % np.ma.count_masked(masked_array))
+    logging.info('Masking %d pixel(s)', np.ma.count_masked(masked_array))
     return np.ma.getmaskarray(masked_array)
 
 
@@ -156,12 +156,12 @@ def in1d_sorted(ar1, ar2):
 
 def central_difference(x, y):
     '''Returns the dy/dx(x) via central difference method
-
+ 
     Parameters
     ----------
     x : array like
     y : array like
-
+ 
     Returns
     -------
     dy/dx : array like
@@ -190,6 +190,7 @@ def get_profile_histogram(x, y, n_bins=100):
     '''
     if len(x) != len(y):
         raise ValueError('x and y dimensions have to be the same')
+    y = y.astype(np.float32)
     n, bin_edges = np.histogram(x, bins=n_bins)  # needed to calculate the number of points per bin
     sy = np.histogram(x, bins=n_bins, weights=y)[0]  # the sum of the bin values
     sy2 = np.histogram(x, bins=n_bins, weights=y * y)[0]  # the quadratic sum of the bin values
@@ -202,10 +203,9 @@ def get_profile_histogram(x, y, n_bins=100):
     return bin_centers, mean, std_mean
 
 
-def get_rate_normalization(hit_file, parameter, reference='event', cluster_file=None, sort=False, plot=False, chunk_size=5000000):
+def get_rate_normalization(hit_file, parameter, reference='event', cluster_file=None, plot=False, chunk_size=5000000):
     ''' Takes different hit files (hit_files), extracts the number of events or the scan time (reference) per scan parameter (parameter)
     and returns an array with a normalization factor. This normalization factor has the length of the number of different parameters.
-    One can also sort the normalization by the parameter values.
     If a cluster_file is specified.
 
     Parameters
@@ -246,8 +246,7 @@ def get_rate_normalization(hit_file, parameter, reference='event', cluster_file=
         else:
             raise NotImplementedError('The normalization reference ' + reference + ' is not implemented')
 
-        if cluster_file:
-            # calculate the rate normalization from the mean number of hits per event per scan parameter, needed for beam data since a beam since the multiplicity is rarely constant
+        if cluster_file:  # calculate the rate normalization from the mean number of hits per event per scan parameter, needed for beam data since a beam since the multiplicity is rarely constant
             cluster_table = in_hit_file_h5.root.Cluster
             index_event_number(cluster_table)
             index = 0  # index where to start the read out, 0 at the beginning, increased during looping, variable for read speed up
@@ -425,16 +424,16 @@ def get_data_file_names_from_scan_base(scan_base, filter_file_words=None, parame
 
 def get_parameter_scan_bases_from_scan_base(scan_base):
     """ Takes a list of scan base names and returns all scan base names that have this scan base within their name.
-
+ 
     Parameters
     ----------
     scan_base : list of strings
     filter_file_words : list of strings
-
+ 
     Returns
     -------
     list of strings
-
+ 
     """
     return [scan_bases[:-3] for scan_bases in get_data_file_names_from_scan_base(scan_base, filter_file_words=['interpreted', 'cut_', 'cluster_sizes', 'histograms'])]
 
@@ -445,6 +444,7 @@ def get_scan_parameter_names(scan_parameters):
     Parameters
     ----------
     scan_parameters : numpy.array
+        Can be None
 
     Returns
     -------
@@ -511,7 +511,7 @@ def get_parameter_from_files(files, parameters=None, unique=False, sort=True):
                 try:
                     for key, value in scan_parameter_values.items():
                         if value[0] != parameter_values_from_file_names_dict[file_name][key][0]:
-                            logging.warning('Parameter values in the file name and in the file differ. Take ' + str(key) + ' parameters ' + str(value) + ' found in %s.' % file_name)
+                            logging.warning('Parameter values in the file name and in the file differ. Take ' + str(key) + ' parameters ' + str(value) + ' found in %s.', file_name)
                 except KeyError:  # parameter does not exists in the file name
                     pass
                 except IndexError:
@@ -526,7 +526,7 @@ def get_parameter_from_files(files, parameters=None, unique=False, sort=True):
                 if not existing:
                     files_dict[file_name] = scan_parameter_values
                 else:
-                    logging.warning('Scan parameter value(s) from %s exists already, do not add to result' % file_name)
+                    logging.warning('Scan parameter value(s) from %s exists already, do not add to result', file_name)
             else:
                 files_dict[file_name] = scan_parameter_values
     return collections.OrderedDict(sorted(files_dict.iteritems(), key=itemgetter(1)) if sort else files_dict)
@@ -556,7 +556,7 @@ def combine_meta_data(files_dict):
 
     """
     if len(files_dict) > 10:
-        logging.info("Combine the meta data from %d files" % len(files_dict))
+        logging.info("Combine the meta data from %d files", len(files_dict))
     # determine total length needed for the new combined array, thats the fastest way to combine arrays
     total_length = 0  # the total length of the new table
     meta_data_v2 = True
@@ -1174,65 +1174,6 @@ def get_n_cluster_in_events(event_numbers):
     return np.vstack((result_event_numbers[:result_size], result_count[:result_size])).T
 
 
-def histogram_tot(array, label='tot'):
-    '''Takes the numpy hit/cluster array and histograms the ToT values.
-
-    Parameters
-    ----------
-    hit_array : numpy.ndarray
-    label: string
-
-    Returns
-    -------
-    numpy.Histogram
-    '''
-    logging.info("Histograming ToT values")
-    return np.histogram(a=array[label], bins=16, range=(0, 16))
-
-
-def histogram_tot_per_pixel(array, labels=['column', 'row', 'tot']):
-    '''Takes the numpy hit/cluster array and histograms the ToT values for each pixel
-
-    Parameters
-    ----------
-    hit_array : numpy.ndarray
-    label: string list
-
-    Returns
-    -------
-    numpy.Histogram
-    '''
-    logging.info("Histograming ToT values for each pixel")
-    return np.histogramdd(sample=(array[labels[0]], array[labels[1]], array[labels[2]]), bins=(80, 336, 16), range=[[0, 80], [0, 336], [0, 16]])
-
-
-def histogram_mean_tot_per_pixel(array, labels=['column', 'row', 'tot']):
-    '''Takes the numpy hit/cluster array and histograms the mean ToT values for each pixel
-
-    Parameters
-    ----------
-    hit_array : numpy.ndarray
-    label: string list
-
-    Returns
-    -------
-    numpy.Histogram
-    '''
-    tot_array = histogram_tot_per_pixel(array=array, labels=labels)[0]
-    occupancy = histogram_occupancy_per_pixel(array=array)[0]  # needed for normalization
-    tot_avr = np.average(tot_array, axis=2, weights=range(0, 16)) * sum(range(0, 16))
-    tot_avr = np.divide(tot_avr, occupancy)
-    return np.ma.array(tot_avr, mask=(occupancy == 0))  # return array with masked pixel without any hit
-
-
-def histogram_occupancy_per_pixel(array, labels=['column', 'row'], mask_no_hit=False, fast=False):
-    occupancy = np.histogram2d(x=array[labels[0]], y=array[labels[1]], bins=(80, 336), range=[[0, 80], [0, 336]])
-    if mask_no_hit:
-        return np.ma.array(occupancy[0], mask=(occupancy[0] == 0)), occupancy[1], occupancy[2]
-    else:
-        return occupancy
-
-
 def get_scan_parameter(meta_data_array, unique=True):
     '''Takes the numpy meta data array and returns the different scan parameter settings and the name aligned in a dictionary
 
@@ -1410,7 +1351,7 @@ def data_aligned_at_events(table, start_event_number=None, stop_event_number=Non
                 stop_index_known = True
 
     if (start_index_known and stop_index_known) and (start_index + chunk_size >= stop_index):  # special case, one read is enough, data not bigger than one chunk and the indices are known
-            yield table.read(start=start_index, stop=stop_index), stop_index
+        yield table.read(start=start_index, stop=stop_index), stop_index
     else:  # read data in chunks, chunks do not divide events, abort if stop_event_number is reached
         while(start_index < stop_index):
             src_array = table.read(start=start_index, stop=start_index + chunk_size + 1)  # stop index is exclusive, so add 1
@@ -1492,7 +1433,7 @@ def get_hit_rate_correction(gdacs, calibration_gdacs, cluster_size_histogram):
     numpy.array, shape=(80,336,# of GDACs during calibration)
         The threshold values for each pixel at gdacs.
     '''
-    logging.info('Calculate the correction factor for the single hit cluster rate at %d given GDAC settings' % len(gdacs))
+    logging.info('Calculate the correction factor for the single hit cluster rate at %d given GDAC settings', len(gdacs))
     if len(calibration_gdacs) != cluster_size_histogram.shape[0]:
         raise ValueError('Length of the provided pixel GDACs does not match the dimension of the cluster size array')
     hist_sum = np.sum(cluster_size_histogram, axis=1)
@@ -1611,7 +1552,6 @@ def get_data_statistics(interpreted_files):
     print '| *File Name* | *File Size* | *Times Stamp* | *Events* | *Bad Events* | *Measurement time* | *# SR* | *Hits* |'  # Mean Tot | Mean rel. BCID'
     for interpreted_file in interpreted_files:
         with tb.openFile(interpreted_file, mode="r") as in_file_h5:  # open the actual hit file
-            event_errors = in_file_h5.root.HistErrorCounter[:]
             n_hits = np.sum(in_file_h5.root.HistOcc[:])
             measurement_time = int(in_file_h5.root.meta_data[-1]['timestamp_stop'] - in_file_h5.root.meta_data[0]['timestamp_start'])
 #             mean_tot = np.average(in_file_h5.root.HistTot[:], weights=range(0,16) * np.sum(range(0,16)))# / in_file_h5.root.HistTot[:].shape[0]

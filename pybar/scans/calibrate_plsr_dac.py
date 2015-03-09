@@ -60,7 +60,7 @@ class PlsrDacScan(Fei4RunBase):
             self.set_scan_parameter(self.scan_parameter, scan_parameter_step)
             voltage, voltage_error = multimeter_device.get_voltage(unit='mV', with_error=True)
             self.data[index] = (scan_parameter_step, voltage, voltage_error)
-            logging.info('Measure (%f +- %f) mV ' % (voltage, voltage_error))
+            logging.info('Measure (%f +- %f) mV ', voltage, voltage_error)
 
         multimeter_device.enable_output(False)
 

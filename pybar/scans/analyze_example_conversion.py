@@ -61,7 +61,8 @@ def analyze_hits(input_file, output_file_hits, scan_data_filename, output_file_h
         analyze_raw_data.plot_histograms(scan_data_filename=scan_data_filename, analyzed_data_file=output_file_hits_analyzed)
 
 
-def analyze_raw_data_per_scan_parameter(input_file, output_file_hits, scan_data_filename, scan_parameters=['PlsrDAC']):
+def analyze_raw_data_per_scan_parameter(input_file, output_file_hits, scan_data_filename, scan_parameters):
+    
     with AnalyzeRawData(raw_data_file=input_file, analyzed_data_file=output_file_hits) as analyze_raw_data:
         analyze_raw_data.create_hit_table = True  # can be set to false to omit hit table creation, std. setting is false
         analyze_raw_data.create_tot_hist = True  # creates a ToT histogram

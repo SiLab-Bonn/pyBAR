@@ -42,7 +42,6 @@ install:
 #  - unzip iverilog-master.zip
 #  - cd iverilog-master && autoconf && ./configure && make && sudo make install && cd ..
   # Install pybar
-  - cd host
   - python setup.py develop
 # Run test
 script:

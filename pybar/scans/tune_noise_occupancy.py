@@ -75,7 +75,7 @@ class NoiseOccupancyScan(Fei4RunBase):
         # preload command
         lvl1_command = self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", length=self.trigger_rate_limit)[0]
         self.total_scan_time = int(lvl1_command.length() * 25 * (10 ** -9) * self.n_triggers)
-        logging.info('Estimated scan time: %ds' % self.total_scan_time)
+        logging.info('Estimated scan time: %ds', self.total_scan_time)
 
         with self.readout(reset_sram_fifo=False, clear_buffer=True, callback=self.handle_data, errback=self.handle_err, no_data_timeout=self.no_data_timeout):
             got_data = False

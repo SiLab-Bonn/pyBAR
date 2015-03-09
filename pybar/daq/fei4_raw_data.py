@@ -1,5 +1,4 @@
 import logging
-from sys import maxint
 import glob
 import zmq
 from threading import RLock
@@ -64,7 +63,7 @@ class RawDataFile(object):
         if mode and mode[0] == 'w':
             h5_files = glob.glob(os.path.splitext(filename)[0] + '*.h5')
             if h5_files:
-                logging.info('Removing following file(s): %s' % ', '.join(h5_files))
+                logging.info('Removing following file(s): %s', ', '.join(h5_files))
             for h5_file in h5_files:
                 remove(h5_file)
         # list of filenames and index
@@ -88,9 +87,9 @@ class RawDataFile(object):
         if os.path.splitext(filename)[1].strip().lower() != '.h5':
             filename = os.path.splitext(filename)[0] + '.h5'
         if os.path.isfile(filename) and mode in ('r+', 'a'):
-            logging.info('Opening existing raw data file: %s' % filename)
+            logging.info('Opening existing raw data file: %s', filename)
         else:
-            logging.info('Opening new raw data file: %s' % filename)
+            logging.info('Opening new raw data file: %s', filename)
 
         filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
         filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
@@ -113,7 +112,7 @@ class RawDataFile(object):
     def close(self):
         with self.lock:
             self.flush()
-            logging.info('Closing raw data file: %s' % self.h5_file.filename)
+            logging.info('Closing raw data file: %s', self.h5_file.filename)
             self.h5_file.close()
 
     def append_item(self, data_tuple, scan_parameters=None, new_file=False, flush=True):
@@ -144,18 +143,18 @@ class RawDataFile(object):
             total_words = self.raw_data_earray.nrows
             raw_data = data_tuple[0]
             len_raw_data = raw_data.shape[0]
-            if total_words + len_raw_data > maxint:
-                    index = self.filenames.get(self.curr_filename, 0) + 1  # reached file size limit, increase index by one
-                    self.filenames[self.curr_filename] = index  # update dict
-                    filename = self.curr_filename + '_' + str(index) + '.h5'
-                    # copy nodes to new file
-                    nodes = self.h5_file.list_nodes('/', classname='Group')
-                    with tb.open_file(filename, mode='a', title=filename) as h5_file:  # append, since file can already exists when scan parameters are jumping back and forth
-                        for node in nodes:
-                            self.h5_file.copy_node(node, h5_file.root, overwrite=True, recursive=True)
-                    self.close()
-                    self.open(filename, 'a', filename)
-                    total_words = self.raw_data_earray.nrows  # in case of re-opening existing file
+            if total_words + len_raw_data > 4000000000:  # our read out does support 2^32 long raw data arrays
+                index = self.filenames.get(self.curr_filename, 0) + 1  # reached file size limit, increase index by one
+                self.filenames[self.curr_filename] = index  # update dict
+                filename = self.curr_filename + '_' + str(index) + '.h5'
+                # copy nodes to new file
+                nodes = self.h5_file.list_nodes('/', classname='Group')
+                with tb.open_file(filename, mode='a', title=filename) as h5_file:  # append, since file can already exists when scan parameters are jumping back and forth
+                    for node in nodes:
+                        self.h5_file.copy_node(node, h5_file.root, overwrite=True, recursive=True)
+                self.close()
+                self.open(filename, 'a', filename)
+                total_words = self.raw_data_earray.nrows  # in case of re-opening existing file
             self.raw_data_earray.append(raw_data)
             self.meta_data_table.row['timestamp_start'] = data_tuple[1]
             self.meta_data_table.row['timestamp_stop'] = data_tuple[2]
@@ -188,10 +187,12 @@ class RawDataFile(object):
                 self.scan_param_table.flush()
 
 
-def save_raw_data_from_data_queue(data_queue, filename, mode='a', title='', scan_parameters={}, **kwargs):  # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created
+def save_raw_data_from_data_queue(data_queue, filename, mode='a', title='', scan_parameters=None, **kwargs):  # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created
     '''Writing raw data file from data queue
 
     If you need to write raw data once in a while this function may make it easy for you.
     '''
+    if not scan_parameters:
+        scan_parameters = {}
     with open_raw_data_file(filename, mode='a', title='', scan_parameters=list(dict.iterkeys(scan_parameters)), **kwargs) as raw_data_file:
         raw_data_file.append(data_queue, scan_parameters=scan_parameters, **kwargs)

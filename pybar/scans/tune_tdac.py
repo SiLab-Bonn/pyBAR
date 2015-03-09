@@ -74,10 +74,10 @@ class TdacTuning(Fei4RunBase):
         for scan_parameter_value, tdac_bit in enumerate(self.tdac_tune_bits):
             if additional_scan:
                 self.set_tdac_bit(tdac_bit)
-                logging.info('TDAC setting: bit %d = 1' % tdac_bit)
+                logging.info('TDAC setting: bit %d = 1', tdac_bit)
             else:
                 self.set_tdac_bit(tdac_bit, bit_value=0)
-                logging.info('TDAC setting: bit %d = 0' % tdac_bit)
+                logging.info('TDAC setting: bit %d = 0', tdac_bit)
 
             self.write_tdac_config()
 

@@ -99,7 +99,7 @@ class FifoReadout(object):
         else:
             fifo_size = self.dut['sram']['FIFO_SIZE']
             if fifo_size != 0:
-                logging.warning('SRAM FIFO not empty when starting FIFO readout: size = %i' % fifo_size)
+                logging.warning('SRAM FIFO not empty when starting FIFO readout: size = %i', fifo_size)
         self._words_per_read.clear()
         if clear_buffer:
             self._data_deque.clear()
@@ -150,8 +150,8 @@ class FifoReadout(object):
         sync_status = self.get_rx_sync_status()
         discard_count = self.get_rx_fifo_discard_count()
         error_count = self.get_rx_8b10b_error_count()
-        logging.info('Data queue size: %d' % len(self._data_deque))
-        logging.info('SRAM FIFO size: %d' % self.dut['sram']['FIFO_SIZE'])
+        logging.info('Data queue size: %d', len(self._data_deque))
+        logging.info('SRAM FIFO size: %d', self.dut['sram']['FIFO_SIZE'])
         logging.info('Channel:                     %s', " | ".join([('CH%d' % channel).rjust(3) for channel in range(1, len(sync_status) + 1, 1)]))
         logging.info('RX sync:                     %s', " | ".join(["YES".rjust(3) if status is True else "NO".rjust(3) for status in sync_status]))
         logging.info('RX FIFO discard counter:     %s', " | ".join([repr(count).rjust(3) for count in discard_count]))
@@ -235,7 +235,7 @@ class FifoReadout(object):
                 if any(self.get_rx_fifo_discard_count()):
                     raise FifoError('RX FIFO discard error(s) detected')
             except Exception:
-                    self.errback(sys.exc_info())
+                self.errback(sys.exc_info())
             if self.stop_readout.wait(self.readout_interval * 10):
                 break
         logging.debug('Stopped %s' % (self.watchdog_thread.name,))
@@ -263,18 +263,18 @@ class FifoReadout(object):
 
     def reset_sram_fifo(self):
         fifo_size = self.dut['sram']['FIFO_SIZE']
-        logging.info('Resetting SRAM FIFO: size = %i' % fifo_size)
+        logging.info('Resetting SRAM FIFO: size = %i', fifo_size)
         self.update_timestamp()
         self.dut['sram']['RESET']
         sleep(0.2)  # sleep here for a while
         fifo_size = self.dut['sram']['FIFO_SIZE']
         if fifo_size != 0:
-            logging.warning('SRAM FIFO not empty after reset: size = %i' % fifo_size)
+            logging.warning('SRAM FIFO not empty after reset: size = %i', fifo_size)
 
     def reset_rx(self, channels=None):
         logging.info('Resetting RX')
         if channels:
-            filter(lambda channel: self.dut[channel]['RESET'], channels)
+            filter(lambda channel: self.dut[channel]['RX_RESET'], channels)
         else:
             if self.dut.name == 'mio':
                 filter(lambda channel: self.dut[channel]['RESET'], ['rx_1', 'rx_2', 'rx_3', 'rx_4'])

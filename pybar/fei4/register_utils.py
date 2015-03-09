@@ -22,14 +22,14 @@ class FEI4RegisterUtils(object):
         self.zero_cmd_padded.fill()
 
     def add_commands(self, x, y):
-            return x + self.zero_cmd + y  # FE needs a zero bits between commands
+        return x + self.zero_cmd + y  # FE needs a zero bits between commands
 
     def add_byte_padded_commands(self, x, y):
-            x_fill = x.copy()
-            x_fill.fill()
-            y_fill = y.copy()
-            y_fill.fill()
-            return x_fill + self.zero_cmd_padded + y_fill  # FE needs a zero between commands
+        x_fill = x.copy()
+        x_fill.fill()
+        y_fill = y.copy()
+        y_fill.fill()
+        return x_fill + self.zero_cmd_padded + y_fill  # FE needs a zero between commands
 
     def concatenate_commands(self, commands, byte_padding=False):
         if byte_padding:
@@ -201,11 +201,9 @@ class FEI4RegisterUtils(object):
         commands.extend(self.register.get_commands("WrRegister", name=["Vthin_AltFine", "Vthin_AltCoarse"]))
         commands.extend(self.register.get_commands("RunMode"))
         self.send_commands(commands)
-        logging.info("Setting GDAC to %d (VthinAltCoarse / VthinAltFine = %d / %d)" % (value, self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine")))
+        logging.info("Setting GDAC to %d (VthinAltCoarse / VthinAltFine = %d / %d)", value, self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine"))
 
     def get_gdac(self, altc, altf):
-#         altc = self.register.get_global_register_value("Vthin_AltCoarse")  # take every second AltCoarse value
-#         altf = self.register.get_global_register_value("Vthin_AltFine")  # take low word
         if self.register.fei4b:
             value = altf & 0xff
             altc &= ~0x01
@@ -264,9 +262,9 @@ def read_chip_sn(self):
     if len(read_values) == 0:
         logging.error('No Chip S/N was found')
     elif len(read_values) == 1:
-        logging.info('Chip S/N: %d' % read_values[0])
+        logging.info('Chip S/N: %d', read_values[0])
     else:
-        logging.warning('Ambiguous Chip S/N: %s' % read_values)
+        logging.warning('Ambiguous Chip S/N: %s', read_values)
 
 
 def test_global_register(self):
@@ -308,10 +306,10 @@ def test_global_register(self):
                     pass
                 else:
                     number_of_errors += 1
-                    logging.warning('Global Register Test: Wrong data for Global Register at address %d (read: %d, expected: %d)' % (fei4_data_word['address'], read_value, set_value))
+                    logging.warning('Global Register Test: Wrong data for Global Register at address %d (read: %d, expected: %d)', fei4_data_word['address'], read_value, set_value)
             else:
                 number_of_errors += 1
-                logging.warning('Global Register Test: Expected Value Record but found %s' % fei4_next_data_word)
+                logging.warning('Global Register Test: Expected Value Record but found %s', fei4_next_data_word)
 
     commands = []
     commands.extend(self.register.get_commands("RunMode"))
@@ -320,7 +318,7 @@ def test_global_register(self):
     not_read_registers = list(not_read_registers)
     not_read_registers.sort()
     for address in not_read_registers:
-        logging.error('Global Register Test: Data for Global Register at address %d missing' % address)
+        logging.error('Global Register Test: Data for Global Register at address %d missing', address)
         number_of_errors += 1
     logging.info('Global Register Test: Found %d error(s)' % number_of_errors)
 
@@ -411,9 +409,9 @@ def test_pixel_register(self):
                 data = self.fifo_readout.read_data()
                 if data.shape[0] == 0:  # no data
                     if do_latch:
-                        logging.error('Pixel Register Test: No data from PxStrobes Bit %d at DC %d' % (pxstrobe + pxstrobe_bit_no, dc_no))
+                        logging.error('Pixel Register Test: No data from PxStrobes Bit %d at DC %d', pxstrobe + pxstrobe_bit_no, dc_no)
                     else:
-                        logging.error('Pixel Register Test: No data from PxStrobes Bit SR at DC %d' % dc_no)
+                        logging.error('Pixel Register Test: No data from PxStrobes Bit SR at DC %d', dc_no)
                     number_of_errors += 1
                 else:
                     expected_addresses = range(15, 672, 16)
@@ -431,9 +429,9 @@ def test_pixel_register(self):
                                 read_address = fei4_data['address']
                                 if read_address not in expected_addresses:
                                     if do_latch:
-                                        logging.warning('Pixel Register Test: Wrong address for PxStrobes Bit %d at DC %d at address %d' % (pxstrobe + pxstrobe_bit_no, dc_no, read_address))
+                                        logging.warning('Pixel Register Test: Wrong address for PxStrobes Bit %d at DC %d at address %d', pxstrobe + pxstrobe_bit_no, dc_no, read_address)
                                     else:
-                                        logging.warning('Pixel Register Test: Wrong address for PxStrobes Bit SR at DC %d at address %d' % (dc_no, read_address))
+                                        logging.warning('Pixel Register Test: Wrong address for PxStrobes Bit SR at DC %d at address %d', dc_no, read_address)
                                     number_of_errors += 1
                                 else:
                                     if read_address not in seen_addresses:
@@ -449,19 +447,19 @@ def test_pixel_register(self):
                                         else:
                                             number_of_errors += 1
                                             if do_latch:
-                                                logging.warning('Pixel Register Test: Wrong value at PxStrobes Bit %d at DC %d at address %d (read: %d, expected: %d)' % (pxstrobe + pxstrobe_bit_no, dc_no, read_address, read_value, set_value))
+                                                logging.warning('Pixel Register Test: Wrong value at PxStrobes Bit %d at DC %d at address %d (read: %d, expected: %d)', pxstrobe + pxstrobe_bit_no, dc_no, read_address, read_value, set_value)
                                             else:
-                                                logging.warning('Pixel Register Test: Wrong value at PxStrobes Bit SR at DC %d at address %d (read: %d, expected: %d)' % (dc_no, read_address, read_value, set_value))
+                                                logging.warning('Pixel Register Test: Wrong value at PxStrobes Bit SR at DC %d at address %d (read: %d, expected: %d)', dc_no, read_address, read_value, set_value)
                                     else:
                                         seen_addresses[read_address] = seen_addresses[read_address] + 1
                                         number_of_errors += 1
                                         if do_latch:
-                                            logging.warning('Pixel Register Test: Multiple occurrence of data for PxStrobes Bit %d at DC %d at address %d' % (pxstrobe + pxstrobe_bit_no, dc_no, read_address))
+                                            logging.warning('Pixel Register Test: Multiple occurrence of data for PxStrobes Bit %d at DC %d at address %d', pxstrobe + pxstrobe_bit_no, dc_no, read_address)
                                         else:
-                                            logging.warning('Pixel Register Test: Multiple occurrence of data for PxStrobes Bit SR at DC %d at address %d' % (dc_no, read_address))
+                                            logging.warning('Pixel Register Test: Multiple occurrence of data for PxStrobes Bit SR at DC %d at address %d', dc_no, read_address)
                             else:
                                 # number_of_errors += 1  # will be increased later
-                                logging.warning('Pixel Register Test: Expected Value Record but found %s' % fei4_next_data_word)
+                                logging.warning('Pixel Register Test: Expected Value Record but found %s', fei4_next_data_word)
 
                     not_read_addresses = set.difference(set(expected_addresses), seen_addresses.iterkeys())
                     not_read_addresses = list(not_read_addresses)
@@ -469,9 +467,9 @@ def test_pixel_register(self):
                     for address in not_read_addresses:
                         number_of_errors += 1
                         if do_latch:
-                            logging.warning('Pixel Register Test: Missing data from PxStrobes Bit %d at DC %d at address %d' % (pxstrobe + pxstrobe_bit_no, dc_no, address))
+                            logging.warning('Pixel Register Test: Missing data from PxStrobes Bit %d at DC %d at address %d', pxstrobe + pxstrobe_bit_no, dc_no, address)
                         else:
-                            logging.warning('Pixel Register Test: Missing data at PxStrobes Bit SR at DC %d at address %d' % (dc_no, address))
+                            logging.warning('Pixel Register Test: Missing data at PxStrobes Bit SR at DC %d at address %d', dc_no, address)
 
 #                        for word in data:
 #                            print FEI4Record(word, self.register.chip_flavor)
@@ -491,17 +489,18 @@ def test_pixel_register(self):
     commands.extend(self.register.get_commands("RunMode"))
     self.register_utils.send_commands(commands)
 
-    logging.info('Pixel Register Test: Found %d error(s)' % number_of_errors)
+    logging.info('Pixel Register Test: Found %d error(s)', number_of_errors)
 
 
-def read_pixel_register(self, pix_regs=["EnableDigInj", "Imon", "Enable", "C_High", "C_Low", "TDAC", "FDAC"], dcs=range(40), overwrite_config=False):
+def read_pixel_register(self, pix_regs=None, dcs=range(40), overwrite_config=False):
     '''Reads the pixel register, interprets the data and returns a masked numpy arrays with the data for the chosen pixel register.
     Pixels without any data are masked.
 
     Parameters
     ----------
-    pix_regs : iterable, int
+    pix_regs : iterable, string
         List of pixel register to read (e.g. Enable, C_High, ...).
+        If None all are read: "EnableDigInj", "Imon", "Enable", "C_High", "C_Low", "TDAC", "FDAC"
     dcs : iterable, int
         List of double columns to read.
     overwrite_config : bool
@@ -512,6 +511,9 @@ def read_pixel_register(self, pix_regs=["EnableDigInj", "Imon", "Enable", "C_Hig
     list of masked numpy.ndarrays
     '''
     result = []
+
+    if pix_regs is None:
+        pix_regs = ["EnableDigInj", "Imon", "Enable", "C_High", "C_Low", "TDAC", "FDAC"]
 
     for pix_reg in pix_regs:
         pixel_data = np.ma.masked_array(np.zeros(shape=(80, 336), dtype=np.uint32), mask=True)  # the result pixel array, only pixel with data are not masked
@@ -763,7 +765,7 @@ def parse_key_value_from_file(f, key, deletechars=''):
             return None
 
 
-def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=False, bol_function=None, eol_function=None, digital_injection=False, enable_shift_masks=["Enable", "C_High", "C_Low"], disable_shift_masks=[], restore_shift_masks=True, mask=None, double_column_correction=False):
+def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=False, bol_function=None, eol_function=None, digital_injection=False, enable_shift_masks=None, disable_shift_masks=None, restore_shift_masks=True, mask=None, double_column_correction=False):
     '''Implementation of the scan loops (mask shifting, loop over double columns, repeatedly sending any arbitrary command).
 
     Parameters
@@ -789,9 +791,9 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
     digital_injection : bool
         Enables digital injection. C_High and C_Low will be disabled.
     enable_shift_masks : list, tuple
-        List of enable pixel masks which will be shifted during scan. Mask set to 1 for selected pixels else 0.
+        List of enable pixel masks which will be shifted during scan. Mask set to 1 for selected pixels else 0. None will select "Enable", "C_High", "C_Low".
     disable_shift_masks : list, tuple
-        List of disable pixel masks which will be shifted during scan. Mask set to 0 for selected pixels else 1.
+        List of disable pixel masks which will be shifted during scan. Mask set to 0 for selected pixels else 1. None will disable no mask.
     restore_shift_masks : bool
         Writing the initial (restored) FE pixel configuration into FE after finishing the scan loop.
     mask : array-like
@@ -801,6 +803,12 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
     '''
     if not isinstance(command, bitarray):
         raise TypeError
+
+    if enable_shift_masks is None:
+        enable_shift_masks = ["Enable", "C_High", "C_Low"]
+
+    if disable_shift_masks is None:
+        disable_shift_masks = []
 
     # get PlsrDAC correction
     if isinstance(double_column_correction, basestring):  # from file
@@ -929,7 +937,7 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
                 self.register.set_global_register_value("DIGHITIN_SEL", 1)
                 commands.extend(self.register.get_commands("WrRegister", name=["DIGHITIN_SEL"]))
         self.register_utils.send_commands(commands, concatenate=True)
-        logging.info('%d injection(s): mask step %d %s' % (repeat_command, mask_step, ('[%d - %d]' % (enable_mask_steps[0], enable_mask_steps[-1])) if len(enable_mask_steps) > 1 else ('[%d]' % enable_mask_steps[0])))
+        logging.info('%d injection(s): mask step %d %s', repeat_command, mask_step, ('[%d - %d]' % (enable_mask_steps[0], enable_mask_steps[-1])) if len(enable_mask_steps) > 1 else ('[%d]' % enable_mask_steps[0]))
 
         if same_mask_for_all_dc:  # fast loop
             # set repeat, should be 1 by default when arriving here

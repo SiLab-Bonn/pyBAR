@@ -51,7 +51,13 @@ data_interpreter.cpp
 # some pyBAR scan data folders, how to get all new folders?
 module_*/
 scc_*/
+proto_*/
 # PyDev files
-.project
-.pydevproject
-.vcd
+*.project
+*.pydevproject
+*.vcd
+# Profiling files
+*.lprof
+# Other files
+*.png
+*.pdf

@@ -98,13 +98,12 @@ def plot_linear_relation(x, y, x_err=None, y_err=None, title=None, point_label=N
         for X, Y, Z in zip(x, y, point_label):
             ax.annotate('{}'.format(Z), xy=(X, Y), xytext=(-5, 5), ha='right', textcoords='offset points')
     # line fit
-    line_fit, pcov = np.polyfit(x, y, 1, full=False, cov=True)
-#     print pcov
+    # line_fit, pcov
+    line_fit, _ = np.polyfit(x, y, 1, full=False, cov=True)
 #     chi_squared = np.sum((np.polyval(line_fit, x) - y) ** 2)
     fit_fn = np.poly1d(line_fit)
     ax.plot(x, fit_fn(x), '-', lw=2, color='gray')
-    line_fit_legend_entry = 'line fit: ax + b\na=$%.2f\pm%.2f$\nb=$%.2f\pm%.2f$' % (line_fit[0], np.absolute(pcov[0][0]) ** 0.5, abs(line_fit[1]), np.absolute(pcov[1][1]) ** 0.5)
-
+#     line_fit_legend_entry = 'line fit: ax + b\na=$%.2f\pm%.2f$\nb=$%.2f\pm%.2f$' % (line_fit[0], np.absolute(pcov[0][0]) ** 0.5, abs(line_fit[1]), np.absolute(pcov[1][1]) ** 0.5)
 #     fig.legend(["data", line_fit_legend_entry], 0)
     setp(ax.get_xticklabels(), visible=False)  # remove ticks at common border of both plots
 
@@ -252,7 +251,8 @@ def plot_occupancy(hist, title='Occupancy', z_max=None, filename=None):
 
 
 def make_occupancy_hist(cols, rows, ncols=80, nrows=336):
-    hist, xedges, yedges = np.histogram2d(rows, cols, bins=(nrows, ncols), range=[[1, nrows], [1, ncols]])
+    # hist, xedges, yedges
+    hist, _, _ = np.histogram2d(rows, cols, bins=(nrows, ncols), range=[[1, nrows], [1, ncols]])
 #     extent = [yedges[0] - 0.5, yedges[-1] + 0.5, xedges[-1] + 0.5, xedges[0] - 0.5]
 
     return np.ma.masked_equal(hist, 0)  # , extent
@@ -311,7 +311,7 @@ def plot_profile_histogram(x, y, n_bins=100, title=None, x_label=None, y_label=N
 
 
 def plot_scatter(x, y, x_err=None, y_err=None, title=None, legend=None, plot_range=None, plot_range_y=None, x_label=None, y_label=None, marker_style='-o', log_x=False, log_y=False, filename=None):
-    logging.info("Plot scatter plot %s" % ((': ' + title) if title is not None else ''))
+    logging.info('Plot scatter plot %s', (': ' + title) if title is not None else '')
     fig = Figure()
     canvas = FigureCanvas(fig)
     ax = fig.add_subplot(111)
@@ -375,7 +375,7 @@ def plot_correlation(hist, title="Hit correlation", xlabel=None, ylabel=None, fi
 
 
 def plot_pixel_matrix(hist, title="Hit correlation", filename=None):
-    logging.info("Plotting pixel matrix: " + title)
+    logging.info("Plotting pixel matrix: %s", title)
     fig = Figure()
     canvas = FigureCanvas(fig)
     ax = fig.add_subplot(111)
@@ -521,7 +521,7 @@ def plot_scurves(occupancy_hist, scan_parameters, title='S-Curves', ylabel='Occu
 
 
 def plot_scatter_time(x, y, yerr=None, title=None, legend=None, plot_range=None, plot_range_y=None, x_label=None, y_label=None, marker_style='-o', log_x=False, log_y=False, filename=None):
-    logging.info("Plot time scatter plot %s" % ((': ' + title) if title is not None else ''))
+    logging.info("Plot time scatter plot %s", (': ' + title) if title is not None else '')
     fig = Figure()
     canvas = FigureCanvas(fig)
     ax = fig.add_subplot(111)
@@ -591,7 +591,7 @@ def plot_cluster_tot_size(hist, median=False, z_max=None, filename=None):
 
 
 def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=None, x_ticks=None, color='r', plot_range=None, log_y=False, filename=None, figure_name=None):
-    logging.info("Plot 1d histogram%s" % ((': ' + title) if title is not None else ''))
+    logging.info('Plot 1d histogram%s', (': ' + title) if title is not None else '')
     fig = Figure()
     canvas = FigureCanvas(fig)
     ax = fig.add_subplot(111)
@@ -713,9 +713,9 @@ def create_1d_hist(fig, ax, hist, title=None, x_axis_title=None, y_axis_title=No
         props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
         ax.text(0.85, 0.9, textright, transform=ax.transAxes, fontsize=8, verticalalignment='top', bbox=props)
     except RuntimeError, e:
-        logging.info('Plot 1d histogram: gauss fit failed, %s' % e)
+        logging.info('Plot 1d histogram: gauss fit failed, %s', e)
     except TypeError, e:
-        logging.info('Plot 1d histogram: gauss fit failed, %s' % e)
+        logging.info('Plot 1d histogram: gauss fit failed, %s', e)
     textleft = '$\mathrm{mean}=%.2f$\n$\mathrm{RMS}=%.2f$\n$\mathrm{median}=%.2f$' % (mean, rms, median)
     props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
     ax.text(0.1, 0.9, textleft, transform=ax.transAxes, fontsize=8, verticalalignment='top', bbox=props)
@@ -765,7 +765,7 @@ def plotThreeWay(hist, title, filename=None, x_axis_title=None, minimum=None, ma
     canvas = FigureCanvas(fig)
     fig.patch.set_facecolor('white')
     ax1 = fig.add_subplot(311)
-    create_2d_pixel_hist(fig, ax1, hist, title=title, x_axis_title="column", y_axis_title="row", z_min = minimum if minimum else 0, z_max=maximum)
+    create_2d_pixel_hist(fig, ax1, hist, title=title, x_axis_title="column", y_axis_title="row", z_min=minimum if minimum else 0, z_max=maximum)
     ax2 = fig.add_subplot(312)
     create_1d_hist(fig, ax2, hist, bins=bins, x_axis_title=x_axis_title, y_axis_title="#", x_min=minimum, x_max=maximum)
     ax3 = fig.add_subplot(313)
