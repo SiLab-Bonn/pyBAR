@@ -3,7 +3,7 @@
 <!--                                                         -->
 <!-- Copyright (c) 2001-2013 Xilinx Inc, All rights reserved -->
 
-<Project Version="7" Minor="0" Path="C:/Users/vfilimonov/workspacePY/PyBAR/device/mio3/vivado/mio3.xpr">
+<Project Version="7" Minor="0" Path="C:/Users/vfilimonov/workspacePY/pyBAR/firmware/mio3/vivado/mio3.xpr">
   <DefaultLaunch Dir="$PRUNDIR"/>
   <Configuration>
     <Option Name="Id" Val="bc37f16bf3ba489b8537d2c52c7a5ef3"/>
