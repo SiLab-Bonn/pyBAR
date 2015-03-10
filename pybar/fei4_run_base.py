@@ -35,13 +35,13 @@ class Fei4RunBase(RunBase):
         if 'send_data' not in self._default_run_conf:
             self._default_run_conf.update({'send_data': None})
         self._default_run_conf.update({'comment': None})
+        self._default_run_conf.update({'reset_rx_on_error': None})
 
         super(Fei4RunBase, self).__init__(conf=conf, run_conf=run_conf)
 
         self.err_queue = Queue()
         self.fifo_readout = None
         self.raw_data_file = None
-        self.ignore_rx_errors = False
 
     @property
     def working_dir(self):
@@ -251,12 +251,9 @@ class Fei4RunBase(RunBase):
         if not self.err_queue.empty():
             exc = self.err_queue.get()
             # well known errors
-            if isinstance(exc[1], (FifoError, NoDataTimeout, StopTimeout)):
+            if isinstance(exc[1], (RxSyncError, EightbTenbError, FifoError, NoDataTimeout, StopTimeout)):
                 raise RunAborted(exc[1])
             # some other error via handle_err(), print to crash.log
-            elif isinstance(exc[1], (RxSyncError, EightbTenbError)):
-                if not self.ignore_rx_errors:
-                    raise RunAborted(exc[1])
             else:
                 raise exc[0], exc[1], exc[2]
         elif self.abort_run.is_set():
@@ -290,8 +287,11 @@ class Fei4RunBase(RunBase):
         self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=False)
 
     def handle_err(self, exc):
-        self.err_queue.put(exc)
-        if not self.ignore_rx_errors:
+        if self.reset_rx_on_error and isinstance(exc[1], (RxSyncError, EightbTenbError)):
+            self.fifo_readout.print_readout_status()
+            self.fifo_readout.reset_rx()
+        else:
+            self.err_queue.put(exc)
             self.abort(msg='%s' % exc[1])
 
     def _get_configuration(self, run_number=None):
@@ -352,7 +352,6 @@ class Fei4RunBase(RunBase):
         reset_sram_fifo = kwargs.pop('reset_sram_fifo', False)
         errback = kwargs.pop('errback', self.handle_err)
         no_data_timeout = kwargs.pop('no_data_timeout', None)
-        self.ignore_rx_errors = kwargs.pop('ignore_rx_errors', False)
         if args or kwargs:
             self.set_scan_parameters(*args, **kwargs)
         self.fifo_readout.start(reset_sram_fifo=reset_sram_fifo, fill_buffer=fill_buffer, clear_buffer=clear_buffer, callback=callback, errback=errback, no_data_timeout=no_data_timeout)
