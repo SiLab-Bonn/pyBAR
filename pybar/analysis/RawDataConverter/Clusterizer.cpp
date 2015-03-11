@@ -793,8 +793,8 @@ void Clusterizer::showHits()
 
 void Clusterizer::addCluster()
 {
-	_actualClusterX/=_actualClusterCharge;  // normalize cluster x position
-	_actualClusterY/=_actualClusterCharge;  // normalize cluster y position
+	_actualClusterX/=(_actualClusterCharge + 1);  // normalize cluster x position
+	_actualClusterY/=(_actualClusterCharge + 1);  // normalize cluster y position
 	if(_createClusterInfoArray){
 		if (_clusterInfo == 0)
 			throw std::runtime_error("Cluster info array is not defined and cannot be filled");
