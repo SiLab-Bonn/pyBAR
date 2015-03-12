@@ -10,7 +10,7 @@ from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.analysis.analysis import analyze_hits_per_scan_parameter
 
 
-def analyze_raw_data(input_file, output_file_hits, scan_data_filename):
+def analyze_raw_data(input_file, output_file_hits):
     with AnalyzeRawData(raw_data_file=input_file, analyzed_data_file=output_file_hits) as analyze_raw_data:
         analyze_raw_data.create_hit_table = False  # can be set to false to omit hit table creation, std. setting is false
         analyze_raw_data.create_cluster_hit_table = False  # adds the cluster id and seed info to each hit, std. setting is false
@@ -47,7 +47,7 @@ def analyze_raw_data(input_file, output_file_hits, scan_data_filename):
         analyze_raw_data.interpreter.debug_events(3832, 3850, False)  # events to be printed onto the console for debugging, usually deactivated
         analyze_raw_data.interpret_word_table()  # the actual start conversion command
         analyze_raw_data.interpreter.print_summary()  # prints the interpreter summary
-        analyze_raw_data.plot_histograms(scan_data_filename=scan_data_filename)  # plots all activated histograms into one pdf
+        analyze_raw_data.plot_histograms(pdf_filename=input_file)  # plots all activated histograms into one pdf
 
 
 def analyze_hits(input_file, output_file_hits, scan_data_filename, output_file_hits_analyzed=None):
@@ -62,7 +62,6 @@ def analyze_hits(input_file, output_file_hits, scan_data_filename, output_file_h
 
 
 def analyze_raw_data_per_scan_parameter(input_file, output_file_hits, scan_data_filename, scan_parameters):
-    
     with AnalyzeRawData(raw_data_file=input_file, analyzed_data_file=output_file_hits) as analyze_raw_data:
         analyze_raw_data.create_hit_table = True  # can be set to false to omit hit table creation, std. setting is false
         analyze_raw_data.create_tot_hist = True  # creates a ToT histogram
@@ -72,14 +71,14 @@ def analyze_raw_data_per_scan_parameter(input_file, output_file_hits, scan_data_
 
 
 if __name__ == "__main__":
-    scan_name = '73_mdbm_120_ext_trigger_gdac_scan'
-    folder = '..//mdbm_120//'
+    scan_name = r'1_module_test_fast_threshold_scan'
+    folder = r'/home/davidlp/git/pyBAR/pybar/module_test/'
     input_file = folder + scan_name + ".h5"
     output_file_hits = folder + scan_name + "_interpreted.h5"
     output_file_hits_analyzed = folder + scan_name + "_analyzed.h5"
     scan_data_filename = folder + scan_name
     start_time = datetime.now()
-    analyze_raw_data(input_file, output_file_hits, scan_data_filename)
+    analyze_raw_data(input_file, output_file_hits)
 #     analyze_raw_data_per_scan_parameter(input_file, output_file_hits, scan_data_filename, scan_parameters=['PlsrDAC'])
 #     analyze_hits(input_file, output_file_hits, scan_data_filename, output_file_hits_analyzed=output_file_hits_analyzed)
     logging.info('Script runtime %.1f seconds' % (datetime.now() - start_time).total_seconds())
