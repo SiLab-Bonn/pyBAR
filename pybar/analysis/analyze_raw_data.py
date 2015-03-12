@@ -4,11 +4,12 @@ from tables import dtype_from_descr, Col
 import numpy as np
 import logging
 import progressbar
+import warnings
 import os
-from scipy.optimize import curve_fit
-from scipy.special import erf
 import multiprocessing as mp
 from functools import partial
+from scipy.optimize import curve_fit, OptimizeWarning
+from scipy.special import erf
 from matplotlib.backends.backend_pdf import PdfPages
 
 from pybar.analysis import analysis_utils
@@ -33,7 +34,7 @@ def fit_scurve(scurve_data, PlsrDAC):  # data of some pixels to fit, has to be g
         popt = [0, 0, 0]
     else:
         try:
-            popt, _ = curve_fit(scurve, PlsrDAC, scurve_data, p0=[max_occ, threshold, 2.5])
+            popt, _ = curve_fit(scurve, PlsrDAC, scurve_data, p0=[max_occ, threshold, 2.5], check_finite=False)
         except RuntimeError:  # fit failed
             popt = [0, 0, 0]
     if popt[1] < 0:  # threshold < 0 rarely happens if fit does not work
@@ -41,39 +42,10 @@ def fit_scurve(scurve_data, PlsrDAC):  # data of some pixels to fit, has to be g
     return popt[1:3]
 
 
-def fit_scurves_subset(hist, PlsrDAC):
-    '''
-    Fits S-curve for each pixel
-
-    Parameters
-    ----------
-    hist : array like, shape = (number of pixel, PlsrDAC range)
-        Array of input y data.
-    PlsrDAC : array-like
-        Input x data.
-
-    Returns
-    -------
-    list with fit result tuples (amplitude, mu, sigma)
-    '''
-    result = []
-    n_failed_pxel_fits = 0
-    for iPixel in range(0, hist.shape[0]):
-        try:
-            popt, _ = curve_fit(scurve, PlsrDAC, hist[iPixel], p0=[100, 50, 3])
-        except RuntimeError:
-            popt = [0, 0, 0]
-            n_failed_pxel_fits = n_failed_pxel_fits + 1
-        result.append(popt[1:3])
-        if(iPixel % 2000 == 0):
-            logging.info('Fitting S-curve: %d%%', iPixel * 100. / 26880.)
-    logging.info('Fitting S-curve: 100%')
-    logging.info('S-curve fit failed for %d pixel', n_failed_pxel_fits)
-    return result
-
-
 class AnalyzeRawData(object):
+
     """A class to analyze FE-I4 raw data"""
+
     def __init__(self, raw_data_file=None, analyzed_data_file=None, create_pdf=False, scan_parameter_name=None):
         '''Initialize the AnalyzeRawData object:
             - The c++ objects (Interpreter, Histogrammer, Clusterizer) are constructed
@@ -166,7 +138,11 @@ class AnalyzeRawData(object):
         self.n_injections = 100
         self.n_bcid = 16
         self.max_tot_value = 13
+        self.vcal_c0, self.vcal_c1 = None, None
+        self.c_low, self.c_mid, self.c_high = None, None, None
+        self.c_low_mask, self.c_high_mask = None, None
         self._filter_table = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
+        warnings.simplefilter("ignore", OptimizeWarning)
         self.out_file_h5 = None
         self.meta_event_index = None
         self.fei4b = False
@@ -563,13 +539,10 @@ class AnalyzeRawData(object):
                     self.interpreter.interpret_raw_data(raw_data)  # interpret the raw data
                     if(index == len(self.files_dict.keys()) - 1 and iWord == range(0, table_size, self._chunk_size)[-1]):  # store hits of the latest event of the last file
                         self.interpreter.store_event()  # all actual buffered events in the interpreter are stored
-#                     Nhits = self.interpreter.get_n_array_hits()  # get the number of hits of the actual interpreted raw data chunk
                     hits = self.interpreter.get_hits()
                     if(self.scan_parameters is not None):
                         nEventIndex = self.interpreter.get_n_meta_data_event()
                         self.histograming.add_meta_event_index(self.meta_event_index, nEventIndex)
-#                     else:
-#                         self.histograming.set_no_scan_parameter()
                     if self.is_histogram_hits():
                         self.histogram_hits(hits)
                     if self.is_cluster_hits():
@@ -695,35 +668,29 @@ class AnalyzeRawData(object):
                 occupancy_array_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistOcc', title='Occupancy Histogram', atom=tb.Atom.from_dtype(self.occupancy.dtype), shape=(336, 80, self.histograming.get_n_parameters()), filters=self._filter_table)
                 occupancy_array_table[0:336, 0:80, 0:self.histograming.get_n_parameters()] = self.occupancy_array  # swap axis col,row,parameter --> row, col,parameter
         if (self._create_threshold_hists):
-            threshold = np.zeros(80 * 336, dtype=np.float64)
-            noise = np.zeros(80 * 336, dtype=np.float64)
-            # calling fast algorithm function: M. Mertens, PhD thesis, Juelich 2010
-            # note: noise zero if occupancy was zero
-            self.histograming.calculate_threshold_scan_arrays(threshold, noise, self._n_injection, np.amin(self.scan_parameters['PlsrDAC']), np.amax(self.scan_parameters['PlsrDAC']))
-            threshold_hist = np.reshape(a=threshold.view(), newshape=(80, 336), order='F')
-            noise_hist = np.reshape(a=noise.view(), newshape=(80, 336), order='F')
-            self.threshold_hist = np.swapaxes(threshold_hist, 0, 1)
-            self.noise_hist = np.swapaxes(noise_hist, 0, 1)
+            threshold, noise = np.zeros(80 * 336, dtype=np.float64), np.zeros(80 * 336, dtype=np.float64)
+            self.histograming.calculate_threshold_scan_arrays(threshold, noise, self._n_injection, np.amin(self.scan_parameters['PlsrDAC']), np.amax(self.scan_parameters['PlsrDAC']))  # calling fast algorithm function: M. Mertens, PhD thesis, Juelich 2010, note: noise zero if occupancy was zero
+            threshold_hist, noise_hist = np.reshape(a=threshold.view(), newshape=(80, 336), order='F'), np.reshape(a=noise.view(), newshape=(80, 336), order='F')
+            self.threshold_hist, self.noise_hist = np.swapaxes(threshold_hist, 0, 1), np.swapaxes(noise_hist, 0, 1)
             if (self._analyzed_data_file is not None and safe_to_file):
                 threshold_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistThreshold', title='Threshold Histogram', atom=tb.Atom.from_dtype(self.threshold_hist.dtype), shape=(336, 80), filters=self._filter_table)
-                threshold_hist_table[0:336, 0:80] = self.threshold_hist
+                threshold_hist_table[:] = self.threshold_hist
                 noise_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistNoise', title='Noise Histogram', atom=tb.Atom.from_dtype(self.noise_hist.dtype), shape=(336, 80), filters=self._filter_table)
-                noise_hist_table[0:336, 0:80] = self.noise_hist
-#                 if self._create_threshold_mask:
-#                     threshold_mask_table = self.out_file_h5.createCArray(self.out_file_h5.root, name = 'MaskThreshold', title = 'Threshold Mask', atom = tb.Atom.from_dtype(self.threshold_mask.dtype), shape = (336,80), filters = self._filter_table)
-#                     threshold_mask_table[0:336, 0:80] = self.threshold_mask
-#             if self._create_threshold_mask:
-#                 self.threshold_mask = analysis_utils.generate_threshold_mask(self.noise_hist)
+                noise_hist_table[:] = self.noise_hist
         if (self._create_fitted_threshold_hists):
             scan_parameters = np.linspace(np.amin(self.scan_parameters['PlsrDAC']), np.amax(self.scan_parameters['PlsrDAC']), num=self.histograming.get_n_parameters(), endpoint=True)
             self.scurve_fit_results = self.fit_scurves_multithread(self.out_file_h5, PlsrDAC=scan_parameters)
             if (self._analyzed_data_file is not None and safe_to_file):
                 fitted_threshold_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistThresholdFitted', title='Threshold Fitted Histogram', atom=tb.Atom.from_dtype(self.scurve_fit_results.dtype), shape=(336, 80), filters=self._filter_table)
-                fitted_threshold_hist_table[0:336, 0:80] = self.scurve_fit_results[:, :, 0]
                 fitted_noise_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistNoiseFitted', title='Noise Fitted Histogram', atom=tb.Atom.from_dtype(self.scurve_fit_results.dtype), shape=(336, 80), filters=self._filter_table)
-                fitted_noise_hist_table[0:336, 0:80] = self.scurve_fit_results[:, :, 1]
-#             if self._create_fitted_threshold_mask:
-#                 self.fitted_threshold_mask = analysis_utils.generate_threshold_mask(self.scurve_fit_results[:, :, 1])
+                fitted_threshold_hist_table.attrs.dimensions, fitted_noise_hist_table.attrs.dimensions = 'column, row, PlsrDAC', 'column, row, PlsrDAC'
+                fitted_threshold_hist_table[:], fitted_noise_hist_table[:] = self.scurve_fit_results[:, :, 0], self.scurve_fit_results[:, :, 1]
+
+                fitted_threshold_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistThresholdFittedCalib', title='Threshold Fitted Histogram with PlsrDAC clalibration', atom=tb.Atom.from_dtype(self.scurve_fit_results.dtype), shape=(336, 80), filters=self._filter_table)
+                fitted_noise_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistNoiseFittedCalib', title='Noise Fitted Histogram with PlsrDAC clalibration', atom=tb.Atom.from_dtype(self.scurve_fit_results.dtype), shape=(336, 80), filters=self._filter_table)
+                fitted_threshold_hist_table.attrs.dimensions, fitted_noise_hist_table.attrs.dimensions = 'column, row, electrons', 'column, row, electrons'
+                self.threshold_hist_calib, self.noise_hist_calib = self._get_plsr_dac_charge(self.scurve_fit_results[:, :, 0]), self._get_plsr_dac_charge(self.scurve_fit_results[:, :, 1])
+                fitted_threshold_hist_table[:], fitted_noise_hist_table[:] = self.threshold_hist_calib, self.noise_hist_calib
 
     def _create_additional_cluster_data(self, safe_to_file=True):
         logging.info('Create selected cluster histograms')
@@ -917,19 +884,17 @@ class AnalyzeRawData(object):
         logging.info('Saving histograms to PDF file: %s', str(output_pdf._file.fh.name))
 
         if (self._create_threshold_hists):
-            # use threshold mask if possible
-            if self._create_threshold_mask:
+            if self._create_threshold_mask:  # mask pixel with bad data for plotting
                 if out_file_h5 is not None:
                     self.threshold_mask = analysis_utils.generate_threshold_mask(out_file_h5.root.HistNoise[:, :])
                 else:
                     self.threshold_mask = analysis_utils.generate_threshold_mask(self.noise_hist)
-                threshold_hist = np.ma.array(out_file_h5.root.HistThreshold[:, :] if out_file_h5 is not None else self.threshold_hist, mask=self.threshold_mask)
-                noise_hist = np.ma.array(out_file_h5.root.HistNoise[:, :] if out_file_h5 is not None else self.noise_hist, mask=self.threshold_mask)
-                mask_cnt = np.ma.count_masked(noise_hist)
-                logging.info('Fast algorithm: masking %d pixel(s)', mask_cnt)
             else:
-                threshold_hist = out_file_h5.root.HistThreshold[:, :] if out_file_h5 is not None else self.threshold_hist
-                noise_hist = out_file_h5.root.HistNoise[:, :] if out_file_h5 is not None else self.noise_hist
+                self.threshold_mask = np.zeros_like(out_file_h5.root.HistThreshold[:, :] if out_file_h5 is not None else self.threshold_hist, dtype=np.bool)
+            threshold_hist = np.ma.array(out_file_h5.root.HistThreshold[:, :] if out_file_h5 is not None else self.threshold_hist, mask=self.threshold_mask)
+            noise_hist = np.ma.array(out_file_h5.root.HistNoise[:, :] if out_file_h5 is not None else self.noise_hist, mask=self.threshold_mask)
+            mask_cnt = np.ma.count_masked(noise_hist)
+            logging.info('Fast algorithm: masking %d pixel(s)', mask_cnt)
             plotting.plotThreeWay(hist=threshold_hist, title='Threshold%s' % ((' (masked %i pixel(s))' % mask_cnt) if self._create_threshold_mask else ''), x_axis_title="threshold [PlsrDAC]", filename=output_pdf, bins=100, minimum=0, maximum=maximum)
             plotting.plotThreeWay(hist=noise_hist, title='Noise%s' % ((' (masked %i pixel(s))' % mask_cnt) if self._create_threshold_mask else ''), x_axis_title="noise [PlsrDAC]", filename=output_pdf, bins=100, minimum=0, maximum=maximum)
         if (self._create_fitted_threshold_hists):
@@ -938,15 +903,18 @@ class AnalyzeRawData(object):
                     self.fitted_threshold_mask = analysis_utils.generate_threshold_mask(out_file_h5.root.HistNoiseFitted[:, :])
                 else:
                     self.fitted_threshold_mask = analysis_utils.generate_threshold_mask(self.scurve_fit_results[:, :, 1])
-                threshold_hist = np.ma.array(out_file_h5.root.HistThresholdFitted[:, :] if out_file_h5 is not None else self.scurve_fit_results[:, :, 0], mask=self.fitted_threshold_mask)
-                noise_hist = np.ma.array(out_file_h5.root.HistNoiseFitted[:, :] if out_file_h5 is not None else self.scurve_fit_results[:, :, 1], mask=self.fitted_threshold_mask)
-                mask_cnt = np.ma.count_masked(noise_hist)
-                logging.info('S-curve fit: masking %d pixel(s)', mask_cnt)
             else:
-                threshold_hist = out_file_h5.root.HistThresholdFitted[:, :] if out_file_h5 is not None else self.scurve_fit_results[:, :, 0]
-                noise_hist = out_file_h5.root.HistNoiseFitted[:, :] if out_file_h5 is not None else self.scurve_fit_results[:, :, 1]
-            plotting.plotThreeWay(hist=threshold_hist, title='Threshold (S-curve fit%s' % ((', masked %i pixel(s))' % mask_cnt) if self._create_fitted_threshold_mask else ')'), x_axis_title="threshold [PlsrDAC]", filename=output_pdf, bins=100, minimum=0, maximum=maximum)
-            plotting.plotThreeWay(hist=noise_hist, title='Noise (S-curve fit%s' % ((', masked %i pixel(s))' % mask_cnt) if self._create_fitted_threshold_mask else ')'), x_axis_title="noise [PlsrDAC]", filename=output_pdf, bins=100, minimum=0, maximum=maximum)
+                self.threshold_mask = np.zeros_like(out_file_h5.root.HistThresholdFitted[:, :] if out_file_h5 is not None else self.scurve_fit_results, dtype=np.bool8)
+            threshold_hist = np.ma.array(out_file_h5.root.HistThresholdFitted[:, :] if out_file_h5 is not None else self.scurve_fit_results[:, :, 0], mask=self.fitted_threshold_mask)
+            noise_hist = np.ma.array(out_file_h5.root.HistNoiseFitted[:, :] if out_file_h5 is not None else self.scurve_fit_results[:, :, 1], mask=self.fitted_threshold_mask)
+            threshold_hist_calib = np.ma.array(out_file_h5.root.HistThresholdFittedCalib[:] if out_file_h5 is not None else self.threshold_hist_calib[:], mask=self.fitted_threshold_mask)
+            noise_hist_calib = np.ma.array(out_file_h5.root.HistNoiseFittedCalib[:, :] if out_file_h5 is not None else self.noise_hist_calib[:], mask=self.fitted_threshold_mask)
+            mask_cnt = np.ma.count_masked(noise_hist)
+            logging.info('S-curve fit: masking %d pixel(s)', mask_cnt)
+            plotting.plotThreeWay(hist=threshold_hist, title='Threshold (S-curve fit, masked %i pixel(s))' % mask_cnt, x_axis_title="Threshold [PlsrDAC]", filename=output_pdf, bins=100, minimum=0, maximum=maximum)
+            plotting.plotThreeWay(hist=noise_hist, title='Noise (S-curve fit, masked %i pixel(s))' % mask_cnt, x_axis_title="Noise [PlsrDAC]", filename=output_pdf, bins=100, minimum=0, maximum=maximum)
+            plotting.plotThreeWay(hist=threshold_hist_calib, title='Threshold (S-curve fit, masked %i pixel(s))' % mask_cnt, x_axis_title="Threshold [e]", filename=output_pdf, bins=100, minimum=0)
+            plotting.plotThreeWay(hist=noise_hist_calib, title='Noise (S-curve fit, masked %i pixel(s))' % mask_cnt, x_axis_title="Noise [e]", filename=output_pdf, bins=100, minimum=0)
         if (self._create_occupancy_hist):
             if(self._create_threshold_hists):
                 plotting.plot_scurves(occupancy_hist=out_file_h5.root.HistOcc[:, :, :] if out_file_h5 is not None else self.occupancy_array[:, :, :], filename=output_pdf, scan_parameters=np.linspace(np.amin(self.scan_parameters['PlsrDAC']), np.amax(self.scan_parameters['PlsrDAC']), num=self.histograming.get_n_parameters(), endpoint=True))
@@ -998,24 +966,16 @@ class AnalyzeRawData(object):
             logging.info('Closing output PDF file: %s', str(output_pdf._file.fh.name))
             output_pdf.close()
 
-    def fit_scurves(self, hit_table_file=None, PlsrDAC=None):
-        occupancy_hist = hit_table_file.root.HistOcc[:, :, :] if hit_table_file is not None else self.occupancy_array[:, :, :]  # take data from RAM if no file was opened
-        occupancy_hist_shaped = occupancy_hist.reshape(occupancy_hist.shape[0] * occupancy_hist.shape[1], occupancy_hist.shape[2])
-        result_array = np.array(fit_scurves_subset(occupancy_hist_shaped[:], PlsrDAC=PlsrDAC))
-        return result_array.reshape(occupancy_hist.shape[0], occupancy_hist.shape[1], 2)
-
     def fit_scurves_multithread(self, hit_table_file=None, PlsrDAC=None):
         logging.info("Start S-curve fit on %d CPU core(s)", mp.cpu_count())
         occupancy_hist = hit_table_file.root.HistOcc[:, :, :] if hit_table_file is not None else self.occupancy_array[:, :, :]  # take data from RAM if no file is opened
         occupancy_hist_shaped = occupancy_hist.reshape(occupancy_hist.shape[0] * occupancy_hist.shape[1], occupancy_hist.shape[2])
         partialfit_scurve = partial(fit_scurve, PlsrDAC=PlsrDAC)  # trick to give a function more than one parameter, needed for pool.map
-        pool = mp.Pool(processes=mp.cpu_count())  # create as many workers as physical cores are available
+        pool = mp.Pool()  # create as many workers as physical cores are available
         try:
             result_list = pool.map(partialfit_scurve, occupancy_hist_shaped.tolist())
         except TypeError:
             raise analysis_utils.NotSupportedError('Less than 3 points found for S-curve fit.')
-        pool.close()
-        pool.join()  # blocking function until fit finished
         result_array = np.array(result_list)
         logging.info("S-curve fit finished")
         return result_array.reshape(occupancy_hist.shape[0], occupancy_hist.shape[1], 2)
@@ -1037,16 +997,38 @@ class AnalyzeRawData(object):
             return True
         return False
 
-    def _deduce_settings_from_file(self, opened_raw_data_file):
+    def _deduce_settings_from_file(self, opened_raw_data_file):  # TODO: parse better
         '''Tries to get the scan parameters needed for analysis from the raw data file
         '''
         try:  # take FE flavor info from raw data file, if this info is there
             flavor = opened_raw_data_file.root.configuration.miscellaneous[:][np.where(opened_raw_data_file.root.configuration.miscellaneous[:]['name'] == 'Flavor')]['value'][0]
             bcid = opened_raw_data_file.root.configuration.global_register[:][np.where(opened_raw_data_file.root.configuration.global_register[:]['name'] == 'Trig_Count')]['value'][0]
+            vcal_c0 = opened_raw_data_file.root.configuration.calibration_parameters[:][np.where(opened_raw_data_file.root.configuration.calibration_parameters[:]['name'] == 'Vcal_Coeff_0')]['value'][0]
+            vcal_c1 = opened_raw_data_file.root.configuration.calibration_parameters[:][np.where(opened_raw_data_file.root.configuration.calibration_parameters[:]['name'] == 'Vcal_Coeff_1')]['value'][0]
+            c_low = opened_raw_data_file.root.configuration.calibration_parameters[:][np.where(opened_raw_data_file.root.configuration.calibration_parameters[:]['name'] == 'C_Inj_Low')]['value'][0]
+            c_mid = opened_raw_data_file.root.configuration.calibration_parameters[:][np.where(opened_raw_data_file.root.configuration.calibration_parameters[:]['name'] == 'C_Inj_Med')]['value'][0]
+            c_high = opened_raw_data_file.root.configuration.calibration_parameters[:][np.where(opened_raw_data_file.root.configuration.calibration_parameters[:]['name'] == 'C_Inj_High')]['value'][0]
+            self.c_low_mask = opened_raw_data_file.root.configuration.C_Low[:]
+            self.c_high_mask = opened_raw_data_file.root.configuration.C_High[:]
             self.fei4b = False if str(flavor) == 'fei4a' else True
             self.n_bcid = int(bcid)
+            self.vcal_c0 = float(vcal_c0)
+            self.vcal_c1 = float(vcal_c1)
+            self.c_low = float(c_low)
+            self.c_mid = float(c_mid)
+            self.c_high = float(c_high)
         except tb.exceptions.NoSuchNodeError:
             logging.warning('No settings stored in raw data file, use provided settings')
+
+    def _get_plsr_dac_charge(self, plsr_dac_array):
+        '''Takes the PlsrDAC calibration and the stored C-high/C-low mask to calculate the charge from the PlsrDAC array on a pixel basis
+        '''
+        charge = np.zeros_like(self.c_low_mask, dtype=np.float16)  # charge in electrons
+        voltage = self.vcal_c0 + self.vcal_c1 * plsr_dac_array
+        charge[np.logical_and(self.c_low_mask, ~self.c_high_mask)] = voltage[np.logical_and(self.c_low_mask, ~self.c_high_mask)] * self.c_low / 0.16022
+        charge[np.logical_and(~self.c_low_mask, self.c_high_mask)] = voltage[np.logical_and(self.c_low_mask, ~self.c_high_mask)] * self.c_mid / 0.16022
+        charge[np.logical_and(self.c_low_mask, self.c_high_mask)] = voltage[np.logical_and(self.c_low_mask, ~self.c_high_mask)] * self.c_high / 0.16022
+        return charge
 
 if __name__ == "__main__":
     pass
