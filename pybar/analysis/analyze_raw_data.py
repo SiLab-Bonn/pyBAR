@@ -886,13 +886,13 @@ class AnalyzeRawData(object):
         if (self._create_threshold_hists):
             if self._create_threshold_mask:  # mask pixel with bad data for plotting
                 if out_file_h5 is not None:
-                    self.threshold_mask = analysis_utils.generate_threshold_mask(out_file_h5.root.HistNoise[:, :])
+                    self.threshold_mask = analysis_utils.generate_threshold_mask(out_file_h5.root.HistNoise[:])
                 else:
                     self.threshold_mask = analysis_utils.generate_threshold_mask(self.noise_hist)
             else:
-                self.threshold_mask = np.zeros_like(out_file_h5.root.HistThreshold[:, :] if out_file_h5 is not None else self.threshold_hist, dtype=np.bool)
-            threshold_hist = np.ma.array(out_file_h5.root.HistThreshold[:, :] if out_file_h5 is not None else self.threshold_hist, mask=self.threshold_mask)
-            noise_hist = np.ma.array(out_file_h5.root.HistNoise[:, :] if out_file_h5 is not None else self.noise_hist, mask=self.threshold_mask)
+                self.threshold_mask = np.zeros_like(out_file_h5.root.HistThreshold[:] if out_file_h5 is not None else self.threshold_hist, dtype=np.bool)
+            threshold_hist = np.ma.array(out_file_h5.root.HistThreshold[:] if out_file_h5 is not None else self.threshold_hist, mask=self.threshold_mask)
+            noise_hist = np.ma.array(out_file_h5.root.HistNoise[:] if out_file_h5 is not None else self.noise_hist, mask=self.threshold_mask)
             mask_cnt = np.ma.count_masked(noise_hist)
             logging.info('Fast algorithm: masking %d pixel(s)', mask_cnt)
             plotting.plotThreeWay(hist=threshold_hist, title='Threshold%s' % ((' (masked %i pixel(s))' % mask_cnt) if self._create_threshold_mask else ''), x_axis_title="threshold [PlsrDAC]", filename=output_pdf, bins=100, minimum=0, maximum=maximum)
@@ -900,15 +900,15 @@ class AnalyzeRawData(object):
         if (self._create_fitted_threshold_hists):
             if self._create_fitted_threshold_mask:
                 if out_file_h5 is not None:
-                    self.fitted_threshold_mask = analysis_utils.generate_threshold_mask(out_file_h5.root.HistNoiseFitted[:, :])
+                    self.fitted_threshold_mask = analysis_utils.generate_threshold_mask(out_file_h5.root.HistNoiseFitted[:])
                 else:
                     self.fitted_threshold_mask = analysis_utils.generate_threshold_mask(self.scurve_fit_results[:, :, 1])
             else:
-                self.threshold_mask = np.zeros_like(out_file_h5.root.HistThresholdFitted[:, :] if out_file_h5 is not None else self.scurve_fit_results, dtype=np.bool8)
-            threshold_hist = np.ma.array(out_file_h5.root.HistThresholdFitted[:, :] if out_file_h5 is not None else self.scurve_fit_results[:, :, 0], mask=self.fitted_threshold_mask)
-            noise_hist = np.ma.array(out_file_h5.root.HistNoiseFitted[:, :] if out_file_h5 is not None else self.scurve_fit_results[:, :, 1], mask=self.fitted_threshold_mask)
+                self.threshold_mask = np.zeros_like(out_file_h5.root.HistThresholdFitted[:] if out_file_h5 is not None else self.scurve_fit_results, dtype=np.bool8)
+            threshold_hist = np.ma.array(out_file_h5.root.HistThresholdFitted[:] if out_file_h5 is not None else self.scurve_fit_results[:, :, 0], mask=self.fitted_threshold_mask)
+            noise_hist = np.ma.array(out_file_h5.root.HistNoiseFitted[:] if out_file_h5 is not None else self.scurve_fit_results[:, :, 1], mask=self.fitted_threshold_mask)
             threshold_hist_calib = np.ma.array(out_file_h5.root.HistThresholdFittedCalib[:] if out_file_h5 is not None else self.threshold_hist_calib[:], mask=self.fitted_threshold_mask)
-            noise_hist_calib = np.ma.array(out_file_h5.root.HistNoiseFittedCalib[:, :] if out_file_h5 is not None else self.noise_hist_calib[:], mask=self.fitted_threshold_mask)
+            noise_hist_calib = np.ma.array(out_file_h5.root.HistNoiseFittedCalib[:] if out_file_h5 is not None else self.noise_hist_calib[:], mask=self.fitted_threshold_mask)
             mask_cnt = np.ma.count_masked(noise_hist)
             logging.info('S-curve fit: masking %d pixel(s)', mask_cnt)
             plotting.plotThreeWay(hist=threshold_hist, title='Threshold (S-curve fit, masked %i pixel(s))' % mask_cnt, x_axis_title="Threshold [PlsrDAC]", filename=output_pdf, bins=100, minimum=0, maximum=maximum)
@@ -917,7 +917,7 @@ class AnalyzeRawData(object):
             plotting.plotThreeWay(hist=noise_hist_calib, title='Noise (S-curve fit, masked %i pixel(s))' % mask_cnt, x_axis_title="Noise [e]", filename=output_pdf, bins=100, minimum=0)
         if (self._create_occupancy_hist):
             if(self._create_threshold_hists):
-                plotting.plot_scurves(occupancy_hist=out_file_h5.root.HistOcc[:, :, :] if out_file_h5 is not None else self.occupancy_array[:, :, :], filename=output_pdf, scan_parameters=np.linspace(np.amin(self.scan_parameters['PlsrDAC']), np.amax(self.scan_parameters['PlsrDAC']), num=self.histograming.get_n_parameters(), endpoint=True))
+                plotting.plot_scurves(occupancy_hist=out_file_h5.root.HistOcc[:] if out_file_h5 is not None else self.occupancy_array[:], filename=output_pdf, scan_parameters=np.linspace(np.amin(self.scan_parameters['PlsrDAC']), np.amax(self.scan_parameters['PlsrDAC']), num=self.histograming.get_n_parameters(), endpoint=True))
             else:
                 hist = np.sum(out_file_h5.root.HistOcc[:], axis=2) if out_file_h5 is not None else np.sum(self.occupancy_array[:], axis=2)
                 occupancy_array_masked = np.ma.masked_equal(hist, 0)
@@ -968,7 +968,7 @@ class AnalyzeRawData(object):
 
     def fit_scurves_multithread(self, hit_table_file=None, PlsrDAC=None):
         logging.info("Start S-curve fit on %d CPU core(s)", mp.cpu_count())
-        occupancy_hist = hit_table_file.root.HistOcc[:, :, :] if hit_table_file is not None else self.occupancy_array[:, :, :]  # take data from RAM if no file is opened
+        occupancy_hist = hit_table_file.root.HistOcc[:] if hit_table_file is not None else self.occupancy_array[:]  # take data from RAM if no file is opened
         occupancy_hist_shaped = occupancy_hist.reshape(occupancy_hist.shape[0] * occupancy_hist.shape[1], occupancy_hist.shape[2])
         partialfit_scurve = partial(fit_scurve, PlsrDAC=PlsrDAC)  # trick to give a function more than one parameter, needed for pool.map
         pool = mp.Pool()  # create as many workers as physical cores are available
