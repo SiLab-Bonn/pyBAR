@@ -18,11 +18,6 @@ hw_drivers:
     base_addr : 0x18100
     base_data_addr : 0x0001000080000000
 
-  - name      : tlu
-    type      : tlu
-    interface : USB
-    base_addr : 0x18200
-
   - name      : rx_4
     type      : fei4_rx
     interface : USB
@@ -42,11 +37,6 @@ hw_drivers:
     type      : fei4_rx
     interface : USB
     base_addr : 0x18600
-
-  - name      : tdc_rx2
-    type      : tdc_s3
-    interface : USB
-    base_addr : 0x18700
 
   - name      : gpio_rx
     type      : gpio
