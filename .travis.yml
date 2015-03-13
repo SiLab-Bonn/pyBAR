@@ -22,9 +22,9 @@ before_install:
   - conda update --yes anaconda
 #  - conda create --yes -n anacondaenv python=$TRAVIS_PYTHON_VERSION
 #  - source activate anacondaenv
-  - wget -O cocotb-master.zip https://github.com/potentialventures/cocotb/archive/master.zip 
-  - unzip cocotb-master.zip
-  - export COCOTB=$(pwd)/cocotb-master
+#  - wget -O cocotb-master.zip https://github.com/potentialventures/cocotb/archive/master.zip 
+#  - unzip cocotb-master.zip
+#  - export COCOTB=$(pwd)/cocotb-master
 # The next couple lines fix a crash with multiprocessing on Travis and are not specific to using Miniconda
   - sudo rm -rf /dev/shm
   - sudo ln -s /run/shm /dev/shm
@@ -35,8 +35,8 @@ install:
   - if [ "$TRAVIS_BRANCH" == "master" ]; then pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/719/Basil-2.0.2.tar.gz; fi
   - if [ "$TRAVIS_BRANCH" == "development" ]; then git clone -b master https://github.com/SiLab-Bonn/basil; cd basil/host; python setup.py develop; cd ../..; fi
   - pip install progressbar-latest
-  - sudo apt-get install -qq iverilog-daily
-  #  Build iverilog from source
+#  - sudo apt-get install -qq iverilog-daily
+#  Build iverilog from source
 #  - sudo apt-get install gperf
 #  - wget -O iverilog-master.zip  https://github.com/steveicarus/iverilog/archive/master.zip
 #  - unzip iverilog-master.zip
@@ -45,4 +45,5 @@ install:
   - python setup.py develop
 # Run test
 script:
-- cd tests; nosetests test_analysis.py test_interface.py --logging-level=INFO
+- cd tests; nosetests test_analysis.py 
+#test_interface.py --logging-level=INFO

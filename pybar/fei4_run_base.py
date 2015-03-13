@@ -34,6 +34,8 @@ class Fei4RunBase(RunBase):
         # adding default run conf parameters valid for all scans
         if 'send_data' not in self._default_run_conf:
             self._default_run_conf.update({'send_data': None})
+        self._default_run_conf.update({'comment': None})
+        self._default_run_conf.update({'reset_rx_on_error': None})
 
         super(Fei4RunBase, self).__init__(conf=conf, run_conf=run_conf)
 
@@ -285,8 +287,12 @@ class Fei4RunBase(RunBase):
         self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=False)
 
     def handle_err(self, exc):
-        self.err_queue.put(exc)
-        self.abort(msg='%s' % exc[1])
+        if self.reset_rx_on_error and isinstance(exc[1], (RxSyncError, EightbTenbError)):
+            self.fifo_readout.print_readout_status()
+            self.fifo_readout.reset_rx()
+        else:
+            self.err_queue.put(exc)
+            self.abort(msg='%s' % exc[1])
 
     def _get_configuration(self, run_number=None):
         def find_file(run_number):

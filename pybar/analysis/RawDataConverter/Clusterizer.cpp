@@ -418,8 +418,8 @@ void Clusterizer::searchNextHits(const unsigned short& pCol, const unsigned shor
 
 	_actualClusterTot+=tTot;		//add tot of the hit to the cluster tot
 	_actualClusterCharge+=_chargeMap[(long)pCol + (long)pRow * (long)RAW_DATA_MAX_COLUMN + (long)tTot * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW];	//add charge of the hit to the cluster tot
-	_actualClusterX+=(float)((float) pCol+0.5) * _chargeMap[(long)pCol + (long)pRow * (long)RAW_DATA_MAX_COLUMN + (long)tTot * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW];	//add x position of actual cluster weigthed by the charge
-	_actualClusterY+=(float)((float) pRow+0.5) * _chargeMap[(long)pCol + (long)pRow * (long)RAW_DATA_MAX_COLUMN + (long)tTot * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW];	//add y position of actual cluster weigthed by the charge
+	_actualClusterX+=(float)((float) pCol+0.5) * (_chargeMap[(long)pCol + (long)pRow * (long)RAW_DATA_MAX_COLUMN + (long)tTot * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] + 1.);	//add x position of actual cluster weigthed by the charge
+	_actualClusterY+=(float)((float) pRow+0.5) * (_chargeMap[(long)pCol + (long)pRow * (long)RAW_DATA_MAX_COLUMN + (long)tTot * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] + 1.);	//add y position of actual cluster weigthed by the charge
 
 	if(Basis::debugSet()){
 //		std::cout<<"Clusterizer::searchNextHits"<<std::endl;
@@ -793,8 +793,8 @@ void Clusterizer::showHits()
 
 void Clusterizer::addCluster()
 {
-	_actualClusterX/=_actualClusterCharge;  // normalize cluster x position
-	_actualClusterY/=_actualClusterCharge;  // normalize cluster y position
+	_actualClusterX/=(_actualClusterCharge + _actualClusterSize);  // normalize cluster x position
+	_actualClusterY/=(_actualClusterCharge + _actualClusterSize);  // normalize cluster y position
 	if(_createClusterInfoArray){
 		if (_clusterInfo == 0)
 			throw std::runtime_error("Cluster info array is not defined and cannot be filled");
