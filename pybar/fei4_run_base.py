@@ -74,6 +74,15 @@ class Fei4RunBase(RunBase):
         else:
             return None
 
+    @contextmanager
+    def _run(self):
+        try:
+            self.pre_run()
+            yield
+            self.post_run()
+        finally:
+            self.cleanup_run()
+
     def init_dut(self):
         if self.dut.name == 'mio':
             self.dut['POWER'].set_voltage('VDDA1', 1.500)
