@@ -350,7 +350,7 @@ class RunManager(object):
 
     def init(self, conf):
         if isinstance(conf, basestring):
-            self._conf_path = conf
+            self._conf_path = conf  # saving path '../configuration.yaml' to the _conf_path
         elif isinstance(conf, file):
             self._conf_path = conf.name
         else:
@@ -364,7 +364,7 @@ class RunManager(object):
                 # working_dir is absolute path, keep that
                 pass
         elif self._conf_path:
-            self.conf['working_dir'] = os.path.dirname(self._conf_path)
+            self.conf['working_dir'] = os.path.dirname(self._conf_path)  # if working_dir path is not given, use path of configuration.yaml
         else:
             raise ValueError('Cannot deduce working directory from configuration')
 

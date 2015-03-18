@@ -76,12 +76,13 @@ class Fei4RunBase(RunBase):
 
     @contextmanager
     def _run(self):
-        try:
-            self.pre_run()
-            yield
-            self.post_run()
-        finally:
-            self.cleanup_run()
+        for i in range(1):
+            try:
+                self.pre_run()
+                yield
+                self.post_run()
+            finally:
+                self.cleanup_run()
 
     def init_dut(self):
         if self.dut.name == 'mio':
@@ -123,9 +124,9 @@ class Fei4RunBase(RunBase):
 
     def init_fe(self):
         if 'fe_configuration' in self.conf:
-            last_configuration = self._get_configuration()
+            last_configuration = self._get_configuration()  # will get the latest valid configuration from the runs
             # init config, a number <=0 will also do the initialization (run 0 does not exists)
-            if (not self.conf['fe_configuration'] and not last_configuration) or (isinstance(self.conf['fe_configuration'], (int, long)) and self.conf['fe_configuration'] <= 0):
+            if (not self.conf['fe_configuration'] and not last_configuration) or (isinstance(self.conf['fe_configuration'], (int, long)) and self.conf['fe_configuration'] <= 0):  # no valid runs yet and no run number for FE configuration file indicated
                 if 'chip_address' in self.conf and self.conf['chip_address']:
                     chip_address = self.conf['chip_address']
                     broadcast = False
@@ -137,7 +138,7 @@ class Fei4RunBase(RunBase):
                 else:
                     raise ValueError('No fe_flavor given')
             # use existing config
-            elif not self.conf['fe_configuration'] and last_configuration:
+            elif not self.conf['fe_configuration'] and last_configuration:  # executes when latest valid configuration exists and run number is not indicated in fe_configuration
                 self._conf['fe_configuration'] = FEI4Register(configuration_file=last_configuration)
             # path
             elif isinstance(self.conf['fe_configuration'], basestring):
@@ -200,7 +201,7 @@ class Fei4RunBase(RunBase):
                     dut = os.path.join(module_path, self.conf['dut'])
                 else:
                     raise ValueError('%s: dut file not found' % self.conf['dut'])
-                self._conf['dut'] = Dut(dut)
+                self._conf['dut'] = Dut(dut)  # creating a Dut object, passing path to dut_mio.yaml as a parameter
             else:
                 self._conf['dut'] = Dut(self.conf['dut'])
 
