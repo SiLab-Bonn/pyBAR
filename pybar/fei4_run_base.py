@@ -61,9 +61,9 @@ class Fei4RunBase(RunBase):
     @property
     def output_filename(self):
         if self.module_id:
-            return os.path.join(self.working_dir, str(self.run_number) + "_" + self.module_id + "_" + self.run_id)
+            return os.path.join(self.working_dir, str(self.run_number) + "_" + self.module_id + "_" + self.run_id + "_fe" + str(self.fe_number))
         else:
-            return os.path.join(self.working_dir, str(self.run_number) + "_" + self.run_id)
+            return os.path.join(self.working_dir, str(self.run_number) + "_" + self.run_id + "_fe" + str(self.fe_number))
 
     @property
     def module_id(self):
@@ -74,23 +74,23 @@ class Fei4RunBase(RunBase):
         else:
             return None
 
-    @contextmanager
-    def _run(self):
-        if 'number_of_fes' in self.conf and self.conf['number_of_fes']:
-            for i in range(self.conf['number_of_fes']):
-                try:
-                    self.pre_run()
-                    yield
-                    self.post_run()
-                finally:
-                    self.cleanup_run()
-        else:
-            try:
-                self.pre_run()
-                yield
-                self.post_run()
-            finally:
-                self.cleanup_run()
+#     @contextmanager
+#     def _run(self):
+#         if 'number_of_fes' in self.conf and self.conf['number_of_fes']:
+#             for self.fe_number in range(self.conf['number_of_fes']):
+#                 try:
+#                     self.pre_run()
+#                     yield
+#                     self.post_run()
+#                 finally:
+#                     self.cleanup_run()
+#         else:
+#             try:
+#                 self.pre_run()
+#                 yield
+#                 self.post_run()
+#             finally:
+#                 self.cleanup_run()
 
     def init_dut(self):
         if self.dut.name == 'mio':
@@ -245,7 +245,7 @@ class Fei4RunBase(RunBase):
         self.init_fe()
 
     def do_run(self):
-        with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, scan_parameters=self.scan_parameters._asdict(), socket_addr=self.socket_addr) as self.raw_data_file:
+        with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, scan_parameters=self.scan_parameters._asdict(), socket_addr=self.socket_addr) as self.raw_data_file:  # closes raw data file when exits with statement
             self.save_configuration_dict(self.raw_data_file.h5_file, 'conf', self.conf)
             self.save_configuration_dict(self.raw_data_file.h5_file, 'run_conf', self.run_conf)
 
