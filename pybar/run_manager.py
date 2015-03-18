@@ -107,8 +107,14 @@ class RunBase():
     def run(self, run_conf, run_number=None):
         self._init(run_conf, run_number)
         try:
-            with self._run():
-                self.do_run()
+            if 'number_of_fes' in self.conf and self.conf['number_of_fes']:
+                for self.fe_number in range(1, self.conf['number_of_fes'] + 1):
+                    with self._run():
+                        self.do_run()
+            else:
+                self.fe_number = 1
+                with self._run():
+                        self.do_run()
         except RunAborted as e:
             self._run_status = run_status.aborted
             logging.warning('Run %s was aborted: %s', self.run_number, e)

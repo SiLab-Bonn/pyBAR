@@ -13,6 +13,7 @@ import abc
 import ast
 import inspect
 from basil.dut import Dut
+from pybar.daq import readout_utils
 
 from pybar.run_manager import RunBase, RunAborted, RunStopped
 from pybar.fei4.register import FEI4Register
@@ -61,9 +62,9 @@ class Fei4RunBase(RunBase):
     @property
     def output_filename(self):
         if self.module_id:
-            return os.path.join(self.working_dir, str(self.run_number) + "_" + self.module_id + "_" + self.run_id)
+            return os.path.join(self.working_dir, str(self.run_number) + "_" + self.module_id + "_" + self.run_id + "_fe" + str(self.fe_number))
         else:
-            return os.path.join(self.working_dir, str(self.run_number) + "_" + self.run_id)
+            return os.path.join(self.working_dir, str(self.run_number) + "_" + self.run_id + "_fe" + str(self.fe_number))
 
     @property
     def module_id(self):
@@ -74,23 +75,23 @@ class Fei4RunBase(RunBase):
         else:
             return None
 
-    @contextmanager
-    def _run(self):
-        if 'number_of_fes' in self.conf and self.conf['number_of_fes']:
-            for i in range(self.conf['number_of_fes']):
-                try:
-                    self.pre_run()
-                    yield
-                    self.post_run()
-                finally:
-                    self.cleanup_run()
-        else:
-            try:
-                self.pre_run()
-                yield
-                self.post_run()
-            finally:
-                self.cleanup_run()
+#     @contextmanager
+#     def _run(self):
+#         if 'number_of_fes' in self.conf and self.conf['number_of_fes']:
+#             for self.fe_number in range(self.conf['number_of_fes']):
+#                 try:
+#                     self.pre_run()
+#                     yield
+#                     self.post_run()
+#                 finally:
+#                     self.cleanup_run()
+#         else:
+#             try:
+#                 self.pre_run()
+#                 yield
+#                 self.post_run()
+#             finally:
+#                 self.cleanup_run()
 
     def init_dut(self):
         if self.dut.name == 'mio':
@@ -245,7 +246,7 @@ class Fei4RunBase(RunBase):
         self.init_fe()
 
     def do_run(self):
-        with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, scan_parameters=self.scan_parameters._asdict(), socket_addr=self.socket_addr) as self.raw_data_file:
+        with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, scan_parameters=self.scan_parameters._asdict(), socket_addr=self.socket_addr) as self.raw_data_file:  # closes raw data file when exits with statement
             self.save_configuration_dict(self.raw_data_file.h5_file, 'conf', self.conf)
             self.save_configuration_dict(self.raw_data_file.h5_file, 'run_conf', self.run_conf)
 
@@ -302,7 +303,11 @@ class Fei4RunBase(RunBase):
             logging.error('Cannot close USB device')
 
     def handle_data(self, data):
-        self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=False)
+#         self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=False)
+        raw_data = data[0]
+        is_raw_data_from_current_channel = readout_utils.is_data_from_channel(self.fe_number)(raw_data)  # later add filter to save trigger and TDC words as well
+        if is_raw_data_from_current_channel.all():
+            self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=False)
 
     def handle_err(self, exc):
         if self.reset_rx_on_error and isinstance(exc[1], (RxSyncError, EightbTenbError)):
