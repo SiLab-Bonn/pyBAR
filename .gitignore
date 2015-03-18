@@ -61,3 +61,5 @@ proto_*/
 # Other files
 *.png
 *.pdf
+# Mac
+.DS_Store
