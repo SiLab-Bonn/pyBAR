@@ -55,3 +55,5 @@ scc_*/
 .project
 .pydevproject
 .vcd
+# Mac
+.DS_Store
