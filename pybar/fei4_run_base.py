@@ -76,7 +76,15 @@ class Fei4RunBase(RunBase):
 
     @contextmanager
     def _run(self):
-        for i in range(1):
+        if 'number_of_fes' in self.conf and self.conf['number_of_fes']:
+            for i in range(self.conf['number_of_fes']):
+                try:
+                    self.pre_run()
+                    yield
+                    self.post_run()
+                finally:
+                    self.cleanup_run()
+        else:
             try:
                 self.pre_run()
                 yield
