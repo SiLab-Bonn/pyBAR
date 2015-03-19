@@ -303,7 +303,7 @@ class Fei4RunBase(RunBase):
             logging.error('Cannot close USB device')
 
     def handle_data(self, data):
-#         self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=False)
+        # self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=False)
 
         list_data = list(data)
         list_data[0] = readout_utils.convert_data_array(list_data[0], filter_func = readout_utils.is_data_from_channel(self.fe_number))
