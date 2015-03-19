@@ -304,10 +304,12 @@ class Fei4RunBase(RunBase):
 
     def handle_data(self, data):
 #         self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=False)
-        raw_data = data[0]
-        is_raw_data_from_current_channel = readout_utils.is_data_from_channel(self.fe_number)(raw_data)  # later add filter to save trigger and TDC words as well
-        if is_raw_data_from_current_channel.all():
-            self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=False)
+
+        list_data = list(data)
+        list_data[0] = readout_utils.convert_data_array(list_data[0], filter_func = readout_utils.is_data_from_channel(self.fe_number))
+        tuple_data = tuple(list_data)
+
+        self.raw_data_file.append_item(tuple_data, scan_parameters=self.scan_parameters._asdict(), flush=False)
 
     def handle_err(self, exc):
         if self.reset_rx_on_error and isinstance(exc[1], (RxSyncError, EightbTenbError)):

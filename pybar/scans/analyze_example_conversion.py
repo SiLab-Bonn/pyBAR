@@ -71,8 +71,8 @@ def analyze_raw_data_per_scan_parameter(input_file, output_file_hits, scan_data_
 
 
 if __name__ == "__main__":
-    scan_name = r'1_module_test_fast_threshold_scan'
-    folder = r'/home/davidlp/git/pyBAR/pybar/module_test/'
+    scan_name = r'25_module_test_analog_scan_fe1'
+    folder = r'C:/Users/vfilimonov/workspacePY/pyBAR/pybar/module_test/'
     input_file = folder + scan_name + ".h5"
     output_file_hits = folder + scan_name + "_interpreted.h5"
     output_file_hits_analyzed = folder + scan_name + "_analyzed.h5"
