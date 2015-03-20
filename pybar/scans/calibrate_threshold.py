@@ -27,7 +27,7 @@ class ThresholdCalibration(FastThresholdScan):
     _default_run_conf['scan_parameters'] = [('PlsrDAC', (0, None)), ('GDAC', np.unique(np.logspace(1.7, 4.0, 10).astype(np.int)).tolist())]
     _default_run_conf.update({
         "ignore_columns": (1, 78, 79, 80),
-        "ignore_parameter_values": None,  # do not use data for these parameter values for the calibration
+        'reset_rx_on_error': True,  # long scans have a high propability for ESD related data transmission errors; recover and continue here
         "create_plots": True,
         "send_data": 'tcp://127.0.0.1:5678',  # send data to socket (e.g. for Online Monitor)
     })
@@ -59,7 +59,7 @@ class ThresholdCalibration(FastThresholdScan):
                 analyze_raw_data.create_tot_hist = False
                 analyze_raw_data.create_fitted_threshold_hists = True
                 analyze_raw_data.create_threshold_mask = True
-                analyze_raw_data.interpreter.set_warning_output(True)  # so far the data structure in a threshold scan was always bad, too many warnings given
+                analyze_raw_data.interpreter.set_warning_output(False)  # RX errors would fill the console
                 analyze_raw_data.interpret_word_table()
 
         def store_calibration_data_as_table(out_file_h5, mean_threshold_calibration, mean_threshold_rms_calibration, threshold_calibration, parameter_values):
