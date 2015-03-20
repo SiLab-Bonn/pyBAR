@@ -172,7 +172,7 @@ class FifoReadout(object):
                 time_read = time()
                 if no_data_timeout and curr_time + no_data_timeout < get_float_time():
                     raise NoDataTimeout('Received no data for %0.1f second(s)' % no_data_timeout)
-                data = self.read_data()
+                data = self.read_data()  # reading data from the SRAM/BRAM FIFO
             except Exception:
                 no_data_timeout = None  # raise exception only once
                 if self.errback:
@@ -189,7 +189,7 @@ class FifoReadout(object):
                     if self.callback:
                         self._data_deque.append((data, last_time, curr_time, status))
                     if self.fill_buffer:
-                        self._data_buffer.append((data, last_time, curr_time, status))
+                        self._data_buffer.append((data, last_time, curr_time, status))  # Filling buffer on the host side
                     self._words_per_read.append(data_words)
                 elif self.stop_readout.is_set():
                     break
@@ -218,7 +218,7 @@ class FifoReadout(object):
                     break
                 else:
                     try:
-                        self.callback(data)
+                        self.callback(data)  # pass data to handle_data each time data is in buffer
                     except Exception:
                         self.errback(sys.exc_info())
 
