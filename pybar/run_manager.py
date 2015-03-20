@@ -107,7 +107,7 @@ class RunBase():
     def run(self, run_conf, run_number=None):
         self._init(run_conf, run_number)
         try:
-            if 'number_of_fes' in self.conf and self.conf['number_of_fes']:
+            if 'number_of_fes' in self.conf and self.conf['number_of_fes'] > 1:
                 for self.fe_number in range(1, self.conf['number_of_fes'] + 1):
                     with self._run():
                         self.do_run()
