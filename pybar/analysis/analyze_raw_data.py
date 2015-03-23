@@ -46,7 +46,7 @@ class AnalyzeRawData(object):
 
     """A class to analyze FE-I4 raw data"""
 
-    def __init__(self, raw_data_file=None, analyzed_data_file=None, create_pdf=False, scan_parameter_name=None):
+    def __init__(self, raw_data_file=None, analyzed_data_file=None, create_pdf=True, scan_parameter_name=None):
         '''Initialize the AnalyzeRawData object:
             - The c++ objects (Interpreter, Histogrammer, Clusterizer) are constructed
             - Create one scan parameter table from all provided raw data files
