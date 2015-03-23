@@ -113,7 +113,10 @@ class AnalyzeRawData(object):
 
         self.set_standard_settings()
         if raw_data_file is not None and create_pdf:
-            output_pdf_filename = os.path.splitext(raw_data_file)[0] + ".pdf"
+            if isinstance(raw_data_file, list):  # for multiple raw data files name pdf accorfing to the first file
+                output_pdf_filename = os.path.splitext(raw_data_file[0])[0] + ".pdf"
+            else:
+                output_pdf_filename = os.path.splitext(raw_data_file)[0] + ".pdf"
             logging.info('Opening output PDF file: %s', output_pdf_filename)
             self.output_pdf = PdfPages(output_pdf_filename)
         else:
