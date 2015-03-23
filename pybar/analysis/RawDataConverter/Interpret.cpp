@@ -122,6 +122,8 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 				if (!tBCIDerror && tActualLVL1ID != tStartLVL1ID){    //LVL1ID not constant, is expected for CMOS pulse trigger/hit OR, but not for trigger word triggering
 //					tLVL1IDisConst = false;
 					addEventErrorCode(__NON_CONST_LVL1ID);
+					if (Basis::infoSet())
+						info("interpretRawData: LVL1 is not constant: "+IntToStr(tActualLVL1ID)+"!="+IntToStr(tStartLVL1ID)+" at event "+LongIntToStr(_nEvents));
 				}
 			}
 			tNdataHeader++;										       //increase data header counter
@@ -525,8 +527,11 @@ void Interpret::printSummary()
 	std::cout<<"\t4\t"<<_errorCounter[4]<<"\tEvents with unknown words\n";
 	std::cout<<"\t5\t"<<_errorCounter[5]<<"\tEvents with jumping BCIDs\n";
 	std::cout<<"\t6\t"<<_errorCounter[6]<<"\tEvents with TLU trigger error\n";
-	std::cout<<"\t7\t"<<_errorCounter[7]<<"\tEvents has too many hit and was truncated\n";
+	std::cout<<"\t7\t"<<_errorCounter[7]<<"\tEvents has too many hits and was truncated\n";
 	std::cout<<"\t8\t"<<_errorCounter[8]<<"\tEvents with TDC words\n";
+	std::cout<<"\t9\t"<<_errorCounter[9]<<"\tEvents with > 1 TDC word\n";
+	std::cout<<"\t10\t"<<_errorCounter[10]<<"\tEvents with TDC overfloe\n";
+	std::cout<<"\t11\t"<<_errorCounter[11]<<"\tEvents with no hit\n";
 
 	std::cout<<"#TriggerErrorCounters \n";
 	std::cout<<"\t0\t"<<_triggerErrorCounter[0]<<"\tTrigger number does not increase by 1\n";
@@ -631,7 +636,6 @@ void Interpret::resetMetaDataCounter()
 
 void Interpret::addHit(const unsigned char& pRelBCID, const unsigned short int& pLVLID, const unsigned char& pColumn, const unsigned short int& pRow, const unsigned char& pTot, const unsigned short int& pBCID)	//add hit with event number, column, row, relative BCID [0:15], tot, trigger ID
 {
-	tTotalHits++;
 	if(tHitBufferIndex < __MAXHITBUFFERSIZE){
 		_hitBuffer[tHitBufferIndex].eventNumber = _nEvents;
 		_hitBuffer[tHitBufferIndex].triggerNumber = tTriggerNumber;
@@ -646,6 +650,8 @@ void Interpret::addHit(const unsigned char& pRelBCID, const unsigned short int& 
 		_hitBuffer[tHitBufferIndex].serviceRecord = tServiceRecord;
 		_hitBuffer[tHitBufferIndex].triggerStatus = tTriggerError;
 		_hitBuffer[tHitBufferIndex].eventStatus = tErrorCode;
+		if ((tErrorCode & __NO_HIT) != __NO_HIT)  //only coubt no virtual hits
+			tTotalHits++;
 		tHitBufferIndex++;
 	}
 	else{
