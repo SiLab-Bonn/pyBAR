@@ -66,6 +66,7 @@ cdef extern from "Interpret.h":
         void resetEventVariables()
         void resetCounters()
         void createMetaDataWordIndex(cpp_bool CreateMetaDataWordIndex)
+        void createEmptyEventHits(cpp_bool CreateEmptyEventHits)
 
         void printSummary()
         void debugEvents(const unsigned int& rStartEvent, const unsigned int& rStopEvent, const cpp_bool& debugEvents)
@@ -172,6 +173,8 @@ cdef class PyDataInterpreter:
         self.thisptr.resetCounters()
     def create_meta_data_word_index(self, value = True):
         self.thisptr.createMetaDataWordIndex(<cpp_bool> value)
+    def create_empty_event_hits(self, value = True):
+        self.thisptr.createEmptyEventHits(<cpp_bool> value)
     def set_hit_array_size(self, size):
         self.thisptr.setHitsArraySize(<const unsigned int&> size)
     def print_summary(self):

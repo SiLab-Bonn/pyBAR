@@ -41,6 +41,7 @@ void Interpret::setStandardSettings()
 	_metaEventIndex = 0;
 	_startWordIndex = 0;
 	_createMetaDataWordIndex = false;
+	_createEmptyEventHits = false;
 	_isMetaTableV2 = false;
 	_useTriggerNumber = false;
 	_useTriggerTimeStamp = false;
@@ -410,6 +411,12 @@ void Interpret::createMetaDataWordIndex(bool CreateMetaDataWordIndex)
 	_createMetaDataWordIndex = CreateMetaDataWordIndex;
 }
 
+void Interpret::createEmptyEventHits(bool CreateEmptyEventHits)
+{
+	debug("createEmptyEventHits");
+	_createEmptyEventHits = CreateEmptyEventHits;
+}
+
 void Interpret::setNbCIDs(const unsigned int& NbCIDs)
 {
 	_NbCID = NbCIDs;
@@ -675,8 +682,13 @@ void Interpret::addEvent()
 		tDebug<<"addEvent() "<<_nEvents;
 		debug(tDebug.str());
 	}
-	if(tNdataRecord==0)
+	if(tNdataRecord==0){
 		_nEmptyEvents++;
+		if (_createEmptyEventHits){
+			addEventErrorCode(__NO_HIT);
+			addHit(0, 0, 0, 0, 0, 0);
+		}
+	}
 	if(tTriggerWord == 0){
 		addEventErrorCode(__NO_TRG_WORD);
 	}
