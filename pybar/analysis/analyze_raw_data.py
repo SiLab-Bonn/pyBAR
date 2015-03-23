@@ -976,6 +976,9 @@ class AnalyzeRawData(object):
             result_list = pool.map(partialfit_scurve, occupancy_hist_shaped.tolist())
         except TypeError:
             raise analysis_utils.NotSupportedError('Less than 3 points found for S-curve fit.')
+        finally:
+            pool.close()
+            pool.join()
         result_array = np.array(result_list)
         logging.info("S-curve fit finished")
         return result_array.reshape(occupancy_hist.shape[0], occupancy_hist.shape[1], 2)
