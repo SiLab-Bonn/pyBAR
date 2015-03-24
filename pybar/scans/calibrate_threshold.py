@@ -56,7 +56,7 @@ def create_threshold_calibration(scan_base_file_name, create_plots=True):  # Cre
         mean_threshold_calib_table.flush()
         logging.info("done")
 
-    def store_calibration_data_as_array(out_file_h5, mean_threshold_calibration, mean_threshold_rms_calibration, threshold_calibration):
+    def store_calibration_data_as_array(out_file_h5, mean_threshold_calibration, mean_threshold_rms_calibration, threshold_calibration, parameter_name, parameter_values):
         logging.info("Storing calibration data in an array...")
         filter_table = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
         mean_threshold_calib_array = out_file_h5.createCArray(out_file_h5.root, name='HistThresholdMeanCalibration', atom=tb.Atom.from_dtype(mean_threshold_calibration.dtype), shape=mean_threshold_calibration.shape, title='mean_threshold_calibration', filters=filter_table)
@@ -65,6 +65,11 @@ def create_threshold_calibration(scan_base_file_name, create_plots=True):  # Cre
         mean_threshold_calib_array[:] = mean_threshold_calibration
         mean_threshold_calib_rms_array[:] = mean_threshold_rms_calibration
         threshold_calib_array[:] = threshold_calibration
+        mean_threshold_calib_array.attrs.dimensions = ['column', 'row', parameter_name]
+        mean_threshold_calib_rms_array.attrs.dimensions = ['column', 'row', parameter_name]
+        threshold_calib_array.attrs.dimensions = ['column', 'row', parameter_name]
+        threshold_calib_array.attrs.scan_parameter_values = parameter_values
+
         logging.info("done")
 
     def mask_columns(pixel_array, ignore_columns):
@@ -118,7 +123,7 @@ def create_threshold_calibration(scan_base_file_name, create_plots=True):  # Cre
     progress_bar.finish()
 
     with tb.openFile(calibration_file + '.h5', mode="w") as out_file_h5:
-        store_calibration_data_as_array(out_file_h5=out_file_h5, mean_threshold_calibration=mean_threshold_calibration, mean_threshold_rms_calibration=mean_threshold_rms_calibration, threshold_calibration=threshold_calibration)
+        store_calibration_data_as_array(out_file_h5=out_file_h5, mean_threshold_calibration=mean_threshold_calibration, mean_threshold_rms_calibration=mean_threshold_rms_calibration, threshold_calibration=threshold_calibration, parameter_name=parameter_name, parameter_values=parameter_values)
         store_calibration_data_as_table(out_file_h5=out_file_h5, mean_threshold_calibration=mean_threshold_calibration, mean_threshold_rms_calibration=mean_threshold_rms_calibration, threshold_calibration=threshold_calibration, parameter_values=parameter_values)
 
     if create_plots:
@@ -144,7 +149,7 @@ class ThresholdCalibration(FastThresholdScan):
         logging.info('Taking threshold data at following ' + self.scan_parameters._fields[1] + ' values: %s', str(self.scan_parameters[1]))
 
         for index, parameter_value in enumerate(self.scan_parameters[1]):
-            if self.scan_parameters._fields[1] == 'GDAC':
+            if self.scan_parameters._fields[1] == 'GDAC':  # if scan parameter = GDAC needs special registers set function
                 self.register_utils.set_gdac(parameter_value)
             else:
                 self.register.set_global_register_value(self.scan_parameters._fields[1], parameter_value)
@@ -152,14 +157,14 @@ class ThresholdCalibration(FastThresholdScan):
             if index == 0:
                 actual_scan_parameters = {'PlsrDAC': self.scan_parameters.PlsrDAC, self.scan_parameters._fields[1]: parameter_value}
             else:
-                self.minimum_data_points = self.data_points
-                actual_scan_parameters = {'PlsrDAC': (self.scan_parameter_start, None), self.scan_parameters._fields[1]: parameter_value}
+                self.minimum_data_points = self.data_points  # Take settings from last fast threshold scan for speed up
+                actual_scan_parameters = {'PlsrDAC': (self.scan_parameter_start, None), self.scan_parameters._fields[1]: parameter_value}  # Start the PlsrDAC at last start point to save time
             self.set_scan_parameters(**actual_scan_parameters)
             super(ThresholdCalibration, self).scan()
         logging.info("Finished!")
 
     def handle_data(self, data):
-        self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), new_file=[self.scan_parameters._fields[1]], flush=False)
+        self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), new_file=[self.scan_parameters._fields[1]], flush=False)  # Create new file for each scan parameter change
 
     def analyze(self):
         create_threshold_calibration(self.output_filename, create_plots=self.create_plots)
