@@ -282,7 +282,10 @@ class Fei4RunBase(RunBase):
         else:
             pass  # do nothing, already initialized
         # FIFO readout
-        self.fifo_readout = FifoReadout(self.dut)
+        if 'number_of_fes' in self.conf and self.conf['number_of_fes'] > 1:
+            self.fifo_readout = FifoReadout(self.dut, self.fe_number)
+        else:
+            self.fifo_readout = FifoReadout(self.dut)
         # initialize the FE
         self.init_fe()
 
@@ -344,12 +347,12 @@ class Fei4RunBase(RunBase):
             logging.error('Cannot close USB device')
 
     def handle_data(self, data):
-        # self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=False)
+        self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=False)
 
-        list_data = list(data)
-        list_data[0] = readout_utils.convert_data_array(list_data[0], filter_func = readout_utils.is_data_from_channel(self.fe_number))
-        tuple_data = tuple(list_data)
-        self.raw_data_file.append_item(tuple_data, scan_parameters=self.scan_parameters._asdict(), flush=False)
+#         list_data = list(data)
+#         list_data[0] = readout_utils.convert_data_array(list_data[0], filter_func = readout_utils.is_data_from_channel(self.fe_number))
+#         tuple_data = tuple(list_data)
+#         self.raw_data_file.append_item(tuple_data, scan_parameters=self.scan_parameters._asdict(), flush=False)
 
     def handle_err(self, exc):
         if self.reset_rx_on_error and isinstance(exc[1], (RxSyncError, EightbTenbError)):
