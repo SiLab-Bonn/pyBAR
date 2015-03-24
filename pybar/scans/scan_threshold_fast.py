@@ -60,7 +60,7 @@ class FastThresholdScan(Fei4RunBase):
 
         self.record_data = False  # set to true to activate data storage, so far not everything is recorded to ease data analysis
 
-        scan_parameter_range = [0, (2 ** self.register.global_registers['PlsrDAC']['bitlength'])]
+        scan_parameter_range = [0, (2 ** self.register.global_registers['PlsrDAC']['bitlength'] - 1)]
         if self.scan_parameters.PlsrDAC[0]:
             scan_parameter_range[0] = self.scan_parameters.PlsrDAC[0]
         if self.scan_parameters.PlsrDAC[1]:
@@ -108,6 +108,9 @@ class FastThresholdScan(Fei4RunBase):
                     logging.info('Testing for stop condition: %s %d', 'PlsrDAC', self.scan_parameter_value)
 
                 col, row = convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)
+                if np.any(np.logical_and(col < 1, col > 80)) or np.any(np.logical_and(row < 1, row > 336)):  # filter bad data records that can happen 
+                    logging.warning('There are undefined %d data records (e.g. random data)', np.count_nonzero(np.logical_and(col < 1, col > 80)) + np.count_nonzero(np.logical_and(row < 1, row > 336)))
+                    col, row = col[np.logical_and(col > 0, col <= 80)], row[np.logical_and(row > 0, row < 336)]
                 occupancy_array = hist_2d_index(col - 1, row - 1, shape=(80, 336))
                 self.scan_condition(occupancy_array)
 
@@ -145,7 +148,7 @@ class FastThresholdScan(Fei4RunBase):
             analyze_raw_data.create_fitted_threshold_hists = True
             analyze_raw_data.create_threshold_mask = True
             analyze_raw_data.n_injections = self.n_injections
-            analyze_raw_data.interpreter.set_warning_output(True)  # so far the data structure in a threshold scan was always bad, too many warnings given
+            analyze_raw_data.interpreter.set_warning_output(True)
             analyze_raw_data.interpret_word_table()
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms()
