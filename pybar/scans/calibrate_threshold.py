@@ -68,6 +68,8 @@ def create_threshold_calibration(scan_base_file_name, create_plots=True):  # Cre
         mean_threshold_calib_array.attrs.dimensions = ['column', 'row', parameter_name]
         mean_threshold_calib_rms_array.attrs.dimensions = ['column', 'row', parameter_name]
         threshold_calib_array.attrs.dimensions = ['column', 'row', parameter_name]
+        mean_threshold_calib_array.scan_parameter_values = parameter_values
+        mean_threshold_calib_rms_array.scan_parameter_values = parameter_values
         threshold_calib_array.attrs.scan_parameter_values = parameter_values
 
         logging.info("done")
