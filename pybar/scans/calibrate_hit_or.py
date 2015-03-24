@@ -26,6 +26,7 @@ class HitOrCalibration(Fei4RunBase):
         "scan_parameters": [('column', None),
                             ('row', None),
                             ('PlsrDAC', [i for j in (range(26, 70, 10), range(80, 200, 50), range(240, 400, 100)) for i in j])],  # 0 400 sufficient
+        "reset_rx_om_error": True,
         "plot_tdc_histograms": False,
         "pixels": (np.dstack(np.where(make_box_pixel_mask_from_col_row([40, 45], [150, 155]) == 1)) + 1)[0],  # list of (col, row) tupels. From 1 to 80/336.
         "enable_masks": ["Enable", "C_Low", "C_High"],
