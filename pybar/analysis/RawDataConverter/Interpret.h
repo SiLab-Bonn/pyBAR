@@ -38,6 +38,7 @@ public:
 
 	//options set/get
 	void setHitsArraySize(const unsigned int &rSize);   			  //set the siye of the hit array, has to be able to hold hits of one event
+	void createEmptyEventHits(bool CreateEmptyEventHits = true);  //create hits that are virtual hits (not real hits) for debugging, thus event no hit events will show up in the hit table
 	void createMetaDataWordIndex(bool CreateMetaDataWordIndex = true);
 	void setNbCIDs(const unsigned int& NbCIDs);				  //set the number of BCIDs with hits for the actual trigger
 	void setMaxTot(const unsigned int& rMaxTot);			  //sets the maximum tot code that is considered to be a hit
@@ -191,6 +192,7 @@ private:
 	MetaWordInfoOut* _metaWordIndex;		  //pointer to the structure array that holds the start/stop word number for every event
 	unsigned int _metaWordIndexLength;		  //length of the word number array
 	unsigned int _actualMetaWordIndex;		  //counter for the actual meta word array index
+	bool _createEmptyEventHits;				  //true if empty event virtual hits are created
 	bool _createMetaDataWordIndex;			  //true if word index has to be set
 	bool _isMetaTableV2;                      //set to true if using MetaInfoV2 table
 
