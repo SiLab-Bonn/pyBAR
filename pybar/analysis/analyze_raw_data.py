@@ -46,7 +46,7 @@ class AnalyzeRawData(object):
 
     """A class to analyze FE-I4 raw data"""
 
-    def __init__(self, raw_data_file=None, analyzed_data_file=None, create_pdf=False, scan_parameter_name=None):
+    def __init__(self, raw_data_file=None, analyzed_data_file=None, create_pdf=True, scan_parameter_name=None):
         '''Initialize the AnalyzeRawData object:
             - The c++ objects (Interpreter, Histogrammer, Clusterizer) are constructed
             - Create one scan parameter table from all provided raw data files
@@ -113,7 +113,10 @@ class AnalyzeRawData(object):
 
         self.set_standard_settings()
         if raw_data_file is not None and create_pdf:
-            output_pdf_filename = os.path.splitext(raw_data_file)[0] + ".pdf"
+            if isinstance(raw_data_file, list):  # for multiple raw data files name pdf accorfing to the first file
+                output_pdf_filename = os.path.splitext(raw_data_file[0])[0] + ".pdf"
+            else:
+                output_pdf_filename = os.path.splitext(raw_data_file)[0] + ".pdf"
             logging.info('Opening output PDF file: %s', output_pdf_filename)
             self.output_pdf = PdfPages(output_pdf_filename)
         else:
@@ -976,6 +979,9 @@ class AnalyzeRawData(object):
             result_list = pool.map(partialfit_scurve, occupancy_hist_shaped.tolist())
         except TypeError:
             raise analysis_utils.NotSupportedError('Less than 3 points found for S-curve fit.')
+        finally:
+            pool.close()
+            pool.join()
         result_array = np.array(result_list)
         logging.info("S-curve fit finished")
         return result_array.reshape(occupancy_hist.shape[0], occupancy_hist.shape[1], 2)

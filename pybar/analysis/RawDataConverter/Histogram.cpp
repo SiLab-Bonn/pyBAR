@@ -110,6 +110,8 @@ void Histogram::addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
 {
 	debug("addHits()");
 	for(unsigned int i = 0; i<rNhits; ++i){
+		if ((rHitInfo[i].eventStatus & __NO_HIT) == __NO_HIT) // ignore virtual hits
+			continue;
 		unsigned short tColumnIndex = rHitInfo[i].column-1;
 		if(tColumnIndex > RAW_DATA_MAX_COLUMN-1)
 			throw std::out_of_range("Column index out of range.");

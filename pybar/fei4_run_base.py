@@ -150,6 +150,13 @@ class Fei4RunBase(RunBase):
                 # use existing config
                 elif not self.conf['multiple_fes_configuration'][self.fe_number] and last_configuration:  # executes when latest valid configuration exists and run number is not indicated in fe_configuration
                     self._conf['fe_configuration'] = FEI4Register(configuration_file=last_configuration)
+                # path
+                elif isinstance(self.conf['multiple_fes_configuration'][self.fe_number], basestring):
+                    if os.path.isabs(self.conf['multiple_fes_configuration'][self.fe_number]):
+                        fe_configuration = self.conf['multiple_fes_configuration'][self.fe_number]
+                    else:
+                        fe_configuration = os.path.join(self.conf['working_dir'], self.conf['multiple_fes_configuration'][self.fe_number])
+                    self._conf['fe_configuration'] = FEI4Register(configuration_file=fe_configuration)
                 # run number
                 elif isinstance(self.conf['multiple_fes_configuration'][self.fe_number], (int, long)) and self.conf['multiple_fes_configuration'][self.fe_number] > 0:
                     self._conf['fe_configuration'] = FEI4Register(configuration_file=self._get_configuration(self.conf['multiple_fes_configuration'][self.fe_number]))
