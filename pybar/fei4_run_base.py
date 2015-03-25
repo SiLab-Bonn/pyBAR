@@ -76,10 +76,10 @@ class Fei4RunBase(RunBase):
 
     def init_dut(self):
         if self.dut.name == 'mio':
-            self.dut['POWER'].set_voltage('VDDA1', 1.500)
-            self.dut['POWER'].set_voltage('VDDA2', 1.500)
-            self.dut['POWER'].set_voltage('VDDD1', 1.200)
-            self.dut['POWER'].set_voltage('VDDD2', 1.200)
+            self.dut['POWER'].set_voltage('CH1', 1.500)
+            self.dut['POWER'].set_voltage('CH2', 1.500)
+            self.dut['POWER'].set_voltage('CH3', 1.200)
+            self.dut['POWER'].set_voltage('CH4', 1.200)
             self.dut['POWER_SCC']['EN_VD1'] = 1
             self.dut['POWER_SCC']['EN_VD2'] = 1
             self.dut['POWER_SCC']['EN_VA1'] = 1
