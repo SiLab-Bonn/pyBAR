@@ -8,7 +8,7 @@ Step 2 Analyze selected hits:
 Step 3 Analyze cluster size:
     In this step the fraction of 1,2,3,4, ... cluster sizes are determined for each GDAC setting.
 Step 2.5 Histogram Cluster seeds:
-    Instead of using single hit cluster (step 2/3) one can also use the cluster seed hits.
+    Instead of using single hit cluster (step 2/3) one can also use the cluster seed hits. The result is the same.
 Step 4 Analyze the injected charge:
     Here the data from the previous steps is used to determine the injected charge. Plots of the results are shown.
 '''
@@ -17,6 +17,7 @@ import numpy as np
 import tables as tb
 import os.path
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 
 from pybar.analysis import analysis
 from pybar.analysis import analysis_utils
@@ -27,10 +28,8 @@ from pybar.analysis.analyze_raw_data import AnalyzeRawData
 analysis_configuration = {
     "scan_name": ['files from scan_ext_trigger_gdac'],
     'input_file_calibration': 'file from calibrate_threshold_scan_parameter',
-    "analysis_steps": [1, 2, 2.5, 3, 4],  # the analysis includes the selected steps here. See explanation above.
-    "chip_flavor": 'fei4a',
-    "n_bcid": 5,
-    "max_tot_value": 13,  # maximum tot value to use the hit
+    'plot_filename': r'output.pdf',
+    "analysis_steps": [1, 2.5, 4],  # the analysis includes the selected steps here. See explanation above.
     "use_cluster_rate_correction": False,  # corrects the hit rate, because one pixel hit cluster are less likely for low thresholds
     "normalize_rate": False,  # correct the number of GDACs per scan parameter by the number of triggers or scan time
     "normalization_reference": 'time',  # one can normalize the hits per GDAC setting to the number of events ('event') or time ('time')
@@ -41,8 +40,8 @@ analysis_configuration = {
     "row_span": [1, 336],  # the row pixel range to use in the analysis
     "min_cut_threshold": 0.8,  # the minimum cut threshold for the occupancy to define pixel to use in the analysis
     "max_cut_threshold": None,  # the maximum cut threshold for the occupancy to define pixel to use in the analysis
-    "min_gdac": 0,  # minimum threshold position in gdac setting to be used for the analysis
-    "max_gdac": 999999,  # maximum threshold position in gdac setting to be used for the analysis
+    "min_gdac": 0,  # minimum threshold position in gdac settings to be used for the analysis
+    "max_gdac": 999999,  # maximum threshold position in gdac settings to be used for the analysis
     "min_thr": 1600,  # minimum threshold position in gdac setting to be used for the analysis
     "max_thr": 35000,  # maximum threshold position in gdac setting to be used for the analysis
     "plot_normalization": True,  # active the output of the normalization
@@ -111,10 +110,10 @@ def plot_result(x_p, y_p, y_p_e):
     plt.close()
 
 
-def analyze_raw_data(input_files, output_file_hits, chip_flavor, scan_parameter):
+def analyze_raw_data(input_files, output_file_hits, scan_parameter):
     logging.info('Analyze the raw FE data given in ' + str(len(input_files)) + ' files and store the needed data')
     if os.path.isfile(output_file_hits) and not analysis_configuration['overwrite_output_files']:  # skip analysis if already done
-        logging.info('Analyzed data file ' + output_file_hits + ' already exists. Skip analysis for this file.')
+        logging.warning('Analyzed data file ' + output_file_hits + ' already exists. Skip analysis for this file.')
     else:
         with AnalyzeRawData(raw_data_file=input_files, analyzed_data_file=output_file_hits, scan_parameter_name=scan_parameter) as analyze_raw_data:
             analyze_raw_data.create_hit_table = True  # can be set to false to omit hit table creation, std. setting is false
@@ -122,24 +121,22 @@ def analyze_raw_data(input_files, output_file_hits, chip_flavor, scan_parameter)
             analyze_raw_data.create_source_scan_hist = True  # create source scan hists
             analyze_raw_data.create_cluster_size_hist = True  # enables cluster size histogramming, can save some time, std. setting is false
             analyze_raw_data.create_cluster_tot_hist = True  # enables cluster ToT histogramming per cluster size, std. setting is false
-            analyze_raw_data.n_bcid = analysis_configuration['n_bcid']  # set the number of BCIDs per event, needed to judge the event structure
-            analyze_raw_data.max_tot_value = analysis_configuration['max_tot_value']  # set the maximum ToT value considered to be a hit, 14 is a late hit
             analyze_raw_data.interpreter.set_warning_output(analysis_configuration['interpreter_warnings'])  # std. setting is True
             analyze_raw_data.clusterizer.set_warning_output(analysis_configuration['interpreter_warnings'])  # std. setting is True
             analyze_raw_data.interpreter.debug_events(0, 10, False)  # events to be printed onto the console for debugging, usually deactivated
-            analyze_raw_data.interpret_word_table(fei4b=True if(chip_flavor == 'fei4b') else False)  # the actual start conversion command
+            analyze_raw_data.interpret_word_table()  # the actual start conversion command
             analyze_raw_data.interpreter.print_summary()  # prints the interpreter summary
-            analyze_raw_data.plot_histograms(scan_data_filename=output_file_hits)  # plots all activated histograms into one pdf
+            analyze_raw_data.plot_histograms()  # plots all activated histograms into one pdf
 
 
 def analyse_selected_hits(input_file_hits, output_file_hits, output_file_hits_analyzed, scan_data_filenames, cluster_size_condition='cluster_size==1', n_cluster_condition='n_cluster==1'):
     logging.info('Analyze selected hits with ' + cluster_size_condition + ' and ' + n_cluster_condition + ' in ' + input_file_hits)
     if os.path.isfile(output_file_hits) and not analysis_configuration["overwrite_output_files"]:  # skip analysis if already done
-        logging.info('Selected hit data file ' + output_file_hits + ' already exists. Skip analysis for this file.')
+        logging.warning('Selected hit data file ' + output_file_hits + ' already exists. Skip analysis for this file.')
     else:
         analysis.select_hits_from_cluster_info(input_file_hits=input_file_hits, output_file_hits=output_file_hits, cluster_size_condition=cluster_size_condition, n_cluster_condition=n_cluster_condition)  # select hits and copy the mto new file
     if os.path.isfile(output_file_hits_analyzed) and not analysis_configuration["overwrite_output_files"]:  # skip analysis if already done
-        logging.info('Analyzed selected hit data file ' + output_file_hits_analyzed + ' already exists. Skip analysis for this file.')
+        logging.warning('Analyzed selected hit data file ' + output_file_hits_analyzed + ' already exists. Skip analysis for this file.')
     else:
         logging.info('Analyze selected hits in ' + output_file_hits)
         with AnalyzeRawData(raw_data_file=None, analyzed_data_file=output_file_hits) as analyze_raw_data:
@@ -157,73 +154,83 @@ def analyse_selected_hits(input_file_hits, output_file_hits, output_file_hits_an
 def analyze_injected_charge(data_analyzed_file):
     logging.info('Analyze the injected charge')
     with tb.openFile(data_analyzed_file, mode="r") as in_file_h5:
-        occupancy = in_file_h5.root.HistOcc[:]
+        occupancy = in_file_h5.root.HistOcc[:].T
         gdacs = analysis_utils.get_scan_parameter(in_file_h5.root.meta_data[:])['GDAC']
-        with tb.openFile(analysis_configuration['input_file_calibration'], mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
-            mean_threshold_calibration = in_file_calibration_h5.root.MeanThresholdCalibration[:]
-            threshold_calibration_array = in_file_calibration_h5.root.HistThresholdCalibration[:]
+        with PdfPages(analysis_configuration['plot_filename']) as plot_file:
+            plotting.plot_scatter(gdacs, occupancy.sum(axis=(0, 1)), title='Single pixel hit rate at different thresholds', x_label='Threshold setting [GDAC]', y_label='Single pixel hit rate', log_x=True, filename=plot_file)
+            if analysis_configuration['input_file_calibration']:
+                with tb.openFile(analysis_configuration['input_file_calibration'], mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
+                    mean_threshold_calibration = in_file_calibration_h5.root.MeanThresholdCalibration[:]
+                    threshold_calibration_array = in_file_calibration_h5.root.HistThresholdCalibration[:]
 
-            gdac_range_calibration = mean_threshold_calibration['gdac']
-            gdac_range_source_scan = gdacs
+                    gdac_range_calibration = np.array(in_file_calibration_h5.root.HistThresholdCalibration._v_attrs.scan_parameter_values)
+                    gdac_range_source_scan = gdacs
 
-            logging.info('Analyzing source scan data with %d GDAC settings from %d to %d with minimum step sizes from %d to %d', len(gdac_range_source_scan), np.min(gdac_range_source_scan), np.max(gdac_range_source_scan), np.min(np.gradient(gdac_range_source_scan)), np.max(np.gradient(gdac_range_source_scan)))
-            logging.info('Use calibration data with %d GDAC settings from %d to %d with minimum step sizes from %d to %d', len(gdac_range_calibration), np.min(gdac_range_calibration), np.max(gdac_range_calibration), np.min(np.gradient(gdac_range_calibration)), np.max(np.gradient(gdac_range_calibration)))
+                    # Select data that is within the given GDAC range, (min_gdac, max_gdac)
+                    sel = np.where(np.logical_and(gdac_range_source_scan >= analysis_configuration['min_gdac'], gdac_range_source_scan <= analysis_configuration['max_gdac']))[0]
+                    gdac_range_source_scan = gdac_range_source_scan[sel]
+                    occupancy = occupancy[:, :, sel]
+                    sel = np.where(np.logical_and(gdac_range_calibration >= analysis_configuration['min_gdac'], gdac_range_calibration <= analysis_configuration['max_gdac']))[0]
+                    gdac_range_calibration = gdac_range_calibration[sel]
+                    threshold_calibration_array = threshold_calibration_array[:, :, sel]
 
-            # rate_normalization of the total hit number for each GDAC setting
-            rate_normalization = 1.
-            if analysis_configuration['normalize_rate']:
-                rate_normalization = analysis_utils.get_rate_normalization(hit_file=hit_file, cluster_file=hit_file, parameter='GDAC', reference=analysis_configuration['normalization_reference'], plot=analysis_configuration['plot_normalization'])
+                    logging.info('Analyzing source scan data with %d GDAC settings from %d to %d with minimum step sizes from %d to %d', len(gdac_range_source_scan), np.min(gdac_range_source_scan), np.max(gdac_range_source_scan), np.min(np.gradient(gdac_range_source_scan)), np.max(np.gradient(gdac_range_source_scan)))
+                    logging.info('Use calibration data with %d GDAC settings from %d to %d with minimum step sizes from %d to %d', len(gdac_range_calibration), np.min(gdac_range_calibration), np.max(gdac_range_calibration), np.min(np.gradient(gdac_range_calibration)), np.max(np.gradient(gdac_range_calibration)))
 
-            # correcting the hit numbers for the different cluster sizes
-            correction_factors = 1.
-            if analysis_configuration['use_cluster_rate_correction']:
-                correction_h5 = tb.openFile(cluster_sizes_file, mode="r")
-                cluster_size_histogram = correction_h5.root.AllHistClusterSize[:]
-                correction_factors = analysis_utils.get_hit_rate_correction(gdacs=gdac_range_source_scan, calibration_gdacs=gdac_range_source_scan, cluster_size_histogram=cluster_size_histogram)
-                if analysis_configuration['plot_cluster_sizes']:
-                    plot_cluster_sizes(correction_h5, in_file_calibration_h5, gdac_range=gdac_range_source_scan)
+                    # rate_normalization of the total hit number for each GDAC setting
+                    rate_normalization = 1.
+                    if analysis_configuration['normalize_rate']:
+                        rate_normalization = analysis_utils.get_rate_normalization(hit_file=hit_file, cluster_file=hit_file, parameter='GDAC', reference=analysis_configuration['normalization_reference'], plot=analysis_configuration['plot_normalization'])
 
-            print correction_factors
+                    # correcting the hit numbers for the different cluster sizes
+                    correction_factors = 1.
+                    if analysis_configuration['use_cluster_rate_correction']:
+                        correction_h5 = tb.openFile(cluster_sizes_file, mode="r")
+                        cluster_size_histogram = correction_h5.root.AllHistClusterSize[:]
+                        correction_factors = analysis_utils.get_hit_rate_correction(gdacs=gdac_range_source_scan, calibration_gdacs=gdac_range_source_scan, cluster_size_histogram=cluster_size_histogram)
+                        if analysis_configuration['plot_cluster_sizes']:
+                            plot_cluster_sizes(correction_h5, in_file_calibration_h5, gdac_range=gdac_range_source_scan)
 
-            pixel_thresholds = analysis_utils.get_pixel_thresholds_from_calibration_array(gdacs=gdac_range_source_scan, calibration_gdacs=gdac_range_calibration, threshold_calibration_array=threshold_calibration_array)  # interpolates the threshold at the source scan GDAC setting from the calibration
-            pixel_hits = np.swapaxes(occupancy, 0, 1)  # create hit array with shape (col, row, ...)
-            pixel_hits = pixel_hits * correction_factors * rate_normalization
+                    pixel_thresholds = analysis_utils.get_pixel_thresholds_from_calibration_array(gdacs=gdac_range_source_scan, calibration_gdacs=gdac_range_calibration, threshold_calibration_array=threshold_calibration_array)  # interpolates the threshold at the source scan GDAC setting from the calibration
+                    pixel_hits = occupancy  # create hit array with shape (col, row, ...)
+                    print pixel_hits.shape
+                    pixel_hits = pixel_hits * correction_factors * rate_normalization
 
-            # choose region with pixels that have a sufficient occupancy but are not too hot
-            good_pixel = analysis_utils.select_good_pixel_region(pixel_hits, col_span=analysis_configuration['col_span'], row_span=analysis_configuration['row_span'], min_cut_threshold=analysis_configuration['min_cut_threshold'], max_cut_threshold=analysis_configuration['max_cut_threshold'])
-            pixel_mask = ~np.ma.getmaskarray(good_pixel)
-            selected_pixel_hits = pixel_hits[pixel_mask, :]  # reduce the data to pixels that are in the good pixel region
-            selected_pixel_thresholds = pixel_thresholds[pixel_mask, :]  # reduce the data to pixels that are in the good pixel region
-            plotting.plot_occupancy(good_pixel.T, title='Select ' + str(len(selected_pixel_hits)) + ' pixels for analysis')
+                    # choose region with pixels that have a sufficient occupancy but are not too hot
+                    good_pixel = analysis_utils.select_good_pixel_region(pixel_hits, col_span=analysis_configuration['col_span'], row_span=analysis_configuration['row_span'], min_cut_threshold=analysis_configuration['min_cut_threshold'], max_cut_threshold=analysis_configuration['max_cut_threshold'])
+                    pixel_mask = ~np.ma.getmaskarray(good_pixel)
+                    selected_pixel_hits = pixel_hits[pixel_mask, :]  # reduce the data to pixels that are in the good pixel region
+                    selected_pixel_thresholds = pixel_thresholds[pixel_mask, :]  # reduce the data to pixels that are in the good pixel region
+                    plotting.plot_occupancy(good_pixel.T, title='Selected pixel for analysis (' + str(len(selected_pixel_hits)) + ')', filename=plot_file)
 
-            # reshape to one dimension
-            x = selected_pixel_thresholds.flatten()
-            y = selected_pixel_hits.flatten()
+                    # reshape to one dimension
+                    x = selected_pixel_thresholds.flatten()
+                    y = selected_pixel_hits.flatten()
 
-            #nothing should be NAN, NAN is not supported yet
-            if np.isfinite(x).shape != x.shape or np.isfinite(y).shape != y.shape:
-                logging.warning('There are pixels with NaN or INF threshold or hit values, analysis will fail')
+                    # nothing should be NAN/INF, NAN/INF is not supported yet
+                    if np.isfinite(x).shape != x.shape or np.isfinite(y).shape != y.shape:
+                        logging.warning('There are pixels with NaN or INF threshold or hit values, analysis will fail')
 
-            # calculated profile histogram
-            x_p, y_p, y_p_e = analysis_utils.get_profile_histogram(x, y, n_bins=analysis_configuration['n_bins'])  # profile histogram data
+                    # calculated profile histogram
+                    x_p, y_p, y_p_e = analysis_utils.get_profile_histogram(x, y, n_bins=analysis_configuration['n_bins'])  # profile histogram data
 
-            # select only the data point where the calibration worked
-            selected_data = np.logical_and(x_p > analysis_configuration['min_thr'] / analysis_configuration['vcal_calibration'], x_p < analysis_configuration['max_thr'] / analysis_configuration['vcal_calibration'])
-            x_p = x_p[selected_data]
-            y_p = y_p[selected_data]
-            y_p_e = y_p_e[selected_data]
+                    # select only the data point where the calibration worked
+                    selected_data = np.logical_and(x_p > analysis_configuration['min_thr'] / analysis_configuration['vcal_calibration'], x_p < analysis_configuration['max_thr'] / analysis_configuration['vcal_calibration'])
+                    x_p = x_p[selected_data]
+                    y_p = y_p[selected_data]
+                    y_p_e = y_p_e[selected_data]
 
-            plot_result(x_p, y_p, y_p_e)
+                    plot_result(x_p, y_p, y_p_e)
 
-            #  calculate and plot mean results
-            x_mean = analysis_utils.get_mean_threshold_from_calibration(gdac_range_source_scan, mean_threshold_calibration)
-            y_mean = selected_pixel_hits.mean(axis=(0))
+                    #  calculate and plot mean results
+                    x_mean = analysis_utils.get_mean_threshold_from_calibration(gdac_range_source_scan, mean_threshold_calibration)
+                    y_mean = selected_pixel_hits.mean(axis=(0))
 
-            plotting.plot_scatter(np.array(gdac_range_source_scan), y_mean, log_x=True, plot_range=None, title='Mean single pixel cluster rate at different thresholds', x_label='threshold setting [GDAC]', y_label='mean single pixel cluster rate')
-            plotting.plot_scatter(x_mean * analysis_configuration['vcal_calibration'], y_mean, plot_range=(analysis_configuration['min_thr'], analysis_configuration['max_thr']), title='Mean single pixel cluster rate at different thresholds', x_label='mean threshold [e]', y_label='mean single pixel cluster rate')
+                    plotting.plot_scatter(np.array(gdac_range_source_scan), y_mean, log_x=True, plot_range=None, title='Mean single pixel cluster rate at different thresholds', x_label='threshold setting [GDAC]', y_label='mean single pixel cluster rate', filename=plot_file)
+                    plotting.plot_scatter(x_mean * analysis_configuration['vcal_calibration'], y_mean, plot_range=(analysis_configuration['min_thr'], analysis_configuration['max_thr']), title='Mean single pixel cluster rate at different thresholds', x_label='mean threshold [e]', y_label='mean single pixel cluster rate', filename=plot_file)
 
-        if analysis_configuration['use_cluster_rate_correction']:
-            correction_h5.close()
+                if analysis_configuration['use_cluster_rate_correction']:
+                    correction_h5.close()
 
 if __name__ == "__main__":
     data_files = analysis_utils.get_data_file_names_from_scan_base(analysis_configuration['scan_name'], filter_file_words=['analyzed', 'interpreted', 'cut_', 'cluster_sizes', 'trigger_fe'], parameter=True)
@@ -237,12 +244,12 @@ if __name__ == "__main__":
     cluster_sizes_file = analysis_configuration['scan_name'][0] + '_ALL_cluster_sizes.h5'
 
     if 1 in analysis_configuration['analysis_steps']:
-        analyze_raw_data(input_files=files_dict.keys(), output_file_hits=hit_file, chip_flavor=analysis_configuration['chip_flavor'], scan_parameter='GDAC')
+        analyze_raw_data(input_files=files_dict.keys(), output_file_hits=hit_file, scan_parameter='GDAC')
     if 2 in analysis_configuration['analysis_steps']:
         analyse_selected_hits(input_file_hits=hit_file, output_file_hits=hit_cut_file, output_file_hits_analyzed=hit_cut_analyzed_file, scan_data_filenames=analysis_configuration['scan_name'][0])
     if 2.5 in analysis_configuration['analysis_steps']:
         if os.path.isfile(cluster_seed_analyzed_file) and not analysis_configuration["overwrite_output_files"]:
-            logging.info('Selected cluster hit histogram data file ' + cluster_seed_analyzed_file + ' already exists. Skip analysis for this file.')
+            logging.warning('Selected cluster hit histogram data file ' + cluster_seed_analyzed_file + ' already exists. Skip analysis for this file.')
         else:
             analysis.histogram_cluster_table(hit_file, cluster_seed_analyzed_file)
     if 3 in analysis_configuration['analysis_steps']:
