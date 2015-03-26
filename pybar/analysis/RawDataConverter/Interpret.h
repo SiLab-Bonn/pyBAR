@@ -153,7 +153,7 @@ private:
 	unsigned char tTriggerError;				//event trigger error code
 	unsigned short tErrorCode;					//event error code
 	unsigned int tServiceRecord;				//event service records
-	unsigned int tTriggerNumber;                //event trigger number
+	unsigned int tEventTriggerNumber;           //event trigger number
 	unsigned int tTotalHits;                    //event hits
 	bool tLVL1IDisConst;					    //is only true if a trigger is send externally, self trigger can have different LVL1IDs in one event
 	bool tBCIDerror;						    //set to true if event data is incomplete to omit the actual event for clustering
@@ -203,6 +203,7 @@ private:
 	unsigned int* _serviceRecordCounter;     //SR histogram
 
 	//temporary variables set according to the actual SRAM word
+	unsigned int tTriggerNumber;            //trigger number of actual trigger number word
 	unsigned int tActualLVL1ID;				//LVL1ID of the actual data header
 	unsigned int tActualBCID;				//BCID of the actual data header
 	unsigned int tActualSRcode;				//Service record code of the actual service record

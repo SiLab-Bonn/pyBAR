@@ -132,11 +132,11 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 		}
 		else if (isTriggerWord(tActualWord)){ //data word is trigger word, is first word of the event data if external trigger is present
 			_nTriggers++;						//increase the total trigger number counter
-			if (!_useTriggerNumber){
-				if (tNdataHeader > _NbCID-1)	//special case: first word is trigger word
+			if (!_useTriggerNumber){			// first word is not always the trigger number
+				if (tNdataHeader > _NbCID-1)
 					addEvent();
 			}
-			else if (_firstTriggerNrSet){		// if a trigger word but not the first occurs create an event
+			else if (_firstTriggerNrSet){		// use trigger number for event building, first word is trigger word in data stream
 				addEvent();
 			}
 			tTriggerWord++;                     //trigger event counter increase
@@ -174,6 +174,10 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 						warning(std::string("interpretRawData: TRIGGER_ERROR_LOW_TIMEOUT at event "+LongIntToStr(_nEvents)));
 				}
 			}
+
+			if (tTriggerWord == 1)  			// event trigger number is trigger number of first trigger word within the event
+				tEventTriggerNumber = tTriggerNumber;
+
 			_lastTriggerNumber = tTriggerNumber;
 		}
 		else if (getInfoFromServiceRecord(tActualWord, tActualSRcode, tActualSRcounter)){ //data word is service record
@@ -401,6 +405,7 @@ void Interpret::resetEventVariables()
 	tTdcCount = 0;
 	tTdcTimeStamp = 0;
 	tTriggerNumber = 0;
+	tEventTriggerNumber = 0;
 	tStartBCID = 0;
 	tStartLVL1ID = 0;
 	tHitBufferIndex = 0;
@@ -638,7 +643,7 @@ void Interpret::addHit(const unsigned char& pRelBCID, const unsigned short int& 
 {
 	if(tHitBufferIndex < __MAXHITBUFFERSIZE){
 		_hitBuffer[tHitBufferIndex].eventNumber = _nEvents;
-		_hitBuffer[tHitBufferIndex].triggerNumber = tTriggerNumber;
+		_hitBuffer[tHitBufferIndex].triggerNumber = tEventTriggerNumber;
 		_hitBuffer[tHitBufferIndex].relativeBCID = pRelBCID;
 		_hitBuffer[tHitBufferIndex].LVLID = pLVLID;
 		_hitBuffer[tHitBufferIndex].column = pColumn;
@@ -732,7 +737,7 @@ void Interpret::addEvent()
 void Interpret::storeEventHits()
 {
 	for (unsigned int i = 0; i<tHitBufferIndex; ++i){
-		_hitBuffer[i].triggerNumber = tTriggerNumber; //not needed if trigger number is at the beginning
+		_hitBuffer[i].triggerNumber = tEventTriggerNumber; //not needed if trigger number is at the beginning
 		_hitBuffer[i].triggerStatus = tTriggerError;
 		_hitBuffer[i].eventStatus = tErrorCode;
 		storeHit(_hitBuffer[i]);
