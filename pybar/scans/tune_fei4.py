@@ -94,7 +94,7 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
             The target threshold value in PlsrDAC.
         target_charge : int
             The target charge in PlsrDAC value to tune to.
-        target_tot : int
+        target_tot : float
             The target tot value to tune to.
         global_iterations : int
             Defines how often global threshold/global feedback current tuning is repeated.
