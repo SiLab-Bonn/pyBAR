@@ -703,7 +703,7 @@ void Interpret::addEvent()
 	if(tTriggerWord == 0){
 		addEventErrorCode(__NO_TRG_WORD);
 		if (_firstTriggerNrSet)  // set the last existing trigger number for events without trigger number if trigger numbers exist
-			tEventTriggerNumber = tTriggerNumber;
+			tEventTriggerNumber = _lastTriggerNumber;
 	}
 	if(tTriggerWord > 1){
 		addTriggerErrorCode(__TRG_NUMBER_MORE_ONE);
