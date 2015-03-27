@@ -42,7 +42,7 @@ class Fei4RunBase(RunBase):
         self.err_queue = Queue()
         self.fifo_readout = None
         self.raw_data_file = None
-
+        
     @property
     def working_dir(self):
         if self.module_id:
@@ -180,6 +180,8 @@ class Fei4RunBase(RunBase):
         if not isinstance(self.conf['dut'], Dut):
             module_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
             if isinstance(self.conf['dut'], basestring):
+                # dirty fix for Windows pathes
+                self.conf['dut'] = os.path.normpath(self.conf['dut'].replace('\\', '/'))
                 # abs path
                 if os.path.isabs(self.conf['dut']):
                     dut = self.conf['dut']
@@ -198,6 +200,8 @@ class Fei4RunBase(RunBase):
             # only initialize when DUT was not initialized before
             if 'dut_configuration' in self.conf and self.conf['dut_configuration']:
                 if isinstance(self.conf['dut_configuration'], basestring):
+                    # dirty fix for Windows pathes
+                    self.conf['dut_configuration'] = os.path.normpath(self.conf['dut_configuration'].replace('\\', '/'))
                     # abs path
                     if os.path.isabs(self.conf['dut_configuration']):
                         dut_configuration = self.conf['dut_configuration']
