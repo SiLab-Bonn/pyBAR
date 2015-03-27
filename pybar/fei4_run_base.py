@@ -34,8 +34,10 @@ class Fei4RunBase(RunBase):
         # adding default run conf parameters valid for all scans
         if 'send_data' not in self._default_run_conf:
             self._default_run_conf.update({'send_data': None})
-        self._default_run_conf.update({'comment': None})
-        self._default_run_conf.update({'reset_rx_on_error': None})
+        if 'comment' not in self._default_run_conf:
+            self._default_run_conf.update({'comment': None})
+        if 'reset_rx_on_error' not in self._default_run_conf:
+            self._default_run_conf.update({'reset_rx_on_error': None})
 
         super(Fei4RunBase, self).__init__(conf=conf, run_conf=run_conf)
 
