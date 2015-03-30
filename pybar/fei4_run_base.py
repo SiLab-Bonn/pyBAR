@@ -96,15 +96,32 @@ class Fei4RunBase(RunBase):
             self.dut['rx']['TDC'] = 1
             self.dut['rx'].write()
         elif self.dut.name == 'mio_gpac':
-            self.dut['V_in'].set_current_limit(1000, unit='mA')  # one for all
-            # enabling LVDS transceivers
-            self.dut['CCPD_Vdd'].set_enable(False)
-            self.dut['CCPD_Vdd'].set_voltage(0.0, unit='V')
-            self.dut['CCPD_Vdd'].set_enable(True)
-            # enabling V_in
-            self.dut['V_in'].set_enable(False)
-            self.dut['V_in'].set_voltage(0.0, unit='V')
+            # PWR
+            self.dut['V_in'].set_current_limit(0.1, unit='A')  # one for all, max. 1A
+            # V_in
+            self.dut['V_in'].set_voltage(2.1, unit='V')
             self.dut['V_in'].set_enable(True)
+            if self.dut["V_in"].get_over_current():
+                self.power_off()
+                raise Exception('V_in overcurrent detected')
+            # Vdd, also enabling LVDS transceivers
+            self.dut['CCPD_Vdd'].set_voltage(1.80, unit='V')
+            self.dut['CCPD_Vdd'].set_enable(True)
+            if self.dut["CCPD_Vdd"].get_over_current():
+                self.power_off()
+                raise Exception('Vdd overcurrent detected')
+            # Vssa
+            self.dut['CCPD_Vssa'].set_voltage(1.50, unit='V')
+            self.dut['CCPD_Vssa'].set_enable(True)
+            if self.dut["CCPD_Vssa"].get_over_current():
+                self.power_off()
+                raise Exception('Vssa overcurrent detected')
+            # VGate
+            self.dut['CCPD_VGate'].set_voltage(2.10, unit='V')
+            self.dut['CCPD_VGate'].set_enable(True)
+            if self.dut["CCPD_VGate"].get_over_current():
+                self.power_off()
+                raise Exception('VGate overcurrent detected')
             # enabling readout
             self.dut['rx']['FE'] = 1
             self.dut['rx']['TLU'] = 1
