@@ -20,7 +20,7 @@ before_install:
   - export PATH="$HOME/miniconda/bin:$PATH"
   - conda update --yes conda
   - conda info -a
-  - conda create --yes -n test-environment numpy cython pytables scipy matplotlib pandas pyserial bitarray nose
+  - conda create --yes -n test-environment numpy cython pytables scipy matplotlib pandas pyserial bitarray nose yaml
   - source activate test-environment
   - pip install progressbar-latest pyvisa pyvisa-py
 #  - wget -O cocotb-master.zip https://github.com/potentialventures/cocotb/archive/master.zip 
