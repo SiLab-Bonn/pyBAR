@@ -71,6 +71,8 @@ def create_hitor_calibration(output_filename):
             progress_bar.start()
 
             for index, (parameter_values, event_start, event_stop) in enumerate(event_ranges_per_parameter):
+                if event_stop is None:  # happens for the last chunk
+                    event_stop = hits[-1]['event_number']
                 array_index = np.searchsorted(event_numbers, np.array([event_start, event_stop]))
                 actual_hits = hits[array_index[0]:array_index[1]]
                 actual_col, actual_row, parameter_value = parameter_values
@@ -107,8 +109,8 @@ class HitOrCalibration(Fei4RunBase):
         "repeat_command": 1000,
         "scan_parameters": [('column', None),
                             ('row', None),
-                            ('PlsrDAC', [i for j in (range(26, 70, 10), range(80, 200, 50), range(240, 400, 100)) for i in j])],  # 0 400 sufficient
-        "reset_rx_om_error": True,
+                            ('PlsrDAC', [40, 50, 60, 80, 130, 180, 230, 280, 340, 440, 540, 640, 740])],  # 0 400 sufficient
+        "reset_rx_on_error": True,
         "plot_tdc_histograms": False,
         "pixels": (np.dstack(np.where(make_box_pixel_mask_from_col_row([40, 45], [150, 155]) == 1)) + 1)[0],  # list of (col, row) tupels. From 1 to 80/336.
         "enable_masks": ["Enable", "C_Low", "C_High"],
@@ -186,3 +188,4 @@ class HitOrCalibration(Fei4RunBase):
 
 if __name__ == "__main__":
     RunManager('../configuration.yaml').run_run(HitOrCalibration)
+#    create_hitor_calibration('/media/davidlp/Data/SCC112/TDCcalibration/scc_112/15_scc_112_hit_or_calibration')
