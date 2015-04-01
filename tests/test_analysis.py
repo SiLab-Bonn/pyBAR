@@ -13,6 +13,7 @@ from pybar.analysis.RawDataConverter.data_histograming import PyDataHistograming
 from pybar.analysis.RawDataConverter.data_clusterizer import PyDataClusterizer
 from pybar.analysis import analysis_utils
 from pybar.analysis.RawDataConverter import data_struct
+from pybar.scans.calibrate_hit_or import create_hitor_calibration
 from pybar.daq.readout_utils import get_col_row_array_from_data_record_array, convert_data_array, is_data_record
 tests_data_folder = 'test_analysis//'
 
@@ -197,12 +198,21 @@ class TestAnalysis(unittest.TestCase):
         del cls.clusterizer
         os.remove(tests_data_folder + 'unit_test_data_1_interpreted.h5')
         os.remove(tests_data_folder + 'unit_test_data_1_analyzed.h5')
+        os.remove(tests_data_folder + 'unit_test_data_1.pdf')
         os.remove(tests_data_folder + 'unit_test_data_2_interpreted.h5')
         os.remove(tests_data_folder + 'unit_test_data_2_analyzed.h5')
         os.remove(tests_data_folder + 'unit_test_data_2_hits.h5')
+        os.remove(tests_data_folder + 'unit_test_data_2.pdf')
         os.remove(tests_data_folder + 'unit_test_data_3_interpreted.h5')
+        os.remove(tests_data_folder + 'unit_test_data_3.pdf')
         os.remove(tests_data_folder + 'unit_test_data_4_interpreted.h5')
         os.remove(tests_data_folder + 'unit_test_data_4_interpreted_2.h5')
+        os.remove(tests_data_folder + 'unit_test_data_4.pdf')
+        os.remove(tests_data_folder + 'unit_test_data_4_parameter_128.pdf')
+        os.remove(tests_data_folder + 'hit_or_calibration_data.pdf')
+        os.remove(tests_data_folder + 'hit_or_calibration_data_calibration.pdf')
+        os.remove(tests_data_folder + 'hit_or_calibration_data_interpreted.h5')
+        os.remove(tests_data_folder + 'hit_or_calibration_data_calibration.h5')
 
     def test_libraries_stability(self):  # calls 50 times the constructor and destructor to check the libraries
         progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=50, term_width=80)
@@ -357,6 +367,13 @@ class TestAnalysis(unittest.TestCase):
             except:  # other exception that should not occur
                 pass
             self.assertTrue(exception_ok & np.all(array == array_fast))
+
+    def test_hit_or_calibration(self):
+        create_hitor_calibration(tests_data_folder + 'hit_or_calibration_data')
+        data_equal, error_msg = compare_h5_files(tests_data_folder + 'hit_or_calibration_interpreted_result.h5', tests_data_folder + 'hit_or_calibration_data_interpreted.h5')
+        self.assertTrue(data_equal, msg=error_msg)
+        data_equal, error_msg = compare_h5_files(tests_data_folder + 'hit_or_calibration_result.h5', tests_data_folder + 'hit_or_calibration_data_calibration.h5')
+        self.assertTrue(data_equal, msg=error_msg)
 
 if __name__ == '__main__':
     tests_data_folder = 'test_analysis//'

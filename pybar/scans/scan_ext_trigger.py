@@ -19,6 +19,7 @@ class ExtTriggerScan(Fei4RunBase):
         "trigger_mode": 0,  # trigger mode, more details in basil.HL.tlu, from 0 to 3
         "trigger_latency": 232,  # FE-I4 trigger latency, in BCs, external scintillator / TLU / HitOR: 232, USBpix self-trigger: 220
         "trigger_delay": 14,  # trigger delay, in BCs
+        "trigger_count": 0,  # consecutive trigger, 0 means 16
         "trigger_rate_limit": 500,  # artificially limiting the trigger rate, in BCs (25ns)
         "col_span": [1, 80],  # defining active column interval, 2-tuple, from 1 to 80
         "row_span": [1, 336],  # defining active row interval, 2-tuple, from 1 to 336
@@ -27,7 +28,8 @@ class ExtTriggerScan(Fei4RunBase):
         "no_data_timeout": 10,  # no data timeout after which the scan will be aborted, in seconds
         "scan_timeout": 60,  # timeout for scan after which the scan will be stopped, in seconds
         "max_triggers": 10000,  # maximum triggers after which the scan will be stopped, in seconds
-        "enable_tdc": False  # if True, enables TDC (use RX2)
+        "enable_tdc": False,  # if True, enables TDC (use RX2)
+        'reset_rx_on_error': False  # long scans have a high propability for ESD related data transmission errors; recover and continue here
     }
 
     def configure(self):
@@ -55,7 +57,7 @@ class ExtTriggerScan(Fei4RunBase):
         commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_Low'))
         # Registers
         self.register.set_global_register_value("Trig_Lat", self.trigger_latency)  # set trigger latency
-        self.register.set_global_register_value("Trig_Count", self.trig_count)  # set number of consecutive triggers
+        self.register.set_global_register_value("Trig_Count", self.trigger_count)  # set number of consecutive triggers
         commands.extend(self.register.get_commands("WrRegister", name=["Trig_Lat", "Trig_Count"]))
         commands.extend(self.register.get_commands("RunMode"))
         self.register_utils.send_commands(commands)
@@ -64,10 +66,6 @@ class ExtTriggerScan(Fei4RunBase):
         # preload command
         lvl1_command = self.register.get_commands("zeros", length=self.trigger_delay)[0] + self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", length=self.trigger_rate_limit)[0]
         self.register_utils.set_command(lvl1_command)
-
-#         show_trigger_message_at = 10 ** (int(math.floor(math.log10(self.max_triggers) - math.log10(3) / math.log10(10))))
-#         current_trigger_number = 0
-#         last_trigger_number = 0
 
         with self.readout(**self.scan_parameters._asdict()):
             got_data = False
@@ -96,7 +94,6 @@ class ExtTriggerScan(Fei4RunBase):
     def analyze(self):
         with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
             analyze_raw_data.create_source_scan_hist = True
-#             analyze_raw_data.create_hit_table = True
             analyze_raw_data.create_cluster_size_hist = True
             analyze_raw_data.create_cluster_tot_hist = True
             if self.enable_tdc:

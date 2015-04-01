@@ -26,8 +26,8 @@ class ExtTriggerGdacScan(ExtTriggerScan):
         if not self.scan_parameters.GDAC:  # distribute logarithmically if no GDAC was specified
             altc = self.register.get_global_register_value("Vthin_AltCoarse")
             altf = self.register.get_global_register_value("Vthin_AltFine")
-            curr_gdac = self.register_utils.get_gdac(self, altc=altc, altf=altf)
-            self.gdacs = np.logspace(curr_gdac, 25000, num=50)
+            curr_gdac = self.register_utils.get_gdac(altc=altc, altf=altf)
+            self.gdacs = np.unique(np.logspace(np.log10(curr_gdac), np.log10(6000), 60).astype(np.int)).tolist() + range(6500, 25001, 500)
         elif isinstance(self.scan_parameters.GDAC, basestring):  # deduce GDACs from calibration file
             if self.interpolate_calibration:
                 self.gdacs = self.get_gdacs_from_interpolated_calibration(self.scan_parameters.GDAC, self.interpolation_thresholds)
@@ -40,7 +40,7 @@ class ExtTriggerGdacScan(ExtTriggerScan):
 
     def scan(self):
         for gdac in self.gdacs:
-            if self.stop_run.is_set():
+            if self.abort_run.is_set():
                 break
             self.register_utils.set_gdac(gdac)
             self.set_scan_parameters(GDAC=gdac)
@@ -53,13 +53,13 @@ class ExtTriggerGdacScan(ExtTriggerScan):
     def get_gdacs_from_interpolated_calibration(self, calibration_file, thresholds):
         logging.info('Interpolate GDAC calibration for the thresholds %s', str(thresholds))
         with tb.openFile(calibration_file, mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
-            interpolation = interp1d(in_file_calibration_h5.root.MeanThresholdCalibration[:]['mean_threshold'], in_file_calibration_h5.root.MeanThresholdCalibration[:]['gdac'], kind='slinear', bounds_error=True)
+            interpolation = interp1d(in_file_calibration_h5.root.MeanThresholdCalibration[:]['mean_threshold'], in_file_calibration_h5.root.MeanThresholdCalibration[:]['parameter_value'], kind='slinear', bounds_error=True)
             return np.unique(interpolation(thresholds).astype(np.uint32))
 
     def get_gdacs_from_calibration_file(self, calibration_file):
         logging.info('Take GDAC values from calibration file')
         with tb.openFile(calibration_file, mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
-            return in_file_calibration_h5.root.MeanThresholdCalibration[:]['gdac']
+            return in_file_calibration_h5.root.MeanThresholdCalibration[:]['parameter_value']
 
 
 if __name__ == "__main__":

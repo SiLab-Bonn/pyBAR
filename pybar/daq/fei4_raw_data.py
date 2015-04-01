@@ -126,7 +126,7 @@ class RawDataFile(object):
                 diff = [name for name in scan_parameters.keys() if scan_parameters[name] != self.scan_parameters[name]]
                 self.scan_parameters.update(scan_parameters)
                 if (new_file is True and diff) or (isinstance(new_file, (list, tuple)) and len([name for name in diff if name in new_file]) != 0):
-                    self.curr_filename = os.path.splitext(self.base_filename)[0].strip().lower() + '_' + '_'.join([str(item) for item in reduce(lambda x, y: x + y, [(key, value) for key, value in scan_parameters.items() if (new_file is True or (isinstance(new_file, (list, tuple)) and key in new_file))])])
+                    self.curr_filename = os.path.splitext(self.base_filename)[0].strip() + '_' + '_'.join([str(item) for item in reduce(lambda x, y: x + y, [(key, value) for key, value in scan_parameters.items() if (new_file is True or (isinstance(new_file, (list, tuple)) and key in new_file))])])
                     index = self.filenames.get(self.curr_filename, 0)
                     if index == 0:
                         filename = self.curr_filename + '.h5'
