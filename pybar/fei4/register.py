@@ -587,14 +587,14 @@ class FEI4Register(object):
         except ValueError:  # value is path to pixel config
             if self.pixel_registers[name]['bitlength'] == 1:  # pixel mask
                 if value[0] == "~" or value[0] == "!":
-                    reg_value = parse_pixel_mask_config(os.path.join(os.path.dirname(self.configuration_file), value[1:]))
+                    reg_value = parse_pixel_mask_config(os.path.join(os.path.dirname(self.configuration_file), os.path.normpath(value[1:].replace('\\', '/'))))
                     inverted_mask = np.ones(shape=(80, 336), dtype=np.dtype('>u1'))
                     inverted_mask[reg_value >= 1] = 0
                     self.pixel_registers[name]['value'][:, :] = inverted_mask
                 else:
-                    self.pixel_registers[name]['value'][:, :] = parse_pixel_mask_config(os.path.join(os.path.dirname(self.configuration_file), value))
+                    self.pixel_registers[name]['value'][:, :] = parse_pixel_mask_config(os.path.join(os.path.dirname(self.configuration_file), os.path.normpath(value).replace('\\', '/')))
             else:  # pixel dac
-                self.pixel_registers[name]['value'][:, :] = parse_pixel_dac_config(os.path.join(os.path.dirname(self.configuration_file), value))
+                self.pixel_registers[name]['value'][:, :] = parse_pixel_dac_config(os.path.join(os.path.dirname(self.configuration_file), os.path.normpath(value).replace('\\', '/')))
         if (self.pixel_registers[name]['value'] >= 2 ** self.pixel_registers[name]['bitlength']).any() or (self.pixel_registers[name]['value'] < 0).any():
             raise ValueError("Pixel register %s: value exceeds limits" % name)
 

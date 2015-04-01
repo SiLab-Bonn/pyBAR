@@ -22,18 +22,17 @@ from pybar.analysis.plotting.plotting import plotThreeWay, plot_1d_hist
 
 
 analysis_configuration = {
-    'scan_name': ['/media/davidlp/Data/SCC167/scc_167/56_scc_167_ext_trigger_scan'],  # the base file name(s) of the raw data file, no file suffix needed
-    'input_file_calibration': '/media/davidlp/Data/SCC167/scc_167/23_scc_167_hit_or_calibration_calibration.h5',  # the Plsr<->TDC calibration file
+    'scan_name': ['/media/davidlp/Data/SCC112/TDCcalibration/DifferentSources/Americium/1_scc_112_ext_trigger_scan'],  # the base file name(s) of the raw data file, no file suffix needed
+    'input_file_calibration': '/media/davidlp/Data/SCC112/TDCcalibration/scc_112/2_scc_112_hit_or_calibration_calibration.h5',  # the Plsr<->TDC calibration file
     'hit_selection_conditions': ['(n_cluster>=1) & (cluster_size>=1)',
                                  '(n_cluster==1) & (cluster_size==1)',  # criterions for the hit selection based on hit properties, per criterion one hitogram is created
                                  '(n_cluster==1) & (cluster_size==2)',
                                  '(n_cluster==1) & (cluster_size>2)',
                                  '(n_cluster>1)'],
-    'event_status_select_mask': 0b0000011111011110,  # the event status bits to cut on
+    'event_status_select_mask': 0b0000111111111110,  # the event status bits to cut on
     'event_status_condition': 0b0000000100000010,  # the event status number after the event_status_select_mask is bitwise ORed with the event number
     'min_pixel_hits': 1e3,  # minimum number of hits a pixel must see to contribute to the 1d corrected TDC histogram
     "analysis_steps": [1, 2],  # the analysis includes this selected steps only. See explanation above.
-    "max_tot_value": 13,  # maximum tot value to use the hit
     "interpreter_plots": True,  # set to False to omit the Raw Data plots, saves time
     "interpreter_warnings": False,  # show interpreter warnings
     "overwrite_output_files": True  # overwrite already existing files from former analysis
@@ -59,7 +58,6 @@ def analyze_raw_data(input_files, output_file_hits, interpreter_plots, pdf_filen
             analyze_raw_data.create_source_scan_hist = True  # create source scan hists
             analyze_raw_data.create_cluster_size_hist = True  # enables cluster size histogramming, can save some time, std. setting is false
             analyze_raw_data.create_cluster_tot_hist = True  # enables cluster ToT histogramming per cluster size, std. setting is false
-            analyze_raw_data.max_tot_value = analysis_configuration['max_tot_value']  # set the maximum ToT value considered to be a hit, 14 is a late hit
             analyze_raw_data.interpreter.set_warning_output(analysis_configuration['interpreter_warnings'])  # std. setting is True
             analyze_raw_data.clusterizer.set_warning_output(analysis_configuration['interpreter_warnings'])  # std. setting is True
             analyze_raw_data.interpret_word_table()  # the actual start conversion command

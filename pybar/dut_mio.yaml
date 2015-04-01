@@ -6,19 +6,31 @@ transfer_layer:
   - name     : USB
     type     : SiUsb
 # Example of additional lab devices to be used by pyBAR
-#  - name     : Visa
+#  - name     : VisaWindows
 #    type     : Visa
 #    init     :
 #        resource_name : ASRLCOM6::INSTR
+#        backend : "@py"
+#  - name     : VisaLinux
+#    type     : Visa
+#    init     :
+#        resource_name : ASRL/dev/ttyUSB0
+#        read_termination : "\r"
+#        baud_rate : 9600
 #        backend : "@py"
 
 hw_drivers:
 # Example of additional lab devices to be used by pyBAR
 #  - name      : PowerSupply
 #    type      : scpi
-#    interface : Visa
+#    interface : VisaWindows
 #    init      :
 #        device : TTi QL335TP
+#  - name      : Multimeter
+#    type      : scpi
+#    interface : VisaLinux
+#    init      :
+#        device : Keithley 2400
 
   - name      : cmd
     type      : cmd_seq

@@ -363,6 +363,8 @@ class RunManager(object):
             self._conf_path = None
         self.conf = self.open_conf(conf)
         if 'working_dir' in self.conf and self.conf['working_dir']:
+            # dirty fix for Windows pathes
+            self.conf['working_dir'] = os.path.normpath(self.conf['working_dir'].replace('\\', '/'))
             if self._conf_path and not os.path.isabs(self.conf['working_dir']):
                 # if working_dir is relative path, join path to configuration file and working_dir
                 self.conf['working_dir'] = os.path.join(os.path.dirname(self._conf_path), self.conf['working_dir'])

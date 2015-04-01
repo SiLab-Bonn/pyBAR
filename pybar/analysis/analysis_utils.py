@@ -1464,11 +1464,11 @@ def get_mean_threshold_from_calibration(gdac, mean_threshold_calibration):
     numpy.array, shape=(len(gdac), )
         The mean threshold values at each value in gdacs.
     '''
-    interpolation = interp1d(mean_threshold_calibration['gdac'], mean_threshold_calibration['mean_threshold'], kind='slinear', bounds_error=True)
+    interpolation = interp1d(mean_threshold_calibration['parameter_value'], mean_threshold_calibration['mean_threshold'], kind='slinear', bounds_error=True)
     return interpolation(gdac)
 
 
-def get_pixel_thresholds_from_calibration_array(gdacs, calibration_gdacs, threshold_calibration_array):
+def get_pixel_thresholds_from_calibration_array(gdacs, calibration_gdacs, threshold_calibration_array, bounds_error=True):
     '''Calculates the threshold for all pixels in threshold_calibration_array at the given GDAC settings via linear interpolation. The GDAC settings used during calibration have to be given.
 
     Parameters
@@ -1487,7 +1487,7 @@ def get_pixel_thresholds_from_calibration_array(gdacs, calibration_gdacs, thresh
     '''
     if len(calibration_gdacs) != threshold_calibration_array.shape[2]:
         raise ValueError('Length of the provided pixel GDACs does not match the third dimension of the calibration array')
-    interpolation = interp1d(x=calibration_gdacs, y=threshold_calibration_array, kind='slinear', bounds_error=True)
+    interpolation = interp1d(x=calibration_gdacs, y=threshold_calibration_array, kind='slinear', bounds_error=bounds_error)
     return interpolation(gdacs)
 
 
