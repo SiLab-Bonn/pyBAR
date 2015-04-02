@@ -459,6 +459,23 @@ set_property SLEW SLOW [get_ports {OC[0]}]
 set_property IOSTANDARD LVCMOS33 [get_ports {OC[0]}]
 set_property PACKAGE_PIN B12 [get_ports {OC[0]}]
 
+# TLU
+set_property SLEW SLOW [get_ports {LEMO_RX[1]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {LEMO_RX[1]}]
+set_property PACKAGE_PIN U26 [get_ports {LEMO_RX[1]}]
+
+set_property SLEW SLOW [get_ports {LEMO_RX[0]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {LEMO_RX[0]}]
+set_property PACKAGE_PIN U22 [get_ports {LEMO_RX[0]}]
+
+set_property SLEW SLOW [get_ports {TX[1]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {TX[1]}]
+set_property PACKAGE_PIN V23 [get_ports {TX[1]}]
+
+set_property SLEW SLOW [get_ports {TX[0]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {TX[0]}]
+set_property PACKAGE_PIN AB21 [get_ports {TX[0]}]
+
 #####################################
 
 #create_clock -name Clk100 -period 10.000 [get_ports Clk100]

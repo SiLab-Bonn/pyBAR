@@ -64,6 +64,13 @@
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
+      <File Path="$PPRDIR/../../../../basil/device/modules/tlu/tlu_controller_fsm.v">
+        <FileInfo>
+          <Attr Name="UsedIn" Val="synthesis"/>
+          <Attr Name="UsedIn" Val="implementation"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
       <File Path="$PPRDIR/../../../../Basil/device/modules/utils/cdc_pulse_sync.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
@@ -79,6 +86,13 @@
         </FileInfo>
       </File>
       <File Path="$PPRDIR/../../../../Basil/device/modules/fei4_rx/receiver_logic.v">
+        <FileInfo>
+          <Attr Name="UsedIn" Val="synthesis"/>
+          <Attr Name="UsedIn" Val="implementation"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
+      <File Path="$PPRDIR/../../../../basil/device/modules/tlu/tlu_controller_core.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
@@ -107,6 +121,13 @@
         </FileInfo>
       </File>
       <File Path="$PPRDIR/../../../../Basil/device/modules/bram_fifo/bram_fifo_core.v">
+        <FileInfo>
+          <Attr Name="UsedIn" Val="synthesis"/>
+          <Attr Name="UsedIn" Val="implementation"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
+      <File Path="$PPRDIR/../../../../basil/device/modules/tlu/tlu_controller.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>

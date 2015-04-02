@@ -61,6 +61,10 @@ module KX7_IF_Test_Top(
 // FE-I4_rx signals
 (* IOB = "FORCE" *) input wire [3:0] DOBOUT,
 
+// Trigger
+(* IOB = "FORCE" *) input wire [1:0] LEMO_RX,
+    output wire [1:0] TX, // TX[0] == RJ45 trigger clock output, TX[1] == RJ45 busy output
+
 // Over Current Protection (BIC only)
     input wire [3:0] OC
     
@@ -189,6 +193,9 @@ PLLE2_BASE #(
  
  localparam FIFO_BASEADDR = 32'h8100;
  localparam FIFO_HIGHADDR = 32'h8200-1;
+ 
+ localparam TLU_BASEADDR = 32'h8200;
+ localparam TLU_HIGHADDR = 32'h8300-1;
 
  localparam RX4_BASEADDR = 32'h8300;
  localparam RX4_HIGHADDR = 32'h8400-1;
@@ -208,8 +215,12 @@ PLLE2_BASE #(
  localparam ABUSWIDTH = 32;
  
 // Command sequencer
-wire CMD_EXT_START_FLAG;
-assign CMD_EXT_START_FLAG = 0;
+wire CMD_EXT_START_FLAG, TLU_CMD_EXT_START_FLAG; // to CMD FSM
+assign CMD_EXT_START_FLAG = TLU_CMD_EXT_START_FLAG;
+//assign CMD_EXT_START_FLAG = 0;
+
+wire CMD_EXT_START_ENABLE; // from CMD FSM
+wire CMD_READY; // to TLU FSM
 
 cmd_seq 
 #( 
@@ -227,9 +238,9 @@ cmd_seq
     .CMD_CLK_OUT(CMD_CLK_OUT),
     .CMD_CLK_IN(clk40mhz),
     .CMD_EXT_START_FLAG(CMD_EXT_START_FLAG),
-    .CMD_EXT_START_ENABLE(),
+    .CMD_EXT_START_ENABLE(CMD_EXT_START_ENABLE),
     .CMD_DATA(CMD_DATA),
-    .CMD_READY(),
+    .CMD_READY(CMD_READY),
     .CMD_START_FLAG()
 );
 
@@ -276,21 +287,80 @@ generate
   end
 endgenerate
 
+// declarations for BRAM
+wire FIFO_NOT_EMPTY, FIFO_FULL, FIFO_NEAR_FULL, FIFO_READ_ERROR;
+
+// TLU
+wire TLU_FIFO_READ;
+wire TLU_FIFO_EMPTY;
+wire [31:0] TLU_FIFO_DATA;
+wire TLU_FIFO_PEEMPT_REQ;
+
+wire TLU_BUSY; // busy signal to TLU to de-assert trigger
+wire TLU_CLOCK;
+
+wire LEMO_TRIGGER, LEMO_RESET;
+assign LEMO_TRIGGER = LEMO_RX[0];
+assign LEMO_RESET = LEMO_RX[1];
+
+assign TX[0] = TLU_CLOCK; // trigger clock; also connected to RJ45 output
+assign TX[1] = TLU_BUSY | (~CMD_READY/*CMD_CAL*/ & ~CMD_EXT_START_ENABLE); // TLU_BUSY signal; also connected to RJ45 output. Asserted when TLU FSM has accepted a trigger or when CMD FSM is busy (when CMD_EXT_START_ENABLE is disabled).
+
+wire [31:0] TIMESTAMP;
+
+tlu_controller #(
+    .BASEADDR(TLU_BASEADDR),
+    .HIGHADDR(TLU_HIGHADDR),
+    .ABUSWIDTH(ABUSWIDTH),
+    .DIVISOR(8)
+) i_tlu_controller (
+    .BUS_CLK(BUS_CLK),
+    .BUS_RST(BUS_RST),
+    .BUS_ADD(BUS_ADD),
+    .BUS_DATA(BUS_DATA[7:0]),
+    .BUS_RD(BUS_RD),
+    .BUS_WR(BUS_WR),
+
+    .CMD_CLK(clk40mhz),
+
+    .FIFO_READ(TLU_FIFO_READ),
+    .FIFO_EMPTY(TLU_FIFO_EMPTY),
+    .FIFO_DATA(TLU_FIFO_DATA),
+
+    .FIFO_PREEMPT_REQ(TLU_FIFO_PEEMPT_REQ),
+
+    .RJ45_TRIGGER(1'b0),
+    .LEMO_TRIGGER(LEMO_TRIGGER),
+    .RJ45_RESET(1'b0),
+    .LEMO_RESET(LEMO_RESET),
+    .RJ45_ENABLED(),
+    .TLU_BUSY(TLU_BUSY),
+    .TLU_CLOCK(TLU_CLOCK),
+    
+    .EXT_VETO(FIFO_FULL),
+    
+    .CMD_READY(CMD_READY),
+    .CMD_EXT_START_FLAG(TLU_CMD_EXT_START_FLAG),
+    .CMD_EXT_START_ENABLE(CMD_EXT_START_ENABLE),
+    
+    .TIMESTAMP(TIMESTAMP)
+);
+
 // Arbiter
 wire ARB_READY_OUT, ARB_WRITE_OUT;
 wire [31:0] ARB_DATA_OUT;
-wire [3:0] READ_GRANT;
+wire [4:0] READ_GRANT;
 
 rrp_arbiter
 #( 
-    .WIDTH(4)
+    .WIDTH(5)
 ) i_rrp_arbiter (
     .RST(BUS_RST),
     .CLK(BUS_CLK),
 
-    .WRITE_REQ(~FIFO_EMPTY),
-    .HOLD_REQ({4'b0}),
-    .DATA_IN({FIFO_DATA[3],FIFO_DATA[2],FIFO_DATA[1], FIFO_DATA[0]}),
+    .WRITE_REQ({~FIFO_EMPTY, ~TLU_FIFO_EMPTY}),
+    .HOLD_REQ({4'b0, TLU_FIFO_PEEMPT_REQ}),
+    .DATA_IN({FIFO_DATA[3],FIFO_DATA[2],FIFO_DATA[1], FIFO_DATA[0], TLU_FIFO_DATA}),
     .READ_GRANT(READ_GRANT),
 
     .READY_OUT(ARB_READY_OUT),
@@ -298,11 +368,10 @@ rrp_arbiter
     .DATA_OUT(ARB_DATA_OUT)
 );
 
-assign FIFO_READ = READ_GRANT[3:0];
+assign TLU_FIFO_READ = READ_GRANT[0];
+assign FIFO_READ = READ_GRANT[4:1];
 
 // BRAM
-wire FIFO_NOT_EMPTY, FIFO_FULL, FIFO_NEAR_FULL, FIFO_READ_ERROR;
-
 bram_fifo 
 #(
     .BASEADDR(FIFO_BASEADDR),
