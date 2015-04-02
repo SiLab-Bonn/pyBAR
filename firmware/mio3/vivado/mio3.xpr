@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Product Version: Vivado v2014.1 (64-bit)              -->
+<!-- Product Version: Vivado v2014.4 (64-bit)              -->
 <!--                                                         -->
-<!-- Copyright (c) 2001-2013 Xilinx Inc, All rights reserved -->
+<!-- Copyright 1986-2014 Xilinx, Inc. All Rights Reserved.   -->
 
-<Project Version="7" Minor="0" Path="C:/Users/vfilimonov/workspacePY/PyBAR/device/mio3/vivado/mio3.xpr">
+<Project Version="7" Minor="2" Path="C:/Users/vfilimonov/workspacePY/pyBAR/firmware/mio3/vivado/mio3.xpr">
   <DefaultLaunch Dir="$PRUNDIR"/>
   <Configuration>
     <Option Name="Id" Val="bc37f16bf3ba489b8537d2c52c7a5ef3"/>
@@ -315,12 +315,6 @@
           <Attr Name="UsedIn" Val="implementation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../../../../xilinx_tutorial/mio3/mio3.ioplanning/constrs_1/designprops.xml">
-        <FileInfo SFType="CompatPartsDb"/>
-      </File>
-      <File Path="$PPRDIR/../../../../../../../xilinx_tutorial/mio3/mio3.ioplanning/constrs_1/usercols.xml">
-        <FileInfo SFType="UserColsDb"/>
-      </File>
       <Config>
         <Option Name="TargetConstrsFile" Val="$PPRDIR/../src/Mercury-KX1.xdc"/>
         <Option Name="ConstrsType" Val="XDC"/>
@@ -338,6 +332,21 @@
       </Config>
     </FileSet>
   </FileSets>
+  <Simulators>
+    <Simulator Name="XSim">
+      <Option Name="Description" Val="Vivado Simulator"/>
+      <Option Name="CompiledLib" Val="0"/>
+    </Simulator>
+    <Simulator Name="ModelSim">
+      <Option Name="Description" Val="QuestaSim/ModelSim Simulator"/>
+    </Simulator>
+    <Simulator Name="IES">
+      <Option Name="Description" Val="Incisive Enterprise Simulator (IES)"/>
+    </Simulator>
+    <Simulator Name="VCS">
+      <Option Name="Description" Val="Verilog Compiler Simulator (VCS)"/>
+    </Simulator>
+  </Simulators>
   <Runs Version="1" Minor="9">
     <Run Id="synth_1" Type="Ft3:Synth" SrcSet="sources_1" Part="xc7k160tfbg676-1" ConstrsSet="constrs_1" Description="Vivado Synthesis Defaults" State="current" Dir="$PRUNDIR/synth_1">
       <Strategy Version="1" Minor="2">
