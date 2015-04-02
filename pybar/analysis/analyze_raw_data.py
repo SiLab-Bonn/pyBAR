@@ -1006,7 +1006,7 @@ class AnalyzeRawData(object):
     def _deduce_settings_from_file(self, opened_raw_data_file):  # TODO: parse better
         '''Tries to get the scan parameters needed for analysis from the raw data file
         '''
-        try:  # take FE flavor info from raw data file, if this info is there
+        try:  # take infos raw data files (not avalable in old files)
             flavor = opened_raw_data_file.root.configuration.miscellaneous[:][np.where(opened_raw_data_file.root.configuration.miscellaneous[:]['name'] == 'Flavor')]['value'][0]
             bcid = opened_raw_data_file.root.configuration.global_register[:][np.where(opened_raw_data_file.root.configuration.global_register[:]['name'] == 'Trig_Count')]['value'][0]
             vcal_c0 = opened_raw_data_file.root.configuration.calibration_parameters[:][np.where(opened_raw_data_file.root.configuration.calibration_parameters[:]['name'] == 'Vcal_Coeff_0')]['value'][0]
@@ -1023,8 +1023,12 @@ class AnalyzeRawData(object):
             self.c_low = float(c_low)
             self.c_mid = float(c_mid)
             self.c_high = float(c_high)
+            repeat_command = opened_raw_data_file.root.configuration.run_conf[:][np.where(opened_raw_data_file.root.configuration.run_conf[:]['name'] == 'repeat_command')]['value'][0]
+            self.n_injections = int(repeat_command)
         except tb.exceptions.NoSuchNodeError:
             logging.warning('No settings stored in raw data file, use provided settings')
+        except IndexError:  # happens if setting is not available (e.g. repeat_command)
+            pass
 
     def _get_plsr_dac_charge(self, plsr_dac_array):
         '''Takes the PlsrDAC calibration and the stored C-high/C-low mask to calculate the charge from the PlsrDAC array on a pixel basis
