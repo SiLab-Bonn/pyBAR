@@ -49,10 +49,7 @@ module KX7_IF_Test_Top(
 (* IOB = "FORCE" *) input wire FLAG2, // DMA watermark flag for thread 2 of FX3
 
 // Power supply regulators EN signals
-    output wire EN_VD1,
-    output wire EN_VD2,
-    output wire EN_VA1,
-    output wire EN_VA2,
+    output wire [3:0] EN,
     
 // Command sequencer signals
     output wire CMD_CLK_OUT,
@@ -71,11 +68,6 @@ module KX7_IF_Test_Top(
 );
 
 //assign reset_fx3 = 1; // not to reset fx3 while loading fpga
-
-assign EN_VD1 = 1;
-assign EN_VD2 = 1;
-assign EN_VA1 = 1;
-assign EN_VA2 = 1;
 
 wire [31:0] BUS_ADD;
 wire [31:0] BUS_DATA;
@@ -209,6 +201,9 @@ PLLE2_BASE #(
  localparam RX1_BASEADDR = 32'h8600;
  localparam RX1_HIGHADDR = 32'h8700-1;
  
+ localparam GPIO_POWER_BASEADDR = 16'h8900;
+ localparam GPIO_POWER_HIGHADDR = 16'h8A00-1;
+ 
  localparam FIFO_BASEADDR_DATA = 32'h8000_0000;
  localparam FIFO_HIGHADDR_DATA = 32'h9000_0000;
  
@@ -286,6 +281,24 @@ generate
     ); 
   end
 endgenerate
+
+// gpio power
+wire [3:0] NOT_CONNECTED_POWER;
+gpio #(
+    .BASEADDR(GPIO_POWER_BASEADDR),
+    .HIGHADDR(GPIO_POWER_HIGHADDR),
+    .ABUSWIDTH(ABUSWIDTH),
+    .IO_WIDTH(8),
+    .IO_DIRECTION(8'hff)
+) i_gpio_power (
+    .BUS_CLK(BUS_CLK),
+    .BUS_RST(BUS_RST),
+    .BUS_ADD(BUS_ADD),
+    .BUS_DATA(BUS_DATA[7:0]),
+    .BUS_RD(BUS_RD),
+    .BUS_WR(BUS_WR),
+    .IO({NOT_CONNECTED_POWER, EN[3], EN[2], EN[1], EN[0]}) //OC[3], OC[2], OC[1], OC[0]
+);
 
 // declarations for BRAM
 wire FIFO_NOT_EMPTY, FIFO_FULL, FIFO_NEAR_FULL, FIFO_READ_ERROR;

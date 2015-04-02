@@ -400,21 +400,21 @@ set_property IOSTANDARD LVCMOS33 [get_ports FLAG2]
 set_property SLEW FAST [get_ports FLAG2]
 
 # Power supply regulators EN signals
-set_property SLEW FAST [get_ports EN_VD1]
-set_property IOSTANDARD LVCMOS33 [get_ports EN_VD1]
-set_property PACKAGE_PIN D18 [get_ports EN_VD1]
+set_property SLEW FAST [get_ports {EN[3]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {EN[3]}]
+set_property PACKAGE_PIN D18 [get_ports {EN[3]}]
 
-set_property SLEW FAST [get_ports EN_VD2]
-set_property IOSTANDARD LVCMOS33 [get_ports EN_VD2]
-set_property PACKAGE_PIN B19 [get_ports EN_VD2]
+set_property SLEW FAST [get_ports {EN[2]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {EN[2]}]
+set_property PACKAGE_PIN B19 [get_ports {EN[2]}]
 
-set_property SLEW FAST [get_ports EN_VA1]
-set_property IOSTANDARD LVCMOS33 [get_ports EN_VA1]
-set_property PACKAGE_PIN A15 [get_ports EN_VA1]
+set_property SLEW FAST [get_ports {EN[0]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {EN[0]}]
+set_property PACKAGE_PIN A15 [get_ports {EN[0]}]
 
-set_property SLEW FAST [get_ports EN_VA2]
-set_property IOSTANDARD LVCMOS33 [get_ports EN_VA2]
-set_property PACKAGE_PIN A12 [get_ports EN_VA2]
+set_property SLEW FAST [get_ports {EN[1]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {EN[1]}]
+set_property PACKAGE_PIN A12 [get_ports {EN[1]}]
 
 # Command sequencer signals
 set_property SLEW SLOW [get_ports CMD_CLK_OUT]
