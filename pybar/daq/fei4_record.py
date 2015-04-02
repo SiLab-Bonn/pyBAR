@@ -13,7 +13,13 @@ class FEI4Record(object):
         self.record_rawdata = int(data_word)
         self.record_word = BitLogic.from_value(value=self.record_rawdata, size=32)
         self.record_dict = OrderedDict()
-        if self.record_rawdata & 0x0F000000:  # FE data
+        if self.record_rawdata & 0x80000000:
+            self.record_type = "TW"
+            self.record_dict.update([('trigger data', self.record_word[30:0].tovalue())])
+        elif self.record_rawdata & 0x40000000:
+            self.record_type = "TDC"
+            self.record_dict.update([('tdc data', self.record_word[29:12].tovalue()), ('tdc value', self.record_word[11:0].tovalue())])
+        elif self.record_rawdata & 0x0F000000:  # FE data
             self.record_dict.update([('channel', (self.record_rawdata & 0x0F000000) >> 24)])
             self.chip_flavor = chip_flavor
             if self.chip_flavor not in flavors:
@@ -50,12 +56,6 @@ class FEI4Record(object):
                 self.record_type = "UNKNOWN FE WORD"
                 self.record_dict.update([('word', self.record_word.tovalue())])
     #             raise ValueError('Unknown data word: ' + str(self.record_word.tovalue()))
-        elif self.record_rawdata & 0x80000000:
-            self.record_type = "TW"
-            self.record_dict.update([('trigger data', self.record_word[30:0].tovalue())])
-        elif self.record_rawdata & 0x40000000:
-            self.record_type = "TDC"
-            self.record_dict.update([('tdc data', self.record_word[29:12].tovalue()), ('tdc value', self.record_word[11:0].tovalue())])
         else:
             self.record_type = "UNKNOWN WORD"
             self.record_dict.update([('unknown', self.record_word[31:0].tovalue())])
