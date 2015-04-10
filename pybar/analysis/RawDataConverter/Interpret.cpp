@@ -655,7 +655,7 @@ void Interpret::addHit(const unsigned char& pRelBCID, const unsigned short int& 
 		_hitBuffer[tHitBufferIndex].serviceRecord = tServiceRecord;
 		_hitBuffer[tHitBufferIndex].triggerStatus = tTriggerError;
 		_hitBuffer[tHitBufferIndex].eventStatus = tErrorCode;
-		if ((tErrorCode & __NO_HIT) != __NO_HIT)  //only coubt no virtual hits
+		if ((tErrorCode & __NO_HIT) != __NO_HIT)  //only count not virtual hits
 			tTotalHits++;
 		tHitBufferIndex++;
 	}
@@ -693,7 +693,7 @@ void Interpret::addEvent()
 		tDebug<<"addEvent() "<<_nEvents;
 		debug(tDebug.str());
 	}
-	if(tNdataRecord==0){
+	if(tTotalHits==0){
 		_nEmptyEvents++;
 		if (_createEmptyEventHits){
 			addEventErrorCode(__NO_HIT);

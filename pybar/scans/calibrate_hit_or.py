@@ -47,6 +47,7 @@ def create_hitor_calibration(output_filename):
         analyze_raw_data.interpret_word_table()
         analyze_raw_data.interpreter.print_summary()
         analyze_raw_data.plot_histograms()
+        n_injections = analyze_raw_data.n_injections  # store number of injections for later cross check
 
     with tb.open_file(output_filename + '_interpreted.h5', 'r') as in_file_h5:  # Get scan parameters from interpreted file
         meta_data = in_file_h5.root.meta_data[:]
@@ -80,9 +81,13 @@ def create_hitor_calibration(output_filename):
                 if len(hits[np.logical_and(actual_hits['column'] != actual_col, actual_hits['row'] != actual_row)]):
                     logging.warning('There are %d hits from not selected pixels in the data', len(actual_hits[np.logical_and(actual_hits['column'] != actual_col, actual_hits['row'] != actual_row)]))
 
-                actual_hits = actual_hits[(actual_hits['event_status'] & 0b0000011110001000) == 0b0000000100000000]  # only take hits from good events (one TDC word only, no error)
                 actual_hits = actual_hits[np.logical_and(actual_hits['column'] == actual_col, actual_hits['row'] == actual_row)]
-                tot, tdc = actual_hits['tot'], actual_hits['TDC']
+                actual_tdc_hits = actual_hits[(actual_hits['event_status'] & 0b0000111110011100) == 0b0000000100000000]  # only take hits from good events (one TDC word only, no error)
+                actual_tot_hits = actual_hits[(actual_hits['event_status'] & 0b0000100010011100) == 0b0000000000000000]  # only take hits from good events for tot
+                tot, tdc = actual_tot_hits['tot'], actual_tdc_hits['TDC']
+
+                if tdc.shape[0] != n_injections and index == event_ranges_per_parameter.shape[0] - 1:
+                    logging.warning('There are %d != %d TDC hits for %s = %s', tdc.shape[0], n_injections, str(scan_parameter_names), str(parameter_values))
 
                 inner_loop_scan_parameter_index = np.where(parameter_value == inner_loop_parameter_values)[0][0]  # translate the scan parameter value to an index for the result histogram
                 calibration_data[actual_col - 1, actual_row - 1, inner_loop_scan_parameter_index, 0] = np.mean(tot)
@@ -120,8 +125,8 @@ class HitOrCalibration(Fei4RunBase):
     def configure(self):
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))
-        self.register.set_global_register_value("Trig_Count", 5)  # decrease trigger count to reduce data
-        self.register.set_global_register_value("Trig_Lat", 216)  # adjust delay for smaller bcid window
+        self.register.set_global_register_value("Trig_Count", 6)  # decrease trigger count to reduce data
+        self.register.set_global_register_value("Trig_Lat", 215)  # adjust delay for smaller bcid window
         self.register.set_global_register_value("ErrorMask", 1536)  # deactivate hit bus service record
         commands.extend(self.register.get_commands("WrRegister", name=["Trig_Lat", "Trig_Count", "ErrorMask"]))
         self.register_utils.send_commands(commands)
@@ -188,4 +193,4 @@ class HitOrCalibration(Fei4RunBase):
 
 if __name__ == "__main__":
     RunManager('../configuration.yaml').run_run(HitOrCalibration)
-#    create_hitor_calibration('/media/davidlp/Data/SCC112/TDCcalibration/scc_112/15_scc_112_hit_or_calibration')
+#     create_hitor_calibration('/media/davidlp/Data/SCC112/TDCcalibration/old_tuning/scc_112/2_scc_112_hit_or_calibration')
