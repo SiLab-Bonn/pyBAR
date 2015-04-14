@@ -1,0 +1,32 @@
+build: false  # Tell appveyor to not use msbuild
+
+environment:
+  matrix:
+    - PYTHON: 2.7
+
+platform:
+  - x86
+  - x64
+
+init:
+  - "ECHO %PYTHON%"
+  - ps: Start-FileDownload 'http://download.microsoft.com/download/7/9/6/796EF2E4-801B-4FC4-AB28-B59FBF6D907B/VCForPython27.msi' C:\VCForPython27.msi; echo "Done"
+  - cmd: msiexec /i C:\VCForPython27.msi /quiet /qn
+  - ps: if($env:PYTHON -eq "2.7" -and $env:Platform -eq "x64"){Start-FileDownload 'http://repo.continuum.io/miniconda/Miniconda-3.5.5-Windows-x86_64.exe' C:\Miniconda.exe; echo "Done"}
+  - ps: if($env:PYTHON -eq "2.7" -and $env:Platform -eq "x86"){Start-FileDownload 'http://repo.continuum.io/miniconda/Miniconda-3.5.5-Windows-x86.exe' C:\Miniconda.exe; echo "Done"}
+  - cmd: C:\Miniconda.exe /S /D=C:\Miniconda
+  - ps: ls C:\Miniconda/Scripts
+  - C:\Miniconda\Scripts\conda create --yes -n test-environment numpy cython pytables scipy matplotlib pandas pyserial bitarray nose pyzmq pyyaml pip
+  - C:\Miniconda\Scripts\activate.bat test-environment
+  - pip install progressbar-latest pyvisa pyvisa-py
+  - C:\Miniconda\Scripts\conda info -a
+  - C:\Miniconda\Scripts\conda list
+
+install:
+  - pip install https://github.com/walac/pyusb/archive/master.zip
+  - pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/735/pySiLibUSB-2.0.3.tar.gz
+  - git clone -b development https://github.com/SiLab-Bonn/basil; cd basil/host; python.exe setup.py develop; cd..; cd..
+  - python.exe setup.py develop
+
+test_script:
+  - nosetests tests
