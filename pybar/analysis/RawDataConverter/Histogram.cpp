@@ -274,7 +274,7 @@ void Histogram::deleteOccupancyArray()
 {
   debug("deleteOccupancyArray()");
   if (_occupancy != 0)
-    delete _occupancy;
+    delete[] _occupancy;
   _occupancy = 0;
 }
 
@@ -369,7 +369,7 @@ void Histogram::deleteTotArray()
 {
   debug("deleteTotArray()");
   if (_tot != 0)
-    delete _tot;
+    delete[] _tot;
   _tot = 0;
 }
 
@@ -377,7 +377,7 @@ void Histogram::deleteTdcArray()
 {
   debug("deleteTdcArray()");
   if (_tdc != 0)
-    delete _tdc;
+    delete[] _tdc;
   _tdc = 0;
 }
 
@@ -408,7 +408,7 @@ void Histogram::deleteRelBcidArray()
 {
   debug("deleteRelBcidArray");
   if (_relBcid != 0)
-    delete _relBcid;
+    delete[] _relBcid;
   _relBcid = 0;
 }
 
@@ -440,7 +440,7 @@ void Histogram::deleteTotPixelArray()
 {
   debug("deleteTotPixelArray");
   if (_totPixel != 0)
-    delete _totPixel;
+    delete[] _totPixel;
   _totPixel = 0;
 }
 
@@ -448,7 +448,7 @@ void Histogram::deleteTdcPixelArray()
 {
   debug("deleteTdcPixelArray");
   if (_tdcPixel != 0)
-    delete _tdcPixel;
+    delete[] _tdcPixel;
   _tdcPixel = 0;
 }
 
