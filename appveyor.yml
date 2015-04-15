@@ -18,7 +18,7 @@ init:
   - ps: ls C:\Miniconda/Scripts
   - C:\Miniconda\Scripts\conda create --yes -n test-environment numpy cython pytables scipy matplotlib pandas pyserial bitarray nose pyzmq pyyaml pip
   - C:\Miniconda\Scripts\activate.bat test-environment
-  - pip install progressbar-latest pyvisa pyvisa-py
+  - pip install progressbar-latest pyvisa pyvisa-py pyqtgraph mock
   - C:\Miniconda\Scripts\conda info -a
   - C:\Miniconda\Scripts\conda list
 
@@ -29,4 +29,4 @@ install:
   - python.exe setup.py develop
 
 test_script:
-  - nosetests tests
+  - nosetests tests\test_analysis.py

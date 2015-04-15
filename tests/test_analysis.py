@@ -15,7 +15,9 @@ from pybar.analysis import analysis_utils
 from pybar.analysis.RawDataConverter import data_struct
 from pybar.scans.calibrate_hit_or import create_hitor_calibration
 from pybar.daq.readout_utils import get_col_row_array_from_data_record_array, convert_data_array, is_data_record
-tests_data_folder = 'test_analysis//'
+
+
+tests_data_folder = 'tests\\test_analysis\\'
 
 
 def get_array_differences(first_array, second_array):
