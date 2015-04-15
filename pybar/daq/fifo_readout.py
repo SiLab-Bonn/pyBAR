@@ -33,7 +33,7 @@ class StopTimeout(Exception):
 
 
 class FifoReadout(object):
-    def __init__(self, dut, fe_number=1):
+    def __init__(self, dut, fe_number=1, parallel=False):
         self.dut = dut
         self.callback = None
         self.errback = None
@@ -56,6 +56,7 @@ class FifoReadout(object):
         self.reset_rx()
         self.reset_sram_fifo()
         self.fe_number = fe_number
+        self.parallel = parallel
 
     @property
     def is_running(self):
@@ -230,9 +231,15 @@ class FifoReadout(object):
                         tuple_data = tuple(list_data)
                         if self.fill_buffer:
                             #filtered_data = readout_utils.convert_data_array(data, filter_func = readout_utils.is_data_from_channel(self.fe_number))
-                            self._data_buffer.append(tuple_data)  # Filling buffer on the host side
+                            if self.parallel:
+                                self._data_buffer.append(data)  # Filling buffer on the host side without filtering
+                            else:
+                                self._data_buffer.append(tuple_data)  # Filling buffer on the host side
                         if self.callback:
-                            self.callback(tuple_data)  # pass data to handle_data each time data is in buffer
+                            if self.parallel:
+                                self.callback(data)  # pass data to handle_data each time data is in buffer without filtering
+                            else:
+                                self.callback(tuple_data)  # pass data to handle_data each time data is in buffer
                     except Exception:
                         self.errback(sys.exc_info())
 

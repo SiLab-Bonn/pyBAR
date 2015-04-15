@@ -19,18 +19,18 @@ from pybar.run_manager import RunBase, RunAborted, RunStopped
 from pybar.fei4.register import FEI4Register
 from pybar.fei4.register_utils import FEI4RegisterUtils, is_fe_ready
 from pybar.daq.fifo_readout import FifoReadout, RxSyncError, EightbTenbError, FifoError, NoDataTimeout, StopTimeout
-from pybar.daq.fei4_raw_data import open_raw_data_file
+from pybar.daq.fei4_raw_data import open_raw_data_file, RawDataFile
 from pybar.analysis.analysis_utils import AnalysisError
 from pybar.analysis.RawDataConverter.data_struct import NameValue
 
 
-class Fei4RunBase(RunBase):
+class Fei4RunBaseParallel(RunBase):
     '''Basic FEI4 run meta class.
 
     Base class for scan- / tune- / analyze-class.
     '''
     __metaclass__ = abc.ABCMeta
-
+    
     def __init__(self, conf, run_conf=None):
         # adding default run conf parameters valid for all scans
         if 'send_data' not in self._default_run_conf:
@@ -40,13 +40,16 @@ class Fei4RunBase(RunBase):
         if 'reset_rx_on_error' not in self._default_run_conf:
             self._default_run_conf.update({'reset_rx_on_error': None})
 
-        super(Fei4RunBase, self).__init__(conf=conf, run_conf=run_conf)
+        super(Fei4RunBaseParallel, self).__init__(conf=conf, run_conf=run_conf)
 
         self.err_queue = Queue()
         self.fifo_readout = None
         self.raw_data_file = None
-        RunBase.parallel = False
-        
+        RunBase.parallel = True
+        self.raw_data_files = {}
+        #self._conf['multiple_fes_configuration'] = {}
+        self.last_configurations = {}
+
     @property
     def working_dir(self):
         if self.module_id:
@@ -60,14 +63,17 @@ class Fei4RunBase(RunBase):
 
     @property
     def register(self):
-        return self.conf['fe_configuration']
+        if 'number_of_fes' in self.conf and self.conf['number_of_fes'] > 1:
+            return self.conf['multiple_fes_configuration'][self.fe_number]
+        else:
+            return self.conf['fe_configuration']
 
     @property
     def output_filename(self):
         if self.module_id:
-            return os.path.join(self.working_dir, str(self.run_number) + "_" + self.module_id + "_" + self.run_id + "_fe" + str(self.fe_number))
+            return os.path.join(self.working_dir, str(self.run_number) + "_" + self.module_id + "_" + self.run_id)
         else:
-            return os.path.join(self.working_dir, str(self.run_number) + "_" + self.run_id + "_fe" + str(self.fe_number))
+            return os.path.join(self.working_dir, str(self.run_number) + "_" + self.run_id)
 
     @property
     def module_id(self):
@@ -154,32 +160,32 @@ class Fei4RunBase(RunBase):
     def init_fe(self):
         if 'number_of_fes' in self.conf and self.conf['number_of_fes'] > 1:
             if 'multiple_fes_configuration' in self.conf:
-                last_configuration = self._get_configuration()  # will get the latest valid configuration from the runs
+                self.last_configurations[self.fe_number] = self._get_configuration()  # will get the latest valid configuration from the runs
                 # init config, a number <=0 will also do the initialization (run 0 does not exist)
-                if (not self.conf['multiple_fes_configuration'][self.fe_number] and not last_configuration) or (isinstance(self.conf['multiple_fes_configuration'][self.fe_number], (int, long)) and self.conf['multiple_fes_configuration'][self.fe_number] <= 0):  # no valid runs yet and no valid run number for FE configuration file indicated
-                    if 'chip_address' in self.conf and self.conf['chip_address']:
-                        chip_address = self.conf['chip_address']
+                if (not self.conf['multiple_fes_configuration'][self.fe_number] and not self.last_configurations[self.fe_number]) or (isinstance(self.conf['multiple_fes_configuration'][self.fe_number], (int, long)) and self.conf['multiple_fes_configuration'][self.fe_number] <= 0):  # no valid runs yet and no valid run number for FE configuration file indicated
+                    if 'multiple_chip_address' in self.conf and self.conf['multiple_chip_address'][self.fe_number]:
+                        chip_address = self.conf['multiple_chip_address'][self.fe_number]
                         broadcast = False
                     else:
                         chip_address = 0
                         broadcast = True
                     if 'fe_flavor' in self.conf and self.conf['fe_flavor']:
-                        self._conf['fe_configuration'] = FEI4Register(fe_type=self.conf['fe_flavor'], chip_address=chip_address, broadcast=broadcast)
+                        self._conf['multiple_fes_configuration'][self.fe_number] = FEI4Register(fe_type=self.conf['fe_flavor'], chip_address=chip_address, broadcast=broadcast)
                     else:
                         raise ValueError('No fe_flavor given')
                 # use existing config
-                elif not self.conf['multiple_fes_configuration'][self.fe_number] and last_configuration:  # executes when latest valid configuration exists and run number is not indicated in fe_configuration
-                    self._conf['fe_configuration'] = FEI4Register(configuration_file=last_configuration)
+                elif not self.conf['multiple_fes_configuration'][self.fe_number] and self.last_configurations[self.fe_number]:  # executes when latest valid configuration exists and run number is not indicated in fe_configuration
+                    self._conf['multiple_fes_configuration'][self.fe_number] = FEI4Register(configuration_file=self.last_configurations[self.fe_number])
                 # path
                 elif isinstance(self.conf['multiple_fes_configuration'][self.fe_number], basestring):
                     if os.path.isabs(self.conf['multiple_fes_configuration'][self.fe_number]):
                         fe_configuration = self.conf['multiple_fes_configuration'][self.fe_number]
                     else:
                         fe_configuration = os.path.join(self.conf['working_dir'], self.conf['multiple_fes_configuration'][self.fe_number])
-                    self._conf['fe_configuration'] = FEI4Register(configuration_file=fe_configuration)
+                    self._conf['multiple_fes_configuration'][self.fe_number] = FEI4Register(configuration_file=fe_configuration)
                 # run number
                 elif isinstance(self.conf['multiple_fes_configuration'][self.fe_number], (int, long)) and self.conf['multiple_fes_configuration'][self.fe_number] > 0:
-                    self._conf['fe_configuration'] = FEI4Register(configuration_file=self._get_configuration(self.conf['multiple_fes_configuration'][self.fe_number]))
+                    self._conf['multiple_fes_configuration'][self.fe_number] = FEI4Register(configuration_file=self._get_configuration(self.conf['multiple_fes_configuration'][self.fe_number]))
                 # assume fe_configuration already initialized
                 elif not isinstance(self.conf['multiple_fes_configuration'][self.fe_number], FEI4Register):
                     raise ValueError('No valid fe_configuration given')
@@ -314,28 +320,58 @@ class Fei4RunBase(RunBase):
             pass  # do nothing, already initialized
         # FIFO readout
         if 'number_of_fes' in self.conf and self.conf['number_of_fes'] > 1:
-            self.fifo_readout = FifoReadout(self.dut, self.fe_number)
+            self.parallel = True
+            self.fifo_readout = FifoReadout(self.dut, self.fe_number, self.parallel)
         else:
             self.fifo_readout = FifoReadout(self.dut)
         # initialize the FE
         self.init_fe()
 
-    def do_run(self):
-        with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, scan_parameters=self.scan_parameters._asdict(), socket_addr=self.socket_addr) as self.raw_data_file:  # closes raw data file when exits with statement
-            self.save_configuration_dict(self.raw_data_file.h5_file, 'conf', self.conf)
-            self.save_configuration_dict(self.raw_data_file.h5_file, 'run_conf', self.run_conf)
+        if 'number_of_fes' in self.conf and self.conf['number_of_fes'] > 1:
+            self.raw_data_files[self.fe_number] = RawDataFile(filename=self.output_filename + "_fe" + str(self.fe_number), mode='w', title=self.run_id, scan_parameters=self.scan_parameters._asdict(), socket_addr=self.socket_addr)
+            self.save_configuration_dict(self.raw_data_files[self.fe_number].h5_file, 'conf', self.conf) # The same configuration.yaml for all FEs
+            self.save_configuration_dict(self.raw_data_files[self.fe_number].h5_file, 'run_conf', self.run_conf) # TODO: upload different confs
+            # configure for scan
+            self.register.create_restore_point(name=self.run_number)
+            self.configure()
+            self.register.save_configuration(self.raw_data_files[self.fe_number].h5_file) # TODO: upload different confs
 
-            with self.register.restored(name=self.run_number):
-                # configure for scan
-                self.configure()
-                self.register.save_configuration(self.raw_data_file.h5_file)
-                self.fifo_readout.reset_rx()
-                self.fifo_readout.reset_sram_fifo()
-                self.fifo_readout.print_readout_status()
-                # scan
-                self.scan()
+    def do_run(self):
+        if 'number_of_fes' in self.conf and self.conf['number_of_fes'] > 1:
+#             self.raw_data_files = {}
+#             for fe_number in range(1, self.conf['number_of_fes'] + 1):
+#                 self.raw_data_files[fe_number] = RawDataFile(filename=self.output_filename + "_fe" + str(fe_number), mode='w', title=self.run_id, scan_parameters=self.scan_parameters._asdict(), socket_addr=self.socket_addr)
+#                 self.save_configuration_dict(self.raw_data_files[fe_number].h5_file, 'conf', self.conf) # The same configuration.yaml for all FEs
+#                 self.save_configuration_dict(self.raw_data_files[fe_number].h5_file, 'run_conf', self.run_conf) # TODO: upload different confs
+#             for fe_number in range(1, self.conf['number_of_fes'] + 1):
+#                 self.register.save_configuration(self.raw_data_files[fe_number].h5_file) # TODO: upload different confs
+            self.fifo_readout.reset_rx()
+            self.fifo_readout.reset_sram_fifo()
+            self.fifo_readout.print_readout_status()
+            # scan
+            self.scan()
+
+            for fe_number in range(1, self.conf['number_of_fes'] + 1):
+                print self.raw_data_files
+                self.raw_data_files[fe_number].close()
+        else:
+            with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, scan_parameters=self.scan_parameters._asdict(), socket_addr=self.socket_addr) as self.raw_data_file:  # closes raw data file when exits with statement
+                self.save_configuration_dict(self.raw_data_file.h5_file, 'conf', self.conf)
+                self.save_configuration_dict(self.raw_data_file.h5_file, 'run_conf', self.run_conf)
+
+                with self.register.restored(name=self.run_number):
+                    # configure for scan
+                    self.configure()
+                    self.register.save_configuration(self.raw_data_file.h5_file)
+                    self.fifo_readout.reset_rx()
+                    self.fifo_readout.reset_sram_fifo()
+                    self.fifo_readout.print_readout_status()
+                    # scan
+                    self.scan()
 
     def post_run(self):
+        if 'number_of_fes' in self.conf and self.conf['number_of_fes'] > 1:
+            self.register.restore()
         try:
             self.fifo_readout.print_readout_status()
         # no device?
@@ -362,7 +398,7 @@ class Fei4RunBase(RunBase):
             raise RunAborted('Read the log')
         # analyzed data, save config
         else:
-            self.register.save_configuration(self.output_filename)
+            self.register.save_configuration(self.output_filename + "_fe" + str(self.fe_number))
 
         # other reasons
         if self.stop_run.is_set():
@@ -378,12 +414,15 @@ class Fei4RunBase(RunBase):
             logging.error('Cannot close USB device')
 
     def handle_data(self, data):
-        self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=False)
 
-#         list_data = list(data)
-#         list_data[0] = readout_utils.convert_data_array(list_data[0], filter_func = readout_utils.is_data_from_channel(self.fe_number))
-#         tuple_data = tuple(list_data)
-#         self.raw_data_file.append_item(tuple_data, scan_parameters=self.scan_parameters._asdict(), flush=False)
+        if 'number_of_fes' in self.conf and self.conf['number_of_fes'] > 1:
+            for fe_number in range(1, self.conf['number_of_fes'] + 1):
+                list_data = list(data)
+                list_data[0] = readout_utils.convert_data_array(list_data[0], filter_func = readout_utils.is_data_from_channel(fe_number))
+                tuple_data = tuple(list_data)
+                self.raw_data_files[fe_number].append_item(tuple_data, scan_parameters=self.scan_parameters._asdict(), flush=False)
+        else:
+            self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=False)
 
     def handle_err(self, exc):
         if self.reset_rx_on_error and isinstance(exc[1], (RxSyncError, EightbTenbError)):

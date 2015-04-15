@@ -106,11 +106,21 @@ class RunBase():
 
     def run(self, run_conf, run_number=None):
         self._init(run_conf, run_number)
+        print self.parallel
         try:
-            if 'number_of_fes' in self.conf and self.conf['number_of_fes'] > 1:
+            if not self.parallel and 'number_of_fes' in self.conf and self.conf['number_of_fes'] > 1:
                 for self.fe_number in range(1, self.conf['number_of_fes'] + 1):
                     with self._run():
                         self.do_run()
+            elif self.parallel and 'number_of_fes' in self.conf and self.conf['number_of_fes'] > 1:
+                print "Parallel scan"
+                for self.fe_number in range(1, self.conf['number_of_fes'] + 1):
+                    self.pre_run()
+                self.fe_number = 1
+                self.do_run()
+                for self.fe_number in range(1, self.conf['number_of_fes'] + 1):
+                    self.post_run()
+                    self.cleanup_run()
             else:
                 self.fe_number = 1
                 with self._run():
