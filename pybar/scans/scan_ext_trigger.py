@@ -5,11 +5,11 @@ from threading import Timer
 
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.fei4.register_utils import invert_pixel_mask, make_box_pixel_mask_from_col_row
-from pybar.fei4_run_base import Fei4RunBase
+from pybar.fei4_run_base_parallel import Fei4RunBaseParallel
 from pybar.run_manager import RunManager
 
 
-class ExtTriggerScan(Fei4RunBase):
+class ExtTriggerScanParallel(Fei4RunBaseParallel):
     '''External trigger scan with FE-I4
 
     For use with external scintillator (user RX0), TLU (use RJ45), USBpix self-trigger (loop back TX2 into RX0.)
@@ -87,29 +87,43 @@ class ExtTriggerScan(Fei4RunBase):
                         self.stop(msg='Trigger limit was reached: %i' % self.max_triggers)
 #                 print self.fifo_readout.data_words_per_second()
 #                 if (current_trigger_number % show_trigger_message_at < last_trigger_number % show_trigger_message_at):
-#                     logging.info('Collected triggers: %d', current_trigger_number)
+                    logging.info('Collected triggers: %d', triggers)
 
         logging.info('Total amount of triggers collected: %d', self.dut['tlu']['TRIGGER_COUNTER'])
 
     def analyze(self):
-        with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
-            analyze_raw_data.create_source_scan_hist = True
-            analyze_raw_data.create_cluster_size_hist = True
-            analyze_raw_data.create_cluster_tot_hist = True
-            if self.enable_tdc:
-                analyze_raw_data.create_tdc_counter_hist = True  # histogram all TDC words
-                analyze_raw_data.create_tdc_hist = True  # histogram the hit TDC information
-                analyze_raw_data.interpreter.use_tdc_word(True)  # align events at the TDC word
-            analyze_raw_data.interpreter.set_warning_output(False)
-            analyze_raw_data.interpret_word_table()
-            analyze_raw_data.interpreter.print_summary()
-            analyze_raw_data.plot_histograms()
+        if 'number_of_fes' in self.conf and self.conf['number_of_fes'] > 1:
+            with AnalyzeRawData(raw_data_file=self.output_filename + "_fe" + str(self.fe_number), create_pdf=True) as analyze_raw_data:
+                analyze_raw_data.create_source_scan_hist = True
+                analyze_raw_data.create_cluster_size_hist = True
+                analyze_raw_data.create_cluster_tot_hist = True
+                if self.enable_tdc:
+                    analyze_raw_data.create_tdc_counter_hist = True  # histogram all TDC words
+                    analyze_raw_data.create_tdc_hist = True  # histogram the hit TDC information
+                    analyze_raw_data.interpreter.use_tdc_word(True)  # align events at the TDC word
+                    analyze_raw_data.interpreter.set_warning_output(False)
+                    analyze_raw_data.interpret_word_table()
+                    analyze_raw_data.interpreter.print_summary()
+                    analyze_raw_data.plot_histograms()
+        else:
+            with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
+                analyze_raw_data.create_source_scan_hist = True
+                analyze_raw_data.create_cluster_size_hist = True
+                analyze_raw_data.create_cluster_tot_hist = True
+                if self.enable_tdc:
+                    analyze_raw_data.create_tdc_counter_hist = True  # histogram all TDC words
+                    analyze_raw_data.create_tdc_hist = True  # histogram the hit TDC information
+                    analyze_raw_data.interpreter.use_tdc_word(True)  # align events at the TDC word
+                    analyze_raw_data.interpreter.set_warning_output(False)
+                    analyze_raw_data.interpret_word_table()
+                    analyze_raw_data.interpreter.print_summary()
+                    analyze_raw_data.plot_histograms()
 
     def start_readout(self, **kwargs):
         if kwargs:
             self.set_scan_parameters(**kwargs)
         self.fifo_readout.start(reset_sram_fifo=False, clear_buffer=True, callback=self.handle_data, errback=self.handle_err, no_data_timeout=self.no_data_timeout)
-        self.dut['tdc_rx2']['ENABLE'] = self.enable_tdc
+#         self.dut['tdc_rx2']['ENABLE'] = self.enable_tdc
         self.dut['tlu'].RESET
         self.dut['tlu']['TRIGGER_MODE'] = self.trigger_mode
         self.dut['cmd']['EN_EXT_TRIGGER'] = True
@@ -127,11 +141,11 @@ class ExtTriggerScan(Fei4RunBase):
 
     def stop_readout(self):
         self.scan_timeout_timer.cancel()
-        self.dut['tdc_rx2']['ENABLE'] = False
+#         self.dut['tdc_rx2']['ENABLE'] = False
         self.dut['cmd']['EN_EXT_TRIGGER'] = False
         self.dut['tlu']['TRIGGER_MODE'] = 0
         self.fifo_readout.stop()
 
 
 if __name__ == "__main__":
-    RunManager('../configuration.yaml').run_run(ExtTriggerScan)
+    RunManager('../configuration.yaml').run_run(ExtTriggerScanParallel)
