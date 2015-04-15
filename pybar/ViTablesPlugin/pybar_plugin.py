@@ -7,7 +7,7 @@
 
 __docformat__ = 'restructuredtext'
 __version__ = '1.0'
-plugin_class = 'PyBAR'
+plugin_class = 'pyBarPlugin'
 
 import numpy as np
 
@@ -17,18 +17,91 @@ from PyQt4 import QtGui
 import vitables.utils
 from vitables.vtSite import PLUGINSDIR
 
-from host.analysis.plotting import plotting
+try:
+    from matplotlib import colors, cm
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
+except:
+    print 'ERROR: Cannot load additional libraries needed for the pyBAR ViTables plugin!'
 
 translate = QtGui.QApplication.translate
 
 
-class PyBar(QtCore.QObject):
+def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=None, x_ticks=None, color='r', plot_range=None, log_y=False, filename=None, figure_name=None):
+    plt.clf()
+    if plot_range is None:
+        plot_range = range(0, len(hist))
+    if not plot_range:
+        plot_range = [0]
+    if yerr is not None:
+        plt.bar(left=plot_range, height=hist[plot_range], color=color, align='center', yerr=yerr)
+    else:
+        plt.bar(left=plot_range, height=hist[plot_range], color=color, align='center')
+    plt.xlim((min(plot_range) - 0.5, max(plot_range) + 0.5))
+    plt.title(title)
+    if x_axis_title is not None:
+        plt.xlabel(x_axis_title)
+    if y_axis_title is not None:
+        plt.ylabel(y_axis_title)
+    if x_ticks is not None:
+        plt.xticks(range(0, len(hist[:])) if plot_range is None else plot_range, x_ticks)
+        plt.tick_params(which='both', labelsize=8)
+    if np.allclose(hist, 0.0):
+        plt.ylim((0, 1))
+    else:
+        if log_y:
+            plt.yscale('log')
+    plt.grid(True)
+    plt.show()
+
+
+def plot_2d_hist(hist, title, z_max=None):
+    if z_max == 'median':
+        median = np.ma.median(hist)
+        z_max = median * 2  # round_to_multiple(median * 2, math.floor(math.log10(median * 2)))
+    elif z_max == 'maximum' or z_max is None:
+        maximum = np.ma.max(hist)
+        z_max = maximum  # round_to_multiple(maximum, math.floor(math.log10(maximum)))
+    if z_max < 1 or hist.all() is np.ma.masked:
+        z_max = 1
+ 
+    plt.clf()
+    xedges = [1, hist.shape[0]]
+    yedges = [1, hist.shape[1]]
+
+    extent = [yedges[0] - 0.5, yedges[-1] + 0.5, xedges[-1] + 0.5, xedges[0] - 0.5]
+#     extent = [0.5, 80.5, 336.5, 0.5]
+    bounds = np.linspace(start=0, stop=z_max, num=255, endpoint=True)
+    cmap = cm.get_cmap('jet')
+    cmap.set_bad('w')
+    norm = colors.BoundaryNorm(bounds, cmap.N)
+    norm = colors.LogNorm()
+
+    im = plt.imshow(hist, interpolation='nearest', aspect='auto', cmap=cmap, norm=norm, extent=extent)  # TODO: use pcolor or pcolormesh
+    plt.ylim((336.5, 0.5))
+    plt.xlim((0.5, 80.5))
+    plt.title(title + ' (%d entrie(s))' % (0 if hist.all() is np.ma.masked else np.ma.sum(hist)))
+    plt.xlabel('Column')
+    plt.ylabel('Row')
+  
+    ax = plt.gca()
+  
+    divider = make_axes_locatable(ax)
+  
+    cax = divider.append_axes("right", size="5%", pad=0.1)
+    cb = plt.colorbar(im, cax=cax, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True))
+    cb.set_label("#")
+    plt.show()
+
+
+
+class pyBarPlugin(QtCore.QObject):
     """Plots the selected pyBAR data with pyBAR functions via Matplotlib
     """
     def __init__(self):
         """The class constructor.
         """
-        super(PyBar, self).__init__()
+        super(pyBarPlugin, self).__init__()
 
         # Get a reference to the application instance
         self.vtapp = vitables.utils.getVTApp()
@@ -53,8 +126,8 @@ class PyBar(QtCore.QObject):
 
         self.plot_action = QtGui.QAction(
             translate('PlotpyBARdata',
-                "Plot data with pyBAR...",
-                "Plot data with pyBAR..."),
+                "Plot data with pyBAR plugin",
+                "Plot data with pyBAR plugin"),
             self,
             shortcut=QtGui.QKeySequence.UnknownKey, triggered=self.plot,
             icon=export_icon,
@@ -98,44 +171,32 @@ class PyBar(QtCore.QObject):
 
         data_name = leaf.name
 
-        if data_name == 'HistErrorCounter':
-            plotting.plot_event_errors(leaf)
-        elif data_name == 'HistTot':
-            plotting.plot_tot(leaf)
-        elif data_name == 'HistRelBcid':
-            plotting.plot_relative_bcid(leaf)
-        elif data_name == 'HistOcc':
-            plotting.plot_fancy_occupancy(hist=leaf)
-        elif data_name == 'HistThreshold':
-            plotting.plotThreeWay(hist=leaf[:, :], title='Threshold', filename=None, label="threshold [PlsrDAC]", minimum=0, bins=100)
-        elif data_name == 'HistNoise':
-            plotting.plotThreeWay(hist=leaf[:, :], title='Noise', filename=None, label="noise [PlsrDAC]", minimum=0, maximum=int(np.median(leaf) * 2), bins=100)
-        elif data_name == 'HistTriggerErrorCounter':
-            plotting.plot_trigger_errors(leaf)
-        elif data_name == 'HistServiceRecord':
-            plotting.plot_service_records(leaf)
-        elif data_name == 'HistClusterTot':
-            plotting.plot_cluster_tot(hist=leaf)
-        elif data_name == 'HistClusterSize':
-            plotting.plot_cluster_size(hist=leaf)
+        hists_1d = ['HistRelBcid', 'HistErrorCounter', 'HistTriggerErrorCounter', 'HistServiceRecord', 'HistTot', 'HistTdc', 'HistClusterTot', 'HistClusterSize']
+        hists_2d = ['HistOcc', 'HistTdcPixel', 'HistTotPixel', 'HistThreshold', 'HistNoise', 'HistThresholdFitted', 'HistNoiseFitted', 'HistThresholdFittedCalib', 'HistNoiseFittedCalib']
+
+        if data_name in hists_1d:
+            plot_1d_hist(hist=leaf[:], title=data_name)
+
+        elif data_name in hists_2d:
+            plot_2d_hist(hist=leaf[:, :, 0], title=data_name)
         else:
-            print 'unknown data - %s: do not plot' % data_name
+            print 'Plotting', data_name, 'is not supported!'
 
     def helpAbout(self):
         """Brief description of the plugin.
         """
 
         # Text to be displayed
-        about_text = translate('pyBAR',
+        about_text = translate('pyBarPlugin',
             """<qt>
             <p>Data plotting plug-in for pyBAR.
             </qt>""",
             'About')
 
-        descr = dict(module_name='pyBAR',
+        descr = dict(module_name='pyBarPlugin',
             folder=PLUGINSDIR,
             version=__version__,
-            plugin_name='pyBAR',
+            plugin_name='pyBarPlugin',
             author='David-Leon Pohl <david-leon.pohl@rub.de>, Jens Janssen <janssen@physik.uni-bonn.de>',
             descr=about_text)
 
