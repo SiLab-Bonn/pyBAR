@@ -6,8 +6,8 @@ dut_configuration : dut_configuration_mio.yaml  # DUT init configuration (.yaml)
 number_of_fes:  2 # Number of FEs to be readout, if not given, number of FEs is 1
 fe_configuration :  # FE configuration file, text (.cfg) or HDF5 (.h5) file. If not given, latest valid configuration (run status FINISHED) will be taken. If a number is given, configuration from run with specified number will be taken.
 multiple_fes_configuration: 
-    1:  # Always first channel in Burn-In Card
-    2:  # Always second channel in Burn-In Card, etc.
+    1: C:\Users\vfilimonov\Documents\module_tests\module_test_tlu_multi_proved_17-04-2015\configs\19_module_test_ext_trigger_scan_parallel_fe1.cfg # Always first channel in Burn-In Card
+    2: C:\Users\vfilimonov\Documents\module_tests\module_test_tlu_multi_proved_17-04-2015\configs\19_module_test_ext_trigger_scan_parallel_fe2.cfg # Always second channel in Burn-In Card, etc.
 fe_flavor : fei4b  # FEI4 flavor/type for initial configuration. Valid values: 'fei4a' or 'fei4b'
 chip_address :  # Chip Address for initial configuration, if not given, broadcast bit will be set
 multiple_chip_address:

@@ -352,7 +352,6 @@ class Fei4RunBaseParallel(RunBase):
             self.scan()
 
             for fe_number in range(1, self.conf['number_of_fes'] + 1):
-                print self.raw_data_files
                 self.raw_data_files[fe_number].close()
         else:
             with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, scan_parameters=self.scan_parameters._asdict(), socket_addr=self.socket_addr) as self.raw_data_file:  # closes raw data file when exits with statement
