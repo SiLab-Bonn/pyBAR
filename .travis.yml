@@ -33,8 +33,8 @@ before_install:
 install:
   - pip install https://github.com/walac/pyusb/archive/master.zip
   - pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/735/pySiLibUSB-2.0.3.tar.gz
-  - if [ "$TRAVIS_BRANCH" == "master" ]; then pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/719/Basil-2.0.2.tar.gz; fi
-  - if [ "$TRAVIS_BRANCH" == "development" ]; then git clone -b master https://github.com/SiLab-Bonn/basil; cd basil/host; python setup.py develop; cd ../..; fi
+  - if [ "$TRAVIS_BRANCH" == "master" ]; then pip install -e "git+https://github.com/SiLab-Bonn/basil.git@master#egg=basil&subdirectory=host"; fi
+  - if [ "$TRAVIS_BRANCH" == "development" ]; then pip install -e "git+https://github.com/SiLab-Bonn/basil.git@development#egg=basil&subdirectory=host"; fi
 #  - sudo apt-get install -qq iverilog-daily
 #  Build iverilog from source
 #  - sudo apt-get install gperf
