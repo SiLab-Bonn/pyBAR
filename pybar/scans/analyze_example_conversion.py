@@ -39,6 +39,7 @@ def analyze_raw_data(input_file, output_file_hits):
         analyze_raw_data.use_trigger_number = False
         analyze_raw_data.set_stop_mode = False  # special analysis if data was taken in stop mode
         analyze_raw_data.interpreter.use_tdc_word(False)  # use the TDC word to align the events, assume that they are first words in the event
+        analyze_raw_data.interpreter.use_trigger_time_stamp(False)  # use the trigger number as a time stamp
 
         analyze_raw_data.interpreter.set_debug_output(False)  # std. setting is False
         analyze_raw_data.interpreter.set_info_output(False)  # std. setting is False
