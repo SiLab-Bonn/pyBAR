@@ -476,6 +476,14 @@ set_property SLEW SLOW [get_ports {TX[0]}]
 set_property IOSTANDARD LVCMOS33 [get_ports {TX[0]}]
 set_property PACKAGE_PIN AB21 [get_ports {TX[0]}]
 
+set_property SLEW SLOW [get_ports RJ45_TRIGGER]
+set_property IOSTANDARD LVCMOS33 [get_ports RJ45_TRIGGER]
+set_property PACKAGE_PIN V21 [get_ports RJ45_TRIGGER]
+
+set_property SLEW SLOW [get_ports RJ45_RESET]
+set_property IOSTANDARD LVCMOS33 [get_ports RJ45_RESET]
+set_property PACKAGE_PIN Y25 [get_ports RJ45_RESET]
+
 #####################################
 
 #create_clock -name Clk100 -period 10.000 [get_ports Clk100]

@@ -10,7 +10,7 @@ cmd:
 tlu:
     TRIGGER_MODE        : 0
     EN_INVERT_TRIGGER   : 0
-    EN_WRITE_TIMESTAMP  : 0
+    EN_WRITE_TIMESTAMP  : 1
     TRIGGER_LOW_TIMEOUT : 255
 
 rx_4:

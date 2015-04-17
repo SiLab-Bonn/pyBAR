@@ -61,6 +61,8 @@ module KX7_IF_Test_Top(
 // Trigger
 (* IOB = "FORCE" *) input wire [1:0] LEMO_RX,
     output wire [1:0] TX, // TX[0] == RJ45 trigger clock output, TX[1] == RJ45 busy output
+(* IOB = "FORCE" *) input wire RJ45_RESET,
+(* IOB = "FORCE" *) input wire RJ45_TRIGGER,
 
 // Over Current Protection (BIC only)
     input wire [3:0] OC
@@ -342,9 +344,9 @@ tlu_controller #(
 
     .FIFO_PREEMPT_REQ(TLU_FIFO_PEEMPT_REQ),
 
-    .RJ45_TRIGGER(1'b0),
+    .RJ45_TRIGGER(RJ45_TRIGGER),
     .LEMO_TRIGGER(LEMO_TRIGGER),
-    .RJ45_RESET(1'b0),
+    .RJ45_RESET(RJ45_RESET),
     .LEMO_RESET(LEMO_RESET),
     .RJ45_ENABLED(),
     .TLU_BUSY(TLU_BUSY),

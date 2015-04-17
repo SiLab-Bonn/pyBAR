@@ -27,7 +27,7 @@ class ExtTriggerScanParallel(Fei4RunBaseParallel):
         "use_enable_mask_for_imon": False,  # if True, apply inverted Enable pixel mask to Imon pixel mask
         "no_data_timeout": 10,  # no data timeout after which the scan will be aborted, in seconds
         "scan_timeout": 60,  # timeout for scan after which the scan will be stopped, in seconds
-        "max_triggers": 10000,  # maximum triggers after which the scan will be stopped, in seconds
+        "max_triggers": 15000,  # maximum triggers after which the scan will be stopped, in seconds
         "enable_tdc": False,  # if True, enables TDC (use RX2)
         'reset_rx_on_error': False  # long scans have a high propability for ESD related data transmission errors; recover and continue here
     }
@@ -56,9 +56,10 @@ class ExtTriggerScanParallel(Fei4RunBaseParallel):
         self.register.set_pixel_register_value('C_Low', 0)
         commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_Low'))
         # Registers
+        self.register.set_global_register_value("Vthin_AltFine", 40)  # lowering the threshold to make FE noisy
         self.register.set_global_register_value("Trig_Lat", self.trigger_latency)  # set trigger latency
         self.register.set_global_register_value("Trig_Count", self.trigger_count)  # set number of consecutive triggers
-        commands.extend(self.register.get_commands("WrRegister", name=["Trig_Lat", "Trig_Count"]))
+        commands.extend(self.register.get_commands("WrRegister", name=["Vthin_AltFine", "Trig_Lat", "Trig_Count"])) # add value for threshold (Vthin_AltFine) here to be sent to the FEs
         commands.extend(self.register.get_commands("RunMode"))
         self.register_utils.send_commands(commands)
 
@@ -101,10 +102,10 @@ class ExtTriggerScanParallel(Fei4RunBaseParallel):
                     analyze_raw_data.create_tdc_counter_hist = True  # histogram all TDC words
                     analyze_raw_data.create_tdc_hist = True  # histogram the hit TDC information
                     analyze_raw_data.interpreter.use_tdc_word(True)  # align events at the TDC word
-                    analyze_raw_data.interpreter.set_warning_output(False)
-                    analyze_raw_data.interpret_word_table()
-                    analyze_raw_data.interpreter.print_summary()
-                    analyze_raw_data.plot_histograms()
+                analyze_raw_data.interpreter.set_warning_output(False)
+                analyze_raw_data.interpret_word_table()
+                analyze_raw_data.interpreter.print_summary()
+                analyze_raw_data.plot_histograms()
         else:
             with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
                 analyze_raw_data.create_source_scan_hist = True
@@ -114,10 +115,10 @@ class ExtTriggerScanParallel(Fei4RunBaseParallel):
                     analyze_raw_data.create_tdc_counter_hist = True  # histogram all TDC words
                     analyze_raw_data.create_tdc_hist = True  # histogram the hit TDC information
                     analyze_raw_data.interpreter.use_tdc_word(True)  # align events at the TDC word
-                    analyze_raw_data.interpreter.set_warning_output(False)
-                    analyze_raw_data.interpret_word_table()
-                    analyze_raw_data.interpreter.print_summary()
-                    analyze_raw_data.plot_histograms()
+                analyze_raw_data.interpreter.set_warning_output(False)
+                analyze_raw_data.interpret_word_table()
+                analyze_raw_data.interpreter.print_summary()
+                analyze_raw_data.plot_histograms()
 
     def start_readout(self, **kwargs):
         if kwargs:

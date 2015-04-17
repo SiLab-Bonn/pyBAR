@@ -401,8 +401,11 @@ class Fei4RunBaseParallel(RunBase):
             self.register.save_configuration(self.output_filename + "_fe" + str(self.fe_number))
 
         # other reasons
-        if self.stop_run.is_set():
-            raise RunStopped('Read the log')
+        if 'number_of_fes' in self.conf and self.conf['number_of_fes'] > 1:
+            pass
+        else:
+            if self.stop_run.is_set():
+                raise RunStopped('Read the log')
 
     def cleanup_run(self):
         # no execption should be thrown here

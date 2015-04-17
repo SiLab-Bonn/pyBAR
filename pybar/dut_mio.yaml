@@ -42,6 +42,11 @@ hw_drivers:
     interface : USB
     base_addr : 0x18100
     base_data_addr : 0x0001000080000000
+    
+  - name      : tlu
+    type      : tlu
+    interface : USB
+    base_addr : 0x18200
 
   - name      : rx_4
     type      : fei4_rx

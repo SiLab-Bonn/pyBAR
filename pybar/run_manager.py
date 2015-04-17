@@ -116,7 +116,6 @@ class RunBase():
                 print "Parallel scan"
                 for self.fe_number in range(1, self.conf['number_of_fes'] + 1):
                     self.pre_run()
-                self.fe_number = 1
                 self.do_run()
                 for self.fe_number in range(1, self.conf['number_of_fes'] + 1):
                     self.post_run()
