@@ -39,6 +39,7 @@ def analyze_raw_data(input_file, output_file_hits):
         analyze_raw_data.use_trigger_number = False
         analyze_raw_data.set_stop_mode = False  # special analysis if data was taken in stop mode
         analyze_raw_data.interpreter.use_tdc_word(False)  # use the TDC word to align the events, assume that they are first words in the event
+        analyze_raw_data.interpreter.use_trigger_time_stamp(False)  # use the trigger number as a time stamp
 
         analyze_raw_data.interpreter.set_debug_output(False)  # std. setting is False
         analyze_raw_data.interpreter.set_info_output(False)  # std. setting is False
@@ -71,8 +72,8 @@ def analyze_raw_data_per_scan_parameter(input_file, output_file_hits, scan_data_
 
 
 if __name__ == "__main__":
-    scan_name = r'25_module_test_analog_scan_fe1'
-    folder = r'C:/Users/vfilimonov/workspacePY/pyBAR/pybar/module_test/'
+    scan_name = r'1_module_test_fast_threshold_scan'
+    folder = r'/home/davidlp/git/pyBAR/pybar/module_test/'
     input_file = folder + scan_name + ".h5"
     output_file_hits = folder + scan_name + "_interpreted.h5"
     output_file_hits_analyzed = folder + scan_name + "_analyzed.h5"
