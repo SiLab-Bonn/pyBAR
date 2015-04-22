@@ -919,7 +919,7 @@ class AnalyzeRawData(object):
             plotting.plotThreeWay(hist=threshold_hist_calib, title='Threshold (S-curve fit, masked %i pixel(s))' % mask_cnt, x_axis_title="Threshold [e]", filename=output_pdf, bins=100, minimum=0)
             plotting.plotThreeWay(hist=noise_hist_calib, title='Noise (S-curve fit, masked %i pixel(s))' % mask_cnt, x_axis_title="Noise [e]", filename=output_pdf, bins=100, minimum=0)
         if (self._create_occupancy_hist):
-            if(self._create_threshold_hists):
+            if(self._create_fitted_threshold_hists):
                 plotting.plot_scurves(occupancy_hist=out_file_h5.root.HistOcc[:] if out_file_h5 is not None else self.occupancy_array[:], filename=output_pdf, scan_parameters=np.linspace(np.amin(self.scan_parameters['PlsrDAC']), np.amax(self.scan_parameters['PlsrDAC']), num=self.histograming.get_n_parameters(), endpoint=True))
             else:
                 hist = np.sum(out_file_h5.root.HistOcc[:], axis=2) if out_file_h5 is not None else np.sum(self.occupancy_array[:], axis=2)
