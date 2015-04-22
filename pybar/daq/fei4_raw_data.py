@@ -73,6 +73,7 @@ class RawDataFile(object):
         if socket_addr:
             self.socket = zmq.Context().socket(zmq.PUSH)
             self.socket.bind(socket_addr)
+            logging.info('Send data to %s', socket_addr)
         else:
             self.socket = None
 

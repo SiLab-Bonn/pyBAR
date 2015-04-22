@@ -83,6 +83,7 @@ class OnlineMonitorApplication(Qt.QApplication):
         self.setup_data_worker(socket_addr)
         self.addWidgets()
         self.fps = 0
+        self.delay = 0
         self.plot_delay = 0
         self.updateTime = ptime.time()
         self.thread.start()
@@ -191,7 +192,10 @@ class OnlineMonitorApplication(Qt.QApplication):
     def update_monitor(self, data, meta_data):
         self.timestamp_label.setText("Data timestamp\n%s" % time.asctime(time.localtime(meta_data[1])))
         self.scan_parameter_label.setText("Scan parameter\n%s" % str(meta_data[3]))
-        self.update_plots(data)
+        self.delay += 1
+        if self.delay % 10 == 0:
+            self.delay = 0
+            self.update_plots(data)
         now = ptime.time()
         self.plot_timestamp_label.setText("Plot timestamp\n%s" % time.asctime(time.localtime(now)))
         self.plot_delay = (now - meta_data[1]) * 1.# self.plot_delay * 0.9 + (now - meta_data[1]) * 0.1
@@ -214,5 +218,5 @@ class OnlineMonitorApplication(Qt.QApplication):
         self.thread.wait(1000)  # give worker thread time to stop, is there a better way? stackoverflow has only worse hacks
 
 if __name__ == '__main__':
-    app = OnlineMonitorApplication(sys.argv, socket_addr='tcp://127.0.0.1:5678')
+    app = OnlineMonitorApplication(sys.argv, socket_addr='tcp://127.0.0.1:5672')
 #

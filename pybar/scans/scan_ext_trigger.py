@@ -25,11 +25,12 @@ class ExtTriggerScanParallel(Fei4RunBaseParallel):
         "row_span": [1, 336],  # defining active row interval, 2-tuple, from 1 to 336
         "overwrite_enable_mask": False,  # if True, use col_span and row_span to define an active region regardless of the Enable pixel register. If False, use col_span and row_span to define active region by also taking Enable pixel register into account.
         "use_enable_mask_for_imon": False,  # if True, apply inverted Enable pixel mask to Imon pixel mask
-        "no_data_timeout": 10,  # no data timeout after which the scan will be aborted, in seconds
-        "scan_timeout": 60,  # timeout for scan after which the scan will be stopped, in seconds
-        "max_triggers": 15000,  # maximum triggers after which the scan will be stopped, in seconds
+        "no_data_timeout": 10 * 600,  # no data timeout after which the scan will be aborted, in seconds
+        "scan_timeout": 60 * 600,  # timeout for scan after which the scan will be stopped, in seconds
+        "max_triggers": 2000000,  # maximum triggers after which the scan will be stopped, in seconds
         "enable_tdc": False,  # if True, enables TDC (use RX2)
-        'reset_rx_on_error': False  # long scans have a high propability for ESD related data transmission errors; recover and continue here
+        'reset_rx_on_error': False,  # long scans have a high propability for ESD related data transmission errors; recover and continue here
+        'send_data': 'tcp://127.0.0.1:5678'
     }
 
     def configure(self):
@@ -56,10 +57,11 @@ class ExtTriggerScanParallel(Fei4RunBaseParallel):
         self.register.set_pixel_register_value('C_Low', 0)
         commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_Low'))
         # Registers
-        self.register.set_global_register_value("Vthin_AltFine", 40)  # lowering the threshold to make FE noisy
+#         self.register.set_global_register_value("Vthin_AltFine", 45)  # lowering the threshold to make FE noisy
         self.register.set_global_register_value("Trig_Lat", self.trigger_latency)  # set trigger latency
         self.register.set_global_register_value("Trig_Count", self.trigger_count)  # set number of consecutive triggers
-        commands.extend(self.register.get_commands("WrRegister", name=["Vthin_AltFine", "Trig_Lat", "Trig_Count"])) # add value for threshold (Vthin_AltFine) here to be sent to the FEs
+        commands.extend(self.register.get_commands("WrRegister", name=["Trig_Lat", "Trig_Count"]))
+#         commands.extend(self.register.get_commands("WrRegister", name=["Vthin_AltFine", "Trig_Lat", "Trig_Count"])) # add value for threshold (Vthin_AltFine) here to be sent to the FEs
         commands.extend(self.register.get_commands("RunMode"))
         self.register_utils.send_commands(commands)
 
@@ -127,6 +129,8 @@ class ExtTriggerScanParallel(Fei4RunBaseParallel):
 #         self.dut['tdc_rx2']['ENABLE'] = self.enable_tdc
         self.dut['tlu'].RESET
         self.dut['tlu']['TRIGGER_MODE'] = self.trigger_mode
+        self.dut['tlu']['EN_WRITE_TIMESTAMP'] = True
+        print self.trigger_mode
         self.dut['cmd']['EN_EXT_TRIGGER'] = True
 
         def timeout():

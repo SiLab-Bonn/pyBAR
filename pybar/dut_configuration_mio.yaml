@@ -8,7 +8,7 @@ cmd:
     OUTPUT_MODE : 0  # 0: positive edge (default), 2: Manchester code
 
 tlu:
-    TRIGGER_MODE        : 0
+    TRIGGER_MODE        : 1
     EN_INVERT_TRIGGER   : 0
     EN_WRITE_TIMESTAMP  : 1
     TRIGGER_LOW_TIMEOUT : 255

@@ -12,9 +12,9 @@ from pybar.analysis.analysis import analyze_hits_per_scan_parameter
 
 def analyze_raw_data(input_file, output_file_hits):
     with AnalyzeRawData(raw_data_file=input_file, analyzed_data_file=output_file_hits) as analyze_raw_data:
-        analyze_raw_data.create_hit_table = False  # can be set to false to omit hit table creation, std. setting is false
-        analyze_raw_data.create_cluster_hit_table = False  # adds the cluster id and seed info to each hit, std. setting is false
-        analyze_raw_data.create_cluster_table = False  # enables the creation of a table with all clusters, std. setting is false
+        analyze_raw_data.create_hit_table = True  # can be set to false to omit hit table creation, std. setting is false
+        analyze_raw_data.create_cluster_hit_table = True  # adds the cluster id and seed info to each hit, std. setting is false
+        analyze_raw_data.create_cluster_table = True  # enables the creation of a table with all clusters, std. setting is false
 
         analyze_raw_data.create_occupancy_hist = True  # creates a colxrow histogram with accumulated hits for each scan parameter
         analyze_raw_data.create_tot_hist = True  # creates a ToT histogram
@@ -36,10 +36,10 @@ def analyze_raw_data(input_file, output_file_hits):
         analyze_raw_data.n_bcid = 16  # set the number of BCIDs per event, needed to judge the event structure, only active if settings are not taken from raw data file
         analyze_raw_data.n_injections = 100  # set the numbers of injections, needed for fast threshold/noise determination
         analyze_raw_data.max_tot_value = 13  # set the maximum ToT value considered to be a hit, 14 is a late hit
-        analyze_raw_data.use_trigger_number = False
+        analyze_raw_data.use_trigger_number = True
         analyze_raw_data.set_stop_mode = False  # special analysis if data was taken in stop mode
         analyze_raw_data.interpreter.use_tdc_word(False)  # use the TDC word to align the events, assume that they are first words in the event
-        analyze_raw_data.interpreter.use_trigger_time_stamp(False)  # use the trigger number as a time stamp
+        analyze_raw_data.interpreter.use_trigger_time_stamp(True)  # use the trigger number as a time stamp
 
         analyze_raw_data.interpreter.set_debug_output(False)  # std. setting is False
         analyze_raw_data.interpreter.set_info_output(False)  # std. setting is False
@@ -72,11 +72,11 @@ def analyze_raw_data_per_scan_parameter(input_file, output_file_hits, scan_data_
 
 
 if __name__ == "__main__":
-    scan_name = r'1_module_test_fast_threshold_scan'
-    folder = r'/home/davidlp/git/pyBAR/pybar/module_test/'
+    scan_name = '\\60_module_test_ext_trigger_scan_parallel_fe1'
+    folder = 'C:\Users\\vfilimonov\workspacePY\pyBAR\pybar\module_test'
     input_file = folder + scan_name + ".h5"
-    output_file_hits = folder + scan_name + "_interpreted.h5"
-    output_file_hits_analyzed = folder + scan_name + "_analyzed.h5"
+    output_file_hits = folder + scan_name + "_interpreted_example.h5"
+    output_file_hits_analyzed = folder + scan_name + "_analyzed_example.h5"
     scan_data_filename = folder + scan_name
     start_time = datetime.now()
     analyze_raw_data(input_file, output_file_hits)

@@ -256,8 +256,6 @@ class Fei4RunBaseParallel(RunBase):
     def pre_run(self):
         # sending data
         self.socket_addr = self._run_conf['send_data']
-        if self.socket_addr:
-            logging.info('Send data to %s', self.socket_addr)
         # scan parameters
         if 'scan_parameters' in self.run_conf:
             if isinstance(self.run_conf['scan_parameters'], basestring):
@@ -328,7 +326,7 @@ class Fei4RunBaseParallel(RunBase):
         self.init_fe()
 
         if 'number_of_fes' in self.conf and self.conf['number_of_fes'] > 1:
-            self.raw_data_files[self.fe_number] = RawDataFile(filename=self.output_filename + "_fe" + str(self.fe_number), mode='w', title=self.run_id, scan_parameters=self.scan_parameters._asdict(), socket_addr=self.socket_addr)
+            self.raw_data_files[self.fe_number] = RawDataFile(filename=self.output_filename + "_fe" + str(self.fe_number), mode='w', title=self.run_id, scan_parameters=self.scan_parameters._asdict(), socket_addr=self.socket_addr[:-1] + str(self.fe_number))
             self.save_configuration_dict(self.raw_data_files[self.fe_number].h5_file, 'conf', self.conf) # The same configuration.yaml for all FEs
             self.save_configuration_dict(self.raw_data_files[self.fe_number].h5_file, 'run_conf', self.run_conf) # TODO: upload different confs
             # configure for scan
@@ -420,7 +418,9 @@ class Fei4RunBaseParallel(RunBase):
         if 'number_of_fes' in self.conf and self.conf['number_of_fes'] > 1:
             for fe_number in range(1, self.conf['number_of_fes'] + 1):
                 list_data = list(data)
-                list_data[0] = readout_utils.convert_data_array(list_data[0], filter_func = readout_utils.is_data_from_channel(fe_number))
+                list_data[0] = readout_utils.convert_data_array(list_data[0], filter_func = readout_utils.logical_or(readout_utils.is_trigger_word, readout_utils.is_data_from_channel(fe_number))) # TODO: Add "or" TDC word
+#                 list_data[0] = readout_utils.convert_data_array(list_data[0], filter_func = readout_utils.logical_or(readout_utils.logical_not(readout_utils.is_fe_word), readout_utils.is_data_from_channel(fe_number)))
+#                 list_data[0] = readout_utils.convert_data_array(list_data[0], filter_func = readout_utils.is_data_from_channel(fe_number))
                 tuple_data = tuple(list_data)
                 self.raw_data_files[fe_number].append_item(tuple_data, scan_parameters=self.scan_parameters._asdict(), flush=False)
         else:
