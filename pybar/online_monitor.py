@@ -20,7 +20,7 @@ class DataWorker(QtCore.QObject):
 
     def __init__(self):
         QtCore.QObject.__init__(self)
-        self.integrate_readouts = 0
+        self.integrate_readouts = 1
         self.n_readout = 0
         self.n_hits = 0  # integrated hits
         self.setup_raw_data_analysis()
