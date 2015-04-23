@@ -111,7 +111,8 @@ class HitOrCalibration(Fei4RunBase):
     ''' Hit Or calibration scan
     '''
     _default_run_conf = {
-        "repeat_command": 1000,
+        "repeat_command": 200,
+        "injection_delay": 5000,  # for really low feedbacks (TT >> 300 ns) one needs to increase the injection delay
         "scan_parameters": [('column', None),
                             ('row', None),
                             ('PlsrDAC', [40, 50, 60, 80, 130, 180, 230, 280, 340, 440, 540, 640, 740])],  # 0 400 sufficient
@@ -141,7 +142,7 @@ class HitOrCalibration(Fei4RunBase):
             else:
                 return (column) / 2
 
-        cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", length=250)[0]
+        cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", length=self.injection_delay)[0]
         scan_par_name = self.scan_parameters._fields[-1]  # scan parameter is in inner loop
         scan_parameters_values = self.scan_parameters[-1][:]  # create deep copy of scan_parameters, they are overwritten in self.readout
 
