@@ -74,7 +74,7 @@ def plot_cluster_sizes(in_file_cluster_h5, in_file_calibration_h5, gdac_range):
     plt.close()
 
 
-def plot_result(x_p, y_p, y_p_e):
+def plot_result(x_p, y_p, y_p_e, filename=None):
     ''' Fit spline to the profile histogramed data, differentiate, determine MPV and plot.
      Parameters
     ----------
@@ -106,8 +106,11 @@ def plot_result(x_p, y_p, y_p_e):
     plt.xlabel('Pixel threshold [e]')
     plt.ylabel('Single hit cluster occupancy [a.u.]')
     plt.ylim(0, np.amax(y_p) * 1.15)
-    plt.show()
-    plt.close()
+    if filename is None:
+        plt.show()
+    else:
+        print 'SAVE TO', filename
+        filename.savefig(plt.gcf())
 
 
 def analyze_raw_data(input_files, output_file_hits, scan_parameter):
@@ -156,7 +159,7 @@ def analyze_injected_charge(data_analyzed_file):
     with tb.openFile(data_analyzed_file, mode="r") as in_file_h5:
         occupancy = in_file_h5.root.HistOcc[:].T
         gdacs = analysis_utils.get_scan_parameter(in_file_h5.root.meta_data[:])['GDAC']
-        with PdfPages(analysis_configuration['plot_filename']) as plot_file:
+        with PdfPages(data_analyzed_file[:-3] + '.pdf') as plot_file:
             plotting.plot_scatter(gdacs, occupancy.sum(axis=(0, 1)), title='Single pixel hit rate at different thresholds', x_label='Threshold setting [GDAC]', y_label='Single pixel hit rate', log_x=True, filename=plot_file)
             if analysis_configuration['input_file_calibration']:
                 with tb.openFile(analysis_configuration['input_file_calibration'], mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
@@ -193,7 +196,6 @@ def analyze_injected_charge(data_analyzed_file):
 
                     pixel_thresholds = analysis_utils.get_pixel_thresholds_from_calibration_array(gdacs=gdac_range_source_scan, calibration_gdacs=gdac_range_calibration, threshold_calibration_array=threshold_calibration_array)  # interpolates the threshold at the source scan GDAC setting from the calibration
                     pixel_hits = occupancy  # create hit array with shape (col, row, ...)
-                    print pixel_hits.shape
                     pixel_hits = pixel_hits * correction_factors * rate_normalization
 
                     # choose region with pixels that have a sufficient occupancy but are not too hot
