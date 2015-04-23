@@ -203,10 +203,10 @@ def get_profile_histogram(x, y, n_bins=100):
     return bin_centers, mean, std_mean
 
 
-def get_rate_normalization(hit_file, parameter, reference='event', cluster_file=None, plot=False, chunk_size=5000000):
+def get_rate_normalization(hit_file, parameter, reference='event', cluster_file=None, plot=False, chunk_size=50000000):
     ''' Takes different hit files (hit_files), extracts the number of events or the scan time (reference) per scan parameter (parameter)
     and returns an array with a normalization factor. This normalization factor has the length of the number of different parameters.
-    If a cluster_file is specified.
+    If a cluster_file is specified also the number of cluster per event are used to create the normalization factor.
 
     Parameters
     ----------
@@ -274,11 +274,11 @@ def get_rate_normalization(hit_file, parameter, reference='event', cluster_file=
     if plot:
         x = scan_parameter
         if reference == 'event':
-            plotting.plot_scatter(x, normalization_rate, title='Events per ' + parameter + ' setting', x_label=parameter, y_label='# events', log_x=True)
+            plotting.plot_scatter(x, normalization_rate, title='Events per ' + parameter + ' setting', x_label=parameter, y_label='# events', log_x=True, filename=hit_file[:-3] + '_n_event_normalization.pdf')
         elif reference == 'time':
-            plotting.plot_scatter(x, normalization_rate, title='Measuring time per GDAC setting', x_label=parameter, y_label='time [s]', log_x=True)
+            plotting.plot_scatter(x, normalization_rate, title='Measuring time per GDAC setting', x_label=parameter, y_label='time [s]', log_x=True, filename=hit_file[:-3] + '_time_normalization.pdf')
         if cluster_file:
-            plotting.plot_scatter(x, normalization_multiplicity, title='Mean number of hits per event', x_label=parameter, y_label='number of hits per event', log_x=True)
+            plotting.plot_scatter(x, normalization_multiplicity, title='Mean number of particles per event', x_label=parameter, y_label='number of hits per event', log_x=True, filename=hit_file[:-3] + '_n_particles_normalization.pdf')
     print len(normalization_rate), len(normalization_multiplicity)
     if cluster_file:
         normalization_rate = np.array(normalization_rate)
