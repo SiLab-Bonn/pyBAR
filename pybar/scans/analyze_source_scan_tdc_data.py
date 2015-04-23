@@ -22,10 +22,11 @@ from pybar.analysis.plotting.plotting import plotThreeWay, plot_1d_hist
 
 
 analysis_configuration = {
-    'scan_name': ['/media/davidlp/Data/SCC112/TDCcalibration/DifferentSources/Americium/1_scc_112_ext_trigger_scan'],  # the base file name(s) of the raw data file, no file suffix needed
-    'input_file_calibration': '/media/davidlp/Data/SCC112/TDCcalibration/scc_112/2_scc_112_hit_or_calibration_calibration.h5',  # the Plsr<->TDC calibration file
+    'scan_name': [r'L:\Proto7\TDCcalibration\DifferentSources\Barium\2_proto_7_ext_trigger_scan'],  # the base file name(s) of the raw data file, no file suffix needed
+    'input_file_calibration': r'L:\Proto7\TDCcalibration\proto_7\15_proto_7_hit_or_calibration_calibration.h5',  # the Plsr<->TDC calibration file,  # the Plsr<->TDC calibration file
     'hit_selection_conditions': ['(n_cluster>=1) & (cluster_size>=1)',
-                                 '(n_cluster==1) & (cluster_size==1)'],  # criterions for the hit selection based on hit properties, per criterion one hitogram is created
+                                 '(n_cluster==1) & (cluster_size==1)',
+                                 '(n_cluster==1) & (cluster_size==1) & (column >= 50) & (column <= 72) & (row >= 10) & (row <= 320)'],  # criterions for the hit selection based on hit properties, per criterion one hitogram is created
     'event_status_select_mask': 0b0000111111111110,  # the event status bits to cut on
     'event_status_condition': 0b0000000100000010,  # the event status number after the event_status_select_mask is bitwise ORed with the event number
     "analysis_steps": [1, 2],  # the analysis includes this selected steps only. See explanation above.
@@ -59,7 +60,7 @@ def analyze_raw_data(input_files, output_file_hits, interpreter_plots, pdf_filen
             analyze_raw_data.interpret_word_table()  # the actual start conversion command
             analyze_raw_data.interpreter.print_summary()  # prints the interpreter summary
             if interpreter_plots:
-                analyze_raw_data.plot_histograms(pdf_filename=pdf_filename)  # plots all activated histograms into one pdf
+                analyze_raw_data.plot_histograms()  # plots all activated histograms into one pdf
 
 
 def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_select_mask, event_status_condition, calibation_file=None, max_tdc=2000, n_bins=2000):
