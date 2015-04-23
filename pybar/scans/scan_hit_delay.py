@@ -1,7 +1,8 @@
 ''' This script changes the injection delay of the internal PlsrDAC (with global register PlsrDelay or PlsrIdacRamp) and measures the mean BCID for each pixel.
 The mean BCID changes for an increasing injection delay every 25 ns due to the clock in an S-curve like shape. 
-The mu of the S-curves is monitored for different charges injected in an outer loop. The change of the mu as a function of the charge 
-is the timewalk that is calculated for each pixel. The absolute value of mu for the same mean BCID gives the hit delay for the pixel.
+The mu of the S-curves is monitored for different charges injected in an outer loop (but wothout S-Curve fit, resolution of mu is PlsrDAC delay step). 
+The change of the mu as a function of the charge is the timewalk that is calculated for each pixel. 
+The absolute value of mu for the same mean BCID gives the hit delay for the pixel.
 Time walk and hit delay are calculated and plotted in different ways.
 The PlsrDAC and injection delay values should be chosen equidistant.
 '''
@@ -334,7 +335,7 @@ class HitDelayScan(Fei4RunBase):
             hist_rel_hit_delay = np.mean(hist_hit_delay[:, :, -1]) - hist_hit_delay
 
             # Create mask and apply for bad pixels
-            mask = np.ones((336, 80, 50), dtype=np.int8)
+            mask = np.ones(hist_rel_timewalk.shape, dtype=np.int8)
             for node in in_file_h5.root.PixelHistsMeanRelBcid:
                 pixel_data = node[:, :, :]
                 a = (np.sum(pixel_data, axis=2))
