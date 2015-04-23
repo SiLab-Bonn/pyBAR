@@ -18,11 +18,13 @@ import vitables.utils
 from vitables.vtSite import PLUGINSDIR
 
 try:
+    import tables as tb
     from matplotlib import colors, cm
     import matplotlib.pyplot as plt
     from mpl_toolkits.axes_grid1 import make_axes_locatable
 except:
     print 'ERROR: Cannot load additional libraries needed for the pyBAR ViTables plugin!'
+    raise
 
 translate = QtGui.QApplication.translate
 
@@ -92,8 +94,20 @@ def plot_2d_hist(hist, title, z_max=None):
     cb = plt.colorbar(im, cax=cax, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True))
     cb.set_label("#")
     plt.show()
+    
 
-
+def plot_table(data, title):
+    plt.clf()
+    plt.title(title)
+    x_name, y_name = data.dtype.names[0], data.dtype.names[1]
+    if len(data.dtype.names) == 2:
+        plt.plot(data[0, :], data[1, :])
+    else:
+        plt.errorbar(data[x_name], data[y_name], yerr=data[data.dtype.names[2]])
+    plt.xlabel(x_name)
+    plt.ylabel(y_name)
+    plt.grid(True)
+    plt.show()
 
 class pyBarPlugin(QtCore.QObject):
     """Plots the selected pyBAR data with pyBAR functions via Matplotlib
@@ -176,11 +190,12 @@ class pyBarPlugin(QtCore.QObject):
 
         if data_name in hists_1d:
             plot_1d_hist(hist=leaf[:], title=data_name)
-
         elif data_name in hists_2d:
             plot_2d_hist(hist=leaf[:, :, 0], title=data_name)
+        elif 'Table' in str(type(leaf)) and len(leaf[:].dtype) <= 3:  # detect tables with less than 4 columns
+            plot_table(leaf[:], title=data_name)
         else:
-            print 'Plotting', data_name, 'is not supported!'
+            print 'Plotting', data_name, '(%s) is not supported!' % type(leaf)
 
     def helpAbout(self):
         """Brief description of the plugin.
