@@ -20,6 +20,31 @@ from pybar.utils.utils import string_is_binary, flatten_iterable, iterable
 flavors = ('fei4a', 'fei4b')
 
 
+# Helper functions
+def parse_global_config(filename):  # parses the global config text file
+    with open(filename, 'r') as f:
+        f.seek(0)
+        config_dict = {}
+        for line in f.readlines():
+            line = line.partition('#')[0].strip()
+            if not line:
+                continue
+            parts = re.split(r'\s*[=]\s*|\s+', line)
+            key = parts[0].strip()
+            if key in config_dict:
+                logging.warning('Item %s in configuration file exists more than once', parts[0])
+            try:
+                config_dict[key] = ast.literal_eval(parts[1].strip())
+            except SyntaxError:  # for comma separated values, e.g. lists
+                try:
+                    config_dict[key] = ast.literal_eval(line[len(parts[0]):].strip())
+                except SyntaxError:
+                    config_dict[key] = line[len(parts[0]):].strip()
+            except ValueError:
+                config_dict[key] = parts[1].strip()
+    return config_dict
+
+
 def parse_pixel_mask_config(filename):
     mask = np.empty((80, 336), dtype=np.uint8)
     with open(filename, 'r') as f:
@@ -105,6 +130,7 @@ def bitarray_from_value(value, size=None, fmt='Q'):
 
 
 class FEI4Register(object):
+
     def __init__(self, configuration_file=None, fe_type=None, chip_address=None, broadcast=False):
         '''
 
@@ -251,26 +277,8 @@ class FEI4Register(object):
         '''
         logging.info("Loading configuration: %s" % configuration_file)
         self.configuration_file = configuration_file
-        with open(configuration_file, 'r') as f:
-            f.seek(0)
-            config_dict = {}
-            for line in f.readlines():
-                line = line.partition('#')[0].strip()
-                if not line:
-                    continue
-                parts = re.split(r'\s*[=]\s*|\s+', line)
-                key = parts[0].strip()
-                if key in config_dict:
-                    logging.warning('Item %s in configuration file exists more than once', parts[0])
-                try:
-                    config_dict[key] = ast.literal_eval(parts[1].strip())
-                except SyntaxError:  # for comma separated values, e.g. lists
-                    try:
-                        config_dict[key] = ast.literal_eval(line[len(parts[0]):].strip())
-                    except SyntaxError:
-                        config_dict[key] = line[len(parts[0]):].strip()
-                except ValueError:
-                    config_dict[key] = parts[1].strip()
+
+        config_dict = parse_global_config(self.configuration_file)
 
         if 'Flavor' in config_dict:
             flavor = config_dict.pop('Flavor').lower()
@@ -932,7 +940,7 @@ class FEI4Register(object):
                     reg = bitarray_from_value(value=register_object['value'], size=register_object['bitlength'])
                     if register_object['littleendian']:
                         reg.reverse()
-#                     register_bitset[max(0, 16 * (register_object['address'] - register_address) + register_object['offset']):min(16, 16 * (register_object['address'] - register_address) + register_object['offset'] + register_object['bitlength'])] |= reg[max(0, 16 * (register_address - register_object['address']) - register_object['offset']):min(register_object['bitlength'], 16 * (register_address - register_object['address'] + 1) - register_object['offset'])]  # [ bit(n) bit(n-1)... bit(0) ]
+# register_bitset[max(0, 16 * (register_object['address'] - register_address) + register_object['offset']):min(16, 16 * (register_object['address'] - register_address) + register_object['offset'] + register_object['bitlength'])] |= reg[max(0, 16 * (register_address - register_object['address']) - register_object['offset']):min(register_object['bitlength'], 16 * (register_address - register_object['address'] + 1) - register_object['offset'])]  # [ bit(n) bit(n-1)... bit(0) ]
                     register_bitset[max(0, 16 - 16 * (register_object['address'] - register_address) - register_object['offset'] - register_object['bitlength']):min(16, 16 - 16 * (register_object['address'] - register_address) - register_object['offset'])] |= reg[max(0, register_object['bitlength'] - 16 - 16 * (register_address - register_object['address']) + register_object['offset']):min(register_object['bitlength'], register_object['bitlength'] + 16 - 16 * (register_address - register_object['address'] + 1) + register_object['offset'])]  # [ bit(0)... bit(n-1) bit(n) ]
                 else:
                     raise Exception("wrong register object")
