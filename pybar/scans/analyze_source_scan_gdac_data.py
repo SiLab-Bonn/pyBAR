@@ -26,28 +26,27 @@ from pybar.analysis.analyze_raw_data import AnalyzeRawData
 
 
 analysis_configuration = {
-    "scan_name": ['files from scan_ext_trigger_gdac'],
-    'input_file_calibration': 'file from calibrate_threshold_scan_parameter',
-    'plot_filename': r'output.pdf',
+    "scan_name": [r'L:\SCC112\ThresholdCalibration\DifferentSources\Cadmium\1_scc_112_ext_trigger_gdac_scan'],
+    'input_file_calibration': r'L:\SCC112\ThresholdCalibration\scc_112\1_scc_112_threshold_calibration_calibration.h5',
     "analysis_steps": [1, 2.5, 4],  # the analysis includes the selected steps here. See explanation above.
     "use_cluster_rate_correction": False,  # corrects the hit rate, because one pixel hit cluster are less likely for low thresholds
-    "normalize_rate": False,  # correct the number of GDACs per scan parameter by the number of triggers or scan time
+    "normalize_rate": True,  # correct the number of GDACs per scan parameter by the number of triggers or scan time
     "normalization_reference": 'time',  # one can normalize the hits per GDAC setting to the number of events ('event') or time ('time')
-    "smoothness": 400,  # the smoothness of the spline fit to the data
+    "smoothness": 100,  # the smoothness of the spline fit to the data
     "vcal_calibration": 55.,   # calibration electrons/PlsrDAC
     "n_bins": 300,  # number of bins for the profile histogram
-    "col_span": [1, 80],  # the column pixel range to use in the analysis
+    "col_span": [53, 76],  # the column pixel range to use in the analysis
     "row_span": [1, 336],  # the row pixel range to use in the analysis
-    "min_cut_threshold": 0.8,  # the minimum cut threshold for the occupancy to define pixel to use in the analysis
+    "min_cut_threshold": 1,  # the minimum cut threshold for the occupancy to define pixel to use in the analysis
     "max_cut_threshold": None,  # the maximum cut threshold for the occupancy to define pixel to use in the analysis
     "min_gdac": 0,  # minimum threshold position in gdac settings to be used for the analysis
     "max_gdac": 999999,  # maximum threshold position in gdac settings to be used for the analysis
-    "min_thr": 1600,  # minimum threshold position in gdac setting to be used for the analysis
-    "max_thr": 35000,  # maximum threshold position in gdac setting to be used for the analysis
+    "min_thr": 3500,  # minimum threshold position in gdac setting to be used for the analysis
+    "max_thr": 7000,  # maximum threshold position in gdac setting to be used for the analysis
     "plot_normalization": True,  # active the output of the normalization
     "plot_cluster_sizes": True,
-    "interpreter_warnings": False,
-    "overwrite_output_files": False
+    "interpreter_warnings": True,
+    "overwrite_output_files": True
 }
 
 
@@ -221,6 +220,13 @@ def analyze_injected_charge(data_analyzed_file):
                     x_p = x_p[selected_data]
                     y_p = y_p[selected_data]
                     y_p_e = y_p_e[selected_data]
+
+                    with tb.openFile(data_analyzed_file[:-3] + '_result.h5', mode="w") as out_file_h5:
+                        result = np.rec.array(np.column_stack((x_p, y_p, y_p_e)), dtype=[('charge', float), ('count', float), ('count_error', float)])
+                        out = out_file_h5.create_table(out_file_h5.root, name='ChargeHistogram', description=result.dtype, title='Charge histogram with threshold method and per pixel calibration', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+                        for key, value in analysis_configuration.iteritems():
+                            out.attrs[key] = value
+                        out.append(result)
 
                     plot_result(x_p, y_p, y_p_e)
 
