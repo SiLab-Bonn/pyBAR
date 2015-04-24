@@ -50,11 +50,11 @@ class DataWorker(QtCore.QObject):
     def recv_data(self, flags=0, copy=True, track=False):
         if self.poller.poll(10):
             meta_data = self.socket.recv_json(flags=flags)
-            msg = self.socket.recv(flags=flags, copy=copy, track=track)
-            array = np.fromstring(msg, dtype=meta_data['dtype'])
-            return array.reshape(meta_data['shape']), meta_data['timestamp_start'], meta_data['timestamp_stop'], meta_data['readout_error'], re.sub(r'\bOrderedDict\b|[()\[\],\']', '', meta_data['scan_parameters'])
-        else:
-            return None, None, None, None, None
+            if meta_data['name'] == 'FEI4readoutData':  # check that the data is FE-I4 readout data (raw data + readout meta data)
+                msg = self.socket.recv(flags=flags, copy=copy, track=track)
+                array = np.fromstring(msg, dtype=meta_data['dtype'])
+                return array.reshape(meta_data['shape']), meta_data['timestamp_start'], meta_data['timestamp_stop'], meta_data['readout_error'], re.sub(r'\bOrderedDict\b|[()\[\],\']', '', meta_data['scan_parameters'])
+        return None, None, None, None, None
 
     def analyze_raw_data(self, raw_data):
         self.interpreter.interpret_raw_data(raw_data)
@@ -64,7 +64,7 @@ class DataWorker(QtCore.QObject):
         data = self.recv_data()  # poll on ZMQ queue for data
         if data[1]:  # identify non empty data by existing time stamp
             self.n_readout += 1
-            if self.integrate_readouts and self.n_readout % self.integrate_readouts == 0:
+            if self.integrate_readouts != 0 and self.n_readout % self.integrate_readouts == 0:
                 self.n_hits = np.sum(self.histograming.get_occupancy())
                 self.histograming.reset()
             self.analyze_raw_data(data[0])
@@ -209,7 +209,7 @@ class OnlineMonitorApplication(Qt.QApplication):
             self.hps = np.sum(data[0])
             self.hit_rate_label.setText("Hits\n%d" % int(self.hps))
         else:
-            self.hps = self.hps * 0.99 + meta_data[4] * 0.11 * self.fps / (float(self.spin_box.value()))
+            self.hps = self.hps * 0.95 + meta_data[4] * 0.05 * self.fps / (float(self.spin_box.value()))
             self.hit_rate_label.setText("Hits\n%d Hz" % int(self.hps))
 
     def update_plots(self, data):
@@ -222,7 +222,7 @@ class OnlineMonitorApplication(Qt.QApplication):
         self.hit_timing_plot.setData(x=np.linspace(-0.5, 15.5, 17), y=data[6], stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
 
     def __del__(self):
-        self.thread.wait(1000)  # give worker thread time to stop, is there a better way? stackoverflow has only worse hacks
+        self.thread.wait(1000)  # give worker thread time to stop after aboutToQuit issued thread.quit; is there a better way? stackoverflow has only worse hacks
 
 if __name__ == '__main__':
     app = OnlineMonitorApplication(sys.argv, socket_addr='tcp://127.0.0.1:5678')
