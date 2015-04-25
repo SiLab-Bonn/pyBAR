@@ -21,6 +21,8 @@ class ExtTriggerScan(Fei4RunBase):
         "trigger_delay": 14,  # trigger delay, in BCs
         "trigger_count": 0,  # consecutive trigger, 0 means 16
         "trigger_rate_limit": 500,  # artificially limiting the trigger rate, in BCs (25ns)
+        "trigger_pos_edge": True,  # trigger on the positibe edge of the RX0 trigger signal
+        "trigger_time_stamp": False,  # if true trigger number is a time stamp with 40 Mhz clock
         "col_span": [1, 80],  # defining active column interval, 2-tuple, from 1 to 80
         "row_span": [1, 336],  # defining active row interval, 2-tuple, from 1 to 336
         "overwrite_enable_mask": False,  # if True, use col_span and row_span to define an active region regardless of the Enable pixel register. If False, use col_span and row_span to define active region by also taking Enable pixel register into account.
@@ -112,6 +114,8 @@ class ExtTriggerScan(Fei4RunBase):
         self.dut['tdc_rx2']['ENABLE'] = self.enable_tdc
         self.dut['tlu'].RESET
         self.dut['tlu']['TRIGGER_MODE'] = self.trigger_mode
+        self.dut['tlu']['EN_INVERT_TRIGGER'] = 0 if self.trigger_pos_edge else 1
+        self.dut['tlu']['EN_WRITE_TIMESTAMP'] = 1 if self.trigger_time_stamp else 0
         self.dut['cmd']['EN_EXT_TRIGGER'] = True
 
         def timeout():
