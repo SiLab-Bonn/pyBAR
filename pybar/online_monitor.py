@@ -54,7 +54,8 @@ class DataWorker(QtCore.QObject):
                 msg = self.socket.recv(flags=flags, copy=copy, track=track)
                 array = np.fromstring(msg, dtype=meta_data['dtype'])
                 return array.reshape(meta_data['shape']), meta_data['timestamp_start'], meta_data['timestamp_stop'], meta_data['readout_error'], re.sub(r'\bOrderedDict\b|[()\[\],\']', '', meta_data['scan_parameters'])
-        return None, None, None, None, None
+            elif meta_data['name'] == 'RunMetaData':  # check that the data is run meta data (FE config + run config)
+                return meta_data['run_conf'],
 
     def analyze_raw_data(self, raw_data):
         self.interpreter.interpret_raw_data(raw_data)
@@ -62,7 +63,7 @@ class DataWorker(QtCore.QObject):
 
     def process_data(self):  # main loop
         data = self.recv_data()  # poll on ZMQ queue for data
-        if data[1]:  # identify non empty data by existing time stamp
+        if data and len(data) == 5:  # identify non empty raw data by existing time stamp
             self.n_readout += 1
             if self.integrate_readouts != 0 and self.n_readout % self.integrate_readouts == 0:
                 self.n_hits = np.sum(self.histograming.get_occupancy())
@@ -70,6 +71,15 @@ class DataWorker(QtCore.QObject):
             self.analyze_raw_data(data[0])
             interpreted_data = self.histograming.get_occupancy(), self.histograming.get_tot_hist(), self.interpreter.get_tdc_counters(), self.interpreter.get_error_counters(), self.interpreter.get_service_records_counters(), self.interpreter.get_trigger_error_counters(), self.histograming.get_rel_bcid_hist()
             self.data_ready.emit(interpreted_data, [data[1], data[2], data[3], data[4], self.n_hits])
+        elif data and len(data) == 1:  # data is run info, thus reset and prepare interpreter according to the new run settings
+            try:
+                n_bcid = int(data[0]['trigger_count'])
+            except KeyError:
+                n_bcid = 0
+            self.histograming.reset()
+            self.interpreter.reset()
+            self.interpreter.set_trig_count(n_bcid)
+
         QtCore.QTimer.singleShot(0.0001, self.process_data)
 
     def __del__(self):
