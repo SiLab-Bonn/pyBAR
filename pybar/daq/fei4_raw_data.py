@@ -6,10 +6,26 @@ import tables as tb
 import os.path
 from os import remove
 
+from pybar.daq.readout_utils import save_configuration_dict
 from pybar.analysis.RawDataConverter.data_struct import MetaTableV2 as MetaTable, generate_scan_parameter_description
 
 
+def send_meta_data(socket, conf, run_conf, name='RunMetaData', flags=0):  # begin of data taking info
+    '''Sends the actual run information (only run conf so far) via ZeroMQ to a specified socket. Is called at the beginning of a run
+    '''
+    try:
+        run_meta_data = dict(
+            name=name,
+            run_conf=run_conf
+        )
+        return socket.send_json(run_meta_data, flags)
+    except zmq.ZMQError:
+        pass
+
+
 def send_data(socket, data, scan_parameters, name='FEI4readoutData', flags=0, copy=False, track=False):
+    '''Sends the data of every read out (raw data and meta data) via ZeroMQ to a specified socket
+    '''
     if socket and data:  # if socket is defined send the data
         try:
             data_meta_data = dict(
@@ -27,8 +43,8 @@ def send_data(socket, data, scan_parameters, name='FEI4readoutData', flags=0, co
             pass
 
 
-def open_raw_data_file(filename, mode="w", title="", scan_parameters=None, socket_addr=None, **kwargs):
-    '''Mimics pytables.open_file()
+def open_raw_data_file(filename, mode="w", title="", conf=None, run_conf=None, scan_parameters=None, socket_addr=None, **kwargs):
+    '''Mimics pytables.open_file() and stores the configuration and run configuration
 
     Returns:
     RawDataFile Object
@@ -38,13 +54,15 @@ def open_raw_data_file(filename, mode="w", title="", scan_parameters=None, socke
         # do something here
         raw_data_file.append(self.readout.data, scan_parameters={scan_parameter:scan_parameter_value})
     '''
-    return RawDataFile(filename=filename, mode=mode, title=title, scan_parameters=scan_parameters, socket_addr=socket_addr, **kwargs)
+    return RawDataFile(filename=filename, mode=mode, title=title, conf=conf, run_conf=run_conf, scan_parameters=scan_parameters, socket_addr=socket_addr, **kwargs)
 
 
 class RawDataFile(object):
+
     '''Raw data file object. Saving data queue to HDF5 file.
     '''
-    def __init__(self, filename, mode="w", title='', scan_parameters=None, socket_addr=None, **kwargs):  # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created):
+
+    def __init__(self, filename, mode="w", title='', conf=None, run_conf=None, scan_parameters=None, socket_addr=None, **kwargs):  # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created):
         self.lock = RLock()
         if os.path.splitext(filename)[1].strip().lower() != '.h5':
             self.base_filename = filename
@@ -70,9 +88,14 @@ class RawDataFile(object):
         self.curr_filename = self.base_filename
         self.filenames = {self.curr_filename: 0}
         self.open(self.curr_filename, mode, title, **kwargs)
+        if conf:
+            save_configuration_dict(filename, 'conf', conf)
+        if run_conf:
+            save_configuration_dict(filename, 'run_conf', run_conf)
         if socket_addr:
-            self.socket = zmq.Context().socket(zmq.PUSH)
+            self.socket = zmq.Context().socket(zmq.PUSH)  # push data non blocking
             self.socket.bind(socket_addr)
+            send_meta_data(self.socket, conf, run_conf)  # send run info
         else:
             self.socket = None
 
