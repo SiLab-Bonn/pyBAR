@@ -6,7 +6,6 @@ import numpy as np
 from functools import wraps
 from threading import Event, Thread
 from Queue import Queue
-import tables as tb
 from collections import namedtuple, Mapping
 from contextlib import contextmanager
 import abc
@@ -20,7 +19,6 @@ from pybar.fei4.register_utils import FEI4RegisterUtils, is_fe_ready
 from pybar.daq.fifo_readout import FifoReadout, RxSyncError, EightbTenbError, FifoError, NoDataTimeout, StopTimeout
 from pybar.daq.fei4_raw_data import open_raw_data_file
 from pybar.analysis.analysis_utils import AnalysisError
-from pybar.analysis.RawDataConverter.data_struct import NameValue
 
 
 class Fei4RunBase(RunBase):
@@ -250,10 +248,7 @@ class Fei4RunBase(RunBase):
         self.init_fe()
 
     def do_run(self):
-        with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, scan_parameters=self.scan_parameters._asdict(), socket_addr=self.socket_addr) as self.raw_data_file:
-            self.save_configuration_dict(self.raw_data_file.h5_file, 'conf', self.conf)
-            self.save_configuration_dict(self.raw_data_file.h5_file, 'run_conf', self.run_conf)
-
+        with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, conf=self.conf, run_conf=self.run_conf, scan_parameters=self.scan_parameters._asdict(), socket_addr=self.socket_addr) as self.raw_data_file:
             with self.register.restored(name=self.run_number):
                 # configure for scan
                 self.configure()
@@ -381,46 +376,6 @@ class Fei4RunBase(RunBase):
 
     def stop_readout(self):
         self.fifo_readout.stop()
-
-    def save_configuration_dict(self, h5_file, configuation_name, configuration, **kwargs):
-        '''Stores any configuration dictionary to HDF5 file.
-
-        Parameters
-        ----------
-        h5_file : string, file
-            Filename of the HDF5 configuration file or file object.
-        configuation_name : str
-            Configuration name. Will be used for table name.
-        configuration : dict
-            Configuration dictionary.
-        '''
-        def save_conf():
-            try:
-                h5_file.removeNode(h5_file.root.configuration, name=configuation_name)
-            except tb.NodeError:
-                pass
-            try:
-                configuration_group = h5_file.create_group(h5_file.root, "configuration")
-            except tb.NodeError:
-                configuration_group = h5_file.root.configuration
-            self.scan_param_table = h5_file.createTable(configuration_group, name=configuation_name, description=NameValue, title=configuation_name)
-
-            row_scan_param = self.scan_param_table.row
-
-            for key, value in dict.iteritems(configuration):
-                row_scan_param['name'] = key
-                row_scan_param['value'] = str(value)
-                row_scan_param.append()
-
-            self.scan_param_table.flush()
-
-        if isinstance(h5_file, tb.file.File):
-            save_conf()
-        else:
-            if os.path.splitext(h5_file)[1].strip().lower() != ".h5":
-                h5_file = os.path.splitext(h5_file)[0] + ".h5"
-            with tb.open_file(h5_file, mode="a", title='', **kwargs) as h5_file:
-                save_conf()
 
     @abc.abstractmethod
     def configure(self):
