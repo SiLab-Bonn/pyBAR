@@ -66,7 +66,7 @@ def plot_2d_hist(hist, title, z_max=None):
         z_max = maximum  # round_to_multiple(maximum, math.floor(math.log10(maximum)))
     if z_max < 1 or hist.all() is np.ma.masked:
         z_max = 1
- 
+
     plt.clf()
     xedges = [1, hist.shape[0]]
     yedges = [1, hist.shape[1]]
@@ -85,33 +85,45 @@ def plot_2d_hist(hist, title, z_max=None):
     plt.title(title + ' (%d entrie(s))' % (0 if hist.all() is np.ma.masked else np.ma.sum(hist)))
     plt.xlabel('Column')
     plt.ylabel('Row')
-  
+
     ax = plt.gca()
-  
+
     divider = make_axes_locatable(ax)
-  
+
     cax = divider.append_axes("right", size="5%", pad=0.1)
     cb = plt.colorbar(im, cax=cax, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True))
     cb.set_label("#")
     plt.show()
-    
+
 
 def plot_table(data, title):
     plt.clf()
     plt.title(title)
-    x_name, y_name = data.dtype.names[0], data.dtype.names[1]
-    if len(data.dtype.names) == 2:
-        plt.plot(data[0, :], data[1, :])
-    else:
+    x_name = data.dtype.names[0]
+    if len(data.dtype.names) == 1:  # one column table, plot value against index
+        plt.xlabel('Index')
+        plt.ylabel(x_name)
+        plt.plot(np.arange(data[x_name].shape[0]), data[x_name])
+    elif len(data.dtype.names) == 2:  # two column table, plot column two against column 1
+        y_name = data.dtype.names[1]
+        plt.plot(data[x_name], data[y_name])
+        plt.xlabel(x_name)
+        plt.ylabel(y_name)
+    elif len(data.dtype.names) == 3:  # three column table, plot column two against column 1 with column 3 error bars
+        y_name = data.dtype.names[1]
+        plt.xlabel(x_name)
+        plt.ylabel(y_name)
         plt.errorbar(data[x_name], data[y_name], yerr=data[data.dtype.names[2]])
-    plt.xlabel(x_name)
-    plt.ylabel(y_name)
+
     plt.grid(True)
     plt.show()
 
+
 class pyBarPlugin(QtCore.QObject):
+
     """Plots the selected pyBAR data with pyBAR functions via Matplotlib
     """
+
     def __init__(self):
         """The class constructor.
         """
@@ -134,20 +146,20 @@ class pyBarPlugin(QtCore.QObject):
         """Add the `Plot pyBAR data`. entry to `Dataset` menu.
         """
         export_icon = QtGui.QIcon()
-        pixmap = QtGui.QPixmap(os.path.join(PLUGINSDIR, \
-            'csv/icons/document-export.png'))
+        pixmap = QtGui.QPixmap(os.path.join(PLUGINSDIR,
+                                            'csv/icons/document-export.png'))
         export_icon.addPixmap(pixmap, QtGui.QIcon.Normal, QtGui.QIcon.On)
 
         self.plot_action = QtGui.QAction(
             translate('PlotpyBARdata',
-                "Plot data with pyBAR plugin",
-                "Plot data with pyBAR plugin"),
+                      "Plot data with pyBAR plugin",
+                      "Plot data with pyBAR plugin"),
             self,
             shortcut=QtGui.QKeySequence.UnknownKey, triggered=self.plot,
             icon=export_icon,
             statusTip=translate('PlotpyBARdata',
-                "Plotting of selected data with pyBAR",
-                "Status bar text for the Dataset -> Plot pyBAR data... action"))
+                                "Plotting of selected data with pyBAR",
+                                "Status bar text for the Dataset -> Plot pyBAR data... action"))
 
         # Add the action to the Dataset menu
         menu = self.vtgui.dataset_menu
@@ -186,13 +198,15 @@ class pyBarPlugin(QtCore.QObject):
         data_name = leaf.name
 
         hists_1d = ['HistRelBcid', 'HistErrorCounter', 'HistTriggerErrorCounter', 'HistServiceRecord', 'HistTot', 'HistTdc', 'HistClusterTot', 'HistClusterSize']
-        hists_2d = ['HistOcc', 'HistTdcPixel', 'HistTotPixel', 'HistThreshold', 'HistNoise', 'HistThresholdFitted', 'HistNoiseFitted', 'HistThresholdFittedCalib', 'HistNoiseFittedCalib']
+        hists_2d = ['HistOcc', 'Enable', 'Imon', 'C_High', 'EnableDigInj', 'C_Low', 'FDAC', 'TDAC', 'HistTdcPixel', 'HistTotPixel', 'HistThreshold', 'HistNoise', 'HistThresholdFitted', 'HistNoiseFitted', 'HistThresholdFittedCalib', 'HistNoiseFittedCalib']
 
         if data_name in hists_1d:
             plot_1d_hist(hist=leaf[:], title=data_name)
         elif data_name in hists_2d:
-            plot_2d_hist(hist=leaf[:, :, 0], title=data_name)
-        elif 'Table' in str(type(leaf)) and len(leaf[:].dtype) <= 3:  # detect tables with less than 4 columns
+            if data_name == 'HistOcc':
+                leaf = np.sum(leaf[:], axis=2)
+            plot_2d_hist(hist=leaf[:], title=data_name)
+        elif 'Table' in str(type(leaf)) and len(leaf[:].dtype.names) <= 3:  # detect tables with less than 4 columns
             plot_table(leaf[:], title=data_name)
         else:
             print 'Plotting', data_name, '(%s) is not supported!' % type(leaf)
@@ -203,16 +217,16 @@ class pyBarPlugin(QtCore.QObject):
 
         # Text to be displayed
         about_text = translate('pyBarPlugin',
-            """<qt>
+                               """<qt>
             <p>Data plotting plug-in for pyBAR.
             </qt>""",
-            'About')
+                               'About')
 
         descr = dict(module_name='pyBarPlugin',
-            folder=PLUGINSDIR,
-            version=__version__,
-            plugin_name='pyBarPlugin',
-            author='David-Leon Pohl <david-leon.pohl@rub.de>, Jens Janssen <janssen@physik.uni-bonn.de>',
-            descr=about_text)
+                     folder=PLUGINSDIR,
+                     version=__version__,
+                     plugin_name='pyBarPlugin',
+                     author='David-Leon Pohl <david-leon.pohl@rub.de>, Jens Janssen <janssen@physik.uni-bonn.de>',
+                     descr=about_text)
 
         return descr
