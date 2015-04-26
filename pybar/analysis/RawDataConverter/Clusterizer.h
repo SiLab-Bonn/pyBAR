@@ -31,6 +31,8 @@
 #include <iterator>
 #include <set>
 
+#include <stddef.h>
+
 #include "Basis.h"
 #include "defines.h"
 
@@ -109,10 +111,10 @@ private:
 
 	//output data structures
 	ClusterHitInfo* _clusterHitInfo;
-	unsigned int _clusterHitInfoSize;
+	size_t _clusterHitInfoSize;
 	unsigned int _NclustersHits;
 	ClusterInfo* _clusterInfo;
-	unsigned int _clusterInfoSize;
+	size_t _clusterInfoSize;
 	unsigned int _Nclusters;
 
 	//cluster results

@@ -4,6 +4,7 @@
 //#pragma pack(1) //data struct in memory alignement
 #pragma pack(push, 1)
 
+#include <stddef.h>
 // for (u)int64_t event_number
 #ifdef _MSC_VER
 #include "external/stdint.h"
@@ -96,36 +97,52 @@ typedef struct MetaWordInfoOut{
 } MetaWordInfoOut;
 
 //DUT and TLU defines
-#define __BCIDCOUNTERSIZE_FEI4A 256	  //BCID counter for FEI4A has 8 bit
-#define __BCIDCOUNTERSIZE_FEI4B 1024  //BCID counter for FEI4B has 10 bit
-#define __NSERVICERECORDS 32          //# of different service records
-#define __MAXARRAYSIZE 2000000         //maximum buffer array size for the output hit array (has to be bigger than hits in one chunk)
-#define __MAXHITBUFFERSIZE 4000000     //maximum buffer array size for the hit buffer array (has to be bigger than hits in one event)
-#define __MAXTLUTRGNUMBER 32767       //maximum trigger logic unit trigger number (32-bit)
+const unsigned int __BCIDCOUNTERSIZE_FEI4A=256;	  //BCID counter for FEI4A has 8 bit
+const unsigned int __BCIDCOUNTERSIZE_FEI4B=1024;  //BCID counter for FEI4B has 10 bit
+const unsigned int __NSERVICERECORDS=32;          //# of different service records
+const size_t __MAXARRAYSIZE=2000000;         //maximum buffer array size for the output hit array (has to be bigger than hits in one chunk)
+const size_t __MAXHITBUFFERSIZE=4000000;     //maximum buffer array size for the hit buffer array (has to be bigger than hits in one event)
+const unsigned int __MAXTLUTRGNUMBER=32767;       //maximum trigger logic unit trigger number (32-bit)
 
 //event error codes
-#define __N_ERROR_CODES 16            //number of event error codes
-#define __NO_ERROR 0                  //no error
-#define __HAS_SR 1                    //the event has service records
-#define __NO_TRG_WORD 2               //the event has no trigger word, is ok for not external triggering
-#define __NON_CONST_LVL1ID 4          //LVL1ID changes in one event, is ok for self triggering
-#define __EVENT_INCOMPLETE 8          //BCID not increasing by 1, most likely BCID missing (incomplete data transmission)
-#define __UNKNOWN_WORD 16             //event has unknown words
-#define __BCID_JUMP 32                //BCID jumps, but either LVL1ID is constant or data is externally triggered with trigger word or TDC word
-#define __TRG_ERROR 64                //a trigger error occured
-#define __TRUNC_EVENT 128             //Event had to many hits (>__MAXHITBUFFERSIZE) and was therefore truncated
-#define __TDC_WORD 256             	  //Event has a TDC word
-#define __MANY_TDC_WORDS 512          //Event has more than one valid TDC word (event has more than one TDC word in normal use mode or event has more than one valid TDC word in TRG delay mode)
-#define __TDC_OVERFLOW 1024           //Event has TDC word indicating a TDC overflow (value overflow in normal use mode and +no in time TDC in TRG delay use mode)
-#define __NO_HIT 2048           	  //Events without any hit, usefull for trigger number debugging
+const unsigned int __N_ERROR_CODES=16;            //number of event error codes
+const unsigned int __NO_ERROR=0;                 //no error
+const unsigned int __HAS_SR=1;                    //the event has service records
+const unsigned int __NO_TRG_WORD=2;               //the event has no trigger word, is ok for not external triggering
+const unsigned int __NON_CONST_LVL1ID=4;          //LVL1ID changes in one event, is ok for self triggering
+const unsigned int __EVENT_INCOMPLETE=8;          //BCID not increasing by 1, most likely BCID missing (incomplete data transmission)
+const unsigned int __UNKNOWN_WORD=16;             //event has unknown words
+const unsigned int __BCID_JUMP=32;                //BCID jumps, but either LVL1ID is constant or data is externally triggered with trigger word or TDC word
+const unsigned int __TRG_ERROR=64;                //a trigger error occured
+const unsigned int __TRUNC_EVENT=128;             //Event had to many hits (>__MAXHITBUFFERSIZE) and was therefore truncated
+const unsigned int __TDC_WORD=256;             	  //Event has a TDC word
+const unsigned int __MANY_TDC_WORDS=512;          //Event has more than one valid TDC word (event has more than one TDC word in normal use mode or event has more than one valid TDC word in TRG delay mode)
+const unsigned int __TDC_OVERFLOW=1024;           //Event has TDC word indicating a TDC overflow (value overflow in normal use mode and +no in time TDC in TRG delay use mode)
+const unsigned int __NO_HIT=2048;           	  //Events without any hit, usefull for trigger number debugging
 
 //trigger error codes
-#define __TRG_N_ERROR_CODES 8         //number of trigger error codes
-#define __TRG_NO_ERROR 0              //no trigger error
-#define __TRG_NUMBER_INC_ERROR 1      //two consecutive triggern numbers are not increasing by exactly one (counter overflow case considered correctly)
-#define __TRG_NUMBER_MORE_ONE 2       //more than one trigger per event
-#define __TRG_ERROR_TRG_ACCEPT 4      //TLU error
-#define __TRG_ERROR_LOW_TIMEOUT 8     //TLU error
+const unsigned int __TRG_N_ERROR_CODES=8;         //number of trigger error codes
+const unsigned int __TRG_NO_ERROR=0;              //no trigger error
+const unsigned int __TRG_NUMBER_INC_ERROR=1;      //two consecutive triggern numbers are not increasing by exactly one (counter overflow case considered correctly)
+const unsigned int __TRG_NUMBER_MORE_ONE=2;       //more than one trigger per event
+const unsigned int __TRG_ERROR_TRG_ACCEPT=4;      //TLU error
+const unsigned int __TRG_ERROR_LOW_TIMEOUT=8;     //TLU error
+
+//Clusterizer definitions
+const unsigned int __MAXBCID=256;			//maximum possible BCID window width, 16 for the FE, 256 in FE stop mode
+const unsigned int __MAXTOTBINS=128;		//number of TOT bins for the cluster tot histogram (in TOT = [0:31])
+const unsigned int __MAXCHARGEBINS=4096;	//number of charge bins for the cluster charge histogram (in PlsrDAC)
+const unsigned int __MAXCLUSTERHITSBINS=1024;	//number of for the cluster size (=# hits) histogram
+const unsigned int __MAXPOSXBINS=1000;		//number of bins in x for the 2d hit position histogram
+const unsigned int __MAXPOSYBINS=1000;		//number of bins in y for the 2d hit position histogram
+
+const unsigned int __MAXTOTLOOKUP=14;
+
+// FE definitions
+const unsigned int RAW_DATA_MIN_COLUMN=1;
+const unsigned int RAW_DATA_MAX_COLUMN=80;
+const unsigned int RAW_DATA_MIN_ROW=1;
+const unsigned int RAW_DATA_MAX_ROW=336;
 
 //trigger word macros
 #define TRIGGER_WORD_HEADER_MASK_NEW 0x80000000   //first bit 1 means trigger word
@@ -181,10 +198,6 @@ typedef struct MetaWordInfoOut{
 #define DATA_RECORD_TOT1_MASK			0x000000F0
 #define DATA_RECORD_TOT2_MASK			0x0000000F
 
-#define RAW_DATA_MIN_COLUMN				0x00000001 // 1
-#define RAW_DATA_MAX_COLUMN				0x00000050 // 80
-#define RAW_DATA_MIN_ROW				0x00000001 // 1
-#define RAW_DATA_MAX_ROW				0x00000150 // 336
 #define DATA_RECORD_MIN_COLUMN			(RAW_DATA_MIN_COLUMN << 17)
 #define DATA_RECORD_MAX_COLUMN			(RAW_DATA_MAX_COLUMN << 17)
 #define DATA_RECORD_MIN_ROW				(RAW_DATA_MIN_ROW << 8)
@@ -239,16 +252,6 @@ typedef struct MetaWordInfoOut{
 #define SERVICE_RECORD_TF_MACRO_FEI4B(X)	((SERVICE_RECORD_TF_MASK_FEI4B & X) >> 9)
 #define SERVICE_RECORD_ETC_MACRO_FEI4B(X)	((SERVICE_RECORD_ETC_MASK_FEI4B & X) >> 4)
 #define SERVICE_RECORD_L1REQ_MACRO_FEI4B(X)	(SERVICE_RECORD_L1REQ_MASK_FEI4B & X)
-
-//Clusterizer definitions
-#define __MAXBCID 256			//maximum possible BCID window width, 16 for the FE, 256 in FE stop mode
-#define __MAXTOTBINS 128		//number of TOT bins for the cluster tot histogram (in TOT = [0:31])
-#define __MAXCHARGEBINS 4096	//number of charge bins for the cluster charge histogram (in PlsrDAC)
-#define __MAXCLUSTERHITSBINS 1024	//number of for the cluster size (=# hits) histogram
-#define __MAXPOSXBINS 1000		//number of bins in x for the 2d hit position histogram
-#define __MAXPOSYBINS 1000		//number of bins in y for the 2d hit position histogram
-
-#define __MAXTOTLOOKUP 14
 
 #pragma pack(pop)  // pop needed to suppress VS C4103 compiler warning
 #endif // DEFINES_H

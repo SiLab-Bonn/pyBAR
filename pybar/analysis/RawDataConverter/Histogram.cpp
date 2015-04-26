@@ -138,7 +138,7 @@ void Histogram::addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
 		if(_createOccHist)
 			if(tTot <= _maxTot){
 				if(_occupancy!=0)
-					_occupancy[(long)tColumnIndex + (long)tRowIndex * (long)RAW_DATA_MAX_COLUMN + (long)tParIndex * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] += 1;
+					_occupancy[(size_t)tColumnIndex + (size_t)tRowIndex * (size_t)RAW_DATA_MAX_COLUMN + (size_t)tParIndex * (size_t)RAW_DATA_MAX_COLUMN * (size_t)RAW_DATA_MAX_ROW] += 1;
 				else
 					throw std::runtime_error("Occupancy array not intitialized. Set scan parameter first!.");
 			}
@@ -156,14 +156,14 @@ void Histogram::addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
 					info("TDC value out of range:" + IntToStr(tTdc) + ">" + IntToStr(__N_TDC_PIXEL_VALUES));
 					tTdc = 0;
 				}
-				_tdcPixel[(long)tColumnIndex + (long)tRowIndex * (long)RAW_DATA_MAX_COLUMN + (long)tTdc * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] += 1;
+				_tdcPixel[(size_t)tColumnIndex + (size_t)tRowIndex * (size_t)RAW_DATA_MAX_COLUMN + (size_t)tTdc * (size_t)RAW_DATA_MAX_COLUMN * (size_t)RAW_DATA_MAX_ROW] += 1;
 			}
 			else
 				throw std::runtime_error("Output TDC pixel array array not set.");
 		}
 		if(_createTotPixelHist){
 			if (tTot <= _maxTot)
-				_totPixel[(long)tColumnIndex + (long)tRowIndex * (long)RAW_DATA_MAX_COLUMN + (long)tTot * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] += 1;
+				_totPixel[(size_t)tColumnIndex + (size_t)tRowIndex * (size_t)RAW_DATA_MAX_COLUMN + (size_t)tTot * (size_t)RAW_DATA_MAX_COLUMN * (size_t)RAW_DATA_MAX_ROW] += 1;
 		}
 	}
 	//std::cout<<"addHits done"<<std::endl;
@@ -189,7 +189,7 @@ void Histogram::addClusterSeedHits(ClusterInfo*& rClusterInfo, const unsigned in
 		}
 		if(_createOccHist){
 			if(_occupancy!=0)
-				_occupancy[(long)tColumnIndex + (long)tRowIndex * (long)RAW_DATA_MAX_COLUMN + (long)tParIndex * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] += 1;
+				_occupancy[(size_t)tColumnIndex + (size_t)tRowIndex * (size_t)RAW_DATA_MAX_COLUMN + (size_t)tParIndex * (size_t)RAW_DATA_MAX_COLUMN * (size_t)RAW_DATA_MAX_ROW] += 1;
 			else
 				throw std::runtime_error("Occupancy array not intitialized. Set scan parameter first!.");
 		}
@@ -201,7 +201,7 @@ unsigned int Histogram::getParIndex(int64_t& rEventNumber)
   if(_parInfo == 0)
     return 0;
   for(uint64_t i=_lastMetaEventIndex; i<_nMetaEventIndexLength-1; ++i){
-    if(_metaEventIndex[i+1] > rEventNumber || _metaEventIndex[i+1] < _metaEventIndex[i]){ // second case: meta event data not set yet (std value = 0), event number has to increase
+    if(_metaEventIndex[i+1] > (uint64_t) rEventNumber || _metaEventIndex[i+1] < _metaEventIndex[i]){ // second case: meta event data not set yet (std value = 0), event number has to increase
       _lastMetaEventIndex = i;
       if (i < _nParInfoLength)
       	return _parInfo[i];
@@ -211,7 +211,7 @@ unsigned int Histogram::getParIndex(int64_t& rEventNumber)
       }
     }
   }
-  if(_metaEventIndex[_nMetaEventIndexLength-1] <= rEventNumber) //last read outs
+  if(_metaEventIndex[_nMetaEventIndexLength-1] <= (uint64_t) rEventNumber) //last read outs
     return _parInfo[_nMetaEventIndexLength-1];
   error("getScanParameter: Correlation issues at event "+LongIntToStr(rEventNumber)+"\n_metaEventIndex[_nMetaEventIndexLength-1] "+LongIntToStr(_metaEventIndex[_nMetaEventIndexLength-1])+"\n_lastMetaEventIndex "+LongIntToStr(_lastMetaEventIndex));
   throw std::logic_error("Event parameter correlation issues.");
@@ -230,13 +230,13 @@ void Histogram::addScanParameter(unsigned int*& rParInfo, const unsigned int& rN
 	  tParameterValues.push_back(_parInfo[i]);
 
 	std::sort(tParameterValues.begin(), tParameterValues.end());  //sort from lowest to highest value
-	std::set<unsigned int> tSet(tParameterValues.begin(), tParameterValues.end());
+	std::set<unsigned int> tSet(tParameterValues.begin(), tParameterValues.end());  // delete duplicates
 	tParameterValues.assign(tSet.begin(), tSet.end() );
 
 	for(unsigned int i = 0; i < tParameterValues.size(); ++i)
 		_parameterValues[tParameterValues[i]] = i;
 
-	_NparameterValues = std::unique(tParameterValues.begin(), tParameterValues.end()) - tParameterValues.begin();
+	_NparameterValues = (unsigned int) tSet.size();
 
 	if (_createOccHist){
 		allocateOccupancyArray();
@@ -263,7 +263,7 @@ void Histogram::allocateOccupancyArray()
   debug("allocateOccupancyArray() with "+IntToStr(getNparameters())+" parameters");
   deleteOccupancyArray();
   try{
-    _occupancy = new unsigned int[(long)(RAW_DATA_MAX_COLUMN-1) + ((long)RAW_DATA_MAX_ROW-1)*(long)RAW_DATA_MAX_COLUMN + ((long)getNparameters()-1) * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW +1];
+    _occupancy = new unsigned int[(size_t)RAW_DATA_MAX_COLUMN * (size_t)RAW_DATA_MAX_ROW * (size_t)getNparameters()];
   }
   catch(std::bad_alloc& exception){
     error(std::string("allocateOccupancyArray: ")+std::string(exception.what()));
@@ -285,7 +285,7 @@ void Histogram::resetOccupancyArray()
 	  for (unsigned int i = 0; i < RAW_DATA_MAX_COLUMN; i++)
 		for (unsigned int j = 0; j < RAW_DATA_MAX_ROW; j++)
 		  for(unsigned int k = 0; k < getNparameters();k++)
-			  _occupancy[(long)i + (long)j * (long)RAW_DATA_MAX_COLUMN + (long)k * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] = 0;
+			  _occupancy[(size_t)i + (size_t)j * (size_t)RAW_DATA_MAX_COLUMN + (size_t)k * (size_t)RAW_DATA_MAX_COLUMN * (size_t)RAW_DATA_MAX_ROW] = 0;
   }
 }
 
@@ -297,7 +297,7 @@ void Histogram::resetTdcPixelArray()
 		  for (unsigned int i = 0; i < RAW_DATA_MAX_COLUMN; i++)
 			for (unsigned int j = 0; j < RAW_DATA_MAX_ROW; j++)
 			  for(unsigned int k = 0; k < __N_TDC_PIXEL_VALUES;k++)
-				  _tdcPixel[(long)i + (long)j * (long)RAW_DATA_MAX_COLUMN + (long)k * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] = 0;
+				  _tdcPixel[(size_t)i + (size_t)j * (size_t)RAW_DATA_MAX_COLUMN + (size_t)k * (size_t)RAW_DATA_MAX_COLUMN * (size_t)RAW_DATA_MAX_ROW] = 0;
 	  }
 	  else
 		  throw std::runtime_error("Output TDC pixel array array not set.");
@@ -312,7 +312,7 @@ void Histogram::resetTotPixelArray()
 		  for (unsigned int i = 0; i < RAW_DATA_MAX_COLUMN; i++)
 			for (unsigned int j = 0; j < RAW_DATA_MAX_ROW; j++)
 			  for(unsigned int k = 0; k < 16;k++)
-				  _totPixel[(long)i + (long)j * (long)RAW_DATA_MAX_COLUMN + (long)k * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW] = 0;
+				  _totPixel[(size_t)i + (size_t)j * (size_t)RAW_DATA_MAX_COLUMN + (size_t)k * (size_t)RAW_DATA_MAX_COLUMN * (size_t)RAW_DATA_MAX_ROW] = 0;
 	  }
 	  else
 		  throw std::runtime_error("Output TOT pixel array array not set.");
@@ -349,7 +349,7 @@ void Histogram::resetTotArray()
   if (_createTotHist){
 	  if (_tot != 0){
 		  for (unsigned int i = 0; i < 16; i++)
-			_tot[(long)i] = 0;
+			_tot[(size_t)i] = 0;
 	  }
   }
 }
@@ -360,7 +360,7 @@ void Histogram::resetTdcArray()
   if (_createTdcHist){
 	  if (_tdc != 0){
 		  for (unsigned int i = 0; i < __N_TDC_VALUES; i++)
-			_tdc[(long)i] = 0;
+			_tdc[(size_t)i] = 0;
 	  }
   }
 }
@@ -399,7 +399,7 @@ void Histogram::resetRelBcidArray()
   if (_createRelBCIDhist){
 	  if (_relBcid != 0){
 		  for (unsigned int i = 0; i < __MAXBCID; i++)
-			_relBcid[(long)i] = 0;
+			_relBcid[(size_t)i] = 0;
 	  }
   }
 }
@@ -417,7 +417,7 @@ void Histogram::allocateTotPixelArray()
   debug("allocateTotPixelArray()");
   deleteTotPixelArray();
   try{
-	  _totPixel = new unsigned short[(long)(RAW_DATA_MAX_COLUMN-1) + ((long)RAW_DATA_MAX_ROW-1)*(long)RAW_DATA_MAX_COLUMN + ((long)16-1) * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW +1];
+	  _totPixel = new unsigned short[(size_t)RAW_DATA_MAX_COLUMN * (size_t) RAW_DATA_MAX_ROW * 16];
   }
   catch(std::bad_alloc& exception){
     error(std::string("allocateTotPixelArray: ")+std::string(exception.what()));
@@ -429,7 +429,7 @@ void Histogram::allocateTdcPixelArray()
   debug("allocateTdcPixelArray()");
   deleteTdcPixelArray();
   try{
-	  _tdcPixel = new unsigned short[(long)(RAW_DATA_MAX_COLUMN-1) + ((long)RAW_DATA_MAX_ROW-1)*(long)RAW_DATA_MAX_COLUMN + ((long)__N_TDC_VALUES-1) * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW +1];
+	  _tdcPixel = new unsigned short[(size_t) RAW_DATA_MAX_COLUMN * (size_t) RAW_DATA_MAX_ROW * (size_t)__N_TDC_VALUES];
   }
   catch(std::bad_alloc& exception){
     error(std::string("allocateTdcPixelArray: ")+std::string(exception.what()));
@@ -478,7 +478,7 @@ void Histogram::getOccupancy(unsigned int& rNparameterValues, unsigned int*& rOc
 {
   debug("getOccupancy(...)");
   if(copy){
-	  unsigned int tArrayLength = (long)(RAW_DATA_MAX_COLUMN-1) + (long)(RAW_DATA_MAX_ROW-1) * (long)RAW_DATA_MAX_COLUMN + (long)(_NparameterValues-1) * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW+1;
+	  unsigned int tArrayLength = (size_t)(RAW_DATA_MAX_COLUMN-1) + (size_t)(RAW_DATA_MAX_ROW-1) * (size_t)RAW_DATA_MAX_COLUMN + (size_t)(_NparameterValues-1) * (size_t)RAW_DATA_MAX_COLUMN * (size_t)RAW_DATA_MAX_ROW+1;
 	  std::copy(_occupancy, _occupancy+tArrayLength, rOccupancy);
   }
   else
@@ -554,7 +554,7 @@ void Histogram::calculateThresholdScanArrays(double rMuArray[], double rSigmaArr
       unsigned int M = 0;
         
       for(unsigned int k=0; k<getNparameters(); ++k){
-        M += _occupancy[(long)i + (long)j * (long)RAW_DATA_MAX_COLUMN  + (long)k * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW]; 
+        M += _occupancy[(size_t)i + (size_t)j * (size_t)RAW_DATA_MAX_COLUMN  + (size_t)k * (size_t)RAW_DATA_MAX_COLUMN * (size_t)RAW_DATA_MAX_ROW];
       }
       double threshold = (double) q_max - d*(double)M/(double)A;
       rMuArray[i+j*RAW_DATA_MAX_COLUMN] = threshold;
@@ -563,9 +563,9 @@ void Histogram::calculateThresholdScanArrays(double rMuArray[], double rSigmaArr
       unsigned int mu2 = 0;
       for(unsigned int k=0; k<getNparameters(); ++k){
         if((double) k*d < threshold)
-          mu1 += _occupancy[(long)i + (long)j * (long)RAW_DATA_MAX_COLUMN  + (long)k * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW];
+          mu1 += _occupancy[(size_t)i + (size_t)j * (size_t)RAW_DATA_MAX_COLUMN  + (size_t)k * (size_t)RAW_DATA_MAX_COLUMN * (size_t)RAW_DATA_MAX_ROW];
         else
-          mu2 += (A-_occupancy[(long)i + (long)j * (long)RAW_DATA_MAX_COLUMN  + (long)k * (long)RAW_DATA_MAX_COLUMN * (long)RAW_DATA_MAX_ROW]);
+          mu2 += (A-_occupancy[(size_t)i + (size_t)j * (size_t)RAW_DATA_MAX_COLUMN  + (size_t)k * (size_t)RAW_DATA_MAX_COLUMN * (size_t)RAW_DATA_MAX_ROW]);
       }
       double noise = (double)d*(double)(mu1+mu2)/(double)A*sqrt(3.141592653589893238462643383/2);
       rSigmaArray[i+j*RAW_DATA_MAX_COLUMN] = noise;
