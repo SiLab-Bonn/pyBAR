@@ -23,6 +23,7 @@ class ExtTriggerScan(Fei4RunBase):
         "trigger_rate_limit": 500,  # artificially limiting the trigger rate, in BCs (25ns)
         "trigger_pos_edge": True,  # trigger on the positibe edge of the RX0 trigger signal
         "trigger_time_stamp": False,  # if true trigger number is a time stamp with 40 Mhz clock
+        "trigger_tdc": False,  # only create tdc word if it can be assigned to a trigger
         "col_span": [1, 80],  # defining active column interval, 2-tuple, from 1 to 80
         "row_span": [1, 336],  # defining active row interval, 2-tuple, from 1 to 336
         "overwrite_enable_mask": False,  # if True, use col_span and row_span to define an active region regardless of the Enable pixel register. If False, use col_span and row_span to define active region by also taking Enable pixel register into account.
@@ -111,6 +112,7 @@ class ExtTriggerScan(Fei4RunBase):
         if kwargs:
             self.set_scan_parameters(**kwargs)
         self.fifo_readout.start(reset_sram_fifo=False, clear_buffer=True, callback=self.handle_data, errback=self.handle_err, no_data_timeout=self.no_data_timeout)
+        self.dut['tdc_rx2']['EN_NO_WRITE_TRIG_ERR'] = 1 if self.trigger_tdc else 0
         self.dut['tdc_rx2']['ENABLE'] = self.enable_tdc
         self.dut['tlu'].RESET
         self.dut['tlu']['TRIGGER_MODE'] = self.trigger_mode
