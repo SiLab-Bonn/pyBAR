@@ -248,11 +248,11 @@ class Fei4RunBase(RunBase):
         self.init_fe()
 
     def do_run(self):
-        with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, conf=self.conf, run_conf=self.run_conf, scan_parameters=self.scan_parameters._asdict(), socket_addr=self.socket_addr) as self.raw_data_file:
+        with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, register=self.register, conf=self.conf, run_conf=self.run_conf, scan_parameters=self.scan_parameters._asdict(), socket_addr=self.socket_addr) as self.raw_data_file:
             with self.register.restored(name=self.run_number):
                 # configure for scan
                 self.configure()
-                self.register.save_configuration(self.raw_data_file.h5_file)
+                self.raw_data_file.save_register_configuration()  # save register configration after configure() since it is most likely changed there
                 self.fifo_readout.reset_rx()
                 self.fifo_readout.reset_sram_fifo()
                 self.fifo_readout.print_readout_status()

@@ -6,127 +6,17 @@ import ast
 import numpy as np
 from collections import OrderedDict
 import copy
-import struct
 import tables as tb
 import datetime
 from contextlib import contextmanager
 from importlib import import_module
 from operator import itemgetter
 
-from pybar.analysis.RawDataConverter.data_struct import NameValue
+from pybar.fei4 import register_utils
 from pybar.utils.utils import string_is_binary, flatten_iterable, iterable
 
 
 flavors = ('fei4a', 'fei4b')
-
-
-# Helper functions
-def parse_global_config(filename):  # parses the global config text file
-    with open(filename, 'r') as f:
-        f.seek(0)
-        config_dict = {}
-        for line in f.readlines():
-            line = line.partition('#')[0].strip()
-            if not line:
-                continue
-            parts = re.split(r'\s*[=]\s*|\s+', line)
-            key = parts[0].strip()
-            if key in config_dict:
-                logging.warning('Item %s in configuration file exists more than once', parts[0])
-            try:
-                config_dict[key] = ast.literal_eval(parts[1].strip())
-            except SyntaxError:  # for comma separated values, e.g. lists
-                try:
-                    config_dict[key] = ast.literal_eval(line[len(parts[0]):].strip())
-                except SyntaxError:
-                    config_dict[key] = line[len(parts[0]):].strip()
-            except ValueError:
-                config_dict[key] = parts[1].strip()
-    return config_dict
-
-
-def parse_pixel_mask_config(filename):
-    mask = np.empty((80, 336), dtype=np.uint8)
-    with open(filename, 'r') as f:
-        row = 0
-        for line in f.readlines():
-            line = line.split()
-            if len(line) == 0 or line[0][0] == '#':
-                continue
-            try:
-                int(line[0])
-            except ValueError:
-                line = ''.join(line).translate(None, '_-')
-            else:
-                line = ''.join(line[1:]).translate(None, '_-')
-            if len(line) != 80:
-                raise ValueError('Dimension of column')
-            # for col, value in enumerate(line):
-            #    mask[col][row] = value
-            mask[:, row] = list(line)
-            row += 1
-        if row != 336:
-            raise ValueError('Dimension of row')
-    return mask
-
-
-def write_pixel_mask_config(filename, value):
-    with open(filename, 'w') as f:
-        seq = []
-        seq.append("###  1     6     11    16     21    26     31    36     41    46     51    56     61    66     71    76\n")
-        seq.append("\n".join([(repr(row + 1).rjust(3) + "  ") + "  ".join(["-".join(["".join([repr(value[col, row]) for col in range(col_fine, col_fine + 5)]) for col_fine in range(col_coarse, col_coarse + 10, 5)]) for col_coarse in range(0, 80, 10)]) for row in range(336)]))
-        seq.append("\n")
-        f.writelines(seq)
-
-
-def parse_pixel_dac_config(filename):
-    mask = np.empty((80, 336), dtype=np.uint8)
-    with open(filename, 'r') as f:
-        row = 0
-        read_line = 0
-        for line in f.readlines():
-            line = line.split()
-            if len(line) == 0 or line[0][0] == '#':
-                continue
-            try:
-                int(line[0])
-            except ValueError:
-                line = line[1:]
-            else:
-                pass  # nothing to do
-            if len(line) != 40:
-                raise ValueError('Dimension of column')
-            if read_line % 2 == 0:
-                mask[:40, row] = line
-            else:
-                mask[40:, row] = line
-                row += 1
-            read_line += 1
-        if row != 336:
-            raise ValueError('Dimension of row')
-    return mask
-
-
-def write_pixel_dac_config(filename, value):
-    with open(filename, 'w') as f:
-        seq = []
-        seq.append("###    1  2  3  4  5  6  7  8  9 10   11 12 13 14 15 16 17 18 19 20   21 22 23 24 25 26 27 28 29 30   31 32 33 34 35 36 37 38 39 40\n")
-        seq.append("###   41 42 43 44 45 46 47 48 49 50   51 52 53 54 55 56 57 58 59 60   61 62 63 64 65 66 67 68 69 70   71 72 73 74 75 76 77 78 79 80\n")
-        seq.append("\n".join(["\n".join([((repr(row + 1).rjust(3) + ("a" if col_coarse == 0 else "b") + "  ") + "   ".join([" ".join([repr(value[col, row]).rjust(2) for col in range(col_fine, col_fine + 10)]) for col_fine in range(col_coarse, col_coarse + 40, 10)])) for col_coarse in range(0, 80, 40)]) for row in range(336)]))
-        seq.append("\n")
-        f.writelines(seq)
-
-
-def bitarray_from_value(value, size=None, fmt='Q'):
-    ba = bitarray(endian='little')
-    ba.frombytes(struct.pack(fmt, value))
-    if size is not None:
-        if size > ba.length():
-            ba.extend((size - ba.length()) * [0])
-        else:
-            ba = ba[:size]
-    ba.reverse()
-    return ba
 
 
 class FEI4Register(object):
@@ -164,7 +54,7 @@ class FEI4Register(object):
         self.chip_id = chip_address
         if self.broadcast:
             self.chip_id += 0x8
-        self.chip_id_bitarray = bitarray_from_value(value=self.chip_id, size=4, fmt='I')
+        self.chip_id_bitarray = register_utils.bitarray_from_value(value=self.chip_id, size=4, fmt='I')
         logging.info('Setting chip address to %d (broadcast bit %s)' % (self.chip_address, 'set' if self.broadcast else 'not set'))
 
     def init_fe_type(self, fe_type):
@@ -248,9 +138,9 @@ class FEI4Register(object):
         '''
         if os.path.isfile(configuration_file):
             if not isinstance(configuration_file, tb.file.File) and os.path.splitext(configuration_file)[1].strip().lower() != ".h5":
-                self._load_configuration_from_text_file(configuration_file)
+                register_utils.load_configuration_from_text_file(self, configuration_file)
             else:
-                self._load_configuration_from_hdf5(configuration_file)
+                register_utils.load_configuration_from_hdf5(self, configuration_file)
         else:
             raise ValueError('Cannot find configuration file specified: %s' % configuration_file)
 
@@ -263,310 +153,9 @@ class FEI4Register(object):
             Filename of the configuration file.
         '''
         if not isinstance(configuration_file, tb.file.File) and os.path.splitext(configuration_file)[1].strip().lower() != ".h5":
-            return self._save_configuration_to_text_file(configuration_file)
+            return register_utils.save_configuration_to_text_file(self, configuration_file)
         else:
-            return self._save_configuration_to_hdf5(configuration_file)
-
-    def _load_configuration_from_text_file(self, configuration_file):
-        '''Loading configuration from text files
-
-        Parameters
-        ----------
-        configuration_file : string
-            Full path (directory and filename) of the configuration file. If name is not given, reload configuration from file.
-        '''
-        logging.info("Loading configuration: %s" % configuration_file)
-        self.configuration_file = configuration_file
-
-        config_dict = parse_global_config(self.configuration_file)
-
-        if 'Flavor' in config_dict:
-            flavor = config_dict.pop('Flavor').lower()
-            if self.flavor:
-                pass
-            else:
-                self.init_fe_type(flavor)
-        else:
-            if self.flavor:
-                pass
-            else:
-                raise ValueError('Flavor not specified')
-        if 'Chip_ID' in config_dict:
-            chip_id = config_dict.pop('Chip_ID')
-            if self.chip_address:
-                pass
-            else:
-                self.broadcast = True if chip_id & 0x8 else False
-                self.set_chip_address(chip_id & 0x7)
-        elif 'Chip_Address' in config_dict:
-            chip_address = config_dict.pop('Chip_Address')
-            if self.chip_address:
-                pass
-            else:
-                self.set_chip_address(chip_address)
-        else:
-            if self.chip_id_initialized:
-                pass
-            else:
-                raise ValueError('Chip address not specified')
-        global_registers_configured = []
-        pixel_registers_configured = []
-        for key in config_dict.keys():
-            value = config_dict.pop(key)
-            if key in self.global_registers:
-                self.set_global_register_value(key, value)
-                global_registers_configured.append(key)
-            elif key in self.pixel_registers:
-                self.set_pixel_register_value(key, value)
-                pixel_registers_configured.append(key)
-            elif key in self.calibration_parameters:
-                self.calibration_parameters[key] = value
-            else:
-                self.miscellaneous[key] = value
-
-        global_registers = self.get_global_register_attributes('name', readonly=False)
-        pixel_registers = self.pixel_registers.keys()
-        global_registers_not_configured = set(global_registers).difference(global_registers_configured)
-        pixel_registers_not_configured = set(pixel_registers).difference(pixel_registers_configured)
-        if global_registers_not_configured:
-            logging.warning("Following global register(s) not configured: {}".format(', '.join('\'' + reg + '\'' for reg in global_registers_not_configured)))
-        if pixel_registers_not_configured:
-            logging.warning("Following pixel register(s) not configured: {}".format(', '.join('\'' + reg + '\'' for reg in pixel_registers_not_configured)))
-        if self.miscellaneous:
-            logging.warning("Found following unknown parameter(s): {}".format(', '.join('\'' + parameter + '\'' for parameter in self.miscellaneous.iterkeys())))
-
-    def _save_configuration_to_text_file(self, configuration_file):
-        '''Saving configuration to text files
-
-        Parameters
-        ----------
-        configuration_file : string
-            Filename of the configuration file.
-        '''
-        configuration_path, filename = os.path.split(configuration_file)
-        if os.path.split(configuration_path)[1] == 'configs':
-            configuration_path = os.path.split(configuration_path)[0]
-        filename = os.path.splitext(filename)[0].strip()
-        self.configuration_file = os.path.join(os.path.join(configuration_path, 'configs'), filename + ".cfg")
-        if os.path.isfile(self.configuration_file):
-            logging.warning("Overwriting configuration: %s", self.configuration_file)
-        else:
-            logging.info("Saving configuration: %s" % self.configuration_file)
-        pixel_reg_dict = {}
-        for path in ["tdacs", "fdacs", "masks", "configs"]:
-            configuration_file_path = os.path.join(configuration_path, path)
-            if not os.path.exists(configuration_file_path):
-                os.makedirs(configuration_file_path)
-            if path == "tdacs":
-                dac = self.get_pixel_register_objects(name="TDAC")[0]
-                dac_config_path = os.path.join(configuration_file_path, "_".join([dac['name'].lower(), filename]) + ".dat")
-                write_pixel_dac_config(dac_config_path, dac['value'])
-                pixel_reg_dict[dac['name']] = os.path.relpath(dac_config_path, os.path.dirname(self.configuration_file))
-            elif path == "fdacs":
-                dac = self.get_pixel_register_objects(name="FDAC")[0]
-                dac_config_path = os.path.join(configuration_file_path, "_".join([dac['name'].lower(), filename]) + ".dat")
-                write_pixel_dac_config(dac_config_path, dac['value'])
-                pixel_reg_dict[dac['name']] = os.path.relpath(dac_config_path, os.path.dirname(self.configuration_file))
-            elif path == "masks":
-                masks = self.get_pixel_register_objects(bitlength=1)
-                for mask in masks:
-                    dac_config_path = os.path.join(configuration_file_path, "_".join([mask['name'].lower(), filename]) + ".dat")
-                    write_pixel_mask_config(dac_config_path, mask['value'])
-                    pixel_reg_dict[mask['name']] = os.path.relpath(dac_config_path, os.path.dirname(self.configuration_file))
-            elif path == "configs":
-                with open(self.configuration_file, 'w') as f:
-                    lines = []
-                    lines.append("# FEI4 Flavor\n")
-                    lines.append('%s %s\n' % ('Flavor', self.flavor))
-                    lines.append("\n# FEI4 Chip ID\n")
-                    lines.append('%s %d\n' % ('Chip_ID', self.chip_id))
-                    lines.append("\n# FEI4 Global Registers\n")
-                    global_regs = self.get_global_register_objects(readonly=False)
-                    for global_reg in sorted(global_regs, key=itemgetter('name')):
-                        lines.append('%s %d\n' % (global_reg['name'], global_reg['value']))
-                    lines.append("\n# FEI4 Pixel Registers\n")
-                    for key in sorted(pixel_reg_dict):
-                        lines.append('%s %s\n' % (key, pixel_reg_dict[key]))
-                    lines.append("\n# FEI4 Calibration Parameters\n")
-                    for key in self.calibration_parameters:
-                        if self.calibration_parameters[key] is None:
-                            lines.append('%s %s\n' % (key, self.calibration_parameters[key]))
-                        elif isinstance(self.calibration_parameters[key], (float, int, long)):
-                            lines.append('%s %s\n' % (key, round(self.calibration_parameters[key], 4)))
-                        elif isinstance(self.calibration_parameters[key], list):
-                            lines.append('%s %s\n' % (key, [round(elem, 2) for elem in self.calibration_parameters[key]]))
-                        else:
-                            raise ValueError('type %s not supported' % type(self.calibration_parameters[key]))
-                    if self.miscellaneous:
-                        lines.append("\n# Miscellaneous\n")
-                        for key, value in self.miscellaneous.iteritems():
-                            lines.append('%s %s\n' % (key, value))
-                    f.writelines(lines)
-
-    def _load_configuration_from_hdf5(self, configuration_file, node=''):
-        '''Loading configuration from HDF5 file
-
-        Parameters
-        ----------
-        configuration_file : string, file
-            Filename of the HDF5 configuration file or file object.
-        node : string
-            Additional identifier (subgroup). Useful when more than one configuration is stored inside a HDF5 file.
-        '''
-        def load_conf():
-            logging.info("Loading configuration: %s" % h5_file.filename)
-            self.configuration_file = h5_file.filename
-            if node:
-                configuration_group = h5_file.root.configuration.node
-            else:
-                configuration_group = h5_file.root.configuration
-
-            # miscellaneous
-            for row in configuration_group.miscellaneous:
-                name = row['name']
-                try:
-                    value = ast.literal_eval(row['value'])
-                except ValueError:
-                    value = row['value']
-                if name == 'Flavor':
-                    if self.flavor:
-                        pass
-                    else:
-                        self.init_fe_type(value)
-                elif name == 'Chip_ID':
-                    if self.chip_address:
-                        pass
-                    else:
-                        self.broadcast = True if value & 0x8 else False
-                        self.set_chip_address(value & 0x7)
-                elif name == 'Chip_Address':
-                    if self.chip_address:
-                        pass
-                    else:
-                        self.set_chip_address(value)
-                else:
-                    self.miscellaneous[name] = value
-
-            if self.flavor:
-                pass
-            else:
-                raise ValueError('Flavor not specified')
-
-            if self.chip_id_initialized:
-                pass
-            else:
-                raise ValueError('Chip address not specified')
-
-            # calibration parameters
-            for row in configuration_group.calibration_parameters:
-                name = row['name']
-                value = row['value']
-                self.calibration_parameters[name] = ast.literal_eval(value)
-
-            # global
-            for row in configuration_group.global_register:
-                name = row['name']
-                value = row['value']
-                self.set_global_register_value(name, ast.literal_eval(value))
-
-            # pixels
-            for pixel_reg in h5_file.iter_nodes(configuration_group, 'CArray'):  # ['Enable', 'TDAC', 'C_High', 'C_Low', 'Imon', 'FDAC', 'EnableDigInj']:
-                if pixel_reg.name in self.pixel_registers:
-                    self.set_pixel_register_value(pixel_reg.name, np.asarray(pixel_reg).T)  # np.asarray(h5_file.get_node(configuration_group, name=pixel_reg)).T
-
-        if isinstance(configuration_file, tb.file.File):
-            h5_file = configuration_file
-            load_conf()
-        else:
-            with tb.open_file(configuration_file, mode="r", title='') as h5_file:
-                load_conf()
-
-    def _save_configuration_to_hdf5(self, configuration_file, name=''):
-        '''Saving configuration to HDF5 file
-
-        Parameters
-        ----------
-        configuration_file : string, file
-            Filename of the HDF5 configuration file or file object.
-        name : string
-            Additional identifier (subgroup). Useful when storing more than one configuration inside a HDF5 file.
-        '''
-        def save_conf():
-            logging.info("Saving configuration: %s" % h5_file.filename)
-            self.configuration_file = h5_file.filename
-            try:
-                configuration_group = h5_file.create_group(h5_file.root, "configuration")
-            except tb.NodeError:
-                configuration_group = h5_file.root.configuration
-            if name:
-                try:
-                    configuration_group = h5_file.create_group(configuration_group, name)
-                except tb.NodeError:
-                    configuration_group = h5_file.root.configuration.name
-
-            # calibration_parameters
-            try:
-                h5_file.remove_node(configuration_group, name='calibration_parameters')
-            except tb.NodeError:
-                pass
-            calibration_data_table = h5_file.create_table(configuration_group, name='calibration_parameters', description=NameValue, title='calibration_parameters')
-            calibration_data_row = calibration_data_table.row
-            for key, value in self.calibration_parameters.iteritems():
-                calibration_data_row['name'] = key
-                calibration_data_row['value'] = str(value)
-                calibration_data_row.append()
-            calibration_data_table.flush()
-
-            # miscellaneous
-            try:
-                h5_file.remove_node(configuration_group, name='miscellaneous')
-            except tb.NodeError:
-                pass
-            miscellaneous_data_table = h5_file.create_table(configuration_group, name='miscellaneous', description=NameValue, title='miscellaneous')
-            miscellaneous_data_row = miscellaneous_data_table.row
-            miscellaneous_data_row['name'] = 'Flavor'
-            miscellaneous_data_row['value'] = self.flavor
-            miscellaneous_data_row.append()
-            miscellaneous_data_row['name'] = 'Chip_ID'
-            miscellaneous_data_row['value'] = self.chip_id
-            miscellaneous_data_row.append()
-            for key, value in self.miscellaneous.iteritems():
-                miscellaneous_data_row['name'] = key
-                miscellaneous_data_row['value'] = value
-                miscellaneous_data_row.append()
-            miscellaneous_data_table.flush()
-
-            # global
-            try:
-                h5_file.remove_node(configuration_group, name='global_register')
-            except tb.NodeError:
-                pass
-            global_data_table = h5_file.create_table(configuration_group, name='global_register', description=NameValue, title='global_register')
-            global_data_table_row = global_data_table.row
-            global_regs = self.get_global_register_objects(readonly=False)
-            for global_reg in sorted(global_regs, key=itemgetter('name')):
-                global_data_table_row['name'] = global_reg['name']
-                global_data_table_row['value'] = global_reg['value']  # TODO: some function that converts to bin, hex
-                global_data_table_row.append()
-            global_data_table.flush()
-
-            # pixel
-            for pixel_reg in self.pixel_registers.itervalues():
-                try:
-                    h5_file.remove_node(configuration_group, name=pixel_reg['name'])
-                except tb.NodeError:
-                    pass
-                data = pixel_reg['value'].T
-                atom = tb.Atom.from_dtype(data.dtype)
-                ds = h5_file.createCArray(configuration_group, name=pixel_reg['name'], atom=atom, shape=data.shape, title=pixel_reg['name'])
-                ds[:] = data
-
-        if isinstance(configuration_file, tb.file.File):
-            h5_file = configuration_file
-            save_conf()
-        else:
-            with tb.open_file(configuration_file, mode="a", title='') as h5_file:
-                save_conf()
+            return register_utils.save_configuration_to_hdf5(self, configuration_file)
 
     '''
     TODO:
@@ -595,14 +184,14 @@ class FEI4Register(object):
         except ValueError:  # value is path to pixel config
             if self.pixel_registers[name]['bitlength'] == 1:  # pixel mask
                 if value[0] == "~" or value[0] == "!":
-                    reg_value = parse_pixel_mask_config(os.path.join(os.path.dirname(self.configuration_file), os.path.normpath(value[1:].replace('\\', '/'))))
+                    reg_value = register_utils.parse_pixel_mask_config(os.path.join(os.path.dirname(self.configuration_file), os.path.normpath(value[1:].replace('\\', '/'))))
                     inverted_mask = np.ones(shape=(80, 336), dtype=np.dtype('>u1'))
                     inverted_mask[reg_value >= 1] = 0
                     self.pixel_registers[name]['value'][:, :] = inverted_mask
                 else:
-                    self.pixel_registers[name]['value'][:, :] = parse_pixel_mask_config(os.path.join(os.path.dirname(self.configuration_file), os.path.normpath(value).replace('\\', '/')))
+                    self.pixel_registers[name]['value'][:, :] = register_utils.parse_pixel_mask_config(os.path.join(os.path.dirname(self.configuration_file), os.path.normpath(value).replace('\\', '/')))
             else:  # pixel dac
-                self.pixel_registers[name]['value'][:, :] = parse_pixel_dac_config(os.path.join(os.path.dirname(self.configuration_file), os.path.normpath(value).replace('\\', '/')))
+                self.pixel_registers[name]['value'][:, :] = register_utils.parse_pixel_dac_config(os.path.join(os.path.dirname(self.configuration_file), os.path.normpath(value).replace('\\', '/')))
         if (self.pixel_registers[name]['value'] >= 2 ** self.pixel_registers[name]['bitlength']).any() or (self.pixel_registers[name]['value'] < 0).any():
             raise ValueError("Pixel register %s: value exceeds limits" % name)
 
@@ -851,7 +440,7 @@ class FEI4Register(object):
                     if string_is_binary(value):
                         value = int(value, 2)
                     try:
-                        command_bitvector += bitarray_from_value(value=int(value), size=command_part_object['bitlength'], fmt='I')
+                        command_bitvector += register_utils.bitarray_from_value(value=int(value), size=command_part_object['bitlength'], fmt='I')
                     except:
                         raise TypeError("Type of value not supported")
             elif string_is_binary(part):
@@ -937,7 +526,7 @@ class FEI4Register(object):
                 if register_object['register_littleendian']:  # check for register endianness
                     register_littleendian = True
                 if (16 * register_object['address'] + register_object['offset'] < 16 * (register_address + 1) and 16 * register_object['address'] + register_object['offset'] + register_object['bitlength'] > 16 * register_address):
-                    reg = bitarray_from_value(value=register_object['value'], size=register_object['bitlength'])
+                    reg = register_utils.bitarray_from_value(value=register_object['value'], size=register_object['bitlength'])
                     if register_object['littleendian']:
                         reg.reverse()
 # register_bitset[max(0, 16 * (register_object['address'] - register_address) + register_object['offset']):min(16, 16 * (register_object['address'] - register_address) + register_object['offset'] + register_object['bitlength'])] |= reg[max(0, 16 * (register_address - register_object['address']) - register_object['offset']):min(register_object['bitlength'], 16 * (register_address - register_object['address'] + 1) - register_object['offset'])]  # [ bit(n) bit(n-1)... bit(0) ]
