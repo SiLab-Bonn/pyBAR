@@ -1,12 +1,16 @@
-''' Script to test the FPGA TDC with pulser. SCPI commands are send via RS232.
+''' Script to test the FPGA TDC with a pulser. Pulser has to be defined in mio.yaml.
 To measure the TDC values connect a pulser with 3 V amplitude to the RX2 plug
 of the Multi IO board (without TDC modification).
 To test the additional timing feature connect an additional
 pulser to RX0. Synchronize the clocks and trigger the additional pulser with the
-first pulser with about 10 ns delay.
+first pulser.
+
+255: tdc without trigger or tdc with ambigous trigger, trigger is ambidous if:
+    - the trigger rising edge is happens while a TDC signal is high
+    - a trigger signal follows a trigger signal without another TDC signal
+254: trigger rising edge is > 2^3 / (640 MHz) = 400 ns before TDC edge
 '''
 
-import serial
 import time
 import logging
 import numpy as np
@@ -18,56 +22,32 @@ from pybar.analysis.plotting import plotting
 from pybar.run_manager import RunManager
 
 
-# Subclass pyserial to make it more usable, define termination characters (eol) here
-class my_serial(serial.Serial):
-
-    def __init__(self, *args, **kwargs):
-        super(my_serial, self).__init__(*args, **kwargs)
-        self.eol = '\r\n'
-
-    def write(self, data):
-        super(my_serial, self).write(data + self.eol)
-
-    def ask(self, data):
-        self.write(data)
-        return self.readline()
-
-
 class TdcTest(Fei4RunBase):
 
     '''Test TDC scan
     '''
     _default_run_conf = {
-        "COM_port": '/dev/ttyUSB0',  # in Windows 'COM?' where ? is the COM port
         "n_pulses": 10000,
-        "test_tdc_values": True,
+        "pulse_period": '1E-6',  # s
+        "test_tdc_values": False,
         "test_trigger_delay": True
     }
 
     def configure(self):  # init pulser
-        try:
-            self.pulser = my_serial(self.COM_port, 19200, timeout=1)
-        except:
-            logging.error('No device found ?!')
-            raise
-        identifier = self.pulser.ask("*IDN?")
-        if 'Agilent Technologies,33250A' not in identifier and 'new_pulser_add_here' not in identifier:  # check if the correct pulser is connected
-            raise NotImplementedError('Pulser ' + str(identifier) + ' is not supported. If SCPI commands are understood, just add its name here.')
-        logging.info('Initialized pulser')
-        self.pulser.write('PULS:PER 1E-6')  # set fast acquisition
-        self.pulser.write('PULS:WIDT 10E-9')
-
-    def start_pulser(self, pulse_width=100, n_pulses=100, pulse_delay=0):
-        self.pulser.write('PULS:WIDT ' + str(pulse_width) + 'E-9')
-        self.pulser.write('TRIG:DELAY ' + str(pulse_delay) + 'E-9')
-        self.pulser.write('BURS:NCYC ' + str(n_pulses))
-        self.pulser.write('*TRG')
-
-    def scan(self):
-        self.dut['tdc_rx2']['ENABLE'] = True
+        self.dut['Pulser'].init()
+        logging.info('Initialized multimeter %s' % self.dut['Pulser'].get_name())
+        self.dut['Pulser'].set_pulse_period(self.pulse_period)
         self.dut['tdc_rx2']['EN_TRIGGER_DIST'] = True
         self.dut['tdc_rx2']['EN_NO_WRITE_TRIG_ERR'] = False
+        self.dut['tdc_rx2']['ENABLE'] = True
 
+    def start_pulser(self, pulse_width=100, n_pulses=100, pulse_delay=0):  # in ns
+        self.dut['Pulser'].set_pulse_width(str(pulse_width) + 'E-9')
+        self.dut['Pulser'].set_trigger_delay(str(pulse_delay) + 'E-9')
+        self.dut['Pulser'].set_n_bursts(str(n_pulses))
+        self.dut['Pulser'].trigger()
+
+    def scan(self):
         with PdfPages(self.output_filename + '.pdf') as output_pdf:
             if self.test_tdc_values:
                 x, y, y_err = [], [], []
@@ -107,7 +87,7 @@ class TdcTest(Fei4RunBase):
                     plotting.plot_tdc_counter(tdc_hist, title='All TDC values', filename=output_pdf)
 
             if self.test_trigger_delay:
-                x, y, y_err = [], [], []
+                x, y, y_err, y2, y2_err = [], [], [], [], []
                 self.fifo_readout.reset_sram_fifo()  # clear fifo data
                 for pulse_delay in [i for j in (range(0, 100, 5), range(100, 500, 500)) for i in j]:
                     logging.info('Test TDC for a pulse delay of %d', pulse_delay)
@@ -118,15 +98,19 @@ class TdcTest(Fei4RunBase):
                     if data[is_tdc_word(data)].shape[0] != 0:
                         if len(is_tdc_word(data)) != 10:
                             logging.warning('%d TDC words instead of %d ', len(is_tdc_word(data)), 10)
+                        tdc_values = np.bitwise_and(data[is_tdc_word(data)], 0x00000FFF)
                         tdc_delay = np.bitwise_and(data[is_tdc_word(data)], 0x0FF00000)
                         tdc_delay = np.right_shift(tdc_delay, 20)
 
                         x.append(pulse_delay)
                         y.append(np.mean(tdc_delay))
                         y_err.append(np.std(tdc_delay))
+                        y2.append(np.mean(tdc_values))
+                        y2_err.append(np.std(tdc_values))
                     else:
                         logging.warning('No TDC words, check connection!')
 
+                plotting.plot_scatter(x, y2, y2_err, title='FPGA TDC for different delays, ' + str(self.n_pulses) + ' each', x_label='Pulse delay [ns]', y_label='TDC value', filename=output_pdf)
                 plotting.plot_scatter(x, y, y_err, title='FPGA TDC trigger delay, ' + str(10) + ' each', x_label='Pulse delay [ns]', y_label='TDC trigger delay', filename=output_pdf)
                 plotting.plot_scatter(x, y_err, title='FPGA TDC trigger delay RMS, ' + str(10) + ' each', x_label='Pulse delay [ns]', y_label='TDC trigger delay RMS', filename=output_pdf)
 
