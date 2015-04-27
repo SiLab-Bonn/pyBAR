@@ -15,7 +15,8 @@ from pybar.analysis.RawDataConverter.data_histograming import PyDataHistograming
 
 
 class DataWorker(QtCore.QObject):
-    connected = QtCore.pyqtSignal(bool)
+    run_start = QtCore.pyqtSignal()
+    config_changed = QtCore.pyqtSignal(dict)
     data_ready = QtCore.pyqtSignal(tuple, list)
 
     def __init__(self):
@@ -42,10 +43,13 @@ class DataWorker(QtCore.QObject):
         self.socket.connect(self.socket_addr)
         self.poller = zmq.Poller()  # poll needed to be able to return QThread
         self.poller.register(self.socket, zmq.POLLIN)
-        self.connected.emit(True)
 
     def set_integrate_readouts(self, value):
         self.integrate_readouts = value
+
+    def reset_data(self):
+        self.histograming.reset()
+        self.interpreter.reset()
 
     def recv_data(self, flags=0, copy=True, track=False):
         if self.poller.poll(10):
@@ -54,8 +58,8 @@ class DataWorker(QtCore.QObject):
                 msg = self.socket.recv(flags=flags, copy=copy, track=track)
                 array = np.fromstring(msg, dtype=meta_data['dtype'])
                 return array.reshape(meta_data['shape']), meta_data['timestamp_start'], meta_data['timestamp_stop'], meta_data['readout_error'], re.sub(r'\bOrderedDict\b|[()\[\],\']', '', meta_data['scan_parameters'])
-            elif meta_data['name'] == 'RunMetaData':  # check that the data is run meta data (FE config + run config)
-                return meta_data['run_conf'],
+            elif 'Conf' in meta_data['name']:  # check that the data is the run conf
+                return meta_data['name'], meta_data['conf']
 
     def analyze_raw_data(self, raw_data):
         self.interpreter.interpret_raw_data(raw_data)
@@ -71,14 +75,16 @@ class DataWorker(QtCore.QObject):
             self.analyze_raw_data(data[0])
             interpreted_data = self.histograming.get_occupancy(), self.histograming.get_tot_hist(), self.interpreter.get_tdc_counters(), self.interpreter.get_error_counters(), self.interpreter.get_service_records_counters(), self.interpreter.get_trigger_error_counters(), self.histograming.get_rel_bcid_hist()
             self.data_ready.emit(interpreted_data, [data[1], data[2], data[3], data[4], self.n_hits])
-        elif data and len(data) == 1:  # data is run info, thus reset and prepare interpreter according to the new run settings
-            try:
-                n_bcid = int(data[0]['trigger_count'])
-            except KeyError:
-                n_bcid = 0
-            self.histograming.reset()
-            self.interpreter.reset()
-            self.interpreter.set_trig_count(n_bcid)
+        elif data and len(data) == 2:  # data is a config object, thus reset and prepare interpreter according to the new settings
+            if data[0] == 'RunConf':  # run conf is set at the beginning of a run
+                self.run_start.emit()
+                try:
+                    n_bcid = int(data[1]['trigger_count'])
+                except KeyError:
+                    n_bcid = 0
+                self.reset_data()
+                self.interpreter.set_trig_count(n_bcid)
+            self.config_changed.emit(data[1])
 
         QtCore.QTimer.singleShot(0.0001, self.process_data)
 
@@ -93,7 +99,7 @@ class OnlineMonitorApplication(Qt.QApplication):
         Qt.QApplication.__init__(self, args)
         self.setup_plots()
         self.setup_data_worker(socket_addr)
-        self.addWidgets()
+        self.add_widgets()
         self.fps = 0
         self.hps = 0  # hits per second
         self.plot_delay = 0
@@ -105,7 +111,8 @@ class OnlineMonitorApplication(Qt.QApplication):
         self.thread = QtCore.QThread()  # no parent!
         self.worker_data = DataWorker()  # no parent!
         self.worker_data.data_ready.connect(self.update_monitor)
-        self.worker_data.connected.connect(self.setup_status_text)
+        self.worker_data.run_start.connect(self.reset_config_text)
+        self.worker_data.config_changed.connect(self.setup_config_text)
         self.worker_data.moveToThread(self.thread)
         self.worker_data.connect(socket_addr)
         self.thread.started.connect(self.worker_data.process_data)
@@ -115,10 +122,17 @@ class OnlineMonitorApplication(Qt.QApplication):
         pg.setConfigOption('background', 'w')
         pg.setConfigOption('foreground', 'k')
 
-    def setup_status_text(self, connected):
-        pass
+    def reset_config_text(self):
+        self.run_conf_list_widget.clear()
+        self.run_conf_list_widget.addItem(Qt.QListWidgetItem("Configuration"))
 
-    def addWidgets(self):
+    def setup_config_text(self, config):
+        for key, value in config.iteritems():
+            item = Qt.QListWidgetItem("%s: %s" % (key, value))
+            self.run_conf_list_widget.addItem(item)
+
+    def add_widgets(self):
+        # Main window with dock area
         self.window = QtGui.QMainWindow()
         self.dock_area = DockArea()
         self.window.setCentralWidget(self.dock_area)
@@ -126,7 +140,9 @@ class OnlineMonitorApplication(Qt.QApplication):
         self.window.setWindowTitle('Online Monitor')
         self.window.show()
 
+        # Docks
         dock_occcupancy = Dock("Occupancy", size=(400, 400))
+        dock_run_config = Dock("Configuration", size=(400, 400))
         dock_tot = Dock("Time over threshold values (TOT)", size=(400, 400))
         dock_tdc = Dock("Time digital converter values (TDC)", size=(400, 400))
         dock_event_status = Dock("Event status", size=(400, 400))
@@ -134,7 +150,8 @@ class OnlineMonitorApplication(Qt.QApplication):
         dock_service_records = Dock("Service records", size=(400, 400))
         dock_hit_timing = Dock("Hit timing (rel. BCID)", size=(400, 400))
         dock_status = Dock("Status", size=(800, 40))
-        self.dock_area.addDock(dock_occcupancy, 'left')
+        self.dock_area.addDock(dock_run_config, 'left')
+        self.dock_area.addDock(dock_occcupancy, 'above', dock_run_config)
         self.dock_area.addDock(dock_tdc, 'right', dock_occcupancy)
         self.dock_area.addDock(dock_tot, 'above', dock_tdc)
         self.dock_area.addDock(dock_service_records, 'bottom', dock_occcupancy)
@@ -143,6 +160,7 @@ class OnlineMonitorApplication(Qt.QApplication):
         self.dock_area.addDock(dock_hit_timing, 'bottom', dock_tot)
         self.dock_area.addDock(dock_status, 'top')
 
+        # Status widget
         cw = QtGui.QWidget()
         cw.setStyleSheet("QWidget {background-color:white}")
         layout = QtGui.QGridLayout()
@@ -163,6 +181,12 @@ class OnlineMonitorApplication(Qt.QApplication):
         layout.addWidget(self.scan_parameter_label, 0, 5, 0, 1)
         layout.addWidget(self.spin_box, 0, 6, 0, 1)
         dock_status.addWidget(cw)
+
+        # Config dock
+        self.run_conf_list_widget = Qt.QListWidget()
+        dock_run_config.addWidget(self.run_conf_list_widget)
+
+        # Different plot docks
 
         occupancy_graphics = pg.GraphicsLayoutWidget()
         occupancy_graphics.show()
@@ -209,17 +233,17 @@ class OnlineMonitorApplication(Qt.QApplication):
         self.update_plots(data)
         now = ptime.time()
         self.plot_timestamp_label.setText("Plot timestamp\n%s" % time.asctime(time.localtime(now)))
-        self.plot_delay = (now - meta_data[1]) * 1.  # self.plot_delay * 0.9 + (now - meta_data[1]) * 0.1
+        self.plot_delay = self.plot_delay * 0.9 + (now - meta_data[1]) * 0.1
         self.plot_delay_label.setText("Plot delay\n%s" % ((time.strftime('%H:%M:%S', time.gmtime(self.plot_delay))) if self.plot_delay > 5 else "%1.2f ms" % (self.plot_delay * 1.e3)))
         fps2 = 1.0 / (now - self.updateTime)
         self.updateTime = now
-        self.fps = self.fps * 0.7 + fps2 * 0.3
+        self.fps = self.fps * 0.7 + fps2 * 0.3  # running mean for filtering
         self.rate_label.setText("Readouts\n%d Hz" % self.fps)
-        if self.spin_box.value() == 0:
+        if self.spin_box.value() == 0:  # show number of hits if all hits are integrated
             self.hps = np.sum(data[0])
             self.hit_rate_label.setText("Hits\n%d" % int(self.hps))
         else:
-            self.hps = self.hps * 0.95 + meta_data[4] * 0.05 * self.fps / (float(self.spin_box.value()))
+            self.hps = self.hps * 0.95 + meta_data[4] * 0.05 * self.fps / (float(self.spin_box.value()))  # running mean for filtering
             self.hit_rate_label.setText("Hits\n%d Hz" % int(self.hps))
 
     def update_plots(self, data):
