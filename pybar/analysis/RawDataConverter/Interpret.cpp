@@ -293,7 +293,7 @@ bool Interpret::setMetaData(MetaInfo* &rMetaInfo, const unsigned int& tLength)
 		return false;
 	}
 	//sanity check
-	for(unsigned int i = 0; i <= tLength; ++i){
+	for(unsigned int i = 0; i < tLength - 1; ++i){
 		if(_metaInfo[i].startIndex + _metaInfo[i].length != _metaInfo[i].stopIndex)
 			throw std::out_of_range("Meta word index out of range.");
 		if(_metaInfo[i].stopIndex != _metaInfo[i+1].startIndex && _metaInfoV2[i+1].startIndex != 0)
@@ -318,7 +318,7 @@ bool Interpret::setMetaDataV2(MetaInfoV2* &rMetaInfo, const unsigned int& tLengt
 		return false;
 	}
 	//sanity check
-	for(unsigned int i = 0; i < tLength-1; ++i){
+	for(unsigned int i = 0; i < tLength - 1; ++i){
 		if(_metaInfoV2[i].startIndex + _metaInfoV2[i].length != _metaInfoV2[i].stopIndex)
 			throw std::out_of_range("Meta word index out of range.");
 		if(_metaInfoV2[i].stopIndex != _metaInfoV2[i+1].startIndex && _metaInfoV2[i+1].startIndex != 0)
