@@ -15,6 +15,7 @@ from operator import itemgetter
 from scipy.interpolate import interp1d
 from scipy.interpolate import splrep, splev
 from tables import dtype_from_descr
+from stat import ST_CTIME
 
 from pybar.analysis.plotting import plotting
 from pybar.analysis.RawDataConverter import analysis_functions
@@ -22,21 +23,25 @@ from pybar.analysis.RawDataConverter import data_struct
 
 
 class AnalysisError(Exception):
+
     """Base class for exceptions in this module.
     """
 
 
 class IncompleteInputError(AnalysisError):
+
     """Exception raised for errors in the input.
     """
 
 
 class InvalidInputError(AnalysisError):
+
     """Exception raised for errors in the input.
     """
 
 
 class NotSupportedError(AnalysisError):
+
     """Exception raised for not supported actions.
     """
 
@@ -156,12 +161,12 @@ def in1d_sorted(ar1, ar2):
 
 def central_difference(x, y):
     '''Returns the dy/dx(x) via central difference method
- 
+
     Parameters
     ----------
     x : array like
     y : array like
- 
+
     Returns
     -------
     dy/dx : array like
@@ -203,7 +208,7 @@ def get_profile_histogram(x, y, n_bins=100):
     return bin_centers, mean, std_mean
 
 
-def get_rate_normalization(hit_file, parameter, reference='event', cluster_file=None, plot=False, chunk_size=50000000):
+def get_rate_normalization(hit_file, parameter, reference='event', cluster_file=None, plot=False, chunk_size=500000):
     ''' Takes different hit files (hit_files), extracts the number of events or the scan time (reference) per scan parameter (parameter)
     and returns an array with a normalization factor. This normalization factor has the length of the number of different parameters.
     If a cluster_file is specified also the number of cluster per event are used to create the normalization factor.
@@ -229,7 +234,7 @@ def get_rate_normalization(hit_file, parameter, reference='event', cluster_file=
         normalization_rate = []
         normalization_multiplicity = []
         try:
-            event_range[-1, 1] = in_hit_file_h5.root.Hits[-1]['event_number']
+            event_range[-1, 1] = in_hit_file_h5.root.Hits[-1]['event_number'] + 1
         except tb.NoSuchNodeError:
             logging.error('Cannot find hits table')
             return
@@ -263,13 +268,13 @@ def get_rate_normalization(hit_file, parameter, reference='event', cluster_file=
                     else:
                         n_cluster_per_event = np.append(n_cluster_per_event, get_n_cluster_in_events(clusters['event_number'])[:, 1])
                     readout_cluster_len += clusters.shape[0]
-                    total_cluster += len(clusters)
+                    total_cluster += clusters.shape[0]
                     progress_bar.update(index)
                 best_chunk_size = int(1.5 * readout_cluster_len) if int(1.05 * readout_cluster_len) < chunk_size else chunk_size  # to increase the readout speed, estimated the number of hits for one read instruction
                 normalization_multiplicity.append(np.mean(n_cluster_per_event))
             progress_bar.finish()
             if total_cluster != cluster_table.shape[0]:
-                logging.warning('Analysis shows inconsistent number of cluster. Check needed!')
+                logging.warning('Analysis shows inconsistent number of cluster (%d != %d). Check needed!', total_cluster, cluster_table.shape[0])
 
     if plot:
         x = scan_parameter
@@ -320,25 +325,28 @@ def create_parameter_table(files_dict):
     except AttributeError:  # no parameters given, return None
         return
     parameter_table = None
-    # create a parameter list for every read out
+    # create a parameter table with an entry for every read out
     for file_name, parameters in files_dict.iteritems():
         with tb.openFile(file_name, mode="r") as in_file_h5:  # open the actual file
             n_parameter_settings = max([len(i) for i in files_dict[file_name].values()])  # determine the number of different parameter settings from the list length of parameter values of the first parameter
-            if n_parameter_settings == 1:  # only one parameter setting used, therefore create a temporary parameter table with these parameter setting and append it to the final parameter table
+            if n_parameter_settings == 0:  # no parameter values, first raw data file has only config info and no other data (meta, raw data, parameter data)
+                continue
+            try:  # try to combine the scan parameter tables
+                if parameter_table is None:  # final parameter_table does not exists, so create is
+                    parameter_table = in_file_h5.root.scan_parameters[:]
+                else:  # final parameter table already exist, so append to existing
+                    parameter_table.resize(parameter_table.shape[0] + in_file_h5.root.scan_parameters[:].shape[0], refcheck=False)  # fastest way to append, http://stackoverflow.com/questions/1730080/append-rows-to-a-numpy-record-array
+                    parameter_table[-in_file_h5.root.scan_parameters.shape[0]:] = in_file_h5.root.scan_parameters[:]  # set table
+            except tb.NoSuchNodeError:  # there is no scan parameter table, so create one
                 read_out = in_file_h5.root.meta_data.shape[0]
                 if parameter_table is None:  # final parameter_table does not exists, so create is
                     parameter_table = np.rec.fromarrays(arrayList, names=names, formats=formats)  # create recarray
-                    parameter_table.resize(read_out)
+                    parameter_table.resize(read_out, refcheck=False)
                     parameter_table[-read_out:] = np.rec.fromarrays(arrayList, names=names, formats=formats)
                 else:  # final parameter table already exist, so append to existing
                     parameter_table.resize(parameter_table.shape[0] + read_out)  # fastest way to append, http://stackoverflow.com/questions/1730080/append-rows-to-a-numpy-record-array
                     parameter_table[-read_out:] = np.rec.fromarrays([l for l in parameters.values()], names=names, formats=formats)
-            else:  # more than one parameter setting used, therefore the info has to be taken from the parameter table in the file. Append this table to the final parameter_table
-                if parameter_table is None:  # final parameter_table does not exists, so create is
-                    parameter_table = in_file_h5.root.scan_parameters[:]
-                else:  # final parameter table already exist, so append to existing
-                    parameter_table.resize(parameter_table.shape[0] + in_file_h5.root.scan_parameters.shape[0])  # fastest way to append, http://stackoverflow.com/questions/1730080/append-rows-to-a-numpy-record-array
-                    parameter_table[-in_file_h5.root.scan_parameters.shape[0]:] = in_file_h5.root.scan_parameters[:]  # set table
+
     return parameter_table
 
 
@@ -388,7 +396,7 @@ def get_parameter_value_from_file_names(files, parameters=None, unique=False, so
     return collections.OrderedDict(sorted(result.iteritems(), key=itemgetter(1)) if sort else files_dict)  # with PEP 265 solution of sorting a dict by value
 
 
-def get_data_file_names_from_scan_base(scan_base, filter_file_words=None, parameter=True):
+def get_data_file_names_from_scan_base(scan_base, filter_file_words=None, parameter=True, sort_by_date=True):
     """
     Takes a list of scan base names and returns all file names that have this scan base within their name. File names that have a word of filter_file_words
     in their name are excluded.
@@ -397,7 +405,11 @@ def get_data_file_names_from_scan_base(scan_base, filter_file_words=None, parame
     ----------
     scan_base : list of strings, string
     filter_file_words : list of strings
-        Return only file names without a filter_file_word. Deactivate feature by setting filter_file_words to None.
+        Return only file names without a filter_file_word. Deactivate feature by setting filter_file_words to None
+    parameter : bool
+        There is a running scan parameter in the file name (e.g. scanname_parametername_parametervalue.h5)
+    sort_by_date : bool
+        Sort the list from oldest to newest files
     Returns
     -------
     list of strings
@@ -413,10 +425,11 @@ def get_data_file_names_from_scan_base(scan_base, filter_file_words=None, parame
             data_files = glob.glob(scan_name + '_*.h5')
         else:
             data_files = glob.glob(scan_name + '*.h5')
-#         if not data_files:
-#             raise RuntimeError('Cannot find any data files, please check data file names.')
+        if sort_by_date:
+            data_files_stats = ((os.stat(path)[ST_CTIME], path) for path in data_files)
+            data_files = [i[1] for i in sorted(data_files_stats)]
         if filter_file_words is not None:
-            raw_data_files.extend(filter(lambda data_file: not any(x in data_file for x in filter_file_words), data_files))  # filter out already analyzed data
+            raw_data_files.extend(filter(lambda data_file: not any(x in data_file for x in filter_file_words), data_files))  # filter out data with filter_file_words
         else:
             raw_data_files = data_files
     return raw_data_files
@@ -424,16 +437,16 @@ def get_data_file_names_from_scan_base(scan_base, filter_file_words=None, parame
 
 def get_parameter_scan_bases_from_scan_base(scan_base):
     """ Takes a list of scan base names and returns all scan base names that have this scan base within their name.
- 
+
     Parameters
     ----------
     scan_base : list of strings
     filter_file_words : list of strings
- 
+
     Returns
     -------
     list of strings
- 
+
     """
     return [scan_bases[:-3] for scan_bases in get_data_file_names_from_scan_base(scan_base, filter_file_words=['interpreted', 'cut_', 'cluster_sizes', 'histograms'])]
 
@@ -510,7 +523,7 @@ def get_parameter_from_files(files, parameters=None, unique=False, sort=True):
             else:  # use the parameter given in the file and cross check if it matches the file name parameter if these is given
                 try:
                     for key, value in scan_parameter_values.items():
-                        if value[0] != parameter_values_from_file_names_dict[file_name][key][0]:
+                        if value and value[0] != parameter_values_from_file_names_dict[file_name][key][0]:  # parameter value exists: check if the first value is the file name value
                             logging.warning('Parameter values in the file name and in the file differ. Take ' + str(key) + ' parameters ' + str(value) + ' found in %s.', file_name)
                 except KeyError:  # parameter does not exists in the file name
                     pass
@@ -537,7 +550,6 @@ def check_parameter_similarity(files_dict):
     Checks if the parameter names of all files are similar. Takes the dictionary from get_parameter_from_files output as input.
 
     """
-
     try:
         parameter_names = files_dict.itervalues().next().keys()  # get the parameter names of the first file, to check if these are the same in the other files
     except AttributeError:  # if there is no parameter at all
@@ -563,6 +575,8 @@ def combine_meta_data(files_dict):
     for file_name in files_dict.iterkeys():
         with tb.openFile(file_name, mode="r") as in_file_h5:  # open the actual file
             total_length += in_file_h5.root.meta_data.shape[0]
+            if total_length == 0:  # length = 0 for the first raw data file that only contains config data
+                continue
             try:
                 in_file_h5.root.meta_data[0]['error']  # error column exists in old and new meta data format
             except IndexError:
@@ -636,7 +650,7 @@ def map_cluster(events, cluster):
 
     """
     cluster = np.ascontiguousarray(cluster)
-    events =  np.ascontiguousarray(events)
+    events = np.ascontiguousarray(events)
     mapped_cluster = np.zeros((events.shape[0], ), dtype=dtype_from_descr(data_struct.ClusterInfoTable))
     mapped_cluster = np.ascontiguousarray(mapped_cluster)
     analysis_functions.map_cluster(events, cluster, mapped_cluster)
@@ -877,11 +891,12 @@ def select_hits(hits_array, condition=None):
     '''
     if condition is None:
         return hits_array
-    
+
     for variable in set(re.findall(r'[a-zA-Z_]+', condition)):
         exec(variable + ' = hits_array[\'' + variable + '\']')
 
     return hits_array[ne.evaluate(condition)]
+
 
 def get_hits_in_events(hits_array, events, assume_sorted=True, condition=None):
     '''Selects the hits that occurred in events and optional selection criterion.
@@ -1107,7 +1122,7 @@ def get_events_with_n_cluster(event_number, condition='n_cluster==1'):
     logging.debug("Calculate events with clusters where " + condition)
     n_cluster_in_events = get_n_cluster_in_events(event_number)
     n_cluster = n_cluster_in_events[:, 1]
-#     return np.take(n_cluster_in_events, ne.evaluate(condition), axis=0)  # does not return only one dimension, Bug?
+# return np.take(n_cluster_in_events, ne.evaluate(condition), axis=0)  # does not return only one dimension, Bug?
     return n_cluster_in_events[ne.evaluate(condition), 0]
 
 
@@ -1492,6 +1507,7 @@ def get_pixel_thresholds_from_calibration_array(gdacs, calibration_gdacs, thresh
 
 
 class ETA(progressbar.Timer):
+
     'Widget which estimate the time of arrival for the progress bar via exponential moving average.'
     TIME_SENSITIVE = True
 
@@ -1554,7 +1570,7 @@ def get_data_statistics(interpreted_files):
         with tb.openFile(interpreted_file, mode="r") as in_file_h5:  # open the actual hit file
             n_hits = np.sum(in_file_h5.root.HistOcc[:])
             measurement_time = int(in_file_h5.root.meta_data[-1]['timestamp_stop'] - in_file_h5.root.meta_data[0]['timestamp_start'])
-#             mean_tot = np.average(in_file_h5.root.HistTot[:], weights=range(0,16) * np.sum(range(0,16)))# / in_file_h5.root.HistTot[:].shape[0]
+# mean_tot = np.average(in_file_h5.root.HistTot[:], weights=range(0,16) * np.sum(range(0,16)))# / in_file_h5.root.HistTot[:].shape[0]
 #             mean_bcid = np.average(in_file_h5.root.HistRelBcid[:], weights=range(0,16))
             n_sr = np.sum(in_file_h5.root.HistServiceRecord[:])
             n_bad_events = int(np.sum(in_file_h5.root.HistErrorCounter[2:]))
@@ -1563,7 +1579,7 @@ def get_data_statistics(interpreted_files):
             except tb.NoSuchNodeError:
                 n_events = '~' + str(in_file_h5.root.meta_data[-1]['event_number'] + (in_file_h5.root.meta_data[-1]['event_number'] - in_file_h5.root.meta_data[-2]['event_number']))
 #             if int(n_events) < 7800000 or n_sr > 4200 or n_bad_events > 40:
-#                 print '| %{color:red}', os.path.basename(interpreted_file) + '%', '|', int(os.path.getsize(interpreted_file) / (1024 * 1024.)), 'Mb |', time.ctime(os.path.getctime(interpreted_file)), '|',  n_events, '|', n_bad_events, '|', measurement_time, 's |', n_sr, '|', n_hits, '|'#, mean_tot, '|', mean_bcid, '|'
+# print '| %{color:red}', os.path.basename(interpreted_file) + '%', '|', int(os.path.getsize(interpreted_file) / (1024 * 1024.)), 'Mb |', time.ctime(os.path.getctime(interpreted_file)), '|',  n_events, '|', n_bad_events, '|', measurement_time, 's |', n_sr, '|', n_hits, '|'#, mean_tot, '|', mean_bcid, '|'
             else:
                 print '|', os.path.basename(interpreted_file), '|', int(os.path.getsize(interpreted_file) / (1024 * 1024.)), 'Mb |', time.ctime(os.path.getctime(interpreted_file)), '|', n_events, '|', n_bad_events, '|', measurement_time, 's |', n_sr, '|', n_hits, '|'  # , mean_tot, '|', mean_bcid, '|'
 

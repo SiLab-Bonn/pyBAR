@@ -78,7 +78,7 @@ class AnalyzeRawData(object):
                 else:
                     raw_data_files.append(one_raw_data_file)
         else:
-            f_list = analysis_utils.get_data_file_names_from_scan_base(raw_data_file, filter_file_words=['analyzed', 'interpreted'], parameter=True)
+            f_list = analysis_utils.get_data_file_names_from_scan_base(raw_data_file, filter_file_words=['analyzed', 'interpreted', 'calibration_calibration', 'result'], parameter=False)
             if f_list:
                 raw_data_files = f_list
             elif raw_data_file is not None and os.path.splitext(raw_data_file)[1].strip().lower() != ".h5":
@@ -122,6 +122,7 @@ class AnalyzeRawData(object):
         else:
             self.output_pdf = None
         self._scan_parameter_name = scan_parameter_name
+        self._settings_from_file_set = False  # the scan settings are in a list of files only in the first one, thus set this flag to suppress warning for other files
 
     def __enter__(self):
         return self
@@ -528,7 +529,7 @@ class AnalyzeRawData(object):
 
         for index, raw_data_file in enumerate(self.files_dict.keys()):  # loop over all raw data files
             self.interpreter.reset_meta_data_counter()
-            with tb.openFile(raw_data_file, mode="r") as in_file_h5:
+            with tb.open_file(raw_data_file, mode="r") as in_file_h5:
                 table_size = in_file_h5.root.raw_data.shape[0]
                 if use_settings_from_file:
                     self._deduce_settings_from_file(in_file_h5)
@@ -1008,6 +1009,7 @@ class AnalyzeRawData(object):
         '''
         try:  # take infos raw data files (not avalable in old files)
             flavor = opened_raw_data_file.root.configuration.miscellaneous[:][np.where(opened_raw_data_file.root.configuration.miscellaneous[:]['name'] == 'Flavor')]['value'][0]
+            self._settings_from_file_set = True
             bcid = opened_raw_data_file.root.configuration.global_register[:][np.where(opened_raw_data_file.root.configuration.global_register[:]['name'] == 'Trig_Count')]['value'][0]
             vcal_c0 = opened_raw_data_file.root.configuration.calibration_parameters[:][np.where(opened_raw_data_file.root.configuration.calibration_parameters[:]['name'] == 'Vcal_Coeff_0')]['value'][0]
             vcal_c1 = opened_raw_data_file.root.configuration.calibration_parameters[:][np.where(opened_raw_data_file.root.configuration.calibration_parameters[:]['name'] == 'Vcal_Coeff_1')]['value'][0]
@@ -1026,7 +1028,10 @@ class AnalyzeRawData(object):
             repeat_command = opened_raw_data_file.root.configuration.run_conf[:][np.where(opened_raw_data_file.root.configuration.run_conf[:]['name'] == 'repeat_command')]['value'][0]
             self.n_injections = int(repeat_command)
         except tb.exceptions.NoSuchNodeError:
-            logging.warning('No settings stored in raw data file, use provided settings')
+            if not self._settings_from_file_set:
+                logging.warning('No settings stored in raw data file %s, use standard settings', opened_raw_data_file.filename)
+            else:
+                logging.info('No settings provided in raw data file %s, use already set settings', opened_raw_data_file.filename)
         except IndexError:  # happens if setting is not available (e.g. repeat_command)
             pass
 
