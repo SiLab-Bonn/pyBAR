@@ -102,7 +102,7 @@ class ExtTriggerScan(Fei4RunBase):
             if self.enable_tdc:
                 analyze_raw_data.create_tdc_counter_hist = True  # histogram all TDC words
                 analyze_raw_data.create_tdc_hist = True  # histogram the hit TDC information
-                analyze_raw_data.interpreter.use_tdc_word(True)  # align events at the TDC word
+                analyze_raw_data.align_at_tdc = True  # align events at the TDC word
             analyze_raw_data.interpreter.set_warning_output(False)
             analyze_raw_data.interpret_word_table()
             analyze_raw_data.interpreter.print_summary()
@@ -112,11 +112,15 @@ class ExtTriggerScan(Fei4RunBase):
         if kwargs:
             self.set_scan_parameters(**kwargs)
         self.fifo_readout.start(reset_sram_fifo=False, clear_buffer=True, callback=self.handle_data, errback=self.handle_err, no_data_timeout=self.no_data_timeout)
-        self.dut['tdc_rx2']['EN_NO_WRITE_TRIG_ERR'] = 1 if self.trigger_tdc else 0
         self.dut['tdc_rx2']['ENABLE'] = self.enable_tdc
         self.dut['tlu'].RESET
         self.dut['tlu']['TRIGGER_MODE'] = self.trigger_mode
-        self.dut['tlu']['EN_INVERT_TRIGGER'] = 0 if self.trigger_pos_edge else 1
+        if self.enable_tdc:  # trigger signal is routed through TDC module, thus invert the signal in the TDC module when it is used
+            self.dut['tlu']['EN_INVERT_TRIGGER'] = 0 if self.trigger_pos_edge else 1
+            self.dut['tdc_rx2']['EN_NO_WRITE_TRIG_ERR'] = 1 if self.trigger_tdc else 0
+            self.dut['tdc_rx2']['EN_TRIGGER_DIST'] = 1 if self.trigger_tdc else 0  # to be able to trigger on tdc the delay measurement trigger|tdc has to be active
+        else:
+            self.dut['tdc_rx2']['EN_INVERT_TRIGGER'] = 0 if self.trigger_pos_edge else 1  # invert trigger in tlu module
         self.dut['tlu']['EN_WRITE_TIMESTAMP'] = 1 if self.trigger_time_stamp else 0
         self.dut['cmd']['EN_EXT_TRIGGER'] = True
 
