@@ -172,7 +172,8 @@ class AnalyzeRawData(object):
         self.create_cluster_table = False
         self.create_cluster_size_hist = False
         self.create_cluster_tot_hist = False
-        self.use_trigger_number = False  # use the trigger number to align the events
+        self.align_at_trigger = False  # use the trigger word to align the events
+        self.align_at_tdc = False  # use the trigger word to align the events
         self.use_trigger_time_stamp = False  # the trigger number is a time stamp
         self.use_tdc_trigger_time_stamp = False  # the tdc time stamp is the difference between trigger and tdc rising edge
         self.set_stop_mode = False  # the FE is read out with stop mode, therefore the BCID plot is different
@@ -426,13 +427,22 @@ class AnalyzeRawData(object):
         self._create_cluster_tot_hist = value
 
     @property
-    def use_trigger_number(self):
-        return self._use_trigger_number
+    def align_at_trigger(self):
+        return self._align_at_trigger
 
-    @use_trigger_number.setter
-    def use_trigger_number(self, value):
-        self._use_trigger_number = value
-        self.interpreter.use_trigger_number(value)
+    @align_at_trigger.setter
+    def align_at_trigger(self, value):
+        self._align_at_trigger = value
+        self.interpreter.align_at_trigger(value)
+
+    @property
+    def align_at_tdc(self):
+        return self._align_at_tdc
+
+    @align_at_tdc.setter
+    def align_at_tdc(self, value):
+        self._align_at_tdc = value
+        self.interpreter.align_at_tdc(value)
 
     @property
     def use_trigger_time_stamp(self):

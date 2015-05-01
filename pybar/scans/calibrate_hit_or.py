@@ -43,7 +43,7 @@ def create_hitor_calibration(output_filename):
         analyze_raw_data.create_occupancy_hist = False  # too many scan parameters to do in ram histograming
         analyze_raw_data.create_hit_table = True
         analyze_raw_data.create_tdc_hist = True
-        analyze_raw_data.interpreter.use_tdc_word(True)  # align events at TDC words, first word of event has to be a tdc word
+        analyze_raw_data.align_at_tdc = True  # align events at TDC words, first word of event has to be a tdc word
         analyze_raw_data.interpret_word_table()
         analyze_raw_data.interpreter.print_summary()
         analyze_raw_data.plot_histograms()

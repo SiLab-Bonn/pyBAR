@@ -45,8 +45,8 @@ public:
 	void setFEI4B(bool pIsFEI4B = true){_fEI4B = pIsFEI4B;};  //set the FE flavor to be able to read the raw data correctly
 	bool getFEI4B(){return _fEI4B;};                          //returns the FE flavor set
 	bool getMetaTableV2(){return _isMetaTableV2;};            //returns the MetaTable flavor (V1 or V2)
-	void useTriggerNumber(bool useTriggerNumber = true);      //new events are created if trigger number occurs
-	void useTdcWord(bool useTdcWord = true);      			  //new events are created if tdc word occurs and event structure of event before is complete
+	void alignAtTriggerNumber(bool alignAtTriggerNumber = true);      //new events are created if trigger number occurs
+	void alignAtTdcWord(bool alignAtTdcWord = true);      			  //new events are created if tdc word occurs and event structure of event before is complete
 	void useTdcTriggerTimeStamp(bool useTdcTriggerTimeStamp = true);//true: tdc time stamp is the delay between trigger/TDC leading edge, False: time stamp counter
 	void useTriggerTimeStamp(bool useTriggerTimeStamp = true);//trigger number is giving you a clock count and not a total count
 
@@ -139,8 +139,8 @@ private:
 	bool _debugEvents;                          //true if some events have to have debug output
 	unsigned int _startDebugEvent;              //start event number to have debug output
 	unsigned int _stopDebugEvent;               //stop event number to have debug output
-	bool _useTriggerNumber;						//set to true to force event recognision by trigger number
-	bool _useTdcWord;							//set to true to force event recognision by tdc word if event before is complete
+	bool _alignAtTriggerNumber;						//set to true to force event recognision by trigger number
+	bool _alignAtTdcWord;							//set to true to force event recognision by tdc word if event before is complete
 	bool _useTdcTriggerTimeStamp;				//set to true to use the TDC trigger distance to fill the TDC time stamp otherwise use counter
 	bool _useTriggerTimeStamp;					//set to true to use the trigger value as a clock count
 
