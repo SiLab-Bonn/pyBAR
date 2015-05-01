@@ -132,22 +132,13 @@ class TestAnalysis(unittest.TestCase):
             analyze_raw_data.create_cluster_tot_hist = True  # enables cluster ToT histogramming per cluster size, std. setting is false
             analyze_raw_data.create_meta_word_index = True  # stores the start and stop raw data word index for every event, std. setting is false
             analyze_raw_data.create_meta_event_index = True  # stores the event number for each readout in an additional meta data array, default: False
-            analyze_raw_data.use_trigger_number = False
-            analyze_raw_data.interpreter.use_tdc_word(False)
-            analyze_raw_data.clusterizer.set_warning_output(False)
-            analyze_raw_data.interpreter.set_debug_output(False)
-            analyze_raw_data.histograming.set_warning_output(False)
             analyze_raw_data.interpret_word_table(use_settings_from_file=False, fei4b=False)  # the actual start conversion command
         with AnalyzeRawData(raw_data_file=tests_data_folder + 'unit_test_data_2.h5', analyzed_data_file=tests_data_folder + 'unit_test_data_2_interpreted.h5', create_pdf=False) as analyze_raw_data:  # analyze the fast threshold scan raw data, do not show any feedback (no prints to console, no plots)
             analyze_raw_data.chunk_size = 2999999
-            analyze_raw_data.interpreter.set_debug_output(False)
-            analyze_raw_data.histograming.set_warning_output(False)
             analyze_raw_data.create_threshold_hists = True  # makes only sense if threshold scan data is analyzed, std. setting is false
             analyze_raw_data.interpret_word_table(use_settings_from_file=False, fei4b=False)  # the actual start conversion command
         with AnalyzeRawData(raw_data_file=None, analyzed_data_file=tests_data_folder + 'unit_test_data_1_interpreted.h5', create_pdf=False) as analyze_raw_data:   # analyze the digital scan hit data, do not show any feedback (no prints to console, no plots)
             analyze_raw_data.chunk_size = 2999999
-            analyze_raw_data.clusterizer.set_warning_output(False)
-            analyze_raw_data.clusterizer.set_warning_output(False)
             analyze_raw_data.create_cluster_hit_table = True
             analyze_raw_data.create_cluster_table = True
             analyze_raw_data.create_cluster_size_hist = True
@@ -163,17 +154,10 @@ class TestAnalysis(unittest.TestCase):
             analyze_raw_data.create_cluster_tot_hist = True  # enables cluster ToT histogramming per cluster size, std. setting is false
             analyze_raw_data.create_meta_word_index = True  # stores the start and stop raw data word index for every event, std. setting is false
             analyze_raw_data.create_meta_event_index = True  # stores the event number for each readout in an additional meta data array, default: False
-            analyze_raw_data.use_trigger_number = False
-            analyze_raw_data.interpreter.use_tdc_word(False)
-            analyze_raw_data.clusterizer.set_warning_output(False)
-            analyze_raw_data.interpreter.set_debug_output(False)
-            analyze_raw_data.histograming.set_warning_output(False)
             analyze_raw_data.interpret_word_table(use_settings_from_file=False, fei4b=False)  # the actual start conversion command
         with AnalyzeRawData(raw_data_file=tests_data_folder + 'unit_test_data_2.h5', analyzed_data_file=tests_data_folder + 'unit_test_data_2_hits.h5', create_pdf=False) as analyze_raw_data:  # analyze the fast threshold scan raw data, do not show any feedback (no prints to console, no plots)
             analyze_raw_data.chunk_size = 2999999
             analyze_raw_data.create_hit_table = True
-            analyze_raw_data.interpreter.set_debug_output(False)
-            analyze_raw_data.histograming.set_warning_output(False)
             analyze_raw_data.create_threshold_hists = True  # makes only sense if threshold scan data is analyzed, std. setting is false
             analyze_raw_data.interpret_word_table(use_settings_from_file=False, fei4b=False)  # the actual start conversion command
         with AnalyzeRawData(raw_data_file=None, analyzed_data_file=tests_data_folder + 'unit_test_data_2_hits.h5', create_pdf=False) as analyze_raw_data:
@@ -183,14 +167,10 @@ class TestAnalysis(unittest.TestCase):
         with AnalyzeRawData(raw_data_file=tests_data_folder + 'unit_test_data_4.h5', analyzed_data_file=tests_data_folder + 'unit_test_data_4_interpreted.h5', create_pdf=False) as analyze_raw_data:
             analyze_raw_data.chunk_size = 2999999
             analyze_raw_data.create_hit_table = True
-            analyze_raw_data.interpreter.set_debug_output(False)
-            analyze_raw_data.histograming.set_warning_output(False)
             analyze_raw_data.interpret_word_table(use_settings_from_file=False, fei4b=False)  # the actual start conversion command
         with AnalyzeRawData(raw_data_file=[tests_data_folder + 'unit_test_data_4_parameter_128.h5', tests_data_folder + 'unit_test_data_4_parameter_256.h5'], analyzed_data_file=tests_data_folder + 'unit_test_data_4_interpreted_2.h5', scan_parameter_name='parameter', create_pdf=False) as analyze_raw_data:
             analyze_raw_data.chunk_size = 2999999
             analyze_raw_data.create_hit_table = True
-            analyze_raw_data.interpreter.set_debug_output(False)
-            analyze_raw_data.histograming.set_warning_output(False)
             analyze_raw_data.interpret_word_table(use_settings_from_file=False, fei4b=False)  # the actual start conversion command
 
     @classmethod
