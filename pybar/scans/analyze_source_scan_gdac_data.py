@@ -73,7 +73,7 @@ def plot_cluster_sizes(in_file_cluster_h5, in_file_calibration_h5, gdac_range):
     plt.close()
 
 
-def plot_result(x_p, y_p, y_p_e, filename=None):
+def plot_result(x_p, y_p, y_p_e, smoothed_data, smoothed_data_diff, filename=None):
     ''' Fit spline to the profile histogramed data, differentiate, determine MPV and plot.
      Parameters
     ----------
@@ -84,13 +84,6 @@ def plot_result(x_p, y_p, y_p_e, filename=None):
     '''
     logging.info('Plot results')
     plt.close()
-
-    if len(y_p_e[y_p_e == 0]) != 0:
-        logging.warning('There are bins without any data, guessing the error bars')
-        y_p_e[y_p_e == 0] = np.amin(y_p_e[y_p_e != 0])
-
-    smoothed_data = analysis_utils.smooth_differentiation(x_p, y_p, weigths=1 / y_p_e, order=3, smoothness=analysis_configuration['smoothness'], derivation=0)
-    smoothed_data_diff = analysis_utils.smooth_differentiation(x_p, y_p, weigths=1 / y_p_e, order=3, smoothness=analysis_configuration['smoothness'], derivation=1)
 
     p1 = plt.errorbar(x_p * analysis_configuration['vcal_calibration'], y_p, yerr=y_p_e, fmt='o')  # plot data with error bars
     p2, = plt.plot(x_p * analysis_configuration['vcal_calibration'], smoothed_data, '-r')  # plot smoothed data
@@ -108,8 +101,8 @@ def plot_result(x_p, y_p, y_p_e, filename=None):
     if filename is None:
         plt.show()
     else:
-        print 'SAVE TO', filename
         filename.savefig(plt.gcf())
+    return smoothed_data_diff
 
 
 def analyze_raw_data(input_files, output_file_hits, scan_parameter):
@@ -221,14 +214,29 @@ def analyze_injected_charge(data_analyzed_file):
                     y_p = y_p[selected_data]
                     y_p_e = y_p_e[selected_data]
 
-                    with tb.openFile(data_analyzed_file[:-3] + '_result.h5', mode="w") as out_file_h5:
-                        result = np.rec.array(np.column_stack((x_p, y_p, y_p_e)), dtype=[('charge', float), ('count', float), ('count_error', float)])
-                        out = out_file_h5.create_table(out_file_h5.root, name='ChargeHistogram', description=result.dtype, title='Charge histogram with threshold method and per pixel calibration', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
-                        for key, value in analysis_configuration.iteritems():
-                            out.attrs[key] = value
-                        out.append(result)
+                    if len(y_p_e[y_p_e == 0]) != 0:
+                        logging.warning('There are bins without any data, guessing the error bars')
+                        y_p_e[y_p_e == 0] = np.amin(y_p_e[y_p_e != 0])
 
-                    plot_result(x_p, y_p, y_p_e)
+                    smoothed_data = analysis_utils.smooth_differentiation(x_p, y_p, weigths=1 / y_p_e, order=3, smoothness=analysis_configuration['smoothness'], derivation=0)
+                    smoothed_data_diff = analysis_utils.smooth_differentiation(x_p, y_p, weigths=1 / y_p_e, order=3, smoothness=analysis_configuration['smoothness'], derivation=1)
+
+                    with tb.openFile(data_analyzed_file[:-3] + '_result.h5', mode="w") as out_file_h5:
+                        result_1 = np.rec.array(np.column_stack((x_p, y_p, y_p_e)), dtype=[('charge', float), ('count', float), ('count_error', float)])
+                        result_2 = np.rec.array(np.column_stack((x_p, smoothed_data)), dtype=[('charge', float), ('count', float)])
+                        result_3 = np.rec.array(np.column_stack((x_p, -smoothed_data_diff)), dtype=[('charge', float), ('count', float)])
+                        out_1 = out_file_h5.create_table(out_file_h5.root, name='ProfileHistogram', description=result_1.dtype, title='Single pixel count rate combined with a profile histogram', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+                        out_2 = out_file_h5.create_table(out_file_h5.root, name='ProfileHistogramSpline', description=result_2.dtype, title='Single pixel count rate combined with a profile histogram and spline smoothed', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+                        out_3 = out_file_h5.create_table(out_file_h5.root, name='ChargeHistogram', description=result_3.dtype, title='Charge histogram with threshold method and per pixel calibration', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+                        for key, value in analysis_configuration.iteritems():
+                            out_1.attrs[key] = value
+                            out_2.attrs[key] = value
+                            out_3.attrs[key] = value
+                        out_1.append(result_1)
+                        out_2.append(result_2)
+                        out_3.append(result_3)
+
+                    plot_result(x_p, y_p, y_p_e, smoothed_data, smoothed_data_diff)
 
                     #  calculate and plot mean results
                     x_mean = analysis_utils.get_mean_threshold_from_calibration(gdac_range_source_scan, mean_threshold_calibration)
