@@ -20,7 +20,7 @@ def send_meta_data(socket, conf, name, flags=0, copy=False, track=False):
             conf=conf
         )
         socket.send_json(meta_data, flags | zmq.SNDMORE | zmq.NOBLOCK)  # TODO make with non blocking working
-    except zmq.ZMQError:
+    except (zmq.ZMQError, TypeError):
         pass
 
 
