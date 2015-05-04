@@ -111,7 +111,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
                     break
                 self.histograming.reset()
                 step += 1
-                logging.info('Step %d / %d at Vthin_AltFine %d', (step, steps, reg_val))
+                logging.info('Step %d / %d at Vthin_AltFine %d', step, steps, reg_val)
                 logging.info('Estimated scan time: %ds', self.total_scan_time)
 
                 with self.readout(Vthin_AltFine=reg_val, Step=step, reset_sram_fifo=True, fill_buffer=True, clear_buffer=True, callback=self.handle_data):
