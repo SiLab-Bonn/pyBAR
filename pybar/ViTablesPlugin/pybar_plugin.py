@@ -18,7 +18,6 @@ import vitables.utils
 from vitables.vtSite import PLUGINSDIR
 
 try:
-    import tables as tb
     from matplotlib import colors, cm
     import matplotlib.pyplot as plt
     from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -76,7 +75,7 @@ def plot_2d_hist(hist, title, z_max=None):
     bounds = np.linspace(start=0, stop=z_max, num=255, endpoint=True)
     cmap = cm.get_cmap('jet')
     cmap.set_bad('w')
-    norm = colors.BoundaryNorm(bounds, cmap.N)
+    colors.BoundaryNorm(bounds, cmap.N)
     norm = colors.LogNorm()
 
     im = plt.imshow(hist, interpolation='nearest', aspect='auto', cmap=cmap, norm=norm, extent=extent)  # TODO: use pcolor or pcolormesh
@@ -208,6 +207,8 @@ class pyBarPlugin(QtCore.QObject):
             plot_2d_hist(hist=leaf[:], title=data_name)
         elif 'Table' in str(type(leaf)) and len(leaf[:].dtype.names) <= 3:  # detect tables with less than 4 columns
             plot_table(leaf[:], title=data_name)
+        elif data_name == 'HitOrCalibration':
+            print 'Comming soon'
         else:
             print 'Plotting', data_name, '(%s) is not supported!' % type(leaf)
 
