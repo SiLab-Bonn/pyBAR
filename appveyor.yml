@@ -18,7 +18,8 @@ init:
   - ps: ls C:\Miniconda/Scripts
   - C:\Miniconda\Scripts\conda create --yes -n test-environment numpy cython pytables scipy matplotlib pandas pyserial bitarray nose pyzmq pyyaml pip
   - C:\Miniconda\Scripts\activate.bat test-environment
-  - pip install progressbar-latest pyvisa pyvisa-py pyqtgraph mock
+  - pip install progressbar-latest pyvisa pyvisa-py pyqtgraph mock sphinx
+  - pip install https://github.com/uvemas/ViTables/archive/v2.1.zip
   - C:\Miniconda\Scripts\conda info -a
   - C:\Miniconda\Scripts\conda list
 
