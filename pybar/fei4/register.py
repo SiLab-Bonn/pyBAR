@@ -497,7 +497,7 @@ class FEI4Register(object):
         except KeyError:
             register_objects = []
         else:
-            register_objects = [self.pixel_registers[reg] for reg in names]
+            register_objects = [self.global_registers[reg] for reg in names]
         for keyword in kwargs.iterkeys():
             allowed_values = iterable(kwargs[keyword])
             register_objects.extend(filter(lambda global_register: set(iterable(global_register[keyword])).intersection(allowed_values), self.global_registers.itervalues()))
