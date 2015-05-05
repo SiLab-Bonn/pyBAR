@@ -10,6 +10,8 @@ from ast import literal_eval
 from bitarray import bitarray
 from operator import itemgetter
 
+from basil.utils.BitLogic import BitLogic
+
 from pybar.utils.utils import bitarray_to_array
 from pybar.daq.readout_utils import interpret_pixel_data
 from pybar.analysis.RawDataConverter.data_struct import NameValue
@@ -726,7 +728,6 @@ def test_global_register(self):
                 set_value = struct.unpack('H', set_value_bitarray.tobytes())[0]
                 checked_address.append(fei4_data_word['address'])
                 if read_value == set_value:
-                    #                     print 'Register Test:', 'Address', fei4_data_word['address'], 'PASSED'
                     pass
                 else:
                     number_of_errors += 1
@@ -916,8 +917,53 @@ def test_pixel_register(self):
     logging.info('Pixel Register Test: Found %d error(s)', number_of_errors)
 
 
+def read_global_register(self, name, overwrite_config=False):
+    '''The function reads the global register, interprets the data and returns the register value.
+
+    Parameters
+    ----------
+    name : register name
+    overwrite_config : bool
+        The read values overwrite the config in RAM if true.
+
+    Returns
+    -------
+    register value
+    '''
+    self.register_utils.send_commands(self.register.get_commands("ConfMode"))
+
+    commands = []
+    commands.extend(self.register.get_commands("RdRegister", name=name))
+    self.register_utils.send_commands(commands)
+
+    data = self.fifo_readout.read_data()
+
+    register_object = self.register.get_global_register_objects(name=[name])[0]
+    value = BitLogic(register_object['addresses'] * 16)
+    index = 0
+    for word in np.nditer(data):
+        fei4_data_word = FEI4Record(word, self.register.chip_flavor)
+        if fei4_data_word == 'AR':
+            address_value = fei4_data_word['address']
+            if address_value != register_object['address'] + index:
+                raise Exception('Unexpected address from Address Record: read: %d, expected: %d' % (address_value, register_object['address'] + index))
+        elif fei4_data_word == 'VR':
+            read_value = BitLogic.from_value(fei4_data_word['value'], size=16)
+            if register_object['register_littleendian']:
+                read_value.reverse()
+            value[index * 16 + 15:index * 16] = read_value
+            index += 1
+    value = value[register_object['bitlength'] + register_object['offset'] - 1:register_object['offset']]
+    if register_object['littleendian']:
+        value.reverse()
+    value = value.tovalue()
+    if overwrite_config:
+        self.register.set_global_register(name, value)
+    return value
+
+
 def read_pixel_register(self, pix_regs=None, dcs=range(40), overwrite_config=False):
-    '''Reads the pixel register, interprets the data and returns a masked numpy arrays with the data for the chosen pixel register.
+    '''The function reads the pixel register, interprets the data and returns a masked numpy arrays with the data for the chosen pixel register.
     Pixels without any data are masked.
 
     Parameters
@@ -934,11 +980,12 @@ def read_pixel_register(self, pix_regs=None, dcs=range(40), overwrite_config=Fal
     -------
     list of masked numpy.ndarrays
     '''
-    result = []
-
     if pix_regs is None:
         pix_regs = ["EnableDigInj", "Imon", "Enable", "C_High", "C_Low", "TDAC", "FDAC"]
 
+    self.register_utils.send_commands(self.register.get_commands("ConfMode"))
+
+    result = []
     for pix_reg in pix_regs:
         pixel_data = np.ma.masked_array(np.zeros(shape=(80, 336), dtype=np.uint32), mask=True)  # the result pixel array, only pixel with data are not masked
         for dc in dcs:
