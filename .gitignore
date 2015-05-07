@@ -64,4 +64,4 @@ proto_*/
 # Mac
 .DS_Store
 # Xilinx ISE
-pybar/firmware/mio/ise
+firmware/mio/ise
