@@ -53,53 +53,11 @@ module KX7_IF_Test_Top(
     output wire [3:0] EN,
     
 // Command sequencer signals
-(* IOB = "FORCE" *) output wire CMD_CLK_OUT_A_P,
-(* IOB = "FORCE" *) output wire CMD_CLK_OUT_A_N,
+(* IOB = "FORCE" *) output wire [7:0] CMD_CLK_OUT_P,
+(* IOB = "FORCE" *) output wire [7:0] CMD_CLK_OUT_N,
 
-(* IOB = "FORCE" *) output wire CMD_CLK_OUT_B_P,
-(* IOB = "FORCE" *) output wire CMD_CLK_OUT_B_N,
-
-(* IOB = "FORCE" *) output wire CMD_CLK_OUT_C_P,
-(* IOB = "FORCE" *) output wire CMD_CLK_OUT_C_N,
-
-(* IOB = "FORCE" *) output wire CMD_CLK_OUT_D_P,
-(* IOB = "FORCE" *) output wire CMD_CLK_OUT_D_N,
-
-(* IOB = "FORCE" *) output wire CMD_CLK_OUT_E_P,
-(* IOB = "FORCE" *) output wire CMD_CLK_OUT_E_N,
-
-(* IOB = "FORCE" *) output wire CMD_CLK_OUT_F_P,
-(* IOB = "FORCE" *) output wire CMD_CLK_OUT_F_N,
-
-(* IOB = "FORCE" *) output wire CMD_CLK_OUT_G_P,
-(* IOB = "FORCE" *) output wire CMD_CLK_OUT_G_N,
-
-(* IOB = "FORCE" *) output wire CMD_CLK_OUT_H_P,
-(* IOB = "FORCE" *) output wire CMD_CLK_OUT_H_N,
-
-(* IOB = "FORCE" *) output wire CMD_DATA_A_P,
-(* IOB = "FORCE" *) output wire CMD_DATA_A_N,
-
-(* IOB = "FORCE" *) output wire CMD_DATA_B_P,
-(* IOB = "FORCE" *) output wire CMD_DATA_B_N,
-
-(* IOB = "FORCE" *) output wire CMD_DATA_C_P,
-(* IOB = "FORCE" *) output wire CMD_DATA_C_N,
-
-(* IOB = "FORCE" *) output wire CMD_DATA_D_P,
-(* IOB = "FORCE" *) output wire CMD_DATA_D_N,
-
-(* IOB = "FORCE" *) output wire CMD_DATA_E_P,
-(* IOB = "FORCE" *) output wire CMD_DATA_E_N,
-
-(* IOB = "FORCE" *) output wire CMD_DATA_F_P,
-(* IOB = "FORCE" *) output wire CMD_DATA_F_N,
-
-(* IOB = "FORCE" *) output wire CMD_DATA_G_P,
-(* IOB = "FORCE" *) output wire CMD_DATA_G_N,
-
-(* IOB = "FORCE" *) output wire CMD_DATA_H_P,
-(* IOB = "FORCE" *) output wire CMD_DATA_H_N,
+(* IOB = "FORCE" *) output wire [7:0] CMD_DATA_P,
+(* IOB = "FORCE" *) output wire [7:0] CMD_DATA_N,
     
 // FE-I4_rx signals
 (* IOB = "FORCE" *) input wire [7:0] DOBOUT_P,
@@ -266,6 +224,7 @@ PLLE2_BASE #(
  localparam FIFO_HIGHADDR_DATA = 32'h9000_0000;
  
  localparam ABUSWIDTH = 32;
+ localparam OUTPUTS = 8;
  
 // Command sequencer
 wire CMD_EXT_START_FLAG, TLU_CMD_EXT_START_FLAG; // to CMD FSM
@@ -274,14 +233,15 @@ assign CMD_EXT_START_FLAG = TLU_CMD_EXT_START_FLAG;
 
 wire CMD_EXT_START_ENABLE; // from CMD FSM
 wire CMD_READY; // to TLU FSM
-wire CMD_CLK_OUT_A, CMD_CLK_OUT_B, CMD_CLK_OUT_C, CMD_CLK_OUT_D, CMD_DATA_A, CMD_DATA_B, CMD_DATA_C, CMD_DATA_D;
-wire CMD_CLK_OUT_E, CMD_CLK_OUT_F, CMD_CLK_OUT_G, CMD_CLK_OUT_H, CMD_DATA_E, CMD_DATA_F, CMD_DATA_G, CMD_DATA_H;
+wire [OUTPUTS-1:0] CMD_CLK_OUT;
+wire [OUTPUTS-1:0] CMD_DATA;
 
 cmd_seq 
 #( 
     .BASEADDR(CMD_BASEADDR),
     .HIGHADDR(CMD_HIGHADDR),
-    .ABUSWIDTH(ABUSWIDTH)
+    .ABUSWIDTH(ABUSWIDTH),
+    .OUTPUTS(OUTPUTS)
 ) icmd (
     .BUS_CLK(BUS_CLK),
     .BUS_RST(BUS_RST),
@@ -290,25 +250,11 @@ cmd_seq
     .BUS_RD(BUS_RD),
     .BUS_WR(BUS_WR),
     
-    .CMD_CLK_OUT_A(CMD_CLK_OUT_A),
-    .CMD_CLK_OUT_B(CMD_CLK_OUT_B),
-    .CMD_CLK_OUT_C(CMD_CLK_OUT_C),
-    .CMD_CLK_OUT_D(CMD_CLK_OUT_D),
-    .CMD_CLK_OUT_E(CMD_CLK_OUT_E),
-    .CMD_CLK_OUT_F(CMD_CLK_OUT_F),
-    .CMD_CLK_OUT_G(CMD_CLK_OUT_G),
-    .CMD_CLK_OUT_H(CMD_CLK_OUT_H),
+    .CMD_CLK_OUT(CMD_CLK_OUT),
     .CMD_CLK_IN(clk40mhz),
     .CMD_EXT_START_FLAG(CMD_EXT_START_FLAG),
     .CMD_EXT_START_ENABLE(CMD_EXT_START_ENABLE),
-    .CMD_DATA_A(CMD_DATA_A),
-    .CMD_DATA_B(CMD_DATA_B),
-    .CMD_DATA_C(CMD_DATA_C),
-    .CMD_DATA_D(CMD_DATA_D),
-    .CMD_DATA_E(CMD_DATA_E),
-    .CMD_DATA_F(CMD_DATA_F),
-    .CMD_DATA_G(CMD_DATA_G),
-    .CMD_DATA_H(CMD_DATA_H),
+    .CMD_DATA(CMD_DATA),
     .CMD_READY(CMD_READY),
     .CMD_START_FLAG()
 );
@@ -317,151 +263,28 @@ cmd_seq
 //         Kintex-7
 // Xilinx HDL Language Template, version 2014.4
 
-OBUFDS #(
-  .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
-  .SLEW("FAST")           // Specify the output slew rate
-) OBUFDS_inst_cmd_clk_out_a (
-  .O(CMD_CLK_OUT_A_P),     // Diff_p output (connect directly to top-level port)
-  .OB(CMD_CLK_OUT_A_N),   // Diff_n output (connect directly to top-level port)
-  .I(CMD_CLK_OUT_A)      // Buffer input 
-);
+genvar g;
+generate
+    for (g = 0; g < OUTPUTS; g = g + 1) begin: cmd_gen
+        OBUFDS #(
+          .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
+          .SLEW("FAST")           // Specify the output slew rate
+        ) OBUFDS_inst_cmd_clk_out (
+          .O(CMD_CLK_OUT_P[g]),     // Diff_p output (connect directly to top-level port)
+          .OB(CMD_CLK_OUT_N[g]),   // Diff_n output (connect directly to top-level port)
+          .I(CMD_CLK_OUT[g])      // Buffer input 
+        );
 
-OBUFDS #(
-  .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
-  .SLEW("FAST")           // Specify the output slew rate
-) OBUFDS_inst_cmd_clk_out_b (
-  .O(CMD_CLK_OUT_B_P),     // Diff_p output (connect directly to top-level port)
-  .OB(CMD_CLK_OUT_B_N),   // Diff_n output (connect directly to top-level port)
-  .I(CMD_CLK_OUT_B)      // Buffer input 
-);
-
-OBUFDS #(
-  .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
-  .SLEW("FAST")           // Specify the output slew rate
-) OBUFDS_inst_cmd_clk_out_c (
-  .O(CMD_CLK_OUT_C_P),     // Diff_p output (connect directly to top-level port)
-  .OB(CMD_CLK_OUT_C_N),   // Diff_n output (connect directly to top-level port)
-  .I(CMD_CLK_OUT_C)      // Buffer input 
-);
-
-OBUFDS #(
-  .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
-  .SLEW("FAST")           // Specify the output slew rate
-) OBUFDS_inst_cmd_clk_out_d (
-  .O(CMD_CLK_OUT_D_P),     // Diff_p output (connect directly to top-level port)
-  .OB(CMD_CLK_OUT_D_N),   // Diff_n output (connect directly to top-level port)
-  .I(CMD_CLK_OUT_D)      // Buffer input 
-);
-
-OBUFDS #(
-  .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
-  .SLEW("FAST")           // Specify the output slew rate
-) OBUFDS_inst_cmd_clk_out_e (
-  .O(CMD_CLK_OUT_E_P),     // Diff_p output (connect directly to top-level port)
-  .OB(CMD_CLK_OUT_E_N),   // Diff_n output (connect directly to top-level port)
-  .I(CMD_CLK_OUT_E)      // Buffer input 
-);
-
-OBUFDS #(
-  .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
-  .SLEW("FAST")           // Specify the output slew rate
-) OBUFDS_inst_cmd_clk_out_f (
-  .O(CMD_CLK_OUT_F_P),     // Diff_p output (connect directly to top-level port)
-  .OB(CMD_CLK_OUT_F_N),   // Diff_n output (connect directly to top-level port)
-  .I(CMD_CLK_OUT_F)      // Buffer input 
-);
-
-OBUFDS #(
-  .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
-  .SLEW("FAST")           // Specify the output slew rate
-) OBUFDS_inst_cmd_clk_out_g (
-  .O(CMD_CLK_OUT_G_P),     // Diff_p output (connect directly to top-level port)
-  .OB(CMD_CLK_OUT_G_N),   // Diff_n output (connect directly to top-level port)
-  .I(CMD_CLK_OUT_G)      // Buffer input 
-);
-
-OBUFDS #(
-  .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
-  .SLEW("FAST")           // Specify the output slew rate
-) OBUFDS_inst_cmd_clk_out_h (
-  .O(CMD_CLK_OUT_H_P),     // Diff_p output (connect directly to top-level port)
-  .OB(CMD_CLK_OUT_H_N),   // Diff_n output (connect directly to top-level port)
-  .I(CMD_CLK_OUT_H)      // Buffer input 
-);
-
-
-OBUFDS #(
-  .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
-  .SLEW("FAST")           // Specify the output slew rate
-) OBUFDS_inst_cmd_data_a (
-  .O(CMD_DATA_A_P),     // Diff_p output (connect directly to top-level port)
-  .OB(CMD_DATA_A_N),   // Diff_n output (connect directly to top-level port)
-  .I(CMD_DATA_A)      // Buffer input 
-);
-
-OBUFDS #(
-  .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
-  .SLEW("FAST")           // Specify the output slew rate
-) OBUFDS_inst_cmd_data_b (
-  .O(CMD_DATA_B_P),     // Diff_p output (connect directly to top-level port)
-  .OB(CMD_DATA_B_N),   // Diff_n output (connect directly to top-level port)
-  .I(CMD_DATA_B)      // Buffer input 
-);
-
-OBUFDS #(
-  .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
-  .SLEW("FAST")           // Specify the output slew rate
-) OBUFDS_inst_cmd_data_c (
-  .O(CMD_DATA_C_P),     // Diff_p output (connect directly to top-level port)
-  .OB(CMD_DATA_C_N),   // Diff_n output (connect directly to top-level port)
-  .I(CMD_DATA_C)      // Buffer input 
-);
-
-OBUFDS #(
-  .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
-  .SLEW("FAST")           // Specify the output slew rate
-) OBUFDS_inst_cmd_data_d (
-  .O(CMD_DATA_D_P),     // Diff_p output (connect directly to top-level port)
-  .OB(CMD_DATA_D_N),   // Diff_n output (connect directly to top-level port)
-  .I(CMD_DATA_D)      // Buffer input 
-);
-
-OBUFDS #(
-  .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
-  .SLEW("FAST")           // Specify the output slew rate
-) OBUFDS_inst_cmd_data_e (
-  .O(CMD_DATA_E_P),     // Diff_p output (connect directly to top-level port)
-  .OB(CMD_DATA_E_N),   // Diff_n output (connect directly to top-level port)
-  .I(CMD_DATA_E)      // Buffer input 
-);
-
-OBUFDS #(
-  .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
-  .SLEW("FAST")           // Specify the output slew rate
-) OBUFDS_inst_cmd_data_f (
-  .O(CMD_DATA_F_P),     // Diff_p output (connect directly to top-level port)
-  .OB(CMD_DATA_F_N),   // Diff_n output (connect directly to top-level port)
-  .I(CMD_DATA_F)      // Buffer input 
-);
-
-OBUFDS #(
-  .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
-  .SLEW("FAST")           // Specify the output slew rate
-) OBUFDS_inst_cmd_data_g (
-  .O(CMD_DATA_G_P),     // Diff_p output (connect directly to top-level port)
-  .OB(CMD_DATA_G_N),   // Diff_n output (connect directly to top-level port)
-  .I(CMD_DATA_G)      // Buffer input 
-);
-
-OBUFDS #(
-  .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
-  .SLEW("FAST")           // Specify the output slew rate
-) OBUFDS_inst_cmd_data_h (
-  .O(CMD_DATA_H_P),     // Diff_p output (connect directly to top-level port)
-  .OB(CMD_DATA_H_N),   // Diff_n output (connect directly to top-level port)
-  .I(CMD_DATA_H)      // Buffer input 
-);
-
+        OBUFDS #(
+          .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
+          .SLEW("FAST")           // Specify the output slew rate
+        ) OBUFDS_inst_cmd_data (
+          .O(CMD_DATA_P[g]),     // Diff_p output (connect directly to top-level port)
+          .OB(CMD_DATA_N[g]),   // Diff_n output (connect directly to top-level port)
+          .I(CMD_DATA[g])      // Buffer input 
+        );
+    end
+endgenerate
 
 // FE-I4 RXs
 parameter DSIZE = 10;

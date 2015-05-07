@@ -427,12 +427,13 @@ class Fei4RunBaseParallel(RunBase):
             self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=False)
 
     def handle_err(self, exc):
-        if self.reset_rx_on_error and isinstance(exc[1], (RxSyncError, EightbTenbError)):
-            self.fifo_readout.print_readout_status()
-            self.fifo_readout.reset_rx()
-        else:
-            self.err_queue.put(exc)
-            self.abort(msg='%s' % exc[1])
+        pass
+#         if self.reset_rx_on_error and isinstance(exc[1], (RxSyncError, EightbTenbError)):
+#             self.fifo_readout.print_readout_status()
+#             self.fifo_readout.reset_rx()
+#         else:
+#             self.err_queue.put(exc)
+#             self.abort(msg='%s' % exc[1])
 
     def _get_configuration(self, run_number=None):
         def find_file(run_number):

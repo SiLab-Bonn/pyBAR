@@ -417,102 +417,102 @@ set_property IOSTANDARD LVCMOS33 [get_ports {EN[1]}]
 set_property PACKAGE_PIN AE21 [get_ports {EN[1]}]
 
 # Command sequencer signals
-set_property IOSTANDARD LVDS_25 [get_ports CMD_CLK_OUT_A_P]
-set_property PACKAGE_PIN C9 [get_ports CMD_CLK_OUT_A_P]
+set_property IOSTANDARD LVDS_25 [get_ports CMD_CLK_OUT_P[0]]
+set_property PACKAGE_PIN C9 [get_ports CMD_CLK_OUT_P[0]]
 
-set_property IOSTANDARD LVDS_25 [get_ports CMD_CLK_OUT_A_N]
-set_property PACKAGE_PIN B9 [get_ports CMD_CLK_OUT_A_N]
+set_property IOSTANDARD LVDS_25 [get_ports CMD_CLK_OUT_N[0]]
+set_property PACKAGE_PIN B9 [get_ports CMD_CLK_OUT_N[0]]
 
-set_property IOSTANDARD LVDS_25 [get_ports CMD_CLK_OUT_B_P]
-set_property PACKAGE_PIN C14 [get_ports CMD_CLK_OUT_B_P]
+set_property IOSTANDARD LVDS_25 [get_ports CMD_CLK_OUT_P[1]]
+set_property PACKAGE_PIN C14 [get_ports CMD_CLK_OUT_P[1]]
 
-set_property IOSTANDARD LVDS_25 [get_ports CMD_CLK_OUT_B_N]
-set_property PACKAGE_PIN C13 [get_ports CMD_CLK_OUT_B_N]
+set_property IOSTANDARD LVDS_25 [get_ports CMD_CLK_OUT_N[1]]
+set_property PACKAGE_PIN C13 [get_ports CMD_CLK_OUT_N[1]]
 
-set_property IOSTANDARD LVDS_25 [get_ports CMD_CLK_OUT_C_P]
-set_property PACKAGE_PIN C19 [get_ports CMD_CLK_OUT_C_P]
+set_property IOSTANDARD LVDS_25 [get_ports CMD_CLK_OUT_P[2]]
+set_property PACKAGE_PIN C19 [get_ports CMD_CLK_OUT_P[2]]
 
-set_property IOSTANDARD LVDS_25 [get_ports CMD_CLK_OUT_C_N]
-set_property PACKAGE_PIN B19 [get_ports CMD_CLK_OUT_C_N]
+set_property IOSTANDARD LVDS_25 [get_ports CMD_CLK_OUT_N[2]]
+set_property PACKAGE_PIN B19 [get_ports CMD_CLK_OUT_N[2]]
 
-set_property IOSTANDARD LVDS_25 [get_ports CMD_CLK_OUT_D_P]
-set_property PACKAGE_PIN J15 [get_ports CMD_CLK_OUT_D_P]
+set_property IOSTANDARD LVDS_25 [get_ports CMD_CLK_OUT_P[3]]
+set_property PACKAGE_PIN J15 [get_ports CMD_CLK_OUT_P[3]]
 
-set_property IOSTANDARD LVDS_25 [get_ports CMD_CLK_OUT_D_N]
-set_property PACKAGE_PIN J16 [get_ports CMD_CLK_OUT_D_N]
+set_property IOSTANDARD LVDS_25 [get_ports CMD_CLK_OUT_N[3]]
+set_property PACKAGE_PIN J16 [get_ports CMD_CLK_OUT_N[3]]
 
-set_property IOSTANDARD LVDS_25 [get_ports CMD_CLK_OUT_E_P]
-set_property PACKAGE_PIN J13 [get_ports CMD_CLK_OUT_E_P]
+set_property IOSTANDARD LVDS_25 [get_ports CMD_CLK_OUT_P[4]]
+set_property PACKAGE_PIN J13 [get_ports CMD_CLK_OUT_P[4]]
 
-set_property IOSTANDARD LVDS_25 [get_ports CMD_CLK_OUT_E_N]
-set_property PACKAGE_PIN H13 [get_ports CMD_CLK_OUT_E_N]
+set_property IOSTANDARD LVDS_25 [get_ports CMD_CLK_OUT_N[4]]
+set_property PACKAGE_PIN H13 [get_ports CMD_CLK_OUT_N[4]]
 
-set_property IOSTANDARD LVDS_25 [get_ports CMD_CLK_OUT_F_P]
-set_property PACKAGE_PIN H9 [get_ports CMD_CLK_OUT_F_P]
+set_property IOSTANDARD LVDS_25 [get_ports CMD_CLK_OUT_P[5]]
+set_property PACKAGE_PIN H9 [get_ports CMD_CLK_OUT_P[5]]
 
-set_property IOSTANDARD LVDS_25 [get_ports CMD_CLK_OUT_F_N]
-set_property PACKAGE_PIN H8 [get_ports CMD_CLK_OUT_F_N]
+set_property IOSTANDARD LVDS_25 [get_ports CMD_CLK_OUT_N[5]]
+set_property PACKAGE_PIN H8 [get_ports CMD_CLK_OUT_N[5]]
 
-set_property IOSTANDARD LVDS_25 [get_ports CMD_CLK_OUT_G_P]
-set_property PACKAGE_PIN E13 [get_ports CMD_CLK_OUT_G_P]
+set_property IOSTANDARD LVDS_25 [get_ports CMD_CLK_OUT_P[6]]
+set_property PACKAGE_PIN E13 [get_ports CMD_CLK_OUT_P[6]]
 
-set_property IOSTANDARD LVDS_25 [get_ports CMD_CLK_OUT_G_N]
-set_property PACKAGE_PIN E12 [get_ports CMD_CLK_OUT_G_N]
+set_property IOSTANDARD LVDS_25 [get_ports CMD_CLK_OUT_N[6]]
+set_property PACKAGE_PIN E12 [get_ports CMD_CLK_OUT_N[6]]
 
-set_property IOSTANDARD LVDS_25 [get_ports CMD_CLK_OUT_H_P]
-set_property PACKAGE_PIN A18 [get_ports CMD_CLK_OUT_H_P]
+set_property IOSTANDARD LVDS_25 [get_ports CMD_CLK_OUT_P[7]]
+set_property PACKAGE_PIN A18 [get_ports CMD_CLK_OUT_P[7]]
 
-set_property IOSTANDARD LVDS_25 [get_ports CMD_CLK_OUT_H_N]
-set_property PACKAGE_PIN A19 [get_ports CMD_CLK_OUT_H_N]
+set_property IOSTANDARD LVDS_25 [get_ports CMD_CLK_OUT_N[7]]
+set_property PACKAGE_PIN A19 [get_ports CMD_CLK_OUT_N[7]]
 
 
-set_property IOSTANDARD LVDS_25 [get_ports CMD_DATA_A_P]
-set_property PACKAGE_PIN D9 [get_ports CMD_DATA_A_P]
+set_property IOSTANDARD LVDS_25 [get_ports CMD_DATA_P[0]]
+set_property PACKAGE_PIN D9 [get_ports CMD_DATA_P[0]]
 
-set_property IOSTANDARD LVDS_25 [get_ports CMD_DATA_A_N]
-set_property PACKAGE_PIN D8 [get_ports CMD_DATA_A_N]
+set_property IOSTANDARD LVDS_25 [get_ports CMD_DATA_N[0]]
+set_property PACKAGE_PIN D8 [get_ports CMD_DATA_N[0]]
 
-set_property IOSTANDARD LVDS_25 [get_ports CMD_DATA_B_P]
-set_property PACKAGE_PIN G12 [get_ports CMD_DATA_B_P]
+set_property IOSTANDARD LVDS_25 [get_ports CMD_DATA_P[1]]
+set_property PACKAGE_PIN G12 [get_ports CMD_DATA_P[1]]
 
-set_property IOSTANDARD LVDS_25 [get_ports CMD_DATA_B_N]
-set_property PACKAGE_PIN F12 [get_ports CMD_DATA_B_N]
+set_property IOSTANDARD LVDS_25 [get_ports CMD_DATA_N[1]]
+set_property PACKAGE_PIN F12 [get_ports CMD_DATA_N[1]]
 
-set_property IOSTANDARD LVDS_25 [get_ports CMD_DATA_C_P]
-set_property PACKAGE_PIN B17 [get_ports CMD_DATA_C_P]
+set_property IOSTANDARD LVDS_25 [get_ports CMD_DATA_P[2]]
+set_property PACKAGE_PIN B17 [get_ports CMD_DATA_P[2]]
 
-set_property IOSTANDARD LVDS_25 [get_ports CMD_DATA_C_N]
-set_property PACKAGE_PIN A17 [get_ports CMD_DATA_C_N]
+set_property IOSTANDARD LVDS_25 [get_ports CMD_DATA_N[2]]
+set_property PACKAGE_PIN A17 [get_ports CMD_DATA_N[2]]
 
-set_property IOSTANDARD LVDS_25 [get_ports CMD_DATA_D_P]
-set_property PACKAGE_PIN G17 [get_ports CMD_DATA_D_P]
+set_property IOSTANDARD LVDS_25 [get_ports CMD_DATA_P[3]]
+set_property PACKAGE_PIN G17 [get_ports CMD_DATA_P[3]]
 
-set_property IOSTANDARD LVDS_25 [get_ports CMD_DATA_D_N]
-set_property PACKAGE_PIN F18 [get_ports CMD_DATA_D_N]
+set_property IOSTANDARD LVDS_25 [get_ports CMD_DATA_N[3]]
+set_property PACKAGE_PIN F18 [get_ports CMD_DATA_N[3]]
 
-set_property IOSTANDARD LVDS_25 [get_ports CMD_DATA_E_P]
-set_property PACKAGE_PIN H14 [get_ports CMD_DATA_E_P]
+set_property IOSTANDARD LVDS_25 [get_ports CMD_DATA_P[4]]
+set_property PACKAGE_PIN H14 [get_ports CMD_DATA_P[4]]
 
-set_property IOSTANDARD LVDS_25 [get_ports CMD_DATA_E_N]
-set_property PACKAGE_PIN G14 [get_ports CMD_DATA_E_N]
+set_property IOSTANDARD LVDS_25 [get_ports CMD_DATA_N[4]]
+set_property PACKAGE_PIN G14 [get_ports CMD_DATA_N[4]]
 
-set_property IOSTANDARD LVDS_25 [get_ports CMD_DATA_F_P]
-set_property PACKAGE_PIN F14 [get_ports CMD_DATA_F_P]
+set_property IOSTANDARD LVDS_25 [get_ports CMD_DATA_P[5]]
+set_property PACKAGE_PIN F14 [get_ports CMD_DATA_P[5]]
 
-set_property IOSTANDARD LVDS_25 [get_ports CMD_DATA_F_N]
-set_property PACKAGE_PIN F13 [get_ports CMD_DATA_F_N]
+set_property IOSTANDARD LVDS_25 [get_ports CMD_DATA_N[5]]
+set_property PACKAGE_PIN F13 [get_ports CMD_DATA_N[5]]
 
-set_property IOSTANDARD LVDS_25 [get_ports CMD_DATA_G_P]
-set_property PACKAGE_PIN B14 [get_ports CMD_DATA_G_P]
+set_property IOSTANDARD LVDS_25 [get_ports CMD_DATA_P[6]]
+set_property PACKAGE_PIN B14 [get_ports CMD_DATA_P[6]]
 
-set_property IOSTANDARD LVDS_25 [get_ports CMD_DATA_G_N]
-set_property PACKAGE_PIN A14 [get_ports CMD_DATA_G_N]
+set_property IOSTANDARD LVDS_25 [get_ports CMD_DATA_N[6]]
+set_property PACKAGE_PIN A14 [get_ports CMD_DATA_N[6]]
 
-set_property IOSTANDARD LVDS_25 [get_ports CMD_DATA_H_P]
-set_property PACKAGE_PIN F17 [get_ports CMD_DATA_H_P]
+set_property IOSTANDARD LVDS_25 [get_ports CMD_DATA_P[7]]
+set_property PACKAGE_PIN F17 [get_ports CMD_DATA_P[7]]
 
-set_property IOSTANDARD LVDS_25 [get_ports CMD_DATA_H_N]
-set_property PACKAGE_PIN E17 [get_ports CMD_DATA_H_N]
+set_property IOSTANDARD LVDS_25 [get_ports CMD_DATA_N[7]]
+set_property PACKAGE_PIN E17 [get_ports CMD_DATA_N[7]]
 
 # FE-I4_rx signals
 set_property IOSTANDARD LVDS_25 [get_ports {DOBOUT_P[7]}]
