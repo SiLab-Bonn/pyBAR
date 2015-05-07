@@ -63,3 +63,5 @@ proto_*/
 *.pdf
 # Mac
 .DS_Store
+# Xilinx ISE
+pybar/firmware/mio/ise
