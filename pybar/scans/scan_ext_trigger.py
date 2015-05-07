@@ -113,7 +113,7 @@ class ExtTriggerScan(Fei4RunBase):
             self.set_scan_parameters(**kwargs)
         self.fifo_readout.start(reset_sram_fifo=False, clear_buffer=True, callback=self.handle_data, errback=self.handle_err, no_data_timeout=self.no_data_timeout)
         self.dut['tdc_rx2']['ENABLE'] = self.enable_tdc
-        self.dut['tlu'].RESET
+        self.dut['tlu']['TRIGGER_COUNTER'] = 0
         self.dut['tlu']['TRIGGER_MODE'] = self.trigger_mode
         if self.enable_tdc:  # trigger signal is routed through TDC module, thus invert the signal in the TDC module when it is used
             self.dut['tlu']['EN_INVERT_TRIGGER'] = 0 if self.trigger_pos_edge else 1
