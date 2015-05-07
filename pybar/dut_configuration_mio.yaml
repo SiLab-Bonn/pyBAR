@@ -13,6 +13,18 @@ tlu:
     EN_WRITE_TIMESTAMP  : 1
     TRIGGER_LOW_TIMEOUT : 255
 
+rx_8:
+    INVERT_RX : 0  # 0: IBL modules (default), 1: DBM modules
+
+rx_7:
+    INVERT_RX : 0
+    
+rx_6:
+    INVERT_RX : 0
+
+rx_5:
+    INVERT_RX : 0
+    
 rx_4:
     INVERT_RX : 0  # 0: IBL modules (default), 1: DBM modules
 

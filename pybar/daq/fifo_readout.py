@@ -298,7 +298,7 @@ class FifoReadout(object):
             filter(lambda channel: self.dut[channel]['RX_RESET'], channels)
         else:
             if self.dut.name == 'mio':
-                filter(lambda channel: self.dut[channel]['RX_RESET'], ['rx_1', 'rx_2', 'rx_3', 'rx_4'])
+                filter(lambda channel: self.dut[channel]['RX_RESET'], ['rx_1', 'rx_2', 'rx_3', 'rx_4', 'rx_5', 'rx_6', 'rx_7', 'rx_8'])
             elif self.dut.name == 'mio_gpac':
                 filter(lambda channel: self.dut[channel]['RX_RESET'], ['rx_fe'])
         sleep(0.1)  # sleep here for a while
@@ -308,7 +308,7 @@ class FifoReadout(object):
             return map(lambda channel: True if self.dut[channel]['READY'] else False, channels)
         else:
             if self.dut.name == 'mio':
-                return map(lambda channel: True if self.dut[channel]['READY'] else False, ['rx_1', 'rx_2', 'rx_3', 'rx_4'])
+                return map(lambda channel: True if self.dut[channel]['READY'] else False, ['rx_1', 'rx_2', 'rx_3', 'rx_4', 'rx_5', 'rx_6', 'rx_7', 'rx_8'])
             elif self.dut.name == 'mio_gpac':
                 return map(lambda channel: True if self.dut[channel]['READY'] else False, ['rx_fe'])
 
@@ -317,7 +317,7 @@ class FifoReadout(object):
             return map(lambda channel: self.dut[channel]['DECODER_ERROR_COUNTER'], channels)
         else:
             if self.dut.name == 'mio':
-                return map(lambda channel: self.dut[channel]['DECODER_ERROR_COUNTER'], ['rx_1', 'rx_2', 'rx_3', 'rx_4'])
+                return map(lambda channel: self.dut[channel]['DECODER_ERROR_COUNTER'], ['rx_1', 'rx_2', 'rx_3', 'rx_4', 'rx_5', 'rx_6', 'rx_7', 'rx_8'])
             elif self.dut.name == 'mio_gpac':
                 return map(lambda channel: self.dut[channel]['DECODER_ERROR_COUNTER'], ['rx_fe'])
 
@@ -326,6 +326,6 @@ class FifoReadout(object):
             return map(lambda channel: self.dut[channel]['LOST_DATA_COUNTER'], channels)
         else:
             if self.dut.name == 'mio':
-                return map(lambda channel: self.dut[channel]['LOST_DATA_COUNTER'], ['rx_1', 'rx_2', 'rx_3', 'rx_4'])
+                return map(lambda channel: self.dut[channel]['LOST_DATA_COUNTER'], ['rx_1', 'rx_2', 'rx_3', 'rx_4', 'rx_5', 'rx_6', 'rx_7', 'rx_8'])
             elif self.dut.name == 'mio_gpac':
                 return map(lambda channel: self.dut[channel]['LOST_DATA_COUNTER'], ['rx_fe'])

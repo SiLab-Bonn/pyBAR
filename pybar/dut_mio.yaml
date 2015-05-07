@@ -48,6 +48,26 @@ hw_drivers:
     interface : USB
     base_addr : 0x18200
 
+  - name      : rx_8
+    type      : fei4_rx
+    interface : USB
+    base_addr : 0x19300
+
+  - name      : rx_7
+    type      : fei4_rx
+    interface : USB
+    base_addr : 0x19400
+    
+  - name      : rx_6
+    type      : fei4_rx
+    interface : USB
+    base_addr : 0x19500
+
+  - name      : rx_5
+    type      : fei4_rx
+    interface : USB
+    base_addr : 0x19600
+    
   - name      : rx_4
     type      : fei4_rx
     interface : USB

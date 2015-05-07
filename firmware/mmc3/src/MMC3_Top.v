@@ -53,14 +53,57 @@ module KX7_IF_Test_Top(
     output wire [3:0] EN,
     
 // Command sequencer signals
-(* IOB = "FORCE" *) output wire CMD_CLK_OUT_P,
-(* IOB = "FORCE" *) output wire CMD_CLK_OUT_N,
-(* IOB = "FORCE" *) output wire CMD_DATA_P,
-(* IOB = "FORCE" *) output wire CMD_DATA_N,
+(* IOB = "FORCE" *) output wire CMD_CLK_OUT_A_P,
+(* IOB = "FORCE" *) output wire CMD_CLK_OUT_A_N,
+
+(* IOB = "FORCE" *) output wire CMD_CLK_OUT_B_P,
+(* IOB = "FORCE" *) output wire CMD_CLK_OUT_B_N,
+
+(* IOB = "FORCE" *) output wire CMD_CLK_OUT_C_P,
+(* IOB = "FORCE" *) output wire CMD_CLK_OUT_C_N,
+
+(* IOB = "FORCE" *) output wire CMD_CLK_OUT_D_P,
+(* IOB = "FORCE" *) output wire CMD_CLK_OUT_D_N,
+
+(* IOB = "FORCE" *) output wire CMD_CLK_OUT_E_P,
+(* IOB = "FORCE" *) output wire CMD_CLK_OUT_E_N,
+
+(* IOB = "FORCE" *) output wire CMD_CLK_OUT_F_P,
+(* IOB = "FORCE" *) output wire CMD_CLK_OUT_F_N,
+
+(* IOB = "FORCE" *) output wire CMD_CLK_OUT_G_P,
+(* IOB = "FORCE" *) output wire CMD_CLK_OUT_G_N,
+
+(* IOB = "FORCE" *) output wire CMD_CLK_OUT_H_P,
+(* IOB = "FORCE" *) output wire CMD_CLK_OUT_H_N,
+
+(* IOB = "FORCE" *) output wire CMD_DATA_A_P,
+(* IOB = "FORCE" *) output wire CMD_DATA_A_N,
+
+(* IOB = "FORCE" *) output wire CMD_DATA_B_P,
+(* IOB = "FORCE" *) output wire CMD_DATA_B_N,
+
+(* IOB = "FORCE" *) output wire CMD_DATA_C_P,
+(* IOB = "FORCE" *) output wire CMD_DATA_C_N,
+
+(* IOB = "FORCE" *) output wire CMD_DATA_D_P,
+(* IOB = "FORCE" *) output wire CMD_DATA_D_N,
+
+(* IOB = "FORCE" *) output wire CMD_DATA_E_P,
+(* IOB = "FORCE" *) output wire CMD_DATA_E_N,
+
+(* IOB = "FORCE" *) output wire CMD_DATA_F_P,
+(* IOB = "FORCE" *) output wire CMD_DATA_F_N,
+
+(* IOB = "FORCE" *) output wire CMD_DATA_G_P,
+(* IOB = "FORCE" *) output wire CMD_DATA_G_N,
+
+(* IOB = "FORCE" *) output wire CMD_DATA_H_P,
+(* IOB = "FORCE" *) output wire CMD_DATA_H_N,
     
 // FE-I4_rx signals
-(* IOB = "FORCE" *) input wire [3:0] DOBOUT_P,
-(* IOB = "FORCE" *) input wire [3:0] DOBOUT_N,
+(* IOB = "FORCE" *) input wire [7:0] DOBOUT_P,
+(* IOB = "FORCE" *) input wire [7:0] DOBOUT_N,
 
 // Trigger
 (* IOB = "FORCE" *) input wire [1:0] LEMO_RX,
@@ -192,15 +235,27 @@ PLLE2_BASE #(
  localparam TLU_BASEADDR = 32'h8200;
  localparam TLU_HIGHADDR = 32'h8300-1;
 
+ localparam RX8_BASEADDR = 32'h9300;
+ localparam RX8_HIGHADDR = 32'h9400-1;
+ 
+ localparam RX7_BASEADDR = 32'h9400;
+ localparam RX7_HIGHADDR = 32'h9500-1;
+ 
+ localparam RX6_BASEADDR = 32'h9500;
+ localparam RX6_HIGHADDR = 32'h9600-1;
+ 
+ localparam RX5_BASEADDR = 32'h9600;
+ localparam RX5_HIGHADDR = 32'h9700-1;
+ 
  localparam RX4_BASEADDR = 32'h8300;
  localparam RX4_HIGHADDR = 32'h8400-1;
- 
+  
  localparam RX3_BASEADDR = 32'h8400;
  localparam RX3_HIGHADDR = 32'h8500-1;
- 
+  
  localparam RX2_BASEADDR = 32'h8500;
  localparam RX2_HIGHADDR = 32'h8600-1;
- 
+  
  localparam RX1_BASEADDR = 32'h8600;
  localparam RX1_HIGHADDR = 32'h8700-1;
  
@@ -219,7 +274,8 @@ assign CMD_EXT_START_FLAG = TLU_CMD_EXT_START_FLAG;
 
 wire CMD_EXT_START_ENABLE; // from CMD FSM
 wire CMD_READY; // to TLU FSM
-wire CMD_CLK_OUT, CMD_DATA;
+wire CMD_CLK_OUT_A, CMD_CLK_OUT_B, CMD_CLK_OUT_C, CMD_CLK_OUT_D, CMD_DATA_A, CMD_DATA_B, CMD_DATA_C, CMD_DATA_D;
+wire CMD_CLK_OUT_E, CMD_CLK_OUT_F, CMD_CLK_OUT_G, CMD_CLK_OUT_H, CMD_DATA_E, CMD_DATA_F, CMD_DATA_G, CMD_DATA_H;
 
 cmd_seq 
 #( 
@@ -234,11 +290,25 @@ cmd_seq
     .BUS_RD(BUS_RD),
     .BUS_WR(BUS_WR),
     
-    .CMD_CLK_OUT(CMD_CLK_OUT),
+    .CMD_CLK_OUT_A(CMD_CLK_OUT_A),
+    .CMD_CLK_OUT_B(CMD_CLK_OUT_B),
+    .CMD_CLK_OUT_C(CMD_CLK_OUT_C),
+    .CMD_CLK_OUT_D(CMD_CLK_OUT_D),
+    .CMD_CLK_OUT_E(CMD_CLK_OUT_E),
+    .CMD_CLK_OUT_F(CMD_CLK_OUT_F),
+    .CMD_CLK_OUT_G(CMD_CLK_OUT_G),
+    .CMD_CLK_OUT_H(CMD_CLK_OUT_H),
     .CMD_CLK_IN(clk40mhz),
     .CMD_EXT_START_FLAG(CMD_EXT_START_FLAG),
     .CMD_EXT_START_ENABLE(CMD_EXT_START_ENABLE),
-    .CMD_DATA(CMD_DATA),
+    .CMD_DATA_A(CMD_DATA_A),
+    .CMD_DATA_B(CMD_DATA_B),
+    .CMD_DATA_C(CMD_DATA_C),
+    .CMD_DATA_D(CMD_DATA_D),
+    .CMD_DATA_E(CMD_DATA_E),
+    .CMD_DATA_F(CMD_DATA_F),
+    .CMD_DATA_G(CMD_DATA_G),
+    .CMD_DATA_H(CMD_DATA_H),
     .CMD_READY(CMD_READY),
     .CMD_START_FLAG()
 );
@@ -250,35 +320,163 @@ cmd_seq
 OBUFDS #(
   .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
   .SLEW("FAST")           // Specify the output slew rate
-) OBUFDS_inst_cmd_clk_out (
-  .O(CMD_CLK_OUT_P),     // Diff_p output (connect directly to top-level port)
-  .OB(CMD_CLK_OUT_N),   // Diff_n output (connect directly to top-level port)
-  .I(CMD_CLK_OUT)      // Buffer input 
+) OBUFDS_inst_cmd_clk_out_a (
+  .O(CMD_CLK_OUT_A_P),     // Diff_p output (connect directly to top-level port)
+  .OB(CMD_CLK_OUT_A_N),   // Diff_n output (connect directly to top-level port)
+  .I(CMD_CLK_OUT_A)      // Buffer input 
 );
 
 OBUFDS #(
   .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
   .SLEW("FAST")           // Specify the output slew rate
-) OBUFDS_inst_cmd_data (
-  .O(CMD_DATA_P),     // Diff_p output (connect directly to top-level port)
-  .OB(CMD_DATA_N),   // Diff_n output (connect directly to top-level port)
-  .I(CMD_DATA)      // Buffer input 
+) OBUFDS_inst_cmd_clk_out_b (
+  .O(CMD_CLK_OUT_B_P),     // Diff_p output (connect directly to top-level port)
+  .OB(CMD_CLK_OUT_B_N),   // Diff_n output (connect directly to top-level port)
+  .I(CMD_CLK_OUT_B)      // Buffer input 
 );
+
+OBUFDS #(
+  .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
+  .SLEW("FAST")           // Specify the output slew rate
+) OBUFDS_inst_cmd_clk_out_c (
+  .O(CMD_CLK_OUT_C_P),     // Diff_p output (connect directly to top-level port)
+  .OB(CMD_CLK_OUT_C_N),   // Diff_n output (connect directly to top-level port)
+  .I(CMD_CLK_OUT_C)      // Buffer input 
+);
+
+OBUFDS #(
+  .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
+  .SLEW("FAST")           // Specify the output slew rate
+) OBUFDS_inst_cmd_clk_out_d (
+  .O(CMD_CLK_OUT_D_P),     // Diff_p output (connect directly to top-level port)
+  .OB(CMD_CLK_OUT_D_N),   // Diff_n output (connect directly to top-level port)
+  .I(CMD_CLK_OUT_D)      // Buffer input 
+);
+
+OBUFDS #(
+  .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
+  .SLEW("FAST")           // Specify the output slew rate
+) OBUFDS_inst_cmd_clk_out_e (
+  .O(CMD_CLK_OUT_E_P),     // Diff_p output (connect directly to top-level port)
+  .OB(CMD_CLK_OUT_E_N),   // Diff_n output (connect directly to top-level port)
+  .I(CMD_CLK_OUT_E)      // Buffer input 
+);
+
+OBUFDS #(
+  .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
+  .SLEW("FAST")           // Specify the output slew rate
+) OBUFDS_inst_cmd_clk_out_f (
+  .O(CMD_CLK_OUT_F_P),     // Diff_p output (connect directly to top-level port)
+  .OB(CMD_CLK_OUT_F_N),   // Diff_n output (connect directly to top-level port)
+  .I(CMD_CLK_OUT_F)      // Buffer input 
+);
+
+OBUFDS #(
+  .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
+  .SLEW("FAST")           // Specify the output slew rate
+) OBUFDS_inst_cmd_clk_out_g (
+  .O(CMD_CLK_OUT_G_P),     // Diff_p output (connect directly to top-level port)
+  .OB(CMD_CLK_OUT_G_N),   // Diff_n output (connect directly to top-level port)
+  .I(CMD_CLK_OUT_G)      // Buffer input 
+);
+
+OBUFDS #(
+  .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
+  .SLEW("FAST")           // Specify the output slew rate
+) OBUFDS_inst_cmd_clk_out_h (
+  .O(CMD_CLK_OUT_H_P),     // Diff_p output (connect directly to top-level port)
+  .OB(CMD_CLK_OUT_H_N),   // Diff_n output (connect directly to top-level port)
+  .I(CMD_CLK_OUT_H)      // Buffer input 
+);
+
+
+OBUFDS #(
+  .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
+  .SLEW("FAST")           // Specify the output slew rate
+) OBUFDS_inst_cmd_data_a (
+  .O(CMD_DATA_A_P),     // Diff_p output (connect directly to top-level port)
+  .OB(CMD_DATA_A_N),   // Diff_n output (connect directly to top-level port)
+  .I(CMD_DATA_A)      // Buffer input 
+);
+
+OBUFDS #(
+  .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
+  .SLEW("FAST")           // Specify the output slew rate
+) OBUFDS_inst_cmd_data_b (
+  .O(CMD_DATA_B_P),     // Diff_p output (connect directly to top-level port)
+  .OB(CMD_DATA_B_N),   // Diff_n output (connect directly to top-level port)
+  .I(CMD_DATA_B)      // Buffer input 
+);
+
+OBUFDS #(
+  .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
+  .SLEW("FAST")           // Specify the output slew rate
+) OBUFDS_inst_cmd_data_c (
+  .O(CMD_DATA_C_P),     // Diff_p output (connect directly to top-level port)
+  .OB(CMD_DATA_C_N),   // Diff_n output (connect directly to top-level port)
+  .I(CMD_DATA_C)      // Buffer input 
+);
+
+OBUFDS #(
+  .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
+  .SLEW("FAST")           // Specify the output slew rate
+) OBUFDS_inst_cmd_data_d (
+  .O(CMD_DATA_D_P),     // Diff_p output (connect directly to top-level port)
+  .OB(CMD_DATA_D_N),   // Diff_n output (connect directly to top-level port)
+  .I(CMD_DATA_D)      // Buffer input 
+);
+
+OBUFDS #(
+  .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
+  .SLEW("FAST")           // Specify the output slew rate
+) OBUFDS_inst_cmd_data_e (
+  .O(CMD_DATA_E_P),     // Diff_p output (connect directly to top-level port)
+  .OB(CMD_DATA_E_N),   // Diff_n output (connect directly to top-level port)
+  .I(CMD_DATA_E)      // Buffer input 
+);
+
+OBUFDS #(
+  .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
+  .SLEW("FAST")           // Specify the output slew rate
+) OBUFDS_inst_cmd_data_f (
+  .O(CMD_DATA_F_P),     // Diff_p output (connect directly to top-level port)
+  .OB(CMD_DATA_F_N),   // Diff_n output (connect directly to top-level port)
+  .I(CMD_DATA_F)      // Buffer input 
+);
+
+OBUFDS #(
+  .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
+  .SLEW("FAST")           // Specify the output slew rate
+) OBUFDS_inst_cmd_data_g (
+  .O(CMD_DATA_G_P),     // Diff_p output (connect directly to top-level port)
+  .OB(CMD_DATA_G_N),   // Diff_n output (connect directly to top-level port)
+  .I(CMD_DATA_G)      // Buffer input 
+);
+
+OBUFDS #(
+  .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
+  .SLEW("FAST")           // Specify the output slew rate
+) OBUFDS_inst_cmd_data_h (
+  .O(CMD_DATA_H_P),     // Diff_p output (connect directly to top-level port)
+  .OB(CMD_DATA_H_N),   // Diff_n output (connect directly to top-level port)
+  .I(CMD_DATA_H)      // Buffer input 
+);
+
 
 // FE-I4 RXs
 parameter DSIZE = 10;
-wire [3:0] FIFO_READ, FIFO_EMPTY;
-wire [31:0] FIFO_DATA [3:0];
-wire [3:0] DOBOUT;
+wire [7:0] FIFO_READ, FIFO_EMPTY;
+wire [31:0] FIFO_DATA [7:0];
+wire [7:0] DOBOUT;
 
 genvar i;
 generate
-  for (i = 0; i < 4; i = i + 1) begin: rx_gen
+  for (i = 0; i < 4; i = i + 1) begin: rx_gen_i
     IBUFDS #(
         .DIFF_TERM("TRUE"),       // Differential Termination
         .IBUF_LOW_PWR("FALSE"),     // Low power="TRUE", Highest performance="FALSE" 
         .IOSTANDARD("LVDS_25")     // Specify the input I/O standard
-     ) IBUFDS_inst (
+     ) IBUFDS_inst_i (
         .O(DOBOUT[i]),  // Buffer output
         .I(DOBOUT_P[i]),  // Diff_p buffer input (connect directly to top-level port)
         .IB(DOBOUT_N[i]) // Diff_n buffer input (connect directly to top-level port)
@@ -291,7 +489,7 @@ generate
         .DSIZE(DSIZE),
         .DATA_IDENTIFIER(i+1),
         .ABUSWIDTH(ABUSWIDTH)
-    ) i_fei4_rx (
+    ) i_fei4_rx_i (
         .RX_CLK(clk160mhz),
         .RX_CLK2X(clk320mhz),
         .DATA_CLK(clk16mhz),
@@ -305,6 +503,53 @@ generate
         .FIFO_READ(FIFO_READ[i]),
         .FIFO_EMPTY(FIFO_EMPTY[i]),
         .FIFO_DATA(FIFO_DATA[i]),
+        
+        .RX_FIFO_FULL(),
+         
+        .BUS_CLK(BUS_CLK),
+        .BUS_RST(BUS_RST),
+        .BUS_ADD(BUS_ADD),
+        .BUS_DATA(BUS_DATA[7:0]),
+        .BUS_RD(BUS_RD),
+        .BUS_WR(BUS_WR)
+    ); 
+  end
+endgenerate
+
+genvar t;
+generate
+  for (t = 4; t < 8; t = t + 1) begin: rx_gen_t
+    IBUFDS #(
+        .DIFF_TERM("TRUE"),       // Differential Termination
+        .IBUF_LOW_PWR("FALSE"),     // Low power="TRUE", Highest performance="FALSE" 
+        .IOSTANDARD("LVDS_25")     // Specify the input I/O standard
+     ) IBUFDS_inst_t (
+        .O(DOBOUT[t]),  // Buffer output
+        .I(DOBOUT_P[t]),  // Diff_p buffer input (connect directly to top-level port)
+        .IB(DOBOUT_N[t]) // Diff_n buffer input (connect directly to top-level port)
+     );
+     
+    fei4_rx 
+    #(
+        .BASEADDR(RX5_BASEADDR-32'h0100*(t-4)),
+        .HIGHADDR(RX5_HIGHADDR-32'h0100*(t-4)),
+        .DSIZE(DSIZE),
+        .DATA_IDENTIFIER(t+1),
+        .ABUSWIDTH(ABUSWIDTH)
+    ) i_fei4_rx_t (
+        .RX_CLK(clk160mhz),
+        .RX_CLK2X(clk320mhz),
+        .DATA_CLK(clk16mhz),
+        
+        .RX_DATA(DOBOUT[t]),
+        
+        .RX_READY(),
+        .RX_8B10B_DECODER_ERR(),
+        .RX_FIFO_OVERFLOW_ERR(),
+         
+        .FIFO_READ(FIFO_READ[t]),
+        .FIFO_EMPTY(FIFO_EMPTY[t]),
+        .FIFO_DATA(FIFO_DATA[t]),
         
         .RX_FIFO_FULL(),
          
@@ -398,18 +643,18 @@ tlu_controller #(
 // Arbiter
 wire ARB_READY_OUT, ARB_WRITE_OUT;
 wire [31:0] ARB_DATA_OUT;
-wire [4:0] READ_GRANT;
+wire [8:0] READ_GRANT;
 
 rrp_arbiter
 #( 
-    .WIDTH(5)
+    .WIDTH(9)
 ) i_rrp_arbiter (
     .RST(BUS_RST),
     .CLK(BUS_CLK),
 
     .WRITE_REQ({~FIFO_EMPTY, ~TLU_FIFO_EMPTY}),
-    .HOLD_REQ({4'b0, TLU_FIFO_PEEMPT_REQ}),
-    .DATA_IN({FIFO_DATA[3],FIFO_DATA[2],FIFO_DATA[1], FIFO_DATA[0], TLU_FIFO_DATA}),
+    .HOLD_REQ({8'b0, TLU_FIFO_PEEMPT_REQ}),
+    .DATA_IN({FIFO_DATA[7], FIFO_DATA[6], FIFO_DATA[5], FIFO_DATA[4], FIFO_DATA[3], FIFO_DATA[2], FIFO_DATA[1], FIFO_DATA[0], TLU_FIFO_DATA}),
     .READ_GRANT(READ_GRANT),
 
     .READY_OUT(ARB_READY_OUT),
@@ -418,7 +663,7 @@ rrp_arbiter
 );
 
 assign TLU_FIFO_READ = READ_GRANT[0];
-assign FIFO_READ = READ_GRANT[4:1];
+assign FIFO_READ = READ_GRANT[8:1];
 
 // BRAM
 bram_fifo 
