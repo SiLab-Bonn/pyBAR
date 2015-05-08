@@ -12,6 +12,8 @@ import abc
 import ast
 import inspect
 from basil.dut import Dut
+from basil.HL.FEI4AdapterCard import FEI4AdapterCard
+from basil.HL.FEI4QuadModuleAdapterCard import FEI4QuadModuleAdapterCard
 
 from pybar.run_manager import RunBase, RunAborted, RunStopped
 from pybar.fei4.register import FEI4Register
@@ -76,20 +78,44 @@ class Fei4RunBase(RunBase):
 
     def init_dut(self):
         if self.dut.name == 'mio':
-            self.dut['POWER'].set_voltage('VDDA1', 1.500)
-            self.dut['POWER'].set_voltage('VDDA2', 1.500)
-            self.dut['POWER'].set_voltage('VDDD1', 1.200)
-            self.dut['POWER'].set_voltage('VDDD2', 1.200)
-            self.dut['POWER_SCC']['EN_VD1'] = 1
-            self.dut['POWER_SCC']['EN_VD2'] = 1
-            self.dut['POWER_SCC']['EN_VA1'] = 1
-            self.dut['POWER_SCC']['EN_VA2'] = 1
-            self.dut['POWER_SCC'].write()
-            # enabling readout
-            self.dut['rx']['CH1'] = 1
-            self.dut['rx']['CH2'] = 1
-            self.dut['rx']['CH3'] = 1
-            self.dut['rx']['CH4'] = 1
+            if isinstance(self.dut['ADAPTER_CARD'], FEI4AdapterCard):
+                self.dut['ADAPTER_CARD'].set_voltage('VDDA1', 1.5)
+                self.dut['ADAPTER_CARD'].set_voltage('VDDA2', 1.5)
+                self.dut['ADAPTER_CARD'].set_voltage('VDDD1', 1.2)
+                self.dut['ADAPTER_CARD'].set_voltage('VDDD2', 1.2)
+                self.dut['POWER_SCC']['EN_VD1'] = 1
+                self.dut['POWER_SCC']['EN_VD2'] = 1
+                self.dut['POWER_SCC']['EN_VA1'] = 1
+                self.dut['POWER_SCC']['EN_VA2'] = 1
+                self.dut['POWER_SCC'].write()
+                # enabling readout
+                self.dut['rx']['CH1'] = 0
+                self.dut['rx']['CH2'] = 0
+                self.dut['rx']['CH3'] = 0
+                self.dut['rx']['CH4'] = 1
+            elif isinstance(self.dut['ADAPTER_CARD'], FEI4QuadModuleAdapterCard):
+                # resetting over current status
+                self.dut['POWER_QUAD']['EN_CH1'] = 0
+                self.dut['POWER_QUAD']['EN_CH2'] = 0
+                self.dut['POWER_QUAD']['EN_CH3'] = 0
+                self.dut['POWER_QUAD']['EN_CH4'] = 0
+                self.dut['POWER_QUAD'].write()
+                self.dut['ADAPTER_CARD'].set_voltage('CH1', 2.1)
+                self.dut['ADAPTER_CARD'].set_voltage('CH2', 2.1)
+                self.dut['ADAPTER_CARD'].set_voltage('CH3', 2.1)
+                self.dut['ADAPTER_CARD'].set_voltage('CH4', 2.1)
+                self.dut['POWER_QUAD']['EN_CH1'] = 1
+                self.dut['POWER_QUAD']['EN_CH2'] = 1
+                self.dut['POWER_QUAD']['EN_CH3'] = 1
+                self.dut['POWER_QUAD']['EN_CH4'] = 1
+                self.dut['POWER_QUAD'].write()
+                # enabling readout
+                self.dut['rx']['CH1'] = 1
+                self.dut['rx']['CH2'] = 1
+                self.dut['rx']['CH3'] = 1
+                self.dut['rx']['CH4'] = 1
+            else:
+                raise RuntimeError('Unknown adapter card')
             self.dut['rx']['TLU'] = 1
             self.dut['rx']['TDC'] = 1
             self.dut['rx'].write()

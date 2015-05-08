@@ -152,10 +152,10 @@ class FifoReadout(object):
         error_count = self.get_rx_8b10b_error_count()
         logging.info('Data queue size: %d', len(self._data_deque))
         logging.info('SRAM FIFO size: %d', self.dut['sram']['FIFO_SIZE'])
-        logging.info('Channel:                     %s', " | ".join([('CH%d' % channel).rjust(3) for channel in range(1, len(sync_status) + 1, 1)]))
-        logging.info('RX sync:                     %s', " | ".join(["YES".rjust(3) if status is True else "NO".rjust(3) for status in sync_status]))
-        logging.info('RX FIFO discard counter:     %s', " | ".join([repr(count).rjust(3) for count in discard_count]))
-        logging.info('RX FIFO 8b10b error counter: %s', " | ".join([repr(count).rjust(3) for count in error_count]))
+        logging.info('Channel:                     %s', " | ".join([channel.name for channel in self.dut['fei4_rx']]))
+        logging.info('RX sync:                     %s', " | ".join(["YES".rjust(4) if status is True else "NO".rjust(4) for status in sync_status]))
+        logging.info('RX FIFO discard counter:     %s', " | ".join([repr(count).rjust(4) for count in discard_count]))
+        logging.info('RX FIFO 8b10b error counter: %s', " | ".join([repr(count).rjust(4) for count in error_count]))
         if not any(self.get_rx_sync_status()) or any(discard_count) or any(error_count):
             logging.warning('RX errors detected')
 
@@ -274,37 +274,25 @@ class FifoReadout(object):
     def reset_rx(self, channels=None):
         logging.info('Resetting RX')
         if channels:
-            filter(lambda channel: self.dut[channel]['RX_RESET'], channels)
+            filter(lambda channel: self.dut[channel].RX_RESET, channels)
         else:
-            if self.dut.name == 'mio':
-                filter(lambda channel: self.dut[channel]['RX_RESET'], ['rx_1', 'rx_2', 'rx_3', 'rx_4'])
-            elif self.dut.name == 'mio_gpac':
-                filter(lambda channel: self.dut[channel]['RX_RESET'], ['rx_fe'])
+            filter(lambda channel: channel.RX_RESET, self.dut['fei4_rx'])
         sleep(0.1)  # sleep here for a while
 
     def get_rx_sync_status(self, channels=None):
         if channels:
-            return map(lambda channel: True if self.dut[channel]['READY'] else False, channels)
+            return map(lambda channel: True if self.dut[channel].READY else False, channels)
         else:
-            if self.dut.name == 'mio':
-                return map(lambda channel: True if self.dut[channel]['READY'] else False, ['rx_1', 'rx_2', 'rx_3', 'rx_4'])
-            elif self.dut.name == 'mio_gpac':
-                return map(lambda channel: True if self.dut[channel]['READY'] else False, ['rx_fe'])
+            return map(lambda channel: True if channel.READY else False, self.dut['fei4_rx'])
 
     def get_rx_8b10b_error_count(self, channels=None):
         if channels:
-            return map(lambda channel: self.dut[channel]['DECODER_ERROR_COUNTER'], channels)
+            return map(lambda channel: self.dut[channel].DECODER_ERROR_COUNTER, channels)
         else:
-            if self.dut.name == 'mio':
-                return map(lambda channel: self.dut[channel]['DECODER_ERROR_COUNTER'], ['rx_1', 'rx_2', 'rx_3', 'rx_4'])
-            elif self.dut.name == 'mio_gpac':
-                return map(lambda channel: self.dut[channel]['DECODER_ERROR_COUNTER'], ['rx_fe'])
+            return map(lambda channel: channel.DECODER_ERROR_COUNTER, self.dut['fei4_rx'])
 
     def get_rx_fifo_discard_count(self, channels=None):
         if channels:
-            return map(lambda channel: self.dut[channel]['LOST_DATA_COUNTER'], channels)
+            return map(lambda channel: self.dut[channel].LOST_DATA_COUNTER, channels)
         else:
-            if self.dut.name == 'mio':
-                return map(lambda channel: self.dut[channel]['LOST_DATA_COUNTER'], ['rx_1', 'rx_2', 'rx_3', 'rx_4'])
-            elif self.dut.name == 'mio_gpac':
-                return map(lambda channel: self.dut[channel]['LOST_DATA_COUNTER'], ['rx_fe'])
+            return map(lambda channel: channel.LOST_DATA_COUNTER, self.dut['fei4_rx'])
