@@ -13,6 +13,14 @@ TLU:
     TRIGGER_INVERT      : 0
     TRIGGER_VETO_SELECT : 255 # VETO_IN, FIFO_FULL
 
+TDC:
+    ENABLE               : 0
+    EN_WRITE_TIMESTAMP   : 0
+    EN_TRIGGER_DIST      : 0
+    EN_NO_WRITE_TRIG_ERR : 0
+    EN_INVERT_TDC        : 0
+    EN_INVERT_TRIGGER    : 0
+
 CH4:
     INVERT_RX : 0  # 0: IBL modules (default), 1: DBM modules
 
