@@ -152,7 +152,7 @@ class FifoReadout(object):
         error_count = self.get_rx_8b10b_error_count()
         logging.info('Data queue size: %d', len(self._data_deque))
         logging.info('SRAM FIFO size: %d', self.dut['SRAM']['FIFO_SIZE'])
-        logging.info('Channel:                     %s', " | ".join([channel.name for channel in self.dut.get_modules('fei4_rx')]))
+        logging.info('Channel:                     %s', " | ".join([channel.name.rjust(3) for channel in self.dut.get_modules('fei4_rx')]))
         logging.info('RX sync:                     %s', " | ".join(["YES".rjust(3) if status is True else "NO".rjust(3) for status in sync_status]))
         logging.info('RX FIFO discard counter:     %s', " | ".join([repr(count).rjust(3) for count in discard_count]))
         logging.info('RX FIFO 8b10b error counter: %s', " | ".join([repr(count).rjust(3) for count in error_count]))
