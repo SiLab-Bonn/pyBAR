@@ -1410,7 +1410,7 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
         self.register_utils.send_commands(commands, concatenate=True)
         logging.info('%d injection(s): mask step %d %s', repeat_command, mask_step, ('[%d - %d]' % (enable_mask_steps[0], enable_mask_steps[-1])) if len(enable_mask_steps) > 1 else ('[%d]' % enable_mask_steps[0]))
 
-        if same_mask_for_all_dc:  # fast loop
+        if same_mask_for_all_dc:  # fast dc loop
             # set repeat, should be 1 by default when arriving here
             self.dut['cmd']['CMD_REPEAT'] = repeat_command
 
@@ -1443,7 +1443,8 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
             if eol_function:
                 eol_function()
             self.dut['cmd']['START_SEQUENCE_LENGTH'] = 0
-        else:  # slow loop
+
+        else:  # slow dc loop
             dc = enable_double_columns[0]
             ec = enable_columns(dc)
             dcs = write_double_columns(dc)
