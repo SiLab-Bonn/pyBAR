@@ -4,10 +4,10 @@ USB:
     board_id       : 
     avoid_download : False
 
-cmd:
+CMD:
     OUTPUT_MODE : 0  # 0: positive edge (default), 2: Manchester code
 
-tlu:
+TLU:
     TRIGGER_MODE        : 0
     EN_INVERT_TRIGGER   : 0
     EN_WRITE_TIMESTAMP  : 0

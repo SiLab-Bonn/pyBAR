@@ -12,33 +12,33 @@ hw_drivers:
     interface : USB
     base_addr : 0x0
 
-  - name      : cmd
+  - name      : CMD
     type      : cmd_seq
     interface : USB
     base_addr : 0x10000
 
-  - name      : sram
+  - name      : SRAM
     type      : sram_fifo
     interface : USB
     base_addr : 0x18100
     base_data_addr : 0x0001000000000000
 
-  - name      : tlu
+  - name      : TLU
     type      : tlu
     interface : USB
     base_addr : 0x18200
 
-  - name      : rx_fe
+  - name      : FE
     type      : fei4_rx
     interface : USB
     base_addr : 0x18300
 
-  - name      : tdc_rx2
+  - name      : TDC
     type      : tdc_s3
     interface : USB
     base_addr : 0x18700
 
-  - name      : gpio_rx
+  - name      : GPIO_ENABLE_CHANNEL
     type      : gpio
     interface : USB
     base_addr : 0x18800
@@ -89,9 +89,9 @@ hw_drivers:
 user_drivers:
 
 registers:
-  - name        : rx
+  - name        : ENABLE_CHANNEL
     type        : StdRegister
-    hw_driver   : gpio_rx
+    hw_driver   : GPIO_ENABLE_CHANNEL
     size        : 8
     fields:
       - name    : CCPD_TDC

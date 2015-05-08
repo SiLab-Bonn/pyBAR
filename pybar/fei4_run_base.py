@@ -89,10 +89,11 @@ class Fei4RunBase(RunBase):
                 self.dut['POWER_SCC']['EN_VA2'] = 1
                 self.dut['POWER_SCC'].write()
                 # enabling readout
-                self.dut['rx']['CH1'] = 0
-                self.dut['rx']['CH2'] = 0
-                self.dut['rx']['CH3'] = 0
-                self.dut['rx']['CH4'] = 1
+                self.dut['ENABLE_CHANNEL']['CH1'] = 0
+                self.dut['ENABLE_CHANNEL']['CH2'] = 0
+                self.dut['ENABLE_CHANNEL']['CH3'] = 0
+                self.dut['ENABLE_CHANNEL']['CH4'] = 1
+                self.dut['ENABLE_CHANNEL'].write()
             elif isinstance(self.dut['ADAPTER_CARD'], FEI4QuadModuleAdapterCard):
                 # resetting over current status
                 self.dut['POWER_QUAD']['EN_CH1'] = 0
@@ -104,21 +105,19 @@ class Fei4RunBase(RunBase):
                 self.dut['ADAPTER_CARD'].set_voltage('CH2', 2.1)
                 self.dut['ADAPTER_CARD'].set_voltage('CH3', 2.1)
                 self.dut['ADAPTER_CARD'].set_voltage('CH4', 2.1)
-                self.dut['POWER_QUAD']['EN_CH1'] = 1
-                self.dut['POWER_QUAD']['EN_CH2'] = 1
-                self.dut['POWER_QUAD']['EN_CH3'] = 1
-                self.dut['POWER_QUAD']['EN_CH4'] = 1
                 self.dut['POWER_QUAD'].write()
-                # enabling readout
-                self.dut['rx']['CH1'] = 1
-                self.dut['rx']['CH2'] = 1
-                self.dut['rx']['CH3'] = 1
-                self.dut['rx']['CH4'] = 1
+                channel_names = [channel.name for channel in self.dut.get_modules('fei4_rx')]
+                for channel in channel_names:
+                    # enabling readout
+                    self.dut['ENABLE_CHANNEL'][channel] = 1
+                    self.dut['POWER_QUAD']['EN_' + channel] = 1
+                self.dut['ENABLE_CHANNEL'].write()
+                self.dut['POWER_QUAD'].write()
             else:
                 raise RuntimeError('Unknown adapter card')
-            self.dut['rx']['TLU'] = 1
-            self.dut['rx']['TDC'] = 1
-            self.dut['rx'].write()
+            self.dut['ENABLE_CHANNEL']['TLU'] = 1
+            self.dut['ENABLE_CHANNEL']['TDC'] = 1
+            self.dut['ENABLE_CHANNEL'].write()
         elif self.dut.name == 'mio_gpac':
             # PWR
             self.dut['V_in'].set_current_limit(0.1, unit='A')  # one for all, max. 1A
@@ -147,11 +146,11 @@ class Fei4RunBase(RunBase):
                 self.power_off()
                 raise Exception('VGate overcurrent detected')
             # enabling readout
-            self.dut['rx']['FE'] = 1
-            self.dut['rx']['TLU'] = 1
-            self.dut['rx']['TDC'] = 1
-            self.dut['rx']['CCPD_TDC'] = 1
-            self.dut['rx'].write()
+            self.dut['ENABLE_CHANNEL']['FE'] = 1
+            self.dut['ENABLE_CHANNEL']['TLU'] = 1
+            self.dut['ENABLE_CHANNEL']['TDC'] = 1
+            self.dut['ENABLE_CHANNEL']['CCPD_TDC'] = 1
+            self.dut['ENABLE_CHANNEL'].write()
         else:
             logging.warning('Omit initialization of DUT %s', self.dut.name)
 

@@ -114,9 +114,9 @@ class StopModeExtTriggerScan(Fei4RunBase):
             self.register.get_commands("GlobalPulse", Width=0)[0],
             self.register.get_commands("zeros", length=100)[0]))
 
-        self.dut['cmd']['CMD_REPEAT'] = self.bcid_window
-        self.dut['cmd']['START_SEQUENCE_LENGTH'] = len(start_sequence)
-        self.dut['cmd']['STOP_SEQUENCE_LENGTH'] = len(stop_sequence) + 1
+        self.dut['CMD']['CMD_REPEAT'] = self.bcid_window
+        self.dut['CMD']['START_SEQUENCE_LENGTH'] = len(start_sequence)
+        self.dut['CMD']['STOP_SEQUENCE_LENGTH'] = len(stop_sequence) + 1
 
         # preload the command to be send for each trigger
         command = self.register_utils.concatenate_commands((start_sequence, one_latency_read, stop_sequence))
@@ -132,7 +132,7 @@ class StopModeExtTriggerScan(Fei4RunBase):
                         logging.info('Taking data...')
                         self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=self.max_triggers, poll=10, term_width=80).start()
                 else:
-                    triggers = self.dut['tlu']['TRIGGER_COUNTER']
+                    triggers = self.dut['TLU']['TRIGGER_COUNTER']
                     try:
                         self.progressbar.update(triggers)
                     except ValueError:
@@ -142,7 +142,7 @@ class StopModeExtTriggerScan(Fei4RunBase):
                         self.progressbar.finish()
                         self.stop(msg='Trigger limit was reached: %i' % self.max_triggers)
 
-        logging.info('Total amount of triggers collected: %d', self.dut['tlu']['TRIGGER_COUNTER'])
+        logging.info('Total amount of triggers collected: %d', self.dut['TLU']['TRIGGER_COUNTER'])
 
     def analyze(self):
         with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
@@ -164,11 +164,11 @@ class StopModeExtTriggerScan(Fei4RunBase):
         if kwargs:
             self.set_scan_parameters(**kwargs)
         self.fifo_readout.start(reset_sram_fifo=False, clear_buffer=True, callback=self.handle_data, errback=self.handle_err, no_data_timeout=self.no_data_timeout)
-        self.dut['tdc_rx2']['ENABLE'] = self.enable_tdc
-        self.dut['tlu']['TRIGGER_COUNTER'] = 0
-        self.dut['tlu']['TRIGGER_MODE'] = self.trigger_mode
-        self.dut['tlu']['EN_WRITE_TIMESTAMP'] = True
-        self.dut['cmd']['EN_EXT_TRIGGER'] = True
+        self.dut['TDC']['ENABLE'] = self.enable_tdc
+        self.dut['TLU']['TRIGGER_COUNTER'] = 0
+        self.dut['TLU']['TRIGGER_MODE'] = self.trigger_mode
+        self.dut['TLU']['EN_WRITE_TIMESTAMP'] = True
+        self.dut['CMD']['EN_EXT_TRIGGER'] = True
 
         def timeout():
             try:
@@ -183,9 +183,9 @@ class StopModeExtTriggerScan(Fei4RunBase):
 
     def stop_readout(self):
         self.scan_timeout_timer.cancel()
-        self.dut['tdc_rx2']['ENABLE'] = False
-        self.dut['cmd']['EN_EXT_TRIGGER'] = False
-        self.dut['tlu']['TRIGGER_MODE'] = 0
+        self.dut['TDC']['ENABLE'] = False
+        self.dut['CMD']['EN_EXT_TRIGGER'] = False
+        self.dut['TLU']['TRIGGER_MODE'] = 0
         self.fifo_readout.stop()
 
 

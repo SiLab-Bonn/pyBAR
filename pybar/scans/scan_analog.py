@@ -48,7 +48,7 @@ class AnalogScan(Fei4RunBase):
 
             if self.enable_tdc:
                 # activate TDC arming
-                self.dut['tdc_rx2']['EN_ARMING'] = True
+                self.dut['TDC']['EN_ARMING'] = True
                 scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections, use_delay=True, mask_steps=self.mask_steps, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=True, bol_function=self.activate_tdc, eol_function=self.deactivate_tdc, digital_injection=False, enable_shift_masks=self.enable_shift_masks, disable_shift_masks=self.disable_shift_masks, restore_shift_masks=False, mask=invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if self.use_enable_mask else None, double_column_correction=self.pulser_dac_correction)
             else:
                 scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections, use_delay=True, mask_steps=self.mask_steps, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=True, digital_injection=False, enable_shift_masks=self.enable_shift_masks, disable_shift_masks=self.disable_shift_masks, restore_shift_masks=False, mask=invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if self.use_enable_mask else None, double_column_correction=self.pulser_dac_correction)
@@ -68,10 +68,10 @@ class AnalogScan(Fei4RunBase):
             analyze_raw_data.interpreter.print_summary()
 
     def activate_tdc(self):
-        self.dut['tdc_rx2']['ENABLE'] = True
+        self.dut['TDC']['ENABLE'] = True
 
     def deactivate_tdc(self):
-        self.dut['tdc_rx2']['ENABLE'] = False
+        self.dut['TDC']['ENABLE'] = False
 
 if __name__ == "__main__":
     RunManager('../configuration.yaml').run_run(AnalogScan)

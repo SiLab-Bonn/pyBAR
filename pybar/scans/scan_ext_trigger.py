@@ -79,7 +79,7 @@ class ExtTriggerScan(Fei4RunBase):
                         logging.info('Taking data...')
                         self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=self.max_triggers, poll=10, term_width=80).start()
                 else:
-                    triggers = self.dut['tlu']['TRIGGER_COUNTER']
+                    triggers = self.dut['TLU']['TRIGGER_COUNTER']
                     try:
                         self.progressbar.update(triggers)
                     except ValueError:
@@ -92,7 +92,7 @@ class ExtTriggerScan(Fei4RunBase):
 #                 if (current_trigger_number % show_trigger_message_at < last_trigger_number % show_trigger_message_at):
 #                     logging.info('Collected triggers: %d', current_trigger_number)
 
-        logging.info('Total amount of triggers collected: %d', self.dut['tlu']['TRIGGER_COUNTER'])
+        logging.info('Total amount of triggers collected: %d', self.dut['TLU']['TRIGGER_COUNTER'])
 
     def analyze(self):
         with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
@@ -112,17 +112,17 @@ class ExtTriggerScan(Fei4RunBase):
         if kwargs:
             self.set_scan_parameters(**kwargs)
         self.fifo_readout.start(reset_sram_fifo=False, clear_buffer=True, callback=self.handle_data, errback=self.handle_err, no_data_timeout=self.no_data_timeout)
-        self.dut['tdc_rx2']['ENABLE'] = self.enable_tdc
-        self.dut['tlu']['TRIGGER_COUNTER'] = 0
-        self.dut['tlu']['TRIGGER_MODE'] = self.trigger_mode
+        self.dut['TDC']['ENABLE'] = self.enable_tdc
+        self.dut['TLU']['TRIGGER_COUNTER'] = 0
+        self.dut['TLU']['TRIGGER_MODE'] = self.trigger_mode
         if self.enable_tdc:  # trigger signal is routed through TDC module, thus invert the signal in the TDC module when it is used
-            self.dut['tlu']['EN_INVERT_TRIGGER'] = 0 if self.trigger_pos_edge else 1
-            self.dut['tdc_rx2']['EN_NO_WRITE_TRIG_ERR'] = 1 if self.trigger_tdc else 0
-            self.dut['tdc_rx2']['EN_TRIGGER_DIST'] = 1 if self.trigger_tdc else 0  # to be able to trigger on tdc the delay measurement trigger|tdc has to be active
+            self.dut['TLU']['EN_INVERT_TRIGGER'] = 0 if self.trigger_pos_edge else 1
+            self.dut['TDC']['EN_NO_WRITE_TRIG_ERR'] = 1 if self.trigger_tdc else 0
+            self.dut['TDC']['EN_TRIGGER_DIST'] = 1 if self.trigger_tdc else 0  # to be able to trigger on tdc the delay measurement trigger|tdc has to be active
         else:
-            self.dut['tdc_rx2']['EN_INVERT_TRIGGER'] = 0 if self.trigger_pos_edge else 1  # invert trigger in tlu module
-        self.dut['tlu']['EN_WRITE_TIMESTAMP'] = 1 if self.trigger_time_stamp else 0
-        self.dut['cmd']['EN_EXT_TRIGGER'] = True
+            self.dut['TDC']['EN_INVERT_TRIGGER'] = 0 if self.trigger_pos_edge else 1  # invert trigger in tlu module
+        self.dut['TLU']['EN_WRITE_TIMESTAMP'] = 1 if self.trigger_time_stamp else 0
+        self.dut['CMD']['EN_EXT_TRIGGER'] = True
 
         def timeout():
             try:
@@ -137,9 +137,9 @@ class ExtTriggerScan(Fei4RunBase):
 
     def stop_readout(self):
         self.scan_timeout_timer.cancel()
-        self.dut['tdc_rx2']['ENABLE'] = False
-        self.dut['cmd']['EN_EXT_TRIGGER'] = False
-        self.dut['tlu']['TRIGGER_MODE'] = 0
+        self.dut['TDC']['ENABLE'] = False
+        self.dut['CMD']['EN_EXT_TRIGGER'] = False
+        self.dut['TLU']['TRIGGER_MODE'] = 0
         self.fifo_readout.stop()
 
 

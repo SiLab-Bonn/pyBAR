@@ -4,23 +4,23 @@ USB:
     board_id       : 
     avoid_download : False
 
-cmd:
+CMD:
     OUTPUT_MODE : 0  # 0: positive edge (default), 2: Manchester code
 
-tlu:
+TLU:
     TRIGGER_MODE        : 0
     EN_INVERT_TRIGGER   : 0
     EN_WRITE_TIMESTAMP  : 0
     TRIGGER_LOW_TIMEOUT : 255
 
-rx_4:
+CH4:
     INVERT_RX : 0  # 0: IBL modules (default), 1: DBM modules
 
-rx_3:
+CH3:
     INVERT_RX : 0
     
-rx_2:
+CH2:
     INVERT_RX : 0
 
-rx_1:
+CH1:
     INVERT_RX : 0

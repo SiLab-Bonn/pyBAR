@@ -41,7 +41,7 @@ class EudaqExtTriggerScan(ExtTriggerScan):
     def scan(self):
         self.data_error_occurred = False
         self.last_trigger_number = None
-        clock_cycles = self.dut['tlu']['TRIGGER_CLOCK_CYCLES']
+        clock_cycles = self.dut['TLU']['TRIGGER_CLOCK_CYCLES']
         if clock_cycles:
             self.max_trigger_counter = 2 ** (clock_cycles - 1)
         else:
@@ -60,7 +60,7 @@ class EudaqExtTriggerScan(ExtTriggerScan):
                         got_data = True
                         logging.info('Taking data...')
                 else:
-                    triggers = self.dut['tlu']['TRIGGER_COUNTER']
+                    triggers = self.dut['TLU']['TRIGGER_COUNTER']
                     data_words = self.fifo_readout.data_words_per_second()
                     print 'Runtime: %s\nTriggers: %d\nData words/s: %s\n' % (strftime('%H:%M:%S', gmtime(time() - start)), triggers, str(data_words))
                     if self.max_triggers is not None and triggers >= self.max_triggers:
@@ -68,7 +68,7 @@ class EudaqExtTriggerScan(ExtTriggerScan):
 
         pp.SendEvent(self.remaining_data)
 
-        logging.info('Total amount of triggers collected: %d', self.dut['tlu']['TRIGGER_COUNTER'])
+        logging.info('Total amount of triggers collected: %d', self.dut['TLU']['TRIGGER_COUNTER'])
 
 #     def analyze(self):
 #         pass

@@ -97,7 +97,7 @@ class FifoReadout(object):
         if reset_sram_fifo:
             self.reset_sram_fifo()
         else:
-            fifo_size = self.dut['sram']['FIFO_SIZE']
+            fifo_size = self.dut['SRAM']['FIFO_SIZE']
             if fifo_size != 0:
                 logging.warning('SRAM FIFO not empty when starting FIFO readout: size = %i', fifo_size)
         self._words_per_read.clear()
@@ -151,11 +151,11 @@ class FifoReadout(object):
         discard_count = self.get_rx_fifo_discard_count()
         error_count = self.get_rx_8b10b_error_count()
         logging.info('Data queue size: %d', len(self._data_deque))
-        logging.info('SRAM FIFO size: %d', self.dut['sram']['FIFO_SIZE'])
-        logging.info('Channel:                     %s', " | ".join([channel.name for channel in self.dut['fei4_rx']]))
-        logging.info('RX sync:                     %s', " | ".join(["YES".rjust(4) if status is True else "NO".rjust(4) for status in sync_status]))
-        logging.info('RX FIFO discard counter:     %s', " | ".join([repr(count).rjust(4) for count in discard_count]))
-        logging.info('RX FIFO 8b10b error counter: %s', " | ".join([repr(count).rjust(4) for count in error_count]))
+        logging.info('SRAM FIFO size: %d', self.dut['SRAM']['FIFO_SIZE'])
+        logging.info('Channel:                     %s', " | ".join([channel.name for channel in self.dut.get_modules('fei4_rx')]))
+        logging.info('RX sync:                     %s', " | ".join(["YES".rjust(3) if status is True else "NO".rjust(3) for status in sync_status]))
+        logging.info('RX FIFO discard counter:     %s', " | ".join([repr(count).rjust(3) for count in discard_count]))
+        logging.info('RX FIFO 8b10b error counter: %s', " | ".join([repr(count).rjust(3) for count in error_count]))
         if not any(self.get_rx_sync_status()) or any(discard_count) or any(error_count):
             logging.warning('RX errors detected')
 
@@ -250,7 +250,7 @@ class FifoReadout(object):
         data : list
             A list of SRAM data words.
         '''
-        return self.dut['sram'].get_data()
+        return self.dut['SRAM'].get_data()
 
     def update_timestamp(self):
         curr_time = get_float_time()
@@ -262,12 +262,12 @@ class FifoReadout(object):
         raise NotImplementedError()
 
     def reset_sram_fifo(self):
-        fifo_size = self.dut['sram']['FIFO_SIZE']
+        fifo_size = self.dut['SRAM']['FIFO_SIZE']
         logging.info('Resetting SRAM FIFO: size = %i', fifo_size)
         self.update_timestamp()
-        self.dut['sram']['RESET']
+        self.dut['SRAM']['RESET']
         sleep(0.2)  # sleep here for a while
-        fifo_size = self.dut['sram']['FIFO_SIZE']
+        fifo_size = self.dut['SRAM']['FIFO_SIZE']
         if fifo_size != 0:
             logging.warning('SRAM FIFO not empty after reset: size = %i', fifo_size)
 
@@ -276,23 +276,23 @@ class FifoReadout(object):
         if channels:
             filter(lambda channel: self.dut[channel].RX_RESET, channels)
         else:
-            filter(lambda channel: channel.RX_RESET, self.dut['fei4_rx'])
+            filter(lambda channel: channel.RX_RESET, self.dut.get_modules('fei4_rx'))
         sleep(0.1)  # sleep here for a while
 
     def get_rx_sync_status(self, channels=None):
         if channels:
             return map(lambda channel: True if self.dut[channel].READY else False, channels)
         else:
-            return map(lambda channel: True if channel.READY else False, self.dut['fei4_rx'])
+            return map(lambda channel: True if channel.READY else False, self.dut.get_modules('fei4_rx'))
 
     def get_rx_8b10b_error_count(self, channels=None):
         if channels:
             return map(lambda channel: self.dut[channel].DECODER_ERROR_COUNTER, channels)
         else:
-            return map(lambda channel: channel.DECODER_ERROR_COUNTER, self.dut['fei4_rx'])
+            return map(lambda channel: channel.DECODER_ERROR_COUNTER, self.dut.get_modules('fei4_rx'))
 
     def get_rx_fifo_discard_count(self, channels=None):
         if channels:
             return map(lambda channel: self.dut[channel].LOST_DATA_COUNTER, channels)
         else:
-            return map(lambda channel: channel.LOST_DATA_COUNTER, self.dut['fei4_rx'])
+            return map(lambda channel: channel.LOST_DATA_COUNTER, self.dut.get_modules('fei4_rx'))

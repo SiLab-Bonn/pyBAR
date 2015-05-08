@@ -19,18 +19,23 @@ hw_drivers:
     interface : USB
     base_addr : 0x0
 
+  - name      : CH4
+    type      : fei4_rx
+    interface : USB
+    base_addr : 0x18300
+
 # Uncomment for FEI4QuadModuleAdapterCard
-#  - name      : rx_3
+#  - name      : CH3
 #    type      : fei4_rx
 #    interface : USB
 #    base_addr : 0x18400
 #    
-#  - name      : rx_2
+#  - name      : CH2
 #    type      : fei4_rx
 #    interface : USB
 #    base_addr : 0x18500
-#
-#  - name      : rx_1
+#    
+#  - name      : CH1
 #    type      : fei4_rx
 #    interface : USB
 #    base_addr : 0x18600
@@ -52,38 +57,33 @@ hw_drivers:
 #    init      :
 #        device : Agilent 33250a
 
-  - name      : cmd
+  - name      : CMD
     type      : cmd_seq
     interface : USB
     base_addr : 0x10000
 
-  - name      : sram
+  - name      : SRAM
     type      : sram_fifo
     interface : USB
     base_addr : 0x18100
     base_data_addr : 0x0001000000000000
 
-  - name      : tlu
+  - name      : TLU
     type      : tlu
     interface : USB
     base_addr : 0x18200
 
-  - name      : rx_4
-    type      : fei4_rx
-    interface : USB
-    base_addr : 0x18300
-
-  - name      : tdc_rx2
+  - name      : TDC
     type      : tdc_s3
     interface : USB
     base_addr : 0x18700
 
-  - name      : gpio_rx
+  - name      : GPIO_ENABLE_CHANNEL
     type      : gpio
     interface : USB
     base_addr : 0x18800
 
-  - name      : gpio_power
+  - name      : GPIO_POWER
     type      : gpio
     interface : USB
     base_addr : 0x18900
@@ -91,9 +91,9 @@ hw_drivers:
 user_drivers:
     
 registers:
-  - name        : rx
+  - name        : ENABLE_CHANNEL
     type        : StdRegister
-    hw_driver   : gpio_rx
+    hw_driver   : GPIO_ENABLE_CHANNEL
     size        : 8
     fields:
       - name    : TDC
@@ -117,7 +117,7 @@ registers:
 
   - name        : POWER_SCC
     type        : StdRegister
-    hw_driver   : gpio_power
+    hw_driver   : GPIO_POWER
     size        : 8
     fields:
       - name    : EN_VD1
@@ -135,7 +135,7 @@ registers:
 
   - name        : POWER_QUAD
     type        : StdRegister
-    hw_driver   : gpio_power
+    hw_driver   : GPIO_POWER
     size        : 8
     fields:
       - name    : OC_CH4

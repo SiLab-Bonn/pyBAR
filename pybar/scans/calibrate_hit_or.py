@@ -168,7 +168,7 @@ class HitOrCalibration(Fei4RunBase):
             self.register_utils.send_commands(commands)
             # self.fifo_readout.reset_sram_fifo()  # after mask shifting you have AR VR in SRAM that are not of interest but reset takes a long time, so ignore the warning
 
-            self.dut['tdc_rx2']['ENABLE'] = True
+            self.dut['TDC']['ENABLE'] = True
             for scan_parameter_value in scan_parameters_values:
                 if self.stop_run.is_set():
                     break
@@ -181,12 +181,12 @@ class HitOrCalibration(Fei4RunBase):
                 commands.extend(self.register.get_commands("RunMode"))
                 self.register_utils.send_commands(commands)
 
-                self.dut['tdc_rx2']['EN_ARMING'] = True
+                self.dut['TDC']['EN_ARMING'] = True
                 with self.readout(column=column, row=row, PlsrDAC=scan_parameter_value):
                     self.register_utils.send_command(command=cal_lvl1_command, repeat=self.repeat_command)
 
-                self.dut['tdc_rx2']['EN_ARMING'] = False
-            self.dut['tdc_rx2']['ENABLE'] = False
+                self.dut['TDC']['EN_ARMING'] = False
+            self.dut['TDC']['ENABLE'] = False
 
     def handle_data(self, data):
         self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), new_file=['column'], flush=False)  # Create new file for each scan parameter change

@@ -45,7 +45,7 @@ class Fei4TriggerScan(ScanBase):
                 # setting up external trigger
                 self.dut['tlu']['TRIGGER_COUNTER'] = 0
                 self.dut['tlu']['TRIGGER_MODE'] = 0
-                self.dut['cmd']['EN_EXT_TRIGGER'] = True
+                self.dut['CMD']['EN_EXT_TRIGGER'] = True
 
                 show_trigger_message_at = 10 ** (int(math.ceil(math.log10(self.max_triggers))) - 1)
                 last_iteration = time.time()
@@ -97,8 +97,8 @@ class Fei4TriggerScan(ScanBase):
                             logging.info('Taking data...')
                             self.wait_for_first_trigger = False
 
-                self.dut['cmd']['EN_EXT_TRIGGER'] = False
-                self.dut['tlu']['TRIGGER_MODE'] = 0
+                self.dut['CMD']['EN_EXT_TRIGGER'] = False
+                self.dut['TLU']['TRIGGER_MODE'] = 0
 
                 logging.info('Total amount of triggers collected: %d', self.dut['tlu']['TRIGGER_COUNTER'])
 
