@@ -135,12 +135,12 @@ class ExtTriggerScan(Fei4RunBase):
         if self.scan_timeout:
             self.scan_timeout_timer.start()
 
-    def stop_readout(self):
+    def stop_readout(self, timeout=10.0):
         self.scan_timeout_timer.cancel()
         self.dut['TDC']['ENABLE'] = False
         self.dut['CMD']['EN_EXT_TRIGGER'] = False
         self.dut['TLU']['TRIGGER_MODE'] = 0
-        self.fifo_readout.stop()
+        self.fifo_readout.stop(timeout=timeout)
 
 
 if __name__ == "__main__":

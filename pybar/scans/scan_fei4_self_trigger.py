@@ -110,10 +110,10 @@ class FEI4SelfTriggerScan(Fei4RunBase):
         if self.scan_timeout:
             self.scan_timeout_timer.start()
 
-    def stop_readout(self):
+    def stop_readout(self, timeout=10.0):
         self.set_self_trigger(False)
         self.scan_timeout_timer.cancel()
-        self.fifo_readout.stop()
+        self.fifo_readout.stop(timeout=timeout)
 
 if __name__ == "__main__":
     RunManager('../configuration.yaml').run_run(FEI4SelfTriggerScan)
