@@ -31,7 +31,7 @@ class StopModeExtTriggerScan(Fei4RunBase):
     - Disable FE to stop mode and stop clock pulse
     '''
     _default_run_conf = {
-        "trigger_mode": 0,  # trigger mode, more details in basil.HL.tlu, from 0 to 3
+        "trigger_mode": 0,  # trigger mode, more details in basil.HL.tlu, from 0 to 3. More configuration options in dut_configuration_mio(_gpac).yaml.
         "trigger_latency": 5,  # FE global register Trig_Lat. The lower the value the longer the hit data will be stored in data buffer
         "trigger_delay": 192,  # delay between trigger and stop mode command
         "bcid_window": 100,  # Number of consecurive time slices to be read, from 0 to 255

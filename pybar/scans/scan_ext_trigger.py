@@ -16,7 +16,7 @@ class ExtTriggerScan(Fei4RunBase):
     '''
     _default_run_conf = {
         "trig_count": 0,  # FE-I4 trigger count, number of consecutive BCs, from 0 to 15
-        "trigger_mode": 0,  # trigger mode, more details in basil.HL.tlu, from 0 to 3
+        "trigger_mode": 0,  # trigger mode, more details in basil.HL.tlu, from 0 to 3. More configuration options in dut_configuration_mio(_gpac).yaml.
         "trigger_latency": 232,  # FE-I4 trigger latency, in BCs, external scintillator / TLU / HitOR: 232, USBpix self-trigger: 220
         "trigger_delay": 14,  # trigger delay, in BCs
         "trigger_count": 0,  # consecutive trigger, 0 means 16

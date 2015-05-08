@@ -24,7 +24,7 @@ class EudaqExtTriggerScan(ExtTriggerScan):
 #         "scan_timeout": 0,
 #     })
     _default_run_conf = {
-        "trigger_mode": 3,  # trigger mode, more details in basil.HL.tlu, from 0 to 3
+        "trigger_mode": 3,  # trigger mode, more details in basil.HL.tlu, from 0 to 3. More configuration options in dut_configuration_mio(_gpac).yaml.
         "trigger_latency": 232,  # FE-I4 trigger latency, in BCs, external scintillator / TLU / HitOR: 232, USBpix self-trigger: 220
         "trigger_delay": 14,  # trigger delay, in BCs
         "trigger_rate_limit": 1000,  # artificially limiting the trigger rate, in BCs (25ns)
