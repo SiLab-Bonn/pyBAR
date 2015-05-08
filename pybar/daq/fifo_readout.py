@@ -129,7 +129,7 @@ class FifoReadout(object):
                 if timeout:
                     raise StopTimeout('FIFO stop timeout after %0.1f second(s)' % timeout)
                 else:
-                    logging.error('FIFO stop timeout')
+                    logging.warning('FIFO stop timeout')
         except StopTimeout as e:
             self.force_stop.set()
             if self.errback:
