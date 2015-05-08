@@ -42,7 +42,7 @@ class Fei4RunBase(RunBase):
         self.err_queue = Queue()
         self.fifo_readout = None
         self.raw_data_file = None
-        
+
     @property
     def working_dir(self):
         if self.module_id:
@@ -353,10 +353,11 @@ class Fei4RunBase(RunBase):
 
     @contextmanager
     def readout(self, *args, **kwargs):
+        timeout = kwargs.pop('timeout', 10.0)
         self.start_readout(*args, **kwargs)
         try:
             yield
-            self.stop_readout()
+            self.stop_readout(timeout=timeout)
         finally:
             # in case something fails, call this on last resort
             if self.fifo_readout.is_running:
@@ -374,8 +375,8 @@ class Fei4RunBase(RunBase):
             self.set_scan_parameters(*args, **kwargs)
         self.fifo_readout.start(reset_sram_fifo=reset_sram_fifo, fill_buffer=fill_buffer, clear_buffer=clear_buffer, callback=callback, errback=errback, no_data_timeout=no_data_timeout)
 
-    def stop_readout(self):
-        self.fifo_readout.stop()
+    def stop_readout(self, timeout=10.0):
+        self.fifo_readout.stop(timeout=timeout)
 
     @abc.abstractmethod
     def configure(self):
