@@ -59,6 +59,8 @@ def open_raw_data_file(filename, mode="w", title="", register=None, conf=None, r
 
 
 class RawDataFile(object):
+    
+    max_table_size = 2**31-1000000  # pytables bug not allowing more than 2^31 entries in a table, since the read function uses xrange which behaves differently on 32/64bit platforms, fixed in pytables 3.2.0 release
 
     '''Raw data file object. Saving data queue to HDF5 file.
     '''
@@ -168,7 +170,7 @@ class RawDataFile(object):
             total_words = self.raw_data_earray.nrows
             raw_data = data_tuple[0]
             len_raw_data = raw_data.shape[0]
-            if total_words + len_raw_data > 2000000000:  # pytables has a a bug since several versions not allowing more than 2^32 / 2 long tables, since the read function uses xrange that has issues 32/64 bit, anoying
+            if total_words + len_raw_data > self.max_table_size:
                 index = self.filenames.get(self.curr_filename, 0) + 1  # reached file size limit, increase index by one
                 self.filenames[self.curr_filename] = index  # update dict
                 filename = self.curr_filename + '_' + str(index) + '.h5'
