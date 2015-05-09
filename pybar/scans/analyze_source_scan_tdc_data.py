@@ -9,6 +9,7 @@ Step 2 Histogram TDC of selected hits:
 
 import logging
 import tables as tb
+import progressbar
 import numpy as np
 import re
 import os.path
@@ -24,13 +25,13 @@ from pybar.analysis.plotting.plotting import plotThreeWay, plot_1d_hist
 
 
 analysis_configuration = {
-    'scan_name': [r'L:\Proto7\TDCcalibration\DifferentSources\Barium\2_proto_7_ext_trigger_scan'],  # the base file name(s) of the raw data file, no file suffix needed
-    'input_file_calibration': r'L:\Proto7\TDCcalibration\proto_7\15_proto_7_hit_or_calibration_calibration.h5',  # the Plsr<->TDC calibration file,  # the Plsr<->TDC calibration file
-    'hit_selection_conditions': ['(n_cluster>=1) & (cluster_size>=1)',
-                                 '(n_cluster==1) & (cluster_size==1)',
-                                 '(n_cluster==1) & (cluster_size==1) & (TDC * 1.5625 - tot * 25 < 80)'],
-    'event_status_select_mask': 0b0000111111111110,  # the event status bits to cut on
-    'event_status_condition': 0b0000000100000010,  # the event status number after the event_status_select_mask is bitwise ORed with the event number
+    'scan_name': [r'L:\TDC_selection\scc112\scc_112\29_scc_112_ext_trigger_scan'],  # the base file name(s) of the raw data file, no file suffix needed
+    'input_file_calibration': r'L:\SCC112\TDCcalibration\scc_112\18_scc_112_hit_or_calibration_calibration.h5',  # the Plsr<->TDC calibration file,  # the Plsr<->TDC calibration file
+    'hit_selection_conditions': ['(n_cluster==1)',  # criterions for the hit selection based on hit properties, per criterion one hitogram is created
+                                 '(n_cluster==1) & %s' % hit_selection,
+                                 '(n_cluster==1) & (cluster_size == 1) & (relative_BCID > 5) & (relative_BCID < 9) & (TDC_time_stamp > 30) & (TDC_time_stamp < 60) & ((tot > 12) | (TDC * 1.5625 - tot * 25 < 100))'],
+    'event_status_select_mask': 0b0000111111111100,  # the event status bits to cut on
+    'event_status_condition': 0b0000000100000000,  # the event status number after the event_status_select_mask is bitwise ORed with the event number
     'max_tdc': 1000,
     'n_bins': 100,
     "analysis_steps": [1, 2],  # the analysis includes this selected steps only. See explanation above.
@@ -46,11 +47,10 @@ def analyze_raw_data(input_files, output_file_hits, interpreter_plots, pdf_filen
         logging.info('Analyzed data file ' + output_file_hits + ' already exists. Skip analysis for this file.')
     else:
         with AnalyzeRawData(raw_data_file=input_files, analyzed_data_file=output_file_hits) as analyze_raw_data:
-            # analyze_raw_data.use_trigger_number = False  # use the trigger number to align the events
-            # analyze_raw_data.use_trigger_time_stamp = True # trigger numbers are time stamp
-            analyze_raw_data.use_tdc_trigger_time_stamp = False  # if you want to also measure the delay between trigger / hit-bus
-            analyze_raw_data.interpreter.debug_events(0, 4, False)
-            analyze_raw_data.align_at_tdc = True  # align events at TDC words, first word of event has to be a tdc word
+            analyze_raw_data.use_tdc_trigger_time_stamp = True  # if you want to also measure the delay between trigger / hit-bus
+            analyze_raw_data.interpreter.debug_events(40, 60, False)
+            # analyze_raw_data.max_tdc_delay = 80
+            analyze_raw_data.align_at_trigger = True  # align events at TDC words, first word of event has to be a tdc word
             analyze_raw_data.create_tdc_counter_hist = True  # create a histogram for all TDC words
             analyze_raw_data.create_tdc_hist = True  # histogram the hit TDC information
             analyze_raw_data.create_tdc_pixel_hist = True
@@ -140,7 +140,9 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
         n_hits_per_condition = [0 for _ in range(len(hit_selection_conditions) + 2)]  # condition 1, 2 are all hits, hits of goode events
 
         logging.info('Select hits and create TDC histograms for %d cut conditions', len(hit_selection_conditions))
-        for cluster_hits, _ in analysis_utils.data_aligned_at_events(cluster_hit_table, chunk_size=2e7):
+        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=cluster_hit_table.shape[0], term_width=80)
+        progress_bar.start()
+        for cluster_hits, _ in analysis_utils.data_aligned_at_events(cluster_hit_table, chunk_size=1e8):
             n_hits_per_condition[0] += cluster_hits.shape[0]
             selected_events_cluster_hits = cluster_hits[np.logical_and(cluster_hits['TDC'] < max_tdc, (cluster_hits['event_status'] & event_status_select_mask) == event_status_condition)]
             n_hits_per_condition[1] += selected_events_cluster_hits.shape[0]
@@ -155,6 +157,8 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
                 mean_pixel_tdc_timestamp_hists_per_condition[index] = np.average(pixel_tdc_timestamp_hists_per_condition[index], axis=2, weights=range(0, 256)) * np.sum(np.arange(0, 256)) / pixel_tdc_timestamp_hists_per_condition[index].sum(axis=2)
                 tdc_hists_per_condition[index] = pixel_tdc_hists_per_condition[index].sum(axis=(0, 1))
                 tdc_corr_hists_per_condition[index] += analysis_utils.hist_2d_index(tdc, selected_cluster_hits['tot'], shape=(max_tdc, 16))
+            progress_bar.update(n_hits_per_condition[0])
+        progress_bar.finish()
 
         # Take TDC calibration if available and calculate charge for each TDC value and pixel
         if calibation_file is not None:
