@@ -1,5 +1,5 @@
 ''' Script to check that the readout system works. A working (and biased) FE-I4 is needed. Otherwise the results
-tell also how good the FE works. If these tests pass there is a high propability that the readout system 
+tell you how good the FE works. If these tests pass there is a high propability that the readout system 
 and the FE-I4 work fine. The tests take about 10 min.
 '''
 
@@ -18,7 +18,7 @@ from pybar.scans.scan_threshold_fast import FastThresholdScan
 from pybar.scans.scan_threshold import ThresholdScan
 from pybar.scans.tune_fei4 import Fei4Tuning
 
-from pybar.fei4.register import parse_pixel_dac_config
+from pybar.fei4.register_utils import parse_pixel_dac_config
 
 _data_folder = 'test_scans//scan_unittests'
 _configuration_folder = 'test_scans/configuration.yaml'
