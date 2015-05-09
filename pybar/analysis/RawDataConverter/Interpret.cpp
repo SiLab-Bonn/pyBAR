@@ -531,7 +531,7 @@ void Interpret::printSummary()
 	std::cout << "#ErrorCounters \n";
 	std::cout << "\t0\t" << _errorCounter[0] << "\tEvents with SR\n";
 	std::cout << "\t1\t" << _errorCounter[1] << "\tEvents with no trigger word\n";
-	std::cout << "\t2\t" << _errorCounter[2] << "\tEvents with LVLID not const.\n";
+	std::cout << "\t2\t" << _errorCounter[2] << "\tEvents with LVL1ID not const.\n";
 	std::cout << "\t3\t" << _errorCounter[3] << "\tEvents that were incomplete (# BCIDs wrong)\n";
 	std::cout << "\t4\t" << _errorCounter[4] << "\tEvents with unknown words\n";
 	std::cout << "\t5\t" << _errorCounter[5] << "\tEvents with jumping BCIDs\n";
