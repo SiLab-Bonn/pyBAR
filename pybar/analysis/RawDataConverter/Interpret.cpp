@@ -531,22 +531,22 @@ void Interpret::printSummary()
 	std::cout << "#ErrorCounters \n";
 	std::cout << "\t0\t" << _errorCounter[0] << "\tEvents with SR\n";
 	std::cout << "\t1\t" << _errorCounter[1] << "\tEvents with no trigger word\n";
-	std::cout << "\t2\t" << _errorCounter[2] << "\tEvents with LVLID non const.\n";
-	std::cout << "\t3\t" << _errorCounter[3] << "\tEvents that are incomplete (# BCIDs wrong)\n";
+	std::cout << "\t2\t" << _errorCounter[2] << "\tEvents with LVLID not const.\n";
+	std::cout << "\t3\t" << _errorCounter[3] << "\tEvents that were incomplete (# BCIDs wrong)\n";
 	std::cout << "\t4\t" << _errorCounter[4] << "\tEvents with unknown words\n";
 	std::cout << "\t5\t" << _errorCounter[5] << "\tEvents with jumping BCIDs\n";
 	std::cout << "\t6\t" << _errorCounter[6] << "\tEvents with TLU trigger error\n";
-	std::cout << "\t7\t" << _errorCounter[7] << "\tEvents has too many hits and was truncated\n";
+	std::cout << "\t7\t" << _errorCounter[7] << "\tEvents with too many hits that were truncated\n";
 	std::cout << "\t8\t" << _errorCounter[8] << "\tEvents with TDC words\n";
-	std::cout << "\t9\t" << _errorCounter[9] << "\tEvents with > 1 TDC word\n";
-	std::cout << "\t10\t" << _errorCounter[10] << "\tEvents with TDC overfloe\n";
-	std::cout << "\t11\t" << _errorCounter[11] << "\tEvents with no hit\n";
+	std::cout << "\t9\t" << _errorCounter[9] << "\tEvents with > 1 TDC words\n";
+	std::cout << "\t10\t" << _errorCounter[10] << "\tEvents with TDC overflow\n";
+	std::cout << "\t11\t" << _errorCounter[11] << "\tEvents with no hits\n";
 
 	std::cout << "#TriggerErrorCounters \n";
-	std::cout << "\t0\t" << _triggerErrorCounter[0] << "\tTrigger number does not increase by 1\n";
+	std::cout << "\t0\t" << _triggerErrorCounter[0] << "\tTrigger number not increasing by 1\n";
 	std::cout << "\t1\t" << _triggerErrorCounter[1] << "\t# Trigger per event > 1\n";
 	std::cout << "\t2\t" << _triggerErrorCounter[2] << "\tTLU trigger accept error\n";
-	std::cout << "\t3\t" << _triggerErrorCounter[3] << "\tTLU low time out error\n";
+	std::cout << "\t3\t" << _triggerErrorCounter[3] << "\tTLU trigger low time out error\n";
 
 	std::cout << "#ServiceRecords \n";
 	for (unsigned int i = 0; i < __NSERVICERECORDS; ++i)
