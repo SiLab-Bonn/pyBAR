@@ -176,6 +176,7 @@ class AnalyzeRawData(object):
         self.align_at_tdc = False  # use the trigger word to align the events
         self.use_trigger_time_stamp = False  # the trigger number is a time stamp
         self.use_tdc_trigger_time_stamp = False  # the tdc time stamp is the difference between trigger and tdc rising edge
+        self.max_tdc_delay = 255
         self.set_stop_mode = False  # the FE is read out with stop mode, therefore the BCID plot is different
 
     def reset(self):
@@ -461,6 +462,15 @@ class AnalyzeRawData(object):
     def use_tdc_trigger_time_stamp(self, value):
         self._use_tdc_trigger_time_stamp = value
         self.interpreter.use_tdc_trigger_time_stamp(value)
+
+    @property
+    def max_tdc_delay(self):
+        return self._max_tdc_delay
+
+    @max_tdc_delay.setter
+    def max_tdc_delay(self, value):
+        self._max_tdc_delay = value
+        self.interpreter.set_max_tdc_delay(value)
 
     @property
     def set_stop_mode(self):

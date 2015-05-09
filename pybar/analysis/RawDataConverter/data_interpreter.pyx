@@ -61,6 +61,7 @@ cdef extern from "Interpret.h":
         void alignAtTriggerNumber(cpp_bool alignAtTriggerNumber)
         void alignAtTdcWord(cpp_bool alignAtTdcWord)
         void useTriggerTimeStamp(cpp_bool useTriggerTimeStamp)
+        void setMaxTdcDelay(const unsigned int& rMaxTdcDelay)
         void useTdcTriggerTimeStamp(cpp_bool useTdcTriggerTimeStamp)
 
         void resetEventVariables()
@@ -192,6 +193,8 @@ cdef class PyDataInterpreter:
         self.thisptr.debugEvents(<const unsigned int&> start_event, <const unsigned int&> stop_event, <const cpp_bool&> toggle)
     def get_hit_size(self):
         return <unsigned int> self.thisptr.getHitSize()
+    def set_max_tdc_delay(self, max_tdc_delay):  # max delay, below tdc words are fully ignored (but counted)
+        self.thisptr.setMaxTdcDelay(<const unsigned int&> max_tdc_delay)
     @property
     def fei4b(self):
         return <cpp_bool> self.thisptr.getFEI4B()

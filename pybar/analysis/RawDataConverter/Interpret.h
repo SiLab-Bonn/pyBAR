@@ -48,6 +48,7 @@ public:
 	void alignAtTriggerNumber(bool alignAtTriggerNumber = true);      //new events are created if trigger number occurs
 	void alignAtTdcWord(bool alignAtTdcWord = true);      			  //new events are created if tdc word occurs and event structure of event before is complete
 	void useTdcTriggerTimeStamp(bool useTdcTriggerTimeStamp = true);//true: tdc time stamp is the delay between trigger/TDC leading edge, False: time stamp counter
+	void setMaxTdcDelay(const unsigned int& rMaxTdcDelay);			  //sets the maximum tdc delay, only tdc words with tdc delay values < rMaxTdcDelay will be considered as fitting tdc words, otherwise it is fully ignored
 	void useTriggerTimeStamp(bool useTriggerTimeStamp = true);//trigger number is giving you a clock count and not a total count
 
 	void addEvent();              //increases the event counter, adds the actual hits/error/SR codes
@@ -135,6 +136,7 @@ private:
 	//config variables
 	unsigned int _NbCID; 						//number of BCIDs for one trigger
 	unsigned int _maxTot; 						//maximum Tot value considered to be a hit
+	unsigned int _maxTdcDelay;				    //maximum tdc delay value to use tdc word
 	bool _fEI4B;								//set to true to distinguish between FE-I4B and FE-I4A
 	bool _debugEvents;                          //true if some events have to have debug output
 	unsigned int _startDebugEvent;              //start event number to have debug output

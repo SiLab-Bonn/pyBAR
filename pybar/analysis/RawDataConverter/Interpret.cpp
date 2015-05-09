@@ -27,11 +27,11 @@ Interpret::~Interpret(void)
 void Interpret::setStandardSettings()
 {
 	info("setStandardSettings()");
-	_hitInfoSize = 1e6;
+	_hitInfoSize = 1000000;
 	_hitInfo = 0;
 	_hitIndex = 0;
 	_NbCID = 16;
-	_maxTot = 14;
+	_maxTot = 13;
 	_fEI4B = false;
 	_metaDataSet = false;
 	_debugEvents = false;
@@ -46,6 +46,7 @@ void Interpret::setStandardSettings()
 	_alignAtTriggerNumber = false;
 	_useTriggerTimeStamp = false;
 	_useTdcTriggerTimeStamp = false;
+	_maxTdcDelay = 255;
 	_alignAtTdcWord = false;
 	_dataWordIndex = 0;
 }
@@ -188,7 +189,7 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 		else if (isTdcWord(tActualWord)) {	//data word is a tdc word
 			addTdcValue(TDC_COUNT_MACRO(tActualWord));
 			_nTDCWords++;
-			if (_useTdcTriggerTimeStamp && (TDC_TRIG_DIST_MACRO(tActualWord) == 254)){  // of the trigger distance if > 254 the TDC word does not belong to this event, thus ignore it
+			if (_useTdcTriggerTimeStamp && (TDC_TRIG_DIST_MACRO(tActualWord) > _maxTdcDelay)){  // of the trigger distance if > _maxTdcDelay the TDC word does not belong to this event, thus ignore it
 				if (Basis::debugSet())
 					debug(std::string(" ") + IntToStr(_nDataWords) + " TDC COUNT " + IntToStr(TDC_COUNT_MACRO(tActualWord)) + "\t" + LongIntToStr(_nEvents) + "\t TRG DIST TIME STAMP " + IntToStr(TDC_TRIG_DIST_MACRO(tActualWord)) + "\t WORD " + IntToStr(tActualWord));
 				continue;
@@ -438,6 +439,11 @@ void Interpret::setMaxTot(const unsigned int& rMaxTot)
 	_maxTot = rMaxTot;
 }
 
+void Interpret::setMaxTdcDelay(const unsigned int& rtMaxTdcDelay)
+{
+	_maxTdcDelay = rtMaxTdcDelay;
+}
+
 void Interpret::alignAtTriggerNumber(bool alignAtTriggerNumber)
 {
 	info("alignAtTriggerNumber()");
@@ -536,7 +542,7 @@ void Interpret::printSummary()
 	std::cout << "\t4\t" << _errorCounter[4] << "\tEvents with unknown words\n";
 	std::cout << "\t5\t" << _errorCounter[5] << "\tEvents with jumping BCIDs\n";
 	std::cout << "\t6\t" << _errorCounter[6] << "\tEvents with TLU trigger error\n";
-	std::cout << "\t7\t" << _errorCounter[7] << "\tEvents with too many hits that were truncated\n";
+	std::cout << "\t7\t" << _errorCounter[7] << "\tEvents that were truncated due to too many hits\n";
 	std::cout << "\t8\t" << _errorCounter[8] << "\tEvents with TDC words\n";
 	std::cout << "\t9\t" << _errorCounter[9] << "\tEvents with > 1 TDC words\n";
 	std::cout << "\t10\t" << _errorCounter[10] << "\tEvents with TDC overflow\n";
@@ -563,9 +569,10 @@ void Interpret::printStatus()
 	std::cout << "_startDebugEvent " << _startDebugEvent << "\n";
 	std::cout << "_stopDebugEvent " << _stopDebugEvent << "\n";
 	std::cout << "_alignAtTriggerNumber " << _alignAtTriggerNumber << "\n";
+	std::cout << "_alignAtTdcWord " << _alignAtTdcWord << "\n";
 	std::cout << "_useTriggerTimeStamp " << _useTriggerTimeStamp << "\n";
 	std::cout << "_useTdcTriggerTimeStamp " << _useTdcTriggerTimeStamp << "\n";
-	std::cout << "_alignAtTdcWord " << _alignAtTdcWord << "\n";
+	std::cout << "_maxTdcDelay " << _maxTdcDelay << "\n";
 
 	std::cout << "\none event variables\n";
 	std::cout << "tNdataHeader " << tNdataHeader << "\n";
