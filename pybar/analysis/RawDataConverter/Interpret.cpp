@@ -49,6 +49,7 @@ void Interpret::setStandardSettings()
 	_maxTdcDelay = 255;
 	_alignAtTdcWord = false;
 	_dataWordIndex = 0;
+	_maxTriggerNumber = 2^16 - 1;
 }
 
 bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& pNdataWords)
@@ -155,7 +156,7 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 			//TLU error handling
 			if (!_firstTriggerNrSet)
 				_firstTriggerNrSet = true;
-			else if (!_useTriggerTimeStamp && _lastTriggerNumber + 1 != tTriggerNumber && !(_lastTriggerNumber == __MAXTLUTRGNUMBER && tTriggerNumber == 0)) {
+			else if (!_useTriggerTimeStamp && (_lastTriggerNumber + 1 != tTriggerNumber) && !(_lastTriggerNumber == _maxTriggerNumber && tTriggerNumber == 0)) {
 				addTriggerErrorCode(__TRG_NUMBER_INC_ERROR);
 				if (Basis::warningSet())
 					warning("interpretRawData: Trigger Number not increasing by 1 (old/new): " + IntToStr(_lastTriggerNumber) + "/" + IntToStr(tTriggerNumber) + " at event " + LongIntToStr(_nEvents));
@@ -448,6 +449,11 @@ void Interpret::alignAtTriggerNumber(bool alignAtTriggerNumber)
 {
 	info("alignAtTriggerNumber()");
 	_alignAtTriggerNumber = alignAtTriggerNumber;
+}
+
+void Interpret::setMaxTriggerNumber(const unsigned int& rMaxTriggerNumber)
+{
+	_maxTriggerNumber = rMaxTriggerNumber;
 }
 
 void Interpret::alignAtTdcWord(bool alignAtTdcWord)

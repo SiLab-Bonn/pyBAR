@@ -21,13 +21,13 @@ public:
 	bool interpretRawData(unsigned int* pDataWords, const unsigned int& pNdataWords); //starts to interpret the actual raw data pDataWords and saves result to _hitInfo
 	bool setMetaData(MetaInfo* &rMetaInfo, const unsigned int& tLength);         	  //sets the meta words for word number/event correlation
 	bool setMetaDataV2(MetaInfoV2* &rMetaInfo, const unsigned int& tLength);       	  //sets the meta words for word number/event correlation
-	void getHits(HitInfo*& rHitInfo, unsigned int& rSize, bool copy = false);    //returns the hit histogram
+	void getHits(HitInfo*& rHitInfo, unsigned int& rSize, bool copy = false);    	  //returns the hit histogram
 
 	//set arrays to be filled
 	void setMetaDataEventIndex(uint64_t*& rEventNumber, const unsigned int& rSize);  //set the meta event index array to be filled
 	void setMetaDataWordIndex(MetaWordInfoOut*& rWordNumber, const unsigned int& rSize);  //set the meta word index array to be filled
 
-	//array info get funnctions
+	//array info get functions
 	unsigned int getNarrayHits(){return _hitIndex;};								  // the number of hits of the actual interpreted raw data
 	unsigned int getNmetaDataEvent(){return _lastMetaIndexNotSet;};				  	  // the filled length of the array storing the event number per read out
 	unsigned int getNmetaDataWord(){return _actualMetaWordIndex;};
@@ -36,7 +36,7 @@ public:
 	void resetCounters();                                     						  //reset summary counters
 	void resetEventVariables();											              //resets event variables before starting new event
 
-	//options set/get
+	//analysis options
 	void setHitsArraySize(const unsigned int &rSize);   			  //set the siye of the hit array, has to be able to hold hits of one event
 	void createEmptyEventHits(bool CreateEmptyEventHits = true);  //create hits that are virtual hits (not real hits) for debugging, thus event no hit events will show up in the hit table
 	void createMetaDataWordIndex(bool CreateMetaDataWordIndex = true);
@@ -50,6 +50,7 @@ public:
 	void useTdcTriggerTimeStamp(bool useTdcTriggerTimeStamp = true);//true: tdc time stamp is the delay between trigger/TDC leading edge, False: time stamp counter
 	void setMaxTdcDelay(const unsigned int& rMaxTdcDelay);			  //sets the maximum tdc delay, only tdc words with tdc delay values < rMaxTdcDelay will be considered as fitting tdc words, otherwise it is fully ignored
 	void useTriggerTimeStamp(bool useTriggerTimeStamp = true);//trigger number is giving you a clock count and not a total count
+	void setMaxTriggerNumber(const unsigned int& rMaxTriggerNumber);
 
 	void addEvent();              //increases the event counter, adds the actual hits/error/SR codes
 
@@ -145,6 +146,7 @@ private:
 	bool _alignAtTdcWord;							//set to true to force event recognision by tdc word if event before is complete
 	bool _useTdcTriggerTimeStamp;				//set to true to use the TDC trigger distance to fill the TDC time stamp otherwise use counter
 	bool _useTriggerTimeStamp;					//set to true to use the trigger value as a clock count
+	unsigned int _maxTriggerNumber;       		//maximum trigger trigger number
 
 	//one event variables
 	unsigned int tNdataHeader;					//number of data header per event
