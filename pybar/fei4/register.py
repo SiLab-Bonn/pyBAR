@@ -2,7 +2,6 @@ import logging
 from bitarray import bitarray
 import re
 import os
-import ast
 import numpy as np
 from collections import OrderedDict
 import copy
@@ -55,7 +54,7 @@ class FEI4Register(object):
         if self.broadcast:
             self.chip_id += 0x8
         self.chip_id_bitarray = register_utils.bitarray_from_value(value=self.chip_id, size=4, fmt='I')
-        logging.info('Setting chip address to %d (broadcast bit %s)' % (self.chip_address, 'set' if self.broadcast else 'not set'))
+        logging.info('Setting chip address to %d (broadcast bit %s)', self.chip_address, 'set' if self.broadcast else 'not set')
 
     def init_fe_type(self, fe_type):
         self.flavor = None
@@ -72,7 +71,7 @@ class FEI4Register(object):
             raise ValueError('Unknown FEI4 flavor: %s' % fe_type['flavor'])
         else:
             self.flavor = fe_type['flavor']
-            logging.info('Initializing FEI4 registers (flavor: %s)' % self.flavor)
+            logging.info('Initializing FEI4 registers (flavor: %s)', self.flavor)
         for name, reg in fe_type['global_registers'].iteritems():
             address = reg.get('address')
             offset = reg.get('offset', 0)
@@ -508,7 +507,7 @@ class FEI4Register(object):
         else:
             return register_objects
 
-    def get_global_register_bitsets(self, register_addresses, do_sort=True):
+    def get_global_register_bitsets(self, register_addresses):  # TOTO: add sorting
         """Calculating register bitsets from register addresses.
 
         Usage: get_global_register_bitsets([regaddress_1, regaddress_2, ...])
@@ -607,7 +606,7 @@ class FEI4Register(object):
             for i in iter(int, 1):
                 name = datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S%f') + '_' + str(i)
                 try:
-                    _ = self.config_state[name]
+                    self.config_state[name]
                 except KeyError:
                     break
                 else:

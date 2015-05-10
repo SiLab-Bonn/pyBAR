@@ -183,8 +183,7 @@ class HitDelayScan(Fei4RunBase):
                 bcid_array[:, :, injection_delay_index, :] += bcid_array_fast
                 tot_pixel_array[:, :, injection_delay_index, :] += tot_pixel_array_fast
                 tot_array += tot_array_fast
-            else:  # save histograms of last PlsrDAC setting
-                store_bcid_histograms(bcid_array, tot_array, tot_pixel_array)
+            store_bcid_histograms(bcid_array, tot_array, tot_pixel_array)  # save histograms of last PlsrDAC setting
             progress_bar.finish()
 
         # Take the mean relative BCID histogram of each PlsrDAC value and calculate the delay for each pixel
@@ -300,7 +299,7 @@ class HitDelayScan(Fei4RunBase):
                 y_err = np.std(array, axis=1)
 
                 fig = Figure()
-                canvas = FigureCanvas(fig)
+                FigureCanvas(fig)
                 ax = fig.add_subplot(111)
                 fig.patch.set_facecolor('white')
                 ax.grid(True)

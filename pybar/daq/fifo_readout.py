@@ -164,7 +164,7 @@ class FifoReadout(object):
 
         Readout thread, which uses read_data() and appends data to self._data_deque (collection.deque).
         '''
-        logging.debug('Starting %s' % (self.readout_thread.name,))
+        logging.debug('Starting %s', self.readout_thread.name)
         curr_time = get_float_time()
         time_wait = 0.0
         while not self.force_stop.wait(time_wait if time_wait >= 0.0 else 0.0):
@@ -202,12 +202,12 @@ class FifoReadout(object):
                 self._result.put(sum(self._words_per_read))
         if self.callback:
             self._data_deque.append(None)  # last item, will stop worker
-        logging.debug('Stopped %s' % (self.readout_thread.name,))
+        logging.debug('Stopped %s', self.readout_thread.name)
 
     def worker(self):
         '''Worker thread continuously calling callback function when data is available.
         '''
-        logging.debug('Starting %s' % (self.worker_thread.name,))
+        logging.debug('Starting %s', self.worker_thread.name)
         while True:
             try:
                 data = self._data_deque.popleft()
@@ -222,10 +222,10 @@ class FifoReadout(object):
                     except Exception:
                         self.errback(sys.exc_info())
 
-        logging.debug('Stopped %s' % (self.worker_thread.name,))
+        logging.debug('Stopped %s', self.worker_thread.name)
 
     def watchdog(self):
-        logging.debug('Starting %s' % (self.watchdog_thread.name,))
+        logging.debug('Starting %s', self.watchdog_thread.name)
         while True:
             try:
                 if not any(self.get_rx_sync_status()):
@@ -238,7 +238,7 @@ class FifoReadout(object):
                 self.errback(sys.exc_info())
             if self.stop_readout.wait(self.readout_interval * 10):
                 break
-        logging.debug('Stopped %s' % (self.watchdog_thread.name,))
+        logging.debug('Stopped %s', self.watchdog_thread.name)
 
     def read_data(self):
         '''Read SRAM and return data array

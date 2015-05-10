@@ -7,6 +7,8 @@
 import logging
 import numpy as np
 import math
+import itertools
+from datetime import datetime
 # import matplotlib.pyplot as plt
 # pyplot is not thread safe since it rely on global parameters: https://github.com/matplotlib/matplotlib/issues/757
 from matplotlib.figure import Figure
@@ -14,20 +16,15 @@ from matplotlib.artist import setp
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from scipy.optimize import curve_fit
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-# from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.dates as mdates
 import pandas as pd
-from datetime import datetime
-import itertools
-# import re
-# import operator
 from matplotlib import colors, cm
 from matplotlib.backends.backend_pdf import PdfPages
 
 
 def plot_tdc_event(points, filename=None):
     fig = Figure()
-    canvas = FigureCanvas(fig)
+    FigureCanvas(fig)
     ax = fig.add_subplot(111, projection='3d')
     xs = points[:, 0]
     ys = points[:, 1]
@@ -39,11 +36,7 @@ def plot_tdc_event(points, filename=None):
     ax.set_xlabel('x [250 um]')
     ax.set_ylabel('y [50 um]')
     ax.set_zlabel('t [25 ns]')
-    # ax.azim = 200
-    # ax.elev = -45
-
     ax.title('Track of one TPC event')
-
     ax.set_xlim(0, 80)
     ax.set_ylim(0, 336)
 
@@ -72,7 +65,7 @@ def plot_linear_relation(x, y, x_err=None, y_err=None, title=None, point_label=N
         None: the plot is printed to screen
     '''
     fig = Figure()
-    canvas = FigureCanvas(fig)
+    FigureCanvas(fig)
     ax = fig.add_subplot(111)
     if x_err is not None:
         x_err = [x_err, x_err]
@@ -97,14 +90,9 @@ def plot_linear_relation(x, y, x_err=None, y_err=None, title=None, point_label=N
     if point_label is not None:
         for X, Y, Z in zip(x, y, point_label):
             ax.annotate('{}'.format(Z), xy=(X, Y), xytext=(-5, 5), ha='right', textcoords='offset points')
-    # line fit
-    # line_fit, pcov
     line_fit, _ = np.polyfit(x, y, 1, full=False, cov=True)
-#     chi_squared = np.sum((np.polyval(line_fit, x) - y) ** 2)
     fit_fn = np.poly1d(line_fit)
     ax.plot(x, fit_fn(x), '-', lw=2, color='gray')
-#     line_fit_legend_entry = 'line fit: ax + b\na=$%.2f\pm%.2f$\nb=$%.2f\pm%.2f$' % (line_fit[0], np.absolute(pcov[0][0]) ** 0.5, abs(line_fit[1]), np.absolute(pcov[1][1]) ** 0.5)
-#     fig.legend(["data", line_fit_legend_entry], 0)
     setp(ax.get_xticklabels(), visible=False)  # remove ticks at common border of both plots
 
     divider = make_axes_locatable(ax)
@@ -122,10 +110,6 @@ def plot_linear_relation(x, y, x_err=None, y_err=None, title=None, point_label=N
 
     ax.plot(ax.set_xlim(), [0, 0], '-', color='black')
     setp(ax_bottom_plot.get_yticklabels()[-2:-1], visible=False)
-#     print ax_bottom_plot.get_yticklabels()[1]
-
-#     ax.set_aspect(2)
-#     ax_bottom_plot.set_aspect(2)
 
     if size is not None:
         fig.set_size_inches(size)
@@ -150,21 +134,18 @@ def plot_fancy_occupancy(hist, z_max=None, filename=None):
     if z_max < 1 or hist.all() is np.ma.masked:
         z_max = 1
 
-#     ax.set_title('Occupancy (%d entries)' % np.sum(hist))
     fig = Figure()
-    canvas = FigureCanvas(fig)
+    FigureCanvas(fig)
     ax = fig.add_subplot(111)
     extent = [0.5, 80.5, 336.5, 0.5]
     bounds = np.linspace(start=0, stop=z_max, num=255, endpoint=True)
     cmap = cm.get_cmap('jet')
     cmap.set_bad('w')
     norm = colors.BoundaryNorm(bounds, cmap.N)
-#     norm = colors.LogNorm()
 
     im = ax.imshow(hist, interpolation='nearest', aspect='auto', cmap=cmap, norm=norm, extent=extent)  # TODO: use pcolor or pcolormesh
     ax.set_ylim((336.5, 0.5))
     ax.set_xlim((0.5, 80.5))
-#     ax.set_title('Occupancy (%d entries)' % np.sum(hist))
     ax.set_xlabel('Column')
     ax.set_ylabel('Row')
 
@@ -181,7 +162,7 @@ def plot_fancy_occupancy(hist, z_max=None, filename=None):
     # make some labels invisible
     setp(axHistx.get_xticklabels() + axHisty.get_yticklabels(), visible=False)
     hight = np.ma.sum(hist, axis=0)
-    # hight[hight.mask] = 0
+
     axHistx.bar(left=range(1, 81), height=hight, align='center', linewidth=0)
     axHistx.set_xlim((0.5, 80.5))
     if hist.all() is np.ma.masked:
@@ -190,7 +171,7 @@ def plot_fancy_occupancy(hist, z_max=None, filename=None):
     axHistx.ticklabel_format(style='sci', scilimits=(0, 4), axis='y')
     axHistx.set_ylabel('#')
     width = np.ma.sum(hist, axis=1)
-    # width[hight.mask] = 0
+
     axHisty.barh(bottom=range(1, 337), width=width, align='center', linewidth=0)
     axHisty.set_ylim((336.5, 0.5))
     if hist.all() is np.ma.masked:
@@ -218,16 +199,14 @@ def plot_occupancy(hist, title='Occupancy', z_max=None, filename=None):
         z_max = 1
 
     fig = Figure()
-    canvas = FigureCanvas(fig)
+    FigureCanvas(fig)
     ax = fig.add_subplot(111)
     ax.set_adjustable('box-forced')
-#     extent = [yedges[0] - 0.5, yedges[-1] + 0.5, xedges[-1] + 0.5, xedges[0] - 0.5]
     extent = [0.5, 80.5, 336.5, 0.5]
     bounds = np.linspace(start=0, stop=z_max, num=255, endpoint=True)
     cmap = cm.get_cmap('jet')
     cmap.set_bad('w')
     norm = colors.BoundaryNorm(bounds, cmap.N)
-#     norm = colors.LogNorm()
 
     im = ax.imshow(hist, interpolation='nearest', aspect='auto', cmap=cmap, norm=norm, extent=extent)  # TODO: use pcolor or pcolormesh
     ax.set_ylim((336.5, 0.5))
@@ -251,11 +230,8 @@ def plot_occupancy(hist, title='Occupancy', z_max=None, filename=None):
 
 
 def make_occupancy_hist(cols, rows, ncols=80, nrows=336):
-    # hist, xedges, yedges
     hist, _, _ = np.histogram2d(rows, cols, bins=(nrows, ncols), range=[[1, nrows], [1, ncols]])
-#     extent = [yedges[0] - 0.5, yedges[-1] + 0.5, xedges[-1] + 0.5, xedges[0] - 0.5]
-
-    return np.ma.masked_equal(hist, 0)  # , extent
+    return np.ma.masked_equal(hist, 0)
 
 
 def plot_profile_histogram(x, y, n_bins=100, title=None, x_label=None, y_label=None, log_y=False, filename=None):
@@ -283,15 +259,9 @@ def plot_profile_histogram(x, y, n_bins=100, title=None, x_label=None, y_label=N
     std_mean = std / np.sqrt((n - 1))
     mean[np.isnan(mean)] = 0.
     std_mean[np.isnan(std_mean)] = 0.
-#     from scipy.special import erf
-#     def scurve(x, A, mu, sigma):
-#         return 0.5 * A * erf((-x + mu) / (np.sqrt(2) * sigma)) + 0.5 * A
-#     popt, _ = curve_fit(scurve, bin_centers, mean, p0=[1.5, 9000, 500])
-#     polynom_fit = np.poly1d(np.polyfit(bin_centers, mean, deg=7))
-#     fig.plot(bin_centers, polynom_fit(bin_centers), 'r-')
 
     fig = Figure()
-    canvas = FigureCanvas(fig)
+    FigureCanvas(fig)
     ax = fig.add_subplot(111)
     ax.errorbar(bin_centers, mean, yerr=std_mean, fmt='o')
     ax.set_title(title)
@@ -313,7 +283,7 @@ def plot_profile_histogram(x, y, n_bins=100, title=None, x_label=None, y_label=N
 def plot_scatter(x, y, x_err=None, y_err=None, title=None, legend=None, plot_range=None, plot_range_y=None, x_label=None, y_label=None, marker_style='-o', log_x=False, log_y=False, filename=None):
     logging.info('Plot scatter plot %s', (': ' + title) if title is not None else '')
     fig = Figure()
-    canvas = FigureCanvas(fig)
+    FigureCanvas(fig)
     ax = fig.add_subplot(111)
     if x_err is not None:
         x_err = [x_err, x_err]
@@ -350,7 +320,7 @@ def plot_scatter(x, y, x_err=None, y_err=None, title=None, legend=None, plot_ran
 def plot_correlation(hist, title="Hit correlation", xlabel=None, ylabel=None, filename=None):
     logging.info("Plotting correlations")
     fig = Figure()
-    canvas = FigureCanvas(fig)
+    FigureCanvas(fig)
     ax = fig.add_subplot(1, 1, 1)
     cmap = cm.get_cmap('jet')
     extent = [hist[2][0] - 0.5, hist[2][-1] + 0.5, hist[1][-1] + 0.5, hist[1][0] - 0.5]
@@ -377,13 +347,12 @@ def plot_correlation(hist, title="Hit correlation", xlabel=None, ylabel=None, fi
 def plot_pixel_matrix(hist, title="Hit correlation", filename=None):
     logging.info("Plotting pixel matrix: %s", title)
     fig = Figure()
-    canvas = FigureCanvas(fig)
+    FigureCanvas(fig)
     ax = fig.add_subplot(111)
     ax.set_title(title)
     ax.set_xlabel('Col')
     ax.set_ylabel('Row')
     cmap = cm.get_cmap('jet')
-#             extent = [hist_mean[2] - 0.5, hist_mean[2][-1] + 0.5, hist_mean[1][-1] + 0.5, hist_mean[1][0] - 0.5]
     ax.imshow(hist.T, aspect='auto', cmap=cmap, interpolation='nearest')
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
@@ -480,9 +449,9 @@ def plot_scurves(occupancy_hist, scan_parameters, title='S-Curves', ylabel='Occu
             max_occ = 1
     if len(occupancy_hist.shape) < 3:
         raise ValueError('Found array with shape %s' % str(occupancy_hist.shape))
-#     y = occupancy_hist.reshape(-1)  # np.ravel(occupancy_hist) or occupancy_hist.flat
+
     n_pixel = occupancy_hist.shape[0] * occupancy_hist.shape[1]
-#     x = np.tile(scan_parameters, n_pixel)
+
     cmap = cm.get_cmap('jet', 200)
     for index, scan_parameter in enumerate(scan_parameters):
         compressed_data = np.ma.masked_array(occupancy_hist[:, :, index], mask=occ_mask, copy=True).compressed()
@@ -492,7 +461,7 @@ def plot_scurves(occupancy_hist, scan_parameters, title='S-Curves', ylabel='Occu
         else:
             hist += heatmap
     fig = Figure()
-    canvas = FigureCanvas(fig)
+    FigureCanvas(fig)
     ax = fig.add_subplot(111)
     fig.patch.set_facecolor('white')
     if len(scan_parameters) > 1:
@@ -523,7 +492,7 @@ def plot_scurves(occupancy_hist, scan_parameters, title='S-Curves', ylabel='Occu
 def plot_scatter_time(x, y, yerr=None, title=None, legend=None, plot_range=None, plot_range_y=None, x_label=None, y_label=None, marker_style='-o', log_x=False, log_y=False, filename=None):
     logging.info("Plot time scatter plot %s", (': ' + title) if title is not None else '')
     fig = Figure()
-    canvas = FigureCanvas(fig)
+    FigureCanvas(fig)
     ax = fig.add_subplot(111)
     ax.format_xdata = mdates.DateFormatter('%Y-%m-%d')
     times = []
@@ -564,7 +533,7 @@ def plot_cluster_tot_size(hist, median=False, z_max=None, filename=None):
     if z_max < 1 or H.all() is np.ma.masked:
         z_max = 1
     fig = Figure()
-    canvas = FigureCanvas(fig)
+    FigureCanvas(fig)
     ax = fig.add_subplot(111)
     extent = [-0.5, 20.5, 49.5, -0.5]
     bounds = np.linspace(start=0, stop=z_max, num=255, endpoint=True)
@@ -575,7 +544,7 @@ def plot_cluster_tot_size(hist, median=False, z_max=None, filename=None):
     ax.set_title('Cluster size and cluster ToT (' + str(np.sum(H) / 2) + ' entries)')
     ax.set_xlabel('cluster size')
     ax.set_ylabel('cluster ToT')
-    # fig.colorbar(cmap=cmap)
+
     ax.invert_yaxis()
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.1)
@@ -593,7 +562,7 @@ def plot_cluster_tot_size(hist, median=False, z_max=None, filename=None):
 def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=None, x_ticks=None, color='r', plot_range=None, log_y=False, filename=None, figure_name=None):
     logging.info('Plot 1d histogram%s', (': ' + title) if title is not None else '')
     fig = Figure()
-    canvas = FigureCanvas(fig)
+    FigureCanvas(fig)
     ax = fig.add_subplot(111)
     if plot_range is None:
         plot_range = range(0, len(hist))
@@ -762,7 +731,7 @@ def plotThreeWay(hist, title, filename=None, x_axis_title=None, minimum=None, ma
 
     x_axis_title = '' if x_axis_title is None else x_axis_title
     fig = Figure()
-    canvas = FigureCanvas(fig)
+    FigureCanvas(fig)
     fig.patch.set_facecolor('white')
     ax1 = fig.add_subplot(311)
     create_2d_pixel_hist(fig, ax1, hist, title=title, x_axis_title="column", y_axis_title="row", z_min=minimum if minimum else 0, z_max=maximum)
@@ -794,7 +763,6 @@ def plot_correlations(filenames, limit=None):
     DataFrame["index"] = DataFrame.index
     DataFrame.drop_duplicates(take_last=True, inplace=True)
     del DataFrame["index"]
-#     print DataFrame.head(10)
     correlationNames = ('Row')
     index = 0
     for corName in correlationNames:
@@ -804,10 +772,9 @@ def plot_correlations(filenames, limit=None):
             else:
                 heatmap, xedges, yedges = np.histogram2d(DataFrame[colName[0]], DataFrame[colName[1]], bins=(336, 336), range=[[1, 336], [1, 336]])
             extent = [yedges[0] - 0.5, yedges[-1] + 0.5, xedges[-1] + 0.5, xedges[0] - 0.5]
-#             extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
             cmap = cm.get_cmap('hot', 40)
             fig = Figure()
-            canvas = FigureCanvas(fig)
+            FigureCanvas(fig)
             ax = fig.add_subplot(111)
             ax.imshow(heatmap, extent=extent, cmap=cmap, interpolation='nearest')
             ax.invert_yaxis()
@@ -815,7 +782,6 @@ def plot_correlations(filenames, limit=None):
             ax.set_ylabel(colName[1])
             ax.set_title('Correlation plot(' + corName + ')')
             fig.savefig(colName[0] + '_' + colName[1] + '.pdf')
-#             print 'store as ', fileNames[int(index/2)]
             index += 1
 
 

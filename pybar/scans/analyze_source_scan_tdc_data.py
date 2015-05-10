@@ -28,7 +28,6 @@ analysis_configuration = {
     'scan_name': [r'L:\TDC_selection\scc112\scc_112\29_scc_112_ext_trigger_scan'],  # the base file name(s) of the raw data file, no file suffix needed
     'input_file_calibration': r'L:\SCC112\TDCcalibration\scc_112\18_scc_112_hit_or_calibration_calibration.h5',  # the Plsr<->TDC calibration file,  # the Plsr<->TDC calibration file
     'hit_selection_conditions': ['(n_cluster==1)',  # criterions for the hit selection based on hit properties, per criterion one hitogram is created
-                                 '(n_cluster==1) & %s' % hit_selection,
                                  '(n_cluster==1) & (cluster_size == 1) & (relative_BCID > 5) & (relative_BCID < 9) & (TDC_time_stamp > 30) & (TDC_time_stamp < 60) & ((tot > 12) | (TDC * 1.5625 - tot * 25 < 100))'],
     'event_status_select_mask': 0b0000111111111100,  # the event status bits to cut on
     'event_status_condition': 0b0000000100000000,  # the event status number after the event_status_select_mask is bitwise ORed with the event number
@@ -41,7 +40,7 @@ analysis_configuration = {
 }
 
 
-def analyze_raw_data(input_files, output_file_hits, interpreter_plots, pdf_filename):
+def analyze_raw_data(input_files, output_file_hits, interpreter_plots):
     logging.info('Analyze the raw FE data given in ' + str(len(input_files)) + ' files and store the needed data')
     if os.path.isfile(output_file_hits) and not analysis_configuration['overwrite_output_files']:  # skip analysis if already done
         logging.info('Analyzed data file ' + output_file_hits + ' already exists. Skip analysis for this file.')
@@ -61,6 +60,7 @@ def analyze_raw_data(input_files, output_file_hits, interpreter_plots, pdf_filen
             analyze_raw_data.create_cluster_tot_hist = True  # enables cluster ToT histogramming per cluster size, std. setting is false
             analyze_raw_data.interpreter.set_warning_output(analysis_configuration['interpreter_warnings'])  # std. setting is True
             analyze_raw_data.clusterizer.set_warning_output(analysis_configuration['interpreter_warnings'])  # std. setting is True
+            analyze_raw_data.interpreter.print_status()
             analyze_raw_data.interpret_word_table()  # the actual start conversion command
             analyze_raw_data.interpreter.print_summary()  # prints the interpreter summary
             if interpreter_plots:
