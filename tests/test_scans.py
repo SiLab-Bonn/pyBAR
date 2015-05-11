@@ -1,6 +1,10 @@
-''' Script to check that the readout system works. A working (and biased) FE-I4 is needed. Otherwise the results
-tell you how good the FE works. If these tests pass there is a high propability that the readout system 
-and the FE-I4 work fine. The tests take about 10 min.
+''' This script checks reliablibility of the readout system.
+A fully functional FE-I4 needs to be attched to the hardware and powered (any sensor needs to be depleted).
+Otherwise the result is biased by FE-I4. If these tests pass there is a high propability that the hardware
+of readout system and the FE-I4 works fine. The tests take about 10 min.
+
+Note:
+Please change the FE-I4 flavor (fe_flavor) according to your FE-I4 inside the tests/test_scans/configuration.yaml file.
 '''
 
 import unittest
@@ -20,8 +24,8 @@ from pybar.scans.tune_fei4 import Fei4Tuning
 
 from pybar.fei4.register_utils import parse_pixel_dac_config
 
-_data_folder = r'test_scans\module_test'
-_configuration_folder = r'test_scans\configuration.yaml'
+_data_folder = 'test_scans/module_test'  # be careful... will be deleted
+_configuration_folder = 'test_scans/configuration.yaml'
 
 # Cut values
 _upper_noise_cut = 3.5
@@ -111,24 +115,24 @@ def check_threshold_scan(filename):
 
 def check_tuning_result(filename):
     ok = True
-    error_string = ' FAIL tuning '
-    fdac_file = find(r'*_tuning.dat', _data_folder + r'\fdacs')[0]
-    tdac_file = find(r'*_tuning.dat', _data_folder + r'\tdacs')[0]
+    error_string = 'FAIL tuning '
+    fdac_file = find('*_tuning.dat', _data_folder + '/fdacs')[0]
+    tdac_file = find('*_tuning.dat', _data_folder + '/tdacs')[0]
     tdacs, fdacs = parse_pixel_dac_config(tdac_file)[1:77, :], parse_pixel_dac_config(fdac_file)[1:77, :]
     tdac_median, tdac_std = np.median(tdacs), np.std(tdacs)
     fdac_median, fdac_std = np.median(fdacs), np.std(fdacs)
 
     if tdac_median < _lower_tdac_median_cut or tdac_median > _upper_tdac_median_cut:
-        error_string += 'TDAC median = %2.1f' % tdac_median
+        error_string += ' TDAC median = %2.1f' % tdac_median
         ok = False
     if tdac_std < _lower_tdac_std_cut or tdac_std > _upper_tdac_std_cut:
-        error_string += 'TDAC std = %2.1f' % tdac_std
+        error_string += ' TDAC std = %2.1f' % tdac_std
         ok = False
     if fdac_median < _lower_fdac_median_cut or fdac_median > _upper_fdac_median_cut:
-        error_string += 'FDAC median = %2.1f' % fdac_median
+        error_string += ' FDAC median = %2.1f' % fdac_median
         ok = False
     if fdac_std < _lower_fdac_std_cut or fdac_std > _upper_fdac_std_cut:
-        error_string += 'FDAC std = %2.1f' % fdac_std
+        error_string += ' FDAC std = %2.1f' % fdac_std
         ok = False
 
     return ok, error_string
@@ -192,7 +196,7 @@ class TestScans(unittest.TestCase):
         self.assertTrue(ok, msg=error_msg)
 
     def test_tuning(self):  # run a full tuning and check results
-        error_msg = ' '
+        error_msg = ''
         data_ok = False
         run_conf = {'global_iterations': 2, 'local_iterations': 1}  # Save time by taking less iterations
         scan_ok, scan_error_msg, output_filename, _, _ = run_scan(Fei4Tuning, run_conf=run_conf)
