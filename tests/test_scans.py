@@ -20,21 +20,21 @@ from pybar.scans.tune_fei4 import Fei4Tuning
 
 from pybar.fei4.register_utils import parse_pixel_dac_config
 
-_data_folder = 'test_scans//scan_unittests'
-_configuration_folder = 'test_scans/configuration.yaml'
+_data_folder = r'test_scans\module_test'
+_configuration_folder = r'test_scans\configuration.yaml'
 
 # Cut values
 _upper_noise_cut = 3.5
 _upper_noise_std_cut = 0.5
 _upper_pixel_fail_cut = 10
-_lower_tdac_mean_cut = 15.
-_upper_tdac_mean_cut = 16.
-_lower_tdac_std_cut = 3.
+_lower_tdac_median_cut = 15.0
+_upper_tdac_median_cut = 16.0
+_lower_tdac_std_cut = 2.5
 _upper_tdac_std_cut = 6.
-_lower_fdac_mean_cut = 7.
-_upper_fdac_mean_cut = 8.
+_lower_fdac_median_cut = 6.5
+_upper_fdac_median_cut = 8.5
 _lower_fdac_std_cut = 1.
-_upper_fdac_std_cut = 2.
+_upper_fdac_std_cut = 2.5
 
 
 def run_scan(scan, run_conf=None):
@@ -112,20 +112,20 @@ def check_threshold_scan(filename):
 def check_tuning_result(filename):
     ok = True
     error_string = ' FAIL tuning '
-    fdac_file = find('*_tuning.dat', _data_folder + '//fdacs')[0]
-    tdac_file = find('*_tuning.dat', _data_folder + '//tdacs')[0]
+    fdac_file = find(r'*_tuning.dat', _data_folder + r'\fdacs')[0]
+    tdac_file = find(r'*_tuning.dat', _data_folder + r'\tdacs')[0]
     tdacs, fdacs = parse_pixel_dac_config(tdac_file)[1:77, :], parse_pixel_dac_config(fdac_file)[1:77, :]
-    tdac_mean, tdac_std = np.mean(tdacs), np.std(tdacs)
-    fdac_mean, fdac_std = np.mean(fdacs), np.std(fdacs)
+    tdac_median, tdac_std = np.median(tdacs), np.std(tdacs)
+    fdac_median, fdac_std = np.median(fdacs), np.std(fdacs)
 
-    if tdac_mean < _lower_tdac_mean_cut or tdac_mean > _upper_tdac_mean_cut:
-        error_string += 'TDAC mean = %2.1f' % tdac_mean
+    if tdac_median < _lower_tdac_median_cut or tdac_median > _upper_tdac_median_cut:
+        error_string += 'TDAC median = %2.1f' % tdac_median
         ok = False
     if tdac_std < _lower_tdac_std_cut or tdac_std > _upper_tdac_std_cut:
         error_string += 'TDAC std = %2.1f' % tdac_std
         ok = False
-    if fdac_mean < _lower_fdac_mean_cut or fdac_mean > _upper_fdac_mean_cut:
-        error_string += 'FDAC mean = %2.1f' % fdac_mean
+    if fdac_median < _lower_fdac_median_cut or fdac_median > _upper_fdac_median_cut:
+        error_string += 'FDAC median = %2.1f' % fdac_median
         ok = False
     if fdac_std < _lower_fdac_std_cut or fdac_std > _upper_fdac_std_cut:
         error_string += 'FDAC std = %2.1f' % fdac_std
@@ -142,7 +142,7 @@ class TestScans(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        shutil.rmtree('test_scans//scan_unittests', ignore_errors=True)
+        shutil.rmtree(_data_folder, ignore_errors=True)
 
     def test_system_status(self):  # does a digital scan and checks the data for errors (event status, number of hits)s
         ok, error_msg, output_filename, default_cfg, _ = run_scan(DigitalScan)
