@@ -45,15 +45,15 @@ class TestInterface(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        
+
         # to build from source:
-        #make -f ../../device/mio/cosim/Makefile results.xml
+        # make -f ../../device/mio/cosim/Makefile results.xml
         # zip sim_build directory and place in tests/test_interface directory
 
         subprocess.call('unzip -o test_interface/sim_build.zip', shell=True)
-        subprocess.Popen(['make','-f','../../device/mio/cosim/Makefile','sim_only'])
-        time.sleep(180) #some time for simulator to start
-        
+        subprocess.Popen(['make', '-f', '../../device/mio/cosim/Makefile', 'sim_only'])
+        time.sleep(180)  # some time for simulator to start
+
     @classmethod
     def tearDownClass(cls):
         shutil.rmtree('test_interface/scan_unittests', ignore_errors=True)
