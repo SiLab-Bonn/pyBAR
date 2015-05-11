@@ -145,7 +145,7 @@ const unsigned int RAW_DATA_MAX_ROW=336;
 
 //trigger word macros
 #define TRIGGER_WORD_HEADER_MASK_NEW 0x80000000   //first bit 1 means trigger word
-#define TRIGGER_NUMBER_MASK_NEW		0x0000FFFF      //trigger number is in the low word
+#define TRIGGER_NUMBER_MASK_NEW		0x7FFFFFFF      //trigger number is in the low word
 #define TRIGGER_TIME_STAMP_MASK		0x7FFFFFFF      //trigger number is in the low word
 #define TRIGGER_ERROR_TRG_ACCEPT		0x40000000    //trigger accept error
 #define TRIGGER_ERROR_LOW_TIMEOUT		0x20000000    //TLU not deassert trigger signal
