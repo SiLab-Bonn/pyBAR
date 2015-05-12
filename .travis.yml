@@ -44,4 +44,4 @@ install:
   - python setup.py develop
 # Run test
 script:
-- nosetests tests/test_analysis.py tests/test_interface.py --logging-level=INFO
+- cd tests; nosetests test_analysis.py test_interface.py --logging-level=INFO
