@@ -24,9 +24,9 @@ before_install:
   - source activate test-environment
   - pip install progressbar-latest pyvisa pyvisa-py pyqtgraph mock sphinx
   - pip install https://github.com/uvemas/ViTables/archive/v2.1.zip
-#  - wget -O cocotb-master.zip https://github.com/potentialventures/cocotb/archive/master.zip 
-#  - unzip cocotb-master.zip
-#  - export COCOTB=$(pwd)/cocotb-master
+  - wget -O cocotb-master.zip https://github.com/potentialventures/cocotb/archive/master.zip 
+  - unzip cocotb-master.zip
+  - export COCOTB=$(pwd)/cocotb-master
 
 # Install pybar with needed packages
 install:
@@ -34,7 +34,7 @@ install:
   - pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/735/pySiLibUSB-2.0.3.tar.gz
   - if [ "$TRAVIS_BRANCH" == "master" ]; then pip install -e "git+https://github.com/SiLab-Bonn/basil.git@master#egg=basil&subdirectory=host"; fi
   - if [ "$TRAVIS_BRANCH" == "development" ]; then pip install -e "git+https://github.com/SiLab-Bonn/basil.git@development#egg=basil&subdirectory=host"; fi
-#  - sudo apt-get install -qq iverilog-daily
+  - sudo apt-get install -qq iverilog-daily
 #  Build iverilog from source
 #  - sudo apt-get install gperf
 #  - wget -O iverilog-master.zip  https://github.com/steveicarus/iverilog/archive/master.zip
@@ -44,5 +44,4 @@ install:
   - python setup.py develop
 # Run test
 script:
-- nosetests tests/test_analysis.py 
-#test_interface.py --logging-level=INFO
+- nosetests tests/test_analysis.py tests/test_interface.py --logging-level=INFO
