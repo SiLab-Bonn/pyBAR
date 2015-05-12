@@ -14,14 +14,14 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with pyBAR.  If not, see <http://www.gnu.org/licenses/>.
  */
- 
- /**
+
+/**
  * ------------------------------------------------------------
  * Copyright (c) All rights reserved 
  * SiLab, Institute of Physics, University of Bonn
  * ------------------------------------------------------------
  */
- 
+
 `timescale 1ns / 1ps
 
 `include "fei4_top.sv"
