@@ -56,7 +56,7 @@ class TestInterface(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        shutil.rmtree('test_interface/scan_unittests', ignore_errors=True)
+        shutil.rmtree('test_interface/module_test', ignore_errors=True)
 
     @mock.patch('pybar.fei4.register_utils.FEI4RegisterUtils.configure_pixel', side_effect=lambda *args, **kwargs: None)  # do not configure pixel registers to safe time
     @mock.patch('pybar.fei4.register_utils.FEI4RegisterUtils.send_commands', autospec=True, side_effect=lambda *args, **kwargs: send_commands(*args, **kwargs))  # do not configure pixel registers to safe time

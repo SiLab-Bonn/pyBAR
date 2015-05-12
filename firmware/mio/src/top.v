@@ -14,14 +14,14 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with pyBAR.  If not, see <http://www.gnu.org/licenses/>.
  */
- 
- /**
+
+/**
  * ------------------------------------------------------------
  * Copyright (c) All rights reserved 
  * SiLab, Institute of Physics, University of Bonn
  * ------------------------------------------------------------
  */
- 
+
 `timescale 1ps / 1ps
 `default_nettype none
 
@@ -196,7 +196,7 @@ reset_gen ireset_gen(.CLK(BUS_CLK), .RST(BUS_RST));
 
 clk_gen iclkgen(
     .U1_CLKIN_IN(FCLK_IN),
-    .U1_RST_IN(1'b0),
+    .U1_USER_RST_IN(1'b0),
     .U1_CLKIN_IBUFG_OUT(),
     .U1_CLK0_OUT(BUS_CLK), // DCM1: 48MHz USB/SRAM clock
     .U1_STATUS_OUT(),

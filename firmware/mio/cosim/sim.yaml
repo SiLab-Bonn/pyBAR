@@ -1,80 +1,99 @@
-#
-# ------------------------------------------------------------
-# Copyright (c) All rights reserved
-# SiLab, Institute of Physics, University of Bonn
-# ------------------------------------------------------------
 
-
-name    : usbpix
+name    : mio
 version : 2.0.0
 
 transfer_layer:
   - name     : USB
-    type     : SiSim
+    type     : SiUsb
+
+# Example of additional lab device transfer layers to be used with pyBAR
+#  - name     : Visa
+#    type     : Visa
+#    init     :
+#        resource_name : ASRLCOM15::INSTR  # Linux: ASRL/dev/ttyUSB0
+#        backend : "@py"
 
 hw_drivers:
-  - name      : cmd
+#  - name      : ADAPTER_CARD
+#    type      : FEI4AdapterCard # FEI4QuadModuleAdapterCard
+#    interface : USB
+#    base_addr : 0x0
+
+  - name      : CH4
+    type      : fei4_rx
+    interface : USB
+    base_addr : 0x18300
+
+# Uncomment for FEI4QuadModuleAdapterCard
+  - name      : CH3
+    type      : fei4_rx
+    interface : USB
+    base_addr : 0x18400
+    
+  - name      : CH2
+    type      : fei4_rx
+    interface : USB
+    base_addr : 0x18500
+    
+  - name      : CH1
+    type      : fei4_rx
+    interface : USB
+    base_addr : 0x18600
+
+# Example of additional lab devices to be used with pyBAR
+#  - name      : PowerSupply
+#    type      : scpi
+#    interface : Visa
+#    init      :
+#        device : TTi QL335TP
+#  - name      : Multimeter
+#    type      : scpi
+#    interface : Visa
+#    init      :
+#        device : Keithley 2400
+#  - name      : Pulser
+#    type      : scpi
+#    interface : Visa
+#    init      :
+#        device : Agilent 33250a
+
+  - name      : CMD
     type      : cmd_seq
     interface : USB
     base_addr : 0x10000
 
-  - name      : sram
+  - name      : SRAM
     type      : sram_fifo
     interface : USB
     base_addr : 0x18100
     base_data_addr : 0x0001000000000000
 
-  - name      : tlu
+  - name      : TLU
     type      : tlu
     interface : USB
     base_addr : 0x18200
 
-  - name      : rx_4
-    type      : fei4_rx
-    interface : USB
-    base_addr : 0x18300
-
-  - name      : rx_3
-    type      : fei4_rx
-    interface : USB
-    base_addr : 0x18400
-    
-  - name      : rx_2
-    type      : fei4_rx
-    interface : USB
-    base_addr : 0x18500
-
-  - name      : rx_1
-    type      : fei4_rx
-    interface : USB
-    base_addr : 0x18600
-
-  - name      : tdc_rx2
+  - name      : TDC
     type      : tdc_s3
     interface : USB
     base_addr : 0x18700
 
-  - name      : gpio_rx
+  - name      : GPIO_ENABLE_CHANNEL
     type      : gpio
     interface : USB
     base_addr : 0x18800
 
-  - name      : gpio_power
+  - name      : GPIO_POWER
     type      : gpio
     interface : USB
     base_addr : 0x18900
 
-#  - name      : POWER
-#    type      : FEI4AdapterCard
-#    interface : USB
-#    base_addr : 0x0
-
 user_drivers:
     
 registers:
-  - name        : rx
+  - name        : ENABLE_CHANNEL
     type        : StdRegister
-    hw_driver   : gpio_rx
+    hw_driver   : GPIO_ENABLE_CHANNEL
     size        : 8
     fields:
       - name    : TDC
@@ -98,7 +117,7 @@ registers:
 
   - name        : POWER_SCC
     type        : StdRegister
-    hw_driver   : gpio_power
+    hw_driver   : GPIO_POWER
     size        : 8
     fields:
       - name    : EN_VD1
@@ -111,5 +130,35 @@ registers:
         size    : 1
         offset  : 1
       - name    : EN_VA1
+        size    : 1
+        offset  : 0
+
+  - name        : POWER_QUAD
+    type        : StdRegister
+    hw_driver   : GPIO_POWER
+    size        : 8
+    fields:
+      - name    : OC_CH4
+        size    : 1
+        offset  : 7
+      - name    : OC_CH3
+        size    : 1
+        offset  : 6
+      - name    : OC_CH2
+        size    : 1
+        offset  : 5
+      - name    : OC_CH1
+        size    : 1
+        offset  : 4
+      - name    : EN_CH4
+        size    : 1
+        offset  : 3
+      - name    : EN_CH3
+        size    : 1
+        offset  : 2
+      - name    : EN_CH2
+        size    : 1
+        offset  : 1
+      - name    : EN_CH1
         size    : 1
         offset  : 0

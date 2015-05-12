@@ -1,17 +1,30 @@
 
-name    : mio
+name    : mio_sim
 version : 2.0.0
 
 transfer_layer:
   - name     : USB
     type     : SiUsb
 
+# Example of additional lab device transfer layers to be used with pyBAR
+#  - name     : Visa
+#    type     : Visa
+#    init     :
+#        resource_name : ASRLCOM15::INSTR  # Linux: ASRL/dev/ttyUSB0
+#        backend : "@py"
+
 hw_drivers:
+#  - name      : ADAPTER_CARD
+#    type      : FEI4AdapterCard # FEI4QuadModuleAdapterCard
+#    interface : USB
+#    base_addr : 0x0
+
   - name      : CH4
     type      : fei4_rx
     interface : USB
     base_addr : 0x18300
 
+# Uncomment for FEI4QuadModuleAdapterCard
   - name      : CH3
     type      : fei4_rx
     interface : USB
@@ -26,6 +39,23 @@ hw_drivers:
     type      : fei4_rx
     interface : USB
     base_addr : 0x18600
+
+# Example of additional lab devices to be used with pyBAR
+#  - name      : PowerSupply
+#    type      : scpi
+#    interface : Visa
+#    init      :
+#        device : TTi QL335TP
+#  - name      : Multimeter
+#    type      : scpi
+#    interface : Visa
+#    init      :
+#        device : Keithley 2400
+#  - name      : Pulser
+#    type      : scpi
+#    interface : Visa
+#    init      :
+#        device : Agilent 33250a
 
   - name      : CMD
     type      : cmd_seq

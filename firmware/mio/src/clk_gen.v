@@ -20,18 +20,13 @@
  * Copyright (c) All rights reserved 
  * SiLab, Institute of Physics, University of Bonn
  * ------------------------------------------------------------
- *
- * SVN revision information:
- *  $Rev::                       $:
- *  $Author::                    $:
- *  $Date::                      $:
  */
 
 `timescale 1ns / 1ps
 `default_nettype none
 
 module clk_gen    (U1_CLKIN_IN, 
-                   U1_RST_IN,  
+                   U1_USER_RST_IN,  
                    U1_CLKIN_IBUFG_OUT, 
                    U1_CLK0_OUT, 
                    U1_STATUS_OUT, 
@@ -44,7 +39,7 @@ module clk_gen    (U1_CLKIN_IN,
                    U2_STATUS_OUT);
 
     input wire U1_CLKIN_IN;
-    input wire U1_RST_IN;
+    input wire U1_USER_RST_IN;
    output wire U2_CLKFX_OUT;
    output wire U1_CLKIN_IBUFG_OUT;
    output wire U1_CLK0_OUT;
@@ -60,18 +55,14 @@ module clk_gen    (U1_CLKIN_IN,
    wire U1_CLKIN_IBUFG;
    wire U1_CLK0_BUF;
    wire U1_LOCKED_INV_IN;
+   wire U1_RST_IN;
    wire U2_CLKDV_BUF;
    wire U2_CLKFB_IN;
    wire U2_CLKFX_BUF;
    wire U2_CLK0_BUF;
    wire U2_CLK90_BUF;
    wire U2_CLK2X_BUF;
-   wire U2_FDS_Q_OUT;
-   wire U2_FD1_Q_OUT;
-   wire U2_FD2_Q_OUT;
-   wire U2_FD3_Q_OUT;
    wire U2_LOCKED_INV_RST;
-   wire U2_OR3_O_OUT;
    wire U2_RST_IN;
    wire CLKFX_OUT;
    
@@ -132,8 +123,6 @@ module clk_gen    (U1_CLKIN_IN,
                               .O(U1_CLKIN_IBUFG));
    BUFG  U1_CLK0_BUFG_INST (.I(U1_CLK0_BUF), 
                            .O(U1_CLK0_OUT));
-   INV  U1_INV_INST (.I(U1_LOCKED_INV_IN), 
-                    .O(U2_LOCKED_INV_RST));
    BUFG  U2_CLKDV_BUFG_INST (.I(U2_CLKDV_BUF), 
                             .O(U2_CLKDV_OUT));
    BUFG  U2_CLKFX_BUFG_INST (.I(U2_CLKFX_BUF), 
@@ -144,6 +133,44 @@ module clk_gen    (U1_CLKIN_IN,
                             .O(U2_CLK90_OUT));
    BUFG  U2_CLK2X_BUFG_INST (.I(U2_CLK2X_BUF), 
                             .O(U2_CLK2X_OUT));
+
+
+   wire U1_FDS_Q_OUT;
+   wire U1_FD1_Q_OUT;
+   wire U1_FD2_Q_OUT;
+   wire U1_FD3_Q_OUT;
+   wire U1_OR3_O_OUT;
+
+   FDS  U1_FDS_INST (.C(U1_CLKIN_IBUFG), 
+                    .D(GND_BIT), 
+                    .S(GND_BIT), 
+                    .Q(U1_FDS_Q_OUT));
+   FD  U1_FD1_INST (.C(U1_CLKIN_IBUFG), 
+                   .D(U1_FDS_Q_OUT), 
+                   .Q(U1_FD1_Q_OUT));
+   FD  U1_FD2_INST (.C(U1_CLKIN_IBUFG), 
+                   .D(U1_FD1_Q_OUT), 
+                   .Q(U1_FD2_Q_OUT));
+   FD  U1_FD3_INST (.C(U1_CLKIN_IBUFG), 
+                   .D(U1_FD2_Q_OUT), 
+                   .Q(U1_FD3_Q_OUT));
+   INV  U1_INV_INST (.I(U1_LOCKED_INV_IN), 
+                    .O(U2_LOCKED_INV_RST));
+   OR2  U1_OR2_INST (.I0(U1_USER_RST_IN), 
+                    .I1(U1_OR3_O_OUT), 
+                    .O(U1_RST_IN));
+   OR3  U1_OR3_INST (.I0(U1_FD3_Q_OUT), 
+                    .I1(U1_FD2_Q_OUT), 
+                    .I2(U1_FD1_Q_OUT), 
+                    .O(U1_OR3_O_OUT));
+
+
+   wire U2_FDS_Q_OUT;
+   wire U2_FD1_Q_OUT;
+   wire U2_FD2_Q_OUT;
+   wire U2_FD3_Q_OUT;
+   wire U2_OR3_O_OUT;
+
    FDS  U2_FDS_INST (.C(U1_CLK0_OUT), 
                     .D(GND_BIT), 
                     .S(GND_BIT), 

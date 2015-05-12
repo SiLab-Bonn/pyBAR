@@ -27,13 +27,15 @@ export PYTHONHOME=$(shell python -c "from distutils.sysconfig import get_config_
 # i.e. export XILINX=~/Xilinx/14.7/ISE_DS
 XILINX_SRC?=$(XILINX)/ISE/verilog/src
    
-BASIL?=../../../../../basil
-BASIL_MODULES?=$(BASIL)/trunk/device/modules
-FEI4_SOURCES?=../../../../../fei4/trunk/models/fei4a
-PYBAR_SOURCES?=../device/mio
+BASIL?=../../../../basil
+BASIL_MODULES?=$(BASIL)/device/modules
+FEI4_SOURCES?=../../../../fei4/trunk/models/fei4a
+PYBAR_SOURCES?=../
 
 VERILOG_SOURCES = \
-                  $(PYBAR_SOURCES)/cosim/tb.sv $(PYBAR_SOURCES)/src/top.v $(PYBAR_SOURCES)/src/clk_gen.v \
+                  $(PYBAR_SOURCES)/cosim/tb.sv \
+                  $(PYBAR_SOURCES)/src/top.v \
+                  $(PYBAR_SOURCES)/src/clk_gen.v \
                   $(XILINX_SRC)/unisims/IFDDRRSE.v \
                   $(XILINX_SRC)/unisims/BUFG.v \
                   $(XILINX_SRC)/unisims/OFDDRRSE.v \
