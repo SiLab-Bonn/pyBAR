@@ -18,16 +18,17 @@ export SIMULATION_BUS
 export SIMULATION_END_ON_DISCONNECT
 
 #to make life bit easier
-PYTHONLIBS=$(shell python -c 'from distutils import sysconfig; print(sysconfig.get_config_var("LIBDIR"))')
-export LD_LIBRARY_PATH+=$(PYTHONLIBS)
-export PYTHONPATH+=$(shell python -c "from distutils import sysconfig; print(sysconfig.get_python_lib())"):$(COCOTB)
+#PYTHONLIBS=$(shell python -c 'from distutils import sysconfig; print(sysconfig.get_config_var("LIBDIR"))')
+#export LD_LIBRARY_PATH+=$(PYTHONLIBS)
+#export PYTHONPATH+=$(shell python -c "from distutils import sysconfig; print(sysconfig.get_python_lib())"):$(COCOTB)
+#export PYTHONHOME=$(shell python -c "from distutils.sysconfig import get_config_var; print(get_config_var('prefix'))")
 export PYTHONHOME=$(shell python -c "from distutils.sysconfig import get_config_var; print(get_config_var('prefix'))")
 
 # Must have XILINX set as an environment variable.
 # i.e. export XILINX=~/Xilinx/14.7/ISE_DS
 XILINX_SRC?=$(XILINX)/ISE/verilog/src
    
-BASIL?=../../../../basil
+BASIL?=$(shell python -c "import basil;import os;print os.path.dirname(os.path.dirname(os.path.dirname(basil.__file__)))")
 BASIL_MODULES?=$(BASIL)/device/modules
 FEI4_SOURCES?=../../../../fei4/trunk/models/fei4a
 PYBAR_SOURCES?=../
@@ -91,6 +92,6 @@ include $(COCOTB)/makefiles/Makefile.inc
 include $(COCOTB)/makefiles/Makefile.sim
 
 sim_only: $(CUSTOM_SIM_DEPS) $(COCOTB_LIBS) $(COCOTB_VPI_LIB) $(CUSTOM_COMPILE_DEPS)
-	PYTHONPATH=$(LIB_DIR):$(SIM_ROOT):$(PWD):$(PYTHONPATH) LD_LIBRARY_PATH=/lib/x86_64-linux-gnu:$(LIB_DIR):$(PYTHONLIBS) MODULE=$(MODULE) \
+	PYTHONPATH=$(LIB_DIR):$(SIM_ROOT):$(PWD):$(NEW_PYTHONPATH) $(LIB_LOAD) MODULE=$(MODULE) \
         TESTCASE=$(TESTCASE) TOPLEVEL=$(TOPLEVEL) \
-        vvp -M $(LIB_DIR) -m gpivpi $(SIM_BUILD)/sim.vvp $(SIM_ARGS) $(EXTRA_ARGS) $(PLUSARGS)
+        vvp -M $(LIB_DIR) -m gpivpi $(SIM_BUILD)/sim.vvp $(SIM_ARGS) $(EXTRA_ARGS) $(PLUSARGS) -fst
