@@ -714,7 +714,7 @@ def test_global_register(self):
     data = self.fifo_readout.read_data()
     if data.shape[0] == 0:
         logging.error('Global Register Test: No data')
-        return
+        return 1
     checked_address = []
     number_of_errors = 0
     for index, word in enumerate(np.nditer(data)):
@@ -746,7 +746,7 @@ def test_global_register(self):
         logging.error('Global Register Test: Data for Global Register at address %d missing', address)
         number_of_errors += 1
     logging.info('Global Register Test: Found %d error(s)' % number_of_errors)
-
+    return number_of_errors
 
 def test_pixel_register(self):
     '''Test Pixel Register
