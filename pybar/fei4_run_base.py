@@ -93,6 +93,8 @@ class Fei4RunBase(RunBase):
                 self.dut['ENABLE_CHANNEL']['CH2'] = 0
                 self.dut['ENABLE_CHANNEL']['CH3'] = 0
                 self.dut['ENABLE_CHANNEL']['CH4'] = 1
+                self.dut['ENABLE_CHANNEL']['TLU'] = 1
+                self.dut['ENABLE_CHANNEL']['TDC'] = 1
                 self.dut['ENABLE_CHANNEL'].write()
             elif self.dut.get_modules('FEI4QuadModuleAdapterCard') and [adapter_card for adapter_card in self.dut.get_modules('FEI4QuadModuleAdapterCard') if adapter_card.name == 'ADAPTER_CARD']:
                 # resetting over current status
@@ -111,18 +113,21 @@ class Fei4RunBase(RunBase):
                     # enabling readout
                     self.dut['ENABLE_CHANNEL'][channel] = 1
                     self.dut['POWER_QUAD']['EN_' + channel] = 1
+                self.dut['ENABLE_CHANNEL']['TLU'] = 1
+                self.dut['ENABLE_CHANNEL']['TDC'] = 1
                 self.dut['ENABLE_CHANNEL'].write()
                 self.dut['POWER_QUAD'].write()
             else:
                 logging.warning('Unknown adapter card')
-                self.dut['ENABLE_CHANNEL']['CH1'] = 1
-                self.dut['ENABLE_CHANNEL']['CH2'] = 1
-                self.dut['ENABLE_CHANNEL']['CH3'] = 1
+                # do the minimal configuration here
+                self.dut['ENABLE_CHANNEL']['CH1'] = 0
+                self.dut['ENABLE_CHANNEL']['CH2'] = 0
+                self.dut['ENABLE_CHANNEL']['CH3'] = 0
                 self.dut['ENABLE_CHANNEL']['CH4'] = 1
+                self.dut['ENABLE_CHANNEL']['TLU'] = 1
+                self.dut['ENABLE_CHANNEL']['TDC'] = 1
                 self.dut['ENABLE_CHANNEL'].write()
-            self.dut['ENABLE_CHANNEL']['TLU'] = 1
-            self.dut['ENABLE_CHANNEL']['TDC'] = 1
-            self.dut['ENABLE_CHANNEL'].write()
+
         elif self.dut.name == 'mio_gpac':
             # PWR
             self.dut['V_in'].set_current_limit(0.1, unit='A')  # one for all, max. 1A
