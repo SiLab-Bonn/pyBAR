@@ -114,7 +114,12 @@ class Fei4RunBase(RunBase):
                 self.dut['ENABLE_CHANNEL'].write()
                 self.dut['POWER_QUAD'].write()
             else:
-                raise RuntimeError('Unknown adapter card')
+                logging.warning('Unknown adapter card')
+                self.dut['ENABLE_CHANNEL']['CH1'] = 1
+                self.dut['ENABLE_CHANNEL']['CH2'] = 1
+                self.dut['ENABLE_CHANNEL']['CH3'] = 1
+                self.dut['ENABLE_CHANNEL']['CH4'] = 1
+                self.dut['ENABLE_CHANNEL'].write()
             self.dut['ENABLE_CHANNEL']['TLU'] = 1
             self.dut['ENABLE_CHANNEL']['TDC'] = 1
             self.dut['ENABLE_CHANNEL'].write()
