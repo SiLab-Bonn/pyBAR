@@ -78,7 +78,7 @@ class Fei4RunBase(RunBase):
 
     def init_dut(self):
         if self.dut.name == 'mio':
-            if [adapter_card for adapter_card in self.dut.get_modules('FEI4AdapterCard') if adapter_card.name == 'ADAPTER_CARD']:
+            if self.dut.get_modules('FEI4AdapterCard') and [adapter_card for adapter_card in self.dut.get_modules('FEI4AdapterCard') if adapter_card.name == 'ADAPTER_CARD']:
                 self.dut['ADAPTER_CARD'].set_voltage('VDDA1', 1.5)
                 self.dut['ADAPTER_CARD'].set_voltage('VDDA2', 1.5)
                 self.dut['ADAPTER_CARD'].set_voltage('VDDD1', 1.2)
@@ -94,7 +94,7 @@ class Fei4RunBase(RunBase):
                 self.dut['ENABLE_CHANNEL']['CH3'] = 0
                 self.dut['ENABLE_CHANNEL']['CH4'] = 1
                 self.dut['ENABLE_CHANNEL'].write()
-            elif [adapter_card for adapter_card in self.dut.get_modules('FEI4QuadModuleAdapterCard') if adapter_card.name == 'ADAPTER_CARD']:
+            elif self.dut.get_modules('FEI4QuadModuleAdapterCard') and [adapter_card for adapter_card in self.dut.get_modules('FEI4QuadModuleAdapterCard') if adapter_card.name == 'ADAPTER_CARD']:
                 # resetting over current status
                 self.dut['POWER_QUAD']['EN_CH1'] = 0
                 self.dut['POWER_QUAD']['EN_CH2'] = 0
