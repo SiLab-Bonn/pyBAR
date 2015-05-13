@@ -65,6 +65,7 @@ module clk_gen    (U1_CLKIN_IN,
    wire U2_LOCKED_INV_RST;
    wire U2_RST_IN;
    wire CLKFX_OUT;
+   wire CLKFX_OUT_IBUFG;
    
    assign GND_BIT = 0;
    assign U1_CLKIN_IBUFG_OUT = U1_CLKIN_IBUFG;
@@ -101,7 +102,7 @@ module clk_gen    (U1_CLKIN_IN,
          .DLL_FREQUENCY_MODE("LOW"), .DUTY_CYCLE_CORRECTION("TRUE"), 
          .FACTORY_JF(16'h8080), .PHASE_SHIFT(0), .STARTUP_WAIT("FALSE") ) 
          DCM_INST2 (.CLKFB(U2_CLKFB_IN), 
-                  .CLKIN(CLKFX_OUT), 
+                  .CLKIN(CLKFX_OUT_IBUFG), 
                   .DSSEN(GND_BIT), 
                   .PSCLK(GND_BIT), 
                   .PSEN(GND_BIT), 
@@ -133,7 +134,8 @@ module clk_gen    (U1_CLKIN_IN,
                             .O(U2_CLK90_OUT));
    BUFG  U2_CLK2X_BUFG_INST (.I(U2_CLK2X_BUF), 
                             .O(U2_CLK2X_OUT));
-
+   BUFG  U1_CLK_OUT_BUFG_INST (.I(CLKFX_OUT),
+                              .O(CLKFX_OUT_IBUFG));
 
    wire U1_FDS_Q_OUT;
    wire U1_FD1_Q_OUT;
@@ -171,17 +173,17 @@ module clk_gen    (U1_CLKIN_IN,
    wire U2_FD3_Q_OUT;
    wire U2_OR3_O_OUT;
 
-   FDS  U2_FDS_INST (.C(U1_CLK0_OUT), 
+   FDS  U2_FDS_INST (.C(CLKFX_OUT_IBUFG), 
                     .D(GND_BIT), 
                     .S(GND_BIT), 
                     .Q(U2_FDS_Q_OUT));
-   FD  U2_FD1_INST (.C(U1_CLK0_OUT), 
+   FD  U2_FD1_INST (.C(CLKFX_OUT_IBUFG), 
                    .D(U2_FDS_Q_OUT), 
                    .Q(U2_FD1_Q_OUT));
-   FD  U2_FD2_INST (.C(U1_CLK0_OUT), 
+   FD  U2_FD2_INST (.C(CLKFX_OUT_IBUFG), 
                    .D(U2_FD1_Q_OUT), 
                    .Q(U2_FD2_Q_OUT));
-   FD  U2_FD3_INST (.C(U1_CLK0_OUT), 
+   FD  U2_FD3_INST (.C(CLKFX_OUT_IBUFG), 
                    .D(U2_FD2_Q_OUT), 
                    .Q(U2_FD3_Q_OUT));
    OR2  U2_OR2_INST (.I0(U2_LOCKED_INV_RST), 
