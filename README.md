@@ -1,5 +1,5 @@
 
-# pyBAR [![Code Status](https://landscape.io/github/SiLab-Bonn/pyBAR/development/landscape.svg?style=flat)](https://landscape.io/github/SiLab-Bonn/pyBAR/development) [![Build Status](https://travis-ci.org/SiLab-Bonn/pyBAR.svg?branch=development)](https://travis-ci.org/SiLab-Bonn/pyBAR) [![Build Status](https://ci.appveyor.com/api/projects/status/github/SiLab-Bonn/pyBAR?svg=true)](https://ci.appveyor.com/project/DavidLP/pybar-71xwl)
+# pyBAR [![Code Status](https://landscape.io/github/SiLab-Bonn/pyBAR/development/landscape.svg?style=flat)](https://landscape.io/github/SiLab-Bonn/pyBAR/development) [![Build Status](https://travis-ci.org/SiLab-Bonn/pyBAR.svg?branch=development)](https://travis-ci.org/SiLab-Bonn/pyBAR) [![Build Status](https://ci.appveyor.com/api/projects/status/github/SiLab-Bonn/pyBAR)](https://ci.appveyor.com/project/DavidLP/pyBAR)
 
 pyBAR - Bonn ATLAS Readout in Python and C++
 
@@ -56,7 +56,7 @@ Prerequisites:
   pip install pyqtgraph
   ```
 
-Checkout pyBAR from git then run the following commands from the within pybar folder:
+Clone pyBAR from git and then run the following commands from the within project folder:
 
 1. Build with:
    ```
@@ -68,9 +68,9 @@ Checkout pyBAR from git then run the following commands from the within pybar fo
    python setup.py develop
    ```
 
-3. Testing:
+3. Testing (from within the test folder):
    ```
-   nosetests tests
+   nosetests test_analysis.py
    ```
 
    Note: the tests need a working FE-I4 setup.
