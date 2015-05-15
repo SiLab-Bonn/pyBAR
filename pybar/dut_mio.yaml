@@ -87,8 +87,6 @@ hw_drivers:
     type      : gpio
     interface : USB
     base_addr : 0x18900
-
-user_drivers:
     
 registers:
   - name        : ENABLE_CHANNEL
