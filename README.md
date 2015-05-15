@@ -68,7 +68,7 @@ Clone pyBAR from git and then run the following commands from the within project
    python setup.py develop
    ```
 
-3. Testing (from within the test folder):
+3. Testing (from within the tests folder):
    ```
    nosetests test_analysis.py
    ```
