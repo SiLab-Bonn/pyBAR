@@ -56,7 +56,7 @@ Prerequisites:
   pip install pyqtgraph
   ```
 
-Checkout pyBAR. From host folder run the following commands:
+Checkout pyBAR from git then run the following commands from the within pybar folder:
 
 1. Build with:
    python setup.py build_ext
