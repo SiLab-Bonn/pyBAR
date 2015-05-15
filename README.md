@@ -39,9 +39,9 @@ Prerequisites:
 
   pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/735/pySiLibUSB-2.0.3.tar.gz
 
-- Basil (>=2.0.2):
+- Basil (>=2.1.0):
 
-  pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/719/Basil-2.0.2.tar.gz
+  pip install -e "git+https://github.com/SiLab-Bonn/basil.git@v2.1.0#egg=basil&subdirectory=host"
 
 - progressbar (>=2.4):
 
