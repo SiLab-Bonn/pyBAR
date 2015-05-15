@@ -33,7 +33,7 @@ The features of the host software in Python and C++:
 Prerequisites:
 - PyUSB (>=1.0.0rc1):
 
-  pip install https://github.com/walac/pyusb/archive/master.zip
+  pip install "git+https://github.com/walac/pyusb.git@master"
 
 - pySiLibUSB (>=1.0.0):
 

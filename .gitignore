@@ -65,3 +65,4 @@ proto_*/
 .DS_Store
 # Xilinx ISE
 firmware/mio/ise
+
