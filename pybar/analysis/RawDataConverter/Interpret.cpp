@@ -49,7 +49,7 @@ void Interpret::setStandardSettings()
 	_maxTdcDelay = 255;
 	_alignAtTdcWord = false;
 	_dataWordIndex = 0;
-	_maxTriggerNumber = 2^16 - 1;
+	_maxTriggerNumber = 2 ^ 31 - 1;
 }
 
 bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& pNdataWords)
@@ -148,9 +148,9 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 
 			if (Basis::debugSet()) {
 				if (!_useTriggerTimeStamp)
-					debug(std::string(" ") + IntToStr(_nDataWords) + " TR NUMBER " + IntToStr(tTriggerNumber) + "\t" + LongIntToStr(_nEvents));
+					debug(std::string(" ") + IntToStr(_nDataWords) + " TR NUMBER " + IntToStr(tTriggerNumber) + "\t WORD " + IntToStr(tActualWord) + "\t" + LongIntToStr(_nEvents));
 				else
-					debug(std::string(" ") + IntToStr(_nDataWords) + " TR TIME STAMP " + IntToStr(tTriggerNumber) + "\t" + LongIntToStr(_nEvents));
+					debug(std::string(" ") + IntToStr(_nDataWords) + " TR TIME STAMP " + IntToStr(tTriggerNumber) + "\t WORD " + IntToStr(tActualWord) + "\t" + LongIntToStr(_nEvents));
 			}
 
 			//TLU error handling
@@ -160,19 +160,6 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 				addTriggerErrorCode(__TRG_NUMBER_INC_ERROR);
 				if (Basis::warningSet())
 					warning("interpretRawData: Trigger Number not increasing by 1 (old/new): " + IntToStr(_lastTriggerNumber) + "/" + IntToStr(tTriggerNumber) + " at event " + LongIntToStr(_nEvents));
-			}
-
-			if (!_useTriggerTimeStamp) {  // the high word shows the trigger status, except the trigger word is used for time stamping
-				if ((tTriggerNumber & TRIGGER_ERROR_TRG_ACCEPT) == TRIGGER_ERROR_TRG_ACCEPT) {
-					addTriggerErrorCode(__TRG_ERROR_TRG_ACCEPT);
-					if (Basis::warningSet())
-						warning(std::string("interpretRawData: TRIGGER_ERROR_TRG_ACCEPT at event " + LongIntToStr(_nEvents)));
-				}
-				if ((tTriggerNumber & TRIGGER_ERROR_LOW_TIMEOUT) == TRIGGER_ERROR_LOW_TIMEOUT) {
-					addTriggerErrorCode(__TRG_ERROR_LOW_TIMEOUT);
-					if (Basis::warningSet())
-						warning(std::string("interpretRawData: TRIGGER_ERROR_LOW_TIMEOUT at event " + LongIntToStr(_nEvents)));
-				}
 			}
 
 			if (tTriggerWord == 1)  			// event trigger number is trigger number of first trigger word within the event
@@ -557,8 +544,6 @@ void Interpret::printSummary()
 	std::cout << "#TriggerErrorCounters \n";
 	std::cout << "\t0\t" << _triggerErrorCounter[0] << "\tTrigger number not increasing by 1\n";
 	std::cout << "\t1\t" << _triggerErrorCounter[1] << "\t# Trigger per event > 1\n";
-	std::cout << "\t2\t" << _triggerErrorCounter[2] << "\tTLU trigger accept error\n";
-	std::cout << "\t3\t" << _triggerErrorCounter[3] << "\tTLU trigger low time out error\n";
 
 	std::cout << "#ServiceRecords \n";
 	for (unsigned int i = 0; i < __NSERVICERECORDS; ++i)
