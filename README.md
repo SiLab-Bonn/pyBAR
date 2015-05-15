@@ -35,18 +35,22 @@ Prerequisites:
   ```
   pip install "git+https://github.com/walac/pyusb.git@master"
   ```
+  
 - pySiLibUSB (>=1.0.0):
   ```
   pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/735/pySiLibUSB-2.0.3.tar.gz
   ```
+  
 - Basil (>=2.1.0):
   ```
   pip install -e "git+https://github.com/SiLab-Bonn/basil.git@v2.1.0#egg=basil&subdirectory=host"
   ```
+  
 - progressbar (>=2.4):
   ```
   pip install progressbar-latest
   ```
+  
 - PyQtGraph:
   ```
   pip install pyqtgraph
