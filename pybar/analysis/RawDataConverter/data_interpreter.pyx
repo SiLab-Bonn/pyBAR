@@ -80,6 +80,9 @@ cdef extern from "Interpret.h":
         void reset()
         void resetMetaDataCounter()
 
+        unsigned int getNhits()
+        uint64_t getNevents()
+
 cdef cnp.uint32_t* data_32
 cdef HitInfo* hits
 cdef unsigned int n_entries = 0
@@ -208,3 +211,7 @@ cdef class PyDataInterpreter:
         self.thisptr.reset()
     def reset_meta_data_counter(self):
         self.thisptr.resetMetaDataCounter()
+    def get_n_hits(self):
+        return <unsigned int> self.thisptr.getNhits()
+    def get_n_events(self):
+        return <uint64_t> self.thisptr.getNevents()
