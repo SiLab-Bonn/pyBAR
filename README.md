@@ -59,13 +59,19 @@ Prerequisites:
 Checkout pyBAR from git then run the following commands from the within pybar folder:
 
 1. Build with:
+   ```
    python setup.py build_ext
+   ```
 
 2. Install with:
+   ```
    python setup.py develop
+   ```
 
 3. Testing:
+   ```
    nosetests tests
+   ```
 
    Note: the tests need a working FE-I4 setup.
 
