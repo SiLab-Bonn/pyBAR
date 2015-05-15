@@ -2,7 +2,8 @@
 Two steps are done automatically:
 Step 1 Tnterpret the raw data:
     Interpret the raw data from the FE, create and plot distributions of all provided raw data files.
-    A cluster hit table is created. Do not forget to tell the interpreter if trigger numbers are expected.
+    A cluster hit table is created. Do not forget to tell the interpreter to align at the trigger number (if trigger numbers are expected)
+    or to align at the TDC word (if it is the first word of an event)
 Step 2 Histogram TDC of selected hits:
     Creates TDC histograms for each pixel from hits fullfilling certain criterions (e.g. 'is_seed==0', 'n_cluster==1') and create plots.
 '''
@@ -23,33 +24,41 @@ from pybar.analysis import analysis_utils
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.analysis.plotting.plotting import plotThreeWay, plot_1d_hist
 
+hit_selection = '(column > 50) & (column < 78) & (row > 16) & (row < 324) & (((column % 2 == 1) & (row % 12 == 1)) | ((column % 2 == 0) & (row % 12 == 7)))'
+pixel_selection = '(column > 0)'  # '((column > 50) & (column < 78) & (row > 54) & (row < 276))'
+pixel_selection_2 = '(column > 0)'  # '((column > 62) & (column < 69) & (row > 170) & (row < 190))'
 
 analysis_configuration = {
-    'scan_name': [r'L:\TDC_selection\scc112\scc_112\29_scc_112_ext_trigger_scan'],  # the base file name(s) of the raw data file, no file suffix needed
-    'input_file_calibration': r'L:\SCC112\TDCcalibration\scc_112\18_scc_112_hit_or_calibration_calibration.h5',  # the Plsr<->TDC calibration file,  # the Plsr<->TDC calibration file
+    'scan_name': [r'L:\SCC30\TDC_Sr90\LongRun\2_scc_30_ext_trigger_scan'],  # the base file name(s) of the raw data file, no file suffix needed
+    'input_file_calibration': r'L:\SCC30\TDCcalibration\scc_30\11_scc_30_hit_or_calibration_calibration.h5',  # the Plsr<->TDC calibration file,  # the Plsr<->TDC calibration file
     'hit_selection_conditions': ['(n_cluster==1)',  # criterions for the hit selection based on hit properties, per criterion one hitogram is created
-                                 '(n_cluster==1) & (cluster_size == 1) & (relative_BCID > 5) & (relative_BCID < 9) & (TDC_time_stamp > 30) & (TDC_time_stamp < 60) & ((tot > 12) | (TDC * 1.5625 - tot * 25 < 100))'],
+                                 #'(n_cluster==1) & %s' % hit_selection,
+                                 '(n_cluster==1) & (cluster_size == 1) & %s' % hit_selection,
+                                 '(n_cluster==1) & (cluster_size == 1) & (relative_BCID > 1) & (relative_BCID < 5) & ((tot > 12) | ((TDC * 1.5625 - tot * 25 < 100) & (tot * 25 - TDC * 1.5625 < 100))) & %s' % hit_selection
+                                 ],
     'event_status_select_mask': 0b0000111111111100,  # the event status bits to cut on
     'event_status_condition': 0b0000000100000000,  # the event status number after the event_status_select_mask is bitwise ORed with the event number
     'max_tdc': 1000,
-    'n_bins': 100,
+    'n_bins': 200,
     "analysis_steps": [1, 2],  # the analysis includes this selected steps only. See explanation above.
     "interpreter_plots": True,  # set to False to omit the Raw Data plots, saves time
     "interpreter_warnings": False,  # show interpreter warnings
-    "overwrite_output_files": True  # overwrite already existing files from former analysis
+    "overwrite_output_files": False  # overwrite already existing files from former analysis
 }
 
 
-def analyze_raw_data(input_files, output_file_hits, interpreter_plots):
+def analyze_raw_data(input_files, output_file_hits, interpreter_plots, pdf_filename):
     logging.info('Analyze the raw FE data given in ' + str(len(input_files)) + ' files and store the needed data')
     if os.path.isfile(output_file_hits) and not analysis_configuration['overwrite_output_files']:  # skip analysis if already done
         logging.info('Analyzed data file ' + output_file_hits + ' already exists. Skip analysis for this file.')
     else:
         with AnalyzeRawData(raw_data_file=input_files, analyzed_data_file=output_file_hits) as analyze_raw_data:
-            analyze_raw_data.use_tdc_trigger_time_stamp = True  # if you want to also measure the delay between trigger / hit-bus
-            analyze_raw_data.interpreter.debug_events(40, 60, False)
-            # analyze_raw_data.max_tdc_delay = 80
-            analyze_raw_data.align_at_trigger = True  # align events at TDC words, first word of event has to be a tdc word
+#             analyze_raw_data.interpreter.debug_events(3645978, 3645978, True)
+#             analyze_raw_data.interpreter.debug_events(100, 110, True)
+#             analyze_raw_data.use_tdc_trigger_time_stamp = True  # if you want to also measure the delay between trigger / hit-bus
+#             analyze_raw_data.max_tdc_delay = 80
+            analyze_raw_data.align_at_trigger = False  # align events at TDC words, first word of event has to be a tdc word
+            analyze_raw_data.align_at_tdc = True  # align events at TDC words, first word of event has to be a tdc word
             analyze_raw_data.create_tdc_counter_hist = True  # create a histogram for all TDC words
             analyze_raw_data.create_tdc_hist = True  # histogram the hit TDC information
             analyze_raw_data.create_tdc_pixel_hist = True
@@ -84,19 +93,23 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
     def plot_tdc_tot_correlation(data, condition, output_pdf):
         logging.info('Plot correlation histogram for %s', condition)
         plt.clf()
-        cmap = cm.get_cmap('jet', 200)
-        cmap.set_bad('w')
-        plt.title('Correlation with %s' % condition)
-        norm = colors.LogNorm()
-        z_max = np.amax(data)
-        plt.xlabel('TDC')
-        plt.ylabel('TOT')
-        im = plt.imshow(data, cmap=cmap, norm=norm, aspect='auto', interpolation='nearest')
-        divider = make_axes_locatable(plt.gca())
-        plt.gca().invert_yaxis()
-        cax = divider.append_axes("right", size="5%", pad=0.1)
-        plt.colorbar(im, cax=cax, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True))
-        output_pdf.savefig()
+        data = np.ma.array(data, mask=(data <= 0))
+        if np.ma.any(data > 0):
+            cmap = cm.get_cmap('jet', 200)
+            cmap.set_bad('w')
+            plt.title('Correlation with %s' % condition)
+            norm = colors.LogNorm()
+            z_max = data.max(fill_value=0)
+            plt.xlabel('TDC')
+            plt.ylabel('TOT')
+            im = plt.imshow(data, cmap=cmap, norm=norm, aspect='auto', interpolation='nearest')  # , norm=norm)
+            divider = make_axes_locatable(plt.gca())
+            plt.gca().invert_yaxis()
+            cax = divider.append_axes("right", size="5%", pad=0.1)
+            plt.colorbar(im, cax=cax, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True))
+            output_pdf.savefig()
+        else:
+            logging.warning('No data for correlation plotting for %s', condition)
 
     def plot_hits_per_condition(output_pdf):
         logging.info('Plot hits selection efficiency histogram for %d conditions', len(hit_selection_conditions) + 2)
@@ -115,10 +128,11 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
             plt.annotate('%d' % (float(y) / float(n_hits_per_condition[0]) * 100.) + r'%', xy=(x, y / 2.), xycoords='data', color='grey', size=15)
         output_pdf.savefig()
 
-    def plot_corrected_tdc_hist(x, y, title, output_pdf):
+    def plot_corrected_tdc_hist(x, y, title, output_pdf, point_style='-'):
         logging.info('Plot TDC hist with TDC calibration')
         plt.clf()
-        plt.plot(x, y / np.amax(y), '-')
+        y /= np.amax(y) if y.shape[0] > 0 else y
+        plt.plot(x, y, point_style)
         plt.title(title, size=10)
         plt.xlabel('Charge [PlsrDAC]')
         plt.ylabel('Count [a.u.]')
@@ -195,30 +209,24 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
                 out_1[:], out_2[:], out_3[:], out_4[:], out_5[:], out_6[:] = pixel_tdc_hist_result, pixel_tdc_timestamp_hist_result, mean_pixel_tdc_hist_result, mean_pixel_tdc_timestamp_hist_result, tdc_hists_per_condition_result, tdc_corr_hist_result
 
                 if charge_calibration is not None:
-                    # Create charge histogram with global TDC(charge) calibration
-                    valid_pixel = np.where(np.logical_and(charge_calibration[:, :, :max_tdc].sum(axis=2) > 0, pixel_tdc_hist_result[:, :, :max_tdc].swapaxes(0, 1).sum(axis=2) > 0))  # valid pixel have data and a calibration (that is any charge(TDC) calibration != 0)
-                    # Calculate the mean charge calibration and the mean tdc hist for the valid pixels
-                    mean_charge_calibration, mean_tdc_hist = np.zeros(shape=(max_tdc)), np.zeros(shape=(max_tdc))
-                    for (column, row) in np.column_stack(valid_pixel):
-                        if not np.all(np.isfinite(charge_calibration[column, row, :max_tdc])) or not np.all(np.isfinite(pixel_tdc_hist_result.swapaxes(0, 1)[column, row, :max_tdc])):
-                            logging.warning('Pixel %d, %d contributes to the mean calculation and has invalid data', column, row)
-                        mean_charge_calibration += charge_calibration[column, row, :max_tdc]
-                        mean_tdc_hist += pixel_tdc_hist_result.swapaxes(0, 1)[column, row, :max_tdc]
-                    mean_charge_calibration = mean_charge_calibration.astype(np.float) / valid_pixel[0].shape[0]
-                    mean_tdc_hist = mean_tdc_hist.astype(np.float) / valid_pixel[0].shape[0]
-                    mean_charge_calibration = mean_charge_calibration[mean_tdc_hist < max_tdc]
-                    mean_tdc_hist = mean_tdc_hist[mean_tdc_hist < max_tdc]
+                    # Select only valid pixel for histograming: they have data and a calibration (that is any charge(TDC) calibration != 0)
+                    valid_pixel = np.where(np.logical_and(charge_calibration[:, :, :max_tdc].sum(axis=2) > 0, pixel_tdc_hist_result[:, :, :max_tdc].swapaxes(0, 1).sum(axis=2) > 0))
+
+                    mean_charge_calibration = charge_calibration[valid_pixel][:, :max_tdc].mean(axis=0)
+                    mean_tdc_hist = pixel_tdc_hist_result.swapaxes(0, 1)[valid_pixel][:, :max_tdc].mean(axis=0)
                     result_array = np.rec.array(np.column_stack((mean_charge_calibration, mean_tdc_hist)), dtype=[('charge', float), ('count', float)])
                     out_6 = out_file_h5.create_table(out_file_h5.root, name='HistMeanTdcCalibratedCondition_%d' % index, description=result_array.dtype, title='Hist Tdc with mean charge calibration and %s' % condition, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
                     out_6.attrs.condition = condition
+                    out_6.attrs.n_pixel = valid_pixel[0].shape[0]
                     out_6.append(result_array)
                     # Create charge histogram with per pixel TDC(charge) calibration
-                    x, y = np.ravel(charge_calibration[:, :, :max_tdc]), np.ravel(pixel_tdc_hist_result.swapaxes(0, 1)[:, :, :max_tdc])
-                    y, x = y[x > 0], x[x > 0]  # reduce by TDC entries without proper calibration
+                    x, y = charge_calibration[valid_pixel][:, :max_tdc].ravel(), np.ravel(pixel_tdc_hist_result.swapaxes(0, 1)[valid_pixel][:, :max_tdc].ravel())
+                    y, x = y[x > 0], x[x > 0]  # remove the hit tdcs without proper calibration plsrDAC(TDC) calibration
                     x, y, yerr = analysis_utils.get_profile_histogram(x, y, n_bins=n_bins)
                     result_array = np.rec.array(np.column_stack((x, y, yerr)), dtype=[('charge', float), ('count', float), ('count_error', float)])
                     out_7 = out_file_h5.create_table(out_file_h5.root, name='HistTdcCalibratedCondition_%d' % index, description=result_array.dtype, title='Hist Tdc with per pixel charge calibration and %s' % condition, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
                     out_7.attrs.condition = condition
+                    out_7.attrs.n_pixel = valid_pixel[0].shape[0]
                     out_7.append(result_array)
 
     # Plot Data
@@ -233,18 +241,26 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
                         logging.warning('Cannot plot TDC delay')
                 elif 'HistTdcCondition' in node.name:
                     hist_1d = node[:]
-                    max_index = np.amax(np.where(hist_1d != 0))
+                    entry_index = np.where(hist_1d != 0)
+                    if entry_index[0].shape[0] != 0:
+                        max_index = np.amax(entry_index)
+                    else:
+                        max_index = max_tdc
                     plot_1d_hist(hist_1d[:max_index + 10], title='TDC histogram, hits with\n%s' % node._v_attrs.condition if 'Timestamp' not in node.name else 'TDC time stamp histogram, hits with\n%s' % node._v_attrs.condition, x_axis_title='TDC' if 'Timestamp' not in node.name else 'TDC time stamp', filename=output_pdf)
                 elif 'HistPixelTdc' in node.name:
                     hist_3d = node[:]
-                    max_index = np.amax(np.where(hist_3d.sum(axis=(0, 1)) != 0))
+                    entry_index = np.where(hist_3d.sum(axis=(0, 1)) != 0)
+                    if entry_index[0].shape[0] != 0:
+                        max_index = np.amax(entry_index)
+                    else:
+                        max_index = max_tdc
                     best_pixel_index = np.where(hist_3d.sum(axis=2) == np.amax(node[:].sum(axis=2)))
-                    if best_pixel_index[0].shape[0] == 1:
-                        plot_1d_hist(hist_3d[best_pixel_index[0], best_pixel_index[1], :max_index][0], title='TDC histogram of pixel %d, %d\n%s' % (best_pixel_index[1], best_pixel_index[0], node._v_attrs.condition) if 'Timestamp' not in node.name else 'TDC time stamp histogram, hits of pixel %d, %d' % (best_pixel_index[1], best_pixel_index[0]), x_axis_title='TDC' if 'Timestamp' not in node.name else 'TDC time stamp', filename=output_pdf)
+                    if best_pixel_index[0].shape[0] == 1:  # there could be more than one pixel with most hits
+                        plot_1d_hist(hist_3d[best_pixel_index][0, :max_index], title='TDC histogram of pixel %d, %d\n%s' % (best_pixel_index[1] + 1, best_pixel_index[0] + 1, node._v_attrs.condition) if 'Timestamp' not in node.name else 'TDC time stamp histogram, hits of pixel %d, %d' % (best_pixel_index[1] + 1, best_pixel_index[0] + 1), x_axis_title='TDC' if 'Timestamp' not in node.name else 'TDC time stamp', filename=output_pdf)
                 elif 'HistTdcCalibratedCondition' in node.name:
-                    plot_corrected_tdc_hist(node[:]['charge'], node[:]['count'], title='TDC histogram, per pixel TDC(charge) calibration\n%s' % node._v_attrs.condition, output_pdf=output_pdf)
+                    plot_corrected_tdc_hist(node[:]['charge'], node[:]['count'], title='TDC histogram, %d pixel, per pixel TDC calib.\n%s' % (node._v_attrs.n_pixel, node._v_attrs.condition), output_pdf=output_pdf)
                 elif 'HistMeanTdcCalibratedCondition' in node.name:
-                    plot_corrected_tdc_hist(node[:]['charge'], node[:]['count'], title='TDC histogram, mean TDC(charge) calibration\n%s' % node._v_attrs.condition, output_pdf=output_pdf)
+                    plot_corrected_tdc_hist(node[:]['charge'], node[:]['count'], title='TDC histogram, %d pixel, mean TDC calib.\n%s' % (node._v_attrs.n_pixel, node._v_attrs.condition), output_pdf=output_pdf)
                 elif 'HistTdcCorr' in node.name:
                     plot_tdc_tot_correlation(node[:], node._v_attrs.condition, output_pdf)
 
