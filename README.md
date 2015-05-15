@@ -73,9 +73,6 @@ Clone pyBAR from git and then run the following commands from the within project
    nosetests test_analysis.py
    ```
 
-   Note: the tests need a working FE-I4 setup.
-
-
 ## Usage
 
 Two methods are available:
