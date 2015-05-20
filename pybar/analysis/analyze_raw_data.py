@@ -723,7 +723,7 @@ class AnalyzeRawData(object):
                 fitted_threshold_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistThresholdFittedCalib', title='Threshold Fitted Histogram with PlsrDAC clalibration', atom=tb.Atom.from_dtype(self.scurve_fit_results.dtype), shape=(336, 80), filters=self._filter_table)
                 fitted_noise_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistNoiseFittedCalib', title='Noise Fitted Histogram with PlsrDAC clalibration', atom=tb.Atom.from_dtype(self.scurve_fit_results.dtype), shape=(336, 80), filters=self._filter_table)
                 fitted_threshold_hist_table.attrs.dimensions, fitted_noise_hist_table.attrs.dimensions = 'column, row, electrons', 'column, row, electrons'
-                self.threshold_hist_calib, self.noise_hist_calib = self._get_plsr_dac_charge(self.scurve_fit_results[:, :, 0]), self._get_plsr_dac_charge(self.scurve_fit_results[:, :, 1])
+                self.threshold_hist_calib, self.noise_hist_calib = self._get_plsr_dac_charge(self.scurve_fit_results[:, :, 0]), self._get_plsr_dac_charge(self.scurve_fit_results[:, :, 1], no_offset=True)
                 fitted_threshold_hist_table[:], fitted_noise_hist_table[:] = self.threshold_hist_calib, self.noise_hist_calib
 
     def _create_additional_cluster_data(self, safe_to_file=True):
@@ -1065,11 +1065,11 @@ class AnalyzeRawData(object):
         except IndexError:  # happens if setting is not available (e.g. repeat_command)
             pass
 
-    def _get_plsr_dac_charge(self, plsr_dac_array):
+    def _get_plsr_dac_charge(self, plsr_dac_array, no_offset=False):
         '''Takes the PlsrDAC calibration and the stored C-high/C-low mask to calculate the charge from the PlsrDAC array on a pixel basis
         '''
         charge = np.zeros_like(self.c_low_mask, dtype=np.float16)  # charge in electrons
-        voltage = self.vcal_c0 + self.vcal_c1 * plsr_dac_array
+        voltage = self.vcal_c1 * plsr_dac_array if no_offset else self.vcal_c0 + self.vcal_c1 * plsr_dac_array
         charge[np.logical_and(self.c_low_mask, ~self.c_high_mask)] = voltage[np.logical_and(self.c_low_mask, ~self.c_high_mask)] * self.c_low / 0.16022
         charge[np.logical_and(~self.c_low_mask, self.c_high_mask)] = voltage[np.logical_and(self.c_low_mask, ~self.c_high_mask)] * self.c_mid / 0.16022
         charge[np.logical_and(self.c_low_mask, self.c_high_mask)] = voltage[np.logical_and(self.c_low_mask, ~self.c_high_mask)] * self.c_high / 0.16022
