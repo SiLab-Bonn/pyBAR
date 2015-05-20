@@ -12,7 +12,10 @@ from pybar.run_manager import RunManager
 class ExtTriggerScan(Fei4RunBase):
     '''External trigger scan with FE-I4
 
-    For use with external scintillator (user RX0), TLU (use RJ45), USBpix self-trigger (loop back TX2 into RX0.)
+    For use with external scintillator (user RX0), TLU (use RJ45), FE-I4 HitOR (USBpix self-trigger).
+    
+    Note:
+    Set up trigger in DUT configuration file (e.g. dut_configuration_mio.yaml).
     '''
     _default_run_conf = {
         "trig_count": 0,  # FE-I4 trigger count, number of consecutive BCs, from 0 to 15
@@ -24,11 +27,11 @@ class ExtTriggerScan(Fei4RunBase):
         "row_span": [1, 336],  # defining active row interval, 2-tuple, from 1 to 336
         "overwrite_enable_mask": False,  # if True, use col_span and row_span to define an active region regardless of the Enable pixel register. If False, use col_span and row_span to define active region by also taking Enable pixel register into account.
         "use_enable_mask_for_imon": False,  # if True, apply inverted Enable pixel mask to Imon pixel mask
-        "no_data_timeout": 1,  # no data timeout after which the scan will be aborted, in seconds
-        "scan_timeout": 1,  # timeout for scan after which the scan will be stopped, in seconds
+        "no_data_timeout": 10,  # no data timeout after which the scan will be aborted, in seconds
+        "scan_timeout": 60,  # timeout for scan after which the scan will be stopped, in seconds
         "max_triggers": 10000,  # maximum triggers after which the scan will be stopped, in seconds
         "enable_tdc": False,  # if True, enables TDC (use RX2)
-        'reset_rx_on_error': False  # long scans have a high propability for ESD related data transmission errors; recover and continue here
+        "reset_rx_on_error": False  # long scans have a high propability for ESD related data transmission errors; recover and continue here
     }
 
     def configure(self):
@@ -123,11 +126,11 @@ class ExtTriggerScan(Fei4RunBase):
         if self.scan_timeout:
             self.scan_timeout_timer.start()
 
-    def stop_readout(self, **kwarg):
+    def stop_readout(self, timeout=10.0):
         self.scan_timeout_timer.cancel()
         self.dut['TDC']['ENABLE'] = False
         self.dut['CMD']['EN_EXT_TRIGGER'] = False
-        self.fifo_readout.stop()
+        self.fifo_readout.stop(timeout=timeout)
 
 
 if __name__ == "__main__":
