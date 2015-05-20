@@ -29,9 +29,11 @@ class StopModeExtTriggerScan(Fei4RunBase):
         - Enable FE conf mode
         - Issue global pulse to advance the latency counters by 1
     - Disable FE to stop mode and stop clock pulse
+    
+    Note:
+    Set up trigger in DUT configuration file (e.g. dut_configuration_mio.yaml).
     '''
     _default_run_conf = {
-        "trigger_mode": 0,  # trigger mode, more details in basil.HL.tlu, from 0 to 3. More configuration options in dut_configuration_mio(_gpac).yaml.
         "trigger_latency": 5,  # FE global register Trig_Lat. The lower the value the longer the hit data will be stored in data buffer
         "trigger_delay": 192,  # delay between trigger and stop mode command
         "bcid_window": 100,  # Number of consecurive time slices to be read, from 0 to 255
@@ -42,7 +44,7 @@ class StopModeExtTriggerScan(Fei4RunBase):
         "no_data_timeout": 30,  # no data timeout after which the scan will be aborted, in seconds
         "scan_timeout": 60,  # timeout for scan after which the scan will be stopped, in seconds
         "max_triggers": 10,  # maximum triggers after which the scan will be stopped, in seconds
-        "enable_tdc": True  # if True, enables TDC (use RX2)
+        "enable_tdc": False  # if True, enables TDC (use RX2)
     }
 
     def configure(self):
@@ -166,8 +168,6 @@ class StopModeExtTriggerScan(Fei4RunBase):
         self.fifo_readout.start(reset_sram_fifo=False, clear_buffer=True, callback=self.handle_data, errback=self.handle_err, no_data_timeout=self.no_data_timeout)
         self.dut['TDC']['ENABLE'] = self.enable_tdc
         self.dut['TLU']['TRIGGER_COUNTER'] = 0
-        self.dut['TLU']['TRIGGER_MODE'] = self.trigger_mode
-        self.dut['TLU']['EN_WRITE_TIMESTAMP'] = True
         self.dut['CMD']['EN_EXT_TRIGGER'] = True
 
         def timeout():
@@ -185,7 +185,6 @@ class StopModeExtTriggerScan(Fei4RunBase):
         self.scan_timeout_timer.cancel()
         self.dut['TDC']['ENABLE'] = False
         self.dut['CMD']['EN_EXT_TRIGGER'] = False
-        self.dut['TLU']['TRIGGER_MODE'] = 0
         self.fifo_readout.stop(timeout=timeout)
 
 
