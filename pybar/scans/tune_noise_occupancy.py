@@ -22,7 +22,7 @@ class NoiseOccupancyScan(Fei4RunBase):
     _default_run_conf = {
         "occupancy_limit": 10 ** (-5),  # 0 will mask any pixel with occupancy greater than zero
         "n_triggers": 10000000,  # total number of triggers which will be sent to the FE. From 1 to 4294967295 (32-bit unsigned int).
-        "trig_count": 1,  # FE global register Trig_Count
+        "trig_count": 1,  # FE-I4 trigger count, number of consecutive BCs, 0 means 16, from 0 to 15
         "trigger_rate_limit": 500,  # artificially limiting the trigger rate, in BCs (25ns)
         "disable_for_mask": ['Enable'],  # list of masks for which noisy pixels will be disabled
         "enable_for_mask": ['Imon'],  # list of masks for which noisy pixels will be disabled

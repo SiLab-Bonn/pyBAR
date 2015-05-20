@@ -79,7 +79,7 @@ class DataWorker(QtCore.QObject):
             if data[0] == 'RunConf':  # run conf is set at the beginning of a run
                 self.run_start.emit()
                 try:
-                    n_bcid = int(data[1]['trigger_count'])
+                    n_bcid = int(data[1]['trig_count'])
                 except KeyError:
                     n_bcid = 0
                 self.reset_data()

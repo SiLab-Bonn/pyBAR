@@ -27,7 +27,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
         "use_enable_mask": False,  # if True, enable mask from config file anded with mask (from col_span and row_span), if False use mask only for enable mask
         "n_triggers": 10000,  # total number of trigger sent to FE
         "trigger_rate_limit": 500,  # artificially limiting the trigger rate, in BCs (25ns)
-        "trig_count": 15,  # FE global register Trig_Count
+        "trig_count": 0,  # FE-I4 trigger count, number of consecutive BCs, 0 means 16, from 0 to 15
         "col_span": [1, 80],  # column range (from minimum to maximum value). From 1 to 80.
         "row_span": [1, 336],  # row range (from minimum to maximum value). From 1 to 336.
     }
