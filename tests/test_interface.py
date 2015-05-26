@@ -65,10 +65,10 @@ class TestInterface(unittest.TestCase):
         run_manager.run_run(RegisterTest, run_conf={'test_pixel': False})
         error_msg = 'Global register test failed. '
         try:
-            error_msg += str(run_manager._current_run.err_queue.get(timeout=1)[1])
+            error_msg += str(run_manager.current_run.err_queue.get(timeout=1)[1])
         except Empty:
             pass
-        ok = (run_manager._current_run._run_status == 'FINISHED')
+        ok = (run_manager.current_run._run_status == 'FINISHED')
         self.assertTrue(ok, msg=error_msg)
 
 

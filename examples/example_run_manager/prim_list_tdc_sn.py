@@ -27,14 +27,14 @@ if __name__ == "__main__":
 
     sns = []
 
-    actual_vthin_alt_fine = runmngr._current_run.register.get_global_register_value("Vthin_AltFine")
+    actual_vthin_alt_fine = runmngr.current_run.register.get_global_register_value("Vthin_AltFine")
 
     for dis_vbn in [40, ]:
         for vthin_alt_fine in range(actual_vthin_alt_fine, 256, 100):
             for prmp_vbpf in range(0, 256, 32):
-                runmngr._current_run.register.set_global_register_value("PrmpVbpf", prmp_vbpf)
-                runmngr._current_run.register.set_global_register_value("Vthin_AltFine", vthin_alt_fine)
-                runmngr._current_run.register.set_global_register_value("DisVbn", dis_vbn)
+                runmngr.current_run.register.set_global_register_value("PrmpVbpf", prmp_vbpf)
+                runmngr.current_run.register.set_global_register_value("Vthin_AltFine", vthin_alt_fine)
+                runmngr.current_run.register.set_global_register_value("DisVbn", dis_vbn)
                 runmngr.run_run(run=HitOrCalibration, run_conf={
                     'reset_rx_on_error': True,
                     "pixels": ((10, 10), (30, 100), (50, 200), (70, 300)),
@@ -44,7 +44,7 @@ if __name__ == "__main__":
                     'send_data': 'tcp://127.0.0.1:5678'
                 })
 
-                sns.append((dis_vbn, vthin_alt_fine, prmp_vbpf, get_signal_to_noise(runmngr._current_run.output_filename)))
+                sns.append((dis_vbn, vthin_alt_fine, prmp_vbpf, get_signal_to_noise(runmngr.current_run.output_filename)))
 
     plt.clf()
     line_styles = ['o', '-', '--']

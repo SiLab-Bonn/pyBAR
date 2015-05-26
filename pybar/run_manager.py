@@ -344,7 +344,7 @@ class RunManager(object):
             win32api.SetConsoleCtrlHandler(handler, 1)
 
         self.conf = conf
-        self._current_run = None
+        self.current_run = None
         self._conf_path = None
         self.init(conf)
 
@@ -387,12 +387,12 @@ class RunManager(object):
     def stop_current_run(self, msg=None):
         '''Control for runs.
         '''
-        self._current_run.stop(msg)
+        self.current_run.stop(msg)
 
     def abort_current_run(self, msg=None):
         '''Control for runs. Immediate abort.
         '''
-        self._current_run.abort(msg)
+        self.current_run.abort(msg)
 
     def run_run(self, run, run_conf=None, use_thread=False):
         '''Runs a run in another thread. Non-blocking.
@@ -426,14 +426,14 @@ class RunManager(object):
             def run_run_in_thread():
                 return run.run(run_conf=run_conf)
 
-            self._current_run = run
+            self.current_run = run
 
             signal.signal(signal.SIGINT, self._signal_handler)
             logging.info('Press Ctrl-C to stop run')
 
             return run_run_in_thread()
         else:
-            self._current_run = run
+            self.current_run = run
             status = run.run(run_conf=run_conf)
             return status
 

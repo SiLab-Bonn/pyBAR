@@ -46,10 +46,10 @@ def run_scan(scan, run_conf=None):
     run_manager.run_run(scan, run_conf=run_conf)
     error_msg = ''
     try:
-        error_msg = str(run_manager._current_run.err_queue.get(timeout=1)[1])
+        error_msg = str(run_manager.current_run.err_queue.get(timeout=1)[1])
     except Empty:
         pass
-    return run_manager._current_run._run_status == 'FINISHED', error_msg, run_manager._current_run.output_filename, run_manager._current_run._default_run_conf, run_manager._current_run.__class__.__name__
+    return run_manager.current_run._run_status == 'FINISHED', error_msg, run_manager.current_run.output_filename, run_manager.current_run._default_run_conf, run_manager.current_run.__class__.__name__
 
 
 def find(pattern, path):
