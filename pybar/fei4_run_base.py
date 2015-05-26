@@ -35,9 +35,9 @@ class Fei4RunBase(RunBase):
         if 'send_data' not in self._default_run_conf:
             self._default_run_conf.update({'send_data': None})
         if 'comment' not in self._default_run_conf:
-            self._default_run_conf.update({'comment': None})
+            self._default_run_conf.update({'comment': ''})
         if 'reset_rx_on_error' not in self._default_run_conf:
-            self._default_run_conf.update({'reset_rx_on_error': None})
+            self._default_run_conf.update({'reset_rx_on_error': False})
 
         super(Fei4RunBase, self).__init__(conf=conf, run_conf=run_conf)
 
