@@ -1,0 +1,80 @@
+#
+# ------------------------------------------------------------
+# Copyright (c) All rights reserved
+# SiLab, Institute of Physics, University of Bonn
+# ------------------------------------------------------------
+#
+
+name    : seabas2 
+version : 1.0
+
+transfer_layer:
+  - name  : inf
+    type  : SiTcp
+    init:      
+        ip : "192.168.10.16"
+        udp_port : 4660
+        tcp_port : 24
+        tcp_connection : True
+    
+hw_drivers:      
+  - name      : cmd
+    type      : cmd_seq
+    interface : inf
+    base_addr : 0x0000
+
+  - name      : sram
+    type      : sram_fifo
+    interface : inf
+    base_addr : 0x200000000
+    base_data_addr : 0x100000000
+
+  - name      : rx_4
+    type      : fei4_rx
+    interface : inf
+    base_addr : 0x8300
+
+  - name      : rx_3
+    type      : fei4_rx
+    interface : inf
+    base_addr : 0x8400
+    
+  - name      : rx_2
+    type      : fei4_rx
+    interface : inf
+    base_addr : 0x8500
+
+  - name      : rx_1
+    type      : fei4_rx
+    interface : inf
+    base_addr : 0x8600
+
+  - name      : GPIO_ENABLE_CHANNEL
+    type      : gpio
+    interface : inf
+    base_addr : 0x8800
+    
+registers:
+  - name        : ENABLE_CHANNEL
+    type        : StdRegister
+    hw_driver   : GPIO_ENABLE_CHANNEL
+    size        : 8
+    fields:
+      - name    : TDC
+        size    : 1
+        offset  : 5
+      - name    : TLU
+        size    : 1
+        offset  : 4
+      - name    : CH4
+        size    : 1
+        offset  : 3
+      - name    : CH3
+        size    : 1
+        offset  : 2
+      - name    : CH2
+        size    : 1
+        offset  : 1
+      - name    : CH1
+        size    : 1
+        offset  : 0
