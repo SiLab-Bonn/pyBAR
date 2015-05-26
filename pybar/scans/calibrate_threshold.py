@@ -144,7 +144,6 @@ class ThresholdCalibration(FastThresholdScan):
         "ignore_columns": (1, 78, 79, 80),
         'reset_rx_on_error': True,  # long scans have a high propability for ESD related data transmission errors; recover and continue here
         "create_plots": True,
-        "send_data": 'tcp://127.0.0.1:5678',  # send data to socket (e.g. for Online Monitor)
     })
 
     def scan(self):

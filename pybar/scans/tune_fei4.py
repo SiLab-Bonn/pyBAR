@@ -30,7 +30,6 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
     '''
     _default_run_conf = {
         # tuning parameters
-        'send_data': 'tcp://127.0.0.1:5678',
         "target_threshold": 50,  # target threshold
         "target_charge": 280,  # target charge
         "target_tot": 5,  # target ToT

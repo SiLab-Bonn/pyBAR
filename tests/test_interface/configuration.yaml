@@ -8,8 +8,14 @@ fe_flavor : fei4a  # FEI4 flavor/type for initial configuration. Valid values: '
 chip_address :  # Chip Address for initial configuration, if not given, broadcast bit will be set
 module_id : module_test  # module identifier / name, sub-folder with given name will be created inside working_dir
 
+# *** global run configuration ***
 #
-# *** run configuration can be added here ***
+#run_conf:
+#    send_data : 'tcp://127.0.0.1:5678'
+#    comment : ''
+#    reset_rx_on_error : False
+#
+# *** scan specific run configuration ***
 #
 #Fei4Tuning:
 #    enable_shift_masks : ["Enable", "C_Low", "C_High"]

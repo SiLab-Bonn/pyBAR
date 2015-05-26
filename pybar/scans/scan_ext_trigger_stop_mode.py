@@ -29,7 +29,7 @@ class StopModeExtTriggerScan(Fei4RunBase):
         - Enable FE conf mode
         - Issue global pulse to advance the latency counters by 1
     - Disable FE to stop mode and stop clock pulse
-    
+
     Note:
     Set up trigger in DUT configuration file (e.g. dut_configuration_mio.yaml).
     '''

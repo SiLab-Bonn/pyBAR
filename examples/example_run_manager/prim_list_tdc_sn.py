@@ -23,7 +23,7 @@ def get_signal_to_noise(filename):
 if __name__ == "__main__":
     plsr_dacs = [40, 50, 60, 80, 130, 180, 230, 280, 340, 440, 540, 640, 740]
     runmngr = RunManager(r'../../pybar/configuration.yaml')
-    runmngr.run_run(run=FastThresholdScan, run_conf={'send_data': 'tcp://127.0.0.1:5678'})
+    runmngr.run_run(run=FastThresholdScan)
 
     sns = []
 
@@ -40,8 +40,7 @@ if __name__ == "__main__":
                     "pixels": ((10, 10), (30, 100), (50, 200), (70, 300)),
                     "scan_parameters": [('column', None),
                                         ('row', None),
-                                        ('PlsrDAC', plsr_dacs)],
-                    'send_data': 'tcp://127.0.0.1:5678'
+                                        ('PlsrDAC', plsr_dacs)]
                 })
 
                 sns.append((dis_vbn, vthin_alt_fine, prmp_vbpf, get_signal_to_noise(runmngr.current_run.output_filename)))

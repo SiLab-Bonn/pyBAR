@@ -13,7 +13,7 @@ class ExtTriggerScan(Fei4RunBase):
     '''External trigger scan with FE-I4
 
     For use with external scintillator (user RX0), TLU (use RJ45), FE-I4 HitOR (USBpix self-trigger).
-    
+
     Note:
     Set up trigger in DUT configuration file (e.g. dut_configuration_mio.yaml).
     '''
