@@ -24,6 +24,7 @@ class DataWorker(QtCore.QObject):
         self.integrate_readouts = 1
         self.n_readout = 0
         self.n_hits = 0  # integrated hits
+        self.n_events = 0
         self.setup_raw_data_analysis()
 
     def setup_raw_data_analysis(self):
@@ -68,13 +69,16 @@ class DataWorker(QtCore.QObject):
     def process_data(self):  # main loop
         data = self.recv_data()  # poll on ZMQ queue for data
         if data and len(data) == 5:  # identify non empty raw data by existing time stamp
+            self.n_hits = self.interpreter.get_n_hits()
+            self.n_events = self.interpreter.get_n_events()
             self.n_readout += 1
             if self.integrate_readouts != 0 and self.n_readout % self.integrate_readouts == 0:
-                self.n_hits = np.sum(self.histograming.get_occupancy())
                 self.histograming.reset()
+                # we do not want to reset interpreter to keep the error counters
+#                 self.interpreter.reset()
             self.analyze_raw_data(data[0])
             interpreted_data = self.histograming.get_occupancy(), self.histograming.get_tot_hist(), self.interpreter.get_tdc_counters(), self.interpreter.get_error_counters(), self.interpreter.get_service_records_counters(), self.interpreter.get_trigger_error_counters(), self.histograming.get_rel_bcid_hist()
-            self.data_ready.emit(interpreted_data, [data[1], data[2], data[3], data[4], self.n_hits])
+            self.data_ready.emit(interpreted_data, [data[1], data[2], data[3], data[4], self.n_hits, self.n_events])
         elif data and len(data) == 2:  # data is a config object, thus reset and prepare interpreter according to the new settings
             if data[0] == 'RunConf':  # run conf is set at the beginning of a run
                 self.run_start.emit()
@@ -100,10 +104,13 @@ class OnlineMonitorApplication(Qt.QApplication):
         self.setup_plots()
         self.setup_data_worker(socket_addr)
         self.add_widgets()
-        self.fps = 0
+        self.fps = 0  # data frames per second
         self.hps = 0  # hits per second
+        self.eps = 0  # events per second
         self.plot_delay = 0
         self.updateTime = ptime.time()
+        self.total_hits = 0
+        self.total_events = 0
         self.thread.start()
         self.exec_()
 
@@ -165,19 +172,19 @@ class OnlineMonitorApplication(Qt.QApplication):
         cw.setStyleSheet("QWidget {background-color:white}")
         layout = QtGui.QGridLayout()
         cw.setLayout(layout)
-        self.rate_label = QtGui.QLabel("Readouts")
-        self.hit_rate_label = QtGui.QLabel("Hits")
-        self.timestamp_label = QtGui.QLabel("Data timestamp")
-        self.plot_timestamp_label = QtGui.QLabel("Plot timestamp")
-        self.plot_delay_label = QtGui.QLabel("Plot delay")
-        self.scan_parameter_label = QtGui.QLabel("Scan parameter")
+        self.rate_label = QtGui.QLabel("Readout Rate\n0 Hz")
+        self.hit_rate_label = QtGui.QLabel("Hit Rate\n0 Hz")
+        self.event_rate_label = QtGui.QLabel("Event Rate\n0 Hz")
+        self.timestamp_label = QtGui.QLabel("Data Timestamp\n")
+        self.plot_delay_label = QtGui.QLabel("Plot Delay\n")
+        self.scan_parameter_label = QtGui.QLabel("Scan Parameter\n")
         self.spin_box = Qt.QSpinBox(value=1)
         self.spin_box.valueChanged.connect(self.worker_data.set_integrate_readouts)
         layout.addWidget(self.timestamp_label, 0, 0, 0, 1)
-        layout.addWidget(self.plot_timestamp_label, 0, 1, 0, 1)
-        layout.addWidget(self.plot_delay_label, 0, 2, 0, 1)
-        layout.addWidget(self.rate_label, 0, 3, 0, 1)
-        layout.addWidget(self.hit_rate_label, 0, 4, 0, 1)
+        layout.addWidget(self.plot_delay_label, 0, 1, 0, 1)
+        layout.addWidget(self.rate_label, 0, 2, 0, 1)
+        layout.addWidget(self.hit_rate_label, 0, 3, 0, 1)
+        layout.addWidget(self.event_rate_label, 0, 4, 0, 1)
         layout.addWidget(self.scan_parameter_label, 0, 5, 0, 1)
         layout.addWidget(self.spin_box, 0, 6, 0, 1)
         dock_status.addWidget(cw)
@@ -228,23 +235,32 @@ class OnlineMonitorApplication(Qt.QApplication):
         dock_hit_timing.addWidget(hit_timing_widget)
 
     def update_monitor(self, data, meta_data):
-        self.timestamp_label.setText("Data timestamp\n%s" % time.asctime(time.localtime(meta_data[1])))
-        self.scan_parameter_label.setText("Scan parameter\n%s" % str(meta_data[3]))
+        self.timestamp_label.setText("Data Timestamp\n%s" % time.asctime(time.localtime(meta_data[1])))
+        self.scan_parameter_label.setText("Scan Parameter\n%s" % str(meta_data[3]))
         self.update_plots(data)
         now = ptime.time()
-        self.plot_timestamp_label.setText("Plot timestamp\n%s" % time.asctime(time.localtime(now)))
+        recent_total_hits = meta_data[4]
+        recent_total_events = meta_data[5]
         self.plot_delay = self.plot_delay * 0.9 + (now - meta_data[1]) * 0.1
-        self.plot_delay_label.setText("Plot delay\n%s" % ((time.strftime('%H:%M:%S', time.gmtime(self.plot_delay))) if self.plot_delay > 5 else "%1.2f ms" % (self.plot_delay * 1.e3)))
-        fps2 = 1.0 / (now - self.updateTime)
+        self.plot_delay_label.setText("Plot Delay\n%s" % ((time.strftime('%H:%M:%S', time.gmtime(self.plot_delay))) if self.plot_delay > 5 else "%1.2f ms" % (self.plot_delay * 1.e3)))
+        recent_fps = 1.0 / (now - self.updateTime)  # calculate FPS
+        recent_hps = (recent_total_hits - self.total_hits) / (now - self.updateTime)
+        recent_eps = (recent_total_events - self.total_events) / (now - self.updateTime)
         self.updateTime = now
-        self.fps = self.fps * 0.7 + fps2 * 0.3  # running mean for filtering
-        self.rate_label.setText("Readouts\n%d Hz" % self.fps)
-        if self.spin_box.value() == 0:  # show number of hits if all hits are integrated
-            self.hps = np.sum(data[0])
-            self.hit_rate_label.setText("Hits\n%d" % int(self.hps))
+        self.total_hits = recent_total_hits
+        self.total_events = recent_total_events
+        self.fps = self.fps * 0.7 + recent_fps * 0.3
+        self.hps = self.hps + (recent_hps - self.hps) * 0.3 / self.fps
+        self.eps = self.eps + (recent_eps - self.eps) * 0.3 / self.fps
+        self.rate_label.setText("Readout Rate\n%d Hz" % self.fps)
+        if self.spin_box.value() == 0:  # show number of hits, all hits are integrated
+            self.hit_rate_label.setText("Total Hits\n%d" % int(recent_total_hits))
         else:
-            self.hps = self.hps * 0.95 + meta_data[4] * 0.05 * self.fps / (float(self.spin_box.value()))  # running mean for filtering
-            self.hit_rate_label.setText("Hits\n%d Hz" % int(self.hps))
+            self.hit_rate_label.setText("Hit Rate\n%d Hz" % int(self.hps))
+        if self.spin_box.value() == 0:  # show number of events
+            self.event_rate_label.setText("Total Events\n%d" % int(recent_total_events))
+        else:
+            self.event_rate_label.setText("Event Rate\n%d Hz" % int(self.eps))
 
     def update_plots(self, data):
         self.occupancy_img.setImage(data[0][:, ::-1, 0], autoDownsample=True)
