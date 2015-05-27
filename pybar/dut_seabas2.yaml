@@ -9,44 +9,44 @@ name    : seabas2
 version : 1.0
 
 transfer_layer:
-  - name  : inf
+  - name  : ETH
     type  : SiTcp
 
 hw_drivers:      
   - name      : CMD
     type      : cmd_seq
-    interface : inf
+    interface : ETH
     base_addr : 0x0000
 
   - name      : SRAM
     type      : sram_fifo
-    interface : inf
+    interface : ETH
     base_addr : 0x200000000
     base_data_addr : 0x100000000
 
-  - name      : CH4
-    type      : fei4_rx
-    interface : inf
-    base_addr : 0x8300
-
   - name      : CH3
     type      : fei4_rx
-    interface : inf
-    base_addr : 0x8400
-    
+    interface : ETH
+    base_addr : 0x8300
+
   - name      : CH2
     type      : fei4_rx
-    interface : inf
-    base_addr : 0x8500
-
+    interface : ETH
+    base_addr : 0x8400
+    
   - name      : CH1
     type      : fei4_rx
-    interface : inf
+    interface : ETH
+    base_addr : 0x8500
+
+  - name      : CH0
+    type      : fei4_rx
+    interface : ETH
     base_addr : 0x8600
 
   - name      : GPIO_ENABLE_CHANNEL
     type      : gpio
-    interface : inf
+    interface : ETH
     base_addr : 0x8800
     
 registers:
@@ -55,21 +55,15 @@ registers:
     hw_driver   : GPIO_ENABLE_CHANNEL
     size        : 8
     fields:
-      - name    : TDC
-        size    : 1
-        offset  : 5
-      - name    : TLU
-        size    : 1
-        offset  : 4
-      - name    : CH4
-        size    : 1
-        offset  : 3
       - name    : CH3
         size    : 1
-        offset  : 2
+        offset  : 3
       - name    : CH2
         size    : 1
-        offset  : 1
+        offset  : 2
       - name    : CH1
+        size    : 1
+        offset  : 1
+      - name    : CH0
         size    : 1
         offset  : 0

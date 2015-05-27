@@ -162,10 +162,10 @@ class Fei4RunBase(RunBase):
             self.dut['ENABLE_CHANNEL']['CCPD_TDC'] = 1
             self.dut['ENABLE_CHANNEL'].write()
         elif self.dut.name == 'seabas2':
+            self.dut['ENABLE_CHANNEL']['CH0'] = 1
             self.dut['ENABLE_CHANNEL']['CH1'] = 1
             self.dut['ENABLE_CHANNEL']['CH2'] = 1
             self.dut['ENABLE_CHANNEL']['CH3'] = 1
-            self.dut['ENABLE_CHANNEL']['CH4'] = 1
             self.dut['ENABLE_CHANNEL'].write()
         else:
             logging.warning('Omit initialization of DUT %s', self.dut.name)
