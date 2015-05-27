@@ -44,7 +44,7 @@ void Clusterizer::setStandardSettings()
 	_dy = 2; // row
 	_DbCID = 4; // timewalk
 	_minClusterHits = 1;
-	_maxClusterHits = 9;	//std. setting for maximum hits per cluster allowed
+	_maxClusterHits = 30;	//std. setting for maximum hits per cluster allowed
 	_runTime = 0;
 	_nHits = 0;
 	_maxClusterHitTot = 13;
