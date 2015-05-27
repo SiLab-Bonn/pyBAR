@@ -3,6 +3,10 @@ from pybar.scans.scan_analog import AnalogScan
 from pybar.scans.scan_ext_trigger import ExtTriggerScan
 from pybar.run_manager import run_status
 
+# Execute this script from the shell: python example_run_manager.py
+#
+# This script can also be run from a Python interactive shell (e.g. IPython).
+
 if __name__ == "__main__":
     # The FE flavor can be set inside configuration.yaml (set the value to fei4a or fei4b).
     # The initial FE configuration will be created during the first run.
