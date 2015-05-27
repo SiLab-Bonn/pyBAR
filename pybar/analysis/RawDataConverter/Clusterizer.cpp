@@ -554,9 +554,9 @@ void Clusterizer::addClusterToResults()
 			_clusterTots[(size_t) _actualClusterTot]++;	//cluster size = 0 contains all cluster sizes
 		}
 		else {
-			std::stringstream tInfo;
-			tInfo << "Clusterizer::addClusterToResults: cluster tot " << _actualClusterTot << " with cluster size " << _actualClusterSize << " does not fit into cluster tot histogram.";
-			throw std::out_of_range(tInfo.str());
+			std::stringstream tWarning;
+			tWarning << "Clusterizer::addClusterToResults: cluster tot " << _actualClusterTot << " with cluster size " << _actualClusterSize << " does not fit into cluster tot histogram.";
+			warning(tWarning.str());
 		}
 
 //		if((int) _actualClusterCharge<__MAXCHARGEBINS && _actualClusterSize<__MAXCLUSTERHITSBINS){
