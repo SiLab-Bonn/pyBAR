@@ -11,12 +11,7 @@ version : 1.0
 transfer_layer:
   - name  : inf
     type  : SiTcp
-    init:      
-        ip : "192.168.10.16"
-        udp_port : 4660
-        tcp_port : 24
-        tcp_connection : True
-    
+
 hw_drivers:      
   - name      : CMD
     type      : cmd_seq
