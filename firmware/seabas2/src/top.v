@@ -73,8 +73,8 @@ clock_manager iclock_manager (
     .RST_IN(RST_DLL), 
     .CLKOUT0_OUT(CLK160), 
     .CLKOUT1_OUT(CLK320), 
-    .CLKOUT2_OUT(CLK40), 
-    .CLKOUT3_OUT(CLK16), 
+    .CLKOUT2_OUT(CLK16), 
+    .CLKOUT3_OUT(CLK40), 
     .CLKOUT0_OUT2(CLK125),
     .LOCKED_OUT(LOCKED_OUT)
     );              
@@ -239,7 +239,7 @@ generate
   for (i = 0; i < 4; i = i + 1) begin: rx_gen
     wire dobout_s;
     IBUFDS #(
-        .DIFF_TERM("TRUE")    ,
+        .DIFF_TERM("TRUE"),
         .IOSTANDARD("LVDS_25")
     ) IBUFDS_inst_dobout(
         .I(DOBOUT_P[i])        , 
