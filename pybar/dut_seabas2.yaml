@@ -18,33 +18,33 @@ transfer_layer:
         tcp_connection : True
     
 hw_drivers:      
-  - name      : cmd
+  - name      : CMD
     type      : cmd_seq
     interface : inf
     base_addr : 0x0000
 
-  - name      : sram
+  - name      : SRAM
     type      : sram_fifo
     interface : inf
     base_addr : 0x200000000
     base_data_addr : 0x100000000
 
-  - name      : rx_4
+  - name      : CH4
     type      : fei4_rx
     interface : inf
     base_addr : 0x8300
 
-  - name      : rx_3
+  - name      : CH3
     type      : fei4_rx
     interface : inf
     base_addr : 0x8400
     
-  - name      : rx_2
+  - name      : CH2
     type      : fei4_rx
     interface : inf
     base_addr : 0x8500
 
-  - name      : rx_1
+  - name      : CH1
     type      : fei4_rx
     interface : inf
     base_addr : 0x8600

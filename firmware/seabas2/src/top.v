@@ -330,10 +330,11 @@ assign NIM_OUT = 0; //what is this
 assign USR_CLOSE_ACK = USR_CLOSE_REQ;
 assign USR_RX_RE = 1'b1;
 
-assign LED[0] = RX_READY[0];
+assign LED[0] = 1'b0;
 assign LED[1] = FIFO_EMPTY;
 assign LED[2] = FIFO_FULL;
-assign LED[7:3] = 5'b10101;
+assign LED[3] = 1'b0;
+assign LED[7:4] = RX_READY;
 
     
 endmodule 
