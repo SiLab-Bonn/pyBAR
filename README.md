@@ -73,7 +73,7 @@ Clone pyBAR from git and then run the following commands from the within project
    nosetests test_analysis.py
    ```
 
-Please note the [Step-by-step Installation Guide](https://github.com/SiLab-Bonn/pyBAR/wiki/Step-by-step-Installation-Guide)
+Please also note the [Step-by-step Installation Guide](https://github.com/SiLab-Bonn/pyBAR/wiki/Step-by-step-Installation-Guide).
 
 ## Usage
 
