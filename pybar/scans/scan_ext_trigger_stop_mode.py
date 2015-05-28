@@ -153,11 +153,10 @@ class StopModeExtTriggerScan(Fei4RunBase):
             analyze_raw_data.create_source_scan_hist = True
             analyze_raw_data.use_trigger_time_stamp = True
             analyze_raw_data.set_stop_mode = True
-            analyze_raw_data.interpreter.use_trigger_number(True)
+            analyze_raw_data.align_at_trigger = True
             analyze_raw_data.create_cluster_size_hist = True
             analyze_raw_data.interpreter.set_warning_output(False)
             analyze_raw_data.clusterizer.set_warning_output(False)
-#             analyze_raw_data.interpreter.debug_events(0, 10, True)  # events to be printed onto the console for debugging, usually deactivated
             analyze_raw_data.interpret_word_table(use_settings_from_file=False)
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms()
