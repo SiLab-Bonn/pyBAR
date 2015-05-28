@@ -337,10 +337,10 @@ class Fei4RunBase(RunBase):
         # no execption should be thrown here
         self.raw_data_file = None
         try:
-            self.dut['USB'].close()  # free USB resources
+            self.dut.close()  # free resources
         # no device?
         except Exception:
-            logging.error('Cannot close USB device')
+            logging.error('Cannot close device')
 
     def handle_data(self, data):
         self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=False)
