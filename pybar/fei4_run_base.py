@@ -338,9 +338,8 @@ class Fei4RunBase(RunBase):
         self.raw_data_file = None
         try:
             self.dut.close()  # free resources
-        # no device?
         except Exception:
-            logging.error('Cannot close device')
+            logging.error('Cannot close DUT')
 
     def handle_data(self, data):
         self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=False)
