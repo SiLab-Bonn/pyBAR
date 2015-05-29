@@ -1170,6 +1170,50 @@ def make_box_pixel_mask_from_col_row(column, row, default=0, value=1):
     return mask
 
 
+def make_xtalk_mask(mask):
+    """
+    Generate xtalk mask (row - 1, row + 1) from pixel mask.
+
+    Parameters
+    ----------
+    mask : ndarray
+        Pixel mask
+
+    Returns
+    -------
+    ndarray
+        Xtalk mask
+
+    Example
+    -------
+    Input:
+    [[1 0 0 0 0 0 1 0 0 0 ..., 0 0 0 0 1 0 0 0 0 0]
+     [0 0 0 1 0 0 0 0 0 1 ..., 0 1 0 0 0 0 0 1 0 0]
+     ...,
+     [1 0 0 0 0 0 1 0 0 0 ..., 0 0 0 0 1 0 0 0 0 0]
+     [0 0 0 1 0 0 0 0 0 1 ..., 0 1 0 0 0 0 0 1 0 0]]
+
+    Output:
+    [[0 1 0 0 0 1 0 1 0 0 ..., 0 0 0 1 0 1 0 0 0 1]
+     [0 0 1 0 1 0 0 0 1 0 ..., 1 0 1 0 0 0 1 0 1 0]
+     ...,
+     [0 1 0 0 0 1 0 1 0 0 ..., 0 0 0 1 0 1 0 0 0 1]
+     [0 0 1 0 1 0 0 0 1 0 ..., 1 0 1 0 0 0 1 0 1 0]]
+    """
+    col, row = mask.nonzero()
+    row_plus_one = row + 1
+    del_index = np.where(row_plus_one > 335)
+    row_plus_one = np.delete(row_plus_one, del_index)
+    col_plus_one = np.delete(col.copy(), del_index)
+    row_minus_one = row - 1
+    del_index = np.where(row_minus_one > 335)
+    row_minus_one = np.delete(row_minus_one, del_index)
+    col_minus_one = np.delete(col.copy(), del_index)
+    col = np.concatenate((col_plus_one, col_minus_one))
+    row = np.concatenate((row_plus_one, row_minus_one))
+    return make_pixel_mask_from_col_row(col + 1, row + 1)
+
+
 def cartesian(arrays, out=None):
     """
     Generate a cartesian product of input arrays.
@@ -1243,7 +1287,7 @@ def parse_key_value_from_file(f, key, deletechars=''):
             return None
 
 
-def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=False, bol_function=None, eol_function=None, digital_injection=False, enable_shift_masks=None, disable_shift_masks=None, restore_shift_masks=True, mask=None, double_column_correction=False):
+def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=False, fast_dc_loop=True, bol_function=None, eol_function=None, digital_injection=False, enable_shift_masks=None, disable_shift_masks=None, restore_shift_masks=True, mask=None, double_column_correction=False):
     '''Implementation of the scan loops (mask shifting, loop over double columns, repeatedly sending any arbitrary command).
 
     Parameters
@@ -1262,6 +1306,8 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
         List of double columns which will be enabled during scan. Default is all double columns. From 0 to 39 (double columns counted from zero). A value equal None or empty list will select all double columns.
     same_mask_for_all_dc : bool
         Use same mask for all double columns. This will only affect all shift masks (see enable_shift_masks). Enabling this is in general a good idea since all double columns will have the same configuration and the scan speed can increased by an order of magnitude.
+    fast_dc_loop : bool
+        If True, optimize double column (DC) loop to save time. Note that bol_function and eol_function cannot do register operations, if True.
     bol_function : function
         Begin of loop function that will be called each time before sending command. Argument is a function pointer (without braces) or functor.
     eol_function : function
@@ -1417,71 +1463,130 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
         self.register_utils.send_commands(commands, concatenate=True)
         logging.info('%d injection(s): mask step %d %s', repeat_command, mask_step, ('[%d - %d]' % (enable_mask_steps[0], enable_mask_steps[-1])) if len(enable_mask_steps) > 1 else ('[%d]' % enable_mask_steps[0]))
 
-        if same_mask_for_all_dc:  # fast dc loop
-            # set repeat, should be 1 by default when arriving here
-            self.dut['CMD']['CMD_REPEAT'] = repeat_command
+        if same_mask_for_all_dc:
+            if fast_dc_loop:  # fast DC loop with optimized pixel register writing
+                # set repeat, should be 1 by default when arriving here
+                self.dut['CMD']['CMD_REPEAT'] = repeat_command
 
-            # get DC command for the first DC in the list, DC command is byte padded
-            # fill CMD memory with DC command and scan loop command, inside the loop only overwrite DC command
-            dc_address_command = get_dc_address_command(enable_double_columns[0])
-            self.dut['CMD']['START_SEQUENCE_LENGTH'] = len(dc_address_command)
-            self.register_utils.set_command(command=self.register_utils.concatenate_commands((dc_address_command, scan_loop_command), byte_padding=False))
+                # get DC command for the first DC in the list, DC command is byte padded
+                # fill CMD memory with DC command and scan loop command, inside the loop only overwrite DC command
+                dc_address_command = get_dc_address_command(enable_double_columns[0])
+                self.dut['CMD']['START_SEQUENCE_LENGTH'] = len(dc_address_command)
+                self.register_utils.set_command(command=self.register_utils.concatenate_commands((dc_address_command, scan_loop_command), byte_padding=False))
 
-            for index, dc in enumerate(enable_double_columns):
-                if self.stop_run.is_set():
-                    break
-                if index != 0:  # full command is already set before loop
-                    # get DC command before wait to save some time
+                for index, dc in enumerate(enable_double_columns):
+                    if self.stop_run.is_set():
+                        break
+                    if index != 0:  # full command is already set before loop
+                        # get DC command before wait to save some time
+                        dc_address_command = get_dc_address_command(dc)
+                        self.register_utils.wait_for_command()
+                        if eol_function:
+                            eol_function()  # do this after command has finished
+                        # only set command after FPGA is ready
+                        # overwrite only the DC command in CMD memory
+                        self.register_utils.set_command(dc_address_command, set_length=False)  # do not set length here, because it was already set up before the loop
+
+                    if bol_function:
+                        bol_function()
+
+                    self.dut['CMD']['START']
+
+                # wait here before we go on because we just jumped out of the loop
+                self.register_utils.wait_for_command()
+                if eol_function:
+                    eol_function()
+                self.dut['CMD']['START_SEQUENCE_LENGTH'] = 0
+
+            else:  # the slow DC loop allows writing commands inside bol and eol functions
+                for index, dc in enumerate(enable_double_columns):
+                    if self.stop_run.is_set():
+                        break
                     dc_address_command = get_dc_address_command(dc)
-                    self.register_utils.wait_for_command()
+                    self.register_utils.send_command(dc_address_command)
+
+                    if bol_function:
+                        bol_function()
+
+                    self.register_utils.send_command(scan_loop_command, repeat=repeat_command)
+
                     if eol_function:
-                        eol_function()  # do this after command has finished
-                    # only set command after FPGA is ready
-                    # overwrite only the DC command in CMD memory
-                    self.register_utils.set_command(dc_address_command, set_length=False)  # do not set length here, because it was already set up before the loop
+                        eol_function()
 
-                if bol_function:
-                    bol_function()
+        else:
+            if fast_dc_loop:  # fast DC loop with optimized pixel register writing
+                dc = enable_double_columns[0]
+                ec = enable_columns(dc)
+                dcs = write_double_columns(dc)
+                commands = []
+                commands.append(conf_mode_command)
+                if disable_shift_masks:
+                    curr_dis_mask = make_pixel_mask(steps=mask_steps, shift=mask_step, default=1, value=0, enable_columns=ec, mask=mask)
+                    map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_dis_mask), disable_shift_masks)
+                    commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=disable_shift_masks, joint_write=True))
+                if enable_shift_masks:
+                    curr_en_mask = make_pixel_mask(steps=mask_steps, shift=mask_step, enable_columns=ec, mask=mask)
+                    map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_en_mask), enable_shift_masks)
+                    commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=enable_shift_masks, joint_write=True))
+                if digital_injection is True:
+                    self.register.set_global_register_value("DIGHITIN_SEL", 1)
+                    commands.extend(self.register.get_commands("WrRegister", name=["DIGHITIN_SEL"]))
+                self.register_utils.send_commands(commands, concatenate=True)
 
-                self.dut['CMD']['START']
+                dc_address_command = get_dc_address_command(dc)
+                self.dut['CMD']['START_SEQUENCE_LENGTH'] = len(dc_address_command)
+                self.dut['CMD']['CMD_REPEAT'] = repeat_command
+                self.register_utils.set_command(command=self.register_utils.concatenate_commands((dc_address_command, scan_loop_command), byte_padding=False))
 
-            # wait here before we go on because we just jumped out of the loop
-            self.register_utils.wait_for_command()
-            if eol_function:
-                eol_function()
-            self.dut['CMD']['START_SEQUENCE_LENGTH'] = 0
+                for index, dc in enumerate(enable_double_columns):
+                    if self.stop_run.is_set():
+                        break
+                    if index != 0:  # full command is already set before loop
+                        ec = enable_columns(dc)
+                        dcs = write_double_columns(dc)
+                        dcs.extend(write_double_columns(enable_double_columns[index - 1]))
+                        commands = []
+                        commands.append(conf_mode_command)
+                        if disable_shift_masks:
+                            curr_dis_mask = make_pixel_mask(steps=mask_steps, shift=mask_step, default=1, value=0, enable_columns=ec, mask=mask)
+                            map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_dis_mask), disable_shift_masks)
+                            commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=disable_shift_masks, joint_write=True))
+                        if enable_shift_masks:
+                            curr_en_mask = make_pixel_mask(steps=mask_steps, shift=mask_step, enable_columns=ec, mask=mask)
+                            map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_en_mask), enable_shift_masks)
+                            commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=enable_shift_masks, joint_write=True))
+                        if digital_injection is True:
+                            self.register.set_global_register_value("DIGHITIN_SEL", 1)
+                            commands.extend(self.register.get_commands("WrRegister", name=["DIGHITIN_SEL"]))
+                        dc_address_command = get_dc_address_command(dc)
 
-        else:  # slow dc loop
-            dc = enable_double_columns[0]
-            ec = enable_columns(dc)
-            dcs = write_double_columns(dc)
-            commands = []
-            commands.append(conf_mode_command)
-            if disable_shift_masks:
-                curr_dis_mask = make_pixel_mask(steps=mask_steps, shift=mask_step, default=1, value=0, enable_columns=ec, mask=mask)
-                map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_dis_mask), disable_shift_masks)
-                commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=disable_shift_masks, joint_write=True))
-            if enable_shift_masks:
-                curr_en_mask = make_pixel_mask(steps=mask_steps, shift=mask_step, enable_columns=ec, mask=mask)
-                map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_en_mask), enable_shift_masks)
-                commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=enable_shift_masks, joint_write=True))
-            if digital_injection is True:
-                self.register.set_global_register_value("DIGHITIN_SEL", 1)
-                commands.extend(self.register.get_commands("WrRegister", name=["DIGHITIN_SEL"]))
-            self.register_utils.send_commands(commands, concatenate=True)
+                        self.register_utils.wait_for_command()
+                        if eol_function:
+                            eol_function()  # do this after command has finished
+                        self.register_utils.send_commands(commands, concatenate=True)
 
-            dc_address_command = get_dc_address_command(dc)
-            self.dut['CMD']['START_SEQUENCE_LENGTH'] = len(dc_address_command)
-            self.dut['CMD']['CMD_REPEAT'] = repeat_command
-            self.register_utils.set_command(command=self.register_utils.concatenate_commands((dc_address_command, scan_loop_command), byte_padding=False))
+                        self.dut['CMD']['START_SEQUENCE_LENGTH'] = len(dc_address_command)
+                        self.dut['CMD']['CMD_REPEAT'] = repeat_command
+                        self.register_utils.set_command(command=self.register_utils.concatenate_commands((dc_address_command, scan_loop_command), byte_padding=False))
 
-            for index, dc in enumerate(enable_double_columns):
-                if self.stop_run.is_set():
-                    break
-                if index != 0:  # full command is already set before loop
+                    if bol_function:
+                        bol_function()
+
+                    self.dut['CMD']['START']
+
+                self.register_utils.wait_for_command()
+                if eol_function:
+                    eol_function()
+                self.dut['CMD']['START_SEQUENCE_LENGTH'] = 0
+
+            else:
+                for index, dc in enumerate(enable_double_columns):
+                    if self.stop_run.is_set():
+                        break
                     ec = enable_columns(dc)
                     dcs = write_double_columns(dc)
-                    dcs.extend(write_double_columns(enable_double_columns[index - 1]))
+                    if index != 0:
+                        dcs.extend(write_double_columns(enable_double_columns[index - 1]))
                     commands = []
                     commands.append(conf_mode_command)
                     if disable_shift_masks:
@@ -1495,26 +1600,18 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
                     if digital_injection is True:
                         self.register.set_global_register_value("DIGHITIN_SEL", 1)
                         commands.extend(self.register.get_commands("WrRegister", name=["DIGHITIN_SEL"]))
-                    dc_address_command = get_dc_address_command(dc)
-
-                    self.register_utils.wait_for_command()
-                    if eol_function:
-                        eol_function()  # do this after command has finished
                     self.register_utils.send_commands(commands, concatenate=True)
 
-                    self.dut['CMD']['START_SEQUENCE_LENGTH'] = len(dc_address_command)
-                    self.dut['CMD']['CMD_REPEAT'] = repeat_command
-                    self.register_utils.set_command(command=self.register_utils.concatenate_commands((dc_address_command, scan_loop_command), byte_padding=False))
+                    dc_address_command = get_dc_address_command(dc)
+                    self.register_utils.send_command(dc_address_command)
 
-                if bol_function:
-                    bol_function()
+                    if bol_function:
+                        bol_function()
 
-                self.dut['CMD']['START']
+                    self.register_utils.send_command(scan_loop_command, repeat=repeat_command)
 
-            self.register_utils.wait_for_command()
-            if eol_function:
-                eol_function()
-            self.dut['CMD']['START_SEQUENCE_LENGTH'] = 0
+                    if eol_function:
+                        eol_function()
 
     # restoring default values
     self.register.restore(name=restore_point_name)
