@@ -100,10 +100,16 @@ class FEI4RegisterUtils(object):
         return command_length
 
     def wait_for_command(self, length=None, repeat=None):
-        if length is not None:
-            if repeat is None:
-                repeat = 1
-            time.sleep((length + 500) * 0.000000025 * repeat)  # TODO: optimize wait time
+        # for scans using the scan loop, reading length and repeat will decrease processor load by 30 to 50%, but has a marginal influence on scan time
+        if length is None:
+            length = self.dut['CMD']['CMD_SIZE'] - self.dut['CMD']['START_SEQUENCE_LENGTH'] - self.dut['CMD']['STOP_SEQUENCE_LENGTH']
+        if repeat is None:
+            repeat = self.dut['CMD']['CMD_REPEAT']
+        if length and repeat > 1:
+            try:
+                time.sleep(length * 25e-9 * repeat - 0.002)  # subtract 2ms delay
+            except IOError:  # negative value
+                pass
         while not self.is_ready:
             pass
 
@@ -747,6 +753,7 @@ def test_global_register(self):
         number_of_errors += 1
     logging.info('Global Register Test: Found %d error(s)' % number_of_errors)
     return number_of_errors
+
 
 def test_pixel_register(self):
     '''Test Pixel Register
