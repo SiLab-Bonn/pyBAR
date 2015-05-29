@@ -16,11 +16,11 @@ class CrosstalkScan(ThresholdScan):
         "scan_parameters": [('PlsrDAC', [None, 100])],  # the PlsrDAC range
         "step_size": 1,  # step size of the PlsrDAC during scan
         "use_enable_mask": False,  # if True, use Enable mask during scan, if False, all pixels will be enabled
-        "enable_shift_masks": ["Enable",],  # enable masks shifted during scan
+        "enable_shift_masks": ["Enable"],  # enable masks shifted during scan
         "disable_shift_masks": ["C_High", "C_Low"],  # disable masks shifted during scan
         "pulser_dac_correction": False  # PlsrDAC correction for each double column
     })
 
 
 if __name__ == "__main__":
-    RunManager('../configuration.yaml').run_run(ThresholdScan)
+    RunManager('../configuration.yaml').run_run(CrosstalkScan)
