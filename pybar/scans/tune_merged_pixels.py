@@ -13,7 +13,7 @@ from pybar.analysis.plotting.plotting import plot_occupancy
 class MergedPixelsTuning(AnalogScan):
     '''Merged Pixels Tuning
 
-    Masking merged pixels.
+    Masking merged pixels. Injecting in every n-th pixel, and reading out everywhere else.
     '''
     _default_run_conf = AnalogScan._default_run_conf.copy()
     _default_run_conf.update({
