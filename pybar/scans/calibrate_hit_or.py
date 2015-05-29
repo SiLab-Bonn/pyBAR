@@ -172,7 +172,6 @@ class HitOrCalibration(Fei4RunBase):
             for scan_parameter_value in scan_parameters_values:
                 if self.stop_run.is_set():
                     break
-                logging.info('Scan step: %s %d', scan_par_name, scan_parameter_value)
 
                 commands = []
                 commands.extend(self.register.get_commands("ConfMode"))
@@ -182,7 +181,7 @@ class HitOrCalibration(Fei4RunBase):
                 self.register_utils.send_commands(commands)
 
                 self.dut['TDC']['EN_ARMING'] = True
-                with self.readout(column=column, row=row, PlsrDAC=scan_parameter_value):
+                with self.readout(column=column, row=row, **{scan_par_name: scan_parameter_value}):
                     self.register_utils.send_command(command=cal_lvl1_command, repeat=self.repeat_command)
 
                 self.dut['TDC']['EN_ARMING'] = False

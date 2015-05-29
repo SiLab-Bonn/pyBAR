@@ -79,7 +79,6 @@ class HitDelayScan(Fei4RunBase):
             for delay_parameter_value in delay_parameter_values:  # Loop over the Plsr delay parameter
                 if self.stop_run.is_set():
                     break
-                logging.info('Scan step: PlsrDAC %s, %s %d', plsr_dac_value, delay_parameter_name, delay_parameter_value)
 
                 # Change the Plsr delay parameter
                 commands = []
