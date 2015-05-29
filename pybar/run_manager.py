@@ -18,6 +18,7 @@ from functools import partial
 from ast import literal_eval
 from time import time
 from threading import current_thread
+from functools import wraps
 
 
 punctuation = """!,.:;?"""
@@ -192,7 +193,8 @@ class RunBase():
             log_status = logging.WARNING
         else:
             log_status = logging.ERROR
-        logging.log(log_status, 'Finished run #%d (%s) in %s. STATUS: %s' % (self.run_number, self.__class__.__name__, self.working_dir, self.run_status))
+        logging.log(log_status, 'Finished run #%d (%s) in %s (total time: %s)' % (self.run_number, self.__class__.__name__, self.working_dir, str(self.total_time)))
+        logging.log(log_status, 'Status: %s', self.run_status)
 
     def stop(self, msg=None):
         """Stopping a run. Control for loops.
@@ -242,6 +244,7 @@ class RunBase():
         return run_numbers
 
     def _write_run_number(self, run_number=None):
+        self.start_time = datetime.datetime.now()
         run_numbers = self._get_run_numbers()
         if run_number:
             self._run_number = run_number
@@ -250,20 +253,22 @@ class RunBase():
                 self._run_number = 1
             else:
                 self._run_number = max(dict.iterkeys(run_numbers)) + 1
-        run_numbers[self.run_number] = str(self.run_number) + ' ' + self.__class__.__name__ + ' ' + 'RUNNING' + ' ' + str(datetime.datetime.now()) + '\n'
+        run_numbers[self.run_number] = str(self.run_number) + ' ' + self.__class__.__name__ + ' ' + 'RUNNING' + ' ' + str(self.start_time) + '\n'
         with self.file_lock:
             with open(os.path.join(self.working_dir, "run" + ".cfg"), "w") as f:
                 for value in dict.itervalues(run_numbers):
                     f.write(value)
 
     def _write_run_status(self, status_msg):
+        self.stop_time = datetime.datetime.now()
+        self.total_time = self.stop_time - self.start_time
         run_numbers = self._get_run_numbers()
         if not run_numbers:
-            run_numbers[self.run_number] = str(self.run_number) + ' ' + self.__class__.__name__ + ' ' + status_msg + ' ' + str(datetime.datetime.now()) + '\n'
+            run_numbers[self.run_number] = str(self.run_number) + ' ' + self.__class__.__name__ + ' ' + status_msg + ' ' + str(self.stop_time) + ' ' + str(self.total_time) + '\n'
         else:
             parts = re.split('\s+', run_numbers[self.run_number])
             parts[2] = status_msg
-            run_numbers[self.run_number] = ' '.join(parts[:-1]) + ' ' + str(datetime.datetime.now()) + '\n'
+            run_numbers[self.run_number] = ' '.join(parts[:-1]) + ' ' + str(self.stop_time) + ' ' + str(self.total_time) + '\n'
         with self.file_lock:
             with open(os.path.join(self.working_dir, "run" + ".cfg"), "w") as f:
                 for value in dict.itervalues(run_numbers):
@@ -517,9 +522,6 @@ class RunManager(object):
     def _signal_handler(self, signum, frame):
         signal.signal(signal.SIGINT, signal.SIG_DFL)  # setting default handler... pressing Ctrl-C a second time will kill application
         self.abort_current_run('Pressed Ctrl-C')
-
-
-from functools import wraps
 
 
 def set_event_when_keyboard_interrupt(_lambda):
