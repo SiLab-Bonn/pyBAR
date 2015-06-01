@@ -15,6 +15,7 @@ from matplotlib.figure import Figure
 from matplotlib.artist import setp
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from scipy.optimize import curve_fit
+from scipy.stats import chisquare
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.dates as mdates
 import pandas as pd
@@ -667,24 +668,32 @@ def create_1d_hist(fig, ax, hist, title=None, x_axis_title=None, y_axis_title=No
 
     # defining gauss fit function
     def gauss(x, *p):
-        A, mu, sigma = p
-        return A * np.exp(-(x - mu) ** 2.0 / (2.0 * sigma ** 2.0))
+        amplitude, mu, sigma = p
+        return amplitude * np.exp(- (x - mu)**2.0 / (2.0 * sigma**2.0))
+#         return 1.0 / (sigma * np.sqrt(2.0 * np.pi)) * np.exp(- (x - mu)**2.0 / (2.0 * sigma**2.0))
+
+    def chi_square(observed_values, expected_values):
+        return (chisquare(observed_values, f_exp=expected_values))[0]
+#         chisquare = 0
+#         for observed, expected in itertools.izip(list(observed_values), list(expected_values)):
+#             chisquare += (float(observed) - float(expected))**2.0 / float(expected)
+#         return chisquare
 
     p0 = (amplitude, mean, rms)  # p0 is the initial guess for the fitting coefficients (A, mu and sigma above)
     try:
         coeff, _ = curve_fit(gauss, bin_centres, h_1d, p0=p0)
-        hist_fit = gauss(bin_centres, *coeff)
-        ax.plot(bin_centres, hist_fit, "r--", label='Gauss fit')
-        chi2 = 0.0
-        for i in range(0, len(h_1d)):
-            chi2 += (h_1d[i] - gauss(h_bins[i], *coeff)) ** 2.0
-        textright = '$\mu=%.2f$\n$\sigma=%.2f$\n$\chi2=%.2f$' % (coeff[1], coeff[2], chi2)
-        props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
-        ax.text(0.85, 0.9, textright, transform=ax.transAxes, fontsize=8, verticalalignment='top', bbox=props)
     except RuntimeError, e:
         logging.info('Plot 1d histogram: gauss fit failed, %s', e)
     except TypeError, e:
         logging.info('Plot 1d histogram: gauss fit failed, %s', e)
+    else:
+        hist_fit = gauss(bin_centres, *coeff)
+        ax.plot(bin_centres, hist_fit, "r--", label='Gauss fit')
+        chi2 = chi_square(h_1d, hist_fit)
+        textright = '$\mu=%.2f$\n$\sigma=%.2f$\n$\chi2=%.2f$' % (coeff[1], coeff[2], chi2)
+        props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+        ax.text(0.85, 0.9, textright, transform=ax.transAxes, fontsize=8, verticalalignment='top', bbox=props)
+
     textleft = '$\mathrm{mean}=%.2f$\n$\mathrm{RMS}=%.2f$\n$\mathrm{median}=%.2f$' % (mean, rms, median)
     props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
     ax.text(0.1, 0.9, textleft, transform=ax.transAxes, fontsize=8, verticalalignment='top', bbox=props)
