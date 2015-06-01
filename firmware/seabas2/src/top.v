@@ -168,7 +168,7 @@ cmd_seq
     .BASEADDR(CMD_BASEADDR),
     .HIGHADDR(CMD_HIGHADDR),
     .ABUSWIDTH(ABUSWIDTH),
-    .OUTPUTS(1)
+    .OUTPUTS(4)
 ) icmd (
     .BUS_CLK(BUS_CLK),
     .BUS_RST(BUS_RST),
@@ -177,12 +177,12 @@ cmd_seq
     .BUS_RD(BUS_RD),
     .BUS_WR(BUS_WR),
     
-    .CMD_CLK_OUT(CMD_CLK[0]),
+    .CMD_CLK_OUT(CMD_CLK),
     .CMD_CLK_IN(CLK40),
     
     .CMD_EXT_START_FLAG(1'b0),
     .CMD_EXT_START_ENABLE(),
-    .CMD_DATA(CMD_DATA[0]),
+    .CMD_DATA(CMD_DATA),
     .CMD_READY(),
     .CMD_START_FLAG()
     
