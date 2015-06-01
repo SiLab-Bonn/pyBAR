@@ -41,7 +41,7 @@ For USB support, PyBAR requires the following packages:
   pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/735/pySiLibUSB-2.0.3.tar.gz
   ```
 
-The [Basil](https://github.com/SiLab-Bonn/basil) framework (==2.1.0) is required:
+[Basil](https://github.com/SiLab-Bonn/basil) (==2.1.0) is required:
   ```
   pip install -e "git+https://github.com/SiLab-Bonn/basil.git@v2.1.0#egg=basil&subdirectory=host"
   ```
@@ -56,8 +56,10 @@ For full functionality, the following additional packages are needed:
   mock nose pyqtgraph pyserial pyvisa pyvisa-py pyzmq
   ```
 
+On Windows, the `pywin32` package is required.
+
 The installation procedure depends on the operating system and software environment.
-Please visit our [Step-by-step Installation Guide](https://github.com/SiLab-Bonn/pyBAR/wiki/Step-by-step-Installation-Guide) for more information.
+Please read our [Step-by-step Installation Guide](https://github.com/SiLab-Bonn/pyBAR/wiki/Step-by-step-Installation-Guide) carefully.
 
 Clone pyBAR from git and then run the following commands from the within project folder:
 
