@@ -30,31 +30,34 @@ The features of the host software in Python and C++:
 
 ## Installation
 
-Prerequisites:
-- PyUSB (>=1.0.0rc1):
+For USB support, PyBAR requires the following packages:
+- [PyUSB](https://github.com/walac/pyusb) (>=1.0.0rc1):
   ```
   pip install "git+https://github.com/walac/pyusb.git@master"
   ```
   
-- pySiLibUSB (>=1.0.0):
+- [pySiLibUSB](https://silab-redmine.physik.uni-bonn.de/projects/pysilibusb) (>=1.0.0):
   ```
   pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/735/pySiLibUSB-2.0.3.tar.gz
   ```
-  
-- Basil (>=2.1.0):
+
+The [Basil](https://github.com/SiLab-Bonn/basil) framework (==2.1.0) is required:
   ```
   pip install -e "git+https://github.com/SiLab-Bonn/basil.git@v2.1.0#egg=basil&subdirectory=host"
   ```
-  
-- progressbar (>=2.4):
+
+The following packages are required for pyBAR's core functionality:
   ```
-  pip install progressbar-latest
+  bitarray cython matplotlib numpy pandas progressbar-latest tables pyyaml scipy
   ```
-  
-- PyQtGraph:
+
+For full functionality, the following additional packages are needed:
   ```
-  pip install pyqtgraph
+  mock nose pyqtgraph pyserial pyvisa pyvisa-py pyzmq
   ```
+
+The installation procedure depends on the operating system and software environment.
+Please visit our [Step-by-step Installation Guide](https://github.com/SiLab-Bonn/pyBAR/wiki/Step-by-step-Installation-Guide) for more information.
 
 Clone pyBAR from git and then run the following commands from the within project folder:
 
@@ -72,8 +75,6 @@ Clone pyBAR from git and then run the following commands from the within project
    ```
    nosetests test_analysis.py
    ```
-
-Please also note the [Step-by-step Installation Guide](https://github.com/SiLab-Bonn/pyBAR/wiki/Step-by-step-Installation-Guide).
 
 ## Usage
 

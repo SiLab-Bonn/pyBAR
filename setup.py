@@ -18,6 +18,7 @@ from setuptools import setup
 from setuptools import find_packages
 from distutils.extension import Extension
 from distutils.command.build_ext import build_ext
+from platform import system
 from Cython.Build import cythonize
 import numpy as np
 import os
@@ -60,6 +61,11 @@ f.close()
 author = 'Jens Janssen'
 author_email = 'janssen@physik.uni-bonn.de'
 
+# requirements for core functionality
+install_requires = ['basil==2.1.0', 'bitarray>=0.8.1', 'cython', 'matplotlib', 'numpy', 'pandas', 'progressbar-latest>=2.4', 'tables', 'pyyaml', 'scipy']
+if system() == 'Windows':
+    install_requires.append('pywin32')
+
 setup(
     name='pyBAR',
     version=version,
@@ -71,7 +77,7 @@ setup(
     maintainer=author,
     author_email=author_email,
     maintainer_email=author_email,
-    install_requires=['cython', 'pySiLibUSB>=1.0.0', 'bitarray>=0.8.1', 'progressbar-latest>=2.4', 'basil==2.1.0'],
+    install_requires=install_requires,
     packages=find_packages(),  # exclude=['*.tests', '*.test']),
     include_package_data=True,  # accept all data files and directories matched by MANIFEST.in or found in source control
     package_data={'': ['README.*', 'VERSION'], 'docs': ['*'], 'examples': ['*'], 'pybar': ['*.yaml', '*.bit']},
