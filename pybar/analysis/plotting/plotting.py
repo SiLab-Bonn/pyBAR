@@ -761,7 +761,6 @@ def plot_correlations(filenames, limit=None):
     DataFrame = pd.DataFrame()
     index = 0
     for fileName in filenames:
-        print 'Opening ', fileName
         with pd.get_store(fileName, 'r') as store:
             tempDataFrame = pd.DataFrame({'Event': store.Hits.Event[:15000], 'Row' + str(index): store.Hits.Row[:15000]})
             tempDataFrame = tempDataFrame.set_index('Event')
