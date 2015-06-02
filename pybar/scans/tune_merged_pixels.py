@@ -19,12 +19,12 @@ class MergedPixelsTuning(AnalogScan):
     _default_run_conf.update({
         "mask_steps": 6,  # number of injections per PlsrDAC step
         "n_injections": 100,  # number of injections per PlsrDAC step
-        "scan_parameters": [('PlsrDAC', 280)],  # the PlsrDAC setting
+        "scan_parameters": [('PlsrDAC', 1023)],  # the PlsrDAC setting
         "use_enable_mask": False,  # if True, use Enable mask during scan, if False, all pixels will be enabled
         "enable_shift_masks": ["C_High", "C_Low"],  # enable masks shifted during scan
         "disable_shift_masks": ["Enable"],  # disable masks shifted during scan
         "pulser_dac_correction": False,  # PlsrDAC correction for each double column
-        "same_mask_for_all_dc": False,  # if True, all columns have the same mask, if False, mask will be enabled only where injected
+        "same_mask_for_all_dc": True,  # if True, all columns have the same mask, if False, mask will be enabled only where injected
         "disable_for_mask": ['Enable'],  # list of masks for which noisy pixels will be disabled
         "enable_for_mask": ['Imon'],  # list of masks for which noisy pixels will be disabled
         "overwrite_mask": False  # if True, overwrite existing masks
