@@ -44,7 +44,7 @@ def send_data(socket, data, scan_parameters, name='FEI4readoutData', flags=0, co
             pass
 
 
-def open_raw_data_file(filename, mode="w", title="", register=None, conf=None, run_conf=None, scan_parameters=None, socket_addr=None, **kwargs):
+def open_raw_data_file(filename, mode="w", title="", register=None, conf=None, run_conf=None, scan_parameters=None, socket_addr=None):
     '''Mimics pytables.open_file() and stores the configuration and run configuration
 
     Returns:
@@ -55,7 +55,7 @@ def open_raw_data_file(filename, mode="w", title="", register=None, conf=None, r
         # do something here
         raw_data_file.append(self.readout.data, scan_parameters={scan_parameter:scan_parameter_value})
     '''
-    return RawDataFile(filename=filename, mode=mode, title=title, register=register, conf=conf, run_conf=run_conf, scan_parameters=scan_parameters, socket_addr=socket_addr, **kwargs)
+    return RawDataFile(filename=filename, mode=mode, title=title, register=register, conf=conf, run_conf=run_conf, scan_parameters=scan_parameters, socket_addr=socket_addr)
 
 
 class RawDataFile(object):
@@ -65,7 +65,7 @@ class RawDataFile(object):
     '''Raw data file object. Saving data queue to HDF5 file.
     '''
 
-    def __init__(self, filename, mode="w", title='', register=None, conf=None, run_conf=None, scan_parameters=None, socket_addr=None, **kwargs):  # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created):
+    def __init__(self, filename, mode="w", title='', register=None, conf=None, run_conf=None, scan_parameters=None, socket_addr=None):  # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created):
         self.lock = RLock()
         if os.path.splitext(filename)[1].strip().lower() != '.h5':
             self.base_filename = filename
@@ -91,7 +91,7 @@ class RawDataFile(object):
         # list of filenames and index
         self.curr_filename = self.base_filename
         self.filenames = {self.curr_filename: 0}
-        self.open(self.curr_filename, mode, title, **kwargs)
+        self.open(self.curr_filename, mode, title)
         if conf:
             save_configuration_dict(filename, 'conf', conf)
         if run_conf:
@@ -110,7 +110,7 @@ class RawDataFile(object):
         self.close()
         return False  # do not hide exceptions
 
-    def open(self, filename, mode='w', title='', **kwargs):
+    def open(self, filename, mode='w', title=''):
         if os.path.splitext(filename)[1].strip().lower() != '.h5':
             filename = os.path.splitext(filename)[0] + '.h5'
         if os.path.isfile(filename) and mode in ('r+', 'a'):
@@ -120,7 +120,7 @@ class RawDataFile(object):
 
         filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
         filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
-        self.h5_file = tb.open_file(filename, mode=mode, title=title if title else filename, **kwargs)
+        self.h5_file = tb.open_file(filename, mode=mode, title=title if title else filename)
         try:
             self.raw_data_earray = self.h5_file.createEArray(self.h5_file.root, name='raw_data', atom=tb.UIntAtom(), shape=(0,), title='raw_data', filters=filter_raw_data)  # expectedrows = ???
         except tb.exceptions.NodeError:
@@ -224,12 +224,12 @@ class RawDataFile(object):
                 self.scan_param_table.flush()
 
 
-def save_raw_data_from_data_queue(data_queue, filename, mode='a', title='', scan_parameters=None, **kwargs):  # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created
+def save_raw_data_from_data_queue(data_queue, filename, mode='a', title='', scan_parameters=None):  # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created
     '''Writing raw data file from data queue
 
     If you need to write raw data once in a while this function may make it easy for you.
     '''
     if not scan_parameters:
         scan_parameters = {}
-    with open_raw_data_file(filename, mode='a', title='', scan_parameters=list(dict.iterkeys(scan_parameters)), **kwargs) as raw_data_file:
-        raw_data_file.append(data_queue, scan_parameters=scan_parameters, **kwargs)
+    with open_raw_data_file(filename, mode='a', title='', scan_parameters=list(dict.iterkeys(scan_parameters))) as raw_data_file:
+        raw_data_file.append(data_queue, scan_parameters=scan_parameters)
