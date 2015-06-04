@@ -210,11 +210,11 @@ class RawDataFile(object):
         if self.register is None:
             raise RuntimeError('Register object not available for storing in FEi4 raw data file')
         self.register.save_configuration(self.h5_file)
-        if self.socket:  # send global register config if socket is specified
-            global_register_config = {}
-            for global_reg in sorted(self.register.get_global_register_objects(readonly=False), key=itemgetter('name')):
-                global_register_config[global_reg['name']] = global_reg['value']
-            send_meta_data(self.socket, global_register_config, name='GlobalRegisterConf')  # send run info
+#         if self.socket:  # send global register config if socket is specified
+#             global_register_config = {}
+#             for global_reg in sorted(self.register.get_global_register_objects(readonly=False), key=itemgetter('name')):
+#                 global_register_config[global_reg['name']] = global_reg['value']
+#             send_meta_data(self.socket, global_register_config, name='GlobalRegisterConf')  # send run info
 
     def flush(self):
         with self.lock:
