@@ -167,6 +167,18 @@ class Fei4RunBase(RunBase):
             self.dut['ENABLE_CHANNEL']['CH2'] = 1
             self.dut['ENABLE_CHANNEL']['CH3'] = 1
             self.dut['ENABLE_CHANNEL'].write()
+        elif self.dut.name == 'nexys4':
+            #enable LVDS RX/TX
+            self.dut['I2C'].write(0xe8, [6,0xf0, 0xff])
+            self.dut['I2C'].write(0xe8, [2,0x0f, 0x00])
+
+            self.dut['ENABLE_CHANNEL']['CH1'] = 0
+            self.dut['ENABLE_CHANNEL']['CH2'] = 0
+            self.dut['ENABLE_CHANNEL']['CH3'] = 0
+            self.dut['ENABLE_CHANNEL']['CH4'] = 1
+            self.dut['ENABLE_CHANNEL']['TLU'] = 1
+            self.dut['ENABLE_CHANNEL']['TDC'] = 1
+            self.dut['ENABLE_CHANNEL'].write()
         else:
             logging.warning('Omit initialization of DUT %s', self.dut.name)
 
