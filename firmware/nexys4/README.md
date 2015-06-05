@@ -1,5 +1,5 @@
 
-# pyBAR firmware for [Nexys4 DDR](http://www.digilentinc.com/Products/Detail.cfm?Prod=NEXYS4DDR) board
+# pyBAR firmware for [Nexys<sup>TM</sup>4 DDR](http://www.digilentinc.com/Products/Detail.cfm?Prod=NEXYS4DDR) board
 
 **Developers would like to thank [Xilinx University Program](http://www.xilinx.com/support/university.html) for donating [Nexys4 DDR](http://www.digilentinc.com/Products/Detail.cfm?Prod=NEXYS4DDR) board.**
 
