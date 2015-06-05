@@ -11,7 +11,7 @@ from pybar.daq.readout_utils import save_configuration_dict
 from pybar.analysis.RawDataConverter.data_struct import MetaTableV2 as MetaTable, generate_scan_parameter_description
 
 
-def send_meta_data(socket, conf, name, flags=0, copy=False, track=False):
+def send_meta_data(socket, conf, name):
     '''Sends the config via ZeroMQ to a specified socket. Is called at the beginning of a run and when the config changes. Conf can be any config dictionary.
     '''
     try:
@@ -19,29 +19,28 @@ def send_meta_data(socket, conf, name, flags=0, copy=False, track=False):
             name=name,
             conf=conf
         )
-        socket.send_json(meta_data, flags | zmq.SNDMORE | zmq.NOBLOCK)  # TODO make with non blocking working
-    except (zmq.ZMQError, TypeError):
+        socket.send_json(data=meta_data, falgs=zmq.NOBLOCK)
+    except (zmq.Again, TypeError):
         pass
 
 
-def send_data(socket, data, scan_parameters, name='FEI4readoutData', flags=0, copy=False, track=False):
+def send_data(socket, data, scan_parameters, name='FEI4readoutData'):
     '''Sends the data of every read out (raw data and meta data) via ZeroMQ to a specified socket
     '''
-    if socket and data:  # if socket is defined send the data
-        try:
-            data_meta_data = dict(
-                name=name,
-                dtype=str(data[0].dtype),
-                shape=data[0].shape,
-                timestamp_start=data[1],
-                timestamp_stop=data[2],
-                readout_error=float(data[3]),
-                scan_parameters=str(scan_parameters)
-            )
-            socket.send_json(data_meta_data, flags | zmq.SNDMORE | zmq.NOBLOCK)
-            return socket.send(data[0].tostring(), flags, copy=copy, track=track)
-        except zmq.ZMQError:
-            pass
+    try:
+        data_meta_data = dict(
+            name=name,
+            dtype=str(data[0].dtype),
+            shape=data[0].shape,
+            timestamp_start=data[1],  # float
+            timestamp_stop=data[2],  # float
+            readout_error=data[3],  # int
+            scan_parameters=scan_parameters  # dict
+        )
+        socket.send_json(data=data_meta_data, flags=zmq.SNDMORE | zmq.NOBLOCK)
+        socket.send(data=data[0], flags=zmq.NOBLOCK)  # PyZMQ supports sending numpy arrays without copying any data
+    except zmq.Again:
+        pass
 
 
 def open_raw_data_file(filename, mode="w", title="", register=None, conf=None, run_conf=None, scan_parameters=None, socket_addr=None):
@@ -197,7 +196,8 @@ class RawDataFile(object):
                 self.scan_param_table.row.append()
             if flush:
                 self.flush()
-            send_data(self.socket, data_tuple, self.scan_parameters)
+            if self.socket:
+                send_data(self.socket, data_tuple, self.scan_parameters)
 
     def append(self, data_iterable, scan_parameters=None, flush=True):
         with self.lock:

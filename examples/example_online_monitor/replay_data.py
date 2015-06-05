@@ -57,7 +57,7 @@ def transfer_file(file_name, socket):  # Function to open the raw data file and 
 
 if __name__ == '__main__':
     # Open th online monitor
-    Popen(["python", "..\\..\\pybar\\online_monitor.py"] + sys.argv[1:])  # if this call fails, comment it out and start the script manually
+    Popen(["python", "../../pybar/online_monitor.py"] + sys.argv[1:])  # if this call fails, comment it out and start the script manually
     # Send delay in s; readout frequency is ~ 20Hz
     delay = 0.05
     # Prepare to send data
@@ -65,7 +65,7 @@ if __name__ == '__main__':
     socket = context.socket(zmq.PUSH)
     socket.bind("tcp://127.0.0.1:5678")
     # Transfer file to socket
-    transfer_file("..\\..\\tests\\test_analysis\\unit_test_data_2.h5", socket=socket)
+    transfer_file("../../tests/test_analysis/unit_test_data_2.h5", socket=socket)
     # Clean up
     socket.close()
     context.term()
