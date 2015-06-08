@@ -19,7 +19,7 @@ def send_meta_data(socket, conf, name):
             name=name,
             conf=conf
         )
-        socket.send_json(data=meta_data, falgs=zmq.NOBLOCK)
+        socket.send_json(meta_data, falgs=zmq.NOBLOCK)
     except (zmq.Again, TypeError):
         pass
 
@@ -37,8 +37,8 @@ def send_data(socket, data, scan_parameters, name='FEI4readoutData'):
             readout_error=data[3],  # int
             scan_parameters=scan_parameters  # dict
         )
-        socket.send_json(data=data_meta_data, flags=zmq.SNDMORE | zmq.NOBLOCK)
-        socket.send(data=data[0], flags=zmq.NOBLOCK)  # PyZMQ supports sending numpy arrays without copying any data
+        socket.send_json(data_meta_data, flags=zmq.SNDMORE | zmq.NOBLOCK)
+        socket.send(data[0], flags=zmq.NOBLOCK)  # PyZMQ supports sending numpy arrays without copying any data
     except zmq.Again:
         pass
 
