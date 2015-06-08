@@ -63,7 +63,7 @@ class GdacTuning(Fei4RunBase):
 
         self.write_target_threshold()
         for gdac_bit in self.gdac_tune_bits:  # reset all GDAC bits
-            self.set_gdac_bit(gdac_bit, bit_value=0)
+            self.set_gdac_bit(gdac_bit, bit_value=0, send_command=False)
 
         last_bit_result = self.n_injections_gdac
         decreased_threshold = False  # needed to determine if the FE is noisy
@@ -121,7 +121,7 @@ class GdacTuning(Fei4RunBase):
                 break
 
             if median_occupancy == 0 and decreased_threshold and all_bits_zero:
-                logging.info('FE noisy?')
+                logging.info('Chip may be noisy')
 
             if gdac_bit > 0:
                 if (median_occupancy < self.n_injections_gdac / 2):  # set GDAC bit to 0 if the occupancy is too lowm, thus decrease threshold
@@ -132,12 +132,11 @@ class GdacTuning(Fei4RunBase):
                     logging.info('Median = %f > %f, leave bit %d = 1', median_occupancy, self.n_injections_gdac / 2, gdac_bit)
                     decreased_threshold = False
                     all_bits_zero = False
-
-            if gdac_bit == 0:
+            elif gdac_bit == 0:
                 if additional_scan:  # scan bit = 0 with the correct value again
                     additional_scan = False
                     last_bit_result = self.occ_array_sel_pixel.copy()
-                    self.gdac_tune_bits.append(0)  # bit 0 has to be scanned twice
+                    self.gdac_tune_bits.append(self.gdac_tune_bits[-1])  # the last tune bit has to be scanned twice
                 else:
                     last_bit_result_median = np.median(last_bit_result[select_mask_array > 0])
                     logging.info('Scanned bit 0 = 0 with %f instead of %f', median_occupancy, last_bit_result_median)
@@ -153,8 +152,12 @@ class GdacTuning(Fei4RunBase):
                         median_occupancy = occupancy_best
                         self.register_utils.set_gdac(gdac_best, send_command=False)
 
-        if (self.register.get_global_register_value("Vthin_AltFine") == 0 and self.register.get_global_register_value("Vthin_AltCoarse") == 0) or self.register.get_global_register_value("Vthin_AltFine") == 254:
-            logging.warning('GDAC reached minimum/maximum value')
+        self.gdac_best = self.register_utils.get_gdac()
+
+        if np.all((((self.gdac_best & (1 << np.arange(16)))) > 0).astype(int)[self.gdac_tune_bits[:-2]] == 1):
+            logging.warning('Selected GDAC bits reached maximum value')
+        elif np.all((((self.gdac_best & (1 << np.arange(16)))) > 0).astype(int)[self.gdac_tune_bits] == 0):
+            logging.warning('Selected GDAC bits reached minimum value')
 
         if abs(median_occupancy - self.n_injections_gdac / 2) > 2 * self.max_delta_threshold:
             logging.warning('Global threshold tuning failed. Delta threshold = %f > %f. Vthin_AltCoarse / Vthin_AltFine = %d / %d', abs(median_occupancy - self.n_injections_gdac / 2), self.max_delta_threshold, self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine"))
@@ -177,13 +180,13 @@ class GdacTuning(Fei4RunBase):
         commands.extend(self.register.get_commands("WrRegister", name="PlsrDAC"))
         self.register_utils.send_commands(commands)
 
-    def set_gdac_bit(self, bit_position, bit_value=1):
+    def set_gdac_bit(self, bit_position, bit_value=1, send_command=True):
         gdac = self.register_utils.get_gdac()
         if bit_value:
             gdac |= (1 << bit_position)
         else:
             gdac &= ~(1 << bit_position)
-        self.register_utils.set_gdac(gdac, send_command=True)
+        self.register_utils.set_gdac(gdac, send_command=send_command)
 
 
 if __name__ == "__main__":
