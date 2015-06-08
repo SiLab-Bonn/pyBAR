@@ -115,7 +115,7 @@ class RunBase():
             logging.warning('Run %s was aborted: %s', self.run_number, e)
         except RunStopped:
             self._run_status = run_status.finished
-            logging.warning('Run %s was stopped', self.run_number)
+            logging.info('Run %s was stopped', self.run_number)
         except Exception as e:
             self._run_status = run_status.crashed
             logging.error('Unexpected exception during run %s: %s' % (self.run_number, traceback.format_exc()))
