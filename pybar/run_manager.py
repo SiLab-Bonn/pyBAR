@@ -417,21 +417,21 @@ class RunManager(object):
         If use_thread is False, returns run status.
         '''
         if isclass(run):
-            init_run_conf = {}
-            if 'run_conf' in self.conf:
-                init_run_conf.update(self.conf['run_conf'])
-            if run.__class__.__name__ in self.conf:
-                init_run_conf.update(self.conf[run.__class__.__name__])
-
             # instantiate the class
-            if init_run_conf:
-                run = run(conf=self.conf, run_conf=init_run_conf)
-            else:
-                run = run(conf=self.conf)
+            run = run(conf=self.conf)
 
-        run_conf = self.open_conf(run_conf)
+        run_conf = {}
+        if 'run_conf' in self.conf:
+            run_conf.update(self.conf['run_conf'])
+
+        if run.__class__.__name__ in self.conf:
+            run_conf.update(self.conf[run.__class__.__name__])
+
+        local_run_conf = self.open_conf(run_conf)
+        # check for additional class name
         if run.__class__.__name__ in run_conf:
-            run_conf = run_conf[run.__class__.__name__]
+            local_run_conf = run_conf[run.__class__.__name__]
+        run_conf.update(local_run_conf)
 
         if use_thread:
             @thunkify('RunThread')
