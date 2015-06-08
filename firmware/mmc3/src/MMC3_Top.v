@@ -108,7 +108,7 @@ FX3_IF  FX3_IF_inst (
     .FLAG2(FLAG2)
     );
 
-wire clk40mhz_pll, clk320mhz_pll, clk160mhz_pll, clk16mhz_pll;
+wire clk40mhz_pll, clk320mhz_pll, clk160mhz_pll, clk16mhz_pll, clk40mhz_phase_pll;
 wire pll_feedback, LOCKED;
 
 PLLE2_BASE #(
@@ -133,6 +133,10 @@ PLLE2_BASE #(
     .CLKOUT3_DUTY_CYCLE(0.5), // Duty cycle for CLKOUT0 (0.001-0.999).
     .CLKOUT3_PHASE(0.0),      // Phase offset for CLKOUT0 (-360.000-360.000).
     
+    .CLKOUT4_DIVIDE(32),     // Divide amount for CLKOUT0 (1-128)
+    .CLKOUT4_DUTY_CYCLE(0.5), // Duty cycle for CLKOUT0 (0.001-0.999).
+    .CLKOUT4_PHASE(55.0),      // Phase offset for CLKOUT0 (-360.000-360.000).
+    
     .DIVCLK_DIVIDE(5),        // Master division value, (1-56)
     .REF_JITTER1(0.0),        // Reference input jitter in UI, (0.000-0.999).
     .STARTUP_WAIT("FALSE")     // Delay DONE until PLL Locks, ("TRUE"/"FALSE")
@@ -143,7 +147,7 @@ PLLE2_BASE #(
      .CLKOUT1(clk320mhz_pll),
      .CLKOUT2(clk160mhz_pll),
      .CLKOUT3(clk16mhz_pll),
-     .CLKOUT4(),
+     .CLKOUT4(clk40mhz_phase_pll),
      .CLKOUT5(),
      
      .CLKFBOUT(pll_feedback),
@@ -161,7 +165,7 @@ PLLE2_BASE #(
      .CLKFBIN(pll_feedback)
  );
  
- wire clk40mhz, clk320mhz, clk160mhz, clk16mhz;
+ wire clk40mhz, clk320mhz, clk160mhz, clk16mhz, clk40mhz_phase;
  
  BUFG BUFG_inst_40 (
  .O(clk40mhz),     // Clock buffer output
@@ -181,6 +185,11 @@ PLLE2_BASE #(
  BUFG BUFG_inst_16 (
  .O(clk16mhz),     // Clock buffer output
  .I(clk16mhz_pll)      // Clock buffer input
+ );
+ 
+ BUFG BUFG_inst_40_phase (
+ .O(clk40mhz_phase),     // Clock buffer output
+ .I(clk40mhz_phase_pll)      // Clock buffer input
  );
  
 // -------  MODULE ADREESSES  ------- //
@@ -258,7 +267,7 @@ cmd_seq
     .CMD_READY(CMD_READY),
     .CMD_START_FLAG()
 );
-
+    	
 // OBUFDS: Differential Output Buffer
 //         Kintex-7
 // Xilinx HDL Language Template, version 2014.4
@@ -266,6 +275,17 @@ cmd_seq
 genvar g;
 generate
     for (g = 0; g < OUTPUTS; g = g + 1) begin: cmd_gen
+    
+        /*ODDR CMD_CLK_FORWARDING_INST (
+            .Q(CMD_CLK_OUT[g]),
+            .C(clk40mhz_phase),
+            .CE(1'b1), 
+            .D1(1'b1),
+            .D2(1'b0),
+            .R(1'b0),
+            .S(1'b0)
+        );*/
+    
         OBUFDS #(
           .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
           .SLEW("FAST")           // Specify the output slew rate
