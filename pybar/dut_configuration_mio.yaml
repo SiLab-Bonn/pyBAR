@@ -18,7 +18,7 @@ TDC:
     EN_INVERT_TDC        : 0  # Inverting TDC input
     EN_INVERT_TRIGGER    : 0  # Inverting trigger input
 
-# FE-I4 command ouput
+# FE-I4 command output
 CMD:
     OUTPUT_MODE : 0  # Selecting command output mode: positive edge (0), negative edge (1), Manchester Code according to IEEE 802.3 (2), Manchester Code according to G.E. Thomas (3)
 
