@@ -198,9 +198,7 @@ class FEI4RegisterUtils(object):
         commands.extend(self.register.get_commands("RunMode"))
         self.send_commands(commands)
 
-    def set_gdac(self, value):
-        commands = []
-        commands.extend(self.register.get_commands("ConfMode"))
+    def set_gdac(self, value, send_command=True):
         if self.register.fei4b:
             altf = value & 0xff
             altc = (value >> 7)
@@ -212,12 +210,21 @@ class FEI4RegisterUtils(object):
             altc = (value >> 8)
             self.register.set_global_register_value("Vthin_AltCoarse", altc)  # take high word
             self.register.set_global_register_value("Vthin_AltFine", altf)  # take low word
-        commands.extend(self.register.get_commands("WrRegister", name=["Vthin_AltFine", "Vthin_AltCoarse"]))
-        commands.extend(self.register.get_commands("RunMode"))
-        self.send_commands(commands)
-        logging.info("Setting GDAC to %d (VthinAltCoarse / VthinAltFine = %d / %d)", value, self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine"))
+        if send_command:
+            commands = []
+            commands.extend(self.register.get_commands("ConfMode"))
+            commands.extend(self.register.get_commands("WrRegister", name=["Vthin_AltFine", "Vthin_AltCoarse"]))
+            commands.extend(self.register.get_commands("RunMode"))
+            self.send_commands(commands)
+            logging.info("Writing GDAC %d (VthinAltCoarse / VthinAltFine = %d / %d)", value, altc, altf)
+        else:
+            logging.info("Setting GDAC to %d (VthinAltCoarse / VthinAltFine = %d / %d)", value, altc, altf)
 
-    def get_gdac(self, altc, altf):
+    def get_gdac(self, altc=None, altf=None):
+        if altc is None:
+            altc = self.register.get_global_register_value("Vthin_AltCoarse")
+        if altf is None:
+            altf = self.register.get_global_register_value("Vthin_AltFine")
         if self.register.fei4b:
             value = altf & 0xff
             altc &= ~0x01
