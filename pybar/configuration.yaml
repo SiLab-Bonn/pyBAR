@@ -26,10 +26,10 @@ module_id : module_test  # module identifier / name, sub-folder with given name 
 #    local_iterations : 3
 #
 #AnalogScan:
-#    scan_parameters : {'PlsrDAC': 280}
+#    scan_parameters : '[("PlsrDAC", 280)]'
 #    enable_shift_masks : ["Enable", "C_Low", "C_High"]
 #
 #ThresholdScan:
-#    scan_parameters : {'PlsrDAC': [0, 100]}
+#    scan_parameters : '[("PlsrDAC", [None, 100])]'
 #    enable_shift_masks : ["Enable", "C_Low", "C_High"]
-#
+
