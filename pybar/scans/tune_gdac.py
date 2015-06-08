@@ -65,7 +65,6 @@ class GdacTuning(Fei4RunBase):
         for gdac_bit in self.gdac_tune_bits:  # reset all GDAC bits
             self.set_gdac_bit(gdac_bit, bit_value=0)
 
-        additional_scan = True
         last_bit_result = self.n_injections_gdac
         decreased_threshold = False  # needed to determine if the FE is noisy
         all_bits_zero = True
@@ -91,11 +90,10 @@ class GdacTuning(Fei4RunBase):
             logging.info('Deselect double column %d' % column)
             select_mask_array[column, :] = 0
 
+        additional_scan = True
         occupancy_best = 0
-        vthin_af_best = self.register.get_global_register_value("Vthin_AltFine")
-        vthin_ac_best = self.register.get_global_register_value("Vthin_AltCoarse")
+        gdac_best = self.register_utils.get_gdac()
         for gdac_bit in self.gdac_tune_bits:
-
             if additional_scan:
                 self.set_gdac_bit(gdac_bit)
                 scan_parameter_value = (self.register.get_global_register_value("Vthin_AltCoarse") << 8) + self.register.get_global_register_value("Vthin_AltFine")
@@ -113,8 +111,7 @@ class GdacTuning(Fei4RunBase):
             median_occupancy = np.ma.median(self.occ_array_sel_pixel)
             if abs(median_occupancy - self.n_injections_gdac / 2) < abs(occupancy_best - self.n_injections_gdac / 2):
                 occupancy_best = median_occupancy
-                vthin_af_best = self.register.get_global_register_value("Vthin_AltFine")
-                vthin_ac_best = self.register.get_global_register_value("Vthin_AltCoarse")
+                gdac_best = self.register_utils.get_gdac()
 
             if self.plot_intermediate_steps:
                 plotThreeWay(self.occ_array_sel_pixel.transpose(), title="Occupancy (GDAC " + str(scan_parameter_value) + " with tuning bit " + str(gdac_bit) + ")", x_axis_title='Occupancy', filename=self.plots_filename, maximum=self.n_injections_gdac)
@@ -154,8 +151,7 @@ class GdacTuning(Fei4RunBase):
                     if abs(occupancy_best - self.n_injections_gdac / 2) < abs(median_occupancy - self.n_injections_gdac / 2):
                         logging.info("Binary search converged to non optimal value, take best measured value instead")
                         median_occupancy = occupancy_best
-                        self.register.set_global_register_value("Vthin_AltFine", vthin_af_best)
-                        self.register.set_global_register_value("Vthin_AltCoarse", vthin_ac_best)
+                        self.register_utils.set_gdac(gdac_best, send_command=False)
 
         if (self.register.get_global_register_value("Vthin_AltFine") == 0 and self.register.get_global_register_value("Vthin_AltCoarse") == 0) or self.register.get_global_register_value("Vthin_AltFine") == 254:
             logging.warning('GDAC reached minimum/maximum value')
@@ -165,12 +161,10 @@ class GdacTuning(Fei4RunBase):
         else:
             logging.info('Tuned GDAC to Vthin_AltCoarse / Vthin_AltFine = %d / %d', self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine"))
 
-        self.vthin_altfine_best = self.register.get_global_register_value("Vthin_AltFine")
-        self.vthin_altcoarse_best = self.register.get_global_register_value("Vthin_AltCoarse")
+        self.gdac_best = self.register_utils.get_gdac()
 
     def analyze(self):
-        self.register.set_global_register_value("Vthin_AltFine", self.vthin_altfine_best)
-        self.register.set_global_register_value("Vthin_AltCoarse", self.vthin_altcoarse_best)
+        self.register_utils.set_gdac(self.gdac_best, send_command=False)
 
         plotThreeWay(self.occ_array_sel_pixel.transpose(), title="Occupancy after GDAC tuning (GDAC " + str(self.scan_parameters.GDAC) + ")", x_axis_title='Occupancy', filename=self.plots_filename, maximum=self.n_injections_gdac)
         if self.close_plots:
@@ -184,20 +178,12 @@ class GdacTuning(Fei4RunBase):
         self.register_utils.send_commands(commands)
 
     def set_gdac_bit(self, bit_position, bit_value=1):
-        commands = []
-        commands.extend(self.register.get_commands("ConfMode"))
-        if(bit_position < 8):
-            if(bit_value == 1):
-                self.register.set_global_register_value("Vthin_AltFine", self.register.get_global_register_value("Vthin_AltFine") | (1 << bit_position))
-            else:
-                self.register.set_global_register_value("Vthin_AltFine", self.register.get_global_register_value("Vthin_AltFine") & ~(1 << bit_position))
+        gdac = self.register_utils.get_gdac()
+        if bit_value:
+            gdac |= (1 << bit_position)
         else:
-            if(bit_value == 1):
-                self.register.set_global_register_value("Vthin_AltCoarse", self.register.get_global_register_value("Vthin_AltCoarse") | (1 << (bit_position - 8)))
-            else:
-                self.register.set_global_register_value("Vthin_AltCoarse", self.register.get_global_register_value("Vthin_AltCoarse") & ~(1 << bit_position))
-        commands.extend(self.register.get_commands("WrRegister", name=["Vthin_AltFine", "Vthin_AltCoarse"]))
-        self.register_utils.send_commands(commands)
+            gdac &= ~(1 << bit_position)
+        self.register_utils.set_gdac(gdac, send_command=True)
 
 
 if __name__ == "__main__":
