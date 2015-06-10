@@ -448,7 +448,7 @@ class RunManager(object):
             return run_run_in_thread()
         else:
             self.current_run = run
-            status = run.run(run_conf=run_conf)
+            status = run.run(run_conf=local_run_conf)
             return status
 
     def run_primlist(self, primlist, skip_remaining=False):
