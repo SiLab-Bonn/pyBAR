@@ -1,11 +1,10 @@
 import sys
-import re
 import zmq
 import time
 import numpy as np
 
 from PyQt4 import Qt
-from PyQt4.QtCore import pyqtSignal, pyqtSlot
+from PyQt4.QtCore import pyqtSlot, pyqtSignal
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtGui
 from pyqtgraph.dockarea import DockArea, Dock
@@ -281,7 +280,7 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
 
     def update_monitor(self, timestamp_start, timestamp_stop, readout_error, scan_parameters, n_hits, n_events):
         self.timestamp_label.setText("Data Timestamp\n%s" % time.asctime(time.localtime(timestamp_stop)))
-        self.scan_parameter_label.setText("Scan Parameters\n%s" % re.sub(r'[{}()\[\]\'\"]', '', repr(scan_parameters)[1:]))
+        self.scan_parameter_label.setText("Scan Parameters\n%s" % ', '.join('%s: %s' % (str(key), str(val)) for key, val in scan_parameters.iteritems()))
         now = ptime.time()
         recent_total_hits = n_hits
         recent_total_events = n_events

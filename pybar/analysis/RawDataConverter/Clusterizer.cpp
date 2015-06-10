@@ -1,5 +1,7 @@
 #include "Clusterizer.h"
 
+const int maxHitsPerEvent = 1000;  // maximum hits per event to start the clustering for this event, otherwise omit event
+
 Clusterizer::Clusterizer(void)
 {
 	setSourceFileName("Clusterizer");
@@ -199,6 +201,10 @@ void Clusterizer::addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
 
 	for (unsigned int i = 0; i < rNhits; i++) {
 		if (_actualEventNumber != rHitInfo[i].eventNumber) {
+			if (_nHits > maxHitsPerEvent){
+				warning("addHits: event " + LongIntToStr(_actualEventNumber) + ", too many hits(" + IntToStr(_nHits) + ">" + IntToStr(maxHitsPerEvent) + ") omit this event!");
+				clearHitMap();
+			}
 			clusterize();
 			addHitClusterInfo(i);
 			clearActualEventVariables();
@@ -269,8 +275,8 @@ bool Clusterizer::clusterize()
 	if (_nHits == 0)
 		return true;
 
-	warning("Clusterizer::clusterize: NOT ALL HITS CLUSTERED!");
-	showHits();
+	error("clusterize: event " + LongIntToStr(_actualEventNumber) + ", only " + IntToStr(_actualClusterSize) + " of " + IntToStr(_nHits) + " hit clustered");
+	clearHitMap();
 	return false;
 }
 
@@ -410,11 +416,9 @@ void Clusterizer::searchNextHits(const unsigned short& pCol, const unsigned shor
 		}
 	}
 
-	if (tTot > (short int) _maxClusterHitTot)	//omit cluster with a hit tot higher than _maxClusterHitTot, clustering is not aborted to delete all hits from this cluster from the hit array
+	if (tTot > (short int) _maxClusterHitTot || _actualClusterSize > (int) _maxClusterHits){	//omit cluster with a hit tot higher than _maxClusterHitTot, clustering is not aborted to delete all hits from this cluster from the hit array
 		_abortCluster = true;
-
-	if (_actualClusterSize > (int) _maxClusterHits)		//omit cluster if it has more hits than _maxClusterHits, clustering is not aborted to delete all hits from this cluster from the hit array
-		_abortCluster = true;
+	}
 
 	_actualClusterTot += tTot;		//add tot of the hit to the cluster tot
 	_actualClusterCharge += _chargeMap[(size_t) pCol + (size_t) pRow * (size_t) RAW_DATA_MAX_COLUMN + (size_t) tTot * (size_t) RAW_DATA_MAX_COLUMN * (size_t) RAW_DATA_MAX_ROW];	//add charge of the hit to the cluster tot
@@ -525,10 +529,10 @@ void Clusterizer::initHitMap()
 {
 	info("initHitMap");
 
-	for (int iCol = 0; iCol < RAW_DATA_MAX_COLUMN; ++iCol) {
-		for (int iRow = 0; iRow < RAW_DATA_MAX_ROW; ++iRow) {
-			for (int iRbCID = 0; iRbCID < __MAXBCID; ++iRbCID)
-				_hitMap[(size_t) iCol + (size_t) iRow * (size_t) RAW_DATA_MAX_COLUMN + (size_t) iRbCID * (size_t) RAW_DATA_MAX_COLUMN * (size_t) RAW_DATA_MAX_ROW] = -1;
+	for (size_t iCol = 0; iCol < (size_t) RAW_DATA_MAX_COLUMN; ++iCol) {
+		for (size_t iRow = 0; iRow < (size_t) RAW_DATA_MAX_ROW; ++iRow) {
+			for (size_t iRbCID = 0; iRbCID < (size_t) __MAXBCID; ++iRbCID)
+				_hitMap[iCol + iRow * RAW_DATA_MAX_COLUMN + iRbCID * RAW_DATA_MAX_COLUMN * RAW_DATA_MAX_ROW] = -1;
 		}
 	}
 
@@ -628,11 +632,11 @@ void Clusterizer::clearHitMap()
 	debug("Clusterizer::clearHitMap\n");
 
 	if (_nHits != 0) {
-		for (int iCol = 0; iCol < RAW_DATA_MAX_COLUMN; ++iCol) {
-			for (int iRow = 0; iRow < RAW_DATA_MAX_ROW; ++iRow) {
-				for (int iRbCID = 0; iRbCID < __MAXBCID; ++iRbCID) {
-					if (_hitMap[(size_t) iCol + (size_t) iRow * (size_t) RAW_DATA_MAX_COLUMN + (size_t) iRbCID * (size_t) RAW_DATA_MAX_COLUMN * (size_t) RAW_DATA_MAX_ROW] != -1) {
-						_hitMap[(size_t) iCol + (size_t) iRow * (size_t) RAW_DATA_MAX_COLUMN + (size_t) iRbCID * (size_t) RAW_DATA_MAX_COLUMN * (size_t) RAW_DATA_MAX_ROW] = -1;
+		for (size_t iCol = 0; iCol < (size_t) RAW_DATA_MAX_COLUMN; ++iCol) {
+			for (size_t iRow = 0; iRow < (size_t) RAW_DATA_MAX_ROW; ++iRow) {
+				for (size_t iRbCID = 0; iRbCID < (size_t) __MAXBCID; ++iRbCID) {
+					if (_hitMap[iCol + iRow * RAW_DATA_MAX_COLUMN + iRbCID * RAW_DATA_MAX_COLUMN * RAW_DATA_MAX_ROW] != -1) {
+						_hitMap[iCol + iRow * RAW_DATA_MAX_COLUMN + iRbCID * RAW_DATA_MAX_COLUMN * RAW_DATA_MAX_ROW] = -1;
 						_nHits--;
 						if (_nHits == 0)
 							goto exitLoop;
