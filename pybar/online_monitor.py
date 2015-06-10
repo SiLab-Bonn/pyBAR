@@ -4,7 +4,7 @@ import time
 import numpy as np
 
 from PyQt4 import Qt
-from PyQt4.QtCore import pyqtSlot  # pyqtSignal
+from PyQt4.QtCore import pyqtSlot, pyqtSignal
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtGui
 from pyqtgraph.dockarea import DockArea, Dock
