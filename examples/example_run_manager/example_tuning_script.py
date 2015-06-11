@@ -15,10 +15,10 @@ from pybar.scans.tune_noise_occupancy import NoiseOccupancyScan
 from pybar.scans.tune_merged_pixels import MergedPixelsTuning
 
 # additional run configuration (optinal)
-run_conf = ''  # use path to yaml file, or dict
+run_conf = None  # use path to YAML file, or dict
 
 if __name__ == "__main__":
-    runmngr = RunManager('../../pybar/configuration.yaml')
+    runmngr = RunManager('../../pybar/configuration.yaml')  # configuration YAML file, open it for more details, it may contain run configuration
 
     # pre tuning
     status = runmngr.run_run(run=DigitalScan, run_conf=run_conf)
