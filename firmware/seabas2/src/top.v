@@ -13,6 +13,7 @@ module top(
     input wire [3:0] DOBOUT_N, // IN
 
     output wire [1:0] NIM_OUT, //OUT
+    input wire [3:0] NIM_IN,
 
     output wire [7:0] LED, // OUT
     // User I/F
@@ -146,6 +147,9 @@ localparam CMD_HIGHADDR = 32'h1000-1;
 localparam FIFO_BASEADDR = 32'h8100;
 localparam FIFO_HIGHADDR = 32'h8200-1;
 
+localparam TLU_BASEADDR = 16'h8200;
+localparam TLU_HIGHADDR = 16'h8300-1;
+
 localparam RX4_BASEADDR = 32'h8300;
 localparam RX4_HIGHADDR = 32'h8400-1;
 
@@ -162,6 +166,39 @@ localparam GPIO_RX_BASEADDR = 32'h8800;
 localparam GPIO_RX_HIGHADDR = 32'h8900-1;
 
 localparam ABUSWIDTH = 32;
+
+//------------------------------------
+
+wire [1:0] NOT_CONNECTED_RX;
+wire TLU_SEL, TDC_SEL;
+wire [3:0] SEL;
+gpio #(
+    .BASEADDR(GPIO_RX_BASEADDR),
+    .HIGHADDR(GPIO_RX_HIGHADDR),
+    .IO_WIDTH(8),
+    .IO_DIRECTION(8'hff)
+) i_gpio_rx (
+    .BUS_CLK(BUS_CLK),
+    .BUS_RST(BUS_RST),
+    .BUS_ADD(BUS_ADD),
+    .BUS_DATA(BUS_DATA),
+    .BUS_RD(BUS_RD),
+    .BUS_WR(BUS_WR),
+    .IO({NOT_CONNECTED_RX, TDC_SEL, TLU_SEL, SEL[3], SEL[2], SEL[1], SEL[0]})
+);
+
+wire CMD_START_FLAG;
+wire TRIGGER_ACCEPTED_FLAG;
+wire TRIGGER_ENABLE; // from CMD FSM
+wire CMD_READY; // from CMD FSM
+wire TRIGGER_ACKNOWLEDGE_FLAG; // to TLU FSM
+
+reg CMD_READY_FF;
+always @ (posedge CLK40)
+begin
+    CMD_READY_FF <= CMD_READY;
+end
+assign TRIGGER_ACKNOWLEDGE_FLAG = CMD_READY & ~CMD_READY_FF;
 
 cmd_seq 
 #( 
@@ -180,11 +217,11 @@ cmd_seq
     .CMD_CLK_OUT(CMD_CLK),
     .CMD_CLK_IN(CLK40),
     
-    .CMD_EXT_START_FLAG(1'b0),
-    .CMD_EXT_START_ENABLE(),
+    .CMD_EXT_START_FLAG(TRIGGER_ACCEPTED_FLAG),
+    .CMD_EXT_START_ENABLE(TRIGGER_ENABLE),
     .CMD_DATA(CMD_DATA),
-    .CMD_READY(),
-    .CMD_START_FLAG()
+    .CMD_READY(CMD_READY),
+    .CMD_START_FLAG(CMD_START_FLAG)
     
 );
 
@@ -211,26 +248,51 @@ generate
     end
 endgenerate
 
+wire TRIGGER_FIFO_READ;
+wire TRIGGER_FIFO_EMPTY;
+wire [31:0] TRIGGER_FIFO_DATA;
+wire TRIGGER_FIFO_PEEMPT_REQ;
+wire [31:0] TIMESTAMP;
 
-wire [1:0] NOT_CONNECTED_RX;
-wire TLU_SEL, TDC_SEL;
-wire [3:0] SEL;
-gpio #(
-    .BASEADDR(GPIO_RX_BASEADDR),
-    .HIGHADDR(GPIO_RX_HIGHADDR),
-    .IO_WIDTH(8),
-    .IO_DIRECTION(8'hff)
-) i_gpio_rx (
+wire FIFO_EMPTY, FIFO_FULL;
+
+tlu_controller #(
+    .BASEADDR(TLU_BASEADDR),
+    .HIGHADDR(TLU_HIGHADDR),
+    .ABUSWIDTH(ABUSWIDTH),
+    .DIVISOR(8)
+) i_tlu_controller (
     .BUS_CLK(BUS_CLK),
     .BUS_RST(BUS_RST),
     .BUS_ADD(BUS_ADD),
     .BUS_DATA(BUS_DATA),
     .BUS_RD(BUS_RD),
     .BUS_WR(BUS_WR),
-    .IO({NOT_CONNECTED_RX, TDC_SEL, TLU_SEL, SEL[3], SEL[2], SEL[1], SEL[0]})
+    
+    .TRIGGER_CLK(CLK40),
+    
+    .FIFO_READ(TRIGGER_FIFO_READ),
+    .FIFO_EMPTY(TRIGGER_FIFO_EMPTY),
+    .FIFO_DATA(TRIGGER_FIFO_DATA),
+    
+    .FIFO_PREEMPT_REQ(TRIGGER_FIFO_PEEMPT_REQ),
+    
+    .TRIGGER({4'b0, NIM_IN}),
+    .TRIGGER_VETO({7'b0, FIFO_FULL}),
+    
+    .TRIGGER_ENABLE(TRIGGER_ENABLE),
+    .TRIGGER_ACKNOWLEDGE(TRIGGER_ACKNOWLEDGE_FLAG),
+    .TRIGGER_ACCEPTED_FLAG(TRIGGER_ACCEPTED_FLAG),
+    
+    .TLU_TRIGGER(1'b0),
+    .TLU_RESET(1'b0),
+    .TLU_BUSY(),
+    .TLU_CLOCK(),
+    
+    .TIMESTAMP(TIMESTAMP)
 );
 
-wire [3:0] FE_FIFO_READ, FE_FIFO_EMPTY;
+wire [3:0] FE_FIFO_READ, RX_8B10B_DECODER_ERR, RX_FIFO_OVERFLOW_ERR, RX_FIFO_FULL, FE_FIFO_EMPTY;
 wire [31:0] FE_FIFO_DATA [3:0];
 wire [3:0] RX_READY;
 
@@ -263,15 +325,15 @@ generate
         .RX_DATA(dobout_s),
         
         .RX_READY(RX_READY[i]),
-        .RX_8B10B_DECODER_ERR(),
-        .RX_FIFO_OVERFLOW_ERR(),
+        .RX_8B10B_DECODER_ERR(RX_8B10B_DECODER_ERR[i]),
+        .RX_FIFO_OVERFLOW_ERR(RX_FIFO_OVERFLOW_ERR[i]),
         
         .FIFO_CLK(CLK125),
         .FIFO_READ(FE_FIFO_READ[i]),
         .FIFO_EMPTY(FE_FIFO_EMPTY[i]),
         .FIFO_DATA(FE_FIFO_DATA[i]),
         
-        .RX_FIFO_FULL(),
+        .RX_FIFO_FULL(RX_FIFO_FULL[i]),
          
         .BUS_CLK(BUS_CLK),
         .BUS_RST(BUS_RST),
@@ -283,26 +345,22 @@ generate
   end
 endgenerate
 
-//more modules possible
-wire TDC_FIFO_READ, TDC_FIFO_EMPTY;
-wire [31:0] TDC_FIFO_DATA;
-assign TDC_FIFO_EMPTY = 1;
         
 wire ARB_READY_OUT, ARB_WRITE_OUT;
 wire [31:0] ARB_DATA_OUT;
 
 rrp_arbiter 
 #( 
-    .WIDTH(5) // changed from 2
+    .WIDTH(5)
 ) i_rrp_arbiter
 (
     .RST(BUS_RST),
     .CLK(CLK125),
 
-    .WRITE_REQ({~FE_FIFO_EMPTY & SEL, ~TDC_FIFO_EMPTY & TDC_SEL}),
-    .HOLD_REQ({5'b0}), // changed from 2 bit to 5 bit
-    .DATA_IN({FE_FIFO_DATA[3],FE_FIFO_DATA[2],FE_FIFO_DATA[1], FE_FIFO_DATA[0], TDC_FIFO_DATA}),
-    .READ_GRANT({FE_FIFO_READ[3], FE_FIFO_READ[2], FE_FIFO_READ[1], FE_FIFO_READ[0], TDC_FIFO_READ}),
+    .WRITE_REQ({~FE_FIFO_EMPTY & SEL, ~TRIGGER_FIFO_EMPTY & TLU_SEL}),
+    .HOLD_REQ({4'b0, TRIGGER_FIFO_PEEMPT_REQ}), 
+    .DATA_IN({FE_FIFO_DATA[3],FE_FIFO_DATA[2],FE_FIFO_DATA[1], FE_FIFO_DATA[0], TRIGGER_FIFO_DATA}),
+    .READ_GRANT({FE_FIFO_READ[3], FE_FIFO_READ[2], FE_FIFO_READ[1], FE_FIFO_READ[0], TRIGGER_FIFO_READ}),
 
     .READY_OUT(ARB_READY_OUT),
     .WRITE_OUT(ARB_WRITE_OUT),
@@ -311,7 +369,7 @@ rrp_arbiter
 
 assign USR_CLK = !CLK125; //This can be worked out to change 
 
-wire FIFO_EMPTY, FIFO_FULL;
+
 fifo_32_to_8 #(.DEPTH(16*1024)) i_data_fifo (
     .RST(BUS_RST),
     .CLK(CLK125),
@@ -326,15 +384,39 @@ fifo_32_to_8 #(.DEPTH(16*1024)) i_data_fifo (
 assign ARB_READY_OUT = !FIFO_FULL;
 assign USR_TX_WE = !USR_TX_AFULL && !FIFO_EMPTY;
 
-assign NIM_OUT = 0; //what is this
+
 assign USR_CLOSE_ACK = USR_CLOSE_REQ;
 assign USR_RX_RE = 1'b1;
 
-assign LED[0] = 1'b0;
-assign LED[1] = FIFO_EMPTY;
-assign LED[2] = FIFO_FULL;
-assign LED[3] = 1'b0;
-assign LED[7:4] = RX_READY;
+wire CE_1HZ; 
+wire CLK_1HZ; 
+clock_divider #(
+    .DIVISOR(40000000)
+) i_clock_divisor_40MHz_to_1Hz (
+    .CLK(CLK40),
+    .RESET(1'b0),
+    .CE(CE_1HZ),
+    .CLOCK(CLK_1HZ)
+);
 
-    
+wire CLK_2HZ;
+clock_divider #(
+    .DIVISOR(13000000)
+) i_clock_divisor_40MHz_to_2Hz (
+    .CLK(CLK40),
+    .RESET(1'b0),
+    .CE(),
+    .CLOCK(CLK_2HZ)
+);
+
+assign NIM_OUT[0] = TRIGGER_ACCEPTED_FLAG;
+assign NIM_OUT[1] = FIFO_FULL;
+
+assign LED[0] = RX_READY[0] & ((RX_8B10B_DECODER_ERR[0]? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[0] | RX_FIFO_FULL[0]);
+assign LED[1] = RX_READY[1] & ((RX_8B10B_DECODER_ERR[1]? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[1] | RX_FIFO_FULL[1]);
+assign LED[2] = RX_READY[2] & ((RX_8B10B_DECODER_ERR[2]? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[2] | RX_FIFO_FULL[2]);
+assign LED[3] = RX_READY[3] & ((RX_8B10B_DECODER_ERR[3]? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[3] | RX_FIFO_FULL[3]);
+assign LED[4] = FIFO_FULL;
+assign LED[7:5] = 0;
+
 endmodule 
