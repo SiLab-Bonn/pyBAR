@@ -2,7 +2,7 @@
 USB:
     bit_file       : "mio_gpac.bit"  # Selecting FPGA firmware
     board_id       : # Selecting USBpix board by ID
-    avoid_download : False  # Avoiding download of FPGA firmware if already initialized
+    avoid_download : True  # Avoiding download of FPGA firmware if already initialized
 
 # Trigger
 TLU:
