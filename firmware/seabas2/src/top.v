@@ -70,17 +70,17 @@ wire CLK0_OUT, CLKFX_BUF, LOCKED1, CLKFB_IN;
 wire LOCKED_OUT;
 
 clock_manager iclock_manager (
-    .CLKIN1_IN(CLK_50M), 
-    .RST_IN(RST_DLL), 
-    .CLKOUT0_OUT(CLK160), 
-    .CLKOUT1_OUT(CLK320), 
-    .CLKOUT2_OUT(CLK16), 
-    .CLKOUT3_OUT(CLK40), 
+    .CLKIN1_IN(CLK_50M),
+    .RST_IN(RST_DLL),
+    .CLKOUT0_OUT(CLK160),
+    .CLKOUT1_OUT(CLK320),
+    .CLKOUT2_OUT(CLK16),
+    .CLKOUT3_OUT(CLK40),
     .CLKOUT0_OUT2(CLK125),
     .LOCKED_OUT(LOCKED_OUT)
-    );              
+    );
 
-IBUFG   CLK_REG_BUFG_INST (.I(REG_CLK), .O(BUS_CLK));
+IBUFG CLK_REG_BUFG_INST (.I(REG_CLK), .O(BUS_CLK));
 //assign BUS_CLK = CLK125;
 
 wire BUS_RST;
@@ -94,7 +94,7 @@ wire RBCP_WE, RBCP_RE;
 wire [7:0] RBCP_WD, RBCP_RD;
 wire [31:0] RBCP_ADDR;
 wire RBCP_ACK;
-    
+
 slave slave(
     .RSTn(~BUS_RST),    // in    : System reset
     .FILL_ADDR(32'h0),    // in    : Filled address for narow address-width
@@ -104,12 +104,12 @@ slave slave(
     .SI(REG_DI),    // out    : Data input
     .SO(REG_DO),    // in    : Data output
     // Register I/F
-    .REG_ADDR(RBCP_ADDR[31:0]),  
-    .REG_WD(RBCP_WD[7:0]), 
-    .REG_WE(RBCP_WE), 
-    .REG_RE(RBCP_RE), 
-    .REG_ACK(RBCP_ACK), 
-    .REG_RV(RBCP_ACK), 
+    .REG_ADDR(RBCP_ADDR[31:0]),
+    .REG_WD(RBCP_WD[7:0]),
+    .REG_WE(RBCP_WE),
+    .REG_RE(RBCP_RE),
+    .REG_ACK(RBCP_ACK),
+    .REG_RV(RBCP_ACK),
     .REG_RD(RBCP_RD[7:0])
 );
 
@@ -200,8 +200,8 @@ begin
 end
 assign TRIGGER_ACKNOWLEDGE_FLAG = CMD_READY & ~CMD_READY_FF;
 
-cmd_seq 
-#( 
+cmd_seq
+#(
     .BASEADDR(CMD_BASEADDR),
     .HIGHADDR(CMD_HIGHADDR),
     .ABUSWIDTH(ABUSWIDTH),
@@ -232,16 +232,16 @@ generate
         OBUFDS #(
             .IOSTANDARD("LVDS_25")
         ) OBUFDS_inst_refclock(
-            .I(CMD_CLK[k])    , 
-            .O(REFCLK_P[k])        ,
+            .I(CMD_CLK[k]),
+            .O(REFCLK_P[k]),
             .OB(REFCLK_N[k])
         );
 
         OBUFDS #(
             .IOSTANDARD("LVDS_25")
         ) OBUFDS_inst_cmd(
-            .I(CMD_DATA[k])    , 
-            .O(CMDDCI_P[k])    , 
+            .I(CMD_DATA[k]),
+            .O(CMDDCI_P[k]),
             .OB(CMDDCI_N[k])
         );
 
@@ -304,12 +304,12 @@ generate
         .DIFF_TERM("TRUE"),
         .IOSTANDARD("LVDS_25")
     ) IBUFDS_inst_dobout(
-        .I(DOBOUT_P[i])        , 
-        .IB(DOBOUT_N[i])    , 
+        .I(DOBOUT_P[i]),
+        .IB(DOBOUT_N[i]),
         .O(dobout_s)
     );
     
-    fei4_rx 
+    fei4_rx
     #(
         .BASEADDR(RX1_BASEADDR-32'h0100*i),
         .HIGHADDR(RX1_HIGHADDR-32'h0100*i),
@@ -341,15 +341,15 @@ generate
         .BUS_DATA(BUS_DATA[7:0]),
         .BUS_RD(BUS_RD),
         .BUS_WR(BUS_WR)
-    ); 
+    );
   end
 endgenerate
 
-        
+
 wire ARB_READY_OUT, ARB_WRITE_OUT;
 wire [31:0] ARB_DATA_OUT;
 
-rrp_arbiter 
+rrp_arbiter
 #( 
     .WIDTH(5)
 ) i_rrp_arbiter
@@ -358,7 +358,7 @@ rrp_arbiter
     .CLK(CLK125),
 
     .WRITE_REQ({~FE_FIFO_EMPTY & SEL, ~TRIGGER_FIFO_EMPTY & TLU_SEL}),
-    .HOLD_REQ({4'b0, TRIGGER_FIFO_PEEMPT_REQ}), 
+    .HOLD_REQ({4'b0, TRIGGER_FIFO_PEEMPT_REQ}),
     .DATA_IN({FE_FIFO_DATA[3],FE_FIFO_DATA[2],FE_FIFO_DATA[1], FE_FIFO_DATA[0], TRIGGER_FIFO_DATA}),
     .READ_GRANT({FE_FIFO_READ[3], FE_FIFO_READ[2], FE_FIFO_READ[1], FE_FIFO_READ[0], TRIGGER_FIFO_READ}),
 
@@ -367,7 +367,7 @@ rrp_arbiter
     .DATA_OUT(ARB_DATA_OUT)
 );
 
-assign USR_CLK = !CLK125; //This can be worked out to change 
+assign USR_CLK = !CLK125; //This can be worked out to change
 
 
 fifo_32_to_8 #(.DEPTH(16*1024)) i_data_fifo (
@@ -388,8 +388,8 @@ assign USR_TX_WE = !USR_TX_AFULL && !FIFO_EMPTY;
 assign USR_CLOSE_ACK = USR_CLOSE_REQ;
 assign USR_RX_RE = 1'b1;
 
-wire CE_1HZ; 
-wire CLK_1HZ; 
+wire CE_1HZ;
+wire CLK_1HZ;
 clock_divider #(
     .DIVISOR(40000000)
 ) i_clock_divisor_40MHz_to_1Hz (
@@ -419,4 +419,4 @@ assign LED[3] = RX_READY[3] & ((RX_8B10B_DECODER_ERR[3]? CLK_2HZ : CLK_1HZ) | RX
 assign LED[4] = FIFO_FULL;
 assign LED[7:5] = 0;
 
-endmodule 
+endmodule
