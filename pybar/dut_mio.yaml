@@ -4,7 +4,7 @@ version : 2.0.0
 
 transfer_layer:
   - name     : USB
-    type     : SiUsb
+    type     : SiUsb3
 # Example of additional lab devices to be used by pyBAR
 #  - name     : VisaWindows
 #    type     : Visa
