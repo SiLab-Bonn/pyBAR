@@ -127,21 +127,22 @@ def plot_linear_relation(x, y, x_err=None, y_err=None, title=None, point_label=N
 
 def plot_fancy_occupancy(hist, z_max=None, filename=None):
     if z_max == 'median':
-        median = np.ma.median(hist)
-        z_max = median * 2  # round_to_multiple(median * 2, math.floor(math.log10(median * 2)))
+        z_max = math.ceil(2 * np.ma.median(hist))  # round_to_multiple(median * 2, math.floor(math.log10(median * 2)))
     elif z_max == 'maximum' or z_max is None:
-        maximum = np.ma.max(hist)
-        z_max = maximum  # round_to_multiple(maximum, math.floor(math.log10(maximum)))
+        z_max = math.ceil(np.ma.max(hist))  # round_to_multiple(maximum, math.floor(math.log10(maximum)))
     if z_max < 1 or hist.all() is np.ma.masked:
-        z_max = 1
+        z_max = 1.0
 
     fig = Figure()
     FigureCanvas(fig)
     ax = fig.add_subplot(111)
     extent = [0.5, 80.5, 336.5, 0.5]
     bounds = np.linspace(start=0, stop=z_max, num=255, endpoint=True)
-    cmap = cm.get_cmap('jet')
-    cmap.set_bad('w')
+    if z_max == 'median':
+        cmap = cm.get_cmap('coolwarm')
+    else:
+        cmap = cm.get_cmap('cool')
+    cmap.set_bad('w', 0.0)
     norm = colors.BoundaryNorm(bounds, cmap.N)
 
     im = ax.imshow(hist, interpolation='nearest', aspect='auto', cmap=cmap, norm=norm, extent=extent)  # TODO: use pcolor or pcolormesh
@@ -191,13 +192,11 @@ def plot_fancy_occupancy(hist, z_max=None, filename=None):
 
 def plot_occupancy(hist, title='Occupancy', z_max=None, filename=None):
     if z_max == 'median':
-        median = np.ma.median(hist)
-        z_max = median * 2  # round_to_multiple(median * 2, math.floor(math.log10(median * 2)))
+        z_max = math.ceil(2 * np.ma.median(hist))  # round_to_multiple(median * 2, math.floor(math.log10(median * 2)))
     elif z_max == 'maximum' or z_max is None:
-        maximum = np.ma.max(hist)
-        z_max = maximum  # round_to_multiple(maximum, math.floor(math.log10(maximum)))
+        z_max = math.ceil(np.ma.max(hist))  # round_to_multiple(maximum, math.floor(math.log10(maximum)))
     if z_max < 1 or hist.all() is np.ma.masked:
-        z_max = 1
+        z_max = 1.0
 
     fig = Figure()
     FigureCanvas(fig)
@@ -205,8 +204,11 @@ def plot_occupancy(hist, title='Occupancy', z_max=None, filename=None):
     ax.set_adjustable('box-forced')
     extent = [0.5, 80.5, 336.5, 0.5]
     bounds = np.linspace(start=0, stop=z_max, num=255, endpoint=True)
-    cmap = cm.get_cmap('jet')
-    cmap.set_bad('w')
+    if z_max == 'median':
+        cmap = cm.get_cmap('coolwarm')
+    else:
+        cmap = cm.get_cmap('cool')
+    cmap.set_bad('w', 0.0)
     norm = colors.BoundaryNorm(bounds, cmap.N)
 
     im = ax.imshow(hist, interpolation='nearest', aspect='auto', cmap=cmap, norm=norm, extent=extent)  # TODO: use pcolor or pcolormesh
@@ -258,8 +260,8 @@ def plot_profile_histogram(x, y, n_bins=100, title=None, x_label=None, y_label=N
     std = np.sqrt((sy2 / n - mean * mean))  # TODO: no understood, need check if this is really the standard deviation
     #     std_mean = np.sqrt((sy2 - 2 * mean * sy + mean * mean) / (1*(n - 1)))  # this should be the formular ?!
     std_mean = std / np.sqrt((n - 1))
-    mean[np.isnan(mean)] = 0.
-    std_mean[np.isnan(std_mean)] = 0.
+    mean[np.isnan(mean)] = 0.0
+    std_mean[np.isnan(std_mean)] = 0.0
 
     fig = Figure()
     FigureCanvas(fig)
@@ -323,7 +325,7 @@ def plot_correlation(hist, title="Hit correlation", xlabel=None, ylabel=None, fi
     fig = Figure()
     FigureCanvas(fig)
     ax = fig.add_subplot(1, 1, 1)
-    cmap = cm.get_cmap('jet')
+    cmap = cm.get_cmap('cool')
     extent = [hist[2][0] - 0.5, hist[2][-1] + 0.5, hist[1][-1] + 0.5, hist[1][0] - 0.5]
     ax.set_title(title)
     ax.set_xlabel(xlabel)
@@ -353,7 +355,7 @@ def plot_pixel_matrix(hist, title="Hit correlation", filename=None):
     ax.set_title(title)
     ax.set_xlabel('Col')
     ax.set_ylabel('Row')
-    cmap = cm.get_cmap('jet')
+    cmap = cm.get_cmap('cool')
     ax.imshow(hist.T, aspect='auto', cmap=cmap, interpolation='nearest')
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
@@ -443,17 +445,15 @@ def plot_cluster_size(hist, title=None, filename=None):
 def plot_scurves(occupancy_hist, scan_parameters, title='S-Curves', ylabel='Occupancy', max_occ=None, scan_parameter_name=None, min_x=None, max_x=None, x_scale=1.0, y_scale=1., filename=None):  # tornado plot
     occ_mask = np.all(occupancy_hist == 0, axis=2)
     if max_occ is None:
-        max_occ = 2 * np.median(np.amax(occupancy_hist, axis=2))
+        max_occ = math.ceil(2 * np.median(np.amax(occupancy_hist, axis=2)))
         if np.allclose(max_occ, 0.0):
-            max_occ = np.amax(occupancy_hist)
-        if np.allclose(max_occ, 0.0):
-            max_occ = 1
+            max_occ = 1.0
     if len(occupancy_hist.shape) < 3:
         raise ValueError('Found array with shape %s' % str(occupancy_hist.shape))
 
     n_pixel = occupancy_hist.shape[0] * occupancy_hist.shape[1]
 
-    cmap = cm.get_cmap('jet', 200)
+    cmap = cm.get_cmap('cool')
     for index, scan_parameter in enumerate(scan_parameters):
         compressed_data = np.ma.masked_array(occupancy_hist[:, :, index], mask=occ_mask, copy=True).compressed()
         heatmap, xedges, yedges = np.histogram2d(compressed_data, [scan_parameter] * compressed_data.shape[0], range=[[0, max_occ], [scan_parameters[0], scan_parameters[-1]]], bins=(max_occ + 1, len(scan_parameters)))
@@ -528,21 +528,21 @@ def plot_scatter_time(x, y, yerr=None, title=None, legend=None, plot_range=None,
 
 
 def plot_cluster_tot_size(hist, median=False, z_max=None, filename=None):
-    H = hist[0:50, 0:20]
+    hist = hist[0:50, 0:20]  # limit size
     if z_max is None:
-        z_max = np.ma.max(H)
-    if z_max < 1 or H.all() is np.ma.masked:
-        z_max = 1
+        z_max = math.ceil(np.ma.max(hist))
+    if z_max < 1 or hist.all() is np.ma.masked:
+        z_max = 1.0
     fig = Figure()
     FigureCanvas(fig)
     ax = fig.add_subplot(111)
     extent = [-0.5, 20.5, 49.5, -0.5]
     bounds = np.linspace(start=0, stop=z_max, num=255, endpoint=True)
-    cmap = cm.get_cmap('jet')
-    cmap.set_bad('w')
+    cmap = cm.get_cmap('cool')
+    cmap.set_bad('w', 0.0)
     norm = colors.BoundaryNorm(bounds, cmap.N)
-    im = ax.imshow(H, aspect="auto", interpolation='nearest', cmap=cmap, norm=norm, extent=extent)  # for monitoring
-    ax.set_title('Cluster size and cluster ToT (' + str(np.sum(H) / 2) + ' entries)')
+    im = ax.imshow(hist, aspect="auto", interpolation='nearest', cmap=cmap, norm=norm, extent=extent)  # for monitoring
+    ax.set_title('Cluster size and cluster ToT (' + str(np.sum(hist) / 2) + ' entries)')
     ax.set_xlabel('cluster size')
     ax.set_ylabel('cluster ToT')
 
@@ -597,16 +597,53 @@ def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=No
         fig.savefig(filename)
 
 
-def create_2d_pixel_hist(fig, ax, hist2d, title=None, x_axis_title=None, y_axis_title=None, z_min=0, z_max=None):
+def plotThreeWay(hist, title, filename=None, x_axis_title=None, minimum=None, maximum=None, bins=101, cmap=None):  # the famous 3 way plot (enhanced)
+    if cmap is None:
+        if maximum == 'median' or maximum is None:
+            cmap = cm.get_cmap('coolwarm')
+        else:
+            cmap = cm.get_cmap('cool')
+    if minimum is None:
+        minimum = 0.0
+    elif minimum == 'minimum':
+        minimum = math.floor(np.ma.min(hist))
+    if maximum == 'median' or maximum is None:
+        maximum = math.ceil(2 * np.ma.median(hist))  # round_to_multiple(median * 2, math.floor(math.log10(median * 2)))
+    elif maximum == 'maximum':
+        maximum = math.ceil(np.ma.max(hist))  # round_to_multiple(maximum, math.floor(math.log10(maximum)))
+    if maximum < 1 or hist.all() is np.ma.masked:
+        maximum = 1.0
+
+    x_axis_title = '' if x_axis_title is None else x_axis_title
+    fig = Figure()
+    FigureCanvas(fig)
+    fig.patch.set_facecolor('white')
+    ax1 = fig.add_subplot(311)
+    create_2d_pixel_hist(fig, ax1, hist, title=title, x_axis_title="column", y_axis_title="row", z_min=minimum if minimum else 0, z_max=maximum, cmap=cmap)
+    ax2 = fig.add_subplot(312)
+    create_1d_hist(fig, ax2, hist, bins=bins, x_axis_title=x_axis_title, y_axis_title="#", x_min=minimum, x_max=maximum)
+    ax3 = fig.add_subplot(313)
+    create_pixel_scatter_plot(fig, ax3, hist, x_axis_title="channel=row + column*336", y_axis_title=x_axis_title, y_min=minimum, y_max=maximum)
+    fig.tight_layout()
+    if not filename:
+        fig.show()
+    elif isinstance(filename, PdfPages):
+        filename.savefig(fig)
+    else:
+        fig.savefig(filename)
+
+
+def create_2d_pixel_hist(fig, ax, hist2d, title=None, x_axis_title=None, y_axis_title=None, z_min=0, z_max=None, cmap=None):
     extent = [0.5, 80.5, 336.5, 0.5]
     if z_max is None:
         if hist2d.all() is np.ma.masked:  # check if masked array is fully masked
-            z_max = 1
+            z_max = 1.0
         else:
-            z_max = 2 * math.ceil(hist2d.max())
+            z_max = math.ceil(2 * np.ma.median(hist2d))
     bounds = np.linspace(start=z_min, stop=z_max, num=255, endpoint=True)
-    cmap = cm.get_cmap('jet')
-    cmap.set_bad('w')
+    if cmap is None:
+        cmap = cm.get_cmap('coolwarm')
+    cmap.set_bad('w', 0.0)
     norm = colors.BoundaryNorm(bounds, cmap.N)
     im = ax.imshow(hist2d, interpolation='nearest', aspect="auto", cmap=cmap, norm=norm, extent=extent)
     if title is not None:
@@ -708,10 +745,10 @@ def create_pixel_scatter_plot(fig, ax, hist, title=None, x_axis_title=None, y_ax
     ax.legend([p1], ["column mean"], prop={'size': 6})
     ax.set_xlim((0, 26880))
     if y_min is None:
-        y_min = 0
+        y_min = 0.0
     if y_max is None:
         if hist.all() is np.ma.masked:  # check if masked array is fully masked
-            y_max = 1
+            y_max = 1.0
         else:
             y_max = math.ceil(hist.max())  # np.max(scatter_y)
     ax.set_ylim(ymin=y_min)
@@ -722,39 +759,6 @@ def create_pixel_scatter_plot(fig, ax, hist, title=None, x_axis_title=None, y_ax
         ax.set_xlabel(x_axis_title)
     if y_axis_title is not None:
         ax.set_ylabel(y_axis_title)
-
-
-def plotThreeWay(hist, title, filename=None, x_axis_title=None, minimum=None, maximum=None, bins=101):  # the famous 3 way plot (enhanced)
-    if minimum is None:
-        minimum = 0
-    elif minimum == 'minimum':
-        minimum = np.ma.min(hist)
-    if maximum == 'median' or maximum is None:
-        median = np.ma.median(hist)
-        maximum = median * 2  # round_to_multiple(median * 2, math.floor(math.log10(median * 2)))
-    elif maximum == 'maximum':
-        maximum = np.ma.max(hist)
-        maximum = maximum  # round_to_multiple(maximum, math.floor(math.log10(maximum)))
-    if maximum < 1 or hist.all() is np.ma.masked:
-        maximum = 1
-
-    x_axis_title = '' if x_axis_title is None else x_axis_title
-    fig = Figure()
-    FigureCanvas(fig)
-    fig.patch.set_facecolor('white')
-    ax1 = fig.add_subplot(311)
-    create_2d_pixel_hist(fig, ax1, hist, title=title, x_axis_title="column", y_axis_title="row", z_min=minimum if minimum else 0, z_max=maximum)
-    ax2 = fig.add_subplot(312)
-    create_1d_hist(fig, ax2, hist, bins=bins, x_axis_title=x_axis_title, y_axis_title="#", x_min=minimum, x_max=maximum)
-    ax3 = fig.add_subplot(313)
-    create_pixel_scatter_plot(fig, ax3, hist, x_axis_title="channel=row + column*336", y_axis_title=x_axis_title, y_min=minimum, y_max=maximum)
-    fig.tight_layout()
-    if not filename:
-        fig.show()
-    elif isinstance(filename, PdfPages):
-        filename.savefig(fig)
-    else:
-        fig.savefig(filename)
 
 
 def plot_correlations(filenames, limit=None):
@@ -780,7 +784,7 @@ def plot_correlations(filenames, limit=None):
             else:
                 heatmap, xedges, yedges = np.histogram2d(DataFrame[colName[0]], DataFrame[colName[1]], bins=(336, 336), range=[[1, 336], [1, 336]])
             extent = [yedges[0] - 0.5, yedges[-1] + 0.5, xedges[-1] + 0.5, xedges[0] - 0.5]
-            cmap = cm.get_cmap('hot', 40)
+            cmap = cm.get_cmap('cool', 40)
             fig = Figure()
             FigureCanvas(fig)
             ax = fig.add_subplot(111)
