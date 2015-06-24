@@ -23,7 +23,7 @@ from pybar.fei4.register_utils import scan_loop
 from pybar.run_manager import RunManager
 from pybar.analysis.analysis_utils import get_hits_of_scan_parameter, hist_1d_index, hist_3d_index, get_scan_parameter, get_mean_from_histogram
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
-from pybar.analysis.plotting.plotting import plot_scurves, plotThreeWay
+from pybar.analysis.plotting.plotting import plot_scurves, plot_three_way
 
 
 class HitDelayScan(Fei4RunBase):
@@ -349,8 +349,8 @@ class HitDelayScan(Fei4RunBase):
             plot_scurves(np.swapaxes(hist_hit_delay[:, :, :], 0, 1), scan_parameters=charge_values, title='Hit delay (T0) with internal charge injection\nof the FE-I4', scan_parameter_name='Charge [e]', ylabel='Hit delay [ns]', min_x=0, y_scale=25. / delay_calibration, filename=output_pdf)
 
             for i in [0, 1, len(plsr_dac_values) / 4, len(plsr_dac_values) / 2, -1]:  # plot 2d hist at min, 1/4, 1/2, max PlsrDAC setting
-                plotThreeWay(hist_rel_timewalk[:, :, i] * 25. / delay_calibration, title='Time walk at %.0f e' % (charge_values[i]), x_axis_title='Time walk [ns]', filename=output_pdf)
-                plotThreeWay(hist_hit_delay[:, :, i] * 25. / delay_calibration, title='Hit delay (T0) with internal charge injection at %.0f e' % (charge_values[i]), x_axis_title='Hit delay [ns]', minimum=np.amin(hist_hit_delay[:, :, i]), maximum=np.amax(hist_hit_delay[:, :, i]), filename=output_pdf)
+                plot_three_way(hist_rel_timewalk[:, :, i] * 25. / delay_calibration, title='Time walk at %.0f e' % (charge_values[i]), x_axis_title='Time walk [ns]', filename=output_pdf)
+                plot_three_way(hist_hit_delay[:, :, i] * 25. / delay_calibration, title='Hit delay (T0) with internal charge injection at %.0f e' % (charge_values[i]), x_axis_title='Hit delay [ns]', minimum=np.amin(hist_hit_delay[:, :, i]), maximum=np.amax(hist_hit_delay[:, :, i]), filename=output_pdf)
             output_pdf.close()
 
 

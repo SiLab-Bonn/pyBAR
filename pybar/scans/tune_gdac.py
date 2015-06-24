@@ -6,7 +6,7 @@ from pybar.fei4_run_base import Fei4RunBase
 from pybar.fei4.register_utils import scan_loop, make_pixel_mask
 from pybar.run_manager import RunManager
 from pybar.daq.readout_utils import convert_data_array, is_data_record, data_array_from_data_iterable, get_col_row_array_from_data_record_array
-from pybar.analysis.plotting.plotting import plotThreeWay
+from pybar.analysis.plotting.plotting import plot_three_way
 
 
 class GdacTuning(Fei4RunBase):
@@ -114,7 +114,7 @@ class GdacTuning(Fei4RunBase):
                 gdac_best = self.register_utils.get_gdac()
 
             if self.plot_intermediate_steps:
-                plotThreeWay(self.occ_array_sel_pixel.transpose(), title="Occupancy (GDAC " + str(scan_parameter_value) + " with tuning bit " + str(gdac_bit) + ")", x_axis_title='Occupancy', filename=self.plots_filename, maximum=self.n_injections_gdac)
+                plot_three_way(self.occ_array_sel_pixel.transpose(), title="Occupancy (GDAC " + str(scan_parameter_value) + " with tuning bit " + str(gdac_bit) + ")", x_axis_title='Occupancy', filename=self.plots_filename, maximum=self.n_injections_gdac)
 
             if abs(median_occupancy - self.n_injections_gdac / 2) < self.max_delta_threshold and gdac_bit > 0:  # abort if good value already found to save time
                 logging.info('Median = %f, good result already achieved (median - Ninj/2 < %f), skipping not varied bits', median_occupancy, self.max_delta_threshold)
@@ -169,7 +169,7 @@ class GdacTuning(Fei4RunBase):
     def analyze(self):
         self.register_utils.set_gdac(self.gdac_best, send_command=False)
 
-        plotThreeWay(self.occ_array_sel_pixel.transpose(), title="Occupancy after GDAC tuning (GDAC " + str(self.scan_parameters.GDAC) + ")", x_axis_title='Occupancy', filename=self.plots_filename, maximum=self.n_injections_gdac)
+        plot_three_way(self.occ_array_sel_pixel.transpose(), title="Occupancy after GDAC tuning (GDAC " + str(self.scan_parameters.GDAC) + ")", x_axis_title='Occupancy', filename=self.plots_filename, maximum=self.n_injections_gdac)
         if self.close_plots:
             self.plots_filename.close()
 

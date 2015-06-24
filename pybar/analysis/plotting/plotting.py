@@ -597,7 +597,7 @@ def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=No
         fig.savefig(filename)
 
 
-def plotThreeWay(hist, title, filename=None, x_axis_title=None, minimum=None, maximum=None, bins=101, cmap=None):  # the famous 3 way plot (enhanced)
+def plot_three_way(hist, title, filename=None, x_axis_title=None, minimum=None, maximum=None, bins=101, cmap=None):  # the famous 3 way plot (enhanced)
     if cmap is None:
         if maximum == 'median' or maximum is None:
             cmap = cm.get_cmap('coolwarm')

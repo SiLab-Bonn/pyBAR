@@ -6,7 +6,7 @@ from pybar.fei4_run_base import Fei4RunBase
 from pybar.fei4.register_utils import scan_loop
 from pybar.run_manager import RunManager
 from pybar.daq.readout_utils import convert_data_array, is_data_record, data_array_from_data_iterable, get_col_row_tot_array_from_data_record_array
-from pybar.analysis.plotting.plotting import plotThreeWay
+from pybar.analysis.plotting.plotting import plot_three_way
 
 
 class FdacTuning(Fei4RunBase):
@@ -95,7 +95,7 @@ class FdacTuning(Fei4RunBase):
             self.tot_mean_best[select_better_pixel_mask] = tot_mean_array[select_better_pixel_mask]
 
             if self.plot_intermediate_steps:
-                plotThreeWay(hist=tot_mean_array.transpose().transpose(), title="Mean ToT (FDAC tuning bit " + str(fdac_bit) + ")", x_axis_title='mean ToT', filename=self.plots_filename, minimum=0, maximum=15)
+                plot_three_way(hist=tot_mean_array.transpose().transpose(), title="Mean ToT (FDAC tuning bit " + str(fdac_bit) + ")", x_axis_title='mean ToT', filename=self.plots_filename, minimum=0, maximum=15)
 
             fdac_mask = self.register.get_pixel_register_value("FDAC")
             self.fdac_mask_best[select_better_pixel_mask] = fdac_mask[select_better_pixel_mask]
@@ -120,8 +120,8 @@ class FdacTuning(Fei4RunBase):
     def analyze(self):
         self.register.set_pixel_register_value("FDAC", self.fdac_mask_best)
 
-        plotThreeWay(hist=self.tot_mean_best.transpose(), title="Mean ToT after FDAC tuning", x_axis_title="Mean ToT", filename=self.plots_filename, minimum=0, maximum=15)
-        plotThreeWay(hist=self.fdac_mask_best.transpose(), title="FDAC distribution after tuning", x_axis_title="FDAC", filename=self.plots_filename, minimum=0, maximum=15)
+        plot_three_way(hist=self.tot_mean_best.transpose(), title="Mean ToT after FDAC tuning", x_axis_title="Mean ToT", filename=self.plots_filename, minimum=0, maximum=15)
+        plot_three_way(hist=self.fdac_mask_best.transpose(), title="FDAC distribution after tuning", x_axis_title="FDAC", filename=self.plots_filename, minimum=0, maximum=15)
         if self.close_plots:
             self.plots_filename.close()
 

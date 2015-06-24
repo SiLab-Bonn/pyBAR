@@ -22,7 +22,7 @@ from scipy.interpolate import interp1d
 
 from pybar.analysis import analysis_utils
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
-from pybar.analysis.plotting.plotting import plotThreeWay, plot_1d_hist
+from pybar.analysis.plotting.plotting import plot_three_way, plot_1d_hist
 
 hit_selection = '(column > 50) & (column < 78) & (row > 16) & (row < 324) & (((column % 2 == 1) & (row % 12 == 1)) | ((column % 2 == 0) & (row % 12 == 7)))'
 pixel_selection = '(column > 0)'  # '((column > 50) & (column < 78) & (row > 54) & (row < 276))'
@@ -236,7 +236,7 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
             for node in in_file_h5.root:  # go through the data and plot them
                 if 'MeanPixel' in node.name:
                     try:
-                        plotThreeWay(np.ma.masked_invalid(node[:]) * 1.5625, title='Mean TDC delay, hits with\n%s' % node._v_attrs.condition if 'Timestamp' in node.name else 'Mean TDC, hits with\n%s' % node._v_attrs.condition, filename=output_pdf)
+                        plot_three_way(np.ma.masked_invalid(node[:]) * 1.5625, title='Mean TDC delay, hits with\n%s' % node._v_attrs.condition if 'Timestamp' in node.name else 'Mean TDC, hits with\n%s' % node._v_attrs.condition, filename=output_pdf)
                     except ValueError:
                         logging.warning('Cannot plot TDC delay')
                 elif 'HistTdcCondition' in node.name:

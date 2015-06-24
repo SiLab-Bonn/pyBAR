@@ -929,8 +929,8 @@ class AnalyzeRawData(object):
             noise_hist = np.ma.array(out_file_h5.root.HistNoise[:] if out_file_h5 is not None else self.noise_hist, mask=self.threshold_mask)
             mask_cnt = np.ma.count_masked(noise_hist)
             logging.info('Fast algorithm: masking %d pixel(s)', mask_cnt)
-            plotting.plotThreeWay(hist=threshold_hist, title='Threshold%s' % ((' (masked %i pixel(s))' % mask_cnt) if self._create_threshold_mask else ''), x_axis_title="threshold [PlsrDAC]", filename=output_pdf, bins=100, minimum=0, maximum=maximum)
-            plotting.plotThreeWay(hist=noise_hist, title='Noise%s' % ((' (masked %i pixel(s))' % mask_cnt) if self._create_threshold_mask else ''), x_axis_title="noise [PlsrDAC]", filename=output_pdf, bins=100, minimum=0, maximum=maximum)
+            plotting.plot_three_way(hist=threshold_hist, title='Threshold%s' % ((' (masked %i pixel(s))' % mask_cnt) if self._create_threshold_mask else ''), x_axis_title="threshold [PlsrDAC]", filename=output_pdf, bins=100, minimum=0, maximum=maximum)
+            plotting.plot_three_way(hist=noise_hist, title='Noise%s' % ((' (masked %i pixel(s))' % mask_cnt) if self._create_threshold_mask else ''), x_axis_title="noise [PlsrDAC]", filename=output_pdf, bins=100, minimum=0, maximum=maximum)
         if self._create_fitted_threshold_hists:
             if self._create_fitted_threshold_mask:
                 if out_file_h5 is not None:
@@ -945,10 +945,10 @@ class AnalyzeRawData(object):
             noise_hist_calib = np.ma.array(out_file_h5.root.HistNoiseFittedCalib[:] if out_file_h5 is not None else self.noise_hist_calib[:], mask=self.fitted_threshold_mask)
             mask_cnt = np.ma.count_masked(noise_hist)
             logging.info('S-curve fit: masking %d pixel(s)', mask_cnt)
-            plotting.plotThreeWay(hist=threshold_hist, title='Threshold (S-curve fit, masked %i pixel(s))' % mask_cnt, x_axis_title="Threshold [PlsrDAC]", filename=output_pdf, bins=100, minimum=0, maximum=maximum)
-            plotting.plotThreeWay(hist=noise_hist, title='Noise (S-curve fit, masked %i pixel(s))' % mask_cnt, x_axis_title="Noise [PlsrDAC]", filename=output_pdf, bins=100, minimum=0, maximum=maximum)
-            plotting.plotThreeWay(hist=threshold_hist_calib, title='Threshold (S-curve fit, masked %i pixel(s))' % mask_cnt, x_axis_title="Threshold [e]", filename=output_pdf, bins=100, minimum=0)
-            plotting.plotThreeWay(hist=noise_hist_calib, title='Noise (S-curve fit, masked %i pixel(s))' % mask_cnt, x_axis_title="Noise [e]", filename=output_pdf, bins=100, minimum=0)
+            plotting.plot_three_way(hist=threshold_hist, title='Threshold (S-curve fit, masked %i pixel(s))' % mask_cnt, x_axis_title="Threshold [PlsrDAC]", filename=output_pdf, bins=100, minimum=0, maximum=maximum)
+            plotting.plot_three_way(hist=noise_hist, title='Noise (S-curve fit, masked %i pixel(s))' % mask_cnt, x_axis_title="Noise [PlsrDAC]", filename=output_pdf, bins=100, minimum=0, maximum=maximum)
+            plotting.plot_three_way(hist=threshold_hist_calib, title='Threshold (S-curve fit, masked %i pixel(s))' % mask_cnt, x_axis_title="Threshold [e]", filename=output_pdf, bins=100, minimum=0)
+            plotting.plot_three_way(hist=noise_hist_calib, title='Noise (S-curve fit, masked %i pixel(s))' % mask_cnt, x_axis_title="Noise [e]", filename=output_pdf, bins=100, minimum=0)
         if self._create_occupancy_hist:
             if self._create_fitted_threshold_hists:
                 plotting.plot_scurves(occupancy_hist=out_file_h5.root.HistOcc[:] if out_file_h5 is not None else self.occupancy_array[:], filename=output_pdf, scan_parameters=np.linspace(np.amin(self.scan_parameters['PlsrDAC']), np.amax(self.scan_parameters['PlsrDAC']), num=self.histograming.get_n_parameters(), endpoint=True))
@@ -959,14 +959,14 @@ class AnalyzeRawData(object):
                     plotting.plot_fancy_occupancy(hist=occupancy_array_masked, filename=output_pdf, z_max='median')
                     plotting.plot_occupancy(hist=occupancy_array_masked, filename=output_pdf, z_max='maximum')
                 else:
-                    plotting.plotThreeWay(hist=occupancy_array_masked, title="Occupancy", x_axis_title="occupancy", filename=output_pdf, maximum=maximum)
+                    plotting.plot_three_way(hist=occupancy_array_masked, title="Occupancy", x_axis_title="occupancy", filename=output_pdf, maximum=maximum)
                     plotting.plot_occupancy(hist=occupancy_array_masked, filename=output_pdf, z_max='median')
         if self._create_tot_hist:
             plotting.plot_tot(hist=out_file_h5.root.HistTot if out_file_h5 is not None else self.tot_hist, filename=output_pdf)
         if self._create_tot_pixel_hist:
             tot_pixel_hist = out_file_h5.root.HistTotPixel[:] if out_file_h5 is not None else self.tot_pixel_hist_array
             mean_pixel_tot = np.average(np.ma.masked_invalid(tot_pixel_hist), axis=2, weights=range(16)) * sum(range(0, 16)) / np.sum(tot_pixel_hist, axis=2)
-            plotting.plotThreeWay(mean_pixel_tot, title='Mean TOT', x_axis_title='mean TOT', filename=output_pdf, minimum=0, maximum=15)
+            plotting.plot_three_way(mean_pixel_tot, title='Mean TOT', x_axis_title='mean TOT', filename=output_pdf, minimum=0, maximum=15)
         if self._create_tdc_counter_hist:
             plotting.plot_tdc_counter(hist=out_file_h5.root.HistTdcCounter if out_file_h5 is not None else self.tdc_hist_counter, filename=output_pdf)
         if self._create_tdc_hist:
@@ -985,7 +985,7 @@ class AnalyzeRawData(object):
         if self._create_tdc_pixel_hist:
             tdc_pixel_hist = out_file_h5.root.HistTdcPixel[:, :, :1024] if out_file_h5 is not None else self.tdc_pixel_hist_array[:, :, :1024]  # only take first 1024 values, otherwise memory error likely
             mean_pixel_tdc = np.average(tdc_pixel_hist, axis=2, weights=range(1024)) * sum(range(0, 1024)) / np.sum(tdc_pixel_hist, axis=2)
-            plotting.plotThreeWay(np.ma.masked_invalid(mean_pixel_tdc), title='Mean TDC', x_axis_title='mean TDC', filename=output_pdf)
+            plotting.plot_three_way(np.ma.masked_invalid(mean_pixel_tdc), title='Mean TDC', x_axis_title='mean TDC', filename=output_pdf)
         if not create_hit_hists_only:
             if analyzed_data_file is None and self._create_error_hist:
                 plotting.plot_event_errors(hist=out_file_h5.root.HistErrorCounter if out_file_h5 is not None else self.error_counter_hist, filename=output_pdf)
