@@ -92,9 +92,9 @@ class RawDataFile(object):
         self.filenames = {self.curr_filename: 0}
         self.open(self.curr_filename, mode, title)
         if conf:
-            save_configuration_dict(filename, 'conf', conf)
+            save_configuration_dict(self.h5_file, 'conf', conf)
         if run_conf:
-            save_configuration_dict(filename, 'run_conf', run_conf)
+            save_configuration_dict(self.h5_file, 'run_conf', run_conf)
         if socket_addr:
             self.socket = zmq.Context().socket(zmq.PUSH)  # push data non blocking
             self.socket.bind(socket_addr)
