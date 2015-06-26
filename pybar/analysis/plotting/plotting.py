@@ -410,7 +410,7 @@ def plot_relative_bcid_stop_mode(hist, filename=None):
 
 
 def plot_tot(hist, title=None, filename=None):
-    plot_1d_hist(hist=hist, title=('Time-over-Threshold distribution (ToT code)' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, plot_range=range(0, 16), x_axis_title='ToT [25 ns]', y_axis_title='#', color='b', filename=filename, figure_name='Hit Tot')
+    plot_1d_hist(hist=hist, title=('Time-over-Threshold distribution' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, plot_range=range(0, 16), x_axis_title='ToT code [25 ns]', y_axis_title='#', color='b', filename=filename, figure_name='Hit Tot')
 
 
 def plot_tdc(hist, title=None, filename=None):
