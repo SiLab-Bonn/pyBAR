@@ -16,7 +16,7 @@ init:
   - ps: if($env:PYTHON -eq "2.7" -and $env:Platform -eq "x86"){Start-FileDownload 'http://repo.continuum.io/miniconda/Miniconda-3.5.5-Windows-x86.exe' C:\Miniconda.exe; echo "Done"}
   - cmd: C:\Miniconda.exe /S /D=C:\Miniconda
   - ps: ls C:\Miniconda/Scripts
-  - C:\Miniconda\Scripts\conda create --yes -n test-environment numpy cython pytables scipy matplotlib pandas pyserial bitarray nose pyzmq pyyaml pip
+  - C:\Miniconda\Scripts\conda create --yes -n test-environment numpy cython pytables scipy matplotlib pandas pyserial bitarray nose pyzmq pyyaml pip pywin32
   - C:\Miniconda\Scripts\activate.bat test-environment
   - pip install progressbar-latest pyvisa pyvisa-py pyqtgraph mock sphinx
   - pip install https://github.com/uvemas/ViTables/archive/v2.1.zip
