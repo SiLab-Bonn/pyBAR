@@ -135,7 +135,7 @@ PLLE2_BASE #(
     
     .CLKOUT4_DIVIDE(32),     // Divide amount for CLKOUT0 (1-128)
     .CLKOUT4_DUTY_CYCLE(0.5), // Duty cycle for CLKOUT0 (0.001-0.999).
-    .CLKOUT4_PHASE(55.0),      // Phase offset for CLKOUT0 (-360.000-360.000).
+    .CLKOUT4_PHASE(25.0),      // Phase offset for CLKOUT0 (-360.000-360.000).
     
     .DIVCLK_DIVIDE(5),        // Master division value, (1-56)
     .REF_JITTER1(0.0),        // Reference input jitter in UI, (0.000-0.999).
@@ -259,7 +259,7 @@ cmd_seq
     .BUS_RD(BUS_RD),
     .BUS_WR(BUS_WR),
     
-    .CMD_CLK_OUT(CMD_CLK_OUT),
+    .CMD_CLK_OUT(/*CMD_CLK_OUT*/),
     .CMD_CLK_IN(clk40mhz),
     .CMD_EXT_START_FLAG(CMD_EXT_START_FLAG),
     .CMD_EXT_START_ENABLE(CMD_EXT_START_ENABLE),
@@ -276,7 +276,7 @@ genvar g;
 generate
     for (g = 0; g < OUTPUTS; g = g + 1) begin: cmd_gen
     
-        /*ODDR CMD_CLK_FORWARDING_INST (
+        ODDR CMD_CLK_FORWARDING_INST (
             .Q(CMD_CLK_OUT[g]),
             .C(clk40mhz_phase),
             .CE(1'b1), 
@@ -284,11 +284,11 @@ generate
             .D2(1'b0),
             .R(1'b0),
             .S(1'b0)
-        );*/
+        );
     
         OBUFDS #(
           .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
-          .SLEW("FAST")           // Specify the output slew rate
+          .SLEW("SLOW")           // Specify the output slew rate
         ) OBUFDS_inst_cmd_clk_out (
           .O(CMD_CLK_OUT_P[g]),     // Diff_p output (connect directly to top-level port)
           .OB(CMD_CLK_OUT_N[g]),   // Diff_n output (connect directly to top-level port)
@@ -297,7 +297,7 @@ generate
 
         OBUFDS #(
           .IOSTANDARD("LVDS_25"), // Specify the output I/O standard
-          .SLEW("FAST")           // Specify the output slew rate
+          .SLEW("SLOW")           // Specify the output slew rate
         ) OBUFDS_inst_cmd_data (
           .O(CMD_DATA_P[g]),     // Diff_p output (connect directly to top-level port)
           .OB(CMD_DATA_N[g]),   // Diff_n output (connect directly to top-level port)

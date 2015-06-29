@@ -597,5 +597,5 @@ set_false_path -from [get_clocks clk40mhz_phase_pll] -to [get_clocks fx3_pclk_10
 set_property BITSTREAM.CONFIG.UNUSEDPIN PULLUP [current_design]
 
 
-set_property PULLUP true [get_ports {DOBOUT_P[7]}]
-set_property PULLDOWN true [get_ports {DOBOUT_N[7]}]
+#set_property PULLUP true [get_ports {DOBOUT_P[7]}]
+#set_property PULLDOWN true [get_ports {DOBOUT_N[7]}]

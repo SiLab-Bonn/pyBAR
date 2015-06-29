@@ -5,7 +5,7 @@ USB:
     avoid_download : False
 
 cmd:
-    OUTPUT_MODE : 0  # 0: positive edge (default), 2: Manchester code
+    OUTPUT_MODE : 3  # 0: positive edge (default), 2: Manchester code
 
 tlu:
     TRIGGER_MODE        : 1
