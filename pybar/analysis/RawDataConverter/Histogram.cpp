@@ -218,7 +218,7 @@ unsigned int Histogram::getParIndex(int64_t& rEventNumber)
   return 0;
 }
 
-void Histogram::addScanParameter(unsigned int*& rParInfo, const unsigned int& rNparInfoLength)
+void Histogram::addScanParameter(int*& rParInfo, const unsigned int& rNparInfoLength)
 {
 	debug("addScanParameter");
 	_nParInfoLength = rNparInfoLength;

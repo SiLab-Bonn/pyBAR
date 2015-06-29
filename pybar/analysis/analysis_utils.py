@@ -378,7 +378,7 @@ def get_parameter_value_from_file_names(files, parameters=None, unique=False, so
         parameters = (parameters, )
     search_string = '_'.join(parameters)
     for _ in parameters:
-        search_string += r'_(\d+)'
+        search_string += r'_(-?\d+)'
     result = {}
     for one_file in files:
         parameter_values = re.findall(search_string, one_file)
@@ -1260,7 +1260,7 @@ def get_scan_parameters_index(scan_parameter):
     '''
     _, index = np.unique(scan_parameter, return_index=True)
     index = np.sort(index)
-    values = np.array(range(0, len(index)), dtype='u4')
+    values = np.array(range(0, len(index)), dtype='i4')
     index = np.append(index, len(scan_parameter))
     counts = np.diff(index)
     return np.repeat(values, counts)
