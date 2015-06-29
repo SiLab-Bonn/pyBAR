@@ -30,4 +30,5 @@ install:
   - python.exe setup.py develop
 
 test_script:
-  - nosetests tests\test_analysis.py
+  - cd tests
+  - nosetests test_analysis.py
