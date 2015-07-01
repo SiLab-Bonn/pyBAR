@@ -18,7 +18,7 @@ class ExtTriggerScan(Fei4RunBase):
     Set up trigger in DUT configuration file (e.g. dut_configuration_mio.yaml).
     '''
     _default_run_conf = {
-        "trigger_count": 0,  # FE-I4 trigger count, number of consecutive BCs, 0 means 16, from 0 to 15
+        "trig_count": 0,  # FE-I4 trigger count, number of consecutive BCs, 0 means 16, from 0 to 15
         "trigger_latency": 232,  # FE-I4 trigger latency, in BCs, external scintillator / TLU / HitOR: 232, USBpix self-trigger: 220
         "trigger_delay": 8,  # trigger delay, in BCs
         "trigger_rate_limit": 500,  # artificially limiting the trigger rate, in BCs (25ns)
@@ -58,7 +58,7 @@ class ExtTriggerScan(Fei4RunBase):
         commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_Low'))
         # Registers
         self.register.set_global_register_value("Trig_Lat", self.trigger_latency)  # set trigger latency
-        self.register.set_global_register_value("Trig_Count", self.trigger_count)  # set number of consecutive triggers
+        self.register.set_global_register_value("Trig_Count", self.trig_count)  # set number of consecutive triggers
         commands.extend(self.register.get_commands("WrRegister", name=["Trig_Lat", "Trig_Count"]))
         commands.extend(self.register.get_commands("RunMode"))
         self.register_utils.send_commands(commands)
