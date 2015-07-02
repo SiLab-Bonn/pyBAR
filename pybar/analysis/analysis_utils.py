@@ -320,7 +320,7 @@ def create_parameter_table(files_dict):
     # create the parameter names / format for the parameter table
     try:
         names = ','.join([name for name in files_dict.itervalues().next().keys()])
-        formats = ','.join(['uint32' for name in files_dict.itervalues().next().keys()])
+        formats = ','.join(['int32' for name in files_dict.itervalues().next().keys()])
         arrayList = [l for l in files_dict.itervalues().next().values()]
     except AttributeError:  # no parameters given, return None
         return

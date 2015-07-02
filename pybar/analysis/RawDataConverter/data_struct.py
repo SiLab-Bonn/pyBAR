@@ -44,7 +44,7 @@ def generate_scan_parameter_description(scan_parameters):
     -----
     pytables.createTable(self.raw_data_file_h5.root, name = 'scan_parameters', description = generate_scan_parameter_description(['PlsrDAC']), title = 'scan_parameters', filters = filter_tables)
     '''
-    table_description = np.dtype([(key, tb.UInt32Col(pos=idx)) for idx, key in enumerate(scan_parameters)])
+    table_description = np.dtype([(key, tb.Int32Col(pos=idx)) for idx, key in enumerate(scan_parameters)])
     return table_description
 
 
