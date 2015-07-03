@@ -41,7 +41,7 @@ For USB support, PyBAR requires the following packages:
   
 - [pySiLibUSB](https://silab-redmine.physik.uni-bonn.de/projects/pysilibusb) (>=2.0.0):
   ```
-  pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/794/pySiLibUSB-2.0.4.tar.gz
+  pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/800/pySiLibUSB-2.0.5.tar.gz
   ```
 
 [Basil](https://github.com/SiLab-Bonn/basil) (==2.1.1) is required:
