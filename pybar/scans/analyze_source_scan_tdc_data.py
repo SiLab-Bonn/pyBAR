@@ -22,7 +22,7 @@ from scipy.interpolate import interp1d
 
 from pybar.analysis import analysis_utils
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
-from pybar.analysis.plotting.plotting import plotThreeWay, plot_1d_hist
+from pybar.analysis.plotting.plotting import plot_three_way, plot_1d_hist
 
 hit_selection = '(column > 50) & (column < 78) & (row > 16) & (row < 324) & (((column % 2 == 1) & (row % 12 == 1)) | ((column % 2 == 0) & (row % 12 == 7)))'
 pixel_selection = '(column > 0)'  # '((column > 50) & (column < 78) & (row > 54) & (row < 276))'
@@ -47,9 +47,9 @@ analysis_configuration = {
 }
 
 
-def analyze_raw_data(input_files, output_file_hits, interpreter_plots, pdf_filename):
+def analyze_raw_data(input_files, output_file_hits, interpreter_plots, overwrite_output_files, pdf_filename):
     logging.info('Analyze the raw FE data given in ' + str(len(input_files)) + ' files and store the needed data')
-    if os.path.isfile(output_file_hits) and not analysis_configuration['overwrite_output_files']:  # skip analysis if already done
+    if os.path.isfile(output_file_hits) and not overwrite_output_files:  # skip analysis if already done
         logging.info('Analyzed data file ' + output_file_hits + ' already exists. Skip analysis for this file.')
     else:
         with AnalyzeRawData(raw_data_file=input_files, analyzed_data_file=output_file_hits) as analyze_raw_data:
@@ -236,7 +236,7 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
             for node in in_file_h5.root:  # go through the data and plot them
                 if 'MeanPixel' in node.name:
                     try:
-                        plotThreeWay(np.ma.masked_invalid(node[:]) * 1.5625, title='Mean TDC delay, hits with\n%s' % node._v_attrs.condition if 'Timestamp' in node.name else 'Mean TDC, hits with\n%s' % node._v_attrs.condition, filename=output_pdf)
+                        plot_three_way(np.ma.masked_invalid(node[:]) * 1.5625, title='Mean TDC delay, hits with\n%s' % node._v_attrs.condition if 'Timestamp' in node.name else 'Mean TDC, hits with\n%s' % node._v_attrs.condition, filename=output_pdf)
                     except ValueError:
                         logging.warning('Cannot plot TDC delay')
                 elif 'HistTdcCondition' in node.name:
@@ -273,6 +273,6 @@ if __name__ == "__main__":
     hit_cut_analyzed_file = analysis_configuration['scan_name'][0] + '_cut_hits_analyzed.h5'
 
     if 1 in analysis_configuration['analysis_steps']:
-        analyze_raw_data(input_files=raw_data_files, output_file_hits=hit_file, interpreter_plots=analysis_configuration['interpreter_plots'], pdf_filename=analysis_configuration['scan_name'][0])
+        analyze_raw_data(input_files=raw_data_files, output_file_hits=hit_file, interpreter_plots=analysis_configuration['interpreter_plots'], overwrite_output_files=analysis_configuration['overwrite_output_files'], pdf_filename=analysis_configuration['scan_name'][0])
     if 2 in analysis_configuration['analysis_steps']:
         histogram_tdc_hits(hit_file, hit_selection_conditions=analysis_configuration['hit_selection_conditions'], event_status_select_mask=analysis_configuration['event_status_select_mask'], event_status_condition=analysis_configuration['event_status_condition'], calibation_file=analysis_configuration['input_file_calibration'])

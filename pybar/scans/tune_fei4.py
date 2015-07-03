@@ -6,7 +6,7 @@ from pybar.scans.tune_gdac import GdacTuning
 from pybar.scans.tune_feedback import FeedbackTuning
 from pybar.scans.tune_tdac import TdacTuning
 from pybar.scans.tune_fdac import FdacTuning
-from pybar.analysis.plotting.plotting import plotThreeWay
+from pybar.analysis.plotting.plotting import plot_three_way
 
 
 class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
@@ -168,11 +168,11 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
 
         if self.make_plots:
             if self.local_iterations:
-                plotThreeWay(hist=self.tot_mean_best.transpose(), title="Mean ToT after last FDAC tuning", x_axis_title='Mean ToT', filename=self.plots_filename)
-                plotThreeWay(hist=self.register.get_pixel_register_value("FDAC").transpose(), title="FDAC distribution after last FDAC tuning", x_axis_title='FDAC', filename=self.plots_filename, maximum=16)
+                plot_three_way(hist=self.tot_mean_best.transpose(), title="Mean ToT after last FDAC tuning", x_axis_title='Mean ToT', filename=self.plots_filename)
+                plot_three_way(hist=self.register.get_pixel_register_value("FDAC").transpose(), title="FDAC distribution after last FDAC tuning", x_axis_title='FDAC', filename=self.plots_filename, maximum=16)
             if self.local_iterations >= 0:
-                plotThreeWay(hist=self.occupancy_best.transpose(), title="Occupancy after tuning", x_axis_title='Occupancy', filename=self.plots_filename, maximum=100)
-                plotThreeWay(hist=self.register.get_pixel_register_value("TDAC").transpose(), title="TDAC distribution after complete tuning", x_axis_title='TDAC', filename=self.plots_filename, maximum=32)
+                plot_three_way(hist=self.occupancy_best.transpose(), title="Occupancy after tuning", x_axis_title='Occupancy', filename=self.plots_filename, maximum=100)
+                plot_three_way(hist=self.register.get_pixel_register_value("TDAC").transpose(), title="TDAC distribution after complete tuning", x_axis_title='TDAC', filename=self.plots_filename, maximum=32)
 
             self.plots_filename.close()
 

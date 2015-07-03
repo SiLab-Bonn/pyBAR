@@ -16,7 +16,7 @@ init:
   - ps: if($env:PYTHON -eq "2.7" -and $env:Platform -eq "x86"){Start-FileDownload 'http://repo.continuum.io/miniconda/Miniconda-3.5.5-Windows-x86.exe' C:\Miniconda.exe; echo "Done"}
   - cmd: C:\Miniconda.exe /S /D=C:\Miniconda
   - ps: ls C:\Miniconda/Scripts
-  - C:\Miniconda\Scripts\conda create --yes -n test-environment numpy cython pytables scipy matplotlib pandas pyserial bitarray nose pyzmq pyyaml pip
+  - C:\Miniconda\Scripts\conda create --yes -n test-environment numpy cython pytables scipy matplotlib pandas pyserial bitarray nose pyzmq pyyaml pip pywin32
   - C:\Miniconda\Scripts\activate.bat test-environment
   - pip install progressbar-latest pyvisa pyvisa-py pyqtgraph mock sphinx
   - pip install https://github.com/uvemas/ViTables/archive/v2.1.zip
@@ -26,8 +26,9 @@ init:
 install:
   - pip install https://github.com/walac/pyusb/archive/master.zip
   - pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/735/pySiLibUSB-2.0.3.tar.gz
-  - pip install -e "git+https://github.com/SiLab-Bonn/basil.git@v2.1.0#egg=basil&subdirectory=host"
+  - pip install -e "git+https://github.com/SiLab-Bonn/basil.git@v2.1.1#egg=basil&subdirectory=host"
   - python.exe setup.py develop
 
 test_script:
-  - nosetests tests\test_analysis.py
+  - cd tests
+  - nosetests test_analysis.py

@@ -55,6 +55,7 @@ class DataWorker(QtCore.QObject):
         self.interpreter.interpret_raw_data(raw_data)
         self.histograming.add_hits(self.interpreter.get_hits())
 
+    @pyqtSlot()
     def process_data(self):  # infinite loop via QObject.moveToThread(), does not block event loop
         while(not self._stop_readout.wait(0.001)):  # use wait(), do not block here
 #             socks = dict(self.poller.poll(1))
@@ -132,7 +133,7 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         super(OnlineMonitorApplication, self).closeEvent(event)
         # wait for thread
         self.worker.stop()
-        #self.thread.wait()
+#         self.thread.wait()
 
     def setup_data_worker_and_start(self, socket_addr):
         self.thread = QtCore.QThread()  # no parent
@@ -147,8 +148,8 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
 #         self.aboutToQuit.connect(self.worker.stop)  # QtGui.QApplication
         self.thread.started.connect(self.worker.process_data)
         self.worker.finished.connect(self.thread.quit)
-        self.worker.finished.connect(self.worker.deleteLater)
-        self.thread.finished.connect(self.thread.deleteLater)
+#         self.worker.finished.connect(self.worker.deleteLater)
+#         self.thread.finished.connect(self.thread.deleteLater)
         self.thread.start()
 
     def setup_plots(self):

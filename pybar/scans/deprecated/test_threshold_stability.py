@@ -182,7 +182,7 @@ def analyze_data(scan_data_filenames, ignore_columns, fei4b=False):
             noise_masked = np.ma.masked_array(in_file_h5.root.HistNoiseFitted[:], mask)
             # plot the threshold distribution and the s curves
             if local_configuration['create_plots']:
-                plotting.plotThreeWay(hist=thresholds_masked * 55., title='Threshold Fitted for delay = ' + str(delay_value), x_axis_title='threshold [e]', filename=output_pdf)
+                plotting.plot_three_way(hist=thresholds_masked * 55., title='Threshold Fitted for delay = ' + str(delay_value), x_axis_title='threshold [e]', filename=output_pdf)
                 plotting.plot_relative_bcid(hist=in_file_h5.root.HistRelBcid[0:16], title='Relative BCID (former LVL1ID) for delay = ' + str(delay_value), filename=output_pdf)
                 plotting.plot_event_errors(hist=in_file_h5.root.HistErrorCounter[:], title='Event status for delay = ' + str(delay_value), filename=output_pdf)
             meta_data_array = in_file_h5.root.meta_data[:]
@@ -221,9 +221,9 @@ def analyze_data(scan_data_filenames, ignore_columns, fei4b=False):
                         rel_bcid_2 = np.zeros(shape=(16, ))
                     # plot the threshold distribution and the s curves
                     if local_configuration['create_plots']:
-                        plotting.plotThreeWay(hist=thresholds_masked_1 * 55., title='Threshold Fitted for 1. trigger, delay ' + str(delay_value), x_axis_title='threshold [e]', filename=output_pdf)
+                        plotting.plot_three_way(hist=thresholds_masked_1 * 55., title='Threshold Fitted for 1. trigger, delay ' + str(delay_value), x_axis_title='threshold [e]', filename=output_pdf)
                         plotting.plot_relative_bcid(hist=rel_bcid_1, title='Relative BCID (former LVL1ID) for 1. trigger, delay = ' + str(delay_value), filename=output_pdf)
-                        plotting.plotThreeWay(hist=thresholds_masked_2 * 55., title='Threshold Fitted for 2. trigger, delay ' + str(delay_value), x_axis_title='threshold [e]', filename=output_pdf)
+                        plotting.plot_three_way(hist=thresholds_masked_2 * 55., title='Threshold Fitted for 2. trigger, delay ' + str(delay_value), x_axis_title='threshold [e]', filename=output_pdf)
                         plotting.plot_relative_bcid(hist=rel_bcid_2, title='Relative BCID (former LVL1ID) for 2. trigger, delay = ' + str(delay_value), filename=output_pdf)
                     if local_configuration['create_plots']:
                         plotting.plot_scurves(occupancy_hist=occupancy_masked_1, title='S-Curves 1. trigger, delay ' + str(delay_value), scan_parameters=scan_parameters, scan_parameter_name='PlsrDAC', filename=output_pdf)

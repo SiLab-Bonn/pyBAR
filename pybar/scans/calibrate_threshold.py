@@ -17,7 +17,7 @@ from pybar.run_manager import RunManager
 from pybar.scans.scan_threshold_fast import FastThresholdScan
 from pybar.analysis import analysis_utils
 from pybar.analysis.RawDataConverter import data_struct
-from pybar.analysis.plotting.plotting import plotThreeWay, plot_scurves, plot_scatter
+from pybar.analysis.plotting.plotting import plot_three_way, plot_scurves, plot_scatter
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 
 
@@ -114,7 +114,7 @@ def create_threshold_calibration(scan_base_file_name, create_plots=True):  # Cre
             occupancy_masked = mask_columns(pixel_array=in_file_h5.root.HistOcc[:], ignore_columns=ignore_columns)  # mask the not scanned columns for analysis and plotting
             thresholds_masked = mask_columns(pixel_array=in_file_h5.root.HistThresholdFitted[:], ignore_columns=ignore_columns)
             if create_plots:
-                plotThreeWay(hist=thresholds_masked, title='Threshold Fitted for ' + parameters.keys()[0] + ' = ' + str(parameters.values()[0][0]), filename=output_pdf)
+                plot_three_way(hist=thresholds_masked, title='Threshold Fitted for ' + parameters.keys()[0] + ' = ' + str(parameters.values()[0][0]), filename=output_pdf)
                 plsr_dacs = analysis_utils.get_scan_parameter(meta_data_array=in_file_h5.root.meta_data[:])['PlsrDAC']
                 plot_scurves(occupancy_hist=occupancy_masked, scan_parameters=plsr_dacs, scan_parameter_name='PlsrDAC', filename=output_pdf)
             # fill the calibration data arrays

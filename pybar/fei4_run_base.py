@@ -84,14 +84,14 @@ class Fei4RunBase(RunBase):
                 self.dut['ADAPTER_CARD'].set_voltage('VDDD1', 1.2)
                 self.dut['ADAPTER_CARD'].set_voltage('VDDD2', 1.2)
                 self.dut['POWER_SCC']['EN_VD1'] = 1
-                self.dut['POWER_SCC']['EN_VD2'] = 1
+                self.dut['POWER_SCC']['EN_VD2'] = 1  # also EN_VPLL on old SCAC
                 self.dut['POWER_SCC']['EN_VA1'] = 1
                 self.dut['POWER_SCC']['EN_VA2'] = 1
                 self.dut['POWER_SCC'].write()
                 # enabling readout
-                self.dut['ENABLE_CHANNEL']['CH1'] = 0
-                self.dut['ENABLE_CHANNEL']['CH2'] = 0
-                self.dut['ENABLE_CHANNEL']['CH3'] = 0
+                self.dut['ENABLE_CHANNEL']['CH1'] = 0  # RD2Bar on SCAC
+                self.dut['ENABLE_CHANNEL']['CH2'] = 0  # RD1Bar on SCAC
+                self.dut['ENABLE_CHANNEL']['CH3'] = 0  # RABar on SCAC
                 self.dut['ENABLE_CHANNEL']['CH4'] = 1
                 self.dut['ENABLE_CHANNEL']['TLU'] = 1
                 self.dut['ENABLE_CHANNEL']['TDC'] = 1
@@ -120,9 +120,9 @@ class Fei4RunBase(RunBase):
             else:
                 logging.warning('Unknown adapter card')
                 # do the minimal configuration here
-                self.dut['ENABLE_CHANNEL']['CH1'] = 0
-                self.dut['ENABLE_CHANNEL']['CH2'] = 0
-                self.dut['ENABLE_CHANNEL']['CH3'] = 0
+                self.dut['ENABLE_CHANNEL']['CH1'] = 0  # RD2Bar on SCAC
+                self.dut['ENABLE_CHANNEL']['CH2'] = 0  # RD1Bar on SCAC
+                self.dut['ENABLE_CHANNEL']['CH3'] = 0  # RABar on SCAC
                 self.dut['ENABLE_CHANNEL']['CH4'] = 1
                 self.dut['ENABLE_CHANNEL']['TLU'] = 1
                 self.dut['ENABLE_CHANNEL']['TDC'] = 1
@@ -168,9 +168,9 @@ class Fei4RunBase(RunBase):
             self.dut['ENABLE_CHANNEL']['CH3'] = 1
             self.dut['ENABLE_CHANNEL'].write()
         elif self.dut.name == 'nexys4':
-            #enable LVDS RX/TX
-            self.dut['I2C'].write(0xe8, [6,0xf0, 0xff])
-            self.dut['I2C'].write(0xe8, [2,0x0f, 0x00])
+            # enable LVDS RX/TX
+            self.dut['I2C'].write(0xe8, [6, 0xf0, 0xff])
+            self.dut['I2C'].write(0xe8, [2, 0x0f, 0x00])
 
             self.dut['ENABLE_CHANNEL']['CH1'] = 0
             self.dut['ENABLE_CHANNEL']['CH2'] = 0
