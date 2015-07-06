@@ -632,6 +632,12 @@ void Interpret::reset()
 	_metaEventIndexLength = 0;
 	_metaEventIndex = 0;
 	_startWordIndex = 0;
+	// initialize SRAM variables to 0
+	tTriggerNumber = 0;
+	tActualLVL1ID = 0;
+	tActualBCID = 0;
+	tActualSRcode= 0;
+	tActualSRcounter = 0;
 }
 
 void Interpret::resetMetaDataCounter()
