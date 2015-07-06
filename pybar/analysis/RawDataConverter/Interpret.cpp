@@ -136,7 +136,7 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 				if (tNdataHeader > _NbCID - 1)
 					addEvent();
 			}
-			else if (_firstTriggerNrSet) {		// use trigger number for event building, first word is trigger word in data stream
+			else {		// use trigger number for event building, first word is trigger word in event data stream
 				addEvent();
 			}
 			tTriggerWord++;                     //trigger event counter increase
