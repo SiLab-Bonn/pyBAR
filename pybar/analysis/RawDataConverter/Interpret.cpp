@@ -136,7 +136,7 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 				if (tNdataHeader > _NbCID - 1)
 					addEvent();
 			}
-			else if (_firstTriggerNrSet) {		// use trigger number for event building, first word is trigger word in data stream
+			else {		// use trigger number for event building, first word is trigger word in event data stream
 				addEvent();
 			}
 			tTriggerWord++;                     //trigger event counter increase
@@ -632,6 +632,12 @@ void Interpret::reset()
 	_metaEventIndexLength = 0;
 	_metaEventIndex = 0;
 	_startWordIndex = 0;
+	// initialize SRAM variables to 0
+	tTriggerNumber = 0;
+	tActualLVL1ID = 0;
+	tActualBCID = 0;
+	tActualSRcode= 0;
+	tActualSRcounter = 0;
 }
 
 void Interpret::resetMetaDataCounter()
