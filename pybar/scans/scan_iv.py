@@ -36,6 +36,8 @@ class IVScan(Fei4RunBase):
         for index, voltage in enumerate(self.voltages):
             if voltage > 0:
                 RuntimeError('Voltage has to be negative! Abort to protect device.')
+            if self.abort_run.is_set():
+                break
             if abs(voltage) <= abs(self.max_voltage):
                 self.dut['Sourcemeter'].set_voltage(voltage)
                 self.actual_voltage = voltage
