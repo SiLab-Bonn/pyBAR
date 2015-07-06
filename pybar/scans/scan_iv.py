@@ -17,7 +17,8 @@ class IVScan(Fei4RunBase):
         "voltages": np.arange(-2, -101, -2),  # voltage steps of the IV curve
         "max_leakage": 10e-6,  # scan aborts if current is higher
         "max_voltage": -20,  # for safety, scan aborts if voltage is higher
-        "minimum_delay": 0.5  # minimum delay between current measurements in seconds
+        "minimum_delay": 0.5,  # minimum delay between current measurements in seconds
+        "bias_voltage": -10  # if defined ramp bias to bias voltage after scan is finished, has to be less than last scanned voltage
     }
 
     def configure(self):
@@ -37,6 +38,7 @@ class IVScan(Fei4RunBase):
                 RuntimeError('Voltage has to be negative! Abort to protect device.')
             if abs(voltage) <= abs(self.max_voltage):
                 self.dut['Sourcemeter'].set_voltage(voltage)
+                self.actual_voltage = voltage
             else:
                 logging.info('Maximum voltage with %f V reached, abort', voltage)
                 break
@@ -63,6 +65,18 @@ class IVScan(Fei4RunBase):
             progress_bar.update(index)
         progress_bar.finish()
         data.flush()
+
+    def post_run(self):
+        super(IVScan, self).post_run()
+        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=len(range(self.actual_voltage, self.bias_voltage + 1, 2)), term_width=80)
+        progress_bar.start()
+        if self.bias_voltage and self.bias_voltage <= 0:
+            logging.info('Set bias voltage from %f V to %f V', self.actual_voltage, self.bias_voltage)
+            for index, voltage in enumerate(range(self.actual_voltage, self.bias_voltage + 1, 2)):  # ramp until bias
+                time.sleep(self.minimum_delay)
+                self.dut['Sourcemeter'].set_voltage(voltage)
+                progress_bar.update(index)
+        progress_bar.finish()
 
     def analyze(self):
         logging.info('Analyze and plot results')
