@@ -41,6 +41,7 @@ class IVScan(Fei4RunBase):
             if abs(voltage) <= abs(self.max_voltage):
                 self.dut['Sourcemeter'].set_voltage(voltage)
                 self.actual_voltage = voltage
+                time.sleep(self.minimum_delay)
             else:
                 logging.info('Maximum voltage with %f V reached, abort', voltage)
                 break
