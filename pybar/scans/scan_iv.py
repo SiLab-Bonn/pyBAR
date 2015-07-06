@@ -14,9 +14,10 @@ from pybar.run_manager import RunManager
 
 class IVScan(Fei4RunBase):
     _default_run_conf = {
-        "voltages": np.arange(0, -100, 20),  # voltage steps of the IV curve
-        "max_leakage": 1e-5,  # scan aborts if current is higher
-        "max_voltage": -20  # for safety, scan aborts if voltage is higher
+        "voltages": np.arange(-2, -101, -2),  # voltage steps of the IV curve
+        "max_leakage": 10e-6,  # scan aborts if current is higher
+        "max_voltage": -20,  # for safety, scan aborts if voltage is higher
+        "minimum_delay": 0.5  # minimum delay between current measurements in seconds
     }
 
     def configure(self):
@@ -24,6 +25,7 @@ class IVScan(Fei4RunBase):
         logging.info('Initialized sourcemeter: %s' % self.dut['Sourcemeter'].get_name())
 
     def scan(self):
+        logging.info('Measure IV for V = %s' % self.voltages)
         description = [('voltage', np.float), ('current', np.float)]
         data = self.raw_data_file.h5_file.create_table(self.raw_data_file.h5_file.root, name='IV_data', description=np.zeros((1, ), dtype=description).dtype, title='Data from the IV scan')
 
@@ -33,29 +35,31 @@ class IVScan(Fei4RunBase):
         for index, voltage in enumerate(self.voltages):
             if voltage > 0:
                 RuntimeError('Voltage has to be negative! Abort to protect device.')
-            if voltage >= self.max_voltage:
+            if abs(voltage) <= abs(self.max_voltage):
                 self.dut['Sourcemeter'].set_voltage(voltage)
             else:
-                logging.info('Maximum voltage %f V reached, abort', self.max_voltage)
+                logging.info('Maximum voltage with %f V reached, abort', voltage)
                 break
             current_string = self.dut['Sourcemeter'].get_current()
             current = float(current_string.split(',')[1])
-            if current < self.max_leakage:
-                logging.info('Maximum current %e I reached, abort', self.max_leakage)
+            if abs(current) > abs(self.max_leakage):
+                logging.info('Maximum current with %e I reached, abort', current)
                 break
-            logging.info('V = %f, I = %f', (voltage, current))
-            for i in range(100):  # repeat current measurement until stable (current does not increase)
-                time.sleep(0.1)
+            logging.info('V = %f, I = %e', voltage, current)
+            for i in range(50):  # repeat current measurement until stable (current does not increase)
+                time.sleep(self.minimum_delay)
                 actual_current = float(self.dut['Sourcemeter'].get_current().split(',')[1])
-                if actual_current < self.max_leakage:
-                    logging.info('Maximum current %e I reached, abort', self.max_leakage)
+                if abs(actual_current) > abs(self.max_leakage):
+                    logging.info('Maximum current with %e I reached, abort', actual_current)
                     break
-                if (actual_current < current):
-                    current = actual_current
+                if (abs(actual_current) < abs(current)):  # stable criterion
+                    break
+                current = actual_current
             if i == 99:  # true if the leakage always increased
                 raise RuntimeError('Leakage current is not stable')
             else:
-                data.append(np.array([[voltage, current]], dtype=description))
+                a = np.array([(voltage, current)], dtype=description)
+                data.append(a)
             progress_bar.update(index)
         progress_bar.finish()
         data.flush()
@@ -65,12 +69,12 @@ class IVScan(Fei4RunBase):
         with tb.open_file(self.output_filename + '.h5', 'r+') as in_file_h5:
             data = in_file_h5.root.IV_data[:]
             # Plot and fit result
-            x, y = np.array(data['voltage'], data['current']) * 1e6
+            x, y = data['voltage'], data['current'] * 1e6
             plt.clf()
-            plt.plot(x, y, label='data')
+            plt.plot(x, y, '.-', label='data')
             plt.title('IV curve')
-            plt.xlabel('Current [uA]')
-            plt.ylabel('Voltage [V]')
+            plt.ylabel('Current [uA]')
+            plt.xlabel('Voltage [V]')
             plt.grid(True)
             plt.legend(loc=0)
             plt.savefig(self.output_filename + '.pdf')
