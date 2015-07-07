@@ -7,7 +7,7 @@ from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.fei4.register_utils import invert_pixel_mask
 from pybar.scans.scan_analog import AnalogScan
 from pybar.run_manager import RunManager
-from pybar.analysis.plotting.plotting import plot_occupancy
+from pybar.analysis.plotting.plotting import plot_occupancy, plot_fancy_occupancy
 
 
 class MergedPixelsTuning(AnalogScan):
@@ -45,7 +45,6 @@ class MergedPixelsTuning(AnalogScan):
                 occ_hist = out_file_h5.root.HistOcc[:, :, 0].T
             occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
             occ_mask[occ_hist > 0] = 1
-            plot_occupancy(occ_mask.T, title='Merged Pixels', z_max=1, filename=analyze_raw_data.output_pdf)
 
             inv_occ_mask = invert_pixel_mask(occ_mask)
             if self.overwrite_mask:
@@ -63,6 +62,14 @@ class MergedPixelsTuning(AnalogScan):
                 for mask in self.enable_for_mask:
                     disable_mask = np.logical_or(occ_mask, self.register.get_pixel_register_value(mask))
                     self.register.set_pixel_register_value(mask, disable_mask)
+            plot_occupancy(occ_mask.T, title='Merged Pixels', z_max=1, filename=analyze_raw_data.output_pdf)
+            plot_fancy_occupancy(occ_mask.T, z_max=1, filename=analyze_raw_data.output_pdf)
+            for mask in self.disable_for_mask:
+                mask_name = self.register.pixel_registers[mask]['name']
+                plot_occupancy(self.register.get_pixel_register_value(mask).T, title='%s Mask' % mask_name, z_max=1, filename=analyze_raw_data.output_pdf)
+            for mask in self.enable_for_mask:
+                mask_name = self.register.pixel_registers[mask]['name']
+                plot_occupancy(self.register.get_pixel_register_value(mask).T, title='%s Mask' % mask_name, z_max=1, filename=analyze_raw_data.output_pdf)
 
 if __name__ == "__main__":
     RunManager('../configuration.yaml').run_run(MergedPixelsTuning)
