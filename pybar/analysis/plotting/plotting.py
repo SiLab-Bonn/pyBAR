@@ -686,7 +686,6 @@ def create_1d_hist(fig, ax, hist, title=None, x_axis_title=None, y_axis_title=No
 #         raise TypeError('Inappropriate type %s' % masked_hist.dtype)
     masked_hist_compressed = np.ma.masked_invalid(np.ma.masked_array(hist)).compressed()
     if masked_hist_compressed.size == 0:
-        print "ahhhhhhhhhhhhhhhhhhhhhhhhhhh"
         ax.plot([])
     else:
         _, _, _ = ax.hist(x=masked_hist_compressed, bins=hist_bins, range=hist_range, align='mid')  # re-bin to 1d histogram, x argument needs to be 1D
