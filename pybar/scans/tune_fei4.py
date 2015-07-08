@@ -35,6 +35,7 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
         "target_tot": 5,  # target ToT
         "global_iterations": 4,  # the number of iterations to do for the global tuning, 0 means only threshold is tuned, negative that no global tuning is done
         "local_iterations": 3,  # the number of iterations to do for the local tuning, 0 means only threshold is tuned, negative that no local tuning is done
+        "fail_on_warning": True,  # do not continue tuning if a global tuning fails
         # GDAC
         "gdac_tune_bits": range(7, -1, -1),  # GDAC bits to change during tuning
         "n_injections_gdac": 50,  # number of injections per GDAC bit setting

@@ -29,7 +29,8 @@ class FeedbackTuning(Fei4RunBase):
         "plots_filename": None,
         "enable_shift_masks": ["Enable", "C_High", "C_Low"],  # enable masks shifted during scan
         "disable_shift_masks": [],  # disable masks shifted during scan
-        "pulser_dac_correction": False  # PlsrDAC correction for each double column
+        "pulser_dac_correction": False,  # PlsrDAC correction for each double column
+        "fail_on_warning": False  # the scan throws a RuntimeWarning exception if the tuning fails
     }
 
     def configure(self):
@@ -127,9 +128,12 @@ class FeedbackTuning(Fei4RunBase):
 
         if self.register.get_global_register_value("PrmpVbpf") == 0 or self.register.get_global_register_value("PrmpVbpf") == 254:
             logging.warning('PrmpVbpf reached minimum/maximum value')
-
+            if self.fail_on_warning:
+                raise RuntimeWarning('PrmpVbpf reached minimum/maximum value')
         if abs(mean_tot - self.target_tot) > 2 * self.max_delta_tot:
             logging.warning('Global feedback tuning failed. Delta ToT = %f > %f. PrmpVbpf = %d', abs(mean_tot - self.target_tot), self.max_delta_tot, self.register.get_global_register_value("PrmpVbpf"))
+            if self.fail_on_warning:
+                raise RuntimeWarning('Global feedback tuning failed.')
         else:
             logging.info('Tuned PrmpVbpf to %d', self.register.get_global_register_value("PrmpVbpf"))
 
