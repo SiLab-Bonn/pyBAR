@@ -133,7 +133,7 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         super(OnlineMonitorApplication, self).closeEvent(event)
         # wait for thread
         self.worker.stop()
-#         self.thread.wait()
+        self.thread.wait(1)  # fixes message: QThread: Destroyed while thread is still running
 
     def setup_data_worker_and_start(self, socket_addr):
         self.thread = QtCore.QThread()  # no parent
