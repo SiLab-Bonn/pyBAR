@@ -685,12 +685,17 @@ def create_1d_hist(fig, ax, hist, title=None, x_axis_title=None, y_axis_title=No
 #     else:
 #         raise TypeError('Inappropriate type %s' % masked_hist.dtype)
     masked_hist_compressed = np.ma.masked_invalid(np.ma.masked_array(hist)).compressed()
-    _, _, _ = ax.hist(x=masked_hist_compressed, bins=hist_bins, range=hist_range, align='mid')  # re-bin to 1d histogram, x argument needs to be 1D
+    if masked_hist_compressed.size == 0:
+        ax.plot([])
+    else:
+        _, _, _ = ax.hist(x=masked_hist_compressed, bins=hist_bins, range=hist_range, align='mid')  # re-bin to 1d histogram, x argument needs to be 1D
     # BUG: np.ma.compressed(np.ma.masked_array(hist, copy=True)) (2D) is not equal to np.ma.masked_array(hist, copy=True).compressed() (1D) if hist is ndarray
     ax.set_xlim(hist_range)  # overwrite xlim
     if hist.all() is np.ma.masked:  # or np.allclose(hist, 0.0):
         ax.set_ylim((0, 1))
         ax.set_xlim((-0.5, +0.5))
+    elif masked_hist_compressed.size == 0:  # or np.allclose(hist, 0.0):
+        ax.set_ylim((0, 1))
     # create histogram without masked elements, higher precision when calculating gauss
 #     h_1d, h_bins = np.histogram(np.ma.masked_array(hist, copy=True).compressed(), bins=hist_bins, range=hist_range)
     if title is not None:

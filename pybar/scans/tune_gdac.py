@@ -30,7 +30,8 @@ class GdacTuning(Fei4RunBase):
         "plots_filename": None,  # file name to store the plot to, if None show on screen
         "enable_shift_masks": ["Enable", "C_High", "C_Low"],  # enable masks shifted during scan
         "disable_shift_masks": [],  # disable masks shifted during scan
-        "pulser_dac_correction": False  # PlsrDAC correction for each double column
+        "pulser_dac_correction": False,  # PlsrDAC correction for each double column
+        "fail_on_warning": False  # the scan throws a RuntimeWarning exception if the tuning fails
     }
 
     def configure(self):
@@ -156,11 +157,17 @@ class GdacTuning(Fei4RunBase):
 
         if np.all((((self.gdac_best & (1 << np.arange(16)))) > 0).astype(int)[self.gdac_tune_bits[:-2]] == 1):
             logging.warning('Selected GDAC bits reached maximum value')
+            if self.fail_on_warning:
+                raise RuntimeWarning('Selected GDAC bits reached maximum value')
         elif np.all((((self.gdac_best & (1 << np.arange(16)))) > 0).astype(int)[self.gdac_tune_bits] == 0):
             logging.warning('Selected GDAC bits reached minimum value')
+            if self.fail_on_warning:
+                raise RuntimeWarning('Selected GDAC bits reached minimum value')
 
         if abs(median_occupancy - self.n_injections_gdac / 2) > 2 * self.max_delta_threshold:
             logging.warning('Global threshold tuning failed. Delta threshold = %f > %f. Vthin_AltCoarse / Vthin_AltFine = %d / %d', abs(median_occupancy - self.n_injections_gdac / 2), self.max_delta_threshold, self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine"))
+            if self.fail_on_warning:
+                raise RuntimeWarning('Global threshold tuning failed.')
         else:
             logging.info('Tuned GDAC to Vthin_AltCoarse / Vthin_AltFine = %d / %d', self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine"))
 

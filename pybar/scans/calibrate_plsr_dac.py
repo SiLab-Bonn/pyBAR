@@ -60,6 +60,8 @@ class PlsrDacScan(Fei4RunBase):
             actual_data = np.zeros(shape=(len(self.scan_parameter_steps), ), dtype=description)
             actual_data['column_address'] = column_address
             for index, scan_parameter_step in enumerate(self.scan_parameter_steps):
+                if self.abort_run.is_set():
+                    break
                 logging.info('Set ' + self.scan_parameter + ' to ' + str(scan_parameter_step))
                 self.set_scan_parameter(self.scan_parameter, scan_parameter_step)
                 voltage_string = self.dut['Multimeter'].get_voltage()
