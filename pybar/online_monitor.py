@@ -193,6 +193,8 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         self.plot_delay_label = QtGui.QLabel("Plot Delay\n")
         self.scan_parameter_label = QtGui.QLabel("Scan Parameters\n")
         self.spin_box = Qt.QSpinBox(value=1)
+        self.spin_box.setMaximum(1000000)
+        self.spin_box.setSuffix(" Readouts")
         layout.addWidget(self.timestamp_label, 0, 0, 0, 1)
         layout.addWidget(self.plot_delay_label, 0, 1, 0, 1)
         layout.addWidget(self.rate_label, 0, 2, 0, 1)
