@@ -5,14 +5,15 @@
 # ------------------------------------------------------------
 #
 
-name    : seabas2 
+name    : seabas2
 version : 1.0
 
 transfer_layer:
   - name  : ETH
     type  : SiTcp
 
-hw_drivers:      
+hw_drivers:
+
   - name      : CMD
     type      : cmd_seq
     interface : ETH
@@ -33,7 +34,7 @@ hw_drivers:
     type      : fei4_rx
     interface : ETH
     base_addr : 0x8400
-    
+
   - name      : CH1
     type      : fei4_rx
     interface : ETH
@@ -48,7 +49,12 @@ hw_drivers:
     type      : gpio
     interface : ETH
     base_addr : 0x8800
-    
+
+  - name      : TLU
+    type      : tlu
+    interface : ETH
+    base_addr : 0x8200
+
 registers:
   - name        : ENABLE_CHANNEL
     type        : StdRegister
