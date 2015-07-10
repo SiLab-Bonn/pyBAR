@@ -1,4 +1,4 @@
-# SEABAS2 board
+# LX9 board
 ETH:
     ip : "192.168.10.16"
     udp_port : 4660

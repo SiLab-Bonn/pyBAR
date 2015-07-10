@@ -5,19 +5,19 @@
 # ------------------------------------------------------------
 #
 
-name    : lx9 
+name    : lx9
 version : 0.1
 
 transfer_layer:
   - name  : ETH
     type  : SiTcp
-    
-hw_drivers:    
+
+hw_drivers:
   - name      : CMD
     type      : cmd_seq
     interface : ETH
     base_addr : 0x0000
-   
+
   - name      : SRAM
     type      : sram_fifo
     interface : ETH
@@ -28,7 +28,7 @@ hw_drivers:
     type      : fei4_rx
     interface : ETH
     base_addr : 0x8600
-    
+
   - name      : I2C
     type      : i2c
     interface : ETH
