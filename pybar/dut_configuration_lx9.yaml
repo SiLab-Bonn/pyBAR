@@ -1,0 +1,14 @@
+# LX9 board
+ETH:
+    ip : "192.168.10.16"
+    udp_port : 4660
+    tcp_port : 24
+    tcp_connection : True
+
+# FE-I4 command ouput
+CMD:
+    OUTPUT_MODE : 0  # Selecting command output mode: positive edge (0), negative edge (1), Manchester Code according to IEEE 802.3 (2), Manchester Code according to G.E. Thomas (3)
+
+# FE-I4 data receiver
+CH0:
+    INVERT_RX : 0

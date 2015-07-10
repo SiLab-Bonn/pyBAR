@@ -63,10 +63,24 @@ proto_*/
 *.pdf
 # Mac
 .DS_Store
-# Xilinx ISE
-firmware/mio/ise
 
-#Nexys4 firmware
+# MIO Xilinx ISE
+firmware/mio/ise/*
+!firmware/mio/ise/*.xise
+
+# MIO3 Xilinx ISE
+firmware/mio3/vivado
+!firmware/mio3/vivado/*.xpr
+
+# SEABAS2 firmware
+firmware/seabas2/ise/*
+!firmware/seabas2/ise/*.xise
+
+# LX9 firmware
+firmware/lx9/ise/*
+!firmware/lx9/ise/*.xise
+
+# Nexys4 firmware
 firmware/nexys4/vivado/*
 !firmware/nexys4/vivado/*.xpr
 firmware/nexys4/src/ip/*

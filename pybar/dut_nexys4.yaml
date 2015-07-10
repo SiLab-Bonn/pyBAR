@@ -5,15 +5,15 @@
 # ------------------------------------------------------------
 #
 
-name    : nexys4 
+name    : nexys4
 version : 0.01
 
 transfer_layer:
   - name  : ETH
     type  : SiTcp
 
-hw_drivers:    
-    
+hw_drivers:
+
   - name      : I2C
     type      : i2c
     interface : ETH
@@ -39,7 +39,7 @@ hw_drivers:
     type      : fei4_rx
     interface : ETH
     base_addr : 0x8400
-    
+
   - name      : CH1
     type      : fei4_rx
     interface : ETH
@@ -64,7 +64,7 @@ hw_drivers:
     type      : tdc_s3
     interface : ETH
     base_addr : 0x8100
-    
+
 registers:
   - name        : ENABLE_CHANNEL
     type        : StdRegister

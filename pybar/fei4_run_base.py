@@ -167,10 +167,14 @@ class Fei4RunBase(RunBase):
             self.dut['ENABLE_CHANNEL']['CH2'] = 1
             self.dut['ENABLE_CHANNEL']['CH3'] = 1
             self.dut['ENABLE_CHANNEL'].write()
+        elif self.dut.name == 'lx9':
+            # enable LVDS RX/TX
+            self.dut['I2C'].write(0xe8, [6, 0xf0, 0xff])
+            self.dut['I2C'].write(0xe8, [2, 0x01, 0x00])  # select channels here
         elif self.dut.name == 'nexys4':
             # enable LVDS RX/TX
             self.dut['I2C'].write(0xe8, [6, 0xf0, 0xff])
-            self.dut['I2C'].write(0xe8, [2, 0x0f, 0x00])
+            self.dut['I2C'].write(0xe8, [2, 0x0f, 0x00])  # select channels here
 
             self.dut['ENABLE_CHANNEL']['CH1'] = 0
             self.dut['ENABLE_CHANNEL']['CH2'] = 0

@@ -4,13 +4,13 @@
 pyBAR - Bonn ATLAS Readout in Python and C++
 
 PyBAR is a versatile readout and test system for the ATLAS FE-I4(A/B) pixel readout chip. It uses the [basil](https://github.com/SiLab-Bonn/basil) framework to access the readout hardware.
-PyBAR's FPGA firmware and host software includes support different hardware platforms.
+PyBAR's FPGA firmware and host software includes support for different hardware platforms.
 
 PyBAR is _not only_ targeting experienced users and developers. The easy-to-use scripts allow a quick setup and start. PyBAR is a very flexible readout and test system and can be adapted to any needs.
 
 The features of the FPGA firmware in a nutshell:
 - supported readout hardware:
-  MIO, MIO 3.0, SEABAS, Avnet LX9 and Digilent Nexys<sup>TM</sup>4 DDR
+  MIO, MIO 3.0, SEABAS2, Avnet LX9 and Digilent Nexys<sup>TM</sup>4 DDR
 - supported adapter cards:
   Single Chip Adapter Card, Burn-in Card (Quad Module Adapter Card) and the General Purpose Analog Card (GPAC)
 - support of up to 4 FE, simultaneous readout

@@ -133,7 +133,7 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         super(OnlineMonitorApplication, self).closeEvent(event)
         # wait for thread
         self.worker.stop()
-#         self.thread.wait()
+        self.thread.wait(1)  # fixes message: QThread: Destroyed while thread is still running
 
     def setup_data_worker_and_start(self, socket_addr):
         self.thread = QtCore.QThread()  # no parent
@@ -193,6 +193,8 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         self.plot_delay_label = QtGui.QLabel("Plot Delay\n")
         self.scan_parameter_label = QtGui.QLabel("Scan Parameters\n")
         self.spin_box = Qt.QSpinBox(value=1)
+        self.spin_box.setMaximum(1000000)
+        self.spin_box.setSuffix(" Readouts")
         layout.addWidget(self.timestamp_label, 0, 0, 0, 1)
         layout.addWidget(self.plot_delay_label, 0, 1, 0, 1)
         layout.addWidget(self.rate_label, 0, 2, 0, 1)
