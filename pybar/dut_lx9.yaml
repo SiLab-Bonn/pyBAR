@@ -31,5 +31,5 @@ hw_drivers:
     
   - name      : I2C
     type      : i2c
-    interface : inf
+    interface : ETH
     base_addr : 0x8800
