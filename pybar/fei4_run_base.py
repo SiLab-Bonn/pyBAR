@@ -167,6 +167,10 @@ class Fei4RunBase(RunBase):
             self.dut['ENABLE_CHANNEL']['CH2'] = 1
             self.dut['ENABLE_CHANNEL']['CH3'] = 1
             self.dut['ENABLE_CHANNEL'].write()
+        elif self.dut.name == 'lx9':
+            # enable LVDS RX/TX
+            self.dut['I2C'].write(0xe8, [6, 0xf0, 0xff])
+            self.dut['I2C'].write(0xe8, [2, 0x01, 0x00])  # select channels here
         else:
             logging.warning('Omit initialization of DUT %s', self.dut.name)
 
