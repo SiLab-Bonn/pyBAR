@@ -66,3 +66,9 @@ proto_*/
 # Xilinx ISE
 firmware/mio/ise
 
+#Nexys4 firmware
+firmware/nexys4/vivado/*
+!firmware/nexys4/vivado/*.xpr
+firmware/nexys4/src/ip/*
+!firmware/nexys4/src/ip/*.xci
+firmware/nexys4/src/SiTCP

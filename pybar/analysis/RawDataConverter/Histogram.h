@@ -34,7 +34,7 @@ public:
 
   void addHits(HitInfo*& rHitInfo, const unsigned int& rNhits);
   void addClusterSeedHits(ClusterInfo*& rClusterInfo, const unsigned int& rNcluster);
-  void addScanParameter(unsigned int*& rParInfo, const unsigned int& rNparInfoLength);
+  void addScanParameter(int*& rParInfo, const unsigned int& rNparInfoLength);
   void setNoScanParameter();
   void addMetaEventIndex(uint64_t*& rMetaEventIndex, const unsigned int& rNmetaEventIndexLength);
 
@@ -84,7 +84,7 @@ private:
 
   unsigned int _NparameterValues;     //needed for _occupancy histogram allocation
 
-  std::map<unsigned int, unsigned int> _parameterValues; //different parameter values used in ParInfo, key = parameter value, value = index
+  std::map<int, unsigned int> _parameterValues; //different parameter values used in ParInfo, key = parameter value, value = index
 
   //config variables
   bool _createOccHist;
@@ -95,6 +95,6 @@ private:
   bool _createTotPixelHist;
   unsigned int _maxTot;               //maximum ToT value (inclusive) considered to be a hit
   
-  unsigned int* _parInfo;
+  int* _parInfo;
 };
 

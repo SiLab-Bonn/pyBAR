@@ -6,7 +6,7 @@ from pybar.scans.tune_gdac import GdacTuning
 from pybar.scans.tune_feedback import FeedbackTuning
 from pybar.scans.tune_tdac import TdacTuning
 from pybar.scans.tune_fdac import FdacTuning
-from pybar.analysis.plotting.plotting import plotThreeWay
+from pybar.analysis.plotting.plotting import plot_three_way
 
 
 class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
@@ -35,6 +35,7 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
         "target_tot": 5,  # target ToT
         "global_iterations": 4,  # the number of iterations to do for the global tuning, 0 means only threshold is tuned, negative that no global tuning is done
         "local_iterations": 3,  # the number of iterations to do for the local tuning, 0 means only threshold is tuned, negative that no local tuning is done
+        "fail_on_warning": True,  # do not continue tuning if a global tuning fails
         # GDAC
         "gdac_tune_bits": range(7, -1, -1),  # GDAC bits to change during tuning
         "n_injections_gdac": 50,  # number of injections per GDAC bit setting
@@ -150,12 +151,15 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
             logging.info("Local tuning step %d / %d", iteration + 1, self.local_iterations)
             start_bit = 4  # - difference_bit * iteration
             self.tdac_tune_bits = range(start_bit, -1, -1)
+            self.set_scan_parameters(local_step=self.scan_parameters.local_step + 1)
             TdacTuning.scan(self)
             self.fdac_tune_bits = range(start_bit - 1, -1, -1)
+            self.set_scan_parameters(local_step=self.scan_parameters.local_step + 1)
             FdacTuning.scan(self)
 
         if self.local_iterations >= 0:
             self.tdac_tune_bits = range(start_bit, -1, -1)
+            self.set_scan_parameters(local_step=self.scan_parameters.local_step + 1)
             TdacTuning.scan(self)
 
     def analyze(self):
@@ -168,11 +172,11 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
 
         if self.make_plots:
             if self.local_iterations:
-                plotThreeWay(hist=self.tot_mean_best.transpose(), title="Mean ToT after last FDAC tuning", x_axis_title='Mean ToT', filename=self.plots_filename)
-                plotThreeWay(hist=self.register.get_pixel_register_value("FDAC").transpose(), title="FDAC distribution after last FDAC tuning", x_axis_title='FDAC', filename=self.plots_filename, maximum=16)
+                plot_three_way(hist=self.tot_mean_best.transpose(), title="Mean ToT after last FDAC tuning", x_axis_title='Mean ToT', filename=self.plots_filename)
+                plot_three_way(hist=self.register.get_pixel_register_value("FDAC").transpose(), title="FDAC distribution after last FDAC tuning", x_axis_title='FDAC', filename=self.plots_filename, maximum=16)
             if self.local_iterations >= 0:
-                plotThreeWay(hist=self.occupancy_best.transpose(), title="Occupancy after tuning", x_axis_title='Occupancy', filename=self.plots_filename, maximum=100)
-                plotThreeWay(hist=self.register.get_pixel_register_value("TDAC").transpose(), title="TDAC distribution after complete tuning", x_axis_title='TDAC', filename=self.plots_filename, maximum=32)
+                plot_three_way(hist=self.occupancy_best.transpose(), title="Occupancy after tuning", x_axis_title='Occupancy', filename=self.plots_filename, maximum=100)
+                plot_three_way(hist=self.register.get_pixel_register_value("TDAC").transpose(), title="TDAC distribution after complete tuning", x_axis_title='TDAC', filename=self.plots_filename, maximum=32)
 
             self.plots_filename.close()
 

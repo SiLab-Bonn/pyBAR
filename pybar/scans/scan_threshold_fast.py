@@ -88,8 +88,6 @@ class FastThresholdScan(Fei4RunBase):
         while self.scan_parameter_value <= scan_parameter_range[1]:  # scan as long as scan parameter is smaller than defined maximum
             if self.stop_run.is_set():
                 break
-            if self.record_data:
-                logging.info("Scan step %d (%s %d)", self.data_points, 'PlsrDAC', self.scan_parameter_value)
 
             commands = []
             commands.extend(self.register.get_commands("ConfMode"))

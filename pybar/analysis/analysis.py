@@ -345,7 +345,7 @@ def analyze_cluster_size_per_scan_parameter(input_file_hits, output_file_cluster
     parameter: string
         The name of the parameter to separate the data into (e.g.: PlsrDAC)
     max_chunk_size: int
-        the maximum chink size used during read, if too big memory error occurs, if too small analysis takes longer
+        the maximum chunk size used during read, if too big memory error occurs, if too small analysis takes longer
     overwrite_output_files: bool
         Set to true to overwrite the output file if it already exists
     output_pdf: PdfPages

@@ -68,7 +68,7 @@ class RegisterTest(Fei4RunBase):
             result_array.data[result == self.register.get_pixel_register_value(pix_regs[i])] = 0
             pixel_register_errors += np.count_nonzero(result_array == 1)
             logging.info("Pixel register %s: %d pixel error", pix_regs[i], np.count_nonzero(result_array == 1))
-            plotting.plotThreeWay(result_array.T, title=str(pix_regs[i]) + " register test with " + str(np.count_nonzero(result_array == 1)) + '/' + str(26880 - np.ma.count_masked(result_array)) + " pixel failing", x_axis_title="0:OK, 1:FAIL", maximum=1, filename=plots)
+            plotting.plot_three_way(result_array.T, title=str(pix_regs[i]) + " register test with " + str(np.count_nonzero(result_array == 1)) + '/' + str(26880 - np.ma.count_masked(result_array)) + " pixel failing", x_axis_title="0:OK, 1:FAIL", maximum=1, filename=plots)
 
         plots.close()
         return pixel_register_errors

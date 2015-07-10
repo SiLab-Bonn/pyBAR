@@ -49,7 +49,7 @@ if __name__ == "__main__":
     print 'Status:', status  # will wait for run to be finished and returns run status
     #
     # Or use a run configuration file:
-    status = runmngr.run_run(run=AnalogScan, run_conf="run_configuration.txt")  # using no thread
+    status = runmngr.run_run(run=AnalogScan, run_conf="example_run_manager_run_config.txt")  # using no thread
     print 'Status:', status
     #
     # Example for a loop of runs, which is failing:

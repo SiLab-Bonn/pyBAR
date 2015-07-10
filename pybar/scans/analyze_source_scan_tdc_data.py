@@ -1,11 +1,11 @@
 ''' This script does a full analysis of the TDC values taken during a source scan.
-Two steps are done automatically:
-Step 1 Tnterpret the raw data:
-    Interpret the raw data from the FE, create and plot distributions of all provided raw data files.
-    A cluster hit table is created. Do not forget to tell the interpreter to align at the trigger number (if trigger numbers are expected)
-    or to align at the TDC word (if it is the first word of an event)
-Step 2 Histogram TDC of selected hits:
-    Creates TDC histograms for each pixel from hits fullfilling certain criterions (e.g. 'is_seed==0', 'n_cluster==1') and create plots.
+Two consecutive steps are done:
+    Step 1: Tnterpret the raw data:
+        Interpret the raw data from the FE, create and plot distributions of all provided raw data files.
+        A cluster hit table is created. Do not forget to tell in the analysis_configuration to align at the trigger number (if trigger numbers are expected)
+        or to align at the TDC word (if it is the first word of an event) and if you want to measure the TDC/trigger distance.
+    Step 2: Histogram TDC of selected hits:
+        Creates TDC histograms for each pixel from hits fullfilling certain criterions (e.g. 'is_seed==0', 'n_cluster==1') and create plots.
 '''
 
 import logging
@@ -22,43 +22,42 @@ from scipy.interpolate import interp1d
 
 from pybar.analysis import analysis_utils
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
-from pybar.analysis.plotting.plotting import plotThreeWay, plot_1d_hist
+from pybar.analysis.plotting.plotting import plot_three_way, plot_1d_hist
 
 hit_selection = '(column > 50) & (column < 78) & (row > 16) & (row < 324) & (((column % 2 == 1) & (row % 12 == 1)) | ((column % 2 == 0) & (row % 12 == 7)))'
-pixel_selection = '(column > 0)'  # '((column > 50) & (column < 78) & (row > 54) & (row < 276))'
-pixel_selection_2 = '(column > 0)'  # '((column > 62) & (column < 69) & (row > 170) & (row < 190))'
 
 analysis_configuration = {
-    'scan_name': [r'L:\SCC30\TDC_Sr90\LongRun\2_scc_30_ext_trigger_scan'],  # the base file name(s) of the raw data file, no file suffix needed
-    'input_file_calibration': r'L:\SCC30\TDCcalibration\scc_30\11_scc_30_hit_or_calibration_calibration.h5',  # the Plsr<->TDC calibration file,  # the Plsr<->TDC calibration file
-    'hit_selection_conditions': ['(n_cluster==1)',  # criterions for the hit selection based on hit properties, per criterion one hitogram is created
-                                 #'(n_cluster==1) & %s' % hit_selection,
+    'scan_name': [r'L:\SCC30\TDC_Sr90\LongRun\2_scc_30_ext_trigger_scan'],  # the base file name(s) of the raw data file, no file suffix
+    'align_at_trigger': True,  # align events to the trigger words, first event word has to be trigger word
+    'align_at_tdc': False,  # align events to the tdc words, first event word has to be tdc word; not needed anymore for new pyBAR data
+    'use_tdc_trigger_time_stamp': False,  # TDC + external trigger are used, thus fill the hit table with delay value between trigger and TDC (usefull for time walk measurements)
+    'max_tdc_delay': 80,  # maximum TDC to trigger delay to consider the TDC word as a valid in-time event word; otherwise TDC word is neglected
+    'input_file_calibration': r'L:\SCC30\TDCcalibration\scc_30\11_scc_30_hit_or_calibration_calibration.h5',  # the Plsr<->TDC calibration file
+    'hit_selection_conditions': ['(n_cluster==1)',  # criterions for the hit selection based on hit properties, per criterion TDC hitograms are created
                                  '(n_cluster==1) & (cluster_size == 1) & %s' % hit_selection,
                                  '(n_cluster==1) & (cluster_size == 1) & (relative_BCID > 1) & (relative_BCID < 5) & ((tot > 12) | ((TDC * 1.5625 - tot * 25 < 100) & (tot * 25 - TDC * 1.5625 < 100))) & %s' % hit_selection
                                  ],
-    'event_status_select_mask': 0b0000111111111100,  # the event status bits to cut on
+    'event_status_select_mask': 0b0000111111111111,  # the event status bits to cut on
     'event_status_condition': 0b0000000100000000,  # the event status number after the event_status_select_mask is bitwise ORed with the event number
     'max_tdc': 1000,
     'n_bins': 200,
     "analysis_steps": [1, 2],  # the analysis includes this selected steps only. See explanation above.
     "interpreter_plots": True,  # set to False to omit the Raw Data plots, saves time
     "interpreter_warnings": False,  # show interpreter warnings
-    "overwrite_output_files": False  # overwrite already existing files from former analysis
+    "overwrite_output_files": True  # overwrite already existing files from former analysis
 }
 
 
-def analyze_raw_data(input_files, output_file_hits, interpreter_plots, pdf_filename):
+def analyze_raw_data(input_files, output_file_hits, interpreter_plots, overwrite_output_files, pdf_filename, align_at_trigger=True, align_at_tdc=False, use_tdc_trigger_time_stamp=False, max_tdc_delay=80):
     logging.info('Analyze the raw FE data given in ' + str(len(input_files)) + ' files and store the needed data')
-    if os.path.isfile(output_file_hits) and not analysis_configuration['overwrite_output_files']:  # skip analysis if already done
+    if os.path.isfile(output_file_hits) and not overwrite_output_files:  # skip analysis if already done
         logging.info('Analyzed data file ' + output_file_hits + ' already exists. Skip analysis for this file.')
     else:
         with AnalyzeRawData(raw_data_file=input_files, analyzed_data_file=output_file_hits) as analyze_raw_data:
-#             analyze_raw_data.interpreter.debug_events(3645978, 3645978, True)
-#             analyze_raw_data.interpreter.debug_events(100, 110, True)
-#             analyze_raw_data.use_tdc_trigger_time_stamp = True  # if you want to also measure the delay between trigger / hit-bus
-#             analyze_raw_data.max_tdc_delay = 80
-            analyze_raw_data.align_at_trigger = False  # align events at TDC words, first word of event has to be a tdc word
-            analyze_raw_data.align_at_tdc = True  # align events at TDC words, first word of event has to be a tdc word
+            analyze_raw_data.max_tdc_delay = 80  # max TDC delay to consider a valid in time TDC word
+            analyze_raw_data.use_tdc_trigger_time_stamp = use_tdc_trigger_time_stamp  # if you want to also measure the delay between trigger / hit-bus
+            analyze_raw_data.align_at_trigger = align_at_trigger  # align events at TDC words, first word of event has to be a tdc word
+            analyze_raw_data.align_at_tdc = align_at_tdc  # align events at TDC words, first word of event has to be a tdc word
             analyze_raw_data.create_tdc_counter_hist = True  # create a histogram for all TDC words
             analyze_raw_data.create_tdc_hist = True  # histogram the hit TDC information
             analyze_raw_data.create_tdc_pixel_hist = True
@@ -236,7 +235,7 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
             for node in in_file_h5.root:  # go through the data and plot them
                 if 'MeanPixel' in node.name:
                     try:
-                        plotThreeWay(np.ma.masked_invalid(node[:]) * 1.5625, title='Mean TDC delay, hits with\n%s' % node._v_attrs.condition if 'Timestamp' in node.name else 'Mean TDC, hits with\n%s' % node._v_attrs.condition, filename=output_pdf)
+                        plot_three_way(np.ma.masked_invalid(node[:]) * 1.5625, title='Mean TDC delay, hits with\n%s' % node._v_attrs.condition if 'Timestamp' in node.name else 'Mean TDC, hits with\n%s' % node._v_attrs.condition, filename=output_pdf)
                     except ValueError:
                         logging.warning('Cannot plot TDC delay')
                 elif 'HistTdcCondition' in node.name:
@@ -273,6 +272,18 @@ if __name__ == "__main__":
     hit_cut_analyzed_file = analysis_configuration['scan_name'][0] + '_cut_hits_analyzed.h5'
 
     if 1 in analysis_configuration['analysis_steps']:
-        analyze_raw_data(input_files=raw_data_files, output_file_hits=hit_file, interpreter_plots=analysis_configuration['interpreter_plots'], pdf_filename=analysis_configuration['scan_name'][0])
+        analyze_raw_data(input_files=raw_data_files,
+                         output_file_hits=hit_file,
+                         interpreter_plots=analysis_configuration['interpreter_plots'],
+                         overwrite_output_files=analysis_configuration['overwrite_output_files'],
+                         pdf_filename=analysis_configuration['scan_name'][0],
+                         align_at_trigger=analysis_configuration['align_at_trigger'],
+                         align_at_tdc=analysis_configuration['align_at_tdc'],
+                         use_tdc_trigger_time_stamp=analysis_configuration['use_tdc_trigger_time_stamp'],
+                         max_tdc_delay=analysis_configuration['max_tdc_delay'])
     if 2 in analysis_configuration['analysis_steps']:
-        histogram_tdc_hits(hit_file, hit_selection_conditions=analysis_configuration['hit_selection_conditions'], event_status_select_mask=analysis_configuration['event_status_select_mask'], event_status_condition=analysis_configuration['event_status_condition'], calibation_file=analysis_configuration['input_file_calibration'])
+        histogram_tdc_hits(hit_file,
+                           hit_selection_conditions=analysis_configuration['hit_selection_conditions'],
+                           event_status_select_mask=analysis_configuration['event_status_select_mask'],
+                           event_status_condition=analysis_configuration['event_status_condition'],
+                           calibation_file=analysis_configuration['input_file_calibration'])

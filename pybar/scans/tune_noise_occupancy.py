@@ -20,7 +20,7 @@ class NoiseOccupancyScan(Fei4RunBase):
     To achieve a broader TDAC distribution it is necessary to decrease TdacVbp.
     '''
     _default_run_conf = {
-        "occupancy_limit": 10 ** (-5),  # 0 will mask any pixel with occupancy greater than zero
+        "occupancy_limit": 1 * 10 ** (-5),  # the lower the number the higher the constraints on noise occupancy; 0 will mask any pixel with occupancy greater than zero
         "n_triggers": 10000000,  # total number of triggers which will be sent to the FE. From 1 to 4294967295 (32-bit unsigned int).
         "trig_count": 1,  # FE-I4 trigger count, number of consecutive BCs, 0 means 16, from 0 to 15
         "trigger_rate_limit": 500,  # artificially limiting the trigger rate, in BCs (25ns)
@@ -39,8 +39,11 @@ class NoiseOccupancyScan(Fei4RunBase):
             self.consecutive_lvl1 = (2 ** self.register.global_registers['Trig_Count']['bitlength'])
         else:
             self.consecutive_lvl1 = self.trig_count
-        if self.occupancy_limit * self.n_triggers * self.consecutive_lvl1 < 1.0:
-            logging.warning('Number of triggers too low for given occupancy limit. Any noise hit will lead to a masked pixel.')
+        self.abs_occ_limit = int(self.occupancy_limit * self.n_triggers * self.consecutive_lvl1)
+        if self.abs_occ_limit < 1.0:
+            logging.warning('Number of triggers too low for given occupancy limit. Any hit will result in a masked pixel.')
+        else:
+            logging.info('Masking pixels with occupancy >%d (sending %d triggers)', self.abs_occ_limit, self.n_triggers)
 
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))
@@ -109,11 +112,7 @@ class NoiseOccupancyScan(Fei4RunBase):
                 occ_hist = out_file_h5.root.HistOcc[:, :, 0].T
             self.occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
             # noisy pixels are set to 1
-            if self.trig_count == 0:
-                consecutive_lvl1 = (2 ** self.register.global_registers['Trig_Count']['bitlength'])
-            else:
-                consecutive_lvl1 = self.trig_count
-            self.occ_mask[occ_hist > self.occupancy_limit * self.n_triggers * consecutive_lvl1] = 1
+            self.occ_mask[occ_hist > self.abs_occ_limit] = 1
             # make inverse
             self.inv_occ_mask = invert_pixel_mask(self.occ_mask)
             if self.overwrite_mask:

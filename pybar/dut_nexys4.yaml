@@ -5,8 +5,8 @@
 # ------------------------------------------------------------
 #
 
-name    : seabas2
-version : 1.0
+name    : nexys4
+version : 0.01
 
 transfer_layer:
   - name  : ETH
@@ -14,6 +14,11 @@ transfer_layer:
 
 hw_drivers:
 
+  - name      : I2C
+    type      : i2c
+    interface : ETH
+    base_addr : 0x8800
+ 
   - name      : CMD
     type      : cmd_seq
     interface : ETH
@@ -48,12 +53,17 @@ hw_drivers:
   - name      : GPIO_ENABLE_CHANNEL
     type      : gpio
     interface : ETH
-    base_addr : 0x8800
-
+    base_addr : 0x8700
+    
   - name      : TLU
     type      : tlu
     interface : ETH
     base_addr : 0x8200
+
+  - name      : TDC
+    type      : tdc_s3
+    interface : ETH
+    base_addr : 0x8100
 
 registers:
   - name        : ENABLE_CHANNEL
@@ -61,15 +71,21 @@ registers:
     hw_driver   : GPIO_ENABLE_CHANNEL
     size        : 8
     fields:
-      - name    : CH3
+      - name    : TDC
+        size    : 1
+        offset  : 5
+      - name    : TLU
+        size    : 1
+        offset  : 4
+      - name    : CH4
         size    : 1
         offset  : 3
-      - name    : CH2
+      - name    : CH3
         size    : 1
         offset  : 2
-      - name    : CH1
+      - name    : CH2
         size    : 1
         offset  : 1
-      - name    : CH0
+      - name    : CH1
         size    : 1
         offset  : 0

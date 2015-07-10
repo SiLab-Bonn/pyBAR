@@ -20,12 +20,12 @@ class ExtTriggerScan(Fei4RunBase):
     _default_run_conf = {
         "trig_count": 0,  # FE-I4 trigger count, number of consecutive BCs, 0 means 16, from 0 to 15
         "trigger_latency": 232,  # FE-I4 trigger latency, in BCs, external scintillator / TLU / HitOR: 232, USBpix self-trigger: 220
-        "trigger_delay": 14,  # trigger delay, in BCs
+        "trigger_delay": 8,  # trigger delay, in BCs
         "trigger_rate_limit": 500,  # artificially limiting the trigger rate, in BCs (25ns)
         "col_span": [1, 80],  # defining active column interval, 2-tuple, from 1 to 80
         "row_span": [1, 336],  # defining active row interval, 2-tuple, from 1 to 336
         "overwrite_enable_mask": False,  # if True, use col_span and row_span to define an active region regardless of the Enable pixel register. If False, use col_span and row_span to define active region by also taking Enable pixel register into account.
-        "use_enable_mask_for_imon": False,  # if True, apply inverted Enable pixel mask to Imon pixel mask
+        "use_enable_mask_for_imon": True,  # if True, apply inverted Enable pixel mask to Imon pixel mask
         "no_data_timeout": 10,  # no data timeout after which the scan will be aborted, in seconds
         "scan_timeout": 60,  # timeout for scan after which the scan will be stopped, in seconds
         "max_triggers": 10000,  # maximum triggers after which the scan will be stopped, in seconds
@@ -97,10 +97,11 @@ class ExtTriggerScan(Fei4RunBase):
             analyze_raw_data.create_source_scan_hist = True
             analyze_raw_data.create_cluster_size_hist = True
             analyze_raw_data.create_cluster_tot_hist = True
+            analyze_raw_data.align_at_trigger = True
             if self.enable_tdc:
                 analyze_raw_data.create_tdc_counter_hist = True  # histogram all TDC words
                 analyze_raw_data.create_tdc_hist = True  # histogram the hit TDC information
-                analyze_raw_data.align_at_tdc = True  # align events at the TDC word
+                analyze_raw_data.align_at_tdc = False  # align events at the TDC word
             analyze_raw_data.interpreter.set_warning_output(False)
             analyze_raw_data.interpret_word_table()
             analyze_raw_data.interpreter.print_summary()

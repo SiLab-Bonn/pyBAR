@@ -320,7 +320,7 @@ def create_parameter_table(files_dict):
     # create the parameter names / format for the parameter table
     try:
         names = ','.join([name for name in files_dict.itervalues().next().keys()])
-        formats = ','.join(['uint32' for name in files_dict.itervalues().next().keys()])
+        formats = ','.join(['int32' for name in files_dict.itervalues().next().keys()])
         arrayList = [l for l in files_dict.itervalues().next().values()]
     except AttributeError:  # no parameters given, return None
         return
@@ -378,7 +378,7 @@ def get_parameter_value_from_file_names(files, parameters=None, unique=False, so
         parameters = (parameters, )
     search_string = '_'.join(parameters)
     for _ in parameters:
-        search_string += r'_(\d+)'
+        search_string += r'_(-?\d+)'
     result = {}
     for one_file in files:
         parameter_values = re.findall(search_string, one_file)
@@ -1260,7 +1260,7 @@ def get_scan_parameters_index(scan_parameter):
     '''
     _, index = np.unique(scan_parameter, return_index=True)
     index = np.sort(index)
-    values = np.array(range(0, len(index)), dtype='u4')
+    values = np.array(range(0, len(index)), dtype='i4')
     index = np.append(index, len(scan_parameter))
     counts = np.diff(index)
     return np.repeat(values, counts)
@@ -1365,7 +1365,7 @@ def data_aligned_at_events(table, start_event_number=None, stop_event_number=Non
                 stop_index = stop_indeces[0]
                 stop_index_known = True
 
-    if (start_index_known and stop_index_known) and (start_index + chunk_size >= stop_index):  # special case, one read is enough, data not bigger than one chunk and the indices are known
+    if (start_index_known and stop_index_known) or (start_index + chunk_size >= stop_index):  # special case, one read is enough, data not bigger than one chunk and the indices are known
         yield table.read(start=start_index, stop=stop_index), stop_index
     else:  # read data in chunks, chunks do not divide events, abort if stop_event_number is reached
         while(start_index < stop_index):

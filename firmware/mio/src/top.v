@@ -61,10 +61,10 @@ module top (
     input wire RJ45_RESET,
     input wire RJ45_TRIGGER,
 
-    // FE CLK (SCC, BIC, GPAC)
-    output wire CMD_CLK,
+    // FE RefClk (SCAC, BIC, GPAC)
+    output wire REF_CLK,
 
-    // FE DI (SCC, BIC, GPAC)
+    // FE DI (SCAC, BIC, GPAC)
     output wire CMD_DATA,
 
 `ifdef GPAC
@@ -97,20 +97,39 @@ module top (
 
     output INJ_STRB,
 `else
-    // FE DOBOUT (SCC and BIC)
+    // FE AuxClk (SCAC)
+    output wire AUX_CLK,
+
+    // FE DOBOUT (SCAC and BIC)
     input wire [3:0] DOBOUT,
 
-    // Voltage Regulator Enable (SCC and BIC)
+    // Voltage Regulator Enable (SCAC and BIC)
     output wire [3:0] EN,
+
+    // Voltage Regulator VPLL Enable (old SCAC)
+    output wire EN_VPLL,
 
     // Over Current Protection (BIC only)
     input wire [3:0] OC, // active low
 
     // Select (SEL) LED (BIC only)
     output wire [3:0] SEL,
+
+    // other IOs on SCAC
+    output wire [2:0] IOMXSEL,
+    output wire [3:0] IOMXIN,
+    input  wire [2:0] IOMXOUT,
+
+    output wire CMD_ALT_PLS,
+    output wire CMD_EXT_TRIGGER,
+    output wire SEL_CMD,
+    output wire SEL_ALT_BUS,
+
+    output wire REG_AB_DAC_LD,
+    output wire REG_AB_STB_LD,
 `endif
 
-    // FE Hitbus (SCC only)
+    // FE Hitbus (SCAC only)
     input wire MONHIT,
 
     //input wire FPGA_BUTTON // switch S2 on MultiIO board, active low
@@ -203,11 +222,45 @@ clk_gen iclkgen(
     .U2_CLKFX_OUT(CLK_40), // DCM2: 40MHz command clock
     .U2_CLKDV_OUT(DATA_CLK), // DCM2: 16MHz SERDES clock
     .U2_CLK0_OUT(RX_CLK), // DCM2: 160MHz data clock
-    .U2_CLK90_OUT(),
     .U2_CLK2X_OUT(RX_CLK2X), // DCM2: 320MHz data recovery clock
     .U2_LOCKED_OUT(CLK_LOCKED),
     .U2_STATUS_OUT()
 );
+
+`ifndef GPAC
+wire CE_10MHZ;
+wire CLK_10MHZ;
+clock_divider #(
+    .DIVISOR(4)
+) i_clock_divisor_40MHz_to_10MHz (
+    .CLK(CLK_40),
+    .RESET(1'b0),
+    .CE(CE_10MHZ),
+    .CLOCK(CLK_10MHZ)
+);
+
+assign AUX_CLK = CLK_10MHZ;
+/*
+ODDR AUX_CLK_FORWARDING_INST (
+    .Q(AUX_CLK),
+    .C(CLK_40),
+    .CE(CE_10MHZ), 
+    .D1(1'b1),
+    .D2(1'b0),
+    .R(1'b0),
+    .S(1'b0)
+);
+*/
+
+assign IOMXSEL  = 0;
+assign IOMXIN = 0;
+assign CMD_ALT_PLS = 0;
+assign CMD_EXT_TRIGGER = 0;
+assign SEL_CMD = 1; // hold this pin high
+assign SEL_ALT_BUS = 0;
+assign REG_AB_DAC_LD = 0;
+assign REG_AB_STB_LD = 0;
+`endif
 
 // 1Hz CLK
 wire CE_1HZ; // use for sequential logic
@@ -317,7 +370,7 @@ cmd_seq #(
     .BUS_RD(BUS_RD),
     .BUS_WR(BUS_WR),
 
-    .CMD_CLK_OUT(CMD_CLK),
+    .CMD_CLK_OUT(REF_CLK),
     .CMD_CLK_IN(CLK_40),
     .CMD_EXT_START_FLAG(CMD_EXT_START_FLAG),
     .CMD_EXT_START_ENABLE(TRIGGER_ENABLE),
@@ -328,10 +381,10 @@ cmd_seq #(
 
 //Recognize CAL command for external device triggering
 //reg [8:0] cmd_rx_reg;
-//always@(posedge CMD_CLK)
+//always@(posedge REF_CLK)
 //    cmd_rx_reg[8:0] <= {cmd_rx_reg[7:0],CMD_DATA};
 //
-//always@(posedge CMD_CLK)
+//always@(posedge REF_CLK)
 //    CMD_CAL <= (cmd_rx_reg == 9'b101100100);
 
 parameter DSIZE = 10;
@@ -359,6 +412,7 @@ fei4_rx #(
     .RX_8B10B_DECODER_ERR(RX_8B10B_DECODER_ERR),
     .RX_FIFO_OVERFLOW_ERR(RX_FIFO_OVERFLOW_ERR),
 
+    .FIFO_CLK(),
     .FIFO_READ(FE_FIFO_READ),
     .FIFO_EMPTY(FE_FIFO_EMPTY),
     .FIFO_DATA(FE_FIFO_DATA),
@@ -532,6 +586,7 @@ gpio #(
 
 wire [7:0] GPIO_POWER_IO;
 assign EN = GPIO_POWER_IO[3:0];
+assign EN_VPLL = GPIO_POWER_IO[2]; // EN_VD2
 assign GPIO_POWER_IO[7:4] = ~{OC[3], OC[2], OC[1], OC[0]};
 gpio #(
     .BASEADDR(GPIO_POWER_BASEADDR),
@@ -662,6 +717,8 @@ spi #(
     .SCLK(ADC_SCLK),
     .SDI(ADC_SDI),
     .SDO(ADC_SDO),
+
+    .EXT_START(),
     .SEN(ADC_EN),
     .SLD()
 );
@@ -780,6 +837,8 @@ spi #(
     .SCLK(CCPD_GLOBAL_SHIFT_CLK),
     .SDI(CCPD_GLOBAL_SHIFT_IN),
     .SDO(CCPD_GLOBAL_SHIFT_OUT),
+
+    .EXT_START(),
     .SEN(),
     .SLD(CCPD_GLOBAL_SHIFT_LD)
 );
@@ -801,6 +860,8 @@ spi #(
     .SCLK(CCPD_CONFIG_SHIFT_CLK),
     .SDI(CCPD_CONFIG_SHIFT_IN),
     .SDO(CCPD_CONFIG_SHIFT_OUT),
+
+    .EXT_START(),
     .SEN(),
     .SLD(CCPD_CONFIG_SHIFT_LD)
 );

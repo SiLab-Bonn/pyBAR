@@ -115,7 +115,7 @@ class RunBase():
             logging.warning('Run %s was aborted: %s', self.run_number, e)
         except RunStopped:
             self._run_status = run_status.finished
-            logging.warning('Run %s was stopped', self.run_number)
+            logging.info('Run %s was stopped', self.run_number)
         except Exception as e:
             self._run_status = run_status.crashed
             logging.error('Unexpected exception during run %s: %s' % (self.run_number, traceback.format_exc()))
@@ -417,26 +417,28 @@ class RunManager(object):
         If use_thread is False, returns run status.
         '''
         if isclass(run):
-            init_run_conf = {}
-            if 'run_conf' in self.conf:
-                init_run_conf.update(self.conf['run_conf'])
-            if run.__class__.__name__ in self.conf:
-                init_run_conf.update(self.conf[run.__class__.__name__])
-
             # instantiate the class
-            if init_run_conf:
-                run = run(conf=self.conf, run_conf=init_run_conf)
-            else:
-                run = run(conf=self.conf)
+            run = run(conf=self.conf)
+
+        local_run_conf = {}
+        # general parameters from conf
+        if 'run_conf' in self.conf:
+            local_run_conf.update(self.conf['run_conf'])
+        # check for class name, scan specific parameters from conf
+        if run.__class__.__name__ in self.conf:
+            local_run_conf.update(self.conf[run.__class__.__name__])
 
         run_conf = self.open_conf(run_conf)
+        # check for class name, scan specific parameters from conf
         if run.__class__.__name__ in run_conf:
             run_conf = run_conf[run.__class__.__name__]
+        # run_conf parameter has highest priority, updated last
+        local_run_conf.update(run_conf)
 
         if use_thread:
             @thunkify('RunThread')
             def run_run_in_thread():
-                return run.run(run_conf=run_conf)
+                return run.run(run_conf=local_run_conf)
 
             self.current_run = run
 
@@ -446,7 +448,7 @@ class RunManager(object):
             return run_run_in_thread()
         else:
             self.current_run = run
-            status = run.run(run_conf=run_conf)
+            status = run.run(run_conf=local_run_conf)
             return status
 
     def run_primlist(self, primlist, skip_remaining=False):

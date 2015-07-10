@@ -22,7 +22,7 @@ cdef packed struct numpy_meta_data_v2:
     cnp.uint32_t error
 
 cdef packed struct numpy_par_info:
-    cnp.uint32_t scanParameter  # parameter setting
+    cnp.int32_t scanParameter  # parameter setting
 
 cdef packed struct numpy_hit_info:
     cnp.int64_t eventNumber  # event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)

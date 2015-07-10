@@ -7,7 +7,7 @@ from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.fei4.register_utils import make_box_pixel_mask_from_col_row, invert_pixel_mask
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.run_manager import RunManager
-from pybar.analysis.plotting.plotting import plot_occupancy, plot_fancy_occupancy, plotThreeWay
+from pybar.analysis.plotting.plotting import plot_occupancy, plot_fancy_occupancy, plot_three_way
 from pybar.daq.readout_utils import data_array_from_data_iterable
 from pybar.analysis.RawDataConverter.data_interpreter import PyDataInterpreter
 from pybar.analysis.RawDataConverter.data_histograming import PyDataHistograming
@@ -201,7 +201,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
             plot_fancy_occupancy(self.last_occupancy_hist.T, filename=analyze_raw_data.output_pdf)
             plot_occupancy(self.last_occupancy_mask.T, title='Occupancy Mask at Vthin_AltFine %d Step %d' % (self.last_reg_val, self.last_step), z_max=1, filename=analyze_raw_data.output_pdf)
             plot_fancy_occupancy(self.last_occupancy_mask.T, filename=analyze_raw_data.output_pdf)
-            plotThreeWay(self.last_tdac_distribution.T, title='TDAC at Vthin_AltFine %d Step %d' % (self.last_reg_val, self.last_step), x_axis_title="TDAC", filename=analyze_raw_data.output_pdf, maximum=31, bins=32)
+            plot_three_way(self.last_tdac_distribution.T, title='TDAC at Vthin_AltFine %d Step %d' % (self.last_reg_val, self.last_step), x_axis_title="TDAC", filename=analyze_raw_data.output_pdf, maximum=31, bins=32)
             plot_occupancy(self.last_tdac_distribution.T, title='TDAC at Vthin_AltFine %d Step %d' % (self.last_reg_val, self.last_step), z_max=31, filename=analyze_raw_data.output_pdf)
             plot_occupancy(self.register.get_pixel_register_value('Enable').T, title='Enable Mask', z_max=1, filename=analyze_raw_data.output_pdf)
             plot_fancy_occupancy(self.register.get_pixel_register_value('Enable').T, filename=analyze_raw_data.output_pdf)

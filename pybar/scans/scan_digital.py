@@ -36,7 +36,7 @@ class DigitalScan(Fei4RunBase):
 
     def analyze(self):
         with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
-            analyze_raw_data.interpreter.set_warning_output(False)
+            analyze_raw_data.interpreter.set_warning_output(True)
             analyze_raw_data.create_tot_hist = False
             analyze_raw_data.interpret_word_table()
             analyze_raw_data.plot_histograms()
