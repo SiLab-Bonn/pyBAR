@@ -5,7 +5,7 @@ from threading import RLock
 import tables as tb
 import os.path
 from os import remove
-from operator import itemgetter
+# from operator import itemgetter
 
 from pybar.daq.readout_utils import save_configuration_dict
 from pybar.analysis.RawDataConverter.data_struct import MetaTableV2 as MetaTable, generate_scan_parameter_description
@@ -58,8 +58,8 @@ def open_raw_data_file(filename, mode="w", title="", register=None, conf=None, r
 
 
 class RawDataFile(object):
-    
-    max_table_size = 2**31-1000000  # pytables bug not allowing more than 2^31 entries in a table, since the read function uses xrange which behaves differently on 32/64bit platforms, fixed in pytables 3.2.0 release
+
+    max_table_size = 2**31 - 1000000  # pytables bug not allowing more than 2^31 entries in a table, since the read function uses xrange which behaves differently on 32/64bit platforms, fixed in pytables 3.2.0 release
 
     '''Raw data file object. Saving data queue to HDF5 file.
     '''
