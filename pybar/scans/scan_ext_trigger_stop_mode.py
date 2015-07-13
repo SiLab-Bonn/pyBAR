@@ -44,7 +44,6 @@ class StopModeExtTriggerScan(Fei4RunBase):
         "no_data_timeout": 30,  # no data timeout after which the scan will be aborted, in seconds
         "scan_timeout": 60,  # timeout for scan after which the scan will be stopped, in seconds
         "max_triggers": 10,  # maximum triggers after which the scan will be stopped, in seconds
-        "enable_tdc": False  # if True, enables TDC (use RX2)
     }
 
     def configure(self):
@@ -165,7 +164,6 @@ class StopModeExtTriggerScan(Fei4RunBase):
         if kwargs:
             self.set_scan_parameters(**kwargs)
         self.fifo_readout.start(reset_sram_fifo=False, clear_buffer=True, callback=self.handle_data, errback=self.handle_err, no_data_timeout=self.no_data_timeout)
-        self.dut['TDC']['ENABLE'] = self.enable_tdc
         self.dut['TLU']['TRIGGER_COUNTER'] = 0
         self.dut['CMD']['EN_EXT_TRIGGER'] = True
 
@@ -182,7 +180,6 @@ class StopModeExtTriggerScan(Fei4RunBase):
 
     def stop_readout(self, timeout=10.0):
         self.scan_timeout_timer.cancel()
-        self.dut['TDC']['ENABLE'] = False
         self.dut['CMD']['EN_EXT_TRIGGER'] = False
         self.fifo_readout.stop(timeout=timeout)
 
