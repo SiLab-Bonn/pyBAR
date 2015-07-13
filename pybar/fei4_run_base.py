@@ -352,10 +352,25 @@ class Fei4RunBase(RunBase):
     def cleanup_run(self):
         # no execption should be thrown here
         self.raw_data_file = None
-        try:
-            self.dut.close()  # free resources
-        except Exception:
-            logging.error('Cannot close DUT')
+        # USB interface needs to be closed here, otherwise an USBError may occur
+        # USB interface can be reused at any time after close without another init
+        usb_intf = self.dut.get_modules('SiUsb')
+        if usb_intf:
+            import usb.core
+            for board in usb_intf:
+                try:
+                    print board
+                    board.close()  # free resources of USB
+                except usb.core.USBError:
+                    logging.error('Cannot detach USB device')
+                except ValueError:
+                    pass  # no USB interface, Basil <= 2.1.1
+                except KeyError:
+                    pass  # no USB interface, Basil > 2.1.1
+                except TypeError:
+                    pass  # DUT not yet initialized
+                except AttributeError:
+                    pass  # USB interface not yet initialized
 
     def handle_data(self, data):
         self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=False)
