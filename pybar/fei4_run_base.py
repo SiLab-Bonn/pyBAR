@@ -359,7 +359,6 @@ class Fei4RunBase(RunBase):
             import usb.core
             for board in usb_intf:
                 try:
-                    print board
                     board.close()  # free resources of USB
                 except usb.core.USBError:
                     logging.error('Cannot detach USB device')
