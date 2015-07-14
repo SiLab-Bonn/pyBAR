@@ -70,7 +70,7 @@ class Fei4RunBase(RunBase):
     @property
     def module_id(self):
         if 'module_id' in self.conf and self.conf['module_id']:
-            module_id = self.conf['module_id']
+            module_id = str(self.conf['module_id'])
             module_id = re.sub(r"[^\w\s+]", '', module_id)
             return re.sub(r"\s+", '_', module_id).lower()
         else:
