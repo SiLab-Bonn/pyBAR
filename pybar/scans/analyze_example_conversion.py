@@ -1,7 +1,8 @@
-"""This is an example module how to use the raw data analyzer. It takes a table with FE-I4 raw data and interprets, histograms and plots it.
-    The first "with-statement" interprets the raw data and can also histogram and cluster hits in the same analysis loop if activated to save time. 
-    The second "with-statement" does the histogramming and clustering starting from hits. 
-    This shows how to use the analysis if hits are already available 
+"""This is an example module on how to use the raw data analyzer. FE-I4 raw data file is interpreted, histogrammed and plotted.
+The analyze_raw_data function interprets the raw data and stores it into the hit table. Histogramming and clustering can be enabled.
+The clusterizer has not a big impact on processing time since it uses the same analysis loop as the interpreter.
+The analyze_hits function does the histogramming and clustering starting from the hit table.
+The analyze_raw_data_per_scan_parameter function does the anylysis per scan parameter.
 """
 
 from datetime import datetime
@@ -80,7 +81,7 @@ if __name__ == "__main__":
     scan_data_filename = folder + scan_name
     start_time = datetime.now()
     analyze_raw_data(input_file, output_file_hits)
-#     analyze_raw_data_per_scan_parameter(input_file, output_file_hits, scan_data_filename, scan_parameters=['PlsrDAC'])
 #     analyze_hits(input_file, output_file_hits, scan_data_filename, output_file_hits_analyzed=output_file_hits_analyzed)
+#     analyze_raw_data_per_scan_parameter(input_file, output_file_hits, scan_data_filename, scan_parameters=['PlsrDAC'])
     logging.info('Script runtime %.1f seconds' % (datetime.now() - start_time).total_seconds())
     logging.info('FINISHED')
