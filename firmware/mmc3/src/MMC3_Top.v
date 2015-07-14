@@ -135,7 +135,7 @@ PLLE2_BASE #(
     
     .CLKOUT4_DIVIDE(32),     // Divide amount for CLKOUT0 (1-128)
     .CLKOUT4_DUTY_CYCLE(0.5), // Duty cycle for CLKOUT0 (0.001-0.999).
-    .CLKOUT4_PHASE(25.0),      // Phase offset for CLKOUT0 (-360.000-360.000).
+    .CLKOUT4_PHASE(45.0),      // Phase offset for CLKOUT0 (-360.000-360.000).
     
     .DIVCLK_DIVIDE(5),        // Master division value, (1-56)
     .REF_JITTER1(0.0),        // Reference input jitter in UI, (0.000-0.999).
@@ -315,6 +315,15 @@ wire [7:0] DOBOUT;
 genvar i;
 generate
   for (i = 0; i < 4; i = i + 1) begin: rx_gen_i
+  
+    /*PULLDOWN PULLDOWN_DOBOUT_N_i (
+        .O(DOBOUT_N[i])     // Pulldown output (connect directly to top-level port)
+    );
+     
+    PULLUP PULLUP_DOBOUT_P_i (
+        .O(DOBOUT_P[i])     // Pulldown output (connect directly to top-level port)
+    );*/
+    
     IBUFDS #(
         .DIFF_TERM("TRUE"),       // Differential Termination
         .IBUF_LOW_PWR("FALSE"),     // Low power="TRUE", Highest performance="FALSE" 
@@ -362,6 +371,15 @@ endgenerate
 genvar t;
 generate
   for (t = 4; t < 8; t = t + 1) begin: rx_gen_t
+  
+    /*PULLDOWN PULLDOWN_DOBOUT_N_t (
+        .O(DOBOUT_N[t])     // Pulldown output (connect directly to top-level port)
+    );
+       
+    PULLUP PULLUP_DOBOUT_P_t (
+        .O(DOBOUT_P[t])     // Pulldown output (connect directly to top-level port)
+    );*/
+  
     IBUFDS #(
         .DIFF_TERM("TRUE"),       // Differential Termination
         .IBUF_LOW_PWR("FALSE"),     // Low power="TRUE", Highest performance="FALSE" 

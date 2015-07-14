@@ -599,3 +599,13 @@ set_property BITSTREAM.CONFIG.UNUSEDPIN PULLUP [current_design]
 
 #set_property PULLUP true [get_ports {DOBOUT_P[7]}]
 #set_property PULLDOWN true [get_ports {DOBOUT_N[7]}]
+
+
+set_property KEEPER true [get_ports {DOBOUT_P[7]}]
+set_property KEEPER true [get_ports {DOBOUT_P[6]}]
+set_property KEEPER true [get_ports {DOBOUT_P[5]}]
+set_property KEEPER true [get_ports {DOBOUT_P[4]}]
+set_property KEEPER true [get_ports {DOBOUT_P[3]}]
+set_property KEEPER true [get_ports {DOBOUT_P[2]}]
+set_property KEEPER true [get_ports {DOBOUT_P[1]}]
+set_property KEEPER true [get_ports {DOBOUT_P[0]}]
