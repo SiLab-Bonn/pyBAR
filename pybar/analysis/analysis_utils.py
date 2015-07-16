@@ -1381,7 +1381,7 @@ def data_aligned_at_events(table, start_event_number=None, stop_event_number=Non
                 stop_index = stop_indeces[0]
                 stop_index_known = True
 
-    if (start_index_known and stop_index_known) or (start_index + chunk_size >= stop_index):  # special case, one read is enough, data not bigger than one chunk and the indices are known
+    if (start_index_known and stop_index_known) and (start_index + chunk_size >= stop_index):  # special case, one read is enough, data not bigger than one chunk and the indices are known
         yield table.read(start=start_index, stop=stop_index), stop_index
     else:  # read data in chunks, chunks do not divide events, abort if stop_event_number is reached
         while(start_index < stop_index):
