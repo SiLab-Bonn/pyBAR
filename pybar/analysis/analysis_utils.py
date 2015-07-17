@@ -1370,14 +1370,14 @@ def data_aligned_at_events(table, start_event_number=None, stop_event_number=Non
         if start_event_number is not None:
             condition_1 = 'event_number==' + str(start_event_number)
             start_indeces = table.get_where_list(condition_1, start=start_index, stop=stop_index)
-            if start_indeces:  # set start index if possible
+            if start_indeces.shape[0] != 0:  # set start index if possible
                 start_index = start_indeces[0]
                 start_index_known = True
 
         if stop_event_number is not None:
             condition_2 = 'event_number==' + str(stop_event_number)
             stop_indeces = table.get_where_list(condition_2, start=start_index, stop=stop_index)
-            if stop_indeces:  # set the stop index if possible, stop index is excluded
+            if stop_indeces.shape[0] != 0:  # set the stop index if possible, stop index is excluded
                 stop_index = stop_indeces[0]
                 stop_index_known = True
 
