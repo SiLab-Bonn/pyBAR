@@ -2,6 +2,11 @@ import logging
 from time import time
 import re
 import os
+import string
+import smtplib
+import traceback
+import requests
+import socket
 import numpy as np
 from functools import wraps
 from threading import Event, Thread
@@ -34,6 +39,8 @@ class Fei4RunBase(RunBase):
         # adding default run conf parameters valid for all scans
         if 'send_data' not in self._default_run_conf:
             self._default_run_conf.update({'send_data': None})
+        if 'send_error' not in self._default_run_conf:
+            self._default_run_conf.update({'send_error': None})
         if 'comment' not in self._default_run_conf:
             self._default_run_conf.update({'comment': ''})
         if 'reset_rx_on_error' not in self._default_run_conf:
@@ -449,6 +456,16 @@ class Fei4RunBase(RunBase):
     def stop_readout(self, timeout=10.0):
         self.fifo_readout.stop(timeout=timeout)
 
+    def _cleanup(self):  # called in run base after exception handling
+        if self._run_conf['send_error']:
+            #try:
+            ip = requests.request('GET', 'http://myip.dnsomatic.com').text
+            send_mail(text=traceback.format_exc(), configuration=self._run_conf['send_error'], subject='PyBAR run report %s %s'%(ip, socket.gethostname()))
+           # except:
+             #   pass
+        super(Fei4RunBase, self)._cleanup()
+
+
     @abc.abstractmethod
     def configure(self):
         '''Implementation of the run configuration.
@@ -553,3 +570,18 @@ def namedtuple_with_defaults(typename, field_names, default_values=None):
         prototype = T(*default_values)
     T.__new__.__defaults__ = tuple(prototype)
     return T
+
+
+def send_mail(text, configuration, subject=''):
+    logging.info('Send status E-Mail (' + subject + ')')
+    body = string.join((
+            "From: %s" % configuration['email_account'][0],
+            "To: %s" % str(configuration['email_to']).strip('[]'),
+            "Subject: %s" % subject,
+            "",
+            text
+            ), "\r\n")
+    server = smtplib.SMTP_SSL(configuration['email_host'])
+    server.login(configuration['email_account'][0], configuration['email_account'][1])
+    server.sendmail(configuration['email_account'][0], configuration['email_to'], body)
+    server.quit()
