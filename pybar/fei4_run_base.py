@@ -162,10 +162,11 @@ class Fei4RunBase(RunBase):
             self.dut['ENABLE_CHANNEL']['CCPD_TDC'] = 1
             self.dut['ENABLE_CHANNEL'].write()
         elif self.dut.name == 'seabas2':
-            self.dut['ENABLE_CHANNEL']['CH0'] = 1
-            self.dut['ENABLE_CHANNEL']['CH1'] = 1
-            self.dut['ENABLE_CHANNEL']['CH2'] = 1
-            self.dut['ENABLE_CHANNEL']['CH3'] = 1
+            channel_names = [channel.name for channel in self.dut.get_modules('fei4_rx')]
+            for channel in channel_names:
+                # enabling readout
+                self.dut['ENABLE_CHANNEL'][channel] = 1
+            self.dut['ENABLE_CHANNEL']['TLU'] = 1
             self.dut['ENABLE_CHANNEL'].write()
         elif self.dut.name == 'lx9':
             # enable LVDS RX/TX
