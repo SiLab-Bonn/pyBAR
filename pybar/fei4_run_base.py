@@ -5,7 +5,6 @@ import os
 import string
 import smtplib
 import traceback
-import requests
 import socket
 import numpy as np
 from functools import wraps
@@ -20,7 +19,7 @@ from basil.dut import Dut
 from basil.HL.FEI4AdapterCard import FEI4AdapterCard
 from basil.HL.FEI4QuadModuleAdapterCard import FEI4QuadModuleAdapterCard
 
-from pybar.run_manager import RunBase, RunAborted, RunStopped
+from pybar.run_manager import RunBase, RunAborted, RunStopped, run_status
 from pybar.fei4.register import FEI4Register
 from pybar.fei4.register_utils import FEI4RegisterUtils, is_fe_ready
 from pybar.daq.fifo_readout import FifoReadout, RxSyncError, EightbTenbError, FifoError, NoDataTimeout, StopTimeout
@@ -457,14 +456,17 @@ class Fei4RunBase(RunBase):
         self.fifo_readout.stop(timeout=timeout)
 
     def _cleanup(self):  # called in run base after exception handling
-        if self._run_conf['send_error']:
-            #try:
-            ip = requests.request('GET', 'http://myip.dnsomatic.com').text
-            send_mail(text=traceback.format_exc(), configuration=self._run_conf['send_error'], subject='PyBAR run report %s %s'%(ip, socket.gethostname()))
-           # except:
-             #   pass
+        if self._run_conf['send_error'] and self._run_status == run_status.crashed:
+            try:
+                import requests
+                ip = requests.request('GET', 'http://myip.dnsomatic.com').text
+            except ImportError:
+                ip = 'Unknown IP'
+            try:
+                send_mail(text=traceback.format_exc(), configuration=self._run_conf['send_error'], subject='PyBAR run report %s %s' % (ip, socket.gethostname()))
+            except:
+                pass
         super(Fei4RunBase, self)._cleanup()
-
 
     @abc.abstractmethod
     def configure(self):
@@ -573,6 +575,8 @@ def namedtuple_with_defaults(typename, field_names, default_values=None):
 
 
 def send_mail(text, configuration, subject=''):
+    ''' Sends a run status mail with the traceback to a specified E-Mail address if a run crashes.
+    '''
     logging.info('Send status E-Mail (' + subject + ')')
     body = string.join((
             "From: %s" % configuration['email_account'][0],
