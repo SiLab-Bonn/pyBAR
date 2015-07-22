@@ -55,6 +55,7 @@ class RunBase():
         self.file_lock = Lock()
         self.stop_run = Event()  # abort condition for loops
         self.abort_run = Event()
+        self.last_traceback = None
 
 #     @abc.abstractproperty
 #     def _run_id(self):
@@ -118,7 +119,8 @@ class RunBase():
             logging.info('Run %s was stopped', self.run_number)
         except Exception as e:
             self._run_status = run_status.crashed
-            logging.error('Unexpected exception during run %s: %s' % (self.run_number, traceback.format_exc()))
+            self.last_traceback = traceback.format_exc()
+            logging.error('Unexpected exception during run %s: %s' % (self.run_number, self.last_traceback))
             with open(os.path.join(self.working_dir, "crash" + ".log"), 'a+') as f:
                 f.write('-------------------- Run %i --------------------\n' % self.run_number)
                 traceback.print_exc(file=f)
@@ -399,7 +401,7 @@ class RunManager(object):
         '''
         self.current_run.abort(msg)
 
-    def run_run(self, run, run_conf=None, use_thread=False):
+    def run_run(self, run, run_conf=None, use_thread=False, catch_exception=True):
         '''Runs a run in another thread. Non-blocking.
 
         Parameters
@@ -449,6 +451,8 @@ class RunManager(object):
         else:
             self.current_run = run
             status = run.run(run_conf=local_run_conf)
+            if not catch_exception and status != run_status.finished:
+                raise RuntimeError('Exception occurred. Please read the log.')
             return status
 
     def run_primlist(self, primlist, skip_remaining=False):
