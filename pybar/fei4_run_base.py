@@ -4,7 +4,6 @@ import re
 import os
 import string
 import smtplib
-import traceback
 import socket
 import numpy as np
 from functools import wraps
@@ -16,8 +15,6 @@ import abc
 import ast
 import inspect
 from basil.dut import Dut
-from basil.HL.FEI4AdapterCard import FEI4AdapterCard
-from basil.HL.FEI4QuadModuleAdapterCard import FEI4QuadModuleAdapterCard
 
 from pybar.run_manager import RunBase, RunAborted, RunStopped, run_status
 from pybar.fei4.register import FEI4Register
@@ -463,7 +460,8 @@ class Fei4RunBase(RunBase):
             except ImportError:
                 ip = 'Unknown IP'
             try:
-                send_mail(text=traceback.format_exc(), configuration=self._run_conf['send_error'], subject='PyBAR run report %s %s' % (ip, socket.gethostname()))
+                text = 'Run %i at %s\n%s' % (self.run_number, time.strftime('%X %x %Z'), self.last_traceback)
+                send_mail(text=text, configuration=self._run_conf['send_error'], subject='PyBAR run report %s %s' % (ip, socket.gethostname()))
             except:
                 pass
         super(Fei4RunBase, self)._cleanup()
