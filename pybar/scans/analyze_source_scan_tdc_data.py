@@ -55,7 +55,7 @@ def analyze_raw_data(input_files, output_file_hits, interpreter_plots, overwrite
         logging.info('Analyzed data file ' + output_file_hits + ' already exists. Skip analysis for this file.')
     else:
         with AnalyzeRawData(raw_data_file=input_files, analyzed_data_file=output_file_hits) as analyze_raw_data:
-            analyze_raw_data.max_tdc_delay = 80  # max TDC delay to consider a valid in time TDC word
+            analyze_raw_data.max_tdc_delay = max_tdc_delay  # max TDC delay to consider a valid in-time TDC word
             analyze_raw_data.use_tdc_trigger_time_stamp = use_tdc_trigger_time_stamp  # if you want to also measure the delay between trigger / hit-bus
             analyze_raw_data.align_at_trigger = align_at_trigger  # align events at TDC words, first word of event has to be a tdc word
             analyze_raw_data.align_at_tdc = align_at_tdc  # align events at TDC words, first word of event has to be a tdc word
