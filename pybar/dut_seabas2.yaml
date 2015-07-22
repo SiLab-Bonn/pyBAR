@@ -61,6 +61,9 @@ registers:
     hw_driver   : GPIO_ENABLE_CHANNEL
     size        : 8
     fields:
+      - name    : TLU
+        size    : 1
+        offset  : 4
       - name    : CH3
         size    : 1
         offset  : 3
