@@ -50,10 +50,10 @@ hw_drivers:
     interface : ETH
     base_addr : 0x8800
 
-#  - name      : TLU
-#    type      : tlu
-#    interface : ETH
-#    base_addr : 0x8200
+  - name      : TLU
+    type      : tlu
+    interface : ETH
+    base_addr : 0x8200
 
 registers:
   - name        : ENABLE_CHANNEL
