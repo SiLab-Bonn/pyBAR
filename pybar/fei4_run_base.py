@@ -1,5 +1,5 @@
 import logging
-from time import time
+import time
 import re
 import os
 import string
@@ -467,6 +467,7 @@ class Fei4RunBase(RunBase):
                 text = 'Run %i at %s\n%s' % (self.run_number, time.strftime('%X %x %Z'), self.last_traceback)
                 send_mail(text=text, configuration=self._run_conf['send_error'], subject='PyBAR run report %s %s' % (ip, socket.gethostname()))
             except:
+                logging.info("Failed sending pyBAR report")
                 pass
         super(Fei4RunBase, self)._cleanup()
 
