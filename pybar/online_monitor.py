@@ -57,10 +57,7 @@ class DataWorker(QtCore.QObject):
 
     @pyqtSlot()
     def process_data(self):  # infinite loop via QObject.moveToThread(), does not block event loop
-        while(not self._stop_readout.wait(0.001)):  # use wait(), do not block here
-#             socks = dict(self.poller.poll(1))
-#             if self.socket_pull in socks and socks[self.socket_pull] == zmq.POLLIN:
-#                 meta_data = self.socket_pull.recv_json()
+        while(not self._stop_readout.wait(0.01)):  # use wait(), do not block here
             try:
                 meta_data = self.socket_pull.recv_json(flags=zmq.NOBLOCK)
             except zmq.Again:
