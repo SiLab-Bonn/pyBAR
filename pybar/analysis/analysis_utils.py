@@ -763,7 +763,7 @@ def hist_3d_index(x, y, z, shape):
     x = np.ascontiguousarray(x.astype(np.int32))
     y = np.ascontiguousarray(y.astype(np.int32))
     z = np.ascontiguousarray(z.astype(np.int32))
-    result = np.zeros(shape=shape, dtype=np.uint16).ravel()  # ravel hist in c-style, 3D --> 1D
+    result = np.zeros(shape=shape, dtype=np.uint32).ravel()  # ravel hist in c-style, 3D --> 1D
     analysis_functions.hist_3d(x, y, z, shape[0], shape[1], shape[2], result)
     return np.reshape(result, shape)  # rebuilt 3D hist from 1D hist
 

@@ -201,7 +201,7 @@ void histogram_2d(int*& x, int*& y, const unsigned int& rSize, const unsigned in
 }
 
 // fast 3d index histograming (bin size = 1, values starting from 0)
-void histogram_3d(int*& x, int*& y, int*& z, const unsigned int& rSize, const unsigned int& rNbinsX, const unsigned int& rNbinsY, const unsigned int& rNbinsZ, uint16_t*& rResult)
+void histogram_3d(int*& x, int*& y, int*& z, const unsigned int& rSize, const unsigned int& rNbinsX, const unsigned int& rNbinsY, const unsigned int& rNbinsZ, uint32_t*& rResult)
 {
 	for (unsigned int i = 0; i < rSize; ++i){
 		if (x[i] >= rNbinsX || y[i] >= rNbinsY || z[i] >= rNbinsZ){
@@ -209,10 +209,10 @@ void histogram_3d(int*& x, int*& y, int*& z, const unsigned int& rSize, const un
 			errorString<<"The histogram indices (x/y/z)=("<<x[i]<<"/"<<y[i]<<"/"<<z[i]<<") are out of range.";
 			throw std::out_of_range(errorString.str());
 		}
-		if (rResult[x[i] * rNbinsY * rNbinsZ + y[i] * rNbinsZ + z[i]] < 65535)
+		if (rResult[x[i] * rNbinsY * rNbinsZ + y[i] * rNbinsZ + z[i]] < 4294967295)
 			++rResult[x[i] * rNbinsY * rNbinsZ + y[i] * rNbinsZ + z[i]];
 		else
-			throw std::out_of_range("The histogram has more than 65535 entries per bin. This is not supported.");
+			throw std::out_of_range("The histogram has more than 4294967295 entries per bin. This is not supported.");
 	}
 }
 
