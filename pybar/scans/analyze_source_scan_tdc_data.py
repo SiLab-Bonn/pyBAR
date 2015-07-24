@@ -181,7 +181,7 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
         logging.info('Select hits and create TDC histograms for %d cut conditions', len(hit_selection_conditions))
         progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=cluster_hit_table.shape[0], term_width=80)
         progress_bar.start()
-        for cluster_hits, _ in analysis_utils.data_aligned_at_events(cluster_hit_table, chunk_size=100000000):
+        for cluster_hits, _ in analysis_utils.data_aligned_at_events(cluster_hit_table, chunk_size=10000000):
             n_hits_per_condition[0] += cluster_hits.shape[0]
             selected_events_cluster_hits = cluster_hits[np.logical_and(cluster_hits['TDC'] < max_tdc, (cluster_hits['event_status'] & event_status_select_mask) == event_status_condition)]
             n_hits_per_condition[1] += selected_events_cluster_hits.shape[0]
