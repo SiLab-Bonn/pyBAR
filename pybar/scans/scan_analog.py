@@ -11,7 +11,7 @@ class AnalogScan(Fei4RunBase):
     '''Analog scan
     '''
     _default_run_conf = {
-        "mask_steps": 3,  # mask steps
+        "mask_steps": 3,  # mask steps, be carefull PlsrDAC injects different charge for different mask steps
         "n_injections": 100,  # number of injections
         "scan_parameters": [('PlsrDAC', 280)],  # the PlsrDAC setting
         "use_enable_mask": False,  # if True, use Enable mask during scan, if False, all pixels will be enabled
