@@ -118,6 +118,7 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
             condition = re.sub('[&]', '\n', condition)
             condition = re.sub('[()]', '', condition)
             labels.append(condition)
+        plt.clf()
         plt.bar(range(len(n_hits_per_condition)), n_hits_per_condition, align='center')
         plt.xticks(range(len(n_hits_per_condition)), labels, size=8)
         plt.title('Number of hits for different cuts')
