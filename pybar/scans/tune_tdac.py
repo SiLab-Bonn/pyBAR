@@ -28,7 +28,7 @@ class TdacTuning(Fei4RunBase):
         "enable_shift_masks": ["Enable", "C_High", "C_Low"],  # enable masks shifted during scan
         "disable_shift_masks": [],  # disable masks shifted during scan
         "pulser_dac_correction": False,  # PlsrDAC correction for each double column
-        "mask_steps": 3,  # mask steps, be carefull PlsrDAC injects different charge for different mask steps
+        "mask_steps": 3  # mask steps, be carefull PlsrDAC injects different charge for different mask steps
     }
 
     def configure(self):
@@ -59,7 +59,7 @@ class TdacTuning(Fei4RunBase):
             self.close_plots = False
 
         enable_mask_steps = []
-        cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", mask_steps=mask_steps)[0]
+        cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", mask_steps=self.mask_steps)[0]
 
         self.write_target_threshold()
         additional_scan = True

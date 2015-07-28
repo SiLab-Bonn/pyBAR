@@ -60,7 +60,7 @@ class GdacTuning(Fei4RunBase):
             self.close_plots = True
         else:
             self.close_plots = False
-        cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", mask_steps=self.mask_steps_gdac)[0]
+        cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", mask_steps=self.mask_steps)[0]
 
         self.write_target_threshold()
         for gdac_bit in self.gdac_tune_bits:  # reset all GDAC bits
@@ -84,9 +84,9 @@ class GdacTuning(Fei4RunBase):
         # calculate selected pixels from the mask and the disabled columns
         select_mask_array = np.zeros(shape=(80, 336), dtype=np.uint8)
         if not self.enable_mask_steps_gdac:
-            self.enable_mask_steps_gdac = range(self.mask_steps_gdac)
+            self.enable_mask_steps_gdac = range(self.mask_steps)
         for mask_step in self.enable_mask_steps_gdac:
-            select_mask_array += make_pixel_mask(steps=self.mask_steps_gdac, shift=mask_step)
+            select_mask_array += make_pixel_mask(steps=self.mask_steps, shift=mask_step)
         for column in bits_set(self.register.get_global_register_value("DisableColumnCnfg")):
             logging.info('Deselect double column %d' % column)
             select_mask_array[column, :] = 0

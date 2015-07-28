@@ -62,7 +62,7 @@ class FeedbackTuning(Fei4RunBase):
             self.close_plots = False
 
         enable_mask_steps = [0]  # one mask step to increase speed, no effect on precision
-        cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", mask_steps=mask_steps)[0]
+        cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", mask_steps=self.mask_steps)[0]
 
         self.write_target_charge()
 
