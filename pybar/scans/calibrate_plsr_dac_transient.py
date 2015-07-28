@@ -46,11 +46,12 @@ class PlsrDacTransientScan(AnalogScan):
     '''
     _default_run_conf = AnalogScan._default_run_conf.copy()
     _default_run_conf.update({
-        "scan_parameter_values": range(30, 1024, 30),  # plsr dac settings, be aware: too low plsDAC settings are difficult to trigger
-        "enable_double_columns": range(25, 39),  # list of double columns which will be enabled during scan. None will select all double columns, first double column defines first trigger level
+        "scan_parameter_values": range(50, 1024, 25),  # plsr dac settings, be aware: too low plsDAC settings are difficult to trigger
+        "enable_double_columns": range(30, 39),  # list of double columns which will be enabled during scan. None will select all double columns, first double column defines first trigger level
         "enable_mask_steps": [0],  # Scan only one mask step to save time
         "n_injections": 300,  # number of injections, has to be > 260 to allow for averaging 256 injection signals
         "channel": 1,  # oscilloscope channel
+        "trigger_offset": 0,  # trigger is automatically set to the median of the baseline; this can be changed by this offset in mV; for low PLsrDAC sometimes needed
         "max_data_index": 2001,  # maximum data index to be read out; 2001 reads date from 0 to 1999
         "fit_range_step": [(-150, -50), (50, 150)],  # the fit range for the voltage step in relative indices from the voltage step position
         "fit_range": [0, 700]  # fit range for the linear PlsrDAC transfer function
@@ -69,13 +70,14 @@ class PlsrDacTransientScan(AnalogScan):
         # Init Oscilloscope
         self.dut['Oscilloscope'].init()
         self.dut['Oscilloscope'].data_init()  # resert data taking settings
-        self.dut['Oscilloscope'].set_data_stop(2001)  # set readout fraction of waveform
+        self.dut['Oscilloscope'].set_data_start(0)  # set readout fraction of waveform
+        self.dut['Oscilloscope'].set_data_stop(self.max_data_index)  # set readout fraction of waveform
         self.dut['Oscilloscope'].set_average_waveforms(2 ** 8)  # for tetronix has to be 2^x
         logging.info('Initialized oscilloscope %s' % self.dut['Oscilloscope'].get_name())
         # Route Vcal to pin
         commands = []
         self.register.set_global_register_value('Colpr_Mode', 0)  # one DC only
-        self.register.set_global_register_value('Colpr_Addr', int(self.enable_double_columns[0] / 2))
+        self.register.set_global_register_value('Colpr_Addr', self.enable_double_columns[0])
         self.register.set_global_register_value('ExtDigCalSW', 0)
         self.register.set_global_register_value('ExtAnaCalSW', 1)  # Route Vcal to external pin
         commands.extend(self.register.get_commands("WrRegister", name=['Colpr_Addr', 'Colpr_Mode', 'ExtDigCalSW', 'ExtAnaCalSW']))
@@ -104,7 +106,7 @@ class PlsrDacTransientScan(AnalogScan):
             time.sleep(0.2)  # give the trigger some time
             raw_data = self.dut['Oscilloscope'].get_data(channel=self.channel)
             times, voltages = interpret_oscilloscope_data(raw_data)
-            trigger_level = np.median(voltages) / 2.
+            trigger_level = np.median(voltages) / 2. + self.trigger_offset * 1e-3
             self.dut['Oscilloscope'].set_trigger_level(trigger_level)
 
             # Setup data aquisition and start scan loop
@@ -131,7 +133,6 @@ class PlsrDacTransientScan(AnalogScan):
             trigger_levels = in_file_h5.root.PlsrDACwaveforms._v_attrs.trigger_levels
             fit_range = ast.literal_eval(in_file_h5.root.configuration.run_conf[:][np.where(in_file_h5.root.configuration.run_conf[:]['name'] == 'fit_range')]['value'][0])
             fit_range_step = ast.literal_eval(in_file_h5.root.configuration.run_conf[:][np.where(in_file_h5.root.configuration.run_conf[:]['name'] == 'fit_range_step')]['value'][0])
-            print type(fit_range_step)
             progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=data.shape[0], term_width=80)
 
             with tb.open_file(self.output_filename + '_interpreted.h5', 'w') as out_file_h5:
