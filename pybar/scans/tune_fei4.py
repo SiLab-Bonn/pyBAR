@@ -40,7 +40,7 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
         "gdac_tune_bits": range(7, -1, -1),  # GDAC bits to change during tuning
         "n_injections_gdac": 50,  # number of injections per GDAC bit setting
         "max_delta_threshold": 2,  # minimum difference to the target_threshold to abort the tuning
-        "enable_mask_steps_gdac": [0],  # mask steps to do per GDAC setting
+        "enable_mask_steps_gdac": [0],  # mask steps to do per GDAC setting, 1 step is sufficient and safes time
         # Feedback
         "feedback_tune_bits": range(7, -1, -1),
         "n_injections_feedback": 50,
