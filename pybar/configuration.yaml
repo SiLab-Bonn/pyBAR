@@ -11,7 +11,7 @@ module_id : module_test  # module identifier / name, sub-folder with given name 
 # *** global run configuration ***
 #
 run_conf:
-#    send_data : 'tcp://127.0.0.1:5678'
+#    send_data : 'tcp://127.0.0.1:5678'  # to allow incoming connections on all interfaces use 0.0.0.0
     send_error :
         email_host: 'mail.gmx.net'  # outgoing mail server
         email_to: ["pohl@physik.uni-bonn.de", "janssen@physik.uni-bonn.de"]  # the Email adresses the status emails are send to

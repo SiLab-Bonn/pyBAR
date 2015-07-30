@@ -309,7 +309,7 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
 if __name__ == '__main__':
     app = Qt.QApplication(sys.argv)
 #     app.aboutToQuit.connect(myExitHandler)
-    win = OnlineMonitorApplication(socket_addr='tcp://127.0.0.1:5678')
+    win = OnlineMonitorApplication(socket_addr='tcp://127.0.0.1:5678')  # enter remote IP to connect to the other side listening
     win.resize(800, 840)
     win.setWindowTitle('Online Monitor')
     win.show()
