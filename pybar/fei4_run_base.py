@@ -16,7 +16,7 @@ import ast
 import inspect
 from basil.dut import Dut
 
-from pybar.run_manager import RunBase, RunAborted, RunStopped, run_status
+from pybar.run_manager import RunManager, RunBase, RunAborted, RunStopped, run_status
 from pybar.fei4.register import FEI4Register
 from pybar.fei4.register_utils import FEI4RegisterUtils, is_fe_ready
 from pybar.daq.fifo_readout import FifoReadout, RxSyncError, EightbTenbError, FifoError, NoDataTimeout, StopTimeout
@@ -270,7 +270,7 @@ class Fei4RunBase(RunBase):
                 elif os.path.exists(os.path.join(module_path, self.conf['dut'])):
                     dut = os.path.join(module_path, self.conf['dut'])
                 else:
-                    raise ValueError('%s: dut file not found' % self.conf['dut'])
+                    raise ValueError('dut file not found: %s' % self.conf['dut'])
                 self._conf['dut'] = Dut(dut)
             else:
                 self._conf['dut'] = Dut(self.conf['dut'])
@@ -293,7 +293,27 @@ class Fei4RunBase(RunBase):
                     elif os.path.exists(os.path.join(module_path, self.conf['dut_configuration'])):
                         dut_configuration = os.path.join(module_path, self.conf['dut_configuration'])
                     else:
-                        raise ValueError('%s: dut_configuration file not found' % self.conf['dut_configuration'])
+                        raise ValueError('dut_configuration file not found: %s' % self.conf['dut_configuration'])
+                    # make dict
+                    dut_configuration = RunManager.open_conf(dut_configuration)
+                    # change bit file path
+                    if 'USB' in dut_configuration and 'bit_file' in dut_configuration['USB'] and dut_configuration['USB']['bit_file']:
+                        bit_file = os.path.normpath(dut_configuration['USB']['bit_file'].replace('\\', '/'))
+                        # abs path
+                        if os.path.isabs(bit_file):
+                            pass
+                        # working dir
+                        elif os.path.exists(os.path.join(self.conf['working_dir'], bit_file)):
+                            bit_file = os.path.join(self.conf['working_dir'], bit_file)
+                        # path of dut file
+                        elif os.path.exists(os.path.join(os.path.dirname(self.dut.conf_path), bit_file)):
+                            bit_file = os.path.join(os.path.dirname(self.dut.conf_path), bit_file)
+                        # path of this file
+                        elif os.path.exists(os.path.join(module_path, bit_file)):
+                            bit_file = os.path.join(module_path, bit_file)
+                        else:
+                            raise ValueError('bit_file not found: %s' % bit_file)
+                        dut_configuration['USB']['bit_file'] = bit_file
                     self.dut.init(dut_configuration)
                 else:
                     self.dut.init(self.conf['dut_configuration'])
