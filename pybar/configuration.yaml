@@ -36,4 +36,29 @@ run_conf:
 #ThresholdScan:
 #    scan_parameters : '[("PlsrDAC", [None, 100])]'
 #    enable_shift_masks : ["Enable", "C_Low", "C_High"]
-
+#
+#ExtTriggerScan:
+#    trig_count : 0
+#    trigger_latency : 232
+#    trigger_delay : 8
+#    trigger_rate_limit : 500
+#    col_span : [1, 80]
+#    row_span : [1, 336]
+#    overwrite_enable_mask : False
+#    use_enable_mask_for_imon : True
+#    no_data_timeout : 10
+#    scan_timeout : 60
+#    max_triggers : 10000
+#    enable_tdc : False
+#    reset_rx_on_error : False
+#
+#FEI4SelfTriggerScan:
+#    trig_count : 4
+#    trigger_latency : 239
+#    col_span : [1, 80]
+#    row_span : [1, 336]
+#    overwrite_enable_mask : False
+#    use_enable_mask_for_imon : True
+#    no_data_timeout : 10
+#    scan_timeout : 60
+#
