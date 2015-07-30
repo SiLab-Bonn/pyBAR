@@ -37,7 +37,7 @@ module nexys4(
     
 );
 
-wire LOCKED, CLKFBIN, CLKFBOUT;
+wire CLK_LOCKED, CLKFBIN, CLKFBOUT;
 wire CLKOUT0, CLKOUT1, CLKOUT2, CLKOUT3, CLKOUT4, CLKOUT5;
 
 PLLE2_BASE #(
@@ -80,7 +80,7 @@ PLLE2_BASE_inst (
     .CLKOUT5(CLKOUT5),   // 1-bit output: CLKOUT5
     // Feedback Clocks: 1-bit (each) output: Clock feedback ports
     .CLKFBOUT(CLKFBOUT), // 1-bit output: Feedback clock
-    .LOCKED(LOCKED),     // 1-bit output: LOCK
+    .LOCKED(CLK_LOCKED),     // 1-bit output: LOCK
     .CLKIN1(CLK100MHZ),     // 1-bit input wire: input wire clock
     // Control Ports: 1-bit (each) input wire: PLL control ports
     .PWRDWN(1'b0),     // 1-bit input wire: Power-down
@@ -109,7 +109,7 @@ assign ETH_REFCLK = ETH_CLK_TX;
 assign BUS_CLK = ETH_CLK_RX;
 
 wire RST;
-assign RST = !LOCKED;
+assign RST = !CLK_LOCKED;
 
 wire EEPROM_CS, EEPROM_SK, EEPROM_DI;
 wire TCP_CLOSE_REQ;
@@ -540,20 +540,20 @@ clock_divider #(
     .CLOCK(CLK_1HZ)
 );
 
-wire CLK_2HZ;
+wire CLK_3HZ;
 clock_divider #(
-    .DIVISOR(13000000)
-) i_clock_divisor_40MHz_to_2Hz (
+    .DIVISOR(13333333)
+) i_clock_divisor_40MHz_to_3Hz (
     .CLK(CLK40),
     .RESET(1'b0),
     .CE(),
-    .CLOCK(CLK_2HZ)
+    .CLOCK(CLK_3HZ)
 );
 
-assign LED[0] = RX_READY[0] & ((RX_8B10B_DECODER_ERR[0]? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[0] | RX_FIFO_FULL[0]);
-assign LED[1] = RX_READY[1] & ((RX_8B10B_DECODER_ERR[1]? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[1] | RX_FIFO_FULL[1]);
-assign LED[2] = RX_READY[2] & ((RX_8B10B_DECODER_ERR[2]? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[2] | RX_FIFO_FULL[2]);
-assign LED[3] = RX_READY[3] & ((RX_8B10B_DECODER_ERR[3]? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[3] | RX_FIFO_FULL[3]);
-assign LED[4] = ((((TLU_TRG == 1'b0 && TLU_RST == 1'b0)? CLK_2HZ : CLK_1HZ) | FIFO_FULL) & LOCKED);
+assign LED[0] = RX_READY[0] & ((RX_8B10B_DECODER_ERR[0]? CLK_3HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[0] | RX_FIFO_FULL[0]);
+assign LED[1] = RX_READY[1] & ((RX_8B10B_DECODER_ERR[1]? CLK_3HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[1] | RX_FIFO_FULL[1]);
+assign LED[2] = RX_READY[2] & ((RX_8B10B_DECODER_ERR[2]? CLK_3HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[2] | RX_FIFO_FULL[2]);
+assign LED[3] = RX_READY[3] & ((RX_8B10B_DECODER_ERR[3]? CLK_3HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[3] | RX_FIFO_FULL[3]);
+assign LED[4] = (CLK_1HZ | FIFO_FULL) & CLK_LOCKED;
 
 endmodule
