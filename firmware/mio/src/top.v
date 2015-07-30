@@ -206,8 +206,8 @@ wire CMD_START_FLAG; // sending FE command triggered by external devices
 //reg CMD_CAL; // when CAL command is send
 
 // LEMO Tx
-assign TX[0] = ~CMD_READY;
-assign TX[1] = TLU_BUSY;
+assign TX[0] = TLU_CLOCK;
+assign TX[1] = TRIGGER_ENABLE ? TLU_BUSY : ~CMD_READY;
 assign TX[2] = RJ45_TRIGGER;
 
 // ------- RESRT/CLOCK  ------- //
