@@ -383,8 +383,14 @@ class RunManager(object):
         if not conf:
             pass
         elif isinstance(conf, basestring):  # parse the first YAML document in a stream
-            with open(conf, 'r') as f:
-                conf_dict.update(safe_load(f))
+            if os.path.isfile(conf):
+                with open(conf, 'r') as f:
+                    conf_dict.update(safe_load(f))
+            else:  # YAML string
+                try:
+                    conf_dict.update(safe_load(conf))
+                except ValueError:  # invalid path/filename
+                    raise IOError("File not found: %s" % conf)
         elif isinstance(conf, file):  # parse the first YAML document in a stream
             conf_dict.update(safe_load(conf))
         else:  # conf is already a dict
