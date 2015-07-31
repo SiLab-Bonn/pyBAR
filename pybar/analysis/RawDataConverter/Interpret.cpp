@@ -764,21 +764,21 @@ void Interpret::storeEventHits()
 	}
 }
 
-void Interpret::correlateMetaWordIndex(const uint64_t& pEventNumer, const unsigned int& pDataWordIndex)
+void Interpret::correlateMetaWordIndex(const uint64_t& pEventNumber, const unsigned int& pDataWordIndex)
 {
 	if (_metaDataSet && pDataWordIndex == _lastWordIndexSet) { // this check is to speed up the _metaEventIndex access by using the fact that the index has to increase for consecutive events
 //		std::cout<<"_lastMetaIndexNotSet "<<_lastMetaIndexNotSet<<"\n";
-		_metaEventIndex[_lastMetaIndexNotSet] = pEventNumer;
+		_metaEventIndex[_lastMetaIndexNotSet] = pEventNumber;
 		if (_isMetaTableV2 == true) {
 			_lastWordIndexSet = _metaInfoV2[_lastMetaIndexNotSet].stopIndex;
 			_lastMetaIndexNotSet++;
 			while (_metaInfoV2[_lastMetaIndexNotSet - 1].length == 0 && _lastMetaIndexNotSet < _metaEventIndexLength) {
 				info("correlateMetaWordIndex: more than one readout during one event, correcting meta info");
-//				std::cout<<"correlateMetaWordIndex: pEventNumer "<<pEventNumer<<" _lastWordIndexSet "<<_lastWordIndexSet<<" _lastMetaIndexNotSet "<<_lastMetaIndexNotSet<<"\n";
-				_metaEventIndex[_lastMetaIndexNotSet] = pEventNumer;
+//				std::cout<<"correlateMetaWordIndex: pEventNumber "<<pEventNumber<<" _lastWordIndexSet "<<_lastWordIndexSet<<" _lastMetaIndexNotSet "<<_lastMetaIndexNotSet<<"\n";
+				_metaEventIndex[_lastMetaIndexNotSet] = pEventNumber;
 				_lastWordIndexSet = _metaInfoV2[_lastMetaIndexNotSet].stopIndex;
 				_lastMetaIndexNotSet++;
-//				std::cout<<"correlateMetaWordIndex: pEventNumer "<<pEventNumer<<" _lastWordIndexSet "<<_lastWordIndexSet<<" _lastMetaIndexNotSet "<<_lastMetaIndexNotSet<<"\n";
+//				std::cout<<"correlateMetaWordIndex: pEventNumber "<<pEventNumber<<" _lastWordIndexSet "<<_lastWordIndexSet<<" _lastMetaIndexNotSet "<<_lastMetaIndexNotSet<<"\n";
 //				std::cout<<" finished\n";
 			}
 		}
@@ -787,11 +787,11 @@ void Interpret::correlateMetaWordIndex(const uint64_t& pEventNumer, const unsign
 			_lastMetaIndexNotSet++;
 			while (_metaInfo[_lastMetaIndexNotSet - 1].length == 0 && _lastMetaIndexNotSet < _metaEventIndexLength) {
 				info("correlateMetaWordIndex: more than one readout during one event, correcting meta info");
-//				std::cout<<"correlateMetaWordIndex: pEventNumer "<<pEventNumer<<" _lastWordIndexSet "<<_lastWordIndexSet<<" _lastMetaIndexNotSet "<<_lastMetaIndexNotSet<<"\n";
-				_metaEventIndex[_lastMetaIndexNotSet] = pEventNumer;
+//				std::cout<<"correlateMetaWordIndex: pEventNumber "<<pEventNumber<<" _lastWordIndexSet "<<_lastWordIndexSet<<" _lastMetaIndexNotSet "<<_lastMetaIndexNotSet<<"\n";
+				_metaEventIndex[_lastMetaIndexNotSet] = pEventNumber;
 				_lastWordIndexSet = _metaInfo[_lastMetaIndexNotSet].stopIndex;
 				_lastMetaIndexNotSet++;
-//				std::cout<<"correlateMetaWordIndex: pEventNumer "<<pEventNumer<<" _lastWordIndexSet "<<_lastWordIndexSet<<" _lastMetaIndexNotSet "<<_lastMetaIndexNotSet<<"\n";
+//				std::cout<<"correlateMetaWordIndex: pEventNumber "<<pEventNumber<<" _lastWordIndexSet "<<_lastWordIndexSet<<" _lastMetaIndexNotSet "<<_lastMetaIndexNotSet<<"\n";
 //				std::cout<<" finished\n";
 			}
 		}
