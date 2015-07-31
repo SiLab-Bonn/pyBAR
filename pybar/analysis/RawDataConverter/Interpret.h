@@ -217,6 +217,5 @@ private:
 
 	//counter variables for the actual raw data file
 	unsigned int _dataWordIndex;			//the word index of the actual raw data file, needed for event number calculation
-	unsigned int _actualDataWordIndex;
 };
 
