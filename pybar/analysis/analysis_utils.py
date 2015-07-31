@@ -451,6 +451,33 @@ def get_data_file_names_from_scan_base(scan_base, filter_file_words=None, parame
     return raw_data_files
 
 
+def sort_raw_data_files_by_time(scan_base, meta_data_v2=True):
+    '''Sort list of raw data files by time given from the meta table.
+
+    Parameters
+    ----------
+    scan_base : list of strings
+    meta_data_v2 : bool
+
+    Returns
+    -------
+    list of strings
+    '''
+    f_list = {}
+    if len(scan_base) > 1:
+        for raw_data_file in scan_base:
+            with tb.open_file(raw_data_file, mode="r") as h5_file:
+                if meta_data_v2:
+                    timestamp = h5_file.root.meta_data[0]["timestamp_start"]
+                else:
+                    timestamp = h5_file.root.meta_data[0]["timestamp"]
+            f_list[raw_data_file] = timestamp
+
+        return list(sorted(f_list, key=f_list.__getitem__, reverse=False))
+    else:
+        return scan_base
+
+
 def get_parameter_scan_bases_from_scan_base(scan_base):
     """ Takes a list of scan base names and returns all scan base names that have this scan base within their name.
 
