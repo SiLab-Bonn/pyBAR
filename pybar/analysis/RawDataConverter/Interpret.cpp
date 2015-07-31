@@ -372,6 +372,7 @@ void Interpret::resetCounters()
 	_nTDCWords = 0;
 	_nOtherWords = 0;
 	_nHits = 0;
+	_nSmallHits = 0;
 	_nEmptyEvents = 0;
 	_nMaxHitsPerEvent = 0;
 	_firstTriggerNrSet = false;
@@ -512,42 +513,45 @@ unsigned int Interpret::getNwords()
 
 void Interpret::printSummary()
 {
-	std::cout << "#Data Words " << _nDataWords << "\n";
-	std::cout << "#Data Header " << _nDataHeaders << "\n";
-	std::cout << "#Data Records " << _nDataRecords << "\n";
-	std::cout << "#Service Records " << _nServiceRecords << "\n";
-	std::cout << "#Other Words " << _nOtherWords << "\n";
-	std::cout << "#Unknown words " << _nUnknownWords << "\n";
-	std::cout << "#TDC words " << _nTDCWords << "\n\n";
+	std::cout << "#Data Words        " << std::right << std::setw(15) << _nDataWords << "\n";
+	std::cout << "#Data Header       " << std::right << std::setw(15) << _nDataHeaders << "\n";
+	std::cout << "#Data Records      " << std::right << std::setw(15) << _nDataRecords << "\n";
+	std::cout << "#Service Records   " << std::right << std::setw(15) << _nServiceRecords << "\n";
+	std::cout << "#Other Words       " << std::right << std::setw(15) << _nOtherWords << "\n";
+	std::cout << "#TDC words         " << std::right << std::setw(15) << _nTDCWords << "\n";
+	std::cout << "#Trigger words     " << std::right << std::setw(15) << _nTriggers << "\n\n";
 
-	std::cout << "#Hits " << _nHits << "\n";
-	std::cout << "MaxHitsPerEvent " << _nMaxHitsPerEvent << "\n";
-	std::cout << "#Events " << _nEvents << "\n";
-	std::cout << "#Trigger " << _nTriggers << "\n\n";
-	std::cout << "#Empty Events " << _nEmptyEvents << "\n";
-	std::cout << "#Incomplete Events " << _nIncompleteEvents << "\n\n";
+	std::cout << "#Events            " << std::right << std::setw(15) << _nEvents << "\n";
+	std::cout << "#Empty Events      " << std::right << std::setw(15) << _nEmptyEvents << "\n";
+	std::cout << "#Hits              " << std::right << std::setw(15) << _nHits << "\n";
+	std::cout << "#Small Hits        " << std::right << std::setw(15) << _nSmallHits << "\n";
+	std::cout << "MaxHitsPerEvent    " << std::right << std::setw(15) << _nMaxHitsPerEvent << "\n\n";
+
+	std::cout << "#Incomplete Events " << std::right << std::setw(15) << _nIncompleteEvents << "\n";
+	std::cout << "#Unknown words     " << std::right << std::setw(15) << _nUnknownWords << "\n\n";
+
 
 	std::cout << "#ErrorCounters \n";
-	std::cout << "\t0\t" << _errorCounter[0] << "\tEvents with SR\n";
-	std::cout << "\t1\t" << _errorCounter[1] << "\tEvents with no trigger word\n";
-	std::cout << "\t2\t" << _errorCounter[2] << "\tEvents with LVL1ID not const.\n";
-	std::cout << "\t3\t" << _errorCounter[3] << "\tEvents that were incomplete (# BCIDs wrong)\n";
-	std::cout << "\t4\t" << _errorCounter[4] << "\tEvents with unknown words\n";
-	std::cout << "\t5\t" << _errorCounter[5] << "\tEvents with jumping BCIDs\n";
-	std::cout << "\t6\t" << _errorCounter[6] << "\tEvents with TLU trigger error\n";
-	std::cout << "\t7\t" << _errorCounter[7] << "\tEvents that were truncated due to too many hits\n";
-	std::cout << "\t8\t" << _errorCounter[8] << "\tEvents with TDC words\n";
-	std::cout << "\t9\t" << _errorCounter[9] << "\tEvents with > 1 TDC words\n";
-	std::cout << "\t10\t" << _errorCounter[10] << "\tEvents with TDC overflow\n";
-	std::cout << "\t11\t" << _errorCounter[11] << "\tEvents with no hits\n";
+	std::cout << "0 " << std::right << std::setw(15) << _errorCounter[0] << " Events with SR\n";
+	std::cout << "1 " << std::right << std::setw(15) << _errorCounter[1] << " Events with no trigger word\n";
+	std::cout << "2 " << std::right << std::setw(15) << _errorCounter[2] << " Events with LVL1ID not const.\n";
+	std::cout << "3 " << std::right << std::setw(15) << _errorCounter[3] << " Events that were incomplete (# BCIDs wrong)\n";
+	std::cout << "4 " << std::right << std::setw(15) << _errorCounter[4] << " Events with unknown words\n";
+	std::cout << "5 " << std::right << std::setw(15) << _errorCounter[5] << " Events with jumping BCIDs\n";
+	std::cout << "6 " << std::right << std::setw(15) << _errorCounter[6] << " Events with TLU trigger error\n";
+	std::cout << "7 " << std::right << std::setw(15) << _errorCounter[7] << " Events that were truncated due to too many hits\n";
+	std::cout << "8 " << std::right << std::setw(15) << _errorCounter[8] << " Events with TDC words\n";
+	std::cout << "9 " << std::right << std::setw(15) << _errorCounter[9] << " Events with > 1 TDC words\n";
+	std::cout << "10" << std::right << std::setw(15) << _errorCounter[10] << " Events with TDC overflow\n";
+	std::cout << "11" << std::right << std::setw(15) << _errorCounter[11] << " Events with no hits\n\n";
 
 	std::cout << "#TriggerErrorCounters \n";
-	std::cout << "\t0\t" << _triggerErrorCounter[0] << "\tTrigger number not increasing by 1\n";
-	std::cout << "\t1\t" << _triggerErrorCounter[1] << "\t# Trigger per event > 1\n";
+	std::cout << "0 " << std::right << std::setw(15) << _triggerErrorCounter[0] << " Trigger number not increasing by 1\n";
+	std::cout << "1 " << std::right << std::setw(15) << _triggerErrorCounter[1] << " # Trigger per event > 1\n\n";
 
 	std::cout << "#ServiceRecords \n";
 	for (unsigned int i = 0; i < __NSERVICERECORDS; ++i)
-		std::cout << "\t" << i << "\t" << _serviceRecordCounter[i] << "\n";
+		std::cout << std::left << std::setw(2) << i << std::right << std::setw(15) << _serviceRecordCounter[i] << "\n";
 }
 
 void Interpret::printStatus()
@@ -596,6 +600,7 @@ void Interpret::printStatus()
 	std::cout << "_nDataRecords " << _nDataRecords << "\n";
 	std::cout << "_nDataHeaders " << _nDataHeaders << "\n";
 	std::cout << "_nHits " << _nHits << "\n";
+	std::cout << "_nSmallHits " << _nSmallHits << "\n";
 	std::cout << "_nDataWords " << _nDataWords << "\n";
 	std::cout << "_firstTriggerNrSet " << _firstTriggerNrSet << "\n";
 	std::cout << "_firstTdcSet " << _firstTdcSet << "\n";
@@ -839,12 +844,18 @@ bool Interpret::getHitsfromDataRecord(const unsigned int& pSRAMWORD, int& pColHi
 		pRowHit1 = DATA_RECORD_ROW1_MACRO(pSRAMWORD);
 		pTotHit1 = DATA_RECORD_TOT1_MACRO(pSRAMWORD);
 	}
+	else if (DATA_RECORD_TOT1_MACRO(pSRAMWORD) == 14) {
+		_nSmallHits++;
+	}
 
 	//set second hit values
 	if (DATA_RECORD_TOT2_MACRO(pSRAMWORD) <= _maxTot) {	//ommit late/small hit and no hit (15) tot values for the TOT(2) hit
 		pColHit2 = DATA_RECORD_COLUMN2_MACRO(pSRAMWORD);
 		pRowHit2 = DATA_RECORD_ROW2_MACRO(pSRAMWORD);
 		pTotHit2 = DATA_RECORD_TOT2_MACRO(pSRAMWORD);
+	}
+	else if (DATA_RECORD_TOT2_MACRO(pSRAMWORD) == 14) {
+		_nSmallHits++;
 	}
 	return true;
 	//}

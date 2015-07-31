@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <iomanip>
 #include <string>
 #include <ctime>
 #include <cmath>
@@ -180,6 +181,7 @@ private:
 	unsigned int _nDataRecords;					//total number of data records found
 	unsigned int _nDataHeaders;					//total number of data headers found
 	unsigned int _nHits;						//total number of hits found
+	unsigned int _nSmallHits;                   //total number of small hits (ToT code 14)
 	unsigned int _nDataWords;					//total number of data words
 	bool _firstTriggerNrSet;                    //true if the first trigger was found
 	bool _firstTdcSet;                    		//true if the first tdc word was found
