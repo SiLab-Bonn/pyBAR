@@ -42,7 +42,7 @@ void Interpret::setStandardSettings()
 	_startWordIndex = 0;
 	_createMetaDataWordIndex = false;
 	_createEmptyEventHits = false;
-	_isMetaTableV2 = false;
+	_isMetaTableV2 = true;
 	_alignAtTriggerNumber = false;
 	_useTriggerTimeStamp = false;
 	_useTdcTriggerTimeStamp = false;
