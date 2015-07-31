@@ -100,7 +100,8 @@ class AnalyzeRawData(object):
             if isinstance(raw_data_file, basestring):
                 self._analyzed_data_file = os.path.splitext(raw_data_file)[0] + '_interpreted.h5'
             else:
-                raise analysis_utils.IncompleteInputError('Output file name is not given.')
+                self._analyzed_data_file = None
+#                 raise analysis_utils.IncompleteInputError('Output file name is not given.')
 
         # create a scan parameter table from all raw data files
         if raw_data_files is not None:
