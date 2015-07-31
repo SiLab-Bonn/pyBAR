@@ -285,7 +285,7 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         recent_total_hits = n_hits
         recent_total_events = n_events
         self.plot_delay = self.plot_delay * 0.9 + (now - timestamp_stop) * 0.1
-        self.plot_delay_label.setText("Plot Delay\n%s" % ((time.strftime('%H:%M:%S', time.gmtime(self.plot_delay))) if self.plot_delay > 5 else "%1.2f ms" % (self.plot_delay * 1.e3)))
+        self.plot_delay_label.setText("Plot Delay\n%s" % ((time.strftime('%H:%M:%S', time.gmtime(self.plot_delay))) if abs(self.plot_delay) > 5 else "%1.2f ms" % (self.plot_delay * 1.e3)))
         recent_fps = 1.0 / (now - self.updateTime)  # calculate FPS
         recent_hps = (recent_total_hits - self.total_hits) / (now - self.updateTime)
         recent_eps = (recent_total_events - self.total_events) / (now - self.updateTime)
