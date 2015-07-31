@@ -291,6 +291,8 @@ bool Interpret::setMetaData(MetaInfo* &rMetaInfo, const unsigned int& tLength)
 			throw std::out_of_range("Meta word index out of range.");
 		if (_metaInfo[i].stopIndex != _metaInfo[i + 1].startIndex && _metaInfoV2[i + 1].startIndex != 0)
 			throw std::out_of_range("Meta word index out of range.");
+		if (_metaInfo[i].timeStamp >= _metaInfo[i + 1].timeStamp)
+			throw std::out_of_range("Time stamp not increasing.");
 	}
 	if (_metaInfo[tLength - 1].startIndex + _metaInfo[tLength - 1].length != _metaInfo[tLength - 1].stopIndex)
 		throw std::out_of_range("Meta word index out of range.");
@@ -316,6 +318,8 @@ bool Interpret::setMetaDataV2(MetaInfoV2* &rMetaInfo, const unsigned int& tLengt
 			throw std::out_of_range("Meta word index out of range.");
 		if (_metaInfoV2[i].stopIndex != _metaInfoV2[i + 1].startIndex && _metaInfoV2[i + 1].startIndex != 0)
 			throw std::out_of_range("Meta word index out of range.");
+		if (_metaInfoV2[i].startTimeStamp >= _metaInfoV2[i].stopTimeStamp || _metaInfoV2[i].stopTimeStamp > _metaInfoV2[i + 1].startTimeStamp)
+			throw std::out_of_range("Time stamp not increasing.");
 	}
 	if (_metaInfoV2[tLength - 1].startIndex + _metaInfoV2[tLength - 1].length != _metaInfoV2[tLength - 1].stopIndex)
 		throw std::out_of_range("Meta word index out of range.");
