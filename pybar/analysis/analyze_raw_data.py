@@ -153,6 +153,7 @@ class AnalyzeRawData(object):
         self.meta_event_index = None
         self.fei4b = False
         self.create_hit_table = False
+        self.create_empty_event_hits = False
         self.create_meta_event_index = True
         self.create_tot_hist = True
         self.create_tot_pixel_hist = True
@@ -205,6 +206,15 @@ class AnalyzeRawData(object):
     @create_hit_table.setter
     def create_hit_table(self, value):
         self._create_hit_table = value
+
+    @property
+    def create_empty_event_hits(self):
+        return self._create_empty_event_hits
+
+    @create_empty_event_hits.setter
+    def create_empty_event_hits(self, value):
+        self._create_empty_event_hits = value
+        self.interpreter.create_empty_event_hits(value)
 
     @property
     def create_occupancy_hist(self):
