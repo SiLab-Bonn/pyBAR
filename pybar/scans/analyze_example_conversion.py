@@ -17,6 +17,7 @@ def analyze_raw_data(input_file, output_file_hits):
         analyze_raw_data.create_cluster_hit_table = False  # adds the cluster id and seed info to each hit, std. setting is false
         analyze_raw_data.create_cluster_table = False  # enables the creation of a table with all clusters, std. setting is false
 
+        analyze_raw_data.create_empty_event_hits = False  # creates events with no hist in hit table
         analyze_raw_data.create_occupancy_hist = True  # creates a colxrow histogram with accumulated hits for each scan parameter
         analyze_raw_data.create_tot_hist = True  # creates a ToT histogram
         analyze_raw_data.create_rel_bcid_hist = True  # creates a histogram with the relative BCID of the hits
