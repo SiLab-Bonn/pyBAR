@@ -605,7 +605,7 @@ def check_parameter_similarity(files_dict):
     return True
 
 
-def combine_meta_data(files_dict):
+def combine_meta_data(files_dict, meta_data_v2=True):
     """
     Takes the dict of hdf5 files and combines their meta data tables into one new numpy record array.
 
@@ -614,7 +614,6 @@ def combine_meta_data(files_dict):
         logging.info("Combine the meta data from %d files", len(files_dict))
     # determine total length needed for the new combined array, thats the fastest way to combine arrays
     total_length = 0  # the total length of the new table
-    meta_data_v2 = True
     for file_name in files_dict.iterkeys():
         with tb.openFile(file_name, mode="r") as in_file_h5:  # open the actual file
             total_length += in_file_h5.root.meta_data.shape[0]
