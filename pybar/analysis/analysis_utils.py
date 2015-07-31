@@ -1367,6 +1367,7 @@ def data_aligned_at_events(table, start_event_number=None, stop_event_number=Non
     try_speedup : bool
         Try to reduce the index range to read by searching for the indices of start and stop event number. If these event numbers are usually
         not in the data this speedup can even slow down the function!
+
     Returns
     -------
     iterable to numpy.histogram
@@ -1379,6 +1380,7 @@ def data_aligned_at_events(table, start_event_number=None, stop_event_number=Non
             start_event_number, stop_event_number = event_select_function(scan_parameter)
             for data, start_index in data_aligned_at_events(table, start_event_number=start_event_number, stop_event_number=stop_event_number, start=start_index):
                 do_something(data)
+
     Example
     -------
     for data, index in data_aligned_at_events(table):
