@@ -28,7 +28,7 @@ class HotPixelTuning(FEI4SelfTriggerScan):
         "scan_timeout": 60,  # timeout for scan after which the scan will be stopped, in seconds
         "disable_for_mask": ['Enable'],  # list of masks for which noisy pixels will be disabled
         "enable_for_mask": ['Imon'],  # list of masks for which noisy pixels will be disabled
-        "mask_high_count": 10,  # masking the largest mask_high_count number of pixels with ocupancy >low_value
+        "mask_high_count": 10,  # masking the largest mask_high_count number of pixels with occupancy greater than low_value
         "low_value": 1  # only pixels with occupancy greater than low_value can be masked
     }
 
@@ -48,7 +48,7 @@ class HotPixelTuning(FEI4SelfTriggerScan):
             # n largest elements
             n_largest_elements = np.sort(occ_hist[occ_hist > self.low_value])[-self.mask_high_count:]
             # noisy pixels are set to 1
-            if n_largest_elements:
+            if n_largest_elements.shape[0] > 0:
                 self.occ_mask[occ_hist >= n_largest_elements[0]] = 1
             # make inverse
             self.inv_occ_mask = invert_pixel_mask(self.occ_mask)

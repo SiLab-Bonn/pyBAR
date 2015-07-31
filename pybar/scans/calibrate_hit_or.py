@@ -118,7 +118,7 @@ class HitOrCalibration(Fei4RunBase):
                             ('PlsrDAC', [40, 50, 60, 80, 130, 180, 230, 280, 340, 440, 540, 640, 740])],  # 0 400 sufficient
         "reset_rx_on_error": True,
         "plot_tdc_histograms": False,
-        "pixels": (np.dstack(np.where(make_box_pixel_mask_from_col_row([40, 45], [150, 155]) == 1)) + 1).tolist()[0],  # list of (col, row) tupels. From 1 to 80/336.
+        "pixels": (np.dstack(np.where(make_box_pixel_mask_from_col_row([40, 41], [150, 151]) == 1)) + 1).tolist()[0],  # list of (col, row) tupels. From 1 to 80/336.
         "enable_masks": ["Enable", "C_Low", "C_High"],
         "disable_masks": ["Imon"]
     }
