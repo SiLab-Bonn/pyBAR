@@ -261,10 +261,8 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
     @pyqtSlot()
     def on_reset(self):
         self.worker.reset()
-        self.updateTime = ptime.time()
         self.total_hits = 0
         self.total_events = 0
-        self.update_monitor(timestamp_start, timestamp_stop, readout_error, scan_parameters, n_hits, n_events)
 
     @pyqtSlot()
     def on_run_start(self):
