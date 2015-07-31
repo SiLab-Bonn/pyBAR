@@ -61,6 +61,7 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 	}
 	_hitIndex = 0;
 	_actualMetaWordIndex = 0;
+	_actualDataWordIndex = 0;
 
 	int tActualCol1 = 0;				//column position of the first hit in the actual data record
 	int tActualRow1 = 0;				//row position of the first hit in the actual data record
@@ -80,8 +81,9 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 		}
 
 		correlateMetaWordIndex(_nEvents, _dataWordIndex);
-		_nDataWords++;
+		_actualDataWordIndex = _dataWordIndex;
 		_dataWordIndex++;
+		_nDataWords++;
 		unsigned int tActualWord = pDataWords[iWord];			//take the actual SRAM word
 		tActualTot1 = -1;												          //TOT1 value stays negative if it can not be set properly in getHitsfromDataRecord()
 		tActualTot2 = -1;												          //TOT2 value stays negative if it can not be set properly in getHitsfromDataRecord()
@@ -131,15 +133,8 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 				debug(std::string(" ") + IntToStr(_nDataWords) + " DH LVL1ID/BCID " + IntToStr(tActualLVL1ID) + "/" + IntToStr(tActualBCID) + "\t" + LongIntToStr(_nEvents));
 		}
 		else if (isTriggerWord(tActualWord)) { //data word is trigger word, is first word of the event data if external trigger is present
-			_nTriggers++;						//increase the total trigger number counter
-			if (!_alignAtTriggerNumber) {			// first word is not always the trigger number
-				if (tNdataHeader > _NbCID - 1)
-					addEvent();
-			}
-			else {		// use trigger number for event building, first word is trigger word in event data stream
-				addEvent();
-			}
-			tTriggerWord++;                     //trigger event counter increase
+			_nTriggers++;						//total trigger number counter
+			tTriggerWord++;                     //trigger words per event
 
 			if (!_useTriggerTimeStamp)
 				tTriggerNumber = TRIGGER_NUMBER_MACRO_NEW(tActualWord); //actual trigger number
@@ -166,6 +161,14 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 				tEventTriggerNumber = tTriggerNumber;
 
 			_lastTriggerNumber = tTriggerNumber;
+
+			if (!_alignAtTriggerNumber) {			// first word is not always the trigger number
+				if (tNdataHeader > _NbCID - 1)
+					addEvent();
+			}
+			else {		// use trigger number for event building, first word is trigger word in event data stream
+				addEvent();
+			}
 		}
 		else if (getInfoFromServiceRecord(tActualWord, tActualSRcode, tActualSRcounter)) { //data word is service record
 			if (Basis::debugSet())
@@ -188,7 +191,7 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 				addEvent();
 			}
 
-			_firstTdcSet = true;
+			_firstTdcSet = true;  // FIXME
 
 			if ((tErrorCode & __TDC_WORD) == __TDC_WORD) {  //if the event has already a TDC word set __MANY_TDC_WORDS
 				if (!_useTdcTriggerTimeStamp)  // the first TDC word defines the event TDC value
@@ -272,6 +275,7 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 			tStartBCID = tActualBCID;
 			tStartLVL1ID = tActualLVL1ID;
 		}
+		//correlateMetaWordIndex(_nEvents, _actualDataWordIndex);
 	}
 	return true;
 }
@@ -679,7 +683,7 @@ void Interpret::addHit(const unsigned char& pRelBCID, const unsigned short int& 
 	}
 	else {
 		addEventErrorCode(__TRUNC_EVENT); //too many hits in the event, abort this event, add truncated flac
-		addEvent();
+		addEvent(); // FIXME
 		if (Basis::warningSet())
 			warning(std::string("addHit: Hit buffer overflow prevented by splitting events at event " + LongIntToStr(_nEvents)), __LINE__);
 	}
