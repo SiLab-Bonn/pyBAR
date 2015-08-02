@@ -242,7 +242,7 @@ class Fei4RunBase(RunBase):
         # sending data
         self.socket_addr = self._run_conf['send_data']
         if self.socket_addr:
-            logging.info('Sending data to %s', self.socket_addr)
+            logging.info('Opening push socket for data transimission at %s', self.socket_addr)
         # scan parameters
         if 'scan_parameters' in self.run_conf:
             if isinstance(self.run_conf['scan_parameters'], basestring):
