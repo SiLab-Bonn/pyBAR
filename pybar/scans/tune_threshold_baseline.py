@@ -18,6 +18,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
 
     Tuning the FEI4 to the lowest possible threshold (GDAC and TDAC). Feedback current will not be tuned.
     NOTE: In case of RX errors decrease the trigger frequency (= increase trigger_rate_limit)
+    NOTE: To increase the TDAC range, decrease TdacVbp.
     '''
     _default_run_conf = {
         "occupancy_limit": 0,  # occupancy limit, when reached the TDAC will be decreased (increasing threshold). 0 will mask any pixel with occupancy greater than zero
