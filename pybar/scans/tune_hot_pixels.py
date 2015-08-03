@@ -32,9 +32,9 @@ class HotPixelTuning(FEI4SelfTriggerScan):
 
     def analyze(self):
         with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
-            analyze_raw_data.create_cluster_size_hist = True  # can be set to false to omit cluster hit creation, can save some time, standard setting is false
+            analyze_raw_data.create_cluster_size_hist = False
             analyze_raw_data.create_source_scan_hist = True
-            analyze_raw_data.create_cluster_tot_hist = True
+            analyze_raw_data.create_cluster_tot_hist = False
             analyze_raw_data.interpreter.set_warning_output(False)
             analyze_raw_data.clusterizer.set_warning_output(False)
             analyze_raw_data.interpret_word_table()
