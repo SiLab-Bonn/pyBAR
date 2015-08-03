@@ -146,7 +146,11 @@ class HitOrCalibration(Fei4RunBase):
         scan_par_name = self.scan_parameters._fields[-1]  # scan parameter is in inner loop
         scan_parameters_values = self.scan_parameters[-1][:]  # create deep copy of scan_parameters, they are overwritten in self.readout
 
+        logging.info("Scanning %d pixels" % len(self.pixels))
         for pixel_index, pixel in enumerate(self.pixels):
+            if self.stop_run.is_set():
+                break
+
             column = pixel[0]
             row = pixel[1]
             logging.info('Scanning pixel: %d / %d (column / row)', column, row)
