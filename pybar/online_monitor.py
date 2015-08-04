@@ -134,6 +134,7 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         self.total_hits = 0
         self.total_events = 0
         self.setup_data_worker_and_start(socket_addr)
+        self.reset_plots()
 
     def closeEvent(self, event):
         super(OnlineMonitorApplication, self).closeEvent(event)
@@ -263,6 +264,7 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         self.worker.reset()
         self.total_hits = 0
         self.total_events = 0
+        self.reset_plots()
 
     @pyqtSlot()
     def on_run_start(self):
@@ -282,6 +284,15 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
     @pyqtSlot(dict)
     def on_interpreted_data(self, interpreted_data):
         self.update_plots(**interpreted_data)
+
+    def reset_plots(self):
+        self.occupancy_img.setImage(np.zeros((80, 336), dtype=np.uint8), autoDownsample=True)
+        self.tot_plot.setData(x=np.linspace(-0.5, 15.5, 17), y=np.zeros((16,), dtype=np.uint8), fillLevel=0, brush=(0, 0, 255, 150))
+        self.tdc_plot.setData(x=np.linspace(-0.5, 4096.5, 4097), y=np.zeros((4096,), dtype=np.uint8), fillLevel=0, brush=(0, 0, 255, 150))
+        self.event_status_plot.setData(x=np.linspace(-0.5, 15.5, 17), y=np.zeros((16,), dtype=np.uint8), stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
+        self.service_record_plot.setData(x=np.linspace(-0.5, 31.5, 33), y=np.zeros((32,), dtype=np.uint8), stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
+        self.trigger_status_plot.setData(x=np.linspace(-0.5, 7.5, 9), y=np.zeros((8,), dtype=np.uint8), stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
+        self.hit_timing_plot.setData(x=np.linspace(-0.5, 15.5, 17), y=np.zeros((16,), dtype=np.uint8), stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
 
     def update_plots(self, occupancy, tot_hist, tdc_counters, error_counters, service_records_counters, trigger_error_counters, rel_bcid_hist):
         self.occupancy_img.setImage(occupancy[:, ::-1, 0], autoDownsample=True)
