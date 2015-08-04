@@ -265,6 +265,7 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         self.total_hits = 0
         self.total_events = 0
         self.reset_plots()
+        self.update_rate(0, 0, 0, 0, 0)
 
     @pyqtSlot()
     def on_run_start(self):
@@ -286,13 +287,7 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         self.update_plots(**interpreted_data)
 
     def reset_plots(self):
-        self.occupancy_img.setImage(np.zeros((80, 336), dtype=np.uint8), autoDownsample=True)
-        self.tot_plot.setData(x=np.linspace(-0.5, 15.5, 17), y=np.zeros((16,), dtype=np.uint8), fillLevel=0, brush=(0, 0, 255, 150))
-        self.tdc_plot.setData(x=np.linspace(-0.5, 4096.5, 4097), y=np.zeros((4096,), dtype=np.uint8), fillLevel=0, brush=(0, 0, 255, 150))
-        self.event_status_plot.setData(x=np.linspace(-0.5, 15.5, 17), y=np.zeros((16,), dtype=np.uint8), stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
-        self.service_record_plot.setData(x=np.linspace(-0.5, 31.5, 33), y=np.zeros((32,), dtype=np.uint8), stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
-        self.trigger_status_plot.setData(x=np.linspace(-0.5, 7.5, 9), y=np.zeros((8,), dtype=np.uint8), stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
-        self.hit_timing_plot.setData(x=np.linspace(-0.5, 15.5, 17), y=np.zeros((16,), dtype=np.uint8), stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
+        self.update_plots(np.zeros((80, 336, 1), dtype=np.uint8), np.zeros((16,), dtype=np.uint8), np.zeros((4096,), dtype=np.uint8), np.zeros((16,), dtype=np.uint8), np.zeros((32,), dtype=np.uint8), np.zeros((8,), dtype=np.uint8), np.zeros((16,), dtype=np.uint8))
 
     def update_plots(self, occupancy, tot_hist, tdc_counters, error_counters, service_records_counters, trigger_error_counters, rel_bcid_hist):
         self.occupancy_img.setImage(occupancy[:, ::-1, 0], autoDownsample=True)
@@ -324,15 +319,18 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         self.fps = self.fps * 0.7 + recent_fps * 0.3
         self.hps = self.hps + (recent_hps - self.hps) * 0.3 / self.fps
         self.eps = self.eps + (recent_eps - self.eps) * 0.3 / self.fps
-        self.rate_label.setText("Readout Rate\n%d Hz" % self.fps)
+        self.update_rate(self.fps, self.hps, recent_total_hits, self.eps, recent_total_events)
+
+    def update_rate(self, fps, hps, recent_total_hits, eps, recent_total_events):
+        self.rate_label.setText("Readout Rate\n%d Hz" % fps)
         if self.spin_box.value() == 0:  # show number of hits, all hits are integrated
             self.hit_rate_label.setText("Total Hits\n%d" % int(recent_total_hits))
         else:
-            self.hit_rate_label.setText("Hit Rate\n%d Hz" % int(self.hps))
+            self.hit_rate_label.setText("Hit Rate\n%d Hz" % int(hps))
         if self.spin_box.value() == 0:  # show number of events
             self.event_rate_label.setText("Total Events\n%d" % int(recent_total_events))
         else:
-            self.event_rate_label.setText("Event Rate\n%d Hz" % int(self.eps))
+            self.event_rate_label.setText("Event Rate\n%d Hz" % int(eps))
 
 
 if __name__ == '__main__':
