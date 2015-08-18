@@ -386,7 +386,7 @@ class AnalyzeRawData(object):
     @n_bcid.setter
     def n_bcid(self, value):
         """Set the numbers of BCIDs (usually 16) of one event."""
-        self._n_bcid = value if 0 < value < 16 else 16
+        self._n_bcid = 16 if value == 0 else value
         self.interpreter.set_trig_count(self._n_bcid)
 
     @property
@@ -705,7 +705,7 @@ class AnalyzeRawData(object):
                     rel_bcid_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistRelBcid', title='relative BCID Histogram', atom=tb.Atom.from_dtype(self.rel_bcid_hist.dtype), shape=(16, ), filters=self._filter_table)
                     rel_bcid_hist_table[:] = self.rel_bcid_hist[0:16]
                 else:
-                    rel_bcid_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistRelBcid', title='relative BCID Histogram', atom=tb.Atom.from_dtype(self.rel_bcid_hist.dtype), shape=self.rel_bcid_hist.shape, filters=self._filter_table)
+                    rel_bcid_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistRelBcid', title='relative BCID Histogram in stop mode read out', atom=tb.Atom.from_dtype(self.rel_bcid_hist.dtype), shape=self.rel_bcid_hist.shape, filters=self._filter_table)
                     rel_bcid_hist_table[:] = self.rel_bcid_hist
         if self._create_occupancy_hist:
             self.occupancy = self.histograming.get_occupancy()
