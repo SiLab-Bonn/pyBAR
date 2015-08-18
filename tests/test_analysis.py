@@ -196,6 +196,7 @@ class TestAnalysis(unittest.TestCase):
         os.remove(tests_data_folder + 'unit_test_data_3_interpreted.h5')
         os.remove(tests_data_folder + 'unit_test_data_4_interpreted.h5')
         os.remove(tests_data_folder + 'unit_test_data_4_interpreted_2.h5')
+        os.remove(tests_data_folder + 'unit_test_data_5_interpreted.h5')
         os.remove(tests_data_folder + 'hit_or_calibration.pdf')
         os.remove(tests_data_folder + 'hit_or_calibration_calibration.pdf')
         os.remove(tests_data_folder + 'hit_or_calibration_interpreted.h5')
