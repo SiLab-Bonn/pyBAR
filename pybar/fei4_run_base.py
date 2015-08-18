@@ -107,6 +107,16 @@ class Fei4RunBase(RunBase):
             self.dut['POWER_SCC']['EN_VA1'] = 1
             self.dut['POWER_SCC']['EN_VA2'] = 1
             self.dut['POWER_SCC'].write()
+            # disabling channels (cmd)
+            self.dut['DISABLE_CHANNEL']['DIS_CH1'] = 0
+            self.dut['DISABLE_CHANNEL']['DIS_CH2'] = 0
+            self.dut['DISABLE_CHANNEL']['DIS_CH3'] = 0
+            self.dut['DISABLE_CHANNEL']['DIS_CH4'] = 0
+            self.dut['DISABLE_CHANNEL']['DIS_CH5'] = 0
+            self.dut['DISABLE_CHANNEL']['DIS_CH6'] = 0
+            self.dut['DISABLE_CHANNEL']['DIS_CH7'] = 0
+            self.dut['DISABLE_CHANNEL']['DIS_CH8'] = 0
+            self.dut['DISABLE_CHANNEL'].write()
             # enabling readout
             self.dut['rx']['CH1'] = 1
             self.dut['rx']['CH2'] = 1

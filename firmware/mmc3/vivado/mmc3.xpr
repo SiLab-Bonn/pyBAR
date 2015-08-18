@@ -127,14 +127,14 @@
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../Basil/device/modules/fx3_if/FX3_IF.v">
+      <File Path="$PPRDIR/../../../../basil/device/modules/cmd_seq/cmd_seq.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../basil/device/modules/cmd_seq/cmd_seq.v">
+      <File Path="$PPRDIR/../../../../Basil/device/modules/fx3_if/FX3_IF.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>

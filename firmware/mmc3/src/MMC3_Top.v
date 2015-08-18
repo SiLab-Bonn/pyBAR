@@ -229,12 +229,34 @@ PLLE2_BASE #(
  localparam GPIO_POWER_BASEADDR = 32'h8900;
  localparam GPIO_POWER_HIGHADDR = 32'h8A00-1;
  
+ localparam GPIO_DISABLE_BASEADDR = 32'h8A00;
+ localparam GPIO_DISABLE_HIGHADDR = 32'h8B00-1;
+ 
  localparam FIFO_BASEADDR_DATA = 32'h8000_0000;
  localparam FIFO_HIGHADDR_DATA = 32'h9000_0000;
  
  localparam ABUSWIDTH = 32;
  localparam OUTPUTS = 8;
- 
+
+// gpio disable
+wire [OUTPUTS-1:0] DIS_CH;
+
+gpio #(
+    .BASEADDR(GPIO_DISABLE_BASEADDR),
+    .HIGHADDR(GPIO_DISABLE_HIGHADDR),
+    .ABUSWIDTH(ABUSWIDTH),
+    .IO_WIDTH(OUTPUTS),
+    .IO_DIRECTION(8'hff)
+) i_gpio_disable (
+    .BUS_CLK(BUS_CLK),
+    .BUS_RST(BUS_RST),
+    .BUS_ADD(BUS_ADD),
+    .BUS_DATA(BUS_DATA[7:0]),
+    .BUS_RD(BUS_RD),
+    .BUS_WR(BUS_WR),
+    .IO(DIS_CH[OUTPUTS-1:0])
+);
+
 // Command sequencer
 wire CMD_EXT_START_FLAG, TLU_CMD_EXT_START_FLAG; // to CMD FSM
 assign CMD_EXT_START_FLAG = TLU_CMD_EXT_START_FLAG;
@@ -265,7 +287,8 @@ cmd_seq
     .CMD_EXT_START_ENABLE(CMD_EXT_START_ENABLE),
     .CMD_DATA(CMD_DATA),
     .CMD_READY(CMD_READY),
-    .CMD_START_FLAG()
+    .CMD_START_FLAG(),
+    .DIS_CH(DIS_CH[OUTPUTS-1:0])
 );
     	
 // OBUFDS: Differential Output Buffer
