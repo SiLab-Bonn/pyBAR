@@ -36,6 +36,7 @@ class StopModeExtTriggerScan(Fei4RunBase):
     _default_run_conf = {
         "trigger_latency": 5,  # FE global register Trig_Lat. The lower the value the longer the hit data will be stored in data buffer
         "trigger_delay": 192,  # delay between trigger and stop mode command
+        "readout_delay": 2000,  # delay after trigger to record hits, the lower the faster the readout; total readout time per track is about (800 + (1300 + readout_delay) * bcid_window) * 25 ns
         "bcid_window": 100,  # Number of consecurive time slices to be read, from 0 to 255
         "col_span": [1, 80],  # defining active column interval, 2-tuple, from 1 to 80
         "row_span": [1, 336],  # defining active row interval, 2-tuple, from 1 to 336
@@ -109,7 +110,7 @@ class StopModeExtTriggerScan(Fei4RunBase):
             self.register.get_commands("RunMode")[0],
             self.register.get_commands("zeros", length=50)[0],
             self.register.get_commands("LV1")[0],
-            self.register.get_commands("zeros", length=2000)[0],
+            self.register.get_commands("zeros", length=self.readout_delay)[0],
             self.register.get_commands("ConfMode")[0],
             self.register.get_commands("zeros", length=1000)[0],
             self.register.get_commands("GlobalPulse", Width=0)[0],
@@ -153,9 +154,7 @@ class StopModeExtTriggerScan(Fei4RunBase):
             analyze_raw_data.use_trigger_time_stamp = True
             analyze_raw_data.set_stop_mode = True
             analyze_raw_data.align_at_trigger = True
-            analyze_raw_data.create_cluster_size_hist = True
             analyze_raw_data.interpreter.set_warning_output(False)
-            analyze_raw_data.clusterizer.set_warning_output(False)
             analyze_raw_data.interpret_word_table(use_settings_from_file=False)
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms()
