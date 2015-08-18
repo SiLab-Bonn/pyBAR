@@ -30,6 +30,8 @@ void Interpret::setStandardSettings()
 	_hitInfoSize = 1000000;
 	_hitInfo = 0;
 	_hitIndex = 0;
+	_startDebugEvent = 0;
+	_stopDebugEvent = 0;
 	_NbCID = 16;
 	_maxTot = 13;
 	_fEI4B = false;
@@ -89,7 +91,7 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 			_nDataHeaders++;
 			if (tNdataHeader > _NbCID - 1) {	                //maximum event window is reached (tNdataHeader > BCIDs, mostly tNdataHeader > 15), so create new event
 				if (_alignAtTriggerNumber) {
-					addEventErrorCode(__TRUNC_EVENT); //too many data header in the event, abort this event, add truncated flac
+					addEventErrorCode(__TRUNC_EVENT); //too many data header in the event, abort this event, add truncated flag
 					if (Basis::warningSet())
 						warning(std::string("addHit: Hit buffer overflow prevented by splitting events at event " + LongIntToStr(_nEvents)), __LINE__);
 				}
@@ -965,7 +967,7 @@ void Interpret::addEventErrorCode(const unsigned short& pErrorCode)
 			}
 			case __TRUNC_EVENT:
 			{
-				tDebug << "EVENT HAS TOO MANY HITS AND WAS TRUNCATED";
+				tDebug << "EVENT HAS TOO MANY DATA HEADERS/RECORDS AND WAS TRUNCATED";
 				break;
 			}
 			case __TDC_WORD:
