@@ -107,6 +107,16 @@ class Fei4RunBase(RunBase):
             self.dut['POWER_SCC']['EN_VA1'] = 1
             self.dut['POWER_SCC']['EN_VA2'] = 1
             self.dut['POWER_SCC'].write()
+            # disabling channels (cmd)
+            self.dut['DISABLE_CHANNEL']['DIS_CH1'] = 0
+            self.dut['DISABLE_CHANNEL']['DIS_CH2'] = 0
+            self.dut['DISABLE_CHANNEL']['DIS_CH3'] = 0
+            self.dut['DISABLE_CHANNEL']['DIS_CH4'] = 0
+            self.dut['DISABLE_CHANNEL']['DIS_CH5'] = 0
+            self.dut['DISABLE_CHANNEL']['DIS_CH6'] = 0
+            self.dut['DISABLE_CHANNEL']['DIS_CH7'] = 0
+            self.dut['DISABLE_CHANNEL']['DIS_CH8'] = 0
+            self.dut['DISABLE_CHANNEL'].write()
             # enabling readout
             self.dut['rx']['CH1'] = 1
             self.dut['rx']['CH2'] = 1
@@ -157,8 +167,8 @@ class Fei4RunBase(RunBase):
                 last_configuration = self._get_configuration()  # will get the latest valid configuration from the runs
                 # init config, a number <=0 will also do the initialization (run 0 does not exist)
                 if (not self.conf['multiple_fes_configuration'][self.fe_number] and not last_configuration) or (isinstance(self.conf['multiple_fes_configuration'][self.fe_number], (int, long)) and self.conf['multiple_fes_configuration'][self.fe_number] <= 0):  # no valid runs yet and no valid run number for FE configuration file indicated
-                    if 'multiple_chip_address' in self.conf and (self.conf['multiple_chip_address'][self.fe_number] or self.conf['multiple_chip_address'][self.fe_number] == 0):
-                        chip_address = self.conf['multiple_chip_address'][self.fe_number]
+                    if 'chip_address' in self.conf and self.conf['chip_address']:
+                        chip_address = self.conf['chip_address']
                         broadcast = False
                     else:
                         chip_address = 0
@@ -310,28 +320,6 @@ class Fei4RunBase(RunBase):
             self.init_dut()
         else:
             pass  # do nothing, already initialized
-        # disabling channels (cmd)
-        if self.dut.name == 'mio' and 'number_of_fes' in self.conf and self.conf['number_of_fes'] > 1:
-            if self.fe_number < 5:
-                self.dut['DISABLE_CHANNEL']['DIS_CH1'] = 0
-                self.dut['DISABLE_CHANNEL']['DIS_CH2'] = 0
-                self.dut['DISABLE_CHANNEL']['DIS_CH3'] = 0
-                self.dut['DISABLE_CHANNEL']['DIS_CH4'] = 0
-                self.dut['DISABLE_CHANNEL']['DIS_CH5'] = 1
-                self.dut['DISABLE_CHANNEL']['DIS_CH6'] = 1
-                self.dut['DISABLE_CHANNEL']['DIS_CH7'] = 1
-                self.dut['DISABLE_CHANNEL']['DIS_CH8'] = 1
-                self.dut['DISABLE_CHANNEL'].write()
-            else:
-                self.dut['DISABLE_CHANNEL']['DIS_CH1'] = 1
-                self.dut['DISABLE_CHANNEL']['DIS_CH2'] = 1
-                self.dut['DISABLE_CHANNEL']['DIS_CH3'] = 1
-                self.dut['DISABLE_CHANNEL']['DIS_CH4'] = 1
-                self.dut['DISABLE_CHANNEL']['DIS_CH5'] = 0
-                self.dut['DISABLE_CHANNEL']['DIS_CH6'] = 0
-                self.dut['DISABLE_CHANNEL']['DIS_CH7'] = 0
-                self.dut['DISABLE_CHANNEL']['DIS_CH8'] = 0
-                self.dut['DISABLE_CHANNEL'].write()
         # FIFO readout
         if 'number_of_fes' in self.conf and self.conf['number_of_fes'] > 1:
             self.fifo_readout = FifoReadout(self.dut, self.fe_number)
