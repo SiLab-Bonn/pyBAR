@@ -124,6 +124,28 @@ class RunBase():
                 self.fe_number = 1
                 with self._run():
                         self.do_run()
+
+#             if 'merging_factor' in self.conf and self.conf['merging_factor'] > 1:
+#                 from pyPdf import PdfFileWriter, PdfFileReader
+#                 from pdfnup import generateNup
+# 
+#                 for fe_number in range(1, self.conf['number_of_fes'], 2):
+#                     output = PdfFileWriter()
+#                     input1 = PdfFileReader(file(os.path.join(self.working_dir, str(self.run_number) + "_" + self.module_id + "_" + self.run_id + "_fe" + str(fe_number) + ".pdf"), "rb"))
+#                     input2 = PdfFileReader(file(os.path.join(self.working_dir, str(self.run_number) + "_" + self.module_id + "_" + self.run_id + "_fe" + str(fe_number + 1) + ".pdf"), "rb"))
+# 
+#                     for page_number in range(0, input1.getNumPages()):
+#                         add_page = input1.getPage(page_number)
+#                         output.addPage(add_page)
+#                         add_page = input2.getPage(page_number)
+#                         output.addPage(add_page)
+# 
+#                     outputStream = file(os.path.join(self.working_dir, str(self.run_number) + "_" + self.module_id + "_" + self.run_id + "_quad_with_fe_" + str(fe_number) + ".pdf"), "wb")
+#                     output.write(outputStream)
+#                     outputStream.close()
+# 
+#                     generateNup(os.path.join(self.working_dir, str(self.run_number) + "_" + self.module_id + "_" + self.run_id + "_quad_with_fe_" + str(fe_number) + ".pdf"), self.conf['merging_factor'])
+
         except RunAborted as e:
             self._run_status = run_status.aborted
             logging.warning('Run %s was aborted: %s', self.run_number, e)
