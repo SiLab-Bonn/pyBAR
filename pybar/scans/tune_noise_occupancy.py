@@ -7,11 +7,12 @@ from time import time
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.fei4.register_utils import make_box_pixel_mask_from_col_row, invert_pixel_mask
 from pybar.fei4_run_base import Fei4RunBase
+from pybar.fei4_run_base_parallel import Fei4RunBaseParallel
 from pybar.run_manager import RunManager
 from pybar.analysis.plotting.plotting import plot_occupancy, plot_fancy_occupancy
 
 
-class NoiseOccupancyScan(Fei4RunBase):
+class NoiseOccupancyScan(Fei4RunBaseParallel):
     '''Noise occupancy scan detecting and masking noisy pixels.
 
     Note
@@ -31,7 +32,8 @@ class NoiseOccupancyScan(Fei4RunBase):
         "overwrite_enable_mask": False,  # if True, use col_span and row_span to define an active region regardless of the Enable pixel register. If False, use col_span and row_span to define active region by also taking Enable pixel register into account.
         "use_enable_mask_for_imon": False,  # if True, apply inverted Enable pixel mask to Imon pixel mask
         "no_data_timeout": 10,  # no data timeout after which the scan will be aborted, in seconds
-        "overwrite_mask": False  # if True, overwrite existing masks
+        "overwrite_mask": False,  # if True, overwrite existing masks
+        'send_data': 'tcp://127.0.0.1:5678'
     }
 
     def configure(self):
@@ -98,47 +100,48 @@ class NoiseOccupancyScan(Fei4RunBase):
                         pass
 
     def analyze(self):
-        with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
-            analyze_raw_data.interpreter.set_warning_output(False)
-            analyze_raw_data.create_source_scan_hist = True
-            analyze_raw_data.create_hit_table = False
-            analyze_raw_data.interpret_word_table()
-            analyze_raw_data.plot_histograms()
-            analyze_raw_data.interpreter.print_summary()
-            with tb.open_file(analyze_raw_data._analyzed_data_file, 'r') as out_file_h5:
-                occ_hist = out_file_h5.root.HistOcc[:, :, 0].T
-            self.occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
-            # noisy pixels are set to 1
-            if self.trig_count == 0:
-                consecutive_lvl1 = (2 ** self.register.global_registers['Trig_Count']['bitlength'])
-            else:
-                consecutive_lvl1 = self.trig_count
-            self.occ_mask[occ_hist > self.occupancy_limit * self.n_triggers * consecutive_lvl1] = 1
-            # make inverse
-            self.inv_occ_mask = invert_pixel_mask(self.occ_mask)
-            if self.overwrite_mask:
-                for mask in self.disable_for_mask:
-                    self.register.set_pixel_register_value(mask, self.inv_occ_mask)
-            else:
-                for mask in self.disable_for_mask:
-                    enable_mask = np.logical_and(self.inv_occ_mask, self.register.get_pixel_register_value(mask))
-                    self.register.set_pixel_register_value(mask, enable_mask)
+        if 'number_of_fes' in self.conf and self.conf['number_of_fes'] > 1:
+            with AnalyzeRawData(raw_data_file=self.output_filename + "_fe" + str(self.fe_number), create_pdf=True) as analyze_raw_data:
+                analyze_raw_data.interpreter.set_warning_output(False)
+                analyze_raw_data.create_source_scan_hist = True
+                analyze_raw_data.create_hit_table = False
+                analyze_raw_data.interpret_word_table()
+                analyze_raw_data.plot_histograms()
+                analyze_raw_data.interpreter.print_summary()
+                with tb.open_file(analyze_raw_data._analyzed_data_file, 'r') as out_file_h5:
+                    occ_hist = out_file_h5.root.HistOcc[:, :, 0].T
+                self.occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
+                # noisy pixels are set to 1
+                if self.trig_count == 0:
+                    consecutive_lvl1 = (2 ** self.register.global_registers['Trig_Count']['bitlength'])
+                else:
+                    consecutive_lvl1 = self.trig_count
+                self.occ_mask[occ_hist > self.occupancy_limit * self.n_triggers * consecutive_lvl1] = 1
+                # make inverse
+                self.inv_occ_mask = invert_pixel_mask(self.occ_mask)
+                if self.overwrite_mask:
+                    for mask in self.disable_for_mask:
+                        self.register.set_pixel_register_value(mask, self.inv_occ_mask)
+                else:
+                    for mask in self.disable_for_mask:
+                        enable_mask = np.logical_and(self.inv_occ_mask, self.register.get_pixel_register_value(mask))
+                        self.register.set_pixel_register_value(mask, enable_mask)
 
-            if self.overwrite_mask:
+                if self.overwrite_mask:
+                    for mask in self.enable_for_mask:
+                        self.register.set_pixel_register_value(mask, self.occ_mask)
+                else:
+                    for mask in self.enable_for_mask:
+                        disable_mask = np.logical_or(self.occ_mask, self.register.get_pixel_register_value(mask))
+                        self.register.set_pixel_register_value(mask, disable_mask)
+                plot_occupancy(self.occ_mask.T, title='Noisy Pixels', z_max=1, filename=analyze_raw_data.output_pdf)
+                plot_fancy_occupancy(self.occ_mask.T, z_max=1, filename=analyze_raw_data.output_pdf)
+                for mask in self.disable_for_mask:
+                    mask_name = self.register.pixel_registers[mask]['name']
+                    plot_occupancy(self.register.get_pixel_register_value(mask).T, title='%s Mask' % mask_name, z_max=1, filename=analyze_raw_data.output_pdf)
                 for mask in self.enable_for_mask:
-                    self.register.set_pixel_register_value(mask, self.occ_mask)
-            else:
-                for mask in self.enable_for_mask:
-                    disable_mask = np.logical_or(self.occ_mask, self.register.get_pixel_register_value(mask))
-                    self.register.set_pixel_register_value(mask, disable_mask)
-            plot_occupancy(self.occ_mask.T, title='Noisy Pixels', z_max=1, filename=analyze_raw_data.output_pdf)
-            plot_fancy_occupancy(self.occ_mask.T, z_max=1, filename=analyze_raw_data.output_pdf)
-            for mask in self.disable_for_mask:
-                mask_name = self.register.pixel_registers[mask]['name']
-                plot_occupancy(self.register.get_pixel_register_value(mask).T, title='%s Mask' % mask_name, z_max=1, filename=analyze_raw_data.output_pdf)
-            for mask in self.enable_for_mask:
-                mask_name = self.register.pixel_registers[mask]['name']
-                plot_occupancy(self.register.get_pixel_register_value(mask).T, title='%s Mask' % mask_name, z_max=1, filename=analyze_raw_data.output_pdf)
+                    mask_name = self.register.pixel_registers[mask]['name']
+                    plot_occupancy(self.register.get_pixel_register_value(mask).T, title='%s Mask' % mask_name, z_max=1, filename=analyze_raw_data.output_pdf)
 
 if __name__ == "__main__":
     RunManager('../configuration.yaml').run_run(NoiseOccupancyScan)
