@@ -1351,11 +1351,12 @@ def index_event_number(table_with_event_numer):
         logging.debug('Event_number index exists already, omit creation')
 
 
-def data_aligned_at_events(table, start_event_number=None, stop_event_number=None, start=None, stop=None, try_speedup=True, chunk_size=10000000):
-    '''Takes the table with a event_number column and returns chunks with the size up to chunk_size. The chunks are chosen in a way that the events are not splitted. Additional
-    parameters can be set to increase the readout speed. If only events between a certain event range are used one can specify this. Also the start and the
-    stop indices for the reading of the table can be specified for speed up.
-    It is important to index the event_number with pytables before using this function, otherwise the queries are very slow.
+def data_aligned_at_events(table, start_event_number=None, stop_event_number=None, start_index=None, stop_index=None, first_event_aligned=True, try_speedup=True, chunk_size=10000000, fail_on_missing_events=True):
+    '''Takes the table with a event_number column and returns chunks with the size up to chunk_size. The chunks are chosen in a way that the events are not splitted.
+    Additional parameters can be set to increase the readout speed. Events between a certain range can be selected.
+    Also the start and the stop indices limiting the table size can be specified to improve performance.
+    The event_number column must be sorted.
+    In case of try_speedup is True, it is important to create an index of event_number column with pytables before using this function. Otherwise the queries are slowed down.
 
     Parameters
     ----------
@@ -1390,9 +1391,13 @@ def data_aligned_at_events(table, start_event_number=None, stop_event_number=Non
     # initialize variables
     start_index_known = False
     stop_index_known = False
-    last_event_start_index = 0
-    start_index = 0 if start is None else start
-    stop_index = table.nrows if stop is None else stop
+    start_index = 0 if start_index is None else start_index
+    stop_index = table.nrows if stop_index is None else stop_index
+    if stop_index < start_index:
+        raise InvalidInputError('Invalid start/stop index')
+    table_max_rows = table.nrows
+    if stop_event_number is not None and start_event_number is not None and stop_event_number < start_event_number:
+        raise InvalidInputError('Invalid start/stop event number')
 
     if try_speedup:  # set start stop indices from the event numbers for fast read if possible; not possible if the given event number does not exist in the data stream
         if start_event_number is not None:
@@ -1404,42 +1409,106 @@ def data_aligned_at_events(table, start_event_number=None, stop_event_number=Non
 
         if stop_event_number is not None:
             condition_2 = 'event_number==' + str(stop_event_number)
-            stop_indeces = table.get_where_list(condition_2, start=start_index, stop=stop_index)
-            if stop_indeces.shape[0] != 0:  # set the stop index if possible, stop index is excluded
-                stop_index = stop_indeces[0]
+            stop_indices = table.get_where_list(condition_2, start=start_index, stop=stop_index)
+            if stop_indices.shape[0] != 0:  # set the stop index if possible, stop index is excluded
+                stop_index = stop_indices[0]
                 stop_index_known = True
 
-    if (start_index_known and stop_index_known) and (start_index + chunk_size >= stop_index):  # special case, one read is enough, data not bigger than one chunk and the indices are known
+    if start_index_known and stop_index_known and start_index + chunk_size >= stop_index:  # special case, one read is enough, data not bigger than one chunk and the indices are known
         yield table.read(start=start_index, stop=stop_index), stop_index
     else:  # read data in chunks, chunks do not divide events, abort if stop_event_number is reached
-        while(start_index < stop_index):
-            src_array = table.read(start=start_index, stop=start_index + chunk_size + 1)  # stop index is exclusive, so add 1
-            first_event = src_array["event_number"][0]
-            last_event = src_array["event_number"][-1]
-            if (start_event_number is not None and last_event < start_event_number):
-                start_index = start_index + src_array.shape[0]  # events fully read, increase start index and continue reading
-                continue
 
-            last_event_start_index = np.argmax(src_array["event_number"] == last_event)  # get first index of last event
-            if last_event_start_index == 0:
-                nrows = src_array.shape[0]
-                if nrows != 1:
-                    logging.warning("Depreciated warning?! Buffer too small to fit event. Possible loss of data. Increase chunk size.")
-            else:
-                if start_index + chunk_size > stop_index:  # special case for the last chunk read, there read the table until its end
-                    nrows = src_array.shape[0]
+        # search for begin
+        current_start_index = start_index
+        if start_event_number is not None:
+            while current_start_index < stop_index:
+                current_stop_index = min(current_start_index + chunk_size, stop_index)
+                array_chunk = table.read(start=current_start_index, stop=current_stop_index)  # stop index is exclusive, so add 1
+                last_event_in_chunk = array_chunk["event_number"][-1]
+
+                if last_event_in_chunk < start_event_number:
+                    current_start_index = current_start_index + chunk_size  # not there yet, continue to next read (assuming sorted events)
                 else:
-                    nrows = last_event_start_index
+                    first_event_in_chunk = array_chunk["event_number"][0]
+#                     if stop_event_number is not None and first_event_in_chunk >= stop_event_number and start_index != 0 and start_index == current_start_index:
+#                         raise InvalidInputError('The stop event %d is missing. Change stop_event_number.' % stop_event_number)
+                    if array_chunk.shape[0] == chunk_size and first_event_in_chunk == last_event_in_chunk:
+                        raise InvalidInputError('Chunk size too small. Increase chunk size to fit full event.')
 
-            if (start_event_number is not None or stop_event_number is not None) and (last_event > stop_event_number or first_event < start_event_number):  # too many events read, get only the selected ones if specified
-                selected_rows = get_data_in_event_range(src_array[0:nrows], event_start=start_event_number, event_stop=stop_event_number, assume_sorted=True)
-                if len(selected_rows) != 0:  # only return non empty data
-                    yield selected_rows, start_index + len(selected_rows)
+                    if not first_event_aligned and first_event_in_chunk == start_event_number and start_index != 0 and start_index == current_start_index:  # first event in first chunk not aligned at index 0, so take next event
+                        if fail_on_missing_events:
+                            raise InvalidInputError('The start event %d is missing. Change start_event_number.' % start_event_number)
+                        chunk_start_index = np.searchsorted(array_chunk["event_number"], start_event_number + 1, side='left')
+                    elif fail_on_missing_events and first_event_in_chunk > start_event_number and start_index == current_start_index:
+                        raise InvalidInputError('The start event %d is missing. Change start_event_number.' % start_event_number)
+                    elif first_event_aligned and first_event_in_chunk == start_event_number and start_index == current_start_index:
+                        chunk_start_index = 0
+                    else:
+                        chunk_start_index = np.searchsorted(array_chunk["event_number"], start_event_number, side='left')
+                        if fail_on_missing_events and array_chunk["event_number"][chunk_start_index] != start_event_number and start_index == current_start_index:
+                            raise InvalidInputError('The start event %d is missing. Change start_event_number.' % start_event_number)
+#                     if fail_on_missing_events and ((start_index == current_start_index and chunk_start_index == 0 and start_index != 0 and not first_event_aligned) or array_chunk["event_number"][chunk_start_index] != start_event_number):
+#                         raise InvalidInputError('The start event %d is missing. Change start_event_number.' % start_event_number)
+                    current_start_index = current_start_index + chunk_start_index  # calculate index for next loop
+                    break
+        elif not first_event_aligned and start_index != 0:
+            while current_start_index < stop_index:
+                current_stop_index = min(current_start_index + chunk_size, stop_index)
+                array_chunk = table.read(start=current_start_index, stop=current_stop_index)  # stop index is exclusive, so add 1
+                first_event_in_chunk = array_chunk["event_number"][0]
+                last_event_in_chunk = array_chunk["event_number"][-1]
+
+                if array_chunk.shape[0] == chunk_size and first_event_in_chunk == last_event_in_chunk:
+                    raise InvalidInputError('Chunk size too small. Increase chunk size to fit full event.')
+
+                chunk_start_index = np.searchsorted(array_chunk["event_number"], first_event_in_chunk + 1, side='left')
+                current_start_index = current_start_index + chunk_start_index
+                if not first_event_in_chunk == last_event_in_chunk:
+                    break
+
+        # data loop
+        while current_start_index < stop_index:
+            current_stop_index = min(current_start_index + chunk_size, stop_index)
+            array_chunk = table.read(start=current_start_index, stop=current_stop_index)  # stop index is exclusive, so add 1
+            first_event_in_chunk = array_chunk["event_number"][0]
+            last_event_in_chunk = array_chunk["event_number"][-1]
+
+            chunk_start_index = 0
+
+            if stop_event_number is not None:
+                if last_event_in_chunk >= stop_event_number:
+                    chunk_stop_index = np.searchsorted(array_chunk["event_number"], stop_event_number, side='left')
+                else:
+                    chunk_stop_index = np.searchsorted(array_chunk["event_number"], last_event_in_chunk, side='left')
             else:
-                yield src_array[0:nrows], start_index + nrows  # no events specified or selected event range is larger than read chunk, thus return the whole chunk minus the little part for event alignment
-            if stop_event_number is not None and last_event > stop_event_number:  # events are sorted, thus stop here to save time
-                break
-            start_index = start_index + nrows  # events fully read, increase start index and continue reading
+                if current_stop_index == table_max_rows:
+                    chunk_stop_index = array_chunk.shape[0]
+                else:
+                    chunk_stop_index = np.searchsorted(array_chunk["event_number"], last_event_in_chunk, side='left')
+
+            nrows = chunk_stop_index - chunk_start_index
+            if nrows == 0:
+                if array_chunk.shape[0] == chunk_size and first_event_in_chunk == last_event_in_chunk:
+                    raise InvalidInputError('Chunk size too small to fit event. Data corruption possible. Increase chunk size to read full event.')
+                elif chunk_start_index == 0:  # not increasing current_start_index
+                    return
+                elif stop_event_number is not None and last_event_in_chunk >= stop_event_number:
+                    return
+            else:
+                yield array_chunk[chunk_start_index:chunk_stop_index], current_start_index + nrows + chunk_start_index
+
+#             if (start_event_number is not None or stop_event_number is not None) and (last_event_in_chunk > stop_event_number or first_event_in_chunk < start_event_number):  # too many events read, get only the selected ones if specified
+#                 selected_rows = get_data_in_event_range(array_chunk[0:nrows], event_start=start_event_number, event_stop=stop_event_number, assume_sorted=True)
+#                 if len(selected_rows) != 0:  # only return non empty data
+#                     yield selected_rows, current_start_index + len(selected_rows)
+#             else:
+#                 yield array_chunk[0:nrows], current_start_index + nrows  # no events specified or selected event range is larger than read chunk, thus return the whole chunk minus the little part for event alignment
+#             if stop_event_number is not None and last_event_in_chunk > stop_event_number:  # events are sorted, thus stop here to save time
+#                 return
+            current_start_index = current_start_index + nrows + chunk_start_index  # events fully read, increase start index and continue reading
+
+#         if stop_event_number is not None and last_event_in_chunk < stop_event_number:
+#             raise InvalidInputError('The event %d is missing. Change stop_event_number.' % start_event_number)
 
 
 def select_good_pixel_region(hits, col_span, row_span, min_cut_threshold=0.2, max_cut_threshold=2.0):
