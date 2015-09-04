@@ -538,7 +538,7 @@ void Interpret::printSummary()
 	std::cout << "\t4\t" << _errorCounter[4] << "\tEvents with unknown words\n";
 	std::cout << "\t5\t" << _errorCounter[5] << "\tEvents with jumping BCIDs\n";
 	std::cout << "\t6\t" << _errorCounter[6] << "\tEvents with TLU trigger error\n";
-	std::cout << "\t7\t" << _errorCounter[7] << "\tEvents that were truncated due to too many hits\n";
+	std::cout << "\t7\t" << _errorCounter[7] << "\tEvents that were truncated due to too many data headers or data records\n";
 	std::cout << "\t8\t" << _errorCounter[8] << "\tEvents with TDC words\n";
 	std::cout << "\t9\t" << _errorCounter[9] << "\tEvents with > 1 TDC words\n";
 	std::cout << "\t10\t" << _errorCounter[10] << "\tEvents with TDC overflow\n";
