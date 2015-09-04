@@ -113,7 +113,7 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 				}
 
 				if (tStartBCID + tDbCID != tActualBCID) {  //check if BCID is increasing by 1s in the event window, if not close actual event and create new event with actual data header
-					if (tActualLVL1ID == tStartLVL1ID) //happens sometimes, non inc. BCID, FE feature, only abort the LVL1ID is not constant (if no external trigger is used or)
+					if (tActualLVL1ID == tStartLVL1ID) //happens sometimes, non inc. BCID, FE feature, only abort if the LVL1ID is not constant (if no external trigger is used or)
 						addEventErrorCode(__BCID_JUMP);
 					else if (_alignAtTriggerNumber || _alignAtTdcWord)  //rely here on the trigger number or TDC word and do not start a new event
 						addEventErrorCode(__BCID_JUMP);
@@ -139,7 +139,8 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 					addEvent();
 			}
 			else {		// use trigger number for event building, first word is trigger word in event data stream
-				addEvent();
+				if (_firstTriggerNrSet)  // do not build new event after first trigger; maybe comment for old data where trigger number is not first event word
+					addEvent();
 			}
 			tTriggerWord++;                     //trigger event counter increase
 
