@@ -1,18 +1,27 @@
-''' This script changes the injection delay of the internal PlsrDAC (with global register PlsrDelay or PlsrIdacRamp) and measures the mean BCID for each pixel (runtime ~ 1 h).
-The mean BCID changes for an increasing injection delay every 25 ns due to the clock in an S-curve like shape.
-The mu of the S-curves is monitored for different charges injected in an outer loop (but without S-Curve fit, resolution of mu is one PlsrDAC delay step).
+''' This script changes the injection delay of the internal PlsrDAC (with global register PlsrDelay or PlsrIdacRamp, only PlsrDelay tested!) and measures the mean BCID for each pixel (runtime ~ 1 h).
+
+The PlsrDAC and injection delay values should be chosen equidistant and the lowest PlsrDAC value should be put to the threshold position!
+
+The mean BCID changes for an increasing injection delay every 25 ns due to the 40 MHz clock in an S-curve like shape.
+The mu of the S-curves is determined for different charges injected and for different BCIDs with an S-Curve fit.
 The change of the mu as a function of the charge is the timewalk that is calculated for each pixel.
-The absolute value of mu for the same mean BCID gives the hit delay for the pixel.
+The value of mu + mean BCID gives the absolute hit delay for the pixel.
 Time walk and hit delay are calculated and plotted in different ways.
-The PlsrDAC and injection delay values should be chosen equidistant. The lowest PlsrDAC value should be put to the threshold position.
+The analysis is quite complex and takes 30 - 60 min.
 '''
 import logging
 import progressbar
 import re
 import tables as tb
 import numpy as np
-from scipy.optimize import curve_fit
+import multiprocessing as mp
+import math
+import warnings
+
+from scipy.optimize import curve_fit, OptimizeWarning
 from scipy.interpolate import interp1d
+from scipy.special import erf
+warnings.simplefilter("ignore", OptimizeWarning)  # deactivate : Covariance warning
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
@@ -24,6 +33,45 @@ from pybar.run_manager import RunManager
 from pybar.analysis.analysis_utils import get_hits_of_scan_parameter, hist_1d_index, hist_3d_index, get_scan_parameter, get_mean_from_histogram
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.analysis.plotting.plotting import plot_scurves, plot_three_way
+
+
+def scurve(x, offset, mu, sigma):
+    return offset + 0.5 * erf((x - mu) / (np.sqrt(2) * sigma)) + 0.5
+
+
+def fit_bcid_jumps(scurve_data, max_chi_2=2.):  # data of some pixels to fit, has to be global for the multiprocessing module
+    offset_min = int(math.ceil(min(scurve_data)))  # offset min is minimum BCID of Scurve fit
+    offset_max = int(math.floor(max(scurve_data)))  # offset max is minimum BCID of Scurve fit + 1
+
+    if offset_max - offset_min > 2:  # restrict to detection of two BCID jumps, otherwise most likely corrupt data
+        offset_max = offset_min + 2
+    index = range(len(scurve_data))
+    result = -np.ones(4)
+    for offset_index, offset in enumerate(xrange(offset_min, offset_max)):  # loop over up to two Scurves
+        actual_index = [index[i] for i in index if offset <= scurve_data[i] <= offset + 1]
+        if not actual_index or len(actual_index) < 5:  # omit broken data
+            continue
+        actual_data = [scurve_data[i] for i in index if offset <= scurve_data[i] <= offset + 1]
+        n_points_left = sum([1 for i in actual_data if i == offset])
+        n_points_right = sum([1 for i in actual_data if i == offset + 1])
+        if n_points_left < 3 or n_points_right < 3:  # omit not sufficient data
+            continue
+        start_value = actual_index[np.argmax(np.diff(actual_data))]
+        try:
+            popt, _ = curve_fit(scurve, actual_index, actual_data, p0=[offset, start_value, 1.], check_finite=False)  # offset is also a fit parameter, since there are PlsrDAC settings that let the BCID jitter more
+            if popt[1] > 0 and popt[0] > offset - 0.05:  # mu < 0 or too low offset indicates bad fit
+                chi_2 = np.sum((scurve(actual_index, popt[0], popt[1], popt[2]) - actual_data) ** 2)
+                if chi_2 < max_chi_2:  # omit bad quality fits
+                    if popt[1] == float('Inf'):
+                        print 'SCREAM'
+                    result[offset_index * 2: offset_index * 2 + 1] = offset
+                    result[offset_index * 2 + 1: offset_index * 2 + 2] = popt[1]
+        except RuntimeError:  # fit failed
+            pass
+    if result[0] == -1 and result[2] != -1:  # if the first scurve fit failed but not the second, define second s-curve as first
+        result[0], result[1] = result[2], result[3]
+        result[2], result[3] = -1, -1
+    return result
 
 
 def analyze_hit_delay(raw_data_file):
@@ -88,14 +136,14 @@ def analyze_hit_delay(raw_data_file):
             injection_delay = scan_parameters_dict[scan_parameters_dict.keys()[1]]  # injection delay par name is unknown and should  be in the inner loop
             scan_parameters = scan_parameters_dict.keys()
 
-        bcid_array = np.zeros((80, 336, len(injection_delay), 16), dtype=np.int16)  # bcid array of actual PlsrDAC
-        tot_pixel_array = np.zeros((80, 336, len(injection_delay), 16), dtype=np.int16)  # tot pixel array of actual PlsrDAC
-        tot_array = np.zeros((16,), dtype=np.int32)  # tot array of actual PlsrDAC
+        bcid_array = np.zeros((80, 336, len(injection_delay), 16), dtype=np.uint16)  # bcid array of actual PlsrDAC
+        tot_pixel_array = np.zeros((80, 336, len(injection_delay), 16), dtype=np.uint16)  # tot pixel array of actual PlsrDAC
+        tot_array = np.zeros((16,), dtype=np.uint32)  # tot array of actual PlsrDAC
 
         logging.info('Store histograms for PlsrDAC values ' + str(plsr_dac))
         progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=max(plsr_dac) - min(plsr_dac), term_width=80)
 
-        for index, (parameters, hits) in enumerate(get_hits_of_scan_parameter(raw_data_file + '_interpreted.h5', scan_parameters, chunk_size=10000000)):
+        for index, (parameters, hits) in enumerate(get_hits_of_scan_parameter(raw_data_file + '_interpreted.h5', scan_parameters, try_speedup=True, chunk_size=10000000)):
             if index == 0:
                 progress_bar.start()  # start after the event index is created to get reasonable ETA
             actual_plsr_dac, actual_injection_delay = parameters[0], parameters[1]
@@ -109,9 +157,9 @@ def analyze_hit_delay(raw_data_file):
                     store_bcid_histograms(bcid_array, tot_array, tot_pixel_array)
                     progress_bar.update(old_plsr_dac - min(plsr_dac))
                 # Reset the histrograms for the next PlsrDAC setting
-                bcid_array = np.zeros((80, 336, len(injection_delay), 16), dtype=np.int8)
-                tot_pixel_array = np.zeros((80, 336, len(injection_delay), 16), dtype=np.int8)
-                tot_array = np.zeros((16,), dtype=np.int32)
+                bcid_array = np.zeros((80, 336, len(injection_delay), 16), dtype=np.uint16)
+                tot_pixel_array = np.zeros((80, 336, len(injection_delay), 16), dtype=np.uint16)
+                tot_array = np.zeros((16,), dtype=np.uint32)
                 old_plsr_dac = actual_plsr_dac
             injection_delay_index = np.where(np.array(injection_delay) == actual_injection_delay)[0][0]
             bcid_array[:, :, injection_delay_index, :] += bcid_array_fast
@@ -121,108 +169,95 @@ def analyze_hit_delay(raw_data_file):
         progress_bar.finish()
 
     # Take the mean relative BCID histogram of each PlsrDAC value and calculate the delay for each pixel
-    with tb.open_file(raw_data_file + '_analyzed.h5', mode="r") as in_file_h5:
-        # Create temporary result data structures
+    with tb.open_file(raw_data_file + '_analyzed.h5', mode="r+") as in_file_h5:
+        hists_folder = in_file_h5.create_group(in_file_h5.root, 'PixelHistsBcidJumps')
         plsr_dac_values = in_file_h5.root.PixelHistsMeanRelBcid._v_attrs.plsr_dac_values
-        timewalk = np.zeros(shape=(80, 336, len(plsr_dac_values)), dtype=np.int8)  # result array
-        tot = np.zeros(shape=(len(plsr_dac_values),), dtype=np.float16)  # result array
-        hit_delay = np.zeros(shape=(80, 336, len(plsr_dac_values)), dtype=np.int8)  # result array
-        min_rel_bcid = np.zeros(shape=(80, 336), dtype=np.int8)  # Temp array to make sure that the Scurve from the same BCID is used
-        delay_calibration_data = []
-        delay_calibration_data_error = []
-
-        # Calculate the minimum BCID. That is chosen to calculate the hit delay. Calculation does not have to work.
-        plsr_dac_min = min(plsr_dac_values)
-        rel_bcid_min_injection = in_file_h5.get_node(in_file_h5.root.PixelHistsMeanRelBcid, 'HistPixelMeanRelBcidPerDelayPlsrDac_%03d' % plsr_dac_min)
-        injection_delays = np.array(rel_bcid_min_injection.attrs.injection_delay_values)
-        injection_delay_min = np.where(injection_delays == np.amax(injection_delays))[0][0]
-        bcid_min = int(round(np.mean(np.ma.masked_array(rel_bcid_min_injection[:, :, injection_delay_min], np.isnan(rel_bcid_min_injection[:, :, injection_delay_min]))))) - 1
 
         # Info output with progressbar
-        logging.info('Create timewalk info for PlsrDACs ' + str(plsr_dac_values))
+        logging.info('Detect BCID jumps with pixel based S-Curve fits for PlsrDACs ' + str(plsr_dac_values))
         progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=len(plsr_dac_values), term_width=80)
         progress_bar.start()
 
-        for index, node in enumerate(in_file_h5.root.PixelHistsMeanRelBcid):  # loop over all mean relative BCID hists for all PlsrDAC values
-            # Select the S-curves
+        for index, node in enumerate(in_file_h5.root.PixelHistsMeanRelBcid):  # loop over all mean relative BCID hists for all PlsrDAC values and determine the BCID jumps
+            actual_plsr_dac = int(re.search(r'\d+', node.name).group())  # actual node plsr dac value
+            # Select the S-curves and interpolate Nans
             pixel_data = node[:, :, :]
             pixel_data_fixed = pixel_data.reshape(pixel_data.shape[0] * pixel_data.shape[1] * pixel_data.shape[2])  # Reshape for interpolation of Nans
-            nans, x = np.isnan(pixel_data_fixed), lambda z: z.nonzero()[0]
+            nans, x = ~np.isfinite(pixel_data_fixed), lambda z: z.nonzero()[0]
             pixel_data_fixed[nans] = np.interp(x(nans), x(~nans), pixel_data_fixed[~nans])  # interpolate Nans
             pixel_data_fixed = pixel_data_fixed.reshape(pixel_data.shape[0], pixel_data.shape[1], pixel_data.shape[2])  # Reshape after interpolation of Nans
-            pixel_data_round = np.round(pixel_data_fixed)
-            pixel_data_round_diff = np.diff(pixel_data_round, axis=2)
-            index_sel = np.where(np.logical_and(pixel_data_round_diff > 0., np.isfinite(pixel_data_round_diff)))
 
-            # Temporary result histograms to be filled
-            first_scurve_mean = np.zeros(shape=(80, 336), dtype=np.int8)  # the first S-curve in the data for the lowest injection (for time walk)
-            second_scurve_mean = np.zeros(shape=(80, 336), dtype=np.int8)  # the second S-curve in the data (to calibrate one inj. delay step)
-            a_scurve_mean = np.zeros(shape=(80, 336), dtype=np.int8)  # the mean of the S-curve at a given rel. BCID (for hit delay)
+            # Fit all BCID jumps per pixel (1 - 2 jumps expected) with multithreading
+            pixel_data_shaped = pixel_data_fixed.reshape(pixel_data_fixed.shape[0] * pixel_data_fixed.shape[1], pixel_data_fixed.shape[2]).tolist()
+            pool = mp.Pool()  # create as many workers as physical cores are available
+            result_array = np.array(pool.map(fit_bcid_jumps, pixel_data_shaped))
+            pool.close()
+            pool.join()
+            result_array = result_array.reshape(pixel_data_fixed.shape[0], pixel_data_fixed.shape[1], 4)
 
-            # Loop over the S-curve means
-            for (row_index, col_index, delay_index) in np.column_stack((index_sel)):
-                delay = injection_delays[delay_index]
-                if first_scurve_mean[col_index, row_index] == 0:
-                    if delay_index == 0:  # ignore the first index, can be wrong due to nan filling
-                        continue
-                    if pixel_data_round[row_index, col_index, delay] >= min_rel_bcid[col_index, row_index]:  # make sure to always use the data of the same BCID
-                        first_scurve_mean[col_index, row_index] = delay
-                        min_rel_bcid[col_index, row_index] = pixel_data_round[row_index, col_index, delay]
-                elif second_scurve_mean[col_index, row_index] == 0 and (delay - first_scurve_mean[col_index, row_index]) > 20:  # minimum distance 10, can otherwise be data 'jitter'
-                    second_scurve_mean[col_index, row_index] = delay
-                if pixel_data_round[row_index, col_index, delay] == bcid_min:
-                    if a_scurve_mean[col_index, row_index] == 0:
-                        a_scurve_mean[col_index, row_index] = delay
-
-            plsr_dac = int(re.search(r'\d+', node.name).group())
-            plsr_dac_index = np.where(plsr_dac_values == plsr_dac)[0][0]
-            if (np.count_nonzero(first_scurve_mean) - np.count_nonzero(a_scurve_mean)) > 1e3:
-                logging.warning("The common BCID to find the absolute hit delay was set wrong! Hit delay calculation will be wrong.")
-            selection = (second_scurve_mean - first_scurve_mean)[np.logical_and(second_scurve_mean > 0, first_scurve_mean < second_scurve_mean)]
-            delay_calibration_data.append(np.mean(selection))
-            delay_calibration_data_error.append(np.std(selection))
-            # Store the actual PlsrDAC data into result hist
-            timewalk[:, :, plsr_dac_index] = first_scurve_mean  # Save the plsr delay of first s-curve (for time walk calc.)
-            hit_delay[:, :, plsr_dac_index] = a_scurve_mean  # Save the plsr delay of s-curve of fixed rel. BCID (for hit delay calc.)
+            # Store array to file
+            out = in_file_h5.createCArray(hists_folder, name='PixelHistsBcidJumpsPlsrDac_%03d' % actual_plsr_dac, title='BCID jumps per pixel for PlsrDAC ' + str(actual_plsr_dac), atom=tb.Atom.from_dtype(result_array.dtype), shape=result_array.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+            out.attrs.dimensions = 'column, row, BCID first jump, delay first jump, BCID second jump, delay second jump'
+            out[:] = result_array
             progress_bar.update(index)
 
-        for index, node in enumerate(in_file_h5.root.HistsTot):  # loop over tot hist for all PlsrDAC values
+    # Calibrate the step size of the injection delay and create absolute and relative (=time walk) hit delay histograms
+    with tb.open_file(raw_data_file + '_analyzed.h5', mode="r+") as out_file_h5:
+        # Calculate injection delay step size using the average difference of two Scurves of all pixels and plsrDAC settings and the minimum BCID to fix the absolute time scale
+        differences = []
+        min_bcid = 15
+        for node in out_file_h5.root.PixelHistsBcidJumps:
+            pixel_data = node[:, :, :]
+        selection = (np.logical_and(pixel_data[:, :, 0] > 0, pixel_data[:, :, 2] > 0))  # select pixels with two Scurve fits
+        difference = pixel_data[selection, 3] - pixel_data[selection, 1]  # difference in delay settings between the scurves
+        difference = difference[np.logical_and(difference > 15, difference < 60)]  # get rid of bad data
+        differences.extend(difference.tolist())
+        if np.amin(pixel_data[selection, 0]) < min_bcid:
+            min_bcid = np.amin(pixel_data[selection, 0])
+        step_size = np.median(differences)  # delay steps needed for 25 ns
+        step_size_error = np.std(differences)  # delay steps needed for 25 ns
+
+        # Calculate the hit delay per pixel
+        plsr_dac_values = out_file_h5.root.PixelHistsMeanRelBcid._v_attrs.plsr_dac_values
+        hit_delay = np.zeros(shape=(336, 80, len(plsr_dac_values)))  # result array
+        for node in out_file_h5.root.PixelHistsBcidJumps:  # loop over all BCID jump hists for all PlsrDAC values to calculate the hit delay
+            actual_plsr_dac = int(re.search(r'\d+', node.name).group())  # actual node plsr dac value
+            plsr_dac_index = np.where(plsr_dac_values == actual_plsr_dac)[0][0]
+            pixel_data = node[:, :, :]
+            actual_hit_delay = (pixel_data[:, :, 0] - min_bcid + 1) * 25. - pixel_data[:, :, 1] * 25. / step_size
+            hit_delay[:, :, plsr_dac_index] = actual_hit_delay
+        hit_delay = np.ma.masked_less(hit_delay, 0)
+        timewalk = hit_delay - np.amin(hit_delay, axis=2)[:, :, np.newaxis]  # time walk calc. by normalization to minimum for every pixel
+
+        # Calculate the mean TOT per PlsrDAC (additional information, not needed for hit delay)
+        tot = np.zeros(shape=(len(plsr_dac_values),), dtype=np.float16)  # result array
+        for node in out_file_h5.root.HistsTot:  # loop over tot hist for all PlsrDAC values
             plsr_dac = int(re.search(r'\d+', node.name).group())
             plsr_dac_index = np.where(plsr_dac_values == plsr_dac)[0][0]
             tot_data = node[:]
             tot[plsr_dac_index] = get_mean_from_histogram(tot_data, range(16))
 
-        # Calibrate the step size of the injection delay by the average difference of two Scurves of all pixels
-        delay_calibration_mean = np.mean(np.array(delay_calibration_data[2:])[np.isfinite(np.array(delay_calibration_data[2:]))])
-        delay_calibration, delay_calibration_error = curve_fit(lambda x, par: (par), injection_delays, delay_calibration_data, p0=delay_calibration_mean, sigma=delay_calibration_data_error, absolute_sigma=True)
-        delay_calibration, delay_calibration_error = delay_calibration[0], delay_calibration_error[0][0]
-
-        progress_bar.finish()
-
-    #  Save time walk / hit delay hists
-    with tb.open_file(raw_data_file + '_analyzed.h5', mode="r+") as out_file_h5:
-        timewalk_result = np.swapaxes(timewalk, 0, 1)
-        hit_delay_result = np.swapaxes(hit_delay, 0, 1)
-        out = out_file_h5.createCArray(out_file_h5.root, name='HistPixelTimewalkPerPlsrDac', title='Time walk per pixel and PlsrDAC', atom=tb.Atom.from_dtype(timewalk_result.dtype), shape=timewalk_result.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
-        out_2 = out_file_h5.createCArray(out_file_h5.root, name='HistPixelHitDelayPerPlsrDac', title='Hit delay per pixel and PlsrDAC', atom=tb.Atom.from_dtype(hit_delay_result.dtype), shape=hit_delay_result.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+        # Store the data
+        out = out_file_h5.createCArray(out_file_h5.root, name='HistPixelTimewalkPerPlsrDac', title='Time walk per pixel and PlsrDAC', atom=tb.Atom.from_dtype(timewalk.dtype), shape=timewalk.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+        out_2 = out_file_h5.createCArray(out_file_h5.root, name='HistPixelHitDelayPerPlsrDac', title='Hit delay per pixel and PlsrDAC', atom=tb.Atom.from_dtype(hit_delay.dtype), shape=hit_delay.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
         out_3 = out_file_h5.createCArray(out_file_h5.root, name='HistTotPerPlsrDac', title='Tot per PlsrDAC', atom=tb.Atom.from_dtype(tot.dtype), shape=tot.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
         out.attrs.dimensions = 'column, row, PlsrDAC'
-        out.attrs.delay_calibration = delay_calibration
-        out.attrs.delay_calibration_error = delay_calibration_error
+        out.attrs.delay_calibration = step_size
+        out.attrs.delay_calibration_error = step_size_error
         out.attrs.plsr_dac_values = plsr_dac_values
         out_2.attrs.dimensions = 'column, row, PlsrDAC'
-        out_2.attrs.delay_calibration = delay_calibration
-        out_2.attrs.delay_calibration_error = delay_calibration_error
+        out_2.attrs.delay_calibration = step_size
+        out_2.attrs.delay_calibration_error = step_size_error
         out_2.attrs.plsr_dac_values = plsr_dac_values
         out_3.attrs.dimensions = 'PlsrDAC'
         out_3.attrs.plsr_dac_values = plsr_dac_values
-        out[:] = timewalk_result
-        out_2[:] = hit_delay_result
+        out[:] = timewalk.filled(fill_value=np.NaN)
+        out_2[:] = hit_delay.filled(fill_value=np.NaN)
         out_3[:] = tot
 
-    # Mask the pixels that have non valid data an create plot with the relative time walk for all pixels
+    # Mask the pixels that have non valid data and create plot with the time walk and hit delay for all pixels
     with tb.open_file(raw_data_file + '_analyzed.h5', mode="r") as in_file_h5:
-        def plsr_dac_to_charge(plsr_dac, vcal_c0, vcal_c1, c_high):
+        def plsr_dac_to_charge(plsr_dac, vcal_c0, vcal_c1, c_high):  # TODO: take PlsrDAC calib from file
             voltage = vcal_c0 + vcal_c1 * plsr_dac
             return voltage * c_high / 0.16022
 
@@ -263,38 +298,28 @@ def analyze_hit_delay(raw_data_file):
             filename.savefig(fig)
 
         plsr_dac_values = in_file_h5.root.PixelHistsMeanRelBcid._v_attrs.plsr_dac_values
-        delay_calibration = in_file_h5.root.HistPixelHitDelayPerPlsrDac._v_attrs.delay_calibration
         charge_values = plsr_dac_to_charge(np.array(plsr_dac_values), vcal_c0, vcal_c1, c_high)
         hist_timewalk = in_file_h5.root.HistPixelTimewalkPerPlsrDac[:, :, :]
         hist_hit_delay = in_file_h5.root.HistPixelHitDelayPerPlsrDac[:, :, :]
         tot = in_file_h5.root.HistTotPerPlsrDac[:]
 
-        hist_rel_timewalk = np.amax(hist_timewalk, axis=2)[:, :, np.newaxis] - hist_timewalk
-        hist_rel_hit_delay = np.mean(hist_hit_delay[:, :, -1]) - hist_hit_delay
-
-        # Create mask and apply for bad pixels
-        mask = np.ones(hist_rel_timewalk.shape, dtype=np.int8)
-        for node in in_file_h5.root.PixelHistsMeanRelBcid:
-            pixel_data = node[:, :, :]
-            a = (np.sum(pixel_data, axis=2))
-            mask[np.isfinite(a), :] = 0
-
-        hist_rel_timewalk = np.ma.masked_array(hist_rel_timewalk, mask)
-        hist_hit_delay = np.ma.masked_array(hist_hit_delay, mask)
+        hist_timewalk = np.ma.masked_invalid(hist_timewalk)
+        hist_hit_delay = np.ma.masked_invalid(hist_hit_delay)
 
         output_pdf = PdfPages(raw_data_file + '_analyzed.pdf')
-        plot_hit_delay(np.swapaxes(hist_rel_timewalk, 0, 1) * 25. / delay_calibration, charge_values=charge_values, title='Time walk', xlabel='Charge [e]', ylabel='Time walk [ns]', filename=output_pdf, threshold=np.amin(charge_values), tot_values=tot)
-        plot_hit_delay(np.swapaxes(hist_rel_hit_delay, 0, 1) * 25. / delay_calibration, charge_values=charge_values, title='Hit delay', xlabel='Charge [e]', ylabel='Hit delay [ns]', filename=output_pdf, threshold=np.amin(charge_values), tot_values=tot)
-        plot_scurves(np.swapaxes(hist_rel_timewalk, 0, 1), scan_parameters=charge_values, title='Timewalk of the FE-I4', scan_parameter_name='Charge [e]', ylabel='Timewalk [ns]', min_x=0, y_scale=25. / delay_calibration, filename=output_pdf)
-        plot_scurves(np.swapaxes(hist_hit_delay[:, :, :], 0, 1), scan_parameters=charge_values, title='Hit delay (T0) with internal charge injection\nof the FE-I4', scan_parameter_name='Charge [e]', ylabel='Hit delay [ns]', min_x=0, y_scale=25. / delay_calibration, filename=output_pdf)
+        plot_hit_delay(np.swapaxes(hist_timewalk, 0, 1), charge_values=charge_values, title='Time walk', xlabel='Charge [e]', ylabel='Time walk [ns]', filename=output_pdf, threshold=np.amin(charge_values), tot_values=tot)
+        plot_hit_delay(np.swapaxes(hist_hit_delay, 0, 1), charge_values=charge_values, title='Hit delay', xlabel='Charge [e]', ylabel='Hit delay [ns]', filename=output_pdf, threshold=np.amin(charge_values), tot_values=tot)
+        plot_scurves(np.swapaxes(hist_timewalk, 0, 1), scan_parameters=charge_values, title='Timewalk of the FE-I4', scan_parameter_name='Charge [e]', ylabel='Timewalk [ns]', min_x=0, filename=output_pdf)
+        plot_scurves(np.swapaxes(hist_hit_delay[:, :, :], 0, 1), scan_parameters=charge_values, title='Hit delay (T0) with internal charge injection\nof the FE-I4', scan_parameter_name='Charge [e]', ylabel='Hit delay [ns]', min_x=0, filename=output_pdf)
 
         for i in [0, 1, len(plsr_dac_values) / 4, len(plsr_dac_values) / 2, -1]:  # plot 2d hist at min, 1/4, 1/2, max PlsrDAC setting
-            plot_three_way(hist_rel_timewalk[:, :, i] * 25. / delay_calibration, title='Time walk at %.0f e' % (charge_values[i]), x_axis_title='Time walk [ns]', filename=output_pdf)
-            plot_three_way(hist_hit_delay[:, :, i] * 25. / delay_calibration, title='Hit delay (T0) with internal charge injection at %.0f e' % (charge_values[i]), x_axis_title='Hit delay [ns]', minimum=np.amin(hist_hit_delay[:, :, i]), maximum=np.amax(hist_hit_delay[:, :, i]), filename=output_pdf)
+            plot_three_way(hist_timewalk[:, :, i], title='Time walk at %.0f e' % (charge_values[i]), x_axis_title='Time walk [ns]', filename=output_pdf)
+            plot_three_way(hist_hit_delay[:, :, i], title='Hit delay (T0) with internal charge injection at %.0f e' % (charge_values[i]), x_axis_title='Hit delay [ns]', minimum=np.amin(hist_hit_delay[:, :, i]), maximum=np.amax(hist_hit_delay[:, :, i]), filename=output_pdf)
         output_pdf.close()
 
 
 class HitDelayScan(Fei4RunBase):
+
     '''Standard Hit Delay Scan
 
     Implementation of a hit delay scan.
@@ -366,4 +391,4 @@ class HitDelayScan(Fei4RunBase):
 
 if __name__ == "__main__":
     RunManager('..\configuration.yaml').run_run(HitDelayScan)
-    #analyze_hit_delay(r'D:\david\SCC30\hit_timing\scc_30\2_scc_30_hit_delay_scan')
+#     analyze_hit_delay(r'L:\hitdelay\2_scc_99_hit_delay_scan')
