@@ -164,6 +164,7 @@ class StopModeExtTriggerScan(Fei4RunBase):
             self.set_scan_parameters(**kwargs)
         self.fifo_readout.start(reset_sram_fifo=False, clear_buffer=True, callback=self.handle_data, errback=self.handle_err, no_data_timeout=self.no_data_timeout)
         self.dut['TLU']['TRIGGER_COUNTER'] = 0
+        self.dut['TLU']['MAX_TRIGGERS'] = self.max_triggers
         self.dut['CMD']['EN_EXT_TRIGGER'] = True
 
         def timeout():
