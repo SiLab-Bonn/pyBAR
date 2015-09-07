@@ -213,6 +213,23 @@ assign TX[2] = RJ45_TRIGGER;
 // ------- RESRT/CLOCK  ------- //
 reset_gen ireset_gen(.CLK(BUS_CLK), .RST(BUS_RST));
 
+`ifdef SLOW_CLK
+assign RX_CLK = CLK_40; // 12MHz
+
+clk_gen_12mhz iclkgen(
+    .U1_CLKIN_IN(FCLK_IN),
+    .U1_USER_RST_IN(1'b0),
+    .U1_CLKIN_IBUFG_OUT(),
+    .U1_CLK0_OUT(BUS_CLK), // DCM1: 48MHz USB/SRAM clock
+    .U1_STATUS_OUT(),
+    .U2_CLKFX_OUT(CLK_40), // DCM2: 40MHz command clock
+    .U2_CLKDV_OUT(DATA_CLK), // DCM2: 16MHz SERDES clock
+    .U2_CLK0_OUT(),
+    .U2_CLK2X_OUT(RX_CLK2X), // DCM2: 24MHz data recovery clock
+    .U2_LOCKED_OUT(CLK_LOCKED),
+    .U2_STATUS_OUT()
+);
+`else
 clk_gen iclkgen(
     .U1_CLKIN_IN(FCLK_IN),
     .U1_USER_RST_IN(1'b0),
@@ -226,6 +243,7 @@ clk_gen iclkgen(
     .U2_LOCKED_OUT(CLK_LOCKED),
     .U2_STATUS_OUT()
 );
+`endif
 
 `ifndef GPAC
 wire CE_10MHZ;
@@ -266,7 +284,11 @@ assign REG_AB_STB_LD = 0;
 wire CE_1HZ; // use for sequential logic
 wire CLK_1HZ; // don't connect to clock input, only combinatorial logic
 clock_divider #(
+`ifdef SLOW_CLK
+    .DIVISOR(12000000)
+`else
     .DIVISOR(40000000)
+`endif
 ) i_clock_divisor_40MHz_to_1Hz (
     .CLK(CLK_40),
     .RESET(1'b0),
@@ -276,7 +298,11 @@ clock_divider #(
 
 wire CLK_3HZ;
 clock_divider #(
+`ifdef SLOW_CLK
+    .DIVISOR(4000000)
+`else
     .DIVISOR(13333333)
+`endif
 ) i_clock_divisor_40MHz_to_3Hz (
     .CLK(CLK_40),
     .RESET(1'b0),
