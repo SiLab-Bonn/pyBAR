@@ -47,7 +47,7 @@ class TestInterface(unittest.TestCase):
     def setUpClass(cls):
         subprocess.call('unzip -o test_interface/sim_build.zip', shell=True)
         subprocess.Popen(['make', '-f', '../firmware/mio/cosim/Makefile', 'sim_only'])
-        time.sleep(180)  # some time for simulator to start
+        time.sleep(10)  # some time for simulator to start
 
     @classmethod
     def tearDownClass(cls):
