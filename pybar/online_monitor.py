@@ -297,7 +297,7 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         self.event_status_plot.setData(x=np.linspace(-0.5, 15.5, 17), y=error_counters, stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
         self.service_record_plot.setData(x=np.linspace(-0.5, 31.5, 33), y=service_records_counters, stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
         self.trigger_status_plot.setData(x=np.linspace(-0.5, 7.5, 9), y=trigger_error_counters, stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
-        self.hit_timing_plot.setData(x=np.linspace(-0.5, 15.5, 17), y=rel_bcid_hist, stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
+        self.hit_timing_plot.setData(x=np.linspace(-0.5, 15.5, 17), y=rel_bcid_hist[:16], stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
 
     @pyqtSlot(dict)
     def on_meta_data(self, meta_data):
