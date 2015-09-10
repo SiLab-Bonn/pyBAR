@@ -45,7 +45,7 @@ def send_data(socket, data, scan_parameters={}, name='FEI4readoutData'):
         pass
 
 
-def open_raw_data_file(filename, mode="w", title="", register=None, conf=None, run_conf=None, scan_parameters=None, socket_addr=None):
+def open_raw_data_file(filename, mode="w", title="", register=None, conf=None, run_conf=None, scan_parameters=None, socket_addr=None, zmq_context=None):
     '''Mimics pytables.open_file() and stores the configuration and run configuration
 
     Returns:
@@ -56,7 +56,7 @@ def open_raw_data_file(filename, mode="w", title="", register=None, conf=None, r
         # do something here
         raw_data_file.append(self.readout.data, scan_parameters={scan_parameter:scan_parameter_value})
     '''
-    return RawDataFile(filename=filename, mode=mode, title=title, register=register, conf=conf, run_conf=run_conf, scan_parameters=scan_parameters, socket_addr=socket_addr)
+    return RawDataFile(filename=filename, mode=mode, title=title, register=register, conf=conf, run_conf=run_conf, scan_parameters=scan_parameters, socket_addr=socket_addr, zmq_context=zmq_context)
 
 
 class RawDataFile(object):
@@ -66,7 +66,7 @@ class RawDataFile(object):
     '''Raw data file object. Saving data queue to HDF5 file.
     '''
 
-    def __init__(self, filename, mode="w", title='', register=None, conf=None, run_conf=None, scan_parameters=None, socket_addr=None):  # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created):
+    def __init__(self, filename, mode="w", title='', register=None, conf=None, run_conf=None, scan_parameters=None, socket_addr=None, zmq_context=None):  # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created):
         self.lock = RLock()
         if os.path.splitext(filename)[1].strip().lower() != '.h5':
             self.base_filename = filename
@@ -97,12 +97,17 @@ class RawDataFile(object):
             save_configuration_dict(self.h5_file, 'conf', conf)
         if run_conf:
             save_configuration_dict(self.h5_file, 'run_conf', run_conf)
-        if socket_addr:
-            self.socket = zmq.Context().socket(zmq.PUSH)  # push data non blocking
-            self.socket.bind(socket_addr)
-            send_meta_data(self.socket, run_conf, name='RunConf')  # send run info
-        else:
+        if socket_addr is None:
             self.socket = None
+        elif isinstance(socket_addr, basestring):
+            if zmq_context is None:
+                zmq_context = zmq.Context()  # create own context
+            self.socket = zmq_context.socket(zmq.PUSH)  # push data non blocking
+            self.socket.bind(socket_addr)
+            send_meta_data(self.socket, run_conf, name='RunConf')  # send run info to indicate new scan
+            logging.info('Sending data to %s' % socket_addr)
+        else:
+            raise ValueError('Expecting string for socket_addr.')
 
     def __enter__(self):
         return self

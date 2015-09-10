@@ -8,14 +8,15 @@ fe_flavor : fei4b  # FEI4 flavor/type for initial configuration. Valid values: '
 chip_address :  # Chip Address for initial configuration, if not given, broadcast bit will be set
 module_id : module_test  # module identifier / name, sub-folder with given name will be created inside working_dir
 
-# *** global run configuration ***
+#send_data : 'tcp://127.0.0.1:5678'  # to allow incoming connections on all interfaces use 0.0.0.0
+send_error_msg :
+    email_host: 'mail.gmx.net'  # outgoing mail server
+    email_to: ["pohl@physik.uni-bonn.de", "janssen@physik.uni-bonn.de"]  # the Email adresses the status emails are send to
+    email_account: ['mr_beam@gmx.de']  # email account name and password used to send email
+
+# *** run configuration ***
 #
-run_conf:
-#    send_data : 'tcp://127.0.0.1:5678'  # to allow incoming connections on all interfaces use 0.0.0.0
-    send_error :
-        email_host: 'mail.gmx.net'  # outgoing mail server
-        email_to: ["pohl@physik.uni-bonn.de", "janssen@physik.uni-bonn.de"]  # the Email adresses the status emails are send to
-        email_account: ['mr_beam@gmx.de']  # email account name and password used to send email
+#run_conf:
 #    comment : ''
 #    reset_rx_on_error : False
 #
