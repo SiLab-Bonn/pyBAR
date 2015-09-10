@@ -46,7 +46,15 @@ class RunBase():
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, conf, run_conf=None):
-        """Initialize object."""
+        """Initialize object.
+
+        Parameters
+        ----------
+        conf: dict
+            Persistant configuration for all runs.
+        run_conf : dict
+            Run configuration for single run.
+        """
         logging.info('Initializing %s', self.__class__.__name__)
         self._conf = conf
         self._init_run_conf(run_conf)
