@@ -602,12 +602,12 @@ def send_mail(text, configuration, subject=''):
     '''
     logging.info('Send status E-Mail (' + subject + ')')
     body = string.join((
-            "From: %s" % configuration['email_account'][0],
-            "To: %s" % str(configuration['email_to']).strip('[]'),
-            "Subject: %s" % subject,
-            "",
-            text
-            ), "\r\n")
+        "From: %s" % configuration['email_account'][0],
+        "To: %s" % str(configuration['email_to']).strip('[]'),
+        "Subject: %s" % subject,
+        "",
+        text
+        ), "\r\n")
     server = smtplib.SMTP_SSL(configuration['email_host'])
     server.login(configuration['email_account'][0], configuration['email_account'][1])
     server.sendmail(configuration['email_account'][0], configuration['email_to'], body)
