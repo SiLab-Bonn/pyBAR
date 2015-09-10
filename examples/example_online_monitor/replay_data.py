@@ -13,19 +13,7 @@ import progressbar
 import sys
 from subprocess import Popen
 
-
-def send_data(socket, data, scan_parameters, name='FEI4readoutData', flags=0, copy=True, track=False):  # Function to serialize the data of one readout and send it via ZMQ
-    data_meta_data = dict(
-        name=name,
-        dtype=str(data[0].dtype),
-        shape=data[0].shape,
-        timestamp_start=data[1],
-        timestamp_stop=data[2],
-        readout_error=float(data[3]),
-        scan_parameters=str(scan_parameters)
-    )
-    socket.send_json(data_meta_data, flags | zmq.SNDMORE | zmq.NOBLOCK)
-    return socket.send(data[0].tostring(), flags, copy=copy, track=track)
+from pybar.daq.fei4_raw_data import send_data
 
 
 def transfer_file(file_name, socket):  # Function to open the raw data file and sending the readouts periodically
