@@ -432,9 +432,9 @@ class RunManager(object):
         If use_thread is True, returns function, which blocks until thread terminates, and which itself returns run status.
         If use_thread is False, returns run status.
         '''
-        if conf is not None:
-            self.conf.update(conf)
-            
+        conf = self.open_conf(conf)
+        self.conf.update(conf)
+
         if isclass(run):
             # instantiate the class
             run = run(conf=self.conf)
