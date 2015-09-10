@@ -336,19 +336,19 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
 
 if __name__ == '__main__':
     usage = "Usage: %prog ADDRESS"
-    description = "ADDRESS: Remote IP address of the sender (default: tcp://127.0.0.1:5678)."
+    description = "ADDRESS: Remote address of the sender (default: tcp://127.0.0.1:5678)."
     parser = OptionParser(usage, description=description)
     options, args = parser.parse_args()
     if len(args) == 0:
-        remote_addr = 'tcp://127.0.0.1:5678'
+        socket_addr = 'tcp://127.0.0.1:5678'
     elif len(args) == 1:
-        remote_addr = args[0]
+        socket_addr = args[0]
     else:
         parser.error("incorrect number of arguments")
 
     app = Qt.QApplication(sys.argv)
 #     app.aboutToQuit.connect(myExitHandler)
-    win = OnlineMonitorApplication(socket_addr='tcp://127.0.0.1:5678')  # enter remote IP to connect to the other side listening
+    win = OnlineMonitorApplication(socket_addr=socket_addr)  # enter remote IP to connect to the other side listening
     win.resize(800, 840)
     win.setWindowTitle('Online Monitor')
     win.show()
