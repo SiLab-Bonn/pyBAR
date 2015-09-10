@@ -1,8 +1,8 @@
-''' This example shows the power of a fast data analysis and a data taking where nothing is discarded. 
-A raw data file is loaded and send to local host in readout chunks. These chunks are created with the same frequency 
-as it was done during data taking, thus this script can replay stored data files.
+'''This example shows the power of a fast raw data analysis and a data taking system where no data is discarded.
+A raw data file is loaded and and data chunks are sent to the online monitor. These chunks are sent with the same speed
+as it was done during data taking. This script can used to replay existing raw data files.
 
-To view the data stream the online monitor is automatically started as a stand alone script.
+The online monitor will be automatically started when calling this script.
 '''
 
 import zmq
