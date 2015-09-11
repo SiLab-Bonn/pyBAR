@@ -5,10 +5,12 @@ from threading import RLock
 import tables as tb
 import os.path
 from os import remove
-# from operator import itemgetter
+from operator import itemgetter
 
 from pybar.daq.readout_utils import save_configuration_dict
 from pybar.analysis.RawDataConverter.data_struct import MetaTableV2 as MetaTable, generate_scan_parameter_description
+
+import time
 
 
 def send_meta_data(socket, conf, name):
@@ -19,8 +21,8 @@ def send_meta_data(socket, conf, name):
         conf=conf
     )
     try:
-        socket.send_json(meta_data, falgs=zmq.NOBLOCK)
-    except (zmq.Again, TypeError):
+        socket.send_json(meta_data, flags=zmq.NOBLOCK)
+    except zmq.Again:
         pass
 
 
@@ -104,6 +106,7 @@ class RawDataFile(object):
                 zmq_context = zmq.Context()  # create own context
             self.socket = zmq_context.socket(zmq.PUB)  # push data non blocking
             self.socket.bind(socket_addr)
+            time.sleep(0.3)  # small sleep needed to be able to use ZMQ socket after creation
             send_meta_data(self.socket, run_conf, name='RunConf')  # send run info to indicate new scan
             logging.info('Sending data to %s' % socket_addr)
         else:
@@ -217,11 +220,11 @@ class RawDataFile(object):
         if self.register is None:
             raise RuntimeError('Register object not available for storing in FEi4 raw data file')
         self.register.save_configuration(self.h5_file)
-#         if self.socket:  # send global register config if socket is specified
-#             global_register_config = {}
-#             for global_reg in sorted(self.register.get_global_register_objects(readonly=False), key=itemgetter('name')):
-#                 global_register_config[global_reg['name']] = global_reg['value']
-#             send_meta_data(self.socket, global_register_config, name='GlobalRegisterConf')  # send run info
+        if self.socket:  # send global register config if socket is specified
+            global_register_config = {}
+            for global_reg in sorted(self.register.get_global_register_objects(readonly=False), key=itemgetter('name')):
+                global_register_config[global_reg['name']] = global_reg['value']
+            send_meta_data(self.socket, global_register_config, name='GlobalRegisterConf')  # send run info
 
     def flush(self):
         with self.lock:

@@ -18,7 +18,8 @@ from pybar.analysis.RawDataConverter.data_histograming import PyDataHistograming
 
 class DataWorker(QtCore.QObject):
     run_start = QtCore.pyqtSignal()
-    config_data = QtCore.pyqtSignal(dict)
+    run_config_data = QtCore.pyqtSignal(dict)
+    global_config_data = QtCore.pyqtSignal(dict)
     interpreted_data = QtCore.pyqtSignal(dict)
     meta_data = QtCore.pyqtSignal(dict)
     finished = QtCore.pyqtSignal()
@@ -45,11 +46,8 @@ class DataWorker(QtCore.QObject):
         self.socket_addr = socket_addr
         self.context = zmq.Context()
         self.socket_pull = self.context.socket(zmq.SUB)
-        self.socket_pull.setsockopt(zmq.SUBSCRIBE, '')
+        self.socket_pull.setsockopt(zmq.SUBSCRIBE, '')  # do not filter any data
         self.socket_pull.connect(self.socket_addr)
-        
-#         self.poller = zmq.Poller()  # poll needed to be able to return QThread
-#         self.poller.register(self.socket_pull, zmq.POLLIN)
 
     @pyqtSlot(float)
     def on_set_integrate_readouts(self, value):
@@ -105,16 +103,14 @@ class DataWorker(QtCore.QObject):
                         meta_data.update({'n_hits': self.interpreter.get_n_hits(), 'n_events': self.interpreter.get_n_events()})
                         self.meta_data.emit(meta_data)
                     elif name == 'RunConf':
-                        # TODO: from FE config
-                        try:
-                            n_bcid = int(data[1]['trig_count'])
-                        except KeyError:
-                            n_bcid = 0
                         self.histograming.reset()
                         self.interpreter.reset()
-                        self.interpreter.set_trig_count(n_bcid)
                         self.run_start.emit()
-                        self.config_data.emit(meta_data)
+                        self.run_config_data.emit(meta_data)
+                    elif name == 'GlobalRegisterConf':
+                        n_bcid = int(meta_data['conf']['Trig_Count'])
+                        self.interpreter.set_trig_count(n_bcid)
+                        self.global_config_data.emit(meta_data)
 
         self.finished.emit()
 
@@ -151,7 +147,8 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         self.worker.meta_data.connect(self.on_meta_data)
         self.worker.interpreted_data.connect(self.on_interpreted_data)
         self.worker.run_start.connect(self.on_run_start)
-        self.worker.config_data.connect(self.on_config_data)
+        self.worker.run_config_data.connect(self.on_run_config_data)
+        self.worker.global_config_data.connect(self.on_global_config_data)
         self.spin_box.valueChanged.connect(self.worker.on_set_integrate_readouts)
         self.reset_button.clicked.connect(self.on_reset)
         self.worker.moveToThread(self.thread)
@@ -174,7 +171,8 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
 
         # Docks
         dock_occcupancy = Dock("Occupancy", size=(400, 400))
-        dock_run_config = Dock("Configuration", size=(400, 400))
+        dock_run_config = Dock("Run configuration", size=(400, 400))
+        dock_global_config = Dock("Global configuration", size=(400, 400))
         dock_tot = Dock("Time over threshold values (TOT)", size=(400, 400))
         dock_tdc = Dock("Time digital converter values (TDC)", size=(400, 400))
         dock_event_status = Dock("Event status", size=(400, 400))
@@ -182,7 +180,8 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         dock_service_records = Dock("Service records", size=(400, 400))
         dock_hit_timing = Dock("Hit timing (rel. BCID)", size=(400, 400))
         dock_status = Dock("Status", size=(800, 40))
-        self.dock_area.addDock(dock_run_config, 'left')
+        self.dock_area.addDock(dock_global_config, 'left')
+        self.dock_area.addDock(dock_run_config, 'above', dock_global_config)
         self.dock_area.addDock(dock_occcupancy, 'above', dock_run_config)
         self.dock_area.addDock(dock_tdc, 'right', dock_occcupancy)
         self.dock_area.addDock(dock_tot, 'above', dock_tdc)
@@ -217,12 +216,15 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         layout.addWidget(self.reset_button, 0, 7, 0, 1)
         dock_status.addWidget(cw)
 
-        # Config dock
+        # Run config dock
         self.run_conf_list_widget = Qt.QListWidget()
         dock_run_config.addWidget(self.run_conf_list_widget)
 
-        # Different plot docks
+        # Global config dock
+        self.global_conf_list_widget = Qt.QListWidget()
+        dock_global_config.addWidget(self.global_conf_list_widget)
 
+        # Different plot docks
         occupancy_graphics = pg.GraphicsLayoutWidget()
         occupancy_graphics.show()
         view = occupancy_graphics.addViewBox()
@@ -272,18 +274,29 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
 
     @pyqtSlot()
     def on_run_start(self):
-        # clear config data widget
+        # clear config data widgets
         self.run_conf_list_widget.clear()
-        self.run_conf_list_widget.addItem(Qt.QListWidgetItem("No run configuration"))
+        self.global_conf_list_widget.clear()
+        self.run_conf_list_widget.addItem(Qt.QListWidgetItem("Actual Run configuration"))
+        self.global_conf_list_widget.addItem(Qt.QListWidgetItem("FE-I4 global register config at start of run"))
 
     @pyqtSlot(dict)
-    def on_config_data(self, config_data):
-        self.setup_config_text(**config_data)
+    def on_run_config_data(self, config_data):
+        self.setup_run_config_text(**config_data)
 
-    def setup_config_text(self, conf):
+    @pyqtSlot(dict)
+    def on_global_config_data(self, config_data):
+        self.setup_global_config_text(**config_data)
+
+    def setup_run_config_text(self, conf):
         for key, value in conf.iteritems():
             item = Qt.QListWidgetItem("%s: %s" % (key, value))
             self.run_conf_list_widget.addItem(item)
+
+    def setup_global_config_text(self, conf):
+        for key, value in conf.iteritems():
+            item = Qt.QListWidgetItem("%s: %s" % (key, value))
+            self.global_conf_list_widget.addItem(item)
 
     @pyqtSlot(dict)
     def on_interpreted_data(self, interpreted_data):
