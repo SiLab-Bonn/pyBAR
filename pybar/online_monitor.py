@@ -108,8 +108,8 @@ class DataWorker(QtCore.QObject):
                         self.run_start.emit()
                         self.run_config_data.emit(meta_data)
                     elif name == 'GlobalRegisterConf':
-                        n_bcid = int(meta_data['conf']['Trig_Count'])
-                        self.interpreter.set_trig_count(n_bcid)
+                        trig_count = int(meta_data['conf']['Trig_Count'])
+                        self.interpreter.set_trig_count(trig_count)
                         self.global_config_data.emit(meta_data)
 
         self.finished.emit()
