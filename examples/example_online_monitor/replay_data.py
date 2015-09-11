@@ -45,7 +45,7 @@ if __name__ == '__main__':
     Popen(["python", "../../pybar/online_monitor.py", socket_addr])  # if this call fails, comment it out and start the script manually
     # Prepare socket
     context = zmq.Context()
-    socket = context.socket(zmq.PUSH)
+    socket = context.socket(zmq.PUB)
     socket.bind(socket_addr)
     # Transfer file to socket
     transfer_file("../../tests/test_analysis/unit_test_data_2.h5", socket=socket)
