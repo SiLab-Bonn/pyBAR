@@ -36,7 +36,8 @@ class StopModeExtTriggerScan(Fei4RunBase):
     _default_run_conf = {
         "trigger_latency": 5,  # FE global register Trig_Lat. The lower the value the longer the hit data will be stored in data buffer
         "trigger_delay": 192,  # delay between trigger and stop mode command
-        "bcid_window": 100,  # Number of consecurive time slices to be read, from 0 to 255
+        "readout_delay": 2000,  # delay after trigger to record hits, the lower the faster the readout; total readout time per track is about (800 + (1300 + readout_delay) * bcid_window) * 25 ns
+        "trig_count": 100,  # Number of consecurive time slices to be read, from 1 to 256
         "col_span": [1, 80],  # defining active column interval, 2-tuple, from 1 to 80
         "row_span": [1, 336],  # defining active row interval, 2-tuple, from 1 to 336
         "overwrite_enable_mask": False,  # if True, use col_span and row_span to define an active region regardless of the Enable pixel register. If False, use col_span and row_span to define active region by also taking Enable pixel register into account.
@@ -44,7 +45,6 @@ class StopModeExtTriggerScan(Fei4RunBase):
         "no_data_timeout": 30,  # no data timeout after which the scan will be aborted, in seconds
         "scan_timeout": 60,  # timeout for scan after which the scan will be stopped, in seconds
         "max_triggers": 10,  # maximum triggers after which the scan will be stopped, in seconds
-        "enable_tdc": False  # if True, enables TDC (use RX2)
     }
 
     def configure(self):
@@ -110,13 +110,13 @@ class StopModeExtTriggerScan(Fei4RunBase):
             self.register.get_commands("RunMode")[0],
             self.register.get_commands("zeros", length=50)[0],
             self.register.get_commands("LV1")[0],
-            self.register.get_commands("zeros", length=2000)[0],
+            self.register.get_commands("zeros", length=self.readout_delay)[0],
             self.register.get_commands("ConfMode")[0],
             self.register.get_commands("zeros", length=1000)[0],
             self.register.get_commands("GlobalPulse", Width=0)[0],
             self.register.get_commands("zeros", length=100)[0]))
 
-        self.dut['CMD']['CMD_REPEAT'] = self.bcid_window
+        self.dut['CMD']['CMD_REPEAT'] = self.trig_count
         self.dut['CMD']['START_SEQUENCE_LENGTH'] = len(start_sequence)
         self.dut['CMD']['STOP_SEQUENCE_LENGTH'] = len(stop_sequence) + 1
 
@@ -149,14 +149,12 @@ class StopModeExtTriggerScan(Fei4RunBase):
     def analyze(self):
         with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
             analyze_raw_data.create_hit_table = True
-            analyze_raw_data.n_bcid = self.bcid_window
+            analyze_raw_data.trig_count = self.trig_count  # set number of BCID to overwrite the number deduced from the raw data file
             analyze_raw_data.create_source_scan_hist = True
             analyze_raw_data.use_trigger_time_stamp = True
             analyze_raw_data.set_stop_mode = True
             analyze_raw_data.align_at_trigger = True
-            analyze_raw_data.create_cluster_size_hist = True
             analyze_raw_data.interpreter.set_warning_output(False)
-            analyze_raw_data.clusterizer.set_warning_output(False)
             analyze_raw_data.interpret_word_table(use_settings_from_file=False)
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms()
@@ -165,8 +163,8 @@ class StopModeExtTriggerScan(Fei4RunBase):
         if kwargs:
             self.set_scan_parameters(**kwargs)
         self.fifo_readout.start(reset_sram_fifo=False, clear_buffer=True, callback=self.handle_data, errback=self.handle_err, no_data_timeout=self.no_data_timeout)
-        self.dut['TDC']['ENABLE'] = self.enable_tdc
         self.dut['TLU']['TRIGGER_COUNTER'] = 0
+        self.dut['TLU']['MAX_TRIGGERS'] = self.max_triggers
         self.dut['CMD']['EN_EXT_TRIGGER'] = True
 
         def timeout():
@@ -182,7 +180,6 @@ class StopModeExtTriggerScan(Fei4RunBase):
 
     def stop_readout(self, timeout=10.0):
         self.scan_timeout_timer.cancel()
-        self.dut['TDC']['ENABLE'] = False
         self.dut['CMD']['EN_EXT_TRIGGER'] = False
         self.fifo_readout.stop(timeout=timeout)
 

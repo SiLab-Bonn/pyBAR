@@ -62,7 +62,7 @@ author = 'Jens Janssen'
 author_email = 'janssen@physik.uni-bonn.de'
 
 # requirements for core functionality
-install_requires = ['basil==2.1.1', 'bitarray>=0.8.1', 'cython', 'matplotlib', 'numpy', 'pandas', 'progressbar-latest>=2.4', 'tables', 'pyyaml', 'scipy']
+install_requires = ['basil==2.1.2', 'bitarray>=0.8.1', 'cython', 'matplotlib', 'numpy', 'pandas', 'progressbar-latest>=2.4', 'tables', 'pyyaml', 'scipy']
 if system() == 'Windows':
     install_requires.append('pywin32')
 

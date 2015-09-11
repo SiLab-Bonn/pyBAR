@@ -5,12 +5,7 @@
 """Plugin that provides plotting of data from the Python Bonn Atlas Readout System (pyBAR).
 """
 
-__docformat__ = 'restructuredtext'
-__version__ = '1.0'
-plugin_class = 'pyBarPlugin'
-
 import numpy as np
-
 import os
 from PyQt4 import QtCore
 from PyQt4 import QtGui
@@ -24,6 +19,10 @@ try:
 except:
     print 'ERROR: Cannot load additional libraries needed for the pyBAR ViTables plugin!'
     raise
+
+__docformat__ = 'restructuredtext'
+__version__ = '1.0'
+plugin_class = 'pyBarPlugin'
 
 translate = QtGui.QApplication.translate
 

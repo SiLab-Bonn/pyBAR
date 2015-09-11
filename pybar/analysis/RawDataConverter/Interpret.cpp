@@ -30,6 +30,8 @@ void Interpret::setStandardSettings()
 	_hitInfoSize = 1000000;
 	_hitInfo = 0;
 	_hitIndex = 0;
+	_startDebugEvent = 0;
+	_stopDebugEvent = 0;
 	_NbCID = 16;
 	_maxTot = 13;
 	_fEI4B = false;
@@ -42,7 +44,7 @@ void Interpret::setStandardSettings()
 	_startWordIndex = 0;
 	_createMetaDataWordIndex = false;
 	_createEmptyEventHits = false;
-	_isMetaTableV2 = false;
+	_isMetaTableV2 = true;
 	_alignAtTriggerNumber = false;
 	_useTriggerTimeStamp = false;
 	_useTdcTriggerTimeStamp = false;
@@ -89,7 +91,7 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 			_nDataHeaders++;
 			if (tNdataHeader > _NbCID - 1) {	                //maximum event window is reached (tNdataHeader > BCIDs, mostly tNdataHeader > 15), so create new event
 				if (_alignAtTriggerNumber) {
-					addEventErrorCode(__TRUNC_EVENT); //too many data header in the event, abort this event, add truncated flac
+					addEventErrorCode(__TRUNC_EVENT); //too many data header in the event, abort this event, add truncated flag
 					if (Basis::warningSet())
 						warning(std::string("addHit: Hit buffer overflow prevented by splitting events at event " + LongIntToStr(_nEvents)), __LINE__);
 				}
@@ -111,7 +113,7 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 				}
 
 				if (tStartBCID + tDbCID != tActualBCID) {  //check if BCID is increasing by 1s in the event window, if not close actual event and create new event with actual data header
-					if (tActualLVL1ID == tStartLVL1ID) //happens sometimes, non inc. BCID, FE feature, only abort the LVL1ID is not constant (if no external trigger is used or)
+					if (tActualLVL1ID == tStartLVL1ID) //happens sometimes, non inc. BCID, FE feature, only abort if the LVL1ID is not constant (if no external trigger is used or)
 						addEventErrorCode(__BCID_JUMP);
 					else if (_alignAtTriggerNumber || _alignAtTdcWord)  //rely here on the trigger number or TDC word and do not start a new event
 						addEventErrorCode(__BCID_JUMP);
@@ -137,7 +139,8 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 					addEvent();
 			}
 			else {		// use trigger number for event building, first word is trigger word in event data stream
-				addEvent();
+				if (_firstTriggerNrSet)  // do not build new event after first trigger; maybe comment for old data where trigger number is not first event word
+					addEvent();
 			}
 			tTriggerWord++;                     //trigger event counter increase
 
@@ -291,6 +294,8 @@ bool Interpret::setMetaData(MetaInfo* &rMetaInfo, const unsigned int& tLength)
 			throw std::out_of_range("Meta word index out of range.");
 		if (_metaInfo[i].stopIndex != _metaInfo[i + 1].startIndex && _metaInfoV2[i + 1].startIndex != 0)
 			throw std::out_of_range("Meta word index out of range.");
+		if (_metaInfo[i].timeStamp >= _metaInfo[i + 1].timeStamp)
+			throw std::out_of_range("Time stamp not increasing.");
 	}
 	if (_metaInfo[tLength - 1].startIndex + _metaInfo[tLength - 1].length != _metaInfo[tLength - 1].stopIndex)
 		throw std::out_of_range("Meta word index out of range.");
@@ -316,6 +321,8 @@ bool Interpret::setMetaDataV2(MetaInfoV2* &rMetaInfo, const unsigned int& tLengt
 			throw std::out_of_range("Meta word index out of range.");
 		if (_metaInfoV2[i].stopIndex != _metaInfoV2[i + 1].startIndex && _metaInfoV2[i + 1].startIndex != 0)
 			throw std::out_of_range("Meta word index out of range.");
+		if (_metaInfoV2[i].startTimeStamp >= _metaInfoV2[i].stopTimeStamp || _metaInfoV2[i].stopTimeStamp > _metaInfoV2[i + 1].startTimeStamp)
+			throw std::out_of_range("Time stamp not increasing.");
 	}
 	if (_metaInfoV2[tLength - 1].startIndex + _metaInfoV2[tLength - 1].length != _metaInfoV2[tLength - 1].stopIndex)
 		throw std::out_of_range("Meta word index out of range.");
@@ -372,6 +379,7 @@ void Interpret::resetCounters()
 	_nTDCWords = 0;
 	_nOtherWords = 0;
 	_nHits = 0;
+	_nSmallHits = 0;
 	_nEmptyEvents = 0;
 	_nMaxHitsPerEvent = 0;
 	_firstTriggerNrSet = false;
@@ -512,42 +520,45 @@ unsigned int Interpret::getNwords()
 
 void Interpret::printSummary()
 {
-	std::cout << "#Data Words " << _nDataWords << "\n";
-	std::cout << "#Data Header " << _nDataHeaders << "\n";
-	std::cout << "#Data Records " << _nDataRecords << "\n";
-	std::cout << "#Service Records " << _nServiceRecords << "\n";
-	std::cout << "#Other Words " << _nOtherWords << "\n";
-	std::cout << "#Unknown words " << _nUnknownWords << "\n";
-	std::cout << "#TDC words " << _nTDCWords << "\n\n";
+	std::cout << "# Data Words        " << std::right << std::setw(15) << _nDataWords << "\n";
+	std::cout << "# Data Header       " << std::right << std::setw(15) << _nDataHeaders << "\n";
+	std::cout << "# Data Records      " << std::right << std::setw(15) << _nDataRecords << "\n";
+	std::cout << "# Service Records   " << std::right << std::setw(15) << _nServiceRecords << "\n";
+	std::cout << "# Other Words       " << std::right << std::setw(15) << _nOtherWords << "\n";
+	std::cout << "# TDC words         " << std::right << std::setw(15) << _nTDCWords << "\n";
+	std::cout << "# Trigger words     " << std::right << std::setw(15) << _nTriggers << "\n\n";
 
-	std::cout << "#Hits " << _nHits << "\n";
-	std::cout << "MaxHitsPerEvent " << _nMaxHitsPerEvent << "\n";
-	std::cout << "#Events " << _nEvents << "\n";
-	std::cout << "#Trigger " << _nTriggers << "\n\n";
-	std::cout << "#Empty Events " << _nEmptyEvents << "\n";
-	std::cout << "#Incomplete Events " << _nIncompleteEvents << "\n\n";
+	std::cout << "# Events            " << std::right << std::setw(15) << _nEvents << "\n";
+	std::cout << "# Empty Events      " << std::right << std::setw(15) << _nEmptyEvents << "\n";
+	std::cout << "# Hits              " << std::right << std::setw(15) << _nHits << "\n";
+	std::cout << "# Small Hits        " << std::right << std::setw(15) << _nSmallHits << "\n";
+	std::cout << "# MaxHitsPerEvent    " << std::right << std::setw(15) << _nMaxHitsPerEvent << "\n\n";
 
-	std::cout << "#ErrorCounters \n";
-	std::cout << "\t0\t" << _errorCounter[0] << "\tEvents with SR\n";
-	std::cout << "\t1\t" << _errorCounter[1] << "\tEvents with no trigger word\n";
-	std::cout << "\t2\t" << _errorCounter[2] << "\tEvents with LVL1ID not const.\n";
-	std::cout << "\t3\t" << _errorCounter[3] << "\tEvents that were incomplete (# BCIDs wrong)\n";
-	std::cout << "\t4\t" << _errorCounter[4] << "\tEvents with unknown words\n";
-	std::cout << "\t5\t" << _errorCounter[5] << "\tEvents with jumping BCIDs\n";
-	std::cout << "\t6\t" << _errorCounter[6] << "\tEvents with TLU trigger error\n";
-	std::cout << "\t7\t" << _errorCounter[7] << "\tEvents that were truncated due to too many hits\n";
-	std::cout << "\t8\t" << _errorCounter[8] << "\tEvents with TDC words\n";
-	std::cout << "\t9\t" << _errorCounter[9] << "\tEvents with > 1 TDC words\n";
-	std::cout << "\t10\t" << _errorCounter[10] << "\tEvents with TDC overflow\n";
-	std::cout << "\t11\t" << _errorCounter[11] << "\tEvents with no hits\n";
+	std::cout << "# Incomplete Events " << std::right << std::setw(15) << _nIncompleteEvents << "\n";
+	std::cout << "# Unknown words     " << std::right << std::setw(15) << _nUnknownWords << "\n\n";
 
-	std::cout << "#TriggerErrorCounters \n";
-	std::cout << "\t0\t" << _triggerErrorCounter[0] << "\tTrigger number not increasing by 1\n";
-	std::cout << "\t1\t" << _triggerErrorCounter[1] << "\t# Trigger per event > 1\n";
 
-	std::cout << "#ServiceRecords \n";
+	std::cout << "# ErrorCounters \n";
+	std::cout << "0 " << std::right << std::setw(15) << _errorCounter[0] << " Events with SR\n";
+	std::cout << "1 " << std::right << std::setw(15) << _errorCounter[1] << " Events without trigger word\n";
+	std::cout << "2 " << std::right << std::setw(15) << _errorCounter[2] << " Events without constant LVL1ID\n";
+	std::cout << "3 " << std::right << std::setw(15) << _errorCounter[3] << " Events that were incomplete (# BCIDs wrong)\n";
+	std::cout << "4 " << std::right << std::setw(15) << _errorCounter[4] << " Events with unknown words\n";
+	std::cout << "5 " << std::right << std::setw(15) << _errorCounter[5] << " Events with jumping BCIDs\n";
+	std::cout << "6 " << std::right << std::setw(15) << _errorCounter[6] << " Events with TLU trigger error\n";
+	std::cout << "7 " << std::right << std::setw(15) << _errorCounter[7] << " Events that were truncated due to too many data headers or data records\n";
+	std::cout << "8 " << std::right << std::setw(15) << _errorCounter[8] << " Events with TDC words\n";
+	std::cout << "9 " << std::right << std::setw(15) << _errorCounter[9] << " Events with >1 TDC words\n";
+	std::cout << "10" << std::right << std::setw(15) << _errorCounter[10] << " Events with TDC overflow\n";
+	std::cout << "11" << std::right << std::setw(15) << _errorCounter[11] << " Events without hits\n\n";
+
+	std::cout << "# TriggerErrorCounters \n";
+	std::cout << "0 " << std::right << std::setw(15) << _triggerErrorCounter[0] << " Trigger number not increasing by 1\n";
+	std::cout << "1 " << std::right << std::setw(15) << _triggerErrorCounter[1] << " # Trigger per event > 1\n\n";
+
+	std::cout << "# ServiceRecords \n";
 	for (unsigned int i = 0; i < __NSERVICERECORDS; ++i)
-		std::cout << "\t" << i << "\t" << _serviceRecordCounter[i] << "\n";
+		std::cout << std::left << std::setw(2) << i << std::right << std::setw(15) << _serviceRecordCounter[i] << "\n";
 }
 
 void Interpret::printStatus()
@@ -596,6 +607,7 @@ void Interpret::printStatus()
 	std::cout << "_nDataRecords " << _nDataRecords << "\n";
 	std::cout << "_nDataHeaders " << _nDataHeaders << "\n";
 	std::cout << "_nHits " << _nHits << "\n";
+	std::cout << "_nSmallHits " << _nSmallHits << "\n";
 	std::cout << "_nDataWords " << _nDataWords << "\n";
 	std::cout << "_firstTriggerNrSet " << _firstTriggerNrSet << "\n";
 	std::cout << "_firstTdcSet " << _firstTdcSet << "\n";
@@ -755,21 +767,21 @@ void Interpret::storeEventHits()
 	}
 }
 
-void Interpret::correlateMetaWordIndex(const uint64_t& pEventNumer, const unsigned int& pDataWordIndex)
+void Interpret::correlateMetaWordIndex(const uint64_t& pEventNumber, const unsigned int& pDataWordIndex)
 {
 	if (_metaDataSet && pDataWordIndex == _lastWordIndexSet) { // this check is to speed up the _metaEventIndex access by using the fact that the index has to increase for consecutive events
 //		std::cout<<"_lastMetaIndexNotSet "<<_lastMetaIndexNotSet<<"\n";
-		_metaEventIndex[_lastMetaIndexNotSet] = pEventNumer;
+		_metaEventIndex[_lastMetaIndexNotSet] = pEventNumber;
 		if (_isMetaTableV2 == true) {
 			_lastWordIndexSet = _metaInfoV2[_lastMetaIndexNotSet].stopIndex;
 			_lastMetaIndexNotSet++;
 			while (_metaInfoV2[_lastMetaIndexNotSet - 1].length == 0 && _lastMetaIndexNotSet < _metaEventIndexLength) {
 				info("correlateMetaWordIndex: more than one readout during one event, correcting meta info");
-//				std::cout<<"correlateMetaWordIndex: pEventNumer "<<pEventNumer<<" _lastWordIndexSet "<<_lastWordIndexSet<<" _lastMetaIndexNotSet "<<_lastMetaIndexNotSet<<"\n";
-				_metaEventIndex[_lastMetaIndexNotSet] = pEventNumer;
+//				std::cout<<"correlateMetaWordIndex: pEventNumber "<<pEventNumber<<" _lastWordIndexSet "<<_lastWordIndexSet<<" _lastMetaIndexNotSet "<<_lastMetaIndexNotSet<<"\n";
+				_metaEventIndex[_lastMetaIndexNotSet] = pEventNumber;
 				_lastWordIndexSet = _metaInfoV2[_lastMetaIndexNotSet].stopIndex;
 				_lastMetaIndexNotSet++;
-//				std::cout<<"correlateMetaWordIndex: pEventNumer "<<pEventNumer<<" _lastWordIndexSet "<<_lastWordIndexSet<<" _lastMetaIndexNotSet "<<_lastMetaIndexNotSet<<"\n";
+//				std::cout<<"correlateMetaWordIndex: pEventNumber "<<pEventNumber<<" _lastWordIndexSet "<<_lastWordIndexSet<<" _lastMetaIndexNotSet "<<_lastMetaIndexNotSet<<"\n";
 //				std::cout<<" finished\n";
 			}
 		}
@@ -778,11 +790,11 @@ void Interpret::correlateMetaWordIndex(const uint64_t& pEventNumer, const unsign
 			_lastMetaIndexNotSet++;
 			while (_metaInfo[_lastMetaIndexNotSet - 1].length == 0 && _lastMetaIndexNotSet < _metaEventIndexLength) {
 				info("correlateMetaWordIndex: more than one readout during one event, correcting meta info");
-//				std::cout<<"correlateMetaWordIndex: pEventNumer "<<pEventNumer<<" _lastWordIndexSet "<<_lastWordIndexSet<<" _lastMetaIndexNotSet "<<_lastMetaIndexNotSet<<"\n";
-				_metaEventIndex[_lastMetaIndexNotSet] = pEventNumer;
+//				std::cout<<"correlateMetaWordIndex: pEventNumber "<<pEventNumber<<" _lastWordIndexSet "<<_lastWordIndexSet<<" _lastMetaIndexNotSet "<<_lastMetaIndexNotSet<<"\n";
+				_metaEventIndex[_lastMetaIndexNotSet] = pEventNumber;
 				_lastWordIndexSet = _metaInfo[_lastMetaIndexNotSet].stopIndex;
 				_lastMetaIndexNotSet++;
-//				std::cout<<"correlateMetaWordIndex: pEventNumer "<<pEventNumer<<" _lastWordIndexSet "<<_lastWordIndexSet<<" _lastMetaIndexNotSet "<<_lastMetaIndexNotSet<<"\n";
+//				std::cout<<"correlateMetaWordIndex: pEventNumber "<<pEventNumber<<" _lastWordIndexSet "<<_lastWordIndexSet<<" _lastMetaIndexNotSet "<<_lastMetaIndexNotSet<<"\n";
 //				std::cout<<" finished\n";
 			}
 		}
@@ -839,12 +851,18 @@ bool Interpret::getHitsfromDataRecord(const unsigned int& pSRAMWORD, int& pColHi
 		pRowHit1 = DATA_RECORD_ROW1_MACRO(pSRAMWORD);
 		pTotHit1 = DATA_RECORD_TOT1_MACRO(pSRAMWORD);
 	}
+	else if (DATA_RECORD_TOT1_MACRO(pSRAMWORD) == 14) {
+		_nSmallHits++;
+	}
 
 	//set second hit values
 	if (DATA_RECORD_TOT2_MACRO(pSRAMWORD) <= _maxTot) {	//ommit late/small hit and no hit (15) tot values for the TOT(2) hit
 		pColHit2 = DATA_RECORD_COLUMN2_MACRO(pSRAMWORD);
 		pRowHit2 = DATA_RECORD_ROW2_MACRO(pSRAMWORD);
 		pTotHit2 = DATA_RECORD_TOT2_MACRO(pSRAMWORD);
+	}
+	else if (DATA_RECORD_TOT2_MACRO(pSRAMWORD) == 14) {
+		_nSmallHits++;
 	}
 	return true;
 	//}
@@ -965,7 +983,7 @@ void Interpret::addEventErrorCode(const unsigned short& pErrorCode)
 			}
 			case __TRUNC_EVENT:
 			{
-				tDebug << "EVENT HAS TOO MANY HITS AND WAS TRUNCATED";
+				tDebug << "EVENT HAS TOO MANY DATA HEADERS/RECORDS AND WAS TRUNCATED";
 				break;
 			}
 			case __TDC_WORD:

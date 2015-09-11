@@ -5,6 +5,7 @@ version : 2.0.0
 transfer_layer:
   - name     : USB
     type     : SiSim
+    timeout  : 180
 
 # Example of additional lab device transfer layers to be used with pyBAR
 #  - name     : Visa

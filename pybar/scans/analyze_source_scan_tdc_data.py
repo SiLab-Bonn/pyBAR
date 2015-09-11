@@ -33,6 +33,7 @@ analysis_configuration = {
     'use_tdc_trigger_time_stamp': False,  # TDC + external trigger are used, thus fill the hit table with delay value between trigger and TDC (usefull for time walk measurements)
     'max_tdc_delay': 80,  # maximum TDC to trigger delay to consider the TDC word as a valid in-time event word; otherwise TDC word is neglected
     'input_file_calibration': r'L:\SCC30\TDCcalibration\scc_30\11_scc_30_hit_or_calibration_calibration.h5',  # the Plsr<->TDC calibration file
+    'correct_calibration': r'L:\SCC112\TDC_ELSA\scc_112\19_scc_112_hit_or_calibration_calibration.h5',  # file name of another more actual calibration to be used to correct the calibration; changes are expected due to tempretature drifts
     'hit_selection_conditions': ['(n_cluster==1)',  # criterions for the hit selection based on hit properties, per criterion TDC hitograms are created
                                  '(n_cluster==1) & (cluster_size == 1) & %s' % hit_selection,
                                  '(n_cluster==1) & (cluster_size == 1) & (relative_BCID > 1) & (relative_BCID < 5) & ((tot > 12) | ((TDC * 1.5625 - tot * 25 < 100) & (tot * 25 - TDC * 1.5625 < 100))) & %s' % hit_selection
@@ -54,7 +55,7 @@ def analyze_raw_data(input_files, output_file_hits, interpreter_plots, overwrite
         logging.info('Analyzed data file ' + output_file_hits + ' already exists. Skip analysis for this file.')
     else:
         with AnalyzeRawData(raw_data_file=input_files, analyzed_data_file=output_file_hits) as analyze_raw_data:
-            analyze_raw_data.max_tdc_delay = 80  # max TDC delay to consider a valid in time TDC word
+            analyze_raw_data.max_tdc_delay = max_tdc_delay  # max TDC delay to consider a valid in-time TDC word
             analyze_raw_data.use_tdc_trigger_time_stamp = use_tdc_trigger_time_stamp  # if you want to also measure the delay between trigger / hit-bus
             analyze_raw_data.align_at_trigger = align_at_trigger  # align events at TDC words, first word of event has to be a tdc word
             analyze_raw_data.align_at_tdc = align_at_tdc  # align events at TDC words, first word of event has to be a tdc word
@@ -75,7 +76,7 @@ def analyze_raw_data(input_files, output_file_hits, interpreter_plots, overwrite
                 analyze_raw_data.plot_histograms()  # plots all activated histograms into one pdf
 
 
-def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_select_mask, event_status_condition, calibation_file=None, max_tdc=analysis_configuration['max_tdc'], n_bins=analysis_configuration['n_bins']):
+def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_select_mask, event_status_condition, calibation_file=None, correct_calibration=None, max_tdc=analysis_configuration['max_tdc'], n_bins=analysis_configuration['n_bins']):
     for condition in hit_selection_conditions:
         logging.info('Histogram tdc hits with %s', condition)
 
@@ -117,6 +118,7 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
             condition = re.sub('[&]', '\n', condition)
             condition = re.sub('[()]', '', condition)
             labels.append(condition)
+        plt.clf()
         plt.bar(range(len(n_hits_per_condition)), n_hits_per_condition, align='center')
         plt.xticks(range(len(n_hits_per_condition)), labels, size=8)
         plt.title('Number of hits for different cuts')
@@ -138,6 +140,31 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
         plt.grid()
         output_pdf.savefig()
 
+    def get_calibration_correction(tdc_calibration, tdc_calibration_values, filename_new_calibration):  # correct the TDC calibration with the TDC calib in filename_new_calibration by shifting the means
+        with tb.open_file(filename_new_calibration, 'r') as in_file_2:
+            charge_calibration_1, charge_calibration_2 = tdc_calibration, in_file_2.root.HitOrCalibration[:, :, :, 1]
+
+            plsr_dacs = tdc_calibration_values
+            if not np.all(plsr_dacs == in_file_2.root.HitOrCalibration._v_attrs.scan_parameter_values):
+                raise NotImplementedError('The check calibration file has to have the same PlsrDAC values')
+
+            valid_pixel = np.where(np.logical_and(charge_calibration_1.sum(axis=2) > 0, charge_calibration_2.sum(axis=2) > 0))  # valid pixel have a calibration in the new and the old calibration
+            mean_charge_calibration = charge_calibration_2[valid_pixel].mean(axis=0)
+            offset_mean = (charge_calibration_1[valid_pixel] - charge_calibration_2[valid_pixel]).mean(axis=0)
+
+            dPlsrDAC_dTDC = analysis_utils.smooth_differentiation(plsr_dacs, mean_charge_calibration, order=3, smoothness=0, derivation=1)
+
+            plt.clf()
+            plt.plot(plsr_dacs, offset_mean / dPlsrDAC_dTDC, '.-', label='PlsrDAC')
+            plt.plot(plsr_dacs, offset_mean, '.-', label='TDC')
+            plt.grid()
+            plt.xlabel('PlsrDAC')
+            plt.ylabel('Mean calibration offset')
+            plt.legend(loc=0)
+            plt.title('Mean offset between TDC calibration data, old - new ')
+            plt.show()
+            return offset_mean
+
     # Create data
     with tb.openFile(input_file_hits, mode="r") as in_hit_file_h5:
         cluster_hit_table = in_hit_file_h5.root.ClusterHits
@@ -155,7 +182,7 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
         logging.info('Select hits and create TDC histograms for %d cut conditions', len(hit_selection_conditions))
         progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=cluster_hit_table.shape[0], term_width=80)
         progress_bar.start()
-        for cluster_hits, _ in analysis_utils.data_aligned_at_events(cluster_hit_table, chunk_size=1e8):
+        for cluster_hits, _ in analysis_utils.data_aligned_at_events(cluster_hit_table, chunk_size=10000000):
             n_hits_per_condition[0] += cluster_hits.shape[0]
             selected_events_cluster_hits = cluster_hits[np.logical_and(cluster_hits['TDC'] < max_tdc, (cluster_hits['event_status'] & event_status_select_mask) == event_status_condition)]
             n_hits_per_condition[1] += selected_events_cluster_hits.shape[0]
@@ -178,6 +205,8 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
             with tb.openFile(calibation_file, mode="r") as in_file_calibration_h5:
                 tdc_calibration = in_file_calibration_h5.root.HitOrCalibration[:, :, :, 1]
                 tdc_calibration_values = in_file_calibration_h5.root.HitOrCalibration.attrs.scan_parameter_values[:]
+                if correct_calibration is not None:
+                    tdc_calibration += get_calibration_correction(tdc_calibration, tdc_calibration_values, correct_calibration)
             charge_calibration = get_charge(max_tdc, tdc_calibration_values, tdc_calibration)
         else:
             charge_calibration = None

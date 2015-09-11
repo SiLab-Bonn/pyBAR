@@ -139,7 +139,7 @@ def plot_fancy_occupancy(hist, z_max=None, filename=None):
         cmap = cm.get_cmap('coolwarm')
     else:
         cmap = cm.get_cmap('cool')
-    cmap.set_bad('w', 0.0)
+    cmap.set_bad('w', 1.0)
     norm = colors.BoundaryNorm(bounds, cmap.N)
 
     im = ax.imshow(hist, interpolation='nearest', aspect='auto', cmap=cmap, norm=norm, extent=extent)  # TODO: use pcolor or pcolormesh
@@ -205,13 +205,13 @@ def plot_occupancy(hist, title='Occupancy', z_max=None, filename=None):
         cmap = cm.get_cmap('coolwarm')
     else:
         cmap = cm.get_cmap('cool')
-    cmap.set_bad('w', 0.0)
+    cmap.set_bad('w', 1.0)
     norm = colors.BoundaryNorm(bounds, cmap.N)
 
     im = ax.imshow(hist, interpolation='nearest', aspect='auto', cmap=cmap, norm=norm, extent=extent)  # TODO: use pcolor or pcolormesh
     ax.set_ylim((336.5, 0.5))
     ax.set_xlim((0.5, 80.5))
-    ax.set_title(title + r' ($\Sigma$ = %d)' % (0 if hist.all() is np.ma.masked else np.ma.sum(hist)))
+    ax.set_title(title + r' ($\Sigma$ = {0})'.format((0 if hist.all() is np.ma.masked else np.ma.sum(hist))), fontsize=8)
     ax.set_xlabel('Column')
     ax.set_ylabel('Row')
 
@@ -540,7 +540,7 @@ def plot_cluster_tot_size(hist, median=False, z_max=None, filename=None):
     extent = [-0.5, 20.5, 49.5, -0.5]
     bounds = np.linspace(start=0, stop=z_max, num=255, endpoint=True)
     cmap = cm.get_cmap('cool')
-    cmap.set_bad('w', 0.0)
+    cmap.set_bad('w', 1.0)
     norm = colors.BoundaryNorm(bounds, cmap.N)
     im = ax.imshow(hist, aspect="auto", interpolation='nearest', cmap=cmap, norm=norm, extent=extent)  # for monitoring
     ax.set_title('Cluster size and cluster ToT' + r' ($\Sigma$ = %d)' % (np.sum(hist) // 2))  # cluster size 0 includes all hits, divide by 2
@@ -608,7 +608,7 @@ def plot_three_way(hist, title, filename=None, x_axis_title=None, minimum=None, 
     # set nan to special value
     # masked_array = np.ma.array (a, mask=np.isnan(a))
     # cmap = matplotlib.cm.jet
-    # cmap.set_bad('w',1.)
+    # cmap.set_bad('w',1.0)
     # ax.imshow(masked_array, interpolation='nearest', cmap=cmap)
     if minimum is None:
         minimum = 0.0
@@ -650,7 +650,7 @@ def create_2d_pixel_hist(fig, ax, hist2d, title=None, x_axis_title=None, y_axis_
     bounds = np.linspace(start=z_min, stop=z_max, num=255, endpoint=True)
     if cmap is None:
         cmap = cm.get_cmap('coolwarm')
-    cmap.set_bad('w', 0.0)
+    cmap.set_bad('w', 1.0)
     norm = colors.BoundaryNorm(bounds, cmap.N)
     im = ax.imshow(hist2d, interpolation='nearest', aspect="auto", cmap=cmap, norm=norm, extent=extent)
     if title is not None:
