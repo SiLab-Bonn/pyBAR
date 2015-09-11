@@ -1,4 +1,5 @@
 import logging
+import time
 import glob
 import zmq
 from threading import RLock
@@ -9,8 +10,6 @@ from operator import itemgetter
 
 from pybar.daq.readout_utils import save_configuration_dict
 from pybar.analysis.RawDataConverter.data_struct import MetaTableV2 as MetaTable, generate_scan_parameter_description
-
-import time
 
 
 def send_meta_data(socket, conf, name):
@@ -95,9 +94,9 @@ class RawDataFile(object):
         self.curr_filename = self.base_filename
         self.filenames = {self.curr_filename: 0}
         self.open(self.curr_filename, mode, title)
-        if conf:
+        if conf is not None:
             save_configuration_dict(self.h5_file, 'conf', conf)
-        if run_conf:
+        if run_conf is not None:
             save_configuration_dict(self.h5_file, 'run_conf', run_conf)
         if socket_addr is None:
             self.socket = None
@@ -150,6 +149,7 @@ class RawDataFile(object):
             self.flush()
             logging.info('Closing raw data file: %s', self.h5_file.filename)
             self.h5_file.close()
+            self.h5_file = None
 
     def append_item(self, data_tuple, scan_parameters=None, new_file=False, flush=True):
         with self.lock:
