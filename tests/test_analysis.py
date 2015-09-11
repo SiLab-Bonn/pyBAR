@@ -175,7 +175,7 @@ class TestAnalysis(unittest.TestCase):
             analyze_raw_data.interpret_word_table(use_settings_from_file=False, fei4b=False)  # the actual start conversion command
         with AnalyzeRawData(raw_data_file=tests_data_folder + 'unit_test_data_5.h5', analyzed_data_file=tests_data_folder + 'unit_test_data_5_interpreted.h5', create_pdf=False) as analyze_raw_data:
             analyze_raw_data.create_hit_table = True
-            analyze_raw_data.n_bcid = 255
+            analyze_raw_data.trig_count = 255
             analyze_raw_data.create_source_scan_hist = True
             analyze_raw_data.set_stop_mode = True
             analyze_raw_data.use_trigger_time_stamp = True
