@@ -44,10 +44,12 @@ class DataWorker(QtCore.QObject):
     def connect(self, socket_addr):
         self.socket_addr = socket_addr
         self.context = zmq.Context()
-        self.socket_pull = self.context.socket(zmq.PULL)
+        self.socket_pull = self.context.socket(zmq.SUB)
+        self.socket_pull.setsockopt(zmq.SUBSCRIBE, '')
         self.socket_pull.connect(self.socket_addr)
-        self.poller = zmq.Poller()  # poll needed to be able to return QThread
-        self.poller.register(self.socket_pull, zmq.POLLIN)
+        
+#         self.poller = zmq.Poller()  # poll needed to be able to return QThread
+#         self.poller.register(self.socket_pull, zmq.POLLIN)
 
     @pyqtSlot(float)
     def on_set_integrate_readouts(self, value):

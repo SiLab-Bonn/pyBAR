@@ -102,7 +102,7 @@ class RawDataFile(object):
         elif isinstance(socket_addr, basestring):
             if zmq_context is None:
                 zmq_context = zmq.Context()  # create own context
-            self.socket = zmq_context.socket(zmq.PUSH)  # push data non blocking
+            self.socket = zmq_context.socket(zmq.PUB)  # push data non blocking
             self.socket.bind(socket_addr)
             send_meta_data(self.socket, run_conf, name='RunConf')  # send run info to indicate new scan
             logging.info('Sending data to %s' % socket_addr)
