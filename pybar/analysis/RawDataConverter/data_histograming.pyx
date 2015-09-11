@@ -115,7 +115,7 @@ cdef class PyDataHistograming:
     def get_rel_bcid_hist(self):
         self.thisptr.getRelBcidHist(<unsigned int*&> data_32, <cpp_bool> False)
         if data_32 != NULL:
-            return data_to_numpy_array_uint32(data_32, 16)
+            return data_to_numpy_array_uint32(data_32, 256)
     def get_tot_pixel_hist(self):
         self.thisptr.getTotPixelHist(<cnp.uint16_t*&> data_16, <cpp_bool> False)
         if data_16 != NULL:

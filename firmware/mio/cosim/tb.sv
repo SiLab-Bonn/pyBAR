@@ -62,7 +62,7 @@ module tb(
     // Bidirs
     wire [15:0] SRAM_IO;
 
-    wire CMD_CLK, CMD_DATA;
+    wire REF_CLK, CMD_DATA;
     wire DOBOUT;
     
     top fpga (
@@ -92,7 +92,7 @@ module tb(
         
         .DOBOUT({4{DOBOUT}}),
         
-        .CMD_CLK(CMD_CLK),
+        .REF_CLK(REF_CLK),
         .CMD_DATA(CMD_DATA),
     
         .TX(TX),
@@ -120,7 +120,7 @@ module tb(
     
     //FEI4 Model
     reg [26880-1:0] hit;
-    fei4_top fei4_inst (.RD1bar(RD1bar), .RD2ENbar(RD2ENbar), .clk_bc(CMD_CLK), .hit(hit), .DCI(CMD_DATA), .Ext_Trigger(1'b0), .ChipId(3'b000), .data_out(FE_RX) );
+    fei4_top fei4_inst (.RD1bar(RD1bar), .RD2ENbar(RD2ENbar), .clk_bc(REF_CLK), .hit(hit), .DCI(CMD_DATA), .Ext_Trigger(1'b0), .ChipId(3'b000), .data_out(FE_RX) );
     
     
     //SRAM Model

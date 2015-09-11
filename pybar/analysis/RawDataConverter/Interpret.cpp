@@ -30,6 +30,8 @@ void Interpret::setStandardSettings()
 	_hitInfoSize = 1000000;
 	_hitInfo = 0;
 	_hitIndex = 0;
+	_startDebugEvent = 0;
+	_stopDebugEvent = 0;
 	_NbCID = 16;
 	_maxTot = 13;
 	_fEI4B = false;
@@ -89,7 +91,7 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 			_nDataHeaders++;
 			if (tNdataHeader > _NbCID - 1) {	                //maximum event window is reached (tNdataHeader > BCIDs, mostly tNdataHeader > 15), so create new event
 				if (_alignAtTriggerNumber) {
-					addEventErrorCode(__TRUNC_EVENT); //too many data header in the event, abort this event, add truncated flac
+					addEventErrorCode(__TRUNC_EVENT); //too many data header in the event, abort this event, add truncated flag
 					if (Basis::warningSet())
 						warning(std::string("addHit: Hit buffer overflow prevented by splitting events at event " + LongIntToStr(_nEvents)), __LINE__);
 				}
@@ -111,7 +113,7 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 				}
 
 				if (tStartBCID + tDbCID != tActualBCID) {  //check if BCID is increasing by 1s in the event window, if not close actual event and create new event with actual data header
-					if (tActualLVL1ID == tStartLVL1ID) //happens sometimes, non inc. BCID, FE feature, only abort the LVL1ID is not constant (if no external trigger is used or)
+					if (tActualLVL1ID == tStartLVL1ID) //happens sometimes, non inc. BCID, FE feature, only abort if the LVL1ID is not constant (if no external trigger is used or)
 						addEventErrorCode(__BCID_JUMP);
 					else if (_alignAtTriggerNumber || _alignAtTdcWord)  //rely here on the trigger number or TDC word and do not start a new event
 						addEventErrorCode(__BCID_JUMP);
@@ -137,7 +139,8 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 					addEvent();
 			}
 			else {		// use trigger number for event building, first word is trigger word in event data stream
-				addEvent();
+				if (_firstTriggerNrSet)  // do not build new event after first trigger; maybe comment for old data where trigger number is not first event word
+					addEvent();
 			}
 			tTriggerWord++;                     //trigger event counter increase
 
@@ -517,43 +520,43 @@ unsigned int Interpret::getNwords()
 
 void Interpret::printSummary()
 {
-	std::cout << "#Data Words        " << std::right << std::setw(15) << _nDataWords << "\n";
-	std::cout << "#Data Header       " << std::right << std::setw(15) << _nDataHeaders << "\n";
-	std::cout << "#Data Records      " << std::right << std::setw(15) << _nDataRecords << "\n";
-	std::cout << "#Service Records   " << std::right << std::setw(15) << _nServiceRecords << "\n";
-	std::cout << "#Other Words       " << std::right << std::setw(15) << _nOtherWords << "\n";
-	std::cout << "#TDC words         " << std::right << std::setw(15) << _nTDCWords << "\n";
-	std::cout << "#Trigger words     " << std::right << std::setw(15) << _nTriggers << "\n\n";
+	std::cout << "# Data Words        " << std::right << std::setw(15) << _nDataWords << "\n";
+	std::cout << "# Data Header       " << std::right << std::setw(15) << _nDataHeaders << "\n";
+	std::cout << "# Data Records      " << std::right << std::setw(15) << _nDataRecords << "\n";
+	std::cout << "# Service Records   " << std::right << std::setw(15) << _nServiceRecords << "\n";
+	std::cout << "# Other Words       " << std::right << std::setw(15) << _nOtherWords << "\n";
+	std::cout << "# TDC words         " << std::right << std::setw(15) << _nTDCWords << "\n";
+	std::cout << "# Trigger words     " << std::right << std::setw(15) << _nTriggers << "\n\n";
 
-	std::cout << "#Events            " << std::right << std::setw(15) << _nEvents << "\n";
-	std::cout << "#Empty Events      " << std::right << std::setw(15) << _nEmptyEvents << "\n";
-	std::cout << "#Hits              " << std::right << std::setw(15) << _nHits << "\n";
-	std::cout << "#Small Hits        " << std::right << std::setw(15) << _nSmallHits << "\n";
-	std::cout << "MaxHitsPerEvent    " << std::right << std::setw(15) << _nMaxHitsPerEvent << "\n\n";
+	std::cout << "# Events            " << std::right << std::setw(15) << _nEvents << "\n";
+	std::cout << "# Empty Events      " << std::right << std::setw(15) << _nEmptyEvents << "\n";
+	std::cout << "# Hits              " << std::right << std::setw(15) << _nHits << "\n";
+	std::cout << "# Small Hits        " << std::right << std::setw(15) << _nSmallHits << "\n";
+	std::cout << "# MaxHitsPerEvent    " << std::right << std::setw(15) << _nMaxHitsPerEvent << "\n\n";
 
-	std::cout << "#Incomplete Events " << std::right << std::setw(15) << _nIncompleteEvents << "\n";
-	std::cout << "#Unknown words     " << std::right << std::setw(15) << _nUnknownWords << "\n\n";
+	std::cout << "# Incomplete Events " << std::right << std::setw(15) << _nIncompleteEvents << "\n";
+	std::cout << "# Unknown words     " << std::right << std::setw(15) << _nUnknownWords << "\n\n";
 
 
-	std::cout << "#ErrorCounters \n";
+	std::cout << "# ErrorCounters \n";
 	std::cout << "0 " << std::right << std::setw(15) << _errorCounter[0] << " Events with SR\n";
-	std::cout << "1 " << std::right << std::setw(15) << _errorCounter[1] << " Events with no trigger word\n";
-	std::cout << "2 " << std::right << std::setw(15) << _errorCounter[2] << " Events with LVL1ID not const.\n";
+	std::cout << "1 " << std::right << std::setw(15) << _errorCounter[1] << " Events without trigger word\n";
+	std::cout << "2 " << std::right << std::setw(15) << _errorCounter[2] << " Events without constant LVL1ID\n";
 	std::cout << "3 " << std::right << std::setw(15) << _errorCounter[3] << " Events that were incomplete (# BCIDs wrong)\n";
 	std::cout << "4 " << std::right << std::setw(15) << _errorCounter[4] << " Events with unknown words\n";
 	std::cout << "5 " << std::right << std::setw(15) << _errorCounter[5] << " Events with jumping BCIDs\n";
 	std::cout << "6 " << std::right << std::setw(15) << _errorCounter[6] << " Events with TLU trigger error\n";
-	std::cout << "7 " << std::right << std::setw(15) << _errorCounter[7] << " Events that were truncated due to too many hits\n";
+	std::cout << "7 " << std::right << std::setw(15) << _errorCounter[7] << " Events that were truncated due to too many data headers or data records\n";
 	std::cout << "8 " << std::right << std::setw(15) << _errorCounter[8] << " Events with TDC words\n";
-	std::cout << "9 " << std::right << std::setw(15) << _errorCounter[9] << " Events with > 1 TDC words\n";
+	std::cout << "9 " << std::right << std::setw(15) << _errorCounter[9] << " Events with >1 TDC words\n";
 	std::cout << "10" << std::right << std::setw(15) << _errorCounter[10] << " Events with TDC overflow\n";
-	std::cout << "11" << std::right << std::setw(15) << _errorCounter[11] << " Events with no hits\n\n";
+	std::cout << "11" << std::right << std::setw(15) << _errorCounter[11] << " Events without hits\n\n";
 
-	std::cout << "#TriggerErrorCounters \n";
+	std::cout << "# TriggerErrorCounters \n";
 	std::cout << "0 " << std::right << std::setw(15) << _triggerErrorCounter[0] << " Trigger number not increasing by 1\n";
 	std::cout << "1 " << std::right << std::setw(15) << _triggerErrorCounter[1] << " # Trigger per event > 1\n\n";
 
-	std::cout << "#ServiceRecords \n";
+	std::cout << "# ServiceRecords \n";
 	for (unsigned int i = 0; i < __NSERVICERECORDS; ++i)
 		std::cout << std::left << std::setw(2) << i << std::right << std::setw(15) << _serviceRecordCounter[i] << "\n";
 }
@@ -980,7 +983,7 @@ void Interpret::addEventErrorCode(const unsigned short& pErrorCode)
 			}
 			case __TRUNC_EVENT:
 			{
-				tDebug << "EVENT HAS TOO MANY HITS AND WAS TRUNCATED";
+				tDebug << "EVENT HAS TOO MANY DATA HEADERS/RECORDS AND WAS TRUNCATED";
 				break;
 			}
 			case __TDC_WORD:

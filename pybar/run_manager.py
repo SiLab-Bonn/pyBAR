@@ -46,7 +46,15 @@ class RunBase():
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, conf, run_conf=None):
-        """Initialize object."""
+        """Initialize object.
+
+        Parameters
+        ----------
+        conf: dict
+            Persistant configuration for all runs.
+        run_conf : dict
+            Run configuration for single run.
+        """
         logging.info('Initializing %s', self.__class__.__name__)
         self._conf = conf
         self._init_run_conf(run_conf)
@@ -407,7 +415,7 @@ class RunManager(object):
         '''
         self.current_run.abort(msg)
 
-    def run_run(self, run, run_conf=None, use_thread=False, catch_exception=True):
+    def run_run(self, run, conf=None, run_conf=None, use_thread=False, catch_exception=True):
         '''Runs a run in another thread. Non-blocking.
 
         Parameters
@@ -424,6 +432,9 @@ class RunManager(object):
         If use_thread is True, returns function, which blocks until thread terminates, and which itself returns run status.
         If use_thread is False, returns run status.
         '''
+        conf = self.open_conf(conf)
+        self.conf.update(conf)
+
         if isclass(run):
             # instantiate the class
             run = run(conf=self.conf)

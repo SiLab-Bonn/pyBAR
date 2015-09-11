@@ -35,13 +35,13 @@ def analyze_raw_data(input_file, output_file_hits):
         analyze_raw_data.create_meta_word_index = False  # stores the start and stop raw data word index for every event, std. setting is false
         analyze_raw_data.create_meta_event_index = True  # stores the event number for each readout in an additional meta data array, default: False
 
-        analyze_raw_data.n_bcid = 16  # set the number of BCIDs per event, needed to judge the event structure, only active if settings are not taken from raw data file
+        analyze_raw_data.trig_count = 0  # set the number of BCIDs per trigger, needed to judge the event structure, only active if settings cannot be taken from raw data file
         analyze_raw_data.n_injections = 100  # set the numbers of injections, needed for fast threshold/noise determination
         analyze_raw_data.max_tot_value = 13  # set the maximum ToT value considered to be a hit, 14 is a late hit
-        analyze_raw_data.use_trigger_number = False
+        analyze_raw_data.align_at_trigger = False  # align the data at the trigger number; has to be first event word
+        analyze_raw_data.align_at_tdc = False  # use the TDC word to align the events, assume that they are first words in the event
+        analyze_raw_data.use_trigger_time_stamp = False  # use the trigger number as a time stamp
         analyze_raw_data.set_stop_mode = False  # special analysis if data was taken in stop mode
-        analyze_raw_data.interpreter.use_tdc_word(False)  # use the TDC word to align the events, assume that they are first words in the event
-        analyze_raw_data.interpreter.use_trigger_time_stamp(False)  # use the trigger number as a time stamp
 
         analyze_raw_data.interpreter.set_debug_output(False)  # std. setting is False
         analyze_raw_data.interpreter.set_info_output(False)  # std. setting is False
@@ -74,7 +74,7 @@ def analyze_raw_data_per_scan_parameter(input_file, output_file_hits, scan_data_
 
 
 if __name__ == "__main__":
-    scan_name = r'1_module_test_threshold_scan'
+    scan_name = r'1_module_test_ext_trigger_scan'
     folder = r'../module_test/'
     input_file = folder + scan_name + ".h5"
     output_file_hits = folder + scan_name + "_interpreted.h5"

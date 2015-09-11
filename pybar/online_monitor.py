@@ -2,6 +2,7 @@ import sys
 import zmq
 import time
 import numpy as np
+from optparse import OptionParser
 
 from PyQt4 import Qt
 from PyQt4.QtCore import pyqtSlot, pyqtSignal
@@ -9,7 +10,7 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtGui
 from pyqtgraph.dockarea import DockArea, Dock
 import pyqtgraph.ptime as ptime
-from threading import Event
+from threading import Event, Lock
 
 from pybar.analysis.RawDataConverter.data_interpreter import PyDataInterpreter
 from pybar.analysis.RawDataConverter.data_histograming import PyDataHistograming
@@ -17,7 +18,8 @@ from pybar.analysis.RawDataConverter.data_histograming import PyDataHistograming
 
 class DataWorker(QtCore.QObject):
     run_start = QtCore.pyqtSignal()
-    config_data = QtCore.pyqtSignal(dict)
+    run_config_data = QtCore.pyqtSignal(dict)
+    global_config_data = QtCore.pyqtSignal(dict)
     interpreted_data = QtCore.pyqtSignal(dict)
     meta_data = QtCore.pyqtSignal(dict)
     finished = QtCore.pyqtSignal()
@@ -28,6 +30,7 @@ class DataWorker(QtCore.QObject):
         self.n_readout = 0
         self._stop_readout = Event()
         self.setup_raw_data_analysis()
+        self.reset_lock = Lock()
 
     def setup_raw_data_analysis(self):
         self.interpreter = PyDataInterpreter()
@@ -42,14 +45,20 @@ class DataWorker(QtCore.QObject):
     def connect(self, socket_addr):
         self.socket_addr = socket_addr
         self.context = zmq.Context()
-        self.socket_pull = self.context.socket(zmq.PULL)
+        self.socket_pull = self.context.socket(zmq.SUB)
+        self.socket_pull.setsockopt(zmq.SUBSCRIBE, '')  # do not filter any data
         self.socket_pull.connect(self.socket_addr)
-        self.poller = zmq.Poller()  # poll needed to be able to return QThread
-        self.poller.register(self.socket_pull, zmq.POLLIN)
 
     @pyqtSlot(float)
     def on_set_integrate_readouts(self, value):
         self.integrate_readouts = value
+
+#     @pyqtSlot()
+    def reset(self):
+        with self.reset_lock:
+            self.histograming.reset()
+            self.interpreter.reset()
+            self.n_readout = 0
 
     def analyze_raw_data(self, raw_data):
         self.interpreter.interpret_raw_data(raw_data)
@@ -58,51 +67,50 @@ class DataWorker(QtCore.QObject):
     @pyqtSlot()
     def process_data(self):  # infinite loop via QObject.moveToThread(), does not block event loop
         while(not self._stop_readout.wait(0.01)):  # use wait(), do not block here
-            try:
-                meta_data = self.socket_pull.recv_json(flags=zmq.NOBLOCK)
-            except zmq.Again:
-                pass
-            else:
-                name = meta_data.pop('name')
-                if name == 'FEI4readoutData':
-                    data = self.socket_pull.recv()
-                    # reconstruct numpy array
-                    buf = buffer(data)
-                    dtype = meta_data.pop('dtype')
-                    shape = meta_data.pop('shape')
-                    data_array = np.frombuffer(buf, dtype=dtype).reshape(shape)
-                    # count readouts and reset
-                    self.n_readout += 1
-                    if self.integrate_readouts != 0 and self.n_readout % self.integrate_readouts == 0:
+            with self.reset_lock:
+                try:
+                    meta_data = self.socket_pull.recv_json(flags=zmq.NOBLOCK)
+                except zmq.Again:
+                    pass
+                else:
+                    name = meta_data.pop('name')
+                    if name == 'FEI4readoutData':
+                        data = self.socket_pull.recv()
+                        # reconstruct numpy array
+                        buf = buffer(data)
+                        dtype = meta_data.pop('dtype')
+                        shape = meta_data.pop('shape')
+                        data_array = np.frombuffer(buf, dtype=dtype).reshape(shape)
+                        # count readouts and reset
+                        self.n_readout += 1
+                        if self.integrate_readouts != 0 and self.n_readout % self.integrate_readouts == 0:
+                            self.histograming.reset()
+                            # we do not want to reset interpreter to keep the error counters
+        #                         self.interpreter.reset()
+                            # interpreted data
+                        self.analyze_raw_data(data_array)
+                        if self.integrate_readouts == 0 or self.n_readout % self.integrate_readouts == self.integrate_readouts - 1:
+                            interpreted_data = {
+                                'occupancy': self.histograming.get_occupancy(),
+                                'tot_hist': self.histograming.get_tot_hist(),
+                                'tdc_counters': self.interpreter.get_tdc_counters(),
+                                'error_counters': self.interpreter.get_error_counters(),
+                                'service_records_counters': self.interpreter.get_service_records_counters(),
+                                'trigger_error_counters': self.interpreter.get_trigger_error_counters(),
+                                'rel_bcid_hist': self.histograming.get_rel_bcid_hist()}
+                            self.interpreted_data.emit(interpreted_data)
+                        # meta data
+                        meta_data.update({'n_hits': self.interpreter.get_n_hits(), 'n_events': self.interpreter.get_n_events()})
+                        self.meta_data.emit(meta_data)
+                    elif name == 'RunConf':
                         self.histograming.reset()
-                        # we do not want to reset interpreter to keep the error counters
-    #                         self.interpreter.reset()
-                        # interpreted data
-                    self.analyze_raw_data(data_array)
-                    if self.integrate_readouts == 0 or self.n_readout % self.integrate_readouts == self.integrate_readouts - 1:
-                        interpreted_data = {
-                            'occupancy': self.histograming.get_occupancy(),
-                            'tot_hist': self.histograming.get_tot_hist(),
-                            'tdc_counters': self.interpreter.get_tdc_counters(),
-                            'error_counters': self.interpreter.get_error_counters(),
-                            'service_records_counters': self.interpreter.get_service_records_counters(),
-                            'trigger_error_counters': self.interpreter.get_trigger_error_counters(),
-                            'rel_bcid_hist': self.histograming.get_rel_bcid_hist()}
-                        self.interpreted_data.emit(interpreted_data)
-                    # meta data
-                    meta_data.update({'n_hits': self.interpreter.get_n_hits(), 'n_events': self.interpreter.get_n_events()})
-                    self.meta_data.emit(meta_data)
-                elif name == 'RunConf':
-                    # TODO: from FE config
-                    try:
-                        n_bcid = int(data[1]['trig_count'])
-                    except KeyError:
-                        n_bcid = 0
-                    self.histograming.reset()
-                    self.interpreter.reset()
-                    self.interpreter.set_trig_count(n_bcid)
-                    self.run_start.emit()
-                    self.config_data.emit(meta_data)
+                        self.interpreter.reset()
+                        self.run_start.emit()
+                        self.run_config_data.emit(meta_data)
+                    elif name == 'GlobalRegisterConf':
+                        n_bcid = int(meta_data['conf']['Trig_Count'])
+                        self.interpreter.set_trig_count(n_bcid)
+                        self.global_config_data.emit(meta_data)
 
         self.finished.emit()
 
@@ -125,12 +133,13 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         self.total_hits = 0
         self.total_events = 0
         self.setup_data_worker_and_start(socket_addr)
+        self.reset_plots()
 
     def closeEvent(self, event):
         super(OnlineMonitorApplication, self).closeEvent(event)
         # wait for thread
         self.worker.stop()
-        self.thread.wait(1)  # fixes message: QThread: Destroyed while thread is still running
+        self.thread.wait(2)  # fixes message: QThread: Destroyed while thread is still running
 
     def setup_data_worker_and_start(self, socket_addr):
         self.thread = QtCore.QThread()  # no parent
@@ -138,8 +147,10 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         self.worker.meta_data.connect(self.on_meta_data)
         self.worker.interpreted_data.connect(self.on_interpreted_data)
         self.worker.run_start.connect(self.on_run_start)
-        self.worker.config_data.connect(self.on_config_data)
+        self.worker.run_config_data.connect(self.on_run_config_data)
+        self.worker.global_config_data.connect(self.on_global_config_data)
         self.spin_box.valueChanged.connect(self.worker.on_set_integrate_readouts)
+        self.reset_button.clicked.connect(self.on_reset)
         self.worker.moveToThread(self.thread)
         self.worker.connect(socket_addr)
 #         self.aboutToQuit.connect(self.worker.stop)  # QtGui.QApplication
@@ -160,7 +171,8 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
 
         # Docks
         dock_occcupancy = Dock("Occupancy", size=(400, 400))
-        dock_run_config = Dock("Configuration", size=(400, 400))
+        dock_run_config = Dock("Run configuration", size=(400, 400))
+        dock_global_config = Dock("Global configuration", size=(400, 400))
         dock_tot = Dock("Time over threshold values (TOT)", size=(400, 400))
         dock_tdc = Dock("Time digital converter values (TDC)", size=(400, 400))
         dock_event_status = Dock("Event status", size=(400, 400))
@@ -168,7 +180,8 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         dock_service_records = Dock("Service records", size=(400, 400))
         dock_hit_timing = Dock("Hit timing (rel. BCID)", size=(400, 400))
         dock_status = Dock("Status", size=(800, 40))
-        self.dock_area.addDock(dock_run_config, 'left')
+        self.dock_area.addDock(dock_global_config, 'left')
+        self.dock_area.addDock(dock_run_config, 'above', dock_global_config)
         self.dock_area.addDock(dock_occcupancy, 'above', dock_run_config)
         self.dock_area.addDock(dock_tdc, 'right', dock_occcupancy)
         self.dock_area.addDock(dock_tot, 'above', dock_tdc)
@@ -192,6 +205,7 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         self.spin_box = Qt.QSpinBox(value=1)
         self.spin_box.setMaximum(1000000)
         self.spin_box.setSuffix(" Readouts")
+        self.reset_button = QtGui.QPushButton('Reset')
         layout.addWidget(self.timestamp_label, 0, 0, 0, 1)
         layout.addWidget(self.plot_delay_label, 0, 1, 0, 1)
         layout.addWidget(self.rate_label, 0, 2, 0, 1)
@@ -199,14 +213,18 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         layout.addWidget(self.event_rate_label, 0, 4, 0, 1)
         layout.addWidget(self.scan_parameter_label, 0, 5, 0, 1)
         layout.addWidget(self.spin_box, 0, 6, 0, 1)
+        layout.addWidget(self.reset_button, 0, 7, 0, 1)
         dock_status.addWidget(cw)
 
-        # Config dock
+        # Run config dock
         self.run_conf_list_widget = Qt.QListWidget()
         dock_run_config.addWidget(self.run_conf_list_widget)
 
-        # Different plot docks
+        # Global config dock
+        self.global_conf_list_widget = Qt.QListWidget()
+        dock_global_config.addWidget(self.global_conf_list_widget)
 
+        # Different plot docks
         occupancy_graphics = pg.GraphicsLayoutWidget()
         occupancy_graphics.show()
         view = occupancy_graphics.addViewBox()
@@ -247,23 +265,45 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         dock_hit_timing.addWidget(hit_timing_widget)
 
     @pyqtSlot()
+    def on_reset(self):
+        self.worker.reset()
+        self.total_hits = 0
+        self.total_events = 0
+        self.reset_plots()
+        self.update_rate(0, 0, 0, 0, 0)
+
+    @pyqtSlot()
     def on_run_start(self):
-        # clear config data widget
+        # clear config data widgets
         self.run_conf_list_widget.clear()
-        self.run_conf_list_widget.addItem(Qt.QListWidgetItem("No run configuration"))
+        self.global_conf_list_widget.clear()
+        self.run_conf_list_widget.addItem(Qt.QListWidgetItem("Actual Run configuration"))
+        self.global_conf_list_widget.addItem(Qt.QListWidgetItem("FE-I4 global register config at start of run"))
 
     @pyqtSlot(dict)
-    def on_config_data(self, config_data):
-        self.setup_config_text(**config_data)
+    def on_run_config_data(self, config_data):
+        self.setup_run_config_text(**config_data)
 
-    def setup_config_text(self, conf):
+    @pyqtSlot(dict)
+    def on_global_config_data(self, config_data):
+        self.setup_global_config_text(**config_data)
+
+    def setup_run_config_text(self, conf):
         for key, value in conf.iteritems():
             item = Qt.QListWidgetItem("%s: %s" % (key, value))
             self.run_conf_list_widget.addItem(item)
 
+    def setup_global_config_text(self, conf):
+        for key, value in conf.iteritems():
+            item = Qt.QListWidgetItem("%s: %s" % (key, value))
+            self.global_conf_list_widget.addItem(item)
+
     @pyqtSlot(dict)
     def on_interpreted_data(self, interpreted_data):
         self.update_plots(**interpreted_data)
+
+    def reset_plots(self):
+        self.update_plots(np.zeros((80, 336, 1), dtype=np.uint8), np.zeros((16,), dtype=np.uint8), np.zeros((4096,), dtype=np.uint8), np.zeros((16,), dtype=np.uint8), np.zeros((32,), dtype=np.uint8), np.zeros((8,), dtype=np.uint8), np.zeros((16,), dtype=np.uint8))
 
     def update_plots(self, occupancy, tot_hist, tdc_counters, error_counters, service_records_counters, trigger_error_counters, rel_bcid_hist):
         self.occupancy_img.setImage(occupancy[:, ::-1, 0], autoDownsample=True)
@@ -272,7 +312,7 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         self.event_status_plot.setData(x=np.linspace(-0.5, 15.5, 17), y=error_counters, stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
         self.service_record_plot.setData(x=np.linspace(-0.5, 31.5, 33), y=service_records_counters, stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
         self.trigger_status_plot.setData(x=np.linspace(-0.5, 7.5, 9), y=trigger_error_counters, stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
-        self.hit_timing_plot.setData(x=np.linspace(-0.5, 15.5, 17), y=rel_bcid_hist, stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
+        self.hit_timing_plot.setData(x=np.linspace(-0.5, 15.5, 17), y=rel_bcid_hist[:16], stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
 
     @pyqtSlot(dict)
     def on_meta_data(self, meta_data):
@@ -285,7 +325,7 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         recent_total_hits = n_hits
         recent_total_events = n_events
         self.plot_delay = self.plot_delay * 0.9 + (now - timestamp_stop) * 0.1
-        self.plot_delay_label.setText("Plot Delay\n%s" % ((time.strftime('%H:%M:%S', time.gmtime(self.plot_delay))) if self.plot_delay > 5 else "%1.2f ms" % (self.plot_delay * 1.e3)))
+        self.plot_delay_label.setText("Plot Delay\n%s" % ((time.strftime('%H:%M:%S', time.gmtime(self.plot_delay))) if abs(self.plot_delay) > 5 else "%1.2f ms" % (self.plot_delay * 1.e3)))
         recent_fps = 1.0 / (now - self.updateTime)  # calculate FPS
         recent_hps = (recent_total_hits - self.total_hits) / (now - self.updateTime)
         recent_eps = (recent_total_events - self.total_events) / (now - self.updateTime)
@@ -295,21 +335,35 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         self.fps = self.fps * 0.7 + recent_fps * 0.3
         self.hps = self.hps + (recent_hps - self.hps) * 0.3 / self.fps
         self.eps = self.eps + (recent_eps - self.eps) * 0.3 / self.fps
-        self.rate_label.setText("Readout Rate\n%d Hz" % self.fps)
+        self.update_rate(self.fps, self.hps, recent_total_hits, self.eps, recent_total_events)
+
+    def update_rate(self, fps, hps, recent_total_hits, eps, recent_total_events):
+        self.rate_label.setText("Readout Rate\n%d Hz" % fps)
         if self.spin_box.value() == 0:  # show number of hits, all hits are integrated
             self.hit_rate_label.setText("Total Hits\n%d" % int(recent_total_hits))
         else:
-            self.hit_rate_label.setText("Hit Rate\n%d Hz" % int(self.hps))
+            self.hit_rate_label.setText("Hit Rate\n%d Hz" % int(hps))
         if self.spin_box.value() == 0:  # show number of events
             self.event_rate_label.setText("Total Events\n%d" % int(recent_total_events))
         else:
-            self.event_rate_label.setText("Event Rate\n%d Hz" % int(self.eps))
+            self.event_rate_label.setText("Event Rate\n%d Hz" % int(eps))
 
 
 if __name__ == '__main__':
+    usage = "Usage: %prog ADDRESS"
+    description = "ADDRESS: Remote address of the sender (default: tcp://127.0.0.1:5678)."
+    parser = OptionParser(usage, description=description)
+    options, args = parser.parse_args()
+    if len(args) == 0:
+        socket_addr = 'tcp://127.0.0.1:5678'
+    elif len(args) == 1:
+        socket_addr = args[0]
+    else:
+        parser.error("incorrect number of arguments")
+
     app = Qt.QApplication(sys.argv)
 #     app.aboutToQuit.connect(myExitHandler)
-    win = OnlineMonitorApplication(socket_addr='tcp://127.0.0.1:5678')  # enter remote IP to connect to the other side listening
+    win = OnlineMonitorApplication(socket_addr=socket_addr)  # enter remote IP to connect to the other side listening
     win.resize(800, 840)
     win.setWindowTitle('Online Monitor')
     win.show()

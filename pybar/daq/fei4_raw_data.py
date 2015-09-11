@@ -5,45 +5,49 @@ from threading import RLock
 import tables as tb
 import os.path
 from os import remove
-# from operator import itemgetter
+from operator import itemgetter
 
 from pybar.daq.readout_utils import save_configuration_dict
 from pybar.analysis.RawDataConverter.data_struct import MetaTableV2 as MetaTable, generate_scan_parameter_description
+
+import time
 
 
 def send_meta_data(socket, conf, name):
     '''Sends the config via ZeroMQ to a specified socket. Is called at the beginning of a run and when the config changes. Conf can be any config dictionary.
     '''
+    meta_data = dict(
+        name=name,
+        conf=conf
+    )
     try:
-        meta_data = dict(
-            name=name,
-            conf=conf
-        )
-        socket.send_json(meta_data, falgs=zmq.NOBLOCK)
-    except (zmq.Again, TypeError):
+        socket.send_json(meta_data, flags=zmq.NOBLOCK)
+    except zmq.Again:
         pass
 
 
-def send_data(socket, data, scan_parameters, name='FEI4readoutData'):
+def send_data(socket, data, scan_parameters={}, name='FEI4readoutData'):
     '''Sends the data of every read out (raw data and meta data) via ZeroMQ to a specified socket
     '''
+    if not scan_parameters:
+        scan_parameters = {}
+    data_meta_data = dict(
+        name=name,
+        dtype=str(data[0].dtype),
+        shape=data[0].shape,
+        timestamp_start=data[1],  # float
+        timestamp_stop=data[2],  # float
+        readout_error=data[3],  # int
+        scan_parameters=scan_parameters  # dict
+    )
     try:
-        data_meta_data = dict(
-            name=name,
-            dtype=str(data[0].dtype),
-            shape=data[0].shape,
-            timestamp_start=data[1],  # float
-            timestamp_stop=data[2],  # float
-            readout_error=data[3],  # int
-            scan_parameters=scan_parameters  # dict
-        )
         socket.send_json(data_meta_data, flags=zmq.SNDMORE | zmq.NOBLOCK)
         socket.send(data[0], flags=zmq.NOBLOCK)  # PyZMQ supports sending numpy arrays without copying any data
     except zmq.Again:
         pass
 
 
-def open_raw_data_file(filename, mode="w", title="", register=None, conf=None, run_conf=None, scan_parameters=None, socket_addr=None):
+def open_raw_data_file(filename, mode="w", title="", register=None, conf=None, run_conf=None, scan_parameters=None, socket_addr=None, zmq_context=None):
     '''Mimics pytables.open_file() and stores the configuration and run configuration
 
     Returns:
@@ -54,7 +58,7 @@ def open_raw_data_file(filename, mode="w", title="", register=None, conf=None, r
         # do something here
         raw_data_file.append(self.readout.data, scan_parameters={scan_parameter:scan_parameter_value})
     '''
-    return RawDataFile(filename=filename, mode=mode, title=title, register=register, conf=conf, run_conf=run_conf, scan_parameters=scan_parameters, socket_addr=socket_addr)
+    return RawDataFile(filename=filename, mode=mode, title=title, register=register, conf=conf, run_conf=run_conf, scan_parameters=scan_parameters, socket_addr=socket_addr, zmq_context=zmq_context)
 
 
 class RawDataFile(object):
@@ -64,7 +68,7 @@ class RawDataFile(object):
     '''Raw data file object. Saving data queue to HDF5 file.
     '''
 
-    def __init__(self, filename, mode="w", title='', register=None, conf=None, run_conf=None, scan_parameters=None, socket_addr=None):  # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created):
+    def __init__(self, filename, mode="w", title='', register=None, conf=None, run_conf=None, scan_parameters=None, socket_addr=None, zmq_context=None):  # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created):
         self.lock = RLock()
         if os.path.splitext(filename)[1].strip().lower() != '.h5':
             self.base_filename = filename
@@ -95,12 +99,18 @@ class RawDataFile(object):
             save_configuration_dict(self.h5_file, 'conf', conf)
         if run_conf:
             save_configuration_dict(self.h5_file, 'run_conf', run_conf)
-        if socket_addr:
-            self.socket = zmq.Context().socket(zmq.PUSH)  # push data non blocking
-            self.socket.bind(socket_addr)
-            send_meta_data(self.socket, run_conf, name='RunConf')  # send run info
-        else:
+        if socket_addr is None:
             self.socket = None
+        elif isinstance(socket_addr, basestring):
+            if zmq_context is None:
+                zmq_context = zmq.Context()  # create own context
+            self.socket = zmq_context.socket(zmq.PUB)  # push data non blocking
+            self.socket.bind(socket_addr)
+            time.sleep(0.3)  # small sleep needed to be able to use ZMQ socket after creation
+            send_meta_data(self.socket, run_conf, name='RunConf')  # send run info to indicate new scan
+            logging.info('Sending data to %s' % socket_addr)
+        else:
+            raise ValueError('Expecting string for socket_addr.')
 
     def __enter__(self):
         return self
@@ -210,11 +220,11 @@ class RawDataFile(object):
         if self.register is None:
             raise RuntimeError('Register object not available for storing in FEi4 raw data file')
         self.register.save_configuration(self.h5_file)
-#         if self.socket:  # send global register config if socket is specified
-#             global_register_config = {}
-#             for global_reg in sorted(self.register.get_global_register_objects(readonly=False), key=itemgetter('name')):
-#                 global_register_config[global_reg['name']] = global_reg['value']
-#             send_meta_data(self.socket, global_register_config, name='GlobalRegisterConf')  # send run info
+        if self.socket:  # send global register config if socket is specified
+            global_register_config = {}
+            for global_reg in sorted(self.register.get_global_register_objects(readonly=False), key=itemgetter('name')):
+                global_register_config[global_reg['name']] = global_reg['value']
+            send_meta_data(self.socket, global_register_config, name='GlobalRegisterConf')  # send run info
 
     def flush(self):
         with self.lock:

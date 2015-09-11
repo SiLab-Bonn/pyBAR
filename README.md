@@ -44,9 +44,9 @@ For USB support, PyBAR requires the following packages:
   pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/800/pySiLibUSB-2.0.5.tar.gz
   ```
 
-[Basil](https://github.com/SiLab-Bonn/basil) (==2.1.1) is required:
+[Basil](https://github.com/SiLab-Bonn/basil) (==2.1.2) is required:
   ```
-  pip install -e "git+https://github.com/SiLab-Bonn/basil.git@v2.1.1#egg=basil&subdirectory=host"
+  pip install -e "git+https://github.com/SiLab-Bonn/basil.git@development#egg=basil&subdirectory=host"
   ```
 
 The following packages are required for pyBAR's core functionality:

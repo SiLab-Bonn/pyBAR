@@ -18,6 +18,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
 
     Tuning the FEI4 to the lowest possible threshold (GDAC and TDAC). Feedback current will not be tuned.
     NOTE: In case of RX errors decrease the trigger frequency (= increase trigger_rate_limit)
+    NOTE: To increase the TDAC range, decrease TdacVbp.
     '''
     _default_run_conf = {
         "occupancy_limit": 0,  # occupancy limit, when reached the TDAC will be decreased (increasing threshold). 0 will mask any pixel with occupancy greater than zero
@@ -190,6 +191,13 @@ class ThresholdBaselineTuning(Fei4RunBase):
         self.register.set_global_register_value("Vthin_AltFine", self.last_good_threshold + self.increase_threshold)
         self.register.set_pixel_register_value('TDAC', self.last_good_tdac)
         self.register.set_pixel_register_value('Enable', self.last_good_enable_mask)
+        # write configuration to avaoid high current states
+        commands = []
+        commands.extend(self.register.get_commands("ConfMode"))
+        commands.extend(self.register.get_commands("WrRegister", name=["Vthin_AltFine"]))
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, name="TDAC"))
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, name="Enable"))
+        self.register_utils.send_commands(commands)
 
         with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
             analyze_raw_data.create_source_scan_hist = True

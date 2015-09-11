@@ -5,6 +5,7 @@ import os
 import string
 import smtplib
 import socket
+import zmq
 import numpy as np
 from functools import wraps
 from threading import Event, Thread
@@ -32,11 +33,7 @@ class Fei4RunBase(RunBase):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, conf, run_conf=None):
-        # adding default run conf parameters valid for all scans
-        if 'send_data' not in self._default_run_conf:
-            self._default_run_conf.update({'send_data': None})
-        if 'send_error' not in self._default_run_conf:
-            self._default_run_conf.update({'send_error': None})
+        # default run conf parameters added for all scans
         if 'comment' not in self._default_run_conf:
             self._default_run_conf.update({'comment': ''})
         if 'reset_rx_on_error' not in self._default_run_conf:
@@ -44,9 +41,16 @@ class Fei4RunBase(RunBase):
 
         super(Fei4RunBase, self).__init__(conf=conf, run_conf=run_conf)
 
+        # default conf parameters
+        if 'send_data' not in conf:
+            conf.update({'send_data': None})
+        if 'send_error_msg' not in conf:
+            conf.update({'send_error_msg': None})
+
         self.err_queue = Queue()
         self.fifo_readout = None
         self.raw_data_file = None
+        self.zmq_context = None
 
     @property
     def working_dir(self):
@@ -239,10 +243,10 @@ class Fei4RunBase(RunBase):
             pass  # no fe_configuration
 
     def pre_run(self):
-        # sending data
-        self.socket_addr = self._run_conf['send_data']
-        if self.socket_addr:
-            logging.info('Sending data to %s', self.socket_addr)
+        # opening ZMQ context
+        if isinstance(self.conf['send_data'], basestring):
+            logging.info('Opening push socket for data transimission at %s', self._conf['send_data'])
+            self.zmq_context = zmq.Context()
         # scan parameters
         if 'scan_parameters' in self.run_conf:
             if isinstance(self.run_conf['scan_parameters'], basestring):
@@ -329,7 +333,7 @@ class Fei4RunBase(RunBase):
         self.init_fe()
 
     def do_run(self):
-        with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, register=self.register, conf=self.conf, run_conf=self.run_conf, scan_parameters=self.scan_parameters._asdict(), socket_addr=self.socket_addr) as self.raw_data_file:
+        with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, register=self.register, conf=self.conf, run_conf=self.run_conf, scan_parameters=self.scan_parameters._asdict(), socket_addr=self.conf['send_data'], zmq_context=self.zmq_context) as self.raw_data_file:
             with self.register.restored(name=self.run_number):
                 # configure for scan
                 self.configure()
@@ -477,7 +481,7 @@ class Fei4RunBase(RunBase):
         self.fifo_readout.stop(timeout=timeout)
 
     def _cleanup(self):  # called in run base after exception handling
-        if self._run_conf['send_error'] and self._run_status == run_status.crashed:
+        if self.conf['send_error_msg'] and self._run_status == run_status.crashed:
             try:
                 import requests
                 ip = requests.request('GET', 'http://myip.dnsomatic.com').text
@@ -602,12 +606,12 @@ def send_mail(text, configuration, subject=''):
     '''
     logging.info('Send status E-Mail (' + subject + ')')
     body = string.join((
-            "From: %s" % configuration['email_account'][0],
-            "To: %s" % str(configuration['email_to']).strip('[]'),
-            "Subject: %s" % subject,
-            "",
-            text
-            ), "\r\n")
+        "From: %s" % configuration['email_account'][0],
+        "To: %s" % str(configuration['email_to']).strip('[]'),
+        "Subject: %s" % subject,
+        "",
+        text),
+        "\r\n")
     server = smtplib.SMTP_SSL(configuration['email_host'])
     server.login(configuration['email_account'][0], configuration['email_account'][1])
     server.sendmail(configuration['email_account'][0], configuration['email_to'], body)
