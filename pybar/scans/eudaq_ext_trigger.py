@@ -25,7 +25,7 @@ class EudaqExtTriggerScan(ExtTriggerScan):
     _default_run_conf = {
         "trig_count": 0,  # FE-I4 trigger count, number of consecutive BCs, 0 means 16, from 0 to 15
         "trigger_latency": 232,  # FE-I4 trigger latency, in BCs, external scintillator / TLU / HitOR: 232, USBpix self-trigger: 220
-        "trigger_delay": 14,  # trigger delay, in BCs
+        "trigger_delay": 8,  # trigger delay, in BCs
         "trigger_rate_limit": 1000,  # artificially limiting the trigger rate, in BCs (25ns)
         "col_span": [1, 80],  # defining active column interval, 2-tuple, from 1 to 80
         "row_span": [1, 336],  # defining active row interval, 2-tuple, from 1 to 336
@@ -61,7 +61,7 @@ class EudaqExtTriggerScan(ExtTriggerScan):
                 else:
                     triggers = self.dut['TLU']['TRIGGER_COUNTER']
                     data_words = self.fifo_readout.data_words_per_second()
-                    print 'Runtime: %s\nTriggers: %d\nData words/s: %s\n' % (strftime('%H:%M:%S', gmtime(time() - start)), triggers, str(data_words))
+                    logging.info('Runtime: %s\nTriggers: %d\nData words/s: %s\n' % (strftime('%H:%M:%S', gmtime(time() - start)), triggers, str(data_words)))
                     if self.max_triggers is not None and triggers >= self.max_triggers:
                         self.stop(msg='Trigger limit was reached: %i' % self.max_triggers)
 
@@ -169,4 +169,3 @@ if __name__ == "__main__":
             # check if the run is stopping regularly
             if pp.StoppingRun:
                 pp.StoppingRun = True  # set status and send EORE
-
