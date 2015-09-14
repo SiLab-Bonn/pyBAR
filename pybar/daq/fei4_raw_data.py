@@ -25,7 +25,7 @@ def send_meta_data(socket, conf, name):
         pass
 
 
-def send_data(socket, data, scan_parameters={}, name='FEI4readoutData'):
+def send_data(socket, data, scan_parameters={}, name='ReadoutData'):
     '''Sends the data of every read out (raw data and meta data) via ZeroMQ to a specified socket
     '''
     if not scan_parameters:
@@ -46,7 +46,7 @@ def send_data(socket, data, scan_parameters={}, name='FEI4readoutData'):
         pass
 
 
-def open_raw_data_file(filename, mode="w", title="", register=None, conf=None, run_conf=None, scan_parameters=None, socket_addr=None, zmq_context=None):
+def open_raw_data_file(filename, mode="w", title="", register=None, conf=None, run_conf=None, scan_parameters=None, socket=None):
     '''Mimics pytables.open_file() and stores the configuration and run configuration
 
     Returns:
@@ -57,7 +57,7 @@ def open_raw_data_file(filename, mode="w", title="", register=None, conf=None, r
         # do something here
         raw_data_file.append(self.readout.data, scan_parameters={scan_parameter:scan_parameter_value})
     '''
-    return RawDataFile(filename=filename, mode=mode, title=title, register=register, conf=conf, run_conf=run_conf, scan_parameters=scan_parameters, socket_addr=socket_addr, zmq_context=zmq_context)
+    return RawDataFile(filename=filename, mode=mode, title=title, register=register, conf=conf, run_conf=run_conf, scan_parameters=scan_parameters, socket=socket)
 
 
 class RawDataFile(object):
@@ -67,7 +67,7 @@ class RawDataFile(object):
     '''Raw data file object. Saving data queue to HDF5 file.
     '''
 
-    def __init__(self, filename, mode="w", title='', register=None, conf=None, run_conf=None, scan_parameters=None, socket_addr=None, zmq_context=None):  # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created):
+    def __init__(self, filename, mode="w", title='', register=None, conf=None, run_conf=None, scan_parameters=None, socket=None):  # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created):
         self.lock = RLock()
         if os.path.splitext(filename)[1].strip().lower() != '.h5':
             self.base_filename = filename
@@ -79,11 +79,17 @@ class RawDataFile(object):
             self.scan_parameters = dict.fromkeys(scan_parameters)
         else:
             self.scan_parameters = {}
-        self.register = register  # reference to register object needed to store to fei4 raw data file
         self.raw_data_earray = None
         self.meta_data_table = None
         self.scan_param_table = None
         self.h5_file = None
+
+        if socket is None:
+            self.socket = None
+        else:
+            self.socket = socket
+            send_meta_data(self.socket, None, name='Reset')  # send reset to indicate a new scan
+
         if mode and mode[0] == 'w':
             h5_files = glob.glob(os.path.splitext(filename)[0] + '*.h5')
             if h5_files:
@@ -94,22 +100,20 @@ class RawDataFile(object):
         self.curr_filename = self.base_filename
         self.filenames = {self.curr_filename: 0}
         self.open(self.curr_filename, mode, title)
+
+        if register is not None:
+            register.save_configuration(self.h5_file)
+            if self.socket:
+                global_register_config = {}
+                for global_reg in sorted(register.get_global_register_objects(readonly=False), key=itemgetter('name')):
+                    global_register_config[global_reg['name']] = global_reg['value']
+                send_meta_data(self.socket, global_register_config, name='GlobalRegisterConf')  # send run info
         if conf is not None:
             save_configuration_dict(self.h5_file, 'conf', conf)
         if run_conf is not None:
             save_configuration_dict(self.h5_file, 'run_conf', run_conf)
-        if socket_addr is None:
-            self.socket = None
-        elif isinstance(socket_addr, basestring):
-            if zmq_context is None:
-                zmq_context = zmq.Context()  # create own context
-            self.socket = zmq_context.socket(zmq.PUB)  # push data non blocking
-            self.socket.bind(socket_addr)
-            time.sleep(0.3)  # small sleep needed to be able to use ZMQ socket after creation
-            send_meta_data(self.socket, run_conf, name='RunConf')  # send run info to indicate new scan
-            logging.info('Sending data to %s' % socket_addr)
-        else:
-            raise ValueError('Expecting string for socket_addr.')
+            if self.socket:
+                send_meta_data(self.socket, run_conf, name='RunConf')
 
     def __enter__(self):
         return self
@@ -125,6 +129,8 @@ class RawDataFile(object):
             logging.info('Opening existing raw data file: %s', filename)
         else:
             logging.info('Opening new raw data file: %s', filename)
+        if self.socket:
+            send_meta_data(self.socket, os.path.basename(filename), name='Filename')
 
         filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
         filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
@@ -215,16 +221,6 @@ class RawDataFile(object):
                 self.append_item(data_tuple, scan_parameters, flush=False)
             if flush:
                 self.flush()
-
-    def save_register_configuration(self):
-        if self.register is None:
-            raise RuntimeError('Register object not available for storing in FEi4 raw data file')
-        self.register.save_configuration(self.h5_file)
-        if self.socket:  # send global register config if socket is specified
-            global_register_config = {}
-            for global_reg in sorted(self.register.get_global_register_objects(readonly=False), key=itemgetter('name')):
-                global_register_config[global_reg['name']] = global_reg['value']
-            send_meta_data(self.socket, global_register_config, name='GlobalRegisterConf')  # send run info
 
     def flush(self):
         with self.lock:
