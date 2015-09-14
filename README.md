@@ -33,17 +33,6 @@ The features of the host software in Python and C++:
 
 ## Installation
 
-For USB support, PyBAR requires the following packages:
-- [PyUSB](https://github.com/walac/pyusb) (>=1.0.0rc1):
-  ```
-  pip install "git+https://github.com/walac/pyusb.git@master"
-  ```
-  
-- [pySiLibUSB](https://silab-redmine.physik.uni-bonn.de/projects/pysilibusb) (>=2.0.0):
-  ```
-  pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/800/pySiLibUSB-2.0.5.tar.gz
-  ```
-
 [Basil](https://github.com/SiLab-Bonn/basil) (==2.1.2) is required:
   ```
   pip install -e "git+https://github.com/SiLab-Bonn/basil.git@development#egg=basil&subdirectory=host"
@@ -54,22 +43,34 @@ The following packages are required for pyBAR's core functionality:
   bitarray cython matplotlib numpy pandas progressbar-latest tables pyyaml scipy
   ```
 
-For full functionality, the following additional packages are needed:
+For full functionality, the following additional packages are required:
   ```
   mock nose pyqtgraph pyserial pyvisa pyvisa-py pyzmq
   ```
 
 On Windows, the `pywin32` package is required.
 
+For supporting USB devices, the following additional packages are required:
+- [PyUSB](https://github.com/walac/pyusb) (>=1.0.0rc1):
+  ```
+  pip install "git+https://github.com/walac/pyusb.git@master"
+  ```
+  
+- [pySiLibUSB](https://silab-redmine.physik.uni-bonn.de/projects/pysilibusb) (>=2.0.0):
+  ```
+  pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/800/pySiLibUSB-2.0.5.tar.gz
+  ```
+
 The installation procedure depends on the operating system and software environment.
 Please read our [Step-by-step Installation Guide](https://github.com/SiLab-Bonn/pyBAR/wiki/Step-by-step-Installation-Guide) carefully.
 
-Clone pyBAR from git and then run the following commands from the within project folder:
+After the obove steps are completed, clone the pyBAR git repository and then run the following commands from the within project folder:
 
 1. Build with:
    ```
    python setup.py build_ext
    ```
+   Note: this command needs to be excuted each time pyBAR is updated or changes are made to the pyBAR C++ library.
 
 2. Install with:
    ```
