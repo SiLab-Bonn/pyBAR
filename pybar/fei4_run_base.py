@@ -51,6 +51,7 @@ class Fei4RunBase(RunBase):
         self.fifo_readout = None
         self.raw_data_file = None
         self.zmq_context = None
+        self.socket = None
 
     @property
     def working_dir(self):
@@ -245,8 +246,10 @@ class Fei4RunBase(RunBase):
     def pre_run(self):
         # opening ZMQ context
         if isinstance(self.conf['send_data'], basestring):
-            logging.info('Opening push socket for data transimission at %s', self._conf['send_data'])
             self.zmq_context = zmq.Context()
+            self.socket = self.zmq_context.socket(zmq.PUB)  # publisher
+            self.socket.bind(self.conf['send_data'])
+            logging.info('Creating socket connection to server %s', self.conf['send_data'])
         # scan parameters
         if 'scan_parameters' in self.run_conf:
             if isinstance(self.run_conf['scan_parameters'], basestring):
@@ -333,14 +336,13 @@ class Fei4RunBase(RunBase):
         self.init_fe()
 
     def do_run(self):
-        with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, register=self.register, conf=self.conf, run_conf=self.run_conf, scan_parameters=self.scan_parameters._asdict(), socket_addr=self.conf['send_data'], zmq_context=self.zmq_context) as self.raw_data_file:
-            with self.register.restored(name=self.run_number):
-                # configure for scan
-                self.configure()
-                self.raw_data_file.save_register_configuration()  # save register configration after configure() since it is most likely changed there
-                self.fifo_readout.reset_rx()
-                self.fifo_readout.reset_sram_fifo()
-                self.fifo_readout.print_readout_status()
+        with self.register.restored(name=self.run_number):
+            # configure for scan
+            self.configure()
+            self.fifo_readout.reset_rx()
+            self.fifo_readout.reset_sram_fifo()
+            self.fifo_readout.print_readout_status()
+            with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, register=self.register, conf=self.conf, run_conf=self.run_conf, scan_parameters=self.scan_parameters._asdict(), socket=self.socket) as self.raw_data_file:
                 # scan
                 self.scan()
 

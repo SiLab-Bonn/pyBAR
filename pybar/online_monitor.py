@@ -20,6 +20,7 @@ class DataWorker(QtCore.QObject):
     run_start = QtCore.pyqtSignal()
     run_config_data = QtCore.pyqtSignal(dict)
     global_config_data = QtCore.pyqtSignal(dict)
+    filename = QtCore.pyqtSignal(dict)
     interpreted_data = QtCore.pyqtSignal(dict)
     meta_data = QtCore.pyqtSignal(dict)
     finished = QtCore.pyqtSignal()
@@ -45,7 +46,7 @@ class DataWorker(QtCore.QObject):
     def connect(self, socket_addr):
         self.socket_addr = socket_addr
         self.context = zmq.Context()
-        self.socket_pull = self.context.socket(zmq.SUB)
+        self.socket_pull = self.context.socket(zmq.SUB)  # subscriber
         self.socket_pull.setsockopt(zmq.SUBSCRIBE, '')  # do not filter any data
         self.socket_pull.connect(self.socket_addr)
 
@@ -74,7 +75,7 @@ class DataWorker(QtCore.QObject):
                     pass
                 else:
                     name = meta_data.pop('name')
-                    if name == 'FEI4readoutData':
+                    if name == 'ReadoutData':
                         data = self.socket_pull.recv()
                         # reconstruct numpy array
                         buf = buffer(data)
@@ -103,15 +104,17 @@ class DataWorker(QtCore.QObject):
                         meta_data.update({'n_hits': self.interpreter.get_n_hits(), 'n_events': self.interpreter.get_n_events()})
                         self.meta_data.emit(meta_data)
                     elif name == 'RunConf':
-                        self.histograming.reset()
-                        self.interpreter.reset()
-                        self.run_start.emit()
                         self.run_config_data.emit(meta_data)
                     elif name == 'GlobalRegisterConf':
                         trig_count = int(meta_data['conf']['Trig_Count'])
                         self.interpreter.set_trig_count(trig_count)
                         self.global_config_data.emit(meta_data)
-
+                    elif name == 'Reset':
+                        self.histograming.reset()
+                        self.interpreter.reset()
+                        self.run_start.emit()
+                    elif name == 'Filename':
+                        self.filename.emit(meta_data)
         self.finished.emit()
 
 #     @pyqtSlot()
@@ -149,6 +152,7 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         self.worker.run_start.connect(self.on_run_start)
         self.worker.run_config_data.connect(self.on_run_config_data)
         self.worker.global_config_data.connect(self.on_global_config_data)
+        self.worker.filename.connect(self.on_filename)
         self.spin_box.valueChanged.connect(self.worker.on_set_integrate_readouts)
         self.reset_button.clicked.connect(self.on_reset)
         self.worker.moveToThread(self.thread)
@@ -277,8 +281,7 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         # clear config data widgets
         self.run_conf_list_widget.clear()
         self.global_conf_list_widget.clear()
-        self.run_conf_list_widget.addItem(Qt.QListWidgetItem("Actual Run configuration"))
-        self.global_conf_list_widget.addItem(Qt.QListWidgetItem("FE-I4 global register config at start of run"))
+        self.setWindowTitle('Online Monitor')
 
     @pyqtSlot(dict)
     def on_run_config_data(self, config_data):
@@ -288,15 +291,22 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
     def on_global_config_data(self, config_data):
         self.setup_global_config_text(**config_data)
 
+    @pyqtSlot(dict)
+    def on_filename(self, config_data):
+        self.setup_filename(**config_data)
+
     def setup_run_config_text(self, conf):
-        for key, value in conf.iteritems():
+        for key, value in sorted(conf.iteritems()):
             item = Qt.QListWidgetItem("%s: %s" % (key, value))
             self.run_conf_list_widget.addItem(item)
 
     def setup_global_config_text(self, conf):
-        for key, value in conf.iteritems():
+        for key, value in sorted(conf.iteritems()):
             item = Qt.QListWidgetItem("%s: %s" % (key, value))
             self.global_conf_list_widget.addItem(item)
+
+    def setup_filename(self, conf):
+        self.setWindowTitle('Online Monitor - %s' % conf)
 
     @pyqtSlot(dict)
     def on_interpreted_data(self, interpreted_data):
