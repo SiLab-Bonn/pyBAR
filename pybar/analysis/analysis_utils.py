@@ -438,9 +438,10 @@ def get_data_file_names_from_scan_base(scan_base, filter_str=['_analyzed', '_int
     if isinstance(scan_base, basestring):
         scan_base = [scan_base]
     for scan_base_str in scan_base:
-        if '.h5' in scan_base_str:
-            raise ValueError('Scan base string must not contain .h5 file extension')
-        data_files.extend(glob.glob(scan_base_str + '*.h5'))
+        if '.h5' == os.path.splitext(scan_base_str)[1]:
+            data_files.append(scan_base_str)
+        else:
+            data_files.extend(glob.glob(scan_base_str + '*.h5'))
 
     if filter_str:
         if isinstance(filter_str, basestring):
