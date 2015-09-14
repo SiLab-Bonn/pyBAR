@@ -50,7 +50,7 @@ For full functionality, the following additional packages are required:
 
 On Windows, the `pywin32` package is required.
 
-For supporting USB devices, the following additional packages are required:
+To enable support for USB devices (MIO, MIO3 and MMC3), the following additional packages are required:
 - [PyUSB](https://github.com/walac/pyusb) (>=1.0.0rc1):
   ```
   pip install "git+https://github.com/walac/pyusb.git@master"
