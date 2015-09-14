@@ -80,8 +80,7 @@ class AnalyzeRawData(object):
                 else:
                     raw_data_files.append(one_raw_data_file)
         else:
-            f_list = analysis_utils.get_data_file_names_from_scan_base(raw_data_file, filter_file_words=['analyzed', 'interpreted', 'calibration_calibration', 'result'], parameter=False)
-            f_list = analysis_utils.sort_raw_data_files_by_time(f_list, meta_data_v2=self.interpreter.meta_table_v2)
+            f_list = analysis_utils.get_data_file_names_from_scan_base(raw_data_file, sort_by_time=True, meta_data_v2=self.interpreter.meta_table_v2)
             if f_list:
                 raw_data_files = f_list
             elif raw_data_file is not None and os.path.splitext(raw_data_file)[1].strip().lower() != ".h5":

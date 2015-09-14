@@ -15,7 +15,6 @@ from operator import itemgetter
 from scipy.interpolate import interp1d
 from scipy.interpolate import splrep, splev
 from tables import dtype_from_descr
-from stat import ST_CTIME
 
 from pybar.analysis.plotting import plotting
 from pybar.analysis.RawDataConverter import analysis_functions
@@ -412,86 +411,53 @@ def get_parameter_value_from_file_names(files, parameters=None, unique=False, so
     return collections.OrderedDict(sorted(result.iteritems(), key=itemgetter(1)) if sort else files_dict)  # with PEP 265 solution of sorting a dict by value
 
 
-def get_data_file_names_from_scan_base(scan_base, filter_file_words=None, parameter=True, sort_by_date=True):
+def get_data_file_names_from_scan_base(scan_base, filter_str=['_analyzed', '_interpreted', '_cut'], sort_by_time=True, meta_data_v2=True):
     """
-    Takes a list of scan base names and returns all file names that have this scan base within their name. File names that have a word of filter_file_words
-    in their name are excluded.
+    Generate a list of .h5 files which have a similar file name.
 
     Parameters
     ----------
-    scan_base : list of strings, string
-    filter_file_words : list of strings
-        Return only file names without a filter_file_word. Deactivate feature by setting filter_file_words to None
-    parameter : bool
-        There is a running scan parameter in the file name (e.g. scanname_parametername_parametervalue.h5)
-    sort_by_date : bool
-        Sort the list from oldest to newest files
-    Returns
-    -------
-    list of strings
-
-    """
-    raw_data_files = []
-    if scan_base is None:
-        return raw_data_files
-    if isinstance(scan_base, basestring):
-        scan_base = (scan_base, )
-    for scan_name in scan_base:
-        if parameter:
-            data_files = glob.glob(scan_name + '_*.h5')
-        else:
-            data_files = glob.glob(scan_name + '*.h5')
-        if sort_by_date:
-            data_files_stats = ((os.stat(path)[ST_CTIME], path) for path in data_files)
-            data_files = [i[1] for i in sorted(data_files_stats)]
-        if filter_file_words is not None:
-            raw_data_files.extend(filter(lambda data_file: not any(x in data_file for x in filter_file_words), data_files))  # filter out data with filter_file_words
-        else:
-            raw_data_files = data_files
-    return raw_data_files
-
-
-def sort_raw_data_files_by_time(scan_base, meta_data_v2=True):
-    '''Sort list of raw data files by time given from the meta table.
-
-    Parameters
-    ----------
-    scan_base : list of strings
+    scan_base : list, string
+        List of string or string of the scan base names. The scan_base will be used to search for files containing the string. The .h5 file extension will be added automatically.
+    filter : list, string
+        List of string or string which are used to filter the returned filenames. File names containing filter_str in the file name will not be returned. Use None to disable filter.
+    sort_by_time : bool
+        If True, return file name list sorted from oldest to newest. The time from meta table will be used to sort the files.
     meta_data_v2 : bool
+        True for new (v2) meta data format, False for the old (v1) format.
 
     Returns
     -------
-    list of strings
-    '''
-    f_list = {}
-    if len(scan_base) > 1:
-        for raw_data_file in scan_base:
-            with tb.open_file(raw_data_file, mode="r") as h5_file:
+    data_files : list
+        List of file names matching the obove conditions.
+
+    """
+    data_files = []
+    if scan_base is None:
+        return data_files
+    if isinstance(scan_base, basestring):
+        scan_base = [scan_base]
+    for scan_base_str in scan_base:
+        if '.h5' in scan_base_str:
+            raise ValueError('Scan base string must not contain .h5 file extension')
+        data_files.extend(glob.glob(scan_base_str + '*.h5'))
+
+    if filter_str:
+        if isinstance(filter_str, basestring):
+            filter_str = [filter_str]
+        data_files = filter(lambda data_file: not any([(True if x in data_file else False) for x in filter_str]), data_files)
+    if sort_by_time and len(data_files) > 1:
+        f_list = {}
+        for data_file in data_files:
+            with tb.open_file(data_file, mode="r") as h5_file:
                 if meta_data_v2:
                     timestamp = h5_file.root.meta_data[0]["timestamp_start"]
                 else:
                     timestamp = h5_file.root.meta_data[0]["timestamp"]
-            f_list[raw_data_file] = timestamp
+            f_list[data_file] = timestamp
 
-        return list(sorted(f_list, key=f_list.__getitem__, reverse=False))
-    else:
-        return scan_base
-
-
-def get_parameter_scan_bases_from_scan_base(scan_base):
-    """ Takes a list of scan base names and returns all scan base names that have this scan base within their name.
-
-    Parameters
-    ----------
-    scan_base : list of strings
-    filter_file_words : list of strings
-
-    Returns
-    -------
-    list of strings
-
-    """
-    return [scan_bases[:-3] for scan_bases in get_data_file_names_from_scan_base(scan_base, filter_file_words=['interpreted', 'cut_', 'cluster_sizes', 'histograms'])]
+        data_files = list(sorted(f_list, key=f_list.__getitem__, reverse=False))
+    return data_files
 
 
 def get_scan_parameter_names(scan_parameters):
