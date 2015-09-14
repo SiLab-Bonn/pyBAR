@@ -1130,7 +1130,7 @@ def get_events_with_n_cluster(event_number, condition='n_cluster==1'):
     logging.debug("Calculate events with clusters where " + condition)
     n_cluster_in_events = get_n_cluster_in_events(event_number)
     n_cluster = n_cluster_in_events[:, 1]
-# return np.take(n_cluster_in_events, ne.evaluate(condition), axis=0)  # does not return only one dimension, Bug?
+#    return np.take(n_cluster_in_events, ne.evaluate(condition), axis=0)  # does not return 1d, bug?
     return n_cluster_in_events[ne.evaluate(condition), 0]
 
 
