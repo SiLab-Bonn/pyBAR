@@ -107,23 +107,39 @@ def unique_row(array, use_columns=None, selected_columns_only=False):
             return array[np.sort(index)][new_names]  # sort to preserve order
 
 
-def get_ranges_from_array(array, append_last=True):
+def get_ranges_from_array(arr, append_last=True):
     '''Takes an array and calculates ranges [start, stop[. The last range end is none to keep the same length.
 
     Parameters
     ----------
-    events : array like
+    arr : array like
     append_last: bool
-        If false the returned array has one entry less
+        If True, append item with a pair of last array item and None.
 
     Returns
     -------
     numpy.array
+        The array formed by pairs of values by the given array.
+
+    Example
+    -------
+    >>> a = np.array((1,2,3,4))
+    >>> get_ranges_from_array(a, append_last=True)
+    array([[1, 2],
+           [2, 3],
+           [3, 4],
+           [4, None]])
+    >>> get_ranges_from_array(a, append_last=False)
+    array([[1, 2],
+           [2, 3],
+           [3, 4]])
     '''
-    left = array[:len(array)]
-    right = array[1:len(array)]
+    right = arr[1:]
     if append_last:
+        left = arr[:]
         right = np.append(right, None)
+    else:
+        left = arr[:-1]
     return np.column_stack((left, right))
 
 
@@ -747,7 +763,7 @@ def hist_3d_index(x, y, z, shape):
     x = np.ascontiguousarray(x.astype(np.int32))
     y = np.ascontiguousarray(y.astype(np.int32))
     z = np.ascontiguousarray(z.astype(np.int32))
-    result = np.zeros(shape=shape, dtype=np.uint16).ravel()  # ravel hist in c-style, 3D --> 1D
+    result = np.zeros(shape=shape, dtype=np.uint32).ravel()  # ravel hist in c-style, 3D --> 1D
     analysis_functions.hist_3d(x, y, z, shape[0], shape[1], shape[2], result)
     return np.reshape(result, shape)  # rebuilt 3D hist from 1D hist
 
@@ -1329,7 +1345,7 @@ def data_aligned_at_events(table, start_event_number=None, stop_event_number=Non
     -------
     iterable to numpy.histogram
         The data of the actual chunk.
-    last_index: int
+    stop_index: int
         The index of the last table part already used. Can be used if data_aligned_at_events is called in a loop for speed up.
         Example:
         start_index = 0
@@ -1354,18 +1370,18 @@ def data_aligned_at_events(table, start_event_number=None, stop_event_number=Non
         if start_event_number is not None:
             condition_1 = 'event_number==' + str(start_event_number)
             start_indeces = table.get_where_list(condition_1, start=start_index, stop=stop_index)
-            if len(start_indeces) != 0:  # set start index if possible
+            if start_indeces.shape[0] != 0:  # set start index if possible
                 start_index = start_indeces[0]
                 start_index_known = True
 
         if stop_event_number is not None:
             condition_2 = 'event_number==' + str(stop_event_number)
             stop_indeces = table.get_where_list(condition_2, start=start_index, stop=stop_index)
-            if len(stop_indeces) != 0:  # set the stop index if possible, stop index is excluded
+            if stop_indeces.shape[0] != 0:  # set the stop index if possible, stop index is excluded
                 stop_index = stop_indeces[0]
                 stop_index_known = True
 
-    if (start_index_known and stop_index_known) or (start_index + chunk_size >= stop_index):  # special case, one read is enough, data not bigger than one chunk and the indices are known
+    if (start_index_known and stop_index_known) and (start_index + chunk_size >= stop_index):  # special case, one read is enough, data not bigger than one chunk and the indices are known
         yield table.read(start=start_index, stop=stop_index), stop_index
     else:  # read data in chunks, chunks do not divide events, abort if stop_event_number is reached
         while(start_index < stop_index):

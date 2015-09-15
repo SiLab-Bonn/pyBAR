@@ -206,13 +206,30 @@ wire CMD_START_FLAG; // sending FE command triggered by external devices
 //reg CMD_CAL; // when CAL command is send
 
 // LEMO Tx
-assign TX[0] = ~CMD_READY;
-assign TX[1] = TLU_BUSY;
+assign TX[0] = TLU_CLOCK;
+assign TX[1] = TRIGGER_ENABLE ? TLU_BUSY : ~CMD_READY;
 assign TX[2] = RJ45_TRIGGER;
 
 // ------- RESRT/CLOCK  ------- //
 reset_gen ireset_gen(.CLK(BUS_CLK), .RST(BUS_RST));
 
+`ifdef SLOW_CLK
+assign RX_CLK = CLK_40; // 12MHz
+
+clk_gen_12mhz iclkgen(
+    .U1_CLKIN_IN(FCLK_IN),
+    .U1_USER_RST_IN(1'b0),
+    .U1_CLKIN_IBUFG_OUT(),
+    .U1_CLK0_OUT(BUS_CLK), // DCM1: 48MHz USB/SRAM clock
+    .U1_STATUS_OUT(),
+    .U2_CLKFX_OUT(CLK_40), // DCM2: 40MHz command clock
+    .U2_CLKDV_OUT(DATA_CLK), // DCM2: 16MHz SERDES clock
+    .U2_CLK0_OUT(),
+    .U2_CLK2X_OUT(RX_CLK2X), // DCM2: 24MHz data recovery clock
+    .U2_LOCKED_OUT(CLK_LOCKED),
+    .U2_STATUS_OUT()
+);
+`else
 clk_gen iclkgen(
     .U1_CLKIN_IN(FCLK_IN),
     .U1_USER_RST_IN(1'b0),
@@ -226,6 +243,7 @@ clk_gen iclkgen(
     .U2_LOCKED_OUT(CLK_LOCKED),
     .U2_STATUS_OUT()
 );
+`endif
 
 `ifndef GPAC
 wire CE_10MHZ;
@@ -266,7 +284,11 @@ assign REG_AB_STB_LD = 0;
 wire CE_1HZ; // use for sequential logic
 wire CLK_1HZ; // don't connect to clock input, only combinatorial logic
 clock_divider #(
+`ifdef SLOW_CLK
+    .DIVISOR(12000000)
+`else
     .DIVISOR(40000000)
+`endif
 ) i_clock_divisor_40MHz_to_1Hz (
     .CLK(CLK_40),
     .RESET(1'b0),
@@ -274,14 +296,18 @@ clock_divider #(
     .CLOCK(CLK_1HZ)
 );
 
-wire CLK_2HZ;
+wire CLK_3HZ;
 clock_divider #(
-    .DIVISOR(13000000)
-) i_clock_divisor_40MHz_to_2Hz (
+`ifdef SLOW_CLK
+    .DIVISOR(4000000)
+`else
+    .DIVISOR(13333333)
+`endif
+) i_clock_divisor_40MHz_to_3Hz (
     .CLK(CLK_40),
     .RESET(1'b0),
     .CE(),
-    .CLOCK(CLK_2HZ)
+    .CLOCK(CLK_3HZ)
 );
 
 // -------  MODULE ADREESSES  ------- //
@@ -1016,37 +1042,20 @@ sram_fifo #(
 );
 
 // ------- LEDs  ------- //
-parameter VERSION = 5; // all on: 31
-wire SHOW_VERSION;
-
-
-SRLC16E # (
-    .INIT(16'hF000) // in seconds, MSB shifted first
-) SRLC16E_LED (
-    .Q(SHOW_VERSION),
-    .Q15(),
-    .A0(1'b1),
-    .A1(1'b1),
-    .A2(1'b1),
-    .A3(1'b1),
-    .CE(CE_1HZ),
-    .CLK(CLK_40),
-    .D(1'b0)
-);
 
 // LED assignments
 `ifdef GPAC
-assign LED[0] = SHOW_VERSION? VERSION[0] : 1'b0;
-assign LED[1] = SHOW_VERSION? VERSION[1] : 1'b0;
-assign LED[2] = SHOW_VERSION? VERSION[2] : 1'b0;
-assign LED[3] = SHOW_VERSION? VERSION[3] : RX_READY & ((RX_8B10B_DECODER_ERR? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR | RX_FIFO_FULL);
+assign LED[0] = 1'b0;
+assign LED[1] = 1'b0;
+assign LED[2] = 1'b0;
+assign LED[3] = RX_READY & ((RX_8B10B_DECODER_ERR? CLK_3HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR | RX_FIFO_FULL);
 `else
-assign LED[0] = SHOW_VERSION? VERSION[0] : RX_READY[0] & ((RX_8B10B_DECODER_ERR[0]? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[0] | RX_FIFO_FULL[0]);
-assign LED[1] = SHOW_VERSION? VERSION[1] : RX_READY[1] & ((RX_8B10B_DECODER_ERR[1]? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[1] | RX_FIFO_FULL[1]);
-assign LED[2] = SHOW_VERSION? VERSION[2] : RX_READY[2] & ((RX_8B10B_DECODER_ERR[2]? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[2] | RX_FIFO_FULL[2]);
-assign LED[3] = SHOW_VERSION? VERSION[3] : RX_READY[3] & ((RX_8B10B_DECODER_ERR[3]? CLK_2HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[3] | RX_FIFO_FULL[3]);
+assign LED[0] = RX_READY[0] & ((RX_8B10B_DECODER_ERR[0]? CLK_3HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[0] | RX_FIFO_FULL[0]);
+assign LED[1] = RX_READY[1] & ((RX_8B10B_DECODER_ERR[1]? CLK_3HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[1] | RX_FIFO_FULL[1]);
+assign LED[2] = RX_READY[2] & ((RX_8B10B_DECODER_ERR[2]? CLK_3HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[2] | RX_FIFO_FULL[2]);
+assign LED[3] = RX_READY[3] & ((RX_8B10B_DECODER_ERR[3]? CLK_3HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[3] | RX_FIFO_FULL[3]);
 `endif
-assign LED[4] = SHOW_VERSION? VERSION[4] : ((((RJ45_TRIGGER == 1'b0 && RJ45_RESET == 1'b0)? CLK_2HZ : CLK_1HZ) | FIFO_FULL) & CLK_LOCKED);
+assign LED[4] = (CLK_1HZ | FIFO_FULL) & CLK_LOCKED;
 
 // Chipscope
 `ifdef SYNTHESIS_NOT

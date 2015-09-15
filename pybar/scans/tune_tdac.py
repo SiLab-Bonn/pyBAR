@@ -27,7 +27,8 @@ class TdacTuning(Fei4RunBase):
         "plots_filename": None,
         "enable_shift_masks": ["Enable", "C_High", "C_Low"],  # enable masks shifted during scan
         "disable_shift_masks": [],  # disable masks shifted during scan
-        "pulser_dac_correction": False  # PlsrDAC correction for each double column
+        "pulser_dac_correction": False,  # PlsrDAC correction for each double column
+        "mask_steps": 3  # mask steps, be carefull PlsrDAC injects different charge for different mask steps
     }
 
     def configure(self):
@@ -56,9 +57,9 @@ class TdacTuning(Fei4RunBase):
             self.close_plots = True
         else:
             self.close_plots = False
-        mask_steps = 3
+
         enable_mask_steps = []
-        cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", mask_steps=mask_steps)[0]
+        cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", mask_steps=self.mask_steps)[0]
 
         self.write_target_threshold()
         additional_scan = True
@@ -81,7 +82,7 @@ class TdacTuning(Fei4RunBase):
             self.write_tdac_config()
 
             with self.readout(TDAC=scan_parameter_value, reset_sram_fifo=True, fill_buffer=True, clear_buffer=True, callback=self.handle_data):
-                scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections_tdac, mask_steps=mask_steps, enable_mask_steps=enable_mask_steps, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=self.enable_shift_masks, disable_shift_masks=self.disable_shift_masks, restore_shift_masks=True, mask=None, double_column_correction=self.pulser_dac_correction)
+                scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections_tdac, mask_steps=self.mask_steps, enable_mask_steps=enable_mask_steps, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=self.enable_shift_masks, disable_shift_masks=self.disable_shift_masks, restore_shift_masks=True, mask=None, double_column_correction=self.pulser_dac_correction)
 
             occupancy_array, _, _ = np.histogram2d(*convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array), bins=(80, 336), range=[[1, 80], [1, 336]])
             select_better_pixel_mask = abs(occupancy_array - self.n_injections_tdac / 2) <= abs(self.occupancy_best - self.n_injections_tdac / 2)

@@ -1,8 +1,8 @@
-''' This example shows the power of a fast data analysis and a data taking where nothing is discarded. 
-A raw data file is loaded and send to local host in readout chunks. These chunks are created with the same frequency 
-as it was done during data taking, thus this script can replay stored data files.
+'''This example shows the power of a fast raw data analysis and a data taking system where no data is discarded.
+A raw data file is loaded and and data chunks are sent to the online monitor. These chunks are sent with the same speed
+as it was done during data taking. This script can used to replay existing raw data files.
 
-To view the data stream the online monitor is automatically started as a stand alone script.
+The online monitor will be automatically started when calling this script.
 '''
 
 import zmq
@@ -10,22 +10,9 @@ import time
 import numpy as np
 import tables as tb
 import progressbar
-import sys
 from subprocess import Popen
 
-
-def send_data(socket, data, scan_parameters, name='FEI4readoutData', flags=0, copy=True, track=False):  # Function to serialize the data of one readout and send it via ZMQ
-    data_meta_data = dict(
-        name=name,
-        dtype=str(data[0].dtype),
-        shape=data[0].shape,
-        timestamp_start=data[1],
-        timestamp_stop=data[2],
-        readout_error=float(data[3]),
-        scan_parameters=str(scan_parameters)
-    )
-    socket.send_json(data_meta_data, flags | zmq.SNDMORE | zmq.NOBLOCK)
-    return socket.send(data[0].tostring(), flags, copy=copy, track=track)
+from pybar.daq.fei4_raw_data import send_data
 
 
 def transfer_file(file_name, socket):  # Function to open the raw data file and sending the readouts periodically
@@ -33,40 +20,35 @@ def transfer_file(file_name, socket):  # Function to open the raw data file and 
         meta_data = in_file_h5.root.meta_data[:]
         raw_data = in_file_h5.root.raw_data[:]
         try:
-            scan_parameter = in_file_h5.root.scan_parameters[:]
-            scan_parameter_name = scan_parameter.dtype.names[0]
+            scan_parameter_names = in_file_h5.root.scan_parameters.dtype.names
         except tb.NoSuchNodeError:
-            scan_parameter = None
+            scan_parameter_names = None
         progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=meta_data.shape[0], term_width=80)
         progress_bar.start()
         for index, (index_start, index_stop) in enumerate(np.column_stack((meta_data['index_start'], meta_data['index_stop']))):
-            time.sleep(delay)
-            try:
-                data = []
-                data.append(raw_data[index_start:index_stop])
-                data.extend((meta_data[index]['timestamp_start'], meta_data[index]['timestamp_stop'], meta_data[index]['error']))
-                if scan_parameter is not None:
-                    send_data(socket, data, scan_parameters={scan_parameter_name: float(scan_parameter[index][0])})
-                else:
-                    send_data(socket, data, scan_parameters='')
-            except zmq.ZMQError:
-                time.sleep(0.01)
+            data = []
+            data.append(raw_data[index_start:index_stop])
+            data.extend((float(meta_data[index]['timestamp_start']), float(meta_data[index]['timestamp_stop']), int(meta_data[index]['error'])))
+            if scan_parameter_names is not None:
+                scan_parameter_value = [int(value) for value in in_file_h5.root.scan_parameters[index]]
+                send_data(socket, data, scan_parameters=dict(zip(scan_parameter_names, scan_parameter_value)))
+            else:
+                send_data(socket, data)
+            time.sleep(meta_data[index]['timestamp_stop'] - meta_data[index]['timestamp_start'])
             progress_bar.update(index)
         progress_bar.finish()
 
 
 if __name__ == '__main__':
     # Open th online monitor
-    Popen(["python", "../../pybar/online_monitor.py"] + sys.argv[1:])  # if this call fails, comment it out and start the script manually
-    # Send delay in s; readout frequency is ~ 20Hz
-    delay = 0.05
-    # Prepare to send data
+    socket_addr = "tcp://127.0.0.1:5678"
+    Popen(["python", "../../pybar/online_monitor.py", socket_addr])  # if this call fails, comment it out and start the script manually
+    # Prepare socket
     context = zmq.Context()
-    socket = context.socket(zmq.PUSH)
-    socket.bind("tcp://127.0.0.1:5678")
+    socket = context.socket(zmq.PUB)
+    socket.bind(socket_addr)
     # Transfer file to socket
     transfer_file("../../tests/test_analysis/unit_test_data_2.h5", socket=socket)
     # Clean up
     socket.close()
     context.term()
-

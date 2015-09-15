@@ -1,7 +1,11 @@
 import logging
-from time import time
+import time
 import re
 import os
+import string
+import smtplib
+import socket
+import zmq
 import numpy as np
 from functools import wraps
 from threading import Event, Thread
@@ -12,10 +16,8 @@ import abc
 import ast
 import inspect
 from basil.dut import Dut
-from basil.HL.FEI4AdapterCard import FEI4AdapterCard
-from basil.HL.FEI4QuadModuleAdapterCard import FEI4QuadModuleAdapterCard
 
-from pybar.run_manager import RunBase, RunAborted, RunStopped
+from pybar.run_manager import RunManager, RunBase, RunAborted, RunStopped, run_status
 from pybar.fei4.register import FEI4Register
 from pybar.fei4.register_utils import FEI4RegisterUtils, is_fe_ready
 from pybar.daq.fifo_readout import FifoReadout, RxSyncError, EightbTenbError, FifoError, NoDataTimeout, StopTimeout
@@ -31,9 +33,7 @@ class Fei4RunBase(RunBase):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, conf, run_conf=None):
-        # adding default run conf parameters valid for all scans
-        if 'send_data' not in self._default_run_conf:
-            self._default_run_conf.update({'send_data': None})
+        # default run conf parameters added for all scans
         if 'comment' not in self._default_run_conf:
             self._default_run_conf.update({'comment': ''})
         if 'reset_rx_on_error' not in self._default_run_conf:
@@ -41,9 +41,17 @@ class Fei4RunBase(RunBase):
 
         super(Fei4RunBase, self).__init__(conf=conf, run_conf=run_conf)
 
+        # default conf parameters
+        if 'send_data' not in conf:
+            conf.update({'send_data': None})
+        if 'send_error_msg' not in conf:
+            conf.update({'send_error_msg': None})
+
         self.err_queue = Queue()
         self.fifo_readout = None
         self.raw_data_file = None
+        self.zmq_context = None
+        self.socket = None
 
     @property
     def working_dir(self):
@@ -70,7 +78,7 @@ class Fei4RunBase(RunBase):
     @property
     def module_id(self):
         if 'module_id' in self.conf and self.conf['module_id']:
-            module_id = self.conf['module_id']
+            module_id = str(self.conf['module_id'])
             module_id = re.sub(r"[^\w\s+]", '', module_id)
             return re.sub(r"\s+", '_', module_id).lower()
         else:
@@ -162,10 +170,11 @@ class Fei4RunBase(RunBase):
             self.dut['ENABLE_CHANNEL']['CCPD_TDC'] = 1
             self.dut['ENABLE_CHANNEL'].write()
         elif self.dut.name == 'seabas2':
-            self.dut['ENABLE_CHANNEL']['CH0'] = 1
-            self.dut['ENABLE_CHANNEL']['CH1'] = 1
-            self.dut['ENABLE_CHANNEL']['CH2'] = 1
-            self.dut['ENABLE_CHANNEL']['CH3'] = 1
+            channel_names = [channel.name for channel in self.dut.get_modules('fei4_rx')]
+            for channel in channel_names:
+                # enabling readout
+                self.dut['ENABLE_CHANNEL'][channel] = 1
+            self.dut['ENABLE_CHANNEL']['TLU'] = 1
             self.dut['ENABLE_CHANNEL'].write()
         elif self.dut.name == 'lx9':
             # enable LVDS RX/TX
@@ -235,10 +244,12 @@ class Fei4RunBase(RunBase):
             pass  # no fe_configuration
 
     def pre_run(self):
-        # sending data
-        self.socket_addr = self._run_conf['send_data']
-        if self.socket_addr:
-            logging.info('Sending data to %s', self.socket_addr)
+        # opening ZMQ context
+        if isinstance(self.conf['send_data'], basestring):
+            self.zmq_context = zmq.Context()
+            self.socket = self.zmq_context.socket(zmq.PUB)  # publisher
+            self.socket.bind(self.conf['send_data'])
+            logging.info('Creating socket connection to server %s', self.conf['send_data'])
         # scan parameters
         if 'scan_parameters' in self.run_conf:
             if isinstance(self.run_conf['scan_parameters'], basestring):
@@ -266,7 +277,7 @@ class Fei4RunBase(RunBase):
                 elif os.path.exists(os.path.join(module_path, self.conf['dut'])):
                     dut = os.path.join(module_path, self.conf['dut'])
                 else:
-                    raise ValueError('%s: dut file not found' % self.conf['dut'])
+                    raise ValueError('dut file not found: %s' % self.conf['dut'])
                 self._conf['dut'] = Dut(dut)
             else:
                 self._conf['dut'] = Dut(self.conf['dut'])
@@ -289,7 +300,27 @@ class Fei4RunBase(RunBase):
                     elif os.path.exists(os.path.join(module_path, self.conf['dut_configuration'])):
                         dut_configuration = os.path.join(module_path, self.conf['dut_configuration'])
                     else:
-                        raise ValueError('%s: dut_configuration file not found' % self.conf['dut_configuration'])
+                        raise ValueError('dut_configuration file not found: %s' % self.conf['dut_configuration'])
+                    # make dict
+                    dut_configuration = RunManager.open_conf(dut_configuration)
+                    # change bit file path
+                    if 'USB' in dut_configuration and 'bit_file' in dut_configuration['USB'] and dut_configuration['USB']['bit_file']:
+                        bit_file = os.path.normpath(dut_configuration['USB']['bit_file'].replace('\\', '/'))
+                        # abs path
+                        if os.path.isabs(bit_file):
+                            pass
+                        # working dir
+                        elif os.path.exists(os.path.join(self.conf['working_dir'], bit_file)):
+                            bit_file = os.path.join(self.conf['working_dir'], bit_file)
+                        # path of dut file
+                        elif os.path.exists(os.path.join(os.path.dirname(self.dut.conf_path), bit_file)):
+                            bit_file = os.path.join(os.path.dirname(self.dut.conf_path), bit_file)
+                        # path of this file
+                        elif os.path.exists(os.path.join(module_path, bit_file)):
+                            bit_file = os.path.join(module_path, bit_file)
+                        else:
+                            raise ValueError('bit_file not found: %s' % bit_file)
+                        dut_configuration['USB']['bit_file'] = bit_file
                     self.dut.init(dut_configuration)
                 else:
                     self.dut.init(self.conf['dut_configuration'])
@@ -305,14 +336,13 @@ class Fei4RunBase(RunBase):
         self.init_fe()
 
     def do_run(self):
-        with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, register=self.register, conf=self.conf, run_conf=self.run_conf, scan_parameters=self.scan_parameters._asdict(), socket_addr=self.socket_addr) as self.raw_data_file:
-            with self.register.restored(name=self.run_number):
-                # configure for scan
-                self.configure()
-                self.raw_data_file.save_register_configuration()  # save register configration after configure() since it is most likely changed there
-                self.fifo_readout.reset_rx()
-                self.fifo_readout.reset_sram_fifo()
-                self.fifo_readout.print_readout_status()
+        with self.register.restored(name=self.run_number):
+            # configure for scan
+            self.configure()
+            self.fifo_readout.reset_rx()
+            self.fifo_readout.reset_sram_fifo()
+            self.fifo_readout.print_readout_status()
+            with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, register=self.register, conf=self.conf, run_conf=self.run_conf, scan_parameters=self.scan_parameters._asdict(), socket=self.socket) as self.raw_data_file:
                 # scan
                 self.scan()
 
@@ -352,10 +382,28 @@ class Fei4RunBase(RunBase):
     def cleanup_run(self):
         # no execption should be thrown here
         self.raw_data_file = None
+        # USB interface needs to be closed here, otherwise an USBError may occur
+        # USB interface can be reused at any time after close without another init
         try:
-            self.dut.close()  # free resources
-        except Exception:
-            logging.error('Cannot close DUT')
+            usb_intf = self.dut.get_modules('SiUsb')
+        except AttributeError:
+            pass  # not yet initialized
+        else:
+            if usb_intf:
+                import usb.core
+                for board in usb_intf:
+                    try:
+                        board.close()  # free resources of USB
+                    except usb.core.USBError:
+                        logging.error('Cannot detach USB device')
+                    except ValueError:
+                        pass  # no USB interface, Basil <= 2.1.1
+                    except KeyError:
+                        pass  # no USB interface, Basil > 2.1.1
+                    except TypeError:
+                        pass  # DUT not yet initialized
+                    except AttributeError:
+                        pass  # USB interface not yet initialized
 
     def handle_data(self, data):
         self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=False)
@@ -433,6 +481,21 @@ class Fei4RunBase(RunBase):
 
     def stop_readout(self, timeout=10.0):
         self.fifo_readout.stop(timeout=timeout)
+
+    def _cleanup(self):  # called in run base after exception handling
+        if self.conf['send_error_msg'] and self._run_status == run_status.crashed:
+            try:
+                import requests
+                ip = requests.request('GET', 'http://myip.dnsomatic.com').text
+            except ImportError:
+                ip = 'Unknown IP'
+            try:
+                text = 'Run %i at %s\n%s' % (self.run_number, time.strftime('%X %x %Z'), self.last_traceback)
+                send_mail(text=text, configuration=self._run_conf['send_error'], subject='PyBAR run %i report from %s %s' % (self.run_number, ip, socket.gethostname()))
+            except:
+                logging.info("Failed sending pyBAR report")
+                pass
+        super(Fei4RunBase, self)._cleanup()
 
     @abc.abstractmethod
     def configure(self):
@@ -538,3 +601,20 @@ def namedtuple_with_defaults(typename, field_names, default_values=None):
         prototype = T(*default_values)
     T.__new__.__defaults__ = tuple(prototype)
     return T
+
+
+def send_mail(text, configuration, subject=''):
+    ''' Sends a run status mail with the traceback to a specified E-Mail address if a run crashes.
+    '''
+    logging.info('Send status E-Mail (' + subject + ')')
+    body = string.join((
+        "From: %s" % configuration['email_account'][0],
+        "To: %s" % str(configuration['email_to']).strip('[]'),
+        "Subject: %s" % subject,
+        "",
+        text),
+        "\r\n")
+    server = smtplib.SMTP_SSL(configuration['email_host'])
+    server.login(configuration['email_account'][0], configuration['email_account'][1])
+    server.sendmail(configuration['email_account'][0], configuration['email_to'], body)
+    server.quit()

@@ -172,6 +172,15 @@ class TestAnalysis(unittest.TestCase):
             analyze_raw_data.chunk_size = 2999999
             analyze_raw_data.create_hit_table = True
             analyze_raw_data.interpret_word_table(use_settings_from_file=False, fei4b=False)  # the actual start conversion command
+        with AnalyzeRawData(raw_data_file=tests_data_folder + 'unit_test_data_5.h5', analyzed_data_file=tests_data_folder + 'unit_test_data_5_interpreted.h5', create_pdf=False) as analyze_raw_data:
+            analyze_raw_data.create_hit_table = True
+            analyze_raw_data.trig_count = 255
+            analyze_raw_data.create_source_scan_hist = True
+            analyze_raw_data.set_stop_mode = True
+            analyze_raw_data.use_trigger_time_stamp = True
+            analyze_raw_data.align_at_trigger = True
+            analyze_raw_data.interpreter.set_warning_output(False)
+            analyze_raw_data.interpret_word_table(use_settings_from_file=False)
 
     @classmethod
     def tearDownClass(cls):  # remove created files
@@ -187,6 +196,7 @@ class TestAnalysis(unittest.TestCase):
         os.remove(tests_data_folder + 'unit_test_data_3_interpreted.h5')
         os.remove(tests_data_folder + 'unit_test_data_4_interpreted.h5')
         os.remove(tests_data_folder + 'unit_test_data_4_interpreted_2.h5')
+        os.remove(tests_data_folder + 'unit_test_data_5_interpreted.h5')
         os.remove(tests_data_folder + 'hit_or_calibration.pdf')
         os.remove(tests_data_folder + 'hit_or_calibration_calibration.pdf')
         os.remove(tests_data_folder + 'hit_or_calibration_interpreted.h5')
@@ -351,6 +361,10 @@ class TestAnalysis(unittest.TestCase):
         data_equal, error_msg = compare_h5_files(tests_data_folder + 'hit_or_calibration_interpreted_result.h5', tests_data_folder + 'hit_or_calibration_interpreted.h5')
         self.assertTrue(data_equal, msg=error_msg)
         data_equal, error_msg = compare_h5_files(tests_data_folder + 'hit_or_calibration_result.h5', tests_data_folder + 'hit_or_calibration_calibration.h5')
+        self.assertTrue(data_equal, msg=error_msg)
+
+    def test_stop_mode_analysis(self):
+        data_equal, error_msg = compare_h5_files(tests_data_folder + 'unit_test_data_5_interpreted.h5', tests_data_folder + 'unit_test_data_5_result.h5')
         self.assertTrue(data_equal, msg=error_msg)
 
 if __name__ == '__main__':

@@ -44,7 +44,7 @@ class MergedPixelsTuning(AnalogScan):
             with tb.open_file(analyze_raw_data._analyzed_data_file, 'r') as out_file_h5:
                 occ_hist = out_file_h5.root.HistOcc[:, :, 0].T
             occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
-            occ_mask[occ_hist > 0] = 1
+            occ_mask[occ_hist > 1] = 1
 
             inv_occ_mask = invert_pixel_mask(occ_mask)
             if self.overwrite_mask:

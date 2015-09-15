@@ -30,6 +30,8 @@ void Interpret::setStandardSettings()
 	_hitInfoSize = 1000000;
 	_hitInfo = 0;
 	_hitIndex = 0;
+	_startDebugEvent = 0;
+	_stopDebugEvent = 0;
 	_NbCID = 16;
 	_maxTot = 13;
 	_fEI4B = false;
@@ -89,7 +91,7 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 			_nDataHeaders++;
 			if (tNdataHeader > _NbCID - 1) {	                //maximum event window is reached (tNdataHeader > BCIDs, mostly tNdataHeader > 15), so create new event
 				if (_alignAtTriggerNumber) {
-					addEventErrorCode(__TRUNC_EVENT); //too many data header in the event, abort this event, add truncated flac
+					addEventErrorCode(__TRUNC_EVENT); //too many data header in the event, abort this event, add truncated flag
 					if (Basis::warningSet())
 						warning(std::string("addHit: Hit buffer overflow prevented by splitting events at event " + LongIntToStr(_nEvents)), __LINE__);
 				}
@@ -111,7 +113,7 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 				}
 
 				if (tStartBCID + tDbCID != tActualBCID) {  //check if BCID is increasing by 1s in the event window, if not close actual event and create new event with actual data header
-					if (tActualLVL1ID == tStartLVL1ID) //happens sometimes, non inc. BCID, FE feature, only abort the LVL1ID is not constant (if no external trigger is used or)
+					if (tActualLVL1ID == tStartLVL1ID) //happens sometimes, non inc. BCID, FE feature, only abort if the LVL1ID is not constant (if no external trigger is used or)
 						addEventErrorCode(__BCID_JUMP);
 					else if (_alignAtTriggerNumber || _alignAtTdcWord)  //rely here on the trigger number or TDC word and do not start a new event
 						addEventErrorCode(__BCID_JUMP);
@@ -137,7 +139,8 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 					addEvent();
 			}
 			else {		// use trigger number for event building, first word is trigger word in event data stream
-				addEvent();
+				if (_firstTriggerNrSet)  // do not build new event after first trigger; maybe comment for old data where trigger number is not first event word
+					addEvent();
 			}
 			tTriggerWord++;                     //trigger event counter increase
 
@@ -535,7 +538,7 @@ void Interpret::printSummary()
 	std::cout << "\t4\t" << _errorCounter[4] << "\tEvents with unknown words\n";
 	std::cout << "\t5\t" << _errorCounter[5] << "\tEvents with jumping BCIDs\n";
 	std::cout << "\t6\t" << _errorCounter[6] << "\tEvents with TLU trigger error\n";
-	std::cout << "\t7\t" << _errorCounter[7] << "\tEvents that were truncated due to too many hits\n";
+	std::cout << "\t7\t" << _errorCounter[7] << "\tEvents that were truncated due to too many data headers or data records\n";
 	std::cout << "\t8\t" << _errorCounter[8] << "\tEvents with TDC words\n";
 	std::cout << "\t9\t" << _errorCounter[9] << "\tEvents with > 1 TDC words\n";
 	std::cout << "\t10\t" << _errorCounter[10] << "\tEvents with TDC overflow\n";
@@ -965,7 +968,7 @@ void Interpret::addEventErrorCode(const unsigned short& pErrorCode)
 			}
 			case __TRUNC_EVENT:
 			{
-				tDebug << "EVENT HAS TOO MANY HITS AND WAS TRUNCATED";
+				tDebug << "EVENT HAS TOO MANY DATA HEADERS/RECORDS AND WAS TRUNCATED";
 				break;
 			}
 			case __TDC_WORD:

@@ -142,7 +142,7 @@ class AnalyzeRawData(object):
         '''
         self.chunk_size = 3000000
         self.n_injections = 100
-        self.n_bcid = 16
+        self.trig_count = 0  # 0 trig_count = 16 BCID per trigger
         self.max_tot_value = 13
         self.vcal_c0, self.vcal_c1 = None, None
         self.c_low, self.c_mid, self.c_high = None, None, None
@@ -153,6 +153,7 @@ class AnalyzeRawData(object):
         self.meta_event_index = None
         self.fei4b = False
         self.create_hit_table = False
+        self.create_empty_event_hits = False
         self.create_meta_event_index = True
         self.create_tot_hist = True
         self.create_tot_pixel_hist = True
@@ -205,6 +206,15 @@ class AnalyzeRawData(object):
     @create_hit_table.setter
     def create_hit_table(self, value):
         self._create_hit_table = value
+
+    @property
+    def create_empty_event_hits(self):
+        return self._create_empty_event_hits
+
+    @create_empty_event_hits.setter
+    def create_empty_event_hits(self, value):
+        self._create_empty_event_hits = value
+        self.interpreter.create_empty_event_hits(value)
 
     @property
     def create_occupancy_hist(self):
@@ -369,15 +379,15 @@ class AnalyzeRawData(object):
         self._n_injection = value
 
     @property
-    def n_bcid(self):
+    def trig_count(self):
         """Get the numbers of BCIDs (usually 16) of one event."""
-        return self._n_bcid
+        return self._trig_count
 
-    @n_bcid.setter
-    def n_bcid(self, value):
+    @trig_count.setter
+    def trig_count(self, value):
         """Set the numbers of BCIDs (usually 16) of one event."""
-        self._n_bcid = value if 0 < value < 16 else 16
-        self.interpreter.set_trig_count(self._n_bcid)
+        self._trig_count = 16 if value == 0 else value
+        self.interpreter.set_trig_count(self._trig_count)
 
     @property
     def max_tot_value(self):
@@ -695,7 +705,7 @@ class AnalyzeRawData(object):
                     rel_bcid_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistRelBcid', title='relative BCID Histogram', atom=tb.Atom.from_dtype(self.rel_bcid_hist.dtype), shape=(16, ), filters=self._filter_table)
                     rel_bcid_hist_table[:] = self.rel_bcid_hist[0:16]
                 else:
-                    rel_bcid_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistRelBcid', title='relative BCID Histogram', atom=tb.Atom.from_dtype(self.rel_bcid_hist.dtype), shape=self.rel_bcid_hist.shape, filters=self._filter_table)
+                    rel_bcid_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistRelBcid', title='relative BCID Histogram in stop mode read out', atom=tb.Atom.from_dtype(self.rel_bcid_hist.dtype), shape=self.rel_bcid_hist.shape, filters=self._filter_table)
                     rel_bcid_hist_table[:] = self.rel_bcid_hist
         if self._create_occupancy_hist:
             self.occupancy = self.histograming.get_occupancy()
@@ -1042,7 +1052,7 @@ class AnalyzeRawData(object):
         try:  # take infos raw data files (not avalable in old files)
             flavor = opened_raw_data_file.root.configuration.miscellaneous[:][np.where(opened_raw_data_file.root.configuration.miscellaneous[:]['name'] == 'Flavor')]['value'][0]
             self._settings_from_file_set = True
-            bcid = opened_raw_data_file.root.configuration.global_register[:][np.where(opened_raw_data_file.root.configuration.global_register[:]['name'] == 'Trig_Count')]['value'][0]
+            trig_count = opened_raw_data_file.root.configuration.global_register[:][np.where(opened_raw_data_file.root.configuration.global_register[:]['name'] == 'Trig_Count')]['value'][0]
             vcal_c0 = opened_raw_data_file.root.configuration.calibration_parameters[:][np.where(opened_raw_data_file.root.configuration.calibration_parameters[:]['name'] == 'Vcal_Coeff_0')]['value'][0]
             vcal_c1 = opened_raw_data_file.root.configuration.calibration_parameters[:][np.where(opened_raw_data_file.root.configuration.calibration_parameters[:]['name'] == 'Vcal_Coeff_1')]['value'][0]
             c_low = opened_raw_data_file.root.configuration.calibration_parameters[:][np.where(opened_raw_data_file.root.configuration.calibration_parameters[:]['name'] == 'C_Inj_Low')]['value'][0]
@@ -1051,7 +1061,7 @@ class AnalyzeRawData(object):
             self.c_low_mask = opened_raw_data_file.root.configuration.C_Low[:]
             self.c_high_mask = opened_raw_data_file.root.configuration.C_High[:]
             self.fei4b = False if str(flavor) == 'fei4a' else True
-            self.n_bcid = int(bcid)
+            self.trig_count = int(trig_count)
             self.vcal_c0 = float(vcal_c0)
             self.vcal_c1 = float(vcal_c1)
             self.c_low = float(c_low)

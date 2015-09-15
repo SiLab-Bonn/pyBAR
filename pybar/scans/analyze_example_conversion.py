@@ -1,7 +1,8 @@
-"""This is an example module how to use the raw data analyzer. It takes a table with FE-I4 raw data and interprets, histograms and plots it.
-    The first "with-statement" interprets the raw data and can also histogram and cluster hits in the same analysis loop if activated to save time. 
-    The second "with-statement" does the histogramming and clustering starting from hits. 
-    This shows how to use the analysis if hits are already available 
+"""This is an example module on how to use the raw data analyzer. FE-I4 raw data file is interpreted, histogrammed and plotted.
+The analyze_raw_data function interprets the raw data and stores it into the hit table. Histogramming and clustering can be enabled.
+The clusterizer has not a big impact on processing time since it uses the same analysis loop as the interpreter.
+The analyze_hits function does the histogramming and clustering starting from the hit table.
+The analyze_raw_data_per_scan_parameter function does the anylysis per scan parameter.
 """
 
 from datetime import datetime
@@ -16,6 +17,7 @@ def analyze_raw_data(input_file, output_file_hits):
         analyze_raw_data.create_cluster_hit_table = False  # adds the cluster id and seed info to each hit, std. setting is false
         analyze_raw_data.create_cluster_table = False  # enables the creation of a table with all clusters, std. setting is false
 
+        analyze_raw_data.create_empty_event_hits = False  # creates events with no hist in hit table
         analyze_raw_data.create_occupancy_hist = True  # creates a colxrow histogram with accumulated hits for each scan parameter
         analyze_raw_data.create_tot_hist = True  # creates a ToT histogram
         analyze_raw_data.create_rel_bcid_hist = True  # creates a histogram with the relative BCID of the hits
@@ -33,13 +35,13 @@ def analyze_raw_data(input_file, output_file_hits):
         analyze_raw_data.create_meta_word_index = False  # stores the start and stop raw data word index for every event, std. setting is false
         analyze_raw_data.create_meta_event_index = True  # stores the event number for each readout in an additional meta data array, default: False
 
-        analyze_raw_data.n_bcid = 16  # set the number of BCIDs per event, needed to judge the event structure, only active if settings are not taken from raw data file
+        analyze_raw_data.trig_count = 0  # set the number of BCIDs per trigger, needed to judge the event structure, only active if settings cannot be taken from raw data file
         analyze_raw_data.n_injections = 100  # set the numbers of injections, needed for fast threshold/noise determination
         analyze_raw_data.max_tot_value = 13  # set the maximum ToT value considered to be a hit, 14 is a late hit
-        analyze_raw_data.use_trigger_number = False
+        analyze_raw_data.align_at_trigger = False  # align the data at the trigger number; has to be first event word
+        analyze_raw_data.align_at_tdc = False  # use the TDC word to align the events, assume that they are first words in the event
+        analyze_raw_data.use_trigger_time_stamp = False  # use the trigger number as a time stamp
         analyze_raw_data.set_stop_mode = False  # special analysis if data was taken in stop mode
-        analyze_raw_data.interpreter.use_tdc_word(False)  # use the TDC word to align the events, assume that they are first words in the event
-        analyze_raw_data.interpreter.use_trigger_time_stamp(False)  # use the trigger number as a time stamp
 
         analyze_raw_data.interpreter.set_debug_output(False)  # std. setting is False
         analyze_raw_data.interpreter.set_info_output(False)  # std. setting is False
@@ -72,7 +74,7 @@ def analyze_raw_data_per_scan_parameter(input_file, output_file_hits, scan_data_
 
 
 if __name__ == "__main__":
-    scan_name = r'1_module_test_threshold_scan'
+    scan_name = r'1_module_test_ext_trigger_scan'
     folder = r'../module_test/'
     input_file = folder + scan_name + ".h5"
     output_file_hits = folder + scan_name + "_interpreted.h5"
@@ -80,7 +82,7 @@ if __name__ == "__main__":
     scan_data_filename = folder + scan_name
     start_time = datetime.now()
     analyze_raw_data(input_file, output_file_hits)
-#     analyze_raw_data_per_scan_parameter(input_file, output_file_hits, scan_data_filename, scan_parameters=['PlsrDAC'])
 #     analyze_hits(input_file, output_file_hits, scan_data_filename, output_file_hits_analyzed=output_file_hits_analyzed)
+#     analyze_raw_data_per_scan_parameter(input_file, output_file_hits, scan_data_filename, scan_parameters=['PlsrDAC'])
     logging.info('Script runtime %.1f seconds' % (datetime.now() - start_time).total_seconds())
     logging.info('FINISHED')
