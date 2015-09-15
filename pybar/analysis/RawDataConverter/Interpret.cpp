@@ -526,17 +526,16 @@ void Interpret::printSummary()
 	std::cout << "# Service Records   " << std::right << std::setw(15) << _nServiceRecords << "\n";
 	std::cout << "# Other Words       " << std::right << std::setw(15) << _nOtherWords << "\n";
 	std::cout << "# TDC words         " << std::right << std::setw(15) << _nTDCWords << "\n";
-	std::cout << "# Trigger words     " << std::right << std::setw(15) << _nTriggers << "\n\n";
+	std::cout << "# Trigger words     " << std::right << std::setw(15) << _nTriggers << "\n";
+	std::cout << "# Unknown words     " << std::right << std::setw(15) << _nUnknownWords << "\n\n";
 
 	std::cout << "# Events            " << std::right << std::setw(15) << _nEvents << "\n";
 	std::cout << "# Empty Events      " << std::right << std::setw(15) << _nEmptyEvents << "\n";
+	std::cout << "# Incomplete Events " << std::right << std::setw(15) << _nIncompleteEvents << "\n\n";
+
 	std::cout << "# Hits              " << std::right << std::setw(15) << _nHits << "\n";
 	std::cout << "# Small Hits        " << std::right << std::setw(15) << _nSmallHits << "\n";
-	std::cout << "# MaxHitsPerEvent    " << std::right << std::setw(15) << _nMaxHitsPerEvent << "\n\n";
-
-	std::cout << "# Incomplete Events " << std::right << std::setw(15) << _nIncompleteEvents << "\n";
-	std::cout << "# Unknown words     " << std::right << std::setw(15) << _nUnknownWords << "\n\n";
-
+	std::cout << "# MaxHitsPerEvent   " << std::right << std::setw(15) << _nMaxHitsPerEvent << "\n\n";
 
 	std::cout << "# ErrorCounters \n";
 	std::cout << "0 " << std::right << std::setw(15) << _errorCounter[0] << " Events with SR\n";
