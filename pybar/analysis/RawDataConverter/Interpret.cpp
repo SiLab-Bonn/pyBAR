@@ -525,16 +525,16 @@ void Interpret::printSummary()
 	std::cout << "# Data Records      " << std::right << std::setw(15) << _nDataRecords << "\n";
 	std::cout << "# Service Records   " << std::right << std::setw(15) << _nServiceRecords << "\n";
 	std::cout << "# Other Words       " << std::right << std::setw(15) << _nOtherWords << "\n";
-	std::cout << "# TDC words         " << std::right << std::setw(15) << _nTDCWords << "\n";
-	std::cout << "# Trigger words     " << std::right << std::setw(15) << _nTriggers << "\n";
-	std::cout << "# Unknown words     " << std::right << std::setw(15) << _nUnknownWords << "\n\n";
+	std::cout << "# TDC Words         " << std::right << std::setw(15) << _nTDCWords << "\n";
+	std::cout << "# Trigger Words     " << std::right << std::setw(15) << _nTriggers << "\n";
+	std::cout << "# Unknown Words     " << std::right << std::setw(15) << _nUnknownWords << "\n\n";
 
 	std::cout << "# Events            " << std::right << std::setw(15) << _nEvents << "\n";
 	std::cout << "# Empty Events      " << std::right << std::setw(15) << _nEmptyEvents << "\n";
 	std::cout << "# Incomplete Events " << std::right << std::setw(15) << _nIncompleteEvents << "\n\n";
 
 	std::cout << "# Hits              " << std::right << std::setw(15) << _nHits << "\n";
-	std::cout << "# Small Hits        " << std::right << std::setw(15) << _nSmallHits << "\n";
+	std::cout << "# Small/Late Hits   " << std::right << std::setw(15) << _nSmallHits << "\n";
 	std::cout << "# MaxHitsPerEvent   " << std::right << std::setw(15) << _nMaxHitsPerEvent << "\n\n";
 
 	std::cout << "# ErrorCounters \n";
