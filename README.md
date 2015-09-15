@@ -58,7 +58,7 @@ To enable support for USB devices (MIO, MIO3 and MMC3), the following additional
   
 - [pySiLibUSB](https://silab-redmine.physik.uni-bonn.de/projects/pysilibusb) (>=2.0.0):
   ```
-  pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/800/pySiLibUSB-2.0.5.tar.gz
+  pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/818/pySiLibUSB-2.0.6.tar.gz
   ```
 
 The installation procedure depends on the operating system and software environment.
