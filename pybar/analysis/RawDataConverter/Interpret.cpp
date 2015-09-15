@@ -850,7 +850,7 @@ bool Interpret::getHitsfromDataRecord(const unsigned int& pSRAMWORD, int& pColHi
 		pRowHit1 = DATA_RECORD_ROW1_MACRO(pSRAMWORD);
 		pTotHit1 = DATA_RECORD_TOT1_MACRO(pSRAMWORD);
 	}
-	else if (DATA_RECORD_TOT1_MACRO(pSRAMWORD) == 14) {
+	if (DATA_RECORD_TOT1_MACRO(pSRAMWORD) == 14) {
 		_nSmallHits++;
 	}
 
@@ -860,7 +860,7 @@ bool Interpret::getHitsfromDataRecord(const unsigned int& pSRAMWORD, int& pColHi
 		pRowHit2 = DATA_RECORD_ROW2_MACRO(pSRAMWORD);
 		pTotHit2 = DATA_RECORD_TOT2_MACRO(pSRAMWORD);
 	}
-	else if (DATA_RECORD_TOT2_MACRO(pSRAMWORD) == 14) {
+	if (DATA_RECORD_TOT2_MACRO(pSRAMWORD) == 14) {
 		_nSmallHits++;
 	}
 	return true;
