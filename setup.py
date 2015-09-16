@@ -1,28 +1,19 @@
 #!/usr/bin/env python
 
-# Building:
+# Building the C++ libraries:
 # python setup.py build_ext
 #
 # Installing package from sources:
 # python setup.py install
 # For developers (creating a link to the sources):
 # python setup.py develop
-#
-# Building source distribution:
-# python setup.py sdist
-# The generated source file is needed for installing by a tool like pip (pip install ...).
 
-
-# from distutils.core import setup
-from setuptools import setup
-from setuptools import find_packages
-from distutils.extension import Extension
+from setuptools import setup, Extension, find_packages
 from distutils.command.build_ext import build_ext
 from platform import system
 from Cython.Build import cythonize
 import numpy as np
 import os
-
 
 copt = {'msvc': ['-Ipybar/analysis/RawDataConverter/external', '/EHsc']}  # set additional include path and EHsc exception handling for VS
 lopt = {}
@@ -31,8 +22,6 @@ lopt = {}
 class build_ext_opt(build_ext):
     def initialize_options(self):
         build_ext.initialize_options(self)
-#         self.force = 1  # does not work
-#         self.inplace = 1
         self.compiler = 'msvc' if os.name == 'nt' else None  # in Anaconda the libpython package includes the MinGW import libraries and a file (Lib/distutils/distutils.cfg) which sets the default compiler to mingw32. Alternatively try conda remove libpython.
 
     def build_extensions(self):
@@ -58,8 +47,8 @@ f = open('VERSION', 'r')
 version = f.readline().strip()
 f.close()
 
-author = 'Jens Janssen'
-author_email = 'janssen@physik.uni-bonn.de'
+author = 'Jens Janssen, David-Leon Pohl'
+author_email = 'janssen@physik.uni-bonn.de, pohl@physik.uni-bonn.de'
 
 # requirements for core functionality
 install_requires = ['basil==2.1.2', 'bitarray>=0.8.1', 'cython', 'matplotlib', 'numpy', 'pandas', 'progressbar-latest>=2.4', 'tables', 'pyyaml', 'scipy']
@@ -72,7 +61,7 @@ setup(
     description='pyBAR: Bonn ATLAS Readout in Pyhton',
     url='https://github.com/SiLab-Bonn/pyBAR',
     license='BSD 3-Clause ("BSD New" or "BSD Simplified") License',
-    long_description='',
+    long_description='PyBAR is a versatile readout and test system for the ATLAS FE-I4(A/B) pixel readout chip. It uses the basil framework to access the readout hardware. PyBARs FPGA firmware and host software includes support for different hardware platforms.',
     author=author,
     maintainer=author,
     author_email=author_email,
