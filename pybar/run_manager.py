@@ -298,7 +298,7 @@ def thunkify(thread_name):
         @functools.wraps(f)
         def thunked(*args, **kwargs):
             result = [None]
-            exc = [False, None]
+            exc = [False, None]  # has exception?, exception info
 #             wait_event = threading.Event()
 
             def worker_func():
