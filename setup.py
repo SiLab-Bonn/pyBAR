@@ -51,17 +51,17 @@ author = 'Jens Janssen, David-Leon Pohl'
 author_email = 'janssen@physik.uni-bonn.de, pohl@physik.uni-bonn.de'
 
 # requirements for core functionality
-install_requires = ['basil==2.1.2', 'bitarray>=0.8.1', 'cython', 'matplotlib', 'numpy', 'pandas', 'progressbar-latest>=2.4', 'tables', 'pyyaml', 'scipy']
+install_requires = ['basil_daq==2.1.2', 'bitarray>=0.8.1', 'cython', 'matplotlib', 'numpy', 'pandas', 'progressbar-latest>=2.4', 'tables', 'pyyaml', 'scipy']
 if system() == 'Windows':
     install_requires.append('pywin32')
 
 setup(
     name='pyBAR',
     version=version,
-    description='pyBAR: Bonn ATLAS Readout in Pyhton',
+    description='pyBAR - Bonn ATLAS Readout in Python and C++',
     url='https://github.com/SiLab-Bonn/pyBAR',
     license='BSD 3-Clause ("BSD New" or "BSD Simplified") License',
-    long_description='PyBAR is a versatile readout and test system for the ATLAS FE-I4(A/B) pixel readout chip. It uses the basil framework to access the readout hardware. PyBARs FPGA firmware and host software includes support for different hardware platforms.',
+    long_description='PyBAR is a versatile readout and test system for the ATLAS FE-I4(A/B) pixel readout chip.\nIt uses the basil framework to access the readout hardware. PyBAR\'s FPGA firmware and host software includes support for different hardware platforms.',
     author=author,
     maintainer=author,
     author_email=author_email,
