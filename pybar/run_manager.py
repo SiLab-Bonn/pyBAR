@@ -308,7 +308,7 @@ def thunkify(thread_name):
                 except Exception:
                     exc[0] = True
                     exc[1] = sys.exc_info()
-                    logging.error("RunThread has thrown an exception:\n%s", traceback.format_exc())
+                    logging.error("%s has thrown an exception:\n%s", thread_name, traceback.format_exc())
 #                 finally:
 #                     wait_event.set()
 
