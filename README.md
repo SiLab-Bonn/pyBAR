@@ -48,7 +48,16 @@ For full functionality, the following additional packages are required:
   mock nose pyqtgraph pyserial pyvisa pyvisa-py pyzmq
   ```
 
-On Windows, the `pywin32` package is required.
+Run the following commands to install the packages:
+  ```
+  conda install numpy cython pytables scipy matplotlib pandas pyserial bitarray nose pyzmq pyyaml
+  pip install progressbar-latest pyvisa pyvisa-py pyqtgraph mock
+  ```
+
+On Windows, the `pywin32` package is required:
+  ```
+  conda install pywin32
+  ```
 
 To enable support for USB devices (MIO, MIO3 and MMC3), the following additional packages are required:
 - [PyUSB](https://github.com/walac/pyusb) (>=1.0.0rc1):
