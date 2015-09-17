@@ -26,7 +26,7 @@ init:
 install:
   - pip install https://github.com/walac/pyusb/archive/master.zip
   - pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/818/pySiLibUSB-2.0.6.tar.gz
-  - pip install -e "git+https://github.com/SiLab-Bonn/basil.git@development"
+  - pip install git+https://github.com/SiLab-Bonn/basil.git@development
   - python.exe setup.py develop
 
 test_script:

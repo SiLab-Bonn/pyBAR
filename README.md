@@ -35,7 +35,7 @@ The features of the host software in Python and C++:
 
 [Basil](https://github.com/SiLab-Bonn/basil) (==2.1.2) is required:
   ```
-  pip install -e "git+https://github.com/SiLab-Bonn/basil.git@development"
+  pip install git+https://github.com/SiLab-Bonn/basil.git@development
   ```
 
 The following packages are required for pyBAR's core functionality:
