@@ -29,7 +29,7 @@ export PYTHONHOME=$(shell python -c "from distutils.sysconfig import get_config_
 XILINX_SRC?=$(XILINX)/ISE/verilog/src
    
 BASIL?=$(shell python -c "import basil;import os;print os.path.dirname(os.path.dirname(os.path.dirname(basil.__file__)))")
-BASIL_MODULES?=$(BASIL)/device/modules
+BASIL_MODULES?=$(BASIL)/firmware/modules
 FEI4_SOURCES?=../../../../fei4/trunk/models/fei4a
 PYBAR_SOURCES?=../
 
