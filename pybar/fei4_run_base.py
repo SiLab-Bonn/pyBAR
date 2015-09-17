@@ -395,7 +395,7 @@ class Fei4RunBase(RunBase):
                     try:
                         board.close()  # free resources of USB
                     except usb.core.USBError:
-                        logging.error('Cannot detach USB device')
+                        logging.error('Cannot close USB device')
                     except ValueError:
                         pass  # no USB interface, Basil <= 2.1.1
                     except KeyError:
@@ -404,6 +404,9 @@ class Fei4RunBase(RunBase):
                         pass  # DUT not yet initialized
                     except AttributeError:
                         pass  # USB interface not yet initialized
+                    else:
+                        pass
+#                         logging.error('Closed USB device')
 
     def handle_data(self, data):
         self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=False)

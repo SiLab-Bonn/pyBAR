@@ -66,20 +66,20 @@ proc vlog_top {} {
 
     vlog $XILINX/verilog/src/glbl.v
 
-    vlog -lint $BASIL/trunk/device/modules/utils/*.v +incdir+$BASIL/trunk/device/modules/includes
-    vlog -lint $BASIL/trunk/device/modules/sram_fifo/*.v
-    vlog -lint $BASIL/trunk/device/modules/fei4_rx/*.v
-    vlog -lint $BASIL/trunk/device/modules/cmd_seq/*.v
-    vlog -lint $BASIL/trunk/device/modules/rrp_arbiter/*.v +incdir+$BASIL/trunk/device/modules/rrp_arbiter
-    vlog -lint $BASIL/trunk/device/modules/tlu/*.v
-    vlog -lint $BASIL/trunk/device/modules/tdc_s3/*.v
-    vlog -lint $BASIL/trunk/device/modules/gpio/*.v
+    vlog -lint $BASIL/firmware/modules/utils/*.v +incdir+$BASIL/firmware/modules/includes
+    vlog -lint $BASIL/firmware/modules/sram_fifo/*.v
+    vlog -lint $BASIL/firmware/modules/fei4_rx/*.v
+    vlog -lint $BASIL/firmware/modules/cmd_seq/*.v
+    vlog -lint $BASIL/firmware/modules/rrp_arbiter/*.v +incdir+$BASIL/firmware/modules/rrp_arbiter
+    vlog -lint $BASIL/firmware/modules/tlu/*.v
+    vlog -lint $BASIL/firmware/modules/tdc_s3/*.v
+    vlog -lint $BASIL/firmware/modules/gpio/*.v
     
     vlog ../src/top.v
     vlog ../src/clk_gen.v
 
     vlog  -novopt $FEI4/fei4_top.sv +incdir+$FEI4 +define+TEST_DC=1
-    vlog  +incdir+$FEI4 +incdir+$BASIL/trunk/device/modules/tb +incdir+../tb ../tb/top_tb.sv
+    vlog  +incdir+$FEI4 +incdir+$BASIL/firmware/modules/tb +incdir+../tb ../tb/top_tb.sv
 
     #vlog ../ise/netgen/par/top_timesim.v
 }
