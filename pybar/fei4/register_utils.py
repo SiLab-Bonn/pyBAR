@@ -20,7 +20,7 @@ from pybar.daq.fei4_record import FEI4Record
 
 class FEI4RegisterUtils(object):
 
-    def __init__(self, dut, register):
+    def __init__(self, dut, register, abort=None):
         self.dut = dut
         self.register = register
         self.command_memory_byte_size = 2048 - 16  # 16 bytes of register data
@@ -28,6 +28,7 @@ class FEI4RegisterUtils(object):
         self.zero_cmd = self.register.get_commands("zeros", length=self.zero_cmd_length)[0]
         self.zero_cmd_padded = self.zero_cmd.copy()
         self.zero_cmd_padded.fill()
+        self.abort = abort
 
     def add_commands(self, x, y):
         return x + self.zero_cmd + y  # FE needs a zero bits between commands
@@ -105,13 +106,21 @@ class FEI4RegisterUtils(object):
             length = self.dut['CMD']['CMD_SIZE'] - self.dut['CMD']['START_SEQUENCE_LENGTH'] - self.dut['CMD']['STOP_SEQUENCE_LENGTH']
         if repeat is None:
             repeat = self.dut['CMD']['CMD_REPEAT']
+#         if length and repeat > 1:
+#             try:
+#                 time.sleep(length * 25e-9 * repeat - 0.002)  # subtract 2ms delay
+#             except IOError:  # negative value
+#                 pass
+#         while not self.is_ready:
+#             pass
         if length and repeat > 1:
-            try:
-                time.sleep(length * 25e-9 * repeat - 0.002)  # subtract 2ms delay
-            except IOError:  # negative value
-                pass
-        while not self.is_ready:
-            pass
+            delay = length * 25e-9 * repeat - 0.002  # subtract 2ms delay
+            timeout = 10 * delay
+        else:
+            delay = None
+            timeout = 1
+        if not self.dut['CMD'].wait_for_ready(timeout=timeout, delay=delay, abort=self.abort) and not self.abort.is_set():
+            raise RuntimeError('Time out - command not fully sent')
 
     @property
     def is_ready(self):
