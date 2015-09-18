@@ -14,8 +14,13 @@ from pybar.scans.test_register import RegisterTest
 
 
 def test_send_command(self, *args, **kwargs):
-    kwargs.update(use_timeout=False)  # no timeout for simulation
-    kwargs.update(command=kwargs['command'].extend(self.register.get_commands("zeros", length=20)))  # append some zeros since simulation is more slow
+    # no timeout for simulation
+    kwargs.update(use_timeout=False)
+    # append some zeros since simulation is more slow
+    if 'command' in kwargs:
+        kwargs.update(command=kwargs['command'].extend(self.register.get_commands("zeros", length=20)))
+    else:
+        args[0] = args[0].extend(self.register.get_commands("zeros", length=20))
     return self.send_command(*args, **kwargs)
 
 
