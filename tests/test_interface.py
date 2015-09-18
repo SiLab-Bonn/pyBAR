@@ -13,7 +13,7 @@ from pybar.run_manager import RunManager
 from pybar.scans.test_register import RegisterTest
 
 
-def test_send_command(self, command, repeat, wait_for_finish, set_length, clear_memory, use_timeout):
+def test_send_command(self, command, repeat=1, wait_for_finish=True, set_length=True, clear_memory=False, use_timeout=True):
     # no timeout for simulation
     use_timeout = False
     # append some zeros since simulation is more slow
