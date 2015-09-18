@@ -51,6 +51,7 @@ For full functionality, the following additional packages are required:
 Run the following commands to install the packages:
   ```
   conda install numpy cython pytables scipy matplotlib pandas pyserial bitarray nose pyzmq pyyaml
+  
   pip install progressbar-latest pyvisa pyvisa-py pyqtgraph mock
   ```
 
