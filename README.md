@@ -35,7 +35,7 @@ The features of the host software in Python and C++:
 
 [Basil](https://github.com/SiLab-Bonn/basil) (==2.1.2) is required:
   ```
-  pip install git+https://github.com/SiLab-Bonn/basil.git@v2.1.2
+  pip install basil_daq==2.1.2
   ```
 
 The following packages are required for pyBAR's core functionality:
@@ -67,7 +67,7 @@ To enable support for USB devices (MIO, MIO3 and MMC3), the following additional
   
 - [pySiLibUSB](https://silab-redmine.physik.uni-bonn.de/projects/pysilibusb) (>=2.0.0):
   ```
-  pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/818/pySiLibUSB-2.0.6.tar.gz
+  pip install pySiLibUSB
   ```
 
 The installation procedure depends on the operating system and software environment.
