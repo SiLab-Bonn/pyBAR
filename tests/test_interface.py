@@ -7,6 +7,7 @@ import mock
 from Queue import Empty
 import subprocess
 import time
+import os
 
 from pybar.run_manager import RunManager
 from pybar.scans.test_register import RegisterTest
@@ -52,9 +53,16 @@ class TestInterface(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         shutil.rmtree('test_interface/module_test', ignore_errors=True)
+        shutil.rmtree('./sim_build', ignore_errors=True)
+        try:
+            os.remove('./results.xml')
+        except OSError:
+            pass
+        # keep waveform file
+#         shutil.rmtree('./tb.vcd', ignore_errors=True)
 
     @mock.patch('pybar.fei4.register_utils.FEI4RegisterUtils.configure_pixel', side_effect=lambda *args, **kwargs: None)  # do not configure pixel registers to safe time
-    @mock.patch('pybar.fei4.register_utils.FEI4RegisterUtils.send_commands', autospec=True, side_effect=lambda *args, **kwargs: send_commands(*args, **kwargs))  # do not configure pixel registers to safe time
+    @mock.patch('pybar.fei4.register_utils.FEI4RegisterUtils.send_commands', autospec=True, side_effect=lambda *args, **kwargs: send_commands(*args, **(kwargs.update(use_timeout=False))))  # do not configure pixel registers to safe time
     def test_global_register(self, mock_send_commands, mock_configure_pixel):
         run_manager = RunManager('test_interface/configuration.yaml')
         run_manager.run_run(RegisterTest, run_conf={'test_pixel': False})
