@@ -13,15 +13,12 @@ from pybar.run_manager import RunManager
 from pybar.scans.test_register import RegisterTest
 
 
-def test_send_command(self, *args, **kwargs):
+def test_send_command(self, command, repeat, wait_for_finish, set_length, clear_memory, use_timeout):
     # no timeout for simulation
-    kwargs.update(use_timeout=False)
+    use_timeout = False
     # append some zeros since simulation is more slow
-    if 'command' in kwargs:
-        kwargs.update(command=kwargs['command'].extend(self.register.get_commands("zeros", length=20)))
-    else:
-        args[0] = args[0].extend(self.register.get_commands("zeros", length=20))
-    return self.send_command(*args, **kwargs)
+    command = command.extend(self.register.get_commands("zeros", length=20))
+    return self.send_command(command=command, repeat=repeat, wait_for_finish=wait_for_finish, set_length=set_length, clear_memory=clear_memory, use_timeout=use_timeout)
 
 
 class TestInterface(unittest.TestCase):
