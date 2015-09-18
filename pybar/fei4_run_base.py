@@ -409,9 +409,24 @@ class Fei4RunBase(RunBase):
 #                         logging.error('Closed USB device')
 
     def handle_data(self, data):
+        '''Handling of the data.
+
+        Parameters
+        ----------
+        data : list, tuple
+            Data tuple of the format (data (np.array), last_time (float), curr_time (float), status (int))
+        '''
         self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=False)
 
     def handle_err(self, exc):
+        '''Handling of Exceptions.
+
+        Parameters
+        ----------
+        exc : list, tuple
+            Information of the exception of the format (type, value, traceback).
+            Uses the return value of sys.exc_info().
+        '''
         if self.reset_rx_on_error and isinstance(exc[1], (RxSyncError, EightbTenbError)):
             self.fifo_readout.print_readout_status()
             self.fifo_readout.reset_rx()
