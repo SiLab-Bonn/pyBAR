@@ -55,7 +55,7 @@ class TestInterface(unittest.TestCase):
 
     @mock.patch('pybar.fei4.register_utils.FEI4RegisterUtils.configure_pixel', side_effect=lambda *args, **kwargs: None)  # do not configure pixel registers to safe time
     @mock.patch('pybar.fei4.register_utils.FEI4RegisterUtils.send_commands', autospec=True, side_effect=lambda *args, **kwargs: send_commands(*args, **kwargs))  # do not configure pixel registers to safe time
-    def test_global_register(self, mock_configure_pixel, mock_send_commands):
+    def test_global_register(self, mock_send_commands, mock_configure_pixel):
         run_manager = RunManager('test_interface/configuration.yaml')
         run_manager.run_run(RegisterTest, run_conf={'test_pixel': False})
         error_msg = 'Global register test failed. '
