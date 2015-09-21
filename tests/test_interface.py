@@ -14,15 +14,15 @@ from pybar.fei4.register_utils import FEI4RegisterUtils
 from pybar.scans.test_register import RegisterTest
 
 
-def configure_pixel(same_mask_for_all_dc=False):
+def configure_pixel(self, same_mask_for_all_dc=False):
     return
 
 
-def send_commands(commands, repeat=1, wait_for_finish=True, concatenate=True, byte_padding=False, clear_memory=False, use_timeout=True):
+def send_commands(self, commands, repeat=1, wait_for_finish=True, concatenate=True, byte_padding=False, clear_memory=False, use_timeout=True):
     # no timeout for simulation
     use_timeout = False
     # append some zeros since simulation is more slow
-    commands = commands.extend(self.register.get_commands("zeros", length=20))
+    commands.extend(self.register.get_commands("zeros", length=20))
     return FEI4RegisterUtils.send_commands(self, commands=commands, repeat=repeat, wait_for_finish=wait_for_finish, concatenate=concatenate, byte_padding=byte_padding, clear_memory=clear_memory, use_timeout=use_timeout)
 
 
@@ -45,8 +45,8 @@ class TestInterface(unittest.TestCase):
         # keep waveform file
 #         shutil.rmtree('./tb.vcd', ignore_errors=True)
 
-    @mock.patch('pybar.fei4.register_utils.FEI4RegisterUtils.configure_pixel', side_effect=lambda *args, **kwargs: configure_pixel(*args, **kwargs))
-    @mock.patch('pybar.fei4.register_utils.FEI4RegisterUtils.send_commands', side_effect=lambda *args, **kwargs: send_commands(*args, **kwargs))
+    @mock.patch('pybar.fei4.register_utils.FEI4RegisterUtils.configure_pixel', autospec=True, side_effect=lambda *args, **kwargs: configure_pixel(*args, **kwargs))
+    @mock.patch('pybar.fei4.register_utils.FEI4RegisterUtils.send_commands', autospec=True, side_effect=lambda *args, **kwargs: send_commands(*args, **kwargs))
     def test_global_register(self, mock_send_commands, mock_configure_pixel):
         run_manager = RunManager('test_interface/configuration.yaml')
         run_manager.run_run(RegisterTest, run_conf={'test_pixel': False})
