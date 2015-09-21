@@ -1,7 +1,8 @@
 include README.* VERSION
 recursive-include docs *
 recursive-include examples *
-#recursive-include tests *
+recursive-include firmware *
+recursive-include tests *
 include pybar *.yaml *.bit
 recursive-include pybar/config *
 recursive-include pybar/analysis *
