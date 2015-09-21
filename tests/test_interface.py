@@ -14,11 +14,11 @@ from pybar.fei4.register_utils import FEI4RegisterUtils
 from pybar.scans.test_register import RegisterTest
 
 
-def configure_pixel(self, same_mask_for_all_dc=False):
+def configure_pixel(same_mask_for_all_dc=False):
     return
 
 
-def send_commands(self, commands, repeat=1, wait_for_finish=True, concatenate=True, byte_padding=False, clear_memory=False, use_timeout=True):
+def send_commands(commands, repeat=1, wait_for_finish=True, concatenate=True, byte_padding=False, clear_memory=False, use_timeout=True):
     # no timeout for simulation
     use_timeout = False
     # append some zeros since simulation is more slow
