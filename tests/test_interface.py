@@ -46,7 +46,7 @@ class TestInterface(unittest.TestCase):
 #         shutil.rmtree('./tb.vcd', ignore_errors=True)
 
     @mock.patch('pybar.fei4.register_utils.FEI4RegisterUtils.configure_pixel', side_effect=lambda *args, **kwargs: configure_pixel(*args, **kwargs))
-    @mock.patch('pybar.fei4.register_utils.FEI4RegisterUtils.send_commands', autospec=True, side_effect=lambda *args, **kwargs: send_commands(*args, **kwargs))
+    @mock.patch('pybar.fei4.register_utils.FEI4RegisterUtils.send_commands', side_effect=lambda *args, **kwargs: send_commands(*args, **kwargs))
     def test_global_register(self, mock_send_commands, mock_configure_pixel):
         run_manager = RunManager('test_interface/configuration.yaml')
         run_manager.run_run(RegisterTest, run_conf={'test_pixel': False})
