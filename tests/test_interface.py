@@ -14,14 +14,14 @@ from pybar.run_manager import RunManager
 from pybar.scans.test_register import RegisterTest
 
 
-def test_configure_pixel(self, same_mask_for_all_dc=False):
+def configure_pixel(self, same_mask_for_all_dc=False):
     return
 
 
-def test_send_commands(self, commands, repeat=1, wait_for_finish=True, concatenate=True, byte_padding=False, clear_memory=False, use_timeout=True):
+def send_commands(self, commands, repeat=1, wait_for_finish=True, concatenate=True, byte_padding=False, clear_memory=False, use_timeout=True):
     # no timeout for simulation
     use_timeout = False
-    # append some zeros since simulation is more slow
+    # append some zeros since simulation needs more time for calculation
     commands.extend(self.register.get_commands("zeros", length=20))
     if concatenate:
         commands_iter = iter(commands)
