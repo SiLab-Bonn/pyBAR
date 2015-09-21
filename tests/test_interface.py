@@ -13,7 +13,11 @@ from pybar.run_manager import RunManager
 from pybar.scans.test_register import RegisterTest
 
 
-def test_send_command(self, command, repeat=1, wait_for_finish=True, set_length=True, clear_memory=False, use_timeout=True):
+def configure_pixel(self, same_mask_for_all_dc=False):
+    return
+
+
+def send_command(self, command, repeat=1, wait_for_finish=True, set_length=True, clear_memory=False, use_timeout=True):
     # no timeout for simulation
     use_timeout = False
     # append some zeros since simulation is more slow
@@ -40,8 +44,8 @@ class TestInterface(unittest.TestCase):
         # keep waveform file
 #         shutil.rmtree('./tb.vcd', ignore_errors=True)
 
-    @mock.patch('pybar.fei4.register_utils.FEI4RegisterUtils.configure_pixel', side_effect=lambda *args, **kwargs: None)  # do not configure pixel registers to safe time
-    @mock.patch('pybar.fei4.register_utils.FEI4RegisterUtils.send_command', autospec=True, side_effect=lambda *args, **kwargs: test_send_command(*args, **kwargs))  # do not configure pixel registers to safe time
+    @mock.patch('pybar.fei4.register_utils.FEI4RegisterUtils.configure_pixel', side_effect=lambda *args, **kwargs: configure_pixel(*args, **kwargs))
+    @mock.patch('pybar.fei4.register_utils.FEI4RegisterUtils.send_command', autospec=True, side_effect=lambda *args, **kwargs: send_command(*args, **kwargs))
     def test_global_register(self, mock_send_commands, mock_configure_pixel):
         run_manager = RunManager('test_interface/configuration.yaml')
         run_manager.run_run(RegisterTest, run_conf={'test_pixel': False})
