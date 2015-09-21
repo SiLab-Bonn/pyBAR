@@ -7,36 +7,45 @@ import mock
 from Queue import Empty
 import subprocess
 import time
+import os
+import logging
 
 from pybar.run_manager import RunManager
 from pybar.scans.test_register import RegisterTest
 
 
-def send_commands(self, commands, repeat=1, wait_for_finish=True, concatenate=True, byte_padding=False, clear_memory=False):
-    commands.extend(self.register.get_commands("zeros", length=20))  # append some zeros since simulation is more slow
+def configure_pixel(self, same_mask_for_all_dc=False):
+    return
+
+
+def send_commands(self, commands, repeat=1, wait_for_finish=True, concatenate=True, byte_padding=False, clear_memory=False, use_timeout=True):
+    # no timeout for simulation
+    use_timeout = False
+    # append some zeros since simulation needs more time for calculation
+    commands.extend(self.register.get_commands("zeros", length=20))
     if concatenate:
         commands_iter = iter(commands)
         try:
             concatenated_cmd = commands_iter.next()
         except StopIteration:
-            pass
+            logging.warning('No commands to be sent')
         else:
             for command in commands_iter:
                 concatenated_cmd_tmp = self.concatenate_commands((concatenated_cmd, command), byte_padding=byte_padding)
                 if concatenated_cmd_tmp.length() > self.command_memory_byte_size * 8:
-                    self.send_command(command=concatenated_cmd, repeat=repeat, wait_for_finish=wait_for_finish, set_length=True, clear_memory=clear_memory)
+                    self.send_command(command=concatenated_cmd, repeat=repeat, wait_for_finish=wait_for_finish, set_length=True, clear_memory=clear_memory, use_timeout=use_timeout)
                     concatenated_cmd = command
                 else:
                     concatenated_cmd = concatenated_cmd_tmp
             # send remaining commands
-            self.send_command(command=concatenated_cmd, repeat=repeat, wait_for_finish=wait_for_finish, set_length=True, clear_memory=clear_memory)
+            self.send_command(command=concatenated_cmd, repeat=repeat, wait_for_finish=wait_for_finish, set_length=True, clear_memory=clear_memory, use_timeout=use_timeout)
     else:
         max_length = 0
         if repeat:
-            self.dut['cmd']['CMD_REPEAT'] = repeat
+            self.dut['CMD']['CMD_REPEAT'] = repeat
         for command in commands:
             max_length = max(command.length(), max_length)
-            self.send_command(command=command, repeat=None, wait_for_finish=wait_for_finish, set_length=True, clear_memory=False)
+            self.send_command(command=command, repeat=None, wait_for_finish=wait_for_finish, set_length=True, clear_memory=False, use_timeout=use_timeout)
         if clear_memory:
             self.clear_command_memory(length=max_length)
 
@@ -52,10 +61,17 @@ class TestInterface(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         shutil.rmtree('test_interface/module_test', ignore_errors=True)
+        shutil.rmtree('./sim_build', ignore_errors=True)
+        try:
+            os.remove('./results.xml')
+        except OSError:
+            pass
+        # keep waveform file
+#         shutil.rmtree('./tb.vcd', ignore_errors=True)
 
-    @mock.patch('pybar.fei4.register_utils.FEI4RegisterUtils.configure_pixel', side_effect=lambda *args, **kwargs: None)  # do not configure pixel registers to safe time
-    @mock.patch('pybar.fei4.register_utils.FEI4RegisterUtils.send_commands', autospec=True, side_effect=lambda *args, **kwargs: send_commands(*args, **kwargs))  # do not configure pixel registers to safe time
-    def test_global_register(self, mock_configure_pixel, mock_send_commands):
+    @mock.patch('pybar.fei4.register_utils.FEI4RegisterUtils.configure_pixel', autospec=True, side_effect=lambda *args, **kwargs: configure_pixel(*args, **kwargs))
+    @mock.patch('pybar.fei4.register_utils.FEI4RegisterUtils.send_commands', autospec=True, side_effect=lambda *args, **kwargs: send_commands(*args, **kwargs))
+    def test_global_register(self, mock_send_commands, mock_configure_pixel):
         run_manager = RunManager('test_interface/configuration.yaml')
         run_manager.run_run(RegisterTest, run_conf={'test_pixel': False})
         error_msg = 'Global register test failed. '

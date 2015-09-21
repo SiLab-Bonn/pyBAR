@@ -1,5 +1,5 @@
 
-# pyBAR [![Code Status](https://landscape.io/github/SiLab-Bonn/pyBAR/development/landscape.svg?style=flat)](https://landscape.io/github/SiLab-Bonn/pyBAR/development) [![Build Status](https://travis-ci.org/SiLab-Bonn/pyBAR.svg?branch=development)](https://travis-ci.org/SiLab-Bonn/pyBAR) [![Build Status](https://ci.appveyor.com/api/projects/status/github/SiLab-Bonn/pyBAR?svg=true)](https://ci.appveyor.com/project/DavidLP/pybar-71xwl)
+# pyBAR [![Code Status](https://landscape.io/github/SiLab-Bonn/pyBAR/master/landscape.svg?style=flat)](https://landscape.io/github/SiLab-Bonn/pyBAR/master) [![Build Status](https://travis-ci.org/SiLab-Bonn/pyBAR.svg?branch=master)](https://travis-ci.org/SiLab-Bonn/pyBAR) [![Build Status](https://ci.appveyor.com/api/projects/status/github/SiLab-Bonn/pyBAR?svg=true)](https://ci.appveyor.com/project/DavidLP/pybar-71xwl)
 
 pyBAR - Bonn ATLAS Readout in Python and C++
 
@@ -35,7 +35,7 @@ The features of the host software in Python and C++:
 
 [Basil](https://github.com/SiLab-Bonn/basil) (==2.1.2) is required:
   ```
-  pip install -e "git+https://github.com/SiLab-Bonn/basil.git@development#egg=basil&subdirectory=host"
+  pip install basil_daq==2.1.2
   ```
 
 The following packages are required for pyBAR's core functionality:
@@ -48,7 +48,17 @@ For full functionality, the following additional packages are required:
   mock nose pyqtgraph pyserial pyvisa pyvisa-py pyzmq
   ```
 
-On Windows, the `pywin32` package is required.
+Run the following commands to install the packages:
+  ```
+  conda install numpy cython pytables scipy matplotlib pandas pyserial bitarray nose pyzmq pyyaml
+  
+  pip install progressbar-latest pyvisa pyvisa-py pyqtgraph mock
+  ```
+
+On Windows, the `pywin32` package is required:
+  ```
+  conda install pywin32
+  ```
 
 To enable support for USB devices (MIO, MIO3 and MMC3), the following additional packages are required:
 - [PyUSB](https://github.com/walac/pyusb) (>=1.0.0rc1):
@@ -58,7 +68,7 @@ To enable support for USB devices (MIO, MIO3 and MMC3), the following additional
   
 - [pySiLibUSB](https://silab-redmine.physik.uni-bonn.de/projects/pysilibusb) (>=2.0.0):
   ```
-  pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/818/pySiLibUSB-2.0.6.tar.gz
+  pip install pySiLibUSB
   ```
 
 The installation procedure depends on the operating system and software environment.

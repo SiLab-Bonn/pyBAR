@@ -5,10 +5,10 @@ To test the additional timing feature connect an additional
 pulser to RX0. Synchronize the clocks and trigger the additional pulser with the
 first pulser.
 
-255: tdc without trigger or tdc with ambigous trigger, trigger is ambidous if:
+255: tdc without trigger or tdc with ambigous trigger, trigger is ambigous if:
     - the trigger rising edge is happens while a TDC signal is high
     - a trigger signal follows a trigger signal without another TDC signal
-254: trigger rising edge is > 2^3 / (640 MHz) = 400 ns before TDC edge
+254: trigger rising edge is > 2^8 / (640 MHz) = 400 ns before TDC edge
 '''
 
 import time

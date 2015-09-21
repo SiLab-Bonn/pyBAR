@@ -20,7 +20,7 @@ from pybar.daq.fei4_record import FEI4Record
 
 class FEI4RegisterUtils(object):
 
-    def __init__(self, dut, register):
+    def __init__(self, dut, register, abort=None):
         self.dut = dut
         self.register = register
         self.command_memory_byte_size = 2048 - 16  # 16 bytes of register data
@@ -28,6 +28,7 @@ class FEI4RegisterUtils(object):
         self.zero_cmd = self.register.get_commands("zeros", length=self.zero_cmd_length)[0]
         self.zero_cmd_padded = self.zero_cmd.copy()
         self.zero_cmd_padded.fill()
+        self.abort = abort
 
     def add_commands(self, x, y):
         return x + self.zero_cmd + y  # FE needs a zero bits between commands
@@ -45,7 +46,7 @@ class FEI4RegisterUtils(object):
         else:
             return reduce(self.add_commands, commands)
 
-    def send_commands(self, commands, repeat=1, wait_for_finish=True, concatenate=True, byte_padding=False, clear_memory=False):
+    def send_commands(self, commands, repeat=1, wait_for_finish=True, concatenate=True, byte_padding=False, clear_memory=False, use_timeout=True):
         if concatenate:
             commands_iter = iter(commands)
             try:
@@ -56,23 +57,23 @@ class FEI4RegisterUtils(object):
                 for command in commands_iter:
                     concatenated_cmd_tmp = self.concatenate_commands((concatenated_cmd, command), byte_padding=byte_padding)
                     if concatenated_cmd_tmp.length() > self.command_memory_byte_size * 8:
-                        self.send_command(command=concatenated_cmd, repeat=repeat, wait_for_finish=wait_for_finish, set_length=True, clear_memory=clear_memory)
+                        self.send_command(command=concatenated_cmd, repeat=repeat, wait_for_finish=wait_for_finish, set_length=True, clear_memory=clear_memory, use_timeout=use_timeout)
                         concatenated_cmd = command
                     else:
                         concatenated_cmd = concatenated_cmd_tmp
                 # send remaining commands
-                self.send_command(command=concatenated_cmd, repeat=repeat, wait_for_finish=wait_for_finish, set_length=True, clear_memory=clear_memory)
+                self.send_command(command=concatenated_cmd, repeat=repeat, wait_for_finish=wait_for_finish, set_length=True, clear_memory=clear_memory, use_timeout=use_timeout)
         else:
             max_length = 0
             if repeat:
                 self.dut['CMD']['CMD_REPEAT'] = repeat
             for command in commands:
                 max_length = max(command.length(), max_length)
-                self.send_command(command=command, repeat=None, wait_for_finish=wait_for_finish, set_length=True, clear_memory=False)
+                self.send_command(command=command, repeat=None, wait_for_finish=wait_for_finish, set_length=True, clear_memory=False, use_timeout=use_timeout)
             if clear_memory:
                 self.clear_command_memory(length=max_length)
 
-    def send_command(self, command, repeat=1, wait_for_finish=True, set_length=True, clear_memory=False):
+    def send_command(self, command, repeat=1, wait_for_finish=True, set_length=True, clear_memory=False, use_timeout=True):
         if repeat:
             self.dut['CMD']['CMD_REPEAT'] = repeat
         # write command into memory
@@ -81,7 +82,7 @@ class FEI4RegisterUtils(object):
         self.dut['CMD']['START']
         # wait for command to be finished
         if wait_for_finish:
-            self.wait_for_command(length=command_length, repeat=repeat)
+            self.wait_for_command(length=command_length, repeat=repeat, use_timeout=use_timeout)
         # clear command memory
         if clear_memory:
             self.clear_command_memory(length=command_length)
@@ -99,19 +100,31 @@ class FEI4RegisterUtils(object):
         self.dut['CMD'].set_data(data=data, addr=byte_offset)
         return command_length
 
-    def wait_for_command(self, length=None, repeat=None):
+    def wait_for_command(self, length=None, repeat=None, use_timeout=True):
         # for scans using the scan loop, reading length and repeat will decrease processor load by 30 to 50%, but has a marginal influence on scan time
         if length is None:
             length = self.dut['CMD']['CMD_SIZE'] - self.dut['CMD']['START_SEQUENCE_LENGTH'] - self.dut['CMD']['STOP_SEQUENCE_LENGTH']
         if repeat is None:
             repeat = self.dut['CMD']['CMD_REPEAT']
         if length and repeat > 1:
-            try:
-                time.sleep(length * 25e-9 * repeat - 0.002)  # subtract 2ms delay
-            except IOError:  # negative value
+            delay = length * 25e-9 * repeat - 0.002  # subtract 2ms delay
+        else:
+            delay = None
+        if use_timeout:
+            if delay:
+                timeout = 10 * delay
+            else:
+                timeout = 1
+            if not self.dut['CMD'].wait_for_ready(timeout=timeout, times=None, delay=delay, abort=self.abort) and not self.abort.is_set():
+                raise RuntimeError('Time out - command not fully sent')
+        else:
+            if delay:
+                try:
+                    time.sleep(delay)  # subtract 2ms delay
+                except IOError:  # negative value
+                    pass
+            while not self.is_ready:
                 pass
-        while not self.is_ready:
-            pass
 
     @property
     def is_ready(self):
