@@ -10,6 +10,7 @@ import time
 import os
 
 from pybar.run_manager import RunManager
+from pybar.fei4.register_utils import FEI4RegisterUtils
 from pybar.scans.test_register import RegisterTest
 
 
@@ -22,7 +23,7 @@ def send_command(self, command, repeat=1, wait_for_finish=True, set_length=True,
     use_timeout = False
     # append some zeros since simulation is more slow
     command = command.extend(self.register.get_commands("zeros", length=20))
-    return self.send_command(command=command, repeat=repeat, wait_for_finish=wait_for_finish, set_length=set_length, clear_memory=clear_memory, use_timeout=use_timeout)
+    return FEI4RegisterUtils.send_command(self, command=command, repeat=repeat, wait_for_finish=wait_for_finish, set_length=set_length, clear_memory=clear_memory, use_timeout=use_timeout)
 
 
 class TestInterface(unittest.TestCase):
