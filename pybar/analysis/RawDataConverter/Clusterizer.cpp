@@ -324,8 +324,8 @@ void Clusterizer::addHit(const unsigned int& pHitIndex)
 		_clusterHitInfo[pHitIndex].serviceRecord = _hitInfo[pHitIndex].serviceRecord;
 		_clusterHitInfo[pHitIndex].eventStatus = _hitInfo[pHitIndex].eventStatus;
 		_clusterHitInfo[pHitIndex].isSeed = 0;
-		_clusterHitInfo[pHitIndex].clusterSize = 666;
-		_clusterHitInfo[pHitIndex].nCluster = 666;
+		_clusterHitInfo[pHitIndex].clusterSize = 0;
+		_clusterHitInfo[pHitIndex].nCluster = 0;
 		return;
 	}
 	uint64_t tEvent = _hitInfo[pHitIndex].eventNumber;
