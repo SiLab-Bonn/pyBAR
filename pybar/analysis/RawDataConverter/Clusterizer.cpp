@@ -314,6 +314,20 @@ void Clusterizer::test()
 void Clusterizer::addHit(const unsigned int& pHitIndex)
 {
 	debug("addHit");
+	if ((_hitInfo[pHitIndex].eventStatus & __NO_HIT) == __NO_HIT){  // do not cluster virtual hits, but add them as virtual cluster hits
+		// Add event related info to virtual cluster hits
+		_clusterHitInfo[pHitIndex].eventNumber = _hitInfo[pHitIndex].eventNumber;
+		_clusterHitInfo[pHitIndex].triggerNumber = _hitInfo[pHitIndex].triggerNumber;
+		_clusterHitInfo[pHitIndex].TDC = _hitInfo[pHitIndex].TDC;
+		_clusterHitInfo[pHitIndex].TDCtimeStamp = _hitInfo[pHitIndex].TDCtimeStamp;
+		_clusterHitInfo[pHitIndex].triggerStatus = _hitInfo[pHitIndex].triggerStatus;
+		_clusterHitInfo[pHitIndex].serviceRecord = _hitInfo[pHitIndex].serviceRecord;
+		_clusterHitInfo[pHitIndex].eventStatus = _hitInfo[pHitIndex].eventStatus;
+		_clusterHitInfo[pHitIndex].isSeed = 0;
+		_clusterHitInfo[pHitIndex].clusterSize = 666;
+		_clusterHitInfo[pHitIndex].nCluster = 666;
+		return;
+	}
 	uint64_t tEvent = _hitInfo[pHitIndex].eventNumber;
 	unsigned short tCol = _hitInfo[pHitIndex].column - 1;
 	unsigned short tRow = _hitInfo[pHitIndex].row - 1;
