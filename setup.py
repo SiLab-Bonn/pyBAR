@@ -50,8 +50,10 @@ f.close()
 author = 'Jens Janssen, David-Leon Pohl'
 author_email = 'janssen@physik.uni-bonn.de, pohl@physik.uni-bonn.de'
 
-# requirements for core functionality
-install_requires = ['basil_daq==2.1.2', 'bitarray>=0.8.1', 'cython', 'matplotlib', 'numpy', 'pandas', 'progressbar-latest>=2.4', 'tables', 'pyyaml', 'scipy']
+# requirements for core functionality from requirements.txt
+with open('requirements.txt') as f:
+    install_requires = f.read().splitlines()
+
 if system() == 'Windows':
     install_requires.append('pywin32')
 

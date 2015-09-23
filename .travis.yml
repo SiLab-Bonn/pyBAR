@@ -20,9 +20,8 @@ before_install:
   - export PATH="$HOME/miniconda/bin:$PATH"
   - conda update --yes conda
   - conda info -a
-  - conda create --yes -n test-environment numpy cython pytables scipy matplotlib pandas pyserial bitarray nose pyzmq pyyaml
+  - conda create --yes -n test-environment --file requirements.txt
   - source activate test-environment
-  - pip install progressbar-latest pyvisa pyvisa-py pyqtgraph mock sphinx
   - pip install https://github.com/uvemas/ViTables/archive/v2.1.zip
   - wget -O cocotb-master.zip https://github.com/potentialventures/cocotb/archive/master.zip 
   - unzip cocotb-master.zip

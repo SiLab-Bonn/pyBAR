@@ -1,0 +1,10 @@
+basil_daq==2.1.2
+bitarray>=0.8.1
+cython
+matplotlib
+numpy
+pandas
+progressbar-latest>=2.4
+tables
+pyyaml
+scipy
