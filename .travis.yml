@@ -19,6 +19,7 @@ before_install:
   - bash miniconda.sh -b -p $HOME/miniconda
   - export PATH="$HOME/miniconda/bin:$PATH"
   - conda update --yes conda
+  - conda config --add channels silab
   - conda info -a
   - conda create --yes -n test-environment --file requirements.txt
   - source activate test-environment
