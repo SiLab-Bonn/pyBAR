@@ -23,7 +23,7 @@ install:
   - conda info -a
   - conda list
   # pyBAR installation including additional specific packages
-  - pip install https://silab-redmine.physik.uni-bonn.de/attachments/download/818/pySiLibUSB-2.0.6.tar.gz
+  - pip install pySiLibUSB
   - pip install git+https://github.com/SiLab-Bonn/basil.git@v2.1.2
   - python.exe setup.py develop
 
