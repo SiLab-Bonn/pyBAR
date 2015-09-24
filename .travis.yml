@@ -21,8 +21,9 @@ before_install:
   - conda update --yes conda
   - conda config --add channels silab
   - conda info -a
-  - conda create --yes -n test-environment --file requirements.txt
+  - conda create --yes -n test-environment numpy cython pytables scipy matplotlib pandas pyserial bitarray nose pyzmq pyyaml
   - source activate test-environment
+  - pip install progressbar-latest pyvisa pyvisa-py pyqtgraph mock sphinx
   - pip install https://github.com/uvemas/ViTables/archive/v2.1.zip
   - wget -O cocotb-master.zip https://github.com/potentialventures/cocotb/archive/master.zip 
   - unzip cocotb-master.zip
