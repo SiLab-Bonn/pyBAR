@@ -1,5 +1,6 @@
 # Core functionality
-basil_daq>=2.1.2
+basil_daq>=2.1.2   # readout framework pyBAR is built on
+pySiLibUSB  # USB driver for USBpix system
 bitarray>=0.8.1
 cython
 matplotlib
@@ -9,13 +10,15 @@ progressbar-latest>=2.4
 tables
 pyyaml
 scipy
-# Additional functionality (lab devices, tests, Online Monitor)
+
+# Additional functionality (lab devices, unit tests, Online Monitor)
 pyvisa
 pyvisa-py
+pyserial
 pyqtgraph
 mock
 sphinx
-pyserial
+vitables
 nose
 pyzmq 
   
