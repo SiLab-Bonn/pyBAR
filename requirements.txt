@@ -18,7 +18,6 @@ pyserial
 pyqtgraph
 mock
 sphinx
-vitables
 nose
 pyzmq 
   
