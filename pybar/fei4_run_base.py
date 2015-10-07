@@ -244,12 +244,14 @@ class Fei4RunBase(RunBase):
             pass  # no fe_configuration
 
     def pre_run(self):
-        # opening ZMQ context
-        if isinstance(self.conf['send_data'], basestring):
+        # opening ZMQ context and binding socket
+        if isinstance(self.conf['send_data'], basestring) and not self.socket:
             self.zmq_context = zmq.Context()
             self.socket = self.zmq_context.socket(zmq.PUB)  # publisher
             self.socket.bind(self.conf['send_data'])
             logging.info('Creating socket connection to server %s', self.conf['send_data'])
+        else:
+            logging.info('Using existing socket')
         # scan parameters
         if 'scan_parameters' in self.run_conf:
             if isinstance(self.run_conf['scan_parameters'], basestring):
