@@ -40,7 +40,7 @@ The features of the host software in Python and C++:
 
 The following packages are required for pyBAR's core functionality:
   ```
-  bitarray cython matplotlib numpy pandas progressbar-latest tables pyyaml scipy
+  bitarray cython matplotlib numpy pandas progressbar-latest pyyaml scipy tables
   ```
 
 For full functionality, the following additional packages are required:
