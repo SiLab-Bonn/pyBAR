@@ -4,7 +4,7 @@ import re
 import os
 import string
 import smtplib
-import socket
+from socket import gethostname
 import zmq
 import numpy as np
 from functools import wraps
@@ -42,16 +42,16 @@ class Fei4RunBase(RunBase):
         super(Fei4RunBase, self).__init__(conf=conf, run_conf=run_conf)
 
         # default conf parameters
+        if 'zmq_context' not in conf:
+            conf.update({'zmq_context': None})  # ZMQ context
         if 'send_data' not in conf:
-            conf.update({'send_data': None})
+            conf.update({'send_data': None})  # PUB socket or string
         if 'send_error_msg' not in conf:
             conf.update({'send_error_msg': None})
 
         self.err_queue = Queue()
         self.fifo_readout = None
         self.raw_data_file = None
-        self.zmq_context = None
-        self.socket = None
 
     @property
     def working_dir(self):
@@ -245,11 +245,12 @@ class Fei4RunBase(RunBase):
 
     def pre_run(self):
         # opening ZMQ context and binding socket
-        if isinstance(self.conf['send_data'], basestring) and not self.socket:
-            self.zmq_context = zmq.Context()
-            self.socket = self.zmq_context.socket(zmq.PUB)  # publisher
-            self.socket.bind(self.conf['send_data'])
+        if isinstance(self.conf['send_data'], basestring):
+            self._conf['zmq_context'] = zmq.Context()
             logging.info('Creating socket connection to server %s', self.conf['send_data'])
+            pub_socket = self.zmq_context.socket(zmq.PUB)  # publisher socket
+            pub_socket.bind(self.conf['send_data'])
+            self._conf['send_data'] = pub_socket
         else:
             logging.info('Using existing socket')
         # scan parameters
@@ -344,7 +345,7 @@ class Fei4RunBase(RunBase):
             self.fifo_readout.reset_rx()
             self.fifo_readout.reset_sram_fifo()
             self.fifo_readout.print_readout_status()
-            with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, register=self.register, conf=self.conf, run_conf=self.run_conf, scan_parameters=self.scan_parameters._asdict(), socket=self.socket) as self.raw_data_file:
+            with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, register=self.register, conf=self.conf, run_conf=self.run_conf, scan_parameters=self.scan_parameters._asdict(), socket=self.conf['send_data']) as self.raw_data_file:
                 # scan
                 self.scan()
 
@@ -511,7 +512,7 @@ class Fei4RunBase(RunBase):
                 ip = 'Unknown IP'
             try:
                 text = 'Run %i at %s\n%s' % (self.run_number, time.strftime('%X %x %Z'), self.last_traceback)
-                send_mail(text=text, configuration=self._run_conf['send_error'], subject='PyBAR run %i report from %s %s' % (self.run_number, ip, socket.gethostname()))
+                send_mail(text=text, configuration=self._run_conf['send_error'], subject='PyBAR run %i report from %s %s' % (self.run_number, ip, gethostname()))
             except:
                 logging.info("Failed sending pyBAR report")
                 pass
