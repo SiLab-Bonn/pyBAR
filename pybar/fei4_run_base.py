@@ -248,7 +248,7 @@ class Fei4RunBase(RunBase):
         if isinstance(self.conf['send_data'], basestring):
             self._conf['zmq_context'] = zmq.Context()
             logging.info('Creating socket connection to server %s', self.conf['send_data'])
-            pub_socket = self.zmq_context.socket(zmq.PUB)  # publisher socket
+            pub_socket = self.conf['zmq_context'].socket(zmq.PUB)  # publisher socket
             pub_socket.bind(self.conf['send_data'])
             self._conf['send_data'] = pub_socket
         else:
