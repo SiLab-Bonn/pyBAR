@@ -45,7 +45,7 @@ The following packages are required for pyBAR's core functionality:
 
 For full functionality, the following additional packages are required:
   ```
-  ipython mock nose pyqtgraph pyserial pyvisa pyvisa-py pyzmq sphinx
+  ipython mock nose pyqtgraph pyserial pyvisa pyvisa-py pyzmq sphinx vitables
   ```
 
 Run the following commands to install the packages:
