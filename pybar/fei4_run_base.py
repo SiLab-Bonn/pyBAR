@@ -280,10 +280,10 @@ class Fei4RunBase(RunBase):
                 elif os.path.exists(os.path.join(module_path, self.conf['dut'])):
                     dut = os.path.join(module_path, self.conf['dut'])
                 else:
-                    raise ValueError('dut parameter not a valid path: %s' % self.conf['dut'])
-                self._conf['dut'] = Dut(dut)
+                    raise ValueError('dut parameter not a valid path: %s' % self._conf['dut'])
             else:
-                self._conf['dut'] = Dut(self.conf['dut'])
+                dut = self._conf['dut']
+            dut = Dut(dut)
 
             # only initialize when DUT was not initialized before
             if 'dut_configuration' in self.conf and self.conf['dut_configuration']:
@@ -324,11 +324,14 @@ class Fei4RunBase(RunBase):
                         else:
                             raise ValueError('bit_file parameter not a valid path: %s' % bit_file)
                         dut_configuration['USB']['bit_file'] = bit_file
-                    self.dut.init(dut_configuration)
                 else:
-                    self.dut.init(self.conf['dut_configuration'])
+                    dut_configuration = self._conf['dut_configuration']
             else:
-                self.dut.init()
+                dut_configuration = None
+
+            dut.init(dut_configuration)
+            # assign dut after init in case of exceptions during init
+            self._conf['dut'] = dut
             # additional init of the DUT
             self.init_dut()
         else:
