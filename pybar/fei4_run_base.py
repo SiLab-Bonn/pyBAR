@@ -280,7 +280,7 @@ class Fei4RunBase(RunBase):
                 elif os.path.exists(os.path.join(module_path, self.conf['dut'])):
                     dut = os.path.join(module_path, self.conf['dut'])
                 else:
-                    raise ValueError('dut file not found: %s' % self.conf['dut'])
+                    raise ValueError('dut parameter not a valid path: %s' % self.conf['dut'])
                 self._conf['dut'] = Dut(dut)
             else:
                 self._conf['dut'] = Dut(self.conf['dut'])
@@ -303,7 +303,7 @@ class Fei4RunBase(RunBase):
                     elif os.path.exists(os.path.join(module_path, self.conf['dut_configuration'])):
                         dut_configuration = os.path.join(module_path, self.conf['dut_configuration'])
                     else:
-                        raise ValueError('dut_configuration file not found: %s' % self.conf['dut_configuration'])
+                        raise ValueError('dut_configuration parameter not a valid path: %s' % self.conf['dut_configuration'])
                     # make dict
                     dut_configuration = RunManager.open_conf(dut_configuration)
                     # change bit file path
@@ -322,7 +322,7 @@ class Fei4RunBase(RunBase):
                         elif os.path.exists(os.path.join(module_path, bit_file)):
                             bit_file = os.path.join(module_path, bit_file)
                         else:
-                            raise ValueError('bit_file not found: %s' % bit_file)
+                            raise ValueError('bit_file parameter not a valid path: %s' % bit_file)
                         dut_configuration['USB']['bit_file'] = bit_file
                     self.dut.init(dut_configuration)
                 else:
