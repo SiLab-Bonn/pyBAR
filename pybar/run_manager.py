@@ -80,15 +80,17 @@ class RunBase():
 
     @property
     def conf(self):
-        '''Run configuration (dictionary)
+        '''Configuration (namedtuple)
         '''
-        return self._conf
+        conf = namedtuple('conf', field_names=self._conf.keys())
+        return conf(**self._conf)  # prevent changing dict
 
     @property
     def run_conf(self):
-        '''Run configuration (dictionary)
+        '''Run configuration (namedtuple)
         '''
-        return self._run_conf
+        run_conf = namedtuple('run_conf', field_names=self._run_conf.keys())
+        return run_conf(**self._run_conf)  # prevent changing dict
 
     @abc.abstractproperty
     def _default_run_conf(self):
@@ -98,21 +100,30 @@ class RunBase():
 
     @property
     def default_run_conf(self):
-        '''Default run configuration (dictionary)
+        '''Default run configuration (namedtuple)
         '''
-        return self._default_run_conf
+        default_run_conf = namedtuple('default_run_conf', field_names=self._default_run_conf.keys())
+        return default_run_conf(**self._default_run_conf)  # prevent changing dict
 
     @property
     def working_dir(self):
-        return self.conf['working_dir']
+        return self._conf['working_dir']
 
     @property
     def run_number(self):
         return self._run_number
 
+    @run_number.setter
+    def run_number(self, value):
+        raise AttributeError
+
     @property
     def run_status(self):
         return self._run_status
+
+    @run_status.setter
+    def run_status(self, value):
+        raise AttributeError
 
     def run(self, run_conf, run_number=None):
         self._init(run_conf, run_number)
@@ -151,16 +162,16 @@ class RunBase():
         logging.info('Starting run #%d (%s) in %s', self.run_number, self.__class__.__name__, self.working_dir)
 
     def _init_run_conf(self, run_conf, update=False):
-        sc = namedtuple('run_configuration', field_names=self.default_run_conf.iterkeys())
+        sc = namedtuple('run_configuration', field_names=self._default_run_conf.keys())
         if update:
-            default_run_conf = sc(**self.run_conf)
+            default_run_conf = sc(**self._run_conf)
         else:
-            default_run_conf = sc(**self.default_run_conf)
+            default_run_conf = sc(**self._default_run_conf)
         if run_conf:
             self._run_conf = default_run_conf._replace(**run_conf)._asdict()
         else:
             self._run_conf = default_run_conf._asdict()
-        self.__dict__.update(self.run_conf)
+        self.__dict__.update(self._run_conf)
 
     @contextmanager
     def _run(self):
@@ -358,10 +369,17 @@ class RunManager(object):
             import win32api
             win32api.SetConsoleCtrlHandler(handler, 1)
 
-        self.conf = conf
+        self._conf = None
         self.current_run = None
         self._conf_path = None
         self.init(conf)
+
+    @property
+    def conf(self):
+        '''Configuration (namedtuple)
+        '''
+        conf = namedtuple('conf', field_names=self._conf.keys())
+        return conf(**self._conf)  # prevent changing dict
 
     def init(self, conf):
         if isinstance(conf, basestring):
@@ -370,18 +388,18 @@ class RunManager(object):
             self._conf_path = conf.name
         else:
             self._conf_path = None
-        self.conf = self.open_conf(conf)
-        if 'working_dir' in self.conf and self.conf['working_dir']:
+        self._conf = self.open_conf(conf)
+        if 'working_dir' in self._conf and self._conf['working_dir']:
             # dirty fix for Windows pathes
-            self.conf['working_dir'] = os.path.normpath(self.conf['working_dir'].replace('\\', '/'))
-            if self._conf_path and not os.path.isabs(self.conf['working_dir']):
+            self._conf['working_dir'] = os.path.normpath(self._conf['working_dir'].replace('\\', '/'))
+            if self._conf_path and not os.path.isabs(self._conf['working_dir']):
                 # if working_dir is relative path, join path to configuration file and working_dir
-                self.conf['working_dir'] = os.path.join(os.path.dirname(self._conf_path), self.conf['working_dir'])
+                self._conf['working_dir'] = os.path.join(os.path.dirname(self._conf_path), self._conf['working_dir'])
             else:
                 # working_dir is absolute path, keep that
                 pass
         elif self._conf_path:
-            self.conf['working_dir'] = os.path.dirname(self._conf_path)
+            self._conf['working_dir'] = os.path.dirname(self._conf_path)
         else:
             raise ValueError('Cannot deduce working directory from configuration')
 
@@ -433,19 +451,19 @@ class RunManager(object):
         If use_thread is False, returns run status.
         '''
         conf = self.open_conf(conf)
-        self.conf.update(conf)
+        self._conf.update(conf)
 
         if isclass(run):
             # instantiate the class
-            run = run(conf=self.conf)
+            run = run(conf=self._conf)
 
         local_run_conf = {}
         # general parameters from conf
-        if 'run_conf' in self.conf:
-            local_run_conf.update(self.conf['run_conf'])
+        if 'run_conf' in self._conf:
+            local_run_conf.update(self._conf['run_conf'])
         # check for class name, scan specific parameters from conf
-        if run.__class__.__name__ in self.conf:
-            local_run_conf.update(self.conf[run.__class__.__name__])
+        if run.__class__.__name__ in self._conf:
+            local_run_conf.update(self._conf[run.__class__.__name__])
 
         run_conf = self.open_conf(run_conf)
         # check for class name, scan specific parameters from conf
@@ -530,14 +548,14 @@ class RunManager(object):
                         elif not len(clsmembers):
                             raise ValueError('Found no matching class.')
                         run_cls = clsmembers[0][1]
-                    if run_cls.__class__.__name__ in self.conf:
-                        run_conf = self.conf[run_cls.__class__.__name__]
+                    if run_cls.__class__.__name__ in self._conf:
+                        run_conf = self._conf[run_cls.__class__.__name__]
                     else:
                         run_conf = {}
                     for param in parts[1:]:
                         key, value = re.split('\s*[=:]\s*', param, 1)
                         run_conf[key] = literal_eval(value)
-                    run_list.append(run_cls(conf=self.conf, run_conf=run_conf))
+                    run_list.append(run_cls(conf=self._conf, run_conf=run_conf))
             return run_list
         else:
             AttributeError('Primlist format not supported.')

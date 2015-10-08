@@ -56,17 +56,17 @@ class Fei4RunBase(RunBase):
     @property
     def working_dir(self):
         if self.module_id:
-            return os.path.join(self.conf['working_dir'], self.module_id)
+            return os.path.join(self._conf['working_dir'], self.module_id)
         else:
-            return os.path.join(self.conf['working_dir'], self.run_id)
+            return os.path.join(self._conf['working_dir'], self.run_id)
 
     @property
     def dut(self):
-        return self.conf['dut']
+        return self._conf['dut']
 
     @property
     def register(self):
-        return self.conf['fe_configuration']
+        return self._conf['fe_configuration']
 
     @property
     def output_filename(self):
@@ -77,8 +77,8 @@ class Fei4RunBase(RunBase):
 
     @property
     def module_id(self):
-        if 'module_id' in self.conf and self.conf['module_id']:
-            module_id = str(self.conf['module_id'])
+        if 'module_id' in self._conf and self._conf['module_id']:
+            module_id = str(self._conf['module_id'])
             module_id = re.sub(r"[^\w\s+]", '', module_id)
             return re.sub(r"\s+", '_', module_id).lower()
         else:
@@ -196,35 +196,35 @@ class Fei4RunBase(RunBase):
             logging.warning('Omit initialization of DUT %s', self.dut.name)
 
     def init_fe(self):
-        if 'fe_configuration' in self.conf:
+        if 'fe_configuration' in self._conf:
             last_configuration = self._get_configuration()
             # init config, a number <=0 will also do the initialization (run 0 does not exists)
-            if (not self.conf['fe_configuration'] and not last_configuration) or (isinstance(self.conf['fe_configuration'], (int, long)) and self.conf['fe_configuration'] <= 0):
-                if 'chip_address' in self.conf and self.conf['chip_address']:
-                    chip_address = self.conf['chip_address']
+            if (not self._conf['fe_configuration'] and not last_configuration) or (isinstance(self._conf['fe_configuration'], (int, long)) and self._conf['fe_configuration'] <= 0):
+                if 'chip_address' in self._conf and self._conf['chip_address']:
+                    chip_address = self._conf['chip_address']
                     broadcast = False
                 else:
                     chip_address = 0
                     broadcast = True
-                if 'fe_flavor' in self.conf and self.conf['fe_flavor']:
-                    self._conf['fe_configuration'] = FEI4Register(fe_type=self.conf['fe_flavor'], chip_address=chip_address, broadcast=broadcast)
+                if 'fe_flavor' in self._conf and self._conf['fe_flavor']:
+                    self._conf['fe_configuration'] = FEI4Register(fe_type=self._conf['fe_flavor'], chip_address=chip_address, broadcast=broadcast)
                 else:
                     raise ValueError('No fe_flavor given')
             # use existing config
-            elif not self.conf['fe_configuration'] and last_configuration:
+            elif not self._conf['fe_configuration'] and last_configuration:
                 self._conf['fe_configuration'] = FEI4Register(configuration_file=last_configuration)
             # path
-            elif isinstance(self.conf['fe_configuration'], basestring):
-                if os.path.isabs(self.conf['fe_configuration']):
-                    fe_configuration = self.conf['fe_configuration']
+            elif isinstance(self._conf['fe_configuration'], basestring):
+                if os.path.isabs(self._conf['fe_configuration']):
+                    fe_configuration = self._conf['fe_configuration']
                 else:
-                    fe_configuration = os.path.join(self.conf['working_dir'], self.conf['fe_configuration'])
+                    fe_configuration = os.path.join(self._conf['working_dir'], self._conf['fe_configuration'])
                 self._conf['fe_configuration'] = FEI4Register(configuration_file=fe_configuration)
             # run number
-            elif isinstance(self.conf['fe_configuration'], (int, long)) and self.conf['fe_configuration'] > 0:
-                self._conf['fe_configuration'] = FEI4Register(configuration_file=self._get_configuration(self.conf['fe_configuration']))
+            elif isinstance(self._conf['fe_configuration'], (int, long)) and self._conf['fe_configuration'] > 0:
+                self._conf['fe_configuration'] = FEI4Register(configuration_file=self._get_configuration(self._conf['fe_configuration']))
             # assume fe_configuration already initialized
-            elif not isinstance(self.conf['fe_configuration'], FEI4Register):
+            elif not isinstance(self._conf['fe_configuration'], FEI4Register):
                 raise ValueError('No valid fe_configuration given')
             # init register utils
             self.register_utils = FEI4RegisterUtils(self.dut, self.register)
@@ -245,40 +245,40 @@ class Fei4RunBase(RunBase):
 
     def pre_run(self):
         # opening ZMQ context and binding socket
-        if isinstance(self.conf['send_data'], basestring):
+        if isinstance(self._conf['send_data'], basestring):
             self._conf['zmq_context'] = zmq.Context()
-            logging.info('Creating socket connection to server %s', self.conf['send_data'])
-            pub_socket = self.conf['zmq_context'].socket(zmq.PUB)  # publisher socket
-            pub_socket.bind(self.conf['send_data'])
+            logging.info('Creating socket connection to server %s', self._conf['send_data'])
+            pub_socket = self._conf['zmq_context'].socket(zmq.PUB)  # publisher socket
+            pub_socket.bind(self._conf['send_data'])
             self._conf['send_data'] = pub_socket
         else:
             logging.info('Using existing socket')
         # scan parameters
-        if 'scan_parameters' in self.run_conf:
-            if isinstance(self.run_conf['scan_parameters'], basestring):
-                self.run_conf['scan_parameters'] = ast.literal_eval(self.run_conf['scan_parameters'])
-            sp = namedtuple('scan_parameters', field_names=zip(*self.run_conf['scan_parameters'])[0])
-            self.scan_parameters = sp(*zip(*self.run_conf['scan_parameters'])[1])
+        if 'scan_parameters' in self._run_conf:
+            if isinstance(self._run_conf['scan_parameters'], basestring):
+                self._run_conf['scan_parameters'] = ast.literal_eval(self._run_conf['scan_parameters'])
+            sp = namedtuple('scan_parameters', field_names=zip(*self._run_conf['scan_parameters'])[0])
+            self.scan_parameters = sp(*zip(*self._run_conf['scan_parameters'])[1])
         else:
             sp = namedtuple_with_defaults('scan_parameters', field_names=[])
             self.scan_parameters = sp()
         logging.info('Scan parameter(s): %s', ', '.join(['%s=%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None')
 
         # init DUT
-        if not isinstance(self.conf['dut'], Dut):
+        if not isinstance(self._conf['dut'], Dut):
             module_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-            if isinstance(self.conf['dut'], basestring):
+            if isinstance(self._conf['dut'], basestring):
                 # dirty fix for Windows pathes
-                self.conf['dut'] = os.path.normpath(self.conf['dut'].replace('\\', '/'))
+                self._conf['dut'] = os.path.normpath(self._conf['dut'].replace('\\', '/'))
                 # abs path
-                if os.path.isabs(self.conf['dut']):
-                    dut = self.conf['dut']
+                if os.path.isabs(self._conf['dut']):
+                    dut = self._conf['dut']
                 # working dir
-                elif os.path.exists(os.path.join(self.conf['working_dir'], self.conf['dut'])):
-                    dut = os.path.join(self.conf['working_dir'], self.conf['dut'])
+                elif os.path.exists(os.path.join(self._conf['working_dir'], self._conf['dut'])):
+                    dut = os.path.join(self._conf['working_dir'], self._conf['dut'])
                 # path of this file
-                elif os.path.exists(os.path.join(module_path, self.conf['dut'])):
-                    dut = os.path.join(module_path, self.conf['dut'])
+                elif os.path.exists(os.path.join(module_path, self._conf['dut'])):
+                    dut = os.path.join(module_path, self._conf['dut'])
                 else:
                     raise ValueError('dut parameter not a valid path: %s' % self._conf['dut'])
             else:
@@ -286,24 +286,24 @@ class Fei4RunBase(RunBase):
             dut = Dut(dut)
 
             # only initialize when DUT was not initialized before
-            if 'dut_configuration' in self.conf and self.conf['dut_configuration']:
-                if isinstance(self.conf['dut_configuration'], basestring):
+            if 'dut_configuration' in self._conf and self._conf['dut_configuration']:
+                if isinstance(self._conf['dut_configuration'], basestring):
                     # dirty fix for Windows pathes
-                    self.conf['dut_configuration'] = os.path.normpath(self.conf['dut_configuration'].replace('\\', '/'))
+                    self._conf['dut_configuration'] = os.path.normpath(self._conf['dut_configuration'].replace('\\', '/'))
                     # abs path
-                    if os.path.isabs(self.conf['dut_configuration']):
-                        dut_configuration = self.conf['dut_configuration']
+                    if os.path.isabs(self._conf['dut_configuration']):
+                        dut_configuration = self._conf['dut_configuration']
                     # working dir
-                    elif os.path.exists(os.path.join(self.conf['working_dir'], self.conf['dut_configuration'])):
-                        dut_configuration = os.path.join(self.conf['working_dir'], self.conf['dut_configuration'])
+                    elif os.path.exists(os.path.join(self._conf['working_dir'], self._conf['dut_configuration'])):
+                        dut_configuration = os.path.join(self._conf['working_dir'], self._conf['dut_configuration'])
                     # path of dut file
-                    elif os.path.exists(os.path.join(os.path.dirname(self.dut.conf_path), self.conf['dut_configuration'])):
-                        dut_configuration = os.path.join(os.path.dirname(self.dut.conf_path), self.conf['dut_configuration'])
+                    elif os.path.exists(os.path.join(os.path.dirname(dut.conf_path), self._conf['dut_configuration'])):
+                        dut_configuration = os.path.join(os.path.dirname(dut.conf_path), self._conf['dut_configuration'])
                     # path of this file
-                    elif os.path.exists(os.path.join(module_path, self.conf['dut_configuration'])):
-                        dut_configuration = os.path.join(module_path, self.conf['dut_configuration'])
+                    elif os.path.exists(os.path.join(module_path, self._conf['dut_configuration'])):
+                        dut_configuration = os.path.join(module_path, self._conf['dut_configuration'])
                     else:
-                        raise ValueError('dut_configuration parameter not a valid path: %s' % self.conf['dut_configuration'])
+                        raise ValueError('dut_configuration parameter not a valid path: %s' % self._conf['dut_configuration'])
                     # make dict
                     dut_configuration = RunManager.open_conf(dut_configuration)
                     # change bit file path
@@ -313,11 +313,11 @@ class Fei4RunBase(RunBase):
                         if os.path.isabs(bit_file):
                             pass
                         # working dir
-                        elif os.path.exists(os.path.join(self.conf['working_dir'], bit_file)):
-                            bit_file = os.path.join(self.conf['working_dir'], bit_file)
+                        elif os.path.exists(os.path.join(self._conf['working_dir'], bit_file)):
+                            bit_file = os.path.join(self._conf['working_dir'], bit_file)
                         # path of dut file
-                        elif os.path.exists(os.path.join(os.path.dirname(self.dut.conf_path), bit_file)):
-                            bit_file = os.path.join(os.path.dirname(self.dut.conf_path), bit_file)
+                        elif os.path.exists(os.path.join(os.path.dirname(dut.conf_path), bit_file)):
+                            bit_file = os.path.join(os.path.dirname(dut.conf_path), bit_file)
                         # path of this file
                         elif os.path.exists(os.path.join(module_path, bit_file)):
                             bit_file = os.path.join(module_path, bit_file)
@@ -348,7 +348,7 @@ class Fei4RunBase(RunBase):
             self.fifo_readout.reset_rx()
             self.fifo_readout.reset_sram_fifo()
             self.fifo_readout.print_readout_status()
-            with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, register=self.register, conf=self.conf, run_conf=self.run_conf, scan_parameters=self.scan_parameters._asdict(), socket=self.conf['send_data']) as self.raw_data_file:
+            with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, register=self.register, conf=self._conf, run_conf=self._run_conf, scan_parameters=self.scan_parameters._asdict(), socket=self._conf['send_data']) as self.raw_data_file:
                 # scan
                 self.scan()
 
@@ -507,7 +507,7 @@ class Fei4RunBase(RunBase):
         self.fifo_readout.stop(timeout=timeout)
 
     def _cleanup(self):  # called in run base after exception handling
-        if self.conf['send_error_msg'] and self._run_status == run_status.crashed:
+        if self._conf['send_error_msg'] and self._run_status == run_status.crashed:
             try:
                 import requests
                 ip = requests.request('GET', 'http://myip.dnsomatic.com').text
