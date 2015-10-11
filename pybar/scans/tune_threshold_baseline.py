@@ -38,8 +38,12 @@ class ThresholdBaselineTuning(Fei4RunBase):
             self.consecutive_lvl1 = (2 ** self.register.global_registers['Trig_Count']['bitlength'])
         else:
             self.consecutive_lvl1 = self.trig_count
-        if self.occupancy_limit * self.n_triggers * self.consecutive_lvl1 < 1.0:
-            logging.warning('Number of triggers too low for given occupancy limit. Any noise hit will lead to a masked pixel.')
+        self.abs_occ_limit = int(self.occupancy_limit * self.n_triggers * self.consecutive_lvl1)
+        if self.abs_occ_limit <= 0:
+            logging.info('Any noise hit will lead to an increased pixel threshold.')
+        else:
+            logging.info('The pixel threshold of any pixel with an occpancy >%d will be increased' % self.abs_occ_limit)
+            
 
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))
@@ -143,7 +147,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
                 occ_hist = self.histograming.get_occupancy()[:, :, 0]
                 # noisy pixels are set to 1
                 occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
-                occ_mask[occ_hist > self.occupancy_limit * self.n_triggers * self.consecutive_lvl1] = 1
+                occ_mask[occ_hist > self.abs_occ_limit] = 1
 
                 tdac_reg = self.register.get_pixel_register_value('TDAC')
                 decrease_pixel_mask = np.logical_and(occ_mask > 0, tdac_reg > 0)
