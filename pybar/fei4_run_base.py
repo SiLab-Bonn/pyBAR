@@ -47,9 +47,9 @@ class Fei4RunBase(RunBase):
         if 'zmq_context' not in conf:
             conf.update({'zmq_context': None})  # ZMQ context
         if 'send_data' not in conf:
-            conf.update({'send_data': None})  # PUB socket or string
+            conf.update({'send_data': None})  # address string of PUB socket
         if 'send_error_msg' not in conf:
-            conf.update({'send_error_msg': None})
+            conf.update({'send_error_msg': None})  # bool
 
         self.err_queue = Queue()
         self.fifo_readout = None
@@ -247,12 +247,9 @@ class Fei4RunBase(RunBase):
 
     def pre_run(self):
         # opening ZMQ context and binding socket
-        if isinstance(self._conf['send_data'], basestring):
-            self._conf['zmq_context'] = zmq.Context()
-            logging.info('Creating socket connection to server %s', self._conf['send_data'])
-            pub_socket = self._conf['zmq_context'].socket(zmq.PUB)  # publisher socket
-            pub_socket.bind(self._conf['send_data'])
-            self._conf['send_data'] = pub_socket
+        if self._conf['send_data'] and not self._conf['zmq_context']:
+            logging.info('Creating ZMQ context')
+            self._conf['zmq_context'] = zmq.Context()  # contexts are thread safe unlike sockets
         else:
             logging.info('Using existing socket')
         # scan parameters
@@ -350,7 +347,7 @@ class Fei4RunBase(RunBase):
             self.fifo_readout.reset_rx()
             self.fifo_readout.reset_sram_fifo()
             self.fifo_readout.print_readout_status()
-            with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, register=self.register, conf=self._conf, run_conf=self._run_conf, scan_parameters=self.scan_parameters._asdict(), socket=self._conf['send_data']) as self.raw_data_file:
+            with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, register=self.register, conf=self._conf, run_conf=self._run_conf, scan_parameters=self.scan_parameters._asdict(), context=self._conf['zmq_context'], socket_address=self._conf['send_data']) as self.raw_data_file:
                 # scan
                 self.scan()
 
