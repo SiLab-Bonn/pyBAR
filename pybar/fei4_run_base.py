@@ -42,6 +42,8 @@ class Fei4RunBase(RunBase):
         super(Fei4RunBase, self).__init__(conf=conf, run_conf=run_conf)
 
         # default conf parameters
+        if 'working_dir' not in conf:
+            conf.update({'working_dir': ''})  # path string, if empty, path of configuration.yaml file will be used
         if 'zmq_context' not in conf:
             conf.update({'zmq_context': None})  # ZMQ context
         if 'send_data' not in conf:
