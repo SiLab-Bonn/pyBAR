@@ -23,7 +23,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
     _default_run_conf = {
         "occupancy_limit": 0,  # occupancy limit, when reached the TDAC will be decreased (increasing threshold). 0 will mask any pixel with occupancy greater than zero
         "scan_parameters": [('Vthin_AltFine', (120, None)), ('Step', 60)],  # the Vthin_AltFine range, number of steps (repetition at constant Vthin_AltFine)
-        "increase_threshold": 5,  # increase the threshold in VthinAF after tuning
+        "increase_threshold": 5,  # increasing the global threshold (Vthin_AltFine) after tuning
         "disabled_pixels_limit": 0.01,  # limit of disabled pixels, fraction of all pixels
         "use_enable_mask": False,  # if True, enable mask from config file anded with mask (from col_span and row_span), if False use mask only for enable mask
         "n_triggers": 10000,  # total number of trigger sent to FE
@@ -181,7 +181,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
                     else:
                         logging.info('Found %d noisy pixels... repeat tuning step for Vthin_AltFine %d', occ_mask.sum(), reg_val)
 
-            if disabled_pixels > disabled_pixels_limit_cnt:
+            if disabled_pixels > disabled_pixels_limit_cnt or scan_parameter_range[1] == reg_val:
                 self.last_good_threshold = self.register.get_global_register_value("Vthin_AltFine")
                 self.last_good_tdac = self.register.get_pixel_register_value('TDAC')
                 self.last_good_enable_mask = self.register.get_pixel_register_value('Enable')
