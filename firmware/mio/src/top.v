@@ -42,7 +42,7 @@ module top (
 
     //debug ports
 //    output wire [15:0] DEBUG_D,
-//    output wire [10:0] MULTI_IO, // Pin 1-11, 12: not connected, 13, 15: DGND, 14, 16: VCC_3.3V
+    output wire [10:0] MULTI_IO, // Pin 1-11, 12: not connected, 13, 15: DGND, 14, 16: VCC_3.3V
 
     //LED
     output wire [4:0] LED,
@@ -168,9 +168,6 @@ wire RX_CLK;
 wire RX_CLK2X;
 wire DATA_CLK;
 wire CLK_LOCKED;
-
-//assign MULTI_IO = 11'b000_0000_0000;
-//assign DEBUG_D = 16'ha5a5;
 
 // LEMO Rx
 wire LEMO_TRIGGER, MULTI_PURPOSE, TDC_IN;
@@ -1056,6 +1053,11 @@ assign LED[2] = RX_READY[2] & ((RX_8B10B_DECODER_ERR[2]? CLK_3HZ : CLK_1HZ) | RX
 assign LED[3] = RX_READY[3] & ((RX_8B10B_DECODER_ERR[3]? CLK_3HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[3] | RX_FIFO_FULL[3]);
 `endif
 assign LED[4] = (CLK_1HZ | FIFO_FULL) & CLK_LOCKED;
+
+
+// Deubug
+assign MULTI_IO = {TDC_IN_FROM_TDC, 10'b00_0000_0000};
+//assign DEBUG_D = 16'ha5a5;
 
 // Chipscope
 `ifdef SYNTHESIS_NOT
