@@ -540,6 +540,7 @@ wire TLU_CLOCK;
 wire LEMO_RESET;
 assign LEMO_RESET = LEMO_RX[1];
 
+//assign TX[0]= TDC_IN;
 assign TX[0] = TLU_CLOCK; // trigger clock; also connected to RJ45 output
 assign TX[1] = TLU_BUSY | (~CMD_READY/*CMD_CAL*/ & ~CMD_EXT_START_ENABLE); // TLU_BUSY signal; also connected to RJ45 output. Asserted when TLU FSM has accepted a trigger or when CMD FSM is busy (when CMD_EXT_START_ENABLE is disabled).
 
@@ -593,7 +594,7 @@ rrp_arbiter
     .RST(BUS_RST),
     .CLK(BUS_CLK),
 
-    .WRITE_REQ({~FIFO_EMPTY, ~TLU_FIFO_EMPTY, ~TDC_FIFO_EMPTY}),
+    .WRITE_REQ({~FIFO_EMPTY, ~TDC_FIFO_EMPTY, ~TLU_FIFO_EMPTY}),
     .HOLD_REQ({8'b0, TLU_FIFO_PEEMPT_REQ}),
     .DATA_IN({FIFO_DATA[6], FIFO_DATA[5], FIFO_DATA[4], FIFO_DATA[3], FIFO_DATA[2], FIFO_DATA[1], FIFO_DATA[0], TDC_FIFO_DATA, TLU_FIFO_DATA}),
     .READ_GRANT(READ_GRANT),
