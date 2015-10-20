@@ -63,6 +63,7 @@ class RunBase():
         self.file_lock = Lock()
         self.stop_run = Event()  # abort condition for loops
         self.abort_run = Event()
+        self.last_status_message = None
         self.last_traceback = None
 
 #     @abc.abstractproperty
@@ -145,6 +146,7 @@ class RunBase():
                 traceback.print_exc(file=f)
                 f.write('\n')
         else:
+            self.last_traceback = None
             self._run_status = run_status.finished
         self._cleanup()
         return self.run_status
@@ -214,8 +216,8 @@ class RunBase():
             log_status = logging.WARNING
         else:
             log_status = logging.ERROR
-        logging.log(log_status, 'Finished run #%d (%s) in %s (total time: %s)' % (self.run_number, self.__class__.__name__, self.working_dir, str(self.total_time)))
-        logging.log(log_status, 'Status: %s', self.run_status)
+        self.last_status_message = 'Finished run #{} ({}) in {} (total time: {})\nStatus: {}'.format(self.run_number, self.__class__.__name__, self.working_dir, str(self.total_time), self.run_status)
+        logging.log(log_status, self.last_status_message)
 
     def stop(self, msg=None):
         """Stopping a run. Control for loops.

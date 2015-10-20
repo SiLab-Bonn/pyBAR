@@ -506,18 +506,13 @@ class Fei4RunBase(RunBase):
         self.fifo_readout.stop(timeout=timeout)
 
     def _cleanup(self):  # called in run base after exception handling
-        if self._conf['send_error_msg'] and self._run_status == run_status.crashed:
+        if 'send_message' in self._conf and self._run_status in self._conf['send_message']['status']:
+            subject = '{}{} ({})'.format(self._conf['send_message']['subject_prefix'], self._run_status, gethostname())
+            body = '{}\n{}'.format(self.last_traceback, self.last_status_message)
             try:
-                import requests
-                ip = requests.request('GET', 'http://myip.dnsomatic.com').text
-            except ImportError:
-                ip = 'Unknown IP'
-            try:
-                text = 'Run %i at %s\n%s' % (self.run_number, time.strftime('%X %x %Z'), self.last_traceback)
-                send_mail(text=text, configuration=self._run_conf['send_error'], subject='PyBAR run %i report from %s %s' % (self.run_number, ip, gethostname()))
+                send_mail(subject=subject, body=body, smtp_server=self._conf['send_message']['smtp_server'], user=self._conf['send_message']['user'], password=self._conf['send_message']['password'], from_addr=self._conf['send_message']['from_addr'], to_addrs=self._conf['send_message']['to_addrs'])
             except:
-                logging.info("Failed sending pyBAR report")
-                pass
+                logging.warning("Failed sending pyBAR status report")
         super(Fei4RunBase, self)._cleanup()
 
     @abc.abstractmethod
@@ -626,18 +621,18 @@ def namedtuple_with_defaults(typename, field_names, default_values=None):
     return T
 
 
-def send_mail(text, configuration, subject=''):
+def send_mail(subject, body, smtp_server, user, password, from_addr, to_addrs):
     ''' Sends a run status mail with the traceback to a specified E-Mail address if a run crashes.
     '''
     logging.info('Send status E-Mail (' + subject + ')')
-    body = string.join((
-        "From: %s" % configuration['email_account'][0],
+    content = string.join((
+        "From: %s" % email_login[0],
         "To: %s" % str(configuration['email_to']).strip('[]'),
         "Subject: %s" % subject,
         "",
-        text),
+        body),
         "\r\n")
-    server = smtplib.SMTP_SSL(configuration['email_host'])
-    server.login(configuration['email_account'][0], configuration['email_account'][1])
-    server.sendmail(configuration['email_account'][0], configuration['email_to'], body)
+    server = smtplib.SMTP_SSL(smtp_server)
+    server.login(user, password)
+    server.sendmail(from_addr, to_addrs, content)
     server.quit()
