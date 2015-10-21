@@ -446,7 +446,7 @@ def plot_cluster_size(hist, title=None, filename=None):
 def plot_scurves(occupancy_hist, scan_parameters, title='S-Curves', ylabel='Occupancy', max_occ=None, scan_parameter_name=None, min_x=None, max_x=None, x_scale=1.0, y_scale=1., filename=None):  # tornado plot
     occ_mask = np.all(occupancy_hist == 0, axis=2)
     if max_occ is None:
-        max_occ = math.ceil(2 * np.median(np.amax(occupancy_hist, axis=2)))
+        max_occ = math.ceil(2 * np.ma.median(np.amax(occupancy_hist, axis=2)))
         if np.allclose(max_occ, 0.0):
             max_occ = 1.0
     if len(occupancy_hist.shape) < 3:
@@ -735,7 +735,11 @@ def create_1d_hist(fig, ax, hist, title=None, x_axis_title=None, y_axis_title=No
     pdf_fitted = norm.pdf(points, loc=param[0], scale=param[1]) * (len(masked_hist_compressed) * bin_width)
     ax.plot(points, pdf_fitted, "r--", label='Normal distribution')
 #     ax.plot(points, hist_fit, "g-", label='Normal distribution')
-    median = np.median(masked_hist_compressed)
+    try:
+        median = np.median(masked_hist_compressed)
+    except IndexError:
+        logging.warning('Cannot create 1D histogram named %s', title)
+        return
     ax.axvline(x=median, color="g")
 #     chi2, pval = chisquare(masked_hist_compressed)
 #     _, p_val = mstats.normaltest(masked_hist_compressed)
