@@ -13,7 +13,7 @@ module_id : module_test  # module identifier / name, sub-folder with given name 
 send_message :
     status: ['CRASHED', 'ABORTED', 'FINISHED']  # run status that triggers emails
     subject_prefix: "pyBAR run report: "
-    smpt_server: 'smtp.alert.com'  # outgoing SMTP mail server
+    smtp_server: 'smtp.alert.com'  # outgoing SMTP mail server
     user: 'my.email@alert.com'  # usually from_addr
     password: 'my_secret_token'  # the password
     from_addr: 'my.email@alert.com'  # email address of the sender
