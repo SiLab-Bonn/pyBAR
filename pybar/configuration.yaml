@@ -11,7 +11,7 @@ module_id : module_test  # module identifier / name, sub-folder with given name 
 # *** configuration ***
 #send_data : 'tcp://127.0.0.1:5678'  # to allow incoming connections on all interfaces use 0.0.0.0
 send_message :
-    status: ['CRASHED', 'ABORTED', 'FINISHED']  # run status that triggers emails
+    status: ['CRASHED', 'ABORTED', 'STOPPED', 'FINISHED']  # run status that triggers emails
     subject_prefix: "pyBAR run report: "
     smtp_server: 'smtp.alert.com'  # outgoing SMTP mail server
     user: 'my.email@alert.com'  # usually from_addr
