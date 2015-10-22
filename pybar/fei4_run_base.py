@@ -15,9 +15,11 @@ from contextlib import contextmanager
 import abc
 import ast
 import inspect
+import sys
+
 from basil.dut import Dut
 
-from pybar.run_manager import RunManager, RunBase, RunAborted, RunStopped, run_status
+from pybar.run_manager import RunManager, RunBase, RunAborted, RunStopped
 from pybar.fei4.register import FEI4Register
 from pybar.fei4.register_utils import FEI4RegisterUtils, is_fe_ready
 from pybar.daq.fifo_readout import FifoReadout, RxSyncError, EightbTenbError, FifoError, NoDataTimeout, StopTimeout
@@ -246,6 +248,8 @@ class Fei4RunBase(RunBase):
             pass  # no fe_configuration
 
     def pre_run(self):
+        # clear error queue in case run is executed a second time
+        self.err_queue.queue.clear()
         # opening ZMQ context and binding socket
         if self._conf['send_data'] and not self._conf['zmq_context']:
             logging.info('Creating ZMQ context')
@@ -352,37 +356,33 @@ class Fei4RunBase(RunBase):
                 self.scan()
 
     def post_run(self):
+        # print FIFO status
         try:
             self.fifo_readout.print_readout_status()
-        # no device?
-        except Exception:
+        except Exception:  # no device?
             pass
-
-        if not self.err_queue.empty():
-            exc = self.err_queue.get()
-            # well known errors
-            if isinstance(exc[1], (RxSyncError, EightbTenbError, FifoError, NoDataTimeout, StopTimeout)):
-                raise RunAborted(exc[1])
-            # some other error via handle_err(), print to crash.log
-            else:
-                raise exc[0], exc[1], exc[2]
-        elif self.abort_run.is_set():
-            raise RunAborted('Read the log')
 
         # analyzing data
         try:
             self.analyze()
-        # known errors
-        except AnalysisError as e:
-            logging.error('Analysis of data failed: %s', e)
-            raise RunAborted('Read the log')
-        # analyzed data, save config
-        else:
+        except Exception:  # analysis errors
+            self.handle_err(sys.exc_info())
+        else:  # analyzed data, save config
             self.register.save_configuration(self.output_filename)
 
-        # other reasons
-        if self.stop_run.is_set():
-            raise RunStopped('Read the log')
+        if not self.err_queue.empty():
+            exc = self.err_queue.get()
+            # well known errors, do not print traceback
+            if isinstance(exc[1], (RxSyncError, EightbTenbError, FifoError, NoDataTimeout, StopTimeout, AnalysisError)):
+                raise RunAborted(exc[1])
+            # some other error via handle_err(), print traceback
+            else:
+                raise exc[0], exc[1], exc[2]
+        elif self.abort_run.is_set():
+            raise RunAborted()
+        elif self.stop_run.is_set():
+            raise RunStopped()
+        # if ending up here, succcess!
 
     def cleanup_run(self):
         # no execption should be thrown here
@@ -436,8 +436,10 @@ class Fei4RunBase(RunBase):
             self.fifo_readout.print_readout_status()
             self.fifo_readout.reset_rx()
         else:
+            # print just the first error massage
+            if not self.abort_run.is_set():
+                self.abort(msg=str(exc[1]))
             self.err_queue.put(exc)
-            self.abort(msg='%s' % exc[1])
 
     def _get_configuration(self, run_number=None):
         def find_file(run_number):
@@ -506,14 +508,15 @@ class Fei4RunBase(RunBase):
         self.fifo_readout.stop(timeout=timeout)
 
     def _cleanup(self):  # called in run base after exception handling
+        super(Fei4RunBase, self)._cleanup()
         if 'send_message' in self._conf and self._run_status in self._conf['send_message']['status']:
             subject = '{}{} ({})'.format(self._conf['send_message']['subject_prefix'], self._run_status, gethostname())
-            body = '{}\n{}'.format(self.last_traceback, self.last_status_message)
+            last_status_message = '{} run {} ({}) in {} (total time: {})'.format(self.run_status, self.run_number, self.__class__.__name__, self.working_dir, str(self._total_run_time))
+            body = '\n'.join(item for item in [self._last_traceback, last_status_message] if item)
             try:
                 send_mail(subject=subject, body=body, smtp_server=self._conf['send_message']['smtp_server'], user=self._conf['send_message']['user'], password=self._conf['send_message']['password'], from_addr=self._conf['send_message']['from_addr'], to_addrs=self._conf['send_message']['to_addrs'])
             except:
                 logging.warning("Failed sending pyBAR status report")
-        super(Fei4RunBase, self)._cleanup()
 
     @abc.abstractmethod
     def configure(self):
@@ -626,8 +629,8 @@ def send_mail(subject, body, smtp_server, user, password, from_addr, to_addrs):
     '''
     logging.info('Send status E-Mail (' + subject + ')')
     content = string.join((
-        "From: %s" % email_login[0],
-        "To: %s" % str(configuration['email_to']).strip('[]'),
+        "From: %s" % from_addr,
+        "To: %s" % ','.join(to_addrs),  # comma separated according to RFC822
         "Subject: %s" % subject,
         "",
         body),
