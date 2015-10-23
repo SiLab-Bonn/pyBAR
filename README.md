@@ -33,14 +33,9 @@ The features of the host software in Python and C++:
 
 ## Installation
 
-[Basil](https://github.com/SiLab-Bonn/basil) (==2.1.2) is required:
-  ```
-  pip install basil_daq==2.1.2
-  ```
-
 The following packages are required for pyBAR's core functionality:
   ```
-  bitarray cython matplotlib numpy pandas progressbar-latest pyyaml scipy tables
+  basil_daq bitarray cython matplotlib numpy pandas progressbar-latest pyyaml scipy tables
   ```
 
 For full functionality, the following additional packages are required:
@@ -48,7 +43,7 @@ For full functionality, the following additional packages are required:
   ipython mock nose pyqtgraph pyserial pyvisa pyvisa-py pyzmq sphinx vitables
   ```
 
-Run the following commands to install the packages:
+Run the *following commands* to install the packages:
   ```
   conda install bitarray cython ipython matplotlib mock nose numpy pandas pyserial pytables pyyaml pyzmq scipy sphinx
   
@@ -58,6 +53,11 @@ Run the following commands to install the packages:
 On Windows, the `pywin32` package is required:
   ```
   conda install pywin32
+  ```
+
+[Basil](https://github.com/SiLab-Bonn/basil) (==2.1.2) is required:
+  ```
+  pip install basil_daq==2.1.2
   ```
 
 To enable support for USB devices (MIO, MIO3 and MMC3), the following additional packages are required:
