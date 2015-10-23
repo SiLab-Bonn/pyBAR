@@ -24,8 +24,8 @@ from functools import wraps
 punctuation = """!,.:;?"""
 
 
-_RunStatus = namedtuple('RunStatus', ['running', 'finished', 'aborted', 'crashed'])
-run_status = _RunStatus(running='RUNNING', finished='FINISHED', aborted='ABORTED', crashed='CRASHED')
+_RunStatus = namedtuple('RunStatus', ['running', 'finished', 'stopped', 'aborted', 'crashed'])
+run_status = _RunStatus(running='RUNNING', finished='FINISHED', stopped='STOPPED', aborted='ABORTED', crashed='CRASHED')
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
@@ -55,7 +55,6 @@ class RunBase():
         run_conf : dict
             Run configuration for single run.
         """
-        logging.info('Initializing %s', self.__class__.__name__)
         self._conf = conf
         self._init_run_conf(run_conf)
         self._run_number = None
@@ -63,7 +62,7 @@ class RunBase():
         self.file_lock = Lock()
         self.stop_run = Event()  # abort condition for loops
         self.abort_run = Event()
-        self.last_traceback = None
+        self._last_traceback = None
 
 #     @abc.abstractproperty
 #     def _run_id(self):
@@ -125,41 +124,64 @@ class RunBase():
     def run_status(self, value):
         raise AttributeError
 
-    def run(self, run_conf, run_number=None):
+    def run(self, run_conf, run_number=None, signal_handler=None):
         self._init(run_conf, run_number)
+        logging.info('Starting run %d (%s) in %s', self.run_number, self.__class__.__name__, self.working_dir)
+        # set up signal handler
+        if current_thread().name == 'MainThread':
+            logging.info('Press Ctrl-C to stop run')
+            if not signal_handler:
+                signal_handler = self._signal_handler
+            signal.signal(signal.SIGINT, signal_handler)
         try:
             with self._run():
                 self.do_run()
         except RunAborted as e:
             self._run_status = run_status.aborted
-            logging.warning('Run %s was aborted: %s', self.run_number, e)
-        except RunStopped:
+            self._last_traceback = None
+            self._last_error_message = e
+        except RunStopped as e:
             self._run_status = run_status.finished
-            logging.info('Run %s was stopped', self.run_number)
+            self._last_traceback = None
+            self._last_error_message = e
         except Exception as e:
             self._run_status = run_status.crashed
-            self.last_traceback = traceback.format_exc()
-            logging.error('Unexpected exception during run %s: %s' % (self.run_number, self.last_traceback))
-            with open(os.path.join(self.working_dir, "crash" + ".log"), 'a+') as f:
-                f.write('-------------------- Run %i --------------------\n' % self.run_number)
-                traceback.print_exc(file=f)
-                f.write('\n')
+            self._last_traceback = traceback.format_exc()
+            self._last_error_message = e
         else:
             self._run_status = run_status.finished
+            self._last_traceback = None
+            self._last_error_message = None
+        # revert signal handler to default
+        if current_thread().name == 'MainThread':
+            signal.signal(signal.SIGINT, signal.SIG_DFL)
         self._cleanup()
+        # log message
+        if self.run_status == run_status.finished:
+            log_status = logging.INFO
+        else:
+            if self.run_status == run_status.stopped:
+                log_status = logging.INFO
+            elif self.run_status == run_status.aborted:
+                log_status = logging.WARNING
+            else:
+                log_status = logging.ERROR
+            logging.log(log_status, 'Run {} {}{}{}'.format(self.run_number, self.run_status, (': ' + str(self._last_error_message)) if self._last_error_message else '', ('\n' + self._last_traceback) if self._last_traceback else ''))
+        if self._last_traceback:
+            with open(os.path.join(self.working_dir, "crash" + ".log"), 'a+') as f:
+                f.write('-------------------- Run {} ({}) --------------------\n'.format(self.run_number, self.__class__.__name__))
+                traceback.print_exc(file=f)
+                f.write('\n')
+        logging.log(log_status, '{} run {} ({}) in {} (total time: {})'.format(self.run_status, self.run_number, self.__class__.__name__, self.working_dir, str(self._total_run_time)))
         return self.run_status
 
     def _init(self, run_conf, run_number=None):
         """Initialization before a new run."""
         self.stop_run.clear()
         self.abort_run.clear()
-        if current_thread().name == 'MainThread':
-            logging.info('Press Ctrl-C to stop run')
-            signal.signal(signal.SIGINT, self._signal_handler)
         self._run_status = run_status.running
         self._write_run_number(run_number)
         self._init_run_conf(run_conf, update=True)
-        logging.info('Starting run #%d (%s) in %s', self.run_number, self.__class__.__name__, self.working_dir)
 
     def _init_run_conf(self, run_conf, update=False):
         sc = namedtuple('run_configuration', field_names=self._default_run_conf.keys())
@@ -205,17 +227,7 @@ class RunBase():
 
     def _cleanup(self):
         """Cleanup after a new run."""
-        if current_thread().name == 'MainThread':
-            signal.signal(signal.SIGINT, signal.SIG_DFL)
         self._write_run_status(self.run_status)
-        if self.run_status == run_status.finished:
-            log_status = logging.INFO
-        elif self.run_status == run_status.aborted:
-            log_status = logging.WARNING
-        else:
-            log_status = logging.ERROR
-        logging.log(log_status, 'Finished run #%d (%s) in %s (total time: %s)' % (self.run_number, self.__class__.__name__, self.working_dir, str(self.total_time)))
-        logging.log(log_status, 'Status: %s', self.run_status)
 
     def stop(self, msg=None):
         """Stopping a run. Control for loops.
@@ -265,7 +277,7 @@ class RunBase():
         return run_numbers
 
     def _write_run_number(self, run_number=None):
-        self.start_time = datetime.datetime.now()
+        self._run_start_time = datetime.datetime.now()
         run_numbers = self._get_run_numbers()
         if run_number:
             self._run_number = run_number
@@ -274,22 +286,22 @@ class RunBase():
                 self._run_number = 1
             else:
                 self._run_number = max(dict.iterkeys(run_numbers)) + 1
-        run_numbers[self.run_number] = str(self.run_number) + ' ' + self.__class__.__name__ + ' ' + 'RUNNING' + ' ' + str(self.start_time) + '\n'
+        run_numbers[self.run_number] = str(self.run_number) + ' ' + self.__class__.__name__ + ' ' + 'RUNNING' + ' ' + str(self._run_start_time) + '\n'
         with self.file_lock:
             with open(os.path.join(self.working_dir, "run" + ".cfg"), "w") as f:
                 for value in dict.itervalues(run_numbers):
                     f.write(value)
 
     def _write_run_status(self, status_msg):
-        self.stop_time = datetime.datetime.now()
-        self.total_time = self.stop_time - self.start_time
+        self._run_stop_time = datetime.datetime.now()
+        self._total_run_time = self._run_stop_time - self._run_start_time
         run_numbers = self._get_run_numbers()
         if not run_numbers:
-            run_numbers[self.run_number] = str(self.run_number) + ' ' + self.__class__.__name__ + ' ' + status_msg + ' ' + str(self.stop_time) + ' ' + str(self.total_time) + '\n'
+            run_numbers[self.run_number] = str(self.run_number) + ' ' + self.__class__.__name__ + ' ' + status_msg + ' ' + str(self._run_stop_time) + ' ' + str(self._total_run_time) + '\n'
         else:
             parts = re.split('\s+', run_numbers[self.run_number])
             parts[2] = status_msg
-            run_numbers[self.run_number] = ' '.join(parts[:-1]) + ' ' + str(self.stop_time) + ' ' + str(self.total_time) + '\n'
+            run_numbers[self.run_number] = ' '.join(parts[:-1]) + ' ' + str(self._run_stop_time) + ' ' + str(self._total_run_time) + '\n'
         with self.file_lock:
             with open(os.path.join(self.working_dir, "run" + ".cfg"), "w") as f:
                 for value in dict.itervalues(run_numbers):
@@ -297,7 +309,7 @@ class RunBase():
 
     def _signal_handler(self, signum, frame):
         signal.signal(signal.SIGINT, signal.SIG_DFL)  # setting default handler... pressing Ctrl-C a second time will kill application
-        self.abort('Pressed Ctrl-C')
+        self.stop('Pressed Ctrl-C')
 
 
 def thunkify(thread_name):
@@ -562,7 +574,7 @@ class RunManager(object):
 
     def _signal_handler(self, signum, frame):
         signal.signal(signal.SIGINT, signal.SIG_DFL)  # setting default handler... pressing Ctrl-C a second time will kill application
-        self.abort_current_run('Pressed Ctrl-C')
+        self.stop_current_run('Pressed Ctrl-C')
 
 
 def set_event_when_keyboard_interrupt(_lambda):
