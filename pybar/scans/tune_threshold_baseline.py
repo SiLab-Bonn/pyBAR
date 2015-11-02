@@ -23,7 +23,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
     _default_run_conf = {
         "occupancy_limit": 0,  # occupancy limit, when reached the TDAC will be decreased (increasing threshold). 0 will mask any pixel with occupancy greater than zero
         "scan_parameters": [('Vthin_AltFine', (120, None)), ('Step', 60)],  # the Vthin_AltFine range, number of steps (repetition at constant Vthin_AltFine)
-        "increase_threshold": 5,  # increase the threshold in VthinAF after tuning
+        "increase_threshold": 5,  # increasing the global threshold (Vthin_AltFine) after tuning
         "disabled_pixels_limit": 0.01,  # limit of disabled pixels, fraction of all pixels
         "use_enable_mask": False,  # if True, enable mask from config file anded with mask (from col_span and row_span), if False use mask only for enable mask
         "n_triggers": 10000,  # total number of trigger sent to FE
@@ -38,8 +38,12 @@ class ThresholdBaselineTuning(Fei4RunBase):
             self.consecutive_lvl1 = (2 ** self.register.global_registers['Trig_Count']['bitlength'])
         else:
             self.consecutive_lvl1 = self.trig_count
-        if self.occupancy_limit * self.n_triggers * self.consecutive_lvl1 < 1.0:
-            logging.warning('Number of triggers too low for given occupancy limit. Any noise hit will lead to a masked pixel.')
+        self.abs_occ_limit = int(self.occupancy_limit * self.n_triggers * self.consecutive_lvl1)
+        if self.abs_occ_limit <= 0:
+            logging.info('Any noise hit will lead to an increased pixel threshold.')
+        else:
+            logging.info('The pixel threshold of any pixel with an occpancy >%d will be increased' % self.abs_occ_limit)
+            
 
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))
@@ -143,7 +147,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
                 occ_hist = self.histograming.get_occupancy()[:, :, 0]
                 # noisy pixels are set to 1
                 occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
-                occ_mask[occ_hist > self.occupancy_limit * self.n_triggers * self.consecutive_lvl1] = 1
+                occ_mask[occ_hist > self.abs_occ_limit] = 1
 
                 tdac_reg = self.register.get_pixel_register_value('TDAC')
                 decrease_pixel_mask = np.logical_and(occ_mask > 0, tdac_reg > 0)
@@ -181,7 +185,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
                     else:
                         logging.info('Found %d noisy pixels... repeat tuning step for Vthin_AltFine %d', occ_mask.sum(), reg_val)
 
-            if disabled_pixels > disabled_pixels_limit_cnt:
+            if disabled_pixels > disabled_pixels_limit_cnt or scan_parameter_range[1] == reg_val:
                 self.last_good_threshold = self.register.get_global_register_value("Vthin_AltFine")
                 self.last_good_tdac = self.register.get_pixel_register_value('TDAC')
                 self.last_good_enable_mask = self.register.get_pixel_register_value('Enable')

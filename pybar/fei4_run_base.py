@@ -4,7 +4,7 @@ import re
 import os
 import string
 import smtplib
-import socket
+from socket import gethostname
 import zmq
 import numpy as np
 from functools import wraps
@@ -15,9 +15,11 @@ from contextlib import contextmanager
 import abc
 import ast
 import inspect
+import sys
+
 from basil.dut import Dut
 
-from pybar.run_manager import RunManager, RunBase, RunAborted, RunStopped, run_status
+from pybar.run_manager import RunManager, RunBase, RunAborted, RunStopped
 from pybar.fei4.register import FEI4Register
 from pybar.fei4.register_utils import FEI4RegisterUtils, is_fe_ready
 from pybar.daq.fifo_readout import FifoReadout, RxSyncError, EightbTenbError, FifoError, NoDataTimeout, StopTimeout
@@ -42,31 +44,33 @@ class Fei4RunBase(RunBase):
         super(Fei4RunBase, self).__init__(conf=conf, run_conf=run_conf)
 
         # default conf parameters
+        if 'working_dir' not in conf:
+            conf.update({'working_dir': ''})  # path string, if empty, path of configuration.yaml file will be used
+        if 'zmq_context' not in conf:
+            conf.update({'zmq_context': None})  # ZMQ context
         if 'send_data' not in conf:
-            conf.update({'send_data': None})
+            conf.update({'send_data': None})  # address string of PUB socket
         if 'send_error_msg' not in conf:
-            conf.update({'send_error_msg': None})
+            conf.update({'send_error_msg': None})  # bool
 
         self.err_queue = Queue()
         self.fifo_readout = None
         self.raw_data_file = None
-        self.zmq_context = None
-        self.socket = None
 
     @property
     def working_dir(self):
         if self.module_id:
-            return os.path.join(self.conf['working_dir'], self.module_id)
+            return os.path.join(self._conf['working_dir'], self.module_id)
         else:
-            return os.path.join(self.conf['working_dir'], self.run_id)
+            return os.path.join(self._conf['working_dir'], self.run_id)
 
     @property
     def dut(self):
-        return self.conf['dut']
+        return self._conf['dut']
 
     @property
     def register(self):
-        return self.conf['fe_configuration']
+        return self._conf['fe_configuration']
 
     @property
     def output_filename(self):
@@ -77,8 +81,8 @@ class Fei4RunBase(RunBase):
 
     @property
     def module_id(self):
-        if 'module_id' in self.conf and self.conf['module_id']:
-            module_id = str(self.conf['module_id'])
+        if 'module_id' in self._conf and self._conf['module_id']:
+            module_id = str(self._conf['module_id'])
             module_id = re.sub(r"[^\w\s+]", '', module_id)
             return re.sub(r"\s+", '_', module_id).lower()
         else:
@@ -196,35 +200,35 @@ class Fei4RunBase(RunBase):
             logging.warning('Omit initialization of DUT %s', self.dut.name)
 
     def init_fe(self):
-        if 'fe_configuration' in self.conf:
+        if 'fe_configuration' in self._conf:
             last_configuration = self._get_configuration()
             # init config, a number <=0 will also do the initialization (run 0 does not exists)
-            if (not self.conf['fe_configuration'] and not last_configuration) or (isinstance(self.conf['fe_configuration'], (int, long)) and self.conf['fe_configuration'] <= 0):
-                if 'chip_address' in self.conf and self.conf['chip_address']:
-                    chip_address = self.conf['chip_address']
+            if (not self._conf['fe_configuration'] and not last_configuration) or (isinstance(self._conf['fe_configuration'], (int, long)) and self._conf['fe_configuration'] <= 0):
+                if 'chip_address' in self._conf and self._conf['chip_address']:
+                    chip_address = self._conf['chip_address']
                     broadcast = False
                 else:
                     chip_address = 0
                     broadcast = True
-                if 'fe_flavor' in self.conf and self.conf['fe_flavor']:
-                    self._conf['fe_configuration'] = FEI4Register(fe_type=self.conf['fe_flavor'], chip_address=chip_address, broadcast=broadcast)
+                if 'fe_flavor' in self._conf and self._conf['fe_flavor']:
+                    self._conf['fe_configuration'] = FEI4Register(fe_type=self._conf['fe_flavor'], chip_address=chip_address, broadcast=broadcast)
                 else:
                     raise ValueError('No fe_flavor given')
             # use existing config
-            elif not self.conf['fe_configuration'] and last_configuration:
+            elif not self._conf['fe_configuration'] and last_configuration:
                 self._conf['fe_configuration'] = FEI4Register(configuration_file=last_configuration)
             # path
-            elif isinstance(self.conf['fe_configuration'], basestring):
-                if os.path.isabs(self.conf['fe_configuration']):
-                    fe_configuration = self.conf['fe_configuration']
+            elif isinstance(self._conf['fe_configuration'], basestring):
+                if os.path.isabs(self._conf['fe_configuration']):
+                    fe_configuration = self._conf['fe_configuration']
                 else:
-                    fe_configuration = os.path.join(self.conf['working_dir'], self.conf['fe_configuration'])
+                    fe_configuration = os.path.join(self._conf['working_dir'], self._conf['fe_configuration'])
                 self._conf['fe_configuration'] = FEI4Register(configuration_file=fe_configuration)
             # run number
-            elif isinstance(self.conf['fe_configuration'], (int, long)) and self.conf['fe_configuration'] > 0:
-                self._conf['fe_configuration'] = FEI4Register(configuration_file=self._get_configuration(self.conf['fe_configuration']))
+            elif isinstance(self._conf['fe_configuration'], (int, long)) and self._conf['fe_configuration'] > 0:
+                self._conf['fe_configuration'] = FEI4Register(configuration_file=self._get_configuration(self._conf['fe_configuration']))
             # assume fe_configuration already initialized
-            elif not isinstance(self.conf['fe_configuration'], FEI4Register):
+            elif not isinstance(self._conf['fe_configuration'], FEI4Register):
                 raise ValueError('No valid fe_configuration given')
             # init register utils
             self.register_utils = FEI4RegisterUtils(self.dut, self.register)
@@ -244,63 +248,65 @@ class Fei4RunBase(RunBase):
             pass  # no fe_configuration
 
     def pre_run(self):
-        # opening ZMQ context
-        if isinstance(self.conf['send_data'], basestring):
-            self.zmq_context = zmq.Context()
-            self.socket = self.zmq_context.socket(zmq.PUB)  # publisher
-            self.socket.bind(self.conf['send_data'])
-            logging.info('Creating socket connection to server %s', self.conf['send_data'])
+        # clear error queue in case run is executed a second time
+        self.err_queue.queue.clear()
+        # opening ZMQ context and binding socket
+        if self._conf['send_data'] and not self._conf['zmq_context']:
+            logging.info('Creating ZMQ context')
+            self._conf['zmq_context'] = zmq.Context()  # contexts are thread safe unlike sockets
+        else:
+            logging.info('Using existing socket')
         # scan parameters
-        if 'scan_parameters' in self.run_conf:
-            if isinstance(self.run_conf['scan_parameters'], basestring):
-                self.run_conf['scan_parameters'] = ast.literal_eval(self.run_conf['scan_parameters'])
-            sp = namedtuple('scan_parameters', field_names=zip(*self.run_conf['scan_parameters'])[0])
-            self.scan_parameters = sp(*zip(*self.run_conf['scan_parameters'])[1])
+        if 'scan_parameters' in self._run_conf:
+            if isinstance(self._run_conf['scan_parameters'], basestring):
+                self._run_conf['scan_parameters'] = ast.literal_eval(self._run_conf['scan_parameters'])
+            sp = namedtuple('scan_parameters', field_names=zip(*self._run_conf['scan_parameters'])[0])
+            self.scan_parameters = sp(*zip(*self._run_conf['scan_parameters'])[1])
         else:
             sp = namedtuple_with_defaults('scan_parameters', field_names=[])
             self.scan_parameters = sp()
         logging.info('Scan parameter(s): %s', ', '.join(['%s=%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None')
 
         # init DUT
-        if not isinstance(self.conf['dut'], Dut):
+        if not isinstance(self._conf['dut'], Dut):
             module_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-            if isinstance(self.conf['dut'], basestring):
+            if isinstance(self._conf['dut'], basestring):
                 # dirty fix for Windows pathes
-                self.conf['dut'] = os.path.normpath(self.conf['dut'].replace('\\', '/'))
+                self._conf['dut'] = os.path.normpath(self._conf['dut'].replace('\\', '/'))
                 # abs path
-                if os.path.isabs(self.conf['dut']):
-                    dut = self.conf['dut']
+                if os.path.isabs(self._conf['dut']):
+                    dut = self._conf['dut']
                 # working dir
-                elif os.path.exists(os.path.join(self.conf['working_dir'], self.conf['dut'])):
-                    dut = os.path.join(self.conf['working_dir'], self.conf['dut'])
+                elif os.path.exists(os.path.join(self._conf['working_dir'], self._conf['dut'])):
+                    dut = os.path.join(self._conf['working_dir'], self._conf['dut'])
                 # path of this file
-                elif os.path.exists(os.path.join(module_path, self.conf['dut'])):
-                    dut = os.path.join(module_path, self.conf['dut'])
+                elif os.path.exists(os.path.join(module_path, self._conf['dut'])):
+                    dut = os.path.join(module_path, self._conf['dut'])
                 else:
-                    raise ValueError('dut file not found: %s' % self.conf['dut'])
-                self._conf['dut'] = Dut(dut)
+                    raise ValueError('dut parameter not a valid path: %s' % self._conf['dut'])
             else:
-                self._conf['dut'] = Dut(self.conf['dut'])
+                dut = self._conf['dut']
+            dut = Dut(dut)
 
             # only initialize when DUT was not initialized before
-            if 'dut_configuration' in self.conf and self.conf['dut_configuration']:
-                if isinstance(self.conf['dut_configuration'], basestring):
+            if 'dut_configuration' in self._conf and self._conf['dut_configuration']:
+                if isinstance(self._conf['dut_configuration'], basestring):
                     # dirty fix for Windows pathes
-                    self.conf['dut_configuration'] = os.path.normpath(self.conf['dut_configuration'].replace('\\', '/'))
+                    self._conf['dut_configuration'] = os.path.normpath(self._conf['dut_configuration'].replace('\\', '/'))
                     # abs path
-                    if os.path.isabs(self.conf['dut_configuration']):
-                        dut_configuration = self.conf['dut_configuration']
+                    if os.path.isabs(self._conf['dut_configuration']):
+                        dut_configuration = self._conf['dut_configuration']
                     # working dir
-                    elif os.path.exists(os.path.join(self.conf['working_dir'], self.conf['dut_configuration'])):
-                        dut_configuration = os.path.join(self.conf['working_dir'], self.conf['dut_configuration'])
+                    elif os.path.exists(os.path.join(self._conf['working_dir'], self._conf['dut_configuration'])):
+                        dut_configuration = os.path.join(self._conf['working_dir'], self._conf['dut_configuration'])
                     # path of dut file
-                    elif os.path.exists(os.path.join(os.path.dirname(self.dut.conf_path), self.conf['dut_configuration'])):
-                        dut_configuration = os.path.join(os.path.dirname(self.dut.conf_path), self.conf['dut_configuration'])
+                    elif os.path.exists(os.path.join(os.path.dirname(dut.conf_path), self._conf['dut_configuration'])):
+                        dut_configuration = os.path.join(os.path.dirname(dut.conf_path), self._conf['dut_configuration'])
                     # path of this file
-                    elif os.path.exists(os.path.join(module_path, self.conf['dut_configuration'])):
-                        dut_configuration = os.path.join(module_path, self.conf['dut_configuration'])
+                    elif os.path.exists(os.path.join(module_path, self._conf['dut_configuration'])):
+                        dut_configuration = os.path.join(module_path, self._conf['dut_configuration'])
                     else:
-                        raise ValueError('dut_configuration file not found: %s' % self.conf['dut_configuration'])
+                        raise ValueError('dut_configuration parameter not a valid path: %s' % self._conf['dut_configuration'])
                     # make dict
                     dut_configuration = RunManager.open_conf(dut_configuration)
                     # change bit file path
@@ -310,22 +316,25 @@ class Fei4RunBase(RunBase):
                         if os.path.isabs(bit_file):
                             pass
                         # working dir
-                        elif os.path.exists(os.path.join(self.conf['working_dir'], bit_file)):
-                            bit_file = os.path.join(self.conf['working_dir'], bit_file)
+                        elif os.path.exists(os.path.join(self._conf['working_dir'], bit_file)):
+                            bit_file = os.path.join(self._conf['working_dir'], bit_file)
                         # path of dut file
-                        elif os.path.exists(os.path.join(os.path.dirname(self.dut.conf_path), bit_file)):
-                            bit_file = os.path.join(os.path.dirname(self.dut.conf_path), bit_file)
+                        elif os.path.exists(os.path.join(os.path.dirname(dut.conf_path), bit_file)):
+                            bit_file = os.path.join(os.path.dirname(dut.conf_path), bit_file)
                         # path of this file
                         elif os.path.exists(os.path.join(module_path, bit_file)):
                             bit_file = os.path.join(module_path, bit_file)
                         else:
-                            raise ValueError('bit_file not found: %s' % bit_file)
+                            raise ValueError('bit_file parameter not a valid path: %s' % bit_file)
                         dut_configuration['USB']['bit_file'] = bit_file
-                    self.dut.init(dut_configuration)
                 else:
-                    self.dut.init(self.conf['dut_configuration'])
+                    dut_configuration = self._conf['dut_configuration']
             else:
-                self.dut.init()
+                dut_configuration = None
+
+            dut.init(dut_configuration)
+            # assign dut after init in case of exceptions during init
+            self._conf['dut'] = dut
             # additional init of the DUT
             self.init_dut()
         else:
@@ -342,42 +351,38 @@ class Fei4RunBase(RunBase):
             self.fifo_readout.reset_rx()
             self.fifo_readout.reset_sram_fifo()
             self.fifo_readout.print_readout_status()
-            with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, register=self.register, conf=self.conf, run_conf=self.run_conf, scan_parameters=self.scan_parameters._asdict(), socket=self.socket) as self.raw_data_file:
+            with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, register=self.register, conf=self._conf, run_conf=self._run_conf, scan_parameters=self.scan_parameters._asdict(), context=self._conf['zmq_context'], socket_address=self._conf['send_data']) as self.raw_data_file:
                 # scan
                 self.scan()
 
     def post_run(self):
+        # print FIFO status
         try:
             self.fifo_readout.print_readout_status()
-        # no device?
-        except Exception:
+        except Exception:  # no device?
             pass
-
-        if not self.err_queue.empty():
-            exc = self.err_queue.get()
-            # well known errors
-            if isinstance(exc[1], (RxSyncError, EightbTenbError, FifoError, NoDataTimeout, StopTimeout)):
-                raise RunAborted(exc[1])
-            # some other error via handle_err(), print to crash.log
-            else:
-                raise exc[0], exc[1], exc[2]
-        elif self.abort_run.is_set():
-            raise RunAborted('Read the log')
 
         # analyzing data
         try:
             self.analyze()
-        # known errors
-        except AnalysisError as e:
-            logging.error('Analysis of data failed: %s', e)
-            raise RunAborted('Read the log')
-        # analyzed data, save config
-        else:
+        except Exception:  # analysis errors
+            self.handle_err(sys.exc_info())
+        else:  # analyzed data, save config
             self.register.save_configuration(self.output_filename)
 
-        # other reasons
-        if self.stop_run.is_set():
-            raise RunStopped('Read the log')
+        if not self.err_queue.empty():
+            exc = self.err_queue.get()
+            # well known errors, do not print traceback
+            if isinstance(exc[1], (RxSyncError, EightbTenbError, FifoError, NoDataTimeout, StopTimeout, AnalysisError)):
+                raise RunAborted(exc[1])
+            # some other error via handle_err(), print traceback
+            else:
+                raise exc[0], exc[1], exc[2]
+        elif self.abort_run.is_set():
+            raise RunAborted()
+        elif self.stop_run.is_set():
+            raise RunStopped()
+        # if ending up here, succcess!
 
     def cleanup_run(self):
         # no execption should be thrown here
@@ -431,8 +436,10 @@ class Fei4RunBase(RunBase):
             self.fifo_readout.print_readout_status()
             self.fifo_readout.reset_rx()
         else:
+            # print just the first error massage
+            if not self.abort_run.is_set():
+                self.abort(msg=str(exc[1]))
             self.err_queue.put(exc)
-            self.abort(msg='%s' % exc[1])
 
     def _get_configuration(self, run_number=None):
         def find_file(run_number):
@@ -501,19 +508,15 @@ class Fei4RunBase(RunBase):
         self.fifo_readout.stop(timeout=timeout)
 
     def _cleanup(self):  # called in run base after exception handling
-        if self.conf['send_error_msg'] and self._run_status == run_status.crashed:
-            try:
-                import requests
-                ip = requests.request('GET', 'http://myip.dnsomatic.com').text
-            except ImportError:
-                ip = 'Unknown IP'
-            try:
-                text = 'Run %i at %s\n%s' % (self.run_number, time.strftime('%X %x %Z'), self.last_traceback)
-                send_mail(text=text, configuration=self._run_conf['send_error'], subject='PyBAR run %i report from %s %s' % (self.run_number, ip, socket.gethostname()))
-            except:
-                logging.info("Failed sending pyBAR report")
-                pass
         super(Fei4RunBase, self)._cleanup()
+        if 'send_message' in self._conf and self._run_status in self._conf['send_message']['status']:
+            subject = '{}{} ({})'.format(self._conf['send_message']['subject_prefix'], self._run_status, gethostname())
+            last_status_message = '{} run {} ({}) in {} (total time: {})'.format(self.run_status, self.run_number, self.__class__.__name__, self.working_dir, str(self._total_run_time))
+            body = '\n'.join(item for item in [self._last_traceback, last_status_message] if item)
+            try:
+                send_mail(subject=subject, body=body, smtp_server=self._conf['send_message']['smtp_server'], user=self._conf['send_message']['user'], password=self._conf['send_message']['password'], from_addr=self._conf['send_message']['from_addr'], to_addrs=self._conf['send_message']['to_addrs'])
+            except:
+                logging.warning("Failed sending pyBAR status report")
 
     @abc.abstractmethod
     def configure(self):
@@ -621,18 +624,18 @@ def namedtuple_with_defaults(typename, field_names, default_values=None):
     return T
 
 
-def send_mail(text, configuration, subject=''):
+def send_mail(subject, body, smtp_server, user, password, from_addr, to_addrs):
     ''' Sends a run status mail with the traceback to a specified E-Mail address if a run crashes.
     '''
     logging.info('Send status E-Mail (' + subject + ')')
-    body = string.join((
-        "From: %s" % configuration['email_account'][0],
-        "To: %s" % str(configuration['email_to']).strip('[]'),
+    content = string.join((
+        "From: %s" % from_addr,
+        "To: %s" % ','.join(to_addrs),  # comma separated according to RFC822
         "Subject: %s" % subject,
         "",
-        text),
+        body),
         "\r\n")
-    server = smtplib.SMTP_SSL(configuration['email_host'])
-    server.login(configuration['email_account'][0], configuration['email_account'][1])
-    server.sendmail(configuration['email_account'][0], configuration['email_to'], body)
+    server = smtplib.SMTP_SSL(smtp_server)
+    server.login(user, password)
+    server.sendmail(from_addr, to_addrs, content)
     server.quit()

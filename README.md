@@ -6,7 +6,7 @@ pyBAR - Bonn ATLAS Readout in Python and C++
 PyBAR is a versatile readout and test system for the ATLAS FE-I4(A/B) pixel readout chip. It uses the [basil](https://github.com/SiLab-Bonn/basil) framework to access the readout hardware.
 PyBAR's FPGA firmware and host software includes support for different hardware platforms.
 
-PyBAR is _not only_ targeting experienced users and developers. The easy-to-use scripts allow a quick setup and start. PyBAR is a very flexible readout and test system and can be adapted to any needs.
+PyBAR is *not only* targeting experienced users and developers. The easy-to-use scripts allow a quick setup and start. PyBAR is a very flexible readout and test system and can be adapted to any needs.
 
 The features of the FPGA firmware in a nutshell:
 - supported readout hardware:
@@ -33,31 +33,31 @@ The features of the host software in Python and C++:
 
 ## Installation
 
-[Basil](https://github.com/SiLab-Bonn/basil) (==2.1.2) is required:
-  ```
-  pip install basil_daq==2.1.2
-  ```
-
 The following packages are required for pyBAR's core functionality:
   ```
-  bitarray cython matplotlib numpy pandas progressbar-latest tables pyyaml scipy
+  basil_daq bitarray cython matplotlib numpy pandas progressbar-latest pyyaml scipy tables
   ```
 
 For full functionality, the following additional packages are required:
   ```
-  mock nose pyqtgraph pyserial pyvisa pyvisa-py pyzmq
+  ipython mock nose pyqtgraph pyserial pyvisa pyvisa-py pyzmq sphinx vitables
   ```
 
-Run the following commands to install the packages:
+Run the **following commands** to install the packages:
   ```
-  conda install numpy cython pytables scipy matplotlib pandas pyserial bitarray nose pyzmq pyyaml
+  conda install bitarray cython ipython matplotlib mock nose numpy pandas pyserial pytables pyyaml pyzmq scipy sphinx
   
-  pip install progressbar-latest pyvisa pyvisa-py pyqtgraph mock
+  pip install progressbar-latest pyvisa pyvisa-py https://github.com/SiLab-Bonn/pyqtgraph/archive/develop.zip https://github.com/uvemas/ViTables/archive/v2.1.zip
   ```
 
 On Windows, the `pywin32` package is required:
   ```
   conda install pywin32
+  ```
+
+[Basil](https://github.com/SiLab-Bonn/basil) (==2.1.2) is required:
+  ```
+  pip install basil_daq==2.1.2
   ```
 
 To enable support for USB devices (MIO, MIO3 and MMC3), the following additional packages are required:

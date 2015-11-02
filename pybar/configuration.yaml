@@ -1,27 +1,30 @@
-working_dir :  # Module data will be written to this path. If not given, use path of this file. Default: not given / empty
-
+# *** hardwre setup/configuration ***
 dut : dut_mio.yaml  # DUT hardware configuration (.yaml). Change to dut_mio_gpac.yaml for GPAC support.
 dut_configuration : dut_configuration_mio.yaml  # DUT init configuration (.yaml). Change to dut_configuration_mio_gpac.yaml for GPAC support.
 
+# *** front-end configuration ***
 fe_configuration :  # FE configuration file, text (.cfg) or HDF5 (.h5) file. If not given, latest valid configuration (run status FINISHED) will be taken. If a number is given, configuration from run with specified number will be taken.
 fe_flavor : fei4b  # FEI4 flavor/type for initial configuration. Valid values: 'fei4a' or 'fei4b'
 chip_address :  # Chip Address for initial configuration, if not given, broadcast bit will be set
 module_id : module_test  # module identifier / name, sub-folder with given name will be created inside working_dir
 
+# *** configuration ***
 #send_data : 'tcp://127.0.0.1:5678'  # to allow incoming connections on all interfaces use 0.0.0.0
-send_error_msg :
-    email_host: 'mail.gmx.net'  # outgoing mail server
-    email_to: ["pohl@physik.uni-bonn.de", "janssen@physik.uni-bonn.de"]  # the Email adresses the status emails are send to
-    email_account: ['mr_beam@gmx.de']  # email account name and password used to send email
+#send_message :
+#    status: ['CRASHED', 'ABORTED', 'STOPPED', 'FINISHED']  # run status that triggers emails
+#    subject_prefix: "pyBAR run report: "
+#    smtp_server: 'smtp.alert.com'  # outgoing SMTP mail server
+#    user: 'my.email@alert.com'  # usually from_addr
+#    password: 'my_secret_token'  # the password
+#    from_addr: 'my.email@alert.com'  # email address of the sender
+#    to_addrs: ["pohl@physik.uni-bonn.de", "janssen@physik.uni-bonn.de"]  # list of email addresses that will be notified
 
 # *** run configuration ***
-#
 #run_conf:
 #    comment : ''
 #    reset_rx_on_error : False
 #
 # *** scan specific run configuration ***
-#
 #Fei4Tuning:
 #    enable_shift_masks : ["Enable", "C_Low", "C_High"]
 #    target_threshold : 50 # target threshold

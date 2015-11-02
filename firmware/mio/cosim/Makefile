@@ -26,10 +26,10 @@ export PYTHONHOME=$(shell python -c "from distutils.sysconfig import get_config_
 
 # Must have XILINX set as an environment variable.
 # i.e. export XILINX=~/Xilinx/14.7/ISE_DS
-XILINX_SRC?=$(XILINX)/ISE/verilog/src
+XILINX_SRC?=$(XILINX)
    
-BASIL?=$(shell python -c "import basil;import os;print os.path.dirname(os.path.dirname(os.path.dirname(basil.__file__)))")
-BASIL_MODULES?=$(BASIL)/firmware/modules
+BASIL?=$(shell python -c "import basil;import os;print os.path.dirname(basil.__file__)")
+BASIL_MODULES?=$(BASIL)/../firmware/modules
 FEI4_SOURCES?=../../../../fei4/trunk/models/fei4a
 PYBAR_SOURCES?=../
 

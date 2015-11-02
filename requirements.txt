@@ -1,0 +1,23 @@
+# Core functionality
+basil_daq>=2.1.2 # readout framework pyBAR is built on
+pySiLibUSB # support for SiLab USB devices
+bitarray>=0.8.1
+cython
+matplotlib
+numpy
+pandas
+progressbar-latest>=2.4
+tables
+pyyaml
+scipy
+
+# Additional functionality (lab devices, unit tests, Online Monitor)
+pyvisa # interface to lab devices
+pyvisa-py # interface to lab devices
+pyserial # serial port
+pyqtgraph # monitor
+mock # unit tests
+sphinx # for vitables
+vitables # data viewer
+nose # unit tests
+pyzmq # monitor

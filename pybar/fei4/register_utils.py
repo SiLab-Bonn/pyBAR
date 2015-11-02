@@ -730,10 +730,10 @@ def test_global_register(self):
     commands = []
     self.register.set_global_register_value('Conf_AddrEnable', 1)
     commands.extend(self.register.get_commands("WrRegister", name='Conf_AddrEnable'))
-    read_from_address = range(1, 64)
     self.register_utils.send_commands(commands)
     self.fifo_readout.reset_sram_fifo()
     commands = []
+    read_from_address = self.register.get_global_register_attributes("addresses", readonly=False)
     commands.extend(self.register.get_commands("RdRegister", addresses=read_from_address))
     self.register_utils.send_commands(commands)
     time.sleep(1.0)  # wait for data

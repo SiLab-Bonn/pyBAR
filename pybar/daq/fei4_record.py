@@ -10,7 +10,7 @@ class FEI4Record(object):
     """Record Object
 
     """
-    def __init__(self, data_word, chip_flavor):
+    def __init__(self, data_word, chip_flavor, tdc_trig_dist=False):
         self.record_rawdata = int(data_word)
         self.record_word = BitLogic.from_value(value=self.record_rawdata, size=32)
         self.record_dict = OrderedDict()
@@ -19,7 +19,10 @@ class FEI4Record(object):
             self.record_dict.update([('trigger data', self.record_word[30:0].tovalue())])
         elif self.record_rawdata & 0x40000000:
             self.record_type = "TDC"
-            self.record_dict.update([('tdc data', self.record_word[29:12].tovalue()), ('tdc value', self.record_word[11:0].tovalue())])
+            if tdc_trig_dist:
+                self.record_dict.update([('tdc distance', self.record_word[27:20].tovalue()), ('tdc counter', self.record_word[19:12].tovalue()), ('tdc value', self.record_word[11:0].tovalue())])
+            else:
+                self.record_dict.update([('tdc counter', self.record_word[27:12].tovalue()), ('tdc value', self.record_word[11:0].tovalue())])
         elif self.record_rawdata & 0x0F000000:  # FE data
             self.record_dict.update([('channel', (self.record_rawdata & 0x0F000000) >> 24)])
             self.chip_flavor = chip_flavor

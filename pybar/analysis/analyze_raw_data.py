@@ -410,9 +410,9 @@ class AnalyzeRawData(object):
     @create_cluster_hit_table.setter
     def create_cluster_hit_table(self, value):
         self._create_cluster_hit_table = value
-        self.clusterizer.set_cluster_hit_info_array_size(2 * self.chunk_size)
-        self.clusterizer.create_cluster_hit_info_array(value)
         if value:
+            self.clusterizer.set_cluster_hit_info_array_size(2 * self.chunk_size)
+            self.clusterizer.create_cluster_hit_info_array(value)
             self.create_cluster_table = value
 
     @property

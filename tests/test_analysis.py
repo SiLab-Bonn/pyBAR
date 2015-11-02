@@ -125,7 +125,7 @@ class TestAnalysis(unittest.TestCase):
         cls.clusterizer = PyDataClusterizer()
 
         with AnalyzeRawData(raw_data_file=tests_data_folder + 'unit_test_data_1.h5', analyzed_data_file=tests_data_folder + 'unit_test_data_1_interpreted.h5', create_pdf=False) as analyze_raw_data:  # analyze the digital scan raw data, do not show any feedback (no prints to console, no plots)
-            analyze_raw_data.chunk_size = 2999999
+            analyze_raw_data.chunk_size = 500009
             analyze_raw_data.create_hit_table = True  # can be set to false to omit hit table creation, std. setting is false
             analyze_raw_data.create_cluster_hit_table = True  # adds the cluster id and seed info to each hit, std. setting is false
             analyze_raw_data.create_cluster_table = True  # enables the creation of a table with all clusters, std. setting is false
@@ -136,18 +136,18 @@ class TestAnalysis(unittest.TestCase):
             analyze_raw_data.create_meta_event_index = True  # stores the event number for each readout in an additional meta data array, default: False
             analyze_raw_data.interpret_word_table(use_settings_from_file=False, fei4b=False)  # the actual start conversion command
         with AnalyzeRawData(raw_data_file=tests_data_folder + 'unit_test_data_2.h5', analyzed_data_file=tests_data_folder + 'unit_test_data_2_interpreted.h5', create_pdf=False) as analyze_raw_data:  # analyze the fast threshold scan raw data, do not show any feedback (no prints to console, no plots)
-            analyze_raw_data.chunk_size = 2999999
+            analyze_raw_data.chunk_size = 500009
             analyze_raw_data.create_threshold_hists = True  # makes only sense if threshold scan data is analyzed, std. setting is false
             analyze_raw_data.interpret_word_table(use_settings_from_file=False, fei4b=False)  # the actual start conversion command
-        with AnalyzeRawData(raw_data_file=None, analyzed_data_file=tests_data_folder + 'unit_test_data_1_interpreted.h5', create_pdf=False) as analyze_raw_data:  # analyze the digital scan hit data, do not show any feedback (no prints to console, no plots)
-            analyze_raw_data.chunk_size = 2999999
+        with AnalyzeRawData(raw_data_file=None, analyzed_data_file=tests_data_folder + 'unit_test_data_1_interpreted.h5', create_pdf=False) as analyze_raw_data:   # analyze the digital scan hit data, do not show any feedback (no prints to console, no plots)
+            analyze_raw_data.chunk_size = 500009
             analyze_raw_data.create_cluster_hit_table = True
             analyze_raw_data.create_cluster_table = True
             analyze_raw_data.create_cluster_size_hist = True
             analyze_raw_data.create_cluster_tot_hist = True
             analyze_raw_data.analyze_hit_table(analyzed_data_out_file=tests_data_folder + 'unit_test_data_1_analyzed.h5')
         with AnalyzeRawData(raw_data_file=tests_data_folder + 'unit_test_data_3.h5', analyzed_data_file=tests_data_folder + 'unit_test_data_3_interpreted.h5', create_pdf=False) as analyze_raw_data:  # analyze the digital scan raw data per scan parameter, do not show any feedback (no prints to console, no plots)
-            analyze_raw_data.chunk_size = 2999999
+            analyze_raw_data.chunk_size = 500009
             analyze_raw_data.create_hit_table = True  # can be set to false to omit hit table creation, std. setting is false
             analyze_raw_data.create_cluster_hit_table = True  # adds the cluster id and seed info to each hit, std. setting is false
             analyze_raw_data.create_cluster_table = True  # enables the creation of a table with all clusters, std. setting is false
