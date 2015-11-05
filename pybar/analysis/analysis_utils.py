@@ -411,7 +411,7 @@ def get_parameter_value_from_file_names(files, parameters=None, unique=False, so
     return collections.OrderedDict(sorted(result.iteritems(), key=itemgetter(1)) if sort else files_dict)  # with PEP 265 solution of sorting a dict by value
 
 
-def get_data_file_names_from_scan_base(scan_base, filter_str=['_analyzed.h5', '_interpreted.h5', '_cut.h5', '_result.h5'], sort_by_time=True, meta_data_v2=True):
+def get_data_file_names_from_scan_base(scan_base, filter_str=['_analyzed.h5', '_interpreted.h5', '_cut.h5', '_result.h5', '_hists.h5'], sort_by_time=True, meta_data_v2=True):
     """
     Generate a list of .h5 files which have a similar file name.
 
@@ -450,6 +450,7 @@ def get_data_file_names_from_scan_base(scan_base, filter_str=['_analyzed.h5', '_
     if sort_by_time and len(data_files) > 1:
         f_list = {}
         for data_file in data_files:
+            print data_file
             with tb.open_file(data_file, mode="r") as h5_file:
                 if meta_data_v2:
                     timestamp = h5_file.root.meta_data[0]["timestamp_start"]
