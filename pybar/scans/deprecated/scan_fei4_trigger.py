@@ -62,7 +62,7 @@ class Fei4TriggerScan(ScanBase):
                     if (current_trigger_number % show_trigger_message_at < last_trigger_number % show_trigger_message_at):
                         logging.info('Collected triggers: %d', current_trigger_number)
                     last_trigger_number = current_trigger_number
-                    if self.max_triggers is not None and current_trigger_number >= self.max_triggers:
+                    if self.max_triggers and current_trigger_number >= self.max_triggers:
                         logging.info('Reached maximum triggers. Stopping Scan...')
                         self.stop_thread_event.set()
                     if scan_start_time is not None and time.time() > scan_stop_time:

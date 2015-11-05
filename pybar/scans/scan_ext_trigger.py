@@ -82,7 +82,7 @@ class ExtTriggerScan(Fei4RunBase):
                         self.progressbar.update(triggers)
                     except ValueError:
                         pass
-                    if self.max_triggers is not None and triggers >= self.max_triggers:
+                    if self.max_triggers and triggers >= self.max_triggers:
 #                         if got_data:
                         self.progressbar.finish()
                         self.stop(msg='Trigger limit was reached: %i' % self.max_triggers)
