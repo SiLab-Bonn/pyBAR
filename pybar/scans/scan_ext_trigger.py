@@ -82,7 +82,7 @@ class ExtTriggerScan(Fei4RunBase):
                         self.progressbar.update(triggers)
                     except ValueError:
                         pass
-                    if self.max_triggers is not None and triggers >= self.max_triggers:
+                    if self.max_triggers and triggers >= self.max_triggers:
 #                         if got_data:
                         self.progressbar.finish()
                         self.stop(msg='Trigger limit was reached: %i' % self.max_triggers)
@@ -113,7 +113,10 @@ class ExtTriggerScan(Fei4RunBase):
         self.fifo_readout.start(reset_sram_fifo=False, clear_buffer=True, callback=self.handle_data, errback=self.handle_err, no_data_timeout=self.no_data_timeout)
         self.dut['TDC']['ENABLE'] = self.enable_tdc
         self.dut['TLU']['TRIGGER_COUNTER'] = 0
-        self.dut['TLU']['MAX_TRIGGERS'] = self.max_triggers
+        if self.max_triggers:
+            self.dut['TLU']['MAX_TRIGGERS'] = self.max_triggers
+        else:
+            self.dut['TLU']['MAX_TRIGGERS'] = 0  # infinity triggers
         self.dut['CMD']['EN_EXT_TRIGGER'] = True
 
         def timeout():

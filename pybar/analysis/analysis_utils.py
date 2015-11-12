@@ -16,6 +16,7 @@ from scipy.interpolate import interp1d
 from scipy.interpolate import splrep, splev
 from tables import dtype_from_descr
 
+from pybar.daq.fei4_record import FEI4Record
 from pybar.analysis.plotting import plotting
 from pybar.analysis.RawDataConverter import analysis_functions
 from pybar.analysis.RawDataConverter import data_struct
@@ -1768,6 +1769,82 @@ def correlate_events(data_frame_fe_1, data_frame_fe_2):
     '''
     logging.info("Correlating events")
     return data_frame_fe_1.merge(data_frame_fe_2, how='left', on='event_number')  # join in the events that the triggered fe sees, only these are interessting
+
+
+def fix_raw_data(raw_data, lsb_byte=None):
+    if not lsb_byte:
+        lsb_byte = np.right_shift(raw_data[0], 24)
+        raw_data = raw_data[1:]
+
+    for i in range(raw_data.shape[0]):
+        msb_bytes = np.left_shift(raw_data[i], 8)
+        new_word = np.bitwise_or(msb_bytes, lsb_byte)
+        lsb_byte = np.right_shift(raw_data[i], 24)
+        raw_data[i] = new_word
+    return raw_data, lsb_byte
+
+
+def contiguous_regions(condition):
+    """Finds contiguous True regions of the boolean array "condition". Returns
+    a 2D array where the first column is the start index of the region and the
+    second column is the end index."""
+
+    # Find the indicies of changes in "condition"
+    d = np.diff(condition, n=1)
+    idx, = d.nonzero()
+
+    # We need to start things after the change in "condition". Therefore,
+    # we'll shift the index by 1 to the right.
+    idx += 1
+
+    if condition[0]:
+        # If the start of condition is True prepend a 0
+        idx = np.r_[0, idx]
+
+    if condition[-1]:
+        # If the end of condition is True, append the length of the array
+        idx = np.r_[idx, condition.size]
+
+    # Reshape the result into two columns
+    idx.shape = (-1, 2)
+    return idx
+
+
+def check_bad_data(raw_data):
+    # search for bad headers
+    fe_words = np.bitwise_and(raw_data, 0x0F000000)
+    other_words = np.bitwise_and(raw_data, 0xF0000000)
+    condition = np.logical_and((fe_words != 0x04000000), (other_words == 0x0))
+    if np.any(condition):
+        return True
+    # search for consecutive trigger words
+    trigger_words = np.right_shift(raw_data, 31)
+    condition = trigger_words >= 1
+    for start, stop in contiguous_regions(condition):
+        if abs(stop - start) > 1:
+            return True
+    return False
+
+
+def consecutive(data, stepsize=1):
+    return np.split(data, np.where(np.diff(data) != stepsize)[0] + 1)
+
+
+def print_raw_data_file(input_file, start_index=0, limit=200, flavor='fei4b'):
+    with tb.open_file(input_file + '.h5', mode="r") as file_h5:
+        raw_data = file_h5.root.raw_data
+        print_raw_data(raw_data=raw_data, start_index=start_index, limit=limit, flavor=flavor)
+
+
+def print_raw_data(raw_data, start_index=0, limit=200, flavor='fei4b', index_offset=0):
+        total_words = 0
+        for index in range(start_index, raw_data.shape[0]):
+            dw = FEI4Record(raw_data[index], chip_flavor=flavor, tdc_trig_dist=True)
+            if dw in ['DH', 'TW', "AR", "VR", "SR", "DR", 'TDC', 'UNKNOWN FE WORD', 'UNKNOWN WORD']:
+                print index + index_offset, '{0:12d} {1:08b} {2:08b} {3:08b} {4:08b}'.format(raw_data[index], (raw_data[index] & 0xFF000000) >> 24, (raw_data[index] & 0x00FF0000) >> 16, (raw_data[index] & 0x0000FF00) >> 8, (raw_data[index] & 0x000000FF) >> 0), dw
+                total_words += 1
+                if limit and total_words >= limit:
+                    break
 
 
 if __name__ == "__main__":

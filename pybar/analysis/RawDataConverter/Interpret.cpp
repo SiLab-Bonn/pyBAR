@@ -93,9 +93,11 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 				if (_alignAtTriggerNumber) {
 					addEventErrorCode(__TRUNC_EVENT); //too many data header in the event, abort this event, add truncated flag
 					if (Basis::warningSet())
-						warning(std::string("addHit: Hit buffer overflow prevented by splitting events at event " + LongIntToStr(_nEvents)), __LINE__);
+						warning("interpretRawData: " + IntToStr(_nDataWords) + " DH " + IntToStr(tActualWord) + " at event " + LongIntToStr(_nEvents) + " too many data headers");
 				}
-				addEvent();
+				else {
+					addEvent();
+				}
 			}
 			if (tNdataHeader == 0) {								        //set the BCID of the first data header
 				tStartBCID = tActualBCID;
@@ -139,8 +141,11 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 					addEvent();
 			}
 			else {		// use trigger number for event building, first word is trigger word in event data stream
-				if (_firstTriggerNrSet)  // do not build new event after first trigger; maybe comment for old data where trigger number is not first event word
+				if (_firstTriggerNrSet)  // do not build new event after first trigger
 					addEvent();
+				else if (tNdataHeader > _NbCID - 1)  // for old data where trigger word (first raw data word) might be missing
+					addEvent();
+
 			}
 			tTriggerWord++;                     //trigger event counter increase
 
@@ -227,14 +232,24 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 				tNdataRecord++;										  //increase data record counter for this event
 				_nDataRecords++;									  //increase total data record counter
 				if (tActualTot1 >= 0)								//add hit if hit info is reasonable (TOT1 >= 0)
-					addHit(tDbCID, tActualLVL1ID, tActualCol1, tActualRow1, tActualTot1, tActualBCID);
+					if (!(addHit(tDbCID, tActualLVL1ID, tActualCol1, tActualRow1, tActualTot1, tActualBCID)))
+						if (Basis::warningSet())
+							warning("interpretRawData: " + IntToStr(_nDataWords) + " DR " + IntToStr(tActualWord) + " at event " + LongIntToStr(_nEvents) + " too many data records");
 				if (tActualTot2 >= 0)								//add hit if hit info is reasonable and set (TOT2 >= 0)
-					addHit(tDbCID, tActualLVL1ID, tActualCol2, tActualRow2, tActualTot2, tActualBCID);
+					if (!(addHit(tDbCID, tActualLVL1ID, tActualCol2, tActualRow2, tActualTot2, tActualBCID)))
+						if (Basis::warningSet())
+							warning("interpretRawData: " + IntToStr(_nDataWords) + " DR " + IntToStr(tActualWord) + " at event " + LongIntToStr(_nEvents) + " too many data records");
 				if (Basis::debugSet()) {
 					std::stringstream tDebug;
 					tDebug << " " << _nDataWords << " DR COL1/ROW1/TOT1  COL2/ROW2/TOT2 " << tActualCol1 << "/" << tActualRow1 << "/" << tActualTot1 << "  " << tActualCol2 << "/" << tActualRow2 << "/" << tActualTot2 << " rBCID " << tDbCID << "\t" << _nEvents;
 					debug(tDebug.str());
 				}
+			}
+			else {
+				if (Basis::warningSet())
+					warning("interpretRawData: " + IntToStr(_nDataWords) + " UNKNOWN WORD " + IntToStr(tActualWord) + " at event " + LongIntToStr(_nEvents));
+				if (Basis::debugSet())
+					debug(std::string(" ") + IntToStr(_nDataWords) + " UNKNOWN WORD " + IntToStr(tActualWord) + " at event " + LongIntToStr(_nEvents));
 			}
 		}
 		else {
@@ -659,7 +674,7 @@ void Interpret::resetMetaDataCounter()
 
 //private
 
-void Interpret::addHit(const unsigned char& pRelBCID, const unsigned short int& pLVLID, const unsigned char& pColumn, const unsigned short int& pRow, const unsigned char& pTot, const unsigned short int& pBCID)	//add hit with event number, column, row, relative BCID [0:15], tot, trigger ID
+bool Interpret::addHit(const unsigned char& pRelBCID, const unsigned short int& pLVLID, const unsigned char& pColumn, const unsigned short int& pRow, const unsigned char& pTot, const unsigned short int& pBCID)	//add hit with event number, column, row, relative BCID [0:15], tot, trigger ID
 {
 	if (tHitBufferIndex < __MAXHITBUFFERSIZE) {
 		_hitBuffer[tHitBufferIndex].eventNumber = _nEvents;
@@ -675,16 +690,18 @@ void Interpret::addHit(const unsigned char& pRelBCID, const unsigned short int& 
 		_hitBuffer[tHitBufferIndex].serviceRecord = tServiceRecord;
 		_hitBuffer[tHitBufferIndex].triggerStatus = tTriggerError;
 		_hitBuffer[tHitBufferIndex].eventStatus = tErrorCode;
-		if ((tErrorCode & __NO_HIT) != __NO_HIT)  //only count not virtual hits
+		if ((tErrorCode & __NO_HIT) != __NO_HIT) // only count not virtual hits
 			tTotalHits++;
 		tHitBufferIndex++;
+		return true;
 	}
 	else {
-		addEventErrorCode(__TRUNC_EVENT); //too many hits in the event, abort this event, add truncated flac
-		addEvent();
+		addEventErrorCode(__TRUNC_EVENT); // too many hits in the event, abort this event, add truncated flag
+		//addEvent();
 		if (Basis::warningSet())
-			warning(std::string("addHit: Hit buffer overflow prevented by splitting events at event " + LongIntToStr(_nEvents)), __LINE__);
+			warning(std::string("addHit: Hit buffer overflow prevented by ignoring hits at event " + LongIntToStr(_nEvents)), __LINE__);
 	}
+	return false;
 }
 
 void Interpret::storeHit(HitInfo& rHit)
@@ -1209,8 +1226,11 @@ void Interpret::printInterpretedWords(unsigned int* pDataWords, const unsigned i
 		std::cout << iWord;
 		if (getTimefromDataHeader(tActualWord, tLVL1, tBCID))
 			std::cout << " DH " << tBCID << " " << tLVL1 << "\t";
-		else if (isDataRecord(tActualWord) && getHitsfromDataRecord(tActualWord, tcol, trow, ttot, tcol2, trow2, ttot2))
-			std::cout << " DR     " << tcol << " " << trow << " " << ttot << " " << tcol2 << " " << trow2 << "  " << ttot2 << "\t";
+		else if (isDataRecord(tActualWord))
+			if (getHitsfromDataRecord(tActualWord, tcol, trow, ttot, tcol2, trow2, ttot2))
+				std::cout << " DR     " << tcol << " " << trow << " " << ttot << " " << tcol2 << " " << trow2 << "  " << ttot2 << "\t";
+			else
+				std::cout << " UNKNOWN " << tActualWord;
 		else if (isTriggerWord(tActualWord))
 			std::cout << " TRIGGER " << TRIGGER_NUMBER_MACRO_NEW(tActualWord);
 		else if (getInfoFromServiceRecord(tActualWord, tActualSRcode, tActualSRcounter))

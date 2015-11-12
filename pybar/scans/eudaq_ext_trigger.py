@@ -31,7 +31,7 @@ class EudaqExtTriggerScan(ExtTriggerScan):
         "row_span": [1, 336],  # defining active row interval, 2-tuple, from 1 to 336
         "overwrite_enable_mask": False,  # if True, use col_span and row_span to define an active region regardless of the Enable pixel register. If False, use col_span and row_span to define active region by also taking Enable pixel register into account.
         "use_enable_mask_for_imon": False,  # if True, apply inverted Enable pixel mask to Imon pixel mask
-        "no_data_timeout": 600,  # no data timeout after which the scan will be aborted, in seconds
+        "no_data_timeout": None,  # no data timeout after which the scan will be aborted, in seconds
         "scan_timeout": None,  # timeout for scan after which the scan will be stopped, in seconds
         "max_triggers": None,  # maximum triggers after which the scan will be stopped, in seconds
         "enable_tdc": False  # if True, enables TDC (use RX2)
@@ -62,7 +62,7 @@ class EudaqExtTriggerScan(ExtTriggerScan):
                     triggers = self.dut['TLU']['TRIGGER_COUNTER']
                     data_words = self.fifo_readout.data_words_per_second()
                     logging.info('Runtime: %s\nTriggers: %d\nData words/s: %s\n' % (strftime('%H:%M:%S', gmtime(time() - start)), triggers, str(data_words)))
-                    if self.max_triggers is not None and triggers >= self.max_triggers:
+                    if self.max_triggers and triggers >= self.max_triggers:
                         self.stop(msg='Trigger limit was reached: %i' % self.max_triggers)
 
         pp.SendEvent(self.remaining_data)

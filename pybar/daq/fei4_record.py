@@ -17,13 +17,13 @@ class FEI4Record(object):
         if self.record_rawdata & 0x80000000:
             self.record_type = "TW"
             self.record_dict.update([('trigger data', self.record_word[30:0].tovalue())])
-        elif self.record_rawdata & 0x40000000:
+        elif self.record_rawdata & 0xF0000000 == 0x40000000:
             self.record_type = "TDC"
             if tdc_trig_dist:
                 self.record_dict.update([('tdc distance', self.record_word[27:20].tovalue()), ('tdc counter', self.record_word[19:12].tovalue()), ('tdc value', self.record_word[11:0].tovalue())])
             else:
                 self.record_dict.update([('tdc counter', self.record_word[27:12].tovalue()), ('tdc value', self.record_word[11:0].tovalue())])
-        elif self.record_rawdata & 0x0F000000:  # FE data
+        elif self.record_rawdata & 0x0F000000 and not self.record_rawdata & 0xF0000000:  # FE data
             self.record_dict.update([('channel', (self.record_rawdata & 0x0F000000) >> 24)])
             self.chip_flavor = chip_flavor
             if self.chip_flavor not in flavors:
