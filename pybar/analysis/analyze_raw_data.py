@@ -17,9 +17,11 @@ from matplotlib.backends.backend_pdf import PdfPages
 from pybar.analysis import analysis_utils
 from pybar.analysis.RawDataConverter import data_struct
 from pybar.analysis.plotting import plotting
+from pybar.analysis.analysis_utils import check_bad_data, fix_raw_data, consecutive, print_raw_data
 from pybar.analysis.RawDataConverter.data_interpreter import PyDataInterpreter
 from pybar.analysis.RawDataConverter.data_histograming import PyDataHistograming
 from pybar.analysis.RawDataConverter.data_clusterizer import PyDataClusterizer
+
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
@@ -158,6 +160,7 @@ class AnalyzeRawData(object):
         self.create_tot_hist = True
         self.create_tot_pixel_hist = True
         self.create_rel_bcid_hist = True
+        self.correct_corrupted_data = False
         self.create_error_hist = True
         self.create_service_record_hist = True
         self.create_occupancy_hist = True
@@ -309,6 +312,14 @@ class AnalyzeRawData(object):
     @create_fitted_threshold_hists.setter
     def create_fitted_threshold_hists(self, value):
         self._create_fitted_threshold_hists = value
+
+    @property
+    def correct_corrupted_data(self):
+        return self._correct_corrupted_data
+
+    @correct_corrupted_data.setter
+    def correct_corrupted_data(self, value):
+        self._correct_corrupted_data = value
 
     @property
     def create_error_hist(self):
@@ -569,21 +580,63 @@ class AnalyzeRawData(object):
         progress_bar.start()
         total_words = 0
 
-        for index, raw_data_file in enumerate(self.files_dict.keys()):  # loop over all raw data files
+        for file_index, raw_data_file in enumerate(self.files_dict.keys()):  # loop over all raw data files
             self.interpreter.reset_meta_data_counter()
             with tb.open_file(raw_data_file, mode="r") as in_file_h5:
-                table_size = in_file_h5.root.raw_data.shape[0]
                 if use_settings_from_file:
                     self._deduce_settings_from_file(in_file_h5)
                 else:
                     self.fei4b = fei4b
-                for iWord in range(0, table_size, self._chunk_size):  # loop over all words in the actual raw data file
+                index_start = in_file_h5.root.meta_data.read(field='index_start')
+                index_stop = in_file_h5.root.meta_data.read(field='index_stop')
+                bad_word_index = set()
+                # check for bad data
+                if self._correct_corrupted_data:
+                    for read_out_index, (index_start, index_stop) in enumerate(np.column_stack((index_start, index_stop))):
+                        try:
+                            raw_data = in_file_h5.root.raw_data.read(index_start, index_stop)
+                        except OverflowError, e:
+                            logging.error('%s: 2^31 xrange() limitation in 32-bit Python', e)
+
+                        if raw_data.shape[0] > 1 and check_bad_data(raw_data[:-1]):  # ignore last word
+                            logging.warning("found bad data in %s from index %d to %d (chunk %d, length %d)" % (in_file_h5.filename, index_start, index_stop, read_out_index, (index_stop - index_start)))
+                            # last word in chunk before currrent chunk is also bad
+                            if (index_start - 1) not in bad_word_index:
+                                bad_word_index.add(index_start - 1)
+                            # adding all word from current chunk
+                            bad_word_index = bad_word_index.union(range(index_start, index_stop))
+                    consecutive_bad_words_list = consecutive(sorted(bad_word_index))
+                    lsb_byte = None
+                for word_index in range(0, in_file_h5.root.raw_data.shape[0], self._chunk_size):  # loop over all words in the actual raw data file
                     try:
-                        raw_data = in_file_h5.root.raw_data.read(iWord, iWord + self._chunk_size)
+                        raw_data = in_file_h5.root.raw_data.read(word_index, word_index + self._chunk_size)
                     except OverflowError, e:
                         logging.error('%s: 2^31 xrange() limitation in 32-bit Python', e)
+                    total_words += raw_data.shape[0]
+                    # fix bad data
+                    if self._correct_corrupted_data:
+                        word_shift = 0
+                        chunk_idx = np.arange(word_index, word_index + self._chunk_size)
+                        for consecutive_bad_words in consecutive_bad_words_list:
+                            selected_words = np.intersect1d(consecutive_bad_words, chunk_idx, assume_unique=True)
+                            if selected_words.shape[0]:
+                                fixed_raw_data, lsb_byte = fix_raw_data(raw_data[selected_words - word_index - word_shift], lsb_byte=lsb_byte)
+    #                             print "bad data"
+    #                             print_raw_data(raw_data, start_index=selected_words[0] - word_index - 20, index_offset=word_index)
+    #                             print_raw_data(raw_data, start_index=selected_words[-1] - word_index - 20, index_offset=word_index)
+                                raw_data = np.r_[raw_data[:selected_words[0] - word_index - word_shift], fixed_raw_data, raw_data[selected_words[-1] - word_index + 1 - word_shift:]]
+                                if selected_words.shape[0] == consecutive_bad_words.shape[0]:
+                                    # full bad data chunk in current chunk
+                                    lsb_byte = None
+                                    # word shift by removing data word at the beginning of each defect chunk
+                                    word_shift += 1
+                                else:
+                                    break
+    #                             print "good data"
+    #                             print_raw_data(raw_data, start_index=selected_words[0] - word_index - 20, index_offset=word_index)
+    #                             print_raw_data(raw_data, start_index=selected_words[-1] - word_index - 20, index_offset=word_index)
                     self.interpreter.interpret_raw_data(raw_data)  # interpret the raw data
-                    if index == len(self.files_dict.keys()) - 1 and iWord == range(0, table_size, self._chunk_size)[-1]:  # store hits of the latest event of the last file
+                    if file_index == len(self.files_dict.keys()) - 1 and word_index == range(0, in_file_h5.root.raw_data.shape[0], self._chunk_size)[-1]:  # store hits of the latest event of the last file
                         self.interpreter.store_event()  # all actual buffered events in the interpreter are stored
                     hits = self.interpreter.get_hits()
                     if self.scan_parameters is not None:
@@ -606,9 +659,8 @@ class AnalyzeRawData(object):
                         size = self.interpreter.get_n_meta_data_word()
                         meta_word_index_table.append(meta_word[:size])
 
-                    if total_words + iWord < progress_bar.maxval:  # otherwise unwanted exception is thrown
-                        progress_bar.update(total_words + iWord)
-                total_words += table_size
+                    if total_words <= progress_bar.maxval:  # otherwise exception is thrown
+                        progress_bar.update(total_words)
                 if self._analyzed_data_file is not None and self._create_hit_table:
                     hit_table.flush()
         progress_bar.finish()
