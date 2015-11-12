@@ -79,7 +79,7 @@ public:
 	unsigned int getHitSize();								  //return the size of one hit entry in the hit array, needed to check data in memory alignment
 
 private:
-	void addHit(const unsigned char& pRelBCID, const unsigned short int& pLVLID, const unsigned char& pColumn, const unsigned short int& pRow, const unsigned char& pTot, const unsigned short int& pBCID); //adds the hit to the event hits array _hitBuffer
+	bool addHit(const unsigned char& pRelBCID, const unsigned short int& pLVLID, const unsigned char& pColumn, const unsigned short int& pRow, const unsigned char& pTot, const unsigned short int& pBCID); //adds the hit to the event hits array _hitBuffer
 	void storeHit(HitInfo& rHit);	//stores the hit into the output hit array _hitInfo
 	void storeEventHits();          //adds the hits of the actual event to _hitInfo
 	void correlateMetaWordIndex(const uint64_t& pEventNumer, const unsigned int& pDataWordIndex);  //writes the event number for the meta data
