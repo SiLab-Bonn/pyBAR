@@ -141,11 +141,13 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 					addEvent();
 			}
 			else {		// use trigger number for event building, first word is trigger word in event data stream
-				if (_firstTriggerNrSet)  // do not build new event after first trigger
+				if (_firstTriggerNrSet) { // do not build new event after first trigger
 					addEvent();
-				else if (tNdataHeader > _NbCID - 1)  // for old data where trigger word (first raw data word) might be missing
+				}
+				else if (tNdataHeader > _NbCID - 1) { // for old data where trigger word (first raw data word) might be missing
 					addEventErrorCode(__NO_TRG_WORD);
 					addEvent();
+				}
 
 			}
 			tTriggerWord++;                     //trigger event counter increase
