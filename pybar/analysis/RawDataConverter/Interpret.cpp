@@ -89,13 +89,13 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 		tActualTot2 = -1;												          //TOT2 value stays negative if it can not be set properly in getHitsfromDataRecord()
 		if (getTimefromDataHeader(tActualWord, tActualLVL1ID, tActualBCID)) {	//data word is data header if true is returned
 			_nDataHeaders++;
-			if (tNdataHeader > _NbCID - 1) {	                //maximum event window is reached (tNdataHeader > BCIDs, mostly tNdataHeader > 15), so create new event
-				if (_alignAtTriggerNumber) {
-					addEventErrorCode(__TRUNC_EVENT); //too many data header in the event, abort this event, add truncated flag
+			if (tNdataHeader > _NbCID - 1) { // maximum event window is reached (tNdataHeader > BCIDs, mostly tNdataHeader > 15)
+				if (_alignAtTriggerNumber) { // do not create new event
+					addEventErrorCode(__TRUNC_EVENT);
 					if (Basis::warningSet())
 						warning("interpretRawData: " + IntToStr(_nDataWords) + " DH " + IntToStr(tActualWord) + " at event " + LongIntToStr(_nEvents) + " too many data headers");
 				}
-				else {
+				else { // create new event
 					addEvent();
 				}
 			}
@@ -141,10 +141,13 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 					addEvent();
 			}
 			else {		// use trigger number for event building, first word is trigger word in event data stream
-				if (_firstTriggerNrSet)  // do not build new event after first trigger
+				if (_firstTriggerNrSet) { // do not build new event after first trigger
 					addEvent();
-				else if (tNdataHeader > _NbCID - 1)  // for old data where trigger word (first raw data word) might be missing
+				}
+				else if (tNdataHeader > _NbCID - 1) { // for old data where trigger word (first raw data word) might be missing
+					addEventErrorCode(__NO_TRG_WORD);
 					addEvent();
+				}
 
 			}
 			tTriggerWord++;                     //trigger event counter increase
