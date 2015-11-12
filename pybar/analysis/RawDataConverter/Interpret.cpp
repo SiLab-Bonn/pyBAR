@@ -93,9 +93,11 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 				if (_alignAtTriggerNumber) {
 					addEventErrorCode(__TRUNC_EVENT); //too many data header in the event, abort this event, add truncated flag
 					if (Basis::warningSet())
-						warning(std::string("addHit: Hit buffer overflow prevented by splitting events at event " + LongIntToStr(_nEvents)), __LINE__);
+						warning("interpretRawData: " + IntToStr(_nDataWords) + " DH " + IntToStr(tActualWord) + " at event " + LongIntToStr(_nEvents) + " too many data headers");
 				}
-				addEvent();
+				else {
+					addEvent();
+				}
 			}
 			if (tNdataHeader == 0) {								        //set the BCID of the first data header
 				tStartBCID = tActualBCID;
