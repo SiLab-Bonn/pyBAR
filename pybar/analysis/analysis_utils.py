@@ -608,9 +608,9 @@ def combine_meta_data(files_dict, meta_data_v2=True):
             ('error', np.uint32)])
     else:
         meta_data_combined = np.empty((total_length, ), dtype=[
-            ('index_start', np.uint32),
-            ('index_stop', np.uint32),
-            ('data_length', np.uint32),
+            ('start_index', np.uint32),
+            ('stop_index', np.uint32),
+            ('length', np.uint32),
             ('timestamp', np.float64),
             ('error', np.uint32)])
 
@@ -1838,12 +1838,16 @@ def consecutive(data, stepsize=1):
     return np.split(data, np.where(np.diff(data) != stepsize)[0] + 1)
 
 
-def print_raw_data_file(input_file, start_index=0, limit=200, flavor='fei4b', select=None):
+def print_raw_data_file(input_file, start_index=0, limit=200, flavor='fei4b', select=None, meta_data_v2=True):
     """Printing FEI4 data from raw data file for debugging.
     """
     with tb.open_file(input_file + '.h5', mode="r") as file_h5:
-        index_start = file_h5.root.meta_data.read(field='index_start')
-        index_stop = file_h5.root.meta_data.read(field='index_stop')
+        if meta_data_v2:
+            index_start = file_h5.root.meta_data.read(field='index_start')
+            index_stop = file_h5.root.meta_data.read(field='index_stop')
+        else:
+            index_start = file_h5.root.meta_data.read(field='start_index')
+            index_stop = file_h5.root.meta_data.read(field='stop_index')
         total_words = 0
         for read_out_index, (index_start, index_stop) in enumerate(np.column_stack((index_start, index_stop))):
             if start_index < index_stop:

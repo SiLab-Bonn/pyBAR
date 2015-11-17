@@ -588,8 +588,12 @@ class AnalyzeRawData(object):
                     self._deduce_settings_from_file(in_file_h5)
                 else:
                     self.fei4b = fei4b
-                index_start = in_file_h5.root.meta_data.read(field='index_start')
-                index_stop = in_file_h5.root.meta_data.read(field='index_stop')
+                if self.interpreter.meta_table_v2:
+                    index_start = in_file_h5.root.meta_data.read(field='index_start')
+                    index_stop = in_file_h5.root.meta_data.read(field='index_stop')
+                else:
+                    index_start = in_file_h5.root.meta_data.read(field='start_index')
+                    index_stop = in_file_h5.root.meta_data.read(field='stop_index')
                 bad_word_index = set()
                 # check for bad data
                 if self._correct_corrupted_data:
