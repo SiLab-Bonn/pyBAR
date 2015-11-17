@@ -20,6 +20,7 @@ from pybar.daq.fei4_record import FEI4Record
 from pybar.analysis.plotting import plotting
 from pybar.analysis.RawDataConverter import analysis_functions
 from pybar.analysis.RawDataConverter import data_struct
+from pybar.daq.readout_utils import is_fe_word, is_data_header
 
 
 class AnalysisError(Exception):
@@ -1787,8 +1788,9 @@ def fix_raw_data(raw_data, lsb_byte=None):
 def contiguous_regions(condition):
     """Finds contiguous True regions of the boolean array "condition". Returns
     a 2D array where the first column is the start index of the region and the
-    second column is the end index."""
-
+    second column is the end index.
+    http://stackoverflow.com/questions/4494404/find-large-number-of-consecutive-values-fulfilling-condition-in-a-numpy-array
+    """
     # Find the indicies of changes in "condition"
     d = np.diff(condition, n=1)
     idx, = d.nonzero()
@@ -1810,41 +1812,62 @@ def contiguous_regions(condition):
     return idx
 
 
-def check_bad_data(raw_data):
-    # search for bad headers
-    fe_words = np.bitwise_and(raw_data, 0x0F000000)
-    other_words = np.bitwise_and(raw_data, 0xF0000000)
-    condition = np.logical_and((fe_words != 0x04000000), (other_words == 0x0))
-    if np.any(condition):
+def check_bad_data(raw_data, trig_count=None):
+    """Checking FEI4 raw data array for corrupted data.
+    """
+    trigger_idx = np.where(raw_data >= 0x80000000)[0]
+    if not trigger_idx.shape[0]:
+        return False
+    fe_words = is_fe_word(raw_data)
+    data_headers = is_data_header(raw_data)
+    fe_dh_idx = np.where(np.logical_and(fe_words, data_headers) >= 1)[0]
+
+    if not trig_count:
+        trig_count = 16
+
+    event_hist = np.histogram(fe_dh_idx, np.r_[trigger_idx, raw_data.shape])
+    if np.count_nonzero(event_hist[0] < trig_count):
         return True
-    # search for consecutive trigger words
-    trigger_words = np.right_shift(raw_data, 31)
-    condition = trigger_words >= 1
-    for start, stop in contiguous_regions(condition):
-        if abs(stop - start) > 1:
-            return True
     return False
 
 
 def consecutive(data, stepsize=1):
+    """Converts array into chunks with consecutive elements of given step size.
+    http://stackoverflow.com/questions/7352684/how-to-find-the-groups-of-consecutive-elements-from-an-array-in-numpy
+    """
     return np.split(data, np.where(np.diff(data) != stepsize)[0] + 1)
 
 
-def print_raw_data_file(input_file, start_index=0, limit=200, flavor='fei4b'):
+def print_raw_data_file(input_file, start_index=0, limit=200, flavor='fei4b', select=None):
+    """Printing FEI4 data from raw data file for debugging.
+    """
     with tb.open_file(input_file + '.h5', mode="r") as file_h5:
-        raw_data = file_h5.root.raw_data
-        print_raw_data(raw_data=raw_data, start_index=start_index, limit=limit, flavor=flavor)
-
-
-def print_raw_data(raw_data, start_index=0, limit=200, flavor='fei4b', index_offset=0):
+        index_start = file_h5.root.meta_data.read(field='index_start')
+        index_stop = file_h5.root.meta_data.read(field='index_stop')
         total_words = 0
-        for index in range(start_index, raw_data.shape[0]):
-            dw = FEI4Record(raw_data[index], chip_flavor=flavor, tdc_trig_dist=True)
-            if dw in ['DH', 'TW', "AR", "VR", "SR", "DR", 'TDC', 'UNKNOWN FE WORD', 'UNKNOWN WORD']:
-                print index + index_offset, '{0:12d} {1:08b} {2:08b} {3:08b} {4:08b}'.format(raw_data[index], (raw_data[index] & 0xFF000000) >> 24, (raw_data[index] & 0x00FF0000) >> 16, (raw_data[index] & 0x0000FF00) >> 8, (raw_data[index] & 0x000000FF) >> 0), dw
-                total_words += 1
+        for read_out_index, (index_start, index_stop) in enumerate(np.column_stack((index_start, index_stop))):
+            if start_index < index_stop:
+                print "\nchunk %d with length %d (from index %d to %d)\n" % (read_out_index, (index_stop - index_start), index_start, index_stop)
+                raw_data = file_h5.root.raw_data.read(index_start, index_stop)
+                total_words += print_raw_data(raw_data=raw_data, start_index=max(start_index - index_start, 0), limit=limit - total_words, flavor=flavor, index_offset=index_start, select=select)
                 if limit and total_words >= limit:
                     break
+
+
+def print_raw_data(raw_data, start_index=0, limit=200, flavor='fei4b', index_offset=0, select=None):
+    """Printing FEI4 raw data array for debugging.
+    """
+    if not select:
+        select = ['DH', 'TW', "AR", "VR", "SR", "DR", 'TDC', 'UNKNOWN FE WORD', 'UNKNOWN WORD']
+    total_words = 0
+    for index in range(start_index, raw_data.shape[0]):
+        dw = FEI4Record(raw_data[index], chip_flavor=flavor, tdc_trig_dist=True)
+        if dw in select:
+            print index + index_offset, '{0:12d} {1:08b} {2:08b} {3:08b} {4:08b}'.format(raw_data[index], (raw_data[index] & 0xFF000000) >> 24, (raw_data[index] & 0x00FF0000) >> 16, (raw_data[index] & 0x0000FF00) >> 8, (raw_data[index] & 0x000000FF) >> 0), dw
+            total_words += 1
+            if limit and total_words >= limit:
+                break
+    return total_words
 
 
 if __name__ == "__main__":
