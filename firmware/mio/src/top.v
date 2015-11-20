@@ -989,7 +989,7 @@ rrp_arbiter #(
 
     .WRITE_REQ({~FE_FIFO_EMPTY & SEL, ~TDC_FIFO_EMPTY & TDC_SEL, ~TRIGGER_FIFO_EMPTY & TLU_SEL}),
     .HOLD_REQ({5'b0, TRIGGER_FIFO_PEEMPT_REQ}),
-    .DATA_IN({FE_FIFO_DATA[3],FE_FIFO_DATA[2],FE_FIFO_DATA[1], FE_FIFO_DATA[0], TDC_FIFO_DATA, TRIGGER_FIFO_DATA }),
+    .DATA_IN({FE_FIFO_DATA[3], FE_FIFO_DATA[2], FE_FIFO_DATA[1], FE_FIFO_DATA[0], TDC_FIFO_DATA, TRIGGER_FIFO_DATA}),
     .READ_GRANT(READ_GRANT),
 
     .READY_OUT(ARB_READY_OUT),
@@ -1000,6 +1000,26 @@ rrp_arbiter #(
 assign TRIGGER_FIFO_READ = READ_GRANT[0];
 assign TDC_FIFO_READ = READ_GRANT[1];
 assign FE_FIFO_READ = READ_GRANT[5:2];
+
+// simple arbiter
+//wire ARB_READY_OUT, ARB_WRITE_OUT;
+//wire [31:0] ARB_DATA_OUT;
+//
+//wire [4:0] FIFO_REQ;
+//assign FIFO_REQ = TRIGGER_FIFO_PEEMPT_REQ? 5'b0_0000 : {~FE_FIFO_EMPTY & SEL, ~TDC_FIFO_EMPTY & TDC_SEL};
+//wire [5:0] FIFO_READ_SEL;
+//
+//assign {FE_FIFO_READ, TDC_FIFO_READ, TRIGGER_FIFO_READ} = (FIFO_READ_SEL & ({6{ARB_READY_OUT}}));
+//assign ARB_WRITE_OUT = ((FIFO_READ_SEL & {FIFO_REQ, ~TRIGGER_FIFO_EMPTY}) != 6'b00_0000);
+//assign ARB_DATA_OUT = (({32{FIFO_READ_SEL[5]}} & FE_FIFO_DATA[3]) | ({32{FIFO_READ_SEL[4]}} & FE_FIFO_DATA[2]) | ({32{FIFO_READ_SEL[3]}} & FE_FIFO_DATA[1]) | ({32{FIFO_READ_SEL[2]}} & FE_FIFO_DATA[0]) | ({32{FIFO_READ_SEL[1]}} & TDC_FIFO_DATA) | ({32{FIFO_READ_SEL[0]}} & TRIGGER_FIFO_DATA));
+//
+//arbiter #(
+//    .WIDTH(6)
+//) arbiter_inst (
+//    .req({FIFO_REQ, ~TRIGGER_FIFO_EMPTY & TLU_SEL}),
+//    .grant(FIFO_READ_SEL),
+//    .base(6'b00_0001) // one hot, TLU has highest priority followed by higher indexed requests
+//);
 `endif
 
 // SRAM
