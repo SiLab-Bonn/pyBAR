@@ -66,7 +66,7 @@ To enable support for USB devices (MIO, MIO3 and MMC3), the following additional
   pip install "git+https://github.com/walac/pyusb.git@master"
   ```
   
-- [pySiLibUSB](https://silab-redmine.physik.uni-bonn.de/projects/pysilibusb) (>=2.0.0):
+- [pySiLibUSB](https://github.com/SiLab-Bonn/pySiLibUSB) (>=2.0.0):
   ```
   pip install pySiLibUSB
   ```
