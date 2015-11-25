@@ -170,7 +170,7 @@ class FEI4Register(object):
         if self.global_registers[name]['readonly']:
             raise ValueError('Global register %s: register is read-only' % name)
         value = long(str(value), 0)  # value is decimal string or number or BitVector
-        if not 0 <= self.global_registers[name]['value'] < 2 ** self.global_registers[name]['bitlength']:
+        if not 0 <= value < 2 ** self.global_registers[name]['bitlength']:
             raise ValueError('Global register %s: value exceeds limits' % name)
         self.global_registers[name]['value'] = value
 
