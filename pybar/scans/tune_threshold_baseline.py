@@ -7,7 +7,7 @@ from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.fei4.register_utils import make_box_pixel_mask_from_col_row, invert_pixel_mask
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.run_manager import RunManager
-from pybar.analysis.plotting.plotting import plot_occupancy, plot_fancy_occupancy, plotThreeWay
+from pybar.analysis.plotting.plotting import plot_occupancy, plot_fancy_occupancy, plotThreeWay, plot_scatter
 from pybar.daq.readout_utils import data_array_from_data_iterable
 from pybar.analysis.RawDataConverter.data_interpreter import PyDataInterpreter
 from pybar.analysis.RawDataConverter.data_histograming import PyDataHistograming
@@ -18,6 +18,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
 
     Tuning the FEI4 to the lowest possible threshold (GDAC and TDAC). Feedback current will not be tuned.
     NOTE: In case of RX errors decrease the trigger frequency (= increase trigger_rate_limit)
+    NOTE: To increase the TDAC range, decrease TdacVbp.
     '''
     _default_run_conf = {
         "occupancy_limit": 0,  # occupancy limit, when reached the TDAC will be decreased (increasing threshold). 0 will mask any pixel with occupancy greater than zero
@@ -27,7 +28,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
         "use_enable_mask": False,  # if True, enable mask from config file anded with mask (from col_span and row_span), if False use mask only for enable mask
         "n_triggers": 10000,  # total number of trigger sent to FE
         "trigger_rate_limit": 500,  # artificially limiting the trigger rate, in BCs (25ns)
-        "trig_count": 15,  # FE global register Trig_Count
+        "trig_count": 0,  # FE-I4 trigger count, number of consecutive BCs, 0 means 16, from 0 to 15
         "col_span": [1, 80],  # column range (from minimum to maximum value). From 1 to 80.
         "row_span": [1, 336],  # row range (from minimum to maximum value). From 1 to 336.
     }
@@ -93,6 +94,9 @@ class ThresholdBaselineTuning(Fei4RunBase):
         preselected_pixels = invert_pixel_mask(self.register.get_pixel_register_value('Enable')).sum()
         disabled_pixels = 0
 
+        self.Vthin_AltFine = []
+        self.Disabled_Pixels = []
+
         for reg_val in range(scan_parameter_range[0], scan_parameter_range[1] - 1, -1):
             if self.stop_run.is_set():
                 break
@@ -111,7 +115,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
                     break
                 self.histograming.reset()
                 step += 1
-                logging.info('Step %d / %d at Vthin_AltFine %d', (step, steps, reg_val))
+                logging.info('Step %d / %d at Vthin_AltFine %d', step, steps, reg_val)
                 logging.info('Estimated scan time: %ds', self.total_scan_time)
 
                 with self.readout(Vthin_AltFine=reg_val, Step=step, reset_sram_fifo=True, fill_buffer=True, clear_buffer=True, callback=self.handle_data):
@@ -180,6 +184,9 @@ class ThresholdBaselineTuning(Fei4RunBase):
                     else:
                         logging.info('Found %d noisy pixels... repeat tuning step for Vthin_AltFine %d', occ_mask.sum(), reg_val)
 
+            self.Vthin_AltFine.append(reg_val)
+            self.Disabled_Pixels.append(disabled_pixels)
+            
             if disabled_pixels > disabled_pixels_limit_cnt:
                 self.last_good_threshold = self.register.get_global_register_value("Vthin_AltFine")
                 self.last_good_tdac = self.register.get_pixel_register_value('TDAC')
@@ -190,6 +197,16 @@ class ThresholdBaselineTuning(Fei4RunBase):
         self.register.set_global_register_value("Vthin_AltFine", self.last_good_threshold + self.increase_threshold)
         self.register.set_pixel_register_value('TDAC', self.last_good_tdac)
         self.register.set_pixel_register_value('Enable', self.last_good_enable_mask)
+        # write configuration to avoid high current states
+        commands = []
+        commands.extend(self.register.get_commands("ConfMode"))
+        commands.extend(self.register.get_commands("WrRegister", name=["Vthin_AltFine"]))
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, name="TDAC"))
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, name="Enable"))
+        self.register_utils.send_commands(commands)
+
+        print self.Vthin_AltFine
+        print self.Disabled_Pixels
 
         with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
             analyze_raw_data.create_source_scan_hist = True
@@ -205,6 +222,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
             plot_occupancy(self.last_tdac_distribution.T, title='TDAC at Vthin_AltFine %d Step %d' % (self.last_reg_val, self.last_step), z_max=31, filename=analyze_raw_data.output_pdf)
             plot_occupancy(self.register.get_pixel_register_value('Enable').T, title='Enable Mask', z_max=1, filename=analyze_raw_data.output_pdf)
             plot_fancy_occupancy(self.register.get_pixel_register_value('Enable').T, filename=analyze_raw_data.output_pdf)
+            plot_scatter(x=self.Vthin_AltFine, y=self.Disabled_Pixels, title='Vthin_AltFine vs Number of Noisy Pixels', plot_range=[self.Vthin_AltFine[-1], 120], plot_range_y=[0, self.Disabled_Pixels[-1]], x_label='Vthin_AltFine', y_label='Number of Noisy Pixels', filename=analyze_raw_data.output_pdf)
 
 if __name__ == "__main__":
     RunManager('../configuration.yaml').run_run(ThresholdBaselineTuning)
