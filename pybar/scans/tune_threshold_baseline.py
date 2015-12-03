@@ -22,13 +22,13 @@ class ThresholdBaselineTuning(Fei4RunBase):
     '''
     _default_run_conf = {
         "occupancy_limit": 0,  # occupancy limit, when reached the TDAC will be decreased (increasing threshold). 0 will mask any pixel with occupancy greater than zero
-        "scan_parameters": [('Vthin_AltFine', (120, None)), ('Step', 60)],  # the Vthin_AltFine range, number of steps (repetition at constant Vthin_AltFine)
+        "scan_parameters": [('Vthin_AltFine', (60, None)), ('Step', 60)],  # the Vthin_AltFine range, number of steps (repetition at constant Vthin_AltFine)
         "increase_threshold": 5,  # increase the threshold in VthinAF after tuning
         "disabled_pixels_limit": 0.01,  # limit of disabled pixels, fraction of all pixels
         "use_enable_mask": False,  # if True, enable mask from config file anded with mask (from col_span and row_span), if False use mask only for enable mask
-        "n_triggers": 10000,  # total number of trigger sent to FE
+        "n_triggers": 10 ** (6),  # total number of trigger sent to FE
         "trigger_rate_limit": 500,  # artificially limiting the trigger rate, in BCs (25ns)
-        "trig_count": 0,  # FE-I4 trigger count, number of consecutive BCs, 0 means 16, from 0 to 15
+        "trig_count": 10,  # FE-I4 trigger count, number of consecutive BCs, 0 means 16, from 0 to 15
         "col_span": [1, 80],  # column range (from minimum to maximum value). From 1 to 80.
         "row_span": [1, 336],  # row range (from minimum to maximum value). From 1 to 336.
     }
@@ -186,7 +186,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
 
             self.Vthin_AltFine.append(reg_val)
             self.Disabled_Pixels.append(disabled_pixels)
-            
+
             if disabled_pixels > disabled_pixels_limit_cnt:
                 self.last_good_threshold = self.register.get_global_register_value("Vthin_AltFine")
                 self.last_good_tdac = self.register.get_pixel_register_value('TDAC')
@@ -207,6 +207,15 @@ class ThresholdBaselineTuning(Fei4RunBase):
 
         print self.Vthin_AltFine
         print self.Disabled_Pixels
+
+        with open(self.output_filename + ".txt", "w") as text_file:
+            text_file.write("Vthin_AltFine\n")
+            for item in self.Vthin_AltFine:
+                text_file.write("%s\n" % item)
+            text_file.write("\n\n\n\n\n")
+            text_file.write("Disabled Pixels\n")
+            for item in self.Disabled_Pixels:
+                text_file.write("%s\n" % item)
 
         with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
             analyze_raw_data.create_source_scan_hist = True
