@@ -21,6 +21,7 @@ from pybar.analysis.analysis_utils import check_bad_data, fix_raw_data, consecut
 from pybar.analysis.RawDataConverter.data_interpreter import PyDataInterpreter
 from pybar.analysis.RawDataConverter.data_histograming import PyDataHistograming
 from pybar.analysis.RawDataConverter.data_clusterizer import PyDataClusterizer
+from pybar.daq.readout_utils import is_fe_word, is_data_header, is_trigger_word
 
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
@@ -597,18 +598,50 @@ class AnalyzeRawData(object):
                 bad_word_index = set()
                 # check for bad data
                 if self._correct_corrupted_data:
-                    last_trigger_raw_data_form_last_chunk = np.array([], dtype=in_file_h5.root.raw_data.dtype)
-                    for read_out_index, (index_start, index_stop) in enumerate(np.column_stack((index_start, index_stop))):
+                    found_first_trigger = False
+                    raw_data_form_last_chunk = np.array([], dtype=in_file_h5.root.raw_data.dtype)
+                    readout_slices = np.column_stack((index_start, index_stop))
+                    for read_out_index, (index_start, index_stop) in enumerate(readout_slices):
                         try:
                             raw_data = in_file_h5.root.raw_data.read(index_start, index_stop)
                         except OverflowError, e:
                             logging.error('%s: 2^31 xrange() limitation in 32-bit Python', e)
 
                         trigger_positions = np.where(raw_data >= 0x80000000)[0]
+#                         if (not found_first_trigger or (index_start - 1) in bad_word_index) and trigger_positions.shape[0]:
+                        if not found_first_trigger and trigger_positions.shape[0]:
+                            raw_data = raw_data[trigger_positions[0]:]
+                            trigger_positions = np.where(raw_data >= 0x80000000)[0]
+                            found_first_trigger = True
+#                             first_trigger_position = trigger_positions[0]
+#                         else:
+#                             first_trigger_position = 0
+                        readout_next_chunk = False
+#                         # previous chunk has bad data, look for good data
+#                         if (index_start - 1) in bad_word_index:
+#                             if trigger_positions.shape[0] == 0:
+#                                 last_trigger_position = raw_data.shape[0]
+#                             else:
+#                         else:
+                        # no trigger
                         if trigger_positions.shape[0] == 0:
-                            last_trigger_position = index_stop
+                            last_trigger_position = raw_data.shape[0]
+                        elif trigger_positions.shape[0] == 1 or (is_trigger_word(raw_data[-1]) and trigger_positions.shape[0] == 2):
+                            readout_next_chunk = True
+                            last_trigger_position = raw_data.shape[0]
                         else:
-                            last_trigger_position = trigger_positions[-1]
+                            if is_trigger_word(raw_data[-1]):
+                                last_trigger_position = trigger_positions[-2]
+                            else:
+                                last_trigger_position = trigger_positions[-1]
+
+                        if readout_next_chunk and (read_out_index + 1) < len(readout_slices):
+                            raw_data_form_next_chunk = in_file_h5.root.raw_data.read(*readout_slices[read_out_index + 1])
+                            trigger_positions_next_chunk = np.where(raw_data_form_next_chunk >= 0x80000000)[0]
+                            if not trigger_positions_next_chunk.shape[0] == 0:
+                                raw_data_form_next_chunk = raw_data_form_next_chunk[:trigger_positions_next_chunk[0]]
+                        else:
+                            raw_data_form_next_chunk = np.array([], dtype=in_file_h5.root.raw_data.dtype)
 
                         # previous chunk has bad data, look for good data
                         if (index_start - 1) in bad_word_index:
@@ -617,29 +650,30 @@ class AnalyzeRawData(object):
                                 if check_bad_data(raw_data[first_trigger_position:last_trigger_position], trig_count=self.trig_count):
                                     bad_word_index = bad_word_index.union(range(index_start, index_stop))
                                 else:
-                                    last_trigger_raw_data_form_last_chunk = raw_data[last_trigger_position:]
+                                    raw_data_form_last_chunk = raw_data[last_trigger_position:]
                             elif trigger_positions.shape[0] == 1:
                                 if check_bad_data(raw_data[:last_trigger_position], trig_count=self.trig_count) and check_bad_data(raw_data[last_trigger_position:], trig_count=self.trig_count):
                                     bad_word_index = bad_word_index.union(range(index_start, index_stop))
                                 else:
-                                    last_trigger_raw_data_form_last_chunk = raw_data[last_trigger_position:]
+                                    raw_data_form_last_chunk = raw_data[last_trigger_position:]
                             else:
                                 if check_bad_data(raw_data, trig_count=self.trig_count):
                                     bad_word_index = bad_word_index.union(range(index_start, index_stop))
                             if index_start not in bad_word_index:
                                 logging.info("found good data in %s from index %d to %d (chunk %d, length %d)" % (in_file_h5.filename, index_start, index_stop, read_out_index, (index_stop - index_start)))
                         # check if chunk has bad data
-                        # check also for single trigger words
-                        elif check_bad_data(np.r_[last_trigger_raw_data_form_last_chunk, raw_data[:last_trigger_position]], trig_count=self.trig_count) or (index_start != 0 and last_trigger_position == 0 and check_bad_data(raw_data[last_trigger_position:], trig_count=self.trig_count)):
+#                         # check also for single trigger words
+                        elif check_bad_data(np.r_[raw_data_form_last_chunk, raw_data[:last_trigger_position], raw_data_form_next_chunk], trig_count=self.trig_count) and read_out_index != 0:  # or (index_start != 0 and last_trigger_position == 0 and check_bad_data(raw_data[last_trigger_position:], trig_count=self.trig_count)):
+#                         if check_bad_data(np.r_[raw_data_form_last_chunk, raw_data[:last_trigger_position], raw_data_form_next_chunk], trig_count=self.trig_count):
                             logging.warning("found bad data in %s from index %d to %d (chunk %d, length %d)" % (in_file_h5.filename, index_start, index_stop, read_out_index, (index_stop - index_start)))
                             # last word in chunk before currrent chunk is also bad
                             if index_start != 0 and (index_start - 1) not in bad_word_index:
                                 bad_word_index.add(index_start - 1)
                             # adding all word from current chunk
                             bad_word_index = bad_word_index.union(range(index_start, index_stop))
-                            last_trigger_raw_data_form_last_chunk = np.array([], dtype=in_file_h5.root.raw_data.dtype)
+                            raw_data_form_last_chunk = np.array([], dtype=in_file_h5.root.raw_data.dtype)
                         else:
-                            last_trigger_raw_data_form_last_chunk = raw_data[last_trigger_position:]
+                            raw_data_form_last_chunk = raw_data[last_trigger_position:]
                     consecutive_bad_words_list = consecutive(sorted(bad_word_index))
                     lsb_byte = None
                 for word_index in range(0, in_file_h5.root.raw_data.shape[0], self._chunk_size):  # loop over all words in the actual raw data file

@@ -20,7 +20,7 @@ from pybar.daq.fei4_record import FEI4Record
 from pybar.analysis.plotting import plotting
 from pybar.analysis.RawDataConverter import analysis_functions
 from pybar.analysis.RawDataConverter import data_struct
-from pybar.daq.readout_utils import is_fe_word, is_data_header
+from pybar.daq.readout_utils import is_fe_word, is_data_header, is_trigger_word
 
 
 class AnalysisError(Exception):
@@ -1816,18 +1816,30 @@ def check_bad_data(raw_data, trig_count=None):
     """Checking FEI4 raw data array for corrupted data.
     """
     trigger_idx = np.where(raw_data >= 0x80000000)[0]
-    if not trigger_idx.shape[0]:
-        return False
     fe_words = is_fe_word(raw_data)
     data_headers = is_data_header(raw_data)
     fe_dh_idx = np.where(np.logical_and(fe_words, data_headers) >= 1)[0]
+    if trigger_idx.shape[0] == 0:
+        if fe_dh_idx.shape[0] == 0:
+            return False
+        else:
+            return True
 
-    if not trig_count:
-        trig_count = 16
-
-    event_hist = np.histogram(fe_dh_idx, np.r_[trigger_idx, raw_data.shape])
-    if np.count_nonzero(event_hist[0] < trig_count):
-        return True
+    trigger_idx = np.r_[trigger_idx, raw_data.shape]
+    if trigger_idx[0] != 0:
+        trigger_idx = np.r_[0, trigger_idx]
+        event_hist = np.histogram(fe_dh_idx, trigger_idx)
+        if np.count_nonzero(event_hist[0][1:] == 0):
+#             print_raw_data(raw_data)
+            return True
+        elif event_hist[0][0] != 0:
+#             print_raw_data(raw_data)
+            return True
+    else:
+        event_hist = np.histogram(fe_dh_idx, trigger_idx)
+        if np.count_nonzero(event_hist[0] == 0):
+#             print_raw_data(raw_data)
+            return True
     return False
 
 
