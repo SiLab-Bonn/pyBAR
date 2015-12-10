@@ -115,11 +115,15 @@ bool Interpret::interpretRawData(unsigned int* pDataWords, const unsigned int& p
 				}
 
 				if (tStartBCID + tDbCID != tActualBCID) {  //check if BCID is increasing by 1s in the event window, if not close actual event and create new event with actual data header
-					if (tActualLVL1ID == tStartLVL1ID) //happens sometimes, non inc. BCID, FE feature, only abort if the LVL1ID is not constant (if no external trigger is used or)
+					if (tActualLVL1ID == tStartLVL1ID) { //happens sometimes, non inc. BCID, FE feature, only abort if the LVL1ID is not constant (if no external trigger is used or)
 						addEventErrorCode(__BCID_JUMP);
-					else if (_alignAtTriggerNumber || _alignAtTdcWord)  //rely here on the trigger number or TDC word and do not start a new event
+						if (Basis::infoSet())
+							info("interpretRawData: BCID jumping: " + IntToStr(tStartBCID + tDbCID) + "!=" + IntToStr(tActualBCID) + " at event " + LongIntToStr(_nEvents));
+					} else if (_alignAtTriggerNumber || _alignAtTdcWord) { //rely here on the trigger number or TDC word and do not start a new event
 						addEventErrorCode(__BCID_JUMP);
-					else {
+						if (Basis::infoSet())
+							info("interpretRawData: BCID jumping: " + IntToStr(tStartBCID + tDbCID) + "!=" + IntToStr(tActualBCID) + " at event " + LongIntToStr(_nEvents));
+					} else {
 						tBCIDerror = true;					       //BCID number wrong, abort event and take actual data header for the first hit of the new event
 						addEventErrorCode(__EVENT_INCOMPLETE);
 					}
