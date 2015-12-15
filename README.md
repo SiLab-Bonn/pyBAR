@@ -55,9 +55,9 @@ On Windows, the `pywin32` package is required:
   conda install pywin32
   ```
 
-[Basil](https://github.com/SiLab-Bonn/basil) (==2.1.2) is required:
+[Basil](https://github.com/SiLab-Bonn/basil) (==2.4.0) is required:
   ```
-  pip install basil_daq==2.1.2
+  pip install basil_daq==2.4.0
   ```
 
 To enable support for USB devices (MIO, MIO3 and MMC3), the following additional packages are required:
