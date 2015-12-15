@@ -58,6 +58,7 @@ VERILOG_SOURCES = \
                   $(BASIL_MODULES)/utils/reset_gen.v \
                   $(BASIL_MODULES)/utils/clock_divider.v \
                   $(BASIL_MODULES)/utils/bus_to_ip.v \
+                  $(BASIL_MODULES)/utils/fx2_to_bus.v \
                   $(BASIL_MODULES)/utils/flag_domain_crossing.v \
                   $(BASIL_MODULES)/utils/3_stage_synchronizer.v \
                   $(BASIL_MODULES)/utils/ddr_des.v \

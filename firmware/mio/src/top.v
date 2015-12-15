@@ -368,16 +368,23 @@ localparam GPIO_POWER_BASEADDR = 16'h8900;
 localparam GPIO_POWER_HIGHADDR = 16'h8A00-1;
 `endif
 
-// -------  BUS SYGNALING  ------- //
+// -------  BUS SIGNALLING  ------- //
 wire [15:0] BUS_ADD;
-assign BUS_ADD = ADD - 16'h4000;
 wire BUS_RD, BUS_WR;
-assign BUS_RD = ~RD_B;
-assign BUS_WR = ~WR_B;
-
+// BASIL bus mapping
+fx2_to_bus i_fx2_to_bus (
+    .ADD(ADD),
+    .RD_B(RD_B),
+    .WR_B(WR_B),
+    
+    .BUS_CLK(BUS_CLK),
+    .BUS_ADD(BUS_ADD),
+    .BUS_RD(BUS_RD),
+    .BUS_WR(BUS_WR),
+    .CS_FPGA()
+);
 
 // -------  USER MODULES  ------- //
-
 wire FIFO_NOT_EMPTY; // raised, when SRAM FIFO is not empty
 wire FIFO_FULL, FIFO_NEAR_FULL; // raised, when SRAM FIFO is full / near full
 wire FIFO_READ_ERROR; // raised, when attempting to read from SRAM FIFO when it is empty
