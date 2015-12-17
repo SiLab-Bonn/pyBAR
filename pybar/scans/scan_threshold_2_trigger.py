@@ -20,7 +20,8 @@ class ThresholdScan(Fei4RunBase):
         "use_enable_mask": False,  # if True, use Enable mask during scan, if False, all pixels will be enabled
         "enable_shift_masks": ["Enable", "C_High", "C_Low"],  # enable masks shifted during scan
         "disable_shift_masks": [],  # disable masks shifted during scan
-        "pulser_dac_correction": False  # PlsrDAC correction for each double column
+        "pulser_dac_correction": False,  # PlsrDAC correction for each double column
+        "trig_count": 0  # FE-I4 trigger count, number of consecutive BCs, 0 means 16, from 0 to 15
     }
 
     def configure(self):
@@ -40,6 +41,11 @@ class ThresholdScan(Fei4RunBase):
         else:
             self.register.set_pixel_register_value('C_High', 0)
             commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_High'))
+#         commands.extend(self.register.get_commands("RunMode"))
+#         self.register_utils.send_commands(commands)
+        # Registers
+        self.register.set_global_register_value("Trig_Count", self.trig_count)  # set number of consecutive triggers
+        commands.extend(self.register.get_commands("WrRegister", name=["Trig_Count"]))
         commands.extend(self.register.get_commands("RunMode"))
         self.register_utils.send_commands(commands)
 
