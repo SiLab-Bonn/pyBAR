@@ -70,7 +70,7 @@ class ThresholdScan(Fei4RunBase):
             self.register_utils.send_commands(commands)
 
             with self.readout(PlsrDAC=scan_parameter_value):
-                cal_lvl1_command = self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", length=1)[0] + self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0]
+                cal_lvl1_command = self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", length=1)[0] + self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", length=10000)[0]
                 scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections, use_delay=True, mask_steps=self.mask_steps, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=self.enable_shift_masks, disable_shift_masks=self.disable_shift_masks, restore_shift_masks=False, mask=invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if self.use_enable_mask else None, double_column_correction=self.pulser_dac_correction)
 
     def analyze(self):
