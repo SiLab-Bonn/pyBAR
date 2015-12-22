@@ -11,8 +11,8 @@ from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from scipy import interpolate
-# from scipy import optimize
-# from scipy import stats
+from scipy import optimize
+from scipy import stats
 
 from pybar.analysis.analysis_utils import consecutive
 from pybar.fei4_run_base import Fei4RunBase
@@ -24,6 +24,7 @@ class PlsrDacScan(Fei4RunBase):
     _default_run_conf = {
         "scan_parameters": [('PlsrDAC', range(0, 1024, 33)), ('Colpr_Addr', range(1, 39))],  # the PlsrDAC and Colpr_Addr range
         "mask_steps": 3,
+        "repeat_measurements": 10,
         "enable_shift_masks": ["Enable", "C_High", "C_Low"]
     }
 
@@ -46,10 +47,10 @@ class PlsrDacScan(Fei4RunBase):
         self.pulser_dac_parameters = self.scan_parameters.PlsrDAC
         self.colpr_addr_parameters = self.scan_parameters.Colpr_Addr
 
-        description = [('column_address', np.uint32), ('PlsrDAC', np.int32), ('voltage', np.float)]  # output data table description
-        data = self.raw_data_file.h5_file.create_table(self.raw_data_file.h5_file.root, name='plsr_dac_data', description=np.zeros((1,), dtype=description).dtype, title='Data from PlsrDAC calibration scan')
+        description = np.dtype([('colpr_addr', np.uint32), ('PlsrDAC', np.int32), ('voltage', np.float)])  # output data table description, native NumPy dtype
+        data = self.raw_data_file.h5_file.create_table(self.raw_data_file.h5_file.root, name='plsr_dac_data', description=description, title='Data from PlsrDAC calibration scan')
 
-        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=len(self.pulser_dac_parameters) * len(self.colpr_addr_parameters), term_width=80)
+        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=len(self.pulser_dac_parameters) * len(self.colpr_addr_parameters) * self.repeat_measurements, term_width=80)
         progress_bar.start()
         progress_bar_index = 0
 
@@ -65,13 +66,10 @@ class PlsrDacScan(Fei4RunBase):
             commands.extend(self.register.get_commands("RunMode"))
             self.register_utils.send_commands(commands)
 
-            actual_data = np.zeros(shape=(len(self.pulser_dac_parameters),), dtype=description)
-            actual_data['column_address'] = colpr_address
-            for index, pulser_dac in enumerate(self.pulser_dac_parameters):
+            for pulser_dac in self.pulser_dac_parameters:
                 if self.abort_run.is_set():
                     break
                 self.set_scan_parameters(PlsrDAC=pulser_dac)
-
                 commands = []
                 commands.extend(self.register.get_commands("ConfMode"))
                 self.register.set_global_register_value("PlsrDAC", pulser_dac)
@@ -79,14 +77,20 @@ class PlsrDacScan(Fei4RunBase):
                 commands.extend(self.register.get_commands("RunMode"))
                 self.register_utils.send_commands(commands)
 
-                voltage_string = self.dut['Multimeter'].get_voltage()
-                voltage = float(voltage_string.split(',')[0])
-                actual_data["PlsrDAC"][index] = pulser_dac
-                actual_data['voltage'][index] = voltage
-                logging.info('Measured %.2fV', voltage)
-                progress_bar_index += 1
-                progress_bar.update(progress_bar_index)
-            data.append(actual_data)
+                actual_data = np.zeros(shape=(self.repeat_measurements,), dtype=description)
+                actual_data['colpr_addr'] = colpr_address
+                actual_data["PlsrDAC"] = pulser_dac
+
+                for index, pulser_dac in enumerate(range(self.repeat_measurements)):
+                    voltage_string = self.dut['Multimeter'].get_voltage()
+                    voltage = float(voltage_string.split(',')[0])
+
+                    actual_data['voltage'][index] = voltage
+#                     logging.info('Measured %.2fV', voltage)
+                    progress_bar_index += 1
+                    progress_bar.update(progress_bar_index)
+                # append data to HDF5 file
+                data.append(actual_data)
         progress_bar.finish()
         data.flush()
 
@@ -102,55 +106,53 @@ class PlsrDacScan(Fei4RunBase):
                 mean_data['voltage_rms'][index] = data['voltage'][data["PlsrDAC"] == parameter].std()
 
             x, y, y_err = mean_data['PlsrDAC'], mean_data['voltage_mean'], mean_data['voltage_rms']
-            if len(self.colpr_addr_parameters) == 1:
-                y_err = None
 
-            slope_fit, plateau_fit = self.plot_pulser_dac(x, y, y_err, output_pdf, title_suffix="(DC " + ", ".join([str(cols[0]) if len(cols) == 1 else (str(cols[0]) + " - " + str(cols[-1])) for cols in consecutive(self.colpr_addr_parameters)]) + ")")
+            slope_fit, slope_err, plateau_fit, plateau_err = self.plot_pulser_dac(x, y, y_err, output_pdf, title_suffix="(DC " + ", ".join([str(cols[0]) if len(cols) == 1 else (str(cols[0]) + " - " + str(cols[-1])) for cols in consecutive(self.colpr_addr_parameters)]) + ")")
             # Store result in file
             self.register.calibration_parameters['Vcal_Coeff_0'] = slope_fit[1] * 1000.0  # store in mV
             self.register.calibration_parameters['Vcal_Coeff_1'] = slope_fit[0] * 1000.0  # store in mV/DAC
 
             # plot per double column
             # Calculate mean PlsrDAC transfer function
-            dc_data = np.zeros(shape=(len(self.colpr_addr_parameters),), dtype=[("colpr_addr", np.int32), ('Vcal_Coeff_0', np.float), ('Vcal_Coeff_1', np.float), ('Vcal_plateau', np.float)])
+            dc_data = np.zeros(shape=(len(self.colpr_addr_parameters),), dtype=[("colpr_addr", np.int32), ('Vcal_Coeff_0', np.float), ('Vcal_Coeff_1', np.float), ('Vcal_Coeff_0_err', np.float), ('Vcal_Coeff_1_err', np.float), ('Vcal_plateau', np.float), ('Vcal_plateau_err', np.float)])
             for dc_index, dc_parameter in enumerate(self.colpr_addr_parameters):
                 mean_data = np.zeros(shape=(len(self.pulser_dac_parameters),), dtype=[("PlsrDAC", np.int32), ('voltage_mean', np.float), ('voltage_rms', np.float)])
                 for index, parameter in enumerate(self.pulser_dac_parameters):
                     mean_data["PlsrDAC"][index] = parameter
-                    mean_data['voltage_mean'][index] = data['voltage'][np.logical_and(data["PlsrDAC"] == parameter, data['column_address'] == dc_parameter)].mean()
-                    mean_data['voltage_rms'][index] = data['voltage'][np.logical_and(data["PlsrDAC"] == parameter, data['column_address'] == dc_parameter)].std()
+                    mean_data['voltage_mean'][index] = data['voltage'][np.logical_and(data["PlsrDAC"] == parameter, data['colpr_addr'] == dc_parameter)].mean()
+                    mean_data['voltage_rms'][index] = data['voltage'][np.logical_and(data["PlsrDAC"] == parameter, data['colpr_addr'] == dc_parameter)].std()
 
                 x, y, y_err = mean_data['PlsrDAC'], mean_data['voltage_mean'], mean_data['voltage_rms']
-                if len(self.colpr_addr_parameters) == 1:
-                    y_err = None
 
-                slope_fit, plateau_fit = self.plot_pulser_dac(x, y, y_err, output_pdf, title_suffix="(DC " + str(dc_parameter) + ")")
+                slope_fit, slope_err, plateau_fit, plateau_err = self.plot_pulser_dac(x, y, y_err, output_pdf, title_suffix="(DC " + str(dc_parameter) + ")")
                 # Store result in file
                 dc_data["colpr_addr"][dc_index] = dc_parameter
-                dc_data['Vcal_Coeff_0'][dc_index] = slope_fit[1] * 1000.0  # offset
-                dc_data['Vcal_Coeff_1'][dc_index] = slope_fit[0] * 1000.0  # slope
+                dc_data['Vcal_Coeff_0'][dc_index] = slope_fit[0] * 1000.0  # offset
+                dc_data['Vcal_Coeff_1'][dc_index] = slope_fit[1] * 1000.0  # slope
+                dc_data['Vcal_Coeff_0_err'][dc_index] = slope_err[0] * 1000.0  # offset error
+                dc_data['Vcal_Coeff_1_err'][dc_index] = slope_err[1] * 1000.0  # slope error
                 dc_data['Vcal_plateau'][dc_index] = plateau_fit[0] * 1000.0  # plateau
+                dc_data['Vcal_plateau_err'][dc_index] = plateau_err[0] * 1000.0  # plateau error
 
             fig = Figure()
             FigureCanvas(fig)
             ax1 = fig.add_subplot(311)
             ax1.set_title('PlsrDAC Vcal_Coeff_0 vs. DC')
-            ax1.plot(dc_data["colpr_addr"], dc_data['Vcal_Coeff_0'], 'o', label='data')
-        #     ax1.plot(x, predict_y, label = str(fit_fn))
+            ax1.errorbar(dc_data["colpr_addr"], dc_data['Vcal_Coeff_0'], yerr=dc_data['Vcal_Coeff_0_err'], fmt='o', label='Vcal_Coeff_0')
             ax1.set_ylabel('Vcal_Coeff_0 [mV]')
             ax1.set_xlabel("Colpr_Addr")
             ax1.set_xlim(-0.5, 39.5)
 
             ax2 = fig.add_subplot(312)
             ax2.set_title('PlsrDAC Vcal_Coeff_1 vs. DC')
-            ax2.plot(dc_data["colpr_addr"], dc_data['Vcal_Coeff_1'], 'o', label='data')
+            ax2.errorbar(dc_data["colpr_addr"], dc_data['Vcal_Coeff_1'], yerr=dc_data['Vcal_Coeff_1_err'], fmt='o', label='Vcal_Coeff_1')
             ax2.set_ylabel('Vcal_Coeff_1 [mV/DAC]')
             ax2.set_xlabel("Colpr_Addr")
             ax2.set_xlim(-0.5, 39.5)
 
             ax2 = fig.add_subplot(313)
             ax2.set_title('PlsrDAC Plateau vs. DC')
-            ax2.plot(dc_data["colpr_addr"], dc_data['Vcal_plateau'], 'o', label='data')
+            ax2.errorbar(dc_data["colpr_addr"], dc_data['Vcal_plateau'], yerr=dc_data['Vcal_plateau_err'], fmt='o', label='Plateau')
             ax2.set_ylabel('Plateau [mV]')
             ax2.set_xlabel("Colpr_Addr")
             ax2.set_xlim(-0.5, 39.5)
@@ -202,17 +204,23 @@ class PlsrDacScan(Fei4RunBase):
             ax1.plot(x, y, 'o', label='data')
             ax1.plot(x[slope_idx], y[slope_idx], 'ro', label='fit data')
             ax1.plot(xnew, interpolate.splev(xnew, tck, der=0), label='B-spline')
-            # Calculate some additional outputs
-        #     slope, intercept, r_value, p_value, std_err = stats.linregress(x[idx], y[idx])
-        #     predict_y = intercept + slope * x
-        #     pred_error = y - predict_y
-        #     degrees_of_freedom = len(x) - 2
-        #     residual_std_error = np.sqrt(np.sum(pred_error**2) / degrees_of_freedom)
-            slope_fit = polyfit(x[slope_idx], y[slope_idx], 1)
-            slope_fit_fn = poly1d(slope_fit)
-            plateau_fit = polyfit(x[plateau_idx], y[plateau_idx], 0)
-            plateau_fit_fn = poly1d(plateau_fit)
-        #     ax1.plot(x, predict_y, label = str(fit_fn))
+
+            def slope_fit_fn(x, offset, slope):
+                return offset + slope * x
+
+            def plateau_fit_fn(x, offset):
+                return offset
+
+            slope_p_opt, slope_p_cov = optimize.curve_fit(slope_fit_fn, x[slope_idx], y[slope_idx], p0=[0.04, 0.0015], sigma=y_err[slope_idx], absolute_sigma=True)
+            slope_p_err = np.sqrt(np.diag(slope_p_cov))
+
+            plateau_p_opt, plateau_p_cov = optimize.curve_fit(plateau_fit_fn, x[plateau_idx], y[plateau_idx], p0=[1.3], sigma=y_err[plateau_idx], absolute_sigma=True)
+            plateau_p_err = np.sqrt(np.diag(plateau_p_cov))
+
+#             slope_p_opt = polyfit(x[slope_idx], y[slope_idx], 1)
+#             slope_fit_fn = poly1d(slope_p_opt)
+#             plateau_p_opt = polyfit(x[plateau_idx], y[plateau_idx], 0)
+#             plateau_fit_fn = poly1d(plateau_p_opt)
             ax1.set_ylabel('Voltage [V]')
             ax1.set_xlabel("PlsrDAC")
             ax1.legend(loc='best')
@@ -240,8 +248,10 @@ class PlsrDacScan(Fei4RunBase):
             ax.errorbar(x, y, None, label='PlsrDAC', fmt='o')
             ax.plot(x[slope_idx], y[slope_idx], 'ro', label='PlsrDAC fit')
             ax.plot(x[plateau_idx], y[plateau_idx], 'go', label='PlsrDAC plateau')
-            ax.plot(x, slope_fit_fn(x), '--k', label=str(slope_fit_fn))
-            ax.plot(x, plateau_fit_fn(x), '-k', label=str(plateau_fit_fn))
+#             ax.plot(x, slope_fit_fn(x), '--k', label=str(slope_fit_fn))
+#             ax.plot(x, plateau_fit_fn(x), '-k', label=str(plateau_fit_fn))
+            ax.plot(x, np.vectorize(slope_fit_fn)(x, *slope_p_opt), '--k', label='%.5f+/-%.5f+\n%.5f+/-%.5f*x' % (slope_p_opt[0], slope_p_err[0], slope_p_opt[1], slope_p_err[1]))
+            ax.plot(x, np.vectorize(plateau_fit_fn)(x, *plateau_p_opt), '-k', label='%.5f+/-%.5f' % (plateau_p_opt[0], plateau_p_err[0]))
             ax.set_title('PlsrDAC calibration %s' % title_suffix)
             ax.set_xlabel("PlsrDAC")
             ax.set_ylabel('Voltage [V]')
@@ -249,7 +259,7 @@ class PlsrDacScan(Fei4RunBase):
             ax.legend(loc='upper left')
             pdf.savefig(fig)
 
-            return slope_fit, plateau_fit
+            return slope_p_opt, slope_p_err, plateau_p_opt, plateau_p_err
 
 
 if __name__ == "__main__":
