@@ -1,6 +1,7 @@
 """A script that changes the PlsrDAC and measures the output voltage. The data is analyzed and fitted and stored to a PDF and configuration file.
 It is necessary to add a measurement device ("Multimeter") to the Basil configuration (.yaml) file. Examples are given in dut_mio.yaml.
 A Keithley SourceMeter is preferred to a Keithley Multimeter since they turn out to be more reliable.
+Use same enable_shift_masks and mask_steps for tuning.
 """
 import numpy as np
 import tables as tb
@@ -105,15 +106,14 @@ class PlsrDacScan(Fei4RunBase):
                 mean_data['voltage_mean'][index] = data['voltage'][data["PlsrDAC"] == parameter].mean()
                 mean_data['voltage_rms'][index] = data['voltage'][data["PlsrDAC"] == parameter].std()
 
-            x, y, y_err = mean_data['PlsrDAC'], mean_data['voltage_mean'], mean_data['voltage_rms']
-
-            slope_fit, slope_err, plateau_fit, plateau_err = self.plot_pulser_dac(x, y, y_err, output_pdf, title_suffix="(DC " + ", ".join([str(cols[0]) if len(cols) == 1 else (str(cols[0]) + " - " + str(cols[-1])) for cols in consecutive(self.colpr_addr_parameters)]) + ")")
-            # Store result in file
+            slope_fit, slope_err, plateau_fit, plateau_err = self.plot_pulser_dac(mean_data['PlsrDAC'], mean_data['voltage_mean'], mean_data['voltage_rms'], output_pdf, title_suffix="(DC " + ", ".join([str(cols[0]) if len(cols) == 1 else (str(cols[0]) + " - " + str(cols[-1])) for cols in consecutive(self.colpr_addr_parameters)]) + ")")
             self.register.calibration_parameters['Vcal_Coeff_0'] = slope_fit[1] * 1000.0  # store in mV
             self.register.calibration_parameters['Vcal_Coeff_1'] = slope_fit[0] * 1000.0  # store in mV/DAC
 
             # plot per double column
             # Calculate mean PlsrDAC transfer function
+            # TODO: Store result in file
+            dc_data_stability = np.zeros(shape=(len(self.colpr_addr_parameters) * len(self.pulser_dac_parameters),), dtype=[("colpr_addr", np.int32), ("PlsrDAC", np.int32), ('voltage_mean', np.float), ('voltage_rms', np.float)])
             dc_data = np.zeros(shape=(len(self.colpr_addr_parameters),), dtype=[("colpr_addr", np.int32), ('Vcal_Coeff_0', np.float), ('Vcal_Coeff_1', np.float), ('Vcal_Coeff_0_err', np.float), ('Vcal_Coeff_1_err', np.float), ('Vcal_plateau', np.float), ('Vcal_plateau_err', np.float)])
             for dc_index, dc_parameter in enumerate(self.colpr_addr_parameters):
                 mean_data = np.zeros(shape=(len(self.pulser_dac_parameters),), dtype=[("PlsrDAC", np.int32), ('voltage_mean', np.float), ('voltage_rms', np.float)])
@@ -122,10 +122,12 @@ class PlsrDacScan(Fei4RunBase):
                     mean_data['voltage_mean'][index] = data['voltage'][np.logical_and(data["PlsrDAC"] == parameter, data['colpr_addr'] == dc_parameter)].mean()
                     mean_data['voltage_rms'][index] = data['voltage'][np.logical_and(data["PlsrDAC"] == parameter, data['colpr_addr'] == dc_parameter)].std()
 
-                x, y, y_err = mean_data['PlsrDAC'], mean_data['voltage_mean'], mean_data['voltage_rms']
+                dc_data_stability["colpr_addr"][dc_index * len(self.pulser_dac_parameters):(dc_index + 1) * len(self.pulser_dac_parameters)] = dc_parameter
+                dc_data_stability["PlsrDAC"][dc_index * len(self.pulser_dac_parameters):(dc_index + 1) * len(self.pulser_dac_parameters)] = mean_data["PlsrDAC"]
+                dc_data_stability["voltage_mean"][dc_index * len(self.pulser_dac_parameters):(dc_index + 1) * len(self.pulser_dac_parameters)] = mean_data['voltage_mean']
+                dc_data_stability["voltage_rms"][dc_index * len(self.pulser_dac_parameters):(dc_index + 1) * len(self.pulser_dac_parameters)] = mean_data['voltage_rms']
 
-                slope_fit, slope_err, plateau_fit, plateau_err = self.plot_pulser_dac(x, y, y_err, output_pdf, title_suffix="(DC " + str(dc_parameter) + ")")
-                # Store result in file
+                slope_fit, slope_err, plateau_fit, plateau_err = self.plot_pulser_dac(mean_data['PlsrDAC'], mean_data['voltage_mean'], mean_data['voltage_rms'], output_pdf, title_suffix="(DC " + str(dc_parameter) + ")")
                 dc_data["colpr_addr"][dc_index] = dc_parameter
                 dc_data['Vcal_Coeff_0'][dc_index] = slope_fit[0] * 1000.0  # offset
                 dc_data['Vcal_Coeff_1'][dc_index] = slope_fit[1] * 1000.0  # slope
@@ -133,6 +135,17 @@ class PlsrDacScan(Fei4RunBase):
                 dc_data['Vcal_Coeff_1_err'][dc_index] = slope_err[1] * 1000.0  # slope error
                 dc_data['Vcal_plateau'][dc_index] = plateau_fit[0] * 1000.0  # plateau
                 dc_data['Vcal_plateau_err'][dc_index] = plateau_err[0] * 1000.0  # plateau error
+
+            for index, parameter in enumerate(self.pulser_dac_parameters):
+                fig = Figure()
+                FigureCanvas(fig)
+                ax = fig.add_subplot(111)
+                ax.set_title('PlsrDAC Voltage vs. DC at PlsrDAC %d' % parameter)
+                ax.errorbar(dc_data_stability["colpr_addr"][dc_data_stability['PlsrDAC'] == parameter], dc_data_stability['voltage_mean'][dc_data_stability['PlsrDAC'] == parameter], yerr=dc_data_stability['voltage_rms'][dc_data_stability['PlsrDAC'] == parameter], fmt='o', label='PlsrDAC Voltage')
+                ax.set_ylabel('Voltage [V]')
+                ax.set_xlabel("Colpr_Addr")
+                ax.set_xlim(-0.5, 39.5)
+                output_pdf.savefig(fig)
 
             fig = Figure()
             FigureCanvas(fig)
@@ -183,7 +196,7 @@ class PlsrDacScan(Fei4RunBase):
             dev_2 = interpolate.splev(x, tck, der=2)
             # calculate slope
             slope_data_dev1 = np.where(np.greater(dev_1, [0] * len(dev_1)))[0]
-            slope_data_dev2 = np.where(np.isclose(dev_2, [0] * len(dev_2), atol=2e-06))[0]
+            slope_data_dev2 = np.where(np.isclose(dev_2, [0] * len(dev_2), atol=0.5 * 1e-06))[0]
             slope_data = np.intersect1d(slope_data_dev1, slope_data_dev2, assume_unique=True)
 
             # index of slope fit values
@@ -214,8 +227,13 @@ class PlsrDacScan(Fei4RunBase):
             slope_p_opt, slope_p_cov = optimize.curve_fit(slope_fit_fn, x[slope_idx], y[slope_idx], p0=[0.04, 0.0015], sigma=y_err[slope_idx], absolute_sigma=True)
             slope_p_err = np.sqrt(np.diag(slope_p_cov))
 
-            plateau_p_opt, plateau_p_cov = optimize.curve_fit(plateau_fit_fn, x[plateau_idx], y[plateau_idx], p0=[1.3], sigma=y_err[plateau_idx], absolute_sigma=True)
-            plateau_p_err = np.sqrt(np.diag(plateau_p_cov))
+            try:
+                plateau_p_opt, plateau_p_cov = optimize.curve_fit(plateau_fit_fn, x[plateau_idx], y[plateau_idx], p0=[1.3], sigma=y_err[plateau_idx], absolute_sigma=True)
+            except:
+                plateau_p_opt = [np.nan]
+                plateau_p_err = [np.nan, np.nan]
+            else:
+                plateau_p_err = np.sqrt(np.diag(plateau_p_cov))
 
 #             slope_p_opt = polyfit(x[slope_idx], y[slope_idx], 1)
 #             slope_fit_fn = poly1d(slope_p_opt)
