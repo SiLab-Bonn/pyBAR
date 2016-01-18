@@ -194,21 +194,30 @@ class PlsrDacScan(Fei4RunBase):
 
             dev_1 = interpolate.splev(x, tck, der=1)
             dev_2 = interpolate.splev(x, tck, der=2)
+
+            # calculate turning point
+            turning_point_idx = np.where(np.logical_and(dev_2 == np.amin(dev_2), dev_2 <= -0.5 * 1e-05))[0]
+
             # calculate slope
-            slope_data_dev1 = np.where(np.greater(dev_1, [0] * len(dev_1)))[0]
-            slope_data_dev2 = np.where(np.isclose(dev_2, [0] * len(dev_2), atol=0.5 * 1e-06))[0]
-            slope_data = np.intersect1d(slope_data_dev1, slope_data_dev2, assume_unique=True)
+            slope_data_dev1_idx = np.where(np.greater(dev_1, [0] * len(dev_1)))[0]
+            slope_data_dev2_idx = np.where(np.isclose(dev_2, [0] * len(dev_2), atol=0.75 * 1e-06))[0]
+            slope_data_idx = np.intersect1d(slope_data_dev1_idx, slope_data_dev2_idx, assume_unique=True)
 
             # index of slope fit values
-            slope_idx = max(consecutive(slope_data), key=len)
+            slope_idx = max(consecutive(slope_data_idx), key=len)
 
             # calculate plateau
-            plateau_data_dev1 = np.where(np.isclose(dev_1, [0] * len(dev_1), atol=1e-05))[0]
-            plateau_data_dev2 = np.where(np.isclose(dev_2, [0] * len(dev_2), atol=2e-06))[0]
-            plateau_data = np.intersect1d(plateau_data_dev1, plateau_data_dev2, assume_unique=True)
+            plateau_data_dev1_idx = np.where(np.isclose(dev_1, [0] * len(dev_1), atol=1e-04))[0]
+            plateau_data_dev2_idx = np.where(np.isclose(dev_2, [0] * len(dev_2), atol=2e-06))[0]
+            plateau_data_idx = np.intersect1d(plateau_data_dev1_idx, plateau_data_dev2_idx, assume_unique=True)
+            if turning_point_idx.size:
+                turning_point = turning_point_idx[0]
+            else:
+                turning_point = len(x)
+            plateau_data_idx = plateau_data_idx[plateau_data_idx > turning_point]
 
             # index of plateau fit values
-            plateau_idx = max(consecutive(plateau_data), key=len)
+            plateau_idx = max(consecutive(plateau_data_idx), key=len)
 
             fig = Figure()
             FigureCanvas(fig)
@@ -252,8 +261,8 @@ class PlsrDacScan(Fei4RunBase):
             ax3 = fig.add_subplot(313)
             ax3.plot(x, dev_2, label='2st dev')
             ax3.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
-            turning_point_mask = dev_2 == np.amin(dev_2)
-            ax3.plot(x[turning_point_mask], dev_2[turning_point_mask], 'rx', label='Turning point')
+            if turning_point_idx.size:
+                ax3.plot(x[turning_point_idx], dev_2[turning_point_idx], 'rx', label='Turning point')
             ax3.set_xlabel("PlsrDAC")
             ax3.legend(loc='best')
             fig.tight_layout()
