@@ -1,7 +1,9 @@
 """A script that changes the PlsrDAC and measures the output voltage. The data is analyzed and fitted and stored to a PDF and configuration file.
 It is necessary to add a measurement device ("Multimeter") to the Basil configuration (.yaml) file. Examples are given in dut_mio.yaml.
 A Keithley SourceMeter is preferred to a Keithley Multimeter since they turn out to be more reliable.
-Use same enable_shift_masks and mask_steps for tuning.
+Note:
+ * Use the same enable_shift_masks and mask_steps value for all other scans (e.g. tuning).
+ * In case of FE-I4A, deselect outermost double columns (0 and 39): change 'Colpr_Addr' scan parameter to range(1, 39).
 """
 import numpy as np
 import tables as tb
