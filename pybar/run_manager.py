@@ -110,6 +110,11 @@ class RunBase():
         try:
             if not self.parallel and 'number_of_fes' in self.conf and self.conf['number_of_fes'] > 1:
                 for self.fe_number in range(1, self.conf['number_of_fes'] + 1):
+#                    if self.fe_number != 1:
+#                        print "skipping channel", self.fe_number
+#                    else:
+#                        with self._run():
+#                            self.do_run()
                     with self._run():
                         self.do_run()
             elif self.parallel and 'number_of_fes' in self.conf and self.conf['number_of_fes'] > 1:

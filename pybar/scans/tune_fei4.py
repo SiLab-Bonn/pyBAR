@@ -31,9 +31,9 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
     _default_run_conf = {
         # tuning parameters
         'send_data': 'tcp://127.0.0.1:5678',
-        "target_threshold": 50,  # target threshold
-        "target_charge": 280,  # target charge
-        "target_tot": 5,  # target ToT
+        "target_threshold": 27,  # target threshold
+        "target_charge": 291,  # target charge
+        "target_tot": 10,  # target ToT
         "global_iterations": 4,  # the number of iterations to do for the global tuning, 0 means only threshold is tuned, negative that no global tuning is done
         "local_iterations": 3,  # the number of iterations to do for the local tuning, 0 means only threshold is tuned, negative that no local tuning is done
         # GDAC

@@ -7,7 +7,6 @@ from pybar.fei4.register_utils import scan_loop
 from pybar.run_manager import RunManager
 from pybar.daq.readout_utils import convert_data_array, is_data_record, data_array_from_data_iterable, get_col_row_array_from_data_record_array
 from pybar.analysis.plotting.plotting import plotThreeWay
-from statsmodels.tsa.vector_ar.tests.test_var import close_plots
 
 
 class TdacTuning(Fei4RunBase):

@@ -311,27 +311,27 @@ class Fei4RunBase(RunBase):
         else:
             pass  # do nothing, already initialized
         # disabling channels (cmd)
-        if self.dut.name == 'mio' and 'number_of_fes' in self.conf and self.conf['number_of_fes'] > 1:
-            if self.fe_number < 5:
-                self.dut['DISABLE_CHANNEL']['DIS_CH1'] = 0
-                self.dut['DISABLE_CHANNEL']['DIS_CH2'] = 0
-                self.dut['DISABLE_CHANNEL']['DIS_CH3'] = 0
-                self.dut['DISABLE_CHANNEL']['DIS_CH4'] = 0
-                self.dut['DISABLE_CHANNEL']['DIS_CH5'] = 1
-                self.dut['DISABLE_CHANNEL']['DIS_CH6'] = 1
-                self.dut['DISABLE_CHANNEL']['DIS_CH7'] = 1
-                self.dut['DISABLE_CHANNEL']['DIS_CH8'] = 1
-                self.dut['DISABLE_CHANNEL'].write()
-            else:
-                self.dut['DISABLE_CHANNEL']['DIS_CH1'] = 1
-                self.dut['DISABLE_CHANNEL']['DIS_CH2'] = 1
-                self.dut['DISABLE_CHANNEL']['DIS_CH3'] = 1
-                self.dut['DISABLE_CHANNEL']['DIS_CH4'] = 1
-                self.dut['DISABLE_CHANNEL']['DIS_CH5'] = 0
-                self.dut['DISABLE_CHANNEL']['DIS_CH6'] = 0
-                self.dut['DISABLE_CHANNEL']['DIS_CH7'] = 0
-                self.dut['DISABLE_CHANNEL']['DIS_CH8'] = 0
-                self.dut['DISABLE_CHANNEL'].write()
+#         if self.dut.name == 'mio' and 'number_of_fes' in self.conf and self.conf['number_of_fes'] > 1:
+#             if self.fe_number < 5:
+#                 self.dut['DISABLE_CHANNEL']['DIS_CH1'] = 0
+#                 self.dut['DISABLE_CHANNEL']['DIS_CH2'] = 0
+#                 self.dut['DISABLE_CHANNEL']['DIS_CH3'] = 0
+#                 self.dut['DISABLE_CHANNEL']['DIS_CH4'] = 0
+#                 self.dut['DISABLE_CHANNEL']['DIS_CH5'] = 1
+#                 self.dut['DISABLE_CHANNEL']['DIS_CH6'] = 1
+#                 self.dut['DISABLE_CHANNEL']['DIS_CH7'] = 1
+#                 self.dut['DISABLE_CHANNEL']['DIS_CH8'] = 1
+#                 self.dut['DISABLE_CHANNEL'].write()
+#             else:
+#                 self.dut['DISABLE_CHANNEL']['DIS_CH1'] = 1
+#                 self.dut['DISABLE_CHANNEL']['DIS_CH2'] = 1
+#                 self.dut['DISABLE_CHANNEL']['DIS_CH3'] = 1
+#                 self.dut['DISABLE_CHANNEL']['DIS_CH4'] = 1
+#                 self.dut['DISABLE_CHANNEL']['DIS_CH5'] = 0
+#                 self.dut['DISABLE_CHANNEL']['DIS_CH6'] = 0
+#                 self.dut['DISABLE_CHANNEL']['DIS_CH7'] = 0
+#                 self.dut['DISABLE_CHANNEL']['DIS_CH8'] = 0
+#                 self.dut['DISABLE_CHANNEL'].write()
         # FIFO readout
         if 'number_of_fes' in self.conf and self.conf['number_of_fes'] > 1:
             self.fifo_readout = FifoReadout(self.dut, self.fe_number)
