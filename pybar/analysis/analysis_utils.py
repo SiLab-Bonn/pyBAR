@@ -279,7 +279,7 @@ def get_rate_normalization(hit_file, parameter, reference='event', cluster_file=
             for start_event, stop_event in event_range:  # loop over the selected events
                 readout_cluster_len = 0  # variable to calculate a optimal chunk size value from the number of hits for speed up
                 n_cluster_per_event = None
-                for clusters, index in data_aligned_at_events(cluster_table, start_event_number=start_event, stop_event_number=stop_event, start=index, chunk_size=best_chunk_size):
+                for clusters, index in data_aligned_at_events(cluster_table, start_event_number=start_event, stop_event_number=stop_event, start_index=index, chunk_size=best_chunk_size):
                     if n_cluster_per_event is None:
                         n_cluster_per_event = get_n_cluster_in_events(clusters['event_number'])[:, 1]  # array with the number of cluster per event, cluster per event are at least 1
                     else:
@@ -993,7 +993,7 @@ def get_hits_of_scan_parameter(input_file_hits, scan_parameters=None, try_speedu
 
             readout_hit_len = 0  # variable to calculate a optimal chunk size value from the number of hits for speed up
             # loop over the hits in the actual selected events with optimizations: determine best chunk size, start word index given
-            for hits, index in data_aligned_at_events(hit_table, start_event_number=start_event_number, stop_event_number=stop_event_number, start=index, try_speedup=try_speedup, chunk_size=best_chunk_size):
+            for hits, index in data_aligned_at_events(hit_table, start_event_number=start_event_number, stop_event_number=stop_event_number, start_index=index, try_speedup=try_speedup, chunk_size=best_chunk_size):
                 yield parameter_values[parameter_index], hits
                 readout_hit_len += hits.shape[0]
             best_chunk_size = int(1.5 * readout_hit_len) if int(1.05 * readout_hit_len) < chunk_size and int(1.05 * readout_hit_len) > 1e3 else chunk_size  # to increase the readout speed, estimated the number of hits for one read instruction
@@ -1321,96 +1321,7 @@ def index_event_number(table_with_event_numer):
         logging.debug('Event_number index exists already, omit creation')
 
 
-def data_aligned_at_events(table, start_event_number=None, stop_event_number=None, start_index=None, stop_index=None, try_speedup=False, chunk_size=10000000, **kwargs):
-    '''Takes the table with a event_number column and returns chunks with the size up to chunk_size. The chunks are chosen in a way that the events are not splitted. Additional
-    parameters can be set to increase the readout speed. If only events between a certain event range are used one can specify this. Also the start and the
-    stop indices for the reading of the table can be specified for speed up.
-    It is important to index the event_number with pytables before using this function, otherwise the queries are very slow.
-
-    Parameters
-    ----------
-    table : pytables.table
-    start_event_number : int
-        The data read is corrected that only data starting from the start_event number is returned. Lower event numbers are discarded.
-    stop_event_number : int
-        The data read is corrected that only data up to the stop_event number is returned. The stop_event number is not included.
-    try_speedup : bool
-        Try to reduce the index range to read by searching for the indices of start and stop event number. If these event numbers are usually
-        not in the data this speedup can even slow down the function!
-    Returns
-    -------
-    iterable to numpy.histogram
-        The data of the actual chunk.
-    stop_index: int
-        The index of the last table part already used. Can be used if data_aligned_at_events is called in a loop for speed up.
-        Example:
-        start_index = 0
-        for scan_parameter in scan_parameter_range:
-            start_event_number, stop_event_number = event_select_function(scan_parameter)
-            for data, start_index in data_aligned_at_events(table, start_event_number=start_event_number, stop_event_number=stop_event_number, start=start_index):
-                do_something(data)
-    Example
-    -------
-    for data, index in data_aligned_at_events(table):
-        do_something(data)
-    '''
-
-    # initialize variables
-    start_index_known = False
-    stop_index_known = False
-    last_event_start_index = 0
-    start_index = 0 if start_index is None else start_index
-    stop_index = table.nrows if stop_index is None else stop_index
-
-    if try_speedup:  # set start stop indices from the event numbers for fast read if possible; not possible if the given event number does not exist in the data stream
-        if start_event_number is not None:
-            condition_1 = 'event_number==' + str(start_event_number)
-            start_indeces = table.get_where_list(condition_1, start=start_index, stop=stop_index)
-            if start_indeces.shape[0] != 0:  # set start index if possible
-                start_index = start_indeces[0]
-                start_index_known = True
-
-        if stop_event_number is not None:
-            condition_2 = 'event_number==' + str(stop_event_number)
-            stop_indeces = table.get_where_list(condition_2, start=start_index, stop=stop_index)
-            if stop_indeces.shape[0] != 0:  # set the stop index if possible, stop index is excluded
-                stop_index = stop_indeces[0]
-                stop_index_known = True
-
-    if (start_index_known and stop_index_known) and (start_index + chunk_size >= stop_index):  # special case, one read is enough, data not bigger than one chunk and the indices are known
-        yield table.read(start=start_index, stop=stop_index), stop_index
-    else:  # read data in chunks, chunks do not divide events, abort if stop_event_number is reached
-        while(start_index < stop_index):
-            src_array = table.read(start=start_index, stop=start_index + chunk_size + 1)  # stop index is exclusive, so add 1
-            first_event = src_array["event_number"][0]
-            last_event = src_array["event_number"][-1]
-            if (start_event_number is not None and last_event < start_event_number):
-                start_index = start_index + src_array.shape[0]  # events fully read, increase start index and continue reading
-                continue
-
-            last_event_start_index = np.argmax(src_array["event_number"] == last_event)  # get first index of last event
-            if last_event_start_index == 0:
-                nrows = src_array.shape[0]
-                if nrows != 1:
-                    logging.warning("Depreciated warning?! Buffer too small to fit event. Possible loss of data. Increase chunk size.")
-            else:
-                if start_index + chunk_size > stop_index:  # special case for the last chunk read, there read the table until its end
-                    nrows = src_array.shape[0]
-                else:
-                    nrows = last_event_start_index
-
-            if (start_event_number is not None or stop_event_number is not None) and (last_event > stop_event_number or first_event < start_event_number):  # too many events read, get only the selected ones if specified
-                selected_rows = get_data_in_event_range(src_array[0:nrows], event_start=start_event_number, event_stop=stop_event_number, assume_sorted=True)
-                if len(selected_rows) != 0:  # only return non empty data
-                    yield selected_rows, start_index + len(selected_rows)
-            else:
-                yield src_array[0:nrows], start_index + nrows  # no events specified or selected event range is larger than read chunk, thus return the whole chunk minus the little part for event alignment
-            if stop_event_number is not None and last_event > stop_event_number:  # events are sorted, thus stop here to save time
-                break
-            start_index = start_index + nrows  # events fully read, increase start index and continue reading
-
-
-def data_aligned_at_events_new(table, start_event_number=None, stop_event_number=None, start_index=None, stop_index=None, first_event_aligned=True, try_speedup=False, chunk_size=10000000, fail_on_missing_events=True):
+def data_aligned_at_events(table, start_event_number=None, stop_event_number=None, start_index=None, stop_index=None, chunk_size=10000000, try_speedup=False, first_event_aligned=True, fail_on_missing_events=True):
     '''Takes the table with a event_number column and returns chunks with the size up to chunk_size. The chunks are chosen in a way that the events are not splitted.
     Additional parameters can be set to increase the readout speed. Events between a certain range can be selected.
     Also the start and the stop indices limiting the table size can be specified to improve performance.
@@ -1420,33 +1331,44 @@ def data_aligned_at_events_new(table, start_event_number=None, stop_event_number
     Parameters
     ----------
     table : pytables.table
+        The data.
     start_event_number : int
-        The data read is corrected that only data starting from the start_event number is returned. Lower event numbers are discarded.
+        The retruned data contains events with event number >= start_event_number. If None, no limit is set.
     stop_event_number : int
-        The data read is corrected that only data up to the stop_event number is returned. The stop_event number is not included.
+        The retruned data contains events with event number < stop_event_number. If None, no limit is set.
+    start_index : int
+        Start index of data. If None, no limit is set.
+    stop_index : int
+        Stop index of data. If None, no limit is set.
+    chunk_size : int
+        Maximum chunk size per read.
     try_speedup : bool
-        Try to reduce the index range to read by searching for the indices of start and stop event number. If these event numbers are usually
+        If True, try to reduce the index range to read by searching for the indices of start and stop event number. If these event numbers are usually
         not in the data this speedup can even slow down the function!
+    
+    The following parameters are not used when try_speedup is True:
+    
+    first_event_aligned : bool
+        If True, assuming that the first event is aligned to the data chunk and will be added. If False, the lowest event number of the first chunk will not be read out.
+    fail_on_missing_events : bool
+        If True, an error is given when start_event_number or stop_event_number is not part of the data.
 
     Returns
     -------
-    iterable to numpy.histogram
-        The data of the actual chunk.
-    stop_index: int
-        The index of the last table part already used. Can be used if data_aligned_at_events is called in a loop for speed up.
-        Example:
-        start_index = 0
-        for scan_parameter in scan_parameter_range:
-            start_event_number, stop_event_number = event_select_function(scan_parameter)
-            for data, start_index in data_aligned_at_events(table, start_event_number=start_event_number, stop_event_number=stop_event_number, start=start_index):
-                do_something(data)
-
+    Iterator of tuples
+        Data of the actual data chunk and start index for the next chunk.
+    
     Example
     -------
+    start_index = 0
+    for scan_parameter in scan_parameter_range:
+        start_event_number, stop_event_number = event_select_function(scan_parameter)
+        for data, start_index in data_aligned_at_events(table, start_event_number=start_event_number, stop_event_number=stop_event_number, start_index=start_index):
+            do_something(data)
+
     for data, index in data_aligned_at_events(table):
         do_something(data)
     '''
-
     # initialize variables
     start_index_known = False
     stop_index_known = False
