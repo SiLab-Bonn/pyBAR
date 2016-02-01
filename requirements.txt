@@ -1,6 +1,7 @@
 # Core functionality
 basil_daq>=2.4.0 # readout framework pyBAR is built on
 pySiLibUSB # support for SiLab USB devices
+pixel_clusterizer>=2.3
 bitarray>=0.8.1
 cython
 matplotlib
