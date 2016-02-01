@@ -13,6 +13,7 @@ from functools import partial
 from scipy.optimize import curve_fit, OptimizeWarning
 from scipy.special import erf
 from matplotlib.backends.backend_pdf import PdfPages
+from pixel_clusterizer.clusterizer import HitClusterizer
 
 from pybar.analysis import analysis_utils
 from pybar.analysis.RawDataConverter import data_struct
@@ -20,7 +21,6 @@ from pybar.analysis.plotting import plotting
 from pybar.analysis.analysis_utils import check_bad_data, fix_raw_data, consecutive, print_raw_data
 from pybar.analysis.RawDataConverter.data_interpreter import PyDataInterpreter
 from pybar.analysis.RawDataConverter.data_histograming import PyDataHistograming
-from pybar.analysis.RawDataConverter.data_clusterizer import PyDataClusterizer
 
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
@@ -72,7 +72,7 @@ class AnalyzeRawData(object):
         '''
         self.interpreter = PyDataInterpreter()
         self.histograming = PyDataHistograming()
-        self.clusterizer = PyDataClusterizer()
+
         raw_data_files = []
 
         if isinstance(raw_data_file, (list, set, tuple)):
@@ -139,9 +139,72 @@ class AnalyzeRawData(object):
             logging.info('Closing output PDF file: %s', str(self.output_pdf._file.fh.name))
             self.output_pdf.close()
 
+    def _setup_clusterizer(self):
+        # Define all field names and data types
+        hit_fields = {'event_number': 'event_number',
+                      'column': 'column',
+                      'row': 'row',
+                      'relative_BCID': 'frame',
+                      'tot': 'charge',
+                      'LVL1ID': 'LVL1ID',
+                      'trigger_number': 'trigger_number',
+                      'BCID': 'BCID',
+                      'TDC': 'TDC',
+                      'TDC_time_stamp': 'TDC_time_stamp',
+                      'trigger_status': 'trigger_status',
+                      'service_record': 'service_record',
+                      'event_status': 'event_status'
+                      }
+
+        hit_dtype = np.dtype([('event_number', '<i8'),
+                              ('trigger_number', '<u4'),
+                              ('relative_BCID', '<u1'),
+                              ('LVL1ID', '<u2'),
+                              ('column', '<u1'),
+                              ('row', '<u2'),
+                              ('tot', '<u1'),
+                              ('BCID', '<u2'),
+                              ('TDC', '<u2'),
+                              ('TDC_time_stamp', '<u1'),
+                              ('trigger_status', '<u1'),
+                              ('service_record', '<u4'),
+                              ('event_status', '<u2')])
+
+        cluster_fields = {'event_number': 'event_number',
+                          'column': 'column',
+                          'row': 'row',
+                          'size': 'n_hits',
+                          'ID': 'ID',
+                          'tot': 'charge',
+                          'seed_column': 'seed_column',
+                          'seed_row': 'seed_row',
+                          'mean_column': 'mean_column',
+                          'mean_row': 'mean_row'}
+
+        cluster_dtype = np.dtype([('event_number', '<i8'),
+                                  ('ID', '<u2'),
+                                  ('size', '<u2'),
+                                  ('tot', '<u2'),
+                                  ('seed_column', '<u1'),
+                                  ('seed_row', '<u2'),
+                                  ('mean_column', '<f4'),
+                                  ('mean_row', '<f4'),
+                                  ('event_status', '<u2')])
+
+        self.clusterizer = HitClusterizer(hit_fields, hit_dtype, cluster_fields, cluster_dtype)  # Initialize clusterizer with custom hit/cluster fields
+
+        # Set the cluster event status from the hit event status
+        def end_of_cluster_function(hits, cluster, is_seed, n_cluster, cluster_size, cluster_id, actual_cluster_index, actual_event_hit_index, actual_cluster_hit_indices, seed_index):
+            cluster[actual_cluster_index].event_status = hits[seed_index].event_status
+        self.clusterizer.set_end_of_cluster_function(end_of_cluster_function)  # Set the new function to the clusterizer
+
+        self.clusterizer.set_frame_cluster_distance(2)
+        self.clusterizer.set_max_cluster_hits(1000)  # Make sure clusterizer can handle 1000 hits per cluster
+
     def set_standard_settings(self):
         '''Set all settings to their standard values.
         '''
+        self._setup_clusterizer()
         self.chunk_size = 3000000
         self.n_injections = 100
         self.trig_count = 0  # 0 trig_count = 16 BCID per trigger
@@ -166,13 +229,14 @@ class AnalyzeRawData(object):
         self.create_occupancy_hist = True
         self.create_meta_word_index = False
         self.create_source_scan_hist = False
+        self.max_cluster_size = 1024  # Maximum clustersize to histogram the cluster
         self.create_tdc_hist = False
         self.create_tdc_counter_hist = False
         self.create_tdc_pixel_hist = False
         self.create_trigger_error_hist = False
         self.create_threshold_hists = False
-        self.create_threshold_mask = True  # threshold/noise histogram mask: masking all pixels out of bounds
-        self.create_fitted_threshold_mask = True  # fitted threshold/noise histogram mask: masking all pixels out of bounds
+        self.create_threshold_mask = True  # Threshold/noise histogram mask: masking all pixels out of bounds
+        self.create_fitted_threshold_mask = True  # Fitted threshold/noise histogram mask: masking all pixels out of bounds
         self.create_fitted_threshold_hists = False
         self.create_cluster_hit_table = False
         self.create_cluster_table = False
@@ -184,14 +248,13 @@ class AnalyzeRawData(object):
         self.use_tdc_trigger_time_stamp = False  # the tdc time stamp is the difference between trigger and tdc rising edge
         self.max_tdc_delay = 255
         self.max_trigger_number = 2 ** 16 - 1
-        self.set_stop_mode = False  # the FE is read out with stop mode, therefore the BCID plot is different
+        self.set_stop_mode = False  # The FE is read out with stop mode, therefore the BCID plot is different
 
     def reset(self):
         '''Reset the c++ libraries for new analysis.
         '''
         self.interpreter.reset()
         self.histograming.reset()
-        self.clusterizer.reset()
 
     @property
     def chunk_size(self):
@@ -200,6 +263,7 @@ class AnalyzeRawData(object):
     @chunk_size.setter
     def chunk_size(self, value):
         self.interpreter.set_hit_array_size(2 * value)
+        self.clusterizer.set_max_hits(value)
         self._chunk_size = value
 
     @property
@@ -411,7 +475,18 @@ class AnalyzeRawData(object):
         self._max_tot_value = value
         self.interpreter.set_max_tot(self._max_tot_value)
         self.histograming.set_max_tot(self._max_tot_value)
-        self.clusterizer.set_max_tot(self._max_tot_value)
+        self.clusterizer.set_max_hit_charge(self._max_tot_value)
+
+    @property
+    def max_cluster_size(self):
+        """Get maximum cluster size value that defines if a hit is used for histograming"""
+        return self._max_cluster_size
+
+    @max_cluster_size.setter
+    def max_cluster_size(self, value):
+        """Set maximum cluster size value that defines if a hit is used for histograming"""
+        self._max_cluster_size = value
+        self.clusterizer.set_max_cluster_hits(self._max_cluster_size)
 
     @property
     def create_cluster_hit_table(self):
@@ -420,10 +495,6 @@ class AnalyzeRawData(object):
     @create_cluster_hit_table.setter
     def create_cluster_hit_table(self, value):
         self._create_cluster_hit_table = value
-        if value:
-            self.clusterizer.set_cluster_hit_info_array_size(2 * self.chunk_size)
-            self.clusterizer.create_cluster_hit_info_array(value)
-            self.create_cluster_table = value
 
     @property
     def create_cluster_table(self):
@@ -432,8 +503,6 @@ class AnalyzeRawData(object):
     @create_cluster_table.setter
     def create_cluster_table(self, value):
         self._create_cluster_table = value
-        self.clusterizer.set_cluster_info_array_size(2 * self.chunk_size)
-        self.clusterizer.create_cluster_info_array(value)
 
     @property
     def create_cluster_size_hist(self):
@@ -575,6 +644,12 @@ class AnalyzeRawData(object):
         self.meta_event_index = np.zeros((meta_data_size,), dtype=[('metaEventIndex', np.uint64)])  # this array is filled by the interpreter and holds the event number per read out
         self.interpreter.set_meta_event_data(self.meta_event_index)  # tell the interpreter the data container to write the meta event index to
 
+        if self._create_cluster_size_hist:  # Cluster size result histogram
+            self._cluster_size_hist = np.zeros(shape=(self.max_cluster_size, ), dtype=np.uint32)
+
+        if self._create_cluster_tot_hist:  # Cluster tot/size result histogram
+            self._cluster_tot_hist = np.zeros(shape=(128, self.max_cluster_size), dtype=np.uint32)
+
         logging.info("Interpreting...")
         progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=analysis_utils.get_total_n_data_words(self.files_dict), term_width=80)
         progress_bar.start()
@@ -594,7 +669,8 @@ class AnalyzeRawData(object):
                     index_start = in_file_h5.root.meta_data.read(field='start_index')
                     index_stop = in_file_h5.root.meta_data.read(field='stop_index')
                 bad_word_index = set()
-                # check for bad data
+
+                # Check for bad data
                 if self._correct_corrupted_data:
                     last_trigger_raw_data_form_last_chunk = np.array([], dtype=in_file_h5.root.raw_data.dtype)
                     for read_out_index, (index_start, index_stop) in enumerate(np.column_stack((index_start, index_stop))):
@@ -641,6 +717,8 @@ class AnalyzeRawData(object):
                             last_trigger_raw_data_form_last_chunk = raw_data[last_trigger_position:]
                     consecutive_bad_words_list = consecutive(sorted(bad_word_index))
                     lsb_byte = None
+
+                # Loop over raw data in chunks
                 for word_index in range(0, in_file_h5.root.raw_data.shape[0], self._chunk_size):  # loop over all words in the actual raw data file
                     try:
                         raw_data = in_file_h5.root.raw_data.read(word_index, word_index + self._chunk_size)
@@ -679,21 +757,22 @@ class AnalyzeRawData(object):
                     if self.is_histogram_hits():
                         self.histogram_hits(hits)
                     if self.is_cluster_hits():
-                        self.cluster_hits(hits)
+                        clustered_hits, cluster = self.cluster_hits(hits)
                         if self._create_cluster_hit_table:
-                            cluster_hits = self.clusterizer.get_hit_cluster()
-                            cluster_hit_table.append(cluster_hits)
+                            cluster_hit_table.append(clustered_hits)
                         if self._create_cluster_table:
-                            cluster = self.clusterizer.get_cluster()
                             cluster_table.append(cluster)
-
+                        if self._create_cluster_size_hist:
+                            self._cluster_size_hist += analysis_utils.hist_1d_index(cluster['size'], shape=self._cluster_size_hist.shape)
+                        if self._create_cluster_tot_hist:
+                            self._cluster_tot_hist += analysis_utils.hist_2d_index(cluster['tot'][cluster['tot'] < 128], cluster['size'][cluster['tot'] < 128], shape=self._cluster_tot_hist.shape)
                     if self._analyzed_data_file is not None and self._create_hit_table:
                         hit_table.append(hits)
                     if self._analyzed_data_file is not None and self._create_meta_word_index:
                         size = self.interpreter.get_n_meta_data_word()
                         meta_word_index_table.append(meta_word[:size])
 
-                    if total_words <= progress_bar.maxval:  # otherwise exception is thrown
+                    if total_words <= progress_bar.maxval:  # Otherwise exception is thrown
                         progress_bar.update(total_words)
                 if self._analyzed_data_file is not None and self._create_hit_table:
                     hit_table.flush()
@@ -827,15 +906,14 @@ class AnalyzeRawData(object):
     def _create_additional_cluster_data(self, safe_to_file=True):
         logging.info('Create selected cluster histograms')
         if self._create_cluster_size_hist:
-            self.cluster_size_hist = self.clusterizer.get_cluster_size_hist()
             if self._analyzed_data_file is not None and safe_to_file:
-                cluster_size_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistClusterSize', title='Cluster Size Histogram', atom=tb.Atom.from_dtype(self.cluster_size_hist.dtype), shape=self.cluster_size_hist.shape, filters=self._filter_table)
-                cluster_size_hist_table[:] = self.cluster_size_hist
+                cluster_size_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistClusterSize', title='Cluster Size Histogram', atom=tb.Atom.from_dtype(self._cluster_size_hist.dtype), shape=self._cluster_size_hist.shape, filters=self._filter_table)
+                cluster_size_hist_table[:] = self._cluster_size_hist
         if self._create_cluster_tot_hist:
-            self.cluster_tot_hist = self.clusterizer.get_cluster_tot_hist()
+            self._cluster_tot_hist[:, 0] = self._cluster_tot_hist.sum(axis=1)  # First bin is the projection of the others
             if self._analyzed_data_file is not None and safe_to_file:
-                cluster_tot_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistClusterTot', title='Cluster Tot Histogram', atom=tb.Atom.from_dtype(self.cluster_tot_hist.dtype), shape=self.cluster_tot_hist.shape, filters=self._filter_table)
-                cluster_tot_hist_table[:] = self.cluster_tot_hist
+                cluster_tot_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistClusterTot', title='Cluster Tot Histogram', atom=tb.Atom.from_dtype(self._cluster_tot_hist.dtype), shape=self._cluster_tot_hist.shape, filters=self._filter_table)
+                cluster_tot_hist_table[:] = self._cluster_tot_hist
 
     def analyze_hit_table(self, analyzed_data_file=None, analyzed_data_out_file=None):
         '''Analyzes a hit table with the c++ histogramer/clusterizer.
@@ -876,6 +954,12 @@ class AnalyzeRawData(object):
             cluster_table = self.out_file_h5.create_table(self.out_file_h5.root, name='Cluster', description=data_struct.ClusterInfoTable, title='cluster_hit_data', filters=self._filter_table, expectedrows=self._chunk_size)
         if self._create_cluster_hit_table:
             cluster_hit_table = self.out_file_h5.create_table(self.out_file_h5.root, name='ClusterHits', description=data_struct.ClusterHitInfoTable, title='cluster_hit_data', filters=self._filter_table, expectedrows=self._chunk_size)
+
+        if self._create_cluster_size_hist:  # Cluster size result histogram
+            self._cluster_size_hist = np.zeros(shape=(self.max_cluster_size, ), dtype=np.uint32)
+
+        if self._create_cluster_tot_hist:  # Cluster tot/size result histogram
+            self._cluster_tot_hist = np.zeros(shape=(128, self.max_cluster_size), dtype=np.uint32)
 
         try:
             meta_data_table = in_file_h5.root.meta_data
@@ -924,6 +1008,10 @@ class AnalyzeRawData(object):
             if self._analyzed_data_file is not None and self._create_cluster_table:
                 cluster = self.clusterizer.get_cluster()
                 cluster_table.append(cluster)
+                if self._create_cluster_size_hist:
+                    self._cluster_size_hist += analysis_utils.hist_1d_index(cluster['size'], shape=self._cluster_size_hist.shape)
+                if self._create_cluster_tot_hist:
+                    self._cluster_tot_hist += analysis_utils.hist_2d_index(cluster['tot'][cluster['tot'] < 128], cluster['size'][cluster['tot'] < 128], shape=self._cluster_tot_hist.shape)
 
             progress_bar.update(index)
 
@@ -974,9 +1062,9 @@ class AnalyzeRawData(object):
 
     def cluster_hits(self, hits, start_index=0, stop_index=None):
         if stop_index is not None:
-            self.clusterizer.add_hits(hits[start_index:stop_index])
+            return self.clusterizer.cluster_hits(hits[start_index:stop_index])
         else:
-            self.clusterizer.add_hits(hits[start_index:])
+            return self.clusterizer.cluster_hits(hits[start_index:])
 
     def histogram_hits(self, hits, start_index=0, stop_index=None):
         if stop_index is not None:
