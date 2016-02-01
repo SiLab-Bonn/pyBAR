@@ -90,7 +90,7 @@ cdef data_to_numpy_array_uint32(cnp.uint32_t* ptr, cnp.npy_intp N):
     cdef cnp.ndarray[cnp.uint32_t, ndim=1] arr = cnp.PyArray_SimpleNewFromData(1, <cnp.npy_intp*> &N, cnp.NPY_UINT32, <cnp.uint32_t*> ptr)
     #PyArray_ENABLEFLAGS(arr, np.NPY_OWNDATA)
     return arr
-cdef hit_dt = cnp.dtype([('eventNumber', '<i8'), ('triggerNumber', '<u4'), ('relativeBCID', '<u1'), ('LVLID', '<u2'), ('column', '<u1'), ('row', '<u2'), ('tot', '<u1'), ('BCID', '<u2'), ('TDC', '<u2'), ('TDCtimeStamp', '<u1'), ('triggerStatus', '<u1'), ('serviceRecord', '<u4'), ('eventStatus', '<u2')])
+cdef hit_dt = cnp.dtype([('event_number', '<i8'), ('trigger_number', '<u4'), ('relative_BCID', '<u1'), ('LVL1ID', '<u2'), ('column', '<u1'), ('row', '<u2'), ('tot', '<u1'), ('BCID', '<u2'), ('TDC', '<u2'), ('TDC_time_stamp', '<u1'), ('trigger_status', '<u1'), ('service_record', '<u4'), ('event_status', '<u2')])
 cdef hit_data_to_numpy_array(void* ptr, cnp.npy_intp N):
     cdef cnp.ndarray[numpy_hit_info, ndim=1] arr = cnp.PyArray_SimpleNewFromData(1, <cnp.npy_intp*> &N, cnp.NPY_INT8, <void*> ptr).view(hit_dt)
     arr.setflags(write=False)  # protect the hit data

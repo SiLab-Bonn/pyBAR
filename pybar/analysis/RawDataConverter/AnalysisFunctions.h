@@ -222,7 +222,7 @@ void mapCluster(int64_t*& rEventArray, const unsigned int& rEventArraySize, Clus
 	unsigned int j = 0;
 	for (unsigned int i = 0; i < rEventArraySize; ++i){
 		for (j; j < rClusterInfoSize; ++j){
-			if (rClusterInfo[j].eventNumber == rEventArray[i]){
+			if (rClusterInfo[j].event_number == rEventArray[i]){
 				if (i < rEventArraySize){
 					rMappedClusterInfo[i] = rClusterInfo[j];
 					++i;
