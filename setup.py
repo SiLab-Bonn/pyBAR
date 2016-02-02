@@ -38,7 +38,6 @@ class build_ext_opt(build_ext):
 extensions = [
     Extension('pybar.analysis.RawDataConverter.data_interpreter', ['pybar/analysis/RawDataConverter/data_interpreter.pyx', 'pybar/analysis/RawDataConverter/Interpret.cpp', 'pybar/analysis/RawDataConverter/Basis.cpp']),
     Extension('pybar.analysis.RawDataConverter.data_histograming', ['pybar/analysis/RawDataConverter/data_histograming.pyx', 'pybar/analysis/RawDataConverter/Histogram.cpp', 'pybar/analysis/RawDataConverter/Basis.cpp']),
-    Extension('pybar.analysis.RawDataConverter.data_clusterizer', ['pybar/analysis/RawDataConverter/data_clusterizer.pyx', 'pybar/analysis/RawDataConverter/Clusterizer.cpp', 'pybar/analysis/RawDataConverter/Basis.cpp']),
     Extension('pybar.analysis.RawDataConverter.analysis_functions', ['pybar/analysis/RawDataConverter/analysis_functions.pyx'])
 ]
 
