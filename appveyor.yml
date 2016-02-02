@@ -22,7 +22,7 @@ install:
   - pip install https://github.com/uvemas/ViTables/archive/v2.1.zip
   - pip install https://github.com/walac/pyusb/archive/master.zip
   - conda update conda --yes
-  - conda update --all --yes
+  # - conda update --all --yes
   - conda info -a
   - conda list
   # pyBAR installation including additional specific packages
