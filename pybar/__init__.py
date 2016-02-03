@@ -1,2 +1,2 @@
-from run_manager import 
+from run_manager import RunManager
 from scans import *
