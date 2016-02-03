@@ -1,2 +1,2 @@
-from pybar.run_manager import RunManager
-from pybar.scans import *
+from run_manager import 
+from scans import *
