@@ -27,7 +27,7 @@ install:
   - conda list
   # pyBAR installation including additional specific packages
   - pip install pySiLibUSB
-  - pip install git+https://github.com/SiLab-Bonn/basil.git@v2.1.2
+  - pip install basil_daq
   - python.exe setup.py develop
 
 test_script:

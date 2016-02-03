@@ -35,8 +35,8 @@ before_install:
 install:
   - pip install https://github.com/walac/pyusb/archive/master.zip
   - pip install pySiLibUSB
-  - if [ "$TRAVIS_BRANCH" == "master" ]; then pip install git+https://github.com/SiLab-Bonn/basil.git@v2.1.2; fi
-  - if [ "$TRAVIS_BRANCH" == "development" ]; then pip install git+https://github.com/SiLab-Bonn/basil.git@v2.1.2; fi
+  - if [ "$TRAVIS_BRANCH" == "master" ]; then pip install basil_daq; fi
+  - if [ "$TRAVIS_BRANCH" == "development" ]; then pip install basil_daq; fi
   - sudo apt-get install -qq iverilog-daily
 #  Build iverilog from source
 #  - sudo apt-get install gperf
