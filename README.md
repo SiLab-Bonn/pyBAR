@@ -34,7 +34,7 @@ The features of the host software in Python and C++:
 
 The following packages are required for pyBAR's core functionality:
   ```
-  basil_daq bitarray cython matplotlib numpy pandas progressbar-latest pyyaml scipy tables
+  basil_daq bitarray cython matplotlib numpy pandas pixel_clusterizer progressbar-latest pyyaml scipy tables
   ```
 
 For full functionality, the following additional packages are required:
@@ -54,9 +54,14 @@ On Windows, the `pywin32` package is required:
   conda install pywin32
   ```
 
-[Basil](https://github.com/SiLab-Bonn/basil) (==2.4.0) is required:
+[Basil](https://github.com/SiLab-Bonn/basil) (==2.4.2) is required:
   ```
-  pip install basil_daq==2.4.0
+  pip install basil_daq==2.4.2
+  ```
+
+[Pixel Clusterizer](https://github.com/SiLab-Bonn/pixel_clusterizer) (==2.3.0) is required:
+  ```
+  pip install pixel_clusterizer==2.3.0
   ```
 
 To enable support for USB devices (MIO, MIO3 and MMC3), the following additional packages are required:
