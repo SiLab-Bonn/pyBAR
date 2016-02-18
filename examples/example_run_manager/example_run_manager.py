@@ -1,7 +1,4 @@
-from pybar.run_manager import RunManager  # importing run manager
-from pybar.scans.scan_analog import AnalogScan
-from pybar.scans.scan_ext_trigger import ExtTriggerScan
-from pybar.run_manager import run_status
+from pybar import *
 
 # Execute this script from the shell: python example_run_manager.py
 #
