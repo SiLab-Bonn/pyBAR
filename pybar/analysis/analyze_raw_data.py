@@ -170,28 +170,7 @@ class AnalyzeRawData(object):
                               ('service_record', '<u4'),
                               ('event_status', '<u2')])
 
-        cluster_fields = {'event_number': 'event_number',
-                          'column': 'column',
-                          'row': 'row',
-                          'size': 'n_hits',
-                          'ID': 'ID',
-                          'tot': 'charge',
-                          'seed_column': 'seed_column',
-                          'seed_row': 'seed_row',
-                          'mean_column': 'mean_column',
-                          'mean_row': 'mean_row'}
-
-        cluster_dtype = np.dtype([('event_number', '<i8'),
-                                  ('ID', '<u2'),
-                                  ('size', '<u2'),
-                                  ('tot', '<u2'),
-                                  ('seed_column', '<u1'),
-                                  ('seed_row', '<u2'),
-                                  ('mean_column', '<f4'),
-                                  ('mean_row', '<f4'),
-                                  ('event_status', '<u2')])
-
-        self.clusterizer = HitClusterizer(hit_fields, hit_dtype, cluster_fields, cluster_dtype)  # Initialize clusterizer with custom hit/cluster fields
+        self.clusterizer = HitClusterizer(hit_fields, hit_dtype)  # Initialize clusterizer with custom hit/cluster fields
 
         # Set the cluster event status from the hit event status
         def end_of_cluster_function(hits, cluster, is_seed, n_cluster, cluster_size, cluster_id, actual_cluster_index, actual_event_hit_index, actual_cluster_hit_indices, seed_index):
