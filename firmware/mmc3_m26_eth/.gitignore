@@ -1,0 +1,3 @@
+vivado/*
+src/SiTCP
+!vivado/*.xpr
