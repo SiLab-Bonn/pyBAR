@@ -4,7 +4,6 @@ A Keithley SourceMeter is preferred to a Keithley Multimeter since they turn out
 Note:
  * Use the same enable_shift_masks and mask_steps value for all other scans (e.g. tuning).
  * In case of FE-I4A, deselect outermost double columns (0 and 39): change 'Colpr_Addr' scan parameter to range(1, 39).
- * Set Multimeter to source current (0.0A) and measure voltage.
 """
 import numpy as np
 import tables as tb

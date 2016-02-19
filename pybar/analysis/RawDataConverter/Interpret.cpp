@@ -640,7 +640,7 @@ void Interpret::printHits(const unsigned int& pNhits)
 		return;
 	std::cout << "Event\tRelBCID\tTrigger\tLVL1ID\tCol\tRow\tTot\tBCID\tSR\tEventStatus\n";
 	for (unsigned int i = 0; i < pNhits; ++i)
-		std::cout << _hitInfo[i].eventNumber << "\t" << (unsigned int) _hitInfo[i].relativeBCID << "\t" << (unsigned int) _hitInfo[i].triggerNumber << "\t" << _hitInfo[i].LVLID << "\t" << (unsigned int) _hitInfo[i].column << "\t" << _hitInfo[i].row << "\t" << (unsigned int) _hitInfo[i].tot << "\t" << _hitInfo[i].BCID << "\t" << (unsigned int) _hitInfo[i].serviceRecord << "\t" << (unsigned int) _hitInfo[i].eventStatus << "\n";
+		std::cout << _hitInfo[i].event_number << "\t" << (unsigned int) _hitInfo[i].relative_BCID << "\t" << (unsigned int) _hitInfo[i].trigger_number << "\t" << _hitInfo[i].LVL1ID << "\t" << (unsigned int) _hitInfo[i].column << "\t" << _hitInfo[i].row << "\t" << (unsigned int) _hitInfo[i].tot << "\t" << _hitInfo[i].BCID << "\t" << (unsigned int) _hitInfo[i].service_record << "\t" << (unsigned int) _hitInfo[i].event_status << "\n";
 }
 
 void Interpret::debugEvents(const unsigned int& rStartEvent, const unsigned int& rStopEvent, const bool& debugEvents)
@@ -681,22 +681,22 @@ void Interpret::resetMetaDataCounter()
 
 //private
 
-bool Interpret::addHit(const unsigned char& pRelBCID, const unsigned short int& pLVLID, const unsigned char& pColumn, const unsigned short int& pRow, const unsigned char& pTot, const unsigned short int& pBCID)	//add hit with event number, column, row, relative BCID [0:15], tot, trigger ID
+bool Interpret::addHit(const unsigned char& pRelBCID, const unsigned short int& pLVL1ID, const unsigned char& pColumn, const unsigned short int& pRow, const unsigned char& pTot, const unsigned short int& pBCID)	//add hit with event number, column, row, relative BCID [0:15], tot, trigger ID
 {
 	if (tHitBufferIndex < __MAXHITBUFFERSIZE) {
-		_hitBuffer[tHitBufferIndex].eventNumber = _nEvents;
-		_hitBuffer[tHitBufferIndex].triggerNumber = tEventTriggerNumber;
-		_hitBuffer[tHitBufferIndex].relativeBCID = pRelBCID;
-		_hitBuffer[tHitBufferIndex].LVLID = pLVLID;
+		_hitBuffer[tHitBufferIndex].event_number = _nEvents;
+		_hitBuffer[tHitBufferIndex].trigger_number = tEventTriggerNumber;
+		_hitBuffer[tHitBufferIndex].relative_BCID = pRelBCID;
+		_hitBuffer[tHitBufferIndex].LVL1ID = pLVL1ID;
 		_hitBuffer[tHitBufferIndex].column = pColumn;
 		_hitBuffer[tHitBufferIndex].row = pRow;
 		_hitBuffer[tHitBufferIndex].tot = pTot;
 		_hitBuffer[tHitBufferIndex].BCID = pBCID;
 		_hitBuffer[tHitBufferIndex].TDC = tTdcCount;
-		_hitBuffer[tHitBufferIndex].TDCtimeStamp = tTdcTimeStamp;
-		_hitBuffer[tHitBufferIndex].serviceRecord = tServiceRecord;
-		_hitBuffer[tHitBufferIndex].triggerStatus = tTriggerError;
-		_hitBuffer[tHitBufferIndex].eventStatus = tErrorCode;
+		_hitBuffer[tHitBufferIndex].TDC_time_stamp = tTdcTimeStamp;
+		_hitBuffer[tHitBufferIndex].service_record = tServiceRecord;
+		_hitBuffer[tHitBufferIndex].trigger_status = tTriggerError;
+		_hitBuffer[tHitBufferIndex].event_status = tErrorCode;
 		if ((tErrorCode & __NO_HIT) != __NO_HIT) // only count not virtual hits
 			tTotalHits++;
 		tHitBufferIndex++;
@@ -783,9 +783,9 @@ void Interpret::addEvent()
 void Interpret::storeEventHits()
 {
 	for (unsigned int i = 0; i < tHitBufferIndex; ++i) {
-		_hitBuffer[i].triggerNumber = tEventTriggerNumber; //not needed if trigger number is at the beginning
-		_hitBuffer[i].triggerStatus = tTriggerError;
-		_hitBuffer[i].eventStatus = tErrorCode;
+		_hitBuffer[i].trigger_number = tEventTriggerNumber; //not needed if trigger number is at the beginning
+		_hitBuffer[i].trigger_status = tTriggerError;
+		_hitBuffer[i].event_status = tErrorCode;
 		storeHit(_hitBuffer[i]);
 	}
 }

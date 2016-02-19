@@ -110,7 +110,7 @@ void Histogram::addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
 {
 	debug("addHits()");
 	for(unsigned int i = 0; i<rNhits; ++i){
-		if ((rHitInfo[i].eventStatus & __NO_HIT) == __NO_HIT) // ignore virtual hits
+		if ((rHitInfo[i].event_status & __NO_HIT) == __NO_HIT) // ignore virtual hits
 			continue;
 		unsigned short tColumnIndex = rHitInfo[i].column-1;
 		if(tColumnIndex > RAW_DATA_MAX_COLUMN-1)
@@ -124,12 +124,12 @@ void Histogram::addHits(HitInfo*& rHitInfo, const unsigned int& rNhits)
 		unsigned int tTdc = rHitInfo[i].TDC;
 		if(tTdc >= __N_TDC_VALUES)
 			throw std::out_of_range("TDC counter " + IntToStr(tTdc) + " index out of range.");
-		unsigned int tRelBcid = rHitInfo[i].relativeBCID;
+		unsigned int tRelBcid = rHitInfo[i].relative_BCID;
 		if(tRelBcid >= __MAXBCID)
 			throw std::out_of_range("Relative BCID index out of range.");
 
-		unsigned int tParIndex = getParIndex(rHitInfo[i].eventNumber);
-//		std::cout<<i<<" tParIndex "<<tParIndex<<" rHitInfo[i].eventNumber "<<rHitInfo[i].eventNumber<<"\n";
+		unsigned int tParIndex = getParIndex(rHitInfo[i].event_number);
+//		std::cout<<i<<" tParIndex "<<tParIndex<<" rHitInfo[i].event_number "<<rHitInfo[i].event_number<<"\n";
 
 		if(tParIndex < 0 || tParIndex > getNparameters()-1){
 			error("addHits: tParIndex "+IntToStr(tParIndex)+"\t> "+IntToStr(_NparameterValues));
@@ -181,7 +181,7 @@ void Histogram::addClusterSeedHits(ClusterInfo*& rClusterInfo, const unsigned in
 		if(tRowIndex > RAW_DATA_MAX_ROW-1)
 			throw std::out_of_range("Row index out of range.");
 
-		unsigned int tParIndex = getParIndex(rClusterInfo[i].eventNumber);
+		unsigned int tParIndex = getParIndex(rClusterInfo[i].event_number);
 
 		if(tParIndex < 0 || tParIndex > getNparameters()-1){
 			error("addHits: tParIndex "+IntToStr(tParIndex)+"\t> "+IntToStr(_NparameterValues));

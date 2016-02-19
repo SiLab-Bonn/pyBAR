@@ -131,12 +131,11 @@ class ClusterInfoTable(tb.IsDescription):
     id = tb.UInt16Col(pos=1)
     size = tb.UInt16Col(pos=2)
     tot = tb.UInt16Col(pos=3)
-    charge = tb.Float32Col(pos=4)
-    seed_column = tb.UInt8Col(pos=5)
-    seed_row = tb.UInt16Col(pos=6)
-    mean_column = tb.Float32Col(pos=7)
-    mean_row = tb.Float32Col(pos=8)
-    event_status = tb.UInt16Col(pos=9)
+    seed_column = tb.UInt8Col(pos=4)
+    seed_row = tb.UInt16Col(pos=5)
+    mean_column = tb.Float32Col(pos=6)
+    mean_row = tb.Float32Col(pos=7)
+    event_status = tb.UInt16Col(pos=8)
 
 
 class MeanThresholdCalibrationTable(tb.IsDescription):
@@ -154,6 +153,7 @@ class ThresholdCalibrationTable(tb.IsDescription):
     vthin_altfine = tb.UInt32Col(pos=3)
     vthin_altcoarse = tb.UInt32Col(pos=4)
     threshold = tb.Float64Col(pos=5)
+
 
 class MeanThresholdTable(tb.IsDescription):
     parameter = tb.Int32Col(pos=0)

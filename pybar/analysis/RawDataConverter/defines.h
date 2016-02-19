@@ -14,54 +14,53 @@
 
 //structure to store the hits
 typedef struct HitInfo{
-  int64_t eventNumber;   //event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
-  unsigned int triggerNumber; //external trigger number for read out system
-  unsigned char relativeBCID; //relative BCID value (unsigned char: 0 to 255)
-  unsigned short int LVLID;   //LVL1ID (unsigned short int: 0 to 65.535)
+  int64_t event_number;   //event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
+  unsigned int trigger_number; //external trigger number for read out system
+  unsigned char relative_BCID; //relative BCID value (unsigned char: 0 to 255)
+  unsigned short int LVL1ID;   //LVL1ID (unsigned short int: 0 to 65.535)
   unsigned char column;       //column value (unsigned char: 0 to 255)
   unsigned short int row;     //row value (unsigned short int: 0 to 65.535)
   unsigned char tot;          //tot value (unsigned char: 0 to 255)
   unsigned short int BCID;    //absolute BCID value (unsigned short int: 0 to 65.535)
   unsigned short int TDC; 	  //the TDC count (12-bit value)
-  unsigned char TDCtimeStamp; //a TDC time stamp value (8-bit value), either trigger distance (640 MHz) or time stamp (40 MHz)
-  unsigned char triggerStatus;//event service records
-  unsigned int serviceRecord; //event service records
-  unsigned short int eventStatus;  //event status value (unsigned short int: 0 to 65.535)
+  unsigned char TDC_time_stamp; //a TDC time stamp value (8-bit value), either trigger distance (640 MHz) or time stamp (40 MHz)
+  unsigned char trigger_status;//event service records
+  unsigned int service_record; //event service records
+  unsigned short int event_status;  //event status value (unsigned short int: 0 to 65.535)
 } HitInfo;
 
 //structure to store the hits with cluster info
 typedef struct ClusterHitInfo{
-  int64_t eventNumber;   //event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
-  unsigned int triggerNumber; //external trigger number for read out system
-  unsigned char relativeBCID; //relative BCID value (unsigned char: 0 to 255)
-  unsigned short int LVLID;   //LVL1ID (unsigned short int: 0 to 65.535)
+  int64_t event_number;   //event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
+  unsigned int trigger_number; //external trigger number for read out system
+  unsigned char relative_BCID; //relative BCID value (unsigned char: 0 to 255)
+  unsigned short int LVL1ID;   //LVL1ID (unsigned short int: 0 to 65.535)
   unsigned char column;       //column value (unsigned char: 0 to 255)
   unsigned short int row;     //row value (unsigned short int: 0 to 65.535)
   unsigned char tot;          //tot value (unsigned char: 0 to 255)
   unsigned short int BCID;    //absolute BCID value (unsigned short int: 0 to 65.535)
   unsigned short int TDC; 	  //the TDC count (12-bit value)
-  unsigned char TDCtimeStamp; //a TDC time stamp value (8-bit value), either trigger distance (640 MHz) or time stamp (40 MHz)
-  unsigned char triggerStatus;//event service records
-  unsigned int serviceRecord; //event service records
-  unsigned short int eventStatus;  //event status value (unsigned short int: 0 to 65.535)
-  unsigned short clusterID;	  //the cluster id of the hit
-  unsigned char isSeed;	  	  //flag to mark seed pixel
-  unsigned short clusterSize; //the cluster size of the cluster belonging to the hit
-  unsigned short nCluster;	  //the number of cluster in the event
+  unsigned char TDC_time_stamp; //a TDC time stamp value (8-bit value), either trigger distance (640 MHz) or time stamp (40 MHz)
+  unsigned char trigger_status;//event service records
+  unsigned int service_record; //event service records
+  unsigned short int event_status;  //event status value (unsigned short int: 0 to 65.535)
+  unsigned short cluster_id;	  //the cluster id of the hit
+  unsigned char is_seed;	  	  //flag to mark seed pixel
+  unsigned short cluster_size; //the cluster size of the cluster belonging to the hit
+  unsigned short n_cluster;	  //the number of cluster in the event
 } ClusterHitInfo;
 
 //structure to store the cluster
 typedef struct ClusterInfo{
-  int64_t eventNumber;  	  //event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
+  int64_t event_number;  	  //event number value (unsigned long long: 0 to 18,446,744,073,709,551,615)
   unsigned short ID;	  	  //the cluster id of the cluster
   unsigned short size; 		  //sum tot of all cluster hits
-  unsigned short Tot; 		  //sum tot of all cluster hits
-  float charge; 		  	  //sum charge of all cluster hits
+  unsigned short tot; 		  //sum tot of all cluster hits
   unsigned char seed_column;  //seed pixel column value (unsigned char: 0 to 255)
   unsigned short int seed_row;//seed pixel row value (unsigned short int: 0 to 65.535)
   float mean_column;		  //column value (unsigned short int: 0 to 65.535)
   float mean_row;			  //row value (unsigned short int: 0 to 65.535)
-  unsigned short int eventStatus;  //event status value (unsigned char: 0 to 255)
+  unsigned short int event_status;  //event status value (unsigned char: 0 to 255)
 } ClusterInfo;
 
 //structure for the input meta data

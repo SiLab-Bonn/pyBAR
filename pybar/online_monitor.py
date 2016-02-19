@@ -160,8 +160,8 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
 #         self.aboutToQuit.connect(self.worker.stop)  # QtGui.QApplication
         self.thread.started.connect(self.worker.process_data)
         self.worker.finished.connect(self.thread.quit)
-#         self.worker.finished.connect(self.worker.deleteLater)
-#         self.thread.finished.connect(self.thread.deleteLater)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.thread.finished.connect(self.thread.deleteLater)
         self.thread.start()
 
     def setup_plots(self):

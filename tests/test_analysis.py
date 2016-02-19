@@ -6,11 +6,11 @@ import os
 import tables as tb
 import numpy as np
 import progressbar
+from pixel_clusterizer.clusterizer import HitClusterizer
 
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.analysis.RawDataConverter.data_interpreter import PyDataInterpreter
 from pybar.analysis.RawDataConverter.data_histograming import PyDataHistograming
-from pybar.analysis.RawDataConverter.data_clusterizer import PyDataClusterizer
 from pybar.analysis import analysis_utils
 from pybar.analysis.analysis_utils import data_aligned_at_events
 from pybar.analysis.RawDataConverter import data_struct
@@ -122,8 +122,6 @@ class TestAnalysis(unittest.TestCase):
     def setUpClass(cls):
         cls.interpreter = PyDataInterpreter()
         cls.histogram = PyDataHistograming()
-        cls.clusterizer = PyDataClusterizer()
-
         with AnalyzeRawData(raw_data_file=tests_data_folder + 'unit_test_data_1.h5', analyzed_data_file=tests_data_folder + 'unit_test_data_1_interpreted.h5', create_pdf=False) as analyze_raw_data:  # analyze the digital scan raw data, do not show any feedback (no prints to console, no plots)
             analyze_raw_data.chunk_size = 500009
             analyze_raw_data.create_hit_table = True  # can be set to false to omit hit table creation, std. setting is false
@@ -189,7 +187,6 @@ class TestAnalysis(unittest.TestCase):
         # explicit del call to check c++ library destructors
         del cls.interpreter
         del cls.histogram
-        del cls.clusterizer
         os.remove(tests_data_folder + 'unit_test_data_1_interpreted.h5')
         os.remove(tests_data_folder + 'unit_test_data_1_analyzed.h5')
         os.remove(tests_data_folder + 'unit_test_data_2_interpreted.h5')
@@ -210,27 +207,27 @@ class TestAnalysis(unittest.TestCase):
         for i in range(50):
             interpreter = PyDataInterpreter()
             histogram = PyDataHistograming()
-            clusterizer = PyDataClusterizer()
+            clusterizer = HitClusterizer()
             del interpreter
             del histogram
             del clusterizer
             progress_bar.update(i)
         progress_bar.finish()
 
-    def test_data_alignement(self):  # test if the data alignment is correct (important to detect 32/64 bit related issues)
-        hits = np.empty((1,), dtype=[('eventNumber', np.uint64),
-                                     ('triggerNumber', np.uint32),
-                                     ('relativeBCID', np.uint8),
-                                     ('LVLID', np.uint16),
+    def test_data_alignement(self):  # Test if the data alignment is correct (important to detect 32/64 bit related issues)
+        hits = np.empty((1,), dtype=[('event_number', np.uint64),
+                                     ('trigger_number', np.uint32),
+                                     ('relative_BCID', np.uint8),
+                                     ('LVL1ID', np.uint16),
                                      ('column', np.uint8),
                                      ('row', np.uint16),
                                      ('tot', np.uint8),
                                      ('BCID', np.uint16),
                                      ('TDC', np.uint16),
-                                     ('TDCtimeStamp', np.uint8),
-                                     ('triggerStatus', np.uint8),
-                                     ('serviceRecord', np.uint32),
-                                     ('eventStatus', np.uint16)
+                                     ('TDC_time_stamp', np.uint8),
+                                     ('trigger_status', np.uint8),
+                                     ('service_record', np.uint32),
+                                     ('event_status', np.uint16)
                                      ])
         self.assertTrue(self.interpreter.get_hit_size() == hits.itemsize)
 
@@ -278,9 +275,9 @@ class TestAnalysis(unittest.TestCase):
         result = analysis_utils.get_max_events_in_both_arrays(event_numbers[0], event_numbers_2)
         self.assertListEqual([0, 0, 1, 1, 2, 3, 3, 4], result.tolist())
 
-    def test_map_cluster(self):  # check the compiled function against result
-        cluster = np.zeros((20,), dtype=tb.dtype_from_descr(data_struct.ClusterInfoTable))
-        result = np.zeros((20,), dtype=tb.dtype_from_descr(data_struct.ClusterInfoTable))
+    def test_map_cluster(self):  # Check the compiled function against result
+        cluster = np.zeros((20, ), dtype=tb.dtype_from_descr(data_struct.ClusterInfoTable))
+        result = np.zeros((20, ), dtype=tb.dtype_from_descr(data_struct.ClusterInfoTable))
         result[1]["event_number"], result[3]["event_number"], result[4]["event_number"], result[7]["event_number"] = 1, 2, 3, 4
 
         for index in range(cluster.shape[0]):
