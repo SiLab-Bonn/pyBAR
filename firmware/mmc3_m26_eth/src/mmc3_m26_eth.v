@@ -117,7 +117,7 @@ PLLE2_BASE #(
      .CLKOUT3_DUTY_CYCLE(0.5), 
      .CLKOUT3_PHASE(0.0), 
      
-     .CLKOUT4_DIVIDE(11), 
+     .CLKOUT4_DIVIDE(12), 
      .CLKOUT4_DUTY_CYCLE(0.5), 
      .CLKOUT4_PHASE(0.0),
 
@@ -625,7 +625,7 @@ assign FE_FIFO_READ = READ_GRANT[1];
 assign FIFO_READ_M26_RX = READ_GRANT[7:2];
 
 wire FIFO_EMPTY, FIFO_FULL;
-fifo_32_to_8 #(.DEPTH(32*1024)) i_data_fifo (
+fifo_32_to_8 #(.DEPTH(128*1024)) i_data_fifo (
     .RST(BUS_RST),
     .CLK(BUS_CLK),
     
