@@ -13,10 +13,11 @@ import progressbar
 
 from matplotlib.backends.backend_pdf import PdfPages
 
+from pybar_fei4_interpreter import data_struct
+
 from pybar.run_manager import RunManager
 from pybar.scans.scan_threshold_fast import FastThresholdScan
 from pybar.analysis import analysis_utils
-from pybar.analysis.RawDataConverter import data_struct
 from pybar.analysis.plotting.plotting import plot_three_way, plot_scurves, plot_scatter
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 

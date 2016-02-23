@@ -11,10 +11,10 @@ from bitarray import bitarray
 from operator import itemgetter
 
 from basil.utils.BitLogic import BitLogic
+from pybar_fei4_interpreter.data_struct import NameValue
 
 from pybar.utils.utils import bitarray_to_array
 from pybar.daq.readout_utils import interpret_pixel_data
-from pybar.analysis.RawDataConverter.data_struct import NameValue
 from pybar.daq.fei4_record import FEI4Record
 
 

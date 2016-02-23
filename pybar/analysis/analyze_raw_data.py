@@ -15,12 +15,15 @@ from scipy.special import erf
 from matplotlib.backends.backend_pdf import PdfPages
 from pixel_clusterizer.clusterizer import HitClusterizer
 
+# pyBAR related imports
+from pybar_fei4_interpreter.data_interpreter import PyDataInterpreter
+from pybar_fei4_interpreter.data_histograming import PyDataHistograming
+from pybar_fei4_interpreter import data_struct
+from pybar_fei4_interpreter import analysis_utils as fast_analysis_utils
+
 from pybar.analysis import analysis_utils
-from pybar.analysis.RawDataConverter import data_struct
 from pybar.analysis.plotting import plotting
 from pybar.analysis.analysis_utils import check_bad_data, fix_raw_data, consecutive, print_raw_data
-from pybar.analysis.RawDataConverter.data_interpreter import PyDataInterpreter
-from pybar.analysis.RawDataConverter.data_histograming import PyDataHistograming
 
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
@@ -763,9 +766,9 @@ class AnalyzeRawData(object):
                         if self._create_cluster_table:
                             cluster_table.append(cluster)
                         if self._create_cluster_size_hist:
-                            self._cluster_size_hist += analysis_utils.hist_1d_index(cluster['size'], shape=self._cluster_size_hist.shape)
+                            self._cluster_size_hist += fast_analysis_utils.hist_1d_index(cluster['size'], shape=self._cluster_size_hist.shape)
                         if self._create_cluster_tot_hist:
-                            self._cluster_tot_hist += analysis_utils.hist_2d_index(cluster['tot'][cluster['tot'] < 128], cluster['size'][cluster['tot'] < 128], shape=self._cluster_tot_hist.shape)
+                            self._cluster_tot_hist += fast_analysis_utils.hist_2d_index(cluster['tot'][cluster['tot'] < 128], cluster['size'][cluster['tot'] < 128], shape=self._cluster_tot_hist.shape)
                     if self._analyzed_data_file is not None and self._create_hit_table:
                         hit_table.append(hits)
                     if self._analyzed_data_file is not None and self._create_meta_word_index:
@@ -1009,9 +1012,9 @@ class AnalyzeRawData(object):
                 cluster = self.clusterizer.get_cluster()
                 cluster_table.append(cluster)
                 if self._create_cluster_size_hist:
-                    self._cluster_size_hist += analysis_utils.hist_1d_index(cluster['size'], shape=self._cluster_size_hist.shape)
+                    self._cluster_size_hist += fast_analysis_utils.hist_1d_index(cluster['size'], shape=self._cluster_size_hist.shape)
                 if self._create_cluster_tot_hist:
-                    self._cluster_tot_hist += analysis_utils.hist_2d_index(cluster['tot'][cluster['tot'] < 128], cluster['size'][cluster['tot'] < 128], shape=self._cluster_tot_hist.shape)
+                    self._cluster_tot_hist += fast_analysis_utils.hist_2d_index(cluster['tot'][cluster['tot'] < 128], cluster['size'][cluster['tot'] < 128], shape=self._cluster_tot_hist.shape)
 
             progress_bar.update(index)
 

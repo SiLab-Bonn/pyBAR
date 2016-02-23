@@ -3,7 +3,7 @@ import os
 import numpy as np
 import tables as tb
 
-from pybar.analysis.RawDataConverter.data_struct import NameValue
+from pybar_fei4_interpreter.data_struct import NameValue
 
 
 def save_configuration_dict(h5_file, configuation_name, configuration, **kwargs):

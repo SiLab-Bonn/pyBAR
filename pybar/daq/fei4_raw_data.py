@@ -7,8 +7,8 @@ import os.path
 from os import remove
 from operator import itemgetter
 
+from pybar_fei4_interpreter.data_struct import MetaTableV2 as MetaTable, generate_scan_parameter_description
 from pybar.daq.readout_utils import save_configuration_dict
-from pybar.analysis.RawDataConverter.data_struct import MetaTableV2 as MetaTable, generate_scan_parameter_description
 
 
 def send_meta_data(socket, conf, name):

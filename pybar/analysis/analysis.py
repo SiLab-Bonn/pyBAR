@@ -9,11 +9,12 @@ import numpy as np
 import tables as tb
 import re
 
+from pybar_fei4_interpreter import data_struct
+from pybar_fei4_interpreter.data_histograming import PyDataHistograming
+
 from pybar.analysis import analysis_utils
-from pybar.analysis.RawDataConverter import data_struct
 from pybar.analysis.plotting import plotting
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
-from pybar.analysis.RawDataConverter.data_histograming import PyDataHistograming
 
 
 def analyze_beam_spot(scan_base, combine_n_readouts=1000, chunk_size=10000000, plot_occupancy_hists=False, output_pdf=None, output_file=None):
