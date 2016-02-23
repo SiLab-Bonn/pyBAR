@@ -21,7 +21,7 @@ before_install:
   - conda update --yes conda
   - conda config --add channels silab
   - conda info -a
-  - conda create --yes -n test-environment numpy pytables scipy matplotlib pandas pyserial bitarray nose pyzmq pyyaml numba=0.22.1
+  - conda create --yes -n test-environment numpy cython pytables scipy matplotlib pandas pyserial bitarray nose pyzmq pyyaml numba=0.22.1
   - source activate test-environment
   - pip install progressbar-latest pyvisa pyvisa-py mock sphinx pixel_clusterizer
   - pip install https://github.com/SiLab-Bonn/pyqtgraph/archive/develop.zip  # pyqtgraph is not working with numpy 1.10 right now, install our fixed fork instead
