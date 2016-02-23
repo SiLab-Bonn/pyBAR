@@ -28,8 +28,8 @@ install:
   # pyBAR installation including additional specific packages
   - pip install pySiLibUSB
   - pip install basil_daq==2.4.2
-  - pip install pixel_clusterizer==2.3.0
-  - pip install pyBAR_fei4_interpreter==0.1
+  - pip install pixel_clusterizer
+  - pip install pyBAR_fei4_interpreter
   - python.exe setup.py develop
 
 test_script:
