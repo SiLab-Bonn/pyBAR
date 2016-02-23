@@ -78,10 +78,12 @@ def create_hitor_calibration(output_filename):
                 actual_hits = hits[array_index[0]:array_index[1]]
                 actual_col, actual_row, parameter_value = parameter_values
 
-                if len(hits[np.logical_and(actual_hits['column'] != actual_col, actual_hits['row'] != actual_row)]):
-                    logging.warning('There are %d hits from not selected pixels in the data', len(actual_hits[np.logical_and(actual_hits['column'] != actual_col, actual_hits['row'] != actual_row)]))
+                # Only pixel of actual column/row should be in the actual data chunk but since SRAM is not cleared for each scan step due to speed reasons and there might be noisy pixels this is not always the case
+                n_wrong_pixel = np.count_nonzero(np.logical_or(actual_hits['column'] != actual_col, actual_hits['row'] != actual_row))
+                if n_wrong_pixel != 0:
+                    logging.warning('There are %d hits from not selected pixels in the data', n_wrong_pixel)
 
-                actual_hits = actual_hits[np.logical_and(actual_hits['column'] == actual_col, actual_hits['row'] == actual_row)]
+                actual_hits = actual_hits[np.logical_and(actual_hits['column'] == actual_col, actual_hits['row'] == actual_row)]  # Only take data from selected pixel
                 actual_tdc_hits = actual_hits[(actual_hits['event_status'] & 0b0000111110011100) == 0b0000000100000000]  # only take hits from good events (one TDC word only, no error)
                 actual_tot_hits = actual_hits[(actual_hits['event_status'] & 0b0000100010011100) == 0b0000000000000000]  # only take hits from good events for tot
                 tot, tdc = actual_tot_hits['tot'], actual_tdc_hits['TDC']
