@@ -81,3 +81,6 @@ firmware/nexys4/vivado/*
 firmware/nexys4/src/ip/*
 !firmware/nexys4/src/ip/*.xci
 firmware/nexys4/src/SiTCP
+
+# Simulation output
+sim_build
