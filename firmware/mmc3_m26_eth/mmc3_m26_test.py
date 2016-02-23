@@ -95,17 +95,23 @@ print 'START'
 chip['SRAM'].reset()
 
 print 'get_fifo_size', chip['SRAM'].get_fifo_size()
+chls = ['M26_RX0', 'M26_RX1', 'M26_RX2', 'M26_RX3', 'M26_RX4', 'M26_RX5']
 
-chip['M26_RX0'].set_en(True)
+for ch in chls:
+    chip[ch].set_en(True)    
+    
 time.sleep(0.01)
-chip['M26_RX0'].set_en(False)
-print chip['M26_RX0'].get_lost_count()
+
+for ch in chls:
+    chip[ch].set_en(False)
+    print chip[ch].get_lost_count(), ch
 
 ret = chip['SRAM'].get_fifo_size(), chip['SRAM'].get_fifo_size()/4
 print 'XXX', ret
 ret = chip['SRAM'].get_data()
 for i, r in enumerate(ret):
-    print i, hex(r)
+    if i > 300 and i < 500:
+        print i, hex(r), 'id', (r & 0x00F00000) >>20, 'start', (r & 0x00010000) >> 16, 'data', hex(r & 0x000FFFFF)
 
 # DATA FORMAT
 # HEADER(2bit=0x20) + PLANEID(4bit) + 3'b000 + FRAME_START(1bit) + DATA(16bit)

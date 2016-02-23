@@ -60,7 +60,7 @@ PLLE2_BASE #(
     
     .CLKOUT4_DIVIDE(8),     // Divide amount for CLKOUT0 (1-128)
     .CLKOUT4_DUTY_CYCLE(0.5), // Duty cycle for CLKOUT0 (0.001-0.999).
-    .CLKOUT4_PHASE(-5.0),      // Phase offset for CLKOUT0 (-360.000-360.000).
+    .CLKOUT4_PHASE(-5.6),      // Phase offset for CLKOUT0 (-360.000-360.000).
     //-65 -> 0?; - 45 -> 39;  -25 -> 100; -5 -> 0;
             
     .DIVCLK_DIVIDE(1),        // Master division value, (1-56)
@@ -515,11 +515,14 @@ wire [5:0] M26_CLK;
 wire [5:0] M26_CLK_BUFG;
 wire [5:0] M26_MKD;
 wire [5:0] M26_DATA0;
-wire [5:0] M26_DATA0_INV;
-assign M26_DATA0 = ~M26_DATA0_INV;
+wire [5:0] M26_DATA0_RX;
 wire [5:0] M26_DATA1;
-wire [5:0] LOST_ERROR;
+wire [5:0] M26_DATA1_RX;
 
+assign M26_DATA0 = ~M26_DATA0_RX;
+assign M26_DATA1 = M26_DATA1_RX;
+
+wire [5:0] LOST_ERROR;
 wire [5:0] FIFO_READ_M26_RX;
 wire [5:0] FIFO_EMPTY_M26_RX;
 wire [31:0] FIFO_DATA_M26_RX [5:0];
@@ -553,7 +556,7 @@ generate
             .IBUF_LOW_PWR("FALSE"), 
             .IOSTANDARD("LVDS_25") 
         ) IBUFDS_inst_M26_DATA0(
-            .O(M26_DATA0_INV[ch]), 
+            .O(M26_DATA0_RX[ch]), 
             .I(M26_DATA0_P[ch]),  
             .IB(M26_DATA0_N[ch])
         );
@@ -563,10 +566,10 @@ generate
             .IBUF_LOW_PWR("FALSE"), 
             .IOSTANDARD("LVDS_25") 
         ) IBUFDS_inst_M26_DATA1(
-            .O(M26_DATA1[ch]), 
+            .O(M26_DATA1_RX[ch]),
             .I(M26_DATA1_P[ch]),  
             .IB(M26_DATA1_N[ch])
-        );      
+        );   
 
         BUFG BUFG_inst_M26_CLK (  .O(M26_CLK_BUFG[ch]),  .I(M26_CLK[ch]) );  
 
@@ -579,7 +582,7 @@ generate
             .IDENTYFIER(ch)
         ) i_m26_rx
         (
-            .CLK_RX(M26_CLK_BUFG[ch]),
+            .CLK_RX(~M26_CLK_BUFG[ch]),
             .MKD_RX(M26_MKD[ch]),
             .DATA_RX({M26_DATA1[ch], M26_DATA0[ch]}),
     
@@ -596,9 +599,11 @@ generate
     
             .LOST_ERROR(LOST_ERROR[ch])
         );
+       
 end   
 endgenerate     
 
+//assign FIFO_EMPTY_M26_RX = 5'hff;
 
 wire ARB_READY_OUT, ARB_WRITE_OUT;
 wire [31:0] ARB_DATA_OUT;
@@ -624,19 +629,33 @@ assign TRIGGER_FIFO_READ = READ_GRANT[1];
 assign FE_FIFO_READ = READ_GRANT[1];
 assign FIFO_READ_M26_RX = READ_GRANT[7:2];
 
+//cdc_fifo is for timing reasons
+wire [31:0] cdc_data_out;
+wire full_32to8, cdc_fifo_empty;
+cdc_syncfifo #(.DSIZE(32), .ASIZE(3)) cdc_syncfifo_i
+(
+    .rdata(cdc_data_out),
+    .wfull(FIFO_FULL),
+    .rempty(cdc_fifo_empty),
+    .wdata(ARB_DATA_OUT),
+    .winc(ARB_WRITE_OUT), .wclk(BUS_CLK), .wrst(BUS_RST),
+    .rinc(!full_32to8), .rclk(BUS_CLK), .rrst(BUS_RST)
+);
+assign ARB_READY_OUT = !FIFO_FULL;
+
 wire FIFO_EMPTY, FIFO_FULL;
-fifo_32_to_8 #(.DEPTH(128*1024)) i_data_fifo (
+fifo_32_to_8 #(.DEPTH(256*1024)) i_data_fifo (
     .RST(BUS_RST),
     .CLK(BUS_CLK),
     
-    .WRITE(ARB_WRITE_OUT),
+    .WRITE(!cdc_fifo_empty),
     .READ(TCP_TX_WR),
-    .DATA_IN(ARB_DATA_OUT),
-    .FULL(FIFO_FULL),
+    .DATA_IN(cdc_data_out),
+    .FULL(full_32to8),
     .EMPTY(FIFO_EMPTY),
     .DATA_OUT(TCP_TX_DATA)
 );
-assign ARB_READY_OUT = !FIFO_FULL;
+
 assign TCP_TX_WR = !TCP_TX_FULL && !FIFO_EMPTY;
 
 wire CLK_1HZ; 
