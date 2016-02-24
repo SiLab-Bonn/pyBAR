@@ -115,6 +115,7 @@ class NoiseOccupancyScan(Fei4RunBase):
             self.occ_mask[occ_hist > self.abs_occ_limit] = 1
             # make inverse
             self.inv_occ_mask = invert_pixel_mask(self.occ_mask)
+
             if self.overwrite_mask:
                 for mask in self.disable_for_mask:
                     self.register.set_pixel_register_value(mask, self.inv_occ_mask)

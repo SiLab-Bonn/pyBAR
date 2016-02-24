@@ -68,7 +68,6 @@ def analyze_raw_data(input_files, output_file_hits, interpreter_plots, overwrite
             analyze_raw_data.create_cluster_size_hist = True  # enables cluster size histogramming, can save some time, std. setting is false
             analyze_raw_data.create_cluster_tot_hist = True  # enables cluster ToT histogramming per cluster size, std. setting is false
             analyze_raw_data.interpreter.set_warning_output(analysis_configuration['interpreter_warnings'])  # std. setting is True
-            analyze_raw_data.clusterizer.set_warning_output(analysis_configuration['interpreter_warnings'])  # std. setting is True
             analyze_raw_data.interpreter.print_status()
             analyze_raw_data.interpret_word_table()  # the actual start conversion command
             analyze_raw_data.interpreter.print_summary()  # prints the interpreter summary
