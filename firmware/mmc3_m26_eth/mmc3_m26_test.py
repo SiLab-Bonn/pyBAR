@@ -32,32 +32,32 @@ hw_drivers:
     interface : ETH
     base_addr : 0x8600
     
-  - name      : M26_RX0
+  - name      : M26_RX1
     type      : m26_rx
     interface : ETH
     base_addr : 0xa000
     
-  - name      : M26_RX1
+  - name      : M26_RX2
     type      : m26_rx
     interface : ETH
     base_addr : 0xa010
 
-  - name      : M26_RX2
+  - name      : M26_RX3
     type      : m26_rx
     interface : ETH
     base_addr : 0xa020
 
-  - name      : M26_RX3
+  - name      : M26_RX4
     type      : m26_rx
     interface : ETH
     base_addr : 0xa030
 
-  - name      : M26_RX4
+  - name      : M26_RX5
     type      : m26_rx
     interface : ETH
     base_addr : 0xa040
     
-  - name      : M26_RX5
+  - name      : M26_RX6
     type      : m26_rx
     interface : ETH
     base_addr : 0xa050
@@ -92,10 +92,15 @@ chip.init()
 #    #time.sleep(1)
 
 print 'START'
-chip['SRAM'].reset()
+chip['M26_RX1'].reset()
+chip['M26_RX2'].reset()
+chip['M26_RX3'].reset()
+chip['M26_RX4'].reset()
+chip['M26_RX5'].reset()
+chip['M26_RX6'].reset()
 
 print 'get_fifo_size', chip['SRAM'].get_fifo_size()
-chls = ['M26_RX0', 'M26_RX1', 'M26_RX2', 'M26_RX3', 'M26_RX4', 'M26_RX5']
+chls = ['M26_RX1', 'M26_RX2', 'M26_RX3', 'M26_RX4', 'M26_RX5', 'M26_RX6'] #['M26_RX1', 'M26_RX2', 'M26_RX3', 'M26_RX4', 'M26_RX5', 'M26_RX6']
 
 for ch in chls:
     chip[ch].set_en(True)    
@@ -110,7 +115,7 @@ ret = chip['SRAM'].get_fifo_size(), chip['SRAM'].get_fifo_size()/4
 print 'XXX', ret
 ret = chip['SRAM'].get_data()
 for i, r in enumerate(ret):
-    if i > 300 and i < 500:
+    if i > 1000 and i < 1100:
         print i, hex(r), 'id', (r & 0x00F00000) >>20, 'start', (r & 0x00010000) >> 16, 'data', hex(r & 0x000FFFFF)
 
 # DATA FORMAT

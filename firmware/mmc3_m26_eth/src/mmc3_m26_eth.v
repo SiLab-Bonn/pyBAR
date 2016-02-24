@@ -19,6 +19,7 @@ module mmc3_m26_eth(
     
     output wire CMD_CLK_P, CMD_CLK_N,
     output wire CMD_DATA_P, CMD_DATA_N,
+    input wire RJ45_HITOR_N, RJ45_HITOR_P,
     input wire DOBOUT_N, DOBOUT_P,
     
     input wire [5:0] M26_CLK_P, M26_CLK_N, M26_MKD_P, M26_MKD_N,
@@ -335,6 +336,9 @@ localparam TLU_HIGHADDR = 16'h8300-1;
 localparam RX_BASEADDR = 32'h8600;
 localparam RX_HIGHADDR = 32'h8700-1;
 
+localparam TDC_BASEADDR = 16'h8700;
+localparam TDC_HIGHADDR = 16'h8800-1;
+
 localparam M26_RX_BASEADDR = 32'ha000;
 localparam M26_RX_HIGHADDR = 32'ha00f-1;
 
@@ -579,7 +583,7 @@ generate
             .HIGHADDR(M26_RX_HIGHADDR + ch*16),
             .ABUSWIDTH(32),
             .HEADER(8'h20),
-            .IDENTYFIER(ch)
+            .IDENTYFIER(ch+1)
         ) i_m26_rx
         (
             .CLK_RX(~M26_CLK_BUFG[ch]),
@@ -605,19 +609,72 @@ endgenerate
 
 //assign FIFO_EMPTY_M26_RX = 5'hff;
 
+
+wire TDC_FIFO_READ;
+wire TDC_FIFO_EMPTY;
+wire [31:0] TDC_FIFO_DATA;
+wire [31:0] TIMESTAMP;
+wire LEMO_TRIGGER_FROM_TDC;
+wire TDC_IN_FROM_TDC;
+wire RJ45_HITOR;
+
+IBUFDS #(
+    .DIFF_TERM("TRUE"), 
+    .IBUF_LOW_PWR("FALSE"), 
+    .IOSTANDARD("LVDS_25") 
+) IBUFDS_inst_RJ45_HITOR (
+    .O(RJ45_HITOR), 
+    .I(RJ45_HITOR_P),  
+    .IB(RJ45_HITOR_N)
+);
+
+    
+tdc_s3 #(
+    .BASEADDR(TDC_BASEADDR),
+    .HIGHADDR(TDC_HIGHADDR),
+    .CLKDV(4),
+    .DATA_IDENTIFIER(4'b0100), // one-hot
+    .FAST_TDC(1),
+    .FAST_TRIGGER(0)
+) i_tdc (
+    .CLK320(CLK320),
+    .CLK160(CLK160),
+    .DV_CLK(CLK40),
+    .TDC_IN(RJ45_HITOR),
+    .TDC_OUT(),
+    .TRIG_IN(),
+    .TRIG_OUT(),
+
+    .FIFO_READ(TDC_FIFO_READ),
+    .FIFO_EMPTY(TDC_FIFO_EMPTY),
+    .FIFO_DATA(TDC_FIFO_DATA),
+
+    .BUS_CLK(BUS_CLK),
+    .BUS_RST(BUS_RST),
+    .BUS_ADD(BUS_ADD),
+    .BUS_DATA(BUS_DATA),
+    .BUS_RD(BUS_RD),
+    .BUS_WR(BUS_WR),
+
+    .ARM_TDC(CMD_START_FLAG), // arm TDC by sending commands
+    .EXT_EN(1'b0),
+    
+    .TIMESTAMP(TIMESTAMP[15:0])
+);
+
 wire ARB_READY_OUT, ARB_WRITE_OUT;
 wire [31:0] ARB_DATA_OUT;
 wire [7:0] READ_GRANT;
 
 rrp_arbiter #(
-    .WIDTH(8)
+    .WIDTH(9)
 ) i_rrp_arbiter (
     .RST(BUS_RST),
     .CLK(BUS_CLK),
 
-    .WRITE_REQ({~FIFO_EMPTY_M26_RX, ~FE_FIFO_EMPTY, ~TRIGGER_FIFO_EMPTY}),
-    .HOLD_REQ({7'b0, TRIGGER_FIFO_PEEMPT_REQ }),
-    .DATA_IN({FIFO_DATA_M26_RX[5], FIFO_DATA_M26_RX[4], FIFO_DATA_M26_RX[3], FIFO_DATA_M26_RX[2], FIFO_DATA_M26_RX[1], FIFO_DATA_M26_RX[0], FE_FIFO_DATA, TRIGGER_FIFO_DATA}),
+    .WRITE_REQ({~TDC_FIFO_EMPTY, ~FIFO_EMPTY_M26_RX, ~FE_FIFO_EMPTY, ~TRIGGER_FIFO_EMPTY}),
+    .HOLD_REQ({8'b0, TRIGGER_FIFO_PEEMPT_REQ }),
+    .DATA_IN({TDC_FIFO_DATA, FIFO_DATA_M26_RX[5], FIFO_DATA_M26_RX[4], FIFO_DATA_M26_RX[3], FIFO_DATA_M26_RX[2], FIFO_DATA_M26_RX[1], FIFO_DATA_M26_RX[0], FE_FIFO_DATA, TRIGGER_FIFO_DATA}),
     .READ_GRANT(READ_GRANT),
 
     .READY_OUT(ARB_READY_OUT),
@@ -625,9 +682,10 @@ rrp_arbiter #(
     .DATA_OUT(ARB_DATA_OUT)
 );
 
-assign TRIGGER_FIFO_READ = READ_GRANT[1];
+assign TRIGGER_FIFO_READ = READ_GRANT[0];
 assign FE_FIFO_READ = READ_GRANT[1];
 assign FIFO_READ_M26_RX = READ_GRANT[7:2];
+assign TDC_FIFO_READ = READ_GRANT[8];
 
 //cdc_fifo is for timing reasons
 wire [31:0] cdc_data_out;

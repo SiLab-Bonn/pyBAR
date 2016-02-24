@@ -23,40 +23,40 @@ hw_drivers:
     interface : ETH
     base_addr : 0x0000
     
-  - name      : M26_RX0
+  - name      : M26_RX1
     type      : m26_rx
     interface : ETH
     base_addr : 0xa000
     
-  - name      : CH0
-    type      : fei4_rx
-    interface : ETH
-    base_addr : 0x8600
-    
-  - name      : M26_RX1
+  - name      : M26_RX2
     type      : m26_rx
     interface : ETH
     base_addr : 0xa010
 
-  - name      : M26_RX2
+  - name      : M26_RX3
     type      : m26_rx
     interface : ETH
     base_addr : 0xa020
 
-  - name      : M26_RX3
+  - name      : M26_RX4
     type      : m26_rx
     interface : ETH
     base_addr : 0xa030
 
-  - name      : M26_RX4
+  - name      : M26_RX5
     type      : m26_rx
     interface : ETH
     base_addr : 0xa040
     
-  - name      : M26_RX5
+  - name      : M26_RX6
     type      : m26_rx
     interface : ETH
     base_addr : 0xa050
+
+  - name      : CH0
+    type      : fei4_rx
+    interface : ETH
+    base_addr : 0x8600
     
   - name      : SRAM
     type      : sram_fifo
@@ -64,5 +64,12 @@ hw_drivers:
     base_addr : 0x200000000
     base_data_addr : 0x100000000
 
+  - name      : TDC
+    type      : tdc_s3
+    interface : ETH
+    base_addr : 0x8700
 
-
+  - name      : TLU
+    type      : tlu
+    interface : ETH
+    base_addr : 0x8200
