@@ -20,6 +20,8 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.backends.backend_pdf import PdfPages
 from scipy.interpolate import interp1d
 
+from pybar_fei4_interpreter import analysis_utils as fast_analysis_utils
+
 from pybar.analysis import analysis_utils
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.analysis.plotting.plotting import plot_three_way, plot_1d_hist
@@ -192,13 +194,13 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
                 selected_cluster_hits = analysis_utils.select_hits(selected_events_cluster_hits, condition)
                 n_hits_per_condition[2 + index] += selected_cluster_hits.shape[0]
                 column, row, tdc = selected_cluster_hits['column'] - 1, selected_cluster_hits['row'] - 1, selected_cluster_hits['TDC']
-                pixel_tdc_hists_per_condition[index] += analysis_utils.hist_3d_index(column, row, tdc, shape=(80, 336, max_tdc))
+                pixel_tdc_hists_per_condition[index] += fast_analysis_utils.hist_3d_index(column, row, tdc, shape=(80, 336, max_tdc))
                 mean_pixel_tdc_hists_per_condition[index] = np.average(pixel_tdc_hists_per_condition[index], axis=2, weights=range(0, max_tdc)) * np.sum(np.arange(0, max_tdc)) / pixel_tdc_hists_per_condition[index].sum(axis=2)
                 tdc_timestamp = selected_cluster_hits['TDC_time_stamp']
-                pixel_tdc_timestamp_hists_per_condition[index] += analysis_utils.hist_3d_index(column, row, tdc_timestamp, shape=(80, 336, 256))
+                pixel_tdc_timestamp_hists_per_condition[index] += fast_analysis_utils.hist_3d_index(column, row, tdc_timestamp, shape=(80, 336, 256))
                 mean_pixel_tdc_timestamp_hists_per_condition[index] = np.average(pixel_tdc_timestamp_hists_per_condition[index], axis=2, weights=range(0, 256)) * np.sum(np.arange(0, 256)) / pixel_tdc_timestamp_hists_per_condition[index].sum(axis=2)
                 tdc_hists_per_condition[index] = pixel_tdc_hists_per_condition[index].sum(axis=(0, 1))
-                tdc_corr_hists_per_condition[index] += analysis_utils.hist_2d_index(tdc, selected_cluster_hits['tot'], shape=(max_tdc, 16))
+                tdc_corr_hists_per_condition[index] += fast_analysis_utils.hist_2d_index(tdc, selected_cluster_hits['tot'], shape=(max_tdc, 16))
             progress_bar.update(n_hits_per_condition[0])
         progress_bar.finish()
 
