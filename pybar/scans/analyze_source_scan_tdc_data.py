@@ -268,7 +268,7 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
             for node in in_file_h5.root:  # go through the data and plot them
                 if 'MeanPixel' in node.name:
                     try:
-                        plot_three_way(np.ma.masked_invalid(node[:]) * 1.5625, title='Mean TDC delay, hits with\n%s' % node._v_attrs.condition if 'Timestamp' in node.name else 'Mean TDC, hits with\n%s' % node._v_attrs.condition, filename=output_pdf)
+                        plot_three_way(np.ma.masked_invalid(node[:]) * 1.5625, title='Mean TDC delay, hits with\n%s' % node._v_attrs.condition[:80] if 'Timestamp' in node.name else 'Mean TDC, hits with\n%s' % node._v_attrs.condition[:80], filename=output_pdf)
                     except ValueError:
                         logging.warning('Cannot plot TDC delay')
                 elif 'HistTdcCondition' in node.name:
@@ -278,7 +278,7 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
                         max_index = np.amax(entry_index)
                     else:
                         max_index = max_tdc
-                    plot_1d_hist(hist_1d[:max_index + 10], title='TDC histogram, hits with\n%s' % node._v_attrs.condition if 'Timestamp' not in node.name else 'TDC time stamp histogram, hits with\n%s' % node._v_attrs.condition, x_axis_title='TDC' if 'Timestamp' not in node.name else 'TDC time stamp', filename=output_pdf)
+                    plot_1d_hist(hist_1d[:max_index + 10], title='TDC histogram, hits with\n%s' % node._v_attrs.condition[:80] if 'Timestamp' not in node.name else 'TDC time stamp histogram, hits with\n%s' % node._v_attrs.condition[:80], x_axis_title='TDC' if 'Timestamp' not in node.name else 'TDC time stamp', filename=output_pdf)
                 elif 'HistPixelTdc' in node.name:
                     hist_3d = node[:]
                     entry_index = np.where(hist_3d.sum(axis=(0, 1)) != 0)
@@ -289,13 +289,13 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
                     best_pixel_index = np.where(hist_3d.sum(axis=2) == np.amax(node[:].sum(axis=2)))
                     if best_pixel_index[0].shape[0] == 1:  # there could be more than one pixel with most hits
                         try:
-                            plot_1d_hist(hist_3d[best_pixel_index][0, :max_index], title='TDC histogram of pixel %d, %d\n%s' % (best_pixel_index[1] + 1, best_pixel_index[0] + 1, node._v_attrs.condition) if 'Timestamp' not in node.name else 'TDC time stamp histogram, hits of pixel %d, %d' % (best_pixel_index[1] + 1, best_pixel_index[0] + 1), x_axis_title='TDC' if 'Timestamp' not in node.name else 'TDC time stamp', filename=output_pdf)
+                            plot_1d_hist(hist_3d[best_pixel_index][0, :max_index], title='TDC histogram of pixel %d, %d\n%s' % (best_pixel_index[1] + 1, best_pixel_index[0] + 1, node._v_attrs.condition[:80]) if 'Timestamp' not in node.name else 'TDC time stamp histogram, hits of pixel %d, %d' % (best_pixel_index[1] + 1, best_pixel_index[0] + 1), x_axis_title='TDC' if 'Timestamp' not in node.name[:80] else 'TDC time stamp', filename=output_pdf)
                         except IndexError:
                             logging.warning('Cannot plot best pixel TDC histogram')
                 elif 'HistTdcCalibratedCondition' in node.name:
-                    plot_corrected_tdc_hist(node[:]['charge'], node[:]['count'], title='TDC histogram, %d pixel, per pixel TDC calib.\n%s' % (node._v_attrs.n_pixel, node._v_attrs.condition), output_pdf=output_pdf)
+                    plot_corrected_tdc_hist(node[:]['charge'], node[:]['count'], title='TDC histogram, %d pixel, per pixel TDC calib.\n%s' % (node._v_attrs.n_pixel, node._v_attrs.condition[:80]), output_pdf=output_pdf)
                 elif 'HistMeanTdcCalibratedCondition' in node.name:
-                    plot_corrected_tdc_hist(node[:]['charge'], node[:]['count'], title='TDC histogram, %d pixel, mean TDC calib.\n%s' % (node._v_attrs.n_pixel, node._v_attrs.condition), output_pdf=output_pdf)
+                    plot_corrected_tdc_hist(node[:]['charge'], node[:]['count'], title='TDC histogram, %d pixel, mean TDC calib.\n%s' % (node._v_attrs.n_pixel, node._v_attrs.condition[:80]), output_pdf=output_pdf)
                 elif 'HistTdcCorr' in node.name:
                     plot_tdc_tot_correlation(node[:], node._v_attrs.condition, output_pdf)
 
