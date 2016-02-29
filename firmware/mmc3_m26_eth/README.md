@@ -1,14 +1,10 @@
 
-### pyBAR firmware for MMC3 board including readout for MIMOSA26 planes
+### pyBAR firmware for Mimosa pixel telescope
 
-Design is using SiTcp Ethernet module. 
-To compile download free SiTcp module from: http://sitcp.bbtech.co.jp/ (need to register)<sup>1</sup>.
+Allows continuous full data taking for single FE-I4 trigger plane and six MIMOSA26 planes. Includes TLU and TDC modules.
 
-[Basil](https://github.com/SiLab-Bonn/basil) modules can be found here: https://github.com/SiLab-Bonn/basil/tree/development/device/modules
+The MMC3 board is based on [Enclustra Mercury KX1](http://www.enclustra.com/en/products/fpga-modules/mercury-kx1/) module.
+The Firmware make use of [Basil](https://github.com/SiLab-Bonn/basil) framework and free [SiTcp<sup>1</sup>](http://sitcp.bbtech.co.jp/) Ethernet module.
 
+![MMC3 board](m26_mmc3.jpg "MMC3 Board")
 
-<sup>1</sup><sub>Use netgen (from Xilinx ISE) to generate netlist file from ngc file:
-```
-netgen -ofmt verilog -insert_glbl false SiTCP_XC7K_32K_BBT_V80.ngc SiTCP_XC7K_32K_BBT_V80.v
-```
-</sub>
