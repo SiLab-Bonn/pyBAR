@@ -11,7 +11,6 @@ progressbar-latest>=2.4
 tables
 pyyaml
 scipy
-scikit-learn
 
 # Additional functionality (lab devices, unit tests, Online Monitor)
 pyvisa # interface to lab devices

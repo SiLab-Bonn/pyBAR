@@ -8,8 +8,8 @@ import struct
 import os
 from ast import literal_eval
 from operator import itemgetter
+import itertools
 
-from sklearn.utils.extmath import cartesian
 from bitarray import bitarray
 
 from basil.utils.BitLogic import BitLogic
@@ -1118,11 +1118,13 @@ def make_pixel_mask(steps, shift, default=0, value=1, enable_columns=None, mask=
     even_row_offset = ((steps // 2) + shift) % steps  # // integer devision
     even_rows = np.arange(even_row_offset, 336, steps)
     if odd_columns:
-        odd_col_row = cartesian((odd_columns, odd_rows))  # get any combination of column and row, no for loop needed
-        mask_array[odd_col_row[:, 0], odd_col_row[:, 1]] = value  # advanced indexing
+        odd_col_rows = itertools.product(odd_columns, odd_rows)  # get any combination of column and row, no for loop needed
+        for odd_col_row in odd_col_rows:
+            mask_array[odd_col_row[0], odd_col_row[1]] = value  # advanced indexing
     if even_columns:
-        even_col_row = cartesian((even_columns, even_rows))
-        mask_array[even_col_row[:, 0], even_col_row[:, 1]] = value
+        even_col_rows = itertools.product(even_columns, even_rows)
+        for even_col_row in even_col_rows:
+            mask_array[even_col_row[0], even_col_row[1]] = value
     if mask is not None:
         mask_array = np.ma.array(mask_array, mask=mask, fill_value=default)
         mask_array = mask_array.filled()
