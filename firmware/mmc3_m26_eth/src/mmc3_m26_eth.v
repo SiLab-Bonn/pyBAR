@@ -466,7 +466,10 @@ tlu_controller #(
     .TIMESTAMP(TIMESTAMP)
 );
 
-    
+reg [31:0] timestamp_gray;
+always@(posedge BUS_CLK) 
+    timestamp_gray <=  (TIMESTAMP>>1) ^ TIMESTAMP;
+
 wire DOBOUT;
 wire RX_READY, RX_8B10B_DECODER_ERR, RX_FIFO_OVERFLOW_ERR, RX_FIFO_FULL;
 wire FE_FIFO_READ;
@@ -576,7 +579,23 @@ generate
         );   
 
         BUFG BUFG_inst_M26_CLK (  .O(M26_CLK_BUFG[ch]),  .I(M26_CLK[ch]) );  
-
+        wire M26_CLK_INV;
+        assign M26_CLK_INV = ~M26_CLK[ch];
+        
+        reg [31:0] timestamp_cdc0, timestamp_cdc1, timestamp_m26;
+        always@(posedge M26_CLK_INV) begin
+            timestamp_cdc0 <= timestamp_gray;
+            timestamp_cdc1 <= timestamp_cdc0;
+        end
+        
+        integer gbi;
+        always@(*) begin
+            timestamp_m26[31] = timestamp_cdc1[31];
+            for(gbi  =30; gbi >= 0; gbi = gbi -1) begin
+                timestamp_m26[gbi] = timestamp_cdc1[gbi] ^ timestamp_m26[gbi+1];
+            end
+        end    
+        
         m26_rx 
         #(
             .BASEADDR(M26_RX_BASEADDR + ch*16), 
@@ -601,6 +620,8 @@ generate
             .FIFO_EMPTY(FIFO_EMPTY_M26_RX[ch]),
             .FIFO_DATA(FIFO_DATA_M26_RX[ch]),
     
+            .TIMESTAMP(timestamp_m26),
+            
             .LOST_ERROR(LOST_ERROR[ch])
         );
        
