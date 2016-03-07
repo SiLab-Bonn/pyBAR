@@ -147,19 +147,20 @@ class FifoReadout(object):
         logging.info('Stopped FIFO readout')
 
     def print_readout_status(self):
-        sync_status = self.get_rx_sync_status()
-        discard_count = self.get_rx_fifo_discard_count()
-        m26_discard_count = self.get_m26_rx_fifo_discard_count()
-        error_count = self.get_rx_8b10b_error_count()
         logging.info('Data queue size: %d', len(self._data_deque))
         logging.info('SRAM FIFO size: %d', self.dut['SRAM']['FIFO_SIZE'])
-        logging.info('Channel:                     %s', " | ".join([channel.name.rjust(3) for channel in self.dut.get_modules('fei4_rx')]))
-        logging.info('RX sync:                     %s', " | ".join(["YES".rjust(3) if status is True else "NO".rjust(3) for status in sync_status]))
-        logging.info('RX FIFO discard counter:     %s', " | ".join([repr(count).rjust(3) for count in discard_count]))
-        logging.info('RX FIFO 8b10b error counter: %s', " | ".join([repr(count).rjust(3) for count in error_count]))
-        
-        logging.info('M26 Channel:                 %s', " | ".join([channel.name.rjust(3) for channel in self.dut.get_modules('m26_rx')]))
-        logging.info('M26 RX FIFO discard counter: %s', " | ".join([repr(count).rjust(7) for count in m26_discard_count]))
+        if self.dut.get_modules('fei4_rx'):
+            sync_status = self.get_rx_sync_status()
+            discard_count = self.get_rx_fifo_discard_count()
+            error_count = self.get_rx_8b10b_error_count()
+            logging.info('FEI4 Channel:                     %s', " | ".join([channel.name.rjust(3) for channel in self.dut.get_modules('fei4_rx')]))
+            logging.info('FEI4 RX sync:                     %s', " | ".join(["YES".rjust(3) if status is True else "NO".rjust(3) for status in sync_status]))
+            logging.info('FEI4 RX FIFO discard counter:     %s', " | ".join([repr(count).rjust(3) for count in discard_count]))
+            logging.info('FEI4 RX FIFO 8b10b error counter: %s', " | ".join([repr(count).rjust(3) for count in error_count]))
+        if self.dut.get_modules('m26_rx'):
+            m26_discard_count = self.get_m26_rx_fifo_discard_count()
+            logging.info('M26 Channel:                 %s', " | ".join([channel.name.rjust(3) for channel in self.dut.get_modules('m26_rx')]))
+            logging.info('M26 RX FIFO discard counter: %s', " | ".join([repr(count).rjust(7) for count in m26_discard_count]))
         
         if not any(self.get_rx_sync_status()) or any(discard_count) or any(error_count) or any(m26_discard_count):
             logging.warning('RX errors detected')
