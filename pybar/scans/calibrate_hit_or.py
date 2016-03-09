@@ -15,29 +15,42 @@ from pybar.fei4_run_base import Fei4RunBase
 from pybar.run_manager import RunManager
 from pybar.analysis.analysis_utils import get_scan_parameter, get_unique_scan_parameter_combinations, get_scan_parameters_table_from_meta_data, get_ranges_from_array
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
+from pybar.analysis.plotting.plotting import plot_scurves
 
+def plot_calibration(col_row_combinations, scan_parameter, calibration_data, filename):  # Result calibration plot function
+    for index, (column, row) in enumerate(col_row_combinations):
+        if index >= 100:  # stop for too many plots
+            logging.info('Reached the limit of 100 pages')
+            break
+        logging.info("Plotting charge calibration for pixel " + str(column) + '/' + str(row))
+        fig = Figure()
+        FigureCanvas(fig)
+        ax1 = fig.add_subplot(111)
+        fig.patch.set_facecolor('white')
+        ax1.grid(True)
+        ax1.errorbar(scan_parameter, calibration_data[column - 1, row - 1, :, 1] * 1000.0/640.0, yerr=[calibration_data[column - 1, row - 1, :, 3] * 1000.0/640.0, calibration_data[column - 1, row - 1, :, 3] * 1000.0/640.0], fmt='o', label='TDC Counter')
+        ax1.set_title('Calibration for pixel ' + str(column) + '/' + str(row))
+        ax1.set_xlabel('Charge [PlsrDAC]')
+        ax1.set_ylabel('TDC [ns]')
+        ax1.set_ylim(ymin=0.0)
+        ax2 = ax1.twinx()
+        ax2.errorbar(scan_parameter, calibration_data[column - 1, row - 1, :, 0], yerr=[calibration_data[column - 1, row - 1, :, 2], calibration_data[column - 1, row - 1, :, 2]], fmt='o', color='g', label='FEI4 ToT')
+        ax2.set_ylabel('TOT')
+        ax2.set_ylim(ymin=0.0, ymax=15.0)
+        # combine legends
+        lines1, labels1 = ax1.get_legend_handles_labels()
+        lines2, labels2 = ax2.get_legend_handles_labels()
+        ax2.legend(lines1 + lines2, labels1 + labels2, loc=0)
+
+        if not filename:
+            fig.show()
+        elif isinstance(filename, PdfPages):
+            filename.savefig(fig)
+        else:
+            fig.savefig(filename)
 
 def create_hitor_calibration(output_filename):
     logging.info('Analyze and plot results of %s', output_filename)
-
-    def plot_calibration(col_row_combinations, scan_parameter, calibration_data, filename):  # Result calibration plot function
-        for index, (column, row) in enumerate(col_row_combinations):
-            logging.info("Plot calibration for pixel " + str(column) + '/' + str(row))
-            fig = Figure()
-            FigureCanvas(fig)
-            ax = fig.add_subplot(111)
-            fig.patch.set_facecolor('white')
-            ax.grid(True)
-            ax.errorbar(scan_parameter, calibration_data[column - 1, row - 1, :, 0] * 25. + 25., yerr=[calibration_data[column - 1, row - 1, :, 2] * 25, calibration_data[column - 1, row - 1, :, 2] * 25], fmt='o', label='FE-I4 ToT [ns]')
-            ax.errorbar(scan_parameter, calibration_data[column - 1, row - 1, :, 1] * 1.5625, yerr=[calibration_data[column - 1, row - 1, :, 3] * 1.5625, calibration_data[column - 1, row - 1, :, 3] * 1.5625], fmt='o', label='TDC ToT [ns]')
-            ax.set_title('Calibration for pixel ' + str(column) + '/' + str(row))
-            ax.set_xlabel('Charge [PlsrDAC]')
-            ax.set_ylabel('TOT')
-            ax.legend(loc=0)
-            filename.savefig(fig)
-            if index > 100:  # stop for too many plots
-                logging.info('Do not create pixel plots for more than 100 pixels to safe time')
-                break
 
     with AnalyzeRawData(raw_data_file=output_filename, create_pdf=True) as analyze_raw_data:  # Interpret the raw data file
         analyze_raw_data.create_occupancy_hist = False  # too many scan parameters to do in ram histograming
@@ -65,7 +78,6 @@ def create_hitor_calibration(output_filename):
 
         with tb.openFile(output_filename + "_calibration.h5", mode="w") as calibration_data_file:
             logging.info('Create calibration')
-            output_pdf = PdfPages(output_filename + "_calibration.pdf")
             calibration_data = np.zeros(shape=(80, 336, len(inner_loop_parameter_values), 4), dtype='f4')  # result of the calibration is a histogram with col_index, row_index, plsrDAC value, mean discrete tot, rms discrete tot, mean tot from TDC, rms tot from TDC
 
             progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=len(event_ranges_per_parameter), term_width=80)
@@ -81,15 +93,17 @@ def create_hitor_calibration(output_filename):
                 # Only pixel of actual column/row should be in the actual data chunk but since SRAM is not cleared for each scan step due to speed reasons and there might be noisy pixels this is not always the case
                 n_wrong_pixel = np.count_nonzero(np.logical_or(actual_hits['column'] != actual_col, actual_hits['row'] != actual_row))
                 if n_wrong_pixel != 0:
-                    logging.warning('There are %d hits from not selected pixels in the data', n_wrong_pixel)
+                    logging.warning('%d hit(s) from other pixels for scan parameters %s', n_wrong_pixel, ', '.join(['%s=%s' % (name, value) for (name, value) in zip(scan_parameter_names, parameter_values)]))
 
                 actual_hits = actual_hits[np.logical_and(actual_hits['column'] == actual_col, actual_hits['row'] == actual_row)]  # Only take data from selected pixel
                 actual_tdc_hits = actual_hits[(actual_hits['event_status'] & 0b0000111110011100) == 0b0000000100000000]  # only take hits from good events (one TDC word only, no error)
                 actual_tot_hits = actual_hits[(actual_hits['event_status'] & 0b0000100010011100) == 0b0000000000000000]  # only take hits from good events for tot
                 tot, tdc = actual_tot_hits['tot'], actual_tdc_hits['TDC']
 
-                if tdc.shape[0] != n_injections and index == event_ranges_per_parameter.shape[0] - 1:
-                    logging.warning('There are %d != %d TDC hits for %s = %s', tdc.shape[0], n_injections, str(scan_parameter_names), str(parameter_values))
+                if tdc.shape[0] != n_injections:
+                    logging.warning('%d of %d expected TDC hits for scan parameters %s', tdc.shape[0], n_injections, ', '.join(['%s=%s' % (name, value) for (name, value) in zip(scan_parameter_names, parameter_values)]))
+                if tot.shape[0] != n_injections:
+                    logging.warning('%d of %d expected hits for scan parameters %s', tot.shape[0], n_injections, ', '.join(['%s=%s' % (name, value) for (name, value) in zip(scan_parameter_names, parameter_values)]))
 
                 inner_loop_scan_parameter_index = np.where(parameter_value == inner_loop_parameter_values)[0][0]  # translate the scan parameter value to an index for the result histogram
                 calibration_data[actual_col - 1, actual_row - 1, inner_loop_scan_parameter_index, 0] = np.mean(tot)
@@ -103,8 +117,10 @@ def create_hitor_calibration(output_filename):
             calibration_data_out[:] = calibration_data
             calibration_data_out.attrs.dimensions = scan_parameter_names
             calibration_data_out.attrs.scan_parameter_values = inner_loop_parameter_values
-            plot_calibration(col_row_combinations, scan_parameter=inner_loop_parameter_values, calibration_data=calibration_data, filename=output_pdf)
-            output_pdf.close()
+            with PdfPages(output_filename + "_calibration.pdf") as output_pdf:
+                plot_calibration(col_row_combinations, scan_parameter=inner_loop_parameter_values, calibration_data=calibration_data, filename=output_pdf)
+                plot_scurves(calibration_data[:, :, :, 0], inner_loop_parameter_values, "ToT calibration", "ToT", 15, "Charge [PlsrDAC]", filename=output_pdf)
+                plot_scurves(calibration_data[:, :, :, 1], inner_loop_parameter_values, "TDC calibration", "TDC [ns]", None, "Charge [PlsrDAC]", y_scale=1000.0/640.0, filename=output_pdf)
             progress_bar.finish()
 
 
