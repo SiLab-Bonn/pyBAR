@@ -162,14 +162,15 @@ class FifoReadout(object):
             logging.info('FEI4 RX sync:                     %s', " | ".join(["YES".rjust(3) if status is True else "NO".rjust(3) for status in sync_status]))
             logging.info('FEI4 RX FIFO discard counter:     %s', " | ".join([repr(count).rjust(3) for count in discard_count]))
             logging.info('FEI4 RX FIFO 8b10b error counter: %s', " | ".join([repr(count).rjust(3) for count in error_count]))
+        if not any(sync_status) or any(discard_count) or any(error_count):
+            logging.warning('FEI4 RX errors detected')
         # Mimosa26
         m26_discard_count = self.get_m26_rx_fifo_discard_count()
         if self.dut.get_modules('m26_rx'):
             logging.info('M26 Channel:                 %s', " | ".join([channel.name.rjust(3) for channel in self.dut.get_modules('m26_rx')]))
             logging.info('M26 RX FIFO discard counter: %s', " | ".join([repr(count).rjust(7) for count in m26_discard_count]))
-        
-        if not any(self.get_rx_sync_status()) or any(discard_count) or any(error_count) or any(m26_discard_count):
-            logging.warning('RX errors detected')
+        if any(m26_discard_count):
+            logging.warning('M26 RX errors detected')
 
     def readout(self, no_data_timeout=None):
         '''Readout thread continuously reading SRAM.
@@ -241,11 +242,11 @@ class FifoReadout(object):
         while True:
             try:
                 if not any(self.get_rx_sync_status()):
-                    raise RxSyncError('No RX sync')
+                    raise RxSyncError('FEI4 RX sync error')
                 if any(self.get_rx_8b10b_error_count()):
-                    raise EightbTenbError('RX 8b10b error(s) detected')
+                    raise EightbTenbError('FEI4 RX 8b10b error(s) detected')
                 if any(self.get_rx_fifo_discard_count()):
-                    raise FifoError('RX FIFO discard error(s) detected')
+                    raise FifoError('FEI4 RX FIFO discard error(s) detected')
                 if any(self.get_m26_rx_fifo_discard_count()):
                     raise FifoError('M26 RX FIFO discard error(s) detected')
             except Exception:
