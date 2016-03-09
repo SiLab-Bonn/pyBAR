@@ -142,9 +142,9 @@ def is_data_from_channel(channel=4):  # function factory
     Note:
     Trigger data not included
     '''
-    if channel > 0 and channel < 5:
+    if channel >= 0 and channel < 16:
         def f(value):
-            return np.equal(np.right_shift(np.bitwise_and(value, 0x7F000000), 24), channel)
+            return np.equal(np.right_shift(np.bitwise_and(value, 0xFF000000), 24), channel)
         f.__name__ = "is_data_from_channel_" + str(channel)  # or use inspect module: inspect.stack()[0][3]
         return f
     else:
