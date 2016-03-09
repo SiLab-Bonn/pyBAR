@@ -161,7 +161,7 @@ class HitOrCalibration(Fei4RunBase):
                 return (column) / 2
 
         cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", length=self.injection_delay)[0]
-        scan_par_name = self.scan_parameters._fields[-1]  # scan parameter is in inner loop
+        scan_parameter_name = self.scan_parameters._fields[-1]  # scan parameter is in inner loop
         scan_parameters_values = self.scan_parameters[-1][:]  # create deep copy of scan_parameters, they are overwritten in self.readout
 
         logging.info("Scanning %d pixels" % len(self.pixels))
@@ -197,13 +197,14 @@ class HitOrCalibration(Fei4RunBase):
 
                 commands = []
                 commands.extend(self.register.get_commands("ConfMode"))
-                self.register.set_global_register_value(scan_par_name, scan_parameter_value)
-                commands.extend(self.register.get_commands("WrRegister", name=[scan_par_name]))
+                self.register.set_global_register_value(scan_parameter_name, scan_parameter_value)
+                commands.extend(self.register.get_commands("WrRegister", name=[scan_parameter_name]))
                 commands.extend(self.register.get_commands("RunMode"))
                 self.register_utils.send_commands(commands)
 
                 self.dut['TDC']['EN_ARMING'] = True
-                with self.readout(column=column, row=row, **{scan_par_name: scan_parameter_value}):
+
+                with self.readout(column=column, row=row, **{scan_parameter_name: scan_parameter_value}):
                     self.register_utils.send_command(command=cal_lvl1_command, repeat=self.repeat_command)
 
                 self.dut['TDC']['EN_ARMING'] = False
