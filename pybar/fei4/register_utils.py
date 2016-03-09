@@ -110,13 +110,15 @@ class FEI4RegisterUtils(object):
             repeat = self.dut['CMD']['CMD_REPEAT']
         if length and repeat > 1:
             delay = length * 25e-9 * repeat - 0.002  # subtract 2ms delay
+            if delay < 0:
+                delay = 0.0
         else:
             delay = None
         if use_timeout:
-            if delay:
-                timeout = 10 * delay
-            else:
+            if delay is None:
                 timeout = 1
+            else:
+                timeout = 10 * delay
             if not self.dut['CMD'].wait_for_ready(timeout=timeout, times=None, delay=delay, abort=self.abort) and not self.abort.is_set():
                 raise RuntimeError('Time out - command not fully sent')
         else:
