@@ -317,33 +317,6 @@ def plot_scatter(x, y, x_err=None, y_err=None, title=None, legend=None, plot_ran
         fig.savefig(filename)
 
 
-def plot_correlation(hist, title="Hit correlation", xlabel=None, ylabel=None, filename=None):
-    logging.info("Plotting correlations")
-    fig = Figure()
-    FigureCanvas(fig)
-    ax = fig.add_subplot(1, 1, 1)
-    cmap = cm.get_cmap('cool')
-    extent = [hist[2][0] - 0.5, hist[2][-1] + 0.5, hist[1][-1] + 0.5, hist[1][0] - 0.5]
-    ax.set_title(title)
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
-    im = ax.imshow(hist[0], extent=extent, cmap=cmap, interpolation='nearest')
-    ax.invert_yaxis()
-    # add colorbar
-    divider = make_axes_locatable(ax)
-    cax = divider.append_axes("right", size="5%", pad=0.05)
-    z_max = np.max(hist[0])
-    bounds = np.linspace(start=0, stop=z_max, num=255, endpoint=True)
-    norm = colors.BoundaryNorm(bounds, cmap.N)
-    fig.colorbar(im, boundaries=bounds, cmap=cmap, norm=norm, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True), cax=cax)
-    if not filename:
-        fig.show()
-    elif isinstance(filename, PdfPages):
-        filename.savefig(fig)
-    else:
-        fig.savefig(filename)
-
-
 def plot_pixel_matrix(hist, title="Hit correlation", filename=None):
     logging.info("Plotting pixel matrix: %s", title)
     fig = Figure()
@@ -777,42 +750,6 @@ def create_pixel_scatter_plot(fig, ax, hist, title=None, x_axis_title=None, y_ax
         ax.set_xlabel(x_axis_title)
     if y_axis_title is not None:
         ax.set_ylabel(y_axis_title)
-
-
-def plot_correlations(filenames, limit=None):
-    DataFrame = pd.DataFrame()
-    index = 0
-    for fileName in filenames:
-        with pd.get_store(fileName, 'r') as store:
-            tempDataFrame = pd.DataFrame({'Event': store.Hits.Event[:15000], 'Row' + str(index): store.Hits.Row[:15000]})
-            tempDataFrame = tempDataFrame.set_index('Event')
-            DataFrame = tempDataFrame.join(DataFrame)
-            DataFrame = DataFrame.dropna()
-            index += 1
-            del tempDataFrame
-    DataFrame["index"] = DataFrame.index
-    DataFrame.drop_duplicates(take_last=True, inplace=True)
-    del DataFrame["index"]
-    correlationNames = ('Row')
-    index = 0
-    for corName in correlationNames:
-        for colName in itertools.permutations(DataFrame.filter(regex=corName), 2):
-            if(corName == 'Col'):
-                heatmap, xedges, yedges = np.histogram2d(DataFrame[colName[0]], DataFrame[colName[1]], bins=(80, 80), range=[[1, 80], [1, 80]])
-            else:
-                heatmap, xedges, yedges = np.histogram2d(DataFrame[colName[0]], DataFrame[colName[1]], bins=(336, 336), range=[[1, 336], [1, 336]])
-            extent = [yedges[0] - 0.5, yedges[-1] + 0.5, xedges[-1] + 0.5, xedges[0] - 0.5]
-            cmap = cm.get_cmap('cool', 40)
-            fig = Figure()
-            FigureCanvas(fig)
-            ax = fig.add_subplot(111)
-            ax.imshow(heatmap, extent=extent, cmap=cmap, interpolation='nearest')
-            ax.invert_yaxis()
-            ax.set_xlabel(colName[0])
-            ax.set_ylabel(colName[1])
-            ax.set_title('Correlation plot(' + corName + ')')
-            fig.savefig(colName[0] + '_' + colName[1] + '.pdf')
-            index += 1
 
 
 def hist_quantiles(hist, prob=(0.05, 0.95), return_indices=False, copy=True):
