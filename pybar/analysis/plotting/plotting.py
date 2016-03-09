@@ -418,6 +418,7 @@ def plot_cluster_size(hist, title=None, filename=None):
 
 def plot_scurves(occupancy_hist, scan_parameters, title='S-curves', ylabel='Occupancy', max_occ=None, scan_parameter_name=None, min_x=None, max_x=None, x_scale=1.0, y_scale=1.0, filename=None):  # tornado plot
     occ_mask = np.all(occupancy_hist == 0, axis=2)
+    occupancy_hist = np.ma.masked_invalid(occupancy_hist)
     if max_occ is None:
         if np.allclose(occupancy_hist, 0.0):
             max_occ = 1.0
@@ -428,7 +429,6 @@ def plot_scurves(occupancy_hist, scan_parameters, title='S-curves', ylabel='Occu
 
     n_pixel = occupancy_hist.shape[0] * occupancy_hist.shape[1]
 
-    cmap = cm.get_cmap('cool')
     for index, scan_parameter in enumerate(scan_parameters):
         compressed_data = np.ma.masked_array(occupancy_hist[:, :, index], mask=occ_mask, copy=True).compressed()
         heatmap, xedges, yedges = np.histogram2d(compressed_data, [scan_parameter] * compressed_data.shape[0], range=[[-0.5, max_occ + 0.5], [scan_parameters[0], scan_parameters[-1]]], bins=(max_occ + 1, len(scan_parameters)))
@@ -436,6 +436,10 @@ def plot_scurves(occupancy_hist, scan_parameters, title='S-curves', ylabel='Occu
             hist = heatmap
         else:
             hist += heatmap
+    if np.allclose(hist, 0.0):
+        z_max = 1.0
+    else:
+        z_max = hist.max()
     fig = Figure()
     FigureCanvas(fig)
     ax = fig.add_subplot(111)
@@ -444,14 +448,30 @@ def plot_scurves(occupancy_hist, scan_parameters, title='S-curves', ylabel='Occu
         scan_parameter_dist = (np.amax(scan_parameters) - np.amin(scan_parameters)) / (len(scan_parameters) - 1)
     else:
         scan_parameter_dist = 0
+    # for axis scaling extent parameter needs to be modified
     extent = [yedges[0] * x_scale - scan_parameter_dist / 2 * x_scale, yedges[-1] * x_scale + scan_parameter_dist / 2 * x_scale, (xedges[-1]) * y_scale, xedges[0] + 0.5 - 0.5 * y_scale]  # x, y
 #     extent = None
-    norm = colors.LogNorm()
-    im = ax.imshow(hist, interpolation='nearest', aspect="auto", cmap=cmap, extent=extent, norm=norm)
+    cmap = cm.get_cmap('cool')
+    if np.allclose(hist, 0.0) or hist.max() <= 1:
+        z_max = 1.0
+    else:
+        z_max = hist.max()
+    # for small z use linear scale, otherwise log scale
+    if z_max <= 10.0:
+        bounds = np.linspace(start=0.0, stop=z_max, num=255, endpoint=True)
+        norm = colors.BoundaryNorm(bounds, cmap.N)
+    else:
+        bounds = np.linspace(start=1.0, stop=z_max, num=255, endpoint=True)
+        norm = colors.LogNorm()
+    im = ax.imshow(np.ma.masked_where(hist == 0, hist), interpolation='none', aspect="auto", cmap=cmap, extent=extent, norm=norm)
     ax.invert_yaxis()
     if min_x is not None or max_x is not None:
         ax.set_xlim((min_x if min_x is not None else np.amin(scan_parameters), max_x if max_x is not None else np.amax(scan_parameters)))
-    fig.colorbar(im)
+    if z_max <= 10.0:
+        cb = fig.colorbar(im, ticks=np.linspace(start=0.0, stop=z_max, num=min(11, math.ceil(z_max) + 1), endpoint=True), fraction=0.04, pad=0.05)
+    else:
+        cb = fig.colorbar(im, fraction=0.04, pad=0.05)
+    cb.set_label("#")
     ax.set_title(title + ' for %d pixel(s)' % (n_pixel - np.count_nonzero(occ_mask)))
     if scan_parameter_name is None:
         ax.set_xlabel('Scan parameter')
