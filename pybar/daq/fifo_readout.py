@@ -6,6 +6,7 @@ from Queue import Queue, Empty
 import sys
 
 from pybar.utils.utils import get_float_time
+from pybar.daq.readout_utils import is_data_record, is_data_header, logical_or
 
 
 data_iterable = ("data", "timestamp_start", "timestamp_stop", "error")
@@ -98,8 +99,11 @@ class FifoReadout(object):
             self.reset_sram_fifo()
         else:
             fifo_size = self.dut['SRAM']['FIFO_SIZE']
-            if fifo_size != 0:
-                logging.warning('SRAM FIFO not empty when starting FIFO readout: size = %i', fifo_size)
+            data = self.read_data()
+            event_selector = logical_or(is_data_record, is_data_header)
+            events = data[event_selector(data)]
+            if events.shape[0] != 0:
+                logging.warning('SRAM FIFO containing events when starting FIFO readout: FIFO_SIZE = %i', fifo_size)
         self._words_per_read.clear()
         if clear_buffer:
             self._data_deque.clear()
