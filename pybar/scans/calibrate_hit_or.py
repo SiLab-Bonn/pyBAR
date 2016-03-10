@@ -85,7 +85,7 @@ def create_hitor_calibration(output_filename):
 
             for index, (parameter_values, event_start, event_stop) in enumerate(event_ranges_per_parameter):
                 if event_stop is None:  # happens for the last chunk
-                    event_stop = hits[-1]['event_number']
+                    event_stop = hits[-1]['event_number'] + 1
                 array_index = np.searchsorted(event_numbers, np.array([event_start, event_stop]))
                 actual_hits = hits[array_index[0]:array_index[1]]
                 actual_col, actual_row, parameter_value = parameter_values
