@@ -431,7 +431,8 @@ def plot_scurves(occupancy_hist, scan_parameters, title='S-curves', ylabel='Occu
 
     for index, scan_parameter in enumerate(scan_parameters):
         compressed_data = np.ma.masked_array(occupancy_hist[:, :, index], mask=occ_mask, copy=True).compressed()
-        heatmap, xedges, yedges = np.histogram2d(compressed_data, [scan_parameter] * compressed_data.shape[0], range=[[-0.5, max_occ + 0.5], [scan_parameters[0], scan_parameters[-1]]], bins=(max_occ + 1, len(scan_parameters)))
+#         heatmap, xedges, yedges = np.histogram2d(compressed_data, [scan_parameter] * compressed_data.shape[0], range=[[-0.5, max_occ + 0.5], [scan_parameters[0], scan_parameters[-1]]], bins=(max_occ + 1, len(scan_parameters)))
+        heatmap, xedges, yedges = np.histogram2d(compressed_data, [scan_parameter] * compressed_data.shape[0], range=[[-0.5, max_occ + 0.5], [scan_parameters[0], scan_parameters[-1] + 1]], bins=(max_occ + 1, scan_parameters[-1] - scan_parameters[0] + 1))
         if index == 0:
             hist = heatmap
         else:
@@ -449,8 +450,8 @@ def plot_scurves(occupancy_hist, scan_parameters, title='S-curves', ylabel='Occu
     else:
         scan_parameter_dist = 0
     # for axis scaling extent parameter needs to be modified
-    extent = [yedges[0] * x_scale - scan_parameter_dist / 2 * x_scale, yedges[-1] * x_scale + scan_parameter_dist / 2 * x_scale, (xedges[-1]) * y_scale, xedges[0] + 0.5 - 0.5 * y_scale]  # x, y
-#     extent = None
+#    extent = [yedges[0] * x_scale - scan_parameter_dist / 2 * x_scale, yedges[-1] * x_scale + scan_parameter_dist / 2 * x_scale, (xedges[-1]) * y_scale, xedges[0] + 0.5 - 0.5 * y_scale]  # x, y
+    extent = None
     cmap = cm.get_cmap('cool')
     if np.allclose(hist, 0.0) or hist.max() <= 1:
         z_max = 1.0
