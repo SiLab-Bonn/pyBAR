@@ -129,7 +129,7 @@ class HitOrCalibration(Fei4RunBase):
     ''' Hit Or calibration scan
     '''
     _default_run_conf = {
-        "repeat_command": 200,
+        "repeat_command": 25,
         "injection_delay": 5000,  # for really low feedbacks (ToT >> 300 ns) one needs to increase the injection delay
         "scan_parameters": [('column', None),
                             ('row', None),
