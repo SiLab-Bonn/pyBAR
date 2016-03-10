@@ -751,8 +751,9 @@ class AnalyzeRawData(object):
     #                             print_raw_data(raw_data, start_index=selected_words[0] - word_index - 20, index_offset=word_index)
     #                             print_raw_data(raw_data, start_index=selected_words[-1] - word_index - 20, index_offset=word_index)
                     self.interpreter.interpret_raw_data(raw_data)  # interpret the raw data
+                    # store remaining buffered event in the interpreter at the end of the last file
                     if file_index == len(self.files_dict.keys()) - 1 and word_index == range(0, in_file_h5.root.raw_data.shape[0], self._chunk_size)[-1]:  # store hits of the latest event of the last file
-                        self.interpreter.store_event()  # all actual buffered events in the interpreter are stored
+                        self.interpreter.store_event()
                     hits = self.interpreter.get_hits()
                     if self.scan_parameters is not None:
                         nEventIndex = self.interpreter.get_n_meta_data_event()
