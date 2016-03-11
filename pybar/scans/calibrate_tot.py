@@ -78,14 +78,12 @@ class TotCalibration(Fei4RunBase):
             analyze_raw_data.plot_histograms()
             analyze_raw_data.interpreter.print_summary()
 
-#         with tb.open_file(self.output_filename + '_interpreted.h5', 'r') as in_file_h5:  # Get scan parameters from interpreted file
             with tb.open_file(analyze_raw_data._analyzed_data_file, 'r') as in_file_h5:
                 meta_data = in_file_h5.root.meta_data[:]
                 tot_mean = np.swapaxes(in_file_h5.root.HistMeanTot[:], 1, 0)
                 scan_parameters_dict = get_scan_parameter(meta_data)
                 inner_loop_parameter_values = scan_parameters_dict[next(reversed(scan_parameters_dict))]  # inner loop parameter name is unknown
         
-    #             with PdfPages(self.output_filename + "_calibration.pdf") as output_pdf:
                 plot_tot_tdc_calibration(scan_parameters=inner_loop_parameter_values, tot_mean=tot_mean, filename=analyze_raw_data.output_pdf)
                 plot_scurves(tot_mean, inner_loop_parameter_values, "ToT calibration", "ToT", 15, "Charge [PlsrDAC]", filename=analyze_raw_data.output_pdf)
 
