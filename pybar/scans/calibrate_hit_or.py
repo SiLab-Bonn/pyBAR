@@ -7,60 +7,27 @@ import tables as tb
 import progressbar
 
 from matplotlib.backends.backend_pdf import PdfPages
-from matplotlib.figure import Figure
-from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
 from pybar.fei4.register_utils import make_pixel_mask_from_col_row, make_box_pixel_mask_from_col_row
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.run_manager import RunManager
 from pybar.analysis.analysis_utils import get_scan_parameter, get_unique_scan_parameter_combinations, get_scan_parameters_table_from_meta_data, get_ranges_from_array
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
-from pybar.analysis.plotting.plotting import plot_scurves
+from pybar.analysis.plotting.plotting import plot_scurves, plot_tot_tdc_calibration
 
-def plot_calibration(col_row_combinations, scan_parameter, calibration_data, filename):  # Result calibration plot function
-    for index, (column, row) in enumerate(col_row_combinations):
-        if index >= 100:  # stop for too many plots
-            logging.info('Reached the limit of 100 pages')
-            break
-        logging.info("Plotting charge calibration for pixel " + str(column) + '/' + str(row))
-        fig = Figure()
-        FigureCanvas(fig)
-        ax1 = fig.add_subplot(111)
-        fig.patch.set_facecolor('white')
-        ax1.grid(True)
-        ax1.errorbar(scan_parameter, calibration_data[column - 1, row - 1, :, 1] * 1000.0/640.0, yerr=[calibration_data[column - 1, row - 1, :, 3] * 1000.0/640.0, calibration_data[column - 1, row - 1, :, 3] * 1000.0/640.0], fmt='o', label='TDC Counter')
-        ax1.set_title('Calibration for pixel ' + str(column) + '/' + str(row))
-        ax1.set_xlabel('Charge [PlsrDAC]')
-        ax1.set_ylabel('TDC [ns]')
-        ax1.set_ylim(ymin=0.0)
-        ax2 = ax1.twinx()
-        ax2.errorbar(scan_parameter, calibration_data[column - 1, row - 1, :, 0], yerr=[calibration_data[column - 1, row - 1, :, 2], calibration_data[column - 1, row - 1, :, 2]], fmt='o', color='g', label='FEI4 ToT')
-        ax2.set_ylabel('TOT')
-        ax2.set_ylim(ymin=0.0, ymax=15.0)
-        # combine legends
-        lines1, labels1 = ax1.get_legend_handles_labels()
-        lines2, labels2 = ax2.get_legend_handles_labels()
-        ax2.legend(lines1 + lines2, labels1 + labels2, loc=0)
-
-        if not filename:
-            fig.show()
-        elif isinstance(filename, PdfPages):
-            filename.savefig(fig)
-        else:
-            fig.savefig(filename)
 
 def create_hitor_calibration(output_filename):
     logging.info('Analyze and plot results of %s', output_filename)
 
     with AnalyzeRawData(raw_data_file=output_filename, create_pdf=True) as analyze_raw_data:  # Interpret the raw data file
-        analyze_raw_data.create_occupancy_hist = False  # too many scan parameters to do in ram histograming
+        analyze_raw_data.create_occupancy_hist = False  # too many scan parameters to do in ram histogramming
         analyze_raw_data.create_hit_table = True
         analyze_raw_data.create_tdc_hist = True
         analyze_raw_data.align_at_tdc = True  # align events at TDC words, first word of event has to be a tdc word
         analyze_raw_data.interpret_word_table()
         analyze_raw_data.interpreter.print_summary()
         analyze_raw_data.plot_histograms()
-        n_injections = analyze_raw_data.n_injections  # store number of injections for later cross check
+        n_injections = analyze_raw_data.n_injections  # use later
 
     with tb.open_file(output_filename + '_interpreted.h5', 'r') as in_file_h5:  # Get scan parameters from interpreted file
         meta_data = in_file_h5.root.meta_data[:]
@@ -68,7 +35,7 @@ def create_hitor_calibration(output_filename):
         scan_parameters_dict = get_scan_parameter(meta_data)
         inner_loop_parameter_values = scan_parameters_dict[next(reversed(scan_parameters_dict))]  # inner loop parameter name is unknown
         scan_parameter_names = scan_parameters_dict.keys()
-        col_row_combinations = get_unique_scan_parameter_combinations(in_file_h5.root.meta_data[:], scan_parameters=('column', 'row'), scan_parameter_columns_only=True)
+#         col_row_combinations = get_unique_scan_parameter_combinations(in_file_h5.root.meta_data[:], scan_parameters=('column', 'row'), scan_parameter_columns_only=True)
 
         meta_data_table_at_scan_parameter = get_unique_scan_parameter_combinations(meta_data, scan_parameters=scan_parameter_names)
         parameter_values = get_scan_parameters_table_from_meta_data(meta_data_table_at_scan_parameter, scan_parameter_names)
@@ -78,7 +45,8 @@ def create_hitor_calibration(output_filename):
 
         with tb.openFile(output_filename + "_calibration.h5", mode="w") as calibration_data_file:
             logging.info('Create calibration')
-            calibration_data = np.zeros(shape=(80, 336, len(inner_loop_parameter_values), 4), dtype='f4')  # result of the calibration is a histogram with col_index, row_index, plsrDAC value, mean discrete tot, rms discrete tot, mean tot from TDC, rms tot from TDC
+            calibration_data = np.empty(shape=(80, 336, len(inner_loop_parameter_values), 4), dtype='f4')  # result of the calibration is a histogram with col_index, row_index, plsrDAC value, mean discrete tot, rms discrete tot, mean tot from TDC, rms tot from TDC
+            calibration_data.fill(np.nan)
 
             progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=len(event_ranges_per_parameter), term_width=80)
             progress_bar.start()
@@ -112,16 +80,16 @@ def create_hitor_calibration(output_filename):
                 calibration_data[actual_col - 1, actual_row - 1, inner_loop_scan_parameter_index, 3] = np.std(tdc)
 
                 progress_bar.update(index)
+            progress_bar.finish()
 
             calibration_data_out = calibration_data_file.createCArray(calibration_data_file.root, name='HitOrCalibration', title='Hit OR calibration data', atom=tb.Atom.from_dtype(calibration_data.dtype), shape=calibration_data.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
             calibration_data_out[:] = calibration_data
             calibration_data_out.attrs.dimensions = scan_parameter_names
             calibration_data_out.attrs.scan_parameter_values = inner_loop_parameter_values
             with PdfPages(output_filename + "_calibration.pdf") as output_pdf:
-                plot_calibration(col_row_combinations, scan_parameter=inner_loop_parameter_values, calibration_data=calibration_data, filename=output_pdf)
+                plot_tot_tdc_calibration(scan_parameters=inner_loop_parameter_values, tot_mean=calibration_data[:, :, :, 0], tot_error=calibration_data[:, :, :, 2], tdc_mean=calibration_data[:, :, :, 1], tdc_error=calibration_data[:, :, :, 3], filename=output_pdf)
                 plot_scurves(calibration_data[:, :, :, 0], inner_loop_parameter_values, "ToT calibration", "ToT", 15, "Charge [PlsrDAC]", filename=output_pdf)
                 plot_scurves(calibration_data[:, :, :, 1], inner_loop_parameter_values, "TDC calibration", "TDC [ns]", None, "Charge [PlsrDAC]", y_scale=1000.0/640.0, filename=output_pdf)
-            progress_bar.finish()
 
 
 class HitOrCalibration(Fei4RunBase):
@@ -129,16 +97,15 @@ class HitOrCalibration(Fei4RunBase):
     ''' Hit Or calibration scan
     '''
     _default_run_conf = {
-        "repeat_command": 25,
+        "n_injections": 200,
         "injection_delay": 5000,  # for really low feedbacks (ToT >> 300 ns) one needs to increase the injection delay
         "scan_parameters": [('column', None),
                             ('row', None),
                             ('PlsrDAC', [40, 50, 60, 80, 130, 180, 230, 280, 340, 440, 540, 640, 740])],  # 0 400 sufficient
         "reset_rx_on_error": True,
-        "plot_tdc_histograms": False,
         "pixels": (np.dstack(np.where(make_box_pixel_mask_from_col_row([40, 41], [150, 151]) == 1)) + 1).tolist()[0],  # list of (col, row) tupels. From 1 to 80/336.
-        "enable_masks": ["Enable", "C_Low", "C_High"],
-        "disable_masks": ["Imon"]
+        "enable_shift_masks": ["Enable", "C_Low", "C_High"],
+        "disable_shift_masks": ["Imon"]
     }
 
     def configure(self):
@@ -180,15 +147,14 @@ class HitOrCalibration(Fei4RunBase):
             commands = []
             commands.extend(self.register.get_commands("ConfMode"))
             single_pixel_enable_mask = make_pixel_mask_from_col_row([column], [row])
-            map(lambda mask_name: self.register.set_pixel_register_value(mask_name, single_pixel_enable_mask), self.enable_masks)
-            commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=self.enable_masks, joint_write=True))
+            map(lambda mask_name: self.register.set_pixel_register_value(mask_name, single_pixel_enable_mask), self.enable_shift_masks)
+            commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=self.enable_shift_masks, joint_write=True))
             single_pixel_disable_mask = make_pixel_mask_from_col_row([column], [row], default=1, value=0)
-            map(lambda mask_name: self.register.set_pixel_register_value(mask_name, single_pixel_disable_mask), self.disable_masks)
-            commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=self.disable_masks, joint_write=True))
+            map(lambda mask_name: self.register.set_pixel_register_value(mask_name, single_pixel_disable_mask), self.disable_shift_masks)
+            commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=self.disable_shift_masks, joint_write=True))
             self.register.set_global_register_value("Colpr_Addr", inject_double_column(column))
             commands.append(self.register.get_commands("WrRegister", name=["Colpr_Addr"])[0])
             self.register_utils.send_commands(commands)
-            # self.fifo_readout.reset_sram_fifo()  # after mask shifting you have AR VR in SRAM that are not of interest but reset takes a long time, so ignore the warning
 
             self.dut['TDC']['ENABLE'] = True
             for scan_parameter_value in scan_parameters_values:
@@ -203,11 +169,10 @@ class HitOrCalibration(Fei4RunBase):
                 self.register_utils.send_commands(commands)
 
                 self.dut['TDC']['EN_ARMING'] = True
-
-                with self.readout(column=column, row=row, **{scan_parameter_name: scan_parameter_value}):
-                    self.register_utils.send_command(command=cal_lvl1_command, repeat=self.repeat_command)
-
+                with self.readout(reset_sram_fifo=False, clear_buffer=False, column=column, row=row, **{scan_parameter_name: scan_parameter_value}):
+                    self.register_utils.send_command(command=cal_lvl1_command, repeat=self.n_injections)
                 self.dut['TDC']['EN_ARMING'] = False
+
             self.dut['TDC']['ENABLE'] = False
 
     def handle_data(self, data):

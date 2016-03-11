@@ -1244,8 +1244,7 @@ class AnalyzeRawData(object):
             self.c_low = float(c_low)
             self.c_mid = float(c_mid)
             self.c_high = float(c_high)
-            repeat_command = opened_raw_data_file.root.configuration.run_conf[:][np.where(opened_raw_data_file.root.configuration.run_conf[:]['name'] == 'repeat_command')]['value'][0]
-            self.n_injections = int(repeat_command)
+            self.n_injections = int(opened_raw_data_file.root.configuration.run_conf[:][np.where(opened_raw_data_file.root.configuration.run_conf[:]['name'] == 'n_injections')]['value'][0])
         except tb.exceptions.NoSuchNodeError:
             if not self._settings_from_file_set:
                 logging.warning('No settings stored in raw data file %s, use standard settings', opened_raw_data_file.filename)
