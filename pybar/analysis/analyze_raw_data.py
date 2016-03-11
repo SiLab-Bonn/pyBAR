@@ -224,6 +224,7 @@ class AnalyzeRawData(object):
         self.create_empty_event_hits = False
         self.create_meta_event_index = True
         self.create_tot_hist = True
+        self.create_mean_tot_hist = False
         self.create_tot_pixel_hist = True
         self.create_rel_bcid_hist = True
         self.correct_corrupted_data = False
@@ -294,6 +295,15 @@ class AnalyzeRawData(object):
     def create_occupancy_hist(self, value):
         self._create_occupancy_hist = value
         self.histograming.create_occupancy_hist(value)
+
+    @property
+    def create_mean_tot_hist(self):
+        return self._create_mean_tot_hist
+
+    @create_occupancy_hist.setter
+    def create_mean_tot_hist(self, value):
+        self._create_mean_tot_hist = value
+        self.histograming.create_mean_tot_hist(value)
 
     @property
     def create_source_scan_hist(self):
@@ -881,6 +891,11 @@ class AnalyzeRawData(object):
             if self._analyzed_data_file is not None and safe_to_file:
                 occupancy_array_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistOcc', title='Occupancy Histogram', atom=tb.Atom.from_dtype(self.occupancy_array.dtype), shape=self.occupancy_array.shape, filters=self._filter_table)
                 occupancy_array_table[0:336, 0:80, 0:self.histograming.get_n_parameters()] = self.occupancy_array
+        if self._create_mean_tot_hist:
+            self.mean_tot_array = np.swapaxes(self.histograming.get_mean_tot(), 0, 1)  # swap axis col,row, parameter --> row, col, parameter
+            if self._analyzed_data_file is not None and safe_to_file:
+                mean_tot_array_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistMeanTot', title='Mean ToT Histogram', atom=tb.Atom.from_dtype(self.mean_tot_array.dtype), shape=self.mean_tot_array.shape, filters=self._filter_table)
+                mean_tot_array_table[0:336, 0:80, 0:self.histograming.get_n_parameters()] = self.mean_tot_array
         if self._create_threshold_hists:
             threshold, noise = np.zeros(80 * 336, dtype=np.float64), np.zeros(80 * 336, dtype=np.float64)
             self.histograming.calculate_threshold_scan_arrays(threshold, noise, self._n_injection, np.amin(self.scan_parameters['PlsrDAC']), np.amax(self.scan_parameters['PlsrDAC']))  # calling fast algorithm function: M. Mertens, PhD thesis, Juelich 2010, note: noise zero if occupancy was zero
