@@ -3,6 +3,7 @@ from pybar.scans.calibrate_plsr_dac_transient import PlsrDacTransientScan
 from pybar.scans.calibrate_plsr_dac import PlsrDacScan
 from pybar.scans.calibrate_pulser_dac_correction import PulserDacCorrectionCalibration
 from pybar.scans.calibrate_threshold import ThresholdCalibration, create_threshold_calibration
+from pybar.scans.calibrate_tot import TotCalibration
 from pybar.scans.scan_analog import AnalogScan
 from pybar.scans.scan_crosstalk import CrosstalkScan
 from pybar.scans.scan_digital import DigitalScan
