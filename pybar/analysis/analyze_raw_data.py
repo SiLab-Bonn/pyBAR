@@ -879,8 +879,8 @@ class AnalyzeRawData(object):
         if self._create_occupancy_hist:
             self.occupancy_array = np.swapaxes(self.histograming.get_occupancy(), 0, 1)  # swap axis col,row, parameter --> row, col, parameter
             if self._analyzed_data_file is not None and safe_to_file:
-                occupancy_array_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistOcc', title='Occupancy Histogram', atom=tb.Atom.from_dtype(self.occupancy.dtype), shape=(336, 80, self.histograming.get_n_parameters()), filters=self._filter_table)
-                occupancy_array_table[0:336, 0:80, 0:self.histograming.get_n_parameters()] = self.occupancy_array  # swap axis col,row,parameter --> row, col,parameter
+                occupancy_array_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistOcc', title='Occupancy Histogram', atom=tb.Atom.from_dtype(self.occupancy_array.dtype), shape=self.occupancy_array.shape, filters=self._filter_table)
+                occupancy_array_table[0:336, 0:80, 0:self.histograming.get_n_parameters()] = self.occupancy_array
         if self._create_threshold_hists:
             threshold, noise = np.zeros(80 * 336, dtype=np.float64), np.zeros(80 * 336, dtype=np.float64)
             self.histograming.calculate_threshold_scan_arrays(threshold, noise, self._n_injection, np.amin(self.scan_parameters['PlsrDAC']), np.amax(self.scan_parameters['PlsrDAC']))  # calling fast algorithm function: M. Mertens, PhD thesis, Juelich 2010, note: noise zero if occupancy was zero
