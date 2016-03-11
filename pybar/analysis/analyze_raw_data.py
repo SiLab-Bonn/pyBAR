@@ -854,7 +854,7 @@ class AnalyzeRawData(object):
                 tot_hist_table[:] = self.tot_hist
         if self._create_tot_pixel_hist:
             if self._analyzed_data_file is not None and safe_to_file:
-                self.tot_pixel_hist_array = np.swapaxes(self.histograming.get_tot_pixel_hist(), 0, 1)
+                self.tot_pixel_hist_array = np.swapaxes(self.histograming.get_tot_pixel_hist(), 0, 1)  # swap axis col,row, parameter --> row, col, parameter
                 tot_pixel_hist_out = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistTotPixel', title='Tot Pixel Histogram', atom=tb.Atom.from_dtype(self.tot_pixel_hist_array.dtype), shape=self.tot_pixel_hist_array.shape, filters=self._filter_table)
                 tot_pixel_hist_out[:] = self.tot_pixel_hist_array
         if self._create_tdc_hist:
@@ -864,7 +864,7 @@ class AnalyzeRawData(object):
                 tdc_hist_table[:] = self.tdc_hist
         if self._create_tdc_pixel_hist:
             if self._analyzed_data_file is not None and safe_to_file:
-                self.tdc_pixel_hist_array = np.swapaxes(self.histograming.get_tdc_pixel_hist(), 0, 1)
+                self.tdc_pixel_hist_array = np.swapaxes(self.histograming.get_tdc_pixel_hist(), 0, 1)  # swap axis col,row, parameter --> row, col, parameter
                 tdc_pixel_hist_out = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistTdcPixel', title='Tdc Pixel Histogram', atom=tb.Atom.from_dtype(self.tdc_pixel_hist_array.dtype), shape=self.tdc_pixel_hist_array.shape, filters=self._filter_table)
                 tdc_pixel_hist_out[:] = self.tdc_pixel_hist_array
         if self._create_rel_bcid_hist:
@@ -877,8 +877,7 @@ class AnalyzeRawData(object):
                     rel_bcid_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistRelBcid', title='relative BCID Histogram in stop mode read out', atom=tb.Atom.from_dtype(self.rel_bcid_hist.dtype), shape=self.rel_bcid_hist.shape, filters=self._filter_table)
                     rel_bcid_hist_table[:] = self.rel_bcid_hist
         if self._create_occupancy_hist:
-            self.occupancy = self.histograming.get_occupancy()
-            self.occupancy_array = np.swapaxes(self.occupancy, 0, 1)
+            self.occupancy_array = np.swapaxes(self.histograming.get_occupancy(), 0, 1)  # swap axis col,row, parameter --> row, col, parameter
             if self._analyzed_data_file is not None and safe_to_file:
                 occupancy_array_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistOcc', title='Occupancy Histogram', atom=tb.Atom.from_dtype(self.occupancy.dtype), shape=(336, 80, self.histograming.get_n_parameters()), filters=self._filter_table)
                 occupancy_array_table[0:336, 0:80, 0:self.histograming.get_n_parameters()] = self.occupancy_array  # swap axis col,row,parameter --> row, col,parameter
