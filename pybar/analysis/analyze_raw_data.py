@@ -209,7 +209,7 @@ class AnalyzeRawData(object):
         '''
         self._setup_clusterizer()
         self.chunk_size = 3000000
-        self.n_injections = 100
+        self.n_injections = None
         self.trig_count = 0  # 0 trig_count = 16 BCID per trigger
         self.max_tot_value = 13
         self.vcal_c0, self.vcal_c1 = None, None
