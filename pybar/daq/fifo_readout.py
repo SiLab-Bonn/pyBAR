@@ -6,6 +6,7 @@ from Queue import Queue, Empty
 import sys
 
 from pybar.utils.utils import get_float_time
+from pybar.daq.readout_utils import is_data_record, is_data_header, logical_or
 
 
 data_iterable = ("data", "timestamp_start", "timestamp_stop", "error")
@@ -98,8 +99,11 @@ class FifoReadout(object):
             self.reset_sram_fifo()
         else:
             fifo_size = self.dut['SRAM']['FIFO_SIZE']
-            if fifo_size != 0:
-                logging.warning('SRAM FIFO not empty when starting FIFO readout: size = %i', fifo_size)
+            data = self.read_data()
+            event_selector = logical_or(is_data_record, is_data_header)
+            events = data[event_selector(data)]
+            if events.shape[0] != 0:
+                logging.warning('SRAM FIFO containing events when starting FIFO readout: FIFO_SIZE = %i', fifo_size)
         self._words_per_read.clear()
         if clear_buffer:
             self._data_deque.clear()
@@ -147,17 +151,26 @@ class FifoReadout(object):
         logging.info('Stopped FIFO readout')
 
     def print_readout_status(self):
+        logging.info('Data queue size: %d', len(self._data_deque))
+        logging.info('SRAM FIFO size: %d', self.dut['SRAM']['FIFO_SIZE'])
+        # FEI4
         sync_status = self.get_rx_sync_status()
         discard_count = self.get_rx_fifo_discard_count()
         error_count = self.get_rx_8b10b_error_count()
-        logging.info('Data queue size: %d', len(self._data_deque))
-        logging.info('SRAM FIFO size: %d', self.dut['SRAM']['FIFO_SIZE'])
-        logging.info('Channel:                     %s', " | ".join([channel.name.rjust(3) for channel in self.dut.get_modules('fei4_rx')]))
-        logging.info('RX sync:                     %s', " | ".join(["YES".rjust(3) if status is True else "NO".rjust(3) for status in sync_status]))
-        logging.info('RX FIFO discard counter:     %s', " | ".join([repr(count).rjust(3) for count in discard_count]))
-        logging.info('RX FIFO 8b10b error counter: %s', " | ".join([repr(count).rjust(3) for count in error_count]))
-        if not any(self.get_rx_sync_status()) or any(discard_count) or any(error_count):
-            logging.warning('RX errors detected')
+        if self.dut.get_modules('fei4_rx'):
+            logging.info('FEI4 Channel:                     %s', " | ".join([channel.name.rjust(3) for channel in self.dut.get_modules('fei4_rx')]))
+            logging.info('FEI4 RX sync:                     %s', " | ".join(["YES".rjust(3) if status is True else "NO".rjust(3) for status in sync_status]))
+            logging.info('FEI4 RX FIFO discard counter:     %s', " | ".join([repr(count).rjust(3) for count in discard_count]))
+            logging.info('FEI4 RX FIFO 8b10b error counter: %s', " | ".join([repr(count).rjust(3) for count in error_count]))
+        if not any(sync_status) or any(discard_count) or any(error_count):
+            logging.warning('FEI4 RX errors detected')
+        # Mimosa26
+        m26_discard_count = self.get_m26_rx_fifo_discard_count()
+        if self.dut.get_modules('m26_rx'):
+            logging.info('M26 Channel:                 %s', " | ".join([channel.name.rjust(3) for channel in self.dut.get_modules('m26_rx')]))
+            logging.info('M26 RX FIFO discard counter: %s', " | ".join([repr(count).rjust(7) for count in m26_discard_count]))
+        if any(m26_discard_count):
+            logging.warning('M26 RX errors detected')
 
     def readout(self, no_data_timeout=None):
         '''Readout thread continuously reading SRAM.
@@ -229,11 +242,13 @@ class FifoReadout(object):
         while True:
             try:
                 if not any(self.get_rx_sync_status()):
-                    raise RxSyncError('No RX sync')
+                    raise RxSyncError('FEI4 RX sync error')
                 if any(self.get_rx_8b10b_error_count()):
-                    raise EightbTenbError('RX 8b10b error(s) detected')
+                    raise EightbTenbError('FEI4 RX 8b10b error(s) detected')
                 if any(self.get_rx_fifo_discard_count()):
-                    raise FifoError('RX FIFO discard error(s) detected')
+                    raise FifoError('FEI4 RX FIFO discard error(s) detected')
+                if any(self.get_m26_rx_fifo_discard_count()):
+                    raise FifoError('M26 RX FIFO discard error(s) detected')
             except Exception:
                 self.errback(sys.exc_info())
             if self.stop_readout.wait(self.readout_interval * 10):
@@ -296,3 +311,10 @@ class FifoReadout(object):
             return map(lambda channel: self.dut[channel].LOST_DATA_COUNTER, channels)
         else:
             return map(lambda channel: channel.LOST_DATA_COUNTER, self.dut.get_modules('fei4_rx'))
+
+    def get_m26_rx_fifo_discard_count(self, channels=None):
+        if channels:
+            return map(lambda channel: self.dut[channel].LOST_COUNT, channels)
+        else:
+            return map(lambda channel: channel.LOST_COUNT, self.dut.get_modules('m26_rx'))
+            

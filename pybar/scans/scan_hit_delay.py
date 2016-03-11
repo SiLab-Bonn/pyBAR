@@ -1,9 +1,9 @@
 ''' This script changes the injection delay of the internal PlsrDAC (with global register PlsrDelay or PlsrIdacRamp, only PlsrDelay tested!) and measures the mean BCID for each pixel (runtime ~ 1 h).
 
-The PlsrDAC and injection delay values should be chosen equidistant and the lowest PlsrDAC value should be put to the threshold position!
+The PlsrDAC and injection delay values should be chosen equidistant and the lowest PlsrDAC value should be at threshold position!
 
 The mean BCID changes for an increasing injection delay every 25 ns due to the 40 MHz clock in an S-curve like shape.
-The mu of the S-curves is determined for different charges injected and for different BCIDs with an S-Curve fit.
+The mu of the S-curves is determined for different charges and for different BCIDs.
 The change of the mu as a function of the charge is the timewalk that is calculated for each pixel.
 The value of mu + mean BCID gives the absolute hit delay for the pixel.
 Time walk and hit delay are calculated and plotted in different ways.
@@ -26,11 +26,13 @@ from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
+from pybar_fei4_interpreter.analysis_utils import hist_1d_index, hist_3d_index
+
 from pybar.fei4.register_utils import invert_pixel_mask
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.fei4.register_utils import scan_loop
 from pybar.run_manager import RunManager
-from pybar.analysis.analysis_utils import get_hits_of_scan_parameter, hist_1d_index, hist_3d_index, get_scan_parameter, get_mean_from_histogram
+from pybar.analysis.analysis_utils import get_hits_of_scan_parameter, get_scan_parameter, get_mean_from_histogram
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.analysis.plotting.plotting import plot_scurves, plot_three_way
 
@@ -39,7 +41,7 @@ def scurve(x, offset, mu, sigma):
     return offset + 0.5 * erf((x - mu) / (np.sqrt(2) * sigma)) + 0.5
 
 
-def fit_bcid_jumps(scurve_data, max_chi_2=2.):  # data of some pixels to fit, has to be global for the multiprocessing module
+def fit_bcid_jumps(scurve_data, max_chi_2=2.):  # Data of some pixels to fit, has to be global for the multiprocessing module
     offset_min = int(math.ceil(min(scurve_data)))  # offset min is minimum BCID of Scurve fit
     offset_max = int(math.floor(max(scurve_data)))  # offset max is minimum BCID of Scurve fit + 1
 
@@ -255,7 +257,7 @@ def analyze_hit_delay(raw_data_file):
         out_2[:] = hit_delay.filled(fill_value=np.NaN)
         out_3[:] = tot
 
-    # Mask the pixels that have non valid data and create plot with the time walk and hit delay for all pixels
+    # Mask the pixels that have non valid data and create plots with the time walk and hit delay for all pixels
     with tb.open_file(raw_data_file + '_analyzed.h5', mode="r") as in_file_h5:
         def plsr_dac_to_charge(plsr_dac, vcal_c0, vcal_c1, c_high):  # TODO: take PlsrDAC calib from file
             voltage = vcal_c0 + vcal_c1 * plsr_dac
@@ -312,7 +314,7 @@ def analyze_hit_delay(raw_data_file):
         plot_scurves(np.swapaxes(hist_timewalk, 0, 1), scan_parameters=charge_values, title='Timewalk of the FE-I4', scan_parameter_name='Charge [e]', ylabel='Timewalk [ns]', min_x=0, filename=output_pdf)
         plot_scurves(np.swapaxes(hist_hit_delay[:, :, :], 0, 1), scan_parameters=charge_values, title='Hit delay (T0) with internal charge injection\nof the FE-I4', scan_parameter_name='Charge [e]', ylabel='Hit delay [ns]', min_x=0, filename=output_pdf)
 
-        for i in [0, 1, len(plsr_dac_values) / 4, len(plsr_dac_values) / 2, -1]:  # plot 2d hist at min, 1/4, 1/2, max PlsrDAC setting
+        for i in [0, 1, len(plsr_dac_values) / 4, len(plsr_dac_values) / 2, -1]:  # Plot 2d hist at min, 1/4, 1/2, max PlsrDAC setting
             plot_three_way(hist_timewalk[:, :, i], title='Time walk at %.0f e' % (charge_values[i]), x_axis_title='Time walk [ns]', filename=output_pdf)
             plot_three_way(hist_hit_delay[:, :, i], title='Hit delay (T0) with internal charge injection at %.0f e' % (charge_values[i]), x_axis_title='Hit delay [ns]', minimum=np.amin(hist_hit_delay[:, :, i]), maximum=np.amax(hist_hit_delay[:, :, i]), filename=output_pdf)
         output_pdf.close()

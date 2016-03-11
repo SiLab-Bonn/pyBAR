@@ -16,7 +16,7 @@ init:
 install:
   # Miniconda setup + necessary external packages
   - set PATH=C:\Miniconda;C:\Miniconda\Scripts;%PATH%  # miniconda is already installed on appveyor: https://github.com/appveyor/ci/issues/359
-  - conda install --yes bitarray cython ipython matplotlib mock nose numpy pandas pyserial pytables pyyaml pyzmq scipy sphinx pywin32 numba=0.22.1
+  - conda install --yes bitarray ipython matplotlib mock nose numpy pandas pyserial pytables pyyaml pyzmq scipy sphinx pywin32 numba=0.22.1
   - pip install progressbar-latest pyvisa pyvisa-py
   - pip install https://github.com/SiLab-Bonn/pyqtgraph/archive/develop.zip  # pyqtgraph is not working with numpy 1.10 right now, install our fixed fork instead
   - pip install https://github.com/uvemas/ViTables/archive/v2.1.zip
@@ -28,7 +28,8 @@ install:
   # pyBAR installation including additional specific packages
   - pip install pySiLibUSB
   - pip install basil_daq==2.4.2
-  - pip install pixel_clusterizer==2.3.0
+  - pip install pixel_clusterizer
+  - pip install pyBAR_fei4_interpreter
   - python.exe setup.py develop
 
 test_script:

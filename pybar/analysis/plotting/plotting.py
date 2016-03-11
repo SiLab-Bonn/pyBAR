@@ -317,33 +317,6 @@ def plot_scatter(x, y, x_err=None, y_err=None, title=None, legend=None, plot_ran
         fig.savefig(filename)
 
 
-def plot_correlation(hist, title="Hit correlation", xlabel=None, ylabel=None, filename=None):
-    logging.info("Plotting correlations")
-    fig = Figure()
-    FigureCanvas(fig)
-    ax = fig.add_subplot(1, 1, 1)
-    cmap = cm.get_cmap('cool')
-    extent = [hist[2][0] - 0.5, hist[2][-1] + 0.5, hist[1][-1] + 0.5, hist[1][0] - 0.5]
-    ax.set_title(title)
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
-    im = ax.imshow(hist[0], extent=extent, cmap=cmap, interpolation='nearest')
-    ax.invert_yaxis()
-    # add colorbar
-    divider = make_axes_locatable(ax)
-    cax = divider.append_axes("right", size="5%", pad=0.05)
-    z_max = np.max(hist[0])
-    bounds = np.linspace(start=0, stop=z_max, num=255, endpoint=True)
-    norm = colors.BoundaryNorm(bounds, cmap.N)
-    fig.colorbar(im, boundaries=bounds, cmap=cmap, norm=norm, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True), cax=cax)
-    if not filename:
-        fig.show()
-    elif isinstance(filename, PdfPages):
-        filename.savefig(fig)
-    else:
-        fig.savefig(filename)
-
-
 def plot_pixel_matrix(hist, title="Hit correlation", filename=None):
     logging.info("Plotting pixel matrix: %s", title)
     fig = Figure()
@@ -443,25 +416,31 @@ def plot_cluster_size(hist, title=None, filename=None):
     plot_1d_hist(hist=hist, title=('Cluster size' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, log_y=True, plot_range=range(0, 32), x_axis_title='Cluster size', y_axis_title='#', filename=filename)
 
 
-def plot_scurves(occupancy_hist, scan_parameters, title='S-Curves', ylabel='Occupancy', max_occ=None, scan_parameter_name=None, min_x=None, max_x=None, x_scale=1.0, y_scale=1., filename=None):  # tornado plot
+def plot_scurves(occupancy_hist, scan_parameters, title='S-curves', ylabel='Occupancy', max_occ=None, scan_parameter_name=None, min_x=None, max_x=None, x_scale=1.0, y_scale=1.0, filename=None):  # tornado plot
     occ_mask = np.all(occupancy_hist == 0, axis=2)
+    occupancy_hist = np.ma.masked_invalid(occupancy_hist)
     if max_occ is None:
-        max_occ = math.ceil(2 * np.ma.median(np.amax(occupancy_hist, axis=2)))
-        if np.allclose(max_occ, 0.0):
+        if np.allclose(occupancy_hist, 0.0):
             max_occ = 1.0
+        else:
+            max_occ = math.ceil(2 * np.ma.median(np.amax(occupancy_hist[~np.all(occupancy_hist == 0, axis=2)], axis=1)))
     if len(occupancy_hist.shape) < 3:
         raise ValueError('Found array with shape %s' % str(occupancy_hist.shape))
 
     n_pixel = occupancy_hist.shape[0] * occupancy_hist.shape[1]
 
-    cmap = cm.get_cmap('cool')
     for index, scan_parameter in enumerate(scan_parameters):
         compressed_data = np.ma.masked_array(occupancy_hist[:, :, index], mask=occ_mask, copy=True).compressed()
-        heatmap, xedges, yedges = np.histogram2d(compressed_data, [scan_parameter] * compressed_data.shape[0], range=[[0, max_occ], [scan_parameters[0], scan_parameters[-1]]], bins=(max_occ + 1, len(scan_parameters)))
+#         heatmap, xedges, yedges = np.histogram2d(compressed_data, [scan_parameter] * compressed_data.shape[0], range=[[-0.5, max_occ + 0.5], [scan_parameters[0], scan_parameters[-1]]], bins=(max_occ + 1, len(scan_parameters)))
+        heatmap, xedges, yedges = np.histogram2d(compressed_data, [scan_parameter] * compressed_data.shape[0], range=[[-0.5, max_occ + 0.5], [scan_parameters[0], scan_parameters[-1] + 1]], bins=(max_occ + 1, scan_parameters[-1] - scan_parameters[0] + 1))
         if index == 0:
             hist = heatmap
         else:
             hist += heatmap
+    if np.allclose(hist, 0.0):
+        z_max = 1.0
+    else:
+        z_max = hist.max()
     fig = Figure()
     FigureCanvas(fig)
     ax = fig.add_subplot(111)
@@ -470,13 +449,30 @@ def plot_scurves(occupancy_hist, scan_parameters, title='S-Curves', ylabel='Occu
         scan_parameter_dist = (np.amax(scan_parameters) - np.amin(scan_parameters)) / (len(scan_parameters) - 1)
     else:
         scan_parameter_dist = 0
-    extent = [yedges[0] - scan_parameter_dist / 2, yedges[-1] * x_scale + scan_parameter_dist / 2, xedges[-1] * y_scale + 0.5, xedges[0] - 0.5]
-    norm = colors.LogNorm()
-    im = ax.imshow(hist, interpolation='nearest', aspect="auto", cmap=cmap, extent=extent, norm=norm)
+    # for axis scaling extent parameter needs to be modified
+#    extent = [yedges[0] * x_scale - scan_parameter_dist / 2 * x_scale, yedges[-1] * x_scale + scan_parameter_dist / 2 * x_scale, (xedges[-1]) * y_scale, xedges[0] + 0.5 - 0.5 * y_scale]  # x, y
+    extent = None
+    cmap = cm.get_cmap('cool')
+    if np.allclose(hist, 0.0) or hist.max() <= 1:
+        z_max = 1.0
+    else:
+        z_max = hist.max()
+    # for small z use linear scale, otherwise log scale
+    if z_max <= 10.0:
+        bounds = np.linspace(start=0.0, stop=z_max, num=255, endpoint=True)
+        norm = colors.BoundaryNorm(bounds, cmap.N)
+    else:
+        bounds = np.linspace(start=1.0, stop=z_max, num=255, endpoint=True)
+        norm = colors.LogNorm()
+    im = ax.imshow(np.ma.masked_where(hist == 0, hist), interpolation='none', aspect="auto", cmap=cmap, extent=extent, norm=norm)
     ax.invert_yaxis()
     if min_x is not None or max_x is not None:
         ax.set_xlim((min_x if min_x is not None else np.amin(scan_parameters), max_x if max_x is not None else np.amax(scan_parameters)))
-    fig.colorbar(im)
+    if z_max <= 10.0:
+        cb = fig.colorbar(im, ticks=np.linspace(start=0.0, stop=z_max, num=min(11, math.ceil(z_max) + 1), endpoint=True), fraction=0.04, pad=0.05)
+    else:
+        cb = fig.colorbar(im, fraction=0.04, pad=0.05)
+    cb.set_label("#")
     ax.set_title(title + ' for %d pixel(s)' % (n_pixel - np.count_nonzero(occ_mask)))
     if scan_parameter_name is None:
         ax.set_xlabel('Scan parameter')
@@ -777,40 +773,41 @@ def create_pixel_scatter_plot(fig, ax, hist, title=None, x_axis_title=None, y_ax
         ax.set_ylabel(y_axis_title)
 
 
-def plot_correlations(filenames, limit=None):
-    DataFrame = pd.DataFrame()
-    index = 0
-    for fileName in filenames:
-        with pd.get_store(fileName, 'r') as store:
-            tempDataFrame = pd.DataFrame({'Event': store.Hits.Event[:15000], 'Row' + str(index): store.Hits.Row[:15000]})
-            tempDataFrame = tempDataFrame.set_index('Event')
-            DataFrame = tempDataFrame.join(DataFrame)
-            DataFrame = DataFrame.dropna()
-            index += 1
-            del tempDataFrame
-    DataFrame["index"] = DataFrame.index
-    DataFrame.drop_duplicates(take_last=True, inplace=True)
-    del DataFrame["index"]
-    correlationNames = ('Row')
-    index = 0
-    for corName in correlationNames:
-        for colName in itertools.permutations(DataFrame.filter(regex=corName), 2):
-            if(corName == 'Col'):
-                heatmap, xedges, yedges = np.histogram2d(DataFrame[colName[0]], DataFrame[colName[1]], bins=(80, 80), range=[[1, 80], [1, 80]])
-            else:
-                heatmap, xedges, yedges = np.histogram2d(DataFrame[colName[0]], DataFrame[colName[1]], bins=(336, 336), range=[[1, 336], [1, 336]])
-            extent = [yedges[0] - 0.5, yedges[-1] + 0.5, xedges[-1] + 0.5, xedges[0] - 0.5]
-            cmap = cm.get_cmap('cool', 40)
-            fig = Figure()
-            FigureCanvas(fig)
-            ax = fig.add_subplot(111)
-            ax.imshow(heatmap, extent=extent, cmap=cmap, interpolation='nearest')
-            ax.invert_yaxis()
-            ax.set_xlabel(colName[0])
-            ax.set_ylabel(colName[1])
-            ax.set_title('Correlation plot(' + corName + ')')
-            fig.savefig(colName[0] + '_' + colName[1] + '.pdf')
-            index += 1
+def plot_tot_tdc_calibration(scan_parameters, filename, tot_mean, tot_error=None, tdc_mean=None, tdc_error=None):
+    col_row_non_nan = np.nonzero(~np.all(np.isnan(tot_mean), axis=2))
+    for index, (column, row) in enumerate(np.dstack(col_row_non_nan)[0]):
+        if index >= 100:  # stop for too many plots
+            logging.info('Reached the limit of 100 pages')
+            break
+        logging.info("Plotting charge calibration for pixel " + str(column) + '/' + str(row))
+        fig = Figure()
+        FigureCanvas(fig)
+        ax1 = fig.add_subplot(111)
+        fig.patch.set_facecolor('white')
+        ax1.grid(True)
+        ax1.errorbar(scan_parameters, tot_mean[column, row, :], yerr=tot_error[column, row, :] if tot_error is not None else None, fmt='o', color='b', label='FEI4 ToT')
+        ax1.set_ylabel('TOT')
+        ax1.set_ylim(ymin=0.0, ymax=15.0)
+        ax1.set_title('Calibration for pixel ' + str(column) + '/' + str(row))
+        ax1.set_xlabel('Charge [PlsrDAC]')
+        if tdc_mean is not None:
+            ax2 = ax1.twinx()
+            ax2.errorbar(scan_parameters, tdc_mean[column, row, :] * 1000.0/640.0, yerr=(tdc_error[column, row, :] * 1000.0/640.0) if tdc_error is not None else None, fmt='o', color='g', label='TDC Counter')
+            ax2.set_ylabel('TDC [ns]')
+            ax2.set_ylim(ymin=0.0)
+            # combine legends
+            lines1, labels1 = ax1.get_legend_handles_labels()
+            lines2, labels2 = ax2.get_legend_handles_labels()
+            ax2.legend(lines1 + lines2, labels1 + labels2, loc=0)
+        else:
+            ax1.legend(loc=0)
+
+        if not filename:
+            fig.show()
+        elif isinstance(filename, PdfPages):
+            filename.savefig(fig)
+        else:
+            fig.savefig(filename)
 
 
 def hist_quantiles(hist, prob=(0.05, 0.95), return_indices=False, copy=True):

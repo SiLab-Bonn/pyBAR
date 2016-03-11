@@ -15,12 +15,15 @@ from scipy.special import erf
 from matplotlib.backends.backend_pdf import PdfPages
 from pixel_clusterizer.clusterizer import HitClusterizer
 
+# pyBAR related imports
+from pybar_fei4_interpreter.data_interpreter import PyDataInterpreter
+from pybar_fei4_interpreter.data_histograming import PyDataHistograming
+from pybar_fei4_interpreter import data_struct
+from pybar_fei4_interpreter import analysis_utils as fast_analysis_utils
+
 from pybar.analysis import analysis_utils
-from pybar.analysis.RawDataConverter import data_struct
 from pybar.analysis.plotting import plotting
 from pybar.analysis.analysis_utils import check_bad_data, fix_raw_data, consecutive, print_raw_data
-from pybar.analysis.RawDataConverter.data_interpreter import PyDataInterpreter
-from pybar.analysis.RawDataConverter.data_histograming import PyDataHistograming
 from pybar.daq.readout_utils import is_fe_word, is_data_header, is_trigger_word
 
 
@@ -208,7 +211,7 @@ class AnalyzeRawData(object):
         '''
         self._setup_clusterizer()
         self.chunk_size = 3000000
-        self.n_injections = 100
+        self.n_injections = None
         self.trig_count = 0  # 0 trig_count = 16 BCID per trigger
         self.max_tot_value = 13
         self.vcal_c0, self.vcal_c1 = None, None
@@ -223,6 +226,7 @@ class AnalyzeRawData(object):
         self.create_empty_event_hits = False
         self.create_meta_event_index = True
         self.create_tot_hist = True
+        self.create_mean_tot_hist = False
         self.create_tot_pixel_hist = True
         self.create_rel_bcid_hist = True
         self.correct_corrupted_data = False
@@ -293,6 +297,15 @@ class AnalyzeRawData(object):
     def create_occupancy_hist(self, value):
         self._create_occupancy_hist = value
         self.histograming.create_occupancy_hist(value)
+
+    @property
+    def create_mean_tot_hist(self):
+        return self._create_mean_tot_hist
+
+    @create_occupancy_hist.setter
+    def create_mean_tot_hist(self, value):
+        self._create_mean_tot_hist = value
+        self.histograming.create_mean_tot_hist(value)
 
     @property
     def create_source_scan_hist(self):
@@ -783,8 +796,9 @@ class AnalyzeRawData(object):
     #                             print_raw_data(raw_data, start_index=selected_words[0] - word_index - 20, index_offset=word_index)
     #                             print_raw_data(raw_data, start_index=selected_words[-1] - word_index - 20, index_offset=word_index)
                     self.interpreter.interpret_raw_data(raw_data)  # interpret the raw data
+                    # store remaining buffered event in the interpreter at the end of the last file
                     if file_index == len(self.files_dict.keys()) - 1 and word_index == range(0, in_file_h5.root.raw_data.shape[0], self._chunk_size)[-1]:  # store hits of the latest event of the last file
-                        self.interpreter.store_event()  # all actual buffered events in the interpreter are stored
+                        self.interpreter.store_event()
                     hits = self.interpreter.get_hits()
                     if self.scan_parameters is not None:
                         nEventIndex = self.interpreter.get_n_meta_data_event()
@@ -798,9 +812,9 @@ class AnalyzeRawData(object):
                         if self._create_cluster_table:
                             cluster_table.append(cluster)
                         if self._create_cluster_size_hist:
-                            self._cluster_size_hist += analysis_utils.hist_1d_index(cluster['size'], shape=self._cluster_size_hist.shape)
+                            self._cluster_size_hist += fast_analysis_utils.hist_1d_index(cluster['size'], shape=self._cluster_size_hist.shape)
                         if self._create_cluster_tot_hist:
-                            self._cluster_tot_hist += analysis_utils.hist_2d_index(cluster['tot'][cluster['tot'] < 128], cluster['size'][cluster['tot'] < 128], shape=self._cluster_tot_hist.shape)
+                            self._cluster_tot_hist += fast_analysis_utils.hist_2d_index(cluster['tot'][cluster['tot'] < 128], cluster['size'][cluster['tot'] < 128], shape=self._cluster_tot_hist.shape)
                     if self._analyzed_data_file is not None and self._create_hit_table:
                         hit_table.append(hits)
                     if self._analyzed_data_file is not None and self._create_meta_word_index:
@@ -885,7 +899,7 @@ class AnalyzeRawData(object):
                 tot_hist_table[:] = self.tot_hist
         if self._create_tot_pixel_hist:
             if self._analyzed_data_file is not None and safe_to_file:
-                self.tot_pixel_hist_array = np.swapaxes(self.histograming.get_tot_pixel_hist(), 0, 1)
+                self.tot_pixel_hist_array = np.swapaxes(self.histograming.get_tot_pixel_hist(), 0, 1)  # swap axis col,row, parameter --> row, col, parameter
                 tot_pixel_hist_out = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistTotPixel', title='Tot Pixel Histogram', atom=tb.Atom.from_dtype(self.tot_pixel_hist_array.dtype), shape=self.tot_pixel_hist_array.shape, filters=self._filter_table)
                 tot_pixel_hist_out[:] = self.tot_pixel_hist_array
         if self._create_tdc_hist:
@@ -895,7 +909,7 @@ class AnalyzeRawData(object):
                 tdc_hist_table[:] = self.tdc_hist
         if self._create_tdc_pixel_hist:
             if self._analyzed_data_file is not None and safe_to_file:
-                self.tdc_pixel_hist_array = np.swapaxes(self.histograming.get_tdc_pixel_hist(), 0, 1)
+                self.tdc_pixel_hist_array = np.swapaxes(self.histograming.get_tdc_pixel_hist(), 0, 1)  # swap axis col,row, parameter --> row, col, parameter
                 tdc_pixel_hist_out = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistTdcPixel', title='Tdc Pixel Histogram', atom=tb.Atom.from_dtype(self.tdc_pixel_hist_array.dtype), shape=self.tdc_pixel_hist_array.shape, filters=self._filter_table)
                 tdc_pixel_hist_out[:] = self.tdc_pixel_hist_array
         if self._create_rel_bcid_hist:
@@ -908,11 +922,15 @@ class AnalyzeRawData(object):
                     rel_bcid_hist_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistRelBcid', title='relative BCID Histogram in stop mode read out', atom=tb.Atom.from_dtype(self.rel_bcid_hist.dtype), shape=self.rel_bcid_hist.shape, filters=self._filter_table)
                     rel_bcid_hist_table[:] = self.rel_bcid_hist
         if self._create_occupancy_hist:
-            self.occupancy = self.histograming.get_occupancy()
-            self.occupancy_array = np.swapaxes(self.occupancy, 0, 1)
+            self.occupancy_array = np.swapaxes(self.histograming.get_occupancy(), 0, 1)  # swap axis col,row, parameter --> row, col, parameter
             if self._analyzed_data_file is not None and safe_to_file:
-                occupancy_array_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistOcc', title='Occupancy Histogram', atom=tb.Atom.from_dtype(self.occupancy.dtype), shape=(336, 80, self.histograming.get_n_parameters()), filters=self._filter_table)
-                occupancy_array_table[0:336, 0:80, 0:self.histograming.get_n_parameters()] = self.occupancy_array  # swap axis col,row,parameter --> row, col,parameter
+                occupancy_array_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistOcc', title='Occupancy Histogram', atom=tb.Atom.from_dtype(self.occupancy_array.dtype), shape=self.occupancy_array.shape, filters=self._filter_table)
+                occupancy_array_table[0:336, 0:80, 0:self.histograming.get_n_parameters()] = self.occupancy_array
+        if self._create_mean_tot_hist:
+            self.mean_tot_array = np.swapaxes(self.histograming.get_mean_tot(), 0, 1)  # swap axis col,row, parameter --> row, col, parameter
+            if self._analyzed_data_file is not None and safe_to_file:
+                mean_tot_array_table = self.out_file_h5.createCArray(self.out_file_h5.root, name='HistMeanTot', title='Mean ToT Histogram', atom=tb.Atom.from_dtype(self.mean_tot_array.dtype), shape=self.mean_tot_array.shape, filters=self._filter_table)
+                mean_tot_array_table[0:336, 0:80, 0:self.histograming.get_n_parameters()] = self.mean_tot_array
         if self._create_threshold_hists:
             threshold, noise = np.zeros(80 * 336, dtype=np.float64), np.zeros(80 * 336, dtype=np.float64)
             self.histograming.calculate_threshold_scan_arrays(threshold, noise, self._n_injection, np.amin(self.scan_parameters['PlsrDAC']), np.amax(self.scan_parameters['PlsrDAC']))  # calling fast algorithm function: M. Mertens, PhD thesis, Juelich 2010, note: noise zero if occupancy was zero
@@ -1044,9 +1062,9 @@ class AnalyzeRawData(object):
                 cluster = self.clusterizer.get_cluster()
                 cluster_table.append(cluster)
                 if self._create_cluster_size_hist:
-                    self._cluster_size_hist += analysis_utils.hist_1d_index(cluster['size'], shape=self._cluster_size_hist.shape)
+                    self._cluster_size_hist += fast_analysis_utils.hist_1d_index(cluster['size'], shape=self._cluster_size_hist.shape)
                 if self._create_cluster_tot_hist:
-                    self._cluster_tot_hist += analysis_utils.hist_2d_index(cluster['tot'][cluster['tot'] < 128], cluster['size'][cluster['tot'] < 128], shape=self._cluster_tot_hist.shape)
+                    self._cluster_tot_hist += fast_analysis_utils.hist_2d_index(cluster['tot'][cluster['tot'] < 128], cluster['size'][cluster['tot'] < 128], shape=self._cluster_tot_hist.shape)
 
             progress_bar.update(index)
 
@@ -1172,7 +1190,7 @@ class AnalyzeRawData(object):
             plotting.plot_three_way(hist=noise_hist_calib, title='Noise (S-curve fit, masked %i pixel(s))' % mask_cnt, x_axis_title="Noise [e]", filename=output_pdf, bins=100, minimum=0)
         if self._create_occupancy_hist:
             if self._create_fitted_threshold_hists:
-                plotting.plot_scurves(occupancy_hist=out_file_h5.root.HistOcc[:] if out_file_h5 is not None else self.occupancy_array[:], filename=output_pdf, scan_parameters=np.linspace(np.amin(self.scan_parameters['PlsrDAC']), np.amax(self.scan_parameters['PlsrDAC']), num=self.histograming.get_n_parameters(), endpoint=True))
+                plotting.plot_scurves(occupancy_hist=out_file_h5.root.HistOcc[:] if out_file_h5 is not None else self.occupancy_array[:], filename=output_pdf, scan_parameters=np.linspace(np.amin(self.scan_parameters['PlsrDAC']), np.amax(self.scan_parameters['PlsrDAC']), num=self.histograming.get_n_parameters(), endpoint=True), scan_parameter_name="PlsrDAC")
             else:
                 hist = np.sum(out_file_h5.root.HistOcc[:], axis=2) if out_file_h5 is not None else np.sum(self.occupancy_array[:], axis=2)
                 occupancy_array_masked = np.ma.masked_equal(hist, 0)
@@ -1276,8 +1294,7 @@ class AnalyzeRawData(object):
             self.c_low = float(c_low)
             self.c_mid = float(c_mid)
             self.c_high = float(c_high)
-            repeat_command = opened_raw_data_file.root.configuration.run_conf[:][np.where(opened_raw_data_file.root.configuration.run_conf[:]['name'] == 'repeat_command')]['value'][0]
-            self.n_injections = int(repeat_command)
+            self.n_injections = int(opened_raw_data_file.root.configuration.run_conf[:][np.where(opened_raw_data_file.root.configuration.run_conf[:]['name'] == 'n_injections')]['value'][0])
         except tb.exceptions.NoSuchNodeError:
             if not self._settings_from_file_set:
                 logging.warning('No settings stored in raw data file %s, use standard settings', opened_raw_data_file.filename)

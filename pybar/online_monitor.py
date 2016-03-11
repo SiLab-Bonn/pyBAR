@@ -12,8 +12,8 @@ from pyqtgraph.dockarea import DockArea, Dock
 import pyqtgraph.ptime as ptime
 from threading import Event, Lock
 
-from pybar.analysis.RawDataConverter.data_interpreter import PyDataInterpreter
-from pybar.analysis.RawDataConverter.data_histograming import PyDataHistograming
+from pybar_fei4_interpreter.data_interpreter import PyDataInterpreter
+from pybar_fei4_interpreter.data_histograming import PyDataHistograming
 
 
 class DataWorker(QtCore.QObject):

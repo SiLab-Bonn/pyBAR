@@ -46,7 +46,6 @@ def analyze_raw_data(input_file, output_file_hits):
         analyze_raw_data.interpreter.set_debug_output(False)  # std. setting is False
         analyze_raw_data.interpreter.set_info_output(False)  # std. setting is False
         analyze_raw_data.interpreter.set_warning_output(True)  # std. setting is True
-        analyze_raw_data.clusterizer.set_warning_output(True)  # std. setting is True
         analyze_raw_data.interpreter.debug_events(3832, 3850, False)  # events to be printed onto the console for debugging, usually deactivated
         analyze_raw_data.interpret_word_table()  # the actual start conversion command
         analyze_raw_data.interpreter.print_summary()  # prints the interpreter summary
