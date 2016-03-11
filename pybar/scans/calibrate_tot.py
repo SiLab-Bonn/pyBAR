@@ -1,5 +1,5 @@
-"""A script that changes a scan parameter (usually PlsrDAC, in inner loop) in a certain range for selected pixels and measures the length of the hit OR signal with the FPGA TDC.
-This calibration can be used to measure charge information for single pixels with higher precision than with the quantized TOT information.
+"""This script is providing a ToT calibration scan.
+The ToT calibration (mean ToT for each scan step) per pixel can be accessed via HistMeanTot from the interpreted hits file.
 """
 import logging
 import numpy as np
@@ -18,17 +18,16 @@ from pybar.analysis.plotting.plotting import plot_scurves, plot_tot_tdc_calibrat
 
 
 class TotCalibration(Fei4RunBase):
-
-    ''' Hit Or calibration scan
+    ''' ToT calibration scan
     '''
     _default_run_conf = {
-        "mask_steps": 3,  # mask steps, be carefull PlsrDAC injects different charge for different mask steps
-        "n_injections": 25,
+        "mask_steps": 3,  # mask steps, the injected charge depends on the mask steps
+        "n_injections": 25,  # number of injections per PlsrDAC, for higher precision close to the threshold increase n_injections
         "injection_delay": 5000,  # for really low feedbacks (ToT >> 300 ns) one needs to increase the injection delay
-        "scan_parameters": [('PlsrDAC', [40, 50, 60, 80, 130, 180, 230, 280, 340, 440, 540, 640, 740])],  # 0 400 sufficient
-        "use_enable_mask": False,
-        "enable_shift_masks": ["Enable", "C_Low", "C_High"],
-        "disable_shift_masks": [],
+        "scan_parameters": [('PlsrDAC', [40, 50, 60, 80, 130, 180, 230, 280, 340, 440, 540, 640, 740])],  # 0 400 sufficient for most tunings
+        "use_enable_mask": False,  # if True, use Enable mask during scan, if False, all pixels will be enabled
+        "enable_shift_masks": ["Enable", "C_Low", "C_High"],  # enable masks shifted during scan
+        "disable_shift_masks": [],  # disable masks shifted during scan
         "pulser_dac_correction": False  # PlsrDAC correction for each double column
     }
 
