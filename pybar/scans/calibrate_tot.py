@@ -23,9 +23,9 @@ class TotCalibration(Fei4RunBase):
     '''
     _default_run_conf = {
         "mask_steps": 3,  # mask steps, be carefull PlsrDAC injects different charge for different mask steps
-        "n_injections": 200,
+        "n_injections": 25,
         "injection_delay": 5000,  # for really low feedbacks (ToT >> 300 ns) one needs to increase the injection delay
-        "scan_parameters": [('PlsrDAC', range(0,500,50))],  # 0 400 sufficient
+        "scan_parameters": [('PlsrDAC', [40, 50, 60, 80, 130, 180, 230, 280, 340, 440, 540, 640, 740])],  # 0 400 sufficient
         "use_enable_mask": False,
         "enable_shift_masks": ["Enable", "C_Low", "C_High"],
         "disable_shift_masks": [],
@@ -78,17 +78,16 @@ class TotCalibration(Fei4RunBase):
             analyze_raw_data.plot_histograms()
             analyze_raw_data.interpreter.print_summary()
 
-        with tb.open_file(self.output_filename + '_interpreted.h5', 'r') as in_file_h5:  # Get scan parameters from interpreted file
-            meta_data = in_file_h5.root.meta_data[:]
-            tot_mean = np.swapaxes(in_file_h5.root.HistMeanTot[:], 1, 0)
-            scan_parameters_dict = get_scan_parameter(meta_data)
-            inner_loop_parameter_values = scan_parameters_dict[next(reversed(scan_parameters_dict))]  # inner loop parameter name is unknown
-    
-            logging.info('Create calibration')
-    
-            with PdfPages(self.output_filename + "_calibration.pdf") as output_pdf:
-                plot_tot_tdc_calibration(scan_parameters=inner_loop_parameter_values, tot_mean=tot_mean, filename=output_pdf)
-                plot_scurves(tot_mean, inner_loop_parameter_values, "ToT calibration", "ToT", 15, "Charge [PlsrDAC]", filename=output_pdf)
+#         with tb.open_file(self.output_filename + '_interpreted.h5', 'r') as in_file_h5:  # Get scan parameters from interpreted file
+            with tb.open_file(analyze_raw_data._analyzed_data_file, 'r') as in_file_h5:
+                meta_data = in_file_h5.root.meta_data[:]
+                tot_mean = np.swapaxes(in_file_h5.root.HistMeanTot[:], 1, 0)
+                scan_parameters_dict = get_scan_parameter(meta_data)
+                inner_loop_parameter_values = scan_parameters_dict[next(reversed(scan_parameters_dict))]  # inner loop parameter name is unknown
+        
+    #             with PdfPages(self.output_filename + "_calibration.pdf") as output_pdf:
+                plot_tot_tdc_calibration(scan_parameters=inner_loop_parameter_values, tot_mean=tot_mean, filename=analyze_raw_data.output_pdf)
+                plot_scurves(tot_mean, inner_loop_parameter_values, "ToT calibration", "ToT", 15, "Charge [PlsrDAC]", filename=analyze_raw_data.output_pdf)
 
 if __name__ == "__main__":
     RunManager('../configuration.yaml').run_run(TotCalibration)
