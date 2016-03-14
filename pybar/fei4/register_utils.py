@@ -67,7 +67,7 @@ class FEI4RegisterUtils(object):
                 self.send_command(command=concatenated_cmd, repeat=repeat, wait_for_finish=wait_for_finish, set_length=True, clear_memory=clear_memory, use_timeout=use_timeout)
         else:
             max_length = 0
-            if repeat:
+            if repeat is not None:
                 self.dut['CMD']['CMD_REPEAT'] = repeat
             for command in commands:
                 max_length = max(command.length(), max_length)
@@ -76,7 +76,7 @@ class FEI4RegisterUtils(object):
                 self.clear_command_memory(length=max_length)
 
     def send_command(self, command, repeat=1, wait_for_finish=True, set_length=True, clear_memory=False, use_timeout=True):
-        if repeat:
+        if repeat is not None:
             self.dut['CMD']['CMD_REPEAT'] = repeat
         # write command into memory
         command_length = self.set_command(command, set_length=set_length)
