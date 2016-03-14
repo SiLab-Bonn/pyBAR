@@ -128,7 +128,7 @@ class HitOrCalibration(Fei4RunBase):
 
         cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", length=self.injection_delay)[0]
         scan_parameter_name = self.scan_parameters._fields[-1]  # scan parameter is in inner loop
-        scan_parameters_values = self.scan_parameters[-1][:]  # create deep copy of scan_parameters, they are overwritten in self.readout
+        scan_parameter_values = self.scan_parameters[-1][:]  # create deep copy of scan_parameters, they are overwritten in self.readout
 
         logging.info("Scanning %d pixels" % len(self.pixels))
         for pixel_index, pixel in enumerate(self.pixels):
@@ -156,7 +156,7 @@ class HitOrCalibration(Fei4RunBase):
             self.register_utils.send_commands(commands)
 
             self.dut['TDC']['ENABLE'] = True
-            for scan_parameter_value in scan_parameters_values:
+            for scan_parameter_value in scan_parameter_values:
                 if self.stop_run.is_set():
                     break
 
