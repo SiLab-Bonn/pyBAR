@@ -417,13 +417,13 @@ def plot_cluster_size(hist, title=None, filename=None):
 
 
 def plot_scurves(occupancy_hist, scan_parameters, title='S-curves', ylabel='Occupancy', max_occ=None, scan_parameter_name=None, min_x=None, max_x=None, x_scale=1.0, y_scale=1.0, filename=None):  # tornado plot
-    occ_mask = np.all(occupancy_hist == 0, axis=2)
+    occ_mask = np.all((occupancy_hist == 0), axis=2) | np.all(np.isnan(occupancy_hist), axis=2)
     occupancy_hist = np.ma.masked_invalid(occupancy_hist)
     if max_occ is None:
-        if np.allclose(occupancy_hist, 0.0):
+        if np.allclose(occupancy_hist, 0.0) or np.all(occ_mask == True):
             max_occ = 1.0
         else:
-            max_occ = math.ceil(2 * np.ma.median(np.amax(occupancy_hist[~np.all(occupancy_hist == 0, axis=2)], axis=1)))
+            max_occ = math.ceil(2 * np.ma.median(np.amax(occupancy_hist[~occ_mask], axis=1)))
     if len(occupancy_hist.shape) < 3:
         raise ValueError('Found array with shape %s' % str(occupancy_hist.shape))
 
