@@ -22,8 +22,7 @@ class TotCalibration(Fei4RunBase):
     '''
     _default_run_conf = {
         "mask_steps": 3,  # mask steps, the injected charge depends on the mask steps
-        "n_injections": 25,  # number of injections per PlsrDAC, for higher precision close to the threshold increase n_injections
-        "injection_delay": 5000,  # for really low feedbacks (ToT >> 300 ns) one needs to increase the injection delay
+        "n_injections": 200,  # number of injections per PlsrDAC, for higher precision close to the threshold increase n_injections
         "scan_parameters": [('PlsrDAC', [40, 50, 60, 80, 130, 180, 230, 280, 340, 440, 540, 640, 740])],  # 0 400 sufficient for most tunings
         "use_enable_mask": False,  # if True, use Enable mask during scan, if False, all pixels will be enabled
         "enable_shift_masks": ["Enable", "C_Low", "C_High"],  # enable masks shifted during scan
@@ -66,7 +65,7 @@ class TotCalibration(Fei4RunBase):
             self.register_utils.send_commands(commands)
 
             with self.readout(**{scan_parameter_name: scan_parameter_value}):
-                cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", length=self.injection_delay)[0]
+                cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0]
                 scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections, use_delay=True, mask_steps=self.mask_steps, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=True, fast_dc_loop=True, bol_function=None, eol_function=None, digital_injection=False, enable_shift_masks=self.enable_shift_masks, disable_shift_masks=self.disable_shift_masks, restore_shift_masks=False, mask=invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if self.use_enable_mask else None, double_column_correction=self.pulser_dac_correction)
 
     def analyze(self):
