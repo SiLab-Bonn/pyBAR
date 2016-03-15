@@ -87,7 +87,22 @@ def create_hitor_calibration(output_filename):
             calibration_data_out.attrs.dimensions = scan_parameter_names
             calibration_data_out.attrs.scan_parameter_values = inner_loop_parameter_values
             with PdfPages(output_filename + "_calibration.pdf") as output_pdf:
-                plot_tot_tdc_calibration(scan_parameters=inner_loop_parameter_values, tot_mean=calibration_data[:, :, :, 0], tot_error=calibration_data[:, :, :, 2], tdc_mean=calibration_data[:, :, :, 1], tdc_error=calibration_data[:, :, :, 3], filename=output_pdf)
+                col_row_non_nan = np.nonzero(~np.all(np.isnan(calibration_data[:, :, :, 0]), axis=2))
+                for index, (column, row) in enumerate(np.dstack(col_row_non_nan)[0]):
+                    if index >= 100:  # stop for too many plots
+                        logging.info('Reached the limit of 100 pages')
+                        break
+                    logging.info("Plotting charge calibration for pixel column " + str(column) + " / row " + str(row))
+                    tot_mean_single_pix = calibration_data[column, row, :, 0]
+                    tot_std_single_pix = calibration_data[column, row, :, 2]
+                    tdc_mean_single_pix = calibration_data[column, row, :, 1]
+                    tdc_std_single_pix = calibration_data[column, row, :, 3]
+                    plot_tot_tdc_calibration(scan_parameters=inner_loop_parameter_values, tot_mean=tot_mean_single_pix, tot_error=tot_std_single_pix, tdc_mean=tdc_mean_single_pix, tdc_error=tdc_std_single_pix, filename=output_pdf)
+                tot_mean_all_pix = np.nanmean(calibration_data[:, :, :, 0], axis=(0, 1))
+                tot_error_all_pix = np.nanstd(calibration_data[:, :, :, 0], axis=(0, 1))
+                tdc_mean_all_pix = np.nanmean(calibration_data[:, :, :, 1], axis=(0, 1))
+                tdc_error_all_pix = np.nanstd(calibration_data[:, :, :, 1], axis=(0, 1))
+                plot_tot_tdc_calibration(scan_parameters=inner_loop_parameter_values, tot_mean=tot_mean_all_pix, tot_error=tot_error_all_pix, tdc_mean=tdc_mean_all_pix, tdc_error=tdc_error_all_pix, filename=output_pdf, title="Mean charge calibration of %d pixel(s)" % np.count_nonzero(~np.all(np.isnan(calibration_data[:, :, :, 0]), axis=2)))
                 plot_scurves(calibration_data[:, :, :, 0], inner_loop_parameter_values, "ToT calibration", "ToT", 15, "Charge [PlsrDAC]", filename=output_pdf)
                 plot_scurves(calibration_data[:, :, :, 1], inner_loop_parameter_values, "TDC calibration", "TDC [ns]", None, "Charge [PlsrDAC]", y_scale=1000.0/640.0, filename=output_pdf)
 
