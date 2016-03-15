@@ -773,26 +773,20 @@ def create_pixel_scatter_plot(fig, ax, hist, title=None, x_axis_title=None, y_ax
         ax.set_ylabel(y_axis_title)
 
 
-def plot_tot_tdc_calibration(scan_parameters, filename, tot_mean, tot_error=None, tdc_mean=None, tdc_error=None):
-    col_row_non_nan = np.nonzero(~np.all(np.isnan(tot_mean), axis=2))
-    for index, (column, row) in enumerate(np.dstack(col_row_non_nan)[0]):
-        if index >= 100:  # stop for too many plots
-            logging.info('Reached the limit of 100 pages')
-            break
-        logging.info("Plotting charge calibration for pixel " + str(column) + '/' + str(row))
+def plot_tot_tdc_calibration(scan_parameters, filename, tot_mean, tot_error=None, tdc_mean=None, tdc_error=None, title="Charge calibration"):
         fig = Figure()
         FigureCanvas(fig)
         ax1 = fig.add_subplot(111)
         fig.patch.set_facecolor('white')
         ax1.grid(True)
-        ax1.errorbar(scan_parameters, tot_mean[column, row, :], yerr=tot_error[column, row, :] if tot_error is not None else None, fmt='o', color='b', label='FEI4 ToT')
-        ax1.set_ylabel('TOT')
+        ax1.errorbar(scan_parameters, tot_mean, yerr=(tot_error) if tot_error is not None else None, fmt='o', color='b', label='FEI4 ToT')
+        ax1.set_ylabel('ToT code')
         ax1.set_ylim(ymin=0.0, ymax=15.0)
-        ax1.set_title('Calibration for pixel ' + str(column) + '/' + str(row))
+        ax1.set_title(title)
         ax1.set_xlabel('Charge [PlsrDAC]')
         if tdc_mean is not None:
             ax2 = ax1.twinx()
-            ax2.errorbar(scan_parameters, tdc_mean[column, row, :] * 1000.0/640.0, yerr=(tdc_error[column, row, :] * 1000.0/640.0) if tdc_error is not None else None, fmt='o', color='g', label='TDC Counter')
+            ax2.errorbar(scan_parameters, tdc_mean * 1000.0/640.0, yerr=(tdc_error * 1000.0/640.0) if tdc_error is not None else None, fmt='o', color='g', label='TDC Counter')
             ax2.set_ylabel('TDC [ns]')
             ax2.set_ylim(ymin=0.0)
             # combine legends
