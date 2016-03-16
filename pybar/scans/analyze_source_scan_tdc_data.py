@@ -79,7 +79,7 @@ def analyze_raw_data(input_files, output_file_hits, interpreter_plots, overwrite
 
 def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_select_mask, event_status_condition, calibation_file=None, correct_calibration=None, max_tdc=analysis_configuration['max_tdc'], n_bins=analysis_configuration['n_bins'], plot_data=True):
     for condition in hit_selection_conditions:
-        logging.info('Histogram tdc hits with %s', condition)
+        logging.info('Histogram TDC hits with %s', condition)
 
     def get_charge(max_tdc, tdc_calibration_values, tdc_pixel_calibration):  # return the charge from calibration
         charge_calibration = np.zeros(shape=(80, 336, max_tdc))
