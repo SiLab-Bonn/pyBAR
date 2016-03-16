@@ -152,9 +152,9 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
             if not np.all(plsr_dacs == in_file_2.root.HitOrCalibration._v_attrs.scan_parameter_values):
                 raise NotImplementedError('The check calibration file has to have the same PlsrDAC values')
 
-            valid_pixel = np.where(np.logical_and(charge_calibration_1.sum(axis=2) > 0, charge_calibration_2.sum(axis=2) > 0))  # valid pixel have a calibration in the new and the old calibration
-            mean_charge_calibration = charge_calibration_2[valid_pixel].mean(axis=0)
-            offset_mean = (charge_calibration_1[valid_pixel] - charge_calibration_2[valid_pixel]).mean(axis=0)
+            valid_pixel = np.where(~np.all((occupancy_hist == 0), axis=2) & ~np.all(np.isnan(occupancy_hist), axis=2))  # valid pixel have a calibration in the new and the old calibration
+            mean_charge_calibration = charge_calibration_2[valid_pixel].nanmean(axis=0)
+            offset_mean = (charge_calibration_1[valid_pixel] - charge_calibration_2[valid_pixel]).nanmean(axis=0)
 
             dPlsrDAC_dTDC = analysis_utils.smooth_differentiation(plsr_dacs, mean_charge_calibration, order=3, smoothness=0, derivation=1)
 
