@@ -82,18 +82,20 @@ class TotCalibration(Fei4RunBase):
                 scan_parameters_dict = get_scan_parameter(meta_data)
                 inner_loop_parameter_values = scan_parameters_dict[next(reversed(scan_parameters_dict))]  # inner loop parameter name is unknown
 
+                tot_mean_all_pix = np.nanmean(tot_mean, axis=(0, 1))
+                tot_error_all_pix = np.nanstd(tot_mean, axis=(0, 1))
+                plot_tot_tdc_calibration(scan_parameters=inner_loop_parameter_values, tot_mean=tot_mean_all_pix, tot_error=tot_error_all_pix, filename=analyze_raw_data.output_pdf, title="Mean charge calibration of %d pixel(s)" % np.count_nonzero(~np.all(np.isnan(tot_mean), axis=2)))
+                plot_scurves(tot_mean, inner_loop_parameter_values, "ToT calibration", "ToT", 15, "Charge [PlsrDAC]", filename=analyze_raw_data.output_pdf)
+                # plotting individual pixels
                 col_row_non_nan = np.nonzero(~np.all(np.isnan(tot_mean), axis=2))
                 for index, (column, row) in enumerate(np.dstack(col_row_non_nan)[0]):
                     if index >= 100:  # stop for too many plots
                         logging.info('Reached the limit of 100 pages')
                         break
-                    logging.info("Plotting charge calibration for pixel column " + str(column) + " / row " + str(row))
+                    logging.info("Plotting charge calibration for pixel column " + str(column + 1) + " / row " + str(row + 1))
                     tot_mean_single_pix = tot_mean[column, row, :]
-                    plot_tot_tdc_calibration(scan_parameters=inner_loop_parameter_values, tot_mean=tot_mean_single_pix, filename=analyze_raw_data.output_pdf, title="Charge calibration for pixel column " + str(column) + " / row " + str(row))
-                tot_mean_all_pix = np.nanmean(tot_mean, axis=(0, 1))
-                tot_error_all_pix = np.nanstd(tot_mean, axis=(0, 1))
-                plot_tot_tdc_calibration(scan_parameters=inner_loop_parameter_values, tot_mean=tot_mean_all_pix, tot_error=tot_error_all_pix, filename=analyze_raw_data.output_pdf, title="Mean charge calibration of %d pixel(s)" % np.count_nonzero(~np.all(np.isnan(tot_mean), axis=2)))
-                plot_scurves(tot_mean, inner_loop_parameter_values, "ToT calibration", "ToT", 15, "Charge [PlsrDAC]", filename=analyze_raw_data.output_pdf)
+                    plot_tot_tdc_calibration(scan_parameters=inner_loop_parameter_values, tot_mean=tot_mean_single_pix, filename=analyze_raw_data.output_pdf, title="Charge calibration for pixel column " + str(column + 1) + " / row " + str(row + 1))
+
 
 if __name__ == "__main__":
     RunManager('../configuration.yaml').run_run(TotCalibration)
