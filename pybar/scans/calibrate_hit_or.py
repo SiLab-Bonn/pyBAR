@@ -101,7 +101,7 @@ def create_hitor_calibration(output_filename, plot_pixel_calibrations=False):
                 calibration_data_out[:] = calibration_data
                 calibration_data_out.attrs.dimensions = scan_parameter_names
                 calibration_data_out.attrs.scan_parameter_values = inner_loop_parameter_values
-                HitOrCalibration.flush()
+                calibration_data_out.flush()
 #                 with PdfPages(output_filename + "_calibration.pdf") as output_pdf:
                 tot_mean_all_pix = np.nanmean(calibration_data[:, :, :, 0], axis=(0, 1))
                 tot_error_all_pix = np.nanstd(calibration_data[:, :, :, 0], axis=(0, 1))
