@@ -300,7 +300,7 @@ class AnalyzeRawData(object):
     def create_mean_tot_hist(self):
         return self._create_mean_tot_hist
 
-    @create_occupancy_hist.setter
+    @create_mean_tot_hist.setter
     def create_mean_tot_hist(self, value):
         self._create_mean_tot_hist = value
         self.histograming.create_mean_tot_hist(value)
