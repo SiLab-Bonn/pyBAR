@@ -243,23 +243,23 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
                 if charge_calibration is not None:
                     # Select only valid pixel for histograming: they have data and a calibration (that is any charge(TDC) calibration != 0)
                     valid_pixel = np.where(np.logical_and(charge_calibration[:, :, :max_tdc].sum(axis=2) > 0, pixel_tdc_hist_result[:, :, :max_tdc].swapaxes(0, 1).sum(axis=2) > 0))
-
+                    # Create charge histogram with mean TDC calibration
                     mean_charge_calibration = charge_calibration[valid_pixel][:, :max_tdc].mean(axis=0)
                     mean_tdc_hist = pixel_tdc_hist_result.swapaxes(0, 1)[valid_pixel][:, :max_tdc].mean(axis=0)
                     result_array = np.rec.array(np.column_stack((mean_charge_calibration, mean_tdc_hist)), dtype=[('charge', float), ('count', float)])
-                    out_6 = out_file_h5.create_table(out_file_h5.root, name='HistMeanTdcCalibratedCondition_%d' % index, description=result_array.dtype, title='Hist Tdc with mean charge calibration and %s' % condition, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
-                    out_6.attrs.condition = condition
-                    out_6.attrs.n_pixel = valid_pixel[0].shape[0]
-                    out_6.append(result_array)
-                    # Create charge histogram with per pixel TDC(charge) calibration
+                    out_7 = out_file_h5.create_table(out_file_h5.root, name='HistMeanTdcCalibratedCondition_%d' % index, description=result_array.dtype, title='Hist Tdc with mean charge calibration and %s' % condition, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+                    out_7.attrs.condition = condition
+                    out_7.attrs.n_pixel = valid_pixel[0].shape[0]
+                    out_7.append(result_array)
+                    # Create charge histogram with per pixel TDC calibration
                     x, y = charge_calibration[valid_pixel][:, :max_tdc].ravel(), np.ravel(pixel_tdc_hist_result.swapaxes(0, 1)[valid_pixel][:, :max_tdc].ravel())
                     y, x = y[x > 0], x[x > 0]  # remove the hit tdcs without proper calibration plsrDAC(TDC) calibration
                     x, y, yerr = analysis_utils.get_profile_histogram(x, y, n_bins=n_bins)
                     result_array = np.rec.array(np.column_stack((x, y, yerr)), dtype=[('charge', float), ('count', float), ('count_error', float)])
-                    out_7 = out_file_h5.create_table(out_file_h5.root, name='HistTdcCalibratedCondition_%d' % index, description=result_array.dtype, title='Hist Tdc with per pixel charge calibration and %s' % condition, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
-                    out_7.attrs.condition = condition
-                    out_7.attrs.n_pixel = valid_pixel[0].shape[0]
-                    out_7.append(result_array)
+                    out_8 = out_file_h5.create_table(out_file_h5.root, name='HistTdcCalibratedCondition_%d' % index, description=result_array.dtype, title='Hist Tdc with per pixel charge calibration and %s' % condition, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+                    out_8.attrs.condition = condition
+                    out_8.attrs.n_pixel = valid_pixel[0].shape[0]
+                    out_8.append(result_array)
 
     # Plot Data
     if plot_data:
