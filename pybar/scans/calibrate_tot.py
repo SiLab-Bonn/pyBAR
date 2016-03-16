@@ -84,8 +84,8 @@ class TotCalibration(Fei4RunBase):
 
                 tot_mean_all_pix = np.nanmean(tot_mean, axis=(0, 1))
                 tot_error_all_pix = np.nanstd(tot_mean, axis=(0, 1))
-                plot_tot_tdc_calibration(scan_parameters=inner_loop_parameter_values, tot_mean=tot_mean_all_pix, tot_error=tot_error_all_pix, filename=analyze_raw_data.output_pdf, title="Mean charge calibration of %d pixel(s)" % np.count_nonzero(~np.all(np.isnan(tot_mean), axis=2)))
                 plot_scurves(tot_mean, inner_loop_parameter_values, "ToT calibration", "ToT", 15, "Charge [PlsrDAC]", filename=analyze_raw_data.output_pdf)
+                plot_tot_tdc_calibration(scan_parameters=inner_loop_parameter_values, tot_mean=tot_mean_all_pix, tot_error=tot_error_all_pix, filename=analyze_raw_data.output_pdf, title="Mean charge calibration of %d pixel(s)" % np.count_nonzero(~np.all(np.isnan(tot_mean), axis=2)))
                 # plotting individual pixels
                 col_row_non_nan = np.nonzero(~np.all(np.isnan(tot_mean), axis=2))
                 for index, (column, row) in enumerate(np.dstack(col_row_non_nan)[0]):
