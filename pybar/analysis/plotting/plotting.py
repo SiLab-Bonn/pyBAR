@@ -281,7 +281,7 @@ def plot_profile_histogram(x, y, n_bins=100, title=None, x_label=None, y_label=N
 
 
 def plot_scatter(x, y, x_err=None, y_err=None, title=None, legend=None, plot_range=None, plot_range_y=None, x_label=None, y_label=None, marker_style='-o', log_x=False, log_y=False, filename=None):
-    logging.info('Plot scatter plot %s', (': ' + title) if title is not None else '')
+    logging.info('Plot scatter plot %s', (': ' + title.replace('\n', ' ')) if title is not None else '')
     fig = Figure()
     FigureCanvas(fig)
     ax = fig.add_subplot(111)
@@ -558,7 +558,7 @@ def plot_cluster_tot_size(hist, median=False, z_max=None, filename=None):
 
 
 def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=None, x_ticks=None, color='r', plot_range=None, log_y=False, filename=None, figure_name=None):
-    logging.info('Plot 1d histogram%s', (': ' + title) if title is not None else '')
+    logging.info('Plot 1d histogram%s', (': ' + title.replace('\n', ' ')) if title is not None else '')
     fig = Figure()
     FigureCanvas(fig)
     ax = fig.add_subplot(111)
