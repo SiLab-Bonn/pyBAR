@@ -51,7 +51,7 @@ analysis_configuration = {
 }
 
 
-def analyze_raw_data(input_files, output_file_hits, interpreter_plots, overwrite_output_files, pdf_filename, align_at_trigger=True, align_at_tdc=False, use_tdc_trigger_time_stamp=False, max_tdc_delay=80):
+def analyze_raw_data(input_files, output_file_hits, interpreter_plots, overwrite_output_files, pdf_filename, align_at_trigger=True, align_at_tdc=False, use_tdc_trigger_time_stamp=False, max_tdc_delay=80, interpreter_warnings=False):
     logging.info('Analyze the raw FE data given in ' + str(len(input_files)) + ' files and store the needed data')
     if os.path.isfile(output_file_hits) and not overwrite_output_files:  # skip analysis if already done
         logging.info('Analyzed data file ' + output_file_hits + ' already exists. Skip analysis for this file.')
@@ -69,7 +69,7 @@ def analyze_raw_data(input_files, output_file_hits, interpreter_plots, overwrite
             analyze_raw_data.create_source_scan_hist = True  # create source scan hists
             analyze_raw_data.create_cluster_size_hist = True  # enables cluster size histogramming, can save some time, std. setting is false
             analyze_raw_data.create_cluster_tot_hist = True  # enables cluster ToT histogramming per cluster size, std. setting is false
-            analyze_raw_data.interpreter.set_warning_output(analysis_configuration['interpreter_warnings'])  # std. setting is True
+            analyze_raw_data.interpreter.set_warning_output(interpreter_warnings)  # std. setting is True
             analyze_raw_data.interpreter.print_status()
             analyze_raw_data.interpret_word_table()  # the actual start conversion command
             analyze_raw_data.interpreter.print_summary()  # prints the interpreter summary
@@ -77,7 +77,7 @@ def analyze_raw_data(input_files, output_file_hits, interpreter_plots, overwrite
                 analyze_raw_data.plot_histograms()  # plots all activated histograms into one pdf
 
 
-def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_select_mask, event_status_condition, calibation_file=None, correct_calibration=None, max_tdc=analysis_configuration['max_tdc'], n_bins=analysis_configuration['n_bins'], plot_data=True):
+def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_select_mask, event_status_condition, calibation_file=None, correct_calibration=None, max_tdc=1000, n_bins=200, plot_data=True):
     for condition in hit_selection_conditions:
         logging.info('Histogram TDC hits with %s', condition)
 
@@ -317,10 +317,14 @@ if __name__ == "__main__":
                          align_at_trigger=analysis_configuration['align_at_trigger'],
                          align_at_tdc=analysis_configuration['align_at_tdc'],
                          use_tdc_trigger_time_stamp=analysis_configuration['use_tdc_trigger_time_stamp'],
-                         max_tdc_delay=analysis_configuration['max_tdc_delay'])
+                         max_tdc_delay=analysis_configuration['max_tdc_delay'],
+                         interpreter_warnings=analysis_configuration['interpreter_warnings'])
     if 2 in analysis_configuration['analysis_steps']:
         histogram_tdc_hits(hit_file,
                            hit_selection_conditions=analysis_configuration['hit_selection_conditions'],
                            event_status_select_mask=analysis_configuration['event_status_select_mask'],
                            event_status_condition=analysis_configuration['event_status_condition'],
-                           calibation_file=analysis_configuration['input_file_calibration'])
+                           calibation_file=analysis_configuration['input_file_calibration'],
+                           max_tdc=analysis_configuration['max_tdc'],
+                           n_bins=analysis_configuration['n_bins']
+                           )
