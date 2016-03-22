@@ -41,7 +41,7 @@ def interpret_data_from_tektronix(raw_data):
 interpret_oscilloscope_data = interpret_data_from_tektronix
 
 
-class PlsrDacTransientScan(AnalogScan):
+class PlsrDacTransientCalibration(AnalogScan):
     ''' Transient PlsrDAC calibration scan
     '''
     _default_run_conf = AnalogScan._default_run_conf.copy()
@@ -204,4 +204,4 @@ class PlsrDacTransientScan(AnalogScan):
             progress_bar.finish()
 
 if __name__ == "__main__":
-    RunManager('../configuration.yaml').run_run(PlsrDacTransientScan)
+    RunManager('../configuration.yaml').run_run(PlsrDacTransientCalibration)
