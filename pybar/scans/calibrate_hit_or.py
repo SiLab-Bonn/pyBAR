@@ -6,7 +6,6 @@ import logging
 import numpy as np
 import tables as tb
 import progressbar
-from matplotlib.backends.backend_pdf import PdfPages
 
 from pybar.fei4.register_utils import make_pixel_mask_from_col_row, make_box_pixel_mask_from_col_row
 from pybar.fei4_run_base import Fei4RunBase
@@ -25,7 +24,7 @@ def create_hitor_calibration(output_filename, plot_pixel_calibrations=False):
         Input raw data file name.
     plot_pixel_calibrations : bool, iterable
         If True, genearating additional pixel calibration plots. If list of column and row tuples (from 1 to 80 / 336), print selected pixels.
-    
+
     Returns
     -------
     nothing
@@ -48,44 +47,45 @@ def create_hitor_calibration(output_filename, plot_pixel_calibrations=False):
             inner_loop_parameter_values = scan_parameters_dict[next(reversed(scan_parameters_dict))]  # inner loop parameter name is unknown
             scan_parameter_names = scan_parameters_dict.keys()
 #             col_row_combinations = get_unique_scan_parameter_combinations(in_file_h5.root.meta_data[:], scan_parameters=('column', 'row'), scan_parameter_columns_only=True)
-    
+
             meta_data_table_at_scan_parameter = get_unique_scan_parameter_combinations(meta_data, scan_parameters=scan_parameter_names)
             parameter_values = get_scan_parameters_table_from_meta_data(meta_data_table_at_scan_parameter, scan_parameter_names)
             event_number_ranges = get_ranges_from_array(meta_data_table_at_scan_parameter['event_number'])
             event_ranges_per_parameter = np.column_stack((parameter_values, event_number_ranges))
             hits = in_file_h5.root.Hits[:]
             event_numbers = hits['event_number'].copy()  # create contigous array, otherwise np.searchsorted too slow, http://stackoverflow.com/questions/15139299/performance-of-numpy-searchsorted-is-poor-on-structured-arrays
-    
+
             with tb.openFile(output_filename + "_calibration.h5", mode="w") as calibration_data_file:
                 logging.info('Create calibration')
                 calibration_data = np.empty(shape=(80, 336, len(inner_loop_parameter_values), 4), dtype='f4')  # result of the calibration is a histogram with col_index, row_index, plsrDAC value, mean discrete tot, rms discrete tot, mean tot from TDC, rms tot from TDC
                 calibration_data.fill(np.nan)
-    
+
                 progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=len(event_ranges_per_parameter), term_width=80)
                 progress_bar.start()
-    
+
                 for index, (parameter_values, event_start, event_stop) in enumerate(event_ranges_per_parameter):
                     if event_stop is None:  # happens for the last chunk
                         event_stop = hits[-1]['event_number'] + 1
                     array_index = np.searchsorted(event_numbers, np.array([event_start, event_stop]))
                     actual_hits = hits[array_index[0]:array_index[1]]
                     actual_col, actual_row, parameter_value = parameter_values
-    
+
                     # Only pixel of actual column/row should be in the actual data chunk but since SRAM is not cleared for each scan step due to speed reasons and there might be noisy pixels this is not always the case
                     n_wrong_pixel = np.count_nonzero(np.logical_or(actual_hits['column'] != actual_col, actual_hits['row'] != actual_row))
                     if n_wrong_pixel != 0:
                         logging.warning('%d hit(s) from other pixels for scan parameters %s', n_wrong_pixel, ', '.join(['%s=%s' % (name, value) for (name, value) in zip(scan_parameter_names, parameter_values)]))
-    
+
                     actual_hits = actual_hits[np.logical_and(actual_hits['column'] == actual_col, actual_hits['row'] == actual_row)]  # Only take data from selected pixel
                     actual_tdc_hits = actual_hits[(actual_hits['event_status'] & 0b0000111110011100) == 0b0000000100000000]  # only take hits from good events (one TDC word only, no error)
                     actual_tot_hits = actual_hits[(actual_hits['event_status'] & 0b0000100010011100) == 0b0000000000000000]  # only take hits from good events for tot
                     tot, tdc = actual_tot_hits['tot'], actual_tdc_hits['TDC']
-    
+
                     if tdc.shape[0] != n_injections:
+                        print tdc.shape[0], n_injections
                         logging.warning('%d of %d expected TDC hits for scan parameters %s', tdc.shape[0], n_injections, ', '.join(['%s=%s' % (name, value) for (name, value) in zip(scan_parameter_names, parameter_values)]))
                     if tot.shape[0] != n_injections:
                         logging.warning('%d of %d expected hits for scan parameters %s', tot.shape[0], n_injections, ', '.join(['%s=%s' % (name, value) for (name, value) in zip(scan_parameter_names, parameter_values)]))
-    
+
                     inner_loop_scan_parameter_index = np.where(parameter_value == inner_loop_parameter_values)[0][0]  # translate the scan parameter value to an index for the result histogram
                     calibration_data[actual_col - 1, actual_row - 1, inner_loop_scan_parameter_index, 0] = np.mean(tot)
                     calibration_data[actual_col - 1, actual_row - 1, inner_loop_scan_parameter_index, 1] = np.mean(tdc)
@@ -93,10 +93,10 @@ def create_hitor_calibration(output_filename, plot_pixel_calibrations=False):
                     calibration_data[actual_col - 1, actual_row - 1, inner_loop_scan_parameter_index, 3] = np.std(tdc)
                     if index == 0 and inner_loop_scan_parameter_index == 0:
                         calibration_data[actual_col - 1, actual_row - 1, inner_loop_scan_parameter_index, 0] = np.nan
-    
+
                     progress_bar.update(index)
                 progress_bar.finish()
-    
+
                 calibration_data_out = calibration_data_file.createCArray(calibration_data_file.root, name='HitOrCalibration', title='Hit OR calibration data', atom=tb.Atom.from_dtype(calibration_data.dtype), shape=calibration_data.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
                 calibration_data_out[:] = calibration_data
                 calibration_data_out.attrs.dimensions = scan_parameter_names
@@ -104,7 +104,7 @@ def create_hitor_calibration(output_filename, plot_pixel_calibrations=False):
                 calibration_data_out.flush()
 #                 with PdfPages(output_filename + "_calibration.pdf") as output_pdf:
                 plot_scurves(calibration_data[:, :, :, 0], inner_loop_parameter_values, "ToT calibration", "ToT", 15, "Charge [PlsrDAC]", filename=analyze_raw_data.output_pdf)
-                plot_scurves(calibration_data[:, :, :, 1], inner_loop_parameter_values, "TDC calibration", "TDC [ns]", None, "Charge [PlsrDAC]", y_scale=1000.0/640.0, filename=analyze_raw_data.output_pdf)
+                plot_scurves(calibration_data[:, :, :, 1], inner_loop_parameter_values, "TDC calibration", "TDC [ns]", None, "Charge [PlsrDAC]", y_scale=1000.0 / 640.0, filename=analyze_raw_data.output_pdf)
                 tot_mean_all_pix = np.nanmean(calibration_data[:, :, :, 0], axis=(0, 1))
                 tot_error_all_pix = np.nanstd(calibration_data[:, :, :, 0], axis=(0, 1))
                 tdc_mean_all_pix = np.nanmean(calibration_data[:, :, :, 1], axis=(0, 1))
@@ -168,7 +168,7 @@ class HitOrCalibration(Fei4RunBase):
         scan_parameter_name = self.scan_parameters._fields[-1]  # scan parameter is in inner loop
         scan_parameter_values = self.scan_parameters[-1][:]  # create deep copy of scan_parameters, they are overwritten in self.readout
 
-        pixels_sorted = sorted(self.pixels)#, key=lambda tup: tup[0])
+        pixels_sorted = sorted(self.pixels)  # , key=lambda tup: tup[0])
         logging.info("Scanning %d pixels" % len(self.pixels))
         # use sorted pixels to prevent overwriting of raw data file when writing a file per column
         for pixel_index, pixel in enumerate(pixels_sorted):
