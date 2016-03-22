@@ -30,3 +30,5 @@ from pybar.scans.tune_stuck_pixel import StuckPixelScan
 from pybar.scans.tune_tdac import TdacTuning
 from pybar.scans.tune_threshold_baseline import ThresholdBaselineTuning
 from pybar.scans.tune_tlu import TluTuning
+
+__all__ = ["HitOrCalibration", "create_hitor_calibration", "PlsrDacTransientScan", "PlsrDacScan", "PulserDacCorrectionCalibration", "ThresholdCalibration", "create_threshold_calibration", "TotCalibration", "AnalogScan", "CrosstalkScan", "DigitalScan", "ExtTriggerGdacScan", "StopModeExtTriggerScan", "ExtTriggerScan", "FEI4SelfTriggerScan", "HitDelayScan", "IleakScan", "InitScan", "IVScan", "FastThresholdScan", "ThresholdScan", "RegisterTest", "TdcTest", "FdacTuning", "FeedbackTuning", "Fei4Tuning", "GdacTuning", "HotPixelTuning", "MergedPixelsTuning", "NoiseOccupancyScan", "StuckPixelScan", "TdacTuning", "ThresholdBaselineTuning", "TluTuning"]
