@@ -2,6 +2,7 @@
 The TDC method gives higher precision charge information than the TOT method. The TDC method is limited to single pixel cluster. During the calibration only one pixel is enabled at a time.
 """
 import logging
+import os.path
 
 import numpy as np
 import tables as tb
@@ -29,7 +30,7 @@ def create_hitor_calibration(output_filename, plot_pixel_calibrations=False):
     -------
     nothing
     '''
-    logging.info('Analyze and plot results of %s', output_filename)
+    logging.info('Analyze HitOR calibration data and plot results of %s', output_filename)
 
     with AnalyzeRawData(raw_data_file=output_filename, create_pdf=True) as analyze_raw_data:  # Interpret the raw data file
         analyze_raw_data.create_occupancy_hist = False  # too many scan parameters to do in ram histogramming
@@ -55,6 +56,7 @@ def create_hitor_calibration(output_filename, plot_pixel_calibrations=False):
             hits = in_file_h5.root.Hits[:]
             event_numbers = hits['event_number'].copy()  # create contigous array, otherwise np.searchsorted too slow, http://stackoverflow.com/questions/15139299/performance-of-numpy-searchsorted-is-poor-on-structured-arrays
 
+            output_filename = os.path.splitext(output_filename)[0]
             with tb.openFile(output_filename + "_calibration.h5", mode="w") as calibration_data_file:
                 logging.info('Create calibration')
                 calibration_data = np.empty(shape=(80, 336, len(inner_loop_parameter_values), 4), dtype='f4')  # result of the calibration is a histogram with col_index, row_index, plsrDAC value, mean discrete tot, rms discrete tot, mean tot from TDC, rms tot from TDC
