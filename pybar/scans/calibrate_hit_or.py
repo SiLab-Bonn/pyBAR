@@ -96,12 +96,11 @@ def create_hitor_calibration(output_filename, plot_pixel_calibrations=False):
                         logging.warning('%d of %d expected hits for scan parameters %s', tot.shape[0], n_injections, ', '.join(['%s=%s' % (name, value) for (name, value) in zip(scan_parameter_names, actual_scan_parameter_values)]))
 
                     inner_loop_scan_parameter_index = np.where(plser_dac == inner_loop_parameter_values)[0][0]  # translate the scan parameter value to an index for the result histogram
+                    # numpy mean and std return nan if array is empty
                     calibration_data[actual_col - 1, actual_row - 1, inner_loop_scan_parameter_index, 0] = np.mean(tot)
                     calibration_data[actual_col - 1, actual_row - 1, inner_loop_scan_parameter_index, 1] = np.mean(tdc)
                     calibration_data[actual_col - 1, actual_row - 1, inner_loop_scan_parameter_index, 2] = np.std(tot)
                     calibration_data[actual_col - 1, actual_row - 1, inner_loop_scan_parameter_index, 3] = np.std(tdc)
-                    if index == 0 and inner_loop_scan_parameter_index == 0:
-                        calibration_data[actual_col - 1, actual_row - 1, inner_loop_scan_parameter_index, 0] = np.nan
 
                     progress_bar.update(index)
                 progress_bar.finish()
