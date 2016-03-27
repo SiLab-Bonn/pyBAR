@@ -49,9 +49,9 @@ def create_hitor_calibration(output_filename, plot_pixel_calibrations=False):
 #             col_row_combinations = get_unique_scan_parameter_combinations(in_file_h5.root.meta_data[:], scan_parameters=('column', 'row'), scan_parameter_columns_only=True)
 
             meta_data_table_at_scan_parameter = get_unique_scan_parameter_combinations(meta_data, scan_parameters=scan_parameter_names)
-            parameter_values = get_scan_parameters_table_from_meta_data(meta_data_table_at_scan_parameter, scan_parameter_names)
+            scan_parameter_values = get_scan_parameters_table_from_meta_data(meta_data_table_at_scan_parameter, scan_parameter_names)
             event_number_ranges = get_ranges_from_array(meta_data_table_at_scan_parameter['event_number'])
-            event_ranges_per_parameter = np.column_stack((parameter_values, event_number_ranges))
+            event_ranges_per_parameter = np.column_stack((scan_parameter_values, event_number_ranges))
             hits = in_file_h5.root.Hits[:]
             event_numbers = hits['event_number'].copy()  # create contigous array, otherwise np.searchsorted too slow, http://stackoverflow.com/questions/15139299/performance-of-numpy-searchsorted-is-poor-on-structured-arrays
 
@@ -63,17 +63,25 @@ def create_hitor_calibration(output_filename, plot_pixel_calibrations=False):
                 progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=len(event_ranges_per_parameter), term_width=80)
                 progress_bar.start()
 
-                for index, (parameter_values, event_start, event_stop) in enumerate(event_ranges_per_parameter):
+                for index, (actual_scan_parameter_values, event_start, event_stop) in enumerate(event_ranges_per_parameter):
                     if event_stop is None:  # happens for the last chunk
                         event_stop = hits[-1]['event_number'] + 1
                     array_index = np.searchsorted(event_numbers, np.array([event_start, event_stop]))
                     actual_hits = hits[array_index[0]:array_index[1]]
-                    actual_col, actual_row, parameter_value = parameter_values
+                    for item_index, item in enumerate(scan_parameter_names):
+                        if item == "column":
+                            actual_col = actual_scan_parameter_values[item_index]
+                        elif item == "row":
+                            actual_row = actual_scan_parameter_values[item_index]
+                        elif item == "PlsrDAC":
+                            plser_dac = actual_scan_parameter_values[item_index]
+                        else:
+                            raise ValueError("Unknown scan parameter %s" % item)
 
                     # Only pixel of actual column/row should be in the actual data chunk but since SRAM is not cleared for each scan step due to speed reasons and there might be noisy pixels this is not always the case
                     n_wrong_pixel = np.count_nonzero(np.logical_or(actual_hits['column'] != actual_col, actual_hits['row'] != actual_row))
                     if n_wrong_pixel != 0:
-                        logging.warning('%d hit(s) from other pixels for scan parameters %s', n_wrong_pixel, ', '.join(['%s=%s' % (name, value) for (name, value) in zip(scan_parameter_names, parameter_values)]))
+                        logging.warning('%d hit(s) from other pixels for scan parameters %s', n_wrong_pixel, ', '.join(['%s=%s' % (name, value) for (name, value) in zip(scan_parameter_names, actual_scan_parameter_values)]))
 
                     actual_hits = actual_hits[np.logical_and(actual_hits['column'] == actual_col, actual_hits['row'] == actual_row)]  # Only take data from selected pixel
                     actual_tdc_hits = actual_hits[(actual_hits['event_status'] & 0b0000111110011100) == 0b0000000100000000]  # only take hits from good events (one TDC word only, no error)
@@ -81,12 +89,11 @@ def create_hitor_calibration(output_filename, plot_pixel_calibrations=False):
                     tot, tdc = actual_tot_hits['tot'], actual_tdc_hits['TDC']
 
                     if tdc.shape[0] != n_injections:
-                        print tdc.shape[0], n_injections
-                        logging.warning('%d of %d expected TDC hits for scan parameters %s', tdc.shape[0], n_injections, ', '.join(['%s=%s' % (name, value) for (name, value) in zip(scan_parameter_names, parameter_values)]))
+                        logging.warning('%d of %d expected TDC hits for scan parameters %s', tdc.shape[0], n_injections, ', '.join(['%s=%s' % (name, value) for (name, value) in zip(scan_parameter_names, actual_scan_parameter_values)]))
                     if tot.shape[0] != n_injections:
-                        logging.warning('%d of %d expected hits for scan parameters %s', tot.shape[0], n_injections, ', '.join(['%s=%s' % (name, value) for (name, value) in zip(scan_parameter_names, parameter_values)]))
+                        logging.warning('%d of %d expected hits for scan parameters %s', tot.shape[0], n_injections, ', '.join(['%s=%s' % (name, value) for (name, value) in zip(scan_parameter_names, actual_scan_parameter_values)]))
 
-                    inner_loop_scan_parameter_index = np.where(parameter_value == inner_loop_parameter_values)[0][0]  # translate the scan parameter value to an index for the result histogram
+                    inner_loop_scan_parameter_index = np.where(plser_dac == inner_loop_parameter_values)[0][0]  # translate the scan parameter value to an index for the result histogram
                     calibration_data[actual_col - 1, actual_row - 1, inner_loop_scan_parameter_index, 0] = np.mean(tot)
                     calibration_data[actual_col - 1, actual_row - 1, inner_loop_scan_parameter_index, 1] = np.mean(tdc)
                     calibration_data[actual_col - 1, actual_row - 1, inner_loop_scan_parameter_index, 2] = np.std(tot)
