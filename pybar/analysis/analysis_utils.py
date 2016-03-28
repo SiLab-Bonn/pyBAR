@@ -5,19 +5,20 @@ import logging
 import re
 import os
 import time
-import collections
-import numpy as np
-import progressbar
 import glob
-import tables as tb
-import numexpr as ne
+import collections
 from operator import itemgetter
+
+import numpy as np
+import tables as tb
+from tables import dtype_from_descr
+import numexpr as ne
 from scipy.interpolate import interp1d
 from scipy.interpolate import splrep, splev
-from tables import dtype_from_descr
+
+import progressbar
 
 from pybar_fei4_interpreter import analysis_functions, data_struct
-
 from pybar.daq.fei4_record import FEI4Record
 from pybar.analysis.plotting import plotting
 from pybar.daq.readout_utils import is_fe_word, is_data_header, is_trigger_word
