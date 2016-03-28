@@ -466,22 +466,6 @@ def get_data_file_names_from_scan_base(scan_base, filter_str=['_analyzed.h5', '_
     return data_files
 
 
-def get_parameter_scan_bases_from_scan_base(scan_base):
-    """ Takes a list of scan base names and returns all scan base names that have this scan base within their name.
-
-    Parameters
-    ----------
-    scan_base : list of strings
-    filter_file_words : list of strings
-
-    Returns
-    -------
-    list of strings
-
-    """
-    return [scan_bases[:-3] for scan_bases in get_data_file_names_from_scan_base(scan_base, filter_file_words=['interpreted', 'cut_', 'cluster_sizes', 'histograms'])]
-
-
 def get_scan_parameter_names(scan_parameters):
     ''' Returns the scan parameter names of the scan_paraemeter table.
 
@@ -493,7 +477,6 @@ def get_scan_parameter_names(scan_parameters):
     Returns
     -------
     list of strings
-
     '''
     return scan_parameters.dtype.names if scan_parameters is not None else None
 
