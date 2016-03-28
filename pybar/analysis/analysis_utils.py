@@ -416,7 +416,6 @@ def get_parameter_value_from_file_names(files, parameters=None, unique=False, so
 def get_data_file_names_from_scan_base(scan_base, filter_str=['_analyzed.h5', '_interpreted.h5', '_cut.h5', '_result.h5', '_hists.h5'], sort_by_time=True, meta_data_v2=True):
     """
     Generate a list of .h5 files which have a similar file name.
-
     Parameters
     ----------
     scan_base : list, string
@@ -427,12 +426,10 @@ def get_data_file_names_from_scan_base(scan_base, filter_str=['_analyzed.h5', '_
         If True, return file name list sorted from oldest to newest. The time from meta table will be used to sort the files.
     meta_data_v2 : bool
         True for new (v2) meta data format, False for the old (v1) format.
-
     Returns
     -------
     data_files : list
         List of file names matching the obove conditions.
-
     """
     data_files = []
     if scan_base is None:
@@ -454,11 +451,15 @@ def get_data_file_names_from_scan_base(scan_base, filter_str=['_analyzed.h5', '_
         for data_file in data_files:
             print data_file
             with tb.open_file(data_file, mode="r") as h5_file:
-                if meta_data_v2:
-                    timestamp = h5_file.root.meta_data[0]["timestamp_start"]
+                try:
+                    if meta_data_v2:
+                        timestamp = h5_file.root.meta_data[0]["timestamp_start"]
+                    else:
+                        timestamp = h5_file.root.meta_data[0]["timestamp"]
+                except IndexError:
+                    print "Info: file %s empty" % h5_file.filename
                 else:
-                    timestamp = h5_file.root.meta_data[0]["timestamp"]
-            f_list[data_file] = timestamp
+                    f_list[data_file] = timestamp
 
         data_files = list(sorted(f_list, key=f_list.__getitem__, reverse=False))
     return data_files

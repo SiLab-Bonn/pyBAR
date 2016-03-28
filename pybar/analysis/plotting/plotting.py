@@ -281,7 +281,7 @@ def plot_profile_histogram(x, y, n_bins=100, title=None, x_label=None, y_label=N
 
 
 def plot_scatter(x, y, x_err=None, y_err=None, title=None, legend=None, plot_range=None, plot_range_y=None, x_label=None, y_label=None, marker_style='-o', log_x=False, log_y=False, filename=None):
-    logging.info('Plot scatter plot %s', (': ' + title) if title is not None else '')
+    logging.info('Plot scatter plot %s', (': ' + title.replace('\n', ' ')) if title is not None else '')
     fig = Figure()
     FigureCanvas(fig)
     ax = fig.add_subplot(111)
@@ -417,13 +417,13 @@ def plot_cluster_size(hist, title=None, filename=None):
 
 
 def plot_scurves(occupancy_hist, scan_parameters, title='S-curves', ylabel='Occupancy', max_occ=None, scan_parameter_name=None, min_x=None, max_x=None, x_scale=1.0, y_scale=1.0, filename=None):  # tornado plot
-    occ_mask = np.all(occupancy_hist == 0, axis=2)
+    occ_mask = np.all((occupancy_hist == 0), axis=2) | np.all(np.isnan(occupancy_hist), axis=2)
     occupancy_hist = np.ma.masked_invalid(occupancy_hist)
     if max_occ is None:
-        if np.allclose(occupancy_hist, 0.0):
+        if np.allclose(occupancy_hist, 0.0) or np.all(occ_mask == True):
             max_occ = 1.0
         else:
-            max_occ = math.ceil(2 * np.ma.median(np.amax(occupancy_hist[~np.all(occupancy_hist == 0, axis=2)], axis=1)))
+            max_occ = math.ceil(2 * np.ma.median(np.amax(occupancy_hist[~occ_mask], axis=1)))
     if len(occupancy_hist.shape) < 3:
         raise ValueError('Found array with shape %s' % str(occupancy_hist.shape))
 
@@ -558,7 +558,7 @@ def plot_cluster_tot_size(hist, median=False, z_max=None, filename=None):
 
 
 def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=None, x_ticks=None, color='r', plot_range=None, log_y=False, filename=None, figure_name=None):
-    logging.info('Plot 1d histogram%s', (': ' + title) if title is not None else '')
+    logging.info('Plot 1d histogram%s', (': ' + title.replace('\n', ' ')) if title is not None else '')
     fig = Figure()
     FigureCanvas(fig)
     ax = fig.add_subplot(111)
@@ -773,26 +773,20 @@ def create_pixel_scatter_plot(fig, ax, hist, title=None, x_axis_title=None, y_ax
         ax.set_ylabel(y_axis_title)
 
 
-def plot_tot_tdc_calibration(scan_parameters, filename, tot_mean, tot_error=None, tdc_mean=None, tdc_error=None):
-    col_row_non_nan = np.nonzero(~np.all(np.isnan(tot_mean), axis=2))
-    for index, (column, row) in enumerate(np.dstack(col_row_non_nan)[0]):
-        if index >= 100:  # stop for too many plots
-            logging.info('Reached the limit of 100 pages')
-            break
-        logging.info("Plotting charge calibration for pixel " + str(column) + '/' + str(row))
+def plot_tot_tdc_calibration(scan_parameters, filename, tot_mean, tot_error=None, tdc_mean=None, tdc_error=None, title="Charge calibration"):
         fig = Figure()
         FigureCanvas(fig)
         ax1 = fig.add_subplot(111)
         fig.patch.set_facecolor('white')
         ax1.grid(True)
-        ax1.errorbar(scan_parameters, tot_mean[column, row, :], yerr=tot_error[column, row, :] if tot_error is not None else None, fmt='o', color='b', label='FEI4 ToT')
-        ax1.set_ylabel('TOT')
+        ax1.errorbar(scan_parameters, tot_mean, yerr=(tot_error) if tot_error is not None else None, fmt='o', color='b', label='FEI4 ToT')
+        ax1.set_ylabel('ToT code')
         ax1.set_ylim(ymin=0.0, ymax=15.0)
-        ax1.set_title('Calibration for pixel ' + str(column) + '/' + str(row))
+        ax1.set_title(title)
         ax1.set_xlabel('Charge [PlsrDAC]')
         if tdc_mean is not None:
             ax2 = ax1.twinx()
-            ax2.errorbar(scan_parameters, tdc_mean[column, row, :] * 1000.0/640.0, yerr=(tdc_error[column, row, :] * 1000.0/640.0) if tdc_error is not None else None, fmt='o', color='g', label='TDC Counter')
+            ax2.errorbar(scan_parameters, tdc_mean * 1000.0/640.0, yerr=(tdc_error * 1000.0/640.0) if tdc_error is not None else None, fmt='o', color='g', label='TDC Counter')
             ax2.set_ylabel('TDC [ns]')
             ax2.set_ylim(ymin=0.0)
             # combine legends

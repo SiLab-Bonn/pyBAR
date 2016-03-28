@@ -3,16 +3,18 @@
 
 import unittest
 import os
+
 import tables as tb
 import numpy as np
+from numpy.testing import assert_array_equal
+
 import progressbar
+
 from pixel_clusterizer.clusterizer import HitClusterizer
 
 from pybar_fei4_interpreter.data_interpreter import PyDataInterpreter
 from pybar_fei4_interpreter.data_histograming import PyDataHistograming
 from pybar_fei4_interpreter import analysis_utils as fast_analysis_utils
-from pybar_fei4_interpreter import data_struct
-
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.analysis import analysis_utils
 from pybar.analysis.analysis_utils import data_aligned_at_events
@@ -99,12 +101,20 @@ def compare_h5_files(first_file, second_file, expected_nodes=None, detailed_comp
                     expected_data = first_h5_file.get_node(first_h5_file.root, node_name)[:]
                     data = second_h5_file.get_node(second_h5_file.root, node_name)[:]
                     if (exact or expected_data.dtype.names is not None):  # exact comparison if exact is set and on recarray data (np.allclose does not work on recarray)
-                        if not np.all(expected_data == data):  # compare the arrays for each element
+                        try:
+                            assert_array_equal(expected_data, data)
+                        except AssertionError, e:
                             checks_passed = False
                             error_msg += node_name
                             if detailed_comparison:
-                                error_msg += get_array_differences(expected_data, data)
+                                error_msg += str(e)
                             error_msg += '\n'
+#                         if not np.all(expected_data == data):  # compare the arrays for each element
+#                             checks_passed = False
+#                             error_msg += node_name
+#                             if detailed_comparison:
+#                                 error_msg += get_array_differences(expected_data, data)
+#                             error_msg += '\n'
                     else:
                         if not np.allclose(expected_data, data):
                             np.allclose(expected_data, data)
