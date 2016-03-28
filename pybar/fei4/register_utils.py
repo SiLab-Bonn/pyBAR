@@ -20,6 +20,10 @@ from pybar.daq.readout_utils import interpret_pixel_data
 from pybar.daq.fei4_record import FEI4Record
 
 
+class CmdTimeoutError(Exception):
+    pass
+
+
 class FEI4RegisterUtils(object):
 
     def __init__(self, dut, register, abort=None):
@@ -119,8 +123,12 @@ class FEI4RegisterUtils(object):
                 timeout = 1
             else:
                 timeout = 10 * delay
-            if not self.dut['CMD'].wait_for_ready(timeout=timeout, times=None, delay=delay, abort=self.abort) and not self.abort.is_set():
-                raise RuntimeError('Time out - command not fully sent')
+            try:
+                msg = "Time out while waiting for sending command becoming ready in %s, module %s. Power cycle or reset readout board!" % (self.dut['CMD'].name, self.dut['CMD'].__class__.__module__)
+                if not self.dut['CMD'].wait_for_ready(timeout=timeout, times=None, delay=delay, abort=self.abort) and not self.abort.is_set():
+                    raise CmdTimeoutError(msg)
+            except RuntimeError:
+                raise CmdTimeoutError(msg)
         else:
             if delay:
                 try:
