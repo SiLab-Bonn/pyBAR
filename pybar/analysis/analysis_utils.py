@@ -455,14 +455,18 @@ def get_data_file_names_from_scan_base(scan_base, filter_str=['_analyzed.h5', '_
             with tb.open_file(data_file, mode="r") as h5_file:
                 try:
                     meta_data = h5_file.root.meta_data
-                except IndexError:
-                    logging.info("File %s is missing meta_data" % h5_file.filename)
+                except NoSuchNodeError:
+                    logging.warning("File %s is missing meta_data" % h5_file.filename)
                 else:
-                    if meta_data_v2:
-                        timestamp = meta_data[0]["timestamp_start"]
+                    try:
+                        if meta_data_v2:
+                            timestamp = meta_data[0]["timestamp_start"]
+                        else:
+                            timestamp = meta_data[0]["timestamp"]
+                    except IndexError:
+                        logging.info("File %s has empty meta_data" % h5_file.filename)
                     else:
-                        timestamp = meta_data[0]["timestamp"]
-                    f_list[data_file] = timestamp
+                        f_list[data_file] = timestamp
 
         data_files = list(sorted(f_list, key=f_list.__getitem__, reverse=False))
     return data_files
