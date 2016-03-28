@@ -81,7 +81,7 @@ def create_threshold_calibration(scan_base_file_name, create_plots=True):  # Cre
         m[:, idx] = 1
         return np.ma.masked_array(pixel_array, m)
 
-    raw_data_files = analysis_utils.get_data_file_names_from_scan_base(scan_base_file_name, filter_file_words=['interpreted', 'calibration_calibration'])
+    raw_data_files = analysis_utils.get_data_file_names_from_scan_base(scan_base_file_name)
     first_scan_base_file_name = scan_base_file_name if isinstance(scan_base_file_name, basestring) else scan_base_file_name[0]  # multilpe scan_base_file_names for multiple runs
 
     with tb.openFile(first_scan_base_file_name + '.h5', mode="r") as in_file_h5:  # deduce scan parameters from the first (and often only) scan base file name
