@@ -649,7 +649,7 @@ class AnalyzeRawData(object):
             self.scan_parameter_index = analysis_utils.get_scan_parameters_index(self.scan_parameters)  # a array that labels unique scan parameter combinations
             self.histograming.add_scan_parameter(self.scan_parameter_index)  # just add an index for the different scan parameter combinations
 
-        self.meta_data = analysis_utils.combine_meta_data(self.files_dict)
+        self.meta_data = analysis_utils.combine_meta_data(self.files_dict, meta_data_v2=self.interpreter.meta_table_v2)
 
         if self.meta_data is None or self.meta_data.shape[0] == 0:
             raise analysis_utils.IncompleteInputError('Meta data is empty. Stopping interpretation.')

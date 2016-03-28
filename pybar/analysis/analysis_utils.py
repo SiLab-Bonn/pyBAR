@@ -416,6 +416,7 @@ def get_parameter_value_from_file_names(files, parameters=None, unique=False, so
 def get_data_file_names_from_scan_base(scan_base, filter_str=['_analyzed.h5', '_interpreted.h5', '_cut.h5', '_result.h5', '_hists.h5'], sort_by_time=True, meta_data_v2=True):
     """
     Generate a list of .h5 files which have a similar file name.
+
     Parameters
     ----------
     scan_base : list, string
@@ -426,6 +427,7 @@ def get_data_file_names_from_scan_base(scan_base, filter_str=['_analyzed.h5', '_
         If True, return file name list sorted from oldest to newest. The time from meta table will be used to sort the files.
     meta_data_v2 : bool
         True for new (v2) meta data format, False for the old (v1) format.
+
     Returns
     -------
     data_files : list
@@ -449,17 +451,21 @@ def get_data_file_names_from_scan_base(scan_base, filter_str=['_analyzed.h5', '_
     if sort_by_time and len(data_files) > 1:
         f_list = {}
         for data_file in data_files:
-            print data_file
             with tb.open_file(data_file, mode="r") as h5_file:
                 try:
-                    if meta_data_v2:
-                        timestamp = h5_file.root.meta_data[0]["timestamp_start"]
-                    else:
-                        timestamp = h5_file.root.meta_data[0]["timestamp"]
-                except IndexError:
-                    print "Info: file %s empty" % h5_file.filename
+                    meta_data = h5_file.root.meta_data
+                except NoSuchNodeError:
+                    logging.warning("File %s is missing meta_data" % h5_file.filename)
                 else:
-                    f_list[data_file] = timestamp
+                    try:
+                        if meta_data_v2:
+                            timestamp = meta_data[0]["timestamp_start"]
+                        else:
+                            timestamp = meta_data[0]["timestamp"]
+                    except IndexError:
+                        logging.info("File %s has empty meta_data" % h5_file.filename)
+                    else:
+                        f_list[data_file] = timestamp
 
         data_files = list(sorted(f_list, key=f_list.__getitem__, reverse=False))
     return data_files
@@ -476,7 +482,6 @@ def get_scan_parameter_names(scan_parameters):
     Returns
     -------
     list of strings
-
     '''
     return scan_parameters.dtype.names if scan_parameters is not None else None
 
@@ -580,6 +585,10 @@ def combine_meta_data(files_dict, meta_data_v2=True):
     """
     Takes the dict of hdf5 files and combines their meta data tables into one new numpy record array.
 
+    Parameters
+    ----------
+    meta_data_v2 : bool
+        True for new (v2) meta data format, False for the old (v1) format.
     """
     if len(files_dict) > 10:
         logging.info("Combine the meta data from %d files", len(files_dict))
@@ -588,16 +597,6 @@ def combine_meta_data(files_dict, meta_data_v2=True):
     for file_name in files_dict.iterkeys():
         with tb.openFile(file_name, mode="r") as in_file_h5:  # open the actual file
             total_length += in_file_h5.root.meta_data.shape[0]
-            if total_length == 0:  # length = 0 for the first raw data file that only contains config data
-                continue
-            try:
-                in_file_h5.root.meta_data[0]['error']  # error column exists in old and new meta data format
-            except IndexError:
-                return None
-            try:
-                in_file_h5.root.meta_data[0]['timestamp_stop']  # this only exists in the new data format, https://silab-redmine.physik.uni-bonn.de/news/7
-            except IndexError:
-                meta_data_v2 = False
 
     if meta_data_v2:
         meta_data_combined = np.empty((total_length, ), dtype=[
