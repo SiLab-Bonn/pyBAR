@@ -578,29 +578,22 @@ def check_parameter_similarity(files_dict):
     return True
 
 
-def combine_meta_data(files_dict):
+def combine_meta_data(files_dict, meta_data_v2=True):
     """
     Takes the dict of hdf5 files and combines their meta data tables into one new numpy record array.
 
+    Parameters
+    ----------
+    meta_data_v2 : bool
+        True for new (v2) meta data format, False for the old (v1) format.
     """
     if len(files_dict) > 10:
         logging.info("Combine the meta data from %d files", len(files_dict))
     # determine total length needed for the new combined array, thats the fastest way to combine arrays
     total_length = 0  # the total length of the new table
-    meta_data_v2 = True
     for file_name in files_dict.iterkeys():
         with tb.openFile(file_name, mode="r") as in_file_h5:  # open the actual file
             total_length += in_file_h5.root.meta_data.shape[0]
-            if total_length == 0:  # length = 0 for the first raw data file that only contains config data
-                continue
-            try:
-                in_file_h5.root.meta_data[0]['error']  # error column exists in old and new meta data format
-            except IndexError:
-                return None
-            try:
-                in_file_h5.root.meta_data[0]['timestamp_stop']  # this only exists in the new data format, https://silab-redmine.physik.uni-bonn.de/news/7
-            except IndexError:
-                meta_data_v2 = False
 
     if meta_data_v2:
         meta_data_combined = np.empty((total_length, ), dtype=[
