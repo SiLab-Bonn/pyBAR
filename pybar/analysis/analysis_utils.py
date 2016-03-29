@@ -1209,7 +1209,7 @@ def data_aligned_at_events(table, start_event_number=None, stop_event_number=Non
     stop_index = table.nrows if stop is None else stop
 
     # set start stop indices from the event numbers for fast read if possible; not possible if the given event number does not exist in the data stream
-    if try_speedup && table.colindexed["event_number"]:
+    if try_speedup and table.colindexed["event_number"]:
         if start_event_number is not None:
             start_condition = 'event_number==' + str(start_event_number)
             start_indeces = table.get_where_list(start_condition, start=start_index, stop=stop_index)
