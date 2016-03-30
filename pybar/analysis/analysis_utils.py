@@ -1226,19 +1226,20 @@ def data_aligned_at_events(table, start_event_number=None, stop_event_number=Non
     if stop_event_number is not None and start_event_number is not None and stop_event_number < start_event_number:
         raise InvalidInputError('Invalid start/stop event number')
 
-    if try_speedup:  # set start stop indices from the event numbers for fast read if possible; not possible if the given event number does not exist in the data stream
+    # set start stop indices from the event numbers for fast read if possible; not possible if the given event number does not exist in the data stream
+    if try_speedup and table.colindexed["event_number"]:
         if start_event_number is not None:
-            condition_1 = 'event_number==' + str(start_event_number)
-            start_indeces = table.get_where_list(condition_1, start=start_index, stop=stop_index)
+            start_condition = 'event_number==' + str(start_event_number)
+            start_indeces = table.get_where_list(start_condition, start=start_index, stop=stop_index)
             if start_indeces.shape[0] != 0:  # set start index if possible
                 start_index = start_indeces[0]
                 start_index_known = True
 
         if stop_event_number is not None:
-            condition_2 = 'event_number==' + str(stop_event_number)
-            stop_indices = table.get_where_list(condition_2, start=start_index, stop=stop_index)
-            if stop_indices.shape[0] != 0:  # set the stop index if possible, stop index is excluded
-                stop_index = stop_indices[0]
+            stop_condition = 'event_number==' + str(stop_event_number)
+            stop_indeces = table.get_where_list(stop_condition, start=start_index, stop=stop_index)
+            if stop_indeces.shape[0] != 0:  # set the stop index if possible, stop index is excluded
+                stop_index = stop_indeces[0]
                 stop_index_known = True
 
     if start_index_known and stop_index_known and start_index + chunk_size >= stop_index:  # special case, one read is enough, data not bigger than one chunk and the indices are known
