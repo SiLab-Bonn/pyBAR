@@ -13,11 +13,15 @@ import itertools
 from bitarray import bitarray
 
 from basil.utils.BitLogic import BitLogic
-from pybar_fei4_interpreter.data_struct import NameValue
 
 from pybar.utils.utils import bitarray_to_array
 from pybar.daq.readout_utils import interpret_pixel_data
 from pybar.daq.fei4_record import FEI4Record
+
+
+class NameValue(tb.IsDescription):
+    name = tb.StringCol(256, pos=0)
+    value = tb.StringCol(1024, pos=0)
 
 
 class CmdTimeoutError(Exception):
