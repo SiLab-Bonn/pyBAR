@@ -421,7 +421,7 @@ class Fei4RunBase(RunBase):
         data : list, tuple
             Data tuple of the format (data (np.array), last_time (float), curr_time (float), status (int))
         '''
-        self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=False)
+        self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=True)
 
     def handle_err(self, exc):
         '''Handling of Exceptions.
