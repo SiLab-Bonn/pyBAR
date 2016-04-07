@@ -18,7 +18,7 @@ from scipy.interpolate import splrep, splev
 
 import progressbar
 
-from pybar_fei4_interpreter import analysis_functions, data_struct
+from pybar_fei4_interpreter import analysis_utils
 from pybar.daq.fei4_record import FEI4Record
 from pybar.analysis.plotting import plotting
 from pybar.daq.readout_utils import is_fe_word, is_data_header, is_trigger_word, logical_and
@@ -282,9 +282,9 @@ def get_rate_normalization(hit_file, parameter, reference='event', cluster_file=
                 n_cluster_per_event = None
                 for clusters, index in data_aligned_at_events(cluster_table, start_event_number=start_event, stop_event_number=stop_event, start_index=index, chunk_size=best_chunk_size):
                     if n_cluster_per_event is None:
-                        n_cluster_per_event = get_n_cluster_in_events(clusters['event_number'])[:, 1]  # array with the number of cluster per event, cluster per event are at least 1
+                        n_cluster_per_event = analysis_utils.get_n_cluster_in_events(clusters['event_number'])[:, 1]  # array with the number of cluster per event, cluster per event are at least 1
                     else:
-                        n_cluster_per_event = np.append(n_cluster_per_event, get_n_cluster_in_events(clusters['event_number'])[:, 1])
+                        n_cluster_per_event = np.append(n_cluster_per_event, analysis_utils.get_n_cluster_in_events(clusters['event_number'])[:, 1])
                     readout_cluster_len += clusters.shape[0]
                     total_cluster += clusters.shape[0]
                     progress_bar.update(index)
@@ -454,7 +454,7 @@ def get_data_file_names_from_scan_base(scan_base, filter_str=['_analyzed.h5', '_
             with tb.open_file(data_file, mode="r") as h5_file:
                 try:
                     meta_data = h5_file.root.meta_data
-                except NoSuchNodeError:
+                except tb.NoSuchNodeError:
                     logging.warning("File %s is missing meta_data" % h5_file.filename)
                 else:
                     try:
@@ -805,7 +805,7 @@ def get_hits_in_events(hits_array, events, assume_sorted=True, condition=None):
             return hits_array[0:0]
     try:
         if assume_sorted:
-            selection = analysis_functions.in1d_events(hits_array['event_number'], events)
+            selection = analysis_utils.in1d_events(hits_array['event_number'], events)
         else:
             logging.warning('Events are usually sorted. Are you sure you want this?')
             selection = np.in1d(hits_array['event_number'], events)
@@ -1001,7 +1001,7 @@ def get_events_with_n_cluster(event_number, condition='n_cluster==1'):
     '''
 
     logging.debug("Calculate events with clusters where " + condition)
-    n_cluster_in_events = get_n_cluster_in_events(event_number)
+    n_cluster_in_events = analysis_utils.get_n_cluster_in_events(event_number)
     n_cluster = n_cluster_in_events[:, 1]
 #    return np.take(n_cluster_in_events, ne.evaluate(condition), axis=0)  # does not return 1d, bug?
     return n_cluster_in_events[ne.evaluate(condition), 0]
@@ -1498,7 +1498,7 @@ def get_n_cluster_per_event_hist(cluster_table):
     numpy.Histogram
     '''
     logging.info("Histogram number of cluster per event")
-    cluster_in_events = get_n_cluster_in_events(cluster_table)[:, 1]  # get the number of cluster for every event
+    cluster_in_events = analysis_utils.get_n_cluster_in_events(cluster_table)[:, 1]  # get the number of cluster for every event
     return np.histogram(cluster_in_events, bins=range(0, np.max(cluster_in_events) + 2))  # histogram the occurrence of n cluster per event
 
 
