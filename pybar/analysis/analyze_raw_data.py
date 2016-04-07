@@ -23,8 +23,7 @@ from pybar_fei4_interpreter import analysis_utils as fast_analysis_utils
 
 from pybar.analysis import analysis_utils
 from pybar.analysis.plotting import plotting
-from pybar.analysis.analysis_utils import check_bad_data, fix_raw_data, consecutive, print_raw_data
-from pybar.daq.readout_utils import is_fe_word, is_data_header, is_trigger_word
+from pybar.analysis.analysis_utils import check_bad_data, fix_raw_data, consecutive
 
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
@@ -713,10 +712,9 @@ class AnalyzeRawData(object):
                                 bad_data, prepend_data_headers_tmp = check_bad_data(raw_data, prepend_data_headers=prepend_data_headers, trig_count=self.trig_count)# , trig_count=None)#
                             # do additional check with follow up data chunk and decide whether current chunk is defect or not
                             if bad_data:
-                                raw_data_merged = np.r_[raw_data, in_file_h5.root.raw_data.read(*readout_slices[read_out_index])]
-    #                             print "raw_data", raw_data.shape[0], raw_data_merged.shape[0]
-                                fixed_raw_data, lsb_byte = fix_raw_data(raw_data_merged[raw_data.shape[0]-1:], lsb_byte=None)
-                                raw_data_merged_fixed = np.r_[raw_data, fixed_raw_data]
+                                raw_data_next_chunk = np.r_[raw_data[-1], in_file_h5.root.raw_data.read(*readout_slices[read_out_index])]
+                                fixed_raw_data_next_chunk, lsb_byte = fix_raw_data(raw_data_next_chunk, lsb_byte=None)
+                                raw_data_merged_fixed = np.r_[raw_data[-1], fixed_raw_data_next_chunk]
                                 bad_data, _ = check_bad_data(raw_data, prepend_data_headers=prepend_data_headers, trig_count=None)# , trig_count=None)#
                             prepend_data_headers = prepend_data_headers_tmp
                             if bad_data:
