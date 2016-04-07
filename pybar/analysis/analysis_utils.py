@@ -21,7 +21,7 @@ import progressbar
 from pybar_fei4_interpreter import analysis_functions, data_struct
 from pybar.daq.fei4_record import FEI4Record
 from pybar.analysis.plotting import plotting
-from pybar.daq.readout_utils import is_fe_word, is_data_header, is_trigger_word
+from pybar.daq.readout_utils import is_fe_word, is_data_header, is_trigger_word, logical_and
 
 
 class AnalysisError(Exception):
@@ -1580,35 +1580,61 @@ def contiguous_regions(condition):
     return idx
 
 
-def check_bad_data(raw_data, trig_count=None):
+def check_bad_data(raw_data, prepend_data_headers=None, trig_count=None):
     """Checking FEI4 raw data array for corrupted data.
     """
-    trigger_idx = np.where(raw_data >= 0x80000000)[0]
-    fe_words = is_fe_word(raw_data)
-    data_headers = is_data_header(raw_data)
-    fe_dh_idx = np.where(np.logical_and(fe_words, data_headers) >= 1)[0]
-    if trigger_idx.shape[0] == 0:
-        if fe_dh_idx.shape[0] == 0:
-            return False
-        else:
-            return True
+    consecutive_triggers = 16 if trig_count == 0 else trig_count
+    is_fe_data_header = logical_and(is_fe_word, is_data_header)
+    trigger_idx = np.where(is_trigger_word(raw_data) >= 1)[0]
+    fe_dh_idx = np.where(is_fe_data_header(raw_data) >= 1)[0]
 
-    trigger_idx = np.r_[trigger_idx, raw_data.shape]
-    if trigger_idx[0] != 0:
-        trigger_idx = np.r_[0, trigger_idx]
-        event_hist = np.histogram(fe_dh_idx, trigger_idx)
-        if np.count_nonzero(event_hist[0][1:] == 0):
-#             print_raw_data(raw_data)
-            return True
-        elif event_hist[0][0] != 0:
-#             print_raw_data(raw_data)
-            return True
+    # get index of the last trigger
+    if trigger_idx.shape[0]:
+        last_event_data_headers_cnt = np.where(fe_dh_idx > trigger_idx[-1])[0].shape[0]
+        if consecutive_triggers and last_event_data_headers_cnt == consecutive_triggers:
+            if not np.all(trigger_idx[-1] > fe_dh_idx):
+                trigger_idx = np.r_[trigger_idx, raw_data.shape]
+            last_event_data_headers_cnt = None
+        elif last_event_data_headers_cnt != 0:
+            fe_dh_idx = fe_dh_idx[:-last_event_data_headers_cnt]
+        elif not np.all(trigger_idx[-1] > fe_dh_idx):
+            trigger_idx = np.r_[trigger_idx, raw_data.shape]
+    # if any data header, add trigger for histogramming, next readout has to have trigger word
+    elif fe_dh_idx.shape[0]:
+        trigger_idx = np.r_[trigger_idx, raw_data.shape]
+        last_event_data_headers_cnt = None
+    # no trigger, no data header
+    # assuming correct data, return input values
     else:
-        event_hist = np.histogram(fe_dh_idx, trigger_idx)
-        if np.count_nonzero(event_hist[0] == 0):
-#             print_raw_data(raw_data)
-            return True
-    return False
+        return False, prepend_data_headers
+
+#     # no triggers, check for the right amount of data headers
+#     if consecutive_triggers and prepend_data_headers and prepend_data_headers + fe_dh_idx.shape[0] != consecutive_triggers:
+#         return True, fe_dh_idx.shape[0]
+
+    # check that trigger comes before data header
+    if prepend_data_headers is None and trigger_idx.shape[0] and fe_dh_idx.shape[0] and not trigger_idx[0] < fe_dh_idx[0]:
+        return True, last_event_data_headers_cnt  # FIXME: 0?
+    # check that no trigger comes before the first data header
+    elif consecutive_triggers and prepend_data_headers is not None and trigger_idx.shape[0] and fe_dh_idx.shape[0] and trigger_idx[0] < fe_dh_idx[0]:
+        return True, last_event_data_headers_cnt  # FIXME: 0?
+    # check for two consecutive triggers
+    elif consecutive_triggers is None and prepend_data_headers == 0 and trigger_idx.shape[0] and fe_dh_idx.shape[0] and trigger_idx[0] < fe_dh_idx[0]:
+        return True, last_event_data_headers_cnt  # FIXME: 0?
+    elif prepend_data_headers:
+        trigger_idx += (prepend_data_headers + 1)
+        fe_dh_idx += (prepend_data_headers + 1)
+        # for histogramming add trigger at index 0
+        trigger_idx = np.r_[0, trigger_idx]
+        fe_dh_idx = np.r_[range(1, prepend_data_headers + 1), fe_dh_idx]
+
+    event_hist, bins = np.histogram(fe_dh_idx, trigger_idx)
+    if consecutive_triggers is None and np.any(event_hist == 0):
+        return True, last_event_data_headers_cnt
+    elif consecutive_triggers and np.any(event_hist != consecutive_triggers):
+        return True, last_event_data_headers_cnt
+
+    return False, last_event_data_headers_cnt
 
 
 def consecutive(data, stepsize=1):
