@@ -2,17 +2,14 @@
 The ToT calibration (mean ToT for each scan step) per pixel can be accessed via HistMeanTot from the interpreted hits file.
 """
 import logging
+
 import numpy as np
 import tables as tb
-import progressbar
 
-from matplotlib.backends.backend_pdf import PdfPages
-
-from pybar.fei4.register_utils import make_pixel_mask_from_col_row, make_box_pixel_mask_from_col_row
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.run_manager import RunManager
-from pybar.fei4.register_utils import scan_loop
-from pybar.analysis.analysis_utils import get_scan_parameter, get_unique_scan_parameter_combinations, get_scan_parameters_table_from_meta_data, get_ranges_from_array
+from pybar.fei4.register_utils import scan_loop, invert_pixel_mask
+from pybar.analysis.analysis_utils import get_scan_parameter
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.analysis.plotting.plotting import plot_scurves, plot_tot_tdc_calibration
 

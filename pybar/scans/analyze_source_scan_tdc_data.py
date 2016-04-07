@@ -51,7 +51,7 @@ analysis_configuration = {
 }
 
 
-def analyze_raw_data(input_files, output_file_hits, interpreter_plots, overwrite_output_files, pdf_filename, align_at_trigger=True, align_at_tdc=False, use_tdc_trigger_time_stamp=False, max_tdc_delay=80, interpreter_warnings=False):
+def analyze_raw_data(input_files, output_file_hits, interpreter_plots, overwrite_output_files, align_at_trigger=True, align_at_tdc=False, use_tdc_trigger_time_stamp=False, max_tdc_delay=80, interpreter_warnings=False):
     logging.info('Analyze the raw FE data given in ' + str(len(input_files)) + ' files and store the needed data')
     if os.path.isfile(output_file_hits) and not overwrite_output_files:  # skip analysis if already done
         logging.info('Analyzed data file ' + output_file_hits + ' already exists. Skip analysis for this file.')
@@ -313,7 +313,6 @@ if __name__ == "__main__":
                          output_file_hits=hit_file,
                          interpreter_plots=analysis_configuration['interpreter_plots'],
                          overwrite_output_files=analysis_configuration['overwrite_output_files'],
-                         pdf_filename=analysis_configuration['scan_name'][0],
                          align_at_trigger=analysis_configuration['align_at_trigger'],
                          align_at_tdc=analysis_configuration['align_at_tdc'],
                          use_tdc_trigger_time_stamp=analysis_configuration['use_tdc_trigger_time_stamp'],

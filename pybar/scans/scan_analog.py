@@ -1,10 +1,9 @@
 import logging
 
-from pybar.analysis.analyze_raw_data import AnalyzeRawData
-from pybar.fei4.register_utils import invert_pixel_mask
 from pybar.fei4_run_base import Fei4RunBase
-from pybar.fei4.register_utils import scan_loop
 from pybar.run_manager import RunManager
+from pybar.fei4.register_utils import scan_loop, invert_pixel_mask
+from pybar.analysis.analyze_raw_data import AnalyzeRawData
 
 
 class AnalogScan(Fei4RunBase):
