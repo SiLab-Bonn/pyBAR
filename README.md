@@ -59,9 +59,14 @@ On Windows, the `pywin32` package is required:
   pip install basil_daq==2.4.2
   ```
 
-[Pixel Clusterizer](https://github.com/SiLab-Bonn/pixel_clusterizer) (==2.3.0) is required:
+[pyBAR FEI4 Interpreter](https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter) (==1.2.0) is required:
   ```
-  pip install pixel_clusterizer==2.3.0
+  pip install git+https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter@1.2.0
+  ```
+
+[Pixel Clusterizer](https://github.com/SiLab-Bonn/pixel_clusterizer) (==2.5.0) is required:
+  ```
+  pip install pixel_clusterizer==2.5.0
   ```
 
 To enable support for USB devices (MIO, MIO3 and MMC3), the following additional packages are required:
