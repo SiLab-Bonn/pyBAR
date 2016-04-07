@@ -66,7 +66,7 @@ class PlsrDacTransientCalibration(AnalogScan):
         self.register_utils.send_commands(commands)
 
     def configure(self):
-        super(PlsrDacTransientScan, self).configure()
+        super(PlsrDacTransientCalibration, self).configure()
         # Init Oscilloscope
         self.dut['Oscilloscope'].init()
         self.dut['Oscilloscope'].data_init()  # resert data taking settings
@@ -112,7 +112,7 @@ class PlsrDacTransientCalibration(AnalogScan):
             # Setup data aquisition and start scan loop
             self.dut['Oscilloscope'].set_acquire_mode('AVERAGE')  # average to get rid of noise and keeping high band width
             time.sleep(0.2)  # tektronix needs time to change mode (bad programing...)
-            super(PlsrDacTransientScan, self).scan()  # analog scan loop
+            super(PlsrDacTransientCalibration, self).scan()  # analog scan loop
             raw_data = self.dut['Oscilloscope'].get_data(channel=self.channel)
             times, voltages = interpret_oscilloscope_data(raw_data)
             data_array[index, :] = voltages[:self.max_data_index]
