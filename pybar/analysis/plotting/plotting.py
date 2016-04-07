@@ -211,7 +211,7 @@ def plot_occupancy(hist, title='Occupancy', z_max=None, filename=None):
     im = ax.imshow(hist, interpolation='nearest', aspect='auto', cmap=cmap, norm=norm, extent=extent)  # TODO: use pcolor or pcolormesh
     ax.set_ylim((336.5, 0.5))
     ax.set_xlim((0.5, 80.5))
-    ax.set_title(title + r' ($\Sigma$ = {0})'.format((0 if hist.all() is np.ma.masked else np.ma.sum(hist))), fontsize=8)
+    ax.set_title(title + r' ($\Sigma$ = {0})'.format((0 if hist.all() is np.ma.masked else np.ma.sum(hist))))
     ax.set_xlabel('Column')
     ax.set_ylabel('Row')
 
