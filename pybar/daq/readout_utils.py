@@ -232,7 +232,7 @@ def logical_xor(f1, f2):  # function factory
 
 
 def is_trigger_word(value):
-    return np.greater_equal(value, 0x80000000)
+    return np.equal(np.bitwise_and(value, 0x80000000), 0x80000000)
 
 
 def is_tdc_word(value):
