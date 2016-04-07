@@ -1,10 +1,10 @@
 ''' This script checks reliablibility of the readout system.
 A fully functional FE-I4 needs to be attched to the hardware and powered (any sensor needs to be depleted).
-Otherwise the result is biased by FE-I4. If these tests pass there is a high propability that the hardware
-of readout system and the FE-I4 works fine. The tests take about 10 min.
+Otherwise the result is biased by FE-I4. If these testing pass there is a high propability that the hardware
+of readout system and the FE-I4 works fine. The testing take about 10 min.
 
 Note:
-Please change the FE-I4 flavor (fe_flavor) according to your FE-I4 inside the tests/test_scans/configuration.yaml file.
+Please change the FE-I4 flavor (fe_flavor) according to your FE-I4 inside the testing/test_scans/configuration.yaml file.
 '''
 
 import unittest
