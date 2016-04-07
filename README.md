@@ -46,7 +46,7 @@ Run the **following commands** to install the packages:
   ```
   conda install bitarray cython ipython matplotlib mock nose numpy pandas pyserial pytables pyyaml pyzmq scipy sphinx
   
-  pip install progressbar-latest pyvisa pyvisa-py https://github.com/SiLab-Bonn/pyqtgraph/archive/develop.zip https://github.com/uvemas/ViTables/archive/v2.1.zip
+  pip install progressbar-latest pyvisa pyvisa-py git+https://github.com/pyqtgraph/pyqtgraph.git@develop https://github.com/uvemas/ViTables/archive/v2.1.zip
   ```
 
 On Windows, the `pywin32` package is required:
