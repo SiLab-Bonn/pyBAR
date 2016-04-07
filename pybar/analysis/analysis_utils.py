@@ -302,7 +302,6 @@ def get_rate_normalization(hit_file, parameter, reference='event', cluster_file=
             plotting.plot_scatter(x, normalization_rate, title='Measuring time per GDAC setting', x_label=parameter, y_label='time [s]', log_x=True, filename=os.path.splitext(hit_file)[0] + '_time_normalization.pdf')
         if cluster_file:
             plotting.plot_scatter(x, normalization_multiplicity, title='Mean number of particles per event', x_label=parameter, y_label='number of hits per event', log_x=True, filename=os.path.splitext(hit_file)[0] + '_n_particles_normalization.pdf')
-    print len(normalization_rate), len(normalization_multiplicity)
     if cluster_file:
         normalization_rate = np.array(normalization_rate)
         normalization_multiplicity = np.array(normalization_multiplicity)
