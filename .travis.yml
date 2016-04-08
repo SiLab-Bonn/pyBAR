@@ -24,7 +24,7 @@ before_install:
   - conda create --yes -n test-environment numpy cython pytables scipy matplotlib pandas pyserial bitarray nose pyzmq pyyaml numba
   - source activate test-environment
   - pip install progressbar-latest pyvisa pyvisa-py mock sphinx pixel_clusterizer
-  - pip install https://github.com/SiLab-Bonn/pyqtgraph/archive/develop.zip  # pyqtgraph is not working with numpy 1.10 right now, install our fixed fork instead
+  - pip install git+https://github.com/pyqtgraph/pyqtgraph.git@develop
   - pip install https://github.com/uvemas/ViTables/archive/v2.1.zip
   - wget -O cocotb-master.zip https://github.com/potentialventures/cocotb/archive/master.zip 
   - unzip cocotb-master.zip
