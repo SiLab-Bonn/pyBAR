@@ -1,21 +1,20 @@
 ﻿from __future__ import division
 
 import logging
-import numpy as np
 import math
 import itertools
 from datetime import datetime
+
+import numpy as np
+from scipy.stats import chisquare, norm  # , mstats
+# from scipy.optimize import curve_fit
 # import matplotlib.pyplot as plt
 # pyplot is not thread safe since it rely on global parameters: https://github.com/matplotlib/matplotlib/issues/757
 from matplotlib.figure import Figure
 from matplotlib.artist import setp
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
-# import scipy
-# from scipy.optimize import curve_fit
-from scipy.stats import chisquare, norm  # , mstats
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.dates as mdates
-import pandas as pd
 from matplotlib import colors, cm
 from matplotlib.backends.backend_pdf import PdfPages
 
