@@ -54,13 +54,13 @@ class TestInterface(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        subprocess.call('unzip -o test_interface/sim_build.zip', shell=True)
+        subprocess.call('unzip -o test_interface_data/sim_build.zip', shell=True)
         subprocess.Popen(['make', '-f', '../../firmware/mio/cosim/Makefile', 'sim_only'])
         time.sleep(10)  # some time for simulator to start
 
     @classmethod
     def tearDownClass(cls):
-        shutil.rmtree('test_interface/module_test', ignore_errors=True)
+        shutil.rmtree('test_interface_data/module_test', ignore_errors=True)
         shutil.rmtree('./sim_build', ignore_errors=True)
         try:
             os.remove('./results.xml')
@@ -72,7 +72,7 @@ class TestInterface(unittest.TestCase):
     @mock.patch('pybar.fei4.register_utils.FEI4RegisterUtils.configure_pixel', autospec=True, side_effect=lambda *args, **kwargs: configure_pixel(*args, **kwargs))
     @mock.patch('pybar.fei4.register_utils.FEI4RegisterUtils.send_commands', autospec=True, side_effect=lambda *args, **kwargs: send_commands(*args, **kwargs))
     def test_global_register(self, mock_send_commands, mock_configure_pixel):
-        run_manager = RunManager('test_interface/configuration.yaml')
+        run_manager = RunManager('test_interface_data/configuration.yaml')
         run_manager.run_run(RegisterTest, run_conf={'test_pixel': False})
         error_msg = 'Global register test failed. '
         try:
