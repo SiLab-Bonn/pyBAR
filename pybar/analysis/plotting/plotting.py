@@ -2,8 +2,8 @@
 
 import logging
 import math
-import itertools
 from datetime import datetime
+# import itertools
 
 import numpy as np
 from scipy.stats import chisquare, norm  # , mstats
