@@ -107,10 +107,9 @@ class TestAnalysis(unittest.TestCase):
         os.remove(tests_data_folder + 'unit_test_data_4_interpreted.h5')
         os.remove(tests_data_folder + 'unit_test_data_4_interpreted_2.h5')
         os.remove(tests_data_folder + 'unit_test_data_5_interpreted.h5')
-#         os.remove(tests_data_folder + 'hit_or_calibration.pdf')
-#         os.remove(tests_data_folder + 'hit_or_calibration_calibration.pdf')
-#         os.remove(tests_data_folder + 'hit_or_calibration_interpreted.h5')
-#         os.remove(tests_data_folder + 'hit_or_calibration_calibration.h5')
+        os.remove(tests_data_folder + 'hit_or_calibration.pdf')
+        os.remove(tests_data_folder + 'hit_or_calibration_interpreted.h5')
+        os.remove(tests_data_folder + 'hit_or_calibration_calibration.h5')
 
     def test_libraries_stability(self):  # calls 50 times the constructor and destructor to check the libraries
         progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=50, term_width=80)
@@ -266,15 +265,13 @@ class TestAnalysis(unittest.TestCase):
                 pass
             self.assertTrue(exception_ok & np.all(array == array_fast))
 
-    @unittest.SkipTest
     def test_hit_or_calibration(self):
-        create_hitor_calibration(tests_data_folder + 'hit_or_calibration')
+        create_hitor_calibration(tests_data_folder + 'hit_or_calibration', plot_pixel_calibrations=True)
         data_equal, error_msg = test_tools.compare_h5_files(tests_data_folder + 'hit_or_calibration_interpreted_result.h5', tests_data_folder + 'hit_or_calibration_interpreted.h5')
         self.assertTrue(data_equal, msg=error_msg)
-        data_equal, error_msg = test_tools.compare_h5_files(tests_data_folder + 'hit_or_calibration_result.h5', tests_data_folder + 'hit_or_calibration_calibration.h5')
+        data_equal, error_msg = test_tools.compare_h5_files(tests_data_folder + 'hit_or_calibration_result.h5', tests_data_folder + 'hit_or_calibration_calibration.h5', exact=False)
         self.assertTrue(data_equal, msg=error_msg)
 
-    @unittest.SkipTest
     def test_stop_mode_analysis(self):
         data_equal, error_msg = test_tools.compare_h5_files(tests_data_folder + 'unit_test_data_5_interpreted.h5', tests_data_folder + 'unit_test_data_5_result.h5')
         self.assertTrue(data_equal, msg=error_msg)
