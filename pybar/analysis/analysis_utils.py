@@ -1524,22 +1524,6 @@ def get_data_statistics(interpreted_files):
                 print '|', os.path.basename(interpreted_file), '|', int(os.path.getsize(interpreted_file) / (1024 * 1024.)), 'Mb |', time.ctime(os.path.getctime(interpreted_file)), '|', n_events, '|', n_bad_events, '|', measurement_time, 's |', n_sr, '|', n_hits, '|'  # , mean_tot, '|', mean_bcid, '|'
 
 
-def correlate_events(data_frame_fe_1, data_frame_fe_2):
-    '''Correlates events from different Fe by the event number
-
-    Parameters
-    ----------
-    data_frame_fe_1 : pandas.dataframe
-    data_frame_fe_2 : pandas.dataframe
-
-    Returns
-    -------
-    Merged pandas dataframe.
-    '''
-    logging.info("Correlating events")
-    return data_frame_fe_1.merge(data_frame_fe_2, how='left', on='event_number')  # join in the events that the triggered fe sees, only these are interessting
-
-
 def fix_raw_data(raw_data, lsb_byte=None):
     if not lsb_byte:
         lsb_byte = np.right_shift(raw_data[0], 24)
