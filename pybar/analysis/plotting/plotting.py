@@ -773,34 +773,34 @@ def create_pixel_scatter_plot(fig, ax, hist, title=None, x_axis_title=None, y_ax
 
 
 def plot_tot_tdc_calibration(scan_parameters, filename, tot_mean, tot_error=None, tdc_mean=None, tdc_error=None, title="Charge calibration"):
-        fig = Figure()
-        FigureCanvas(fig)
-        ax1 = fig.add_subplot(111)
-        fig.patch.set_facecolor('white')
-        ax1.grid(True)
-        ax1.errorbar(scan_parameters, tot_mean, yerr=(tot_error) if tot_error is not None else None, fmt='o', color='b', label='FEI4 ToT')
-        ax1.set_ylabel('ToT code')
-        ax1.set_ylim(ymin=0.0, ymax=15.0)
-        ax1.set_title(title)
-        ax1.set_xlabel('Charge [PlsrDAC]')
-        if tdc_mean is not None:
-            ax2 = ax1.twinx()
-            ax2.errorbar(scan_parameters, tdc_mean * 1000.0/640.0, yerr=(tdc_error * 1000.0/640.0) if tdc_error is not None else None, fmt='o', color='g', label='TDC Counter')
-            ax2.set_ylabel('TDC [ns]')
-            ax2.set_ylim(ymin=0.0)
-            # combine legends
-            lines1, labels1 = ax1.get_legend_handles_labels()
-            lines2, labels2 = ax2.get_legend_handles_labels()
-            ax2.legend(lines1 + lines2, labels1 + labels2, loc=0)
-        else:
-            ax1.legend(loc=0)
+    fig = Figure()
+    FigureCanvas(fig)
+    ax1 = fig.add_subplot(111)
+    fig.patch.set_facecolor('white')
+    ax1.grid(True)
+    ax1.errorbar(scan_parameters, tot_mean, yerr=(tot_error) if tot_error is not None else None, fmt='o', color='b', label='FEI4 ToT')
+    ax1.set_ylabel('ToT code')
+    ax1.set_ylim(ymin=0.0, ymax=15.0)
+    ax1.set_title(title)
+    ax1.set_xlabel('Charge [PlsrDAC]')
+    if tdc_mean is not None:
+        ax2 = ax1.twinx()
+        ax2.errorbar(scan_parameters, tdc_mean * 1000.0/640.0, yerr=(tdc_error * 1000.0/640.0) if tdc_error is not None else None, fmt='o', color='g', label='TDC Counter')
+        ax2.set_ylabel('TDC [ns]')
+        ax2.set_ylim(ymin=0.0)
+        # combine legends
+        lines1, labels1 = ax1.get_legend_handles_labels()
+        lines2, labels2 = ax2.get_legend_handles_labels()
+        ax2.legend(lines1 + lines2, labels1 + labels2, loc=0)
+    else:
+        ax1.legend(loc=0)
 
-        if not filename:
-            fig.show()
-        elif isinstance(filename, PdfPages):
-            filename.savefig(fig)
-        else:
-            fig.savefig(filename)
+    if not filename:
+        fig.show()
+    elif isinstance(filename, PdfPages):
+        filename.savefig(fig)
+    else:
+        fig.savefig(filename)
 
 
 def hist_quantiles(hist, prob=(0.05, 0.95), return_indices=False, copy=True):
