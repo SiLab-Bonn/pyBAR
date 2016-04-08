@@ -112,7 +112,7 @@ def create_hitor_calibration(output_filename, plot_pixel_calibrations=False):
                 calibration_data_out.flush()
 #                 with PdfPages(output_filename + "_calibration.pdf") as output_pdf:
                 plot_scurves(calibration_data[:, :, :, 0], inner_loop_parameter_values, "ToT calibration", "ToT", 15, "Charge [PlsrDAC]", filename=analyze_raw_data.output_pdf)
-                plot_scurves(calibration_data[:, :, :, 1], inner_loop_parameter_values, "TDC calibration", "TDC [ns]", None, "Charge [PlsrDAC]", y_scale=1000.0 / 640.0, filename=analyze_raw_data.output_pdf)
+                plot_scurves(calibration_data[:, :, :, 1], inner_loop_parameter_values, "TDC calibration", "TDC [ns]", None, "Charge [PlsrDAC]", filename=analyze_raw_data.output_pdf)
                 tot_mean_all_pix = np.nanmean(calibration_data[:, :, :, 0], axis=(0, 1))
                 tot_error_all_pix = np.nanstd(calibration_data[:, :, :, 0], axis=(0, 1))
                 tdc_mean_all_pix = np.nanmean(calibration_data[:, :, :, 1], axis=(0, 1))
