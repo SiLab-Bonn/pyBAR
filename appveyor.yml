@@ -18,7 +18,8 @@ install:
   - set PATH=C:\Miniconda;C:\Miniconda\Scripts;%PATH%  # miniconda is already installed on appveyor: https://github.com/appveyor/ci/issues/359
   - conda install --yes bitarray ipython matplotlib mock nose numpy pandas pyserial pytables pyyaml pyzmq scipy sphinx pywin32 numba
   - pip install progressbar-latest pyvisa pyvisa-py
-  - pip install git+https://github.com/pyqtgraph/pyqtgraph.git@develop
+  # - pip install git+https://github.com/pyqtgraph/pyqtgraph.git@develop
+  - pip install git+https://github.com/SiLab-Bonn/pyqtgraph.git@develop # keeping this fork until release 0.9.11
   - pip install https://github.com/uvemas/ViTables/archive/v2.1.zip
   - pip install https://github.com/walac/pyusb/archive/master.zip
   - conda update conda --yes
