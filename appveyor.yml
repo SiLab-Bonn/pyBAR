@@ -33,5 +33,5 @@ install:
   - python.exe setup.py develop
 
 test_script:
-  - cd tests
+  - cd pybar/testing
   - nosetests test_analysis.py
