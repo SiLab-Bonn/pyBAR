@@ -23,7 +23,7 @@ before_install:
   - conda info -a
   - conda create --yes -n test-environment numpy cython pytables scipy matplotlib pandas pyserial bitarray nose pyzmq pyyaml numba
   - source activate test-environment
-  - pip install progressbar-latest pyvisa pyvisa-py mock sphinx pixel_clusterizer
+  - pip install progressbar-latest pyvisa pyvisa-py mock sphinx
   - pip install git+https://github.com/pyqtgraph/pyqtgraph.git@develop
   - pip install https://github.com/uvemas/ViTables/archive/v2.1.zip
   - wget -O cocotb-master.zip https://github.com/potentialventures/cocotb/archive/master.zip 
@@ -36,7 +36,7 @@ install:
   - pip install https://github.com/walac/pyusb/archive/master.zip
   - pip install pySiLibUSB
   - if [ "$TRAVIS_BRANCH" == "master" ]; then pip pip install basil_daq==2.4.2 pixel_clusterizer pyBAR_fei4_interpreter; fi
-  - if [ "$TRAVIS_BRANCH" == "development" ]; then pip install basil_daq==2.4.2 pixel_clusterizer pyBAR_fei4_interpreter; fi
+  - if [ "$TRAVIS_BRANCH" == "development" ]; then pip install basil_daq==2.4.2 git+https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter@1.2.0 pixel_clusterizer==2.5.0 pyBAR_fei4_interpreter; fi
   - sudo apt-get install -qq iverilog-daily
 #  Build iverilog from source
 #  - sudo apt-get install gperf
