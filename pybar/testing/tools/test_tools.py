@@ -50,7 +50,7 @@ def array_close(array_1, array_2, rtol=1.e-5, atol=1.e-8):
     '''Compares two numpy arrays elementwise for similarity with small differences.'''
     if not array_1.dtype.names:
         try:
-            return np.allclose(array_1, array_2, rtol=1.e-5, atol=1.e-8)  # Only works on non recarrays
+            return np.allclose(array_1, array_2, rtol=1.e-5, atol=1.e-8, equal_nan=True)  # Only works on non recarrays
         except ValueError:  # Raised if shape is incompatible
             return False
     results = []
@@ -101,11 +101,14 @@ def compare_h5_files(first_file, second_file, expected_nodes=None, detailed_comp
                     expected_data = first_h5_file.get_node(first_h5_file.root, node.name)[:]
                     data = second_h5_file.get_node(second_h5_file.root, node.name)[:]
                     if exact:
-                        if not np.array_equal(expected_data, data):  # compare the arrays for each element
+                        try:
+                            np.testing.assert_array_equal(expected_data, data)
+                        except AssertionError as e:
                             checks_passed = False
                             error_msg += node.name
                             if detailed_comparison:
                                 error_msg += get_array_differences(expected_data, data)
+                                error_msg += str(e)
                             error_msg += '\n'
                     else:
                         if not array_close(expected_data, data, rtol, atol):
