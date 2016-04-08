@@ -49,7 +49,7 @@ def plot_tdc_event(points, filename=None):
     return fig
 
 
-def plot_linear_relation(x, y, x_err=None, y_err=None, title=None, point_label=None, legend=None, plot_range=None, plot_range_y=None, x_label=None, y_label=None, y_2_label=None, marker_style='-o', log_x=False, log_y=False, size=None, filename=None):
+def plot_linear_relation(x, y, x_err=None, y_err=None, title=None, point_label=None, legend=None, plot_range=None, plot_range_y=None, x_label=None, y_label=None, y_2_label=None, log_x=False, log_y=False, size=None, filename=None):
     ''' Takes point data (x,y) with errors(x,y) and fits a straight line. The deviation to this line is also plotted, showing the offset.
 
      Parameters
@@ -370,7 +370,7 @@ def round_to_multiple(number, multiple):
 
 
 def plot_relative_bcid(hist, title=None, filename=None):
-    plot_1d_hist(hist=hist, title=('Relative BCID' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, log_y=True, plot_range=range(0, 16), x_axis_title='Relative BCID [25 ns]', y_axis_title='#', filename=filename, figure_name='Relative BCID')
+    plot_1d_hist(hist=hist, title=('Relative BCID' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, log_y=True, plot_range=range(0, 16), x_axis_title='Relative BCID [25 ns]', y_axis_title='#', filename=filename)
 
 
 def plot_relative_bcid_stop_mode(hist, filename=None):
@@ -378,36 +378,36 @@ def plot_relative_bcid_stop_mode(hist, filename=None):
         max_plot_range = np.where(hist[:] != 0)[0][-1] + 1
     except IndexError:
         max_plot_range = 1
-    plot_1d_hist(hist=hist, title='Latency window in stop mode', plot_range=range(0, max_plot_range), x_axis_title='Lantency window [BCID]', y_axis_title='#', filename=filename, figure_name='Latency window in stop mode')
+    plot_1d_hist(hist=hist, title='Latency window in stop mode', plot_range=range(0, max_plot_range), x_axis_title='Lantency window [BCID]', y_axis_title='#', filename=filename)
 
 
 def plot_tot(hist, title=None, filename=None):
-    plot_1d_hist(hist=hist, title=('Time-over-Threshold distribution' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, plot_range=range(0, 16), x_axis_title='ToT code [25 ns]', y_axis_title='#', color='b', filename=filename, figure_name='Hit Tot')
+    plot_1d_hist(hist=hist, title=('Time-over-Threshold distribution' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, plot_range=range(0, 16), x_axis_title='ToT code [25 ns]', y_axis_title='#', color='b', filename=filename)
 
 
 def plot_tdc(hist, title=None, filename=None):
     masked_hist, indices = hist_quantiles(hist, prob=(0., 0.99), return_indices=True)
-    plot_1d_hist(hist=masked_hist, title=('TDC Hit distribution' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, plot_range=range(*indices), x_axis_title='hit TDC', y_axis_title='#', color='b', filename=filename, figure_name='Hit TDC')
+    plot_1d_hist(hist=masked_hist, title=('TDC Hit distribution' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, plot_range=range(*indices), x_axis_title='hit TDC', y_axis_title='#', color='b', filename=filename)
 
 
 def plot_tdc_counter(hist, title=None, filename=None):
     masked_hist, indices = hist_quantiles(hist, prob=(0., 0.99), return_indices=True)
-    plot_1d_hist(hist=masked_hist, title=('TDC counter distribution' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, plot_range=range(*indices), x_axis_title='TDC value', y_axis_title='#', color='b', filename=filename, figure_name='Counter TDC')
+    plot_1d_hist(hist=masked_hist, title=('TDC counter distribution' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, plot_range=range(*indices), x_axis_title='TDC value', y_axis_title='#', color='b', filename=filename)
 
 
 def plot_event_errors(hist, title=None, filename=None):
-    plot_1d_hist(hist=hist, title=('Event status' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, plot_range=range(0, 11), x_ticks=('SR\noccured', 'No\ntrigger', 'LVL1ID\nnot const.', '#BCID\nwrong', 'unknown\nword', 'BCID\njump', 'trigger\nerror', 'truncated', 'TDC\nword', '> 1 TDC\nwords', 'TDC\noverflow'), color='g', y_axis_title='#', filename=filename, figure_name='Event Errors')
+    plot_1d_hist(hist=hist, title=('Event status' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, plot_range=range(0, 11), x_ticks=('SR\noccured', 'No\ntrigger', 'LVL1ID\nnot const.', '#BCID\nwrong', 'unknown\nword', 'BCID\njump', 'trigger\nerror', 'truncated', 'TDC\nword', '> 1 TDC\nwords', 'TDC\noverflow'), color='g', y_axis_title='#', filename=filename)
 
 
 def plot_trigger_errors(hist, filename=None):
-    plot_1d_hist(hist=hist, title='Trigger errors' + r' ($\Sigma$ = %d)' % (np.sum(hist)), plot_range=range(0, 8), x_ticks=('increase\nerror', 'more than\none trg.', 'TLU\naccept', 'TLU\ntime out', 'not\nused', 'not\nused', 'not\nused', 'not\nused'), color='g', y_axis_title='#', filename=filename, figure_name='Trigger Errors')
+    plot_1d_hist(hist=hist, title='Trigger errors' + r' ($\Sigma$ = %d)' % (np.sum(hist)), plot_range=range(0, 8), x_ticks=('increase\nerror', 'more than\none trg.', 'TLU\naccept', 'TLU\ntime out', 'not\nused', 'not\nused', 'not\nused', 'not\nused'), color='g', y_axis_title='#', filename=filename)
 
 
 def plot_service_records(hist, filename=None):
-    plot_1d_hist(hist=hist, title='Service records' + r' ($\Sigma$ = %d)' % (np.sum(hist)), x_axis_title='Service record code', color='g', y_axis_title='#', filename=filename, figure_name='Service Records')
+    plot_1d_hist(hist=hist, title='Service records' + r' ($\Sigma$ = %d)' % (np.sum(hist)), x_axis_title='Service record code', color='g', y_axis_title='#', filename=filename)
 
 
-def plot_cluster_tot(hist, median=False, max_occ=None, filename=None):
+def plot_cluster_tot(hist, filename=None):
     plot_1d_hist(hist=hist[:, 0], title='Cluster ToT' + r' ($\Sigma$ = %d)' % (np.sum(hist[:, 0])), plot_range=range(0, 32), x_axis_title='cluster ToT', y_axis_title='#', filename=filename)
 
 
@@ -415,7 +415,8 @@ def plot_cluster_size(hist, title=None, filename=None):
     plot_1d_hist(hist=hist, title=('Cluster size' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, log_y=True, plot_range=range(0, 32), x_axis_title='Cluster size', y_axis_title='#', filename=filename)
 
 
-def plot_scurves(occupancy_hist, scan_parameters, title='S-curves', ylabel='Occupancy', max_occ=None, scan_parameter_name=None, min_x=None, max_x=None, x_scale=1.0, y_scale=1.0, filename=None):  # tornado plot
+# tornado plot
+def plot_scurves(occupancy_hist, scan_parameters, title='S-curves', ylabel='Occupancy', max_occ=None, scan_parameter_name=None, min_x=None, max_x=None, filename=None):  # x_scale=1.0, y_scale=1.0
     occ_mask = np.all((occupancy_hist == 0), axis=2) | np.all(np.isnan(occupancy_hist), axis=2)
     occupancy_hist = np.ma.masked_invalid(occupancy_hist)
     if max_occ is None:
@@ -431,7 +432,7 @@ def plot_scurves(occupancy_hist, scan_parameters, title='S-curves', ylabel='Occu
     for index, scan_parameter in enumerate(scan_parameters):
         compressed_data = np.ma.masked_array(occupancy_hist[:, :, index], mask=occ_mask, copy=True).compressed()
 #         heatmap, xedges, yedges = np.histogram2d(compressed_data, [scan_parameter] * compressed_data.shape[0], range=[[-0.5, max_occ + 0.5], [scan_parameters[0], scan_parameters[-1]]], bins=(max_occ + 1, len(scan_parameters)))
-        heatmap, xedges, yedges = np.histogram2d(compressed_data, [scan_parameter] * compressed_data.shape[0], range=[[-0.5, max_occ + 0.5], [scan_parameters[0], scan_parameters[-1] + 1]], bins=(max_occ + 1, scan_parameters[-1] - scan_parameters[0] + 1))
+        heatmap, _, _ = np.histogram2d(compressed_data, [scan_parameter] * compressed_data.shape[0], range=[[-0.5, max_occ + 0.5], [scan_parameters[0], scan_parameters[-1] + 1]], bins=(max_occ + 1, scan_parameters[-1] - scan_parameters[0] + 1))
         if index == 0:
             hist = heatmap
         else:
@@ -444,10 +445,10 @@ def plot_scurves(occupancy_hist, scan_parameters, title='S-curves', ylabel='Occu
     FigureCanvas(fig)
     ax = fig.add_subplot(111)
     fig.patch.set_facecolor('white')
-    if len(scan_parameters) > 1:
-        scan_parameter_dist = (np.amax(scan_parameters) - np.amin(scan_parameters)) / (len(scan_parameters) - 1)
-    else:
-        scan_parameter_dist = 0
+#     if len(scan_parameters) > 1:
+#         scan_parameter_dist = (np.amax(scan_parameters) - np.amin(scan_parameters)) / (len(scan_parameters) - 1)
+#     else:
+#         scan_parameter_dist = 0
     # for axis scaling extent parameter needs to be modified
 #    extent = [yedges[0] * x_scale - scan_parameter_dist / 2 * x_scale, yedges[-1] * x_scale + scan_parameter_dist / 2 * x_scale, (xedges[-1]) * y_scale, xedges[0] + 0.5 - 0.5 * y_scale]  # x, y
     extent = None
@@ -523,7 +524,7 @@ def plot_scatter_time(x, y, yerr=None, title=None, legend=None, plot_range=None,
         fig.savefig(filename)
 
 
-def plot_cluster_tot_size(hist, median=False, z_max=None, filename=None):
+def plot_cluster_tot_size(hist, z_max=None, filename=None):
     hist = hist[0:50, 0:20]  # limit size
     if z_max is None:
         z_max = math.ceil(np.ma.max(hist))
@@ -556,7 +557,7 @@ def plot_cluster_tot_size(hist, median=False, z_max=None, filename=None):
         fig.savefig(filename)
 
 
-def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=None, x_ticks=None, color='r', plot_range=None, log_y=False, filename=None, figure_name=None):
+def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=None, x_ticks=None, color='r', plot_range=None, log_y=False, filename=None):
     logging.info('Plot 1d histogram%s', (': ' + title.replace('\n', ' ')) if title is not None else '')
     fig = Figure()
     FigureCanvas(fig)
@@ -623,9 +624,9 @@ def plot_three_way(hist, title, filename=None, x_axis_title=None, minimum=None, 
     ax1 = fig.add_subplot(311)
     create_2d_pixel_hist(fig, ax1, hist, title=title, x_axis_title="column", y_axis_title="row", z_min=minimum if minimum else 0, z_max=maximum, cmap=cmap)
     ax2 = fig.add_subplot(312)
-    create_1d_hist(fig, ax2, hist, bins=bins, x_axis_title=x_axis_title, y_axis_title="#", x_min=minimum, x_max=maximum)
+    create_1d_hist(ax2, hist, bins=bins, x_axis_title=x_axis_title, y_axis_title="#", x_min=minimum, x_max=maximum)
     ax3 = fig.add_subplot(313)
-    create_pixel_scatter_plot(fig, ax3, hist, x_axis_title="channel=row + column*336", y_axis_title=x_axis_title, y_min=minimum, y_max=maximum)
+    create_pixel_scatter_plot(ax3, hist, x_axis_title="channel=row + column*336", y_axis_title=x_axis_title, y_min=minimum, y_max=maximum)
     fig.tight_layout()
     if not filename:
         fig.show()
@@ -659,7 +660,7 @@ def create_2d_pixel_hist(fig, ax, hist2d, title=None, x_axis_title=None, y_axis_
     fig.colorbar(im, boundaries=bounds, cmap=cmap, norm=norm, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True), cax=cax)
 
 
-def create_1d_hist(fig, ax, hist, title=None, x_axis_title=None, y_axis_title=None, bins=101, x_min=None, x_max=None):
+def create_1d_hist(ax, hist, title=None, x_axis_title=None, y_axis_title=None, bins=101, x_min=None, x_max=None):
     if x_min is None:
         x_min = 0.0
     if x_max is None:
@@ -703,14 +704,15 @@ def create_1d_hist(fig, ax, hist, title=None, x_axis_title=None, y_axis_title=No
 #     amplitude = np.amax(h_1d)
 
     # defining gauss fit function
-    def gauss(x, *p):
-        amplitude, mu, sigma = p
-        return amplitude * np.exp(- (x - mu)**2.0 / (2.0 * sigma**2.0))
+#     def gauss(x, *p):
+#         amplitude, mu, sigma = p
+#         return amplitude * np.exp(- (x - mu)**2.0 / (2.0 * sigma**2.0))
 #         mu, sigma = p
 #         return 1.0 / (sigma * np.sqrt(2.0 * np.pi)) * np.exp(- (x - mu)**2.0 / (2.0 * sigma**2.0))
-
-    def chi_square(observed_values, expected_values):
-        return (chisquare(observed_values, f_exp=expected_values))[0]
+# 
+#     def chi_square(observed_values, expected_values):
+#         return (chisquare(observed_values, f_exp=expected_values))[0]
+#         # manual calculation
 #         chisquare = 0
 #         for observed, expected in itertools.izip(list(observed_values), list(expected_values)):
 #             chisquare += (float(observed) - float(expected))**2.0 / float(expected)
@@ -747,7 +749,7 @@ def create_1d_hist(fig, ax, hist, title=None, x_axis_title=None, y_axis_title=No
     ax.text(0.05, 0.9, textleft, transform=ax.transAxes, fontsize=8, verticalalignment='top', bbox=props)
 
 
-def create_pixel_scatter_plot(fig, ax, hist, title=None, x_axis_title=None, y_axis_title=None, y_min=None, y_max=None):
+def create_pixel_scatter_plot(ax, hist, title=None, x_axis_title=None, y_axis_title=None, y_min=None, y_max=None):
     scatter_y_mean = np.ma.mean(hist, axis=0)
     scatter_y = hist.flatten('F')
     ax.scatter(range(80 * 336), scatter_y, marker='o', s=0.8, rasterized=True)

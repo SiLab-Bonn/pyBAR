@@ -27,7 +27,7 @@ plugin_class = 'pyBarPlugin'
 translate = QtGui.QApplication.translate
 
 
-def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=None, x_ticks=None, color='r', plot_range=None, log_y=False, filename=None, figure_name=None):
+def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=None, x_ticks=None, color='r', plot_range=None, log_y=False, filename=None):
     plt.clf()
     if plot_range is None:
         plot_range = range(0, len(hist))
