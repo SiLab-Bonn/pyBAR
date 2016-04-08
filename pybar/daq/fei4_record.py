@@ -1,4 +1,5 @@
 from collections import OrderedDict
+
 from basil.utils.BitLogic import BitLogic
 
 from pybar.daq.readout_utils import is_data_header, is_address_record, is_value_record, is_service_record, is_data_record

@@ -1,5 +1,6 @@
 """This class provides often needed analysis functions, for analysis that is done with python.
 """
+from __future__ import division
 
 import logging
 import re

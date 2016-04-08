@@ -1,21 +1,23 @@
 ''' Script to convert the raw data and to plot all histograms'''
 from __future__ import division
 
-import tables as tb
-from tables import dtype_from_descr, Col
-import numpy as np
 import logging
-import progressbar
 import warnings
 import os
 import multiprocessing as mp
 from functools import partial
+
+import tables as tb
+from tables import dtype_from_descr, Col
+import numpy as np
 from scipy.optimize import curve_fit, OptimizeWarning
 from scipy.special import erf
 from matplotlib.backends.backend_pdf import PdfPages
+
+import progressbar
+
 from pixel_clusterizer.clusterizer import HitClusterizer
 
-# pyBAR related imports
 from pybar_fei4_interpreter.data_interpreter import PyDataInterpreter
 from pybar_fei4_interpreter.data_histograming import PyDataHistograming
 from pybar_fei4_interpreter import data_struct

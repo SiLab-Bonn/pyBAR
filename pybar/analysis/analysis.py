@@ -1,5 +1,6 @@
 """This module makes a lot of analysis functions available.
 """
+from __future__ import division
 
 import logging
 import os
