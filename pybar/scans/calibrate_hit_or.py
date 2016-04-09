@@ -204,6 +204,7 @@ class HitOrCalibration(Fei4RunBase):
             self.register_utils.send_commands(commands)
 
             self.dut['TDC']['ENABLE'] = True
+            self.dut['TDC']['EN_NO_WRITE_TRIG_ERR'] = False  # Do not trigger TDC words
             for scan_parameter_value in scan_parameter_values:
                 if self.stop_run.is_set():
                     break
