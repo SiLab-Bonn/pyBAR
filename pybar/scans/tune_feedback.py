@@ -32,6 +32,7 @@ class FeedbackTuning(Fei4RunBase):
         "pulser_dac_correction": False,  # PlsrDAC correction for each double column
         "fail_on_warning": False,  # the scan throws a RuntimeWarning exception if the tuning fails
         "mask_steps": 3,  # mask steps, be carefull PlsrDAC injects different charge for different mask steps
+        "same_mask_for_all_dc": True  # Increases scan speed, should be deactivated for very noisy FE
     }
 
     def configure(self):
@@ -85,7 +86,20 @@ class FeedbackTuning(Fei4RunBase):
             scan_parameter_value = self.register.get_global_register_value("PrmpVbpf")
 
             with self.readout(PrmpVbpf=scan_parameter_value, reset_sram_fifo=True, fill_buffer=True, clear_buffer=True, callback=self.handle_data):
-                scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections_feedback, mask_steps=self.mask_steps, enable_mask_steps=enable_mask_steps, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=self.enable_shift_masks, disable_shift_masks=self.disable_shift_masks, restore_shift_masks=True, mask=None, double_column_correction=self.pulser_dac_correction)
+                scan_loop(self,
+                          cal_lvl1_command,
+                          repeat_command=self.n_injections_feedback,
+                          mask_steps=self.mask_steps,
+                          enable_mask_steps=enable_mask_steps,
+                          enable_double_columns=None,
+                          same_mask_for_all_dc=self.same_mask_for_all_dc,
+                          eol_function=None,
+                          digital_injection=False,
+                          enable_shift_masks=self.enable_shift_masks,
+                          disable_shift_masks=self.disable_shift_masks,
+                          restore_shift_masks=True,
+                          mask=None,
+                          double_column_correction=self.pulser_dac_correction)
 
             tots = convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=is_data_record, converter_func=get_tot_array_from_data_record_array)
             mean_tot = np.mean(tots)

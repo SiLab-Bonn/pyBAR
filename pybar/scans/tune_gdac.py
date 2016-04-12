@@ -31,7 +31,8 @@ class GdacTuning(Fei4RunBase):
         "disable_shift_masks": [],  # disable masks shifted during scan
         "pulser_dac_correction": False,  # PlsrDAC correction for each double column
         "fail_on_warning": False,  # the scan throws a RuntimeWarning exception if the tuning fails
-        "mask_steps": 3  # mask steps, be carefull PlsrDAC injects different charge for different mask steps
+        "mask_steps": 3,  # mask steps, be carefull PlsrDAC injects different charge for different mask steps
+        "same_mask_for_all_dc": True  # Increases scan speed, should be deactivated for very noisy FE
     }
 
     def configure(self):
@@ -105,7 +106,20 @@ class GdacTuning(Fei4RunBase):
                 logging.info('GDAC setting: %d, bit %d = 0', scan_parameter_value, gdac_bit)
 
             with self.readout(GDAC=scan_parameter_value, reset_sram_fifo=True, fill_buffer=True, clear_buffer=True, callback=self.handle_data):
-                scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections_gdac, mask_steps=self.mask_steps, enable_mask_steps=self.enable_mask_steps_gdac, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=self.enable_shift_masks, disable_shift_masks=self.disable_shift_masks, restore_shift_masks=True, mask=None, double_column_correction=self.pulser_dac_correction)
+                scan_loop(self,
+                          cal_lvl1_command,
+                          repeat_command=self.n_injections_gdac,
+                          mask_steps=self.mask_steps,
+                          enable_mask_steps=self.enable_mask_steps_gdac,
+                          enable_double_columns=None,
+                          same_mask_for_all_dc=self.same_mask_for_all_dc,
+                          eol_function=None,
+                          digital_injection=False,
+                          enable_shift_masks=self.enable_shift_masks,
+                          disable_shift_masks=self.disable_shift_masks,
+                          restore_shift_masks=True,
+                          mask=None,
+                          double_column_correction=self.pulser_dac_correction)
 
             occupancy_array, _, _ = np.histogram2d(*convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array), bins=(80, 336), range=[[1, 80], [1, 336]])
             self.occ_array_sel_pixel = np.ma.array(occupancy_array, mask=np.logical_not(np.ma.make_mask(select_mask_array)))  # take only selected pixel into account by creating a mask

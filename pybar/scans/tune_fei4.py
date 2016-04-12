@@ -39,7 +39,7 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
         # GDAC
         "gdac_tune_bits": range(7, -1, -1),  # GDAC bits to change during tuning
         "n_injections_gdac": 50,  # number of injections per GDAC bit setting
-        "max_delta_threshold": 2,  # minimum difference to the target_threshold to abort the tuning
+        "max_delta_threshold": 9,  # minimum difference to the target_threshold to abort the tuning
         "enable_mask_steps_gdac": [0],  # mask steps to do per GDAC setting, 1 step is sufficient and safes time
         # Feedback
         "feedback_tune_bits": range(7, -1, -1),
@@ -62,6 +62,7 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
         "plots_filename": None,  # file name to store the plot to, if None show on screen
         # other
         "mask_steps": 3,  # mask steps, be carefull PlsrDAC injects different charge for different mask steps
+        "same_mask_for_all_dc": True  # Increases scan speed, should be deactivated for very noisy FE
     }
 
     def configure(self):
