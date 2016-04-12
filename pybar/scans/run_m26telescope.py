@@ -207,18 +207,22 @@ class M26TelescopeScan(Fei4RunBase):
         self.dut['TLU']['TRIGGER_COUNTER'] = 0
         self.dut['TLU']['TRIGGER_VETO_SELECT'] = 0
         self.dut['TLU']['EN_TLU_VETO'] = 0
-        if self.max_triggers:
-            self.dut['TLU']['MAX_TRIGGERS'] = self.max_triggers
-        else:
-            self.dut['TLU']['MAX_TRIGGERS'] = 0  # infinity triggers
-        self.dut['CMD']['EN_EXT_TRIGGER'] = True
+
         self.dut['M26_RX1'].set_en(True)
         self.dut['M26_RX2'].set_en(True)
         self.dut['M26_RX3'].set_en(True)
         self.dut['M26_RX4'].set_en(True)
         self.dut['M26_RX5'].set_en(True)
         self.dut['M26_RX6'].set_en(True)
-        self.dut['TLU']['TRIGGER_ENABLE'] = True
+
+        if self.max_triggers:
+            self.dut['TLU']['MAX_TRIGGERS'] = self.max_triggers
+        else:
+            self.dut['TLU']['MAX_TRIGGERS'] = 0  # infinity triggers
+        # use this with FE-I4 connected
+        self.dut['CMD']['EN_EXT_TRIGGER'] = True
+        # use this if no FE-I4 is connected
+#         self.dut['TLU']['TRIGGER_ENABLE'] = True
     
 
         def timeout():
