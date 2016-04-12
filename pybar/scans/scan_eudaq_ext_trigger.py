@@ -15,7 +15,7 @@ from PyEUDAQWrapper import PyProducer
 
 
 class EudaqExtTriggerScan(ExtTriggerScan):
-    '''EUDAQ producer
+    '''External trigger scan that connects to EUDAQ producer (EUDAQ 1.4 and higher).
     '''
 #     _default_run_conf = ExtTriggerScan._default_run_conf.copy()
 #     _default_run_conf.update({
