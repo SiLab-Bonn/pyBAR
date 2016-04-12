@@ -14,8 +14,8 @@ from pybar.run_manager import RunManager
 from basil.utils.BitLogic import BitLogic
 
 
-class RunM26Telescope(Fei4RunBase):
-    '''External trigger scan with FE-I4
+class M26TelescopeScan(Fei4RunBase):
+    '''External trigger scan with FE-I4 and up to 6 Mimosa26 telescope planes.
 
     For use with external scintillator (user RX0), TLU (use RJ45), FE-I4 HitOR (USBpix self-trigger).
 
@@ -246,4 +246,4 @@ class RunM26Telescope(Fei4RunBase):
 
 
 if __name__ == "__main__":
-    RunManager('../configuration.yaml').run_run(RunM26Telescope)
+    RunManager('../configuration.yaml').run_run(M26TelescopeScan)
