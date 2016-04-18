@@ -41,7 +41,7 @@ def get_charge_calibration(calibation_file, max_tdc):
     return get_charge(max_tdc, tdc_calibration_values, tdc_calibration)
 
 
-def get_time_walk_hist(hit_file):
+def get_time_walk_hist(hit_file, charge_calibration, event_status_select_mask, event_status_condition, hit_selection_conditions, max_timesamp, max_tdc, max_charge):
     with tb.open_file(hit_file, 'r') as in_file_h5:
         cluster_hit_table = in_file_h5.root.ClusterHits
 
@@ -71,7 +71,7 @@ def get_time_walk_hist(hit_file):
     return timewalk, xedges, yedges
 
 
-def plot_timewalk(hist, xedges, yedges, title, max_time_walk=50):
+def plot_timewalk(hist, xedges, yedges, title, max_charge, max_time_walk=50):
     yedges *= 1.5625  # One TDC time stamp are 1/640 MHZ = 1.5625 ns
     timewalks = (yedges[0:-1] + yedges[1:]) / 2.
     charges = (xedges[0:-1] + xedges[1:]) / 2.
@@ -152,6 +152,12 @@ if __name__ == '__main__':
     max_charge = plsr_dac_to_charge(np.amax(charge_calibration))  # Correspond to max TDC, just needed for plotting
 
     # Create and plot time walk histogram
-    timewalk_hist, xedges, yedges = get_time_walk_hist(hit_file)
-    plot_timewalk(timewalk_hist, xedges, yedges, title='Time walk')
-
+    timewalk_hist, xedges, yedges = get_time_walk_hist(hit_file,
+                                                       charge_calibration,
+                                                       event_status_select_mask,
+                                                       event_status_condition,
+                                                       hit_selection_conditions,
+                                                       max_timesamp,
+                                                       max_tdc,
+                                                       max_charge)
+    plot_timewalk(timewalk_hist, xedges, yedges, title='Time walk', max_charge=max_charge)
