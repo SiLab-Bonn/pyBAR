@@ -415,15 +415,14 @@ def plot_cluster_size(hist, title=None, filename=None):
     plot_1d_hist(hist=hist, title=('Cluster size' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, log_y=True, plot_range=range(0, 32), x_axis_title='Cluster size', y_axis_title='#', filename=filename)
 
 
-# tornado plot
-def plot_scurves(occupancy_hist, scan_parameters, title='S-curves', ylabel='Occupancy', max_occ=None, scan_parameter_name=None, min_x=None, max_x=None, filename=None):  # x_scale=1.0, y_scale=1.0
-    occ_mask = np.all((occupancy_hist == 0), axis=2) | np.all(np.isnan(occupancy_hist), axis=2)
+def plot_scurves(occupancy_hist, scan_parameters, title='S-curves', ylabel='Occupancy', max_occ=None, scan_parameter_name=None, min_x=None, max_x=None, x_scale=1.0, y_scale=1.0, filename=None):  # tornado plot
+    occ_mask = np.all(occupancy_hist == 0, axis=2)
     occupancy_hist = np.ma.masked_invalid(occupancy_hist)
     if max_occ is None:
-        if np.allclose(occupancy_hist, 0.0) or np.all(occ_mask == True):
+        if np.allclose(occupancy_hist, 0.0):
             max_occ = 1.0
         else:
-            max_occ = math.ceil(2 * np.ma.median(np.amax(occupancy_hist[~occ_mask], axis=1)))
+            max_occ = math.ceil(2 * np.ma.median(np.amax(occupancy_hist[~np.all(occupancy_hist == 0, axis=2)], axis=1)))
     if len(occupancy_hist.shape) < 3:
         raise ValueError('Found array with shape %s' % str(occupancy_hist.shape))
 
@@ -431,8 +430,7 @@ def plot_scurves(occupancy_hist, scan_parameters, title='S-curves', ylabel='Occu
 
     for index, scan_parameter in enumerate(scan_parameters):
         compressed_data = np.ma.masked_array(occupancy_hist[:, :, index], mask=occ_mask, copy=True).compressed()
-#         heatmap, xedges, yedges = np.histogram2d(compressed_data, [scan_parameter] * compressed_data.shape[0], range=[[-0.5, max_occ + 0.5], [scan_parameters[0], scan_parameters[-1]]], bins=(max_occ + 1, len(scan_parameters)))
-        heatmap, _, _ = np.histogram2d(compressed_data, [scan_parameter] * compressed_data.shape[0], range=[[-0.5, max_occ + 0.5], [scan_parameters[0], scan_parameters[-1] + 1]], bins=(max_occ + 1, scan_parameters[-1] - scan_parameters[0] + 1))
+        heatmap, xedges, yedges = np.histogram2d(compressed_data, [scan_parameter] * compressed_data.shape[0], range=[[-0.5, max_occ + 0.5], [scan_parameters[0], scan_parameters[-1]]], bins=(max_occ + 1, len(scan_parameters)))
         if index == 0:
             hist = heatmap
         else:
@@ -445,13 +443,13 @@ def plot_scurves(occupancy_hist, scan_parameters, title='S-curves', ylabel='Occu
     FigureCanvas(fig)
     ax = fig.add_subplot(111)
     fig.patch.set_facecolor('white')
-#     if len(scan_parameters) > 1:
-#         scan_parameter_dist = (np.amax(scan_parameters) - np.amin(scan_parameters)) / (len(scan_parameters) - 1)
-#     else:
-#         scan_parameter_dist = 0
+    if len(scan_parameters) > 1:
+        scan_parameter_dist = (np.amax(scan_parameters) - np.amin(scan_parameters)) / (len(scan_parameters) - 1)
+    else:
+        scan_parameter_dist = 0
     # for axis scaling extent parameter needs to be modified
-#    extent = [yedges[0] * x_scale - scan_parameter_dist / 2 * x_scale, yedges[-1] * x_scale + scan_parameter_dist / 2 * x_scale, (xedges[-1]) * y_scale, xedges[0] + 0.5 - 0.5 * y_scale]  # x, y
-    extent = None
+    extent = [yedges[0] * x_scale - scan_parameter_dist / 2 * x_scale, yedges[-1] * x_scale + scan_parameter_dist / 2 * x_scale, (xedges[-1]) * y_scale, xedges[0] + 0.5 - 0.5 * y_scale]  # x, y
+#     extent = None
     cmap = cm.get_cmap('cool')
     if np.allclose(hist, 0.0) or hist.max() <= 1:
         z_max = 1.0
