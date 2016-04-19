@@ -780,19 +780,27 @@ def plot_tot_tdc_calibration(scan_parameters, filename, tot_mean, tot_error=None
     ax1.grid(True)
     ax1.errorbar(scan_parameters, (tot_mean + 1) * 25.0, yerr=(tot_error * 25.0) if tot_error is not None else None, fmt='o', color='b', label='ToT')
     ax1.set_ylabel('ToT [ns]')
-    ax1.set_ylim(ymin=0.0)
     ax1.set_title(title)
     ax1.set_xlabel('Charge [PlsrDAC]')
     if tdc_mean is not None:
         ax1.errorbar(scan_parameters, tdc_mean * 1000.0/640.0, yerr=(tdc_error * 1000.0/640.0) if tdc_error is not None else None, fmt='o', color='g', label='TDC')
         ax1.set_ylabel('ToT / TDC [ns]')
     ax1.legend(loc=0)
+    ax1.set_ylim(ymin=0.0)
     # second axis with ToT code
     ax2 = ax1.twinx()
     ax2.set_ylabel('ToT code')
     ax2.set_ylim(ax1.get_ylim())
-    ax2.set_yticks(range(25, 25 * 17, 25))
-    ax2.set_yticklabels([str(int((item / 25.0) - 1)) for item in ax2.get_yticks()])
+    from matplotlib.ticker import  IndexLocator, FuncFormatter, NullFormatter, MultipleLocator, FixedLocator
+
+    def format_fn(tick_val, tick_pos):
+        if tick_val <= 25 * 16:
+            return str(int((tick_val / 25.0) - 1))
+        else:
+            return ''
+
+    ax2.yaxis.set_major_formatter(FuncFormatter(format_fn))
+    ax2.yaxis.set_major_locator(FixedLocator(locs=range(25, 17 * 25, 25) if ax1.get_ylim()[1] < 1000 else [25, 16 * 25]))
 
     if not filename:
         fig.show()
