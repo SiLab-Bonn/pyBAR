@@ -25,6 +25,11 @@ module mmc3_m26_eth(
     input wire [5:0] M26_CLK_P, M26_CLK_N, M26_MKD_P, M26_MKD_N,
     input wire [5:0] M26_DATA1_P, M26_DATA1_N, M26_DATA0_P, M26_DATA0_N,
     
+    output wire M26_TCK_P,M26_TCK_N,
+    output wire M26_TMS_P,M26_TMS_N,
+    output wire M26_TDI_P,M26_TDI_N,
+    input wire M26_TDO_P,M26_TDO_N,
+    
     
     output wire RJ45_BUSY_LEMO_TX1, RJ45_CLK_LEMO_TX0, 
     input wire RJ45_TRIGGER, RJ45_RESET,
@@ -324,9 +329,6 @@ rbcp_to_bus irbcp_to_bus(
 
 // -------  MODULE ADREESSES  ------- //
 
-localparam GPIO_BASEADDR = 32'h9000;
-localparam GPIO_HIGHADDR = 32'h901f;
-
 localparam CMD_BASEADDR = 32'h0000;
 localparam CMD_HIGHADDR = 32'h8000-1;
 
@@ -342,29 +344,68 @@ localparam TDC_HIGHADDR = 16'h8800-1;
 localparam M26_RX_BASEADDR = 32'ha000;
 localparam M26_RX_HIGHADDR = 32'ha00f-1;
 
+localparam GPIO_BASEADDR = 32'hb000;
+localparam GPIO_HIGHADDR = 32'hb01f;
 
     
 // -------  USER MODULES  ------- //
+///////////////////// M26 JTAG
+wire M26_TCK, M26_TMS,M26_TDI,M26_TDO,M26_TMS_INV,M26_TDI_INV, M26_TDO_INV;
+wire M26_RESETB;
+OBUFDS #(
+  .IOSTANDARD("LVDS_25"),
+  .SLEW("SLOW") 
+) OBUFDS_inst_m26_tck (
+  .O(M26_TCK_P),
+  .OB(M26_TCK_N), 
+  .I(M26_TCK)    
+);
+OBUFDS #(
+  .IOSTANDARD("LVDS_25"),
+  .SLEW("SLOW") 
+) OBUFDS_inst_m26_tms (
+  .O(M26_TMS_P),
+  .OB(M26_TMS_N), 
+  .I(M26_TMS)    
+);
+OBUFDS #(
+  .IOSTANDARD("LVDS_25"),
+  .SLEW("SLOW") 
+) OBUFDS_inst_m26_tdi (
+  .O(M26_TDI_P),
+  .OB(M26_TDI_N), 
+  .I(M26_TDI)    
+);
+IBUFDS #(
+    .DIFF_TERM("TRUE"), 
+    .IBUF_LOW_PWR("FALSE"), 
+    .IOSTANDARD("LVDS_25") 
+) IBUFDS_inst_m26_tdo (
+    .O(M26_TDO), 
+    .I(M26_TDO_P),  
+    .IB(M26_TDO_N)
+);
+assign M26_TMS= ~M26_TMS_INV;
+assign M26_TDI= ~M26_TDI_INV;
+assign M26_TDO_INV = ~M26_TDO;
 
-wire [7:0] GPIO_IO;
 gpio #(
     .BASEADDR(GPIO_BASEADDR),
     .HIGHADDR(GPIO_HIGHADDR),
     .ABUSWIDTH(32),
     .IO_WIDTH(8),
-    .IO_DIRECTION(8'hff)
-) i_gpio_rx (
+    .IO_DIRECTION(8'hef)
+) i_gpio_jtag (
     .BUS_CLK(BUS_CLK),
     .BUS_RST(BUS_RST),
     .BUS_ADD(BUS_ADD),
     .BUS_DATA(BUS_DATA),
     .BUS_RD(BUS_RD),
     .BUS_WR(BUS_WR),
-    .IO(GPIO_IO)
+    .IO({LED[5:3],M26_TDO,M26_TDI_INV,M26_TMS_INV,M26_TCK,M26_RESETB})
 );
 
 wire CMD_DATA, CMD_CLK;
-
 
 wire TRIGGER_ENABLE; // from CMD FSM
 wire CMD_READY; // from CMD FSM
@@ -747,7 +788,7 @@ clock_divider #(
     .CLOCK(CLK_1HZ)
 );
 
-assign LED[7:3] = 6'hff;
+assign LED[7:6] = 2'hf;
 assign LED[0] = RX_READY;
 assign LED[1] = ~(|LOST_ERROR & CLK_1HZ);
 assign LED[2] = ~(|RX_8B10B_DECODER_ERR & CLK_1HZ);
