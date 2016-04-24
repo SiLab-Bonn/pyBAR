@@ -415,41 +415,41 @@ def plot_cluster_size(hist, title=None, filename=None):
     plot_1d_hist(hist=hist, title=('Cluster size' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, log_y=True, plot_range=range(0, 32), x_axis_title='Cluster size', y_axis_title='#', filename=filename)
 
 
-def plot_scurves(occupancy_hist, scan_parameters, title='S-curves', ylabel='Occupancy', max_occ=None, scan_parameter_name=None, min_x=None, max_x=None, x_scale=1.0, y_scale=1.0, filename=None):  # tornado plot
-    occ_mask = np.all(occupancy_hist == 0, axis=2)
+# tornado plot
+def plot_scurves(occupancy_hist, scan_parameters, title='S-curves', ylabel='Occupancy', max_occ=None, scan_parameter_name=None, min_x=None, max_x=None, extend_bin_width=True, filename=None):
+    occ_mask = np.all((occupancy_hist == 0), axis=2) | np.all(np.isnan(occupancy_hist), axis=2)
     occupancy_hist = np.ma.masked_invalid(occupancy_hist)
     if max_occ is None:
-        if np.allclose(occupancy_hist, 0.0):
-            max_occ = 1.0
+        if np.allclose(occupancy_hist, 0.0) or np.all(occ_mask == True):
+            max_occ = 0.0
         else:
-            max_occ = math.ceil(2 * np.ma.median(np.amax(occupancy_hist[~np.all(occupancy_hist == 0, axis=2)], axis=1)))
+            max_occ = math.ceil(2 * np.ma.median(np.amax(occupancy_hist[~occ_mask], axis=1)))
     if len(occupancy_hist.shape) < 3:
         raise ValueError('Found array with shape %s' % str(occupancy_hist.shape))
 
     n_pixel = occupancy_hist.shape[0] * occupancy_hist.shape[1]
 
+    if extend_bin_width and len(scan_parameters) >= 2:
+#         x_bins = np.r_[-0.5, (scan_parameters[:-1] + scan_parameters[1:].astype(np.float)) / 2, max(scan_parameters) + 0.5]
+        dist = (scan_parameters[1:] - scan_parameters[:-1].astype(np.float))
+        min_dist = np.minimum(np.r_[dist[0], dist[:]], np.r_[dist[:], dist[-1]]) / 2
+        x_bins = np.unique(np.dstack([scan_parameters - min_dist, scan_parameters + min_dist]).flatten())
+    else:
+        x_bins = np.arange(-0.5, max(scan_parameters) + 1.5)
+    y_bins = np.arange(-0.5, max_occ + 1.5)
+
     for index, scan_parameter in enumerate(scan_parameters):
         compressed_data = np.ma.masked_array(occupancy_hist[:, :, index], mask=occ_mask, copy=True).compressed()
-        heatmap, xedges, yedges = np.histogram2d(compressed_data, [scan_parameter] * compressed_data.shape[0], range=[[-0.5, max_occ + 0.5], [scan_parameters[0], scan_parameters[-1]]], bins=(max_occ + 1, len(scan_parameters)))
+        tmp_hist, yedges, xedges = np.histogram2d(compressed_data, [scan_parameter] * compressed_data.shape[0], bins=(y_bins, x_bins))
         if index == 0:
-            hist = heatmap
+            hist = tmp_hist
         else:
-            hist += heatmap
-    if np.allclose(hist, 0.0):
-        z_max = 1.0
-    else:
-        z_max = hist.max()
+            hist += tmp_hist
+
     fig = Figure()
     FigureCanvas(fig)
     ax = fig.add_subplot(111)
     fig.patch.set_facecolor('white')
-    if len(scan_parameters) > 1:
-        scan_parameter_dist = (np.amax(scan_parameters) - np.amin(scan_parameters)) / (len(scan_parameters) - 1)
-    else:
-        scan_parameter_dist = 0
-    # for axis scaling extent parameter needs to be modified
-    extent = [yedges[0] * x_scale - scan_parameter_dist / 2 * x_scale, yedges[-1] * x_scale + scan_parameter_dist / 2 * x_scale, (xedges[-1]) * y_scale, xedges[0] + 0.5 - 0.5 * y_scale]  # x, y
-#     extent = None
     cmap = cm.get_cmap('cool')
     if np.allclose(hist, 0.0) or hist.max() <= 1:
         z_max = 1.0
@@ -462,10 +462,11 @@ def plot_scurves(occupancy_hist, scan_parameters, title='S-curves', ylabel='Occu
     else:
         bounds = np.linspace(start=1.0, stop=z_max, num=255, endpoint=True)
         norm = colors.LogNorm()
-    im = ax.imshow(np.ma.masked_where(hist == 0, hist), interpolation='none', aspect="auto", cmap=cmap, extent=extent, norm=norm)
-    ax.invert_yaxis()
+    X, Y = np.meshgrid(xedges, yedges)
+    im = ax.pcolormesh(X, Y, np.ma.masked_where(hist == 0, hist), cmap=cmap, norm=norm)
+    ax.axis([xedges[0], xedges[-1], yedges[0], yedges[-1]])
     if min_x is not None or max_x is not None:
-        ax.set_xlim((min_x if min_x is not None else np.amin(scan_parameters), max_x if max_x is not None else np.amax(scan_parameters)))
+        ax.set_xlim((min_x if min_x is not None else np.min(scan_parameters), max_x if max_x is not None else np.max(scan_parameters)))
     if z_max <= 10.0:
         cb = fig.colorbar(im, ticks=np.linspace(start=0.0, stop=z_max, num=min(11, math.ceil(z_max) + 1), endpoint=True), fraction=0.04, pad=0.05)
     else:
