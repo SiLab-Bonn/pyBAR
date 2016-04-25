@@ -428,12 +428,16 @@ def plot_scurves(occupancy_hist, scan_parameters, title='S-curves', ylabel='Occu
         raise ValueError('Found array with shape %s' % str(occupancy_hist.shape))
 
     n_pixel = occupancy_hist.shape[0] * occupancy_hist.shape[1]
-
+    scan_parameters = np.array(scan_parameters)
     if extend_bin_width and len(scan_parameters) >= 2:
-#         x_bins = np.r_[-0.5, (scan_parameters[:-1] + scan_parameters[1:].astype(np.float)) / 2, max(scan_parameters) + 0.5]
+        # adding mirror scan parameter for plotting range -0.5 ... 
+        scan_parameters = np.r_[-scan_parameters[0] - 1.0, scan_parameters]
         dist = (scan_parameters[1:] - scan_parameters[:-1].astype(np.float))
         min_dist = np.minimum(np.r_[dist[0], dist[:]], np.r_[dist[:], dist[-1]]) / 2
-        x_bins = np.unique(np.dstack([scan_parameters - min_dist, scan_parameters + min_dist]).flatten())
+        min_dist = np.minimum(np.r_[(scan_parameters[0] + 0.5) * 2, dist[:]], np.r_[dist[:], dist[-1]]) / 2
+        # removing mirror scan parameter
+        x_bins = np.unique(np.dstack([scan_parameters - min_dist, scan_parameters + min_dist]).flatten())[1:]
+        scan_parameters = scan_parameters[1:]
     else:
         x_bins = np.arange(-0.5, max(scan_parameters) + 1.5)
     y_bins = np.arange(-0.5, max_occ + 1.5)
