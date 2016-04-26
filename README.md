@@ -44,7 +44,7 @@ For full functionality, the following additional packages are required:
 
 Run the **following commands** to install the packages:
   ```
-  conda install bitarray cython ipython matplotlib mock nose numpy pandas pyserial pytables pyyaml pyzmq scipy sphinx
+  conda install bitarray cython ipython matplotlib mock nose numba numpy pyserial pytables pyyaml pyzmq scipy sphinx
   
   pip install progressbar-latest pyvisa pyvisa-py git+https://github.com/SiLab-Bonn/pyqtgraph.git@develop https://github.com/uvemas/ViTables/archive/v2.1.zip
   ```
@@ -59,9 +59,9 @@ On Windows, the `pywin32` package is required:
   pip install basil_daq==2.4.2
   ```
 
-[pyBAR FEI4 Interpreter](https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter) (==1.2.0) is required:
+[pyBAR FEI4 Interpreter](https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter) (==1.2.1) is required:
   ```
-  pip install git+https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter@1.2.0
+  pip install git+https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter@1.2.1
   ```
 
 [Pixel Clusterizer](https://github.com/SiLab-Bonn/pixel_clusterizer) (==2.5.0) is required:
