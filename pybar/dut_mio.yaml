@@ -64,7 +64,8 @@ hw_drivers:
 #    interface : Visa # GPIB
 #    interface : Serial # Serial Port
 #    init      :
-#        device : Keithley 2400
+#        device  : Keithley 2400
+#        timeout : 1
 #
 #  - name      : Pulser
 #    type      : scpi
