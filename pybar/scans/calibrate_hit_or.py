@@ -224,7 +224,7 @@ class HitOrCalibration(Fei4RunBase):
             self.dut['TDC']['ENABLE'] = False
 
     def handle_data(self, data):
-        self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), new_file=['column'], flush=False)  # Create new file for each scan parameter change
+        self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), new_file=['column'], flush=True)  # Create new file for each scan parameter change
 
     def analyze(self):
         create_hitor_calibration(self.output_filename, plot_pixel_calibrations=True)
