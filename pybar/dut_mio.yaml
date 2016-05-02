@@ -8,20 +8,26 @@ transfer_layer:
 
 # Example of additional lab device transfer layers to be used with pyBAR
 #
+#  - name     : Serial
+#    type     : Serial
+#    init     :
+#        port             : /dev/ttyUSB0 # Linux
+#        read_termination : "\r"
+#        baudrate         : 19200
+#
+#  - name     : Visa_eth
+#    type     : Visa
+#    init     :
+#        resource_name : TCPIP::192.168.1.10
+#        backend       : "@py"
+#
 #  - name     : Visa
 #    type     : Visa
 #    init     :
 #        resource_name : ASRLCOM15::INSTR # Windows
 #        resource_name : ASRL/dev/ttyUSB0 # Linux
-#        backend : "@py"
+#        backend       : "@py"
 #
-#  - name     : Serial
-#    type     : Serial
-#    init     :
-#        port     : /dev/ttyUSB0 # Linux
-#        read_termination : "\r"
-#        baudrate : 19200
-
 hw_drivers:
   - name      : ADAPTER_CARD
     type      : FEI4AdapterCard
@@ -53,12 +59,6 @@ hw_drivers:
 
 # Example of additional lab devices to be used with pyBAR
 #
-#  - name      : PowerSupply
-#    type      : scpi
-#    interface : Visa
-#    init      :
-#        device : TTi QL335TP
-#
 #  - name      : Multimeter
 #    type      : scpi
 #    interface : Visa # GPIB
@@ -66,6 +66,18 @@ hw_drivers:
 #    init      :
 #        device  : Keithley 2400
 #        timeout : 1
+#
+#  - name      : Oscilloscope
+#    type      : scpi
+#    interface : Visa_eth
+#    init      :
+#        device : Tektronix MSO4104B
+#
+#  - name      : PowerSupply
+#    type      : scpi
+#    interface : Visa
+#    init      :
+#        device : TTi QL335TP
 #
 #  - name      : Pulser
 #    type      : scpi
