@@ -239,7 +239,8 @@ class PlsrDacCalibration(Fei4RunBase):
 
         try:
             plateau_p_opt, plateau_p_cov = optimize.curve_fit(plateau_fit_fn, x[plateau_idx], y[plateau_idx], p0=[1.3], sigma=y_err[plateau_idx], absolute_sigma=True)
-        except RuntimeError:
+        # in case of failing fit or missing plateau
+        except (RuntimeError, TypeError):
             plateau_p_opt = [np.nan]
             plateau_p_err = [np.nan, np.nan]
         else:
