@@ -242,7 +242,7 @@ class PlsrDacCalibration(Fei4RunBase):
         # in case of failing fit or missing plateau
         except (RuntimeError, TypeError):
             plateau_p_opt = [np.nan]
-            plateau_p_err = [np.nan, np.nan]
+            plateau_p_err = [np.nan]
         else:
             plateau_p_err = np.sqrt(np.diag(plateau_p_cov))
 
