@@ -185,6 +185,24 @@ set_false_path -from [get_clocks BUS_CLK_PLL] -to [get_clocks m26_clk3]
 set_false_path -from [get_clocks BUS_CLK_PLL] -to [get_clocks m26_clk4]
 set_false_path -from [get_clocks BUS_CLK_PLL] -to [get_clocks m26_clk5]
 
+## Port 7
+set_property PACKAGE_PIN A19 [get_ports M26_TCK_N]
+set_property PACKAGE_PIN A18 [get_ports M26_TCK_P]
+set_property IOSTANDARD LVDS_25 [get_ports M26_TCK*]
+
+set_property PACKAGE_PIN F17 [get_ports M26_TMS_P]
+set_property PACKAGE_PIN E17 [get_ports M26_TMS_N]
+set_property IOSTANDARD LVDS_25 [get_ports M26_TMS*]
+
+set_property PACKAGE_PIN E15 [get_ports M26_TDI_P]
+set_property PACKAGE_PIN E16 [get_ports M26_TDI_N]
+set_property IOSTANDARD LVDS_25 [get_ports M26_TDI*]
+
+set_property PACKAGE_PIN F15 [get_ports M26_TDO_N]
+set_property PACKAGE_PIN G15 [get_ports M26_TDO_P]
+set_property IOSTANDARD LVDS_25 [get_ports M26_TDO*]
+
+
 set_property PACKAGE_PIN V23 [get_ports RJ45_BUSY_LEMO_TX1]
 set_property PACKAGE_PIN AB21 [get_ports RJ45_CLK_LEMO_TX0]
 set_property PACKAGE_PIN V21 [get_ports RJ45_TRIGGER]
