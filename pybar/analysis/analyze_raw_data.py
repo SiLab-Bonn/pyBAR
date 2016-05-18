@@ -737,6 +737,9 @@ class AnalyzeRawData(object):
                         raw_data = in_file_h5.root.raw_data.read(word_index, word_index + self._chunk_size)
                     except OverflowError, e:
                         logging.error('%s: 2^31 xrange() limitation in 32-bit Python', e)
+                    except tb.exceptions.HDF5ExtError:
+                        logging.warning('Raw data file %s has missing raw data. Continue raw data analysis.', in_file_h5.filename)
+                        break
                     total_words += raw_data.shape[0]
                     # fix bad data
                     if self._correct_corrupted_data:
