@@ -332,14 +332,14 @@ rbcp_to_bus irbcp_to_bus(
 localparam CMD_BASEADDR = 32'h0000;
 localparam CMD_HIGHADDR = 32'h8000-1;
 
-localparam TLU_BASEADDR = 16'h8200;
-localparam TLU_HIGHADDR = 16'h8300-1;
+localparam TLU_BASEADDR = 32'h8200;
+localparam TLU_HIGHADDR = 32'h8300-1;
 
 localparam RX_BASEADDR = 32'h8600;
 localparam RX_HIGHADDR = 32'h8700-1;
 
-localparam TDC_BASEADDR = 16'h8700;
-localparam TDC_HIGHADDR = 16'h8800-1;
+localparam TDC_BASEADDR = 32'h8700;
+localparam TDC_HIGHADDR = 32'h8800-1;
 
 localparam M26_RX_BASEADDR = 32'ha000;
 localparam M26_RX_HIGHADDR = 32'ha00f-1;
@@ -690,10 +690,11 @@ IBUFDS #(
     .IB(RJ45_HITOR_N)
 );
 
-    
+wire TDC_OUT;    
 tdc_s3 #(
     .BASEADDR(TDC_BASEADDR),
     .HIGHADDR(TDC_HIGHADDR),
+    .ABUSWIDTH(32),
     .CLKDV(4),
     .DATA_IDENTIFIER(4'b0100), // one-hot
     .FAST_TDC(1),
@@ -703,7 +704,7 @@ tdc_s3 #(
     .CLK160(CLK160),
     .DV_CLK(CLK40),
     .TDC_IN(RJ45_HITOR),
-    .TDC_OUT(),
+    .TDC_OUT(TDC_OUT),
     .TRIG_IN(),
     .TRIG_OUT(),
 
@@ -726,7 +727,7 @@ tdc_s3 #(
 
 wire ARB_READY_OUT, ARB_WRITE_OUT;
 wire [31:0] ARB_DATA_OUT;
-wire [7:0] READ_GRANT;
+wire [8:0] READ_GRANT;
 
 rrp_arbiter #(
     .WIDTH(9)
