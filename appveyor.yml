@@ -28,9 +28,9 @@ install:
   - conda list
   # pyBAR installation including additional specific packages
   - pip install pySiLibUSB
-  - pip install basil_daq==2.4.2
+  - pip install basil_daq==2.4.3
   # - pip install pyBAR_fei4_interpreter
-  - pip install git+https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter@1.2.0
+  - pip install git+https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter@1.2.1
   - pip install pixel_clusterizer==2.5.0
   - python.exe setup.py develop
 
