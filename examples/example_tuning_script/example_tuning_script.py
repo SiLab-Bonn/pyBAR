@@ -4,15 +4,7 @@ Note:
 To change tuning parameters, change configuration.yaml, or use run_conf parameter.
 '''
 
-from pybar.run_manager import RunManager  # importing run manager
-
-from pybar.scans.scan_digital import DigitalScan
-from pybar.scans.scan_analog import AnalogScan
-from pybar.scans.scan_threshold import ThresholdScan
-from pybar.scans.tune_fei4 import Fei4Tuning
-from pybar.scans.tune_stuck_pixel import StuckPixelScan
-from pybar.scans.tune_noise_occupancy import NoiseOccupancyScan
-from pybar.scans.tune_merged_pixels import MergedPixelsTuning
+from pybar import *
 
 # additional run configuration (optinal)
 run_conf = None  # use path to YAML file, or dict
