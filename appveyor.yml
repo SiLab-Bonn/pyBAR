@@ -20,6 +20,7 @@ install:
   # - conda update --all --yes
   - conda info -a
   - conda install --yes bitarray cython ipython matplotlib mock nose numba numpy pyserial pytables pyyaml pyzmq scipy sphinx
+  - conda install pywin32
   - pip install progressbar-latest pyvisa pyvisa-py
   # - pip install git+https://github.com/pyqtgraph/pyqtgraph.git@develop
   - pip install git+https://github.com/SiLab-Bonn/pyqtgraph.git@develop # keeping this fork until release 0.9.11
