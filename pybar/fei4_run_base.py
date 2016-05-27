@@ -21,7 +21,7 @@ from basil.dut import Dut
 
 from pybar.run_manager import RunManager, RunBase, RunAborted, RunStopped
 from pybar.fei4.register import FEI4Register
-from pybar.fei4.register_utils import FEI4RegisterUtils, is_fe_ready
+from pybar.fei4.register_utils import FEI4RegisterUtils, is_fe_ready, CmdTimeoutError
 from pybar.daq.fifo_readout import FifoReadout, RxSyncError, EightbTenbError, FifoError, NoDataTimeout, StopTimeout
 from pybar.daq.fei4_raw_data import open_raw_data_file
 from pybar.analysis.analysis_utils import AnalysisError
@@ -421,7 +421,7 @@ class Fei4RunBase(RunBase):
         data : list, tuple
             Data tuple of the format (data (np.array), last_time (float), curr_time (float), status (int))
         '''
-        self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=False)
+        self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=True)
 
     def handle_err(self, exc):
         '''Handling of Exceptions.

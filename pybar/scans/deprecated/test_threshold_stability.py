@@ -267,7 +267,7 @@ def analyze_data(scan_data_filenames, ignore_columns, fei4b=False):
 
 
 def reanalyze(fei4b=False):
-    data_files = analysis_utils.get_data_file_names_from_scan_base(local_configuration['data_file'], filter_file_words=['analyzed', 'interpreted', 'cut_', 'cluster_sizes', 'trigger_fe'], parameter=True)
+    data_files = analysis_utils.get_data_file_names_from_scan_base(local_configuration['data_file'])
     import pprint
     data_files_par = analysis_utils.get_parameter_value_from_file_names(data_files, parameters='stability')
     pprint.pprint(data_files_par)

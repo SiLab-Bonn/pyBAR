@@ -1,13 +1,19 @@
-''' This script changes the injection delay of the internal PlsrDAC (with global register PlsrDelay or PlsrIdacRamp, only PlsrDelay tested!) and measures the mean BCID for each pixel (runtime ~ 1 h).
+''' This script changes the injection delay of the internal PlsrDAC (with global register PlsrDelay or PlsrIdacRamp, only PlsrDelay tested!) 
+and measures the mean BCID for each pixel (runtime ~ 1 h).
 
-The PlsrDAC and injection delay values should be chosen equidistant and the lowest PlsrDAC value should be put to the threshold position!
+The PlsrDAC and injection delay values should be chosen equidistant and the lowest PlsrDAC value should be at threshold position!
 
 The mean BCID changes for an increasing injection delay every 25 ns due to the 40 MHz clock in an S-curve like shape.
-The mu of the S-curves is determined for different charges injected and for different BCIDs with an S-Curve fit.
+The mu of the S-curves is determined for different charges and for different BCIDs.
 The change of the mu as a function of the charge is the timewalk that is calculated for each pixel.
 The value of mu + mean BCID gives the absolute hit delay for the pixel.
 Time walk and hit delay are calculated and plotted in different ways.
-The analysis is quite complex and takes 30 - 60 min.
+The analysis is quite complex, uses >> 1 Billion hits and takes 30 - 60 min.
+
+The observation is that there is a dip in the hit delay curve, thus the fastest hits are not at the highest charge. This seems
+to be a real measurement, carefull check shows this behavior for all pixels, a wrong injection delay calibration cannot explain the observation.
+Although this is a real measurement this seems NOT to be a feature of the analog amplification, but a systematic measurement error that is introduced by the
+PlsrDAC injection circuit. Because the direct hit delay measurements with a trigger + TDC time stamp do not show this behavior.
 '''
 import logging
 import progressbar
@@ -26,11 +32,13 @@ from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
+from pybar_fei4_interpreter.analysis_utils import hist_1d_index, hist_3d_index
+
 from pybar.fei4.register_utils import invert_pixel_mask
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.fei4.register_utils import scan_loop
 from pybar.run_manager import RunManager
-from pybar.analysis.analysis_utils import get_hits_of_scan_parameter, hist_1d_index, hist_3d_index, get_scan_parameter, get_mean_from_histogram
+from pybar.analysis.analysis_utils import get_hits_of_scan_parameter, get_scan_parameter, get_mean_from_histogram
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.analysis.plotting.plotting import plot_scurves, plot_three_way
 
@@ -39,36 +47,34 @@ def scurve(x, offset, mu, sigma):
     return offset + 0.5 * erf((x - mu) / (np.sqrt(2) * sigma)) + 0.5
 
 
-def fit_bcid_jumps(scurve_data, max_chi_2=2.):  # data of some pixels to fit, has to be global for the multiprocessing module
-    offset_min = int(math.ceil(min(scurve_data)))  # offset min is minimum BCID of Scurve fit
-    offset_max = int(math.floor(max(scurve_data)))  # offset max is minimum BCID of Scurve fit + 1
+def fit_bcid_jumps(scurve_data, max_chi_2=2.):  # Data of some pixels to fit, has to be global for the multiprocessing module
+    offset_min = int(math.ceil(min(scurve_data)))  # Offset min is minimum BCID of Scurve fit
+    offset_max = int(math.floor(max(scurve_data)))  # Offset max is minimum BCID of Scurve fit + 1
 
-    if offset_max - offset_min > 2:  # restrict to detection of two BCID jumps, otherwise most likely corrupt data
+    if offset_max - offset_min > 2:  # Restrict to detection of two BCID jumps, otherwise most likely corrupt data
         offset_max = offset_min + 2
     index = range(len(scurve_data))
     result = -np.ones(4)
     for offset_index, offset in enumerate(xrange(offset_min, offset_max)):  # loop over up to two Scurves
         actual_index = [index[i] for i in index if offset <= scurve_data[i] <= offset + 1]
-        if not actual_index or len(actual_index) < 5:  # omit broken data
+        if not actual_index or len(actual_index) < 5:  # Omit broken data
             continue
         actual_data = [scurve_data[i] for i in index if offset <= scurve_data[i] <= offset + 1]
         n_points_left = sum([1 for i in actual_data if i == offset])
         n_points_right = sum([1 for i in actual_data if i == offset + 1])
-        if n_points_left < 3 or n_points_right < 3:  # omit not sufficient data
+        if n_points_left < 2 or n_points_right < 2:  # Omit not sufficient data
             continue
         start_value = actual_index[np.argmax(np.diff(actual_data))]
         try:
             popt, _ = curve_fit(scurve, actual_index, actual_data, p0=[offset, start_value, 1.], check_finite=False)  # offset is also a fit parameter, since there are PlsrDAC settings that let the BCID jitter more
             if popt[1] > 0 and popt[0] > offset - 0.05:  # mu < 0 or too low offset indicates bad fit
                 chi_2 = np.sum((scurve(actual_index, popt[0], popt[1], popt[2]) - actual_data) ** 2)
-                if chi_2 < max_chi_2:  # omit bad quality fits
-                    if popt[1] == float('Inf'):
-                        print 'SCREAM'
+                if chi_2 < max_chi_2:  # Omit bad quality fits
                     result[offset_index * 2: offset_index * 2 + 1] = offset
                     result[offset_index * 2 + 1: offset_index * 2 + 2] = popt[1]
-        except RuntimeError:  # fit failed
+        except RuntimeError:  # Fit failed
             pass
-    if result[0] == -1 and result[2] != -1:  # if the first scurve fit failed but not the second, define second s-curve as first
+    if result[0] == -1 and result[2] != -1:  # If the first scurve fit failed but not the second, define second s-curve as first
         result[0], result[1] = result[2], result[3]
         result[2], result[3] = -1, -1
     return result
@@ -77,11 +83,12 @@ def fit_bcid_jumps(scurve_data, max_chi_2=2.):  # data of some pixels to fit, ha
 def analyze_hit_delay(raw_data_file):
     # Interpret data and create hit table
     with AnalyzeRawData(raw_data_file=raw_data_file, create_pdf=False) as analyze_raw_data:
-        analyze_raw_data.create_occupancy_hist = False  # too many scan parameters to do in ram histograming
+        analyze_raw_data.create_occupancy_hist = False  # Too many scan parameters to do in ram histograming
         analyze_raw_data.create_hit_table = True
-        analyze_raw_data.interpreter.set_warning_output(False)  # a lot of data produces unknown words
+        analyze_raw_data.interpreter.set_warning_output(False)  # A lot of data produces unknown words
         analyze_raw_data.interpret_word_table()
         analyze_raw_data.interpreter.print_summary()
+        # Store calibration values in variables
         vcal_c0 = analyze_raw_data.vcal_c0
         vcal_c1 = analyze_raw_data.vcal_c1
         c_high = analyze_raw_data.c_high
@@ -133,7 +140,7 @@ def analyze_hit_delay(raw_data_file):
             hists_folder_2._v_attrs.plsr_dac_values = plsr_dac
             hists_folder_3._v_attrs.plsr_dac_values = plsr_dac
             hists_folder_4._v_attrs.plsr_dac_values = plsr_dac
-            injection_delay = scan_parameters_dict[scan_parameters_dict.keys()[1]]  # injection delay par name is unknown and should  be in the inner loop
+            injection_delay = scan_parameters_dict[scan_parameters_dict.keys()[1]]  # injection delay par name is unknown and should be in the inner loop
             scan_parameters = scan_parameters_dict.keys()
 
         bcid_array = np.zeros((80, 336, len(injection_delay), 16), dtype=np.uint16)  # bcid array of actual PlsrDAC
@@ -145,7 +152,7 @@ def analyze_hit_delay(raw_data_file):
 
         for index, (parameters, hits) in enumerate(get_hits_of_scan_parameter(raw_data_file + '_interpreted.h5', scan_parameters, try_speedup=True, chunk_size=10000000)):
             if index == 0:
-                progress_bar.start()  # start after the event index is created to get reasonable ETA
+                progress_bar.start()  # Start after the event index is created to get reasonable ETA
             actual_plsr_dac, actual_injection_delay = parameters[0], parameters[1]
             column, row, rel_bcid, tot = hits['column'] - 1, hits['row'] - 1, hits['relative_BCID'], hits['tot']
             bcid_array_fast = hist_3d_index(column, row, rel_bcid, shape=(80, 336, 16))
@@ -204,22 +211,28 @@ def analyze_hit_delay(raw_data_file):
     # Calibrate the step size of the injection delay and create absolute and relative (=time walk) hit delay histograms
     with tb.open_file(raw_data_file + '_analyzed.h5', mode="r+") as out_file_h5:
         # Calculate injection delay step size using the average difference of two Scurves of all pixels and plsrDAC settings and the minimum BCID to fix the absolute time scale
-        differences = []
+        differences = np.zeros(shape=(336, 80, sum(1 for _ in out_file_h5.root.PixelHistsBcidJumps)), dtype=np.float)
         min_bcid = 15
-        for node in out_file_h5.root.PixelHistsBcidJumps:
+        for index, node in enumerate(out_file_h5.root.PixelHistsBcidJumps):  # Loop to get last node (the node with most charge injected)
             pixel_data = node[:, :, :]
-        selection = (np.logical_and(pixel_data[:, :, 0] > 0, pixel_data[:, :, 2] > 0))  # select pixels with two Scurve fits
-        difference = pixel_data[selection, 3] - pixel_data[selection, 1]  # difference in delay settings between the scurves
-        difference = difference[np.logical_and(difference > 15, difference < 60)]  # get rid of bad data
-        differences.extend(difference.tolist())
-        if np.amin(pixel_data[selection, 0]) < min_bcid:
-            min_bcid = np.amin(pixel_data[selection, 0])
-        step_size = np.median(differences)  # delay steps needed for 25 ns
-        step_size_error = np.std(differences)  # delay steps needed for 25 ns
+            selection = (np.logical_and(pixel_data[:, :, 0] > 0, pixel_data[:, :, 2] > 0))  # select pixels with two Scurve fits
+            difference = np.zeros_like(differences[:, :, 0])
+            difference[selection] = pixel_data[selection, 3] - pixel_data[selection, 1]  # Difference in delay settings between the scurves
+            difference[np.logical_or(difference < 15, difference > 60)] = 0  # Get rid of bad data leading to difference that is too small / large
+            differences[:, :, index] = difference
+            if np.any(pixel_data[selection, 0]) and np.min(pixel_data[selection, 0]) < min_bcid:  # Search for the minimum rel. BCID delay (= fastes hits)
+                min_bcid = np.amin(pixel_data[selection, 0])
+
+        differences = np.ma.masked_where(np.logical_or(differences == 0, ~np.isfinite(differences)), differences)
+
+        step_size = np.ma.median(differences)  # Delay steps needed for 25 ns
+        step_size_error = np.ma.std(differences)  # Delay steps needed for 25 ns
+
+        logging.info('Mean step size for the PLsrDAC delay is %1.2f +-  %1.2f ns', 25. / step_size, 25. / step_size ** 2 * step_size_error)
 
         # Calculate the hit delay per pixel
         plsr_dac_values = out_file_h5.root.PixelHistsMeanRelBcid._v_attrs.plsr_dac_values
-        hit_delay = np.zeros(shape=(336, 80, len(plsr_dac_values)))  # result array
+        hit_delay = np.zeros(shape=(336, 80, len(plsr_dac_values)), dtype=np.float)  # Result array
         for node in out_file_h5.root.PixelHistsBcidJumps:  # loop over all BCID jump hists for all PlsrDAC values to calculate the hit delay
             actual_plsr_dac = int(re.search(r'\d+', node.name).group())  # actual node plsr dac value
             plsr_dac_index = np.where(plsr_dac_values == actual_plsr_dac)[0][0]
@@ -227,11 +240,11 @@ def analyze_hit_delay(raw_data_file):
             actual_hit_delay = (pixel_data[:, :, 0] - min_bcid + 1) * 25. - pixel_data[:, :, 1] * 25. / step_size
             hit_delay[:, :, plsr_dac_index] = actual_hit_delay
         hit_delay = np.ma.masked_less(hit_delay, 0)
-        timewalk = hit_delay - np.amin(hit_delay, axis=2)[:, :, np.newaxis]  # time walk calc. by normalization to minimum for every pixel
+        timewalk = hit_delay - np.amin(hit_delay, axis=2)[:, :, np.newaxis]  # Time walk calc. by normalization to minimum hit delay for every pixel
 
         # Calculate the mean TOT per PlsrDAC (additional information, not needed for hit delay)
-        tot = np.zeros(shape=(len(plsr_dac_values),), dtype=np.float16)  # result array
-        for node in out_file_h5.root.HistsTot:  # loop over tot hist for all PlsrDAC values
+        tot = np.zeros(shape=(len(plsr_dac_values),), dtype=np.float16)  # Result array
+        for node in out_file_h5.root.HistsTot:  # Loop over tot hist for all PlsrDAC values
             plsr_dac = int(re.search(r'\d+', node.name).group())
             plsr_dac_index = np.where(plsr_dac_values == plsr_dac)[0][0]
             tot_data = node[:]
@@ -255,9 +268,9 @@ def analyze_hit_delay(raw_data_file):
         out_2[:] = hit_delay.filled(fill_value=np.NaN)
         out_3[:] = tot
 
-    # Mask the pixels that have non valid data and create plot with the time walk and hit delay for all pixels
+    # Mask the pixels that have non valid data and create plots with the time walk and hit delay for all pixels
     with tb.open_file(raw_data_file + '_analyzed.h5', mode="r") as in_file_h5:
-        def plsr_dac_to_charge(plsr_dac, vcal_c0, vcal_c1, c_high):  # TODO: take PlsrDAC calib from file
+        def plsr_dac_to_charge(plsr_dac, vcal_c0, vcal_c1, c_high):  # Calibration values are taken from file
             voltage = vcal_c0 + vcal_c1 * plsr_dac
             return voltage * c_high / 0.16022
 
@@ -265,7 +278,7 @@ def analyze_hit_delay(raw_data_file):
             # Interpolate tot values for second tot axis
             interpolation = interp1d(tot_values, charge_values, kind='slinear', bounds_error=True)
             tot = np.arange(16)
-            tot = tot[np.logical_and(tot >= np.amin(tot_values), tot <= np.amax(tot_values))]
+            tot = tot[np.logical_and(tot >= np.min(tot_values), tot <= np.max(tot_values))]
 
             array = np.transpose(hist_3d, axes=(2, 1, 0)).reshape(hist_3d.shape[2], hist_3d.shape[0] * hist_3d.shape[1])
             y = np.mean(array, axis=1)
@@ -278,18 +291,18 @@ def analyze_hit_delay(raw_data_file):
             ax.grid(True)
             ax.set_xlabel(xlabel)
             ax.set_ylabel(ylabel)
-            ax.set_xlim((0, np.amax(charge_values)))
-            ax.set_ylim((np.amin(y - y_err), np.amax(y + y_err)))
+            ax.set_xlim((0, np.max(charge_values)))
+            ax.set_ylim((np.min(y - y_err), np.max(y + y_err)))
             ax.plot(charge_values, y, '.-', color='black', label=title)
             if threshold is not None:
-                ax.plot([threshold, threshold], [np.amin(y - y_err), np.amax(y + y_err)], linestyle='--', color='black', label='Threshold\n%d e' % (threshold))
+                ax.plot([threshold, threshold], [np.min(y - y_err), np.max(y + y_err)], linestyle='--', color='black', label='Threshold\n%d e' % (threshold))
             ax.fill_between(charge_values, y - y_err, y + y_err, color='gray', alpha=0.5, facecolor='gray', label='RMS')
             ax2 = ax.twiny()
             ax2.set_xlabel("ToT")
 
             ticklab = ax2.xaxis.get_ticklabels()[0]
             trans = ticklab.get_transform()
-            ax2.xaxis.set_label_coords(np.amax(charge_values), 1, transform=trans)
+            ax2.xaxis.set_label_coords(np.max(charge_values), 1, transform=trans)
             ax2.set_xlim(ax.get_xlim())
             ax2.set_xticks(interpolation(tot))
             ax2.set_xticklabels([str(int(i)) for i in tot])
@@ -312,9 +325,9 @@ def analyze_hit_delay(raw_data_file):
         plot_scurves(np.swapaxes(hist_timewalk, 0, 1), scan_parameters=charge_values, title='Timewalk of the FE-I4', scan_parameter_name='Charge [e]', ylabel='Timewalk [ns]', min_x=0, filename=output_pdf)
         plot_scurves(np.swapaxes(hist_hit_delay[:, :, :], 0, 1), scan_parameters=charge_values, title='Hit delay (T0) with internal charge injection\nof the FE-I4', scan_parameter_name='Charge [e]', ylabel='Hit delay [ns]', min_x=0, filename=output_pdf)
 
-        for i in [0, 1, len(plsr_dac_values) / 4, len(plsr_dac_values) / 2, -1]:  # plot 2d hist at min, 1/4, 1/2, max PlsrDAC setting
+        for i in [0, 1, len(plsr_dac_values) / 4, len(plsr_dac_values) / 2, -1]:  # Plot 2d hist at min, 1/4, 1/2, max PlsrDAC setting
             plot_three_way(hist_timewalk[:, :, i], title='Time walk at %.0f e' % (charge_values[i]), x_axis_title='Time walk [ns]', filename=output_pdf)
-            plot_three_way(hist_hit_delay[:, :, i], title='Hit delay (T0) with internal charge injection at %.0f e' % (charge_values[i]), x_axis_title='Hit delay [ns]', minimum=np.amin(hist_hit_delay[:, :, i]), maximum=np.amax(hist_hit_delay[:, :, i]), filename=output_pdf)
+            plot_three_way(hist_hit_delay[:, :, i], title='Hit delay (T0) with internal charge injection at %.0f e' % (charge_values[i]), x_axis_title='Hit delay [ns]', minimum=np.amin(hist_hit_delay[:, :, i]), maximum=np.max(hist_hit_delay[:, :, i]), filename=output_pdf)
         output_pdf.close()
 
 

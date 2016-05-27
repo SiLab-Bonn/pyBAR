@@ -1,27 +1,28 @@
 """This class provides often needed analysis functions, for analysis that is done with python.
 """
+from __future__ import division
 
 import logging
 import re
 import os
 import time
-import collections
-import numpy as np
-import progressbar
 import glob
-import tables as tb
-import numexpr as ne
+import collections
 from operator import itemgetter
+
+import numpy as np
+import tables as tb
+from tables import dtype_from_descr
+import numexpr as ne
 from scipy.interpolate import interp1d
 from scipy.interpolate import splrep, splev
-from tables import dtype_from_descr
-from stat import ST_CTIME
 
+import progressbar
+
+from pybar_fei4_interpreter import analysis_utils
 from pybar.daq.fei4_record import FEI4Record
 from pybar.analysis.plotting import plotting
-from pybar.analysis.RawDataConverter import analysis_functions
-from pybar.analysis.RawDataConverter import data_struct
-from pybar.daq.readout_utils import is_fe_word, is_data_header
+from pybar.daq.readout_utils import is_fe_word, is_data_header, is_trigger_word, logical_and
 
 
 class AnalysisError(Exception):
@@ -280,11 +281,11 @@ def get_rate_normalization(hit_file, parameter, reference='event', cluster_file=
             for start_event, stop_event in event_range:  # loop over the selected events
                 readout_cluster_len = 0  # variable to calculate a optimal chunk size value from the number of hits for speed up
                 n_cluster_per_event = None
-                for clusters, index in data_aligned_at_events(cluster_table, start_event_number=start_event, stop_event_number=stop_event, start=index, chunk_size=best_chunk_size):
+                for clusters, index in data_aligned_at_events(cluster_table, start_event_number=start_event, stop_event_number=stop_event, start_index=index, chunk_size=best_chunk_size):
                     if n_cluster_per_event is None:
-                        n_cluster_per_event = get_n_cluster_in_events(clusters['event_number'])[:, 1]  # array with the number of cluster per event, cluster per event are at least 1
+                        n_cluster_per_event = analysis_utils.get_n_cluster_in_events(clusters['event_number'])[:, 1]  # array with the number of cluster per event, cluster per event are at least 1
                     else:
-                        n_cluster_per_event = np.append(n_cluster_per_event, get_n_cluster_in_events(clusters['event_number'])[:, 1])
+                        n_cluster_per_event = np.append(n_cluster_per_event, analysis_utils.get_n_cluster_in_events(clusters['event_number'])[:, 1])
                     readout_cluster_len += clusters.shape[0]
                     total_cluster += clusters.shape[0]
                     progress_bar.update(index)
@@ -297,12 +298,11 @@ def get_rate_normalization(hit_file, parameter, reference='event', cluster_file=
     if plot:
         x = scan_parameter
         if reference == 'event':
-            plotting.plot_scatter(x, normalization_rate, title='Events per ' + parameter + ' setting', x_label=parameter, y_label='# events', log_x=True, filename=hit_file[:-3] + '_n_event_normalization.pdf')
+            plotting.plot_scatter(x, normalization_rate, title='Events per ' + parameter + ' setting', x_label=parameter, y_label='# events', log_x=True, filename=os.path.splitext(hit_file)[0] + '_n_event_normalization.pdf')
         elif reference == 'time':
-            plotting.plot_scatter(x, normalization_rate, title='Measuring time per GDAC setting', x_label=parameter, y_label='time [s]', log_x=True, filename=hit_file[:-3] + '_time_normalization.pdf')
+            plotting.plot_scatter(x, normalization_rate, title='Measuring time per GDAC setting', x_label=parameter, y_label='time [s]', log_x=True, filename=os.path.splitext(hit_file)[0] + '_time_normalization.pdf')
         if cluster_file:
-            plotting.plot_scatter(x, normalization_multiplicity, title='Mean number of particles per event', x_label=parameter, y_label='number of hits per event', log_x=True, filename=hit_file[:-3] + '_n_particles_normalization.pdf')
-    print len(normalization_rate), len(normalization_multiplicity)
+            plotting.plot_scatter(x, normalization_multiplicity, title='Mean number of particles per event', x_label=parameter, y_label='number of hits per event', log_x=True, filename=os.path.splitext(hit_file)[0] + '_n_particles_normalization.pdf')
     if cluster_file:
         normalization_rate = np.array(normalization_rate)
         normalization_multiplicity = np.array(normalization_multiplicity)
@@ -414,59 +414,62 @@ def get_parameter_value_from_file_names(files, parameters=None, unique=False, so
     return collections.OrderedDict(sorted(result.iteritems(), key=itemgetter(1)) if sort else files_dict)  # with PEP 265 solution of sorting a dict by value
 
 
-def get_data_file_names_from_scan_base(scan_base, filter_file_words=None, parameter=True, sort_by_date=True):
+def get_data_file_names_from_scan_base(scan_base, filter_str=['_analyzed.h5', '_interpreted.h5', '_cut.h5', '_result.h5', '_hists.h5'], sort_by_time=True, meta_data_v2=True):
     """
-    Takes a list of scan base names and returns all file names that have this scan base within their name. File names that have a word of filter_file_words
-    in their name are excluded.
+    Generate a list of .h5 files which have a similar file name.
 
     Parameters
     ----------
-    scan_base : list of strings, string
-    filter_file_words : list of strings
-        Return only file names without a filter_file_word. Deactivate feature by setting filter_file_words to None
-    parameter : bool
-        There is a running scan parameter in the file name (e.g. scanname_parametername_parametervalue.h5)
-    sort_by_date : bool
-        Sort the list from oldest to newest files
+    scan_base : list, string
+        List of string or string of the scan base names. The scan_base will be used to search for files containing the string. The .h5 file extension will be added automatically.
+    filter : list, string
+        List of string or string which are used to filter the returned filenames. File names containing filter_str in the file name will not be returned. Use None to disable filter.
+    sort_by_time : bool
+        If True, return file name list sorted from oldest to newest. The time from meta table will be used to sort the files.
+    meta_data_v2 : bool
+        True for new (v2) meta data format, False for the old (v1) format.
+
     Returns
     -------
-    list of strings
-
+    data_files : list
+        List of file names matching the obove conditions.
     """
-    raw_data_files = []
+    data_files = []
     if scan_base is None:
-        return raw_data_files
+        return data_files
     if isinstance(scan_base, basestring):
-        scan_base = (scan_base, )
-    for scan_name in scan_base:
-        if parameter:
-            data_files = glob.glob(scan_name + '_*.h5')
+        scan_base = [scan_base]
+    for scan_base_str in scan_base:
+        if '.h5' == os.path.splitext(scan_base_str)[1]:
+            data_files.append(scan_base_str)
         else:
-            data_files = glob.glob(scan_name + '*.h5')
-        if sort_by_date:
-            data_files_stats = ((os.stat(path)[ST_CTIME], path) for path in data_files)
-            data_files = [i[1] for i in sorted(data_files_stats)]
-        if filter_file_words is not None:
-            raw_data_files.extend(filter(lambda data_file: not any(x in data_file for x in filter_file_words), data_files))  # filter out data with filter_file_words
-        else:
-            raw_data_files = data_files
-    return raw_data_files
+            data_files.extend(glob.glob(scan_base_str + '*.h5'))
 
+    if filter_str:
+        if isinstance(filter_str, basestring):
+            filter_str = [filter_str]
+        data_files = filter(lambda data_file: not any([(True if x in data_file else False) for x in filter_str]), data_files)
+    if sort_by_time and len(data_files) > 1:
+        f_list = {}
+        for data_file in data_files:
+            with tb.open_file(data_file, mode="r") as h5_file:
+                try:
+                    meta_data = h5_file.root.meta_data
+                except tb.NoSuchNodeError:
+                    logging.warning("File %s is missing meta_data" % h5_file.filename)
+                else:
+                    try:
+                        if meta_data_v2:
+                            timestamp = meta_data[0]["timestamp_start"]
+                        else:
+                            timestamp = meta_data[0]["timestamp"]
+                    except IndexError:
+                        logging.info("File %s has empty meta_data" % h5_file.filename)
+                    else:
+                        f_list[data_file] = timestamp
 
-def get_parameter_scan_bases_from_scan_base(scan_base):
-    """ Takes a list of scan base names and returns all scan base names that have this scan base within their name.
-
-    Parameters
-    ----------
-    scan_base : list of strings
-    filter_file_words : list of strings
-
-    Returns
-    -------
-    list of strings
-
-    """
-    return [scan_bases[:-3] for scan_bases in get_data_file_names_from_scan_base(scan_base, filter_file_words=['interpreted', 'cut_', 'cluster_sizes', 'histograms'])]
+        data_files = list(sorted(f_list, key=f_list.__getitem__, reverse=False))
+    return data_files
 
 
 def get_scan_parameter_names(scan_parameters):
@@ -480,7 +483,6 @@ def get_scan_parameter_names(scan_parameters):
     Returns
     -------
     list of strings
-
     '''
     return scan_parameters.dtype.names if scan_parameters is not None else None
 
@@ -580,29 +582,22 @@ def check_parameter_similarity(files_dict):
     return True
 
 
-def combine_meta_data(files_dict):
+def combine_meta_data(files_dict, meta_data_v2=True):
     """
     Takes the dict of hdf5 files and combines their meta data tables into one new numpy record array.
 
+    Parameters
+    ----------
+    meta_data_v2 : bool
+        True for new (v2) meta data format, False for the old (v1) format.
     """
     if len(files_dict) > 10:
         logging.info("Combine the meta data from %d files", len(files_dict))
     # determine total length needed for the new combined array, thats the fastest way to combine arrays
     total_length = 0  # the total length of the new table
-    meta_data_v2 = True
     for file_name in files_dict.iterkeys():
         with tb.openFile(file_name, mode="r") as in_file_h5:  # open the actual file
             total_length += in_file_h5.root.meta_data.shape[0]
-            if total_length == 0:  # length = 0 for the first raw data file that only contains config data
-                continue
-            try:
-                in_file_h5.root.meta_data[0]['error']  # error column exists in old and new meta data format
-            except IndexError:
-                return None
-            try:
-                in_file_h5.root.meta_data[0]['timestamp_stop']  # this only exists in the new data format, https://silab-redmine.physik.uni-bonn.de/news/7
-            except IndexError:
-                meta_data_v2 = False
 
     if meta_data_v2:
         meta_data_combined = np.empty((total_length, ), dtype=[
@@ -637,137 +632,6 @@ def combine_meta_data(files_dict):
     if len(files_dict) > 10:
         progress_bar.finish()
     return meta_data_combined
-
-
-def in1d_events(ar1, ar2):
-    """
-    Does the same than np.in1d but uses the fact that ar1 and ar2 are sorted and the c++ library. Is therefore much much faster.
-
-    """
-    ar1 = np.ascontiguousarray(ar1)  # change memory alignement for c++ library
-    ar2 = np.ascontiguousarray(ar2)  # change memory alignement for c++ library
-    tmp = np.empty_like(ar1, dtype=np.uint8)  # temporary result array filled by c++ library, bool type is not supported with cython/numpy
-    return analysis_functions.get_in1d_sorted(ar1, ar2, tmp)
-
-
-def get_max_events_in_both_arrays(events_one, events_two):
-    """
-    Calculates the maximum count of events that exist in both arrays.
-
-    """
-    events_one = np.ascontiguousarray(events_one)  # change memory alignement for c++ library
-    events_two = np.ascontiguousarray(events_two)  # change memory alignement for c++ library
-    event_result = np.empty(shape=(events_one.shape[0] + events_two.shape[0], ), dtype=events_one.dtype)
-    count = analysis_functions.get_max_events_in_both_arrays(events_one, events_two, event_result)
-    return event_result[:count]
-
-
-def map_cluster(events, cluster):
-    """
-    Maps the cluster hits on events. Not existing hits in events have all values set to 0
-
-    """
-    cluster = np.ascontiguousarray(cluster)
-    events = np.ascontiguousarray(events)
-    mapped_cluster = np.zeros((events.shape[0], ), dtype=dtype_from_descr(data_struct.ClusterInfoTable))
-    mapped_cluster = np.ascontiguousarray(mapped_cluster)
-    analysis_functions.map_cluster(events, cluster, mapped_cluster)
-    return mapped_cluster
-
-
-def get_events_in_both_arrays(events_one, events_two):
-    """
-    Calculates the events that exist in both arrays.
-
-    """
-    events_one = np.ascontiguousarray(events_one)  # change memory alignement for c++ library
-    events_two = np.ascontiguousarray(events_two)  # change memory alignement for c++ library
-    event_result = np.empty_like(events_one)
-    count = analysis_functions.get_events_in_both_arrays(events_one, events_two, event_result)
-    return event_result[:count]
-
-
-def hist_1d_index(x, shape):
-    """
-    Fast 1d histogram of 1D indices with C++ inner loop optimization.
-    Is more than 2 orders faster than np.histogram().
-    The indices are given in coordinates and have to fit into a histogram of the dimensions shape.
-    Parameters
-    ----------
-    x : array like
-    shape : tuple
-        tuple with x dimensions: (x,)
-
-    Returns
-    -------
-    np.ndarray with given shape
-
-    """
-    if len(shape) != 1:
-        raise InvalidInputError('The shape has to describe a 1-d histogram')
-
-    # change memory alignment for c++ library
-    x = np.ascontiguousarray(x.astype(np.int32))
-    result = np.zeros(shape=shape, dtype=np.uint32)
-    analysis_functions.hist_1d(x, shape[0], result)
-    return result
-
-
-def hist_2d_index(x, y, shape):
-    """
-    Fast 2d histogram of 2D indices with C++ inner loop optimization.
-    Is more than 2 orders faster than np.histogram2d().
-    The indices are given in x, y coordinates and have to fit into a histogram of the dimensions shape.
-    Parameters
-    ----------
-    x : array like
-    y : array like
-    shape : tuple
-        tuple with x,y dimensions: (x, y)
-
-    Returns
-    -------
-    np.ndarray with given shape
-
-    """
-    if len(shape) != 2:
-        raise InvalidInputError('The shape has to describe a 2-d histogram')
-
-    # change memory alignment for c++ library
-    x = np.ascontiguousarray(x.astype(np.int32))
-    y = np.ascontiguousarray(y.astype(np.int32))
-    result = np.zeros(shape=shape, dtype=np.uint32).ravel()  # ravel hist in c-style, 3D --> 1D
-    analysis_functions.hist_2d(x, y, shape[0], shape[1], result)
-    return np.reshape(result, shape)  # rebuilt 3D hist from 1D hist
-
-
-def hist_3d_index(x, y, z, shape):
-    """
-    Fast 3d histogram of 3D indices with C++ inner loop optimization.
-    Is more than 2 orders faster than np.histogramdd().
-    The indices are given in x, y, z coordinates and have to fit into a histogram of the dimensions shape.
-    Parameters
-    ----------
-    x : array like
-    y : array like
-    z : array like
-    shape : tuple
-        tuple with x,y,z dimensions: (x, y, z)
-
-    Returns
-    -------
-    np.ndarray with given shape
-
-    """
-    if len(shape) != 3:
-        raise InvalidInputError('The shape has to describe a 3-d histogram')
-    # change memory alignment for c++ library
-    x = np.ascontiguousarray(x.astype(np.int32))
-    y = np.ascontiguousarray(y.astype(np.int32))
-    z = np.ascontiguousarray(z.astype(np.int32))
-    result = np.zeros(shape=shape, dtype=np.uint32).ravel()  # ravel hist in c-style, 3D --> 1D
-    analysis_functions.hist_3d(x, y, z, shape[0], shape[1], shape[2], result)
-    return np.reshape(result, shape)  # rebuilt 3D hist from 1D hist
 
 
 def smooth_differentiation(x, y, weigths=None, order=5, smoothness=3, derivation=1):
@@ -942,7 +806,7 @@ def get_hits_in_events(hits_array, events, assume_sorted=True, condition=None):
             return hits_array[0:0]
     try:
         if assume_sorted:
-            selection = in1d_events(hits_array['event_number'], events)
+            selection = analysis_utils.in1d_events(hits_array['event_number'], events)
         else:
             logging.warning('Events are usually sorted. Are you sure you want this?')
             selection = np.in1d(hits_array['event_number'], events)
@@ -999,7 +863,7 @@ def get_hits_of_scan_parameter(input_file_hits, scan_parameters=None, try_speedu
 
             readout_hit_len = 0  # variable to calculate a optimal chunk size value from the number of hits for speed up
             # loop over the hits in the actual selected events with optimizations: determine best chunk size, start word index given
-            for hits, index in data_aligned_at_events(hit_table, start_event_number=start_event_number, stop_event_number=stop_event_number, start=index, try_speedup=try_speedup, chunk_size=best_chunk_size):
+            for hits, index in data_aligned_at_events(hit_table, start_event_number=start_event_number, stop_event_number=stop_event_number, start_index=index, try_speedup=try_speedup, chunk_size=best_chunk_size):
                 yield parameter_values[parameter_index], hits
                 readout_hit_len += hits.shape[0]
             best_chunk_size = int(1.5 * readout_hit_len) if int(1.05 * readout_hit_len) < chunk_size and int(1.05 * readout_hit_len) > 1e3 else chunk_size  # to increase the readout speed, estimated the number of hits for one read instruction
@@ -1138,9 +1002,9 @@ def get_events_with_n_cluster(event_number, condition='n_cluster==1'):
     '''
 
     logging.debug("Calculate events with clusters where " + condition)
-    n_cluster_in_events = get_n_cluster_in_events(event_number)
+    n_cluster_in_events = analysis_utils.get_n_cluster_in_events(event_number)
     n_cluster = n_cluster_in_events[:, 1]
-# return np.take(n_cluster_in_events, ne.evaluate(condition), axis=0)  # does not return only one dimension, Bug?
+#    return np.take(n_cluster_in_events, ne.evaluate(condition), axis=0)  # does not return 1d, bug?
     return n_cluster_in_events[ne.evaluate(condition), 0]
 
 
@@ -1181,30 +1045,6 @@ def get_events_with_error_code(event_number, event_status, select_mask=0b1111111
 
     logging.debug("Calculate events with certain error code")
     return np.unique(event_number[event_status & select_mask == condition])
-
-
-def get_n_cluster_in_events(event_numbers):
-    '''Calculates the number of cluster in every given event.
-    An external C++ library is used since there is no sufficient solution in python possible.
-    Because of np.bincount # BUG #225 for values > int32 and the different handling under 32/64 bit operating systems.
-
-    Parameters
-    ----------
-    event_numbers : numpy.array
-        List of event numbers to be checked.
-
-    Returns
-    -------
-    numpy.array
-        First dimension is the event number.
-        Second dimension is the number of cluster of the event.
-    '''
-    logging.debug("Calculate the number of cluster in every given event")
-    event_numbers = np.ascontiguousarray(event_numbers)  # change memory alignement for c++ library
-    result_event_numbers = np.empty_like(event_numbers)
-    result_count = np.empty_like(event_numbers, dtype=np.uint32)
-    result_size = analysis_functions.get_n_cluster_in_events(event_numbers, result_event_numbers, result_count)
-    return np.vstack((result_event_numbers[:result_size], result_count[:result_size])).T
 
 
 def get_scan_parameter(meta_data_array, unique=True):
@@ -1327,93 +1167,176 @@ def index_event_number(table_with_event_numer):
         logging.debug('Event_number index exists already, omit creation')
 
 
-def data_aligned_at_events(table, start_event_number=None, stop_event_number=None, start=None, stop=None, try_speedup=True, chunk_size=10000000):
-    '''Takes the table with a event_number column and returns chunks with the size up to chunk_size. The chunks are chosen in a way that the events are not splitted. Additional
-    parameters can be set to increase the readout speed. If only events between a certain event range are used one can specify this. Also the start and the
-    stop indices for the reading of the table can be specified for speed up.
-    It is important to index the event_number with pytables before using this function, otherwise the queries are very slow.
+def data_aligned_at_events(table, start_event_number=None, stop_event_number=None, start_index=None, stop_index=None, chunk_size=10000000, try_speedup=False, first_event_aligned=True, fail_on_missing_events=True):
+    '''Takes the table with a event_number column and returns chunks with the size up to chunk_size. The chunks are chosen in a way that the events are not splitted.
+    Additional parameters can be set to increase the readout speed. Events between a certain range can be selected.
+    Also the start and the stop indices limiting the table size can be specified to improve performance.
+    The event_number column must be sorted.
+    In case of try_speedup is True, it is important to create an index of event_number column with pytables before using this function. Otherwise the queries are slowed down.
 
     Parameters
     ----------
     table : pytables.table
+        The data.
     start_event_number : int
-        The data read is corrected that only data starting from the start_event number is returned. Lower event numbers are discarded.
+        The retruned data contains events with event number >= start_event_number. If None, no limit is set.
     stop_event_number : int
-        The data read is corrected that only data up to the stop_event number is returned. The stop_event number is not included.
+        The retruned data contains events with event number < stop_event_number. If None, no limit is set.
+    start_index : int
+        Start index of data. If None, no limit is set.
+    stop_index : int
+        Stop index of data. If None, no limit is set.
+    chunk_size : int
+        Maximum chunk size per read.
     try_speedup : bool
-        Try to reduce the index range to read by searching for the indices of start and stop event number. If these event numbers are usually
+        If True, try to reduce the index range to read by searching for the indices of start and stop event number. If these event numbers are usually
         not in the data this speedup can even slow down the function!
+    
+    The following parameters are not used when try_speedup is True:
+    
+    first_event_aligned : bool
+        If True, assuming that the first event is aligned to the data chunk and will be added. If False, the lowest event number of the first chunk will not be read out.
+    fail_on_missing_events : bool
+        If True, an error is given when start_event_number or stop_event_number is not part of the data.
+
     Returns
     -------
-    iterable to numpy.histogram
-        The data of the actual chunk.
-    stop_index: int
-        The index of the last table part already used. Can be used if data_aligned_at_events is called in a loop for speed up.
-        Example:
-        start_index = 0
-        for scan_parameter in scan_parameter_range:
-            start_event_number, stop_event_number = event_select_function(scan_parameter)
-            for data, start_index in data_aligned_at_events(table, start_event_number=start_event_number, stop_event_number=stop_event_number, start=start_index):
-                do_something(data)
+    Iterator of tuples
+        Data of the actual data chunk and start index for the next chunk.
+    
     Example
     -------
+    start_index = 0
+    for scan_parameter in scan_parameter_range:
+        start_event_number, stop_event_number = event_select_function(scan_parameter)
+        for data, start_index in data_aligned_at_events(table, start_event_number=start_event_number, stop_event_number=stop_event_number, start_index=start_index):
+            do_something(data)
+
     for data, index in data_aligned_at_events(table):
         do_something(data)
     '''
-
     # initialize variables
     start_index_known = False
     stop_index_known = False
-    last_event_start_index = 0
-    start_index = 0 if start is None else start
-    stop_index = table.nrows if stop is None else stop
+    start_index = 0 if start_index is None else start_index
+    stop_index = table.nrows if stop_index is None else stop_index
+    if stop_index < start_index:
+        raise InvalidInputError('Invalid start/stop index')
+    table_max_rows = table.nrows
+    if stop_event_number is not None and start_event_number is not None and stop_event_number < start_event_number:
+        raise InvalidInputError('Invalid start/stop event number')
 
-    if try_speedup:  # set start stop indices from the event numbers for fast read if possible; not possible if the given event number does not exist in the data stream
+    # set start stop indices from the event numbers for fast read if possible; not possible if the given event number does not exist in the data stream
+    if try_speedup and table.colindexed["event_number"]:
         if start_event_number is not None:
-            condition_1 = 'event_number==' + str(start_event_number)
-            start_indeces = table.get_where_list(condition_1, start=start_index, stop=stop_index)
+            start_condition = 'event_number==' + str(start_event_number)
+            start_indeces = table.get_where_list(start_condition, start=start_index, stop=stop_index)
             if start_indeces.shape[0] != 0:  # set start index if possible
                 start_index = start_indeces[0]
                 start_index_known = True
 
         if stop_event_number is not None:
-            condition_2 = 'event_number==' + str(stop_event_number)
-            stop_indeces = table.get_where_list(condition_2, start=start_index, stop=stop_index)
+            stop_condition = 'event_number==' + str(stop_event_number)
+            stop_indeces = table.get_where_list(stop_condition, start=start_index, stop=stop_index)
             if stop_indeces.shape[0] != 0:  # set the stop index if possible, stop index is excluded
                 stop_index = stop_indeces[0]
                 stop_index_known = True
 
-    if (start_index_known and stop_index_known) and (start_index + chunk_size >= stop_index):  # special case, one read is enough, data not bigger than one chunk and the indices are known
+    if start_index_known and stop_index_known and start_index + chunk_size >= stop_index:  # special case, one read is enough, data not bigger than one chunk and the indices are known
         yield table.read(start=start_index, stop=stop_index), stop_index
     else:  # read data in chunks, chunks do not divide events, abort if stop_event_number is reached
-        while(start_index < stop_index):
-            src_array = table.read(start=start_index, stop=start_index + chunk_size + 1)  # stop index is exclusive, so add 1
-            first_event = src_array["event_number"][0]
-            last_event = src_array["event_number"][-1]
-            if (start_event_number is not None and last_event < start_event_number):
-                start_index = start_index + src_array.shape[0]  # events fully read, increase start index and continue reading
-                continue
 
-            last_event_start_index = np.argmax(src_array["event_number"] == last_event)  # get first index of last event
-            if last_event_start_index == 0:
-                nrows = src_array.shape[0]
-                if nrows != 1:
-                    logging.warning("Depreciated warning?! Buffer too small to fit event. Possible loss of data. Increase chunk size.")
-            else:
-                if start_index + chunk_size > stop_index:  # special case for the last chunk read, there read the table until its end
-                    nrows = src_array.shape[0]
+        # search for begin
+        current_start_index = start_index
+        if start_event_number is not None:
+            while current_start_index < stop_index:
+                current_stop_index = min(current_start_index + chunk_size, stop_index)
+                array_chunk = table.read(start=current_start_index, stop=current_stop_index)  # stop index is exclusive, so add 1
+                last_event_in_chunk = array_chunk["event_number"][-1]
+
+                if last_event_in_chunk < start_event_number:
+                    current_start_index = current_start_index + chunk_size  # not there yet, continue to next read (assuming sorted events)
                 else:
-                    nrows = last_event_start_index
+                    first_event_in_chunk = array_chunk["event_number"][0]
+#                     if stop_event_number is not None and first_event_in_chunk >= stop_event_number and start_index != 0 and start_index == current_start_index:
+#                         raise InvalidInputError('The stop event %d is missing. Change stop_event_number.' % stop_event_number)
+                    if array_chunk.shape[0] == chunk_size and first_event_in_chunk == last_event_in_chunk:
+                        raise InvalidInputError('Chunk size too small. Increase chunk size to fit full event.')
 
-            if (start_event_number is not None or stop_event_number is not None) and (last_event > stop_event_number or first_event < start_event_number):  # too many events read, get only the selected ones if specified
-                selected_rows = get_data_in_event_range(src_array[0:nrows], event_start=start_event_number, event_stop=stop_event_number, assume_sorted=True)
-                if len(selected_rows) != 0:  # only return non empty data
-                    yield selected_rows, start_index + len(selected_rows)
+                    if not first_event_aligned and first_event_in_chunk == start_event_number and start_index != 0 and start_index == current_start_index:  # first event in first chunk not aligned at index 0, so take next event
+                        if fail_on_missing_events:
+                            raise InvalidInputError('The start event %d is missing. Change start_event_number.' % start_event_number)
+                        chunk_start_index = np.searchsorted(array_chunk["event_number"], start_event_number + 1, side='left')
+                    elif fail_on_missing_events and first_event_in_chunk > start_event_number and start_index == current_start_index:
+                        raise InvalidInputError('The start event %d is missing. Change start_event_number.' % start_event_number)
+                    elif first_event_aligned and first_event_in_chunk == start_event_number and start_index == current_start_index:
+                        chunk_start_index = 0
+                    else:
+                        chunk_start_index = np.searchsorted(array_chunk["event_number"], start_event_number, side='left')
+                        if fail_on_missing_events and array_chunk["event_number"][chunk_start_index] != start_event_number and start_index == current_start_index:
+                            raise InvalidInputError('The start event %d is missing. Change start_event_number.' % start_event_number)
+#                     if fail_on_missing_events and ((start_index == current_start_index and chunk_start_index == 0 and start_index != 0 and not first_event_aligned) or array_chunk["event_number"][chunk_start_index] != start_event_number):
+#                         raise InvalidInputError('The start event %d is missing. Change start_event_number.' % start_event_number)
+                    current_start_index = current_start_index + chunk_start_index  # calculate index for next loop
+                    break
+        elif not first_event_aligned and start_index != 0:
+            while current_start_index < stop_index:
+                current_stop_index = min(current_start_index + chunk_size, stop_index)
+                array_chunk = table.read(start=current_start_index, stop=current_stop_index)  # stop index is exclusive, so add 1
+                first_event_in_chunk = array_chunk["event_number"][0]
+                last_event_in_chunk = array_chunk["event_number"][-1]
+
+                if array_chunk.shape[0] == chunk_size and first_event_in_chunk == last_event_in_chunk:
+                    raise InvalidInputError('Chunk size too small. Increase chunk size to fit full event.')
+
+                chunk_start_index = np.searchsorted(array_chunk["event_number"], first_event_in_chunk + 1, side='left')
+                current_start_index = current_start_index + chunk_start_index
+                if not first_event_in_chunk == last_event_in_chunk:
+                    break
+
+        # data loop
+        while current_start_index < stop_index:
+            current_stop_index = min(current_start_index + chunk_size, stop_index)
+            array_chunk = table.read(start=current_start_index, stop=current_stop_index)  # stop index is exclusive, so add 1
+            first_event_in_chunk = array_chunk["event_number"][0]
+            last_event_in_chunk = array_chunk["event_number"][-1]
+
+            chunk_start_index = 0
+
+            if stop_event_number is not None:
+                if last_event_in_chunk >= stop_event_number:
+                    chunk_stop_index = np.searchsorted(array_chunk["event_number"], stop_event_number, side='left')
+                else:
+                    chunk_stop_index = np.searchsorted(array_chunk["event_number"], last_event_in_chunk, side='left')
             else:
-                yield src_array[0:nrows], start_index + nrows  # no events specified or selected event range is larger than read chunk, thus return the whole chunk minus the little part for event alignment
-            if stop_event_number is not None and last_event > stop_event_number:  # events are sorted, thus stop here to save time
-                break
-            start_index = start_index + nrows  # events fully read, increase start index and continue reading
+                if current_stop_index == table_max_rows:
+                    chunk_stop_index = array_chunk.shape[0]
+                else:
+                    chunk_stop_index = np.searchsorted(array_chunk["event_number"], last_event_in_chunk, side='left')
+
+            nrows = chunk_stop_index - chunk_start_index
+            if nrows == 0:
+                if array_chunk.shape[0] == chunk_size and first_event_in_chunk == last_event_in_chunk:
+                    raise InvalidInputError('Chunk size too small to fit event. Data corruption possible. Increase chunk size to read full event.')
+                elif chunk_start_index == 0:  # not increasing current_start_index
+                    return
+                elif stop_event_number is not None and last_event_in_chunk >= stop_event_number:
+                    return
+            else:
+                yield array_chunk[chunk_start_index:chunk_stop_index], current_start_index + nrows + chunk_start_index
+
+#             if (start_event_number is not None or stop_event_number is not None) and (last_event_in_chunk > stop_event_number or first_event_in_chunk < start_event_number):  # too many events read, get only the selected ones if specified
+#                 selected_rows = get_data_in_event_range(array_chunk[0:nrows], event_start=start_event_number, event_stop=stop_event_number, assume_sorted=True)
+#                 if len(selected_rows) != 0:  # only return non empty data
+#                     yield selected_rows, current_start_index + len(selected_rows)
+#             else:
+#                 yield array_chunk[0:nrows], current_start_index + nrows  # no events specified or selected event range is larger than read chunk, thus return the whole chunk minus the little part for event alignment
+#             if stop_event_number is not None and last_event_in_chunk > stop_event_number:  # events are sorted, thus stop here to save time
+#                 return
+            current_start_index = current_start_index + nrows + chunk_start_index  # events fully read, increase start index and continue reading
+
+#         if stop_event_number is not None and last_event_in_chunk < stop_event_number:
+#             raise InvalidInputError('The event %d is missing. Change stop_event_number.' % start_event_number)
 
 
 def select_good_pixel_region(hits, col_span, row_span, min_cut_threshold=0.2, max_cut_threshold=2.0):
@@ -1576,7 +1499,7 @@ def get_n_cluster_per_event_hist(cluster_table):
     numpy.Histogram
     '''
     logging.info("Histogram number of cluster per event")
-    cluster_in_events = get_n_cluster_in_events(cluster_table)[:, 1]  # get the number of cluster for every event
+    cluster_in_events = analysis_utils.get_n_cluster_in_events(cluster_table)[:, 1]  # get the number of cluster for every event
     return np.histogram(cluster_in_events, bins=range(0, np.max(cluster_in_events) + 2))  # histogram the occurrence of n cluster per event
 
 
@@ -1600,22 +1523,6 @@ def get_data_statistics(interpreted_files):
 # print '| %{color:red}', os.path.basename(interpreted_file) + '%', '|', int(os.path.getsize(interpreted_file) / (1024 * 1024.)), 'Mb |', time.ctime(os.path.getctime(interpreted_file)), '|',  n_events, '|', n_bad_events, '|', measurement_time, 's |', n_sr, '|', n_hits, '|'#, mean_tot, '|', mean_bcid, '|'
             else:
                 print '|', os.path.basename(interpreted_file), '|', int(os.path.getsize(interpreted_file) / (1024 * 1024.)), 'Mb |', time.ctime(os.path.getctime(interpreted_file)), '|', n_events, '|', n_bad_events, '|', measurement_time, 's |', n_sr, '|', n_hits, '|'  # , mean_tot, '|', mean_bcid, '|'
-
-
-def correlate_events(data_frame_fe_1, data_frame_fe_2):
-    '''Correlates events from different Fe by the event number
-
-    Parameters
-    ----------
-    data_frame_fe_1 : pandas.dataframe
-    data_frame_fe_2 : pandas.dataframe
-
-    Returns
-    -------
-    Merged pandas dataframe.
-    '''
-    logging.info("Correlating events")
-    return data_frame_fe_1.merge(data_frame_fe_2, how='left', on='event_number')  # join in the events that the triggered fe sees, only these are interessting
 
 
 def fix_raw_data(raw_data, lsb_byte=None):
@@ -1658,23 +1565,61 @@ def contiguous_regions(condition):
     return idx
 
 
-def check_bad_data(raw_data, trig_count=None):
+def check_bad_data(raw_data, prepend_data_headers=None, trig_count=None):
     """Checking FEI4 raw data array for corrupted data.
     """
-    trigger_idx = np.where(raw_data >= 0x80000000)[0]
-    if not trigger_idx.shape[0]:
-        return False
-    fe_words = is_fe_word(raw_data)
-    data_headers = is_data_header(raw_data)
-    fe_dh_idx = np.where(np.logical_and(fe_words, data_headers) >= 1)[0]
+    consecutive_triggers = 16 if trig_count == 0 else trig_count
+    is_fe_data_header = logical_and(is_fe_word, is_data_header)
+    trigger_idx = np.where(is_trigger_word(raw_data) >= 1)[0]
+    fe_dh_idx = np.where(is_fe_data_header(raw_data) >= 1)[0]
 
-    if not trig_count:
-        trig_count = 16
+    # get index of the last trigger
+    if trigger_idx.shape[0]:
+        last_event_data_headers_cnt = np.where(fe_dh_idx > trigger_idx[-1])[0].shape[0]
+        if consecutive_triggers and last_event_data_headers_cnt == consecutive_triggers:
+            if not np.all(trigger_idx[-1] > fe_dh_idx):
+                trigger_idx = np.r_[trigger_idx, raw_data.shape]
+            last_event_data_headers_cnt = None
+        elif last_event_data_headers_cnt != 0:
+            fe_dh_idx = fe_dh_idx[:-last_event_data_headers_cnt]
+        elif not np.all(trigger_idx[-1] > fe_dh_idx):
+            trigger_idx = np.r_[trigger_idx, raw_data.shape]
+    # if any data header, add trigger for histogramming, next readout has to have trigger word
+    elif fe_dh_idx.shape[0]:
+        trigger_idx = np.r_[trigger_idx, raw_data.shape]
+        last_event_data_headers_cnt = None
+    # no trigger, no data header
+    # assuming correct data, return input values
+    else:
+        return False, prepend_data_headers
 
-    event_hist = np.histogram(fe_dh_idx, np.r_[trigger_idx, raw_data.shape])
-    if np.count_nonzero(event_hist[0] < trig_count):
-        return True
-    return False
+#     # no triggers, check for the right amount of data headers
+#     if consecutive_triggers and prepend_data_headers and prepend_data_headers + fe_dh_idx.shape[0] != consecutive_triggers:
+#         return True, fe_dh_idx.shape[0]
+
+    # check that trigger comes before data header
+    if prepend_data_headers is None and trigger_idx.shape[0] and fe_dh_idx.shape[0] and not trigger_idx[0] < fe_dh_idx[0]:
+        return True, last_event_data_headers_cnt  # FIXME: 0?
+    # check that no trigger comes before the first data header
+    elif consecutive_triggers and prepend_data_headers is not None and trigger_idx.shape[0] and fe_dh_idx.shape[0] and trigger_idx[0] < fe_dh_idx[0]:
+        return True, last_event_data_headers_cnt  # FIXME: 0?
+    # check for two consecutive triggers
+    elif consecutive_triggers is None and prepend_data_headers == 0 and trigger_idx.shape[0] and fe_dh_idx.shape[0] and trigger_idx[0] < fe_dh_idx[0]:
+        return True, last_event_data_headers_cnt  # FIXME: 0?
+    elif prepend_data_headers:
+        trigger_idx += (prepend_data_headers + 1)
+        fe_dh_idx += (prepend_data_headers + 1)
+        # for histogramming add trigger at index 0
+        trigger_idx = np.r_[0, trigger_idx]
+        fe_dh_idx = np.r_[range(1, prepend_data_headers + 1), fe_dh_idx]
+
+    event_hist, bins = np.histogram(fe_dh_idx, trigger_idx)
+    if consecutive_triggers is None and np.any(event_hist == 0):
+        return True, last_event_data_headers_cnt
+    elif consecutive_triggers and np.any(event_hist != consecutive_triggers):
+        return True, last_event_data_headers_cnt
+
+    return False, last_event_data_headers_cnt
 
 
 def consecutive(data, stepsize=1):

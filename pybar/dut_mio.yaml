@@ -7,15 +7,31 @@ transfer_layer:
     type     : SiUsb
 
 # Example of additional lab device transfer layers to be used with pyBAR
+#
+#  - name     : Serial
+#    type     : Serial
+#    init     :
+#        port             : /dev/ttyUSB0 # Linux
+#        read_termination : "\r"
+#        baudrate         : 19200
+#
+#  - name     : Visa_eth
+#    type     : Visa
+#    init     :
+#        resource_name : TCPIP::192.168.1.10
+#        backend       : "@py"
+#
 #  - name     : Visa
 #    type     : Visa
 #    init     :
-#        resource_name : ASRLCOM15::INSTR  # Linux: ASRL/dev/ttyUSB0
-#        backend : "@py"
-
+#        resource_name : ASRLCOM15::INSTR # Windows
+#        resource_name : ASRL/dev/ttyUSB0 # Linux
+#        backend       : "@py"
+#
 hw_drivers:
   - name      : ADAPTER_CARD
-    type      : FEI4AdapterCard # FEI4QuadModuleAdapterCard
+    type      : FEI4AdapterCard
+#    type      : FEI4QuadModuleAdapterCard
     interface : USB
     base_addr : 0x0
 
@@ -24,7 +40,8 @@ hw_drivers:
     interface : USB
     base_addr : 0x18300
 
-# Uncomment for FEI4QuadModuleAdapterCard
+# Uncomment to enable additional channels on the FEI4 Quad Module Adapter Card
+#
 #  - name      : CH3
 #    type      : fei4_rx
 #    interface : USB
@@ -41,16 +58,27 @@ hw_drivers:
 #    base_addr : 0x18600
 
 # Example of additional lab devices to be used with pyBAR
+#
+#  - name      : Multimeter
+#    type      : scpi
+#    interface : Visa # GPIB
+#    interface : Serial # Serial Port
+#    init      :
+#        device  : Keithley 2400
+#        timeout : 1
+#
+#  - name      : Oscilloscope
+#    type      : scpi
+#    interface : Visa_eth
+#    init      :
+#        device : Tektronix MSO4104B
+#
 #  - name      : PowerSupply
 #    type      : scpi
 #    interface : Visa
 #    init      :
 #        device : TTi QL335TP
-#  - name      : Multimeter
-#    type      : scpi
-#    interface : Visa
-#    init      :
-#        device : Keithley 2400
+#
 #  - name      : Pulser
 #    type      : scpi
 #    interface : Visa

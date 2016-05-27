@@ -13,10 +13,11 @@ import progressbar
 
 from matplotlib.backends.backend_pdf import PdfPages
 
+from pybar_fei4_interpreter import data_struct
+
 from pybar.run_manager import RunManager
 from pybar.scans.scan_threshold_fast import FastThresholdScan
 from pybar.analysis import analysis_utils
-from pybar.analysis.RawDataConverter import data_struct
 from pybar.analysis.plotting.plotting import plot_three_way, plot_scurves, plot_scatter
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 
@@ -80,7 +81,7 @@ def create_threshold_calibration(scan_base_file_name, create_plots=True):  # Cre
         m[:, idx] = 1
         return np.ma.masked_array(pixel_array, m)
 
-    raw_data_files = analysis_utils.get_data_file_names_from_scan_base(scan_base_file_name, filter_file_words=['interpreted', 'calibration_calibration'])
+    raw_data_files = analysis_utils.get_data_file_names_from_scan_base(scan_base_file_name)
     first_scan_base_file_name = scan_base_file_name if isinstance(scan_base_file_name, basestring) else scan_base_file_name[0]  # multilpe scan_base_file_names for multiple runs
 
     with tb.openFile(first_scan_base_file_name + '.h5', mode="r") as in_file_h5:  # deduce scan parameters from the first (and often only) scan base file name
@@ -165,7 +166,7 @@ class ThresholdCalibration(FastThresholdScan):
         logging.info("Finished!")
 
     def handle_data(self, data):
-        self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), new_file=[self.scan_parameters._fields[1]], flush=False)  # Create new file for each scan parameter change
+        self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), new_file=[self.scan_parameters._fields[1]], flush=True)  # Create new file for each scan parameter change
 
     def analyze(self):
         create_threshold_calibration(self.output_filename, create_plots=self.create_plots)

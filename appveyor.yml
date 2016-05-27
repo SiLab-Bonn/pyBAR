@@ -16,20 +16,27 @@ init:
 install:
   # Miniconda setup + necessary external packages
   - set PATH=C:\Miniconda;C:\Miniconda\Scripts;%PATH%  # miniconda is already installed on appveyor: https://github.com/appveyor/ci/issues/359
-  - conda install --yes bitarray cython ipython matplotlib mock nose numpy pandas pyserial pytables pyyaml pyzmq scipy sphinx pywin32
-  - pip install progressbar-latest pyvisa pyvisa-py
-  - pip install https://github.com/SiLab-Bonn/pyqtgraph/archive/develop.zip  # pyqtgraph is not working with numpy 1.10 right now, install our fixed fork instead
-  - pip install https://github.com/uvemas/ViTables/archive/v2.1.zip
-  - pip install https://github.com/walac/pyusb/archive/master.zip
   - conda update conda --yes
-  - conda update --all --yes
+  # - conda update --all --yes
   - conda info -a
-  - conda list
-  # pyBAR installation including additional specific packages
+  - conda install --yes bitarray cython ipython matplotlib mock nose numba numpy pyserial pytables pyyaml pyzmq scipy sphinx
+  - conda install --yes pywin32
+  - pip install progressbar-latest pyvisa pyvisa-py
+  # - pip install git+https://github.com/pyqtgraph/pyqtgraph.git@develop
+  - pip install git+https://github.com/SiLab-Bonn/pyqtgraph.git@develop # keeping this fork until release 0.9.11
+  - pip install git+https://github.com/uvemas/ViTables@v2.1
+  # test packages required for USB interface
+  - pip install pyusb
   - pip install pySiLibUSB
-  - pip install git+https://github.com/SiLab-Bonn/basil.git@v2.1.2
+  # pyBAR installation including additional specific packages
+  - pip install basil_daq==2.4.3
+  # - pip install pyBAR_fei4_interpreter
+  - pip install git+https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter@1.2.1
+  - pip install pixel_clusterizer==2.5.0
   - python.exe setup.py develop
+  - conda list
+  - pip list
 
 test_script:
-  - cd tests
+  - cd pybar/testing
   - nosetests test_analysis.py

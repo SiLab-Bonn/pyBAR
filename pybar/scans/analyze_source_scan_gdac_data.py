@@ -249,7 +249,7 @@ def analyze_injected_charge(data_analyzed_file):
                     correction_h5.close()
 
 if __name__ == "__main__":
-    data_files = analysis_utils.get_data_file_names_from_scan_base(analysis_configuration['scan_name'], filter_file_words=['analyzed', 'interpreted', 'cut_', 'cluster_sizes', 'trigger_fe'], parameter=True)
+    data_files = analysis_utils.get_data_file_names_from_scan_base(analysis_configuration['scan_name'])
     files_dict = analysis_utils.get_parameter_from_files(data_files, unique=True, parameters='GDAC')  # get a sorted ordered dict with GDAC, raw_data_filename
     logging.info('Found ' + str(len(files_dict)) + ' raw data files.')
 

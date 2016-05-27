@@ -1,14 +1,16 @@
 import logging
 import glob
-import zmq
 from threading import RLock
-import tables as tb
 import os.path
 from os import remove
 from operator import itemgetter
 
+import tables as tb
+
+import zmq
+
+from pybar_fei4_interpreter.data_struct import MetaTableV2 as MetaTable, generate_scan_parameter_description
 from pybar.daq.readout_utils import save_configuration_dict
-from pybar.analysis.RawDataConverter.data_struct import MetaTableV2 as MetaTable, generate_scan_parameter_description
 
 
 def send_meta_data(socket, conf, name):
@@ -124,7 +126,7 @@ class RawDataFile(object):
         return self
 
     def __exit__(self, *exc_info):
-        self.close()
+        self.close(close_socket=True)
         return False  # do not hide exceptions
 
     def open(self, filename, mode='w', title=''):
@@ -155,13 +157,13 @@ class RawDataFile(object):
             except tb.exceptions.NodeError:
                 self.scan_param_table = self.h5_file.getNode(self.h5_file.root, name='scan_parameters')
 
-    def close(self):
+    def close(self, close_socket=True):
         with self.lock:
             self.flush()
             logging.info('Closing raw data file: %s', self.h5_file.filename)
             self.h5_file.close()
             self.h5_file = None
-        if self.socket:
+        if self.socket and close_socket:
             logging.info('Closing socket connection')
             self.socket.close()  # close here, do not wait for garbage collector
             self.socket = None
@@ -189,7 +191,7 @@ class RawDataFile(object):
                     with tb.open_file(filename, mode='a', title=filename) as h5_file:  # append, since file can already exists when scan parameters are jumping back and forth
                         for node in nodes:
                             self.h5_file.copy_node(node, h5_file.root, overwrite=True, recursive=True)
-                    self.close()
+                    self.close(close_socket=False)
                     self.open(filename, 'a', filename)
             total_words = self.raw_data_earray.nrows
             raw_data = data_tuple[0]
@@ -203,7 +205,7 @@ class RawDataFile(object):
                 with tb.open_file(filename, mode='a', title=filename) as h5_file:  # append, since file can already exists when scan parameters are jumping back and forth
                     for node in nodes:
                         self.h5_file.copy_node(node, h5_file.root, overwrite=True, recursive=True)
-                self.close()
+                self.close(close_socket=False)
                 self.open(filename, 'a', filename)
                 total_words = self.raw_data_earray.nrows  # in case of re-opening existing file
             self.raw_data_earray.append(raw_data)

@@ -1,9 +1,13 @@
 import logging
 import os
+
 import numpy as np
 import tables as tb
 
-from pybar.analysis.RawDataConverter.data_struct import NameValue
+
+class NameValue(tb.IsDescription):
+    name = tb.StringCol(256, pos=0)
+    value = tb.StringCol(4 * 1024, pos=0)
 
 
 def save_configuration_dict(h5_file, configuation_name, configuration, **kwargs):
@@ -142,9 +146,9 @@ def is_data_from_channel(channel=4):  # function factory
     Note:
     Trigger data not included
     '''
-    if channel > 0 and channel < 5:
+    if channel >= 0 and channel < 16:
         def f(value):
-            return np.equal(np.right_shift(np.bitwise_and(value, 0x7F000000), 24), channel)
+            return np.equal(np.right_shift(np.bitwise_and(value, 0xFF000000), 24), channel)
         f.__name__ = "is_data_from_channel_" + str(channel)  # or use inspect module: inspect.stack()[0][3]
         return f
     else:

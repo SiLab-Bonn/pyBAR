@@ -43,11 +43,6 @@ coverage.xml
 docs/_build/
 # PyBuilder
 target/
-#  pyBAR cython files
-analysis_functions.cpp
-data_clusterizer.cpp
-data_histograming.cpp
-data_interpreter.cpp
 # some pyBAR scan data folders, how to get all new folders?
 module_*/
 scc_*/
@@ -86,3 +81,6 @@ firmware/nexys4/vivado/*
 firmware/nexys4/src/ip/*
 !firmware/nexys4/src/ip/*.xci
 firmware/nexys4/src/SiTCP
+
+# Simulation output
+sim_build

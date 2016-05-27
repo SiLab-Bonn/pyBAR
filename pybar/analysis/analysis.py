@@ -1,5 +1,6 @@
 """This module makes a lot of analysis functions available.
 """
+from __future__ import division
 
 import logging
 import os
@@ -9,11 +10,12 @@ import numpy as np
 import tables as tb
 import re
 
+from pybar_fei4_interpreter import data_struct
+from pybar_fei4_interpreter.data_histograming import PyDataHistograming
+
 from pybar.analysis import analysis_utils
-from pybar.analysis.RawDataConverter import data_struct
 from pybar.analysis.plotting import plotting
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
-from pybar.analysis.RawDataConverter.data_histograming import PyDataHistograming
 
 
 def analyze_beam_spot(scan_base, combine_n_readouts=1000, chunk_size=10000000, plot_occupancy_hists=False, output_pdf=None, output_file=None):
@@ -67,7 +69,7 @@ def analyze_beam_spot(scan_base, combine_n_readouts=1000, chunk_size=10000000, p
 
                 # loop over the hits in the actual selected events with optimizations: determine best chunk size, start word index given
                 readout_hit_len = 0  # variable to calculate a optimal chunk size value from the number of hits for speed up
-                for hits, index in analysis_utils.data_aligned_at_events(hit_table, start_event_number=parameter_range[2], stop_event_number=parameter_range[3], start=index, chunk_size=best_chunk_size):
+                for hits, index in analysis_utils.data_aligned_at_events(hit_table, start_event_number=parameter_range[2], stop_event_number=parameter_range[3], start_index=index, chunk_size=best_chunk_size):
                     analyze_data.analyze_hits(hits)  # analyze the selected hits in chunks
                     readout_hit_len += hits.shape[0]
                     progress_bar.update(index)
@@ -199,7 +201,7 @@ def analyse_n_cluster_per_event(scan_base, include_no_cluster=False, time_line_a
                 # loop over the cluster in the actual selected events with optimizations: determine best chunk size, start word index given
                 readout_cluster_len = 0  # variable to calculate a optimal chunk size value from the number of hits for speed up
                 hist = None
-                for clusters, index in analysis_utils.data_aligned_at_events(cluster_table, start_event_number=parameter_range[2], stop_event_number=parameter_range[3], start=index, chunk_size=best_chunk_size):
+                for clusters, index in analysis_utils.data_aligned_at_events(cluster_table, start_event_number=parameter_range[2], stop_event_number=parameter_range[3], start_index=index, chunk_size=best_chunk_size):
                     n_cluster_per_event = analysis_utils.get_n_cluster_in_events(clusters['event_number'])[:, 1]  # array with the number of cluster per event, cluster per event are at least 1
                     if hist is None:
                         hist = np.histogram(n_cluster_per_event, bins=10, range=(0, 10))[0]
@@ -390,7 +392,7 @@ def analyze_cluster_size_per_scan_parameter(input_file_hits, output_file_cluster
                             actual_parameter_group = out_file_h5.createGroup(parameter_goup, name=parameter + '_' + str(parameter_range[0]), title=parameter + '_' + str(parameter_range[0]))
                             # loop over the hits in the actual selected events with optimizations: variable chunk size, start word index given
                             readout_hit_len = 0  # variable to calculate a optimal chunk size value from the number of hits for speed up
-                            for hits, index in analysis_utils.data_aligned_at_events(hit_table, start_event_number=start_event_number, stop_event_number=stop_event_number, start=index, chunk_size=chunk_size):
+                            for hits, index in analysis_utils.data_aligned_at_events(hit_table, start_event_number=start_event_number, stop_event_number=stop_event_number, start_index=index, chunk_size=chunk_size):
                                 total_hits += hits.shape[0]
                                 analyze_data.analyze_hits(hits)  # analyze the selected hits in chunks
                                 readout_hit_len += hits.shape[0]
@@ -523,7 +525,7 @@ def analyze_hits_per_scan_parameter(analyze_data, scan_parameters=None, chunk_si
         analyze_data.reset()  # resets the front end data of the last analysis step but not the options
         readout_hit_len = 0  # variable to calculate a optimal chunk size value from the number of hits for speed up
         # loop over the hits in the actual selected events with optimizations: determine best chunk size, start word index given
-        for hits, index in analysis_utils.data_aligned_at_events(hit_table, start_event_number=start_event_number, stop_event_number=stop_event_number, start=index, chunk_size=best_chunk_size):
+        for hits, index in analysis_utils.data_aligned_at_events(hit_table, start_event_number=start_event_number, stop_event_number=stop_event_number, start_index=index, chunk_size=best_chunk_size):
             analyze_data.analyze_hits(hits, scan_parameter=False)  # analyze the selected hits in chunks
             readout_hit_len += hits.shape[0]
         best_chunk_size = int(1.5 * readout_hit_len) if int(1.05 * readout_hit_len) < chunk_size and int(1.05 * readout_hit_len) > 1e3 else chunk_size  # to increase the readout speed, estimated the number of hits for one read instruction

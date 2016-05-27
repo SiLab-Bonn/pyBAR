@@ -12,8 +12,8 @@ from pyqtgraph.dockarea import DockArea, Dock
 import pyqtgraph.ptime as ptime
 from threading import Event, Lock
 
-from pybar.analysis.RawDataConverter.data_interpreter import PyDataInterpreter
-from pybar.analysis.RawDataConverter.data_histograming import PyDataHistograming
+from pybar_fei4_interpreter.data_interpreter import PyDataInterpreter
+from pybar_fei4_interpreter.data_histograming import PyDataHistograming
 
 
 class DataWorker(QtCore.QObject):
@@ -160,8 +160,8 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
 #         self.aboutToQuit.connect(self.worker.stop)  # QtGui.QApplication
         self.thread.started.connect(self.worker.process_data)
         self.worker.finished.connect(self.thread.quit)
-#         self.worker.finished.connect(self.worker.deleteLater)
-#         self.thread.finished.connect(self.thread.deleteLater)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.thread.finished.connect(self.thread.deleteLater)
         self.thread.start()
 
     def setup_plots(self):

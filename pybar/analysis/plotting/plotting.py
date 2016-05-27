@@ -1,21 +1,20 @@
 ﻿from __future__ import division
 
 import logging
-import numpy as np
 import math
-import itertools
 from datetime import datetime
+# import itertools
+
+import numpy as np
+from scipy.stats import chisquare, norm  # , mstats
+# from scipy.optimize import curve_fit
 # import matplotlib.pyplot as plt
 # pyplot is not thread safe since it rely on global parameters: https://github.com/matplotlib/matplotlib/issues/757
 from matplotlib.figure import Figure
 from matplotlib.artist import setp
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
-# import scipy
-# from scipy.optimize import curve_fit
-from scipy.stats import chisquare, norm  # , mstats
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.dates as mdates
-import pandas as pd
 from matplotlib import colors, cm
 from matplotlib.backends.backend_pdf import PdfPages
 
@@ -50,7 +49,7 @@ def plot_tdc_event(points, filename=None):
     return fig
 
 
-def plot_linear_relation(x, y, x_err=None, y_err=None, title=None, point_label=None, legend=None, plot_range=None, plot_range_y=None, x_label=None, y_label=None, y_2_label=None, marker_style='-o', log_x=False, log_y=False, size=None, filename=None):
+def plot_linear_relation(x, y, x_err=None, y_err=None, title=None, point_label=None, legend=None, plot_range=None, plot_range_y=None, x_label=None, y_label=None, y_2_label=None, log_x=False, log_y=False, size=None, filename=None):
     ''' Takes point data (x,y) with errors(x,y) and fits a straight line. The deviation to this line is also plotted, showing the offset.
 
      Parameters
@@ -281,7 +280,7 @@ def plot_profile_histogram(x, y, n_bins=100, title=None, x_label=None, y_label=N
 
 
 def plot_scatter(x, y, x_err=None, y_err=None, title=None, legend=None, plot_range=None, plot_range_y=None, x_label=None, y_label=None, marker_style='-o', log_x=False, log_y=False, filename=None):
-    logging.info('Plot scatter plot %s', (': ' + title) if title is not None else '')
+    logging.info('Plot scatter plot %s', (': ' + title.replace('\n', ' ')) if title is not None else '')
     fig = Figure()
     FigureCanvas(fig)
     ax = fig.add_subplot(111)
@@ -309,33 +308,6 @@ def plot_scatter(x, y, x_err=None, y_err=None, title=None, legend=None, plot_ran
     if legend:
         ax.legend(legend, 0)
     ax.grid(True)
-    if not filename:
-        fig.show()
-    elif isinstance(filename, PdfPages):
-        filename.savefig(fig)
-    else:
-        fig.savefig(filename)
-
-
-def plot_correlation(hist, title="Hit correlation", xlabel=None, ylabel=None, filename=None):
-    logging.info("Plotting correlations")
-    fig = Figure()
-    FigureCanvas(fig)
-    ax = fig.add_subplot(1, 1, 1)
-    cmap = cm.get_cmap('cool')
-    extent = [hist[2][0] - 0.5, hist[2][-1] + 0.5, hist[1][-1] + 0.5, hist[1][0] - 0.5]
-    ax.set_title(title)
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
-    im = ax.imshow(hist[0], extent=extent, cmap=cmap, interpolation='nearest')
-    ax.invert_yaxis()
-    # add colorbar
-    divider = make_axes_locatable(ax)
-    cax = divider.append_axes("right", size="5%", pad=0.05)
-    z_max = np.max(hist[0])
-    bounds = np.linspace(start=0, stop=z_max, num=255, endpoint=True)
-    norm = colors.BoundaryNorm(bounds, cmap.N)
-    fig.colorbar(im, boundaries=bounds, cmap=cmap, norm=norm, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True), cax=cax)
     if not filename:
         fig.show()
     elif isinstance(filename, PdfPages):
@@ -398,7 +370,7 @@ def round_to_multiple(number, multiple):
 
 
 def plot_relative_bcid(hist, title=None, filename=None):
-    plot_1d_hist(hist=hist, title=('Relative BCID' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, log_y=True, plot_range=range(0, 16), x_axis_title='Relative BCID [25 ns]', y_axis_title='#', filename=filename, figure_name='Relative BCID')
+    plot_1d_hist(hist=hist, title=('Relative BCID' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, log_y=True, plot_range=range(0, 16), x_axis_title='Relative BCID [25 ns]', y_axis_title='#', filename=filename)
 
 
 def plot_relative_bcid_stop_mode(hist, filename=None):
@@ -406,36 +378,36 @@ def plot_relative_bcid_stop_mode(hist, filename=None):
         max_plot_range = np.where(hist[:] != 0)[0][-1] + 1
     except IndexError:
         max_plot_range = 1
-    plot_1d_hist(hist=hist, title='Latency window in stop mode', plot_range=range(0, max_plot_range), x_axis_title='Lantency window [BCID]', y_axis_title='#', filename=filename, figure_name='Latency window in stop mode')
+    plot_1d_hist(hist=hist, title='Latency window in stop mode', plot_range=range(0, max_plot_range), x_axis_title='Lantency window [BCID]', y_axis_title='#', filename=filename)
 
 
 def plot_tot(hist, title=None, filename=None):
-    plot_1d_hist(hist=hist, title=('Time-over-Threshold distribution' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, plot_range=range(0, 16), x_axis_title='ToT code [25 ns]', y_axis_title='#', color='b', filename=filename, figure_name='Hit Tot')
+    plot_1d_hist(hist=hist, title=('Time-over-Threshold distribution' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, plot_range=range(0, 16), x_axis_title='ToT code [25 ns]', y_axis_title='#', color='b', filename=filename)
 
 
 def plot_tdc(hist, title=None, filename=None):
     masked_hist, indices = hist_quantiles(hist, prob=(0., 0.99), return_indices=True)
-    plot_1d_hist(hist=masked_hist, title=('TDC Hit distribution' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, plot_range=range(*indices), x_axis_title='hit TDC', y_axis_title='#', color='b', filename=filename, figure_name='Hit TDC')
+    plot_1d_hist(hist=masked_hist, title=('TDC Hit distribution' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, plot_range=range(*indices), x_axis_title='hit TDC', y_axis_title='#', color='b', filename=filename)
 
 
 def plot_tdc_counter(hist, title=None, filename=None):
     masked_hist, indices = hist_quantiles(hist, prob=(0., 0.99), return_indices=True)
-    plot_1d_hist(hist=masked_hist, title=('TDC counter distribution' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, plot_range=range(*indices), x_axis_title='TDC value', y_axis_title='#', color='b', filename=filename, figure_name='Counter TDC')
+    plot_1d_hist(hist=masked_hist, title=('TDC counter distribution' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, plot_range=range(*indices), x_axis_title='TDC value', y_axis_title='#', color='b', filename=filename)
 
 
 def plot_event_errors(hist, title=None, filename=None):
-    plot_1d_hist(hist=hist, title=('Event status' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, plot_range=range(0, 11), x_ticks=('SR\noccured', 'No\ntrigger', 'LVL1ID\nnot const.', '#BCID\nwrong', 'unknown\nword', 'BCID\njump', 'trigger\nerror', 'truncated', 'TDC\nword', '> 1 TDC\nwords', 'TDC\noverflow'), color='g', y_axis_title='#', filename=filename, figure_name='Event Errors')
+    plot_1d_hist(hist=hist, title=('Event status' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, plot_range=range(0, 11), x_ticks=('SR\noccured', 'No\ntrigger', 'LVL1ID\nnot const.', '#BCID\nwrong', 'unknown\nword', 'BCID\njump', 'trigger\nerror', 'truncated', 'TDC\nword', '> 1 TDC\nwords', 'TDC\noverflow'), color='g', y_axis_title='#', filename=filename)
 
 
 def plot_trigger_errors(hist, filename=None):
-    plot_1d_hist(hist=hist, title='Trigger errors' + r' ($\Sigma$ = %d)' % (np.sum(hist)), plot_range=range(0, 8), x_ticks=('increase\nerror', 'more than\none trg.', 'TLU\naccept', 'TLU\ntime out', 'not\nused', 'not\nused', 'not\nused', 'not\nused'), color='g', y_axis_title='#', filename=filename, figure_name='Trigger Errors')
+    plot_1d_hist(hist=hist, title='Trigger errors' + r' ($\Sigma$ = %d)' % (np.sum(hist)), plot_range=range(0, 8), x_ticks=('increase\nerror', 'more than\none trg.', 'TLU\naccept', 'TLU\ntime out', 'not\nused', 'not\nused', 'not\nused', 'not\nused'), color='g', y_axis_title='#', filename=filename)
 
 
 def plot_service_records(hist, filename=None):
-    plot_1d_hist(hist=hist, title='Service records' + r' ($\Sigma$ = %d)' % (np.sum(hist)), x_axis_title='Service record code', color='g', y_axis_title='#', filename=filename, figure_name='Service Records')
+    plot_1d_hist(hist=hist, title='Service records' + r' ($\Sigma$ = %d)' % (np.sum(hist)), x_axis_title='Service record code', color='g', y_axis_title='#', filename=filename)
 
 
-def plot_cluster_tot(hist, median=False, max_occ=None, filename=None):
+def plot_cluster_tot(hist, filename=None):
     plot_1d_hist(hist=hist[:, 0], title='Cluster ToT' + r' ($\Sigma$ = %d)' % (np.sum(hist[:, 0])), plot_range=range(0, 32), x_axis_title='cluster ToT', y_axis_title='#', filename=filename)
 
 
@@ -443,40 +415,67 @@ def plot_cluster_size(hist, title=None, filename=None):
     plot_1d_hist(hist=hist, title=('Cluster size' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, log_y=True, plot_range=range(0, 32), x_axis_title='Cluster size', y_axis_title='#', filename=filename)
 
 
-def plot_scurves(occupancy_hist, scan_parameters, title='S-Curves', ylabel='Occupancy', max_occ=None, scan_parameter_name=None, min_x=None, max_x=None, x_scale=1.0, y_scale=1., filename=None):  # tornado plot
-    occ_mask = np.all(occupancy_hist == 0, axis=2)
+# tornado plot
+def plot_scurves(occupancy_hist, scan_parameters, title='S-curves', ylabel='Occupancy', max_occ=None, scan_parameter_name=None, min_x=None, max_x=None, extend_bin_width=True, filename=None):
+    occ_mask = np.all((occupancy_hist == 0), axis=2) | np.all(np.isnan(occupancy_hist), axis=2)
+    occupancy_hist = np.ma.masked_invalid(occupancy_hist)
     if max_occ is None:
-        max_occ = math.ceil(2 * np.ma.median(np.amax(occupancy_hist, axis=2)))
-        if np.allclose(max_occ, 0.0):
-            max_occ = 1.0
+        if np.allclose(occupancy_hist, 0.0) or np.all(occ_mask == True):
+            max_occ = 0.0
+        else:
+            max_occ = math.ceil(2 * np.ma.median(np.amax(occupancy_hist[~occ_mask], axis=1)))
     if len(occupancy_hist.shape) < 3:
         raise ValueError('Found array with shape %s' % str(occupancy_hist.shape))
 
     n_pixel = occupancy_hist.shape[0] * occupancy_hist.shape[1]
+    scan_parameters = np.array(scan_parameters)
+    if extend_bin_width and len(scan_parameters) >= 2:
+        # adding mirror scan parameter for plotting range -0.5 ... 
+        scan_parameters = np.r_[-scan_parameters[0] - 1.0, scan_parameters]
+        dist = (scan_parameters[1:] - scan_parameters[:-1].astype(np.float))
+        min_dist = np.minimum(np.r_[dist[0], dist[:]], np.r_[dist[:], dist[-1]]) / 2
+        min_dist = np.minimum(np.r_[(scan_parameters[0] + 0.5) * 2, dist[:]], np.r_[dist[:], dist[-1]]) / 2
+        # removing mirror scan parameter
+        x_bins = np.unique(np.dstack([scan_parameters - min_dist, scan_parameters + min_dist]).flatten())[1:]
+        scan_parameters = scan_parameters[1:]
+    else:
+        x_bins = np.arange(-0.5, max(scan_parameters) + 1.5)
+    y_bins = np.arange(-0.5, max_occ + 1.5)
 
-    cmap = cm.get_cmap('cool')
     for index, scan_parameter in enumerate(scan_parameters):
         compressed_data = np.ma.masked_array(occupancy_hist[:, :, index], mask=occ_mask, copy=True).compressed()
-        heatmap, xedges, yedges = np.histogram2d(compressed_data, [scan_parameter] * compressed_data.shape[0], range=[[0, max_occ], [scan_parameters[0], scan_parameters[-1]]], bins=(max_occ + 1, len(scan_parameters)))
+        tmp_hist, yedges, xedges = np.histogram2d(compressed_data, [scan_parameter] * compressed_data.shape[0], bins=(y_bins, x_bins))
         if index == 0:
-            hist = heatmap
+            hist = tmp_hist
         else:
-            hist += heatmap
+            hist += tmp_hist
+
     fig = Figure()
     FigureCanvas(fig)
     ax = fig.add_subplot(111)
     fig.patch.set_facecolor('white')
-    if len(scan_parameters) > 1:
-        scan_parameter_dist = (np.amax(scan_parameters) - np.amin(scan_parameters)) / (len(scan_parameters) - 1)
+    cmap = cm.get_cmap('cool')
+    if np.allclose(hist, 0.0) or hist.max() <= 1:
+        z_max = 1.0
     else:
-        scan_parameter_dist = 0
-    extent = [yedges[0] - scan_parameter_dist / 2, yedges[-1] * x_scale + scan_parameter_dist / 2, xedges[-1] * y_scale + 0.5, xedges[0] - 0.5]
-    norm = colors.LogNorm()
-    im = ax.imshow(hist, interpolation='nearest', aspect="auto", cmap=cmap, extent=extent, norm=norm)
-    ax.invert_yaxis()
+        z_max = hist.max()
+    # for small z use linear scale, otherwise log scale
+    if z_max <= 10.0:
+        bounds = np.linspace(start=0.0, stop=z_max, num=255, endpoint=True)
+        norm = colors.BoundaryNorm(bounds, cmap.N)
+    else:
+        bounds = np.linspace(start=1.0, stop=z_max, num=255, endpoint=True)
+        norm = colors.LogNorm()
+    X, Y = np.meshgrid(xedges, yedges)
+    im = ax.pcolormesh(X, Y, np.ma.masked_where(hist == 0, hist), cmap=cmap, norm=norm)
+    ax.axis([xedges[0], xedges[-1], yedges[0], yedges[-1]])
     if min_x is not None or max_x is not None:
-        ax.set_xlim((min_x if min_x is not None else np.amin(scan_parameters), max_x if max_x is not None else np.amax(scan_parameters)))
-    fig.colorbar(im)
+        ax.set_xlim((min_x if min_x is not None else np.min(scan_parameters), max_x if max_x is not None else np.max(scan_parameters)))
+    if z_max <= 10.0:
+        cb = fig.colorbar(im, ticks=np.linspace(start=0.0, stop=z_max, num=min(11, math.ceil(z_max) + 1), endpoint=True), fraction=0.04, pad=0.05)
+    else:
+        cb = fig.colorbar(im, fraction=0.04, pad=0.05)
+    cb.set_label("#")
     ax.set_title(title + ' for %d pixel(s)' % (n_pixel - np.count_nonzero(occ_mask)))
     if scan_parameter_name is None:
         ax.set_xlabel('Scan parameter')
@@ -528,7 +527,7 @@ def plot_scatter_time(x, y, yerr=None, title=None, legend=None, plot_range=None,
         fig.savefig(filename)
 
 
-def plot_cluster_tot_size(hist, median=False, z_max=None, filename=None):
+def plot_cluster_tot_size(hist, z_max=None, filename=None):
     hist = hist[0:50, 0:20]  # limit size
     if z_max is None:
         z_max = math.ceil(np.ma.max(hist))
@@ -561,8 +560,8 @@ def plot_cluster_tot_size(hist, median=False, z_max=None, filename=None):
         fig.savefig(filename)
 
 
-def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=None, x_ticks=None, color='r', plot_range=None, log_y=False, filename=None, figure_name=None):
-    logging.info('Plot 1d histogram%s', (': ' + title) if title is not None else '')
+def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=None, x_ticks=None, color='r', plot_range=None, log_y=False, filename=None):
+    logging.info('Plot 1d histogram%s', (': ' + title.replace('\n', ' ')) if title is not None else '')
     fig = Figure()
     FigureCanvas(fig)
     ax = fig.add_subplot(111)
@@ -628,9 +627,9 @@ def plot_three_way(hist, title, filename=None, x_axis_title=None, minimum=None, 
     ax1 = fig.add_subplot(311)
     create_2d_pixel_hist(fig, ax1, hist, title=title, x_axis_title="column", y_axis_title="row", z_min=minimum if minimum else 0, z_max=maximum, cmap=cmap)
     ax2 = fig.add_subplot(312)
-    create_1d_hist(fig, ax2, hist, bins=bins, x_axis_title=x_axis_title, y_axis_title="#", x_min=minimum, x_max=maximum)
+    create_1d_hist(ax2, hist, bins=bins, x_axis_title=x_axis_title, y_axis_title="#", x_min=minimum, x_max=maximum)
     ax3 = fig.add_subplot(313)
-    create_pixel_scatter_plot(fig, ax3, hist, x_axis_title="channel=row + column*336", y_axis_title=x_axis_title, y_min=minimum, y_max=maximum)
+    create_pixel_scatter_plot(ax3, hist, x_axis_title="channel=row + column*336", y_axis_title=x_axis_title, y_min=minimum, y_max=maximum)
     fig.tight_layout()
     if not filename:
         fig.show()
@@ -664,7 +663,7 @@ def create_2d_pixel_hist(fig, ax, hist2d, title=None, x_axis_title=None, y_axis_
     fig.colorbar(im, boundaries=bounds, cmap=cmap, norm=norm, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True), cax=cax)
 
 
-def create_1d_hist(fig, ax, hist, title=None, x_axis_title=None, y_axis_title=None, bins=101, x_min=None, x_max=None):
+def create_1d_hist(ax, hist, title=None, x_axis_title=None, y_axis_title=None, bins=101, x_min=None, x_max=None):
     if x_min is None:
         x_min = 0.0
     if x_max is None:
@@ -708,14 +707,15 @@ def create_1d_hist(fig, ax, hist, title=None, x_axis_title=None, y_axis_title=No
 #     amplitude = np.amax(h_1d)
 
     # defining gauss fit function
-    def gauss(x, *p):
-        amplitude, mu, sigma = p
-        return amplitude * np.exp(- (x - mu)**2.0 / (2.0 * sigma**2.0))
+#     def gauss(x, *p):
+#         amplitude, mu, sigma = p
+#         return amplitude * np.exp(- (x - mu)**2.0 / (2.0 * sigma**2.0))
 #         mu, sigma = p
 #         return 1.0 / (sigma * np.sqrt(2.0 * np.pi)) * np.exp(- (x - mu)**2.0 / (2.0 * sigma**2.0))
-
-    def chi_square(observed_values, expected_values):
-        return (chisquare(observed_values, f_exp=expected_values))[0]
+# 
+#     def chi_square(observed_values, expected_values):
+#         return (chisquare(observed_values, f_exp=expected_values))[0]
+#         # manual calculation
 #         chisquare = 0
 #         for observed, expected in itertools.izip(list(observed_values), list(expected_values)):
 #             chisquare += (float(observed) - float(expected))**2.0 / float(expected)
@@ -752,7 +752,7 @@ def create_1d_hist(fig, ax, hist, title=None, x_axis_title=None, y_axis_title=No
     ax.text(0.05, 0.9, textleft, transform=ax.transAxes, fontsize=8, verticalalignment='top', bbox=props)
 
 
-def create_pixel_scatter_plot(fig, ax, hist, title=None, x_axis_title=None, y_axis_title=None, y_min=None, y_max=None):
+def create_pixel_scatter_plot(ax, hist, title=None, x_axis_title=None, y_axis_title=None, y_min=None, y_max=None):
     scatter_y_mean = np.ma.mean(hist, axis=0)
     scatter_y = hist.flatten('F')
     ax.scatter(range(80 * 336), scatter_y, marker='o', s=0.8, rasterized=True)
@@ -777,40 +777,42 @@ def create_pixel_scatter_plot(fig, ax, hist, title=None, x_axis_title=None, y_ax
         ax.set_ylabel(y_axis_title)
 
 
-def plot_correlations(filenames, limit=None):
-    DataFrame = pd.DataFrame()
-    index = 0
-    for fileName in filenames:
-        with pd.get_store(fileName, 'r') as store:
-            tempDataFrame = pd.DataFrame({'Event': store.Hits.Event[:15000], 'Row' + str(index): store.Hits.Row[:15000]})
-            tempDataFrame = tempDataFrame.set_index('Event')
-            DataFrame = tempDataFrame.join(DataFrame)
-            DataFrame = DataFrame.dropna()
-            index += 1
-            del tempDataFrame
-    DataFrame["index"] = DataFrame.index
-    DataFrame.drop_duplicates(take_last=True, inplace=True)
-    del DataFrame["index"]
-    correlationNames = ('Row')
-    index = 0
-    for corName in correlationNames:
-        for colName in itertools.permutations(DataFrame.filter(regex=corName), 2):
-            if(corName == 'Col'):
-                heatmap, xedges, yedges = np.histogram2d(DataFrame[colName[0]], DataFrame[colName[1]], bins=(80, 80), range=[[1, 80], [1, 80]])
-            else:
-                heatmap, xedges, yedges = np.histogram2d(DataFrame[colName[0]], DataFrame[colName[1]], bins=(336, 336), range=[[1, 336], [1, 336]])
-            extent = [yedges[0] - 0.5, yedges[-1] + 0.5, xedges[-1] + 0.5, xedges[0] - 0.5]
-            cmap = cm.get_cmap('cool', 40)
-            fig = Figure()
-            FigureCanvas(fig)
-            ax = fig.add_subplot(111)
-            ax.imshow(heatmap, extent=extent, cmap=cmap, interpolation='nearest')
-            ax.invert_yaxis()
-            ax.set_xlabel(colName[0])
-            ax.set_ylabel(colName[1])
-            ax.set_title('Correlation plot(' + corName + ')')
-            fig.savefig(colName[0] + '_' + colName[1] + '.pdf')
-            index += 1
+def plot_tot_tdc_calibration(scan_parameters, filename, tot_mean, tot_error=None, tdc_mean=None, tdc_error=None, title="Charge calibration"):
+    fig = Figure()
+    FigureCanvas(fig)
+    ax1 = fig.add_subplot(111)
+    fig.patch.set_facecolor('white')
+    ax1.grid(True)
+    ax1.errorbar(scan_parameters, (tot_mean + 1) * 25.0, yerr=(tot_error * 25.0) if tot_error is not None else None, fmt='o', color='b', label='ToT')
+    ax1.set_ylabel('ToT [ns]')
+    ax1.set_title(title)
+    ax1.set_xlabel('Charge [PlsrDAC]')
+    if tdc_mean is not None:
+        ax1.errorbar(scan_parameters, tdc_mean * 1000.0/640.0, yerr=(tdc_error * 1000.0/640.0) if tdc_error is not None else None, fmt='o', color='g', label='TDC')
+        ax1.set_ylabel('ToT / TDC [ns]')
+    ax1.legend(loc=0)
+    ax1.set_ylim(ymin=0.0)
+    # second axis with ToT code
+    ax2 = ax1.twinx()
+    ax2.set_ylabel('ToT code')
+    ax2.set_ylim(ax1.get_ylim())
+    from matplotlib.ticker import  IndexLocator, FuncFormatter, NullFormatter, MultipleLocator, FixedLocator
+
+    def format_fn(tick_val, tick_pos):
+        if tick_val <= 25 * 16:
+            return str(int((tick_val / 25.0) - 1))
+        else:
+            return ''
+
+    ax2.yaxis.set_major_formatter(FuncFormatter(format_fn))
+    ax2.yaxis.set_major_locator(FixedLocator(locs=range(25, 17 * 25, 25) if ax1.get_ylim()[1] < 1000 else [25, 16 * 25]))
+
+    if not filename:
+        fig.show()
+    elif isinstance(filename, PdfPages):
+        filename.savefig(fig)
+    else:
+        fig.savefig(filename)
 
 
 def hist_quantiles(hist, prob=(0.05, 0.95), return_indices=False, copy=True):

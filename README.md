@@ -34,7 +34,7 @@ The features of the host software in Python and C++:
 
 The following packages are required for pyBAR's core functionality:
   ```
-  basil_daq bitarray cython matplotlib numpy pandas progressbar-latest pyyaml scipy tables
+  basil_daq bitarray cython matplotlib numpy pandas pixel_clusterizer progressbar-latest pyyaml scipy tables
   ```
 
 For full functionality, the following additional packages are required:
@@ -44,9 +44,9 @@ For full functionality, the following additional packages are required:
 
 Run the **following commands** to install the packages:
   ```
-  conda install bitarray cython ipython matplotlib mock nose numpy pandas pyserial pytables pyyaml pyzmq scipy sphinx
+  conda install bitarray cython ipython matplotlib mock nose numba numpy pyserial pytables pyyaml pyzmq scipy sphinx
   
-  pip install progressbar-latest pyvisa pyvisa-py https://github.com/SiLab-Bonn/pyqtgraph/archive/develop.zip https://github.com/uvemas/ViTables/archive/v2.1.zip
+  pip install progressbar-latest pyvisa pyvisa-py git+https://github.com/SiLab-Bonn/pyqtgraph.git@develop git+https://github.com/uvemas/ViTables@v2.1
   ```
 
 On Windows, the `pywin32` package is required:
@@ -54,15 +54,25 @@ On Windows, the `pywin32` package is required:
   conda install pywin32
   ```
 
-[Basil](https://github.com/SiLab-Bonn/basil) (==2.4.0) is required:
+[Basil](https://github.com/SiLab-Bonn/basil) (==2.4.3) is required:
   ```
-  pip install basil_daq==2.4.0
+  pip install basil_daq==2.4.3
+  ```
+
+[pyBAR FEI4 Interpreter](https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter) (==1.2.1) is required:
+  ```
+  pip install git+https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter@1.2.1
+  ```
+
+[Pixel Clusterizer](https://github.com/SiLab-Bonn/pixel_clusterizer) (==2.5.0) is required:
+  ```
+  pip install pixel_clusterizer==2.5.0
   ```
 
 To enable support for USB devices (MIO, MIO3 and MMC3), the following additional packages are required:
 - [PyUSB](https://github.com/walac/pyusb) (>=1.0.0rc1):
   ```
-  pip install "git+https://github.com/walac/pyusb.git@master"
+  pip install pyusb
   ```
   
 - [pySiLibUSB](https://github.com/SiLab-Bonn/pySiLibUSB) (>=2.0.0):
