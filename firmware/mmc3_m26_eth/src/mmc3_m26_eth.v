@@ -646,7 +646,7 @@ generate
             .IDENTYFIER(ch+1)
         ) i_m26_rx
         (
-            .CLK_RX(~M26_CLK_BUFG[ch]),
+            .CLK_RX(M26_CLK_BUFG[ch]),
             .MKD_RX(M26_MKD[ch]),
             .DATA_RX({M26_DATA1[ch], M26_DATA0[ch]}),
     
