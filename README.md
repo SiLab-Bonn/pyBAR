@@ -85,18 +85,12 @@ Please read our [Step-by-step Installation Guide](https://github.com/SiLab-Bonn/
 
 After the obove steps are completed, clone the pyBAR git repository and then run the following commands from the within project folder:
 
-1. Build with:
-   ```
-   python setup.py build_ext
-   ```
-   Note: this command needs to be excuted each time pyBAR is updated or changes are made to the pyBAR C++ library.
-
-2. Install with:
+1. Install with:
    ```
    python setup.py develop
    ```
 
-3. Testing (from within the tests folder):
+2. Testing (from within the pybar/testing folder):
    ```
    nosetests test_analysis.py
    ```
