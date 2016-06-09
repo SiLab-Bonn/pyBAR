@@ -26,17 +26,18 @@ from pybar.analysis import analysis_utils
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.analysis.plotting.plotting import plot_three_way, plot_1d_hist
 
-hit_selection = '(column > 50) & (column < 78) & (row > 16) & (row < 324) & (((column % 2 == 1) & (row % 12 == 1)) | ((column % 2 == 0) & (row % 12 == 7)))'
+hit_selection = '(column > 50) & (column < 78) & (row > 73) & (row < 280) & (((column % 2 == 1) & (row % 12 == 1)) | ((column % 2 == 0) & (row % 12 == 7)))'
 
 analysis_configuration = {
-    'scan_name': [r'L:\SCC30\TDC_Sr90\LongRun\2_scc_30_ext_trigger_scan'],  # the base file name(s) of the raw data file, no file suffix
+    'scan_name': [r'/home/patrick/git/pyBAR/pybar/module_test/67_module_test_ext_trigger_scan'],  # the base file name(s) of the raw data file, no file suffix
     'align_at_trigger': True,  # align events to the trigger words, first event word has to be trigger word
     'align_at_tdc': False,  # align events to the tdc words, first event word has to be tdc word; not needed anymore for new pyBAR data
     'use_tdc_trigger_time_stamp': False,  # TDC + external trigger are used, thus fill the hit table with delay value between trigger and TDC (usefull for time walk measurements)
     'max_tdc_delay': 80,  # maximum TDC to trigger delay to consider the TDC word as a valid in-time event word; otherwise TDC word is neglected
-    'input_file_calibration': r'L:\SCC30\TDCcalibration\scc_30\11_scc_30_hit_or_calibration_calibration.h5',  # the Plsr<->TDC calibration file
-    'correct_calibration': r'L:\SCC112\TDC_ELSA\scc_112\19_scc_112_hit_or_calibration_calibration.h5',  # file name of another more actual calibration to be used to correct the calibration; changes are expected due to tempretature drifts
+    'input_file_calibration': r'/home/patrick/git/pyBAR/pybar/module_test/66_module_test_hit_or_calibration_calibration.h5',  # the Plsr<->TDC calibration file
+    #'correct_calibration': r'L:\SCC112\TDC_ELSA\scc_112\19_scc_112_hit_or_calibration_calibration.h5',  # file name of another more actual calibration to be used to correct the calibration; changes are expected due to tempretature drifts
     'hit_selection_conditions': ['(n_cluster==1)',  # criterions for the hit selection based on hit properties, per criterion TDC hitograms are created
+                                 '(n_cluster==1) & (cluster_size == 1)',
                                  '(n_cluster==1) & (cluster_size == 1) & %s' % hit_selection,
                                  '(n_cluster==1) & (cluster_size == 1) & (relative_BCID > 1) & (relative_BCID < 5) & ((tot > 12) | ((TDC * 1.5625 - tot * 25 < 100) & (tot * 25 - TDC * 1.5625 < 100))) & %s' % hit_selection
                                  ],

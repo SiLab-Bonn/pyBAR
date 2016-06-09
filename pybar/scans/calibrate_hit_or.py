@@ -146,9 +146,9 @@ class HitOrCalibration(Fei4RunBase):
         "injection_delay": 5000,  # for really low feedbacks (ToT >> 300 ns) one needs to increase the injection delay
         "scan_parameters": [('column', None),
                             ('row', None),
-                            ('PlsrDAC', [40, 50, 60, 80, 130, 180, 230, 280, 340, 440, 540, 640, 740])],  # 0 400 sufficient for most tunings
+                            ('PlsrDAC', [30, 40, 50, 60, 80, 100, 120, 150, 200, 250, 300, 350, 400, 500, 600, 700, 800])],  # 0 400 sufficient for most tunings
         "reset_rx_on_error": True,  # reset RX on errors that may occur during scan
-        "pixels": (np.dstack(np.where(make_box_pixel_mask_from_col_row([40, 41], [150, 151]) == 1)) + 1).tolist()[0],  # list of (col, row) tupels. From 1 to 80/336.
+        "pixels": (np.dstack(np.where(make_box_pixel_mask_from_col_row([65, 66], [221, 222]) == 1)) + 1).tolist()[0],  # list of (col, row) tupels. From 1 to 80/336.
         "enable_shift_masks": ["Enable", "C_Low", "C_High"],  # enable masks shifted during scan
         "disable_shift_masks": ["Imon"]  # disable masks shifted during scan
     }

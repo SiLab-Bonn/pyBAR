@@ -22,15 +22,15 @@ class ExtTriggerScan(Fei4RunBase):
         "trigger_latency": 232,  # FE-I4 trigger latency, in BCs, external scintillator / TLU / HitOR: 232, USBpix self-trigger: 220
         "trigger_delay": 8,  # trigger delay, in BCs
         "trigger_rate_limit": 500,  # artificially limiting the trigger rate, in BCs (25ns)
-        "col_span": [1, 80],  # defining active column interval, 2-tuple, from 1 to 80
-        "row_span": [1, 336],  # defining active row interval, 2-tuple, from 1 to 336
+        "col_span": [65, 75],  # defining active column interval, 2-tuple, from 1 to 80
+        "row_span": [75, 275],  # defining active row interval, 2-tuple, from 1 to 336
         "overwrite_enable_mask": False,  # if True, use col_span and row_span to define an active region regardless of the Enable pixel register. If False, use col_span and row_span to define active region by also taking Enable pixel register into account.
         "use_enable_mask_for_imon": True,  # if True, apply inverted Enable pixel mask to Imon pixel mask
-        "no_data_timeout": 10,  # no data timeout after which the scan will be aborted, in seconds
-        "scan_timeout": 60,  # timeout for scan after which the scan will be stopped, in seconds
-        "max_triggers": 10000,  # maximum triggers after which the scan will be stopped, in seconds
-        "enable_tdc": False,  # if True, enables TDC (use RX2)
-        "reset_rx_on_error": False  # long scans have a high propability for ESD related data transmission errors; recover and continue here
+        "no_data_timeout": 20,  # no data timeout after which the scan will be aborted, in seconds
+        "scan_timeout": 0.1 * 60 * 60,  # timeout for scan after which the scan will be stopped, in seconds
+        "max_triggers": 1000000000,  # maximum triggers after which the scan will be stopped, in seconds
+        "enable_tdc": True,  # if True, enables TDC (use RX2)
+        "reset_rx_on_error": True  # long scans have a high propability for ESD related data transmission errors; recover and continue here
     }
 
     def configure(self):
@@ -98,6 +98,7 @@ class ExtTriggerScan(Fei4RunBase):
             analyze_raw_data.create_cluster_size_hist = True
             analyze_raw_data.create_cluster_tot_hist = True
             analyze_raw_data.align_at_trigger = True
+            analyze_raw_data.max_cluster_size = 200000
             if self.enable_tdc:
                 analyze_raw_data.create_tdc_counter_hist = True  # histogram all TDC words
                 analyze_raw_data.create_tdc_hist = True  # histogram the hit TDC information
