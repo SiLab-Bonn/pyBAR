@@ -82,5 +82,11 @@ firmware/nexys4/src/ip/*
 !firmware/nexys4/src/ip/*.xci
 firmware/nexys4/src/SiTCP
 
+# MMC3 Beast firmware
+firmware/mmc3_beast_eth/vivado/*
+firmware/mmc3_beast_eth/src/SiTCP
+!firmware/mmc3_beast_eth/vivado/*.xpr
+
 # Simulation output
 sim_build
+

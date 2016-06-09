@@ -119,6 +119,16 @@ def data_array_from_data_iterable(data_iterable):
     return data_array
 
 
+def is_tdc_from_channel(channel=4):  # function factory
+    if channel >= 1 and channel < 8:
+        def f(value):
+            return np.equal(np.right_shift(np.bitwise_and(value, 0xF0000000), 28), channel)
+        f.__name__ = "is_tdc_from_channel_" + str(channel)  # or use inspect module: inspect.stack()[0][3]
+        return f
+    else:
+        raise ValueError('Invalid channel number')
+
+
 def is_data_from_channel(channel=4):  # function factory
     '''Select data from channel
 
@@ -174,7 +184,7 @@ def logical_and(f1, f2):  # function factory
     '''
     def f(value):
         return np.logical_and(f1(value), f2(value))
-    f.__name__ = f1.__name__ + "_and_" + f2.__name__
+    f.__name__ = "(" + f1.__name__ + "_and_" + f2.__name__ + ")"
     return f
 
 
@@ -192,7 +202,7 @@ def logical_or(f1, f2):  # function factory
     '''
     def f(value):
         return np.logical_or(f1(value), f2(value))
-    f.__name__ = f1.__name__ + "_or_" + f2.__name__
+    f.__name__ = "(" + f1.__name__ + "_or_" + f2.__name__ + ")"
     return f
 
 
@@ -228,7 +238,7 @@ def logical_xor(f1, f2):  # function factory
     '''
     def f(value):
         return np.logical_xor(f1(value), f2(value))
-    f.__name__ = f1.__name__ + "_xor_" + f2.__name__
+    f.__name__ = "(" + f1.__name__ + "_xor_" + f2.__name__ + ")"
     return f
 
 

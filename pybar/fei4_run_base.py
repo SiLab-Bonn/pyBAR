@@ -196,6 +196,10 @@ class Fei4RunBase(RunBase):
             self.dut['ENABLE_CHANNEL']['TLU'] = 1
             self.dut['ENABLE_CHANNEL']['TDC'] = 1
             self.dut['ENABLE_CHANNEL'].write()
+        elif self.dut.name == 'beast':
+            logging.info('BEAST initialization')
+            self.dut['DLY_CONFIG']['CLK_DLY'] = 0
+            self.dut['DLY_CONFIG'].write()
         else:
             logging.warning('Omit initialization of DUT %s', self.dut.name)
 

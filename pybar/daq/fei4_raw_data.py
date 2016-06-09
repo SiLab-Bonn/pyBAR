@@ -10,6 +10,7 @@ import zmq
 
 from pybar_fei4_interpreter.data_struct import MetaTableV2 as MetaTable, generate_scan_parameter_description
 from pybar.daq.readout_utils import save_configuration_dict
+from docutils.transforms.misc import ClassAttribute
 
 
 def send_meta_data(socket, conf, name):
@@ -238,6 +239,20 @@ class RawDataFile(object):
             self.meta_data_table.flush()
             if self.scan_parameters:
                 self.scan_param_table.flush()
+
+    @classmethod
+    def from_raw_data_file(cls, input_file, output_filename, mode="a"):
+        if os.path.splitext(output_filename)[1].strip().lower() != '.h5':
+            output_filename = os.path.splitext(output_filename)[0] + '.h5'
+        nodes = input_file.list_nodes('/', classname='Group')
+        with tb.open_file(output_filename, mode=mode, title=output_filename) as h5_file:  # append, since file can already exists when scan parameters are jumping back and forth
+            for node in nodes:
+                input_file.copy_node(node, h5_file.root, overwrite=True, recursive=True)
+        try:
+            scan_parameters = input_file.root.scan_parameters.fields
+        except tb.exceptions.NoSuchNodeError:
+            scan_parameters = {}
+        return cls(output_filename, mode="a", scan_parameters=scan_parameters)
 
 
 def save_raw_data_from_data_queue(data_queue, filename, mode='a', title='', scan_parameters=None):  # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created
