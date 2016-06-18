@@ -187,8 +187,8 @@ class GdacTuning(Fei4RunBase):
                     last_median_occupancy = np.ma.median(last_occ_array_sel_pixel)
                     logging.info('Measured %.2f with bit 0 = 0 with and %.2f with bit 0 = 1', median_occupancy, last_median_occupancy)
                     if abs(median_occupancy - self.n_injections_gdac / 2) > abs(last_median_occupancy - self.n_injections_gdac / 2):  # if bit 0 = 0 is worse than bit 0 = 1, so go back
-                        self.set_gdac_bit(0, bit_value=1)
                         logging.info('Set bit 0 = 1')
+                        self.set_gdac_bit(0, bit_value=1)
                         self.occ_array_sel_pixel = last_occ_array_sel_pixel.copy()
                         median_occupancy = last_median_occupancy
                     else:

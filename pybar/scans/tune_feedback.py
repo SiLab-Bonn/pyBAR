@@ -161,8 +161,8 @@ class FeedbackTuning(Fei4RunBase):
                 else:
                     logging.info('Measured %.2f with bit 0 = 0 and %.2f with bit 0 = 1', mean_tot, last_mean_tot)
                     if(abs(mean_tot - self.target_tot) > abs(last_mean_tot - self.target_tot)):  # if bit 0 = 0 is worse than bit 0 = 1, so go back
-                        self.set_prmp_vbpf_bit(0, bit_value=1)
                         logging.info('Set bit 0 = 1')
+                        self.set_prmp_vbpf_bit(0, bit_value=1)
                         self.tot_hist = last_tot_hist.copy()
                         mean_tot = last_mean_tot
                     else:
@@ -170,7 +170,7 @@ class FeedbackTuning(Fei4RunBase):
 
         # select best Feedback value
         if abs(mean_tot - self.target_tot) > abs(tot_mean_best - self.target_tot):
-            logging.info("Binary search converged to non-optimal value, apply best Feedback value, change Feedback from %d to %d", self.register.get_global_register_value("PrmpVbpf"), feedback_best)
+            logging.info("Binary search converged to non-optimal value, apply best Feedback value, change PrmpVbpf from %d to %d", self.register.get_global_register_value("PrmpVbpf"), feedback_best)
             mean_tot = tot_mean_best
             self.register.set_global_register_value("PrmpVbpf", feedback_best)
 
