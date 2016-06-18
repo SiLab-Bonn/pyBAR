@@ -30,7 +30,7 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
     '''
     _default_run_conf = {
         # tuning parameters
-        "target_threshold": 50,  # target threshold
+        "target_threshold": 30,  # target threshold
         "target_charge": 280,  # target charge
         "target_tot": 5,  # target ToT
         "global_iterations": 4,  # the number of iterations to do for the global tuning, 0 means only threshold is tuned, negative that no global tuning is done

@@ -20,7 +20,7 @@ class TdacTuning(Fei4RunBase):
     '''
     _default_run_conf = {
         "scan_parameters": [('TDAC', None)],
-        "target_threshold": 50,
+        "target_threshold": 30,
         "tdac_tune_bits": range(4, -1, -1),
         "n_injections_tdac": 100,
         "plot_intermediate_steps": False,
