@@ -196,7 +196,7 @@ class GdacTuning(Fei4RunBase):
 
         # select best GDAC value
         if abs(occupancy_best - self.n_injections_gdac / 2) < abs(median_occupancy - self.n_injections_gdac / 2):
-            logging.info("Binary search converged to non-optimal value, apply best GDAC value")
+            logging.info("Binary search converged to non-optimal value, apply best GDAC value, change GDAC from %d to %d", self.register_utils.get_gdac(), gdac_best)
             median_occupancy = occupancy_best
             self.register_utils.set_gdac(gdac_best, send_command=False)
 

@@ -170,7 +170,7 @@ class FeedbackTuning(Fei4RunBase):
 
         # select best Feedback value
         if abs(mean_tot - self.target_tot) > abs(tot_mean_best - self.target_tot):
-            logging.info("Binary search converged to non-optimal value, apply best Feedback value")
+            logging.info("Binary search converged to non-optimal value, apply best Feedback value, change Feedback from %d to %d", self.register.get_global_register_value("PrmpVbpf"), feedback_best)
             mean_tot = tot_mean_best
             self.register.set_global_register_value("PrmpVbpf", feedback_best)
 
