@@ -159,7 +159,7 @@ class FeedbackTuning(Fei4RunBase):
                     last_tot_hist = self.tot_hist.copy()
                     feedback_tune_bits.append(0)  # bit 0 has to be scanned twice
                 else:
-                    logging.info('Scanned bit 0 = 0 with %.2f instead of %.2f for scanned bit 0 = 1', mean_tot, last_mean_tot)
+                    logging.info('Measured %.2f with bit 0 = 0 and %.2f with bit 0 = 1', mean_tot, last_mean_tot)
                     if(abs(mean_tot - self.target_tot) > abs(last_mean_tot - self.target_tot)):  # if bit 0 = 0 is worse than bit 0 = 1, so go back
                         self.set_prmp_vbpf_bit(0, bit_value=1)
                         logging.info('Set bit 0 = 1')

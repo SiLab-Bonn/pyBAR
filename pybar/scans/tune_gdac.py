@@ -185,7 +185,7 @@ class GdacTuning(Fei4RunBase):
                     gdac_tune_bits.append(0)  # the last tune bit has to be scanned twice
                 else:
                     last_median_occupancy = np.ma.median(last_occ_array_sel_pixel)
-                    logging.info('Measured bit 0 = 0 with %.2f and bit 0 = 1 with %.2f', median_occupancy, last_median_occupancy)
+                    logging.info('Measured %.2f with bit 0 = 0 with and %.2f with bit 0 = 1', median_occupancy, last_median_occupancy)
                     if abs(median_occupancy - self.n_injections_gdac / 2) > abs(last_median_occupancy - self.n_injections_gdac / 2):  # if bit 0 = 0 is worse than bit 0 = 1, so go back
                         self.set_gdac_bit(0, bit_value=1)
                         logging.info('Set bit 0 = 1')
