@@ -75,8 +75,8 @@ class FdacTuning(Fei4RunBase):
         self.tot_mean_best = np.empty(shape=(80, 336))  # array to store the best occupancy (closest to Ninjections/2) of the pixel
         self.tot_mean_best.fill(0)
         self.fdac_mask_best = self.register.get_pixel_register_value("FDAC")
-
-        for scan_parameter_value, fdac_bit in enumerate(self.fdac_tune_bits):
+        fdac_tune_bits = self.fdac_tune_bits[:]
+        for scan_parameter_value, fdac_bit in enumerate(fdac_tune_bits):
             if additional_scan:
                 self.set_fdac_bit(fdac_bit)
                 logging.info('FDAC setting: bit %d = 1', fdac_bit)
@@ -122,7 +122,7 @@ class FdacTuning(Fei4RunBase):
                 if additional_scan:  # scan bit = 0 with the correct value again
                     additional_scan = False
                     lastBitResult = tot_mean_array.copy()
-                    self.fdac_tune_bits.append(0)  # bit 0 has to be scanned twice
+                    fdac_tune_bits.append(0)  # bit 0 has to be scanned twice
                 else:
                     fdac_mask[abs(tot_mean_array - self.target_tot) > abs(lastBitResult - self.target_tot)] = fdac_mask[abs(tot_mean_array - self.target_tot) > abs(lastBitResult - self.target_tot)] | (1 << fdac_bit)
                     tot_mean_array[abs(tot_mean_array - self.target_tot) > abs(lastBitResult - self.target_tot)] = lastBitResult[abs(tot_mean_array - self.target_tot) > abs(lastBitResult - self.target_tot)]

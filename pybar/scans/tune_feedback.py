@@ -3,9 +3,9 @@ import numpy as np
 from matplotlib.backends.backend_pdf import PdfPages
 
 from pybar.fei4_run_base import Fei4RunBase
-from pybar.fei4.register_utils import scan_loop
+from pybar.fei4.register_utils import scan_loop, make_pixel_mask
 from pybar.run_manager import RunManager
-from pybar.daq.readout_utils import convert_data_array, is_data_record, data_array_from_data_iterable, get_tot_array_from_data_record_array
+from pybar.daq.readout_utils import convert_data_array, is_data_record, data_array_from_data_iterable, get_col_row_tot_array_from_data_record_array
 from pybar.analysis.plotting.plotting import plot_tot
 
 
@@ -25,6 +25,7 @@ class FeedbackTuning(Fei4RunBase):
         "feedback_tune_bits": range(7, -1, -1),
         "n_injections_feedback": 50,
         "max_delta_tot": 0.1,
+        "enable_mask_steps_feedback": [0],  # mask steps to do per PrmpVbpf setting
         "plot_intermediate_steps": False,
         "plots_filename": None,
         "enable_shift_masks": ["Enable", "C_High", "C_Low"],  # enable masks shifted during scan
@@ -62,7 +63,27 @@ class FeedbackTuning(Fei4RunBase):
         else:
             self.close_plots = False
 
-        enable_mask_steps = [0]  # one mask step to increase speed, no effect on precision
+        def bits_set(int_type):
+            int_type = int(int_type)
+            position = 0
+            bits_set = []
+            while(int_type):
+                if(int_type & 1):
+                    bits_set.append(position)
+                position += 1
+                int_type = int_type >> 1
+            return bits_set
+
+        # calculate selected pixels from the mask and the disabled columns
+        select_mask_array = np.zeros(shape=(80, 336), dtype=np.uint8)
+        if not self.enable_mask_steps_feedback:
+            self.enable_mask_steps_feedback = range(self.mask_steps)
+        for mask_step in self.enable_mask_steps_feedback:
+            select_mask_array += make_pixel_mask(steps=self.mask_steps, shift=mask_step)
+        for column in bits_set(self.register.get_global_register_value("DisableColumnCnfg")):
+            logging.info('Deselect double column %d' % column)
+            select_mask_array[column, :] = 0
+
         cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", mask_steps=self.mask_steps)[0]
 
         self.write_target_charge()
@@ -75,7 +96,8 @@ class FeedbackTuning(Fei4RunBase):
 
         tot_mean_best = 0
         feedback_best = self.register.get_global_register_value("PrmpVbpf")
-        for feedback_bit in self.feedback_tune_bits:
+        feedback_tune_bits = self.feedback_tune_bits[:]
+        for feedback_bit in feedback_tune_bits:
             if additional_scan:
                 self.set_prmp_vbpf_bit(feedback_bit)
                 logging.info('PrmpVbpf setting: %d, bit %d = 1', self.register.get_global_register_value("PrmpVbpf"), feedback_bit)
@@ -90,7 +112,7 @@ class FeedbackTuning(Fei4RunBase):
                           cal_lvl1_command,
                           repeat_command=self.n_injections_feedback,
                           mask_steps=self.mask_steps,
-                          enable_mask_steps=enable_mask_steps,
+                          enable_mask_steps=self.enable_mask_steps_feedback,
                           enable_double_columns=None,
                           same_mask_for_all_dc=self.same_mask_for_all_dc,
                           eol_function=None,
@@ -101,17 +123,22 @@ class FeedbackTuning(Fei4RunBase):
                           mask=None,
                           double_column_correction=self.pulser_dac_correction)
 
-            tots = convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=is_data_record, converter_func=get_tot_array_from_data_record_array)
-            mean_tot = np.mean(tots)
-            if np.isnan(mean_tot):
-                logging.error("No hits, ToT calculation not possible, tuning will fail")
+            col_row_tot_array = np.column_stack(convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=is_data_record, converter_func=get_col_row_tot_array_from_data_record_array))
+            occupancy_array, _, _ = np.histogram2d(col_row_tot_array[:, 0], col_row_tot_array[:, 1], bins=(80, 336), range=[[1, 80], [1, 336]])
+            occupancy_array = np.ma.array(occupancy_array, mask=np.logical_not(np.ma.make_mask(select_mask_array)))  # take only selected pixel into account by creating a mask
+            occupancy_array = np.ma.masked_where(occupancy_array > self.n_injections_feedback, occupancy_array)
+            col_row_tot_hist = np.histogramdd(col_row_tot_array, bins=(80, 336, 16), range=[[1, 80], [1, 336], [0, 15]])[0]
+            tot_mean_array = np.average(col_row_tot_hist, axis=2, weights=range(0, 16)) * sum(range(0, 16)) / self.n_injections_feedback
+            tot_mean_array = np.ma.array(tot_mean_array, mask=occupancy_array.mask)
+            mean_tot = np.ma.mean(tot_mean_array)
+            tot_array = col_row_tot_array[:, 2]
 
             if abs(mean_tot - self.target_tot) < abs(tot_mean_best - self.target_tot):
                 tot_mean_best = mean_tot
                 feedback_best = self.register.get_global_register_value("PrmpVbpf")
 
             logging.info('Mean ToT = %f', mean_tot)
-            self.tot_array, _ = np.histogram(a=tots, range=(0, 16), bins=16)
+            self.tot_array, _ = np.histogram(a=tot_array, range=(0, 16), bins=16)
             if self.plot_intermediate_steps:
                 plot_tot(hist=self.tot_array, title='ToT distribution (PrmpVbpf ' + str(scan_parameter_value) + ')', filename=self.plots_filename)
 
@@ -127,7 +154,7 @@ class FeedbackTuning(Fei4RunBase):
                 if additional_scan:  # scan bit = 0 with the correct value again
                     additional_scan = False
                     last_bit_result = mean_tot
-                    self.feedback_tune_bits.append(0)  # bit 0 has to be scanned twice
+                    feedback_tune_bits.append(0)  # bit 0 has to be scanned twice
                 else:
                     logging.info('Scanned bit 0 = 0 with %f instead of %f for scanned bit 0 = 1', mean_tot, last_bit_result)
                     if(abs(mean_tot - self.target_tot) > abs(last_bit_result - self.target_tot)):  # if bit 0 = 0 is worse than bit 0 = 1, so go back
