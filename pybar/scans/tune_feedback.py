@@ -88,7 +88,7 @@ class FeedbackTuning(Fei4RunBase):
 
         self.write_target_charge()
 
-        for feedback_bit in self.feedback_tune_bits:  # reset all GDAC bits
+        for feedback_bit in self.feedback_tune_bits:  # reset all feedback bits
             self.set_prmp_vbpf_bit(feedback_bit, bit_value=0)
 
         additional_scan = True
