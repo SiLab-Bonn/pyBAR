@@ -139,6 +139,7 @@ class TdacTuning(Fei4RunBase):
 #         plot_three_way(hist=self.register.get_pixel_register_value("TDAC").transpose(), title="TDAC check distribution after tuning", x_axis_title="TDAC", filename=plots_filename, maximum = 32)
 
     def analyze(self):
+        # set here because original value is restored after scan()
         self.register.set_pixel_register_value("TDAC", self.tdac_mask_best)
 
         plot_three_way(hist=self.occupancy_best.transpose(), title="Occupancy after TDAC tuning", x_axis_title="Occupancy", filename=self.plots_filename, maximum=self.n_injections_tdac)

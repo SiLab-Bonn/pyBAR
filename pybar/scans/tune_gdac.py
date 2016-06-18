@@ -67,8 +67,6 @@ class GdacTuning(Fei4RunBase):
         for gdac_bit in self.gdac_tune_bits:  # reset all GDAC bits
             self.set_gdac_bit(gdac_bit, bit_value=0, send_command=False)
 
-        last_bit_result = self.n_injections_gdac
-
         def bits_set(int_type):
             int_type = int(int_type)
             position = 0
@@ -103,11 +101,11 @@ class GdacTuning(Fei4RunBase):
             if additional_scan:
                 self.set_gdac_bit(gdac_bit, bit_value=1)
                 scan_parameter_value = (self.register.get_global_register_value("Vthin_AltCoarse") << 8) + self.register.get_global_register_value("Vthin_AltFine")
-                logging.info('GDAC setting: %d, bit %d = 1', scan_parameter_value, gdac_bit)
+                logging.info('GDAC setting: %d, set bit %d = 1', scan_parameter_value, gdac_bit)
             else:
                 self.set_gdac_bit(gdac_bit, bit_value=0)
                 scan_parameter_value = (self.register.get_global_register_value("Vthin_AltCoarse") << 8) + self.register.get_global_register_value("Vthin_AltFine")
-                logging.info('GDAC setting: %d, bit %d = 0', scan_parameter_value, gdac_bit)
+                logging.info('GDAC setting: %d, set bit %d = 0', scan_parameter_value, gdac_bit)
 
             with self.readout(GDAC=scan_parameter_value, reset_sram_fifo=True, fill_buffer=True, clear_buffer=True, callback=self.handle_data):
                 scan_loop(self,
@@ -136,9 +134,9 @@ class GdacTuning(Fei4RunBase):
             if self.plot_intermediate_steps:
                 plot_three_way(self.occ_array_sel_pixel.transpose(), title="Occupancy (GDAC " + str(scan_parameter_value) + " with tuning bit " + str(gdac_bit) + ")", x_axis_title='Occupancy', filename=self.plots_filename, maximum=self.n_injections_gdac)
 
-            if abs(median_occupancy - self.n_injections_gdac / 2) < self.max_delta_threshold and gdac_bit > 0:  # abort if good value already found to save time
-                logging.info('Median = %f, good result already achieved (median - Ninj/2 < %f), skipping not varied bits', median_occupancy, self.max_delta_threshold)
-                break
+#            if abs(median_occupancy - self.n_injections_gdac / 2) < self.max_delta_threshold and gdac_bit > 0:  # abort if good value already found to save time
+#                logging.info('Median = %.2f, good result already achieved (median - Ninj/2 < %.2f), skipping not varied bits', median_occupancy, self.max_delta_threshold)
+#                break
 
             if not occupancy_almost_zero:
                 if min_gdac_with_occupancy is None:
@@ -149,14 +147,14 @@ class GdacTuning(Fei4RunBase):
             if gdac_bit > 0:
                 # GDAC too low, no hits
                 if occupancy_almost_zero and self.register_utils.get_gdac() < min_gdac_with_occupancy:
-                    logging.info('Median = %f > %f, GDAC possibly too low, leave bit %d = 1', median_occupancy, self.n_injections_gdac / 2, gdac_bit)
+                    logging.info('Median = %.2f > %.2f, GDAC possibly too low, keep bit %d = 1', median_occupancy, self.n_injections_gdac / 2, gdac_bit)
                 # GDAC too high, less hits, decrease GDAC
                 elif median_occupancy < (self.n_injections_gdac / 2):  # set GDAC bit to 0 if the occupancy is too low, thus decrease threshold
-                    logging.info('Median = %f < %f, set bit %d = 0', median_occupancy, self.n_injections_gdac / 2, gdac_bit)
+                    logging.info('Median = %.2f < %.2f, set bit %d = 0', median_occupancy, self.n_injections_gdac / 2, gdac_bit)
                     self.set_gdac_bit(gdac_bit, bit_value=0)
                 # GDAC too low, more hits
                 else:
-                    logging.info('Median = %f > %f, leave bit %d = 1', median_occupancy, self.n_injections_gdac / 2, gdac_bit)
+                    logging.info('Median = %.2f > %.2f, keep bit %d = 1', median_occupancy, self.n_injections_gdac / 2, gdac_bit)
             elif gdac_bit == 0:
                 if occupancy_almost_zero and len(self.gdac_tune_bits) > last_good_gdac_scan_step + 2:# and min_gdac_occupancy is None:
                     self.set_gdac_bit(0, bit_value=0, send_command=False)  # turn off LSB
@@ -183,44 +181,47 @@ class GdacTuning(Fei4RunBase):
                             last_good_gdac_scan_step += 1
                 elif additional_scan:  # scan bit = 0 with the correct value again
                     additional_scan = False
-                    last_bit_result = self.occ_array_sel_pixel.copy()
+                    last_occ_array_sel_pixel = self.occ_array_sel_pixel.copy()
                     gdac_tune_bits.append(0)  # the last tune bit has to be scanned twice
                 else:
-                    last_bit_result_median = np.median(last_bit_result[select_mask_array > 0])
-                    logging.info('Scanned bit 0 = 0 with %f instead of %f', median_occupancy, last_bit_result_median)
-                    if abs(median_occupancy - self.n_injections_gdac / 2) > abs(last_bit_result_median - self.n_injections_gdac / 2):  # if bit 0 = 0 is worse than bit 0 = 1, so go back
-                        self.set_gdac_bit(gdac_bit, bit_value=1)
+                    last_median_occupancy = np.ma.median(last_occ_array_sel_pixel)
+                    logging.info('Measured bit 0 = 0 with %.2f and bit 0 = 1 with %.2f', median_occupancy, last_median_occupancy)
+                    if abs(median_occupancy - self.n_injections_gdac / 2) > abs(last_median_occupancy - self.n_injections_gdac / 2):  # if bit 0 = 0 is worse than bit 0 = 1, so go back
+                        self.set_gdac_bit(0, bit_value=1)
                         logging.info('Set bit 0 = 1')
-                        self.occ_array_sel_pixel = last_bit_result
-                        median_occupancy = np.ma.median(self.occ_array_sel_pixel)
+                        self.occ_array_sel_pixel = last_occ_array_sel_pixel.copy()
+                        median_occupancy = last_median_occupancy
                     else:
-                        logging.info('Set bit 0 = 0')
-                    if abs(occupancy_best - self.n_injections_gdac / 2) < abs(median_occupancy - self.n_injections_gdac / 2):
-                        logging.info("Binary search converged to non-optimal value, take best measured value instead")
-                        median_occupancy = occupancy_best
-                        self.register_utils.set_gdac(gdac_best, send_command=False)
+                        logging.info('Keep bit 0 = 0')
+
+        # select best GDAC value
+        if abs(occupancy_best - self.n_injections_gdac / 2) < abs(median_occupancy - self.n_injections_gdac / 2):
+            logging.info("Binary search converged to non-optimal value, apply best GDAC value")
+            median_occupancy = occupancy_best
+            self.register_utils.set_gdac(gdac_best, send_command=False)
 
         self.gdac_best = self.register_utils.get_gdac()
 
-        if np.all((((self.gdac_best & (1 << np.arange(16)))) > 0).astype(int)[self.gdac_tune_bits[:-2]] == 1):
-            logging.warning('Selected GDAC bits reached maximum value')
+        if np.all((((self.gdac_best & (1 << np.arange(self.register.global_registers['Vthin_AltFine']['bitlength'] + self.register.global_registers['Vthin_AltFine']['bitlength'])))) > 0).astype(int)[self.gdac_tune_bits] == 1):
             if self.fail_on_warning:
                 raise RuntimeWarning('Selected GDAC bits reached maximum value')
-        elif np.all((((self.gdac_best & (1 << np.arange(16)))) > 0).astype(int)[self.gdac_tune_bits] == 0):
-            logging.warning('Selected GDAC bits reached minimum value')
+            else:
+                logging.warning('Selected GDAC bits reached maximum value')
+        if np.all((((self.gdac_best & (1 << np.arange(self.register.global_registers['Vthin_AltFine']['bitlength'] + self.register.global_registers['Vthin_AltFine']['bitlength'])))) > 0).astype(int)[self.gdac_tune_bits] == 0):
             if self.fail_on_warning:
                 raise RuntimeWarning('Selected GDAC bits reached minimum value')
-
+            else:
+                logging.warning('Selected GDAC bits reached minimum value')
         if abs(median_occupancy - self.n_injections_gdac / 2) > 2 * self.max_delta_threshold:
-            logging.warning('Global threshold tuning failed. Delta threshold = %f > %f. Vthin_AltCoarse / Vthin_AltFine = %d / %d', abs(median_occupancy - self.n_injections_gdac / 2), self.max_delta_threshold, self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine"))
             if self.fail_on_warning:
-                raise RuntimeWarning('Global threshold tuning failed.')
+                raise RuntimeWarning('Global threshold tuning failed. Delta threshold = %.2f > %.2f. Vthin_AltCoarse / Vthin_AltFine = %d / %d' %(abs(median_occupancy - self.n_injections_gdac / 2), self.max_delta_threshold, self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine")))
+            else:
+                logging.warning('Global threshold tuning failed. Delta threshold = %.2f > %.2f. Vthin_AltCoarse / Vthin_AltFine = %d / %d', abs(median_occupancy - self.n_injections_gdac / 2), self.max_delta_threshold, self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine"))
         else:
             logging.info('Tuned GDAC to Vthin_AltCoarse / Vthin_AltFine = %d / %d', self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine"))
 
-        self.gdac_best = self.register_utils.get_gdac()
-
     def analyze(self):
+        # set here because original value is restored after scan()
         self.register_utils.set_gdac(self.gdac_best, send_command=False)
 
         plot_three_way(self.occ_array_sel_pixel.transpose(), title="Occupancy after GDAC tuning (GDAC " + str(self.scan_parameters.GDAC) + ")", x_axis_title='Occupancy', filename=self.plots_filename, maximum=self.n_injections_gdac)
