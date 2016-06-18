@@ -176,22 +176,22 @@ class FeedbackTuning(Fei4RunBase):
 
         self.feedback_best = self.register.get_global_register_value("PrmpVbpf")
 
-
-        if np.all((((self.feedback_best & (1 << np.arange(self.register.global_registers['PrmpVbpf']['bitlength'])))) > 0).astype(int)[self.feedback_tune_bits] == 1):
-            if self.fail_on_warning:
-                raise RuntimeWarning('Selected Feedback bits reached maximum value')
-            else:
-                logging.warning('Selected Feedback bits reached maximum value')
-        if np.all((((self.feedback_best & (1 << np.arange(self.register.global_registers['PrmpVbpf']['bitlength'])))) > 0).astype(int)[self.feedback_tune_bits] == 0):
-            if self.fail_on_warning:
-                raise RuntimeWarning('Selected Feedback bits reached minimum value')
-            else:
-                logging.warning('Selected Feedback bits reached minimum value')
         if abs(mean_tot - self.target_tot) > 2 * self.max_delta_tot:
-            if self.fail_on_warning:
-                raise RuntimeWarning('Global feedback tuning failed. Delta ToT = %.2f > %.2f. PrmpVbpf = %d' %(abs(mean_tot - self.target_tot), self.max_delta_tot, self.register.get_global_register_value("PrmpVbpf")))
+            if np.all((((self.feedback_best & (1 << np.arange(self.register.global_registers['PrmpVbpf']['bitlength'])))) > 0).astype(int)[self.feedback_tune_bits] == 1):
+                if self.fail_on_warning:
+                    raise RuntimeWarning('Selected Feedback bits reached maximum value')
+                else:
+                    logging.warning('Selected Feedback bits reached maximum value')
+            elif np.all((((self.feedback_best & (1 << np.arange(self.register.global_registers['PrmpVbpf']['bitlength'])))) > 0).astype(int)[self.feedback_tune_bits] == 0):
+                if self.fail_on_warning:
+                    raise RuntimeWarning('Selected Feedback bits reached minimum value')
+                else:
+                    logging.warning('Selected Feedback bits reached minimum value')
             else:
-                logging.warning('Global feedback tuning failed. Delta ToT = %.2f > %.2f. PrmpVbpf = %d', abs(mean_tot - self.target_tot), self.max_delta_tot, self.register.get_global_register_value("PrmpVbpf"))
+                if self.fail_on_warning:
+                    raise RuntimeWarning('Global feedback tuning failed. Delta ToT = %.2f > %.2f. PrmpVbpf = %d' %(abs(mean_tot - self.target_tot), self.max_delta_tot, self.register.get_global_register_value("PrmpVbpf")))
+                else:
+                    logging.warning('Global feedback tuning failed. Delta ToT = %.2f > %.2f. PrmpVbpf = %d', abs(mean_tot - self.target_tot), self.max_delta_tot, self.register.get_global_register_value("PrmpVbpf"))
         else:
             logging.info('Tuned PrmpVbpf to %d', self.register.get_global_register_value("PrmpVbpf"))
 
