@@ -172,7 +172,7 @@ class GdacTuning(Fei4RunBase):
                             gdac_tune_bits_permutation += 1
                     else:
                         gdac_tune_bits_permutation_header = map(int,bin(gdac_tune_bits_permutation)[2:].zfill(last_good_gdac_scan_step))
-			for gdac_permutation_bit, gdac_permutation_bit_value in enumerate(gdac_tune_bits_permutation_header):
+                        for gdac_permutation_bit, gdac_permutation_bit_value in enumerate(gdac_tune_bits_permutation_header):
                             self.set_gdac_bit(self.gdac_tune_bits[gdac_permutation_bit], bit_value=gdac_permutation_bit_value, send_command=False)
                         gdac_tune_bits.extend(self.gdac_tune_bits[last_good_gdac_scan_step + 1:])
                         if 2**last_good_gdac_scan_step > gdac_tune_bits_permutation + 1:
@@ -196,7 +196,7 @@ class GdacTuning(Fei4RunBase):
                     else:
                         logging.info('Set bit 0 = 0')
                     if abs(occupancy_best - self.n_injections_gdac / 2) < abs(median_occupancy - self.n_injections_gdac / 2):
-                        logging.info("Binary search converged to non optimal value, take best measured value instead")
+                        logging.info("Binary search converged to non-optimal value, take best measured value instead")
                         median_occupancy = occupancy_best
                         self.register_utils.set_gdac(gdac_best, send_command=False)
 
