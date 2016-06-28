@@ -620,8 +620,6 @@ class AnalyzeRawData(object):
             meta_word = np.empty((self._chunk_size,), dtype=dtype_from_descr(data_struct.MetaInfoWordTable))
             self.interpreter.set_meta_data_word_index(meta_word)
 
-        self._filter_table = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
-
         if self._analyzed_data_file is not None:
             self.out_file_h5 = tb.openFile(self._analyzed_data_file, mode="w", title="Interpreted FE-I4 raw data")
             if self._create_hit_table is True:
