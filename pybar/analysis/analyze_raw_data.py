@@ -121,6 +121,7 @@ class AnalyzeRawData(object):
             self.files_dict = None
             self.scan_parameters = None
 
+        self.out_file_h5 = None
         self.set_standard_settings()
         if raw_data_file is not None and create_pdf:
             if isinstance(raw_data_file, list):  # for multiple raw data files name pdf accorfing to the first file
@@ -144,6 +145,8 @@ class AnalyzeRawData(object):
         if self.output_pdf is not None and isinstance(self.output_pdf, PdfPages):
             logging.info('Closing output PDF file: %s', str(self.output_pdf._file.fh.name))
             self.output_pdf.close()
+        if self.is_open(self.out_file_h5):
+            self.out_file_h5.close()
 
     def _setup_clusterizer(self):
         # Define all field names and data types
@@ -210,6 +213,9 @@ class AnalyzeRawData(object):
     def set_standard_settings(self):
         '''Set all settings to their standard values.
         '''
+        if self.is_open(self.out_file_h5):
+            self.out_file_h5.close()
+        self.out_file_h5 = None
         self._setup_clusterizer()
         self.chunk_size = 3000000
         self.n_injections = None
@@ -220,7 +226,6 @@ class AnalyzeRawData(object):
         self.c_low_mask, self.c_high_mask = None, None
         self._filter_table = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
         warnings.simplefilter("ignore", OptimizeWarning)
-        self.out_file_h5 = None
         self.meta_event_index = None
         self.fei4b = False
         self.create_hit_table = False
@@ -613,12 +618,39 @@ class AnalyzeRawData(object):
             True if the needed parameters should be extracted from the raw data file
         '''
 
-        if analyzed_data_file:
-            self._analyzed_data_file = analyzed_data_file
+        logging.info('Interpreting raw data file(s): ' + (', ').join(self.files_dict.keys()))
 
         if self._create_meta_word_index:
             meta_word = np.empty((self._chunk_size,), dtype=dtype_from_descr(data_struct.MetaInfoWordTable))
             self.interpreter.set_meta_data_word_index(meta_word)
+        self.interpreter.reset_event_variables()
+        self.interpreter.reset_counters()
+
+        self.meta_data = analysis_utils.combine_meta_data(self.files_dict, meta_data_v2=self.interpreter.meta_table_v2)
+
+        if self.meta_data is None or self.meta_data.shape[0] == 0:
+            raise analysis_utils.IncompleteInputError('Meta data is empty. Stopping interpretation.')
+
+        self.interpreter.set_meta_data(self.meta_data)  # tell interpreter the word index per readout to be able to calculate the event number per read out
+        meta_data_size = self.meta_data.shape[0]
+        self.meta_event_index = np.zeros((meta_data_size,), dtype=[('metaEventIndex', np.uint64)])  # this array is filled by the interpreter and holds the event number per read out
+        self.interpreter.set_meta_event_data(self.meta_event_index)  # tell the interpreter the data container to write the meta event index to
+
+        if self.scan_parameters is None:
+            self.histograming.set_no_scan_parameter()
+        else:
+            self.scan_parameter_index = analysis_utils.get_scan_parameters_index(self.scan_parameters)  # a array that labels unique scan parameter combinations
+            self.histograming.add_scan_parameter(self.scan_parameter_index)  # just add an index for the different scan parameter combinations
+
+        if self._create_cluster_size_hist:  # Cluster size result histogram
+            self._cluster_size_hist = np.zeros(shape=(self.max_cluster_size, ), dtype=np.uint32)
+
+        if self._create_cluster_tot_hist:  # Cluster tot/size result histogram
+            self._cluster_tot_hist = np.zeros(shape=(128, self.max_cluster_size), dtype=np.uint32)
+
+        # create output file
+        if analyzed_data_file:
+            self._analyzed_data_file = analyzed_data_file
 
         if self._analyzed_data_file is not None:
             self.out_file_h5 = tb.openFile(self._analyzed_data_file, mode="w", title="Interpreted FE-I4 raw data")
@@ -636,33 +668,6 @@ class AnalyzeRawData(object):
                 if self.use_trigger_time_stamp:  # replace the column name if trigger gives you a time stamp
                     description['trigger_time_stamp'] = description.pop('trigger_number')
                 cluster_hit_table = self.out_file_h5.create_table(self.out_file_h5.root, name='ClusterHits', description=description, title='cluster_hit_data', filters=self._filter_table, expectedrows=self._chunk_size)
-
-        logging.info('Interpreting raw data file(s): ' + (', ').join(self.files_dict.keys()))
-
-        self.interpreter.reset_event_variables()
-        self.interpreter.reset_counters()
-
-        if self.scan_parameters is None:
-            self.histograming.set_no_scan_parameter()
-        else:
-            self.scan_parameter_index = analysis_utils.get_scan_parameters_index(self.scan_parameters)  # a array that labels unique scan parameter combinations
-            self.histograming.add_scan_parameter(self.scan_parameter_index)  # just add an index for the different scan parameter combinations
-
-        self.meta_data = analysis_utils.combine_meta_data(self.files_dict, meta_data_v2=self.interpreter.meta_table_v2)
-
-        if self.meta_data is None or self.meta_data.shape[0] == 0:
-            raise analysis_utils.IncompleteInputError('Meta data is empty. Stopping interpretation.')
-
-        self.interpreter.set_meta_data(self.meta_data)  # tell interpreter the word index per readout to be able to calculate the event number per read out
-        meta_data_size = self.meta_data.shape[0]
-        self.meta_event_index = np.zeros((meta_data_size,), dtype=[('metaEventIndex', np.uint64)])  # this array is filled by the interpreter and holds the event number per read out
-        self.interpreter.set_meta_event_data(self.meta_event_index)  # tell the interpreter the data container to write the meta event index to
-
-        if self._create_cluster_size_hist:  # Cluster size result histogram
-            self._cluster_size_hist = np.zeros(shape=(self.max_cluster_size, ), dtype=np.uint32)
-
-        if self._create_cluster_tot_hist:  # Cluster tot/size result histogram
-            self._cluster_tot_hist = np.zeros(shape=(128, self.max_cluster_size), dtype=np.uint32)
 
         logging.info("Interpreting...")
         progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=analysis_utils.get_total_n_data_words(self.files_dict), term_width=80)
