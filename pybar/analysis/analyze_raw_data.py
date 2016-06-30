@@ -702,34 +702,38 @@ class AnalyzeRawData(object):
 
                         # previous data chunk had bad data, check for good data
                         if (index_start - 1) in bad_word_index:
-                            bad_data, prepend_data_headers_tmp = check_bad_data(raw_data, prepend_data_headers=1, trig_count=None)# , trig_count=None)#
+                            bad_data, prepend_data_headers_tmp = check_bad_data(raw_data, prepend_data_headers=1, trig_count=None)
                             if bad_data:
                                 prepend_data_headers = None
                                 bad_word_index = bad_word_index.union(range(index_start, index_stop))
                             else:
                                 logging.info("found good data in %s from index %d to %d (chunk %d, length %d)" % (in_file_h5.filename, index_start, index_stop, read_out_index, (index_stop - index_start)))
+                                prepend_data_headers = prepend_data_headers_tmp
                         # check for bad data
                         else:
-                            # first data chunk might have missing trigger in some cases (already fixed in firmware)
+                            # workaround for first data chunk, might have missing trigger in some rare cases (already fixed in firmware)
                             if read_out_index == 0:
-                                bad_data, prepend_data_headers_tmp = check_bad_data(raw_data, prepend_data_headers=1, trig_count=None)# , trig_count=None)#
+                                bad_data, prepend_data_headers_tmp = check_bad_data(raw_data, prepend_data_headers=1, trig_count=None)
+                                # check for full last event in data
+                                if prepend_data_headers_tmp == self.trig_count:
+                                    prepend_data_headers_tmp = None
+                            # check for bad data happens here
                             else:
-                                bad_data, prepend_data_headers_tmp = check_bad_data(raw_data, prepend_data_headers=prepend_data_headers, trig_count=self.trig_count)# , trig_count=None)#
+                                bad_data, prepend_data_headers_tmp = check_bad_data(raw_data, prepend_data_headers=prepend_data_headers, trig_count=self.trig_count)
                             # do additional check with follow up data chunk and decide whether current chunk is defect or not
                             if bad_data:
-                                raw_data_next_chunk = np.r_[raw_data[-1], in_file_h5.root.raw_data.read(*readout_slices[read_out_index])]
-                                fixed_raw_data_next_chunk, lsb_byte = fix_raw_data(raw_data_next_chunk, lsb_byte=None)
-                                raw_data_merged_fixed = np.r_[raw_data[-1], fixed_raw_data_next_chunk]
-                                bad_data, _ = check_bad_data(raw_data, prepend_data_headers=prepend_data_headers, trig_count=None)# , trig_count=None)#
+                                raw_data_with_previous_data_word = np.r_[in_file_h5.root.raw_data.read(*readout_slices[read_out_index - 1])[-1], raw_data]
+                                fixed_raw_data, lsb_byte = fix_raw_data(raw_data_with_previous_data_word, lsb_byte=None)
+                                bad_fixed_data, _ = check_bad_data(fixed_raw_data, prepend_data_headers=1, trig_count=None)
+                                if not bad_fixed_data:
+                                    prepend_data_headers = None
+                                    logging.warning("found bad data in %s from index %d to %d (chunk %d, length %d)" % (in_file_h5.filename, index_start, index_stop, read_out_index, (index_stop - index_start)))
+                                    # last word in chunk before currrent chunk is also bad
+                                    if index_start != 0 and (index_start - 1) not in bad_word_index:
+                                        bad_word_index.add(index_start - 1)
+                                    # adding all word from current chunk
+                                    bad_word_index = bad_word_index.union(range(index_start, index_stop))
                             prepend_data_headers = prepend_data_headers_tmp
-                            if bad_data:
-                                prepend_data_headers = None
-                                logging.warning("found bad data in %s from index %d to %d (chunk %d, length %d)" % (in_file_h5.filename, index_start, index_stop, read_out_index, (index_stop - index_start)))
-                                # last word in chunk before currrent chunk is also bad
-                                if index_start != 0 and (index_start - 1) not in bad_word_index:
-                                    bad_word_index.add(index_start - 1)
-                                # adding all word from current chunk
-                                bad_word_index = bad_word_index.union(range(index_start, index_stop))
 
                     consecutive_bad_words_list = consecutive(sorted(bad_word_index))
                     lsb_byte = None
