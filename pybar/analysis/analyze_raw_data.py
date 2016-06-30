@@ -747,13 +747,13 @@ class AnalyzeRawData(object):
                     # fix bad data
                     if self._correct_corrupted_data:
                         word_shift = 0
-                        chunk_idx = np.arange(word_index, word_index + self._chunk_size)
-                        for consecutive_bad_words in consecutive_bad_words_list:
-                            selected_words = np.intersect1d(consecutive_bad_words, chunk_idx, assume_unique=True)
+                        chunk_indices = np.arange(word_index, word_index + self._chunk_size)
+                        for consecutive_bad_word_indices in consecutive_bad_words_list:
+                            selected_words = np.intersect1d(consecutive_bad_word_indices, chunk_indices, assume_unique=True)
                             if selected_words.shape[0]:
                                 fixed_raw_data, lsb_byte = fix_raw_data(raw_data[selected_words - word_index - word_shift], lsb_byte=lsb_byte)
                                 raw_data = np.r_[raw_data[:selected_words[0] - word_index - word_shift], fixed_raw_data, raw_data[selected_words[-1] - word_index + 1 - word_shift:]]
-                                if selected_words.shape[0] == consecutive_bad_words.shape[0]:
+                                if selected_words.shape[0] == consecutive_bad_word_indices.shape[0]:
                                     # full bad data chunk in current chunk
                                     lsb_byte = None
                                     # word shift by removing data word at the beginning of each defect chunk
