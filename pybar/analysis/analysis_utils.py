@@ -1606,7 +1606,7 @@ def check_bad_data(raw_data, prepend_data_headers=None, trig_count=None):
     # check for two consecutive triggers
     elif consecutive_triggers is None and prepend_data_headers == 0 and trigger_idx.shape[0] and fe_dh_idx.shape[0] and trigger_idx[0] < fe_dh_idx[0]:
         return True, last_event_data_headers_cnt  # FIXME: 0?
-    elif prepend_data_headers:
+    elif prepend_data_headers is not None:
         trigger_idx += (prepend_data_headers + 1)
         fe_dh_idx += (prepend_data_headers + 1)
         # for histogramming add trigger at index 0
