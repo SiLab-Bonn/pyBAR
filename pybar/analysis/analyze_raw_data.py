@@ -741,7 +741,7 @@ class AnalyzeRawData(object):
                 # Loop over raw data in chunks
                 for word_index in range(0, in_file_h5.root.raw_data.shape[0], self._chunk_size):  # loop over all words in the actual raw data file
                     try:
-                        raw_data = in_file_h5.root.raw_data.read(word_index, word_index + self._chunk_size)
+                        raw_data = in_file_h5.root.raw_data[word_index:word_index + self._chunk_size]
                     except OverflowError, e:
                         logging.error('%s: 2^31 xrange() limitation in 32-bit Python', e)
                     except tb.exceptions.HDF5ExtError:
