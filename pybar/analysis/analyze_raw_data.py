@@ -705,7 +705,9 @@ class AnalyzeRawData(object):
                         try:
                             raw_data = in_file_h5.root.raw_data.read(index_start, index_stop)
                         except OverflowError, e:
-                            logging.error('%s: 2^31 xrange() limitation in 32-bit Python', e)
+                            pass
+                        except tb.exceptions.HDF5ExtError:
+                            break
                         # previous data chunk had bad data, check for good data
                         if (index_start - 1) in bad_word_index:
                             bad_data, current_prepend_data_headers, _ , _ = check_bad_data(raw_data, prepend_data_headers=1, trig_count=None)
