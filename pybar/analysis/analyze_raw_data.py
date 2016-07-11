@@ -721,9 +721,9 @@ class AnalyzeRawData(object):
                                     logging.warning("found bad data in %s from index %d to %d (chunk %d to %d, length %d)" % (in_file_h5.filename, readout_slices[last_good_readout_index][1], readout_slices[read_out_index - 1][1], last_good_readout_index + 1, read_out_index - 1, (readout_slices[read_out_index - 1][1] - readout_slices[last_good_readout_index][1])))
                                 previous_good_raw_data = in_file_h5.root.raw_data.read(readout_slices[last_good_readout_index][0], readout_slices[last_good_readout_index][1] - 1)
                                 previous_bad_raw_data = in_file_h5.root.raw_data.read(readout_slices[last_good_readout_index][1] - 1, readout_slices[read_out_index - 1][1])
-                                fixed_raw_data, lsb_byte = fix_raw_data(previous_bad_raw_data, lsb_byte=None)
+                                fixed_raw_data, _ = fix_raw_data(previous_bad_raw_data, lsb_byte=None)
                                 fixed_raw_data = np.r_[previous_good_raw_data, fixed_raw_data, raw_data]
-                                _, prepend_data_headers, n_triggers , n_dh = check_bad_data(fixed_raw_data, prepend_data_headers=previous_prepend_data_headers, trig_count=self.trig_count)
+                                _, prepend_data_headers, n_triggers, n_dh = check_bad_data(fixed_raw_data, prepend_data_headers=previous_prepend_data_headers, trig_count=self.trig_count)
                                 last_good_readout_index = read_out_index
                                 if n_triggers != 0 or n_dh != 0:
                                     last_index_with_event_data = read_out_index
@@ -770,7 +770,7 @@ class AnalyzeRawData(object):
                                     if last_index_with_event_data and last_event_data_prepend_data_headers != read_out_index:
                                         before_bad_raw_data = in_file_h5.root.raw_data.read(readout_slices[last_index_with_event_data - 1][0], readout_slices[last_index_with_event_data - 1][1] - 1)
                                         previous_bad_raw_data = in_file_h5.root.raw_data.read(readout_slices[last_index_with_event_data][0] - 1, readout_slices[last_index_with_event_data][1])
-                                        fixed_raw_data, lsb_byte = fix_raw_data(previous_bad_raw_data, lsb_byte=None)
+                                        fixed_raw_data, _ = fix_raw_data(previous_bad_raw_data, lsb_byte=None)
                                         previous_good_raw_data = in_file_h5.root.raw_data.read(readout_slices[last_index_with_event_data][1], readout_slices[read_out_index - 1][1])
                                         fixed_raw_data = np.r_[before_bad_raw_data, fixed_raw_data, previous_good_raw_data, raw_data]
                                         bad_fixed_previous_data, current_prepend_data_headers, _ , _ = check_bad_data(fixed_raw_data, prepend_data_headers=last_event_data_prepend_data_headers, trig_count=self.trig_count)
@@ -789,8 +789,8 @@ class AnalyzeRawData(object):
                                 prepend_data_headers = current_prepend_data_headers
 
                     consecutive_bad_words_list = consecutive(sorted(bad_word_index))
-                    lsb_byte = None
 
+                lsb_byte = None
                 # Loop over raw data in chunks
                 for word_index in range(0, in_file_h5.root.raw_data.shape[0], self._chunk_size):  # loop over all words in the actual raw data file
                     try:
