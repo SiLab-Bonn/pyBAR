@@ -692,6 +692,8 @@ class AnalyzeRawData(object):
 
                 # Check for bad data
                 if self._correct_corrupted_data:
+                    tw = 2147483648  # trigger word
+                    dh = 15269888  # data header
                     is_fe_data_header = logical_and(is_fe_word, is_data_header)
                     found_first_trigger = False
                     readout_slices = np.column_stack((index_start, index_stop))
@@ -737,16 +739,24 @@ class AnalyzeRawData(object):
                             # usually check for bad data happens here
                             else:
                                 bad_data, current_prepend_data_headers, n_triggers , n_dh = check_bad_data(raw_data, prepend_data_headers=prepend_data_headers, trig_count=self.trig_count)
+
+                            # do additional check with follow up data chunk and decide whether current chunk is defect or not
                             if bad_data:
                                 if read_out_index == 0:
-                                    fixed_raw_data, lsb_byte = fix_raw_data(raw_data, lsb_byte=None)
+                                    fixed_raw_data_chunk, _ = fix_raw_data(raw_data, lsb_byte=None)
+                                    fixed_raw_data_list = [fixed_raw_data_chunk]
                                 else:
                                     previous_raw_data = in_file_h5.root.raw_data.read(*readout_slices[read_out_index - 1])
                                     raw_data_with_previous_data_word = np.r_[previous_raw_data[-1], raw_data]
-                                    fixed_raw_data, lsb_byte = fix_raw_data(raw_data_with_previous_data_word, lsb_byte=None)
-                                    fixed_raw_data = np.r_[previous_raw_data[:-1], fixed_raw_data]
-                                bad_fixed_data, _, _ , _ = check_bad_data(fixed_raw_data, prepend_data_headers=previous_prepend_data_headers, trig_count=self.trig_count)
-                                if not bad_fixed_data: # good fixed data
+                                    fixed_raw_data_chunk, _ = fix_raw_data(raw_data_with_previous_data_word, lsb_byte=None)
+                                    fixed_raw_data = np.r_[previous_raw_data[:-1], fixed_raw_data_chunk]
+                                    # last data word of chunk before broken chunk migh be a trigger word or data header which cannot be recovered
+                                    fixed_raw_data_with_tw = np.r_[previous_raw_data[:-1], tw, fixed_raw_data_chunk]
+                                    fixed_raw_data_with_dh = np.r_[previous_raw_data[:-1], dh, fixed_raw_data_chunk]
+                                    fixed_raw_data_list = [fixed_raw_data, fixed_raw_data_with_tw, fixed_raw_data_with_dh]
+                                bad_fixed_data, _, _ , _ = check_bad_data(fixed_raw_data_with_dh, prepend_data_headers=previous_prepend_data_headers, trig_count=self.trig_count)
+                                bad_fixed_data = map(lambda data: check_bad_data(data, prepend_data_headers=previous_prepend_data_headers, trig_count=self.trig_count)[0], fixed_raw_data_list)
+                                if not all(bad_fixed_data): # good fixed data
                                     # last word in chunk before currrent chunk is also bad
                                     if index_start != 0:
                                         bad_word_index.add(index_start - 1)
