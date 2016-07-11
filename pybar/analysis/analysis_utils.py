@@ -1599,14 +1599,17 @@ def check_bad_data(raw_data, prepend_data_headers=None, trig_count=None):
 #     if consecutive_triggers and prepend_data_headers and prepend_data_headers + n_dh != consecutive_triggers:
 #         return True, n_dh, n_triggers, n_dh
 
+    n_triggers_cleaned = trigger_idx.shape[0]
+    n_dh_cleaned = fe_dh_idx.shape[0]
+
     # check that trigger comes before data header
-    if prepend_data_headers is None and n_triggers and n_dh and not trigger_idx[0] < fe_dh_idx[0]:
+    if prepend_data_headers is None and n_triggers_cleaned and n_dh_cleaned and not trigger_idx[0] < fe_dh_idx[0]:
         return True, last_event_data_headers_cnt, n_triggers, n_dh  # FIXME: 0?
     # check that no trigger comes before the first data header
-    elif consecutive_triggers and prepend_data_headers is not None and n_triggers and n_dh and trigger_idx[0] < fe_dh_idx[0]:
+    elif consecutive_triggers and prepend_data_headers is not None and n_triggers_cleaned and n_dh_cleaned and trigger_idx[0] < fe_dh_idx[0]:
         return True, last_event_data_headers_cnt, n_triggers, n_dh  # FIXME: 0?
     # check for two consecutive triggers
-    elif consecutive_triggers is None and prepend_data_headers == 0 and n_triggers and n_dh and trigger_idx[0] < fe_dh_idx[0]:
+    elif consecutive_triggers is None and prepend_data_headers == 0 and n_triggers_cleaned and n_dh_cleaned and trigger_idx[0] < fe_dh_idx[0]:
         return True, last_event_data_headers_cnt, n_triggers, n_dh  # FIXME: 0?
     elif prepend_data_headers is not None:
         trigger_idx += (prepend_data_headers + 1)
