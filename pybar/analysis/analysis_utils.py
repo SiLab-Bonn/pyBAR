@@ -147,23 +147,15 @@ def get_ranges_from_array(arr, append_last=True):
 
 
 def get_mean_from_histogram(counts, bin_positions):
-    return np.dot(counts, np.array(bin_positions)) / np.sum(counts).astype('f4')
+    return np.average(counts, weights=bin_positions) * np.sum(bin_positions) / np.sum(counts)
 
 
 def get_median_from_histogram(counts, bin_positions):
-    values = []
-    for index, one_bin in enumerate(counts):
-        for _ in range(one_bin):
-            values.append(bin_positions[index])
-    return np.median(values)
+    return np.median(np.repeat(bin_positions, counts))
 
 
 def get_rms_from_histogram(counts, bin_positions):
-    values = []
-    for index, one_bin in enumerate(counts):
-        for _ in range(one_bin):
-            values.append(bin_positions[index])
-    return np.std(values)
+    return np.std(np.repeat(bin_positions, counts))
 
 
 def in1d_sorted(ar1, ar2):
