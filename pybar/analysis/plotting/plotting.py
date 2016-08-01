@@ -609,6 +609,7 @@ def plot_three_way(hist, title, filename=None, x_axis_title=None, minimum=None, 
     # cmap = matplotlib.cm.jet
     # cmap.set_bad('w',1.0)
     # ax.imshow(masked_array, interpolation='nearest', cmap=cmap)
+    hist = np.ma.masked_invalid(hist)
     if minimum is None:
         minimum = 0.0
     elif minimum == 'minimum':
