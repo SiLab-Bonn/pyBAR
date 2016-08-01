@@ -1249,7 +1249,7 @@ class AnalyzeRawData(object):
         if self._create_tdc_pixel_hist:
             tdc_pixel_hist = out_file_h5.root.HistTdcPixel[:, :, :1024] if out_file_h5 is not None else self.tdc_pixel_hist_array[:, :, :1024]  # only take first 1024 values, otherwise memory error likely
             mean_pixel_tdc = np.average(tdc_pixel_hist, axis=2, weights=range(1024)) * sum(range(0, 1024)) / np.sum(tdc_pixel_hist, axis=2)
-            plotting.plot_three_way(mean_pixel_tdc, title='Mean TDC', x_axis_title='mean TDC', filename=output_pdf)
+            plotting.plot_three_way(mean_pixel_tdc, title='Mean TDC', x_axis_title='mean TDC', maximum=2 * np.ma.median(np.ma.masked_invalid(mean_pixel_tdc)), filename=output_pdf)
         if not create_hit_hists_only:
             if analyzed_data_file is None and self._create_error_hist:
                 plotting.plot_event_errors(hist=out_file_h5.root.HistErrorCounter if out_file_h5 is not None else self.error_counter_hist, filename=output_pdf)
