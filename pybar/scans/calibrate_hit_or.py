@@ -59,8 +59,7 @@ def create_hitor_calibration(output_filename, plot_pixel_calibrations=False):
             output_filename = os.path.splitext(output_filename)[0]
             with tb.openFile(output_filename + "_calibration.h5", mode="w") as calibration_data_file:
                 logging.info('Create calibration')
-                calibration_data = np.empty(shape=(80, 336, len(inner_loop_parameter_values), 4), dtype='f4')  # result of the calibration is a histogram with col_index, row_index, plsrDAC value, mean discrete tot, rms discrete tot, mean tot from TDC, rms tot from TDC
-                calibration_data.fill(np.nan)
+                calibration_data = np.full(shape=(80, 336, len(inner_loop_parameter_values), 4), fill_value=np.nan, dtype='f4')  # result of the calibration is a histogram with col_index, row_index, plsrDAC value, mean discrete tot, rms discrete tot, mean tot from TDC, rms tot from TDC
 
                 progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=len(event_ranges_per_parameter), term_width=80)
                 progress_bar.start()

@@ -1117,10 +1117,9 @@ def make_pixel_mask(steps, shift, default=0, value=1, enable_columns=None, mask=
         self.register_utils.send_commands(commands)
         # do something here
     '''
-    dimension = (80, 336)
+    shape = (80, 336)
     # value = np.zeros(dimension, dtype = np.uint8)
-    mask_array = np.empty(dimension, dtype=np.uint8)
-    mask_array.fill(default)
+    mask_array = np.full(shape, default, dtype=np.uint8)
     # FE columns and rows are starting from 1
     if enable_columns:
         odd_columns = [odd - 1 for odd in enable_columns if odd % 2 != 0]
@@ -1168,10 +1167,8 @@ def make_pixel_mask_from_col_row(column, row, default=0, value=1):
     row_array = np.array(row) - 1
     if np.any(col_array >= 80) or np.any(col_array < 0) or np.any(row_array >= 336) or np.any(col_array < 0):
         raise ValueError('Column and/or row out of range')
-    dimension = (80, 336)
-    # value = np.zeros(dimension, dtype = np.uint8)
-    mask = np.empty(dimension, dtype=np.uint8)
-    mask.fill(default)
+    shape = (80, 336)
+    mask = np.full(shape, default, dtype=np.uint8)
     mask[col_array, row_array] = value  # advanced indexing
     return mask
 
@@ -1199,10 +1196,8 @@ def make_box_pixel_mask_from_col_row(column, row, default=0, value=1):
     row_array = np.array(row) - 1
     if np.any(col_array >= 80) or np.any(col_array < 0) or np.any(row_array >= 336) or np.any(col_array < 0):
         raise ValueError('Column and/or row out of range')
-    dimension = (80, 336)
-    # value = np.zeros(dimension, dtype = np.uint8)
-    mask = np.empty(dimension, dtype=np.uint8)
-    mask.fill(default)
+    shape = (80, 336)
+    mask = np.full(shape, default, dtype=np.uint8)
     if column and row:
         mask[col_array.min():col_array.max() + 1, row_array.min():row_array.max() + 1] = value  # advanced indexing
     return mask

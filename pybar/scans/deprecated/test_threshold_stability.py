@@ -298,10 +298,8 @@ def mask_pixel(steps, shift, default=0, value=1, mask=None):
                 out[j * m:(j + 1) * m, 1:] = out[0:m, 1:]
         return out
 
-    dimension = (80, 336)
-    # value = np.zeros(dimension, dtype = np.uint8)
-    mask_array = np.empty(dimension, dtype=np.uint8)
-    mask_array.fill(default)
+    shape = (80, 336)
+    mask_array = np.full(shape, fill_value=default, dtype=np.uint8)
     # FE columns and rows are starting from 1
     odd_columns = np.arange(0, 80, 2)
     even_columns = np.arange(1, 80, 2)

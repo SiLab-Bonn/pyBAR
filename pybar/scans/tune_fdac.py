@@ -72,8 +72,7 @@ class FdacTuning(Fei4RunBase):
 
         self.set_start_fdac()
 
-        self.tot_mean_best = np.empty(shape=(80, 336))  # array to store the best occupancy (closest to Ninjections/2) of the pixel
-        self.tot_mean_best.fill(0)
+        self.tot_mean_best = np.full(shape=(80, 336), fill_value=0)  # array to store the best occupancy (closest to Ninjections/2) of the pixel
         self.fdac_mask_best = self.register.get_pixel_register_value("FDAC")
         fdac_tune_bits = self.fdac_tune_bits[:]
         for scan_parameter_value, fdac_bit in enumerate(fdac_tune_bits):

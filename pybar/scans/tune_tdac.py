@@ -68,8 +68,7 @@ class TdacTuning(Fei4RunBase):
 
         self.set_start_tdac()
 
-        self.occupancy_best = np.empty(shape=(80, 336))  # array to store the best occupancy (closest to Ninjections/2) of the pixel
-        self.occupancy_best.fill(self.n_injections_tdac)
+        self.occupancy_best = np.full(shape=(80, 336), fill_value=self.n_injections_tdac)  # array to store the best occupancy (closest to Ninjections/2) of the pixel
         self.tdac_mask_best = self.register.get_pixel_register_value("TDAC")
         tdac_tune_bits = self.tdac_tune_bits[:]
         for scan_parameter_value, tdac_bit in enumerate(tdac_tune_bits):
