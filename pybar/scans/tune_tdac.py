@@ -5,7 +5,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.fei4.register_utils import scan_loop
 from pybar.run_manager import RunManager
-from pybar.daq.readout_utils import convert_data_array, is_data_record, data_array_from_data_iterable, get_col_row_array_from_data_record_array
+from pybar.daq.readout_utils import convert_data_array, is_data_record, is_fe_word, logical_and, data_array_from_data_iterable, get_col_row_array_from_data_record_array
 from pybar.analysis.plotting.plotting import plot_three_way
 
 
@@ -97,7 +97,7 @@ class TdacTuning(Fei4RunBase):
                           mask=None,
                           double_column_correction=self.pulser_dac_correction)
 
-            occupancy_array, _, _ = np.histogram2d(*convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array), bins=(80, 336), range=[[1, 80], [1, 336]])
+            occupancy_array, _, _ = np.histogram2d(*convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=logical_and(is_fe_word, is_data_record), converter_func=get_col_row_array_from_data_record_array), bins=(80, 336), range=[[1, 80], [1, 336]])
             select_better_pixel_mask = abs(occupancy_array - self.n_injections_tdac / 2) <= abs(self.occupancy_best - self.n_injections_tdac / 2)
             pixel_with_too_high_occupancy_mask = occupancy_array > self.n_injections_tdac / 2
             self.occupancy_best[select_better_pixel_mask] = occupancy_array[select_better_pixel_mask]
