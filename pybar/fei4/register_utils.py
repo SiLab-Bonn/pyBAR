@@ -1264,7 +1264,12 @@ def parse_key_value_from_file(f, key, deletechars=''):
             return None
 
 
-def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=False, fast_dc_loop=True, bol_function=None, eol_function=None, digital_injection=False, enable_shift_masks=None, disable_shift_masks=None, restore_shift_masks=True, mask=None, double_column_correction=False):
+def calculate_wait_cycles(mask_steps):
+    # good practice from measurements, see Feature #59
+    return int(336. / mask_steps * 25. + 600)
+
+
+def scan_loop(self, command, repeat_command=100, use_delay=True, additional_delay=0, mask_steps=3, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=False, fast_dc_loop=True, bol_function=None, eol_function=None, digital_injection=False, enable_shift_masks=None, disable_shift_masks=None, restore_shift_masks=True, mask=None, double_column_correction=False):
     '''Implementation of the scan loops (mask shifting, loop over double columns, repeatedly sending any arbitrary command).
 
     Parameters
@@ -1275,8 +1280,10 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
         The number of repetitions command will be sent out each mask step.
     use_delay : bool
         Add additional delay to the command (append zeros). This helps to avoid FE data errors because of sending to many commands to the FE chip.
+    additional_delay: int
+        Additional delay to increase the command-to-command delay (in number of clock cycles / 25ns).
     mask_steps : int
-        Number of mask steps.
+        Number of mask steps (from 1 to 672).
     enable_mask_steps : list, tuple
         List of mask steps which will be applied. Default is all mask steps. From 0 to (mask-1). A value equal None or empty list will select all mask steps.
     enable_double_columns : list, tuple
@@ -1334,7 +1341,7 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
     conf_mode_command = self.register.get_commands("ConfMode")[0]
     run_mode_command = self.register.get_commands("RunMode")[0]
     if use_delay:
-        delay = self.register.get_commands("zeros", mask_steps=mask_steps)[0]
+        delay = self.register.get_commands("zeros", length=additional_delay + calculate_wait_cycles(mask_steps))[0]
         scan_loop_command = command + delay
     else:
         scan_loop_command = command

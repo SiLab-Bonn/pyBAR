@@ -207,23 +207,19 @@ class FEI4Register(object):
         chip_id = kwargs.pop("ChipID", self.chip_id_bitarray)
         commands = []
         if command_name == "zeros":
+            bv = bitarray(endian='little')
             if "length" in kwargs:
-                bv = bitarray(kwargs["length"], endian='little')  # all bits to zero
-            elif "mask_steps" in kwargs:
-                def calculate_wait_cycles(mask_steps):
-                    return int(336. / mask_steps * 25. + 600)  # good practice from measurement, see Feature #59
-                bv = bitarray(calculate_wait_cycles(kwargs["mask_steps"]), endian='little')
-            else:
-                raise ValueError('Cannot calculate length')
-            bv.setall(0)
+                bv += bitarray(kwargs["length"], endian='little')  # initialized from int, bits may be random
+            elif kwargs:
+                raise ValueError("Unknown parameter(s): %s" % ", ".join(kwargs.iterkeys()))
+            bv.setall(0)  # all bits to zero
             commands.append(bv)
         elif command_name == "ones":
+            bv = bitarray(endian='little')
             if "length" in kwargs:
-                bv = bitarray(kwargs["length"], endian='little')  # all bits to zero
-            elif "mask_steps" in kwargs:
-                bv = bitarray(calculate_wait_cycles(kwargs["mask_steps"]), endian='little')
-            else:
-                raise ValueError('cannot calculate length')
+                bv += bitarray(kwargs["length"], endian='little')  # initialized from int, bits may be random
+            elif kwargs:
+                raise ValueError("Unknown parameter(s): %s" % ", ".join(kwargs.iterkeys()))
             bv.setall(1)  # all bits to one
             commands.append(bv)
         elif command_name == "WrRegister":
