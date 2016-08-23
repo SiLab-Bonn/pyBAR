@@ -1333,8 +1333,8 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, mask_steps=3, e
     # pre-calculate often used commands
     conf_mode_command = self.register.get_commands("ConfMode")[0]
     run_mode_command = self.register.get_commands("RunMode")[0]
-    delay = self.register.get_commands("zeros", mask_steps=mask_steps)[0]
     if use_delay:
+        delay = self.register.get_commands("zeros", mask_steps=mask_steps)[0]
         scan_loop_command = command + delay
     else:
         scan_loop_command = command
