@@ -64,7 +64,7 @@ class FdacTuning(Fei4RunBase):
 
         enable_mask_steps = []
 
-        cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", mask_steps=self.mask_steps)[0]
+        cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0]
 
         self.write_target_charge()
         additional_scan = True
@@ -87,7 +87,7 @@ class FdacTuning(Fei4RunBase):
 
             with self.readout(FDAC=scan_parameter_value, reset_sram_fifo=True, fill_buffer=True, clear_buffer=True, callback=self.handle_data):
                 scan_loop(self,
-                          cal_lvl1_command,
+                          command=cal_lvl1_command,
                           repeat_command=self.n_injections_fdac,
                           mask_steps=self.mask_steps,
                           enable_mask_steps=enable_mask_steps,

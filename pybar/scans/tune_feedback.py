@@ -84,7 +84,7 @@ class FeedbackTuning(Fei4RunBase):
             logging.info('Deselect double column %d' % column)
             select_mask_array[column, :] = 0
 
-        cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", mask_steps=self.mask_steps)[0]
+        cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0]
 
         self.write_target_charge()
 
@@ -107,7 +107,7 @@ class FeedbackTuning(Fei4RunBase):
 
             with self.readout(PrmpVbpf=scan_parameter_value, reset_sram_fifo=True, fill_buffer=True, clear_buffer=True, callback=self.handle_data):
                 scan_loop(self,
-                          cal_lvl1_command,
+                          command=cal_lvl1_command,
                           repeat_command=self.n_injections_feedback,
                           mask_steps=self.mask_steps,
                           enable_mask_steps=self.enable_mask_steps_feedback,

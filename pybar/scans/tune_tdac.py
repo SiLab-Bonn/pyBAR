@@ -60,7 +60,7 @@ class TdacTuning(Fei4RunBase):
             self.close_plots = False
 
         enable_mask_steps = []
-        cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", mask_steps=self.mask_steps)[0]
+        cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0]
 
         self.write_target_threshold()
         additional_scan = True
@@ -83,7 +83,7 @@ class TdacTuning(Fei4RunBase):
 
             with self.readout(TDAC=scan_parameter_value, reset_sram_fifo=True, fill_buffer=True, clear_buffer=True, callback=self.handle_data):
                 scan_loop(self,
-                          cal_lvl1_command,
+                          command=cal_lvl1_command,
                           repeat_command=self.n_injections_tdac,
                           mask_steps=self.mask_steps,
                           enable_mask_steps=enable_mask_steps,

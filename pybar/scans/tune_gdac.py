@@ -61,7 +61,7 @@ class GdacTuning(Fei4RunBase):
             self.close_plots = True
         else:
             self.close_plots = False
-        cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", mask_steps=self.mask_steps)[0]
+        cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0]
 
         self.write_target_threshold()
         for gdac_bit in self.gdac_tune_bits:  # reset all GDAC bits
@@ -109,7 +109,7 @@ class GdacTuning(Fei4RunBase):
 
             with self.readout(GDAC=scan_parameter_value, reset_sram_fifo=True, fill_buffer=True, clear_buffer=True, callback=self.handle_data):
                 scan_loop(self,
-                          cal_lvl1_command,
+                          command=cal_lvl1_command,
                           repeat_command=self.n_injections_gdac,
                           mask_steps=self.mask_steps,
                           enable_mask_steps=self.enable_mask_steps_gdac,
