@@ -108,8 +108,8 @@ class PlsrDacCalibration(Fei4RunBase):
                 mean_data['voltage_rms'][index] = data['voltage'][data["PlsrDAC"] == parameter].std()
 
             slope_fit, slope_err, plateau_fit, plateau_err = self.plot_pulser_dac(mean_data['PlsrDAC'], mean_data['voltage_mean'], mean_data['voltage_rms'], output_pdf, title_suffix="(DC " + ", ".join([str(cols[0]) if len(cols) == 1 else (str(cols[0]) + " - " + str(cols[-1])) for cols in consecutive(self.colpr_addr_parameters)]) + ")")
-            self.register.calibration_parameters['Vcal_Coeff_0'] = slope_fit[0] * 1000.0  # store in mV
-            self.register.calibration_parameters['Vcal_Coeff_1'] = slope_fit[1] * 1000.0  # store in mV/DAC
+            self.register.calibration_parameters['Vcal_Coeff_0'] = np.nan_to_num(slope_fit[0] * 1000.0)  # store in mV
+            self.register.calibration_parameters['Vcal_Coeff_1'] = np.nan_to_num(slope_fit[1] * 1000.0)  # store in mV/DAC
 
             # plot per double column
             # Calculate mean PlsrDAC transfer function
