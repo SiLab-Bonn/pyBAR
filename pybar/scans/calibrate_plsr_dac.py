@@ -186,12 +186,13 @@ class PlsrDacCalibration(Fei4RunBase):
         ax.set_xlabel("PlsrDAC")
         ax.set_ylabel('Voltage [V]')
         ax.grid(True)
+        ax.set_xlim((min(x), max(x)))
         ax.legend(loc='upper left')
         pdf.savefig(fig)
 
         # calculate 1st and 2nd deviation to estimate fit range
         tck = interpolate.splrep(x, y, k=3, s=0)
-        xnew = np.linspace(0, 1024)
+        xnew = np.linspace(min(x), max(x), num=100, endpoint=True)
 
         dev_1 = interpolate.splev(x, tck, der=1)
         dev_2 = interpolate.splev(x, tck, der=2)
@@ -257,12 +258,14 @@ class PlsrDacCalibration(Fei4RunBase):
 #         plateau_fit_fn = poly1d(plateau_p_opt)
         ax1.set_ylabel('Voltage [V]')
         ax1.set_xlabel("PlsrDAC")
+        ax1.set_xlim((min(x), max(x)))
         ax1.legend(loc='best')
 
         ax2 = fig.add_subplot(312)
         ax2.plot(x, dev_1, label='1st dev')
         ax2.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
         ax2.set_xlabel("PlsrDAC")
+        ax2.set_xlim((min(x), max(x)))
         ax2.legend(loc='best')
 
         ax3 = fig.add_subplot(313)
@@ -271,6 +274,7 @@ class PlsrDacCalibration(Fei4RunBase):
         if turning_point_idx.size:
             ax3.plot(x[turning_point_idx], dev_2[turning_point_idx], 'rx', label='Turning point')
         ax3.set_xlabel("PlsrDAC")
+        ax3.set_xlim((min(x), max(x)))
         ax3.legend(loc='best')
         fig.tight_layout()
         pdf.savefig(fig)
@@ -290,6 +294,7 @@ class PlsrDacCalibration(Fei4RunBase):
         ax.set_xlabel("PlsrDAC")
         ax.set_ylabel('Voltage [V]')
         ax.grid(True)
+        ax.set_xlim((min(x), max(x)))
         ax.legend(loc='upper left')
         pdf.savefig(fig)
 
