@@ -17,8 +17,6 @@ class IleakScan(Fei4RunBase):
     }
 
     def configure(self):
-        self.dut['Multimeter'].init()
-        logging.info('Initialized multimeter %s' % self.dut['Multimeter'].get_name())
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))
         self.register.set_pixel_register_value('Imon', 0)

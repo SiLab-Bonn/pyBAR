@@ -22,8 +22,7 @@ class IVScan(Fei4RunBase):
     }
 
     def configure(self):
-        self.dut['Sourcemeter'].init()
-        logging.info('Initialized sourcemeter: %s' % self.dut['Sourcemeter'].get_name())
+        pass
 
     def scan(self):
         logging.info('Measure IV for V = %s' % self.voltages)

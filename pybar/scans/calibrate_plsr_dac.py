@@ -31,8 +31,6 @@ class PlsrDacCalibration(Fei4RunBase):
     }
 
     def configure(self):
-        self.dut['Multimeter'].init()
-        logging.info('Initialized multimeter %s' % self.dut['Multimeter'].get_name())
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))
         enable_mask = make_pixel_mask(steps=self.mask_steps, shift=0, default=0, value=1)  # Activate pixels for injection, although they are not read out

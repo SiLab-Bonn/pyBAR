@@ -73,7 +73,7 @@ class PlsrDacTransientCalibration(AnalogScan):
     def configure(self):
         super(PlsrDacTransientCalibration, self).configure()
         # Init Oscilloscope
-        self.dut['Oscilloscope'].init()
+#         self.dut['Oscilloscope'].init()
         self.dut['Oscilloscope'].data_init()  # Resert data taking settings
         self.dut['Oscilloscope'].set_data_start(0)  # Set readout fraction of waveform
         self.dut['Oscilloscope'].set_data_stop(self.max_data_index)  # Set readout fraction of waveform
