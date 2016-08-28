@@ -19,6 +19,7 @@ from matplotlib import colors, cm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.backends.backend_pdf import PdfPages
 from scipy.interpolate import interp1d
+from scipy.ndimage.interpolation import shift
 
 from pybar_fei4_interpreter import analysis_utils as fast_analysis_utils
 
@@ -29,16 +30,17 @@ from pybar.analysis.plotting.plotting import plot_three_way, plot_1d_hist
 hit_selection = '(column > 50) & (column < 78) & (row > 16) & (row < 324) & (((column % 2 == 1) & (row % 12 == 1)) | ((column % 2 == 0) & (row % 12 == 7)))'
 
 analysis_configuration = {
-    'scan_name': [r'L:\SCC30\TDC_Sr90\LongRun\2_scc_30_ext_trigger_scan'],  # the base file name(s) of the raw data file, no file suffix
+    'scan_name': [r'H:\SCC112\irrad_2\scc_112_-50\141_scc_112_ext_trigger_scan'],  # the base file name(s) of the raw data file, no file suffix
     'align_at_trigger': True,  # align events to the trigger words, first event word has to be trigger word
     'align_at_tdc': False,  # align events to the tdc words, first event word has to be tdc word; not needed anymore for new pyBAR data
     'use_tdc_trigger_time_stamp': False,  # TDC + external trigger are used, thus fill the hit table with delay value between trigger and TDC (usefull for time walk measurements)
     'max_tdc_delay': 80,  # maximum TDC to trigger delay to consider the TDC word as a valid in-time event word; otherwise TDC word is neglected
-    'input_file_calibration': r'L:\SCC30\TDCcalibration\scc_30\11_scc_30_hit_or_calibration_calibration.h5',  # the Plsr<->TDC calibration file
-    'correct_calibration': r'L:\SCC112\TDC_ELSA\scc_112\19_scc_112_hit_or_calibration_calibration.h5',  # file name of another more actual calibration to be used to correct the calibration; changes are expected due to tempretature drifts
+    'ignore_disabled_regions': True,  # Use only pixel that have enabled neighbouring pixels to allow proper cluster size cuts, a  neigbeuring pixel is +-1 in column XOR row direction
+    'input_file_calibration': r'H:\SCC112\irrad_2\scc_112_-50\18_scc_112_hit_or_calibration_calibration.h5',  # the Plsr<->TDC calibration file
+    'correct_calibration': None,  # file name of another more actual calibration to be used to correct the calibration; changes are expected due to tempretature drifts and irradiation
     'hit_selection_conditions': ['(n_cluster==1)',  # criterions for the hit selection based on hit properties, per criterion TDC hitograms are created
                                  '(n_cluster==1) & (cluster_size == 1) & %s' % hit_selection,
-                                 '(n_cluster==1) & (cluster_size == 1) & (relative_BCID > 1) & (relative_BCID < 5) & ((tot > 12) | ((TDC * 1.5625 - tot * 25 < 100) & (tot * 25 - TDC * 1.5625 < 100))) & %s' % hit_selection
+                                 '(n_cluster==1) & (cluster_size == 1) & (relative_BCID > 2) & (relative_BCID < 5) & ((tot > 12) | ((TDC * 1.5625 - tot * 25 < 100) & (tot * 25 - TDC * 1.5625 < 100))) & %s' % hit_selection
                                  ],
     'event_status_select_mask': 0b0000111111111111,  # the event status bits to cut on
     'event_status_condition': 0b0000000100000000,  # the event status number after the event_status_select_mask is bitwise ORed with the event number
@@ -70,9 +72,14 @@ def analyze_raw_data(input_files, output_file_hits, interpreter_plots, overwrite
             analyze_raw_data.create_cluster_size_hist = True  # enables cluster size histogramming, can save some time, std. setting is false
             analyze_raw_data.create_cluster_tot_hist = True  # enables cluster ToT histogramming per cluster size, std. setting is false
             analyze_raw_data.interpreter.set_warning_output(interpreter_warnings)  # std. setting is True
-            analyze_raw_data.interpreter.print_status()
             analyze_raw_data.interpret_word_table()  # the actual start conversion command
             analyze_raw_data.interpreter.print_summary()  # prints the interpreter summary
+
+            # Store the enables pixels for good pixel selection in TDC analysis step
+            with tb.open_file(analyze_raw_data._analyzed_data_file, 'r+') as out_file_h5:
+                with tb.open_file(analyze_raw_data.files_dict.items()[0][0]) as in_file_h5:  # Use first raw data file to extract enable mask
+                    out_file_h5.root.ClusterHits.attrs.enabled_pixels = in_file_h5.root.configuration.Enable[:]
+
             if interpreter_plots:
                 analyze_raw_data.plot_histograms()  # plots all activated histograms into one pdf
 
@@ -86,7 +93,8 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
         for column in range(80):
             for row in range(336):
                 actual_pixel_calibration = tdc_pixel_calibration[column, row, :]
-                if np.any(actual_pixel_calibration != 0) and np.any(np.isfinite(actual_pixel_calibration)):
+                # Only take pixels with at least 3 valid calibration points
+                if np.count_nonzero(actual_pixel_calibration != 0) > 2 and np.count_nonzero(np.isfinite(actual_pixel_calibration)) > 2:
                     selected_measurements = np.isfinite(actual_pixel_calibration)  # Select valid calibration steps
                     selected_actual_pixel_calibration = actual_pixel_calibration[selected_measurements]
                     selected_tdc_calibration_values = tdc_calibration_values[selected_measurements]
@@ -169,9 +177,35 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
             plt.show()
             return offset_mean
 
+    def delete_disabled_regions(hits, enable_mask):
+        n_hits = hits.shape[0]
+
+        # Column, row array with True for disabled pixels
+        disabled_region = ~enable_mask.astype(np.bool).T.copy()
+        n_disabled_pixels = np.count_nonzero(disabled_region)
+
+        # Extend disabled pixel mask by the neighbouring pixels
+        neighbour_pixels = [(-1, 0), (1, 0), (0, -1), (0, 1)]  # Disable direct neighbouring pixels
+        for neighbour_pixel in neighbour_pixels:
+            disabled_region = np.logical_or(disabled_region, shift(disabled_region, shift=neighbour_pixel, cval=0))
+
+        logging.info('Masking %d additional pixel neighbouring %d disabled pixels', np.count_nonzero(disabled_region) - n_disabled_pixels, n_disabled_pixels)
+
+        # Make 1D selection array with disabled pixels
+        disabled_pixels = np.where(disabled_region)
+        disabled_pixels_1d = (disabled_pixels[0] + 1) * disabled_region.shape[1] + (disabled_pixels[1] + 1)  # + 1 because pixel index 0,0 has column/row = 1
+
+        hits_1d = hits['column'].astype(np.uint32) * disabled_region.shape[1] + hits['row']  # change dtype to fit new number
+        hits = hits[np.in1d(hits_1d, disabled_pixels_1d, invert=True)]
+
+        logging.info('Lost %d hits (%d percent) due to disabling neighbours', n_hits - hits.shape[0], (1. - float(hits.shape[0]) / n_hits) * 100)
+
+        return hits
+
     # Create data
     with tb.openFile(input_file_hits, mode="r") as in_hit_file_h5:
         cluster_hit_table = in_hit_file_h5.root.ClusterHits
+        enabled_pixels = in_hit_file_h5.root.ClusterHits._v_attrs.enabled_pixels[:]
 
         # Result hists, initialized per condition
         pixel_tdc_hists_per_condition = [np.zeros(shape=(80, 336, max_tdc), dtype=np.uint16) for _ in hit_selection_conditions] if hit_selection_conditions else []
@@ -192,6 +226,9 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
             n_hits_per_condition[1] += selected_events_cluster_hits.shape[0]
             for index, condition in enumerate(hit_selection_conditions):
                 selected_cluster_hits = analysis_utils.select_hits(selected_events_cluster_hits, condition)
+                if analysis_configuration['ignore_disabled_regions']:
+                    selected_cluster_hits = delete_disabled_regions(hits=selected_cluster_hits, enable_mask=enabled_pixels)
+
                 n_hits_per_condition[2 + index] += selected_cluster_hits.shape[0]
                 column, row, tdc = selected_cluster_hits['column'] - 1, selected_cluster_hits['row'] - 1, selected_cluster_hits['TDC']
                 pixel_tdc_hists_per_condition[index] += fast_analysis_utils.hist_3d_index(column, row, tdc, shape=(80, 336, max_tdc))
