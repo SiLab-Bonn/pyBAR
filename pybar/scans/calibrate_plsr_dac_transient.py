@@ -2,17 +2,6 @@
 Since the minimum and maximum of the signal is measured, this script gives a more precise PlsrDAC calibration than
 the normal PlsrDAC calibration. Do not forget to add the oscilloscope device in dut_mio.yaml.
 The oscilloscope can be any device supported by basil, but the string interpretation here is only implemented for Tektronix oscilloscopes!
-
-Settings for Tektronix that should be set before running this script:
-- Trigger mode: Normal, NOT auto roll!
-- X-Scale: 400 ns / Div
-- Y-Scale: 200 mV / Div
-- Trigger horizontal position: within first division
-- Baseline: low enough that 1.5 V fits the screen
-- 10k data points
-- acquisition mode: average over 512 injections
-- full band width
-- be aware: first 2500 data points of waveform should be read (read start/stop = 0/2500)
 """
 import time
 import ast
@@ -29,16 +18,25 @@ from pybar.scans.scan_analog import AnalogScan
 
 
 # Add oscilloscope interpretation functions below
-def interpret_data_from_tektronix(raw_data):
+def interpret_data_from_tektronix(preamble, data):
     ''' Interprets raw data from Tektronix
     returns: lists of x, y values in seconds/volt'''
-    meta_data = raw_data.split(',')[5].split(';')
-    scale_x, scale_y = float(meta_data[5]), float(meta_data[9])  # x, y scaling factor (units/x unit, units/digitizing level)
-    offset_x, offset_y = float(meta_data[6]), float(meta_data[10])  # y offset (in x unit / digits)
-    raw_voltages = raw_data.split(',')[6:]
-    voltages = [(float(voltage) - offset_y) * scale_y for voltage in raw_voltages]
-    times = [(float(time) - offset_x) * scale_x for time in range(len(voltages))]
-    return np.array(times), np.array(voltages)
+    # Y mode ("WFMPRE:PT_FMT"):
+    # Xn = XZEro + XINcr (n - PT_Off)
+    # Yn = YZEro + YMUlt (yn - YOFf)
+    voltage = np.array(data, dtype=np.float)
+    meta_data = preamble.split(',')[5].split(';')
+    time_unit = meta_data[3][1:-1]
+    XZEro = float(meta_data[5])
+    XINcr = float(meta_data[4])
+    PT_Off = float(meta_data[6])
+    voltage_unit = meta_data[7][1:-1]
+    YZEro = float(meta_data[10])
+    YMUlt = float(meta_data[8])
+    YOFf = float(meta_data[9])
+    time = XZEro + XINcr * (np.arange(0, voltage.size) - PT_Off)
+    voltage = YZEro + YMUlt * (voltage - YOFf)
+    return time, voltage, time_unit, voltage_unit
 
 # Select actual interpretation function
 interpret_oscilloscope_data = interpret_data_from_tektronix
@@ -49,20 +47,31 @@ class PlsrDacTransientCalibration(AnalogScan):
     '''
     _default_run_conf = AnalogScan._default_run_conf.copy()
     _default_run_conf.update({
-        "scan_parameter_values": range(25, 1024, 25),  # plsr dac settings, be aware: too low plsDAC settings are difficult to trigger
-        "enable_double_columns": range(0, 16),  # list of double columns which will be enabled during scan. None will select all double columns, first double column defines first trigger level
+        "scan_parameters": [('PlsrDAC', range(25, 1024, 25))],  # plsr dac settings, be aware: too low plsDAC settings are difficult to trigger
+        "enable_double_column": 20,  # double columns which will be enabled during scan
         "enable_mask_steps": [0],  # Scan only one mask step to save time
         "n_injections": 512,  # number of injections, has to be > 260 to allow for averaging 256 injection signals
         "channel": 1,  # oscilloscope channel
         "show_debug_plots": False,
-        "trigger_level_offset": 0, # trigger is automatically set between the maximum / minimum of the baseline; this can be changed by this offset in mV; for low PLsrDAC sometimes needed
-        "trigger_level_start": 60, # trigger level in mV of for the first measurement
-        "max_data_index": 2001,  # maximum data index to be read out; 2001 reads date from 0 to 1999
-        "fit_range_step": [(-150, -50), (50, 150)],  # the fit range for the voltage step in relative indices from the voltage step position
+        "trigger_level_offset": 10,  # offset of the PlsrDAC baseline in mV
+        "data_points": 10000,
+        "max_data_index": None,  # maximum data index to be read out; e.g. 2000 reads date from 1 to 2000, if None, use max record length
+        "horizontal_scale": 0.0000004,
+        "horizontal_delay_time": 0.0000016,
+        "vertical_scale": 0.2,
+        "vertical_offset": 0.0,
+        "vertical_position": -4,
+        "impedance": "MEG",
+        "coupling": "DC",
+        "bandwidth": "FULl",
+        "trigger_mode": "NORMal",
+        "trigger_edge_slope": "FALL",
+        "trigger_level": 0.0, # trigger level in V of for the first measurement
+        "fit_range_step": [(-750, -250), (500, 1000)],  # the fit range for the voltage step in relative indices from the voltage step position
         "fit_range": [0, 700]  # fit range for the linear PlsrDAC transfer function
     })
 
-    def set_scan_parameter(self, parameter, value):  # set the new PlsrDAc value
+    def write_global_register(self, parameter, value):
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))
         self.register.set_global_register_value(parameter, value)
@@ -72,18 +81,46 @@ class PlsrDacTransientCalibration(AnalogScan):
 
     def configure(self):
         super(PlsrDacTransientCalibration, self).configure()
-        # Init Oscilloscope
-#         self.dut['Oscilloscope'].init()
-        self.dut['Oscilloscope'].data_init()  # Resert data taking settings
-        self.dut['Oscilloscope'].set_data_start(0)  # Set readout fraction of waveform
+        # data acquisition
+        self.dut['Oscilloscope'].data_init()  # Resert to factory settings
+        self.dut['Oscilloscope'].set_data_width(2)  # 2 byte per value
+        self.dut['Oscilloscope'].set_data_encoding("RIBINARY")  # signed integer
+        self.dut['Oscilloscope'].set_horizontal_record_length(self.data_points)
+        self.dut['Oscilloscope'].set_data_start(1)  # Set readout fraction of waveform
+        if not self.max_data_index:
+            self.max_data_index = int(self.dut['Oscilloscope'].get_horizontal_record_length())
         self.dut['Oscilloscope'].set_data_stop(self.max_data_index)  # Set readout fraction of waveform
-        self.dut['Oscilloscope'].set_average_waveforms(2 ** 8)  # For tetronix has to be 2^x
-        self.dut['Oscilloscope'].set_trigger_level(self.trigger_level_start)
+
+        # waveform parameters
+        self.dut['Oscilloscope'].set_average_waveforms(self.n_injections)  # For Tektronix it has to be power of 2
+
+        # horizontal axis
+        self.dut['Oscilloscope'].set_horizontal_scale(self.horizontal_scale)
+        self.dut['Oscilloscope'].set_horizontal_delay_time(self.horizontal_delay_time)
+
+        # vertical axis
+        self.dut['Oscilloscope'].set_vertical_scale(self.vertical_scale, channel=self.channel)
+        self.dut['Oscilloscope'].set_vertical_offset(self.vertical_offset, channel=self.channel)
+        self.dut['Oscilloscope'].set_vertical_position(self.vertical_position, channel=self.channel)
+
+        # input
+        self.dut['Oscilloscope'].set_impedance(self.impedance, channel=self.channel)
+        self.dut['Oscilloscope'].set_coupling(self.coupling, channel=self.channel)
+        self.dut['Oscilloscope'].set_bandwidth(self.bandwidth, channel=self.channel)
+
+        # trigger
+        self.dut['Oscilloscope'].set_trigger_mode(self.trigger_mode)
+        self.dut['Oscilloscope'].set_trigger_edge_slope(self.trigger_edge_slope)
+        self.dut['Oscilloscope'].set_trigger_level(self.trigger_level)
+
+        # get final preamble parameters
+        self.preamble = self.dut['Oscilloscope'].get_parameters(channel=self.channel)
+
         logging.info('Initialized oscilloscope %s' % self.dut['Oscilloscope'].get_name())
         # Route Vcal to pin
         commands = []
         self.register.set_global_register_value('Colpr_Mode', 0)  # one DC only
-        self.register.set_global_register_value('Colpr_Addr', self.enable_double_columns[0])
+        self.register.set_global_register_value('Colpr_Addr', self.enable_double_column)
         self.register.set_global_register_value('ExtDigCalSW', 0)
         self.register.set_global_register_value('ExtAnaCalSW', 1)  # Route Vcal to external pin
         commands.extend(self.register.get_commands("WrRegister", name=['Colpr_Addr', 'Colpr_Mode', 'ExtDigCalSW', 'ExtAnaCalSW']))
@@ -92,70 +129,87 @@ class PlsrDacTransientCalibration(AnalogScan):
 
     def scan(self):
         # Output data structures
-        data_array = np.zeros(shape=(len(self.scan_parameter_values), self.max_data_index - 1), dtype=np.float16)
-        data_out = self.raw_data_file.h5_file.createCArray(self.raw_data_file.h5_file.root, name='PlsrDACwaveforms', title='Waveforms from transient PlsrDAC calibration scan', atom=tb.Atom.from_dtype(data_array.dtype), shape=data_array.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
-        data_out.attrs.scan_parameter_values = self.scan_parameter_values
-        data_out.attrs.dimensions = ['plsrdac', 'time', 'voltage']
+        scan_parameter_values = self.scan_parameters.PlsrDAC
+        shape=(len(scan_parameter_values), self.max_data_index)
+        atom = tb.FloatAtom()
+        data_out = self.raw_data_file.h5_file.createCArray(self.raw_data_file.h5_file.root, name='PlsrDACwaveforms', title='Waveforms from transient PlsrDAC calibration scan', atom=atom, shape=shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+        shape=(self.max_data_index,)
+        atom = tb.FloatAtom()
+        time_out = self.raw_data_file.h5_file.createCArray(self.raw_data_file.h5_file.root, name='Times', title='Time values', atom=atom, shape=shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+        data_out.attrs.scan_parameter_values = scan_parameter_values
+        data_out.attrs.enable_double_column = self.enable_double_column
         trigger_levels = []
 
-        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=len(self.scan_parameter_values), term_width=80)
+        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=len(scan_parameter_values), term_width=80)
         progress_bar.start()
 
-        for index, scan_parameter in enumerate(self.scan_parameter_values):
+        for index, scan_parameter_value in enumerate(scan_parameter_values):
+            if self.stop_run.is_set():
+                break
             # Update PlsrDAC parameter
-            self.set_scan_parameters(** {'PlsrDAC': scan_parameter})  # tell run base
-            self.set_scan_parameter('PlsrDAC', scan_parameter)  # set in FE
-            # Get actual high level and set trigger level to the middle
-            self.dut['Oscilloscope'].set_acquire_mode('SAMPLE')  # clears also averaging storage
-            time.sleep(1.5)  # tektronix needs time to change mode and clear averaging storage (bad programing...)
+            self.set_scan_parameters(PlsrDAC=scan_parameter_value)  # set scan parameter
+            self.write_global_register('PlsrDAC', scan_parameter_value)  # write to FE
+            self.dut['Oscilloscope'].set_acquire_mode('SAMple')
+            self.dut['Oscilloscope'].set_acquire_stop_after("RUNSTop")
+            self.dut['Oscilloscope'].set_acquire_state("RUN")
+            time.sleep(1.5)
             self.dut['Oscilloscope'].force_trigger()
-            time.sleep(1.5)  # give the trigger some time
-            raw_data = self.dut['Oscilloscope'].get_data(channel=self.channel)
-            times, voltages = interpret_oscilloscope_data(raw_data)
-            trigger_level = (np.amax(voltages) - np.amin(voltages)) / 2. + self.trigger_level_offset * 1e-3
+            self.dut['Oscilloscope'].set_acquire_state("STOP")
+            data = self.dut['Oscilloscope']._intf._resource.query_binary_values("DATA:SOURCE CH1;:CURVe?", datatype='h', is_big_endian=True)
+            times, voltages, time_unit, voltage_unit = interpret_oscilloscope_data(self.preamble, data)
+            if len(data):
+                trigger_level = (np.mean(voltages) - self.trigger_level_offset * 1e-3) / 2.0 + self.trigger_level_offset * 1e-3
+            else:
+                trigger_level = trigger_levels[-1]
             self.dut['Oscilloscope'].set_trigger_level(trigger_level)
 
             if self.show_debug_plots:
                 plt.clf()
                 plt.grid()
-                plt.plot(times * 1e9, voltages * 1e3, label='Data')
-                plt.plot(times * 1e9, np.repeat([trigger_level * 1e3], len(times)), '--', label='Trigger (%d mV)' % (trigger_level * 1000))
+                plt.plot(times * 1e9, voltages * 1e3, label='PlsrDAC Pulse')
+                plt.axhline(y=trigger_level * 1e3, linewidth=2, linestyle="--", color='r', label='Trigger (%d mV)' % (trigger_level * 1e3))
                 plt.xlabel('Time [ns]')
                 plt.ylabel('Voltage [mV]')
                 plt.legend(loc=0)
                 plt.show()
 
             # Setup data aquisition and start scan loop
-            self.dut['Oscilloscope'].set_acquire_mode('AVERAGE')  # average to get rid of noise and keeping high band width
-            time.sleep(1.5)  # tektronix needs time to change mode (bad programing...)
+            self.dut['Oscilloscope'].set_acquire_mode('AVErage')  # average to get rid of noise and keeping high band width
+            self.dut['Oscilloscope'].set_acquire_stop_after("SEQuence")
+            self.dut['Oscilloscope'].set_acquire_state("RUN")
+            time.sleep(1.5)
             super(PlsrDacTransientCalibration, self).scan()  # analog scan loop
-            raw_data = self.dut['Oscilloscope'].get_data(channel=self.channel)
-            times, voltages = interpret_oscilloscope_data(raw_data)
-            data_array[index, :] = voltages[:self.max_data_index]
-            trigger_levels.append(float(self.dut['Oscilloscope'].get_trigger_level()))
+            self.dut['Oscilloscope'].set_acquire_state("STOP")
+            # get final number of data points
+#             if not self.dut['Oscilloscope'].get_number_points():
+#                 raise RuntimeError()
+            data = self.dut['Oscilloscope']._intf._resource.query_binary_values("DATA:SOURCE CH1;:CURVe?", datatype='h', is_big_endian=True)
+            times, voltages, time_unit, voltage_unit = interpret_oscilloscope_data(self.preamble, data)
+            data_out[index, :] = voltages[:]
+            trigger_level = float(self.dut['Oscilloscope'].get_trigger_level())
+            trigger_levels.append(trigger_level)
             progress_bar.update(index)
 
             if self.show_debug_plots:
                 plt.clf()
                 plt.ylim(0, 1500)
                 plt.grid()
-                plt.plot(times * 1e9, voltages * 1e3, label='Data')
-                plt.plot(times * 1e9, np.repeat([trigger_level * 1e3], len(times)), '--', label='Trigger (%d mV)' % (trigger_level * 1000))
+                plt.plot(times * 1e9, voltages * 1e3, label='PlsrDAC Pulse')
+                plt.axhline(y=trigger_level * 1e3, linewidth=2, linestyle="--", color='r', label='Trigger (%d mV)' % (trigger_level * 1e3))
                 plt.xlabel('Time [ns]')
                 plt.ylabel('Voltage [mV]')
                 plt.legend(loc=0)
                 plt.show()
 
-        data_out[:] = data_array
+        time_out[:] = times
         data_out.attrs.trigger_levels = trigger_levels
-        data_out.attrs.times = times.tolist()
         progress_bar.finish()
 
     def analyze(self):
-        logging.info('Analysing the PlsrDAC waveforms')
+        logging.info('Analyzing the PlsrDAC waveforms')
         with tb.open_file(self.output_filename + '.h5', 'r') as in_file_h5:
             data = in_file_h5.root.PlsrDACwaveforms[:]
-            times = np.array(in_file_h5.root.PlsrDACwaveforms._v_attrs.times)
+            times = in_file_h5.root.Times[:]
             scan_parameter_values = in_file_h5.root.PlsrDACwaveforms._v_attrs.scan_parameter_values
             trigger_levels = in_file_h5.root.PlsrDACwaveforms._v_attrs.trigger_levels
             fit_range = ast.literal_eval(in_file_h5.root.configuration.run_conf[:][np.where(in_file_h5.root.configuration.run_conf[:]['name'] == 'fit_range')]['value'][0])
@@ -176,11 +230,11 @@ class PlsrDacTransientCalibration(AnalogScan):
                             logging.warning('The trigger threshold for PlsrDAC %d is with %d mV too low. Thus this setting is omitted in the analysis!', plsr_dac, trigger_level * 1000.)
                             data_array['voltage_step'][index] = np.NaN
                             continue
-                        step_index = np.where(np.abs(voltages - trigger_level) == np.amin(np.abs(voltages - trigger_level)))[0][0]
-
+                        # index of first value below trigger level
+                        step_index = np.argmin(voltages>trigger_level)
+                        # fit range
                         left_step_fit_range = (step_index + fit_range_step[0][0], step_index + fit_range_step[0][1])
                         right_step_fit_range = (step_index + fit_range_step[1][0], step_index + fit_range_step[1][1])
-
                         # Error handling if selected fit range exeeds limits
                         if left_step_fit_range[0] < 0 or left_step_fit_range[1] < 0 or right_step_fit_range[0] >= data.shape[1] or right_step_fit_range[1] >= data.shape[1] or left_step_fit_range[0] >= left_step_fit_range[1] or right_step_fit_range[0] >= right_step_fit_range[1]:
                             logging.warning('The step fit limits for PlsrDAC %d are out of bounds. Omit this data!', plsr_dac)
@@ -199,11 +253,11 @@ class PlsrDacTransientCalibration(AnalogScan):
                         # Plot waveform + fit
                         plt.clf()
                         plt.grid()
-                        plt.plot(times * 1e9, voltages * 1e3, label='Data')
+                        plt.plot(times * 1e9, voltages * 1e3, label='PlsrDAC Pulse')
                         plt.plot(times * 1e9, np.repeat([trigger_level * 1e3], len(times)), '--', label='Trigger (%d mV)' % (trigger_level * 1000))
                         plt.plot(times_left_step * 1e9, np.repeat(median_left_step * 1e3, times_left_step.shape[0]), '-', linewidth=2, label='Left of step constant fit')
                         plt.plot(times_right_step * 1e9, np.repeat(median_right_step * 1e3, times_right_step.shape[0]), '-', linewidth=2, label='Right of step constant fit')
-                        plt.title('PulserDAC %d waveform' % plsr_dac)
+                        plt.title('PulserDAC=%d Waveform' % plsr_dac)
                         plt.xlabel('Time [ns]')
                         plt.ylabel('Voltage [mV]')
                         plt.legend(loc=0)
@@ -216,11 +270,11 @@ class PlsrDacTransientCalibration(AnalogScan):
                     fit = polyfit(x[np.logical_and(x >= fit_range[0], x <= fit_range[1])], y[np.logical_and(x >= fit_range[0], x <= fit_range[1])], 1)
                     fit_fn = poly1d(fit)
                     plt.clf()
-                    plt.plot(x, y, '.-', label='data')
+                    plt.plot(x, y, '.-', label='PlsrDAC Voltage Step')
                     plt.plot(x, fit_fn(x), '--k', label=str(fit_fn))
-                    plt.title('PlsrDAC calibration')
+                    plt.title('PlsrDAC Calibration')
                     plt.xlabel('PlsrDAC')
-                    plt.ylabel('Voltage step [V]')
+                    plt.ylabel('Voltage Step [V]')
                     plt.grid(True)
                     plt.legend(loc=0)
                     output_pdf.savefig()

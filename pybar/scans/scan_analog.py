@@ -1,5 +1,7 @@
 import logging
 
+from collections import Iterable
+
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.run_manager import RunManager
 from pybar.fei4.register_utils import scan_loop, invert_pixel_mask
@@ -26,7 +28,8 @@ class AnalogScan(Fei4RunBase):
     def configure(self):
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))
-        self.register.set_global_register_value('PlsrDAC', self.scan_parameters.PlsrDAC)
+        scan_parameter_value = self.scan_parameters.PlsrDAC[0] if isinstance(self.scan_parameters.PlsrDAC, Iterable) else self.scan_parameters.PlsrDAC
+        self.register.set_global_register_value('PlsrDAC', scan_parameter_value)
         commands.extend(self.register.get_commands("WrRegister", name=['PlsrDAC']))
         # C_Low
         if "C_Low".lower() in map(lambda x: x.lower(), self.enable_shift_masks):
