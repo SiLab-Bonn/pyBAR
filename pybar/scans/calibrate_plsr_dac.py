@@ -237,7 +237,7 @@ def plot_pulser_dac(x, y, y_err=None, output_pdf=None, title_suffix=""):
         return offset
 
     try:
-        slope_p_opt, slope_p_cov = optimize.curve_fit(slope_fit_fn, x[slope_idx], y[slope_idx], p0=[0.04, 0.0015], sigma=y_err[slope_idx] if y_err else None, absolute_sigma=True)
+        slope_p_opt, slope_p_cov = optimize.curve_fit(slope_fit_fn, x[slope_idx], y[slope_idx], p0=[0.04, 0.0015], sigma=y_err[slope_idx] if y_err is not None else None, absolute_sigma=True)
     except (RuntimeError, TypeError):
         slope_p_opt = [np.nan, np.nan]
         slope_p_err = [np.nan, np.nan]
@@ -245,7 +245,7 @@ def plot_pulser_dac(x, y, y_err=None, output_pdf=None, title_suffix=""):
         slope_p_err = np.sqrt(np.diag(slope_p_cov))
 
     try:
-        plateau_p_opt, plateau_p_cov = optimize.curve_fit(plateau_fit_fn, x[plateau_idx], y[plateau_idx], p0=[1.3], sigma=y_err[plateau_idx] if y_err else None, absolute_sigma=True)
+        plateau_p_opt, plateau_p_cov = optimize.curve_fit(plateau_fit_fn, x[plateau_idx], y[plateau_idx], p0=[1.3], sigma=y_err[plateau_idx] if y_err is not None else None, absolute_sigma=True)
     # in case of failing fit or missing plateau
     except (RuntimeError, TypeError):
         plateau_p_opt = [np.nan]
