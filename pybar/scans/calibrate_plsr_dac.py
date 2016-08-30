@@ -199,23 +199,25 @@ def plot_pulser_dac(x, y, y_err=None, output_pdf=None, title_suffix=""):
     dev_2 = interpolate.splev(x, tck, der=2)
 
     # calculate turning point
-    turning_point_idx = np.where(np.logical_and(dev_2 == np.amin(dev_2), dev_2 <= -0.5 * 1e-05))[0]
+    turning_point_idx = np.where(np.logical_and(dev_1 > 0, dev_2 < 0))[0]
 
     # calculate slope
-    slope_data_dev1_idx = np.where(np.greater(dev_1, [0] * len(dev_1)))[0]
-    slope_data_dev2_idx = np.where(np.isclose(dev_2, [0] * len(dev_2), atol=0.75 * 1e-06))[0]
+    slope_data_dev1_idx = np.where(dev_1 > 0)[0]
+    slope_data_dev2_idx = np.where(np.isclose(dev_2, 0, atol=1.0 * 1e-05))[0]
     slope_data_idx = np.intersect1d(slope_data_dev1_idx, slope_data_dev2_idx, assume_unique=True)
 
     # index of slope fit values
     slope_idx = max(consecutive(slope_data_idx), key=len)
 
     # calculate plateau
-    plateau_data_dev1_idx = np.where(np.isclose(dev_1, [0] * len(dev_1), atol=1e-04))[0]
-    plateau_data_dev2_idx = np.where(np.isclose(dev_2, [0] * len(dev_2), atol=2e-06))[0]
+    plateau_data_dev1_idx = np.where(np.isclose(dev_1, 0, atol=1e-04))[0]
+    plateau_data_dev2_idx = np.where(np.isclose(dev_2, 0, atol=1e-05))[0]
     plateau_data_idx = np.intersect1d(plateau_data_dev1_idx, plateau_data_dev2_idx, assume_unique=True)
     if turning_point_idx.size:
-        turning_point = turning_point_idx[0]
+        # take last index from array
+        turning_point = turning_point_idx[-1]
     else:
+        # select highest index
         turning_point = len(x)
     plateau_data_idx = plateau_data_idx[plateau_data_idx > turning_point]
 
@@ -272,8 +274,7 @@ def plot_pulser_dac(x, y, y_err=None, output_pdf=None, title_suffix=""):
     ax3 = fig.add_subplot(313)
     ax3.plot(x, dev_2, label='2st dev')
     ax3.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
-    if turning_point_idx.size:
-        ax3.plot(x[turning_point_idx], dev_2[turning_point_idx], 'rx', label='Turning point')
+    ax3.plot(x[turning_point], dev_2[turning_point], 'rx', label='Turning point')
     ax3.set_xlabel("PlsrDAC")
     ax3.set_xlim((min(x), max(x)))
     ax3.legend(loc='best')

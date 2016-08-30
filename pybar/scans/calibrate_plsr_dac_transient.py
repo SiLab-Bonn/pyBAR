@@ -113,9 +113,6 @@ class PlsrDacTransientCalibration(AnalogScan):
         self.dut['Oscilloscope'].set_trigger_edge_slope(self.trigger_edge_slope)
         self.dut['Oscilloscope'].set_trigger_level(self.trigger_level)
 
-        # get final preamble parameters
-        self.preamble = self.dut['Oscilloscope'].get_parameters(channel=self.channel)
-
         logging.info('Initialized oscilloscope %s' % self.dut['Oscilloscope'].get_name())
         # Route Vcal to pin
         commands = []
@@ -163,7 +160,7 @@ class PlsrDacTransientCalibration(AnalogScan):
             else:
                 trigger_level = trigger_levels[-1]
             self.dut['Oscilloscope'].set_trigger_level(trigger_level)
-            self.dut['Oscilloscope'].set_vertical_scale((np.mean(voltages) + 0.1) / 10, channel=self.channel)
+            self.dut['Oscilloscope'].set_vertical_scale(min(self.vertical_scale, (np.mean(voltages) + 0.2 * np.mean(voltages)) / 10), channel=self.channel)
             #self.dut['Oscilloscope'].set_vertical_scale(0.05, channel=self.channel)
 
             if self.show_debug_plots:
