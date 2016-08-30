@@ -80,7 +80,7 @@ class PlsrDacTransientCalibrationAdvanced(AnalogScan):
         self.register_utils.send_commands(commands)
 
     def configure(self):
-        super(PlsrDacTransientCalibration, self).configure()
+        super(PlsrDacTransientCalibrationAdvanced, self).configure()
         # data acquisition
         self.dut['Oscilloscope'].data_init()  # Resert to factory settings
         self.dut['Oscilloscope'].set_data_width(2)  # 2 byte per value
@@ -178,7 +178,7 @@ class PlsrDacTransientCalibrationAdvanced(AnalogScan):
             self.dut['Oscilloscope'].set_acquire_stop_after("SEQuence")
             self.dut['Oscilloscope'].set_acquire_state("RUN")
             time.sleep(1.5)
-            super(PlsrDacTransientCalibration, self).scan()  # analog scan loop
+            super(PlsrDacTransientCalibrationAdvanced, self).scan()  # analog scan loop
             self.dut['Oscilloscope'].set_acquire_state("STOP")
             # get final number of data points
 #             if not self.dut['Oscilloscope'].get_number_points():
@@ -283,4 +283,4 @@ class PlsrDacTransientCalibrationAdvanced(AnalogScan):
             progress_bar.finish()
 
 if __name__ == "__main__":
-    RunManager('../configuration.yaml').run_run(PlsrDacTransientCalibration)
+    RunManager('../configuration.yaml').run_run(PlsrDacTransientCalibrationAdvanced)
