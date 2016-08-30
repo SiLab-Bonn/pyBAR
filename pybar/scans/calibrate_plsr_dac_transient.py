@@ -53,7 +53,7 @@ class PlsrDacTransientCalibration(AnalogScan):
         "n_injections": 512,  # number of injections, has to be > 260 to allow for averaging 256 injection signals
         "channel": 1,  # oscilloscope channel
         "show_debug_plots": False,
-        "trigger_level_offset": 10,  # offset of the PlsrDAC baseline in mV
+        "trigger_level_offset": 10,  # offset of the PlsrDAC baseline in mV, usually the offset voltage at PlsrDAC=0
         "data_points": 10000,
         "max_data_index": None,  # maximum data index to be read out; e.g. 2000 reads date from 1 to 2000, if None, use max record length
         "horizontal_scale": 0.0000004,
