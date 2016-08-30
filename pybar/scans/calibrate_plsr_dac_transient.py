@@ -216,7 +216,6 @@ class PlsrDacTransientCalibration(AnalogScan):
             scan_parameter_values = in_file_h5.root.PlsrDACwaveforms._v_attrs.scan_parameter_values
             enable_double_column = in_file_h5.root.PlsrDACwaveforms._v_attrs.enable_double_column
             trigger_levels = in_file_h5.root.PlsrDACwaveforms._v_attrs.trigger_levels
-            fit_range = ast.literal_eval(in_file_h5.root.configuration.run_conf[:][np.where(in_file_h5.root.configuration.run_conf[:]['name'] == 'fit_range')]['value'][0])
             fit_range_step = ast.literal_eval(in_file_h5.root.configuration.run_conf[:][np.where(in_file_h5.root.configuration.run_conf[:]['name'] == 'fit_range_step')]['value'][0])
             progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=data.shape[0], term_width=80)
 
