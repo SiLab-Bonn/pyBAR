@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 
 from pybar.run_manager import RunManager
 from pybar.scans.scan_analog import AnalogScan
+from pybar.scans.calibrate_plsr_dac import plot_pulser_dac
 
 
 # Add oscilloscope interpretation functions below
@@ -68,7 +69,6 @@ class PlsrDacTransientCalibration(AnalogScan):
         "trigger_edge_slope": "FALL",
         "trigger_level": 0.0, # trigger level in V of for the first measurement
         "fit_range_step": [(-750, -250), (500, 1000)],  # the fit range for the voltage step in relative indices from the voltage step position
-        "fit_range": [0, 700]  # fit range for the linear PlsrDAC transfer function
     })
 
     def write_global_register(self, parameter, value):
@@ -214,6 +214,7 @@ class PlsrDacTransientCalibration(AnalogScan):
             except NoSuchNodeError:  # for backward compatibility
                 times = np.array(in_file_h5.root.PlsrDACwaveforms._v_attrs.times)
             scan_parameter_values = in_file_h5.root.PlsrDACwaveforms._v_attrs.scan_parameter_values
+            enable_double_column = in_file_h5.root.PlsrDACwaveforms._v_attrs.enable_double_column
             trigger_levels = in_file_h5.root.PlsrDACwaveforms._v_attrs.trigger_levels
             fit_range = ast.literal_eval(in_file_h5.root.configuration.run_conf[:][np.where(in_file_h5.root.configuration.run_conf[:]['name'] == 'fit_range')]['value'][0])
             fit_range_step = ast.literal_eval(in_file_h5.root.configuration.run_conf[:][np.where(in_file_h5.root.configuration.run_conf[:]['name'] == 'fit_range_step')]['value'][0])
@@ -269,21 +270,14 @@ class PlsrDacTransientCalibration(AnalogScan):
                     data_table.append(data_array[np.isfinite(data_array['voltage_step'])])  # store valid data
 
                     # Plot, fit and store linear PlsrDAC transfer function
-                    x, y = data_array[np.isfinite(data_array['voltage_step'])]['PlsrDAC'], data_array[np.isfinite(data_array['voltage_step'])]['voltage_step']
-                    fit = polyfit(x[np.logical_and(x >= fit_range[0], x <= fit_range[1])], y[np.logical_and(x >= fit_range[0], x <= fit_range[1])], 1)
-                    fit_fn = poly1d(fit)
-                    plt.clf()
-                    plt.plot(x, y, '.-', label='PlsrDAC Voltage Step')
-                    plt.plot(x, fit_fn(x), '--k', label=str(fit_fn))
-                    plt.title('PlsrDAC Calibration')
-                    plt.xlabel('PlsrDAC')
-                    plt.ylabel('Voltage Step [V]')
-                    plt.grid(True)
-                    plt.legend(loc=0)
-                    output_pdf.savefig()
+                    select = np.isfinite(data_array['voltage_step'])
+                    x = data_array[select]['PlsrDAC']
+                    y = data_array[select]['voltage_step']
+                    slope_fit, slope_err, plateau_fit, plateau_err = plot_pulser_dac(x, y, output_pdf=output_pdf, title_suffix="(DC %d)" % (enable_double_column,))
+
                     # Store result in file
-                    self.register.calibration_parameters['Vcal_Coeff_0'] = fit[1] * 1000.  # store in mV
-                    self.register.calibration_parameters['Vcal_Coeff_1'] = fit[0] * 1000.  # store in mV/DAC
+                    self.register.calibration_parameters['Vcal_Coeff_0'] = np.nan_to_num(slope_fit[0] * 1000.0)  # store in mV
+                    self.register.calibration_parameters['Vcal_Coeff_1'] = np.nan_to_num(slope_fit[1] * 1000.0)  # store in mV/DAC
             progress_bar.finish()
 
 if __name__ == "__main__":
