@@ -155,7 +155,7 @@ class PlsrDacTransientCalibration(AnalogScan):
             time.sleep(1.5)
             self.dut['Oscilloscope'].force_trigger()
             self.dut['Oscilloscope'].set_acquire_state("STOP")
-            data = self.dut['Oscilloscope']._intf._resource.query_binary_values("DATA:SOURCE CH1;:CURVe?", datatype='h', is_big_endian=True)
+            data = self.dut['Oscilloscope']._intf._resource.query_binary_values("DATA:SOURCE CH%d;:CURVe?" % self.channel, datatype='h', is_big_endian=True)
             times, voltages, time_unit, voltage_unit = interpret_oscilloscope_data(self.preamble, data)
             if len(data):
                 trigger_level = (np.mean(voltages) - self.trigger_level_offset * 1e-3) / 2.0 + self.trigger_level_offset * 1e-3
