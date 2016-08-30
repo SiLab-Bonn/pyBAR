@@ -4,7 +4,6 @@ the normal PlsrDAC calibration. Do not forget to add the oscilloscope device in 
 The oscilloscope can be any device supported by basil, but the string interpretation here is only implemented for Tektronix oscilloscopes!
 """
 import time
-import ast
 import numpy as np
 import tables as tb
 from pylab import polyfit, poly1d
@@ -68,7 +67,7 @@ class PlsrDacTransientCalibrationAdvanced(AnalogScan):
         "trigger_mode": "NORMal",
         "trigger_edge_slope": "FALL",
         "trigger_level": 0.0, # trigger level in V of for the first measurement
-        "fit_range_step": [(-750, -250), (500, 1000)],  # the fit range for the voltage step in relative indices from the voltage step position
+        "fit_ranges": [(-1000, -100), (200, 450)],  # the fit range (in ns) relative to the trigger (t=0ns), first tuple: baseline, second tuple: peak
     })
 
     def write_global_register(self, parameter, value):
@@ -135,6 +134,8 @@ class PlsrDacTransientCalibrationAdvanced(AnalogScan):
         time_out = self.raw_data_file.h5_file.createCArray(self.raw_data_file.h5_file.root, name='Times', title='Time values', atom=atom, shape=shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
         data_out.attrs.scan_parameter_values = scan_parameter_values
         data_out.attrs.enable_double_column = self.enable_double_column
+        data_out.attrs.fit_ranges = self.fit_ranges
+        data_out.attrs.trigger_level_offset = self.trigger_level_offset
         trigger_levels = []
 
         progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=len(scan_parameter_values), term_width=80)
@@ -167,7 +168,7 @@ class PlsrDacTransientCalibrationAdvanced(AnalogScan):
                 plt.clf()
                 plt.grid()
                 plt.plot(times * 1e9, voltages * 1e3, label='PlsrDAC Pulse')
-                plt.axhline(y=trigger_level * 1e3, linewidth=2, linestyle="--", color='r', label='Trigger (%d mV)' % (trigger_level * 1e3))
+                plt.axhline(y=trigger_level * 1e3, linewidth=2, linestyle="--", color='r', label='Trigger (%0.1f mV)' % (trigger_level * 1e3))
                 plt.xlabel('Time [ns]')
                 plt.ylabel('Voltage [mV]')
                 plt.legend(loc=0)
@@ -196,7 +197,7 @@ class PlsrDacTransientCalibrationAdvanced(AnalogScan):
                 plt.ylim(0, 1500)
                 plt.grid()
                 plt.plot(times * 1e9, voltages * 1e3, label='PlsrDAC Pulse')
-                plt.axhline(y=trigger_level * 1e3, linewidth=2, linestyle="--", color='r', label='Trigger (%d mV)' % (trigger_level * 1e3))
+                plt.axhline(y=trigger_level * 1e3, linewidth=2, linestyle="--", color='r', label='Trigger (%0.1f mV)' % (trigger_level * 1e3))
                 plt.xlabel('Time [ns]')
                 plt.ylabel('Voltage [mV]')
                 plt.legend(loc=0)
@@ -219,7 +220,8 @@ class PlsrDacTransientCalibrationAdvanced(AnalogScan):
             scan_parameter_values = in_file_h5.root.PlsrDACwaveforms._v_attrs.scan_parameter_values
             enable_double_column = in_file_h5.root.PlsrDACwaveforms._v_attrs.enable_double_column
             trigger_levels = in_file_h5.root.PlsrDACwaveforms._v_attrs.trigger_levels
-            fit_range_step = ast.literal_eval(in_file_h5.root.configuration.run_conf[:][np.where(in_file_h5.root.configuration.run_conf[:]['name'] == 'fit_range_step')]['value'][0])
+            trigger_level_offset = in_file_h5.root.PlsrDACwaveforms._v_attrs.trigger_level_offset
+            fit_ranges = in_file_h5.root.PlsrDACwaveforms._v_attrs.fit_ranges
             progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=data.shape[0], term_width=80)
 
             with tb.open_file(self.output_filename + '_interpreted.h5', 'w') as out_file_h5:
@@ -228,45 +230,51 @@ class PlsrDacTransientCalibrationAdvanced(AnalogScan):
                 data_table = out_file_h5.create_table(out_file_h5.root, name='plsr_dac_data', description=np.zeros((1,), dtype=description).dtype, title='Voltage steps from transient PlsrDAC calibration scan')
                 with PdfPages(self.output_filename + '_interpreted.pdf') as output_pdf:
                     progress_bar.start()
+
+                    start_index_baseline = np.argmin(np.abs(times * 1e9 - fit_ranges[0][0]))
+                    stop_index_baseline = np.argmin(np.abs(times * 1e9 - fit_ranges[0][1]))
+                    start_index_peak = np.argmin(np.abs(times * 1e9 - fit_ranges[1][0]))
+                    stop_index_peak = np.argmin(np.abs(times * 1e9 - fit_ranges[1][1]))
+                    times_baseline = times[start_index_baseline:stop_index_baseline]
+                    times_peak = times[start_index_peak:stop_index_peak]
+
                     for index in range(data.shape[0]):
                         voltages = data[index]
                         trigger_level = trigger_levels[index]
                         plsr_dac = scan_parameter_values[index]
-                        if abs(trigger_level) < 0.005:
-                            logging.warning('The trigger threshold for PlsrDAC %d is with %d mV too low. Thus this setting is omitted in the analysis!', plsr_dac, trigger_level * 1000.)
-                            data_array['voltage_step'][index] = np.NaN
-                            continue
+
                         # index of first value below trigger level
                         step_index = np.argmin(voltages>trigger_level)
-                        # fit range
-                        left_step_fit_range = (step_index + fit_range_step[0][0], step_index + fit_range_step[0][1])
-                        right_step_fit_range = (step_index + fit_range_step[1][0], step_index + fit_range_step[1][1])
-                        # Error handling if selected fit range exeeds limits
-                        if left_step_fit_range[0] < 0 or left_step_fit_range[1] < 0 or right_step_fit_range[0] >= data.shape[1] or right_step_fit_range[1] >= data.shape[1] or left_step_fit_range[0] >= left_step_fit_range[1] or right_step_fit_range[0] >= right_step_fit_range[1]:
-                            logging.warning('The step fit limits for PlsrDAC %d are out of bounds. Omit this data!', plsr_dac)
+                        if not (step_index > start_index_baseline and step_index > stop_index_baseline):
+                            logging.warning("Baseline fit range might be too large")
+                        if not (step_index < start_index_peak and step_index < stop_index_peak):
+                            logging.warning("Peak fit range might be too small")
+
+                        voltage_baseline = voltages[start_index_baseline:stop_index_baseline]
+                        voltage_peak = voltages[start_index_peak:stop_index_peak]
+
+                        median_baseline = np.median(voltage_baseline)
+                        median_peak = np.median(voltage_peak)
+                        # sanity check
+                        if not (median_baseline > trigger_level and median_peak < trigger_level and trigger_level * 1e3 >= trigger_level_offset):
+                            logging.warning('Skipping PlsrDAC=%d because the trigger level of %.1f mV is too low.', plsr_dac, trigger_level * 1e3)
                             data_array['voltage_step'][index] = np.NaN
                             continue
 
-                        times_left_step, voltage_left_step = times[left_step_fit_range[0]:left_step_fit_range[1]], voltages[left_step_fit_range[0]:left_step_fit_range[1]]
-                        times_right_step, voltage_right_step = times[right_step_fit_range[0]:right_step_fit_range[1]], voltages[right_step_fit_range[0]:right_step_fit_range[1]]
-
-                        median_left_step = np.median(voltage_left_step)
-                        median_right_step = np.median(voltage_right_step)
-
                         data_array['PlsrDAC'][index] = plsr_dac
-                        data_array['voltage_step'][index] = median_left_step - median_right_step
+                        data_array['voltage_step'][index] = median_baseline - median_peak
 
                         # Plot waveform + fit
                         plt.clf()
                         plt.grid()
                         plt.plot(times * 1e9, voltages * 1e3, label='PlsrDAC Pulse')
-                        plt.plot(times * 1e9, np.repeat([trigger_level * 1e3], len(times)), '--', label='Trigger (%d mV)' % (trigger_level * 1000))
-                        plt.plot(times_left_step * 1e9, np.repeat(median_left_step * 1e3, times_left_step.shape[0]), '-', linewidth=2, label='Left of step constant fit')
-                        plt.plot(times_right_step * 1e9, np.repeat(median_right_step * 1e3, times_right_step.shape[0]), '-', linewidth=2, label='Right of step constant fit')
+                        plt.axhline(y=trigger_level * 1e3, linewidth=2, linestyle="--", color='r', label='Trigger (%0.f mV)' % (trigger_level * 1e3))
+                        plt.plot(times_baseline * 1e9, np.repeat(median_baseline * 1e3, times_baseline.size), '-', linewidth=2, label='Baseline (%.1f mV)' % (median_baseline * 1e3))
+                        plt.plot(times_peak * 1e9, np.repeat(median_peak * 1e3, times_peak.size), '-', linewidth=2, label='Peak (%.1f mV)' % (median_peak * 1e3))
                         plt.title('PulserDAC=%d Waveform' % plsr_dac)
                         plt.xlabel('Time [ns]')
                         plt.ylabel('Voltage [mV]')
-                        plt.legend(loc=0)
+                        plt.legend(loc=4)  # lower right
                         output_pdf.savefig()
                         progress_bar.update(index)
                     data_table.append(data_array[np.isfinite(data_array['voltage_step'])])  # store valid data
