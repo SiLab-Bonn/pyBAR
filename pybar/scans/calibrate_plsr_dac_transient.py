@@ -186,7 +186,7 @@ class PlsrDacTransientCalibration(AnalogScan):
             # get final number of data points
 #             if not self.dut['Oscilloscope'].get_number_points():
 #                 raise RuntimeError()
-            data = self.dut['Oscilloscope']._intf._resource.query_binary_values("DATA:SOURCE CH1;:CURVe?", datatype='h', is_big_endian=True)
+            data = self.dut['Oscilloscope']._intf._resource.query_binary_values("DATA:SOURCE CH%d;:CURVe?" % self.channel, datatype='h', is_big_endian=True)
             self.preamble = self.dut['Oscilloscope'].get_parameters(channel=self.channel)
             times, voltages, time_unit, voltage_unit = interpret_oscilloscope_data(self.preamble, data)
             data_out[index, :] = voltages[:]
