@@ -209,7 +209,10 @@ class PlsrDacTransientCalibration(AnalogScan):
         logging.info('Analyzing the PlsrDAC waveforms')
         with tb.open_file(self.output_filename + '.h5', 'r') as in_file_h5:
             data = in_file_h5.root.PlsrDACwaveforms[:]
-            times = in_file_h5.root.Times[:]
+            try:
+                times = in_file_h5.root.Times[:]
+            except NoSuchNodeError:  # for backward compatibility
+                times = np.array(in_file_h5.root.PlsrDACwaveforms._v_attrs.times)
             scan_parameter_values = in_file_h5.root.PlsrDACwaveforms._v_attrs.scan_parameter_values
             trigger_levels = in_file_h5.root.PlsrDACwaveforms._v_attrs.trigger_levels
             fit_range = ast.literal_eval(in_file_h5.root.configuration.run_conf[:][np.where(in_file_h5.root.configuration.run_conf[:]['name'] == 'fit_range')]['value'][0])
