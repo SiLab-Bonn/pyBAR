@@ -1265,8 +1265,10 @@ def parse_key_value_from_file(f, key, deletechars=''):
 
 
 def calculate_wait_cycles(mask_steps):
-    # good practice from measurements, see Feature #59
-    return int(336.0 / mask_steps * 25.0 + 600.0)
+    # This delay is a delicate part. A wrong (too short) delay can lead to an effectively smaller injection charge.
+    # The delay is good practice, see also bug report #59.
+    # The delay was verified with different PlsrDAC settings.
+    return int(336.0 / mask_steps * 25.0 + 600)
 
 
 def scan_loop(self, command, repeat_command=100, use_delay=True, additional_delay=0, mask_steps=3, enable_mask_steps=None, enable_double_columns=None, same_mask_for_all_dc=False, fast_dc_loop=True, bol_function=None, eol_function=None, digital_injection=False, enable_shift_masks=None, disable_shift_masks=None, restore_shift_masks=True, mask=None, double_column_correction=False):
