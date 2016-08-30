@@ -156,12 +156,15 @@ class PlsrDacTransientCalibration(AnalogScan):
             self.dut['Oscilloscope'].force_trigger()
             self.dut['Oscilloscope'].set_acquire_state("STOP")
             data = self.dut['Oscilloscope']._intf._resource.query_binary_values("DATA:SOURCE CH%d;:CURVe?" % self.channel, datatype='h', is_big_endian=True)
+            self.preamble = self.dut['Oscilloscope'].get_parameters(channel=self.channel)
             times, voltages, time_unit, voltage_unit = interpret_oscilloscope_data(self.preamble, data)
             if len(data):
                 trigger_level = (np.mean(voltages) - self.trigger_level_offset * 1e-3) / 2.0 + self.trigger_level_offset * 1e-3
             else:
                 trigger_level = trigger_levels[-1]
             self.dut['Oscilloscope'].set_trigger_level(trigger_level)
+            self.dut['Oscilloscope'].set_vertical_scale((np.mean(voltages) + 0.1) / 10, channel=self.channel)
+            #self.dut['Oscilloscope'].set_vertical_scale(0.05, channel=self.channel)
 
             if self.show_debug_plots:
                 plt.clf()
@@ -184,6 +187,7 @@ class PlsrDacTransientCalibration(AnalogScan):
 #             if not self.dut['Oscilloscope'].get_number_points():
 #                 raise RuntimeError()
             data = self.dut['Oscilloscope']._intf._resource.query_binary_values("DATA:SOURCE CH1;:CURVe?", datatype='h', is_big_endian=True)
+            self.preamble = self.dut['Oscilloscope'].get_parameters(channel=self.channel)
             times, voltages, time_unit, voltage_unit = interpret_oscilloscope_data(self.preamble, data)
             data_out[index, :] = voltages[:]
             trigger_level = float(self.dut['Oscilloscope'].get_trigger_level())
@@ -200,6 +204,8 @@ class PlsrDacTransientCalibration(AnalogScan):
                 plt.ylabel('Voltage [mV]')
                 plt.legend(loc=0)
                 plt.show()
+
+            self.dut['Oscilloscope'].set_vertical_scale(self.vertical_scale, channel=self.channel)
 
         time_out[:] = times
         data_out.attrs.trigger_levels = trigger_levels
