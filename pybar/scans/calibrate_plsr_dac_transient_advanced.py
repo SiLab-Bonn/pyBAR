@@ -48,7 +48,7 @@ class PlsrDacTransientCalibrationAdvanced(AnalogScan):
     _default_run_conf = AnalogScan._default_run_conf.copy()
     _default_run_conf.update({
         "scan_parameters": [('PlsrDAC', range(25, 1024, 25))],  # plsr dac settings, be aware: too low plsDAC settings are difficult to trigger
-        "enable_double_column": 20,  # double columns which will be enabled during scan
+        "enable_double_columns": [20],  # double columns which will be enabled during scan
         "enable_mask_steps": [0],  # Scan only one mask step to save time
         "n_injections": 512,  # number of injections, has to be > 260 to allow for averaging 256 injection signals
         "channel": 1,  # oscilloscope channel
@@ -116,7 +116,7 @@ class PlsrDacTransientCalibrationAdvanced(AnalogScan):
         # Route Vcal to pin
         commands = []
         self.register.set_global_register_value('Colpr_Mode', 0)  # one DC only
-        self.register.set_global_register_value('Colpr_Addr', self.enable_double_column)
+        self.register.set_global_register_value('Colpr_Addr', self.enable_double_columns[0])
         self.register.set_global_register_value('ExtDigCalSW', 0)
         self.register.set_global_register_value('ExtAnaCalSW', 1)  # Route Vcal to external pin
         commands.extend(self.register.get_commands("WrRegister", name=['Colpr_Addr', 'Colpr_Mode', 'ExtDigCalSW', 'ExtAnaCalSW']))
@@ -133,7 +133,7 @@ class PlsrDacTransientCalibrationAdvanced(AnalogScan):
         atom = tb.FloatAtom()
         time_out = self.raw_data_file.h5_file.createCArray(self.raw_data_file.h5_file.root, name='Times', title='Time values', atom=atom, shape=shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
         data_out.attrs.scan_parameter_values = scan_parameter_values
-        data_out.attrs.enable_double_column = self.enable_double_column
+        data_out.attrs.enable_double_columns = self.enable_double_columns
         data_out.attrs.fit_ranges = self.fit_ranges
         data_out.attrs.trigger_level_offset = self.trigger_level_offset
         trigger_levels = []
@@ -218,7 +218,7 @@ class PlsrDacTransientCalibrationAdvanced(AnalogScan):
             except NoSuchNodeError:  # for backward compatibility
                 times = np.array(in_file_h5.root.PlsrDACwaveforms._v_attrs.times)
             scan_parameter_values = in_file_h5.root.PlsrDACwaveforms._v_attrs.scan_parameter_values
-            enable_double_column = in_file_h5.root.PlsrDACwaveforms._v_attrs.enable_double_column
+            enable_double_columns = in_file_h5.root.PlsrDACwaveforms._v_attrs.enable_double_columns
             trigger_levels = in_file_h5.root.PlsrDACwaveforms._v_attrs.trigger_levels
             trigger_level_offset = in_file_h5.root.PlsrDACwaveforms._v_attrs.trigger_level_offset
             fit_ranges = in_file_h5.root.PlsrDACwaveforms._v_attrs.fit_ranges
@@ -283,7 +283,7 @@ class PlsrDacTransientCalibrationAdvanced(AnalogScan):
                     select = np.isfinite(data_array['voltage_step'])
                     x = data_array[select]['PlsrDAC']
                     y = data_array[select]['voltage_step']
-                    slope_fit, slope_err, plateau_fit, plateau_err = plot_pulser_dac(x, y, output_pdf=output_pdf, title_suffix="(DC %d)" % (enable_double_column,))
+                    slope_fit, slope_err, plateau_fit, plateau_err = plot_pulser_dac(x, y, output_pdf=output_pdf, title_suffix="(DC %d)" % (enable_double_columns[0],))
 
                     # Store result in file
                     self.register.calibration_parameters['Vcal_Coeff_0'] = np.nan_to_num(slope_fit[0] * 1000.0)  # store in mV
