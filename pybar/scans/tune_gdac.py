@@ -157,7 +157,7 @@ class GdacTuning(Fei4RunBase):
                 else:
                     logging.info('Median = %.2f > %.2f, keep bit %d = 1', median_occupancy, self.n_injections_gdac / 2, gdac_bit)
             elif gdac_bit == 0:
-                if not additional_scan_ongoing and occupancy_almost_zero and len(self.gdac_tune_bits) > last_good_gdac_scan_step + 2:
+                if not additional_scan_ongoing and ((occupancy_almost_zero and no_noise) or not no_noise) and len(self.gdac_tune_bits) > last_good_gdac_scan_step + 2:
                     self.set_gdac_bit(0, bit_value=0, send_command=False)  # turn off LSB
                     if len(gdac_tune_bits) == gdac_scan_step + 1 and gdac_tune_bits_permutation == 0:  # min. 2 bits for bin search
                         self.set_gdac_bit(last_good_gdac_bit, bit_value=1, send_command=False)  # always enable highest bit
