@@ -89,6 +89,7 @@ class GdacTuning(Fei4RunBase):
             select_mask_array[column, :] = 0
 
         additional_scan = True
+        additional_scan_ongoing = False
         occupancy_best = 0.0
         last_good_gdac_bit = self.gdac_tune_bits[0]
         last_good_gdac_scan_step = 0
@@ -156,7 +157,7 @@ class GdacTuning(Fei4RunBase):
                 else:
                     logging.info('Median = %.2f > %.2f, keep bit %d = 1', median_occupancy, self.n_injections_gdac / 2, gdac_bit)
             elif gdac_bit == 0:
-                if occupancy_almost_zero and len(self.gdac_tune_bits) > last_good_gdac_scan_step + 2:# and min_gdac_occupancy is None:
+                if not additional_scan_ongoing and occupancy_almost_zero and len(self.gdac_tune_bits) > last_good_gdac_scan_step + 2:# and min_gdac_occupancy is None:
                     self.set_gdac_bit(0, bit_value=0, send_command=False)  # turn off LSB
                     if len(gdac_tune_bits) == gdac_scan_step + 1 and gdac_tune_bits_permutation == 0:  # min. 2 bits for bin search
                         self.set_gdac_bit(last_good_gdac_bit, bit_value=1, send_command=False) # always enable highest bit
@@ -181,9 +182,11 @@ class GdacTuning(Fei4RunBase):
                             last_good_gdac_scan_step += 1
                 elif additional_scan:  # scan bit = 0 with the correct value again
                     additional_scan = False
+                    additional_scan_ongoing = True
                     last_occ_array_sel_pixel = self.occ_array_sel_pixel.copy()
                     gdac_tune_bits.append(0)  # the last tune bit has to be scanned twice
                 else:
+                    additional_scan_ongoing = False
                     last_median_occupancy = np.ma.median(last_occ_array_sel_pixel)
                     logging.info('Measured %.2f with bit 0 = 0 with and %.2f with bit 0 = 1', median_occupancy, last_median_occupancy)
                     if abs(median_occupancy - self.n_injections_gdac / 2) > abs(last_median_occupancy - self.n_injections_gdac / 2):  # if bit 0 = 0 is worse than bit 0 = 1, so go back
