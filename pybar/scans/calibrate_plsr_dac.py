@@ -218,7 +218,7 @@ def plot_pulser_dac(x, y, y_err=None, output_pdf=None, title_suffix=""):
         turning_point = turning_point_idx[-1]
     else:
         # select highest index
-        turning_point = len(x)
+        turning_point = len(x) - 1
     plateau_data_idx = plateau_data_idx[plateau_data_idx > turning_point]
 
     # index of plateau fit values
