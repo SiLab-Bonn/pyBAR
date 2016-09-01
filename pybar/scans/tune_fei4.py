@@ -33,8 +33,8 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
         "target_threshold": 30,  # target threshold
         "target_charge": 280,  # target charge
         "target_tot": 5,  # target ToT
-        "global_iterations": 4,  # the number of iterations to do for the global tuning, 0 means only threshold is tuned, negative that no global tuning is done
-        "local_iterations": 3,  # the number of iterations to do for the local tuning, 0 means only threshold is tuned, negative that no local tuning is done
+        "global_iterations": 4,  # the number of iterations to do for the global tuning, 0: only global threshold (GDAC) is tuned, -1 or None: no global tuning
+        "local_iterations": 3,  # the number of iterations to do for the local tuning, 0: only local threshold (TDAC) is tuned, -1 or None: no local tuning
         "fail_on_warning": True,  # do not continue tuning if a global tuning fails
         # GDAC
         "gdac_tune_bits": range(7, -1, -1),  # GDAC bits to change during tuning
@@ -100,20 +100,24 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
         target_tot : float
             The target tot value to tune to.
         global_iterations : int
-            Defines how often global threshold/global feedback current tuning is repeated.
-            -1: Global tuning is disabled
-            0: Global tuning consists of the global threshold tuning only
-            1: Global threshold/global feedback current/global threshold tuning
-            2: Global threshold/global feedback current/global threshold tuning/global feedback current/global threshold tuning
+            Defines how often global threshold (GDAC) / global feedback (PrmpVbpf) current tuning is repeated.
+            -1 or None: Global tuning is disabled
+            0: Only global threshold tuning
+            1: GDAC -> PrmpVbpf -> GDAC
+            2: GDAC -> PrmpVbpf -> GDAC -> PrmpVbpf -> GDAC
             ...
         local_iterations : int
             Defines how often local threshold (TDAC) / feedback current (FDAC) tuning is repeated.
-                -1: The local tuning is disabled
-                0: Local threshold tuning only (TDAC)
-                1: TDAC/FDAC/TDAC
-                2: TDAC/FDAC/TDAC/FDAC/TDAC
-                ...
+            -1 or None: Local tuning is disabled
+            0: Only local threshold tuning
+            1: TDAC -> FDAC -> TDAC
+            2: TDAC -> FDAC -> TDAC -> FDAC -> TDAC
+            ...
         '''
+        if self.global_iterations is None:
+            self.global_iterations = -1
+        if self.local_iterations is None:
+            self.local_iterations = -1
 
         if self.make_plots:
             self.plots_filename = PdfPages(self.output_filename + '.pdf')
