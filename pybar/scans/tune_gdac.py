@@ -22,6 +22,7 @@ class GdacTuning(Fei4RunBase):
         "scan_parameters": [('GDAC', None)],
         "target_threshold": 30,  # target threshold in PlsrDAC to tune to
         "gdac_tune_bits": range(7, -1, -1),  # GDAC bits to change during tuning
+        "gdac_lower_limit": 40,  # set GDAC lower limit to prevent FEI4 from becoming noisy, set to 0 or None to disable
         "n_injections_gdac": 50,  # number of injections per GDAC bit setting
         "max_delta_threshold": 5,  # minimum difference to the target_threshold to abort the tuning
         "enable_mask_steps_gdac": [0],  # mask steps to do per GDAC setting
@@ -99,11 +100,11 @@ class GdacTuning(Fei4RunBase):
         min_gdac_with_occupancy = None
         for gdac_scan_step, gdac_bit in enumerate(gdac_tune_bits):
             if additional_scan:
-                self.set_gdac_bit(gdac_bit, bit_value=1)
+                self.set_gdac_bit(gdac_bit, bit_value=1, send_command=True)
                 scan_parameter_value = (self.register.get_global_register_value("Vthin_AltCoarse") << 8) + self.register.get_global_register_value("Vthin_AltFine")
                 logging.info('GDAC setting: %d, set bit %d = 1', scan_parameter_value, gdac_bit)
             else:
-                self.set_gdac_bit(gdac_bit, bit_value=0)
+                self.set_gdac_bit(gdac_bit, bit_value=0, send_command=True)
                 scan_parameter_value = (self.register.get_global_register_value("Vthin_AltCoarse") << 8) + self.register.get_global_register_value("Vthin_AltFine")
                 logging.info('GDAC setting: %d, set bit %d = 0', scan_parameter_value, gdac_bit)
 
@@ -146,13 +147,22 @@ class GdacTuning(Fei4RunBase):
                     min_gdac_with_occupancy = min(min_gdac_with_occupancy, self.register_utils.get_gdac())
 
             if gdac_bit > 0:
+                limit = 40
                 # GDAC too low, no hits
                 if occupancy_almost_zero and no_noise and self.register_utils.get_gdac() < min_gdac_with_occupancy:
                     logging.info('Median = %.2f > %.2f, GDAC possibly too low, keep bit %d = 1', median_occupancy, self.n_injections_gdac / 2, gdac_bit)
                 # GDAC too high, less hits, decrease GDAC
                 elif no_noise and median_occupancy < (self.n_injections_gdac / 2):  # set GDAC bit to 0 if the occupancy is too low, thus decrease threshold
-                    logging.info('Median = %.2f < %.2f, set bit %d = 0', median_occupancy, self.n_injections_gdac / 2, gdac_bit)
-                    self.set_gdac_bit(gdac_bit, bit_value=0)
+                    try:
+                        next_gdac_bit = gdac_tune_bits[gdac_scan_step + 1]
+                    except IndexError:
+                        next_gdac_bit = None
+                    # check if new value is below lower limit
+                    if self.gdac_lower_limit and (next_gdac_bit is not None and self.register_utils.get_gdac() - 2**gdac_bit + 2**next_gdac_bit < self.gdac_lower_limit) or (next_gdac_bit is None and self.register_utils.get_gdac() - 2**gdac_bit < self.gdac_lower_limit):
+                        logging.info('Median = %.2f < %.2f, reaching lower GDAC limit, keep bit %d = 1', median_occupancy, self.n_injections_gdac / 2, gdac_bit)
+                    else:
+                        logging.info('Median = %.2f < %.2f, set bit %d = 0', median_occupancy, self.n_injections_gdac / 2, gdac_bit)
+                        self.set_gdac_bit(gdac_bit, bit_value=0, send_command=False)  # do not write, might be too low, do this in next iteration
                 # GDAC too low, more hits
                 else:
                     logging.info('Median = %.2f > %.2f, keep bit %d = 1', median_occupancy, self.n_injections_gdac / 2, gdac_bit)
@@ -192,7 +202,7 @@ class GdacTuning(Fei4RunBase):
                     logging.info('Measured %.2f with bit 0 = 0 with and %.2f with bit 0 = 1', median_occupancy, last_median_occupancy)
                     if abs(median_occupancy - self.n_injections_gdac / 2) > abs(last_median_occupancy - self.n_injections_gdac / 2):  # if bit 0 = 0 is worse than bit 0 = 1, so go back
                         logging.info('Set bit 0 = 1')
-                        self.set_gdac_bit(0, bit_value=1)
+                        self.set_gdac_bit(0, bit_value=1, send_command=True)
                         occ_array_sel_pixels = last_occ_array_sel_pixels.copy()
                         occ_array_desel_pixels = last_occ_array_desel_pixels.copy()
                         median_occupancy = last_median_occupancy
