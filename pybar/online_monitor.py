@@ -44,6 +44,7 @@ class DataWorker(QtCore.QObject):
         self.histograming.create_tdc_hist(True)
         try:
             self.histograming.create_tdc_distance_hist(True)
+            self.interpreter.use_tdc_trigger_time_stamp(True)
         except AttributeError:
             self.has_tdc_distance = False
         else:
