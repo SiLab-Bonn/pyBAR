@@ -81,6 +81,8 @@ class GdacTuning(Fei4RunBase):
 
         # calculate selected pixels from the mask and the disabled columns
         select_mask_array = np.zeros(shape=(80, 336), dtype=np.uint8)
+        self.occ_array_sel_pixels_best = select_mask_array.copy()
+        self.occ_array_desel_pixels_best = select_mask_array.copy()
         if not self.enable_mask_steps_gdac:
             self.enable_mask_steps_gdac = range(self.mask_steps)
         for mask_step in self.enable_mask_steps_gdac:
