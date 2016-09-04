@@ -55,6 +55,7 @@ class GdacTuning(Fei4RunBase):
             commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_High'))
         commands.extend(self.register.get_commands("RunMode"))
         self.register_utils.send_commands(commands)
+        self.write_target_threshold()
 
     def scan(self):
         if not self.plots_filename:
@@ -64,7 +65,6 @@ class GdacTuning(Fei4RunBase):
             self.close_plots = False
         cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0]
 
-        self.write_target_threshold()
         for gdac_bit in self.gdac_tune_bits:  # reset all GDAC bits
             self.set_gdac_bit(gdac_bit, bit_value=0, send_command=False)
 
@@ -147,7 +147,6 @@ class GdacTuning(Fei4RunBase):
                     min_gdac_with_occupancy = min(min_gdac_with_occupancy, self.register_utils.get_gdac())
 
             if gdac_bit > 0:
-                limit = 40
                 # GDAC too low, no hits
                 if occupancy_almost_zero and no_noise and self.register_utils.get_gdac() < min_gdac_with_occupancy:
                     logging.info('Median = %.2f > %.2f, GDAC possibly too low, keep bit %d = 1', median_occupancy, self.n_injections_gdac / 2, gdac_bit)
