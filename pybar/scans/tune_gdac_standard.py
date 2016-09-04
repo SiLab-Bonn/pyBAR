@@ -67,14 +67,27 @@ class GdacTuningStandard(Fei4RunBase):
 
         scan_parameter_range = [(2 ** self.register.global_registers['Vthin_AltFine']['bitlength']), 0]  # high to low
         if self.scan_parameters.GDAC[0]:
-            scan_parameter_range[0] = self.scan_parameters.PlsrDAC[0]
+            scan_parameter_range[0] = self.scan_parameters.GDAC[0]
         if self.scan_parameters.GDAC[1]:
-            scan_parameter_range[1] = self.scan_parameters.PlsrDAC[1]
+            scan_parameter_range[1] = self.scan_parameters.GDAC[1]
         scan_parameter_range = range(scan_parameter_range[0], scan_parameter_range[1] - 1, self.step_size)
         logging.info("Scanning %s from %d to %d", 'GDAC', scan_parameter_range[0], scan_parameter_range[-1])
 
+        def bits_set(int_type):
+            int_type = int(int_type)
+            position = 0
+            bits_set = []
+            while(int_type):
+                if(int_type & 1):
+                    bits_set.append(position)
+                position += 1
+                int_type = int_type >> 1
+            return bits_set
+
         # calculate selected pixels from the mask and the disabled columns
         select_mask_array = np.zeros(shape=(80, 336), dtype=np.uint8)
+        self.occ_array_sel_pixels_best = select_mask_array.copy()
+        self.occ_array_desel_pixels_best = select_mask_array.copy()
         if not self.enable_mask_steps_gdac:
             self.enable_mask_steps_gdac = range(self.mask_steps)
         for mask_step in self.enable_mask_steps_gdac:
@@ -132,12 +145,7 @@ class GdacTuningStandard(Fei4RunBase):
         self.gdac_best = self.register_utils.get_gdac()
 
         if abs(median_occupancy - self.n_injections_gdac / 2) > self.max_delta_threshold:
-            if np.all((((self.gdac_best & (1 << np.arange(self.register.global_registers['Vthin_AltFine']['bitlength'] + self.register.global_registers['Vthin_AltFine']['bitlength'])))) > 0).astype(int)[self.gdac_tune_bits] == 1):
-                if self.fail_on_warning:
-                    raise RuntimeWarning('Selected GDAC bits reached maximum value')
-                else:
-                    logging.warning('Selected GDAC bits reached maximum value')
-            elif np.all((((self.gdac_best & (1 << np.arange(self.register.global_registers['Vthin_AltFine']['bitlength'] + self.register.global_registers['Vthin_AltFine']['bitlength'])))) > 0).astype(int)[self.gdac_tune_bits] == 0):
+            if np.all((((self.gdac_best & (1 << np.arange(self.register.global_registers['Vthin_AltFine']['bitlength'] + self.register.global_registers['Vthin_AltFine']['bitlength'])))) > 0).astype(int) == 0):
                 if self.fail_on_warning:
                     raise RuntimeWarning('Selected GDAC bits reached minimum value')
                 else:
