@@ -95,8 +95,8 @@ class ThresholdBaselineTuning(Fei4RunBase):
         lvl1_command = self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", length=self.trigger_rate_limit)[0]
         self.total_scan_time = int(lvl1_command.length() * 25 * (10 ** -9) * self.n_triggers)
 
-        disabled_pixels_limit_cnt = int(self.disabled_pixels_limit * 336 * 80)
         preselected_pixels = invert_pixel_mask(self.register.get_pixel_register_value('Enable')).sum()
+        disabled_pixels_limit_cnt = int(self.disabled_pixels_limit * self.register.get_pixel_register_value('Enable').sum())
         disabled_pixels = 0
         self.last_reg_val = deque([None] * self.increase_threshold, maxlen=self.increase_threshold + 1)
         self.last_step = deque([None] * self.increase_threshold, maxlen=self.increase_threshold + 1)
