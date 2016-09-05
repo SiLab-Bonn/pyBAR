@@ -198,7 +198,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
     def analyze(self):
         self.register.set_global_register_value("Vthin_AltFine", self.last_good_threshold[self.increase_threshold])
         self.register.set_pixel_register_value('TDAC', self.last_good_tdac[self.increase_threshold])
-        self.register.set_pixel_register_value('Enable', self.last_good_enable_mask[0])
+        self.register.set_pixel_register_value('Enable', self.last_good_enable_mask[0])  # use enable mask from the lowest point to mask bad pixels
         # write configuration to avaoid high current states
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))
@@ -219,7 +219,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
             plot_fancy_occupancy(self.last_occupancy_mask[self.increase_threshold].T, filename=analyze_raw_data.output_pdf)
             plot_three_way(self.last_good_tdac[self.increase_threshold].T, title='TDAC at Vthin_AltFine %d Step %d' % (self.last_reg_val[self.increase_threshold], self.last_step[self.increase_threshold]), x_axis_title="TDAC", filename=analyze_raw_data.output_pdf, maximum=31, bins=32)
             plot_occupancy(self.last_good_tdac[self.increase_threshold].T, title='TDAC at Vthin_AltFine %d Step %d' % (self.last_reg_val[self.increase_threshold], self.last_step[self.increase_threshold]), z_max=31, filename=analyze_raw_data.output_pdf)
-            plot_occupancy(self.last_good_enable_mask[self.increase_threshold].T, title='Enable Mask at Vthin_AltFine %d Step %d' % (self.last_reg_val[self.increase_threshold], self.last_step[self.increase_threshold]), z_max=1, filename=analyze_raw_data.output_pdf)
+            plot_occupancy(self.last_good_enable_mask[self.increase_threshold].T, title='Intermediate Enable Mask at Vthin_AltFine %d Step %d' % (self.last_reg_val[self.increase_threshold], self.last_step[self.increase_threshold]), z_max=1, filename=analyze_raw_data.output_pdf)
             plot_fancy_occupancy(self.last_good_enable_mask[self.increase_threshold].T, filename=analyze_raw_data.output_pdf)
             plot_occupancy(self.last_good_enable_mask[0].T, title='Final Enable Mask at Vthin_AltFine %d Step %d' % (self.last_reg_val[0], self.last_step[0]), z_max=1, filename=analyze_raw_data.output_pdf)
             plot_fancy_occupancy(self.last_good_enable_mask[0].T, filename=analyze_raw_data.output_pdf)
