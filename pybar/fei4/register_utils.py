@@ -1247,9 +1247,9 @@ def make_xtalk_mask(mask):
     return make_pixel_mask_from_col_row(col + 1, row + 1)
 
 
-def make_checkboard_mask(column_distance, row_distance, column_offset=0, row_offset=0):
+def make_checkerboard_mask(column_distance, row_distance, column_offset=0, row_offset=0, default=0, value=1):
     """
-    Generate chessboard mask.
+    Generate chessboard/checkerboard mask.
 
     Parameters
     ----------
@@ -1283,8 +1283,8 @@ def make_checkboard_mask(column_distance, row_distance, column_offset=0, row_off
      [0 0 0 0 0 0 0 0 0 0 ... 0 0 0 0 0 0 0 0 0 0]]
     """
     col_shape = (336,)
-    col = np.zeros(col_shape, dtype=np.uint8)
-    col[::row_distance] = 1
+    col = np.full(col_shape, fill_value=default, dtype=np.uint8)
+    col[::row_distance] = value
     shape = (80, 336)
     chessboard_mask = np.zeros(shape, dtype=np.uint8)
     chessboard_mask[column_offset::column_distance * 2] = np.roll(col, row_offset)
