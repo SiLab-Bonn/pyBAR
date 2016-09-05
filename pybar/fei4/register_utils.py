@@ -1286,7 +1286,7 @@ def make_checkerboard_mask(column_distance, row_distance, column_offset=0, row_o
     col = np.full(col_shape, fill_value=default, dtype=np.uint8)
     col[::row_distance] = value
     shape = (80, 336)
-    chessboard_mask = np.zeros(shape, dtype=np.uint8)
+    chessboard_mask = np.full(shape, fill_value=default, dtype=np.uint8)
     chessboard_mask[column_offset::column_distance * 2] = np.roll(col, row_offset)
     chessboard_mask[column_distance + column_offset::column_distance * 2] = np.roll(col, row_distance / 2 + row_offset)
     return chessboard_mask
