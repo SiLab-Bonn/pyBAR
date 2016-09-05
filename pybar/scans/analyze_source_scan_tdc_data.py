@@ -84,7 +84,7 @@ def analyze_raw_data(input_files, output_file_hits, interpreter_plots, overwrite
                 analyze_raw_data.plot_histograms()  # plots all activated histograms into one pdf
 
 
-def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_select_mask, event_status_condition, calibation_file=None, correct_calibration=None, max_tdc=1000, n_bins=200, plot_data=True):
+def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_select_mask, event_status_condition, calibation_file=None, correct_calibration=None, max_tdc=1000, ignore_disabled_regions=True, n_bins=200, plot_data=True):
     for condition in hit_selection_conditions:
         logging.info('Histogram TDC hits with %s', condition)
 
@@ -160,12 +160,12 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
             if not np.all(plsr_dacs == in_file_2.root.HitOrCalibration._v_attrs.scan_parameter_values):
                 raise NotImplementedError('The check calibration file has to have the same PlsrDAC values')
 
-            valid_pixel = np.where(~np.all((charge_calibration_1 == 0), axis=2) & ~np.all(np.isnan(charge_calibration_1), axis=2) & ~np.all((charge_calibration_2 == 0), axis=2) & ~np.all(np.isnan(charge_calibration_2), axis=2))  # valid pixel have a calibration in the new and the old calibration
-            mean_charge_calibration = charge_calibration_2[valid_pixel].nanmean(axis=0)
-            offset_mean = (charge_calibration_1[valid_pixel] - charge_calibration_2[valid_pixel]).nanmean(axis=0)
+            # Valid pixel have a calibration in the new and the old calibration
+            valid_pixel = np.where(~np.all((charge_calibration_1 == 0), axis=2) & ~np.all(np.isnan(charge_calibration_1), axis=2) & ~np.all((charge_calibration_2 == 0), axis=2) & ~np.all(np.isnan(charge_calibration_2), axis=2))
+            mean_charge_calibration = np.nanmean(charge_calibration_2[valid_pixel], axis=0)
+            offset_mean = np.nanmean((charge_calibration_2[valid_pixel] - charge_calibration_1[valid_pixel]), axis=0)
 
             dPlsrDAC_dTDC = analysis_utils.smooth_differentiation(plsr_dacs, mean_charge_calibration, order=3, smoothness=0, derivation=1)
-
             plt.clf()
             plt.plot(plsr_dacs, offset_mean / dPlsrDAC_dTDC, '.-', label='PlsrDAC')
             plt.plot(plsr_dacs, offset_mean, '.-', label='TDC')
@@ -173,12 +173,18 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
             plt.xlabel('PlsrDAC')
             plt.ylabel('Mean calibration offset')
             plt.legend(loc=0)
-            plt.title('Mean offset between TDC calibration data, old - new ')
+            plt.title('Mean offset between TDC calibration data, new - old ')
+            plt.savefig(filename_new_calibration[:-3] + '.pdf')
             plt.show()
+
             return offset_mean
 
     def delete_disabled_regions(hits, enable_mask):
         n_hits = hits.shape[0]
+
+        # Tread no hits case
+        if n_hits == 0:
+            return hits
 
         # Column, row array with True for disabled pixels
         disabled_region = ~enable_mask.astype(np.bool).T.copy()
@@ -226,7 +232,7 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
             n_hits_per_condition[1] += selected_events_cluster_hits.shape[0]
             for index, condition in enumerate(hit_selection_conditions):
                 selected_cluster_hits = analysis_utils.select_hits(selected_events_cluster_hits, condition)
-                if analysis_configuration['ignore_disabled_regions']:
+                if ignore_disabled_regions:
                     selected_cluster_hits = delete_disabled_regions(hits=selected_cluster_hits, enable_mask=enabled_pixels)
 
                 n_hits_per_condition[2 + index] += selected_cluster_hits.shape[0]
@@ -362,5 +368,6 @@ if __name__ == "__main__":
                            event_status_condition=analysis_configuration['event_status_condition'],
                            calibation_file=analysis_configuration['input_file_calibration'],
                            max_tdc=analysis_configuration['max_tdc'],
+                           ignore_disabled_regions=analysis_configuration['ignore_disabled_regions'],
                            n_bins=analysis_configuration['n_bins']
                            )
