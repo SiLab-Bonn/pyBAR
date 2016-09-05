@@ -98,13 +98,13 @@ class ThresholdBaselineTuning(Fei4RunBase):
         disabled_pixels_limit_cnt = int(self.disabled_pixels_limit * 336 * 80)
         preselected_pixels = invert_pixel_mask(self.register.get_pixel_register_value('Enable')).sum()
         disabled_pixels = 0
-        self.last_reg_val = collections.deque([None] * self.increase_threshold, maxlen=self.increase_threshold + 1)
-        self.last_step = collections.deque([None] * self.increase_threshold, maxlen=self.increase_threshold + 1)
-        self.last_good_threshold = collections.deque([None] * self.increase_threshold, maxlen=self.increase_threshold + 1)
-        self.last_good_tdac = collections.deque([None] * self.increase_threshold, maxlen=self.increase_threshold + 1)
-        self.last_good_enable_mask = collections.deque([None] * self.increase_threshold, maxlen=self.increase_threshold + 1)
-        self.last_occupancy_hist = collections.deque([None] * self.increase_threshold, maxlen=self.increase_threshold + 1)
-        self.last_occupancy_mask = collections.deque([None] * self.increase_threshold, maxlen=self.increase_threshold + 1)
+        self.last_reg_val = deque([None] * self.increase_threshold, maxlen=self.increase_threshold + 1)
+        self.last_step = deque([None] * self.increase_threshold, maxlen=self.increase_threshold + 1)
+        self.last_good_threshold = deque([None] * self.increase_threshold, maxlen=self.increase_threshold + 1)
+        self.last_good_tdac = deque([None] * self.increase_threshold, maxlen=self.increase_threshold + 1)
+        self.last_good_enable_mask = deque([None] * self.increase_threshold, maxlen=self.increase_threshold + 1)
+        self.last_occupancy_hist = deque([None] * self.increase_threshold, maxlen=self.increase_threshold + 1)
+        self.last_occupancy_mask = deque([None] * self.increase_threshold, maxlen=self.increase_threshold + 1)
 
         for reg_val in range(scan_parameter_range[0], scan_parameter_range[1] - 1, -1):
             if self.stop_run.is_set():
@@ -185,7 +185,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
                         self.last_step.appendleft(step)
                         self.last_good_threshold.appendleft(self.register.get_global_register_value("Vthin_AltFine"))
                         self.last_good_tdac.appendleft(self.register.get_pixel_register_value("TDAC"))
-                        self.last_good_enable_mask.appendleft(self.register.get_pixel_register_value("ENABLE"))
+                        self.last_good_enable_mask.appendleft(self.register.get_pixel_register_value("Enable"))
                         self.last_occupancy_hist.appendleft(occ_hist.copy())
                         self.last_occupancy_mask.appendleft(occ_mask.copy())
                         break
@@ -216,9 +216,9 @@ class ThresholdBaselineTuning(Fei4RunBase):
             plot_occupancy(self.last_occupancy_hist[self.increase_threshold].T, title='Noisy Pixels at Vthin_AltFine %d Step %d' % (self.last_reg_val[self.increase_threshold], self.last_step[self.increase_threshold]), filename=analyze_raw_data.output_pdf)
             plot_fancy_occupancy(self.last_occupancy_hist[self.increase_threshold].T, filename=analyze_raw_data.output_pdf)
             plot_occupancy(self.last_occupancy_mask[self.increase_threshold].T, title='Occupancy Mask at Vthin_AltFine %d Step %d' % (self.last_reg_val[self.increase_threshold], self.last_step[self.increase_threshold]), z_max=1, filename=analyze_raw_data.output_pdf)
-            plot_fancy_occupancy(self.last_occupancy_mask.T, filename=analyze_raw_data.output_pdf)
-            plot_three_way(self.last_tdac_distribution[self.increase_threshold].T, title='TDAC at Vthin_AltFine %d Step %d' % (self.last_reg_val[self.increase_threshold], self.last_step[self.increase_threshold]), x_axis_title="TDAC", filename=analyze_raw_data.output_pdf, maximum=31, bins=32)
-            plot_occupancy(self.last_tdac_distribution[self.increase_threshold].T, title='TDAC at Vthin_AltFine %d Step %d' % (self.last_reg_val[self.increase_threshold], self.last_step[self.increase_threshold]), z_max=31, filename=analyze_raw_data.output_pdf)
+            plot_fancy_occupancy(self.last_occupancy_mask[self.increase_threshold].T, filename=analyze_raw_data.output_pdf)
+            plot_three_way(self.last_good_tdac[self.increase_threshold].T, title='TDAC at Vthin_AltFine %d Step %d' % (self.last_reg_val[self.increase_threshold], self.last_step[self.increase_threshold]), x_axis_title="TDAC", filename=analyze_raw_data.output_pdf, maximum=31, bins=32)
+            plot_occupancy(self.last_good_tdac[self.increase_threshold].T, title='TDAC at Vthin_AltFine %d Step %d' % (self.last_reg_val[self.increase_threshold], self.last_step[self.increase_threshold]), z_max=31, filename=analyze_raw_data.output_pdf)
             plot_occupancy(self.last_good_enable_mask[self.increase_threshold].T, title='Enable Mask', z_max=1, filename=analyze_raw_data.output_pdf)
             plot_fancy_occupancy(self.last_good_enable_mask[self.increase_threshold].T, filename=analyze_raw_data.output_pdf)
 
