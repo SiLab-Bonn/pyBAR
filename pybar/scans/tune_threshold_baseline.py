@@ -2,6 +2,7 @@ import logging
 from time import time
 import numpy as np
 import progressbar
+from collections import deque
 
 from pybar_fei4_interpreter.data_interpreter import PyDataInterpreter
 from pybar_fei4_interpreter.data_histograming import PyDataHistograming
@@ -97,11 +98,17 @@ class ThresholdBaselineTuning(Fei4RunBase):
         disabled_pixels_limit_cnt = int(self.disabled_pixels_limit * 336 * 80)
         preselected_pixels = invert_pixel_mask(self.register.get_pixel_register_value('Enable')).sum()
         disabled_pixels = 0
+        self.last_reg_val = collections.deque([None] * self.increase_threshold, maxlen=self.increase_threshold + 1)
+        self.last_step = collections.deque([None] * self.increase_threshold, maxlen=self.increase_threshold + 1)
+        self.last_good_threshold = collections.deque([None] * self.increase_threshold, maxlen=self.increase_threshold + 1)
+        self.last_good_tdac = collections.deque([None] * self.increase_threshold, maxlen=self.increase_threshold + 1)
+        self.last_good_enable_mask = collections.deque([None] * self.increase_threshold, maxlen=self.increase_threshold + 1)
+        self.last_occupancy_hist = collections.deque([None] * self.increase_threshold, maxlen=self.increase_threshold + 1)
+        self.last_occupancy_mask = collections.deque([None] * self.increase_threshold, maxlen=self.increase_threshold + 1)
 
         for reg_val in range(scan_parameter_range[0], scan_parameter_range[1] - 1, -1):
             if self.stop_run.is_set():
                 break
-            self.register.create_restore_point(name=str(reg_val))
             logging.info('Scanning Vthin_AltFine %d', reg_val)
             commands = []
             commands.extend(self.register.get_commands("ConfMode"))
@@ -160,7 +167,6 @@ class ThresholdBaselineTuning(Fei4RunBase):
                 disabled_pixels = invert_pixel_mask(enable_mask).sum() - preselected_pixels
                 if disabled_pixels > disabled_pixels_limit_cnt:
                     logging.info('Limit of disabled pixels reached: %d (limit %d)... stopping scan' % (disabled_pixels, disabled_pixels_limit_cnt))
-                    self.register.restore(name=str(reg_val))
                     break
                 else:
                     logging.info('Increasing threshold of %d pixel(s)', decrease_pixel_mask.sum())
@@ -175,26 +181,24 @@ class ThresholdBaselineTuning(Fei4RunBase):
                     commands.extend(self.register.get_commands("RunMode"))
                     self.register_utils.send_commands(commands)
                     if occ_mask.sum() == 0 or step == steps or decrease_pixel_mask.sum() < disabled_pixels_limit_cnt:
-                        self.register.clear_restore_points(name=str(reg_val))
-                        self.last_tdac_distribution = self.register.get_pixel_register_value('TDAC')
-                        self.last_occupancy_hist = occ_hist.copy()
-                        self.last_occupancy_mask = occ_mask.copy()
-                        self.last_reg_val = reg_val
-                        self.last_step = step
+                        self.last_reg_val.appendleft(reg_val)
+                        self.last_step.appendleft(step)
+                        self.last_good_threshold.appendleft(self.register.get_global_register_value("Vthin_AltFine"))
+                        self.last_good_tdac.appendleft(self.register.get_pixel_register_value("TDAC"))
+                        self.last_good_enable_mask.appendleft(self.register.get_pixel_register_value("ENABLE"))
+                        self.last_occupancy_hist.appendleft(occ_hist.copy())
+                        self.last_occupancy_mask.appendleft(occ_mask.copy())
                         break
                     else:
                         logging.info('Found %d noisy pixels... repeat tuning step for Vthin_AltFine %d', occ_mask.sum(), reg_val)
 
             if disabled_pixels > disabled_pixels_limit_cnt or scan_parameter_range[1] == reg_val:
-                self.last_good_threshold = self.register.get_global_register_value("Vthin_AltFine")
-                self.last_good_tdac = self.register.get_pixel_register_value('TDAC')
-                self.last_good_enable_mask = self.register.get_pixel_register_value('Enable')
                 break
 
     def analyze(self):
-        self.register.set_global_register_value("Vthin_AltFine", self.last_good_threshold + self.increase_threshold)
-        self.register.set_pixel_register_value('TDAC', self.last_good_tdac)
-        self.register.set_pixel_register_value('Enable', self.last_good_enable_mask)
+        self.register.set_global_register_value("Vthin_AltFine", self.last_good_threshold[self.increase_threshold])
+        self.register.set_pixel_register_value('TDAC', self.last_good_tdac[self.increase_threshold])
+        self.register.set_pixel_register_value('Enable', self.last_good_enable_mask[self.increase_threshold])
         # write configuration to avaoid high current states
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))
@@ -209,14 +213,14 @@ class ThresholdBaselineTuning(Fei4RunBase):
             analyze_raw_data.interpret_word_table()
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms()
-            plot_occupancy(self.last_occupancy_hist.T, title='Noisy Pixels at Vthin_AltFine %d Step %d' % (self.last_reg_val, self.last_step), filename=analyze_raw_data.output_pdf)
-            plot_fancy_occupancy(self.last_occupancy_hist.T, filename=analyze_raw_data.output_pdf)
-            plot_occupancy(self.last_occupancy_mask.T, title='Occupancy Mask at Vthin_AltFine %d Step %d' % (self.last_reg_val, self.last_step), z_max=1, filename=analyze_raw_data.output_pdf)
+            plot_occupancy(self.last_occupancy_hist[self.increase_threshold].T, title='Noisy Pixels at Vthin_AltFine %d Step %d' % (self.last_reg_val[self.increase_threshold], self.last_step[self.increase_threshold]), filename=analyze_raw_data.output_pdf)
+            plot_fancy_occupancy(self.last_occupancy_hist[self.increase_threshold].T, filename=analyze_raw_data.output_pdf)
+            plot_occupancy(self.last_occupancy_mask[self.increase_threshold].T, title='Occupancy Mask at Vthin_AltFine %d Step %d' % (self.last_reg_val[self.increase_threshold], self.last_step[self.increase_threshold]), z_max=1, filename=analyze_raw_data.output_pdf)
             plot_fancy_occupancy(self.last_occupancy_mask.T, filename=analyze_raw_data.output_pdf)
-            plot_three_way(self.last_tdac_distribution.T, title='TDAC at Vthin_AltFine %d Step %d' % (self.last_reg_val, self.last_step), x_axis_title="TDAC", filename=analyze_raw_data.output_pdf, maximum=31, bins=32)
-            plot_occupancy(self.last_tdac_distribution.T, title='TDAC at Vthin_AltFine %d Step %d' % (self.last_reg_val, self.last_step), z_max=31, filename=analyze_raw_data.output_pdf)
-            plot_occupancy(self.register.get_pixel_register_value('Enable').T, title='Enable Mask', z_max=1, filename=analyze_raw_data.output_pdf)
-            plot_fancy_occupancy(self.register.get_pixel_register_value('Enable').T, filename=analyze_raw_data.output_pdf)
+            plot_three_way(self.last_tdac_distribution[self.increase_threshold].T, title='TDAC at Vthin_AltFine %d Step %d' % (self.last_reg_val[self.increase_threshold], self.last_step[self.increase_threshold]), x_axis_title="TDAC", filename=analyze_raw_data.output_pdf, maximum=31, bins=32)
+            plot_occupancy(self.last_tdac_distribution[self.increase_threshold].T, title='TDAC at Vthin_AltFine %d Step %d' % (self.last_reg_val[self.increase_threshold], self.last_step[self.increase_threshold]), z_max=31, filename=analyze_raw_data.output_pdf)
+            plot_occupancy(self.last_good_enable_mask[self.increase_threshold].T, title='Enable Mask', z_max=1, filename=analyze_raw_data.output_pdf)
+            plot_fancy_occupancy(self.last_good_enable_mask[self.increase_threshold].T, filename=analyze_raw_data.output_pdf)
 
 if __name__ == "__main__":
     RunManager('../configuration.yaml').run_run(ThresholdBaselineTuning)
