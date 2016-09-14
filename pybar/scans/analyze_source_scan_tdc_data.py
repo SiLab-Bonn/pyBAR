@@ -84,7 +84,7 @@ def analyze_raw_data(input_files, output_file_hits, interpreter_plots, overwrite
                 analyze_raw_data.plot_histograms()  # plots all activated histograms into one pdf
 
 
-def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_select_mask, event_status_condition, calibation_file=None, correct_calibration=None, max_tdc=1000, ignore_disabled_regions=True, n_bins=200, plot_data=True):
+def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_select_mask, event_status_condition, calibration_file=None, correct_calibration=None, max_tdc=1000, ignore_disabled_regions=True, n_bins=200, plot_data=True):
     for condition in hit_selection_conditions:
         logging.info('Histogram TDC hits with %s', condition)
 
@@ -211,7 +211,11 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
     # Create data
     with tb.openFile(input_file_hits, mode="r") as in_hit_file_h5:
         cluster_hit_table = in_hit_file_h5.root.ClusterHits
-        enabled_pixels = in_hit_file_h5.root.ClusterHits._v_attrs.enabled_pixels[:]
+        try:
+            enabled_pixels = in_hit_file_h5.root.ClusterHits._v_attrs.enabled_pixels[:]
+        except AttributeError:  # Old and simulate data do not have this info
+            logging.warning('No enabled pixel mask found in data! Assume all pixels are enabled.')
+            enabled_pixels = np.ones(shape=(336, 80))
 
         # Result hists, initialized per condition
         pixel_tdc_hists_per_condition = [np.zeros(shape=(80, 336, max_tdc), dtype=np.uint16) for _ in hit_selection_conditions] if hit_selection_conditions else []
@@ -248,8 +252,8 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
         progress_bar.finish()
 
         # Take TDC calibration if available and calculate charge for each TDC value and pixel
-        if calibation_file is not None:
-            with tb.openFile(calibation_file, mode="r") as in_file_calibration_h5:
+        if calibration_file is not None:
+            with tb.openFile(calibration_file, mode="r") as in_file_calibration_h5:
                 tdc_calibration = in_file_calibration_h5.root.HitOrCalibration[:, :, :, 1]
                 tdc_calibration_values = in_file_calibration_h5.root.HitOrCalibration.attrs.scan_parameter_values[:]
                 if correct_calibration is not None:
