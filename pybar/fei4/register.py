@@ -33,8 +33,9 @@ class FEI4Register(object):
 
         self.broadcast = broadcast
         self.chip_address = None
-        if chip_address is not None:
-            self.set_chip_address(chip_address)
+        if chip_address is None:
+            chip_address = 0
+        self.set_chip_address(chip_address)
 
         self.configuration_file = fe_type
         if configuration_file:
