@@ -232,13 +232,11 @@ class FEI4RegisterUtils(object):
             altf = value & 0xff
             altc = (value >> 7)
             altc &= ~0x01
-            self.register.set_global_register_value("Vthin_AltCoarse", altc)  # take every second AltCoarse value
-            self.register.set_global_register_value("Vthin_AltFine", altf)  # take low word
         else:
             altf = value & 0xff
             altc = (value >> 8)
-            self.register.set_global_register_value("Vthin_AltCoarse", altc)  # take high word
-            self.register.set_global_register_value("Vthin_AltFine", altf)  # take low word
+        self.register.set_global_register_value("Vthin_AltCoarse", altc)  # write high word
+        self.register.set_global_register_value("Vthin_AltFine", altf)  # write low word
         if send_command:
             commands = []
             commands.extend(self.register.get_commands("ConfMode"))
