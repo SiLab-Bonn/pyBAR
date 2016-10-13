@@ -6,7 +6,6 @@ from os import remove
 from operator import itemgetter
 
 import tables as tb
-
 import zmq
 
 from pybar_fei4_interpreter.data_struct import MetaTableV2 as MetaTable, generate_scan_parameter_description
