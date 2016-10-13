@@ -1,15 +1,16 @@
 import logging
-from bitarray import bitarray
 import re
 import os
-import numpy as np
 from collections import OrderedDict
 import copy
-import tables as tb
 import datetime
 from contextlib import contextmanager
 from importlib import import_module
 from operator import itemgetter
+
+from bitarray import bitarray
+import numpy as np
+import tables as tb
 
 from pybar.fei4 import register_utils
 from pybar.utils.utils import string_is_binary, flatten_iterable, iterable

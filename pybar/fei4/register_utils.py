@@ -1,7 +1,5 @@
 import logging
 import time
-import numpy as np
-import tables as tb
 import re
 import ast
 import struct
@@ -11,6 +9,8 @@ from operator import itemgetter
 import itertools
 
 from bitarray import bitarray
+import numpy as np
+import tables as tb
 
 from basil.utils.BitLogic import BitLogic
 
