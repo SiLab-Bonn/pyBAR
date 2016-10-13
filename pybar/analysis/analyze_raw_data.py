@@ -1017,7 +1017,7 @@ class AnalyzeRawData(object):
                 self.out_file_h5 = tb.openFile(self._analyzed_data_file, mode="r+")
                 in_file_h5 = self.out_file_h5  # input file is output file
         else:
-            print self.out_file_h5
+            pass
 
         if analyzed_data_file is not None:
             self._analyzed_data_file = analyzed_data_file
