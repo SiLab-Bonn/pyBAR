@@ -136,8 +136,8 @@ class GdacTuning(Fei4RunBase):
             if abs(median_occupancy - self.n_injections_gdac / 2) < abs(occupancy_best - self.n_injections_gdac / 2):
                 occupancy_best = median_occupancy
                 gdac_best = self.register_utils.get_gdac()
-                self.occ_array_sel_pixels_best = occ_array_sel_pixels
-                self.occ_array_desel_pixels_best = occ_array_desel_pixels
+                self.occ_array_sel_pixels_best = occ_array_sel_pixels.copy()
+                self.occ_array_desel_pixels_best = occ_array_desel_pixels.copy()
 
             if self.plot_intermediate_steps:
                 plot_three_way(self.occ_array_sel_pixel.transpose(), title="Occupancy (GDAC " + str(scan_parameter_value) + " with tuning bit " + str(gdac_bit) + ")", x_axis_title='Occupancy', filename=self.plots_filename, maximum=self.n_injections_gdac)
