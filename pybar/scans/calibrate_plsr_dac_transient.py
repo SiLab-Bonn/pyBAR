@@ -93,7 +93,7 @@ class PlsrDacTransientCalibration(AnalogScan):
     def scan(self):
         # Output data structures
         data_array = np.zeros(shape=(len(self.scan_parameter_values), self.max_data_index - 1), dtype=np.float16)
-        data_out = self.raw_data_file.h5_file.createCArray(self.raw_data_file.h5_file.root, name='PlsrDACwaveforms', title='Waveforms from transient PlsrDAC calibration scan', atom=tb.Atom.from_dtype(data_array.dtype), shape=data_array.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+        data_out = self.raw_data_file.h5_file.create_carray(self.raw_data_file.h5_file.root, name='PlsrDACwaveforms', title='Waveforms from transient PlsrDAC calibration scan', atom=tb.Atom.from_dtype(data_array.dtype), shape=data_array.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
         data_out.attrs.scan_parameter_values = self.scan_parameter_values
         data_out.attrs.dimensions = ['plsrdac', 'time', 'voltage']
         trigger_levels = []

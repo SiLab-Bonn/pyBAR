@@ -981,7 +981,7 @@ def save_configuration_to_hdf5(register, configuration_file, name=''):
                 pass
             data = pixel_reg['value'].T
             atom = tb.Atom.from_dtype(data.dtype)
-            ds = h5_file.createCArray(configuration_group, name=pixel_reg['name'], atom=atom, shape=data.shape, title=pixel_reg['name'])
+            ds = h5_file.create_carray(configuration_group, name=pixel_reg['name'], atom=atom, shape=data.shape, title=pixel_reg['name'])
             ds[:] = data
 
     if isinstance(configuration_file, tb.file.File):

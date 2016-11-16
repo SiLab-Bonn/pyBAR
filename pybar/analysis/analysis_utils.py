@@ -237,7 +237,7 @@ def get_rate_normalization(hit_file, parameter, reference='event', cluster_file=
     '''
 
     logging.info('Calculate the rate normalization')
-    with tb.openFile(hit_file, mode="r+") as in_hit_file_h5:  # open the hit file
+    with tb.open_file(hit_file, mode="r+") as in_hit_file_h5:  # open the hit file
         meta_data = in_hit_file_h5.root.meta_data[:]
         scan_parameter = get_scan_parameter(meta_data)[parameter]
         event_numbers = get_meta_data_at_scan_parameter(meta_data, parameter)['event_number']  # get the event numbers in meta_data where the scan parameter changes
@@ -309,7 +309,7 @@ def get_total_n_data_words(files_dict, precise=False):
             progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', ETA()], maxval=len(files_dict), term_width=80)
             progress_bar.start()
         for index, file_name in enumerate(files_dict.iterkeys()):
-            with tb.openFile(file_name, mode="r") as in_file_h5:  # open the actual file
+            with tb.open_file(file_name, mode="r") as in_file_h5:  # open the actual file
                 n_words += in_file_h5.root.raw_data.shape[0]
             if len(files_dict) > 10:
                 progress_bar.update(index)
@@ -317,9 +317,9 @@ def get_total_n_data_words(files_dict, precise=False):
             progress_bar.finish()
         return n_words
     else:  # open just first an last file and take the mean to estimate the total numbe rof words
-        with tb.openFile(files_dict.keys()[0], mode="r") as in_file_h5:  # open the actual file
+        with tb.open_file(files_dict.keys()[0], mode="r") as in_file_h5:  # open the actual file
             n_words += in_file_h5.root.raw_data.shape[0]
-        with tb.openFile(files_dict.keys()[-1], mode="r") as in_file_h5:  # open the actual file
+        with tb.open_file(files_dict.keys()[-1], mode="r") as in_file_h5:  # open the actual file
             n_words += in_file_h5.root.raw_data.shape[0]
         return n_words * len(files_dict) / 2
 
@@ -337,7 +337,7 @@ def create_parameter_table(files_dict):
     parameter_table = None
     # create a parameter table with an entry for every read out
     for file_name, parameters in files_dict.iteritems():
-        with tb.openFile(file_name, mode="r") as in_file_h5:  # open the actual file
+        with tb.open_file(file_name, mode="r") as in_file_h5:  # open the actual file
             n_parameter_settings = max([len(i) for i in files_dict[file_name].values()])  # determine the number of different parameter settings from the list length of parameter values of the first parameter
             if n_parameter_settings == 0:  # no parameter values, first raw data file has only config info and no other data (meta, raw data, parameter data)
                 continue
@@ -506,7 +506,7 @@ def get_parameter_from_files(files, parameters=None, unique=False, sort=True):
         parameters = (parameters, )
     parameter_values_from_file_names_dict = get_parameter_value_from_file_names(files, parameters, unique=unique, sort=sort)  # get the parameter from the file name
     for file_name in files:
-        with tb.openFile(file_name, mode="r") as in_file_h5:  # open the actual file
+        with tb.open_file(file_name, mode="r") as in_file_h5:  # open the actual file
             scan_parameter_values = collections.OrderedDict()
             try:
                 scan_parameters = in_file_h5.root.scan_parameters[:]  # get the scan parameters from the scan parameter table
@@ -588,7 +588,7 @@ def combine_meta_data(files_dict, meta_data_v2=True):
     # determine total length needed for the new combined array, thats the fastest way to combine arrays
     total_length = 0  # the total length of the new table
     for file_name in files_dict.iterkeys():
-        with tb.openFile(file_name, mode="r") as in_file_h5:  # open the actual file
+        with tb.open_file(file_name, mode="r") as in_file_h5:  # open the actual file
             total_length += in_file_h5.root.meta_data.shape[0]
 
     if meta_data_v2:
@@ -615,7 +615,7 @@ def combine_meta_data(files_dict, meta_data_v2=True):
 
     # fill actual result array
     for file_name in files_dict.iterkeys():
-        with tb.openFile(file_name, mode="r") as in_file_h5:  # open the actual file
+        with tb.open_file(file_name, mode="r") as in_file_h5:  # open the actual file
             array_length = in_file_h5.root.meta_data.shape[0]
             meta_data_combined[index:index + array_length] = in_file_h5.root.meta_data[:]
             index += array_length
@@ -837,7 +837,7 @@ def get_hits_of_scan_parameter(input_file_hits, scan_parameters=None, try_speedu
         Actual scan parameter tuple, hit array with the hits of a chunk of the given scan parameter tuple
     '''
 
-    with tb.openFile(input_file_hits, mode="r+") as in_file_h5:
+    with tb.open_file(input_file_hits, mode="r+") as in_file_h5:
         hit_table = in_file_h5.root.Hits
         meta_data = in_file_h5.root.meta_data[:]
         meta_data_table_at_scan_parameter = get_unique_scan_parameter_combinations(meta_data, scan_parameters=scan_parameters)
@@ -1500,7 +1500,7 @@ def get_data_statistics(interpreted_files):
     '''
     print '| *File Name* | *File Size* | *Times Stamp* | *Events* | *Bad Events* | *Measurement time* | *# SR* | *Hits* |'  # Mean Tot | Mean rel. BCID'
     for interpreted_file in interpreted_files:
-        with tb.openFile(interpreted_file, mode="r") as in_file_h5:  # open the actual hit file
+        with tb.open_file(interpreted_file, mode="r") as in_file_h5:  # open the actual hit file
             n_hits = np.sum(in_file_h5.root.HistOcc[:])
             measurement_time = int(in_file_h5.root.meta_data[-1]['timestamp_stop'] - in_file_h5.root.meta_data[0]['timestamp_start'])
 # mean_tot = np.average(in_file_h5.root.HistTot[:], weights=range(0,16) * np.sum(range(0,16)))# / in_file_h5.root.HistTot[:].shape[0]

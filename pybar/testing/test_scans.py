@@ -65,7 +65,7 @@ def check_1d_histogram(filename, hist_name, select_mask, result, operation):
     ok = True
     error_string = hist_name + ' '
     with tb.open_file(filename, 'r') as in_file_h5:
-        hist = in_file_h5.getNode(in_file_h5.root, hist_name)[:]
+        hist = in_file_h5.get_node(in_file_h5.root, hist_name)[:]
         for index in range(select_mask[select_mask].shape[0]):
             operation_ok = True
             if operation[select_mask][index] == '==' and not (hist[select_mask][index] == result[select_mask][index]):
@@ -89,7 +89,7 @@ def check_1d_histogram(filename, hist_name, select_mask, result, operation):
 def check_hit_map(filename, hist_name, select_mask, result, operation):
     failing_pixels = 0
     with tb.open_file(filename, 'r') as in_file_h5:
-        hist = in_file_h5.getNode(in_file_h5.root, hist_name)[:, :, 0]
+        hist = in_file_h5.get_node(in_file_h5.root, hist_name)[:, :, 0]
         if operation == '==' and not np.all(hist[select_mask] == result[select_mask]):
             failing_pixels = np.sum(~(hist[select_mask] == result[select_mask]))
         elif operation == '<=' and not np.all(hist[select_mask] <= result[select_mask]):

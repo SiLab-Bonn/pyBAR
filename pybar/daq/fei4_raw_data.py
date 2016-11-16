@@ -142,19 +142,19 @@ class RawDataFile(object):
         filter_tables = tb.Filters(complib='zlib', complevel=5, fletcher32=False)
         self.h5_file = tb.open_file(filename, mode=mode, title=title if title else filename)
         try:
-            self.raw_data_earray = self.h5_file.createEArray(self.h5_file.root, name='raw_data', atom=tb.UIntAtom(), shape=(0,), title='raw_data', filters=filter_raw_data)  # expectedrows = ???
+            self.raw_data_earray = self.h5_file.create_earray(self.h5_file.root, name='raw_data', atom=tb.UIntAtom(), shape=(0,), title='raw_data', filters=filter_raw_data)  # expectedrows = ???
         except tb.exceptions.NodeError:
-            self.raw_data_earray = self.h5_file.getNode(self.h5_file.root, name='raw_data')
+            self.raw_data_earray = self.h5_file.get_node(self.h5_file.root, name='raw_data')
         try:
-            self.meta_data_table = self.h5_file.createTable(self.h5_file.root, name='meta_data', description=MetaTable, title='meta_data', filters=filter_tables)
+            self.meta_data_table = self.h5_file.create_table(self.h5_file.root, name='meta_data', description=MetaTable, title='meta_data', filters=filter_tables)
         except tb.exceptions.NodeError:
-            self.meta_data_table = self.h5_file.getNode(self.h5_file.root, name='meta_data')
+            self.meta_data_table = self.h5_file.get_node(self.h5_file.root, name='meta_data')
         if self.scan_parameters:
             try:
                 scan_param_descr = generate_scan_parameter_description(self.scan_parameters)
-                self.scan_param_table = self.h5_file.createTable(self.h5_file.root, name='scan_parameters', description=scan_param_descr, title='scan_parameters', filters=filter_tables)
+                self.scan_param_table = self.h5_file.create_table(self.h5_file.root, name='scan_parameters', description=scan_param_descr, title='scan_parameters', filters=filter_tables)
             except tb.exceptions.NodeError:
-                self.scan_param_table = self.h5_file.getNode(self.h5_file.root, name='scan_parameters')
+                self.scan_param_table = self.h5_file.get_node(self.h5_file.root, name='scan_parameters')
 
     def close(self, close_socket=True):
         with self.lock:
