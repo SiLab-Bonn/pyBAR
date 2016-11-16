@@ -54,7 +54,6 @@ class GdacTuningStandard(Fei4RunBase):
             commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_High'))
         commands.extend(self.register.get_commands("RunMode"))
         self.register_utils.send_commands(commands)
-        self.write_target_threshold()
 
     def scan(self):
         if not self.plots_filename:
@@ -64,6 +63,8 @@ class GdacTuningStandard(Fei4RunBase):
             self.close_plots = False
 
         cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0]
+
+        self.write_target_threshold()
 
         scan_parameter_range = [(2 ** self.register.global_registers['Vthin_AltFine']['bitlength']), 0]  # high to low
         if self.scan_parameters.GDAC[0]:
