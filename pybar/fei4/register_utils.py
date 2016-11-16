@@ -9,7 +9,6 @@ import itertools
 
 from bitarray import bitarray
 import numpy as np
-import tables as tb
 
 from basil.utils.BitLogic import BitLogic
 
