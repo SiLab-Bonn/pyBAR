@@ -5,8 +5,10 @@ from collections import deque
 from Queue import Queue, Empty
 import sys
 
+import numpy as np
+
 from pybar.utils.utils import get_float_time
-from pybar.daq.readout_utils import is_data_record, is_data_header, logical_or
+from pybar.daq.readout_utils import is_fe_word, is_data_record, is_data_header, logical_or, logical_and
 
 
 data_iterable = ("data", "timestamp_start", "timestamp_stop", "error")
@@ -101,7 +103,7 @@ class FifoReadout(object):
             fifo_size = self.dut['SRAM']['FIFO_SIZE']
             data = self.read_data()
             dh_sr_select = logical_and(is_fe_word, logical_or(is_data_record, is_data_header))
-            if np.count_nonzero(dh_sr_select) != 0:
+            if np.count_nonzero(dh_sr_select(data)) != 0:
                 logging.warning('SRAM FIFO containing events when starting FIFO readout: FIFO_SIZE = %i', fifo_size)
         self._words_per_read.clear()
         if clear_buffer:
