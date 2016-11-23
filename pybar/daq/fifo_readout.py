@@ -100,9 +100,8 @@ class FifoReadout(object):
         else:
             fifo_size = self.dut['SRAM']['FIFO_SIZE']
             data = self.read_data()
-            event_selector = logical_or(is_data_record, is_data_header)
-            events = data[event_selector(data)]
-            if events.shape[0] != 0:
+            dh_sr_select = logical_and(is_fe_word, logical_or(is_data_record, is_data_header))
+            if np.count_nonzero(dh_sr_select) != 0:
                 logging.warning('SRAM FIFO containing events when starting FIFO readout: FIFO_SIZE = %i', fifo_size)
         self._words_per_read.clear()
         if clear_buffer:
