@@ -55,7 +55,6 @@ class GdacTuning(Fei4RunBase):
             commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_High'))
         commands.extend(self.register.get_commands("RunMode"))
         self.register_utils.send_commands(commands)
-        self.write_target_threshold()
 
     def scan(self):
         if not self.plots_filename:
@@ -64,6 +63,8 @@ class GdacTuning(Fei4RunBase):
         else:
             self.close_plots = False
         cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0]
+
+        self.write_target_threshold()
 
         for gdac_bit in self.gdac_tune_bits:  # reset all GDAC bits
             self.set_gdac_bit(gdac_bit, bit_value=0, send_command=False)
@@ -136,8 +137,8 @@ class GdacTuning(Fei4RunBase):
             if abs(median_occupancy - self.n_injections_gdac / 2) < abs(occupancy_best - self.n_injections_gdac / 2):
                 occupancy_best = median_occupancy
                 gdac_best = self.register_utils.get_gdac()
-                self.occ_array_sel_pixels_best = occ_array_sel_pixels
-                self.occ_array_desel_pixels_best = occ_array_desel_pixels
+                self.occ_array_sel_pixels_best = occ_array_sel_pixels.copy()
+                self.occ_array_desel_pixels_best = occ_array_desel_pixels.copy()
 
             if self.plot_intermediate_steps:
                 plot_three_way(self.occ_array_sel_pixel.transpose(), title="Occupancy (GDAC " + str(scan_parameter_value) + " with tuning bit " + str(gdac_bit) + ")", x_axis_title='Occupancy', filename=self.plots_filename, maximum=self.n_injections_gdac)

@@ -4,8 +4,8 @@ import time
 import numpy as np
 from optparse import OptionParser
 
-from PyQt4 import Qt
-from PyQt4.QtCore import pyqtSlot, pyqtSignal
+from PyQt5 import Qt
+from PyQt5.QtCore import pyqtSlot, pyqtSignal
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtGui
 from pyqtgraph.dockarea import DockArea, Dock
@@ -57,7 +57,7 @@ class DataWorker(QtCore.QObject):
         self.socket_pull.setsockopt(zmq.SUBSCRIBE, '')  # do not filter any data
         self.socket_pull.connect(self.socket_addr)
 
-    @pyqtSlot(float)
+    @pyqtSlot(int)
     def on_set_integrate_readouts(self, value):
         self.integrate_readouts = value
 

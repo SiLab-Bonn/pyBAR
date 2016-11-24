@@ -21,11 +21,11 @@ before_install:
   - conda update conda --yes
   - conda config --add channels silab
   - conda info -a
-  - conda create --yes -n test-environment bitarray cython ipython matplotlib mock nose numba numpy pyserial pytables pyyaml pyzmq scipy sphinx
+  - conda create --yes -n test-environment bitarray cython ipython matplotlib mock nose numba numpy pyserial pytables pyyaml pyzmq scipy sphinx pyqt
   - source activate test-environment
-  - pip install progressbar-latest pyvisa pyvisa-py mock sphinx
+  - pip install progressbar-latest pyvisa pyvisa-py mock sphinx pyqtgraph
   # - pip install git+https://github.com/pyqtgraph/pyqtgraph.git@develop
-  - pip install git+https://github.com/SiLab-Bonn/pyqtgraph.git@develop # keeping this fork until release 0.9.11
+  # - pip install git+https://github.com/SiLab-Bonn/pyqtgraph.git@develop # keeping this fork until release 0.9.11
   - pip install git+https://github.com/uvemas/ViTables@v2.1
   - wget -O cocotb-master.zip https://github.com/potentialventures/cocotb/archive/master.zip 
   - unzip cocotb-master.zip

@@ -200,7 +200,6 @@ def flatten_iterable(iterable):
     [[[1, 2, 3], [4, 5]], 6] -> [1, 2, 3, 4, 5, 6]
 
     """
-
     for item in iterable:
         if isinstance(item, collections.Iterable) and not isinstance(item, basestring):
             for sub in flatten_iterable(item):

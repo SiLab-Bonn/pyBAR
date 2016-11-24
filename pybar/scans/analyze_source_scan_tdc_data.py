@@ -209,7 +209,7 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
         return hits
 
     # Create data
-    with tb.openFile(input_file_hits, mode="r") as in_hit_file_h5:
+    with tb.open_file(input_file_hits, mode="r") as in_hit_file_h5:
         cluster_hit_table = in_hit_file_h5.root.ClusterHits
         try:
             enabled_pixels = in_hit_file_h5.root.ClusterHits._v_attrs.enabled_pixels[:]
@@ -253,7 +253,7 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
 
         # Take TDC calibration if available and calculate charge for each TDC value and pixel
         if calibration_file is not None:
-            with tb.openFile(calibration_file, mode="r") as in_file_calibration_h5:
+            with tb.open_file(calibration_file, mode="r") as in_file_calibration_h5:
                 tdc_calibration = in_file_calibration_h5.root.HitOrCalibration[:, :, :, 1]
                 tdc_calibration_values = in_file_calibration_h5.root.HitOrCalibration.attrs.scan_parameter_values[:]
                 if correct_calibration is not None:
@@ -272,12 +272,12 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
                 tdc_hists_per_condition_result = tdc_hists_per_condition[index]
                 tdc_corr_hist_result = np.swapaxes(tdc_corr_hists_per_condition[index], 0, 1)
                 # Create result hists
-                out_1 = out_file_h5.createCArray(out_file_h5.root, name='HistPixelTdcCondition_%d' % index, title='Hist Pixel Tdc with %s' % condition, atom=tb.Atom.from_dtype(pixel_tdc_hist_result.dtype), shape=pixel_tdc_hist_result.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
-                out_2 = out_file_h5.createCArray(out_file_h5.root, name='HistPixelTdcTimestampCondition_%d' % index, title='Hist Pixel Tdc Timestamp with %s' % condition, atom=tb.Atom.from_dtype(pixel_tdc_timestamp_hist_result.dtype), shape=pixel_tdc_timestamp_hist_result.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
-                out_3 = out_file_h5.createCArray(out_file_h5.root, name='HistMeanPixelTdcCondition_%d' % index, title='Hist Mean Pixel Tdc with %s' % condition, atom=tb.Atom.from_dtype(mean_pixel_tdc_hist_result.dtype), shape=mean_pixel_tdc_hist_result.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
-                out_4 = out_file_h5.createCArray(out_file_h5.root, name='HistMeanPixelTdcTimestampCondition_%d' % index, title='Hist Mean Pixel Tdc Timestamp with %s' % condition, atom=tb.Atom.from_dtype(mean_pixel_tdc_timestamp_hist_result.dtype), shape=mean_pixel_tdc_timestamp_hist_result.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
-                out_5 = out_file_h5.createCArray(out_file_h5.root, name='HistTdcCondition_%d' % index, title='Hist Tdc with %s' % condition, atom=tb.Atom.from_dtype(tdc_hists_per_condition_result.dtype), shape=tdc_hists_per_condition_result.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
-                out_6 = out_file_h5.createCArray(out_file_h5.root, name='HistTdcCorrCondition_%d' % index, title='Hist Correlation Tdc/Tot with %s' % condition, atom=tb.Atom.from_dtype(tdc_corr_hist_result.dtype), shape=tdc_corr_hist_result.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+                out_1 = out_file_h5.create_carray(out_file_h5.root, name='HistPixelTdcCondition_%d' % index, title='Hist Pixel Tdc with %s' % condition, atom=tb.Atom.from_dtype(pixel_tdc_hist_result.dtype), shape=pixel_tdc_hist_result.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+                out_2 = out_file_h5.create_carray(out_file_h5.root, name='HistPixelTdcTimestampCondition_%d' % index, title='Hist Pixel Tdc Timestamp with %s' % condition, atom=tb.Atom.from_dtype(pixel_tdc_timestamp_hist_result.dtype), shape=pixel_tdc_timestamp_hist_result.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+                out_3 = out_file_h5.create_carray(out_file_h5.root, name='HistMeanPixelTdcCondition_%d' % index, title='Hist Mean Pixel Tdc with %s' % condition, atom=tb.Atom.from_dtype(mean_pixel_tdc_hist_result.dtype), shape=mean_pixel_tdc_hist_result.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+                out_4 = out_file_h5.create_carray(out_file_h5.root, name='HistMeanPixelTdcTimestampCondition_%d' % index, title='Hist Mean Pixel Tdc Timestamp with %s' % condition, atom=tb.Atom.from_dtype(mean_pixel_tdc_timestamp_hist_result.dtype), shape=mean_pixel_tdc_timestamp_hist_result.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+                out_5 = out_file_h5.create_carray(out_file_h5.root, name='HistTdcCondition_%d' % index, title='Hist Tdc with %s' % condition, atom=tb.Atom.from_dtype(tdc_hists_per_condition_result.dtype), shape=tdc_hists_per_condition_result.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+                out_6 = out_file_h5.create_carray(out_file_h5.root, name='HistTdcCorrCondition_%d' % index, title='Hist Correlation Tdc/Tot with %s' % condition, atom=tb.Atom.from_dtype(tdc_corr_hist_result.dtype), shape=tdc_corr_hist_result.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
                 # Add result hists information
                 out_1.attrs.dimensions, out_1.attrs.condition, out_1.attrs.tdc_values = 'column, row, TDC value', condition, range(max_tdc)
                 out_2.attrs.dimensions, out_2.attrs.condition, out_2.attrs.tdc_values = 'column, row, TDC time stamp value', condition, range(256)

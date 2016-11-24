@@ -414,6 +414,7 @@ class RunManager(object):
             self._conf['working_dir'] = os.path.dirname(self._conf_path)
         else:
             raise ValueError('Cannot deduce working directory from configuration')
+        logging.info('Use working directory %s', self._conf['working_dir'])
 
     @staticmethod
     def open_conf(conf):
@@ -422,13 +423,14 @@ class RunManager(object):
             pass
         elif isinstance(conf, basestring):  # parse the first YAML document in a stream
             if os.path.isfile(conf):
+                logging.info('Load configuration file %s', os.path.abspath(conf))
                 with open(conf, 'r') as f:
                     conf_dict.update(safe_load(f))
             else:  # YAML string
                 try:
                     conf_dict.update(safe_load(conf))
                 except ValueError:  # invalid path/filename
-                    raise IOError("File not found: %s" % conf)
+                    raise IOError("File not found: %s" % os.path.abspath(conf))
         elif isinstance(conf, file):  # parse the first YAML document in a stream
             conf_dict.update(safe_load(conf))
         else:  # conf is already a dict

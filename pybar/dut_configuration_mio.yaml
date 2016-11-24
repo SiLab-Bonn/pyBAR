@@ -4,6 +4,9 @@ USB:
     board_id       : # Selecting USBpix board by ID
     avoid_download : True  # Avoiding download of FPGA firmware if already initialized
 
+ADAPTER_CARD:
+    no_calibration : False
+
 # Trigger
 TLU:
     TRIGGER_MODE                         : 0  # Selecting trigger mode: Use trigger inputs/trigger select (0), TLU no handshake (1), TLU simple handshake (2), TLU data handshake (3)

@@ -128,10 +128,10 @@ class PlsrDacTransientCalibrationAdvanced(AnalogScan):
         scan_parameter_values = self.scan_parameters.PlsrDAC
         shape=(len(scan_parameter_values), self.max_data_index)
         atom = tb.FloatAtom()
-        data_out = self.raw_data_file.h5_file.createCArray(self.raw_data_file.h5_file.root, name='PlsrDACwaveforms', title='Waveforms from transient PlsrDAC calibration scan', atom=atom, shape=shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+        data_out = self.raw_data_file.h5_file.create_carray(self.raw_data_file.h5_file.root, name='PlsrDACwaveforms', title='Waveforms from transient PlsrDAC calibration scan', atom=atom, shape=shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
         shape=(self.max_data_index,)
         atom = tb.FloatAtom()
-        time_out = self.raw_data_file.h5_file.createCArray(self.raw_data_file.h5_file.root, name='Times', title='Time values', atom=atom, shape=shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+        time_out = self.raw_data_file.h5_file.create_carray(self.raw_data_file.h5_file.root, name='Times', title='Time values', atom=atom, shape=shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
         data_out.attrs.scan_parameter_values = scan_parameter_values
         data_out.attrs.enable_double_columns = self.enable_double_columns
         data_out.attrs.fit_ranges = self.fit_ranges

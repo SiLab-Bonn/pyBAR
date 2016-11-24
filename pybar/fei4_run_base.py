@@ -286,6 +286,7 @@ class Fei4RunBase(RunBase):
                     raise ValueError('dut parameter not a valid path: %s' % self._conf['dut'])
             else:
                 dut = self._conf['dut']
+            logging.info('Load devices (DUTs) from %s', dut)
             dut = Dut(dut)
 
             # only initialize when DUT was not initialized before

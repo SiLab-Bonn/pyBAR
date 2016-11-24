@@ -19,11 +19,11 @@ install:
   - conda update conda --yes
   # - conda update --all --yes
   - conda info -a
-  - conda install --yes bitarray cython ipython matplotlib mock nose numba numpy pyserial pytables pyyaml pyzmq scipy sphinx
+  - conda install --yes bitarray cython ipython matplotlib mock nose numba numpy pyserial pytables pyyaml pyzmq scipy sphinx pyqt
   - conda install --yes pywin32
-  - pip install progressbar-latest pyvisa pyvisa-py
+  - pip install progressbar-latest pyvisa pyvisa-py pyqtgraph
   # - pip install git+https://github.com/pyqtgraph/pyqtgraph.git@develop
-  - pip install git+https://github.com/SiLab-Bonn/pyqtgraph.git@develop # keeping this fork until release 0.9.11
+  # - pip install git+https://github.com/SiLab-Bonn/pyqtgraph.git@develop # keeping this fork until release 0.9.11
   - pip install git+https://github.com/uvemas/ViTables@v2.1
   # test packages required for USB interface
   - pip install pyusb
