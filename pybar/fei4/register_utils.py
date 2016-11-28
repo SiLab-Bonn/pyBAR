@@ -119,7 +119,7 @@ class FEI4RegisterUtils(object):
             if delay is None:
                 timeout = 1
             else:
-                timeout = 10 * delay
+                timeout = 100 * delay
             try:
                 msg = "Time out while waiting for sending command becoming ready in %s, module %s. Power cycle or reset readout board!" % (self.dut['CMD'].name, self.dut['CMD'].__class__.__module__)
                 if not self.dut['CMD'].wait_for_ready(timeout=timeout, times=None, delay=delay, abort=self.abort) and not self.abort.is_set():
