@@ -110,7 +110,7 @@ class FEI4RegisterUtils(object):
         if repeat is None:
             repeat = self.dut['CMD']['CMD_REPEAT']
         if length and repeat > 1:
-            delay = length * 25e-9 * repeat - 0.002  # subtract 2ms delay
+            delay = length * 25e-9 * repeat
             if delay < 0:
                 delay = 0.0
         else:
@@ -772,7 +772,8 @@ def make_box_pixel_mask_from_col_row(column, row, default=0, value=1):
     shape = (80, 336)
     mask = np.full(shape, default, dtype=np.uint8)
     if column and row:
-        mask[col_array.min():col_array.max() + 1, row_array.min():row_array.max() + 1] = value  # advanced indexing
+        #mask[col_array.min():col_array.max() + 1, row_array.min():row_array.max() + 1] = value  # advanced indexing
+        mask[min(col_array):max(col_array) + 1:(col_array[1]-col_array[0]), min(row_array):max(row_array) + 1:(row_array[1]-row_array[0])] = value  # advanced indexing
     return mask
 
 
