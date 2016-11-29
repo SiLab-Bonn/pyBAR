@@ -123,13 +123,17 @@ class FEI4RegisterUtils(object):
             try:
                 msg = "Time out while waiting for sending command becoming ready in %s, module %s. Power cycle or reset readout board!" % (self.dut['CMD'].name, self.dut['CMD'].__class__.__module__)
                 if not self.dut['CMD'].wait_for_ready(timeout=timeout, times=None, delay=delay, abort=self.abort) and not self.abort.is_set():
+                    print 'timeout 1', timeout
+                    print 'delay 1', delay
                     raise CmdTimeoutError(msg)
             except RuntimeError:
+                print 'timeout 2', timeout
+                print 'delay 2', delay
                 raise CmdTimeoutError(msg)
         else:
             if delay:
                 try:
-                    time.sleep(delay)  # subtract 2ms delay
+                    time.sleep(delay)
                 except IOError:  # negative value
                     pass
             while not self.is_ready:
@@ -772,8 +776,7 @@ def make_box_pixel_mask_from_col_row(column, row, default=0, value=1):
     shape = (80, 336)
     mask = np.full(shape, default, dtype=np.uint8)
     if column and row:
-        #mask[col_array.min():col_array.max() + 1, row_array.min():row_array.max() + 1] = value  # advanced indexing
-        mask[min(col_array):max(col_array) + 1:(col_array[1]-col_array[0]), min(row_array):max(row_array) + 1:(row_array[1]-row_array[0])] = value  # advanced indexing
+        mask[col_array.min():col_array.max() + 1, row_array.min():row_array.max() + 1] = value  # advanced indexing
     return mask
 
 
