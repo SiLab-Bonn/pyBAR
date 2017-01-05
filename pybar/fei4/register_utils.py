@@ -111,31 +111,23 @@ class FEI4RegisterUtils(object):
             repeat = self.dut['CMD']['CMD_REPEAT']
         if length and repeat > 1:
             delay = length * 25e-9 * repeat
-            if delay < 0:
-                delay = 0.0
+            if delay <= 0.0:
+                delay = None  # no additional delay
         else:
             delay = None
         if use_timeout:
-            if delay is None:
-                timeout = 1
-            else:
-                timeout = 100 * delay
+            timeout = 1.0  # minimum timeout threshold
+            if delay is not None and delay > 0.0:
+                timeout += delay  # adding command delay to timeout
             try:
                 msg = "Time out while waiting for sending command becoming ready in %s, module %s. Power cycle or reset readout board!" % (self.dut['CMD'].name, self.dut['CMD'].__class__.__module__)
                 if not self.dut['CMD'].wait_for_ready(timeout=timeout, times=None, delay=delay, abort=self.abort) and not self.abort.is_set():
-                    print 'timeout 1', timeout
-                    print 'delay 1', delay
                     raise CmdTimeoutError(msg)
             except RuntimeError:
-                print 'timeout 2', timeout
-                print 'delay 2', delay
                 raise CmdTimeoutError(msg)
         else:
-            if delay:
-                try:
-                    time.sleep(delay)
-                except IOError:  # negative value
-                    pass
+            if delay is not None and delay > 0.0:
+                time.sleep(delay)
             while not self.is_ready:
                 pass
 
