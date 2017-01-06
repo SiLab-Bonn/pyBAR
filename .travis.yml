@@ -24,12 +24,9 @@ before_install:
   - conda update conda --yes
   - conda config --add channels silab
   - conda info -a
-  - conda create --yes -n test-environment bitarray cython ipython matplotlib mock nose numba numpy pyserial pytables pyyaml pyzmq scipy sphinx pyqt
+  - conda create --yes -n test-environment bitarray cython ipython matplotlib mock nose numba numpy pyserial pytables pyyaml pyzmq scipy sphinx
   - source activate test-environment
-  - pip install progressbar-latest pyvisa pyvisa-py mock sphinx pyqtgraph
-  # - pip install git+https://github.com/pyqtgraph/pyqtgraph.git@develop
-  # - pip install git+https://github.com/SiLab-Bonn/pyqtgraph.git@develop # keeping this fork until release 0.9.11
-  - pip install git+https://github.com/uvemas/ViTables@v2.1
+  - pip install progressbar-latest pyvisa pyvisa-py git+https://github.com/pyqtgraph/pyqtgraph.git@pyqtgraph-0.10.0 git+https://github.com/uvemas/ViTables@v2.1
   - git clone https://github.com/potentialventures/cocotb
   - export COCOTB=$(pwd)/cocotb
   - rm -f /home/travis/miniconda2/envs/test-environment/lib/libreadline.so.6

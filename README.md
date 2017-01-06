@@ -34,7 +34,7 @@ The features of the host software in Python and C++:
 
 The following packages are required for pyBAR's core functionality:
   ```
-  basil_daq bitarray cython matplotlib numpy pandas pixel_clusterizer progressbar-latest pyyaml scipy tables
+  basil_daq bitarray cython matplotlib numba numpy pixel_clusterizer progressbar-latest pytables pyyaml scipy
   ```
 
 For full functionality, the following additional packages are required:
@@ -46,7 +46,7 @@ Run the **following commands** to install the packages:
   ```
   conda install bitarray cython ipython matplotlib mock nose numba numpy pyserial pytables pyyaml pyzmq scipy sphinx
   
-  pip install progressbar-latest pyvisa pyvisa-py git+https://github.com/SiLab-Bonn/pyqtgraph.git@develop git+https://github.com/uvemas/ViTables@v2.1
+  pip install progressbar-latest pyvisa pyvisa-py git+https://github.com/pyqtgraph/pyqtgraph.git@pyqtgraph-0.10.0 git+https://github.com/uvemas/ViTables@v2.1
   ```
 
 On Windows, the `pywin32` package is required:
