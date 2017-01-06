@@ -284,9 +284,9 @@ class Fei4RunBase(RunBase):
                     dut = os.path.join(module_path, self._conf['dut'])
                 else:
                     raise ValueError('dut parameter not a valid path: %s' % self._conf['dut'])
+                logging.info('Loading DUT configuration from file %s', os.path.abspath(dut))
             else:
                 dut = self._conf['dut']
-            logging.info('Load devices (DUTs) from %s', dut)
             dut = Dut(dut)
 
             # only initialize when DUT was not initialized before
@@ -308,7 +308,8 @@ class Fei4RunBase(RunBase):
                         dut_configuration = os.path.join(module_path, self._conf['dut_configuration'])
                     else:
                         raise ValueError('dut_configuration parameter not a valid path: %s' % self._conf['dut_configuration'])
-                    # make dict
+                    logging.info('Loading DUT initialization parameters from file %s', os.path.abspath(dut_configuration))
+                    # convert to dict
                     dut_configuration = RunManager.open_conf(dut_configuration)
                     # change bit file path
                     if 'USB' in dut_configuration and 'bit_file' in dut_configuration['USB'] and dut_configuration['USB']['bit_file']:
@@ -332,7 +333,7 @@ class Fei4RunBase(RunBase):
                     dut_configuration = self._conf['dut_configuration']
             else:
                 dut_configuration = None
-
+            logging.info('Initializing basil')
             dut.init(dut_configuration)
             # assign dut after init in case of exceptions during init
             self._conf['dut'] = dut
