@@ -18,6 +18,6 @@ pyserial # serial port
 pyqtgraph # monitor
 mock # unit tests
 sphinx # for vitables
-vitables # data viewer
+#vitables # data viewer
 nose # unit tests
 pyzmq # monitor
