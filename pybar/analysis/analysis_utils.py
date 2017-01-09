@@ -146,8 +146,8 @@ def get_ranges_from_array(arr, append_last=True):
     return np.column_stack((left, right))
 
 
-def get_mean_from_histogram(counts, bin_positions):
-    return np.average(counts, weights=bin_positions) * np.sum(bin_positions) / np.sum(counts)
+def get_mean_from_histogram(counts, bin_positions, axis=0):
+    return np.average(counts, axis=axis, weights=bin_positions) * bin_positions.sum() / np.nansum(counts, axis=axis)
 
 
 def get_median_from_histogram(counts, bin_positions):
