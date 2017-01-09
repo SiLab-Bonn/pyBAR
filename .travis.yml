@@ -35,8 +35,8 @@ before_install:
 install:
   - pip install pyusb
   - pip install pySiLibUSB
-  - if [ "$TRAVIS_BRANCH" == "master" ]; then pip install basil_daq==2.4.3 git+https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter@1.2.1 pixel_clusterizer==2.5.0; fi
-  - if [ "$TRAVIS_BRANCH" == "development" ]; then pip install basil_daq==2.4.3 git+https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter@1.2.1 pixel_clusterizer==2.5.0; fi
+  - if [ "$TRAVIS_BRANCH" == "master" ]; then pip install git+https://github.com/SiLab-Bonn/basil@development git+https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter@1.2.1 pixel_clusterizer==2.5.0; fi
+  - if [ "$TRAVIS_BRANCH" == "development" ]; then pip install git+https://github.com/SiLab-Bonn/basil@development git+https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter@1.2.1 pixel_clusterizer==2.5.0; fi
   - sudo apt-get install -qq iverilog-daily
 #  Build iverilog from source
 #  - sudo apt-get install gperf
