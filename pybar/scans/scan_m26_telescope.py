@@ -3,6 +3,8 @@ import inspect
 import logging
 import numpy as np
 import progressbar
+import time
+import sys
 from threading import Timer
 from collections import namedtuple, Mapping, OrderedDict
 
@@ -13,6 +15,7 @@ from pybar.run_manager import RunManager
 
 from basil.utils.BitLogic import BitLogic
 
+from basil.dut import Dut
 
 class M26TelescopeScan(Fei4RunBase):
     '''External trigger scan with FE-I4 and up to 6 Mimosa26 telescope planes.
@@ -32,89 +35,133 @@ class M26TelescopeScan(Fei4RunBase):
         "overwrite_enable_mask": False,  # if True, use col_span and row_span to define an active region regardless of the Enable pixel register. If False, use col_span and row_span to define active region by also taking Enable pixel register into account.
         "use_enable_mask_for_imon": True,  # if True, apply inverted Enable pixel mask to Imon pixel mask
         "no_data_timeout": 120,  # no data timeout after which the scan will be aborted, in seconds
-        "scan_timeout": 120,  # timeout for scan after which the scan will be stopped, in seconds
+        "scan_timeout": 60,  # timeout for scan after which the scan will be stopped, in seconds
         "max_triggers": False,  # maximum triggers after which the scan will be stopped, in seconds
         "enable_tdc": False,  # if True, enables TDC (use RX2)
-        "reset_rx_on_error": False  # long scans have a high propability for ESD related data transmission errors; recover and continue here
+        "reset_rx_on_error": True,  # long scans have a high propability for ESD related data transmission errors; recover and continue here
+        "remote": True # if True, Powersupply remote is enabled
     }
 
     def init_dut(self): 
+        
+        if self.remote:
+            dut = Dut('agilent_e3644a_pyserial.yaml')
+            dut.init()
+            status = dut['Powersupply'].get_enable()
+            time.sleep(0.15)    
+            status = status.replace("\n", "").replace("\r", "")
+            status = int(status) #convert string to float in order to compare values!
+            if status == 1:
+                logging.info("Output of powersupply is ON, status: %s"%status)
+            else:
+                logging.info("Output of powersupply is OFF, status: %s" % status)  # TODO: STOP READOUT!!!
+                #abort(msg='Scan timeout was reached')
+                #stop_current_run(msg='OFF')
+            current = dut['Powersupply'].get_current()
+            current = current.replace("\n", "").replace("\r", "")
+            logging.info('Current:  %s A', current)
+            current = float(current)  # convert string to float in order to compare values!
+        else:
+            logging.info('No remote enabled')
+
         map(lambda channel: channel.reset(), self.dut.get_modules('m26_rx'))
         self.dut['jtag'].reset()
-        
-        if 'm26_configuration' in self._conf:
-            m26_config_file =  os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))), self._conf['m26_configuration'])
-            
-            logging.info('Loading m26 configuration file %s', m26_config_file)
-            self.dut.set_configuration(m26_config_file)
-            
-            IR={"BSR_ALL":'00101',"DEV_ID_ALL":'01110',"BIAS_DAC_ALL":'01111',"LINEPAT0_REG_ALL":'10000',
-                "DIS_DISCRI_ALL":'10001',"SEQUENCER_PIX_REG_ALL":'10010',"CONTROL_PIX_REG_ALL":'10011',
-                "LINEPAT1_REG_ALL":'10100',"SEQUENCER_SUZE_REG_ALL":'10101',"HEADER_REG_ALL":'10110',
-                "CONTROL_SUZE_REG_ALL":'10111',
-                "CTRL_8b10b_REG0_ALL":'11000',"CTRL_8b10b_REG1_ALL":'11001',"RO_MODE1_ALL":'11101',
-                "RO_MODE0_ALL":'11110',
-                "BYPASS_ALL":'11111'}
-            ## write JTAG
-            irs = ["BIAS_DAC_ALL","BYPASS_ALL","BSR_ALL","RO_MODE0_ALL","RO_MODE1_ALL",
-            "DIS_DISCRI_ALL","LINEPAT0_REG_ALL","LINEPAT1_REG_ALL","CONTROL_PIX_REG_ALL","SEQUENCER_PIX_REG_ALL",
-            "HEADER_REG_ALL","CONTROL_SUZE_REG_ALL","SEQUENCER_SUZE_REG_ALL","CTRL_8b10b_REG0_ALL",
-            "CTRL_8b10b_REG1_ALL"]
-            for i,ir in enumerate(irs):
-                logging.info('Programming M26 JATG configuration reg %s', ir)
-                logging.debug(self.dut[ir][:])
-                self.dut['jtag'].scan_ir([BitLogic(IR[ir])]*6)
-                ret = self.dut['jtag'].scan_dr([self.dut[ir][:]])[0]
-            ## read JTAG  and check
-            irs=["DEV_ID_ALL","BSR_ALL","BIAS_DAC_ALL","RO_MODE1_ALL","RO_MODE0_ALL",
-               "DIS_DISCRI_ALL","LINEPAT0_REG_ALL","LINEPAT1_REG_ALL","CONTROL_PIX_REG_ALL",
-               "SEQUENCER_PIX_REG_ALL",
-               "HEADER_REG_ALL","CONTROL_SUZE_REG_ALL","SEQUENCER_SUZE_REG_ALL","CTRL_8b10b_REG0_ALL",
-               "CTRL_8b10b_REG1_ALL","BYPASS_ALL"]
-            ret={}
-            for i,ir in enumerate(irs):
-                logging.info('Reading M26 JATG configuration reg %s', ir)
-                self.dut['jtag'].scan_ir([BitLogic(IR[ir])]*6)
-                ret[ir]= self.dut['jtag'].scan_dr([self.dut[ir][:]])[0]
-            ## check
-            for k,v in ret.iteritems():
-                if k=="CTRL_8b10b_REG1_ALL":
-                    pass
-                elif k=="BSR_ALL":
-                    pass #TODO mask clock bits and check others
-                elif self.dut[k][:]!=v:
-                    logging.error("JTAG data does not match %s get=%s set=%s"%(k,v,self.dut[k][:]))
-                else:
-                    logging.info("Checking M26 JTAG %s ok"%k)        
-            #START procedure
-            logging.info('Starting M26')
-            temp=self.dut['RO_MODE0_ALL'][:]
-              #disable extstart
-            for reg in self.dut["RO_MODE0_ALL"]["RO_MODE0"]:
-                reg['En_ExtStart']=0
-                reg['JTAG_Start']=0
-            self.dut['jtag'].scan_ir([BitLogic(IR['RO_MODE0_ALL'])]*6)
-            self.dut['jtag'].scan_dr([self.dut['RO_MODE0_ALL'][:]])
-              #JTAG start
-            for reg in self.dut["RO_MODE0_ALL"]["RO_MODE0"]:
-                reg['JTAG_Start']=1
-            self.dut['jtag'].scan_ir([BitLogic(IR['RO_MODE0_ALL'])]*6)
-            self.dut['jtag'].scan_dr([self.dut['RO_MODE0_ALL'][:]])
-            for reg in self.dut["RO_MODE0_ALL"]["RO_MODE0"]:
-                reg['JTAG_Start']=0
-            self.dut['jtag'].scan_ir([BitLogic(IR['RO_MODE0_ALL'])]*6)
-            self.dut['jtag'].scan_dr([self.dut['RO_MODE0_ALL'][:]])
-              #write original configuration
-            self.dut['RO_MODE0_ALL'][:]=temp
-            self.dut['jtag'].scan_ir([BitLogic(IR['RO_MODE0_ALL'])]*6)
-            self.dut['jtag'].scan_dr([self.dut['RO_MODE0_ALL'][:]])
-              #readback?
-            self.dut['jtag'].scan_ir([BitLogic(IR['RO_MODE0_ALL'])]*6)
-            self.dut['jtag'].scan_dr([self.dut['RO_MODE0_ALL'][:]]*6)           
-        else:
-            logging.info('Skipping m26 configuration')
-   
 
+        if 'force_config_mimosa26' in self._conf and not self._conf['force_config_mimosa26'] and self.remote and current >= 3.3: #check if force_config is False
+                logging.info('Skipping m26 configuration, m26 is already configured')
+        else:     
+            if 'm26_configuration' in self._conf and self._conf['m26_configuration']:
+                m26_config_file =  os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))), self._conf['m26_configuration'])
+
+                logging.info('Loading m26 configuration file %s', m26_config_file)
+                self.dut.set_configuration(m26_config_file)
+
+                IR={"BSR_ALL":'00101',"DEV_ID_ALL":'01110',"BIAS_DAC_ALL":'01111',"LINEPAT0_REG_ALL":'10000',
+                    "DIS_DISCRI_ALL":'10001',"SEQUENCER_PIX_REG_ALL":'10010',"CONTROL_PIX_REG_ALL":'10011',
+                    "LINEPAT1_REG_ALL":'10100',"SEQUENCER_SUZE_REG_ALL":'10101',"HEADER_REG_ALL":'10110',
+                    "CONTROL_SUZE_REG_ALL":'10111',
+                    "CTRL_8b10b_REG0_ALL":'11000',"CTRL_8b10b_REG1_ALL":'11001',"RO_MODE1_ALL":'11101',
+                    "RO_MODE0_ALL":'11110',
+                    "BYPASS_ALL":'11111'}
+                ## write JTAG
+                irs = ["BIAS_DAC_ALL","BYPASS_ALL","BSR_ALL","RO_MODE0_ALL","RO_MODE1_ALL",
+                "DIS_DISCRI_ALL","LINEPAT0_REG_ALL","LINEPAT1_REG_ALL","CONTROL_PIX_REG_ALL","SEQUENCER_PIX_REG_ALL",
+                "HEADER_REG_ALL","CONTROL_SUZE_REG_ALL","SEQUENCER_SUZE_REG_ALL","CTRL_8b10b_REG0_ALL",
+                "CTRL_8b10b_REG1_ALL"]
+                for i,ir in enumerate(irs):
+                    logging.info('Programming M26 JATG configuration reg %s', ir)
+                    logging.debug(self.dut[ir][:])
+                    self.dut['jtag'].scan_ir([BitLogic(IR[ir])]*6)
+                    ret = self.dut['jtag'].scan_dr([self.dut[ir][:]])[0]
+                    
+                if self.remote:    
+                    current = dut['Powersupply'].get_current()
+                    current = current.replace("\n", "").replace("\r", "")
+                    logging.info('Current:  %s A', current)  
+                ## read JTAG  and check
+                irs=["DEV_ID_ALL","BSR_ALL","BIAS_DAC_ALL","RO_MODE1_ALL","RO_MODE0_ALL",
+                   "DIS_DISCRI_ALL","LINEPAT0_REG_ALL","LINEPAT1_REG_ALL","CONTROL_PIX_REG_ALL",
+                   "SEQUENCER_PIX_REG_ALL",
+                   "HEADER_REG_ALL","CONTROL_SUZE_REG_ALL","SEQUENCER_SUZE_REG_ALL","CTRL_8b10b_REG0_ALL",
+                   "CTRL_8b10b_REG1_ALL","BYPASS_ALL"]
+                ret={}
+                for i,ir in enumerate(irs):
+                    logging.info('Reading M26 JATG configuration reg %s', ir)
+                    self.dut['jtag'].scan_ir([BitLogic(IR[ir])]*6)
+                    ret[ir]= self.dut['jtag'].scan_dr([self.dut[ir][:]])[0]
+                
+                if self.remote:
+                    current = dut['Powersupply'].get_current()
+                    current = current.replace("\n", "").replace("\r", "")
+                    logging.info('Current:  %s A', current)    
+                ## check
+                for k,v in ret.iteritems():
+                    if k=="CTRL_8b10b_REG1_ALL":
+                        pass
+                    elif k=="BSR_ALL":
+                        pass #TODO mask clock bits and check others
+                    elif self.dut[k][:]!=v:
+                        logging.error("JTAG data does not match %s get=%s set=%s"%(k,v,self.dut[k][:]))
+                    else:
+                        logging.info("Checking M26 JTAG %s ok"%k)
+                    
+                if self.remote:    
+                    current = dut['Powersupply'].get_current()
+                    current = current.replace("\n", "").replace("\r", "")
+                    logging.info('Current:  %s A', current)    
+                #START procedure
+                logging.info('Starting M26')
+                temp=self.dut['RO_MODE0_ALL'][:]
+                  #disable extstart
+                for reg in self.dut["RO_MODE0_ALL"]["RO_MODE0"]:
+                    reg['En_ExtStart']=0
+                    reg['JTAG_Start']=0
+                self.dut['jtag'].scan_ir([BitLogic(IR['RO_MODE0_ALL'])]*6)
+                self.dut['jtag'].scan_dr([self.dut['RO_MODE0_ALL'][:]])
+                  #JTAG start
+                for reg in self.dut["RO_MODE0_ALL"]["RO_MODE0"]:
+                    reg['JTAG_Start']=1
+                self.dut['jtag'].scan_ir([BitLogic(IR['RO_MODE0_ALL'])]*6)
+                self.dut['jtag'].scan_dr([self.dut['RO_MODE0_ALL'][:]])
+                for reg in self.dut["RO_MODE0_ALL"]["RO_MODE0"]:
+                    reg['JTAG_Start']=0
+                self.dut['jtag'].scan_ir([BitLogic(IR['RO_MODE0_ALL'])]*6)
+                self.dut['jtag'].scan_dr([self.dut['RO_MODE0_ALL'][:]])
+                  #write original configuration
+                self.dut['RO_MODE0_ALL'][:]=temp
+                self.dut['jtag'].scan_ir([BitLogic(IR['RO_MODE0_ALL'])]*6)
+                self.dut['jtag'].scan_dr([self.dut['RO_MODE0_ALL'][:]])
+                  #readback?
+                self.dut['jtag'].scan_ir([BitLogic(IR['RO_MODE0_ALL'])]*6)
+                self.dut['jtag'].scan_dr([self.dut['RO_MODE0_ALL'][:]]*6)
+                
+                if self.remote:
+                    current = dut['Powersupply'].get_current()
+                    current = current.replace("\n", "").replace("\r", "")
+                    logging.info('Current:  %s A', current)
+            else:
+                logging.info('Skipping m26 configuration')
+            
     def configure(self):
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))

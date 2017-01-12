@@ -24,7 +24,7 @@ def save_configuration_dict(h5_file, configuation_name, configuration, **kwargs)
         '''
         def save_conf():
             try:
-                h5_file.removeNode(h5_file.root.configuration, name=configuation_name)
+                h5_file.remove_node(h5_file.root.configuration, name=configuation_name)
             except tb.NodeError:
                 pass
             try:
@@ -32,7 +32,7 @@ def save_configuration_dict(h5_file, configuation_name, configuration, **kwargs)
             except tb.NodeError:
                 configuration_group = h5_file.root.configuration
 
-            scan_param_table = h5_file.createTable(configuration_group, name=configuation_name, description=NameValue, title=configuation_name)
+            scan_param_table = h5_file.create_table(configuration_group, name=configuation_name, description=NameValue, title=configuation_name)
             row_scan_param = scan_param_table.row
             for key, value in dict.iteritems(configuration):
                 row_scan_param['name'] = key

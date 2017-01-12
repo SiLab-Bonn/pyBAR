@@ -146,24 +146,16 @@ def get_ranges_from_array(arr, append_last=True):
     return np.column_stack((left, right))
 
 
-def get_mean_from_histogram(counts, bin_positions):
-    return np.dot(counts, np.array(bin_positions)) / np.sum(counts).astype('f4')
+def get_mean_from_histogram(counts, bin_positions, axis=0):
+    return np.average(counts, axis=axis, weights=bin_positions) * bin_positions.sum() / np.nansum(counts, axis=axis)
 
 
 def get_median_from_histogram(counts, bin_positions):
-    values = []
-    for index, one_bin in enumerate(counts):
-        for _ in range(one_bin):
-            values.append(bin_positions[index])
-    return np.median(values)
+    return np.median(np.repeat(bin_positions, counts))
 
 
 def get_rms_from_histogram(counts, bin_positions):
-    values = []
-    for index, one_bin in enumerate(counts):
-        for _ in range(one_bin):
-            values.append(bin_positions[index])
-    return np.std(values)
+    return np.std(np.repeat(bin_positions, counts))
 
 
 def in1d_sorted(ar1, ar2):
@@ -245,7 +237,7 @@ def get_rate_normalization(hit_file, parameter, reference='event', cluster_file=
     '''
 
     logging.info('Calculate the rate normalization')
-    with tb.openFile(hit_file, mode="r+") as in_hit_file_h5:  # open the hit file
+    with tb.open_file(hit_file, mode="r+") as in_hit_file_h5:  # open the hit file
         meta_data = in_hit_file_h5.root.meta_data[:]
         scan_parameter = get_scan_parameter(meta_data)[parameter]
         event_numbers = get_meta_data_at_scan_parameter(meta_data, parameter)['event_number']  # get the event numbers in meta_data where the scan parameter changes
@@ -317,7 +309,7 @@ def get_total_n_data_words(files_dict, precise=False):
             progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', ETA()], maxval=len(files_dict), term_width=80)
             progress_bar.start()
         for index, file_name in enumerate(files_dict.iterkeys()):
-            with tb.openFile(file_name, mode="r") as in_file_h5:  # open the actual file
+            with tb.open_file(file_name, mode="r") as in_file_h5:  # open the actual file
                 n_words += in_file_h5.root.raw_data.shape[0]
             if len(files_dict) > 10:
                 progress_bar.update(index)
@@ -325,9 +317,9 @@ def get_total_n_data_words(files_dict, precise=False):
             progress_bar.finish()
         return n_words
     else:  # open just first an last file and take the mean to estimate the total numbe rof words
-        with tb.openFile(files_dict.keys()[0], mode="r") as in_file_h5:  # open the actual file
+        with tb.open_file(files_dict.keys()[0], mode="r") as in_file_h5:  # open the actual file
             n_words += in_file_h5.root.raw_data.shape[0]
-        with tb.openFile(files_dict.keys()[-1], mode="r") as in_file_h5:  # open the actual file
+        with tb.open_file(files_dict.keys()[-1], mode="r") as in_file_h5:  # open the actual file
             n_words += in_file_h5.root.raw_data.shape[0]
         return n_words * len(files_dict) / 2
 
@@ -345,7 +337,7 @@ def create_parameter_table(files_dict):
     parameter_table = None
     # create a parameter table with an entry for every read out
     for file_name, parameters in files_dict.iteritems():
-        with tb.openFile(file_name, mode="r") as in_file_h5:  # open the actual file
+        with tb.open_file(file_name, mode="r") as in_file_h5:  # open the actual file
             n_parameter_settings = max([len(i) for i in files_dict[file_name].values()])  # determine the number of different parameter settings from the list length of parameter values of the first parameter
             if n_parameter_settings == 0:  # no parameter values, first raw data file has only config info and no other data (meta, raw data, parameter data)
                 continue
@@ -514,7 +506,7 @@ def get_parameter_from_files(files, parameters=None, unique=False, sort=True):
         parameters = (parameters, )
     parameter_values_from_file_names_dict = get_parameter_value_from_file_names(files, parameters, unique=unique, sort=sort)  # get the parameter from the file name
     for file_name in files:
-        with tb.openFile(file_name, mode="r") as in_file_h5:  # open the actual file
+        with tb.open_file(file_name, mode="r") as in_file_h5:  # open the actual file
             scan_parameter_values = collections.OrderedDict()
             try:
                 scan_parameters = in_file_h5.root.scan_parameters[:]  # get the scan parameters from the scan parameter table
@@ -596,7 +588,7 @@ def combine_meta_data(files_dict, meta_data_v2=True):
     # determine total length needed for the new combined array, thats the fastest way to combine arrays
     total_length = 0  # the total length of the new table
     for file_name in files_dict.iterkeys():
-        with tb.openFile(file_name, mode="r") as in_file_h5:  # open the actual file
+        with tb.open_file(file_name, mode="r") as in_file_h5:  # open the actual file
             total_length += in_file_h5.root.meta_data.shape[0]
 
     if meta_data_v2:
@@ -623,7 +615,7 @@ def combine_meta_data(files_dict, meta_data_v2=True):
 
     # fill actual result array
     for file_name in files_dict.iterkeys():
-        with tb.openFile(file_name, mode="r") as in_file_h5:  # open the actual file
+        with tb.open_file(file_name, mode="r") as in_file_h5:  # open the actual file
             array_length = in_file_h5.root.meta_data.shape[0]
             meta_data_combined[index:index + array_length] = in_file_h5.root.meta_data[:]
             index += array_length
@@ -845,7 +837,7 @@ def get_hits_of_scan_parameter(input_file_hits, scan_parameters=None, try_speedu
         Actual scan parameter tuple, hit array with the hits of a chunk of the given scan parameter tuple
     '''
 
-    with tb.openFile(input_file_hits, mode="r+") as in_file_h5:
+    with tb.open_file(input_file_hits, mode="r+") as in_file_h5:
         hit_table = in_file_h5.root.Hits
         meta_data = in_file_h5.root.meta_data[:]
         meta_data_table_at_scan_parameter = get_unique_scan_parameter_combinations(meta_data, scan_parameters=scan_parameters)
@@ -1508,10 +1500,10 @@ def get_data_statistics(interpreted_files):
     '''
     print '| *File Name* | *File Size* | *Times Stamp* | *Events* | *Bad Events* | *Measurement time* | *# SR* | *Hits* |'  # Mean Tot | Mean rel. BCID'
     for interpreted_file in interpreted_files:
-        with tb.openFile(interpreted_file, mode="r") as in_file_h5:  # open the actual hit file
+        with tb.open_file(interpreted_file, mode="r") as in_file_h5:  # open the actual hit file
             n_hits = np.sum(in_file_h5.root.HistOcc[:])
             measurement_time = int(in_file_h5.root.meta_data[-1]['timestamp_stop'] - in_file_h5.root.meta_data[0]['timestamp_start'])
-# mean_tot = np.average(in_file_h5.root.HistTot[:], weights=range(0,16) * np.sum(range(0,16)))# / in_file_h5.root.HistTot[:].shape[0]
+#             mean_tot = np.average(in_file_h5.root.HistTot[:], weights=range(0,16) * np.sum(range(0,16)))# / in_file_h5.root.HistTot[:].shape[0]
 #             mean_bcid = np.average(in_file_h5.root.HistRelBcid[:], weights=range(0,16))
             n_sr = np.sum(in_file_h5.root.HistServiceRecord[:])
             n_bad_events = int(np.sum(in_file_h5.root.HistErrorCounter[2:]))
@@ -1519,8 +1511,6 @@ def get_data_statistics(interpreted_files):
                 n_events = str(in_file_h5.root.Hits[-1]['event_number'] + 1)
             except tb.NoSuchNodeError:
                 n_events = '~' + str(in_file_h5.root.meta_data[-1]['event_number'] + (in_file_h5.root.meta_data[-1]['event_number'] - in_file_h5.root.meta_data[-2]['event_number']))
-#             if int(n_events) < 7800000 or n_sr > 4200 or n_bad_events > 40:
-# print '| %{color:red}', os.path.basename(interpreted_file) + '%', '|', int(os.path.getsize(interpreted_file) / (1024 * 1024.)), 'Mb |', time.ctime(os.path.getctime(interpreted_file)), '|',  n_events, '|', n_bad_events, '|', measurement_time, 's |', n_sr, '|', n_hits, '|'#, mean_tot, '|', mean_bcid, '|'
             else:
                 print '|', os.path.basename(interpreted_file), '|', int(os.path.getsize(interpreted_file) / (1024 * 1024.)), 'Mb |', time.ctime(os.path.getctime(interpreted_file)), '|', n_events, '|', n_bad_events, '|', measurement_time, 's |', n_sr, '|', n_hits, '|'  # , mean_tot, '|', mean_bcid, '|'
 
@@ -1572,9 +1562,11 @@ def check_bad_data(raw_data, prepend_data_headers=None, trig_count=None):
     is_fe_data_header = logical_and(is_fe_word, is_data_header)
     trigger_idx = np.where(is_trigger_word(raw_data) >= 1)[0]
     fe_dh_idx = np.where(is_fe_data_header(raw_data) >= 1)[0]
+    n_triggers = trigger_idx.shape[0]
+    n_dh = fe_dh_idx.shape[0]
 
     # get index of the last trigger
-    if trigger_idx.shape[0]:
+    if n_triggers:
         last_event_data_headers_cnt = np.where(fe_dh_idx > trigger_idx[-1])[0].shape[0]
         if consecutive_triggers and last_event_data_headers_cnt == consecutive_triggers:
             if not np.all(trigger_idx[-1] > fe_dh_idx):
@@ -1585,28 +1577,31 @@ def check_bad_data(raw_data, prepend_data_headers=None, trig_count=None):
         elif not np.all(trigger_idx[-1] > fe_dh_idx):
             trigger_idx = np.r_[trigger_idx, raw_data.shape]
     # if any data header, add trigger for histogramming, next readout has to have trigger word
-    elif fe_dh_idx.shape[0]:
+    elif n_dh:
         trigger_idx = np.r_[trigger_idx, raw_data.shape]
         last_event_data_headers_cnt = None
     # no trigger, no data header
     # assuming correct data, return input values
     else:
-        return False, prepend_data_headers
+        return False, prepend_data_headers, n_triggers, n_dh
 
 #     # no triggers, check for the right amount of data headers
-#     if consecutive_triggers and prepend_data_headers and prepend_data_headers + fe_dh_idx.shape[0] != consecutive_triggers:
-#         return True, fe_dh_idx.shape[0]
+#     if consecutive_triggers and prepend_data_headers and prepend_data_headers + n_dh != consecutive_triggers:
+#         return True, n_dh, n_triggers, n_dh
+
+    n_triggers_cleaned = trigger_idx.shape[0]
+    n_dh_cleaned = fe_dh_idx.shape[0]
 
     # check that trigger comes before data header
-    if prepend_data_headers is None and trigger_idx.shape[0] and fe_dh_idx.shape[0] and not trigger_idx[0] < fe_dh_idx[0]:
-        return True, last_event_data_headers_cnt  # FIXME: 0?
+    if prepend_data_headers is None and n_triggers_cleaned and n_dh_cleaned and not trigger_idx[0] < fe_dh_idx[0]:
+        return True, last_event_data_headers_cnt, n_triggers, n_dh  # FIXME: 0?
     # check that no trigger comes before the first data header
-    elif consecutive_triggers and prepend_data_headers is not None and trigger_idx.shape[0] and fe_dh_idx.shape[0] and trigger_idx[0] < fe_dh_idx[0]:
-        return True, last_event_data_headers_cnt  # FIXME: 0?
+    elif consecutive_triggers and prepend_data_headers is not None and n_triggers_cleaned and n_dh_cleaned and trigger_idx[0] < fe_dh_idx[0]:
+        return True, last_event_data_headers_cnt, n_triggers, n_dh  # FIXME: 0?
     # check for two consecutive triggers
-    elif consecutive_triggers is None and prepend_data_headers == 0 and trigger_idx.shape[0] and fe_dh_idx.shape[0] and trigger_idx[0] < fe_dh_idx[0]:
-        return True, last_event_data_headers_cnt  # FIXME: 0?
-    elif prepend_data_headers:
+    elif consecutive_triggers is None and prepend_data_headers == 0 and n_triggers_cleaned and n_dh_cleaned and trigger_idx[0] < fe_dh_idx[0]:
+        return True, last_event_data_headers_cnt, n_triggers, n_dh  # FIXME: 0?
+    elif prepend_data_headers is not None:
         trigger_idx += (prepend_data_headers + 1)
         fe_dh_idx += (prepend_data_headers + 1)
         # for histogramming add trigger at index 0
@@ -1615,11 +1610,11 @@ def check_bad_data(raw_data, prepend_data_headers=None, trig_count=None):
 
     event_hist, bins = np.histogram(fe_dh_idx, trigger_idx)
     if consecutive_triggers is None and np.any(event_hist == 0):
-        return True, last_event_data_headers_cnt
+        return True, last_event_data_headers_cnt, n_triggers, n_dh
     elif consecutive_triggers and np.any(event_hist != consecutive_triggers):
-        return True, last_event_data_headers_cnt
+        return True, last_event_data_headers_cnt, n_triggers, n_dh
 
-    return False, last_event_data_headers_cnt
+    return False, last_event_data_headers_cnt, n_triggers, n_dh
 
 
 def consecutive(data, stepsize=1):

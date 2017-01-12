@@ -141,7 +141,7 @@ def plot_fancy_occupancy(hist, z_max=None, filename=None):
     cmap.set_bad('w', 1.0)
     norm = colors.BoundaryNorm(bounds, cmap.N)
 
-    im = ax.imshow(hist, interpolation='nearest', aspect='auto', cmap=cmap, norm=norm, extent=extent)  # TODO: use pcolor or pcolormesh
+    im = ax.imshow(hist, interpolation='none', aspect='auto', cmap=cmap, norm=norm, extent=extent)  # TODO: use pcolor or pcolormesh
     ax.set_ylim((336.5, 0.5))
     ax.set_xlim((0.5, 80.5))
     ax.set_xlabel('Column')
@@ -207,7 +207,7 @@ def plot_occupancy(hist, title='Occupancy', z_max=None, filename=None):
     cmap.set_bad('w', 1.0)
     norm = colors.BoundaryNorm(bounds, cmap.N)
 
-    im = ax.imshow(hist, interpolation='nearest', aspect='auto', cmap=cmap, norm=norm, extent=extent)  # TODO: use pcolor or pcolormesh
+    im = ax.imshow(hist, interpolation='none', aspect='auto', cmap=cmap, norm=norm, extent=extent)  # TODO: use pcolor or pcolormesh
     ax.set_ylim((336.5, 0.5))
     ax.set_xlim((0.5, 80.5))
     ax.set_title(title + r' ($\Sigma$ = {0})'.format((0 if hist.all() is np.ma.masked else np.ma.sum(hist))))
@@ -325,7 +325,7 @@ def plot_pixel_matrix(hist, title="Hit correlation", filename=None):
     ax.set_xlabel('Col')
     ax.set_ylabel('Row')
     cmap = cm.get_cmap('cool')
-    ax.imshow(hist.T, aspect='auto', cmap=cmap, interpolation='nearest')
+    ax.imshow(hist.T, aspect='auto', cmap=cmap, interpolation='none')
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     z_max = np.max(hist)
@@ -541,7 +541,7 @@ def plot_cluster_tot_size(hist, z_max=None, filename=None):
     cmap = cm.get_cmap('cool')
     cmap.set_bad('w', 1.0)
     norm = colors.BoundaryNorm(bounds, cmap.N)
-    im = ax.imshow(hist, aspect="auto", interpolation='nearest', cmap=cmap, norm=norm, extent=extent)  # for monitoring
+    im = ax.imshow(hist, aspect="auto", interpolation='none', cmap=cmap, norm=norm, extent=extent)  # for monitoring
     ax.set_title('Cluster size and cluster ToT' + r' ($\Sigma$ = %d)' % (np.sum(hist) // 2))  # cluster size 0 includes all hits, divide by 2
     ax.set_xlabel('cluster size')
     ax.set_ylabel('cluster ToT')
@@ -608,7 +608,8 @@ def plot_three_way(hist, title, filename=None, x_axis_title=None, minimum=None, 
     # masked_array = np.ma.array (a, mask=np.isnan(a))
     # cmap = matplotlib.cm.jet
     # cmap.set_bad('w',1.0)
-    # ax.imshow(masked_array, interpolation='nearest', cmap=cmap)
+    # ax.imshow(masked_array, interpolation='none', cmap=cmap)
+    hist = np.ma.masked_invalid(hist)
     if minimum is None:
         minimum = 0.0
     elif minimum == 'minimum':
@@ -651,7 +652,7 @@ def create_2d_pixel_hist(fig, ax, hist2d, title=None, x_axis_title=None, y_axis_
         cmap = cm.get_cmap('coolwarm')
     cmap.set_bad('w', 1.0)
     norm = colors.BoundaryNorm(bounds, cmap.N)
-    im = ax.imshow(hist2d, interpolation='nearest', aspect="auto", cmap=cmap, norm=norm, extent=extent)
+    im = ax.imshow(hist2d, interpolation='none', aspect="auto", cmap=cmap, norm=norm, extent=extent)
     if title is not None:
         ax.set_title(title)
     if x_axis_title is not None:

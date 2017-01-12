@@ -22,8 +22,7 @@ class IVScan(Fei4RunBase):
     }
 
     def configure(self):
-        self.dut['Sourcemeter'].init()
-        logging.info('Initialized sourcemeter: %s' % self.dut['Sourcemeter'].get_name())
+        pass
 
     def scan(self):
         logging.info('Measure IV for V = %s' % self.voltages)
@@ -51,7 +50,8 @@ class IVScan(Fei4RunBase):
                 logging.info('Maximum current with %e I reached, abort', current)
                 break
             logging.info('V = %f, I = %e', voltage, current)
-            for i in range(50):  # repeat current measurement until stable (current does not increase)
+            max_repeat = 50
+            for i in range(max_repeat):  # repeat current measurement until stable (current does not increase)
                 time.sleep(self.minimum_delay)
                 actual_current = float(self.dut['Sourcemeter'].get_current().split(',')[1])
                 if abs(actual_current) > abs(self.max_leakage):
@@ -60,7 +60,7 @@ class IVScan(Fei4RunBase):
                 if (abs(actual_current) < abs(current)):  # stable criterion
                     break
                 current = actual_current
-            if i == 99:  # true if the leakage always increased
+            if i == max_repeat - 1:  # true if the leakage always increased
                 raise RuntimeError('Leakage current is not stable')
             else:
                 a = np.array([(voltage, current)], dtype=description)

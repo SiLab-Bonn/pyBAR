@@ -35,12 +35,12 @@ local_configuration = {
 
 def select_trigger_hits(input_file_hits, output_file_hits_1, output_file_hits_2):
     if (not os.path.isfile(output_file_hits_1) and not os.path.isfile(output_file_hits_2)) or local_configuration['overwrite_output_files']:
-        with tb.openFile(input_file_hits, mode="r") as in_hit_file_h5:
+        with tb.open_file(input_file_hits, mode="r") as in_hit_file_h5:
             hit_table_in = in_hit_file_h5.root.Hits
-            with tb.openFile(output_file_hits_1, mode="w") as out_hit_file_1_h5:
-                with tb.openFile(output_file_hits_2, mode="w") as out_hit_file_2_h5:
-                    hit_table_out_1 = out_hit_file_1_h5.createTable(out_hit_file_1_h5.root, name='Hits', description=data_struct.HitInfoTable, title='hit_data', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
-                    hit_table_out_2 = out_hit_file_2_h5.createTable(out_hit_file_2_h5.root, name='Hits', description=data_struct.HitInfoTable, title='hit_data', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+            with tb.open_file(output_file_hits_1, mode="w") as out_hit_file_1_h5:
+                with tb.open_file(output_file_hits_2, mode="w") as out_hit_file_2_h5:
+                    hit_table_out_1 = out_hit_file_1_h5.create_table(out_hit_file_1_h5.root, name='Hits', description=data_struct.HitInfoTable, title='hit_data', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+                    hit_table_out_2 = out_hit_file_2_h5.create_table(out_hit_file_2_h5.root, name='Hits', description=data_struct.HitInfoTable, title='hit_data', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
                     progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=hit_table_in.shape[0], term_width=80)
                     progress_bar.start()
                     for data, index in analysis_utils.data_aligned_at_events(hit_table_in, chunk_size=5000000):
@@ -98,8 +98,8 @@ def analyze(raw_data_file, analyzed_data_file, fei4b=False):
 def store_calibration_data_as_table(out_file_h5, mean_threshold_calibration, mean_threshold_rms_calibration, threshold_calibration, mean_noise_calibration, mean_noise_rms_calibration, noise_calibration):
     logging.info("Storing calibration data in a table...")
     filter_table = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
-    mean_threshold_calib_table = out_file_h5.createTable(out_file_h5.root, name='MeanThreshold', description=data_struct.MeanThresholdTable, title='mean_threshold_calibration', filters=filter_table)
-    threshold_calib_table = out_file_h5.createTable(out_file_h5.root, name='Threshold', description=data_struct.ThresholdTable, title='threshold_calibration', filters=filter_table)
+    mean_threshold_calib_table = out_file_h5.create_table(out_file_h5.root, name='MeanThreshold', description=data_struct.MeanThresholdTable, title='mean_threshold_calibration', filters=filter_table)
+    threshold_calib_table = out_file_h5.create_table(out_file_h5.root, name='Threshold', description=data_struct.ThresholdTable, title='threshold_calibration', filters=filter_table)
     for column in range(0, 80):
         for row in range(0, 336):
             for delay_index, delay_value in enumerate(local_configuration['delays']):
@@ -125,12 +125,12 @@ def store_calibration_data_as_table(out_file_h5, mean_threshold_calibration, mea
 def store_calibration_data_as_array(out_file_h5, mean_threshold_calibration, mean_threshold_rms_calibration, threshold_calibration, mean_noise_calibration, mean_noise_rms_calibration, noise_calibration):
     logging.info("Storing calibration data in an array...")
     filter_table = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
-    mean_threshold_calib_array = out_file_h5.createCArray(out_file_h5.root, name='HistThresholdMeanCalibration', atom=tb.Atom.from_dtype(mean_threshold_calibration.dtype), shape=mean_threshold_calibration.shape, title='mean_threshold_calibration', filters=filter_table)
-    mean_threshold_calib_rms_array = out_file_h5.createCArray(out_file_h5.root, name='HistThresholdRMSCalibration', atom=tb.Atom.from_dtype(mean_threshold_calibration.dtype), shape=mean_threshold_calibration.shape, title='mean_threshold_rms_calibration', filters=filter_table)
-    threshold_calib_array = out_file_h5.createCArray(out_file_h5.root, name='HistThresholdCalibration', atom=tb.Atom.from_dtype(threshold_calibration.dtype), shape=threshold_calibration.shape, title='threshold_calibration', filters=filter_table)
-    mean_noise_calib_array = out_file_h5.createCArray(out_file_h5.root, name='HistNoiseMeanCalibration', atom=tb.Atom.from_dtype(mean_noise_calibration.dtype), shape=mean_noise_calibration.shape, title='mean_noise_calibration', filters=filter_table)
-    mean_noise_calib_rms_array = out_file_h5.createCArray(out_file_h5.root, name='HistNoiseRMSCalibration', atom=tb.Atom.from_dtype(mean_noise_calibration.dtype), shape=mean_noise_calibration.shape, title='mean_noise_rms_calibration', filters=filter_table)
-    noise_calib_array = out_file_h5.createCArray(out_file_h5.root, name='HistNoiseCalibration', atom=tb.Atom.from_dtype(noise_calibration.dtype), shape=noise_calibration.shape, title='noise_calibration', filters=filter_table)
+    mean_threshold_calib_array = out_file_h5.create_carray(out_file_h5.root, name='HistThresholdMeanCalibration', atom=tb.Atom.from_dtype(mean_threshold_calibration.dtype), shape=mean_threshold_calibration.shape, title='mean_threshold_calibration', filters=filter_table)
+    mean_threshold_calib_rms_array = out_file_h5.create_carray(out_file_h5.root, name='HistThresholdRMSCalibration', atom=tb.Atom.from_dtype(mean_threshold_calibration.dtype), shape=mean_threshold_calibration.shape, title='mean_threshold_rms_calibration', filters=filter_table)
+    threshold_calib_array = out_file_h5.create_carray(out_file_h5.root, name='HistThresholdCalibration', atom=tb.Atom.from_dtype(threshold_calibration.dtype), shape=threshold_calibration.shape, title='threshold_calibration', filters=filter_table)
+    mean_noise_calib_array = out_file_h5.create_carray(out_file_h5.root, name='HistNoiseMeanCalibration', atom=tb.Atom.from_dtype(mean_noise_calibration.dtype), shape=mean_noise_calibration.shape, title='mean_noise_calibration', filters=filter_table)
+    mean_noise_calib_rms_array = out_file_h5.create_carray(out_file_h5.root, name='HistNoiseRMSCalibration', atom=tb.Atom.from_dtype(mean_noise_calibration.dtype), shape=mean_noise_calibration.shape, title='mean_noise_rms_calibration', filters=filter_table)
+    noise_calib_array = out_file_h5.create_carray(out_file_h5.root, name='HistNoiseCalibration', atom=tb.Atom.from_dtype(noise_calibration.dtype), shape=noise_calibration.shape, title='noise_calibration', filters=filter_table)
     mean_threshold_calib_array[:] = mean_threshold_calibration
     mean_threshold_calib_rms_array[:] = mean_threshold_rms_calibration
     threshold_calib_array[:] = threshold_calibration
@@ -174,7 +174,7 @@ def analyze_data(scan_data_filenames, ignore_columns, fei4b=False):
         analyze(raw_data_file=raw_data_file, analyzed_data_file=analyzed_data_file, fei4b=fei4b)
 
         scan_parameters = None
-        with tb.openFile(analyzed_data_file, mode="r") as in_file_h5:
+        with tb.open_file(analyzed_data_file, mode="r") as in_file_h5:
             # mask the not scanned columns for analysis and plotting
             mask = np.logical_or(mask_columns(pixel_array=in_file_h5.root.HistThresholdFitted[:], ignore_columns=ignore_columns), mask_pixel(steps=3, shift=0).T) == 0
             occupancy_masked = mask_columns(pixel_array=in_file_h5.root.HistOcc[:], ignore_columns=ignore_columns)
@@ -200,8 +200,8 @@ def analyze_data(scan_data_filenames, ignore_columns, fei4b=False):
 
         # if activated analyze also the trigger seperately
         if local_configuration['analysis_two_trigger']:
-            with tb.openFile(analyzed_data_file[:-3] + '_analyzed_1.h5', mode="r") as in_file_1_h5:
-                with tb.openFile(analyzed_data_file[:-3] + '_analyzed_2.h5', mode="r") as in_file_2_h5:
+            with tb.open_file(analyzed_data_file[:-3] + '_analyzed_1.h5', mode="r") as in_file_1_h5:
+                with tb.open_file(analyzed_data_file[:-3] + '_analyzed_2.h5', mode="r") as in_file_2_h5:
                     # mask the not scanned columns for analysis and plotting
                     try:
                         occupancy_masked_1 = occupancy_masked = mask_columns(pixel_array=in_file_1_h5.root.HistOcc[:], ignore_columns=ignore_columns)
@@ -261,7 +261,7 @@ def analyze_data(scan_data_filenames, ignore_columns, fei4b=False):
         output_pdf.close()
 
     # store the calibration data into a hdf5 file as an easy to read table and as an array for quick data access
-    with tb.openFile(output_h5_filename, mode="w") as out_file_h5:
+    with tb.open_file(output_h5_filename, mode="w") as out_file_h5:
         store_calibration_data_as_array(out_file_h5, mean_threshold_calibration, mean_threshold_rms_calibration, threshold_calibration, mean_noise_calibration, mean_noise_rms_calibration, noise_calibration)
         store_calibration_data_as_table(out_file_h5, mean_threshold_calibration, mean_threshold_rms_calibration, threshold_calibration, mean_noise_calibration, mean_noise_rms_calibration, noise_calibration)
 
@@ -298,10 +298,8 @@ def mask_pixel(steps, shift, default=0, value=1, mask=None):
                 out[j * m:(j + 1) * m, 1:] = out[0:m, 1:]
         return out
 
-    dimension = (80, 336)
-    # value = np.zeros(dimension, dtype = np.uint8)
-    mask_array = np.empty(dimension, dtype=np.uint8)
-    mask_array.fill(default)
+    shape = (80, 336)
+    mask_array = np.full(shape, fill_value=default, dtype=np.uint8)
     # FE columns and rows are starting from 1
     odd_columns = np.arange(0, 80, 2)
     even_columns = np.arange(1, 80, 2)

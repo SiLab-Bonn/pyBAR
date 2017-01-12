@@ -27,7 +27,7 @@ module_id : module_test  # module identifier / name, sub-folder with given name 
 # *** scan specific run configuration ***
 #Fei4Tuning:
 #    enable_shift_masks : ["Enable", "C_Low", "C_High"]
-#    target_threshold : 50 # target threshold
+#    target_threshold : 30 # target threshold
 #    target_charge : 280 # target charge
 #    target_tot : 5 # target ToT
 #    global_iterations : 4

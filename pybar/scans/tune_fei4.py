@@ -30,21 +30,23 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
     '''
     _default_run_conf = {
         # tuning parameters
-        "target_threshold": 50,  # target threshold
+        "target_threshold": 30,  # target threshold
         "target_charge": 280,  # target charge
         "target_tot": 5,  # target ToT
-        "global_iterations": 4,  # the number of iterations to do for the global tuning, 0 means only threshold is tuned, negative that no global tuning is done
-        "local_iterations": 3,  # the number of iterations to do for the local tuning, 0 means only threshold is tuned, negative that no local tuning is done
+        "global_iterations": 4,  # the number of iterations to do for the global tuning, 0: only global threshold (GDAC) is tuned, -1 or None: no global tuning
+        "local_iterations": 3,  # the number of iterations to do for the local tuning, 0: only local threshold (TDAC) is tuned, -1 or None: no local tuning
         "fail_on_warning": True,  # do not continue tuning if a global tuning fails
         # GDAC
         "gdac_tune_bits": range(7, -1, -1),  # GDAC bits to change during tuning
+        "gdac_lower_limit": 40,  # set GDAC lower limit to prevent FEI4 from becoming noisy, set to 0 or None to disable
         "n_injections_gdac": 50,  # number of injections per GDAC bit setting
-        "max_delta_threshold": 9,  # minimum difference to the target_threshold to abort the tuning
-        "enable_mask_steps_gdac": [0],  # mask steps to do per GDAC setting, 1 step is sufficient and safes time
+        "max_delta_threshold": 5,  # minimum difference to the target_threshold to abort the tuning
+        "enable_mask_steps_gdac": [0],  # mask steps to do per GDAC setting, 1 step is sufficient and saves time
         # Feedback
         "feedback_tune_bits": range(7, -1, -1),
         "n_injections_feedback": 50,
         "max_delta_tot": 0.1,
+        "enable_mask_steps_feedback": [0],  # mask steps to do per PrmpVbpf setting, 1 step is sufficient and saves time
         # TDAC
         "tdac_tune_bits": range(4, -1, -1),
         "n_injections_tdac": 100,
@@ -99,45 +101,39 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
         target_tot : float
             The target tot value to tune to.
         global_iterations : int
-            Defines how often global threshold/global feedback current tuning is repeated.
-            -1: the global tuning is disabled
-            0: the global tuning consists of the global threshold tuning only
-            1: global threshold/global feedback current/global threshold tuning
-            2: global threshold/global feedback current/global threshold tuning/global feedback current/global threshold tuning
+            Defines how often global threshold (GDAC) / global feedback (PrmpVbpf) current tuning is repeated.
+            -1 or None: Global tuning is disabled
+            0: Only global threshold tuning
+            1: GDAC -> PrmpVbpf -> GDAC
+            2: GDAC -> PrmpVbpf -> GDAC -> PrmpVbpf -> GDAC
             ...
         local_iterations : int
             Defines how often local threshold (TDAC) / feedback current (FDAC) tuning is repeated.
-                -1: the local tuning is disabled
-                0: the local tuning consists of the local threshold tuning only (TDAC)
-                1: TDAC/FDAC/TDAC
-                2: TDAC/FDAC/TDAC/FDAC/TDAC
-                ...
+            -1 or None: Local tuning is disabled
+            0: Only local threshold tuning
+            1: TDAC -> FDAC -> TDAC
+            2: TDAC -> FDAC -> TDAC -> FDAC -> TDAC
+            ...
         '''
-        if self.global_iterations < 0:
-            self.global_iterations = 0
-        if self.local_iterations < 0:
-            self.local_iterations = 0
-#         difference_bit = 1
+        if self.global_iterations is None:
+            self.global_iterations = -1
+        if self.local_iterations is None:
+            self.local_iterations = -1
 
         if self.make_plots:
             self.plots_filename = PdfPages(self.output_filename + '.pdf')
         else:
             self.plots_filename = None
 
-        start_bit = 7
         for iteration in range(0, self.global_iterations):  # tune iteratively with decreasing range to save time
             logging.info("Global tuning step %d / %d", iteration + 1, self.global_iterations)
-            start_bit = 7  # - difference_bit * iteration
             self.set_scan_parameters(global_step=self.scan_parameters.global_step + 1)
-            self.gdac_tune_bits = range(start_bit, -1, -1)
             GdacTuning.scan(self)
             self.set_scan_parameters(global_step=self.scan_parameters.global_step + 1)
-            self.feedback_tune_bits = range(start_bit, -1, -1)
             FeedbackTuning.scan(self)
 
         if self.global_iterations >= 0:
             self.set_scan_parameters(global_step=self.scan_parameters.global_step + 1)
-            self.gdac_tune_bits = range(start_bit, -1, -1)
             GdacTuning.scan(self)
 
             Vthin_AC = self.register.get_global_register_value("Vthin_AltCoarse")
@@ -146,34 +142,30 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
             logging.info("Results of global threshold tuning: Vthin_AltCoarse / Vthin_AltFine = %d / %d", Vthin_AC, Vthin_AF)
             logging.info("Results of global feedback tuning: PrmpVbpf = %d", PrmpVbpf)
 
-#         difference_bit = int(5 / (self.local_iterations if self.local_iterations > 0 else 1))
-
-        start_bit = 4
         for iteration in range(0, self.local_iterations):
             logging.info("Local tuning step %d / %d", iteration + 1, self.local_iterations)
-            start_bit = 4  # - difference_bit * iteration
-            self.tdac_tune_bits = range(start_bit, -1, -1)
             self.set_scan_parameters(local_step=self.scan_parameters.local_step + 1)
             TdacTuning.scan(self)
-            self.fdac_tune_bits = range(start_bit - 1, -1, -1)
             self.set_scan_parameters(local_step=self.scan_parameters.local_step + 1)
             FdacTuning.scan(self)
 
         if self.local_iterations >= 0:
-            self.tdac_tune_bits = range(start_bit, -1, -1)
             self.set_scan_parameters(local_step=self.scan_parameters.local_step + 1)
             TdacTuning.scan(self)
 
     def analyze(self):
-        if self.global_iterations:
-            GdacTuning.analyze(self)
+        if self.global_iterations > 0:
             FeedbackTuning.analyze(self)
-        if self.local_iterations:
-            TdacTuning.analyze(self)
+        if self.global_iterations >= 0:
+            GdacTuning.analyze(self)
+
+        if self.local_iterations > 0:
             FdacTuning.analyze(self)
+        if self.local_iterations >= 0:
+            TdacTuning.analyze(self)
 
         if self.make_plots:
-            if self.local_iterations:
+            if self.local_iterations > 0:
                 plot_three_way(hist=self.tot_mean_best.transpose(), title="Mean ToT after last FDAC tuning", x_axis_title='Mean ToT', filename=self.plots_filename)
                 plot_three_way(hist=self.register.get_pixel_register_value("FDAC").transpose(), title="FDAC distribution after last FDAC tuning", x_axis_title='FDAC', filename=self.plots_filename, maximum=16)
             if self.local_iterations >= 0:

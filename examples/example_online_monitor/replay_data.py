@@ -16,7 +16,7 @@ from pybar.daq.fei4_raw_data import send_data
 
 
 def transfer_file(file_name, socket):  # Function to open the raw data file and sending the readouts periodically
-    with tb.openFile(file_name, mode="r") as in_file_h5:
+    with tb.open_file(file_name, mode="r") as in_file_h5:
         meta_data = in_file_h5.root.meta_data[:]
         raw_data = in_file_h5.root.raw_data[:]
         try:

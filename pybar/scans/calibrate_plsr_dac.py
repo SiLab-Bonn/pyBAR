@@ -31,8 +31,6 @@ class PlsrDacCalibration(Fei4RunBase):
     }
 
     def configure(self):
-        self.dut['Multimeter'].init()
-        logging.info('Initialized multimeter %s' % self.dut['Multimeter'].get_name())
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))
         enable_mask = make_pixel_mask(steps=self.mask_steps, shift=0, default=0, value=1)  # Activate pixels for injection, although they are not read out
@@ -107,9 +105,9 @@ class PlsrDacCalibration(Fei4RunBase):
                 mean_data['voltage_mean'][index] = data['voltage'][data["PlsrDAC"] == parameter].mean()
                 mean_data['voltage_rms'][index] = data['voltage'][data["PlsrDAC"] == parameter].std()
 
-            slope_fit, slope_err, plateau_fit, plateau_err = self.plot_pulser_dac(mean_data['PlsrDAC'], mean_data['voltage_mean'], mean_data['voltage_rms'], output_pdf, title_suffix="(DC " + ", ".join([str(cols[0]) if len(cols) == 1 else (str(cols[0]) + " - " + str(cols[-1])) for cols in consecutive(self.colpr_addr_parameters)]) + ")")
-            self.register.calibration_parameters['Vcal_Coeff_0'] = slope_fit[0] * 1000.0  # store in mV
-            self.register.calibration_parameters['Vcal_Coeff_1'] = slope_fit[1] * 1000.0  # store in mV/DAC
+            slope_fit, slope_err, plateau_fit, plateau_err = plot_pulser_dac(mean_data['PlsrDAC'], mean_data['voltage_mean'], mean_data['voltage_rms'], output_pdf, title_suffix="(DC " + ", ".join([str(cols[0]) if len(cols) == 1 else (str(cols[0]) + " - " + str(cols[-1])) for cols in consecutive(self.colpr_addr_parameters)]) + ")")
+            self.register.calibration_parameters['Vcal_Coeff_0'] = np.nan_to_num(slope_fit[0] * 1000.0)  # store in mV
+            self.register.calibration_parameters['Vcal_Coeff_1'] = np.nan_to_num(slope_fit[1] * 1000.0)  # store in mV/DAC
 
             # plot per double column
             # Calculate mean PlsrDAC transfer function
@@ -128,7 +126,7 @@ class PlsrDacCalibration(Fei4RunBase):
                 dc_data_stability["voltage_mean"][dc_index * len(self.pulser_dac_parameters):(dc_index + 1) * len(self.pulser_dac_parameters)] = mean_data['voltage_mean']
                 dc_data_stability["voltage_rms"][dc_index * len(self.pulser_dac_parameters):(dc_index + 1) * len(self.pulser_dac_parameters)] = mean_data['voltage_rms']
 
-                slope_fit, slope_err, plateau_fit, plateau_err = self.plot_pulser_dac(mean_data['PlsrDAC'], mean_data['voltage_mean'], mean_data['voltage_rms'], output_pdf, title_suffix="(DC " + str(dc_parameter) + ")")
+                slope_fit, slope_err, plateau_fit, plateau_err = plot_pulser_dac(mean_data['PlsrDAC'], mean_data['voltage_mean'], mean_data['voltage_rms'], output_pdf, title_suffix="(DC " + str(dc_parameter) + ")")
                 dc_data["colpr_addr"][dc_index] = dc_parameter
                 dc_data['Vcal_Coeff_0'][dc_index] = slope_fit[0] * 1000.0  # offset
                 dc_data['Vcal_Coeff_1'][dc_index] = slope_fit[1] * 1000.0  # slope
@@ -176,124 +174,139 @@ class PlsrDacCalibration(Fei4RunBase):
 
             output_pdf.close()
 
-    def plot_pulser_dac(self, x, y, y_err, pdf, title_suffix=""):
-        # plot result
-        fig = Figure()
-        FigureCanvas(fig)
-        ax = fig.add_subplot(111)
-        ax.errorbar(x, y, yerr=y_err, label='PlsrDAC', fmt='o')
-        ax.set_title('PlsrDAC measurement %s' % title_suffix)
-        ax.set_xlabel("PlsrDAC")
-        ax.set_ylabel('Voltage [V]')
-        ax.grid(True)
-        ax.legend(loc='upper left')
-        pdf.savefig(fig)
+def plot_pulser_dac(x, y, y_err=None, output_pdf=None, title_suffix=""):
+    # plot result
+    fig = Figure()
+    FigureCanvas(fig)
+    ax = fig.add_subplot(111)
+    ax.errorbar(x, y, yerr=y_err, label='PlsrDAC', fmt='o')
+    ax.set_title('PlsrDAC Measurement %s' % title_suffix)
+    ax.set_xlabel("PlsrDAC")
+    ax.set_ylabel('Voltage [V]')
+    ax.grid(True)
+    ax.set_xlim((min(x), max(x)))
+    ax.legend(loc='upper left')
+    if isinstance(output_pdf, PdfPages):
+        output_pdf.savefig(fig)
+    else:
+        fig.show()
 
-        # calculate 1st and 2nd deviation to estimate fit range
-        tck = interpolate.splrep(x, y, k=3, s=0)
-        xnew = np.linspace(0, 1024)
+    # calculate 1st and 2nd deviation to estimate fit range
+    tck = interpolate.splrep(x, y, k=3, s=0)
+    xnew = np.linspace(min(x), max(x), num=100, endpoint=True)
 
-        dev_1 = interpolate.splev(x, tck, der=1)
-        dev_2 = interpolate.splev(x, tck, der=2)
+    dev_1 = interpolate.splev(x, tck, der=1)
+    dev_2 = interpolate.splev(x, tck, der=2)
 
-        # calculate turning point
-        turning_point_idx = np.where(np.logical_and(dev_2 == np.amin(dev_2), dev_2 <= -0.5 * 1e-05))[0]
+    # calculate turning point
+    turning_point_idx = np.where(np.logical_and(dev_1 > 0, dev_2 < 0))[0]
 
-        # calculate slope
-        slope_data_dev1_idx = np.where(np.greater(dev_1, [0] * len(dev_1)))[0]
-        slope_data_dev2_idx = np.where(np.isclose(dev_2, [0] * len(dev_2), atol=0.75 * 1e-06))[0]
-        slope_data_idx = np.intersect1d(slope_data_dev1_idx, slope_data_dev2_idx, assume_unique=True)
+    # calculate slope
+    slope_data_dev1_idx = np.where(dev_1 > 0)[0]
+    slope_data_dev2_idx = np.where(np.isclose(dev_2, 0, atol=1.0 * 1e-05))[0]
+    slope_data_idx = np.intersect1d(slope_data_dev1_idx, slope_data_dev2_idx, assume_unique=True)
 
-        # index of slope fit values
-        slope_idx = max(consecutive(slope_data_idx), key=len)
+    # index of slope fit values
+    slope_idx = max(consecutive(slope_data_idx), key=len)
 
-        # calculate plateau
-        plateau_data_dev1_idx = np.where(np.isclose(dev_1, [0] * len(dev_1), atol=1e-04))[0]
-        plateau_data_dev2_idx = np.where(np.isclose(dev_2, [0] * len(dev_2), atol=2e-06))[0]
-        plateau_data_idx = np.intersect1d(plateau_data_dev1_idx, plateau_data_dev2_idx, assume_unique=True)
-        if turning_point_idx.size:
-            turning_point = turning_point_idx[0]
-        else:
-            turning_point = len(x)
-        plateau_data_idx = plateau_data_idx[plateau_data_idx > turning_point]
+    # calculate plateau
+    plateau_data_dev1_idx = np.where(np.isclose(dev_1, 0, atol=1e-04))[0]
+    plateau_data_dev2_idx = np.where(np.isclose(dev_2, 0, atol=1e-05))[0]
+    plateau_data_idx = np.intersect1d(plateau_data_dev1_idx, plateau_data_dev2_idx, assume_unique=True)
+    if turning_point_idx.size:
+        # take last index from array
+        turning_point = turning_point_idx[-1]
+    else:
+        # select highest index
+        turning_point = len(x) - 1
+    plateau_data_idx = plateau_data_idx[plateau_data_idx > turning_point]
 
-        # index of plateau fit values
-        plateau_idx = max(consecutive(plateau_data_idx), key=len)
+    # index of plateau fit values
+    plateau_idx = max(consecutive(plateau_data_idx), key=len)
 
-        fig = Figure()
-        FigureCanvas(fig)
-        ax1 = fig.add_subplot(311)
-        ax1.set_title('PlsrDAC fit range %s' % title_suffix)
-        ax1.plot(x, y, 'o', label='data')
-        ax1.plot(x[slope_idx], y[slope_idx], 'ro', label='fit data')
-        ax1.plot(xnew, interpolate.splev(xnew, tck, der=0), label='B-spline')
+    fig = Figure()
+    FigureCanvas(fig)
+    ax1 = fig.add_subplot(311)
+    ax1.set_title('PlsrDAC Fit Range %s' % title_suffix)
+    ax1.plot(x, y, 'o', label='data')
+    ax1.plot(x[slope_idx], y[slope_idx], 'ro', label='fit data')
+    ax1.plot(xnew, interpolate.splev(xnew, tck, der=0), label='B-spline')
 
-        def slope_fit_fn(x, offset, slope):
-            return offset + slope * x
+    def slope_fit_fn(x, offset, slope):
+        return offset + slope * x
 
-        def plateau_fit_fn(x, offset):
-            return offset
+    def plateau_fit_fn(x, offset):
+        return offset
 
-        try:
-            slope_p_opt, slope_p_cov = optimize.curve_fit(slope_fit_fn, x[slope_idx], y[slope_idx], p0=[0.04, 0.0015], sigma=y_err[slope_idx], absolute_sigma=True)
-        except (RuntimeError, TypeError):
-            slope_p_opt = [np.nan, np.nan]
-            slope_p_err = [np.nan, np.nan]
-        else:
-            slope_p_err = np.sqrt(np.diag(slope_p_cov))
+    try:
+        slope_p_opt, slope_p_cov = optimize.curve_fit(slope_fit_fn, x[slope_idx], y[slope_idx], p0=[0.04, 0.0015], sigma=y_err[slope_idx] if y_err is not None else None, absolute_sigma=True)
+    except (RuntimeError, TypeError):
+        slope_p_opt = [np.nan, np.nan]
+        slope_p_err = [np.nan, np.nan]
+    else:
+        slope_p_err = np.sqrt(np.diag(slope_p_cov))
 
-        try:
-            plateau_p_opt, plateau_p_cov = optimize.curve_fit(plateau_fit_fn, x[plateau_idx], y[plateau_idx], p0=[1.3], sigma=y_err[plateau_idx], absolute_sigma=True)
-        # in case of failing fit or missing plateau
-        except (RuntimeError, TypeError):
-            plateau_p_opt = [np.nan]
-            plateau_p_err = [np.nan]
-        else:
-            plateau_p_err = np.sqrt(np.diag(plateau_p_cov))
+    try:
+        plateau_p_opt, plateau_p_cov = optimize.curve_fit(plateau_fit_fn, x[plateau_idx], y[plateau_idx], p0=[1.3], sigma=y_err[plateau_idx] if y_err is not None else None, absolute_sigma=True)
+    # in case of failing fit or missing plateau
+    except (RuntimeError, TypeError):
+        plateau_p_opt = [np.nan]
+        plateau_p_err = [np.nan]
+    else:
+        plateau_p_err = np.sqrt(np.diag(plateau_p_cov))
 
-#         slope_p_opt = polyfit(x[slope_idx], y[slope_idx], 1)
-#         slope_fit_fn = poly1d(slope_p_opt)
-#         plateau_p_opt = polyfit(x[plateau_idx], y[plateau_idx], 0)
-#         plateau_fit_fn = poly1d(plateau_p_opt)
-        ax1.set_ylabel('Voltage [V]')
-        ax1.set_xlabel("PlsrDAC")
-        ax1.legend(loc='best')
+#     slope_p_opt = polyfit(x[slope_idx], y[slope_idx], 1)
+#     slope_fit_fn = poly1d(slope_p_opt)
+#     plateau_p_opt = polyfit(x[plateau_idx], y[plateau_idx], 0)
+#     plateau_fit_fn = poly1d(plateau_p_opt)
+    ax1.set_ylabel('Voltage [V]')
+    ax1.set_xlabel("PlsrDAC")
+    ax1.set_xlim((min(x), max(x)))
+    ax1.legend(loc='best')
 
-        ax2 = fig.add_subplot(312)
-        ax2.plot(x, dev_1, label='1st dev')
-        ax2.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
-        ax2.set_xlabel("PlsrDAC")
-        ax2.legend(loc='best')
+    ax2 = fig.add_subplot(312)
+    ax2.plot(x, dev_1, label='1st dev')
+    ax2.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
+    ax2.set_xlabel("PlsrDAC")
+    ax2.set_xlim((min(x), max(x)))
+    ax2.legend(loc='best')
 
-        ax3 = fig.add_subplot(313)
-        ax3.plot(x, dev_2, label='2st dev')
-        ax3.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
-        if turning_point_idx.size:
-            ax3.plot(x[turning_point_idx], dev_2[turning_point_idx], 'rx', label='Turning point')
-        ax3.set_xlabel("PlsrDAC")
-        ax3.legend(loc='best')
-        fig.tight_layout()
-        pdf.savefig(fig)
+    ax3 = fig.add_subplot(313)
+    ax3.plot(x, dev_2, label='2st dev')
+    ax3.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
+    ax3.plot(x[turning_point], dev_2[turning_point], 'rx', label='Turning point')
+    ax3.set_xlabel("PlsrDAC")
+    ax3.set_xlim((min(x), max(x)))
+    ax3.legend(loc='best')
+    fig.tight_layout()
+    if isinstance(output_pdf, PdfPages):
+        output_pdf.savefig(fig)
+    else:
+        fig.show()
 
-        # plot and fit result
-        fig = Figure()
-        FigureCanvas(fig)
-        ax = fig.add_subplot(111)
-        ax.errorbar(x, y, None, label='PlsrDAC', fmt='o')
-        ax.plot(x[slope_idx], y[slope_idx], 'ro', label='PlsrDAC fit')
-        ax.plot(x[plateau_idx], y[plateau_idx], 'go', label='PlsrDAC plateau')
-#         ax.plot(x, slope_fit_fn(x), '--k', label=str(slope_fit_fn))
-#         ax.plot(x, plateau_fit_fn(x), '-k', label=str(plateau_fit_fn))
-        ax.plot(x, np.vectorize(slope_fit_fn)(x, *slope_p_opt), '--k', label='%.5f+/-%.5f+\n%.5f+/-%.5f*x' % (slope_p_opt[0], slope_p_err[0], slope_p_opt[1], slope_p_err[1]))
-        ax.plot(x, np.vectorize(plateau_fit_fn)(x, *plateau_p_opt), '-k', label='%.5f+/-%.5f' % (plateau_p_opt[0], plateau_p_err[0]))
-        ax.set_title('PlsrDAC calibration %s' % title_suffix)
-        ax.set_xlabel("PlsrDAC")
-        ax.set_ylabel('Voltage [V]')
-        ax.grid(True)
-        ax.legend(loc='upper left')
-        pdf.savefig(fig)
+    # plot and fit result
+    fig = Figure()
+    FigureCanvas(fig)
+    ax = fig.add_subplot(111)
+    ax.errorbar(x, y, None, label='PlsrDAC', fmt='o')
+    ax.plot(x[slope_idx], y[slope_idx], 'ro', label='PlsrDAC fit')
+    ax.plot(x[plateau_idx], y[plateau_idx], 'go', label='PlsrDAC plateau')
+#     ax.plot(x, slope_fit_fn(x), '--k', label=str(slope_fit_fn))
+#     ax.plot(x, plateau_fit_fn(x), '-k', label=str(plateau_fit_fn))
+    ax.plot(x, np.vectorize(slope_fit_fn)(x, *slope_p_opt), '--k', label='%.5f+/-%.5f+\n%.5f+/-%.5f*x' % (slope_p_opt[0], slope_p_err[0], slope_p_opt[1], slope_p_err[1]))
+    ax.plot(x, np.vectorize(plateau_fit_fn)(x, *plateau_p_opt), '-k', label='%.5f+/-%.5f' % (plateau_p_opt[0], plateau_p_err[0]))
+    ax.set_title('PlsrDAC Calibration %s' % title_suffix)
+    ax.set_xlabel("PlsrDAC")
+    ax.set_ylabel('Voltage [V]')
+    ax.grid(True)
+    ax.set_xlim((min(x), max(x)))
+    ax.legend(loc='upper left')
+    if isinstance(output_pdf, PdfPages):
+        output_pdf.savefig(fig)
+    else:
+        fig.show()
 
-        return slope_p_opt, slope_p_err, plateau_p_opt, plateau_p_err
+    return slope_p_opt, slope_p_err, plateau_p_opt, plateau_p_err
 
 
 if __name__ == "__main__":

@@ -17,8 +17,6 @@ class IleakScan(Fei4RunBase):
     }
 
     def configure(self):
-        self.dut['Multimeter'].init()
-        logging.info('Initialized multimeter %s' % self.dut['Multimeter'].get_name())
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))
         self.register.set_pixel_register_value('Imon', 0)
@@ -31,7 +29,7 @@ class IleakScan(Fei4RunBase):
         progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=len(self.pixels), term_width=80)
         progress_bar.start()
 
-        data_out = self.raw_data_file.h5_file.createCArray(self.raw_data_file.h5_file.root, name='Ileak_map', title='Leakage current per pixel in arbitrary units', atom=tb.Atom.from_dtype(self.ileakmap.dtype), shape=self.ileakmap.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+        data_out = self.raw_data_file.h5_file.create_carray(self.raw_data_file.h5_file.root, name='Ileak_map', title='Leakage current per pixel in arbitrary units', atom=tb.Atom.from_dtype(self.ileakmap.dtype), shape=self.ileakmap.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
 
         for pixel_index, (column, row) in enumerate(self.pixels):
             # Set Imon for actual pixel and configure FE

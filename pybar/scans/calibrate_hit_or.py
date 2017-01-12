@@ -57,10 +57,9 @@ def create_hitor_calibration(output_filename, plot_pixel_calibrations=False):
             event_numbers = hits['event_number'].copy()  # create contigous array, otherwise np.searchsorted too slow, http://stackoverflow.com/questions/15139299/performance-of-numpy-searchsorted-is-poor-on-structured-arrays
 
             output_filename = os.path.splitext(output_filename)[0]
-            with tb.openFile(output_filename + "_calibration.h5", mode="w") as calibration_data_file:
+            with tb.open_file(output_filename + "_calibration.h5", mode="w") as calibration_data_file:
                 logging.info('Create calibration')
-                calibration_data = np.empty(shape=(80, 336, len(inner_loop_parameter_values), 4), dtype='f4')  # result of the calibration is a histogram with col_index, row_index, plsrDAC value, mean discrete tot, rms discrete tot, mean tot from TDC, rms tot from TDC
-                calibration_data.fill(np.nan)
+                calibration_data = np.full(shape=(80, 336, len(inner_loop_parameter_values), 4), fill_value=np.nan, dtype='f4')  # result of the calibration is a histogram with col_index, row_index, plsrDAC value, mean discrete tot, rms discrete tot, mean tot from TDC, rms tot from TDC
 
                 progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=len(event_ranges_per_parameter), term_width=80)
                 progress_bar.start()
@@ -105,7 +104,7 @@ def create_hitor_calibration(output_filename, plot_pixel_calibrations=False):
                     progress_bar.update(index)
                 progress_bar.finish()
 
-                calibration_data_out = calibration_data_file.createCArray(calibration_data_file.root, name='HitOrCalibration', title='Hit OR calibration data', atom=tb.Atom.from_dtype(calibration_data.dtype), shape=calibration_data.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+                calibration_data_out = calibration_data_file.create_carray(calibration_data_file.root, name='HitOrCalibration', title='Hit OR calibration data', atom=tb.Atom.from_dtype(calibration_data.dtype), shape=calibration_data.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
                 calibration_data_out[:] = calibration_data
                 calibration_data_out.attrs.dimensions = scan_parameter_names
                 calibration_data_out.attrs.scan_parameter_values = inner_loop_parameter_values

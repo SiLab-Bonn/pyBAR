@@ -4,8 +4,8 @@ import time
 import numpy as np
 from optparse import OptionParser
 
-from PyQt4 import Qt
-from PyQt4.QtCore import pyqtSlot, pyqtSignal
+from PyQt5 import Qt
+from PyQt5.QtCore import pyqtSlot, pyqtSignal
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtGui
 from pyqtgraph.dockarea import DockArea, Dock
@@ -42,6 +42,13 @@ class DataWorker(QtCore.QObject):
         self.histograming.create_rel_bcid_hist(True)
         self.histograming.create_tot_hist(True)
         self.histograming.create_tdc_hist(True)
+        try:
+            self.histograming.create_tdc_distance_hist(True)
+            self.interpreter.use_tdc_trigger_time_stamp(True)
+        except AttributeError:
+            self.has_tdc_distance = False
+        else:
+            self.has_tdc_distance = True
 
     def connect(self, socket_addr):
         self.socket_addr = socket_addr
@@ -50,7 +57,7 @@ class DataWorker(QtCore.QObject):
         self.socket_pull.setsockopt(zmq.SUBSCRIBE, '')  # do not filter any data
         self.socket_pull.connect(self.socket_addr)
 
-    @pyqtSlot(float)
+    @pyqtSlot(int)
     def on_set_integrate_readouts(self, value):
         self.integrate_readouts = value
 
@@ -95,6 +102,7 @@ class DataWorker(QtCore.QObject):
                                 'occupancy': self.histograming.get_occupancy(),
                                 'tot_hist': self.histograming.get_tot_hist(),
                                 'tdc_counters': self.interpreter.get_tdc_counters(),
+                                'tdc_distance': self.interpreter.get_tdc_distance() if self.has_tdc_distance else np.zeros((256,), dtype=np.uint8),
                                 'error_counters': self.interpreter.get_error_counters(),
                                 'service_records_counters': self.interpreter.get_service_records_counters(),
                                 'trigger_error_counters': self.interpreter.get_trigger_error_counters(),
@@ -177,8 +185,9 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         dock_occcupancy = Dock("Occupancy", size=(400, 400))
         dock_run_config = Dock("Run configuration", size=(400, 400))
         dock_global_config = Dock("Global configuration", size=(400, 400))
-        dock_tot = Dock("Time over threshold values (TOT)", size=(400, 400))
-        dock_tdc = Dock("Time digital converter values (TDC)", size=(400, 400))
+        dock_tot = Dock("ToT", size=(400, 400))
+        dock_tdc = Dock("TDC", size=(400, 400))
+        dock_tdc_distance = Dock("TDC distance", size=(400, 400))
         dock_event_status = Dock("Event status", size=(400, 400))
         dock_trigger_status = Dock("Trigger status", size=(400, 400))
         dock_service_records = Dock("Service records", size=(400, 400))
@@ -187,7 +196,8 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         self.dock_area.addDock(dock_global_config, 'left')
         self.dock_area.addDock(dock_run_config, 'above', dock_global_config)
         self.dock_area.addDock(dock_occcupancy, 'above', dock_run_config)
-        self.dock_area.addDock(dock_tdc, 'right', dock_occcupancy)
+        self.dock_area.addDock(dock_tdc_distance, 'right', dock_occcupancy)
+        self.dock_area.addDock(dock_tdc, 'above', dock_tdc_distance)
         self.dock_area.addDock(dock_tot, 'above', dock_tdc)
         self.dock_area.addDock(dock_service_records, 'bottom', dock_occcupancy)
         self.dock_area.addDock(dock_trigger_status, 'above', dock_service_records)
@@ -238,33 +248,39 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         dock_occcupancy.addWidget(occupancy_graphics)
 
         tot_plot_widget = pg.PlotWidget(background="w")
-        self.tot_plot = tot_plot_widget.plot(np.linspace(-0.5, 15.5, 17), np.zeros((16)), stepMode=True)
+        self.tot_plot = tot_plot_widget.plot(np.linspace(-0.5, 15.5, 17, endpoint=True), np.zeros((16)), stepMode=True)
         tot_plot_widget.showGrid(y=True)
         dock_tot.addWidget(tot_plot_widget)
 
         tdc_plot_widget = pg.PlotWidget(background="w")
-        self.tdc_plot = tdc_plot_widget.plot(np.linspace(-0.5, 4095.5, 4097), np.zeros((4096)), stepMode=True)
+        self.tdc_plot = tdc_plot_widget.plot(np.linspace(-0.5, 4095.5, 4097, endpoint=True), np.zeros((4096)), stepMode=True)
         tdc_plot_widget.showGrid(y=True)
         tdc_plot_widget.setXRange(0, 800, update=True)
         dock_tdc.addWidget(tdc_plot_widget)
 
+        tdc_distance_plot_widget = pg.PlotWidget(background="w")
+        self.tdc_distance_plot = tdc_distance_plot_widget.plot(np.linspace(-0.5, 255.5, 257, endpoint=True), np.zeros((256)), stepMode=True)
+        tdc_distance_plot_widget.showGrid(y=True)
+        tdc_distance_plot_widget.setXRange(0, 800, update=True)
+        dock_tdc_distance.addWidget(tdc_distance_plot_widget)
+
         event_status_widget = pg.PlotWidget()
-        self.event_status_plot = event_status_widget.plot(np.linspace(-0.5, 15.5, 17), np.zeros((16)), stepMode=True)
+        self.event_status_plot = event_status_widget.plot(np.linspace(-0.5, 15.5, 17, endpoint=True), np.zeros((16)), stepMode=True)
         event_status_widget.showGrid(y=True)
         dock_event_status.addWidget(event_status_widget)
 
         trigger_status_widget = pg.PlotWidget()
-        self.trigger_status_plot = trigger_status_widget.plot(np.linspace(-0.5, 7.5, 9), np.zeros((8)), stepMode=True)
+        self.trigger_status_plot = trigger_status_widget.plot(np.linspace(-0.5, 7.5, 9, endpoint=True), np.zeros((8)), stepMode=True)
         trigger_status_widget.showGrid(y=True)
         dock_trigger_status.addWidget(trigger_status_widget)
 
         service_record_widget = pg.PlotWidget()
-        self.service_record_plot = service_record_widget.plot(np.linspace(-0.5, 31.5, 33), np.zeros((32)), stepMode=True)
+        self.service_record_plot = service_record_widget.plot(np.linspace(-0.5, 31.5, 33, endpoint=True), np.zeros((32)), stepMode=True)
         service_record_widget.showGrid(y=True)
         dock_service_records.addWidget(service_record_widget)
 
         hit_timing_widget = pg.PlotWidget()
-        self.hit_timing_plot = hit_timing_widget.plot(np.linspace(-0.5, 15.5, 17), np.zeros((16)), stepMode=True)
+        self.hit_timing_plot = hit_timing_widget.plot(np.linspace(-0.5, 15.5, 17, endpoint=True), np.zeros((16)), stepMode=True)
         hit_timing_widget.showGrid(y=True)
         dock_hit_timing.addWidget(hit_timing_widget)
 
@@ -313,16 +329,17 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         self.update_plots(**interpreted_data)
 
     def reset_plots(self):
-        self.update_plots(np.zeros((80, 336, 1), dtype=np.uint8), np.zeros((16,), dtype=np.uint8), np.zeros((4096,), dtype=np.uint8), np.zeros((16,), dtype=np.uint8), np.zeros((32,), dtype=np.uint8), np.zeros((8,), dtype=np.uint8), np.zeros((16,), dtype=np.uint8))
+        self.update_plots(np.zeros((80, 336, 1), dtype=np.uint8), np.zeros((16,), dtype=np.uint8), np.zeros((4096,), dtype=np.uint8), np.zeros((256,), dtype=np.uint8), np.zeros((16,), dtype=np.uint8), np.zeros((32,), dtype=np.uint8), np.zeros((8,), dtype=np.uint8), np.zeros((16,), dtype=np.uint8))
 
-    def update_plots(self, occupancy, tot_hist, tdc_counters, error_counters, service_records_counters, trigger_error_counters, rel_bcid_hist):
+    def update_plots(self, occupancy, tot_hist, tdc_counters, tdc_distance, error_counters, service_records_counters, trigger_error_counters, rel_bcid_hist):
         self.occupancy_img.setImage(occupancy[:, ::-1, 0], autoDownsample=True)
-        self.tot_plot.setData(x=np.linspace(-0.5, 15.5, 17), y=tot_hist, fillLevel=0, brush=(0, 0, 255, 150))
-        self.tdc_plot.setData(x=np.linspace(-0.5, 4096.5, 4097), y=tdc_counters, fillLevel=0, brush=(0, 0, 255, 150))
-        self.event_status_plot.setData(x=np.linspace(-0.5, 15.5, 17), y=error_counters, stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
-        self.service_record_plot.setData(x=np.linspace(-0.5, 31.5, 33), y=service_records_counters, stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
-        self.trigger_status_plot.setData(x=np.linspace(-0.5, 7.5, 9), y=trigger_error_counters, stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
-        self.hit_timing_plot.setData(x=np.linspace(-0.5, 15.5, 17), y=rel_bcid_hist[:16], stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
+        self.tot_plot.setData(x=np.linspace(-0.5, 15.5, 17, endpoint=True), y=tot_hist, fillLevel=0, brush=(0, 0, 255, 150), stepMode=True)
+        self.tdc_plot.setData(x=np.linspace(-0.5, 4095.5, 4097, endpoint=True), y=tdc_counters, fillLevel=0, brush=(0, 0, 255, 150), stepMode=True)
+        self.tdc_distance_plot.setData(x=np.linspace(-0.5, 255.5, 257, endpoint=True), y=tdc_distance, fillLevel=0, brush=(0, 0, 255, 150), stepMode=True)
+        self.event_status_plot.setData(x=np.linspace(-0.5, 15.5, 17, endpoint=True), y=error_counters, fillLevel=0, brush=(0, 0, 255, 150), stepMode=True)
+        self.service_record_plot.setData(x=np.linspace(-0.5, 31.5, 33, endpoint=True), y=service_records_counters, fillLevel=0, brush=(0, 0, 255, 150), stepMode=True)
+        self.trigger_status_plot.setData(x=np.linspace(-0.5, 7.5, 9, endpoint=True), y=trigger_error_counters, fillLevel=0, brush=(0, 0, 255, 150), stepMode=True)
+        self.hit_timing_plot.setData(x=np.linspace(-0.5, 15.5, 17, endpoint=True), y=rel_bcid_hist[:16], fillLevel=0, brush=(0, 0, 255, 150), stepMode=True)
 
     @pyqtSlot(dict)
     def on_meta_data(self, meta_data):

@@ -4,6 +4,9 @@ USB:
     board_id       : # Selecting USBpix board by ID
     avoid_download : True  # Avoiding download of FPGA firmware if already initialized
 
+ADAPTER_CARD:
+    no_calibration : False
+
 # Trigger
 TLU:
     TRIGGER_MODE                         : 0  # Selecting trigger mode: Use trigger inputs/trigger select (0), TLU no handshake (1), TLU simple handshake (2), TLU data handshake (3)
@@ -13,6 +16,7 @@ TLU:
     TRIGGER_HANDSHAKE_ACCEPT_WAIT_CYCLES : 3  # increase minimum trigger length
     TRIGGER_DATA_DELAY                   : 0  # Depends on the cable length and should be adjusted (run scan/tune_tlu.py)
     TRIGGER_THRESHOLD                    : 0  # Standard trigger minimum length
+    DATA_FORMAT                          : 0  # trigger number according to TRIGGER_MODE (0), time stamp only (1), combined, 15bit time stamp + 16bit trigger number (2)
 
 # TDC for high precision charge measurements
 TDC:

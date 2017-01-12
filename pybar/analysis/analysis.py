@@ -38,7 +38,7 @@ def analyze_beam_spot(scan_base, combine_n_readouts=1000, chunk_size=10000000, p
     y = []
 
     for data_file in scan_base:
-        with tb.openFile(data_file + '_interpreted.h5', mode="r+") as in_hit_file_h5:
+        with tb.open_file(data_file + '_interpreted.h5', mode="r+") as in_hit_file_h5:
             # get data and data pointer
             meta_data_array = in_hit_file_h5.root.meta_data[:]
             hit_table = in_hit_file_h5.root.Hits
@@ -87,10 +87,10 @@ def analyze_beam_spot(scan_base, combine_n_readouts=1000, chunk_size=10000000, p
             progress_bar.finish()
     plotting.plot_scatter([i * 250 for i in x], [i * 50 for i in y], title='Mean beam position', x_label='x [um]', y_label='y [um]', marker_style='-o', filename=output_pdf)
     if output_file:
-        with tb.openFile(output_file, mode="a") as out_file_h5:
+        with tb.open_file(output_file, mode="a") as out_file_h5:
             rec_array = np.array(zip(time_stamp, x, y), dtype=[('time_stamp', float), ('x', float), ('y', float)])
             try:
-                beam_spot_table = out_file_h5.createTable(out_file_h5.root, name='Beamspot', description=rec_array, title='Beam spot position', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+                beam_spot_table = out_file_h5.create_table(out_file_h5.root, name='Beamspot', description=rec_array, title='Beam spot position', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
                 beam_spot_table[:] = rec_array
             except tb.exceptions.NodeError:
                 logging.warning(output_file + ' has already a Beamspot note, do not overwrite existing.')
@@ -118,7 +118,7 @@ def analyze_event_rate(scan_base, combine_n_readouts=1000, time_line_absolute=Tr
     start_time_set = False
 
     for data_file in scan_base:
-        with tb.openFile(data_file + '_interpreted.h5', mode="r") as in_file_h5:
+        with tb.open_file(data_file + '_interpreted.h5', mode="r") as in_file_h5:
             meta_data_array = in_file_h5.root.meta_data[:]
             parameter_ranges = np.column_stack((analysis_utils.get_ranges_from_array(meta_data_array['timestamp_start'][::combine_n_readouts]), analysis_utils.get_ranges_from_array(meta_data_array['event_number'][::combine_n_readouts])))
 
@@ -135,10 +135,10 @@ def analyze_event_rate(scan_base, combine_n_readouts=1000, time_line_absolute=Tr
     else:
         plotting.plot_scatter(time_stamp, rate, title='Events per time', x_label='Progressed time [min.]', y_label='Events rate [Hz]', marker_style='o', filename=output_pdf)
     if output_file:
-        with tb.openFile(output_file, mode="a") as out_file_h5:
+        with tb.open_file(output_file, mode="a") as out_file_h5:
             rec_array = np.array(zip(time_stamp, rate), dtype=[('time_stamp', float), ('rate', float)]).view(np.recarray)
             try:
-                rate_table = out_file_h5.createTable(out_file_h5.root, name='Eventrate', description=rec_array, title='Event rate', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+                rate_table = out_file_h5.create_table(out_file_h5.root, name='Eventrate', description=rec_array, title='Event rate', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
                 rate_table[:] = rec_array
             except tb.exceptions.NodeError:
                 logging.warning(output_file + ' has already a Eventrate note, do not overwrite existing.')
@@ -168,7 +168,7 @@ def analyse_n_cluster_per_event(scan_base, include_no_cluster=False, time_line_a
     start_time_set = False
 
     for data_file in scan_base:
-        with tb.openFile(data_file + '_interpreted.h5', mode="r+") as in_cluster_file_h5:
+        with tb.open_file(data_file + '_interpreted.h5', mode="r+") as in_cluster_file_h5:
             # get data and data pointer
             meta_data_array = in_cluster_file_h5.root.meta_data[:]
             cluster_table = in_cluster_file_h5.root.Cluster
@@ -235,11 +235,11 @@ def analyse_n_cluster_per_event(scan_base, include_no_cluster=False, time_line_a
     else:
         plotting.plot_scatter(time_stamp, n_cluster, title='Number of cluster per event as a function of time', x_label='time [min.]', marker_style='o', filename=output_pdf, legend=('0 cluster', '1 cluster', '2 cluster', '3 cluster') if include_no_cluster else ('0 cluster not plotted', '1 cluster', '2 cluster', '3 cluster'))
     if output_file:
-        with tb.openFile(output_file, mode="a") as out_file_h5:
+        with tb.open_file(output_file, mode="a") as out_file_h5:
             cluster_array = np.array(n_cluster)
             rec_array = np.array(zip(time_stamp, cluster_array[:, 0], cluster_array[:, 1], cluster_array[:, 2], cluster_array[:, 3], cluster_array[:, 4], cluster_array[:, 5]), dtype=[('time_stamp', float), ('cluster_0', float), ('cluster_1', float), ('cluster_2', float), ('cluster_3', float), ('cluster_4', float), ('cluster_5', float)]).view(np.recarray)
             try:
-                n_cluster_table = out_file_h5.createTable(out_file_h5.root, name='n_cluster', description=rec_array, title='Cluster per event', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+                n_cluster_table = out_file_h5.create_table(out_file_h5.root, name='n_cluster', description=rec_array, title='Cluster per event', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
                 n_cluster_table[:] = rec_array
             except tb.exceptions.NodeError:
                 logging.warning(output_file + ' has already a Beamspot note, do not overwrite existing.')
@@ -263,11 +263,11 @@ def select_hits_from_cluster_info(input_file_hits, output_file_hits, cluster_siz
         the number of cluster in a event ((e.g.: 'n_cluster_condition == 1')
     '''
     logging.info('Write hits of events from ' + str(input_file_hits) + ' with ' + cluster_size_condition + ' and ' + n_cluster_condition + ' into ' + str(output_file_hits))
-    with tb.openFile(input_file_hits, mode="r+") as in_hit_file_h5:
+    with tb.open_file(input_file_hits, mode="r+") as in_hit_file_h5:
         analysis_utils.index_event_number(in_hit_file_h5.root.Hits)
         analysis_utils.index_event_number(in_hit_file_h5.root.Cluster)
-        with tb.openFile(output_file_hits, mode="w") as out_hit_file_h5:
-            hit_table_out = out_hit_file_h5.createTable(out_hit_file_h5.root, name='Hits', description=data_struct.HitInfoTable, title='hit_data', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+        with tb.open_file(output_file_hits, mode="w") as out_hit_file_h5:
+            hit_table_out = out_hit_file_h5.create_table(out_hit_file_h5.root, name='Hits', description=data_struct.HitInfoTable, title='hit_data', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
             cluster_table = in_hit_file_h5.root.Cluster
             last_word_number = 0
             progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=cluster_table.shape[0], term_width=80)
@@ -304,18 +304,18 @@ def select_hits(input_file_hits, output_file_hits, condition=None, cluster_size_
     '''
     logging.info('Write hits with ' + condition + ' into ' + str(output_file_hits))
     if cluster_size_condition is None and n_cluster_condition is None:  # no cluster cuts are done
-        with tb.openFile(input_file_hits, mode="r+") as in_hit_file_h5:
+        with tb.open_file(input_file_hits, mode="r+") as in_hit_file_h5:
             analysis_utils.index_event_number(in_hit_file_h5.root.Hits)  # create event index for faster selection
-            with tb.openFile(output_file_hits, mode="w") as out_hit_file_h5:
-                hit_table_out = out_hit_file_h5.createTable(out_hit_file_h5.root, name='Hits', description=data_struct.HitInfoTable, title='hit_data', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+            with tb.open_file(output_file_hits, mode="w") as out_hit_file_h5:
+                hit_table_out = out_hit_file_h5.create_table(out_hit_file_h5.root, name='Hits', description=data_struct.HitInfoTable, title='hit_data', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
                 analysis_utils.write_hits_in_event_range(hit_table_in=in_hit_file_h5.root.Hits, hit_table_out=hit_table_out, condition=condition)  # write the hits of the selected events into a new table
                 in_hit_file_h5.root.meta_data.copy(out_hit_file_h5.root)  # copy meta_data note to new file
     else:
-        with tb.openFile(input_file_hits, mode="r+") as in_hit_file_h5:  # open file with hit/cluster data with r+ to be able to create index
+        with tb.open_file(input_file_hits, mode="r+") as in_hit_file_h5:  # open file with hit/cluster data with r+ to be able to create index
             analysis_utils.index_event_number(in_hit_file_h5.root.Hits)  # create event index for faster selection
             analysis_utils.index_event_number(in_hit_file_h5.root.Cluster)  # create event index for faster selection
-            with tb.openFile(output_file_hits, mode="w") as out_hit_file_h5:
-                hit_table_out = out_hit_file_h5.createTable(out_hit_file_h5.root, name='Hits', description=data_struct.HitInfoTable, title='hit_data', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+            with tb.open_file(output_file_hits, mode="w") as out_hit_file_h5:
+                hit_table_out = out_hit_file_h5.create_table(out_hit_file_h5.root, name='Hits', description=data_struct.HitInfoTable, title='hit_data', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
                 cluster_table = in_hit_file_h5.root.Cluster
                 last_word_number = 0
                 progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=cluster_table.shape[0], term_width=80)
@@ -357,11 +357,11 @@ def analyze_cluster_size_per_scan_parameter(input_file_hits, output_file_cluster
     if os.path.isfile(output_file_cluster_size) and not overwrite_output_files:  # skip analysis if already done
         logging.info('Analyzed cluster size file ' + output_file_cluster_size + ' already exists. Skip cluster size analysis.')
     else:
-        with tb.openFile(output_file_cluster_size, mode="w") as out_file_h5:  # file to write the data into
+        with tb.open_file(output_file_cluster_size, mode="w") as out_file_h5:  # file to write the data into
             filter_table = tb.Filters(complib='blosc', complevel=5, fletcher32=False)  # compression of the written data
-            parameter_goup = out_file_h5.createGroup(out_file_h5.root, parameter, title=parameter)  # note to store the data
+            parameter_goup = out_file_h5.create_group(out_file_h5.root, parameter, title=parameter)  # note to store the data
             cluster_size_total = None  # final array for the cluster size per GDAC
-            with tb.openFile(input_file_hits, mode="r+") as in_hit_file_h5:  # open the actual hit file
+            with tb.open_file(input_file_hits, mode="r+") as in_hit_file_h5:  # open the actual hit file
                 meta_data_array = in_hit_file_h5.root.meta_data[:]
                 scan_parameter = analysis_utils.get_scan_parameter(meta_data_array)  # get the scan parameters
                 if scan_parameter:  # if a GDAC scan parameter was used analyze the cluster size per GDAC setting
@@ -389,7 +389,7 @@ def analyze_cluster_size_per_scan_parameter(input_file_hits, output_file_cluster
                             start_event_number = parameter_range[1]
                             stop_event_number = parameter_range[2]
                             logging.debug('Data from events = [' + str(start_event_number) + ',' + str(stop_event_number) + '[')
-                            actual_parameter_group = out_file_h5.createGroup(parameter_goup, name=parameter + '_' + str(parameter_range[0]), title=parameter + '_' + str(parameter_range[0]))
+                            actual_parameter_group = out_file_h5.create_group(parameter_goup, name=parameter + '_' + str(parameter_range[0]), title=parameter + '_' + str(parameter_range[0]))
                             # loop over the hits in the actual selected events with optimizations: variable chunk size, start word index given
                             readout_hit_len = 0  # variable to calculate a optimal chunk size value from the number of hits for speed up
                             for hits, index in analysis_utils.data_aligned_at_events(hit_table, start_event_number=start_event_number, stop_event_number=stop_event_number, start_index=index, chunk_size=chunk_size):
@@ -405,7 +405,7 @@ def analyze_cluster_size_per_scan_parameter(input_file_hits, output_file_cluster
 
                             # store and plot cluster size hist
                             cluster_size_hist = analyze_data.clusterizer.get_cluster_size_hist()
-                            cluster_size_hist_table = out_file_h5.createCArray(actual_parameter_group, name='HistClusterSize', title='Cluster Size Histogram', atom=tb.Atom.from_dtype(cluster_size_hist.dtype), shape=cluster_size_hist.shape, filters=filter_table)
+                            cluster_size_hist_table = out_file_h5.create_carray(actual_parameter_group, name='HistClusterSize', title='Cluster Size Histogram', atom=tb.Atom.from_dtype(cluster_size_hist.dtype), shape=cluster_size_hist.shape, filters=filter_table)
                             cluster_size_hist_table[:] = cluster_size_hist
                             if output_pdf is not False:
                                 plotting.plot_cluster_size(hist=cluster_size_hist, title='Cluster size (' + str(np.sum(cluster_size_hist)) + ' entries) for ' + parameter + ' = ' + str(scan_parameter_values[parameter_index]), filename=output_pdf)
@@ -419,7 +419,7 @@ def analyze_cluster_size_per_scan_parameter(input_file_hits, output_file_cluster
                         if total_hits != total_hits_2:
                             logging.warning('Analysis shows inconsistent number of hits. Check needed!')
                         logging.info('Analyzed %d hits!', total_hits)
-            cluster_size_total_out = out_file_h5.createCArray(out_file_h5.root, name='AllHistClusterSize', title='All Cluster Size Histograms', atom=tb.Atom.from_dtype(cluster_size_total.dtype), shape=cluster_size_total.shape, filters=filter_table)
+            cluster_size_total_out = out_file_h5.create_carray(out_file_h5.root, name='AllHistClusterSize', title='All Cluster Size Histograms', atom=tb.Atom.from_dtype(cluster_size_total.dtype), shape=cluster_size_total.shape, filters=filter_table)
             cluster_size_total_out[:] = cluster_size_total
 
 
@@ -436,8 +436,8 @@ def histogram_cluster_table(analyzed_data_file, output_file, chunk_size=10000000
     occupancy_array: numpy.array with dimensions (col, row, #scan_parameter)
     '''
 
-    with tb.openFile(analyzed_data_file, mode="r") as in_file_h5:
-        with tb.openFile(output_file, mode="w") as out_file_h5:
+    with tb.open_file(analyzed_data_file, mode="r") as in_file_h5:
+        with tb.open_file(output_file, mode="w") as out_file_h5:
             histograming = PyDataHistograming()
             histograming.create_occupancy_hist(True)
             scan_parameters = None
@@ -471,7 +471,7 @@ def histogram_cluster_table(analyzed_data_file, output_file, chunk_size=10000000
 
             filter_table = tb.Filters(complib='blosc', complevel=5, fletcher32=False)  # compression of the written data
             occupancy_array = histograming.get_occupancy().T
-            occupancy_array_table = out_file_h5.createCArray(out_file_h5.root, name='HistOcc', title='Occupancy Histogram', atom=tb.Atom.from_dtype(occupancy_array.dtype), shape=occupancy_array.shape, filters=filter_table)
+            occupancy_array_table = out_file_h5.create_carray(out_file_h5.root, name='HistOcc', title='Occupancy Histogram', atom=tb.Atom.from_dtype(occupancy_array.dtype), shape=occupancy_array.shape, filters=filter_table)
             occupancy_array_table[:] = occupancy_array
 
             if total_cluster != np.sum(occupancy_array):

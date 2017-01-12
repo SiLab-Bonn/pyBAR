@@ -400,6 +400,10 @@ class RunManager(object):
             self._conf_path = conf.name
         else:
             self._conf_path = None
+        if isinstance(conf, basestring) and os.path.isfile(conf):
+            logging.info('Loading configuration from file %s', os.path.abspath(conf))
+        else:
+            logging.info('Loading configuration')
         self._conf = self.open_conf(conf)
         if 'working_dir' in self._conf and self._conf['working_dir']:
             # dirty fix for Windows pathes
@@ -414,6 +418,7 @@ class RunManager(object):
             self._conf['working_dir'] = os.path.dirname(self._conf_path)
         else:
             raise ValueError('Cannot deduce working directory from configuration')
+        logging.info('Using working directory %s', os.path.abspath(self._conf['working_dir']))
 
     @staticmethod
     def open_conf(conf):
@@ -428,7 +433,7 @@ class RunManager(object):
                 try:
                     conf_dict.update(safe_load(conf))
                 except ValueError:  # invalid path/filename
-                    raise IOError("File not found: %s" % conf)
+                    raise IOError("File not found: %s" % os.path.abspath(conf))
         elif isinstance(conf, file):  # parse the first YAML document in a stream
             conf_dict.update(safe_load(conf))
         else:  # conf is already a dict
@@ -462,6 +467,10 @@ class RunManager(object):
         If use_thread is True, returns function, which blocks until thread terminates, and which itself returns run status.
         If use_thread is False, returns run status.
         '''
+        if isinstance(conf, basestring) and os.path.isfile(conf):
+            logging.info('Updating configuration from file %s', os.path.abspath(conf))
+        elif conf is not None:
+            logging.info('Updating configuration')
         conf = self.open_conf(conf)
         self._conf.update(conf)
 
@@ -472,11 +481,17 @@ class RunManager(object):
         local_run_conf = {}
         # general parameters from conf
         if 'run_conf' in self._conf:
+            logging.info('Updating run configuration using run_conf key from configuration')
             local_run_conf.update(self._conf['run_conf'])
         # check for class name, scan specific parameters from conf
         if run.__class__.__name__ in self._conf:
+            logging.info('Updating run configuration using %s key from configuration' % (run.__class__.__name__,))
             local_run_conf.update(self._conf[run.__class__.__name__])
 
+        if isinstance(run_conf, basestring) and os.path.isfile(run_conf):
+            logging.info('Updating run configuration from file %s', os.path.abspath(run_conf))
+        elif run_conf is not None:
+            logging.info('Updating run configuration')
         run_conf = self.open_conf(run_conf)
         # check for class name, scan specific parameters from conf
         if run.__class__.__name__ in run_conf:

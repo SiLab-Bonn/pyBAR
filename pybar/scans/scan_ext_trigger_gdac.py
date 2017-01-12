@@ -52,13 +52,13 @@ class ExtTriggerGdacScan(ExtTriggerScan):
 
     def get_gdacs_from_interpolated_calibration(self, calibration_file, thresholds):
         logging.info('Interpolate GDAC calibration for the thresholds %s', str(thresholds))
-        with tb.openFile(calibration_file, mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
+        with tb.open_file(calibration_file, mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
             interpolation = interp1d(in_file_calibration_h5.root.MeanThresholdCalibration[:]['mean_threshold'], in_file_calibration_h5.root.MeanThresholdCalibration[:]['parameter_value'], kind='slinear', bounds_error=True)
             return np.unique(interpolation(thresholds).astype(np.uint32))
 
     def get_gdacs_from_calibration_file(self, calibration_file):
         logging.info('Take GDAC values from calibration file')
-        with tb.openFile(calibration_file, mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
+        with tb.open_file(calibration_file, mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
             return in_file_calibration_h5.root.MeanThresholdCalibration[:]['parameter_value']
 
 

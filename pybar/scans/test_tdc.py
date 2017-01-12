@@ -34,8 +34,6 @@ class TdcTest(Fei4RunBase):
     }
 
     def configure(self):  # init pulser
-        self.dut['Pulser'].init()
-        logging.info('Initialized multimeter %s' % self.dut['Pulser'].get_name())
         self.dut['Pulser'].set_pulse_period(self.pulse_period)
         self.dut['TDC']['EN_TRIGGER_DIST'] = True
         self.dut['TDC']['EN_NO_WRITE_TRIG_ERR'] = False

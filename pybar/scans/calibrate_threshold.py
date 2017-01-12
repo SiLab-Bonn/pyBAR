@@ -38,8 +38,8 @@ def create_threshold_calibration(scan_base_file_name, create_plots=True):  # Cre
     def store_calibration_data_as_table(out_file_h5, mean_threshold_calibration, mean_threshold_rms_calibration, threshold_calibration, parameter_values):
         logging.info("Storing calibration data in a table...")
         filter_table = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
-        mean_threshold_calib_table = out_file_h5.createTable(out_file_h5.root, name='MeanThresholdCalibration', description=data_struct.MeanThresholdCalibrationTable, title='mean_threshold_calibration', filters=filter_table)
-        threshold_calib_table = out_file_h5.createTable(out_file_h5.root, name='ThresholdCalibration', description=data_struct.ThresholdCalibrationTable, title='threshold_calibration', filters=filter_table)
+        mean_threshold_calib_table = out_file_h5.create_table(out_file_h5.root, name='MeanThresholdCalibration', description=data_struct.MeanThresholdCalibrationTable, title='mean_threshold_calibration', filters=filter_table)
+        threshold_calib_table = out_file_h5.create_table(out_file_h5.root, name='ThresholdCalibration', description=data_struct.ThresholdCalibrationTable, title='threshold_calibration', filters=filter_table)
         for column in range(80):
             for row in range(336):
                 for parameter_value_index, parameter_value in enumerate(parameter_values):
@@ -60,9 +60,9 @@ def create_threshold_calibration(scan_base_file_name, create_plots=True):  # Cre
     def store_calibration_data_as_array(out_file_h5, mean_threshold_calibration, mean_threshold_rms_calibration, threshold_calibration, parameter_name, parameter_values):
         logging.info("Storing calibration data in an array...")
         filter_table = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
-        mean_threshold_calib_array = out_file_h5.createCArray(out_file_h5.root, name='HistThresholdMeanCalibration', atom=tb.Atom.from_dtype(mean_threshold_calibration.dtype), shape=mean_threshold_calibration.shape, title='mean_threshold_calibration', filters=filter_table)
-        mean_threshold_calib_rms_array = out_file_h5.createCArray(out_file_h5.root, name='HistThresholdRMSCalibration', atom=tb.Atom.from_dtype(mean_threshold_calibration.dtype), shape=mean_threshold_calibration.shape, title='mean_threshold_rms_calibration', filters=filter_table)
-        threshold_calib_array = out_file_h5.createCArray(out_file_h5.root, name='HistThresholdCalibration', atom=tb.Atom.from_dtype(threshold_calibration.dtype), shape=threshold_calibration.shape, title='threshold_calibration', filters=filter_table)
+        mean_threshold_calib_array = out_file_h5.create_carray(out_file_h5.root, name='HistThresholdMeanCalibration', atom=tb.Atom.from_dtype(mean_threshold_calibration.dtype), shape=mean_threshold_calibration.shape, title='mean_threshold_calibration', filters=filter_table)
+        mean_threshold_calib_rms_array = out_file_h5.create_carray(out_file_h5.root, name='HistThresholdRMSCalibration', atom=tb.Atom.from_dtype(mean_threshold_calibration.dtype), shape=mean_threshold_calibration.shape, title='mean_threshold_rms_calibration', filters=filter_table)
+        threshold_calib_array = out_file_h5.create_carray(out_file_h5.root, name='HistThresholdCalibration', atom=tb.Atom.from_dtype(threshold_calibration.dtype), shape=threshold_calibration.shape, title='threshold_calibration', filters=filter_table)
         mean_threshold_calib_array[:] = mean_threshold_calibration
         mean_threshold_calib_rms_array[:] = mean_threshold_rms_calibration
         threshold_calib_array[:] = threshold_calibration
@@ -84,7 +84,7 @@ def create_threshold_calibration(scan_base_file_name, create_plots=True):  # Cre
     raw_data_files = analysis_utils.get_data_file_names_from_scan_base(scan_base_file_name)
     first_scan_base_file_name = scan_base_file_name if isinstance(scan_base_file_name, basestring) else scan_base_file_name[0]  # multilpe scan_base_file_names for multiple runs
 
-    with tb.openFile(first_scan_base_file_name + '.h5', mode="r") as in_file_h5:  # deduce scan parameters from the first (and often only) scan base file name
+    with tb.open_file(first_scan_base_file_name + '.h5', mode="r") as in_file_h5:  # deduce scan parameters from the first (and often only) scan base file name
         ignore_columns = in_file_h5.root.configuration.run_conf[:][np.where(in_file_h5.root.configuration.run_conf[:]['name'] == 'ignore_columns')]['value'][0]
         parameter_name = in_file_h5.root.configuration.run_conf[:][np.where(in_file_h5.root.configuration.run_conf[:]['name'] == 'scan_parameters')]['value'][0]
         ignore_columns = ast.literal_eval(ignore_columns)
@@ -111,7 +111,7 @@ def create_threshold_calibration(scan_base_file_name, create_plots=True):  # Cre
     parameter_values = []
     for index, (analyzed_data_file, parameters) in enumerate(files_per_parameter.items()):
         parameter_values.append(parameters.values()[0][0])
-        with tb.openFile(analyzed_data_file, mode="r") as in_file_h5:
+        with tb.open_file(analyzed_data_file, mode="r") as in_file_h5:
             occupancy_masked = mask_columns(pixel_array=in_file_h5.root.HistOcc[:], ignore_columns=ignore_columns)  # mask the not scanned columns for analysis and plotting
             thresholds_masked = mask_columns(pixel_array=in_file_h5.root.HistThresholdFitted[:], ignore_columns=ignore_columns)
             if create_plots:
@@ -125,7 +125,7 @@ def create_threshold_calibration(scan_base_file_name, create_plots=True):  # Cre
         progress_bar.update(index)
     progress_bar.finish()
 
-    with tb.openFile(calibration_file + '.h5', mode="w") as out_file_h5:
+    with tb.open_file(calibration_file + '.h5', mode="w") as out_file_h5:
         store_calibration_data_as_array(out_file_h5=out_file_h5, mean_threshold_calibration=mean_threshold_calibration, mean_threshold_rms_calibration=mean_threshold_rms_calibration, threshold_calibration=threshold_calibration, parameter_name=parameter_name, parameter_values=parameter_values)
         store_calibration_data_as_table(out_file_h5=out_file_h5, mean_threshold_calibration=mean_threshold_calibration, mean_threshold_rms_calibration=mean_threshold_rms_calibration, threshold_calibration=threshold_calibration, parameter_values=parameter_values)
 

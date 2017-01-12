@@ -141,20 +141,20 @@ def analyse_selected_hits(input_file_hits, output_file_hits, output_file_hits_an
             analyze_raw_data.create_cluster_tot_hist = True
             analyze_raw_data.analyze_hit_table(analyzed_data_out_file=output_file_hits_analyzed)
             analyze_raw_data.plot_histograms(scan_data_filename=output_file_hits_analyzed, analyzed_data_file=output_file_hits_analyzed)
-        with tb.openFile(input_file_hits, mode="r") as in_hit_file_h5:  # copy meta data to the new analyzed file
-            with tb.openFile(output_file_hits_analyzed, mode="r+") as output_hit_file_h5:
+        with tb.open_file(input_file_hits, mode="r") as in_hit_file_h5:  # copy meta data to the new analyzed file
+            with tb.open_file(output_file_hits_analyzed, mode="r+") as output_hit_file_h5:
                 in_hit_file_h5.root.meta_data.copy(output_hit_file_h5.root)  # copy meta_data note to new file
 
 
 def analyze_injected_charge(data_analyzed_file):
     logging.info('Analyze the injected charge')
-    with tb.openFile(data_analyzed_file, mode="r") as in_file_h5:
+    with tb.open_file(data_analyzed_file, mode="r") as in_file_h5:
         occupancy = in_file_h5.root.HistOcc[:].T
         gdacs = analysis_utils.get_scan_parameter(in_file_h5.root.meta_data[:])['GDAC']
         with PdfPages(data_analyzed_file[:-3] + '.pdf') as plot_file:
             plotting.plot_scatter(gdacs, occupancy.sum(axis=(0, 1)), title='Single pixel hit rate at different thresholds', x_label='Threshold setting [GDAC]', y_label='Single pixel hit rate', log_x=True, filename=plot_file)
             if analysis_configuration['input_file_calibration']:
-                with tb.openFile(analysis_configuration['input_file_calibration'], mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
+                with tb.open_file(analysis_configuration['input_file_calibration'], mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
                     mean_threshold_calibration = in_file_calibration_h5.root.MeanThresholdCalibration[:]
                     threshold_calibration_array = in_file_calibration_h5.root.HistThresholdCalibration[:]
 
@@ -180,7 +180,7 @@ def analyze_injected_charge(data_analyzed_file):
                     # correcting the hit numbers for the different cluster sizes
                     correction_factors = 1.
                     if analysis_configuration['use_cluster_rate_correction']:
-                        correction_h5 = tb.openFile(cluster_sizes_file, mode="r")
+                        correction_h5 = tb.open_file(cluster_sizes_file, mode="r")
                         cluster_size_histogram = correction_h5.root.AllHistClusterSize[:]
                         correction_factors = analysis_utils.get_hit_rate_correction(gdacs=gdac_range_source_scan, calibration_gdacs=gdac_range_source_scan, cluster_size_histogram=cluster_size_histogram)
                         if analysis_configuration['plot_cluster_sizes']:
@@ -221,7 +221,7 @@ def analyze_injected_charge(data_analyzed_file):
                     smoothed_data = analysis_utils.smooth_differentiation(x_p, y_p, weigths=1 / y_p_e, order=3, smoothness=analysis_configuration['smoothness'], derivation=0)
                     smoothed_data_diff = analysis_utils.smooth_differentiation(x_p, y_p, weigths=1 / y_p_e, order=3, smoothness=analysis_configuration['smoothness'], derivation=1)
 
-                    with tb.openFile(data_analyzed_file[:-3] + '_result.h5', mode="w") as out_file_h5:
+                    with tb.open_file(data_analyzed_file[:-3] + '_result.h5', mode="w") as out_file_h5:
                         result_1 = np.rec.array(np.column_stack((x_p, y_p, y_p_e)), dtype=[('charge', float), ('count', float), ('count_error', float)])
                         result_2 = np.rec.array(np.column_stack((x_p, smoothed_data)), dtype=[('charge', float), ('count', float)])
                         result_3 = np.rec.array(np.column_stack((x_p, -smoothed_data_diff)), dtype=[('charge', float), ('count', float)])

@@ -1,9 +1,10 @@
 # Example how to use pyBar to take TDC data and analyze the TDC SN in one small script.
 import numpy as np
 import tables as tb
+import matplotlib.pyplot as plt
+
 from pybar.run_manager import RunManager  # importing run manager
 from pybar.scans.scan_threshold_fast import FastThresholdScan
-import matplotlib.pyplot as plt
 from pybar.scans.calibrate_hit_or import HitOrCalibration
 
 
