@@ -1138,23 +1138,14 @@ class AnalyzeRawData(object):
 
         return cluster, cluster_hits
 
-    def cluster_hits(self, hits, start_index=0, stop_index=None):
-        if stop_index is not None:
-            return self.clusterizer.cluster_hits(hits[start_index:stop_index])
-        else:
-            return self.clusterizer.cluster_hits(hits[start_index:])
+    def cluster_hits(self, hits, start_index=None, stop_index=None):
+        return self.clusterizer.cluster_hits(hits[start_index:stop_index])
 
-    def histogram_hits(self, hits, start_index=0, stop_index=None):
-        if stop_index is not None:
-            self.histograming.add_hits(hits[start_index:stop_index])
-        else:
-            self.histograming.add_hits(hits[start_index:])
+    def histogram_hits(self, hits, start_index=None, stop_index=None):
+        self.histogram.add_hits(hits[start_index:stop_index])
 
-    def histogram_cluster_seed_hits(self, cluster, start_index=0, stop_index=None):
-        if stop_index is not None:
-            self.histograming.add_hits(cluster[start_index:stop_index])
-        else:
-            self.histograming.add_hits(cluster[start_index:])
+    def histogram_cluster_seed_hits(self, clusters, start_index=None, stop_index=None):
+        self.histogram.add_hits(clusters[start_index:stop_index])
 
     def plot_histograms(self, pdf_filename=None, analyzed_data_file=None, maximum=None, create_hit_hists_only=False):  # plots the histogram from output file if available otherwise from ram
         logging.info('Creating histograms%s', (' (source: %s)' % analyzed_data_file) if analyzed_data_file is not None else (' (source: %s)' % self._analyzed_data_file) if self._analyzed_data_file is not None else '')
