@@ -35,15 +35,15 @@ class DataWorker(QtCore.QObject):
 
     def setup_raw_data_analysis(self):
         self.interpreter = PyDataInterpreter()
-        self.histograming = PyDataHistograming()
+        self.histogram = PyDataHistograming()
         self.interpreter.set_warning_output(False)
-        self.histograming.set_no_scan_parameter()
-        self.histograming.create_occupancy_hist(True)
-        self.histograming.create_rel_bcid_hist(True)
-        self.histograming.create_tot_hist(True)
-        self.histograming.create_tdc_hist(True)
+        self.histogram.set_no_scan_parameter()
+        self.histogram.create_occupancy_hist(True)
+        self.histogram.create_rel_bcid_hist(True)
+        self.histogram.create_tot_hist(True)
+        self.histogram.create_tdc_hist(True)
         try:
-            self.histograming.create_tdc_distance_hist(True)
+            self.histogram.create_tdc_distance_hist(True)
             self.interpreter.use_tdc_trigger_time_stamp(True)
         except AttributeError:
             self.has_tdc_distance = False
@@ -64,13 +64,13 @@ class DataWorker(QtCore.QObject):
 #     @pyqtSlot()
     def reset(self):
         with self.reset_lock:
-            self.histograming.reset()
+            self.histogram.reset()
             self.interpreter.reset()
             self.n_readout = 0
 
     def analyze_raw_data(self, raw_data):
         self.interpreter.interpret_raw_data(raw_data)
-        self.histograming.add_hits(self.interpreter.get_hits())
+        self.histogram.add_hits(self.interpreter.get_hits())
 
     @pyqtSlot()
     def process_data(self):  # infinite loop via QObject.moveToThread(), does not block event loop
@@ -92,21 +92,21 @@ class DataWorker(QtCore.QObject):
                         # count readouts and reset
                         self.n_readout += 1
                         if self.integrate_readouts != 0 and self.n_readout % self.integrate_readouts == 0:
-                            self.histograming.reset()
+                            self.histogram.reset()
                             # we do not want to reset interpreter to keep the error counters
         #                         self.interpreter.reset()
                             # interpreted data
                         self.analyze_raw_data(data_array)
                         if self.integrate_readouts == 0 or self.n_readout % self.integrate_readouts == self.integrate_readouts - 1:
                             interpreted_data = {
-                                'occupancy': self.histograming.get_occupancy(),
-                                'tot_hist': self.histograming.get_tot_hist(),
+                                'occupancy': self.histogram.get_occupancy(),
+                                'tot_hist': self.histogram.get_tot_hist(),
                                 'tdc_counters': self.interpreter.get_tdc_counters(),
                                 'tdc_distance': self.interpreter.get_tdc_distance() if self.has_tdc_distance else np.zeros((256,), dtype=np.uint8),
                                 'error_counters': self.interpreter.get_error_counters(),
                                 'service_records_counters': self.interpreter.get_service_records_counters(),
                                 'trigger_error_counters': self.interpreter.get_trigger_error_counters(),
-                                'rel_bcid_hist': self.histograming.get_rel_bcid_hist()}
+                                'rel_bcid_hist': self.histogram.get_rel_bcid_hist()}
                             self.interpreted_data.emit(interpreted_data)
                         # meta data
                         meta_data.update({'n_hits': self.interpreter.get_n_hits(), 'n_events': self.interpreter.get_n_events()})
@@ -118,7 +118,7 @@ class DataWorker(QtCore.QObject):
                         self.interpreter.set_trig_count(trig_count)
                         self.global_config_data.emit(meta_data)
                     elif name == 'Reset':
-                        self.histograming.reset()
+                        self.histogram.reset()
                         self.interpreter.reset()
                         self.run_start.emit()
                     elif name == 'Filename':

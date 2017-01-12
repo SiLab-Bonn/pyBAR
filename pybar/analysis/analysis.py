@@ -53,7 +53,7 @@ def analyze_beam_spot(scan_base, combine_n_readouts=1000, chunk_size=10000000, p
             analyze_data = AnalyzeRawData()
             analyze_data.create_tot_hist = False
             analyze_data.create_bcid_hist = False
-            analyze_data.histograming.set_no_scan_parameter()
+            analyze_data.histogram.set_no_scan_parameter()
 
             # variables for read speed up
             index = 0  # index where to start the read out, 0 at the beginning, increased during looping
@@ -76,7 +76,7 @@ def analyze_beam_spot(scan_base, combine_n_readouts=1000, chunk_size=10000000, p
                 best_chunk_size = int(1.5 * readout_hit_len) if int(1.05 * readout_hit_len) < chunk_size else chunk_size  # to increase the readout speed, estimated the number of hits for one read instruction
 
                 # get and store results
-                occupancy_array = analyze_data.histograming.get_occupancy()
+                occupancy_array = analyze_data.histogram.get_occupancy()
                 projection_x = np.sum(occupancy_array, axis=0).ravel()
                 projection_y = np.sum(occupancy_array, axis=1).ravel()
                 x.append(analysis_utils.get_mean_from_histogram(projection_x, bin_positions=range(0, 80)))
@@ -380,7 +380,7 @@ def analyze_cluster_size_per_scan_parameter(input_file_hits, output_file_cluster
                         analyze_data = AnalyzeRawData()
                         analyze_data.create_cluster_size_hist = True
                         analyze_data.create_cluster_tot_hist = True
-                        analyze_data.histograming.set_no_scan_parameter()  # one has to tell the histogramer the # of scan parameters for correct occupancy hist allocation
+                        analyze_data.histogram.set_no_scan_parameter()  # one has to tell histogram the # of scan parameters for correct occupancy hist allocation
                         progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=hit_table.shape[0], term_width=80)
                         progress_bar.start()
                         for parameter_index, parameter_range in enumerate(parameter_ranges):  # loop over the selected events
@@ -401,7 +401,7 @@ def analyze_cluster_size_per_scan_parameter(input_file_hits, output_file_cluster
                             if chunk_size < 50:  # limit the lower chunk size, there can always be a crazy event with more than 20 hits
                                 chunk_size = 50
                             # get occupancy hist
-                            occupancy = analyze_data.histograming.get_occupancy()  # just here to check histograming is consistend
+                            occupancy = analyze_data.histogram.get_occupancy()  # just check here if histogram is consistent
 
                             # store and plot cluster size hist
                             cluster_size_hist = analyze_data.clusterizer.get_cluster_size_hist()
@@ -438,8 +438,8 @@ def histogram_cluster_table(analyzed_data_file, output_file, chunk_size=10000000
 
     with tb.open_file(analyzed_data_file, mode="r") as in_file_h5:
         with tb.open_file(output_file, mode="w") as out_file_h5:
-            histograming = PyDataHistograming()
-            histograming.create_occupancy_hist(True)
+            histogram = PyDataHistograming()
+            histogram.create_occupancy_hist(True)
             scan_parameters = None
             event_number_indices = None
             scan_parameter_indices = None
@@ -449,15 +449,15 @@ def histogram_cluster_table(analyzed_data_file, output_file, chunk_size=10000000
                 if scan_parameters is not None:
                     scan_parameter_indices = np.array(range(0, len(scan_parameters)), dtype='u4')
                     event_number_indices = np.ascontiguousarray(scan_parameters['event_number']).astype(np.uint64)
-                    histograming.add_meta_event_index(event_number_indices, array_length=len(scan_parameters['event_number']))
-                    histograming.add_scan_parameter(scan_parameter_indices)
+                    histogram.add_meta_event_index(event_number_indices, array_length=len(scan_parameters['event_number']))
+                    histogram.add_scan_parameter(scan_parameter_indices)
                     logging.info("Add %d different scan parameter(s) for analysis", len(scan_parameters))
                 else:
                     logging.info("No scan parameter data provided")
-                    histograming.set_no_scan_parameter()
+                    histogram.set_no_scan_parameter()
             except tb.exceptions.NoSuchNodeError:
                 logging.info("No meta data provided, use no scan parameter")
-                histograming.set_no_scan_parameter()
+                histogram.set_no_scan_parameter()
 
             logging.info('Histogram cluster seeds...')
             progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=in_file_h5.root.Cluster.shape[0], term_width=80)
@@ -465,12 +465,12 @@ def histogram_cluster_table(analyzed_data_file, output_file, chunk_size=10000000
             total_cluster = 0  # to check analysis
             for cluster, index in analysis_utils.data_aligned_at_events(in_file_h5.root.Cluster, chunk_size=chunk_size):
                 total_cluster += len(cluster)
-                histograming.add_cluster_seed_hits(cluster, len(cluster))
+                histogram.add_cluster_seed_hits(cluster, len(cluster))
                 progress_bar.update(index)
             progress_bar.finish()
 
             filter_table = tb.Filters(complib='blosc', complevel=5, fletcher32=False)  # compression of the written data
-            occupancy_array = histograming.get_occupancy().T
+            occupancy_array = histogram.get_occupancy().T
             occupancy_array_table = out_file_h5.create_carray(out_file_h5.root, name='HistOcc', title='Occupancy Histogram', atom=tb.Atom.from_dtype(occupancy_array.dtype), shape=occupancy_array.shape, filters=filter_table)
             occupancy_array_table[:] = occupancy_array
 

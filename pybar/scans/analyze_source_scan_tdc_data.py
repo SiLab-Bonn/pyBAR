@@ -288,7 +288,7 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
                 out_1[:], out_2[:], out_3[:], out_4[:], out_5[:], out_6[:] = pixel_tdc_hist_result, pixel_tdc_timestamp_hist_result, mean_pixel_tdc_hist_result, mean_pixel_tdc_timestamp_hist_result, tdc_hists_per_condition_result, tdc_corr_hist_result
 
                 if charge_calibration is not None:
-                    # Select only valid pixel for histograming: they have data and a calibration (that is any charge(TDC) calibration != 0)
+                    # Select only valid pixel for histogramming: they have data and a calibration (that is any charge(TDC) calibration != 0)
                     valid_pixel = np.where(np.logical_and(charge_calibration[:, :, :max_tdc].sum(axis=2) > 0, pixel_tdc_hist_result[:, :, :max_tdc].swapaxes(0, 1).sum(axis=2) > 0))
                     # Create charge histogram with mean TDC calibration
                     mean_charge_calibration = charge_calibration[valid_pixel][:, :max_tdc].mean(axis=0)

@@ -83,7 +83,7 @@ def fit_bcid_jumps(scurve_data, max_chi_2=2.):  # Data of some pixels to fit, ha
 def analyze_hit_delay(raw_data_file):
     # Interpret data and create hit table
     with AnalyzeRawData(raw_data_file=raw_data_file, create_pdf=False) as analyze_raw_data:
-        analyze_raw_data.create_occupancy_hist = False  # Too many scan parameters to do in ram histograming
+        analyze_raw_data.create_occupancy_hist = False  # Too many scan parameters to do in ram histogramming
         analyze_raw_data.create_hit_table = True
         analyze_raw_data.interpreter.set_warning_output(False)  # A lot of data produces unknown words
         analyze_raw_data.interpret_word_table()
