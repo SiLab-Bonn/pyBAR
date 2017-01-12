@@ -1107,18 +1107,6 @@ class AnalyzeRawData(object):
         n_hits = hits.shape[0]
         logging.debug('Analyze %d hits' % n_hits)
 
-        if self._create_cluster_table:
-            cluster = np.zeros((n_hits,), dtype=dtype_from_descr(data_struct.ClusterInfoTable))
-            self.clusterizer.set_cluster_info_array(cluster)
-        else:
-            cluster = None
-
-        if self._create_cluster_hit_table:
-            cluster_hits = np.zeros((n_hits,), dtype=dtype_from_descr(data_struct.ClusterHitInfoTable))
-            self.clusterizer.set_cluster_hit_info_array(cluster_hits)
-        else:
-            cluster_hits = None
-
         if scan_parameter is None:  # if nothing specified keep actual setting
             logging.debug('Keep scan parameter settings ')
         elif not scan_parameter:    # set no scan parameter
@@ -1130,13 +1118,16 @@ class AnalyzeRawData(object):
 
         if self.is_cluster_hits():
             logging.debug('Cluster hits')
-            self.cluster_hits(hits)
+            cluster_hits, clusters = self.cluster_hits(hits)
+        else:
+            cluster_hits = None
+            clusters = None
 
         if self.is_histogram_hits():
             logging.debug('Histogram hits')
             self.histogram_hits(hits)
 
-        return cluster, cluster_hits
+        return cluster_hits, clusters
 
     def cluster_hits(self, hits, start_index=None, stop_index=None):
         return self.clusterizer.cluster_hits(hits[start_index:stop_index])
