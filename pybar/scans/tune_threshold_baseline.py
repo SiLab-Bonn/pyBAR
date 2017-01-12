@@ -76,11 +76,11 @@ class ThresholdBaselineTuning(Fei4RunBase):
         self.register_utils.send_commands(commands)
 
         self.interpreter = PyDataInterpreter()
-        self.histograming = PyDataHistograming()
+        self.histogram = PyDataHistograming()
         self.interpreter.set_trig_count(self.trig_count)
         self.interpreter.set_warning_output(False)
-        self.histograming.set_no_scan_parameter()
-        self.histograming.create_occupancy_hist(True)
+        self.histogram.set_no_scan_parameter()
+        self.histogram.create_occupancy_hist(True)
 
     def scan(self):
         scan_parameter_range = [self.register.get_global_register_value("Vthin_AltFine"), 0]
@@ -121,7 +121,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
             while True:
                 if self.stop_run.is_set():
                     break
-                self.histograming.reset()
+                self.histogram.reset()
                 step += 1
                 logging.info('Step %d / %d at Vthin_AltFine %d', step, steps, reg_val)
                 logging.info('Estimated scan time: %ds', self.total_scan_time)
@@ -146,12 +146,12 @@ class ThresholdBaselineTuning(Fei4RunBase):
                                 self.progressbar.update(time() - start)
                             except ValueError:
                                 pass
-                # Use fast C++ hit histograming to save time
+                # Use fast C++ hit histogramming to save time
                 raw_data = np.ascontiguousarray(data_array_from_data_iterable(self.fifo_readout.data), dtype=np.uint32)
                 self.interpreter.interpret_raw_data(raw_data)
                 self.interpreter.store_event()  # force to create latest event
-                self.histograming.add_hits(self.interpreter.get_hits())
-                occ_hist = self.histograming.get_occupancy()[:, :, 0]
+                self.histogram.add_hits(self.interpreter.get_hits())
+                occ_hist = self.histogram.get_occupancy()[:, :, 0]
                 # noisy pixels are set to 1
                 occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
                 occ_mask[occ_hist > self.abs_occ_limit] = 1
