@@ -33,7 +33,7 @@ class TestAnalysis(unittest.TestCase):
     def setUpClass(cls):
         cls.interpreter = PyDataInterpreter()
         cls.histogram = PyDataHistograming()
-        with AnalyzeRawData(raw_data_file=tests_data_folder + 'unit_test_data_1.h5', analyzed_data_file=tests_data_folder + 'unit_test_data_1_interpreted.h5', create_pdf=False) as analyze_raw_data:  # analyze the digital scan raw data, do not show any feedback (no prints to console, no plots)
+        with AnalyzeRawData(raw_data_file=os.path.join(tests_data_folder, 'unit_test_data_1.h5'), analyzed_data_file=os.path.join(tests_data_folder, 'unit_test_data_1_interpreted.h5'), create_pdf=False) as analyze_raw_data:  # analyze the digital scan raw data, do not show any feedback (no prints to console, no plots)
             analyze_raw_data.chunk_size = 500009
             analyze_raw_data.create_hit_table = True  # can be set to false to omit hit table creation, std. setting is false
             analyze_raw_data.create_cluster_hit_table = True  # adds the cluster id and seed info to each hit, std. setting is false
@@ -44,19 +44,19 @@ class TestAnalysis(unittest.TestCase):
             analyze_raw_data.create_meta_word_index = True  # stores the start and stop raw data word index for every event, std. setting is false
             analyze_raw_data.create_meta_event_index = True  # stores the event number for each readout in an additional meta data array, default: False
             analyze_raw_data.interpret_word_table(use_settings_from_file=False, fei4b=False)  # the actual start conversion command
-        with AnalyzeRawData(raw_data_file=tests_data_folder + 'unit_test_data_2.h5', analyzed_data_file=tests_data_folder + 'unit_test_data_2_interpreted.h5', create_pdf=False) as analyze_raw_data:  # analyze the fast threshold scan raw data, do not show any feedback (no prints to console, no plots)
+        with AnalyzeRawData(raw_data_file=os.path.join(tests_data_folder, 'unit_test_data_2.h5'), analyzed_data_file=os.path.join(tests_data_folder, 'unit_test_data_2_interpreted.h5'), create_pdf=False) as analyze_raw_data:  # analyze the fast threshold scan raw data, do not show any feedback (no prints to console, no plots)
             analyze_raw_data.chunk_size = 500009
             analyze_raw_data.n_injections = 100  # Not stored in file for unit test data, has to be set manually
             analyze_raw_data.create_threshold_hists = True  # makes only sense if threshold scan data is analyzed, std. setting is false
             analyze_raw_data.interpret_word_table(use_settings_from_file=False, fei4b=False)  # The old unit test data does not hav the settings stored in file
-        with AnalyzeRawData(raw_data_file=None, analyzed_data_file=tests_data_folder + 'unit_test_data_1_interpreted.h5', create_pdf=False) as analyze_raw_data:   # analyze the digital scan hit data, do not show any feedback (no prints to console, no plots)
+        with AnalyzeRawData(raw_data_file=None, analyzed_data_file=os.path.join(tests_data_folder, 'unit_test_data_1_interpreted.h5'), create_pdf=False) as analyze_raw_data:   # analyze the digital scan hit data, do not show any feedback (no prints to console, no plots)
             analyze_raw_data.chunk_size = 500009
             analyze_raw_data.create_cluster_hit_table = True
             analyze_raw_data.create_cluster_table = True
             analyze_raw_data.create_cluster_size_hist = True
             analyze_raw_data.create_cluster_tot_hist = True
-            analyze_raw_data.analyze_hit_table(analyzed_data_out_file=tests_data_folder + 'unit_test_data_1_analyzed.h5')
-        with AnalyzeRawData(raw_data_file=tests_data_folder + 'unit_test_data_3.h5', analyzed_data_file=tests_data_folder + 'unit_test_data_3_interpreted.h5', create_pdf=False) as analyze_raw_data:  # analyze the digital scan raw data per scan parameter, do not show any feedback (no prints to console, no plots)
+            analyze_raw_data.analyze_hit_table(analyzed_data_out_file=os.path.join(tests_data_folder, 'unit_test_data_1_analyzed.h5'))
+        with AnalyzeRawData(raw_data_file=os.path.join(tests_data_folder, 'unit_test_data_3.h5'), analyzed_data_file=os.path.join(tests_data_folder, 'unit_test_data_3_interpreted.h5'), create_pdf=False) as analyze_raw_data:  # analyze the digital scan raw data per scan parameter, do not show any feedback (no prints to console, no plots)
             analyze_raw_data.chunk_size = 500009
             analyze_raw_data.create_hit_table = True  # can be set to false to omit hit table creation, std. setting is false
             analyze_raw_data.create_cluster_hit_table = True  # adds the cluster id and seed info to each hit, std. setting is false
@@ -67,26 +67,26 @@ class TestAnalysis(unittest.TestCase):
             analyze_raw_data.create_meta_word_index = True  # stores the start and stop raw data word index for every event, std. setting is false
             analyze_raw_data.create_meta_event_index = True  # stores the event number for each readout in an additional meta data array, default: False
             analyze_raw_data.interpret_word_table(use_settings_from_file=False, fei4b=False)  # The old unit test data does not hav the settings stored in file
-        with AnalyzeRawData(raw_data_file=tests_data_folder + 'unit_test_data_2.h5', analyzed_data_file=tests_data_folder + 'unit_test_data_2_hits.h5', create_pdf=False) as analyze_raw_data:  # analyze the fast threshold scan raw data, do not show any feedback (no prints to console, no plots)
+        with AnalyzeRawData(raw_data_file=os.path.join(tests_data_folder, 'unit_test_data_2.h5'), analyzed_data_file=os.path.join(tests_data_folder, 'unit_test_data_2_hits.h5'), create_pdf=False) as analyze_raw_data:  # analyze the fast threshold scan raw data, do not show any feedback (no prints to console, no plots)
             analyze_raw_data.chunk_size = 2999999
             analyze_raw_data.create_hit_table = True
             analyze_raw_data.create_threshold_hists = True  # makes only sense if threshold scan data is analyzed, std. setting is false
             analyze_raw_data.n_injections = 100  # Not stored in file for unit test data, has to be set manually
             analyze_raw_data.interpret_word_table(use_settings_from_file=False, fei4b=False)  # The old unit test data does not hav the settings stored in file
-        with AnalyzeRawData(raw_data_file=None, analyzed_data_file=tests_data_folder + 'unit_test_data_2_hits.h5', create_pdf=False) as analyze_raw_data:
+        with AnalyzeRawData(raw_data_file=None, analyzed_data_file=os.path.join(tests_data_folder, 'unit_test_data_2_hits.h5'), create_pdf=False) as analyze_raw_data:
             analyze_raw_data.chunk_size = 2999999
             analyze_raw_data.create_threshold_hists = True
             analyze_raw_data.n_injections = 100  # Not stored in file for unit test data, has to be set manually
-            analyze_raw_data.analyze_hit_table(analyzed_data_out_file=tests_data_folder + 'unit_test_data_2_analyzed.h5')
-        with AnalyzeRawData(raw_data_file=tests_data_folder + 'unit_test_data_4.h5', analyzed_data_file=tests_data_folder + 'unit_test_data_4_interpreted.h5', create_pdf=False) as analyze_raw_data:
+            analyze_raw_data.analyze_hit_table(analyzed_data_out_file=os.path.join(tests_data_folder, 'unit_test_data_2_analyzed.h5'))
+        with AnalyzeRawData(raw_data_file=os.path.join(tests_data_folder, 'unit_test_data_4.h5'), analyzed_data_file=os.path.join(tests_data_folder, 'unit_test_data_4_interpreted.h5'), create_pdf=False) as analyze_raw_data:
             analyze_raw_data.chunk_size = 2999999
             analyze_raw_data.create_hit_table = True
             analyze_raw_data.interpret_word_table(use_settings_from_file=False, fei4b=False)  # the actual start conversion command
-        with AnalyzeRawData(raw_data_file=[tests_data_folder + 'unit_test_data_4_parameter_128.h5', tests_data_folder + 'unit_test_data_4_parameter_256.h5'], analyzed_data_file=tests_data_folder + 'unit_test_data_4_interpreted_2.h5', scan_parameter_name='parameter', create_pdf=False) as analyze_raw_data:
+        with AnalyzeRawData(raw_data_file=[os.path.join(tests_data_folder, 'unit_test_data_4_parameter_128.h5'), os.path.join(tests_data_folder, 'unit_test_data_4_parameter_256.h5')], analyzed_data_file=os.path.join(tests_data_folder, 'unit_test_data_4_interpreted_2.h5'), scan_parameter_name='parameter', create_pdf=False) as analyze_raw_data:
             analyze_raw_data.chunk_size = 2999999
             analyze_raw_data.create_hit_table = True
             analyze_raw_data.interpret_word_table(use_settings_from_file=False, fei4b=False)  # the actual start conversion command
-        with AnalyzeRawData(raw_data_file=tests_data_folder + 'unit_test_data_5.h5', analyzed_data_file=tests_data_folder + 'unit_test_data_5_interpreted.h5', create_pdf=False) as analyze_raw_data:
+        with AnalyzeRawData(raw_data_file=os.path.join(tests_data_folder, 'unit_test_data_5.h5'), analyzed_data_file=os.path.join(tests_data_folder, 'unit_test_data_5_interpreted.h5'), create_pdf=False) as analyze_raw_data:
             analyze_raw_data.create_hit_table = True
             analyze_raw_data.trig_count = 255
             analyze_raw_data.create_source_scan_hist = True
@@ -98,18 +98,18 @@ class TestAnalysis(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):  # remove created files
-        os.remove(tests_data_folder + 'unit_test_data_1_interpreted.h5')
-        os.remove(tests_data_folder + 'unit_test_data_1_analyzed.h5')
-        os.remove(tests_data_folder + 'unit_test_data_2_interpreted.h5')
-        os.remove(tests_data_folder + 'unit_test_data_2_analyzed.h5')
-        os.remove(tests_data_folder + 'unit_test_data_2_hits.h5')
-        os.remove(tests_data_folder + 'unit_test_data_3_interpreted.h5')
-        os.remove(tests_data_folder + 'unit_test_data_4_interpreted.h5')
-        os.remove(tests_data_folder + 'unit_test_data_4_interpreted_2.h5')
-        os.remove(tests_data_folder + 'unit_test_data_5_interpreted.h5')
-        os.remove(tests_data_folder + 'hit_or_calibration.pdf')
-        os.remove(tests_data_folder + 'hit_or_calibration_interpreted.h5')
-        os.remove(tests_data_folder + 'hit_or_calibration_calibration.h5')
+        os.remove(os.path.join(tests_data_folder, 'unit_test_data_1_interpreted.h5'))
+        os.remove(os.path.join(tests_data_folder, 'unit_test_data_1_analyzed.h5'))
+        os.remove(os.path.join(tests_data_folder, 'unit_test_data_2_interpreted.h5'))
+        os.remove(os.path.join(tests_data_folder, 'unit_test_data_2_analyzed.h5'))
+        os.remove(os.path.join(tests_data_folder, 'unit_test_data_2_hits.h5'))
+        os.remove(os.path.join(tests_data_folder, 'unit_test_data_3_interpreted.h5'))
+        os.remove(os.path.join(tests_data_folder, 'unit_test_data_4_interpreted.h5'))
+        os.remove(os.path.join(tests_data_folder, 'unit_test_data_4_interpreted_2.h5'))
+        os.remove(os.path.join(tests_data_folder, 'unit_test_data_5_interpreted.h5'))
+        os.remove(os.path.join(tests_data_folder, 'hit_or_calibration.pdf'))
+        os.remove(os.path.join(tests_data_folder, 'hit_or_calibration_interpreted.h5'))
+        os.remove(os.path.join(tests_data_folder, 'hit_or_calibration_calibration.h5'))
 
     def test_libraries_stability(self):  # calls 50 times the constructor and destructor to check the libraries
         progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=50, term_width=80)
@@ -142,27 +142,27 @@ class TestAnalysis(unittest.TestCase):
         self.assertTrue(self.interpreter.get_hit_size() == hits.itemsize)
 
     def test_raw_data_analysis(self):  # test the created interpretation file against the stored one
-        data_equal, error_msg = test_tools.compare_h5_files(tests_data_folder + 'unit_test_data_1_result.h5', tests_data_folder + 'unit_test_data_1_interpreted.h5')
+        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'unit_test_data_1_result.h5'), os.path.join(tests_data_folder, 'unit_test_data_1_interpreted.h5'))
         self.assertTrue(data_equal, msg=error_msg)
 
     def test_threshold_analysis(self):  # test the created interpretation file of the threshold data against the stored one
-        data_equal, error_msg = test_tools.compare_h5_files(tests_data_folder + 'unit_test_data_2_result.h5', tests_data_folder + 'unit_test_data_2_interpreted.h5', exact=False)
+        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'unit_test_data_2_result.h5'), os.path.join(tests_data_folder, 'unit_test_data_2_interpreted.h5'), exact=False)
         self.assertTrue(data_equal, msg=error_msg)
 
     def test_hit_data_analysis(self):  # test the hit histogramming/clustering starting from the predefined interpreted data
-        data_equal, error_msg = test_tools.compare_h5_files(tests_data_folder + 'unit_test_data_1_result.h5', tests_data_folder + 'unit_test_data_1_analyzed.h5', expected_nodes=8)
+        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'unit_test_data_1_result.h5'), os.path.join(tests_data_folder, 'unit_test_data_1_analyzed.h5'), expected_nodes=8)
         self.assertTrue(data_equal, msg=error_msg)
 
     def test_analysis_per_scan_parameter(self):  # check if the data per scan parameter is correctly analyzed
         # check if the data with more than one scan parameter is correctly analyzed
-        data_equal, error_msg = test_tools.compare_h5_files(tests_data_folder + 'unit_test_data_3_result.h5', tests_data_folder + 'unit_test_data_3_interpreted.h5')
+        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'unit_test_data_3_result.h5'), os.path.join(tests_data_folder, 'unit_test_data_3_interpreted.h5'))
         self.assertTrue(data_equal, msg=error_msg)
         # check the data from two files with one scan parameter each with the previous file containing two scan parameters
-        data_equal, error_msg = test_tools.compare_h5_files(tests_data_folder + 'unit_test_data_4_interpreted.h5', tests_data_folder + 'unit_test_data_4_interpreted_2.h5')
+        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'unit_test_data_4_interpreted.h5'), os.path.join(tests_data_folder, 'unit_test_data_4_interpreted_2.h5'))
         self.assertTrue(data_equal, msg=error_msg)
         # check if the occupancy hist from the threshold scan hit data is correctly created
-        with tb.open_file(tests_data_folder + 'unit_test_data_2_interpreted.h5', 'r') as first_h5_file:
-            with tb.open_file(tests_data_folder + 'unit_test_data_2_analyzed.h5', 'r') as second_h5_file:
+        with tb.open_file(os.path.join(tests_data_folder, 'unit_test_data_2_interpreted.h5'), 'r') as first_h5_file:
+            with tb.open_file(os.path.join(tests_data_folder, 'unit_test_data_2_analyzed.h5'), 'r') as second_h5_file:
                 occupancy_expected = first_h5_file.root.HistOcc[:]
                 occupancy = second_h5_file.root.HistOcc[:]
                 self.assertTrue(np.all(occupancy_expected == occupancy), msg=error_msg)
@@ -249,7 +249,7 @@ class TestAnalysis(unittest.TestCase):
         self.assertTrue(exception_ok & np.all(array == array_fast))
 
     def test_3d_index_histogram(self):  # check compiled hist_3D_index function
-        with tb.open_file(tests_data_folder + 'hist_data.h5', mode="r") as in_file_h5:
+        with tb.open_file(os.path.join(tests_data_folder, 'hist_data.h5'), mode="r") as in_file_h5:
             xyz = in_file_h5.root.HistDataXYZ[:]
             x, y, z = xyz[0], xyz[1], xyz[2]
             shape = (100, 100, 100)
@@ -266,18 +266,18 @@ class TestAnalysis(unittest.TestCase):
             self.assertTrue(exception_ok & np.all(array == array_fast))
 
     def test_hit_or_calibration(self):
-        create_hitor_calibration(tests_data_folder + 'hit_or_calibration', plot_pixel_calibrations=True)
-        data_equal, error_msg = test_tools.compare_h5_files(tests_data_folder + 'hit_or_calibration_interpreted_result.h5', tests_data_folder + 'hit_or_calibration_interpreted.h5')
+        create_hitor_calibration(os.path.join(tests_data_folder, 'hit_or_calibration'), plot_pixel_calibrations=True)
+        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'hit_or_calibration_interpreted_result.h5'), os.path.join(tests_data_folder, 'hit_or_calibration_interpreted.h5'))
         self.assertTrue(data_equal, msg=error_msg)
-        data_equal, error_msg = test_tools.compare_h5_files(tests_data_folder + 'hit_or_calibration_result.h5', tests_data_folder + 'hit_or_calibration_calibration.h5', exact=False)
+        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'hit_or_calibration_result.h5'), os.path.join(tests_data_folder, 'hit_or_calibration_calibration.h5'), exact=False)
         self.assertTrue(data_equal, msg=error_msg)
 
     def test_stop_mode_analysis(self):
-        data_equal, error_msg = test_tools.compare_h5_files(tests_data_folder + 'unit_test_data_5_interpreted.h5', tests_data_folder + 'unit_test_data_5_result.h5')
+        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'unit_test_data_5_interpreted.h5'), os.path.join(tests_data_folder, 'unit_test_data_5_result.h5'))
         self.assertTrue(data_equal, msg=error_msg)
 
     def test_data_aligned_at_events(self):
-        with tb.open_file(tests_data_folder + 'unit_test_data_2_hits.h5', 'r') as h5_file:
+        with tb.open_file(os.path.join(tests_data_folder, 'unit_test_data_2_hits.h5'), 'r') as h5_file:
             # testing full table
             hist_table, _ = np.histogram(h5_file.root.Hits[:]["event_number"])
             gen = data_aligned_at_events(h5_file.root.Hits, start_event_number=None, stop_event_number=None, start_index=None, stop_index=None, first_event_aligned=True, try_speedup=False, chunk_size=1000000)
