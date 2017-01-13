@@ -429,8 +429,9 @@ def histogram_cluster_table(analyzed_data_file, output_file, chunk_size=10000000
 
     Parameters
     ----------
-    analyzed_data_file : hdf5 file containing the cluster table. If a scan parameter is given in the meta data the occupancy
-                        histograming is done per scan parameter.
+    analyzed_data_file : string
+        HDF5 filename of the file containing the cluster table. If a scan parameter is given in the meta data, the occupancy histogramming is done per scan parameter step.
+
     Returns
     -------
     occupancy_array: numpy.array with dimensions (col, row, #scan_parameter)
