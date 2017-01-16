@@ -28,7 +28,7 @@ install:
   # pyBAR installation including additional specific packages
   - pip install git+https://github.com/SiLab-Bonn/basil@development
   - pip install git+https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter@1.2.1
-  - pip install pixel_clusterizer==2.5.0
+  - pip install pixel_clusterizer==3
   - python.exe setup.py develop
   - conda list
   - pip list

@@ -2,7 +2,7 @@
 basil_daq>=2.4.3 # readout framework pyBAR is built on
 pySiLibUSB # support for SiLab USB devices
 pyBAR_fei4_interpreter>=1.2.0  # to interpret the raw data
-pixel_clusterizer>=2.5  # to cluster pixel hits
+pixel_clusterizer>=3.0.0  # to cluster pixel hits
 bitarray>=0.8.1
 matplotlib
 numpy
