@@ -32,6 +32,8 @@ class IleakScan(Fei4RunBase):
         data_out = self.raw_data_file.h5_file.create_carray(self.raw_data_file.h5_file.root, name='Ileak_map', title='Leakage current per pixel in arbitrary units', atom=tb.Atom.from_dtype(self.ileakmap.dtype), shape=self.ileakmap.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
 
         for pixel_index, (column, row) in enumerate(self.pixels):
+            if self.stop_run.is_set():
+                break
             # Set Imon for actual pixel and configure FE
             mask = np.zeros(shape=(80, 336))
             mask[column - 1, row - 1] = 1
