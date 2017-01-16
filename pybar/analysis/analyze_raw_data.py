@@ -284,7 +284,7 @@ class AnalyzeRawData(object):
 
     @chunk_size.setter
     def chunk_size(self, value):
-        self.interpreter.set_hit_array_size(value)
+        self.interpreter.set_hit_array_size(2 * value)
         self._chunk_size = value
 
     @property
