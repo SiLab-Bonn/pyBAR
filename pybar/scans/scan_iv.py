@@ -33,6 +33,8 @@ class IVScan(Fei4RunBase):
         progress_bar.start()
 
         for index, voltage in enumerate(self.voltages):
+            if self.stop_run.is_set():
+                break
             if voltage > 0:
                 RuntimeError('Voltage has to be negative! Abort to protect device.')
             if self.abort_run.is_set():
