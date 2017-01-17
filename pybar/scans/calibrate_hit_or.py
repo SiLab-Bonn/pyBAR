@@ -119,16 +119,25 @@ def create_hitor_calibration(output_filename, plot_pixel_calibrations=False):
                 plot_tot_tdc_calibration(scan_parameters=inner_loop_parameter_values, tot_mean=tot_mean_all_pix, tot_error=tot_error_all_pix, tdc_mean=tdc_mean_all_pix, tdc_error=tdc_error_all_pix, filename=analyze_raw_data.output_pdf, title="Mean charge calibration of %d pixel(s)" % np.count_nonzero(~np.all(np.isnan(calibration_data[:, :, :, 0]), axis=2)))
                 # plotting individual pixels
                 if plot_pixel_calibrations is True:
+                    # selecting pixels with non-nan entries
                     col_row_non_nan = np.nonzero(~np.all(np.isnan(calibration_data[:, :, :, 0]), axis=2))
                     plot_pixel_calibrations = np.dstack(col_row_non_nan)[0]
                 elif plot_pixel_calibrations is False:
-                    plot_pixel_calibrations = []
+                    plot_pixel_calibrations = np.array([], dtype=np.int)
                 else:  # assuming list of column / row tuples
                     plot_pixel_calibrations = np.array(plot_pixel_calibrations) - 1
-                for index, (column, row) in enumerate(plot_pixel_calibrations):
-                    if index >= 100:  # stop for too many plots
-                        logging.info('Reached the limit of 100 pages')
-                        break
+                # generate index array
+                pixel_indices = np.arange(plot_pixel_calibrations.shape[0])
+                plot_n_pixels = 10  # number of pixels at the beginning, center and end of the array
+                np.random.seed(0)
+                # select random pixels
+                if pixel_indices.size - 2 * plot_n_pixels >= 0:
+                    random_pixel_indices = np.sort(np.random.choice(pixel_indices[plot_n_pixels:-plot_n_pixels], min(plot_n_pixels, pixel_indices.size - 2 * plot_n_pixels), replace=False))
+                else:
+                    random_pixel_indices = np.array([], dtype=np.int)
+                selected_pixel_indices = np.unique(np.hstack([pixel_indices[:plot_n_pixels], random_pixel_indices, pixel_indices[-plot_n_pixels:]]))
+                # plotting individual pixels
+                for (column, row) in plot_pixel_calibrations[selected_pixel_indices]:
                     logging.info("Plotting charge calibration for pixel column " + str(column + 1) + " / row " + str(row + 1))
                     tot_mean_single_pix = calibration_data[column, row, :, 0]
                     tot_std_single_pix = calibration_data[column, row, :, 2]
