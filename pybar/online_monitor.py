@@ -5,7 +5,6 @@ import numpy as np
 from optparse import OptionParser
 
 from PyQt5 import Qt
-from PyQt5.QtCore import pyqtSlot, pyqtSignal
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtGui
 from pyqtgraph.dockarea import DockArea, Dock
@@ -57,11 +56,9 @@ class DataWorker(QtCore.QObject):
         self.socket_pull.setsockopt(zmq.SUBSCRIBE, '')  # do not filter any data
         self.socket_pull.connect(self.socket_addr)
 
-    @pyqtSlot(int)
     def on_set_integrate_readouts(self, value):
         self.integrate_readouts = value
 
-#     @pyqtSlot()
     def reset(self):
         with self.reset_lock:
             self.histogram.reset()
@@ -72,7 +69,6 @@ class DataWorker(QtCore.QObject):
         self.interpreter.interpret_raw_data(raw_data)
         self.histogram.add_hits(self.interpreter.get_hits())
 
-    @pyqtSlot()
     def process_data(self):  # infinite loop via QObject.moveToThread(), does not block event loop
         while(not self._stop_readout.wait(0.01)):  # use wait(), do not block here
             with self.reset_lock:
@@ -125,7 +121,6 @@ class DataWorker(QtCore.QObject):
                         self.filename.emit(meta_data)
         self.finished.emit()
 
-#     @pyqtSlot()
     def stop(self):
         self._stop_readout.set()
 
@@ -284,7 +279,6 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         hit_timing_widget.showGrid(y=True)
         dock_hit_timing.addWidget(hit_timing_widget)
 
-    @pyqtSlot()
     def on_reset(self):
         self.worker.reset()
         self.total_hits = 0
@@ -292,22 +286,18 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         self.reset_plots()
         self.update_rate(0, 0, 0, 0, 0)
 
-    @pyqtSlot()
     def on_run_start(self):
         # clear config data widgets
         self.run_conf_list_widget.clear()
         self.global_conf_list_widget.clear()
         self.setWindowTitle('Online Monitor')
 
-    @pyqtSlot(dict)
     def on_run_config_data(self, config_data):
         self.setup_run_config_text(**config_data)
 
-    @pyqtSlot(dict)
     def on_global_config_data(self, config_data):
         self.setup_global_config_text(**config_data)
 
-    @pyqtSlot(dict)
     def on_filename(self, config_data):
         self.setup_filename(**config_data)
 
@@ -324,7 +314,6 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
     def setup_filename(self, conf):
         self.setWindowTitle('Online Monitor - %s' % conf)
 
-    @pyqtSlot(dict)
     def on_interpreted_data(self, interpreted_data):
         self.update_plots(**interpreted_data)
 
@@ -341,7 +330,6 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         self.trigger_status_plot.setData(x=np.linspace(-0.5, 7.5, 9, endpoint=True), y=trigger_error_counters, fillLevel=0, brush=(0, 0, 255, 150), stepMode=True)
         self.hit_timing_plot.setData(x=np.linspace(-0.5, 15.5, 17, endpoint=True), y=rel_bcid_hist[:16], fillLevel=0, brush=(0, 0, 255, 150), stepMode=True)
 
-    @pyqtSlot(dict)
     def on_meta_data(self, meta_data):
         self.update_monitor(**meta_data)
 
