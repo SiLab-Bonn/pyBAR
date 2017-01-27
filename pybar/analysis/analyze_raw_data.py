@@ -834,13 +834,13 @@ class AnalyzeRawData(object):
                         if self._create_cluster_table:
                             cluster_table.append(clusters)
                         if self._create_cluster_size_hist:
-                            if np.max(clusters['size']) + 1 > self._cluster_size_hist.shape[0]:
+                            if clusters['size'].shape[0] > 0 and np.max(clusters['size']) + 1 > self._cluster_size_hist.shape[0]:
                                 self._cluster_size_hist.resize(np.max(clusters['size']) + 1)
                             self._cluster_size_hist += fast_analysis_utils.hist_1d_index(clusters['size'], shape=self._cluster_size_hist.shape)
                         if self._create_cluster_tot_hist:
-                            if np.max(clusters['tot']) + 1 > self._cluster_tot_hist.shape[0]:
+                            if clusters['tot'].shape[0] > 0 and np.max(clusters['tot']) + 1 > self._cluster_tot_hist.shape[0]:
                                 self._cluster_tot_hist.resize((np.max(clusters['tot']) + 1, self._cluster_tot_hist.shape[1]))
-                            if np.max(clusters['size']) + 1 > self._cluster_tot_hist.shape[1]:
+                            if clusters['size'].shape[0] > 0 and np.max(clusters['size']) + 1 > self._cluster_tot_hist.shape[1]:
                                 self._cluster_tot_hist.resize((self._cluster_tot_hist.shape[0], np.max(clusters['size']) + 1))
                             self._cluster_tot_hist += fast_analysis_utils.hist_2d_index(clusters['tot'], clusters['size'], shape=self._cluster_tot_hist.shape)
                     if self._analyzed_data_file is not None and self._create_hit_table:
@@ -1088,13 +1088,13 @@ class AnalyzeRawData(object):
             if self._analyzed_data_file is not None and self._create_cluster_table:
                 cluster_table.append(clusters)
                 if self._create_cluster_size_hist:
-                    if np.max(clusters['size']) + 1 > self._cluster_size_hist.shape[0]:
+                    if clusters['size'].shape[0] > 0 and np.max(clusters['size']) + 1 > self._cluster_size_hist.shape[0]:
                         self._cluster_size_hist.resize(np.max(clusters['size']) + 1)
                     self._cluster_size_hist += fast_analysis_utils.hist_1d_index(clusters['size'], shape=self._cluster_size_hist.shape)
                 if self._create_cluster_tot_hist:
-                    if np.max(clusters['tot']) + 1 > self._cluster_tot_hist.shape[0]:
+                    if clusters['tot'].shape[0] > 0 and np.max(clusters['tot']) + 1 > self._cluster_tot_hist.shape[0]:
                         self._cluster_tot_hist.resize((np.max(clusters['tot']) + 1, self._cluster_tot_hist.shape[1]))
-                    if np.max(clusters['size']) + 1 > self._cluster_tot_hist.shape[1]:
+                    if clusters['size'].shape[0] > 0 and np.max(clusters['size']) + 1 > self._cluster_tot_hist.shape[1]:
                         self._cluster_tot_hist.resize((self._cluster_tot_hist.shape[0], np.max(clusters['size']) + 1))
                     self._cluster_tot_hist += fast_analysis_utils.hist_2d_index(clusters['tot'], clusters['size'], shape=self._cluster_tot_hist.shape)
 
