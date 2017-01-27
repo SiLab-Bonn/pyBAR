@@ -565,7 +565,7 @@ def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=No
     fig = Figure()
     FigureCanvas(fig)
     ax = fig.add_subplot(111)
-    if plot_range is None:
+    if plot_range is None or max(plot_range) > len(hist):
         plot_range = range(0, len(hist))
     if not plot_range:
         plot_range = [0]
