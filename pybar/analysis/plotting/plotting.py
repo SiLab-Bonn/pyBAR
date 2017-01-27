@@ -528,7 +528,9 @@ def plot_scatter_time(x, y, yerr=None, title=None, legend=None, plot_range=None,
 
 
 def plot_cluster_tot_size(hist, z_max=None, filename=None):
-    hist = hist[0:50, 0:20]  # limit size
+    tot_max = min(50, hist.shape[0])
+    cluster_max = min(20, hist.shape[1])
+    hist = hist[0:tot_max, 0:min(6, hist.shape[1])]  # limit size
     if z_max is None:
         z_max = math.ceil(np.ma.max(hist))
     if z_max < 1 or hist.all() is np.ma.masked:
@@ -536,7 +538,7 @@ def plot_cluster_tot_size(hist, z_max=None, filename=None):
     fig = Figure()
     FigureCanvas(fig)
     ax = fig.add_subplot(111)
-    extent = [-0.5, 20.5, 49.5, -0.5]
+    extent = [-0.5, cluster_max - 0.5, tot_max - 0.5, -0.5]
     bounds = np.linspace(start=0, stop=z_max, num=255, endpoint=True)
     cmap = cm.get_cmap('cool')
     cmap.set_bad('w', 1.0)
@@ -565,7 +567,7 @@ def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=No
     fig = Figure()
     FigureCanvas(fig)
     ax = fig.add_subplot(111)
-    if plot_range is None:
+    if plot_range is None or max(plot_range) > len(hist):
         plot_range = range(0, len(hist))
     if not plot_range:
         plot_range = [0]
