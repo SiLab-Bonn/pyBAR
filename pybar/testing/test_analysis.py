@@ -277,7 +277,39 @@ class TestAnalysis(unittest.TestCase):
         self.assertTrue(data_equal, msg=error_msg)
 
     def test_data_aligned_at_events(self):
-        with tb.open_file(os.path.join(tests_data_folder, 'unit_test_data_2_hits.h5'), 'r') as h5_file:
+        def test_gen(generator, table, start, stop=None, size=None, iterations=None):
+
+            #for arr, stop_index in generator:
+            while True:
+                try:
+                    arr, stop_index = generator.next()
+                except StopIteration:
+                    if stop is None:
+                        self.assertEqual(table.nrows, start, "Generator did not return all data")
+                    else:
+                        self.assertEqual(stop, start, "Generator did not return all data until stop index")
+                    break
+                else:
+                    pass
+                arr_size = stop_index - start
+                self.assertNotEqual(arr.shape[0], 0)
+                self.assertEqual(arr_size, arr.shape[0])
+                np.testing.assert_array_equal(arr, table[start:start + arr_size], "Generator returned wrong data")
+                start += arr_size
+                if size is not None:
+                    self.assertGreaterEqual(size, arr_size, "Generator exceeded chunk size")
+
+                if iterations is not None:
+                    iterations -= 1
+                    if iterations == 0:
+                        break
+
+            if stop is None:
+                self.assertGreaterEqual(table.nrows, start, "Generator index exceeded table nrows")
+            else:
+                self.assertGreaterEqual(stop, start, "Generator index exceeded stop index")
+
+        with tb.open_file(os.path.join(tests_data_folder, 'unit_test_data_2_hits.h5'), 'r+') as h5_file:
             # testing full table
             hist_table, _ = np.histogram(h5_file.root.Hits[:]["event_number"])
             gen = data_aligned_at_events(h5_file.root.Hits, start_event_number=None, stop_event_number=None, start_index=None, stop_index=None, first_event_aligned=True, try_speedup=False, chunk_size=1000000)
@@ -288,43 +320,11 @@ class TestAnalysis(unittest.TestCase):
 #             self.assertSequenceEqual(event_numbers, h5_file.root.Hits[:]["event_number"].tolist())
             self.assertSequenceEqual(hist_table.tolist(), hist.tolist())
 
-            def test_gen(gen, start, stop=None, size=None, iterations=None):
-                if stop is None:
-                    max_stop = h5_file.root.Hits.nrows
-                else:
-                    max_stop = stop
-                for arr, stop_index in gen:
-                    arr_size = stop_index - start
-                    self.assertNotEqual(arr.shape[0], 0)
-                    self.assertEqual(arr_size, arr.shape[0])
-                    np.testing.assert_array_equal(arr, h5_file.root.Hits[start:start + arr_size])
-                    start += arr_size
-                    self.assertGreaterEqual(max_stop, start)
-                    if size is not None:
-                        self.assertGreaterEqual(size, arr_size)
-
-                    if iterations is not None:
-                        iterations -= 1
-                        if iterations == 0:
-                            break
-                if stop is not None:
-                    self.assertGreaterEqual(stop, start)
-
             # test chunk size
             gen = data_aligned_at_events(h5_file.root.Hits, start_event_number=None, stop_event_number=None, start_index=None, stop_index=None, first_event_aligned=True, try_speedup=False, chunk_size=224)
             self.assertRaises(InvalidInputError, gen.next)
             gen = data_aligned_at_events(h5_file.root.Hits, start_event_number=None, stop_event_number=None, start_index=None, stop_index=None, first_event_aligned=True, try_speedup=False, chunk_size=225)
-            test_gen(gen, 0, iterations=3)
-#             arr, index = gen.next()
-#             self.assertEqual(224, arr.shape[0])
-#             self.assertEqual(224, index)
-#             np.testing.assert_array_equal(arr, h5_file.root.Hits[0:224])
-#             arr, index = gen.next()
-#             self.assertEqual(224, arr.shape[0])
-#             self.assertEqual(448, index)
-#             arr, index = gen.next()
-#             self.assertEqual(165, arr.shape[0])
-#             self.assertEqual(613, index)
+            test_gen(generator=gen, table=h5_file.root.Hits, start=0, iterations=3)
             gen = data_aligned_at_events(h5_file.root.Hits, start_event_number=None, stop_event_number=None, start_index=None, stop_index=None, first_event_aligned=True, try_speedup=False, chunk_size=223)
             self.assertRaises(InvalidInputError, gen.next)
 
@@ -362,12 +362,6 @@ class TestAnalysis(unittest.TestCase):
             self.assertEqual(448, index)
             gen = data_aligned_at_events(h5_file.root.Hits, start_event_number=2, stop_event_number=None, start_index=None, stop_index=None, first_event_aligned=True, try_speedup=False, chunk_size=225)
             self.assertRaises(InvalidInputError, gen.next)
-#             arr, index = gen.next()
-#             self.assertEqual(224, arr.shape[0])
-#             self.assertEqual(448, index)
-#             arr, index = gen.next()
-#             self.assertEqual(165, arr.shape[0])
-#             self.assertEqual(613, index)
             gen = data_aligned_at_events(h5_file.root.Hits, start_event_number=3800, stop_event_number=None, start_index=None, stop_index=None, first_event_aligned=True, try_speedup=False, chunk_size=225)
             arr, index = gen.next()
             self.assertEqual(224, arr.shape[0])
@@ -377,20 +371,8 @@ class TestAnalysis(unittest.TestCase):
             self.assertEqual(613, index)
             gen = data_aligned_at_events(h5_file.root.Hits, start_event_number=2, stop_event_number=None, start_index=None, stop_index=None, first_event_aligned=True, try_speedup=False, chunk_size=10000)
             self.assertRaises(InvalidInputError, gen.next)
-#             arr, index = gen.next()
-#             self.assertEqual(9774, arr.shape[0])
-#             self.assertEqual(9998, index)
-#             arr, index = gen.next()
-#             self.assertEqual(9999, arr.shape[0])
-#             self.assertEqual(19997, index)
             gen = data_aligned_at_events(h5_file.root.Hits, start_event_number=3800, stop_event_number=None, start_index=None, stop_index=None, first_event_aligned=True, try_speedup=False, chunk_size=10000)
-            test_gen(gen, start=224, size=10000, iterations=3)
-#             arr, index = gen.next()
-#             self.assertEqual(9774, arr.shape[0])
-#             self.assertEqual(9998, index)
-#             arr, index = gen.next()
-#             self.assertEqual(9999, arr.shape[0])
-#             self.assertEqual(19997, index)
+            test_gen(generator=gen, table=h5_file.root.Hits, start=224, size=10000)
 
             # test start and stop event number
             gen = data_aligned_at_events(h5_file.root.Hits, start_event_number=0, stop_event_number=0, start_index=None, stop_index=None, first_event_aligned=True, try_speedup=False, chunk_size=10000)
@@ -406,19 +388,8 @@ class TestAnalysis(unittest.TestCase):
             self.assertRaises(StopIteration, gen.next)
             gen = data_aligned_at_events(h5_file.root.Hits, start_event_number=2, stop_event_number=3801, start_index=None, stop_index=None, first_event_aligned=True, try_speedup=False, chunk_size=10000)
             self.assertRaises(InvalidInputError, gen.next)
-#             arr, index = gen.next()
-#             self.assertEqual(224, arr.shape[0])
-#             self.assertEqual(448, index)
-#             self.assertRaises(StopIteration, gen.next)
             gen = data_aligned_at_events(h5_file.root.Hits, start_event_number=2, stop_event_number=110200, start_index=None, stop_index=None, first_event_aligned=True, try_speedup=False, chunk_size=10000)
             self.assertRaises(InvalidInputError, gen.next)
-#             arr, index = gen.next()
-#             self.assertEqual(9774, arr.shape[0])
-#             self.assertEqual(9998, index)
-#             arr, index = gen.next()
-#             self.assertEqual(4786, arr.shape[0])
-#             self.assertEqual(14784, index)
-#             self.assertRaises(StopIteration, gen.next)
 
             # test stop index
             gen = data_aligned_at_events(h5_file.root.Hits, start_event_number=None, stop_event_number=None, start_index=None, stop_index=500, first_event_aligned=True, try_speedup=False, chunk_size=10000)
@@ -484,39 +455,18 @@ class TestAnalysis(unittest.TestCase):
             self.assertEqual(10222, index)
             gen = data_aligned_at_events(h5_file.root.Hits, start_event_number=3801, stop_event_number=None, start_index=224, stop_index=None, first_event_aligned=True, try_speedup=False, chunk_size=10000)
             self.assertRaises(InvalidInputError, gen.next)
-#             arr, index = gen.next()
-#             self.assertEqual(9774, arr.shape[0])
-#             self.assertEqual(10222, index)
 
             # test start index, first event not aligned
             gen = data_aligned_at_events(h5_file.root.Hits, start_event_number=None, stop_event_number=None, start_index=0, stop_index=None, first_event_aligned=False, try_speedup=False, chunk_size=10000)
-            test_gen(gen, start=0, size=10000, iterations=3)
-#             arr, index = gen.next()
-#             self.assertEqual(9998, arr.shape[0])  # assuming start index 0 is always aligned
-#             self.assertEqual(9998, index)
+            test_gen(generator=gen, table=h5_file.root.Hits, start=0, size=10000)
             gen = data_aligned_at_events(h5_file.root.Hits, start_event_number=None, stop_event_number=None, start_index=500, stop_index=None, first_event_aligned=False, try_speedup=False, chunk_size=10000)
-            test_gen(gen, start=501, size=10000, iterations=3)
-#             arr, index = gen.next()
-#             self.assertEqual(9998, arr.shape[0])
-#             self.assertEqual(10499, index)
-#             arr, index = gen.next()
-#             self.assertEqual(9996, arr.shape[0])
-#             self.assertEqual(20495, index)
+            test_gen(generator=gen, table=h5_file.root.Hits, start=501, size=10000)
             gen = data_aligned_at_events(h5_file.root.Hits, start_event_number=None, stop_event_number=None, start_index=224, stop_index=None, first_event_aligned=False, try_speedup=False, chunk_size=10000)
-            test_gen(gen, start=448, size=10000, iterations=3)
-#             arr, index = gen.next()
-#             self.assertEqual(9774, arr.shape[0])
-#             self.assertEqual(10222, index)
-#             arr, index = gen.next()
-#             self.assertEqual(9995, arr.shape[0])
-#             self.assertEqual(20217, index)
+            test_gen(generator=gen, table=h5_file.root.Hits, start=448, size=10000)
             gen = data_aligned_at_events(h5_file.root.Hits, start_event_number=3800, stop_event_number=None, start_index=224, stop_index=None, first_event_aligned=False, try_speedup=False, chunk_size=10000)
             self.assertRaises(InvalidInputError, gen.next)
             gen = data_aligned_at_events(h5_file.root.Hits, start_event_number=3801, stop_event_number=None, start_index=224, stop_index=None, first_event_aligned=False, try_speedup=False, chunk_size=10000)
             self.assertRaises(InvalidInputError, gen.next)
-#             arr, index = gen.next()
-#             self.assertEqual(9774, arr.shape[0])
-#             self.assertEqual(10222, index)
 
             # test start index, start event number
             gen = data_aligned_at_events(h5_file.root.Hits, start_event_number=0, stop_event_number=None, start_index=0, stop_index=None, first_event_aligned=False, try_speedup=False, chunk_size=10000)
@@ -600,37 +550,23 @@ class TestAnalysis(unittest.TestCase):
             gen = data_aligned_at_events(h5_file.root.Hits, start_event_number=3801, stop_event_number=110200, start_index=100, stop_index=15000, first_event_aligned=True, try_speedup=False, chunk_size=10000)
             self.assertRaises(InvalidInputError, gen.next)
             gen = data_aligned_at_events(h5_file.root.Hits, start_event_number=3800, stop_event_number=110200, start_index=100, stop_index=15000, first_event_aligned=True, try_speedup=False, chunk_size=10000)
-            test_gen(gen, start=224, stop=14784, size=10000)
-#             arr, index = gen.next()
-#             self.assertEqual(9875, arr.shape[0])
-#             self.assertEqual(10099, index)
-#             arr, index = gen.next()
-#             self.assertEqual(4685, arr.shape[0])
-#             self.assertEqual(14784, index)
-#             self.assertRaises(StopIteration, gen.next)
+            test_gen(generator=gen, table=h5_file.root.Hits, start=224, stop=14784, size=10000)
             gen = data_aligned_at_events(h5_file.root.Hits, start_event_number=3800, stop_event_number=110200, start_index=100, stop_index=15000, first_event_aligned=False, try_speedup=False, chunk_size=10000)
-            test_gen(gen, start=224, stop=14784, size=10000)
-#             arr, index = gen.next()
-#             self.assertEqual(9875, arr.shape[0])
-#             self.assertEqual(10099, index)
-#             arr, index = gen.next()
-#             self.assertEqual(4685, arr.shape[0])
-#             self.assertEqual(14784, index)
-#             self.assertRaises(StopIteration, gen.next)
+            test_gen(generator=gen, table=h5_file.root.Hits, start=224, stop=14784, size=10000)
             gen = data_aligned_at_events(h5_file.root.Hits, start_event_number=3800, stop_event_number=110200, start_index=224, stop_index=15000, first_event_aligned=False, try_speedup=False, chunk_size=10000)
             self.assertRaises(InvalidInputError, gen.next)
             gen = data_aligned_at_events(h5_file.root.Hits, start_event_number=3800, stop_event_number=110200, start_index=100, stop_index=14784, first_event_aligned=True, try_speedup=False, chunk_size=10000)
-            test_gen(gen, start=224, stop=14782, size=10000)
-#             arr, index = gen.next()
-#             self.assertEqual(9875, arr.shape[0])
-#             self.assertEqual(10099, index)
-#             arr, index = gen.next()
-#             self.assertEqual(4683, arr.shape[0])
-#             self.assertEqual(14782, index)
-#             self.assertRaises(StopIteration, gen.next)
+            test_gen(generator=gen, table=h5_file.root.Hits, start=224, stop=14782, size=10000)
+
             # chunk size
             gen = data_aligned_at_events(h5_file.root.Hits, start_event_number=3800, stop_event_number=None, start_index=100, stop_index=None, first_event_aligned=False, try_speedup=False, chunk_size=224)
             self.assertRaises(InvalidInputError, gen.next)
+
+            # read full table
+            gen = data_aligned_at_events(h5_file.root.Hits, start_event_number=0, stop_event_number=239500, start_index=None, stop_index=None, first_event_aligned=True, try_speedup=False, chunk_size=100000)
+            test_gen(generator=gen, table=h5_file.root.Hits, start=0, stop=None, size=100000)
+            gen = data_aligned_at_events(h5_file.root.Hits, start_event_number=3800, stop_event_number=239500, start_index=None, stop_index=None, first_event_aligned=True, try_speedup=False, chunk_size=100000)
+            test_gen(generator=gen, table=h5_file.root.Hits, start=224, stop=None, size=100000)
 
 
 if __name__ == '__main__':
