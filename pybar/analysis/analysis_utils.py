@@ -1183,9 +1183,9 @@ def data_aligned_at_events(table, start_event_number=None, stop_event_number=Non
     try_speedup : bool
         If True, try to reduce the index range to read by searching for the indices of start and stop event number. If these event numbers are usually
         not in the data this speedup can even slow down the function!
-    
+
     The following parameters are not used when try_speedup is True:
-    
+
     first_event_aligned : bool
         If True, assuming that the first event is aligned to the data chunk and will be added. If False, the lowest event number of the first chunk will not be read out.
     fail_on_missing_events : bool
@@ -1195,7 +1195,7 @@ def data_aligned_at_events(table, start_event_number=None, stop_event_number=Non
     -------
     Iterator of tuples
         Data of the actual data chunk and start index for the next chunk.
-    
+
     Example
     -------
     start_index = 0
@@ -1295,13 +1295,15 @@ def data_aligned_at_events(table, start_event_number=None, stop_event_number=Non
 
             chunk_start_index = 0
 
-            if stop_event_number is not None:
-                if last_event_in_chunk >= stop_event_number:
-                    chunk_stop_index = np.searchsorted(array_chunk["event_number"], stop_event_number, side='left')
+            if stop_event_number is None:
+                if current_stop_index == table_max_rows:
+                    chunk_stop_index = array_chunk.shape[0]
                 else:
                     chunk_stop_index = np.searchsorted(array_chunk["event_number"], last_event_in_chunk, side='left')
             else:
-                if current_stop_index == table_max_rows:
+                if last_event_in_chunk >= stop_event_number:
+                    chunk_stop_index = np.searchsorted(array_chunk["event_number"], stop_event_number, side='left')
+                elif current_stop_index == table_max_rows:  # this will also add the last event of the table
                     chunk_stop_index = array_chunk.shape[0]
                 else:
                     chunk_stop_index = np.searchsorted(array_chunk["event_number"], last_event_in_chunk, side='left')
@@ -1317,18 +1319,7 @@ def data_aligned_at_events(table, start_event_number=None, stop_event_number=Non
             else:
                 yield array_chunk[chunk_start_index:chunk_stop_index], current_start_index + nrows + chunk_start_index
 
-#             if (start_event_number is not None or stop_event_number is not None) and (last_event_in_chunk > stop_event_number or first_event_in_chunk < start_event_number):  # too many events read, get only the selected ones if specified
-#                 selected_rows = get_data_in_event_range(array_chunk[0:nrows], event_start=start_event_number, event_stop=stop_event_number, assume_sorted=True)
-#                 if len(selected_rows) != 0:  # only return non empty data
-#                     yield selected_rows, current_start_index + len(selected_rows)
-#             else:
-#                 yield array_chunk[0:nrows], current_start_index + nrows  # no events specified or selected event range is larger than read chunk, thus return the whole chunk minus the little part for event alignment
-#             if stop_event_number is not None and last_event_in_chunk > stop_event_number:  # events are sorted, thus stop here to save time
-#                 return
             current_start_index = current_start_index + nrows + chunk_start_index  # events fully read, increase start index and continue reading
-
-#         if stop_event_number is not None and last_event_in_chunk < stop_event_number:
-#             raise InvalidInputError('The event %d is missing. Change stop_event_number.' % start_event_number)
 
 
 def select_good_pixel_region(hits, col_span, row_span, min_cut_threshold=0.2, max_cut_threshold=2.0):
