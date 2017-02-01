@@ -372,7 +372,7 @@ if __name__ == "__main__":
                            hit_selection_conditions=analysis_configuration['hit_selection_conditions'],
                            event_status_select_mask=analysis_configuration['event_status_select_mask'],
                            event_status_condition=analysis_configuration['event_status_condition'],
-                           calibation_file=analysis_configuration['input_file_calibration'],
+                           calibration_file=analysis_configuration['input_file_calibration'],
                            max_tdc=analysis_configuration['max_tdc'],
                            ignore_disabled_regions=analysis_configuration['ignore_disabled_regions'],
                            n_bins=analysis_configuration['n_bins']
