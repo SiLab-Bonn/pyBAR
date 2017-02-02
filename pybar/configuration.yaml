@@ -1,15 +1,18 @@
 # *** hardwre setup/configuration ***
 dut : dut_mio.yaml  # DUT hardware configuration (.yaml). Change to dut_mio_gpac.yaml for GPAC support.
 dut_configuration : dut_configuration_mio.yaml  # DUT init configuration (.yaml). Change to dut_configuration_mio_gpac.yaml for GPAC support.
+working_dir : data  # The output data folder (e.g. set to stave name)
+# *** module configurations ***
 
-# *** front-end configuration ***
-fe_configuration :  # FE configuration file, text (.cfg) or HDF5 (.h5) file. If not given, latest valid configuration (run status FINISHED) will be taken. If a number is given, configuration from run with specified number will be taken.
-fe_flavor : fei4b  # FEI4 flavor/type for initial configuration. Valid values: 'fei4a' or 'fei4b'
-chip_address :  # Chip Address for initial configuration, if not given, broadcast bit will be set
-module_id : module_test  # module identifier / name, sub-folder with given name will be created inside working_dir
+modules : 
+    module_test : # Module name
+        fe_configuration :  # FE configuration file, text (.cfg) or HDF5 (.h5) file. If not given, latest valid configuration (run status FINISHED) will be taken. If a number is given, configuration from run with specified number will be taken.
+        fe_flavor : fei4b  # FEI4 flavor/type for initial configuration. Valid values: 'fei4a' or 'fei4b'
+        chip_address :  # Chip Address for initial configuration, if not given, broadcast bit will be set
+	    #send_data : 'tcp://127.0.0.1:5678'
 
 # *** configuration ***
-#send_data : 'tcp://127.0.0.1:5678'  # to allow incoming connections on all interfaces use 0.0.0.0
+
 #send_message :
 #    status: ['CRASHED', 'ABORTED', 'STOPPED', 'FINISHED']  # run status that triggers emails
 #    subject_prefix: "pyBAR run report: "
