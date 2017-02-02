@@ -19,7 +19,7 @@ import sys
 from basil.dut import Dut
 
 from pybar.run_manager import RunManager, RunBase, RunAborted, RunStopped
-from pybar.fei4.register import FEI4Register
+from pybar.fei4.register import FEI4Register, BroadcastRegister
 from pybar.fei4.register_utils import FEI4RegisterUtils, is_fe_ready
 from pybar.daq.fifo_readout import FifoReadout, RxSyncError, EightbTenbError, FifoError, NoDataTimeout, StopTimeout
 from pybar.daq.readout_utils import save_configuration_dict
@@ -58,6 +58,8 @@ class Fei4RunBase(RunBase):
 
         self._parse_module_cfgs(conf)
         self._set_default_cfg(conf)
+
+        self.seriell = True  # Std. setting.: scans are parallel
 
         self._n_modules = len(self._module_cfgs)
 
@@ -267,6 +269,49 @@ class Fei4RunBase(RunBase):
                 # resetting service records must be done once after power up
                 self._module_register_utils[module_id].reset_service_records()
 
+            # Create module data path if it does not exist
+            module_path = self.get_module_path(module_id)
+            if not os.path.exists(module_path):
+                os.makedirs(module_path)
+
+    def _set_single_handles(self, module_id):
+        ''' Sets handles to access one module
+        '''
+        self.register = self.get_register(module_id)
+        self.output_filename = self.get_output_filename(module_id)
+        self.register_utils = self.get_register_utils(module_id)
+
+    def _check_fe_type(self):
+        ''' Warns if all FE do not have the same flavor
+        '''
+        flavor = []
+        for setting, value in self._module_cfgs.values().iteritems():
+            if setting == 'fe_flavor':
+                flavor.append(value)
+        if len(set(flavor)) > 1:
+            logging.warning('Mixed FE flavor in broadcast mode.')
+        return flavor[0]
+
+    def _set_broadcast_handles(self):
+        ''' Sets handles to access multiple module with broadcast
+        '''
+        fe_type = self._check_fe_type()  # Broadcast can fail if FE flavors differ
+        self.register = BroadcastRegister(fe_type=fe_type)
+        self.output_filename = None
+        self.register_utils = FEI4RegisterUtils(self.dut, self.register)
+
+    def _set_multi_handles(self):
+        ''' Sets handles to access multiple module at different channels
+        '''
+        raise NotImplemented('This feature is not implemented yet')
+
+    def _unset_module_handles(self):
+        ''' Unset actual module handles
+        '''
+        self.register = None
+        self.output_filename = None
+        self.register_utils = None
+
     def pre_run(self):
         # clear error queue in case run is executed a second time
         self.err_queue.queue.clear()
@@ -361,46 +406,44 @@ class Fei4RunBase(RunBase):
         # initialize the modules
         self.init_modules()
 
-    def _set_module_handles(self, module_id):
-        ''' Sets some handles to ease the access to the active module in the scans
-        '''
-        self.register = self.get_register(module_id)
-        self.output_filename = self.get_output_filename(module_id)
-        self.register_utils = self.get_register_utils(module_id)
-
-    def _unset_module_handles(self):
-        ''' Unset actual module handles
-        '''
-        self.register = None
-        self.output_filename = None
-        self.register_utils = None
-
     def do_run(self):
         ''' Start runs on all modules sequentially.
 
         Sets properties to access current module properties.
         '''
 
-        for module_id in self._module_cfgs:
-            # Gives access for scan to actual module register with simple properties
-            self._set_module_handles(module_id)
+        if self.seriell:  # Use each FE one by one
+            for module_id in self._module_cfgs:
+                # Gives access for scan to actual module
+                self._set_single_handles(module_id)
 
-            # Create module data path if it does not exist
-            module_path = self.get_module_path(module_id)
-            if not os.path.exists(module_path):
-                os.makedirs(module_path)
+                with self.register.restored(name=self.run_number):
+                    # configure for scan
+                    self.configure()
+                    self.fifo_readout.reset_rx()
+                    self.fifo_readout.reset_sram_fifo()
+                    self.fifo_readout.print_readout_status()
+                    with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, register=self.register,
+                                            conf=self._conf, run_conf=self._run_conf,
+                                            scan_parameters=self.scan_parameters._asdict(),
+                                            socket_address=self._module_cfgs[module_id]['send_data']) as self.raw_data_file:
+                        self.scan()
 
-            with self.register.restored(name=self.run_number):
-                # configure for scan
-                self.configure()
-                self.fifo_readout.reset_rx()
-                self.fifo_readout.reset_sram_fifo()
-                self.fifo_readout.print_readout_status()
-                with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, register=self.register,
-                                        conf=self._conf, run_conf=self._run_conf,
-                                        scan_parameters=self.scan_parameters._asdict(),
-                                        socket_address=self._module_cfgs[module_id]['send_data']) as self.raw_data_file:
-                    self.scan()
+                # For safety to prevent no crash if handles is not set correclty
+                self._unset_module_handles()
+        else:  # Use all FE at once with command broadcast
+            # Gives access for scan to all modules
+            self._set_broadcast_handles()
+            self.configure()
+            self.fifo_readout.reset_rx()
+            self.fifo_readout.reset_sram_fifo()
+            self.fifo_readout.print_readout_status()
+            # FIXME: multiple files with filtered raw data needed
+            with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, register=self.register,
+                                    conf=self._conf, run_conf=self._run_conf,
+                                    scan_parameters=self.scan_parameters._asdict(),
+                                    socket_address=self._module_cfgs[module_id]['send_data']) as self.raw_data_file:
+                self.scan()
 
             # For safety to prevent no crash if handles is not set correclty
             self._unset_module_handles()
@@ -414,7 +457,7 @@ class Fei4RunBase(RunBase):
 
         # analyzing data
         for module_id in self._module_cfgs:
-            self._set_module_handles(module_id)
+            self._set_single_handles(module_id)
             try:
                 self.analyze()
             except Exception:  # analysis errors
@@ -474,9 +517,11 @@ class Fei4RunBase(RunBase):
         data : list, tuple
             Data tuple of the format (data (np.array), last_time (float), curr_time (float), status (int))
         '''
-        filter_func = logical_or(is_trigger_word,
-                            logical_or(logical_and(is_tdc_word, is_tdc_from_channel(4)),
-                                       logical_and(is_fe_word, is_data_from_channel(4))))
+        filter_func = logical_or(
+            is_trigger_word,
+            logical_or(
+                logical_and(is_tdc_word, is_tdc_from_channel(4)),
+                logical_and(is_fe_word, is_data_from_channel(4))))
         data = convert_data_iterable((data,), filter_func=filter_func, converter_func=None)
         self.raw_data_file.append_item(data[0], scan_parameters=self.scan_parameters._asdict(), flush=True)
 

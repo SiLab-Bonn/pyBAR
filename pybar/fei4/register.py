@@ -685,6 +685,21 @@ class FEI4Register(object):
             return False
 
 
+class BroadcastRegister(FEI4Register):
+    ''' Defiens a FE-I4 register object for storing register settings to be
+    broadcasted to multiple Front-Ends.
+    '''
+    def __init__(self, fe_type=None):
+        super(FEI4Register, self).__init__(self, configuration_file=None,
+                                           fe_type=fe_type, chip_address=None,
+                                           broadcast=True)
+
+    def get_commands(self, command_name, **kwargs):
+        if 'RdRegister' in command_name:
+            logging.warning('Reading registers in broadcast mode')
+        super(FEI4Register, self).get_commands(self, command_name, **kwargs)
+
+
 class NameValue(tb.IsDescription):
     name = tb.StringCol(256, pos=0)
     value = tb.StringCol(1024, pos=0)
