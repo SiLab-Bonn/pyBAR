@@ -80,8 +80,6 @@ class Fei4RunBase(RunBase):
 
         # Default module parameters
         for m_settings in self._module_cfgs.values():
-            if 'zmq_context' not in m_settings:
-                m_settings.update({'zmq_context': None})  # ZMQ context
             if 'send_data' not in m_settings:
                 m_settings.update({'send_data': None})  # address string of PUB socket
             if 'send_error_msg' not in m_settings:
@@ -90,13 +88,6 @@ class Fei4RunBase(RunBase):
         # Default config parameters
         if 'working_dir' not in conf:
                 conf.update({'working_dir': ''})  # path string, if empty, path of configuration.yaml file will be used
-
-#     @property
-#     def working_dir(self):
-#         if self.module_id:
-#             return os.path.join(self._conf['working_dir'], self.module_id)
-#         else:
-#             return os.path.join(self._conf['working_dir'], self.run_id)
 
     @property
     def dut(self):
@@ -113,15 +104,6 @@ class Fei4RunBase(RunBase):
     def get_output_filename(self, module_id):
         module_path = os.path.join(self.working_dir, module_id)
         return os.path.join(module_path, str(self.run_number) + "_" + module_id + "_" + self.run_id)
-
-    @property
-    def module_id(self):
-        if 'module_id' in self._conf and self._conf['module_id']:
-            module_id = str(self._conf['module_id'])
-            module_id = re.sub(r"[^\w\s+]", '', module_id)
-            return re.sub(r"\s+", '_', module_id).lower()
-        else:
-            return None
 
     def init_dut(self):
         if self.dut.name == 'mio':
@@ -290,13 +272,7 @@ class Fei4RunBase(RunBase):
     def pre_run(self):
         # clear error queue in case run is executed a second time
         self.err_queue.queue.clear()
-# FIXME: Socket handling better in data class?
-#         # opening ZMQ context and binding socket
-#         if self._conf['send_data'] and not self._conf['zmq_context']:
-#             logging.info('Creating ZMQ context')
-#             self._conf['zmq_context'] = zmq.Context()  # contexts are thread safe unlike sockets
-#         else:
-#             logging.info('Using existing socket')
+
         # scan parameters
         if 'scan_parameters' in self._run_conf:
             if isinstance(self._run_conf['scan_parameters'], basestring):
@@ -425,7 +401,6 @@ class Fei4RunBase(RunBase):
                 with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, register=self.register,
                                         conf=self._conf, run_conf=self._run_conf,
                                         scan_parameters=self.scan_parameters._asdict(),
-                                        context=self._module_cfgs[module_id]['zmq_context'],
                                         socket_address=self._module_cfgs[module_id]['send_data']) as self.raw_data_file:
                     self.scan()
 
