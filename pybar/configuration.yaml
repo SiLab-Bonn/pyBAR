@@ -9,7 +9,7 @@ modules :
         fe_configuration :  # FE configuration file, text (.cfg) or HDF5 (.h5) file. If not given, latest valid configuration (run status FINISHED) will be taken. If a number is given, configuration from run with specified number will be taken.
         fe_flavor : fei4b  # FEI4 flavor/type for initial configuration. Valid values: 'fei4a' or 'fei4b'
         chip_address :  # Chip Address for initial configuration, if not given, broadcast bit will be set
-	    #send_data : 'tcp://127.0.0.1:5678'
+        #send_data : 'tcp://127.0.0.1:5678' 
 
 # *** configuration ***
 
