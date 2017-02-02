@@ -50,7 +50,7 @@ def save_configuration_dict(h5_file, configuation_name, configuration, **kwargs)
 
 
 def convert_data_array(array, filter_func=None, converter_func=None):  # TODO: add copy parameter, otherwise in-place
-    '''Filter and convert raw data numpy array (numpy.ndarray)
+    '''Filter and convert raw data numpy array (numpy.ndarray).
 
     Parameters
     ----------
@@ -123,6 +123,22 @@ def data_array_from_data_iterable(data_iterable):
 
 
 def is_tdc_from_channel(channel=4):  # function factory
+    '''Selecting TDC data from given channel.
+
+    Parameters
+    ----------
+    channel : int
+        Channel number (4 is default channel on Single Chip Card).
+
+    Returns
+    -------
+    Function.
+
+    Usage:
+    1 Selecting TDC data from channel 4 (combine with is_tdc_word):
+        filter_tdc_data_from_channel_4 = logical_and(is_tdc_word, is_tdc_from_channel(4))
+        tdc_data_from_channel_4 = data_array[filter_tdc_data_from_channel_4(data_array)]
+    '''
     if channel >= 1 and channel < 8:
         def f(value):
             return np.equal(np.right_shift(np.bitwise_and(value, 0xF0000000), 28), channel)
@@ -133,31 +149,30 @@ def is_tdc_from_channel(channel=4):  # function factory
 
 
 def is_data_from_channel(channel=4):  # function factory
-    '''Select data from channel
+    '''Selecting FE data from given channel.
 
-    Parameters:
+    Parameters
+    ----------
     channel : int
-        Channel number (4 is default channel on Single Chip Card)
+        Channel number (4 is default channel on Single Chip Card).
 
-    Returns:
-    Function
+    Returns
+    -------
+    Function.
 
     Usage:
-    # 1
-    is_data_from_channel_4 = is_data_from_channel(4)
-    data_from_channel_4 = data_array[is_data_from_channel_4(data_array)]
-    # 2
-    filter_func = logical_and(is_data_record, is_data_from_channel(3))
-    data_record_from_channel_3 = data_array[filter_func(data_array)]
-    # 3
-    is_raw_data_from_channel_3 = is_data_from_channel(3)(raw_data)
+    1 Selecting FE data from channel 4 (combine with is_fe_word):
+        filter_fe_data_from_channel_4 = logical_and(is_fe_word, is_data_from_channel(4))
+        fe_data_from_channel_4 = data_array[filter_fe_data_from_channel_4(data_array)]
+    2 Sleceting data from channel 4:
+        filter_data_from_channel_4 = is_data_from_channel(4)
+        data_from_channel_4 = data_array[filter_data_from_channel_4(fe_data_array)]
+    3 Sleceting data from channel 4:
+        data_from_channel_4 = is_data_from_channel(4)(fe_raw_data)
 
-    Similar to:
-    f_ch3 = functoools.partial(is_data_from_channel, channel=3)
+    Other usage:
+    f_ch4 = functoools.partial(is_data_from_channel, channel=4)
     l_ch4 = lambda x: is_data_from_channel(x, channel=4)
-
-    Note:
-    Trigger data not included
     '''
     if channel >= 0 and channel < 16:
         def f(value):
@@ -178,10 +193,9 @@ def logical_and(f1, f2):  # function factory
 
     Returns
     -------
-    Function
+    Function.
 
-    Examples
-    --------
+    Usage:
     filter_func=logical_and(is_data_record, is_data_from_channel(4))  # new filter function
     filter_func(array) # array that has Data Records from channel 4
     '''
@@ -201,7 +215,7 @@ def logical_or(f1, f2):  # function factory
 
     Returns
     -------
-    Function
+    Function.
     '''
     def f(value):
         return np.logical_or(f1(value), f2(value))
@@ -219,7 +233,7 @@ def logical_not(f):  # function factory
 
     Returns
     -------
-    Function
+    Function.
     '''
     def f(value):
         return np.logical_not(f(value))
@@ -237,7 +251,7 @@ def logical_xor(f1, f2):  # function factory
 
     Returns
     -------
-    Function
+    Function.
     '''
     def f(value):
         return np.logical_xor(f1(value), f2(value))
@@ -278,25 +292,25 @@ def is_data_record(value):
 
 
 def get_address_record_address(value):
-    '''Returns the address in the address record
+    '''Returns the address in the address record.
     '''
     return np.bitwise_and(value, 0x0000EFFF)
 
 
 def get_address_record_type(value):
-    '''Returns the type in the address record
+    '''Returns the type in the address record.
     '''
     return np.right_shift(np.bitwise_and(value, 0x00008000), 14)
 
 
 def get_value_record(value):
-    '''Returns the value in the value record
+    '''Returns the value in the value record.
     '''
     return np.bitwise_and(value, 0x0000FFFF)
 
 
 def get_col_row_tot_array_from_data_record_array(array):  # TODO: max ToT
-    '''Convert raw data array to column, row, and ToT array
+    '''Convert raw data array to column, row, and ToT array.
 
     Parameters
     ----------
@@ -389,12 +403,12 @@ def build_events_from_raw_data(array):
 
 def interpret_pixel_data(data, dc, pixel_array, invert=True):
     '''Takes the pixel raw data and interprets them. This includes consistency checks and pixel/data matching.
-    The data has to come from one double column only but can have more than one pixel bit (e.g. TDAC = 5 bit)
+    The data has to come from one double column only but can have more than one pixel bit (e.g. TDAC = 5 bit).
 
     Parameters
     ----------
     data : numpy.ndarray
-        The raw data words
+        The raw data words.
     dc : int
         The double column where the data is from.
     pixel_array : numpy.ma.ndarray
