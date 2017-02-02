@@ -27,6 +27,7 @@ from pybar.daq.fifo_readout import FifoReadout, RxSyncError, EightbTenbError, Fi
 from pybar.daq.readout_utils import save_configuration_dict
 from pybar.daq.fei4_raw_data import open_raw_data_file, send_meta_data
 from pybar.analysis.analysis_utils import AnalysisError
+from pybar.daq.readout_utils import convert_data_iterable, logical_or, logical_and, is_trigger_word, is_fe_word, is_data_from_channel, is_tdc_word, is_tdc_from_channel
 
 
 class Fei4RunBase(RunBase):
@@ -438,7 +439,11 @@ class Fei4RunBase(RunBase):
         data : list, tuple
             Data tuple of the format (data (np.array), last_time (float), curr_time (float), status (int))
         '''
-        self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=True)
+        filter = logical_or(is_trigger_word,
+                            logical_or(logical_and(is_tdc_word, is_tdc_from_channel(4)),
+                                       logical_and(is_fe_word, is_data_from_channel(4))))
+        data = convert_data_iterable((data,), filter_func=filter, converter_func=None)
+        self.raw_data_file.append_item(data[0], scan_parameters=self.scan_parameters._asdict(), flush=True)
 
     def handle_err(self, exc):
         '''Handling of Exceptions.

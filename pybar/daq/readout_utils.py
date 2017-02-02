@@ -141,7 +141,7 @@ def is_tdc_from_channel(channel=4):  # function factory
     '''
     if channel >= 1 and channel < 8:
         def f(value):
-            return np.equal(np.right_shift(np.bitwise_and(value, 0xF0000000), 28), channel)
+            return np.equal(np.right_shift(np.bitwise_and(value, 0x70000000), 28), channel)
         f.__name__ = "is_tdc_from_channel_" + str(channel)  # or use inspect module: inspect.stack()[0][3]
         return f
     else:
@@ -176,7 +176,7 @@ def is_data_from_channel(channel=4):  # function factory
     '''
     if channel >= 0 and channel < 16:
         def f(value):
-            return np.equal(np.right_shift(np.bitwise_and(value, 0xFF000000), 24), channel)
+            return np.equal(np.right_shift(np.bitwise_and(value, 0x0F000000), 24), channel)
         f.__name__ = "is_data_from_channel_" + str(channel)  # or use inspect module: inspect.stack()[0][3]
         return f
     else:
@@ -264,7 +264,7 @@ def is_trigger_word(value):
 
 
 def is_tdc_word(value):
-    return np.equal(np.bitwise_and(value, 0xC0000000), 0x40000000)
+    return np.logical_and(np.equal(np.bitwise_and(value, 0x80000000), 0), np.greater(np.bitwise_and(value, 0x70000000), 0))
 
 
 def is_fe_word(value):
