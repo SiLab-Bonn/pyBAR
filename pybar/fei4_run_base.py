@@ -1,11 +1,9 @@
 import logging
 import time
-import re
 import os
 import string
 import smtplib
 from socket import gethostname
-import zmq
 import numpy as np
 from functools import wraps
 from threading import Event, Thread
@@ -22,7 +20,7 @@ from basil.dut import Dut
 
 from pybar.run_manager import RunManager, RunBase, RunAborted, RunStopped
 from pybar.fei4.register import FEI4Register
-from pybar.fei4.register_utils import FEI4RegisterUtils, is_fe_ready, CmdTimeoutError
+from pybar.fei4.register_utils import FEI4RegisterUtils, is_fe_ready
 from pybar.daq.fifo_readout import FifoReadout, RxSyncError, EightbTenbError, FifoError, NoDataTimeout, StopTimeout
 from pybar.daq.readout_utils import save_configuration_dict
 from pybar.daq.fei4_raw_data import open_raw_data_file, send_meta_data
@@ -476,10 +474,10 @@ class Fei4RunBase(RunBase):
         data : list, tuple
             Data tuple of the format (data (np.array), last_time (float), curr_time (float), status (int))
         '''
-        filter = logical_or(is_trigger_word,
+        filter_func = logical_or(is_trigger_word,
                             logical_or(logical_and(is_tdc_word, is_tdc_from_channel(4)),
                                        logical_and(is_fe_word, is_data_from_channel(4))))
-        data = convert_data_iterable((data,), filter_func=filter, converter_func=None)
+        data = convert_data_iterable((data,), filter_func=filter_func, converter_func=None)
         self.raw_data_file.append_item(data[0], scan_parameters=self.scan_parameters._asdict(), flush=True)
 
     def handle_err(self, exc):
