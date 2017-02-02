@@ -34,6 +34,8 @@ class Fei4RunBase(RunBase):
     '''Basic FEI4 run meta class.
 
     Base class for scan- / tune- / analyze-class.
+    If multiple FE-I4 modules are defined the scan is run for
+    each module in series.
     '''
     __metaclass__ = abc.ABCMeta
 
@@ -44,43 +46,73 @@ class Fei4RunBase(RunBase):
         if 'reset_rx_on_error' not in self._default_run_conf:
             self._default_run_conf.update({'reset_rx_on_error': False})
 
+        # Sets self._conf = conf
         super(Fei4RunBase, self).__init__(conf=conf, run_conf=run_conf)
-
-        # default conf parameters
-        if 'working_dir' not in conf:
-            conf.update({'working_dir': ''})  # path string, if empty, path of configuration.yaml file will be used
-        if 'zmq_context' not in conf:
-            conf.update({'zmq_context': None})  # ZMQ context
-        if 'send_data' not in conf:
-            conf.update({'send_data': None})  # address string of PUB socket
-        if 'send_error_msg' not in conf:
-            conf.update({'send_error_msg': None})  # bool
 
         self.err_queue = Queue()
         self.fifo_readout = None
         self.raw_data_file = None
 
-    @property
-    def working_dir(self):
-        if self.module_id:
-            return os.path.join(self._conf['working_dir'], self.module_id)
-        else:
-            return os.path.join(self._conf['working_dir'], self.run_id)
+        self.raw_data_files = {}
+        self.last_configurations = {}
+        self._module_cfgs = {}
+        self._module_register_utils = {}
+
+        self._parse_module_cfgs(conf)
+        self._set_default_cfg(conf)
+
+        self._n_modules = len(self._module_cfgs)
+
+    def _parse_module_cfgs(self, conf):
+        ''' Extracts the configuration of the modules '''
+
+        if 'fe_configuration' in conf:
+            raise NotImplementedError('You are using the old module configuration format. This is not supported anymore!')
+        if 'send_data' in conf:
+            raise NotImplementedError('Specifiy the send_data in the module cfg!')
+
+        if 'modules' in conf:
+            for module_id in conf['modules']:
+                self._module_cfgs[module_id] = conf['modules'][module_id]
+
+    def _set_default_cfg(self, conf):
+        ''' Sets the default  parameters if they are not specified '''
+
+        # Default module parameters
+        for m_settings in self._module_cfgs.values():
+            if 'zmq_context' not in m_settings:
+                m_settings.update({'zmq_context': None})  # ZMQ context
+            if 'send_data' not in m_settings:
+                m_settings.update({'send_data': None})  # address string of PUB socket
+            if 'send_error_msg' not in m_settings:
+                m_settings.update({'send_error_msg': None})  # bool
+
+        # Default config parameters
+        if 'working_dir' not in conf:
+                conf.update({'working_dir': ''})  # path string, if empty, path of configuration.yaml file will be used
+
+#     @property
+#     def working_dir(self):
+#         if self.module_id:
+#             return os.path.join(self._conf['working_dir'], self.module_id)
+#         else:
+#             return os.path.join(self._conf['working_dir'], self.run_id)
 
     @property
     def dut(self):
         return self._conf['dut']
 
-    @property
-    def register(self):
-        return self._conf['fe_configuration']
+    def get_register(self, module_id):
+        ''' Returns the register configuration of the module with given id '''
+        return self._module_cfgs[module_id]['fe_configuration']
 
-    @property
-    def output_filename(self):
-        if self.module_id:
-            return os.path.join(self.working_dir, str(self.run_number) + "_" + self.module_id + "_" + self.run_id)
-        else:
-            return os.path.join(self.working_dir, str(self.run_number) + "_" + self.run_id)
+    def get_register_utils(self, module_id):
+        ''' Returns the register utils of the module with given id '''
+        return self._module_register_utils[module_id]
+
+    def get_output_filename(self, module_id):
+        module_path = os.path.join(self.working_dir, module_id)
+        return os.path.join(module_path, str(self.run_number) + "_" + module_id + "_" + self.run_id)
 
     @property
     def module_id(self):
@@ -93,6 +125,8 @@ class Fei4RunBase(RunBase):
 
     def init_dut(self):
         if self.dut.name == 'mio':
+            if self._n_modules > 1:
+                raise RuntimeError('More than one module is not supported by your hardware!')
             if self.dut.get_modules('FEI4AdapterCard') and [adapter_card for adapter_card in self.dut.get_modules('FEI4AdapterCard') if adapter_card.name == 'ADAPTER_CARD']:
                 self.dut['ADAPTER_CARD'].set_voltage('VDDA1', 1.5)
                 self.dut['ADAPTER_CARD'].set_voltage('VDDA2', 1.5)
@@ -198,67 +232,71 @@ class Fei4RunBase(RunBase):
             self.dut['DLY_CONFIG'].write()
         else:
             logging.warning('Omitting initialization of DUT %s', self.dut.name)
-        # enabling all FEI4 Rx
-        rx_names = [rx.name for rx in self.dut.get_modules('fei4_rx')]
-        for rx_name in rx_names:
-             self.dut[rx_name].ENABLE_RX = 1
 
-    def init_fe(self):
-        if 'fe_configuration' in self._conf:
-            last_configuration = self._get_configuration()
+    def init_modules(self):
+        ''' Initialize all modules consecutevly'''
+
+        broadcast = False
+
+        for module_id, m_config in self._module_cfgs.iteritems():
+            last_configuration = self._get_configuration(module_id=module_id)
             # init config, a number <=0 will also do the initialization (run 0 does not exists)
-            if (not self._conf['fe_configuration'] and not last_configuration) or (isinstance(self._conf['fe_configuration'], (int, long)) and self._conf['fe_configuration'] <= 0):
-                if 'chip_address' in self._conf and self._conf['chip_address']:
-                    chip_address = self._conf['chip_address']
+            if (not m_config['fe_configuration'] and not last_configuration) or (isinstance(m_config['fe_configuration'], (int, long)) and m_config['fe_configuration'] <= 0):
+                if 'chip_address' in m_config and m_config['chip_address']:
+                    chip_address = m_config['chip_address']
+                    if broadcast:
+                        raise NotImplemented('You cannot broadcast data do some chips only!')
                     broadcast = False
                 else:
                     chip_address = 0
                     broadcast = True
-                if 'fe_flavor' in self._conf and self._conf['fe_flavor']:
-                    self._conf['fe_configuration'] = FEI4Register(fe_type=self._conf['fe_flavor'], chip_address=chip_address, broadcast=broadcast)
+                if 'fe_flavor' in m_config and m_config['fe_flavor']:
+                    m_config['fe_configuration'] = FEI4Register(fe_type=m_config['fe_flavor'], chip_address=chip_address, broadcast=broadcast)
                 else:
                     raise ValueError('No fe_flavor given')
             # use existing config
-            elif not self._conf['fe_configuration'] and last_configuration:
-                self._conf['fe_configuration'] = FEI4Register(configuration_file=last_configuration)
+            elif not m_config['fe_configuration'] and last_configuration:
+                m_config['fe_configuration'] = FEI4Register(configuration_file=last_configuration)
             # path string
-            elif isinstance(self._conf['fe_configuration'], basestring):
-                if os.path.isabs(self._conf['fe_configuration']):  # absolute path
-                    self._conf['fe_configuration'] = FEI4Register(configuration_file=self._conf['fe_configuration'])
+            elif isinstance(m_config['fe_configuration'], basestring):
+                if os.path.isabs(m_config['fe_configuration']):  # absolute path
+                    m_config['fe_configuration'] = FEI4Register(configuration_file=m_config['fe_configuration'])
                 else:  # relative path
-                    self._conf['fe_configuration'] = FEI4Register(configuration_file=os.path.join(self._conf['working_dir'], self._conf['fe_configuration']))
+                    m_config['fe_configuration'] = FEI4Register(configuration_file=os.path.join(m_config['working_dir'], m_config['fe_configuration']))
             # run number
-            elif isinstance(self._conf['fe_configuration'], (int, long)) and self._conf['fe_configuration'] > 0:
-                self._conf['fe_configuration'] = FEI4Register(configuration_file=self._get_configuration(self._conf['fe_configuration']))
+            elif isinstance(m_config['fe_configuration'], (int, long)) and m_config['fe_configuration'] > 0:
+                m_config['fe_configuration'] = FEI4Register(configuration_file=self._get_configuration(m_config['fe_configuration']))
             # assume fe_configuration already initialized
-            elif not isinstance(self._conf['fe_configuration'], FEI4Register):
+            elif not isinstance(m_config['fe_configuration'], FEI4Register):
                 raise ValueError('No valid fe_configuration given')
+
+            # Init FE
+
             # init register utils
-            self.register_utils = FEI4RegisterUtils(self.dut, self.register)
+            self._module_register_utils[module_id] = FEI4RegisterUtils(self.dut, self.get_register(module_id))
             # reset and configuration
-            self.register_utils.global_reset()
-            self.register_utils.configure_all()
-            if is_fe_ready(self):
+            self._module_register_utils[module_id].global_reset()
+            self._module_register_utils[module_id].configure_all()
+            if is_fe_ready(self, module_id):
                 reset_service_records = False
             else:
                 reset_service_records = True
-            self.register_utils.reset_bunch_counter()
-            self.register_utils.reset_event_counter()
+            self._module_register_utils[module_id].reset_bunch_counter()
+            self._module_register_utils[module_id].reset_event_counter()
             if reset_service_records:
                 # resetting service records must be done once after power up
-                self.register_utils.reset_service_records()
-        else:
-            pass  # no fe_configuration
+                self._module_register_utils[module_id].reset_service_records()
 
     def pre_run(self):
         # clear error queue in case run is executed a second time
         self.err_queue.queue.clear()
-        # opening ZMQ context and binding socket
-        if self._conf['send_data'] and not self._conf['zmq_context']:
-            logging.info('Creating ZMQ context')
-            self._conf['zmq_context'] = zmq.Context()  # contexts are thread safe unlike sockets
-        else:
-            logging.info('Using existing socket')
+# FIXME: Socket handling better in data class?
+#         # opening ZMQ context and binding socket
+#         if self._conf['send_data'] and not self._conf['zmq_context']:
+#             logging.info('Creating ZMQ context')
+#             self._conf['zmq_context'] = zmq.Context()  # contexts are thread safe unlike sockets
+#         else:
+#             logging.info('Using existing socket')
         # scan parameters
         if 'scan_parameters' in self._run_conf:
             if isinstance(self._run_conf['scan_parameters'], basestring):
@@ -271,7 +309,7 @@ class Fei4RunBase(RunBase):
         logging.info('Scan parameter(s): %s', ', '.join(['%s=%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None')
 
         # init DUT
-        if not isinstance(self._conf['dut'], Dut):
+        if not isinstance(self._conf['dut'], Dut):  # Check if already initialized
             module_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
             if isinstance(self._conf['dut'], basestring):
                 # dirty fix for Windows pathes
@@ -346,32 +384,53 @@ class Fei4RunBase(RunBase):
             pass  # do nothing, already initialized
         # FIFO readout
         self.fifo_readout = FifoReadout(self.dut)
-        # initialize the FE
-        self.init_fe()
+        # initialize the modules
+        self.init_modules()
+
+    def _set_module_handles(self, module_id):
+        ''' Sets some handles to ease the access to the active module in the scans
+        '''
+        self.register = self.get_register(module_id)
+        self.output_filename = self.get_output_filename(module_id)
+        self.register_utils = self.get_register_utils(module_id)
+
+    def _unset_module_handles(self):
+        ''' Unset actual module handles
+        '''
+        self.register = None
+        self.output_filename = None
+        self.register_utils = None
 
     def do_run(self):
-        with self.register.restored(name=self.run_number):
-            # configure for scan
-            self.configure()
-            self.fifo_readout.reset_rx()
-            self.fifo_readout.reset_sram_fifo()
-            self.fifo_readout.print_readout_status()
-            # open raw data file
-            with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, scan_parameters=self.scan_parameters._asdict(), context=self._conf['zmq_context'], socket_address=self._conf['send_data']) as self.raw_data_file:
-                # save configuration data to raw data file
-                self.register.save_configuration(self.raw_data_file.h5_file)
-                save_configuration_dict(self.raw_data_file.h5_file, 'conf', self._conf)
-                save_configuration_dict(self.raw_data_file.h5_file, 'run_conf', self._run_conf)
-                # send configuration data to online monitor
-                if self.raw_data_file.socket:
-                    send_meta_data(self.raw_data_file.socket, self.output_filename, name='Filename')
-                    global_register_config = {}
-                    for global_reg in sorted(self.register.get_global_register_objects(readonly=False), key=itemgetter('name')):
-                        global_register_config[global_reg['name']] = global_reg['value']
-                    send_meta_data(self.raw_data_file.socket, global_register_config, name='GlobalRegisterConf')
-                    send_meta_data(self.raw_data_file.socket, self._run_conf, name='RunConf')
-                # scan
-                self.scan()
+        ''' Start runs on all modules sequentially.
+
+        Sets properties to access current module properties.
+        '''
+
+        for module_id in self._module_cfgs:
+            # Gives access for scan to actual module register with simple properties
+            self._set_module_handles(module_id)
+
+            # Create module data path if it does not exist
+            module_path = self.get_module_path(module_id)
+            if not os.path.exists(module_path):
+                os.makedirs(module_path)
+
+            with self.register.restored(name=self.run_number):
+                # configure for scan
+                self.configure()
+                self.fifo_readout.reset_rx()
+                self.fifo_readout.reset_sram_fifo()
+                self.fifo_readout.print_readout_status()
+                with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, register=self.register,
+                                        conf=self._conf, run_conf=self._run_conf,
+                                        scan_parameters=self.scan_parameters._asdict(),
+                                        context=self._module_cfgs[module_id]['zmq_context'],
+                                        socket_address=self._module_cfgs[module_id]['send_data']) as self.raw_data_file:
+                    self.scan()
+
+            # For safety to prevent no crash if handles is not set correclty
+            self._unset_module_handles()
 
     def post_run(self):
         # printing FIFO status
@@ -381,12 +440,15 @@ class Fei4RunBase(RunBase):
             pass
 
         # analyzing data
-        try:
-            self.analyze()
-        except Exception:  # analysis errors
-            self.handle_err(sys.exc_info())
-        else:  # analyzed data, save config
-            self.register.save_configuration(self.output_filename)
+        for module_id in self._module_cfgs:
+            self._set_module_handles(module_id)
+            try:
+                self.analyze()
+            except Exception:  # analysis errors
+                self.handle_err(sys.exc_info())
+            else:  # analyzed data, save config
+                self.register.save_configuration(self.output_filename)
+            self._unset_module_handles()
 
         if not self.err_queue.empty():
             exc = self.err_queue.get()
@@ -463,12 +525,22 @@ class Fei4RunBase(RunBase):
                 self.abort(msg=exc[1].__class__.__name__ + ": " + str(exc[1]))
             self.err_queue.put(exc)
 
-    def _get_configuration(self, run_number=None):
+    def get_module_path(self, module_id):
+        return os.path.join(self.working_dir, module_id)
+
+    def _get_configuration(self, module_id, run_number=None):
+        ''' Returns the configuration for a given module_id
+
+        The working directory is searched for a file matching the module_id with the
+        given run number. If not run number is defined the last successfull run defines
+        the run number.
+        '''
         def find_file(run_number):
-            for root, _, files in os.walk(self.working_dir):
+            module_path = self.get_module_path(module_id)
+            for root, _, files in os.walk(module_path):
                 for cfgfile in files:
                     cfg_root, cfg_ext = os.path.splitext(cfgfile)
-                    if cfg_root.startswith(''.join([str(run_number), '_', self.module_id])) and cfg_ext.endswith(".cfg"):
+                    if cfg_root.startswith(''.join([str(run_number), '_', module_id])) and cfg_ext.endswith(".cfg"):
                         return os.path.join(root, cfgfile)
 
         if not run_number:
@@ -540,27 +612,25 @@ class Fei4RunBase(RunBase):
             except:
                 logging.warning("Failed sending pyBAR status report")
 
-    @abc.abstractmethod
     def configure(self):
         '''Implementation of the run configuration.
 
-        Will be executed before starting the scan routine.
+        Will be executed before starting the scan routine. Has to be defined in scan.
         '''
-        pass
+        raise NotImplemented('You have to specify a configure method in your scan!')
 
-    @abc.abstractmethod
     def scan(self):
         '''Implementation of the scan routine.
 
-        Do you want to write your own scan? Here is the place to begin.
+        Do you want to write your own scan? Here is the place to begin. Has to be defined in scan.
         '''
-        pass
+        raise NotImplemented('You have to specify a scan method in your scan!')
 
-    @abc.abstractmethod
     def analyze(self):
         '''Implementation of run data processing.
 
         Will be executed after finishing the scan routine.
+        Does not have to be defined
         '''
         pass
 
