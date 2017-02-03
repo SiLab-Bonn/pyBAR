@@ -293,23 +293,20 @@ class Fei4RunBase(RunBase):
 
     def init_modules(self):
         ''' Initialize all modules consecutevly'''
-
-        broadcast = False
-
         for module_id, m_config in self._module_cfgs.iteritems():
             last_configuration = self._get_configuration(module_id=module_id)
             # init config, a number <=0 will also do the initialization (run 0 does not exists)
             if (not m_config['fe_configuration'] and not last_configuration) or (isinstance(m_config['fe_configuration'], (int, long)) and m_config['fe_configuration'] <= 0):
-                if 'chip_address' in m_config and m_config['chip_address']:
+                if 'chip_address' in m_config and m_config['chip_address'] is not None:
                     chip_address = m_config['chip_address']
-                    if broadcast:
-                        raise NotImplemented('You cannot broadcast data do some chips only!')
-                    broadcast = False
                 else:
-                    chip_address = 0
-                    broadcast = True
+                    # In single chip setups the std. address is usually 0
+                    if self._n_modules == 1:
+                        chip_address = 0
+                    else:
+                        raise RuntimeError('You have to specify a chip address in multi module setups')
                 if 'fe_flavor' in m_config and m_config['fe_flavor']:
-                    m_config['fe_configuration'] = FEI4Register(fe_type=m_config['fe_flavor'], chip_address=chip_address, broadcast=broadcast)
+                    m_config['fe_configuration'] = FEI4Register(fe_type=m_config['fe_flavor'], chip_address=chip_address, broadcast=False)
                 else:
                     raise ValueError('No fe_flavor given')
             # use existing config
