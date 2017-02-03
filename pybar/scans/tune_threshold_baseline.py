@@ -44,7 +44,6 @@ class ThresholdBaselineTuning(Fei4RunBase):
             logging.info('Any noise hit will lead to an increased pixel threshold.')
         else:
             logging.info('The pixel threshold of any pixel with an occpancy >%d will be increased' % self.abs_occ_limit)
-            
 
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))
