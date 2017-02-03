@@ -32,8 +32,36 @@ class Fei4RunBase(RunBase):
     '''Basic FEI4 run meta class.
 
     Base class for scan- / tune- / analyze-class.
-    If multiple FE-I4 modules are defined the scan is run for
-    each module in series.
+
+    A fei4 run consist of 3 steps:
+      1. pre_run
+        - dut initialization (readout system init)
+        - init readout fifo (data taking buffer)
+        - init each front-end one by one (configure registers, serial)
+      2. do_run
+        The following steps are either run for all front-ends
+        at once (parallel scan) or one by one (serial scan):
+        - scan specific configuration
+        - run scan
+      3. post_run
+        - call analysis on raw data files one by one (serial)
+
+    Several handles are provided to encapsulate the underlying hardware
+    and scan type to be able to use generic scan definitions:
+
+    - serial scan mode:
+      - register: one FE register data
+      - register_utils: access to one FE registers
+      - output_filename: output file name of a selected module
+      - raw_data_file: one output data file
+
+    - parallel scan mode:
+      - register: broadcast register or multiple front-end registers
+      - register_utils: access all FE registers via broadcast or each front-end registers
+        at different channels
+      - output_filename: output file name of a selected module
+      - raw_data_file: all output data file with channel data filters
+
     '''
     __metaclass__ = abc.ABCMeta
 
@@ -55,13 +83,13 @@ class Fei4RunBase(RunBase):
         self.last_configurations = {}
         self._module_cfgs = {}
         self._module_register_utils = {}
+        self._raw_data_files = {}
 
         self._parse_module_cfgs(conf)
+        self._n_modules = len(self._module_cfgs)
         self._set_default_cfg(conf)
 
-        self.seriell = True  # Std. setting.: scans are parallel
-
-        self._n_modules = len(self._module_cfgs)
+        self.parallel = False  # Std. setting.: scans are parallel
 
     def _parse_module_cfgs(self, conf):
         ''' Extracts the configuration of the modules '''
@@ -79,11 +107,18 @@ class Fei4RunBase(RunBase):
         ''' Sets the default  parameters if they are not specified '''
 
         # Default module parameters
-        for m_settings in self._module_cfgs.values():
+        for module_id, m_settings in self._module_cfgs.iteritems():
             if 'send_data' not in m_settings:
                 m_settings.update({'send_data': None})  # address string of PUB socket
             if 'send_error_msg' not in m_settings:
                 m_settings.update({'send_error_msg': None})  # bool
+            if 'fe_configuration' not in m_settings:
+                logging.warning('No fe_configuration for %s defined, fallback to std. config', module_id)
+            if 'channel' not in m_settings:
+                if self._n_modules > 1:
+                    raise RuntimeError('No channel defined for %d in multi module configuration')
+                else:  # Single module config, std channel is 4
+                    self._module_cfgs[module_id]['channel'] = 4
 
         # Default config parameters
         if 'working_dir' not in conf:
@@ -412,7 +447,7 @@ class Fei4RunBase(RunBase):
         Sets properties to access current module properties.
         '''
 
-        if self.seriell:  # Use each FE one by one
+        if not self.parallel:  # Use each FE one by one
             for module_id in self._module_cfgs:
                 # Gives access for scan to actual module
                 self._set_single_handles(module_id)
