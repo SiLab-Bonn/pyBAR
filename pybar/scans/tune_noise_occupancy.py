@@ -35,6 +35,10 @@ class NoiseOccupancyTuning(Fei4RunBase):
         "overwrite_mask": False  # if True, overwrite existing masks
     }
 
+    # Parallel mode not supported in tunings
+    def set_scan_mode(self):
+        self.parallel = False
+
     def configure(self):
         if self.trig_count == 0:
             self.consecutive_lvl1 = (2 ** self.register.global_registers['Trig_Count']['bitlength'])

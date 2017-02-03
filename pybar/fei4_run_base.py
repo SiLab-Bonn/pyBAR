@@ -127,7 +127,15 @@ class Fei4RunBase(RunBase):
 
         self._unset_module_handles()
 
-        self.parallel = True  # Std. setting.: scans are parallel
+        self.set_scan_mode()
+
+    def set_scan_mode(self):
+        ''' Called during init to set scan in serial or paralle mode.
+
+            Overwrite this function in the scan to change the mode.
+            Std. setting is parallel.
+        '''
+        self.parallel = True
 
     def _parse_module_cfgs(self, conf):
         ''' Extracts the configuration of the modules '''

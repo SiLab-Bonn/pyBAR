@@ -21,6 +21,10 @@ class StuckPixelScan(DigitalScan):
         "overwrite_mask": False  # if True, overwrite existing masks
     }
 
+    # Parallel mode not supported in tunings
+    def set_scan_mode(self):
+        self.parallel = False
+
     def configure(self):
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))

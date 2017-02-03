@@ -36,6 +36,10 @@ class GdacTuningStandard(Fei4RunBase):
         "same_mask_for_all_dc": True  # Increases scan speed, should be deactivated for very noisy FE
     }
 
+    # Parallel mode not supported in tunings
+    def set_scan_mode(self):
+        self.parallel = False
+
     def configure(self):
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))

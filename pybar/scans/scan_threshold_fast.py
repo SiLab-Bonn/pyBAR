@@ -32,6 +32,10 @@ class FastThresholdScan(Fei4RunBase):
     }
     scan_parameter_start = 0  # holding last start value (e.g. used in GDAC threshold scan)
 
+    # Parallel mode not supported in scans that analyze data on the fly
+    def set_scan_mode(self):
+        self.parallel = False
+
     def configure(self):
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))

@@ -35,6 +35,10 @@ class ThresholdBaselineTuning(Fei4RunBase):
         "row_span": [1, 336],  # row range (from minimum to maximum value). From 1 to 336.
     }
 
+    # Parallel mode not supported in tunings
+    def set_scan_mode(self):
+        self.parallel = False
+
     def configure(self):
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))
