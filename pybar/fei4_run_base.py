@@ -96,7 +96,7 @@ class Fei4RunBase(RunBase):
       - register_utils: access all FE registers via broadcast or each front-end registers
         at different channels
       - output_filename: output file name of a selected module
-      - raw_data_file: all output data file with channel data filters
+      - raw_data_file: all output data files with channel data filters
 
     '''
     __metaclass__ = abc.ABCMeta
@@ -224,6 +224,8 @@ class Fei4RunBase(RunBase):
                 self.dut['ADAPTER_CARD'].set_voltage('CH4', 2.1)
                 self.dut['POWER_QUAD'].write()
                 channel_names = [channel.name for channel in self.dut.get_modules('fei4_rx')]
+                if len(channel_names) < self._n_modules:
+                    raise RuntimeError('Less hardware channels activated than modules defined.')
                 for channel in channel_names:
                     # enabling readout
                     self.dut['ENABLE_CHANNEL'][channel] = 1
