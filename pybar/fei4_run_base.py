@@ -127,7 +127,7 @@ class Fei4RunBase(RunBase):
 
         self._unset_module_handles()
 
-        self.parallel = False  # Std. setting.: scans are parallel
+        self.parallel = True  # Std. setting.: scans are parallel
 
     def _parse_module_cfgs(self, conf):
         ''' Extracts the configuration of the modules '''
@@ -358,9 +358,8 @@ class Fei4RunBase(RunBase):
         ''' Warns if all FE do not have the same flavor
         '''
         flavor = []
-        for setting, value in self._module_cfgs.values().iteritems():
-            if setting == 'fe_flavor':
-                flavor.append(value)
+        for setting in self._module_cfgs.values():
+            flavor.append(setting['fe_flavor'])
         if len(set(flavor)) > 1:
             logging.warning('Mixed FE flavor in broadcast mode.')
         return flavor[0]
@@ -521,6 +520,7 @@ class Fei4RunBase(RunBase):
                                                                                              conf=self._conf, run_conf=self._run_conf,
                                                                                              scan_parameters=self.scan_parameters._asdict(),
                                                                                              socket_address=self._module_cfgs[module_id]['send_data']))
+                self.raw_data_file = Fei4RawDataHandle(self._raw_data_files, self._module_cfgs)
                 self.scan()
 
             # For safety to prevent NO crash if handles is not set correclty
@@ -533,7 +533,7 @@ class Fei4RunBase(RunBase):
         except Exception:  # no device?
             pass
 
-        # analyzing data
+        # analyzing data per front end one by one
         for module_id in self._module_cfgs:
             self._set_single_handles(module_id)
             try:
