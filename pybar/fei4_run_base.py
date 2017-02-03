@@ -32,14 +32,19 @@ from pybar.daq.readout_utils import convert_data_iterable, logical_or, logical_a
 
 class Fei4RawDataHandle(object):
 
-    ''' Access to multiple raw data files with filter functions.
+    ''' Access to single or multiple raw data files with filter functions.
 
     Needed to encapsulate raw data write from hardware setup.
     '''
 
-    def __init__(self, raw_data_files, module_cfgs):
-        self._raw_data_files = raw_data_files
-        self._module_cfgs = module_cfgs
+    def __init__(self, raw_data_files, module_cfgs, module_id=None):
+        ''' If module_id is not set use multiple files otherwise only the file of module_id '''
+        if not module_id:  # Acces to multiple files
+            self._raw_data_files = raw_data_files
+            self._module_cfgs = module_cfgs
+        else:  # One file only
+            self._raw_data_files = {module_id: raw_data_files[module_id]}
+            self._module_cfgs = {module_id: module_cfgs[module_id]}
 
         # Module filter functions dict for quick lookup
         self._filter_funcs = {}
@@ -175,9 +180,9 @@ class Fei4RunBase(RunBase):
 
     def init_dut(self):
         if self.dut.name == 'mio':
-            if self._n_modules > 1:
-                raise RuntimeError('More than one module is not supported by your hardware!')
             if self.dut.get_modules('FEI4AdapterCard') and [adapter_card for adapter_card in self.dut.get_modules('FEI4AdapterCard') if adapter_card.name == 'ADAPTER_CARD']:
+                if self._n_modules > 1:
+                    raise RuntimeError('More than one module is not supported by your hardware!')
                 try:
                     self.dut['ADAPTER_CARD'].set_voltage('VDDA1', 1.5)
                     self.dut['ADAPTER_CARD'].set_voltage('VDDA2', 1.5)
@@ -500,7 +505,7 @@ class Fei4RunBase(RunBase):
                                             conf=self._conf, run_conf=self._run_conf,
                                             scan_parameters=self.scan_parameters._asdict(),
                                             socket_address=self._module_cfgs[module_id]['send_data']) as self._raw_data_files[module_id]:
-                        self.raw_data_file = Fei4RawDataHandle(self._raw_data_files, self._module_cfgs)
+                        self.raw_data_file = Fei4RawDataHandle(self._raw_data_files, self._module_cfgs, module_id=module_id)
                         self.scan()
 
                 # For safety to prevent no crash if handles is not set correclty
@@ -593,13 +598,7 @@ class Fei4RunBase(RunBase):
         data : list, tuple
             Data tuple of the format (data (np.array), last_time (float), curr_time (float), status (int))
         '''
-        filter_func = logical_or(
-            is_trigger_word,
-            logical_or(
-                logical_and(is_tdc_word, is_tdc_from_channel(4)),
-                logical_and(is_fe_word, is_data_from_channel(4))))
-        data = convert_data_iterable((data,), filter_func=filter_func, converter_func=None)
-        self.raw_data_file.append_item(data[0], scan_parameters=self.scan_parameters._asdict(), flush=True)
+        self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=True)
 
     def handle_err(self, exc):
         '''Handling of Exceptions.
