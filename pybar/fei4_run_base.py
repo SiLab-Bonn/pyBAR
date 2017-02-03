@@ -328,7 +328,8 @@ class Fei4RunBase(RunBase):
                     m_config['fe_configuration'] = FEI4Register(configuration_file=os.path.join(m_config['working_dir'], m_config['fe_configuration']))
             # run number
             elif isinstance(m_config['fe_configuration'], (int, long)) and m_config['fe_configuration'] > 0:
-                m_config['fe_configuration'] = FEI4Register(configuration_file=self._get_configuration(m_config['fe_configuration']))
+                m_config['fe_configuration'] = FEI4Register(configuration_file=self._get_configuration(module_id=module_id,
+                                                                                                       run_number=m_config['fe_configuration']))
             # assume fe_configuration already initialized
             elif not isinstance(m_config['fe_configuration'], FEI4Register):
                 raise ValueError('No valid fe_configuration given')
