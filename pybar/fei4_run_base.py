@@ -3,6 +3,7 @@ import time
 import re
 import os
 import string
+import struct
 import smtplib
 from socket import gethostname
 import zmq
@@ -93,10 +94,13 @@ class Fei4RunBase(RunBase):
     def init_dut(self):
         if self.dut.name == 'mio':
             if self.dut.get_modules('FEI4AdapterCard') and [adapter_card for adapter_card in self.dut.get_modules('FEI4AdapterCard') if adapter_card.name == 'ADAPTER_CARD']:
-                self.dut['ADAPTER_CARD'].set_voltage('VDDA1', 1.5)
-                self.dut['ADAPTER_CARD'].set_voltage('VDDA2', 1.5)
-                self.dut['ADAPTER_CARD'].set_voltage('VDDD1', 1.2)
-                self.dut['ADAPTER_CARD'].set_voltage('VDDD2', 1.2)
+                try:
+                    self.dut['ADAPTER_CARD'].set_voltage('VDDA1', 1.5)
+                    self.dut['ADAPTER_CARD'].set_voltage('VDDA2', 1.5)
+                    self.dut['ADAPTER_CARD'].set_voltage('VDDD1', 1.2)
+                    self.dut['ADAPTER_CARD'].set_voltage('VDDD2', 1.2)
+                except struct.error:
+                    logging.warning('Cannot set adapter card voltages. Maybe card not calibrated?')
                 self.dut['POWER_SCC']['EN_VD1'] = 1
                 self.dut['POWER_SCC']['EN_VD2'] = 1  # also EN_VPLL on old SCAC
                 self.dut['POWER_SCC']['EN_VA1'] = 1
