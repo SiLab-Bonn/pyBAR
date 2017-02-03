@@ -16,6 +16,7 @@ import abc
 import ast
 import inspect
 import sys
+import contextlib2 as contextlib
 
 from basil.dut import Dut
 
@@ -29,7 +30,36 @@ from pybar.analysis.analysis_utils import AnalysisError
 from pybar.daq.readout_utils import convert_data_iterable, logical_or, logical_and, is_trigger_word, is_fe_word, is_data_from_channel, is_tdc_word, is_tdc_from_channel
 
 
+class Fei4RawDataHandle(object):
+
+    ''' Access to multiple raw data files with filter functions.
+
+    Needed to encapsulate raw data write from hardware setup.
+    '''
+
+    def __init__(self, raw_data_files, module_cfgs):
+        self._raw_data_files = raw_data_files
+        self._module_cfgs = module_cfgs
+
+        # Module filter functions dict for quick lookup
+        self._filter_funcs = {}
+        for module_id, setting in self._module_cfgs.iteritems():
+            self._filter_funcs[module_id] = logical_or(
+                is_trigger_word,
+                logical_or(
+                    logical_and(is_tdc_word, is_tdc_from_channel(setting['channel'])),
+                    logical_and(is_fe_word, is_data_from_channel(setting['channel']))))
+
+    def append_item(self, data_tuple, scan_parameters=None, new_file=False, flush=True):
+        ''' Append raw data for each module after filtering the raw data for this module
+        '''
+        for module_id, filter_func in self._filter_funcs.iteritems():
+            mod_data = convert_data_iterable((data_tuple,), filter_func=filter_func)
+            self._raw_data_files[module_id].append_item(mod_data[0], scan_parameters=scan_parameters, flush=flush)
+
+
 class Fei4RunBase(RunBase):
+
     '''Basic FEI4 run meta class.
 
     Base class for scan- / tune- / analyze-class.
@@ -90,6 +120,8 @@ class Fei4RunBase(RunBase):
         self._n_modules = len(self._module_cfgs)
         self._set_default_cfg(conf)
 
+        self._unset_module_handles()
+
         self.parallel = False  # Std. setting.: scans are parallel
 
     def _parse_module_cfgs(self, conf):
@@ -123,7 +155,7 @@ class Fei4RunBase(RunBase):
 
         # Default config parameters
         if 'working_dir' not in conf:
-                conf.update({'working_dir': ''})  # path string, if empty, path of configuration.yaml file will be used
+            conf.update({'working_dir': ''})  # path string, if empty, path of configuration.yaml file will be used
 
     @property
     def dut(self):
@@ -350,6 +382,7 @@ class Fei4RunBase(RunBase):
         self.register = None
         self.output_filename = None
         self.register_utils = None
+        self.raw_data_file = None
 
     def pre_run(self):
         # clear error queue in case run is executed a second time
@@ -462,10 +495,12 @@ class Fei4RunBase(RunBase):
                     self.fifo_readout.reset_rx()
                     self.fifo_readout.reset_sram_fifo()
                     self.fifo_readout.print_readout_status()
-                    with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, register=self.register,
+
+                    with open_raw_data_file(filename=self.get_output_filename(module_id), mode='w', title=self.run_id, register=self.register,
                                             conf=self._conf, run_conf=self._run_conf,
                                             scan_parameters=self.scan_parameters._asdict(),
-                                            socket_address=self._module_cfgs[module_id]['send_data']) as self.raw_data_file:
+                                            socket_address=self._module_cfgs[module_id]['send_data']) as self._raw_data_files[module_id]:
+                        self.raw_data_file = Fei4RawDataHandle(self._raw_data_files, self._module_cfgs)
                         self.scan()
 
                 # For safety to prevent no crash if handles is not set correclty
@@ -477,14 +512,16 @@ class Fei4RunBase(RunBase):
             self.fifo_readout.reset_rx()
             self.fifo_readout.reset_sram_fifo()
             self.fifo_readout.print_readout_status()
-            # FIXME: multiple files with filtered raw data needed
-            with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, register=self.register,
-                                    conf=self._conf, run_conf=self._run_conf,
-                                    scan_parameters=self.scan_parameters._asdict(),
-                                    socket_address=self._module_cfgs[module_id]['send_data']) as self.raw_data_file:
+
+            with contextlib.ExitStack() as stack:
+                for module_id in self._module_cfgs:
+                    self._raw_data_files[module_id] = stack.enter_context(open_raw_data_file(filename=self.get_output_filename(module_id), mode='w', title=self.run_id, register=self.register,
+                                                                                             conf=self._conf, run_conf=self._run_conf,
+                                                                                             scan_parameters=self.scan_parameters._asdict(),
+                                                                                             socket_address=self._module_cfgs[module_id]['send_data']))
                 self.scan()
 
-            # For safety to prevent no crash if handles is not set correclty
+            # For safety to prevent NO crash if handles is not set correclty
             self._unset_module_handles()
 
     def post_run(self):
