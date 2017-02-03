@@ -610,8 +610,8 @@ def read_pixel_register(self, pix_regs=None, dcs=range(40), overwrite_config=Fal
     return result
 
 
-def is_fe_ready(self):
-    '''Get FEI4 status.
+def is_fe_ready(self, module_id):
+    '''Get FEI4 status of module.
 
     If FEI4 is not ready, resetting service records is necessary to bring the FEI4 to a defined state.
 
@@ -621,13 +621,13 @@ def is_fe_ready(self):
         True if FEI4 is ready, False if the FEI4 was powered up recently and is not ready.
     '''
     commands = []
-    commands.extend(self.register.get_commands("ConfMode"))
-    commands.extend(self.register.get_commands("RdRegister", address=[1]))
-    commands.extend(self.register.get_commands("RunMode"))
-    self.register_utils.send_commands(commands)
+    commands.extend(self.get_register(module_id).get_commands("ConfMode"))
+    commands.extend(self.get_register(module_id).get_commands("RdRegister", address=[1]))
+    commands.extend(self.get_register(module_id).get_commands("RunMode"))
+    self.get_register_utils(module_id).send_commands(commands)
     data = self.fifo_readout.read_data()
     if len(data):
-        return True if FEI4Record(data[-1], self.register.chip_flavor) == 'VR' else False
+        return True if FEI4Record(data[-1], self.get_register(module_id).chip_flavor) == 'VR' else False
     else:
         return False
 
