@@ -5,11 +5,12 @@ working_dir : data  # The output data folder (e.g. set to stave name)
 # *** module configurations ***
 
 modules : 
-    module_test : # Module name
+    module_test : # Overwrite module_test to set a different module name
         fe_configuration :  # FE configuration file, text (.cfg) or HDF5 (.h5) file. If not given, latest valid configuration (run status FINISHED) will be taken. If a number is given, configuration from run with specified number will be taken.
         fe_flavor : fei4b  # FEI4 flavor/type for initial configuration. Valid values: 'fei4a' or 'fei4b'
-        chip_address :  # Chip Address for initial configuration, if not given, broadcast bit will be set
-        #send_data : 'tcp://127.0.0.1:5678' 
+        chip_address : # Chip Address for initial configuration, if not given, broadcast bit will be set
+        channel : 4  # Input channel of RO system. has to be defined if multiple modules are used
+        #send_data : 'tcp://127.0.0.1:5678'
 
 # *** configuration ***
 
