@@ -529,9 +529,13 @@ class Fei4RunBase(RunBase):
 
         scan_attr = {}
         for attr in self.__dict__.keys():
-            if attr not in self._attr:  # attr is added in scan
+            # attr is added in scan
+            if attr not in self._attr:
                 scan_attr[attr] = self.__dict__[attr]
                 del self.__dict__[attr]
+            # attr is a default run config that was maybe changed
+            if attr in self._default_run_conf.keys():
+                scan_attr[attr] = self.__dict__[attr]
 
         if store:
             self._scan_attr[module_id] = scan_attr
