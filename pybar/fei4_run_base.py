@@ -534,8 +534,6 @@ class Fei4RunBase(RunBase):
                 del self.__dict__[attr]
 
         if store:
-            for key, value in scan_attr.iteritems():
-                print key, value
             self._scan_attr[module_id] = scan_attr
 
         # Set default run conf (e.g. self.plots_filename was changed)
@@ -563,10 +561,14 @@ class Fei4RunBase(RunBase):
     def _load_scan_par(self, module_id):
         ''' Load the scan parameters for module with module_id that where maybe changed during scan
         '''
-        try:  # There are a module specific scan parameters (serial scan)
+        try:  # There are module specific scan parameters (serial scan)
             self.scan_parameters = self._scan_pars[module_id]
         except KeyError:  # No module specific scan pars (parallel scan)
-            self.scan_parameters = self._scan_pars[None]
+            try:
+                self.scan_parameters = self._scan_pars[None]
+            except KeyError:  # No scan parameters at all
+                self.scan_parameters = None
+                pass
 
     def do_run(self):
         ''' Start runs on all modules sequentially.
@@ -576,7 +578,6 @@ class Fei4RunBase(RunBase):
 
         if not self.parallel:  # Use each FE one by one
             for module_id in self._module_cfgs:
-
                 # Gives access for scan to actual module
                 self._set_single_handles(module_id)
 
@@ -591,7 +592,7 @@ class Fei4RunBase(RunBase):
                                             conf=self._conf, run_conf=self._run_conf,
                                             scan_parameters=self.scan_parameters._asdict(),
                                             socket_address=self._module_cfgs[module_id]['send_data']) as self._raw_data_files[module_id]:
-                        self.raw_data_file = Fei4RawDataHandle(self._raw_data_files, self._module_cfgs, module_id=module_id, par=self.parallel)
+                        self.raw_data_file = Fei4RawDataHandle(self._raw_data_files, self._module_cfgs, module_id=module_id)
 
                         # Run the scan but restore class attributes that might have been set
                         self._store_attributes()
@@ -615,7 +616,7 @@ class Fei4RunBase(RunBase):
                                                                                              conf=self._conf, run_conf=self._run_conf,
                                                                                              scan_parameters=self.scan_parameters._asdict(),
                                                                                              socket_address=self._module_cfgs[module_id]['send_data']))
-                self.raw_data_file = Fei4RawDataHandle(self._raw_data_files, self._module_cfgs, par=self.parallel)
+                self.raw_data_file = Fei4RawDataHandle(self._raw_data_files, self._module_cfgs)
 
                 self._store_attributes()
                 self.scan()
@@ -626,7 +627,6 @@ class Fei4RunBase(RunBase):
             self._unset_module_handles()
 
     def post_run(self):
-        # printing FIFO status
         try:
             self.fifo_readout.print_readout_status()
         except Exception:  # no device?
