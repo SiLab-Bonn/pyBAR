@@ -21,7 +21,7 @@ import contextlib2 as contextlib
 from basil.dut import Dut
 
 from pybar.run_manager import RunManager, RunBase, RunAborted, RunStopped
-from pybar.fei4.register import FEI4Register, BroadcastRegister
+from pybar.fei4.register import FEI4Register
 from pybar.fei4.register_utils import FEI4RegisterUtils, is_fe_ready
 from pybar.daq.fifo_readout import FifoReadout, RxSyncError, EightbTenbError, FifoError, NoDataTimeout, StopTimeout
 from pybar.daq.readout_utils import save_configuration_dict
@@ -73,12 +73,16 @@ class Fei4RunBase(RunBase):
       1. pre_run
         - dut initialization (readout system init)
         - init readout fifo (data taking buffer)
+        - load scan parameters from run config
         - init each front-end one by one (configure registers, serial)
       2. do_run
         The following steps are either run for all front-ends
         at once (parallel scan) or one by one (serial scan):
         - scan specific configuration
+        - store run attributes
         - run scan
+        - restore scan attributes (some scans store data in attributes, this restores to before)
+        - load scan parameters from run config (in case they changed in the scan)
       3. post_run
         - call analysis on raw data files one by one (serial)
 
@@ -113,10 +117,7 @@ class Fei4RunBase(RunBase):
 
         self.err_queue = Queue()
         self.fifo_readout = None
-        self.raw_data_file = None
 
-        self.raw_data_files = {}
-        self.last_configurations = {}
         self._module_cfgs = {}
         self._module_register_utils = {}
         self._raw_data_files = {}
@@ -126,6 +127,7 @@ class Fei4RunBase(RunBase):
         self._set_default_cfg(conf)
 
         self._unset_module_handles()
+        self._attr = None  # Stores class attr before scan start to be able to restore
 
         self.set_scan_mode()
 
@@ -379,7 +381,10 @@ class Fei4RunBase(RunBase):
         ''' Sets handles to access multiple module with broadcast
         '''
         fe_type = self._check_fe_type()  # Broadcast can fail if FE flavors differ
-        self.register = BroadcastRegister(fe_type=fe_type)
+        self.register = FEI4Register(configuration_file=None,
+                                     fe_type=fe_type,
+                                     chip_address=None,
+                                     broadcast=True)
         self.output_filename = None
         self.register_utils = FEI4RegisterUtils(self.dut, self.register)
 
@@ -396,10 +401,7 @@ class Fei4RunBase(RunBase):
         self.register_utils = None
         self.raw_data_file = None
 
-    def pre_run(self):
-        # clear error queue in case run is executed a second time
-        self.err_queue.queue.clear()
-
+    def _set_scan_par_from_run_cfg(self):
         # scan parameters
         if 'scan_parameters' in self._run_conf:
             if isinstance(self._run_conf['scan_parameters'], basestring):
@@ -409,6 +411,12 @@ class Fei4RunBase(RunBase):
         else:
             sp = namedtuple_with_defaults('scan_parameters', field_names=[])
             self.scan_parameters = sp()
+
+    def pre_run(self):
+        # clear error queue in case run is executed a second time
+        self.err_queue.queue.clear()
+
+        self._set_scan_par_from_run_cfg()
         logging.info('Scan parameter(s): %s', ', '.join(['%s=%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None')
 
         # init DUT
@@ -490,6 +498,22 @@ class Fei4RunBase(RunBase):
         # initialize the modules
         self.init_modules()
 
+    def _store_attributes(self):
+        ''' Store actual class attributes for later restore '''
+        self._attr = self.__dict__.keys()
+
+    def _restore_attributes(self):
+        ''' Restore store class attributes
+
+        Deletes all attributes that are not stored.
+        '''
+        for attr in self.__dict__.keys():
+            if attr not in self._attr:
+                del self.__dict__[attr]
+
+    def __setattr__(self, name, value):
+        super(Fei4RunBase, self).__setattr__(name, value)
+
     def do_run(self):
         ''' Start runs on all modules sequentially.
 
@@ -498,6 +522,7 @@ class Fei4RunBase(RunBase):
 
         if not self.parallel:  # Use each FE one by one
             for module_id in self._module_cfgs:
+
                 # Gives access for scan to actual module
                 self._set_single_handles(module_id)
 
@@ -513,10 +538,16 @@ class Fei4RunBase(RunBase):
                                             scan_parameters=self.scan_parameters._asdict(),
                                             socket_address=self._module_cfgs[module_id]['send_data']) as self._raw_data_files[module_id]:
                         self.raw_data_file = Fei4RawDataHandle(self._raw_data_files, self._module_cfgs, module_id=module_id)
+
+                        self._store_attributes()
                         self.scan()
+                        self._restore_attributes()
 
                 # For safety to prevent no crash if handles is not set correclty
                 self._unset_module_handles()
+
+                # Reset scan parameters that might have been changed in the scan
+                self._set_scan_par_from_run_cfg()
         else:  # Use all FE at once with command broadcast
             # Gives access for scan to all modules
             self._set_broadcast_handles()
@@ -532,10 +563,16 @@ class Fei4RunBase(RunBase):
                                                                                              scan_parameters=self.scan_parameters._asdict(),
                                                                                              socket_address=self._module_cfgs[module_id]['send_data']))
                 self.raw_data_file = Fei4RawDataHandle(self._raw_data_files, self._module_cfgs)
+
+                self._store_attributes()
                 self.scan()
+                self._restore_attributes()
 
             # For safety to prevent NO crash if handles is not set correclty
             self._unset_module_handles()
+
+            # Reset scan parameters that might have been changed in the scan
+            self._set_scan_par_from_run_cfg()
 
     def post_run(self):
         # printing FIFO status
@@ -544,7 +581,7 @@ class Fei4RunBase(RunBase):
         except Exception:  # no device?
             pass
 
-        # analyzing data per front end one by one
+        # analyzing data and store register cfg per front end one by one
         for module_id in self._module_cfgs:
             self._set_single_handles(module_id)
             try:
