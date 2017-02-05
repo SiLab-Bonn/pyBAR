@@ -69,7 +69,7 @@ class Fei4RunBase(RunBase):
 
     Base class for scan- / tune- / analyze-class.
 
-    A fei4 run consist of 3 steps:
+    A fei4 run consist of 3 major steps:
       1. pre_run
         - dut initialization (readout system init)
         - init readout fifo (data taking buffer)
@@ -81,8 +81,8 @@ class Fei4RunBase(RunBase):
         - scan specific configuration
         - store run attributes
         - run scan
-        - restore scan attributes (some scans store data in attributes, this restores to before)
-        - load scan parameters from run config (in case they changed in the scan)
+        - restore scan attributes (some scans change run conf attributes or add attributes, this restores to before)
+        - restore scan parameters from default run config (they mighte have changed in scan)
       3. post_run
         - call analysis on raw data files one by one (serial)
 
@@ -734,7 +734,7 @@ class Fei4RunBase(RunBase):
         ''' Returns the configuration for a given module_id
 
         The working directory is searched for a file matching the module_id with the
-        given run number. If not run number is defined the last successfull run defines
+        given run number. If no run number is defined the last successfull run defines
         the run number.
         '''
         def find_file(run_number):
@@ -747,10 +747,16 @@ class Fei4RunBase(RunBase):
 
         if not run_number:
             run_numbers = sorted(self._get_run_numbers(status='FINISHED').iterkeys(), reverse=True)
+            found_fin_run_cfg = True
+            last_fin_run = run_numbers[0]
             for run_number in run_numbers:
                 cfg_file = find_file(run_number)
                 if cfg_file:
+                    if not found_fin_run_cfg:
+                        logging.warning('Module %s has no configuration for run %d, use config of run %d', module_id, last_fin_run, run_number)
                     return cfg_file
+                else:
+                    found_fin_run_cfg = False
         else:
             cfg_file = find_file(run_number)
             if cfg_file:
