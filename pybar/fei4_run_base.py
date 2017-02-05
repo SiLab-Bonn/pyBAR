@@ -39,12 +39,12 @@ class Fei4RawDataHandle(object):
 
     def __init__(self, raw_data_files, module_cfgs, module_id=None):
         ''' If module_id is not set use multiple files otherwise only the file of module_id '''
-        if not module_id:  # Acces to multiple files
-            self._raw_data_files = raw_data_files
-            self._module_cfgs = module_cfgs
-        else:  # One file only
+        if module_id:  # One file only
             self._raw_data_files = {module_id: raw_data_files[module_id]}
             self._module_cfgs = {module_id: module_cfgs[module_id]}
+        else:  # Acces to multiple files
+            self._raw_data_files = raw_data_files
+            self._module_cfgs = module_cfgs
 
         # Module filter functions dict for quick lookup
         self._filter_funcs = {}
@@ -127,7 +127,12 @@ class Fei4RunBase(RunBase):
         self._set_default_cfg(conf)
 
         self._unset_module_handles()
+
+        # Data structures to store scan related data
         self._attr = None  # Stores class attr before scan start to be able to restore
+        self._scan_attr = {}  # Store specific scan attributes per module to make available after scan
+        self._scan_pars = {}  # Store specific scan parameters per module to make available after scan
+        self.scan_parameters = None
 
         self.set_scan_mode()
 
@@ -401,8 +406,13 @@ class Fei4RunBase(RunBase):
         self.register_utils = None
         self.raw_data_file = None
 
-    def _set_scan_par_from_run_cfg(self):
-        # scan parameters
+    def _set_scan_par_from_run_cfg(self, module_id=None):
+        ''' Sets the scan parameters defined in the run configuration
+
+        If scan parameters are defined already (from a previous module scan) they are stored
+        for later usage
+        '''
+
         if 'scan_parameters' in self._run_conf:
             if isinstance(self._run_conf['scan_parameters'], basestring):
                 self._run_conf['scan_parameters'] = ast.literal_eval(self._run_conf['scan_parameters'])
@@ -500,19 +510,63 @@ class Fei4RunBase(RunBase):
 
     def _store_attributes(self):
         ''' Store actual class attributes for later restore '''
+
+        # Complete dict copy is not possible since objects do not always
+        # support deepcopy
         self._attr = self.__dict__.keys()
 
-    def _restore_attributes(self):
-        ''' Restore store class attributes
+    def _restore_attributes(self, module_id=None, store=False):
+        ''' Restore stored class attributes
 
-        Deletes all attributes that are not stored.
+        Deletes all attributes that are not stored to keep class constant.
+        These attributes were added in the scan and can be saved in an additional dict for
+        later use. Als sets the run config to the default run config since it might
+        be changed in the scan.
+
+        Warnning: all classe attributes that are not given by run config parameters but existed before
+        the scan are not restored. This is not possible with the actual design.
         '''
+
+        scan_attr = {}
         for attr in self.__dict__.keys():
-            if attr not in self._attr:
+            if attr not in self._attr:  # attr is added in scan
+                scan_attr[attr] = self.__dict__[attr]
                 del self.__dict__[attr]
 
-    def __setattr__(self, name, value):
-        super(Fei4RunBase, self).__setattr__(name, value)
+        if store:
+            for key, value in scan_attr.iteritems():
+                print key, value
+            self._scan_attr[module_id] = scan_attr
+
+        # Set default run conf (e.g. self.plots_filename was changed)
+        self._init_run_conf(run_conf=False, update=False)
+
+        # Reset scan pars (e.g. scan par PlsrDAC was changed)
+        self._set_scan_par_from_run_cfg()
+
+    def _load_scan_attr(self, module_id):
+        ''' Load the scan attributes for module with module_id that where added during scan
+        '''
+        try:  # serial scan
+            self.__dict__.update(self._scan_attr[module_id])
+        except KeyError:  # parallel scan, there is only one scan attr dict
+            self.__dict__.update(self._scan_attr[None])
+
+    def _store_scan_pars(self, module_id=None):
+        ''' Store the scan parameters for module with module_id.
+
+        These where maybe changed during scan and are maybe needed in post run data analysis
+        '''
+        if self.scan_parameters:
+            self._scan_pars[module_id] = self.scan_parameters
+
+    def _load_scan_par(self, module_id):
+        ''' Load the scan parameters for module with module_id that where maybe changed during scan
+        '''
+        try:  # There are a module specific scan parameters (serial scan)
+            self.scan_parameters = self._scan_pars[module_id]
+        except KeyError:  # No module specific scan pars (parallel scan)
+            self.scan_parameters = self._scan_pars[None]
 
     def do_run(self):
         ''' Start runs on all modules sequentially.
@@ -537,17 +591,16 @@ class Fei4RunBase(RunBase):
                                             conf=self._conf, run_conf=self._run_conf,
                                             scan_parameters=self.scan_parameters._asdict(),
                                             socket_address=self._module_cfgs[module_id]['send_data']) as self._raw_data_files[module_id]:
-                        self.raw_data_file = Fei4RawDataHandle(self._raw_data_files, self._module_cfgs, module_id=module_id)
+                        self.raw_data_file = Fei4RawDataHandle(self._raw_data_files, self._module_cfgs, module_id=module_id, par=self.parallel)
 
+                        # Run the scan but restore class attributes that might have been set
                         self._store_attributes()
                         self.scan()
-                        self._restore_attributes()
+                        self._store_scan_pars(module_id)
+                        self._restore_attributes(module_id=module_id, store=True)
 
                 # For safety to prevent no crash if handles is not set correclty
                 self._unset_module_handles()
-
-                # Reset scan parameters that might have been changed in the scan
-                self._set_scan_par_from_run_cfg()
         else:  # Use all FE at once with command broadcast
             # Gives access for scan to all modules
             self._set_broadcast_handles()
@@ -562,17 +615,15 @@ class Fei4RunBase(RunBase):
                                                                                              conf=self._conf, run_conf=self._run_conf,
                                                                                              scan_parameters=self.scan_parameters._asdict(),
                                                                                              socket_address=self._module_cfgs[module_id]['send_data']))
-                self.raw_data_file = Fei4RawDataHandle(self._raw_data_files, self._module_cfgs)
+                self.raw_data_file = Fei4RawDataHandle(self._raw_data_files, self._module_cfgs, par=self.parallel)
 
                 self._store_attributes()
                 self.scan()
-                self._restore_attributes()
+                self._store_scan_pars(module_id)
+                self._restore_attributes(store=True)
 
             # For safety to prevent NO crash if handles is not set correclty
             self._unset_module_handles()
-
-            # Reset scan parameters that might have been changed in the scan
-            self._set_scan_par_from_run_cfg()
 
     def post_run(self):
         # printing FIFO status
@@ -583,14 +634,23 @@ class Fei4RunBase(RunBase):
 
         # analyzing data and store register cfg per front end one by one
         for module_id in self._module_cfgs:
+            # Set module specific handles and data structures
             self._set_single_handles(module_id)
+            self._load_scan_attr(module_id)
+            self._load_scan_par(module_id)
+
             try:
                 self.analyze()
             except Exception:  # analysis errors
                 self.handle_err(sys.exc_info())
             else:  # analyzed data, save config
                 self.register.save_configuration(self.output_filename)
+
+            # Reset module specific handles and data structures
+            # To prevent silent bugs
             self._unset_module_handles()
+            self._restore_attributes(module_id)
+            self.scan_parameters = None
 
         if not self.err_queue.empty():
             exc = self.err_queue.get()
