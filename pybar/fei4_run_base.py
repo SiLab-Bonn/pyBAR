@@ -748,6 +748,8 @@ class Fei4RunBase(RunBase):
         if not run_number:
             run_numbers = sorted(self._get_run_numbers(status='FINISHED').iterkeys(), reverse=True)
             found_fin_run_cfg = True
+            if not run_numbers:
+                return None
             last_fin_run = run_numbers[0]
             for run_number in run_numbers:
                 cfg_file = find_file(run_number)
