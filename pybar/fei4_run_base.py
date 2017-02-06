@@ -63,6 +63,30 @@ class Fei4RawDataHandle(object):
             self._raw_data_files[module_id].append_item(mod_data[0], scan_parameters=scan_parameters, flush=flush)
 
 
+class TdcHandle(object):
+    ''' Access to single or multiple tdc modules.
+
+    Needed to encapsulate tdc configuration in scan from hardware setup.
+    '''
+    def __init__(self, dut, tdc_modules):
+        self._dut = dut
+        self._tdc_modules = tdc_modules
+        self._conf = {}  # Common conf for all TDCs
+
+    def __getitem__(self, key):
+        ''' Return configurations that are common to all TDC modules
+        '''
+        return self._conf[key]
+
+    def __setitem__(self, key, value):
+        ''' Set TDC setting to all TDC modules
+        '''
+        self._conf[key] = value
+        for module in self._tdc_modules:
+            tdc = self._dut[module]
+            tdc[key] = value
+
+
 class Fei4RunBase(RunBase):
 
     '''Basic FEI4 run meta class.
@@ -81,8 +105,8 @@ class Fei4RunBase(RunBase):
         - scan specific configuration
         - store run attributes
         - run scan
-        - restore scan attributes (some scans change run conf attributes or add attributes, this restores to before)
-        - restore scan parameters from default run config (they mighte have changed in scan)
+        - restore run attributes (some scans change run conf attributes or add new attributes, this restores to before)
+        - restore scan parameters from default run config (they mighte have been changed in scan)
       3. post_run
         - call analysis on raw data files one by one (serial)
 
@@ -126,6 +150,7 @@ class Fei4RunBase(RunBase):
         self._n_modules = len(self._module_cfgs)
         self._set_default_cfg(conf)
 
+        self.tdc = None  # Handle for TDC modules
         self._unset_module_handles()
 
         # Data structures to store scan related data
@@ -218,6 +243,7 @@ class Fei4RunBase(RunBase):
                 self.dut['ENABLE_CHANNEL']['TLU'] = 1
                 self.dut['ENABLE_CHANNEL']['TDC'] = 1
                 self.dut['ENABLE_CHANNEL'].write()
+                self.tdc = TdcHandle(self.dut, tdc_modules=['TDC'])
             elif self.dut.get_modules('FEI4QuadModuleAdapterCard') and [adapter_card for adapter_card in self.dut.get_modules('FEI4QuadModuleAdapterCard') if adapter_card.name == 'ADAPTER_CARD']:
                 # resetting over current status
                 self.dut['POWER_QUAD']['EN_CH1'] = 0
@@ -241,6 +267,7 @@ class Fei4RunBase(RunBase):
                 self.dut['ENABLE_CHANNEL']['TDC'] = 1
                 self.dut['ENABLE_CHANNEL'].write()
                 self.dut['POWER_QUAD'].write()
+                self.tdc = TdcHandle(self.dut, tdc_modules=['TDC'])
             else:
                 logging.warning('Unknown adapter card')
                 # do the minimal configuration here
@@ -251,6 +278,7 @@ class Fei4RunBase(RunBase):
                 self.dut['ENABLE_CHANNEL']['TLU'] = 1
                 self.dut['ENABLE_CHANNEL']['TDC'] = 1
                 self.dut['ENABLE_CHANNEL'].write()
+                self.tdc = TdcHandle(self.dut, tdc_modules=['TDC'])
 
         elif self.dut.name == 'mio_gpac':
             # PWR
@@ -285,6 +313,7 @@ class Fei4RunBase(RunBase):
             self.dut['ENABLE_CHANNEL']['TDC'] = 1
             self.dut['ENABLE_CHANNEL']['CCPD_TDC'] = 1
             self.dut['ENABLE_CHANNEL'].write()
+            self.tdc = TdcHandle(self.dut, tdc_modules=['TDC', 'CCPD_TDC'])
         elif self.dut.name == 'lx9':
             # enable LVDS RX/TX
             self.dut['I2C'].write(0xe8, [6, 0xf0, 0xff])
@@ -301,10 +330,12 @@ class Fei4RunBase(RunBase):
             self.dut['ENABLE_CHANNEL']['TLU'] = 1
             self.dut['ENABLE_CHANNEL']['TDC'] = 1
             self.dut['ENABLE_CHANNEL'].write()
+            self.tdc = TdcHandle(self.dut, tdc_modules=['TDC'])
         elif self.dut.name == 'beast':
             logging.info('BEAST initialization')
             self.dut['DLY_CONFIG']['CLK_DLY'] = 0
             self.dut['DLY_CONFIG'].write()
+            self.tdc = TdcHandle(self.dut, tdc_modules=['TDC', 'TDC1', 'TDC2', 'TDC3', 'TDC4'])
         else:
             logging.warning('Omitting initialization of DUT %s', self.dut.name)
 
