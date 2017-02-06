@@ -27,7 +27,8 @@ class RegisterTest(Fei4RunBase):
     _default_run_conf = {
         "read_sn": True,
         "test_global": True,
-        "test_pixel": True
+        "test_pixel": True,
+        "fail_on_error": False
     }
 
     # Parallel mode not supported in this scan
@@ -43,12 +44,12 @@ class RegisterTest(Fei4RunBase):
 
         if self.test_global:
             global_register_errors = test_global_register(self)
-            if global_register_errors:
+            if global_register_errors and self.fail_on_error:
                 raise Exception('Global register test finished with %d errors' % global_register_errors)
 
         if self.test_pixel:
             pixel_register_errors = self.test_pixel_register()
-            if pixel_register_errors:
+            if pixel_register_errors and self.fail_on_error:
                 raise Exception('Pixel register test finished with %d errors' % pixel_register_errors)
 
     def analyze(self):
