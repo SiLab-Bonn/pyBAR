@@ -431,7 +431,10 @@ def interpret_pixel_data(data, dc, pixel_array, invert=True):
     value_split = np.array_split(value, np.where(np.diff(address.astype(np.int32)) < 0)[0] + 1)
 
     if len(address_split) > 5:
-        raise NotImplementedError('Only the data from one double column can be interpreted at once!')
+        pixel_array.mask[dc * 2, :] = True
+        pixel_array.mask[dc * 2 + 1, :] = True
+        logging.warning('Invalid pixel data for DC %d', dc)
+        return
 
     mask = np.empty_like(pixel_array.data)  # BUG in numpy: pixel_array is de-masked if not .data is used
     mask[:] = len(address_split)
@@ -439,12 +442,12 @@ def interpret_pixel_data(data, dc, pixel_array, invert=True):
     for bit, (bit_address, bit_value) in enumerate(zip(address_split, value_split)):  # loop over all bits of the pixel data
         # error output, pixel data is often corrupt for FE-I4A
         if len(bit_address) == 0:
-            logging.warning('No pixel data')
+            logging.warning('No pixel data for DC %d', dc)
             continue
         if len(bit_address) != 42:
-            logging.warning('Some pixel data missing')
+            logging.warning('Some pixel data missing for DC %d', dc)
         if (np.any(bit_address > 672)):
-            RuntimeError('Pixel data corrupt')
+            RuntimeError('Pixel data corrupt for DC %d', dc)
         # set pixel that occurred in the data stream
         pixel = []
         for i in bit_address:
