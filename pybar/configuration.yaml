@@ -1,16 +1,34 @@
-# *** hardwre setup/configuration ***
-dut : dut_mio.yaml  # DUT hardware configuration (.yaml). Change to dut_mio_gpac.yaml for GPAC support.
-dut_configuration : dut_configuration_mio.yaml  # DUT init configuration (.yaml). Change to dut_configuration_mio_gpac.yaml for GPAC support.
-working_dir : data  # The output data folder (e.g. set to stave name)
-# *** module configurations ***
+# *** Hardware setup/configuration ***
+# DUT hardware configuration (.yaml)
+# E.g.: change to dut_mio_gpac.yaml for GPAC support, dut_configuration_mmc3_beast_eth for MMC3 BEAST support etc.
+dut : dut_mio.yaml
 
+# DUT init configuration (.yaml)
+# Change to dut_configuration_mio_gpac.yaml for GPAC support, dut_mmc3_beast_eth for MMC3 BEAST support etc.
+dut_configuration : dut_configuration_mio.yaml
+
+# The output data folder (e.g. set to stave name)
+working_dir : data 
+
+# *** Module(s) configurations ***
 modules : 
-    module_test : # Overwrite module_test to set a different module name
-        fe_configuration :  # FE configuration file, text (.cfg) or HDF5 (.h5) file. If not given, latest valid configuration (run status FINISHED) will be taken. If a number is given, configuration from run with specified number will be taken.
-        fe_flavor : fei4b  # FEI4 flavor/type for initial configuration. Valid values: 'fei4a' or 'fei4b'
-        chip_address : # Chip Address for initial configuration, if not given, broadcast bit will be set
-        channel : 4  # Input channel of RO system. has to be defined if multiple modules are used
-        #send_data : 'tcp://127.0.0.1:5678'
+	# Module name
+    module_test :
+    	# FE configuration file, text (.cfg) or HDF5 (.h5) file. If not given, latest existing valid configuration (run status FINISHED)
+    	# will be taken. If a number is given, configuration from run with specified number will be taken.
+        fe_configuration :
+        
+        # FEI4 flavor/type for initial configuration. Valid values: 'fei4a' or 'fei4b'
+        fe_flavor : fei4b
+        
+        # Chip Address for initial configuration, if not defined and only one module is used 0 is assumed
+        chip_address :
+        
+        # Input channel of the RO system, if not defined and only one module is used 4 is assumed
+        channel : 4
+        
+        # Sends the data to the specified socket
+        send_data : 'tcp://127.0.0.1:5678'
 
 # *** configuration ***
 

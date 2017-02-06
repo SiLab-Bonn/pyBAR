@@ -1,35 +1,8 @@
-working_dir :  # Module data will be written to this path. If not given, use path of this file. Default: not given / empty
+dut : dut_mio_sim.yaml
+dut_configuration :
+working_dir : 
 
-dut : dut_mio_sim.yaml  # DUT hardware configuration (.yaml). Change to dut_mio_gpac.yaml for GPAC support.
-dut_configuration :  # DUT init configuration (.yaml). Change to dut_configuration_mio_gpac.yaml for GPAC support.
-
-fe_configuration :  # FE configuration file, text (.cfg) or HDF5 (.h5) file. If not given, latest valid configuration (run status FINISHED) will be taken. If a number is given, configuration from run with specified number will be taken.
-fe_flavor : fei4a  # FEI4 flavor/type for initial configuration. Valid values: 'fei4a' or 'fei4b'
-chip_address :  # Chip Address for initial configuration, if not given, broadcast bit will be set
-module_id : module_test  # module identifier / name, sub-folder with given name will be created inside working_dir
-
-# *** global run configuration ***
-#
-#run_conf:
-#    send_data : 'tcp://127.0.0.1:5678'
-#    comment : ''
-#    reset_rx_on_error : False
-#
-# *** scan specific run configuration ***
-#
-#Fei4Tuning:
-#    enable_shift_masks : ["Enable", "C_Low", "C_High"]
-#    target_threshold : 50 # target threshold
-#    target_charge : 280 # target charge
-#    target_tot : 5 # target ToT
-#    global_iterations : 4
-#    local_iterations : 3
-#
-#AnalogScan:
-#    scan_parameters : {'PlsrDAC': 280}
-#    enable_shift_masks : ["Enable", "C_Low", "C_High"]
-#
-#ThresholdScan:
-#    scan_parameters : {'PlsrDAC': [0, 100]}
-#    enable_shift_masks : ["Enable", "C_Low", "C_High"]
-#
+modules : 
+    module_test :
+        fe_configuration :
+        fe_flavor : fei4a
