@@ -35,9 +35,9 @@ class TdcTest(Fei4RunBase):
 
     def configure(self):  # init pulser
         self.dut['Pulser'].set_pulse_period(self.pulse_period)
-        self.dut['TDC']['EN_TRIGGER_DIST'] = True
-        self.dut['TDC']['EN_NO_WRITE_TRIG_ERR'] = False
-        self.dut['TDC']['ENABLE'] = True
+        self.tdc['EN_TRIGGER_DIST'] = True
+        self.tdc['EN_NO_WRITE_TRIG_ERR'] = False
+        self.tdc['ENABLE'] = True
 
     def start_pulser(self, pulse_width=100, n_pulses=100, pulse_delay=0):  # in ns
         self.dut['Pulser'].set_pulse_width(str(pulse_width) + 'E-9')
