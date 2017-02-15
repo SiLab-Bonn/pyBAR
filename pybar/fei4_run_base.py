@@ -27,7 +27,8 @@ from pybar.daq.fifo_readout import FifoReadout, RxSyncError, EightbTenbError, Fi
 from pybar.daq.readout_utils import save_configuration_dict
 from pybar.daq.fei4_raw_data import open_raw_data_file, send_meta_data
 from pybar.analysis.analysis_utils import AnalysisError
-from pybar.daq.readout_utils import convert_data_iterable, logical_or, logical_and, is_trigger_word, is_fe_word, is_data_from_channel, is_tdc_word, is_tdc_from_channel
+from pybar.daq.readout_utils import (convert_data_iterable, logical_or, logical_and, is_trigger_word, is_fe_word, is_data_from_channel, 
+                                     is_tdc_word, is_tdc_from_channel, convert_tdc_to_channel)
 
 
 class Fei4RawDataHandle(object):
@@ -48,18 +49,20 @@ class Fei4RawDataHandle(object):
 
         # Module filter functions dict for quick lookup
         self._filter_funcs = {}
+        self._converter_funcs = {}
         for module_id, setting in self._module_cfgs.iteritems():
             self._filter_funcs[module_id] = logical_or(
                 is_trigger_word,
                 logical_or(
                     logical_and(is_tdc_word, is_tdc_from_channel(setting['channel'])),
                     logical_and(is_fe_word, is_data_from_channel(setting['channel']))))
+            self._converter_funcs[module_id] = convert_tdc_to_channel(channel=setting['channel'])
 
     def append_item(self, data_tuple, scan_parameters=None, new_file=False, flush=True):
         ''' Append raw data for each module after filtering the raw data for this module
         '''
         for module_id, filter_func in self._filter_funcs.iteritems():
-            mod_data = convert_data_iterable((data_tuple,), filter_func=filter_func)
+            mod_data = convert_data_iterable((data_tuple,), filter_func=filter_func, converter_func=self._converter_funcs[module_id])
             self._raw_data_files[module_id].append_item(mod_data[0], scan_parameters=scan_parameters, flush=flush)
 
 
