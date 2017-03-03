@@ -77,10 +77,10 @@ class ThresholdBaselineTuning(Fei4RunBase):
 
     def scan(self):
         scan_parameter_range = [self.register.get_global_register_value("Vthin_AltFine"), 0]
-        if self.scan_parameters.Vthin_AltFine[0]:
-            scan_parameter_range[0] = self.scan_parameters.Vthin_AltFine[0]
-        if self.scan_parameters.Vthin_AltFine[1]:
-            scan_parameter_range[1] = self.scan_parameters.Vthin_AltFine[1]
+        if self.scan_parameters.Vthin_AltFine[0] is not None:
+            scan_parameter_range[0] = min(self.scan_parameters.Vthin_AltFine[0], 2 ** self.register.global_registers['Vthin_AltFine']['bitlength'])
+        if self.scan_parameters.Vthin_AltFine[1] is not None:
+            scan_parameter_range[1] = max(self.scan_parameters.Vthin_AltFine[1], 0)
         steps = 1
         if self.scan_parameters.Step:
             steps = self.scan_parameters.Step
