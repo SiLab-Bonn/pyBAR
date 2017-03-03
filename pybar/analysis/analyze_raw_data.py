@@ -266,7 +266,7 @@ class AnalyzeRawData(object):
         self.create_cluster_tot_hist = False
         self.align_at_trigger = False  # use the trigger word to align the events
         self.align_at_tdc = False  # use the trigger word to align the events
-        self.set_trigger_data_format = 0  # 2: 15 bit time stamp + 16 bit trigger number, 1: 31 bit time stamp, 0: 31 bit trigger number
+        self.trigger_data_format = 0  # 0: 31bit trigger number, 1: 31bit trigger time stamp, 2: 15bit trigger time stamp + 16bit trigger number
         self.use_tdc_trigger_time_stamp = False  # the tdc time stamp is the difference between trigger and tdc rising edge
         self.max_tdc_delay = 255
         self.max_trigger_number = 2 ** 16 - 1
@@ -558,12 +558,12 @@ class AnalyzeRawData(object):
         self.interpreter.align_at_tdc(value)
 
     @property
-    def set_trigger_data_format(self):
-        return self._set_trigger_data_format
+    def trigger_data_format(self):
+        return self._trigger_data_format
 
-    @set_trigger_data_format.setter
-    def set_trigger_data_format(self, value):
-        self._set_trigger_data_format = value
+    @trigger_data_format.setter
+    def trigger_data_format(self, value):
+        self._trigger_data_format = value
         self.interpreter.set_trigger_data_format(value)
 
     @property
@@ -654,7 +654,7 @@ class AnalyzeRawData(object):
             self.out_file_h5 = tb.open_file(self._analyzed_data_file, mode="w", title="Interpreted FE-I4 raw data")
             if self._create_hit_table is True:
                 description = data_struct.HitInfoTable().columns.copy()
-                if self.set_trigger_data_format == 1:  # replace the column name if trigger gives you a time stamp
+                if self.trigger_data_format == 1:  # use trigger time stamp if trigger number is not available
                     description['trigger_time_stamp'] = description.pop('trigger_number')
                 hit_table = self.out_file_h5.create_table(self.out_file_h5.root, name='Hits', description=description, title='hit_data', filters=self._filter_table, chunkshape=(self._chunk_size / 100,))
             if self._create_meta_word_index is True:
@@ -663,7 +663,7 @@ class AnalyzeRawData(object):
                 cluster_table = self.out_file_h5.create_table(self.out_file_h5.root, name='Cluster', description=data_struct.ClusterInfoTable, title='Cluster data', filters=self._filter_table, expectedrows=self._chunk_size)
             if self._create_cluster_hit_table:
                 description = data_struct.ClusterHitInfoTable().columns.copy()
-                if self.set_trigger_data_format == 1:  # replace the column name if trigger gives you a time stamp
+                if self.trigger_data_format == 1:  # use trigger time stamp if trigger number is not available
                     description['trigger_time_stamp'] = description.pop('trigger_number')
                 cluster_hit_table = self.out_file_h5.create_table(self.out_file_h5.root, name='ClusterHits', description=description, title='cluster_hit_data', filters=self._filter_table, expectedrows=self._chunk_size)
 
