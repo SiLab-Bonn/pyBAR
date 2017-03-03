@@ -59,9 +59,9 @@ On Windows, the `pywin32` package is required:
   pip install basil_daq==2.4.3
   ```
 
-[pyBAR FEI4 Interpreter](https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter) (==1.2.1) is required:
+[pyBAR FEI4 Interpreter](https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter) (>=1.3.0) is required:
   ```
-  pip install git+https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter@1.2.1
+  pip install git+https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter@1.3.0
   ```
 
 [Pixel Clusterizer](https://github.com/SiLab-Bonn/pixel_clusterizer) (>=3.0.0) is required:
