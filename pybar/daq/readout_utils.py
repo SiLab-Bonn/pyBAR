@@ -115,7 +115,10 @@ def data_array_from_data_iterable(data_iterable):
     data_array : numpy.array
         concatenated data array
     '''
-    data_array = np.concatenate([item[0] for item in data_iterable])
+    try:
+        data_array = np.concatenate([item[0] for item in data_iterable])
+    except ValueError:  # length is 0
+        data_array = []
     return data_array
 
 
