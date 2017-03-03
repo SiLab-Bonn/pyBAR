@@ -19,7 +19,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
     '''Threshold Baseline Tuning
 
     Tuning the FEI4 to the lowest possible threshold (GDAC and TDAC). Feedback current will not be tuned.
-    NOTE: In case of RX errors decrease the trigger frequency (= increase trigger_rate_limit)
+    NOTE: In case of RX errors decrease the trigger frequency (= increase trigger_rate_limit), or reduce the number of triggers
     NOTE: To increase the TDAC range, decrease TdacVbp.
     '''
     _default_run_conf = {
