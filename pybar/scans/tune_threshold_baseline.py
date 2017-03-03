@@ -4,14 +4,15 @@ import numpy as np
 import progressbar
 from collections import deque
 
-from pybar_fei4_interpreter.data_interpreter import PyDataInterpreter
-from pybar_fei4_interpreter.data_histograming import PyDataHistograming
+from pybar.daq.readout_utils import get_col_row_array_from_data_record_array, convert_data_array, data_array_from_data_iterable, is_fe_word, is_data_record, logical_and
+# from pybar.daq.readout_utils import data_array_from_data_iterable
+# from pybar_fei4_interpreter.data_interpreter import PyDataInterpreter
+# from pybar_fei4_interpreter.data_histograming import PyDataHistograming
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.fei4.register_utils import make_box_pixel_mask_from_col_row, invert_pixel_mask
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.run_manager import RunManager
 from pybar.analysis.plotting.plotting import plot_occupancy, plot_fancy_occupancy, plot_three_way
-from pybar.daq.readout_utils import data_array_from_data_iterable
 
 
 class ThresholdBaselineTuning(Fei4RunBase):
@@ -74,13 +75,6 @@ class ThresholdBaselineTuning(Fei4RunBase):
         commands.extend(self.register.get_commands("RunMode"))
         self.register_utils.send_commands(commands)
 
-        self.interpreter = PyDataInterpreter()
-        self.histogram = PyDataHistograming()
-        self.interpreter.set_trig_count(self.trig_count)
-        self.interpreter.set_warning_output(False)
-        self.histogram.set_no_scan_parameter()
-        self.histogram.create_occupancy_hist(True)
-
     def scan(self):
         scan_parameter_range = [self.register.get_global_register_value("Vthin_AltFine"), 0]
         if self.scan_parameters.Vthin_AltFine[0]:
@@ -105,6 +99,13 @@ class ThresholdBaselineTuning(Fei4RunBase):
         self.last_occupancy_hist = deque([None] * self.increase_threshold, maxlen=self.increase_threshold + 1)
         self.last_occupancy_mask = deque([None] * self.increase_threshold, maxlen=self.increase_threshold + 1)
 
+#         interpreter = PyDataInterpreter()
+#         histogram = PyDataHistograming()
+#         interpreter.set_trig_count(self.trig_count)
+#         interpreter.set_warning_output(False)
+#         histogram.set_no_scan_parameter()
+#         histogram.create_occupancy_hist(True)
+
         for reg_val in range(scan_parameter_range[0], scan_parameter_range[1] - 1, -1):
             if self.stop_run.is_set():
                 break
@@ -120,7 +121,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
             while True:
                 if self.stop_run.is_set():
                     break
-                self.histogram.reset()
+#                 histogram.reset()
                 step += 1
                 logging.info('Step %d / %d at Vthin_AltFine %d', step, steps, reg_val)
                 logging.info('Estimated scan time: %ds', self.total_scan_time)
@@ -145,14 +146,20 @@ class ThresholdBaselineTuning(Fei4RunBase):
                                 self.progressbar.update(time() - start)
                             except ValueError:
                                 pass
-                # Use fast C++ hit histogramming to save time
-                raw_data = np.ascontiguousarray(data_array_from_data_iterable(self.fifo_readout.data), dtype=np.uint32)
-                self.interpreter.interpret_raw_data(raw_data)
-                self.interpreter.store_event()  # force to create latest event
-                self.histogram.add_hits(self.interpreter.get_hits())
-                occ_hist = self.histogram.get_occupancy()[:, :, 0]
-                # noisy pixels are set to 1
+                # use Numpy for analysis and histogramming
+                col_arr, row_arr = convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=logical_and(is_fe_word, is_data_record), converter_func=get_col_row_array_from_data_record_array)
+                occ_hist, _, _ = np.histogram2d(col_arr, row_arr, bins=(80, 336), range=[[1, 80], [1, 336]])
                 occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
+
+                # use FEI4 interpreter for analysis and histogramming
+#                 raw_data = np.ascontiguousarray(data_array_from_data_iterable(self.fifo_readout.data), dtype=np.uint32)
+#                 interpreter.interpret_raw_data(raw_data)
+#                 interpreter.store_event()  # force to create latest event
+#                 histogram.add_hits(interpreter.get_hits())
+#                 occ_hist = histogram.get_occupancy()[:, :, 0]
+#                 # noisy pixels are set to 1
+#                 occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
+
                 occ_mask[occ_hist > self.abs_occ_limit] = 1
 
                 tdac_reg = self.register.get_pixel_register_value('TDAC')
