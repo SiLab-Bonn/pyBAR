@@ -37,7 +37,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
 
     def configure(self):
         if self.trig_count == 0:
-            self.consecutive_lvl1 = (2 ** self.register.global_registers['Trig_Count']['bitlength'])
+            self.consecutive_lvl1 = 2 ** self.register.global_registers['Trig_Count']['bitlength']
         else:
             self.consecutive_lvl1 = self.trig_count
         self.abs_occ_limit = int(self.occupancy_limit * self.n_triggers * self.consecutive_lvl1)
