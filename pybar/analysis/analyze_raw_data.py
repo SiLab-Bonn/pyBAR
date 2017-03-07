@@ -158,6 +158,7 @@ class AnalyzeRawData(object):
                       'tot': 'charge',
                       'LVL1ID': 'LVL1ID',
                       'trigger_number': 'trigger_number',
+                      'trigger_time_stamp': 'trigger_time_stamp',
                       'BCID': 'BCID',
                       'TDC': 'TDC',
                       'TDC_time_stamp': 'TDC_time_stamp',
@@ -168,6 +169,7 @@ class AnalyzeRawData(object):
 
         hit_dtype = np.dtype([('event_number', '<i8'),
                               ('trigger_number', '<u4'),
+                              ('trigger_time_stamp', '<u4'),
                               ('relative_BCID', '<u1'),
                               ('LVL1ID', '<u2'),
                               ('column', '<u1'),
