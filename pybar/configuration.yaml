@@ -1,7 +1,7 @@
 # *** hardwre setup/configuration ***
-dut : dut_mmc3_beast_eth.yaml  # DUT hardware configuration (.yaml). Change to dut_mio_gpac.yaml for GPAC support.
-dut_configuration : dut_configuration_mmc3_beast_eth.yaml  # DUT init configuration (.yaml). Change to dut_configuration_mio_gpac.yaml for GPAC support.
-working_dir : data_05 # The output data folder (e.g. set to stave name)
+dut : dut_mio.yaml  # DUT hardware configuration (.yaml). Change to dut_mio_gpac.yaml for GPAC support.
+dut_configuration : dut_configuration_mio.yaml  # DUT init configuration (.yaml). Change to dut_configuration_mio_gpac.yaml for GPAC support.
+working_dir : data  # The output data folder (e.g. set to stave name)
 # *** module configurations ***
 
 modules : 
