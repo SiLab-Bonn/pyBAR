@@ -32,12 +32,10 @@ from pybar.daq.readout_utils import (convert_data_iterable, logical_or, logical_
 
 
 class Fei4RawDataHandle(object):
-
     ''' Access to single or multiple raw data files with filter functions.
 
     Needed to encapsulate raw data write from hardware setup.
     '''
-
     def __init__(self, raw_data_files, module_cfgs, module_id=None):
         ''' If module_id is not set use multiple files otherwise only the file of module_id '''
         if module_id:  # One file only
@@ -91,7 +89,6 @@ class TdcHandle(object):
 
 
 class Fei4RunBase(RunBase):
-
     '''Basic FEI4 run meta class.
 
     Base class for scan- / tune- / analyze-class.

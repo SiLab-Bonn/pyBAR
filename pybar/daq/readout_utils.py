@@ -146,7 +146,8 @@ def is_tdc_from_channel(channel=4):  # function factory
         return f
     else:
         raise ValueError('Invalid channel number')
-    
+
+
 def convert_tdc_to_channel(channel):
     ''' Converts TDC words at a given channel to common TDC header (0x4).
     '''
@@ -158,6 +159,7 @@ def convert_tdc_to_channel(channel):
         f.__name__ = "convert_tdc_to_channel_" + str(channel)
         return value
     return f
+
 
 def is_data_from_channel(channel=4):  # function factory
     '''Selecting FE data from given channel.
