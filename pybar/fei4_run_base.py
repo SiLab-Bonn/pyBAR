@@ -61,7 +61,7 @@ class Fei4RawDataHandle(object):
         '''
         for module_id, filter_func in self._filter_funcs.iteritems():
             mod_data = convert_data_iterable((data_tuple,), filter_func=filter_func, converter_func=self._converter_funcs[module_id])
-            self._raw_data_files[module_id].append_item(mod_data[0], scan_parameters=scan_parameters, flush=flush)
+            self._raw_data_files[module_id].append_item(mod_data[0], scan_parameters=scan_parameters, new_file=new_file, flush=flush)
 
 
 class TdcHandle(object):
