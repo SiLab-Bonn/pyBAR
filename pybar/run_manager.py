@@ -63,6 +63,11 @@ class RunBase():
         self.stop_run = Event()  # abort condition for loops
         self.abort_run = Event()
         self._last_traceback = None
+        self._run_start_time = None
+        self._run_stop_time = None
+        self._total_run_time = None
+        self._last_error_message = None
+        self._last_traceback = None
 
 #     @abc.abstractproperty
 #     def _run_id(self):
