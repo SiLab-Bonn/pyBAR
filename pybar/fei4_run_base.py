@@ -32,9 +32,7 @@ from pybar.daq.readout_utils import (convert_data_iterable, logical_or, logical_
 
 
 class Fei4RawDataHandle(object):
-    ''' Access to single or multiple raw data files with filter functions.
-
-    Needed to encapsulate raw data write from hardware setup.
+    ''' Handle for multiple raw data files with filter and converter functions.
     '''
     def __init__(self, raw_data_files, module_cfgs, module_id=None):
         ''' If module_id is not set use multiple files otherwise only the file of module_id '''
@@ -57,7 +55,7 @@ class Fei4RawDataHandle(object):
             self._converter_funcs[module_id] = convert_tdc_to_channel(channel=setting['channel'])
 
     def append_item(self, data_tuple, scan_parameters=None, new_file=False, flush=True):
-        ''' Append raw data for each module after filtering the raw data for this module
+        ''' Append raw data for each module after filtering and converting the raw data individually.
         '''
         for module_id, filter_func in self._filter_funcs.iteritems():
             mod_data = convert_data_iterable((data_tuple,), filter_func=filter_func, converter_func=self._converter_funcs[module_id])
@@ -182,7 +180,8 @@ class Fei4RunBase(RunBase):
                 self._module_cfgs[module_id] = conf['modules'][module_id]
 
     def _set_default_cfg(self, conf):
-        ''' Sets the default  parameters if they are not specified '''
+        ''' Sets the default parameters if they are not specified.
+        '''
 
         # Default module parameters
         for module_id, m_settings in self._module_cfgs.iteritems():
@@ -207,11 +206,13 @@ class Fei4RunBase(RunBase):
         return self._conf['dut']
 
     def get_register(self, module_id):
-        ''' Returns the register configuration of the module with given id '''
+        ''' Returns the register configuration of the module with given ID.
+        '''
         return self._module_cfgs[module_id]['fe_configuration']
 
     def get_register_utils(self, module_id):
-        ''' Returns the register utils of the module with given id '''
+        ''' Returns the register utils of the module with given ID.
+        '''
         return self._module_register_utils[module_id]
 
     def get_output_filename(self, module_id):
@@ -757,7 +758,7 @@ class Fei4RunBase(RunBase):
         return os.path.join(self.working_dir, module_id)
 
     def _get_configuration(self, module_id, run_number=None):
-        ''' Returns the configuration for a given module_id
+        ''' Returns the configuration for a given module ID.
 
         The working directory is searched for a file matching the module_id with the
         given run number. If no run number is defined the last successfull run defines
