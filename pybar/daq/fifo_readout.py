@@ -8,7 +8,7 @@ import sys
 import numpy as np
 
 from pybar.utils.utils import get_float_time
-from pybar.daq.readout_utils import is_fe_word, is_data_record, is_data_header, logical_or, logical_and
+from pybar.daq.readout_utils import is_fe_word, is_data_record, is_data_header, logical_or, logical_and, convert_data_iterable
 
 
 data_iterable = ("data", "timestamp_start", "timestamp_stop", "error")
@@ -43,6 +43,8 @@ class FifoReadout(object):
         self.worker_thread = None
         self.watchdog_thread = None
         self.fill_buffer = False
+        self.filter = None
+        self.converter = None
         self.readout_interval = 0.05
         self._moving_average_time_period = 10.0
         self._data_deque = deque()
@@ -87,7 +89,9 @@ class FifoReadout(object):
             return None
         return result / float(self._moving_average_time_period)
 
-    def start(self, callback=None, errback=None, reset_rx=False, reset_sram_fifo=False, clear_buffer=False, fill_buffer=False, no_data_timeout=None):
+    def start(self, callback=None, errback=None, reset_rx=False, reset_sram_fifo=False, clear_buffer=False, fill_buffer=False, no_data_timeout=None, filter=None, converter=None):
+        self.filter = filter
+        self.converter = converter
         if self._is_running:
             raise RuntimeError('Readout already running: use stop() before start()')
         self._is_running = True
@@ -101,9 +105,9 @@ class FifoReadout(object):
             self.reset_sram_fifo()
         else:
             fifo_size = self.dut['SRAM']['FIFO_SIZE']
-            data = self.read_data()
+            raw_data = self.read_data()
             dh_dr_select = logical_and(is_fe_word, logical_or(is_data_record, is_data_header))
-            if np.count_nonzero(dh_dr_select(data)) != 0:
+            if np.count_nonzero(dh_dr_select(raw_data)) != 0:
                 logging.warning('SRAM FIFO containing events when starting FIFO readout: FIFO_SIZE = %i', fifo_size)
         self._words_per_read.clear()
         if clear_buffer:
@@ -115,10 +119,9 @@ class FifoReadout(object):
             self.watchdog_thread = Thread(target=self.watchdog, name='WatchdogThread')
             self.watchdog_thread.daemon = True
             self.watchdog_thread.start()
-        if self.callback:
-            self.worker_thread = Thread(target=self.worker, name='WorkerThread')
-            self.worker_thread.daemon = True
-            self.worker_thread.start()
+        self.worker_thread = Thread(target=self.worker, name='WorkerThread')
+        self.worker_thread.daemon = True
+        self.worker_thread.start()
         self.readout_thread = Thread(target=self.readout, name='ReadoutThread', kwargs={'no_data_timeout': no_data_timeout})
         self.readout_thread.daemon = True
         self.readout_thread.start()
@@ -145,8 +148,7 @@ class FifoReadout(object):
             self.readout_thread.join()
         if self.errback:
             self.watchdog_thread.join()
-        if self.callback:
-            self.worker_thread.join()
+        self.worker_thread.join()
         self.callback = None
         self.errback = None
         logging.info('Stopped FIFO readout')
@@ -186,7 +188,7 @@ class FifoReadout(object):
                 time_read = time()
                 if no_data_timeout and curr_time + no_data_timeout < get_float_time():
                     raise NoDataTimeout('Received no data for %0.1f second(s)' % no_data_timeout)
-                data = self.read_data()
+                raw_data = self.read_data()
             except Exception:
                 no_data_timeout = None  # raise exception only once
                 if self.errback:
@@ -196,15 +198,12 @@ class FifoReadout(object):
                 if self.stop_readout.is_set():
                     break
             else:
-                data_words = data.shape[0]
-                if data_words > 0:
+                n_data_words = raw_data.shape[0]
+                if n_data_words > 0:
                     last_time, curr_time = self.update_timestamp()
                     status = 0
-                    if self.callback:
-                        self._data_deque.append((data, last_time, curr_time, status))
-                    if self.fill_buffer:
-                        self._data_buffer.append((data, last_time, curr_time, status))
-                    self._words_per_read.append(data_words)
+                    self._data_deque.append((raw_data, last_time, curr_time, status))
+                    self._words_per_read.append(n_data_words)
                 elif self.stop_readout.is_set():
                     break
                 else:
@@ -214,8 +213,7 @@ class FifoReadout(object):
             if self._calculate.is_set():
                 self._calculate.clear()
                 self._result.put(sum(self._words_per_read))
-        if self.callback:
-            self._data_deque.append(None)  # last item, will stop worker
+        self._data_deque.append(None)  # last item, None will stop worker
         logging.debug('Stopped %s', self.readout_thread.name)
 
     def worker(self):
@@ -224,17 +222,22 @@ class FifoReadout(object):
         logging.debug('Starting %s', self.worker_thread.name)
         while True:
             try:
-                data = self._data_deque.popleft()
+                data_tuple = self._data_deque.popleft()
             except IndexError:
                 self.stop_readout.wait(self.readout_interval)  # sleep a little bit, reducing CPU usage
             else:
-                if data is None:  # if None then exit
+                if data_tuple is None:  # if None then exit
                     break
                 else:
-                    try:
-                        self.callback(data)
-                    except Exception:
-                        self.errback(sys.exc_info())
+                    # filter and do the conversion
+                    converted_data_tuple = convert_data_iterable((data_tuple,), filter_func=self.filter, converter_func=self.converter)[0]
+                    if self.callback:
+                        try:
+                            self.callback(converted_data_tuple)
+                        except Exception:
+                            self.errback(sys.exc_info())
+                    if self.fill_buffer:
+                        self._data_buffer.append(converted_data_tuple)
 
         logging.debug('Stopped %s', self.worker_thread.name)
 

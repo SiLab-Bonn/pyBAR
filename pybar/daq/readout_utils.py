@@ -272,6 +272,14 @@ def logical_xor(f1, f2):  # function factory
     return f
 
 
+def true(value):
+    return np.True_
+
+
+def false(value):
+    return np.False_
+
+
 def is_trigger_word(value):
     return np.equal(np.bitwise_and(value, 0x80000000), 0x80000000)
 

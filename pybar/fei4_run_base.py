@@ -835,9 +835,25 @@ class Fei4RunBase(RunBase):
         reset_sram_fifo = kwargs.pop('reset_sram_fifo', False)
         errback = kwargs.pop('errback', self.handle_err)
         no_data_timeout = kwargs.pop('no_data_timeout', None)
+        filter = kwargs.pop('filter', None)
+        converter = kwargs.pop('converter', None)
+        # this is the implementation for a filter and converter for a individual module
+#         if self.current_single_handle is not None:
+#             module_cfg = self._module_cfgs[self.current_single_handle]
+#             if 'rx_channel' in module_cfg and module_cfg['rx_channel']:
+#                 rx_filter = logical_and(is_fe_word, is_data_from_channel(module_cfg['rx_channel']))
+#             else:
+#                 rx_filter = false
+#             if 'tdc_channel' in module_cfg and module_cfg['tdc_channel']:
+#                 tdc_filter = logical_and(is_tdc_word, is_tdc_from_channel(module_cfg['tdc_channel']))
+#                 converter = convert_tdc_to_channel(channel=module_cfg['tdc_channel'])
+#             else:
+#                 tdc_filter = false
+#                 converter = None
+#             filter = logical_or(is_trigger_word, logical_or(rx_filter, tdc_filter))
         if args or kwargs:
             self.set_scan_parameters(*args, **kwargs)
-        self.fifo_readout.start(reset_sram_fifo=reset_sram_fifo, fill_buffer=fill_buffer, clear_buffer=clear_buffer, callback=callback, errback=errback, no_data_timeout=no_data_timeout)
+        self.fifo_readout.start(reset_sram_fifo=reset_sram_fifo, fill_buffer=fill_buffer, clear_buffer=clear_buffer, callback=callback, errback=errback, no_data_timeout=no_data_timeout, filter=filter, converter=converter)
 
     def stop_readout(self, timeout=10.0):
         self.fifo_readout.stop(timeout=timeout)
