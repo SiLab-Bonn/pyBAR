@@ -332,7 +332,7 @@ class Fei4RunBase(RunBase):
             logging.info('BEAST initialization')
             self.dut['DLY_CONFIG']['CLK_DLY'] = 0
             self.dut['DLY_CONFIG'].write()
-            self.tdc = TdcHandle(self.dut, tdc_modules=['TDC', 'TDC1', 'TDC2', 'TDC3', 'TDC4'])
+            self.tdc = TdcHandle(self.dut, tdc_modules=['TDC0', 'TDC1', 'TDC2', 'TDC3', 'TDC4'])
         else:
             logging.warning('Omitting initialization of DUT %s', self.dut.name)
 

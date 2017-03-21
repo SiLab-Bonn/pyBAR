@@ -16,7 +16,35 @@ TLU:
     TRIGGER_THRESHOLD                    : 0  # Standard trigger minimum length
 
 # TDC for high precision charge measurements
-TDC:
+TDC0:
+    EN_WRITE_TIMESTAMP   : 1  # Writing trigger timestamp
+    EN_TRIGGER_DIST      : 0  # Measuring trigger to TDC delay with 640MHz clock
+    EN_NO_WRITE_TRIG_ERR : 0  # Writing TDC word only if valid trigger occurred
+    EN_INVERT_TDC        : 0  # Inverting TDC input
+    EN_INVERT_TRIGGER    : 0  # Inverting trigger input
+
+TDC1:
+    EN_WRITE_TIMESTAMP   : 1  # Writing trigger timestamp
+    EN_TRIGGER_DIST      : 0  # Measuring trigger to TDC delay with 640MHz clock
+    EN_NO_WRITE_TRIG_ERR : 0  # Writing TDC word only if valid trigger occurred
+    EN_INVERT_TDC        : 0  # Inverting TDC input
+    EN_INVERT_TRIGGER    : 0  # Inverting trigger input
+
+TDC2:
+    EN_WRITE_TIMESTAMP   : 1  # Writing trigger timestamp
+    EN_TRIGGER_DIST      : 0  # Measuring trigger to TDC delay with 640MHz clock
+    EN_NO_WRITE_TRIG_ERR : 0  # Writing TDC word only if valid trigger occurred
+    EN_INVERT_TDC        : 0  # Inverting TDC input
+    EN_INVERT_TRIGGER    : 0  # Inverting trigger input
+
+TDC3:
+    EN_WRITE_TIMESTAMP   : 1  # Writing trigger timestamp
+    EN_TRIGGER_DIST      : 0  # Measuring trigger to TDC delay with 640MHz clock
+    EN_NO_WRITE_TRIG_ERR : 0  # Writing TDC word only if valid trigger occurred
+    EN_INVERT_TDC        : 0  # Inverting TDC input
+    EN_INVERT_TRIGGER    : 0  # Inverting trigger input
+
+TDC4:
     EN_WRITE_TIMESTAMP   : 1  # Writing trigger timestamp
     EN_TRIGGER_DIST      : 0  # Measuring trigger to TDC delay with 640MHz clock
     EN_NO_WRITE_TRIG_ERR : 0  # Writing TDC word only if valid trigger occurred

@@ -54,7 +54,7 @@ hw_drivers:
     base_addr : 0x200000000
     base_data_addr : 0x100000000
 
-  - name      : TDC
+  - name      : TDC0
     type      : tdc_s3
     interface : ETH
     base_addr : 0xa000
