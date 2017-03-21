@@ -368,7 +368,7 @@ class Fei4RunBase(RunBase):
                 m_config['fe_configuration'] = FEI4Register(configuration_file=self._get_configuration(module_id=module_id,
                                                                                                        run_number=m_config['fe_configuration']))
             # assume fe_configuration already initialized
-                raise ValueError("Found no valid FE configuration for the module %s" % module_id)
+                raise ValueError("Found no valid value for parameter 'fe_configuration' for the module %s" % module_id)
 
             # Init FE
 
