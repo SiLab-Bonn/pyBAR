@@ -1,54 +1,19 @@
 # *** hardwre setup/configuration ***
-dut : dut_mio.yaml  # DUT hardware configuration (.yaml). Change to dut_mio_gpac.yaml for GPAC support.
-dut_configuration : dut_configuration_mio.yaml  # DUT init configuration (.yaml). Change to dut_configuration_mio_gpac.yaml for GPAC support.
-working_dir : data  # The output data folder (e.g. set to stave name)
+
+dut : dut_mio.yaml # DUT hardware configuration (.yaml file). E.g. change to dut_mio_gpac.yaml to support the GPAC adapter card.
+dut_configuration : dut_configuration_mio.yaml  # Initial DUT configuration (.yaml file). E.g. change to dut_configuration_mio_gpac.yaml to support the GPAC adapter card.
+working_dir : data # The name of the output data folder.
+
 # *** module configurations ***
 
-modules : 
-    module_test_01 : # Module name
-        fe_configuration : # FE configuration file, text (.cfg) or HDF5 (.h5) file. If not given, latest valid configuration (run status FINISHED) will be taken. If a number is given, configuration from run with specified number will be taken.
-        fe_flavor : fei4b  # FEI4 flavor/type for initial configuration. Valid values: 'fei4a' or 'fei4b'
-        chip_address : 7 # Chip Address for initial configuration, if not given, broadcast bit will be set
-        channel : 1
-         
-        send_data : 'tcp://127.0.0.1:5673'
-        
-    module_test_02 : 
-         
-        fe_configuration : 
-        fe_flavor : fei4b
-        chip_address : 6
-        channel : 2
-         
-        send_data : 'tcp://127.0.0.1:5674'
-         
-    module_test_03 :
-          
-        fe_configuration : 
-        fe_flavor : fei4b
-        chip_address : 5
-        channel : 3
-         
-        send_data : 'tcp://127.0.0.1:5675'
-          
-    module_test_04 :
-          
-        fe_configuration : 
-        fe_flavor : fei4b
-        chip_address : 4
-        channel : 4
-         
-        send_data : 'tcp://127.0.0.1:5676'
-          
-    module_test_05 : 
-          
-        fe_configuration :
-        fe_flavor : fei4b
-        chip_address : 3
-        channel : 5
-         
-        # Sends the data to the specified socket
-        send_data : 'tcp://127.0.0.1:5678'
+modules :
+    module_0 :
+         fe_configuration : # FE configuration file, text (.cfg) or HDF5 (.h5) file. If no value is given, the latest valid configuration (run status 'FINISHED') will be taken. If a number is given, the configuration from the run with the specified number will be taken.
+         fe_flavor : fei4b # FEI4 flavor/type for initial configuration. Valid values are: 'fei4a', 'fei4b'.
+         chip_address : # Chip Address for initial configuration. if no value is given, the broadcast bit will be set.
+         rx_channel : 4 # As implemented in the firmware.
+         tdc_channel : 4 # As implemented in the firmware.
+#        send_data : 'tcp://127.0.0.1:5678' # Address of the online monitor
 
 # *** configuration ***
 
@@ -62,11 +27,13 @@ modules :
 #    to_addrs: ["pohl@physik.uni-bonn.de", "janssen@physik.uni-bonn.de"]  # list of email addresses that will be notified
 
 # *** run configuration ***
+
 #run_conf:
 #    comment : ''
 #    reset_rx_on_error : False
-#
+
 # *** scan specific run configuration ***
+
 #Fei4Tuning:
 #    enable_shift_masks : ["Enable", "C_Low", "C_High"]
 #    target_threshold : 30 # target threshold
@@ -74,7 +41,7 @@ modules :
 #    target_tot : 5 # target ToT
 #    global_iterations : 4
 #    local_iterations : 3
-#
+
 #AnalogScan:
 #    scan_parameters : '[("PlsrDAC", 280)]'
 #    enable_shift_masks : ["Enable", "C_Low", "C_High"]
@@ -82,7 +49,7 @@ modules :
 #ThresholdScan:
 #    scan_parameters : '[("PlsrDAC", [None, 100])]'
 #    enable_shift_masks : ["Enable", "C_Low", "C_High"]
-#
+
 #ExtTriggerScan:
 #    trig_count : 0
 #    trigger_latency : 232
@@ -97,7 +64,7 @@ modules :
 #    max_triggers : 10000
 #    enable_tdc : False
 #    reset_rx_on_error : False
-#
+
 #FEI4SelfTriggerScan:
 #    trig_count : 4
 #    trigger_latency : 239
@@ -107,4 +74,3 @@ modules :
 #    use_enable_mask_for_imon : True
 #    no_data_timeout : 10
 #    scan_timeout : 60
-#

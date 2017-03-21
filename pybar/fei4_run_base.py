@@ -27,39 +27,41 @@ from pybar.daq.fifo_readout import FifoReadout, RxSyncError, EightbTenbError, Fi
 from pybar.daq.readout_utils import save_configuration_dict
 from pybar.daq.fei4_raw_data import open_raw_data_file, send_meta_data
 from pybar.analysis.analysis_utils import AnalysisError
-from pybar.daq.readout_utils import (convert_data_iterable, logical_or, logical_and, is_trigger_word, is_fe_word, is_data_from_channel, 
-                                     is_tdc_word, is_tdc_from_channel, convert_tdc_to_channel)
+from pybar.daq.readout_utils import (convert_data_iterable, logical_or, logical_and, is_trigger_word, is_fe_word, is_data_from_channel,
+                                     is_tdc_word, is_tdc_from_channel, convert_tdc_to_channel, false)
 
 
 class Fei4RawDataHandle(object):
     ''' Handle for multiple raw data files with filter and converter functions.
     '''
-    def __init__(self, raw_data_files, module_cfgs, module_id=None):
-        ''' If module_id is not set use multiple files otherwise only the file of module_id '''
-        if module_id:  # One file only
-            self._raw_data_files = {module_id: raw_data_files[module_id]}
-            self._module_cfgs = {module_id: module_cfgs[module_id]}
-        else:  # Acces to multiple files
-            self._raw_data_files = raw_data_files
-            self._module_cfgs = module_cfgs
+    def __init__(self, raw_data_files, module_cfgs):
+        self._raw_data_files = raw_data_files
+        self._module_cfgs = module_cfgs
 
         # Module filter functions dict for quick lookup
         self._filter_funcs = {}
         self._converter_funcs = {}
-        for module_id, setting in self._module_cfgs.iteritems():
-            self._filter_funcs[module_id] = logical_or(
-                is_trigger_word,
-                logical_or(
-                    logical_and(is_tdc_word, is_tdc_from_channel(setting['channel'])),
-                    logical_and(is_fe_word, is_data_from_channel(setting['channel']))))
-            self._converter_funcs[module_id] = convert_tdc_to_channel(channel=setting['channel'])
+        for module_id, module_cfg in self._module_cfgs.iteritems():
+            if module_id is None:
+                continue
+            if 'rx_channel' in module_cfg and module_cfg['rx_channel']:
+                rx_filter = logical_and(is_fe_word, is_data_from_channel(module_cfg['rx_channel']))
+            else:
+                rx_filter = false
+            if 'tdc_channel' in module_cfg and module_cfg['tdc_channel']:
+                tdc_filter = logical_and(is_tdc_word, is_tdc_from_channel(module_cfg['tdc_channel']))
+                self._converter_funcs[module_id] = convert_tdc_to_channel(channel=module_cfg['tdc_channel'])
+            else:
+                tdc_filter = false
+                self._converter_funcs[module_id] = None
+            self._filter_funcs[module_id] = logical_or(is_trigger_word, logical_or(rx_filter, tdc_filter))
 
     def append_item(self, data_tuple, scan_parameters=None, new_file=False, flush=True):
         ''' Append raw data for each module after filtering and converting the raw data individually.
         '''
         for module_id, filter_func in self._filter_funcs.iteritems():
-            mod_data = convert_data_iterable((data_tuple,), filter_func=filter_func, converter_func=self._converter_funcs[module_id])
-            self._raw_data_files[module_id].append_item(mod_data[0], scan_parameters=scan_parameters, new_file=new_file, flush=flush)
+            converted_data_tuple = convert_data_iterable((data_tuple,), filter_func=filter_func, converter_func=self._converter_funcs[module_id])[0]
+            self._raw_data_files[module_id].append_item(converted_data_tuple, scan_parameters=scan_parameters, new_file=new_file, flush=flush)
 
 
 class TdcHandle(object):
@@ -136,28 +138,32 @@ class Fei4RunBase(RunBase):
 
         # Sets self._conf = conf
         super(Fei4RunBase, self).__init__(conf=conf, run_conf=run_conf)
+        # settting up scan
+        self.set_scan_mode()
 
         self.err_queue = Queue()
-        self.fifo_readout = None
 
         self._module_cfgs = {}
         self._module_register_utils = {}
         self._raw_data_files = {}
-
+        self._module_attr = {}
+        self._scan_attr = {}  # Store specific scan attributes per module to make available after scan
+        self._scan_parameters = {}  # Store specific scan parameters per module to make available after scan
         self._parse_module_cfgs(conf)
-        self._n_modules = len(self._module_cfgs)
         self._set_default_cfg(conf)
-
+        self.fifo_readout = None  # FIFO readout
         self.tdc = None  # Handle for TDC modules
-        self._unset_module_handles()
+        self.raw_data_file = None
+        self.deselect_module()  # Initialize handles
+        self._initialized = True
 
         # Data structures to store scan related data
-        self._attr = None  # Stores class attr before scan start to be able to restore
-        self._scan_attr = {}  # Store specific scan attributes per module to make available after scan
-        self._scan_pars = {}  # Store specific scan parameters per module to make available after scan
-        self.scan_parameters = None
-
-        self.set_scan_mode()
+    @property
+    def is_initialized(self):
+        if "_initialized" in self.__dict__ and self._initialized:
+            return True
+        else:
+            return False
 
     def set_scan_mode(self):
         ''' Called during init to set scan in serial or paralle mode.
@@ -168,42 +174,58 @@ class Fei4RunBase(RunBase):
         self.parallel = True
 
     def _parse_module_cfgs(self, conf):
-        ''' Extracts the configuration of the modules '''
+        ''' Extracts the configuration of the modules.
+        '''
+        if 'modules' in conf and conf['modules']:
+            for module_id, module_cfg in conf['modules'].iteritems():
+                # Check here for missing module config items.
+                if 'rx_channel' not in module_cfg:
+                    raise ValueError("No parameter 'rx_channel' defined for module '%s'" % module_id)
+                if 'fe_flavor' not in module_cfg:
+                    raise ValueError("No parameter 'fe_flavor' defined for module '%s'" % module_id)
+                if 'chip_address' not in module_cfg:
+                    raise ValueError("No parameter 'chip_address' defined for module '%s'" % module_id)
+                # Save config to dict.
+                self._module_cfgs[module_id] = module_cfg
 
-        if 'fe_configuration' in conf:
-            raise NotImplementedError('You are using the old module configuration format. This is not supported anymore!')
-        if 'send_data' in conf:
-            raise NotImplementedError('Specifiy the send_data in the module cfg!')
-
-        if 'modules' in conf:
-            for module_id in conf['modules']:
-                self._module_cfgs[module_id] = conf['modules'][module_id]
+        else:
+            raise ValueError("No module configuration specified")
 
     def _set_default_cfg(self, conf):
         ''' Sets the default parameters if they are not specified.
         '''
-
-        # Default module parameters
-        for module_id, m_settings in self._module_cfgs.iteritems():
-            if 'send_data' not in m_settings:
-                m_settings.update({'send_data': None})  # address string of PUB socket
-            if 'send_error_msg' not in m_settings:
-                m_settings.update({'send_error_msg': None})  # bool
-            if 'fe_configuration' not in m_settings:
-                logging.warning('No fe_configuration for %s defined, fallback to std. config', module_id)
-            if 'channel' not in m_settings:
-                if self._n_modules > 1:
-                    raise RuntimeError('No channel defined for %d in multi module configuration')
-                else:  # Single module config, std channel is 4
-                    self._module_cfgs[module_id]['channel'] = 4
-
-        # Default config parameters
+        # Adding here default run config parameters.
         if 'working_dir' not in conf:
             conf.update({'working_dir': ''})  # path string, if empty, path of configuration.yaml file will be used
+
+        fe_flavors = set([module_cfg['fe_flavor'] for module_cfg in self._module_cfgs.itervalues()])
+        if len(fe_flavors) != 1 and self.parallel:
+            raise ValueError("Parameter 'fe_flavor' must be the same for module group")
+        elif self.parallel:
+            # Adding broadcast config for parallel mode.
+            self._module_cfgs[None] = {
+                'channel': None,
+                'fe_flavor': fe_flavors.pop(),
+                'chip_address': None}
+
+        # Adding here default module config items.
+        for module_id, module_cfg in self._module_cfgs.iteritems():
+            if 'send_data' not in module_cfg:
+                module_cfg.update({'send_data': None})  # address string of PUB socket
+            if 'send_error_msg' not in module_cfg:
+                module_cfg.update({'send_error_msg': None})  # bool, None
+            if 'fe_configuration' not in module_cfg:
+                module_cfg.update({'fe_configuration': None})  # value, None
+            # TODO: message missing
 
     @property
     def dut(self):
         return self._conf['dut']
+
+    def get_scan_parameters(self, module_id):
+        ''' Returns the scan parameters of the module with given ID.
+        '''
+        return self._scan_parameters[module_id]
 
     def get_register(self, module_id):
         ''' Returns the register configuration of the module with given ID.
@@ -216,6 +238,8 @@ class Fei4RunBase(RunBase):
         return self._module_register_utils[module_id]
 
     def get_output_filename(self, module_id):
+        if module_id is None:
+            return None
         module_path = os.path.join(self.working_dir, module_id)
         return os.path.join(module_path, str(self.run_number) + "_" + module_id + "_" + self.run_id)
 
@@ -338,123 +362,76 @@ class Fei4RunBase(RunBase):
 
     def init_modules(self):
         ''' Initialize all modules consecutevly'''
-        for module_id, m_config in self._module_cfgs.iteritems():
-            last_configuration = self._get_configuration(module_id=module_id)
-            # init config, a number <=0 will also do the initialization (run 0 does not exists)
-            if (not m_config['fe_configuration'] and not last_configuration) or (isinstance(m_config['fe_configuration'], (int, long)) and m_config['fe_configuration'] <= 0):
-                if 'chip_address' in m_config and m_config['chip_address'] is not None:
-                    chip_address = m_config['chip_address']
+        for module_id, module_cfg in self._module_cfgs.iteritems():
+            # adding scan parameters for each module
+            if 'scan_parameters' in self._run_conf:
+                if isinstance(self._run_conf['scan_parameters'], basestring):
+                    self._run_conf['scan_parameters'] = ast.literal_eval(self._run_conf['scan_parameters'])
+                sp = namedtuple('scan_parameters', field_names=zip(*self._run_conf['scan_parameters'])[0])
+                self._scan_parameters[module_id] = sp(*zip(*self._run_conf['scan_parameters'])[1])
+            else:
+                sp = namedtuple_with_defaults('scan_parameters', field_names=[])
+                self._scan_parameters[module_id] = sp()
+            # init FE config
+            # a config number <=0 will create a new config (run 0 does not exists)
+            last_configuration = self.get_configuration(module_id=module_id)
+            if (not module_cfg['fe_configuration'] and not last_configuration) or (isinstance(module_cfg['fe_configuration'], (int, long)) and module_cfg['fe_configuration'] <= 0):
+                broadcast = False
+                if 'chip_address' in module_cfg and module_cfg['chip_address'] is not None:
+                    chip_address = module_cfg['chip_address']
                 else:
                     # In single chip setups the std. address is usually 0
-                    if self._n_modules == 1:
+                    if len(filter(None, self._module_cfgs.iterkeys())) == 1 or module_id is None:
                         chip_address = 0
+                        broadcast = True
                     else:
-                        raise ValueError("Parameter 'chip_address' not specified for the module %s" % module_id)
-                if 'fe_flavor' in m_config and m_config['fe_flavor']:
-                    m_config['fe_configuration'] = FEI4Register(fe_type=m_config['fe_flavor'], chip_address=chip_address, broadcast=False)
+                        raise ValueError("Parameter 'chip_address' not specified for module '%s'" % module_id)
+                if 'fe_flavor' in module_cfg and module_cfg['fe_flavor']:
+                    module_cfg['fe_configuration'] = FEI4Register(fe_type=module_cfg['fe_flavor'], chip_address=chip_address, broadcast=broadcast)
                 else:
-                    raise ValueError("Parameter 'fe_flavor' not specified for the module %s" % module_id)
+                    raise ValueError("Parameter 'fe_flavor' not specified for module '%s'" % module_id)
             # use existing config
-            elif not m_config['fe_configuration'] and last_configuration:
-                m_config['fe_configuration'] = FEI4Register(configuration_file=last_configuration)
+            elif not module_cfg['fe_configuration'] and last_configuration:
+                module_cfg['fe_configuration'] = FEI4Register(configuration_file=last_configuration)
             # path string
-            elif isinstance(m_config['fe_configuration'], basestring):
-                if os.path.isabs(m_config['fe_configuration']):  # absolute path
-                    m_config['fe_configuration'] = FEI4Register(configuration_file=m_config['fe_configuration'])
+            elif isinstance(module_cfg['fe_configuration'], basestring):
+                if os.path.isabs(module_cfg['fe_configuration']):  # absolute path
+                    module_cfg['fe_configuration'] = FEI4Register(configuration_file=module_cfg['fe_configuration'])
                 else:  # relative path
-                    m_config['fe_configuration'] = FEI4Register(configuration_file=os.path.join(m_config['working_dir'], m_config['fe_configuration']))
+                    module_cfg['fe_configuration'] = FEI4Register(configuration_file=os.path.join(module_cfg['working_dir'], module_cfg['fe_configuration']))
             # run number
-            elif isinstance(m_config['fe_configuration'], (int, long)) and m_config['fe_configuration'] > 0:
-                m_config['fe_configuration'] = FEI4Register(configuration_file=self._get_configuration(module_id=module_id,
-                                                                                                       run_number=m_config['fe_configuration']))
+            elif isinstance(module_cfg['fe_configuration'], (int, long)) and module_cfg['fe_configuration'] > 0:
+                module_cfg['fe_configuration'] = FEI4Register(configuration_file=self.get_configuration(module_id=module_id,
+                                                                                                        run_number=module_cfg['fe_configuration']))
             # assume fe_configuration already initialized
-                raise ValueError("Found no valid value for parameter 'fe_configuration' for the module %s" % module_id)
-
-            # Init FE
+            elif not isinstance(module_cfg['fe_configuration'], FEI4Register):
+                raise ValueError("Found no valid value for parameter 'fe_configuration' for module '%s'" % module_id)
 
             # init register utils
-            self._module_register_utils[module_id] = FEI4RegisterUtils(self.dut, self.get_register(module_id))
-            # reset and configuration
-            self._module_register_utils[module_id].global_reset()
-            self._module_register_utils[module_id].configure_all()
-            if is_fe_ready(self, module_id):
-                reset_service_records = False
-            else:
-                reset_service_records = True
-            self._module_register_utils[module_id].reset_bunch_counter()
-            self._module_register_utils[module_id].reset_event_counter()
-            if reset_service_records:
-                # resetting service records must be done once after power up
-                self._module_register_utils[module_id].reset_service_records()
+            self._module_register_utils[module_id] = FEI4RegisterUtils(self.dut, self.get_register(module_id=module_id))
 
-            # Create module data path if it does not exist
-            module_path = self.get_module_path(module_id)
-            if not os.path.exists(module_path):
-                os.makedirs(module_path)
+            if module_id is not None:
+                # reset and configuration
+                self._module_register_utils[module_id].global_reset()
+                self._module_register_utils[module_id].configure_all()
+                if is_fe_ready(self, module_id):
+                    reset_service_records = False
+                else:
+                    reset_service_records = True
+                self._module_register_utils[module_id].reset_bunch_counter()
+                self._module_register_utils[module_id].reset_event_counter()
+                if reset_service_records:
+                    # resetting service records must be done once after power up
+                    self._module_register_utils[module_id].reset_service_records()
 
-    def _set_single_handles(self, module_id):
-        ''' Sets handles to access one module
-        '''
-        self.register = self.get_register(module_id)
-        self.output_filename = self.get_output_filename(module_id)
-        self.register_utils = self.get_register_utils(module_id)
-
-    def _check_fe_type(self):
-        ''' Warns if all FE do not have the same flavor
-        '''
-        flavor = []
-        for setting in self._module_cfgs.values():
-            flavor.append(setting['fe_flavor'])
-        if len(set(flavor)) > 1:
-            logging.warning('Mixed FE flavor in broadcast mode.')
-        return flavor[0]
-
-    def _set_broadcast_handles(self):
-        ''' Sets handles to access multiple module with broadcast
-        '''
-        fe_type = self._check_fe_type()  # Broadcast can fail if FE flavors differ
-        self.register = FEI4Register(configuration_file=None,
-                                     fe_type=fe_type,
-                                     chip_address=None,
-                                     broadcast=True)
-        self.output_filename = None
-        self.register_utils = FEI4RegisterUtils(self.dut, self.register)
-
-    def _set_multi_handles(self):
-        ''' Sets handles to access multiple module at different channels
-        '''
-        raise NotImplemented('This feature is not implemented yet')
-
-    def _unset_module_handles(self):
-        ''' Unset actual module handles
-        '''
-        self.register = None
-        self.output_filename = None
-        self.register_utils = None
-        self.raw_data_file = None
-
-    def _set_scan_par_from_run_cfg(self, module_id=None):
-        ''' Sets the scan parameters defined in the run configuration
-
-        If scan parameters are defined already (from a previous module scan) they are stored
-        for later usage
-        '''
-
-        if 'scan_parameters' in self._run_conf:
-            if isinstance(self._run_conf['scan_parameters'], basestring):
-                self._run_conf['scan_parameters'] = ast.literal_eval(self._run_conf['scan_parameters'])
-            sp = namedtuple('scan_parameters', field_names=zip(*self._run_conf['scan_parameters'])[0])
-            self.scan_parameters = sp(*zip(*self._run_conf['scan_parameters'])[1])
-        else:
-            sp = namedtuple_with_defaults('scan_parameters', field_names=[])
-            self.scan_parameters = sp()
+                # Create module data path if it does not exist
+                module_path = self.get_module_path(module_id)
+                if not os.path.exists(module_path):
+                    os.makedirs(module_path)
 
     def pre_run(self):
         # clear error queue in case run is executed a second time
         self.err_queue.queue.clear()
-
-        self._set_scan_par_from_run_cfg()
-        logging.info('Scan parameter(s): %s', ', '.join(['%s=%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None')
 
         # init DUT
         if not isinstance(self._conf['dut'], Dut):  # Check if already initialized
@@ -535,153 +512,62 @@ class Fei4RunBase(RunBase):
         # initialize the modules
         self.init_modules()
 
-    def _store_attributes(self):
-        ''' Store actual class attributes for later restore '''
-
-        # Complete dict copy is not possible since objects do not always
-        # support deepcopy
-        self._attr = self.__dict__.keys()
-
-    def _restore_attributes(self, module_id=None, store=False):
-        ''' Restore stored class attributes
-
-        Deletes all attributes that are not stored to keep class constant.
-        These attributes were added in the scan and can be saved in an additional dict for
-        later use. Als sets the run config to the default run config since it might
-        be changed in the scan.
-
-        Warnning: all classe attributes that are not given by run config parameters but existed before
-        the scan are not restored. This is not possible with the actual design.
-        '''
-
-        scan_attr = {}
-        for attr in self.__dict__.keys():
-            # attr is added in scan
-            if attr not in self._attr:
-                scan_attr[attr] = self.__dict__[attr]
-                del self.__dict__[attr]
-            # attr is a default run config that was maybe changed
-            if attr in self._default_run_conf.keys():
-                scan_attr[attr] = self.__dict__[attr]
-
-        if store:
-            self._scan_attr[module_id] = scan_attr
-
-        # Set default run conf (e.g. self.plots_filename was changed)
-        self._init_run_conf(run_conf=False, update=False)
-
-        # Reset scan pars (e.g. scan par PlsrDAC was changed)
-        self._set_scan_par_from_run_cfg()
-
-    def _load_scan_attr(self, module_id):
-        ''' Load the scan attributes for module with module_id that where added during scan
-        '''
-        try:  # serial scan
-            self.__dict__.update(self._scan_attr[module_id])
-        except KeyError:  # parallel scan, there is only one scan attr dict
-            self.__dict__.update(self._scan_attr[None])
-
-    def _store_scan_pars(self, module_id=None):
-        ''' Store the scan parameters for module with module_id.
-
-        These where maybe changed during scan and are maybe needed in post run data analysis
-        '''
-        if self.scan_parameters:
-            self._scan_pars[module_id] = self.scan_parameters
-
-    def _load_scan_par(self, module_id):
-        ''' Load the scan parameters for module with module_id that where maybe changed during scan
-        '''
-        try:  # There are module specific scan parameters (serial scan)
-            self.scan_parameters = self._scan_pars[module_id]
-        except KeyError:  # No module specific scan pars (parallel scan)
-            try:
-                self.scan_parameters = self._scan_pars[None]
-            except KeyError:  # No scan parameters at all
-                self.scan_parameters = None
-                pass
-
     def do_run(self):
         ''' Start runs on all modules sequentially.
 
         Sets properties to access current module properties.
         '''
+        if self.parallel:  # Broadcast FE commands
+            with contextlib.ExitStack() as stack:
+                # Configure each FE individually
+                # Sort module config keys, configure broadcast module (key is None) first
+                for module_id in sorted(self._module_cfgs.iterkeys(), key=lambda x: (x is not None, x)):
+                    with self.access_module(module_id=module_id, parallel=False):
+                        logging.info('Scan parameter(s): %s', ', '.join(['%s=%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None')
+                        stack.enter_context(self.register.restored(name=self.run_number))
+                        self.configure()
 
-        if not self.parallel:  # Use each FE one by one
-            for module_id in self._module_cfgs:
-                # Gives access for scan to actual module
-                self._set_single_handles(module_id)
+                self.fifo_readout.reset_rx()
+                self.fifo_readout.reset_sram_fifo()
+                self.fifo_readout.print_readout_status()
 
-                with self.register.restored(name=self.run_number):
-                    # configure for scan
-                    self.configure()
-                    self.fifo_readout.reset_rx()
-                    self.fifo_readout.reset_sram_fifo()
-                    self.fifo_readout.print_readout_status()
-
-                    with open_raw_data_file(filename=self.get_output_filename(module_id), mode='w', title=self.run_id, register=self.register,
-                                            conf=self._conf, run_conf=self._run_conf,
-                                            scan_parameters=self.scan_parameters._asdict(),
-                                            socket_address=self._module_cfgs[module_id]['send_data']) as self._raw_data_files[module_id]:
-                        self.raw_data_file = Fei4RawDataHandle(self._raw_data_files, self._module_cfgs, module_id=module_id)
-
-                        # Run the scan but restore class attributes that might have been set
-                        self._store_attributes()
+                with self.access_module(module_id=None, parallel=True):
+                    with self.open_file(module_id=None):
                         self.scan()
-                        self._store_scan_pars(module_id)
-                        self._restore_attributes(module_id=module_id, store=True)
 
-                # For safety to prevent no crash if handles is not set correclty
-                self._unset_module_handles()
-        else:  # Use all FE at once with command broadcast
-            # Gives access for scan to all modules
-            self._set_broadcast_handles()
-            self.configure()
-            self.fifo_readout.reset_rx()
-            self.fifo_readout.reset_sram_fifo()
             self.fifo_readout.print_readout_status()
 
-            with contextlib.ExitStack() as stack:
-                for module_id in self._module_cfgs:
-                    self._raw_data_files[module_id] = stack.enter_context(open_raw_data_file(filename=self.get_output_filename(module_id), mode='w', title=self.run_id, register=self.register,
-                                                                                             conf=self._conf, run_conf=self._run_conf,
-                                                                                             scan_parameters=self.scan_parameters._asdict(),
-                                                                                             socket_address=self._module_cfgs[module_id]['send_data']))
-                self.raw_data_file = Fei4RawDataHandle(self._raw_data_files, self._module_cfgs)
+        else:  # Scan each FE individually
+            for module_id in self._module_cfgs:
+                if module_id is None:
+                    continue
+                with self.access_module(module_id=module_id, parallel=False):
+                    logging.info('Scan parameter(s): %s', ', '.join(['%s=%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None')
+                    with self.register.restored(name=self.run_number):
+                        self.configure()
 
-                self._store_attributes()
-                self.scan()
-                self._store_scan_pars(module_id)
-                self._restore_attributes(store=True)
+                        self.fifo_readout.reset_rx()
+                        self.fifo_readout.reset_sram_fifo()
+                        self.fifo_readout.print_readout_status()
 
-            # For safety to prevent NO crash if handles is not set correclty
-            self._unset_module_handles()
+                        with self.open_file(module_id=module_id):
+                            self.scan()
+
+                self.fifo_readout.print_readout_status()
+
 
     def post_run(self):
-        try:
-            self.fifo_readout.print_readout_status()
-        except Exception:  # no device?
-            pass
-
         # analyzing data and store register cfg per front end one by one
         for module_id in self._module_cfgs:
-            # Set module specific handles and data structures
-            self._set_single_handles(module_id)
-            self._load_scan_attr(module_id)
-            self._load_scan_par(module_id)
-
-            try:
-                self.analyze()
-            except Exception:  # analysis errors
-                self.handle_err(sys.exc_info())
-            else:  # analyzed data, save config
-                self.register.save_configuration(self.output_filename)
-
-            # Reset module specific handles and data structures
-            # To prevent silent bugs
-            self._unset_module_handles()
-            self._restore_attributes(module_id)
-            self.scan_parameters = None
+            if module_id is None:
+                continue
+            with self.access_module(module_id=module_id, parallel=self.parallel):
+                try:
+                    self.analyze()
+                except Exception:  # analysis errors
+                    self.handle_err(sys.exc_info())
+                else:  # analyzed data, save config
+                    self.register.save_configuration(self.output_filename)
 
         if not self.err_queue.empty():
             exc = self.err_queue.get()
@@ -757,13 +643,15 @@ class Fei4RunBase(RunBase):
     def get_module_path(self, module_id):
         return os.path.join(self.working_dir, module_id)
 
-    def _get_configuration(self, module_id, run_number=None):
+    def get_configuration(self, module_id, run_number=None):
         ''' Returns the configuration for a given module ID.
 
         The working directory is searched for a file matching the module_id with the
         given run number. If no run number is defined the last successfull run defines
         the run number.
         '''
+        if module_id is None:
+            return None
         def find_file(run_number):
             module_path = self.get_module_path(module_id)
             for root, _, files in os.walk(module_path):
@@ -782,7 +670,7 @@ class Fei4RunBase(RunBase):
                 cfg_file = find_file(run_number)
                 if cfg_file:
                     if not found_fin_run_cfg:
-                        logging.warning('Module %s has no configuration for run %d, use config of run %d', module_id, last_fin_run, run_number)
+                        logging.warning("Module '%s' has no configuration for run %d, use config of run %d", module_id, last_fin_run, run_number)
                     return cfg_file
                 else:
                     found_fin_run_cfg = False
@@ -810,6 +698,85 @@ class Fei4RunBase(RunBase):
         diff = [name for name in scan_parameters_old.keys() if np.any(scan_parameters_old[name] != scan_parameters_new[name])]
         if diff:
             logging.info('Changing scan parameter(s): %s', ', '.join([('%s=%s' % (name, fields[name])) for name in diff]))
+
+    def __setattr__(self, name, value):
+        ''' Always called to retrun the value for an attribute.
+        '''
+        if self.is_initialized and not hasattr(self, name):
+            if self.current_single_handle not in self._module_attr:
+                self._module_attr[self.current_single_handle] = {}
+            self._module_attr[self.current_single_handle][name] = value
+        else:
+            super(Fei4RunBase, self).__setattr__(name, value)
+
+    def __getattr__(self, name):
+        ''' This is called in a last attempt to receive the value for an attribute that was not found in the usual places.
+        '''
+        try:
+            return self._module_attr[self.current_single_handle][name]
+        except KeyError:
+            raise AttributeError("'%s' (current handle '%s') has no attribute '%s'" % (self.__class__.__name__, self.current_single_handle, name))
+
+    @contextmanager
+    def access_module(self, module_id, parallel):
+        self.select_module(module_id=module_id, parallel=parallel)
+        try:
+            yield
+        finally:
+            # in case something fails, call this on last resort
+            self.deselect_module()
+
+    def select_module(self, module_id, parallel):
+        ''' Select module and give access to the module.
+        '''
+        self.current_single_handle = None if parallel else module_id
+        self.scan_parameters = self.get_scan_parameters(module_id=module_id)
+        self.register = self.get_register(module_id=module_id)
+        self.register_utils = self.get_register_utils(module_id=module_id)
+        self.output_filename = self.get_output_filename(module_id=module_id)
+
+    def deselect_module(self):
+        ''' Deselect module and cleanup.
+        '''
+        self.current_single_handle = None
+        self.scan_parameters = None
+        self.register = None
+        self.register_utils = None
+        self.output_filename = None
+
+    @contextmanager
+    def open_file(self, module_id):
+        self.create_file(module_id=module_id)
+        try:
+            yield
+        finally:
+            # in case something fails, call this on last resort
+            self.close_file()
+
+    def create_file(self, module_id):
+        if module_id is None:
+            selected_modules = self._module_cfgs.iterkeys()
+        else:
+            selected_modules = [module_id]
+        for selected_module_id in selected_modules:
+            if selected_module_id is None:
+                continue
+            self._raw_data_files[selected_module_id] = open_raw_data_file(filename=self.get_output_filename(selected_module_id),
+                                                                          mode='w',
+                                                                          title=self.run_id,
+                                                                          register=self.register,
+                                                                          conf=self._conf,
+                                                                          run_conf=self._run_conf,
+                                                                          scan_parameters=self.scan_parameters._asdict(),
+                                                                          socket_address=self._module_cfgs[selected_module_id]['send_data'])
+        self.raw_data_file = Fei4RawDataHandle(self._raw_data_files, self._module_cfgs)
+
+    def close_file(self):
+        for raw_data_file in self._raw_data_files.itervalues():
+            raw_data_file.close()
+        # delete all file objects
+        self._raw_data_files.clear()
+        self.raw_data_file = None
 
     @contextmanager
     def readout(self, *args, **kwargs):
