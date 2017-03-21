@@ -147,7 +147,6 @@ class Fei4RunBase(RunBase):
         self._module_register_utils = {}
         self._raw_data_files = {}
         self._module_attr = {}
-        self._scan_attr = {}  # Store specific scan attributes per module to make available after scan
         self._scan_parameters = {}  # Store specific scan parameters per module to make available after scan
         self._parse_module_cfgs(conf)
         self._set_default_cfg(conf)
