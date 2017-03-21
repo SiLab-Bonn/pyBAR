@@ -515,7 +515,7 @@ class Fei4RunBase(RunBase):
                         elif os.path.exists(os.path.join(module_path, bit_file)):
                             bit_file = os.path.join(module_path, bit_file)
                         else:
-                            raise ValueError('bit_file parameter not a valid path: %s' % bit_file)
+                            raise ValueError("Parameter 'bit_file' is not a valid path: %s" % bit_file)
                         dut_configuration['USB']['bit_file'] = bit_file
                 else:
                     dut_configuration = self._conf['dut_configuration']
