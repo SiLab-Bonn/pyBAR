@@ -221,8 +221,6 @@ class Fei4RunBase(RunBase):
     def init_dut(self):
         if self.dut.name == 'mio':
             if self.dut.get_modules('FEI4AdapterCard') and [adapter_card for adapter_card in self.dut.get_modules('FEI4AdapterCard') if adapter_card.name == 'ADAPTER_CARD']:
-                if self._n_modules > 1:
-                    raise RuntimeError('More than one module is not supported by your hardware!')
                 try:
                     self.dut['ADAPTER_CARD'].set_voltage('VDDA1', 1.5)
                     self.dut['ADAPTER_CARD'].set_voltage('VDDA2', 1.5)
@@ -257,8 +255,6 @@ class Fei4RunBase(RunBase):
                 self.dut['ADAPTER_CARD'].set_voltage('CH4', 2.1)
                 self.dut['POWER_QUAD'].write()
                 channel_names = [channel.name for channel in self.dut.get_modules('fei4_rx')]
-                if len(channel_names) < self._n_modules:
-                    raise RuntimeError('Less hardware channels activated than modules defined.')
                 for channel in channel_names:
                     # enabling readout
                     self.dut['ENABLE_CHANNEL'][channel] = 1
@@ -352,11 +348,11 @@ class Fei4RunBase(RunBase):
                     if self._n_modules == 1:
                         chip_address = 0
                     else:
-                        raise RuntimeError('You have to specify a chip address in multi module setups')
+                        raise ValueError("Parameter 'chip_address' not specified for the module %s" % module_id)
                 if 'fe_flavor' in m_config and m_config['fe_flavor']:
                     m_config['fe_configuration'] = FEI4Register(fe_type=m_config['fe_flavor'], chip_address=chip_address, broadcast=False)
                 else:
-                    raise ValueError('No fe_flavor given')
+                    raise ValueError("Parameter 'fe_flavor' not specified for the module %s" % module_id)
             # use existing config
             elif not m_config['fe_configuration'] and last_configuration:
                 m_config['fe_configuration'] = FEI4Register(configuration_file=last_configuration)
@@ -371,8 +367,7 @@ class Fei4RunBase(RunBase):
                 m_config['fe_configuration'] = FEI4Register(configuration_file=self._get_configuration(module_id=module_id,
                                                                                                        run_number=m_config['fe_configuration']))
             # assume fe_configuration already initialized
-            elif not isinstance(m_config['fe_configuration'], FEI4Register):
-                raise ValueError('No valid fe_configuration given')
+                raise ValueError("Found no valid FE configuration for the module %s" % module_id)
 
             # Init FE
 
@@ -476,7 +471,7 @@ class Fei4RunBase(RunBase):
                 elif os.path.exists(os.path.join(module_path, self._conf['dut'])):
                     dut = os.path.join(module_path, self._conf['dut'])
                 else:
-                    raise ValueError('dut parameter not a valid path: %s' % self._conf['dut'])
+                    raise ValueError("Parameter 'dut' is not a valid path: %s" % self._conf['dut'])
                 logging.info('Loading DUT configuration from file %s', os.path.abspath(dut))
             else:
                 dut = self._conf['dut']
@@ -500,7 +495,7 @@ class Fei4RunBase(RunBase):
                     elif os.path.exists(os.path.join(module_path, self._conf['dut_configuration'])):
                         dut_configuration = os.path.join(module_path, self._conf['dut_configuration'])
                     else:
-                        raise ValueError('dut_configuration parameter not a valid path: %s' % self._conf['dut_configuration'])
+                        raise ValueError("Parameter 'dut_configuration' is not a valid path: %s" % self._conf['dut_configuration'])
                     logging.info('Loading DUT initialization parameters from file %s', os.path.abspath(dut_configuration))
                     # convert to dict
                     dut_configuration = RunManager.open_conf(dut_configuration)
