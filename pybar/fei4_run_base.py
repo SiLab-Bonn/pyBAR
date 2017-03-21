@@ -870,24 +870,22 @@ class Fei4RunBase(RunBase):
                 logging.warning("Failed sending pyBAR status report")
 
     def configure(self):
-        '''Implementation of the run configuration.
+        '''The module configuration happens here.
 
-        Will be executed before starting the scan routine. Has to be defined in scan.
+        Will be executed before calling the scan method.
+        Any changes of the module configuration will be reverted after after finishing the scan method.
         '''
-        raise NotImplemented('You have to specify a configure method in your scan!')
+        pass
 
     def scan(self):
-        '''Implementation of the scan routine.
-
-        Do you want to write your own scan? Here is the place to begin. Has to be defined in scan.
+        '''Implementation of the scan.
         '''
-        raise NotImplemented('You have to specify a scan method in your scan!')
+        pass
 
     def analyze(self):
-        '''Implementation of run data processing.
+        '''Implementation of the data analysis.
 
-        Will be executed after finishing the scan routine.
-        Does not have to be defined
+        Will be executed after finishing the scan method.
         '''
         pass
 
