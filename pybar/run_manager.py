@@ -594,7 +594,7 @@ class RunManager(object):
 
     def _signal_handler(self, signum, frame):
         signal.signal(signal.SIGINT, signal.SIG_DFL)  # setting default handler... pressing Ctrl-C a second time will kill application
-        self.stop_current_run('Pressed Ctrl-C')
+        self.abort_current_run('Pressed Ctrl-C')
 
 
 def set_event_when_keyboard_interrupt(_lambda):

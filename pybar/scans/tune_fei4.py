@@ -61,9 +61,7 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
         "pulser_dac_correction": False,  # PlsrDAC correction for each double column
         "scan_parameters": [('GDAC', -1), ('TDAC', -1), ('PrmpVbpf', -1), ('FDAC', -1), ('global_step', 0), ('local_step', 0)],
         # plotting
-        "make_plots": True,  # plots for all scan steps are created
         "plot_intermediate_steps": False,  # plot intermediate steps (takes time)
-        "plots_filename": None,  # file name to store the plot to, if None show on screen
         # other
         "mask_steps": 3,  # mask steps, be carefull PlsrDAC injects different charge for different mask steps
         "same_mask_for_all_dc": True  # Increases scan speed, should be deactivated for very noisy FE
@@ -91,6 +89,7 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
             commands.extend(self.register.get_commands("RunMode"))
             self.register_utils.send_commands(commands)
 
+        self.close_plots = False
 
     def scan(self):
         '''Metascript that calls other scripts to tune the FE.
@@ -125,19 +124,18 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
         if self.local_iterations is None:
             self.local_iterations = -1
 
-        if self.make_plots:
-            self.plots_filename = PdfPages(self.output_filename + '.pdf')
-        else:
-            self.plots_filename = None
-
         for iteration in range(0, self.global_iterations):  # tune iteratively with decreasing range to save time
+            if self.stop_run.is_set():
+                break
             logging.info("Global tuning step %d / %d", iteration + 1, self.global_iterations)
             self.set_scan_parameters(global_step=self.scan_parameters.global_step + 1)
             GdacTuning.scan(self)
+            if self.stop_run.is_set():
+                break
             self.set_scan_parameters(global_step=self.scan_parameters.global_step + 1)
             FeedbackTuning.scan(self)
 
-        if self.global_iterations >= 0:
+        if self.global_iterations >= 0 and not self.stop_run.is_set():
             self.set_scan_parameters(global_step=self.scan_parameters.global_step + 1)
             GdacTuning.scan(self)
 
@@ -148,13 +146,17 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
             logging.info("Results of global feedback tuning: PrmpVbpf = %d", PrmpVbpf)
 
         for iteration in range(0, self.local_iterations):
+            if self.stop_run.is_set():
+                break
             logging.info("Local tuning step %d / %d", iteration + 1, self.local_iterations)
             self.set_scan_parameters(local_step=self.scan_parameters.local_step + 1)
             TdacTuning.scan(self)
+            if self.stop_run.is_set():
+                break
             self.set_scan_parameters(local_step=self.scan_parameters.local_step + 1)
             FdacTuning.scan(self)
 
-        if self.local_iterations >= 0:
+        if self.local_iterations >= 0 and not self.stop_run.is_set():
             self.set_scan_parameters(local_step=self.scan_parameters.local_step + 1)
             TdacTuning.scan(self)
 
@@ -169,15 +171,14 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
         if self.local_iterations >= 0:
             TdacTuning.analyze(self)
 
-        if self.make_plots:
-            if self.local_iterations > 0:
-                plot_three_way(hist=self.tot_mean_best.transpose(), title="Mean ToT after last FDAC tuning", x_axis_title='Mean ToT', filename=self.plots_filename)
-                plot_three_way(hist=self.register.get_pixel_register_value("FDAC").transpose(), title="FDAC distribution after last FDAC tuning", x_axis_title='FDAC', filename=self.plots_filename, maximum=16)
-            if self.local_iterations >= 0:
-                plot_three_way(hist=self.occupancy_best.transpose(), title="Occupancy after tuning", x_axis_title='Occupancy', filename=self.plots_filename, maximum=100)
-                plot_three_way(hist=self.register.get_pixel_register_value("TDAC").transpose(), title="TDAC distribution after complete tuning", x_axis_title='TDAC', filename=self.plots_filename, maximum=32)
+        if self.local_iterations > 0:
+            plot_three_way(hist=self.tot_mean_best.transpose(), title="Mean ToT after last FDAC tuning", x_axis_title='Mean ToT', filename=self.plots_filename)
+            plot_three_way(hist=self.register.get_pixel_register_value("FDAC").transpose(), title="FDAC distribution after last FDAC tuning", x_axis_title='FDAC', filename=self.plots_filename, maximum=16)
+        if self.local_iterations >= 0:
+            plot_three_way(hist=self.occupancy_best.transpose(), title="Occupancy after tuning", x_axis_title='Occupancy', filename=self.plots_filename, maximum=100)
+            plot_three_way(hist=self.register.get_pixel_register_value("TDAC").transpose(), title="TDAC distribution after complete tuning", x_axis_title='TDAC', filename=self.plots_filename, maximum=32)
 
-            self.plots_filename.close()
+        self.plots_filename.close()
 
 if __name__ == "__main__":
     RunManager('../configuration.yaml').run_run(Fei4Tuning)

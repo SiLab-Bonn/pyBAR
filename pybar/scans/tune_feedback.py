@@ -28,7 +28,6 @@ class FeedbackTuning(Fei4RunBase):
         "max_delta_tot": 0.1,
         "enable_mask_steps_feedback": [0],  # mask steps to do per PrmpVbpf setting
         "plot_intermediate_steps": False,
-        "plots_filename": None,
         "enable_shift_masks": ["Enable", "C_High", "C_Low"],  # enable masks shifted during scan
         "disable_shift_masks": [],  # disable masks shifted during scan
         "pulser_dac_correction": False,  # PlsrDAC correction for each double column
@@ -61,13 +60,10 @@ class FeedbackTuning(Fei4RunBase):
         commands.extend(self.register.get_commands("RunMode"))
         self.register_utils.send_commands(commands)
 
-    def scan(self):
-        if not self.plots_filename:
-            self.plots_filename = PdfPages(self.output_filename + '.pdf')
-            self.close_plots = True
-        else:
-            self.close_plots = False
+        self.plots_filename = PdfPages(self.output_filename + '.pdf')
+        self.close_plots = True
 
+    def scan(self):
         def bits_set(int_type):
             int_type = int(int_type)
             position = 0
@@ -101,6 +97,8 @@ class FeedbackTuning(Fei4RunBase):
         feedback_best = self.register.get_global_register_value("PrmpVbpf")
         feedback_tune_bits = self.feedback_tune_bits[:]
         for feedback_bit in feedback_tune_bits:
+            if self.stop_run.is_set():
+                break
             if additional_scan:
                 self.set_prmp_vbpf_bit(feedback_bit, bit_value=1)
                 logging.info('PrmpVbpf setting: %d, set bit %d = 1', self.register.get_global_register_value("PrmpVbpf"), feedback_bit)
@@ -126,7 +124,8 @@ class FeedbackTuning(Fei4RunBase):
                           mask=None,
                           double_column_correction=self.pulser_dac_correction)
 
-            col_row_tot_array = np.column_stack(convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=logical_and(is_fe_word, is_data_record), converter_func=get_col_row_tot_array_from_data_record_array))
+            filter_func = np.logical_and(self.raw_data_file._filter_funcs[self.current_single_handle], is_data_record)
+            col_row_tot_array = np.column_stack(convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=filter_func, converter_func=get_col_row_tot_array_from_data_record_array))
             occupancy_array, _, _ = np.histogram2d(col_row_tot_array[:, 0], col_row_tot_array[:, 1], bins=(80, 336), range=[[1, 80], [1, 336]])
             occupancy_array = np.ma.array(occupancy_array, mask=np.logical_not(np.ma.make_mask(select_mask_array)))  # take only selected pixel into account by creating a mask
             occupancy_array = np.ma.masked_where(occupancy_array > self.n_injections_feedback, occupancy_array)
@@ -181,7 +180,7 @@ class FeedbackTuning(Fei4RunBase):
 
         self.feedback_best = self.register.get_global_register_value("PrmpVbpf")
 
-        if abs(mean_tot - self.target_tot) > 2 * self.max_delta_tot:
+        if abs(mean_tot - self.target_tot) > 2 * self.max_delta_tot and not self.stop_run.is_set():
             if np.all((((self.feedback_best & (1 << np.arange(self.register.global_registers['PrmpVbpf']['bitlength'])))) > 0).astype(int)[self.feedback_tune_bits] == 1):
                 if self.fail_on_warning:
                     raise RuntimeWarning('Selected Feedback bits reached maximum value')

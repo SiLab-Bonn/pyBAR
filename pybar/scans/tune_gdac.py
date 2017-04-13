@@ -6,7 +6,8 @@ import numpy as np
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.fei4.register_utils import scan_loop, make_pixel_mask
 from pybar.run_manager import RunManager
-from pybar.daq.readout_utils import convert_data_array, is_data_record, is_fe_word, logical_and, data_array_from_data_iterable, get_col_row_array_from_data_record_array
+from pybar.daq.readout_utils import convert_data_array, is_data_record, is_fe_word, logical_and, data_array_from_data_iterable, get_col_row_array_from_data_record_array,\
+    is_data_from_channel
 from pybar.analysis.plotting.plotting import plot_three_way
 
 
@@ -28,7 +29,6 @@ class GdacTuning(Fei4RunBase):
         "max_delta_threshold": 5,  # minimum difference to the target_threshold to abort the tuning
         "enable_mask_steps_gdac": [0],  # mask steps to do per GDAC setting
         "plot_intermediate_steps": False,  # plot intermediate steps (takes time)
-        "plots_filename": None,  # file name to store the plot to, if None show on screen
         "enable_shift_masks": ["Enable", "C_High", "C_Low"],  # enable masks shifted during scan
         "disable_shift_masks": [],  # disable masks shifted during scan
         "pulser_dac_correction": False,  # PlsrDAC correction for each double column
@@ -61,12 +61,10 @@ class GdacTuning(Fei4RunBase):
         commands.extend(self.register.get_commands("RunMode"))
         self.register_utils.send_commands(commands)
 
+        self.plots_filename = PdfPages(self.output_filename + '.pdf')
+        self.close_plots = True
+
     def scan(self):
-        if not self.plots_filename:
-            self.plots_filename = PdfPages(self.output_filename + '.pdf')
-            self.close_plots = True
-        else:
-            self.close_plots = False
         cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0]
 
         self.write_target_threshold()
@@ -107,6 +105,8 @@ class GdacTuning(Fei4RunBase):
         gdac_tune_bits = self.gdac_tune_bits[:]
         min_gdac_with_occupancy = None
         for gdac_scan_step, gdac_bit in enumerate(gdac_tune_bits):
+            if self.stop_run.is_set():
+                break
             if additional_scan:
                 self.set_gdac_bit(gdac_bit, bit_value=1, send_command=True)
                 scan_parameter_value = (self.register.get_global_register_value("Vthin_AltCoarse") << 8) + self.register.get_global_register_value("Vthin_AltFine")
@@ -132,7 +132,8 @@ class GdacTuning(Fei4RunBase):
                           mask=None,
                           double_column_correction=self.pulser_dac_correction)
 
-            occupancy_array, _, _ = np.histogram2d(*convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=logical_and(is_fe_word, is_data_record), converter_func=get_col_row_array_from_data_record_array), bins=(80, 336), range=[[1, 80], [1, 336]])
+            filter_func = np.logical_and(self.raw_data_file._filter_funcs[self.current_single_handle], is_data_record)
+            occupancy_array, _, _ = np.histogram2d(*convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=filter_func, converter_func=get_col_row_array_from_data_record_array), bins=(80, 336), range=[[1, 80], [1, 336]])
             occ_array_sel_pixels = np.ma.array(occupancy_array, mask=np.logical_not(np.ma.make_mask(select_mask_array)))  # take only selected pixel into account by using the mask
             occ_array_desel_pixels = np.ma.array(occupancy_array, mask=np.ma.make_mask(select_mask_array))  # take only de-selected pixel into account by using the inverted mask
             median_occupancy = np.ma.median(occ_array_sel_pixels)
@@ -224,7 +225,7 @@ class GdacTuning(Fei4RunBase):
 
         self.gdac_best = self.register_utils.get_gdac()
 
-        if abs(median_occupancy - self.n_injections_gdac / 2) > self.max_delta_threshold:
+        if abs(median_occupancy - self.n_injections_gdac / 2) > self.max_delta_threshold and not self.stop_run.is_set():
             if np.all((((self.gdac_best & (1 << np.arange(self.register.global_registers['Vthin_AltFine']['bitlength'] + self.register.global_registers['Vthin_AltFine']['bitlength'])))) > 0).astype(int)[self.gdac_tune_bits] == 1):
                 if self.fail_on_warning:
                     raise RuntimeWarning('Selected GDAC bits reached maximum value')
