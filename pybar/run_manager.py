@@ -13,7 +13,7 @@ import signal
 import abc
 from contextlib import contextmanager
 from importlib import import_module
-from inspect import getmembers, isclass
+from inspect import getmembers, isclass, getargspec
 from functools import partial
 from ast import literal_eval
 from time import time
@@ -21,7 +21,7 @@ from threading import current_thread
 from functools import wraps
 
 
-punctuation = """!,.:;?"""
+punctuation = '!,.:;?'
 
 
 _RunStatus = namedtuple('RunStatus', ['running', 'finished', 'stopped', 'aborted', 'crashed'])
@@ -38,15 +38,15 @@ class RunStopped(Exception):
     pass
 
 
-class RunBase():
+class RunBase(object):
     '''Basic run meta class
 
     Base class for run class.
     '''
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, conf, run_conf=None):
-        """Initialize object.
+    def __init__(self, conf):
+        '''Initialize object.
 
         Parameters
         ----------
@@ -54,9 +54,9 @@ class RunBase():
             Persistant configuration for all runs.
         run_conf : dict
             Run configuration for single run.
-        """
+        '''
         self._conf = conf
-        self._init_run_conf(run_conf)
+        self._run_conf = None
         self._run_number = None
         self._run_status = None
         self.file_lock = Lock()
@@ -68,12 +68,24 @@ class RunBase():
         self._total_run_time = None
         self._last_error_message = None
         self._last_traceback = None
+        self._cancel_functions = None
+        self.connect_cancel(["abort"])
+        self._initialized = False
 
-#     @abc.abstractproperty
-#     def _run_id(self):
-#         '''Defining run name
-#         '''
-#         pass
+    @property
+    def is_initialized(self):
+        if "_initialized" in self.__dict__ and self._initialized:
+            return True
+        else:
+            return False
+
+    def __getattr__(self, name):
+        ''' This is called in a last attempt to receive the value for an attribute that was not found in the usual places.
+        '''
+        try:
+            return self._run_conf[name]  # Allowing to access run conf parameters
+        except KeyError:
+            raise AttributeError("'%s' has no attribute '%s'" % (self.__class__.__name__, name))
 
     @property
     def run_id(self):
@@ -131,6 +143,7 @@ class RunBase():
 
     def run(self, run_conf, run_number=None, signal_handler=None):
         self._init(run_conf, run_number)
+        self._initialized = True
         logging.info('Starting run %d (%s) in %s', self.run_number, self.__class__.__name__, self.working_dir)
         # set up signal handler
         if current_thread().name == 'MainThread':
@@ -145,10 +158,6 @@ class RunBase():
             self._run_status = run_status.aborted
             self._last_traceback = None
             self._last_error_message = e.__class__.__name__ + ": " + str(e)
-        except RunStopped as e:
-            self._run_status = run_status.finished
-            self._last_traceback = None
-            self._last_error_message = e.__class__.__name__ + ": " + str(e)
         except Exception as e:
             self._run_status = run_status.crashed
             self._last_traceback = traceback.format_exc()
@@ -157,6 +166,8 @@ class RunBase():
             self._run_status = run_status.finished
             self._last_traceback = None
             self._last_error_message = None
+        finally:
+            self._initialized = False
         # revert signal handler to default
         if current_thread().name == 'MainThread':
             signal.signal(signal.SIGINT, signal.SIG_DFL)
@@ -181,24 +192,21 @@ class RunBase():
         return self.run_status
 
     def _init(self, run_conf, run_number=None):
-        """Initialization before a new run."""
+        '''Initialization before a new run.
+        '''
         self.stop_run.clear()
         self.abort_run.clear()
         self._run_status = run_status.running
         self._write_run_number(run_number)
-        self._init_run_conf(run_conf, update=True)
+        self._init_run_conf(run_conf)
 
-    def _init_run_conf(self, run_conf, update=False):
+    def _init_run_conf(self, run_conf):
         sc = namedtuple('run_configuration', field_names=self._default_run_conf.keys())
-        if update:
-            default_run_conf = sc(**self._run_conf)
-        else:
-            default_run_conf = sc(**self._default_run_conf)
+        default_run_conf = sc(**self._default_run_conf)
         if run_conf:
             self._run_conf = default_run_conf._replace(**run_conf)._asdict()
         else:
             self._run_conf = default_run_conf._asdict()
-        self.__dict__.update(self._run_conf)
 
     @contextmanager
     def _run(self):
@@ -206,37 +214,65 @@ class RunBase():
             self.pre_run()
             yield
             self.post_run()
+            if self.abort_run.is_set():
+                raise RunAborted()
         finally:
             self.cleanup_run()
 
     @abc.abstractmethod
     def pre_run(self):
-        """Before run."""
+        '''Before run.
+        '''
         pass
 
     @abc.abstractmethod
     def do_run(self):
-        """The run."""
+        '''The run.
+        '''
         pass
 
     @abc.abstractmethod
     def post_run(self):
-        """After run."""
+        '''After run.
+        '''
         pass
 
     @abc.abstractmethod
     def cleanup_run(self):
-        """Cleanup after run, will be executed always, even after exception. Avoid throwing exceptions here.
-        """
+        '''Cleanup after run, will be executed always, even after exception. Avoid throwing exceptions here.
+        '''
         pass
 
     def _cleanup(self):
-        """Cleanup after a new run."""
+        '''Cleanup after a new run.
+        '''
         self._write_run_status(self.run_status)
 
+    def connect_cancel(self, functions):
+        '''Run given functions when a run is cancelled.
+        '''
+        self._cancel_functions = []
+        for func in functions:
+            if isinstance(func, basestring) and hasattr(self, func) and callable(getattr(self, func)):
+                self._cancel_functions.append(getattr(self, func))
+            elif callable(func):
+                self._cancel_functions.append(func)
+            else:
+                raise ValueError("Unknown function %s" % str(func))
+
+    def handle_cancel(self, **kwargs):
+        '''Cancelling a run.
+        '''
+        for func in self._cancel_functions:
+            f_args = getargspec(func)[0]
+            f_kwargs = {key: kwargs[key] for key in f_args if key in kwargs}
+            func(**f_kwargs)
+
     def stop(self, msg=None):
-        """Stopping a run. Control for loops.
-        """
+        '''Stopping a run. Control for loops. Gentle stop/abort.
+
+        This event should provide a more gentle abort. The run should stop ASAP but the run is still considered complete.
+        '''
         if not self.stop_run.is_set():
             if msg:
                 logging.info('%s%s Stopping run...', msg, ('' if msg[-1] in punctuation else '.'))
@@ -245,8 +281,10 @@ class RunBase():
         self.stop_run.set()
 
     def abort(self, msg=None):
-        """Aborting a run. Control for loops. Immediate abort.
-        """
+        '''Aborting a run. Control for loops. Immediate stop/abort.
+
+        The implementation should stop a run ASAP when this event is set. The run is considered incomplete.
+        '''
         if not self.abort_run.is_set():
             if msg:
                 logging.error('%s%s Aborting run...', msg, ('' if msg[-1] in punctuation else '.'))
@@ -314,14 +352,14 @@ class RunBase():
 
     def _signal_handler(self, signum, frame):
         signal.signal(signal.SIGINT, signal.SIG_DFL)  # setting default handler... pressing Ctrl-C a second time will kill application
-        self.stop('Pressed Ctrl-C')
+        self.handle_cancel(msg='Pressed Ctrl-C')
 
 
 def thunkify(thread_name):
-    """Make a function immediately return a function of no args which, when called,
+    '''Make a function immediately return a function of no args which, when called,
     waits for the result, which will start being processed in another thread.
     Taken from https://wiki.python.org/moin/PythonDecoratorLibrary.
-    """
+    '''
     def actual_decorator(f):
         @functools.wraps(f)
         def thunked(*args, **kwargs):
@@ -445,15 +483,10 @@ class RunManager(object):
             conf_dict.update(conf)
         return conf_dict
 
-    def stop_current_run(self, msg=None):
+    def cancel_current_run(self, msg=None):
         '''Control for runs.
         '''
-        self.current_run.stop(msg)
-
-    def abort_current_run(self, msg=None):
-        '''Control for runs. Immediate abort.
-        '''
-        self.current_run.abort(msg)
+        self.current_run.handle_cancel(msg=msg)
 
     def run_run(self, run, conf=None, run_conf=None, use_thread=False, catch_exception=True):
         '''Runs a run in another thread. Non-blocking.
@@ -594,7 +627,7 @@ class RunManager(object):
 
     def _signal_handler(self, signum, frame):
         signal.signal(signal.SIGINT, signal.SIG_DFL)  # setting default handler... pressing Ctrl-C a second time will kill application
-        self.abort_current_run('Pressed Ctrl-C')
+        self.cancel_current_run(msg='Pressed Ctrl-C')
 
 
 def set_event_when_keyboard_interrupt(_lambda):

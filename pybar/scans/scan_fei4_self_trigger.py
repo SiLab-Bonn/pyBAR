@@ -93,8 +93,9 @@ class FEI4SelfTriggerScan(Fei4RunBase):
         self.register_utils.send_commands(commands)
 
     def start_readout(self, *args, **kwargs):
+        self.connect_cancel(["stop"])
         super(FEI4SelfTriggerScan, self).start_readout(*args, **kwargs)
-        self.set_self_trigger(True)
+        self.set_self_trigger(enable=True)
 
         def timeout():
             try:
@@ -109,8 +110,10 @@ class FEI4SelfTriggerScan(Fei4RunBase):
 
     def stop_readout(self, timeout=10.0):
         self.scan_timeout_timer.cancel()
-        self.set_self_trigger(False)
+        self.connect_cancel(["abort"])
+        self.set_self_trigger(enable=False)
         super(FEI4SelfTriggerScan, self).stop_readout(timeout=timeout)
+
 
 if __name__ == "__main__":
     RunManager('../configuration.yaml').run_run(FEI4SelfTriggerScan)

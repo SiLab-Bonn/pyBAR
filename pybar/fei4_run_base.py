@@ -134,15 +134,9 @@ class Fei4RunBase(RunBase):
     '''
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, conf, run_conf=None):
-        # default run conf parameters added for all scans
-        if 'comment' not in self._default_run_conf:
-            self._default_run_conf.update({'comment': ''})
-        if 'reset_rx_on_error' not in self._default_run_conf:
-            self._default_run_conf.update({'reset_rx_on_error': False})
-
+    def __init__(self, conf):
         # Sets self._conf = conf
-        super(Fei4RunBase, self).__init__(conf=conf, run_conf=run_conf)
+        super(Fei4RunBase, self).__init__(conf=conf)
         # settting up scan
         self.set_scan_mode()
 
@@ -161,7 +155,13 @@ class Fei4RunBase(RunBase):
         self.deselect_module()  # Initialize handles
         self._initialized = True
 
-        # Data structures to store scan related data
+    def _init_run_conf(self, run_conf):
+        # set up default run conf parameters
+        self._default_run_conf.setdefault('comment', '{}'.format(self.__class__.__name__))
+        self._default_run_conf.setdefault('reset_rx_on_error', False)
+
+        super(Fei4RunBase, self)._init_run_conf(run_conf=run_conf)
+
     @property
     def is_initialized(self):
         if "_initialized" in self.__dict__ and self._initialized:
@@ -172,8 +172,8 @@ class Fei4RunBase(RunBase):
     def set_scan_mode(self):
         ''' Called during init to set scan in serial or paralle mode.
 
-            Overwrite this function in the scan to change the mode.
-            Std. setting is parallel.
+        Overwrite this function in the scan to change the mode.
+        Std. setting is parallel.
         '''
         self.parallel = True
 
@@ -199,8 +199,7 @@ class Fei4RunBase(RunBase):
         ''' Sets the default parameters if they are not specified.
         '''
         # Adding here default run config parameters.
-        if 'working_dir' not in conf:
-            conf.update({'working_dir': ''})  # path string, if empty, path of configuration.yaml file will be used
+        conf.setdefault('working_dir', '')  # path string, if empty, path of configuration.yaml file will be used
 
         fe_flavors = set([module_cfg['fe_flavor'] for module_cfg in self._module_cfgs.values()])
         if len(fe_flavors) != 1 and self.parallel:
@@ -213,15 +212,11 @@ class Fei4RunBase(RunBase):
                 'chip_address': None}
 
         # Adding here default module config items.
-        for module_id, module_cfg in self._module_cfgs.items():
-            if 'send_data' not in module_cfg:
-                module_cfg.update({'send_data': None})  # address string of PUB socket
-            if 'send_error_msg' not in module_cfg:
-                module_cfg.update({'send_error_msg': None})  # bool, None
-            if 'fe_configuration' not in module_cfg:
-                module_cfg.update({'fe_configuration': None})  # value, None
-            if 'rx' not in module_cfg:
-                module_cfg.update({'rx': None})  # value, None
+        for module_cfg in self._module_cfgs.values():
+            module_cfg.setdefault('send_data', None)  # address string of PUB socket
+            module_cfg.setdefault('send_error_msg', None)  # bool, None
+            module_cfg.setdefault('fe_configuration', None)  # value, None
+            module_cfg.setdefault('rx', None)  # value, None
             # TODO: message missing
 
     @property
@@ -578,6 +573,8 @@ class Fei4RunBase(RunBase):
     def post_run(self):
         # analyzing data and store register cfg per front end one by one
         for module_id in sorted(self._module_cfgs.keys(), key=lambda x: (x is not None, x)):
+            if self.abort_run.is_set():
+                    break
             if module_id is None:
                 continue
             with self.access_module(module_id=module_id):
@@ -596,11 +593,6 @@ class Fei4RunBase(RunBase):
             # some other error via handle_err(), print traceback
             else:
                 raise exc[0], exc[1], exc[2]
-        elif self.abort_run.is_set():
-            raise RunAborted()
-        elif self.stop_run.is_set():
-            raise RunStopped()
-        # if ending up here, succcess!
 
     def cleanup_run(self):
         # no execption should be thrown here
@@ -722,7 +714,7 @@ class Fei4RunBase(RunBase):
     def __setattr__(self, name, value):
         ''' Always called to retrun the value for an attribute.
         '''
-        if self.is_initialized and (not hasattr(self, name) or (hasattr(self, "current_single_handle") and self.current_single_handle in self._module_attr and name in self._module_attr[self.current_single_handle])):
+        if self.is_initialized and name not in self.__dict__:
             if self.current_single_handle not in self._module_attr:
                 self._module_attr[self.current_single_handle] = {}
             self._module_attr[self.current_single_handle][name] = value
@@ -733,12 +725,15 @@ class Fei4RunBase(RunBase):
         ''' This is called in a last attempt to receive the value for an attribute that was not found in the usual places.
         '''
         try:
-            return self._module_attr[self.current_single_handle][name]
+            return self._module_attr[self.current_single_handle][name]  # this has to come first
         except KeyError:
             try:
-                return self._module_attr[None][name]
-            except KeyError:
-                raise AttributeError("'%s' (current handle '%s') has no attribute '%s'" % (self.__class__.__name__, self.current_single_handle, name))
+                return super(Fei4RunBase, self).__getattr__(name=name)
+            except AttributeError:
+                try:
+                    return self._module_attr[None][name]
+                except KeyError:
+                    raise AttributeError("'%s' (current handle '%s') has no attribute '%s'" % (self.__class__.__name__, self.current_single_handle, name))
 
     @contextmanager
     def access_module(self, module_id):
