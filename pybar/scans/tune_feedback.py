@@ -203,7 +203,7 @@ class FeedbackTuning(Fei4RunBase):
         # set here because original value is restored after scan()
         self.register.set_global_register_value("PrmpVbpf", self.feedback_best)
 
-        plot_tot(hist=self.tot_hist, title='ToT distribution after feedback tuning (PrmpVbpf %d)' % self.scan_parameters.PrmpVbpf, filename=self.plots_filename)
+        plot_tot(hist=self.tot_hist, title='ToT distribution after feedback tuning (PrmpVbpf %d)' % self.feedback_best, filename=self.plots_filename)
         if self.close_plots:
             self.plots_filename.close()
 
