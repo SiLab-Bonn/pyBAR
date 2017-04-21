@@ -98,10 +98,12 @@ class GdacTuningStandard(Fei4RunBase):
             logging.info('Deselect double column %d' % column)
             select_mask_array[column, :] = 0
 
-        occupancy_best = 0.0
-        median_occupancy_last_step = 0.0
-        gdac_best = self.register_utils.get_gdac()
-        for gdac_scan_step, scan_parameter_value in enumerate(scan_parameter_range):
+        gdac_values = []
+        gdac_occupancy = []
+        gdac_occ_array_sel_pixels = []
+        gdac_occ_array_desel_pixels = []
+        median_occupancy_last_step = None
+        for scan_parameter_value in scan_parameter_range:
             self.register_utils.set_gdac(scan_parameter_value)
             with self.readout(GDAC=scan_parameter_value, reset_sram_fifo=True, fill_buffer=True, clear_buffer=True, callback=self.handle_data):
                 scan_loop(self,
@@ -127,24 +129,40 @@ class GdacTuningStandard(Fei4RunBase):
             noise_occupancy = np.ma.median(occ_array_desel_pixels)
             occupancy_almost_zero = np.allclose(median_occupancy, 0)
             no_noise = np.allclose(noise_occupancy, 0)
-            if no_noise and not occupancy_almost_zero and abs(median_occupancy - self.n_injections_gdac / 2) < abs(occupancy_best - self.n_injections_gdac / 2):
-                occupancy_best = median_occupancy
-                gdac_best = self.register_utils.get_gdac()
-                self.occ_array_sel_pixels_best = occ_array_sel_pixels.copy()
-                self.occ_array_desel_pixels_best = occ_array_desel_pixels.copy()
+            gdac_values.append(self.register_utils.get_gdac())
+            gdac_occupancy.append(median_occupancy)
+            gdac_occ_array_sel_pixels.append(occ_array_sel_pixels.copy())
+            gdac_occ_array_desel_pixels.append(occ_array_desel_pixels.copy())
+            self.occ_array_sel_pixels_best = occ_array_sel_pixels.copy()
+            self.occ_array_desel_pixels_best = occ_array_desel_pixels.copy()
 
             if self.plot_intermediate_steps:
                 plot_three_way(self.occ_array_sel_pixel.transpose(), title="Occupancy (GDAC " + str(scan_parameter_value) + ")", x_axis_title='Occupancy', filename=self.plots_filename, maximum=self.n_injections_gdac)
 
-            if no_noise and not occupancy_almost_zero and median_occupancy >= median_occupancy_last_step and median_occupancy >= self.n_injections_gdac / 2:
+            # abort early if threshold is found
+            if no_noise and not occupancy_almost_zero and (median_occupancy_last_step is not None and median_occupancy >= median_occupancy_last_step) and median_occupancy >= self.n_injections_gdac / 2:
                 break
+
             if no_noise and not occupancy_almost_zero:
                 median_occupancy_last_step = median_occupancy
             else:
                 median_occupancy_last_step = 0.0
 
-        self.register_utils.set_gdac(gdac_best, send_command=False)
+        # select best GDAC value
+        occupancy_sorted = np.array(gdac_occupancy)[np.argsort(np.array(gdac_values))]
+        gdac_sorted = np.sort(gdac_values)
+        gdac_min_idx = np.where(occupancy_sorted >= self.n_injections_gdac / 2)[0][-1]
+        occupancy_sorted_sel = occupancy_sorted[gdac_min_idx:]
+        gdac_sorted_sel = gdac_sorted[gdac_min_idx:]
+        gdac_best_idx = np.abs(np.array(occupancy_sorted_sel) - self.n_injections_gdac / 2).argmin()
+        gdac_best = gdac_sorted_sel[gdac_best_idx]
+        occupancy_best = occupancy_sorted_sel[gdac_best_idx]
         median_occupancy = occupancy_best
+        self.register_utils.set_gdac(gdac_best, send_command=False)
+        # for plotting
+        self.occ_array_sel_pixels_best = np.array(gdac_occ_array_sel_pixels)[np.argsort(np.array(gdac_values))][gdac_best_idx]
+        self.occ_array_desel_pixels_best = np.array(gdac_occ_array_sel_pixels)[np.argsort(np.array(gdac_values))][gdac_best_idx]
+
         self.gdac_best = self.register_utils.get_gdac()
 
         if abs(median_occupancy - self.n_injections_gdac / 2) > self.max_delta_threshold:

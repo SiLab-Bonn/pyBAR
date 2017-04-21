@@ -85,8 +85,6 @@ class GdacTuning(Fei4RunBase):
 
         # calculate selected pixels from the mask and the disabled columns
         select_mask_array = np.zeros(shape=(80, 336), dtype=np.uint8)
-        self.occ_array_sel_pixels_best = select_mask_array.copy()
-        self.occ_array_desel_pixels_best = select_mask_array.copy()
         if not self.enable_mask_steps_gdac:
             self.enable_mask_steps_gdac = range(self.mask_steps)
         for mask_step in self.enable_mask_steps_gdac:
@@ -97,11 +95,13 @@ class GdacTuning(Fei4RunBase):
 
         additional_scan = True
         additional_scan_ongoing = False
-        occupancy_best = 0.0
         last_good_gdac_bit = self.gdac_tune_bits[0]
         last_good_gdac_scan_step = 0
         gdac_tune_bits_permutation = 0
-        gdac_best = self.register_utils.get_gdac()
+        gdac_values = []
+        gdac_occupancy = []
+        gdac_occ_array_sel_pixels = []
+        gdac_occ_array_desel_pixels = []
         gdac_tune_bits = self.gdac_tune_bits[:]
         min_gdac_with_occupancy = None
         for gdac_scan_step, gdac_bit in enumerate(gdac_tune_bits):
@@ -140,11 +140,12 @@ class GdacTuning(Fei4RunBase):
             noise_occupancy = np.ma.median(occ_array_desel_pixels)
             occupancy_almost_zero = np.allclose(median_occupancy, 0)
             no_noise = np.allclose(noise_occupancy, 0)
-            if abs(median_occupancy - self.n_injections_gdac / 2) < abs(occupancy_best - self.n_injections_gdac / 2):
-                occupancy_best = median_occupancy
-                gdac_best = self.register_utils.get_gdac()
-                self.occ_array_sel_pixels_best = occ_array_sel_pixels.copy()
-                self.occ_array_desel_pixels_best = occ_array_desel_pixels.copy()
+            gdac_values.append(self.register_utils.get_gdac())
+            gdac_occupancy.append(median_occupancy)
+            gdac_occ_array_sel_pixels.append(occ_array_sel_pixels.copy())
+            gdac_occ_array_desel_pixels.append(occ_array_desel_pixels.copy())
+            self.occ_array_sel_pixels_best = occ_array_sel_pixels.copy()
+            self.occ_array_desel_pixels_best = occ_array_desel_pixels.copy()
 
             if self.plot_intermediate_steps:
                 plot_three_way(self.occ_array_sel_pixel.transpose(), title="Occupancy (GDAC " + str(scan_parameter_value) + " with tuning bit " + str(gdac_bit) + ")", x_axis_title='Occupancy', filename=self.plots_filename, maximum=self.n_injections_gdac)
@@ -218,10 +219,21 @@ class GdacTuning(Fei4RunBase):
                         logging.info('Keep bit 0 = 0')
 
         # select best GDAC value
-        if abs(occupancy_best - self.n_injections_gdac / 2) < abs(median_occupancy - self.n_injections_gdac / 2):
+        occupancy_sorted = np.array(gdac_occupancy)[np.argsort(np.array(gdac_values))]
+        gdac_sorted = np.sort(gdac_values)
+        gdac_min_idx = np.where(occupancy_sorted >= self.n_injections_gdac / 2)[0][-1]
+        occupancy_sorted_sel = occupancy_sorted[gdac_min_idx:]
+        gdac_sorted_sel = gdac_sorted[gdac_min_idx:]
+        gdac_best_idx = np.abs(np.array(occupancy_sorted_sel) - self.n_injections_gdac / 2).argmin()
+        gdac_best = gdac_sorted_sel[gdac_best_idx]
+        occupancy_best = occupancy_sorted_sel[gdac_best_idx]
+        if gdac_best != self.register_utils.get_gdac():
             logging.info("Binary search converged to non-optimal value, apply best GDAC value, change GDAC from %d to %d", self.register_utils.get_gdac(), gdac_best)
             median_occupancy = occupancy_best
             self.register_utils.set_gdac(gdac_best, send_command=False)
+            # for plotting
+            self.occ_array_sel_pixels_best = np.array(gdac_occ_array_sel_pixels)[np.argsort(np.array(gdac_values))][gdac_best_idx]
+            self.occ_array_desel_pixels_best = np.array(gdac_occ_array_sel_pixels)[np.argsort(np.array(gdac_values))][gdac_best_idx]
 
         self.gdac_best = self.register_utils.get_gdac()
 
