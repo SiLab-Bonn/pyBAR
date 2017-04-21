@@ -8,7 +8,7 @@ from pybar.fei4.register_utils import invert_pixel_mask
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.fei4.register_utils import scan_loop
 from pybar.run_manager import RunManager
-from pybar.daq.readout_utils import get_col_row_array_from_data_record_array, convert_data_array, is_data_record, data_array_from_data_iterable
+from pybar.daq.readout_utils import get_col_row_array_from_data_record_array, convert_data_array, is_data_record, data_array_from_data_iterable, logical_and
 
 
 class FastThresholdScan(Fei4RunBase):
@@ -110,7 +110,7 @@ class FastThresholdScan(Fei4RunBase):
                 if not self.stop_condition_triggered and self.record_data:
                     logging.info('Testing for stop condition: %s %d', 'PlsrDAC', self.scan_parameter_value)
 
-                filter_func = np.logical_and(self.raw_data_file._filter_funcs[self.current_single_handle], is_data_record)
+                filter_func = logical_and(self.raw_data_file._filter_funcs[self.current_single_handle], is_data_record)
                 col, row = convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=filter_func, converter_func=get_col_row_array_from_data_record_array)
                 if np.any(np.logical_and(col < 1, col > 80)) or np.any(np.logical_and(row < 1, row > 336)):  # filter bad data records that can happen
                     logging.warning('There are undefined %d data records (e.g. random data)', np.count_nonzero(np.logical_and(col < 1, col > 80)) + np.count_nonzero(np.logical_and(row < 1, row > 336)))
