@@ -705,7 +705,8 @@ class Fei4RunBase(RunBase):
                     raise TypeError('Got multiple values for keyword argument %s' % field)
                 fields[field] = value
         scan_parameters_old = self.scan_parameters._asdict()
-        self.scan_parameters = self.scan_parameters._replace(**fields)
+        self._scan_parameters[self.current_single_handle] = self.scan_parameters._replace(**fields)
+        self.scan_parameters = self._scan_parameters[self.current_single_handle]
         scan_parameters_new = self.scan_parameters._asdict()
         diff = [name for name in scan_parameters_old.keys() if np.any(scan_parameters_old[name] != scan_parameters_new[name])]
         if diff:
