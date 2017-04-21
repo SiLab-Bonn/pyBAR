@@ -372,7 +372,7 @@ class Fei4RunBase(RunBase):
         ''' Initialize all modules consecutevly'''
         for module_id in sorted(self._module_cfgs.keys(), key=lambda x: (x is not None, x)):
             module_cfg = self._module_cfgs[module_id]
-            logging.info("Initializing module %s..." % module_id)
+            logging.info("Initializing %s..." % "broadcast module" if module_id is None else module_id)
             # adding scan parameters for each module
             if 'scan_parameters' in self._run_conf:
                 if isinstance(self._run_conf['scan_parameters'], basestring):
