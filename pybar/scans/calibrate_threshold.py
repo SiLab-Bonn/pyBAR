@@ -14,7 +14,6 @@ import numpy as np
 import progressbar
 
 from pybar_fei4_interpreter import data_struct
-
 from pybar.run_manager import RunManager
 from pybar.scans.scan_threshold_fast import FastThresholdScan
 from pybar.analysis import analysis_utils

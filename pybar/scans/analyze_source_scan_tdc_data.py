@@ -359,6 +359,7 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
                     elif 'HistTdcCorr' in node.name:
                         plot_tdc_tot_correlation(node[:], node._v_attrs.condition, output_pdf)
 
+
 if __name__ == "__main__":
     raw_data_files = analysis_utils.get_data_file_names_from_scan_base(analysis_configuration['scan_name'])
     logging.info('Found ' + str(len(raw_data_files)) + ' raw data file(s)')

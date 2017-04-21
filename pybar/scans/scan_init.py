@@ -13,10 +13,11 @@ class InitScan(Fei4RunBase):
         pass
 
     def scan(self):
-        logging.info('Init run...')
+        pass
 
     def analyze(self):
         pass
+
 
 if __name__ == "__main__":
     RunManager('../configuration.yaml').run_run(InitScan)

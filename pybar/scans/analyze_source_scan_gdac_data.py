@@ -249,6 +249,7 @@ def analyze_injected_charge(data_analyzed_file):
                 if analysis_configuration['use_cluster_rate_correction']:
                     correction_h5.close()
 
+
 if __name__ == "__main__":
     data_files = analysis_utils.get_data_file_names_from_scan_base(analysis_configuration['scan_name'])
     files_dict = analysis_utils.get_parameter_from_files(data_files, unique=True, parameters='GDAC')  # get a sorted ordered dict with GDAC, raw_data_filename

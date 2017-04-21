@@ -78,5 +78,6 @@ class AnalogScan(Fei4RunBase):
     def deactivate_tdc(self):
         self.tdc['ENABLE'] = False
 
+
 if __name__ == "__main__":
     RunManager('../configuration.yaml').run_run(AnalogScan)

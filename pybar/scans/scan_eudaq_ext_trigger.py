@@ -1,6 +1,8 @@
 #!/usr/bin/env python2
 
 import logging
+
+import sys
 from optparse import OptionParser
 import numpy as np
 from time import time, strftime, gmtime, sleep
@@ -9,9 +11,9 @@ from pybar.run_manager import RunManager, run_status
 from pybar.scans.scan_ext_trigger import ExtTriggerScan
 from pybar.daq.readout_utils import build_events_from_raw_data, is_trigger_word
 
-import sys
-sys.path.append('/home/telescope/eudaq/python/')
 from PyEUDAQWrapper import PyProducer
+
+sys.path.append('/home/telescope/eudaq/python/')
 
 
 class EudaqExtTriggerScan(ExtTriggerScan):

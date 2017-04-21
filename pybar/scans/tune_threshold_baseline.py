@@ -4,7 +4,7 @@ import numpy as np
 import progressbar
 from collections import deque
 
-from pybar.daq.readout_utils import get_col_row_array_from_data_record_array, convert_data_array, data_array_from_data_iterable, is_fe_word, is_data_record, logical_and
+from pybar.daq.readout_utils import get_col_row_array_from_data_record_array, convert_data_array, data_array_from_data_iterable, is_data_record, logical_and
 # from pybar.daq.readout_utils import data_array_from_data_iterable
 # from pybar_fei4_interpreter.data_interpreter import PyDataInterpreter
 # from pybar_fei4_interpreter.data_histograming import PyDataHistograming

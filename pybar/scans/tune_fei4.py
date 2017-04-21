@@ -1,7 +1,5 @@
 import logging
 
-from matplotlib.backends.backend_pdf import PdfPages
-
 from pybar.run_manager import RunManager
 from pybar.scans.tune_gdac import GdacTuning
 from pybar.scans.tune_feedback import FeedbackTuning
@@ -74,7 +72,7 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
     def configure(self):
         super(Fei4Tuning, self).configure()
 
-        # overwrite pixel registers and set them to center postion before a global tuning 
+        # overwrite pixel registers and set them to center postion before a global tuning
         if self.reset_local_dacs and self.global_iterations:
             commands = []
             commands.extend(self.register.get_commands("ConfMode"))
@@ -179,6 +177,7 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
             plot_three_way(hist=self.register.get_pixel_register_value("TDAC").transpose(), title="TDAC distribution after complete tuning", x_axis_title='TDAC', filename=self.plots_filename, maximum=32)
 
         self.plots_filename.close()
+
 
 if __name__ == "__main__":
     RunManager('../configuration.yaml').run_run(Fei4Tuning)
