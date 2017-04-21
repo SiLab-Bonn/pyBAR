@@ -1215,7 +1215,7 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, additional_dela
 
     # restoring default values
     self.register.restore(name=restore_point_name)
-    self.register_utils.configure_global()  # always restore global configuration
+    #self.register_utils.configure_global()  # always restore global configuration
     if restore_shift_masks:
         commands = []
         commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, name=disable_shift_masks))
