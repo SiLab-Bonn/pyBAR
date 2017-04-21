@@ -165,7 +165,7 @@ class GdacTuningStandard(Fei4RunBase):
 
         self.gdac_best = self.register_utils.get_gdac()
 
-        if abs(median_occupancy - self.n_injections_gdac / 2) > self.max_delta_threshold:
+        if abs(median_occupancy - self.n_injections_gdac / 2) > self.max_delta_threshold and not self.stop_run.is_set():
             if np.all((((self.gdac_best & (1 << np.arange(self.register.global_registers['Vthin_AltFine']['bitlength'] + self.register.global_registers['Vthin_AltFine']['bitlength'])))) > 0).astype(int) == 0):
                 if self.fail_on_warning:
                     raise RuntimeWarning('Selected GDAC bits reached minimum value')
