@@ -712,8 +712,8 @@ class Fei4RunBase(RunBase):
                     raise TypeError('Got multiple values for keyword argument %s' % field)
                 fields[field] = value
         scan_parameters_old = self.scan_parameters._asdict()
-        self._scan_parameters[self.current_single_handle] = self.scan_parameters._replace(**fields)
-        self.scan_parameters = self._scan_parameters[self.current_single_handle]
+        self._scan_parameters[self.current_module_handle] = self.scan_parameters._replace(**fields)
+        self.scan_parameters = self._scan_parameters[self.current_module_handle]
         scan_parameters_new = self.scan_parameters._asdict()
         diff = [name for name in scan_parameters_old.keys() if np.any(scan_parameters_old[name] != scan_parameters_new[name])]
         if diff:
@@ -723,9 +723,9 @@ class Fei4RunBase(RunBase):
         ''' Always called to retrun the value for an attribute.
         '''
         if self.is_initialized and name not in self.__dict__:
-            if self.current_single_handle not in self._module_attr:
-                self._module_attr[self.current_single_handle] = {}
-            self._module_attr[self.current_single_handle][name] = value
+            if self.current_module_handle not in self._module_attr:
+                self._module_attr[self.current_module_handle] = {}
+            self._module_attr[self.current_module_handle][name] = value
         else:
             super(Fei4RunBase, self).__setattr__(name, value)
 
@@ -733,7 +733,7 @@ class Fei4RunBase(RunBase):
         ''' This is called in a last attempt to receive the value for an attribute that was not found in the usual places.
         '''
         try:
-            return self._module_attr[self.current_single_handle][name]  # this has to come first
+            return self._module_attr[self.current_module_handle][name]  # this has to come first
         except KeyError:
             try:
                 return super(Fei4RunBase, self).__getattr__(name=name)
@@ -741,7 +741,7 @@ class Fei4RunBase(RunBase):
                 try:
                     return self._module_attr[None][name]
                 except KeyError:
-                    raise AttributeError("'%s' (current handle '%s') has no attribute '%s'" % (self.__class__.__name__, self.current_single_handle, name))
+                    raise AttributeError("'%s' (current handle '%s') has no attribute '%s'" % (self.__class__.__name__, self.current_module_handle, name))
 
     @contextmanager
     def access_module(self, module_id):
@@ -755,7 +755,7 @@ class Fei4RunBase(RunBase):
     def select_module(self, module_id):
         ''' Select module and give access to the module.
         '''
-        self.current_single_handle = module_id
+        self.current_module_handle = module_id
         self.scan_parameters = self.get_scan_parameters(module_id=module_id)
         self.register = self.get_register(module_id=module_id)
         self.register_utils = self.get_register_utils(module_id=module_id)
@@ -764,7 +764,7 @@ class Fei4RunBase(RunBase):
     def deselect_module(self):
         ''' Deselect module and cleanup.
         '''
-        self.current_single_handle = None
+        self.current_module_handle = None
         self.scan_parameters = None
         self.register = None
         self.register_utils = None
@@ -826,8 +826,8 @@ class Fei4RunBase(RunBase):
         converter_f = kwargs.pop('converter', None)
         enabled_fe_channels = kwargs.pop('enabled_channels', filter(None, [item['rx'] for item in self._module_cfgs.itervalues()]))
         # this is the implementation for a filter and converter for a individual module
-#         if self.current_single_handle is not None:
-#             module_cfg = self._module_cfgs[self.current_single_handle]
+#         if self.current_module_handle is not None:
+#             module_cfg = self._module_cfgs[self.current_module_handle]
 #             if 'rx_channel' in module_cfg and module_cfg['rx_channel']:
 #                 rx_filter = logical_and(is_fe_word, is_data_from_channel(module_cfg['rx_channel']))
 #             else:
