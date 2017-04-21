@@ -161,11 +161,13 @@ class FifoReadout(object):
         logging.info('Data queue size: %d', len(self._data_deque))
         logging.info('SRAM FIFO size: %d', self.dut['SRAM']['FIFO_SIZE'])
         # FEI4
+        enable_status = self.get_rx_enable_status()
         sync_status = self.get_rx_sync_status()
         discard_count = self.get_rx_fifo_discard_count()
         error_count = self.get_rx_8b10b_error_count(channels=None)
         if self.dut.get_modules('fei4_rx'):
             logging.info('FEI4 Channel:                     %s', " | ".join([channel.name.rjust(3) for channel in self.dut.get_modules('fei4_rx')]))
+            logging.info('FEI4 RX enable:                   %s', " | ".join(["YES".rjust(3) if status is True else "NO".rjust(3) for status in enable_status]))
             logging.info('FEI4 RX sync:                     %s', " | ".join(["YES".rjust(3) if status is True else "NO".rjust(3) for status in sync_status]))
             logging.info('FEI4 RX FIFO discard counter:     %s', " | ".join([repr(count).rjust(3) for count in discard_count]))
             logging.info('FEI4 RX FIFO 8b10b error counter: %s', " | ".join([repr(count).rjust(3) for count in error_count]))
@@ -301,6 +303,12 @@ class FifoReadout(object):
         else:
             filter(lambda channel: channel.RX_RESET, self.dut.get_modules('fei4_rx'))
         sleep(0.1)  # sleep here for a while
+
+    def get_rx_enable_status(self, channels=None):
+        if channels:
+            return map(lambda channel: True if self.dut[channel].ENABLE_RX else False, channels)
+        else:
+            return map(lambda channel: True if channel.ENABLE_RX else False, self.dut.get_modules('fei4_rx'))
 
     def get_rx_sync_status(self, channels=None):
         if channels:

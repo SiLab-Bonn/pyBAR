@@ -364,7 +364,14 @@ class Fei4RunBase(RunBase):
             self.dut['DLY_CONFIG'].write()
             self.tdc = TdcHandle(self.dut, tdc_modules=['TDC0', 'TDC1', 'TDC2', 'TDC3', 'TDC4'])
         elif self.dut.name == 'MMC3_8_chip':
-            pass
+            channel_names = [channel.name for channel in self.dut.get_modules('fei4_rx')]
+            active_channel_names = [module_cfg["rx"] for module_cfg in self._module_cfgs.values()]
+            for channel_name in channel_names:
+                # enabling readout
+                if channel_name in active_channel_names:
+                    self.dut[channel_name].ENABLE_RX = 1
+                else:
+                    self.dut[channel_name].ENABLE_RX = 0
         else:
             logging.warning('Omitting initialization of DUT %s', self.dut.name)
 
