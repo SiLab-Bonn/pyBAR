@@ -1,5 +1,4 @@
 from pybar.scans.calibrate_hit_or import HitOrCalibration, create_hitor_calibration
-from pybar.scans.calibrate_plsr_dac_transient import PlsrDacTransientCalibration
 from pybar.scans.calibrate_plsr_dac import PlsrDacCalibration, plot_pulser_dac
 from pybar.scans.calibrate_pulser_dac_correction import PulserDacCorrectionCalibration
 from pybar.scans.calibrate_plsr_dac_transient import PlsrDacTransientCalibration
