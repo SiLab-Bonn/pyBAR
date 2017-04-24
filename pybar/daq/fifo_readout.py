@@ -43,8 +43,8 @@ class FifoReadout(object):
         self.worker_thread = None
         self.watchdog_thread = None
         self.fill_buffer = False
-        self.filter = None
-        self.converter = None
+        self.filter_func = None
+        self.converter_func = None
         self.enabled_fe_channels = None
         self.enabled_m26_channels = None
         self.readout_interval = 0.05
@@ -91,9 +91,9 @@ class FifoReadout(object):
             return None
         return result / float(self._moving_average_time_period)
 
-    def start(self, callback=None, errback=None, reset_rx=False, reset_sram_fifo=False, clear_buffer=False, fill_buffer=False, no_data_timeout=None, filter=None, converter=None, enabled_fe_channels=None, enabled_m26_channels=None):
-        self.filter = filter
-        self.converter = converter
+    def start(self, callback=None, errback=None, reset_rx=False, reset_sram_fifo=False, clear_buffer=False, fill_buffer=False, no_data_timeout=None, filter_func=None, converter_func=None, enabled_fe_channels=None, enabled_m26_channels=None):
+        self.filter_func = filter_func
+        self.converter_func = converter_func
         self.enabled_fe_channels = enabled_fe_channels
         self.enabled_m26_channels = enabled_m26_channels
         if self._is_running:
@@ -236,7 +236,7 @@ class FifoReadout(object):
                     break
                 else:
                     # filter and do the conversion
-                    converted_data_tuple = convert_data_iterable((data_tuple,), filter_func=self.filter, converter_func=self.converter)[0]
+                    converted_data_tuple = convert_data_iterable((data_tuple,), filter_func=self.filter_func, converter_func=self.converter_func)[0]
                     if self.callback:
                         try:
                             self.callback(converted_data_tuple)
