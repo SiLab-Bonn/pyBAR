@@ -168,6 +168,7 @@ class StopModeExtTriggerScan(Fei4RunBase):
 
     def start_readout(self, *args, **kwargs):
         super(StopModeExtTriggerScan, self).start_readout(*args, **kwargs)
+        self.connect_cancel(["stop"])
         self.dut['TLU']['TRIGGER_COUNTER'] = 0
         self.dut['TLU']['MAX_TRIGGERS'] = self.max_triggers
         self.dut['CMD']['EN_EXT_TRIGGER'] = True
@@ -187,6 +188,7 @@ class StopModeExtTriggerScan(Fei4RunBase):
         self.scan_timeout_timer.cancel()
         self.dut['CMD']['EN_EXT_TRIGGER'] = False
         super(StopModeExtTriggerScan, self).stop_readout(timeout=timeout)
+        self.connect_cancel(["abort"])
 
 
 if __name__ == "__main__":

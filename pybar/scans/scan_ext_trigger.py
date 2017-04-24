@@ -112,6 +112,7 @@ class ExtTriggerScan(Fei4RunBase):
 
     def start_readout(self, *args, **kwargs):
         super(ExtTriggerScan, self).start_readout(*args, **kwargs)
+        self.connect_cancel(["stop"])
         self.tdc['ENABLE'] = self.enable_tdc
         self.dut['TLU']['TRIGGER_COUNTER'] = 0
         if self.max_triggers:
@@ -136,6 +137,7 @@ class ExtTriggerScan(Fei4RunBase):
         self.tdc['ENABLE'] = False
         self.dut['CMD']['EN_EXT_TRIGGER'] = False
         super(ExtTriggerScan, self).stop_readout(timeout=timeout)
+        self.connect_cancel(["abort"])
 
 
 if __name__ == "__main__":

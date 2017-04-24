@@ -240,6 +240,7 @@ class M26TelescopeScan(Fei4RunBase):
 
     def start_readout(self, *args, **kwargs):
         super(M26TelescopeScan, self).start_readout(*args, **kwargs)
+        self.connect_cancel(["stop"])
         self.dut['TLU']['RESET'] = 1
         self.dut['TLU']['TRIGGER_MODE'] = 3
         self.dut['TLU']['TRIGGER_LOW_TIMEOUT'] = 200
@@ -288,6 +289,7 @@ class M26TelescopeScan(Fei4RunBase):
         self.dut['M26_RX5'].set_en(False)
         self.dut['M26_RX6'].set_en(False)
         super(M26TelescopeScan, self).stop_readout(timeout=timeout)
+        self.connect_cancel(["abort"])
 
 
 if __name__ == "__main__":
