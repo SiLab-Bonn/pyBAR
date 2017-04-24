@@ -104,7 +104,7 @@ class FdacTuning(Fei4RunBase):
                           mask=None,
                           double_column_correction=self.pulser_dac_correction)
 
-            filter_func = logical_and(self.raw_data_file._filter_funcs[self.current_single_handle], is_data_record)
+            filter_func = logical_and(self.raw_data_file._filter_funcs[self.current_module_handle], is_data_record)
             col_row_tot = np.column_stack(convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=filter_func, converter_func=get_col_row_tot_array_from_data_record_array))
             tot_array = np.histogramdd(col_row_tot, bins=(80, 336, 16), range=[[1, 80], [1, 336], [0, 15]])[0]
             tot_mean_array = np.average(tot_array, axis=2, weights=range(0, 16)) * sum(range(0, 16)) / self.n_injections_fdac
