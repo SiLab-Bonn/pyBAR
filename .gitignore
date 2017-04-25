@@ -104,6 +104,11 @@ firmware/mmc3_m26_eth/vivado/*
 firmware/mmc3_beast_eth/vivado/*
 !firmware/mmc3_beast_eth/vivado/*.xpr
 
+# MMC3 8-chip firmware
+firmware/mmc3_quad_eth/vivado/*
+firmware/mmc3_quad_eth/src/SiTCP
+!firmware/mmc3_quad_eth/vivado/*.xpr
+
 # Simulation output
 firmware/mio/cosim/sim_build
 firmware/mio/cosim/sim_build.zip
