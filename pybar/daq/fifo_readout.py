@@ -8,7 +8,7 @@ import sys
 import numpy as np
 
 from pybar.utils.utils import get_float_time
-from pybar.daq.readout_utils import is_fe_word, is_data_record, is_data_header, logical_or, logical_and, convert_data_iterable
+from pybar.daq.readout_utils import is_fe_word, is_data_record, is_data_header, logical_or, logical_and, convert_data_iterable, convert_data_array
 
 
 data_iterable = ("data", "timestamp_start", "timestamp_stop", "error")
@@ -265,7 +265,7 @@ class FifoReadout(object):
                 break
         logging.debug('Stopped %s', self.watchdog_thread.name)
 
-    def read_data(self):
+    def read_data(self, filter_func=None, converter_func=None):
         '''Read SRAM and return data array
 
         Can be used without threading.
@@ -275,7 +275,9 @@ class FifoReadout(object):
         data : list
             A list of SRAM data words.
         '''
-        return self.dut['SRAM'].get_data()
+        data = self.dut['SRAM'].get_data()
+        data = convert_data_array(data, filter_func=None, converter_func=converter_func)
+        return data
 
     def update_timestamp(self):
         curr_time = get_float_time()

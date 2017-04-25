@@ -15,6 +15,7 @@ from basil.utils.BitLogic import BitLogic
 from pybar.utils.utils import bitarray_to_array
 from pybar.daq.readout_utils import interpret_pixel_data
 from pybar.daq.fei4_record import FEI4Record
+from pybar.daq.readout_utils import logical_and, is_fe_word, is_data_from_channel
 
 
 class CmdTimeoutError(Exception):
@@ -625,7 +626,11 @@ def is_fe_ready(self, module_id):
     commands.extend(self.get_register(module_id).get_commands("RdRegister", address=[1]))
     commands.extend(self.get_register(module_id).get_commands("RunMode"))
     self.get_register_utils(module_id).send_commands(commands)
-    data = self.fifo_readout.read_data()
+
+    time.sleep(0.1)
+    filter_func = logical_and(is_fe_word, is_data_from_channel(self.get_module_cfg(module_id)['rx_channel']))
+    data = self.fifo_readout.read_data(filter_func=filter_func)
+
     if len(data):
         return True if FEI4Record(data[-1], self.get_register(module_id).chip_flavor) == 'VR' else False
     else:
