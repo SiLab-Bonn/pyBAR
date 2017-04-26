@@ -26,7 +26,6 @@ TLU:
 # FE-I4 command output
 CMD:
     OUTPUT_MODE : 3  # Selecting command output mode: positive edge (0), negative edge (1), Manchester Code according to IEEE 802.3 (2), Manchester Code according to G.E. Thomas (3)
-    OUTPUT_ENABLE : 0x01
 
 # FE-I4 data receiver
 CH0:

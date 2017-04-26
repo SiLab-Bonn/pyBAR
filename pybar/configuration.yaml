@@ -13,6 +13,7 @@ modules :
          chip_address : # Chip Address for initial configuration. if no value is given, the broadcast bit will be set.
          rx : CH4  # As implemented in the firmware.
          rx_channel : 4 # As implemented in the firmware.
+         tx_channel : 0 # As implemented in the firmware.
          tdc_channel : 4 # As implemented in the firmware.
 #        send_data : 'tcp://127.0.0.1:5678' # Address of the online monitor
 

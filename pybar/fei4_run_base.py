@@ -183,15 +183,18 @@ class Fei4RunBase(RunBase):
         if 'modules' in conf and conf['modules']:
             for module_id, module_cfg in conf['modules'].iteritems():
                 # Check here for missing module config items.
-                if 'rx_channel' not in module_cfg:
+                if 'rx' not in module_cfg or module_cfg['rx'] is None:
+                    raise ValueError("No parameter 'rx' defined for module '%s'" % module_id)
+                if 'rx_channel' not in module_cfg or module_cfg['rx_channel'] is None:
                     raise ValueError("No parameter 'rx_channel' defined for module '%s'" % module_id)
-                if 'fe_flavor' not in module_cfg:
+                if 'tx_channel' not in module_cfg or module_cfg['tx_channel'] is None:
+                    raise ValueError("No parameter 'tx_channel' defined for module '%s'" % module_id)
+                if 'fe_flavor' not in module_cfg or module_cfg['fe_flavor'] is None:
                     raise ValueError("No parameter 'fe_flavor' defined for module '%s'" % module_id)
                 if 'chip_address' not in module_cfg:
                     raise ValueError("No parameter 'chip_address' defined for module '%s'" % module_id)
                 # Save config to dict.
                 self._module_cfgs[module_id] = module_cfg
-
         else:
             raise ValueError("No module configuration specified")
 
@@ -204,19 +207,21 @@ class Fei4RunBase(RunBase):
         fe_flavors = set([module_cfg['fe_flavor'] for module_cfg in self._module_cfgs.values()])
         if len(fe_flavors) != 1 and self.parallel:
             raise ValueError("Parameter 'fe_flavor' must be the same for module group")
-        elif self.parallel:
+
+        if self.parallel:
             # Adding broadcast config for parallel mode.
             self._module_cfgs[None] = {
                 'channel': None,
                 'fe_flavor': fe_flavors.pop(),
-                'chip_address': None}
+                'chip_address': None,
+                'rx': None,
+                'rx_channel': None,
+                'tx_channel': None}
 
         # Adding here default module config items.
         for module_cfg in self._module_cfgs.values():
             module_cfg.setdefault('send_data', None)  # address string of PUB socket
-            module_cfg.setdefault('send_error_msg', None)  # bool, None
             module_cfg.setdefault('fe_configuration', None)  # value, None
-            module_cfg.setdefault('rx', None)  # value, None
             # TODO: message missing
 
     @property
@@ -534,6 +539,8 @@ class Fei4RunBase(RunBase):
 
         Sets properties to access current module properties.
         '''
+        tx_channels = set([1 << module_cfg['tx_channel'] for module_cfg in self._module_cfgs.values() if module_cfg['tx_channel'] is not None])
+        broadcast_tx_channels = reduce(lambda x, y: x | y, tx_channels)
         if self.parallel:  # Broadcast FE commands
             with contextlib.ExitStack() as stack:
                 # Configure each FE individually
@@ -542,6 +549,7 @@ class Fei4RunBase(RunBase):
                     if self.abort_run.is_set():
                         break
                     with self.access_module(module_id=module_id):
+                        self.dut['CMD']['OUTPUT_ENABLE'] = 1 << self._module_cfgs[module_id]["tx_channel"] if module_id is not None else broadcast_tx_channels
                         logging.info('Scan parameter(s): %s', ', '.join(['%s=%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None')
                         stack.enter_context(self.register.restored(name=self.run_number))
                         self.configure()
@@ -552,6 +560,7 @@ class Fei4RunBase(RunBase):
 
                 with self.access_module(module_id=None):
                     with self.open_file(module_id=None):
+                        self.dut['CMD']['OUTPUT_ENABLE'] = broadcast_tx_channels
                         self.scan()
 
             self.fifo_readout.print_readout_status()
@@ -564,6 +573,7 @@ class Fei4RunBase(RunBase):
                 if module_id is None:
                     continue
                 with self.access_module(module_id=module_id):
+                    self.dut['CMD']['OUTPUT_ENABLE'] = 1 << self._module_cfgs[module_id]["tx_channel"] if module_id is not None else broadcast_tx_channels
                     logging.info('Scan parameter(s): %s', ', '.join(['%s=%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None')
                     with self.register.restored(name=self.run_number):
                         self.configure()
