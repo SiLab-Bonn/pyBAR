@@ -30,22 +30,23 @@ CMD:
 
 # FE-I4 data receiver
 CH0:
+    ENABLE_RX : 1  # Set to 0 if no FE is connected
     INVERT_RX : 0  # Inverting data input: disabled (0), enabled (e.g. for DBM modules) (1)
 
 M26_RX1:
-    EN : 0
+    EN : 1  # Set to 0 if no Mimosa26 is connected
 
 M26_RX2:
-    EN : 0
+    EN : 1  # Set to 0 if no Mimosa26 is connected
 
 M26_RX3:
-    EN : 0
+    EN : 1  # Set to 0 if no Mimosa26 is connected
 
 M26_RX4:
-    EN : 0
+    EN : 1  # Set to 0 if no Mimosa26 is connected
 
 M26_RX5:
-    EN : 0
+    EN : 1  # Set to 0 if no Mimosa26 is connected
 
 M26_RX6:
-    EN : 0
+    EN : 1  # Set to 0 if no Mimosa26 is connected
