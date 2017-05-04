@@ -363,8 +363,15 @@ class Fei4RunBase(RunBase):
             self.dut['ENABLE_CHANNEL']['TDC'] = 1
             self.dut['ENABLE_CHANNEL'].write()
             self.tdc = TdcHandle(self.dut, tdc_modules=['TDC'])
-        elif self.dut.name == 'beast':
-            logging.info('BEAST initialization')
+        elif self.dut.name == 'mmc3_beast_eth':
+            channel_names = [channel.name for channel in self.dut.get_modules('fei4_rx')]
+            active_channel_names = [module_cfg["rx"] for module_cfg in self._module_cfgs.values()]
+            for channel_name in channel_names:
+                # enabling readout
+                if channel_name in active_channel_names:
+                    self.dut[channel_name].ENABLE_RX = 1
+                else:
+                    self.dut[channel_name].ENABLE_RX = 0
             self.dut['DLY_CONFIG']['CLK_DLY'] = 0
             self.dut['DLY_CONFIG'].write()
             self.tdc = TdcHandle(self.dut, tdc_modules=['TDC0', 'TDC1', 'TDC2', 'TDC3', 'TDC4'])

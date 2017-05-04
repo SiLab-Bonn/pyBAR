@@ -5,7 +5,7 @@
 # ------------------------------------------------------------
 #
 
-name    : beast
+name    : mmc3_beast_eth
 version : 0.1
 
 transfer_layer:

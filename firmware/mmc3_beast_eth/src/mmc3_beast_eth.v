@@ -523,7 +523,7 @@ generate
         .BASEADDR(RX_BASEADDR+32'h0100*i),
         .HIGHADDR(RX_HIGHADDR+32'h0100*i),
         .DSIZE(10),
-        .DATA_IDENTIFIER(i+1),
+        .DATA_IDENTIFIER(i),
         .ABUSWIDTH(32)
     ) i_fei4_rx (
         .RX_CLK(CLK160),
@@ -608,7 +608,7 @@ generate
         .HIGHADDR(TDC_HIGHADDR+32'h0100*i),
         .ABUSWIDTH(32),
         .CLKDV(4),
-        .DATA_IDENTIFIER(4'b0001 + i), // one-hot
+        .DATA_IDENTIFIER(4'b0001 + i),
         .FAST_TDC(1),
         .FAST_TRIGGER(0)
     ) i_tdc (
