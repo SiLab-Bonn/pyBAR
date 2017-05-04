@@ -1,4 +1,4 @@
-# MMC3 board for Beast
+# MMC3 board supporting BEAST/FANGS
 ETH:
     ip : "192.168.10.16"
     udp_port : 4660

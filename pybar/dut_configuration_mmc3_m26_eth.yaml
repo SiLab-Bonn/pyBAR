@@ -1,4 +1,4 @@
-# MMC3 board
+# MMC3 board with single FEI4 and max. 6 Mimosa26
 ETH:
     ip : "192.168.10.16"
     udp_port : 4660

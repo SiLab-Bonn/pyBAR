@@ -4,6 +4,7 @@
 # SiLab, Institute of Physics, University of Bonn
 # ------------------------------------------------------------
 #
+# MMC3 board supporting BEAST/FANGS
 
 name    : mmc3_beast_eth
 version : 0.1

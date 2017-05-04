@@ -1,4 +1,4 @@
-# MMC3 board for Beast
+# MMC3 board with max. 8 FEI4s
 ETH:
     ip : "192.168.10.16"
     udp_port : 4660
@@ -29,4 +29,25 @@ CMD:
 
 # FE-I4 data receiver
 CH0:
+    INVERT_RX : 0  # Inverting data input: disabled (0), enabled (e.g. for DBM modules) (1)
+
+CH1:
+    INVERT_RX : 0  # Inverting data input: disabled (0), enabled (e.g. for DBM modules) (1)
+
+CH2:
+    INVERT_RX : 0  # Inverting data input: disabled (0), enabled (e.g. for DBM modules) (1)
+
+CH3:
+    INVERT_RX : 0  # Inverting data input: disabled (0), enabled (e.g. for DBM modules) (1)
+
+CH4:
+    INVERT_RX : 0  # Inverting data input: disabled (0), enabled (e.g. for DBM modules) (1)
+
+CH5:
+    INVERT_RX : 0  # Inverting data input: disabled (0), enabled (e.g. for DBM modules) (1)
+
+CH6:
+    INVERT_RX : 0  # Inverting data input: disabled (0), enabled (e.g. for DBM modules) (1)
+
+CH7:
     INVERT_RX : 0  # Inverting data input: disabled (0), enabled (e.g. for DBM modules) (1)

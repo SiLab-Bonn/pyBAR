@@ -4,6 +4,7 @@
 # SiLab, Institute of Physics, University of Bonn
 # ------------------------------------------------------------
 #
+# MMC3 board with single FEI4 and max. 6 Mimosa26
 
 name    : mmc3_m26_eth
 version : 0.1

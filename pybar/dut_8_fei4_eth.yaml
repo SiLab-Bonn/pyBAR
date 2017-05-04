@@ -4,8 +4,9 @@
 # SiLab, Institute of Physics, University of Bonn
 # ------------------------------------------------------------
 #
+# MMC3 board with max. 8 FEI4s
 
-name    : MMC3_8_chip
+name    : mmc3_8_fei4_eth
 version : 0.1
 
 transfer_layer:
