@@ -559,7 +559,6 @@ class Fei4RunBase(RunBase):
                     if self.abort_run.is_set():
                         break
                     with self.access_module(module_id=module_id):
-                        self.dut['CMD']['OUTPUT_ENABLE'] = 1 << self._module_cfgs[module_id]["tx_channel"] if module_id is not None else broadcast_tx_channels
                         logging.info('Scan parameter(s): %s', ', '.join(['%s=%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None')
                         stack.enter_context(self.register.restored(name=self.run_number))
                         self.configure()
