@@ -572,10 +572,10 @@ def read_global_register(self, name, overwrite_config=False):
     time.sleep(0.1)  # wait for data
     filter_func = self.raw_data_file._filter_funcs[self.current_module_handle]
     data = self.fifo_readout.read_data(filter_func=filter_func)
-
     register_object = self.register.get_global_register_objects(name=[name])[0]
     value = BitLogic(register_object['addresses'] * 16)
     index = 0
+    vr_count = 0
     for word in np.nditer(data):
         fei4_data_word = FEI4Record(word, self.register.chip_flavor)
         if fei4_data_word == 'AR':
@@ -583,6 +583,9 @@ def read_global_register(self, name, overwrite_config=False):
             if address_value != register_object['address'] + index:
                 raise Exception('Unexpected address from Address Record: read: %d, expected: %d' % (address_value, register_object['address'] + index))
         elif fei4_data_word == 'VR':
+            vr_count += 1
+            if vr_count >= 2:
+                raise RuntimeError("Read more than 2 value records")
             read_value = BitLogic.from_value(fei4_data_word['value'], size=16)
             if register_object['register_littleendian']:
                 read_value.reverse()
