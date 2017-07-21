@@ -441,22 +441,27 @@ class Fei4RunBase(RunBase):
 
             if module_id is not None:
                 # reset and configuration
-                self._module_register_utils[module_id].global_reset()
-                self._module_register_utils[module_id].configure_all()
-                if is_fe_ready(self, module_id):
-                    reset_service_records = False
-                else:
-                    reset_service_records = True
-                self._module_register_utils[module_id].reset_bunch_counter()
-                self._module_register_utils[module_id].reset_event_counter()
-                if reset_service_records:
-                    # resetting service records must be done once after power up
-                    self._module_register_utils[module_id].reset_service_records()
-
-                # Create module data path if it does not exist
-                module_path = self.get_module_path(module_id)
-                if not os.path.exists(module_path):
-                    os.makedirs(module_path)
+                with self.access_module(module_id=module_id):
+                    self._module_register_utils[module_id].global_reset()
+                    self._module_register_utils[module_id].configure_all()
+                    if is_fe_ready(self, module_id):
+                        reset_service_records = False
+                    else:
+                        reset_service_records = True
+                    self._module_register_utils[module_id].reset_bunch_counter()
+                    self._module_register_utils[module_id].reset_event_counter()
+                    if reset_service_records:
+                        # resetting service records must be done once after power up
+                        self._module_register_utils[module_id].reset_service_records()
+                    # set all FE to conf mode afterwards to be immune to ECR and BCR
+                    self._module_register_utils[module_id].set_conf_mode()
+                    # Create module data path if it does not exist
+                    module_path = self.get_module_path(module_id)
+                    if not os.path.exists(module_path):
+                        os.makedirs(module_path)
+            else:
+                with self.access_module(module_id=module_id):
+                    self._module_register_utils[module_id].set_conf_mode()
 
     def pre_run(self):
         # clear error queue in case run is executed a second time
@@ -546,8 +551,6 @@ class Fei4RunBase(RunBase):
 
         Sets properties to access current module properties.
         '''
-        tx_channels = set([1 << module_cfg['tx_channel'] for module_cfg in self._module_cfgs.values() if module_cfg['tx_channel'] is not None])
-        broadcast_tx_channels = reduce(lambda x, y: x | y, tx_channels)
         if self.parallel:  # Broadcast FE commands
             with contextlib.ExitStack() as stack:
                 # Configure each FE individually
@@ -567,7 +570,6 @@ class Fei4RunBase(RunBase):
 
                 with self.access_module(module_id=None):
                     with self.open_file(module_id=None):
-                        self.dut['CMD']['OUTPUT_ENABLE'] = broadcast_tx_channels
                         self.scan()
 
             self.fifo_readout.print_readout_status()
@@ -580,7 +582,6 @@ class Fei4RunBase(RunBase):
                 if module_id is None:
                     continue
                 with self.access_module(module_id=module_id):
-                    self.dut['CMD']['OUTPUT_ENABLE'] = 1 << self._module_cfgs[module_id]["tx_channel"] if module_id is not None else broadcast_tx_channels
                     logging.info('Scan parameter(s): %s', ', '.join(['%s=%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None')
                     with self.register.restored(name=self.run_number):
                         self.configure()
@@ -773,6 +774,10 @@ class Fei4RunBase(RunBase):
         ''' Select module and give access to the module.
         '''
         self.current_module_handle = module_id
+        tx_channels = set([1 << module_cfg['tx_channel'] for module_cfg in self._module_cfgs.values() if module_cfg['tx_channel'] is not None])
+        # generate enable bits
+        broadcast_tx_channels = reduce(lambda x, y: x | y, tx_channels)
+        self.dut['CMD']['OUTPUT_ENABLE'] = (1 << self._module_cfgs[module_id]["tx_channel"]) if module_id is not None else broadcast_tx_channels
         self.scan_parameters = self.get_scan_parameters(module_id=module_id)
         self.register = self.get_register(module_id=module_id)
         self.register_utils = self.get_register_utils(module_id=module_id)
