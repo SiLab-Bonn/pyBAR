@@ -136,6 +136,16 @@ class FEI4RegisterUtils(object):
     def is_ready(self):
         return True if self.dut['CMD']['READY'] else False
 
+    def set_conf_mode(self):
+        commands = []
+        commands.extend(self.register.get_commands("ConfMode"))
+        self.send_commands(commands)
+
+    def set_run_mode(self):
+        commands = []
+        commands.extend(self.register.get_commands("RunMode"))
+        self.send_commands(commands)
+
     def global_reset(self):
         '''FEI4 Global Reset
 
@@ -207,7 +217,7 @@ class FEI4RegisterUtils(object):
         commands.extend(self.register.get_commands("ConfMode"))
         commands.extend(self.register.get_commands("WrRegister", readonly=False))
         commands.extend(self.register.get_commands("RunMode"))
-        self.send_commands(commands, concatenate=True)
+        self.send_commands(commands)
 
     def configure_pixel(self, same_mask_for_all_dc=False):
         logging.info('Sending pixel configuration to FE')
@@ -1050,7 +1060,7 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, additional_dela
 #     plt.savefig('mask_step' + str(mask_step) + '.pdf')
 
     commands.extend(self.register.get_commands("WrRegister", name=["DIGHITIN_SEL"]))
-    self.register_utils.send_commands(commands, concatenate=True)
+    self.register_utils.send_commands(commands)
 
     for mask_step in enable_mask_steps:
         if self.abort_run.is_set():
@@ -1081,7 +1091,7 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, additional_dela
                 # write DIGHITIN_SEL since after mask writing it is disabled
                 self.register.set_global_register_value("DIGHITIN_SEL", 1)
                 commands.extend(self.register.get_commands("WrRegister", name=["DIGHITIN_SEL"]))
-        self.register_utils.send_commands(commands, concatenate=True)
+        self.register_utils.send_commands(commands)
         logging.info('%d injection(s): mask step %d %s', repeat_command, mask_step, ('[%d - %d]' % (enable_mask_steps[0], enable_mask_steps[-1])) if len(enable_mask_steps) > 1 else ('[%d]' % enable_mask_steps[0]))
 
         if same_mask_for_all_dc:
@@ -1152,7 +1162,7 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, additional_dela
                 if digital_injection is True:
                     self.register.set_global_register_value("DIGHITIN_SEL", 1)
                     commands.extend(self.register.get_commands("WrRegister", name=["DIGHITIN_SEL"]))
-                self.register_utils.send_commands(commands, concatenate=True)
+                self.register_utils.send_commands(commands)
 
                 dc_address_command = get_dc_address_command(dc)
                 self.dut['CMD']['START_SEQUENCE_LENGTH'] = len(dc_address_command)
@@ -1184,7 +1194,7 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, additional_dela
                         self.register_utils.wait_for_command()
                         if eol_function:
                             eol_function()  # do this after command has finished
-                        self.register_utils.send_commands(commands, concatenate=True)
+                        self.register_utils.send_commands(commands)
 
                         self.dut['CMD']['START_SEQUENCE_LENGTH'] = len(dc_address_command)
                         self.dut['CMD']['CMD_REPEAT'] = repeat_command
@@ -1221,7 +1231,7 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, additional_dela
                     if digital_injection is True:
                         self.register.set_global_register_value("DIGHITIN_SEL", 1)
                         commands.extend(self.register.get_commands("WrRegister", name=["DIGHITIN_SEL"]))
-                    self.register_utils.send_commands(commands, concatenate=True)
+                    self.register_utils.send_commands(commands)
 
                     dc_address_command = get_dc_address_command(dc)
                     self.register_utils.send_command(dc_address_command)
