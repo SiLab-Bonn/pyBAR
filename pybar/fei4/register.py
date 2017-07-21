@@ -252,7 +252,9 @@ class FEI4Register(object):
             if not self.broadcast:
                 self.set_global_register_value("Colpr_Mode", 0)  # write only to the addressed double-column
                 self.set_global_register_value("Colpr_Addr", 40)  # ivalid address, grounded
-                commands.extend(self.get_commands("ConfMode", ChipID=8))  # set all chips to conf mode to receive commands
+                # Broadcasting ConfMode not necessary, writing registers is also possible in RunMode
+#                 commands.extend(self.get_commands("ConfMode", ChipID=8))  # set all chips to conf mode to receive commands#
+                # set all other chips to invalid addresses, to make broadcasting of WrRegister command possible
                 commands.extend(self.get_commands("WrRegister", name=["Colpr_Mode", "Colpr_Addr"], ChipID=8)) # braodcast
             self.set_global_register_value("S0", 0)
             self.set_global_register_value("S1", 0)
