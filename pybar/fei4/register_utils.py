@@ -600,6 +600,15 @@ def read_global_register(self, name, overwrite_config=False):
     return value
 
 
+def write_global_register(self, parameter, value):
+    commands = []
+    commands.extend(self.register.get_commands("ConfMode"))
+    self.register.set_global_register_value(parameter, value)
+    commands.extend(self.register.get_commands("WrRegister", name=[parameter]))
+    commands.extend(self.register.get_commands("RunMode"))
+    self.register_utils.send_commands(commands)
+
+
 def read_pixel_register(self, pix_regs=None, dcs=range(40), overwrite_config=False):
     '''The function reads the pixel register, interprets the data and returns a masked numpy arrays with the data for the chosen pixel register.
     Pixels without any data are masked.
