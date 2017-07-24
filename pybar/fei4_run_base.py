@@ -374,7 +374,7 @@ class Fei4RunBase(RunBase):
                     self.dut[channel_name].ENABLE_RX = 0
             self.dut['DLY_CONFIG']['CLK_DLY'] = 0
             self.dut['DLY_CONFIG'].write()
-            self.tdc = TdcHandle(self.dut, tdc_modules=['TDC0', 'TDC1', 'TDC2', 'TDC3', 'TDC4'])
+            self.tdc = TdcHandle(self.dut, tdc_modules=['TDC%d' % channel for channel in range(5)])
         elif self.dut.name == 'mmc3_8_fei4_eth':
             channel_names = [channel.name for channel in self.dut.get_modules('fei4_rx')]
             active_channel_names = [module_cfg["rx"] for module_cfg in self._module_cfgs.values()]
@@ -384,6 +384,9 @@ class Fei4RunBase(RunBase):
                     self.dut[channel_name].ENABLE_RX = 1
                 else:
                     self.dut[channel_name].ENABLE_RX = 0
+            self.dut['DLY_CONFIG']['CLK_DLY'] = 0
+            self.dut['DLY_CONFIG'].write()
+            self.tdc = TdcHandle(self.dut, tdc_modules=['TDC%d' % channel for channel in range(7)])
         else:
             logging.warning('Omitting initialization of DUT %s', self.dut.name)
 
