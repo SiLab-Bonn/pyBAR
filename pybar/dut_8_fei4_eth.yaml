@@ -12,11 +12,6 @@ version : 0.1
 transfer_layer:
   - name  : ETH
     type  : SiTcp
-    init:
-        ip : "192.168.10.16"
-        udp_port : 4660
-        tcp_port : 24
-        tcp_connection : True
 
 hw_drivers:
   - name      : CMD
@@ -43,33 +38,67 @@ hw_drivers:
     type      : fei4_rx
     interface : ETH
     base_addr : 0x9300
-    
+
   - name      : CH4
     type      : fei4_rx
     interface : ETH
     base_addr : 0x9400
-    
+
   - name      : CH5
     type      : fei4_rx
     interface : ETH
     base_addr : 0x9500
-    
+
   - name      : CH6
     type      : fei4_rx
     interface : ETH
     base_addr : 0x9600
-    
+
   - name      : CH7
     type      : fei4_rx
     interface : ETH
     base_addr : 0x9700
+
+  - name      : TDC0
+    type      : tdc_s3
+    interface : ETH
+    base_addr : 0xa000
+
+  - name      : TDC1
+    type      : tdc_s3
+    interface : ETH
+    base_addr : 0xa100
+
+  - name      : TDC2
+    type      : tdc_s3
+    interface : ETH
+    base_addr : 0xa200
+
+  - name      : TDC3
+    type      : tdc_s3
+    interface : ETH
+    base_addr : 0xa300
+
+  - name      : TDC4
+    type      : tdc_s3
+    interface : ETH
+    base_addr : 0xa400
+
+  - name      : TDC5
+    type      : tdc_s3
+    interface : ETH
+    base_addr : 0xa500
+
+  - name      : TDC6
+    type      : tdc_s3
+    interface : ETH
+    base_addr : 0xa600
 
   - name      : SRAM
     type      : sram_fifo
     interface : ETH
     base_addr : 0x200000000
     base_data_addr : 0x100000000
-
 
   - name      : DLY_CONFIG_GPIO
     type      : gpio

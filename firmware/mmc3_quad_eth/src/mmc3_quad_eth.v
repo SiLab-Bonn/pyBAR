@@ -1,5 +1,3 @@
-
-
 module mmc3_quad_eth(
     input wire RESET_N,
     input wire clkin,
@@ -425,8 +423,7 @@ always@(posedge CLK320)
     CLK_SR <= {CLK_SR[6:0],CLK40};
 
 always@(posedge CLK320)
-     CLK40_OUT_SEL <=  CLK_SR[SEL_CLK40];
-
+    CLK40_OUT_SEL <= CLK_SR[SEL_CLK40];
 
 genvar h;
 generate
@@ -469,13 +466,14 @@ wire TRIGGER_FIFO_EMPTY;
 wire [31:0] TRIGGER_FIFO_DATA;
 wire TRIGGER_FIFO_PEEMPT_REQ;
 wire [31:0] TIMESTAMP;
-wire [4:0] TDC_OUT;
+wire [6:0] TDC_OUT;
 
 tlu_controller #(
     .BASEADDR(TLU_BASEADDR),
     .HIGHADDR(TLU_HIGHADDR),
     .DIVISOR(8),
-    .ABUSWIDTH(32)
+    .ABUSWIDTH(32),
+    .WIDTH(9)
 ) i_tlu_controller (
     .BUS_CLK(BUS_CLK),
     .BUS_RST(BUS_RST),
@@ -492,8 +490,8 @@ tlu_controller #(
 
     .FIFO_PREEMPT_REQ(TRIGGER_FIFO_PEEMPT_REQ),
 
-    .TRIGGER({2'b0, LEMO_RX[0], TDC_OUT}),
-    .TRIGGER_VETO({7'b0, FIFO_FULL}),
+    .TRIGGER({1'b0, LEMO_RX[0], TDC_OUT}),
+    .TRIGGER_VETO({RX_FIFO_FULL, FIFO_FULL}),
 
     .EXT_TRIGGER_ENABLE(EXT_TRIGGER_ENABLE),
     .TRIGGER_ACKNOWLEDGE(EXT_TRIGGER_ENABLE == 1'b0 ? TRIGGER_ACCEPTED_FLAG : TRIGGER_ACKNOWLEDGE_FLAG),
@@ -512,15 +510,15 @@ always@(posedge BUS_CLK)
     timestamp_gray <=  (TIMESTAMP>>1) ^ TIMESTAMP;
 
 
-wire [7:0] RX_READY, RX_8B10B_DECODER_ERR, RX_FIFO_OVERFLOW_ERR, RX_FIFO_FULL;
+wire [7:0] RX_READY, RX_8B10B_DECODER_ERR, RX_FIFO_OVERFLOW_ERR, RX_FIFO_FULL, RX_ENABLED;
 wire [7:0] FE_FIFO_READ;
 wire [7:0] FE_FIFO_EMPTY;
 wire [31:0] FE_FIFO_DATA [7:0];
-/*
-wire [4:0] TDC_FIFO_READ;
-wire [4:0] TDC_FIFO_EMPTY;
-wire [31:0] TDC_FIFO_DATA [4:0];
-*/
+
+wire [6:0] TDC_FIFO_READ;
+wire [6:0] TDC_FIFO_EMPTY;
+wire [31:0] TDC_FIFO_DATA [6:0];
+
 genvar i;
 generate
   for (i = 0; i < 8; i = i + 1) begin: rx_gen
@@ -548,6 +546,7 @@ generate
         .FIFO_DATA(FE_FIFO_DATA[i]),
 
         .RX_FIFO_FULL(RX_FIFO_FULL[i]),
+        .RX_ENABLED(RX_ENABLED[i]),
 
         .BUS_CLK(BUS_CLK),
         .BUS_RST(BUS_RST),
@@ -607,14 +606,19 @@ generate
     */
 
     always@(*) DOBOUT_DLY = DOBOUT;
-/*
+end
+endgenerate
+
+genvar j;
+generate
+  for (j = 0; j < 7; j = j + 1) begin: tdc_gen
     wire RJ45_HITOR;
     tdc_s3 #(
-        .BASEADDR(TDC_BASEADDR+32'h0100*i),
-        .HIGHADDR(TDC_HIGHADDR+32'h0100*i),
+        .BASEADDR(TDC_BASEADDR+32'h0100*j),
+        .HIGHADDR(TDC_HIGHADDR+32'h0100*j),
         .ABUSWIDTH(32),
         .CLKDV(4),
-        .DATA_IDENTIFIER(4'b0001 + i), // one-hot
+        .DATA_IDENTIFIER(4'b0001 + j), // one-hot
         .FAST_TDC(1),
         .FAST_TRIGGER(0)
     ) i_tdc (
@@ -622,13 +626,13 @@ generate
         .CLK160(CLK160),
         .DV_CLK(CLK40),
         .TDC_IN(RJ45_HITOR),
-        .TDC_OUT(TDC_OUT[i]),
+        .TDC_OUT(TDC_OUT[j]),
         .TRIG_IN(),
         .TRIG_OUT(),
 
-        .FIFO_READ(TDC_FIFO_READ[i]),
-        .FIFO_EMPTY(TDC_FIFO_EMPTY[i]),
-        .FIFO_DATA(TDC_FIFO_DATA[i]),
+        .FIFO_READ(TDC_FIFO_READ[j]),
+        .FIFO_EMPTY(TDC_FIFO_EMPTY[j]),
+        .FIFO_DATA(TDC_FIFO_DATA[j]),
 
         .BUS_CLK(BUS_CLK),
         .BUS_RST(BUS_RST),
@@ -649,26 +653,71 @@ generate
         .IOSTANDARD("LVDS_25")
     ) IBUFDS_inst_RJ45_HITOR (
         .O(RJ45_HITOR),
-        .I(RJ45_HITOR_P[i]),
-        .IB(RJ45_HITOR_N[i])
+        .I(RJ45_HITOR_P[j]),
+        .IB(RJ45_HITOR_N[j])
     );
-*/
+
   end
 endgenerate
+/*
+wire RJ45_HITOR;
+tdc_s3 #(
+    .BASEADDR(TDC_BASEADDR+32'h0100*7),
+    .HIGHADDR(TDC_HIGHADDR+32'h0100*7),
+    .ABUSWIDTH(32),
+    .CLKDV(4),
+    .DATA_IDENTIFIER(4'b0001), // one-hot
+    .FAST_TDC(1),
+    .FAST_TRIGGER(0)
+) i_tdc (
+    .CLK320(CLK320),
+    .CLK160(CLK160),
+    .DV_CLK(CLK40),
+    .TDC_IN(RJ45_HITOR),
+    .TDC_OUT(TDC_OUT[7]),
+    .TRIG_IN(),
+    .TRIG_OUT(),
 
+    .FIFO_READ(TDC_FIFO_READ[7]),
+    .FIFO_EMPTY(TDC_FIFO_EMPTY[7]),
+    .FIFO_DATA(TDC_FIFO_DATA[7]),
+
+    .BUS_CLK(BUS_CLK),
+    .BUS_RST(BUS_RST),
+    .BUS_ADD(BUS_ADD),
+    .BUS_DATA(BUS_DATA),
+    .BUS_RD(BUS_RD),
+    .BUS_WR(BUS_WR),
+
+    .ARM_TDC(CMD_START_FLAG), // arm TDC by sending commands
+    .EXT_EN(1'b0),
+
+    .TIMESTAMP(TIMESTAMP[15:0])
+);
+
+IBUFDS #(
+    .DIFF_TERM("TRUE"),
+    .IBUF_LOW_PWR("FALSE"),
+    .IOSTANDARD("LVDS_25")
+) IBUFDS_inst_RJ45_HITOR (
+    .O(RJ45_HITOR),
+    .I(RJ45_HITOR_P[7]),
+    .IB(RJ45_HITOR_N[7])
+);
+*/
 wire ARB_READY_OUT, ARB_WRITE_OUT;
 wire [31:0] ARB_DATA_OUT;
-wire [8:0] READ_GRANT;
+wire [15:0] READ_GRANT;
 
 rrp_arbiter #(
-    .WIDTH(9)
+    .WIDTH(16)
 ) i_rrp_arbiter (
     .RST(BUS_RST),
     .CLK(BUS_CLK),
 
-    .WRITE_REQ({~FE_FIFO_EMPTY, ~TRIGGER_FIFO_EMPTY}),
-    .HOLD_REQ({8'b0, TRIGGER_FIFO_PEEMPT_REQ}),
-    .DATA_IN({FE_FIFO_DATA[7], FE_FIFO_DATA[6], FE_FIFO_DATA[5], FE_FIFO_DATA[4], FE_FIFO_DATA[3], FE_FIFO_DATA[2], FE_FIFO_DATA[1], FE_FIFO_DATA[0], TRIGGER_FIFO_DATA}),
+    .WRITE_REQ({~TDC_FIFO_EMPTY, ~FE_FIFO_EMPTY, ~TRIGGER_FIFO_EMPTY}),
+    .HOLD_REQ({15'b0, TRIGGER_FIFO_PEEMPT_REQ}),
+    .DATA_IN({TDC_FIFO_DATA[6], TDC_FIFO_DATA[5], TDC_FIFO_DATA[4], TDC_FIFO_DATA[3], TDC_FIFO_DATA[2], TDC_FIFO_DATA[1], TDC_FIFO_DATA[0], FE_FIFO_DATA[7], FE_FIFO_DATA[6], FE_FIFO_DATA[5], FE_FIFO_DATA[4], FE_FIFO_DATA[3], FE_FIFO_DATA[2], FE_FIFO_DATA[1], FE_FIFO_DATA[0], TRIGGER_FIFO_DATA}),
     .READ_GRANT(READ_GRANT),
 
     .READY_OUT(ARB_READY_OUT),
@@ -678,6 +727,7 @@ rrp_arbiter #(
 
 assign TRIGGER_FIFO_READ = READ_GRANT[0];
 assign FE_FIFO_READ = READ_GRANT[8:1];
+assign TDC_FIFO_READ = READ_GRANT[15:9];
 
 //cdc_fifo is for timing reasons
 wire [31:0] cdc_data_out;
@@ -718,10 +768,20 @@ clock_divider #(
     .CLOCK(CLK_1HZ)
 );
 
+wire CLK_3HZ;
+clock_divider #(
+    .DIVISOR(13333333)
+) i_clock_divisor_40MHz_to_3Hz (
+    .CLK(CLK40),
+    .RESET(1'b0),
+    .CE(),
+    .CLOCK(CLK_3HZ)
+);
+
 assign LED[7:4] = 4'hf;
-assign LED[0] = |RX_READY;
-assign LED[1] = ~(CLK_1HZ);
-assign LED[2] = ~(|RX_8B10B_DECODER_ERR & CLK_1HZ);
+assign LED[0] = CLK_1HZ;
+assign LED[1] = (RX_READY == RX_ENABLED) & ((|(RX_8B10B_DECODER_ERR & RX_ENABLED)? CLK_3HZ : CLK_1HZ) | (|(RX_FIFO_OVERFLOW_ERR & RX_ENABLED)) | (|(RX_FIFO_FULL & RX_ENABLED)));
+assign LED[2] = 1'b1;
 assign LED[3] = 1'b1;
 
 //ila_0 ila(
