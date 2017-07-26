@@ -375,7 +375,7 @@ class Fei4RunBase(RunBase):
             self.dut['DLY_CONFIG']['CLK_DLY'] = 0
             self.dut['DLY_CONFIG'].write()
             self.tdc = TdcHandle(self.dut, tdc_modules=['TDC%d' % channel for channel in range(5)])
-        elif self.dut.name == 'mmc3_8_fei4_eth':
+        elif self.dut.name == 'mmc3_8chip_eth':
             channel_names = [channel.name for channel in self.dut.get_modules('fei4_rx')]
             active_channel_names = [module_cfg["rx"] for module_cfg in self._module_cfgs.values()]
             for channel_name in channel_names:

@@ -6,7 +6,7 @@
 #
 # MMC3 board with max. 8 FEI4s
 
-name    : mmc3_8_fei4_eth
+name    : mmc3_8chip_eth
 version : 0.1
 
 transfer_layer:

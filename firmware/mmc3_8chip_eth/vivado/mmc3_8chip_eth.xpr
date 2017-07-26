@@ -3,7 +3,7 @@
 <!--                                                         -->
 <!-- Copyright 1986-2017 Xilinx, Inc. All Rights Reserved.   -->
 
-<Project Version="7" Minor="20" Path="C:/Users/Florian/git/pyBAR/firmware/mmc3_quad_eth/vivado/mmc3_quad_eth.xpr">
+<Project Version="7" Minor="20" Path="C:/Users/Florian/git/pyBAR/firmware/mmc3_8chip_eth/vivado/mmc3_8chip_eth.xpr">
   <DefaultLaunch Dir="$PRUNDIR"/>
   <Configuration>
     <Option Name="Id" Val="bcfce6db9e8b493e8cb5b2b6871ddf7d"/>
@@ -252,7 +252,7 @@
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../src/mmc3_quad_eth.v">
+      <File Path="$PPRDIR/../src/mmc3_8chip_eth.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
@@ -261,7 +261,7 @@
       </File>
       <Config>
         <Option Name="DesignMode" Val="RTL"/>
-        <Option Name="TopModule" Val="mmc3_quad_eth"/>
+        <Option Name="TopModule" Val="mmc3_8chip_eth"/>
         <Option Name="TopAutoSet" Val="TRUE"/>
       </Config>
     </FileSet>
@@ -282,7 +282,7 @@
       <Filter Type="Srcs"/>
       <Config>
         <Option Name="DesignMode" Val="RTL"/>
-        <Option Name="TopModule" Val="mmc3_quad_eth"/>
+        <Option Name="TopModule" Val="mmc3_8chip_eth"/>
         <Option Name="TopLib" Val="xil_defaultlib"/>
         <Option Name="TopAutoSet" Val="TRUE"/>
         <Option Name="TransportPathDelay" Val="0"/>
