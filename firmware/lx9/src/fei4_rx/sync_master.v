@@ -131,10 +131,11 @@ always @ (posedge clk or posedge rst) begin
     end
 end
 
-
-
+// 320MHz clock domain
+// *** do not touch code below ***
 
 wire [3:0] DDRQ_DATA;
+
 ISERDES2 #(
   .BITSLIP_ENABLE("FALSE"),      // Enable Bitslip Functionality (TRUE/FALSE)
   .DATA_RATE("SDR"),             // Data-rate ("SDR" or "DDR")
@@ -185,5 +186,14 @@ assign az[1] = DATA_IN_DLY[3];
 assign bz[1] = DATA_IN_DLY[2];
 assign cz[1] = DATA_IN_DLY[1];
 assign dz[1] = DATA_IN_DLY[0];
+
+//FDC ff_az0(.D(datain), .C(clk), .CLR(rst), .Q(az[0]))/*synthesis rloc = "x0y0" */;
+//FDC ff_az1(.D(az[0]),     .C(clk), .CLR(rst), .Q(az[1]))/*synthesis rloc = "x2y0" */;
+//FDC ff_bz0(.D(datain), .C(clk90), .CLR(rst), .Q(bz[0]))/*synthesis rloc = "x1y0" */;
+//FDC ff_bz1(.D(bz[0]),     .C(clk), .CLR(rst), .Q(bz[1]))/*synthesis rloc = "x4y0" */;
+//FDC ff_cz0(.D(datain), .C(notclk), .CLR(rst), .Q(cz[0]))/*synthesis rloc = "x1y1" */;
+//FDC ff_cz1(.D(cz[0]),     .C(clk), .CLR(rst), .Q(cz[1]))/*synthesis rloc = "x2y0" */;
+//FDC ff_dz0(.D(datain), .C(notclk90), .CLR(rst), .Q(dz[0]))/*synthesis rloc = "x0y1" */;
+//FDC ff_dz1(.D(dz[0]),     .C(clk90), .CLR(rst), .Q(dz[1]))/*synthesis rloc = "x3y0" */;
 
 endmodule
