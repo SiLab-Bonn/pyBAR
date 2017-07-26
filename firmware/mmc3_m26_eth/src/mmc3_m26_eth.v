@@ -518,7 +518,7 @@ tlu_controller #(
     .FIFO_PREEMPT_REQ(TRIGGER_FIFO_PEEMPT_REQ),
     
     .TRIGGER({8'b0}),
-    .TRIGGER_VETO({7'b0, FIFO_FULL}),
+    .TRIGGER_VETO({6'b0, RX_FIFO_FULL, FIFO_FULL}),
     
     .EXT_TRIGGER_ENABLE(EXT_TRIGGER_ENABLE),
     .TRIGGER_ACKNOWLEDGE(EXT_TRIGGER_ENABLE == 1'b0 ? TRIGGER_ACCEPTED_FLAG : TRIGGER_ACKNOWLEDGE_FLAG),
@@ -537,7 +537,7 @@ always@(posedge BUS_CLK)
     timestamp_gray <=  (TIMESTAMP>>1) ^ TIMESTAMP;
 
 wire DOBOUT;
-wire RX_READY, RX_8B10B_DECODER_ERR, RX_FIFO_OVERFLOW_ERR, RX_FIFO_FULL;
+wire RX_READY, RX_8B10B_DECODER_ERR, RX_FIFO_OVERFLOW_ERR, RX_FIFO_FULL, RX_ENABLED;
 wire FE_FIFO_READ;
 wire FE_FIFO_EMPTY;
 wire [31:0] FE_FIFO_DATA;
@@ -564,7 +564,7 @@ fei4_rx #(
     .FIFO_DATA(FE_FIFO_DATA),
 
     .RX_FIFO_FULL(RX_FIFO_FULL),
-    .RX_ENABLED(),
+    .RX_ENABLED(RX_ENABLED),
 
     .BUS_CLK(BUS_CLK),
     .BUS_RST(BUS_RST),
@@ -815,10 +815,21 @@ clock_divider #(
     .CLOCK(CLK_1HZ)
 );
 
-assign LED[7:6] = 2'hf;
-assign LED[0] = RX_READY;
-assign LED[1] = ~(|LOST_ERROR & CLK_1HZ);
-assign LED[2] = ~(|RX_8B10B_DECODER_ERR & CLK_1HZ);
+wire CLK_3HZ;
+clock_divider #(
+    .DIVISOR(13333333)
+) i_clock_divisor_40MHz_to_3Hz (
+    .CLK(CLK40),
+    .RESET(1'b0),
+    .CE(),
+    .CLOCK(CLK_3HZ)
+);
+
+assign LED[7:4] = 4'hf;
+assign LED[0] = ~((CLK_1HZ | FIFO_FULL) & LOCKED & LOCKED2);
+assign LED[1] = ~((RX_READY == RX_ENABLED) & (((RX_8B10B_DECODER_ERR & RX_ENABLED)? CLK_3HZ : CLK_1HZ) | (RX_FIFO_OVERFLOW_ERR & RX_ENABLED) | (RX_FIFO_FULL & RX_ENABLED)));
+assign LED[2] = 1'b1;
+assign LED[3] = 1'b1;
 
 //ila_0 ila(
 //    .clk(CLK320),
