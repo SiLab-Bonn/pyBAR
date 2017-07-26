@@ -467,7 +467,8 @@ tlu_controller #(
     .BASEADDR(TLU_BASEADDR),
     .HIGHADDR(TLU_HIGHADDR),
     .DIVISOR(8),
-    .ABUSWIDTH(32)
+    .ABUSWIDTH(32),
+    .WIDTH(8)
 ) i_tlu_controller (
     .BUS_CLK(BUS_CLK),
     .BUS_RST(BUS_RST),
@@ -540,6 +541,7 @@ generate
         .FIFO_DATA(FE_FIFO_DATA[i]),
 
         .RX_FIFO_FULL(RX_FIFO_FULL[i]),
+        .RX_ENABLED(),
 
         .BUS_CLK(BUS_CLK),
         .BUS_RST(BUS_RST),
