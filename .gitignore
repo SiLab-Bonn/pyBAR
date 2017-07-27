@@ -86,10 +86,6 @@ firmware/mio/ise/*
 firmware/mio3/vivado
 !firmware/mio3/vivado/*.xpr
 
-# SEABAS2 firmware
-firmware/seabas2/ise/*
-!firmware/seabas2/ise/*.xise
-
 # LX9 firmware
 firmware/lx9/ise/*
 !firmware/lx9/ise/*.xise
