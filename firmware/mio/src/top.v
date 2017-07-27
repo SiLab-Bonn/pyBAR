@@ -17,7 +17,7 @@
 
 /**
  * ------------------------------------------------------------
- * Copyright (c) All rights reserved 
+ * Copyright (c) All rights reserved
  * SiLab, Institute of Physics, University of Bonn
  * ------------------------------------------------------------
  */
@@ -421,7 +421,7 @@ parameter DSIZE = 10;
 //parameter CLKIN_PERIOD = 6.250;
 
 `ifdef GPAC
-wire RX_READY, RX_8B10B_DECODER_ERR, RX_FIFO_OVERFLOW_ERR, RX_FIFO_FULL;
+wire RX_READY, RX_8B10B_DECODER_ERR, RX_FIFO_OVERFLOW_ERR, RX_FIFO_FULL, RX_ENABLED;
 wire FE_FIFO_READ;
 wire FE_FIFO_EMPTY;
 wire [31:0] FE_FIFO_DATA;
@@ -448,6 +448,7 @@ fei4_rx #(
     .FIFO_DATA(FE_FIFO_DATA),
 
     .RX_FIFO_FULL(RX_FIFO_FULL),
+	 .RX_ENABLED(RX_ENABLED),
 
     .BUS_CLK(BUS_CLK),
     .BUS_RST(BUS_RST),
@@ -457,7 +458,7 @@ fei4_rx #(
     .BUS_WR(BUS_WR)
 );
 `else
-wire [3:0] RX_READY, RX_8B10B_DECODER_ERR, RX_FIFO_OVERFLOW_ERR, RX_FIFO_FULL;
+wire [3:0] RX_READY, RX_8B10B_DECODER_ERR, RX_FIFO_OVERFLOW_ERR, RX_FIFO_FULL, RX_ENABLED;
 wire [3:0] FE_FIFO_READ;
 wire [3:0] FE_FIFO_EMPTY;
 wire [31:0] FE_FIFO_DATA [3:0];
@@ -486,6 +487,7 @@ for (i = 0; i < 4; i = i + 1) begin: rx_gen
         .FIFO_DATA(FE_FIFO_DATA[i]),
 
         .RX_FIFO_FULL(RX_FIFO_FULL[i]),
+        .RX_ENABLED(RX_ENABLED[i]),
 
         .BUS_CLK(BUS_CLK),
         .BUS_RST(BUS_RST),
@@ -566,7 +568,8 @@ tlu_controller #(
     .BASEADDR(TLU_BASEADDR),
     .HIGHADDR(TLU_HIGHADDR),
     .DIVISOR(32),
-    .TLU_TRIGGER_MAX_CLOCK_CYCLES(17)
+    .TLU_TRIGGER_MAX_CLOCK_CYCLES(17),
+    .WIDTH(8)
 ) i_tlu_controller (
     .BUS_CLK(BUS_CLK),
     .BUS_RST(BUS_RST),
@@ -1074,12 +1077,12 @@ sram_fifo #(
 assign LED[0] = 1'b0;
 assign LED[1] = 1'b0;
 assign LED[2] = 1'b0;
-assign LED[3] = RX_READY & ((RX_8B10B_DECODER_ERR? CLK_3HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR | RX_FIFO_FULL);
+assign LED[3] = (RX_ENABLED & RX_READY) & ((RX_8B10B_DECODER_ERR? CLK_3HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR | RX_FIFO_FULL);
 `else
-assign LED[0] = RX_READY[0] & ((RX_8B10B_DECODER_ERR[0]? CLK_3HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[0] | RX_FIFO_FULL[0]);
-assign LED[1] = RX_READY[1] & ((RX_8B10B_DECODER_ERR[1]? CLK_3HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[1] | RX_FIFO_FULL[1]);
-assign LED[2] = RX_READY[2] & ((RX_8B10B_DECODER_ERR[2]? CLK_3HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[2] | RX_FIFO_FULL[2]);
-assign LED[3] = RX_READY[3] & ((RX_8B10B_DECODER_ERR[3]? CLK_3HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[3] | RX_FIFO_FULL[3]);
+assign LED[0] = (RX_ENABLED[0] & RX_READY[0]) & ((RX_8B10B_DECODER_ERR[0]? CLK_3HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[0] | RX_FIFO_FULL[0]);
+assign LED[1] = (RX_ENABLED[1] & RX_READY[1]) & ((RX_8B10B_DECODER_ERR[1]? CLK_3HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[1] | RX_FIFO_FULL[1]);
+assign LED[2] = (RX_ENABLED[2] & RX_READY[2]) & ((RX_8B10B_DECODER_ERR[2]? CLK_3HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[2] | RX_FIFO_FULL[2]);
+assign LED[3] = (RX_ENABLED[3] & RX_READY[3]) & ((RX_8B10B_DECODER_ERR[3]? CLK_3HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[3] | RX_FIFO_FULL[3]);
 `endif
 assign LED[4] = (CLK_1HZ | FIFO_FULL) & CLK_LOCKED;
 

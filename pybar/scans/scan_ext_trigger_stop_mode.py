@@ -151,7 +151,7 @@ class StopModeExtTriggerScan(Fei4RunBase):
             analyze_raw_data.create_hit_table = True
             analyze_raw_data.trig_count = self.trig_count  # set number of BCID to overwrite the number deduced from the raw data file
             analyze_raw_data.create_source_scan_hist = True
-            analyze_raw_data.use_trigger_time_stamp = True
+            analyze_raw_data.trigger_data_format = 1  # time stamp only
             analyze_raw_data.set_stop_mode = True
             analyze_raw_data.align_at_trigger = True
             analyze_raw_data.interpreter.set_warning_output(False)

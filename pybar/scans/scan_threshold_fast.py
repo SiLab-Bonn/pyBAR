@@ -107,9 +107,9 @@ class FastThresholdScan(Fei4RunBase):
                     logging.info('Testing for stop condition: %s %d', 'PlsrDAC', self.scan_parameter_value)
 
                 col, row = convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)
-                if np.any(np.logical_and(col < 1, col > 80)) or np.any(np.logical_and(row < 1, row > 336)):  # filter bad data records that can happen 
+                if np.any(np.logical_and(col < 1, col > 80)) or np.any(np.logical_and(row < 1, row > 336)):  # filter bad data records that can happen
                     logging.warning('There are undefined %d data records (e.g. random data)', np.count_nonzero(np.logical_and(col < 1, col > 80)) + np.count_nonzero(np.logical_and(row < 1, row > 336)))
-                    col, row = col[np.logical_and(col > 0, col <= 80)], row[np.logical_and(row > 0, row < 336)]
+                    col, row = col[np.logical_and(col > 0, col <= 80)], row[np.logical_and(row > 0, row <= 336)]
                 occupancy_array = hist_2d_index(col - 1, row - 1, shape=(80, 336))
                 self.scan_condition(occupancy_array)
 

@@ -91,7 +91,7 @@ class TestAnalysis(unittest.TestCase):
             analyze_raw_data.trig_count = 255
             analyze_raw_data.create_source_scan_hist = True
             analyze_raw_data.set_stop_mode = True
-            analyze_raw_data.use_trigger_time_stamp = True
+            analyze_raw_data.trigger_data_format = 1  # time stamp only
             analyze_raw_data.align_at_trigger = True
             analyze_raw_data.interpreter.set_warning_output(False)
             analyze_raw_data.interpret_word_table(use_settings_from_file=False)  # The old unit test data does not hav the settings stored in file

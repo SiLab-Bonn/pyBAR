@@ -1,4 +1,5 @@
 import logging
+
 from matplotlib.backends.backend_pdf import PdfPages
 
 from pybar.run_manager import RunManager
@@ -35,6 +36,7 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
         "target_tot": 5,  # target ToT
         "global_iterations": 4,  # the number of iterations to do for the global tuning, 0: only global threshold (GDAC) is tuned, -1 or None: no global tuning
         "local_iterations": 3,  # the number of iterations to do for the local tuning, 0: only local threshold (TDAC) is tuned, -1 or None: no local tuning
+        "reset_local_dacs": True,  # if True, reset pixels registers to the middle of the DAC range before the global tuning starts
         "fail_on_warning": True,  # do not continue tuning if a global tuning fails
         # GDAC
         "gdac_tune_bits": range(7, -1, -1),  # GDAC bits to change during tuning
@@ -68,24 +70,23 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
     }
 
     def configure(self):
-        commands = []
-        commands.extend(self.register.get_commands("ConfMode"))
-        # C_Low
-        if "C_Low".lower() in map(lambda x: x.lower(), self.enable_shift_masks):
-            self.register.set_pixel_register_value('C_Low', 1)
-            commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_Low'))
-        else:
-            self.register.set_pixel_register_value('C_Low', 0)
-            commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_Low'))
-        # C_High
-        if "C_High".lower() in map(lambda x: x.lower(), self.enable_shift_masks):
-            self.register.set_pixel_register_value('C_High', 1)
-            commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_High'))
-        else:
-            self.register.set_pixel_register_value('C_High', 0)
-            commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_High'))
-        commands.extend(self.register.get_commands("RunMode"))
-        self.register_utils.send_commands(commands)
+        super(Fei4Tuning, self).configure()
+
+        # overwrite pixel registers and set them to center postion before a global tuning 
+        if self.reset_local_dacs and self.global_iterations:
+            commands = []
+            commands.extend(self.register.get_commands("ConfMode"))
+            # TDAC
+            tdac_center = 2 ** self.register.pixel_registers['TDAC']['bitlength'] / 2
+            self.register.set_pixel_register_value('TDAC', tdac_center)
+            commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='TDAC'))
+            # FDAC
+            fdac_center = 2 ** self.register.pixel_registers['FDAC']['bitlength'] / 2
+            self.register.set_pixel_register_value('FDAC', fdac_center)
+            commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='FDAC'))
+            commands.extend(self.register.get_commands("RunMode"))
+            self.register_utils.send_commands(commands)
+
 
     def scan(self):
         '''Metascript that calls other scripts to tune the FE.

@@ -158,6 +158,7 @@ class AnalyzeRawData(object):
                       'tot': 'charge',
                       'LVL1ID': 'LVL1ID',
                       'trigger_number': 'trigger_number',
+                      'trigger_time_stamp': 'trigger_time_stamp',
                       'BCID': 'BCID',
                       'TDC': 'TDC',
                       'TDC_time_stamp': 'TDC_time_stamp',
@@ -168,6 +169,7 @@ class AnalyzeRawData(object):
 
         hit_dtype = np.dtype([('event_number', '<i8'),
                               ('trigger_number', '<u4'),
+                              ('trigger_time_stamp', '<u4'),
                               ('relative_BCID', '<u1'),
                               ('LVL1ID', '<u2'),
                               ('column', '<u1'),
@@ -266,7 +268,7 @@ class AnalyzeRawData(object):
         self.create_cluster_tot_hist = False
         self.align_at_trigger = False  # use the trigger word to align the events
         self.align_at_tdc = False  # use the trigger word to align the events
-        self.use_trigger_time_stamp = False  # the trigger number is a time stamp
+        self.trigger_data_format = 0  # 0: 31bit trigger number, 1: 31bit trigger time stamp, 2: 15bit trigger time stamp + 16bit trigger number
         self.use_tdc_trigger_time_stamp = False  # the tdc time stamp is the difference between trigger and tdc rising edge
         self.max_tdc_delay = 255
         self.max_trigger_number = 2 ** 16 - 1
@@ -558,13 +560,13 @@ class AnalyzeRawData(object):
         self.interpreter.align_at_tdc(value)
 
     @property
-    def use_trigger_time_stamp(self):
-        return self._use_trigger_time_stamp
+    def trigger_data_format(self):
+        return self._trigger_data_format
 
-    @use_trigger_time_stamp.setter
-    def use_trigger_time_stamp(self, value):
-        self._use_trigger_time_stamp = value
-        self.interpreter.use_trigger_time_stamp(value)
+    @trigger_data_format.setter
+    def trigger_data_format(self, value):
+        self._trigger_data_format = value
+        self.interpreter.set_trigger_data_format(value)
 
     @property
     def use_tdc_trigger_time_stamp(self):
@@ -654,7 +656,7 @@ class AnalyzeRawData(object):
             self.out_file_h5 = tb.open_file(self._analyzed_data_file, mode="w", title="Interpreted FE-I4 raw data")
             if self._create_hit_table is True:
                 description = data_struct.HitInfoTable().columns.copy()
-                if self.use_trigger_time_stamp:  # replace the column name if trigger gives you a time stamp
+                if self.trigger_data_format == 1:  # use trigger time stamp if trigger number is not available
                     description['trigger_time_stamp'] = description.pop('trigger_number')
                 hit_table = self.out_file_h5.create_table(self.out_file_h5.root, name='Hits', description=description, title='hit_data', filters=self._filter_table, chunkshape=(self._chunk_size / 100,))
             if self._create_meta_word_index is True:
@@ -663,7 +665,7 @@ class AnalyzeRawData(object):
                 cluster_table = self.out_file_h5.create_table(self.out_file_h5.root, name='Cluster', description=data_struct.ClusterInfoTable, title='Cluster data', filters=self._filter_table, expectedrows=self._chunk_size)
             if self._create_cluster_hit_table:
                 description = data_struct.ClusterHitInfoTable().columns.copy()
-                if self.use_trigger_time_stamp:  # replace the column name if trigger gives you a time stamp
+                if self.trigger_data_format == 1:  # use trigger time stamp if trigger number is not available
                     description['trigger_time_stamp'] = description.pop('trigger_number')
                 cluster_hit_table = self.out_file_h5.create_table(self.out_file_h5.root, name='ClusterHits', description=description, title='cluster_hit_data', filters=self._filter_table, expectedrows=self._chunk_size)
 

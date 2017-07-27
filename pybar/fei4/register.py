@@ -246,6 +246,12 @@ class FEI4Register(object):
             joint_write = kwargs.pop("joint_write", False)
             same_mask_for_all_dc = kwargs.pop("same_mask_for_all_dc", False)
             register_objects = self.get_pixel_register_objects(do_sort=['pxstrobe'], **kwargs)
+            # prepare for writing pixel registers
+            if not self.broadcast:
+                self.set_global_register_value("Colpr_Mode", 0)  # write only to the addressed double-column
+                self.set_global_register_value("Colpr_Addr", 40)  # ivalid address, grounded
+                commands.extend(self.get_commands("ConfMode", ChipID=8))  # set all chips to conf mode to receive commands
+                commands.extend(self.get_commands("WrRegister", name=["Colpr_Mode", "Colpr_Addr"], ChipID=8)) # braodcast
             self.set_global_register_value("S0", 0)
             self.set_global_register_value("S1", 0)
             self.set_global_register_value("SR_Clr", 0)
@@ -264,6 +270,7 @@ class FEI4Register(object):
             elif self.fei4b:
                 self.set_global_register_value("SR_Read", 0)
             commands.extend(self.get_commands("WrRegister", name=registers))
+
             if joint_write:
                 pxstrobes = 0
                 first_read = True
@@ -293,7 +300,7 @@ class FEI4Register(object):
                     self.set_global_register_value("Colpr_Addr", dc_no)
                     commands.extend(self.get_commands("WrRegister", name=["Colpr_Addr"]))
                     register_bitset = self.get_pixel_register_bitset(register_objects[0], 0, dc_no)
-                    commands.extend([self.build_command(command_name, PixelData=register_bitset, ChipID=chip_id, **kwargs)])
+                    commands.extend([self.build_command(command_name, PixelData=register_bitset, ChipID=8, **kwargs)])  # broadcast
                     if do_latch:
                         commands.extend(self.get_commands("GlobalPulse", Width=0))
             else:
@@ -317,7 +324,7 @@ class FEI4Register(object):
                             self.set_global_register_value("Colpr_Addr", dc_no)
                             commands.extend(self.get_commands("WrRegister", name=["Colpr_Addr"]))
                             register_bitset = self.get_pixel_register_bitset(register_object, pxstrobe_bit_no, dc_no)
-                            commands.extend([self.build_command(command_name, PixelData=register_bitset, ChipID=chip_id, **kwargs)])
+                            commands.extend([self.build_command(command_name, PixelData=register_bitset, ChipID=8, **kwargs)])  # broadcast
                             if do_latch:
                                 commands.extend(self.get_commands("GlobalPulse", Width=0))
             self.restore(pixel_register=False)

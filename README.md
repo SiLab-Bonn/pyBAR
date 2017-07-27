@@ -10,7 +10,7 @@ PyBAR is *not only* targeting experienced users and developers. The easy-to-use 
 
 The features of the FPGA firmware in a nutshell:
 - supported readout hardware:
-  MIO, MIO 3.0, SEABAS2, Avnet LX9 and Digilent Nexys<sup>TM</sup>4 DDR
+  MIO, MIO3/MMC3, Avnet LX9 and Digilent Nexys<sup>TM</sup>4 DDR
 - supported adapter cards:
   Single Chip Adapter Card, Burn-in Card (Quad Module Adapter Card) and the General Purpose Analog Card (GPAC)
 - support of up to 4 FE, simultaneous readout
@@ -54,19 +54,19 @@ On Windows, the `pywin32` package is required:
   conda install pywin32
   ```
 
-[Basil](https://github.com/SiLab-Bonn/basil) (==2.4.3) is required:
+[Basil](https://github.com/SiLab-Bonn/basil) (==2.4.6) is required:
   ```
-  pip install basil_daq==2.4.3
+  pip install basil_daq==2.4.6
   ```
 
-[pyBAR FEI4 Interpreter](https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter) (==1.2.1) is required:
+[pyBAR FEI4 Interpreter](https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter) (>=1.3.0) is required:
   ```
-  pip install git+https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter@1.2.1
+  pip install git+https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter@1.3.0
   ```
 
 [Pixel Clusterizer](https://github.com/SiLab-Bonn/pixel_clusterizer) (>=3.0.0) is required:
   ```
-  pip install pixel_clusterizer==3
+  pip install pixel_clusterizer
   ```
 
 To enable support for USB devices (MIO, MIO3 and MMC3), the following additional packages are required:

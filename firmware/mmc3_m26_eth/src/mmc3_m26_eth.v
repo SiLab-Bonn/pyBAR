@@ -475,7 +475,8 @@ tlu_controller #(
     .BASEADDR(TLU_BASEADDR),
     .HIGHADDR(TLU_HIGHADDR),
     .DIVISOR(8),
-    .ABUSWIDTH(32)
+    .ABUSWIDTH(32),
+    .WIDTH(8)
 ) i_tlu_controller (
     .BUS_CLK(BUS_CLK),
     .BUS_RST(BUS_RST),
@@ -539,6 +540,7 @@ fei4_rx #(
     .FIFO_DATA(FE_FIFO_DATA),
 
     .RX_FIFO_FULL(RX_FIFO_FULL),
+    .RX_ENABLED(),
 
     .BUS_CLK(BUS_CLK),
     .BUS_RST(BUS_RST),
