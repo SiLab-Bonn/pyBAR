@@ -1,8 +1,7 @@
 # Core functionality
-basil_daq>=2.4.6 # readout framework pyBAR is built on
-pySiLibUSB # support for SiLab USB devices
-pyBAR_fei4_interpreter>=1.3.0  # to interpret the raw data
-pixel_clusterizer>=3.0.0  # to cluster pixel hits
+basil_daq==2.4.6 # readout framework pyBAR is built on
+pyBAR_fei4_interpreter>=1.3,<1.4  # to interpret the raw data
+pixel_clusterizer>=3.1,<3.2  # to cluster pixel hits
 bitarray>=0.8.1
 matplotlib
 numpy
@@ -15,7 +14,7 @@ scipy
 pyvisa # interface to lab devices
 pyvisa-py # interface to lab devices
 pyserial # serial port
-pyqtgraph # monitor
+pyqtgraph>=0.10 # monitor
 mock # unit tests
 sphinx # for vitables
 #vitables # data viewer
