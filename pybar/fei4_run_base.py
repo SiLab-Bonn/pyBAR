@@ -18,6 +18,7 @@ import inspect
 import sys
 import contextlib2 as contextlib
 
+import basil
 from basil.dut import Dut
 
 from pybar.run_manager import RunManager, RunBase, RunAborted, RunStopped
@@ -76,21 +77,47 @@ class TdcHandle(object):
     '''
     def __init__(self, dut, tdc_modules):
         self._dut = dut
+        if not all(isinstance(dut[tdc_module], basil.HL.tdc_s3.tdc_s3) for tdc_module in tdc_modules):
+            raise ValueError("Not all modules are of type TDC")
         self._tdc_modules = tdc_modules
-        self._conf = {}  # Common conf for all TDCs
 
     def __getitem__(self, key):
         ''' Return configurations that are common to all TDC modules
         '''
-        return self._conf[key]
+        values = []
+        for module_name in self._tdc_modules:
+            values.append(self._dut[module_name][key])
+        if not len(set(values)) == 1:
+            raise RuntimeError("Returned values are different.")
+        return values[0]
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, name, value):
         ''' Set TDC setting to all TDC modules
         '''
-        self._conf[key] = value
-        for module in self._tdc_modules:
-            tdc = self._dut[module]
-            tdc[key] = value
+        for module_name in self._tdc_modules:
+            self._dut[module_name][name] = value
+
+    def __getattr__(self, name):
+        '''called only on last resort if there are no attributes in the instance that match the name
+        '''
+        if name.isupper():
+            return self[name]
+        else:
+            def method(*args, **kwargs):
+                nsplit = name.split('_', 1)
+                if len(nsplit) == 2 and nsplit[0] == 'set' and nsplit[1].isupper() and len(args) == 1 and not kwargs:
+                    self[nsplit[1]] = args[0]  # returns None
+                elif len(nsplit) == 2 and nsplit[0] == 'get' and nsplit[1].isupper() and not args and not kwargs:
+                    return self[nsplit[1]]
+                else:
+                    raise AttributeError("%r object has no attribute %r" % (self.__class__, name))
+            return method
+
+    def __setattr__(self, name, value):
+        if name.isupper():
+            self[name] = value
+        else:
+            super(TdcHandle, self).__setattr__(name, value)
 
 
 class Fei4RunBase(RunBase):
