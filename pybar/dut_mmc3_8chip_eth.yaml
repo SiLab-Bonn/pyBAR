@@ -14,6 +14,11 @@ transfer_layer:
     type  : SiTcp
 
 hw_drivers:
+  - name      : TLU
+    type      : tlu
+    interface : ETH
+    base_addr : 0x8200
+
   - name      : CMD
     type      : cmd_seq
     interface : ETH
