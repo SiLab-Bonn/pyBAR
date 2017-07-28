@@ -77,7 +77,9 @@ class TdcHandle(object):
     '''
     def __init__(self, dut, tdc_modules):
         self._dut = dut
-        if not all(isinstance(dut[tdc_module], basil.HL.tdc_s3.tdc_s3) for tdc_module in tdc_modules):
+        if not tdc_modules:
+            tdc_modules = []
+        if tdc_modules and not all(isinstance(dut[tdc_module], basil.HL.tdc_s3.tdc_s3) for tdc_module in tdc_modules):
             raise ValueError("Not all modules are of type TDC")
         self._tdc_modules = tdc_modules
 
@@ -176,10 +178,17 @@ class Fei4RunBase(RunBase):
         self._scan_parameters = {}  # Store specific scan parameters per module to make available after scan
         self._parse_module_cfgs(conf)
         self._set_default_cfg(conf)
-        self.fifo_readout = None  # FIFO readout
-        self.tdc = None  # Handle for TDC modules
+        # initialize attributes not related to a module
+        self.fifo_readout = None
+        self.tdc = None
+        self.current_module_handle = None  # setting broadast module as default module
+        self.scan_parameters = None
+        self.register = None
+        self.register_utils = None
+        self.output_filename = None
         self.raw_data_file = None
-        self.deselect_module()  # Initialize handles
+        # after initialized is set to True, all new attributes are belonging to selected mudule
+        # by default the broadcast module is selected (current_module_handle is None)
         self._initialized = True
 
     def _init_run_conf(self, run_conf):
@@ -220,6 +229,10 @@ class Fei4RunBase(RunBase):
                     raise ValueError("No parameter 'fe_flavor' defined for module '%s'" % module_id)
                 if 'chip_address' not in module_cfg:
                     raise ValueError("No parameter 'chip_address' defined for module '%s'" % module_id)
+                if 'tdc' not in module_cfg:
+                    module_cfg["tdc"] = None
+                if 'tdc_channel' not in module_cfg:
+                    module_cfg["tdc_channel"] = None
                 # Save config to dict.
                 self._module_cfgs[module_id] = module_cfg
         else:
@@ -243,7 +256,9 @@ class Fei4RunBase(RunBase):
                 'chip_address': None,
                 'rx': None,
                 'rx_channel': None,
-                'tx_channel': None}
+                'tx_channel': None,
+                'tdc': None,
+                'tdc_channel': None}
 
         # Adding here default module config items.
         for module_cfg in self._module_cfgs.values():
@@ -304,7 +319,6 @@ class Fei4RunBase(RunBase):
                 self.dut['ENABLE_CHANNEL']['TLU'] = 1
                 self.dut['ENABLE_CHANNEL']['TDC'] = 1
                 self.dut['ENABLE_CHANNEL'].write()
-                self.tdc = TdcHandle(self.dut, tdc_modules=['TDC'])
             elif self.dut.get_modules('FEI4QuadModuleAdapterCard') and [adapter_card for adapter_card in self.dut.get_modules('FEI4QuadModuleAdapterCard') if adapter_card.name == 'ADAPTER_CARD']:
                 # resetting over current status
                 self.dut['POWER_QUAD']['EN_CH1'] = 0
@@ -326,7 +340,6 @@ class Fei4RunBase(RunBase):
                 self.dut['ENABLE_CHANNEL']['TDC'] = 1
                 self.dut['ENABLE_CHANNEL'].write()
                 self.dut['POWER_QUAD'].write()
-                self.tdc = TdcHandle(self.dut, tdc_modules=['TDC'])
             else:
                 logging.warning('Unknown adapter card')
                 # do the minimal configuration here
@@ -337,8 +350,6 @@ class Fei4RunBase(RunBase):
                 self.dut['ENABLE_CHANNEL']['TLU'] = 1
                 self.dut['ENABLE_CHANNEL']['TDC'] = 1
                 self.dut['ENABLE_CHANNEL'].write()
-                self.tdc = TdcHandle(self.dut, tdc_modules=['TDC'])
-
         elif self.dut.name == 'mio_gpac':
             # PWR
             self.dut['V_in'].set_current_limit(0.1, unit='A')  # one for all, max. 1A
@@ -372,7 +383,6 @@ class Fei4RunBase(RunBase):
             self.dut['ENABLE_CHANNEL']['TDC'] = 1
             self.dut['ENABLE_CHANNEL']['CCPD_TDC'] = 1
             self.dut['ENABLE_CHANNEL'].write()
-            self.tdc = TdcHandle(self.dut, tdc_modules=['TDC', 'CCPD_TDC'])
         elif self.dut.name == 'lx9':
             # enable LVDS RX/TX
             self.dut['I2C'].write(0xe8, [6, 0xf0, 0xff])
@@ -389,7 +399,6 @@ class Fei4RunBase(RunBase):
             self.dut['ENABLE_CHANNEL']['TLU'] = 1
             self.dut['ENABLE_CHANNEL']['TDC'] = 1
             self.dut['ENABLE_CHANNEL'].write()
-            self.tdc = TdcHandle(self.dut, tdc_modules=['TDC'])
         elif self.dut.name == 'mmc3_beast_eth':
             channel_names = [channel.name for channel in self.dut.get_modules('fei4_rx')]
             active_channel_names = [module_cfg["rx"] for module_cfg in self._module_cfgs.values()]
@@ -401,7 +410,6 @@ class Fei4RunBase(RunBase):
                     self.dut[channel_name].ENABLE_RX = 0
             self.dut['DLY_CONFIG']['CLK_DLY'] = 0
             self.dut['DLY_CONFIG'].write()
-            self.tdc = TdcHandle(self.dut, tdc_modules=['TDC%d' % channel for channel in range(5)])
         elif self.dut.name == 'mmc3_8chip_eth':
             channel_names = [channel.name for channel in self.dut.get_modules('fei4_rx')]
             active_channel_names = [module_cfg["rx"] for module_cfg in self._module_cfgs.values()]
@@ -413,7 +421,6 @@ class Fei4RunBase(RunBase):
                     self.dut[channel_name].ENABLE_RX = 0
             self.dut['DLY_CONFIG']['CLK_DLY'] = 0
             self.dut['DLY_CONFIG'].write()
-            self.tdc = TdcHandle(self.dut, tdc_modules=['TDC%d' % channel for channel in range(7)])
         else:
             logging.warning('Omitting initialization of DUT %s', self.dut.name)
 
@@ -803,10 +810,15 @@ class Fei4RunBase(RunBase):
         ''' Select module and give access to the module.
         '''
         self.current_module_handle = module_id
+        # enabling Tx channels
+        # generating enable bit mask for broadcast
         tx_channels = set([1 << module_cfg['tx_channel'] for module_cfg in self._module_cfgs.values() if module_cfg['tx_channel'] is not None])
-        # generate enable bits
         broadcast_tx_channels = reduce(lambda x, y: x | y, tx_channels)
         self.dut['CMD']['OUTPUT_ENABLE'] = (1 << self._module_cfgs[module_id]["tx_channel"]) if module_id is not None else broadcast_tx_channels
+        # setting TDC handle
+        # generating list of TDCs for broadcast
+        broadcast_tdc = [module_cfg["tdc"] for module_cfg in self._module_cfgs.values() if module_cfg["tdc"] is not None]
+        self.tdc = TdcHandle(self.dut, tdc_modules=([self._module_cfgs[module_id]["tdc"]] if self._module_cfgs[module_id]["tdc"] is not None else None) if module_id is not None else broadcast_tdc)
         self.scan_parameters = self.get_scan_parameters(module_id=module_id)
         self.register = self.get_register(module_id=module_id)
         self.register_utils = self.get_register_utils(module_id=module_id)
@@ -816,6 +828,10 @@ class Fei4RunBase(RunBase):
         ''' Deselect module and cleanup.
         '''
         self.current_module_handle = None
+        # disabling Tx channels
+        self.dut['CMD']['OUTPUT_ENABLE'] = 0
+        # setting TDC handle to None
+        self.tdc = None
         self.scan_parameters = None
         self.register = None
         self.register_utils = None
