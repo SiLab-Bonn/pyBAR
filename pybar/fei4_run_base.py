@@ -311,6 +311,14 @@ class Fei4RunBase(RunBase):
                 self.dut['POWER_SCC']['EN_VA2'] = 1
                 self.dut['POWER_SCC'].write()
                 # enabling readout
+                rx_names = [rx.name for rx in self.dut.get_modules('fei4_rx')]
+                active_rx_names = ['CH4']
+                for rx_name in rx_names:
+                    # enabling/disabling Rx
+                    if rx_name in active_rx_names:
+                        self.dut[rx_name].ENABLE_RX = 1
+                    else:
+                        self.dut[rx_name].ENABLE_RX = 0
                 self.dut['ENABLE_CHANNEL']['CH1'] = 0  # RD2Bar on SCAC
                 self.dut['ENABLE_CHANNEL']['CH2'] = 0  # RD1Bar on SCAC
                 self.dut['ENABLE_CHANNEL']['CH3'] = 0  # RABar on SCAC
@@ -330,11 +338,18 @@ class Fei4RunBase(RunBase):
                 self.dut['ADAPTER_CARD'].set_voltage('CH3', 2.1)
                 self.dut['ADAPTER_CARD'].set_voltage('CH4', 2.1)
                 self.dut['POWER_QUAD'].write()
-                channel_names = [channel.name for channel in self.dut.get_modules('fei4_rx')]
-                for channel in channel_names:
-                    # enabling readout
-                    self.dut['ENABLE_CHANNEL'][channel] = 1
-                    self.dut['POWER_QUAD']['EN_' + channel] = 1
+                rx_names = [rx.name for rx in self.dut.get_modules('fei4_rx')]
+                active_rx_names = [module_cfg["rx"] for module_cfg in self._module_cfgs.values()]
+                for rx_name in rx_names:
+                    # enabling/disabling Rx
+                    if rx_name in active_rx_names:
+                        self.dut[rx_name].ENABLE_RX = 1
+                        self.dut['ENABLE_CHANNEL'][rx_name] = 1
+                        self.dut['POWER_QUAD']['EN_' + rx_name] = 1
+                    else:
+                        self.dut[rx_name].ENABLE_RX = 0
+                        self.dut['ENABLE_CHANNEL'][rx_name] = 0
+                        self.dut['POWER_QUAD']['EN_' + rx_name] = 0
                 self.dut['ENABLE_CHANNEL']['TLU'] = 1
                 self.dut['ENABLE_CHANNEL']['TDC'] = 1
                 self.dut['ENABLE_CHANNEL'].write()
@@ -398,26 +413,36 @@ class Fei4RunBase(RunBase):
             self.dut['ENABLE_CHANNEL']['TLU'] = 1
             self.dut['ENABLE_CHANNEL']['TDC'] = 1
             self.dut['ENABLE_CHANNEL'].write()
-        elif self.dut.name == 'mmc3_beast_eth':
-            channel_names = [channel.name for channel in self.dut.get_modules('fei4_rx')]
-            active_channel_names = [module_cfg["rx"] for module_cfg in self._module_cfgs.values()]
-            for channel_name in channel_names:
+        elif self.dut.name == 'mmc3_m26_eth':
+            # TODO: enable Mimosa26 Rx when necessary
+            rx_names = [rx.name for rx in self.dut.get_modules('fei4_rx')]
+            active_rx_names = [module_cfg["rx"] for module_cfg in self._module_cfgs.values()]
+            for rx_name in rx_names:
                 # enabling readout
-                if channel_name in active_channel_names:
-                    self.dut[channel_name].ENABLE_RX = 1
+                if rx_name in active_rx_names:
+                    self.dut[rx_name].ENABLE_RX = 1
                 else:
-                    self.dut[channel_name].ENABLE_RX = 0
+                    self.dut[rx_name].ENABLE_RX = 0
+        elif self.dut.name == 'mmc3_beast_eth':
+            rx_names = [rx.name for rx in self.dut.get_modules('fei4_rx')]
+            active_rx_names = [module_cfg["rx"] for module_cfg in self._module_cfgs.values()]
+            for rx_name in rx_names:
+                # enabling/disabling Rx
+                if rx_name in active_rx_names:
+                    self.dut[rx_name].ENABLE_RX = 1
+                else:
+                    self.dut[rx_name].ENABLE_RX = 0
             self.dut['DLY_CONFIG']['CLK_DLY'] = 0
             self.dut['DLY_CONFIG'].write()
         elif self.dut.name == 'mmc3_8chip_eth':
-            channel_names = [channel.name for channel in self.dut.get_modules('fei4_rx')]
-            active_channel_names = [module_cfg["rx"] for module_cfg in self._module_cfgs.values()]
-            for channel_name in channel_names:
-                # enabling readout
-                if channel_name in active_channel_names:
-                    self.dut[channel_name].ENABLE_RX = 1
+            rx_names = [rx.name for rx in self.dut.get_modules('fei4_rx')]
+            active_rx_names = [module_cfg["rx"] for module_cfg in self._module_cfgs.values()]
+            for rx_name in rx_names:
+                # enabling/disabling Rx
+                if rx_name in active_rx_names:
+                    self.dut[rx_name].ENABLE_RX = 1
                 else:
-                    self.dut[channel_name].ENABLE_RX = 0
+                    self.dut[rx_name].ENABLE_RX = 0
             self.dut['DLY_CONFIG']['CLK_DLY'] = 0
             self.dut['DLY_CONFIG'].write()
         else:

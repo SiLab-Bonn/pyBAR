@@ -30,6 +30,7 @@ transfer_layer:
 #
 hw_drivers:
   - name      : ADAPTER_CARD
+# Choose adapter card here
     type      : FEI4AdapterCard
 #    type      : FEI4QuadModuleAdapterCard
     interface : USB
@@ -40,22 +41,20 @@ hw_drivers:
     interface : USB
     base_addr : 0x18300
 
-# Uncomment to enable additional channels on the FEI4 Quad Module Adapter Card
-#
-#  - name      : CH3
-#    type      : fei4_rx
-#    interface : USB
-#    base_addr : 0x18400
-#
-#  - name      : CH2
-#    type      : fei4_rx
-#    interface : USB
-#    base_addr : 0x18500
-#
-#  - name      : CH1
-#    type      : fei4_rx
-#    interface : USB
-#    base_addr : 0x18600
+  - name      : CH3
+    type      : fei4_rx
+    interface : USB
+    base_addr : 0x18400
+
+  - name      : CH2
+    type      : fei4_rx
+    interface : USB
+    base_addr : 0x18500
+
+  - name      : CH1
+    type      : fei4_rx
+    interface : USB
+    base_addr : 0x18600
 
 # Example of additional lab devices to be used with pyBAR
 #
