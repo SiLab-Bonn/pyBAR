@@ -164,20 +164,22 @@ class FifoReadout(object):
         enable_status = self.get_rx_enable_status()
         sync_status = self.get_rx_sync_status()
         discard_count = self.get_rx_fifo_discard_count()
-        error_count = self.get_rx_8b10b_error_count(channels=None)
+        error_count = self.get_rx_8b10b_error_count()
         if self.dut.get_modules('fei4_rx'):
-            logging.info('FEI4 Channel:                     %s', " | ".join([channel.name.rjust(3) for channel in self.dut.get_modules('fei4_rx')]))
-            logging.info('FEI4 RX enable:                   %s', " | ".join(["YES".rjust(3) if status is True else "NO".rjust(3) for status in enable_status]))
+            logging.info('FEI4 channel:                     %s', " | ".join([channel.name.rjust(3) for channel in self.dut.get_modules('fei4_rx')]))
+            logging.info('FEI4 RX enabled:                  %s', " | ".join(["YES".rjust(3) if status is True else "NO".rjust(3) for status in enable_status]))
             logging.info('FEI4 RX sync:                     %s', " | ".join(["YES".rjust(3) if status is True else "NO".rjust(3) for status in sync_status]))
             logging.info('FEI4 RX FIFO discard counter:     %s', " | ".join([repr(count).rjust(3) for count in discard_count]))
             logging.info('FEI4 RX FIFO 8b10b error counter: %s', " | ".join([repr(count).rjust(3) for count in error_count]))
         if not any(sync_status) or any(discard_count) or any(error_count):
             logging.warning('FEI4 RX errors detected')
         # Mimosa26
-        m26_discard_count = self.get_m26_rx_fifo_discard_count(channels=None)
+        m26_enable_status = self.get_m26_rx_enable_status()
+        m26_discard_count = self.get_m26_rx_fifo_discard_count()
         if self.dut.get_modules('m26_rx'):
-            logging.info('M26 Channel:                 %s', " | ".join([channel.name.rjust(3) for channel in self.dut.get_modules('m26_rx')]))
-            logging.info('M26 RX FIFO discard counter: %s', " | ".join([repr(count).rjust(7) for count in m26_discard_count]))
+            logging.info('Mimosa26 channel:                 %s', " | ".join([channel.name.rjust(3) for channel in self.dut.get_modules('m26_rx')]))
+            logging.info('Mimosa26 RX enabled:              %s', " | ".join(["YES".rjust(3) if status is True else "NO".rjust(3) for status in m26_enable_status]))
+            logging.info('Mimosa26 RX FIFO discard counter: %s', " | ".join([repr(count).rjust(7) for count in m26_discard_count]))
         if any(m26_discard_count):
             logging.warning('M26 RX errors detected')
 
@@ -329,6 +331,12 @@ class FifoReadout(object):
             return map(lambda channel: self.dut[channel].LOST_DATA_COUNTER, channels)
         else:
             return map(lambda channel: channel.LOST_DATA_COUNTER, self.dut.get_modules('fei4_rx'))
+
+    def get_m26_rx_enable_status(self, channels=None):
+        if channels:
+            return map(lambda channel: True if self.dut[channel].EN else False, channels)
+        else:
+            return map(lambda channel: True if channel.EN else False, self.dut.get_modules('m26_rx'))
 
     def get_m26_rx_fifo_discard_count(self, channels=None):
         if channels:
