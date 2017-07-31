@@ -251,7 +251,6 @@ class Fei4RunBase(RunBase):
         if self.parallel:
             # Adding broadcast config for parallel mode.
             self._module_cfgs[None] = {
-                'channel': None,
                 'fe_flavor': fe_flavors.pop(),
                 'chip_address': None,
                 'rx': None,
