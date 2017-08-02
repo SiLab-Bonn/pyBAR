@@ -16,7 +16,7 @@ transfer_layer:
         tcp_connection : True
 
 hw_drivers:
-  - name      : gpio_drv
+  - name      : GPIO_DRV
     type      : gpio
     interface : ETH
     base_addr : 0x9000
@@ -62,16 +62,14 @@ hw_drivers:
     interface : ETH
     base_addr : 0xa050
 
-  - name      : SRAM
-    type      : sram_fifo
+  - name      : FIFO
+    type      : sitcp_fifo
     interface : ETH
-    base_addr : 0x200000000
-    base_data_addr : 0x100000000
 
 registers:
   - name        : GPIO_LED
     type        : StdRegister
-    hw_driver   : gpio_drv
+    hw_driver   : GPIO_DRV
     size        : 8
     fields:
       - name    : LED
@@ -99,7 +97,7 @@ chip['M26_RX4'].reset()
 chip['M26_RX5'].reset()
 chip['M26_RX6'].reset()
 
-print 'get_fifo_size', chip['SRAM'].get_fifo_size()
+print 'get_fifo_size', chip['FIFO'].get_fifo_size()
 chls = ['M26_RX1', 'M26_RX2', 'M26_RX3', 'M26_RX4', 'M26_RX5', 'M26_RX6'] #['M26_RX1', 'M26_RX2', 'M26_RX3', 'M26_RX4', 'M26_RX5', 'M26_RX6']
 
 for ch in chls:
@@ -111,9 +109,8 @@ for ch in chls:
     chip[ch].set_en(False)
     print chip[ch].get_lost_count(), ch
 
-ret = chip['SRAM'].get_fifo_size(), chip['SRAM'].get_fifo_size()/4
-print 'XXX', ret
-ret = chip['SRAM'].get_data()
+ret = chip['FIFO'].get_fifo_size(), chip['FIFO'].get_fifo_size()/4
+ret = chip['FIFO'].get_data()
 for i, r in enumerate(ret):
     if i > 1000 and i < 1100:
         print i, hex(r), 'id', (r & 0x00F00000) >>20, 'start', (r & 0x00010000) >> 16, 'data', hex(r & 0x000FFFFF)
