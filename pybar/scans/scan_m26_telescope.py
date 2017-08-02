@@ -191,9 +191,9 @@ class M26TelescopeScan(Fei4RunBase):
         commands.extend(self.register.get_commands("RunMode"))
         self.register_utils.send_commands(commands)
         self.dut['TLU']['RESET'] = 1
-        for plane in range(1, 7):
-            self.dut['M26_RX%d' % plane].reset()
-            self.dut['M26_RX%d' % plane]['TIMESTAMP_HEADER'] = 1
+        for channel in self.dut.get_modules('m26_rx'):
+            channel.reset()
+            channel['TIMESTAMP_HEADER'] = 1
 
     def scan(self):
         # preload command
