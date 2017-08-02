@@ -60,7 +60,7 @@ class FifoReadout(object):
         self.update_timestamp()
         self._is_running = False
         self.reset_rx()
-        self.reset_sram_fifo()
+        self.reset_fifo()
 
     @property
     def is_running(self):
@@ -91,7 +91,7 @@ class FifoReadout(object):
             return None
         return result / float(self._moving_average_time_period)
 
-    def start(self, callback=None, errback=None, reset_rx=False, reset_sram_fifo=False, clear_buffer=False, fill_buffer=False, no_data_timeout=None, filter_func=None, converter_func=None, enabled_fe_channels=None, enabled_m26_channels=None):
+    def start(self, callback=None, errback=None, reset_rx=False, reset_fifo=False, clear_buffer=False, fill_buffer=False, no_data_timeout=None, filter_func=None, converter_func=None, enabled_fe_channels=None, enabled_m26_channels=None):
         self.filter_func = filter_func
         self.converter_func = converter_func
         self.enabled_fe_channels = enabled_fe_channels
@@ -105,14 +105,14 @@ class FifoReadout(object):
         self.fill_buffer = fill_buffer
         if reset_rx:
             self.reset_rx()
-        if reset_sram_fifo:
-            self.reset_sram_fifo()
+        if reset_fifo:
+            self.reset_fifo()
         else:
-            fifo_size = self.dut['SRAM']['FIFO_SIZE']
+            fifo_size = self.dut['FIFO']['FIFO_SIZE']
             raw_data = self.read_data()
             dh_dr_select = logical_and(is_fe_word, logical_or(is_data_record, is_data_header))
             if np.count_nonzero(dh_dr_select(raw_data)) != 0:
-                logging.warning('SRAM FIFO containing events when starting FIFO readout: FIFO_SIZE = %i', fifo_size)
+                logging.warning('FIFO containing events when starting FIFO readout: FIFO_SIZE = %i', fifo_size)
         self._words_per_read.clear()
         if clear_buffer:
             self._data_deque.clear()
@@ -159,7 +159,7 @@ class FifoReadout(object):
 
     def print_readout_status(self):
         logging.info('Data queue size: %d', len(self._data_deque))
-        logging.info('SRAM FIFO size: %d', self.dut['SRAM']['FIFO_SIZE'])
+        logging.info('FIFO size: %d', self.dut['FIFO']['FIFO_SIZE'])
         # FEI4
         enable_status = self.get_rx_enable_status()
         sync_status = self.get_rx_sync_status()
@@ -184,7 +184,7 @@ class FifoReadout(object):
             logging.warning('M26 RX errors detected')
 
     def readout(self, no_data_timeout=None):
-        '''Readout thread continuously reading SRAM.
+        '''Readout thread continuously reading FIFO.
 
         Readout thread, which uses read_data() and appends data to self._data_deque (collection.deque).
         '''
@@ -268,16 +268,16 @@ class FifoReadout(object):
         logging.debug('Stopped %s', self.watchdog_thread.name)
 
     def read_data(self, filter_func=None, converter_func=None):
-        '''Read SRAM and return data array
+        '''Read FIFO and return data array
 
         Can be used without threading.
 
         Returns
         -------
-        data : list
-            A list of SRAM data words.
+        data : np.array
+            An array containing FIFO data words.
         '''
-        data = self.dut['SRAM'].get_data()
+        data = self.dut['FIFO'].get_data()
         data = convert_data_array(data, filter_func=None, converter_func=converter_func)
         return data
 
@@ -290,13 +290,13 @@ class FifoReadout(object):
     def read_status(self):
         raise NotImplementedError()
 
-    def reset_sram_fifo(self):
-        fifo_size = self.dut['SRAM']['FIFO_SIZE']
-        logging.info('Resetting SRAM FIFO: size = %i', fifo_size)
+    def reset_fifo(self):
+        fifo_size = self.dut['FIFO']['FIFO_SIZE']
+        logging.info('Resetting FIFO: size = %i', fifo_size)
         self.update_timestamp()
-        self.dut['SRAM']['RESET']
+        self.dut['FIFO']['RESET']
         sleep(0.2)  # sleep here for a while
-        fifo_size = self.dut['SRAM']['FIFO_SIZE']
+        fifo_size = self.dut['FIFO']['FIFO_SIZE']
         if fifo_size != 0:
             logging.warning('FIFO not empty after reset: size = %i', fifo_size)
 
@@ -343,4 +343,3 @@ class FifoReadout(object):
             return map(lambda channel: self.dut[channel].LOST_COUNT, channels)
         else:
             return map(lambda channel: channel.LOST_COUNT, self.dut.get_modules('m26_rx'))
-            

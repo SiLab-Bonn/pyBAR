@@ -84,23 +84,23 @@ hw_drivers:
 #    init      :
 #        device : Agilent 33250a
 
-  - name      : CMD
+  - name      : CMD_CH1_TO_CH4
     type      : cmd_seq
     interface : USB
     base_addr : 0x10000
 
-  - name      : SRAM
+  - name      : SRAM_FIFO
     type      : sram_fifo
     interface : USB
     base_addr : 0x18100
     base_data_addr : 0x0001000000000000
 
-  - name      : TLU
+  - name      : TRIGGER_CH1_TO_CH4
     type      : tlu
     interface : USB
     base_addr : 0x18200
 
-  - name      : TDC
+  - name      : TDC_RX2
     type      : tdc_s3
     interface : USB
     base_addr : 0x18700

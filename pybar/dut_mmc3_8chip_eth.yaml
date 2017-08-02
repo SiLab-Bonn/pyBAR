@@ -14,12 +14,12 @@ transfer_layer:
     type  : SiTcp
 
 hw_drivers:
-  - name      : TLU
+  - name      : TRIGGER_CH0_TO_CH7
     type      : tlu
     interface : ETH
     base_addr : 0x8200
 
-  - name      : CMD
+  - name      : CMD_CH0_TO_CH7
     type      : cmd_seq
     interface : ETH
     base_addr : 0x0000
@@ -99,11 +99,9 @@ hw_drivers:
     interface : ETH
     base_addr : 0xa600
 
-  - name      : SRAM
-    type      : sram_fifo
+  - name      : SITCP_FIFO
+    type      : sitcp_fifo
     interface : ETH
-    base_addr : 0x200000000
-    base_data_addr : 0x100000000
 
   - name      : DLY_CONFIG_GPIO
     type      : gpio
@@ -112,7 +110,6 @@ hw_drivers:
     size      : 48
 
 registers:
-
   - name        : DLY_CONFIG
     type        : StdRegister
     hw_driver   : DLY_CONFIG_GPIO

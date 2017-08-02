@@ -2,7 +2,16 @@ dut : dut_mio_sim.yaml
 dut_configuration :
 working_dir : 
 
-modules : 
-    module_test :
-        fe_configuration :
-        fe_flavor : fei4a
+modules :
+    module_0 :
+         fe_configuration : # FE configuration file, text (.cfg) or HDF5 (.h5) file. If no value is given, the latest valid configuration (run status 'FINISHED') will be taken. If a number is given, the configuration from the run with the specified number will be taken.
+         fe_flavor : fei4a # FEI4 flavor/type for initial configuration. Valid values are: 'fei4a', 'fei4b'.
+         chip_address : 0 # Chip Address for initial configuration. if no value is given, the broadcast bit will be set.
+         FIFO : SRAM_FIFO  # As implemented in the firmware.
+         RX : CH4  # As implemented in the firmware.
+         rx_channel : 4 # As implemented in the firmware.
+         TX : CMD_CH1_TO_CH4  # As implemented in the firmware.
+         tx_channel : 0 # As implemented in the firmware.
+         TDC: TDC_RX2 # As implemented in the firmware.
+         tdc_channel : 4 # As implemented in the firmware.
+         TLU : TRIGGER_CH1_TO_CH4 # As implemented in the firmware.

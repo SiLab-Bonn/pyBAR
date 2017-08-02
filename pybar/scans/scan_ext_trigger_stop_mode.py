@@ -118,9 +118,9 @@ class StopModeExtTriggerScan(Fei4RunBase):
             self.register.get_commands("GlobalPulse", Width=0)[0],
             self.register.get_commands("zeros", length=100)[0]))
 
-        self.dut['CMD']['CMD_REPEAT'] = self.trig_count
-        self.dut['CMD']['START_SEQUENCE_LENGTH'] = len(start_sequence)
-        self.dut['CMD']['STOP_SEQUENCE_LENGTH'] = len(stop_sequence) + 1
+        self.dut['TX']['CMD_REPEAT'] = self.trig_count
+        self.dut['TX']['START_SEQUENCE_LENGTH'] = len(start_sequence)
+        self.dut['TX']['STOP_SEQUENCE_LENGTH'] = len(stop_sequence) + 1
 
         # preload the command to be send for each trigger
         command = self.register_utils.concatenate_commands((start_sequence, one_latency_read, stop_sequence))
@@ -171,7 +171,7 @@ class StopModeExtTriggerScan(Fei4RunBase):
         self.connect_cancel(["stop"])
         self.dut['TLU']['TRIGGER_COUNTER'] = 0
         self.dut['TLU']['MAX_TRIGGERS'] = self.max_triggers
-        self.dut['CMD']['EN_EXT_TRIGGER'] = True
+        self.dut['TX']['EN_EXT_TRIGGER'] = True
 
         def timeout():
             try:
@@ -186,7 +186,7 @@ class StopModeExtTriggerScan(Fei4RunBase):
 
     def stop_readout(self, timeout=10.0):
         self.scan_timeout_timer.cancel()
-        self.dut['CMD']['EN_EXT_TRIGGER'] = False
+        self.dut['TX']['EN_EXT_TRIGGER'] = False
         super(StopModeExtTriggerScan, self).stop_readout(timeout=timeout)
         self.connect_cancel(["abort"])
 

@@ -4,6 +4,9 @@
 # ------------------------------------------------------------
 #
 
+import time
+
+from basil.dut import Dut
 
 cnfg_yaml = """
 transfer_layer:
@@ -16,21 +19,15 @@ transfer_layer:
         tcp_connection : True
 
 hw_drivers:
-  - name      : GPIO_DRV
-    type      : gpio
+  - name      : TRIGGER_FEI4
+    type      : tlu
     interface : ETH
-    base_addr : 0x9000
-    size      : 8
+    base_addr : 0x8200
 
-  - name      : CMD
+  - name      : CMD_FEI4
     type      : cmd_seq
     interface : ETH
     base_addr : 0x0000
-
-  - name      : CH0
-    type      : fei4_rx
-    interface : ETH
-    base_addr : 0x8600
 
   - name      : M26_RX1
     type      : m26_rx
@@ -62,59 +59,44 @@ hw_drivers:
     interface : ETH
     base_addr : 0xa050
 
-  - name      : FIFO
+  - name      : FEI4_RX
+    type      : fei4_rx
+    interface : ETH
+    base_addr : 0x8600
+
+  - name      : SITCP_FIFO
     type      : sitcp_fifo
     interface : ETH
 
-registers:
-  - name        : GPIO_LED
-    type        : StdRegister
-    hw_driver   : GPIO_DRV
-    size        : 8
-    fields:
-      - name    : LED
-        size    : 8
-        offset  : 7
+  - name      : TDC_FEI4
+    type      : tdc_s3
+    interface : ETH
+    base_addr : 0x8700
 """
 
-import time
-from basil.dut import Dut
+dut = Dut(cnfg_yaml)
+dut.init()
 
-chip = Dut(cnfg_yaml)
-chip.init()
+print 'Resetting Mimosa26 receivers'
+map(lambda channel: channel.reset(), self.dut.get_modules('m26_rx'))
 
-#for i in range(8):
-#    chip['GPIO_LED']['LED'] = 0x01 << i
-#    chip['GPIO_LED'].write()
-#    print('LED:', chip['GPIO_LED'].get_data())
-#    #time.sleep(1)
+print 'FIFO size', dut['SITCP_FIFO'].get_FIFO_SIZE()
 
-print 'START'
-chip['M26_RX1'].reset()
-chip['M26_RX2'].reset()
-chip['M26_RX3'].reset()
-chip['M26_RX4'].reset()
-chip['M26_RX5'].reset()
-chip['M26_RX6'].reset()
-
-print 'get_fifo_size', chip['FIFO'].get_fifo_size()
-chls = ['M26_RX1', 'M26_RX2', 'M26_RX3', 'M26_RX4', 'M26_RX5', 'M26_RX6'] #['M26_RX1', 'M26_RX2', 'M26_RX3', 'M26_RX4', 'M26_RX5', 'M26_RX6']
-
-for ch in chls:
-    chip[ch]["EN"] = True
+for channel in self.dut.get_modules('m26_rx'):
+    channel["EN"] = True
 
 time.sleep(0.01)
 
-for ch in chls:
-    chip[ch].set_en(False)
-    print chip[ch].get_lost_count(), ch
+for channel in self.dut.get_modules('m26_rx'):
+    channel["EN"] = False
+    print "Lost count", channel["LOST_COUNT"], "channel name", channel.name
 
-ret = chip['FIFO'].get_fifo_size(), chip['FIFO'].get_fifo_size()/4
-ret = chip['FIFO'].get_data()
+print 'FIFO size', dut['SITCP_FIFO'].get_FIFO_SIZE()
+
+ret = dut['SITCP_FIFO'].get_data()
 for i, r in enumerate(ret):
     if i > 1000 and i < 1100:
         print i, hex(r), 'id', (r & 0x00F00000) >>20, 'start', (r & 0x00010000) >> 16, 'data', hex(r & 0x000FFFFF)
 
 # DATA FORMAT
 # HEADER(2bit=0x20) + PLANEID(4bit) + 3'b000 + FRAME_START(1bit) + DATA(16bit)
-

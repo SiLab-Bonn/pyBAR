@@ -37,10 +37,8 @@ class TluTuning(Fei4RunBase):
 
             with self.readout(TRIGGER_DATA_DELAY=value):
                 self.dut['TLU']['TRIGGER_ENABLE'] = True
-#                 self.dut['CMD']['EN_EXT_TRIGGER'] = True
                 time.sleep(self.sleep)
                 self.dut['TLU']['TRIGGER_ENABLE'] = False
-#                 self.dut['CMD']['EN_EXT_TRIGGER'] = False
                 if self.dut['TLU']['TRIGGER_COUNTER'] == 0:
                     raise RuntimeError('No triggers collected. Check if TLU is on and the IO is set correctly.')
 

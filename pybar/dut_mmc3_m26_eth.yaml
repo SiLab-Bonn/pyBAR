@@ -35,7 +35,12 @@ hw_drivers:
     init      :
         device : Agilent E3644A
 
-  - name      : CMD
+  - name      : TRIGGER_FEI4
+    type      : tlu
+    interface : ETH
+    base_addr : 0x8200
+
+  - name      : CMD_FEI4
     type      : cmd_seq
     interface : ETH
     base_addr : 0x0000
@@ -70,26 +75,19 @@ hw_drivers:
     interface : ETH
     base_addr : 0xa050
 
-  - name      : CH0
+  - name      : FEI4_RX
     type      : fei4_rx
     interface : ETH
     base_addr : 0x8600
 
-  - name      : SRAM
-    type      : sram_fifo
+  - name      : SITCP_FIFO
+    type      : sitcp_fifo
     interface : ETH
-    base_addr : 0x200000000
-    base_data_addr : 0x100000000
 
-  - name      : TDC
+  - name      : TDC_FEI4
     type      : tdc_s3
     interface : ETH
     base_addr : 0x8700
-
-  - name      : TLU
-    type      : tlu
-    interface : ETH
-    base_addr : 0x8200
 
   - name      : GPIO_JTAG
     type      : gpio

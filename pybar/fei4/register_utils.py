@@ -70,7 +70,7 @@ class FEI4RegisterUtils(object):
         else:
             max_length = 0
             if repeat is not None:
-                self.dut['CMD']['CMD_REPEAT'] = repeat
+                self.dut['TX']['CMD_REPEAT'] = repeat
             for command in commands:
                 max_length = max(command.length(), max_length)
                 self.send_command(command=command, repeat=None, wait_for_finish=wait_for_finish, set_length=True, clear_memory=False, use_timeout=use_timeout)
@@ -79,11 +79,11 @@ class FEI4RegisterUtils(object):
 
     def send_command(self, command, repeat=1, wait_for_finish=True, set_length=True, clear_memory=False, use_timeout=True):
         if repeat is not None:
-            self.dut['CMD']['CMD_REPEAT'] = repeat
+            self.dut['TX']['CMD_REPEAT'] = repeat
         # write command into memory
         command_length = self.set_command(command, set_length=set_length)
         # sending command
-        self.dut['CMD']['START']
+        self.dut['TX']['START']
         # wait for command to be finished
         if wait_for_finish:
             self.wait_for_command(length=command_length, repeat=repeat, use_timeout=use_timeout)
@@ -98,18 +98,18 @@ class FEI4RegisterUtils(object):
         command_length = command.length()
         # set command bit length
         if set_length:
-            self.dut['CMD']['CMD_SIZE'] = command_length
+            self.dut['TX']['CMD_SIZE'] = command_length
         # set command
         data = bitarray_to_array(command)
-        self.dut['CMD'].set_data(data=data, addr=byte_offset)
+        self.dut['TX'].set_data(data=data, addr=byte_offset)
         return command_length
 
     def wait_for_command(self, length=None, repeat=None, use_timeout=True):
         # for scans using the scan loop, reading length and repeat will decrease processor load by 30 to 50%, but has a marginal influence on scan time
         if length is None:
-            length = self.dut['CMD']['CMD_SIZE'] - self.dut['CMD']['START_SEQUENCE_LENGTH'] - self.dut['CMD']['STOP_SEQUENCE_LENGTH']
+            length = self.dut['TX']['CMD_SIZE'] - self.dut['TX']['START_SEQUENCE_LENGTH'] - self.dut['TX']['STOP_SEQUENCE_LENGTH']
         if repeat is None:
-            repeat = self.dut['CMD']['CMD_REPEAT']
+            repeat = self.dut['TX']['CMD_REPEAT']
         if length and repeat > 1:
             delay = length * 25e-9 * repeat
             if delay <= 0.0:
@@ -121,8 +121,8 @@ class FEI4RegisterUtils(object):
             if delay is not None and delay > 0.0:
                 timeout += delay  # adding command delay to timeout
             try:
-                msg = "Time out while waiting for sending command becoming ready in %s, module %s. Power cycle or reset readout board!" % (self.dut['CMD'].name, self.dut['CMD'].__class__.__module__)
-                if not self.dut['CMD'].wait_for_ready(timeout=timeout, times=None, delay=delay, abort=self.abort) and not self.abort.is_set():
+                msg = "Time out while waiting for sending command becoming ready in %s, module %s. Power cycle or reset readout board!" % (self.dut['TX'].name, self.dut['TX'].__class__.__module__)
+                if not self.dut['TX'].wait_for_ready(timeout=timeout, times=None, delay=delay, abort=self.abort) and not self.abort.is_set():
                     raise CmdTimeoutError(msg)
             except RuntimeError:
                 raise CmdTimeoutError(msg)
@@ -134,7 +134,7 @@ class FEI4RegisterUtils(object):
 
     @property
     def is_ready(self):
-        return True if self.dut['CMD']['READY'] else False
+        return True if self.dut['TX']['READY'] else False
 
     def set_conf_mode(self):
         commands = []
@@ -274,7 +274,7 @@ def read_chip_sn(self):
     commands = []
     commands.extend(self.register.get_commands("ConfMode"))
     self.register_utils.send_commands(commands)
-    self.fifo_readout.reset_sram_fifo()
+    self.fifo_readout.reset_fifo()
     if self.register.fei4b:
         commands = []
         self.register.set_global_register_value('Efuse_Sense', 1)
@@ -330,7 +330,7 @@ def test_global_register(self):
     self.register.set_global_register_value('Conf_AddrEnable', 1)
     commands.extend(self.register.get_commands("WrRegister", name='Conf_AddrEnable'))
     self.register_utils.send_commands(commands)
-    self.fifo_readout.reset_sram_fifo()
+    self.fifo_readout.reset_fifo()
     commands = []
     read_from_address = self.register.get_global_register_attributes("addresses", readonly=False)
     commands.extend(self.register.get_commands("RdRegister", addresses=read_from_address))
@@ -385,7 +385,7 @@ def test_pixel_register(self):
     commands = []
     commands.extend(self.register.get_commands("ConfMode"))
     self.register_utils.send_commands(commands)
-    self.fifo_readout.reset_sram_fifo()
+    self.fifo_readout.reset_fifo()
 
     commands = []
     self.register.set_global_register_value('Conf_AddrEnable', 1)
@@ -1109,12 +1109,12 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, additional_dela
         if same_mask_for_all_dc:
             if fast_dc_loop:  # fast DC loop with optimized pixel register writing
                 # set repeat, should be 1 by default when arriving here
-                self.dut['CMD']['CMD_REPEAT'] = repeat_command
+                self.dut['TX']['CMD_REPEAT'] = repeat_command
 
                 # get DC command for the first DC in the list, DC command is byte padded
                 # fill CMD memory with DC command and scan loop command, inside the loop only overwrite DC command
                 dc_address_command = get_dc_address_command(enable_double_columns[0])
-                self.dut['CMD']['START_SEQUENCE_LENGTH'] = len(dc_address_command)
+                self.dut['TX']['START_SEQUENCE_LENGTH'] = len(dc_address_command)
                 self.register_utils.set_command(command=self.register_utils.concatenate_commands((dc_address_command, scan_loop_command), byte_padding=False))
 
                 for index, dc in enumerate(enable_double_columns):
@@ -1133,13 +1133,13 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, additional_dela
                     if bol_function:
                         bol_function()
 
-                    self.dut['CMD']['START']
+                    self.dut['TX']['START']
 
                 # wait here before we go on because we just jumped out of the loop
                 self.register_utils.wait_for_command()
                 if eol_function:
                     eol_function()
-                self.dut['CMD']['START_SEQUENCE_LENGTH'] = 0
+                self.dut['TX']['START_SEQUENCE_LENGTH'] = 0
 
             else:  # the slow DC loop allows writing commands inside bol and eol functions
                 for index, dc in enumerate(enable_double_columns):
@@ -1177,8 +1177,8 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, additional_dela
                 self.register_utils.send_commands(commands)
 
                 dc_address_command = get_dc_address_command(dc)
-                self.dut['CMD']['START_SEQUENCE_LENGTH'] = len(dc_address_command)
-                self.dut['CMD']['CMD_REPEAT'] = repeat_command
+                self.dut['TX']['START_SEQUENCE_LENGTH'] = len(dc_address_command)
+                self.dut['TX']['CMD_REPEAT'] = repeat_command
                 self.register_utils.set_command(command=self.register_utils.concatenate_commands((dc_address_command, scan_loop_command), byte_padding=False))
 
                 for index, dc in enumerate(enable_double_columns):
@@ -1208,19 +1208,19 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, additional_dela
                             eol_function()  # do this after command has finished
                         self.register_utils.send_commands(commands)
 
-                        self.dut['CMD']['START_SEQUENCE_LENGTH'] = len(dc_address_command)
-                        self.dut['CMD']['CMD_REPEAT'] = repeat_command
+                        self.dut['TX']['START_SEQUENCE_LENGTH'] = len(dc_address_command)
+                        self.dut['TX']['CMD_REPEAT'] = repeat_command
                         self.register_utils.set_command(command=self.register_utils.concatenate_commands((dc_address_command, scan_loop_command), byte_padding=False))
 
                     if bol_function:
                         bol_function()
 
-                    self.dut['CMD']['START']
+                    self.dut['TX']['START']
 
                 self.register_utils.wait_for_command()
                 if eol_function:
                     eol_function()
-                self.dut['CMD']['START_SEQUENCE_LENGTH'] = 0
+                self.dut['TX']['START_SEQUENCE_LENGTH'] = 0
 
             else:
                 for index, dc in enumerate(enable_double_columns):

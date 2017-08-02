@@ -108,7 +108,7 @@ class FeedbackTuning(Fei4RunBase):
 
             scan_parameter_value = self.register.get_global_register_value("PrmpVbpf")
 
-            with self.readout(PrmpVbpf=scan_parameter_value, reset_sram_fifo=True, fill_buffer=True, clear_buffer=True, callback=self.handle_data):
+            with self.readout(PrmpVbpf=scan_parameter_value, reset_fifo=True, fill_buffer=True, clear_buffer=True, callback=self.handle_data):
                 scan_loop(self,
                           command=cal_lvl1_command,
                           repeat_command=self.n_injections_feedback,

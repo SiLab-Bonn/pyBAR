@@ -88,7 +88,7 @@ class FdacTuning(Fei4RunBase):
 
             self.write_fdac_config()
 
-            with self.readout(FDAC=scan_parameter_value, reset_sram_fifo=True, fill_buffer=True, clear_buffer=True, callback=self.handle_data):
+            with self.readout(FDAC=scan_parameter_value, reset_fifo=True, fill_buffer=True, clear_buffer=True, callback=self.handle_data):
                 scan_loop(self,
                           command=cal_lvl1_command,
                           repeat_command=self.n_injections_fdac,

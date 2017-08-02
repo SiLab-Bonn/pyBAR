@@ -132,17 +132,17 @@ class M26TelescopeScan(Fei4RunBase):
                 logging.info('Starting M26')
                 temp = self.dut['RO_MODE0_ALL'][:]
                 # disable extstart
-                for reg in self.dut["RO_MODE0_ALL"]["RO_MODE0"]:
+                for reg in self.dut['RO_MODE0_ALL']['RO_MODE0']:
                     reg['En_ExtStart'] = 0
                     reg['JTAG_Start'] = 0
                 self.dut['JTAG'].scan_ir([BitLogic(IR['RO_MODE0_ALL'])] * 6)
                 self.dut['JTAG'].scan_dr([self.dut['RO_MODE0_ALL'][:]])
                 # JTAG start
-                for reg in self.dut["RO_MODE0_ALL"]["RO_MODE0"]:
+                for reg in self.dut['RO_MODE0_ALL']['RO_MODE0']:
                     reg['JTAG_Start'] = 1
                 self.dut['JTAG'].scan_ir([BitLogic(IR['RO_MODE0_ALL'])] * 6)
                 self.dut['JTAG'].scan_dr([self.dut['RO_MODE0_ALL'][:]])
-                for reg in self.dut["RO_MODE0_ALL"]["RO_MODE0"]:
+                for reg in self.dut['RO_MODE0_ALL']['RO_MODE0']:
                     reg['JTAG_Start'] = 0
                 self.dut['JTAG'].scan_ir([BitLogic(IR['RO_MODE0_ALL'])] * 6)
                 self.dut['JTAG'].scan_dr([self.dut['RO_MODE0_ALL'][:]])
@@ -281,7 +281,7 @@ class M26TelescopeScan(Fei4RunBase):
     def stop_readout(self, timeout=10.0):
         self.scan_timeout_timer.cancel()
         self.dut['TLU']['TRIGGER_ENABLE'] = False
-        self.dut['CMD']['EN_EXT_TRIGGER'] = False
+        self.dut['TX']['EN_EXT_TRIGGER'] = False
         self.dut['M26_RX1'].set_en(False)
         self.dut['M26_RX2'].set_en(False)
         self.dut['M26_RX3'].set_en(False)

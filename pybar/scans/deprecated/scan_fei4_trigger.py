@@ -43,9 +43,9 @@ class Fei4TriggerScan(ScanBase):
                 lvl1_command = self.register.get_commands("zeros", length=14)[0] + self.register.get_commands("LV1")[0]  # + self.register.get_commands("zeros", length=1000)[0]
                 self.register_utils.set_command(lvl1_command)
                 # setting up external trigger
-                self.dut['tlu']['TRIGGER_COUNTER'] = 0
-                self.dut['tlu']['TRIGGER_MODE'] = 0
-                self.dut['CMD']['EN_EXT_TRIGGER'] = True
+                self.dut['TLU']['TRIGGER_COUNTER'] = 0
+                self.dut['TLU']['TRIGGER_MODE'] = 0
+                self.dut['TX']['EN_EXT_TRIGGER'] = True
 
                 show_trigger_message_at = 10 ** (int(math.ceil(math.log10(self.max_triggers))) - 1)
                 last_iteration = time.time()
@@ -58,7 +58,7 @@ class Fei4TriggerScan(ScanBase):
                 current_trigger_number = 0
                 last_trigger_number = 0
                 while not self.stop_thread_event.wait(self.readout.readout_interval):
-                    current_trigger_number = self.dut['tlu']['TRIGGER_COUNTER']
+                    current_trigger_number = self.dut['TLU']['TRIGGER_COUNTER']
                     if (current_trigger_number % show_trigger_message_at < last_trigger_number % show_trigger_message_at):
                         logging.info('Collected triggers: %d', current_trigger_number)
                     last_trigger_number = current_trigger_number
@@ -97,10 +97,10 @@ class Fei4TriggerScan(ScanBase):
                             logging.info('Taking data...')
                             self.wait_for_first_trigger = False
 
-                self.dut['CMD']['EN_EXT_TRIGGER'] = False
+                self.dut['TX']['EN_EXT_TRIGGER'] = False
                 self.dut['TLU']['TRIGGER_MODE'] = 0
 
-                logging.info('Total amount of triggers collected: %d', self.dut['tlu']['TRIGGER_COUNTER'])
+                logging.info('Total amount of triggers collected: %d', self.dut['TLU']['TRIGGER_COUNTER'])
 
         self.readout.stop()
 

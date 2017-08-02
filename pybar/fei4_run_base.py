@@ -7,7 +7,7 @@ import smtplib
 from socket import gethostname
 import numpy as np
 from functools import wraps
-from threading import Event, Thread
+from threading import Event, Thread, current_thread
 from Queue import Queue
 from collections import namedtuple, Mapping
 from contextlib import contextmanager
@@ -30,6 +30,9 @@ from pybar.daq.fei4_raw_data import open_raw_data_file, send_meta_data
 from pybar.analysis.analysis_utils import AnalysisError
 from pybar.daq.readout_utils import (convert_data_iterable, logical_or, logical_and, is_trigger_word, is_fe_word, is_data_from_channel,
                                      is_tdc_word, is_tdc_from_channel, convert_tdc_to_channel, false)
+
+
+_reserved_driver_names = ["FIFO", "TX", "RX", "TLU", "TDC"]
 
 
 class Fei4RawDataHandle(object):
@@ -70,33 +73,31 @@ class Fei4RawDataHandle(object):
             self._raw_data_files[module_id].append_item(converted_data_tuple, scan_parameters=scan_parameters, new_file=new_file, flush=flush)
 
 
-class TdcHandle(object):
-    ''' Access to single or multiple tdc modules.
+class RhlHandle(object):
+    ''' Handle for basil.HL.RegisterHardwareLayer.
 
-    Needed to encapsulate tdc configuration in scan from hardware setup.
+    Mimic register interface of RegisterHardwareLayer objects and allows for consecutively reading/writing values in all given modules.
     '''
-    def __init__(self, dut, tdc_modules):
+    def __init__(self, dut, module_names):
         self._dut = dut
-        if not tdc_modules:
-            tdc_modules = []
-        if tdc_modules and not all(isinstance(dut[tdc_module], basil.HL.tdc_s3.tdc_s3) for tdc_module in tdc_modules):
-            raise ValueError("Not all modules are of type TDC")
-        self._tdc_modules = tdc_modules
+        if not module_names:
+            module_names = []
+        if len(set(module_names)) != len(module_names):
+            raise ValueError('Parameter "module_names" contains duplicate entries.')
+        if module_names and not all([isinstance(dut[module_name], basil.HL.RegisterHardwareLayer.RegisterHardwareLayer) for module_name in module_names]):
+            raise ValueError("Not all modules are of type basil.HL.RegisterHardwareLayer.RegisterHardwareLayer")
+        self.module_names = module_names
 
-    def __getitem__(self, key):
-        ''' Return configurations that are common to all TDC modules
-        '''
+    def __getitem__(self, name):
         values = []
-        for module_name in self._tdc_modules:
-            values.append(self._dut[module_name][key])
+        for module_name in self.module_names:
+            values.append(self._dut[module_name][name])
         if not len(set(values)) == 1:
-            raise RuntimeError("Returned values are different.")
+            raise RuntimeError("Returned values for %s are different." % (name,))
         return values[0]
 
     def __setitem__(self, name, value):
-        ''' Set TDC setting to all TDC modules
-        '''
-        for module_name in self._tdc_modules:
+        for module_name in self.module_names:
             self._dut[module_name][name] = value
 
     def __getattr__(self, name):
@@ -119,7 +120,48 @@ class TdcHandle(object):
         if name.isupper():
             self[name] = value
         else:
-            super(TdcHandle, self).__setattr__(name, value)
+            super(RhlHandle, self).__setattr__(name, value)
+
+
+class DutHandle(object):
+    ''' Handle for DUT.
+
+    Providing interface to Basil DUT object and gives access only to those drivers which are specified in the module configuration.
+    '''
+    def __init__(self, dut, module_cfgs, module_id=None):
+        self._dut = dut
+        self._module_cfgs = module_cfgs
+        self._module_id = module_id
+
+    def __getitem__(self, key):
+        values = []
+        thread_name = current_thread().name
+        module_id_from_thread_name = [name for name in self._module_cfgs.iterkeys() if (name is not None and name in thread_name)]
+        if len(module_id_from_thread_name) > 1:
+            raise RuntimeError("Thread name contains names of multiple modules: %s" % ", ".join(module_id_from_thread_name))
+        try:
+            self._dut[key]
+            dut_has_key = True
+        except KeyError:
+            dut_has_key = False
+        if dut_has_key:
+            return self._dut[key]
+        elif module_id_from_thread_name and self._module_id is None and self._module_cfgs[None][key] is None: # TODO: adding broadcast module
+            module_name = self._module_cfgs[module_id_from_thread_name[0]][key]
+            return self._dut[module_name]
+        else:
+            # retrieve all module names and remove duplicates
+            module_names = list(set([module_cfg[key] for module_cfg in self._module_cfgs.itervalues() if (key in module_cfg and module_cfg[key] is not None)]))
+            if len(module_names) > 1:
+                return RhlHandle(dut=self._dut, module_names=module_names)
+            else:
+                return self._dut[module_names[0]]
+
+
+    def __getattr__(self, name):
+        '''called only on last resort if there are no attributes in the instance that match the name
+        '''
+        return getattr(self._dut, name)
 
 
 class Fei4RunBase(RunBase):
@@ -179,8 +221,8 @@ class Fei4RunBase(RunBase):
         self._parse_module_cfgs(conf)
         self._set_default_cfg(conf)
         # initialize attributes not related to a module
+        self.dut = None
         self.fifo_readout = None
-        self.tdc = None
         self.current_module_handle = None  # setting broadast module as default module
         self.scan_parameters = None
         self.register = None
@@ -219,8 +261,17 @@ class Fei4RunBase(RunBase):
         if 'modules' in conf and conf['modules']:
             for module_id, module_cfg in conf['modules'].iteritems():
                 # Check here for missing module config items.
-                if 'rx' not in module_cfg or module_cfg['rx'] is None:
-                    raise ValueError("No parameter 'rx' defined for module '%s'" % module_id)
+                # Capital letter keys are Basil drivers, other keys are parameters.
+                # FIFO, RX, TX, TLU and TDC are generic driver names which are used in the scan implementations.
+                # The use of these reserved driver names allows for abstraction.
+                # Accessing Basil drivers with real name is still possible.
+                for driver_name in _reserved_driver_names:
+                    # TDC is not mandatory
+                    if driver_name == "TDC":
+                        if 'TDC' not in module_cfg:
+                            module_cfg["TDC"] = None
+                    if driver_name not in module_cfg or module_cfg[driver_name] is None:
+                        raise ValueError("No parameter '%s' defined for module '%s'" % (driver_name, module_id))
                 if 'rx_channel' not in module_cfg or module_cfg['rx_channel'] is None:
                     raise ValueError("No parameter 'rx_channel' defined for module '%s'" % module_id)
                 if 'tx_channel' not in module_cfg or module_cfg['tx_channel'] is None:
@@ -229,8 +280,6 @@ class Fei4RunBase(RunBase):
                     raise ValueError("No parameter 'fe_flavor' defined for module '%s'" % module_id)
                 if 'chip_address' not in module_cfg:
                     raise ValueError("No parameter 'chip_address' defined for module '%s'" % module_id)
-                if 'tdc' not in module_cfg:
-                    module_cfg["tdc"] = None
                 if 'tdc_channel' not in module_cfg:
                     module_cfg["tdc_channel"] = None
                 # Save config to dict.
@@ -253,11 +302,14 @@ class Fei4RunBase(RunBase):
             self._module_cfgs[None] = {
                 'fe_flavor': fe_flavors.pop(),
                 'chip_address': None,
-                'rx': None,
+                'FIFO': None,
+                'RX': None,
                 'rx_channel': None,
+                'TX': None,
                 'tx_channel': None,
-                'tdc': None,
-                'tdc_channel': None}
+                'TDC': None,
+                'tdc_channel': None,
+                'TLU' : None}
 
         # Adding here default module config items.
         for module_cfg in self._module_cfgs.values():
@@ -265,9 +317,6 @@ class Fei4RunBase(RunBase):
             module_cfg.setdefault('fe_configuration', None)  # value, None
             # TODO: message missing
 
-    @property
-    def dut(self):
-        return self._conf['dut']
 
     def get_module_cfg(self, module_id):
         ''' Returns the configuration of the module with given ID.
@@ -312,7 +361,7 @@ class Fei4RunBase(RunBase):
                 self.dut['POWER_SCC'].write()
                 # enabling readout
                 rx_names = [rx.name for rx in self.dut.get_modules('fei4_rx')]
-                active_rx_names = [module_cfg["rx"] for module_cfg in self._module_cfgs.values()]
+                active_rx_names = [module_cfg["RX"] for module_cfg in self._module_cfgs.values()]
                 for rx_name in rx_names:
                     # enabling/disabling Rx
                     if rx_name in active_rx_names:
@@ -339,7 +388,7 @@ class Fei4RunBase(RunBase):
                 self.dut['ADAPTER_CARD'].set_voltage('CH4', 2.1)
                 self.dut['POWER_QUAD'].write()
                 rx_names = [rx.name for rx in self.dut.get_modules('fei4_rx')]
-                active_rx_names = [module_cfg["rx"] for module_cfg in self._module_cfgs.values()]
+                active_rx_names = [module_cfg["RX"] for module_cfg in self._module_cfgs.values()]
                 for rx_name in rx_names:
                     # enabling/disabling Rx
                     if rx_name in active_rx_names:
@@ -370,25 +419,25 @@ class Fei4RunBase(RunBase):
             # V_in
             self.dut['V_in'].set_voltage(2.1, unit='V')
             self.dut['V_in'].set_enable(True)
-            if self.dut["V_in"].get_over_current():
+            if self.dut['V_in'].get_over_current():
                 self.power_off()
                 raise Exception('V_in overcurrent detected')
             # Vdd, also enabling LVDS transceivers
             self.dut['CCPD_Vdd'].set_voltage(1.80, unit='V')
             self.dut['CCPD_Vdd'].set_enable(True)
-            if self.dut["CCPD_Vdd"].get_over_current():
+            if self.dut['CCPD_Vdd'].get_over_current():
                 self.power_off()
                 raise Exception('Vdd overcurrent detected')
             # Vssa
             self.dut['CCPD_Vssa'].set_voltage(1.50, unit='V')
             self.dut['CCPD_Vssa'].set_enable(True)
-            if self.dut["CCPD_Vssa"].get_over_current():
+            if self.dut['CCPD_Vssa'].get_over_current():
                 self.power_off()
                 raise Exception('Vssa overcurrent detected')
             # VGate
             self.dut['CCPD_VGate'].set_voltage(2.10, unit='V')
             self.dut['CCPD_VGate'].set_enable(True)
-            if self.dut["CCPD_VGate"].get_over_current():
+            if self.dut['CCPD_VGate'].get_over_current():
                 self.power_off()
                 raise Exception('VGate overcurrent detected')
             # enabling readout
@@ -416,7 +465,7 @@ class Fei4RunBase(RunBase):
         elif self.dut.name == 'mmc3_m26_eth':
             # TODO: enable Mimosa26 Rx when necessary
             rx_names = [rx.name for rx in self.dut.get_modules('fei4_rx')]
-            active_rx_names = [module_cfg["rx"] for module_cfg in self._module_cfgs.values()]
+            active_rx_names = [module_cfg["RX"] for module_cfg in self._module_cfgs.values()]
             for rx_name in rx_names:
                 # enabling readout
                 if rx_name in active_rx_names:
@@ -425,7 +474,7 @@ class Fei4RunBase(RunBase):
                     self.dut[rx_name].ENABLE_RX = 0
         elif self.dut.name == 'mmc3_beast_eth':
             rx_names = [rx.name for rx in self.dut.get_modules('fei4_rx')]
-            active_rx_names = [module_cfg["rx"] for module_cfg in self._module_cfgs.values()]
+            active_rx_names = [module_cfg["RX"] for module_cfg in self._module_cfgs.values()]
             for rx_name in rx_names:
                 # enabling/disabling Rx
                 if rx_name in active_rx_names:
@@ -436,7 +485,7 @@ class Fei4RunBase(RunBase):
             self.dut['DLY_CONFIG'].write()
         elif self.dut.name == 'mmc3_8chip_eth':
             rx_names = [rx.name for rx in self.dut.get_modules('fei4_rx')]
-            active_rx_names = [module_cfg["rx"] for module_cfg in self._module_cfgs.values()]
+            active_rx_names = [module_cfg["RX"] for module_cfg in self._module_cfgs.values()]
             for rx_name in rx_names:
                 # enabling/disabling Rx
                 if rx_name in active_rx_names:
@@ -598,8 +647,20 @@ class Fei4RunBase(RunBase):
             dut.init(dut_configuration)
             # assign dut after init in case of exceptions during init
             self._conf['dut'] = dut
+            # setting up default handle for DUT
+            self.dut = DutHandle(dut=self._conf['dut'], module_cfgs=self._module_cfgs, module_id=None)
             # additional init of the DUT
             self.init_dut()
+            # check for existence of reserved driver names
+            found_reserved_names = []
+            for driver_name in _reserved_driver_names:
+                try:
+                    dut[driver_name]
+                    found_reserved_names.append(driver_name)
+                except KeyError:
+                    pass
+            if found_reserved_names:
+                raise RuntimeError("The basil DUT contains reserved driver names: %s" % ", ".join(found_reserved_names))
         else:
             pass  # do nothing, already initialized
         # FIFO readout
@@ -625,7 +686,7 @@ class Fei4RunBase(RunBase):
                         self.configure()
 
                 self.fifo_readout.reset_rx()
-                self.fifo_readout.reset_sram_fifo()
+                self.fifo_readout.reset_fifo()
                 self.fifo_readout.print_readout_status()
 
                 with self.access_module(module_id=None):
@@ -647,7 +708,7 @@ class Fei4RunBase(RunBase):
                         self.configure()
 
                         self.fifo_readout.reset_rx()
-                        self.fifo_readout.reset_sram_fifo()
+                        self.fifo_readout.reset_fifo()
                         self.fifo_readout.print_readout_status()
 
                         with self.open_file(module_id=module_id):
@@ -834,15 +895,13 @@ class Fei4RunBase(RunBase):
         ''' Select module and give access to the module.
         '''
         self.current_module_handle = module_id
+        # setting DUT handle for specified mudule
+        self.dut = DutHandle(dut=self._conf['dut'], module_cfgs=self._module_cfgs, module_id=module_id)
         # enabling Tx channels
         # generating enable bit mask for broadcast
         tx_channels = set([1 << module_cfg['tx_channel'] for module_cfg in self._module_cfgs.values() if module_cfg['tx_channel'] is not None])
         broadcast_tx_channels = reduce(lambda x, y: x | y, tx_channels)
-        self.dut['CMD']['OUTPUT_ENABLE'] = (1 << self._module_cfgs[module_id]["tx_channel"]) if module_id is not None else broadcast_tx_channels
-        # setting TDC handle
-        # generating list of TDCs for broadcast
-        broadcast_tdc = [module_cfg["tdc"] for module_cfg in self._module_cfgs.values() if module_cfg["tdc"] is not None]
-        self.tdc = TdcHandle(self.dut, tdc_modules=([self._module_cfgs[module_id]["tdc"]] if self._module_cfgs[module_id]["tdc"] is not None else None) if module_id is not None else broadcast_tdc)
+        self.dut['TX']['OUTPUT_ENABLE'] = (1 << self._module_cfgs[module_id]["tx_channel"]) if module_id is not None else broadcast_tx_channels
         self.scan_parameters = self.get_scan_parameters(module_id=module_id)
         self.register = self.get_register(module_id=module_id)
         self.register_utils = self.get_register_utils(module_id=module_id)
@@ -852,10 +911,10 @@ class Fei4RunBase(RunBase):
         ''' Deselect module and cleanup.
         '''
         self.current_module_handle = None
+        # setting DUT handle to default
+        self.dut = DutHandle(dut=self._conf['dut'], module_cfgs=self._module_cfgs, module_id=None)
         # disabling Tx channels
-        self.dut['CMD']['OUTPUT_ENABLE'] = 0
-        # setting TDC handle to None
-        self.tdc = None
+        self.dut['TX']['OUTPUT_ENABLE'] = 0
         self.scan_parameters = None
         self.register = None
         self.register_utils = None
@@ -910,12 +969,12 @@ class Fei4RunBase(RunBase):
         callback = kwargs.pop('callback', self.handle_data)
         clear_buffer = kwargs.pop('clear_buffer', False)
         fill_buffer = kwargs.pop('fill_buffer', False)
-        reset_sram_fifo = kwargs.pop('reset_sram_fifo', False)
+        reset_fifo = kwargs.pop('reset_fifo', False)
         errback = kwargs.pop('errback', self.handle_err)
         no_data_timeout = kwargs.pop('no_data_timeout', None)
         filter_func = kwargs.pop('filter', None)
         converter_func = kwargs.pop('converter', None)
-        enabled_fe_channels = kwargs.pop('enabled_channels', filter(None, [item['rx'] for item in self._module_cfgs.itervalues()]))
+        enabled_fe_channels = kwargs.pop('enabled_channels', filter(None, [item['RX'] for item in self._module_cfgs.itervalues()]))
         # this is the implementation for a filter and converter for a individual module
 #         if self.current_module_handle is not None:
 #             module_cfg = self._module_cfgs[self.current_module_handle]
@@ -932,7 +991,7 @@ class Fei4RunBase(RunBase):
 #             filter = logical_or(is_trigger_word, logical_or(rx_filter, tdc_filter))
         if args or kwargs:
             self.set_scan_parameters(*args, **kwargs)
-        self.fifo_readout.start(reset_sram_fifo=reset_sram_fifo, fill_buffer=fill_buffer, clear_buffer=clear_buffer, callback=callback, errback=errback, no_data_timeout=no_data_timeout, filter_func=filter_func, converter_func=converter_func, enabled_fe_channels=enabled_fe_channels)
+        self.fifo_readout.start(reset_fifo=reset_fifo, fill_buffer=fill_buffer, clear_buffer=clear_buffer, callback=callback, errback=errback, no_data_timeout=no_data_timeout, filter_func=filter_func, converter_func=converter_func, enabled_fe_channels=enabled_fe_channels)
 
     def stop_readout(self, timeout=10.0):
         self.fifo_readout.stop(timeout=timeout)

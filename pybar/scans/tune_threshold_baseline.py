@@ -137,7 +137,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
                 logging.info('TDAC step %d at Vthin_AltFine %d', tdac_step, reg_val)
 #                 logging.info('Estimated scan time: %ds', total_scan_time)
 
-                with self.readout(Vthin_AltFine=reg_val, TDAC_step=tdac_step, relaxation=relaxation, reset_sram_fifo=True, fill_buffer=True, clear_buffer=True, callback=self.handle_data):
+                with self.readout(Vthin_AltFine=reg_val, TDAC_step=tdac_step, relaxation=relaxation, reset_fifo=True, fill_buffer=True, clear_buffer=True, callback=self.handle_data):
                     got_data = False
                     start = time()
                     self.register_utils.send_command(lvl1_command, repeat=self.n_triggers, wait_for_finish=False, set_length=True, clear_memory=False)

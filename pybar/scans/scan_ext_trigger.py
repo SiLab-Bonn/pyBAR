@@ -113,13 +113,13 @@ class ExtTriggerScan(Fei4RunBase):
     def start_readout(self, *args, **kwargs):
         super(ExtTriggerScan, self).start_readout(*args, **kwargs)
         self.connect_cancel(["stop"])
-        self.tdc['ENABLE'] = self.enable_tdc
+        self.dut['TDC']['ENABLE'] = self.enable_tdc
         self.dut['TLU']['TRIGGER_COUNTER'] = 0
         if self.max_triggers:
             self.dut['TLU']['MAX_TRIGGERS'] = self.max_triggers
         else:
             self.dut['TLU']['MAX_TRIGGERS'] = 0  # infinity triggers
-        self.dut['CMD']['EN_EXT_TRIGGER'] = True
+        self.dut['TX']['EN_EXT_TRIGGER'] = True
 
         def timeout():
             try:
@@ -134,8 +134,8 @@ class ExtTriggerScan(Fei4RunBase):
 
     def stop_readout(self, timeout=10.0):
         self.scan_timeout_timer.cancel()
-        self.tdc['ENABLE'] = False
-        self.dut['CMD']['EN_EXT_TRIGGER'] = False
+        self.dut['TDC']['ENABLE'] = False
+        self.dut['TX']['EN_EXT_TRIGGER'] = False
         super(ExtTriggerScan, self).stop_readout(timeout=timeout)
         self.connect_cancel(["abort"])
 

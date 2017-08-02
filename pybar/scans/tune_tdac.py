@@ -84,7 +84,7 @@ class TdacTuning(Fei4RunBase):
 
             self.write_tdac_config()
 
-            with self.readout(TDAC=scan_parameter_value, reset_sram_fifo=True, fill_buffer=True, clear_buffer=True, callback=self.handle_data):
+            with self.readout(TDAC=scan_parameter_value, reset_fifo=True, fill_buffer=True, clear_buffer=True, callback=self.handle_data):
                 scan_loop(self,
                           command=cal_lvl1_command,
                           repeat_command=self.n_injections_tdac,

@@ -8,7 +8,7 @@ ADAPTER_CARD:
     no_calibration : False
 
 # Trigger
-TLU:
+TRIGGER_CH1_TO_CH4:
     TRIGGER_MODE                         : 0  # Selecting trigger mode: Use trigger inputs/trigger select (0), TLU no handshake (1), TLU simple handshake (2), TLU data handshake (3)
     TRIGGER_SELECT                       : 0  # Selecting trigger input: RX2 (TDC loop-through) (8), RX1 (4), RX0 (2), MonHit/HitOR from Adapter Card (1), disabled (0)
     TRIGGER_INVERT                       : 0  # Inverting trigger input: RX2 (TDC loop-through) (8), RX1 (4), RX0 (2), MonHit/HitOR from Adapter Card (1), disabled (0)
@@ -19,7 +19,7 @@ TLU:
     DATA_FORMAT                          : 0  # trigger number according to TRIGGER_MODE (0), time stamp only (1), combined, 15bit time stamp + 16bit trigger number (2)
 
 # TDC for high precision charge measurements
-TDC:
+TDC_RX2:
     EN_WRITE_TIMESTAMP   : 0  # Writing trigger timestamp
     EN_TRIGGER_DIST      : 0  # Measuring trigger to TDC delay with 640MHz clock
     EN_NO_WRITE_TRIG_ERR : 0  # Writing TDC word only if valid trigger occurred
@@ -27,7 +27,7 @@ TDC:
     EN_INVERT_TRIGGER    : 0  # Inverting trigger input
 
 # FE-I4 command output
-CMD:
+CMD_CH1_TO_CH4:
     OUTPUT_MODE : 0  # Selecting command output mode: positive edge (0), negative edge (1), Manchester Code according to IEEE 802.3 (2), Manchester Code according to G.E. Thomas (3)
 
 # FE-I4 data receiver
