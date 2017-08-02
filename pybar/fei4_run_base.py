@@ -312,7 +312,7 @@ class Fei4RunBase(RunBase):
                 self.dut['POWER_SCC'].write()
                 # enabling readout
                 rx_names = [rx.name for rx in self.dut.get_modules('fei4_rx')]
-                active_rx_names = ['CH4']
+                active_rx_names = [module_cfg["rx"] for module_cfg in self._module_cfgs.values()]
                 for rx_name in rx_names:
                     # enabling/disabling Rx
                     if rx_name in active_rx_names:
