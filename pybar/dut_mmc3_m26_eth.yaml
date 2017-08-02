@@ -91,15 +91,15 @@ hw_drivers:
     interface : ETH
     base_addr : 0x8200
 
-  - name      : gpio_jtag
+  - name      : GPIO_JTAG
     type      : gpio
     interface : ETH
     base_addr : 0xb000
     size      : 8
 
-  - name      : jtag
+  - name      : JTAG
     type      : JtagGpio
-    hw_driver : gpio_jtag
+    hw_driver : GPIO_JTAG
     size      : 8
 
 registers:

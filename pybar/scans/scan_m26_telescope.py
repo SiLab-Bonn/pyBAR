@@ -61,7 +61,7 @@ class M26TelescopeScan(Fei4RunBase):
             logging.info('No remote enabled')
 
         map(lambda channel: channel.reset(), self.dut.get_modules('m26_rx'))
-        self.dut['jtag'].reset()
+        self.dut['JTAG'].reset()
 
         if 'force_config_mimosa26' in self._conf and not self._conf['force_config_mimosa26'] and self.remote and current >= 3.3:  # check if force_config is False
                 logging.info('Skipping m26 configuration, m26 is already configured')
@@ -87,8 +87,8 @@ class M26TelescopeScan(Fei4RunBase):
                 for ir in irs:
                     logging.info('Programming M26 JATG configuration reg %s', ir)
                     logging.debug(self.dut[ir][:])
-                    self.dut['jtag'].scan_ir([BitLogic(IR[ir])] * 6)
-                    ret = self.dut['jtag'].scan_dr([self.dut[ir][:]])[0]
+                    self.dut['JTAG'].scan_ir([BitLogic(IR[ir])] * 6)
+                    ret = self.dut['JTAG'].scan_dr([self.dut[ir][:]])[0]
 
                 if self.remote:
                     current = self.dut['Powersupply'].get_current()
@@ -104,8 +104,8 @@ class M26TelescopeScan(Fei4RunBase):
                 ret = {}
                 for ir in irs:
                     logging.info('Reading M26 JATG configuration reg %s', ir)
-                    self.dut['jtag'].scan_ir([BitLogic(IR[ir])] * 6)
-                    ret[ir] = self.dut['jtag'].scan_dr([self.dut[ir][:]])[0]
+                    self.dut['JTAG'].scan_ir([BitLogic(IR[ir])] * 6)
+                    ret[ir] = self.dut['JTAG'].scan_dr([self.dut[ir][:]])[0]
 
                 if self.remote:
                     current = self.dut['Powersupply'].get_current()
@@ -135,24 +135,24 @@ class M26TelescopeScan(Fei4RunBase):
                 for reg in self.dut["RO_MODE0_ALL"]["RO_MODE0"]:
                     reg['En_ExtStart'] = 0
                     reg['JTAG_Start'] = 0
-                self.dut['jtag'].scan_ir([BitLogic(IR['RO_MODE0_ALL'])] * 6)
-                self.dut['jtag'].scan_dr([self.dut['RO_MODE0_ALL'][:]])
+                self.dut['JTAG'].scan_ir([BitLogic(IR['RO_MODE0_ALL'])] * 6)
+                self.dut['JTAG'].scan_dr([self.dut['RO_MODE0_ALL'][:]])
                 # JTAG start
                 for reg in self.dut["RO_MODE0_ALL"]["RO_MODE0"]:
                     reg['JTAG_Start'] = 1
-                self.dut['jtag'].scan_ir([BitLogic(IR['RO_MODE0_ALL'])] * 6)
-                self.dut['jtag'].scan_dr([self.dut['RO_MODE0_ALL'][:]])
+                self.dut['JTAG'].scan_ir([BitLogic(IR['RO_MODE0_ALL'])] * 6)
+                self.dut['JTAG'].scan_dr([self.dut['RO_MODE0_ALL'][:]])
                 for reg in self.dut["RO_MODE0_ALL"]["RO_MODE0"]:
                     reg['JTAG_Start'] = 0
-                self.dut['jtag'].scan_ir([BitLogic(IR['RO_MODE0_ALL'])] * 6)
-                self.dut['jtag'].scan_dr([self.dut['RO_MODE0_ALL'][:]])
+                self.dut['JTAG'].scan_ir([BitLogic(IR['RO_MODE0_ALL'])] * 6)
+                self.dut['JTAG'].scan_dr([self.dut['RO_MODE0_ALL'][:]])
                 # write original configuration
                 self.dut['RO_MODE0_ALL'][:] = temp
-                self.dut['jtag'].scan_ir([BitLogic(IR['RO_MODE0_ALL'])] * 6)
-                self.dut['jtag'].scan_dr([self.dut['RO_MODE0_ALL'][:]])
+                self.dut['JTAG'].scan_ir([BitLogic(IR['RO_MODE0_ALL'])] * 6)
+                self.dut['JTAG'].scan_dr([self.dut['RO_MODE0_ALL'][:]])
                 # readback?
-                self.dut['jtag'].scan_ir([BitLogic(IR['RO_MODE0_ALL'])] * 6)
-                self.dut['jtag'].scan_dr([self.dut['RO_MODE0_ALL'][:]] * 6)
+                self.dut['JTAG'].scan_ir([BitLogic(IR['RO_MODE0_ALL'])] * 6)
+                self.dut['JTAG'].scan_dr([self.dut['RO_MODE0_ALL'][:]] * 6)
 
                 if self.remote:
                     current = self.dut['Powersupply'].get_current()
