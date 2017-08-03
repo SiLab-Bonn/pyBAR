@@ -214,7 +214,7 @@ class Fei4RunBase(RunBase):
         self.err_queue = Queue()
 
         self._module_cfgs = {}
-        self._module_register_utils = {}
+        self._register_utils = {}
         self._raw_data_files = {}
         self._module_attr = {}
         self._scan_parameters = {}  # Store specific scan parameters per module to make available after scan
@@ -224,10 +224,10 @@ class Fei4RunBase(RunBase):
         self.dut = None
         self.fifo_readout = None
         self.current_module_handle = None  # setting broadast module as default module
-        self.scan_parameters = None
-        self.register = None
-        self.register_utils = None
-        self.output_filename = None
+#         self.scan_parameters = None
+#         self.register = None
+#         self.register_utils = None
+#         self.output_filename = None
         self.raw_data_file = None
         # after initialized is set to True, all new attributes are belonging to selected mudule
         # by default the broadcast module is selected (current_module_handle is None)
@@ -246,6 +246,50 @@ class Fei4RunBase(RunBase):
             return True
         else:
             return False
+
+    @property
+    def register(self):
+        thread_name = current_thread().name
+        module_id_from_thread_name = [name for name in self._module_cfgs.iterkeys() if (name is not None and name in thread_name)]
+        if len(module_id_from_thread_name) > 1:
+            raise RuntimeError("Thread name contains names of multiple modules: %s" % ", ".join(module_id_from_thread_name))
+        if module_id_from_thread_name and self.current_module_handle is None:
+            return self._module_cfgs[module_id_from_thread_name[0]]['fe_configuration']
+        else:
+            return self._module_cfgs[self.current_module_handle]['fe_configuration']
+
+    @property
+    def register_utils(self):
+        thread_name = current_thread().name
+        module_id_from_thread_name = [name for name in self._module_cfgs.iterkeys() if (name is not None and name in thread_name)]
+        if len(module_id_from_thread_name) > 1:
+            raise RuntimeError("Thread name contains names of multiple modules: %s" % ", ".join(module_id_from_thread_name))
+        if module_id_from_thread_name and self.current_module_handle is None:
+            return self._register_utils[module_id_from_thread_name[0]]
+        else:
+            return self._register_utils[self.current_module_handle]
+
+    @property
+    def output_filename(self):
+        thread_name = current_thread().name
+        module_id_from_thread_name = [name for name in self._module_cfgs.iterkeys() if (name is not None and name in thread_name)]
+        if len(module_id_from_thread_name) > 1:
+            raise RuntimeError("Thread name contains names of multiple modules: %s" % ", ".join(module_id_from_thread_name))
+        if module_id_from_thread_name and self.current_module_handle is None:
+            return self.get_output_filename(module_id=module_id_from_thread_name[0])
+        else:
+            return self.get_output_filename(module_id=self.current_module_handle)
+
+    @property
+    def scan_parameters(self):
+        thread_name = current_thread().name
+        module_id_from_thread_name = [name for name in self._module_cfgs.iterkeys() if (name is not None and name in thread_name)]
+        if len(module_id_from_thread_name) > 1:
+            raise RuntimeError("Thread name contains names of multiple modules: %s" % ", ".join(module_id_from_thread_name))
+        if module_id_from_thread_name and self.current_module_handle is None:
+            return self._scan_parameters[module_id_from_thread_name[0]]
+        else:
+            return self._scan_parameters[self.current_module_handle]
 
     def set_scan_mode(self):
         ''' Called during init to set scan in serial or paralle mode.
@@ -316,27 +360,6 @@ class Fei4RunBase(RunBase):
             module_cfg.setdefault('send_data', None)  # address string of PUB socket
             module_cfg.setdefault('fe_configuration', None)  # value, None
             # TODO: message missing
-
-
-    def get_module_cfg(self, module_id):
-        ''' Returns the configuration of the module with given ID.
-        '''
-        return self._module_cfgs[module_id]
-
-    def get_scan_parameters(self, module_id):
-        ''' Returns the scan parameters of the module with given ID.
-        '''
-        return self._scan_parameters[module_id]
-
-    def get_register(self, module_id):
-        ''' Returns the register configuration of the module with given ID.
-        '''
-        return self._module_cfgs[module_id]['fe_configuration']
-
-    def get_register_utils(self, module_id):
-        ''' Returns the register utils of the module with given ID.
-        '''
-        return self._module_register_utils[module_id]
 
     def get_output_filename(self, module_id):
         if module_id is None:
@@ -547,31 +570,31 @@ class Fei4RunBase(RunBase):
                 raise ValueError("Found no valid value for parameter 'fe_configuration' for module '%s'" % module_id)
 
             # init register utils
-            self._module_register_utils[module_id] = FEI4RegisterUtils(self.dut, self.get_register(module_id=module_id))
+            self._register_utils[module_id] = FEI4RegisterUtils(self.dut, self._module_cfgs[module_id]['fe_configuration'])
 
             if module_id is not None:
                 # reset and configuration
                 with self.access_module(module_id=module_id):
-                    self._module_register_utils[module_id].global_reset()
-                    self._module_register_utils[module_id].configure_all()
-                    if is_fe_ready(self, module_id):
+                    self._register_utils[module_id].global_reset()
+                    self._register_utils[module_id].configure_all()
+                    if is_fe_ready(self):
                         reset_service_records = False
                     else:
                         reset_service_records = True
-                    self._module_register_utils[module_id].reset_bunch_counter()
-                    self._module_register_utils[module_id].reset_event_counter()
+                    self._register_utils[module_id].reset_bunch_counter()
+                    self._register_utils[module_id].reset_event_counter()
                     if reset_service_records:
                         # resetting service records must be done once after power up
-                        self._module_register_utils[module_id].reset_service_records()
+                        self._register_utils[module_id].reset_service_records()
                     # set all FE to conf mode afterwards to be immune to ECR and BCR
-                    self._module_register_utils[module_id].set_conf_mode()
+                    self._register_utils[module_id].set_conf_mode()
                     # Create module data path if it does not exist
                     module_path = self.get_module_path(module_id)
                     if not os.path.exists(module_path):
                         os.makedirs(module_path)
             else:
                 with self.access_module(module_id=module_id):
-                    self._module_register_utils[module_id].set_conf_mode()
+                    self._register_utils[module_id].set_conf_mode()
 
     def pre_run(self):
         # clear error queue in case run is executed a second time
@@ -902,10 +925,10 @@ class Fei4RunBase(RunBase):
         tx_channels = set([1 << module_cfg['tx_channel'] for module_cfg in self._module_cfgs.values() if module_cfg['tx_channel'] is not None])
         broadcast_tx_channels = reduce(lambda x, y: x | y, tx_channels)
         self.dut['TX']['OUTPUT_ENABLE'] = (1 << self._module_cfgs[module_id]["tx_channel"]) if module_id is not None else broadcast_tx_channels
-        self.scan_parameters = self.get_scan_parameters(module_id=module_id)
-        self.register = self.get_register(module_id=module_id)
-        self.register_utils = self.get_register_utils(module_id=module_id)
-        self.output_filename = self.get_output_filename(module_id=module_id)
+#         self.scan_parameters = self.get_scan_parameters(module_id=module_id)
+#         self.register = self.get_register(module_id=module_id)
+#         self.register_utils = self.get_register_utils(module_id=module_id)
+#         self.output_filename = self.get_output_filename(module_id=module_id)
 
     def deselect_module(self):
         ''' Deselect module and cleanup.
@@ -915,10 +938,10 @@ class Fei4RunBase(RunBase):
         self.dut = DutHandle(dut=self._conf['dut'], module_cfgs=self._module_cfgs, module_id=None)
         # disabling Tx channels
         self.dut['TX']['OUTPUT_ENABLE'] = 0
-        self.scan_parameters = None
-        self.register = None
-        self.register_utils = None
-        self.output_filename = None
+#         self.scan_parameters = None
+#         self.register = None
+#         self.register_utils = None
+#         self.output_filename = None
 
     @contextmanager
     def open_file(self, module_id):
@@ -951,6 +974,18 @@ class Fei4RunBase(RunBase):
         # delete all file objects
         self._raw_data_files.clear()
         self.raw_data_file = None
+
+    def read_data(self):
+        thread_name = current_thread().name
+        module_id_from_thread_name = [name for name in self._module_cfgs.iterkeys() if (name is not None and name in thread_name)]
+        if len(module_id_from_thread_name) > 1:
+            raise RuntimeError("Thread name contains names of multiple modules: %s" % ", ".join(module_id_from_thread_name))
+        if module_id_from_thread_name and self.current_module_handle is None:
+            filter_func = logical_and(is_fe_word, is_data_from_channel(self._module_cfgs[module_id_from_thread_name[0]]['rx_channel']))
+            return self.fifo_readout.read_data(filter_func=filter_func)
+        else:
+            filter_func = logical_and(is_fe_word, is_data_from_channel(self._module_cfgs[self.current_module_handle]['rx_channel']))
+            return self.fifo_readout.read_data(filter_func=filter_func)
 
     @contextmanager
     def readout(self, *args, **kwargs):

@@ -15,7 +15,6 @@ from basil.utils.BitLogic import BitLogic
 from pybar.utils.utils import bitarray_to_array
 from pybar.daq.readout_utils import interpret_pixel_data
 from pybar.daq.fei4_record import FEI4Record
-from pybar.daq.readout_utils import logical_and, is_fe_word, is_data_from_channel
 
 
 class CmdTimeoutError(Exception):
@@ -639,8 +638,7 @@ def read_pixel_register(self, pix_regs=None, dcs=range(40), overwrite_config=Fal
             self.register_utils.send_commands(self.register.get_commands("RdFrontEnd", name=[pix_reg], dcs=[dc]))
 
             time.sleep(0.1)  # wait for data
-            filter_func = self.raw_data_file._filter_funcs[self.current_module_handle]
-            data = self.fifo_readout.read_data(filter_func=filter_func)
+            data = self.read_data()
 
             interpret_pixel_data(data, dc, pixel_data, invert=False if pix_reg == "EnableDigInj" else True)
         if overwrite_config:
@@ -649,7 +647,7 @@ def read_pixel_register(self, pix_regs=None, dcs=range(40), overwrite_config=Fal
     return result
 
 
-def is_fe_ready(self, module_id):
+def is_fe_ready(self):
     '''Get FEI4 status of module.
 
     If FEI4 is not ready, resetting service records is necessary to bring the FEI4 to a defined state.
@@ -660,17 +658,16 @@ def is_fe_ready(self, module_id):
         True if FEI4 is ready, False if the FEI4 was powered up recently and is not ready.
     '''
     commands = []
-    commands.extend(self.get_register(module_id).get_commands("ConfMode"))
-    commands.extend(self.get_register(module_id).get_commands("RdRegister", address=[1]))
-    commands.extend(self.get_register(module_id).get_commands("RunMode"))
-    self.get_register_utils(module_id).send_commands(commands)
+    commands.extend(self.register.get_commands("ConfMode"))
+    commands.extend(self.register.get_commands("RdRegister", address=[1]))
+    commands.extend(self.register.get_commands("RunMode"))
+    self.register_utils.send_commands(commands)
 
     time.sleep(0.1)
-    filter_func = logical_and(is_fe_word, is_data_from_channel(self.get_module_cfg(module_id)['rx_channel']))
-    data = self.fifo_readout.read_data(filter_func=filter_func)
+    data = self.read_data()
 
     if len(data):
-        return True if FEI4Record(data[-1], self.get_register(module_id).chip_flavor) == 'VR' else False
+        return True if FEI4Record(data[-1], self.register.chip_flavor) == 'VR' else False
     else:
         return False
 
