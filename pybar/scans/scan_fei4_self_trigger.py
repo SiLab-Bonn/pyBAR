@@ -57,7 +57,7 @@ class FEI4SelfTriggerScan(Fei4RunBase):
         self.register_utils.send_commands(commands)
 
     def scan(self):
-        with self.readout():
+        with self.readout(no_data_timeout=self.no_data_timeout):
             got_data = False
             start = time()
             while not self.stop_run.wait(1.0):
@@ -92,10 +92,8 @@ class FEI4SelfTriggerScan(Fei4RunBase):
             commands.extend(self.register.get_commands("RunMode"))
         self.register_utils.send_commands(commands)
 
-    def start_readout(self, **kwargs):
-        if kwargs:
-            self.set_scan_parameters(**kwargs)
-        self.fifo_readout.start(reset_sram_fifo=False, clear_buffer=True, callback=self.handle_data, errback=self.handle_err, no_data_timeout=self.no_data_timeout)
+    def start_readout(self, *args, **kwargs):
+        super(FEI4SelfTriggerScan, self).start_readout(*args, **kwargs)
         self.set_self_trigger(True)
 
         def timeout():
@@ -110,9 +108,9 @@ class FEI4SelfTriggerScan(Fei4RunBase):
             self.scan_timeout_timer.start()
 
     def stop_readout(self, timeout=10.0):
-        self.set_self_trigger(False)
         self.scan_timeout_timer.cancel()
-        self.fifo_readout.stop(timeout=timeout)
+        self.set_self_trigger(False)
+        super(FEI4SelfTriggerScan, self).stop_readout(timeout=timeout)
 
 if __name__ == "__main__":
     RunManager('../configuration.yaml').run_run(FEI4SelfTriggerScan)

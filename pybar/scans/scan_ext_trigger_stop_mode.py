@@ -125,7 +125,7 @@ class StopModeExtTriggerScan(Fei4RunBase):
 
         self.register_utils.set_command(command)
 
-        with self.readout(**self.scan_parameters._asdict()):
+        with self.readout(no_data_timeout=self.no_data_timeout, **self.scan_parameters._asdict()):
             got_data = False
             while not self.stop_run.wait(1.0):
                 if not got_data:
@@ -159,10 +159,8 @@ class StopModeExtTriggerScan(Fei4RunBase):
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms()
 
-    def start_readout(self, **kwargs):
-        if kwargs:
-            self.set_scan_parameters(**kwargs)
-        self.fifo_readout.start(reset_sram_fifo=False, clear_buffer=True, callback=self.handle_data, errback=self.handle_err, no_data_timeout=self.no_data_timeout)
+    def start_readout(self, *args, **kwargs):
+        super(StopModeExtTriggerScan, self).start_readout(*args, **kwargs)
         self.dut['TLU']['TRIGGER_COUNTER'] = 0
         self.dut['TLU']['MAX_TRIGGERS'] = self.max_triggers
         self.dut['CMD']['EN_EXT_TRIGGER'] = True
@@ -181,7 +179,7 @@ class StopModeExtTriggerScan(Fei4RunBase):
     def stop_readout(self, timeout=10.0):
         self.scan_timeout_timer.cancel()
         self.dut['CMD']['EN_EXT_TRIGGER'] = False
-        self.fifo_readout.stop(timeout=timeout)
+        super(StopModeExtTriggerScan, self).stop_readout(timeout=timeout)
 
 
 if __name__ == "__main__":

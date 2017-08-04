@@ -201,7 +201,7 @@ class M26TelescopeScan(Fei4RunBase):
         lvl1_command = self.register.get_commands("zeros", length=self.trigger_delay)[0] + self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", length=self.trigger_rate_limit)[0]
         self.register_utils.set_command(lvl1_command)
 
-        with self.readout(**self.scan_parameters._asdict()):
+        with self.readout(no_data_timeout=self.no_data_timeout, **self.scan_parameters._asdict()):
             got_data = False
             while not self.stop_run.wait(1.0):
                 if not got_data:
@@ -240,10 +240,8 @@ class M26TelescopeScan(Fei4RunBase):
         #    analyze_raw_data.interpreter.print_summary()
         #    analyze_raw_data.plot_histograms()
 
-    def start_readout(self, **kwargs):
-        if kwargs:
-            self.set_scan_parameters(**kwargs)
-        self.fifo_readout.start(reset_sram_fifo=False, clear_buffer=True, callback=self.handle_data, errback=self.handle_err, no_data_timeout=self.no_data_timeout)
+    def start_readout(self, *args, **kwargs):
+        super(M26TelescopeScan, self).start_readout(*args, **kwargs)
         #self.dut['TDC']['ENABLE'] = self.enable_tdc
         self.dut['TLU']['RESET']=1
         self.dut['TLU']['TRIGGER_MODE']=3
@@ -271,7 +269,6 @@ class M26TelescopeScan(Fei4RunBase):
         # use this if no FE-I4 is connected
 #         self.dut['TLU']['TRIGGER_ENABLE'] = True
     
-
         def timeout():
             try:
                 self.progressbar.finish()
@@ -293,7 +290,7 @@ class M26TelescopeScan(Fei4RunBase):
         self.dut['M26_RX4'].set_en(False)
         self.dut['M26_RX5'].set_en(False)
         self.dut['M26_RX6'].set_en(False)
-        self.fifo_readout.stop(timeout=timeout)
+        super(M26TelescopeScan, self).stop_readout(timeout=timeout)
 
 
 if __name__ == "__main__":
