@@ -759,7 +759,7 @@ class Fei4RunBase(RunBase):
         data : list, tuple
             Data tuple of the format (data (np.array), last_time (float), curr_time (float), status (int))
         '''
-        if self.current_module_handle is None:
+        if self.current_module_handle is None and not self.scan_threads:
             scan_parameters = self.scan_parameters._asdict()
         else:
             scan_parameters = {key: value._asdict() for (key, value) in self._scan_parameters.iteritems()}
@@ -1127,10 +1127,9 @@ class Fei4RawDataHandle(object):
     def append_item(self, data_tuple, scan_parameters=None, new_file=False, flush=True):
         ''' Append raw data for each module after filtering and converting the raw data individually.
         '''
-        print data_tuple
         for module_id in self._selected_modules:
             converted_data_tuple = convert_data_iterable((data_tuple,), filter_func=self._filter[module_id], converter_func=self._converter[module_id])[0]
-            self._raw_data_files[module_id].append_item(converted_data_tuple, scan_parameters=scan_parameters if self._module_id is None else scan_parameters[module_id], new_file=new_file, flush=flush)
+            self._raw_data_files[module_id].append_item(converted_data_tuple, scan_parameters=scan_parameters[module_id] if module_id in scan_parameters else scan_parameters, new_file=new_file, flush=flush)
 
 
 class RhlHandle(object):
