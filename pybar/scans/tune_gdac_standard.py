@@ -35,10 +35,6 @@ class GdacTuningStandard(Fei4RunBase):
         "same_mask_for_all_dc": True  # Increases scan speed, should be deactivated for very noisy FE
     }
 
-    # Parallel mode not supported in tunings
-    def set_scan_mode(self):
-        self.parallel = False
-
     def configure(self):
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))
@@ -105,7 +101,7 @@ class GdacTuningStandard(Fei4RunBase):
         median_occupancy_last_step = None
         for scan_parameter_value in scan_parameter_range:
             self.register_utils.set_gdac(scan_parameter_value)
-            with self.readout(GDAC=scan_parameter_value, reset_fifo=True, fill_buffer=True, clear_buffer=True, callback=self.handle_data):
+            with self.readout(GDAC=scan_parameter_value, fill_buffer=True):
                 scan_loop(self,
                           command=cal_lvl1_command,
                           repeat_command=self.n_injections_gdac,
@@ -121,8 +117,8 @@ class GdacTuningStandard(Fei4RunBase):
                           mask=None,
                           double_column_correction=self.pulser_dac_correction)
 
-            filter_func = logical_and(self.raw_data_file._filter_funcs[self.current_module_handle], is_data_record)
-            occupancy_array, _, _ = np.histogram2d(*convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=filter_func, converter_func=get_col_row_array_from_data_record_array), bins=(80, 336), range=[[1, 80], [1, 336]])
+            data = convert_data_array(array=self.read_data(filter=True), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)
+            occupancy_array, _, _ = np.histogram2d(*data, bins=(80, 336), range=[[1, 80], [1, 336]])
             occ_array_sel_pixels = np.ma.array(occupancy_array, mask=np.logical_not(np.ma.make_mask(select_mask_array)))  # take only selected pixel into account by using the mask
             occ_array_desel_pixels = np.ma.array(occupancy_array, mask=np.ma.make_mask(select_mask_array))  # take only de-selected pixel into account by using the inverted mask
             median_occupancy = np.ma.median(occ_array_sel_pixels)

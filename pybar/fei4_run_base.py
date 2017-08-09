@@ -1,13 +1,14 @@
 import logging
 import time
 import os
+import itertools
 import string
 import struct
 import smtplib
 from socket import gethostname
 import numpy as np
 from functools import wraps
-from threading import Event, Thread, current_thread
+from threading import Event, Thread, current_thread, Lock, RLock
 from Queue import Queue
 from collections import namedtuple, Mapping
 from contextlib import contextmanager
@@ -33,135 +34,6 @@ from pybar.daq.readout_utils import (convert_data_iterable, logical_or, logical_
 
 
 _reserved_driver_names = ["FIFO", "TX", "RX", "TLU", "TDC"]
-
-
-class Fei4RawDataHandle(object):
-    ''' Handle for multiple raw data files with filter and converter functions.
-    '''
-    def __init__(self, raw_data_files, module_cfgs, selected_modules=None):
-        self._raw_data_files = raw_data_files
-        self._module_cfgs = module_cfgs
-
-        # Module filter functions dict for quick lookup
-        self._filter_funcs = {}
-        self._converter_funcs = {}
-        if selected_modules is None:
-            selected_modules = [item for item in sorted(self._module_cfgs.keys(), key=lambda x: (x is not None, x)) if item is not None]
-        if len(raw_data_files) != len(selected_modules):
-            raise ValueError("Selected modules do not match number of raw data files.")
-        for module_id in selected_modules:
-            module_cfg = module_cfgs[module_id]
-            if module_id is None:
-                continue
-            if 'rx_channel' in module_cfg and module_cfg['rx_channel'] is not None:
-                rx_filter = logical_and(is_fe_word, is_data_from_channel(module_cfg['rx_channel']))
-            else:
-                rx_filter = is_fe_word
-            if 'tdc_channel' in module_cfg and module_cfg['tdc_channel'] is not None:
-                tdc_filter = logical_and(is_tdc_word, is_tdc_from_channel(module_cfg['tdc_channel']))
-                self._converter_funcs[module_id] = convert_tdc_to_channel(channel=module_cfg['tdc_channel'])
-            else:
-                tdc_filter = false
-                self._converter_funcs[module_id] = None
-            self._filter_funcs[module_id] = logical_or(is_trigger_word, logical_or(rx_filter, tdc_filter))
-
-    def append_item(self, data_tuple, scan_parameters=None, new_file=False, flush=True):
-        ''' Append raw data for each module after filtering and converting the raw data individually.
-        '''
-        for module_id, filter_func in self._filter_funcs.iteritems():
-            converted_data_tuple = convert_data_iterable((data_tuple,), filter_func=filter_func, converter_func=self._converter_funcs[module_id])[0]
-            self._raw_data_files[module_id].append_item(converted_data_tuple, scan_parameters=scan_parameters, new_file=new_file, flush=flush)
-
-
-class RhlHandle(object):
-    ''' Handle for basil.HL.RegisterHardwareLayer.
-
-    Mimic register interface of RegisterHardwareLayer objects and allows for consecutively reading/writing values in all given modules.
-    '''
-    def __init__(self, dut, module_names):
-        self._dut = dut
-        if not module_names:
-            module_names = []
-        if len(set(module_names)) != len(module_names):
-            raise ValueError('Parameter "module_names" contains duplicate entries.')
-        if module_names and not all([isinstance(dut[module_name], basil.HL.RegisterHardwareLayer.RegisterHardwareLayer) for module_name in module_names]):
-            raise ValueError("Not all modules are of type basil.HL.RegisterHardwareLayer.RegisterHardwareLayer")
-        self.module_names = module_names
-
-    def __getitem__(self, name):
-        values = []
-        for module_name in self.module_names:
-            values.append(self._dut[module_name][name])
-        if not len(set(values)) == 1:
-            raise RuntimeError("Returned values for %s are different." % (name,))
-        return values[0]
-
-    def __setitem__(self, name, value):
-        for module_name in self.module_names:
-            self._dut[module_name][name] = value
-
-    def __getattr__(self, name):
-        '''called only on last resort if there are no attributes in the instance that match the name
-        '''
-        if name.isupper():
-            return self[name]
-        else:
-            def method(*args, **kwargs):
-                nsplit = name.split('_', 1)
-                if len(nsplit) == 2 and nsplit[0] == 'set' and nsplit[1].isupper() and len(args) == 1 and not kwargs:
-                    self[nsplit[1]] = args[0]  # returns None
-                elif len(nsplit) == 2 and nsplit[0] == 'get' and nsplit[1].isupper() and not args and not kwargs:
-                    return self[nsplit[1]]
-                else:
-                    raise AttributeError("%r object has no attribute %r" % (self.__class__, name))
-            return method
-
-    def __setattr__(self, name, value):
-        if name.isupper():
-            self[name] = value
-        else:
-            super(RhlHandle, self).__setattr__(name, value)
-
-
-class DutHandle(object):
-    ''' Handle for DUT.
-
-    Providing interface to Basil DUT object and gives access only to those drivers which are specified in the module configuration.
-    '''
-    def __init__(self, dut, module_cfgs, module_id=None):
-        self._dut = dut
-        self._module_cfgs = module_cfgs
-        self._module_id = module_id
-
-    def __getitem__(self, key):
-        values = []
-        thread_name = current_thread().name
-        module_id_from_thread_name = [name for name in self._module_cfgs.iterkeys() if (name is not None and name in thread_name)]
-        if len(module_id_from_thread_name) > 1:
-            raise RuntimeError("Thread name contains names of multiple modules: %s" % ", ".join(module_id_from_thread_name))
-        try:
-            self._dut[key]
-            dut_has_key = True
-        except KeyError:
-            dut_has_key = False
-        if dut_has_key:
-            return self._dut[key]
-        elif module_id_from_thread_name and self._module_id is None and self._module_cfgs[None][key] is None: # TODO: adding broadcast module
-            module_name = self._module_cfgs[module_id_from_thread_name[0]][key]
-            return self._dut[module_name]
-        else:
-            # retrieve all module names and remove duplicates
-            module_names = list(set([module_cfg[key] for module_cfg in self._module_cfgs.itervalues() if (key in module_cfg and module_cfg[key] is not None)]))
-            if len(module_names) > 1:
-                return RhlHandle(dut=self._dut, module_names=module_names)
-            else:
-                return self._dut[module_names[0]]
-
-
-    def __getattr__(self, name):
-        '''called only on last resort if there are no attributes in the instance that match the name
-        '''
-        return getattr(self._dut, name)
 
 
 class Fei4RunBase(RunBase):
@@ -208,26 +80,25 @@ class Fei4RunBase(RunBase):
     def __init__(self, conf):
         # Sets self._conf = conf
         super(Fei4RunBase, self).__init__(conf=conf)
-        # settting up scan
-        self.set_scan_mode()
 
         self.err_queue = Queue()
-
+        self.global_lock = RLock()
         self._module_cfgs = {}
         self._register_utils = {}
         self._raw_data_files = {}
-        self._module_attr = {}
         self._scan_parameters = {}  # Store specific scan parameters per module to make available after scan
         self._parse_module_cfgs(conf)
         self._set_default_cfg(conf)
+        self._module_attr = {key : {} for key in self._module_cfgs}
         # initialize attributes not related to a module
+        self.scan_threads = []
+        self.threaded_readout = []
+        self._readout_lock = Lock()
+        self._readout_event = Event()
+        self._readout_event.clear()
         self.dut = None
         self.fifo_readout = None
-        self.current_module_handle = None  # setting broadast module as default module
-#         self.scan_parameters = None
-#         self.register = None
-#         self.register_utils = None
-#         self.output_filename = None
+        self._current_module_handle = None  # setting broadast module as default module
         self.raw_data_file = None
         # after initialized is set to True, all new attributes are belonging to selected mudule
         # by default the broadcast module is selected (current_module_handle is None)
@@ -237,6 +108,14 @@ class Fei4RunBase(RunBase):
         # set up default run conf parameters
         self._default_run_conf.setdefault('comment', '{}'.format(self.__class__.__name__))
         self._default_run_conf.setdefault('reset_rx_on_error', False)
+        # Enabling broadcast commands will significantly improve the speed of scans.
+        # Only those scans can be accelerated which commands can be broadcastet and
+        # which commands are not individual for each module.
+        self._default_run_conf.setdefault('broadcast_commands', False)
+        # Enabling threaded scan improves the speed of scans
+        # and require multiple TX for sending commands.
+        # If only a single TX is available, no speed improvement is gained.
+        self._default_run_conf.setdefault('threaded_scan', False)
 
         super(Fei4RunBase, self)._init_run_conf(run_conf=run_conf)
 
@@ -248,56 +127,31 @@ class Fei4RunBase(RunBase):
             return False
 
     @property
-    def register(self):
+    def current_module_handle(self):
         thread_name = current_thread().name
-        module_id_from_thread_name = [name for name in self._module_cfgs.iterkeys() if (name is not None and name in thread_name)]
+        module_id_from_thread_name = [module_name for module_name in self._module_cfgs.iterkeys() if (module_name is not None and module_name in thread_name)]
         if len(module_id_from_thread_name) > 1:
             raise RuntimeError("Thread name contains names of multiple modules: %s" % ", ".join(module_id_from_thread_name))
-        if module_id_from_thread_name and self.current_module_handle is None:
-            return self._module_cfgs[module_id_from_thread_name[0]]['fe_configuration']
+        if module_id_from_thread_name and self._current_module_handle is None:
+            return module_id_from_thread_name[0]
         else:
-            return self._module_cfgs[self.current_module_handle]['fe_configuration']
+            return self._current_module_handle
+
+    @property
+    def register(self):
+        return self._module_cfgs[self.current_module_handle]['fe_configuration']
 
     @property
     def register_utils(self):
-        thread_name = current_thread().name
-        module_id_from_thread_name = [name for name in self._module_cfgs.iterkeys() if (name is not None and name in thread_name)]
-        if len(module_id_from_thread_name) > 1:
-            raise RuntimeError("Thread name contains names of multiple modules: %s" % ", ".join(module_id_from_thread_name))
-        if module_id_from_thread_name and self.current_module_handle is None:
-            return self._register_utils[module_id_from_thread_name[0]]
-        else:
-            return self._register_utils[self.current_module_handle]
+        return self._register_utils[self.current_module_handle]
 
     @property
     def output_filename(self):
-        thread_name = current_thread().name
-        module_id_from_thread_name = [name for name in self._module_cfgs.iterkeys() if (name is not None and name in thread_name)]
-        if len(module_id_from_thread_name) > 1:
-            raise RuntimeError("Thread name contains names of multiple modules: %s" % ", ".join(module_id_from_thread_name))
-        if module_id_from_thread_name and self.current_module_handle is None:
-            return self.get_output_filename(module_id=module_id_from_thread_name[0])
-        else:
-            return self.get_output_filename(module_id=self.current_module_handle)
+        return self.get_output_filename(module_id=self.current_module_handle)
 
     @property
     def scan_parameters(self):
-        thread_name = current_thread().name
-        module_id_from_thread_name = [name for name in self._module_cfgs.iterkeys() if (name is not None and name in thread_name)]
-        if len(module_id_from_thread_name) > 1:
-            raise RuntimeError("Thread name contains names of multiple modules: %s" % ", ".join(module_id_from_thread_name))
-        if module_id_from_thread_name and self.current_module_handle is None:
-            return self._scan_parameters[module_id_from_thread_name[0]]
-        else:
-            return self._scan_parameters[self.current_module_handle]
-
-    def set_scan_mode(self):
-        ''' Called during init to set scan in serial or paralle mode.
-
-        Overwrite this function in the scan to change the mode.
-        Std. setting is parallel.
-        '''
-        self.parallel = True
+        return self._scan_parameters[self.current_module_handle]
 
     def _parse_module_cfgs(self, conf):
         ''' Extracts the configuration of the modules.
@@ -338,22 +192,21 @@ class Fei4RunBase(RunBase):
         conf.setdefault('working_dir', '')  # path string, if empty, path of configuration.yaml file will be used
 
         fe_flavors = set([module_cfg['fe_flavor'] for module_cfg in self._module_cfgs.values()])
-        if len(fe_flavors) != 1 and self.parallel:
+        if len(fe_flavors) != 1:
             raise ValueError("Parameter 'fe_flavor' must be the same for module group")
 
-        if self.parallel:
-            # Adding broadcast config for parallel mode.
-            self._module_cfgs[None] = {
-                'fe_flavor': fe_flavors.pop(),
-                'chip_address': None,
-                'FIFO': None,
-                'RX': None,
-                'rx_channel': None,
-                'TX': None,
-                'tx_channel': None,
-                'TDC': None,
-                'tdc_channel': None,
-                'TLU' : None}
+        # Adding broadcast config for parallel mode.
+        self._module_cfgs[None] = {
+            'fe_flavor': fe_flavors.pop(),
+            'chip_address': None,
+            'FIFO': None,
+            'RX': None,
+            'rx_channel': None,
+            'TX': None,
+            'tx_channel': None,
+            'TDC': None,
+            'tdc_channel': None,
+            'TLU' : None}
 
         # Adding here default module config items.
         for module_cfg in self._module_cfgs.values():
@@ -524,7 +377,7 @@ class Fei4RunBase(RunBase):
         ''' Initialize all modules consecutevly'''
         for module_id in sorted(self._module_cfgs.keys(), key=lambda x: (x is not None, x)):
             module_cfg = self._module_cfgs[module_id]
-            logging.info("Initializing %s..." % "broadcast module" if module_id is None else module_id)
+            logging.info("Initializing %s..." % ("broadcast module" if module_id is None else module_id))
             # adding scan parameters for each module
             if 'scan_parameters' in self._run_conf:
                 if isinstance(self._run_conf['scan_parameters'], basestring):
@@ -570,31 +423,43 @@ class Fei4RunBase(RunBase):
                 raise ValueError("Found no valid value for parameter 'fe_configuration' for module '%s'" % module_id)
 
             # init register utils
-            self._register_utils[module_id] = FEI4RegisterUtils(self.dut, self._module_cfgs[module_id]['fe_configuration'])
+            with self.access_module(module_id=module_id):
+                self._register_utils[module_id] = FEI4RegisterUtils(self.dut, self._module_cfgs[module_id]['fe_configuration'])
 
             if module_id is not None:
-                # reset and configuration
-                with self.access_module(module_id=module_id):
-                    self._register_utils[module_id].global_reset()
-                    self._register_utils[module_id].configure_all()
-                    if is_fe_ready(self):
-                        reset_service_records = False
-                    else:
-                        reset_service_records = True
-                    self._register_utils[module_id].reset_bunch_counter()
-                    self._register_utils[module_id].reset_event_counter()
-                    if reset_service_records:
-                        # resetting service records must be done once after power up
-                        self._register_utils[module_id].reset_service_records()
-                    # set all FE to conf mode afterwards to be immune to ECR and BCR
-                    self._register_utils[module_id].set_conf_mode()
-                    # Create module data path if it does not exist
-                    module_path = self.get_module_path(module_id)
-                    if not os.path.exists(module_path):
-                        os.makedirs(module_path)
-            else:
-                with self.access_module(module_id=module_id):
-                    self._register_utils[module_id].set_conf_mode()
+                # Create module data path if it does not exist
+                module_path = self.get_module_path(module_id)
+                if not os.path.exists(module_path):
+                    os.makedirs(module_path)
+
+        # Initila configuration of all modules.
+        # This is done by iterating over each module individually
+
+        # set all modules to conf mode to prevent from receiving BCR and ECR broadcast
+        for module_id in filter(None, sorted(self._module_cfgs.keys(), key=lambda x: (x is not None, x))):
+            with self.access_module(module_id=module_id):
+                self.register_utils.set_conf_mode()
+
+        for module_id in filter(None, sorted(self._module_cfgs.keys(), key=lambda x: (x is not None, x))):
+            # reset and configuration
+            with self.access_module(module_id=module_id):
+                self.register_utils.global_reset()
+                self.register_utils.configure_all()
+                if is_fe_ready(self):
+                    print "READY = True"
+                    reset_service_records = False
+                else:
+                    print "READY = False"
+                    reset_service_records = True
+                # BCR and ECR might result in RX errors
+                # a reset of the RX and FIFO will happen just before scan()
+                self.register_utils.reset_bunch_counter()
+                self.register_utils.reset_event_counter()
+                if reset_service_records:
+                    # resetting service records must be done once after power up
+                    self.register_utils.reset_service_records()
+                # set all modules to conf mode afterwards to be immune to ECR and BCR
+                self.register_utils.set_conf_mode()
 
     def pre_run(self):
         # clear error queue in case run is executed a second time
@@ -696,56 +561,150 @@ class Fei4RunBase(RunBase):
 
         Sets properties to access current module properties.
         '''
-        if self.parallel:  # Broadcast FE commands
-            with contextlib.ExitStack() as stack:
+        if self.broadcast_commands:  # Broadcast FE commands
+            print "do_run if"
+            with contextlib.ExitStack() as restore_config_stack:
                 # Configure each FE individually
                 # Sort module config keys, configure broadcast module (key is None) first
                 for module_id in sorted(self._module_cfgs.keys(), key=lambda x: (x is not None, x)):
                     if self.abort_run.is_set():
                         break
                     with self.access_module(module_id=module_id):
-                        logging.info('Scan parameter(s): %s', ', '.join(['%s=%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None')
-                        stack.enter_context(self.register.restored(name=self.run_number))
+                        logging.info('Scan parameter(s) for module %s: %s', module_id, ', '.join(['%s=%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None')
+                        # storing register values until scan has finished and then restore configuration
+                        restore_config_stack.enter_context(self.register.restored(name=self.run_number))
                         self.configure()
+                        # set all modules to run mode by before entering scan()
+                        self.register_utils.set_run_mode()
 
                 self.fifo_readout.reset_rx()
                 self.fifo_readout.reset_fifo()
                 self.fifo_readout.print_readout_status()
 
-                with self.access_module(module_id=None):
-                    with self.open_file(module_id=None):
-                        self.scan()
-
-            self.fifo_readout.print_readout_status()
-
-        else:  # Scan each FE individually
-            for module_id in sorted(self._module_cfgs.keys(), key=lambda x: (x is not None, x)):
-                if self.abort_run.is_set():
-                    break
-                self.stop_run.clear()  # some scans use this event to stop scan loop, clear event here to make another scan possible
-                if module_id is None:
-                    continue
-                with self.access_module(module_id=module_id):
-                    logging.info('Scan parameter(s): %s', ', '.join(['%s=%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None')
-                    with self.register.restored(name=self.run_number):
-                        self.configure()
-
-                        self.fifo_readout.reset_rx()
-                        self.fifo_readout.reset_fifo()
-                        self.fifo_readout.print_readout_status()
-
-                        with self.open_file(module_id=module_id):
+                if self.threaded_scan:
+                    raise NotImplementedError("Threaded scan not supported when broadcast commands is True.")
+#                     with self.access_module(module_id=None):
+#                         with self.access_file(module_id=None):
+#                             self.scan_threads = []
+#                             for module_id in filter(None, sorted(self._module_cfgs.keys(), key=lambda x: (x is not None, x))):
+#                                 if self.abort_run.is_set():
+#                                     break
+#                                 t = ExcThread(target=self.scan, name=module_id)
+#                                 t.daemon = True  # exiting program even when thread is alive
+#                                 self.scan_threads.append(t)
+#                             for t in self.scan_threads:
+#                                 t.start()
+#                             while any([t.is_alive() for t in self.scan_threads]):
+#                                 if self.abort_run.is_set():
+#                                     break
+#                                 for t in self.scan_threads:
+#                                     try:
+#                                         t.join(0.01)
+#                                     except:
+#                                         self.scan_threads.remove(t)
+#                                         self.handle_err(sys.exc_info())
+#                             alive_threads = [t.name for t in self.scan_threads if not t.join(10.0) and t.is_alive()]
+#                             if alive_threads:
+#                                 raise RuntimeError("Scan thread(s) not finished: %s" % ", ".join(alive_threads))
+#                             self.scan_threads = []
+                else:
+                    with self.access_module(module_id=None):
+                        with self.access_file(module_id=None):
                             self.scan()
 
-                self.fifo_readout.print_readout_status()
+                for module_id in sorted(self._module_cfgs.keys(), key=lambda x: (x is not None, x)):
+                    if self.abort_run.is_set():
+                        break
+                    with self.access_module(module_id=module_id):
+                        # set modules to conf mode by after finishing scan()
+                        self.register_utils.set_conf_mode()
+
+            self.fifo_readout.print_readout_status()
+        else:  # Scan each FE individually
+            if self.threaded_scan:
+                with contextlib.ExitStack() as restore_config_stack:
+                    with self.access_file(module_id=None):
+                        self.scan_threads = []
+                        # group modules by TX
+                        tx_groups = dict((k, list(g)) for k, g in itertools.groupby(filter(None, sorted(self._module_cfgs.keys(), key=lambda x: (x is not None, x))), lambda name: self._module_cfgs[name]['TX']))
+                        # loop over grpups of modules with different TX
+                        for tx_module_ids in itertools.izip_longest(*tx_groups.values()):
+                            if self.abort_run.is_set():
+                                break
+                            print "tx_module_ids", tx_module_ids
+                            for module_id in filter(None, tx_module_ids):
+                                if self.abort_run.is_set():
+                                    break
+                                with self.access_module(module_id=module_id):
+                                    logging.info('Scan parameter(s) for module %s: %s', module_id, ', '.join(['%s=%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None')
+                                    # storing register values until scan has finished and then restore configuration
+                                    restore_config_stack.enter_context(self.register.restored(name=self.run_number))
+                                    self.configure()
+                                    # set modules to run mode by before entering scan()
+                                    self.register_utils.set_run_mode()
+
+                                self.fifo_readout.reset_rx()
+                                self.fifo_readout.reset_fifo()
+                                self.fifo_readout.print_readout_status()
+
+                                print "setup thread for", module_id
+                                t = ExcThread(target=self.scan, name=module_id)
+                                t.daemon = True  # exiting program even when thread is alive
+                                self.scan_threads.append(t)
+                            with self.access_module(module_id=None):
+                                for t in self.scan_threads:
+                                    print "start thread for", t.name
+                                    t.start()
+                                while any([t.is_alive() for t in self.scan_threads]):
+#                                     if self.abort_run.is_set():
+#                                         break
+                                    for t in self.scan_threads:
+                                        try:
+                                            t.join(0.01)
+                                        except:
+                                            self.scan_threads.remove(t)
+                                            self.handle_err(sys.exc_info())
+#                                 alive_threads = [t.name for t in self.scan_threads if (not t.join(10.0) and t.is_alive())]
+#                                 if alive_threads:
+#                                     raise RuntimeError("Scan thread(s) not finished: %s" % ", ".join(alive_threads))
+                                self.scan_threads = []
+
+                            for module_id in filter(None, tx_module_ids):
+                                if self.abort_run.is_set():
+                                    break
+                                with self.access_module(module_id=module_id):
+                                    # set modules to conf mode by after finishing scan()
+                                    self.register_utils.set_conf_mode()
+
+                            self.fifo_readout.print_readout_status()
+            else:
+                for module_id in filter(None, sorted(self._module_cfgs.keys(), key=lambda x: (x is not None, x))):
+                    if self.abort_run.is_set():
+                        break
+                    self.stop_run.clear()  # some scans use this event to stop scan loop, clear event here to make another scan possible
+                    with self.access_module(module_id=module_id):
+                        logging.info('Scan parameter(s) for module %s: %s', module_id, ', '.join(['%s=%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None')
+                        with self.register.restored(name=self.run_number):
+                            self.configure()
+                            # set modules to run mode by before entering scan()
+                            self.register_utils.set_run_mode()
+
+                            self.fifo_readout.reset_rx()
+                            self.fifo_readout.reset_fifo()
+                            self.fifo_readout.print_readout_status()
+
+                            with self.access_file(module_id=module_id):
+                                self.scan()
+                            # set modules to conf mode by after finishing scan()
+                            self.register_utils.set_conf_mode()
+
+                    self.fifo_readout.print_readout_status()
 
     def post_run(self):
         # analyzing data and store register cfg per front end one by one
-        for module_id in sorted(self._module_cfgs.keys(), key=lambda x: (x is not None, x)):
+        for module_id in filter(None, sorted(self._module_cfgs.keys(), key=lambda x: (x is not None, x))):
             if self.abort_run.is_set():
                     break
-            if module_id is None:
-                continue
             with self.access_module(module_id=module_id):
                 try:
                     self.analyze()
@@ -800,7 +759,11 @@ class Fei4RunBase(RunBase):
         data : list, tuple
             Data tuple of the format (data (np.array), last_time (float), curr_time (float), status (int))
         '''
-        self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=True)
+        if self.current_module_handle is None:
+            scan_parameters = self.scan_parameters._asdict()
+        else:
+            scan_parameters = {key: value._asdict() for (key, value) in self._scan_parameters.iteritems()}
+        self.raw_data_file.append_item(data, scan_parameters=scan_parameters, new_file=False, flush=True)
 
     def handle_err(self, exc):
         '''Handling of Exceptions.
@@ -874,8 +837,8 @@ class Fei4RunBase(RunBase):
                     raise TypeError('Got multiple values for keyword argument %s' % field)
                 fields[field] = value
         scan_parameters_old = self.scan_parameters._asdict()
-        self._scan_parameters[self.current_module_handle] = self.scan_parameters._replace(**fields)
-        self.scan_parameters = self._scan_parameters[self.current_module_handle]
+        with self.global_lock:
+            self._scan_parameters[self.current_module_handle] = self.scan_parameters._replace(**fields)
         scan_parameters_new = self.scan_parameters._asdict()
         diff = [name for name in scan_parameters_old.keys() if np.any(scan_parameters_old[name] != scan_parameters_new[name])]
         if diff:
@@ -885,8 +848,6 @@ class Fei4RunBase(RunBase):
         ''' Always called to retrun the value for an attribute.
         '''
         if self.is_initialized and name not in self.__dict__:
-            if self.current_module_handle not in self._module_attr:
-                self._module_attr[self.current_module_handle] = {}
             self._module_attr[self.current_module_handle][name] = value
         else:
             super(Fei4RunBase, self).__setattr__(name, value)
@@ -894,16 +855,19 @@ class Fei4RunBase(RunBase):
     def __getattr__(self, name):
         ''' This is called in a last attempt to receive the value for an attribute that was not found in the usual places.
         '''
-        try:
-            return self._module_attr[self.current_module_handle][name]  # this has to come first
-        except KeyError:
+        # test for attribute name in module attribute dict first
+        if self.is_initialized and name in self._module_attr[self.current_module_handle]:
+            return self._module_attr[self.current_module_handle][name]
+        elif self.is_initialized and name in self._module_attr[None]:
+            return self._module_attr[None][name]
+        else:
             try:
-                return super(Fei4RunBase, self).__getattr__(name=name)
+                return super(Fei4RunBase, self).__getattr__(name)
             except AttributeError:
-                try:
-                    return self._module_attr[None][name]
-                except KeyError:
-                    raise AttributeError("'%s' (current handle '%s') has no attribute '%s'" % (self.__class__.__name__, self.current_module_handle, name))
+                if self.is_initialized:
+                    raise AttributeError("'%s' (current module handle '%s') has no attribute '%s'" % (self.__class__.__name__, self.current_module_handle, name))
+                else:
+                    raise
 
     @contextmanager
     def access_module(self, module_id):
@@ -917,46 +881,43 @@ class Fei4RunBase(RunBase):
     def select_module(self, module_id):
         ''' Select module and give access to the module.
         '''
-        self.current_module_handle = module_id
+        self._current_module_handle = module_id
         # setting DUT handle for specified mudule
         self.dut = DutHandle(dut=self._conf['dut'], module_cfgs=self._module_cfgs, module_id=module_id)
-        # enabling Tx channels
-        # generating enable bit mask for broadcast
-        tx_channels = set([1 << module_cfg['tx_channel'] for module_cfg in self._module_cfgs.values() if module_cfg['tx_channel'] is not None])
-        broadcast_tx_channels = reduce(lambda x, y: x | y, tx_channels)
-        self.dut['TX']['OUTPUT_ENABLE'] = (1 << self._module_cfgs[module_id]["tx_channel"]) if module_id is not None else broadcast_tx_channels
-#         self.scan_parameters = self.get_scan_parameters(module_id=module_id)
-#         self.register = self.get_register(module_id=module_id)
-#         self.register_utils = self.get_register_utils(module_id=module_id)
-#         self.output_filename = self.get_output_filename(module_id=module_id)
+        # enabling specific TX channels
+        if module_id is None:
+            # generating enable bit mask for broadcasting
+            for tx in set(filter(None, [module_cfg['TX'] for module_cfg in self._module_cfgs.values()])):
+                tx_channels = set([1 << module_cfg['tx_channel'] for module_cfg in self._module_cfgs.values() if module_cfg['tx_channel'] is not None and module_cfg['TX'] == tx])
+                self.dut[tx]['OUTPUT_ENABLE'] = reduce(lambda x, y: x | y, tx_channels)
+        else:
+            # enable specific channel
+            self.dut['TX']['OUTPUT_ENABLE'] = (1 << self._module_cfgs[module_id]["tx_channel"])
 
     def deselect_module(self):
         ''' Deselect module and cleanup.
         '''
-        self.current_module_handle = None
+        self._current_module_handle = None
         # setting DUT handle to default
         self.dut = DutHandle(dut=self._conf['dut'], module_cfgs=self._module_cfgs, module_id=None)
-        # disabling Tx channels
+        # disabling TX channels
         self.dut['TX']['OUTPUT_ENABLE'] = 0
-#         self.scan_parameters = None
-#         self.register = None
-#         self.register_utils = None
-#         self.output_filename = None
 
     @contextmanager
-    def open_file(self, module_id):
-        self.create_file(module_id=module_id)
+    def access_file(self, module_id):
+        self.open_files(module_id=module_id)
         try:
             yield
         finally:
             # in case something fails, call this on last resort
-            self.close_file()
+            self.close_files()
 
-    def create_file(self, module_id):
+    def open_files(self, module_id):
         if module_id is None:
-            selected_modules = [item for item in sorted(self._module_cfgs.keys(), key=lambda x: (x is not None, x)) if item is not None]
+            selected_modules = filter(None, [item for item in sorted(self._module_cfgs.keys(), key=lambda x: (x is not None, x))])
         else:
             selected_modules = [module_id]
+        print "selected_modules open files", selected_modules
         for selected_module_id in selected_modules:
             self._raw_data_files[selected_module_id] = open_raw_data_file(filename=self.get_output_filename(selected_module_id),
                                                                           mode='w',
@@ -966,26 +927,34 @@ class Fei4RunBase(RunBase):
                                                                           run_conf=self._run_conf,
                                                                           scan_parameters=self.scan_parameters._asdict(),
                                                                           socket_address=self._module_cfgs[selected_module_id]['send_data'])
-        self.raw_data_file = Fei4RawDataHandle(raw_data_files=self._raw_data_files, module_cfgs=self._module_cfgs, selected_modules=selected_modules)
+        self.raw_data_file = Fei4RawDataHandle(raw_data_files=self._raw_data_files, module_cfgs=self._module_cfgs, module_id=module_id)
 
-    def close_file(self):
+    def close_files(self):
         for module_id in sorted(self._raw_data_files.keys()):
             self._raw_data_files[module_id].close()
         # delete all file objects
         self._raw_data_files.clear()
         self.raw_data_file = None
 
-    def read_data(self):
-        thread_name = current_thread().name
-        module_id_from_thread_name = [name for name in self._module_cfgs.iterkeys() if (name is not None and name in thread_name)]
-        if len(module_id_from_thread_name) > 1:
-            raise RuntimeError("Thread name contains names of multiple modules: %s" % ", ".join(module_id_from_thread_name))
-        if module_id_from_thread_name and self.current_module_handle is None:
-            filter_func = logical_and(is_fe_word, is_data_from_channel(self._module_cfgs[module_id_from_thread_name[0]]['rx_channel']))
-            return self.fifo_readout.read_data(filter_func=filter_func)
+    def get_raw_data_from_buffer(self, filter_func=None, converter_func=None):
+        return self.fifo_readout.get_raw_data_from_buffer(filter_func=filter_func, converter_func=converter_func)
+
+    def read_raw_data_from_fifo(self, filter_func=None, converter_func=None):
+        return self.fifo_readout.read_raw_data_from_fifo(filter_func=filter_func, converter_func=converter_func)
+
+    def read_data(self, filter=True):
+        if filter:
+            if 'rx_channel' in self._module_cfgs[self.current_module_handle] and self._module_cfgs[self.current_module_handle]['rx_channel'] is not None:
+                filter_func = logical_and(is_fe_word, is_data_from_channel(self._module_cfgs[self.current_module_handle]['rx_channel']))
+            else:
+                filter_func = is_fe_word
         else:
-            filter_func = logical_and(is_fe_word, is_data_from_channel(self._module_cfgs[self.current_module_handle]['rx_channel']))
-            return self.fifo_readout.read_data(filter_func=filter_func)
+            filter_func = None
+        with self._readout_lock:
+            if self.fifo_readout.fill_buffer:
+                return self.get_raw_data_from_buffer(filter_func=filter_func)
+            else:
+                return self.read_raw_data_from_fifo(filter_func=filter_func)
 
     @contextmanager
     def readout(self, *args, **kwargs):
@@ -996,40 +965,74 @@ class Fei4RunBase(RunBase):
             self.stop_readout(timeout=timeout)
         finally:
             # in case something fails, call this on last resort
-            if self.fifo_readout.is_running:
-                self.fifo_readout.stop(timeout=0.0)
+            # if run was aborted, immediately stop readout
+            if self.abort_run.is_set():
+                with self._readout_lock:
+                    if self.fifo_readout.is_running:
+                        self.fifo_readout.stop(timeout=0.0)
 
     def start_readout(self, *args, **kwargs):
         # Pop parameters for fifo_readout.start
         callback = kwargs.pop('callback', self.handle_data)
-        clear_buffer = kwargs.pop('clear_buffer', False)
+        clear_buffer = kwargs.pop('clear_buffer', True)
         fill_buffer = kwargs.pop('fill_buffer', False)
-        reset_fifo = kwargs.pop('reset_fifo', False)
+        reset_fifo = kwargs.pop('reset_fifo', True)
         errback = kwargs.pop('errback', self.handle_err)
         no_data_timeout = kwargs.pop('no_data_timeout', None)
         filter_func = kwargs.pop('filter', None)
         converter_func = kwargs.pop('converter', None)
-        enabled_fe_channels = kwargs.pop('enabled_channels', filter(None, [item['RX'] for item in self._module_cfgs.itervalues()]))
-        # this is the implementation for a filter and converter for a individual module
-#         if self.current_module_handle is not None:
-#             module_cfg = self._module_cfgs[self.current_module_handle]
-#             if 'rx_channel' in module_cfg and module_cfg['rx_channel']:
-#                 rx_filter = logical_and(is_fe_word, is_data_from_channel(module_cfg['rx_channel']))
-#             else:
-#                 rx_filter = false
-#             if 'tdc_channel' in module_cfg and module_cfg['tdc_channel']:
-#                 tdc_filter = logical_and(is_tdc_word, is_tdc_from_channel(module_cfg['tdc_channel']))
-#                 converter = convert_tdc_to_channel(channel=module_cfg['tdc_channel'])
-#             else:
-#                 tdc_filter = false
-#                 converter = None
-#             filter = logical_or(is_trigger_word, logical_or(rx_filter, tdc_filter))
         if args or kwargs:
             self.set_scan_parameters(*args, **kwargs)
-        self.fifo_readout.start(reset_fifo=reset_fifo, fill_buffer=fill_buffer, clear_buffer=clear_buffer, callback=callback, errback=errback, no_data_timeout=no_data_timeout, filter_func=filter_func, converter_func=converter_func, enabled_fe_channels=enabled_fe_channels)
+        if self.scan_threads and current_thread().name not in [t.name for t in self.scan_threads]:
+            raise RuntimeError("Thread %s is not valid")
+        if self.scan_threads and current_thread().name in self.threaded_readout:
+            raise RuntimeError("Thread %s is already reading FIFO")
+        if self.scan_threads:
+            with self._readout_lock:
+                self.threaded_readout.append(current_thread().name)
+            self._readout_event.clear()
+        else:
+            with self._readout_lock:
+                self.threaded_readout.append(self.current_module_handle)
+                self._readout_event.clear()
+        while not self._readout_event.wait(0.01):
+            if self.abort_run.is_set():
+                break
+            if len(set(self.threaded_readout) & set([t.name for t in self.scan_threads if t.is_alive()])) == len(set([t.name for t in self.scan_threads if t.is_alive()])) or not self.scan_threads:
+                with self._readout_lock:
+                    if not self.fifo_readout.is_running:
+                        # select readout channels only from running threads
+                        enabled_fe_channels = kwargs.pop('enabled_channels', filter(None, [value['RX'] for name, value in self._module_cfgs.iteritems() if (name in self.threaded_readout or None in self.threaded_readout)]))
+                        self.fifo_readout.start(reset_fifo=reset_fifo, fill_buffer=fill_buffer, clear_buffer=clear_buffer, callback=callback, errback=errback, no_data_timeout=no_data_timeout, filter_func=filter_func, converter_func=converter_func, enabled_fe_channels=enabled_fe_channels)
+                        self._readout_event.set()
+                    else:
+                        pass
+                    break
 
     def stop_readout(self, timeout=10.0):
-        self.fifo_readout.stop(timeout=timeout)
+        if self.scan_threads and current_thread().name not in [t.name for t in self.scan_threads]:
+            raise RuntimeError("Thread %s is not valid")
+        if self.scan_threads and current_thread().name not in self.threaded_readout:
+            raise RuntimeError("Thread %s is not reading FIFO")
+        if self.scan_threads:
+            with self._readout_lock:
+                self.threaded_readout.remove(current_thread().name)
+            self._readout_event.clear()
+        else:
+            with self._readout_lock:
+                self.threaded_readout.remove(self.current_module_handle)
+            self._readout_event.clear()
+        while not self._readout_event.wait(0.01):
+            if self.abort_run.is_set():
+                break
+            if len(set(self.threaded_readout) & set([t.name for t in self.scan_threads if t.is_alive()])) == 0 or not self.scan_threads:
+                with self._readout_lock:
+                    if self.fifo_readout.is_running:
+                        self.fifo_readout.stop(timeout=timeout)
+                        self._readout_event.set()
+                    else:
+                        pass
+                    break
 
     def _cleanup(self):  # called in run base after exception handling
         super(Fei4RunBase, self)._cleanup()
@@ -1061,6 +1064,175 @@ class Fei4RunBase(RunBase):
         Will be executed after finishing the scan method.
         '''
         pass
+
+
+class ExcThread(Thread):
+    def run(self):
+        self.exc = None
+        try:
+            if hasattr(self, '_Thread__target'):
+                # Thread uses name mangling prior to Python 3.
+                self._Thread__target(*self._Thread__args, **self._Thread__kwargs)
+            else:
+                self._target(*self._args, **self._kwargs)
+        except:
+            self.exc = sys.exc_info()
+
+    def join(self, timeout=None):
+        super(ExcThread, self).join(timeout=timeout)
+        if self.exc:
+            raise self.exc[0], self.exc[1], self.exc[2]
+
+
+class Fei4RawDataHandle(object):
+    ''' Handle for multiple raw data files with filter and converter functions.
+    '''
+    def __init__(self, raw_data_files, module_cfgs, module_id=None):
+        self._raw_data_files = raw_data_files
+        self._module_cfgs = module_cfgs
+        self._module_id = module_id
+        self._selected_modules = None
+        self.init()
+
+    def init(self):
+        # Module filter functions dict for quick lookup
+        self._fei4_raw_data_filter = {}
+        self._filter = {}
+        self._converter = {}
+        if self._module_id is None:
+            self._selected_modules = filter(None, [item for item in sorted(self._module_cfgs.keys(), key=lambda x: (x is not None, x))])
+        else:
+            self._selected_modules = [self._module_id]
+        if len(self._raw_data_files) != len(self._selected_modules):
+            raise ValueError("Selected modules do not match number of raw data files.")
+        for module_id in self._selected_modules:
+            module_cfg = self._module_cfgs[module_id]
+            if 'rx_channel' not in module_cfg:
+                self._fei4_raw_data_filter[module_id] = false
+            elif module_cfg['rx_channel'] is None:
+                self._fei4_raw_data_filter[module_id] = is_fe_word
+            else:
+                self._fei4_raw_data_filter[module_id] = logical_and(is_fe_word, is_data_from_channel(module_cfg['rx_channel']))
+            if 'tdc_channel' not in module_cfg:
+                tdc_filter = false
+                self._converter[module_id] = None
+            elif module_cfg['tdc_channel'] is None:
+                tdc_filter = is_tdc_word
+                self._converter[module_id] = convert_tdc_to_channel(channel=module_cfg['tdc_channel'])  # for the raw data analyzer
+            else:
+                tdc_filter = logical_and(is_tdc_word, is_tdc_from_channel(module_cfg['tdc_channel']))
+                self._converter[module_id] = convert_tdc_to_channel(channel=module_cfg['tdc_channel'])  # for the raw data analyzer
+            self._filter[module_id] = logical_or(is_trigger_word, logical_or(self._fei4_raw_data_filter[module_id], tdc_filter))
+
+    def append_item(self, data_tuple, scan_parameters=None, new_file=False, flush=True):
+        ''' Append raw data for each module after filtering and converting the raw data individually.
+        '''
+        print data_tuple
+        for module_id in self._selected_modules:
+            converted_data_tuple = convert_data_iterable((data_tuple,), filter_func=self._filter[module_id], converter_func=self._converter[module_id])[0]
+            self._raw_data_files[module_id].append_item(converted_data_tuple, scan_parameters=scan_parameters if self._module_id is None else scan_parameters[module_id], new_file=new_file, flush=flush)
+
+
+class RhlHandle(object):
+    ''' Handle for basil.HL.RegisterHardwareLayer.
+
+    Mimic register interface of RegisterHardwareLayer objects and allows for consecutively reading/writing values in all given modules.
+    '''
+    def __init__(self, dut, module_names):
+        self._dut = dut
+        if not module_names:
+            module_names = []
+        if len(set(module_names)) != len(module_names):
+            raise ValueError('Parameter "module_names" contains duplicate entries.')
+        if module_names and not all([isinstance(dut[module_name], basil.HL.RegisterHardwareLayer.RegisterHardwareLayer) for module_name in module_names]):
+            raise ValueError("Not all modules are of type basil.HL.RegisterHardwareLayer.RegisterHardwareLayer")
+        self.module_names = module_names
+
+    def __getitem__(self, name):
+        values = []
+        for module_name in self.module_names:
+            values.append(self._dut[module_name][name])
+        if not len(set(values)) == 1:
+            raise RuntimeError("Returned values for %s are different." % (name,))
+        return values[0]
+
+    def __setitem__(self, name, value):
+        for module_name in self.module_names:
+            self._dut[module_name][name] = value
+
+    def __getattr__(self, name):
+        '''called only on last resort if there are no attributes in the instance that match the name
+        '''
+#         print "gatattr", name
+        if name.isupper():
+            return self[name]
+        else:
+            def method(*args, **kwargs):
+                nsplit = name.split('_', 1)
+                if len(nsplit) == 2 and nsplit[0] == 'set' and nsplit[1].isupper() and len(args) == 1 and not kwargs:
+                    self[nsplit[1]] = args[0]  # returns None
+                elif len(nsplit) == 2 and nsplit[0] == 'get' and nsplit[1].isupper() and not args and not kwargs:
+                    return self[nsplit[1]]
+                else:
+                    values = []
+                    for module_name in self.module_names:
+                        values.append(getattr(self._dut[module_name], name)(*args, **kwargs))
+                    if not len(set(values)) == 1:
+                        raise RuntimeError("Returned values for %s are different." % (name,))
+                    return values[0]
+#                     raise AttributeError("%r object has no attribute %r" % (self.__class__, name))
+            return method
+
+    def __setattr__(self, name, value):
+        if name.isupper():
+            self[name] = value
+        else:
+#             print "__setattr__", name, value
+            super(RhlHandle, self).__setattr__(name, value)
+
+
+class DutHandle(object):
+    ''' Handle for DUT.
+
+    Providing interface to Basil DUT object and gives access only to those drivers which are specified in the module configuration.
+    '''
+    def __init__(self, dut, module_cfgs, module_id=None):
+        self._dut = dut
+        self._module_cfgs = module_cfgs
+        self._module_id = module_id
+
+    def __getitem__(self, key):
+        values = []
+        thread_name = current_thread().name
+        module_id_from_thread_name = [module_name for module_name in self._module_cfgs.iterkeys() if (module_name is not None and module_name in thread_name)]
+        if len(module_id_from_thread_name) > 1:
+            raise RuntimeError("Thread name contains names of multiple modules: %s" % ", ".join(module_id_from_thread_name))
+        try:
+            self._dut[key]
+            dut_has_key = True
+        except KeyError:
+            dut_has_key = False
+        if dut_has_key:
+            return self._dut[key]
+        elif module_id_from_thread_name and self._module_id is None and self._module_cfgs[None][key] is None:  # TODO: adding broadcast module
+            module_name = self._module_cfgs[module_id_from_thread_name[0]][key]
+            return self._dut[module_name]
+        else:
+            # retrieve all module names and remove duplicates
+            if self._module_id is None:
+                module_names = list(set([module_cfg[key] for module_cfg in self._module_cfgs.itervalues() if (key in module_cfg and module_cfg[key] is not None)]))
+            else:
+                module_names = [self._module_cfgs[self._module_id][key]]
+            if len(module_names) > 1:
+                return RhlHandle(dut=self._dut, module_names=module_names)
+            else:
+                return self._dut[module_names[0]]
+
+
+    def __getattr__(self, name):
+        '''called only on last resort if there are no attributes in the instance that match the name
+        '''
+        return getattr(self._dut, name)
 
 
 def timed(f):

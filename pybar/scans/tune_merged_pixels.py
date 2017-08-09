@@ -29,10 +29,6 @@ class MergedPixelsTuning(AnalogScan):
         "overwrite_mask": False  # if True, overwrite existing masks
     })
 
-    # Parallel mode not supported in tunings
-    def set_scan_mode(self):
-        self.parallel = False
-
     def analyze(self):
         with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
             analyze_raw_data.create_tot_hist = True

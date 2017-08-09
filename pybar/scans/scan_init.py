@@ -7,7 +7,9 @@ from pybar.run_manager import RunManager
 class InitScan(Fei4RunBase):
     '''Init scan
     '''
-    _default_run_conf = {}
+    _default_run_conf = {
+        "broadcast_commands": False
+    }
 
     def configure(self):
         pass

@@ -598,11 +598,11 @@ class FEI4Register(object):
 
     @contextmanager
     def restored(self, name=None):
-        self.create_restore_point(name)
+        name = self.create_restore_point(name=name)
         try:
             yield
         finally:
-            self.restore()
+            self.restore(name=name)
 
     def create_restore_point(self, name=None):
         '''Creating a configuration restore point.
@@ -624,6 +624,7 @@ class FEI4Register(object):
         if name in self.config_state:
             raise ValueError('Restore point %s already exists' % name)
         self.config_state[name] = (copy.deepcopy(self.global_registers), copy.deepcopy(self.pixel_registers))
+        return name
 
     def restore(self, name=None, keep=False, last=True, global_register=True, pixel_register=True):
         '''Restoring a configuration restore point.

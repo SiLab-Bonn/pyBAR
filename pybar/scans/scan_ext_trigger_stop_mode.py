@@ -36,6 +36,7 @@ class StopModeExtTriggerScan(Fei4RunBase):
     Set up trigger in DUT configuration file (e.g. dut_configuration_mio.yaml).
     '''
     _default_run_conf = {
+        "broadcast_commands": True,
         "trigger_latency": 5,  # FE global register Trig_Lat. The lower the value the longer the hit data will be stored in data buffer
         "trigger_delay": 192,  # delay between trigger and stop mode command
         "readout_delay": 2000,  # delay after trigger to record hits, the lower the faster the readout; total readout time per track is about (800 + (1300 + readout_delay) * bcid_window) * 25 ns

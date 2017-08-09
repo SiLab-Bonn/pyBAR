@@ -35,10 +35,6 @@ class FdacTuning(Fei4RunBase):
         "same_mask_for_all_dc": True  # Increases scan speed, should be deactivated for very noisy FE
     }
 
-    # Parallel mode not supported in tunings
-    def set_scan_mode(self):
-        self.parallel = False
-
     def configure(self):
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))
@@ -88,7 +84,7 @@ class FdacTuning(Fei4RunBase):
 
             self.write_fdac_config()
 
-            with self.readout(FDAC=scan_parameter_value, reset_fifo=True, fill_buffer=True, clear_buffer=True, callback=self.handle_data):
+            with self.readout(FDAC=scan_parameter_value, fill_buffer=True):
                 scan_loop(self,
                           command=cal_lvl1_command,
                           repeat_command=self.n_injections_fdac,
@@ -104,8 +100,8 @@ class FdacTuning(Fei4RunBase):
                           mask=None,
                           double_column_correction=self.pulser_dac_correction)
 
-            filter_func = logical_and(self.raw_data_file._filter_funcs[self.current_module_handle], is_data_record)
-            col_row_tot = np.column_stack(convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=filter_func, converter_func=get_col_row_tot_array_from_data_record_array))
+            data = convert_data_array(array=self.read_data(filter=True), filter_func=is_data_record, converter_func=get_col_row_tot_array_from_data_record_array)
+            col_row_tot = np.column_stack(data)
             tot_array = np.histogramdd(col_row_tot, bins=(80, 336, 16), range=[[1, 80], [1, 336], [0, 15]])[0]
             tot_mean_array = np.average(tot_array, axis=2, weights=range(0, 16)) * sum(range(0, 16)) / self.n_injections_fdac
             select_better_pixel_mask = abs(tot_mean_array - self.target_tot) <= abs(self.tot_mean_best - self.target_tot)

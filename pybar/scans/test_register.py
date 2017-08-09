@@ -31,10 +31,6 @@ class RegisterTest(Fei4RunBase):
         "fail_on_error": False
     }
 
-    # Parallel mode not supported in this scan
-    def set_scan_mode(self):
-        self.parallel = False
-
     def configure(self):
         pass
 

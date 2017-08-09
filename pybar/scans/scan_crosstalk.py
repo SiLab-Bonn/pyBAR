@@ -18,6 +18,7 @@ class CrosstalkScan(Fei4RunBase):
     Crosstalk exists when a threshold higher 0 can be measured (s-curve fit successful).
     '''
     _default_run_conf = {
+        "broadcast_commands": True,
         "mask_steps": 6,  # number of injections per PlsrDAC step
         "n_injections": 100,  # number of injections per PlsrDAC step
         "scan_parameters": [('PlsrDAC', [None, 800])],  # the PlsrDAC range

@@ -8,7 +8,7 @@ import sys
 import numpy as np
 
 from pybar.utils.utils import get_float_time
-from pybar.daq.readout_utils import is_fe_word, is_data_record, is_data_header, logical_or, logical_and, convert_data_iterable, convert_data_array
+from pybar.daq.readout_utils import is_fe_word, is_data_record, is_data_header, logical_or, logical_and, data_array_from_data_iterable, convert_data_iterable, convert_data_array
 
 
 data_iterable = ("data", "timestamp_start", "timestamp_stop", "error")
@@ -59,8 +59,6 @@ class FifoReadout(object):
         self.timestamp = None
         self.update_timestamp()
         self._is_running = False
-        self.reset_rx()
-        self.reset_fifo()
 
     @property
     def is_running(self):
@@ -72,13 +70,6 @@ class FifoReadout(object):
             return self.worker_thread.is_alive()
         else:
             False
-
-    @property
-    def data(self):
-        if self.fill_buffer:
-            return self._data_buffer
-        else:
-            logging.warning('Data requested but software data buffer not active')
 
     def data_words_per_second(self):
         if self._result.full():
@@ -92,13 +83,13 @@ class FifoReadout(object):
         return result / float(self._moving_average_time_period)
 
     def start(self, callback=None, errback=None, reset_rx=False, reset_fifo=False, clear_buffer=False, fill_buffer=False, no_data_timeout=None, filter_func=None, converter_func=None, enabled_fe_channels=None, enabled_m26_channels=None):
+        if self._is_running:
+            raise RuntimeError('Readout thread already started: use stop()')
+        self._is_running = True
         self.filter_func = filter_func
         self.converter_func = converter_func
         self.enabled_fe_channels = enabled_fe_channels
         self.enabled_m26_channels = enabled_m26_channels
-        if self._is_running:
-            raise RuntimeError('Readout already running: use stop() before start()')
-        self._is_running = True
         logging.info('Starting FIFO readout...')
         self.callback = callback
         self.errback = errback
@@ -109,7 +100,7 @@ class FifoReadout(object):
             self.reset_fifo()
         else:
             fifo_size = self.dut['FIFO']['FIFO_SIZE']
-            raw_data = self.read_data()
+            raw_data = self.read_raw_data_from_fifo()
             dh_dr_select = logical_and(is_fe_word, logical_or(is_data_record, is_data_header))
             if np.count_nonzero(dh_dr_select(raw_data)) != 0:
                 logging.warning('FIFO containing events when starting FIFO readout: FIFO_SIZE = %i', fifo_size)
@@ -132,7 +123,7 @@ class FifoReadout(object):
 
     def stop(self, timeout=10.0):
         if not self._is_running:
-            raise RuntimeError('Readout not running: use start() before stop()')
+            raise RuntimeError('Readout thread not running: use start()')
         self._is_running = False
         self.stop_readout.set()
         try:
@@ -186,7 +177,7 @@ class FifoReadout(object):
     def readout(self, no_data_timeout=None):
         '''Readout thread continuously reading FIFO.
 
-        Readout thread, which uses read_data() and appends data to self._data_deque (collection.deque).
+        Readout thread, which uses read_raw_data_from_fifo() and appends data to self._data_deque (collection.deque).
         '''
         logging.debug('Starting %s', self.readout_thread.name)
         curr_time = get_float_time()
@@ -196,7 +187,7 @@ class FifoReadout(object):
                 time_read = time()
                 if no_data_timeout and curr_time + no_data_timeout < get_float_time():
                     raise NoDataTimeout('Received no data for %0.1f second(s)' % no_data_timeout)
-                raw_data = self.read_data()
+                raw_data = self.read_raw_data_from_fifo()
             except Exception:
                 no_data_timeout = None  # raise exception only once
                 if self.errback:
@@ -267,10 +258,37 @@ class FifoReadout(object):
                 break
         logging.debug('Stopped %s', self.watchdog_thread.name)
 
-    def read_data(self, filter_func=None, converter_func=None):
-        '''Read FIFO and return data array
+    def get_data_from_buffer(self, filter_func=None, converter_func=None):
+        '''Reads local data buffer and returns data and meta data list.
 
-        Can be used without threading.
+        Returns
+        -------
+        data : list
+            List of data and meta data dicts.
+        '''
+        if self._is_running:
+            raise RuntimeError('Readout thread running')
+        if not self.fill_buffer:
+            logging.warning('Data buffer is not activated')
+        return convert_data_iterable(self._data_buffer, filter_func=filter_func, converter_func=converter_func)
+
+    def get_raw_data_from_buffer(self, filter_func=None, converter_func=None):
+        '''Reads local data buffer and returns raw data array.
+
+        Returns
+        -------
+        data : np.array
+            An array containing data words from the local data buffer.
+        '''
+        if self._is_running:
+            raise RuntimeError('Readout thread running')
+        if not self.fill_buffer:
+            logging.warning('Data buffer is not activated')
+        print data_array_from_data_iterable(self._data_buffer)
+        return convert_data_array(data_array_from_data_iterable(self._data_buffer), filter_func=filter_func, converter_func=converter_func)
+
+    def read_raw_data_from_fifo(self, filter_func=None, converter_func=None):
+        '''Reads FIFO data and returns raw data array.
 
         Returns
         -------
@@ -278,7 +296,7 @@ class FifoReadout(object):
             An array containing FIFO data words.
         '''
         data = self.dut['FIFO'].get_data()
-        data = convert_data_array(data, filter_func=None, converter_func=converter_func)
+        data = convert_data_array(data, filter_func=filter_func, converter_func=converter_func)
         return data
 
     def update_timestamp(self):
@@ -291,14 +309,14 @@ class FifoReadout(object):
         raise NotImplementedError()
 
     def reset_fifo(self):
-        fifo_size = self.dut['FIFO']['FIFO_SIZE']
-        logging.info('Resetting FIFO: size = %i', fifo_size)
+#         fifo_size = self.dut['FIFO']['FIFO_SIZE']
+#         logging.info('Resetting FIFO: size = %i', fifo_size)
         self.update_timestamp()
         self.dut['FIFO']['RESET']
         sleep(0.2)  # sleep here for a while
-        fifo_size = self.dut['FIFO']['FIFO_SIZE']
-        if fifo_size != 0:
-            logging.warning('FIFO not empty after reset: size = %i', fifo_size)
+#         fifo_size = self.dut['FIFO']['FIFO_SIZE']
+#         if fifo_size != 0:
+#             logging.warning('FIFO not empty after reset: size = %i', fifo_size)
 
     def reset_rx(self, channels=None):
         logging.info('Resetting RX')

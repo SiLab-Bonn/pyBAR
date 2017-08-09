@@ -12,6 +12,8 @@ class AnalogScan(Fei4RunBase):
     '''Analog scan
     '''
     _default_run_conf = {
+        "broadcast_commands": True,
+        "threaded_scan": False,
         "mask_steps": 3,  # mask steps, be carefull PlsrDAC injects different charge for different mask steps
         "n_injections": 100,  # number of injections
         "scan_parameters": [('PlsrDAC', 280)],  # the PlsrDAC setting
@@ -57,10 +59,6 @@ class AnalogScan(Fei4RunBase):
                 scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections, use_delay=True, mask_steps=self.mask_steps, enable_mask_steps=self.enable_mask_steps, enable_double_columns=self.enable_double_columns, same_mask_for_all_dc=self.same_mask_for_all_dc, bol_function=self.activate_tdc, eol_function=self.deactivate_tdc, digital_injection=False, enable_shift_masks=self.enable_shift_masks, disable_shift_masks=self.disable_shift_masks, restore_shift_masks=False, mask=invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if self.use_enable_mask else None, double_column_correction=self.pulser_dac_correction)
             else:
                 scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections, use_delay=True, mask_steps=self.mask_steps, enable_mask_steps=self.enable_mask_steps, enable_double_columns=self.enable_double_columns, same_mask_for_all_dc=self.same_mask_for_all_dc, digital_injection=False, enable_shift_masks=self.enable_shift_masks, disable_shift_masks=self.disable_shift_masks, restore_shift_masks=False, mask=invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if self.use_enable_mask else None, double_column_correction=self.pulser_dac_correction)
-
-        # plotting data
-#         filter_func = logical_and(self.raw_data_file._filter_funcs[self.current_single_handle], is_data_record)
-#         plot_occupancy(hist=make_occupancy_hist(*convert_data_array(data_array_from_data_dict_iterable(self.fifo_readout.data), filter_func=filter_func, converter_func=get_col_row_array_from_data_record_array)), z_max='median', filename=self.scan_data_filename + "_occupancy.pdf")
 
     def analyze(self):
         with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:

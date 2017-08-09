@@ -341,6 +341,7 @@ class HitDelayScan(Fei4RunBase):
     Implementation of a hit delay scan.
     '''
     _default_run_conf = {
+        "broadcast_commands": True,
         "mask_steps": 3,  # mask steps, be carefull PlsrDAC injects different charge for different mask steps
         "n_injections": 20,  # number of injections per PlsrDAC step
         "scan_parameters": [('PlsrDAC', range(21, 801, 15)), ('PlsrDelay', range(1, 63))],  # make sure to set the lowest PlsrDAC to the threshold position!

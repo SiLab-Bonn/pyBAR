@@ -30,10 +30,6 @@ class HotPixelTuning(FEI4SelfTriggerScan):
         "low_value": 1  # only pixels with occupancy greater than low_value can be masked
     }
 
-    # Parallel mode not supported in tunings
-    def set_scan_mode(self):
-        self.parallel = False
-
     def analyze(self):
         with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
             analyze_raw_data.create_cluster_size_hist = False

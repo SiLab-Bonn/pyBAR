@@ -17,6 +17,7 @@ class TotCalibration(Fei4RunBase):
     ''' ToT calibration scan
     '''
     _default_run_conf = {
+        "broadcast_commands": True,
         "mask_steps": 3,  # mask steps, the injected charge depends on the mask steps
         "n_injections": 200,  # number of injections per PlsrDAC, for higher precision close to the threshold increase n_injections
         "scan_parameters": [('PlsrDAC', [40, 50, 60, 80, 130, 180, 230, 280, 340, 440, 540, 640, 740])],  # 0 400 sufficient for most tunings
