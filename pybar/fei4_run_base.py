@@ -942,8 +942,8 @@ class Fei4RunBase(RunBase):
     def read_raw_data_from_fifo(self, filter_func=None, converter_func=None):
         return self.fifo_readout.read_raw_data_from_fifo(filter_func=filter_func, converter_func=converter_func)
 
-    def read_data(self, filter=True):
-        if filter:
+    def read_data(self, fe_word_filter=True):
+        if fe_word_filter:
             if 'rx_channel' in self._module_cfgs[self.current_module_handle] and self._module_cfgs[self.current_module_handle]['rx_channel'] is not None:
                 filter_func = logical_and(is_fe_word, is_data_from_channel(self._module_cfgs[self.current_module_handle]['rx_channel']))
             else:
