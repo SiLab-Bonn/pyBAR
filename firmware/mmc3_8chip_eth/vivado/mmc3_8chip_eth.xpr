@@ -49,7 +49,7 @@
   <FileSets Version="1" Minor="31">
     <FileSet Name="sources_1" Type="DesignSrcs" RelSrcDir="$PSRCDIR/sources_1">
       <Filter Type="Srcs"/>
-      <File Path="$PPRDIR/../../mmc3_beast_eth/src/SiTCP/XC7KSiTCPlib32k_V11/SiTCP_XC7K_32K_BBT_V110.ngc">
+      <File Path="$PPRDIR/../src/XC7KSiTCPlib32k_V11/SiTCP_XC7K_32K_BBT_V110.ngc">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
@@ -62,21 +62,21 @@
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../mmc3_beast_eth/src/SiTCP/XC7KSiTCPlib32k_V11/SiTCP_XC7K_32K_BBT_V110.V">
+      <File Path="$PPRDIR/../src/XC7KSiTCPlib32k_V11/SiTCP_XC7K_32K_BBT_V110.V">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../mmc3_beast_eth/src/SiTCP/XC7KSiTCPlib32k_V11/TIMER.v">
+      <File Path="$PPRDIR/../src/XC7KSiTCPlib32k_V11/TIMER.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../mmc3_beast_eth/src/SiTCP/XC7KSiTCPlib32k_V11/WRAP_SiTCP_GMII_XC7K_32K.V">
+      <File Path="$PPRDIR/../src/XC7KSiTCPlib32k_V11/WRAP_SiTCP_GMII_XC7K_32K.V">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>

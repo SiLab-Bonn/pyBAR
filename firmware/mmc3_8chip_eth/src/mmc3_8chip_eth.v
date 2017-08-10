@@ -1,16 +1,16 @@
 /**
  * This file is part of pyBAR.
- * 
+ *
  * pyBAR is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * pyBAR is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU Lesser General Public License
  * along with pyBAR.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -464,7 +464,7 @@ generate
       .I(CLK40_OUT_SEL)
   //.I(CMD_CLK)
   );
-  
+
     OBUFDS #(
     .IOSTANDARD("LVDS_25"),
     .SLEW("SLOW")
@@ -473,7 +473,7 @@ generate
     .OB(CMD_DATA_N[h]),
     .I(CMD_DATA[h])
 //.I(CMD_CLK)
-  
+
     );
   end
 endgenerate
