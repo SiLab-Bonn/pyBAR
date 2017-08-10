@@ -154,7 +154,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
                             except ValueError:
                                 pass
                 # use Numpy for analysis and histogramming
-                col_arr, row_arr = convert_data_array(array=self.read_data(filter=True), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)
+                col_arr, row_arr = convert_data_array(array=self.read_data(fe_word_filter=True), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)
                 occ_hist, _, _ = np.histogram2d(col_arr, row_arr, bins=(80, 336), range=[[1, 80], [1, 336]])
                 occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
 

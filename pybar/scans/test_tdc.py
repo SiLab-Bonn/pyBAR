@@ -56,7 +56,7 @@ class TdcTest(Fei4RunBase):
                         logging.info('Test TDC for a pulse with of %d', pulse_width)
                         self.start_pulser(pulse_width, self.n_pulses)
                         time.sleep(self.n_pulses * pulse_width * 1e-9 + 0.1)
-                    data = self.read_data(filter=False)
+                    data = self.read_data(fe_word_filter=False)
                     if data[is_tdc_word(data)].shape[0] != 0:
                         tdc_values = np.bitwise_and(data[is_tdc_word(data)], 0x00000FFF)
                         tdc_counter = np.bitwise_and(data[is_tdc_word(data)], 0x000FF000)
@@ -92,7 +92,7 @@ class TdcTest(Fei4RunBase):
                         for _ in range(10):
                             self.start_pulser(pulse_width=100, n_pulses=1, pulse_delay=pulse_delay)
                             time.sleep(0.1)
-                    data = self.read_data(filter=False)
+                    data = self.read_data(fe_word_filter=False)
                     if data[is_tdc_word(data)].shape[0] != 0:
                         if len(is_tdc_word(data)) != 10:
                             logging.warning('%d TDC words instead of %d ', len(is_tdc_word(data)), 10)
