@@ -306,3 +306,9 @@ def str2bool(value):
         raise ValueError('Cannot convert to boolean: unknown string %s' % value)
     except AttributeError:  # not a string
         return bool(value)
+
+
+def groupby_dict(dictionary, key):
+    ''' Group dict of dicts by key.
+    '''
+    return dict((k, list(g)) for k, g in itertools.groupby(filter(None, sorted(dictionary.keys(), key=lambda x: (x is not None, x))), lambda name: dictionary[name][key]))

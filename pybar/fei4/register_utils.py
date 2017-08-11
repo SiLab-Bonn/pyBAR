@@ -643,7 +643,6 @@ def is_fe_ready(self):
     value : bool
         True if FEI4 is ready, False if the FEI4 was powered up recently and is not ready.
     '''
-    print "is fe ready?"
     with self.readout(fill_buffer=True, callback=None, errback=None):
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))

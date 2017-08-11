@@ -90,7 +90,6 @@ class FifoReadout(object):
         self.converter_func = converter_func
         self.enabled_fe_channels = enabled_fe_channels
         self.enabled_m26_channels = enabled_m26_channels
-        logging.info('Starting FIFO readout...')
         self.callback = callback
         self.errback = errback
         self.fill_buffer = fill_buffer
@@ -110,6 +109,7 @@ class FifoReadout(object):
             self._data_buffer.clear()
         self.stop_readout.clear()
         self.force_stop.clear()
+        logging.info('Starting FIFO readout...')
         if self.errback:
             self.watchdog_thread = Thread(target=self.watchdog, name='WatchdogThread')
             self.watchdog_thread.daemon = True
@@ -284,7 +284,6 @@ class FifoReadout(object):
             raise RuntimeError('Readout thread running')
         if not self.fill_buffer:
             logging.warning('Data buffer is not activated')
-        print data_array_from_data_iterable(self._data_buffer)
         return convert_data_array(data_array_from_data_iterable(self._data_buffer), filter_func=filter_func, converter_func=converter_func)
 
     def read_raw_data_from_fifo(self, filter_func=None, converter_func=None):
@@ -309,14 +308,14 @@ class FifoReadout(object):
         raise NotImplementedError()
 
     def reset_fifo(self):
-#         fifo_size = self.dut['FIFO']['FIFO_SIZE']
-#         logging.info('Resetting FIFO: size = %i', fifo_size)
+        fifo_size = self.dut['FIFO']['FIFO_SIZE']
+        logging.info('Resetting FIFO: size = %i', fifo_size)
         self.update_timestamp()
         self.dut['FIFO']['RESET']
         sleep(0.2)  # sleep here for a while
-#         fifo_size = self.dut['FIFO']['FIFO_SIZE']
-#         if fifo_size != 0:
-#             logging.warning('FIFO not empty after reset: size = %i', fifo_size)
+        fifo_size = self.dut['FIFO']['FIFO_SIZE']
+        if fifo_size != 0:
+            logging.warning('FIFO not empty after reset: size = %i', fifo_size)
 
     def reset_rx(self, channels=None):
         logging.info('Resetting RX')
