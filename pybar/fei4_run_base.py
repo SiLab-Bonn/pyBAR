@@ -812,7 +812,7 @@ class Fei4RunBase(RunBase):
         # USB interface can be reused at any time after close without another init
         try:
             usb_intf = self.dut.get_modules('SiUsb')
-        except AttributeError:
+        except (KeyError, AttributeError):
             pass  # not yet initialized
         else:
             if usb_intf:
