@@ -1018,8 +1018,8 @@ class Fei4RunBase(RunBase):
 
     def close_files(self):
         # close all file objects
-        for file in self._raw_data_files.values():
-            file.close()
+        for f in self._raw_data_files.values():
+            f.close()
         # delete all file objects
         self._raw_data_files.clear()
         self.raw_data_file = None
