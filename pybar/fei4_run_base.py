@@ -679,7 +679,7 @@ class Fei4RunBase(RunBase):
             else:
                 for tx_module_id, tx_group in self._tx_module_groups.items():
                     if self.abort_run.is_set():
-                            break
+                        break
                     with contextlib.ExitStack() as restore_config_stack:
                         for module_id in itertools.chain([tx_module_id], tx_group):
                             if self.abort_run.is_set():
