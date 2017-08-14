@@ -436,7 +436,7 @@ class Fei4RunBase(RunBase):
         else:
             # print just the first error massage
             if not self.abort_run.is_set():
-                self.abort(msg=str(exc[1]))
+                self.abort(msg=exc[1].__class__.__name__ + ": " + str(exc[1]))
             self.err_queue.put(exc)
 
     def _get_configuration(self, run_number=None):

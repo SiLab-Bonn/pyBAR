@@ -139,15 +139,15 @@ class RunBase():
         except RunAborted as e:
             self._run_status = run_status.aborted
             self._last_traceback = None
-            self._last_error_message = e
+            self._last_error_message = e.__class__.__name__ + ": " + str(e)
         except RunStopped as e:
             self._run_status = run_status.finished
             self._last_traceback = None
-            self._last_error_message = e
+            self._last_error_message = e.__class__.__name__ + ": " + str(e)
         except Exception as e:
             self._run_status = run_status.crashed
             self._last_traceback = traceback.format_exc()
-            self._last_error_message = e
+            self._last_error_message = e.__class__.__name__ + ": " + str(e)
         else:
             self._run_status = run_status.finished
             self._last_traceback = None
