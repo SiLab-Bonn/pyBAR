@@ -1023,12 +1023,12 @@ class Fei4RunBase(RunBase):
                                                module_cfgs={key: value for (key, value) in self._module_cfgs.items() if key in selected_modules})
 
     def close_files(self):
+        self.raw_data_file = None
         # close all file objects
         for f in self._raw_data_files.values():
             f.close()
         # delete all file objects
         self._raw_data_files.clear()
-        self.raw_data_file = None
 
     def get_output_filename(self, module_id):
         module_path = os.path.join(self.working_dir, module_id)
