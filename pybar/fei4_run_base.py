@@ -1003,7 +1003,7 @@ class Fei4RunBase(RunBase):
 
     def open_files(self):
         if self.current_module_handle is None:
-            selected_modules = self._modules
+            selected_modules = self._modules.keys()
         elif self.current_module_handle in self._modules:
             selected_modules = [self.current_module_handle]
         elif self.current_module_handle in self._tx_module_groups:
