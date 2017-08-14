@@ -834,7 +834,7 @@ class Fei4RunBase(RunBase):
                         pass
 #                         logging.error('Closed USB device')
 
-    def handle_data(self, data):
+    def handle_data(self, data, new_file=False, flush=True):
         '''Handling of the data.
 
         Parameters
@@ -842,11 +842,8 @@ class Fei4RunBase(RunBase):
         data : list, tuple
             Data tuple of the format (data (np.array), last_time (float), curr_time (float), status (int))
         '''
-        if self.current_module_handle is None and not self._scan_threads:
-            scan_parameters = self.scan_parameters._asdict()
-        else:
-            scan_parameters = {key: value._asdict() for (key, value) in self._scan_parameters.iteritems()}
-        self.raw_data_file.append_item(data, scan_parameters=scan_parameters, new_file=False, flush=True)
+        scan_parameters = {key: value._asdict() for (key, value) in self._scan_parameters.items() if key in self._modules}
+        self.raw_data_file.append_item(data, scan_parameters=scan_parameters, new_file=new_file, flush=flush)
 
     def handle_err(self, exc):
         '''Handling of Exceptions.
@@ -916,9 +913,18 @@ class Fei4RunBase(RunBase):
                 if field in fields:
                     raise TypeError('Got multiple values for keyword argument %s' % field)
                 fields[field] = value
+        if self.current_module_handle is None:
+            selected_modules = self._modules.keys()
+        elif self.current_module_handle in self._modules:
+            selected_modules = [self.current_module_handle]
+        elif self.current_module_handle in self._tx_module_groups:
+            selected_modules = self._tx_module_groups[self.current_module_handle]
+        else:
+            RuntimeError('Cannot change scan parameters. Module handle "%s" is not valid.' % self.current_module_handle)
         scan_parameters_old = self.scan_parameters._asdict()
         with self.global_lock:
-            self._scan_parameters[self.current_module_handle] = self.scan_parameters._replace(**fields)
+            for module_id in selected_modules:
+                self._scan_parameters[module_id] = self.scan_parameters._replace(**fields)
         scan_parameters_new = self.scan_parameters._asdict()
         diff = [name for name in scan_parameters_old.keys() if np.any(scan_parameters_old[name] != scan_parameters_new[name])]
         if diff:

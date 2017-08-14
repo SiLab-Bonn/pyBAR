@@ -74,7 +74,7 @@ class EudaqExtTriggerScan(ExtTriggerScan):
         super(EudaqExtTriggerScan, self).handle_err(exc=exc)
         self.data_error_occurred = True
 
-    def handle_data(self, data):
+    def handle_data(self, data, new_file=False, flush=True):
         events = build_events_from_raw_data(data[0])
         for item in events:
             if item.shape[0] == 0:
@@ -104,8 +104,7 @@ class EudaqExtTriggerScan(ExtTriggerScan):
                 self.remaining_data = item
             else:
                 self.remaining_data = np.concatenate([self.remaining_data, item])
-
-        self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=True)
+        super(EudaqExtTriggerScan, self).handle_data(data=data, new_file=new_file, flush=flush)
 
 
 if __name__ == "__main__":
