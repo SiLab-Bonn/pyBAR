@@ -169,14 +169,14 @@ class Fei4RunBase(RunBase):
         ''' Extracts the configuration of the modules.
         '''
         if 'modules' in conf and conf['modules']:
-            for module_id, module_cfg in conf['modules'].iteritems():
+            for module_id, module_cfg in conf['modules'].items():
                 # Check here for missing module config items.
                 # Capital letter keys are Basil drivers, other keys are parameters.
                 # FIFO, RX, TX, TLU and TDC are generic driver names which are used in the scan implementations.
                 # The use of these reserved driver names allows for abstraction.
                 # Accessing Basil drivers with real name is still possible.
                 if "module_group" in module_id:
-                    raise ValueError('The module ID "%s" contains the reserved name "module_group"' % module_id)
+                    raise ValueError('The module ID "%s" contains the reserved name "module_group".' % module_id)
                 for driver_name in _reserved_driver_names:
                     # TDC is not mandatory
                     if driver_name == "TDC":
@@ -184,18 +184,18 @@ class Fei4RunBase(RunBase):
                         module_cfg.setdefault('TDC', None)
                         continue
                     if driver_name not in module_cfg or module_cfg[driver_name] is None:
-                        raise ValueError("No parameter '%s' defined for module '%s'" % (driver_name, module_id))
-                if 'rx_channel' not in module_cfg or module_cfg['rx_channel'] is None:
-                    raise ValueError("No parameter 'rx_channel' defined for module '%s'" % module_id)
-                if 'tx_channel' not in module_cfg or module_cfg['tx_channel'] is None:
-                    raise ValueError("No parameter 'tx_channel' defined for module '%s'" % module_id)
-                if 'fe_flavor' not in module_cfg or module_cfg['fe_flavor'] is None:
-                    raise ValueError("No parameter 'fe_flavor' defined for module '%s'" % module_id)
-                if 'chip_address' not in module_cfg:
-                    raise ValueError("No parameter 'chip_address' defined for module '%s'" % module_id)
-                module_cfg.setdefault('tdc_channel', None)
-                module_cfg.setdefault('fe_configuration', None)  # string or number, if None, using the last valid configuration 
-                module_cfg.setdefault('send_data', None)  # address string of PUB socket
+                        raise ValueError('No parameter "%s" defined for module "%s".' % (driver_name, module_id))
+                if "rx_channel" not in module_cfg or module_cfg["rx_channel"] is None:
+                    raise ValueError('No parameter "rx_channel" defined for module "%s".' % module_id)
+                if "tx_channel" not in module_cfg or module_cfg["tx_channel"] is None:
+                    raise ValueError('No parameter "tx_channel" defined for module "%s".' % module_id)
+                if "fe_flavor" not in module_cfg or module_cfg["fe_flavor"] is None:
+                    raise ValueError('No parameter "fe_flavor" defined for module "%s".' % module_id)
+                if "chip_address" not in module_cfg:
+                    raise ValueError('No parameter "chip_address" defined for module "%s".' % module_id)
+                module_cfg.setdefault("tdc_channel", None)
+                module_cfg.setdefault("fe_configuration", None)  # string or number, if None, using the last valid configuration 
+                module_cfg.setdefault("send_data", None)  # address string of PUB socket
                 # Save config to dict.
                 self._module_cfgs[module_id] = module_cfg
                 self._modules[module_id] = [module_id]
@@ -227,11 +227,11 @@ class Fei4RunBase(RunBase):
         for tx, module_group in tx_groups.items():
             fe_flavors = list(set([module_cfg['fe_flavor'] for module_id, module_cfg in self._module_cfgs.items() if module_id in module_group]))
             if len(fe_flavors) != 1:
-                raise ValueError("Parameter 'fe_flavor' must be the same for module group TX=%s" % tx)
+                raise ValueError("Parameter 'fe_flavor' must be the same for module group TX=%s." % tx)
 
             chip_addresses = list(set([module_cfg['chip_address'] for module_id, module_cfg in self._module_cfgs.items() if module_id in module_group]))
             if len(module_group) != len(chip_addresses) or (len(module_group) != 1 and None in chip_addresses):
-                raise ValueError("Parameter 'chip_address' must be different for each module in module group TX=%s" % tx)
+                raise ValueError("Parameter 'chip_address' must be different for each module in module group TX=%s." % tx)
 
             # Adding broadcast config for parallel mode.
             self._module_cfgs["module_group_TX=" + tx] = {
@@ -251,7 +251,7 @@ class Fei4RunBase(RunBase):
 
         fifo_groups = groupby_dict({key: value for (key, value) in self._module_cfgs.items() if key in self._modules}, "FIFO")
         if len(fifo_groups) > 1:
-            raise NotImplementedError("Handling of more than one FIFO is not implemented")
+            raise NotImplementedError("Handling of more than one FIFO is not implemented.")
         for fifo, module_group in fifo_groups.items():
             # Adding broadcast config for parallel mode.
             self._module_cfgs["module_group_FIFO=" + fifo] = {
@@ -459,11 +459,11 @@ class Fei4RunBase(RunBase):
                             chip_address = module_cfg['chip_address']
                             broadcast = False
                     else:
-                        raise ValueError("Parameter 'chip_address' not specified for module '%s'" % module_id)
+                        raise ValueError('Parameter "chip_address" not specified for module "%s".' % module_id)
                     if 'fe_flavor' in module_cfg and module_cfg['fe_flavor']:
                         module_cfg['fe_configuration'] = FEI4Register(fe_type=module_cfg['fe_flavor'], chip_address=chip_address, broadcast=broadcast)
                     else:
-                        raise ValueError("Parameter 'fe_flavor' not specified for module '%s'" % module_id)
+                        raise ValueError('Parameter "fe_flavor" not specified for module "%s".' % module_id)
                 # use existing config
                 elif not module_cfg['fe_configuration'] and last_configuration:
                     module_cfg['fe_configuration'] = FEI4Register(configuration_file=last_configuration)
@@ -479,7 +479,7 @@ class Fei4RunBase(RunBase):
                                                                                                             run_number=module_cfg['fe_configuration']))
                 # assume fe_configuration already initialized
                 elif not isinstance(module_cfg['fe_configuration'], FEI4Register):
-                    raise ValueError("Found no valid value for parameter 'fe_configuration' for module '%s'" % module_id)
+                    raise ValueError('Found no valid value for parameter "fe_configuration" for module "%s".' % module_id)
 
                 # init register utils
                 self._registers[module_id] = self._module_cfgs[module_id]['fe_configuration']
@@ -885,7 +885,7 @@ class Fei4RunBase(RunBase):
                         return os.path.join(root, cfgfile)
 
         if not run_number:
-            run_numbers = sorted(self._get_run_numbers(status='FINISHED').iterkeys(), reverse=True)
+            run_numbers = sorted(self._get_run_numbers(status='FINISHED').keys(), reverse=True)
             found_fin_run_cfg = True
             if not run_numbers:
                 return None
@@ -1076,9 +1076,9 @@ class Fei4RunBase(RunBase):
         if args or kwargs:
             self.set_scan_parameters(*args, **kwargs)
         if self._scan_threads and current_thread().name not in [t.name for t in self._scan_threads]:
-            raise RuntimeError("Thread %s is not valid")
+            raise RuntimeError('Thread name "%s" is not valid.')
         if self._scan_threads and current_thread().name in self._running_readout_t:
-            raise RuntimeError("Thread %s is already reading FIFO")
+            raise RuntimeError('Thread "%s" is already actively reading FIFO.')
         if self._scan_threads:
             with self._readout_lock:
                 self._running_readout_t.append(current_thread().name)
@@ -1110,9 +1110,9 @@ class Fei4RunBase(RunBase):
 
     def stop_readout(self, timeout=10.0):
         if self._scan_threads and current_thread().name not in [t.name for t in self._scan_threads]:
-            raise RuntimeError("Thread %s is not valid")
+            raise RuntimeError('Thread name "%s" is not valid.')
         if self._scan_threads and current_thread().name not in self._running_readout_t:
-            raise RuntimeError("Thread %s is not reading FIFO")
+            raise RuntimeError('Thread "%s" is not reading FIFO.')
         if self._scan_threads:
             with self._readout_lock:
                 self._running_readout_t.remove(current_thread().name)
@@ -1236,7 +1236,7 @@ class RhlHandle(object):
         if len(set(module_names)) != len(module_names):
             raise ValueError('Parameter "module_names" contains duplicate entries.')
         if module_names and not all([isinstance(dut[module_name], basil.HL.RegisterHardwareLayer.RegisterHardwareLayer) for module_name in module_names]):
-            raise ValueError("Not all modules are of type basil.HL.RegisterHardwareLayer.RegisterHardwareLayer")
+            raise ValueError("Not all modules are of type basil.HL.RegisterHardwareLayer.RegisterHardwareLayer.")
         self.module_names = module_names
 
     def __getitem__(self, name):
