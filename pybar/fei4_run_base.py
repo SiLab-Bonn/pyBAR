@@ -794,10 +794,11 @@ class Fei4RunBase(RunBase):
                 try:
                     self.analyze()
                 except Exception:  # analysis errors
-                    self.handle_err(sys.exc_info())
+                    exc = sys.exc_info()
+                    self.err_queue.put(sys.exc_info())
+                    logging.warning(exc[1].__class__.__name__ + ": " + str(exc[1]))
                 else:  # analyzed data, save config
                     self.register.save_configuration(self.output_filename)
-
         if not self.err_queue.empty():
             exc = self.err_queue.get()
             # well known errors, do not print traceback
