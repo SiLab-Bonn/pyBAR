@@ -123,6 +123,9 @@ class Fei4RunBase(RunBase):
         self._default_run_conf.setdefault('threaded_scan', False)
 
         super(Fei4RunBase, self)._init_run_conf(run_conf=run_conf)
+        # check for invalid run conf parameters
+        if self.run_conf._asdict()['broadcast_commands'] != self._default_run_conf['broadcast_commands']:
+            raise RuntimeError('Changing "broadcast_commands" parameter from False (default) to True is not allowed.')
 
     @property
     def is_initialized(self):
@@ -516,6 +519,8 @@ class Fei4RunBase(RunBase):
                 if reset_service_records:
                     # resetting service records must be done once after power up
                     self.register_utils.reset_service_records()
+                if not is_fe_ready(self):
+                    logging.warning('Module "%s" is not sending any data.' % module_id)
                 # set all modules to conf mode afterwards to be immune to ECR and BCR
                 self.register_utils.set_conf_mode()
                 self.dut["RX"]["RESET"]
@@ -867,6 +872,8 @@ class Fei4RunBase(RunBase):
             self.err_queue.put(exc)
 
     def get_module_path(self, module_id):
+        if module_id not in self._modules:
+            raise ValueError('Module ID "%s" is not a valid name.' % module_id)
         return os.path.join(self.working_dir, module_id)
 
     def get_configuration(self, module_id, run_number=None):
@@ -1034,6 +1041,8 @@ class Fei4RunBase(RunBase):
         self._raw_data_files.clear()
 
     def get_output_filename(self, module_id):
+        if module_id not in self._modules:
+            raise ValueError('Module ID "%s" is not a valid name.' % module_id)
         module_path = os.path.join(self.working_dir, module_id)
         return os.path.join(module_path, str(self.run_number) + "_" + module_id + "_" + self.run_id)
 
