@@ -509,18 +509,18 @@ class Fei4RunBase(RunBase):
                 self.register_utils.global_reset()
                 self.register_utils.configure_all()
                 if is_fe_ready(self):
-                    reset_service_records = False
+                    fe_not_ready = False
                 else:
-                    reset_service_records = True
+                    fe_not_ready = True
                 # BCR and ECR might result in RX errors
                 # a reset of the RX and FIFO will happen just before scan()
                 self.register_utils.reset_bunch_counter()
                 self.register_utils.reset_event_counter()
-                if reset_service_records:
+                if fe_not_ready:
                     # resetting service records must be done once after power up
                     self.register_utils.reset_service_records()
-                if not is_fe_ready(self):
-                    logging.warning('Module "%s" is not sending any data.' % module_id)
+                    if not is_fe_ready(self):
+                        logging.warning('Module "%s" is not sending any data.' % module_id)
                 # set all modules to conf mode afterwards to be immune to ECR and BCR
                 self.register_utils.set_conf_mode()
                 self.dut["RX"]["RESET"]
