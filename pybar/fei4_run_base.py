@@ -426,7 +426,7 @@ class Fei4RunBase(RunBase):
             logging.warning('Omitting initialization of DUT %s', self.dut.name)
 
     def init_modules(self):
-        ''' Initialize all modules consecutevly'''
+        ''' Initialize all modules consecutively'''
         for module_id, module_cfg in self._module_cfgs.items():
             if module_id is not None:
                 alt_string = module_id.split('=', 1)
@@ -591,15 +591,6 @@ class Fei4RunBase(RunBase):
                     dut_configuration = self._conf['dut_configuration']
             else:
                 dut_configuration = None
-            logging.info('Initializing basil...')
-            dut.init(dut_configuration)
-            # assign dut after init in case of exceptions during init
-            self._conf['dut'] = dut
-            # adding DUT handles
-            for module_id, module_cfg in self._module_cfgs.items():
-                self._duts[module_id] = DutHandle(dut=dut, module_cfg=module_cfg)
-            # additional init of the DUT
-            self.init_dut()
             # check for existence of reserved driver names
             found_reserved_names = []
             for driver_name in _reserved_driver_names:
@@ -610,8 +601,19 @@ class Fei4RunBase(RunBase):
                     pass
             if found_reserved_names:
                 raise RuntimeError("The basil DUT contains reserved driver names: %s" % ", ".join(found_reserved_names))
+            logging.info('Initializing basil...')
+            dut.init(dut_configuration)
+            # assign dut after init in case of exceptions during init
+            self._conf['dut'] = dut
+            # adding DUT handles
+            for module_id, module_cfg in self._module_cfgs.items():
+                self._duts[module_id] = DutHandle(dut=self._conf['dut'], module_cfg=module_cfg)
+            # additional init of the DUT
+            self.init_dut()
         else:
-            pass  # do nothing, already initialized
+            # adding DUT handles
+            for module_id, module_cfg in self._module_cfgs.items():
+                self._duts[module_id] = DutHandle(dut=self._conf['dut'], module_cfg=module_cfg)
         # FIFO readout
         self.fifo_readout = FifoReadout(dut=self._duts[self._fifo_module_groups.keys()[0]])
         # initialize the modules
