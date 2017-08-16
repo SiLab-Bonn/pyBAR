@@ -83,7 +83,7 @@ class RunBase(object):
         ''' This is called in a last attempt to receive the value for an attribute that was not found in the usual places.
         '''
         try:
-            return self._run_conf[name]  # Allowing to access run conf parameters
+            return self._run_conf[name]  # Accessing run conf parameters
         except KeyError:
             raise AttributeError("'%s' has no attribute '%s'" % (self.__class__.__name__, name))
 
@@ -201,6 +201,9 @@ class RunBase(object):
         self._init_run_conf(run_conf)
 
     def _init_run_conf(self, run_conf):
+        attribute_names = [key for key in self._default_run_conf.keys() if (key in self.__dict__ or (hasattr(self.__class__, key) and isinstance(getattr(self.__class__, key), property)))]
+        if attribute_names:
+            raise RuntimeError('Conflicting attribute(s) used in run conf: %s' % ', '.join(attribute_names))
         sc = namedtuple('run_configuration', field_names=self._default_run_conf.keys())
         default_run_conf = sc(**self._default_run_conf)
         if run_conf:

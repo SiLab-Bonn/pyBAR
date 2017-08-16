@@ -81,32 +81,31 @@ class Fei4RunBase(RunBase):
     def __init__(self, conf):
         # Sets self._conf = conf
         super(Fei4RunBase, self).__init__(conf=conf)
-
         self.err_queue = Queue()
         self.global_lock = RLock()
-        self._module_cfgs = {}
-        self._modules = {}
-        self._tx_module_groups = {}
-        self._fifo_module_groups = {}
-        self._registers = {}
-        self._register_utils = {}
-        self._raw_data_files = {}
-        self._scan_parameters = {}  # Store specific scan parameters per module to make available after scan
-        self._module_attr = {}
-        self._parse_module_cfgs(conf)
-        self._set_default_cfg(conf)
-        # initialize attributes not related to a module
+
+        self._module_run_conf = {}  # Store module specific run conf
+        self._module_cfgs = {}  # Store module specific configurations
+        self._modules = {}  # Module IDs of real modules
+        self._tx_module_groups = {}  # Module IDs of TX module groups (virtual modules)
+        self._fifo_module_groups = {}  # Module IDs of FIFO module groups (virtual modules)
+        self._registers = {}  # Store module specific FEI4 registers
+        self._register_utils = {}  # Store module specific FEI4 register utils
+        self._raw_data_files = {}  # Store module specific raw data files
+        self._scan_parameters = {}  # Store module specific scan parameters
+        self._module_attr = {}  # Store module specific scan attributes
+        self._module_dut = {}  # Store module specific DUT handle
+        self._parse_conf()
+        self._current_module_handle = None  # setting "None" module as default module
+        self.raw_data_file = None  # Handle for the raw data files
         self._scan_threads = []  # list of currently running scan threads
         self._running_readout_t = []  # list of currently running threads reading out the FIFO
         self._readout_lock = Lock()
         self._readout_event = Event()
         self._readout_event.clear()
-        self._duts = {}
-        self.fifo_readout = None
-        self._current_module_handle = None  # setting broadast module as default module
-        self.raw_data_file = None
+        self.fifo_readout = None  # FIFO readout instance
         # after initialized is set to True, all new attributes are belonging to selected mudule
-        # by default the broadcast module is selected (current_module_handle is None)
+        # by default the "None" module is selected (current_module_handle is None)
         self._initialized = True
 
     def _init_run_conf(self, run_conf):
@@ -124,8 +123,12 @@ class Fei4RunBase(RunBase):
 
         super(Fei4RunBase, self)._init_run_conf(run_conf=run_conf)
         # check for invalid run conf parameters
-        if self.run_conf._asdict()['broadcast_commands'] != self._default_run_conf['broadcast_commands']:
-            raise RuntimeError('Changing "broadcast_commands" parameter from False (default) to True is not allowed.')
+        if self._run_conf['broadcast_commands'] and not self._default_run_conf['broadcast_commands']:
+            raise RuntimeError('Changing "broadcast_commands" parameter from False (default) to True.')
+        if 'modules' in self._conf and self._conf['modules']:
+            for module_id, module_cfg in self._conf['modules'].items():
+                if module_id in self._modules and self.__class__.__name__ in self._conf["modules"][module_id] and self._run_conf['broadcast_commands']:
+                    raise RuntimeError('Module "%s" has specific run configuration for "%s" and "broadcast_commands" parameter is set to True.' % (module_id, self.__class__.__name__))
 
     @property
     def is_initialized(self):
@@ -161,18 +164,42 @@ class Fei4RunBase(RunBase):
         return self.get_output_filename(module_id=self.current_module_handle)
 
     @property
+    def run_conf(self):
+        run_conf = namedtuple('run_conf', field_names=self._module_run_conf[self.current_module_handle].keys())
+        return run_conf(*self._module_run_conf[self.current_module_handle])  # prevent changing dict
+
+    @property
     def scan_parameters(self):
         return self._scan_parameters[self.current_module_handle]
 
     @property
     def dut(self):
-        return self._duts[self.current_module_handle]
+        return self._module_dut[self.current_module_handle]
 
-    def _parse_module_cfgs(self, conf):
+    def _init_run_conf(self, run_conf):
+        # same implementation as in base class, but ignore "scan_parameters" property
+        attribute_names = [key for key in self._default_run_conf.keys() if (key != "scan_parameters" and (key in self.__dict__ or (hasattr(self.__class__, key) and isinstance(getattr(self.__class__, key), property))))]
+        if attribute_names:
+            raise RuntimeError('Conflicting attribute(s) used in run conf: %s' % ', '.join(attribute_names))
+        sc = namedtuple('run_configuration', field_names=self._default_run_conf.keys())
+        default_run_conf = sc(**self._default_run_conf)
+        if run_conf:
+            self._run_conf = default_run_conf._replace(**run_conf)._asdict()
+        else:
+            self._run_conf = default_run_conf._asdict()
+
+    def _parse_conf(self):
         ''' Extracts the configuration of the modules.
         '''
-        if 'modules' in conf and conf['modules']:
-            for module_id, module_cfg in conf['modules'].items():
+        # Adding here default run config parameters.
+        if "dut" not in self._conf or self._conf["dut"] is None:
+            raise ValueError('Parameter "dut" not defined.')
+        if "dut_configuration" not in self._conf or self._conf["dut_configuration"] is None:
+            raise ValueError('Parameter "dut_configuration" not defined.')
+        self._conf.setdefault('working_dir', None)  # string, if None, absolute path of configuration.yaml file will be used
+
+        if 'modules' in self._conf and self._conf['modules']:
+            for module_id, module_cfg in self._conf['modules'].items():
                 # Check here for missing module config items.
                 # Capital letter keys are Basil drivers, other keys are parameters.
                 # FIFO, RX, TX, TLU and TDC are generic driver names which are used in the scan implementations.
@@ -205,12 +232,9 @@ class Fei4RunBase(RunBase):
         else:
             raise ValueError("No module configuration specified")
 
-    def _set_default_cfg(self, conf):
+    def _set_default_cfg(self):
         ''' Sets the default parameters if they are not specified.
         '''
-        # Adding here default run config parameters.
-        conf.setdefault('working_dir', '')  # path string, if empty, path of configuration.yaml file will be used
-
         # adding special conf for accessing all DUT drivers
         self._module_cfgs[None] = {
             'fe_flavor': None,
@@ -273,7 +297,15 @@ class Fei4RunBase(RunBase):
             self._fifo_module_groups["module_group_FIFO=" + fifo] = module_group
 
         # Setting up per module attributes
-        self._module_attr = {key : {} for key in self._module_cfgs}
+        self._module_attr = {key: {} for key in self._module_cfgs}
+        # Setting up per module run conf
+        for module_id in self._module_cfgs:
+            sc = namedtuple('run_configuration', field_names=self._default_run_conf.keys())
+            run_conf = sc(**self._run_conf)
+            if module_id in self._modules and self.__class__.__name__ in self._conf["modules"][module_id] and self._conf["modules"][module_id][self.__class__.__name__] is not None:
+                self._module_run_conf[module_id] = run_conf._replace(**self._conf["modules"][module_id][self.__class__.__name__])._asdict()
+            else:
+                self._module_run_conf[module_id] = run_conf._asdict()
 
     def init_dut(self):
         if self.dut.name == 'mio':
@@ -436,12 +468,12 @@ class Fei4RunBase(RunBase):
                 alt_string[0] = alt_string[0].replace("_", " ")
                 alt_string = "=".join(alt_string)
             logging.info("Initializing configuration for %s..." % (module_id if module_id in self._modules else ("broadcast module" if module_id is None else alt_string)))
-            # adding scan parameters for each module
-            if 'scan_parameters' in self._run_conf:
-                if isinstance(self._run_conf['scan_parameters'], basestring):
-                    self._run_conf['scan_parameters'] = ast.literal_eval(self._run_conf['scan_parameters'])
-                sp = namedtuple('scan_parameters', field_names=zip(*self._run_conf['scan_parameters'])[0])
-                self._scan_parameters[module_id] = sp(*zip(*self._run_conf['scan_parameters'])[1])
+            # adding scan parameters to dict
+            if 'scan_parameters' in self._module_run_conf[module_id] and self._module_run_conf[module_id]['scan_parameters'] is not None:
+                if isinstance(self._module_run_conf[module_id]['scan_parameters'], basestring):
+                    self._module_run_conf[module_id]['scan_parameters'] = ast.literal_eval(self._module_run_conf[module_id]['scan_parameters'])
+                sp = namedtuple('scan_parameters', field_names=zip(*self._module_run_conf[module_id]['scan_parameters'])[0])
+                self._scan_parameters[module_id] = sp(*zip(*self._module_run_conf[module_id]['scan_parameters'])[1])
             else:
                 sp = namedtuple_with_defaults('scan_parameters', field_names=[])
                 self._scan_parameters[module_id] = sp()
@@ -486,7 +518,7 @@ class Fei4RunBase(RunBase):
 
                 # init register utils
                 self._registers[module_id] = self._module_cfgs[module_id]['fe_configuration']
-                self._register_utils[module_id] = FEI4RegisterUtils(self._duts[module_id], self._module_cfgs[module_id]['fe_configuration'])
+                self._register_utils[module_id] = FEI4RegisterUtils(self._module_dut[module_id], self._module_cfgs[module_id]['fe_configuration'])
 
                 if module_id in self._modules:
                     # Create module data path for real modules
@@ -527,8 +559,10 @@ class Fei4RunBase(RunBase):
                 self.dut["FIFO"]["RESET"]
 
     def pre_run(self):
-        # clear error queue in case run is executed a second time
+        # clear error queue in case run is executed another time
         self.err_queue.queue.clear()
+        # set default configuration, revert any changes that were done by last run
+        self._set_default_cfg()
 
         # init DUT
         if not isinstance(self._conf['dut'], Dut):  # Check if already initialized
@@ -612,15 +646,15 @@ class Fei4RunBase(RunBase):
             self._conf['dut'] = dut
             # adding DUT handles
             for module_id, module_cfg in self._module_cfgs.items():
-                self._duts[module_id] = DutHandle(dut=self._conf['dut'], module_cfg=module_cfg)
+                self._module_dut[module_id] = DutHandle(dut=self._conf['dut'], module_cfg=module_cfg)
             # additional init of the DUT
             self.init_dut()
         else:
             # adding DUT handles
             for module_id, module_cfg in self._module_cfgs.items():
-                self._duts[module_id] = DutHandle(dut=self._conf['dut'], module_cfg=module_cfg)
+                self._module_dut[module_id] = DutHandle(dut=self._conf['dut'], module_cfg=module_cfg)
         # FIFO readout
-        self.fifo_readout = FifoReadout(dut=self._duts[self._fifo_module_groups.keys()[0]])
+        self.fifo_readout = FifoReadout(dut=self._module_dut[self._fifo_module_groups.keys()[0]])
         # initialize the modules
         self.init_modules()
 
@@ -944,6 +978,8 @@ class Fei4RunBase(RunBase):
         ''' Always called to retrun the value for an attribute.
         '''
         if self.is_initialized and name not in self.__dict__:
+            if name in self._module_run_conf[self.current_module_handle]:
+                raise RuntimeError('Attribute name "%s" used in run conf.' % name)
             self._module_attr[self.current_module_handle][name] = value
         else:
             super(Fei4RunBase, self).__setattr__(name, value)
@@ -956,12 +992,15 @@ class Fei4RunBase(RunBase):
             return self._module_attr[self.current_module_handle][name]
         else:
             try:
-                return super(Fei4RunBase, self).__getattr__(name)
-            except AttributeError:
-                if self.is_initialized:
-                    raise AttributeError("'%s' (current module handle '%s') has no attribute '%s'" % (self.__class__.__name__, self.current_module_handle, name))
-                else:
-                    raise
+                return self._module_run_conf[self.current_module_handle][name]  # Accessing run conf parameters
+            except KeyError:
+                try:
+                    return super(Fei4RunBase, self).__getattr__(name)
+                except AttributeError:
+                    if self.is_initialized:
+                        raise AttributeError("'%s' (current module handle '%s') has no attribute '%s'" % (self.__class__.__name__, self.current_module_handle, name))
+                    else:
+                        raise
 
     @contextmanager
     def access_module(self, module_id):
@@ -1026,7 +1065,7 @@ class Fei4RunBase(RunBase):
                                                                           title=self.run_id,
                                                                           register=self._registers[selected_module_id],
                                                                           conf=self._conf,
-                                                                          run_conf=self._run_conf,
+                                                                          run_conf=self._module_run_conf[selected_module_id],
                                                                           scan_parameters=self._scan_parameters[selected_module_id]._asdict(),
                                                                           socket_address=self._module_cfgs[selected_module_id]['send_data'])
         self.raw_data_file = Fei4RawDataHandle(raw_data_files=self._raw_data_files,
