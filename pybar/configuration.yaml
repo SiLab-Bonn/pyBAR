@@ -56,7 +56,7 @@ module_id : module_test  # module identifier / name, sub-folder with given name 
 #    enable_tdc : False
 #    reset_rx_on_error : False
 #
-#FEI4SelfTriggerScan:
+#Fei4SelfTriggerScan :
 #    trig_count : 4
 #    trigger_latency : 239
 #    col_span : [1, 80]
