@@ -1,46 +1,46 @@
 # *** hardwre setup/configuration ***
 
 dut : dut_mio.yaml # DUT hardware configuration (.yaml file). E.g. change to dut_mio_gpac.yaml to support the GPAC adapter card.
-dut_configuration : dut_configuration_mio.yaml  # Initial DUT configuration (.yaml file). E.g. change to dut_configuration_mio_gpac.yaml to support the GPAC adapter card.
+dut_configuration : dut_configuration_mio.yaml # Initial DUT configuration (.yaml file). E.g. change to dut_configuration_mio_gpac.yaml to support the GPAC adapter card.
 working_dir : data # The name of the output data folder.
 
 # *** module configurations ***
 
 modules :
     module_0 :
-         fe_configuration : # FE configuration file, text (.cfg) or HDF5 (.h5) file. If no value is given, the latest valid configuration (run status 'FINISHED') will be taken. If a number is given, the configuration from the run with the specified number will be taken.
-         fe_flavor : fei4b # FEI4 flavor/type for initial configuration. Valid values are: 'fei4a', 'fei4b'.
-         chip_address : # Chip Address for initial configuration. if no value is given, the broadcast bit will be set.
-         FIFO : SRAM_FIFO  # As implemented in the firmware.
-         RX : CH4  # As implemented in the firmware.
-         rx_channel : 4 # As implemented in the firmware.
-         TX : CMD_CH1_TO_CH4  # As implemented in the firmware.
-         tx_channel : 0 # As implemented in the firmware.
-         TDC: TDC_RX2 # As implemented in the firmware.
-         tdc_channel : 4 # As implemented in the firmware.
-         TLU : TRIGGER_CH1_TO_CH4 # As implemented in the firmware.
+        fe_configuration : # FE configuration file, text (.cfg) or HDF5 (.h5) file. If no value is given, the latest valid configuration (run status 'FINISHED') will be taken. If a number is given, the configuration from the run with the specified number will be taken.
+        fe_flavor : fei4b # FEI4 flavor/type for initial configuration. Valid values are: 'fei4a', 'fei4b'.
+        chip_address : # Chip Address for initial configuration. if no value is given, the broadcast bit will be set.
+        FIFO : SRAM_FIFO # As implemented in the firmware.
+        RX : CH4 # As implemented in the firmware.
+        rx_channel : 4 # As implemented in the firmware.
+        TX : CMD_CH1_TO_CH4 # As implemented in the firmware.
+        tx_channel : 0 # As implemented in the firmware.
+        TDC: TDC_RX2 # As implemented in the firmware.
+        tdc_channel : 4 # As implemented in the firmware.
+        TLU : TRIGGER_CH1_TO_CH4 # As implemented in the firmware.
 #        send_data : 'tcp://127.0.0.1:5678' # Address of the online monitor
 
 # *** configuration ***
 
 #send_message :
-#    status: ['CRASHED', 'ABORTED', 'STOPPED', 'FINISHED']  # run status that triggers emails
+#    status: ['CRASHED', 'ABORTED', 'STOPPED', 'FINISHED'] # run status that triggers emails
 #    subject_prefix: "pyBAR run report: "
-#    smtp_server: 'smtp.alert.com'  # outgoing SMTP mail server
-#    user: 'my.email@alert.com'  # usually from_addr
-#    password: 'my_secret_token'  # the password
-#    from_addr: 'my.email@alert.com'  # email address of the sender
-#    to_addrs: ["pohl@physik.uni-bonn.de", "janssen@physik.uni-bonn.de"]  # list of email addresses that will be notified
+#    smtp_server: 'smtp.alert.com' # outgoing SMTP mail server
+#    user: 'my.email@alert.com' # usually from_addr
+#    password: 'my_secret_token' # the password
+#    from_addr: 'my.email@alert.com' # email address of the sender
+#    to_addrs: ["pohl@physik.uni-bonn.de", "janssen@physik.uni-bonn.de"] # list of email addresses that will be notified
 
 # *** run configuration ***
 
-#run_conf:
+#run_conf :
 #    comment : ''
 #    reset_rx_on_error : False
 
 # *** scan specific run configuration ***
 
-#Fei4Tuning:
+#Fei4Tuning :
 #    enable_shift_masks : ["Enable", "C_Low", "C_High"]
 #    target_threshold : 30 # target threshold
 #    target_charge : 280 # target charge
@@ -48,15 +48,15 @@ modules :
 #    global_iterations : 4
 #    local_iterations : 3
 
-#AnalogScan:
-#    scan_parameters : '[("PlsrDAC", 280)]'
+#AnalogScan :
+#    scan_parameters : '[("PlsrDAC", 100)]'
 #    enable_shift_masks : ["Enable", "C_Low", "C_High"]
-#
+
 #ThresholdScan:
 #    scan_parameters : '[("PlsrDAC", [None, 100])]'
 #    enable_shift_masks : ["Enable", "C_Low", "C_High"]
 
-#ExtTriggerScan:
+#ExtTriggerScan :
 #    trig_count : 0
 #    trigger_latency : 232
 #    trigger_delay : 8
@@ -71,7 +71,7 @@ modules :
 #    enable_tdc : False
 #    reset_rx_on_error : False
 
-#FEI4SelfTriggerScan:
+#FEI4SelfTriggerScan :
 #    trig_count : 4
 #    trigger_latency : 239
 #    col_span : [1, 80]
