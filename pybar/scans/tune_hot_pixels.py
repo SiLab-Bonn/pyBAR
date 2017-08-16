@@ -2,14 +2,14 @@ import logging
 
 import numpy as np
 
-from pybar.scans.scan_fei4_self_trigger import FEI4SelfTriggerScan
+from pybar.scans.scan_fei4_self_trigger import Fei4SelfTriggerScan
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.fei4.register_utils import invert_pixel_mask
 from pybar.run_manager import RunManager
 from pybar.analysis.plotting.plotting import plot_occupancy, plot_fancy_occupancy
 
 
-class HotPixelTuning(FEI4SelfTriggerScan):
+class HotPixelTuning(Fei4SelfTriggerScan):
     '''FE-I4 hot pixels tuning
 
     Masking hot pixels based on FEI4 self-trigger scan.

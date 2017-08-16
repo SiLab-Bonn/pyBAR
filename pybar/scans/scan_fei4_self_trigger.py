@@ -10,7 +10,7 @@ from pybar.fei4_run_base import Fei4RunBase
 from pybar.run_manager import RunManager
 
 
-class FEI4SelfTriggerScan(Fei4RunBase):
+class Fei4SelfTriggerScan(Fei4RunBase):
     '''FE-I4 self-trigger scan
 
     Implementation of the FE-I4 self-trigger scan, internally using HitOR for self-triggering.
@@ -94,7 +94,7 @@ class FEI4SelfTriggerScan(Fei4RunBase):
         self.register_utils.send_commands(commands)
 
     def start_readout(self, *args, **kwargs):
-        super(FEI4SelfTriggerScan, self).start_readout(*args, **kwargs)
+        super(Fei4SelfTriggerScan, self).start_readout(*args, **kwargs)
         self.connect_cancel(["stop"])
         self.set_self_trigger(enable=True)
 
@@ -112,9 +112,9 @@ class FEI4SelfTriggerScan(Fei4RunBase):
     def stop_readout(self, timeout=10.0):
         self.scan_timeout_timer.cancel()
         self.set_self_trigger(enable=False)
-        super(FEI4SelfTriggerScan, self).stop_readout(timeout=timeout)
+        super(Fei4SelfTriggerScan, self).stop_readout(timeout=timeout)
         self.connect_cancel(["abort"])
 
 
 if __name__ == "__main__":
-    RunManager('../configuration.yaml').run_run(FEI4SelfTriggerScan)
+    RunManager('../configuration.yaml').run_run(Fei4SelfTriggerScan)
