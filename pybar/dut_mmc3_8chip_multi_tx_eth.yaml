@@ -4,7 +4,7 @@
 # SiLab, Institute of Physics, University of Bonn
 # ------------------------------------------------------------
 #
-# MMC3 board with max. 8 FEI4s
+# MMC3 board with max. 8 FEI4s with multiple TX
 
 name    : mmc3_8chip_eth
 version : 0.1
@@ -23,37 +23,37 @@ hw_drivers:
     type      : cmd_seq
     interface : ETH
     base_addr : 0x0000
-    
+
   - name      : CMD1
     type      : cmd_seq
     interface : ETH
     base_addr : 0x8000
-    
+
   - name      : CMD2
     type      : cmd_seq
     interface : ETH
     base_addr : 0x10000
-    
+
   - name      : CMD3
     type      : cmd_seq
     interface : ETH
     base_addr : 0x18000
-    
+
   - name      : CMD4
     type      : cmd_seq
     interface : ETH
     base_addr : 0x20000
-    
+
   - name      : CMD5
     type      : cmd_seq
     interface : ETH
     base_addr : 0x28000
-    
+
   - name      : CMD6
     type      : cmd_seq
     interface : ETH
     base_addr : 0x30000
-    
+
   - name      : CMD7
     type      : cmd_seq
     interface : ETH
@@ -133,7 +133,7 @@ hw_drivers:
     type      : tdc_s3
     interface : ETH
     base_addr : 0x425ff
-    
+
   - name      : TDC7
     type      : tdc_s3
     interface : ETH

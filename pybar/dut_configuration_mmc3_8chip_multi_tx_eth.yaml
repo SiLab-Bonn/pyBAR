@@ -1,4 +1,4 @@
-# MMC3 board with max. 8 FEI4s
+# MMC3 board with max. 8 FEI4s with multiple TX
 ETH:
     ip : "192.168.10.16"
     udp_port : 4660
@@ -68,20 +68,28 @@ TDC6:
 # FE-I4 command output
 CMD0:
     OUTPUT_MODE : 3  # Selecting command output mode: positive edge (0), negative edge (1), Manchester Code according to IEEE 802.3 (2), Manchester Code according to G.E. Thomas (3)
+
 CMD1:
-    OUTPUT_MODE : 3  # Selecting command output mode: positive edge (0), negative edge (1), Manchester Code according to IEEE 802.3 (2), Manchester Code according to G.E. Thomas (3)    
+    OUTPUT_MODE : 3  # Selecting command output mode: positive edge (0), negative edge (1), Manchester Code according to IEEE 802.3 (2), Manchester Code according to G.E. Thomas (3)
+
 CMD2:
     OUTPUT_MODE : 3  # Selecting command output mode: positive edge (0), negative edge (1), Manchester Code according to IEEE 802.3 (2), Manchester Code according to G.E. Thomas (3)
+
 CMD3:
     OUTPUT_MODE : 3  # Selecting command output mode: positive edge (0), negative edge (1), Manchester Code according to IEEE 802.3 (2), Manchester Code according to G.E. Thomas (3)
+
 CMD4:
     OUTPUT_MODE : 3  # Selecting command output mode: positive edge (0), negative edge (1), Manchester Code according to IEEE 802.3 (2), Manchester Code according to G.E. Thomas (3)
+
 CMD5:
     OUTPUT_MODE : 3  # Selecting command output mode: positive edge (0), negative edge (1), Manchester Code according to IEEE 802.3 (2), Manchester Code according to G.E. Thomas (3)
+
 CMD6:
     OUTPUT_MODE : 3  # Selecting command output mode: positive edge (0), negative edge (1), Manchester Code according to IEEE 802.3 (2), Manchester Code according to G.E. Thomas (3)
+
 CMD7:
     OUTPUT_MODE : 3  # Selecting command output mode: positive edge (0), negative edge (1), Manchester Code according to IEEE 802.3 (2), Manchester Code according to G.E. Thomas (3)
+
 # FE-I4 data receivers
 CH0:
     INVERT_RX : 0  # Inverting data input: disabled (0), enabled (e.g. for DBM modules) (1)

@@ -25,7 +25,7 @@
 `timescale 1ps / 1ps
 `default_nettype none
 
-module mmc3_8chip_eth_multi(
+module mmc3_8chip_multi_tx_eth(
     input wire RESET_N,
     input wire clkin,
     output wire [3:0] rgmii_txd,
