@@ -278,7 +278,7 @@ rbcp_to_bus irbcp_to_bus(
     .BUS_DATA(BUS_DATA)
 );
 
-//MODULE ADREESSES
+//MODULE ADDRESSES
 
 localparam CMD_BASEADDR = 32'h0000;
 localparam CMD_HIGHADDR = 32'h8000-1;
@@ -403,7 +403,7 @@ tdc_s3 #(
     .HIGHADDR(TDC_HIGHADDR),
     .ABUSWIDTH(32),
     .CLKDV(4),
-    .DATA_IDENTIFIER(4'b0100), // one-hot
+    .DATA_IDENTIFIER(4'b0100),
     .FAST_TDC(1),
     .FAST_TRIGGER(1)
 ) i_tdc (

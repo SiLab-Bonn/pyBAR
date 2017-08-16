@@ -326,7 +326,7 @@ WRAP_SiTCP_GMII_XC7K_32K sitcp(
     .RBCP_RD(RBCP_RD)                    // in    : Read data[7:0]
 );
 
-// -------  BUS SYGNALING  ------- //
+// -------  BUS SIGNALLING  ------- //
 
 wire BUS_WR, BUS_RD, BUS_RST;
 wire [31:0] BUS_ADD;
@@ -351,7 +351,7 @@ rbcp_to_bus irbcp_to_bus(
     .BUS_DATA(BUS_DATA)
 );
 
-// -------  MODULE ADREESSES  ------- //
+// -------  MODULE ADDRESSES  ------- //
 
 localparam CMD_BASEADDR = 32'h0000;
 localparam CMD_HIGHADDR = 32'h8000-1;
@@ -491,7 +491,7 @@ assign TRIGGER_ACKNOWLEDGE_FLAG = CMD_READY & ~CMD_READY_FF;
 wire TRIGGER_FIFO_READ;
 wire TRIGGER_FIFO_EMPTY;
 wire [31:0] TRIGGER_FIFO_DATA;
-wire TRIGGER_FIFO_PEEMPT_REQ;
+wire TRIGGER_FIFO_PREEMPT_REQ;
 wire [31:0] TIMESTAMP;
 wire [6:0] TDC_OUT;
 
@@ -515,7 +515,7 @@ tlu_controller #(
     .FIFO_EMPTY(TRIGGER_FIFO_EMPTY),
     .FIFO_DATA(TRIGGER_FIFO_DATA),
 
-    .FIFO_PREEMPT_REQ(TRIGGER_FIFO_PEEMPT_REQ),
+    .FIFO_PREEMPT_REQ(TRIGGER_FIFO_PREEMPT_REQ),
 
     .TRIGGER({1'b0, TDC_OUT, LEMO_RX[0]}),
     .TRIGGER_VETO({RX_FIFO_FULL, FIFO_FULL}),
@@ -645,7 +645,7 @@ generate
         .HIGHADDR(TDC_HIGHADDR+32'h0100*j),
         .ABUSWIDTH(32),
         .CLKDV(4),
-        .DATA_IDENTIFIER(4'b0001 + j), // one-hot
+        .DATA_IDENTIFIER(4'b0001 + j),
         .FAST_TDC(1),
         .FAST_TRIGGER(0)
     ) i_tdc (
@@ -693,7 +693,7 @@ tdc_s3 #(
     .HIGHADDR(TDC_HIGHADDR+32'h0100*7),
     .ABUSWIDTH(32),
     .CLKDV(4),
-    .DATA_IDENTIFIER(4'b0001), // one-hot
+    .DATA_IDENTIFIER(4'b0001),
     .FAST_TDC(1),
     .FAST_TRIGGER(0)
 ) i_tdc (
@@ -743,7 +743,7 @@ rrp_arbiter #(
     .CLK(BUS_CLK),
 
     .WRITE_REQ({~TDC_FIFO_EMPTY, ~FE_FIFO_EMPTY, ~TRIGGER_FIFO_EMPTY}),
-    .HOLD_REQ({15'b0, TRIGGER_FIFO_PEEMPT_REQ}),
+    .HOLD_REQ({15'b0, TRIGGER_FIFO_PREEMPT_REQ}),
     .DATA_IN({TDC_FIFO_DATA[6], TDC_FIFO_DATA[5], TDC_FIFO_DATA[4], TDC_FIFO_DATA[3], TDC_FIFO_DATA[2], TDC_FIFO_DATA[1], TDC_FIFO_DATA[0], FE_FIFO_DATA[7], FE_FIFO_DATA[6], FE_FIFO_DATA[5], FE_FIFO_DATA[4], FE_FIFO_DATA[3], FE_FIFO_DATA[2], FE_FIFO_DATA[1], FE_FIFO_DATA[0], TRIGGER_FIFO_DATA}),
     .READ_GRANT(READ_GRANT),
 

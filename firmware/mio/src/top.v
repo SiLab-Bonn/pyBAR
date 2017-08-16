@@ -307,7 +307,7 @@ clock_divider #(
     .CLOCK(CLK_3HZ)
 );
 
-// -------  MODULE ADREESSES  ------- //
+// -------  MODULE ADDRESSES  ------- //
 localparam CMD_BASEADDR = 16'h0000;
 localparam CMD_HIGHADDR = 16'h8000-1;
 
@@ -511,7 +511,7 @@ tdc_s3 #(
     .BASEADDR(TDC_BASEADDR),
     .HIGHADDR(TDC_HIGHADDR),
     .CLKDV(4),
-    .DATA_IDENTIFIER(4'b0100), // one-hot
+    .DATA_IDENTIFIER(4'b0100),
     .FAST_TDC(1),
     .FAST_TRIGGER(1)
 ) i_tdc (
