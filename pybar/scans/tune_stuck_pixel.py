@@ -49,7 +49,6 @@ class StuckPixelScan(DigitalScan):
             self.occ_mask[occ_hist < self.n_injections] = 1
             # make inverse
             self.inv_occ_mask = invert_pixel_mask(self.occ_mask)
-            self.disable_for_mask = self.disable_for_mask
             if self.overwrite_mask:
                 for mask in self.disable_for_mask:
                     self.register.set_pixel_register_value(mask, self.inv_occ_mask)
@@ -58,7 +57,6 @@ class StuckPixelScan(DigitalScan):
                     enable_mask = np.logical_and(self.inv_occ_mask, self.register.get_pixel_register_value(mask))
                     self.register.set_pixel_register_value(mask, enable_mask)
 
-            self.enable_for_mask = self.enable_for_mask
             if self.overwrite_mask:
                 for mask in self.enable_for_mask:
                     self.register.set_pixel_register_value(mask, self.occ_mask)
