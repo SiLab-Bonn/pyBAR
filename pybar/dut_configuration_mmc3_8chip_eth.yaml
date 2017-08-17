@@ -8,8 +8,8 @@ ETH:
 # Trigger
 TRIGGER_CH0_TO_CH7:
     TRIGGER_MODE                         : 0  # Selecting trigger mode: Use trigger inputs/trigger select (0), TLU no handshake (1), TLU simple handshake (2), TLU data handshake (3)
-    TRIGGER_SELECT                       : 1  # Selecting trigger input: MonHit/HitOR from module 0/1/2/3/4/5/6/7 (2/4/8/16/32/64/128), LEMO RX0 (1), disabled (0)
-    TRIGGER_INVERT                       : 0  # Inverting trigger input: MonHit/HitOR from module 0/1/2/3/4/5/6/7 (2/4/8/16/32/64/128), LEMO RX0 (1), disabled (0)
+    TRIGGER_SELECT                       : 1  # Selecting trigger input: MonHit/HitOR from module 0/1/2/3/4/5/6/7 (2/4/8/16/32/64/128/256), LEMO RX0 (1), disabled (0)
+    TRIGGER_INVERT                       : 0  # Inverting trigger input: MonHit/HitOR from module 0/1/2/3/4/5/6/7 (2/4/8/16/32/64/128/256), LEMO RX0 (1), disabled (0)
     TRIGGER_VETO_SELECT                  : 1  # Selecting trigger veto: RX FIFO 0/1/2/3/4/4/6/7 full (2/4/8/16/32/64/128/256), FIFO full (1), disabled (0)
     TRIGGER_HANDSHAKE_ACCEPT_WAIT_CYCLES : 3  # Increasing minimum trigger length in TLU data handshale mode (preventing certain TLU flaws)
     TRIGGER_DATA_DELAY                   : 0  # TLU data handshake data delay depends on the cable length and should be adjusted with a delay scan (run scan/tune_tlu.py)
