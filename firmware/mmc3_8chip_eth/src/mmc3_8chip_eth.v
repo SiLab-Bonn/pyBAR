@@ -636,10 +636,11 @@ generate
 end
 endgenerate
 
+wire [6:0] RJ45_HITOR;
+
 genvar j;
 generate
   for (j = 0; j < 7; j = j + 1) begin: tdc_gen
-    wire RJ45_HITOR;
     tdc_s3 #(
         .BASEADDR(TDC_BASEADDR+32'h0100*j),
         .HIGHADDR(TDC_HIGHADDR+32'h0100*j),
@@ -652,7 +653,7 @@ generate
         .CLK320(CLK320),
         .CLK160(CLK160),
         .DV_CLK(CLK40),
-        .TDC_IN(RJ45_HITOR),
+        .TDC_IN(RJ45_HITOR[j]),
         .TDC_OUT(TDC_OUT[j]),
         .TRIG_IN(),
         .TRIG_OUT(),
@@ -679,7 +680,7 @@ generate
         .IBUF_LOW_PWR("FALSE"),
         .IOSTANDARD("LVDS_25")
     ) IBUFDS_inst_RJ45_HITOR (
-        .O(RJ45_HITOR),
+        .O(RJ45_HITOR[j]),
         .I(RJ45_HITOR_P[j]),
         .IB(RJ45_HITOR_N[j])
     );
@@ -687,7 +688,6 @@ generate
   end
 endgenerate
 /*
-wire RJ45_HITOR;
 tdc_s3 #(
     .BASEADDR(TDC_BASEADDR+32'h0100*7),
     .HIGHADDR(TDC_HIGHADDR+32'h0100*7),
@@ -700,7 +700,7 @@ tdc_s3 #(
     .CLK320(CLK320),
     .CLK160(CLK160),
     .DV_CLK(CLK40),
-    .TDC_IN(RJ45_HITOR),
+    .TDC_IN(RJ45_HITOR[7]),
     .TDC_OUT(TDC_OUT[7]),
     .TRIG_IN(),
     .TRIG_OUT(),
@@ -727,7 +727,7 @@ IBUFDS #(
     .IBUF_LOW_PWR("FALSE"),
     .IOSTANDARD("LVDS_25")
 ) IBUFDS_inst_RJ45_HITOR (
-    .O(RJ45_HITOR),
+    .O(RJ45_HITOR[7]),
     .I(RJ45_HITOR_P[7]),
     .IB(RJ45_HITOR_N[7])
 );

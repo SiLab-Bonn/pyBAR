@@ -356,8 +356,8 @@ rbcp_to_bus irbcp_to_bus(
 localparam CMD_BASEADDR = 32'h0000;
 localparam CMD_HIGHADDR = 32'h8000-1;
 
-localparam TLU_BASEADDR = 32'h40200;
-localparam TLU_HIGHADDR = 32'h40300-1;
+localparam TLU_BASEADDR = 32'h40000;
+localparam TLU_HIGHADDR = 32'h40100-1;
 
 localparam RX_BASEADDR = 32'h41000;
 localparam RX_HIGHADDR = 32'h41100-1;
@@ -479,8 +479,8 @@ generate
 endgenerate
 
 
-wire TRIGGER_ACKNOWLEDGE_FLAG; // to TLU FSM
-reg CMD_READY_FF;
+wire [7:0] TRIGGER_ACKNOWLEDGE_FLAG; // to TLU FSM
+reg [7:0] CMD_READY_FF;
 always @ (posedge CLK40)
 begin
     CMD_READY_FF <= CMD_READY;
@@ -488,13 +488,55 @@ end
 assign TRIGGER_ACKNOWLEDGE_FLAG = CMD_READY & ~CMD_READY_FF;
 
 
-wire TRIGGER_FIFO_READ;
-wire TRIGGER_FIFO_EMPTY;
-wire [31:0] TRIGGER_FIFO_DATA;
-wire TRIGGER_FIFO_PREEMPT_REQ;
-wire [31:0] TIMESTAMP;
-wire [6:0] TDC_OUT;
+wire [7:0] TRIGGER_FIFO_READ;
+wire [7:0] TRIGGER_FIFO_EMPTY;
+wire [31:0] TRIGGER_FIFO_DATA [7:0];
+wire [7:0] TRIGGER_FIFO_PREEMPT_REQ;
+wire [31:0] TIMESTAMP [7:0];
+wire [7:0] TDC_OUT;
 
+
+genvar k;
+generate
+  for (k = 1; k < 8; k = k + 1) begin: tlu_gen
+    tlu_controller #(
+        .BASEADDR(TLU_BASEADDR+32'h0100*k),
+        .HIGHADDR(TLU_HIGHADDR+32'h0100*k),
+        .DIVISOR(8),
+        .ABUSWIDTH(32),
+        .WIDTH(9)
+    ) i_tlu_controller (
+        .BUS_CLK(BUS_CLK),
+        .BUS_RST(BUS_RST),
+        .BUS_ADD(BUS_ADD),
+        .BUS_DATA(BUS_DATA),
+        .BUS_RD(BUS_RD),
+        .BUS_WR(BUS_WR),
+
+        .TRIGGER_CLK(CLK40),
+
+        .FIFO_READ(TRIGGER_FIFO_READ[k]),
+        .FIFO_EMPTY(TRIGGER_FIFO_EMPTY[k]),
+        .FIFO_DATA(TRIGGER_FIFO_DATA[k]),
+
+        .FIFO_PREEMPT_REQ(TRIGGER_FIFO_PREEMPT_REQ[k]),
+
+        .TRIGGER({TDC_OUT, LEMO_RX[0]}),
+        .TRIGGER_VETO({RX_FIFO_FULL, FIFO_FULL}),
+
+        .EXT_TRIGGER_ENABLE(EXT_TRIGGER_ENABLE[k]),
+        .TRIGGER_ACKNOWLEDGE(TRIGGER_ACKNOWLEDGE_FLAG[k]),
+        .TRIGGER_ACCEPTED_FLAG(TRIGGER_ACCEPTED_FLAG[k]),
+
+        .TLU_TRIGGER(),
+        .TLU_RESET(),
+        .TLU_BUSY(),
+        .TLU_CLOCK(),
+
+        .TIMESTAMP(TIMESTAMP[k])
+    );
+  end
+endgenerate
 
 tlu_controller #(
     .BASEADDR(TLU_BASEADDR),
@@ -512,31 +554,31 @@ tlu_controller #(
 
     .TRIGGER_CLK(CLK40),
 
-    .FIFO_READ(TRIGGER_FIFO_READ),
-    .FIFO_EMPTY(TRIGGER_FIFO_EMPTY),
-    .FIFO_DATA(TRIGGER_FIFO_DATA),
+    .FIFO_READ(TRIGGER_FIFO_READ[0]),
+    .FIFO_EMPTY(TRIGGER_FIFO_EMPTY[0]),
+    .FIFO_DATA(TRIGGER_FIFO_DATA[0]),
 
-    .FIFO_PREEMPT_REQ(TRIGGER_FIFO_PREEMPT_REQ),
+    .FIFO_PREEMPT_REQ(TRIGGER_FIFO_PREEMPT_REQ[0]),
 
-    .TRIGGER({1'b0, LEMO_RX[0], TDC_OUT}),
+    .TRIGGER({TDC_OUT, LEMO_RX[0]}),
     .TRIGGER_VETO({RX_FIFO_FULL, FIFO_FULL}),
 
-    .EXT_TRIGGER_ENABLE(EXT_TRIGGER_ENABLE),
-    .TRIGGER_ACKNOWLEDGE(TRIGGER_ACKNOWLEDGE_FLAG),
-    .TRIGGER_ACCEPTED_FLAG(TRIGGER_ACCEPTED_FLAG),
+    .EXT_TRIGGER_ENABLE(EXT_TRIGGER_ENABLE[0]),
+    .TRIGGER_ACKNOWLEDGE(TRIGGER_ACKNOWLEDGE_FLAG[0]),
+    .TRIGGER_ACCEPTED_FLAG(TRIGGER_ACCEPTED_FLAG[0]),
 
     .TLU_TRIGGER(RJ45_TRIGGER),
     .TLU_RESET(RJ45_RESET),
     .TLU_BUSY(RJ45_BUSY_LEMO_TX1),
     .TLU_CLOCK(RJ45_CLK_LEMO_TX0),
 
-    .TIMESTAMP(TIMESTAMP)
+    .TIMESTAMP(TIMESTAMP[0])
 );
 
 
 reg [31:0] timestamp_gray;
 always@(posedge BUS_CLK)
-    timestamp_gray <=  (TIMESTAMP>>1) ^ TIMESTAMP;
+    timestamp_gray <=  (TIMESTAMP[0]>>1) ^ TIMESTAMP[0];
 
 
 wire [7:0] RX_READY, RX_8B10B_DECODER_ERR, RX_FIFO_OVERFLOW_ERR, RX_FIFO_FULL, RX_ENABLED;
@@ -544,9 +586,9 @@ wire [7:0] FE_FIFO_READ;
 wire [7:0] FE_FIFO_EMPTY;
 wire [31:0] FE_FIFO_DATA [7:0];
 
-wire [6:0] TDC_FIFO_READ;
-wire [6:0] TDC_FIFO_EMPTY;
-wire [31:0] TDC_FIFO_DATA [6:0];
+wire [7:0] TDC_FIFO_READ;
+wire [7:0] TDC_FIFO_EMPTY;
+wire [31:0] TDC_FIFO_DATA [7:0];
 
 genvar i;
 generate
@@ -638,11 +680,12 @@ generate
 end
 endgenerate
 
+wire [7:0] RJ45_HITOR;
+
 genvar j;
 generate
   for (j = 0; j < 7; j = j + 1) begin: tdc_gen
-    wire RJ45_HITOR;
-    tdc_s3 #(
+        tdc_s3 #(
         .BASEADDR(TDC_BASEADDR+32'h0100*j),
         .HIGHADDR(TDC_HIGHADDR+32'h0100*j),
         .ABUSWIDTH(32),
@@ -654,7 +697,7 @@ generate
         .CLK320(CLK320),
         .CLK160(CLK160),
         .DV_CLK(CLK40),
-        .TDC_IN(RJ45_HITOR),
+        .TDC_IN(RJ45_HITOR[j]),
         .TDC_OUT(TDC_OUT[j]),
         .TRIG_IN(),
         .TRIG_OUT(),
@@ -670,10 +713,10 @@ generate
         .BUS_RD(BUS_RD),
         .BUS_WR(BUS_WR),
 
-        .ARM_TDC(CMD_START_FLAG), // arm TDC by sending commands
+        .ARM_TDC(CMD_START_FLAG[j]), // arm TDC by sending commands
         .EXT_EN(1'b0),
 
-        .TIMESTAMP(TIMESTAMP[15:0])
+        .TIMESTAMP(TIMESTAMP[j][15:0])
     );
 
     IBUFDS #(
@@ -681,7 +724,7 @@ generate
         .IBUF_LOW_PWR("FALSE"),
         .IOSTANDARD("LVDS_25")
     ) IBUFDS_inst_RJ45_HITOR (
-        .O(RJ45_HITOR),
+        .O(RJ45_HITOR[j]),
         .I(RJ45_HITOR_P[j]),
         .IB(RJ45_HITOR_N[j])
     );
@@ -689,8 +732,6 @@ generate
   end
 endgenerate
 
-/*
-wire RJ45_HITOR;
 tdc_s3 #(
     .BASEADDR(TDC_BASEADDR+32'h0100*7),
     .HIGHADDR(TDC_HIGHADDR+32'h0100*7),
@@ -703,7 +744,7 @@ tdc_s3 #(
     .CLK320(CLK320),
     .CLK160(CLK160),
     .DV_CLK(CLK40),
-    .TDC_IN(RJ45_HITOR),
+    .TDC_IN(RJ45_HITOR[7]),
     .TDC_OUT(TDC_OUT[7]),
     .TRIG_IN(),
     .TRIG_OUT(),
@@ -719,10 +760,10 @@ tdc_s3 #(
     .BUS_RD(BUS_RD),
     .BUS_WR(BUS_WR),
 
-    .ARM_TDC(CMD_START_FLAG), // arm TDC by sending commands
+    .ARM_TDC(CMD_START_FLAG[7]), // arm TDC by sending commands
     .EXT_EN(1'b0),
 
-    .TIMESTAMP(TIMESTAMP[15:0])
+    .TIMESTAMP(TIMESTAMP[7][15:0])
 );
 
 IBUFDS #(
@@ -730,24 +771,24 @@ IBUFDS #(
     .IBUF_LOW_PWR("FALSE"),
     .IOSTANDARD("LVDS_25")
 ) IBUFDS_inst_RJ45_HITOR (
-    .O(RJ45_HITOR),
+    .O(RJ45_HITOR[7]),
     .I(RJ45_HITOR_P[7]),
     .IB(RJ45_HITOR_N[7])
 );
-*/
+
 wire ARB_READY_OUT, ARB_WRITE_OUT;
 wire [31:0] ARB_DATA_OUT;
 wire [15:0] READ_GRANT;
 
 rrp_arbiter #(
-    .WIDTH(16)
+    .WIDTH(24)
 ) i_rrp_arbiter (
     .RST(BUS_RST),
     .CLK(BUS_CLK),
 
     .WRITE_REQ({~TDC_FIFO_EMPTY, ~FE_FIFO_EMPTY, ~TRIGGER_FIFO_EMPTY}),
-    .HOLD_REQ({15'b0, TRIGGER_FIFO_PREEMPT_REQ}),
-    .DATA_IN({TDC_FIFO_DATA[6], TDC_FIFO_DATA[5], TDC_FIFO_DATA[4], TDC_FIFO_DATA[3], TDC_FIFO_DATA[2], TDC_FIFO_DATA[1], TDC_FIFO_DATA[0], FE_FIFO_DATA[7], FE_FIFO_DATA[6], FE_FIFO_DATA[5], FE_FIFO_DATA[4], FE_FIFO_DATA[3], FE_FIFO_DATA[2], FE_FIFO_DATA[1], FE_FIFO_DATA[0], TRIGGER_FIFO_DATA}),
+    .HOLD_REQ({16'b0, TRIGGER_FIFO_PREEMPT_REQ}),
+    .DATA_IN({TDC_FIFO_DATA[7], TDC_FIFO_DATA[6], TDC_FIFO_DATA[5], TDC_FIFO_DATA[4], TDC_FIFO_DATA[3], TDC_FIFO_DATA[2], TDC_FIFO_DATA[1], TDC_FIFO_DATA[0], FE_FIFO_DATA[7], FE_FIFO_DATA[6], FE_FIFO_DATA[5], FE_FIFO_DATA[4], FE_FIFO_DATA[3], FE_FIFO_DATA[2], FE_FIFO_DATA[1], FE_FIFO_DATA[0], TRIGGER_FIFO_DATA}),
     .READ_GRANT(READ_GRANT),
 
     .READY_OUT(ARB_READY_OUT),
