@@ -1,16 +1,16 @@
 /**
  * This file is part of pyBAR.
- * 
+ *
  * pyBAR is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * pyBAR is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU Lesser General Public License
  * along with pyBAR.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -49,7 +49,7 @@ module mmc3_8chip_multi_tx_eth(
 
 
 wire RST;
-wire BUS_CLK_PLL, CLK250PLL, CLK125PLLTX, CLK125PLLTX90, CLK125PLLRX;
+wire CLK250PLL, CLK125PLLTX, CLK125PLLTX90, CLK125PLLRX;
 wire PLL_FEEDBACK, LOCKED;
 
 PLLE2_BASE #(
@@ -429,6 +429,7 @@ always@(posedge CLK320)
 always@(posedge CLK320)
     CLK40_OUT_SEL <= CLK_SR[SEL_CLK40];
 
+wire BROADCAST_CMD;
 genvar h;
 generate
   for (h = 0; h < 8; h = h + 1) begin: cmd_gen
@@ -448,13 +449,13 @@ generate
         .CMD_CLK_IN(CLK40),
         .CMD_CLK_OUT(CMD_CLK[h]),
         .CMD_DATA(CMD_DATA[h]),
- 
-        .CMD_EXT_START_FLAG(CMD_EXT_START_FLAG[h]),
+
+        .CMD_EXT_START_FLAG(BROADCAST_CMD ? CMD_EXT_START_FLAG[0] : CMD_EXT_START_FLAG[h]),
         .CMD_EXT_START_ENABLE(EXT_TRIGGER_ENABLE[h]),
         .CMD_READY(CMD_READY[h]),
         .CMD_START_FLAG(CMD_START_FLAG[h])
     );
-  
+
     OBUFDS #(
       .IOSTANDARD("LVDS_25"),
       .SLEW("SLOW")
@@ -464,7 +465,7 @@ generate
       .I(CLK40_OUT_SEL)
   //.I(CMD_CLK)
   );
-  
+
     OBUFDS #(
     .IOSTANDARD("LVDS_25"),
     .SLEW("SLOW")
@@ -473,7 +474,7 @@ generate
     .OB(CMD_DATA_N[h]),
     .I(CMD_DATA[h])
 //.I(CMD_CLK)
-  
+
     );
   end
 endgenerate
@@ -487,6 +488,26 @@ begin
 end
 assign TRIGGER_ACKNOWLEDGE_FLAG = CMD_READY & ~CMD_READY_FF;
 
+reg CMD_READY_BROADCAST;
+always @ (posedge CLK40)
+begin
+  if (!BROADCAST_CMD)
+    CMD_READY_BROADCAST <= 1'b0;
+  else if (~&(CMD_READY | (~EXT_TRIGGER_ENABLE)))
+    CMD_READY_BROADCAST <= 1'b0;
+  else if (&(CMD_READY | (~EXT_TRIGGER_ENABLE)))
+    CMD_READY_BROADCAST <= 1'b1;
+  else
+    CMD_READY_BROADCAST <= CMD_READY_BROADCAST;
+end
+
+wire CMD_READY_BROADCAST_FLAG;
+reg CMD_READY_BROADCAST_FF;
+always @ (posedge CLK40)
+begin
+    CMD_READY_BROADCAST_FF <= CMD_READY_BROADCAST;
+end
+assign CMD_READY_BROADCAST_FLAG = CMD_READY_BROADCAST & ~CMD_READY_BROADCAST_FF;
 
 wire [7:0] TRIGGER_FIFO_READ;
 wire [7:0] TRIGGER_FIFO_EMPTY;
@@ -494,7 +515,12 @@ wire [31:0] TRIGGER_FIFO_DATA [7:0];
 wire [7:0] TRIGGER_FIFO_PREEMPT_REQ;
 wire [31:0] TIMESTAMP [7:0];
 wire [7:0] TDC_OUT;
-
+wire TLU_BUSY, TLU_CLOCK;
+wire [7:0] TRIGGER_ENABLED, TLU_ENABLED;
+wire [7:0] RX_READY, RX_8B10B_DECODER_ERR, RX_FIFO_OVERFLOW_ERR, RX_FIFO_FULL, RX_ENABLED;
+wire FIFO_FULL;
+assign RJ45_BUSY_LEMO_TX1 = BROADCAST_CMD ? TLU_BUSY : ~CMD_READY_BROADCAST;
+assign RJ45_CLK_LEMO_TX0 = TLU_CLOCK;
 
 genvar k;
 generate
@@ -524,10 +550,12 @@ generate
         .TRIGGER({TDC_OUT, LEMO_RX[0]}),
         .TRIGGER_VETO({RX_FIFO_FULL, FIFO_FULL}),
 
-        .EXT_TRIGGER_ENABLE(EXT_TRIGGER_ENABLE[k]),
-        .TRIGGER_ACKNOWLEDGE(TRIGGER_ACKNOWLEDGE_FLAG[k]),
+        .EXT_TRIGGER_ENABLE(BROADCAST_CMD ? 1'b0 : EXT_TRIGGER_ENABLE[k]),
+        .TRIGGER_ACKNOWLEDGE(BROADCAST_CMD ? 1'b0 : TRIGGER_ACKNOWLEDGE_FLAG[k]),
         .TRIGGER_ACCEPTED_FLAG(TRIGGER_ACCEPTED_FLAG[k]),
 
+        .TRIGGER_ENABLED(TRIGGER_ENABLED[k]),
+        .TLU_ENABLED(TLU_ENABLED[k]),
         .TLU_TRIGGER(),
         .TLU_RESET(),
         .TLU_BUSY(),
@@ -563,25 +591,25 @@ tlu_controller #(
     .TRIGGER({TDC_OUT, LEMO_RX[0]}),
     .TRIGGER_VETO({RX_FIFO_FULL, FIFO_FULL}),
 
-    .EXT_TRIGGER_ENABLE(EXT_TRIGGER_ENABLE[0]),
-    .TRIGGER_ACKNOWLEDGE(TRIGGER_ACKNOWLEDGE_FLAG[0]),
+    .EXT_TRIGGER_ENABLE(BROADCAST_CMD ? |EXT_TRIGGER_ENABLE : EXT_TRIGGER_ENABLE[0]),
+    .TRIGGER_ACKNOWLEDGE(BROADCAST_CMD ? CMD_READY_BROADCAST_FLAG : TRIGGER_ACKNOWLEDGE_FLAG[0]),
     .TRIGGER_ACCEPTED_FLAG(TRIGGER_ACCEPTED_FLAG[0]),
 
+    .TRIGGER_ENABLED(TRIGGER_ENABLED[0]),
+    .TLU_ENABLED(TLU_ENABLED[0]),
     .TLU_TRIGGER(RJ45_TRIGGER),
     .TLU_RESET(RJ45_RESET),
-    .TLU_BUSY(RJ45_BUSY_LEMO_TX1),
-    .TLU_CLOCK(RJ45_CLK_LEMO_TX0),
+    .TLU_BUSY(TLU_BUSY),
+    .TLU_CLOCK(TLU_CLOCK),
 
     .TIMESTAMP(TIMESTAMP[0])
 );
+assign BROADCAST_CMD = (TRIGGER_ENABLED[0] && TLU_ENABLED[0]);
 
+//reg [31:0] timestamp_gray;
+//always@(posedge BUS_CLK)
+//    timestamp_gray <= ((TIMESTAMP[0])>>1) ^ (TIMESTAMP[0]);
 
-reg [31:0] timestamp_gray;
-always@(posedge BUS_CLK)
-    timestamp_gray <=  (TIMESTAMP[0]>>1) ^ TIMESTAMP[0];
-
-
-wire [7:0] RX_READY, RX_8B10B_DECODER_ERR, RX_FIFO_OVERFLOW_ERR, RX_FIFO_FULL, RX_ENABLED;
 wire [7:0] FE_FIFO_READ;
 wire [7:0] FE_FIFO_EMPTY;
 wire [31:0] FE_FIFO_DATA [7:0];
@@ -778,7 +806,7 @@ IBUFDS #(
 
 wire ARB_READY_OUT, ARB_WRITE_OUT;
 wire [31:0] ARB_DATA_OUT;
-wire [15:0] READ_GRANT;
+wire [23:0] READ_GRANT;
 
 rrp_arbiter #(
     .WIDTH(24)
@@ -796,13 +824,14 @@ rrp_arbiter #(
     .DATA_OUT(ARB_DATA_OUT)
 );
 
-assign TRIGGER_FIFO_READ = READ_GRANT[0];
-assign FE_FIFO_READ = READ_GRANT[8:1];
-assign TDC_FIFO_READ = READ_GRANT[15:9];
+assign TRIGGER_FIFO_READ = READ_GRANT[7:0];
+assign FE_FIFO_READ = READ_GRANT[15:8];
+assign TDC_FIFO_READ = READ_GRANT[23:16];
 
 //cdc_fifo is for timing reasons
 wire [31:0] cdc_data_out;
 wire full_32to8, cdc_fifo_empty;
+wire FIFO_EMPTY;
 cdc_syncfifo #(.DSIZE(32), .ASIZE(3)) cdc_syncfifo_i
 (
     .rdata(cdc_data_out),
@@ -814,7 +843,6 @@ cdc_syncfifo #(.DSIZE(32), .ASIZE(3)) cdc_syncfifo_i
 );
 assign ARB_READY_OUT = !FIFO_FULL;
 
-wire FIFO_EMPTY, FIFO_FULL;
 fifo_32_to_8 #(.DEPTH(256*1024)) i_data_fifo (
     .RST(BUS_RST),
     .CLK(BUS_CLK),

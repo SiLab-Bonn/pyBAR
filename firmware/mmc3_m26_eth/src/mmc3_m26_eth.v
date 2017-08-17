@@ -63,7 +63,7 @@ module mmc3_m26_eth(
 
 
 wire RST;
-wire BUS_CLK_PLL, CLK250PLL, CLK125PLLTX, CLK125PLLTX90, CLK125PLLRX;
+wire CLK250PLL, CLK125PLLTX, CLK125PLLTX90, CLK125PLLRX;
 wire PLL_FEEDBACK, LOCKED;
 
 PLLE2_BASE #(
@@ -495,6 +495,8 @@ wire [31:0] TRIGGER_FIFO_DATA;
 wire TRIGGER_FIFO_PREEMPT_REQ;
 wire [31:0] TIMESTAMP;
 wire TDC_OUT;
+wire RX_READY, RX_8B10B_DECODER_ERR, RX_FIFO_OVERFLOW_ERR, RX_FIFO_FULL, RX_ENABLED;
+wire FIFO_FULL;
 
 tlu_controller #(
     .BASEADDR(TLU_BASEADDR),
@@ -525,6 +527,8 @@ tlu_controller #(
     .TRIGGER_ACKNOWLEDGE(TRIGGER_ACKNOWLEDGE_FLAG),
     .TRIGGER_ACCEPTED_FLAG(TRIGGER_ACCEPTED_FLAG),
 
+    .TRIGGER_ENABLED(),
+    .TLU_ENABLED(),
     .TLU_TRIGGER(RJ45_TRIGGER),
     .TLU_RESET(RJ45_RESET),
     .TLU_BUSY(RJ45_BUSY_LEMO_TX1),
@@ -533,12 +537,11 @@ tlu_controller #(
     .TIMESTAMP(TIMESTAMP)
 );
 
-reg [31:0] timestamp_gray;
-always@(posedge BUS_CLK)
-    timestamp_gray <=  (TIMESTAMP>>1) ^ TIMESTAMP;
+//reg [31:0] timestamp_gray;
+//always@(posedge BUS_CLK)
+//    timestamp_gray <= (TIMESTAMP>>1) ^ TIMESTAMP;
 
 wire DOBOUT;
-wire RX_READY, RX_8B10B_DECODER_ERR, RX_FIFO_OVERFLOW_ERR, RX_FIFO_FULL, RX_ENABLED;
 wire FE_FIFO_READ;
 wire FE_FIFO_EMPTY;
 wire [31:0] FE_FIFO_DATA;
@@ -779,6 +782,7 @@ assign TDC_FIFO_READ = READ_GRANT[8];
 //cdc_fifo is for timing reasons
 wire [31:0] cdc_data_out;
 wire full_32to8, cdc_fifo_empty;
+wire FIFO_EMPTY;
 cdc_syncfifo #(.DSIZE(32), .ASIZE(3)) cdc_syncfifo_i
 (
     .rdata(cdc_data_out),
@@ -790,7 +794,6 @@ cdc_syncfifo #(.DSIZE(32), .ASIZE(3)) cdc_syncfifo_i
 );
 assign ARB_READY_OUT = !FIFO_FULL;
 
-wire FIFO_EMPTY, FIFO_FULL;
 fifo_32_to_8 #(.DEPTH(256*1024)) i_data_fifo (
     .RST(BUS_RST),
     .CLK(BUS_CLK),

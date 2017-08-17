@@ -14,10 +14,45 @@ transfer_layer:
     type  : SiTcp
 
 hw_drivers:
-  - name      : TRIGGER_CH0_TO_CH7
+  - name      : TRIGGER_CH0
+    type      : tlu
+    interface : ETH
+    base_addr : 0x40000
+
+  - name      : TRIGGER_CH1
+    type      : tlu
+    interface : ETH
+    base_addr : 0x40100
+
+  - name      : TRIGGER_CH2
     type      : tlu
     interface : ETH
     base_addr : 0x40200
+
+  - name      : TRIGGER_CH3
+    type      : tlu
+    interface : ETH
+    base_addr : 0x40300
+
+  - name      : TRIGGER_CH4
+    type      : tlu
+    interface : ETH
+    base_addr : 0x40400
+
+  - name      : TRIGGER_CH5
+    type      : tlu
+    interface : ETH
+    base_addr : 0x40500
+
+  - name      : TRIGGER_CH6
+    type      : tlu
+    interface : ETH
+    base_addr : 0x40600
+
+  - name      : TRIGGER_CH7
+    type      : tlu
+    interface : ETH
+    base_addr : 0x40700
 
   - name      : CMD0
     type      : cmd_seq

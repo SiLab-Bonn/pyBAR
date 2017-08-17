@@ -1,16 +1,16 @@
 /**
  * This file is part of pyBAR.
- * 
+ *
  * pyBAR is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * pyBAR is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU Lesser General Public License
  * along with pyBAR.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -27,38 +27,38 @@
 
 module nexys4(
     input wire CLK100MHZ,
-    
+
     output wire ETH_MDC,
     inout wire ETH_MDIO,
-    
+
     output wire ETH_RSTN,
-    
+
     input wire ETH_CRSDV,
     input wire  ETH_RXERR,
     input wire [1:0] ETH_RXD,
-    
+
     output wire ETH_TXEN,
     output wire [1:0] ETH_TXD,
-    
+
     output wire ETH_REFCLK,
     input wire  ETH_INTN,
-    
+
     inout wire SDA, SCL,
-        
+
     output wire CMD_CLK,
-    output wire CMD_DATA, 
+    output wire CMD_DATA,
 
     input wire [3:0] DOBOUT,
-    
+
     input wire TDC_IN, TDC_TRIG,
-    
+
     input wire TLU_TRG,
     input wire TLU_RST,
     output wire TLU_BSY,
     output wire TLU_CLK,
-    
+
     output wire [4:0] LED
-    
+
 );
 
 wire CLK_LOCKED, CLKFBIN, CLKFBOUT;
@@ -161,24 +161,24 @@ wire ETH_COL, ETH_CRS, ETH_RX_DV, ETH_RX_ER;
 mii_to_rmii_0 imii_to_rmii_0 (
     .rst_n(ETH_RSTN), //IN
     .ref_clk(ETH_CLK_TX), //IN
-    
+
     .mac2rmii_tx_en(ETH_TX_EN), //IN
     .mac2rmii_txd(ETH_TX_D), //IN
     .mac2rmii_tx_er(ETH_TX_ER), //IN
-    
+
     .rmii2mac_tx_clk(TX_CLK), //OUT
     .rmii2mac_rx_clk(RX_CLK), //OUT
-    
+
     .rmii2mac_col(ETH_COL), //OUT
     .rmii2mac_crs(ETH_CRS), //OUT
     .rmii2mac_rx_dv(ETH_RX_DV), //OUT
     .rmii2mac_rx_er(ETH_RX_ER), //OUT
     .rmii2mac_rxd(ETH_RX_D), //OUT
-    
+
     .phy2rmii_crs_dv(ETH_CRSDV), //IN
     .phy2rmii_rx_er(ETH_RXERR), //IN
     .phy2rmii_rxd(ETH_RXD), //IN
-    
+
     .rmii2phy_txd(ETH_TXD), //OUT
     .rmii2phy_tx_en(ETH_TXEN) //OUT
 );
@@ -207,7 +207,7 @@ WRAP_SiTCP_GMII_XC7A_32K #(.TIM_PERIOD(50))sitcp(
     // MII interface
     .GMII_RSTn(ETH_RSTN)            ,    // out    : PHY reset
     .GMII_1000M(1'b0)            ,    // in    : GMII mode (0:MII, 1:GMII)
-    // TX 
+    // TX
     .GMII_TX_CLK(TX_CLK)            ,    // in    : Tx clock
     .GMII_TX_EN(ETH_TX_EN)            ,    // out    : Tx enable
     .GMII_TXD({ETH_TX_D_NO,ETH_TX_D})            ,    // out    : Tx data[7:0]
@@ -263,7 +263,7 @@ wire [7:0] BUS_DATA;
 rbcp_to_bus irbcp_to_bus(
     .BUS_RST(BUS_RST),
     .BUS_CLK(BUS_CLK),
-    
+
     .RBCP_ACT(RBCP_ACT),
     .RBCP_ADDR(RBCP_ADDR),
     .RBCP_WD(RBCP_WD),
@@ -271,7 +271,7 @@ rbcp_to_bus irbcp_to_bus(
     .RBCP_RE(RBCP_RE),
     .RBCP_ACK(RBCP_ACK),
     .RBCP_RD(RBCP_RD),
-    
+
     .BUS_WR(BUS_WR),
     .BUS_RD(BUS_RD),
     .BUS_ADD(BUS_ADD),
@@ -305,20 +305,20 @@ localparam GPIO_BASEADDR = 32'h8700;
 localparam GPIO_HIGHADDR = 32'h8800-1;
 
 localparam I2C_BASEADDR = 32'h8800;
-localparam I2C_HIGHADDR = 32'h8900-1; 
-    
+localparam I2C_HIGHADDR = 32'h8900-1;
+
 ///
 
 wire I2C_CLK, I2C_CLK_PRE;
 clock_divider  #( .DIVISOR(10000) ) i2c_clkdev ( .CLK(BUS_CLK), .RESET(BUS_RST), .CE(), .CLOCK(I2C_CLK_PRE) );
 BUFG BUFG_I2C (  .O(I2C_CLK),  .I(I2C_CLK_PRE) );
 
-i2c 
-#( 
-    .BASEADDR(I2C_BASEADDR), 
+i2c
+#(
+    .BASEADDR(I2C_BASEADDR),
     .HIGHADDR(I2C_HIGHADDR),
     .ABUSWIDTH(32),
-    .MEM_BYTES(8) 
+    .MEM_BYTES(8)
 )  i_i2c
 (
     .BUS_CLK(BUS_CLK),
@@ -366,8 +366,8 @@ begin
 end
 assign TRIGGER_ACKNOWLEDGE_FLAG = CMD_READY & ~CMD_READY_FF;
 
-cmd_seq 
-#( 
+cmd_seq
+#(
     .BASEADDR(CMD_BASEADDR),
     .HIGHADDR(CMD_HIGHADDR),
     .ABUSWIDTH(32),
@@ -379,16 +379,16 @@ cmd_seq
     .BUS_DATA(BUS_DATA[7:0]),
     .BUS_RD(BUS_RD),
     .BUS_WR(BUS_WR),
-    
+
     .CMD_CLK_OUT(CMD_CLK),
     .CMD_CLK_IN(CLK40),
-    
+
     .CMD_EXT_START_FLAG(TRIGGER_ACCEPTED_FLAG),
     .CMD_EXT_START_ENABLE(EXT_TRIGGER_ENABLE),
     .CMD_DATA(CMD_DATA),
     .CMD_READY(CMD_READY),
     .CMD_START_FLAG(CMD_START_FLAG)
-    
+
 );
 
 wire TDC_FIFO_READ;
@@ -428,7 +428,7 @@ tdc_s3 #(
 
     .ARM_TDC(CMD_START_FLAG), // arm TDC by sending commands
     .EXT_EN(1'b0),
-    
+
     .TIMESTAMP(TIMESTAMP[15:0])
 );
 
@@ -450,30 +450,32 @@ tlu_controller #(
     .BUS_DATA(BUS_DATA),
     .BUS_RD(BUS_RD),
     .BUS_WR(BUS_WR),
-    
+
     .TRIGGER_CLK(CLK40),
-    
+
     .FIFO_READ(TRIGGER_FIFO_READ),
     .FIFO_EMPTY(TRIGGER_FIFO_EMPTY),
     .FIFO_DATA(TRIGGER_FIFO_DATA),
-    
+
     .FIFO_PREEMPT_REQ(TRIGGER_FIFO_PEEMPT_REQ),
-    
+
     .TRIGGER({6'b0, TDC_OUT, TRIG_OUT}),
     .TRIGGER_VETO({7'b0, FIFO_FULL}),
-    
+
     .EXT_TRIGGER_ENABLE(EXT_TRIGGER_ENABLE),
     .TRIGGER_ACKNOWLEDGE(TRIGGER_ACKNOWLEDGE_FLAG),
     .TRIGGER_ACCEPTED_FLAG(TRIGGER_ACCEPTED_FLAG),
-    
+
+    .TRIGGER_ENABLED(),
+    .TLU_ENABLED(),
     .TLU_TRIGGER(TLU_TRG),
     .TLU_RESET(TLU_RST),
     .TLU_BUSY(TLU_BSY),
     .TLU_CLOCK(TLU_CLK),
-    
+
     .TIMESTAMP(TIMESTAMP)
-);  
-    
+);
+
 wire [3:0] RX_READY, RX_8B10B_DECODER_ERR, RX_FIFO_OVERFLOW_ERR, RX_FIFO_FULL, RX_ENABLED;
 wire [3:0] FE_FIFO_READ;
 wire [3:0] FE_FIFO_EMPTY;
@@ -519,7 +521,7 @@ endgenerate
 wire ARB_READY_OUT, ARB_WRITE_OUT;
 wire [31:0] ARB_DATA_OUT;
 wire [5:0] READ_GRANT;
- 
+
 rrp_arbiter #(
     .WIDTH(6)
 ) i_rrp_arbiter (
@@ -537,12 +539,12 @@ rrp_arbiter #(
 assign FE_FIFO_READ = READ_GRANT[5:2];
 assign TDC_FIFO_READ = READ_GRANT[1];
 assign TRIGGER_FIFO_READ = READ_GRANT[0];
-    
+
 wire FIFO_EMPTY, FIFO_FULL;
 fifo_32_to_8 #(.DEPTH(64*1024)) i_data_fifo (
     .RST(BUS_RST),
     .CLK(BUS_CLK),
-    
+
     .WRITE(ARB_WRITE_OUT),
     .READ(TCP_TX_WR),
     .DATA_IN(ARB_DATA_OUT),
@@ -555,8 +557,8 @@ assign TCP_TX_WR = !TCP_TX_FULL && !FIFO_EMPTY;
 
 //assign GPIO_LED = RX_READY;
 
-wire CE_1HZ; 
-wire CLK_1HZ; 
+wire CE_1HZ;
+wire CLK_1HZ;
 clock_divider #(
     .DIVISOR(40000000)
 ) i_clock_divisor_40MHz_to_1Hz (
