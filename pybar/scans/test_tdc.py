@@ -28,6 +28,7 @@ class TdcTest(Fei4RunBase):
     '''
     _default_run_conf = {
         "broadcast_commands": True,
+        "threaded_scan": False,
         "n_pulses": 10000,
         "pulse_period": '1E-6',  # s
         "test_tdc_values": False,

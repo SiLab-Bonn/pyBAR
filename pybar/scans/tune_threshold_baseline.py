@@ -23,6 +23,8 @@ class ThresholdBaselineTuning(Fei4RunBase):
     NOTE: To increase the TDAC range, decrease TdacVbp.
     '''
     _default_run_conf = {
+        "broadcast_commands": False,
+        "threaded_scan": False,
         "occupancy_limit": 1 * 10 ** (-5),  # occupancy limit, when reached the TDAC will be decreased (increasing threshold). 0 will mask any pixel with occupancy greater than zero
         "scan_parameters": [('Vthin_AltFine', (120, None)), ('TDAC_step', None), ('relaxation', 0)],  # the Vthin_AltFine range, number of steps (repetition at constant Vthin_AltFine)
         "increase_threshold": 5,  # increasing the global threshold (Vthin_AltFine) after tuning

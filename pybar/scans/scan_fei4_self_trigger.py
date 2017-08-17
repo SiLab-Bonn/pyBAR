@@ -17,6 +17,7 @@ class Fei4SelfTriggerScan(Fei4RunBase):
     '''
     _default_run_conf = {
         "broadcast_commands": True,
+        "threaded_scan": False,
         "trig_count": 4,  # FE-I4 trigger count, number of consecutive BCs, 0 means 16, from 0 to 15
         "trigger_latency": 239,  # FE-I4 trigger latency, in BCs, external scintillator / TLU / HitOR: 232, USBpix self-trigger: 220, from 0 to 255
         "col_span": [1, 80],  # defining active column interval, 2-tuple, from 1 to 80

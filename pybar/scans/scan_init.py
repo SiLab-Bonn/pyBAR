@@ -8,7 +8,8 @@ class InitScan(Fei4RunBase):
     '''Init scan
     '''
     _default_run_conf = {
-        "broadcast_commands": False
+        "broadcast_commands": False,
+        "threaded_scan": False
     }
 
     def configure(self):

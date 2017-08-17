@@ -22,6 +22,7 @@ class TluTuning(Fei4RunBase):
     '''
     _default_run_conf = {
         "broadcast_commands": True,
+        "threaded_scan": False,
         "scan_parameters": [('TRIGGER_DATA_DELAY', range(0, 2**4))],  # TRIGGER_DATA_DELAY has 4-bit
         "sleep": 2  # Time to record the trigger words per delay setting in seconds
     }

@@ -13,6 +13,8 @@ class StuckPixelScan(DigitalScan):
     '''Stuck pixel scan to detect and disable stuck pixels (Hitbus/HitOR always high).
     '''
     _default_run_conf = {
+        "broadcast_commands": False,
+        "threaded_scan": False,
         "mask_steps": 3,  # mask steps
         "n_injections": 100,  # number of injections
         "use_enable_mask": False,  # if True, use Enable mask during scan, if False, all pixels will be enabled

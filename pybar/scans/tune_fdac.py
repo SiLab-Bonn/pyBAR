@@ -22,6 +22,8 @@ class FdacTuning(Fei4RunBase):
     Use pybar.scans.tune_fei4 for full FE-I4 tuning.
     '''
     _default_run_conf = {
+        "broadcast_commands": False,
+        "threaded_scan": False,
         "scan_parameters": [('FDAC', None)],
         "target_charge": 280,
         "target_tot": 5,
