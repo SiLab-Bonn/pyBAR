@@ -203,7 +203,7 @@ class RunBase(object):
     def _init_run_conf(self, run_conf):
         attribute_names = [key for key in self._default_run_conf.keys() if (key in self.__dict__ or (hasattr(self.__class__, key) and isinstance(getattr(self.__class__, key), property)))]
         if attribute_names:
-            raise RuntimeError('Conflicting attribute(s) used in run conf: %s' % ', '.join(attribute_names))
+            raise RuntimeError('Attribute names already in use. Rename the following parameters in run conf: %s' % ', '.join(attribute_names))
         sc = namedtuple('run_configuration', field_names=self._default_run_conf.keys())
         default_run_conf = sc(**self._default_run_conf)
         if run_conf:

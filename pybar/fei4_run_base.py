@@ -95,7 +95,6 @@ class Fei4RunBase(RunBase):
         self._scan_parameters = {}  # Store module specific scan parameters
         self._module_attr = {}  # Store module specific scan attributes
         self._module_dut = {}  # Store module specific DUT handle
-        self._parse_conf()
         self._current_module_handle = None  # setting "None" module as default module
         self.raw_data_file = None  # Handle for the raw data files
         self._scan_threads = []  # list of currently running scan threads
@@ -104,31 +103,11 @@ class Fei4RunBase(RunBase):
         self._readout_event = Event()
         self._readout_event.clear()
         self.fifo_readout = None  # FIFO readout instance
+        self._parse_module_cfgs()
+        self._init_default_run_conf()
         # after initialized is set to True, all new attributes are belonging to selected mudule
         # by default the "None" module is selected (current_module_handle is None)
         self._initialized = True
-
-    def _init_run_conf(self, run_conf):
-        # set up default run conf parameters
-        self._default_run_conf.setdefault('comment', '{}'.format(self.__class__.__name__))
-        self._default_run_conf.setdefault('reset_rx_on_error', False)
-        # Enabling broadcast commands will significantly improve the speed of scans.
-        # Only those scans can be accelerated which commands can be broadcastet and
-        # which commands are not individual for each module.
-        self._default_run_conf.setdefault('broadcast_commands', False)
-        # Enabling threaded scan improves the speed of scans
-        # and require multiple TX for sending commands.
-        # If only a single TX is available, no speed improvement is gained.
-        self._default_run_conf.setdefault('threaded_scan', False)
-
-        super(Fei4RunBase, self)._init_run_conf(run_conf=run_conf)
-        # check for invalid run conf parameters
-        if self._run_conf['broadcast_commands'] and not self._default_run_conf['broadcast_commands']:
-            raise RuntimeError('Changing "broadcast_commands" parameter from False (default) to True.')
-        if 'modules' in self._conf and self._conf['modules']:
-            for module_id, module_cfg in self._conf['modules'].items():
-                if module_id in self._modules and self.__class__.__name__ in self._conf["modules"][module_id] and self._run_conf['broadcast_commands']:
-                    raise RuntimeError('Module "%s" has specific run configuration for "%s" and "broadcast_commands" parameter is set to True.' % (module_id, self.__class__.__name__))
 
     @property
     def is_initialized(self):
@@ -176,19 +155,7 @@ class Fei4RunBase(RunBase):
     def dut(self):
         return self._module_dut[self.current_module_handle]
 
-    def _init_run_conf(self, run_conf):
-        # same implementation as in base class, but ignore "scan_parameters" property
-        attribute_names = [key for key in self._default_run_conf.keys() if (key != "scan_parameters" and (key in self.__dict__ or (hasattr(self.__class__, key) and isinstance(getattr(self.__class__, key), property))))]
-        if attribute_names:
-            raise RuntimeError('Conflicting attribute(s) used in run conf: %s' % ', '.join(attribute_names))
-        sc = namedtuple('run_configuration', field_names=self._default_run_conf.keys())
-        default_run_conf = sc(**self._default_run_conf)
-        if run_conf:
-            self._run_conf = default_run_conf._replace(**run_conf)._asdict()
-        else:
-            self._run_conf = default_run_conf._asdict()
-
-    def _parse_conf(self):
+    def _parse_module_cfgs(self):
         ''' Extracts the configuration of the modules.
         '''
         # Adding here default run config parameters.
@@ -231,6 +198,39 @@ class Fei4RunBase(RunBase):
                 self._modules[module_id] = [module_id]
         else:
             raise ValueError("No module configuration specified")
+
+    def _init_default_run_conf(self):
+        # set up default run conf parameters
+        self._default_run_conf.setdefault('comment', '{}'.format(self.__class__.__name__))
+        self._default_run_conf.setdefault('reset_rx_on_error', False)
+        # Enabling broadcast commands will significantly improve the speed of scans.
+        # Only those scans can be accelerated which commands can be broadcastet and
+        # which commands are not individual for each module.
+        self._default_run_conf.setdefault('broadcast_commands', False)
+        # Enabling threaded scan improves the speed of scans
+        # and require multiple TX for sending commands.
+        # If only a single TX is available, no speed improvement is gained.
+        self._default_run_conf.setdefault('threaded_scan', False)
+
+    def _init_run_conf(self, run_conf):
+        # same implementation as in base class, but ignore "scan_parameters" property
+        attribute_names = [key for key in self._default_run_conf.keys() if (key != "scan_parameters" and (key in self.__dict__ or (hasattr(self.__class__, key) and isinstance(getattr(self.__class__, key), property))))]
+        if attribute_names:
+            raise RuntimeError('Attribute names already in use. Rename the following parameters in run conf: %s' % ', '.join(attribute_names))
+        sc = namedtuple('run_configuration', field_names=self._default_run_conf.keys())
+        default_run_conf = sc(**self._default_run_conf)
+        if run_conf:
+            self._run_conf = default_run_conf._replace(**run_conf)._asdict()
+        else:
+            self._run_conf = default_run_conf._asdict()
+
+        # check for invalid run conf parameters
+        if self._run_conf['broadcast_commands'] and not self._default_run_conf['broadcast_commands']:
+            raise RuntimeError('Changing "broadcast_commands" parameter from False (default) to True.')
+        if 'modules' in self._conf and self._conf['modules']:
+            for module_id, module_cfg in self._conf['modules'].items():
+                if module_id in self._modules and self.__class__.__name__ in self._conf["modules"][module_id] and self._run_conf['broadcast_commands']:
+                    raise RuntimeError('Module "%s" has specific run configuration for "%s" and "broadcast_commands" parameter is set to True.' % (module_id, self.__class__.__name__))
 
     def _set_default_cfg(self):
         ''' Sets the default parameters if they are not specified.
@@ -979,7 +979,7 @@ class Fei4RunBase(RunBase):
         '''
         if self.is_initialized and name not in self.__dict__:
             if name in self._module_run_conf[self.current_module_handle]:
-                raise RuntimeError('Attribute name "%s" used in run conf.' % name)
+                raise RuntimeError('"%s" (current module handle "%s") cannot use attribute "%s" because it is already used in run conf.' % (self.__class__.__name__, self.current_module_handle, name))
             self._module_attr[self.current_module_handle][name] = value
         else:
             super(Fei4RunBase, self).__setattr__(name, value)
@@ -998,7 +998,7 @@ class Fei4RunBase(RunBase):
                     return super(Fei4RunBase, self).__getattr__(name)
                 except AttributeError:
                     if self.is_initialized:
-                        raise AttributeError("'%s' (current module handle '%s') has no attribute '%s'" % (self.__class__.__name__, self.current_module_handle, name))
+                        raise AttributeError('"%s" (current module handle "%s") has no attribute "%s"' % (self.__class__.__name__, self.current_module_handle, name))
                     else:
                         raise
 
