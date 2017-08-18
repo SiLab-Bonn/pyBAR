@@ -103,9 +103,9 @@ set_property KEEPER true [get_ports RJ45_HITOR_P[5]]
 set_property PACKAGE_PIN A10 [get_ports RJ45_HITOR_N[6]]
 set_property IOSTANDARD LVDS_25 [get_ports RJ45_HITOR*]
 set_property KEEPER true [get_ports RJ45_HITOR_P[6]]
-#set_property PACKAGE_PIN E16 [get_ports RJ45_HITOR_N[7]]
-#set_property IOSTANDARD LVDS_25 [get_ports RJ45_HITOR*]
-#set_property KEEPER true [get_ports RJ45_HITOR_P[7]]
+set_property PACKAGE_PIN E16 [get_ports RJ45_HITOR_N[7]]
+set_property IOSTANDARD LVDS_25 [get_ports RJ45_HITOR*]
+set_property KEEPER true [get_ports RJ45_HITOR_P[7]]
 
 #PORT CMD
 set_property PACKAGE_PIN D8 [get_ports CMD_DATA_N[0]]

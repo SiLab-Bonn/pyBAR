@@ -99,6 +99,11 @@ hw_drivers:
     interface : ETH
     base_addr : 0xa600
 
+  - name      : TDC7
+    type      : tdc_s3
+    interface : ETH
+    base_addr : 0xa700
+
   - name      : SITCP_FIFO
     type      : sitcp_fifo
     interface : ETH

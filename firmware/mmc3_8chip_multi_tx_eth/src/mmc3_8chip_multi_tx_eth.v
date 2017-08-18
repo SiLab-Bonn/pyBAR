@@ -438,7 +438,7 @@ generate
         .HIGHADDR(CMD_HIGHADDR+32'h8000*h),
         .ABUSWIDTH(32),
         .OUTPUTS(1)
-    ) icmd (
+    ) i_cmd_seq (
         .BUS_CLK(BUS_CLK),
         .BUS_RST(BUS_RST),
         .BUS_ADD(BUS_ADD),
@@ -572,7 +572,7 @@ tlu_controller #(
     .DIVISOR(8),
     .ABUSWIDTH(32),
     .WIDTH(9)
-) i_tlu_controller (
+) i_tlu_controller_0 (
     .BUS_CLK(BUS_CLK),
     .BUS_RST(BUS_RST),
     .BUS_ADD(BUS_ADD),
@@ -768,7 +768,7 @@ tdc_s3 #(
     .DATA_IDENTIFIER(4'b0001),
     .FAST_TDC(1),
     .FAST_TRIGGER(0)
-) i_tdc (
+) i_tdc_7 (
     .CLK320(CLK320),
     .CLK160(CLK160),
     .DV_CLK(CLK40),
@@ -798,7 +798,7 @@ IBUFDS #(
     .DIFF_TERM("TRUE"),
     .IBUF_LOW_PWR("FALSE"),
     .IOSTANDARD("LVDS_25")
-) IBUFDS_inst_RJ45_HITOR (
+) IBUFDS_inst_RJ45_HITOR_7 (
     .O(RJ45_HITOR[7]),
     .I(RJ45_HITOR_P[7]),
     .IB(RJ45_HITOR_N[7])
