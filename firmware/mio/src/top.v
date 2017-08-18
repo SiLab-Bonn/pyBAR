@@ -205,7 +205,7 @@ wire TRIGGER_ENABLED, TLU_ENABLED;
 
 // LEMO Tx
 assign TX[0] = TLU_CLOCK;
-assign TX[1] = (TRIGGER_ENABLED && TLU_ENABLED) ? TLU_BUSY : ~CMD_READY;
+assign TX[1] = TLU_ENABLED ? TLU_BUSY : ~CMD_READY;
 assign TX[2] = RJ45_TRIGGER;
 
 // ------- RESRT/CLOCK  ------- //
