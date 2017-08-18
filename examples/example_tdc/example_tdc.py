@@ -17,7 +17,7 @@ from pybar.scans.scan_analog import AnalogScan
 from pybar.scans.tune_fei4 import Fei4Tuning
 from pybar.scans.tune_stuck_pixel import StuckPixelScan
 from pybar.scans.scan_threshold_fast import FastThresholdScan
-from pybar.scans.tune_noise_occupancy import NoiseOccupancyScan
+from pybar.scans.tune_noise_occupancy import NoiseOccupancyTuning
 from pybar.scans.calibrate_plsr_dac import PlsrDacScan
 from pybar.scans.calibrate_hit_or import HitOrCalibration
 from pybar.scans.scan_ext_trigger import ExtTriggerScan
@@ -135,7 +135,7 @@ if __name__ == "__main__":
     runmngr.run_run(run=IVScan, run_conf={"voltages": np.arange(-1, max_iv_voltage - 1, -1), "max_voltage": max_iv_voltage, "bias_voltage": bias_voltage, "minimum_delay": 0.5})
 
     # FE check and complete tuning
-    runmngr.run_run(run=RegisterTest) 
+    runmngr.run_run(run=RegisterTest)
     runmngr.run_run(run=DigitalScan)  # digital scan with std. settings
 
     if runmngr.current_run.register.flavor == 'fei4a':  # FEI4 A related config changes, Deactivate noisy edge columns if FE-I4A
@@ -148,7 +148,7 @@ if __name__ == "__main__":
     runmngr.run_run(run=AnalogScan, run_conf={'scan_parameters': [('PlsrDAC', target_charge)]})
     runmngr.run_run(run=FastThresholdScan)
     runmngr.run_run(run=StuckPixelScan)
-    runmngr.run_run(run=NoiseOccupancyScan, run_conf={'occupancy_limit': 1000, 'n_triggers': 10000000})  # high occupancy limit to work with strong Sr-90 source
+    runmngr.run_run(run=NoiseOccupancyTuning, run_conf={'occupancy_limit': 1000, 'n_triggers': 10000000})  # high occupancy limit to work with strong Sr-90 source
     runmngr.run_run(run=PlsrDacScan, run_conf={"colpr_address": range(25, 39)})
 
     # TDC calibration
@@ -163,7 +163,7 @@ if __name__ == "__main__":
 
     # Scintillator trigger source scan
     imon_mask = tdc_pixel ^ 1  # imon mask = not enable mask
-    runmngr.current_run.register.set_pixel_register_value("Imon", imon_mask)  # remember: for the selection later index 0 == colum/row 1 
+    runmngr.current_run.register.set_pixel_register_value("Imon", imon_mask)  # remember: for the selection later index 0 == colum/row 1
     runmngr.run_run(run=ExtTriggerScan, run_conf={'comment': 'Strong Sr-90 source',
                                                   'col_span': col_span,
                                                   'row_span': row_span,

@@ -11,7 +11,7 @@ from pybar.run_manager import RunManager
 from pybar.analysis.plotting.plotting import plot_occupancy, plot_fancy_occupancy
 
 
-class NoiseOccupancyScan(Fei4RunBase):
+class NoiseOccupancyTuning(Fei4RunBase):
     '''Noise occupancy scan detecting and masking noisy pixels.
 
     Note
@@ -141,4 +141,4 @@ class NoiseOccupancyScan(Fei4RunBase):
                 plot_occupancy(self.register.get_pixel_register_value(mask).T, title='%s Mask' % mask_name, z_max=1, filename=analyze_raw_data.output_pdf)
 
 if __name__ == "__main__":
-    RunManager('../configuration.yaml').run_run(NoiseOccupancyScan)
+    RunManager('../configuration.yaml').run_run(NoiseOccupancyTuning)
