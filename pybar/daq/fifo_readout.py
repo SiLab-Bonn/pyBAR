@@ -332,31 +332,31 @@ class FifoReadout(object):
             return map(lambda channel: True if channel.ENABLE_RX else False, self.dut.get_modules('fei4_rx'))
 
     def get_rx_sync_status(self, channels=None):
-        if channels:
-            return map(lambda channel: True if self.dut[channel].READY else False, channels)
-        else:
+        if channels is None:
             return map(lambda channel: True if channel.READY else False, self.dut.get_modules('fei4_rx'))
+        else:
+            return map(lambda channel: True if self.dut[channel].READY else False, channels)
 
     def get_rx_8b10b_error_count(self, channels=None):
-        if channels:
-            return map(lambda channel: self.dut[channel].DECODER_ERROR_COUNTER, channels)
-        else:
+        if channels is None:
             return map(lambda channel: channel.DECODER_ERROR_COUNTER, self.dut.get_modules('fei4_rx'))
+        else:
+            return map(lambda channel: self.dut[channel].DECODER_ERROR_COUNTER, channels)
 
     def get_rx_fifo_discard_count(self, channels=None):
-        if channels:
-            return map(lambda channel: self.dut[channel].LOST_DATA_COUNTER, channels)
-        else:
+        if channels is None:
             return map(lambda channel: channel.LOST_DATA_COUNTER, self.dut.get_modules('fei4_rx'))
+        else:
+            return map(lambda channel: self.dut[channel].LOST_DATA_COUNTER, channels)
 
     def get_m26_rx_enable_status(self, channels=None):
-        if channels:
-            return map(lambda channel: True if self.dut[channel].EN else False, channels)
-        else:
+        if channels is None:
             return map(lambda channel: True if channel.EN else False, self.dut.get_modules('m26_rx'))
+        else:
+            return map(lambda channel: True if self.dut[channel].EN else False, channels)
 
     def get_m26_rx_fifo_discard_count(self, channels=None):
-        if channels:
-            return map(lambda channel: self.dut[channel].LOST_COUNT, channels)
-        else:
+        if channels is None:
             return map(lambda channel: channel.LOST_COUNT, self.dut.get_modules('m26_rx'))
+        else:
+            return map(lambda channel: self.dut[channel].LOST_COUNT, channels)
