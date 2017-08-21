@@ -194,12 +194,12 @@ class Fei4RunBase(RunBase):
                     raise ValueError('No parameter "rx_channel" defined for module "%s".' % module_id)
                 if "tx_channel" not in module_cfg or module_cfg["tx_channel"] is None:
                     raise ValueError('No parameter "tx_channel" defined for module "%s".' % module_id)
-                if "fe_flavor" not in module_cfg or module_cfg["fe_flavor"] is None:
-                    raise ValueError('No parameter "fe_flavor" defined for module "%s".' % module_id)
+                if "flavor" not in module_cfg or module_cfg["flavor"] is None:
+                    raise ValueError('No parameter "flavor" defined for module "%s".' % module_id)
                 if "chip_address" not in module_cfg:
                     raise ValueError('No parameter "chip_address" defined for module "%s".' % module_id)
                 module_cfg.setdefault("tdc_channel", None)
-                module_cfg.setdefault("fe_configuration", None)  # string or number, if None, using the last valid configuration
+                module_cfg.setdefault("configuration", None)  # string or number, if None, using the last valid configuration
                 module_cfg.setdefault("send_data", None)  # address string of PUB socket
                 # Save config to dict.
                 self._module_cfgs[module_id] = module_cfg
@@ -245,7 +245,7 @@ class Fei4RunBase(RunBase):
         '''
         # adding special conf for accessing all DUT drivers
         self._module_cfgs[None] = {
-            'fe_flavor': None,
+            'flavor': None,
             'chip_address': None,
             'FIFO': list(set([self._module_cfgs[module_id]['FIFO'] for module_id in self._modules])),
             'RX': list(set([self._module_cfgs[module_id]['RX'] for module_id in self._modules])),
@@ -255,14 +255,14 @@ class Fei4RunBase(RunBase):
             'TDC': list(set([self._module_cfgs[module_id]['TDC'] for module_id in self._modules])),
             'tdc_channel': list(set([self._module_cfgs[module_id]['tdc_channel'] for module_id in self._modules])),
             'TLU' : list(set([self._module_cfgs[module_id]['TLU'] for module_id in self._modules])),
-            'fe_configuration' : None,
+            'configuration' : None,
             'send_data' : None}
 
         tx_groups = groupby_dict({key: value for (key, value) in self._module_cfgs.items() if key in self._modules}, "TX")
         for tx, module_group in tx_groups.items():
-            fe_flavors = list(set([module_cfg['fe_flavor'] for module_id, module_cfg in self._module_cfgs.items() if module_id in module_group]))
-            if len(fe_flavors) != 1:
-                raise ValueError("Parameter 'fe_flavor' must be the same for module group TX=%s." % tx)
+            flavors = list(set([module_cfg['flavor'] for module_id, module_cfg in self._module_cfgs.items() if module_id in module_group]))
+            if len(flavors) != 1:
+                raise ValueError("Parameter 'flavor' must be the same for module group TX=%s." % tx)
 
             chip_addresses = list(set([module_cfg['chip_address'] for module_id, module_cfg in self._module_cfgs.items() if module_id in module_group]))
             if len(module_group) != len(chip_addresses) or (len(module_group) != 1 and None in chip_addresses):
@@ -270,7 +270,7 @@ class Fei4RunBase(RunBase):
 
             # Adding broadcast config for parallel mode.
             self._module_cfgs["module_group_TX=" + tx] = {
-                'fe_flavor': fe_flavors[0],
+                'flavor': flavors[0],
                 'chip_address': None,  # broadcast
                 'FIFO': list(set([module_cfg['FIFO'] for module_id, module_cfg in self._module_cfgs.items() if module_id in module_group])),
                 'RX': list(set([module_cfg['RX'] for module_id, module_cfg in self._module_cfgs.items() if module_id in module_group])),
@@ -280,7 +280,7 @@ class Fei4RunBase(RunBase):
                 'TDC': list(set([module_cfg['TDC'] for module_id, module_cfg in self._module_cfgs.items() if module_id in module_group])),
                 'tdc_channel': list(set([module_cfg['tdc_channel'] for module_id, module_cfg in self._module_cfgs.items() if module_id in module_group])),
                 'TLU' : list(set([module_cfg['TLU'] for module_id, module_cfg in self._module_cfgs.items() if module_id in module_group])),
-                'fe_configuration' : None,
+                'configuration' : None,
                 'send_data' : None}
             self._tx_module_groups["module_group_TX=" + tx] = module_group
 
@@ -290,7 +290,7 @@ class Fei4RunBase(RunBase):
         for fifo, module_group in fifo_groups.items():
             # Adding broadcast config for parallel mode.
             self._module_cfgs["module_group_FIFO=" + fifo] = {
-                'fe_flavor': None,
+                'flavor': None,
                 'chip_address': None,
                 'FIFO': fifo,
                 'RX': list(set([module_cfg['RX'] for module_id, module_cfg in self._module_cfgs.items() if module_id in module_group])),
@@ -300,7 +300,7 @@ class Fei4RunBase(RunBase):
                 'TDC': list(set([module_cfg['TDC'] for module_id, module_cfg in self._module_cfgs.items() if module_id in module_group])),
                 'tdc_channel': list(set([module_cfg['tdc_channel'] for module_id, module_cfg in self._module_cfgs.items() if module_id in module_group])),
                 'TLU' : list(set([module_cfg['TLU'] for module_id, module_cfg in self._module_cfgs.items() if module_id in module_group])),
-                'fe_configuration' : None,
+                'configuration' : None,
                 'send_data' : None}
             self._fifo_module_groups["module_group_FIFO=" + fifo] = module_group
 
@@ -493,7 +493,7 @@ class Fei4RunBase(RunBase):
                     last_configuration = self.get_configuration(module_id=module_id)
                 else:
                     last_configuration = None
-                if (('fe_configuration' not in module_cfg or module_cfg['fe_configuration'] is None) and last_configuration is None) or (isinstance(module_cfg['fe_configuration'], (int, long)) and module_cfg['fe_configuration'] <= 0):
+                if (('configuration' not in module_cfg or module_cfg['configuration'] is None) and last_configuration is None) or (isinstance(module_cfg['configuration'], (int, long)) and module_cfg['configuration'] <= 0):
                     if 'chip_address' in module_cfg:
                         if module_cfg['chip_address'] is None:
                             chip_address = 0
@@ -503,30 +503,30 @@ class Fei4RunBase(RunBase):
                             broadcast = False
                     else:
                         raise ValueError('Parameter "chip_address" not specified for module "%s".' % module_id)
-                    if 'fe_flavor' in module_cfg and module_cfg['fe_flavor']:
-                        module_cfg['fe_configuration'] = FEI4Register(fe_type=module_cfg['fe_flavor'], chip_address=chip_address, broadcast=broadcast)
+                    if 'flavor' in module_cfg and module_cfg['flavor']:
+                        module_cfg['configuration'] = FEI4Register(fe_type=module_cfg['flavor'], chip_address=chip_address, broadcast=broadcast)
                     else:
-                        raise ValueError('Parameter "fe_flavor" not specified for module "%s".' % module_id)
+                        raise ValueError('Parameter "flavor" not specified for module "%s".' % module_id)
                 # use existing config
-                elif not module_cfg['fe_configuration'] and last_configuration:
-                    module_cfg['fe_configuration'] = FEI4Register(configuration_file=last_configuration)
+                elif not module_cfg['configuration'] and last_configuration:
+                    module_cfg['configuration'] = FEI4Register(configuration_file=last_configuration)
                 # path string
-                elif isinstance(module_cfg['fe_configuration'], basestring):
-                    if os.path.isabs(module_cfg['fe_configuration']):  # absolute path
-                        module_cfg['fe_configuration'] = FEI4Register(configuration_file=module_cfg['fe_configuration'])
+                elif isinstance(module_cfg['configuration'], basestring):
+                    if os.path.isabs(module_cfg['configuration']):  # absolute path
+                        module_cfg['configuration'] = FEI4Register(configuration_file=module_cfg['configuration'])
                     else:  # relative path
-                        module_cfg['fe_configuration'] = FEI4Register(configuration_file=os.path.join(module_cfg['working_dir'], module_cfg['fe_configuration']))
+                        module_cfg['configuration'] = FEI4Register(configuration_file=os.path.join(module_cfg['working_dir'], module_cfg['configuration']))
                 # run number
-                elif isinstance(module_cfg['fe_configuration'], (int, long)) and module_cfg['fe_configuration'] > 0:
-                    module_cfg['fe_configuration'] = FEI4Register(configuration_file=self.get_configuration(module_id=module_id,
-                                                                                                            run_number=module_cfg['fe_configuration']))
-                # assume fe_configuration already initialized
-                elif not isinstance(module_cfg['fe_configuration'], FEI4Register):
-                    raise ValueError('Found no valid value for parameter "fe_configuration" for module "%s".' % module_id)
+                elif isinstance(module_cfg['configuration'], (int, long)) and module_cfg['configuration'] > 0:
+                    module_cfg['configuration'] = FEI4Register(configuration_file=self.get_configuration(module_id=module_id,
+                                                                                                            run_number=module_cfg['configuration']))
+                # assume configuration already initialized
+                elif not isinstance(module_cfg['configuration'], FEI4Register):
+                    raise ValueError('Found no valid value for parameter "configuration" for module "%s".' % module_id)
 
                 # init register utils
-                self._registers[module_id] = self._module_cfgs[module_id]['fe_configuration']
-                self._register_utils[module_id] = FEI4RegisterUtils(self._module_dut[module_id], self._module_cfgs[module_id]['fe_configuration'])
+                self._registers[module_id] = self._module_cfgs[module_id]['configuration']
+                self._register_utils[module_id] = FEI4RegisterUtils(self._module_dut[module_id], self._module_cfgs[module_id]['configuration'])
 
                 if module_id in self._modules:
                     # Create module data path for real modules

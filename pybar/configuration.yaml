@@ -8,8 +8,8 @@ working_dir : data # The name of the output data folder.
 
 modules :
     module_0 :
-        fe_configuration : # FE configuration file, text (.cfg) or HDF5 (.h5) file. If no value is given, the latest valid configuration (run status 'FINISHED') will be taken. If a number is given, the configuration from the run with the specified number will be taken.
-        fe_flavor : fei4b # FEI4 flavor/type for initial configuration. Valid values are: 'fei4a', 'fei4b'.
+        configuration : # FE configuration file, text (.cfg) or HDF5 (.h5) file. If no value is given, the latest valid configuration (run status 'FINISHED') will be taken. If a number is given, the configuration from the run with the specified number will be taken.
+        flavor : fei4b # FEI4 flavor/type for initial configuration. Valid values are: 'fei4a', 'fei4b'.
         chip_address : # Chip Address for initial configuration. if no value is given, the broadcast bit will be set.
         FIFO : SRAM_FIFO # As implemented in the firmware.
         RX : CH4 # As implemented in the firmware.
