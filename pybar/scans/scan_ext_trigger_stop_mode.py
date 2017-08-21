@@ -40,7 +40,7 @@ class StopModeExtTriggerScan(Fei4RunBase):
         "trigger_latency": 5,  # FE global register Trig_Lat. The lower the value the longer the hit data will be stored in data buffer
         "trigger_delay": 192,  # delay between trigger and stop mode command
         "readout_delay": 2000,  # delay after trigger to record hits, the lower the faster the readout; total readout time per track is about (800 + (1300 + readout_delay) * bcid_window) * 25 ns
-        "trig_count": 100,  # Number of consecurive time slices to be read, from 1 to 256
+        "trig_count": 100,  # Number of consecurive time slices to be read, from 1 to 256; the number is read from raw data file during analysis.
         "col_span": [1, 80],  # defining active column interval, 2-tuple, from 1 to 80
         "row_span": [1, 336],  # defining active row interval, 2-tuple, from 1 to 336
         "overwrite_enable_mask": False,  # if True, use col_span and row_span to define an active region regardless of the Enable pixel register. If False, use col_span and row_span to define active region by also taking Enable pixel register into account.
@@ -157,13 +157,16 @@ class StopModeExtTriggerScan(Fei4RunBase):
     def analyze(self):
         with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
             analyze_raw_data.create_hit_table = True
-            analyze_raw_data.trig_count = self.trig_count  # set number of BCID to overwrite the number deduced from the raw data file
             analyze_raw_data.create_source_scan_hist = True
             analyze_raw_data.trigger_data_format = 1  # time stamp only
             analyze_raw_data.set_stop_mode = True
             analyze_raw_data.align_at_trigger = True
+            if self.enable_tdc:
+                analyze_raw_data.create_tdc_counter_hist = True  # histogram all TDC words
+                analyze_raw_data.create_tdc_hist = True  # histogram the hit TDC information
+                analyze_raw_data.align_at_tdc = False  # align events at the TDC word
             analyze_raw_data.interpreter.set_warning_output(False)
-            analyze_raw_data.interpret_word_table(use_settings_from_file=False)
+            analyze_raw_data.interpret_word_table()
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms()
 
@@ -171,8 +174,13 @@ class StopModeExtTriggerScan(Fei4RunBase):
         super(StopModeExtTriggerScan, self).start_readout(*args, **kwargs)
         self.connect_cancel(["stop"])
         self.dut['TLU']['TRIGGER_COUNTER'] = 0
-        self.dut['TLU']['MAX_TRIGGERS'] = self.max_triggers
+        if self.max_triggers:
+            self.dut['TLU']['MAX_TRIGGERS'] = self.max_triggers
+        else:
+            self.dut['TLU']['MAX_TRIGGERS'] = 0  # infinity triggers
         self.dut['TX']['EN_EXT_TRIGGER'] = True
+        with self.synchronized():
+            self.dut['TLU']['TRIGGER_ENABLE'] = True
 
         def timeout():
             try:
@@ -187,6 +195,8 @@ class StopModeExtTriggerScan(Fei4RunBase):
 
     def stop_readout(self, timeout=10.0):
         self.scan_timeout_timer.cancel()
+        with self.synchronized():
+            self.dut['TLU']['TRIGGER_ENABLE'] = False
         self.dut['TX']['EN_EXT_TRIGGER'] = False
         super(StopModeExtTriggerScan, self).stop_readout(timeout=timeout)
         self.connect_cancel(["abort"])
