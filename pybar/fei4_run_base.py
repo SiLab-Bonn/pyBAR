@@ -836,7 +836,7 @@ class Fei4RunBase(RunBase):
 
     def post_run(self):
         # analyzing data and store register cfg per front end one by one
-        for module_id in self._modules:
+        for module_id in [name for name in self._modules if self._module_cfgs[name]["activate"] is True]:
             if self.abort_run.is_set():
                     break
             with self.access_module(module_id=module_id):
@@ -1045,7 +1045,6 @@ class Fei4RunBase(RunBase):
                 self.dut['TX']['OUTPUT_ENABLE'] = 0
         elif module_id in self._tx_module_groups:
             tx_channels = list(set([1 << module_cfg['tx_channel'] for (name, module_cfg) in self._module_cfgs.items() if (name in self._tx_module_groups[module_id] and module_cfg['activate'] is True)]))
-            print tx_channels
             if tx_channels:
                 self.dut['TX']['OUTPUT_ENABLE'] = reduce(lambda x, y: x | y, tx_channels)
             else:
