@@ -98,10 +98,18 @@ class Fei4RunBase(RunBase):
         self._current_module_handle = None  # setting "None" module as default module
         self.raw_data_file = None  # Handle for the raw data files
         self._scan_threads = []  # list of currently running scan threads
-        self._running_readout_t = []  # list of currently running threads reading out the FIFO
+        self._curr_readout_threads = []  # list of currently running threads awaiting start of FIFO readout
         self._readout_lock = Lock()
-        self._readout_event = Event()
-        self._readout_event.clear()
+        self._starting_readout_event = Event()
+        self._starting_readout_event.clear()
+        self._stopping_readout_event = Event()
+        self._stopping_readout_event.clear()
+        self._curr_sync_threads = []
+        self._sync_lock = Lock()
+        self._enter_sync_event = Event()
+        self._enter_sync_event.clear()
+        self._exit_sync_event = Event()
+        self._exit_sync_event.clear()
         self.fifo_readout = None  # FIFO readout instance
         self._parse_module_cfgs()
         self._init_default_run_conf()
@@ -191,7 +199,7 @@ class Fei4RunBase(RunBase):
                 if "chip_address" not in module_cfg:
                     raise ValueError('No parameter "chip_address" defined for module "%s".' % module_id)
                 module_cfg.setdefault("tdc_channel", None)
-                module_cfg.setdefault("fe_configuration", None)  # string or number, if None, using the last valid configuration 
+                module_cfg.setdefault("fe_configuration", None)  # string or number, if None, using the last valid configuration
                 module_cfg.setdefault("send_data", None)  # address string of PUB socket
                 # Save config to dict.
                 self._module_cfgs[module_id] = module_cfg
@@ -1106,7 +1114,57 @@ class Fei4RunBase(RunBase):
         return self.fifo_readout.read_raw_data_from_fifo(filter_func=filter_func, converter_func=converter_func)
 
     @contextmanager
+    def synchronized(self):
+        ''' Synchronize the execution of a section of code between threads.
+        '''
+        self.enter_sync()
+        try:
+            yield
+            self.exit_sync()
+        finally:
+            # in case something fails, call this on last resort
+            pass
+
+    def enter_sync(self):
+        ''' Waiting for all threads to appear, then continue.
+        '''
+        if self._scan_threads and self.current_module_handle not in [t.name for t in self._scan_threads]:
+            raise RuntimeError('Thread name "%s" is not valid.')
+        if self._scan_threads and self.current_module_handle in self._curr_sync_threads:
+            raise RuntimeError('Thread "%s" is already actively reading FIFO.')
+        with self._sync_lock:
+            self._curr_sync_threads.append(self.current_module_handle)
+        self._enter_sync_event.clear()
+        while not self._enter_sync_event.wait(0.01):
+            if self.abort_run.is_set():
+                break
+            with self._sync_lock:
+                if len(set(self._curr_sync_threads) & set([t.name for t in self._scan_threads if t.is_alive()])) == len(set([t.name for t in self._scan_threads if t.is_alive()])) or not self._scan_threads:
+                    self._enter_sync_event.set()
+
+    def exit_sync(self):
+        ''' Waiting for all threads to appear, then continue.
+        '''
+        if self._scan_threads and self.current_module_handle not in [t.name for t in self._scan_threads]:
+            raise RuntimeError('Thread name "%s" is not valid.')
+        if self._scan_threads and self.current_module_handle not in self._curr_sync_threads:
+            raise RuntimeError('Thread "%s" is not reading FIFO.')
+        with self._sync_lock:
+            self._curr_sync_threads.remove(self.current_module_handle)
+        self._exit_sync_event.clear()
+        while not self._exit_sync_event.wait(0.01):
+            if self.abort_run.is_set():
+                break
+            with self._sync_lock:
+                if len(set(self._curr_sync_threads) & set([t.name for t in self._scan_threads if t.is_alive()])) == 0 or not self._scan_threads:
+                    self._exit_sync_event.set()
+
+    @contextmanager
     def readout(self, *args, **kwargs):
+        ''' Running the FIFO readout while executing other statements.
+
+        Starting and stopping of the FIFO readout is synchronized between the threads.
+        '''
         timeout = kwargs.pop('timeout', 10.0)
         self.start_readout(*args, **kwargs)
         try:
@@ -1121,6 +1179,11 @@ class Fei4RunBase(RunBase):
                         self.fifo_readout.stop(timeout=0.0)
 
     def start_readout(self, *args, **kwargs):
+        ''' Starting the FIFO readout.
+
+        Starting of the FIFO readout is executed only once by a random thread.
+        Starting of the FIFO readout is synchronized between all threads reading out the FIFO.
+        '''
         # Pop parameters for fifo_readout.start
         callback = kwargs.pop('callback', self.handle_data)
         clear_buffer = kwargs.pop('clear_buffer', True)
@@ -1132,23 +1195,18 @@ class Fei4RunBase(RunBase):
         converter_func = kwargs.pop('converter', None)
         if args or kwargs:
             self.set_scan_parameters(*args, **kwargs)
-        if self._scan_threads and current_thread().name not in [t.name for t in self._scan_threads]:
+        if self._scan_threads and self.current_module_handle not in [t.name for t in self._scan_threads]:
             raise RuntimeError('Thread name "%s" is not valid.')
-        if self._scan_threads and current_thread().name in self._running_readout_t:
+        if self._scan_threads and self.current_module_handle in self._curr_readout_threads:
             raise RuntimeError('Thread "%s" is already actively reading FIFO.')
-        if self._scan_threads:
-            with self._readout_lock:
-                self._running_readout_t.append(current_thread().name)
-            self._readout_event.clear()
-        else:
-            with self._readout_lock:
-                self._running_readout_t.append(self.current_module_handle)
-                self._readout_event.clear()
-        while not self._readout_event.wait(0.01):
+        with self._readout_lock:
+            self._curr_readout_threads.append(self.current_module_handle)
+        self._starting_readout_event.clear()
+        while not self._starting_readout_event.wait(0.01):
             if self.abort_run.is_set():
                 break
-            if len(set(self._running_readout_t) & set([t.name for t in self._scan_threads if t.is_alive()])) == len(set([t.name for t in self._scan_threads if t.is_alive()])) or not self._scan_threads:
-                with self._readout_lock:
+            with self._readout_lock:
+                if len(set(self._curr_readout_threads) & set([t.name for t in self._scan_threads if t.is_alive()])) == len(set([t.name for t in self._scan_threads if t.is_alive()])) or not self._scan_threads:
                     if not self.fifo_readout.is_running:
                         # select readout channels only from running threads
                         if self.current_module_handle is None: # FIXME :
@@ -1160,35 +1218,29 @@ class Fei4RunBase(RunBase):
                         else:
                             enabled_fe_channels = []  # do nothing
                         self.fifo_readout.start(reset_fifo=reset_fifo, fill_buffer=fill_buffer, clear_buffer=clear_buffer, callback=callback, errback=errback, no_data_timeout=no_data_timeout, filter_func=filter_func, converter_func=converter_func, enabled_fe_channels=enabled_fe_channels)
-                        self._readout_event.set()
-                    else:
-                        pass
-                    break
+                        self._starting_readout_event.set()
 
     def stop_readout(self, timeout=10.0):
-        if self._scan_threads and current_thread().name not in [t.name for t in self._scan_threads]:
+        ''' Stopping the FIFO readout.
+
+        Stopping of the FIFO readout is executed only once by a random thread.
+        Stopping of the FIFO readout is synchronized between all threads reading out the FIFO.
+        '''
+        if self._scan_threads and self.current_module_handle not in [t.name for t in self._scan_threads]:
             raise RuntimeError('Thread name "%s" is not valid.')
-        if self._scan_threads and current_thread().name not in self._running_readout_t:
+        if self._scan_threads and self.current_module_handle not in self._curr_readout_threads:
             raise RuntimeError('Thread "%s" is not reading FIFO.')
-        if self._scan_threads:
-            with self._readout_lock:
-                self._running_readout_t.remove(current_thread().name)
-            self._readout_event.clear()
-        else:
-            with self._readout_lock:
-                self._running_readout_t.remove(self.current_module_handle)
-            self._readout_event.clear()
-        while not self._readout_event.wait(0.01):
+        with self._readout_lock:
+            self._curr_readout_threads.remove(self.current_module_handle)
+        self._stopping_readout_event.clear()
+        while not self._stopping_readout_event.wait(0.01):
             if self.abort_run.is_set():
                 break
-            if len(set(self._running_readout_t) & set([t.name for t in self._scan_threads if t.is_alive()])) == 0 or not self._scan_threads:
-                with self._readout_lock:
+            with self._readout_lock:
+                if len(set(self._curr_readout_threads) & set([t.name for t in self._scan_threads if t.is_alive()])) == 0 or not self._scan_threads:
                     if self.fifo_readout.is_running:
                         self.fifo_readout.stop(timeout=timeout)
-                        self._readout_event.set()
-                    else:
-                        pass
-                    break
+                        self._stopping_readout_event.set()
 
     def _cleanup(self):  # called in run base after exception handling
         super(Fei4RunBase, self)._cleanup()
