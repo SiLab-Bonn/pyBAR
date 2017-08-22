@@ -49,6 +49,7 @@ class FifoReadout(object):
         self.enabled_m26_channels = None
         self.readout_interval = 0.05
         self._moving_average_time_period = 10.0
+        self._n_empty_reads = 3  # number of empty reads before stopping FIFO readout
         self._data_deque = deque()
         self._data_buffer = deque()
         self._words_per_read = deque(maxlen=int(self._moving_average_time_period / self.readout_interval))
@@ -184,6 +185,7 @@ class FifoReadout(object):
         logging.debug('Starting %s', self.readout_thread.name)
         curr_time = get_float_time()
         time_wait = 0.0
+        empty_reads = 0
         while not self.force_stop.wait(time_wait if time_wait >= 0.0 else 0.0):
             try:
                 time_read = time()
@@ -200,15 +202,17 @@ class FifoReadout(object):
                     break
             else:
                 n_data_words = raw_data.shape[0]
+                self._words_per_read.append(n_data_words)
                 if n_data_words > 0:
+                    empty_reads = 0
                     last_time, curr_time = self.update_timestamp()
                     status = 0
                     self._data_deque.append((raw_data, last_time, curr_time, status))
-                    self._words_per_read.append(n_data_words)
                 elif self.stop_readout.is_set():
-                    break
-                else:
-                    self._words_per_read.append(0)
+                    if empty_reads == self._n_empty_reads:
+                        break
+                    else:
+                        empty_reads += 1
             finally:
                 time_wait = self.readout_interval - (time() - time_read)
             if self._calculate.is_set():
