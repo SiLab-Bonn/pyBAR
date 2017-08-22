@@ -1,3 +1,5 @@
+# *** MIO2 board ***
+
 # *** hardwre setup/configuration ***
 
 dut : dut_mio.yaml # DUT hardware configuration (.yaml file). E.g. change to dut_mio_gpac.yaml to support the GPAC adapter card.
@@ -12,14 +14,36 @@ modules :
         configuration : # FE configuration file, text (.cfg) or HDF5 (.h5) file. If no value is given, the latest valid configuration (run status 'FINISHED') will be taken. If a number is given, the configuration from the run with the specified number will be taken.
         flavor : fei4b # FEI4 flavor/type for initial configuration. Valid values are: 'fei4a', 'fei4b'.
         chip_address : # Chip Address for initial configuration. if no value is given, the broadcast bit will be set.
-        FIFO : SRAM_FIFO # As implemented in the firmware.
-        RX : CH4 # As implemented in the firmware.
+        FIFO : SRAM_FIFO # As defined in DUT configuration.
+        RX : DATA_CH4 # As defined in DUT configuration.
         rx_channel : 4 # As implemented in the firmware.
-        TX : CMD_CH1_TO_CH4 # As implemented in the firmware.
+        TX : CMD_CH1_TO_CH4 # As defined in DUT configuration.
         tx_channel : 0 # As implemented in the firmware.
-        TDC: TDC_RX2 # As implemented in the firmware.
+        TDC: TDC_RX2 # As defined in DUT configuration.
         tdc_channel : 4 # As implemented in the firmware.
-        TLU : TRIGGER_CH1_TO_CH4 # As implemented in the firmware.
+        TLU : TRIGGER_CH1_TO_CH4 # As defined in DUT configuration.
+#        send_data : 'tcp://127.0.0.1:5678' # Address of the online monitor
+
+# *** MMC3 board with max. 8 FEI4s ***
+
+#dut : dut_mmc3_8chip_eth.yaml # DUT hardware configuration (.yaml file). E.g. change to dut_mio_gpac.yaml to support the GPAC adapter card.
+#dut_configuration : dut_configuration_mmc3_8chip_eth.yaml # Initial DUT configuration (.yaml file). E.g. change to dut_configuration_mio_gpac.yaml to support the GPAC adapter card.
+#working_dir : data # The name of the output data folder.
+
+#modules :
+#    module_0 :
+#        activate : True
+#        configuration : # FE configuration file, text (.cfg) or HDF5 (.h5) file. If no value is given, the latest valid configuration (run status 'FINISHED') will be taken. If a number is given, the configuration from the run with the specified number will be taken.
+#        flavor : fei4b # FEI4 flavor/type for initial configuration. Valid values are: 'fei4a', 'fei4b'.
+#        chip_address : # Chip Address for initial configuration. if no value is given, the broadcast bit will be set.
+#        FIFO : SITCP_FIFO # As defined in DUT configuration.
+#        RX : DATA_CH0 # As defined in DUT configuration.
+#        rx_channel : 0 # As implemented in the firmware.
+#        TX : CMD_CH0_TO_CH7 # As defined in DUT configuration.
+#        tx_channel : 0 # As implemented in the firmware.
+#        TDC: TDC_CH0 # As defined in DUT configuration.
+#        tdc_channel : 1 # As implemented in the firmware.
+#        TLU : TRIGGER_CH0_TO_CH7 # As defined in DUT configuration.
 #        send_data : 'tcp://127.0.0.1:5678' # Address of the online monitor
 
 # *** configuration ***

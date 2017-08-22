@@ -31,14 +31,14 @@ CMD_CH1_TO_CH4:
     OUTPUT_MODE : 0  # Selecting command output mode: positive edge (0), negative edge (1), Manchester Code according to IEEE 802.3 (2), Manchester Code according to G.E. Thomas (3)
 
 # FE-I4 data receiver
-CH4:
+DATA_CH4:
     INVERT_RX : 0  # Inverting data input: disabled (0), enabled (e.g. for DBM modules) (1)
 
-CH3:
+DATA_CH3:
     INVERT_RX : 0
 
-CH2:
+DATA_CH2:
     INVERT_RX : 0
 
-CH1:
+DATA_CH1:
     INVERT_RX : 0

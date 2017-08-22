@@ -17,56 +17,56 @@ TRIGGER_CH0_TO_CH7:
     DATA_FORMAT                          : 0  # 31bit trigger number according to TRIGGER_MODE (0), 31bit time stamp (1), 15bit time stamp + 16bit trigger number (2)
 
 # TDC for high precision charge measurements
-TDC0:
+TDC_CH0:
     EN_WRITE_TIMESTAMP   : 1  # Writing trigger timestamp
     EN_TRIGGER_DIST      : 0  # Measuring trigger to TDC delay with 640MHz clock
     EN_NO_WRITE_TRIG_ERR : 0  # Writing TDC word only if valid trigger occurred
     EN_INVERT_TDC        : 0  # Inverting TDC input
     EN_INVERT_TRIGGER    : 0  # Inverting trigger input
 
-TDC1:
+TDC_CH1:
     EN_WRITE_TIMESTAMP   : 1  # Writing trigger timestamp
     EN_TRIGGER_DIST      : 0  # Measuring trigger to TDC delay with 640MHz clock
     EN_NO_WRITE_TRIG_ERR : 0  # Writing TDC word only if valid trigger occurred
     EN_INVERT_TDC        : 0  # Inverting TDC input
     EN_INVERT_TRIGGER    : 0  # Inverting trigger input
 
-TDC2:
+TDC_CH2:
     EN_WRITE_TIMESTAMP   : 1  # Writing trigger timestamp
     EN_TRIGGER_DIST      : 0  # Measuring trigger to TDC delay with 640MHz clock
     EN_NO_WRITE_TRIG_ERR : 0  # Writing TDC word only if valid trigger occurred
     EN_INVERT_TDC        : 0  # Inverting TDC input
     EN_INVERT_TRIGGER    : 0  # Inverting trigger input
 
-TDC3:
+TDC_CH3:
     EN_WRITE_TIMESTAMP   : 1  # Writing trigger timestamp
     EN_TRIGGER_DIST      : 0  # Measuring trigger to TDC delay with 640MHz clock
     EN_NO_WRITE_TRIG_ERR : 0  # Writing TDC word only if valid trigger occurred
     EN_INVERT_TDC        : 0  # Inverting TDC input
     EN_INVERT_TRIGGER    : 0  # Inverting trigger input
 
-TDC4:
+TDC_CH4:
     EN_WRITE_TIMESTAMP   : 1  # Writing trigger timestamp
     EN_TRIGGER_DIST      : 0  # Measuring trigger to TDC delay with 640MHz clock
     EN_NO_WRITE_TRIG_ERR : 0  # Writing TDC word only if valid trigger occurred
     EN_INVERT_TDC        : 0  # Inverting TDC input
     EN_INVERT_TRIGGER    : 0  # Inverting trigger input
 
-TDC5:
+TDC_CH5:
     EN_WRITE_TIMESTAMP   : 1  # Writing trigger timestamp
     EN_TRIGGER_DIST      : 0  # Measuring trigger to TDC delay with 640MHz clock
     EN_NO_WRITE_TRIG_ERR : 0  # Writing TDC word only if valid trigger occurred
     EN_INVERT_TDC        : 0  # Inverting TDC input
     EN_INVERT_TRIGGER    : 0  # Inverting trigger input
 
-TDC6:
+TDC_CH6:
     EN_WRITE_TIMESTAMP   : 1  # Writing trigger timestamp
     EN_TRIGGER_DIST      : 0  # Measuring trigger to TDC delay with 640MHz clock
     EN_NO_WRITE_TRIG_ERR : 0  # Writing TDC word only if valid trigger occurred
     EN_INVERT_TDC        : 0  # Inverting TDC input
     EN_INVERT_TRIGGER    : 0  # Inverting trigger input
 
-TDC7:
+TDC_CH7:
     EN_WRITE_TIMESTAMP   : 1  # Writing trigger timestamp
     EN_TRIGGER_DIST      : 0  # Measuring trigger to TDC delay with 640MHz clock
     EN_NO_WRITE_TRIG_ERR : 0  # Writing TDC word only if valid trigger occurred
@@ -78,26 +78,26 @@ CMD_CH0_TO_CH7:
     OUTPUT_MODE : 3  # Selecting command output mode: positive edge (0), negative edge (1), Manchester Code according to IEEE 802.3 (2), Manchester Code according to G.E. Thomas (3)
 
 # FE-I4 data receivers
-CH0:
+DATA_CH0:
     INVERT_RX : 0  # Inverting data input: disabled (0), enabled (e.g. for DBM modules) (1)
 
-CH1:
+DATA_CH1:
     INVERT_RX : 0  # Inverting data input: disabled (0), enabled (e.g. for DBM modules) (1)
 
-CH2:
+DATA_CH2:
     INVERT_RX : 0  # Inverting data input: disabled (0), enabled (e.g. for DBM modules) (1)
 
-CH3:
+DATA_CH3:
     INVERT_RX : 0  # Inverting data input: disabled (0), enabled (e.g. for DBM modules) (1)
 
-CH4:
+DATA_CH4:
     INVERT_RX : 0  # Inverting data input: disabled (0), enabled (e.g. for DBM modules) (1)
 
-CH5:
+DATA_CH5:
     INVERT_RX : 0  # Inverting data input: disabled (0), enabled (e.g. for DBM modules) (1)
 
-CH6:
+DATA_CH6:
     INVERT_RX : 0  # Inverting data input: disabled (0), enabled (e.g. for DBM modules) (1)
 
-CH7:
+DATA_CH7:
     INVERT_RX : 0  # Inverting data input: disabled (0), enabled (e.g. for DBM modules) (1)

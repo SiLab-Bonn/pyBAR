@@ -341,10 +341,10 @@ class Fei4RunBase(RunBase):
                         self.dut[rx_name].ENABLE_RX = 1
                     else:
                         self.dut[rx_name].ENABLE_RX = 0
-                self.dut['ENABLE_CHANNEL']['CH1'] = 0  # RD2Bar on SCAC
-                self.dut['ENABLE_CHANNEL']['CH2'] = 0  # RD1Bar on SCAC
-                self.dut['ENABLE_CHANNEL']['CH3'] = 0  # RABar on SCAC
-                self.dut['ENABLE_CHANNEL']['CH4'] = 1
+                self.dut['ENABLE_CHANNEL']['DATA_CH1'] = 0  # RD2Bar on SCAC
+                self.dut['ENABLE_CHANNEL']['DATA_CH2'] = 0  # RD1Bar on SCAC
+                self.dut['ENABLE_CHANNEL']['DATA_CH3'] = 0  # RABar on SCAC
+                self.dut['ENABLE_CHANNEL']['DATA_CH4'] = 1
                 self.dut['ENABLE_CHANNEL']['TLU'] = 1
                 self.dut['ENABLE_CHANNEL']['TDC'] = 1
                 self.dut['ENABLE_CHANNEL'].write()
@@ -379,10 +379,10 @@ class Fei4RunBase(RunBase):
             else:
                 logging.warning('Unknown adapter card')
                 # do the minimal configuration here
-                self.dut['ENABLE_CHANNEL']['CH1'] = 0  # RD2Bar on SCAC
-                self.dut['ENABLE_CHANNEL']['CH2'] = 0  # RD1Bar on SCAC
-                self.dut['ENABLE_CHANNEL']['CH3'] = 0  # RABar on SCAC
-                self.dut['ENABLE_CHANNEL']['CH4'] = 1
+                self.dut['ENABLE_CHANNEL']['DATA_CH1'] = 0  # RD2Bar on SCAC
+                self.dut['ENABLE_CHANNEL']['DATA_CH2'] = 0  # RD1Bar on SCAC
+                self.dut['ENABLE_CHANNEL']['DATA_CH3'] = 0  # RABar on SCAC
+                self.dut['ENABLE_CHANNEL']['DATA_CH4'] = 1
                 self.dut['ENABLE_CHANNEL']['TLU'] = 1
                 self.dut['ENABLE_CHANNEL']['TDC'] = 1
                 self.dut['ENABLE_CHANNEL'].write()
@@ -428,10 +428,10 @@ class Fei4RunBase(RunBase):
             self.dut['I2C'].write(0xe8, [6, 0xf0, 0xff])
             self.dut['I2C'].write(0xe8, [2, 0x0f, 0x00])  # select channels here
 
-            self.dut['ENABLE_CHANNEL']['CH1'] = 1
-            self.dut['ENABLE_CHANNEL']['CH2'] = 1
-            self.dut['ENABLE_CHANNEL']['CH3'] = 1
-            self.dut['ENABLE_CHANNEL']['CH4'] = 1
+            self.dut['ENABLE_CHANNEL']['DATA_CH1'] = 1
+            self.dut['ENABLE_CHANNEL']['DATA_CH2'] = 1
+            self.dut['ENABLE_CHANNEL']['DATA_CH3'] = 1
+            self.dut['ENABLE_CHANNEL']['DATA_CH4'] = 1
             self.dut['ENABLE_CHANNEL']['TLU'] = 1
             self.dut['ENABLE_CHANNEL']['TDC'] = 1
             self.dut['ENABLE_CHANNEL'].write()

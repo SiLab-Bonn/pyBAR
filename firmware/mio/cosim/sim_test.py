@@ -22,10 +22,10 @@ dut['POWER_SCC']['EN_VA2'] = 1
 dut['POWER_SCC'].write()
 
 # enabling readout
-dut['rx']['CH1'] = 1
-dut['rx']['CH2'] = 1
-dut['rx']['CH3'] = 1
-dut['rx']['CH4'] = 1
+dut['rx']['DATA_CH1'] = 1
+dut['rx']['DATA_CH2'] = 1
+dut['rx']['DATA_CH3'] = 1
+dut['rx']['DATA_CH4'] = 1
 dut['rx']['TLU'] = 1
 dut['rx']['TDC'] = 1
 dut['rx'].write()

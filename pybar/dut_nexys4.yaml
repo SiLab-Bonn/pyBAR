@@ -27,22 +27,22 @@ hw_drivers:
     type      : sitcp_fifo
     interface : ETH
 
-  - name      : CH3
+  - name      : DATA_CH4
     type      : fei4_rx
     interface : ETH
     base_addr : 0x8300
 
-  - name      : CH2
+  - name      : DATA_CH3
     type      : fei4_rx
     interface : ETH
     base_addr : 0x8400
 
-  - name      : CH1
+  - name      : DATA_CH2
     type      : fei4_rx
     interface : ETH
     base_addr : 0x8500
 
-  - name      : CH0
+  - name      : DATA_CH1
     type      : fei4_rx
     interface : ETH
     base_addr : 0x8600
@@ -74,15 +74,15 @@ registers:
       - name    : TLU
         size    : 1
         offset  : 4
-      - name    : CH4
+      - name    : DATA_CH4
         size    : 1
         offset  : 3
-      - name    : CH3
+      - name    : DATA_CH3
         size    : 1
         offset  : 2
-      - name    : CH2
+      - name    : DATA_CH2
         size    : 1
         offset  : 1
-      - name    : CH1
+      - name    : DATA_CH1
         size    : 1
         offset  : 0

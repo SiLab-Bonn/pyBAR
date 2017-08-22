@@ -54,122 +54,122 @@ hw_drivers:
     interface : ETH
     base_addr : 0x40700
 
-  - name      : CMD0
+  - name      : CMD_CH0
     type      : cmd_seq
     interface : ETH
     base_addr : 0x0000
 
-  - name      : CMD1
+  - name      : CMD_CH1
     type      : cmd_seq
     interface : ETH
     base_addr : 0x8000
 
-  - name      : CMD2
+  - name      : CMD_CH2
     type      : cmd_seq
     interface : ETH
     base_addr : 0x10000
 
-  - name      : CMD3
+  - name      : CMD_CH3
     type      : cmd_seq
     interface : ETH
     base_addr : 0x18000
 
-  - name      : CMD4
+  - name      : CMD_CH4
     type      : cmd_seq
     interface : ETH
     base_addr : 0x20000
 
-  - name      : CMD5
+  - name      : CMD_CH5
     type      : cmd_seq
     interface : ETH
     base_addr : 0x28000
 
-  - name      : CMD6
+  - name      : CMD_CH6
     type      : cmd_seq
     interface : ETH
     base_addr : 0x30000
 
-  - name      : CMD7
+  - name      : CMD_CH7
     type      : cmd_seq
     interface : ETH
     base_addr : 0x38000
 
-  - name      : CH0
+  - name      : DATA_CH0
     type      : fei4_rx
     interface : ETH
     base_addr : 0x41000
 
-  - name      : CH1
+  - name      : DATA_CH1
     type      : fei4_rx
     interface : ETH
     base_addr : 0x41100
 
-  - name      : CH2
+  - name      : DATA_CH2
     type      : fei4_rx
     interface : ETH
     base_addr : 0x41200
 
-  - name      : CH3
+  - name      : DATA_CH3
     type      : fei4_rx
     interface : ETH
     base_addr : 0x41300
 
-  - name      : CH4
+  - name      : DATA_CH4
     type      : fei4_rx
     interface : ETH
     base_addr : 0x41400
 
-  - name      : CH5
+  - name      : DATA_CH5
     type      : fei4_rx
     interface : ETH
     base_addr : 0x41500
 
-  - name      : CH6
+  - name      : DATA_CH6
     type      : fei4_rx
     interface : ETH
     base_addr : 0x41600
 
-  - name      : CH7
+  - name      : DATA_CH7
     type      : fei4_rx
     interface : ETH
     base_addr : 0x41700
 
-  - name      : TDC0
+  - name      : TDC_CH0
     type      : tdc_s3
     interface : ETH
     base_addr : 0x41fff
 
-  - name      : TDC1
+  - name      : TDC_CH1
     type      : tdc_s3
     interface : ETH
     base_addr : 0x420ff
 
-  - name      : TDC2
+  - name      : TDC_CH2
     type      : tdc_s3
     interface : ETH
     base_addr : 0x421ff
 
-  - name      : TDC3
+  - name      : TDC_CH3
     type      : tdc_s3
     interface : ETH
     base_addr : 0x422ff
 
-  - name      : TDC4
+  - name      : TDC_CH4
     type      : tdc_s3
     interface : ETH
     base_addr : 0x423ff
 
-  - name      : TDC5
+  - name      : TDC_CH5
     type      : tdc_s3
     interface : ETH
     base_addr : 0x424ff
 
-  - name      : TDC6
+  - name      : TDC_CH6
     type      : tdc_s3
     interface : ETH
     base_addr : 0x425ff
 
-  - name      : TDC7
+  - name      : TDC_CH7
     type      : tdc_s3
     interface : ETH
     base_addr : 0x41fff

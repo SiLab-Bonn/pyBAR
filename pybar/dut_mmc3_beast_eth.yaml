@@ -24,27 +24,27 @@ hw_drivers:
     interface : ETH
     base_addr : 0x0000
 
-  - name      : CH0
+  - name      : DATA_CH0
     type      : fei4_rx
     interface : ETH
     base_addr : 0x9000
 
-  - name      : CH1
+  - name      : DATA_CH1
     type      : fei4_rx
     interface : ETH
     base_addr : 0x9100
 
-  - name      : CH2
+  - name      : DATA_CH2
     type      : fei4_rx
     interface : ETH
     base_addr : 0x9200
 
-  - name      : CH3
+  - name      : DATA_CH3
     type      : fei4_rx
     interface : ETH
     base_addr : 0x9300
 
-  - name      : CH4
+  - name      : DATA_CH4
     type      : fei4_rx
     interface : ETH
     base_addr : 0x9400
@@ -53,27 +53,27 @@ hw_drivers:
     type      : sitcp_fifo
     interface : ETH
 
-  - name      : TDC0
+  - name      : TDC_CH0
     type      : tdc_s3
     interface : ETH
     base_addr : 0xa000
 
-  - name      : TDC1
+  - name      : TDC_CH1
     type      : tdc_s3
     interface : ETH
     base_addr : 0xa100
 
-  - name      : TDC2
+  - name      : TDC_CH2
     type      : tdc_s3
     interface : ETH
     base_addr : 0xa200
 
-  - name      : TDC3
+  - name      : TDC_CH3
     type      : tdc_s3
     interface : ETH
     base_addr : 0xa300
 
-  - name      : TDC4
+  - name      : TDC_CH4
     type      : tdc_s3
     interface : ETH
     base_addr : 0xa400

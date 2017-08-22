@@ -10,5 +10,5 @@ CMD_CH0:
     OUTPUT_MODE : 0  # Selecting command output mode: positive edge (0), negative edge (1), Manchester Code according to IEEE 802.3 (2), Manchester Code according to G.E. Thomas (3)
 
 # FE-I4 data receiver
-CH0:
+DATA_CH0:
     INVERT_RX : 0

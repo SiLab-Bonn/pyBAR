@@ -75,7 +75,7 @@ hw_drivers:
     interface : ETH
     base_addr : 0xa050
 
-  - name      : FEI4_RX
+  - name      : DATA_FEI4
     type      : fei4_rx
     interface : ETH
     base_addr : 0x8600

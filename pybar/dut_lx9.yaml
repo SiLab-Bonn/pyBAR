@@ -22,7 +22,7 @@ hw_drivers:
     type      : sitcp_fifo
     interface : ETH
 
-  - name      : CH0
+  - name      : DATA_CH0
     type      : fei4_rx
     interface : ETH
     base_addr : 0x8600
