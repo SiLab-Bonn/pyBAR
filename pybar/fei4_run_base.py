@@ -1028,6 +1028,8 @@ class Fei4RunBase(RunBase):
         if module_id not in self._module_cfgs:
             raise ValueError('Module ID "%s" is not valid' % module_id)
         self._current_module_handle = module_id
+        if module_id is not None:
+            current_thread().name = module_id
         # enabling specific TX channels
         if module_id is None:
             # generating enable bit mask for broadcasting
@@ -1057,6 +1059,7 @@ class Fei4RunBase(RunBase):
         '''
         self.dut['TX']['OUTPUT_ENABLE'] = 0
         self._current_module_handle = None
+        current_thread().name = "MainThread"
 
     @contextmanager
     def access_files(self):
