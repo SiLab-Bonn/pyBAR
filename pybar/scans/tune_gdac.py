@@ -219,9 +219,10 @@ class GdacTuning(Fei4RunBase):
         occupancy_sorted = np.array(gdac_occupancy)[np.argsort(np.array(gdac_values))]
         gdac_sorted = np.sort(gdac_values)
         try:
-            gdac_min_idx = np.where(occupancy_sorted >= self.n_injections_gdac / 2)[0][-1]
+            diff_occupancy = occupancy_sorted[1:] - occupancy_sorted[:-1]
+            gdac_min_idx = np.where(diff_occupancy > 0)[0][-1]
         except IndexError:
-            gdac_min_idx = np.where(occupancy_sorted >= occupancy_sorted.max())[0][-1]
+            gdac_min_idx = None
         occupancy_sorted_sel = occupancy_sorted[gdac_min_idx:]
         gdac_sorted_sel = gdac_sorted[gdac_min_idx:]
         gdac_best_idx = np.abs(np.array(occupancy_sorted_sel) - self.n_injections_gdac / 2).argmin()
