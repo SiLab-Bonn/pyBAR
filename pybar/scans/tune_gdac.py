@@ -218,7 +218,10 @@ class GdacTuning(Fei4RunBase):
         # select best GDAC value
         occupancy_sorted = np.array(gdac_occupancy)[np.argsort(np.array(gdac_values))]
         gdac_sorted = np.sort(gdac_values)
-        gdac_min_idx = np.where(occupancy_sorted >= self.n_injections_gdac / 2)[0][-1]
+        try:
+            gdac_min_idx = np.where(occupancy_sorted >= self.n_injections_gdac / 2)[0][-1]
+        except IndexError:
+            gdac_min_idx = np.where(occupancy_sorted >= occupancy_sorted.max())[0][-1]
         occupancy_sorted_sel = occupancy_sorted[gdac_min_idx:]
         gdac_sorted_sel = gdac_sorted[gdac_min_idx:]
         gdac_best_idx = np.abs(np.array(occupancy_sorted_sel) - self.n_injections_gdac / 2).argmin()
