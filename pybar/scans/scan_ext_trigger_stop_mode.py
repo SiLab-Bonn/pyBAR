@@ -44,7 +44,7 @@ class StopModeExtTriggerScan(Fei4RunBase):
         "use_enable_mask_for_imon": True,  # if True, apply inverted Enable pixel mask to Imon pixel mask
         "no_data_timeout": 30,  # no data timeout after which the scan will be aborted, in seconds
         "scan_timeout": 60,  # timeout for scan after which the scan will be stopped, in seconds
-        "max_triggers": 10,  # maximum triggers after which the scan will be stopped, in seconds
+        "max_triggers": 10,  # maximum triggers after which the scan will be stopped, if 0, no maximum triggers are set
     }
 
     def configure(self):

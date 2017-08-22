@@ -17,11 +17,6 @@ from PyEUDAQWrapper import PyProducer
 class EudaqExtTriggerScan(ExtTriggerScan):
     '''External trigger scan that connects to EUDAQ producer (EUDAQ 1.4 and higher).
     '''
-#     _default_run_conf = ExtTriggerScan._default_run_conf.copy()
-#     _default_run_conf.update({
-#         "no_data_timeout": 600,
-#         "scan_timeout": 0,
-#     })
     _default_run_conf = {
         "trig_count": 0,  # FE-I4 trigger count, number of consecutive BCs, 0 means 16, from 0 to 15
         "trigger_latency": 232,  # FE-I4 trigger latency, in BCs, external scintillator / TLU / HitOR: 232, USBpix self-trigger: 220
@@ -33,7 +28,7 @@ class EudaqExtTriggerScan(ExtTriggerScan):
         "use_enable_mask_for_imon": False,  # if True, apply inverted Enable pixel mask to Imon pixel mask
         "no_data_timeout": None,  # no data timeout after which the scan will be aborted, in seconds
         "scan_timeout": None,  # timeout for scan after which the scan will be stopped, in seconds
-        "max_triggers": None,  # maximum triggers after which the scan will be stopped, in seconds
+        "max_triggers": 0,  # maximum triggers after which the scan will be stopped, if 0, no maximum triggers are set
         "enable_tdc": False  # if True, enables TDC (use RX2)
     }
 

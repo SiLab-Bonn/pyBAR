@@ -28,7 +28,7 @@ class ExtTriggerScan(Fei4RunBase):
         "use_enable_mask_for_imon": True,  # if True, apply inverted Enable pixel mask to Imon pixel mask
         "no_data_timeout": 10,  # no data timeout after which the scan will be aborted, in seconds
         "scan_timeout": 60,  # timeout for scan after which the scan will be stopped, in seconds
-        "max_triggers": 10000,  # maximum triggers after which the scan will be stopped, in seconds
+        "max_triggers": 10000,  # maximum triggers after which the scan will be stopped, if 0, no maximum triggers are set
         "enable_tdc": False,  # if True, enables TDC (use RX2)
         "reset_rx_on_error": False  # long scans have a high propability for ESD related data transmission errors; recover and continue here
     }

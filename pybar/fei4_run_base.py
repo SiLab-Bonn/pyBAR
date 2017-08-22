@@ -194,7 +194,7 @@ class Fei4RunBase(RunBase):
             self.dut['DLY_CONFIG']['CLK_DLY'] = 0
             self.dut['DLY_CONFIG'].write()
         else:
-            logging.warning('Omit initialization of DUT %s', self.dut.name)
+            logging.warning('Omitting initialization of DUT %s', self.dut.name)
 
     def init_fe(self):
         if 'fe_configuration' in self._conf:
