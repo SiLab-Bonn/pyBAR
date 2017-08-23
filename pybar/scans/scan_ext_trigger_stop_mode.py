@@ -161,10 +161,6 @@ class StopModeExtTriggerScan(Fei4RunBase):
             analyze_raw_data.create_source_scan_hist = True
             analyze_raw_data.set_stop_mode = True
             analyze_raw_data.align_at_trigger = True
-            if self.enable_tdc:
-                analyze_raw_data.create_tdc_counter_hist = True  # histogram all TDC words
-                analyze_raw_data.create_tdc_hist = True  # histogram the hit TDC information
-                analyze_raw_data.align_at_tdc = False  # align events at the TDC word
             analyze_raw_data.interpreter.set_warning_output(False)
             analyze_raw_data.interpret_word_table()
             analyze_raw_data.interpreter.print_summary()
