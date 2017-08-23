@@ -70,26 +70,28 @@ class ExtTriggerScan(Fei4RunBase):
 
         with self.readout(no_data_timeout=self.no_data_timeout, **self.scan_parameters._asdict()):
             got_data = False
+            start = time()
             while not self.stop_run.wait(1.0):
                 if not got_data:
                     if self.fifo_readout.data_words_per_second() > 0:
                         got_data = True
                         logging.info('Taking data...')
-                        self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=self.max_triggers, poll=10, term_width=80).start()
+                        if self.max_triggers:
+                            self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=self.max_triggers, poll=10, term_width=80).start()
+                        else:
+                            self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.Timer()], maxval=self.scan_timeout, poll=10, term_width=80).start()
                 else:
                     triggers = self.dut['TLU']['TRIGGER_COUNTER']
                     try:
-                        self.progressbar.update(triggers)
+                        if self.max_triggers:
+                            self.progressbar.update(triggers)
+                        else:
+                            self.progressbar.update(time() - start)
                     except ValueError:
                         pass
                     if self.max_triggers and triggers >= self.max_triggers:
-#                         if got_data:
                         self.progressbar.finish()
                         self.stop(msg='Trigger limit was reached: %i' % self.max_triggers)
-#                 print self.fifo_readout.data_words_per_second()
-#                 if (current_trigger_number % show_trigger_message_at < last_trigger_number % show_trigger_message_at):
-#                     logging.info('Collected triggers: %d', current_trigger_number)
-
         logging.info('Total amount of triggers collected: %d', self.dut['TLU']['TRIGGER_COUNTER'])
 
     def analyze(self):

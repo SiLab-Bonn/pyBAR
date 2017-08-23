@@ -1,7 +1,9 @@
 import logging
-import numpy as np
-import progressbar
+from time import time
 from threading import Timer
+
+import progressbar
+import numpy as np
 
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.fei4.register_utils import invert_pixel_mask, make_box_pixel_mask_from_col_row
@@ -127,23 +129,28 @@ class StopModeExtTriggerScan(Fei4RunBase):
 
         with self.readout(no_data_timeout=self.no_data_timeout, **self.scan_parameters._asdict()):
             got_data = False
+            start = time()
             while not self.stop_run.wait(1.0):
                 if not got_data:
                     if self.fifo_readout.data_words_per_second() > 0:
                         got_data = True
                         logging.info('Taking data...')
-                        self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=self.max_triggers, poll=10, term_width=80).start()
+                        if self.max_triggers:
+                            self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=self.max_triggers, poll=10, term_width=80).start()
+                        else:
+                            self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.Timer()], maxval=self.scan_timeout, poll=10, term_width=80).start()
                 else:
                     triggers = self.dut['TLU']['TRIGGER_COUNTER']
                     try:
-                        self.progressbar.update(triggers)
+                        if self.max_triggers:
+                            self.progressbar.update(triggers)
+                        else:
+                            self.progressbar.update(time() - start)
                     except ValueError:
                         pass
                     if self.max_triggers and triggers >= self.max_triggers:
-                        #                         if got_data:
                         self.progressbar.finish()
                         self.stop(msg='Trigger limit was reached: %i' % self.max_triggers)
-
         logging.info('Total amount of triggers collected: %d', self.dut['TLU']['TRIGGER_COUNTER'])
 
     def analyze(self):
