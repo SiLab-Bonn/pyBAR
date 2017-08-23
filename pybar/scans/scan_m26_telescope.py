@@ -267,10 +267,10 @@ class M26TelescopeScan(Fei4RunBase):
             self.dut['TLU']['MAX_TRIGGERS'] = self.max_triggers
         else:
             self.dut['TLU']['MAX_TRIGGERS'] = 0  # infinity triggers
-        # use this with FE-I4 connected
+        # remmove the following line if no FE-I4 connected
         self.dut['CMD']['EN_EXT_TRIGGER'] = True
-        # use this if no FE-I4 is connected
-#         self.dut['TLU']['TRIGGER_ENABLE'] = True
+        # this will turn on trigger/TLU FSM
+        self.dut['TLU']['TRIGGER_ENABLE'] = True
 
         def timeout():
             try:
