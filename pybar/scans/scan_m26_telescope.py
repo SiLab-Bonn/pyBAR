@@ -267,7 +267,7 @@ class M26TelescopeScan(Fei4RunBase):
             self.dut['TLU']['MAX_TRIGGERS'] = self.max_triggers
         else:
             self.dut['TLU']['MAX_TRIGGERS'] = 0  # infinity triggers
-        # remmove the following line if no FE-I4 connected
+        # remove the following line if no FE-I4 connected
         self.dut['CMD']['EN_EXT_TRIGGER'] = True
         # this will turn on trigger/TLU FSM
         self.dut['TLU']['TRIGGER_ENABLE'] = True
