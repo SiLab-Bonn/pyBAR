@@ -13,8 +13,7 @@ import numpy as np
 
 import progressbar
 
-import configuration
-from scan_threshold_fast import FastThresholdScan
+from pybar.scans.scan_threshold_fast import FastThresholdScan
 from analysis import analysis_utils
 from analysis.RawDataConverter import data_struct
 from analysis.plotting import plotting

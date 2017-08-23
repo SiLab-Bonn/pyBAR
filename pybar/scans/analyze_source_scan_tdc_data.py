@@ -25,7 +25,6 @@ from scipy.ndimage.interpolation import shift
 import progressbar
 
 from pybar_fei4_interpreter import analysis_utils as fast_analysis_utils
-
 from pybar.analysis import analysis_utils
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.analysis.plotting.plotting import plot_three_way, plot_1d_hist

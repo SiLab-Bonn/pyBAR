@@ -4,11 +4,10 @@ import unittest
 import os
 import zlib
 
+import progressbar
 import tables as tb
 import numpy as np
 from numpy.testing import assert_array_equal
-
-import progressbar
 
 from pixel_clusterizer.clusterizer import HitClusterizer
 

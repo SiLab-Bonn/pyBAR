@@ -1,5 +1,4 @@
 import logging
-from yaml import safe_load
 import datetime
 import os
 import re
@@ -20,6 +19,7 @@ from time import time
 from threading import current_thread
 from functools import wraps
 
+from yaml import safe_load
 
 punctuation = '!,.:;?'
 

@@ -1,5 +1,4 @@
 import logging
-
 from collections import Iterable
 
 from pybar.fei4_run_base import Fei4RunBase

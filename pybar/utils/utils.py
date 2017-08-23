@@ -5,6 +5,7 @@ import Queue
 import collections
 import itertools
 # import array
+
 import numpy as np
 # from bitarray import bitarray
 

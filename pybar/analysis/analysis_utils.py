@@ -11,14 +11,13 @@ import collections
 from operator import itemgetter
 import zlib
 
+import progressbar
 import numpy as np
 import tables as tb
 from tables import dtype_from_descr
 import numexpr as ne
 from scipy.interpolate import interp1d
 from scipy.interpolate import splrep, splev
-
-import progressbar
 
 from pybar_fei4_interpreter import analysis_utils
 from pybar.daq.fei4_record import FEI4Record

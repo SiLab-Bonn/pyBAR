@@ -43,6 +43,7 @@ from pybar.analysis.analysis_utils import get_hits_of_scan_parameter, get_scan_p
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.analysis.plotting.plotting import plot_scurves, plot_three_way
 
+
 warnings.simplefilter("ignore", OptimizeWarning)  # deactivate : Covariance warning
 
 

@@ -1,8 +1,8 @@
 import logging
+
 import numpy as np
 
 from pybar_fei4_interpreter.analysis_utils import hist_2d_index
-
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.fei4.register_utils import invert_pixel_mask
 from pybar.fei4_run_base import Fei4RunBase

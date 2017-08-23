@@ -6,7 +6,6 @@ import string
 import struct
 import smtplib
 from socket import gethostname
-import numpy as np
 from functools import wraps
 from threading import Event, Thread, current_thread, Lock, RLock
 from Queue import Queue
@@ -18,6 +17,8 @@ import ast
 import inspect
 import sys
 import contextlib2 as contextlib
+
+import numpy as np
 
 import basil
 from basil.dut import Dut
@@ -31,8 +32,7 @@ from pybar.daq.fifo_readout import FifoReadout, RxSyncError, EightbTenbError, Fi
 from pybar.daq.readout_utils import save_configuration_dict
 from pybar.daq.fei4_raw_data import open_raw_data_file, send_meta_data
 from pybar.analysis.analysis_utils import AnalysisError
-from pybar.daq.readout_utils import (convert_data_iterable, logical_or, logical_and, is_trigger_word, is_fe_word, is_data_from_channel,
-                                     is_tdc_word, is_tdc_from_channel, convert_tdc_to_channel, false)
+from pybar.daq.readout_utils import convert_data_iterable, logical_or, logical_and, is_trigger_word, is_fe_word, is_data_from_channel, is_tdc_word, is_tdc_from_channel, convert_tdc_to_channel, false
 
 
 _reserved_driver_names = ["FIFO", "TX", "RX", "TLU", "TDC"]

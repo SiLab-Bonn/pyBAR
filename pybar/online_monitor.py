@@ -1,15 +1,15 @@
 import sys
-import zmq
 import time
-import numpy as np
+from threading import Event, Lock
 from optparse import OptionParser
 
+import zmq
+import numpy as np
 from PyQt5 import Qt
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtGui
 from pyqtgraph.dockarea import DockArea, Dock
 import pyqtgraph.ptime as ptime
-from threading import Event, Lock
 
 from pybar_fei4_interpreter.data_interpreter import PyDataInterpreter
 from pybar_fei4_interpreter.data_histograming import PyDataHistograming

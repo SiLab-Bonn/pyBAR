@@ -5,11 +5,11 @@ from __future__ import division
 import logging
 import os
 import time
+import re
 import zlib
 
 import numpy as np
 import tables as tb
-import re
 
 import progressbar
 

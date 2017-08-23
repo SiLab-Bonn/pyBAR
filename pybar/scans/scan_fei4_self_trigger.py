@@ -1,8 +1,9 @@
 import logging
 from time import time
-import numpy as np
-import progressbar
 from threading import Timer
+
+import progressbar
+import numpy as np
 
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.fei4.register_utils import invert_pixel_mask, make_box_pixel_mask_from_col_row
