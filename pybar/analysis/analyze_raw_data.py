@@ -1153,7 +1153,7 @@ class AnalyzeRawData(object):
         n_hits = 0  # number of hits in actual chunk
 
         logging.info('Analyzing hits...')
-        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=table_size, term_width=80)
+        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=table_size, term_width=80)
         progress_bar.start()
 
         for hits, index in analysis_utils.data_aligned_at_events(in_file_h5.root.Hits, chunk_size=self._chunk_size):

@@ -269,7 +269,7 @@ def get_rate_normalization(hit_file, parameter, reference='event', cluster_file=
             index = 0  # index where to start the read out, 0 at the beginning, increased during looping, variable for read speed up
             best_chunk_size = chunk_size  # variable for read speed up
             total_cluster = 0
-            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', ETA(smoothing=0.8)], maxval=cluster_table.shape[0], term_width=80)
+            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=cluster_table.shape[0], term_width=80)
             progress_bar.start()
             for start_event, stop_event in event_range:  # loop over the selected events
                 readout_cluster_len = 0  # variable to calculate a optimal chunk size value from the number of hits for speed up
@@ -307,7 +307,7 @@ def get_total_n_data_words(files_dict, precise=False):
     n_words = 0
     if precise:  # open all files and determine the total number of words precicely, can take some time
         if len(files_dict) > 10:
-            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', ETA()], maxval=len(files_dict), term_width=80)
+            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=len(files_dict), term_width=80)
             progress_bar.start()
         for index, file_name in enumerate(files_dict.iterkeys()):
             with tb.open_file(file_name, mode="r") as in_file_h5:  # open the actual file
@@ -609,7 +609,7 @@ def combine_meta_data(files_dict, meta_data_v2=True):
             ('error', np.uint32)])
 
     if len(files_dict) > 10:
-        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', ETA()], maxval=total_length, term_width=80)
+        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=total_length, term_width=80)
         progress_bar.start()
 
     index = 0
@@ -1432,8 +1432,8 @@ def get_pixel_thresholds_from_calibration_array(gdacs, calibration_gdacs, thresh
 
 
 class ETA(progressbar.Timer):
-
-    'Widget which estimate the time of arrival for the progress bar via exponential moving average.'
+    '''Progressbar widget which estimate the time of arrival for the progress bar via exponential moving average.
+    '''
     TIME_SENSITIVE = True
 
     def __init__(self, smoothing=0.1):
