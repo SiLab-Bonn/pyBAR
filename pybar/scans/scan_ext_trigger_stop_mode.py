@@ -157,8 +157,8 @@ class StopModeExtTriggerScan(Fei4RunBase):
     def analyze(self):
         with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
             analyze_raw_data.create_hit_table = True
+            analyze_raw_data.trigger_data_format = self.dut['TLU']['DATA_FORMAT']
             analyze_raw_data.create_source_scan_hist = True
-            analyze_raw_data.trigger_data_format = 1  # time stamp only
             analyze_raw_data.set_stop_mode = True
             analyze_raw_data.align_at_trigger = True
             if self.enable_tdc:

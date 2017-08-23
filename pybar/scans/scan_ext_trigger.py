@@ -100,6 +100,7 @@ class ExtTriggerScan(Fei4RunBase):
 
     def analyze(self):
         with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
+            analyze_raw_data.trigger_data_format = self.dut['TLU']['DATA_FORMAT']
             analyze_raw_data.create_source_scan_hist = True
             analyze_raw_data.create_cluster_size_hist = True
             analyze_raw_data.create_cluster_tot_hist = True

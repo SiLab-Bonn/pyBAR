@@ -230,15 +230,16 @@ class M26TelescopeScan(Fei4RunBase):
 
     def analyze(self):
         pass
-        # with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
-        #    analyze_raw_data.create_source_scan_hist = True
-        #    analyze_raw_data.create_cluster_size_hist = True
-        #    analyze_raw_data.create_cluster_tot_hist = True
-        #    analyze_raw_data.align_at_trigger = True
-        #    analyze_raw_data.interpreter.set_warning_output(False)
-        #    analyze_raw_data.interpret_word_table()
-        #    analyze_raw_data.interpreter.print_summary()
-        #    analyze_raw_data.plot_histograms()
+#         with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
+#            analyze_raw_data.trigger_data_format = self.dut['TLU']['DATA_FORMAT']
+#            analyze_raw_data.create_source_scan_hist = True
+#            analyze_raw_data.create_cluster_size_hist = True
+#            analyze_raw_data.create_cluster_tot_hist = True
+#            analyze_raw_data.align_at_trigger = True
+#            analyze_raw_data.interpreter.set_warning_output(False)
+#            analyze_raw_data.interpret_word_table()
+#            analyze_raw_data.interpreter.print_summary()
+#            analyze_raw_data.plot_histograms()
 
     def start_readout(self, *args, **kwargs):
         super(M26TelescopeScan, self).start_readout(*args, **kwargs)
