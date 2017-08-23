@@ -1470,7 +1470,6 @@ class ETA(progressbar.Timer):
                 speed = 0
 
 
-# old, maybe not needed functions
 def get_n_cluster_per_event_hist(cluster_table):
     '''Calculates the number of cluster in every event.
 
