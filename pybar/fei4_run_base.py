@@ -1014,22 +1014,23 @@ class Fei4RunBase(RunBase):
 
     @contextmanager
     def access_module(self, module_id):
+        self.select_module(module_id=module_id)
         try:
-            self.select_module(module_id=module_id)
             yield
-            self.deselect_module()
         finally:
-            # in case something fails, call this on last resort
-            self._current_module_handle = None
+            try:
+                self.deselect_module()
+            except:
+                # in case something fails, call this on last resort
+                self._current_module_handle = None
+                current_thread().name = "MainThread"
 
     def select_module(self, module_id):
         ''' Select module and give access to the module.
         '''
         if module_id not in self._module_cfgs:
             raise ValueError('Module ID "%s" is not valid' % module_id)
-        self._current_module_handle = module_id
-        if module_id is not None:
-            current_thread().name = module_id
+
         # enabling specific TX channels
         if module_id is None:
             # generating enable bit mask for broadcasting
@@ -1053,6 +1054,9 @@ class Fei4RunBase(RunBase):
                 self.dut['TX']['OUTPUT_ENABLE'] = 0
         else:
             pass  # do nothing
+        self._current_module_handle = module_id
+        if module_id is not None:
+            current_thread().name = module_id
 
     def deselect_module(self):
         ''' Deselect module and cleanup.
@@ -1183,14 +1187,16 @@ class Fei4RunBase(RunBase):
         self.start_readout(*args, **kwargs)
         try:
             yield
-            self.stop_readout(timeout=timeout)
         finally:
-            # in case something fails, call this on last resort
-            # if run was aborted, immediately stop readout
-            if self.abort_run.is_set():
-                with self._readout_lock:
-                    if self.fifo_readout.is_running:
-                        self.fifo_readout.stop(timeout=0.0)
+            try:
+                self.stop_readout(timeout=timeout)
+            except:
+                # in case something fails, call this on last resort
+                # if run was aborted, immediately stop readout
+                if self.abort_run.is_set():
+                    with self._readout_lock:
+                        if self.fifo_readout.is_running:
+                            self.fifo_readout.stop(timeout=0.0)
 
     def start_readout(self, *args, **kwargs):
         ''' Starting the FIFO readout.
