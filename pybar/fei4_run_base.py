@@ -105,6 +105,7 @@ class Fei4RunBase(RunBase):
         self._starting_readout_event.clear()
         self._stopping_readout_event = Event()
         self._stopping_readout_event.clear()
+        self._enabled_fe_channels = []  # ignore any RX sync errors
         self._curr_sync_threads = []
         self._sync_lock = Lock()
         self._enter_sync_event = Event()
@@ -1031,6 +1032,19 @@ class Fei4RunBase(RunBase):
         if module_id not in self._module_cfgs:
             raise ValueError('Module ID "%s" is not valid' % module_id)
 
+        # select readout channels and report sync status only from actively selected modules
+        if module_id is None:
+            self._enabled_fe_channels = list(set([module_cfg['RX'] for (name, module_cfg) in self._module_cfgs.items() if (name in self._modules and module_cfg['activate'] is True)]))
+        elif module_id in self._modules:
+            if self._module_cfgs[module_id]['activate'] is True:
+                self._enabled_fe_channels = [self._module_cfgs[module_id]['RX']]
+            else:
+                self._enabled_fe_channels = []
+        elif module_id in self._tx_module_groups:
+            self._enabled_fe_channels = list(set([module_cfg['RX'] for (name, module_cfg) in self._module_cfgs.items() if (name in self._tx_module_groups[module_id] and module_cfg['activate'] is True)]))
+        else:
+            self._enabled_fe_channels = []  # ignore any RX sync errors
+
         # enabling specific TX channels
         if module_id is None:
             # generating enable bit mask for broadcasting
@@ -1061,6 +1075,7 @@ class Fei4RunBase(RunBase):
     def deselect_module(self):
         ''' Deselect module and cleanup.
         '''
+        self._enabled_fe_channels = []  # ignore any RX sync errors
         self.dut['TX']['OUTPUT_ENABLE'] = 0
         self._current_module_handle = None
         current_thread().name = "MainThread"
@@ -1228,19 +1243,7 @@ class Fei4RunBase(RunBase):
             with self._readout_lock:
                 if len(set(self._curr_readout_threads) & set([t.name for t in self._scan_threads if t.is_alive()])) == len(set([t.name for t in self._scan_threads if t.is_alive()])) or not self._scan_threads:
                     if not self.fifo_readout.is_running:
-                        # select readout channels only from running threads
-                        if self.current_module_handle is None: # FIXME :
-                            enabled_fe_channels = list(set([module_cfg['RX'] for (name, module_cfg) in self._module_cfgs.items() if (name in self._modules and module_cfg['activate'] is True)]))
-                        elif self.current_module_handle in self._modules:
-                            if self._module_cfgs[self.current_module_handle]['activate'] is True:
-                                enabled_fe_channels = [self._module_cfgs[self.current_module_handle]['RX']]
-                            else:
-                                enabled_fe_channels = []
-                        elif self.current_module_handle in self._tx_module_groups:
-                            enabled_fe_channels = list(set([module_cfg['RX'] for (name, module_cfg) in self._module_cfgs.items() if (name in self._tx_module_groups[self.current_module_handle] and module_cfg['activate'] is True)]))
-                        else:
-                            enabled_fe_channels = []  # do nothing
-                        self.fifo_readout.start(reset_fifo=reset_fifo, fill_buffer=fill_buffer, clear_buffer=clear_buffer, callback=callback, errback=errback, no_data_timeout=no_data_timeout, filter_func=filter_func, converter_func=converter_func, enabled_fe_channels=enabled_fe_channels)
+                        self.fifo_readout.start(reset_fifo=reset_fifo, fill_buffer=fill_buffer, clear_buffer=clear_buffer, callback=callback, errback=errback, no_data_timeout=no_data_timeout, filter_func=filter_func, converter_func=converter_func, enabled_fe_channels=self._enabled_fe_channels)
                         self._starting_readout_event.set()
 
     def stop_readout(self, timeout=10.0):
