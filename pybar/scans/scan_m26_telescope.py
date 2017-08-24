@@ -202,7 +202,7 @@ class M26TelescopeScan(Fei4RunBase):
         lvl1_command = self.register.get_commands("zeros", length=self.trigger_delay)[0] + self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", length=self.trigger_rate_limit)[0]
         self.register_utils.set_command(lvl1_command)
 
-        with self.readout(no_data_timeout=self.no_data_timeout, **self.scan_parameters._asdict()):
+        with self.readout(no_data_timeout=self.no_data_timeout):
             got_data = False
             start = time()
             while not self.stop_run.wait(1.0):
