@@ -71,7 +71,7 @@ On Windows, the `pywin32` package is required:
   pip install 'pixel_clusterizer>=3.1,<3.2'
   ```
 
-To enable support for USB devices (MIO, MIO3 and MMC3), the following additional packages are required:
+To enable support for USB devices (MIO2), the following additional packages are required:
 - [PyUSB](https://github.com/walac/pyusb) (>=1.0.0rc1):
   ```
   pip install pyusb
