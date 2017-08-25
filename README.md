@@ -45,7 +45,7 @@ For full functionality, the following additional packages are required:
 Run the **following commands** to install the packages:
   ```
   conda install bitarray cython ipython matplotlib mock nose numba numpy pyserial pytables pyyaml pyzmq scipy sphinx
-  
+
   pip install progressbar-latest pyvisa pyvisa-py git+https://github.com/pyqtgraph/pyqtgraph.git@pyqtgraph-0.10.0
   ```
 
@@ -66,7 +66,7 @@ On Windows, the `pywin32` package is required:
 
 [Pixel Clusterizer](https://github.com/SiLab-Bonn/pixel_clusterizer) (>=3.0.0) is required:
   ```
-  pip install pixel_clusterizer
+  pip install git+https://github.com/SiLab-Bonn/pixel_clusterizer@development
   ```
 
 To enable support for USB devices (MIO, MIO3 and MMC3), the following additional packages are required:
@@ -74,7 +74,7 @@ To enable support for USB devices (MIO, MIO3 and MMC3), the following additional
   ```
   pip install pyusb
   ```
-  
+
 - [pySiLibUSB](https://github.com/SiLab-Bonn/pySiLibUSB) (>=2.0.0):
   ```
   pip install pySiLibUSB
