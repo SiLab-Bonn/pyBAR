@@ -33,7 +33,7 @@ class EudaqExtTriggerScan(ExtTriggerScan):
         "no_data_timeout": None,  # no data timeout after which the scan will be aborted, in seconds
         "scan_timeout": None,  # timeout for scan after which the scan will be stopped, in seconds
         "max_triggers": 0,  # maximum triggers after which the scan will be stopped, if 0, no maximum triggers are set
-        "enable_tdc": False  # if True, enables TDC (use RX2)
+        "enable_tdc": False  # if True, enables TDC
     }
 
     def scan(self):

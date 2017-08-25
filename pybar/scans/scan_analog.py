@@ -20,7 +20,7 @@ class AnalogScan(Fei4RunBase):
         "enable_shift_masks": ["Enable", "C_High", "C_Low"],  # enable masks shifted during scan
         "disable_shift_masks": [],  # disable masks shifted during scan
         "pulser_dac_correction": False,  # PlsrDAC correction for each double column
-        "enable_tdc": False,  # if True, enables TDC (use RX2)
+        "enable_tdc": False,  # if True, enables TDC
         "same_mask_for_all_dc": True,  # if True, all columns have the same mask, if False, mask will be enabled only where injected
         "enable_double_columns": None,  # List of double columns which will be enabled during scan. None will select all double columns
         "enable_mask_steps": None,  # List of mask steps which will be applied. None will select all mask steps.
