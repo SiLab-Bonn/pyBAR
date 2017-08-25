@@ -17,17 +17,16 @@ from pybar.run_manager import RunManager
 
 
 class M26TelescopeScan(Fei4RunBase):
-    '''External trigger scan with FE-I4 and up to 6 Mimosa26 telescope planes.
-
-    For use with external scintillator (user RX0), TLU (use RJ45), FE-I4 HitOR (USBpix self-trigger).
+    '''External trigger scan with a single FE-I4 and up to 6 Mimosa26 telescope planes.
 
     Note:
     Set up trigger in DUT configuration file (e.g. dut_configuration_mmc3_m26_eth.yaml).
     Only Agilent E3644a power supply is supported.
     '''
     _default_run_conf = {
-        "broadcast_commands": True,
+        "broadcast_commands": False,
         "threaded_scan": False,
+        "reset_rx_on_error": True,  # long scans have a high propability for ESD related data transmission errors; recover and continue
         "trig_count": 0,  # FE-I4 trigger count, number of consecutive BCs, 0 means 16, from 0 to 15
         "trigger_latency": 232,  # FE-I4 trigger latency, in BCs, external scintillator / TLU / HitOR: 232, USBpix self-trigger: 220
         "trigger_delay": 8,  # trigger delay, in BCs
@@ -39,7 +38,7 @@ class M26TelescopeScan(Fei4RunBase):
         "no_data_timeout": 120,  # no data timeout after which the scan will be aborted, in seconds
         "scan_timeout": 60,  # timeout for scan after which the scan will be stopped, in seconds
         "max_triggers": 0,  # maximum triggers after which the scan will be stopped, if 0, no maximum triggers are set
-        "reset_rx_on_error": True,  # long scans have a high propability for ESD related data transmission errors; recover and continue here
+        "enable_roi": False,  # if True, use additional FEI4 ROI plane
         "remote": False  # if True, Powersupply remote is enabled
     }
 
@@ -242,6 +241,8 @@ class M26TelescopeScan(Fei4RunBase):
 #            analyze_raw_data.plot_histograms()
 
     def start_readout(self, *args, **kwargs):
+        if not self.enable_roi:
+            self._enabled_fe_channels = []
         super(M26TelescopeScan, self).start_readout(*args, **kwargs)
         self.connect_cancel(["stop"])
         self.dut['TLU']['RESET'] = 1
@@ -265,7 +266,10 @@ class M26TelescopeScan(Fei4RunBase):
             self.dut['TLU']['MAX_TRIGGERS'] = self.max_triggers
         else:
             self.dut['TLU']['MAX_TRIGGERS'] = 0  # infinity triggers
-        self.dut['TX']['EN_EXT_TRIGGER'] = True
+        if self.enable_roi:
+            self.dut['TX']['EN_EXT_TRIGGER'] = True
+        else:
+            self.dut['TX']['EN_EXT_TRIGGER'] = False
         # this will turn on trigger/TLU FSM
         with self.synchronized():
             self.dut['TLU']['TRIGGER_ENABLE'] = True

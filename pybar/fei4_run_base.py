@@ -105,14 +105,15 @@ class Fei4RunBase(RunBase):
         self._starting_readout_event.clear()
         self._stopping_readout_event = Event()
         self._stopping_readout_event.clear()
-        self._enabled_fe_channels = []  # ignore any RX sync errors
+        self.fifo_readout = None  # FIFO readout instance
+        self._enabled_fifos = []  # currently activated FIFOs
+        self._enabled_fe_channels = []  # currently activated receivers
         self._curr_sync_threads = []
         self._sync_lock = Lock()
         self._enter_sync_event = Event()
         self._enter_sync_event.clear()
         self._exit_sync_event = Event()
         self._exit_sync_event.clear()
-        self.fifo_readout = None  # FIFO readout instance
         self._parse_module_cfgs()
         self._init_default_run_conf()
         # after initialized is set to True, all new attributes are belonging to selected mudule
@@ -176,7 +177,7 @@ class Fei4RunBase(RunBase):
         self._conf.setdefault('working_dir', None)  # string, if None, absolute path of configuration.yaml file will be used
 
         if 'modules' in self._conf and self._conf['modules']:
-            for module_id, module_cfg in [(key, val) for key, val in self._conf['modules'].items() if val["flavor"] in fe_flavors]:
+            for module_id, module_cfg in [(key, value) for key, value in self._conf['modules'].items() if ("activate" not in value or ("activate" in value and value["activate"] is True))]:
                 # Check here for missing module config items.
                 # Capital letter keys are Basil drivers, other keys are parameters.
                 # FIFO, RX, TX, TLU and TDC are generic driver names which are used in the scan implementations.
@@ -184,29 +185,29 @@ class Fei4RunBase(RunBase):
                 # Accessing Basil drivers with real name is still possible.
                 if "module_group" in module_id:
                     raise ValueError('The module ID "%s" contains the reserved name "module_group".' % module_id)
-                for driver_name in _reserved_driver_names:
-                    # TDC is not mandatory
-                    if driver_name == "TDC":
-                        # TDC is allowed to have set None
-                        module_cfg.setdefault('TDC', None)
-                        continue
-                    if driver_name not in module_cfg or module_cfg[driver_name] is None:
-                        raise ValueError('No parameter "%s" defined for module "%s".' % (driver_name, module_id))
-                if "rx_channel" not in module_cfg or module_cfg["rx_channel"] is None:
-                    raise ValueError('No parameter "rx_channel" defined for module "%s".' % module_id)
-                if "tx_channel" not in module_cfg or module_cfg["tx_channel"] is None:
-                    raise ValueError('No parameter "tx_channel" defined for module "%s".' % module_id)
                 if "flavor" not in module_cfg or module_cfg["flavor"] is None:
                     raise ValueError('No parameter "flavor" defined for module "%s".' % module_id)
-                if "chip_address" not in module_cfg:
-                    raise ValueError('No parameter "chip_address" defined for module "%s".' % module_id)
-                module_cfg.setdefault("tdc_channel", None)
-                module_cfg.setdefault("configuration", None)  # string or number, if None, using the last valid configuration
-                module_cfg.setdefault("send_data", None)  # address string of PUB socket
-                module_cfg.setdefault("activate", True)  # if True, activate module
-                # Save config to dict.
-                self._module_cfgs[module_id] = module_cfg
-                self._modules[module_id] = [module_id]
+                if module_cfg["flavor"] in fe_flavors:
+                    for driver_name in _reserved_driver_names:
+                        # TDC is not mandatory
+                        if driver_name == "TDC":
+                            # TDC is allowed to have set None
+                            module_cfg.setdefault('TDC', None)
+                            continue
+                        if driver_name not in module_cfg or module_cfg[driver_name] is None:
+                            raise ValueError('No parameter "%s" defined for module "%s".' % (driver_name, module_id))
+                    if "rx_channel" not in module_cfg or module_cfg["rx_channel"] is None:
+                        raise ValueError('No parameter "rx_channel" defined for module "%s".' % module_id)
+                    if "tx_channel" not in module_cfg or module_cfg["tx_channel"] is None:
+                        raise ValueError('No parameter "tx_channel" defined for module "%s".' % module_id)
+                    if "chip_address" not in module_cfg:
+                        raise ValueError('No parameter "chip_address" defined for module "%s".' % module_id)
+                    module_cfg.setdefault("tdc_channel", None)
+                    module_cfg.setdefault("configuration", None)  # string or number, if None, using the last valid configuration
+                    module_cfg.setdefault("send_data", None)  # address string of PUB socket
+                    # Save config to dict.
+                    self._module_cfgs[module_id] = module_cfg
+                    self._modules[module_id] = [module_id]
         else:
             raise ValueError("No module configuration specified")
 
@@ -664,8 +665,6 @@ class Fei4RunBase(RunBase):
             # adding DUT handles
             for module_id, module_cfg in self._module_cfgs.items():
                 self._module_dut[module_id] = DutHandle(dut=self._conf['dut'], module_cfg=module_cfg)
-        # FIFO readout
-        self.fifo_readout = FifoReadout(dut=self._module_dut[self._fifo_module_groups.keys()[0]])
         # initialize the modules
         self.init_modules()
 
@@ -694,11 +693,11 @@ class Fei4RunBase(RunBase):
                             # set all modules to run mode by before entering scan()
                             self.register_utils.set_run_mode()
 
-                    self.fifo_readout.reset_rx()
-                    self.fifo_readout.reset_fifo()
-                    self.fifo_readout.print_readout_status()
-
                     with self.access_module(module_id=None):
+                        self.fifo_readout.reset_rx()
+                        self.fifo_readout.reset_fifo()
+                        self.fifo_readout.print_readout_status()
+
                         with self.access_files():
                             self._scan_threads = []
                             for module_id in self._tx_module_groups:
@@ -775,15 +774,14 @@ class Fei4RunBase(RunBase):
                                 self.configure()
                                 # set modules to run mode by before entering scan()
                                 self.register_utils.set_run_mode()
-
-                            self.fifo_readout.reset_rx()
-                            self.fifo_readout.reset_fifo()
-                            self.fifo_readout.print_readout_status()
-
                             t = ExcThread(target=self.scan, name=module_id)
                             t.daemon = True  # exiting program even when thread is alive
                             self._scan_threads.append(t)
                         with self.access_module(module_id=None):
+                            self.fifo_readout.reset_rx()
+                            self.fifo_readout.reset_fifo()
+                            self.fifo_readout.print_readout_status()
+
                             with self.access_files():
                                 # some scans use this event to stop scan loop, clear event here to make another scan possible
                                 self.stop_run.clear()
@@ -833,7 +831,9 @@ class Fei4RunBase(RunBase):
                             # set modules to conf mode by after finishing scan()
                             self.register_utils.set_conf_mode()
 
-        self.fifo_readout.print_readout_status()
+        if self._modules:
+            with self.access_module(module_id=None):
+                self.fifo_readout.print_readout_status()
 
     def post_run(self):
         # analyzing data and store register cfg per front end one by one
@@ -1034,16 +1034,25 @@ class Fei4RunBase(RunBase):
         if self._current_module_handle is not None:
             raise RuntimeError('Module handle "%s" cannot be set because another module is active' % module_id)
 
+        # FIFO readout
+        if module_id is None:
+            self._enabled_fifos = list(set([module_cfg['FIFO'] for (name, module_cfg) in self._module_cfgs.items() if name in self._modules]))
+        elif module_id in self._modules:
+            self._enabled_fifos = [self._module_cfgs[module_id]['FIFO']]
+        elif module_id in self._tx_module_groups:
+            self._enabled_fifos = list(set([module_cfg['FIFO'] for (name, module_cfg) in self._module_cfgs.items() if name in self._tx_module_groups[module_id]]))
+        # TODO: adding support for multiple FIFO
+        if len(self._enabled_fifos) != 1:
+            raise NotImplementedError("More than one FIFO is currently not supported")
+        self.fifo_readout = FifoReadout(dut=self._module_dut["module_group_FIFO=" + self._enabled_fifos[0]])
+
         # select readout channels and report sync status only from actively selected modules
         if module_id is None:
-            self._enabled_fe_channels = list(set([module_cfg['RX'] for (name, module_cfg) in self._module_cfgs.items() if (name in self._modules and module_cfg['activate'] is True)]))
+            self._enabled_fe_channels = list(set([module_cfg['RX'] for (name, module_cfg) in self._module_cfgs.items() if name in self._modules]))
         elif module_id in self._modules:
-            if self._module_cfgs[module_id]['activate'] is True:
-                self._enabled_fe_channels = [self._module_cfgs[module_id]['RX']]
-            else:
-                self._enabled_fe_channels = []
+            self._enabled_fe_channels = [self._module_cfgs[module_id]['RX']]
         elif module_id in self._tx_module_groups:
-            self._enabled_fe_channels = list(set([module_cfg['RX'] for (name, module_cfg) in self._module_cfgs.items() if (name in self._tx_module_groups[module_id] and module_cfg['activate'] is True)]))
+            self._enabled_fe_channels = list(set([module_cfg['RX'] for (name, module_cfg) in self._module_cfgs.items() if name in self._tx_module_groups[module_id]]))
         else:
             self._enabled_fe_channels = []  # ignore any RX sync errors
 
@@ -1051,19 +1060,16 @@ class Fei4RunBase(RunBase):
         if module_id is None:
             # generating enable bit mask for broadcasting
             for tx in set([self._module_cfgs[name]['TX'] for name in self._modules]):
-                tx_channels = list(set([1 << module_cfg['tx_channel'] for (name, module_cfg) in self._module_cfgs.items() if (module_cfg['TX'] == tx and name in self._modules and module_cfg['activate'] is True)]))
+                tx_channels = list(set([1 << module_cfg['tx_channel'] for (name, module_cfg) in self._module_cfgs.items() if (module_cfg['TX'] == tx and name in self._modules)]))
                 if tx_channels:
                     self.dut[tx]['OUTPUT_ENABLE'] = reduce(lambda x, y: x | y, tx_channels)
                 else:
                     self.dut[tx]['OUTPUT_ENABLE'] = 0
         elif module_id in self._modules:
             # enable specific channel
-            if self._module_cfgs[module_id]['activate'] is True:
-                self.dut['TX']['OUTPUT_ENABLE'] = (1 << self._module_cfgs[module_id]["tx_channel"])
-            else:
-                self.dut['TX']['OUTPUT_ENABLE'] = 0
+            self.dut['TX']['OUTPUT_ENABLE'] = (1 << self._module_cfgs[module_id]["tx_channel"])
         elif module_id in self._tx_module_groups:
-            tx_channels = list(set([1 << module_cfg['tx_channel'] for (name, module_cfg) in self._module_cfgs.items() if (name in self._tx_module_groups[module_id] and module_cfg['activate'] is True)]))
+            tx_channels = list(set([1 << module_cfg['tx_channel'] for (name, module_cfg) in self._module_cfgs.items() if name in self._tx_module_groups[module_id]]))
             if tx_channels:
                 self.dut['TX']['OUTPUT_ENABLE'] = reduce(lambda x, y: x | y, tx_channels)
             else:
@@ -1077,6 +1083,7 @@ class Fei4RunBase(RunBase):
     def deselect_module(self):
         ''' Deselect module and cleanup.
         '''
+        self.fifo_readout = None
         self._enabled_fe_channels = []  # ignore any RX sync errors
         self.dut['TX']['OUTPUT_ENABLE'] = 0
         self._current_module_handle = None
