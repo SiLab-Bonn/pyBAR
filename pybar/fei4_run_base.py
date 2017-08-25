@@ -1031,6 +1031,8 @@ class Fei4RunBase(RunBase):
         '''
         if module_id not in self._module_cfgs:
             raise ValueError('Module ID "%s" is not valid' % module_id)
+        if self._current_module_handle is not None:
+            raise RuntimeError('Module handle "%s" cannot be set because another module is active' % module_id)
 
         # select readout channels and report sync status only from actively selected modules
         if module_id is None:
