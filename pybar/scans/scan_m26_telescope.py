@@ -1,10 +1,8 @@
 import logging
 import os
 import inspect
-import sys
 from time import time, sleep
 from threading import Timer
-from collections import namedtuple, Mapping, OrderedDict
 
 import progressbar
 import numpy as np
@@ -25,6 +23,7 @@ class M26TelescopeScan(Fei4RunBase):
 
     Note:
     Set up trigger in DUT configuration file (e.g. dut_configuration_mio.yaml).
+    Only Agilent E3644a Power supply for current feedback is supported
     '''
     _default_run_conf = {
         "trig_count": 0,  # FE-I4 trigger count, number of consecutive BCs, 0 means 16, from 0 to 15
@@ -45,9 +44,7 @@ class M26TelescopeScan(Fei4RunBase):
 
     def init_dut(self):
         if self.remote:
-            dut = Dut('agilent_e3644a_pyserial.yaml')
-            dut.init()
-            status = dut['Powersupply'].get_enable()
+            status = self.dut['Powersupply'].get_enable()
             sleep(0.15)
             status = status.replace("\n", "").replace("\r", "")
             status = int(status) #convert string to float in order to compare values!
@@ -57,7 +54,7 @@ class M26TelescopeScan(Fei4RunBase):
                 logging.info("Output of powersupply is OFF, status: %s" % status)  # TODO: STOP READOUT!!!
                 #abort(msg='Scan timeout was reached')
                 #stop_current_run(msg='OFF')
-            current = dut['Powersupply'].get_current()
+            current = self.dut['Powersupply'].get_current()
             current = current.replace("\n", "").replace("\r", "")
             logging.info('Current:  %s A', current)
             current = float(current)  # convert string to float in order to compare values!
@@ -95,7 +92,7 @@ class M26TelescopeScan(Fei4RunBase):
                     ret = self.dut['jtag'].scan_dr([self.dut[ir][:]])[0]
 
                 if self.remote:
-                    current = dut['Powersupply'].get_current()
+                    current = self.dut['Powersupply'].get_current()
                     current = current.replace("\n", "").replace("\r", "")
                     logging.info('Current:  %s A', current)
                 ## read JTAG  and check
@@ -111,7 +108,7 @@ class M26TelescopeScan(Fei4RunBase):
                     ret[ir]= self.dut['jtag'].scan_dr([self.dut[ir][:]])[0]
 
                 if self.remote:
-                    current = dut['Powersupply'].get_current()
+                    current = self.dut['Powersupply'].get_current()
                     current = current.replace("\n", "").replace("\r", "")
                     logging.info('Current:  %s A', current)
                 ## check
@@ -126,19 +123,19 @@ class M26TelescopeScan(Fei4RunBase):
                         logging.info("Checking M26 JTAG %s ok"%k)
 
                 if self.remote:
-                    current = dut['Powersupply'].get_current()
+                    current = self.dut['Powersupply'].get_current()
                     current = current.replace("\n", "").replace("\r", "")
                     logging.info('Current:  %s A', current)
                 #START procedure
                 logging.info('Starting M26')
                 temp=self.dut['RO_MODE0_ALL'][:]
-                  #disable extstart
+                #disable extstart
                 for reg in self.dut["RO_MODE0_ALL"]["RO_MODE0"]:
                     reg['En_ExtStart']=0
                     reg['JTAG_Start']=0
                 self.dut['jtag'].scan_ir([BitLogic(IR['RO_MODE0_ALL'])]*6)
                 self.dut['jtag'].scan_dr([self.dut['RO_MODE0_ALL'][:]])
-                  #JTAG start
+                #JTAG start
                 for reg in self.dut["RO_MODE0_ALL"]["RO_MODE0"]:
                     reg['JTAG_Start']=1
                 self.dut['jtag'].scan_ir([BitLogic(IR['RO_MODE0_ALL'])]*6)
@@ -147,16 +144,16 @@ class M26TelescopeScan(Fei4RunBase):
                     reg['JTAG_Start']=0
                 self.dut['jtag'].scan_ir([BitLogic(IR['RO_MODE0_ALL'])]*6)
                 self.dut['jtag'].scan_dr([self.dut['RO_MODE0_ALL'][:]])
-                  #write original configuration
+                #write original configuration
                 self.dut['RO_MODE0_ALL'][:]=temp
                 self.dut['jtag'].scan_ir([BitLogic(IR['RO_MODE0_ALL'])]*6)
                 self.dut['jtag'].scan_dr([self.dut['RO_MODE0_ALL'][:]])
-                  #readback?
+                #readback?
                 self.dut['jtag'].scan_ir([BitLogic(IR['RO_MODE0_ALL'])]*6)
                 self.dut['jtag'].scan_dr([self.dut['RO_MODE0_ALL'][:]]*6)
 
                 if self.remote:
-                    current = dut['Powersupply'].get_current()
+                    current = self.dut['Powersupply'].get_current()
                     current = current.replace("\n", "").replace("\r", "")
                     logging.info('Current:  %s A', current)
             else:

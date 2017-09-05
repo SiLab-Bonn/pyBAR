@@ -9,6 +9,17 @@ name    : mmc3_m26_eth
 version : 0.1
 
 transfer_layer:
+  # The power supply that powers the Mimosa 26 plane
+  # Can be commented out if no communication to the
+  # power supply is possible
+  - name     : Serial
+    type     : Serial
+    init     :
+        port     : /dev/ttyUSB0
+        read_termination : "\n"
+        baudrate : 9600
+        dsrdtr : True
+        timeout : 2
   - name  : ETH
     type  : SiTcp
     init:      
@@ -18,6 +29,14 @@ transfer_layer:
         tcp_connection : True
         
 hw_drivers:
+  # The power supply that powers the Mimosa 26 plane
+  # Can be commented out if no communication to the
+  # power supply is possible
+  - name      : Powersupply
+    type      : scpi
+    interface : Serial
+    init      :
+        device : Agilent E3644A
   - name      : CMD
     type      : cmd_seq
     interface : ETH
