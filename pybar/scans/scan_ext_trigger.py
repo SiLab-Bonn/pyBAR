@@ -1,6 +1,7 @@
 import logging
 import numpy as np
 import progressbar
+from time import time
 from threading import Timer
 
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
