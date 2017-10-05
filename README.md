@@ -54,9 +54,9 @@ On Windows, the `pywin32` package is required:
   conda install pywin32
   ```
 
-[Basil](https://github.com/SiLab-Bonn/basil) (==2.4.6) is required:
+[Basil](https://github.com/SiLab-Bonn/basil) (==2.4.7) is required:
   ```
-  pip install basil_daq==2.4.6
+  pip install basil_daq==2.4.7
   ```
 
 [pyBAR FEI4 Interpreter](https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter) (>=1.3.0) is required:
