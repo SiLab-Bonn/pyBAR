@@ -9,6 +9,14 @@ name    : mmc3_m26_eth
 version : 0.1
 
 transfer_layer:
+  - name  : ETH
+    type  : SiTcp
+    init:
+        ip : "192.168.10.16"
+        udp_port : 4660
+        tcp_port : 24
+        tcp_connection : True
+
   # The power supply that powers the Mimosa 26 plane
   # Can be commented out if no communication to the
   # power supply is possible
@@ -20,14 +28,7 @@ transfer_layer:
         baudrate : 9600
         dsrdtr : True
         timeout : 2
-  - name  : ETH
-    type  : SiTcp
-    init:      
-        ip : "192.168.10.16"
-        udp_port : 4660
-        tcp_port : 24
-        tcp_connection : True
-        
+
 hw_drivers:
   # The power supply that powers the Mimosa 26 plane
   # Can be commented out if no communication to the
@@ -37,6 +38,7 @@ hw_drivers:
     interface : Serial
     init      :
         device : Agilent E3644A
+
   - name      : CMD
     type      : cmd_seq
     interface : ETH

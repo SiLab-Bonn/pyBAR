@@ -22,8 +22,8 @@ class M26TelescopeScan(Fei4RunBase):
     For use with external scintillator (user RX0), TLU (use RJ45), FE-I4 HitOR (USBpix self-trigger).
 
     Note:
-    Set up trigger in DUT configuration file (e.g. dut_configuration_mio.yaml).
-    Only Agilent E3644a Power supply for current feedback is supported
+    Set up trigger in DUT configuration file (e.g. dut_configuration_mmc3_m26_eth.yaml).
+    Only Agilent E3644a power supply is supported.
     '''
     _default_run_conf = {
         "trig_count": 0,  # FE-I4 trigger count, number of consecutive BCs, 0 means 16, from 0 to 15
