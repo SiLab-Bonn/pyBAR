@@ -45,7 +45,8 @@ cmd([0xB4, 0x50, 0x70], 23)  # run mode
 cmd([0xB1, 0x00], 9)  # ECR
 cmd([0xB4, 0x50, 0x0E], 23)  # conf mode
 
-dut['rx_1']['RESET']  # let rx sync
+dut['rx_1']['RX_RESET']  # RX sync
+dut['rx_1']['ENABLE_RX']  # enable RX
 
 cmd([0xB4, 0x08, 0x00], 23)  # readbck a register
 

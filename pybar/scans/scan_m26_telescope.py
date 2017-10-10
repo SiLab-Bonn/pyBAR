@@ -3,6 +3,7 @@ import os
 import inspect
 from time import time, sleep
 from threading import Timer
+from contextlib import contextmanager
 
 import progressbar
 import numpy as np
@@ -201,30 +202,31 @@ class M26TelescopeScan(Fei4RunBase):
         lvl1_command = self.register.get_commands("zeros", length=self.trigger_delay)[0] + self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", length=self.trigger_rate_limit)[0]
         self.register_utils.set_command(lvl1_command)
 
-        with self.readout(no_data_timeout=self.no_data_timeout):
-            got_data = False
-            start = time()
-            while not self.stop_run.wait(1.0):
-                if not got_data:
-                    if self.fifo_readout.data_words_per_second() > 0:
-                        got_data = True
-                        logging.info('Taking data...')
-                        if self.max_triggers:
-                            self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=self.max_triggers, poll=10, term_width=80).start()
-                        else:
-                            self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.Timer()], maxval=self.scan_timeout, poll=10, term_width=80).start()
-                else:
-                    triggers = self.dut['TLU']['TRIGGER_COUNTER']
-                    try:
-                        if self.max_triggers:
-                            self.progressbar.update(triggers)
-                        else:
-                            self.progressbar.update(time() - start)
-                    except ValueError:
-                        pass
-                    if self.max_triggers and triggers >= self.max_triggers:
-                        self.progressbar.finish()
-                        self.stop(msg='Trigger limit was reached: %i' % self.max_triggers)
+        with self.readout(no_data_timeout=self.no_data_timeout, enabled_fe_channels=self._enabled_fe_channels if self.enable_roi else [], enabled_m26_channels=[rx.name for rx in self.dut.get_modules('m26_rx')]):
+            with self.trigger():
+                got_data = False
+                start = time()
+                while not self.stop_run.wait(1.0):
+                    if not got_data:
+                        if self.fifo_readout.data_words_per_second() > 0:
+                            got_data = True
+                            logging.info('Taking data...')
+                            if self.max_triggers:
+                                self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=self.max_triggers, poll=10, term_width=80).start()
+                            else:
+                                self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.Timer()], maxval=self.scan_timeout, poll=10, term_width=80).start()
+                    else:
+                        triggers = self.dut['TLU']['TRIGGER_COUNTER']
+                        try:
+                            if self.max_triggers:
+                                self.progressbar.update(triggers)
+                            else:
+                                self.progressbar.update(time() - start)
+                        except ValueError:
+                            pass
+                        if self.max_triggers and triggers >= self.max_triggers:
+                            self.progressbar.finish()
+                            self.stop(msg='Trigger limit was reached: %i' % self.max_triggers)
         logging.info('Total amount of triggers collected: %d', self.dut['TLU']['TRIGGER_COUNTER'])
 
     def analyze(self):
@@ -240,10 +242,20 @@ class M26TelescopeScan(Fei4RunBase):
 #            analyze_raw_data.interpreter.print_summary()
 #            analyze_raw_data.plot_histograms()
 
-    def start_readout(self, *args, **kwargs):
-        if not self.enable_roi:
-            self._enabled_fe_channels = []
-        super(M26TelescopeScan, self).start_readout(*args, **kwargs)
+    @contextmanager
+    def trigger(self):
+        self.start_trigger()
+        try:
+            yield
+        finally:
+            try:
+                self.stop_trigger()
+            except:
+                # in case something fails, call this on last resort
+                self.scan_timeout_timer.cancel()
+                self.connect_cancel(["abort"])
+
+    def start_trigger(self):
         self.connect_cancel(["stop"])
         self.dut['TLU']['RESET'] = 1
         self.dut['TLU']['TRIGGER_MODE'] = 3
@@ -254,13 +266,6 @@ class M26TelescopeScan(Fei4RunBase):
         self.dut['TLU']['TRIGGER_COUNTER'] = 0
         self.dut['TLU']['TRIGGER_VETO_SELECT'] = 0
         self.dut['TLU']['EN_TLU_VETO'] = 0
-
-        self.dut['M26_RX1'].set_en(True)
-        self.dut['M26_RX2'].set_en(True)
-        self.dut['M26_RX3'].set_en(True)
-        self.dut['M26_RX4'].set_en(True)
-        self.dut['M26_RX5'].set_en(True)
-        self.dut['M26_RX6'].set_en(True)
 
         if self.max_triggers:
             self.dut['TLU']['MAX_TRIGGERS'] = self.max_triggers
@@ -285,20 +290,11 @@ class M26TelescopeScan(Fei4RunBase):
         if self.scan_timeout:
             self.scan_timeout_timer.start()
 
-    def stop_readout(self, timeout=10.0):
+    def stop_trigger(self):
         self.scan_timeout_timer.cancel()
         with self.synchronized():
             self.dut['TLU']['TRIGGER_ENABLE'] = False
         self.dut['TX']['EN_EXT_TRIGGER'] = False
-
-        self.dut['M26_RX1'].set_en(False)
-        self.dut['M26_RX2'].set_en(False)
-        self.dut['M26_RX3'].set_en(False)
-        self.dut['M26_RX4'].set_en(False)
-        self.dut['M26_RX5'].set_en(False)
-        self.dut['M26_RX6'].set_en(False)
-
-        super(M26TelescopeScan, self).stop_readout(timeout=timeout)
         self.connect_cancel(["abort"])
 
 

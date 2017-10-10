@@ -16,8 +16,8 @@ import abc
 import ast
 import inspect
 import sys
-import contextlib2 as contextlib
 
+from contextlib2 import ExitStack
 import numpy as np
 
 import basil
@@ -438,39 +438,16 @@ class Fei4RunBase(RunBase):
             self.dut['ENABLE_CHANNEL']['TDC'] = 1
             self.dut['ENABLE_CHANNEL'].write()
         elif self.dut.name == 'mmc3_m26_eth':
+            pass
             # TODO: enable Mimosa26 Rx when necessary
-            rx_names = [rx.name for rx in self.dut.get_modules('fei4_rx')]
-            active_rx_names = [module_cfg["RX"] for (name, module_cfg) in self._module_cfgs.items() if name in self._modules]
-            for rx_name in rx_names:
-                # enabling readout
-                if rx_name in active_rx_names:
-                    self.dut[rx_name].ENABLE_RX = 1
-                else:
-                    self.dut[rx_name].ENABLE_RX = 0
         elif self.dut.name == 'mmc3_beast_eth':
-            rx_names = [rx.name for rx in self.dut.get_modules('fei4_rx')]
-            active_rx_names = [module_cfg["RX"] for (name, module_cfg) in self._module_cfgs.items() if name in self._modules]
-            for rx_name in rx_names:
-                # enabling/disabling Rx
-                if rx_name in active_rx_names:
-                    self.dut[rx_name].ENABLE_RX = 1
-                else:
-                    self.dut[rx_name].ENABLE_RX = 0
             self.dut['DLY_CONFIG']['CLK_DLY'] = 0
             self.dut['DLY_CONFIG'].write()
         elif self.dut.name == 'mmc3_8chip_eth':
-            rx_names = [rx.name for rx in self.dut.get_modules('fei4_rx')]
-            active_rx_names = [module_cfg["RX"] for (name, module_cfg) in self._module_cfgs.items() if name in self._modules]
-            for rx_name in rx_names:
-                # enabling/disabling Rx
-                if rx_name in active_rx_names:
-                    self.dut[rx_name].ENABLE_RX = 1
-                else:
-                    self.dut[rx_name].ENABLE_RX = 0
             self.dut['DLY_CONFIG']['CLK_DLY'] = 0
             self.dut['DLY_CONFIG'].write()
         else:
-            logging.warning('Omitting initialization of DUT %s', self.dut.name)
+            logging.warning('Unknown DUT name: %s', self.dut.name)
 
     def init_modules(self):
         ''' Initialize all modules consecutively'''
@@ -541,8 +518,6 @@ class Fei4RunBase(RunBase):
         # Set all modules to conf mode to prevent from receiving BCR and ECR broadcast
         for module_id in self._tx_module_groups:
             with self.access_module(module_id=module_id):
-                self.dut["RX"]["RESET"]
-                self.dut["FIFO"]["RESET"]
                 self.register_utils.set_conf_mode()
 
         # Initial configuration (reset and configuration) of all modules.
@@ -567,8 +542,6 @@ class Fei4RunBase(RunBase):
                         logging.warning('Module "%s" is not sending any data.' % module_id)
                 # set all modules to conf mode afterwards to be immune to ECR and BCR
                 self.register_utils.set_conf_mode()
-                self.dut["RX"]["RESET"]
-                self.dut["FIFO"]["RESET"]
 
     def pre_run(self):
         # clear error queue in case run is executed another time
@@ -675,7 +648,7 @@ class Fei4RunBase(RunBase):
         '''
         if self.broadcast_commands:  # Broadcast FE commands
             if self.threaded_scan:
-                with contextlib.ExitStack() as restore_config_stack:
+                with ExitStack() as restore_config_stack:
                     # Configure each FE individually
                     # Sort module config keys, configure broadcast modules first
                     for module_id in itertools.chain(self._tx_module_groups, self._modules):
@@ -731,7 +704,7 @@ class Fei4RunBase(RunBase):
                 for tx_module_id, tx_group in self._tx_module_groups.items():
                     if self.abort_run.is_set():
                         break
-                    with contextlib.ExitStack() as restore_config_stack:
+                    with ExitStack() as restore_config_stack:
                         for module_id in itertools.chain([tx_module_id], tx_group):
                             if self.abort_run.is_set():
                                 break
@@ -763,7 +736,7 @@ class Fei4RunBase(RunBase):
                 for tx_module_ids in itertools.izip_longest(*self._tx_module_groups.values()):
                     if self.abort_run.is_set():
                         break
-                    with contextlib.ExitStack() as restore_config_stack:
+                    with ExitStack() as restore_config_stack:
                         for module_id in tx_module_ids:
                             if self.abort_run.is_set():
                                 break
@@ -1230,13 +1203,16 @@ class Fei4RunBase(RunBase):
         '''
         # Pop parameters for fifo_readout.start
         callback = kwargs.pop('callback', self.handle_data)
+        errback = kwargs.pop('errback', self.handle_err)
+        reset_rx = kwargs.pop('reset_rx', True)
+        reset_fifo = kwargs.pop('reset_fifo', True)
         clear_buffer = kwargs.pop('clear_buffer', True)
         fill_buffer = kwargs.pop('fill_buffer', False)
-        reset_fifo = kwargs.pop('reset_fifo', True)
-        errback = kwargs.pop('errback', self.handle_err)
         no_data_timeout = kwargs.pop('no_data_timeout', None)
         filter_func = kwargs.pop('filter', None)
         converter_func = kwargs.pop('converter', None)
+        enabled_fe_channels = kwargs.pop('enabled_fe_channels', self._enabled_fe_channels)
+        enabled_m26_channels = kwargs.pop('enabled_m26_channels', None)
         if args or kwargs:
             self.set_scan_parameters(*args, **kwargs)
         if self._scan_threads and self.current_module_handle not in [t.name for t in self._scan_threads]:
@@ -1252,7 +1228,7 @@ class Fei4RunBase(RunBase):
             with self._readout_lock:
                 if len(set(self._curr_readout_threads) & set([t.name for t in self._scan_threads if t.is_alive()])) == len(set([t.name for t in self._scan_threads if t.is_alive()])) or not self._scan_threads:
                     if not self.fifo_readout.is_running:
-                        self.fifo_readout.start(reset_fifo=reset_fifo, fill_buffer=fill_buffer, clear_buffer=clear_buffer, callback=callback, errback=errback, no_data_timeout=no_data_timeout, filter_func=filter_func, converter_func=converter_func, enabled_fe_channels=self._enabled_fe_channels)
+                        self.fifo_readout.start(callback=callback, errback=errback, reset_rx=reset_rx, reset_fifo=reset_fifo, clear_buffer=clear_buffer, fill_buffer=fill_buffer, no_data_timeout=no_data_timeout, filter_func=filter_func, converter_func=converter_func, enabled_fe_channels=enabled_fe_channels, enabled_m26_channels=enabled_m26_channels)
                         self._starting_readout_event.set()
 
     def stop_readout(self, timeout=10.0):

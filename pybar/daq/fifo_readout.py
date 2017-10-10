@@ -89,8 +89,14 @@ class FifoReadout(object):
         self._is_running = True
         self.filter_func = filter_func
         self.converter_func = converter_func
-        self.enabled_fe_channels = enabled_fe_channels
-        self.enabled_m26_channels = enabled_m26_channels
+        if enabled_fe_channels is None:
+            self.enabled_fe_channels = [rx.name for rx in self.dut.get_modules('fei4_rx')]
+        else:
+            self.enabled_fe_channels = enabled_fe_channels
+        if enabled_m26_channels is None:
+            self.enabled_m26_channels = [rx.name for rx in self.dut.get_modules('m26_rx')]
+        else:
+            self.enabled_m26_channels = enabled_m26_channels
         self.callback = callback
         self.errback = errback
         self.fill_buffer = fill_buffer
@@ -104,6 +110,11 @@ class FifoReadout(object):
             dh_dr_select = logical_and(is_fe_word, logical_or(is_data_record, is_data_header))
             if np.count_nonzero(dh_dr_select(raw_data)) != 0:
                 logging.warning('FIFO containing events when starting FIFO readout: FIFO_SIZE = %i', fifo_size)
+        # enabling selected RX channels
+        for fei4_rx_name in self.enabled_fe_channels:
+            self.dut[fei4_rx_name].ENABLE_RX = 1
+        for m26_rx_name in self.enabled_m26_channels:
+            self.dut[m26_rx_name].EN = 1
         self._words_per_read.clear()
         if clear_buffer:
             self._data_deque.clear()
@@ -140,6 +151,11 @@ class FifoReadout(object):
                 self.errback(sys.exc_info())
             else:
                 logging.error(e)
+        # disabling selected RX channels
+        for fei4_rx_name in self.enabled_fe_channels:
+            self.dut[fei4_rx_name].ENABLE_RX = 0
+        for m26_rx_name in self.enabled_m26_channels:
+            self.dut[m26_rx_name].EN = 0
         if self.readout_thread.is_alive():
             self.readout_thread.join()
         if self.errback:

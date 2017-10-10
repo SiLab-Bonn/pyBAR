@@ -1,6 +1,7 @@
 import logging
 from time import time
 from threading import Timer
+from contextlib import contextmanager
 
 import progressbar
 import numpy as np
@@ -61,19 +62,20 @@ class Fei4SelfTriggerScan(Fei4RunBase):
 
     def scan(self):
         with self.readout(no_data_timeout=self.no_data_timeout):
-            got_data = False
-            start = time()
-            while not self.stop_run.wait(1.0):
-                if not got_data:
-                    if self.fifo_readout.data_words_per_second() > 0:
-                        got_data = True
-                        logging.info('Taking data...')
-                        self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.Timer()], maxval=self.scan_timeout, poll=10, term_width=80).start()
-                else:
-                    try:
-                        self.progressbar.update(time() - start)
-                    except ValueError:
-                        pass
+            with self.trigger():
+                got_data = False
+                start = time()
+                while not self.stop_run.wait(1.0):
+                    if not got_data:
+                        if self.fifo_readout.data_words_per_second() > 0:
+                            got_data = True
+                            logging.info('Taking data...')
+                            self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.Timer()], maxval=self.scan_timeout, poll=10, term_width=80).start()
+                    else:
+                        try:
+                            self.progressbar.update(time() - start)
+                        except ValueError:
+                            pass
 
     def analyze(self):
         with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
@@ -95,8 +97,20 @@ class Fei4SelfTriggerScan(Fei4RunBase):
             commands.extend(self.register.get_commands("RunMode"))
         self.register_utils.send_commands(commands)
 
-    def start_readout(self, *args, **kwargs):
-        super(Fei4SelfTriggerScan, self).start_readout(*args, **kwargs)
+    @contextmanager
+    def trigger(self):
+        self.start_trigger()
+        try:
+            yield
+        finally:
+            try:
+                self.stop_trigger()
+            except:
+                # in case something fails, call this on last resort
+                self.scan_timeout_timer.cancel()
+                self.connect_cancel(["abort"])
+
+    def start_trigger(self):
         self.connect_cancel(["stop"])
         with self.synchronized():
             self.set_self_trigger(enable=True)
@@ -112,11 +126,10 @@ class Fei4SelfTriggerScan(Fei4RunBase):
         if self.scan_timeout:
             self.scan_timeout_timer.start()
 
-    def stop_readout(self, timeout=10.0):
+    def stop_trigger(self):
         self.scan_timeout_timer.cancel()
         with self.synchronized():
             self.set_self_trigger(enable=False)
-        super(Fei4SelfTriggerScan, self).stop_readout(timeout=timeout)
         self.connect_cancel(["abort"])
 
 
