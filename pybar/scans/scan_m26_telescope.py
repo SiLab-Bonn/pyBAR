@@ -37,7 +37,6 @@ class M26TelescopeScan(Fei4RunBase):
         "no_data_timeout": 120,  # no data timeout after which the scan will be aborted, in seconds
         "scan_timeout": 60,  # timeout for scan after which the scan will be stopped, in seconds
         "max_triggers": 0,  # maximum triggers after which the scan will be stopped, if 0, no maximum triggers are set
-        "enable_tdc": False,  # if True, enables TDC (use RX2)
         "reset_rx_on_error": True,  # long scans have a high propability for ESD related data transmission errors; recover and continue here
         "remote": True # if True, Powersupply remote is enabled
     }
@@ -231,10 +230,6 @@ class M26TelescopeScan(Fei4RunBase):
         #    analyze_raw_data.create_cluster_size_hist = True
         #    analyze_raw_data.create_cluster_tot_hist = True
         #    analyze_raw_data.align_at_trigger = True
-        #    if self.enable_tdc:
-        #        analyze_raw_data.create_tdc_counter_hist = True  # histogram all TDC words
-        #        analyze_raw_data.create_tdc_hist = True  # histogram the hit TDC information
-        #        analyze_raw_data.align_at_tdc = False  # align events at the TDC word
         #    analyze_raw_data.interpreter.set_warning_output(False)
         #    analyze_raw_data.interpret_word_table()
         #    analyze_raw_data.interpreter.print_summary()
@@ -242,7 +237,6 @@ class M26TelescopeScan(Fei4RunBase):
 
     def start_readout(self, *args, **kwargs):
         super(M26TelescopeScan, self).start_readout(*args, **kwargs)
-        #self.dut['TDC']['ENABLE'] = self.enable_tdc
         self.dut['TLU']['RESET']=1
         self.dut['TLU']['TRIGGER_MODE']=3
         self.dut['TLU']['TRIGGER_LOW_TIMEOUT']=200

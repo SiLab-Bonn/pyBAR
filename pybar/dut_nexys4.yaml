@@ -18,7 +18,7 @@ hw_drivers:
     type      : i2c
     interface : ETH
     base_addr : 0x8800
- 
+
   - name      : CMD
     type      : cmd_seq
     interface : ETH
@@ -54,7 +54,7 @@ hw_drivers:
     type      : gpio
     interface : ETH
     base_addr : 0x8700
-    
+
   - name      : TLU
     type      : tlu
     interface : ETH
