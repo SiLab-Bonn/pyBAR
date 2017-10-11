@@ -21,8 +21,10 @@ class M26TelescopeScan(Fei4RunBase):
     '''External trigger scan with a single FE-I4 and up to 6 Mimosa26 telescope planes.
 
     Note:
-    Set up trigger in DUT configuration file (e.g. dut_configuration_mmc3_m26_eth.yaml).
-    Only Agilent E3644a power supply is supported.
+    - Remove not used Mimosa26 planes by commenting out the drivers in the DUT file (i.e. dut_mmc3_m26_eth.yaml).
+    - Set up trigger in DUT configuration file (i.e. dut_configuration_mmc3_m26_eth.yaml).
+    - Enable/disable FEI4 ROI by setting "enable_roi" to True/False.
+    - Only Agilent E3644a power supplys are supported. Set "remote" to True to enable remote control.
     '''
     _default_run_conf = {
         "broadcast_commands": False,
@@ -192,10 +194,6 @@ class M26TelescopeScan(Fei4RunBase):
         commands.extend(self.register.get_commands("WrRegister", name=["Trig_Lat", "Trig_Count"]))
         commands.extend(self.register.get_commands("RunMode"))
         self.register_utils.send_commands(commands)
-        self.dut['TLU']['RESET'] = 1
-        for channel in self.dut.get_modules('m26_rx'):
-            channel.reset()
-            channel['TIMESTAMP_HEADER'] = 1
 
     def scan(self):
         # preload command

@@ -45,6 +45,7 @@ hw_drivers:
     interface : ETH
     base_addr : 0x0000
 
+# Remove not used Mimosa26 planes by commenting out the drivers
   - name      : M26_RX1
     type      : m26_rx
     interface : ETH

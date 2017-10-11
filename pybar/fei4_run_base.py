@@ -1212,7 +1212,7 @@ class Fei4RunBase(RunBase):
         filter_func = kwargs.pop('filter', None)
         converter_func = kwargs.pop('converter', None)
         enabled_fe_channels = kwargs.pop('enabled_fe_channels', self._enabled_fe_channels)
-        enabled_m26_channels = kwargs.pop('enabled_m26_channels', None)
+        enabled_m26_channels = kwargs.pop('enabled_m26_channels', [])  # use none by default, even if available in firmware
         if args or kwargs:
             self.set_scan_parameters(*args, **kwargs)
         if self._scan_threads and self.current_module_handle not in [t.name for t in self._scan_threads]:

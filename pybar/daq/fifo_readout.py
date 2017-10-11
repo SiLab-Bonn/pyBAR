@@ -7,6 +7,7 @@ import sys
 
 import numpy as np
 
+from basil.HL import sitcp_fifo
 from pybar.utils.utils import get_float_time
 from pybar.daq.readout_utils import is_fe_word, is_data_record, is_data_header, logical_or, logical_and, data_array_from_data_iterable, convert_data_iterable, convert_data_array
 
@@ -101,7 +102,7 @@ class FifoReadout(object):
         self.errback = errback
         self.fill_buffer = fill_buffer
         if reset_rx:
-            self.reset_rx()
+            self.reset_rx(fe_channels=self.enabled_fe_channels, m26_channels=self.enabled_m26_channels)
         if reset_fifo:
             self.reset_fifo()
         else:
@@ -326,26 +327,31 @@ class FifoReadout(object):
         self.timestamp = curr_time
         return last_time, curr_time
 
-    def read_status(self):
-        raise NotImplementedError()
+    def get_fifo_size(self):
+        return self.dut['FIFO']['FIFO_SIZE']
+
+    def reset_rx(self, fe_channels=None, m26_channels=None):
+        logging.info('Resetting RX')
+        if fe_channels is None:
+            fe_channels = [rx.name for rx in self.dut.get_modules('fei4_rx')]
+        if m26_channels is None:
+            m26_channels = [rx.name for rx in self.dut.get_modules('m26_rx')]
+        for fei4_rx_name in fe_channels:
+            self.dut[fei4_rx_name].RX_RESET
+        for m26_rx_name in m26_channels:
+            self.dut[m26_rx_name].RESET
 
     def reset_fifo(self):
         fifo_size = self.dut['FIFO']['FIFO_SIZE']
         logging.info('Resetting FIFO: size = %i', fifo_size)
         self.update_timestamp()
         self.dut['FIFO']['RESET']
-        sleep(0.2)  # sleep here for a while
+        # sleep for a while, if it is a hardware FIFO
+        if not isinstance(self.dut['FIFO'], (sitcp_fifo.sitcp_fifo,)):
+            sleep(0.2)
         fifo_size = self.dut['FIFO']['FIFO_SIZE']
         if fifo_size != 0:
             logging.warning('FIFO not empty after reset: size = %i', fifo_size)
-
-    def reset_rx(self, channels=None):
-        logging.info('Resetting RX')
-        if channels:
-            filter(lambda channel: self.dut[channel].RX_RESET, channels)
-        else:
-            filter(lambda channel: channel.RX_RESET, self.dut.get_modules('fei4_rx'))
-        sleep(0.1)  # sleep here for a while
 
     def get_rx_enable_status(self, channels=None):
         if channels:

@@ -27,26 +27,3 @@ TDC_FEI4:
 # FE-I4 command output
 CMD_FEI4:
     OUTPUT_MODE : 0  # Selecting command output mode: positive edge (0), negative edge (1), Manchester Code according to IEEE 802.3 (2), Manchester Code according to G.E. Thomas (3)
-
-# FE-I4 data receiver
-DATA_FEI4:
-    ENABLE_RX : 1  # Set to 0 if no FE is connected
-    INVERT_RX : 0  # Inverting data input: disabled (0), enabled (e.g. for DBM modules) (1)
-
-M26_RX1:
-    EN : 1  # Set to 0 if no Mimosa26 is connected
-
-M26_RX2:
-    EN : 1  # Set to 0 if no Mimosa26 is connected
-
-M26_RX3:
-    EN : 1  # Set to 0 if no Mimosa26 is connected
-
-M26_RX4:
-    EN : 1  # Set to 0 if no Mimosa26 is connected
-
-M26_RX5:
-    EN : 1  # Set to 0 if no Mimosa26 is connected
-
-M26_RX6:
-    EN : 1  # Set to 0 if no Mimosa26 is connected
