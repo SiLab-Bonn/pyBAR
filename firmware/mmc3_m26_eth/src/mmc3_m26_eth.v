@@ -537,15 +537,15 @@ tlu_controller #(
 
     .TLU_TRIGGER(RJ45_TRIGGER),
     .TLU_RESET(RJ45_RESET),
-    .TLU_BUSY(RJ45_BUSY_LEMO_TX1),
-    .TLU_CLOCK(RJ45_CLK_LEMO_TX0),
+    .TLU_BUSY(TLU_BUSY),
+    .TLU_CLOCK(TLU_CLOCK),
 
     .TIMESTAMP(TIMESTAMP)
 );
 
-//reg [31:0] timestamp_gray;
-//always@(posedge BUS_CLK)
-//    timestamp_gray <= (TIMESTAMP>>1) ^ TIMESTAMP;
+reg [31:0] timestamp_gray;
+always@(posedge BUS_CLK)
+    timestamp_gray <= (TIMESTAMP>>1) ^ TIMESTAMP;
 
 wire DOBOUT;
 wire FE_FIFO_READ;
