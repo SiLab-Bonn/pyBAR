@@ -89,13 +89,15 @@ class Fei4RunBase(RunBase):
         self._module_cfgs = {}  # Store module specific configurations
         self._modules = {}  # Module IDs of real modules
         self._tx_module_groups = {}  # Module IDs of TX module groups (virtual modules)
-        self._fifo_module_groups = {}  # Module IDs of FIFO module groups (virtual modules)
         self._registers = {}  # Store module specific FEI4 registers
         self._register_utils = {}  # Store module specific FEI4 register utils
         self._raw_data_files = {}  # Store module specific raw data files
         self._scan_parameters = {}  # Store module specific scan parameters
         self._module_attr = {}  # Store module specific scan attributes
         self._module_dut = {}  # Store module specific DUT handle
+        self._module_fifo_readout = {}  # FIFO readout instances
+        self._enabled_fifos = []  # currently activated FIFOs
+        self._enabled_fe_channels = []  # currently activated receivers
         self._current_module_handle = None  # setting "None" module as default module
         self.raw_data_file = None  # Handle for the raw data files
         self._scan_threads = []  # list of currently running scan threads
@@ -105,9 +107,6 @@ class Fei4RunBase(RunBase):
         self._starting_readout_event.clear()
         self._stopping_readout_event = Event()
         self._stopping_readout_event.clear()
-        self.fifo_readout = None  # FIFO readout instance
-        self._enabled_fifos = []  # currently activated FIFOs
-        self._enabled_fe_channels = []  # currently activated receivers
         self._curr_sync_threads = []
         self._sync_lock = Lock()
         self._enter_sync_event = Event()
@@ -165,6 +164,10 @@ class Fei4RunBase(RunBase):
     @property
     def dut(self):
         return self._module_dut[self.current_module_handle]
+
+    @property
+    def fifo_readout(self):
+        return self._module_fifo_readout[self.current_module_handle]
 
     def _parse_module_cfgs(self):
         ''' Extracts the configuration of the modules.
@@ -287,26 +290,6 @@ class Fei4RunBase(RunBase):
                 'configuration' : None,
                 'send_data' : None}
             self._tx_module_groups["module_group_TX=" + tx] = module_group
-
-        fifo_groups = groupby_dict({key: value for (key, value) in self._module_cfgs.items() if key in self._modules}, "FIFO")
-        if len(fifo_groups) > 1:
-            raise NotImplementedError("Handling of more than one FIFO is not implemented.")
-        for fifo, module_group in fifo_groups.items():
-            # Adding broadcast config for parallel mode.
-            self._module_cfgs["module_group_FIFO=" + fifo] = {
-                'flavor': None,
-                'chip_address': None,
-                'FIFO': fifo,
-                'RX': list(set([module_cfg['RX'] for module_id, module_cfg in self._module_cfgs.items() if module_id in module_group])),
-                'rx_channel': list(set([module_cfg['rx_channel'] for module_id, module_cfg in self._module_cfgs.items() if module_id in module_group])),
-                'TX':  list(set([module_cfg['TX'] for module_id, module_cfg in self._module_cfgs.items() if module_id in module_group])),
-                'tx_channel': list(set([module_cfg['tx_channel'] for module_id, module_cfg in self._module_cfgs.items() if module_id in module_group])),
-                'TDC': list(set([module_cfg['TDC'] for module_id, module_cfg in self._module_cfgs.items() if module_id in module_group])),
-                'tdc_channel': list(set([module_cfg['tdc_channel'] for module_id, module_cfg in self._module_cfgs.items() if module_id in module_group])),
-                'TLU' : list(set([module_cfg['TLU'] for module_id, module_cfg in self._module_cfgs.items() if module_id in module_group])),
-                'configuration' : None,
-                'send_data' : None}
-            self._fifo_module_groups["module_group_FIFO=" + fifo] = module_group
 
         # Setting up per module attributes
         self._module_attr = {key: {} for key in self._module_cfgs}
@@ -452,23 +435,24 @@ class Fei4RunBase(RunBase):
     def init_modules(self):
         ''' Initialize all modules consecutively'''
         for module_id, module_cfg in self._module_cfgs.items():
-            if module_id is not None:
-                alt_string = module_id.split('=', 1)
-                alt_string[0] = alt_string[0].replace("_", " ")
-                alt_string = "=".join(alt_string)
-            logging.info("Initializing configuration for %s..." % (module_id if module_id in self._modules else ("broadcast module" if module_id is None else alt_string)))
-            # adding scan parameters to dict
-            if 'scan_parameters' in self._module_run_conf[module_id] and self._module_run_conf[module_id]['scan_parameters'] is not None:
-                if isinstance(self._module_run_conf[module_id]['scan_parameters'], basestring):
-                    self._module_run_conf[module_id]['scan_parameters'] = ast.literal_eval(self._module_run_conf[module_id]['scan_parameters'])
-                sp = namedtuple('scan_parameters', field_names=zip(*self._module_run_conf[module_id]['scan_parameters'])[0])
-                self._scan_parameters[module_id] = sp(*zip(*self._module_run_conf[module_id]['scan_parameters'])[1])
-            else:
-                sp = namedtuple_with_defaults('scan_parameters', field_names=[])
-                self._scan_parameters[module_id] = sp()
-            # init FE config
-            # a config number <=0 will create a new config (run 0 does not exists)
             if module_id in self._modules or module_id in self._tx_module_groups:
+                if module_id in self._modules:
+                    module_id_str = "module " + module_id
+                else:
+                    module_id_str = module_id.split('=', 1)
+                    module_id_str[0] = module_id_str[0].replace("_", " ")
+                    module_id_str = "=".join(module_id_str)
+                logging.info("Initializing configuration for %s..." % module_id_str)
+                # adding scan parameters to dict
+                if 'scan_parameters' in self._module_run_conf[module_id] and self._module_run_conf[module_id]['scan_parameters'] is not None:
+                    if isinstance(self._module_run_conf[module_id]['scan_parameters'], basestring):
+                        self._module_run_conf[module_id]['scan_parameters'] = ast.literal_eval(self._module_run_conf[module_id]['scan_parameters'])
+                    sp = namedtuple('scan_parameters', field_names=zip(*self._module_run_conf[module_id]['scan_parameters'])[0])
+                    self._scan_parameters[module_id] = sp(*zip(*self._module_run_conf[module_id]['scan_parameters'])[1])
+                else:
+                    sp = namedtuple_with_defaults('scan_parameters', field_names=[])
+                    self._scan_parameters[module_id] = sp()
+                # init FE config
                 if module_id in self._modules:
                     # only real modules can have an existing configuration
                     last_configuration = self.get_configuration(module_id=module_id)
@@ -632,12 +616,15 @@ class Fei4RunBase(RunBase):
             # adding DUT handles
             for module_id, module_cfg in self._module_cfgs.items():
                 self._module_dut[module_id] = DutHandle(dut=self._conf['dut'], module_cfg=module_cfg)
+                self._module_fifo_readout[module_id] = FifoReadout(dut=self._module_dut[module_id])
             # additional init of the DUT
             self.init_dut()
         else:
             # adding DUT handles
             for module_id, module_cfg in self._module_cfgs.items():
                 self._module_dut[module_id] = DutHandle(dut=self._conf['dut'], module_cfg=module_cfg)
+                self._module_fifo_readout[module_id] = FifoReadout(dut=self._module_dut[module_id])
+
         # initialize the modules
         self.init_modules()
 
@@ -655,7 +642,13 @@ class Fei4RunBase(RunBase):
                         if self.abort_run.is_set():
                             break
                         with self.access_module(module_id=module_id):
-                            logging.info('Scan parameter(s) for module %s: %s', module_id, ', '.join(['%s=%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None')
+                            if module_id in self._modules:
+                                module_id_str = "module " + module_id
+                            else:
+                                module_id_str = module_id.split('=', 1)
+                                module_id_str[0] = module_id_str[0].replace("_", " ")
+                                module_id_str = "=".join(module_id_str)
+                            logging.info('Scan parameter(s) for %s: %s', module_id_str, ', '.join(['%s=%s' % (key, value) for (key, value) in self.scan_parameters._asdict().items()]) if self.scan_parameters else 'None')
                             # storing register values until scan has finished and then restore configuration
                             restore_config_stack.enter_context(self.register.restored(name=self.run_number))
                             self.configure()
@@ -1014,10 +1007,9 @@ class Fei4RunBase(RunBase):
             self._enabled_fifos = [self._module_cfgs[module_id]['FIFO']]
         elif module_id in self._tx_module_groups:
             self._enabled_fifos = list(set([module_cfg['FIFO'] for (name, module_cfg) in self._module_cfgs.items() if name in self._tx_module_groups[module_id]]))
-        # TODO: adding support for multiple FIFO
+        # TODO: adding support for multiple FIFOs
         if len(self._enabled_fifos) != 1:
             raise NotImplementedError("More than one FIFO is currently not supported")
-        self.fifo_readout = FifoReadout(dut=self._module_dut["module_group_FIFO=" + self._enabled_fifos[0]])
 
         # select readout channels and report sync status only from actively selected modules
         if module_id is None:
@@ -1056,7 +1048,6 @@ class Fei4RunBase(RunBase):
     def deselect_module(self):
         ''' Deselect module and cleanup.
         '''
-        self.fifo_readout = None
         self._enabled_fe_channels = []  # ignore any RX sync errors
         self.dut['TX']['OUTPUT_ENABLE'] = 0
         self._current_module_handle = None
