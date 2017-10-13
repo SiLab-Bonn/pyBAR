@@ -68,10 +68,7 @@ class EudaqExtTriggerScan(ExtTriggerScan):
 #         pass
 
     def handle_err(self, exc):
-        self.err_queue.put(exc)
-#         self.abort(msg='%s' % exc[1])
-#         pp.logging(...)
-        logging.warning(exc[1])
+        super(EudaqExtTriggerScan, self).handle_err(exc=exc)
         self.data_error_occurred = True
 
     def handle_data(self, data):
