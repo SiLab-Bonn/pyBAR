@@ -86,7 +86,7 @@ class FifoReadout(object):
 
     def start(self, callback=None, errback=None, reset_rx=False, reset_fifo=False, clear_buffer=False, fill_buffer=False, no_data_timeout=None, filter_func=None, converter_func=None, enabled_fe_channels=None, enabled_m26_channels=None):
         if self._is_running:
-            raise RuntimeError('Readout thread already started: use stop()')
+            raise RuntimeError('FIFO readout thread already started: use stop()')
         self._is_running = True
         self.filter_func = filter_func
         self.converter_func = converter_func
@@ -136,17 +136,14 @@ class FifoReadout(object):
 
     def stop(self, timeout=10.0):
         if not self._is_running:
-            raise RuntimeError('Readout thread not running: use start()')
+            raise RuntimeError('FIFO readout thread not running: use start()')
         self._is_running = False
         self.stop_readout.set()
         try:
             self.readout_thread.join(timeout=timeout)
             if self.readout_thread.is_alive():
-                if timeout:
-                    raise StopTimeout('FIFO stop timeout after %0.1f second(s)' % timeout)
-                else:
-                    logging.warning('FIFO stop timeout')
-        except StopTimeout as e:
+                raise StopTimeout('Stopping FIFO readout timed out after %0.1fs' % timeout)
+        except:
             self.force_stop.set()
             if self.errback:
                 self.errback(sys.exc_info())
