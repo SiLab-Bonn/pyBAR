@@ -163,7 +163,7 @@ class FifoReadout(object):
         self.errback = None
         logging.info('Stopped FIFO readout')
 
-    def print_readout_status(self):
+    def print_readout_status(self, active_module):
         logging.info('Data queue size: %d', len(self._data_deque))
         logging.info('FIFO size: %d', self.dut['FIFO']['FIFO_SIZE'])
         # FEI4
@@ -172,9 +172,10 @@ class FifoReadout(object):
         discard_count = self.get_rx_fifo_discard_count()
         error_count = self.get_rx_8b10b_error_count()
         fei4_rx_names = [rx.name for rx in self.dut.get_modules('fei4_rx')]
+        active_modules = self.get_active_modules(fei4_rx_names, active_module)
         if self.dut.get_modules('fei4_rx'):
             logging.info('FEI4 RX channel:                  %s', " | ".join([name.rjust(3) for name in fei4_rx_names]))
-            logging.info('FEI4 RX enabled:                  %s', " | ".join(["YES".rjust(max(3, len(fei4_rx_names[index]))) if status is True else "NO".rjust(max(3, len(fei4_rx_names[index]))) for index, status in enumerate(enable_status)]))
+            logging.info('FEI4 RX enabled:                  %s', " | ".join(["YES".rjust(max(3, len(fei4_rx_names[index]))) if status is True else "NO".rjust(max(3, len(fei4_rx_names[index]))) for index, status in enumerate(active_modules)]))
             logging.info('FEI4 RX sync:                     %s', " | ".join(["YES".rjust(max(3, len(fei4_rx_names[index]))) if status is True else "NO".rjust(max(3, len(fei4_rx_names[index]))) for index, status in enumerate(sync_status)]))
             logging.info('FEI4 RX FIFO discard counter:     %s', " | ".join([repr(count).rjust(max(3, len(fei4_rx_names[index]))) for index, count in enumerate(discard_count)]))
             logging.info('FEI4 RX FIFO 8b10b error counter: %s', " | ".join([repr(count).rjust(max(3, len(fei4_rx_names[index]))) for index, count in enumerate(error_count)]))
@@ -385,3 +386,13 @@ class FifoReadout(object):
             return map(lambda channel: channel.LOST_COUNT, self.dut.get_modules('m26_rx'))
         else:
             return map(lambda channel: self.dut[channel].LOST_COUNT, channels)
+
+    def get_active_modules(self, fei4_rx_names, active_module):
+        active_modules = []
+        for name in fei4_rx_names:
+            if name in active_module.keys():
+                pass
+            else:
+                active_module[str(name)] = "False"
+            active_modules.append(active_module[str(name)])
+        return active_modules

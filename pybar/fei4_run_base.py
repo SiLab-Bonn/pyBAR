@@ -213,6 +213,10 @@ class Fei4RunBase(RunBase):
                     self._modules[module_id] = [module_id]
         else:
             raise ValueError("No module configuration specified")
+        
+        self.active_module = {}
+        for key in self._conf['modules']:
+            self.active_module[self._conf['modules'][key]['RX']] = self._conf['modules'][key]['activate']
 
     def _init_default_run_conf(self):
         # set up default run conf parameters
@@ -662,7 +666,7 @@ class Fei4RunBase(RunBase):
                     with self.access_module(module_id=None):
                         self.fifo_readout.reset_rx()
                         self.fifo_readout.reset_fifo()
-                        self.fifo_readout.print_readout_status()
+                        self.fifo_readout.print_readout_status(active_module=self.active_module)
 
                         with self.access_files():
                             self._scan_threads = []
@@ -712,7 +716,7 @@ class Fei4RunBase(RunBase):
 
                             self.fifo_readout.reset_rx()
                             self.fifo_readout.reset_fifo()
-                            self.fifo_readout.print_readout_status()
+                            self.fifo_readout.print_readout_status(active_module=self.active_module)
 
                             # some scans use this event to stop scan loop, clear event here to make another scan possible
                             self.stop_run.clear()
@@ -746,7 +750,7 @@ class Fei4RunBase(RunBase):
                         with self.access_module(module_id=None):
                             self.fifo_readout.reset_rx()
                             self.fifo_readout.reset_fifo()
-                            self.fifo_readout.print_readout_status()
+                            self.fifo_readout.print_readout_status(active_module=self.active_module)
 
                             with self.access_files():
                                 # some scans use this event to stop scan loop, clear event here to make another scan possible
@@ -788,7 +792,7 @@ class Fei4RunBase(RunBase):
 
                             self.fifo_readout.reset_rx()
                             self.fifo_readout.reset_fifo()
-                            self.fifo_readout.print_readout_status()
+                            self.fifo_readout.print_readout_status(active_module=self.active_module)
 
                             # some scans use this event to stop scan loop, clear event here to make another scan possible
                             self.stop_run.clear()
@@ -799,7 +803,7 @@ class Fei4RunBase(RunBase):
 
         if self._modules:
             with self.access_module(module_id=None):
-                self.fifo_readout.print_readout_status()
+                self.fifo_readout.print_readout_status(active_module=self.active_module)
 
     def post_run(self):
         # analyzing data and store register cfg per front end one by one
@@ -874,7 +878,7 @@ class Fei4RunBase(RunBase):
             Uses the return value of sys.exc_info().
         '''
         if self.reset_rx_on_error and isinstance(exc[1], (RxSyncError, EightbTenbError)):
-            self.fifo_readout.print_readout_status()
+            self.fifo_readout.print_readout_status(active_module=self.active_module)
             self.fifo_readout.reset_rx()
         else:
             # print just the first error massage
