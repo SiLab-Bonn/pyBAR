@@ -29,7 +29,7 @@ class M26TelescopeScan(Fei4RunBase):
         "trig_count": 0,  # FE-I4 trigger count, number of consecutive BCs, 0 means 16, from 0 to 15
         "trigger_latency": 232,  # FE-I4 trigger latency, in BCs, external scintillator / TLU / HitOR: 232, USBpix self-trigger: 220
         "trigger_delay": 8,  # trigger delay, in BCs
-        "trigger_rate_limit": 0,  # artificially limiting the trigger rate, in BCs (25ns)
+        "trigger_rate_limit": 500,  # artificially limiting the trigger rate, in BCs (25ns)
         "col_span": [1, 79],  # defining active column interval, 2-tuple, from 1 to 80
         "row_span": [1, 336],  # defining active row interval, 2-tuple, from 1 to 336
         "overwrite_enable_mask": False,  # if True, use col_span and row_span to define an active region regardless of the Enable pixel register. If False, use col_span and row_span to define active region by also taking Enable pixel register into account.
