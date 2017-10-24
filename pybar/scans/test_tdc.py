@@ -88,7 +88,7 @@ class TdcTest(Fei4RunBase):
             if self.test_trigger_delay:
                 x, y, y_err, y2, y2_err = [], [], [], [], []
                 for pulse_delay in [i for j in (range(0, 100, 5), range(100, 500, 500)) for i in j]:
-                    with self.readout(reset_fifo=True, fill_buffer=True, clear_buffer=True, callback=None):
+                    with self.readout(reset_fifo=True, fill_buffer=True, callback=None):
                         logging.info('Test TDC for a pulse delay of %d', pulse_delay)
                         for _ in range(10):
                             self.start_pulser(pulse_width=100, n_pulses=1, pulse_delay=pulse_delay)

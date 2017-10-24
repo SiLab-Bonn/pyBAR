@@ -230,7 +230,7 @@ class HitOrCalibration(Fei4RunBase):
                 self.register_utils.send_commands(commands)
 
                 self.dut['TDC']['EN_ARMING'] = True
-                with self.readout(reset_fifo=True, clear_buffer=True, column=column, row=row, **{scan_parameter_name: scan_parameter_value}):
+                with self.readout(reset_fifo=True, column=column, row=row, **{scan_parameter_name: scan_parameter_value}):
                     self.register_utils.send_command(command=cal_lvl1_command, repeat=self.n_injections)
                 self.dut['TDC']['EN_ARMING'] = False
 

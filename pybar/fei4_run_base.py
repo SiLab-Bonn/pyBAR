@@ -23,7 +23,7 @@ import numpy as np
 import basil
 from basil.dut import Dut
 
-from pybar.utils.utils import groupby_dict
+from pybar.utils.utils import groupby_dict, dict_compare
 from pybar.run_manager import RunManager, RunBase, RunAborted, RunStopped
 from pybar.fei4.register import FEI4Register
 from pybar.fei4.register import flavors as fe_flavors
@@ -95,11 +95,14 @@ class Fei4RunBase(RunBase):
         self._scan_parameters = {}  # Store module specific scan parameters
         self._module_attr = {}  # Store module specific scan attributes
         self._module_dut = {}  # Store module specific DUT handle
-        self._module_fifo_readout = {}  # FIFO readout instances
-        self._enabled_fifos = []  # currently activated FIFOs
+        self.fifo_readout = None  # FIFO readout instances
+        self._selected_modules = []
+        self._selected_fifos = []  # currently activated FIFOs
+        self._readout_fifos = []
+        self._converter = []
+        self._filter = []
         self._enabled_fe_channels = []  # currently activated receivers
         self._current_module_handle = None  # setting "None" module as default module
-        self.raw_data_file = None  # Handle for the raw data files
         self._scan_threads = []  # list of currently running scan threads
         self._curr_readout_threads = []  # list of currently running threads awaiting start of FIFO readout
         self._readout_lock = Lock()
@@ -130,7 +133,7 @@ class Fei4RunBase(RunBase):
     def current_module_handle(self):
         if self._current_module_handle is None:
             thread_name = current_thread().name
-            module_handles = [module_id for module_id in self._module_cfgs if (module_id is not None and module_id in thread_name)]
+            module_handles = [module_id for module_id in self._module_cfgs if (module_id is not None and module_id == thread_name)]
             if len(module_handles) > 1:
                 raise RuntimeError("Could not determine module handle. Thread name contains multiple module IDs: %s" % ", ".join(module_handles))
             if len(module_handles) == 0:
@@ -166,8 +169,8 @@ class Fei4RunBase(RunBase):
         return self._module_dut[self.current_module_handle]
 
     @property
-    def fifo_readout(self):
-        return self._module_fifo_readout[self.current_module_handle]
+    def raw_data_file(self):
+        return self._raw_data_files[self.current_module_handle]
 
     def _parse_module_cfgs(self):
         ''' Extracts the configuration of the modules.
@@ -213,7 +216,7 @@ class Fei4RunBase(RunBase):
                     self._modules[module_id] = [module_id]
         else:
             raise ValueError("No module configuration specified")
-        
+
         self.active_module = {}
         for key in self._conf['modules']:
             self.active_module[self._conf['modules'][key]['RX']] = self._conf['modules'][key]['activate']
@@ -246,10 +249,18 @@ class Fei4RunBase(RunBase):
         # check for invalid run conf parameters
         if self._run_conf['broadcast_commands'] and not self._default_run_conf['broadcast_commands']:
             raise RuntimeError('Changing "broadcast_commands" parameter from False (default) to True.')
-        if 'modules' in self._conf and self._conf['modules']:
-            for module_id, module_cfg in self._conf['modules'].items():
-                if module_id in self._modules and self.__class__.__name__ in self._conf["modules"][module_id] and self._run_conf['broadcast_commands']:
-                    raise RuntimeError('Module "%s" has specific run configuration for "%s" and "broadcast_commands" parameter is set to True.' % (module_id, self.__class__.__name__))
+        if self._run_conf['broadcast_commands'] and 'modules' in self._conf and self._conf['modules']:
+            tx_groups = groupby_dict({key: value for (key, value) in self._module_cfgs.items() if key in self._modules}, "TX")
+            for module_group in tx_groups.values():
+                for module_id in module_group:
+                    if self.__class__.__name__ in self._conf["modules"][module_id] and self._conf["modules"][module_id][self.__class__.__name__] is not None:
+                        for other_module_id in module_group:
+                            if self.__class__.__name__ in self._conf["modules"][other_module_id] and self._conf["modules"][other_module_id][self.__class__.__name__] is not None:
+                                if any(dict_compare(self._conf["modules"][module_id][self.__class__.__name__], self._conf["modules"][other_module_id][self.__class__.__name__])[:3]):
+                                    raise RuntimeError('Module "%s" has specific run configuration that is different from module "%s" for "%s" and "broadcast_commands" parameter is set to True.' % (other_module_id, module_id, self.__class__.__name__))
+                            else:
+                                raise RuntimeError('Module "%s" has no specific run configuration for "%s" and "broadcast_commands" parameter is set to True.' % (other_module_id, self.__class__.__name__))
+
 
     def _set_default_cfg(self):
         ''' Sets the default parameters if they are not specified.
@@ -305,6 +316,12 @@ class Fei4RunBase(RunBase):
                 self._module_run_conf[module_id] = run_conf._replace(**self._conf["modules"][module_id][self.__class__.__name__])._asdict()
             else:
                 self._module_run_conf[module_id] = run_conf._asdict()
+                # update module group with run specific configuration
+                if module_id in self._tx_module_groups and self._tx_module_groups[module_id]:
+                    selected_module_id = self._tx_module_groups[module_id][0]
+                    if self.__class__.__name__ in self._conf["modules"][selected_module_id] and self._conf["modules"][selected_module_id][self.__class__.__name__] is not None:
+                        self._module_run_conf[module_id] = run_conf._replace(**self._conf["modules"][selected_module_id][self.__class__.__name__])._asdict()
+
 
     def init_dut(self):
         if self.dut.name == 'mio':
@@ -449,6 +466,7 @@ class Fei4RunBase(RunBase):
                 logging.info("Initializing configuration for %s..." % module_id_str)
                 # adding scan parameters to dict
                 if 'scan_parameters' in self._module_run_conf[module_id] and self._module_run_conf[module_id]['scan_parameters'] is not None:
+                    # evaluating string for support of nested lists and other complex data structures
                     if isinstance(self._module_run_conf[module_id]['scan_parameters'], basestring):
                         self._module_run_conf[module_id]['scan_parameters'] = ast.literal_eval(self._module_run_conf[module_id]['scan_parameters'])
                     sp = namedtuple('scan_parameters', field_names=zip(*self._module_run_conf[module_id]['scan_parameters'])[0])
@@ -620,14 +638,14 @@ class Fei4RunBase(RunBase):
             # adding DUT handles
             for module_id, module_cfg in self._module_cfgs.items():
                 self._module_dut[module_id] = DutHandle(dut=self._conf['dut'], module_cfg=module_cfg)
-                self._module_fifo_readout[module_id] = FifoReadout(dut=self._module_dut[module_id])
+            self.fifo_readout = FifoReadout(dut=self._conf['dut'])
             # additional init of the DUT
             self.init_dut()
         else:
             # adding DUT handles
             for module_id, module_cfg in self._module_cfgs.items():
                 self._module_dut[module_id] = DutHandle(dut=self._conf['dut'], module_cfg=module_cfg)
-                self._module_fifo_readout[module_id] = FifoReadout(dut=self._module_dut[module_id])
+            self.fifo_readout = FifoReadout(dut=self._conf['dut'])
 
         # initialize the modules
         self.init_modules()
@@ -665,7 +683,7 @@ class Fei4RunBase(RunBase):
 
                     with self.access_module(module_id=None):
                         self.fifo_readout.reset_rx()
-                        self.fifo_readout.reset_fifo()
+                        self.fifo_readout.reset_fifo(self._selected_fifos)
                         self.fifo_readout.print_readout_status(active_module=self.active_module)
 
                         with self.access_files():
@@ -715,7 +733,7 @@ class Fei4RunBase(RunBase):
                             self.register_utils.set_run_mode()
 
                             self.fifo_readout.reset_rx()
-                            self.fifo_readout.reset_fifo()
+                            self.fifo_readout.reset_fifo(self._selected_fifos)
                             self.fifo_readout.print_readout_status(active_module=self.active_module)
 
                             # some scans use this event to stop scan loop, clear event here to make another scan possible
@@ -749,7 +767,7 @@ class Fei4RunBase(RunBase):
                             self._scan_threads.append(t)
                         with self.access_module(module_id=None):
                             self.fifo_readout.reset_rx()
-                            self.fifo_readout.reset_fifo()
+                            self.fifo_readout.reset_fifo(self._selected_fifos)
                             self.fifo_readout.print_readout_status(active_module=self.active_module)
 
                             with self.access_files():
@@ -791,7 +809,7 @@ class Fei4RunBase(RunBase):
                             self.register_utils.set_run_mode()
 
                             self.fifo_readout.reset_rx()
-                            self.fifo_readout.reset_fifo()
+                            self.fifo_readout.reset_fifo(self._selected_fifos)
                             self.fifo_readout.print_readout_status(active_module=self.active_module)
 
                             # some scans use this event to stop scan loop, clear event here to make another scan possible
@@ -802,8 +820,7 @@ class Fei4RunBase(RunBase):
                             self.register_utils.set_conf_mode()
 
         if self._modules:
-            with self.access_module(module_id=None):
-                self.fifo_readout.print_readout_status(active_module=self.active_module)
+            self.fifo_readout.print_readout_status(active_module=self.active_module)
 
     def post_run(self):
         # analyzing data and store register cfg per front end one by one
@@ -830,7 +847,6 @@ class Fei4RunBase(RunBase):
 
     def cleanup_run(self):
         # no execption should be thrown here
-        self.raw_data_file = None
         # USB interface needs to be closed here, otherwise an USBError may occur
         # USB interface can be reused at any time after close without another init
         try:
@@ -865,8 +881,11 @@ class Fei4RunBase(RunBase):
         data : list, tuple
             Data tuple of the format (data (np.array), last_time (float), curr_time (float), status (int))
         '''
-        scan_parameters = {key: value._asdict() for (key, value) in self._scan_parameters.items() if key in self._modules}
-        self.raw_data_file.append_item(data, scan_parameters=scan_parameters, new_file=new_file, flush=flush)
+#         scan_parameters = {key: value._asdict() for (key, value) in self._scan_parameters.items() if key in self._modules}
+        for i, module_id in enumerate(self._selected_modules):
+            if data[i] is None:
+                continue
+            self._raw_data_files[module_id].append_item(data_tuple=data[i], scan_parameters=self._scan_parameters[module_id]._asdict(), flush=True)
 
     def handle_err(self, exc):
         '''Handling of Exceptions.
@@ -1004,16 +1023,46 @@ class Fei4RunBase(RunBase):
         if self._current_module_handle is not None:
             raise RuntimeError('Module handle "%s" cannot be set because another module is active' % module_id)
 
+        if module_id is None:
+            self._selected_modules = self._modules.keys()
+        elif module_id in self._modules:
+            self._selected_modules = [module_id]
+        elif module_id in self._tx_module_groups:
+            self._selected_modules = self._tx_module_groups[module_id]
+        else:
+            RuntimeError('Cannot open files. Module handle "%s" is not valid.' % self.current_module_handle)
+
         # FIFO readout
         if module_id is None:
-            self._enabled_fifos = list(set([module_cfg['FIFO'] for (name, module_cfg) in self._module_cfgs.items() if name in self._modules]))
+            self._selected_fifos = list(set([module_cfg['FIFO'] for (name, module_cfg) in self._module_cfgs.items() if name in self._modules]))
         elif module_id in self._modules:
-            self._enabled_fifos = [self._module_cfgs[module_id]['FIFO']]
+            self._selected_fifos = [self._module_cfgs[module_id]['FIFO']]
         elif module_id in self._tx_module_groups:
-            self._enabled_fifos = list(set([module_cfg['FIFO'] for (name, module_cfg) in self._module_cfgs.items() if name in self._tx_module_groups[module_id]]))
-        # TODO: adding support for multiple FIFOs
-        if len(self._enabled_fifos) != 1:
-            raise NotImplementedError("More than one FIFO is currently not supported")
+            self._selected_fifos = list(set([module_cfg['FIFO'] for (name, module_cfg) in self._module_cfgs.items() if name in self._tx_module_groups[module_id]]))
+
+        # Module filter functions dict for quick lookup
+        self._readout_fifos = []
+        self._filter = []
+        self._converter = []
+        for selected_module_id in self._selected_modules:
+            module_cfg  = self._module_cfgs[selected_module_id]
+            self._readout_fifos.append(module_cfg['FIFO'])
+            if 'tdc_channel' not in module_cfg:
+                tdc_filter = false
+                self._converter.append(None)
+            elif module_cfg['tdc_channel'] is None:
+                tdc_filter = is_tdc_word
+                self._converter.append(convert_tdc_to_channel(channel=module_cfg['tdc_channel']))  # for the raw data analyzer
+            else:
+                tdc_filter = logical_and(is_tdc_word, is_tdc_from_channel(module_cfg['tdc_channel']))
+                self._converter.append(convert_tdc_to_channel(channel=module_cfg['tdc_channel']))  # for the raw data analyzer
+            if 'rx_channel' not in module_cfg:
+                self._filter.append(logical_or(is_trigger_word, tdc_filter))
+            elif module_cfg['rx_channel'] is None:
+                self._filter.append(logical_or(is_trigger_word, logical_or(tdc_filter, is_fe_word)))
+            else:
+                self._filter.append(logical_or(is_trigger_word, logical_or(tdc_filter, logical_and(is_fe_word, is_data_from_channel(module_cfg['rx_channel'])))))
+
 
         # select readout channels and report sync status only from actively selected modules
         if module_id is None:
@@ -1066,31 +1115,31 @@ class Fei4RunBase(RunBase):
         finally:
             # in case something fails, call this on last resort
             self._raw_data_files.clear()
-            self.raw_data_file = None
 
     def open_files(self):
-        if self.current_module_handle is None:
-            selected_modules = self._modules.keys()
-        elif self.current_module_handle in self._modules:
-            selected_modules = [self.current_module_handle]
-        elif self.current_module_handle in self._tx_module_groups:
-            selected_modules = self._tx_module_groups[self.current_module_handle]
-        else:
-            RuntimeError('Cannot open files. Module handle "%s" is not valid.' % self.current_module_handle)
-        for selected_module_id in selected_modules:
+        for selected_module_id in self._selected_modules:
             self._raw_data_files[selected_module_id] = open_raw_data_file(filename=self.get_output_filename(module_id=selected_module_id),
                                                                           mode='w',
                                                                           title=self.run_id,
-                                                                          register=self._registers[selected_module_id],
-                                                                          conf=self._conf,
-                                                                          run_conf=self._module_run_conf[selected_module_id],
                                                                           scan_parameters=self._scan_parameters[selected_module_id]._asdict(),
                                                                           socket_address=self._module_cfgs[selected_module_id]['send_data'])
-        self.raw_data_file = Fei4RawDataHandle(raw_data_files=self._raw_data_files,
-                                               module_cfgs={key: value for (key, value) in self._module_cfgs.items() if key in selected_modules})
+            # save configuration data to raw data file
+            self._registers[selected_module_id].save_configuration(self._raw_data_files[selected_module_id].h5_file)
+            save_configuration_dict(self._raw_data_files[selected_module_id].h5_file, 'conf', self._conf)
+            save_configuration_dict(self._raw_data_files[selected_module_id].h5_file, 'run_conf', self._module_run_conf[selected_module_id])
+            # send configuration data to online monitor
+            if self._raw_data_files[selected_module_id].socket:
+                send_meta_data(self._raw_data_files[selected_module_id].socket, self.output_filename, name='Filename')
+                global_register_config = {}
+                for global_reg in sorted(self._registers[selected_module_id].get_global_register_objects(readonly=False), key=itemgetter('name')):
+                    global_register_config[global_reg['name']] = global_reg['value']
+                send_meta_data(self._raw_data_files[selected_module_id].socket, global_register_config, name='GlobalRegisterConf')
+                send_meta_data(self._raw_data_files[selected_module_id].socket, self._run_conf, name='RunConf')
+
+#         self.raw_data_file = Fei4RawDataHandle(raw_data_files=self._raw_data_files,
+#                                                module_cfgs={key: value for (key, value) in self._module_cfgs.items() if key in selected_modules})
 
     def close_files(self):
-        self.raw_data_file = None
         # close all file objects
         for f in self._raw_data_files.values():
             f.close()
@@ -1111,9 +1160,11 @@ class Fei4RunBase(RunBase):
                 filter_func = is_fe_word
         else:
             filter_func = None
+        pos = self._selected_modules.index(self.current_module_handle)
         with self._readout_lock:
             if self.fifo_readout.fill_buffer:
-                return self.get_raw_data_from_buffer(filter_func=filter_func)
+                return self.get_raw_data_from_buffer(filter_func=None)[pos]
+#                 return self.get_raw_data_from_buffer(filter_func=filter_func)
             else:
                 return self.read_raw_data_from_fifo(filter_func=filter_func)
 
@@ -1201,17 +1252,17 @@ class Fei4RunBase(RunBase):
         errback = kwargs.pop('errback', self.handle_err)
         reset_rx = kwargs.pop('reset_rx', True)
         reset_fifo = kwargs.pop('reset_fifo', True)
-        clear_buffer = kwargs.pop('clear_buffer', True)
         fill_buffer = kwargs.pop('fill_buffer', False)
         no_data_timeout = kwargs.pop('no_data_timeout', None)
-        filter_func = kwargs.pop('filter', None)
-        converter_func = kwargs.pop('converter', None)
+#         filter_func = kwargs.pop('filter', None)
+#         converter_func = kwargs.pop('converter', None)
+        
         enabled_fe_channels = kwargs.pop('enabled_fe_channels', self._enabled_fe_channels)
         enabled_m26_channels = kwargs.pop('enabled_m26_channels', [])  # use none by default, even if available in firmware
         if args or kwargs:
             self.set_scan_parameters(*args, **kwargs)
         if self._scan_threads and self.current_module_handle not in [t.name for t in self._scan_threads]:
-            raise RuntimeError('Thread name "%s" is not valid.')
+            raise RuntimeError('Thread name "%s" is not valid.' % t.name)
         if self._scan_threads and self.current_module_handle in self._curr_readout_threads:
             raise RuntimeError('Thread "%s" is already actively reading FIFO.')
         with self._readout_lock:
@@ -1223,7 +1274,7 @@ class Fei4RunBase(RunBase):
             with self._readout_lock:
                 if len(set(self._curr_readout_threads) & set([t.name for t in self._scan_threads if t.is_alive()])) == len(set([t.name for t in self._scan_threads if t.is_alive()])) or not self._scan_threads:
                     if not self.fifo_readout.is_running:
-                        self.fifo_readout.start(callback=callback, errback=errback, reset_rx=reset_rx, reset_fifo=reset_fifo, clear_buffer=clear_buffer, fill_buffer=fill_buffer, no_data_timeout=no_data_timeout, filter_func=filter_func, converter_func=converter_func, enabled_fe_channels=enabled_fe_channels, enabled_m26_channels=enabled_m26_channels)
+                        self.fifo_readout.start(fifos=self._selected_fifos, callback=callback, errback=errback, reset_rx=reset_rx, reset_fifo=reset_fifo, fill_buffer=fill_buffer, no_data_timeout=no_data_timeout, filter_func=self._filter, converter_func=self._converter, fifo_select=self._readout_fifos, enabled_fe_channels=enabled_fe_channels, enabled_m26_channels=enabled_m26_channels)
                         self._starting_readout_event.set()
 
     def stop_readout(self, timeout=10.0):
@@ -1296,47 +1347,6 @@ class ExcThread(Thread):
         super(ExcThread, self).join(timeout=timeout)
         if self.exc:
             raise self.exc[0], self.exc[1], self.exc[2]
-
-
-class Fei4RawDataHandle(object):
-    ''' Handle for multiple raw data files with filter and converter functions.
-    '''
-    def __init__(self, module_cfgs, raw_data_files):
-        self._module_cfgs = module_cfgs
-        self._raw_data_files = raw_data_files
-        self.init()
-
-    def init(self):
-        # Module filter functions dict for quick lookup
-        self._fei4_raw_data_filter = {}
-        self._filter = {}
-        self._converter = {}
-        if len(self._raw_data_files) != len(self._module_cfgs):
-            raise ValueError("Selected modules do not match number of raw data files.")
-        for module_id, module_cfg in self._module_cfgs.items():
-            if 'rx_channel' not in module_cfg:
-                self._fei4_raw_data_filter[module_id] = false
-            elif module_cfg['rx_channel'] is None:
-                self._fei4_raw_data_filter[module_id] = is_fe_word
-            else:
-                self._fei4_raw_data_filter[module_id] = logical_and(is_fe_word, is_data_from_channel(module_cfg['rx_channel']))
-            if 'tdc_channel' not in module_cfg:
-                tdc_filter = false
-                self._converter[module_id] = None
-            elif module_cfg['tdc_channel'] is None:
-                tdc_filter = is_tdc_word
-                self._converter[module_id] = convert_tdc_to_channel(channel=module_cfg['tdc_channel'])  # for the raw data analyzer
-            else:
-                tdc_filter = logical_and(is_tdc_word, is_tdc_from_channel(module_cfg['tdc_channel']))
-                self._converter[module_id] = convert_tdc_to_channel(channel=module_cfg['tdc_channel'])  # for the raw data analyzer
-            self._filter[module_id] = logical_or(is_trigger_word, logical_or(self._fei4_raw_data_filter[module_id], tdc_filter))
-
-    def append_item(self, data_tuple, scan_parameters=None, new_file=False, flush=True):
-        ''' Append raw data for each module after filtering and converting the raw data individually.
-        '''
-        for module_id in self._module_cfgs:
-            converted_data_tuple = convert_data_iterable((data_tuple,), filter_func=self._filter[module_id], converter_func=self._converter[module_id])[0]
-            self._raw_data_files[module_id].append_item(converted_data_tuple, scan_parameters=scan_parameters[module_id], new_file=new_file, flush=flush)
 
 
 class RhlHandle(object):

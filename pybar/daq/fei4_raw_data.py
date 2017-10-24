@@ -46,7 +46,7 @@ def send_data(socket, data, scan_parameters={}, name='ReadoutData'):
         pass
 
 
-def open_raw_data_file(filename, mode="w", title="", register=None, conf=None, run_conf=None, scan_parameters=None, socket_address=None):
+def open_raw_data_file(filename, mode="w", title="", scan_parameters=None, socket_address=None):
     '''Mimics pytables.open_file() and stores the configuration and run configuration
 
     Returns:
@@ -57,7 +57,7 @@ def open_raw_data_file(filename, mode="w", title="", register=None, conf=None, r
         # do something here
         raw_data_file.append(self.readout.data, scan_parameters={scan_parameter:scan_parameter_value})
     '''
-    return RawDataFile(filename=filename, mode=mode, title=title, register=register, conf=conf, run_conf=run_conf, scan_parameters=scan_parameters, socket_address=socket_address)
+    return RawDataFile(filename=filename, mode=mode, title=title, scan_parameters=scan_parameters, socket_address=socket_address)
 
 
 class RawDataFile(object):
@@ -67,7 +67,7 @@ class RawDataFile(object):
     '''Raw data file object. Saving data queue to HDF5 file.
     '''
 
-    def __init__(self, filename, mode="w", title='', register=None, conf=None, run_conf=None, scan_parameters=None, socket_address=None):  # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created):
+    def __init__(self, filename, mode="w", title='', scan_parameters=None, socket_address=None):  # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created):
         self.lock = RLock()
         if os.path.splitext(filename)[1].strip().lower() != '.h5':
             self.base_filename = filename
