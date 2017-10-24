@@ -12,6 +12,7 @@ from threading import Event, Thread
 from Queue import Queue
 from collections import namedtuple, Mapping
 from contextlib import contextmanager
+from operator import itemgetter
 import abc
 import ast
 import inspect
@@ -23,7 +24,8 @@ from pybar.run_manager import RunManager, RunBase, RunAborted, RunStopped
 from pybar.fei4.register import FEI4Register
 from pybar.fei4.register_utils import FEI4RegisterUtils, is_fe_ready, CmdTimeoutError
 from pybar.daq.fifo_readout import FifoReadout, RxSyncError, EightbTenbError, FifoError, NoDataTimeout, StopTimeout
-from pybar.daq.fei4_raw_data import open_raw_data_file
+from pybar.daq.readout_utils import save_configuration_dict
+from pybar.daq.fei4_raw_data import open_raw_data_file, send_meta_data
 from pybar.analysis.analysis_utils import AnalysisError
 
 
@@ -349,7 +351,20 @@ class Fei4RunBase(RunBase):
             self.fifo_readout.reset_rx()
             self.fifo_readout.reset_sram_fifo()
             self.fifo_readout.print_readout_status()
-            with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, register=self.register, conf=self._conf, run_conf=self._run_conf, scan_parameters=self.scan_parameters._asdict(), context=self._conf['zmq_context'], socket_address=self._conf['send_data']) as self.raw_data_file:
+            # open raw data file
+            with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, scan_parameters=self.scan_parameters._asdict(), context=self._conf['zmq_context'], socket_address=self._conf['send_data']) as self.raw_data_file:
+                # save configuration data to raw data file
+                self.register.save_configuration(self.raw_data_file.h5_file)
+                save_configuration_dict(self.raw_data_file.h5_file, 'conf', self._conf)
+                save_configuration_dict(self.raw_data_file.h5_file, 'run_conf', self._run_conf)
+                # send configuration data to online monitor
+                if self.raw_data_file.socket:
+                    send_meta_data(self.raw_data_file.socket, self.output_filename, name='Filename')
+                    global_register_config = {}
+                    for global_reg in sorted(self.register.get_global_register_objects(readonly=False), key=itemgetter('name')):
+                        global_register_config[global_reg['name']] = global_reg['value']
+                    send_meta_data(self.raw_data_file.socket, global_register_config, name='GlobalRegisterConf')
+                    send_meta_data(self.raw_data_file.socket, self._run_conf, name='RunConf')
                 # scan
                 self.scan()
 
