@@ -975,6 +975,10 @@ class Fei4RunBase(RunBase):
             if name in self._module_run_conf[self.current_module_handle]:
                 raise RuntimeError('"%s" (current module handle "%s") cannot use attribute "%s" because it is already used in run conf.' % (self.__class__.__name__, self.current_module_handle, name))
             self._module_attr[self.current_module_handle][name] = value
+            # set attribute for all other mudules in module group
+            if self.current_module_handle in self._tx_module_groups:
+                for module_id in self._tx_module_groups[self.current_module_handle]:
+                    self._module_attr[module_id][name] = value
         else:
             super(Fei4RunBase, self).__setattr__(name, value)
 
