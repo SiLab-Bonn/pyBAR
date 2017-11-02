@@ -316,7 +316,7 @@ def groupby_dict(dictionary, key):
 
 
 def dict_compare(d1, d2):
-    '''Comparing two dictionaries
+    '''Comparing two dictionaries.
 
     Note: https://stackoverflow.com/questions/4527942/comparing-two-dictionaries-in-python
     '''
@@ -328,3 +328,11 @@ def dict_compare(d1, d2):
     modified = {o : (d1[o], d2[o]) for o in intersect_keys if d1[o] != d2[o]}
     same = set(o for o in intersect_keys if d1[o] == d2[o])
     return added, removed, modified, same
+
+
+def zip_nofill(*iterables):
+    '''Zipping iterables without fillvalue.
+
+    Note: https://stackoverflow.com/questions/38054593/zip-longest-without-fillvalue
+    '''
+    return (tuple([entry for entry in iterable if entry is not None]) for iterable in itertools.izip_longest(*iterables, fillvalue=None))

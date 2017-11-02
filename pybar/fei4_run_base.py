@@ -9,7 +9,7 @@ from socket import gethostname
 from functools import wraps
 from threading import Event, Thread, current_thread, Lock, RLock
 from Queue import Queue
-from collections import namedtuple, Mapping
+from collections import namedtuple, Mapping, Iterable
 from contextlib import contextmanager
 from operator import itemgetter
 import abc
@@ -23,7 +23,7 @@ import numpy as np
 import basil
 from basil.dut import Dut
 
-from pybar.utils.utils import groupby_dict, dict_compare
+from pybar.utils.utils import groupby_dict, dict_compare, zip_nofill
 from pybar.run_manager import RunManager, RunBase, RunAborted, RunStopped
 from pybar.fei4.register import FEI4Register
 from pybar.fei4.register import flavors as fe_flavors
@@ -744,7 +744,7 @@ class Fei4RunBase(RunBase):
             if self.threaded_scan:
                 self._scan_threads = []
                 # loop over grpups of modules with different TX
-                for tx_module_ids in itertools.izip_longest(*self._tx_module_groups.values()):
+                for tx_module_ids in zip_nofill(*self._tx_module_groups.values()):
                     if self.abort_run.is_set():
                         break
                     with ExitStack() as restore_config_stack:
@@ -761,7 +761,7 @@ class Fei4RunBase(RunBase):
                             t = ExcThread(target=self.scan, name=module_id)
                             t.daemon = True  # exiting program even when thread is alive
                             self._scan_threads.append(t)
-                        with self.access_module(module_id=None):
+                        with self.access_module(module_id=tx_module_ids):
                             self.fifo_readout.reset_rx()
                             self.fifo_readout.reset_fifo(self._selected_fifos)
                             self.fifo_readout.print_fei4_rx_status()
@@ -1012,13 +1012,17 @@ class Fei4RunBase(RunBase):
     def select_module(self, module_id):
         ''' Select module and give access to the module.
         '''
-        if module_id not in self._module_cfgs:
+        if not isinstance(module_id, basestring) and isinstance(module_id, Iterable) and set(module_id) - set(self._modules):
+            raise ValueError('Module IDs invalid:' % ", ".join(set(module_id) - set(self._modules)))
+        if isinstance(module_id, basestring) and module_id not in self._module_cfgs:
             raise ValueError('Module ID "%s" is not valid' % module_id)
         if self._current_module_handle is not None:
             raise RuntimeError('Module handle "%s" cannot be set because another module is active' % module_id)
 
         if module_id is None:
             self._selected_modules = self._modules.keys()
+        elif not isinstance(module_id, basestring) and isinstance(module_id, Iterable):
+            self._selected_modules = module_id
         elif module_id in self._modules:
             self._selected_modules = [module_id]
         elif module_id in self._tx_module_groups:
@@ -1027,12 +1031,7 @@ class Fei4RunBase(RunBase):
             RuntimeError('Cannot open files. Module handle "%s" is not valid.' % self.current_module_handle)
 
         # FIFO readout
-        if module_id is None:
-            self._selected_fifos = list(set([module_cfg['FIFO'] for (name, module_cfg) in self._module_cfgs.items() if name in self._modules]))
-        elif module_id in self._modules:
-            self._selected_fifos = [self._module_cfgs[module_id]['FIFO']]
-        elif module_id in self._tx_module_groups:
-            self._selected_fifos = list(set([module_cfg['FIFO'] for (name, module_cfg) in self._module_cfgs.items() if name in self._tx_module_groups[module_id]]))
+        self._selected_fifos = list(set([module_cfg['FIFO'] for (name, module_cfg) in self._module_cfgs.items() if name in self._selected_modules]))
 
         # Module filter functions dict for quick lookup
         self._readout_fifos = []
@@ -1059,37 +1058,21 @@ class Fei4RunBase(RunBase):
 
 
         # select readout channels and report sync status only from actively selected modules
-        if module_id is None:
-            self._enabled_fe_channels = list(set([module_cfg['RX'] for (name, module_cfg) in self._module_cfgs.items() if name in self._modules]))
-        elif module_id in self._modules:
-            self._enabled_fe_channels = [self._module_cfgs[module_id]['RX']]
-        elif module_id in self._tx_module_groups:
-            self._enabled_fe_channels = list(set([module_cfg['RX'] for (name, module_cfg) in self._module_cfgs.items() if name in self._tx_module_groups[module_id]]))
-        else:
-            self._enabled_fe_channels = []  # ignore any RX sync errors
+        self._enabled_fe_channels = list(set([module_cfg['RX'] for (name, module_cfg) in self._module_cfgs.items() if name in self._selected_modules]))
 
         # enabling specific TX channels
-        if module_id is None:
-            # generating enable bit mask for broadcasting
-            for tx in set([self._module_cfgs[name]['TX'] for name in self._modules]):
-                tx_channels = list(set([1 << module_cfg['tx_channel'] for (name, module_cfg) in self._module_cfgs.items() if (module_cfg['TX'] == tx and name in self._modules)]))
-                if tx_channels:
-                    self.dut[tx]['OUTPUT_ENABLE'] = reduce(lambda x, y: x | y, tx_channels)
-                else:
-                    self.dut[tx]['OUTPUT_ENABLE'] = 0
-        elif module_id in self._modules:
-            # enable specific channel
-            self.dut['TX']['OUTPUT_ENABLE'] = (1 << self._module_cfgs[module_id]["tx_channel"])
-        elif module_id in self._tx_module_groups:
-            tx_channels = list(set([1 << module_cfg['tx_channel'] for (name, module_cfg) in self._module_cfgs.items() if name in self._tx_module_groups[module_id]]))
-            if tx_channels:
-                self.dut['TX']['OUTPUT_ENABLE'] = reduce(lambda x, y: x | y, tx_channels)
-            else:
-                self.dut['TX']['OUTPUT_ENABLE'] = 0
+        tx_channels = list(set([1 << module_cfg['tx_channel'] for (name, module_cfg) in self._module_cfgs.items() if name in self._selected_modules]))
+        if tx_channels:
+            self.dut['TX']['OUTPUT_ENABLE'] = reduce(lambda x, y: x | y, tx_channels)
         else:
-            pass  # do nothing
-        self._current_module_handle = module_id
-        if module_id is not None:
+            self.dut['TX']['OUTPUT_ENABLE'] = 0
+
+        if not isinstance(module_id, basestring) and isinstance(module_id, Iterable):
+            self._current_module_handle = None
+        else:
+            self._current_module_handle = module_id
+
+        if module_id is not None and isinstance(module_id, basestring):
             current_thread().name = module_id
 
     def deselect_module(self):
@@ -1132,9 +1115,6 @@ class Fei4RunBase(RunBase):
                     global_register_config[global_reg['name']] = global_reg['value']
                 send_meta_data(self._raw_data_files[selected_module_id].socket, global_register_config, name='GlobalRegisterConf')
                 send_meta_data(self._raw_data_files[selected_module_id].socket, self._run_conf, name='RunConf')
-
-#         self.raw_data_file = Fei4RawDataHandle(raw_data_files=self._raw_data_files,
-#                                                module_cfgs={key: value for (key, value) in self._module_cfgs.items() if key in selected_modules})
 
     def close_files(self):
         # close all file objects
