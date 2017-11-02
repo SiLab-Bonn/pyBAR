@@ -684,7 +684,7 @@ class Fei4RunBase(RunBase):
                     with self.access_module(module_id=None):
                         self.fifo_readout.reset_rx()
                         self.fifo_readout.reset_fifo(self._selected_fifos)
-                        self.fifo_readout.print_readout_status(active_module=self.active_module)
+                        self.fifo_readout.print_fei4_rx_status()
 
                         with self.access_files():
                             self._scan_threads = []
@@ -734,7 +734,7 @@ class Fei4RunBase(RunBase):
 
                             self.fifo_readout.reset_rx()
                             self.fifo_readout.reset_fifo(self._selected_fifos)
-                            self.fifo_readout.print_readout_status(active_module=self.active_module)
+                            self.fifo_readout.print_fei4_rx_status()
 
                             # some scans use this event to stop scan loop, clear event here to make another scan possible
                             self.stop_run.clear()
@@ -768,7 +768,7 @@ class Fei4RunBase(RunBase):
                         with self.access_module(module_id=None):
                             self.fifo_readout.reset_rx()
                             self.fifo_readout.reset_fifo(self._selected_fifos)
-                            self.fifo_readout.print_readout_status(active_module=self.active_module)
+                            self.fifo_readout.print_fei4_rx_status()
 
                             with self.access_files():
                                 # some scans use this event to stop scan loop, clear event here to make another scan possible
@@ -810,7 +810,7 @@ class Fei4RunBase(RunBase):
 
                             self.fifo_readout.reset_rx()
                             self.fifo_readout.reset_fifo(self._selected_fifos)
-                            self.fifo_readout.print_readout_status(active_module=self.active_module)
+                            self.fifo_readout.print_fei4_rx_status()
 
                             # some scans use this event to stop scan loop, clear event here to make another scan possible
                             self.stop_run.clear()
@@ -820,7 +820,7 @@ class Fei4RunBase(RunBase):
                             self.register_utils.set_conf_mode()
 
         if self._modules:
-            self.fifo_readout.print_readout_status(active_module=self.active_module)
+            self.fifo_readout.print_readout_status()
 
     def post_run(self):
         # analyzing data and store register cfg per front end one by one
@@ -870,8 +870,7 @@ class Fei4RunBase(RunBase):
                     except AttributeError:
                         pass  # USB interface not yet initialized
                     else:
-                        pass
-#                         logging.error('Closed USB device')
+                        logging.debug('Closed USB device')
 
     def handle_data(self, data, new_file=False, flush=True):
         '''Handling of the data.
@@ -881,7 +880,6 @@ class Fei4RunBase(RunBase):
         data : list, tuple
             Data tuple of the format (data (np.array), last_time (float), curr_time (float), status (int))
         '''
-#         scan_parameters = {key: value._asdict() for (key, value) in self._scan_parameters.items() if key in self._modules}
         for i, module_id in enumerate(self._selected_modules):
             if data[i] is None:
                 continue
@@ -897,7 +895,7 @@ class Fei4RunBase(RunBase):
             Uses the return value of sys.exc_info().
         '''
         if self.reset_rx_on_error and isinstance(exc[1], (RxSyncError, EightbTenbError)):
-            self.fifo_readout.print_readout_status(active_module=self.active_module)
+            self.fifo_readout.print_readout_status()
             self.fifo_readout.reset_rx()
         else:
             # print just the first error massage
@@ -1102,6 +1100,9 @@ class Fei4RunBase(RunBase):
         ''' Deselect module and cleanup.
         '''
         self._enabled_fe_channels = []  # ignore any RX sync errors
+        self._readout_fifos = []
+        self._filter = []
+        self._converter = []
         self.dut['TX']['OUTPUT_ENABLE'] = 0
         self._current_module_handle = None
         current_thread().name = "MainThread"
@@ -1152,21 +1153,12 @@ class Fei4RunBase(RunBase):
         module_path = os.path.join(self.working_dir, module_id)
         return os.path.join(module_path, str(self.run_number) + "_" + module_id + "_" + self.run_id)
 
-    def read_data(self, fe_word_filter=True):
-        if fe_word_filter:
-            if 'rx_channel' in self._module_cfgs[self.current_module_handle] and self._module_cfgs[self.current_module_handle]['rx_channel'] is not None:
-                filter_func = logical_and(is_fe_word, is_data_from_channel(self._module_cfgs[self.current_module_handle]['rx_channel']))
-            else:
-                filter_func = is_fe_word
-        else:
-            filter_func = None
-        pos = self._selected_modules.index(self.current_module_handle)
+    def read_data(self, filter_func=None, converter_func=None):
         with self._readout_lock:
             if self.fifo_readout.fill_buffer:
-                return self.get_raw_data_from_buffer(filter_func=None)[pos]
-#                 return self.get_raw_data_from_buffer(filter_func=filter_func)
+                return self.get_raw_data_from_buffer()[self._selected_modules.index(self.current_module_handle)]
             else:
-                return self.read_raw_data_from_fifo(filter_func=filter_func)
+                return self.read_raw_data_from_fifo(filter_func=filter_func, converter_func=converter_func)
 
     def get_raw_data_from_buffer(self, filter_func=None, converter_func=None):
         return self.fifo_readout.get_raw_data_from_buffer(filter_func=filter_func, converter_func=converter_func)
@@ -1254,9 +1246,6 @@ class Fei4RunBase(RunBase):
         reset_fifo = kwargs.pop('reset_fifo', True)
         fill_buffer = kwargs.pop('fill_buffer', False)
         no_data_timeout = kwargs.pop('no_data_timeout', None)
-#         filter_func = kwargs.pop('filter', None)
-#         converter_func = kwargs.pop('converter', None)
-        
         enabled_fe_channels = kwargs.pop('enabled_fe_channels', self._enabled_fe_channels)
         enabled_m26_channels = kwargs.pop('enabled_m26_channels', [])  # use none by default, even if available in firmware
         if args or kwargs:
