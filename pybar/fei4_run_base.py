@@ -217,10 +217,6 @@ class Fei4RunBase(RunBase):
         else:
             raise ValueError("No module configuration specified")
 
-        self.active_module = {}
-        for key in self._conf['modules']:
-            self.active_module[self._conf['modules'][key]['RX']] = self._conf['modules'][key]['activate']
-
     def _init_default_run_conf(self):
         # set up default run conf parameters
         self._default_run_conf.setdefault('comment', '{}'.format(self.__class__.__name__))
