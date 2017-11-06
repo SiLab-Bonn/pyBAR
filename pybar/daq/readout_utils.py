@@ -344,23 +344,17 @@ def get_col_row_tot_array_from_data_record_array(array):  # TODO: max ToT
     '''
     def get_col_row_tot_1_array_from_data_record_array(value):
         return np.right_shift(np.bitwise_and(value, 0x00FE0000), 17), np.right_shift(np.bitwise_and(value, 0x0001FF00), 8), np.right_shift(np.bitwise_and(value, 0x000000F0), 4)
-#         return (value & 0xFE0000)>>17, (value & 0x1FF00)>>8, (value & 0x0000F0)>>4 # numpy.vectorize()
 
     def get_col_row_tot_2_array_from_data_record_array(value):
         return np.right_shift(np.bitwise_and(value, 0x00FE0000), 17), np.add(np.right_shift(np.bitwise_and(value, 0x0001FF00), 8), 1), np.bitwise_and(value, 0x0000000F)
-#         return (value & 0xFE0000)>>17, ((value & 0x1FF00)>>8)+1, (value & 0x0000F) # numpy.vectorize()
 
     col_row_tot_1_array = np.column_stack(get_col_row_tot_1_array_from_data_record_array(array))
     col_row_tot_2_array = np.column_stack(get_col_row_tot_2_array_from_data_record_array(array))
-#     print col_row_tot_1_array, col_row_tot_1_array.shape, col_row_tot_1_array.dtype
-#     print col_row_tot_2_array, col_row_tot_2_array.shape, col_row_tot_2_array.dtype
     # interweave array here
     col_row_tot_array = np.vstack((col_row_tot_1_array.T, col_row_tot_2_array.T)).reshape((3, -1), order='F').T  # http://stackoverflow.com/questions/5347065/interweaving-two-numpy-arrays
-#     print col_row_tot_array, col_row_tot_array.shape, col_row_tot_array.dtype
     # remove ToT > 14 (late hit, no hit) from array, remove row > 336 in case we saw hit in row 336 (no double hit possible)
     try:
         col_row_tot_array_filtered = col_row_tot_array[col_row_tot_array[:, 2] < 14]  # [np.logical_and(col_row_tot_array[:,2]<14, col_row_tot_array[:,1]<=336)]
-#         print col_row_tot_array_filtered, col_row_tot_array_filtered.shape, col_row_tot_array_filtered.dtype
     except IndexError:
         # logging.warning('Array is empty')
         return np.array([], dtype=np.dtype('>u4')), np.array([], dtype=np.dtype('>u4')), np.array([], dtype=np.dtype('>u4'))

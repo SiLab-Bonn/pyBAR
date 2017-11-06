@@ -54,12 +54,12 @@ class EudaqExtTriggerScan(ExtTriggerScan):
             got_data = False
             while not self.stop_run.wait(1.0):
                 if not got_data:
-                    if self.fifo_readout.data_words_per_second() > 0:
+                    if self.data_words_per_second() > 0:
                         got_data = True
                         logging.info('Taking data...')
                 else:
                     triggers = self.dut['TLU']['TRIGGER_COUNTER']
-                    data_words = self.fifo_readout.data_words_per_second()
+                    data_words = self.data_words_per_second()
                     logging.info('Runtime: %s\nTriggers: %d\nData words/s: %s\n' % (strftime('%H:%M:%S', gmtime(time() - start)), triggers, str(data_words)))
                     if self.max_triggers and triggers >= self.max_triggers:
                         self.stop(msg='Trigger limit was reached: %i' % self.max_triggers)

@@ -1136,7 +1136,7 @@ class Fei4RunBase(RunBase):
     def read_data(self, filter_func=None, converter_func=None):
         with self._readout_lock:
             if self.fifo_readout.fill_buffer:
-                return self.get_raw_data_from_buffer()[self._selected_modules.index(self.current_module_handle)]
+                return self.get_raw_data_from_buffer(filter_func=None, converter_func=None)[self._selected_modules.index(self.current_module_handle)]
             else:
                 return self.read_raw_data_from_fifo(filter_func=filter_func, converter_func=converter_func)
 
@@ -1145,6 +1145,16 @@ class Fei4RunBase(RunBase):
 
     def read_raw_data_from_fifo(self, filter_func=None, converter_func=None):
         return self.fifo_readout.read_raw_data_from_fifo(filter_func=filter_func, converter_func=converter_func)
+
+    def data_words_per_second(self):
+        if self.current_module_handle is None:
+            return sum(self.fifo_readout.data_words_per_second())
+        elif self.current_module_handle in self._modules:
+            return self.fifo_readout.data_words_per_second()[self._selected_modules.index(self.current_module_handle)]
+        elif self.current_module_handle in self._tx_module_groups:
+            return sum([dw_per_s for i, dw_per_s in enumerate(self.fifo_readout.data_words_per_second()) if self._selected_modules[i] in self._tx_module_groups[self.current_module_handle]])
+        else:
+            RuntimeError('Module handle "%s" is not valid.' % self.current_module_handle)
 
     @contextmanager
     def synchronized(self):

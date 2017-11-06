@@ -147,7 +147,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
                             logging.info('Finished sending %d triggers', self.n_triggers)
                             break
                         if not got_data:
-                            if self.fifo_readout.data_words_per_second() > 0:
+                            if self.data_words_per_second() > 0:
                                 got_data = True
                                 logging.info('Taking data...')
                                 self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.Timer()], maxval=total_scan_time, poll=10, term_width=80).start()
