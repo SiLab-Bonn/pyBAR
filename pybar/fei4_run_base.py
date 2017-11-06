@@ -352,10 +352,10 @@ class Fei4RunBase(RunBase):
                 self.dut['ENABLE_CHANNEL'].write()
             elif self.dut.get_modules('FEI4QuadModuleAdapterCard') and [adapter_card for adapter_card in self.dut.get_modules('FEI4QuadModuleAdapterCard') if adapter_card.name == 'ADAPTER_CARD']:
                 # resetting over current status
-                self.dut['POWER_QUAD']['EN_CH1'] = 0
-                self.dut['POWER_QUAD']['EN_CH2'] = 0
-                self.dut['POWER_QUAD']['EN_CH3'] = 0
-                self.dut['POWER_QUAD']['EN_CH4'] = 0
+                self.dut['POWER_QUAD']['EN_DATA_CH1'] = 0
+                self.dut['POWER_QUAD']['EN_DATA_CH2'] = 0
+                self.dut['POWER_QUAD']['EN_DATA_CH3'] = 0
+                self.dut['POWER_QUAD']['EN_DATA_CH4'] = 0
                 self.dut['POWER_QUAD'].write()
                 self.dut['ADAPTER_CARD'].set_voltage('CH1', 2.1)
                 self.dut['ADAPTER_CARD'].set_voltage('CH2', 2.1)
