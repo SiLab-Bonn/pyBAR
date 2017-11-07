@@ -567,14 +567,14 @@ def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=No
     fig = Figure()
     FigureCanvas(fig)
     ax = fig.add_subplot(111)
-    if plot_range is None or max(plot_range) > len(hist):
+    if plot_range is None:
         plot_range = range(0, len(hist))
-    if not plot_range:
-        plot_range = [0]
+    if len(plot_range) > len(hist):
+        plot_range = plot_range[0:len(hist)]
     if yerr is not None:
-        ax.bar(x=plot_range, height=hist[plot_range], color=color, align='center', yerr=yerr)
+        ax.bar(x=plot_range, height=hist, color=color, align='center', yerr=yerr)
     else:
-        ax.bar(x=plot_range, height=hist[plot_range], color=color, align='center')
+        ax.bar(x=plot_range, height=hist, color=color, align='center')
     ax.set_xlim((min(plot_range) - 0.5, max(plot_range) + 0.5))
     ax.set_title(title)
     if x_axis_title is not None:
@@ -582,7 +582,7 @@ def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=No
     if y_axis_title is not None:
         ax.set_ylabel(y_axis_title)
     if x_ticks is not None:
-        ax.set_xticks(range(0, len(hist[:])) if plot_range is None else plot_range)
+        ax.set_xticks(plot_range)
         ax.set_xticklabels(x_ticks)
         ax.tick_params(which='both', labelsize=8)
     if np.allclose(hist, 0.0):
