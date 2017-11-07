@@ -387,13 +387,12 @@ def plot_tot(hist, title=None, filename=None):
 
 def plot_tdc(hist, title=None, filename=None):
     masked_hist, indices = hist_quantiles(hist, prob=(0.0, 0.99), return_indices=True)
-    print masked_hist, indices
-    plot_1d_hist(hist=masked_hist, title=('TDC Hit distribution' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, plot_range=range(*indices), x_axis_title='hit TDC', y_axis_title='#', color='b', filename=filename)
+    plot_1d_hist(hist=masked_hist, title=('TDC Hit distribution' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, plot_range=range(indices[0], indices[1] + 1), x_axis_title='hit TDC', y_axis_title='#', color='b', filename=filename)
 
 
 def plot_tdc_counter(hist, title=None, filename=None):
     masked_hist, indices = hist_quantiles(hist, prob=(0.0, 0.99), return_indices=True)
-    plot_1d_hist(hist=masked_hist, title=('TDC counter distribution' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, plot_range=range(*indices), x_axis_title='TDC value', y_axis_title='#', color='b', filename=filename)
+    plot_1d_hist(hist=masked_hist, title=('TDC counter distribution' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, plot_range=range(indices[0], indices[1] + 1), x_axis_title='TDC value', y_axis_title='#', color='b', filename=filename)
 
 
 def plot_event_errors(hist, title=None, filename=None):
@@ -568,10 +567,11 @@ def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=No
     fig = Figure()
     FigureCanvas(fig)
     ax = fig.add_subplot(111)
+    hist = np.array(hist)
     if plot_range is None:
         plot_range = range(0, len(hist))
-    if len(plot_range) > len(hist):
-        plot_range = plot_range[0:len(hist)]
+    plot_range = np.array(plot_range)
+    plot_range = plot_range[plot_range < len(hist)]
     if yerr is not None:
         ax.bar(x=plot_range, height=hist[plot_range], color=color, align='center', yerr=yerr)
     else:

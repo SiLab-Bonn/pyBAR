@@ -29,10 +29,11 @@ translate = QtGui.QApplication.translate
 
 def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=None, x_ticks=None, color='r', plot_range=None, log_y=False, filename=None):
     plt.clf()
+    hist = np.array(hist)
     if plot_range is None:
         plot_range = range(0, len(hist))
-    if len(plot_range) > len(hist):
-        plot_range = plot_range[0:len(hist)]
+    plot_range = np.array(plot_range)
+    plot_range = plot_range[plot_range < len(hist)]
     if yerr is not None:
         plt.bar(x=plot_range, height=hist[plot_range], color=color, align='center', yerr=yerr)
     else:
