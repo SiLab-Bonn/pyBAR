@@ -22,7 +22,7 @@ The features of the host software in Python and C++:
 - very minimalistic interface, script based, no GUI
 - support for Windows/Linux/OSX
 - support for FE-I4A and B
-- configuration files human readable (compatible to RCE/HSIO)
+- configuration files are human readable (compatible to RCE/HSIO)
 - full control over FE command generation
 - sending any arbitrary bit stream/configuration sequence to the FE of any desired frame length and/or format
 - readout of full FE data including timestamps, storing of the compressed data to HDF5 file
@@ -61,7 +61,7 @@ On Windows, the `pywin32` package is required:
 
 [pyBAR FEI4 Interpreter](https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter) (>=1.3.0) is required:
   ```
-  pip install git+https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter@1.3.0
+  pip install git+https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter@development
   ```
 
 [Pixel Clusterizer](https://github.com/SiLab-Bonn/pixel_clusterizer) (>=3.0.0) is required:
