@@ -1,4 +1,4 @@
-''' This script changes the injection delay of the internal PlsrDAC (with global register PlsrDelay or PlsrIdacRamp, only PlsrDelay tested!) 
+''' This script changes the injection delay of the internal PlsrDAC (with global register PlsrDelay or PlsrIdacRamp, only PlsrDelay tested!)
 and measures the mean BCID for each pixel (runtime ~ 1 h).
 
 The PlsrDAC and injection delay values should be chosen equidistant and the lowest PlsrDAC value should be at threshold position!
@@ -47,7 +47,7 @@ def scurve(x, offset, mu, sigma):
     return offset + 0.5 * erf((x - mu) / (np.sqrt(2) * sigma)) + 0.5
 
 
-def fit_bcid_jumps(scurve_data, max_chi_2=2.):  # Data of some pixels to fit, has to be global for the multiprocessing module
+def fit_bcid_jumps(scurve_data, max_chi_2=2.0):  # Data of some pixels to fit, has to be global for the multiprocessing module
     offset_min = int(math.ceil(min(scurve_data)))  # Offset min is minimum BCID of Scurve fit
     offset_max = int(math.floor(max(scurve_data)))  # Offset max is minimum BCID of Scurve fit + 1
 

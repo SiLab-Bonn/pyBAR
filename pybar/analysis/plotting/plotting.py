@@ -386,12 +386,13 @@ def plot_tot(hist, title=None, filename=None):
 
 
 def plot_tdc(hist, title=None, filename=None):
-    masked_hist, indices = hist_quantiles(hist, prob=(0., 0.99), return_indices=True)
+    masked_hist, indices = hist_quantiles(hist, prob=(0.0, 0.99), return_indices=True)
+    print masked_hist, indices
     plot_1d_hist(hist=masked_hist, title=('TDC Hit distribution' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, plot_range=range(*indices), x_axis_title='hit TDC', y_axis_title='#', color='b', filename=filename)
 
 
 def plot_tdc_counter(hist, title=None, filename=None):
-    masked_hist, indices = hist_quantiles(hist, prob=(0., 0.99), return_indices=True)
+    masked_hist, indices = hist_quantiles(hist, prob=(0.0, 0.99), return_indices=True)
     plot_1d_hist(hist=masked_hist, title=('TDC counter distribution' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, plot_range=range(*indices), x_axis_title='TDC value', y_axis_title='#', color='b', filename=filename)
 
 

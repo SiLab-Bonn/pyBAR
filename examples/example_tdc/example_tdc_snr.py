@@ -53,7 +53,7 @@ if __name__ == "__main__":
     line_styles = ['o', '-', '--']
     for index, (dis_vbn, vthin_alt_fine, prmp_vbpf, sn) in enumerate(sns):
         print dis_vbn, vthin_alt_fine, prmp_vbpf, sn
-        plt.plot(np.array(plsr_dacs) * 55., sn, line_styles[index % 3], label='Dis_Vbn:%d, Vthin_AF:%d, PrmpVbpf:%d' % (dis_vbn, vthin_alt_fine, prmp_vbpf))
+        plt.plot(np.array(plsr_dacs) * 55.0, sn, line_styles[index % 3], label='Dis_Vbn:%d, Vthin_AF:%d, PrmpVbpf:%d' % (dis_vbn, vthin_alt_fine, prmp_vbpf))
     plt.grid(True)
     plt.xlabel('Charge')
     plt.ylabel('Signal to noise')

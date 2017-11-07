@@ -173,7 +173,7 @@ class PlsrDacTransientCalibration(AnalogScan):
                         trigger_level = trigger_levels[index]
                         plsr_dac = scan_parameter_values[index]
                         if abs(trigger_level) < 0.005:
-                            logging.warning('The trigger threshold for PlsrDAC %d is with %d mV too low. Thus this setting is omitted in the analysis!', plsr_dac, trigger_level * 1000.)
+                            logging.warning('The trigger threshold for PlsrDAC %d is with %d mV too low. Thus this setting is omitted in the analysis!', plsr_dac, trigger_level * 1000.0)
                             data_array['voltage_step'][index] = np.NaN
                             continue
                         step_index = np.where(np.abs(voltages - trigger_level) == np.amin(np.abs(voltages - trigger_level)))[0][0]

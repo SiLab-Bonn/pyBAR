@@ -1503,7 +1503,7 @@ def get_data_statistics(interpreted_files):
             except tb.NoSuchNodeError:
                 n_events = '~' + str(in_file_h5.root.meta_data[-1]['event_number'] + (in_file_h5.root.meta_data[-1]['event_number'] - in_file_h5.root.meta_data[-2]['event_number']))
             else:
-                print '|', os.path.basename(interpreted_file), '|', int(os.path.getsize(interpreted_file) / (1024 * 1024.)), 'Mb |', time.ctime(os.path.getctime(interpreted_file)), '|', n_events, '|', n_bad_events, '|', measurement_time, 's |', n_sr, '|', n_hits, '|'  # , mean_tot, '|', mean_bcid, '|'
+                print '|', os.path.basename(interpreted_file), '|', int(os.path.getsize(interpreted_file) / (1024.0 * 1024.0)), 'Mb |', time.ctime(os.path.getctime(interpreted_file)), '|', n_events, '|', n_bad_events, '|', measurement_time, 's |', n_sr, '|', n_hits, '|'  # , mean_tot, '|', mean_bcid, '|'
 
 
 def fix_raw_data(raw_data, lsb_byte=None):

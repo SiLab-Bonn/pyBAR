@@ -182,7 +182,7 @@ def analyze_data(scan_data_filenames, ignore_columns, fei4b=False):
             noise_masked = np.ma.masked_array(in_file_h5.root.HistNoiseFitted[:], mask)
             # plot the threshold distribution and the s curves
             if local_configuration['create_plots']:
-                plotting.plot_three_way(hist=thresholds_masked * 55., title='Threshold Fitted for delay = ' + str(delay_value), x_axis_title='threshold [e]', filename=output_pdf)
+                plotting.plot_three_way(hist=thresholds_masked * 55.0, title='Threshold Fitted for delay = ' + str(delay_value), x_axis_title='threshold [e]', filename=output_pdf)
                 plotting.plot_relative_bcid(hist=in_file_h5.root.HistRelBcid[0:16], title='Relative BCID (former LVL1ID) for delay = ' + str(delay_value), filename=output_pdf)
                 plotting.plot_event_errors(hist=in_file_h5.root.HistErrorCounter[:], title='Event status for delay = ' + str(delay_value), filename=output_pdf)
             meta_data_array = in_file_h5.root.meta_data[:]
@@ -221,9 +221,9 @@ def analyze_data(scan_data_filenames, ignore_columns, fei4b=False):
                         rel_bcid_2 = np.zeros(shape=(16, ))
                     # plot the threshold distribution and the s curves
                     if local_configuration['create_plots']:
-                        plotting.plot_three_way(hist=thresholds_masked_1 * 55., title='Threshold Fitted for 1. trigger, delay ' + str(delay_value), x_axis_title='threshold [e]', filename=output_pdf)
+                        plotting.plot_three_way(hist=thresholds_masked_1 * 55.0, title='Threshold Fitted for 1. trigger, delay ' + str(delay_value), x_axis_title='threshold [e]', filename=output_pdf)
                         plotting.plot_relative_bcid(hist=rel_bcid_1, title='Relative BCID (former LVL1ID) for 1. trigger, delay = ' + str(delay_value), filename=output_pdf)
-                        plotting.plot_three_way(hist=thresholds_masked_2 * 55., title='Threshold Fitted for 2. trigger, delay ' + str(delay_value), x_axis_title='threshold [e]', filename=output_pdf)
+                        plotting.plot_three_way(hist=thresholds_masked_2 * 55.0, title='Threshold Fitted for 2. trigger, delay ' + str(delay_value), x_axis_title='threshold [e]', filename=output_pdf)
                         plotting.plot_relative_bcid(hist=rel_bcid_2, title='Relative BCID (former LVL1ID) for 2. trigger, delay = ' + str(delay_value), filename=output_pdf)
                     if local_configuration['create_plots']:
                         plotting.plot_scurves(occupancy_hist=occupancy_masked_1, title='S-Curves 1. trigger, delay ' + str(delay_value), scan_parameters=scan_parameters, scan_parameter_name='PlsrDAC', filename=output_pdf)
@@ -240,22 +240,22 @@ def analyze_data(scan_data_filenames, ignore_columns, fei4b=False):
 
     # plot the parameter against delay plots
     if local_configuration['create_result_plots']:
-        plotting.plot_scatter(x=local_configuration['delays'], y=mean_threshold_calibration * 55., title='Threshold as a function of the delay', x_label='delay [BCID]', y_label='Mean threshold [e]', log_x=False, filename=output_pdf)
-        plotting.plot_scatter(x=local_configuration['delays'], y=mean_threshold_calibration * 55., title='Threshold as a function of the delay', x_label='delay [BCID]', y_label='Mean threshold [e]', log_x=True, filename=output_pdf)
-        plotting.plot_scatter(x=local_configuration['delays'], y=mean_threshold_rms_calibration * 55., title='Threshold as a function of the delay', x_label='delay [BCID]', y_label='Threshold RMS [e]', log_x=False, filename=output_pdf)
-        plotting.plot_scatter(x=local_configuration['delays'], y=mean_threshold_rms_calibration * 55., title='Threshold as a function of the delay', x_label='delay [BCID]', y_label='Threshold RMS [e]', log_x=True, filename=output_pdf)
+        plotting.plot_scatter(x=local_configuration['delays'], y=mean_threshold_calibration * 55.0, title='Threshold as a function of the delay', x_label='delay [BCID]', y_label='Mean threshold [e]', log_x=False, filename=output_pdf)
+        plotting.plot_scatter(x=local_configuration['delays'], y=mean_threshold_calibration * 55.0, title='Threshold as a function of the delay', x_label='delay [BCID]', y_label='Mean threshold [e]', log_x=True, filename=output_pdf)
+        plotting.plot_scatter(x=local_configuration['delays'], y=mean_threshold_rms_calibration * 55.0, title='Threshold as a function of the delay', x_label='delay [BCID]', y_label='Threshold RMS [e]', log_x=False, filename=output_pdf)
+        plotting.plot_scatter(x=local_configuration['delays'], y=mean_threshold_rms_calibration * 55.0, title='Threshold as a function of the delay', x_label='delay [BCID]', y_label='Threshold RMS [e]', log_x=True, filename=output_pdf)
         if local_configuration['analysis_two_trigger']:
-            plotting.plot_scatter(x=local_configuration['delays'], y=mean_threshold_calibration_1 * 55., title='Threshold as a function of the delay, 1. trigger', x_label='delay [BCID]', y_label='Mean threshold [e]', log_x=False, filename=output_pdf)
-            plotting.plot_scatter(x=local_configuration['delays'], y=mean_threshold_calibration_1 * 55., title='Threshold as a function of the delay, 1. trigger', x_label='delay [BCID]', y_label='Mean threshold [e]', log_x=True, filename=output_pdf)
-            plotting.plot_scatter(x=local_configuration['delays'], y=mean_threshold_rms_calibration_1 * 55., title='Threshold as a function of the delay, 1. trigger', x_label='delay [BCID]', y_label='Threshold RMS [e]', log_x=False, filename=output_pdf)
-            plotting.plot_scatter(x=local_configuration['delays'], y=mean_threshold_rms_calibration_1 * 55., title='Threshold as a function of the delay, 1. trigger', x_label='delay [BCID]', y_label='Threshold RMS [e]', log_x=True, filename=output_pdf)
-            plotting.plot_scatter(x=local_configuration['delays'], y=mean_threshold_calibration_2 * 55., title='Threshold as a function of the delay, 2. trigger', x_label='delay [BCID]', y_label='Mean threshold [e]', log_x=False, filename=output_pdf)
-            plotting.plot_scatter(x=local_configuration['delays'], y=mean_threshold_calibration_2 * 55., title='Threshold as a function of the delay, 2. trigger', x_label='delay [BCID]', y_label='Mean threshold [e]', log_x=True, filename=output_pdf)
-            plotting.plot_scatter(x=local_configuration['delays'], y=mean_threshold_rms_calibration_2 * 55., title='Threshold as a function of the delay, 2. trigger', x_label='delay [BCID]', y_label='Threshold RMS [e]', log_x=False, filename=output_pdf)
-            plotting.plot_scatter(x=local_configuration['delays'], y=mean_threshold_rms_calibration_2 * 55., title='Threshold as a function of the delay, 2. trigger', x_label='delay [BCID]', y_label='Threshold RMS [e]', log_x=True, filename=output_pdf)
+            plotting.plot_scatter(x=local_configuration['delays'], y=mean_threshold_calibration_1 * 55.0, title='Threshold as a function of the delay, 1. trigger', x_label='delay [BCID]', y_label='Mean threshold [e]', log_x=False, filename=output_pdf)
+            plotting.plot_scatter(x=local_configuration['delays'], y=mean_threshold_calibration_1 * 55.0, title='Threshold as a function of the delay, 1. trigger', x_label='delay [BCID]', y_label='Mean threshold [e]', log_x=True, filename=output_pdf)
+            plotting.plot_scatter(x=local_configuration['delays'], y=mean_threshold_rms_calibration_1 * 55.0, title='Threshold as a function of the delay, 1. trigger', x_label='delay [BCID]', y_label='Threshold RMS [e]', log_x=False, filename=output_pdf)
+            plotting.plot_scatter(x=local_configuration['delays'], y=mean_threshold_rms_calibration_1 * 55.0, title='Threshold as a function of the delay, 1. trigger', x_label='delay [BCID]', y_label='Threshold RMS [e]', log_x=True, filename=output_pdf)
+            plotting.plot_scatter(x=local_configuration['delays'], y=mean_threshold_calibration_2 * 55.0, title='Threshold as a function of the delay, 2. trigger', x_label='delay [BCID]', y_label='Mean threshold [e]', log_x=False, filename=output_pdf)
+            plotting.plot_scatter(x=local_configuration['delays'], y=mean_threshold_calibration_2 * 55.0, title='Threshold as a function of the delay, 2. trigger', x_label='delay [BCID]', y_label='Mean threshold [e]', log_x=True, filename=output_pdf)
+            plotting.plot_scatter(x=local_configuration['delays'], y=mean_threshold_rms_calibration_2 * 55.0, title='Threshold as a function of the delay, 2. trigger', x_label='delay [BCID]', y_label='Threshold RMS [e]', log_x=False, filename=output_pdf)
+            plotting.plot_scatter(x=local_configuration['delays'], y=mean_threshold_rms_calibration_2 * 55.0, title='Threshold as a function of the delay, 2. trigger', x_label='delay [BCID]', y_label='Threshold RMS [e]', log_x=True, filename=output_pdf)
 
-        plotting.plot_scatter(x=local_configuration['delays'], y=mean_noise_calibration * 55., title='Noise as a function of the delay', x_label='delay [BCID]', y_label='Mean noise [e]', log_x=False, filename=output_pdf)
-        plotting.plot_scatter(x=local_configuration['delays'], y=mean_noise_rms_calibration * 55., title='Noise as a function of the delay', x_label='delay [BCID]', y_label='Noise RMS [e]', log_x=False, filename=output_pdf)
+        plotting.plot_scatter(x=local_configuration['delays'], y=mean_noise_calibration * 55.0, title='Noise as a function of the delay', x_label='delay [BCID]', y_label='Mean noise [e]', log_x=False, filename=output_pdf)
+        plotting.plot_scatter(x=local_configuration['delays'], y=mean_noise_rms_calibration * 55.0, title='Noise as a function of the delay', x_label='delay [BCID]', y_label='Noise RMS [e]', log_x=False, filename=output_pdf)
 
     if local_configuration['create_plots'] or local_configuration['create_result_plots']:
         output_pdf.close()

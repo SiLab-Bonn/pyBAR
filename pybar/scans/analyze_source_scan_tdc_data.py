@@ -138,7 +138,7 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
         plt.ylabel('#')
         plt.grid()
         for x, y in zip(np.arange(len(n_hits_per_condition)), n_hits_per_condition):
-            plt.annotate('%d' % (float(y) / float(n_hits_per_condition[0]) * 100.) + r'%', xy=(x, y / 2.), xycoords='data', color='grey', size=15)
+            plt.annotate('%d' % (float(y) / float(n_hits_per_condition[0]) * 100.0) + r'%', xy=(x, y / 2.0), xycoords='data', color='grey', size=15)
         output_pdf.savefig()
 
     def plot_corrected_tdc_hist(x, y, title, output_pdf, point_style='-'):

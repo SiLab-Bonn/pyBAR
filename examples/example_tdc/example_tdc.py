@@ -80,10 +80,10 @@ def fit_landau_bootstrap(x, y, p0, n_sigma=1, n_iterations=500, **kwargs):  # fi
     progress_bar.start()
     for i in range(n_iterations):
         if yerr is None:
-            randomDelta = np.random.normal(0., s_res, len(y))
+            randomDelta = np.random.normal(0.0, s_res, len(y))
             randomdataY = y + randomDelta
         else:
-            randomDelta = np.array([np.random.normal(0., derr, 1)[0] for derr in yerr])
+            randomDelta = np.array([np.random.normal(0.0, derr, 1)[0] for derr in yerr])
             randomdataY = y + randomDelta
         randomfit, _ = leastsq(errfunc, p0, args=(x, randomdataY), full_output=0)
         ps.append(randomfit)

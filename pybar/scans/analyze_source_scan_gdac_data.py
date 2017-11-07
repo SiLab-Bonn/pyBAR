@@ -1,4 +1,4 @@
-''' This script does the full analysis of a source scan where the global threshold setting was changed to reconstruct the charge injected in a sensor pixel 
+''' This script does the full analysis of a source scan where the global threshold setting was changed to reconstruct the charge injected in a sensor pixel
 by a constant source. Several steps are done automatically:
 Step 1 Tnterpret the raw data:
     This step interprets the raw data from the FE and creates and plots distributions.
@@ -33,7 +33,7 @@ analysis_configuration = {
     "normalize_rate": True,  # correct the number of GDACs per scan parameter by the number of triggers or scan time
     "normalization_reference": 'time',  # one can normalize the hits per GDAC setting to the number of events ('event') or time ('time')
     "smoothness": 100,  # the smoothness of the spline fit to the data
-    "vcal_calibration": 55.,   # calibration electrons/PlsrDAC
+    "vcal_calibration": 55.0,   # calibration electrons/PlsrDAC
     "n_bins": 300,  # number of bins for the profile histogram
     "col_span": [53, 76],  # the column pixel range to use in the analysis
     "row_span": [1, 336],  # the row pixel range to use in the analysis
