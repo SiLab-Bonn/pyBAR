@@ -31,8 +31,8 @@ def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=No
     plt.clf()
     if plot_range is None:
         plot_range = range(0, len(hist))
-    if not plot_range:
-        plot_range = [0]
+    if len(plot_range) > len(hist):
+        plot_range = plot_range[0:len(hist)]
     if yerr is not None:
         plt.bar(x=plot_range, height=hist[plot_range], color=color, align='center', yerr=yerr)
     else:
@@ -44,7 +44,7 @@ def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=No
     if y_axis_title is not None:
         plt.ylabel(y_axis_title)
     if x_ticks is not None:
-        plt.xticks(range(0, len(hist[:])) if plot_range is None else plot_range, x_ticks)
+        plt.xticks(plot_range, x_ticks)
         plt.tick_params(which='both', labelsize=8)
     if np.allclose(hist, 0.0):
         plt.ylim((0, 1))

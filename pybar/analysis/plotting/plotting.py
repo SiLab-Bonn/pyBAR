@@ -430,7 +430,7 @@ def plot_scurves(occupancy_hist, scan_parameters, title='S-curves', ylabel='Occu
     n_pixel = occupancy_hist.shape[0] * occupancy_hist.shape[1]
     scan_parameters = np.array(scan_parameters)
     if extend_bin_width and len(scan_parameters) >= 2:
-        # adding mirror scan parameter for plotting range -0.5 ... 
+        # adding mirror scan parameter for plotting range -0.5 ...
         scan_parameters = np.r_[-scan_parameters[0] - 1.0, scan_parameters]
         dist = (scan_parameters[1:] - scan_parameters[:-1].astype(np.float))
         min_dist = np.minimum(np.r_[dist[0], dist[:]], np.r_[dist[:], dist[-1]]) / 2
@@ -572,9 +572,9 @@ def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=No
     if len(plot_range) > len(hist):
         plot_range = plot_range[0:len(hist)]
     if yerr is not None:
-        ax.bar(x=plot_range, height=hist, color=color, align='center', yerr=yerr)
+        ax.bar(x=plot_range, height=hist[plot_range], color=color, align='center', yerr=yerr)
     else:
-        ax.bar(x=plot_range, height=hist, color=color, align='center')
+        ax.bar(x=plot_range, height=hist[plot_range], color=color, align='center')
     ax.set_xlim((min(plot_range) - 0.5, max(plot_range) + 0.5))
     ax.set_title(title)
     if x_axis_title is not None:
@@ -715,7 +715,7 @@ def create_1d_hist(ax, hist, title=None, x_axis_title=None, y_axis_title=None, b
 #         return amplitude * np.exp(- (x - mu)**2.0 / (2.0 * sigma**2.0))
 #         mu, sigma = p
 #         return 1.0 / (sigma * np.sqrt(2.0 * np.pi)) * np.exp(- (x - mu)**2.0 / (2.0 * sigma**2.0))
-# 
+#
 #     def chi_square(observed_values, expected_values):
 #         return (chisquare(observed_values, f_exp=expected_values))[0]
 #         # manual calculation
