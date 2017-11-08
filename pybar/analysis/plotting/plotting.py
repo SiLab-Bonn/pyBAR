@@ -170,7 +170,7 @@ def plot_fancy_occupancy(hist, z_max=None, filename=None):
     axHistx.set_ylabel('#')
     width = np.ma.sum(hist, axis=1)
 
-    axHisty.barh(bottom=range(1, 337), width=width, align='center', linewidth=0)
+    axHisty.barh(y=range(1, 337), width=width, align='center', linewidth=0)
     axHisty.set_ylim((336.5, 0.5))
     if hist.all() is np.ma.masked:
         axHisty.set_xlim((0, 1))
