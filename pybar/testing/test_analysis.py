@@ -111,10 +111,10 @@ class TestAnalysis(unittest.TestCase):
         os.remove(os.path.join(tests_data_folder, 'hit_or_calibration.pdf'))
         os.remove(os.path.join(tests_data_folder, 'hit_or_calibration_interpreted.h5'))
         os.remove(os.path.join(tests_data_folder, 'hit_or_calibration_calibration.h5'))
-        #os.remove(os.path.join(tests_data_folder, 'ext_trigger_scan_tdc_interpreted.h5'))
-        #os.remove(os.path.join(tests_data_folder, 'ext_trigger_scan_tdc_interpreted_calibrated_tdc_hists.pdf'))
-        #os.remove(os.path.join(tests_data_folder, 'ext_trigger_scan_tdc_interpreted_tdc_hists.h5'))
-        #os.remove(os.path.join(tests_data_folder, 'ext_trigger_scan_tdc.pdf'))
+        os.remove(os.path.join(tests_data_folder, 'ext_trigger_scan_tdc_interpreted.h5'))
+        os.remove(os.path.join(tests_data_folder, 'ext_trigger_scan_tdc_interpreted_calibrated_tdc_hists.pdf'))
+        os.remove(os.path.join(tests_data_folder, 'ext_trigger_scan_tdc_interpreted_tdc_hists.h5'))
+        os.remove(os.path.join(tests_data_folder, 'ext_trigger_scan_tdc.pdf'))
         os.remove(os.path.join(tests_data_folder, 'ext_trigger_scan_tlu.pdf'))
         os.remove(os.path.join(tests_data_folder, 'ext_trigger_scan_tlu_interpreted.h5'))
 
@@ -576,7 +576,6 @@ class TestAnalysis(unittest.TestCase):
             gen = data_aligned_at_events(h5_file.root.Hits, start_event_number=3800, stop_event_number=239500, start_index=None, stop_index=None, first_event_aligned=True, try_speedup=False, chunk_size=100000)
             test_gen(generator=gen, table=h5_file.root.Hits, start=224, stop=None, size=100000)
 
-    @unittest.skip("TDC test missing file test_analysis_data/hit_or_calibration_tdc.h5")
     def test_tdc_analysis(self):
         def analyze_tdc(source_scan_filename, calibration_filename, col_span, row_span):
             # Data files
@@ -619,10 +618,12 @@ class TestAnalysis(unittest.TestCase):
                     calibration_filename=os.path.join(tests_data_folder, 'hit_or_calibration_tdc.h5'),
                     col_span=[55, 75], row_span=[75, 275])
         # Test raw data interpretation with TDC words
-        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'ext_trigger_scan_tdc_interpreted_result.h5'), os.path.join(tests_data_folder, 'ext_trigger_scan_tdc_interpreted.h5'))
+        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'ext_trigger_scan_tdc_interpreted_result.h5'),
+                                                            os.path.join(tests_data_folder, 'ext_trigger_scan_tdc_interpreted.h5'))
         self.assertTrue(data_equal, msg=error_msg)
         # Test TDC histogram creation
-        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'ext_trigger_scan_tdc_interpreted_tdc_hists_result.h5'), os.path.join(tests_data_folder, 'ext_trigger_scan_tdc_interpreted_tdc_hists.h5'))
+        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'ext_trigger_scan_tdc_interpreted_tdc_hists_result.h5'),
+                                                            os.path.join(tests_data_folder, 'ext_trigger_scan_tdc_interpreted_tdc_hists.h5'))
         self.assertTrue(data_equal, msg=error_msg)
 
     def test_tlu_analysis(self):
