@@ -1,9 +1,10 @@
 dut : dut_mio_sim.yaml
-dut_configuration :
+dut_configuration : ""
 working_dir :
 
 modules :
     module_0 :
+         activate : True
          configuration : # FE configuration file, text (.cfg) or HDF5 (.h5) file. If no value is given, the latest valid configuration (run status 'FINISHED') will be taken. If a number is given, the configuration from the run with the specified number will be taken.
          flavor : fei4a # FEI4 flavor/type for initial configuration. Valid values are: 'fei4a', 'fei4b'.
          chip_address : 0 # Chip Address for initial configuration. if no value is given, the broadcast bit will be set.
