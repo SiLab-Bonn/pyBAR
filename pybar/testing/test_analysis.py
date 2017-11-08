@@ -92,7 +92,7 @@ class TestAnalysis(unittest.TestCase):
             analyze_raw_data.trig_count = 255
             analyze_raw_data.create_source_scan_hist = True
             analyze_raw_data.set_stop_mode = True
-            analyze_raw_data.trigger_data_format = 1  # time stamp only
+            analyze_raw_data.trigger_data_format = 0  # time stamp only
             analyze_raw_data.align_at_trigger = True
             analyze_raw_data.interpreter.set_warning_output(False)
             analyze_raw_data.interpret_word_table(use_settings_from_file=False)  # The old unit test data does not hav the settings stored in file
@@ -111,10 +111,10 @@ class TestAnalysis(unittest.TestCase):
         os.remove(os.path.join(tests_data_folder, 'hit_or_calibration.pdf'))
         os.remove(os.path.join(tests_data_folder, 'hit_or_calibration_interpreted.h5'))
         os.remove(os.path.join(tests_data_folder, 'hit_or_calibration_calibration.h5'))
-        os.remove(os.path.join(tests_data_folder, 'ext_trigger_scan_tdc_interpreted.h5'))
-        os.remove(os.path.join(tests_data_folder, 'ext_trigger_scan_tdc_interpreted_calibrated_tdc_hists.pdf'))
-        os.remove(os.path.join(tests_data_folder, 'ext_trigger_scan_tdc_interpreted_tdc_hists.h5'))
-        os.remove(os.path.join(tests_data_folder, 'ext_trigger_scan_tdc.pdf'))
+        #os.remove(os.path.join(tests_data_folder, 'ext_trigger_scan_tdc_interpreted.h5'))
+        #os.remove(os.path.join(tests_data_folder, 'ext_trigger_scan_tdc_interpreted_calibrated_tdc_hists.pdf'))
+        #os.remove(os.path.join(tests_data_folder, 'ext_trigger_scan_tdc_interpreted_tdc_hists.h5'))
+        #os.remove(os.path.join(tests_data_folder, 'ext_trigger_scan_tdc.pdf'))
         os.remove(os.path.join(tests_data_folder, 'ext_trigger_scan_tlu.pdf'))
         os.remove(os.path.join(tests_data_folder, 'ext_trigger_scan_tlu_interpreted.h5'))
 
@@ -134,6 +134,7 @@ class TestAnalysis(unittest.TestCase):
     def test_data_alignement(self):  # Test if the data alignment is correct (important to detect 32/64 bit related issues)
         hits = np.empty((1,), dtype=[('event_number', np.uint64),
                                      ('trigger_number', np.uint32),
+                                     ('trigger_time_stamp', np.uint32),
                                      ('relative_BCID', np.uint8),
                                      ('LVL1ID', np.uint16),
                                      ('column', np.uint8),
@@ -575,6 +576,7 @@ class TestAnalysis(unittest.TestCase):
             gen = data_aligned_at_events(h5_file.root.Hits, start_event_number=3800, stop_event_number=239500, start_index=None, stop_index=None, first_event_aligned=True, try_speedup=False, chunk_size=100000)
             test_gen(generator=gen, table=h5_file.root.Hits, start=224, stop=None, size=100000)
 
+    @unittest.skip("TDC test missing file test_analysis_data/hit_or_calibration_tdc.h5")
     def test_tdc_analysis(self):
         def analyze_tdc(source_scan_filename, calibration_filename, col_span, row_span):
             # Data files
