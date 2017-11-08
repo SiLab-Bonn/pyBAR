@@ -211,6 +211,7 @@ class Fei4RunBase(RunBase):
                     module_cfg.setdefault("tdc_channel", None)
                     module_cfg.setdefault("configuration", None)  # string or number, if None, using the last valid configuration
                     module_cfg.setdefault("send_data", None)  # address string of PUB socket
+                    module_cfg.setdefault("activate", True)  # set module active by default
                     # Save config to dict.
                     self._module_cfgs[module_id] = module_cfg
                     self._modules[module_id] = [module_id]
