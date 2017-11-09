@@ -150,30 +150,37 @@ class TestAnalysis(unittest.TestCase):
         self.assertTrue(self.interpreter.get_hit_size() == hits.itemsize)
 
     def test_raw_data_analysis(self):  # test the created interpretation file against the stored one
-        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'unit_test_data_1_result.h5'), os.path.join(tests_data_folder, 'unit_test_data_1_interpreted.h5'))
+        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'unit_test_data_1_result.h5'),
+                                                            os.path.join(tests_data_folder, 'unit_test_data_1_interpreted.h5'))
         self.assertTrue(data_equal, msg=error_msg)
 
     def test_threshold_analysis(self):  # test the created interpretation file of the threshold data against the stored one
-        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'unit_test_data_2_result.h5'), os.path.join(tests_data_folder, 'unit_test_data_2_interpreted.h5'), exact=False)
+        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'unit_test_data_2_interpreted.h5'),
+                                                            os.path.join(tests_data_folder, 'unit_test_data_2_result.h5'),
+                                                            exact=False)
         self.assertTrue(data_equal, msg=error_msg)
 
     def test_hit_data_analysis(self):  # test the hit histogramming/clustering starting from the predefined interpreted data
-        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'unit_test_data_1_result.h5'), os.path.join(tests_data_folder, 'unit_test_data_1_analyzed.h5'), expected_nodes=8)
+        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'unit_test_data_1_result.h5'),
+                                                            os.path.join(tests_data_folder, 'unit_test_data_1_analyzed.h5'),
+                                                            node_names=["HistClusterTot", "HistTotPixel", "HistOcc", "ClusterHits", "Cluster", "HistClusterSize", "HistRelBcid", "HistTot"])
         self.assertTrue(data_equal, msg=error_msg)
 
     def test_analysis_per_scan_parameter(self):  # check if the data per scan parameter is correctly analyzed
         # check if the data with more than one scan parameter is correctly analyzed
-        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'unit_test_data_3_result.h5'), os.path.join(tests_data_folder, 'unit_test_data_3_interpreted.h5'))
+        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'unit_test_data_3_result.h5'),
+                                                            os.path.join(tests_data_folder, 'unit_test_data_3_interpreted.h5'))
         self.assertTrue(data_equal, msg=error_msg)
         # check the data from two files with one scan parameter each with the previous file containing two scan parameters
-        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'unit_test_data_4_interpreted.h5'), os.path.join(tests_data_folder, 'unit_test_data_4_interpreted_2.h5'))
+        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'unit_test_data_4_interpreted.h5'),
+                                                            os.path.join(tests_data_folder, 'unit_test_data_4_interpreted_2.h5'))
         self.assertTrue(data_equal, msg=error_msg)
         # check if the occupancy hist from the threshold scan hit data is correctly created
-        with tb.open_file(os.path.join(tests_data_folder, 'unit_test_data_2_interpreted.h5'), 'r') as first_h5_file:
-            with tb.open_file(os.path.join(tests_data_folder, 'unit_test_data_2_analyzed.h5'), 'r') as second_h5_file:
-                occupancy_expected = first_h5_file.root.HistOcc[:]
-                occupancy = second_h5_file.root.HistOcc[:]
-                self.assertTrue(np.all(occupancy_expected == occupancy), msg=error_msg)
+        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'unit_test_data_2_interpreted.h5'),
+                                                            os.path.join(tests_data_folder, 'unit_test_data_2_analyzed.h5'),
+                                                            node_names=["HistThreshold", "HistNoise", "HistTotPixel", "HistOcc", "HistRelBcid", "HistTot"])
+        self.assertTrue(data_equal, msg=error_msg)
+
 
     def test_analysis_utils_get_n_cluster_in_events(self):  # check compiled get_n_cluster_in_events function
         event_numbers = np.array([[0, 0, 1, 2, 2, 2, 4, 4000000000, 4000000000, 40000000000, 40000000000], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=np.int64)  # use data format with non linear memory alignment
@@ -275,13 +282,17 @@ class TestAnalysis(unittest.TestCase):
 
     def test_hit_or_calibration(self):
         create_hitor_calibration(os.path.join(tests_data_folder, 'hit_or_calibration'), plot_pixel_calibrations=True)
-        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'hit_or_calibration_interpreted_result.h5'), os.path.join(tests_data_folder, 'hit_or_calibration_interpreted.h5'))
+        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'hit_or_calibration_interpreted_result.h5'),
+                                                            os.path.join(tests_data_folder, 'hit_or_calibration_interpreted.h5'))
         self.assertTrue(data_equal, msg=error_msg)
-        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'hit_or_calibration_result.h5'), os.path.join(tests_data_folder, 'hit_or_calibration_calibration.h5'), exact=False)
+        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'hit_or_calibration_result.h5'),
+                                                            os.path.join(tests_data_folder, 'hit_or_calibration_calibration.h5'),
+                                                            exact=False)
         self.assertTrue(data_equal, msg=error_msg)
 
     def test_stop_mode_analysis(self):
-        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'unit_test_data_5_interpreted.h5'), os.path.join(tests_data_folder, 'unit_test_data_5_result.h5'))
+        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'unit_test_data_5_interpreted.h5'),
+                                                            os.path.join(tests_data_folder, 'unit_test_data_5_result.h5'))
         self.assertTrue(data_equal, msg=error_msg)
 
     def test_data_aligned_at_events(self):
