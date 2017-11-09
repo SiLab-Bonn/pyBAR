@@ -9,12 +9,14 @@ Two consecutive steps are done:
 '''
 
 import logging
-import tables as tb
-import progressbar
-import numpy as np
 import re
 import os.path
-import matplotlib.pyplot as plt
+
+import progressbar
+import tables as tb
+import numpy as np
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib import colors, cm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.backends.backend_pdf import PdfPages
@@ -104,22 +106,24 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
 
     def plot_tdc_tot_correlation(data, condition, output_pdf):
         logging.info('Plot correlation histogram for %s', condition)
-        plt.clf()
         data = np.ma.array(data, mask=(data <= 0))
         if np.ma.any(data > 0):
+            fig = Figure()
+            FigureCanvas(fig)
+            ax = fig.add_subplot(111)
             cmap = cm.get_cmap('jet', 200)
             cmap.set_bad('w')
-            plt.title('Correlation with %s' % condition)
+            ax.set_title('Correlation with %s' % condition)
             norm = colors.LogNorm()
             z_max = data.max(fill_value=0)
-            plt.xlabel('TDC')
-            plt.ylabel('TOT')
-            im = plt.imshow(data, cmap=cmap, norm=norm, aspect='auto', interpolation='nearest')  # , norm=norm)
-            divider = make_axes_locatable(plt.gca())
-            plt.gca().invert_yaxis()
+            ax.set_xlabel('TDC')
+            ax.set_ylabel('TOT')
+            im = ax.imshow(data, cmap=cmap, norm=norm, aspect='auto', interpolation='nearest')  # , norm=norm)
+            divider = make_axes_locatable(ax)
+            ax.invert_yaxis()
             cax = divider.append_axes("right", size="5%", pad=0.1)
-            plt.colorbar(im, cax=cax, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True))
-            output_pdf.savefig()
+            fig.colorbar(im, cax=cax, ticks=np.linspace(start=0, stop=z_max, num=9, endpoint=True))
+            output_pdf.savefig(fig)
         else:
             logging.warning('No data for correlation plotting for %s', condition)
 
@@ -130,54 +134,60 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
             condition = re.sub('[&]', '\n', condition)
             condition = re.sub('[()]', '', condition)
             labels.append(condition)
-        plt.clf()
-        plt.bar(range(len(n_hits_per_condition)), n_hits_per_condition, align='center')
-        plt.xticks(range(len(n_hits_per_condition)), labels, size=8)
-        plt.title('Number of hits for different cuts')
-        plt.yscale('log')
-        plt.ylabel('#')
-        plt.grid()
+        fig = Figure()
+        FigureCanvas(fig)
+        ax = fig.add_subplot(111)
+        ax.bar(range(len(n_hits_per_condition)), n_hits_per_condition, align='center')
+        ax.set_xticks(range(len(n_hits_per_condition)), labels)
+        ax.tick_params(axis='x', labelsize=8)
+        ax.set_title('Number of hits for different cuts')
+        ax.set_yscale('log')
+        ax.set_ylabel('#')
+        ax.grid(True)
         for x, y in zip(np.arange(len(n_hits_per_condition)), n_hits_per_condition):
-            plt.annotate('%d' % (float(y) / float(n_hits_per_condition[0]) * 100.0) + r'%', xy=(x, y / 2.0), xycoords='data', color='grey', size=15)
-        output_pdf.savefig()
+            ax.annotate('%d' % (float(y) / float(n_hits_per_condition[0]) * 100.0) + r'%', xy=(x, y / 2.0), xycoords='data', color='grey', size=15)
+        output_pdf.savefig(fig)
 
     def plot_corrected_tdc_hist(x, y, title, output_pdf, point_style='-'):
         logging.info('Plot TDC hist with TDC calibration')
-        plt.clf()
+        fig = Figure()
+        FigureCanvas(fig)
+        ax = fig.add_subplot(111)
         y /= np.amax(y) if y.shape[0] > 0 else y
-        plt.plot(x, y, point_style)
-        plt.title(title, size=10)
-        plt.xlabel('Charge [PlsrDAC]')
-        plt.ylabel('Count [a.u.]')
-        plt.grid()
-        output_pdf.savefig()
+        ax.plot(x, y, point_style)
+        ax.set_title(title, size=10)
+        ax.set_xlabel('Charge [PlsrDAC]')
+        ax.set_ylabel('Count [a.u.]')
+        ax.grid(True)
+        output_pdf.savefig(fig)
 
     def get_calibration_correction(tdc_calibration, tdc_calibration_values, filename_new_calibration):  # correct the TDC calibration with the TDC calib in filename_new_calibration by shifting the means
         with tb.open_file(filename_new_calibration, 'r') as in_file_2:
-            charge_calibration_1, charge_calibration_2 = tdc_calibration, in_file_2.root.HitOrCalibration[:, :, :, 1]
+            with PdfPages(os.path.splitext(filename_new_calibration)[0] + '.pdf') as output_pdf:
+                charge_calibration_1, charge_calibration_2 = tdc_calibration, in_file_2.root.HitOrCalibration[:, :, :, 1]
 
-            plsr_dacs = tdc_calibration_values
-            if not np.all(plsr_dacs == in_file_2.root.HitOrCalibration._v_attrs.scan_parameter_values):
-                raise NotImplementedError('The check calibration file has to have the same PlsrDAC values')
+                plsr_dacs = tdc_calibration_values
+                if not np.all(plsr_dacs == in_file_2.root.HitOrCalibration._v_attrs.scan_parameter_values):
+                    raise NotImplementedError('The check calibration file has to have the same PlsrDAC values')
 
-            # Valid pixel have a calibration in the new and the old calibration
-            valid_pixel = np.where(~np.all((charge_calibration_1 == 0), axis=2) & ~np.all(np.isnan(charge_calibration_1), axis=2) & ~np.all((charge_calibration_2 == 0), axis=2) & ~np.all(np.isnan(charge_calibration_2), axis=2))
-            mean_charge_calibration = np.nanmean(charge_calibration_2[valid_pixel], axis=0)
-            offset_mean = np.nanmean((charge_calibration_2[valid_pixel] - charge_calibration_1[valid_pixel]), axis=0)
+                # Valid pixel have a calibration in the new and the old calibration
+                valid_pixel = np.where(~np.all((charge_calibration_1 == 0), axis=2) & ~np.all(np.isnan(charge_calibration_1), axis=2) & ~np.all((charge_calibration_2 == 0), axis=2) & ~np.all(np.isnan(charge_calibration_2), axis=2))
+                mean_charge_calibration = np.nanmean(charge_calibration_2[valid_pixel], axis=0)
+                offset_mean = np.nanmean((charge_calibration_2[valid_pixel] - charge_calibration_1[valid_pixel]), axis=0)
 
-            dPlsrDAC_dTDC = analysis_utils.smooth_differentiation(plsr_dacs, mean_charge_calibration, order=3, smoothness=0, derivation=1)
-            plt.clf()
-            plt.plot(plsr_dacs, offset_mean / dPlsrDAC_dTDC, '.-', label='PlsrDAC')
-            plt.plot(plsr_dacs, offset_mean, '.-', label='TDC')
-            plt.grid()
-            plt.xlabel('PlsrDAC')
-            plt.ylabel('Mean calibration offset')
-            plt.legend(loc=0)
-            plt.title('Mean offset between TDC calibration data, new - old ')
-            plt.savefig(filename_new_calibration[:-3] + '.pdf')
-            plt.show()
-
-            return offset_mean
+                dPlsrDAC_dTDC = analysis_utils.smooth_differentiation(plsr_dacs, mean_charge_calibration, order=3, smoothness=0, derivation=1)
+                fig = Figure()
+                FigureCanvas(fig)
+                ax = fig.add_subplot(111)
+                ax.plot(plsr_dacs, offset_mean / dPlsrDAC_dTDC, '.-', label='PlsrDAC')
+                ax.plot(plsr_dacs, offset_mean, '.-', label='TDC')
+                ax.grid(True)
+                ax.set_xlabel('PlsrDAC')
+                ax.set_ylabel('Mean calibration offset')
+                ax.legend(loc=0)
+                ax.set_title('Mean offset between TDC calibration data, new - old ')
+                output_pdf.savefig(fig)
+                return offset_mean
 
     def delete_disabled_regions(hits, enable_mask):
         n_hits = hits.shape[0]
@@ -263,7 +273,7 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
             charge_calibration = None
 
         # Store data of result histograms
-        with tb.open_file(input_file_hits[:-3] + '_tdc_hists.h5', mode="w") as out_file_h5:
+        with tb.open_file(os.path.splitext(input_file_hits)[0] + '_tdc_hists.h5', mode="w") as out_file_h5:
             for index, condition in enumerate(hit_selection_conditions):
                 pixel_tdc_hist_result = np.swapaxes(pixel_tdc_hists_per_condition[index], 0, 1)
                 pixel_tdc_timestamp_hist_result = np.swapaxes(pixel_tdc_timestamp_hists_per_condition[index], 0, 1)
@@ -312,9 +322,9 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
 
     # Plot Data
     if plot_data:
-        with PdfPages(input_file_hits[:-3] + '_calibrated_tdc_hists.pdf') as output_pdf:
+        with PdfPages(os.path.splitext(input_file_hits)[0] + '_calibrated_tdc_hists.pdf') as output_pdf:
             plot_hits_per_condition(output_pdf)
-            with tb.open_file(input_file_hits[:-3] + '_tdc_hists.h5', mode="r") as in_file_h5:
+            with tb.open_file(os.path.splitext(input_file_hits)[0] + '_tdc_hists.h5', mode="r") as in_file_h5:
                 for node in in_file_h5.root:  # go through the data and plot them
                     if 'MeanPixel' in node.name:
                         try:
