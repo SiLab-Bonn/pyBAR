@@ -151,7 +151,7 @@ def analyze_injected_charge(data_analyzed_file):
     with tb.open_file(data_analyzed_file, mode="r") as in_file_h5:
         occupancy = in_file_h5.root.HistOcc[:].T
         gdacs = analysis_utils.get_scan_parameter(in_file_h5.root.meta_data[:])['GDAC']
-        with PdfPages(data_analyzed_file[:-3] + '.pdf') as plot_file:
+        with PdfPages(os.path.splitext(data_analyzed_file)[0] + '.pdf') as plot_file:
             plotting.plot_scatter(gdacs, occupancy.sum(axis=(0, 1)), title='Single pixel hit rate at different thresholds', x_label='Threshold setting [GDAC]', y_label='Single pixel hit rate', log_x=True, filename=plot_file)
             if analysis_configuration['input_file_calibration']:
                 with tb.open_file(analysis_configuration['input_file_calibration'], mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
@@ -221,7 +221,7 @@ def analyze_injected_charge(data_analyzed_file):
                     smoothed_data = analysis_utils.smooth_differentiation(x_p, y_p, weigths=1 / y_p_e, order=3, smoothness=analysis_configuration['smoothness'], derivation=0)
                     smoothed_data_diff = analysis_utils.smooth_differentiation(x_p, y_p, weigths=1 / y_p_e, order=3, smoothness=analysis_configuration['smoothness'], derivation=1)
 
-                    with tb.open_file(data_analyzed_file[:-3] + '_result.h5', mode="w") as out_file_h5:
+                    with tb.open_file(os.path.splitext(data_analyzed_file)[0] + '_result.h5', mode="w") as out_file_h5:
                         result_1 = np.rec.array(np.column_stack((x_p, y_p, y_p_e)), dtype=[('charge', float), ('count', float), ('count_error', float)])
                         result_2 = np.rec.array(np.column_stack((x_p, smoothed_data)), dtype=[('charge', float), ('count', float)])
                         result_3 = np.rec.array(np.column_stack((x_p, -smoothed_data_diff)), dtype=[('charge', float), ('count', float)])

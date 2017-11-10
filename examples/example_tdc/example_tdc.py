@@ -1,5 +1,6 @@
 # A complete prim list utilizing the TDC method to extract the Landau MPV.
 # Do not forget to set the TDC module in dut_comfiguration_mio.yaml correctly.
+import os.path
 import numpy as np
 import tables as tb
 import progressbar
@@ -29,7 +30,7 @@ def analyze_tdc(source_scan_filename, calibration_filename, col_span, row_span):
     # Data files
     calibation_file = calibration_filename
     raw_data_file = source_scan_filename
-    hit_file = raw_data_file[:-3] + r'_interpreted.h5'
+    hit_file = os.path.splitext(raw_data_file)[0] + r'_interpreted.h5'
     # Selection criterions, change this to your needs
     hit_selection = '(column > %d) & (column < %d) & (row > %d) & (row < %d)' % (col_span[0] + 1, col_span[1] - 1, row_span[0] + 5, row_span[1] - 5)  # deselect edge pixels for better cluster size cut
     hit_selection_conditions = ['(n_cluster==1)', '(n_cluster==1) & (cluster_size == 1)', '(n_cluster==1) & (cluster_size == 1) & (relative_BCID > 1) & (relative_BCID < 4) & ((tot > 12) | ((TDC * 1.5625 - tot * 25 < 100) & (tot * 25 - TDC * 1.5625 < 100))) & %s' % hit_selection]
@@ -53,7 +54,7 @@ def analyze_tdc(source_scan_filename, calibration_filename, col_span, row_span):
                                     max_tdc=1500,
                                     n_bins=350)
 
-    return hit_file[:-3] + '_tdc_hists.h5'
+    return os.path.splitext(hit_file)[0] + '_tdc_hists.h5'
 
 
 def plsr_dac_to_charge(source_scan_filename, plsr_dac):
