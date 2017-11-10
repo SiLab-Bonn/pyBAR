@@ -592,7 +592,7 @@ class TestAnalysis(unittest.TestCase):
             # Data files
             calibation_file = calibration_filename
             raw_data_file = source_scan_filename
-            hit_file = raw_data_file[:-3] + r'_interpreted.h5'
+            hit_file = os.path.splitext(raw_data_file)[0] + r'_interpreted.h5'
             # Selection criterions
             # deselect edge pixels for better cluster size cut
             hit_selection = '(column > %d) & (column < %d) & (row > %d) & (row < %d)' % (col_span[0] + 1,
