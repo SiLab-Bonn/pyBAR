@@ -1217,25 +1217,25 @@ class AnalyzeRawData(object):
                     plotting.plot_three_way(hist=occupancy_array_masked, title="Occupancy", x_axis_title="occupancy", filename=output_pdf, maximum=maximum)
                     plotting.plot_occupancy(hist=occupancy_array_masked, filename=output_pdf, z_max='median')
         if self._create_tot_hist:
-            plotting.plot_tot(hist=out_file_h5.root.HistTot if out_file_h5 is not None else self.tot_hist, filename=output_pdf)
+            plotting.plot_tot(hist=out_file_h5.root.HistTot[:] if out_file_h5 is not None else self.tot_hist, filename=output_pdf)
         if self._create_tot_pixel_hist:
             tot_pixel_hist = out_file_h5.root.HistTotPixel[:] if out_file_h5 is not None else self.tot_pixel_hist_array
             total_hits_masked = np.ma.masked_equal(np.sum(tot_pixel_hist, axis=2), 0)
             mean_pixel_tot = np.average(tot_pixel_hist, axis=2, weights=range(16)) * sum(range(0, 16)) / total_hits_masked
             plotting.plot_three_way(mean_pixel_tot, title='Mean ToT', x_axis_title='mean ToT', filename=output_pdf, minimum=0, maximum=15)
         if self._create_tdc_counter_hist:
-            plotting.plot_tdc_counter(hist=out_file_h5.root.HistTdcCounter if out_file_h5 is not None else self.tdc_hist_counter, filename=output_pdf)
+            plotting.plot_tdc_counter(hist=out_file_h5.root.HistTdcCounter[:] if out_file_h5 is not None else self.tdc_hist_counter, filename=output_pdf)
         if self._create_tdc_hist:
-            plotting.plot_tdc(hist=out_file_h5.root.HistTdc if out_file_h5 is not None else self.tdc_hist, filename=output_pdf)
+            plotting.plot_tdc(hist=out_file_h5.root.HistTdc[:] if out_file_h5 is not None else self.tdc_hist, filename=output_pdf)
         if self._create_cluster_size_hist:
-            plotting.plot_cluster_size(hist=out_file_h5.root.HistClusterSize if out_file_h5 is not None else self.cluster_size_hist, filename=output_pdf)
+            plotting.plot_cluster_size(hist=out_file_h5.root.HistClusterSize[:] if out_file_h5 is not None else self.cluster_size_hist, filename=output_pdf)
         if self._create_cluster_tot_hist:
-            plotting.plot_cluster_tot(hist=out_file_h5.root.HistClusterTot if out_file_h5 is not None else self.cluster_tot_hist, filename=output_pdf)
+            plotting.plot_cluster_tot(hist=out_file_h5.root.HistClusterTot[:] if out_file_h5 is not None else self.cluster_tot_hist, filename=output_pdf)
         if self._create_cluster_tot_hist and self._create_cluster_size_hist:
-            plotting.plot_cluster_tot_size(hist=out_file_h5.root.HistClusterTot if out_file_h5 is not None else self.cluster_tot_hist, filename=output_pdf)
+            plotting.plot_cluster_tot_size(hist=out_file_h5.root.HistClusterTot[:] if out_file_h5 is not None else self.cluster_tot_hist, filename=output_pdf)
         if self._create_rel_bcid_hist:
             if self.set_stop_mode:
-                plotting.plot_relative_bcid_stop_mode(hist=out_file_h5.root.HistRelBcid if out_file_h5 is not None else self.rel_bcid_hist, filename=output_pdf)
+                plotting.plot_relative_bcid_stop_mode(hist=out_file_h5.root.HistRelBcid[:] if out_file_h5 is not None else self.rel_bcid_hist, filename=output_pdf)
             else:
                 plotting.plot_relative_bcid(hist=out_file_h5.root.HistRelBcid[0:16] if out_file_h5 is not None else self.rel_bcid_hist[0:16], filename=output_pdf)
         if self._create_tdc_pixel_hist:
@@ -1245,11 +1245,11 @@ class AnalyzeRawData(object):
             plotting.plot_three_way(mean_pixel_tdc, title='Mean TDC', x_axis_title='mean TDC', maximum=2 * np.ma.median(np.ma.masked_invalid(mean_pixel_tdc)), filename=output_pdf)
         if not create_hit_hists_only:
             if analyzed_data_file is None and self._create_error_hist:
-                plotting.plot_event_errors(hist=out_file_h5.root.HistErrorCounter if out_file_h5 is not None else self.error_counter_hist, filename=output_pdf)
+                plotting.plot_event_errors(hist=out_file_h5.root.HistErrorCounter[:] if out_file_h5 is not None else self.error_counter_hist, filename=output_pdf)
             if analyzed_data_file is None and self._create_service_record_hist:
-                plotting.plot_service_records(hist=out_file_h5.root.HistServiceRecord if out_file_h5 is not None else self.service_record_hist, filename=output_pdf)
+                plotting.plot_service_records(hist=out_file_h5.root.HistServiceRecord[:] if out_file_h5 is not None else self.service_record_hist, filename=output_pdf)
             if analyzed_data_file is None and self._create_trigger_error_hist:
-                plotting.plot_trigger_errors(hist=out_file_h5.root.HistTriggerErrorCounter if out_file_h5 is not None else self.trigger_error_counter_hist, filename=output_pdf)
+                plotting.plot_trigger_errors(hist=out_file_h5.root.HistTriggerErrorCounter[:] if out_file_h5 is not None else self.trigger_error_counter_hist, filename=output_pdf)
 
         if out_file_h5 is not None:
             out_file_h5.close()
