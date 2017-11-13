@@ -60,7 +60,7 @@ def analyze_hits(input_file, output_file_hits, scan_data_filename, output_file_h
         analyze_raw_data.create_cluster_size_hist = True
         analyze_raw_data.create_cluster_tot_hist = True
         analyze_raw_data.analyze_hit_table(analyzed_data_out_file=output_file_hits_analyzed)
-        analyze_raw_data.plot_histograms(scan_data_filename=scan_data_filename, analyzed_data_file=output_file_hits_analyzed)
+        analyze_raw_data.plot_histograms(pdf_filename=scan_data_filename, analyzed_data_file=output_file_hits_analyzed)
 
 
 def analyze_raw_data_per_scan_parameter(input_file, output_file_hits, scan_data_filename, scan_parameters):

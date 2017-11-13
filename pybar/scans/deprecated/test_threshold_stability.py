@@ -81,7 +81,7 @@ def analyze(raw_data_file, analyzed_data_file, fei4b=False):
                 analyze_raw_data.create_fitted_threshold_mask = True
                 analyze_raw_data.n_injections = local_configuration["n_injections"]
                 analyze_raw_data.analyze_hit_table(analyzed_data_out_file=os.path.splitext(analyzed_data_file)[0] + '_analyzed_1.h5')
-                analyze_raw_data.plot_histograms(scan_data_filename=os.path.splitext(analyzed_data_file)[0] + '_analyzed_1.pdf', analyzed_data_file=os.path.splitext(analyzed_data_file)[0] + '_analyzed_1.h5')
+                analyze_raw_data.plot_histograms(pdf_filename=os.path.splitext(analyzed_data_file)[0] + '_analyzed_1.pdf', analyzed_data_file=os.path.splitext(analyzed_data_file)[0] + '_analyzed_1.h5')
         logging.info('Analyze 2. trigger')
         if not os.path.isfile(os.path.splitext(analyzed_data_file)[0] + '_analyzed_2.h5') or local_configuration['overwrite_output_files']:
             with AnalyzeRawData(raw_data_file=None, analyzed_data_file=os.path.splitext(analyzed_data_file)[0] + '_2.h5') as analyze_raw_data:
@@ -92,7 +92,7 @@ def analyze(raw_data_file, analyzed_data_file, fei4b=False):
                 analyze_raw_data.create_fitted_threshold_mask = True
                 analyze_raw_data.n_injections = local_configuration["n_injections"]
                 analyze_raw_data.analyze_hit_table(analyzed_data_out_file=os.path.splitext(analyzed_data_file)[0] + '_analyzed_2.h5')
-                analyze_raw_data.plot_histograms(scan_data_filename=os.path.splitext(analyzed_data_file)[0] + '_analyzed_2.pdf', analyzed_data_file=os.path.splitext(analyzed_data_file)[0] + '_analyzed_2.h5')
+                analyze_raw_data.plot_histograms(pdf_filename=os.path.splitext(analyzed_data_file)[0] + '_analyzed_2.pdf', analyzed_data_file=os.path.splitext(analyzed_data_file)[0] + '_analyzed_2.h5')
 
 
 def store_calibration_data_as_table(out_file_h5, mean_threshold_calibration, mean_threshold_rms_calibration, threshold_calibration, mean_noise_calibration, mean_noise_rms_calibration, noise_calibration):

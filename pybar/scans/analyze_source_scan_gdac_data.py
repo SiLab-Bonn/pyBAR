@@ -140,7 +140,7 @@ def analyse_selected_hits(input_file_hits, output_file_hits, output_file_hits_an
             analyze_raw_data.create_cluster_size_hist = True
             analyze_raw_data.create_cluster_tot_hist = True
             analyze_raw_data.analyze_hit_table(analyzed_data_out_file=output_file_hits_analyzed)
-            analyze_raw_data.plot_histograms(scan_data_filename=output_file_hits_analyzed, analyzed_data_file=output_file_hits_analyzed)
+            analyze_raw_data.plot_histograms(pdf_filename=output_file_hits_analyzed, analyzed_data_file=output_file_hits_analyzed)
         with tb.open_file(input_file_hits, mode="r") as in_hit_file_h5:  # copy meta data to the new analyzed file
             with tb.open_file(output_file_hits_analyzed, mode="r+") as output_hit_file_h5:
                 in_hit_file_h5.root.meta_data.copy(output_hit_file_h5.root)  # copy meta_data note to new file
