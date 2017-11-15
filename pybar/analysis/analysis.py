@@ -501,10 +501,10 @@ def analyze_hits_per_scan_parameter(analyze_data, scan_parameters=None, chunk_si
 
     if analyze_data.out_file_h5 is None or analyze_data.out_file_h5.isopen == 0:
         in_hit_file_h5 = tb.open_file(analyze_data._analyzed_data_file, 'r+')
-        opened_file = True
+        close_file = True
     else:
         in_hit_file_h5 = analyze_data.out_file_h5
-        opened_file = False
+        close_file = False
 
     meta_data = in_hit_file_h5.root.meta_data[:]  # get the meta data table
     try:
@@ -538,7 +538,7 @@ def analyze_hits_per_scan_parameter(analyze_data, scan_parameters=None, chunk_si
         analyze_data._create_additional_cluster_data(safe_to_file=False)
         yield analyze_data, file_name
 
-    if opened_file:
+    if close_file:
         in_hit_file_h5.close()
 
 if __name__ == "__main__":
