@@ -13,7 +13,7 @@ import progressbar
 from pybar.fei4.register_utils import make_pixel_mask_from_col_row, make_box_pixel_mask_from_col_row
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.run_manager import RunManager
-from pybar.analysis.analysis_utils import get_scan_parameter, get_unique_scan_parameter_combinations, get_scan_parameters_table_from_meta_data, get_ranges_from_array
+from pybar.analysis.analysis_utils import get_scan_parameter, get_unique_scan_parameter_combinations, get_scan_parameters_table_from_meta_data, get_ranges_from_array, AnalysisError
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.analysis.plotting.plotting import plot_scurves, plot_tot_tdc_calibration
 
@@ -54,6 +54,8 @@ def create_hitor_calibration(output_filename, plot_pixel_calibrations=False):
         scan_parameter_values = get_scan_parameters_table_from_meta_data(meta_data_table_at_scan_parameter, scan_parameter_names)
         event_number_ranges = get_ranges_from_array(meta_data_table_at_scan_parameter['event_number'])
         event_ranges_per_parameter = np.column_stack((scan_parameter_values, event_number_ranges))
+        if analyze_raw_data.out_file_h5.root.Hits.nrows == 0:
+            raise AnalysisError("Found no hits.")
         hits = analyze_raw_data.out_file_h5.root.Hits[:]
         event_numbers = hits['event_number'].copy()  # create contigous array, otherwise np.searchsorted too slow, http://stackoverflow.com/questions/15139299/performance-of-numpy-searchsorted-is-poor-on-structured-arrays
 

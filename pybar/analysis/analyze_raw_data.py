@@ -1152,21 +1152,6 @@ class AnalyzeRawData(object):
         table_size = in_file_h5.root.Hits.nrows
         n_hits = 0  # number of hits in actual chunk
 
-        if table_size == 0:
-            logging.warning('Hit table is empty.')
-            self._create_additional_hit_data()
-            if close_analyzed_data_out_file:
-                out_file_h5.close()
-            if close_analyzed_data_file:
-                in_file_h5.close()
-            else:
-                self.out_file_h5 = tmp_out_file_h5
-            if self.is_open(self.out_file_h5):
-                self._analyzed_data_file = self.out_file_h5.filename
-            else:
-                self._analyzed_data_file = None
-            return
-
         logging.info('Analyzing hits...')
         progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=table_size, term_width=80)
         progress_bar.start()
@@ -1196,11 +1181,14 @@ class AnalyzeRawData(object):
                     self._cluster_tot_hist += fast_analysis_utils.hist_2d_index(clusters['tot'], clusters['size'], shape=self._cluster_tot_hist.shape)
             self.out_file_h5.flush()
             progress_bar.update(index)
+        progress_bar.finish()
+
+        if table_size == 0:
+            logging.warning('Found no hits')
 
         if n_hits != table_size:
-            logging.warning('Not all hits analyzed, check analysis!')
+            raise analysis_utils.AnalysisError('Tables have different sizes. Not all hits were analyzed.')
 
-        progress_bar.finish()
         self._create_additional_hit_data()
         self._create_additional_cluster_data()
         if close_analyzed_data_out_file:
