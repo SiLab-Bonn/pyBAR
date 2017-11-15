@@ -630,8 +630,7 @@ class TestAnalysis(unittest.TestCase):
                     col_span=[55, 75], row_span=[75, 275])
         # Test raw data interpretation with TDC words
         data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'ext_trigger_scan_tdc_interpreted_result.h5'),
-                                                            os.path.join(tests_data_folder, 'ext_trigger_scan_tdc_interpreted.h5'),
-                                                            chunk_size=100000)
+                                                            os.path.join(tests_data_folder, 'ext_trigger_scan_tdc_interpreted.h5'))
         self.assertTrue(data_equal, msg=error_msg)
         # Test TDC histogram creation
         data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'ext_trigger_scan_tdc_interpreted_tdc_hists_result.h5'),

@@ -118,7 +118,9 @@ def compare_h5_files(first_file, second_file, node_names=None, detailed_comparis
                 nrows = first_h5_file.get_node(first_h5_file.root, node_name).nrows
                 index_start = 0
                 while index_start < nrows:
-                    index_stop = index_start + chunk_size
+                    # reduce memory footprint by taken array dimension into account
+                    read_nrows = max(1, int(chunk_size / np.prod(first_h5_file.get_node(first_h5_file.root, node_name).shape[1:])))
+                    index_stop = index_start + read_nrows
                     first_file_data = first_h5_file.get_node(first_h5_file.root, node_name).read(index_start, index_stop)
                     second_file_data = second_h5_file.get_node(second_h5_file.root, node_name).read(index_start, index_stop)
                     if exact:
@@ -140,5 +142,5 @@ def compare_h5_files(first_file, second_file, node_names=None, detailed_comparis
                                 error_msg += get_array_differences(first_file_data, second_file_data)
                             error_msg += '\n'
                             break
-                    index_start += chunk_size
+                    index_start += read_nrows
     return checks_passed, error_msg
