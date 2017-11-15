@@ -1,6 +1,6 @@
 import logging
+
 import numpy as np
-import tables as tb
 
 from pybar.scans.scan_digital import DigitalScan
 from pybar.fei4.register_utils import invert_pixel_mask
@@ -40,9 +40,8 @@ class StuckPixelScan(DigitalScan):
             analyze_raw_data.interpret_word_table()
             analyze_raw_data.plot_histograms()
             analyze_raw_data.interpreter.print_summary()
-#             occ_hist = make_occupancy_hist(*convert_data_array(data_array_from_data_dict_iterable(self.fifo_readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)).T
-            with tb.open_file(analyze_raw_data._analyzed_data_file, 'r') as out_file_h5:
-                occ_hist = out_file_h5.root.HistOcc[:, :, 0].T
+
+            occ_hist = analyze_raw_data.out_file_h5.root.HistOcc[:, :, 0].T
             self.occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
             # noisy pixels are set to 1
             self.occ_mask[occ_hist < self.n_injections] = 1

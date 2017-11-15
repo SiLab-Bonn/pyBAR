@@ -1,8 +1,8 @@
 ''' Script to check the correctness of the analysis. The analysis is done on raw data and all results are compared to a recorded analysis.
 '''
-
 import unittest
 import os
+import zlib
 
 import tables as tb
 import numpy as np
@@ -22,6 +22,7 @@ from pybar.testing.tools import test_tools
 from pybar.scans.calibrate_hit_or import create_hitor_calibration
 from pybar.daq.readout_utils import get_col_row_array_from_data_record_array, convert_data_array, is_data_record
 from pybar.analysis.analysis_utils import data_aligned_at_events, InvalidInputError
+import pybar.scans.analyze_source_scan_tdc_data as tdc_analysis
 
 
 tests_data_folder = 'test_analysis_data/'
@@ -91,7 +92,7 @@ class TestAnalysis(unittest.TestCase):
             analyze_raw_data.trig_count = 255
             analyze_raw_data.create_source_scan_hist = True
             analyze_raw_data.set_stop_mode = True
-            analyze_raw_data.use_trigger_time_stamp = True
+            analyze_raw_data.trigger_data_format = 0  # time stamp only
             analyze_raw_data.align_at_trigger = True
             analyze_raw_data.interpreter.set_warning_output(False)
             analyze_raw_data.interpret_word_table(use_settings_from_file=False)  # The old unit test data does not hav the settings stored in file
@@ -110,6 +111,12 @@ class TestAnalysis(unittest.TestCase):
         os.remove(os.path.join(tests_data_folder, 'hit_or_calibration.pdf'))
         os.remove(os.path.join(tests_data_folder, 'hit_or_calibration_interpreted.h5'))
         os.remove(os.path.join(tests_data_folder, 'hit_or_calibration_calibration.h5'))
+        os.remove(os.path.join(tests_data_folder, 'ext_trigger_scan_tdc_interpreted.h5'))
+        os.remove(os.path.join(tests_data_folder, 'ext_trigger_scan_tdc_interpreted_calibrated_tdc_hists.pdf'))
+        os.remove(os.path.join(tests_data_folder, 'ext_trigger_scan_tdc_interpreted_tdc_hists.h5'))
+        os.remove(os.path.join(tests_data_folder, 'ext_trigger_scan_tdc.pdf'))
+        os.remove(os.path.join(tests_data_folder, 'ext_trigger_scan_tlu.pdf'))
+        os.remove(os.path.join(tests_data_folder, 'ext_trigger_scan_tlu_interpreted.h5'))
 
     def test_libraries_stability(self):  # calls 50 times the constructor and destructor to check the libraries
         progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=50, term_width=80)
@@ -127,6 +134,7 @@ class TestAnalysis(unittest.TestCase):
     def test_data_alignement(self):  # Test if the data alignment is correct (important to detect 32/64 bit related issues)
         hits = np.empty((1,), dtype=[('event_number', np.uint64),
                                      ('trigger_number', np.uint32),
+                                     ('trigger_time_stamp', np.uint32),
                                      ('relative_BCID', np.uint8),
                                      ('LVL1ID', np.uint16),
                                      ('column', np.uint8),
@@ -142,30 +150,37 @@ class TestAnalysis(unittest.TestCase):
         self.assertTrue(self.interpreter.get_hit_size() == hits.itemsize)
 
     def test_raw_data_analysis(self):  # test the created interpretation file against the stored one
-        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'unit_test_data_1_result.h5'), os.path.join(tests_data_folder, 'unit_test_data_1_interpreted.h5'))
+        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'unit_test_data_1_result.h5'),
+                                                            os.path.join(tests_data_folder, 'unit_test_data_1_interpreted.h5'))
         self.assertTrue(data_equal, msg=error_msg)
 
     def test_threshold_analysis(self):  # test the created interpretation file of the threshold data against the stored one
-        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'unit_test_data_2_result.h5'), os.path.join(tests_data_folder, 'unit_test_data_2_interpreted.h5'), exact=False)
+        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'unit_test_data_2_interpreted.h5'),
+                                                            os.path.join(tests_data_folder, 'unit_test_data_2_result.h5'),
+                                                            exact=False)
         self.assertTrue(data_equal, msg=error_msg)
 
     def test_hit_data_analysis(self):  # test the hit histogramming/clustering starting from the predefined interpreted data
-        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'unit_test_data_1_result.h5'), os.path.join(tests_data_folder, 'unit_test_data_1_analyzed.h5'), expected_nodes=8)
+        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'unit_test_data_1_result.h5'),
+                                                            os.path.join(tests_data_folder, 'unit_test_data_1_analyzed.h5'),
+                                                            node_names=["HistClusterTot", "HistTotPixel", "HistOcc", "ClusterHits", "Cluster", "HistClusterSize", "HistRelBcid", "HistTot"])
         self.assertTrue(data_equal, msg=error_msg)
 
     def test_analysis_per_scan_parameter(self):  # check if the data per scan parameter is correctly analyzed
         # check if the data with more than one scan parameter is correctly analyzed
-        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'unit_test_data_3_result.h5'), os.path.join(tests_data_folder, 'unit_test_data_3_interpreted.h5'))
+        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'unit_test_data_3_result.h5'),
+                                                            os.path.join(tests_data_folder, 'unit_test_data_3_interpreted.h5'))
         self.assertTrue(data_equal, msg=error_msg)
         # check the data from two files with one scan parameter each with the previous file containing two scan parameters
-        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'unit_test_data_4_interpreted.h5'), os.path.join(tests_data_folder, 'unit_test_data_4_interpreted_2.h5'))
+        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'unit_test_data_4_interpreted.h5'),
+                                                            os.path.join(tests_data_folder, 'unit_test_data_4_interpreted_2.h5'))
         self.assertTrue(data_equal, msg=error_msg)
         # check if the occupancy hist from the threshold scan hit data is correctly created
-        with tb.open_file(os.path.join(tests_data_folder, 'unit_test_data_2_interpreted.h5'), 'r') as first_h5_file:
-            with tb.open_file(os.path.join(tests_data_folder, 'unit_test_data_2_analyzed.h5'), 'r') as second_h5_file:
-                occupancy_expected = first_h5_file.root.HistOcc[:]
-                occupancy = second_h5_file.root.HistOcc[:]
-                self.assertTrue(np.all(occupancy_expected == occupancy), msg=error_msg)
+        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'unit_test_data_2_interpreted.h5'),
+                                                            os.path.join(tests_data_folder, 'unit_test_data_2_analyzed.h5'),
+                                                            node_names=["HistThreshold", "HistNoise", "HistTotPixel", "HistOcc", "HistRelBcid", "HistTot"])
+        self.assertTrue(data_equal, msg=error_msg)
+
 
     def test_analysis_utils_get_n_cluster_in_events(self):  # check compiled get_n_cluster_in_events function
         event_numbers = np.array([[0, 0, 1, 2, 2, 2, 4, 4000000000, 4000000000, 40000000000, 40000000000], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=np.int64)  # use data format with non linear memory alignment
@@ -267,13 +282,17 @@ class TestAnalysis(unittest.TestCase):
 
     def test_hit_or_calibration(self):
         create_hitor_calibration(os.path.join(tests_data_folder, 'hit_or_calibration'), plot_pixel_calibrations=True)
-        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'hit_or_calibration_interpreted_result.h5'), os.path.join(tests_data_folder, 'hit_or_calibration_interpreted.h5'))
+        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'hit_or_calibration_interpreted_result.h5'),
+                                                            os.path.join(tests_data_folder, 'hit_or_calibration_interpreted.h5'))
         self.assertTrue(data_equal, msg=error_msg)
-        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'hit_or_calibration_result.h5'), os.path.join(tests_data_folder, 'hit_or_calibration_calibration.h5'), exact=False)
+        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'hit_or_calibration_result.h5'),
+                                                            os.path.join(tests_data_folder, 'hit_or_calibration_calibration.h5'),
+                                                            exact=False)
         self.assertTrue(data_equal, msg=error_msg)
 
     def test_stop_mode_analysis(self):
-        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'unit_test_data_5_interpreted.h5'), os.path.join(tests_data_folder, 'unit_test_data_5_result.h5'))
+        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'unit_test_data_5_interpreted.h5'),
+                                                            os.path.join(tests_data_folder, 'unit_test_data_5_result.h5'))
         self.assertTrue(data_equal, msg=error_msg)
 
     def test_data_aligned_at_events(self):
@@ -568,6 +587,90 @@ class TestAnalysis(unittest.TestCase):
             gen = data_aligned_at_events(h5_file.root.Hits, start_event_number=3800, stop_event_number=239500, start_index=None, stop_index=None, first_event_aligned=True, try_speedup=False, chunk_size=100000)
             test_gen(generator=gen, table=h5_file.root.Hits, start=224, stop=None, size=100000)
 
+    def test_tdc_analysis(self):
+        def analyze_tdc(source_scan_filename, calibration_filename, col_span, row_span):
+            # Data files
+            calibation_file = calibration_filename
+            raw_data_file = source_scan_filename
+            hit_file = os.path.splitext(raw_data_file)[0] + r'_interpreted.h5'
+            # Selection criterions
+            # deselect edge pixels for better cluster size cut
+            hit_selection = '(column > %d) & (column < %d) & (row > %d) & (row < %d)' % (col_span[0] + 1,
+                                                                                         col_span[1] - 1,
+                                                                                         row_span[0] + 5,
+                                                                                         row_span[1] - 5)
+            hit_selection_conditions = ['(n_cluster==1)',
+                                        '(n_cluster==1) & (cluster_size == 1)',
+                                        '(n_cluster==1) & (cluster_size == 1) & '
+                                        '(relative_BCID > 1) & (relative_BCID < 4) & %s' % hit_selection,
+                                        '(n_cluster==1) & (cluster_size == 1) & '
+                                        '(relative_BCID > 1) & (relative_BCID < 4) & ((tot > 12) | '
+                                        '((TDC * 1.5625 - tot * 25 < 100) & (tot * 25 - TDC * 1.5625 < 100))) & %s' % hit_selection]
+            event_status_select_mask = 0b0000111111011111
+            event_status_condition = 0b0000000100000000  # trigger, one in-time tdc word and perfect event structure required
+            # Interpret and create hit table
+            tdc_analysis.analyze_raw_data(input_files=raw_data_file,
+                                          output_file_hits=hit_file,
+                                          interpreter_plots=True,
+                                          overwrite_output_files=True,
+                                          align_at_trigger=True,
+                                          use_tdc_trigger_time_stamp=True,
+                                          max_tdc_delay=255)
+            # Select TDC histograms for different cut criterions and with charge calibrations
+            tdc_analysis.histogram_tdc_hits(hit_file,
+                                            hit_selection_conditions,
+                                            event_status_select_mask,
+                                            event_status_condition,
+                                            calibation_file,
+                                            max_tdc=500,
+                                            n_bins=1000)
+
+        analyze_tdc(source_scan_filename=os.path.join(tests_data_folder, 'ext_trigger_scan_tdc.h5'),
+                    calibration_filename=os.path.join(tests_data_folder, 'hit_or_calibration_tdc.h5'),
+                    col_span=[55, 75], row_span=[75, 275])
+        # Test raw data interpretation with TDC words
+        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'ext_trigger_scan_tdc_interpreted_result.h5'),
+                                                            os.path.join(tests_data_folder, 'ext_trigger_scan_tdc_interpreted.h5'))
+        self.assertTrue(data_equal, msg=error_msg)
+        # Test TDC histogram creation
+        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'ext_trigger_scan_tdc_interpreted_tdc_hists_result.h5'),
+                                                            os.path.join(tests_data_folder, 'ext_trigger_scan_tdc_interpreted_tdc_hists.h5'))
+        self.assertTrue(data_equal, msg=error_msg)
+
+    def test_tlu_analysis(self):
+        ' Use data with 4 TLU trigger errors (not increasing by one) and check analysis'
+        def analyze_raw_data_tlu(input_file, align_at_trg=False):  # FE-I4 raw data analysis
+            with AnalyzeRawData(raw_data_file=input_file, create_pdf=True) as analyze_raw_data:
+                analyze_raw_data.align_at_trigger_number = align_at_trg  # if trigger number is at the beginning of each event activate this for event alignment
+                analyze_raw_data.use_trigger_time_stamp = False  # the trigger number is a time stamp
+                analyze_raw_data.use_tdc_word = False
+                analyze_raw_data.create_hit_table = True
+                analyze_raw_data.create_meta_event_index = True
+                analyze_raw_data.create_trigger_error_hist = True
+                analyze_raw_data.create_rel_bcid_hist = True
+                analyze_raw_data.create_error_hist = True
+                analyze_raw_data.create_service_record_hist = True
+                analyze_raw_data.create_occupancy_hist = True
+                analyze_raw_data.create_tot_hist = False
+                analyze_raw_data.interpreter.create_empty_event_hits(False)
+                analyze_raw_data.interpreter.set_warning_output(False)
+                analyze_raw_data.interpret_word_table()
+                analyze_raw_data.interpreter.print_summary()
+                analyze_raw_data.plot_histograms()
+
+        # Test raw data interpretation with event alignment on BCIDs
+        analyze_raw_data_tlu(input_file=os.path.join(tests_data_folder, 'ext_trigger_scan_tlu.h5'),
+                             align_at_trg=False)
+        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'ext_trigger_scan_tlu_interpreted_result.h5'),
+                                                            os.path.join(tests_data_folder, 'ext_trigger_scan_tlu_interpreted.h5'))
+        self.assertTrue(data_equal, msg=error_msg)
+
+        # Test raw data interpretation with event alignment on trigger number
+        analyze_raw_data_tlu(input_file=os.path.join(tests_data_folder, 'ext_trigger_scan_tlu.h5'),
+                             align_at_trg=True)
+        data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'ext_trigger_scan_tlu_interpreted_result.h5'),
+                                                            os.path.join(tests_data_folder, 'ext_trigger_scan_tlu_interpreted.h5'))
+        self.assertTrue(data_equal, msg=error_msg)
 
 if __name__ == '__main__':
     tests_data_folder = 'test_analysis_data//'

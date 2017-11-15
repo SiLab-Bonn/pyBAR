@@ -5,10 +5,11 @@
 """Plugin that provides plotting of data from the Python Bonn Atlas Readout System (pyBAR).
 """
 
-import numpy as np
 import os
+
 from PyQt4 import QtCore
 from PyQt4 import QtGui
+
 import vitables.utils
 from vitables.vtSite import PLUGINSDIR
 
@@ -19,6 +20,7 @@ try:
 except:
     print 'ERROR: Cannot load additional libraries needed for the pyBAR ViTables plugin!'
     raise
+import numpy as np
 
 __docformat__ = 'restructuredtext'
 __version__ = '1.0'
@@ -29,14 +31,15 @@ translate = QtGui.QApplication.translate
 
 def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=None, x_ticks=None, color='r', plot_range=None, log_y=False, filename=None):
     plt.clf()
+    hist = np.array(hist)
     if plot_range is None:
         plot_range = range(0, len(hist))
-    if not plot_range:
-        plot_range = [0]
+    plot_range = np.array(plot_range)
+    plot_range = plot_range[plot_range < len(hist)]
     if yerr is not None:
-        plt.bar(left=plot_range, height=hist[plot_range], color=color, align='center', yerr=yerr)
+        plt.bar(x=plot_range, height=hist[plot_range], color=color, align='center', yerr=yerr)
     else:
-        plt.bar(left=plot_range, height=hist[plot_range], color=color, align='center')
+        plt.bar(x=plot_range, height=hist[plot_range], color=color, align='center')
     plt.xlim((min(plot_range) - 0.5, max(plot_range) + 0.5))
     plt.title(title)
     if x_axis_title is not None:
@@ -44,7 +47,7 @@ def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=No
     if y_axis_title is not None:
         plt.ylabel(y_axis_title)
     if x_ticks is not None:
-        plt.xticks(range(0, len(hist[:])) if plot_range is None else plot_range, x_ticks)
+        plt.xticks(plot_range, x_ticks)
         plt.tick_params(which='both', labelsize=8)
     if np.allclose(hist, 0.0):
         plt.ylim((0, 1))

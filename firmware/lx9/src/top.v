@@ -1,8 +1,29 @@
 /**
+ * This file is part of pyBAR.
+ * 
+ * pyBAR is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * pyBAR is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with pyBAR.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+/**
  * ------------------------------------------------------------
- * Copyright (c) SILAB , Physics Institute of Bonn University 
+ * Copyright (c) All rights reserved
+ * SiLab, Institute of Physics, University of Bonn
  * ------------------------------------------------------------
  */
+
+`timescale 1ps / 1ps
+`default_nettype none
 
 module top (
     input wire USER_RESET,
@@ -104,7 +125,7 @@ module top (
     wire CLK_40;
     assign CLK_40 = BUS_CLK;
         
-    wire IOCLK ,DIVCLK, DIVCLK_BUF, RX_320_IOCE;
+    wire IOCLK, DIVCLK, DIVCLK_BUF, RX_320_IOCE;
     /*
     BUFIO2 #(
       .DIVIDE(4),             // DIVCLK divider (1,3-8)
@@ -323,6 +344,7 @@ module top (
             .FIFO_DATA(FE_FIFO_DATA[i]),
 
             .RX_FIFO_FULL(RX_FIFO_FULL[i]),
+            .RX_ENABLED(),
 
             .BUS_CLK(BUS_CLK),
             .BUS_RST(BUS_RST),

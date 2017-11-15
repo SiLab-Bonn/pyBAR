@@ -115,8 +115,21 @@ def data_array_from_data_iterable(data_iterable):
     data_array : numpy.array
         concatenated data array
     '''
-    data_array = np.concatenate([item[0] for item in data_iterable])
+    try:
+        data_array = np.concatenate([item[0] for item in data_iterable])
+    except ValueError:  # length is 0
+        data_array = np.empty(0, dtype=np.uint32)
     return data_array
+
+
+def is_tdc_from_channel(channel=4):  # function factory
+    if channel >= 1 and channel < 8:
+        def f(value):
+            return np.equal(np.right_shift(np.bitwise_and(value, 0xF0000000), 28), channel)
+        f.__name__ = "is_tdc_from_channel_" + str(channel)  # or use inspect module: inspect.stack()[0][3]
+        return f
+    else:
+        raise ValueError('Invalid channel number')
 
 
 def is_data_from_channel(channel=4):  # function factory
@@ -174,7 +187,7 @@ def logical_and(f1, f2):  # function factory
     '''
     def f(value):
         return np.logical_and(f1(value), f2(value))
-    f.__name__ = f1.__name__ + "_and_" + f2.__name__
+    f.__name__ = "(" + f1.__name__ + "_and_" + f2.__name__ + ")"
     return f
 
 
@@ -192,7 +205,7 @@ def logical_or(f1, f2):  # function factory
     '''
     def f(value):
         return np.logical_or(f1(value), f2(value))
-    f.__name__ = f1.__name__ + "_or_" + f2.__name__
+    f.__name__ = "(" + f1.__name__ + "_or_" + f2.__name__ + ")"
     return f
 
 
@@ -228,7 +241,7 @@ def logical_xor(f1, f2):  # function factory
     '''
     def f(value):
         return np.logical_xor(f1(value), f2(value))
-    f.__name__ = f1.__name__ + "_xor_" + f2.__name__
+    f.__name__ = "(" + f1.__name__ + "_xor_" + f2.__name__ + ")"
     return f
 
 

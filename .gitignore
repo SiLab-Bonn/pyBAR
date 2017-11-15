@@ -1,8 +1,10 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
+
 # C extensions
 *.so
+
 # Distribution / packaging
 .Python
 env/
@@ -19,14 +21,17 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
+
 # PyInstaller
 # Usually these files are written by a python script from a template
 # before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
+
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
+
 # Unit test / coverage reports
 htmlcov/
 .tox/
@@ -34,30 +39,44 @@ htmlcov/
 .cache
 nosetests.xml
 coverage.xml
+results.xml
+
 # Translations
 *.mo
 *.pot
-# Django stuff:
+
+# Django
 *.log
+
 # Sphinx documentation
 docs/_build/
+
 # PyBuilder
 target/
-# some pyBAR scan data folders, how to get all new folders?
-module_*/
-scc_*/
-proto_*/
+
+# pyBAR output folder
+pybar/module*/
+pybar/scc*/
+pybar/proto*/
+pybar/data*/
+
 # PyDev files
 *.project
 *.pydevproject
 *.vcd
+
 # Profiling files
 *.lprof
+
 # Other files
 *.png
 *.pdf
+
 # Mac
 .DS_Store
+
+# SiTCP
+*SiTCP*
 
 # MIO Xilinx ISE
 firmware/mio/ise/*
@@ -66,10 +85,6 @@ firmware/mio/ise/*
 # MIO3 Xilinx ISE
 firmware/mio3/vivado
 !firmware/mio3/vivado/*.xpr
-
-# SEABAS2 firmware
-firmware/seabas2/ise/*
-!firmware/seabas2/ise/*.xise
 
 # LX9 firmware
 firmware/lx9/ise/*
@@ -80,7 +95,17 @@ firmware/nexys4/vivado/*
 !firmware/nexys4/vivado/*.xpr
 firmware/nexys4/src/ip/*
 !firmware/nexys4/src/ip/*.xci
-firmware/nexys4/src/SiTCP
+
+# MMC3 Mimosa26 + FEI4 firmware
+firmware/mmc3_m26_eth/vivado/*
+!firmware/mmc3_m26_eth/vivado/*.xpr
+
+# MMC3 Beast firmware
+firmware/mmc3_beast_eth/vivado/*
+!firmware/mmc3_beast_eth/vivado/*.xpr
 
 # Simulation output
-sim_build
+firmware/mio/cosim/sim_build
+firmware/mio/cosim/sim_build.zip
+
+

@@ -1,7 +1,6 @@
 import logging
 import inspect
 
-import tables as tb
 import numpy as np
 
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
@@ -95,8 +94,7 @@ class CrosstalkScan(Fei4RunBase):
             analyze_raw_data.interpret_word_table()
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms()
-            with tb.open_file(analyze_raw_data._analyzed_data_file, 'r') as out_file_h5:
-                thr_hist = out_file_h5.root.HistThresholdFitted[:, :].T
+            thr_hist = analyze_raw_data.out_file_h5.root.HistThresholdFitted[:, :].T
             xtalk_mask = np.zeros(shape=thr_hist.shape, dtype=np.dtype('>u1'))
             xtalk_mask[thr_hist > 0.0] = 1
             plot_occupancy(xtalk_mask.T, title='Crosstalk', z_max=1, filename=analyze_raw_data.output_pdf)

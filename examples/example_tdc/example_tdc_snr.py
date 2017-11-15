@@ -1,7 +1,7 @@
 # Example how to use pyBar to take TDC data and analyze the TDC SN in one small script.
+import matplotlib.pyplot as plt
 import numpy as np
 import tables as tb
-import matplotlib.pyplot as plt
 
 from pybar.run_manager import RunManager  # importing run manager
 from pybar.scans.scan_threshold_fast import FastThresholdScan
@@ -53,7 +53,7 @@ if __name__ == "__main__":
     line_styles = ['o', '-', '--']
     for index, (dis_vbn, vthin_alt_fine, prmp_vbpf, sn) in enumerate(sns):
         print dis_vbn, vthin_alt_fine, prmp_vbpf, sn
-        plt.plot(np.array(plsr_dacs) * 55., sn, line_styles[index % 3], label='Dis_Vbn:%d, Vthin_AF:%d, PrmpVbpf:%d' % (dis_vbn, vthin_alt_fine, prmp_vbpf))
+        plt.plot(np.array(plsr_dacs) * 55.0, sn, line_styles[index % 3], label='Dis_Vbn:%d, Vthin_AF:%d, PrmpVbpf:%d' % (dis_vbn, vthin_alt_fine, prmp_vbpf))
     plt.grid(True)
     plt.xlabel('Charge')
     plt.ylabel('Signal to noise')

@@ -1,4 +1,4 @@
-''' This script changes the injection delay of the internal PlsrDAC (with global register PlsrDelay or PlsrIdacRamp, only PlsrDelay tested!) 
+''' This script changes the injection delay of the internal PlsrDAC (with global register PlsrDelay or PlsrIdacRamp, only PlsrDelay tested!)
 and measures the mean BCID for each pixel (runtime ~ 1 h).
 
 The PlsrDAC and injection delay values should be chosen equidistant and the lowest PlsrDAC value should be at threshold position!
@@ -16,21 +16,22 @@ Although this is a real measurement this seems NOT to be a feature of the analog
 PlsrDAC injection circuit. Because the direct hit delay measurements with a trigger + TDC time stamp do not show this behavior.
 '''
 import logging
-import progressbar
 import re
-import tables as tb
-import numpy as np
 import multiprocessing as mp
 import math
 import warnings
 
+from matplotlib.backends.backend_pdf import PdfPages
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+import tables as tb
+import numpy as np
 from scipy.optimize import curve_fit, OptimizeWarning
 from scipy.interpolate import interp1d
 from scipy.special import erf
 warnings.simplefilter("ignore", OptimizeWarning)  # deactivate : Covariance warning
-from matplotlib.backends.backend_pdf import PdfPages
-from matplotlib.figure import Figure
-from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+
+import progressbar
 
 from pybar_fei4_interpreter.analysis_utils import hist_1d_index, hist_3d_index
 
@@ -47,7 +48,7 @@ def scurve(x, offset, mu, sigma):
     return offset + 0.5 * erf((x - mu) / (np.sqrt(2) * sigma)) + 0.5
 
 
-def fit_bcid_jumps(scurve_data, max_chi_2=2.):  # Data of some pixels to fit, has to be global for the multiprocessing module
+def fit_bcid_jumps(scurve_data, max_chi_2=2.0):  # Data of some pixels to fit, has to be global for the multiprocessing module
     offset_min = int(math.ceil(min(scurve_data)))  # Offset min is minimum BCID of Scurve fit
     offset_max = int(math.floor(max(scurve_data)))  # Offset max is minimum BCID of Scurve fit + 1
 

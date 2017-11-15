@@ -3,14 +3,16 @@ Since the minimum and maximum of the signal is measured, this script gives a mor
 the normal PlsrDAC calibration. Do not forget to add the oscilloscope device in dut_mio.yaml.
 The oscilloscope can be any device supported by basil, but the string interpretation here is only implemented for Tektronix oscilloscopes!
 """
+import logging
 import time
+
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 import numpy as np
 import tables as tb
 from pylab import polyfit, poly1d
-from matplotlib.backends.backend_pdf import PdfPages
-import logging
+
 import progressbar
-import matplotlib.pyplot as plt
 
 from pybar.run_manager import RunManager
 from pybar.scans.scan_analog import AnalogScan

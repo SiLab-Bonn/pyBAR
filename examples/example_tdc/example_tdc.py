@@ -1,10 +1,13 @@
 # A complete prim list utilizing the TDC method to extract the Landau MPV.
 # Do not forget to set the TDC module in dut_comfiguration_mio.yaml correctly.
+import os.path
+
+from matplotlib import pyplot as plt
 import numpy as np
 import tables as tb
-import progressbar
-from matplotlib import pyplot as plt
 from scipy.optimize import curve_fit, leastsq
+
+import progressbar
 
 from pyLandau import landau
 
@@ -17,7 +20,7 @@ from pybar.scans.scan_analog import AnalogScan
 from pybar.scans.tune_fei4 import Fei4Tuning
 from pybar.scans.tune_stuck_pixel import StuckPixelScan
 from pybar.scans.scan_threshold_fast import FastThresholdScan
-from pybar.scans.tune_noise_occupancy import NoiseOccupancyScan
+from pybar.scans.tune_noise_occupancy import NoiseOccupancyTuning
 from pybar.scans.calibrate_plsr_dac import PlsrDacScan
 from pybar.scans.calibrate_hit_or import HitOrCalibration
 from pybar.scans.scan_ext_trigger import ExtTriggerScan
@@ -29,7 +32,7 @@ def analyze_tdc(source_scan_filename, calibration_filename, col_span, row_span):
     # Data files
     calibation_file = calibration_filename
     raw_data_file = source_scan_filename
-    hit_file = raw_data_file[:-3] + r'_interpreted.h5'
+    hit_file = os.path.splitext(raw_data_file)[0] + r'_interpreted.h5'
     # Selection criterions, change this to your needs
     hit_selection = '(column > %d) & (column < %d) & (row > %d) & (row < %d)' % (col_span[0] + 1, col_span[1] - 1, row_span[0] + 5, row_span[1] - 5)  # deselect edge pixels for better cluster size cut
     hit_selection_conditions = ['(n_cluster==1)', '(n_cluster==1) & (cluster_size == 1)', '(n_cluster==1) & (cluster_size == 1) & (relative_BCID > 1) & (relative_BCID < 4) & ((tot > 12) | ((TDC * 1.5625 - tot * 25 < 100) & (tot * 25 - TDC * 1.5625 < 100))) & %s' % hit_selection]
@@ -53,7 +56,7 @@ def analyze_tdc(source_scan_filename, calibration_filename, col_span, row_span):
                                     max_tdc=1500,
                                     n_bins=350)
 
-    return hit_file[:-3] + '_tdc_hists.h5'
+    return os.path.splitext(hit_file)[0] + '_tdc_hists.h5'
 
 
 def plsr_dac_to_charge(source_scan_filename, plsr_dac):
@@ -80,10 +83,10 @@ def fit_landau_bootstrap(x, y, p0, n_sigma=1, n_iterations=500, **kwargs):  # fi
     progress_bar.start()
     for i in range(n_iterations):
         if yerr is None:
-            randomDelta = np.random.normal(0., s_res, len(y))
+            randomDelta = np.random.normal(0.0, s_res, len(y))
             randomdataY = y + randomDelta
         else:
-            randomDelta = np.array([np.random.normal(0., derr, 1)[0] for derr in yerr])
+            randomDelta = np.array([np.random.normal(0.0, derr, 1)[0] for derr in yerr])
             randomdataY = y + randomDelta
         randomfit, _ = leastsq(errfunc, p0, args=(x, randomdataY), full_output=0)
         ps.append(randomfit)
@@ -135,7 +138,7 @@ if __name__ == "__main__":
     runmngr.run_run(run=IVScan, run_conf={"voltages": np.arange(-1, max_iv_voltage - 1, -1), "max_voltage": max_iv_voltage, "bias_voltage": bias_voltage, "minimum_delay": 0.5})
 
     # FE check and complete tuning
-    runmngr.run_run(run=RegisterTest) 
+    runmngr.run_run(run=RegisterTest)
     runmngr.run_run(run=DigitalScan)  # digital scan with std. settings
 
     if runmngr.current_run.register.flavor == 'fei4a':  # FEI4 A related config changes, Deactivate noisy edge columns if FE-I4A
@@ -148,7 +151,7 @@ if __name__ == "__main__":
     runmngr.run_run(run=AnalogScan, run_conf={'scan_parameters': [('PlsrDAC', target_charge)]})
     runmngr.run_run(run=FastThresholdScan)
     runmngr.run_run(run=StuckPixelScan)
-    runmngr.run_run(run=NoiseOccupancyScan, run_conf={'occupancy_limit': 1000, 'n_triggers': 10000000})  # high occupancy limit to work with strong Sr-90 source
+    runmngr.run_run(run=NoiseOccupancyTuning, run_conf={'occupancy_limit': 1000, 'n_triggers': 10000000})  # high occupancy limit to work with strong Sr-90 source
     runmngr.run_run(run=PlsrDacScan, run_conf={"colpr_address": range(25, 39)})
 
     # TDC calibration
@@ -163,7 +166,7 @@ if __name__ == "__main__":
 
     # Scintillator trigger source scan
     imon_mask = tdc_pixel ^ 1  # imon mask = not enable mask
-    runmngr.current_run.register.set_pixel_register_value("Imon", imon_mask)  # remember: for the selection later index 0 == colum/row 1 
+    runmngr.current_run.register.set_pixel_register_value("Imon", imon_mask)  # remember: for the selection later index 0 == colum/row 1
     runmngr.run_run(run=ExtTriggerScan, run_conf={'comment': 'Strong Sr-90 source',
                                                   'col_span': col_span,
                                                   'row_span': row_span,

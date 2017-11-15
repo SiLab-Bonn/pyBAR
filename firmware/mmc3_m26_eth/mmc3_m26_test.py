@@ -9,34 +9,34 @@ cnfg_yaml = """
 transfer_layer:
   - name  : ETH
     type  : SiTcp
-    init:      
+    init:
         ip : "192.168.10.16"
         udp_port : 4660
         tcp_port : 24
         tcp_connection : True
-        
+
 hw_drivers:
   - name      : gpio_drv
     type      : gpio
     interface : ETH
     base_addr : 0x9000
     size      : 8
-    
+
   - name      : CMD
     type      : cmd_seq
     interface : ETH
     base_addr : 0x0000
-    
+
   - name      : CH0
     type      : fei4_rx
     interface : ETH
     base_addr : 0x8600
-    
+
   - name      : M26_RX1
     type      : m26_rx
     interface : ETH
     base_addr : 0xa000
-    
+
   - name      : M26_RX2
     type      : m26_rx
     interface : ETH
@@ -56,18 +56,18 @@ hw_drivers:
     type      : m26_rx
     interface : ETH
     base_addr : 0xa040
-    
+
   - name      : M26_RX6
     type      : m26_rx
     interface : ETH
     base_addr : 0xa050
-    
+
   - name      : SRAM
     type      : sram_fifo
     interface : ETH
     base_addr : 0x200000000
     base_data_addr : 0x100000000
-    
+
 registers:
   - name        : GPIO_LED
     type        : StdRegister
@@ -78,7 +78,7 @@ registers:
         size    : 8
         offset  : 7
 """
-        
+
 import time
 from basil.dut import Dut
 
@@ -103,8 +103,8 @@ print 'get_fifo_size', chip['SRAM'].get_fifo_size()
 chls = ['M26_RX1', 'M26_RX2', 'M26_RX3', 'M26_RX4', 'M26_RX5', 'M26_RX6'] #['M26_RX1', 'M26_RX2', 'M26_RX3', 'M26_RX4', 'M26_RX5', 'M26_RX6']
 
 for ch in chls:
-    chip[ch].set_en(True)    
-    
+    chip[ch]["EN"] = True
+
 time.sleep(0.01)
 
 for ch in chls:

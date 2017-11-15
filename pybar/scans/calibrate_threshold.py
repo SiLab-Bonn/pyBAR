@@ -1,17 +1,17 @@
-"""A script that runs a fast threshold scan for different parameter (e.g. GDAC, TDACVbp) to get a threshold calibration. 
+"""A script that runs a fast threshold scan for different parameter (e.g. GDAC, TDACVbp) to get a threshold calibration.
 To save time the PlsrDAC start position is the start position determined from the previous threshold scan. So the
 scan parameter values should be chosen in a ways that the threshold increases for each step.
 After the data taking the data is analyzed and the calibration is written into a h5 file.
 """
-
-import os
-import tables as tb
-import numpy as np
 import logging
+import os
 import ast
-import progressbar
 
 from matplotlib.backends.backend_pdf import PdfPages
+import tables as tb
+import numpy as np
+
+import progressbar
 
 from pybar_fei4_interpreter import data_struct
 
@@ -24,7 +24,7 @@ from pybar.analysis.analyze_raw_data import AnalyzeRawData
 
 def create_threshold_calibration(scan_base_file_name, create_plots=True):  # Create calibration function, can be called stand alone
     def analyze_raw_data_file(file_name):
-        if os.path.isfile(file_name[:-3] + '_interpreted.h5'):  # skip analysis if already done
+        if os.path.isfile(os.path.splitext(file_name)[0] + '_interpreted.h5'):  # skip analysis if already done
             logging.warning('Analyzed data file ' + file_name + ' already exists. Skip analysis for this file.')
         else:
             with AnalyzeRawData(raw_data_file=file_name, create_pdf=False) as analyze_raw_data:
@@ -95,7 +95,7 @@ def create_threshold_calibration(scan_base_file_name, create_plots=True):  # Cre
     for raw_data_file in raw_data_files:  # analyze each raw data file, not using multithreading here, it is already used in s-curve fit
         analyze_raw_data_file(raw_data_file)
 
-    files_per_parameter = analysis_utils.get_parameter_value_from_file_names([file_name[:-3] + '_interpreted.h5' for file_name in raw_data_files], parameter_name, unique=True, sort=True)
+    files_per_parameter = analysis_utils.get_parameter_value_from_file_names([os.path.splitext(file_name)[0] + '_interpreted.h5' for file_name in raw_data_files], parameter_name, unique=True, sort=True)
 
     logging.info("Create calibration from data")
     mean_threshold_calibration = np.empty(shape=(len(raw_data_files),), dtype='<f8')

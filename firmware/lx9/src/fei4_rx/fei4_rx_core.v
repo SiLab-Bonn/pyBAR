@@ -1,6 +1,6 @@
 /**
  * ------------------------------------------------------------
- * Copyright (c) All rights reserved 
+ * Copyright (c) All rights reserved
  * SiLab, Institute of Physics, University of Bonn
  * ------------------------------------------------------------
  */
@@ -29,6 +29,7 @@ module fei4_rx_core
     output wire [31:0] FIFO_DATA,
     
     output wire RX_FIFO_FULL,
+    output wire RX_ENABLED,
 
     input wire BUS_CLK,
     input wire [ABUSWIDTH-1:0] BUS_ADD,
@@ -39,7 +40,7 @@ module fei4_rx_core
     input wire BUS_RD
 );
 
-localparam VERSION = 2;
+localparam VERSION = 3;
 
 // 0 - soft reset
 // 1 - status
@@ -97,29 +98,34 @@ reg [7:0] status_regs;
 
 wire CONF_EN_INVERT_RX_DATA; // BUS_ADD==2 BIT==1
 assign CONF_EN_INVERT_RX_DATA = status_regs[1];
+wire CONF_EN_RX; // BUS_ADD==2 BIT==2
+assign CONF_EN_RX = status_regs[2];
+assign RX_ENABLED = CONF_EN_RX;
 
 always @(posedge BUS_CLK) begin
     if(RST)
-        status_regs <= 8'b0000_0000;
+        status_regs <= 8'b0000_0100; // enable Rx by default
     else if(BUS_WR && BUS_ADD == 2)
         status_regs <= BUS_DATA_IN;
 end
 
-always @ (posedge BUS_CLK) begin //(*) begin
-    if(BUS_ADD == 0)
-        BUS_DATA_OUT <= VERSION;
-    else if(BUS_ADD == 2)
-        BUS_DATA_OUT <= {status_regs[7:1], RX_READY};
-    else if(BUS_ADD == 3)
-        BUS_DATA_OUT <= fifo_size[7:0];
-    else if(BUS_ADD == 4)
-        BUS_DATA_OUT <= fifo_size_buf[15:8];
-    else if(BUS_ADD == 5)
-        BUS_DATA_OUT <= decoder_err_cnt_buf;
-    else if(BUS_ADD == 6)
-        BUS_DATA_OUT <= lost_err_cnt_buf;
-    else
-        BUS_DATA_OUT <= 8'b0;
+always @ (posedge BUS_CLK) begin
+    if(BUS_RD) begin
+        if(BUS_ADD == 0)
+            BUS_DATA_OUT <= VERSION;
+        else if(BUS_ADD == 2)
+            BUS_DATA_OUT <= {status_regs[7:1], RX_READY};
+        else if(BUS_ADD == 3)
+            BUS_DATA_OUT <= fifo_size[7:0];
+        else if(BUS_ADD == 4)
+            BUS_DATA_OUT <= fifo_size_buf[15:8];
+        else if(BUS_ADD == 5)
+            BUS_DATA_OUT <= decoder_err_cnt_buf;
+        else if(BUS_ADD == 6)
+            BUS_DATA_OUT <= lost_err_cnt_buf;
+        else
+            BUS_DATA_OUT <= 8'b0;
+    end
 end
 
 wire [23:0] FE_DATA;
@@ -163,6 +169,7 @@ receiver_logic #(
     .decoder_err_cnt(decoder_err_cnt),
     .fifo_size(fifo_size),
     .invert_rx_data(CONF_EN_INVERT_RX_DATA),
+    .enable_rx(CONF_EN_RX),
     .FIFO_CLK(FIFO_CLK)
 );
 

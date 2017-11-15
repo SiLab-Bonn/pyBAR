@@ -1,21 +1,20 @@
+import logging
 import os
 import inspect
-import logging
-import numpy as np
-import progressbar
-import time
-import sys
+from time import time, sleep
 from threading import Timer
-from collections import namedtuple, Mapping, OrderedDict
+
+import progressbar
+import numpy as np
+
+from basil.utils.BitLogic import BitLogic
+from basil.dut import Dut
 
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.fei4.register_utils import invert_pixel_mask, make_box_pixel_mask_from_col_row
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.run_manager import RunManager
 
-from basil.utils.BitLogic import BitLogic
-
-from basil.dut import Dut
 
 class M26TelescopeScan(Fei4RunBase):
     '''External trigger scan with FE-I4 and up to 6 Mimosa26 telescope planes.
@@ -23,32 +22,29 @@ class M26TelescopeScan(Fei4RunBase):
     For use with external scintillator (user RX0), TLU (use RJ45), FE-I4 HitOR (USBpix self-trigger).
 
     Note:
-    Set up trigger in DUT configuration file (e.g. dut_configuration_mio.yaml).
+    Set up trigger in DUT configuration file (e.g. dut_configuration_mmc3_m26_eth.yaml).
+    Only Agilent E3644a power supply is supported.
     '''
     _default_run_conf = {
         "trig_count": 0,  # FE-I4 trigger count, number of consecutive BCs, 0 means 16, from 0 to 15
         "trigger_latency": 232,  # FE-I4 trigger latency, in BCs, external scintillator / TLU / HitOR: 232, USBpix self-trigger: 220
         "trigger_delay": 8,  # trigger delay, in BCs
-        "trigger_rate_limit": 0,  # artificially limiting the trigger rate, in BCs (25ns)
+        "trigger_rate_limit": 500,  # artificially limiting the trigger rate, in BCs (25ns)
         "col_span": [1, 79],  # defining active column interval, 2-tuple, from 1 to 80
         "row_span": [1, 336],  # defining active row interval, 2-tuple, from 1 to 336
         "overwrite_enable_mask": False,  # if True, use col_span and row_span to define an active region regardless of the Enable pixel register. If False, use col_span and row_span to define active region by also taking Enable pixel register into account.
         "use_enable_mask_for_imon": True,  # if True, apply inverted Enable pixel mask to Imon pixel mask
         "no_data_timeout": 120,  # no data timeout after which the scan will be aborted, in seconds
         "scan_timeout": 60,  # timeout for scan after which the scan will be stopped, in seconds
-        "max_triggers": False,  # maximum triggers after which the scan will be stopped, in seconds
-        "enable_tdc": False,  # if True, enables TDC (use RX2)
+        "max_triggers": 0,  # maximum triggers after which the scan will be stopped, if 0, no maximum triggers are set
         "reset_rx_on_error": True,  # long scans have a high propability for ESD related data transmission errors; recover and continue here
         "remote": True # if True, Powersupply remote is enabled
     }
 
-    def init_dut(self): 
-        
+    def init_dut(self):
         if self.remote:
-            dut = Dut('agilent_e3644a_pyserial.yaml')
-            dut.init()
-            status = dut['Powersupply'].get_enable()
-            time.sleep(0.15)    
+            status = self.dut['Powersupply'].get_enable()
+            sleep(0.15)
             status = status.replace("\n", "").replace("\r", "")
             status = int(status) #convert string to float in order to compare values!
             if status == 1:
@@ -57,7 +53,7 @@ class M26TelescopeScan(Fei4RunBase):
                 logging.info("Output of powersupply is OFF, status: %s" % status)  # TODO: STOP READOUT!!!
                 #abort(msg='Scan timeout was reached')
                 #stop_current_run(msg='OFF')
-            current = dut['Powersupply'].get_current()
+            current = self.dut['Powersupply'].get_current()
             current = current.replace("\n", "").replace("\r", "")
             logging.info('Current:  %s A', current)
             current = float(current)  # convert string to float in order to compare values!
@@ -69,7 +65,7 @@ class M26TelescopeScan(Fei4RunBase):
 
         if 'force_config_mimosa26' in self._conf and not self._conf['force_config_mimosa26'] and self.remote and current >= 3.3: #check if force_config is False
                 logging.info('Skipping m26 configuration, m26 is already configured')
-        else:     
+        else:
             if 'm26_configuration' in self._conf and self._conf['m26_configuration']:
                 m26_config_file =  os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))), self._conf['m26_configuration'])
 
@@ -93,11 +89,11 @@ class M26TelescopeScan(Fei4RunBase):
                     logging.debug(self.dut[ir][:])
                     self.dut['jtag'].scan_ir([BitLogic(IR[ir])]*6)
                     ret = self.dut['jtag'].scan_dr([self.dut[ir][:]])[0]
-                    
-                if self.remote:    
-                    current = dut['Powersupply'].get_current()
+
+                if self.remote:
+                    current = self.dut['Powersupply'].get_current()
                     current = current.replace("\n", "").replace("\r", "")
-                    logging.info('Current:  %s A', current)  
+                    logging.info('Current:  %s A', current)
                 ## read JTAG  and check
                 irs=["DEV_ID_ALL","BSR_ALL","BIAS_DAC_ALL","RO_MODE1_ALL","RO_MODE0_ALL",
                    "DIS_DISCRI_ALL","LINEPAT0_REG_ALL","LINEPAT1_REG_ALL","CONTROL_PIX_REG_ALL",
@@ -109,11 +105,11 @@ class M26TelescopeScan(Fei4RunBase):
                     logging.info('Reading M26 JATG configuration reg %s', ir)
                     self.dut['jtag'].scan_ir([BitLogic(IR[ir])]*6)
                     ret[ir]= self.dut['jtag'].scan_dr([self.dut[ir][:]])[0]
-                
+
                 if self.remote:
-                    current = dut['Powersupply'].get_current()
+                    current = self.dut['Powersupply'].get_current()
                     current = current.replace("\n", "").replace("\r", "")
-                    logging.info('Current:  %s A', current)    
+                    logging.info('Current:  %s A', current)
                 ## check
                 for k,v in ret.iteritems():
                     if k=="CTRL_8b10b_REG1_ALL":
@@ -124,21 +120,21 @@ class M26TelescopeScan(Fei4RunBase):
                         logging.error("JTAG data does not match %s get=%s set=%s"%(k,v,self.dut[k][:]))
                     else:
                         logging.info("Checking M26 JTAG %s ok"%k)
-                    
-                if self.remote:    
-                    current = dut['Powersupply'].get_current()
+
+                if self.remote:
+                    current = self.dut['Powersupply'].get_current()
                     current = current.replace("\n", "").replace("\r", "")
-                    logging.info('Current:  %s A', current)    
+                    logging.info('Current:  %s A', current)
                 #START procedure
                 logging.info('Starting M26')
                 temp=self.dut['RO_MODE0_ALL'][:]
-                  #disable extstart
+                #disable extstart
                 for reg in self.dut["RO_MODE0_ALL"]["RO_MODE0"]:
                     reg['En_ExtStart']=0
                     reg['JTAG_Start']=0
                 self.dut['jtag'].scan_ir([BitLogic(IR['RO_MODE0_ALL'])]*6)
                 self.dut['jtag'].scan_dr([self.dut['RO_MODE0_ALL'][:]])
-                  #JTAG start
+                #JTAG start
                 for reg in self.dut["RO_MODE0_ALL"]["RO_MODE0"]:
                     reg['JTAG_Start']=1
                 self.dut['jtag'].scan_ir([BitLogic(IR['RO_MODE0_ALL'])]*6)
@@ -147,21 +143,21 @@ class M26TelescopeScan(Fei4RunBase):
                     reg['JTAG_Start']=0
                 self.dut['jtag'].scan_ir([BitLogic(IR['RO_MODE0_ALL'])]*6)
                 self.dut['jtag'].scan_dr([self.dut['RO_MODE0_ALL'][:]])
-                  #write original configuration
+                #write original configuration
                 self.dut['RO_MODE0_ALL'][:]=temp
                 self.dut['jtag'].scan_ir([BitLogic(IR['RO_MODE0_ALL'])]*6)
                 self.dut['jtag'].scan_dr([self.dut['RO_MODE0_ALL'][:]])
-                  #readback?
+                #readback?
                 self.dut['jtag'].scan_ir([BitLogic(IR['RO_MODE0_ALL'])]*6)
                 self.dut['jtag'].scan_dr([self.dut['RO_MODE0_ALL'][:]]*6)
-                
+
                 if self.remote:
-                    current = dut['Powersupply'].get_current()
+                    current = self.dut['Powersupply'].get_current()
                     current = current.replace("\n", "").replace("\r", "")
                     logging.info('Current:  %s A', current)
             else:
                 logging.info('Skipping m26 configuration')
-            
+
     def configure(self):
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))
@@ -201,27 +197,30 @@ class M26TelescopeScan(Fei4RunBase):
         lvl1_command = self.register.get_commands("zeros", length=self.trigger_delay)[0] + self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", length=self.trigger_rate_limit)[0]
         self.register_utils.set_command(lvl1_command)
 
-        with self.readout(**self.scan_parameters._asdict()):
+        with self.readout(no_data_timeout=self.no_data_timeout, **self.scan_parameters._asdict()):
             got_data = False
+            start = time()
             while not self.stop_run.wait(1.0):
                 if not got_data:
                     if self.fifo_readout.data_words_per_second() > 0:
                         got_data = True
                         logging.info('Taking data...')
-                        self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=self.max_triggers, poll=10, term_width=80).start()
+                        if self.max_triggers:
+                            self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=self.max_triggers, poll=10, term_width=80).start()
+                        else:
+                            self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.Timer()], maxval=self.scan_timeout, poll=10, term_width=80).start()
                 else:
                     triggers = self.dut['TLU']['TRIGGER_COUNTER']
                     try:
-                        self.progressbar.update(triggers)
+                        if self.max_triggers:
+                            self.progressbar.update(triggers)
+                        else:
+                            self.progressbar.update(time() - start)
                     except ValueError:
                         pass
                     if self.max_triggers and triggers >= self.max_triggers:
                         self.progressbar.finish()
                         self.stop(msg='Trigger limit was reached: %i' % self.max_triggers)
-#                 print self.fifo_readout.data_words_per_second()
-#                 if (current_trigger_number % show_trigger_message_at < last_trigger_number % show_trigger_message_at):
-#                     logging.info('Collected triggers: %d', current_trigger_number)
-
         logging.info('Total amount of triggers collected: %d', self.dut['TLU']['TRIGGER_COUNTER'])
 
     def analyze(self):
@@ -231,20 +230,13 @@ class M26TelescopeScan(Fei4RunBase):
         #    analyze_raw_data.create_cluster_size_hist = True
         #    analyze_raw_data.create_cluster_tot_hist = True
         #    analyze_raw_data.align_at_trigger = True
-        #    if self.enable_tdc:
-        #        analyze_raw_data.create_tdc_counter_hist = True  # histogram all TDC words
-        #        analyze_raw_data.create_tdc_hist = True  # histogram the hit TDC information
-        #        analyze_raw_data.align_at_tdc = False  # align events at the TDC word
         #    analyze_raw_data.interpreter.set_warning_output(False)
         #    analyze_raw_data.interpret_word_table()
         #    analyze_raw_data.interpreter.print_summary()
         #    analyze_raw_data.plot_histograms()
 
-    def start_readout(self, **kwargs):
-        if kwargs:
-            self.set_scan_parameters(**kwargs)
-        self.fifo_readout.start(reset_sram_fifo=False, clear_buffer=True, callback=self.handle_data, errback=self.handle_err, no_data_timeout=self.no_data_timeout)
-        #self.dut['TDC']['ENABLE'] = self.enable_tdc
+    def start_readout(self, *args, **kwargs):
+        super(M26TelescopeScan, self).start_readout(*args, **kwargs)
         self.dut['TLU']['RESET']=1
         self.dut['TLU']['TRIGGER_MODE']=3
         self.dut['TLU']['TRIGGER_LOW_TIMEOUT']=200
@@ -266,11 +258,10 @@ class M26TelescopeScan(Fei4RunBase):
             self.dut['TLU']['MAX_TRIGGERS'] = self.max_triggers
         else:
             self.dut['TLU']['MAX_TRIGGERS'] = 0  # infinity triggers
-        # use this with FE-I4 connected
+        # remove the following line if no FE-I4 connected
         self.dut['CMD']['EN_EXT_TRIGGER'] = True
-        # use this if no FE-I4 is connected
-#         self.dut['TLU']['TRIGGER_ENABLE'] = True
-    
+        # this will turn on trigger/TLU FSM
+        self.dut['TLU']['TRIGGER_ENABLE'] = True
 
         def timeout():
             try:
@@ -293,7 +284,7 @@ class M26TelescopeScan(Fei4RunBase):
         self.dut['M26_RX4'].set_en(False)
         self.dut['M26_RX5'].set_en(False)
         self.dut['M26_RX6'].set_en(False)
-        self.fifo_readout.stop(timeout=timeout)
+        super(M26TelescopeScan, self).stop_readout(timeout=timeout)
 
 
 if __name__ == "__main__":

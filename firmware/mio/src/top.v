@@ -1,23 +1,23 @@
 /**
  * This file is part of pyBAR.
- * 
+ *
  * pyBAR is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * pyBAR is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU Lesser General Public License
  * along with pyBAR.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 /**
  * ------------------------------------------------------------
- * Copyright (c) All rights reserved 
+ * Copyright (c) All rights reserved
  * SiLab, Institute of Physics, University of Bonn
  * ------------------------------------------------------------
  */
@@ -28,7 +28,7 @@
 module top (
     input wire FCLK_IN, // 48MHz
 
-    //full speed 
+    //full speed
     inout wire [7:0] BUS_DATA,
     input wire [15:0] ADD,
     input wire RD_B,
@@ -259,7 +259,7 @@ assign AUX_CLK = CLK_10MHZ;
 ODDR AUX_CLK_FORWARDING_INST (
     .Q(AUX_CLK),
     .C(CLK_40),
-    .CE(CE_10MHZ), 
+    .CE(CE_10MHZ),
     .D1(1'b1),
     .D2(1'b0),
     .R(1'b0),
@@ -376,7 +376,7 @@ fx2_to_bus i_fx2_to_bus (
     .ADD(ADD),
     .RD_B(RD_B),
     .WR_B(WR_B),
-    
+
     .BUS_CLK(BUS_CLK),
     .BUS_ADD(BUS_ADD),
     .BUS_RD(BUS_RD),
@@ -421,7 +421,7 @@ parameter DSIZE = 10;
 //parameter CLKIN_PERIOD = 6.250;
 
 `ifdef GPAC
-wire RX_READY, RX_8B10B_DECODER_ERR, RX_FIFO_OVERFLOW_ERR, RX_FIFO_FULL;
+wire RX_READY, RX_8B10B_DECODER_ERR, RX_FIFO_OVERFLOW_ERR, RX_FIFO_FULL, RX_ENABLED;
 wire FE_FIFO_READ;
 wire FE_FIFO_EMPTY;
 wire [31:0] FE_FIFO_DATA;
@@ -448,6 +448,7 @@ fei4_rx #(
     .FIFO_DATA(FE_FIFO_DATA),
 
     .RX_FIFO_FULL(RX_FIFO_FULL),
+    .RX_ENABLED(RX_ENABLED),
 
     .BUS_CLK(BUS_CLK),
     .BUS_RST(BUS_RST),
@@ -457,7 +458,7 @@ fei4_rx #(
     .BUS_WR(BUS_WR)
 );
 `else
-wire [3:0] RX_READY, RX_8B10B_DECODER_ERR, RX_FIFO_OVERFLOW_ERR, RX_FIFO_FULL;
+wire [3:0] RX_READY, RX_8B10B_DECODER_ERR, RX_FIFO_OVERFLOW_ERR, RX_FIFO_FULL, RX_ENABLED;
 wire [3:0] FE_FIFO_READ;
 wire [3:0] FE_FIFO_EMPTY;
 wire [31:0] FE_FIFO_DATA [3:0];
@@ -486,6 +487,7 @@ for (i = 0; i < 4; i = i + 1) begin: rx_gen
         .FIFO_DATA(FE_FIFO_DATA[i]),
 
         .RX_FIFO_FULL(RX_FIFO_FULL[i]),
+        .RX_ENABLED(RX_ENABLED[i]),
 
         .BUS_CLK(BUS_CLK),
         .BUS_RST(BUS_RST),
@@ -534,7 +536,7 @@ tdc_s3 #(
 
     .ARM_TDC(CMD_START_FLAG), // arm TDC by sending commands
     .EXT_EN(1'b0),
-    
+
     .TIMESTAMP(TIMESTAMP[15:0])
 );
 
@@ -566,7 +568,8 @@ tlu_controller #(
     .BASEADDR(TLU_BASEADDR),
     .HIGHADDR(TLU_HIGHADDR),
     .DIVISOR(32),
-    .TLU_TRIGGER_MAX_CLOCK_CYCLES(17)
+    .TLU_TRIGGER_MAX_CLOCK_CYCLES(17),
+    .WIDTH(8)
 ) i_tlu_controller (
     .BUS_CLK(BUS_CLK),
     .BUS_RST(BUS_RST),
@@ -582,19 +585,19 @@ tlu_controller #(
     .FIFO_DATA(TRIGGER_FIFO_DATA),
 
     .FIFO_PREEMPT_REQ(TRIGGER_FIFO_PEEMPT_REQ),
-    
+
     .TRIGGER({3'b0, CCPD_TDC_FROM_TDC, TDC_IN_FROM_TDC, MULTI_PURPOSE, LEMO_TRIGGER_FROM_TDC, MONHIT}),
     .TRIGGER_VETO({6'b0, MULTI_PURPOSE, FIFO_FULL}),
-    
+
     .EXT_TRIGGER_ENABLE(EXT_TRIGGER_ENABLE),
     .TRIGGER_ACKNOWLEDGE(EXT_TRIGGER_ENABLE == 1'b0 ? TRIGGER_ACCEPTED_FLAG : TRIGGER_ACKNOWLEDGE_FLAG),
     .TRIGGER_ACCEPTED_FLAG(TRIGGER_ACCEPTED_FLAG),
-    
+
     .TLU_TRIGGER(RJ45_TRIGGER),
     .TLU_RESET(RJ45_RESET),
     .TLU_BUSY(TLU_BUSY),
     .TLU_CLOCK(TLU_CLOCK),
-    
+
     .TIMESTAMP(TIMESTAMP)
 );
 `else
@@ -651,27 +654,27 @@ tlu_controller #(
     .BUS_DATA(BUS_DATA),
     .BUS_RD(BUS_RD),
     .BUS_WR(BUS_WR),
-    
+
     .TRIGGER_CLK(CLK_40),
-    
+
     .FIFO_READ(TRIGGER_FIFO_READ),
     .FIFO_EMPTY(TRIGGER_FIFO_EMPTY),
     .FIFO_DATA(TRIGGER_FIFO_DATA),
-    
+
     .FIFO_PREEMPT_REQ(TRIGGER_FIFO_PEEMPT_REQ),
-    
+
     .TRIGGER({4'b0, TDC_IN_FROM_TDC, MULTI_PURPOSE, LEMO_TRIGGER_FROM_TDC, MONHIT}),
     .TRIGGER_VETO({6'b0, MULTI_PURPOSE, FIFO_FULL}),
-    
+
     .EXT_TRIGGER_ENABLE(EXT_TRIGGER_ENABLE),
     .TRIGGER_ACKNOWLEDGE(EXT_TRIGGER_ENABLE == 1'b0 ? TRIGGER_ACCEPTED_FLAG : TRIGGER_ACKNOWLEDGE_FLAG),
     .TRIGGER_ACCEPTED_FLAG(TRIGGER_ACCEPTED_FLAG),
-    
+
     .TLU_TRIGGER(RJ45_TRIGGER),
     .TLU_RESET(RJ45_RESET),
     .TLU_BUSY(TLU_BUSY),
     .TLU_CLOCK(TLU_CLOCK),
-    
+
     .TIMESTAMP(TIMESTAMP)
 );
 `endif
@@ -717,7 +720,7 @@ tdc_s3 #(
 
     .TIMESTAMP(INJ_CNT),
     //.TIMESTAMP(TIMESTAMP[15:0]),
-    .EXT_EN(CCPD_TDCGATE) 
+    .EXT_EN(CCPD_TDCGATE)
 );
 
 /*
@@ -776,11 +779,11 @@ gpac_adc_iobuf i_gpac_adc_iobuf (
 
     .ADC_IN_P(ADC_OUT_P),
     .ADC_IN_N(ADC_OUT_N),
-    
-	.ADC_IN0(ADC_IN0),
-	.ADC_IN1(ADC_IN1),
-	.ADC_IN2(ADC_IN2),
-	.ADC_IN3(ADC_IN3)
+
+    .ADC_IN0(ADC_IN0),
+    .ADC_IN1(ADC_IN1),
+    .ADC_IN2(ADC_IN2),
+    .ADC_IN3(ADC_IN3)
 );
 
 wire FIFO_READ_ADC, FIFO_EMPTY_ADC;
@@ -828,7 +831,7 @@ gpac_adc_rx #(
     .BUS_ADD(BUS_ADD),
     .BUS_DATA(BUS_DATA),
     .BUS_RD(BUS_RD),
-    .BUS_WR(BUS_WR), 
+    .BUS_WR(BUS_WR),
 
     .ADC_ENC(ADC_ENC),
     .ADC_IN(ADC_IN1),
@@ -898,7 +901,7 @@ spi #(
     .SLD(CCPD_CONFIG_SHIFT_LD)
 );
 
-pulse_gen #( 
+pulse_gen #(
     .BASEADDR(CCPD_PULSE_INJ_BASEADDR),
     .HIGHADDR(CCPD_PULSE_INJ_HIGHADDR)
 ) i_pulse_gen_inj (
@@ -1044,7 +1047,7 @@ sram_fifo #(
     .BUS_ADD(BUS_ADD),
     .BUS_DATA(BUS_DATA),
     .BUS_RD(BUS_RD),
-    .BUS_WR(BUS_WR), 
+    .BUS_WR(BUS_WR),
 
     .SRAM_A(SRAM_A),
     .SRAM_IO(SRAM_IO),
@@ -1074,12 +1077,12 @@ sram_fifo #(
 assign LED[0] = 1'b0;
 assign LED[1] = 1'b0;
 assign LED[2] = 1'b0;
-assign LED[3] = RX_READY & ((RX_8B10B_DECODER_ERR? CLK_3HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR | RX_FIFO_FULL);
+assign LED[3] = (RX_ENABLED & RX_READY) & ((RX_8B10B_DECODER_ERR? CLK_3HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR | RX_FIFO_FULL);
 `else
-assign LED[0] = RX_READY[0] & ((RX_8B10B_DECODER_ERR[0]? CLK_3HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[0] | RX_FIFO_FULL[0]);
-assign LED[1] = RX_READY[1] & ((RX_8B10B_DECODER_ERR[1]? CLK_3HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[1] | RX_FIFO_FULL[1]);
-assign LED[2] = RX_READY[2] & ((RX_8B10B_DECODER_ERR[2]? CLK_3HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[2] | RX_FIFO_FULL[2]);
-assign LED[3] = RX_READY[3] & ((RX_8B10B_DECODER_ERR[3]? CLK_3HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[3] | RX_FIFO_FULL[3]);
+assign LED[0] = (RX_ENABLED[0] & RX_READY[0]) & ((RX_8B10B_DECODER_ERR[0]? CLK_3HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[0] | RX_FIFO_FULL[0]);
+assign LED[1] = (RX_ENABLED[1] & RX_READY[1]) & ((RX_8B10B_DECODER_ERR[1]? CLK_3HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[1] | RX_FIFO_FULL[1]);
+assign LED[2] = (RX_ENABLED[2] & RX_READY[2]) & ((RX_8B10B_DECODER_ERR[2]? CLK_3HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[2] | RX_FIFO_FULL[2]);
+assign LED[3] = (RX_ENABLED[3] & RX_READY[3]) & ((RX_8B10B_DECODER_ERR[3]? CLK_3HZ : CLK_1HZ) | RX_FIFO_OVERFLOW_ERR[3] | RX_FIFO_FULL[3]);
 `endif
 assign LED[4] = (CLK_1HZ | FIFO_FULL) & CLK_LOCKED;
 

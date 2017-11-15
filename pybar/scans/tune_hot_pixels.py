@@ -1,8 +1,8 @@
 import logging
-import numpy as np
-import tables as tb
-from pybar.scans.scan_fei4_self_trigger import FEI4SelfTriggerScan
 
+import numpy as np
+
+from pybar.scans.scan_fei4_self_trigger import FEI4SelfTriggerScan
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.fei4.register_utils import invert_pixel_mask
 from pybar.run_manager import RunManager
@@ -39,8 +39,8 @@ class HotPixelTuning(FEI4SelfTriggerScan):
             analyze_raw_data.interpret_word_table()
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms()
-            with tb.open_file(analyze_raw_data._analyzed_data_file, 'r') as out_file_h5:
-                occ_hist = out_file_h5.root.HistOcc[:, :, 0].T
+
+            occ_hist = analyze_raw_data.out_file_h5.root.HistOcc[:, :, 0].T
             self.occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
             # n largest elements
             n_largest_elements = np.sort(occ_hist[occ_hist > self.low_value])[-self.mask_high_count:]

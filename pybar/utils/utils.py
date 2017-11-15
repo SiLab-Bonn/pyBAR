@@ -163,7 +163,6 @@ def bitvector_to_bytearray(bitvector, pad_to_n_bytes=4):
         pieces.append(byte)
     # array.array('B', [17, 24, 121, 1, 12, 222, 34, 76])
     # struct.pack('B' * len(integers), *integers)
-    print pieces
     return bytearray(pieces)
 
 
@@ -307,12 +306,3 @@ def str2bool(value):
         raise ValueError('Cannot convert to boolean: unknown string %s' % value)
     except AttributeError:  # not a string
         return bool(value)
-
-
-#-----------------------------------------------------------------
-if __name__ == "__main__":
-    # ~ print list(flatten([[1, 2], (4, 5), [5], [6, 6, 8]]))
-    # ~ print argmin_random_tie(['one', 'to', 'three', 'or'], len)
-
-    print min(['one', 'to', 'three', 'or'], key=len)
-    print argmin(['one', 'to', 'three', 'or'], len)

@@ -40,7 +40,7 @@ def analyze_raw_data(input_file, output_file_hits):
         analyze_raw_data.max_tot_value = 13  # set the maximum ToT value considered to be a hit, 14 is a late hit
         analyze_raw_data.align_at_trigger = False  # align the data at the trigger number; has to be first event word
         analyze_raw_data.align_at_tdc = False  # use the TDC word to align the events, assume that they are first words in the event
-        analyze_raw_data.use_trigger_time_stamp = False  # use the trigger number as a time stamp
+        analyze_raw_data.trigger_data_format = 0  # specify trigger data word format
         analyze_raw_data.set_stop_mode = False  # special analysis if data was taken in stop mode
 
         analyze_raw_data.interpreter.set_debug_output(False)  # std. setting is False
@@ -60,7 +60,7 @@ def analyze_hits(input_file, output_file_hits, scan_data_filename, output_file_h
         analyze_raw_data.create_cluster_size_hist = True
         analyze_raw_data.create_cluster_tot_hist = True
         analyze_raw_data.analyze_hit_table(analyzed_data_out_file=output_file_hits_analyzed)
-        analyze_raw_data.plot_histograms(scan_data_filename=scan_data_filename, analyzed_data_file=output_file_hits_analyzed)
+        analyze_raw_data.plot_histograms(pdf_filename=scan_data_filename, analyzed_data_file=output_file_hits_analyzed)
 
 
 def analyze_raw_data_per_scan_parameter(input_file, output_file_hits, scan_data_filename, scan_parameters):

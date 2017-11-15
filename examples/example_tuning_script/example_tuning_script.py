@@ -37,7 +37,7 @@ if __name__ == "__main__":
     status = runmngr.run_run(run=StuckPixelScan, run_conf=run_conf)
     print 'Status:', status
 
-    status = runmngr.run_run(run=NoiseOccupancyScan, run_conf=run_conf)
+    status = runmngr.run_run(run=NoiseOccupancyTuning, run_conf=run_conf)
     print 'Status:', status
 
     # masking merged pixels

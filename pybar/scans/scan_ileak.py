@@ -1,6 +1,8 @@
 import logging
+
 import numpy as np
 import tables as tb
+
 import progressbar
 
 from pybar.fei4.register_utils import make_box_pixel_mask_from_col_row

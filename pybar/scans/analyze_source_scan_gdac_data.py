@@ -1,4 +1,4 @@
-''' This script does the full analysis of a source scan where the global threshold setting was changed to reconstruct the charge injected in a sensor pixel 
+''' This script does the full analysis of a source scan where the global threshold setting was changed to reconstruct the charge injected in a sensor pixel
 by a constant source. Several steps are done automatically:
 Step 1 Tnterpret the raw data:
     This step interprets the raw data from the FE and creates and plots distributions.
@@ -13,11 +13,12 @@ Step 4 Analyze the injected charge:
     Here the data from the previous steps is used to determine the injected charge. Plots of the results are shown.
 '''
 import logging
-import numpy as np
-import tables as tb
 import os.path
+
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
+import numpy as np
+import tables as tb
 
 from pybar.analysis import analysis
 from pybar.analysis import analysis_utils
@@ -33,7 +34,7 @@ analysis_configuration = {
     "normalize_rate": True,  # correct the number of GDACs per scan parameter by the number of triggers or scan time
     "normalization_reference": 'time',  # one can normalize the hits per GDAC setting to the number of events ('event') or time ('time')
     "smoothness": 100,  # the smoothness of the spline fit to the data
-    "vcal_calibration": 55.,   # calibration electrons/PlsrDAC
+    "vcal_calibration": 55.0,   # calibration electrons/PlsrDAC
     "n_bins": 300,  # number of bins for the profile histogram
     "col_span": [53, 76],  # the column pixel range to use in the analysis
     "row_span": [1, 336],  # the row pixel range to use in the analysis
@@ -140,7 +141,7 @@ def analyse_selected_hits(input_file_hits, output_file_hits, output_file_hits_an
             analyze_raw_data.create_cluster_size_hist = True
             analyze_raw_data.create_cluster_tot_hist = True
             analyze_raw_data.analyze_hit_table(analyzed_data_out_file=output_file_hits_analyzed)
-            analyze_raw_data.plot_histograms(scan_data_filename=output_file_hits_analyzed, analyzed_data_file=output_file_hits_analyzed)
+            analyze_raw_data.plot_histograms(pdf_filename=output_file_hits_analyzed, analyzed_data_file=output_file_hits_analyzed)
         with tb.open_file(input_file_hits, mode="r") as in_hit_file_h5:  # copy meta data to the new analyzed file
             with tb.open_file(output_file_hits_analyzed, mode="r+") as output_hit_file_h5:
                 in_hit_file_h5.root.meta_data.copy(output_hit_file_h5.root)  # copy meta_data note to new file
@@ -151,7 +152,7 @@ def analyze_injected_charge(data_analyzed_file):
     with tb.open_file(data_analyzed_file, mode="r") as in_file_h5:
         occupancy = in_file_h5.root.HistOcc[:].T
         gdacs = analysis_utils.get_scan_parameter(in_file_h5.root.meta_data[:])['GDAC']
-        with PdfPages(data_analyzed_file[:-3] + '.pdf') as plot_file:
+        with PdfPages(os.path.splitext(data_analyzed_file)[0] + '.pdf') as plot_file:
             plotting.plot_scatter(gdacs, occupancy.sum(axis=(0, 1)), title='Single pixel hit rate at different thresholds', x_label='Threshold setting [GDAC]', y_label='Single pixel hit rate', log_x=True, filename=plot_file)
             if analysis_configuration['input_file_calibration']:
                 with tb.open_file(analysis_configuration['input_file_calibration'], mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
@@ -221,7 +222,7 @@ def analyze_injected_charge(data_analyzed_file):
                     smoothed_data = analysis_utils.smooth_differentiation(x_p, y_p, weigths=1 / y_p_e, order=3, smoothness=analysis_configuration['smoothness'], derivation=0)
                     smoothed_data_diff = analysis_utils.smooth_differentiation(x_p, y_p, weigths=1 / y_p_e, order=3, smoothness=analysis_configuration['smoothness'], derivation=1)
 
-                    with tb.open_file(data_analyzed_file[:-3] + '_result.h5', mode="w") as out_file_h5:
+                    with tb.open_file(os.path.splitext(data_analyzed_file)[0] + '_result.h5', mode="w") as out_file_h5:
                         result_1 = np.rec.array(np.column_stack((x_p, y_p, y_p_e)), dtype=[('charge', float), ('count', float), ('count_error', float)])
                         result_2 = np.rec.array(np.column_stack((x_p, smoothed_data)), dtype=[('charge', float), ('count', float)])
                         result_3 = np.rec.array(np.column_stack((x_p, -smoothed_data_diff)), dtype=[('charge', float), ('count', float)])

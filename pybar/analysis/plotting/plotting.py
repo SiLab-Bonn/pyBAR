@@ -5,10 +5,6 @@ import math
 from datetime import datetime
 # import itertools
 
-import numpy as np
-from scipy.stats import chisquare, norm  # , mstats
-# from scipy.optimize import curve_fit
-# import matplotlib.pyplot as plt
 # pyplot is not thread safe since it rely on global parameters: https://github.com/matplotlib/matplotlib/issues/757
 from matplotlib.figure import Figure
 from matplotlib.artist import setp
@@ -17,6 +13,9 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.dates as mdates
 from matplotlib import colors, cm
 from matplotlib.backends.backend_pdf import PdfPages
+import numpy as np
+from scipy.stats import chisquare, norm  # , mstats
+# from scipy.optimize import curve_fit
 
 
 def plot_tdc_event(points, filename=None):
@@ -161,7 +160,7 @@ def plot_fancy_occupancy(hist, z_max=None, filename=None):
     setp(axHistx.get_xticklabels() + axHisty.get_yticklabels(), visible=False)
     hight = np.ma.sum(hist, axis=0)
 
-    axHistx.bar(left=range(1, 81), height=hight, align='center', linewidth=0)
+    axHistx.bar(x=range(1, 81), height=hight, align='center', linewidth=0)
     axHistx.set_xlim((0.5, 80.5))
     if hist.all() is np.ma.masked:
         axHistx.set_ylim((0, 1))
@@ -170,7 +169,7 @@ def plot_fancy_occupancy(hist, z_max=None, filename=None):
     axHistx.set_ylabel('#')
     width = np.ma.sum(hist, axis=1)
 
-    axHisty.barh(bottom=range(1, 337), width=width, align='center', linewidth=0)
+    axHisty.barh(y=range(1, 337), width=width, align='center', linewidth=0)
     axHisty.set_ylim((336.5, 0.5))
     if hist.all() is np.ma.masked:
         axHisty.set_xlim((0, 1))
@@ -386,13 +385,13 @@ def plot_tot(hist, title=None, filename=None):
 
 
 def plot_tdc(hist, title=None, filename=None):
-    masked_hist, indices = hist_quantiles(hist, prob=(0., 0.99), return_indices=True)
-    plot_1d_hist(hist=masked_hist, title=('TDC Hit distribution' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, plot_range=range(*indices), x_axis_title='hit TDC', y_axis_title='#', color='b', filename=filename)
+    masked_hist, indices = hist_quantiles(hist, prob=(0.0, 0.99), return_indices=True)
+    plot_1d_hist(hist=masked_hist, title=('TDC Hit distribution' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, plot_range=range(indices[0], indices[1] + 1), x_axis_title='hit TDC', y_axis_title='#', color='b', filename=filename)
 
 
 def plot_tdc_counter(hist, title=None, filename=None):
-    masked_hist, indices = hist_quantiles(hist, prob=(0., 0.99), return_indices=True)
-    plot_1d_hist(hist=masked_hist, title=('TDC counter distribution' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, plot_range=range(*indices), x_axis_title='TDC value', y_axis_title='#', color='b', filename=filename)
+    masked_hist, indices = hist_quantiles(hist, prob=(0.0, 0.99), return_indices=True)
+    plot_1d_hist(hist=masked_hist, title=('TDC counter distribution' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, plot_range=range(indices[0], indices[1] + 1), x_axis_title='TDC value', y_axis_title='#', color='b', filename=filename)
 
 
 def plot_event_errors(hist, title=None, filename=None):
@@ -430,7 +429,7 @@ def plot_scurves(occupancy_hist, scan_parameters, title='S-curves', ylabel='Occu
     n_pixel = occupancy_hist.shape[0] * occupancy_hist.shape[1]
     scan_parameters = np.array(scan_parameters)
     if extend_bin_width and len(scan_parameters) >= 2:
-        # adding mirror scan parameter for plotting range -0.5 ... 
+        # adding mirror scan parameter for plotting range -0.5 ...
         scan_parameters = np.r_[-scan_parameters[0] - 1.0, scan_parameters]
         dist = (scan_parameters[1:] - scan_parameters[:-1].astype(np.float))
         min_dist = np.minimum(np.r_[dist[0], dist[:]], np.r_[dist[:], dist[-1]]) / 2
@@ -567,14 +566,15 @@ def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=No
     fig = Figure()
     FigureCanvas(fig)
     ax = fig.add_subplot(111)
-    if plot_range is None or max(plot_range) > len(hist):
+    hist = np.array(hist)
+    if plot_range is None:
         plot_range = range(0, len(hist))
-    if not plot_range:
-        plot_range = [0]
+    plot_range = np.array(plot_range)
+    plot_range = plot_range[plot_range < len(hist)]
     if yerr is not None:
-        ax.bar(left=plot_range, height=hist[plot_range], color=color, align='center', yerr=yerr)
+        ax.bar(x=plot_range, height=hist[plot_range], color=color, align='center', yerr=yerr)
     else:
-        ax.bar(left=plot_range, height=hist[plot_range], color=color, align='center')
+        ax.bar(x=plot_range, height=hist[plot_range], color=color, align='center')
     ax.set_xlim((min(plot_range) - 0.5, max(plot_range) + 0.5))
     ax.set_title(title)
     if x_axis_title is not None:
@@ -582,7 +582,7 @@ def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=No
     if y_axis_title is not None:
         ax.set_ylabel(y_axis_title)
     if x_ticks is not None:
-        ax.set_xticks(range(0, len(hist[:])) if plot_range is None else plot_range)
+        ax.set_xticks(plot_range)
         ax.set_xticklabels(x_ticks)
         ax.tick_params(which='both', labelsize=8)
     if np.allclose(hist, 0.0):
@@ -715,7 +715,7 @@ def create_1d_hist(ax, hist, title=None, x_axis_title=None, y_axis_title=None, b
 #         return amplitude * np.exp(- (x - mu)**2.0 / (2.0 * sigma**2.0))
 #         mu, sigma = p
 #         return 1.0 / (sigma * np.sqrt(2.0 * np.pi)) * np.exp(- (x - mu)**2.0 / (2.0 * sigma**2.0))
-# 
+#
 #     def chi_square(observed_values, expected_values):
 #         return (chisquare(observed_values, f_exp=expected_values))[0]
 #         # manual calculation

@@ -10,11 +10,11 @@ first pulser.
     - a trigger signal follows a trigger signal without another TDC signal
 254: trigger rising edge is > 2^8 / (640 MHz) = 400 ns before TDC edge
 '''
-
-import time
 import logging
-import numpy as np
+import time
+
 from matplotlib.backends.backend_pdf import PdfPages
+import numpy as np
 
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.daq.readout_utils import is_tdc_word

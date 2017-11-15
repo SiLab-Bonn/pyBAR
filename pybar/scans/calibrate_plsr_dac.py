@@ -5,16 +5,18 @@ Note:
  * Use the same enable_shift_masks and mask_steps value for all other scans (e.g. tuning).
  * In case of FE-I4A, deselect outermost double columns (0 and 39): change 'Colpr_Addr' scan parameter to range(1, 39).
 """
-import numpy as np
-import tables as tb
-# from pylab import polyfit, poly1d
 import logging
-import progressbar
+
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+import numpy as np
+import tables as tb
 from scipy import interpolate
 from scipy import optimize
+# from pylab import polyfit, poly1d
+
+import progressbar
 
 from pybar.analysis.analysis_utils import consecutive
 from pybar.fei4_run_base import Fei4RunBase

@@ -425,14 +425,9 @@ set_property SLEW SLOW [get_ports CMD_DATA]
 set_property IOSTANDARD LVCMOS33 [get_ports CMD_DATA]
 
 # FE-I4_rx signals
-<<<<<<< .mine
-set_property SLEW SLOW [get_ports DOBOUT]
-set_property IOSTANDARD LVCMOS33 [get_ports DOBOUT]
-=======
 set_property SLEW SLOW [get_ports DOBOUT[3]]
 set_property IOSTANDARD LVCMOS33 [get_ports DOBOUT[3]]
 set_property PACKAGE_PIN U25 [get_ports DOBOUT[3]]
->>>>>>> .r1946
 
 set_property SLEW SLOW [get_ports DOBOUT[2]]
 set_property IOSTANDARD LVCMOS33 [get_ports DOBOUT[2]]

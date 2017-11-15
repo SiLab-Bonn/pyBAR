@@ -5,10 +5,13 @@ from __future__ import division
 import logging
 import os
 import time
-import progressbar
+import zlib
+
 import numpy as np
 import tables as tb
 import re
+
+import progressbar
 
 from pybar_fei4_interpreter import data_struct
 from pybar_fei4_interpreter.data_histograming import PyDataHistograming
@@ -64,7 +67,7 @@ def analyze_beam_spot(scan_base, combine_n_readouts=1000, chunk_size=10000000, p
 
             # loop over the selected events
             for parameter_index, parameter_range in enumerate(parameter_ranges):
-                logging.debug('Analyze time stamp ' + str(parameter_range[0]) + ' and data from events = [' + str(parameter_range[2]) + ',' + str(parameter_range[3]) + '[ ' + str(int(float(float(parameter_index) / float(len(parameter_ranges)) * 100.))) + '%')
+                logging.debug('Analyze time stamp ' + str(parameter_range[0]) + ' and data from events = [' + str(parameter_range[2]) + ',' + str(parameter_range[3]) + '[ ' + str(int(float(float(parameter_index) / float(len(parameter_ranges)) * 100.0))) + '%')
                 analyze_data.reset()  # resets the data of the last analysis
 
                 # loop over the hits in the actual selected events with optimizations: determine best chunk size, start word index given
@@ -128,7 +131,7 @@ def analyze_event_rate(scan_base, combine_n_readouts=1000, time_line_absolute=Tr
                 if not start_time_set:
                     start_time = parameter_ranges[0, 0]
                     start_time_set = True
-                time_stamp.extend((parameter_ranges[:-1, 0] - start_time) / 60.)
+                time_stamp.extend((parameter_ranges[:-1, 0] - start_time) / 60.0)
             rate.extend((parameter_ranges[:-1, 3] - parameter_ranges[:-1, 2]) / (parameter_ranges[:-1, 1] - parameter_ranges[:-1, 0]))  # d#Events / dt
     if time_line_absolute:
         plotting.plot_scatter_time(time_stamp, rate, title='Event rate [Hz]', marker_style='o', filename=output_pdf)
@@ -195,7 +198,7 @@ def analyse_n_cluster_per_event(scan_base, include_no_cluster=False, time_line_a
 
             # loop over the selected events
             for parameter_index, parameter_range in enumerate(parameter_ranges):
-                logging.debug('Analyze time stamp ' + str(parameter_range[0]) + ' and data from events = [' + str(parameter_range[2]) + ',' + str(parameter_range[3]) + '[ ' + str(int(float(float(parameter_index) / float(len(parameter_ranges)) * 100.))) + '%')
+                logging.debug('Analyze time stamp ' + str(parameter_range[0]) + ' and data from events = [' + str(parameter_range[2]) + ',' + str(parameter_range[3]) + '[ ' + str(int(float(float(parameter_index) / float(len(parameter_ranges)) * 100.0))) + '%')
                 analyze_data.reset()  # resets the data of the last analysis
 
                 # loop over the cluster in the actual selected events with optimizations: determine best chunk size, start word index given
@@ -224,7 +227,7 @@ def analyse_n_cluster_per_event(scan_base, include_no_cluster=False, time_line_a
                     if not start_time_set:
                         start_time = parameter_ranges[0, 0]
                         start_time_set = True
-                    time_stamp.append((parameter_range[0] - start_time) / 60.)
+                    time_stamp.append((parameter_range[0] - start_time) / 60.0)
                 n_cluster.append(hist)
             progress_bar.finish()
             if total_cluster != 0:
@@ -385,7 +388,7 @@ def analyze_cluster_size_per_scan_parameter(input_file_hits, output_file_cluster
                         progress_bar.start()
                         for parameter_index, parameter_range in enumerate(parameter_ranges):  # loop over the selected events
                             analyze_data.reset()  # resets the data of the last analysis
-                            logging.debug('Analyze GDAC = ' + str(parameter_range[0]) + ' ' + str(int(float(float(parameter_index) / float(len(parameter_ranges)) * 100.))) + '%')
+                            logging.debug('Analyze GDAC = ' + str(parameter_range[0]) + ' ' + str(int(float(float(parameter_index) / float(len(parameter_ranges)) * 100.0))) + '%')
                             start_event_number = parameter_range[1]
                             stop_event_number = parameter_range[2]
                             logging.debug('Data from events = [' + str(start_event_number) + ',' + str(stop_event_number) + '[')
@@ -498,10 +501,10 @@ def analyze_hits_per_scan_parameter(analyze_data, scan_parameters=None, chunk_si
 
     if analyze_data.out_file_h5 is None or analyze_data.out_file_h5.isopen == 0:
         in_hit_file_h5 = tb.open_file(analyze_data._analyzed_data_file, 'r+')
-        opened_file = True
+        close_file = True
     else:
         in_hit_file_h5 = analyze_data.out_file_h5
-        opened_file = False
+        close_file = False
 
     meta_data = in_hit_file_h5.root.meta_data[:]  # get the meta data table
     try:
@@ -535,7 +538,7 @@ def analyze_hits_per_scan_parameter(analyze_data, scan_parameters=None, chunk_si
         analyze_data._create_additional_cluster_data(safe_to_file=False)
         yield analyze_data, file_name
 
-    if opened_file:
+    if close_file:
         in_hit_file_h5.close()
 
 if __name__ == "__main__":

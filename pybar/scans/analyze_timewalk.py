@@ -1,18 +1,17 @@
 """A script that takes external trigger scan data where the TDC + TDC time stamp were activated and creates
 time walk plots from the data.
 """
-
-import tables as tb
-import numpy as np
 import logging
-import progressbar
-
-from pybar.analysis import analysis_utils
 
 from matplotlib import pyplot as plt
 from matplotlib import cm
+import tables as tb
+import numpy as np
 from scipy.interpolate import interp1d
 
+import progressbar
+
+from pybar.analysis import analysis_utils
 
 def plsr_dac_to_charge(plsr_dac):
     return 72.16 * plsr_dac + 2777.63
@@ -67,7 +66,7 @@ def get_time_walk_hist(hit_file, charge_calibration, event_status_select_mask, e
 
             progress_bar.update(n_hits)
         progress_bar.finish()
-        logging.info('Selected %d of %d hits = %1.1f percent', n_selected_hits, n_hits, float(n_selected_hits) / float(n_hits) * 100.)
+        logging.info('Selected %d of %d hits = %1.1f percent', n_selected_hits, n_hits, float(n_selected_hits) / float(n_hits) * 100.0)
     return timewalk, xedges, yedges
 
 
@@ -103,7 +102,7 @@ def plot_timewalk(hist, xedges, yedges, title, max_charge, max_time_walk=50):
     percentages = []  # Percentages of hits for 5/10/15/... ns timewalk
     n_hits = np.ma.sum(hist)
     for timewalk_bin in range(0, max_time_walk + 1, 5):
-        percentages.append(np.round(float(np.ma.sum(hist[:, np.where(timewalks <= zero_timewalk + timewalk_bin)])) / n_hits * 100., 1))
+        percentages.append(np.round(float(np.ma.sum(hist[:, np.where(timewalks <= zero_timewalk + timewalk_bin)])) / n_hits * 100.0, 1))
 
     mean -= zero_timewalk  # Time walk is relative
 

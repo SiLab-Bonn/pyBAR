@@ -3,13 +3,12 @@ import glob
 from threading import RLock
 import os.path
 from os import remove
-from operator import itemgetter
+from docutils.transforms.misc import ClassAttribute
 
 import tables as tb
 import zmq
 
 from pybar_fei4_interpreter.data_struct import MetaTableV2 as MetaTable, generate_scan_parameter_description
-from pybar.daq.readout_utils import save_configuration_dict
 
 
 def send_meta_data(socket, conf, name):
@@ -46,7 +45,7 @@ def send_data(socket, data, scan_parameters={}, name='ReadoutData'):
         pass
 
 
-def open_raw_data_file(filename, mode="w", title="", register=None, conf=None, run_conf=None, scan_parameters=None, context=None, socket_address=None):
+def open_raw_data_file(filename, mode="w", title="", scan_parameters=None, context=None, socket_address=None):
     '''Mimics pytables.open_file() and stores the configuration and run configuration
 
     Returns:
@@ -57,7 +56,7 @@ def open_raw_data_file(filename, mode="w", title="", register=None, conf=None, r
         # do something here
         raw_data_file.append(self.readout.data, scan_parameters={scan_parameter:scan_parameter_value})
     '''
-    return RawDataFile(filename=filename, mode=mode, title=title, register=register, conf=conf, run_conf=run_conf, scan_parameters=scan_parameters, context=context, socket_address=socket_address)
+    return RawDataFile(filename=filename, mode=mode, title=title, scan_parameters=scan_parameters, context=context, socket_address=socket_address)
 
 
 class RawDataFile(object):
@@ -67,7 +66,7 @@ class RawDataFile(object):
     '''Raw data file object. Saving data queue to HDF5 file.
     '''
 
-    def __init__(self, filename, mode="w", title='', register=None, conf=None, run_conf=None, scan_parameters=None, context=None, socket_address=None):  # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created):
+    def __init__(self, filename, mode="w", title='', scan_parameters=None, context=None, socket_address=None):  # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created):
         self.lock = RLock()
         if os.path.splitext(filename)[1].strip().lower() != '.h5':
             self.base_filename = filename
@@ -92,7 +91,6 @@ class RawDataFile(object):
             logging.info('Creating socket connection to server %s', socket_address)
             self.socket = context.socket(zmq.PUB)  # publisher socket
             self.socket.bind(socket_address)
-            send_meta_data(self.socket, None, name='Reset')  # send reset to indicate a new scan
         else:
             self.socket = None
 
@@ -107,19 +105,6 @@ class RawDataFile(object):
         self.filenames = {self.curr_filename: 0}
         self.open(self.curr_filename, mode, title)
 
-        if register is not None:
-            register.save_configuration(self.h5_file)
-            if self.socket:
-                global_register_config = {}
-                for global_reg in sorted(register.get_global_register_objects(readonly=False), key=itemgetter('name')):
-                    global_register_config[global_reg['name']] = global_reg['value']
-                send_meta_data(self.socket, global_register_config, name='GlobalRegisterConf')  # send run info
-        if conf is not None:
-            save_configuration_dict(self.h5_file, 'conf', conf)
-        if run_conf is not None:
-            save_configuration_dict(self.h5_file, 'run_conf', run_conf)
-            if self.socket:
-                send_meta_data(self.socket, run_conf, name='RunConf')
 
     def __enter__(self):
         return self
@@ -136,6 +121,7 @@ class RawDataFile(object):
         else:
             logging.info('Opening new raw data file: %s', filename)
         if self.socket:
+            send_meta_data(self.socket, None, name='Reset')  # send reset to indicate a new scan
             send_meta_data(self.socket, os.path.basename(filename), name='Filename')
 
         filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
@@ -238,6 +224,20 @@ class RawDataFile(object):
             self.meta_data_table.flush()
             if self.scan_parameters:
                 self.scan_param_table.flush()
+
+    @classmethod
+    def from_raw_data_file(cls, input_file, output_filename, mode="a"):
+        if os.path.splitext(output_filename)[1].strip().lower() != '.h5':
+            output_filename = os.path.splitext(output_filename)[0] + '.h5'
+        nodes = input_file.list_nodes('/', classname='Group')
+        with tb.open_file(output_filename, mode=mode, title=output_filename) as h5_file:  # append, since file can already exists when scan parameters are jumping back and forth
+            for node in nodes:
+                input_file.copy_node(node, h5_file.root, overwrite=True, recursive=True)
+        try:
+            scan_parameters = input_file.root.scan_parameters.fields
+        except tb.exceptions.NoSuchNodeError:
+            scan_parameters = {}
+        return cls(output_filename, mode="a", scan_parameters=scan_parameters)
 
 
 def save_raw_data_from_data_queue(data_queue, filename, mode='a', title='', scan_parameters=None):  # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created

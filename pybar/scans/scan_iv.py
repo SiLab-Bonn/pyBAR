@@ -1,12 +1,14 @@
 """A script that changes the voltage in a certain range and measures the current needed for IV curves. Maximum voltage and current limits
 can be set for device protection.
 """
+import logging
+import time
+
+import matplotlib.pyplot as plt
 import numpy as np
 import tables as tb
-import logging
+
 import progressbar
-import matplotlib.pyplot as plt
-import time
 
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.run_manager import RunManager

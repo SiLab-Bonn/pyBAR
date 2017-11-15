@@ -59,7 +59,7 @@ def array_close(array_1, array_2, rtol=1.e-5, atol=1.e-8):
     return np.all(results)
 
 
-def compare_h5_files(first_file, second_file, expected_nodes=None, detailed_comparison=True, exact=True, rtol=1.e-5, atol=1.e-8):
+def compare_h5_files(first_file, second_file, node_names=None, detailed_comparison=True, exact=True, rtol=1.e-5, atol=1.e-8, chunk_size=1000000):
     '''Takes two hdf5 files and check for equality of all nodes.
     Returns true if the node data is equal and the number of nodes is the number of expected nodes.
     It also returns a error string containing the names of the nodes that are not equal.
@@ -69,10 +69,10 @@ def compare_h5_files(first_file, second_file, expected_nodes=None, detailed_comp
     first_file : string
         Path to the first file.
     second_file : string
-        Path to the first file.
-    expected_nodes : Int
-        The number of nodes expected in the second_file. If not specified the number of nodes expected in the second_file equals
-        the number of nodes in the first file.
+        Path to the second file.
+    node_names : list, tuple
+        Iterable of node names that are required to exist and will be compared.
+        If None, compare all existing nodes and fail if nodes are not existing.
     detailed_comparison : boolean
         Print reason why the comparison failed
     exact : boolean
@@ -83,41 +83,64 @@ def compare_h5_files(first_file, second_file, expected_nodes=None, detailed_comp
             The relative tolerance parameter (see Notes).
         atol : float
             The absolute tolerance parameter (see Notes).
+
     Returns
     -------
-    bool, string
+    (bool, string)
     '''
     checks_passed = True
     error_msg = ""
     with tb.open_file(first_file, 'r') as first_h5_file:
         with tb.open_file(second_file, 'r') as second_h5_file:
-            n_expected_nodes = sum(1 for _ in enumerate(first_h5_file.root)) if expected_nodes is None else expected_nodes  # set the number of expected nodes
-            n_nodes = sum(1 for _ in enumerate(second_h5_file.root))  # calculated the number of nodes
-            if n_nodes != n_expected_nodes:
-                checks_passed = False
-                error_msg += 'The number of nodes in the file is wrong.\n'
-            for node in second_h5_file.root:  # loop over all nodes and compare each node, do not abort if one node is wrong
-                try:
-                    expected_data = first_h5_file.get_node(first_h5_file.root, node.name)[:]
-                    data = second_h5_file.get_node(second_h5_file.root, node.name)[:]
+            fist_file_nodes = [node.name for node in first_h5_file.root]  # get node names
+            second_file_nodes = [node.name for node in second_h5_file.root]  # get node names
+            if node_names is None:
+                additional_first_file_nodes = set(fist_file_nodes) - set(second_file_nodes)
+                additional_second_file_nodes = set(second_file_nodes) - set(fist_file_nodes)
+                if additional_first_file_nodes:
+                    checks_passed = False
+                    error_msg += 'File %s has additional nodes: %s\n' % (first_file, ', '.join(additional_first_file_nodes))
+                if additional_second_file_nodes:
+                    checks_passed = False
+                    error_msg += 'File %s has additional nodes: %s\n' % (second_file, ', '.join(additional_second_file_nodes))
+                common_nodes = set(fist_file_nodes) & set(second_file_nodes)
+            else:
+                missing_first_file_nodes = set(node_names) - set(fist_file_nodes)
+                if missing_first_file_nodes:
+                    checks_passed = False
+                    error_msg += 'File %s is missing nodes: %s\n' % (first_file, ', '.join(missing_first_file_nodes))
+                missing_second_file_nodes = set(node_names) - set(second_file_nodes)
+                if missing_second_file_nodes:
+                    checks_passed = False
+                    error_msg += 'File %s is missing nodes: %s\n' % (second_file, ', '.join(missing_second_file_nodes))
+                common_nodes = (set(fist_file_nodes) & set(second_file_nodes)) & set(node_names)
+            for node_name in common_nodes:  # loop over all nodes and compare each node, do not abort if one node is wrong
+                nrows = first_h5_file.get_node(first_h5_file.root, node_name).nrows
+                index_start = 0
+                while index_start < nrows:
+                    # reduce memory footprint by taken array dimension into account
+                    read_nrows = max(1, int(chunk_size / np.prod(first_h5_file.get_node(first_h5_file.root, node_name).shape[1:])))
+                    index_stop = index_start + read_nrows
+                    first_file_data = first_h5_file.get_node(first_h5_file.root, node_name).read(index_start, index_stop)
+                    second_file_data = second_h5_file.get_node(second_h5_file.root, node_name).read(index_start, index_stop)
                     if exact:
                         try:
-                            np.testing.assert_array_equal(expected_data, data)
+                            np.testing.assert_array_equal(first_file_data, second_file_data)
                         except AssertionError as e:
                             checks_passed = False
-                            error_msg += node.name
+                            error_msg += node_name
                             if detailed_comparison:
-                                error_msg += get_array_differences(expected_data, data)
+                                error_msg += get_array_differences(first_file_data, second_file_data)
                                 error_msg += str(e)
                             error_msg += '\n'
+                            break
                     else:
-                        if not array_close(expected_data, data, rtol, atol):
+                        if not array_close(first_file_data, second_file_data, rtol, atol):
                             checks_passed = False
-                            error_msg += node.name
+                            error_msg += node_name
                             if detailed_comparison:
-                                error_msg += get_array_differences(expected_data, data)
+                                error_msg += get_array_differences(first_file_data, second_file_data)
                             error_msg += '\n'
-                except tb.NoSuchNodeError:
-                    checks_passed = False
-                    error_msg += 'Unknown node ' + node.name + '\n'
+                            break
+                    index_start += read_nrows
     return checks_passed, error_msg

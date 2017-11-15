@@ -37,7 +37,7 @@ class ExtInjScan(ScanBase):
             analyze_raw_data.interpreter.set_warning_output(False)
             analyze_raw_data.interpret_word_table()
             analyze_raw_data.interpreter.print_summary()
-            analyze_raw_data.plot_histograms(scan_data_filename=self.scan_data_filename)
+            analyze_raw_data.plot_histograms(pdf_filename=self.scan_data_filename)
 
 if __name__ == "__main__":
     import configuration
@@ -45,11 +45,11 @@ if __name__ == "__main__":
     scan.start(run_configure=True, run_analyze=True, use_thread=False, **local_configuration)
     scan.stop()
 
-# 
+#
 # # Chip Parameters
 # Flavor FEI4B
 # Chip_ID 8 Broadcast = 8
-# 
+#
 # # Global Registers
 # Amp2Vbn 79
 # Amp2Vbp 85
@@ -139,7 +139,7 @@ if __name__ == "__main__":
 # VrefDigTune 100 digital voltage (1.2V)
 # Vthin_AltCoarse 3
 # Vthin_AltFine 240
-# 
+#
 # # Pixel Registers
 # C_High 1 C:\pyats\trunk\host\config\fei4default\masks\c_high.dat
 # C_Low 1 C:\pyats\trunk\host\config\fei4default\masks\c_low.dat
@@ -148,7 +148,7 @@ if __name__ == "__main__":
 # FDAC 7 C:\pyats\trunk\host\config\fei4default\fdacs\fdac.dat
 # Imon 0 C:\pyats\trunk\host\config\fei4default\masks\imon.dat
 # TDAC 15 C:\pyats\trunk\host\config\fei4default\tdacs\tdac.dat
-# 
+#
 # # Calibration Parameters
 # C_Inj_Low 0
 # C_Inj_High 0

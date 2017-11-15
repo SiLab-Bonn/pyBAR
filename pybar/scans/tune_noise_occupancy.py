@@ -1,8 +1,9 @@
 import logging
-import numpy as np
-import tables as tb
-import progressbar
 from time import time
+
+import numpy as np
+
+import progressbar
 
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.fei4.register_utils import make_box_pixel_mask_from_col_row, invert_pixel_mask
@@ -11,7 +12,7 @@ from pybar.run_manager import RunManager
 from pybar.analysis.plotting.plotting import plot_occupancy, plot_fancy_occupancy
 
 
-class NoiseOccupancyScan(Fei4RunBase):
+class NoiseOccupancyTuning(Fei4RunBase):
     '''Noise occupancy scan detecting and masking noisy pixels.
 
     Note
@@ -108,8 +109,8 @@ class NoiseOccupancyScan(Fei4RunBase):
             analyze_raw_data.interpret_word_table()
             analyze_raw_data.plot_histograms()
             analyze_raw_data.interpreter.print_summary()
-            with tb.open_file(analyze_raw_data._analyzed_data_file, 'r') as out_file_h5:
-                occ_hist = out_file_h5.root.HistOcc[:, :, 0].T
+
+            occ_hist = analyze_raw_data.out_file_h5.root.HistOcc[:, :, 0].T
             self.occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
             # noisy pixels are set to 1
             self.occ_mask[occ_hist > self.abs_occ_limit] = 1
@@ -141,4 +142,4 @@ class NoiseOccupancyScan(Fei4RunBase):
                 plot_occupancy(self.register.get_pixel_register_value(mask).T, title='%s Mask' % mask_name, z_max=1, filename=analyze_raw_data.output_pdf)
 
 if __name__ == "__main__":
-    RunManager('../configuration.yaml').run_run(NoiseOccupancyScan)
+    RunManager('../configuration.yaml').run_run(NoiseOccupancyTuning)
