@@ -16,21 +16,22 @@ Although this is a real measurement this seems NOT to be a feature of the analog
 PlsrDAC injection circuit. Because the direct hit delay measurements with a trigger + TDC time stamp do not show this behavior.
 '''
 import logging
-import progressbar
 import re
-import tables as tb
-import numpy as np
 import multiprocessing as mp
 import math
 import warnings
 
+from matplotlib.backends.backend_pdf import PdfPages
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+import tables as tb
+import numpy as np
 from scipy.optimize import curve_fit, OptimizeWarning
 from scipy.interpolate import interp1d
 from scipy.special import erf
 warnings.simplefilter("ignore", OptimizeWarning)  # deactivate : Covariance warning
-from matplotlib.backends.backend_pdf import PdfPages
-from matplotlib.figure import Figure
-from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+
+import progressbar
 
 from pybar_fei4_interpreter.analysis_utils import hist_1d_index, hist_3d_index
 

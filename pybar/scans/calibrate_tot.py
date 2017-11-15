@@ -2,6 +2,7 @@
 The ToT calibration (mean ToT for each scan step) per pixel can be accessed via HistMeanTot from the interpreted hits file.
 """
 import logging
+import zlib
 
 import numpy as np
 import tables as tb

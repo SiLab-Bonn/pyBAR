@@ -13,11 +13,12 @@ Step 4 Analyze the injected charge:
     Here the data from the previous steps is used to determine the injected charge. Plots of the results are shown.
 '''
 import logging
-import numpy as np
-import tables as tb
 import os.path
+
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
+import numpy as np
+import tables as tb
 
 from pybar.analysis import analysis
 from pybar.analysis import analysis_utils

@@ -1,8 +1,8 @@
 ''' Script to check the correctness of the analysis. The analysis is done on raw data and all results are compared to a recorded analysis.
 '''
-
 import unittest
 import os
+import zlib
 
 import tables as tb
 import numpy as np

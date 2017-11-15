@@ -14,15 +14,17 @@ Settings for Tektronix that should be set before running this script:
 - full band width
 - be aware: first 2500 data points of waveform should be read (read start/stop = 0/2500)
 """
+import logging
 import time
 import ast
+
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 import numpy as np
 import tables as tb
 from pylab import polyfit, poly1d
-from matplotlib.backends.backend_pdf import PdfPages
-import logging
+
 import progressbar
-import matplotlib.pyplot as plt
 
 from pybar.run_manager import RunManager
 from pybar.scans.scan_analog import AnalogScan

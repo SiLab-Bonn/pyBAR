@@ -1,6 +1,7 @@
 import logging
-import numpy as np
+
 from matplotlib.backends.backend_pdf import PdfPages
+import numpy as np
 
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.fei4.register_utils import scan_loop

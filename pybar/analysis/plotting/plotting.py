@@ -5,10 +5,6 @@ import math
 from datetime import datetime
 # import itertools
 
-import numpy as np
-from scipy.stats import chisquare, norm  # , mstats
-# from scipy.optimize import curve_fit
-# import matplotlib.pyplot as plt
 # pyplot is not thread safe since it rely on global parameters: https://github.com/matplotlib/matplotlib/issues/757
 from matplotlib.figure import Figure
 from matplotlib.artist import setp
@@ -17,6 +13,9 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.dates as mdates
 from matplotlib import colors, cm
 from matplotlib.backends.backend_pdf import PdfPages
+import numpy as np
+from scipy.stats import chisquare, norm  # , mstats
+# from scipy.optimize import curve_fit
 
 
 def plot_tdc_event(points, filename=None):

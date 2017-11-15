@@ -3,9 +3,11 @@ The TDC method gives higher precision charge information than the TOT method. Th
 """
 import logging
 import os.path
+import zlib
 
 import numpy as np
 import tables as tb
+
 import progressbar
 
 from pybar.fei4.register_utils import make_pixel_mask_from_col_row, make_box_pixel_mask_from_col_row

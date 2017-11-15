@@ -1,8 +1,10 @@
 'Simple example how to draw hit maps from a raw data file with data from multiple chips. No event builing is done, thus no feedback about FE status!'
 import os.path
+
+from matplotlib.backends.backend_pdf import PdfPages
 import tables as tb
 import numpy as np
-from matplotlib.backends.backend_pdf import PdfPages
+
 from pybar.daq import readout_utils
 from pybar.analysis.plotting import plotting
 

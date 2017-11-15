@@ -5,10 +5,13 @@ from __future__ import division
 import logging
 import os
 import time
-import progressbar
+import zlib
+
 import numpy as np
 import tables as tb
 import re
+
+import progressbar
 
 from pybar_fei4_interpreter import data_struct
 from pybar_fei4_interpreter.data_histograming import PyDataHistograming

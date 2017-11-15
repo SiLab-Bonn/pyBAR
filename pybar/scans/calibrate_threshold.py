@@ -3,15 +3,15 @@ To save time the PlsrDAC start position is the start position determined from th
 scan parameter values should be chosen in a ways that the threshold increases for each step.
 After the data taking the data is analyzed and the calibration is written into a h5 file.
 """
-
-import os
-import tables as tb
-import numpy as np
 import logging
+import os
 import ast
-import progressbar
 
 from matplotlib.backends.backend_pdf import PdfPages
+import tables as tb
+import numpy as np
+
+import progressbar
 
 from pybar_fei4_interpreter import data_struct
 

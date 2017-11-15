@@ -1,4 +1,6 @@
 import logging
+import zlib
+
 import numpy as np
 import tables as tb
 from scipy.interpolate import interp1d

@@ -1,5 +1,6 @@
 import logging
 import inspect
+import zlib
 
 import tables as tb
 import numpy as np

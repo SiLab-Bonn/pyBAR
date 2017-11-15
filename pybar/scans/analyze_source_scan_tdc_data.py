@@ -12,16 +12,17 @@ import logging
 import re
 import os.path
 
-import progressbar
-import tables as tb
-import numpy as np
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib import colors, cm
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.backends.backend_pdf import PdfPages
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+import tables as tb
+import numpy as np
 from scipy.interpolate import interp1d
 from scipy.ndimage.interpolation import shift
+
+import progressbar
 
 from pybar_fei4_interpreter import analysis_utils as fast_analysis_utils
 

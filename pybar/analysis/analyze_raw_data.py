@@ -7,12 +7,12 @@ import os
 import multiprocessing as mp
 from functools import partial
 
+from matplotlib.backends.backend_pdf import PdfPages
 import tables as tb
 from tables import dtype_from_descr, Col
 import numpy as np
 from scipy.optimize import curve_fit, OptimizeWarning
 from scipy.special import erf
-from matplotlib.backends.backend_pdf import PdfPages
 
 import progressbar
 
@@ -286,7 +286,7 @@ class AnalyzeRawData(object):
 
     @chunk_size.setter
     def chunk_size(self, value):
-        self.interpreter.set_hit_array_size(2 * value)  # worst case: one raw data word becoming 2 hit words 
+        self.interpreter.set_hit_array_size(2 * value)  # worst case: one raw data word becoming 2 hit words
         self._chunk_size = value
 
     @property

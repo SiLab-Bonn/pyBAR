@@ -1,4 +1,5 @@
 import logging
+import zlib
 
 import tables as tb
 import numpy as np

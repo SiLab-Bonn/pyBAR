@@ -1,8 +1,11 @@
 import logging
-import numpy as np
-import progressbar
-import tables as tb
 from threading import Timer
+import zlib
+
+import numpy as np
+import tables as tb
+
+import progressbar
 
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.fei4.register_utils import invert_pixel_mask, make_box_pixel_mask_from_col_row
@@ -98,9 +101,9 @@ class ExtTriggerScan(Fei4RunBase):
     def analyze(self):
 #         #own part for a splitter of the raw data
 #         ndev=range(1, 5)
-# 
+#
 #         with tb.open_file(raw_data_file=self.output_filename, mode="r") as in_file_h5:
-# 
+#
 #             if self.interpreter.meta_table_v2:
 #                 index_start = in_file_h5.root.meta_data.read(field='index_start')
 #                 index_stop = in_file_h5.root.meta_data.read(field='index_stop')
@@ -108,13 +111,13 @@ class ExtTriggerScan(Fei4RunBase):
 #                 index_start = in_file_h5.root.meta_data.read(field='start_index')
 #                 index_stop = in_file_h5.root.meta_data.read(field='stop_index')
 #             readout_slices = np.column_stack((index_start, index_stop))
-# 
+#
 #             for i in ndev:
 #                 out_files = []
 #                 out_files.append(RawDataFile.from_raw_data_file(input_file=in_file_h5, output_filename=self.output_filename + "_channel%d" % i, mode="w"))
 #                 filters = []
 #                 filters.append(readout_utils.logical_or(readout_utils.is_trigger_word, readout_utils.logical_or(readout_utils.logical_and(readout_utils.is_fe_word, readout_utils.is_data_from_channel(i)), Fei4RunBase.is_tdc_from_channel)))
-# 
+#
 #             scan_parameters = in_file_h5.scan_parameters.copy()
 #             for read_out_index, (index_start, index_stop) in enumerate(readout_slices):
 #                 raw_data = in_file_h5.root.raw_data.read(index_start, index_stop)
@@ -128,7 +131,7 @@ class ExtTriggerScan(Fei4RunBase):
 #                     data_ch0[0][0][select] = np.bitwise_or(data_ch0[0][0][select], 0x40000000)
 #                     if data_ch0[0][0].size != 0:
 #                         out_files[index].append_item(data_ch0[0], scan_parameters=scan_parameters)
-# 
+#
 #         for out_file in out_files:
 #             filename = out_file.base_filename
 #             out_file.close()

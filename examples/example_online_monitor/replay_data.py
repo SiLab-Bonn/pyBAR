@@ -4,13 +4,14 @@ as it was done during data taking. This script can used to replay existing raw d
 
 The online monitor will be automatically started when calling this script.
 '''
-
-import zmq
 import time
+from subprocess import Popen
+
 import numpy as np
 import tables as tb
+
+import zmq
 import progressbar
-from subprocess import Popen
 
 from pybar.daq.fei4_raw_data import send_data
 

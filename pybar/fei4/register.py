@@ -10,9 +10,9 @@ from contextlib import contextmanager
 from importlib import import_module
 from operator import itemgetter
 
-from bitarray import bitarray
 import numpy as np
 import tables as tb
+from bitarray import bitarray
 
 from pybar.utils.utils import string_is_binary, flatten_iterable, iterable
 

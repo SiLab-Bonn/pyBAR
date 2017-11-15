@@ -1,18 +1,17 @@
 """A script that takes external trigger scan data where the TDC + TDC time stamp were activated and creates
 time walk plots from the data.
 """
-
-import tables as tb
-import numpy as np
 import logging
-import progressbar
-
-from pybar.analysis import analysis_utils
 
 from matplotlib import pyplot as plt
 from matplotlib import cm
+import tables as tb
+import numpy as np
 from scipy.interpolate import interp1d
 
+import progressbar
+
+from pybar.analysis import analysis_utils
 
 def plsr_dac_to_charge(plsr_dac):
     return 72.16 * plsr_dac + 2777.63

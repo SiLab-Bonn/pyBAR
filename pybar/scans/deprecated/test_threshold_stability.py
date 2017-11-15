@@ -2,16 +2,16 @@
 Command sequence:
     arbitrary FE command + delay + CAL + fixed delay + LVL1
 """
-
-
-import progressbar
-import tables as tb
-import numpy as np
 import logging
 import os
 import math
 from datetime import datetime
+
 from matplotlib.backends.backend_pdf import PdfPages
+import tables as tb
+import numpy as np
+
+import progressbar
 
 import configuration
 from scan_threshold_fast import FastThresholdScan

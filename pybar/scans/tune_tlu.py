@@ -1,9 +1,10 @@
 import logging
-import numpy as np
-import tables as tb
 import time
+
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
+import numpy as np
+import tables as tb
 
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.run_manager import RunManager

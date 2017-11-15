@@ -5,10 +5,11 @@
 """Plugin that provides plotting of data from the Python Bonn Atlas Readout System (pyBAR).
 """
 
-import numpy as np
 import os
+
 from PyQt4 import QtCore
 from PyQt4 import QtGui
+
 import vitables.utils
 from vitables.vtSite import PLUGINSDIR
 
@@ -19,6 +20,7 @@ try:
 except:
     print 'ERROR: Cannot load additional libraries needed for the pyBAR ViTables plugin!'
     raise
+import numpy as np
 
 __docformat__ = 'restructuredtext'
 __version__ = '1.0'

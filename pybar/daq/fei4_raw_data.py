@@ -3,12 +3,12 @@ import glob
 from threading import RLock
 import os.path
 from os import remove
+from docutils.transforms.misc import ClassAttribute
 
 import tables as tb
 import zmq
 
 from pybar_fei4_interpreter.data_struct import MetaTableV2 as MetaTable, generate_scan_parameter_description
-from docutils.transforms.misc import ClassAttribute
 
 
 def send_meta_data(socket, conf, name):

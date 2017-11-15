@@ -1,8 +1,10 @@
 import logging
+import zlib
+
 import numpy as np
 import tables as tb
-from pybar.scans.scan_fei4_self_trigger import FEI4SelfTriggerScan
 
+from pybar.scans.scan_fei4_self_trigger import FEI4SelfTriggerScan
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.fei4.register_utils import invert_pixel_mask
 from pybar.run_manager import RunManager

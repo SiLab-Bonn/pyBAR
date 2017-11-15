@@ -1,11 +1,13 @@
 # A complete prim list utilizing the TDC method to extract the Landau MPV.
 # Do not forget to set the TDC module in dut_comfiguration_mio.yaml correctly.
 import os.path
+
+from matplotlib import pyplot as plt
 import numpy as np
 import tables as tb
-import progressbar
-from matplotlib import pyplot as plt
 from scipy.optimize import curve_fit, leastsq
+
+import progressbar
 
 from pyLandau import landau
 
