@@ -119,7 +119,7 @@ def compare_h5_files(first_file, second_file, node_names=None, detailed_comparis
                 index_start = 0
                 while index_start < nrows:
                     index_stop = index_start + chunk_size
-                    first_file_data = second_h5_file.get_node(second_h5_file.root, node_name).read(index_start, index_stop)
+                    first_file_data = first_h5_file.get_node(first_h5_file.root, node_name).read(index_start, index_stop)
                     second_file_data = second_h5_file.get_node(second_h5_file.root, node_name).read(index_start, index_stop)
                     if exact:
                         try:
