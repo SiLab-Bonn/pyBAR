@@ -15,7 +15,6 @@ from pybar.analysis.analysis_utils import get_scan_parameter, get_unique_scan_pa
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.analysis.plotting.plotting import plot_scurves, plot_tot_tdc_calibration
 from pybar.daq import readout_utils
-from numpy import select
 
 
 def create_hitor_calibration(output_filename, plot_pixel_calibrations=False):
