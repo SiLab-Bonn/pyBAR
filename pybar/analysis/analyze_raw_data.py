@@ -64,14 +64,16 @@ class AnalyzeRawData(object):
 
         Parameters
         ----------
-        raw_data_file : string or tuple, list
-            A string or a list of strings with the raw data file name(s).
+        raw_data_file : string or list, tuple, set of strings
+            Filename or a list of filenames of the raw data file(s) and analyzed_data_file will be overwritten.
+            If None and if analyzed_data_file is not None, any existing analyzed_data_file will be opened, otherwise created.
             Filename extension (.h5) does not need to be provided.
         analyzed_data_file : string
             The file name of the output analyzed data file.
+            If None and if raw_data_file is not None, the filename will be generated from the raw_data_file.
             Filename extension (.h5) does not need to be provided.
         create_pdf : boolean
-            Creates interpretation plots into one PDF file. Only active if raw_data_file is given.
+            If True, plots will be written into a PDF file. Will be set to False, if raw_data_file is None.
         scan_parameter_name : string or iterable
             The name/names of scan parameter(s) to be used during analysis. If None, the scan parameter
             table is used to extract the scan parameters. Otherwise no scan parameter is set.
