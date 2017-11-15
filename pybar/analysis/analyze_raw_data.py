@@ -912,8 +912,7 @@ class AnalyzeRawData(object):
 
                     if total_words <= progress_bar.maxval:  # Otherwise exception is thrown
                         progress_bar.update(total_words)
-                if self._analyzed_data_file is not None and self._create_hit_table:
-                    hit_table.flush()
+                    self.out_file_h5.flush()
         progress_bar.finish()
         self._create_additional_data()
 
@@ -957,7 +956,7 @@ class AnalyzeRawData(object):
                         for scan_par_name in self.scan_parameters.dtype.names:
                             entry[scan_par_name] = self.scan_parameters[scan_par_name][i]
                     entry.append()
-                meta_data_out_table.flush()
+                    self.out_file_h5.flush()
                 if self.scan_parameters is not None:
                     logging.info("Save meta data with scan parameter " + scan_par_name)
             else:
@@ -1195,7 +1194,7 @@ class AnalyzeRawData(object):
                     if clusters['size'].shape[0] > 0 and np.max(clusters['size']) + 1 > self._cluster_tot_hist.shape[1]:
                         self._cluster_tot_hist.resize((self._cluster_tot_hist.shape[0], np.max(clusters['size']) + 1))
                     self._cluster_tot_hist += fast_analysis_utils.hist_2d_index(clusters['tot'], clusters['size'], shape=self._cluster_tot_hist.shape)
-
+            self.out_file_h5.flush()
             progress_bar.update(index)
 
         if n_hits != table_size:
