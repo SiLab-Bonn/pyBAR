@@ -1062,7 +1062,7 @@ class AnalyzeRawData(object):
             logging.info("No meta data provided")
             self.histogram.set_no_scan_parameter()
 
-        table_size = in_file_h5.root.Hits.shape[0]
+        table_size = in_file_h5.root.Hits.nrows
         n_hits = 0  # number of hits in actual chunk
 
         if table_size == 0:
