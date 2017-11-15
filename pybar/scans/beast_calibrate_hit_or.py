@@ -168,7 +168,7 @@ class HitOrCalibration(Fei4RunBase):
         tdc="TDC4"
     else:
         print"Channel out of range"
-    print "You are using",tdc
+    print "You are using", tdc
 
 
     def is_tdc_from_channel(self, value):  # function factory

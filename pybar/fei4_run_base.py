@@ -369,7 +369,7 @@ class Fei4RunBase(RunBase):
                 self.scan()
 
     def post_run(self):
-        # print FIFO status
+        # printing FIFO status
         try:
             self.fifo_readout.print_readout_status()
         except Exception:  # no device?
