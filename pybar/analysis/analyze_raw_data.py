@@ -65,50 +65,65 @@ class AnalyzeRawData(object):
         Parameters
         ----------
         raw_data_file : string or tuple, list
-            A string or a list of strings with the raw data file name(s). File ending (.h5)
-            does not not have to be set.
+            A string or a list of strings with the raw data file name(s).
+            Filename extension (.h5) does not need to be provided.
         analyzed_data_file : string
-            The file name of the output analyzed data file. File ending (.h5)
-            Does not have to be set.
+            The file name of the output analyzed data file.
+            Filename extension (.h5) does not need to be provided.
         create_pdf : boolean
             Creates interpretation plots into one PDF file. Only active if raw_data_file is given.
         scan_parameter_name : string or iterable
-            The name/names of scan parameter(s) to be used during analysis. If not set the scan parameter
+            The name/names of scan parameter(s) to be used during analysis. If None, the scan parameter
             table is used to extract the scan parameters. Otherwise no scan parameter is set.
         '''
         self.interpreter = PyDataInterpreter()
         self.histogram = PyDataHistograming()
 
         raw_data_files = []
-
-        if isinstance(raw_data_file, (list, set, tuple)):
+        if isinstance(raw_data_file, basestring):
+            # normalize path
+            raw_data_file = os.path.abspath(raw_data_file)
+            f_list = analysis_utils.get_data_file_names_from_scan_base(raw_data_file, sort_by_time=True, meta_data_v2=self.interpreter.meta_table_v2)
+            if f_list:
+                raw_data_files = f_list
+            else:
+                if os.path.splitext(raw_data_file)[1].lower() != ".h5":
+                    raw_data_files.append(os.path.splitext(raw_data_file)[0] + ".h5")
+                else:
+                    raw_data_files.append(raw_data_file)
+        elif isinstance(raw_data_file, (list, tuple, set)):  # iterable of raw data files
             for one_raw_data_file in raw_data_file:
-                if one_raw_data_file is not None and os.path.splitext(one_raw_data_file)[1].strip().lower() != ".h5":
+                # normalize path
+                one_raw_data_file = os.path.abspath(one_raw_data_file)
+                if os.path.splitext(one_raw_data_file)[1].lower() != ".h5":
                     raw_data_files.append(os.path.splitext(one_raw_data_file)[0] + ".h5")
                 else:
                     raw_data_files.append(one_raw_data_file)
         else:
-            f_list = analysis_utils.get_data_file_names_from_scan_base(raw_data_file, sort_by_time=True, meta_data_v2=self.interpreter.meta_table_v2)
-            if f_list:
-                raw_data_files = f_list
-            elif raw_data_file is not None and os.path.splitext(raw_data_file)[1].strip().lower() != ".h5":
-                raw_data_files.append(os.path.splitext(raw_data_file)[0] + ".h5")
-            elif raw_data_file is not None:
-                raw_data_files.append(raw_data_file)
-            else:
-                raw_data_files = None
+            raw_data_files = None
 
-        if analyzed_data_file:
-            if os.path.splitext(analyzed_data_file)[1].strip().lower() != ".h5":
+        if analyzed_data_file is not None:
+            # normalize path
+            analyzed_data_file = os.path.abspath(analyzed_data_file)
+            if os.path.splitext(analyzed_data_file)[1].lower() != ".h5":
                 self._analyzed_data_file = os.path.splitext(analyzed_data_file)[0] + ".h5"
-            else:
+            else:  # iterable of raw data files
                 self._analyzed_data_file = analyzed_data_file
         else:
-            if isinstance(raw_data_file, basestring):
-                self._analyzed_data_file = os.path.splitext(raw_data_file)[0] + '_interpreted.h5'
+            if raw_data_file is not None:
+                if isinstance(raw_data_file, basestring):
+                    self._analyzed_data_file = os.path.splitext(raw_data_file)[0] + '_interpreted.h5'
+                else:  # iterable of raw data files
+                    commonprefix = os.path.commonprefix(raw_data_files)
+                    if commonprefix:
+                        # use common string for output filename
+                        one_raw_data_file = os.path.abspath(commonprefix)
+                    else:
+                        # take 1st filename for output filename
+                        one_raw_data_file = os.path.abspath(raw_data_files[0])
+                    self._analyzed_data_file = os.path.splitext(one_raw_data_file)[0] + '_interpreted.h5'
             else:
                 self._analyzed_data_file = None
-#                 raise analysis_utils.IncompleteInputError('Output file name is not given.')
 
         # create a scan parameter table from all raw data files
         if raw_data_files is not None:
@@ -124,11 +139,20 @@ class AnalyzeRawData(object):
 
         self.out_file_h5 = None
         self.set_standard_settings()
-        if raw_data_file is not None and create_pdf:
-            if isinstance(raw_data_file, list):  # for multiple raw data files name pdf accorfing to the first file
-                output_pdf_filename = os.path.splitext(raw_data_file[0])[0] + ".pdf"
+        if self._analyzed_data_file is not None:
+            if raw_data_file is None:
+                # assume that output file already exists containing analyzed raw data
+                self.out_file_h5 = tb.open_file(self._analyzed_data_file, mode="a", title="Interpreted FE-I4 raw data")
             else:
+                # raw data files are given, overwrite any existing file
+                self.out_file_h5 = tb.open_file(self._analyzed_data_file, mode="w", title="Interpreted FE-I4 raw data")
+
+        if raw_data_file is not None and create_pdf:
+            if isinstance(raw_data_file, basestring):
                 output_pdf_filename = os.path.splitext(raw_data_file)[0] + ".pdf"
+            else:  # iterable of raw data files
+                one_raw_data_file = os.path.abspath(raw_data_files[0])
+                output_pdf_filename = os.path.splitext(one_raw_data_file)[0] + ".pdf"
             logging.info('Opening output PDF file: %s', output_pdf_filename)
             self.output_pdf = PdfPages(output_pdf_filename)
         else:
@@ -140,14 +164,7 @@ class AnalyzeRawData(object):
         return self
 
     def __exit__(self, *exc_info):
-        del self.interpreter
-        del self.histogram
-        del self.clusterizer
-        if self.output_pdf is not None and isinstance(self.output_pdf, PdfPages):
-            logging.info('Closing output PDF file: %s', str(self.output_pdf._file.fh.name))
-            self.output_pdf.close()
-        if self.is_open(self.out_file_h5):
-            self.out_file_h5.close()
+        self.close()
 
     def _setup_clusterizer(self):
         # Define all field names and data types
@@ -222,6 +239,25 @@ class AnalyzeRawData(object):
 
         # Set the new function to the clusterizer
         self.clusterizer.set_end_of_cluster_function(end_of_cluster_function)
+
+    def close(self):
+        del self.interpreter
+        del self.histogram
+        del self.clusterizer
+        self._close_h5()
+        self._close_pdf()
+
+    def _close_h5(self):
+        if self.is_open(self.out_file_h5):
+            self.out_file_h5.close()
+            self.out_file_h5 = None
+
+    def _close_pdf(self):
+        if self.output_pdf is not None:
+            logging.info('Closing output PDF file: %s', str(self.output_pdf._file.fh.name))
+            self.output_pdf.close()
+            self.output_pdf = None
+
 
     def set_standard_settings(self):
         '''Set all settings to their standard values.
@@ -610,12 +646,12 @@ class AnalyzeRawData(object):
         Parameters
         ----------
         analyzed_data_file : string
-            The file name of the output analyzed data file. If not set the output analyzed data file
+            The file name of the output analyzed data file. If None, the output analyzed data file
             specified during initialization is taken.
-        fei4b : boolean
-            True if the raw data is from FE-I4B.
         use_settings_from_file : boolean
             True if the needed parameters should be extracted from the raw data file
+        fei4b : boolean
+            True if the raw data is from FE-I4B.
         '''
 
         logging.info('Interpreting raw data file(s): ' + (', ').join(self.files_dict.keys()))
@@ -648,12 +684,33 @@ class AnalyzeRawData(object):
         if self._create_cluster_tot_hist:  # Cluster tot/size result histogram
             self._cluster_tot_hist = np.zeros(shape=(16, 6), dtype=np.uint32)
 
-        # create output file
-        if analyzed_data_file:
-            self._analyzed_data_file = analyzed_data_file
+        close_analyzed_data_file = False
+        if analyzed_data_file is not None:  # if an output file name is specified create new file for analyzed data
+            if self.is_open(self.out_file_h5) and os.path.abspath(analyzed_data_file) == os.path.abspath(self.out_file_h5.filename):
+                out_file_h5 = self.out_file_h5
+            else:
+                # normalize path
+                analyzed_data_file = os.path.abspath(analyzed_data_file)
+                if os.path.splitext(analyzed_data_file)[1].lower() != ".h5":
+                    analyzed_data_file = os.path.splitext(analyzed_data_file)[0] + ".h5"
+                out_file_h5 = tb.open_file(analyzed_data_file, mode="w", title="Interpreted FE-I4 raw data")
+                close_analyzed_data_file = True
+        elif self.is_open(self.out_file_h5):
+                out_file_h5 = self.out_file_h5
+        else:
+            out_file_h5 = None
+
+        tmp_out_file_h5 = self.out_file_h5
+        if not self.is_open(self.out_file_h5) and self.is_open(out_file_h5):
+            close_analyzed_data_file = False
+            tmp_out_file_h5 = out_file_h5
+        self.out_file_h5 = out_file_h5
+        if self.is_open(self.out_file_h5):
+            self._analyzed_data_file = self.out_file_h5.filename
+        else:
+            self._analyzed_data_file is None
 
         if self._analyzed_data_file is not None:
-            self.out_file_h5 = tb.open_file(self._analyzed_data_file, mode="w", title="Interpreted FE-I4 raw data")
             if self._create_hit_table is True:
                 description = data_struct.HitInfoTable().columns.copy()
                 if self.trigger_data_format == 1:  # use trigger time stamp if trigger number is not available
@@ -669,7 +726,7 @@ class AnalyzeRawData(object):
                     description['trigger_time_stamp'] = description.pop('trigger_number')
                 cluster_hit_table = self.out_file_h5.create_table(self.out_file_h5.root, name='ClusterHits', description=description, title='cluster_hit_data', filters=self._filter_table, expectedrows=self._chunk_size)
 
-        logging.info("Interpreting...")
+        logging.info("Interpreting raw data...")
         progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=analysis_utils.get_total_n_data_words(self.files_dict), term_width=80)
         progress_bar.start()
         total_words = 0
@@ -857,11 +914,18 @@ class AnalyzeRawData(object):
                     hit_table.flush()
         progress_bar.finish()
         self._create_additional_data()
-        if self._analyzed_data_file is not None:
+
+        if close_analyzed_data_file:
             self.out_file_h5.close()
+            self.out_file_h5 = None
+        self.out_file_h5 = out_file_h5
+        if self.is_open(self.out_file_h5):
+            self._analyzed_data_file = self.out_file_h5.filename
+        else:
+            self._analyzed_data_file = None
 
     def _create_additional_data(self):
-        logging.info('Create selected event histograms')
+        logging.info('Creating selected event histograms...')
         if self._analyzed_data_file is not None and self._create_meta_event_index:
             meta_data_size = self.meta_data.shape[0]
             n_event_index = self.interpreter.get_n_meta_data_event()
@@ -1004,34 +1068,56 @@ class AnalyzeRawData(object):
         Parameters
         ----------
         analyzed_data_file : string
-            The file name of the already analyzed data file. If not set the analyzed data file
+            The filename of the analyzed data file. If None, the analyzed data file
             specified during initialization is taken.
+            Filename extension (.h5) does not need to be provided.
         analyzed_data_out_file : string
-            The file name of the new analyzed data file. If not set the analyzed data file
+            The filename of the new analyzed data file. If None, the analyzed data file
             specified during initialization is taken.
+            Filename extension (.h5) does not need to be provided.
         '''
-        in_file_h5 = None
+        close_analyzed_data_file = False
+        if analyzed_data_file is not None:  # if an output file name is specified create new file for analyzed data
+            if self.is_open(self.out_file_h5) and os.path.abspath(analyzed_data_file) == os.path.abspath(self.out_file_h5.filename):
+                in_file_h5 = self.out_file_h5
+            else:
+                # normalize path
+                analyzed_data_file = os.path.abspath(analyzed_data_file)
+                if os.path.splitext(analyzed_data_file)[1].lower() != ".h5":
+                    analyzed_data_file = os.path.splitext(analyzed_data_file)[0] + ".h5"
+                in_file_h5 = tb.open_file(analyzed_data_file, mode="r+")
+                close_analyzed_data_file = True
+        elif self.is_open(self.out_file_h5):
+                in_file_h5 = self.out_file_h5
+        else:
+            raise ValueError('Parameter "analyzed_data_file" not specified.')
 
         # set output file if an output file name is given, otherwise check if an output file is already opened
+        close_analyzed_data_out_file = False
         if analyzed_data_out_file is not None:  # if an output file name is specified create new file for analyzed data
-            if self.is_open(self.out_file_h5):
-                self.out_file_h5.close()
-            self.out_file_h5 = tb.open_file(analyzed_data_out_file, mode="w", title="Analyzed FE-I4 hits")
-        elif self._analyzed_data_file is not None:  # if no output file is specified check if an output file is already open and write new data into the opened one
-            if not self.is_open(self.out_file_h5):
-                self.out_file_h5 = tb.open_file(self._analyzed_data_file, mode="r+")
-                in_file_h5 = self.out_file_h5  # input file is output file
+            if self.is_open(self.out_file_h5) and os.path.abspath(analyzed_data_out_file) == os.path.abspath(self.out_file_h5.filename):
+                out_file_h5 = self.out_file_h5
+            elif self.is_open(in_file_h5) and os.path.abspath(analyzed_data_out_file) == os.path.abspath(in_file_h5.filename):
+                out_file_h5 = in_file_h5
+            else:
+                # normalize path
+                analyzed_data_out_file = os.path.abspath(analyzed_data_out_file)
+                if os.path.splitext(analyzed_data_out_file)[1].lower() != ".h5":
+                    analyzed_data_out_file = os.path.splitext(analyzed_data_out_file)[0] + ".h5"
+                out_file_h5 = tb.open_file(analyzed_data_out_file, mode="w", title="Analyzed FE-I4 hits")
+                close_analyzed_data_out_file = True
+        elif self.is_open(self.out_file_h5):
+                out_file_h5 = self.out_file_h5
         else:
-            pass
+            raise ValueError('Parameter "analyzed_data_out_file" not specified.')
 
-        if analyzed_data_file is not None:
-            self._analyzed_data_file = analyzed_data_file
-        elif self._analyzed_data_file is None:
-            logging.warning("No data file with analyzed data given, abort!")
-            return
-
-        if in_file_h5 is None:
-            in_file_h5 = tb.open_file(self._analyzed_data_file, mode="r")
+        tmp_out_file_h5 = self.out_file_h5
+        if not self.is_open(self.out_file_h5):
+            if os.path.abspath(in_file_h5.filename) == os.path.abspath(out_file_h5.filename):
+                close_analyzed_data_file = False
+                tmp_out_file_h5 = in_file_h5
+        self.out_file_h5 = out_file_h5
+        self._analyzed_data_file = self.out_file_h5.filename
 
         if self._create_cluster_table:
             cluster_table = self.out_file_h5.create_table(self.out_file_h5.root, name='Cluster', description=data_struct.ClusterInfoTable, title='cluster_hit_data', filters=self._filter_table, expectedrows=self._chunk_size)
@@ -1068,11 +1154,19 @@ class AnalyzeRawData(object):
         if table_size == 0:
             logging.warning('Hit table is empty.')
             self._create_additional_hit_data()
-            self.out_file_h5.close()
-            in_file_h5.close()
+            if close_analyzed_data_out_file:
+                out_file_h5.close()
+            if close_analyzed_data_file:
+                in_file_h5.close()
+            else:
+                self.out_file_h5 = tmp_out_file_h5
+            if self.is_open(self.out_file_h5):
+                self._analyzed_data_file = self.out_file_h5.filename
+            else:
+                self._analyzed_data_file = None
             return
 
-        logging.info('Analyze hits...')
+        logging.info('Analyzing hits...')
         progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=table_size, term_width=80)
         progress_bar.start()
 
@@ -1108,9 +1202,16 @@ class AnalyzeRawData(object):
         progress_bar.finish()
         self._create_additional_hit_data()
         self._create_additional_cluster_data()
-
-        self.out_file_h5.close()
-        in_file_h5.close()
+        if close_analyzed_data_out_file:
+            out_file_h5.close()
+        if close_analyzed_data_file:
+            in_file_h5.close()
+        else:
+            self.out_file_h5 = tmp_out_file_h5
+        if self.is_open(self.out_file_h5):
+            self._analyzed_data_file = self.out_file_h5.filename
+        else:
+            self._analyzed_data_file = None
 
     def analyze_hits(self, hits, scan_parameter=None):
         n_hits = hits.shape[0]
@@ -1149,29 +1250,37 @@ class AnalyzeRawData(object):
 
     def plot_histograms(self, pdf_filename=None, analyzed_data_file=None, maximum=None, create_hit_hists_only=False):  # plots the histogram from output file if available otherwise from ram
         logging.info('Creating histograms%s', (' (source: %s)' % analyzed_data_file) if analyzed_data_file is not None else (' (source: %s)' % self._analyzed_data_file) if self._analyzed_data_file is not None else '')
+        close_analyzed_data_file = False
         if analyzed_data_file is not None:
-            out_file_h5 = tb.open_file(analyzed_data_file, mode="r")
-        elif self._analyzed_data_file is not None:
-            try:
-                out_file_h5 = tb.open_file(self._analyzed_data_file, mode="r")
-            except ValueError:
-                logging.info('Output file handle in use, will histogram from RAM')
-                out_file_h5 = None
+            if self.is_open(self.out_file_h5) and os.path.abspath(analyzed_data_file) == os.path.abspath(self.out_file_h5.filename):
+                out_file_h5 = self.out_file_h5
+            else:
+                # normalize path
+                analyzed_data_file = os.path.abspath(analyzed_data_file)
+                if os.path.splitext(analyzed_data_file)[1].lower() != ".h5":
+                    analyzed_data_file = os.path.splitext(analyzed_data_file)[0] + ".h5"
+                out_file_h5 = tb.open_file(analyzed_data_file, mode="r")
+                close_analyzed_data_file = True
+        elif self.is_open(self.out_file_h5):
+            out_file_h5 = self.out_file_h5
         else:
-            out_file_h5 = None
+            logging.info('Parameter "analyzed_data_file" not set. Use histograms from memory.')
+        close_pdf = False
         if pdf_filename is not None:
-            if os.path.splitext(pdf_filename)[1].strip().lower() != ".pdf":  # check for correct filename extension
+            # normalize path
+            pdf_filename = os.path.abspath(pdf_filename)
+            if os.path.splitext(pdf_filename)[1].lower() != ".pdf":
                 output_pdf_filename = os.path.splitext(pdf_filename)[0] + ".pdf"
             else:
                 output_pdf_filename = pdf_filename
             logging.info('Opening output PDF file: %s', output_pdf_filename)
             output_pdf = PdfPages(output_pdf_filename)
+            close_pdf = True
         else:
             output_pdf = self.output_pdf
-        if not output_pdf:
-            raise analysis_utils.IncompleteInputError('Output PDF file descriptor not given.')
+        if output_pdf is None:
+            raise ValueError('Parameter "pdf_filename" not specified.')
         logging.info('Saving histograms to PDF file: %s', str(output_pdf._file.fh.name))
-
         if self._create_threshold_hists:
             if self._create_threshold_mask:  # mask pixel with bad data for plotting
                 if out_file_h5 is not None:
@@ -1251,9 +1360,9 @@ class AnalyzeRawData(object):
             if analyzed_data_file is None and self._create_trigger_error_hist:
                 plotting.plot_trigger_errors(hist=out_file_h5.root.HistTriggerErrorCounter[:] if out_file_h5 is not None else self.trigger_error_counter_hist, filename=output_pdf)
 
-        if out_file_h5 is not None:
+        if close_analyzed_data_file:
             out_file_h5.close()
-        if pdf_filename is not None:
+        if close_pdf:
             logging.info('Closing output PDF file: %s', str(output_pdf._file.fh.name))
             output_pdf.close()
 
@@ -1275,11 +1384,9 @@ class AnalyzeRawData(object):
         return result_array.reshape(occupancy_hist.shape[0], occupancy_hist.shape[1], 2)
 
     def is_open(self, h5_file):
-        try:  # check if output h5 file is already opened
-            h5_file.root
-        except AttributeError:
-            return False
-        return True
+        if isinstance(h5_file, tb.file.File):
+            return True
+        return False
 
     def is_histogram_hits(self):  # returns true if a setting needs to have the hit histogramming active
         if self._create_occupancy_hist or self._create_tot_hist or self._create_rel_bcid_hist or self._create_hit_table or self._create_threshold_hists or self._create_fitted_threshold_hists:

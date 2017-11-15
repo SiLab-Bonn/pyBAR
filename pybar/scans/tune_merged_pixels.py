@@ -1,7 +1,5 @@
 import logging
-import zlib
 
-import tables as tb
 import numpy as np
 
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
@@ -41,8 +39,7 @@ class MergedPixelsTuning(AnalogScan):
             analyze_raw_data.plot_histograms()
             analyze_raw_data.interpreter.print_summary()
 
-            with tb.open_file(analyze_raw_data._analyzed_data_file, 'r') as out_file_h5:
-                occ_hist = out_file_h5.root.HistOcc[:, :, 0].T
+            occ_hist = analyze_raw_data.out_file_h5.root.HistOcc[:, :, 0].T
             occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
             occ_mask[occ_hist > 1] = 1
 

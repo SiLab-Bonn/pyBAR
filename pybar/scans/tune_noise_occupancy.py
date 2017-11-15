@@ -1,9 +1,7 @@
 import logging
 from time import time
-import zlib
 
 import numpy as np
-import tables as tb
 
 import progressbar
 
@@ -111,8 +109,8 @@ class NoiseOccupancyTuning(Fei4RunBase):
             analyze_raw_data.interpret_word_table()
             analyze_raw_data.plot_histograms()
             analyze_raw_data.interpreter.print_summary()
-            with tb.open_file(analyze_raw_data._analyzed_data_file, 'r') as out_file_h5:
-                occ_hist = out_file_h5.root.HistOcc[:, :, 0].T
+
+            occ_hist = analyze_raw_data.out_file_h5.root.HistOcc[:, :, 0].T
             self.occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
             # noisy pixels are set to 1
             self.occ_mask[occ_hist > self.abs_occ_limit] = 1

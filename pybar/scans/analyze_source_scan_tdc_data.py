@@ -79,9 +79,8 @@ def analyze_raw_data(input_files, output_file_hits, interpreter_plots, overwrite
             analyze_raw_data.interpreter.print_summary()  # prints the interpreter summary
 
             # Store the enables pixels for good pixel selection in TDC analysis step
-            with tb.open_file(analyze_raw_data._analyzed_data_file, 'r+') as out_file_h5:
-                with tb.open_file(analyze_raw_data.files_dict.items()[0][0]) as in_file_h5:  # Use first raw data file to extract enable mask
-                    out_file_h5.root.ClusterHits.attrs.enabled_pixels = in_file_h5.root.configuration.Enable[:]
+            with tb.open_file(analyze_raw_data.files_dict.items()[0][0]) as in_file_h5:  # Use first raw data file to extract enable mask
+                analyze_raw_data.out_file_h5.root.ClusterHits.attrs.enabled_pixels = in_file_h5.root.configuration.Enable[:]
 
             if interpreter_plots:
                 analyze_raw_data.plot_histograms()  # plots all activated histograms into one pdf

@@ -2,10 +2,8 @@
 The ToT calibration (mean ToT for each scan step) per pixel can be accessed via HistMeanTot from the interpreted hits file.
 """
 import logging
-import zlib
 
 import numpy as np
-import tables as tb
 
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.run_manager import RunManager
@@ -74,33 +72,32 @@ class TotCalibration(Fei4RunBase):
             analyze_raw_data.plot_histograms()
             analyze_raw_data.interpreter.print_summary()
 
-            with tb.open_file(analyze_raw_data._analyzed_data_file, 'r') as in_file_h5:
-                meta_data = in_file_h5.root.meta_data[:]
-                tot_mean = np.swapaxes(in_file_h5.root.HistMeanTot[:], 1, 0)
-                scan_parameters_dict = get_scan_parameter(meta_data)
-                inner_loop_parameter_values = scan_parameters_dict[next(reversed(scan_parameters_dict))]  # inner loop parameter name is unknown
-                # calculate mean ToT arrays
-                tot_mean_all_pix = np.nanmean(tot_mean, axis=(0, 1))
-                tot_error_all_pix = np.nanstd(tot_mean, axis=(0, 1))
-                plot_scurves(tot_mean, inner_loop_parameter_values, "ToT calibration", "ToT", 15, "Charge [PlsrDAC]", filename=analyze_raw_data.output_pdf)
-                plot_tot_tdc_calibration(scan_parameters=inner_loop_parameter_values, tot_mean=tot_mean_all_pix, tot_error=tot_error_all_pix, filename=analyze_raw_data.output_pdf, title="Mean charge calibration of %d pixel(s)" % np.count_nonzero(~np.all(np.isnan(tot_mean), axis=2)))
-                # selecting pixels with non-nan entries
-                col_row_non_nan = np.nonzero(~np.all(np.isnan(tot_mean), axis=2))
-                plot_pixel_calibrations = np.dstack(col_row_non_nan)[0]
-                # generate index array
-                pixel_indices = np.arange(plot_pixel_calibrations.shape[0])
-                plot_n_pixels = 10  # number of pixels at the beginning, center and end of the array
-                np.random.seed(0)
-                if pixel_indices.size - 2 * plot_n_pixels >= 0:
-                    random_pixel_indices = np.sort(np.random.choice(pixel_indices[plot_n_pixels:-plot_n_pixels], min(plot_n_pixels, pixel_indices.size - 2 * plot_n_pixels), replace=False))
-                else:
-                    random_pixel_indices = np.array([], dtype=np.int)
-                selected_pixel_indices = np.unique(np.hstack([pixel_indices[:plot_n_pixels], random_pixel_indices, pixel_indices[-plot_n_pixels:]]))
-                # plotting individual pixels
-                for (column, row) in plot_pixel_calibrations[selected_pixel_indices]:
-                    logging.info("Plotting charge calibration for pixel column " + str(column + 1) + " / row " + str(row + 1))
-                    tot_mean_single_pix = tot_mean[column, row, :]
-                    plot_tot_tdc_calibration(scan_parameters=inner_loop_parameter_values, tot_mean=tot_mean_single_pix, filename=analyze_raw_data.output_pdf, title="Charge calibration for pixel column " + str(column + 1) + " / row " + str(row + 1))
+            meta_data = analyze_raw_data.out_file_h5.root.meta_data[:]
+            tot_mean = np.swapaxes(analyze_raw_data.out_file_h5.root.HistMeanTot[:], 1, 0)
+            scan_parameters_dict = get_scan_parameter(meta_data)
+            inner_loop_parameter_values = scan_parameters_dict[next(reversed(scan_parameters_dict))]  # inner loop parameter name is unknown
+            # calculate mean ToT arrays
+            tot_mean_all_pix = np.nanmean(tot_mean, axis=(0, 1))
+            tot_error_all_pix = np.nanstd(tot_mean, axis=(0, 1))
+            plot_scurves(tot_mean, inner_loop_parameter_values, "ToT calibration", "ToT", 15, "Charge [PlsrDAC]", filename=analyze_raw_data.output_pdf)
+            plot_tot_tdc_calibration(scan_parameters=inner_loop_parameter_values, tot_mean=tot_mean_all_pix, tot_error=tot_error_all_pix, filename=analyze_raw_data.output_pdf, title="Mean charge calibration of %d pixel(s)" % np.count_nonzero(~np.all(np.isnan(tot_mean), axis=2)))
+            # selecting pixels with non-nan entries
+            col_row_non_nan = np.nonzero(~np.all(np.isnan(tot_mean), axis=2))
+            plot_pixel_calibrations = np.dstack(col_row_non_nan)[0]
+            # generate index array
+            pixel_indices = np.arange(plot_pixel_calibrations.shape[0])
+            plot_n_pixels = 10  # number of pixels at the beginning, center and end of the array
+            np.random.seed(0)
+            if pixel_indices.size - 2 * plot_n_pixels >= 0:
+                random_pixel_indices = np.sort(np.random.choice(pixel_indices[plot_n_pixels:-plot_n_pixels], min(plot_n_pixels, pixel_indices.size - 2 * plot_n_pixels), replace=False))
+            else:
+                random_pixel_indices = np.array([], dtype=np.int)
+            selected_pixel_indices = np.unique(np.hstack([pixel_indices[:plot_n_pixels], random_pixel_indices, pixel_indices[-plot_n_pixels:]]))
+            # plotting individual pixels
+            for (column, row) in plot_pixel_calibrations[selected_pixel_indices]:
+                logging.info("Plotting charge calibration for pixel column " + str(column + 1) + " / row " + str(row + 1))
+                tot_mean_single_pix = tot_mean[column, row, :]
+                plot_tot_tdc_calibration(scan_parameters=inner_loop_parameter_values, tot_mean=tot_mean_single_pix, filename=analyze_raw_data.output_pdf, title="Charge calibration for pixel column " + str(column + 1) + " / row " + str(row + 1))
 
 
 if __name__ == "__main__":

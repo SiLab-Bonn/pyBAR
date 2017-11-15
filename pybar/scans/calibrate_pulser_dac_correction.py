@@ -1,8 +1,6 @@
 import logging
-import zlib
 
 import numpy as np
-import tables as tb
 
 from pybar.run_manager import RunManager
 from pybar.scans.scan_threshold import ThresholdScan
@@ -27,15 +25,14 @@ class PulserDacCorrectionCalibration(ThresholdScan):
             analyze_raw_data.plot_histograms()
             analyze_raw_data.interpreter.print_summary()
 
-            with tb.open_file(analyze_raw_data._analyzed_data_file, 'r') as out_file_h5:
-                thr = out_file_h5.root.HistThresholdFitted[:]
-                thr_masked = np.ma.masked_where(np.isclose(thr, 0), thr)
-                corr = [thr_masked[:, 0].mean()]
-                corr.extend([thr_masked[:, i * 2 + 1:i * 2 + 3].mean() for i in range(0, 38)])
-                corr.extend([thr_masked[:, 77:79].mean()])
-                corr = np.array(corr)
-                corr -= corr.min()
-                corr = np.around(corr, decimals=2)
+            thr = analyze_raw_data.out_file_h5.root.HistThresholdFitted[:]
+            thr_masked = np.ma.masked_where(np.isclose(thr, 0), thr)
+            corr = [thr_masked[:, 0].mean()]
+            corr.extend([thr_masked[:, i * 2 + 1:i * 2 + 3].mean() for i in range(0, 38)])
+            corr.extend([thr_masked[:, 77:79].mean()])
+            corr = np.array(corr)
+            corr -= corr.min()
+            corr = np.around(corr, decimals=2)
 
         if "C_High".lower() in map(lambda x: x.lower(), self.enable_shift_masks) and "C_Low".lower() in map(lambda x: x.lower(), self.enable_shift_masks):
             self.register.calibration_parameters['Pulser_Corr_C_Inj_High'] = list(corr)
