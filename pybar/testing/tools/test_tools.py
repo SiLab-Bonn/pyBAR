@@ -5,6 +5,29 @@ import numpy as np
 import tables as tb
 
 
+def nan_to_num(array, copy=False):
+    ''' Like np.nan_to_num but also works on recarray
+
+    Parameters
+    ----------
+    array : numpy.ndarray
+    copy : boolean
+        If True, return copy. If False, replace values in-place.
+
+    Returns
+    -------
+    boolean
+    '''
+    if array.dtype.names is None:  # normal nd.array
+        return np.nan_to_num(array, copy=copy)
+    else:
+        if copy:
+            array = np.copy(array)
+        for column_name in array.dtype.names:
+            np.nan_to_num(array[column_name], copy=False)
+        return array
+
+
 def nan_equal(first_array, second_array):
     ''' Compares two arrays and test for equality.
 
@@ -20,12 +43,20 @@ def nan_equal(first_array, second_array):
     -------
     boolean
     '''
-    # Check for shape
+    # Check for shape, prevent broadcast
     if first_array.shape != second_array.shape:
+        return False
+    # Check if both are recarrays
+    if (first_array.dtype.names is None and second_array.dtype.names is not None) or (first_array.dtype.names is not None and second_array.dtype.names is None):
         return False
     if first_array.dtype.names is None:  # Not a recarray
         # Check for same dtypes
         if first_array.dtype != second_array.dtype:
+            return False
+        # Check for equality
+        try:
+            np.testing.assert_equal(first_array, second_array)
+        except AssertionError:
             return False
     else:
         # Check for same column names
@@ -35,15 +66,15 @@ def nan_equal(first_array, second_array):
             # Check for same dtypes
             if first_array[column].dtype != second_array[column].dtype:
                 return False
-    # Check for equality
-    try:
-        np.testing.assert_equal(actual=first_array, desired=second_array)
-    except AssertionError:
-        return False
+            # Check for equality
+            try:
+                np.testing.assert_equal(first_array[column], second_array[column])
+            except AssertionError:
+                return False
     return True
 
 
-def nan_close(first_array, second_array, rtol=1.e-5, atol=1.e-8, equal_nan=True):
+def nan_close(first_array, second_array, rtol=1e-5, atol=1e-8, equal_nan=True):
     ''' Compares two arrays and test for similarity.
 
     Works with recarrays.
@@ -61,29 +92,29 @@ def nan_close(first_array, second_array, rtol=1.e-5, atol=1.e-8, equal_nan=True)
     -------
     boolean
     '''
-    # Check for shape
+    # Check for shape, prevent broadcast
     if first_array.shape != second_array.shape:
+        return False
+    # Check if both are recarrays
+    if (first_array.dtype.names is None and second_array.dtype.names is not None) or (first_array.dtype.names is not None and second_array.dtype.names is None):
         return False
     if first_array.dtype.names is None:  # Not a recarray
         # Check for same dtypes
         if first_array.dtype != second_array.dtype:
             return False
-        try:
-            return np.allclose(a=first_array, b=second_array, rtol=rtol, atol=atol, equal_nan=equal_nan)
-        except ValueError:
-            return False
+        return np.allclose(a=first_array, b=second_array, rtol=rtol, atol=atol, equal_nan=equal_nan)
     else:
         # Check for same column names
         if set(first_array.dtype.names) != set(second_array.dtype.names):
             return False
-        results = []
         for column in first_array.dtype.names:
             # Check for same dtypes
             if first_array[column].dtype != second_array[column].dtype:
                 return False
             # Check for similarity
-            results.append(np.allclose(a=first_array[column], b=second_array[column], rtol=rtol, atol=atol, equal_nan=equal_nan))
-        return all(results)
+            if not np.allclose(a=first_array[column], b=second_array[column], rtol=rtol, atol=atol, equal_nan=equal_nan):
+                return False
+        return True
 
 
 def get_array_differences(first_array, second_array, exact=True, rtol=1e-5, atol=1e-8, equal_nan=True):
@@ -105,25 +136,27 @@ def get_array_differences(first_array, second_array, exact=True, rtol=1e-5, atol
             compare_str += 'Type:\nfirst: %s\nsecond: %s\n' % (str(actual.dtype), str(desired.dtype))
         if actual.shape != desired.shape:
             compare_str += 'Shape:\nfirst: %s\nsecond: %s\n' % (str(actual.shape), str(desired.shape))
-        if np.sum(actual) != np.sum(desired):
-            compare_str += 'Sum:\nfirst: %s\nsecond: %s\n' % (str(np.sum(actual)), str(np.sum(desired)))
+        if np.nansum(actual) != np.nansum(desired):
+            compare_str += 'Sum:\nfirst: %s\nsecond: %s\n' % (str(np.nansum(actual)), str(np.nansum(desired)))
         if exact:
             try:
-                np.testing.assert_equal(actual=first_array, desired=second_array)
+                np.testing.assert_equal(actual=actual, desired=desired)
             except AssertionError as e:
-                compare_str += e + "\n"
+                compare_str += str(e) + "\n"
         else:
             try:
-                np.testing.assert_allclose(actual=first_array, desired=second_array, rtol=rtol, atol=atol, equal_nan=equal_nan)
+                np.testing.assert_allclose(actual=actual, desired=desired, rtol=rtol, atol=atol, equal_nan=equal_nan)
             except AssertionError as e:
-                compare_str += e + "\n"
+                compare_str += str(e) + "\n"
         if compare_str:
-            compare_str = "Difference:\n" + compare_str
+            compare_str = ("Difference (%s):\n" % ("exact" if exact else "close")) + compare_str
         else:
-            compare_str = "No Difference\n"
+            compare_str = "No Difference (%s)\n" % ("exact" if exact else "close")
         return compare_str
 
-
+    # Check if both are recarrays
+    if (first_array.dtype.names is None and second_array.dtype.names is not None) or (first_array.dtype.names is not None and second_array.dtype.names is None):
+        return "Type mismatch: np.array and np.recarray"
     if first_array.dtype.names is None:  # Not a recarray
         return compare_arrays(actual=first_array, desired=second_array, exact=exact, rtol=rtol, atol=atol, equal_nan=equal_nan)
     else:
@@ -140,8 +173,8 @@ def get_array_differences(first_array, second_array, exact=True, rtol=1e-5, atol
         for column_name in common_columns:  # loop over all nodes and compare each node, do not abort if one node is wrong
             first_column_data = first_array[column_name]
             second_column_data = second_array[column_name]
-            col_str = compare_arrays(actual=first_column_data, desired=second_column_data, exact=exact, rtol=rtol, atol=atol, equal_nan=equal_nan)
-            return_str += "Column %s:\n%s" % (column_name, col_str)
+            col_compare_str = compare_arrays(actual=first_column_data, desired=second_column_data, exact=exact, rtol=rtol, atol=atol, equal_nan=equal_nan)
+            return_str += "Column %s:\n%s" % (column_name, col_compare_str)
         return return_str
 
 
