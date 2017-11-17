@@ -256,7 +256,7 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
                 tdc_timestamp = selected_cluster_hits['TDC_time_stamp']
                 pixel_tdc_timestamp_hists_per_condition[index] += fast_analysis_utils.hist_3d_index(column, row, tdc_timestamp, shape=(80, 336, 256))
                 mean_pixel_tdc_timestamp_hists_per_condition[index] = np.average(pixel_tdc_timestamp_hists_per_condition[index], axis=2, weights=range(0, 256)) * np.sum(np.arange(0, 256)) / pixel_tdc_timestamp_hists_per_condition[index].sum(axis=2)
-                tdc_hists_per_condition[index] = pixel_tdc_hists_per_condition[index].sum(axis=(0, 1))
+                tdc_hists_per_condition[index] = pixel_tdc_hists_per_condition[index].sum(axis=(0, 1), dtype=np.uint32)  # fix dtype, sum will otherwise increase precision
                 tdc_corr_hists_per_condition[index] += fast_analysis_utils.hist_2d_index(tdc, selected_cluster_hits['tot'], shape=(max_tdc, 16))
             progress_bar.update(n_hits_per_condition[0])
         progress_bar.finish()
