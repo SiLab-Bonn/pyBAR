@@ -59,8 +59,8 @@ def nan_equal(first_array, second_array):
         except AssertionError:
             return False
     else:
-        # Check for same column names
-        if set(first_array.dtype.names) != set(second_array.dtype.names):
+        # Check for same column names and same order
+        if first_array.dtype.names != second_array.dtype.names:
             return False
         for column in first_array.dtype.names:
             # Check for same dtypes
@@ -104,8 +104,8 @@ def nan_close(first_array, second_array, rtol=1e-5, atol=1e-8, equal_nan=True):
             return False
         return np.allclose(a=first_array, b=second_array, rtol=rtol, atol=atol, equal_nan=equal_nan)
     else:
-        # Check for same column names
-        if set(first_array.dtype.names) != set(second_array.dtype.names):
+        # Check for same column names and same order
+        if first_array.dtype.names != second_array.dtype.names:
             return False
         for column in first_array.dtype.names:
             # Check for same dtypes
@@ -166,9 +166,11 @@ def get_array_differences(first_array, second_array, exact=True, rtol=1e-5, atol
         additional_first_array_column_names = set(first_array_column_names) - set(second_array_column_names)
         additional_second_array_column_names = set(second_array_column_names) - set(first_array_column_names)
         if additional_first_array_column_names:
-            error_msg += 'First array has additional columns: %s\n' % ', '.join(additional_first_array_column_names)
+            return_str += 'First array has additional columns: %s\n' % ', '.join(additional_first_array_column_names)
         if additional_second_array_column_names:
-            error_msg += 'Second array has additional columns: %s\n' % ', '.join(additional_second_array_column_names)
+            return_str += 'Second array has additional columns: %s\n' % ', '.join(additional_second_array_column_names)
+        if not additional_first_array_column_names and not additional_second_array_column_names and first_array_column_names != second_array_column_names:
+            return_str += 'Columns have different order:\nfirst: %s\nsecond: %s\n' % (first_array_column_names, second_array_column_names)
         common_columns = set(first_array_column_names) & set(second_array_column_names)
         for column_name in common_columns:  # loop over all nodes and compare each node, do not abort if one node is wrong
             first_column_data = first_array[column_name]
@@ -260,7 +262,7 @@ def compare_h5_files(first_file, second_file, node_names=None, detailed_comparis
                             break
                     index_start += read_nrows
     if checks_passed:
-        error_msg = 'Comparing file %s and %s: OK\n%s' % (first_file, second_file, error_msg)
+        error_msg = 'Comparing files %s and %s: OK\n%s' % (first_file, second_file, error_msg)
     else:
-        error_msg = 'Comparing file %s and %s: FAILED\n%s' % (first_file, second_file, error_msg)
+        error_msg = 'Comparing files %s and %s: FAILED\n%s' % (first_file, second_file, error_msg)
     return checks_passed, error_msg
