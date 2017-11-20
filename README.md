@@ -1,34 +1,33 @@
 
 # pyBAR [![Code Status](https://landscape.io/github/SiLab-Bonn/pyBAR/master/landscape.svg?style=flat)](https://landscape.io/github/SiLab-Bonn/pyBAR/master) [![Build Status](https://travis-ci.org/SiLab-Bonn/pyBAR.svg?branch=master)](https://travis-ci.org/SiLab-Bonn/pyBAR) [![Build Status](https://ci.appveyor.com/api/projects/status/github/SiLab-Bonn/pyBAR?svg=true)](https://ci.appveyor.com/project/DavidLP/pybar-71xwl)
 
-pyBAR - Bonn ATLAS Readout in Python and C++
+pyBAR - Bonn ATLAS Readout in Python
 
-PyBAR is a versatile readout and test system for the ATLAS FE-I4(A/B) pixel readout chip. It uses the [basil](https://github.com/SiLab-Bonn/basil) framework to access the readout hardware.
+PyBAR is a versatile readout and test system for the ATLAS FEI4(A/B) pixel readout chip. It uses the [basil](https://github.com/SiLab-Bonn/basil) framework to access the readout hardware.
 PyBAR's FPGA firmware and host software includes support for different hardware platforms.
 
-PyBAR is *not only* targeting experienced users and developers. The easy-to-use scripts allow a quick setup and start. PyBAR is a very flexible readout and test system and can be adapted to any needs.
+PyBAR is *not only* targeting experienced users and developers. The easy-to-use scripts allow a quick setup and start. PyBAR is a very flexible readout and test system and provides the capability to conduct tests and characterization measurements of individual chips.
 
 The features of the FPGA firmware in a nutshell:
-- supported readout hardware:
-  MIO, MIO3/MMC3, Avnet LX9 and Digilent Nexys<sup>TM</sup>4 DDR
+- supported readout boards:
+  any hardware that is supported by basil (e.g., MIO2, MIO3, and MMC3)
 - supported adapter cards:
   Single Chip Adapter Card, Burn-in Card (Quad Module Adapter Card) and the General Purpose Analog Card (GPAC)
-- support of up to 4 FE, simultaneous readout
-- continuous data taking (no interrupts during data taking, preserving all information)
-- automatic data to clock phase alignment on each channel individually
+- readout of single chip modules
+- continuous data taking
+- automatic data to clock phase alignment
 - full support of EUDAQ TLU and availability of EUDAQ Producer
 
-The features of the host software in Python and C++:
-- very minimalistic interface, script based, no GUI
-- support for Windows/Linux/OSX
-- support for FE-I4A and B
+The features of the host software in Python:
+- no GUI
+- support for Windows, Linux and macOS
+- scan/tuning/calibration algorithms are implemented in stand-alone scripts
+- fast development and implementation of new scan/tuning/calibration algorithms
 - configuration files are human readable (compatible to RCE/HSIO)
-- full control over FE command generation
-- sending any arbitrary bit stream/configuration sequence to the FE of any desired frame length and/or format
-- readout of full FE data including timestamps, storing of the compressed data to HDF5 file
-- ultra fast raw data analysis, event-, cluster building and validity checking
+- full control over FEI4 command generation, sending any arbitrary bit stream and configuration sequence to the FEI4
+- recording of the full input data stream with timestamps and storage of the compressed data to HDF5 files
+- ultra fast raw data analysis, event and cluster building, and raw data validity checks
 - real-time online monitor with GUI
-- fast development and implementation of new scan algorithms
 
 ## Installation
 
