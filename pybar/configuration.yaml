@@ -59,7 +59,7 @@ modules :
 #modules :
 #    module_0 :
 #        activate : True
-#        configuration : 0 # FE configuration file, text (.cfg) or HDF5 (.h5) file. If no value is given, the latest valid configuration (run status 'FINISHED') will be taken. If a number is given, the configuration from the run with the specified number will be taken.
+#        configuration : # FE configuration file, text (.cfg) or HDF5 (.h5) file. If no value is given, the latest valid configuration (run status 'FINISHED') will be taken. If a number is given, the configuration from the run with the specified number will be taken.
 #        flavor : fei4b # FEI4 flavor/type for initial configuration. Valid values are: 'fei4a', 'fei4b'.
 #        chip_address : # Chip Address for initial configuration. if no value is given, the broadcast bit will be set.
 #        FIFO : SITCP_FIFO # As defined in DUT configuration.
@@ -77,7 +77,7 @@ modules :
 
 #    module_1 :
 #        activate : True
-#        configuration : 0 # FE configuration file, text (.cfg) or HDF5 (.h5) file. If no value is given, the latest valid configuration (run status 'FINISHED') will be taken. If a number is given, the configuration from the run with the specified number will be taken.
+#        configuration : # FE configuration file, text (.cfg) or HDF5 (.h5) file. If no value is given, the latest valid configuration (run status 'FINISHED') will be taken. If a number is given, the configuration from the run with the specified number will be taken.
 #        flavor : fei4b # FEI4 flavor/type for initial configuration. Valid values are: 'fei4a', 'fei4b'.
 #        chip_address : # Chip Address for initial configuration. if no value is given, the broadcast bit will be set.
 #        FIFO : SITCP_FIFO # As defined in DUT configuration.
