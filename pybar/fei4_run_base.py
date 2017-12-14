@@ -1271,13 +1271,11 @@ class Fei4RunBase(RunBase):
             self._curr_readout_threads.remove(self.current_module_handle)
         self._stopping_readout_event.clear()
         while not self._stopping_readout_event.wait(0.01):
-            if self.abort_run.is_set():
-                break
             with self._readout_lock:
-                if len(set(self._curr_readout_threads) & set([t.name for t in self._scan_threads if t.is_alive()])) == 0 or not self._scan_threads:
+                if len(set(self._curr_readout_threads) & set([t.name for t in self._scan_threads if t.is_alive()])) == 0 or not self._scan_threads or self.abort_run.is_set():
                     if self.fifo_readout.is_running:
                         self.fifo_readout.stop(timeout=timeout)
-                        self._stopping_readout_event.set()
+                    self._stopping_readout_event.set()
 
     def _cleanup(self):  # called in run base after exception handling
         super(Fei4RunBase, self)._cleanup()
