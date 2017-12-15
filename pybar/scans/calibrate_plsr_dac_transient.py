@@ -47,7 +47,7 @@ def interpret_data_from_tektronix(preamble, data):
 interpret_oscilloscope_data = interpret_data_from_tektronix
 
 
-class PlsrDacTransientCalibrationAdvanced(AnalogScan):
+class PlsrDacTransientCalibration(AnalogScan):
     ''' Transient PlsrDAC calibration scan
     '''
     _default_run_conf = AnalogScan._default_run_conf.copy()
@@ -82,7 +82,7 @@ class PlsrDacTransientCalibrationAdvanced(AnalogScan):
         self.register_utils.send_commands(commands)
 
     def configure(self):
-        super(PlsrDacTransientCalibrationAdvanced, self).configure()
+        super(PlsrDacTransientCalibration, self).configure()
         # data acquisition
         self.dut['Oscilloscope'].data_init()  # Resert to factory settings
         self.dut['Oscilloscope'].set_data_width(2)  # 2 byte per value
@@ -194,7 +194,7 @@ class PlsrDacTransientCalibrationAdvanced(AnalogScan):
             self.dut['Oscilloscope'].set_acquire_stop_after("SEQuence")
             self.dut['Oscilloscope'].set_acquire_state("RUN")
             time.sleep(1.5)
-            super(PlsrDacTransientCalibrationAdvanced, self).scan()  # analog scan loop
+            super(PlsrDacTransientCalibration, self).scan()  # analog scan loop
             self.dut['Oscilloscope'].set_acquire_state("STOP")
             if self.dut['Oscilloscope'].get_number_waveforms() == 0:
                 logging.warning("No acquisition taking place.")
@@ -309,4 +309,4 @@ class PlsrDacTransientCalibrationAdvanced(AnalogScan):
             progress_bar.finish()
 
 if __name__ == "__main__":
-    RunManager('../configuration.yaml').run_run(PlsrDacTransientCalibrationAdvanced)
+    RunManager('../configuration.yaml').run_run(PlsrDacTransientCalibration)
