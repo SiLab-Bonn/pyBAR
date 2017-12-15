@@ -10,6 +10,7 @@ import logging
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 import tables as tb
 from scipy import interpolate
@@ -186,7 +187,7 @@ def plot_pulser_dac(x, y, y_err=None, output_pdf=None, title_suffix=""):
     ax.set_xlabel("PlsrDAC")
     ax.set_ylabel('Voltage [V]')
     ax.grid(True)
-    ax.set_xlim((min(x), max(x)))
+    ax.set_xlim((0, max(x)))
     ax.legend(loc='upper left')
     if isinstance(output_pdf, PdfPages):
         output_pdf.savefig(fig)
@@ -263,14 +264,15 @@ def plot_pulser_dac(x, y, y_err=None, output_pdf=None, title_suffix=""):
 #     plateau_fit_fn = poly1d(plateau_p_opt)
     ax1.set_ylabel('Voltage [V]')
     ax1.set_xlabel("PlsrDAC")
-    ax1.set_xlim((min(x), max(x)))
+    ax1.set_xlim((0, max(x)))
+    ax1.set_ylim(bottom=0)
     ax1.legend(loc='best')
 
     ax2 = fig.add_subplot(312)
     ax2.plot(x, dev_1, label='1st dev')
     ax2.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
     ax2.set_xlabel("PlsrDAC")
-    ax2.set_xlim((min(x), max(x)))
+    ax2.set_xlim((0, max(x)))
     ax2.legend(loc='best')
 
     ax3 = fig.add_subplot(313)
@@ -278,7 +280,7 @@ def plot_pulser_dac(x, y, y_err=None, output_pdf=None, title_suffix=""):
     ax3.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
     ax3.plot(x[turning_point], dev_2[turning_point], 'rx', label='Turning point')
     ax3.set_xlabel("PlsrDAC")
-    ax3.set_xlim((min(x), max(x)))
+    ax3.set_xlim((0, max(x)))
     ax3.legend(loc='best')
     fig.tight_layout()
     if isinstance(output_pdf, PdfPages):
@@ -301,8 +303,17 @@ def plot_pulser_dac(x, y, y_err=None, output_pdf=None, title_suffix=""):
     ax.set_xlabel("PlsrDAC")
     ax.set_ylabel('Voltage [V]')
     ax.grid(True)
-    ax.set_xlim((min(x), max(x)))
+    ax.set_xlim((0, max(x)))
+    ax.set_ylim(bottom=0)
     ax.legend(loc='upper left')
+    # second plot with shared axis
+    divider = make_axes_locatable(ax)
+    ax_bottom_plot = divider.append_axes("bottom", 1.0, pad=0.1, sharex=ax)
+    ax_bottom_plot.bar(x, (y - np.vectorize(slope_fit_fn)(x, *slope_p_opt)) * 1e3, align='center')
+    ax_bottom_plot.grid(True)
+    ax_bottom_plot.set_xlabel("PlsrDAC")
+    ax_bottom_plot.set_ylabel("$\Delta$Voltage [mV]")
+
     if isinstance(output_pdf, PdfPages):
         output_pdf.savefig(fig)
     else:

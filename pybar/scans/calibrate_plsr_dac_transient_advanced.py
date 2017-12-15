@@ -6,8 +6,11 @@ The oscilloscope can be any device supported by basil, but the string interpreta
 import logging
 import time
 
-import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.backends.backend_pdf import PdfPages
+import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
 import numpy as np
 import tables as tb
 from pylab import polyfit, poly1d
@@ -49,13 +52,13 @@ class PlsrDacTransientCalibrationAdvanced(AnalogScan):
     '''
     _default_run_conf = AnalogScan._default_run_conf.copy()
     _default_run_conf.update({
-        "scan_parameters": [('PlsrDAC', range(25, 1024, 25))],  # plsr dac settings, be aware: too low plsDAC settings are difficult to trigger
+        "scan_parameters": [('PlsrDAC', range(0, 1024, 25))],  # plsr dac settings, be aware: too low plsDAC settings are difficult to trigger
         "enable_double_columns": [20],  # double columns which will be enabled during scan
         "enable_mask_steps": [0],  # Scan only one mask step to save time
         "n_injections": 512,  # number of injections, has to be > 260 to allow for averaging 256 injection signals
         "channel": 1,  # oscilloscope channel
         "show_debug_plots": False,
-        "trigger_level_offset": 10,  # offset of the PlsrDAC baseline in mV, usually the offset voltage at PlsrDAC=0
+        "trigger_level_offset": 25,  # offset of the PlsrDAC baseline in mV, usually the offset voltage at PlsrDAC=0
         "data_points": 10000,
         "max_data_index": None,  # maximum data index to be read out; e.g. 2000 reads date from 1 to 2000, if None, use max record length
         "horizontal_scale": 0.0000004,
@@ -65,10 +68,15 @@ class PlsrDacTransientCalibrationAdvanced(AnalogScan):
         "vertical_position": -4,
         "impedance": "MEG",
         "coupling": "DC",
-        "bandwidth": "FULl",
-        "trigger_mode": "NORMal",
-        "trigger_edge_slope": "FALL",
-        "trigger_level": 0.0, # trigger level in V of for the first measurement
+        "bandwidth": "20E6",  # reject noise, set to lower bandwidth (20MHz)
+        "trigger_mode": "NORMal",  # prevent from untriggered roll
+        "trigger_type": "PULSe",
+        "trigger_pulse_class": "WIDth",
+        "trigger_pulse_width_source": "CH1",
+        "trigger_pulse_width_polarity": "POSitive",  # misleading, this will trigger on the falling edge
+        "trigger_pulse_width_when": "MOREthan",
+        "trigger_pulse_width": "500.0E-9",  # 500ns or more, roughly the lenghth of the injection pulse at lowest potential
+        "trigger_level": 0.0,  # trigger level in V of for the first measurement
         "fit_ranges": [(-1000, -100), (200, 450)],  # the fit range (in ns) relative to the trigger (t=0ns), first tuple: baseline, second tuple: peak
     })
 
@@ -88,9 +96,11 @@ class PlsrDacTransientCalibrationAdvanced(AnalogScan):
         self.dut['Oscilloscope'].set_data_encoding("RIBINARY")  # signed integer
         self.dut['Oscilloscope'].set_horizontal_record_length(self.data_points)
         self.dut['Oscilloscope'].set_data_start(1)  # Set readout fraction of waveform
-        if not self.max_data_index:
-            self.max_data_index = int(self.dut['Oscilloscope'].get_horizontal_record_length())
-        self.dut['Oscilloscope'].set_data_stop(self.max_data_index)  # Set readout fraction of waveform
+        if self.max_data_index is None:
+            self.data_index = int(self.dut['Oscilloscope'].get_horizontal_record_length())
+        else:
+            self.data_index = self.max_data_index
+        self.dut['Oscilloscope'].set_data_stop(self.data_index)  # Set readout fraction of waveform
 
         # waveform parameters
         self.dut['Oscilloscope'].set_average_waveforms(self.n_injections)  # For Tektronix it has to be power of 2
@@ -109,9 +119,15 @@ class PlsrDacTransientCalibrationAdvanced(AnalogScan):
         self.dut['Oscilloscope'].set_coupling(self.coupling, channel=self.channel)
         self.dut['Oscilloscope'].set_bandwidth(self.bandwidth, channel=self.channel)
 
-        # trigger
+        # pulse width trigger
         self.dut['Oscilloscope'].set_trigger_mode(self.trigger_mode)
-        self.dut['Oscilloscope'].set_trigger_edge_slope(self.trigger_edge_slope)
+        self.dut['Oscilloscope'].set_trigger_type(self.trigger_type)
+        self.dut['Oscilloscope'].set_trigger_pulse_class(self.trigger_pulse_class)
+        self.dut['Oscilloscope'].set_trigger_pulse_width_source(self.trigger_pulse_width_source)
+        self.dut['Oscilloscope'].set_trigger_pulse_width_polarity(self.trigger_pulse_width_polarity)
+        self.dut['Oscilloscope'].set_trigger_pulse_width_when(self.trigger_pulse_width_when)
+        self.dut['Oscilloscope'].set_trigger_pulse_width_width(self.trigger_pulse_width)
+
         self.dut['Oscilloscope'].set_trigger_level(self.trigger_level)
 
         logging.info('Initialized oscilloscope %s' % self.dut['Oscilloscope'].get_name())
@@ -128,10 +144,10 @@ class PlsrDacTransientCalibrationAdvanced(AnalogScan):
     def scan(self):
         # Output data structures
         scan_parameter_values = self.scan_parameters.PlsrDAC
-        shape=(len(scan_parameter_values), self.max_data_index)
+        shape = (len(scan_parameter_values), self.data_index)
         atom = tb.FloatAtom()
         data_out = self.raw_data_file.h5_file.create_carray(self.raw_data_file.h5_file.root, name='PlsrDACwaveforms', title='Waveforms from transient PlsrDAC calibration scan', atom=atom, shape=shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
-        shape=(self.max_data_index,)
+        shape = (self.data_index,)
         atom = tb.FloatAtom()
         time_out = self.raw_data_file.h5_file.create_carray(self.raw_data_file.h5_file.root, name='Times', title='Time values', atom=atom, shape=shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
         data_out.attrs.scan_parameter_values = scan_parameter_values
@@ -267,17 +283,21 @@ class PlsrDacTransientCalibrationAdvanced(AnalogScan):
                         data_array['voltage_step'][index] = median_baseline - median_peak
 
                         # Plot waveform + fit
-                        plt.clf()
-                        plt.grid()
-                        plt.plot(times * 1e9, voltages * 1e3, label='PlsrDAC Pulse')
-                        plt.axhline(y=trigger_level * 1e3, linewidth=2, linestyle="--", color='r', label='Trigger (%0.f mV)' % (trigger_level * 1e3))
-                        plt.plot(times_baseline * 1e9, np.repeat(median_baseline * 1e3, times_baseline.size), '-', linewidth=2, label='Baseline (%.1f mV)' % (median_baseline * 1e3))
-                        plt.plot(times_peak * 1e9, np.repeat(median_peak * 1e3, times_peak.size), '-', linewidth=2, label='Peak (%.1f mV)' % (median_peak * 1e3))
-                        plt.title('PulserDAC=%d Waveform' % plsr_dac)
-                        plt.xlabel('Time [ns]')
-                        plt.ylabel('Voltage [mV]')
-                        plt.legend(loc=4)  # lower right
-                        output_pdf.savefig()
+                        fig = Figure()
+                        FigureCanvas(fig)
+                        ax = fig.add_subplot(111)
+                        ax.plot(times * 1e9, voltages * 1e3, label='PlsrDAC Pulse')
+                        ax.axhline(y=trigger_level * 1e3, linewidth=2, linestyle="--", color='r', label='Trigger (%0.fmV)' % (trigger_level * 1e3))
+                        ax.plot(times_baseline * 1e9, np.repeat(median_baseline * 1e3, times_baseline.size), '-', linewidth=2, label='Baseline (%.3fmV)' % (median_baseline * 1e3))
+                        ax.plot(times_peak * 1e9, np.repeat(median_peak * 1e3, times_peak.size), '-', linewidth=2, label='Peak (%.3fmV)' % (median_peak * 1e3))
+                        ax.set_title('PulserDAC=%d Waveform' % plsr_dac)
+                        ax.set_xlabel('Time [ns]')
+                        ax.set_ylabel('Voltage [mV]')
+                        delta_string = '$\Delta=$%.3fmv' % (median_baseline * 1e3 - median_peak * 1e3)
+                        handles, labels = ax.get_legend_handles_labels()
+                        handles.append(mpatches.Patch(color='none', label=delta_string))
+                        ax.legend(handles=handles, loc=4)  # lower right
+                        output_pdf.savefig(fig)
                         progress_bar.update(index)
                     data_table.append(data_array[np.isfinite(data_array['voltage_step'])])  # store valid data
 
