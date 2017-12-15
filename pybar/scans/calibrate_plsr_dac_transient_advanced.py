@@ -66,15 +66,8 @@ class PlsrDacTransientCalibrationAdvanced(AnalogScan):
         "vertical_scale": 0.2,
         "vertical_offset": 0.0,
         "vertical_position": -4,
-        "impedance": "MEG",
         "coupling": "DC",
         "bandwidth": "20E6",  # reject noise, set to lower bandwidth (20MHz)
-        "trigger_mode": "NORMal",  # prevent from untriggered roll
-        "trigger_type": "PULSe",
-        "trigger_pulse_class": "WIDth",
-        "trigger_pulse_width_source": "CH1",
-        "trigger_pulse_width_polarity": "POSitive",  # misleading, this will trigger on the falling edge
-        "trigger_pulse_width_when": "MOREthan",
         "trigger_pulse_width": "500.0E-9",  # 500ns or more, roughly the lenghth of the injection pulse at lowest potential
         "trigger_level": 0.0,  # trigger level in V of for the first measurement
         "fit_ranges": [(-1000, -100), (200, 450)],  # the fit range (in ns) relative to the trigger (t=0ns), first tuple: baseline, second tuple: peak
@@ -115,17 +108,17 @@ class PlsrDacTransientCalibrationAdvanced(AnalogScan):
         self.dut['Oscilloscope'].set_vertical_position(self.vertical_position, channel=self.channel)
 
         # input
-        self.dut['Oscilloscope'].set_impedance(self.impedance, channel=self.channel)
+        self.dut['Oscilloscope'].set_impedance("MEG", channel=self.channel)
         self.dut['Oscilloscope'].set_coupling(self.coupling, channel=self.channel)
         self.dut['Oscilloscope'].set_bandwidth(self.bandwidth, channel=self.channel)
 
         # pulse width trigger
-        self.dut['Oscilloscope'].set_trigger_mode(self.trigger_mode)
-        self.dut['Oscilloscope'].set_trigger_type(self.trigger_type)
-        self.dut['Oscilloscope'].set_trigger_pulse_class(self.trigger_pulse_class)
-        self.dut['Oscilloscope'].set_trigger_pulse_width_source(self.trigger_pulse_width_source)
-        self.dut['Oscilloscope'].set_trigger_pulse_width_polarity(self.trigger_pulse_width_polarity)
-        self.dut['Oscilloscope'].set_trigger_pulse_width_when(self.trigger_pulse_width_when)
+        self.dut['Oscilloscope'].set_trigger_mode("NORMal")
+        self.dut['Oscilloscope'].set_trigger_type("PULSe")
+        self.dut['Oscilloscope'].set_trigger_pulse_class("WIDth")
+        self.dut['Oscilloscope'].set_trigger_pulse_width_source("CH%d" % self.channel)
+        self.dut['Oscilloscope'].set_trigger_pulse_width_polarity("POSitive")
+        self.dut['Oscilloscope'].set_trigger_pulse_width_when("MOREthan")
         self.dut['Oscilloscope'].set_trigger_pulse_width_width(self.trigger_pulse_width)
 
         self.dut['Oscilloscope'].set_trigger_level(self.trigger_level)
@@ -165,6 +158,8 @@ class PlsrDacTransientCalibrationAdvanced(AnalogScan):
             # Update PlsrDAC parameter
             self.set_scan_parameters(PlsrDAC=scan_parameter_value)  # set scan parameter
             self.write_global_register('PlsrDAC', scan_parameter_value)  # write to FE
+            self.dut['Oscilloscope'].set_trigger_mode("AUTO")
+            self.dut['Oscilloscope'].set_trigger_type("EDGe")
             self.dut['Oscilloscope'].set_acquire_mode('SAMple')
             self.dut['Oscilloscope'].set_acquire_stop_after("RUNSTop")
             self.dut['Oscilloscope'].set_acquire_state("RUN")
@@ -193,15 +188,16 @@ class PlsrDacTransientCalibrationAdvanced(AnalogScan):
                 plt.show()
 
             # Setup data aquisition and start scan loop
+            self.dut['Oscilloscope'].set_trigger_mode("NORMal")
+            self.dut['Oscilloscope'].set_trigger_type("PULSe")
             self.dut['Oscilloscope'].set_acquire_mode('AVErage')  # average to get rid of noise and keeping high band width
             self.dut['Oscilloscope'].set_acquire_stop_after("SEQuence")
             self.dut['Oscilloscope'].set_acquire_state("RUN")
             time.sleep(1.5)
             super(PlsrDacTransientCalibrationAdvanced, self).scan()  # analog scan loop
             self.dut['Oscilloscope'].set_acquire_state("STOP")
-            # get final number of data points
-#             if not self.dut['Oscilloscope'].get_number_points():
-#                 raise RuntimeError()
+            if self.dut['Oscilloscope'].get_number_waveforms() == 0:
+                logging.warning("No acquisition taking place.")
             data = self.dut['Oscilloscope']._intf._resource.query_binary_values("DATA:SOURCE CH%d;:CURVe?" % self.channel, datatype='h', is_big_endian=True)
             self.preamble = self.dut['Oscilloscope'].get_parameters(channel=self.channel)
             times, voltages, time_unit, voltage_unit = interpret_oscilloscope_data(self.preamble, data)
@@ -249,13 +245,6 @@ class PlsrDacTransientCalibrationAdvanced(AnalogScan):
                 with PdfPages(self.output_filename + '_interpreted.pdf') as output_pdf:
                     progress_bar.start()
 
-                    start_index_baseline = np.argmin(np.abs(times * 1e9 - fit_ranges[0][0]))
-                    stop_index_baseline = np.argmin(np.abs(times * 1e9 - fit_ranges[0][1]))
-                    start_index_peak = np.argmin(np.abs(times * 1e9 - fit_ranges[1][0]))
-                    stop_index_peak = np.argmin(np.abs(times * 1e9 - fit_ranges[1][1]))
-                    times_baseline = times[start_index_baseline:stop_index_baseline]
-                    times_peak = times[start_index_peak:stop_index_peak]
-
                     for index in range(data.shape[0]):
                         voltages = data[index]
                         trigger_level = trigger_levels[index]
@@ -263,11 +252,18 @@ class PlsrDacTransientCalibrationAdvanced(AnalogScan):
 
                         # index of first value below trigger level
                         step_index = np.argmin(voltages>trigger_level)
+                        step_time = times[step_index]
+                        start_index_baseline = np.argmin(np.abs(times * 1e9 - fit_ranges[0][0] - step_time * 1e9))
+                        stop_index_baseline = np.argmin(np.abs(times * 1e9 - fit_ranges[0][1] - step_time * 1e9))
+                        start_index_peak = np.argmin(np.abs(times * 1e9 - fit_ranges[1][0] - step_time * 1e9))
+                        stop_index_peak = np.argmin(np.abs(times * 1e9 - fit_ranges[1][1] - step_time * 1e9))
                         if not (step_index > start_index_baseline and step_index > stop_index_baseline):
                             logging.warning("Baseline fit range might be too large")
                         if not (step_index < start_index_peak and step_index < stop_index_peak):
                             logging.warning("Peak fit range might be too small")
 
+                        times_baseline = times[start_index_baseline:stop_index_baseline]
+                        times_peak = times[start_index_peak:stop_index_peak]
                         voltage_baseline = voltages[start_index_baseline:stop_index_baseline]
                         voltage_peak = voltages[start_index_peak:stop_index_peak]
 
