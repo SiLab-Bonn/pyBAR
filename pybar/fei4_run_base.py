@@ -202,7 +202,6 @@ class Fei4RunBase(RunBase):
         for rx_name in rx_names:
              self.dut[rx_name].ENABLE_RX = 1
 
-
     def init_fe(self):
         if 'fe_configuration' in self._conf:
             last_configuration = self._get_configuration()
