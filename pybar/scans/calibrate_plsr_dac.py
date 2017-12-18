@@ -177,7 +177,7 @@ class PlsrDacCalibration(Fei4RunBase):
 
             output_pdf.close()
 
-def plot_pulser_dac(x, y, y_err=None, output_pdf=None, title_suffix=""):
+def plot_pulser_dac(x, y, y_err=None, output_pdf=None, title_suffix="", atol_first_dev=1.0 * 1e-04, atol_second_dev=1.0 * 1e-05):
     # plot result
     fig = Figure()
     FigureCanvas(fig)
@@ -206,15 +206,15 @@ def plot_pulser_dac(x, y, y_err=None, output_pdf=None, title_suffix=""):
 
     # calculate slope
     slope_data_dev1_idx = np.where(dev_1 > 0)[0]
-    slope_data_dev2_idx = np.where(np.isclose(dev_2, 0, atol=5.0 * 1e-05))[0]
+    slope_data_dev2_idx = np.where(np.isclose(dev_2, 0, atol=atol_second_dev))[0]
     slope_data_idx = np.intersect1d(slope_data_dev1_idx, slope_data_dev2_idx, assume_unique=True)
 
     # index of slope fit values
     slope_idx = max(consecutive(slope_data_idx), key=len)
 
     # calculate plateau
-    plateau_data_dev1_idx = np.where(np.isclose(dev_1, 0, atol=1e-04))[0]
-    plateau_data_dev2_idx = np.where(np.isclose(dev_2, 0, atol=1e-05))[0]
+    plateau_data_dev1_idx = np.where(np.isclose(dev_1, 0, atol=atol_first_dev))[0]
+    plateau_data_dev2_idx = np.where(np.isclose(dev_2, 0, atol=atol_second_dev))[0]
     plateau_data_idx = np.intersect1d(plateau_data_dev1_idx, plateau_data_dev2_idx, assume_unique=True)
     if turning_point_idx.size:
         # take last index from array
@@ -293,14 +293,11 @@ def plot_pulser_dac(x, y, y_err=None, output_pdf=None, title_suffix=""):
     fig = Figure()
     FigureCanvas(fig)
     ax = fig.add_subplot(111)
-    ax.plot(x, np.vectorize(slope_fit_fn)(x, *slope_p_opt), '--k', label='%.5f+/-%.5f+\n%.5f+/-%.5f*x' % (slope_p_opt[0], slope_p_err[0], slope_p_opt[1], slope_p_err[1]))
-    ax.plot(x, np.vectorize(plateau_fit_fn)(x, *plateau_p_opt), '-k', label='%.5f+/-%.5f' % (plateau_p_opt[0], plateau_p_err[0]))
-    ax.errorbar(x, y, None, label='PlsrDAC', fmt='o')
-#     ax.plot(x[slope_idx], y[slope_idx], 'ro', label='PlsrDAC ramp')
-#     ax.plot(x[plateau_idx], y[plateau_idx], 'go', label='PlsrDAC plateau')
-#     ax.plot(x, slope_fit_fn(x), '--k', label=str(slope_fit_fn))
-#     ax.plot(x, plateau_fit_fn(x), '-k', label=str(plateau_fit_fn))
-
+    ax.errorbar(x, y, None, label='PlsrDAC', fmt='o', zorder=1)
+#     ax.plot(x[slope_idx], y[slope_idx], 'ro', label='PlsrDAC ramp', zorder=2)
+#     ax.plot(x[plateau_idx], y[plateau_idx], 'go', label='PlsrDAC plateau', zorder=2)
+    ax.plot(x, np.vectorize(slope_fit_fn)(x, *slope_p_opt), '--k', label='%.5f+/-%.5f+\n%.5f+/-%.5f*x' % (slope_p_opt[0], slope_p_err[0], slope_p_opt[1], slope_p_err[1]), zorder=4)
+    ax.plot(x, np.vectorize(plateau_fit_fn)(x, *plateau_p_opt), '-k', label='%.5f+/-%.5f' % (plateau_p_opt[0], plateau_p_err[0]), zorder=3)
     ax.set_title('PlsrDAC Calibration %s' % title_suffix)
     ax.set_xlabel("PlsrDAC")
     ax.set_ylabel('Voltage [V]')

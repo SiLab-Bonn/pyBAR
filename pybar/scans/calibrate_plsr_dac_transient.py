@@ -61,8 +61,8 @@ class PlsrDacTransientCalibration(AnalogScan):
         "trigger_level_offset": 25,  # offset of the PlsrDAC baseline in mV, usually the offset voltage at PlsrDAC=0
         "data_points": 10000,
         "max_data_index": None,  # maximum data index to be read out; e.g. 2000 reads date from 1 to 2000, if None, use max record length
-        "horizontal_scale": 0.0000004,
-        "horizontal_delay_time": 0.0000016,
+        "horizontal_scale": 0.0000004,  # 0.0000020 for longer range
+        "horizontal_delay_time": 0.0000016,  # 0.0000080 for longer range
         "vertical_scale": 0.2,
         "vertical_offset": 0.0,
         "vertical_position": -4,
@@ -70,7 +70,7 @@ class PlsrDacTransientCalibration(AnalogScan):
         "bandwidth": "20E6",  # reject noise, set to lower bandwidth (20MHz)
         "trigger_pulse_width": "500.0E-9",  # 500ns or more, roughly the lenghth of the injection pulse at lowest potential
         "trigger_level": 0.0,  # trigger level in V of for the first measurement
-        "fit_ranges": [(-1000, -100), (200, 450)],  # the fit range (in ns) relative to the trigger (t=0ns), first tuple: baseline, second tuple: peak
+        "fit_ranges": [(-1000, -100), (25, 50)],  # the fit range (in ns) relative to the trigger (t=0ns), first tuple: baseline, second tuple: peak
     })
 
     def write_global_register(self, parameter, value):
@@ -301,7 +301,7 @@ class PlsrDacTransientCalibration(AnalogScan):
                     select = np.isfinite(data_array['voltage_step'])
                     x = data_array[select]['PlsrDAC']
                     y = data_array[select]['voltage_step']
-                    slope_fit, slope_err, plateau_fit, plateau_err = plot_pulser_dac(x, y, output_pdf=output_pdf, title_suffix="(DC %d)" % (enable_double_columns[0],))
+                    slope_fit, slope_err, plateau_fit, plateau_err = plot_pulser_dac(x, y, output_pdf=output_pdf, title_suffix="(DC %d)" % (enable_double_columns[0],), atol_first_dev=2.0 * 1e-04, atol_second_dev=5.0 * 1e-04)
 
                     # Store result in file
                     self.register.calibration_parameters['Vcal_Coeff_0'] = np.nan_to_num(slope_fit[0] * 1000.0)  # store in mV
