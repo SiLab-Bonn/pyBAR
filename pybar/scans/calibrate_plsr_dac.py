@@ -202,13 +202,19 @@ def plot_pulser_dac(x, y, y_err=None, output_pdf=None, title_suffix="", atol_fir
     dev_2 = interpolate.splev(x, tck, der=2)
 
     # calculate turning point
-    turning_point_idx = np.where(np.logical_and(dev_1 > 0, dev_2 < 0))[0]
+    turning_point_idx = np.where(np.logical_and(dev_1 > 0, dev_2 < -atol_second_dev))[0]
+    if turning_point_idx.size:
+        # take last index from array
+        turning_point = turning_point_idx[-1]
+    else:
+        # select highest index
+        turning_point = len(x) - 1
 
     # calculate slope
     slope_data_dev1_idx = np.where(dev_1 > 0)[0]
     slope_data_dev2_idx = np.where(np.isclose(dev_2, 0, atol=atol_second_dev))[0]
     slope_data_idx = np.intersect1d(slope_data_dev1_idx, slope_data_dev2_idx, assume_unique=True)
-
+    slope_data_idx = slope_data_idx[slope_data_idx < turning_point]
     # index of slope fit values
     slope_idx = max(consecutive(slope_data_idx), key=len)
 
@@ -216,14 +222,7 @@ def plot_pulser_dac(x, y, y_err=None, output_pdf=None, title_suffix="", atol_fir
     plateau_data_dev1_idx = np.where(np.isclose(dev_1, 0, atol=atol_first_dev))[0]
     plateau_data_dev2_idx = np.where(np.isclose(dev_2, 0, atol=atol_second_dev))[0]
     plateau_data_idx = np.intersect1d(plateau_data_dev1_idx, plateau_data_dev2_idx, assume_unique=True)
-    if turning_point_idx.size:
-        # take last index from array
-        turning_point = turning_point_idx[-1]
-    else:
-        # select highest index
-        turning_point = len(x) - 1
     plateau_data_idx = plateau_data_idx[plateau_data_idx > turning_point]
-
     # index of plateau fit values
     plateau_idx = max(consecutive(plateau_data_idx), key=len)
 

@@ -301,7 +301,7 @@ class PlsrDacTransientCalibration(AnalogScan):
                     select = np.isfinite(data_array['voltage_step'])
                     x = data_array[select]['PlsrDAC']
                     y = data_array[select]['voltage_step']
-                    slope_fit, slope_err, plateau_fit, plateau_err = plot_pulser_dac(x, y, output_pdf=output_pdf, title_suffix="(DC %d)" % (enable_double_columns[0],), atol_first_dev=2.0 * 1e-04, atol_second_dev=5.0 * 1e-04)
+                    slope_fit, slope_err, plateau_fit, plateau_err = plot_pulser_dac(x, y, output_pdf=output_pdf, title_suffix="(DC %d)" % (enable_double_columns[0],), atol_first_dev=1.0 * 1e-04, atol_second_dev=2.0 * 1e-05)
 
                     # Store result in file
                     self.register.calibration_parameters['Vcal_Coeff_0'] = np.nan_to_num(slope_fit[0] * 1000.0)  # store in mV
