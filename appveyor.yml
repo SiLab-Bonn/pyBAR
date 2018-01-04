@@ -17,7 +17,7 @@ install:
   # Miniconda setup + necessary external packages
   - set PATH=C:\Miniconda;C:\Miniconda\Scripts;%PATH%  # miniconda is already installed on appveyor: https://github.com/appveyor/ci/issues/359
   - conda update conda --yes
-  # - conda update --all --yes
+  - conda update --all --yes
   - conda info -a
   - conda install --yes bitarray cython ipython matplotlib mock nose numba numpy pyserial pytables pyyaml pyzmq scipy sphinx
   - conda install --yes pywin32

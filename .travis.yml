@@ -22,7 +22,7 @@ before_install:
   - bash miniconda.sh -b -p $HOME/miniconda2
   - export PATH="$HOME/miniconda2/bin:$PATH"
   - conda update conda --yes
-  - conda config --add channels silab
+  - conda update --all --yes
   - conda info -a
   - conda create --yes -n test-environment bitarray cython ipython matplotlib mock nose numba numpy pyserial pytables pyyaml pyzmq scipy sphinx
   - source activate test-environment
