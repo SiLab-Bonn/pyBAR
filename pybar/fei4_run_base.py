@@ -184,9 +184,9 @@ class Fei4RunBase(RunBase):
             self.dut['I2C'].write(0xe8, [6, 0xf0, 0xff])
             self.dut['I2C'].write(0xe8, [2, 0x0f, 0x00])  # select channels here
 
-            self.dut['ENABLE_CHANNEL']['CH1'] = 0
-            self.dut['ENABLE_CHANNEL']['CH2'] = 0
-            self.dut['ENABLE_CHANNEL']['CH3'] = 0
+            self.dut['ENABLE_CHANNEL']['CH1'] = 1
+            self.dut['ENABLE_CHANNEL']['CH2'] = 1
+            self.dut['ENABLE_CHANNEL']['CH3'] = 1
             self.dut['ENABLE_CHANNEL']['CH4'] = 1
             self.dut['ENABLE_CHANNEL']['TLU'] = 1
             self.dut['ENABLE_CHANNEL']['TDC'] = 1
@@ -197,6 +197,10 @@ class Fei4RunBase(RunBase):
             self.dut['DLY_CONFIG'].write()
         else:
             logging.warning('Omitting initialization of DUT %s', self.dut.name)
+        # enabling all FEI4 Rx
+        rx_names = [rx.name for rx in self.dut.get_modules('fei4_rx')]
+        for rx_name in rx_names:
+             self.dut[rx_name].ENABLE_RX = 1
 
     def init_fe(self):
         if 'fe_configuration' in self._conf:

@@ -27,11 +27,12 @@ export PYTHONHOME=$(shell python -c "from distutils.sysconfig import get_config_
 # Must have XILINX set as an environment variable.
 # i.e. export XILINX=~/Xilinx/14.7/ISE_DS
 XILINX_SRC?=$(XILINX)
-   
+
 BASIL?=$(shell python -c "import basil;import os;print os.path.dirname(basil.__file__)")
 BASIL_MODULES?=$(BASIL)/../firmware/modules
-FEI4_SOURCES?=../../../../fei4/trunk/models/fei4a
-PYBAR_SOURCES?=../
+FEI4_SOURCES?=$(BASIL)/../../fei4/trunk/models/fei4a
+PYBAR?=$(shell python -c "import pybar;import os;print os.path.dirname(pybar.__file__)")
+PYBAR_SOURCES?=$(PYBAR)/../firmware/mio
 
 VERILOG_SOURCES = \
                   $(PYBAR_SOURCES)/cosim/tb.sv \
@@ -94,5 +95,5 @@ include $(COCOTB)/makefiles/Makefile.sim
 
 sim_only: $(CUSTOM_SIM_DEPS) $(COCOTB_LIBS) $(COCOTB_VPI_LIB) $(CUSTOM_COMPILE_DEPS)
 	PYTHONPATH=$(LIB_DIR):$(SIM_ROOT):$(PWD):$(NEW_PYTHONPATH) $(LIB_LOAD) MODULE=$(MODULE) \
-        TESTCASE=$(TESTCASE) TOPLEVEL=$(TOPLEVEL) \
-        vvp -M $(LIB_DIR) -m gpivpi $(SIM_BUILD)/sim.vvp $(SIM_ARGS) $(EXTRA_ARGS) $(PLUSARGS) -fst
+	TESTCASE=$(TESTCASE) TOPLEVEL=$(TOPLEVEL) \
+	vvp -M $(LIB_DIR) -m gpivpi $(SIM_BUILD)/sim.vvp $(SIM_ARGS) $(EXTRA_ARGS) $(PLUSARGS) -fst

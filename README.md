@@ -43,7 +43,7 @@ For full functionality, the following additional packages are required:
 
 Run the **following commands** to install the packages:
   ```
-  conda install bitarray cython ipython matplotlib mock nose numba numpy pyserial pytables pyyaml pyzmq scipy sphinx
+  conda install python=2.7 bitarray cython ipython matplotlib mock nose numba numpy pyserial pytables pyyaml pyzmq scipy sphinx
 
   pip install progressbar-latest pyvisa pyvisa-py git+https://github.com/pyqtgraph/pyqtgraph.git@pyqtgraph-0.10.0
   ```
@@ -53,9 +53,9 @@ On Windows, the `pywin32` package is required:
   conda install pywin32
   ```
 
-[Basil](https://github.com/SiLab-Bonn/basil) (==2.4.7) is required:
+[Basil](https://github.com/SiLab-Bonn/basil) (>=2.4.9,<3.0.0) is required:
   ```
-  pip install basil_daq==2.4.7
+  pip install 'basil_daq>=2.4.9,<3.0.0'
   ```
 
 [pyBAR FEI4 Interpreter](https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter) (>=1.3.0) is required:
@@ -63,9 +63,9 @@ On Windows, the `pywin32` package is required:
   pip install git+https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter@development
   ```
 
-[Pixel Clusterizer](https://github.com/SiLab-Bonn/pixel_clusterizer) (>=3.0.0) is required:
+[Pixel Clusterizer](https://github.com/SiLab-Bonn/pixel_clusterizer) (>=3.1,<3.2) is required:
   ```
-  pip install git+https://github.com/SiLab-Bonn/pixel_clusterizer@development
+  pip install 'pixel_clusterizer>=3.1,<3.2'
   ```
 
 To enable support for USB devices (MIO, MIO3 and MMC3), the following additional packages are required:
