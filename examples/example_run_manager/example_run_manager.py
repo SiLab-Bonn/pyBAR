@@ -9,7 +9,7 @@ if __name__ == "__main__":
     # The initial FE configuration will be created during the first run.
     #
     # (from configuration.yaml)
-    # fe_flavor : fei4a
+    # flavor : fei4a
     # ...
     #
     # Initializing the run manager:
@@ -18,17 +18,17 @@ if __name__ == "__main__":
     # During the first run, an module data directory relative to the configuration.yaml file will be created.
     # If configuration.yaml is placed inside /host/pybar/ the module data will be stored inside /host/pybar/<module_id> (where <module_id> is defined inside configuration.yaml).
     #
-    # If fe_configuration inside configuration.yaml is not given, the latest valid FE configuration file will be taken (the file with the highest run number and run status 'FINISHED').
+    # If configuration inside configuration.yaml is not given, the latest valid FE configuration file will be taken (the file with the highest run number and run status 'FINISHED').
     #
     # (from configuration.yaml)
-    # fe_configuration:
+    # configuration:
     # ...
     #
-    # If no configuration file exists, a initial configuration will be create according to fe_flavor.
+    # If no configuration file exists, a initial configuration will be create according to flavor.
     # To load a specific configuration file, a path to FE configuration file or a run number (e.g. 5) can be given:
     #
     # (from configuration.yaml)
-    # fe_configuration: 1
+    # configuration: 1
     # ...
     #
     # This will retain the configuration for the following scans.

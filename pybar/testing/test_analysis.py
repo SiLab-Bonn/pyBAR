@@ -4,11 +4,10 @@ import unittest
 import os
 import zlib
 
+import progressbar
 import tables as tb
 import numpy as np
 from numpy.testing import assert_array_equal
-
-import progressbar
 
 from pixel_clusterizer.clusterizer import HitClusterizer
 
@@ -119,7 +118,7 @@ class TestAnalysis(unittest.TestCase):
         os.remove(os.path.join(tests_data_folder, 'ext_trigger_scan_tlu_interpreted.h5'))
 
     def test_libraries_stability(self):  # calls 50 times the constructor and destructor to check the libraries
-        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=50, term_width=80)
+        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=50, term_width=80)
         progress_bar.start()
         for i in range(50):
             interpreter = PyDataInterpreter()

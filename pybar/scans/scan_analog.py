@@ -1,5 +1,4 @@
 import logging
-
 from collections import Iterable
 
 from pybar.fei4_run_base import Fei4RunBase
@@ -12,6 +11,8 @@ class AnalogScan(Fei4RunBase):
     '''Analog scan
     '''
     _default_run_conf = {
+        "broadcast_commands": False,
+        "threaded_scan": True,
         "mask_steps": 3,  # mask steps, be carefull PlsrDAC injects different charge for different mask steps
         "n_injections": 100,  # number of injections
         "scan_parameters": [('PlsrDAC', 280)],  # the PlsrDAC setting
@@ -19,7 +20,7 @@ class AnalogScan(Fei4RunBase):
         "enable_shift_masks": ["Enable", "C_High", "C_Low"],  # enable masks shifted during scan
         "disable_shift_masks": [],  # disable masks shifted during scan
         "pulser_dac_correction": False,  # PlsrDAC correction for each double column
-        "enable_tdc": False,  # if True, enables TDC (use RX2)
+        "enable_tdc": False,  # if True, enables TDC
         "same_mask_for_all_dc": True,  # if True, all columns have the same mask, if False, mask will be enabled only where injected
         "enable_double_columns": None,  # List of double columns which will be enabled during scan. None will select all double columns
         "enable_mask_steps": None,  # List of mask steps which will be applied. None will select all mask steps.
@@ -58,9 +59,6 @@ class AnalogScan(Fei4RunBase):
             else:
                 scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections, use_delay=True, mask_steps=self.mask_steps, enable_mask_steps=self.enable_mask_steps, enable_double_columns=self.enable_double_columns, same_mask_for_all_dc=self.same_mask_for_all_dc, digital_injection=False, enable_shift_masks=self.enable_shift_masks, disable_shift_masks=self.disable_shift_masks, restore_shift_masks=False, mask=invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if self.use_enable_mask else None, double_column_correction=self.pulser_dac_correction)
 
-        # plotting data
-#         plot_occupancy(hist=make_occupancy_hist(*convert_data_array(data_array_from_data_dict_iterable(self.fifo_readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)), z_max='median', filename=self.scan_data_filename + "_occupancy.pdf")
-
     def analyze(self):
         with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
             analyze_raw_data.create_tot_hist = True
@@ -76,6 +74,7 @@ class AnalogScan(Fei4RunBase):
 
     def deactivate_tdc(self):
         self.dut['TDC']['ENABLE'] = False
+
 
 if __name__ == "__main__":
     RunManager('../configuration.yaml').run_run(AnalogScan)

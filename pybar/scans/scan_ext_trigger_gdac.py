@@ -49,8 +49,8 @@ class ExtTriggerGdacScan(ExtTriggerScan):
             ExtTriggerScan.scan(self)
             self.stop_run.clear()
 
-    def handle_data(self, data):
-        self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), new_file=True, flush=True)
+    def handle_data(self, data, new_file=True, flush=True):
+        super(ExtTriggerGdacScan, self).handle_data(data=data, new_file=new_file, flush=flush)
 
     def get_gdacs_from_interpolated_calibration(self, calibration_file, thresholds):
         logging.info('Interpolate GDAC calibration for the thresholds %s', str(thresholds))

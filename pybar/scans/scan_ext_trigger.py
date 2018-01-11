@@ -1,8 +1,10 @@
 import logging
-import numpy as np
-import progressbar
 from time import time
 from threading import Timer
+from contextlib import contextmanager
+
+import progressbar
+import numpy as np
 
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.fei4.register_utils import invert_pixel_mask, make_box_pixel_mask_from_col_row
@@ -19,6 +21,8 @@ class ExtTriggerScan(Fei4RunBase):
     Set up trigger in DUT configuration file (e.g. dut_configuration_mio.yaml).
     '''
     _default_run_conf = {
+        "broadcast_commands": True,
+        "threaded_scan": False,
         "trig_count": 0,  # FE-I4 trigger count, number of consecutive BCs, 0 means 16, from 0 to 15
         "trigger_latency": 232,  # FE-I4 trigger latency, in BCs, external scintillator / TLU / HitOR: 232, USBpix self-trigger: 220
         "trigger_delay": 8,  # trigger delay, in BCs
@@ -30,7 +34,7 @@ class ExtTriggerScan(Fei4RunBase):
         "no_data_timeout": 10,  # no data timeout after which the scan will be aborted, in seconds
         "scan_timeout": 60,  # timeout for scan after which the scan will be stopped, in seconds
         "max_triggers": 10000,  # maximum triggers after which the scan will be stopped, if 0, no maximum triggers are set
-        "enable_tdc": False,  # if True, enables TDC (use RX2)
+        "enable_tdc": False,  # if True, enables TDC
         "reset_rx_on_error": False  # long scans have a high propability for ESD related data transmission errors; recover and continue here
     }
 
@@ -70,33 +74,35 @@ class ExtTriggerScan(Fei4RunBase):
         self.register_utils.set_command(lvl1_command)
 
         with self.readout(no_data_timeout=self.no_data_timeout, **self.scan_parameters._asdict()):
-            got_data = False
-            start = time()
-            while not self.stop_run.wait(1.0):
-                if not got_data:
-                    if self.fifo_readout.data_words_per_second() > 0:
-                        got_data = True
-                        logging.info('Taking data...')
-                        if self.max_triggers:
-                            self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=self.max_triggers, poll=10, term_width=80).start()
-                        else:
-                            self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.Timer()], maxval=self.scan_timeout, poll=10, term_width=80).start()
-                else:
-                    triggers = self.dut['TLU']['TRIGGER_COUNTER']
-                    try:
-                        if self.max_triggers:
-                            self.progressbar.update(triggers)
-                        else:
-                            self.progressbar.update(time() - start)
-                    except ValueError:
-                        pass
-                    if self.max_triggers and triggers >= self.max_triggers:
-                        self.progressbar.finish()
-                        self.stop(msg='Trigger limit was reached: %i' % self.max_triggers)
+            with self.trigger():
+                got_data = False
+                start = time()
+                while not self.stop_run.wait(1.0):
+                    if not got_data:
+                        if self.data_words_per_second() > 0:
+                            got_data = True
+                            logging.info('Taking data...')
+                            if self.max_triggers:
+                                self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=self.max_triggers, poll=10, term_width=80).start()
+                            else:
+                                self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.Timer()], maxval=self.scan_timeout, poll=10, term_width=80).start()
+                    else:
+                        triggers = self.dut['TLU']['TRIGGER_COUNTER']
+                        try:
+                            if self.max_triggers:
+                                self.progressbar.update(triggers)
+                            else:
+                                self.progressbar.update(time() - start)
+                        except ValueError:
+                            pass
+                        if self.max_triggers and triggers >= self.max_triggers:
+                            self.progressbar.finish()
+                            self.stop(msg='Trigger limit was reached: %i' % self.max_triggers)
         logging.info('Total amount of triggers collected: %d', self.dut['TLU']['TRIGGER_COUNTER'])
 
     def analyze(self):
         with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
+            analyze_raw_data.trigger_data_format = self.dut['TLU']['DATA_FORMAT']
             analyze_raw_data.create_source_scan_hist = True
             analyze_raw_data.create_cluster_size_hist = True
             analyze_raw_data.create_cluster_tot_hist = True
@@ -110,15 +116,30 @@ class ExtTriggerScan(Fei4RunBase):
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms()
 
-    def start_readout(self, *args, **kwargs):
-        super(ExtTriggerScan, self).start_readout(*args, **kwargs)
+    @contextmanager
+    def trigger(self):
+        self.start_trigger()
+        try:
+            yield
+        finally:
+            try:
+                self.stop_trigger()
+            except:
+                # in case something fails, call this on last resort
+                self.scan_timeout_timer.cancel()
+                self.connect_cancel(["abort"])
+
+    def start_trigger(self, *args, **kwargs):
+        self.connect_cancel(["stop"])
         self.dut['TDC']['ENABLE'] = self.enable_tdc
         self.dut['TLU']['TRIGGER_COUNTER'] = 0
         if self.max_triggers:
             self.dut['TLU']['MAX_TRIGGERS'] = self.max_triggers
         else:
             self.dut['TLU']['MAX_TRIGGERS'] = 0  # infinity triggers
-        self.dut['CMD']['EN_EXT_TRIGGER'] = True
+        self.dut['TX']['EN_EXT_TRIGGER'] = True
+        with self.synchronized():
+            self.dut['TLU']['TRIGGER_ENABLE'] = True
 
         def timeout():
             try:
@@ -131,11 +152,13 @@ class ExtTriggerScan(Fei4RunBase):
         if self.scan_timeout:
             self.scan_timeout_timer.start()
 
-    def stop_readout(self, timeout=10.0):
+    def stop_trigger(self, timeout=10.0):
         self.scan_timeout_timer.cancel()
+        with self.synchronized():
+            self.dut['TLU']['TRIGGER_ENABLE'] = False
+        self.dut['TX']['EN_EXT_TRIGGER'] = False
         self.dut['TDC']['ENABLE'] = False
-        self.dut['CMD']['EN_EXT_TRIGGER'] = False
-        super(ExtTriggerScan, self).stop_readout(timeout=timeout)
+        self.connect_cancel(["abort"])
 
 
 if __name__ == "__main__":

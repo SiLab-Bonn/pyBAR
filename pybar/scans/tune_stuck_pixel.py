@@ -13,6 +13,8 @@ class StuckPixelScan(DigitalScan):
     '''Stuck pixel scan to detect and disable stuck pixels (Hitbus/HitOR always high).
     '''
     _default_run_conf = {
+        "broadcast_commands": False,
+        "threaded_scan": False,
         "mask_steps": 3,  # mask steps
         "n_injections": 100,  # number of injections
         "use_enable_mask": False,  # if True, use Enable mask during scan, if False, all pixels will be enabled
@@ -42,30 +44,28 @@ class StuckPixelScan(DigitalScan):
             analyze_raw_data.interpreter.print_summary()
 
             occ_hist = analyze_raw_data.out_file_h5.root.HistOcc[:, :, 0].T
-            self.occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
+            occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
             # noisy pixels are set to 1
-            self.occ_mask[occ_hist < self.n_injections] = 1
+            occ_mask[occ_hist < self.n_injections] = 1
             # make inverse
-            self.inv_occ_mask = invert_pixel_mask(self.occ_mask)
-            self.disable_for_mask = self.disable_for_mask
+            inv_occ_mask = invert_pixel_mask(occ_mask)
             if self.overwrite_mask:
                 for mask in self.disable_for_mask:
-                    self.register.set_pixel_register_value(mask, self.inv_occ_mask)
+                    self.register.set_pixel_register_value(mask, inv_occ_mask)
             else:
                 for mask in self.disable_for_mask:
-                    enable_mask = np.logical_and(self.inv_occ_mask, self.register.get_pixel_register_value(mask))
+                    enable_mask = np.logical_and(inv_occ_mask, self.register.get_pixel_register_value(mask))
                     self.register.set_pixel_register_value(mask, enable_mask)
 
-            self.enable_for_mask = self.enable_for_mask
             if self.overwrite_mask:
                 for mask in self.enable_for_mask:
-                    self.register.set_pixel_register_value(mask, self.occ_mask)
+                    self.register.set_pixel_register_value(mask, occ_mask)
             else:
                 for mask in self.enable_for_mask:
-                    disable_mask = np.logical_or(self.occ_mask, self.register.get_pixel_register_value(mask))
+                    disable_mask = np.logical_or(occ_mask, self.register.get_pixel_register_value(mask))
                     self.register.set_pixel_register_value(mask, disable_mask)
 
-            plot_occupancy(self.occ_mask.T, title='Stuck Pixels', z_max=1, filename=analyze_raw_data.output_pdf)
+            plot_occupancy(occ_mask.T, title='Stuck Pixels', z_max=1, filename=analyze_raw_data.output_pdf)
             for mask in self.disable_for_mask:
                 mask_name = self.register.pixel_registers[mask]['name']
                 plot_occupancy(self.register.get_pixel_register_value(mask).T, title='%s Mask' % mask_name, z_max=1, filename=analyze_raw_data.output_pdf)

@@ -6,7 +6,7 @@ import numpy as np
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.fei4.register_utils import scan_loop, make_pixel_mask
 from pybar.run_manager import RunManager
-from pybar.daq.readout_utils import convert_data_array, is_data_record, is_fe_word, logical_and, data_array_from_data_iterable, get_col_row_array_from_data_record_array
+from pybar.daq.readout_utils import convert_data_array, is_data_record, logical_and, data_array_from_data_iterable, get_col_row_array_from_data_record_array
 from pybar.analysis.plotting.plotting import plot_three_way
 
 
@@ -20,6 +20,8 @@ class GdacTuningStandard(Fei4RunBase):
     Use pybar.scans.tune_fei4 for full FE-I4 tuning.
     '''
     _default_run_conf = {
+        "broadcast_commands": False,
+        "threaded_scan": False,
         "scan_parameters": [('GDAC', [255, 40])],
         "step_size": -1,  # step size of the GDAC during scan
         "target_threshold": 30,  # target threshold in PlsrDAC to tune to
@@ -27,7 +29,6 @@ class GdacTuningStandard(Fei4RunBase):
         "max_delta_threshold": 5,  # minimum difference to the target_threshold to abort the tuning
         "enable_mask_steps_gdac": [0],  # mask steps to do per GDAC setting
         "plot_intermediate_steps": False,  # plot intermediate steps (takes time)
-        "plots_filename": None,  # file name to store the plot to, if None show on screen
         "enable_shift_masks": ["Enable", "C_High", "C_Low"],  # enable masks shifted during scan
         "disable_shift_masks": [],  # disable masks shifted during scan
         "pulser_dac_correction": False,  # PlsrDAC correction for each double column
@@ -56,13 +57,10 @@ class GdacTuningStandard(Fei4RunBase):
         commands.extend(self.register.get_commands("RunMode"))
         self.register_utils.send_commands(commands)
 
-    def scan(self):
-        if not self.plots_filename:
-            self.plots_filename = PdfPages(self.output_filename + '.pdf')
-            self.close_plots = True
-        else:
-            self.close_plots = False
+        self.plots_filename = PdfPages(self.output_filename + '.pdf')
+        self.close_plots = True
 
+    def scan(self):
         cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0]
 
         self.write_target_threshold()
@@ -98,12 +96,14 @@ class GdacTuningStandard(Fei4RunBase):
             logging.info('Deselect double column %d' % column)
             select_mask_array[column, :] = 0
 
-        occupancy_best = 0.0
-        median_occupancy_last_step = 0.0
-        gdac_best = self.register_utils.get_gdac()
-        for gdac_scan_step, scan_parameter_value in enumerate(scan_parameter_range):
+        gdac_values = []
+        gdac_occupancy = []
+        gdac_occ_array_sel_pixels = []
+        gdac_occ_array_desel_pixels = []
+        median_occupancy_last_step = None
+        for scan_parameter_value in scan_parameter_range:
             self.register_utils.set_gdac(scan_parameter_value)
-            with self.readout(GDAC=scan_parameter_value, reset_sram_fifo=True, fill_buffer=True, clear_buffer=True, callback=self.handle_data):
+            with self.readout(GDAC=scan_parameter_value, fill_buffer=True):
                 scan_loop(self,
                           command=cal_lvl1_command,
                           repeat_command=self.n_injections_gdac,
@@ -119,34 +119,51 @@ class GdacTuningStandard(Fei4RunBase):
                           mask=None,
                           double_column_correction=self.pulser_dac_correction)
 
-            occupancy_array, _, _ = np.histogram2d(*convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=logical_and(is_fe_word, is_data_record), converter_func=get_col_row_array_from_data_record_array), bins=(80, 336), range=[[1, 80], [1, 336]])
+            data = convert_data_array(array=self.read_data(), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)
+            occupancy_array, _, _ = np.histogram2d(*data, bins=(80, 336), range=[[1, 80], [1, 336]])
             occ_array_sel_pixels = np.ma.array(occupancy_array, mask=np.logical_not(np.ma.make_mask(select_mask_array)))  # take only selected pixel into account by using the mask
             occ_array_desel_pixels = np.ma.array(occupancy_array, mask=np.ma.make_mask(select_mask_array))  # take only de-selected pixel into account by using the inverted mask
             median_occupancy = np.ma.median(occ_array_sel_pixels)
             noise_occupancy = np.ma.median(occ_array_desel_pixels)
             occupancy_almost_zero = np.allclose(median_occupancy, 0)
             no_noise = np.allclose(noise_occupancy, 0)
-            if no_noise and not occupancy_almost_zero and abs(median_occupancy - self.n_injections_gdac / 2) < abs(occupancy_best - self.n_injections_gdac / 2):
-                occupancy_best = median_occupancy
-                gdac_best = self.register_utils.get_gdac()
-                self.occ_array_sel_pixels_best = occ_array_sel_pixels.copy()
-                self.occ_array_desel_pixels_best = occ_array_desel_pixels.copy()
+            gdac_values.append(self.register_utils.get_gdac())
+            gdac_occupancy.append(median_occupancy)
+            gdac_occ_array_sel_pixels.append(occ_array_sel_pixels.copy())
+            gdac_occ_array_desel_pixels.append(occ_array_desel_pixels.copy())
+            self.occ_array_sel_pixels_best = occ_array_sel_pixels.copy()
+            self.occ_array_desel_pixels_best = occ_array_desel_pixels.copy()
 
             if self.plot_intermediate_steps:
                 plot_three_way(self.occ_array_sel_pixel.transpose(), title="Occupancy (GDAC " + str(scan_parameter_value) + ")", x_axis_title='Occupancy', filename=self.plots_filename, maximum=self.n_injections_gdac)
 
-            if no_noise and not occupancy_almost_zero and median_occupancy >= median_occupancy_last_step and median_occupancy >= self.n_injections_gdac / 2:
+            # abort early if threshold is found
+            if no_noise and not occupancy_almost_zero and (median_occupancy_last_step is not None and median_occupancy >= median_occupancy_last_step) and median_occupancy >= self.n_injections_gdac / 2:
                 break
+
             if no_noise and not occupancy_almost_zero:
                 median_occupancy_last_step = median_occupancy
             else:
                 median_occupancy_last_step = 0.0
 
-        self.register_utils.set_gdac(gdac_best, send_command=False)
+        # select best GDAC value
+        occupancy_sorted = np.array(gdac_occupancy)[np.argsort(np.array(gdac_values))]
+        gdac_sorted = np.sort(gdac_values)
+        gdac_min_idx = np.where(occupancy_sorted >= self.n_injections_gdac / 2)[0][-1]
+        occupancy_sorted_sel = occupancy_sorted[gdac_min_idx:]
+        gdac_sorted_sel = gdac_sorted[gdac_min_idx:]
+        gdac_best_idx = np.abs(np.array(occupancy_sorted_sel) - self.n_injections_gdac / 2).argmin()
+        gdac_best = gdac_sorted_sel[gdac_best_idx]
+        occupancy_best = occupancy_sorted_sel[gdac_best_idx]
         median_occupancy = occupancy_best
+        self.register_utils.set_gdac(gdac_best, send_command=False)
+        # for plotting
+        self.occ_array_sel_pixels_best = np.array(gdac_occ_array_sel_pixels)[np.argsort(np.array(gdac_values))][gdac_best_idx]
+        self.occ_array_desel_pixels_best = np.array(gdac_occ_array_sel_pixels)[np.argsort(np.array(gdac_values))][gdac_best_idx]
+
         self.gdac_best = self.register_utils.get_gdac()
 
-        if abs(median_occupancy - self.n_injections_gdac / 2) > self.max_delta_threshold:
+        if abs(median_occupancy - self.n_injections_gdac / 2) > self.max_delta_threshold and not self.stop_run.is_set():
             if np.all((((self.gdac_best & (1 << np.arange(self.register.global_registers['Vthin_AltFine']['bitlength'] + self.register.global_registers['Vthin_AltFine']['bitlength'])))) > 0).astype(int) == 0):
                 if self.fail_on_warning:
                     raise RuntimeWarning('Selected GDAC bits reached minimum value')
@@ -154,7 +171,7 @@ class GdacTuningStandard(Fei4RunBase):
                     logging.warning('Selected GDAC bits reached minimum value')
             else:
                 if self.fail_on_warning:
-                    raise RuntimeWarning('Global threshold tuning failed. Delta threshold = %.2f > %.2f. Vthin_AltCoarse / Vthin_AltFine = %d / %d' %(abs(median_occupancy - self.n_injections_gdac / 2), self.max_delta_threshold, self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine")))
+                    raise RuntimeWarning('Global threshold tuning failed. Delta threshold = %.2f > %.2f. Vthin_AltCoarse / Vthin_AltFine = %d / %d' % (abs(median_occupancy - self.n_injections_gdac / 2), self.max_delta_threshold, self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine")))
                 else:
                     logging.warning('Global threshold tuning failed. Delta threshold = %.2f > %.2f. Vthin_AltCoarse / Vthin_AltFine = %d / %d', abs(median_occupancy - self.n_injections_gdac / 2), self.max_delta_threshold, self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine"))
         else:
@@ -164,9 +181,9 @@ class GdacTuningStandard(Fei4RunBase):
         # set here because original value is restored after scan()
         self.register_utils.set_gdac(self.gdac_best, send_command=False)
 
-        plot_three_way(self.occ_array_sel_pixels_best.transpose(), title="Occupancy after GDAC tuning of selected pixels (GDAC " + str(self.scan_parameters.GDAC) + ")", x_axis_title='Occupancy', filename=self.plots_filename, maximum=self.n_injections_gdac)
+        plot_three_way(self.occ_array_sel_pixels_best.transpose(), title="Occupancy after GDAC tuning of selected pixels (GDAC " + str(self.gdac_best) + ")", x_axis_title='Occupancy', filename=self.plots_filename, maximum=self.n_injections_gdac)
 
-        plot_three_way(self.occ_array_desel_pixels_best.transpose(), title="Occupancy after GDAC tuning of not selected pixels (GDAC " + str(self.scan_parameters.GDAC) + ")", x_axis_title='Occupancy', filename=self.plots_filename, maximum=self.n_injections_gdac)
+        plot_three_way(self.occ_array_desel_pixels_best.transpose(), title="Occupancy after GDAC tuning of not selected pixels (GDAC " + str(self.gdac_best) + ")", x_axis_title='Occupancy', filename=self.plots_filename, maximum=self.n_injections_gdac)
         if self.close_plots:
             self.plots_filename.close()
 

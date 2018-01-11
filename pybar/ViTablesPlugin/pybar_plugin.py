@@ -4,7 +4,6 @@
 
 """Plugin that provides plotting of data from the Python Bonn Atlas Readout System (pyBAR).
 """
-
 import os
 
 from PyQt4 import QtCore
@@ -14,8 +13,8 @@ import vitables.utils
 from vitables.vtSite import PLUGINSDIR
 
 try:
-    from matplotlib import colors, cm
     import matplotlib.pyplot as plt
+    from matplotlib import colors, cm
     from mpl_toolkits.axes_grid1 import make_axes_locatable
 except:
     print 'ERROR: Cannot load additional libraries needed for the pyBAR ViTables plugin!'

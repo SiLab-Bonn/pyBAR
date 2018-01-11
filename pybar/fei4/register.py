@@ -23,7 +23,7 @@ flavors = ('fei4a', 'fei4b')
 class FEI4Register(object):
 
     def __init__(self, configuration_file=None, fe_type=None, chip_address=None, broadcast=False):
-        '''
+        '''FE-I4 register class.
 
         Note:
         Chip ID: This 4-bit field consists of broadcast bit and chip address. The broadcast bit, the most significant one, if set, means that the command is broadcasted to all FE chips receiving the data stream.
@@ -33,22 +33,24 @@ class FEI4Register(object):
         if fe_type:
             self.init_fe_type(fe_type)
 
-        self.broadcast = broadcast
+        self.broadcast = None
         self.chip_address = None
         if chip_address is None:
             chip_address = 0
-        self.set_chip_address(chip_address)
 
         self.configuration_file = fe_type
         if configuration_file:
             self.load_configuration(configuration_file)
+        else:
+            self.set_chip_address(chip_address, broadcast)
 
         self.config_state = OrderedDict()
 
     def __repr__(self):
         return self.configuration_file
 
-    def set_chip_address(self, chip_address):
+    def set_chip_address(self, chip_address, broadcast):
+        self.broadcast = broadcast
         if 7 < chip_address < 0:
             raise ValueError('Chip address out of range: %i' % chip_address)
         self.chip_id_initialized = True
@@ -250,7 +252,9 @@ class FEI4Register(object):
             if not self.broadcast:
                 self.set_global_register_value("Colpr_Mode", 0)  # write only to the addressed double-column
                 self.set_global_register_value("Colpr_Addr", 40)  # ivalid address, grounded
-                commands.extend(self.get_commands("ConfMode", ChipID=8))  # set all chips to conf mode to receive commands
+                # Broadcasting ConfMode not necessary, writing registers is also possible in RunMode
+#                 commands.extend(self.get_commands("ConfMode", ChipID=8))  # set all chips to conf mode to receive commands#
+                # set all other chips to invalid addresses, to make broadcasting of WrRegister command possible
                 commands.extend(self.get_commands("WrRegister", name=["Colpr_Mode", "Colpr_Addr"], ChipID=8)) # braodcast
             self.set_global_register_value("S0", 0)
             self.set_global_register_value("S1", 0)
@@ -594,11 +598,11 @@ class FEI4Register(object):
 
     @contextmanager
     def restored(self, name=None):
-        self.create_restore_point(name)
+        name = self.create_restore_point(name=name)
         try:
             yield
         finally:
-            self.restore()
+            self.restore(name=name)
 
     def create_restore_point(self, name=None):
         '''Creating a configuration restore point.
@@ -620,6 +624,7 @@ class FEI4Register(object):
         if name in self.config_state:
             raise ValueError('Restore point %s already exists' % name)
         self.config_state[name] = (copy.deepcopy(self.global_registers), copy.deepcopy(self.pixel_registers))
+        return name
 
     def restore(self, name=None, keep=False, last=True, global_register=True, pixel_register=True):
         '''Restoring a configuration restore point.
@@ -685,6 +690,23 @@ class FEI4Register(object):
             return False
 
 
+class BroadcastRegister(FEI4Register):
+
+    ''' Defiens a FE-I4 register object for storing register settings to be
+    broadcasted to multiple Front-Ends.
+    '''
+
+    def __init__(self, fe_type=None):
+        super(BroadcastRegister, self).__init__(configuration_file=None,
+                                                fe_type=fe_type, chip_address=None,
+                                                broadcast=True)
+
+    def get_commands(self, command_name, **kwargs):
+        if 'RdRegister' in command_name:
+            logging.warning('Reading registers in broadcast mode')
+        return super(BroadcastRegister, self).get_commands(command_name, **kwargs)
+
+
 class NameValue(tb.IsDescription):
     name = tb.StringCol(256, pos=0)
     value = tb.StringCol(1024, pos=0)
@@ -720,8 +742,7 @@ def load_configuration_from_text_file(register, configuration_file):
         if register.chip_address:
             pass
         else:
-            register.broadcast = True if chip_id & 0x8 else False
-            register.set_chip_address(chip_id & 0x7)
+            register.set_chip_address(chip_address=chip_id & 0x7, broadcast=True if chip_id & 0x8 else False)
     elif 'Chip_Address' in config_dict:
         chip_address = config_dict.pop('Chip_Address')
         if register.chip_address:
@@ -795,13 +816,12 @@ def load_configuration_from_hdf5(register, configuration_file, node=''):
                 if register.chip_address:
                     pass
                 else:
-                    register.broadcast = True if value & 0x8 else False
-                    register.set_chip_address(value & 0x7)
+                    register.set_chip_address(chip_address=value & 0x7, broadcast=True if value & 0x8 else False)
             elif name == 'Chip_Address':
                 if register.chip_address:
                     pass
                 else:
-                    register.set_chip_address(value)
+                    register.set_chip_address(chip_address=value, broadcast=False)
             else:
                 register.miscellaneous[name] = value
 

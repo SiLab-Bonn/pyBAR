@@ -21,6 +21,8 @@ class NoiseOccupancyTuning(Fei4RunBase):
     To achieve a broader TDAC distribution it is necessary to decrease TdacVbp.
     '''
     _default_run_conf = {
+        "broadcast_commands": True,
+        "threaded_scan": False,
         "occupancy_limit": 1 * 10 ** (-5),  # the lower the number the higher the constraints on noise occupancy; 0 will mask any pixel with occupancy greater than zero
         "n_triggers": 10000000,  # total number of triggers which will be sent to the FE. From 1 to 4294967295 (32-bit unsigned int).
         "trig_count": 1,  # FE-I4 trigger count, number of consecutive BCs, 0 means 16, from 0 to 15
@@ -81,7 +83,7 @@ class NoiseOccupancyTuning(Fei4RunBase):
         self.total_scan_time = int(lvl1_command.length() * 25 * (10 ** -9) * self.n_triggers)
         logging.info('Estimated scan time: %ds', self.total_scan_time)
 
-        with self.readout(reset_sram_fifo=False, clear_buffer=True, callback=self.handle_data, errback=self.handle_err, no_data_timeout=self.no_data_timeout):
+        with self.readout(no_data_timeout=self.no_data_timeout):
             got_data = False
             start = time()
             self.register_utils.send_command(lvl1_command, repeat=self.n_triggers, wait_for_finish=False, set_length=True, clear_memory=False)
@@ -91,7 +93,7 @@ class NoiseOccupancyTuning(Fei4RunBase):
                         self.progressbar.finish()
                     self.stop('Finished sending %d triggers' % self.n_triggers)
                 if not got_data:
-                    if self.fifo_readout.data_words_per_second() > 0:
+                    if self.data_words_per_second() > 0:
                         got_data = True
                         logging.info('Taking data...')
                         self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.Timer()], maxval=self.total_scan_time, poll=10, term_width=80).start()
@@ -140,6 +142,7 @@ class NoiseOccupancyTuning(Fei4RunBase):
             for mask in self.enable_for_mask:
                 mask_name = self.register.pixel_registers[mask]['name']
                 plot_occupancy(self.register.get_pixel_register_value(mask).T, title='%s Mask' % mask_name, z_max=1, filename=analyze_raw_data.output_pdf)
+
 
 if __name__ == "__main__":
     RunManager('../configuration.yaml').run_run(NoiseOccupancyTuning)

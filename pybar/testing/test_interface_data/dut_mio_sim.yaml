@@ -5,7 +5,8 @@ version : 2.0.0
 transfer_layer:
   - name     : USB
     type     : SiSim
-    timeout  : 180
+    init     :
+        timeout  : 180
 
 # Example of additional lab device transfer layers to be used with pyBAR
 #  - name     : Visa
@@ -20,23 +21,22 @@ hw_drivers:
 #    interface : USB
 #    base_addr : 0x0
 
-  - name      : CH4
+  - name      : DATA_CH4
     type      : fei4_rx
     interface : USB
     base_addr : 0x18300
 
-# Uncomment for FEI4QuadModuleAdapterCard
-  - name      : CH3
+  - name      : DATA_CH3
     type      : fei4_rx
     interface : USB
     base_addr : 0x18400
-    
-  - name      : CH2
+
+  - name      : DATA_CH2
     type      : fei4_rx
     interface : USB
     base_addr : 0x18500
-    
-  - name      : CH1
+
+  - name      : DATA_CH1
     type      : fei4_rx
     interface : USB
     base_addr : 0x18600
@@ -58,23 +58,23 @@ hw_drivers:
 #    init      :
 #        device : Agilent 33250a
 
-  - name      : CMD
+  - name      : CMD_CH1_TO_CH4
     type      : cmd_seq
     interface : USB
     base_addr : 0x10000
 
-  - name      : SRAM
+  - name      : SRAM_FIFO
     type      : sram_fifo
     interface : USB
     base_addr : 0x18100
     base_data_addr : 0x0001000000000000
 
-  - name      : TLU
+  - name      : TRIGGER_CH1_TO_CH4
     type      : tlu
     interface : USB
     base_addr : 0x18200
 
-  - name      : TDC
+  - name      : TDC_RX2
     type      : tdc_s3
     interface : USB
     base_addr : 0x18700
@@ -89,8 +89,6 @@ hw_drivers:
     interface : USB
     base_addr : 0x18900
 
-user_drivers:
-    
 registers:
   - name        : ENABLE_CHANNEL
     type        : StdRegister
@@ -103,16 +101,16 @@ registers:
       - name    : TLU
         size    : 1
         offset  : 4
-      - name    : CH4
+      - name    : DATA_CH4
         size    : 1
         offset  : 3
-      - name    : CH3
+      - name    : DATA_CH3
         size    : 1
         offset  : 2
-      - name    : CH2
+      - name    : DATA_CH2
         size    : 1
         offset  : 1
-      - name    : CH1
+      - name    : DATA_CH1
         size    : 1
         offset  : 0
 

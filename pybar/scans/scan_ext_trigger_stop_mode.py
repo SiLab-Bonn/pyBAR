@@ -1,6 +1,7 @@
 import logging
 from time import time
 from threading import Timer
+from contextlib import contextmanager
 
 import progressbar
 import numpy as np
@@ -36,10 +37,11 @@ class StopModeExtTriggerScan(Fei4RunBase):
     Set up trigger in DUT configuration file (e.g. dut_configuration_mio.yaml).
     '''
     _default_run_conf = {
+        "broadcast_commands": True,
         "trigger_latency": 5,  # FE global register Trig_Lat. The lower the value the longer the hit data will be stored in data buffer
         "trigger_delay": 192,  # delay between trigger and stop mode command
         "readout_delay": 2000,  # delay after trigger to record hits, the lower the faster the readout; total readout time per track is about (800 + (1300 + readout_delay) * bcid_window) * 25 ns
-        "trig_count": 100,  # Number of consecurive time slices to be read, from 1 to 256
+        "trig_count": 100,  # Number of consecurive time slices to be read, from 1 to 256; the number is read from raw data file during analysis.
         "col_span": [1, 80],  # defining active column interval, 2-tuple, from 1 to 80
         "row_span": [1, 336],  # defining active row interval, 2-tuple, from 1 to 336
         "overwrite_enable_mask": False,  # if True, use col_span and row_span to define an active region regardless of the Enable pixel register. If False, use col_span and row_span to define active region by also taking Enable pixel register into account.
@@ -118,9 +120,9 @@ class StopModeExtTriggerScan(Fei4RunBase):
             self.register.get_commands("GlobalPulse", Width=0)[0],
             self.register.get_commands("zeros", length=100)[0]))
 
-        self.dut['CMD']['CMD_REPEAT'] = self.trig_count
-        self.dut['CMD']['START_SEQUENCE_LENGTH'] = len(start_sequence)
-        self.dut['CMD']['STOP_SEQUENCE_LENGTH'] = len(stop_sequence) + 1
+        self.dut['TX']['CMD_REPEAT'] = self.trig_count
+        self.dut['TX']['START_SEQUENCE_LENGTH'] = len(start_sequence)
+        self.dut['TX']['STOP_SEQUENCE_LENGTH'] = len(stop_sequence) + 1
 
         # preload the command to be send for each trigger
         command = self.register_utils.concatenate_commands((start_sequence, one_latency_read, stop_sequence))
@@ -128,49 +130,67 @@ class StopModeExtTriggerScan(Fei4RunBase):
         self.register_utils.set_command(command)
 
         with self.readout(no_data_timeout=self.no_data_timeout, **self.scan_parameters._asdict()):
-            got_data = False
-            start = time()
-            while not self.stop_run.wait(1.0):
-                if not got_data:
-                    if self.fifo_readout.data_words_per_second() > 0:
-                        got_data = True
-                        logging.info('Taking data...')
-                        if self.max_triggers:
-                            self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=self.max_triggers, poll=10, term_width=80).start()
-                        else:
-                            self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.Timer()], maxval=self.scan_timeout, poll=10, term_width=80).start()
-                else:
-                    triggers = self.dut['TLU']['TRIGGER_COUNTER']
-                    try:
-                        if self.max_triggers:
-                            self.progressbar.update(triggers)
-                        else:
-                            self.progressbar.update(time() - start)
-                    except ValueError:
-                        pass
-                    if self.max_triggers and triggers >= self.max_triggers:
-                        self.progressbar.finish()
-                        self.stop(msg='Trigger limit was reached: %i' % self.max_triggers)
+            with self.trigger():
+                got_data = False
+                start = time()
+                while not self.stop_run.wait(1.0):
+                    if not got_data:
+                        if self.data_words_per_second() > 0:
+                            got_data = True
+                            logging.info('Taking data...')
+                            if self.max_triggers:
+                                self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=self.max_triggers, poll=10, term_width=80).start()
+                            else:
+                                self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.Timer()], maxval=self.scan_timeout, poll=10, term_width=80).start()
+                    else:
+                        triggers = self.dut['TLU']['TRIGGER_COUNTER']
+                        try:
+                            if self.max_triggers:
+                                self.progressbar.update(triggers)
+                            else:
+                                self.progressbar.update(time() - start)
+                        except ValueError:
+                            pass
+                        if self.max_triggers and triggers >= self.max_triggers:
+                            self.progressbar.finish()
+                            self.stop(msg='Trigger limit was reached: %i' % self.max_triggers)
         logging.info('Total amount of triggers collected: %d', self.dut['TLU']['TRIGGER_COUNTER'])
 
     def analyze(self):
         with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
             analyze_raw_data.create_hit_table = True
-            analyze_raw_data.trig_count = self.trig_count  # set number of BCID to overwrite the number deduced from the raw data file
+            analyze_raw_data.trigger_data_format = self.dut['TLU']['DATA_FORMAT']
             analyze_raw_data.create_source_scan_hist = True
-            analyze_raw_data.trigger_data_format = 1  # time stamp only
             analyze_raw_data.set_stop_mode = True
             analyze_raw_data.align_at_trigger = True
             analyze_raw_data.interpreter.set_warning_output(False)
-            analyze_raw_data.interpret_word_table(use_settings_from_file=False)
+            analyze_raw_data.interpret_word_table()
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms()
 
-    def start_readout(self, *args, **kwargs):
-        super(StopModeExtTriggerScan, self).start_readout(*args, **kwargs)
+    @contextmanager
+    def trigger(self):
+        self.start_trigger()
+        try:
+            yield
+        finally:
+            try:
+                self.stop_trigger()
+            except:
+                # in case something fails, call this on last resort
+                self.scan_timeout_timer.cancel()
+                self.connect_cancel(["abort"])
+
+    def start_trigger(self):
+        self.connect_cancel(["stop"])
         self.dut['TLU']['TRIGGER_COUNTER'] = 0
-        self.dut['TLU']['MAX_TRIGGERS'] = self.max_triggers
-        self.dut['CMD']['EN_EXT_TRIGGER'] = True
+        if self.max_triggers:
+            self.dut['TLU']['MAX_TRIGGERS'] = self.max_triggers
+        else:
+            self.dut['TLU']['MAX_TRIGGERS'] = 0  # infinity triggers
+        self.dut['TX']['EN_EXT_TRIGGER'] = True
+        with self.synchronized():
+            self.dut['TLU']['TRIGGER_ENABLE'] = True
 
         def timeout():
             try:
@@ -183,10 +203,12 @@ class StopModeExtTriggerScan(Fei4RunBase):
         if self.scan_timeout:
             self.scan_timeout_timer.start()
 
-    def stop_readout(self, timeout=10.0):
+    def stop_trigger(self):
         self.scan_timeout_timer.cancel()
-        self.dut['CMD']['EN_EXT_TRIGGER'] = False
-        super(StopModeExtTriggerScan, self).stop_readout(timeout=timeout)
+        with self.synchronized():
+            self.dut['TLU']['TRIGGER_ENABLE'] = False
+        self.dut['TX']['EN_EXT_TRIGGER'] = False
+        self.connect_cancel(["abort"])
 
 
 if __name__ == "__main__":

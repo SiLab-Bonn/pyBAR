@@ -11,6 +11,8 @@ class DigitalScan(Fei4RunBase):
     '''Digital scan
     '''
     _default_run_conf = {
+        "broadcast_commands": True,
+        "threaded_scan": False,
         "mask_steps": 3,  # mask steps
         "n_injections": 100,  # number of injections
         "use_enable_mask": False  # if True, use Enable mask during scan, if False, all pixels will be enabled
@@ -41,6 +43,7 @@ class DigitalScan(Fei4RunBase):
             analyze_raw_data.interpret_word_table()
             analyze_raw_data.plot_histograms()
             analyze_raw_data.interpreter.print_summary()
+
 
 if __name__ == "__main__":
     RunManager('../configuration.yaml').run_run(DigitalScan)

@@ -13,8 +13,7 @@ import numpy as np
 
 import progressbar
 
-import configuration
-from scan_threshold_fast import FastThresholdScan
+from pybar.scans.scan_threshold_fast import FastThresholdScan
 from analysis import analysis_utils
 from analysis.RawDataConverter import data_struct
 from analysis.plotting import plotting
@@ -41,7 +40,7 @@ def select_trigger_hits(input_file_hits, output_file_hits_1, output_file_hits_2)
                 with tb.open_file(output_file_hits_2, mode="w") as out_hit_file_2_h5:
                     hit_table_out_1 = out_hit_file_1_h5.create_table(out_hit_file_1_h5.root, name='Hits', description=data_struct.HitInfoTable, title='hit_data', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
                     hit_table_out_2 = out_hit_file_2_h5.create_table(out_hit_file_2_h5.root, name='Hits', description=data_struct.HitInfoTable, title='hit_data', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
-                    progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=hit_table_in.shape[0], term_width=80)
+                    progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=hit_table_in.shape[0], term_width=80)
                     progress_bar.start()
                     for data, index in analysis_utils.data_aligned_at_events(hit_table_in, chunk_size=5000000):
                         hit_table_out_1.append(data[data['LVL1ID'] % 2 == 1])  # first trigger hits
@@ -164,7 +163,7 @@ def analyze_data(scan_data_filenames, ignore_columns, fei4b=False):
     mean_threshold_rms_calibration_2 = np.zeros_like(mean_threshold_calibration)  # array to hold the analyzed data in ram
     threshold_calibration_2 = np.zeros_like(threshold_calibration)  # array to hold the analyzed data in ram
     # initialize progress bar
-    progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', analysis_utils.ETA()], maxval=len(local_configuration['delays']), term_width=80)
+    progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=len(local_configuration['delays']), term_width=80)
     progress_bar.start()
     # loop over all delay values and analyze the corresponding data
     for delay_index, delay_value in enumerate(local_configuration['delays']):

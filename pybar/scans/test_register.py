@@ -25,9 +25,12 @@ class RegisterTest(Fei4RunBase):
     Register at address 40 will always fail (ADC output value).
     '''
     _default_run_conf = {
+        "broadcast_commands": False,
+        "threaded_scan": False,
         "read_sn": True,
         "test_global": True,
-        "test_pixel": True
+        "test_pixel": True,
+        "fail_on_error": False
     }
 
     def configure(self):
@@ -39,12 +42,12 @@ class RegisterTest(Fei4RunBase):
 
         if self.test_global:
             global_register_errors = test_global_register(self)
-            if global_register_errors:
+            if global_register_errors and self.fail_on_error:
                 raise Exception('Global register test finished with %d errors' % global_register_errors)
 
         if self.test_pixel:
             pixel_register_errors = self.test_pixel_register()
-            if pixel_register_errors:
+            if pixel_register_errors and self.fail_on_error:
                 raise Exception('Pixel register test finished with %d errors' % pixel_register_errors)
 
     def analyze(self):
@@ -58,7 +61,7 @@ class RegisterTest(Fei4RunBase):
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))
         self.register_utils.send_commands(commands)
-        self.fifo_readout.reset_sram_fifo()
+        self.fifo_readout.reset_fifo()
 
         pixel_register_errors = 0
 
@@ -73,6 +76,7 @@ class RegisterTest(Fei4RunBase):
 
         plots.close()
         return pixel_register_errors
+
 
 if __name__ == "__main__":
     RunManager('../configuration.yaml').run_run(RegisterTest)

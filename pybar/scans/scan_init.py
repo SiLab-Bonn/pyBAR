@@ -7,16 +7,20 @@ from pybar.run_manager import RunManager
 class InitScan(Fei4RunBase):
     '''Init scan
     '''
-    _default_run_conf = {}
+    _default_run_conf = {
+        "broadcast_commands": False,
+        "threaded_scan": False
+    }
 
     def configure(self):
         pass
 
     def scan(self):
-        logging.info('Init run...')
+        pass
 
     def analyze(self):
         pass
+
 
 if __name__ == "__main__":
     RunManager('../configuration.yaml').run_run(InitScan)

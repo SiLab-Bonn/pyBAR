@@ -13,39 +13,36 @@ transfer_layer:
     type  : SiTcp
 
 hw_drivers:
-
   - name      : I2C
     type      : i2c
     interface : ETH
     base_addr : 0x8800
 
-  - name      : CMD
+  - name      : CMD_CH1_TO_CH4
     type      : cmd_seq
     interface : ETH
     base_addr : 0x0000
 
-  - name      : SRAM
-    type      : sram_fifo
+  - name      : SITCP_FIFO
+    type      : sitcp_fifo
     interface : ETH
-    base_addr : 0x200000000
-    base_data_addr : 0x100000000
 
-  - name      : CH3
+  - name      : DATA_CH4
     type      : fei4_rx
     interface : ETH
     base_addr : 0x8300
 
-  - name      : CH2
+  - name      : DATA_CH3
     type      : fei4_rx
     interface : ETH
     base_addr : 0x8400
 
-  - name      : CH1
+  - name      : DATA_CH2
     type      : fei4_rx
     interface : ETH
     base_addr : 0x8500
 
-  - name      : CH0
+  - name      : DATA_CH1
     type      : fei4_rx
     interface : ETH
     base_addr : 0x8600
@@ -55,12 +52,12 @@ hw_drivers:
     interface : ETH
     base_addr : 0x8700
 
-  - name      : TLU
+  - name      : TRIGGER_CH1_TO_CH4
     type      : tlu
     interface : ETH
     base_addr : 0x8200
 
-  - name      : TDC
+  - name      : TDC_PIN_D14
     type      : tdc_s3
     interface : ETH
     base_addr : 0x8100
@@ -77,15 +74,15 @@ registers:
       - name    : TLU
         size    : 1
         offset  : 4
-      - name    : CH4
+      - name    : DATA_CH4
         size    : 1
         offset  : 3
-      - name    : CH3
+      - name    : DATA_CH3
         size    : 1
         offset  : 2
-      - name    : CH2
+      - name    : DATA_CH2
         size    : 1
         offset  : 1
-      - name    : CH1
+      - name    : DATA_CH1
         size    : 1
         offset  : 0

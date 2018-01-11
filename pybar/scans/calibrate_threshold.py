@@ -14,7 +14,6 @@ import numpy as np
 import progressbar
 
 from pybar_fei4_interpreter import data_struct
-
 from pybar.run_manager import RunManager
 from pybar.scans.scan_threshold_fast import FastThresholdScan
 from pybar.analysis import analysis_utils
@@ -165,8 +164,8 @@ class ThresholdCalibration(FastThresholdScan):
             super(ThresholdCalibration, self).scan()
         logging.info("Finished!")
 
-    def handle_data(self, data):
-        self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), new_file=[self.scan_parameters._fields[1]], flush=True)  # Create new file for each scan parameter change
+    def handle_data(self, data, new_file=['GDAC'], flush=True):  # Create new file for each scan parameter change
+        super(ThresholdCalibration, self).handle_data(data=data, new_file=new_file, flush=flush)
 
     def analyze(self):
         create_threshold_calibration(self.output_filename, create_plots=self.create_plots)

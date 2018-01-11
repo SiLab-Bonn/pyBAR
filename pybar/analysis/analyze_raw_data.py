@@ -715,8 +715,6 @@ class AnalyzeRawData(object):
         if self._analyzed_data_file is not None:
             if self._create_hit_table is True:
                 description = data_struct.HitInfoTable().columns.copy()
-                if self.trigger_data_format == 1:  # use trigger time stamp if trigger number is not available
-                    description['trigger_time_stamp'] = description.pop('trigger_number')
                 hit_table = self.out_file_h5.create_table(self.out_file_h5.root, name='Hits', description=description, title='hit_data', filters=self._filter_table, chunkshape=(self._chunk_size / 100,))
             if self._create_meta_word_index is True:
                 meta_word_index_table = self.out_file_h5.create_table(self.out_file_h5.root, name='EventMetaData', description=data_struct.MetaInfoWordTable, title='event_meta_data', filters=self._filter_table, chunkshape=(self._chunk_size / 10,))
@@ -724,8 +722,6 @@ class AnalyzeRawData(object):
                 cluster_table = self.out_file_h5.create_table(self.out_file_h5.root, name='Cluster', description=data_struct.ClusterInfoTable, title='Cluster data', filters=self._filter_table, expectedrows=self._chunk_size)
             if self._create_cluster_hit_table:
                 description = data_struct.ClusterHitInfoTable().columns.copy()
-                if self.trigger_data_format == 1:  # use trigger time stamp if trigger number is not available
-                    description['trigger_time_stamp'] = description.pop('trigger_number')
                 cluster_hit_table = self.out_file_h5.create_table(self.out_file_h5.root, name='ClusterHits', description=description, title='cluster_hit_data', filters=self._filter_table, expectedrows=self._chunk_size)
 
         logging.info("Interpreting raw data...")
@@ -1153,7 +1149,7 @@ class AnalyzeRawData(object):
         n_hits = 0  # number of hits in actual chunk
 
         logging.info('Analyzing hits...')
-        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=table_size, term_width=80)
+        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=table_size, term_width=80)
         progress_bar.start()
 
         for hits, index in analysis_utils.data_aligned_at_events(in_file_h5.root.Hits, chunk_size=self._chunk_size):
@@ -1393,7 +1389,11 @@ class AnalyzeRawData(object):
         try:  # take infos raw data files (not avalable in old files)
             flavor = opened_raw_data_file.root.configuration.miscellaneous[:][np.where(opened_raw_data_file.root.configuration.miscellaneous[:]['name'] == 'Flavor')]['value'][0]
             self._settings_from_file_set = True
-            trig_count = opened_raw_data_file.root.configuration.global_register[:][np.where(opened_raw_data_file.root.configuration.global_register[:]['name'] == 'Trig_Count')]['value'][0]
+            # adding this for special cases e.g., stop-mode scan
+            if "trig_count" in opened_raw_data_file.root.configuration.run_conf[:]['name']:
+                trig_count = opened_raw_data_file.root.configuration.run_conf[:][np.where(opened_raw_data_file.root.configuration.run_conf[:]['name'] == 'trig_count')]['value'][0]
+            else:
+                trig_count = opened_raw_data_file.root.configuration.global_register[:][np.where(opened_raw_data_file.root.configuration.global_register[:]['name'] == 'Trig_Count')]['value'][0]
             vcal_c0 = opened_raw_data_file.root.configuration.calibration_parameters[:][np.where(opened_raw_data_file.root.configuration.calibration_parameters[:]['name'] == 'Vcal_Coeff_0')]['value'][0]
             vcal_c1 = opened_raw_data_file.root.configuration.calibration_parameters[:][np.where(opened_raw_data_file.root.configuration.calibration_parameters[:]['name'] == 'Vcal_Coeff_1')]['value'][0]
             c_low = opened_raw_data_file.root.configuration.calibration_parameters[:][np.where(opened_raw_data_file.root.configuration.calibration_parameters[:]['name'] == 'C_Inj_Low')]['value'][0]

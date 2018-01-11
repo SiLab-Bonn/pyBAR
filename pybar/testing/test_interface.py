@@ -1,6 +1,8 @@
 ''' Script to check the readout system interface (software + FPGA firmware).
 A global register test is performed with pyBAR and a simulation of the FPGA + FE-I4.
 '''
+
+import logging
 import unittest
 import shutil
 import mock
@@ -8,7 +10,6 @@ from Queue import Empty
 import subprocess
 import time
 import os
-import logging
 
 from pybar.run_manager import RunManager
 from pybar.scans.test_register import RegisterTest

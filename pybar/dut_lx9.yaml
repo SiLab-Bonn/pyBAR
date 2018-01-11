@@ -13,18 +13,16 @@ transfer_layer:
     type  : SiTcp
 
 hw_drivers:
-  - name      : CMD
+  - name      : CMD_CH0
     type      : cmd_seq
     interface : ETH
     base_addr : 0x0000
 
-  - name      : SRAM
-    type      : sram_fifo
+  - name      : SITCP_FIFO
+    type      : sitcp_fifo
     interface : ETH
-    base_addr : 0x200000000
-    base_data_addr : 0x100000000
 
-  - name      : CH0
+  - name      : DATA_CH0
     type      : fei4_rx
     interface : ETH
     base_addr : 0x8600

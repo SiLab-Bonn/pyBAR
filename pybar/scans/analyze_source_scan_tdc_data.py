@@ -25,7 +25,6 @@ from scipy.ndimage.interpolation import shift
 import progressbar
 
 from pybar_fei4_interpreter import analysis_utils as fast_analysis_utils
-
 from pybar.analysis import analysis_utils
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.analysis.plotting.plotting import plot_three_way, plot_1d_hist
@@ -358,6 +357,7 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
                         plot_corrected_tdc_hist(node[:]['charge'], node[:]['count'], title='TDC histogram, %d pixel, mean TDC calib.\n%s' % (node._v_attrs.n_pixel, node._v_attrs.condition[:80]), output_pdf=output_pdf)
                     elif 'HistTdcCorr' in node.name:
                         plot_tdc_tot_correlation(node[:], node._v_attrs.condition, output_pdf)
+
 
 if __name__ == "__main__":
     raw_data_files = analysis_utils.get_data_file_names_from_scan_base(analysis_configuration['scan_name'])

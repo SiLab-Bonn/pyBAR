@@ -30,32 +30,31 @@ transfer_layer:
 #
 hw_drivers:
   - name      : ADAPTER_CARD
+# Choose adapter card here
     type      : FEI4AdapterCard
 #    type      : FEI4QuadModuleAdapterCard
     interface : USB
     base_addr : 0x0
 
-  - name      : CH4
+  - name      : DATA_CH4
     type      : fei4_rx
     interface : USB
     base_addr : 0x18300
 
-# Uncomment to enable additional channels on the FEI4 Quad Module Adapter Card
-#
-#  - name      : CH3
-#    type      : fei4_rx
-#    interface : USB
-#    base_addr : 0x18400
-#
-#  - name      : CH2
-#    type      : fei4_rx
-#    interface : USB
-#    base_addr : 0x18500
-#
-#  - name      : CH1
-#    type      : fei4_rx
-#    interface : USB
-#    base_addr : 0x18600
+  - name      : DATA_CH3
+    type      : fei4_rx
+    interface : USB
+    base_addr : 0x18400
+
+  - name      : DATA_CH2
+    type      : fei4_rx
+    interface : USB
+    base_addr : 0x18500
+
+  - name      : DATA_CH1
+    type      : fei4_rx
+    interface : USB
+    base_addr : 0x18600
 
 # Example of additional lab devices to be used with pyBAR
 #
@@ -85,23 +84,23 @@ hw_drivers:
 #    init      :
 #        device : Agilent 33250a
 
-  - name      : CMD
+  - name      : CMD_CH1_TO_CH4
     type      : cmd_seq
     interface : USB
     base_addr : 0x10000
 
-  - name      : SRAM
+  - name      : SRAM_FIFO
     type      : sram_fifo
     interface : USB
     base_addr : 0x18100
     base_data_addr : 0x0001000000000000
 
-  - name      : TLU
+  - name      : TRIGGER_CH1_TO_CH4
     type      : tlu
     interface : USB
     base_addr : 0x18200
 
-  - name      : TDC
+  - name      : TDC_RX2
     type      : tdc_s3
     interface : USB
     base_addr : 0x18700
@@ -128,16 +127,16 @@ registers:
       - name    : TLU
         size    : 1
         offset  : 4
-      - name    : CH4
+      - name    : DATA_CH4
         size    : 1
         offset  : 3
-      - name    : CH3
+      - name    : DATA_CH3
         size    : 1
         offset  : 2
-      - name    : CH2
+      - name    : DATA_CH2
         size    : 1
         offset  : 1
-      - name    : CH1
+      - name    : DATA_CH1
         size    : 1
         offset  : 0
 
@@ -164,27 +163,27 @@ registers:
     hw_driver   : GPIO_POWER
     size        : 8
     fields:
-      - name    : OC_CH4
+      - name    : OC_DATA_CH4
         size    : 1
         offset  : 7
-      - name    : OC_CH3
+      - name    : OC_DATA_CH3
         size    : 1
         offset  : 6
-      - name    : OC_CH2
+      - name    : OC_DATA_CH2
         size    : 1
         offset  : 5
-      - name    : OC_CH1
+      - name    : OC_DATA_CH1
         size    : 1
         offset  : 4
-      - name    : EN_CH4
+      - name    : EN_DATA_CH4
         size    : 1
         offset  : 3
-      - name    : EN_CH3
+      - name    : EN_DATA_CH3
         size    : 1
         offset  : 2
-      - name    : EN_CH2
+      - name    : EN_DATA_CH2
         size    : 1
         offset  : 1
-      - name    : EN_CH1
+      - name    : EN_DATA_CH1
         size    : 1
         offset  : 0

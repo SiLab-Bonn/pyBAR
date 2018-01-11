@@ -13,6 +13,8 @@ class ThresholdScan(Fei4RunBase):
     Implementation of a standard threshold scan.
     '''
     _default_run_conf = {
+        "broadcast_commands": True,
+        "threaded_scan": False,
         "mask_steps": 3,  # mask steps, be carefull PlsrDAC injects different charge for different mask steps
         "n_injections": 100,  # number of injections per PlsrDAC step
         "scan_parameters": [('PlsrDAC', [None, 100])],  # the PlsrDAC range
@@ -76,6 +78,7 @@ class ThresholdScan(Fei4RunBase):
             analyze_raw_data.interpret_word_table()
             analyze_raw_data.interpreter.print_summary()
             analyze_raw_data.plot_histograms()
+
 
 if __name__ == "__main__":
     RunManager('../configuration.yaml').run_run(ThresholdScan)
