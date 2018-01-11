@@ -14,7 +14,7 @@ The features of the FPGA firmware in a nutshell:
 - supported adapter cards:
   Single Chip Adapter Card, Burn-in Card (Quad Module Adapter Card) and the General Purpose Analog Card (GPAC)
 - readout of multiple readout boards
-- readout of multiple multi-chip modules (e.g., single, dual, and quad module)
+- readout of multiple multi-chip modules (e.g., single, dual, quad module, and any combination of those)
 - simultaneous readout (e.g., data taking with external trigger, individual tuning of chips)
 - continuous data taking
 - individual and automatic data to clock phase alignment on each channel
