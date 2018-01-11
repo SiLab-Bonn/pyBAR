@@ -107,5 +107,3 @@ firmware/mmc3_beast_eth/vivado/*
 # Simulation output
 firmware/mio/cosim/sim_build
 firmware/mio/cosim/sim_build.zip
-
-
