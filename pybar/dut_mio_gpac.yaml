@@ -12,28 +12,28 @@ hw_drivers:
     interface : USB
     base_addr : 0x0
 
-  - name      : CMD
+  - name      : CMD_FEI4
     type      : cmd_seq
     interface : USB
     base_addr : 0x10000
 
-  - name      : SRAM
+  - name      : SRAM_FIFO
     type      : sram_fifo
     interface : USB
     base_addr : 0x18100
     base_data_addr : 0x0001000000000000
 
-  - name      : TLU
+  - name      : TRIGGER_FEI4
     type      : tlu
     interface : USB
     base_addr : 0x18200
 
-  - name      : FE
+  - name      : FEI4_RX
     type      : fei4_rx
     interface : USB
     base_addr : 0x18300
 
-  - name      : TDC
+  - name      : TDC_RX2
     type      : tdc_s3
     interface : USB
     base_addr : 0x18700

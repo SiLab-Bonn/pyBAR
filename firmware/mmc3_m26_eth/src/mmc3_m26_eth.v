@@ -1,10 +1,34 @@
+/**
+ * This file is part of pyBAR.
+ *
+ * pyBAR is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * pyBAR is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with pyBAR.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
+/**
+ * ------------------------------------------------------------
+ * Copyright (c) All rights reserved
+ * SiLab, Institute of Physics, University of Bonn
+ * ------------------------------------------------------------
+ */
+
+`timescale 1ps / 1ps
+`default_nettype none
 
 module mmc3_m26_eth(
     input wire RESET_N,
     input wire clkin,
-    
-    
+
     output wire [3:0] rgmii_txd,
     output wire rgmii_tx_ctl,
     output wire rgmii_txc,
@@ -14,24 +38,24 @@ module mmc3_m26_eth(
     output wire mdio_phy_mdc,
     inout wire mdio_phy_mdio,
     output wire phy_rst_n,
-    
+
     output wire [7:0] LED,
-    
+
     output wire CMD_CLK_P, CMD_CLK_N,
     output wire CMD_DATA_P, CMD_DATA_N,
     input wire RJ45_HITOR_N, RJ45_HITOR_P,
     input wire DOBOUT_N, DOBOUT_P,
-    
+
     input wire [5:0] M26_CLK_P, M26_CLK_N, M26_MKD_P, M26_MKD_N,
     input wire [5:0] M26_DATA1_P, M26_DATA1_N, M26_DATA0_P, M26_DATA0_N,
-    
+
     output wire M26_TCK_P,M26_TCK_N,
     output wire M26_TMS_P,M26_TMS_N,
     output wire M26_TDI_P,M26_TDI_N,
     input wire M26_TDO_P,M26_TDO_N,
-    
-    
-    output wire RJ45_BUSY_LEMO_TX1, RJ45_CLK_LEMO_TX0, 
+
+
+    output wire RJ45_BUSY_LEMO_TX1, RJ45_CLK_LEMO_TX0,
     input wire RJ45_TRIGGER, RJ45_RESET,
     input wire [1:0] LEMO_RX
 
@@ -39,7 +63,7 @@ module mmc3_m26_eth(
 
 
 wire RST;
-wire BUS_CLK_PLL, CLK250PLL, CLK125PLLTX, CLK125PLLTX90, CLK125PLLRX;
+wire CLK250PLL, CLK125PLLTX, CLK125PLLTX90, CLK125PLLRX;
 wire PLL_FEEDBACK, LOCKED;
 
 PLLE2_BASE #(
@@ -47,28 +71,28 @@ PLLE2_BASE #(
     .CLKFBOUT_MULT(10),       // Multiply value for all CLKOUT, (2-64)
     .CLKFBOUT_PHASE(0.0),     // Phase offset in degrees of CLKFB, (-360.000-360.000).
     .CLKIN1_PERIOD(10.000),      // Input clock period in ns to ps resolution (i.e. 33.333 is 30 MHz).
-    
+
     .CLKOUT0_DIVIDE(7),     // Divide amount for CLKOUT0 (1-128)
     .CLKOUT0_DUTY_CYCLE(0.5), // Duty cycle for CLKOUT0 (0.001-0.999).
     .CLKOUT0_PHASE(0.0),      // Phase offset for CLKOUT0 (-360.000-360.000).
-    
+
     .CLKOUT1_DIVIDE(4),     // Divide amount for CLKOUT0 (1-128)
     .CLKOUT1_DUTY_CYCLE(0.5), // Duty cycle for CLKOUT0 (0.001-0.999).
     .CLKOUT1_PHASE(0.0),      // Phase offset for CLKOUT0 (-360.000-360.000).
-    
+
     .CLKOUT2_DIVIDE(8),     // Divide amount for CLKOUT0 (1-128)
     .CLKOUT2_DUTY_CYCLE(0.5), // Duty cycle for CLKOUT0 (0.001-0.999).
     .CLKOUT2_PHASE(0.0),      // Phase offset for CLKOUT0 (-360.000-360.000).
-    
+
     .CLKOUT3_DIVIDE(8),     // Divide amount for CLKOUT0 (1-128)
     .CLKOUT3_DUTY_CYCLE(0.5), // Duty cycle for CLKOUT0 (0.001-0.999).
     .CLKOUT3_PHASE(90.0),      // Phase offset for CLKOUT0 (-360.000-360.000).
-    
+
     .CLKOUT4_DIVIDE(8),     // Divide amount for CLKOUT0 (1-128)
     .CLKOUT4_DUTY_CYCLE(0.5), // Duty cycle for CLKOUT0 (0.001-0.999).
     .CLKOUT4_PHASE(-5.6),      // Phase offset for CLKOUT0 (-360.000-360.000).
     //-65 -> 0?; - 45 -> 39;  -25 -> 100; -5 -> 0;
-            
+
     .DIVCLK_DIVIDE(1),        // Master division value, (1-56)
     .REF_JITTER1(0.0),        // Reference input jitter in UI, (0.000-0.999).
     .STARTUP_WAIT("FALSE")     // Delay DONE until PLL Locks, ("TRUE"/"FALSE")
@@ -77,59 +101,59 @@ PLLE2_BASE #(
 
      .CLKOUT0(),
      .CLKOUT1(CLK250PLL),
-     
+
      .CLKOUT2(CLK125PLLTX),
      .CLKOUT3(CLK125PLLTX90),
      .CLKOUT4(CLK125PLLRX),
-     
+
      .CLKOUT5(),
-     
+
      .CLKFBOUT(PLL_FEEDBACK),
-     
+
      .LOCKED(LOCKED),     // 1-bit output: LOCK
-     
+
      // Input 100 MHz clock
      .CLKIN1(clkin),
-    
+
      // Control Ports
      .PWRDWN(0),
      .RST(!RESET_N),
-    
+
      // Feedback
      .CLKFBIN(PLL_FEEDBACK)
  );
- 
+
 wire PLL_FEEDBACK2, LOCKED2;
 wire CLK160_PLL, CLK320_PLL, CLK40_PLL, CLK16_PLL, BUS_CLK_PLL;
 PLLE2_BASE #(
-     .BANDWIDTH("OPTIMIZED"), 
-     .CLKFBOUT_MULT(16),     
-     .CLKFBOUT_PHASE(0.0), 
-     .CLKIN1_PERIOD(10.000),  
-     
-     .CLKOUT0_DIVIDE(10),   
-     .CLKOUT0_DUTY_CYCLE(0.5), 
-     .CLKOUT0_PHASE(0.0),   
-     
-     .CLKOUT1_DIVIDE(40),     
-     .CLKOUT1_DUTY_CYCLE(0.5), 
-     .CLKOUT1_PHASE(0.0),   
-     
-     .CLKOUT2_DIVIDE(5),    
-     .CLKOUT2_DUTY_CYCLE(0.5), 
+     .BANDWIDTH("OPTIMIZED"),
+     .CLKFBOUT_MULT(16),
+     .CLKFBOUT_PHASE(0.0),
+     .CLKIN1_PERIOD(10.000),
+
+     .CLKOUT0_DIVIDE(10),
+     .CLKOUT0_DUTY_CYCLE(0.5),
+     .CLKOUT0_PHASE(0.0),
+
+     .CLKOUT1_DIVIDE(40),
+     .CLKOUT1_DUTY_CYCLE(0.5),
+     .CLKOUT1_PHASE(0.0),
+
+     .CLKOUT2_DIVIDE(5),
+     .CLKOUT2_DUTY_CYCLE(0.5),
      .CLKOUT2_PHASE(0.0),
-     
-     .CLKOUT3_DIVIDE(100), 
-     .CLKOUT3_DUTY_CYCLE(0.5), 
-     .CLKOUT3_PHASE(0.0), 
-     
-     .CLKOUT4_DIVIDE(12), 
-     .CLKOUT4_DUTY_CYCLE(0.5), 
+
+     .CLKOUT3_DIVIDE(100),
+     .CLKOUT3_DUTY_CYCLE(0.5),
+     .CLKOUT3_PHASE(0.0),
+
+     .CLKOUT4_DIVIDE(12),
+     .CLKOUT4_DUTY_CYCLE(0.5),
      .CLKOUT4_PHASE(0.0),
 
-     .DIVCLK_DIVIDE(1), 
-     .REF_JITTER1(0.0), 
-     .STARTUP_WAIT("FALSE") 
+     .DIVCLK_DIVIDE(1),
+     .REF_JITTER1(0.0),
+     .STARTUP_WAIT("FALSE")
 )
 PLLE2_BASE_inst_2 (
 
@@ -139,18 +163,18 @@ PLLE2_BASE_inst_2 (
       .CLKOUT3(CLK16_PLL),
       .CLKOUT4(BUS_CLK_PLL),
       .CLKOUT5(),
-      
+
       .CLKFBOUT(PLL_FEEDBACK2),
       .LOCKED(LOCKED2),     // 1-bit output: LOCK
-      
+
       .CLKIN1(clkin),
-     
+
       .PWRDWN(0),
       .RST(!RESET_N),
 
       .CLKFBIN(PLL_FEEDBACK2)
 );
-  
+
 
 wire CLK160, CLK40, CLK320, CLK16, BUS_CLK;
 BUFG BUFG_inst_160 (.O(CLK160), .I(CLK160_PLL) );
@@ -260,7 +284,7 @@ WRAP_SiTCP_GMII_XC7K_32K sitcp(
     // MII interface
     .GMII_RSTn(phy_rst_n)            ,    // out    : PHY reset
     .GMII_1000M(1'b1)            ,    // in    : GMII mode (0:MII, 1:GMII)
-    // TX 
+    // TX
     .GMII_TX_CLK(CLK125TX)            ,    // in    : Tx clock
     .GMII_TX_EN(gmii_tx_en)            ,    // out    : Tx enable
     .GMII_TXD(gmii_txd)            ,    // out    : Tx data[7:0]
@@ -302,8 +326,8 @@ WRAP_SiTCP_GMII_XC7K_32K sitcp(
     .RBCP_RD(RBCP_RD)                    // in    : Read data[7:0]
 );
 
-// -------  BUS SYGNALING  ------- //
- 
+// -------  BUS SIGNALLING  ------- //
+
 wire BUS_WR, BUS_RD, BUS_RST;
 wire [31:0] BUS_ADD;
 wire [7:0] BUS_DATA;
@@ -312,7 +336,7 @@ assign BUS_RST = SiTCP_RST;
 rbcp_to_bus irbcp_to_bus(
     .BUS_RST(BUS_RST),
     .BUS_CLK(BUS_CLK),
-    
+
     .RBCP_ACT(RBCP_ACT),
     .RBCP_ADDR(RBCP_ADDR),
     .RBCP_WD(RBCP_WD),
@@ -320,14 +344,14 @@ rbcp_to_bus irbcp_to_bus(
     .RBCP_RE(RBCP_RE),
     .RBCP_ACK(RBCP_ACK),
     .RBCP_RD(RBCP_RD),
-    
+
     .BUS_WR(BUS_WR),
     .BUS_RD(BUS_RD),
     .BUS_ADD(BUS_ADD),
     .BUS_DATA(BUS_DATA)
 );
 
-// -------  MODULE ADREESSES  ------- //
+// -------  MODULE ADDRESSES  ------- //
 
 localparam CMD_BASEADDR = 32'h0000;
 localparam CMD_HIGHADDR = 32'h8000-1;
@@ -347,42 +371,42 @@ localparam M26_RX_HIGHADDR = 32'ha00f-1;
 localparam GPIO_BASEADDR = 32'hb000;
 localparam GPIO_HIGHADDR = 32'hb01f;
 
-    
+
 // -------  USER MODULES  ------- //
 ///////////////////// M26 JTAG
 wire M26_TCK, M26_TMS,M26_TDI,M26_TDO,M26_TMS_INV,M26_TDI_INV, M26_TDO_INV;
 wire M26_RESETB;
 OBUFDS #(
   .IOSTANDARD("LVDS_25"),
-  .SLEW("SLOW") 
+  .SLEW("SLOW")
 ) OBUFDS_inst_m26_tck (
   .O(M26_TCK_P),
-  .OB(M26_TCK_N), 
-  .I(M26_TCK)    
+  .OB(M26_TCK_N),
+  .I(M26_TCK)
 );
 OBUFDS #(
   .IOSTANDARD("LVDS_25"),
-  .SLEW("SLOW") 
+  .SLEW("SLOW")
 ) OBUFDS_inst_m26_tms (
   .O(M26_TMS_P),
-  .OB(M26_TMS_N), 
-  .I(M26_TMS)    
+  .OB(M26_TMS_N),
+  .I(M26_TMS)
 );
 OBUFDS #(
   .IOSTANDARD("LVDS_25"),
-  .SLEW("SLOW") 
+  .SLEW("SLOW")
 ) OBUFDS_inst_m26_tdi (
   .O(M26_TDI_P),
-  .OB(M26_TDI_N), 
-  .I(M26_TDI)    
+  .OB(M26_TDI_N),
+  .I(M26_TDI)
 );
 IBUFDS #(
-    .DIFF_TERM("TRUE"), 
-    .IBUF_LOW_PWR("FALSE"), 
-    .IOSTANDARD("LVDS_25") 
+    .DIFF_TERM("TRUE"),
+    .IBUF_LOW_PWR("FALSE"),
+    .IOSTANDARD("LVDS_25")
 ) IBUFDS_inst_m26_tdo (
-    .O(M26_TDO), 
-    .I(M26_TDO_P),  
+    .O(M26_TDO),
+    .I(M26_TDO_P),
     .IB(M26_TDO_N)
 );
 assign M26_TMS= ~M26_TMS_INV;
@@ -430,29 +454,29 @@ cmd_seq #(
     .CMD_CLK_IN(CLK40),
     .CMD_CLK_OUT(CMD_CLK),
     .CMD_DATA(CMD_DATA),
-    
+
     .CMD_EXT_START_FLAG(CMD_EXT_START_FLAG),
     .CMD_EXT_START_ENABLE(EXT_TRIGGER_ENABLE),
     .CMD_READY(CMD_READY),
     .CMD_START_FLAG(CMD_START_FLAG)
 );
-    
+
 OBUFDS #(
   .IOSTANDARD("LVDS_25"),
-  .SLEW("SLOW") 
+  .SLEW("SLOW")
 ) OBUFDS_inst_cmd_clk_out (
   .O(CMD_CLK_P),
-  .OB(CMD_CLK_N), 
-  .I(CMD_CLK)    
+  .OB(CMD_CLK_N),
+  .I(CMD_CLK)
 );
 
 OBUFDS #(
-  .IOSTANDARD("LVDS_25"), 
+  .IOSTANDARD("LVDS_25"),
   .SLEW("SLOW")
 ) OBUFDS_inst_cmd_data (
-  .O(CMD_DATA_P), 
-  .OB(CMD_DATA_N), 
-  .I(CMD_DATA) 
+  .O(CMD_DATA_P),
+  .OB(CMD_DATA_N),
+  .I(CMD_DATA)
 );
 
 
@@ -468,8 +492,15 @@ assign TRIGGER_ACKNOWLEDGE_FLAG = CMD_READY & ~CMD_READY_FF;
 wire TRIGGER_FIFO_READ;
 wire TRIGGER_FIFO_EMPTY;
 wire [31:0] TRIGGER_FIFO_DATA;
-wire TRIGGER_FIFO_PEEMPT_REQ;
+wire TRIGGER_FIFO_PREEMPT_REQ;
 wire [31:0] TIMESTAMP;
+wire TDC_OUT;
+wire RX_READY, RX_8B10B_DECODER_ERR, RX_FIFO_OVERFLOW_ERR, RX_FIFO_FULL, RX_ENABLED;
+wire FIFO_FULL;
+wire TLU_BUSY, TLU_CLOCK;
+wire TRIGGER_ENABLED, TLU_ENABLED;
+assign RJ45_BUSY_LEMO_TX1 = TLU_ENABLED ? TLU_BUSY : ~CMD_READY;
+assign RJ45_CLK_LEMO_TX0 = TLU_CLOCK;
 
 tlu_controller #(
     .BASEADDR(TLU_BASEADDR),
@@ -484,40 +515,43 @@ tlu_controller #(
     .BUS_DATA(BUS_DATA),
     .BUS_RD(BUS_RD),
     .BUS_WR(BUS_WR),
-    
+
     .TRIGGER_CLK(CLK40),
-    
+
     .FIFO_READ(TRIGGER_FIFO_READ),
     .FIFO_EMPTY(TRIGGER_FIFO_EMPTY),
     .FIFO_DATA(TRIGGER_FIFO_DATA),
-    
-    .FIFO_PREEMPT_REQ(TRIGGER_FIFO_PEEMPT_REQ),
-    
-    .TRIGGER({8'b0}),
-    .TRIGGER_VETO({7'b0, FIFO_FULL}),
-    
+
+    .FIFO_PREEMPT_REQ(TRIGGER_FIFO_PREEMPT_REQ),
+
+    .TRIGGER_ENABLED(TRIGGER_ENABLED),
+    .TRIGGER_SELECTED(),
+    .TLU_ENABLED(TLU_ENABLED),
+
+    .TRIGGER({6'b0, TDC_OUT, LEMO_RX[0]}),
+    .TRIGGER_VETO({6'b0, RX_FIFO_FULL, FIFO_FULL}),
+
     .EXT_TRIGGER_ENABLE(EXT_TRIGGER_ENABLE),
-    .TRIGGER_ACKNOWLEDGE(EXT_TRIGGER_ENABLE == 1'b0 ? TRIGGER_ACCEPTED_FLAG : TRIGGER_ACKNOWLEDGE_FLAG),
+    .TRIGGER_ACKNOWLEDGE(TRIGGER_ACKNOWLEDGE_FLAG),
     .TRIGGER_ACCEPTED_FLAG(TRIGGER_ACCEPTED_FLAG),
-    
+
     .TLU_TRIGGER(RJ45_TRIGGER),
     .TLU_RESET(RJ45_RESET),
-    .TLU_BUSY(RJ45_BUSY_LEMO_TX1),
-    .TLU_CLOCK(RJ45_CLK_LEMO_TX0),
-    
+    .TLU_BUSY(TLU_BUSY),
+    .TLU_CLOCK(TLU_CLOCK),
+
     .TIMESTAMP(TIMESTAMP)
 );
 
 reg [31:0] timestamp_gray;
-always@(posedge BUS_CLK) 
-    timestamp_gray <=  (TIMESTAMP>>1) ^ TIMESTAMP;
+always@(posedge BUS_CLK)
+    timestamp_gray <= (TIMESTAMP>>1) ^ TIMESTAMP;
 
 wire DOBOUT;
-wire RX_READY, RX_8B10B_DECODER_ERR, RX_FIFO_OVERFLOW_ERR, RX_FIFO_FULL;
 wire FE_FIFO_READ;
 wire FE_FIFO_EMPTY;
 wire [31:0] FE_FIFO_DATA;
-    
+
 fei4_rx #(
     .BASEADDR(RX_BASEADDR),
     .HIGHADDR(RX_HIGHADDR),
@@ -540,7 +574,7 @@ fei4_rx #(
     .FIFO_DATA(FE_FIFO_DATA),
 
     .RX_FIFO_FULL(RX_FIFO_FULL),
-    .RX_ENABLED(),
+    .RX_ENABLED(RX_ENABLED),
 
     .BUS_CLK(BUS_CLK),
     .BUS_RST(BUS_RST),
@@ -549,14 +583,14 @@ fei4_rx #(
     .BUS_RD(BUS_RD),
     .BUS_WR(BUS_WR)
 );
-        
+
 IBUFDS #(
-    .DIFF_TERM("TRUE"), 
-    .IBUF_LOW_PWR("FALSE"), 
-    .IOSTANDARD("LVDS_25") 
+    .DIFF_TERM("TRUE"),
+    .IBUF_LOW_PWR("FALSE"),
+    .IOSTANDARD("LVDS_25")
 ) IBUFDS_inst_i (
-    .O(DOBOUT), 
-    .I(DOBOUT_P),  
+    .O(DOBOUT),
+    .I(DOBOUT_P),
     .IB(DOBOUT_N)
 );
 
@@ -576,72 +610,72 @@ wire [5:0] LOST_ERROR;
 wire [5:0] FIFO_READ_M26_RX;
 wire [5:0] FIFO_EMPTY_M26_RX;
 wire [31:0] FIFO_DATA_M26_RX [5:0];
-     
+
 genvar ch;
 generate
     for (ch = 0; ch < 6; ch = ch + 1) begin: m26_gen
 
         IBUFDS #(
-            .DIFF_TERM("TRUE"), 
-            .IBUF_LOW_PWR("FALSE"), 
-            .IOSTANDARD("LVDS_25") 
+            .DIFF_TERM("TRUE"),
+            .IBUF_LOW_PWR("FALSE"),
+            .IOSTANDARD("LVDS_25")
         ) IBUFDS_inst_M26_CLK(
-            .O(M26_CLK[ch]), 
-            .I(M26_CLK_P[ch]),  
+            .O(M26_CLK[ch]),
+            .I(M26_CLK_P[ch]),
             .IB(M26_CLK_N[ch])
         );
-             
+
         IBUFDS #(
-            .DIFF_TERM("TRUE"), 
-            .IBUF_LOW_PWR("FALSE"), 
-            .IOSTANDARD("LVDS_25") 
+            .DIFF_TERM("TRUE"),
+            .IBUF_LOW_PWR("FALSE"),
+            .IOSTANDARD("LVDS_25")
         ) IBUFDS_inst_M26_MKD(
-            .O(M26_MKD[ch]), 
-            .I(M26_MKD_P[ch]),  
+            .O(M26_MKD[ch]),
+            .I(M26_MKD_P[ch]),
             .IB(M26_MKD_N[ch])
         );
 
         IBUFDS #(
-            .DIFF_TERM("TRUE"), 
-            .IBUF_LOW_PWR("FALSE"), 
-            .IOSTANDARD("LVDS_25") 
+            .DIFF_TERM("TRUE"),
+            .IBUF_LOW_PWR("FALSE"),
+            .IOSTANDARD("LVDS_25")
         ) IBUFDS_inst_M26_DATA0(
-            .O(M26_DATA0_RX[ch]), 
-            .I(M26_DATA0_P[ch]),  
+            .O(M26_DATA0_RX[ch]),
+            .I(M26_DATA0_P[ch]),
             .IB(M26_DATA0_N[ch])
         );
-        
+
         IBUFDS #(
-            .DIFF_TERM("TRUE"), 
-            .IBUF_LOW_PWR("FALSE"), 
-            .IOSTANDARD("LVDS_25") 
+            .DIFF_TERM("TRUE"),
+            .IBUF_LOW_PWR("FALSE"),
+            .IOSTANDARD("LVDS_25")
         ) IBUFDS_inst_M26_DATA1(
             .O(M26_DATA1_RX[ch]),
-            .I(M26_DATA1_P[ch]),  
+            .I(M26_DATA1_P[ch]),
             .IB(M26_DATA1_N[ch])
-        );   
+        );
 
-        BUFG BUFG_inst_M26_CLK (  .O(M26_CLK_BUFG[ch]),  .I(M26_CLK[ch]) );  
+        BUFG BUFG_inst_M26_CLK (  .O(M26_CLK_BUFG[ch]),  .I(M26_CLK[ch]) );
         wire M26_CLK_INV;
         assign M26_CLK_INV = ~M26_CLK[ch];
-        
+
         reg [31:0] timestamp_cdc0, timestamp_cdc1, timestamp_m26;
         always@(posedge M26_CLK_INV) begin
             timestamp_cdc0 <= timestamp_gray;
             timestamp_cdc1 <= timestamp_cdc0;
         end
-        
+
         integer gbi;
         always@(*) begin
             timestamp_m26[31] = timestamp_cdc1[31];
             for(gbi  =30; gbi >= 0; gbi = gbi -1) begin
                 timestamp_m26[gbi] = timestamp_cdc1[gbi] ^ timestamp_m26[gbi+1];
             end
-        end    
-        
-        m26_rx 
+        end
+
+        m26_rx
         #(
-            .BASEADDR(M26_RX_BASEADDR + ch*16), 
+            .BASEADDR(M26_RX_BASEADDR + ch*16),
             .HIGHADDR(M26_RX_HIGHADDR + ch*16),
             .ABUSWIDTH(32),
             .HEADER(8'h20),
@@ -651,25 +685,25 @@ generate
             .CLK_RX(M26_CLK_BUFG[ch]),
             .MKD_RX(M26_MKD[ch]),
             .DATA_RX({M26_DATA1[ch], M26_DATA0[ch]}),
-    
+
             .BUS_CLK(BUS_CLK),
             .BUS_RST(BUS_RST),
             .BUS_ADD(BUS_ADD),
             .BUS_DATA(BUS_DATA[7:0]),
             .BUS_RD(BUS_RD),
-            .BUS_WR(BUS_WR), 
-    
+            .BUS_WR(BUS_WR),
+
             .FIFO_READ(FIFO_READ_M26_RX[ch]),
             .FIFO_EMPTY(FIFO_EMPTY_M26_RX[ch]),
             .FIFO_DATA(FIFO_DATA_M26_RX[ch]),
-    
+
             .TIMESTAMP(timestamp_m26),
-            
+
             .LOST_ERROR(LOST_ERROR[ch])
         );
-       
-end   
-endgenerate     
+
+end
+endgenerate
 
 //assign FIFO_EMPTY_M26_RX = 5'hff;
 
@@ -683,22 +717,21 @@ wire TDC_IN_FROM_TDC;
 wire RJ45_HITOR;
 
 IBUFDS #(
-    .DIFF_TERM("TRUE"), 
-    .IBUF_LOW_PWR("FALSE"), 
-    .IOSTANDARD("LVDS_25") 
+    .DIFF_TERM("TRUE"),
+    .IBUF_LOW_PWR("FALSE"),
+    .IOSTANDARD("LVDS_25")
 ) IBUFDS_inst_RJ45_HITOR (
-    .O(RJ45_HITOR), 
-    .I(RJ45_HITOR_P),  
+    .O(RJ45_HITOR),
+    .I(RJ45_HITOR_P),
     .IB(RJ45_HITOR_N)
 );
 
-wire TDC_OUT;    
 tdc_s3 #(
     .BASEADDR(TDC_BASEADDR),
     .HIGHADDR(TDC_HIGHADDR),
     .ABUSWIDTH(32),
     .CLKDV(4),
-    .DATA_IDENTIFIER(4'b0100), // one-hot
+    .DATA_IDENTIFIER(4'b0100),
     .FAST_TDC(1),
     .FAST_TRIGGER(0)
 ) i_tdc (
@@ -723,7 +756,7 @@ tdc_s3 #(
 
     .ARM_TDC(CMD_START_FLAG), // arm TDC by sending commands
     .EXT_EN(1'b0),
-    
+
     .TIMESTAMP(TIMESTAMP[15:0])
 );
 
@@ -738,7 +771,7 @@ rrp_arbiter #(
     .CLK(BUS_CLK),
 
     .WRITE_REQ({~TDC_FIFO_EMPTY, ~FIFO_EMPTY_M26_RX, ~FE_FIFO_EMPTY, ~TRIGGER_FIFO_EMPTY}),
-    .HOLD_REQ({8'b0, TRIGGER_FIFO_PEEMPT_REQ }),
+    .HOLD_REQ({8'b0, TRIGGER_FIFO_PREEMPT_REQ }),
     .DATA_IN({TDC_FIFO_DATA, FIFO_DATA_M26_RX[5], FIFO_DATA_M26_RX[4], FIFO_DATA_M26_RX[3], FIFO_DATA_M26_RX[2], FIFO_DATA_M26_RX[1], FIFO_DATA_M26_RX[0], FE_FIFO_DATA, TRIGGER_FIFO_DATA}),
     .READ_GRANT(READ_GRANT),
 
@@ -755,6 +788,7 @@ assign TDC_FIFO_READ = READ_GRANT[8];
 //cdc_fifo is for timing reasons
 wire [31:0] cdc_data_out;
 wire full_32to8, cdc_fifo_empty;
+wire FIFO_EMPTY;
 cdc_syncfifo #(.DSIZE(32), .ASIZE(3)) cdc_syncfifo_i
 (
     .rdata(cdc_data_out),
@@ -766,11 +800,10 @@ cdc_syncfifo #(.DSIZE(32), .ASIZE(3)) cdc_syncfifo_i
 );
 assign ARB_READY_OUT = !FIFO_FULL;
 
-wire FIFO_EMPTY, FIFO_FULL;
 fifo_32_to_8 #(.DEPTH(256*1024)) i_data_fifo (
     .RST(BUS_RST),
     .CLK(BUS_CLK),
-    
+
     .WRITE(!cdc_fifo_empty),
     .READ(TCP_TX_WR),
     .DATA_IN(cdc_data_out),
@@ -781,7 +814,7 @@ fifo_32_to_8 #(.DEPTH(256*1024)) i_data_fifo (
 
 assign TCP_TX_WR = !TCP_TX_FULL && !FIFO_EMPTY;
 
-wire CLK_1HZ; 
+wire CLK_1HZ;
 clock_divider #(
     .DIVISOR(40000000)
 ) i_clock_divisor_40MHz_to_1Hz (
@@ -791,10 +824,21 @@ clock_divider #(
     .CLOCK(CLK_1HZ)
 );
 
-assign LED[7:6] = 2'hf;
-assign LED[0] = RX_READY;
-assign LED[1] = ~(|LOST_ERROR & CLK_1HZ);
-assign LED[2] = ~(|RX_8B10B_DECODER_ERR & CLK_1HZ);
+wire CLK_3HZ;
+clock_divider #(
+    .DIVISOR(13333333)
+) i_clock_divisor_40MHz_to_3Hz (
+    .CLK(CLK40),
+    .RESET(1'b0),
+    .CE(),
+    .CLOCK(CLK_3HZ)
+);
+
+assign LED[7:4] = 4'hf;
+assign LED[0] = ~((CLK_1HZ | FIFO_FULL) & LOCKED & LOCKED2);
+assign LED[1] = ~(((RX_READY & RX_ENABLED) == RX_ENABLED) & ((|(RX_8B10B_DECODER_ERR & RX_ENABLED)? CLK_3HZ : CLK_1HZ) | (|(RX_FIFO_OVERFLOW_ERR & RX_ENABLED)) | (|(RX_FIFO_FULL & RX_ENABLED))));
+assign LED[2] = 1'b1;
+assign LED[3] = 1'b1;
 
 //ila_0 ila(
 //    .clk(CLK320),

@@ -1,4 +1,29 @@
+/**
+ * This file is part of pyBAR.
+ *
+ * pyBAR is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * pyBAR is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with pyBAR.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
+/**
+ * ------------------------------------------------------------
+ * Copyright (c) All rights reserved
+ * SiLab, Institute of Physics, University of Bonn
+ * ------------------------------------------------------------
+ */
+
+`timescale 1ps / 1ps
+`default_nettype none
 
 module mmc3_beast_eth(
     input wire RESET_N,
@@ -24,7 +49,7 @@ module mmc3_beast_eth(
 
 
 wire RST;
-wire BUS_CLK_PLL, CLK250PLL, CLK125PLLTX, CLK125PLLTX90, CLK125PLLRX;
+wire CLK250PLL, CLK125PLLTX, CLK125PLLTX90, CLK125PLLRX;
 wire PLL_FEEDBACK, LOCKED;
 
 PLLE2_BASE #(
@@ -301,7 +326,7 @@ WRAP_SiTCP_GMII_XC7K_32K sitcp(
     .RBCP_RD(RBCP_RD)                    // in    : Read data[7:0]
 );
 
-// -------  BUS SYGNALING  ------- //
+// -------  BUS SIGNALLING  ------- //
 
 wire BUS_WR, BUS_RD, BUS_RST;
 wire [31:0] BUS_ADD;
@@ -326,7 +351,7 @@ rbcp_to_bus irbcp_to_bus(
     .BUS_DATA(BUS_DATA)
 );
 
-// -------  MODULE ADREESSES  ------- //
+// -------  MODULE ADDRESSES  ------- //
 
 localparam CMD_BASEADDR = 32'h0000;
 localparam CMD_HIGHADDR = 32'h8000-1;
@@ -459,9 +484,15 @@ assign TRIGGER_ACKNOWLEDGE_FLAG = CMD_READY & ~CMD_READY_FF;
 wire TRIGGER_FIFO_READ;
 wire TRIGGER_FIFO_EMPTY;
 wire [31:0] TRIGGER_FIFO_DATA;
-wire TRIGGER_FIFO_PEEMPT_REQ;
+wire TRIGGER_FIFO_PREEMPT_REQ;
 wire [31:0] TIMESTAMP;
 wire [4:0] TDC_OUT;
+wire [4:0] RX_READY, RX_8B10B_DECODER_ERR, RX_FIFO_OVERFLOW_ERR, RX_FIFO_FULL, RX_ENABLED;
+wire FIFO_FULL;
+wire TLU_BUSY, TLU_CLOCK;
+wire TRIGGER_ENABLED, TLU_ENABLED;
+assign RJ45_BUSY_LEMO_TX1 = TLU_ENABLED ? TLU_BUSY : ~CMD_READY;
+assign RJ45_CLK_LEMO_TX0 = TLU_CLOCK;
 
 tlu_controller #(
     .BASEADDR(TLU_BASEADDR),
@@ -483,29 +514,31 @@ tlu_controller #(
     .FIFO_EMPTY(TRIGGER_FIFO_EMPTY),
     .FIFO_DATA(TRIGGER_FIFO_DATA),
 
-    .FIFO_PREEMPT_REQ(TRIGGER_FIFO_PEEMPT_REQ),
+    .FIFO_PREEMPT_REQ(TRIGGER_FIFO_PREEMPT_REQ),
 
-    .TRIGGER({2'b0, LEMO_RX[0], TDC_OUT}),
-    .TRIGGER_VETO({7'b0, FIFO_FULL}),
+    .TRIGGER_ENABLED(TRIGGER_ENABLED),
+    .TRIGGER_SELECTED(),
+    .TLU_ENABLED(TLU_ENABLED),
+
+    .TRIGGER({2'b0, TDC_OUT, LEMO_RX[0]}),
+    .TRIGGER_VETO({2'b0, RX_FIFO_FULL, FIFO_FULL}),
 
     .EXT_TRIGGER_ENABLE(EXT_TRIGGER_ENABLE),
-    .TRIGGER_ACKNOWLEDGE(EXT_TRIGGER_ENABLE == 1'b0 ? TRIGGER_ACCEPTED_FLAG : TRIGGER_ACKNOWLEDGE_FLAG),
+    .TRIGGER_ACKNOWLEDGE(TRIGGER_ACKNOWLEDGE_FLAG),
     .TRIGGER_ACCEPTED_FLAG(TRIGGER_ACCEPTED_FLAG),
 
     .TLU_TRIGGER(RJ45_TRIGGER),
     .TLU_RESET(RJ45_RESET),
-    .TLU_BUSY(RJ45_BUSY_LEMO_TX1),
-    .TLU_CLOCK(RJ45_CLK_LEMO_TX0),
+    .TLU_BUSY(TLU_BUSY),
+    .TLU_CLOCK(TLU_CLOCK),
 
     .TIMESTAMP(TIMESTAMP)
 );
 
-reg [31:0] timestamp_gray;
-always@(posedge BUS_CLK)
-    timestamp_gray <=  (TIMESTAMP>>1) ^ TIMESTAMP;
+//reg [31:0] timestamp_gray;
+//always@(posedge BUS_CLK)
+//    timestamp_gray <= (TIMESTAMP>>1) ^ TIMESTAMP;
 
-
-wire [4:0] RX_READY, RX_8B10B_DECODER_ERR, RX_FIFO_OVERFLOW_ERR, RX_FIFO_FULL;
 wire [4:0] FE_FIFO_READ;
 wire [4:0] FE_FIFO_EMPTY;
 wire [31:0] FE_FIFO_DATA [4:0];
@@ -523,7 +556,7 @@ generate
         .BASEADDR(RX_BASEADDR+32'h0100*i),
         .HIGHADDR(RX_HIGHADDR+32'h0100*i),
         .DSIZE(10),
-        .DATA_IDENTIFIER(i+1),
+        .DATA_IDENTIFIER(i),
         .ABUSWIDTH(32)
     ) i_fei4_rx (
         .RX_CLK(CLK160),
@@ -541,7 +574,7 @@ generate
         .FIFO_DATA(FE_FIFO_DATA[i]),
 
         .RX_FIFO_FULL(RX_FIFO_FULL[i]),
-        .RX_ENABLED(),
+        .RX_ENABLED(RX_ENABLED[i]),
 
         .BUS_CLK(BUS_CLK),
         .BUS_RST(BUS_RST),
@@ -608,7 +641,7 @@ generate
         .HIGHADDR(TDC_HIGHADDR+32'h0100*i),
         .ABUSWIDTH(32),
         .CLKDV(4),
-        .DATA_IDENTIFIER(4'b0001 + i), // one-hot
+        .DATA_IDENTIFIER(4'b0001 + i),
         .FAST_TDC(1),
         .FAST_TRIGGER(0)
     ) i_tdc (
@@ -660,7 +693,7 @@ rrp_arbiter #(
     .CLK(BUS_CLK),
 
     .WRITE_REQ({~TDC_FIFO_EMPTY, ~FE_FIFO_EMPTY, ~TRIGGER_FIFO_EMPTY}),
-    .HOLD_REQ({10'b0, TRIGGER_FIFO_PEEMPT_REQ }),
+    .HOLD_REQ({10'b0, TRIGGER_FIFO_PREEMPT_REQ }),
     .DATA_IN({TDC_FIFO_DATA[4], TDC_FIFO_DATA[3], TDC_FIFO_DATA[2], TDC_FIFO_DATA[1], TDC_FIFO_DATA[0], FE_FIFO_DATA[4], FE_FIFO_DATA[3], FE_FIFO_DATA[2], FE_FIFO_DATA[1], FE_FIFO_DATA[0], TRIGGER_FIFO_DATA}),
     .READ_GRANT(READ_GRANT),
 
@@ -676,6 +709,7 @@ assign TDC_FIFO_READ = READ_GRANT[10:6];
 //cdc_fifo is for timing reasons
 wire [31:0] cdc_data_out;
 wire full_32to8, cdc_fifo_empty;
+wire FIFO_EMPTY;
 cdc_syncfifo #(.DSIZE(32), .ASIZE(3)) cdc_syncfifo_i
 (
     .rdata(cdc_data_out),
@@ -687,7 +721,6 @@ cdc_syncfifo #(.DSIZE(32), .ASIZE(3)) cdc_syncfifo_i
 );
 assign ARB_READY_OUT = !FIFO_FULL;
 
-wire FIFO_EMPTY, FIFO_FULL;
 fifo_32_to_8 #(.DEPTH(256*1024)) i_data_fifo (
     .RST(BUS_RST),
     .CLK(BUS_CLK),
@@ -712,10 +745,21 @@ clock_divider #(
     .CLOCK(CLK_1HZ)
 );
 
-assign LED[7:3] = 5'hf;
-assign LED[0] = RX_READY;
-assign LED[1] = ~(CLK_1HZ);
-assign LED[2] = ~(|RX_8B10B_DECODER_ERR & CLK_1HZ);
+wire CLK_3HZ;
+clock_divider #(
+    .DIVISOR(13333333)
+) i_clock_divisor_40MHz_to_3Hz (
+    .CLK(CLK40),
+    .RESET(1'b0),
+    .CE(),
+    .CLOCK(CLK_3HZ)
+);
+
+assign LED[7:4] = 4'hf;
+assign LED[0] = ~((CLK_1HZ | FIFO_FULL) & LOCKED & LOCKED2);
+assign LED[1] = ~(((RX_READY & RX_ENABLED) == RX_ENABLED) & ((|(RX_8B10B_DECODER_ERR & RX_ENABLED)? CLK_3HZ : CLK_1HZ) | (|(RX_FIFO_OVERFLOW_ERR & RX_ENABLED)) | (|(RX_FIFO_FULL & RX_ENABLED))));
+assign LED[2] = 1'b1;
+assign LED[3] = 1'b1;
 
 //ila_0 ila(
 //    .clk(CLK320),

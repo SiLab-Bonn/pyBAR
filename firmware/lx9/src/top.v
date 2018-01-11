@@ -266,7 +266,7 @@ module top (
     .BUS_DATA(BUS_DATA)
   );
     
-    //MODULE ADREESSES
+    //MODULE ADDRESSES
 
     localparam CMD_BASEADDR = 32'h0000;
     localparam CMD_HIGHADDR = 32'h8000-1;

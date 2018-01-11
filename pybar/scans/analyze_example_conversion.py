@@ -5,8 +5,9 @@ The analyze_hits function does the histogramming and clustering starting from th
 The analyze_raw_data_per_scan_parameter function does the anylysis per scan parameter.
 """
 
-from datetime import datetime
 import logging
+from datetime import datetime
+
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.analysis.analysis import analyze_hits_per_scan_parameter
 

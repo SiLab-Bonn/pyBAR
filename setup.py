@@ -34,7 +34,7 @@ setup(
     description='pyBAR - Bonn ATLAS Readout in Python',
     url='https://github.com/SiLab-Bonn/pyBAR',
     license='BSD 3-Clause ("BSD New" or "BSD Simplified") License',
-    long_description='PyBAR is a versatile readout and test system for the ATLAS FE-I4(A/B) pixel readout chip.\nIt uses the basil framework to access the readout hardware. PyBAR\'s FPGA firmware and host software includes support for different hardware platforms.',
+    long_description='PyBAR is a versatile readout and test system for the ATLAS FEI4 pixel readout chip.\nIt uses the Basil framework to access the readout hardware. PyBAR\'s FPGA firmware and host software includes support for different hardware platforms.',
     author=author,
     maintainer=author,
     author_email=author_email,

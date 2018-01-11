@@ -21,6 +21,8 @@ class TluTuning(Fei4RunBase):
     The TLU has to be started with internal trigger generation (TLUControl -t 1).
     '''
     _default_run_conf = {
+        "broadcast_commands": True,
+        "threaded_scan": False,
         "scan_parameters": [('TRIGGER_DATA_DELAY', range(0, 2**4))],  # TRIGGER_DATA_DELAY has 4-bit
         "sleep": 2  # Time to record the trigger words per delay setting in seconds
     }
@@ -37,10 +39,8 @@ class TluTuning(Fei4RunBase):
 
             with self.readout(TRIGGER_DATA_DELAY=value):
                 self.dut['TLU']['TRIGGER_ENABLE'] = True
-#                 self.dut['CMD']['EN_EXT_TRIGGER'] = True
                 time.sleep(self.sleep)
                 self.dut['TLU']['TRIGGER_ENABLE'] = False
-#                 self.dut['CMD']['EN_EXT_TRIGGER'] = False
                 if self.dut['TLU']['TRIGGER_COUNTER'] == 0:
                     raise RuntimeError('No triggers collected. Check if TLU is on and the IO is set correctly.')
 
@@ -100,6 +100,7 @@ class TluTuning(Fei4RunBase):
                     plt.grid(True)
                     plt.legend(loc=0)
                     output_pdf.savefig()
+
 
 if __name__ == "__main__":
     RunManager('../configuration.yaml').run_run(TluTuning)

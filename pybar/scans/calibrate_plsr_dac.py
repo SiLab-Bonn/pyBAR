@@ -27,6 +27,7 @@ from pybar.fei4.register_utils import make_pixel_mask
 
 class PlsrDacCalibration(Fei4RunBase):
     _default_run_conf = {
+        "broadcast_commands": True,
         "scan_parameters": [('PlsrDAC', range(0, 1024, 25)), ('Colpr_Addr', range(0, 40))],  # the PlsrDAC and Colpr_Addr range
         "mask_steps": 3,
         "repeat_measurements": 10,

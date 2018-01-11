@@ -2,19 +2,21 @@ import logging
 
 import numpy as np
 
-from pybar.scans.scan_fei4_self_trigger import FEI4SelfTriggerScan
+from pybar.scans.scan_fei4_self_trigger import Fei4SelfTriggerScan
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.fei4.register_utils import invert_pixel_mask
 from pybar.run_manager import RunManager
 from pybar.analysis.plotting.plotting import plot_occupancy, plot_fancy_occupancy
 
 
-class HotPixelTuning(FEI4SelfTriggerScan):
+class HotPixelTuning(Fei4SelfTriggerScan):
     '''FE-I4 hot pixels tuning
 
     Masking hot pixels based on FEI4 self-trigger scan.
     '''
     _default_run_conf = {
+        "broadcast_commands": False,
+        "threaded_scan": False,
         "trig_count": 4,  # FE-I4 trigger count, number of consecutive BCs, 0 means 16, from 0 to 15
         "trigger_latency": 239,  # FE-I4 trigger latency, in BCs, external scintillator / TLU / HitOR: 232, USBpix self-trigger: 220, from 0 to 255
         "col_span": [1, 80],  # defining active column interval, 2-tuple, from 1 to 80

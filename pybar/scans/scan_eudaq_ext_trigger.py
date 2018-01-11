@@ -1,23 +1,27 @@
 #!/usr/bin/env python2
 
 import logging
+import sys
 from optparse import OptionParser
-import numpy as np
 from time import time, strftime, gmtime, sleep
+
+import numpy as np
+from PyEUDAQWrapper import PyProducer
 
 from pybar.run_manager import RunManager, run_status
 from pybar.scans.scan_ext_trigger import ExtTriggerScan
 from pybar.daq.readout_utils import build_events_from_raw_data, is_trigger_word
 
-import sys
+
 sys.path.append('/home/telescope/eudaq/python/')
-from PyEUDAQWrapper import PyProducer
 
 
 class EudaqExtTriggerScan(ExtTriggerScan):
     '''External trigger scan that connects to EUDAQ producer (EUDAQ 1.4 and higher).
     '''
     _default_run_conf = {
+        "broadcast_commands": True,
+        "threaded_scan": False,
         "trig_count": 0,  # FE-I4 trigger count, number of consecutive BCs, 0 means 16, from 0 to 15
         "trigger_latency": 232,  # FE-I4 trigger latency, in BCs, external scintillator / TLU / HitOR: 232, USBpix self-trigger: 220
         "trigger_delay": 8,  # trigger delay, in BCs
@@ -29,7 +33,7 @@ class EudaqExtTriggerScan(ExtTriggerScan):
         "no_data_timeout": None,  # no data timeout after which the scan will be aborted, in seconds
         "scan_timeout": None,  # timeout for scan after which the scan will be stopped, in seconds
         "max_triggers": 0,  # maximum triggers after which the scan will be stopped, if 0, no maximum triggers are set
-        "enable_tdc": False  # if True, enables TDC (use RX2)
+        "enable_tdc": False  # if True, enables TDC
     }
 
     def scan(self):
@@ -50,12 +54,12 @@ class EudaqExtTriggerScan(ExtTriggerScan):
             got_data = False
             while not self.stop_run.wait(1.0):
                 if not got_data:
-                    if self.fifo_readout.data_words_per_second() > 0:
+                    if self.data_words_per_second() > 0:
                         got_data = True
                         logging.info('Taking data...')
                 else:
                     triggers = self.dut['TLU']['TRIGGER_COUNTER']
-                    data_words = self.fifo_readout.data_words_per_second()
+                    data_words = self.data_words_per_second()
                     logging.info('Runtime: %s\nTriggers: %d\nData words/s: %s\n' % (strftime('%H:%M:%S', gmtime(time() - start)), triggers, str(data_words)))
                     if self.max_triggers and triggers >= self.max_triggers:
                         self.stop(msg='Trigger limit was reached: %i' % self.max_triggers)
@@ -71,7 +75,7 @@ class EudaqExtTriggerScan(ExtTriggerScan):
         super(EudaqExtTriggerScan, self).handle_err(exc=exc)
         self.data_error_occurred = True
 
-    def handle_data(self, data):
+    def handle_data(self, data, new_file=False, flush=True):
         events = build_events_from_raw_data(data[0])
         for item in events:
             if item.shape[0] == 0:
@@ -101,8 +105,7 @@ class EudaqExtTriggerScan(ExtTriggerScan):
                 self.remaining_data = item
             else:
                 self.remaining_data = np.concatenate([self.remaining_data, item])
-
-        self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=True)
+        super(EudaqExtTriggerScan, self).handle_data(data=data, new_file=new_file, flush=flush)
 
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@ import numpy as np
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.fei4.register_utils import scan_loop, make_pixel_mask
 from pybar.run_manager import RunManager
-from pybar.daq.readout_utils import convert_data_array, is_data_record, is_fe_word, logical_and, data_array_from_data_iterable, get_col_row_tot_array_from_data_record_array
+from pybar.daq.readout_utils import convert_data_array, is_data_record, logical_and, data_array_from_data_iterable, get_col_row_tot_array_from_data_record_array
 from pybar.analysis.plotting.plotting import plot_tot
 
 
@@ -20,6 +20,8 @@ class FeedbackTuning(Fei4RunBase):
     Use pybar.scans.tune_fei4 for full FE-I4 tuning.
     '''
     _default_run_conf = {
+        "broadcast_commands": False,
+        "threaded_scan": False,
         "scan_parameters": [('PrmpVbpf', None)],
         "target_charge": 280,
         "target_tot": 5,
@@ -28,7 +30,6 @@ class FeedbackTuning(Fei4RunBase):
         "max_delta_tot": 0.1,
         "enable_mask_steps_feedback": [0],  # mask steps to do per PrmpVbpf setting
         "plot_intermediate_steps": False,
-        "plots_filename": None,
         "enable_shift_masks": ["Enable", "C_High", "C_Low"],  # enable masks shifted during scan
         "disable_shift_masks": [],  # disable masks shifted during scan
         "pulser_dac_correction": False,  # PlsrDAC correction for each double column
@@ -57,13 +58,10 @@ class FeedbackTuning(Fei4RunBase):
         commands.extend(self.register.get_commands("RunMode"))
         self.register_utils.send_commands(commands)
 
-    def scan(self):
-        if not self.plots_filename:
-            self.plots_filename = PdfPages(self.output_filename + '.pdf')
-            self.close_plots = True
-        else:
-            self.close_plots = False
+        self.plots_filename = PdfPages(self.output_filename + '.pdf')
+        self.close_plots = True
 
+    def scan(self):
         def bits_set(int_type):
             int_type = int(int_type)
             position = 0
@@ -97,6 +95,8 @@ class FeedbackTuning(Fei4RunBase):
         feedback_best = self.register.get_global_register_value("PrmpVbpf")
         feedback_tune_bits = self.feedback_tune_bits[:]
         for feedback_bit in feedback_tune_bits:
+            if self.stop_run.is_set():
+                break
             if additional_scan:
                 self.set_prmp_vbpf_bit(feedback_bit, bit_value=1)
                 logging.info('PrmpVbpf setting: %d, set bit %d = 1', self.register.get_global_register_value("PrmpVbpf"), feedback_bit)
@@ -106,7 +106,7 @@ class FeedbackTuning(Fei4RunBase):
 
             scan_parameter_value = self.register.get_global_register_value("PrmpVbpf")
 
-            with self.readout(PrmpVbpf=scan_parameter_value, reset_sram_fifo=True, fill_buffer=True, clear_buffer=True, callback=self.handle_data):
+            with self.readout(PrmpVbpf=scan_parameter_value, fill_buffer=True):
                 scan_loop(self,
                           command=cal_lvl1_command,
                           repeat_command=self.n_injections_feedback,
@@ -122,7 +122,8 @@ class FeedbackTuning(Fei4RunBase):
                           mask=None,
                           double_column_correction=self.pulser_dac_correction)
 
-            col_row_tot_array = np.column_stack(convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=logical_and(is_fe_word, is_data_record), converter_func=get_col_row_tot_array_from_data_record_array))
+            data = convert_data_array(array=self.read_data(), filter_func=is_data_record, converter_func=get_col_row_tot_array_from_data_record_array)
+            col_row_tot_array = np.column_stack(data)
             occupancy_array, _, _ = np.histogram2d(col_row_tot_array[:, 0], col_row_tot_array[:, 1], bins=(80, 336), range=[[1, 80], [1, 336]])
             occupancy_array = np.ma.array(occupancy_array, mask=np.logical_not(np.ma.make_mask(select_mask_array)))  # take only selected pixel into account by creating a mask
             occupancy_array = np.ma.masked_where(occupancy_array > self.n_injections_feedback, occupancy_array)
@@ -177,7 +178,7 @@ class FeedbackTuning(Fei4RunBase):
 
         self.feedback_best = self.register.get_global_register_value("PrmpVbpf")
 
-        if abs(mean_tot - self.target_tot) > 2 * self.max_delta_tot:
+        if abs(mean_tot - self.target_tot) > 2 * self.max_delta_tot and not self.stop_run.is_set():
             if np.all((((self.feedback_best & (1 << np.arange(self.register.global_registers['PrmpVbpf']['bitlength'])))) > 0).astype(int)[self.feedback_tune_bits] == 1):
                 if self.fail_on_warning:
                     raise RuntimeWarning('Selected Feedback bits reached maximum value')
@@ -190,7 +191,7 @@ class FeedbackTuning(Fei4RunBase):
                     logging.warning('Selected Feedback bits reached minimum value')
             else:
                 if self.fail_on_warning:
-                    raise RuntimeWarning('Global feedback tuning failed. Delta ToT = %.2f > %.2f. PrmpVbpf = %d' %(abs(mean_tot - self.target_tot), self.max_delta_tot, self.register.get_global_register_value("PrmpVbpf")))
+                    raise RuntimeWarning('Global feedback tuning failed. Delta ToT = %.2f > %.2f. PrmpVbpf = %d' % (abs(mean_tot - self.target_tot), self.max_delta_tot, self.register.get_global_register_value("PrmpVbpf")))
                 else:
                     logging.warning('Global feedback tuning failed. Delta ToT = %.2f > %.2f. PrmpVbpf = %d', abs(mean_tot - self.target_tot), self.max_delta_tot, self.register.get_global_register_value("PrmpVbpf"))
         else:
@@ -200,7 +201,7 @@ class FeedbackTuning(Fei4RunBase):
         # set here because original value is restored after scan()
         self.register.set_global_register_value("PrmpVbpf", self.feedback_best)
 
-        plot_tot(hist=self.tot_hist, title='ToT distribution after feedback tuning (PrmpVbpf %d)' % self.scan_parameters.PrmpVbpf, filename=self.plots_filename)
+        plot_tot(hist=self.tot_hist, title='ToT distribution after feedback tuning (PrmpVbpf %d)' % self.feedback_best, filename=self.plots_filename)
         if self.close_plots:
             self.plots_filename.close()
 

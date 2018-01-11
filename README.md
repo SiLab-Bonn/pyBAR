@@ -6,22 +6,25 @@ pyBAR - Bonn ATLAS Readout in Python
 PyBAR is a versatile readout and test system for the ATLAS FEI4(A/B) pixel readout chip. It uses the [basil](https://github.com/SiLab-Bonn/basil) framework to access the readout hardware.
 PyBAR's FPGA firmware and host software includes support for different hardware platforms.
 
-PyBAR is *not only* targeting experienced users and developers. The easy-to-use scripts allow a quick setup and start. PyBAR is a very flexible readout and test system and provides the capability to conduct tests and characterization measurements of individual chips.
+PyBAR is *not only* targeting experienced users and developers. The easy-to-use scripts allow a quick setup and start. PyBAR is a very flexible readout and test system and provides the capability to conduct tests and characterization measurements of individual chips, and tests of large-scale detectors with multiple multi-chip modules and multiple readout boards.
 
 The features of the FPGA firmware in a nutshell:
 - supported readout boards:
   any hardware that is supported by basil (e.g., MIO2, MIO3, and MMC3)
 - supported adapter cards:
   Single Chip Adapter Card, Burn-in Card (Quad Module Adapter Card) and the General Purpose Analog Card (GPAC)
-- readout of single chip modules
+- readout of multiple readout boards
+- readout of multiple multi-chip modules (e.g., single, dual, quad module, and any combination of those)
+- simultaneous readout (e.g., data taking with external trigger, individual tuning of chips)
 - continuous data taking
-- automatic data to clock phase alignment
+- individual and automatic data to clock phase alignment on each channel
 - full support of EUDAQ TLU and availability of EUDAQ Producer
 
 The features of the host software in Python:
 - no GUI
 - support for Windows, Linux and macOS
 - scan/tuning/calibration algorithms are implemented in stand-alone scripts
+- scripts are implemented for operating single chips but are working with multi-chip configurations as well
 - fast development and implementation of new scan/tuning/calibration algorithms
 - configuration files are human readable (compatible to RCE/HSIO)
 - full control over FEI4 command generation, sending any arbitrary bit stream and configuration sequence to the FEI4
@@ -33,7 +36,7 @@ The features of the host software in Python:
 
 The following packages are required for pyBAR's core functionality:
   ```
-  basil_daq bitarray cython matplotlib numba numpy pixel_clusterizer progressbar-latest pytables pyyaml scipy
+  basil_daq bitarray contextlib2 cython matplotlib numba numpy pixel_clusterizer progressbar-latest pytables pyyaml scipy
   ```
 
 For full functionality, the following additional packages are required:
@@ -43,7 +46,7 @@ For full functionality, the following additional packages are required:
 
 Run the **following commands** to install the packages:
   ```
-  conda install python=2.7 bitarray cython ipython matplotlib mock nose numba numpy pyserial pytables pyyaml pyzmq scipy sphinx
+  conda install python=2.7 bitarray contextlib2 cython ipython matplotlib mock nose numba numpy pyserial pytables pyyaml pyzmq scipy sphinx
 
   pip install progressbar-latest pyvisa pyvisa-py git+https://github.com/pyqtgraph/pyqtgraph.git@pyqtgraph-0.10.0
   ```
@@ -68,7 +71,7 @@ On Windows, the `pywin32` package is required:
   pip install 'pixel_clusterizer>=3.1,<3.2'
   ```
 
-To enable support for USB devices (MIO, MIO3 and MMC3), the following additional packages are required:
+To enable support for USB devices (MIO2), the following additional packages are required:
 - [PyUSB](https://github.com/walac/pyusb) (>=1.0.0rc1):
   ```
   pip install pyusb

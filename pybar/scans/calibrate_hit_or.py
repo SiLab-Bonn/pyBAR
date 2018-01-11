@@ -42,8 +42,8 @@ def create_hitor_calibration(output_filename, plot_pixel_calibrations=False):
         analyze_raw_data.interpret_word_table()
         analyze_raw_data.interpreter.print_summary()
         analyze_raw_data.plot_histograms()
-        n_injections = analyze_raw_data.n_injections  # use later
 
+        n_injections = analyze_raw_data.n_injections  # use later
         meta_data = analyze_raw_data.out_file_h5.root.meta_data[:]
         scan_parameters_dict = get_scan_parameter(meta_data)
         inner_loop_parameter_values = scan_parameters_dict[next(reversed(scan_parameters_dict))]  # inner loop parameter name is unknown
@@ -82,7 +82,7 @@ def create_hitor_calibration(output_filename, plot_pixel_calibrations=False):
                     else:
                         raise ValueError("Unknown scan parameter %s" % item)
 
-                # Only pixel of actual column/row should be in the actual data chunk but since SRAM is not cleared for each scan step due to speed reasons and there might be noisy pixels this is not always the case
+                # Only pixel of actual column/row should be in the actual data chunk but since FIFO is not cleared for each scan step due to speed reasons and there might be noisy pixels this is not always the case
                 n_wrong_pixel = np.count_nonzero(np.logical_or(actual_hits['column'] != actual_col, actual_hits['row'] != actual_row))
                 if n_wrong_pixel != 0:
                     logging.warning('%d hit(s) from other pixels for scan parameters %s', n_wrong_pixel, ', '.join(['%s=%s' % (name, value) for (name, value) in zip(scan_parameter_names, actual_scan_parameter_values)]))
@@ -153,6 +153,8 @@ class HitOrCalibration(Fei4RunBase):
     ''' HitOR calibration scan
     '''
     _default_run_conf = {
+        "broadcast_commands": True,
+        "threaded_scan": True,
         "n_injections": 200,  # number of injections
         "injection_delay": 5000,  # for really low feedbacks (ToT >> 300 ns) one needs to increase the injection delay
         "scan_parameters": [('column', None),
@@ -228,14 +230,14 @@ class HitOrCalibration(Fei4RunBase):
                 self.register_utils.send_commands(commands)
 
                 self.dut['TDC']['EN_ARMING'] = True
-                with self.readout(reset_sram_fifo=False, clear_buffer=False, column=column, row=row, **{scan_parameter_name: scan_parameter_value}):
+                with self.readout(reset_fifo=True, column=column, row=row, **{scan_parameter_name: scan_parameter_value}):
                     self.register_utils.send_command(command=cal_lvl1_command, repeat=self.n_injections)
                 self.dut['TDC']['EN_ARMING'] = False
 
             self.dut['TDC']['ENABLE'] = False
 
-    def handle_data(self, data):
-        self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), new_file=['column'], flush=True)  # Create new file for each scan parameter change
+    def handle_data(self, data, new_file=['column'], flush=True):  # Create new file for each scan parameter change
+        super(HitOrCalibration, self).handle_data(data=data, new_file=new_file, flush=flush)
 
     def analyze(self):
         create_hitor_calibration(self.output_filename, plot_pixel_calibrations=True)

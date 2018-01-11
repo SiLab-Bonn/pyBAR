@@ -1,14 +1,14 @@
 import logging
+
 import numpy as np
 
 from pybar_fei4_interpreter.analysis_utils import hist_2d_index
-
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.fei4.register_utils import invert_pixel_mask
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.fei4.register_utils import scan_loop
 from pybar.run_manager import RunManager
-from pybar.daq.readout_utils import get_col_row_array_from_data_record_array, convert_data_array, is_data_record, data_array_from_data_iterable
+from pybar.daq.readout_utils import get_col_row_array_from_data_record_array, convert_data_array, is_data_record, data_array_from_data_iterable, logical_and
 
 
 class FastThresholdScan(Fei4RunBase):
@@ -17,6 +17,8 @@ class FastThresholdScan(Fei4RunBase):
     Implementation of a fast threshold scan checking for start and end of s-curve.
     '''
     _default_run_conf = {
+        "broadcast_commands": True,
+        "threaded_scan": False,
         "n_injections": 100,  # number of injections per PlsrDAC step
         "scan_parameters": [('PlsrDAC', (None, 100))],  # the PlsrDAC range
         "mask_steps": 3,  # mask steps, be carefull PlsrDAC injects different charge for different mask steps
@@ -96,7 +98,7 @@ class FastThresholdScan(Fei4RunBase):
             commands.extend(self.register.get_commands("WrRegister", name=['PlsrDAC']))
             self.register_utils.send_commands(commands)
 
-            with self.readout(PlsrDAC=self.scan_parameter_value, reset_sram_fifo=True, fill_buffer=True, clear_buffer=True, callback=self.handle_data if self.record_data else None):
+            with self.readout(PlsrDAC=self.scan_parameter_value, fill_buffer=True, callback=self.handle_data if self.record_data else None):
                 cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0]
                 scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections, use_delay=True, mask_steps=self.mask_steps, enable_mask_steps=self.enable_mask_steps, enable_double_columns=enable_double_columns, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=self.enable_shift_masks, disable_shift_masks=self.disable_shift_masks, restore_shift_masks=False, mask=invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if self.use_enable_mask else None, double_column_correction=self.pulser_dac_correction)
 
@@ -106,7 +108,7 @@ class FastThresholdScan(Fei4RunBase):
                 if not self.stop_condition_triggered and self.record_data:
                     logging.info('Testing for stop condition: %s %d', 'PlsrDAC', self.scan_parameter_value)
 
-                col, row = convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)
+                col, row = convert_data_array(array=self.read_data(), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)
                 if np.any(np.logical_and(col < 1, col > 80)) or np.any(np.logical_and(row < 1, row > 336)):  # filter bad data records that can happen
                     logging.warning('There are undefined %d data records (e.g. random data)', np.count_nonzero(np.logical_and(col < 1, col > 80)) + np.count_nonzero(np.logical_and(row < 1, row > 336)))
                     col, row = col[np.logical_and(col > 0, col <= 80)], row[np.logical_and(row > 0, row <= 336)]
@@ -168,6 +170,7 @@ class FastThresholdScan(Fei4RunBase):
         if pixels_with_hits_count >= start_pixel_cnt and not self.start_condition_triggered:  # start precise scanning if this is true
             logging.info("Triggering start condition: %d pixel(s) with more than 0 hits >= %d pixel(s)", pixels_with_hits_count, start_pixel_cnt)
             self.start_condition_triggered = True
+
 
 if __name__ == "__main__":
     RunManager('../configuration.yaml').run_run(FastThresholdScan)

@@ -5,6 +5,7 @@ import os.path
 from os import remove
 from docutils.transforms.misc import ClassAttribute
 
+from docutils.transforms.misc import ClassAttribute
 import tables as tb
 import zmq
 
@@ -45,7 +46,7 @@ def send_data(socket, data, scan_parameters={}, name='ReadoutData'):
         pass
 
 
-def open_raw_data_file(filename, mode="w", title="", scan_parameters=None, context=None, socket_address=None):
+def open_raw_data_file(filename, mode="w", title="", scan_parameters=None, socket_address=None):
     '''Mimics pytables.open_file() and stores the configuration and run configuration
 
     Returns:
@@ -56,7 +57,7 @@ def open_raw_data_file(filename, mode="w", title="", scan_parameters=None, conte
         # do something here
         raw_data_file.append(self.readout.data, scan_parameters={scan_parameter:scan_parameter_value})
     '''
-    return RawDataFile(filename=filename, mode=mode, title=title, scan_parameters=scan_parameters, context=context, socket_address=socket_address)
+    return RawDataFile(filename=filename, mode=mode, title=title, scan_parameters=scan_parameters, socket_address=socket_address)
 
 
 class RawDataFile(object):
@@ -66,7 +67,7 @@ class RawDataFile(object):
     '''Raw data file object. Saving data queue to HDF5 file.
     '''
 
-    def __init__(self, filename, mode="w", title='', scan_parameters=None, context=None, socket_address=None):  # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created):
+    def __init__(self, filename, mode="w", title='', scan_parameters=None, socket_address=None):  # mode="r+" to append data, raw_data_file_h5 must exist, "w" to overwrite raw_data_file_h5, "a" to append data, if raw_data_file_h5 does not exist it is created):
         self.lock = RLock()
         if os.path.splitext(filename)[1].strip().lower() != '.h5':
             self.base_filename = filename
@@ -83,9 +84,8 @@ class RawDataFile(object):
         self.scan_param_table = None
         self.h5_file = None
 
-        if socket_address and not context:
-            logging.info('Creating ZMQ context')
-            context = zmq.Context()
+        if socket_address:
+            context = zmq.Context.instance()
 
         if socket_address and context:
             logging.info('Creating socket connection to server %s', socket_address)

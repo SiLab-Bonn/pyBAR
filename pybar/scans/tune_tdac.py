@@ -6,7 +6,7 @@ import numpy as np
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.fei4.register_utils import scan_loop
 from pybar.run_manager import RunManager
-from pybar.daq.readout_utils import convert_data_array, is_data_record, is_fe_word, logical_and, data_array_from_data_iterable, get_col_row_array_from_data_record_array
+from pybar.daq.readout_utils import convert_data_array, is_data_record, logical_and, data_array_from_data_iterable, get_col_row_array_from_data_record_array
 from pybar.analysis.plotting.plotting import plot_three_way
 
 
@@ -20,12 +20,13 @@ class TdacTuning(Fei4RunBase):
     Use pybar.scans.tune_fei4 for full FE-I4 tuning.
     '''
     _default_run_conf = {
+        "broadcast_commands": False,
+        "threaded_scan": False,
         "scan_parameters": [('TDAC', None)],
         "target_threshold": 30,
         "tdac_tune_bits": range(4, -1, -1),
         "n_injections_tdac": 100,
         "plot_intermediate_steps": False,
-        "plots_filename": None,
         "enable_shift_masks": ["Enable", "C_High", "C_Low"],  # enable masks shifted during scan
         "disable_shift_masks": [],  # disable masks shifted during scan
         "pulser_dac_correction": False,  # PlsrDAC correction for each double column
@@ -53,13 +54,10 @@ class TdacTuning(Fei4RunBase):
         commands.extend(self.register.get_commands("RunMode"))
         self.register_utils.send_commands(commands)
 
-    def scan(self):
-        if not self.plots_filename:
-            self.plots_filename = PdfPages(self.output_filename + '.pdf')
-            self.close_plots = True
-        else:
-            self.close_plots = False
+        self.plots_filename = PdfPages(self.output_filename + '.pdf')
+        self.close_plots = True
 
+    def scan(self):
         enable_mask_steps = []
         cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0]
 
@@ -73,6 +71,8 @@ class TdacTuning(Fei4RunBase):
         self.tdac_mask_best = self.register.get_pixel_register_value("TDAC")
         tdac_tune_bits = self.tdac_tune_bits[:]
         for scan_parameter_value, tdac_bit in enumerate(tdac_tune_bits):
+            if self.stop_run.is_set():
+                break
             if additional_scan:
                 self.set_tdac_bit(tdac_bit)
                 logging.info('TDAC setting: bit %d = 1', tdac_bit)
@@ -82,7 +82,7 @@ class TdacTuning(Fei4RunBase):
 
             self.write_tdac_config()
 
-            with self.readout(TDAC=scan_parameter_value, reset_sram_fifo=True, fill_buffer=True, clear_buffer=True, callback=self.handle_data):
+            with self.readout(TDAC=scan_parameter_value, fill_buffer=True):
                 scan_loop(self,
                           command=cal_lvl1_command,
                           repeat_command=self.n_injections_tdac,
@@ -98,7 +98,8 @@ class TdacTuning(Fei4RunBase):
                           mask=None,
                           double_column_correction=self.pulser_dac_correction)
 
-            occupancy_array, _, _ = np.histogram2d(*convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=logical_and(is_fe_word, is_data_record), converter_func=get_col_row_array_from_data_record_array), bins=(80, 336), range=[[1, 80], [1, 336]])
+            data = convert_data_array(array=self.read_data(), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)
+            occupancy_array, _, _ = np.histogram2d(*data, bins=(80, 336), range=[[1, 80], [1, 336]])
             select_better_pixel_mask = abs(occupancy_array - self.n_injections_tdac / 2) <= abs(self.occupancy_best - self.n_injections_tdac / 2)
             pixel_with_too_high_occupancy_mask = occupancy_array > self.n_injections_tdac / 2
             self.occupancy_best[select_better_pixel_mask] = occupancy_array[select_better_pixel_mask]
@@ -134,7 +135,8 @@ class TdacTuning(Fei4RunBase):
 #         cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", mask_steps=mask_steps)[0]
 #         self.scan_loop(cal_lvl1_command, repeat_command=self.n_injections_tdac, mask_steps=mask_steps, enable_mask_steps=enable_mask_steps, enable_double_columns=None, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=["Enable", "C_High", "C_Low"], restore_shift_masks=True, mask=None)
 #         self.readout.stop()
-#         occupancy_array, _, _ = np.histogram2d(*convert_data_array(data_array_from_data_dict_iterable(self.fifo_readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array), bins=(80, 336), range=[[1, 80], [1, 336]])
+#         data = convert_data_array(array=self.read_data(), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)
+#         occupancy_array, _, _ = np.histogram2d(*data, bins=(80, 336), range=[[1, 80], [1, 336]])
 #         plot_three_way(hist=occupancy_array.transpose(), title="Occupancy check", x_axis_title="Occupancy", filename=plots_filename, maximum = self.n_injections_tdac)
 #         plot_three_way(hist=self.register.get_pixel_register_value("TDAC").transpose(), title="TDAC check distribution after tuning", x_axis_title="TDAC", filename=plots_filename, maximum = 32)
 
@@ -171,6 +173,7 @@ class TdacTuning(Fei4RunBase):
         commands.extend(self.register.get_commands("ConfMode"))
         commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, name=["TDAC"]))
         self.register_utils.send_commands(commands)
+
 
 if __name__ == "__main__":
     RunManager('../configuration.yaml').run_run(TdacTuning)

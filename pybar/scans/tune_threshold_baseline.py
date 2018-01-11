@@ -1,10 +1,11 @@
 import logging
 from time import time
-import numpy as np
-import progressbar
 from collections import deque
 
-from pybar.daq.readout_utils import get_col_row_array_from_data_record_array, convert_data_array, data_array_from_data_iterable, is_fe_word, is_data_record, logical_and
+import progressbar
+import numpy as np
+
+from pybar.daq.readout_utils import get_col_row_array_from_data_record_array, convert_data_array, data_array_from_data_iterable, is_data_record, logical_and
 # from pybar.daq.readout_utils import data_array_from_data_iterable
 # from pybar_fei4_interpreter.data_interpreter import PyDataInterpreter
 # from pybar_fei4_interpreter.data_histograming import PyDataHistograming
@@ -23,6 +24,8 @@ class ThresholdBaselineTuning(Fei4RunBase):
     NOTE: To increase the TDAC range, decrease TdacVbp.
     '''
     _default_run_conf = {
+        "broadcast_commands": False,
+        "threaded_scan": False,
         "occupancy_limit": 1 * 10 ** (-5),  # occupancy limit, when reached the TDAC will be decreased (increasing threshold). 0 will mask any pixel with occupancy greater than zero
         "scan_parameters": [('Vthin_AltFine', (120, None)), ('TDAC_step', None), ('relaxation', 0)],  # the Vthin_AltFine range, number of steps (repetition at constant Vthin_AltFine)
         "increase_threshold": 5,  # increasing the global threshold (Vthin_AltFine) after tuning
@@ -133,7 +136,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
                 logging.info('TDAC step %d at Vthin_AltFine %d', tdac_step, reg_val)
 #                 logging.info('Estimated scan time: %ds', total_scan_time)
 
-                with self.readout(Vthin_AltFine=reg_val, TDAC_step=tdac_step, relaxation=relaxation, reset_sram_fifo=True, fill_buffer=True, clear_buffer=True, callback=self.handle_data):
+                with self.readout(Vthin_AltFine=reg_val, TDAC_step=tdac_step, relaxation=relaxation, fill_buffer=True):
                     got_data = False
                     start = time()
                     self.register_utils.send_command(lvl1_command, repeat=self.n_triggers, wait_for_finish=False, set_length=True, clear_memory=False)
@@ -144,7 +147,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
                             logging.info('Finished sending %d triggers', self.n_triggers)
                             break
                         if not got_data:
-                            if self.fifo_readout.data_words_per_second() > 0:
+                            if self.data_words_per_second() > 0:
                                 got_data = True
                                 logging.info('Taking data...')
                                 self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.Timer()], maxval=total_scan_time, poll=10, term_width=80).start()
@@ -154,7 +157,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
                             except ValueError:
                                 pass
                 # use Numpy for analysis and histogramming
-                col_arr, row_arr = convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=logical_and(is_fe_word, is_data_record), converter_func=get_col_row_array_from_data_record_array)
+                col_arr, row_arr = convert_data_array(array=self.read_data(), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)
                 occ_hist, _, _ = np.histogram2d(col_arr, row_arr, bins=(80, 336), range=[[1, 80], [1, 336]])
                 occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
 

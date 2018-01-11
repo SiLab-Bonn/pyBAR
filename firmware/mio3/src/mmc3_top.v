@@ -182,7 +182,7 @@ PLLE2_BASE #(
  .I(clk16mhz_pll)      // Clock buffer input
  );
 
-// -------  MODULE ADREESSES  ------- //
+// -------  MODULE ADDRESSES  ------- //
  localparam CMD_BASEADDR = 32'h0000;
  localparam CMD_HIGHADDR = 32'h1000-1;
 

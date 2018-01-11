@@ -11,46 +11,46 @@ class NameValue(tb.IsDescription):
 
 
 def save_configuration_dict(h5_file, configuation_name, configuration, **kwargs):
-        '''Stores any configuration dictionary to HDF5 file.
+    '''Stores any configuration dictionary to HDF5 file.
 
-        Parameters
-        ----------
-        h5_file : string, file
-            Filename of the HDF5 configuration file or file object.
-        configuation_name : str
-            Configuration name. Will be used for table name.
-        configuration : dict
-            Configuration dictionary.
-        '''
-        def save_conf():
-            try:
-                h5_file.remove_node(h5_file.root.configuration, name=configuation_name)
-            except tb.NodeError:
-                pass
-            try:
-                configuration_group = h5_file.create_group(h5_file.root, "configuration")
-            except tb.NodeError:
-                configuration_group = h5_file.root.configuration
+    Parameters
+    ----------
+    h5_file : string, file
+        Filename of the HDF5 configuration file or file object.
+    configuation_name : str
+        Configuration name. Will be used for table name.
+    configuration : dict
+        Configuration dictionary.
+    '''
+    def save_conf():
+        try:
+            h5_file.remove_node(h5_file.root.configuration, name=configuation_name)
+        except tb.NodeError:
+            pass
+        try:
+            configuration_group = h5_file.create_group(h5_file.root, "configuration")
+        except tb.NodeError:
+            configuration_group = h5_file.root.configuration
 
-            scan_param_table = h5_file.create_table(configuration_group, name=configuation_name, description=NameValue, title=configuation_name)
-            row_scan_param = scan_param_table.row
-            for key, value in dict.iteritems(configuration):
-                row_scan_param['name'] = key
-                row_scan_param['value'] = str(value)
-                row_scan_param.append()
-            scan_param_table.flush()
+        scan_param_table = h5_file.create_table(configuration_group, name=configuation_name, description=NameValue, title=configuation_name)
+        row_scan_param = scan_param_table.row
+        for key, value in dict.iteritems(configuration):
+            row_scan_param['name'] = key
+            row_scan_param['value'] = str(value)
+            row_scan_param.append()
+        scan_param_table.flush()
 
-        if isinstance(h5_file, tb.file.File):
+    if isinstance(h5_file, tb.file.File):
+        save_conf()
+    else:
+        if os.path.splitext(h5_file)[1].strip().lower() != ".h5":
+            h5_file = os.path.splitext(h5_file)[0] + ".h5"
+        with tb.open_file(h5_file, mode="a", title='', **kwargs) as h5_file:
             save_conf()
-        else:
-            if os.path.splitext(h5_file)[1].strip().lower() != ".h5":
-                h5_file = os.path.splitext(h5_file)[0] + ".h5"
-            with tb.open_file(h5_file, mode="a", title='', **kwargs) as h5_file:
-                save_conf()
 
 
 def convert_data_array(array, filter_func=None, converter_func=None):  # TODO: add copy parameter, otherwise in-place
-    '''Filter and convert raw data numpy array (numpy.ndarray)
+    '''Filter and convert raw data numpy array (numpy.ndarray).
 
     Parameters
     ----------
@@ -123,45 +123,73 @@ def data_array_from_data_iterable(data_iterable):
 
 
 def is_tdc_from_channel(channel=4):  # function factory
+    '''Selecting TDC data from given channel.
+
+    Parameters
+    ----------
+    channel : int
+        Channel number (4 is default channel on Single Chip Card).
+
+    Returns
+    -------
+    Function.
+
+    Usage:
+    1 Selecting TDC data from channel 4 (combine with is_tdc_word):
+        filter_tdc_data_from_channel_4 = logical_and(is_tdc_word, is_tdc_from_channel(4))
+        tdc_data_from_channel_4 = data_array[filter_tdc_data_from_channel_4(data_array)]
+    '''
     if channel >= 1 and channel < 8:
         def f(value):
-            return np.equal(np.right_shift(np.bitwise_and(value, 0xF0000000), 28), channel)
+            return np.equal(np.right_shift(np.bitwise_and(value, 0x70000000), 28), channel)
         f.__name__ = "is_tdc_from_channel_" + str(channel)  # or use inspect module: inspect.stack()[0][3]
         return f
     else:
         raise ValueError('Invalid channel number')
 
 
+def convert_tdc_to_channel(channel):
+    ''' Converts TDC words at a given channel to common TDC header (0x4).
+    '''
+    def f(value):
+        filter_func = logical_and(is_tdc_word, is_tdc_from_channel(channel))
+        select = filter_func(value)
+        value[select] = np.bitwise_and(value[select], 0x0FFFFFFF)
+        value[select] = np.bitwise_or(value[select], 0x40000000)
+        f.__name__ = "convert_tdc_to_channel_" + str(channel)
+        return value
+    return f
+
+
 def is_data_from_channel(channel=4):  # function factory
-    '''Select data from channel
+    '''Selecting FE data from given channel.
 
-    Parameters:
+    Parameters
+    ----------
     channel : int
-        Channel number (4 is default channel on Single Chip Card)
+        Channel number (4 is default channel on Single Chip Card).
 
-    Returns:
-    Function
+    Returns
+    -------
+    Function.
 
     Usage:
-    # 1
-    is_data_from_channel_4 = is_data_from_channel(4)
-    data_from_channel_4 = data_array[is_data_from_channel_4(data_array)]
-    # 2
-    filter_func = logical_and(is_data_record, is_data_from_channel(3))
-    data_record_from_channel_3 = data_array[filter_func(data_array)]
-    # 3
-    is_raw_data_from_channel_3 = is_data_from_channel(3)(raw_data)
+    1 Selecting FE data from channel 4 (combine with is_fe_word):
+        filter_fe_data_from_channel_4 = logical_and(is_fe_word, is_data_from_channel(4))
+        fe_data_from_channel_4 = data_array[filter_fe_data_from_channel_4(data_array)]
+    2 Sleceting data from channel 4:
+        filter_data_from_channel_4 = is_data_from_channel(4)
+        data_from_channel_4 = data_array[filter_data_from_channel_4(fe_data_array)]
+    3 Sleceting data from channel 4:
+        data_from_channel_4 = is_data_from_channel(4)(fe_raw_data)
 
-    Similar to:
-    f_ch3 = functoools.partial(is_data_from_channel, channel=3)
+    Other usage:
+    f_ch4 = functoools.partial(is_data_from_channel, channel=4)
     l_ch4 = lambda x: is_data_from_channel(x, channel=4)
-
-    Note:
-    Trigger data not included
     '''
     if channel >= 0 and channel < 16:
         def f(value):
-            return np.equal(np.right_shift(np.bitwise_and(value, 0xFF000000), 24), channel)
+            return np.equal(np.right_shift(np.bitwise_and(value, 0x0F000000), 24), channel)
         f.__name__ = "is_data_from_channel_" + str(channel)  # or use inspect module: inspect.stack()[0][3]
         return f
     else:
@@ -178,10 +206,9 @@ def logical_and(f1, f2):  # function factory
 
     Returns
     -------
-    Function
+    Function.
 
-    Examples
-    --------
+    Usage:
     filter_func=logical_and(is_data_record, is_data_from_channel(4))  # new filter function
     filter_func(array) # array that has Data Records from channel 4
     '''
@@ -201,7 +228,7 @@ def logical_or(f1, f2):  # function factory
 
     Returns
     -------
-    Function
+    Function.
     '''
     def f(value):
         return np.logical_or(f1(value), f2(value))
@@ -219,7 +246,7 @@ def logical_not(f):  # function factory
 
     Returns
     -------
-    Function
+    Function.
     '''
     def f(value):
         return np.logical_not(f(value))
@@ -237,7 +264,7 @@ def logical_xor(f1, f2):  # function factory
 
     Returns
     -------
-    Function
+    Function.
     '''
     def f(value):
         return np.logical_xor(f1(value), f2(value))
@@ -245,12 +272,20 @@ def logical_xor(f1, f2):  # function factory
     return f
 
 
+def true(value):
+    return np.True_
+
+
+def false(value):
+    return np.False_
+
+
 def is_trigger_word(value):
     return np.equal(np.bitwise_and(value, 0x80000000), 0x80000000)
 
 
 def is_tdc_word(value):
-    return np.equal(np.bitwise_and(value, 0xC0000000), 0x40000000)
+    return np.logical_and(np.equal(np.bitwise_and(value, 0x80000000), 0), np.greater(np.bitwise_and(value, 0x70000000), 0))
 
 
 def is_fe_word(value):
@@ -278,25 +313,25 @@ def is_data_record(value):
 
 
 def get_address_record_address(value):
-    '''Returns the address in the address record
+    '''Returns the address in the address record.
     '''
     return np.bitwise_and(value, 0x0000EFFF)
 
 
 def get_address_record_type(value):
-    '''Returns the type in the address record
+    '''Returns the type in the address record.
     '''
     return np.right_shift(np.bitwise_and(value, 0x00008000), 14)
 
 
 def get_value_record(value):
-    '''Returns the value in the value record
+    '''Returns the value in the value record.
     '''
     return np.bitwise_and(value, 0x0000FFFF)
 
 
 def get_col_row_tot_array_from_data_record_array(array):  # TODO: max ToT
-    '''Convert raw data array to column, row, and ToT array
+    '''Convert raw data array to column, row, and ToT array.
 
     Parameters
     ----------
@@ -309,23 +344,17 @@ def get_col_row_tot_array_from_data_record_array(array):  # TODO: max ToT
     '''
     def get_col_row_tot_1_array_from_data_record_array(value):
         return np.right_shift(np.bitwise_and(value, 0x00FE0000), 17), np.right_shift(np.bitwise_and(value, 0x0001FF00), 8), np.right_shift(np.bitwise_and(value, 0x000000F0), 4)
-#         return (value & 0xFE0000)>>17, (value & 0x1FF00)>>8, (value & 0x0000F0)>>4 # numpy.vectorize()
 
     def get_col_row_tot_2_array_from_data_record_array(value):
         return np.right_shift(np.bitwise_and(value, 0x00FE0000), 17), np.add(np.right_shift(np.bitwise_and(value, 0x0001FF00), 8), 1), np.bitwise_and(value, 0x0000000F)
-#         return (value & 0xFE0000)>>17, ((value & 0x1FF00)>>8)+1, (value & 0x0000F) # numpy.vectorize()
 
     col_row_tot_1_array = np.column_stack(get_col_row_tot_1_array_from_data_record_array(array))
     col_row_tot_2_array = np.column_stack(get_col_row_tot_2_array_from_data_record_array(array))
-#     print col_row_tot_1_array, col_row_tot_1_array.shape, col_row_tot_1_array.dtype
-#     print col_row_tot_2_array, col_row_tot_2_array.shape, col_row_tot_2_array.dtype
     # interweave array here
     col_row_tot_array = np.vstack((col_row_tot_1_array.T, col_row_tot_2_array.T)).reshape((3, -1), order='F').T  # http://stackoverflow.com/questions/5347065/interweaving-two-numpy-arrays
-#     print col_row_tot_array, col_row_tot_array.shape, col_row_tot_array.dtype
     # remove ToT > 14 (late hit, no hit) from array, remove row > 336 in case we saw hit in row 336 (no double hit possible)
     try:
         col_row_tot_array_filtered = col_row_tot_array[col_row_tot_array[:, 2] < 14]  # [np.logical_and(col_row_tot_array[:,2]<14, col_row_tot_array[:,1]<=336)]
-#         print col_row_tot_array_filtered, col_row_tot_array_filtered.shape, col_row_tot_array_filtered.dtype
     except IndexError:
         # logging.warning('Array is empty')
         return np.array([], dtype=np.dtype('>u4')), np.array([], dtype=np.dtype('>u4')), np.array([], dtype=np.dtype('>u4'))
@@ -389,12 +418,12 @@ def build_events_from_raw_data(array):
 
 def interpret_pixel_data(data, dc, pixel_array, invert=True):
     '''Takes the pixel raw data and interprets them. This includes consistency checks and pixel/data matching.
-    The data has to come from one double column only but can have more than one pixel bit (e.g. TDAC = 5 bit)
+    The data has to come from one double column only but can have more than one pixel bit (e.g. TDAC = 5 bit).
 
     Parameters
     ----------
     data : numpy.ndarray
-        The raw data words
+        The raw data words.
     dc : int
         The double column where the data is from.
     pixel_array : numpy.ma.ndarray
@@ -417,7 +446,10 @@ def interpret_pixel_data(data, dc, pixel_array, invert=True):
     value_split = np.array_split(value, np.where(np.diff(address.astype(np.int32)) < 0)[0] + 1)
 
     if len(address_split) > 5:
-        raise NotImplementedError('Only the data from one double column can be interpreted at once!')
+        pixel_array.mask[dc * 2, :] = True
+        pixel_array.mask[dc * 2 + 1, :] = True
+        logging.warning('Invalid pixel data for DC %d', dc)
+        return
 
     mask = np.empty_like(pixel_array.data)  # BUG in numpy: pixel_array is de-masked if not .data is used
     mask[:] = len(address_split)
@@ -425,12 +457,12 @@ def interpret_pixel_data(data, dc, pixel_array, invert=True):
     for bit, (bit_address, bit_value) in enumerate(zip(address_split, value_split)):  # loop over all bits of the pixel data
         # error output, pixel data is often corrupt for FE-I4A
         if len(bit_address) == 0:
-            logging.warning('No pixel data')
+            logging.warning('No pixel data for DC %d', dc)
             continue
         if len(bit_address) != 42:
-            logging.warning('Some pixel data missing')
+            logging.warning('Some pixel data missing for DC %d', dc)
         if (np.any(bit_address > 672)):
-            RuntimeError('Pixel data corrupt')
+            RuntimeError('Pixel data corrupt for DC %d', dc)
         # set pixel that occurred in the data stream
         pixel = []
         for i in bit_address:

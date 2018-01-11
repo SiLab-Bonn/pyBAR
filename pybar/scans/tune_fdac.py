@@ -6,7 +6,7 @@ import numpy as np
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.fei4.register_utils import scan_loop
 from pybar.run_manager import RunManager
-from pybar.daq.readout_utils import convert_data_array, is_data_record, is_fe_word, logical_and, data_array_from_data_iterable, get_col_row_tot_array_from_data_record_array
+from pybar.daq.readout_utils import convert_data_array, is_data_record, logical_and, data_array_from_data_iterable, get_col_row_tot_array_from_data_record_array
 from pybar.analysis.plotting.plotting import plot_three_way
 
 
@@ -22,13 +22,14 @@ class FdacTuning(Fei4RunBase):
     Use pybar.scans.tune_fei4 for full FE-I4 tuning.
     '''
     _default_run_conf = {
+        "broadcast_commands": False,
+        "threaded_scan": False,
         "scan_parameters": [('FDAC', None)],
         "target_charge": 280,
         "target_tot": 5,
         "fdac_tune_bits": range(3, -1, -1),
         "n_injections_fdac": 30,
         "plot_intermediate_steps": False,
-        "plots_filename": None,
         "enable_shift_masks": ["Enable", "C_High", "C_Low"],  # enable masks shifted during scan
         "disable_shift_masks": [],  # disable masks shifted during scan
         "pulser_dac_correction": False,  # PlsrDAC correction for each double column
@@ -56,13 +57,10 @@ class FdacTuning(Fei4RunBase):
         commands.extend(self.register.get_commands("RunMode"))
         self.register_utils.send_commands(commands)
 
-    def scan(self):
-        if not self.plots_filename:
-            self.plots_filename = PdfPages(self.output_filename + '.pdf')
-            self.close_plots = True
-        else:
-            self.close_plots = False
+        self.plots_filename = PdfPages(self.output_filename + '.pdf')
+        self.close_plots = True
 
+    def scan(self):
         enable_mask_steps = []
 
         cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0]
@@ -77,6 +75,8 @@ class FdacTuning(Fei4RunBase):
         self.fdac_mask_best = self.register.get_pixel_register_value("FDAC")
         fdac_tune_bits = self.fdac_tune_bits[:]
         for scan_parameter_value, fdac_bit in enumerate(fdac_tune_bits):
+            if self.stop_run.is_set():
+                break
             if additional_scan:
                 self.set_fdac_bit(fdac_bit)
                 logging.info('FDAC setting: bit %d = 1', fdac_bit)
@@ -86,7 +86,7 @@ class FdacTuning(Fei4RunBase):
 
             self.write_fdac_config()
 
-            with self.readout(FDAC=scan_parameter_value, reset_sram_fifo=True, fill_buffer=True, clear_buffer=True, callback=self.handle_data):
+            with self.readout(FDAC=scan_parameter_value, fill_buffer=True):
                 scan_loop(self,
                           command=cal_lvl1_command,
                           repeat_command=self.n_injections_fdac,
@@ -102,7 +102,8 @@ class FdacTuning(Fei4RunBase):
                           mask=None,
                           double_column_correction=self.pulser_dac_correction)
 
-            col_row_tot = np.column_stack(convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=logical_and(is_fe_word, is_data_record), converter_func=get_col_row_tot_array_from_data_record_array))
+            data = convert_data_array(array=self.read_data(), filter_func=is_data_record, converter_func=get_col_row_tot_array_from_data_record_array)
+            col_row_tot = np.column_stack(data)
             tot_array = np.histogramdd(col_row_tot, bins=(80, 336, 16), range=[[1, 80], [1, 336], [0, 15]])[0]
             tot_mean_array = np.average(tot_array, axis=2, weights=range(0, 16)) * sum(range(0, 16)) / self.n_injections_fdac
             select_better_pixel_mask = abs(tot_mean_array - self.target_tot) <= abs(self.tot_mean_best - self.target_tot)
@@ -165,6 +166,7 @@ class FdacTuning(Fei4RunBase):
         for bit_position in self.fdac_tune_bits:  # reset all FDAC bits, TODO: speed up
             start_fdac_setting = start_fdac_setting & ~(1 << bit_position)
         self.register.set_pixel_register_value("FDAC", start_fdac_setting)
+
 
 if __name__ == "__main__":
     RunManager('../configuration.yaml').run_run(FdacTuning)
