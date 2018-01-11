@@ -1,8 +1,5 @@
-include README.* VERSION
-recursive-include docs *
+include README.* VERSION LICENSE.txt requirements.txt
+include pybar/*.yaml pybar/*.bit
 recursive-include examples *
 recursive-include firmware *
-include pybar *.yaml *.bit
 recursive-include pybar/config *
-recursive-include pybar/analysis *
-global-exclude *.pyc .project .pydevproject build
