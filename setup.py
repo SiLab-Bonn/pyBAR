@@ -44,9 +44,5 @@ setup(
     include_package_data=True,  # accept all data files and directories matched by MANIFEST.in or found in source control
     package_data={'pybar': ['*.yaml',
                             '*.bit']},
-    data_files=[('.', ['README.md',
-                       'VERSION',
-                       'LICENSE.txt',
-                       'requirements.txt'])],
     platforms='any'
 )
