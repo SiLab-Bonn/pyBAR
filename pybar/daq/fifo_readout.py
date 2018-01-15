@@ -420,7 +420,7 @@ class FifoReadout(object):
         if m26_channels is None:
             m26_channels = [rx.name for rx in self.dut.get_modules('m26_rx')]
         for fei4_rx_name in fe_channels:
-            self.dut[fei4_rx_name].RESET
+            self.dut[fei4_rx_name].RX_RESET
         for m26_rx_name in m26_channels:
             self.dut[m26_rx_name].RESET
 
