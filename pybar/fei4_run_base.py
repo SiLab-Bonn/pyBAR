@@ -370,6 +370,7 @@ class Fei4RunBase(RunBase):
                     send_meta_data(self.raw_data_file.socket, self._run_conf, name='RunConf')
                 # scan
                 self.scan()
+            self.raw_data_file = None
 
     def post_run(self):
         # printing FIFO status
@@ -401,33 +402,16 @@ class Fei4RunBase(RunBase):
         # if ending up here, succcess!
 
     def cleanup_run(self):
-        # no execption should be thrown here
-        self.raw_data_file = None
-        # USB interface needs to be closed here, otherwise an USBError may occur
-        # USB interface can be reused at any time after close without another init
+        pass
+
+    def close(self):
+        # all exceptions should be catched here
         try:
-            usb_intf = self.dut.get_modules('SiUsb')
-        except AttributeError:
-            pass  # not yet initialized
+            self.dut.close()
+        except Exception:
+            logging.warning('Closing DUT was not successful')
         else:
-            if usb_intf:
-                import usb.core
-                for board in usb_intf:
-                    try:
-                        board.close()  # free resources of USB
-                    except usb.core.USBError:
-                        logging.error('Cannot close USB device')
-                    except ValueError:
-                        pass  # no USB interface, Basil <= 2.1.1
-                    except KeyError:
-                        pass  # no USB interface, Basil > 2.1.1
-                    except TypeError:
-                        pass  # DUT not yet initialized
-                    except AttributeError:
-                        pass  # USB interface not yet initialized
-                    else:
-                        pass
-#                         logging.error('Closed USB device')
+            logging.debug('Closed DUT')
 
     def handle_data(self, data, new_file=False, flush=True):
         '''Handling of the data.
