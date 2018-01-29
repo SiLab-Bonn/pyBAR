@@ -28,8 +28,8 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
     *) measurements from IBL wafer probing
     '''
     _default_run_conf = {
-        "broadcast_commands": False,
-        "threaded_scan": False,
+        "broadcast_commands": False,  # do not change, keep False, otherwise unexpected bahavior
+        "threaded_scan": True,  # if True, parallelize tuning
         # tuning parameters
         "target_threshold": 30,  # target threshold
         "target_charge": 280,  # target charge
