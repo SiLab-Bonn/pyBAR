@@ -21,8 +21,8 @@ class NoiseOccupancyTuning(Fei4RunBase):
     To achieve a broader TDAC distribution it is necessary to decrease TdacVbp.
     '''
     _default_run_conf = {
-        "broadcast_commands": True,
-        "threaded_scan": False,
+        "broadcast_commands": False,  # use False to limit data rate
+        "threaded_scan": True,
         "occupancy_limit": 1 * 10 ** (-5),  # the lower the number the higher the constraints on noise occupancy; 0 will mask any pixel with occupancy greater than zero
         "n_triggers": 10000000,  # total number of triggers which will be sent to the FE. From 1 to 4294967295 (32-bit unsigned int).
         "trig_count": 1,  # FE-I4 trigger count, number of consecutive BCs, 0 means 16, from 0 to 15

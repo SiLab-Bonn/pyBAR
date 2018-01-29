@@ -16,6 +16,8 @@ class MergedPixelsTuning(AnalogScan):
     '''
     _default_run_conf = AnalogScan._default_run_conf.copy()
     _default_run_conf.update({
+        "broadcast_commands": True,
+        "threaded_scan": True,
         "mask_steps": 6,  # number of injections per PlsrDAC step
         "n_injections": 100,  # number of injections per PlsrDAC step
         "scan_parameters": [('PlsrDAC', 1023)],  # the PlsrDAC setting
