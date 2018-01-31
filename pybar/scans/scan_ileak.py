@@ -15,6 +15,8 @@ class IleakScan(Fei4RunBase):
     '''Pixel leakage current scan using external multimeter.
     '''
     _default_run_conf = {
+        "broadcast_commands": False,
+        "threaded_scan": False,
         "pixels": (np.dstack(np.where(make_box_pixel_mask_from_col_row([1, 16], [1, 36]) == 1)) + 1).tolist()[0],  # list of (col, row) tupels. From 1 to 80/336.
     }
 
