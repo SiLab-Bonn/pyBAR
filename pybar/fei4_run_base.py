@@ -1096,7 +1096,7 @@ class Fei4RunBase(RunBase):
             save_configuration_dict(self._raw_data_files[selected_module_id].h5_file, 'run_conf', self._module_run_conf[selected_module_id])
             # send configuration data to online monitor
             if self._raw_data_files[selected_module_id].socket:
-                send_meta_data(self._raw_data_files[selected_module_id].socket, self.output_filename, name='Filename')
+                send_meta_data(self._raw_data_files[selected_module_id].socket, selected_module_id, name='Filename')
                 global_register_config = {}
                 for global_reg in sorted(self._registers[selected_module_id].get_global_register_objects(readonly=False), key=itemgetter('name')):
                     global_register_config[global_reg['name']] = global_reg['value']
