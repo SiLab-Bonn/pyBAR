@@ -21,7 +21,7 @@ class GdacTuningStandard(Fei4RunBase):
     '''
     _default_run_conf = {
         "broadcast_commands": False,
-        "threaded_scan": False,
+        "threaded_scan": True,
         "scan_parameters": [('GDAC', [255, 40])],
         "step_size": -1,  # step size of the GDAC during scan
         "target_threshold": 30,  # target threshold in PlsrDAC to tune to

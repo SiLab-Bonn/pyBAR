@@ -21,7 +21,7 @@ class TdacTuning(Fei4RunBase):
     '''
     _default_run_conf = {
         "broadcast_commands": False,
-        "threaded_scan": False,
+        "threaded_scan": True,
         "scan_parameters": [('TDAC', None)],
         "target_threshold": 30,
         "tdac_tune_bits": range(4, -1, -1),

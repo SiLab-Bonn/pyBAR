@@ -843,31 +843,13 @@ class Fei4RunBase(RunBase):
                 raise exc[0], exc[1], exc[2]
 
     def cleanup_run(self):
-        # no execption should be thrown here
-        # USB interface needs to be closed here, otherwise an USBError may occur
-        # USB interface can be reused at any time after close without another init
+        # all exceptions should be catched here
         try:
-            usb_intf = self.dut.get_modules('SiUsb')
-        except (KeyError, AttributeError):
-            pass  # not yet initialized
+            self.dut.close()
+        except:
+            logging.warning('Closing DUT was not successful')
         else:
-            if usb_intf:
-                import usb.core
-                for board in usb_intf:
-                    try:
-                        board.close()  # free resources of USB
-                    except usb.core.USBError:
-                        logging.error('Cannot close USB device')
-                    except ValueError:
-                        pass  # no USB interface, Basil <= 2.1.1
-                    except KeyError:
-                        pass  # no USB interface, Basil > 2.1.1
-                    except TypeError:
-                        pass  # DUT not yet initialized
-                    except AttributeError:
-                        pass  # USB interface not yet initialized
-                    else:
-                        logging.debug('Closed USB device')
+            logging.debug('Closed DUT')
 
     def handle_data(self, data, new_file=False, flush=True):
         '''Handling of the data.
@@ -1114,7 +1096,7 @@ class Fei4RunBase(RunBase):
             save_configuration_dict(self._raw_data_files[selected_module_id].h5_file, 'run_conf', self._module_run_conf[selected_module_id])
             # send configuration data to online monitor
             if self._raw_data_files[selected_module_id].socket:
-                send_meta_data(self._raw_data_files[selected_module_id].socket, self.output_filename, name='Filename')
+                send_meta_data(self._raw_data_files[selected_module_id].socket, selected_module_id, name='Filename')
                 global_register_config = {}
                 for global_reg in sorted(self._registers[selected_module_id].get_global_register_objects(readonly=False), key=itemgetter('name')):
                     global_register_config[global_reg['name']] = global_reg['value']

@@ -16,6 +16,8 @@ from pybar.run_manager import RunManager
 
 class IVScan(Fei4RunBase):
     _default_run_conf = {
+        "broadcast_commands": False,
+        "threaded_scan": False,
         "voltages": np.arange(-2, -101, -2),  # voltage steps of the IV curve
         "max_leakage": 10e-6,  # scan aborts if current is higher
         "max_voltage": -20,  # for safety, scan aborts if voltage is higher

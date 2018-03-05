@@ -11,7 +11,7 @@ class AnalogScan(Fei4RunBase):
     '''Analog scan
     '''
     _default_run_conf = {
-        "broadcast_commands": False,
+        "broadcast_commands": False,  # keep this False, if this scan is used to verify the tuning
         "threaded_scan": True,
         "mask_steps": 3,  # mask steps, be carefull PlsrDAC injects different charge for different mask steps
         "n_injections": 100,  # number of injections

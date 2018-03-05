@@ -209,12 +209,24 @@ def compare_h5_files(first_file, second_file, node_names=None, detailed_comparis
     -------
     (bool, string)
     '''
+    if node_names and not isinstance(node_names, (list, tuple)):
+        raise ValueError("Parameter node_names must be list or tuple")
     checks_passed = True
     error_msg = ""
     with tb.open_file(first_file, 'r') as first_h5_file:
         with tb.open_file(second_file, 'r') as second_h5_file:
-            fist_file_nodes = [node.name for node in first_h5_file.root]  # get node names
-            second_file_nodes = [node.name for node in second_h5_file.root]  # get node names
+
+            def walk_nodes(f, n, g="/"):
+                for item in f.get_node(f.root, g):
+                    if isinstance(item, tb.group.Group):
+                        walk_nodes(f=f, n=n, g=item._v_pathname)
+                    else:
+                        n.append(item._v_pathname)
+
+            fist_file_nodes = []
+            walk_nodes(f=first_h5_file, n=fist_file_nodes)  # get node names
+            second_file_nodes = []
+            walk_nodes(f=second_h5_file, n=second_file_nodes)  # get node names
             if node_names is None:
                 additional_first_file_nodes = set(fist_file_nodes) - set(second_file_nodes)
                 additional_second_file_nodes = set(second_file_nodes) - set(fist_file_nodes)
@@ -228,6 +240,7 @@ def compare_h5_files(first_file, second_file, node_names=None, detailed_comparis
                         error_msg += 'File %s has additional nodes: %s\n' % (second_file, ', '.join(additional_second_file_nodes))
                 common_nodes = set(fist_file_nodes) & set(second_file_nodes)
             else:
+                node_names = [(("/" + name) if (name and name[:1] != "/") else name) for name in node_names]
                 missing_first_file_nodes = set(node_names) - set(fist_file_nodes)
                 if missing_first_file_nodes:
                     checks_passed = False

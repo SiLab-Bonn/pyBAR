@@ -21,7 +21,7 @@ class GdacTuning(Fei4RunBase):
     '''
     _default_run_conf = {
         "broadcast_commands": False,
-        "threaded_scan": False,
+        "threaded_scan": True,
         "scan_parameters": [('GDAC', None)],
         "target_threshold": 30,  # target threshold in PlsrDAC to tune to
         "gdac_tune_bits": range(7, -1, -1),  # GDAC bits to change during tuning

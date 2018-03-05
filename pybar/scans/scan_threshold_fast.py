@@ -18,7 +18,7 @@ class FastThresholdScan(Fei4RunBase):
     '''
     _default_run_conf = {
         "broadcast_commands": True,
-        "threaded_scan": False,
+        "threaded_scan": True,
         "n_injections": 100,  # number of injections per PlsrDAC step
         "scan_parameters": [('PlsrDAC', (None, 100))],  # the PlsrDAC range
         "mask_steps": 3,  # mask steps, be carefull PlsrDAC injects different charge for different mask steps
