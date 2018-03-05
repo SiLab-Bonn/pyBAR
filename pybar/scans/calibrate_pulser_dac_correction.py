@@ -45,4 +45,4 @@ class PulserDacCorrectionCalibration(ThresholdScan):
 
 
 if __name__ == "__main__":
-    RunManager('../configuration.yaml').run_run(PulserDacCorrectionCalibration)
+    RunManager('configuration.yaml').run_run(PulserDacCorrectionCalibration)

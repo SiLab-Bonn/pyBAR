@@ -172,4 +172,4 @@ class ThresholdCalibration(FastThresholdScan):
 
 
 if __name__ == "__main__":
-    RunManager('../configuration.yaml').run_run(ThresholdCalibration)
+    RunManager('configuration.yaml').run_run(ThresholdCalibration)

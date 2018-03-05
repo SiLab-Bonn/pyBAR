@@ -212,4 +212,4 @@ class StopModeExtTriggerScan(Fei4RunBase):
 
 
 if __name__ == "__main__":
-    RunManager('../configuration.yaml').run_run(StopModeExtTriggerScan)
+    RunManager('configuration.yaml').run_run(StopModeExtTriggerScan)

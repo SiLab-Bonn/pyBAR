@@ -46,4 +46,4 @@ class DigitalScan(Fei4RunBase):
 
 
 if __name__ == "__main__":
-    RunManager('../configuration.yaml').run_run(DigitalScan)
+    RunManager('configuration.yaml').run_run(DigitalScan)
