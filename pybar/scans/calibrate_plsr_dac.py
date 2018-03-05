@@ -323,4 +323,4 @@ def plot_pulser_dac(x, y, y_err=None, output_pdf=None, title_suffix="", atol_fir
 
 
 if __name__ == "__main__":
-    RunManager('../configuration.yaml').run_run(PlsrDacCalibration)
+    RunManager('configuration.yaml').run_run(PlsrDacCalibration)

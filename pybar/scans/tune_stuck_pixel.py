@@ -76,4 +76,4 @@ class StuckPixelScan(DigitalScan):
 
 
 if __name__ == "__main__":
-    RunManager('../configuration.yaml').run_run(StuckPixelScan)
+    RunManager('configuration.yaml').run_run(StuckPixelScan)

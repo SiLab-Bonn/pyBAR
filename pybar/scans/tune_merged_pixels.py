@@ -72,4 +72,4 @@ class MergedPixelsTuning(AnalogScan):
 
 
 if __name__ == "__main__":
-    RunManager('../configuration.yaml').run_run(MergedPixelsTuning)
+    RunManager('configuration.yaml').run_run(MergedPixelsTuning)

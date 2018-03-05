@@ -103,4 +103,4 @@ class CrosstalkScan(Fei4RunBase):
 
 
 if __name__ == "__main__":
-    RunManager('../configuration.yaml').run_run(CrosstalkScan)
+    RunManager('configuration.yaml').run_run(CrosstalkScan)

@@ -312,4 +312,4 @@ class PlsrDacTransientCalibration(AnalogScan):
             progress_bar.finish()
 
 if __name__ == "__main__":
-    RunManager('../configuration.yaml').run_run(PlsrDacTransientCalibration)
+    RunManager('configuration.yaml').run_run(PlsrDacTransientCalibration)

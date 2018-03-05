@@ -77,4 +77,4 @@ class AnalogScan(Fei4RunBase):
 
 
 if __name__ == "__main__":
-    RunManager('../configuration.yaml').run_run(AnalogScan)
+    RunManager('configuration.yaml').run_run(AnalogScan)
