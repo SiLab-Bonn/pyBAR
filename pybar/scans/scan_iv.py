@@ -102,4 +102,4 @@ class IVScan(Fei4RunBase):
 
 
 if __name__ == "__main__":
-    RunManager('../configuration.yaml').run_run(IVScan)
+    RunManager('configuration.yaml').run_run(IVScan)

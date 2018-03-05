@@ -113,4 +113,4 @@ class FEI4SelfTriggerScan(Fei4RunBase):
         super(FEI4SelfTriggerScan, self).stop_readout(timeout=timeout)
 
 if __name__ == "__main__":
-    RunManager('../configuration.yaml').run_run(FEI4SelfTriggerScan)
+    RunManager('configuration.yaml').run_run(FEI4SelfTriggerScan)

@@ -176,4 +176,4 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
             self.plots_filename.close()
 
 if __name__ == "__main__":
-    RunManager('../configuration.yaml').run_run(Fei4Tuning)
+    RunManager('configuration.yaml').run_run(Fei4Tuning)

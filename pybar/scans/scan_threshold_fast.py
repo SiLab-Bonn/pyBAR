@@ -170,4 +170,4 @@ class FastThresholdScan(Fei4RunBase):
             self.start_condition_triggered = True
 
 if __name__ == "__main__":
-    RunManager('../configuration.yaml').run_run(FastThresholdScan)
+    RunManager('configuration.yaml').run_run(FastThresholdScan)

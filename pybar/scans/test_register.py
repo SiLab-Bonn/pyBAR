@@ -75,4 +75,4 @@ class RegisterTest(Fei4RunBase):
         return pixel_register_errors
 
 if __name__ == "__main__":
-    RunManager('../configuration.yaml').run_run(RegisterTest)
+    RunManager('configuration.yaml').run_run(RegisterTest)

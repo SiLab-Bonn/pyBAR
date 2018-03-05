@@ -19,4 +19,4 @@ class InitScan(Fei4RunBase):
         pass
 
 if __name__ == "__main__":
-    RunManager('../configuration.yaml').run_run(InitScan)
+    RunManager('configuration.yaml').run_run(InitScan)

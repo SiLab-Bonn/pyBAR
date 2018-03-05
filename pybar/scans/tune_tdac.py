@@ -173,4 +173,4 @@ class TdacTuning(Fei4RunBase):
         self.register_utils.send_commands(commands)
 
 if __name__ == "__main__":
-    RunManager('../configuration.yaml').run_run(TdacTuning)
+    RunManager('configuration.yaml').run_run(TdacTuning)
