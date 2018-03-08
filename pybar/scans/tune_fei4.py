@@ -178,4 +178,5 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
 
 
 if __name__ == "__main__":
-    RunManager('configuration.yaml').run_run(Fei4Tuning)
+    with RunManager('configuration.yaml') as runmngr:
+        runmngr.run_run(Fei4Tuning)

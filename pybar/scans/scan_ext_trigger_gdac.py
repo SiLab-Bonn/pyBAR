@@ -65,4 +65,5 @@ class ExtTriggerGdacScan(ExtTriggerScan):
 
 
 if __name__ == "__main__":
-    RunManager('configuration.yaml').run_run(ExtTriggerGdacScan)
+    with RunManager('configuration.yaml') as runmngr:
+        runmngr.run_run(ExtTriggerGdacScan)

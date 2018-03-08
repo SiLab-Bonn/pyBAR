@@ -134,4 +134,5 @@ class Fei4SelfTriggerScan(Fei4RunBase):
 
 
 if __name__ == "__main__":
-    RunManager('configuration.yaml').run_run(Fei4SelfTriggerScan)
+    with RunManager('configuration.yaml') as runmngr:
+        runmngr.run_run(Fei4SelfTriggerScan)

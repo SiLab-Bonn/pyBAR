@@ -843,7 +843,11 @@ class Fei4RunBase(RunBase):
                 raise exc[0], exc[1], exc[2]
 
     def cleanup_run(self):
-        # all exceptions should be catched here
+        pass
+
+    def close(self):
+        '''Releasing hardware resources.
+        '''
         try:
             self.dut.close()
         except:

@@ -78,4 +78,5 @@ class HotPixelTuning(Fei4SelfTriggerScan):
 
 
 if __name__ == "__main__":
-    RunManager('configuration.yaml').run_run(HotPixelTuning)
+    with RunManager('configuration.yaml') as runmngr:
+        runmngr.run_run(HotPixelTuning)

@@ -70,21 +70,13 @@ class RunBase(object):
         self._last_traceback = None
         self._cancel_functions = None
         self.connect_cancel(["abort"])
-        self._initialized = False
-
-    @property
-    def is_initialized(self):
-        if "_initialized" in self.__dict__ and self._initialized:
-            return True
-        else:
-            return False
 
     def __getattr__(self, name):
         ''' This is called in a last attempt to receive the value for an attribute that was not found in the usual places.
         '''
         try:
             return self._run_conf[name]  # Accessing run conf parameters
-        except KeyError:
+        except (KeyError, TypeError):  # If key is not existing or run conf is not a dict
             raise AttributeError("'%s' has no attribute '%s'" % (self.__class__.__name__, name))
 
     @property
@@ -143,7 +135,6 @@ class RunBase(object):
 
     def run(self, run_conf, run_number=None, signal_handler=None):
         self._init(run_conf, run_number)
-        self._initialized = True
         logging.info('Starting run %d (%s) in %s', self.run_number, self.__class__.__name__, self.working_dir)
         # set up signal handler
         if current_thread().name == 'MainThread':
@@ -167,7 +158,7 @@ class RunBase(object):
             self._last_traceback = None
             self._last_error_message = None
         finally:
-            self._initialized = False
+            pass
         # revert signal handler to default
         if current_thread().name == 'MainThread':
             signal.signal(signal.SIGINT, signal.SIG_DFL)
@@ -295,6 +286,13 @@ class RunBase(object):
                 logging.error('Aborting run...')
         self.abort_run.set()
         self.stop_run.set()  # set stop_run in case abort_run event is not used
+
+    def close(self):
+        '''Close properly and releasing hardware resources.
+
+        This should be called before Python garbage collector takes action.
+        '''
+        pass
 
     def _get_run_numbers(self, status=None):
         run_numbers = {}
@@ -465,6 +463,16 @@ class RunManager(object):
         else:
             raise ValueError('Cannot deduce working directory from configuration')
         logging.info('Using working directory %s', os.path.abspath(self._conf['working_dir']))
+
+    def close(self):
+        if self.current_run is not None:
+            self.current_run.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc_info):
+        self.close()
 
     @staticmethod
     def open_conf(conf):
