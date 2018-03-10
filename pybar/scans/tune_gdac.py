@@ -27,7 +27,7 @@ class GdacTuning(Fei4RunBase):
         "gdac_tune_bits": range(7, -1, -1),  # GDAC bits to change during tuning
         "gdac_lower_limit": 30,  # set GDAC lower limit to prevent FEI4 from becoming noisy, set to 0 or None to disable
         "n_injections_gdac": 50,  # number of injections per GDAC bit setting
-        "max_delta_threshold": 15,  # minimum difference to the target_threshold to abort the tuning, in percent of n_injections_gdac
+        "max_delta_threshold": 20,  # minimum difference to the target_threshold to abort the tuning, in percent of n_injections_gdac
         "enable_mask_steps_gdac": [0],  # mask steps to do per GDAC setting
         "plot_intermediate_steps": False,  # plot intermediate steps (takes time)
         "enable_shift_masks": ["Enable", "C_High", "C_Low"],  # enable masks shifted during scan
