@@ -289,7 +289,7 @@ class PlsrDacTransientCalibration(AnalogScan):
                         ax.set_title('PulserDAC=%d Waveform' % plsr_dac)
                         ax.set_xlabel('Time [ns]')
                         ax.set_ylabel('Voltage [mV]')
-                        delta_string = '$\Delta=$%.3fmv' % (median_baseline * 1e3 - median_peak * 1e3)
+                        delta_string = '$\Delta=$%.3fmV' % (median_baseline * 1e3 - median_peak * 1e3)
                         handles, labels = ax.get_legend_handles_labels()
                         handles.append(mpatches.Patch(color='none', label=delta_string))
                         ax.legend(handles=handles, loc=4)  # lower right
