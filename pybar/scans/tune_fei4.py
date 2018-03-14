@@ -34,8 +34,8 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
         "target_threshold": 30,  # target threshold
         "target_charge": 280,  # target charge
         "target_tot": 5,  # target ToT
-        "global_iterations": 4,  # the number of iterations to do for the global tuning, 0: only global threshold (GDAC) is tuned, -1 or None: no global tuning
-        "local_iterations": 3,  # the number of iterations to do for the local tuning, 0: only local threshold (TDAC) is tuned, -1 or None: no local tuning
+        "global_iterations": 4,  # the number of iterations to do for the global tuning, 0: only global threshold (GDAC) is tuned, -1: no global tuning
+        "local_iterations": 3,  # the number of iterations to do for the local tuning, 0: only local threshold (TDAC) is tuned, -1: no local tuning
         "reset_local_dacs": True,  # if True, reset pixels registers to the middle of the DAC range before the global tuning starts
         "fail_on_warning": True,  # do not continue tuning if a global tuning fails
         # GDAC
@@ -115,11 +115,6 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
             2: TDAC -> FDAC -> TDAC -> FDAC -> TDAC
             ...
         '''
-        if self.global_iterations is None:
-            self.global_iterations = -1
-        if self.local_iterations is None:
-            self.local_iterations = -1
-
         for iteration in range(0, self.global_iterations):  # tune iteratively with decreasing range to save time
             if self.stop_run.is_set():
                 break
