@@ -1250,7 +1250,6 @@ class AnalyzeRawData(object):
             out_file_h5 = self.out_file_h5
         else:
             logging.info('Parameter "analyzed_data_file" not set. Use histograms from memory.')
-        close_pdf = False
         if pdf_filename is not None:
             # normalize path
             pdf_filename = os.path.abspath(pdf_filename)
@@ -1258,11 +1257,14 @@ class AnalyzeRawData(object):
                 output_pdf_filename = os.path.splitext(pdf_filename)[0] + ".pdf"
             else:
                 output_pdf_filename = pdf_filename
+        # reuse existing PDF file
+        if pdf_filename is not None and os.path.abspath(output_pdf_filename) != self.output_pdf._file.fh.name:
             logging.info('Opening output PDF file: %s', output_pdf_filename)
             output_pdf = PdfPages(output_pdf_filename)
             close_pdf = True
         else:
             output_pdf = self.output_pdf
+            close_pdf = False
         if output_pdf is None:
             raise ValueError('Parameter "pdf_filename" not specified.')
         logging.info('Saving histograms to PDF file: %s', str(output_pdf._file.fh.name))
