@@ -38,12 +38,12 @@ The following packages are required for pyBAR's core functionality:
 
 For full functionality, the following additional packages are required:
   ```
-  ipython mock nose pyqtgraph pyserial pyvisa pyvisa-py pyzmq sphinx vitables
+  ipython mock nose pyqtgraph pyserial pyvisa pyvisa-py pyzmq vitables
   ```
 
 Run the **following commands** to install the packages:
   ```
-  conda install python=2.7 bitarray cython ipython matplotlib mock nose numba numpy pyqt pyserial pytables pyyaml pyzmq qtpy scipy sphinx
+  conda install python=2.7 bitarray cython ipython matplotlib mock nose numba numpy pyqt pyserial pytables pyyaml pyzmq qtpy scipy
 
   pip install progressbar-latest pyvisa pyvisa-py git+https://github.com/pyqtgraph/pyqtgraph.git@pyqtgraph-0.10.0
   ```

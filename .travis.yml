@@ -38,7 +38,7 @@ install:
   - conda update --yes conda
   - conda update --yes --all
   - conda info -a
-  - conda create --yes -n test-environment python=$TRAVIS_PYTHON_VERSION bitarray cython ipython matplotlib mock nose numba numpy pyqt pyserial pytables pyyaml pyzmq qtpy scipy sphinx
+  - conda create --yes -n test-environment python=$TRAVIS_PYTHON_VERSION bitarray cython ipython matplotlib mock nose numba numpy pyqt pyserial pytables pyyaml pyzmq qtpy scipy
   - source activate test-environment
   - pip install progressbar-latest pyvisa pyvisa-py git+https://github.com/pyqtgraph/pyqtgraph.git@pyqtgraph-0.10.0
   - pip install pyusb
