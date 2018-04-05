@@ -19,4 +19,3 @@ pyserial # serial port
 pyvisa # interface to lab devices
 pyvisa-py # interface to lab devices
 pyzmq # online monitor
-sphinx # for vitables
