@@ -3,9 +3,7 @@ import glob
 from threading import RLock
 import os.path
 from os import remove
-from docutils.transforms.misc import ClassAttribute
 
-from docutils.transforms.misc import ClassAttribute
 import tables as tb
 import zmq
 
