@@ -1023,8 +1023,13 @@ class AnalyzeRawData(object):
                 mean_tot_array_table = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistMeanTot', title='Mean ToT Histogram', atom=tb.Atom.from_dtype(self.mean_tot_array.dtype), shape=self.mean_tot_array.shape, filters=self._filter_table)
                 mean_tot_array_table[0:336, 0:80, 0:self.histogram.get_n_parameters()] = self.mean_tot_array
         if self._create_threshold_hists:
+            _, scan_parameters_idx = np.unique(self.scan_parameters['PlsrDAC'], return_index=True)
+            scan_parameters = self.scan_parameters['PlsrDAC'][np.sort(scan_parameters_idx)]
+            if scan_parameters[0] >= scan_parameters[-1]:
+                 raise analysis_utils.AnalysisError('Scan parameter PlsrDAC not increasing')
             threshold, noise = np.zeros(80 * 336, dtype=np.float64), np.zeros(80 * 336, dtype=np.float64)
-            self.histogram.calculate_threshold_scan_arrays(threshold, noise, self._n_injection, np.min(self.scan_parameters['PlsrDAC']), np.max(self.scan_parameters['PlsrDAC']))  # calling fast algorithm function: M. Mertens, PhD thesis, Juelich 2010, note: noise zero if occupancy was zero
+            # calling fast algorithm function: M. Mertens, PhD thesis, Juelich 2010, note: noise zero if occupancy was zero
+            self.histogram.calculate_threshold_scan_arrays(threshold, noise, self._n_injection, np.min(self.scan_parameters['PlsrDAC']), np.max(self.scan_parameters['PlsrDAC']))
             threshold_hist, noise_hist = np.reshape(a=threshold.view(), newshape=(80, 336), order='F'), np.reshape(a=noise.view(), newshape=(80, 336), order='F')
             self.threshold_hist, self.noise_hist = np.swapaxes(threshold_hist, 0, 1), np.swapaxes(noise_hist, 0, 1)
             if self._analyzed_data_file is not None and safe_to_file:
@@ -1033,7 +1038,8 @@ class AnalyzeRawData(object):
                 noise_hist_table = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistNoise', title='Noise Histogram', atom=tb.Atom.from_dtype(self.noise_hist.dtype), shape=(336, 80), filters=self._filter_table)
                 noise_hist_table[:] = self.noise_hist
         if self._create_fitted_threshold_hists:
-            scan_parameters = np.linspace(np.amin(self.scan_parameters['PlsrDAC']), np.amax(self.scan_parameters['PlsrDAC']), num=self.histogram.get_n_parameters(), endpoint=True)
+            _, scan_parameters_idx = np.unique(self.scan_parameters['PlsrDAC'], return_index=True)
+            scan_parameters = self.scan_parameters['PlsrDAC'][np.sort(scan_parameters_idx)]
             self.scurve_fit_results = self.fit_scurves_multithread(self.out_file_h5, PlsrDAC=scan_parameters)
             if self._analyzed_data_file is not None and safe_to_file:
                 fitted_threshold_hist_table = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistThresholdFitted', title='Threshold Fitted Histogram', atom=tb.Atom.from_dtype(self.scurve_fit_results.dtype), shape=(336, 80), filters=self._filter_table)
@@ -1302,7 +1308,9 @@ class AnalyzeRawData(object):
             plotting.plot_three_way(hist=noise_hist_calib, title='Noise (S-curve fit, masked %i pixel(s))' % mask_cnt, x_axis_title="Noise [e]", filename=output_pdf, bins=100, minimum=0)
         if self._create_occupancy_hist:
             if self._create_fitted_threshold_hists:
-                plotting.plot_scurves(occupancy_hist=out_file_h5.root.HistOcc[:] if out_file_h5 is not None else self.occupancy_array[:], filename=output_pdf, scan_parameters=np.linspace(np.amin(self.scan_parameters['PlsrDAC']), np.amax(self.scan_parameters['PlsrDAC']), num=self.histogram.get_n_parameters(), endpoint=True), scan_parameter_name="PlsrDAC")
+                _, scan_parameters_idx = np.unique(self.scan_parameters['PlsrDAC'], return_index=True)
+                scan_parameters = self.scan_parameters['PlsrDAC'][np.sort(scan_parameters_idx)]
+                plotting.plot_scurves(occupancy_hist=out_file_h5.root.HistOcc[:] if out_file_h5 is not None else self.occupancy_array[:], filename=output_pdf, scan_parameters=scan_parameters, scan_parameter_name="PlsrDAC")
             else:
                 hist = np.sum(out_file_h5.root.HistOcc[:], axis=2) if out_file_h5 is not None else np.sum(self.occupancy_array[:], axis=2)
                 occupancy_array_masked = np.ma.masked_equal(hist, 0)
@@ -1357,6 +1365,10 @@ class AnalyzeRawData(object):
         logging.info("Start S-curve fit on %d CPU core(s)", mp.cpu_count())
         occupancy_hist = hit_table_file.root.HistOcc[:] if hit_table_file is not None else self.occupancy_array[:]  # take data from RAM if no file is opened
         occupancy_hist_shaped = occupancy_hist.reshape(occupancy_hist.shape[0] * occupancy_hist.shape[1], occupancy_hist.shape[2])
+        # reverse data to fit s-curve
+        if PlsrDAC[0] > PlsrDAC[-1]:
+            occupancy_hist_shaped = np.flip(occupancy_hist_shaped, axis=1)
+            PlsrDAC = np.flip(PlsrDAC, axis=0)
         partialfit_scurve = partial(fit_scurve, PlsrDAC=PlsrDAC)  # trick to give a function more than one parameter, needed for pool.map
         pool = mp.Pool()  # create as many workers as physical cores are available
         try:
