@@ -238,7 +238,7 @@ class GdacTuning(Fei4RunBase):
 
         self.gdac_best = self.register_utils.get_gdac()
 
-        if int(abs(median_occupancy - self.n_injections_gdac / 2)) > int(abs(self.n_injections_gdac * 0.01 * self.max_delta_threshold)) and not self.stop_run.is_set():
+        if abs(median_occupancy - self.n_injections_gdac / 2) > abs(self.n_injections_gdac * 0.01 * self.max_delta_threshold) and not self.stop_run.is_set():
             if np.all((((self.gdac_best & (1 << np.arange(self.register.global_registers['Vthin_AltFine']['bitlength'] + self.register.global_registers['Vthin_AltFine']['bitlength'])))) > 0).astype(int)[self.gdac_tune_bits] == 1):
                 if self.fail_on_warning:
                     raise RuntimeWarning('Selected GDAC bits reached maximum value')
@@ -251,9 +251,9 @@ class GdacTuning(Fei4RunBase):
                     logging.warning('Selected GDAC bits reached minimum value')
             else:
                 if self.fail_on_warning:
-                    raise RuntimeWarning('Global threshold tuning failed. Delta threshold = %d > %d. Vthin_AltCoarse / Vthin_AltFine = %d / %d' % (int(abs(median_occupancy - self.n_injections_gdac / 2)), int(abs(self.n_injections_gdac * 0.01 * self.max_delta_threshold)), self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine")))
+                    raise RuntimeWarning('Global threshold tuning failed. Delta threshold = %.2f > %.2f. Vthin_AltCoarse / Vthin_AltFine = %d / %d' % (abs(median_occupancy - self.n_injections_gdac / 2), abs(self.n_injections_gdac * 0.01 * self.max_delta_threshold), self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine")))
                 else:
-                    logging.warning('Global threshold tuning failed. Delta threshold = %d > %d. Vthin_AltCoarse / Vthin_AltFine = %d / %d', int(abs(median_occupancy - self.n_injections_gdac / 2)), int(abs(self.n_injections_gdac * 0.01 * self.max_delta_threshold)), self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine"))
+                    logging.warning('Global threshold tuning failed. Delta threshold = %.2f > %.2f. Vthin_AltCoarse / Vthin_AltFine = %d / %d', abs(median_occupancy - self.n_injections_gdac / 2), abs(self.n_injections_gdac * 0.01 * self.max_delta_threshold), self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine"))
         else:
             logging.info('Tuned GDAC to Vthin_AltCoarse / Vthin_AltFine = %d / %d', self.register.get_global_register_value("Vthin_AltCoarse"), self.register.get_global_register_value("Vthin_AltFine"))
 
