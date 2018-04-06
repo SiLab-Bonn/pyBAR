@@ -96,10 +96,6 @@ firmware/nexys4/vivado/*
 firmware/nexys4/src/ip/*
 !firmware/nexys4/src/ip/*.xci
 
-# MMC3 Beast firmware
-firmware/mmc3_beast_eth/vivado/*
-!firmware/mmc3_beast_eth/vivado/*.xpr
-
 # Simulation output
 firmware/mio/cosim/sim_build
 firmware/mio/cosim/sim_build.zip
