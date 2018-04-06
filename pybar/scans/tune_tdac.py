@@ -73,6 +73,8 @@ class TdacTuning(Fei4RunBase):
         self.tdac_mask_best = self.register.get_pixel_register_value("TDAC")
         tdac_tune_bits = self.tdac_tune_bits[:]
         for scan_parameter_value, tdac_bit in enumerate(tdac_tune_bits):
+            if self.stop_run.is_set():
+                break
             if additional_scan:
                 self.set_tdac_bit(tdac_bit)
                 logging.info('TDAC setting: bit %d = 1', tdac_bit)

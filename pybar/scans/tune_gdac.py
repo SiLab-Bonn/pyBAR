@@ -103,6 +103,8 @@ class GdacTuning(Fei4RunBase):
         gdac_tune_bits = self.gdac_tune_bits[:]
         min_gdac_with_occupancy = None
         for gdac_scan_step, gdac_bit in enumerate(gdac_tune_bits):
+            if self.stop_run.is_set():
+                break
             if additional_scan:
                 self.set_gdac_bit(gdac_bit, bit_value=1, send_command=True)
                 scan_parameter_value = (self.register.get_global_register_value("Vthin_AltCoarse") << 8) + self.register.get_global_register_value("Vthin_AltFine")
@@ -220,7 +222,7 @@ class GdacTuning(Fei4RunBase):
 
         self.gdac_best = self.register_utils.get_gdac()
 
-        if abs(median_occupancy - self.n_injections_gdac / 2) > self.max_delta_threshold:
+        if abs(median_occupancy - self.n_injections_gdac / 2) > self.max_delta_threshold and not self.stop_run.is_set():
             if np.all((((self.gdac_best & (1 << np.arange(self.register.global_registers['Vthin_AltFine']['bitlength'] + self.register.global_registers['Vthin_AltFine']['bitlength'])))) > 0).astype(int)[self.gdac_tune_bits] == 1):
                 if self.fail_on_warning:
                     raise RuntimeWarning('Selected GDAC bits reached maximum value')

@@ -72,7 +72,7 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
     def configure(self):
         super(Fei4Tuning, self).configure()
 
-        # overwrite pixel registers and set them to center postion before a global tuning 
+        # overwrite pixel registers and set them to center postion before a global tuning
         if self.reset_local_dacs and self.global_iterations:
             commands = []
             commands.extend(self.register.get_commands("ConfMode"))
@@ -127,13 +127,17 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
             self.plots_filename = None
 
         for iteration in range(0, self.global_iterations):  # tune iteratively with decreasing range to save time
+            if self.stop_run.is_set():
+                break
             logging.info("Global tuning step %d / %d", iteration + 1, self.global_iterations)
             self.set_scan_parameters(global_step=self.scan_parameters.global_step + 1)
             GdacTuning.scan(self)
+            if self.stop_run.is_set():
+                break
             self.set_scan_parameters(global_step=self.scan_parameters.global_step + 1)
             FeedbackTuning.scan(self)
 
-        if self.global_iterations >= 0:
+        if self.global_iterations >= 0 and not self.stop_run.is_set():
             self.set_scan_parameters(global_step=self.scan_parameters.global_step + 1)
             GdacTuning.scan(self)
 
@@ -144,13 +148,17 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
             logging.info("Results of global feedback tuning: PrmpVbpf = %d", PrmpVbpf)
 
         for iteration in range(0, self.local_iterations):
+            if self.stop_run.is_set():
+                break
             logging.info("Local tuning step %d / %d", iteration + 1, self.local_iterations)
             self.set_scan_parameters(local_step=self.scan_parameters.local_step + 1)
             TdacTuning.scan(self)
+            if self.stop_run.is_set():
+                break
             self.set_scan_parameters(local_step=self.scan_parameters.local_step + 1)
             FdacTuning.scan(self)
 
-        if self.local_iterations >= 0:
+        if self.local_iterations >= 0 and not self.stop_run.is_set():
             self.set_scan_parameters(local_step=self.scan_parameters.local_step + 1)
             TdacTuning.scan(self)
 

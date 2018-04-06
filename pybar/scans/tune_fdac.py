@@ -77,6 +77,8 @@ class FdacTuning(Fei4RunBase):
         self.fdac_mask_best = self.register.get_pixel_register_value("FDAC")
         fdac_tune_bits = self.fdac_tune_bits[:]
         for scan_parameter_value, fdac_bit in enumerate(fdac_tune_bits):
+            if self.stop_run.is_set():
+                break
             if additional_scan:
                 self.set_fdac_bit(fdac_bit)
                 logging.info('FDAC setting: bit %d = 1', fdac_bit)

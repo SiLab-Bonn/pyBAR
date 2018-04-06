@@ -97,6 +97,8 @@ class FeedbackTuning(Fei4RunBase):
         feedback_best = self.register.get_global_register_value("PrmpVbpf")
         feedback_tune_bits = self.feedback_tune_bits[:]
         for feedback_bit in feedback_tune_bits:
+            if self.stop_run.is_set():
+                break
             if additional_scan:
                 self.set_prmp_vbpf_bit(feedback_bit, bit_value=1)
                 logging.info('PrmpVbpf setting: %d, set bit %d = 1', self.register.get_global_register_value("PrmpVbpf"), feedback_bit)
@@ -177,7 +179,7 @@ class FeedbackTuning(Fei4RunBase):
 
         self.feedback_best = self.register.get_global_register_value("PrmpVbpf")
 
-        if abs(mean_tot - self.target_tot) > 2 * self.max_delta_tot:
+        if abs(mean_tot - self.target_tot) > 2 * self.max_delta_tot and not self.stop_run.is_set():
             if np.all((((self.feedback_best & (1 << np.arange(self.register.global_registers['PrmpVbpf']['bitlength'])))) > 0).astype(int)[self.feedback_tune_bits] == 1):
                 if self.fail_on_warning:
                     raise RuntimeWarning('Selected Feedback bits reached maximum value')
