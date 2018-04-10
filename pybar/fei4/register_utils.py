@@ -155,7 +155,7 @@ class FEI4RegisterUtils(object):
         '''Resetting Service Records
 
         This will reset Service Record counters. This will also bring back alive some FE where the output FIFO is stuck (no data is coming out in run mode).
-        This should be only issues after power up, otherwise the timing (BCID counter) is worse.
+        This should be only issued after power up and in the case of a stuck FIFO, otherwise the BCID counter starts jumping.
         '''
         logging.info('Resetting Service Records')
         commands = []
