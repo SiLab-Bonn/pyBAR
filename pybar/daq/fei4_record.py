@@ -85,10 +85,10 @@ class FEI4Record(object):
     def __eq__(self, other):
         try:
             return self.record_type.lower() == other.lower()
-        except:
+        except Exception:
             try:
                 return self.record_type == other.record_type
-            except:
+            except Exception:
                 return False
 
     def __str__(self):

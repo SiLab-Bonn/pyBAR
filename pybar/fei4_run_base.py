@@ -24,7 +24,7 @@ import basil
 from basil.dut import Dut
 
 from pybar.utils.utils import groupby_dict, dict_compare, zip_nofill
-from pybar.run_manager import RunManager, RunBase, RunAborted, RunStopped
+from pybar.run_manager import RunManager, RunBase, RunAborted
 from pybar.fei4.register import FEI4Register
 from pybar.fei4.register import flavors as fe_flavors
 from pybar.fei4.register_utils import FEI4RegisterUtils, is_fe_ready
@@ -32,7 +32,7 @@ from pybar.daq.fifo_readout import FifoReadout, RxSyncError, EightbTenbError, Fi
 from pybar.daq.readout_utils import save_configuration_dict
 from pybar.daq.fei4_raw_data import open_raw_data_file, send_meta_data
 from pybar.analysis.analysis_utils import AnalysisError
-from pybar.daq.readout_utils import convert_data_iterable, logical_or, logical_and, is_trigger_word, is_fe_word, is_data_from_channel, is_tdc_word, is_tdc_from_channel, convert_tdc_to_channel, false
+from pybar.daq.readout_utils import logical_or, logical_and, is_trigger_word, is_fe_word, is_data_from_channel, is_tdc_word, is_tdc_from_channel, convert_tdc_to_channel, false
 
 
 _reserved_driver_names = ["FIFO", "TX", "RX", "TLU", "TDC"]
@@ -258,7 +258,6 @@ class Fei4RunBase(RunBase):
                             else:
                                 raise RuntimeError('Module "%s" has no specific run configuration for "%s" and "broadcast_commands" parameter is set to True.' % (other_module_id, self.__class__.__name__))
 
-
     def _set_default_cfg(self):
         ''' Sets the default parameters if they are not specified.
         '''
@@ -269,13 +268,13 @@ class Fei4RunBase(RunBase):
             'FIFO': list(set([self._module_cfgs[module_id]['FIFO'] for module_id in self._modules])),
             'RX': list(set([self._module_cfgs[module_id]['RX'] for module_id in self._modules])),
             'rx_channel': list(set([self._module_cfgs[module_id]['rx_channel'] for module_id in self._modules])),
-            'TX':  list(set([self._module_cfgs[module_id]['TX'] for module_id in self._modules])),
+            'TX': list(set([self._module_cfgs[module_id]['TX'] for module_id in self._modules])),
             'tx_channel': list(set([self._module_cfgs[module_id]['tx_channel'] for module_id in self._modules])),
             'TDC': list(set([self._module_cfgs[module_id]['TDC'] for module_id in self._modules])),
             'tdc_channel': list(set([self._module_cfgs[module_id]['tdc_channel'] for module_id in self._modules])),
-            'TLU' : list(set([self._module_cfgs[module_id]['TLU'] for module_id in self._modules])),
-            'configuration' : None,
-            'send_data' : None}
+            'TLU': list(set([self._module_cfgs[module_id]['TLU'] for module_id in self._modules])),
+            'configuration': None,
+            'send_data': None}
 
         tx_groups = groupby_dict({key: value for (key, value) in self._module_cfgs.items() if key in self._modules}, "TX")
         for tx, module_group in tx_groups.items():
@@ -298,9 +297,9 @@ class Fei4RunBase(RunBase):
                 'tx_channel': list(set([module_cfg['tx_channel'] for module_id, module_cfg in self._module_cfgs.items() if module_id in module_group])),
                 'TDC': list(set([module_cfg['TDC'] for module_id, module_cfg in self._module_cfgs.items() if module_id in module_group])),
                 'tdc_channel': list(set([module_cfg['tdc_channel'] for module_id, module_cfg in self._module_cfgs.items() if module_id in module_group])),
-                'TLU' : list(set([module_cfg['TLU'] for module_id, module_cfg in self._module_cfgs.items() if module_id in module_group])),
-                'configuration' : None,
-                'send_data' : None}
+                'TLU': list(set([module_cfg['TLU'] for module_id, module_cfg in self._module_cfgs.items() if module_id in module_group])),
+                'configuration': None,
+                'send_data': None}
             self._tx_module_groups["module_group_TX=" + tx] = module_group
 
         # Setting up per module attributes
@@ -318,7 +317,6 @@ class Fei4RunBase(RunBase):
                     selected_module_id = self._tx_module_groups[module_id][0]
                     if self.__class__.__name__ in self._conf["modules"][selected_module_id] and self._conf["modules"][selected_module_id][self.__class__.__name__] is not None:
                         self._module_run_conf[module_id] = run_conf._replace(**self._conf["modules"][selected_module_id][self.__class__.__name__])._asdict()
-
 
     def init_dut(self):
         if self.dut.name == 'mio':
@@ -502,8 +500,7 @@ class Fei4RunBase(RunBase):
                         module_cfg['configuration'] = FEI4Register(configuration_file=os.path.join(module_cfg['working_dir'], module_cfg['configuration']))
                 # run number
                 elif isinstance(module_cfg['configuration'], (int, long)) and module_cfg['configuration'] > 0:
-                    module_cfg['configuration'] = FEI4Register(configuration_file=self.get_configuration(module_id=module_id,
-                                                                                                            run_number=module_cfg['configuration']))
+                    module_cfg['configuration'] = FEI4Register(configuration_file=self.get_configuration(module_id=module_id, run_number=module_cfg['configuration']))
                 # assume configuration already initialized
                 elif not isinstance(module_cfg['configuration'], FEI4Register):
                     raise ValueError('Found no valid value for parameter "configuration" for module "%s".' % module_id)
@@ -699,7 +696,7 @@ class Fei4RunBase(RunBase):
                                 for t in self._scan_threads:
                                     try:
                                         t.join(0.01)
-                                    except:
+                                    except Exception:
                                         self._scan_threads.remove(t)
                                         self.handle_err(sys.exc_info())
 #                             alive_threads = [t.name for t in self._scan_threads if (not t.join(10.0) and t.is_alive())]
@@ -778,7 +775,7 @@ class Fei4RunBase(RunBase):
                                     for t in self._scan_threads:
                                         try:
                                             t.join(0.01)
-                                        except:
+                                        except Exception:
                                             self._scan_threads.remove(t)
                                             self.handle_err(sys.exc_info())
 #                                 alive_threads = [t.name for t in self._scan_threads if (not t.join(10.0) and t.is_alive())]
@@ -850,7 +847,7 @@ class Fei4RunBase(RunBase):
         '''
         try:
             self.dut.close()
-        except:
+        except Exception:
             logging.warning('Closing DUT was not successful')
         else:
             logging.debug('Closed DUT')
@@ -995,7 +992,7 @@ class Fei4RunBase(RunBase):
         finally:
             try:
                 self.deselect_module()
-            except:
+            except Exception:
                 # in case something fails, call this on last resort
                 self._current_module_handle = None
                 current_thread().name = "MainThread"
@@ -1029,7 +1026,7 @@ class Fei4RunBase(RunBase):
         self._filter = []
         self._converter = []
         for selected_module_id in self._selected_modules:
-            module_cfg  = self._module_cfgs[selected_module_id]
+            module_cfg = self._module_cfgs[selected_module_id]
             self._readout_fifos.append(module_cfg['FIFO'])
             if 'tdc_channel' not in module_cfg:
                 tdc_filter = false
@@ -1047,12 +1044,11 @@ class Fei4RunBase(RunBase):
             else:
                 self._filter.append(logical_or(is_trigger_word, logical_or(tdc_filter, logical_and(is_fe_word, is_data_from_channel(module_cfg['rx_channel'])))))
 
-
         # select readout channels and report sync status only from actively selected modules
-        self._enabled_fe_channels = list(set([module_cfg['RX'] for (name, module_cfg) in self._module_cfgs.items() if name in self._selected_modules]))
+        self._enabled_fe_channels = list(set([config['RX'] for (name, config) in self._module_cfgs.items() if name in self._selected_modules]))
 
         # enabling specific TX channels
-        tx_channels = list(set([1 << module_cfg['tx_channel'] for (name, module_cfg) in self._module_cfgs.items() if name in self._selected_modules]))
+        tx_channels = list(set([1 << config['tx_channel'] for (name, config) in self._module_cfgs.items() if name in self._selected_modules]))
         if tx_channels:
             self.dut['TX']['OUTPUT_ENABLE'] = reduce(lambda x, y: x | y, tx_channels)
         else:
@@ -1202,7 +1198,7 @@ class Fei4RunBase(RunBase):
         finally:
             try:
                 self.stop_readout(timeout=timeout)
-            except:
+            except Exception:
                 # in case something fails, call this on last resort
                 # if run was aborted, immediately stop readout
                 if self.abort_run.is_set():
@@ -1271,7 +1267,7 @@ class Fei4RunBase(RunBase):
             body = '\n'.join(item for item in [self._last_traceback, last_status_message] if item)
             try:
                 send_mail(subject=subject, body=body, smtp_server=self._conf['send_message']['smtp_server'], user=self._conf['send_message']['user'], password=self._conf['send_message']['password'], from_addr=self._conf['send_message']['from_addr'], to_addrs=self._conf['send_message']['to_addrs'])
-            except:
+            except Exception:
                 logging.warning("Failed sending pyBAR status report")
 
     def configure(self):
@@ -1304,7 +1300,7 @@ class ExcThread(Thread):
                 self._Thread__target(*self._Thread__args, **self._Thread__kwargs)
             else:
                 self._target(*self._args, **self._kwargs)
-        except:
+        except Exception:
             self.exc = sys.exc_info()
 
     def join(self, timeout=None):

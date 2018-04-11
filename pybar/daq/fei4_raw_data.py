@@ -103,7 +103,6 @@ class RawDataFile(object):
         self.filenames = {self.curr_filename: 0}
         self.open(self.curr_filename, mode, title)
 
-
     def __enter__(self):
         return self
 

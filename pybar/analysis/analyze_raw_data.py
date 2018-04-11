@@ -260,7 +260,6 @@ class AnalyzeRawData(object):
             self.output_pdf.close()
             self.output_pdf = None
 
-
     def set_standard_settings(self):
         '''Set all settings to their standard values.
         '''
@@ -827,7 +826,7 @@ class AnalyzeRawData(object):
                                         fixed_raw_data, _ = fix_raw_data(previous_bad_raw_data, lsb_byte=None)
                                         previous_good_raw_data = in_file_h5.root.raw_data.read(readout_slices[last_index_with_event_data][1], readout_slices[read_out_index - 1][1])
                                         fixed_raw_data = np.r_[before_bad_raw_data, fixed_raw_data, previous_good_raw_data, raw_data]
-                                        bad_fixed_previous_data, current_prepend_data_headers, _ , _ = check_bad_data(fixed_raw_data, prepend_data_headers=last_event_data_prepend_data_headers, trig_count=self.trig_count)
+                                        bad_fixed_previous_data, current_prepend_data_headers, _, _ = check_bad_data(fixed_raw_data, prepend_data_headers=last_event_data_prepend_data_headers, trig_count=self.trig_count)
                                         if not bad_fixed_previous_data:
                                             logging.warning("found bad data in %s from index %d to %d (chunk %d, length %d)" % (in_file_h5.filename, readout_slices[last_index_with_event_data][0], readout_slices[last_index_with_event_data][1], last_index_with_event_data, (readout_slices[last_index_with_event_data][1] - readout_slices[last_index_with_event_data][0])))
                                             bad_word_index = bad_word_index.union(range(readout_slices[last_index_with_event_data][0] - 1, readout_slices[last_index_with_event_data][1]))
@@ -1026,7 +1025,7 @@ class AnalyzeRawData(object):
             _, scan_parameters_idx = np.unique(self.scan_parameters['PlsrDAC'], return_index=True)
             scan_parameters = self.scan_parameters['PlsrDAC'][np.sort(scan_parameters_idx)]
             if scan_parameters[0] >= scan_parameters[-1]:
-                 raise analysis_utils.AnalysisError('Scan parameter PlsrDAC not increasing')
+                raise analysis_utils.AnalysisError('Scan parameter PlsrDAC not increasing')
             threshold, noise = np.zeros(80 * 336, dtype=np.float64), np.zeros(80 * 336, dtype=np.float64)
             # calling fast algorithm function: M. Mertens, PhD thesis, Juelich 2010, note: noise zero if occupancy was zero
             self.histogram.calculate_threshold_scan_arrays(threshold, noise, self._n_injection, np.min(self.scan_parameters['PlsrDAC']), np.max(self.scan_parameters['PlsrDAC']))

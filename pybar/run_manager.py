@@ -4,7 +4,6 @@ import os
 import re
 from collections import namedtuple
 from threading import Lock, Thread, Event
-# from multiprocessing import dummy as multiprocessing
 import sys
 import functools
 import traceback

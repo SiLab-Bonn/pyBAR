@@ -7,7 +7,6 @@ import itertools
 # import array
 
 import numpy as np
-# from bitarray import bitarray
 
 
 class Timer(object):
@@ -229,7 +228,7 @@ def try_int(s):
     "Convert to integer if possible."
     try:
         return int(s)
-    except:
+    except Exception:
         return s
 
 
@@ -325,7 +324,7 @@ def dict_compare(d1, d2):
     intersect_keys = d1_keys.intersection(d2_keys)
     added = d1_keys - d2_keys
     removed = d2_keys - d1_keys
-    modified = {o : (d1[o], d2[o]) for o in intersect_keys if d1[o] != d2[o]}
+    modified = {o: (d1[o], d2[o]) for o in intersect_keys if d1[o] != d2[o]}
     same = set(o for o in intersect_keys if d1[o] == d2[o])
     return added, removed, modified, same
 
