@@ -863,7 +863,7 @@ class Fei4RunBase(RunBase):
         for i, module_id in enumerate(self._selected_modules):
             if data[i] is None:
                 continue
-            self._raw_data_files[module_id].append(data_iterable=data[i], scan_parameters=self._scan_parameters[module_id]._asdict(), flush=True)
+            self._raw_data_files[module_id].append(data_iterable=data[i], scan_parameters=self._scan_parameters[module_id]._asdict(), new_file=new_file, flush=True)
 
     def handle_err(self, exc):
         '''Handling of Exceptions.
