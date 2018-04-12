@@ -208,10 +208,10 @@ class RawDataFile(object):
             if self.socket:
                 send_data(self.socket, data_tuple, self.scan_parameters)
 
-    def append(self, data_iterable, scan_parameters=None, flush=True):
+    def append(self, data_iterable, scan_parameters=None, new_file=False, flush=True):
         with self.lock:
             for data_tuple in data_iterable:
-                self.append_item(data_tuple, scan_parameters, flush=False)
+                self.append_item(data_tuple=data_tuple, scan_parameters=scan_parameters, new_file=new_file, flush=False)
             if flush:
                 self.flush()
 

@@ -1,16 +1,13 @@
 import logging
 from time import sleep, time
 from itertools import izip
-from threading import Thread, Event, Lock
+from threading import Thread, Event, Lock, Condition
 from collections import deque, Iterable
-from Queue import Queue, Empty
 import sys
-
-import numpy as np
 
 from basil.HL import sitcp_fifo
 from pybar.utils.utils import get_float_time
-from pybar.daq.readout_utils import is_fe_word, is_data_record, is_data_header, logical_or, logical_and, data_array_from_data_iterable, convert_data_iterable, convert_data_array
+from pybar.daq.readout_utils import data_array_from_data_iterable, convert_data_iterable, convert_data_array
 
 
 data_iterable = ("data", "timestamp_start", "timestamp_stop", "error")
@@ -45,8 +42,10 @@ class FifoReadout(object):
         self.errback = None
         self.readout_thread = None
         self.worker_thread = None
+        self.writer_threads = None
         self.watchdog_thread = None
         self.fifos = []
+        self.fifo_condition = []
         self.fill_buffer = False
         self.filter_func = [None]
         self.converter_func = [None]
@@ -54,10 +53,16 @@ class FifoReadout(object):
         self.enabled_fe_channels = None
         self.enabled_m26_channels = None
         self.readout_interval = 0.05
+        self.write_interval = 1.0
+        self.watchdog_interval = 1.0
         self._moving_average_time_period = 10.0  # in seconds
         self._n_empty_reads = 3  # number of empty reads before stopping FIFO readout
+        self._fifo_data_deque = None
+        self._fifo_conditions = None
+        self._data_deque = None  # stores data for writer thread
+        self._data_conditions = None
+        self._data_buffer = None  # stores data for later readout
         self._data_deque = None
-        self._data_buffer = None
         self._words_per_read = []
         self.stop_readout = Event()
         self.force_stop = None
@@ -136,6 +141,9 @@ class FifoReadout(object):
             self.fifo_select = fifo_select
 
             self._fifo_data_deque = {fifo: deque() for fifo in self.fifos}
+            self._fifo_conditions = {fifo: Condition() for fifo in self.fifos}
+            self._data_deque = [deque() for _ in self.filter_func]
+            self._data_conditions = [Condition() for _ in self.filter_func]
             self._data_buffer = [deque() for _ in self.filter_func]
             self.force_stop = {fifo: Event() for fifo in self.fifos}
             self.timestamp = {fifo: None for fifo in self.fifos}
@@ -161,13 +169,20 @@ class FifoReadout(object):
                 self.watchdog_thread.start()
             self.readout_threads = []
             self.worker_threads = []
+            self.writer_threads = []
             for fifo in self.fifos:
-                readout_thread = Thread(target=self.readout, name='%s ReadoutThread' % fifo, kwargs={'fifo': fifo, 'no_data_timeout': no_data_timeout})
-                worker_thread = Thread(target=self.worker, name='%s WorkerThread' % fifo, kwargs={'fifo': fifo})
+                readout_thread = Thread(target=self.readout, name='ReadoutThread %s' % fifo, kwargs={'fifo': fifo, 'no_data_timeout': no_data_timeout})
+                worker_thread = Thread(target=self.worker, name='WorkerThread %s' % fifo, kwargs={'fifo': fifo})
                 readout_thread.daemon = True
                 worker_thread.daemon = True
                 self.readout_threads.append(readout_thread)
                 self.worker_threads.append(worker_thread)
+            for index, _ in enumerate(self.filter_func):
+                writer_thread = Thread(target=self.writer, name='WriterThread %d' % index, kwargs={'index': index})
+                writer_thread.daemon = True
+                self.writer_threads.append(writer_thread)
+            for writer_thread in self.writer_threads:
+                writer_thread.start()
             for worker_thread in self.worker_threads:
                 worker_thread.start()
             for readout_thread in self.readout_threads:
@@ -220,6 +235,9 @@ class FifoReadout(object):
             for worker_thread in self.worker_threads:
                 worker_thread.join()
             self.worker_threads = []
+            for writer_thread in self.writer_threads:
+                writer_thread.join()
+            self.writer_threads = []
             if self.errback:
                 self.watchdog_thread.join()
                 self.watchdog_thread = None
@@ -277,13 +295,13 @@ class FifoReadout(object):
         Readout thread, which uses read_raw_data_from_fifo() and appends data to self._fifo_data_deque (collection.deque).
         '''
         logging.info('Starting readout thread for %s', fifo)
-        curr_time = get_float_time()
+        time_stop_read = get_float_time()
         time_wait = 0.0
         empty_reads = 0
         while not self.force_stop[fifo].wait(time_wait if time_wait >= 0.0 else 0.0):
+            time_read = time()
             try:
-                time_read = time()
-                if no_data_timeout and curr_time + no_data_timeout < get_float_time():
+                if no_data_timeout and time_stop_read + no_data_timeout < get_float_time():
                     raise NoDataTimeout('Received no data for %0.1f second(s) from %s' % (no_data_timeout, fifo))
                 raw_data = self.read_raw_data_from_fifo(fifo)
             except Exception:
@@ -298,9 +316,11 @@ class FifoReadout(object):
                 n_data_words = raw_data.shape[0]
                 if n_data_words > 0:
                     empty_reads = 0
-                    last_time, curr_time = self.update_timestamp(fifo)
+                    time_start_read, time_stop_read = self.update_timestamp(fifo)
                     status = 0
-                    self._fifo_data_deque[fifo].append((raw_data, last_time, curr_time, status))
+                    self._fifo_data_deque[fifo].append((raw_data, time_start_read, time_stop_read, status))
+                    with self._fifo_conditions[fifo]:
+                        self._fifo_conditions[fifo].notify_all()
                 elif self.stop_readout.is_set():
                     if empty_reads == self._n_empty_reads:
                         break
@@ -311,22 +331,24 @@ class FifoReadout(object):
                 # and stays more or less constant over time
                 time_wait = self.readout_interval - (time() - time_read)
         self._fifo_data_deque[fifo].append(None)  # last item, None will stop worker
+        with self._fifo_conditions[fifo]:
+            self._fifo_conditions[fifo].notify_all()
         logging.info('Stopping readout thread for %s', fifo)
 
     def worker(self, fifo):
-        '''Worker thread continuously calling callback function when data is available.
+        '''Worker thread continuously filtering and converting data when data becomes available.
         '''
-        logging.info('Starting worker thread for %s', fifo)
+        logging.debug('Starting worker thread for %s', fifo)
+        self._fifo_conditions[fifo].acquire()
         while True:
             try:
                 data_tuple = self._fifo_data_deque[fifo].popleft()
             except IndexError:
-                self.stop_readout.wait(self.readout_interval / 2.0)  # sleep a little bit, reducing CPU usage
+                self._fifo_conditions[fifo].wait(self.readout_interval)  # sleep a little bit, reducing CPU usage
             else:
                 if data_tuple is None:  # if None then exit
                     break
                 else:
-                    converted_data_tuple_list = []
                     for i, (filter_func, converter_func, fifo_select) in enumerate(izip(self.filter_func, self.converter_func, self.fifo_select)):
                         if fifo_select is None or fifo_select == fifo:
                             # filter and do the conversion
@@ -334,21 +356,63 @@ class FifoReadout(object):
                             n_data_words = converted_data_tuple[0].shape[0]
                             with self.data_words_per_second_lock:
                                 self._words_per_read[i].append((n_data_words, converted_data_tuple[1], converted_data_tuple[2]))
-                            converted_data_tuple_list.append(converted_data_tuple)
-                            if self.fill_buffer:
-                                self._data_buffer[i].append(converted_data_tuple)
-                        else:
-                            converted_data_tuple_list.append(None)
-                    if self.callback:
+                            self._data_deque[i].append(converted_data_tuple)
+                            with self._data_conditions[i]:
+                                self._data_conditions[i].notify_all()
+        for i, fifo_select in enumerate(self.fifo_select):
+            if fifo_select is None or fifo_select == fifo:
+                self._data_deque[i].append(None)
+                with self._data_conditions[i]:
+                    self._data_conditions[i].notify_all()
+        self._fifo_conditions[fifo].release()
+        logging.debug('Stopping worker thread for %s', fifo)
+
+    def writer(self, index):
+        '''Writer thread continuously calling callback function for writing data when data becomes available.
+        '''
+        logging.debug('Starting writer thread with index %d', index)
+        self._data_conditions[index].acquire()
+        time_write = time()
+        converted_data_tuple_list = [None] * len(self.filter_func)
+        while True:
+            try:
+                converted_data_tuple = self._data_deque[index].popleft()
+            except IndexError:
+                self._data_conditions[index].wait(self.readout_interval)  # sleep a little bit, reducing CPU usage
+            else:
+                if converted_data_tuple is None:  # if None then write and exit
+                    if self.callback and any(converted_data_tuple_list):
                         try:
                             self.callback(converted_data_tuple_list)
                         except Exception:
                             self.errback(sys.exc_info())
-        logging.info('Stopping worker thread for %s', fifo)
+                    break
+                else:
+                    if converted_data_tuple_list[index]:
+                        converted_data_tuple_list[index].append(converted_data_tuple)
+                    else:
+                        converted_data_tuple_list[index] = [converted_data_tuple]  # adding iterable
+                    if self.fill_buffer:
+                        self._data_buffer[index].append(converted_data_tuple)
+                if self.callback and ((self.write_interval and time() - time_write >= self.write_interval) or not self.write_interval):
+                    if any(converted_data_tuple_list):
+                        try:
+                            self.callback(converted_data_tuple_list)
+                        except Exception:
+                            self.errback(sys.exc_info())
+                        else:
+                            converted_data_tuple_list = [None] * len(self.filter_func)
+                            time_write = time()
+                    else:
+                        time_write = time()
+        self._data_conditions[index].release()
+        logging.debug('Stopping writer thread with index %d', index)
 
     def watchdog(self):
         logging.debug('Starting %s', self.watchdog_thread.name)
-        while True:
+        time_wait = 0.0
+        while not self.stop_readout.wait(time_wait if time_wait >= 0.0 else 0.0):
+            time_read = time()
             try:
                 if not all(self.get_rx_sync_status(channels=self.enabled_fe_channels)):
                     raise RxSyncError('FEI4 RX sync error')
@@ -360,8 +424,7 @@ class FifoReadout(object):
                     raise FifoError('M26 RX FIFO discard error(s) detected')
             except Exception:
                 self.errback(sys.exc_info())
-            if self.stop_readout.wait(self.readout_interval * 10):
-                break
+            time_wait = self.watchdog_interval - (time() - time_read)
         logging.debug('Stopping %s', self.watchdog_thread.name)
 
     def get_data_from_buffer(self, filter_func=None, converter_func=None):
