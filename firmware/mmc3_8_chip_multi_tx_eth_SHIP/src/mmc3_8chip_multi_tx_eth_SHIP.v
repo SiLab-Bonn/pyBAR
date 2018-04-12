@@ -482,11 +482,15 @@ endgenerate
 
 wire [7:0] TRIGGER_ACKNOWLEDGE_FLAG; // to TLU FSM
 reg [7:0] CMD_READY_FF;
+
+
 always @ (posedge CLK40)
 begin
     CMD_READY_FF <= CMD_READY;
 end
+
 assign TRIGGER_ACKNOWLEDGE_FLAG = CMD_READY & ~CMD_READY_FF;
+//assign RJ45_BUSY_LEMO_TX1 = TRIGGER_ACKNOWLEDGE_FLAG;
 
 reg CMD_READY_BROADCAST;
 always @ (posedge CLK40)
@@ -509,6 +513,52 @@ begin
 end
 assign CMD_READY_BROADCAST_FLAG = CMD_READY_BROADCAST & ~CMD_READY_BROADCAST_FF;
 
+wire [7:0] FE_FIFO_EMPTY;
+reg CMD_FIFO_READY;
+reg [5:0] FIFO_EMPTY_COUNTER;
+reg STARTED_READY_COUNTER;
+
+always @(posedge CLK40)
+begin
+    STARTED_READY_COUNTER <= STARTED_READY_COUNTER;
+    CMD_FIFO_READY <= CMD_FIFO_READY;
+    FIFO_EMPTY_COUNTER <= FIFO_EMPTY_COUNTER;
+
+    if (~|EXT_TRIGGER_ENABLE)
+    begin
+        CMD_FIFO_READY <= 1'b1;
+        FIFO_EMPTY_COUNTER <= 6'b000000;
+        STARTED_READY_COUNTER <= 1'b0;
+    end
+    else if (STARTED_READY_COUNTER == 1'b0 && CMD_READY_BROADCAST_FLAG)
+    begin
+        STARTED_READY_COUNTER <= 1'b1;
+        FIFO_EMPTY_COUNTER <= 6'b000000;
+        CMD_FIFO_READY <= 1'b0;
+    end
+    else if (STARTED_READY_COUNTER == 1'b1 && (~&FE_FIFO_EMPTY))
+    begin
+        FIFO_EMPTY_COUNTER <= 6'b000000;
+    end
+    else if (STARTED_READY_COUNTER == 1'b1 && FIFO_EMPTY_COUNTER == 6'b111111)
+    begin
+        CMD_FIFO_READY <= 1'b1;
+        STARTED_READY_COUNTER <= 1'b0;
+    end
+    else if (STARTED_READY_COUNTER == 1'b1 && (&FE_FIFO_EMPTY))
+    begin           
+        FIFO_EMPTY_COUNTER <= FIFO_EMPTY_COUNTER + 1'b1;
+    end
+end
+
+wire CMD_FIFO_READY_BROADCAST_FLAG;
+reg CMD_FIFO_READY_FF;
+always @ (posedge CLK40)
+begin
+    CMD_FIFO_READY_FF <= CMD_FIFO_READY;
+end
+assign CMD_FIFO_READY_BROADCAST_FLAG = CMD_FIFO_READY & ~CMD_FIFO_READY_FF;
+
 wire [7:0] TRIGGER_FIFO_READ;
 wire [7:0] TRIGGER_FIFO_EMPTY;
 wire [31:0] TRIGGER_FIFO_DATA [7:0];
@@ -520,7 +570,7 @@ wire FIFO_FULL;
 wire TLU_BUSY, TLU_CLOCK;
 wire [7:0] TRIGGER_ENABLED, TLU_ENABLED;
 wire [7:0] TRIGGER_SELECTED [7:0];
-assign RJ45_BUSY_LEMO_TX1 = TLU_ENABLED[0] ? TLU_BUSY : ~CMD_READY_BROADCAST;
+assign RJ45_BUSY_LEMO_TX1 = TRIGGER_ENABLED[0] ? TLU_BUSY : 1'b1;
 assign RJ45_CLK_LEMO_TX0 = TLU_CLOCK;
 
 genvar k;
@@ -601,7 +651,7 @@ tlu_controller #(
     .TIMESTAMP_RESET(LEMO_RX[1]),
 
     .EXT_TRIGGER_ENABLE(BROADCAST_CMD ? |EXT_TRIGGER_ENABLE : EXT_TRIGGER_ENABLE[0]),
-    .TRIGGER_ACKNOWLEDGE(BROADCAST_CMD ? CMD_READY_BROADCAST_FLAG : TRIGGER_ACKNOWLEDGE_FLAG[0]),
+    .TRIGGER_ACKNOWLEDGE(BROADCAST_CMD ? CMD_FIFO_READY_BROADCAST_FLAG : TRIGGER_ACKNOWLEDGE_FLAG[0]),
     .TRIGGER_ACCEPTED_FLAG(TRIGGER_ACCEPTED_FLAG[0]),
 
     .TLU_TRIGGER(RJ45_TRIGGER),
@@ -618,7 +668,7 @@ assign BROADCAST_CMD = (TRIGGER_ENABLED == 8'b0000_0001 && (TLU_ENABLED[0] || TR
 //    timestamp_gray <= ((TIMESTAMP[0])>>1) ^ (TIMESTAMP[0]);
 
 wire [7:0] FE_FIFO_READ;
-wire [7:0] FE_FIFO_EMPTY;
+//wire [7:0] FE_FIFO_EMPTY;
 wire [31:0] FE_FIFO_DATA [7:0];
 
 wire [7:0] TDC_FIFO_READ;
@@ -883,17 +933,6 @@ clock_divider #(
     .CE(),
     .CLOCK(CLK_3HZ)
 );
-
-//Make LED FLAG if start of spill signal was accepted
-reg SOS_RESET;
-
-//always @(posedge CLK40)
-//begin
-//    if (LEMO_RX[2])
-//      SOS_RESET <= LEMO_RX[2];
-//    else
-//      SOS_RESET <= 1'b1;
-//end
 
 assign LED[7:4] = 4'hf;
 assign LED[0] = ~((CLK_1HZ | FIFO_FULL) & LOCKED & LOCKED2);
