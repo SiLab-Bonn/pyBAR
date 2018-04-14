@@ -936,7 +936,7 @@ clock_divider #(
 
 assign LED[7:4] = 4'hf;
 assign LED[0] = ~((CLK_1HZ | FIFO_FULL) & LOCKED & LOCKED2);
-assign LED[1] = ~(((RX_READY & RX_ENABLED) == RX_ENABLED) & ((|(RX_8B10B_DECODER_ERR & RX_ENABLED)? CLK_3HZ : CLK_1HZ) | (|(RX_FIFO_OVERFLOW_ERR & RX_ENABLED)) | (|(RX_FIFO_FULL & RX_ENABLED))));
+assign LED[1] = ~((((RX_READY != RX_ENABLED) || |(RX_8B10B_DECODER_ERR & RX_ENABLED))? CLK_3HZ : CLK_1HZ) | (|(RX_FIFO_OVERFLOW_ERR & RX_ENABLED)) | (|(RX_FIFO_FULL & RX_ENABLED)));
 assign LED[2] = 1'b1;
 assign LED[3] = 1'b1;
 
