@@ -424,18 +424,6 @@ class Fei4RunBase(RunBase):
             # enable LVDS RX/TX
             self.dut['I2C'].write(0xe8, [6, 0xf0, 0xff])
             self.dut['I2C'].write(0xe8, [2, 0x01, 0x00])  # select channels here
-        elif self.dut.name == 'nexys4':
-            # enable LVDS RX/TX
-            self.dut['I2C'].write(0xe8, [6, 0xf0, 0xff])
-            self.dut['I2C'].write(0xe8, [2, 0x0f, 0x00])  # select channels here
-
-            self.dut['ENABLE_CHANNEL']['DATA_CH1'] = 1
-            self.dut['ENABLE_CHANNEL']['DATA_CH2'] = 1
-            self.dut['ENABLE_CHANNEL']['DATA_CH3'] = 1
-            self.dut['ENABLE_CHANNEL']['DATA_CH4'] = 1
-            self.dut['ENABLE_CHANNEL']['TLU'] = 1
-            self.dut['ENABLE_CHANNEL']['TDC'] = 1
-            self.dut['ENABLE_CHANNEL'].write()
         elif self.dut.name == 'mmc3_m26_eth':
             pass
             # TODO: enable Mimosa26 Rx when necessary
