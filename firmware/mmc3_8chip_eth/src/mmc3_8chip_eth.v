@@ -378,7 +378,9 @@ gpio
     .BASEADDR(GPIO_DLY_BASEADDR),
     .HIGHADDR(GPIO_DLY_HIGHADDR),
     .IO_WIDTH(48),
-    .IO_DIRECTION(48'hffffffffffff)
+    .IO_DIRECTION(48'hffffffffffff),
+    .IO_TRI(48'h000000000000),
+    .ABUSWIDTH(32)
 ) i_gpio
 (
     .BUS_CLK(BUS_CLK),
@@ -478,7 +480,6 @@ generate
   end
 endgenerate
 
-
 wire TRIGGER_ACKNOWLEDGE_FLAG; // to TLU FSM
 reg CMD_READY_FF;
 always @ (posedge CLK40)
@@ -529,6 +530,7 @@ tlu_controller #(
 
     .TRIGGER({TDC_OUT, LEMO_RX[0]}),
     .TRIGGER_VETO({RX_FIFO_FULL, FIFO_FULL}),
+    .TIMESTAMP_RESET(1'b0),
 
     .EXT_TRIGGER_ENABLE(EXT_TRIGGER_ENABLE),
     .TRIGGER_ACKNOWLEDGE(TRIGGER_ACKNOWLEDGE_FLAG),
@@ -576,6 +578,7 @@ generate
         .RX_8B10B_DECODER_ERR(RX_8B10B_DECODER_ERR[i]),
         .RX_FIFO_OVERFLOW_ERR(RX_FIFO_OVERFLOW_ERR[i]),
 
+        .FIFO_CLK(1'b0),
         .FIFO_READ(FE_FIFO_READ[i]),
         .FIFO_EMPTY(FE_FIFO_EMPTY[i]),
         .FIFO_DATA(FE_FIFO_DATA[i]),
