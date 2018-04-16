@@ -82,88 +82,81 @@ PLLE2_BASE #(
     .DIVCLK_DIVIDE(1),        // Master division value, (1-56)
     .REF_JITTER1(0.0),        // Reference input jitter in UI, (0.000-0.999).
     .STARTUP_WAIT("FALSE")     // Delay DONE until PLL Locks, ("TRUE"/"FALSE")
- )
- PLLE2_BASE_inst (
+) PLLE2_BASE_inst (
+    .CLKOUT0(),
+    .CLKOUT1(CLK250PLL),
+    .CLKOUT2(CLK125PLLTX),
+    .CLKOUT3(CLK125PLLTX90),
+    .CLKOUT4(CLK125PLLRX),
+    .CLKOUT5(),
 
-     .CLKOUT0(),
-     .CLKOUT1(CLK250PLL),
+    .CLKFBOUT(PLL_FEEDBACK),
+    .LOCKED(LOCKED),     // 1-bit output: LOCK
 
-     .CLKOUT2(CLK125PLLTX),
-     .CLKOUT3(CLK125PLLTX90),
-     .CLKOUT4(CLK125PLLRX),
+    // Input 100 MHz clock
+    .CLKIN1(clkin),
 
-     .CLKOUT5(),
+    // Control Ports
+    .PWRDWN(0),
+    .RST(!RESET_N),
 
-     .CLKFBOUT(PLL_FEEDBACK),
-
-     .LOCKED(LOCKED),     // 1-bit output: LOCK
-
-     // Input 100 MHz clock
-     .CLKIN1(clkin),
-
-     // Control Ports
-     .PWRDWN(0),
-     .RST(!RESET_N),
-
-     // Feedback
-     .CLKFBIN(PLL_FEEDBACK)
- );
+    // Feedback
+    .CLKFBIN(PLL_FEEDBACK)
+);
 
 wire PLL_FEEDBACK2, LOCKED2;
 wire CLK160_PLL, CLK320_PLL, CLK40_PLL, CLK16_PLL, BUS_CLK_PLL, CLK200_PLL;
 PLLE2_BASE #(
-     .BANDWIDTH("OPTIMIZED"),
-     .CLKFBOUT_MULT(16),
-     .CLKFBOUT_PHASE(0.0),
-     .CLKIN1_PERIOD(10.000),
+    .BANDWIDTH("OPTIMIZED"),
+    .CLKFBOUT_MULT(16),
+    .CLKFBOUT_PHASE(0.0),
+    .CLKIN1_PERIOD(10.000),
 
-     .CLKOUT0_DIVIDE(10),
-     .CLKOUT0_DUTY_CYCLE(0.5),
-     .CLKOUT0_PHASE(0.0),
+    .CLKOUT0_DIVIDE(10),
+    .CLKOUT0_DUTY_CYCLE(0.5),
+    .CLKOUT0_PHASE(0.0),
 
-     .CLKOUT1_DIVIDE(40),
-     .CLKOUT1_DUTY_CYCLE(0.5),
-     .CLKOUT1_PHASE(0.0),
+    .CLKOUT1_DIVIDE(40),
+    .CLKOUT1_DUTY_CYCLE(0.5),
+    .CLKOUT1_PHASE(0.0),
 
-     .CLKOUT2_DIVIDE(5),
-     .CLKOUT2_DUTY_CYCLE(0.5),
-     .CLKOUT2_PHASE(0.0),
+    .CLKOUT2_DIVIDE(5),
+    .CLKOUT2_DUTY_CYCLE(0.5),
+    .CLKOUT2_PHASE(0.0),
 
-     .CLKOUT3_DIVIDE(100),
-     .CLKOUT3_DUTY_CYCLE(0.5),
-     .CLKOUT3_PHASE(0.0),
+    .CLKOUT3_DIVIDE(100),
+    .CLKOUT3_DUTY_CYCLE(0.5),
+    .CLKOUT3_PHASE(0.0),
 
-     .CLKOUT4_DIVIDE(12),
-     .CLKOUT4_DUTY_CYCLE(0.5),
-     .CLKOUT4_PHASE(0.0),
+    .CLKOUT4_DIVIDE(12),
+    .CLKOUT4_DUTY_CYCLE(0.5),
+    .CLKOUT4_PHASE(0.0),
 
-     .CLKOUT5_DIVIDE(8),
-     .CLKOUT5_DUTY_CYCLE(0.5),
-     .CLKOUT5_PHASE(0.0),
+    .CLKOUT5_DIVIDE(8),
+    .CLKOUT5_DUTY_CYCLE(0.5),
+    .CLKOUT5_PHASE(0.0),
 
 
-     .DIVCLK_DIVIDE(1),
-     .REF_JITTER1(0.0),
-     .STARTUP_WAIT("FALSE")
-)
-PLLE2_BASE_inst_2 (
+    .DIVCLK_DIVIDE(1),
+    .REF_JITTER1(0.0),
+    .STARTUP_WAIT("FALSE")
+) PLLE2_BASE_inst_2 (
+    .CLKOUT0(CLK160_PLL),
+    .CLKOUT1(CLK40_PLL),
+    .CLKOUT2(CLK320_PLL),
+    .CLKOUT3(CLK16_PLL),
+    .CLKOUT4(BUS_CLK_PLL),
+    .CLKOUT5(CLK200_PLL),
 
-      .CLKOUT0(CLK160_PLL),
-      .CLKOUT1(CLK40_PLL),
-      .CLKOUT2(CLK320_PLL),
-      .CLKOUT3(CLK16_PLL),
-      .CLKOUT4(BUS_CLK_PLL),
-      .CLKOUT5(CLK200_PLL),
+    .CLKFBOUT(PLL_FEEDBACK2),
+    .LOCKED(LOCKED2),     // 1-bit output: LOCK
 
-      .CLKFBOUT(PLL_FEEDBACK2),
-      .LOCKED(LOCKED2),     // 1-bit output: LOCK
+    .CLKIN1(clkin),
 
-      .CLKIN1(clkin),
+    .PWRDWN(0),
+    .RST(!RESET_N),
 
-      .PWRDWN(0),
-      .RST(!RESET_N),
-
-      .CLKFBIN(PLL_FEEDBACK2)
+    .CLKFBIN(PLL_FEEDBACK2)
 );
 
 
