@@ -583,7 +583,8 @@ generate
         .HIGHADDR(TLU_HIGHADDR+32'h0100*k),
         .DIVISOR(8),
         .ABUSWIDTH(32),
-        .WIDTH(9)
+        .WIDTH(9),
+        .TLU_TRIGGER_MAX_CLOCK_CYCLES(32)
     ) i_tlu_controller (
         .BUS_CLK(BUS_CLK),
         .BUS_RST(BUS_RST),
@@ -627,7 +628,8 @@ tlu_controller #(
     .HIGHADDR(TLU_HIGHADDR),
     .DIVISOR(8),
     .ABUSWIDTH(32),
-    .WIDTH(9)
+    .WIDTH(9),
+    .TLU_TRIGGER_MAX_CLOCK_CYCLES(32)
 ) i_tlu_controller_0 (
     .BUS_CLK(BUS_CLK),
     .BUS_RST(BUS_RST),
