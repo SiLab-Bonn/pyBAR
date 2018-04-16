@@ -488,6 +488,29 @@ begin
 end
 assign TRIGGER_ACKNOWLEDGE_FLAG = CMD_READY & ~CMD_READY_FF;
 
+wire [7:0] RX_ENABLED, RX_ENABLED_CLK40;
+three_stage_synchronizer #(
+    .WIDTH(8)
+) three_stage_sync_rx_enable_clk40 (
+    .CLK(CLK40),
+    .IN(RX_ENABLED),
+    .OUT(RX_ENABLED_CLK40)
+);
+wire [7:0] FE_FIFO_EMPTY, FE_FIFO_EMPTY_CLK40;
+three_stage_synchronizer #(
+    .WIDTH(8)
+) three_stage_sync_fe_fifo_empty_clk40 (
+    .CLK(CLK40),
+    .IN(FE_FIFO_EMPTY),
+    .OUT(FE_FIFO_EMPTY_CLK40)
+);
+
+parameter max_wait_cycles = 64;
+reg STARTED_READY_COUNTER;
+reg CMD_FIFO_READY;
+integer fifo_empty_counter;
+wire CMD_FIFO_READY_FLAG;
+reg CMD_FIFO_READY_FF;
 
 wire TRIGGER_FIFO_READ;
 wire TRIGGER_FIFO_EMPTY;
@@ -495,12 +518,51 @@ wire [31:0] TRIGGER_FIFO_DATA;
 wire TRIGGER_FIFO_PREEMPT_REQ;
 wire [31:0] TIMESTAMP;
 wire [7:0] TDC_OUT;
-wire [7:0] RX_READY, RX_8B10B_DECODER_ERR, RX_FIFO_OVERFLOW_ERR, RX_FIFO_FULL, RX_ENABLED;
+wire [7:0] RX_READY, RX_8B10B_DECODER_ERR, RX_FIFO_OVERFLOW_ERR, RX_FIFO_FULL;
 wire FIFO_FULL;
 wire TLU_BUSY, TLU_CLOCK;
 wire TRIGGER_ENABLED, TLU_ENABLED;
-assign RJ45_BUSY_LEMO_TX1 = TLU_ENABLED ? TLU_BUSY : ~CMD_READY;
+assign RJ45_BUSY_LEMO_TX1 = TLU_BUSY;
 assign RJ45_CLK_LEMO_TX0 = TLU_CLOCK;
+
+always @(posedge CLK40)
+begin
+    STARTED_READY_COUNTER <= STARTED_READY_COUNTER;
+    CMD_FIFO_READY <= CMD_FIFO_READY;
+    fifo_empty_counter <= fifo_empty_counter;
+
+    if (~EXT_TRIGGER_ENABLE || ~TRIGGER_ENABLED)
+    begin
+        STARTED_READY_COUNTER <= 1'b0;
+        CMD_FIFO_READY <= 1'b1;
+        fifo_empty_counter <= 0;
+    end
+    else if (STARTED_READY_COUNTER == 1'b0 && TRIGGER_ACKNOWLEDGE_FLAG == 1'b1)
+    begin
+        STARTED_READY_COUNTER <= 1'b1;
+        CMD_FIFO_READY <= 1'b0;
+        fifo_empty_counter <= 0;
+    end
+    else if (STARTED_READY_COUNTER == 1'b1 && |(~FE_FIFO_EMPTY_CLK40 & RX_ENABLED_CLK40))
+    begin
+        fifo_empty_counter <= 0;
+    end
+    else if (STARTED_READY_COUNTER == 1'b1 && fifo_empty_counter == max_wait_cycles)
+    begin
+        STARTED_READY_COUNTER <= 1'b0;
+        CMD_FIFO_READY <= 1'b1;
+    end
+    else if (STARTED_READY_COUNTER == 1'b1 && &(FE_FIFO_EMPTY_CLK40 | ~RX_ENABLED_CLK40))
+    begin
+        fifo_empty_counter <= fifo_empty_counter + 1;
+    end
+end
+
+always @ (posedge CLK40)
+begin
+    CMD_FIFO_READY_FF <= CMD_FIFO_READY;
+end
+assign CMD_FIFO_READY_FLAG = CMD_FIFO_READY & ~CMD_FIFO_READY_FF;
 
 tlu_controller #(
     .BASEADDR(TLU_BASEADDR),
@@ -534,7 +596,7 @@ tlu_controller #(
     .TIMESTAMP_RESET(1'b0),
 
     .EXT_TRIGGER_ENABLE(EXT_TRIGGER_ENABLE),
-    .TRIGGER_ACKNOWLEDGE(TRIGGER_ACKNOWLEDGE_FLAG),
+    .TRIGGER_ACKNOWLEDGE(CMD_FIFO_READY_FLAG),
     .TRIGGER_ACCEPTED_FLAG(TRIGGER_ACCEPTED_FLAG),
 
     .TLU_TRIGGER(RJ45_TRIGGER),
@@ -550,7 +612,7 @@ tlu_controller #(
 //    timestamp_gray <= (TIMESTAMP>>1) ^ TIMESTAMP;
 
 wire [7:0] FE_FIFO_READ;
-wire [7:0] FE_FIFO_EMPTY;
+//wire [7:0] FE_FIFO_EMPTY;
 wire [31:0] FE_FIFO_DATA [7:0];
 
 wire [7:0] TDC_FIFO_READ;
@@ -817,9 +879,25 @@ clock_divider #(
     .CLOCK(CLK_3HZ)
 );
 
+reg [7:0] RX_ENABLED_CLK40_FF;
+wire [7:0] RX_ENABLED_CLK40_FLAG;
+always @ (posedge CLK40)
+begin
+    RX_ENABLED_CLK40_FF <= RX_ENABLED_CLK40;
+end
+assign RX_ENABLED_CLK40_FLAG = RX_ENABLED_CLK40 & ~RX_ENABLED_CLK40_FF;
+reg [7:0] RX_ENABLED_CLK40_BUF;
+always @ (posedge CLK40)
+begin
+    if (|RX_ENABLED_CLK40_FLAG)
+        RX_ENABLED_CLK40_BUF <= RX_ENABLED_CLK40;
+    else
+        RX_ENABLED_CLK40_BUF <= RX_ENABLED_CLK40_BUF;
+end
+
 assign LED[7:4] = 4'hf;
 assign LED[0] = ~((CLK_1HZ | FIFO_FULL) & LOCKED & LOCKED2);
-assign LED[1] = ~((((RX_READY != RX_ENABLED) || |(RX_8B10B_DECODER_ERR & RX_ENABLED))? CLK_3HZ : CLK_1HZ) | (|(RX_FIFO_OVERFLOW_ERR & RX_ENABLED)) | (|(RX_FIFO_FULL & RX_ENABLED)));
+assign LED[1] = ~((((RX_READY != RX_ENABLED_CLK40_BUF) || |(RX_8B10B_DECODER_ERR & RX_ENABLED_CLK40_BUF))? CLK_3HZ : CLK_1HZ) | (|(RX_FIFO_OVERFLOW_ERR & RX_ENABLED_CLK40_BUF)) | (|(RX_FIFO_FULL & RX_ENABLED_CLK40_BUF)));
 assign LED[2] = 1'b1;
 assign LED[3] = 1'b1;
 
