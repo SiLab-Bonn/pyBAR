@@ -424,9 +424,6 @@ class Fei4RunBase(RunBase):
             # enable LVDS RX/TX
             self.dut['I2C'].write(0xe8, [6, 0xf0, 0xff])
             self.dut['I2C'].write(0xe8, [2, 0x01, 0x00])  # select channels here
-        elif self.dut.name == 'mmc3_m26_eth':
-            pass
-            # TODO: enable Mimosa26 Rx when necessary
         elif self.dut.name == 'mmc3_beast_eth':
             self.dut['DLY_CONFIG']['CLK_DLY'] = 0
             self.dut['DLY_CONFIG'].write()
@@ -1208,7 +1205,6 @@ class Fei4RunBase(RunBase):
         fill_buffer = kwargs.pop('fill_buffer', False)
         no_data_timeout = kwargs.pop('no_data_timeout', None)
         enabled_fe_channels = kwargs.pop('enabled_fe_channels', self._enabled_fe_channels)
-        enabled_m26_channels = kwargs.pop('enabled_m26_channels', [])  # use none by default, even if available in firmware
         if args or kwargs:
             self.set_scan_parameters(*args, **kwargs)
         if self._scan_threads and self.current_module_handle not in [t.name for t in self._scan_threads]:
@@ -1224,7 +1220,7 @@ class Fei4RunBase(RunBase):
             with self._readout_lock:
                 if len(set(self._curr_readout_threads) & set([t.name for t in self._scan_threads if t.is_alive()])) == len(set([t.name for t in self._scan_threads if t.is_alive()])) or not self._scan_threads:
                     if not self.fifo_readout.is_running:
-                        self.fifo_readout.start(fifos=self._selected_fifos, callback=callback, errback=errback, reset_rx=reset_rx, reset_fifo=reset_fifo, fill_buffer=fill_buffer, no_data_timeout=no_data_timeout, filter_func=self._filter, converter_func=self._converter, fifo_select=self._readout_fifos, enabled_fe_channels=enabled_fe_channels, enabled_m26_channels=enabled_m26_channels)
+                        self.fifo_readout.start(fifos=self._selected_fifos, callback=callback, errback=errback, reset_rx=reset_rx, reset_fifo=reset_fifo, fill_buffer=fill_buffer, no_data_timeout=no_data_timeout, filter_func=self._filter, converter_func=self._converter, fifo_select=self._readout_fifos, enabled_fe_channels=enabled_fe_channels)
                         self._starting_readout_event.set()
 
     def stop_readout(self, timeout=10.0):

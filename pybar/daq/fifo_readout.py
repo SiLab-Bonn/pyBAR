@@ -51,7 +51,6 @@ class FifoReadout(object):
         self.converter_func = [None]
         self.fifo_select = [None]
         self.enabled_fe_channels = None
-        self.enabled_m26_channels = None
         self.readout_interval = 0.05
         self.write_interval = 1.0
         self.watchdog_interval = 1.0
@@ -82,7 +81,7 @@ class FifoReadout(object):
                 result.append(sum([item[0] for item in words_per_read if item[1] > (curr_time - self._moving_average_time_period)]) / float(self._moving_average_time_period))
             return result
 
-    def start(self, fifos, callback=None, errback=None, reset_rx=False, reset_fifo=False, fill_buffer=False, no_data_timeout=None, filter_func=None, converter_func=None, fifo_select=None, enabled_fe_channels=None, enabled_m26_channels=None):
+    def start(self, fifos, callback=None, errback=None, reset_rx=False, reset_fifo=False, fill_buffer=False, no_data_timeout=None, filter_func=None, converter_func=None, fifo_select=None, enabled_fe_channels=None):
         with self.is_running_lock:
             if self._is_running:
                 raise RuntimeError('FIFO readout threads already started: use stop()')
@@ -128,10 +127,6 @@ class FifoReadout(object):
                 self.enabled_fe_channels = [rx.name for rx in self.dut.get_modules('fei4_rx')]
             else:
                 self.enabled_fe_channels = enabled_fe_channels
-            if enabled_m26_channels is None:
-                self.enabled_m26_channels = [rx.name for rx in self.dut.get_modules('m26_rx')]
-            else:
-                self.enabled_m26_channels = enabled_m26_channels
             self.fifos = fifos
             self.callback = callback
             self.errback = errback
@@ -151,7 +146,7 @@ class FifoReadout(object):
             curr_time = get_float_time()
             self._words_per_read = [deque(iterable=[(0, curr_time, curr_time)] * len_deque, maxlen=len_deque) for _ in self.filter_func]
             if reset_rx:
-                self.reset_rx(fe_channels=self.enabled_fe_channels, m26_channels=self.enabled_m26_channels)
+                self.reset_rx(fe_channels=self.enabled_fe_channels)
             for fifo in self.fifos:
                 if reset_fifo:
                     self.reset_fifo([fifo])
@@ -193,18 +188,12 @@ class FifoReadout(object):
                 self.update_timestamp(fifo)
             for fei4_rx_name in self.enabled_fe_channels:
                 self.dut[fei4_rx_name].ENABLE_RX = 1
-            for m26_rx_name in self.enabled_m26_channels:
-                self.dut[m26_rx_name].EN = 1
 
     def stop(self, timeout=10.0):
         with self.is_running_lock:
             if not self._is_running:
                 raise RuntimeError('FIFO readout threads not running: use start()')
             self._is_running = False
-            # disabling Mimosa26 RX channels, the Mimosa26 RX is continuously providing data
-            # and therefore this has to be disabled before readout stop
-            for m26_rx_name in self.enabled_m26_channels:
-                self.dut[m26_rx_name].EN = 0
             self.stop_readout.set()
 
             def wait_for_thread_timeout(thread, fifo, timeout):
@@ -251,7 +240,6 @@ class FifoReadout(object):
     def print_readout_status(self):
         self.print_fifo_status()
         self.print_fei4_rx_status()
-        self.print_m26_rx_status()
 
     def print_fifo_status(self):
         fifo_sizes = [self.get_fifo_size(fifo) for fifo in self.fifos]
@@ -276,18 +264,6 @@ class FifoReadout(object):
             logging.info('FEI4 RX FIFO 8b10b error counter: %s', " | ".join([repr(count).rjust(max(3, len(fei4_rx_names[index]))) for index, count in enumerate(error_count)]))
         if not any(sync_status) or any(discard_count) or any(error_count):
             logging.warning('FEI4 RX errors detected')
-
-    def print_m26_rx_status(self):
-        # Mimosa26
-        m26_enable_status = self.get_m26_rx_enable_status()
-        m26_discard_count = self.get_m26_rx_fifo_discard_count()
-        m26_rx_names = [rx.name for rx in self.dut.get_modules('m26_rx')]
-        if m26_rx_names:
-            logging.info('Mimosa26 RX channel:              %s', " | ".join([name.rjust(3) for name in m26_rx_names]))
-            logging.info('Mimosa26 RX enabled:              %s', " | ".join(["YES".rjust(max(3, len(m26_rx_names[index]))) if status is True else "NO".rjust(max(3, len(m26_rx_names[index]))) for index, status in enumerate(m26_enable_status)]))
-            logging.info('Mimosa26 RX FIFO discard counter: %s', " | ".join([repr(count).rjust(max(3, len(m26_rx_names[index]))) for index, count in enumerate(m26_discard_count)]))
-        if any(m26_discard_count):
-            logging.warning('Mimosa26 RX errors detected')
 
     def readout(self, fifo, no_data_timeout=None):
         '''Readout thread continuously reading FIFO.
@@ -420,8 +396,6 @@ class FifoReadout(object):
                     raise EightbTenbError('FEI4 RX 8b10b error(s) detected')
                 if any(self.get_rx_fifo_discard_count(channels=self.enabled_fe_channels)):
                     raise FifoError('FEI4 RX FIFO discard error(s) detected')
-                if any(self.get_m26_rx_fifo_discard_count(channels=self.enabled_m26_channels)):
-                    raise FifoError('M26 RX FIFO discard error(s) detected')
             except Exception:
                 self.errback(sys.exc_info())
             time_wait = self.watchdog_interval - (time() - time_read)
@@ -476,16 +450,12 @@ class FifoReadout(object):
     def get_fifo_size(self, fifo):
         return self.dut[fifo]['FIFO_SIZE']
 
-    def reset_rx(self, fe_channels=None, m26_channels=None):
+    def reset_rx(self, fe_channels=None):
         logging.info('Resetting RX')
         if fe_channels is None:
             fe_channels = [rx.name for rx in self.dut.get_modules('fei4_rx')]
-        if m26_channels is None:
-            m26_channels = [rx.name for rx in self.dut.get_modules('m26_rx')]
         for fei4_rx_name in fe_channels:
             self.dut[fei4_rx_name].RX_RESET
-        for m26_rx_name in m26_channels:
-            self.dut[m26_rx_name].RESET
 
     def reset_fifo(self, fifos):
         if not isinstance(fifos, Iterable):
@@ -524,15 +494,3 @@ class FifoReadout(object):
             return map(lambda channel: channel.LOST_DATA_COUNTER, self.dut.get_modules('fei4_rx'))
         else:
             return map(lambda channel: self.dut[channel].LOST_DATA_COUNTER, channels)
-
-    def get_m26_rx_enable_status(self, channels=None):
-        if channels is None:
-            return map(lambda channel: True if channel.EN else False, self.dut.get_modules('m26_rx'))
-        else:
-            return map(lambda channel: True if self.dut[channel].EN else False, channels)
-
-    def get_m26_rx_fifo_discard_count(self, channels=None):
-        if channels is None:
-            return map(lambda channel: channel.LOST_COUNT, self.dut.get_modules('m26_rx'))
-        else:
-            return map(lambda channel: self.dut[channel].LOST_COUNT, channels)
