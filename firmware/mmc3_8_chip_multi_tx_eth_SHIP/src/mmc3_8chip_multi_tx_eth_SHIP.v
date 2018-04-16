@@ -1051,9 +1051,4 @@ assign LED[1] = ~((((RX_READY != RX_ENABLED_CLK40_BUF) || |(RX_8B10B_DECODER_ERR
 assign LED[2] = 1'b1;
 assign LED[3] = 1'b1;
 
-//ila_0 ila(
-//    .clk(CLK320),
-//    .probe0({M26_DATA1, M26_DATA0, M26_MKD, M26_CLK})
-//);
-
 endmodule
