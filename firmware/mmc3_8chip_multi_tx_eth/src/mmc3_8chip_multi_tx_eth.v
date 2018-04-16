@@ -748,7 +748,7 @@ tlu_controller #(
 
     .TIMESTAMP(TIMESTAMP[0])
 );
-assign BROADCAST_CMD = ((TRIGGER_ENABLED == 1) && (EXT_TRIGGER_ENABLE != 1));
+assign BROADCAST_CMD = (TRIGGER_ENABLED == 1);
 
 //reg [31:0] timestamp_gray;
 //always@(posedge BUS_CLK)

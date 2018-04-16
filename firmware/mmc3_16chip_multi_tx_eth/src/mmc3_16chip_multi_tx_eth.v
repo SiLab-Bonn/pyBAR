@@ -748,7 +748,7 @@ tlu_controller #(
 
     .TIMESTAMP(TIMESTAMP[0])
 );
-assign BROADCAST_CMD = ((TRIGGER_ENABLED == 1) && (EXT_TRIGGER_ENABLE != 1));
+assign BROADCAST_CMD = (TRIGGER_ENABLED == 1);
 
 wire [15:0] FE_FIFO_READ;
 //wire [15:0] FE_FIFO_EMPTY;

@@ -577,7 +577,7 @@ wire FIFO_FULL;
 wire TLU_BUSY, TLU_CLOCK;
 wire [7:0] TRIGGER_ENABLED, TLU_ENABLED;
 wire [7:0] TRIGGER_SELECTED [7:0];
-assign RJ45_BUSY_LEMO_TX1 = TRIGGER_ENABLED[0] ? TLU_BUSY : 1'b1;
+assign RJ45_BUSY_LEMO_TX1 = BROADCAST_CMD ? TLU_BUSY : 1'b1;
 assign RJ45_CLK_LEMO_TX0 = TLU_CLOCK;
 
 genvar k;
@@ -748,7 +748,7 @@ tlu_controller #(
 
     .TIMESTAMP(TIMESTAMP[0])
 );
-assign BROADCAST_CMD = ((TRIGGER_ENABLED == 1) && (EXT_TRIGGER_ENABLE != 1));
+assign BROADCAST_CMD = (TRIGGER_ENABLED == 1);
 
 //reg [31:0] timestamp_gray;
 //always@(posedge BUS_CLK)
