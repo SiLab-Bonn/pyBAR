@@ -4,9 +4,9 @@
 # SiLab, Institute of Physics, University of Bonn
 # ------------------------------------------------------------
 #
-# MMC3 board with max. 8 FEI4s with multiple TX
+# MMC3 board with max. 16 FEI4s with multiple TX
 
-name    : mmc3_8chip_eth
+name    : mmc3_16chip_multi_tx_eth
 version : 0.1
 
 transfer_layer:
@@ -133,7 +133,7 @@ hw_drivers:
     type      : fei4_rx
     interface : ETH
     base_addr : 0x41700
-    
+
   - name      : DATA_CH8
     type      : fei4_rx
     interface : ETH

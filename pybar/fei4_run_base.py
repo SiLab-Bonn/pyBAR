@@ -320,28 +320,19 @@ class Fei4RunBase(RunBase):
 
     def init_dut(self):
         if self.dut.name == 'mio':
-            if self.dut.get_modules('FEI4AdapterCard') and [adapter_card for adapter_card in self.dut.get_modules('FEI4AdapterCard') if adapter_card.name == 'ADAPTER_CARD']:
+            if self.dut.get_modules('FEI4AdapterCard') and [adapter_card for adapter_card in self.dut.get_modules('FEI4AdapterCard') if adapter_card.name == 'SINGLE_CHIP_ADAPTER_CARD']:
                 try:
-                    self.dut['ADAPTER_CARD'].set_voltage('VDDA1', 1.5)
-                    self.dut['ADAPTER_CARD'].set_voltage('VDDA2', 1.5)
-                    self.dut['ADAPTER_CARD'].set_voltage('VDDD1', 1.2)
-                    self.dut['ADAPTER_CARD'].set_voltage('VDDD2', 1.2)
+                    self.dut['SINGLE_CHIP_ADAPTER_CARD'].set_voltage('VDDA1', 1.5)
+                    self.dut['SINGLE_CHIP_ADAPTER_CARD'].set_voltage('VDDA2', 1.5)
+                    self.dut['SINGLE_CHIP_ADAPTER_CARD'].set_voltage('VDDD1', 1.2)
+                    self.dut['SINGLE_CHIP_ADAPTER_CARD'].set_voltage('VDDD2', 1.2)
                 except struct.error:
-                    logging.warning('Cannot set adapter card voltages. Maybe card not calibrated?')
+                    logging.warning('Cannot set voltages. Adapter card not calibrated? Voltages out of range?')
                 self.dut['POWER_SCC']['EN_VD1'] = 1
                 self.dut['POWER_SCC']['EN_VD2'] = 1  # also EN_VPLL on old SCAC
                 self.dut['POWER_SCC']['EN_VA1'] = 1
                 self.dut['POWER_SCC']['EN_VA2'] = 1
                 self.dut['POWER_SCC'].write()
-                # enabling readout
-                rx_names = [rx.name for rx in self.dut.get_modules('fei4_rx')]
-                active_rx_names = [module_cfg["RX"] for (name, module_cfg) in self._module_cfgs.items() if name in self._modules]
-                for rx_name in rx_names:
-                    # enabling/disabling Rx
-                    if rx_name in active_rx_names:
-                        self.dut[rx_name].ENABLE_RX = 1
-                    else:
-                        self.dut[rx_name].ENABLE_RX = 0
                 self.dut['ENABLE_CHANNEL']['DATA_CH1'] = 0  # RD2Bar on SCAC
                 self.dut['ENABLE_CHANNEL']['DATA_CH2'] = 0  # RD1Bar on SCAC
                 self.dut['ENABLE_CHANNEL']['DATA_CH3'] = 0  # RABar on SCAC
@@ -349,28 +340,28 @@ class Fei4RunBase(RunBase):
                 self.dut['ENABLE_CHANNEL']['TLU'] = 1
                 self.dut['ENABLE_CHANNEL']['TDC'] = 1
                 self.dut['ENABLE_CHANNEL'].write()
-            elif self.dut.get_modules('FEI4QuadModuleAdapterCard') and [adapter_card for adapter_card in self.dut.get_modules('FEI4QuadModuleAdapterCard') if adapter_card.name == 'ADAPTER_CARD']:
+            elif self.dut.get_modules('FEI4QuadModuleAdapterCard') and [adapter_card for adapter_card in self.dut.get_modules('FEI4QuadModuleAdapterCard') if adapter_card.name == 'QUAD_MODULE_ADAPTER_CARD']:
                 # resetting over current status
                 self.dut['POWER_QUAD']['EN_DATA_CH1'] = 0
                 self.dut['POWER_QUAD']['EN_DATA_CH2'] = 0
                 self.dut['POWER_QUAD']['EN_DATA_CH3'] = 0
                 self.dut['POWER_QUAD']['EN_DATA_CH4'] = 0
                 self.dut['POWER_QUAD'].write()
-                self.dut['ADAPTER_CARD'].set_voltage('CH1', 2.1)
-                self.dut['ADAPTER_CARD'].set_voltage('CH2', 2.1)
-                self.dut['ADAPTER_CARD'].set_voltage('CH3', 2.1)
-                self.dut['ADAPTER_CARD'].set_voltage('CH4', 2.1)
-                self.dut['POWER_QUAD'].write()
+                try:
+                    self.dut['QUAD_MODULE_ADAPTER_CARD'].set_voltage('CH1', 2.1)
+                    self.dut['QUAD_MODULE_ADAPTER_CARD'].set_voltage('CH2', 2.1)
+                    self.dut['QUAD_MODULE_ADAPTER_CARD'].set_voltage('CH3', 2.1)
+                    self.dut['QUAD_MODULE_ADAPTER_CARD'].set_voltage('CH4', 2.1)
+                except struct.error:
+                    logging.warning('Cannot set voltages. Adapter card not calibrated? Voltages out of range?')
                 rx_names = [rx.name for rx in self.dut.get_modules('fei4_rx')]
                 active_rx_names = [module_cfg["RX"] for (name, module_cfg) in self._module_cfgs.items() if name in self._modules]
                 for rx_name in rx_names:
                     # enabling/disabling Rx
                     if rx_name in active_rx_names:
-                        self.dut[rx_name].ENABLE_RX = 1
                         self.dut['ENABLE_CHANNEL'][rx_name] = 1
                         self.dut['POWER_QUAD']['EN_' + rx_name] = 1
                     else:
-                        self.dut[rx_name].ENABLE_RX = 0
                         self.dut['ENABLE_CHANNEL'][rx_name] = 0
                         self.dut['POWER_QUAD']['EN_' + rx_name] = 0
                 self.dut['ENABLE_CHANNEL']['TLU'] = 1
@@ -424,13 +415,43 @@ class Fei4RunBase(RunBase):
             # enable LVDS RX/TX
             self.dut['I2C'].write(0xe8, [6, 0xf0, 0xff])
             self.dut['I2C'].write(0xe8, [2, 0x01, 0x00])  # select channels here
+        elif self.dut.name in ['mmc3_8chip_eth', 'mmc3_8chip_multi_tx_eth', 'mmc3_16chip_multi_tx_eth']:
+            for register in self.dut.get_modules('StdRegister'):
+                if 'DLY_CONFIG' in register.name:
+                    register['CLK_DLY'] = 0
+                    register.write()
         elif self.dut.name == 'mmc3_beast_eth':
-            self.dut['DLY_CONFIG']['CLK_DLY'] = 0
-            self.dut['DLY_CONFIG'].write()
-        elif self.dut.name == 'mmc3_8chip_eth':
-            self.dut['DLY_CONFIG']['CLK_DLY'] = 0
-            self.dut['DLY_CONFIG'].write()
+            for register in self.dut.get_modules('StdRegister'):
+                if 'DLY_CONFIG' in register.name:
+                    register['CLK_DLY'] = 0
+                    register.write()
         else:
+            for adapter_card in self.dut.get_modules('FEI4AdapterCard'):
+                if 'SINGLE_CHIP_ADAPTER_CARD' in adapter_card.name:
+                    try:
+                        adapter_card.set_voltage('VDDA1', 1.5)
+                        adapter_card.set_voltage('VDDA2', 1.5)
+                        adapter_card.set_voltage('VDDD1', 1.2)
+                        adapter_card.set_voltage('VDDD2', 1.2)
+                    except struct.error:
+                        logging.warning('Cannot set voltages. Adapter card not calibrated? Voltages out of range?')
+            for register in self.dut.get_modules('StdRegister'):
+                if 'POWER_SCC' in register.name:
+                    register['EN_VD1'] = 1
+                    register['EN_VD2'] = 1  # also EN_VPLL on old SCAC
+                    register['EN_VA1'] = 1
+                    register['EN_VA2'] = 1
+                    register.write()
+            for register in self.dut.get_modules('StdRegister'):
+                if 'ENABLE_CHANNEL' in register.name:
+                    register['DATA_CH1'] = 0  # RD2Bar on SCAC, CH1 on quad module adapter card
+                    register['DATA_CH2'] = 0  # RD1Bar on SCAC, CH2 on quad module adapter card
+                    register['DATA_CH3'] = 0  # RABar on SCAC, CH3 on quad module adapter card
+                    register['DATA_CH4'] = 1
+                    register['TLU'] = 1
+                    register['TDC'] = 1
+                    register.write()
+
             logging.warning('Unknown DUT name: %s', self.dut.name)
 
     def init_modules(self):

@@ -4,8 +4,11 @@ USB:
     board_id       : # Selecting USBpix board by ID
     avoid_download : True  # Avoiding download of FPGA firmware if already initialized
 
-ADAPTER_CARD:
+SINGLE_CHIP_ADAPTER_CARD:
     no_calibration : False
+
+#QUAD_MODULE_ADAPTER_CARD:
+#    no_calibration : False
 
 # Trigger
 TRIGGER_CH1_TO_CH4:
