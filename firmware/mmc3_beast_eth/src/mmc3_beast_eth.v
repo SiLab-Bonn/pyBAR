@@ -49,7 +49,7 @@ module mmc3_beast_eth(
 
 
 wire RST;
-wire CLK250PLL, CLK125PLLTX, CLK125PLLTX90, CLK125PLLRX;
+wire CLK250PLL, CLK125PLLTX, CLK125PLLTX90;
 wire PLL_FEEDBACK, LOCKED;
 
 PLLE2_BASE #(
@@ -74,11 +74,6 @@ PLLE2_BASE #(
     .CLKOUT3_DUTY_CYCLE(0.5), // Duty cycle for CLKOUT0 (0.001-0.999).
     .CLKOUT3_PHASE(90.0),      // Phase offset for CLKOUT0 (-360.000-360.000).
 
-    .CLKOUT4_DIVIDE(8),     // Divide amount for CLKOUT0 (1-128)
-    .CLKOUT4_DUTY_CYCLE(0.5), // Duty cycle for CLKOUT0 (0.001-0.999).
-    .CLKOUT4_PHASE(-5.6),      // Phase offset for CLKOUT0 (-360.000-360.000).
-    //-65 -> 0?; - 45 -> 39;  -25 -> 100; -5 -> 0;
-
     .DIVCLK_DIVIDE(1),        // Master division value, (1-56)
     .REF_JITTER1(0.0),        // Reference input jitter in UI, (0.000-0.999).
     .STARTUP_WAIT("FALSE")     // Delay DONE until PLL Locks, ("TRUE"/"FALSE")
@@ -87,7 +82,7 @@ PLLE2_BASE #(
     .CLKOUT1(CLK250PLL),
     .CLKOUT2(CLK125PLLTX),
     .CLKOUT3(CLK125PLLTX90),
-    .CLKOUT4(CLK125PLLRX),
+    .CLKOUT4(),
     .CLKOUT5(),
 
     .CLKFBOUT(PLL_FEEDBACK),
