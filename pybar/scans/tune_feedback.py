@@ -21,7 +21,7 @@ class FeedbackTuning(Fei4RunBase):
     '''
     _default_run_conf = {
         "broadcast_commands": False,
-        "threaded_scan": False,
+        "threaded_scan": True,
         "scan_parameters": [('PrmpVbpf', None)],
         "target_charge": 280,
         "target_tot": 5,
