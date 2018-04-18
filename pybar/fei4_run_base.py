@@ -319,7 +319,7 @@ class Fei4RunBase(RunBase):
                         self._module_run_conf[module_id] = run_conf._replace(**self._conf["modules"][selected_module_id][self.__class__.__name__])._asdict()
 
     def init_dut(self):
-        if self.dut.name == 'mio':
+        if self.dut.name == 'mio':  # MIO2 with Single Chip Adapter Card (SCAC) or QUAD Module Adapter Card
             if self.dut.get_modules('FEI4AdapterCard') and [adapter_card for adapter_card in self.dut.get_modules('FEI4AdapterCard') if adapter_card.name == 'SINGLE_CHIP_ADAPTER_CARD']:
                 try:
                     self.dut['SINGLE_CHIP_ADAPTER_CARD'].set_voltage('VDDA1', 1.5)
@@ -378,7 +378,7 @@ class Fei4RunBase(RunBase):
                 self.dut['ENABLE_CHANNEL']['TLU'] = 1
                 self.dut['ENABLE_CHANNEL']['TDC'] = 1
                 self.dut['ENABLE_CHANNEL'].write()
-        elif self.dut.name == 'mio_gpac':
+        elif self.dut.name == 'mio_gpac':  # MIO2 with Genaral Purpose Analog Card (GPAC)
             # PWR
             self.dut['V_in'].set_current_limit(0.1, unit='A')  # one for all, max. 1A
             # V_in
@@ -411,21 +411,26 @@ class Fei4RunBase(RunBase):
             self.dut['ENABLE_CHANNEL']['TDC'] = 1
             self.dut['ENABLE_CHANNEL']['CCPD_TDC'] = 1
             self.dut['ENABLE_CHANNEL'].write()
-        elif self.dut.name == 'lx9':
+        elif self.dut.name == 'lx9':  # Avnet LX9
             # enable LVDS RX/TX
             self.dut['I2C'].write(0xe8, [6, 0xf0, 0xff])
             self.dut['I2C'].write(0xe8, [2, 0x01, 0x00])  # select channels here
-        elif self.dut.name in ['mmc3_8chip_eth', 'mmc3_8chip_multi_tx_eth', 'mmc3_16chip_multi_tx_eth']:
+        elif self.dut.name in ['mmc3_8chip_eth', 'mmc3_8chip_multi_tx_eth', 'mmc3_16chip_multi_tx_eth']:  # Multi Module Card (MMC3)
             for register in self.dut.get_modules('StdRegister'):
                 if 'DLY_CONFIG' in register.name:
                     register['CLK_DLY'] = 0
                     register.write()
-        elif self.dut.name == 'mmc3_beast_eth':
+        elif self.dut.name == 'mmc3_beast_eth':  # MMC3 for BEAST/FANGS experiment at KEK
             for register in self.dut.get_modules('StdRegister'):
                 if 'DLY_CONFIG' in register.name:
                     register['CLK_DLY'] = 0
                     register.write()
         else:
+            # This helps to enable regulators on Single Chip Adapter Card (SCAC) in a multi-board configuration
+            # Note: Keep the original basil names and add a string to it, e.g.:
+            #       SINGLE_CHIP_ADAPTER_CARD -> SINGLE_CHIP_ADAPTER_CARD_TELESCOPE_0
+            #       POWER_SCC -> POWER_SCC_TELESCOPE_0
+            #       ENABLE_CHANNEL -> ENABLE_CHANNEL_TELESCOPE_0
             for adapter_card in self.dut.get_modules('FEI4AdapterCard'):
                 if 'SINGLE_CHIP_ADAPTER_CARD' in adapter_card.name:
                     try:
@@ -451,8 +456,8 @@ class Fei4RunBase(RunBase):
                     register['TLU'] = 1
                     register['TDC'] = 1
                     register.write()
-
-            logging.warning('Unknown DUT name: %s', self.dut.name)
+#        else:
+#            logging.warning('Unknown DUT name: %s', self.dut.name)
 
     def init_modules(self):
         ''' Initialize all modules consecutively'''
