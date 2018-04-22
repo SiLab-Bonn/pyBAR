@@ -280,13 +280,18 @@ class FifoReadout(object):
                 if no_data_timeout and time_stop_read + no_data_timeout < get_float_time():
                     raise NoDataTimeout('Received no data for %0.1f second(s) from %s' % (no_data_timeout, fifo))
                 raw_data = self.read_raw_data_from_fifo(fifo)
-            except Exception:
+            except NoDataTimeout:
                 no_data_timeout = None  # raise exception only once
                 if self.errback:
                     self.errback(sys.exc_info())
                 else:
                     raise
-                if self.stop_readout.is_set():
+            except Exception:
+                if self.errback:
+                    self.errback(sys.exc_info())
+                else:
+                    raise
+                if self.stop_readout.is_set():  # in case of a exception, break immediately
                     break
             else:
                 n_data_words = raw_data.shape[0]
