@@ -339,6 +339,7 @@ module top (
             .RX_8B10B_DECODER_ERR(RX_8B10B_DECODER_ERR[i]),
             .RX_FIFO_OVERFLOW_ERR(RX_FIFO_OVERFLOW_ERR[i]),
 
+            .FIFO_CLK(1'b0),
             .FIFO_READ(FE_FIFO_READ[i]),
             .FIFO_EMPTY(FE_FIFO_EMPTY[i]),
             .FIFO_DATA(FE_FIFO_DATA[i]),

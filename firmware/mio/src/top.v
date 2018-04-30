@@ -385,6 +385,7 @@ fx2_to_bus i_fx2_to_bus (
     .CS_FPGA()
 );
 
+
 // -------  USER MODULES  ------- //
 wire FIFO_NOT_EMPTY; // raised, when SRAM FIFO is not empty
 wire FIFO_FULL, FIFO_NEAR_FULL; // raised, when SRAM FIFO is full / near full

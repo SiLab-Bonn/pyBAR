@@ -260,6 +260,7 @@ generate
         .RX_8B10B_DECODER_ERR(),
         .RX_FIFO_OVERFLOW_ERR(),
 
+        .FIFO_CLK(1'b0),
         .FIFO_READ(FIFO_READ[i]),
         .FIFO_EMPTY(FIFO_EMPTY[i]),
         .FIFO_DATA(FIFO_DATA[i]),
