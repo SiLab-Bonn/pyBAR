@@ -22,7 +22,7 @@ class ExtTriggerScan(Fei4RunBase):
     '''
     _default_run_conf = {
         "broadcast_commands": True,
-        "threaded_scan": False,
+        "threaded_scan": True,
         "trig_count": 0,  # FE-I4 trigger count, number of consecutive BCs, 0 means 16, from 0 to 15
         "trigger_latency": 232,  # FE-I4 trigger latency, in BCs, external scintillator / TLU / HitOR: 232, USBpix self-trigger: 220
         "trigger_delay": 8,  # trigger delay, in BCs

@@ -5,9 +5,11 @@ from threading import Thread, Event, Lock, Condition
 from collections import deque, Iterable
 import sys
 
+import numpy as np
+
 from basil.HL import sitcp_fifo
 from pybar.utils.utils import get_float_time
-from pybar.daq.readout_utils import data_array_from_data_iterable, convert_data_iterable, convert_data_array
+from pybar.daq.readout_utils import data_array_from_data_iterable, convert_data_iterable, convert_data_array, logical_and, is_fe_word, is_data_header
 
 
 data_iterable = ("data", "timestamp_start", "timestamp_stop", "error")
@@ -51,7 +53,6 @@ class FifoReadout(object):
         self.converter_func = [None]
         self.fifo_select = [None]
         self.enabled_fe_channels = None
-        self.enabled_m26_channels = None
         self.readout_interval = 0.05
         self.write_interval = 1.0
         self.watchdog_interval = 1.0
@@ -82,7 +83,7 @@ class FifoReadout(object):
                 result.append(sum([item[0] for item in words_per_read if item[1] > (curr_time - self._moving_average_time_period)]) / float(self._moving_average_time_period))
             return result
 
-    def start(self, fifos, callback=None, errback=None, reset_rx=False, reset_fifo=False, fill_buffer=False, no_data_timeout=None, filter_func=None, converter_func=None, fifo_select=None, enabled_fe_channels=None, enabled_m26_channels=None):
+    def start(self, fifos, callback=None, errback=None, reset_rx=False, reset_fifo=False, fill_buffer=False, no_data_timeout=None, filter_func=None, converter_func=None, fifo_select=None, enabled_fe_channels=None):
         with self.is_running_lock:
             if self._is_running:
                 raise RuntimeError('FIFO readout threads already started: use stop()')
@@ -128,10 +129,6 @@ class FifoReadout(object):
                 self.enabled_fe_channels = [rx.name for rx in self.dut.get_modules('fei4_rx')]
             else:
                 self.enabled_fe_channels = enabled_fe_channels
-            if enabled_m26_channels is None:
-                self.enabled_m26_channels = [rx.name for rx in self.dut.get_modules('m26_rx')]
-            else:
-                self.enabled_m26_channels = enabled_m26_channels
             self.fifos = fifos
             self.callback = callback
             self.errback = errback
@@ -151,7 +148,7 @@ class FifoReadout(object):
             curr_time = get_float_time()
             self._words_per_read = [deque(iterable=[(0, curr_time, curr_time)] * len_deque, maxlen=len_deque) for _ in self.filter_func]
             if reset_rx:
-                self.reset_rx(fe_channels=self.enabled_fe_channels, m26_channels=self.enabled_m26_channels)
+                self.reset_rx(fe_channels=self.enabled_fe_channels)
             for fifo in self.fifos:
                 if reset_fifo:
                     self.reset_fifo([fifo])
@@ -178,7 +175,7 @@ class FifoReadout(object):
                 self.readout_threads.append(readout_thread)
                 self.worker_threads.append(worker_thread)
             for index, _ in enumerate(self.filter_func):
-                writer_thread = Thread(target=self.writer, name='WriterThread %d' % index, kwargs={'index': index})
+                writer_thread = Thread(target=self.writer, name='WriterThread %d' % index, kwargs={'index': index, 'no_data_timeout': no_data_timeout})
                 writer_thread.daemon = True
                 self.writer_threads.append(writer_thread)
             for writer_thread in self.writer_threads:
@@ -193,18 +190,12 @@ class FifoReadout(object):
                 self.update_timestamp(fifo)
             for fei4_rx_name in self.enabled_fe_channels:
                 self.dut[fei4_rx_name].ENABLE_RX = 1
-            for m26_rx_name in self.enabled_m26_channels:
-                self.dut[m26_rx_name].EN = 1
 
     def stop(self, timeout=10.0):
         with self.is_running_lock:
             if not self._is_running:
                 raise RuntimeError('FIFO readout threads not running: use start()')
             self._is_running = False
-            # disabling Mimosa26 RX channels, the Mimosa26 RX is continuously providing data
-            # and therefore this has to be disabled before readout stop
-            for m26_rx_name in self.enabled_m26_channels:
-                self.dut[m26_rx_name].EN = 0
             self.stop_readout.set()
 
             def wait_for_thread_timeout(thread, fifo, timeout):
@@ -251,7 +242,6 @@ class FifoReadout(object):
     def print_readout_status(self):
         self.print_fifo_status()
         self.print_fei4_rx_status()
-        self.print_m26_rx_status()
 
     def print_fifo_status(self):
         fifo_sizes = [self.get_fifo_size(fifo) for fifo in self.fifos]
@@ -277,44 +267,38 @@ class FifoReadout(object):
         if not any(sync_status) or any(discard_count) or any(error_count):
             logging.warning('FEI4 RX errors detected')
 
-    def print_m26_rx_status(self):
-        # Mimosa26
-        m26_enable_status = self.get_m26_rx_enable_status()
-        m26_discard_count = self.get_m26_rx_fifo_discard_count()
-        m26_rx_names = [rx.name for rx in self.dut.get_modules('m26_rx')]
-        if m26_rx_names:
-            logging.info('Mimosa26 RX channel:              %s', " | ".join([name.rjust(3) for name in m26_rx_names]))
-            logging.info('Mimosa26 RX enabled:              %s', " | ".join(["YES".rjust(max(3, len(m26_rx_names[index]))) if status is True else "NO".rjust(max(3, len(m26_rx_names[index]))) for index, status in enumerate(m26_enable_status)]))
-            logging.info('Mimosa26 RX FIFO discard counter: %s', " | ".join([repr(count).rjust(max(3, len(m26_rx_names[index]))) for index, count in enumerate(m26_discard_count)]))
-        if any(m26_discard_count):
-            logging.warning('Mimosa26 RX errors detected')
-
     def readout(self, fifo, no_data_timeout=None):
         '''Readout thread continuously reading FIFO.
 
         Readout thread, which uses read_raw_data_from_fifo() and appends data to self._fifo_data_deque (collection.deque).
         '''
         logging.info('Starting readout thread for %s', fifo)
-        time_stop_read = get_float_time()
+        time_last_data = time()
         time_wait = 0.0
         empty_reads = 0
         while not self.force_stop[fifo].wait(time_wait if time_wait >= 0.0 else 0.0):
             time_read = time()
             try:
-                if no_data_timeout and time_stop_read + no_data_timeout < get_float_time():
+                if no_data_timeout and time_last_data + no_data_timeout < get_float_time():
                     raise NoDataTimeout('Received no data for %0.1f second(s) from %s' % (no_data_timeout, fifo))
                 raw_data = self.read_raw_data_from_fifo(fifo)
-            except Exception:
+            except NoDataTimeout:
                 no_data_timeout = None  # raise exception only once
                 if self.errback:
                     self.errback(sys.exc_info())
                 else:
                     raise
-                if self.stop_readout.is_set():
+            except Exception:
+                if self.errback:
+                    self.errback(sys.exc_info())
+                else:
+                    raise
+                if self.stop_readout.is_set():  # in case of a exception, break immediately
                     break
             else:
                 n_data_words = raw_data.shape[0]
                 if n_data_words > 0:
+                    time_last_data = time()
                     empty_reads = 0
                     time_start_read, time_stop_read = self.update_timestamp(fifo)
                     status = 0
@@ -349,34 +333,44 @@ class FifoReadout(object):
                 if data_tuple is None:  # if None then exit
                     break
                 else:
-                    for i, (filter_func, converter_func, fifo_select) in enumerate(izip(self.filter_func, self.converter_func, self.fifo_select)):
+                    for index, (filter_func, converter_func, fifo_select) in enumerate(izip(self.filter_func, self.converter_func, self.fifo_select)):
                         if fifo_select is None or fifo_select == fifo:
                             # filter and do the conversion
                             converted_data_tuple = convert_data_iterable((data_tuple,), filter_func=filter_func, converter_func=converter_func)[0]
                             n_data_words = converted_data_tuple[0].shape[0]
                             with self.data_words_per_second_lock:
-                                self._words_per_read[i].append((n_data_words, converted_data_tuple[1], converted_data_tuple[2]))
-                            self._data_deque[i].append(converted_data_tuple)
-                            with self._data_conditions[i]:
-                                self._data_conditions[i].notify_all()
-        for i, fifo_select in enumerate(self.fifo_select):
+                                self._words_per_read[index].append((n_data_words, converted_data_tuple[1], converted_data_tuple[2]))
+                            self._data_deque[index].append(converted_data_tuple)
+                            with self._data_conditions[index]:
+                                self._data_conditions[index].notify_all()
+        for index, fifo_select in enumerate(self.fifo_select):
             if fifo_select is None or fifo_select == fifo:
-                self._data_deque[i].append(None)
-                with self._data_conditions[i]:
-                    self._data_conditions[i].notify_all()
+                self._data_deque[index].append(None)
+                with self._data_conditions[index]:
+                    self._data_conditions[index].notify_all()
         self._fifo_conditions[fifo].release()
         logging.debug('Stopping worker thread for %s', fifo)
 
-    def writer(self, index):
+    def writer(self, index, no_data_timeout=None):
         '''Writer thread continuously calling callback function for writing data when data becomes available.
         '''
+        is_fe_data_header = logical_and(is_fe_word, is_data_header)
         logging.debug('Starting writer thread with index %d', index)
         self._data_conditions[index].acquire()
+        time_last_data = time()
         time_write = time()
-        converted_data_tuple_list = [None] * len(self.filter_func)
+        converted_data_tuple_list = [None] * len(self.filter_func)  # callback function gets a list of lists of tuples
         while True:
             try:
+                if no_data_timeout and time_last_data + no_data_timeout < time():
+                    raise NoDataTimeout('Received no data for %0.1f second(s) for writer thread with index %d' % (no_data_timeout, index))
                 converted_data_tuple = self._data_deque[index].popleft()
+            except NoDataTimeout:
+                no_data_timeout = None  # raise exception only once
+                if self.errback:
+                    self.errback(sys.exc_info())
+                else:
+                    raise
             except IndexError:
                 self._data_conditions[index].wait(self.readout_interval)  # sleep a little bit, reducing CPU usage
             else:
@@ -388,6 +382,8 @@ class FifoReadout(object):
                             self.errback(sys.exc_info())
                     break
                 else:
+                    if no_data_timeout and np.any(is_fe_data_header(converted_data_tuple[0])):  # check for FEI4 data words
+                        time_last_data = time()
                     if converted_data_tuple_list[index]:
                         converted_data_tuple_list[index].append(converted_data_tuple)
                     else:
@@ -397,7 +393,7 @@ class FifoReadout(object):
                 if self.callback and ((self.write_interval and time() - time_write >= self.write_interval) or not self.write_interval):
                     if any(converted_data_tuple_list):
                         try:
-                            self.callback(converted_data_tuple_list)
+                            self.callback(converted_data_tuple_list)  # callback function gets a list of lists of tuples
                         except Exception:
                             self.errback(sys.exc_info())
                         else:
@@ -420,8 +416,6 @@ class FifoReadout(object):
                     raise EightbTenbError('FEI4 RX 8b10b error(s) detected')
                 if any(self.get_rx_fifo_discard_count(channels=self.enabled_fe_channels)):
                     raise FifoError('FEI4 RX FIFO discard error(s) detected')
-                if any(self.get_m26_rx_fifo_discard_count(channels=self.enabled_m26_channels)):
-                    raise FifoError('M26 RX FIFO discard error(s) detected')
             except Exception:
                 self.errback(sys.exc_info())
             time_wait = self.watchdog_interval - (time() - time_read)
@@ -476,16 +470,12 @@ class FifoReadout(object):
     def get_fifo_size(self, fifo):
         return self.dut[fifo]['FIFO_SIZE']
 
-    def reset_rx(self, fe_channels=None, m26_channels=None):
+    def reset_rx(self, fe_channels=None):
         logging.info('Resetting RX')
         if fe_channels is None:
             fe_channels = [rx.name for rx in self.dut.get_modules('fei4_rx')]
-        if m26_channels is None:
-            m26_channels = [rx.name for rx in self.dut.get_modules('m26_rx')]
         for fei4_rx_name in fe_channels:
             self.dut[fei4_rx_name].RX_RESET
-        for m26_rx_name in m26_channels:
-            self.dut[m26_rx_name].RESET
 
     def reset_fifo(self, fifos):
         if not isinstance(fifos, Iterable):
@@ -524,15 +514,3 @@ class FifoReadout(object):
             return map(lambda channel: channel.LOST_DATA_COUNTER, self.dut.get_modules('fei4_rx'))
         else:
             return map(lambda channel: self.dut[channel].LOST_DATA_COUNTER, channels)
-
-    def get_m26_rx_enable_status(self, channels=None):
-        if channels is None:
-            return map(lambda channel: True if channel.EN else False, self.dut.get_modules('m26_rx'))
-        else:
-            return map(lambda channel: True if self.dut[channel].EN else False, channels)
-
-    def get_m26_rx_fifo_discard_count(self, channels=None):
-        if channels is None:
-            return map(lambda channel: channel.LOST_COUNT, self.dut.get_modules('m26_rx'))
-        else:
-            return map(lambda channel: self.dut[channel].LOST_COUNT, channels)

@@ -1,5 +1,5 @@
 
-# pyBAR [![Code Status](https://landscape.io/github/SiLab-Bonn/pyBAR/development/landscape.svg?style=flat)](https://landscape.io/github/SiLab-Bonn/pyBAR/development) [![Build Status](https://travis-ci.org/SiLab-Bonn/pyBAR.svg?branch=development)](https://travis-ci.org/SiLab-Bonn/pyBAR/branches) [![Build Status](https://ci.appveyor.com/api/projects/status/github/SiLab-Bonn/pyBAR?branch=development&svg=true)](https://ci.appveyor.com/project/DavidLP/pybar-71xwl?branch=development)
+# pyBAR [![Code Status](https://landscape.io/github/SiLab-Bonn/pyBAR/development/landscape.svg?style=flat)](https://landscape.io/github/SiLab-Bonn/pyBAR/development) [![Build Status](https://travis-ci.org/SiLab-Bonn/pyBAR.svg?branch=development)](https://travis-ci.org/SiLab-Bonn/pyBAR/branches) [![Build Status](https://ci.appveyor.com/api/projects/status/github/SiLab-Bonn/pyBAR?branch=development&svg=true)](https://ci.appveyor.com/project/laborleben/pybar-71xwl?branch=development)
 
 pyBAR - Bonn ATLAS Readout in Python
 
@@ -56,9 +56,9 @@ On Windows, the `pywin32` package is required:
   conda install pywin32
   ```
 
-[Basil](https://github.com/SiLab-Bonn/basil) (>=2.4.9,<3.0.0) is required:
+[Basil](https://github.com/SiLab-Bonn/basil) (>=2.4.12,<3.0.0) is required:
   ```
-  pip install 'basil_daq>=2.4.9,<3.0.0'
+  pip install git+https://github.com/SiLab-Bonn/basil@development
   ```
 
 [pyBAR FEI4 Interpreter](https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter) (>=1.3.0) is required:

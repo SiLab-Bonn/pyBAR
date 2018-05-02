@@ -319,29 +319,20 @@ class Fei4RunBase(RunBase):
                         self._module_run_conf[module_id] = run_conf._replace(**self._conf["modules"][selected_module_id][self.__class__.__name__])._asdict()
 
     def init_dut(self):
-        if self.dut.name == 'mio':
-            if self.dut.get_modules('FEI4AdapterCard') and [adapter_card for adapter_card in self.dut.get_modules('FEI4AdapterCard') if adapter_card.name == 'ADAPTER_CARD']:
+        if self.dut.name == 'mio':  # MIO2 with Single Chip Adapter Card (SCAC) or QUAD Module Adapter Card
+            if self.dut.get_modules('FEI4AdapterCard') and [adapter_card for adapter_card in self.dut.get_modules('FEI4AdapterCard') if adapter_card.name == 'SINGLE_CHIP_ADAPTER_CARD']:
                 try:
-                    self.dut['ADAPTER_CARD'].set_voltage('VDDA1', 1.5)
-                    self.dut['ADAPTER_CARD'].set_voltage('VDDA2', 1.5)
-                    self.dut['ADAPTER_CARD'].set_voltage('VDDD1', 1.2)
-                    self.dut['ADAPTER_CARD'].set_voltage('VDDD2', 1.2)
+                    self.dut['SINGLE_CHIP_ADAPTER_CARD'].set_voltage('VDDA1', 1.5)
+                    self.dut['SINGLE_CHIP_ADAPTER_CARD'].set_voltage('VDDA2', 1.5)
+                    self.dut['SINGLE_CHIP_ADAPTER_CARD'].set_voltage('VDDD1', 1.2)
+                    self.dut['SINGLE_CHIP_ADAPTER_CARD'].set_voltage('VDDD2', 1.2)
                 except struct.error:
-                    logging.warning('Cannot set adapter card voltages. Maybe card not calibrated?')
+                    logging.warning('Cannot set voltages. Adapter card not calibrated? Voltages out of range?')
                 self.dut['POWER_SCC']['EN_VD1'] = 1
                 self.dut['POWER_SCC']['EN_VD2'] = 1  # also EN_VPLL on old SCAC
                 self.dut['POWER_SCC']['EN_VA1'] = 1
                 self.dut['POWER_SCC']['EN_VA2'] = 1
                 self.dut['POWER_SCC'].write()
-                # enabling readout
-                rx_names = [rx.name for rx in self.dut.get_modules('fei4_rx')]
-                active_rx_names = [module_cfg["RX"] for (name, module_cfg) in self._module_cfgs.items() if name in self._modules]
-                for rx_name in rx_names:
-                    # enabling/disabling Rx
-                    if rx_name in active_rx_names:
-                        self.dut[rx_name].ENABLE_RX = 1
-                    else:
-                        self.dut[rx_name].ENABLE_RX = 0
                 self.dut['ENABLE_CHANNEL']['DATA_CH1'] = 0  # RD2Bar on SCAC
                 self.dut['ENABLE_CHANNEL']['DATA_CH2'] = 0  # RD1Bar on SCAC
                 self.dut['ENABLE_CHANNEL']['DATA_CH3'] = 0  # RABar on SCAC
@@ -349,28 +340,28 @@ class Fei4RunBase(RunBase):
                 self.dut['ENABLE_CHANNEL']['TLU'] = 1
                 self.dut['ENABLE_CHANNEL']['TDC'] = 1
                 self.dut['ENABLE_CHANNEL'].write()
-            elif self.dut.get_modules('FEI4QuadModuleAdapterCard') and [adapter_card for adapter_card in self.dut.get_modules('FEI4QuadModuleAdapterCard') if adapter_card.name == 'ADAPTER_CARD']:
+            elif self.dut.get_modules('FEI4QuadModuleAdapterCard') and [adapter_card for adapter_card in self.dut.get_modules('FEI4QuadModuleAdapterCard') if adapter_card.name == 'QUAD_MODULE_ADAPTER_CARD']:
                 # resetting over current status
                 self.dut['POWER_QUAD']['EN_DATA_CH1'] = 0
                 self.dut['POWER_QUAD']['EN_DATA_CH2'] = 0
                 self.dut['POWER_QUAD']['EN_DATA_CH3'] = 0
                 self.dut['POWER_QUAD']['EN_DATA_CH4'] = 0
                 self.dut['POWER_QUAD'].write()
-                self.dut['ADAPTER_CARD'].set_voltage('CH1', 2.1)
-                self.dut['ADAPTER_CARD'].set_voltage('CH2', 2.1)
-                self.dut['ADAPTER_CARD'].set_voltage('CH3', 2.1)
-                self.dut['ADAPTER_CARD'].set_voltage('CH4', 2.1)
-                self.dut['POWER_QUAD'].write()
+                try:
+                    self.dut['QUAD_MODULE_ADAPTER_CARD'].set_voltage('CH1', 2.1)
+                    self.dut['QUAD_MODULE_ADAPTER_CARD'].set_voltage('CH2', 2.1)
+                    self.dut['QUAD_MODULE_ADAPTER_CARD'].set_voltage('CH3', 2.1)
+                    self.dut['QUAD_MODULE_ADAPTER_CARD'].set_voltage('CH4', 2.1)
+                except struct.error:
+                    logging.warning('Cannot set voltages. Adapter card not calibrated? Voltages out of range?')
                 rx_names = [rx.name for rx in self.dut.get_modules('fei4_rx')]
                 active_rx_names = [module_cfg["RX"] for (name, module_cfg) in self._module_cfgs.items() if name in self._modules]
                 for rx_name in rx_names:
                     # enabling/disabling Rx
                     if rx_name in active_rx_names:
-                        self.dut[rx_name].ENABLE_RX = 1
                         self.dut['ENABLE_CHANNEL'][rx_name] = 1
                         self.dut['POWER_QUAD']['EN_' + rx_name] = 1
                     else:
-                        self.dut[rx_name].ENABLE_RX = 0
                         self.dut['ENABLE_CHANNEL'][rx_name] = 0
                         self.dut['POWER_QUAD']['EN_' + rx_name] = 0
                 self.dut['ENABLE_CHANNEL']['TLU'] = 1
@@ -387,7 +378,7 @@ class Fei4RunBase(RunBase):
                 self.dut['ENABLE_CHANNEL']['TLU'] = 1
                 self.dut['ENABLE_CHANNEL']['TDC'] = 1
                 self.dut['ENABLE_CHANNEL'].write()
-        elif self.dut.name == 'mio_gpac':
+        elif self.dut.name == 'mio_gpac':  # MIO2 with Genaral Purpose Analog Card (GPAC)
             # PWR
             self.dut['V_in'].set_current_limit(0.1, unit='A')  # one for all, max. 1A
             # V_in
@@ -420,33 +411,53 @@ class Fei4RunBase(RunBase):
             self.dut['ENABLE_CHANNEL']['TDC'] = 1
             self.dut['ENABLE_CHANNEL']['CCPD_TDC'] = 1
             self.dut['ENABLE_CHANNEL'].write()
-        elif self.dut.name == 'lx9':
+        elif self.dut.name == 'lx9':  # Avnet LX9
             # enable LVDS RX/TX
             self.dut['I2C'].write(0xe8, [6, 0xf0, 0xff])
             self.dut['I2C'].write(0xe8, [2, 0x01, 0x00])  # select channels here
-        elif self.dut.name == 'nexys4':
-            # enable LVDS RX/TX
-            self.dut['I2C'].write(0xe8, [6, 0xf0, 0xff])
-            self.dut['I2C'].write(0xe8, [2, 0x0f, 0x00])  # select channels here
-
-            self.dut['ENABLE_CHANNEL']['DATA_CH1'] = 1
-            self.dut['ENABLE_CHANNEL']['DATA_CH2'] = 1
-            self.dut['ENABLE_CHANNEL']['DATA_CH3'] = 1
-            self.dut['ENABLE_CHANNEL']['DATA_CH4'] = 1
-            self.dut['ENABLE_CHANNEL']['TLU'] = 1
-            self.dut['ENABLE_CHANNEL']['TDC'] = 1
-            self.dut['ENABLE_CHANNEL'].write()
-        elif self.dut.name == 'mmc3_m26_eth':
-            pass
-            # TODO: enable Mimosa26 Rx when necessary
-        elif self.dut.name == 'mmc3_beast_eth':
-            self.dut['DLY_CONFIG']['CLK_DLY'] = 0
-            self.dut['DLY_CONFIG'].write()
-        elif self.dut.name == 'mmc3_8chip_eth':
-            self.dut['DLY_CONFIG']['CLK_DLY'] = 0
-            self.dut['DLY_CONFIG'].write()
+        elif self.dut.name in ['mmc3_8chip_eth', 'mmc3_8chip_multi_tx_eth', 'mmc3_16chip_multi_tx_eth']:  # Multi Module Card (MMC3)
+            for register in self.dut.get_modules('StdRegister'):
+                if 'DLY_CONFIG' in register.name:
+                    register['CLK_DLY'] = 0
+                    register.write()
+        elif self.dut.name == 'mmc3_beast_eth':  # MMC3 for BEAST/FANGS experiment at KEK
+            for register in self.dut.get_modules('StdRegister'):
+                if 'DLY_CONFIG' in register.name:
+                    register['CLK_DLY'] = 0
+                    register.write()
         else:
-            logging.warning('Unknown DUT name: %s', self.dut.name)
+            # This helps to enable regulators on Single Chip Adapter Card (SCAC) in a multi-board configuration
+            # Note: Keep the original basil names and add a string to it, e.g.:
+            #       SINGLE_CHIP_ADAPTER_CARD -> SINGLE_CHIP_ADAPTER_CARD_TELESCOPE_0
+            #       POWER_SCC -> POWER_SCC_TELESCOPE_0
+            #       ENABLE_CHANNEL -> ENABLE_CHANNEL_TELESCOPE_0
+            for adapter_card in self.dut.get_modules('FEI4AdapterCard'):
+                if 'SINGLE_CHIP_ADAPTER_CARD' in adapter_card.name:
+                    try:
+                        adapter_card.set_voltage('VDDA1', 1.5)
+                        adapter_card.set_voltage('VDDA2', 1.5)
+                        adapter_card.set_voltage('VDDD1', 1.2)
+                        adapter_card.set_voltage('VDDD2', 1.2)
+                    except struct.error:
+                        logging.warning('Cannot set voltages. Adapter card not calibrated? Voltages out of range?')
+            for register in self.dut.get_modules('StdRegister'):
+                if 'POWER_SCC' in register.name:
+                    register['EN_VD1'] = 1
+                    register['EN_VD2'] = 1  # also EN_VPLL on old SCAC
+                    register['EN_VA1'] = 1
+                    register['EN_VA2'] = 1
+                    register.write()
+            for register in self.dut.get_modules('StdRegister'):
+                if 'ENABLE_CHANNEL' in register.name:
+                    register['DATA_CH1'] = 0  # RD2Bar on SCAC, CH1 on quad module adapter card
+                    register['DATA_CH2'] = 0  # RD1Bar on SCAC, CH2 on quad module adapter card
+                    register['DATA_CH3'] = 0  # RABar on SCAC, CH3 on quad module adapter card
+                    register['DATA_CH4'] = 1
+                    register['TLU'] = 1
+                    register['TDC'] = 1
+                    register.write()
+#        else:
+#            logging.warning('Unknown DUT name: %s', self.dut.name)
 
     def init_modules(self):
         ''' Initialize all modules consecutively'''
@@ -561,6 +572,9 @@ class Fei4RunBase(RunBase):
                 # working dir
                 elif os.path.exists(os.path.join(self._conf['working_dir'], self._conf['dut'])):
                     dut = os.path.join(self._conf['working_dir'], self._conf['dut'])
+                # check path up
+                elif os.path.exists(os.path.join(os.path.split(self._conf['working_dir'])[0], self._conf['dut'])):
+                    dut = os.path.join(os.path.split(self._conf['working_dir'])[0], self._conf['dut'])
                 # path of this file
                 elif os.path.exists(os.path.join(module_path, self._conf['dut'])):
                     dut = os.path.join(module_path, self._conf['dut'])
@@ -594,23 +608,24 @@ class Fei4RunBase(RunBase):
                     # convert to dict
                     dut_configuration = RunManager.open_conf(dut_configuration)
                     # change bit file path
-                    if 'USB' in dut_configuration and 'bit_file' in dut_configuration['USB'] and dut_configuration['USB']['bit_file']:
-                        bit_file = os.path.normpath(dut_configuration['USB']['bit_file'].replace('\\', '/'))
-                        # abs path
-                        if os.path.isabs(bit_file):
-                            pass
-                        # working dir
-                        elif os.path.exists(os.path.join(self._conf['working_dir'], bit_file)):
-                            bit_file = os.path.join(self._conf['working_dir'], bit_file)
-                        # path of dut file
-                        elif os.path.exists(os.path.join(os.path.dirname(dut.conf_path), bit_file)):
-                            bit_file = os.path.join(os.path.dirname(dut.conf_path), bit_file)
-                        # path of this file
-                        elif os.path.exists(os.path.join(module_path, bit_file)):
-                            bit_file = os.path.join(module_path, bit_file)
-                        else:
-                            raise ValueError("Parameter 'bit_file' is not a valid path: %s" % bit_file)
-                        dut_configuration['USB']['bit_file'] = bit_file
+                    for drv in dut_configuration.iterkeys():
+                        if 'bit_file' in dut_configuration[drv] and dut_configuration[drv]['bit_file']:
+                            bit_file = os.path.normpath(dut_configuration[drv]['bit_file'].replace('\\', '/'))
+                            # abs path
+                            if os.path.isabs(bit_file):
+                                pass
+                            # working dir
+                            elif os.path.exists(os.path.join(self._conf['working_dir'], bit_file)):
+                                bit_file = os.path.join(self._conf['working_dir'], bit_file)
+                            # path of dut file
+                            elif os.path.exists(os.path.join(os.path.dirname(dut.conf_path), bit_file)):
+                                bit_file = os.path.join(os.path.dirname(dut.conf_path), bit_file)
+                            # path of this file
+                            elif os.path.exists(os.path.join(module_path, bit_file)):
+                                bit_file = os.path.join(module_path, bit_file)
+                            else:
+                                raise ValueError("Parameter 'bit_file' is not a valid path: %s" % bit_file)
+                            dut_configuration[drv]['bit_file'] = bit_file
                 else:
                     dut_configuration = self._conf['dut_configuration']
             else:
@@ -1220,7 +1235,6 @@ class Fei4RunBase(RunBase):
         fill_buffer = kwargs.pop('fill_buffer', False)
         no_data_timeout = kwargs.pop('no_data_timeout', None)
         enabled_fe_channels = kwargs.pop('enabled_fe_channels', self._enabled_fe_channels)
-        enabled_m26_channels = kwargs.pop('enabled_m26_channels', [])  # use none by default, even if available in firmware
         if args or kwargs:
             self.set_scan_parameters(*args, **kwargs)
         if self._scan_threads and self.current_module_handle not in [t.name for t in self._scan_threads]:
@@ -1236,7 +1250,7 @@ class Fei4RunBase(RunBase):
             with self._readout_lock:
                 if len(set(self._curr_readout_threads) & set([t.name for t in self._scan_threads if t.is_alive()])) == len(set([t.name for t in self._scan_threads if t.is_alive()])) or not self._scan_threads:
                     if not self.fifo_readout.is_running:
-                        self.fifo_readout.start(fifos=self._selected_fifos, callback=callback, errback=errback, reset_rx=reset_rx, reset_fifo=reset_fifo, fill_buffer=fill_buffer, no_data_timeout=no_data_timeout, filter_func=self._filter, converter_func=self._converter, fifo_select=self._readout_fifos, enabled_fe_channels=enabled_fe_channels, enabled_m26_channels=enabled_m26_channels)
+                        self.fifo_readout.start(fifos=self._selected_fifos, callback=callback, errback=errback, reset_rx=reset_rx, reset_fifo=reset_fifo, fill_buffer=fill_buffer, no_data_timeout=no_data_timeout, filter_func=self._filter, converter_func=self._converter, fifo_select=self._readout_fifos, enabled_fe_channels=enabled_fe_channels)
                         self._starting_readout_event.set()
 
     def stop_readout(self, timeout=10.0):
