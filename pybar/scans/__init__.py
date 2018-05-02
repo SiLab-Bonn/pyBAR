@@ -23,6 +23,7 @@ from pybar.scans.tune_fdac import FdacTuning
 from pybar.scans.tune_feedback import FeedbackTuning
 from pybar.scans.tune_fei4 import Fei4Tuning
 from pybar.scans.tune_gdac import GdacTuning
+from pybar.scans.tune_gdac_standard import GdacTuningStandard
 from pybar.scans.tune_hot_pixels import HotPixelTuning
 from pybar.scans.tune_merged_pixels import MergedPixelsTuning
 from pybar.scans.tune_noise_occupancy import NoiseOccupancyTuning
@@ -31,4 +32,4 @@ from pybar.scans.tune_tdac import TdacTuning
 from pybar.scans.tune_threshold_baseline import ThresholdBaselineTuning
 from pybar.scans.tune_tlu import TluTuning
 
-__all__ = ["HitOrCalibration", "create_hitor_calibration", "PlsrDacTransientCalibration", "PlsrDacCalibration", "plot_pulser_dac", "PulserDacCorrectionCalibration", "ThresholdCalibration", "create_threshold_calibration", "TotCalibration", "AnalogScan", "CrosstalkScan", "DigitalScan", "ExtTriggerGdacScan", "StopModeExtTriggerScan", "ExtTriggerScan", "Fei4SelfTriggerScan", "HitDelayScan", "IleakScan", "InitScan", "IVScan", "FastThresholdScan", "ThresholdScan", "RegisterTest", "TdcTest", "FdacTuning", "FeedbackTuning", "Fei4Tuning", "GdacTuning", "HotPixelTuning", "MergedPixelsTuning", "NoiseOccupancyTuning", "StuckPixelScan", "TdacTuning", "ThresholdBaselineTuning", "TluTuning"]
+__all__ = ["HitOrCalibration", "create_hitor_calibration", "PlsrDacTransientCalibration", "PlsrDacCalibration", "plot_pulser_dac", "PulserDacCorrectionCalibration", "ThresholdCalibration", "create_threshold_calibration", "TotCalibration", "AnalogScan", "CrosstalkScan", "DigitalScan", "ExtTriggerGdacScan", "StopModeExtTriggerScan", "ExtTriggerScan", "Fei4SelfTriggerScan", "HitDelayScan", "IleakScan", "InitScan", "IVScan", "FastThresholdScan", "ThresholdScan", "RegisterTest", "TdcTest", "FdacTuning", "FeedbackTuning", "Fei4Tuning", "GdacTuning", "GdacTuningStandard", "HotPixelTuning", "MergedPixelsTuning", "NoiseOccupancyTuning", "StuckPixelScan", "TdacTuning", "ThresholdBaselineTuning", "TluTuning"]

@@ -1,7 +1,9 @@
 import logging
 
 from pybar.run_manager import RunManager
-from pybar.scans.tune_gdac import GdacTuning
+from pybar.scans.tune_gdac import GdacTuning  # fast GDAC tuning
+# uncomment the following line to use the standard GDAC tuning:
+# from pybar.scans.tune_gdac_standard import GdacTuningStandard as GdacTuning  # standard GDAC tuning
 from pybar.scans.tune_feedback import FeedbackTuning
 from pybar.scans.tune_tdac import TdacTuning
 from pybar.scans.tune_fdac import FdacTuning
@@ -40,6 +42,8 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
         "fail_on_warning": True,  # do not continue tuning if a global tuning fails
         # GDAC
         "gdac_tune_bits": range(7, -1, -1),  # GDAC bits to change during tuning
+        "start_gdac": 150,  # start value of standard GDAC tuning, not used for fast GDAC tuning
+        "step_size": -1,  # step size of the GDAC during scan, not used for fast GDAC tuning
         "gdac_lower_limit": 30,  # set GDAC lower limit to prevent FEI4 from becoming noisy, set to 0 or None to disable
         "n_injections_gdac": 50,  # number of injections per GDAC bit setting
         "max_delta_threshold": 20,  # minimum difference to the target_threshold to abort the tuning, in percent of n_injections_gdac
