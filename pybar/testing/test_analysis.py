@@ -2,7 +2,6 @@
 '''
 import unittest
 import os
-import zlib
 
 import progressbar
 import tables as tb

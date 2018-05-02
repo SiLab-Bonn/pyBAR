@@ -9,7 +9,6 @@ import time
 import glob
 import collections
 from operator import itemgetter
-import zlib
 
 import progressbar
 import numpy as np
