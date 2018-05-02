@@ -5,11 +5,10 @@ from __future__ import division
 import logging
 import os
 import time
-import zlib
+import re
 
 import numpy as np
 import tables as tb
-import re
 
 import progressbar
 
@@ -540,6 +539,7 @@ def analyze_hits_per_scan_parameter(analyze_data, scan_parameters=None, chunk_si
 
     if close_file:
         in_hit_file_h5.close()
+
 
 if __name__ == "__main__":
     print 'run analysis as main'

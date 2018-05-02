@@ -2,7 +2,6 @@
 '''
 import unittest
 import os
-import zlib
 
 import tables as tb
 import numpy as np

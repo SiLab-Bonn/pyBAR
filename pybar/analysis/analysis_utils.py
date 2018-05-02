@@ -9,7 +9,6 @@ import time
 import glob
 import collections
 from operator import itemgetter
-import zlib
 
 import numpy as np
 import tables as tb
