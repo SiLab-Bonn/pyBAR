@@ -13,7 +13,6 @@ from operator import itemgetter
 import progressbar
 import numpy as np
 import tables as tb
-from tables import dtype_from_descr
 import numexpr as ne
 from scipy.interpolate import interp1d
 from scipy.interpolate import splrep, splev
