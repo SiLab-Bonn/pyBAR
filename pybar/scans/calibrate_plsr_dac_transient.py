@@ -10,7 +10,6 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.patches as mpatches
-import matplotlib.pyplot as plt
 import numpy as np
 import tables as tb
 
@@ -56,7 +55,6 @@ class PlsrDacTransientCalibration(AnalogScan):
         "enable_mask_steps": [0],  # Scan only one mask step to save time
         "n_injections": 512,  # number of injections, has to be > 260 to allow for averaging 256 injection signals
         "channel": 1,  # oscilloscope channel
-        "show_debug_plots": False,
         "trigger_level_offset": 25,  # offset of the PlsrDAC baseline in mV, usually the offset voltage at PlsrDAC=0
         "data_points": 10000,
         "max_data_index": None,  # maximum data index to be read out; e.g. 2000 reads date from 1 to 2000, if None, use max record length
@@ -176,16 +174,6 @@ class PlsrDacTransientCalibration(AnalogScan):
             self.dut['Oscilloscope'].set_vertical_scale(min(self.vertical_scale, (np.mean(voltages) + 0.2 * np.mean(voltages)) / 10), channel=self.channel)
 #             self.dut['Oscilloscope'].set_vertical_scale(0.05, channel=self.channel)
 
-            if self.show_debug_plots:
-                plt.clf()
-                plt.grid()
-                plt.plot(times * 1e9, voltages * 1e3, label='PlsrDAC Pulse')
-                plt.axhline(y=trigger_level * 1e3, linewidth=2, linestyle="--", color='r', label='Trigger (%0.1f mV)' % (trigger_level * 1e3))
-                plt.xlabel('Time [ns]')
-                plt.ylabel('Voltage [mV]')
-                plt.legend(loc=0)
-                plt.show()
-
             # Setup data aquisition and start scan loop
             self.dut['Oscilloscope'].set_trigger_mode("NORMal")
             self.dut['Oscilloscope'].set_trigger_type("PULSe")
@@ -204,18 +192,6 @@ class PlsrDacTransientCalibration(AnalogScan):
             trigger_level = float(self.dut['Oscilloscope'].get_trigger_level())
             trigger_levels.append(trigger_level)
             progress_bar.update(index)
-
-            if self.show_debug_plots:
-                plt.clf()
-                plt.ylim(0, 1500)
-                plt.grid()
-                plt.plot(times * 1e9, voltages * 1e3, label='PlsrDAC Pulse')
-                plt.axhline(y=trigger_level * 1e3, linewidth=2, linestyle="--", color='r', label='Trigger (%0.1f mV)' % (trigger_level * 1e3))
-                plt.xlabel('Time [ns]')
-                plt.ylabel('Voltage [mV]')
-                plt.legend(loc=0)
-                plt.show()
-
             self.dut['Oscilloscope'].set_vertical_scale(self.vertical_scale, channel=self.channel)
 
         time_out[:] = times
