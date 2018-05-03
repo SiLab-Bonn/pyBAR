@@ -13,7 +13,6 @@ import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 import tables as tb
-from pylab import polyfit, poly1d
 
 import progressbar
 
@@ -175,7 +174,7 @@ class PlsrDacTransientCalibration(AnalogScan):
                 trigger_level = trigger_levels[-1]
             self.dut['Oscilloscope'].set_trigger_level(trigger_level)
             self.dut['Oscilloscope'].set_vertical_scale(min(self.vertical_scale, (np.mean(voltages) + 0.2 * np.mean(voltages)) / 10), channel=self.channel)
-            #self.dut['Oscilloscope'].set_vertical_scale(0.05, channel=self.channel)
+#             self.dut['Oscilloscope'].set_vertical_scale(0.05, channel=self.channel)
 
             if self.show_debug_plots:
                 plt.clf()
@@ -229,7 +228,7 @@ class PlsrDacTransientCalibration(AnalogScan):
             data = in_file_h5.root.PlsrDACwaveforms[:]
             try:
                 times = in_file_h5.root.Times[:]
-            except NoSuchNodeError:  # for backward compatibility
+            except tb.NoSuchNodeError:  # for backward compatibility
                 times = np.array(in_file_h5.root.PlsrDACwaveforms._v_attrs.times)
             scan_parameter_values = in_file_h5.root.PlsrDACwaveforms._v_attrs.scan_parameter_values
             enable_double_columns = in_file_h5.root.PlsrDACwaveforms._v_attrs.enable_double_columns
@@ -251,7 +250,7 @@ class PlsrDacTransientCalibration(AnalogScan):
                         plsr_dac = scan_parameter_values[index]
 
                         # index of first value below trigger level
-                        step_index = np.argmin(voltages>trigger_level)
+                        step_index = np.argmin(voltages > trigger_level)
                         step_time = times[step_index]
                         start_index_baseline = np.argmin(np.abs(times * 1e9 - fit_ranges[0][0] - step_time * 1e9))
                         stop_index_baseline = np.argmin(np.abs(times * 1e9 - fit_ranges[0][1] - step_time * 1e9))
@@ -307,6 +306,7 @@ class PlsrDacTransientCalibration(AnalogScan):
                     self.register.calibration_parameters['Vcal_Coeff_0'] = np.nan_to_num(slope_fit[0] * 1000.0)  # store in mV
                     self.register.calibration_parameters['Vcal_Coeff_1'] = np.nan_to_num(slope_fit[1] * 1000.0)  # store in mV/DAC
             progress_bar.finish()
+
 
 if __name__ == "__main__":
     RunManager('configuration.yaml').run_run(PlsrDacTransientCalibration)

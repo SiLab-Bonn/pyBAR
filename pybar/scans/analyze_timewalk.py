@@ -13,6 +13,7 @@ import progressbar
 
 from pybar.analysis import analysis_utils
 
+
 def plsr_dac_to_charge(plsr_dac):
     return 72.16 * plsr_dac + 2777.63
 

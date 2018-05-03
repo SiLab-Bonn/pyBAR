@@ -13,7 +13,6 @@ from pyLandau import landau
 
 from pybar.run_manager import RunManager  # importing run manager
 from pybar.scans.scan_iv import IVScan
-from pybar.scans.scan_init import InitScan
 from pybar.scans.test_register import RegisterTest
 from pybar.scans.scan_digital import DigitalScan
 from pybar.scans.scan_analog import AnalogScan
@@ -24,7 +23,7 @@ from pybar.scans.tune_noise_occupancy import NoiseOccupancyTuning
 from pybar.scans.calibrate_plsr_dac import PlsrDacScan
 from pybar.scans.calibrate_hit_or import HitOrCalibration
 from pybar.scans.scan_ext_trigger import ExtTriggerScan
-from pybar.fei4.register_utils import make_box_pixel_mask_from_col_row, parse_global_config
+from pybar.fei4.register_utils import make_box_pixel_mask_from_col_row
 import pybar.scans.analyze_source_scan_tdc_data as tdc_analysis
 
 
@@ -106,7 +105,7 @@ def plot_landau(source_scan_filename, tdc_hists, target_threshold, fit_range=(13
         plt.clf()
         plt.grid()
         x_fit_range = np.logical_and(charge > fit_range[0], charge < fit_range[1])
-        coeff, err = fit_landau_bootstrap(charge[x_fit_range], count[x_fit_range], p0 = (7000, np.std(charge[x_fit_range]), 150, np.amax(count[x_fit_range])), yerr=count_error[x_fit_range], n_iterations=100)
+        coeff, err = fit_landau_bootstrap(charge[x_fit_range], count[x_fit_range], p0=(7000, np.std(charge[x_fit_range]), 150, np.amax(count[x_fit_range])), yerr=count_error[x_fit_range], n_iterations=100)
         plt.bar(charge, count, width=charge[1] - charge[0], color='blue', label='data')
         plt.plot(charge[x_fit_range], landau.langau(charge[x_fit_range], *coeff), 'r-')
         plt.plot([target_threshold_charge, target_threshold_charge], [plt.ylim()[0], plt.ylim()[1]], 'b--', linewidth=2, label='Threshold $%d$ e' % target_threshold_charge)
@@ -128,8 +127,8 @@ if __name__ == "__main__":
 
     #   TDC measurements
     plsr_dacs = [target_threshold, 40, 50, 60, 80, 100, 120, 150, 200, 250, 300, 350, 400, 500, 600, 700, 800]  # PlsrDAC range for TDC calibration, should start at threshold
-    col_span = [55, 75]#[50, 78]  # pixel column range to use in TDC scans
-    row_span = [125, 225]#[20, 315]  # pixel row range to use in TDC scans
+    col_span = [55, 75]  # [50, 78]  # pixel column range to use in TDC scans
+    row_span = [125, 225]  # [20, 315]  # pixel row range to use in TDC scans
     tdc_pixel = make_box_pixel_mask_from_col_row(column=[col_span[0], col_span[1]], row=[row_span[0], row_span[1]])  # edge pixel are not used in analysis
 
     runmngr = RunManager('configuration.yaml')
@@ -156,12 +155,12 @@ if __name__ == "__main__":
 
     # TDC calibration
     runmngr.run_run(run=HitOrCalibration, run_conf={
-                                                    'reset_rx_on_error': True,
-                                                    "pixels": (np.dstack(np.where(tdc_pixel == 1))+ 1).tolist()[0],
-                                                    "scan_parameters": [('column', None),
-                                                                        ('row', None),
-                                                                        ('PlsrDAC', plsr_dacs)]
-                                                    })
+        'reset_rx_on_error': True,
+        "pixels": (np.dstack(np.where(tdc_pixel == 1)) + 1).tolist()[0],
+        "scan_parameters": [('column', None),
+                            ('row', None),
+                            ('PlsrDAC', plsr_dacs)]
+    })
     calibration_filename = runmngr.current_run.output_filename + '_calibration.h5'
 
     # Scintillator trigger source scan

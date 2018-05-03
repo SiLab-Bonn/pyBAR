@@ -17,7 +17,7 @@ try:
     from matplotlib import colors, cm
     import matplotlib.pyplot as plt
     from mpl_toolkits.axes_grid1 import make_axes_locatable
-except:
+except Exception:
     print 'ERROR: Cannot load additional libraries needed for the pyBAR ViTables plugin!'
     raise
 import numpy as np
