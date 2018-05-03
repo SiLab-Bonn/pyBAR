@@ -4,7 +4,8 @@ can be set for device protection.
 import logging
 import time
 
-import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 import numpy as np
 import tables as tb
 
@@ -18,7 +19,7 @@ class IVScan(Fei4RunBase):
     _default_run_conf = {
         "broadcast_commands": False,
         "threaded_scan": False,
-        "voltages": np.arange(-2, -101, -2),  # voltage steps of the IV curve
+        "voltages": np.arange(-2, -101, -2).tolist(),  # voltage steps of the IV curve
         "max_leakage": 10e-6,  # scan aborts if current is higher
         "max_voltage": -20,  # for safety, scan aborts if voltage is higher
         "minimum_delay": 0.5,  # minimum delay between current measurements in seconds
@@ -35,57 +36,57 @@ class IVScan(Fei4RunBase):
 
         progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=len(self.voltages), term_width=80)
         progress_bar.start()
-
-        for index, voltage in enumerate(self.voltages):
-            if self.stop_run.is_set():
-                break
-            if voltage > 0:
-                RuntimeError('Voltage has to be negative! Abort to protect device.')
-            if self.abort_run.is_set():
-                break
-            if abs(voltage) <= abs(self.max_voltage):
-                self.dut['Sourcemeter'].set_voltage(voltage)
-                self.actual_voltage = voltage
-                time.sleep(self.minimum_delay)
-            else:
-                logging.info('Maximum voltage with %f V reached, abort', voltage)
-                break
-            current_string = self.dut['Sourcemeter'].get_current()
-            current = float(current_string.split(',')[1])
-            if abs(current) > abs(self.max_leakage):
-                logging.info('Maximum current with %e I reached, abort', current)
-                break
-            logging.info('V = %f, I = %e', voltage, current)
-            max_repeat = 50
-            for i in range(max_repeat):  # repeat current measurement until stable (current does not increase)
-                time.sleep(self.minimum_delay)
-                actual_current = float(self.dut['Sourcemeter'].get_current().split(',')[1])
-                if abs(actual_current) > abs(self.max_leakage):
-                    logging.info('Maximum current with %e I reached, abort', actual_current)
+        actual_voltage = None
+        try:
+            raise Exception("bla")
+            for index, voltage in enumerate(self.voltages):
+                if self.stop_run.is_set():
                     break
-                if (abs(actual_current) < abs(current)):  # stable criterion
+                if voltage > 0:
+                    RuntimeError('Voltage has to be negative! Abort to protect device.')
+                if self.abort_run.is_set():
                     break
-                current = actual_current
-            if i == max_repeat - 1:  # true if the leakage always increased
-                raise RuntimeError('Leakage current is not stable')
-            else:
-                a = np.array([(voltage, current)], dtype=description)
-                data.append(a)
-            progress_bar.update(index)
-        progress_bar.finish()
-        data.flush()
-
-    def post_run(self):
-        super(IVScan, self).post_run()
-        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=len(range(self.actual_voltage, self.bias_voltage + 1, 2)), term_width=80)
-        progress_bar.start()
-        if self.bias_voltage and self.bias_voltage <= 0:
-            logging.info('Set bias voltage from %f V to %f V', self.actual_voltage, self.bias_voltage)
-            for index, voltage in enumerate(range(self.actual_voltage, self.bias_voltage + 1, 2)):  # ramp until bias
-                time.sleep(self.minimum_delay)
-                self.dut['Sourcemeter'].set_voltage(voltage)
+                if abs(voltage) <= abs(self.max_voltage):
+                    self.dut['Sourcemeter'].set_voltage(voltage)
+                    actual_voltage = voltage
+                    time.sleep(self.minimum_delay)
+                else:
+                    logging.info('Maximum voltage with %f V reached, abort', voltage)
+                    break
+                current = float(self.dut['Sourcemeter'].get_current().split(',')[1])
+                if abs(current) > abs(self.max_leakage):
+                    logging.info('Maximum current with %e I reached, abort', current)
+                    break
+                logging.info('V = %f, I = %e', voltage, current)
+                max_repeat = 50
+                for i in range(max_repeat):  # repeat current measurement until stable (current does not increase)
+                    time.sleep(self.minimum_delay)
+                    actual_current = float(self.dut['Sourcemeter'].get_current().split(',')[1])
+                    if abs(actual_current) > abs(self.max_leakage):
+                        logging.info('Maximum current with %e I reached, abort', actual_current)
+                        break
+                    if (abs(actual_current) < abs(current)):  # stable criterion
+                        break
+                    current = actual_current
+                if i == max_repeat - 1:  # true if the leakage always increased
+                    raise RuntimeError('Leakage current is not stable')
+                else:
+                    a = np.array([(voltage, current)], dtype=description)
+                    data.append(a)
                 progress_bar.update(index)
-        progress_bar.finish()
+            progress_bar.finish()
+            data.flush()
+        finally:
+            # ramp down
+            if self.bias_voltage and self.bias_voltage <= 0 and actual_voltage is not None:
+                logging.info('Set bias voltage from %f V to %f V', actual_voltage, self.bias_voltage)
+                progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=len(range(actual_voltage, self.bias_voltage + 1, 2)), term_width=80)
+                progress_bar.start()
+                for index, voltage in enumerate(range(actual_voltage, self.bias_voltage + 1, 2)):  # ramp until bias
+                    time.sleep(self.minimum_delay)
+                    self.dut['Sourcemeter'].set_voltage(voltage)
+                    progress_bar.update(index)
+                progress_bar.finish()
 
     def analyze(self):
         logging.info('Analyze and plot results')
@@ -93,14 +94,16 @@ class IVScan(Fei4RunBase):
             data = in_file_h5.root.IV_data[:]
             # Plot and fit result
             x, y = data['voltage'], data['current'] * 1e6
-            plt.clf()
-            plt.plot(x, y, '.-', label='data')
-            plt.title('IV curve')
-            plt.ylabel('Current [uA]')
-            plt.xlabel('Voltage [V]')
-            plt.grid(True)
-            plt.legend(loc=0)
-            plt.savefig(self.output_filename + '.pdf')
+            fig = Figure()
+            FigureCanvas(fig)
+            ax = fig.add_subplot(111)
+            ax.plot(x, y, '.-', label='data')
+            ax.set_title('IV curve')
+            ax.set_ylabel('Current [uA]')
+            ax.set_xlabel('Voltage [V]')
+            ax.grid(True)
+            ax.legend(loc=0)
+            fig.savefig(self.output_filename + '.pdf')
 
 
 if __name__ == "__main__":
