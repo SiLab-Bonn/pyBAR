@@ -1,7 +1,8 @@
 import logging
 import time
 
-import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.backends.backend_pdf import PdfPages
 import numpy as np
 import tables as tb
@@ -70,14 +71,16 @@ class TluTuning(Fei4RunBase):
                         data_array['error_rate'][index] = float(actual_errors) / selection.shape[0]
 
                         # Plot trigger number
-                        plt.clf()
-                        plt.plot(range(trigger_words.shape[0]), trigger_words, '-', label='data')
-                        plt.title('Trigger words for delay setting index %d' % index)
-                        plt.xlabel('Trigger word index')
-                        plt.ylabel('Trigger word')
-                        plt.grid(True)
-                        plt.legend(loc=0)
-                        output_pdf.savefig()
+                        fig = Figure()
+                        FigureCanvas(fig)
+                        ax = fig.add_subplot(111)
+                        ax.plot(range(trigger_words.shape[0]), trigger_words, '-', label='data')
+                        ax.set_title('Trigger words for delay setting index %d' % index)
+                        ax.set_xlabel('Trigger word index')
+                        ax.set_ylabel('Trigger word')
+                        ax.grid(True)
+                        ax.legend(loc=0)
+                        output_pdf.savefig(fig)
 
                     data_table.append(data_array)  # Store valid data
                     if not np.any(data_array['error_rate'] != 0):
@@ -91,15 +94,17 @@ class TluTuning(Fei4RunBase):
                     logging.info('The best delay setting for this setup is %d', best_delay_setting)
 
                     # Plot error rate plot
-                    plt.clf()
-                    plt.plot(data_array['TRIGGER_DATA_DELAY'], data_array['error_rate'], '.-', label='data')
-                    plt.plot([best_delay_setting, best_delay_setting], [0, 1], '--', label='best delay setting')
-                    plt.title('Trigger word error rate for different data delays')
-                    plt.xlabel('TRIGGER_DATA_DELAY')
-                    plt.ylabel('Error rate')
-                    plt.grid(True)
-                    plt.legend(loc=0)
-                    output_pdf.savefig()
+                    fig = Figure()
+                    FigureCanvas(fig)
+                    ax = fig.add_subplot(111)
+                    ax.plot(data_array['TRIGGER_DATA_DELAY'], data_array['error_rate'], '.-', label='data')
+                    ax.plot([best_delay_setting, best_delay_setting], [0, 1], '--', label='best delay setting')
+                    ax.set_title('Trigger word error rate for different data delays')
+                    ax.set_xlabel('TRIGGER_DATA_DELAY')
+                    ax.set_ylabel('Error rate')
+                    ax.grid(True)
+                    ax.legend(loc=0)
+                    output_pdf.savefig(fig)
 
 
 if __name__ == "__main__":
