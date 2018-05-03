@@ -445,6 +445,9 @@ class RunManager(object):
             self._conf_path = None
         if isinstance(conf, basestring) and os.path.isfile(conf):
             logging.info('Loading configuration from file %s', os.path.abspath(conf))
+        elif os.path.exists(os.path.join(os.path.split(os.getcwd())[0], conf)):
+            logging.info('Loading configuration from file %s', os.path.abspath(conf))
+            conf = os.path.join(os.path.split(os.getcwd())[0], conf)
         else:
             logging.info('Loading configuration')
         self._conf = self.open_conf(conf)

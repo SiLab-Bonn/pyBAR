@@ -573,8 +573,8 @@ class Fei4RunBase(RunBase):
                 elif os.path.exists(os.path.join(self._conf['working_dir'], self._conf['dut'])):
                     dut = os.path.join(self._conf['working_dir'], self._conf['dut'])
                 # check path up
-                elif os.path.exists(os.path.join(os.path.split(self._conf['working_dir'])[0], self._conf['dut'])):
-                    dut = os.path.join(os.path.split(self._conf['working_dir'])[0], self._conf['dut'])
+#                 elif os.path.exists(os.path.join(os.path.split(self._conf['working_dir'])[0], self._conf['dut'])):
+#                     dut = os.path.join(os.path.split(self._conf['working_dir'])[0], self._conf['dut'])
                 # path of this file
                 elif os.path.exists(os.path.join(module_path, self._conf['dut'])):
                     dut = os.path.join(module_path, self._conf['dut'])
