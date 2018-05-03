@@ -11,10 +11,11 @@ from matplotlib.artist import setp
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.dates as mdates
+from matplotlib.ticker import FuncFormatter, FixedLocator
 from matplotlib import colors, cm
 from matplotlib.backends.backend_pdf import PdfPages
 import numpy as np
-from scipy.stats import chisquare, norm  # , mstats
+from scipy.stats import norm  # chisquare, mstats
 # from scipy.optimize import curve_fit
 
 
@@ -419,7 +420,7 @@ def plot_scurves(occupancy_hist, scan_parameters, title='S-curves', ylabel='Occu
     occ_mask = np.all((occupancy_hist == 0), axis=2) | np.all(np.isnan(occupancy_hist), axis=2)
     occupancy_hist = np.ma.masked_invalid(occupancy_hist)
     if max_occ is None:
-        if np.allclose(occupancy_hist, 0.0) or np.all(occ_mask == True):
+        if np.allclose(occupancy_hist, 0.0) or np.all(occ_mask == 1):
             max_occ = 0.0
         else:
             max_occ = math.ceil(2 * np.ma.median(np.amax(occupancy_hist[~occ_mask], axis=1)))
@@ -791,7 +792,7 @@ def plot_tot_tdc_calibration(scan_parameters, filename, tot_mean, tot_error=None
     ax1.set_title(title)
     ax1.set_xlabel('Charge [PlsrDAC]')
     if tdc_mean is not None:
-        ax1.errorbar(scan_parameters, tdc_mean * 1000.0/640.0, yerr=(tdc_error * 1000.0/640.0) if tdc_error is not None else None, fmt='o', color='g', label='TDC')
+        ax1.errorbar(scan_parameters, tdc_mean * 1000.0 / 640.0, yerr=(tdc_error * 1000.0 / 640.0) if tdc_error is not None else None, fmt='o', color='g', label='TDC')
         ax1.set_ylabel('ToT / TDC [ns]')
     ax1.legend(loc=0)
     ax1.set_ylim(ymin=0.0)
@@ -799,7 +800,6 @@ def plot_tot_tdc_calibration(scan_parameters, filename, tot_mean, tot_error=None
     ax2 = ax1.twinx()
     ax2.set_ylabel('ToT code')
     ax2.set_ylim(ax1.get_ylim())
-    from matplotlib.ticker import  IndexLocator, FuncFormatter, NullFormatter, MultipleLocator, FixedLocator
 
     def format_fn(tick_val, tick_pos):
         if tick_val <= 25 * 16:
