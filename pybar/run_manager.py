@@ -20,8 +20,10 @@ from time import time
 from threading import current_thread
 from functools import wraps
 
+from pybar.utils.utils import find_file_dir_up
 
-punctuation = """!,.:;?"""
+
+punctuation = '!,.:;?'
 
 
 _RunStatus = namedtuple('RunStatus', ['running', 'finished', 'stopped', 'aborted', 'crashed'])
@@ -381,9 +383,9 @@ class RunManager(object):
             import win32api
             win32api.SetConsoleCtrlHandler(handler, 1)
 
-        self._conf = None
-        self.current_run = None
-        self._conf_path = None
+        self._conf = None  # configuration dictionary
+        self.current_run = None  # current run number
+        self._conf_path = None  # absolute path of the configuation file
         self.init(conf)
 
     @property
@@ -394,19 +396,18 @@ class RunManager(object):
         return conf(**self._conf)  # prevent changing dict
 
     def init(self, conf):
-        if isinstance(conf, basestring):
+        # current working directory
+        if isinstance(conf, basestring) and os.path.isfile(os.path.abspath(conf)):
+            conf = os.path.abspath(conf)
+            self._conf_path = conf
+        # search directory upwards form current working directory
+        elif isinstance(conf, basestring) and find_file_dir_up(conf):
+            conf = find_file_dir_up(conf)
             self._conf_path = conf
         elif isinstance(conf, file):
-            self._conf_path = conf.name
+            self._conf_path = os.path.abspath(conf.name)
         else:
             self._conf_path = None
-        if isinstance(conf, basestring) and os.path.isfile(conf):
-            logging.info('Loading configuration from file %s', os.path.abspath(conf))
-        elif os.path.exists(os.path.join(os.path.split(os.getcwd())[0], conf)):
-            logging.info('Loading configuration from file %s', os.path.abspath(conf))
-            conf = os.path.join(os.path.split(os.getcwd())[0], conf)
-        else:
-            logging.info('Loading configuration')
         self._conf = self.open_conf(conf)
         if 'working_dir' in self._conf and self._conf['working_dir']:
             # dirty fix for Windows pathes
@@ -417,11 +418,12 @@ class RunManager(object):
             else:
                 # working_dir is absolute path, keep that
                 pass
+        # use path of configuration file
         elif self._conf_path:
             self._conf['working_dir'] = os.path.dirname(self._conf_path)
         else:
             raise ValueError('Cannot deduce working directory from configuration')
-        logging.info('Using working directory %s', os.path.abspath(self._conf['working_dir']))
+        logging.info('Using working directory %s', self._conf['working_dir'])
 
     @staticmethod
     def open_conf(conf):
@@ -429,14 +431,17 @@ class RunManager(object):
         if not conf:
             pass
         elif isinstance(conf, basestring):  # parse the first YAML document in a stream
-            if os.path.isfile(conf):
-                with open(conf, 'r') as f:
+            if os.path.isfile(os.path.abspath(conf)):
+                logging.info('Loading configuration from file %s', os.path.abspath(conf))
+                with open(os.path.abspath(conf), 'r') as f:
                     conf_dict.update(safe_load(f))
             else:  # YAML string
                 try:
                     conf_dict.update(safe_load(conf))
                 except ValueError:  # invalid path/filename
                     raise IOError("File not found: %s" % os.path.abspath(conf))
+                else:
+                    logging.info('Loading configuration from file %s', os.path.abspath(conf.name))
         elif isinstance(conf, file):  # parse the first YAML document in a stream
             conf_dict.update(safe_load(conf))
         else:  # conf is already a dict

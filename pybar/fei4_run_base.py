@@ -22,6 +22,7 @@ import sys
 from basil.dut import Dut
 
 from pybar.run_manager import RunManager, RunBase, RunAborted, RunStopped
+from pybar.utils.utils import find_file_dir_up
 from pybar.fei4.register import FEI4Register
 from pybar.fei4.register_utils import FEI4RegisterUtils, is_fe_ready, CmdTimeoutError
 from pybar.daq.fifo_readout import FifoReadout, RxSyncError, EightbTenbError, FifoError, NoDataTimeout, StopTimeout
@@ -276,14 +277,11 @@ class Fei4RunBase(RunBase):
                 # abs path
                 if os.path.isabs(self._conf['dut']):
                     dut = self._conf['dut']
-                # working dir
-                elif os.path.exists(os.path.join(self._conf['working_dir'], self._conf['dut'])):
-                    dut = os.path.join(self._conf['working_dir'], self._conf['dut'])
-                # check path up
-#                 elif os.path.exists(os.path.join(os.path.split(self._conf['working_dir'])[0], self._conf['dut'])):
-#                     dut = os.path.join(os.path.split(self._conf['working_dir'])[0], self._conf['dut'])
+                # working dir, and directorys upwards
+                elif find_file_dir_up(filename=self._conf['dut'], path=self._conf['working_dir']):
+                    dut = find_file_dir_up(filename=self._conf['dut'], path=self._conf['working_dir'])
                 # path of this file
-                elif os.path.exists(os.path.join(module_path, self._conf['dut'])):
+                elif os.path.isfile(os.path.join(module_path, self._conf['dut'])):
                     dut = os.path.join(module_path, self._conf['dut'])
                 else:
                     raise ValueError('dut parameter not a valid path: %s' % self._conf['dut'])
@@ -300,14 +298,11 @@ class Fei4RunBase(RunBase):
                     # abs path
                     if os.path.isabs(self._conf['dut_configuration']):
                         dut_configuration = self._conf['dut_configuration']
-                    # working dir
-                    elif os.path.exists(os.path.join(self._conf['working_dir'], self._conf['dut_configuration'])):
-                        dut_configuration = os.path.join(self._conf['working_dir'], self._conf['dut_configuration'])
-                    # path of dut file
-                    elif os.path.exists(os.path.join(os.path.dirname(dut.conf_path), self._conf['dut_configuration'])):
-                        dut_configuration = os.path.join(os.path.dirname(dut.conf_path), self._conf['dut_configuration'])
+                    # working dir, and directorys upwards
+                    elif find_file_dir_up(filename=self._conf['dut_configuration'], path=self._conf['working_dir']):
+                        dut_configuration = find_file_dir_up(filename=self._conf['dut_configuration'], path=self._conf['working_dir'])
                     # path of this file
-                    elif os.path.exists(os.path.join(module_path, self._conf['dut_configuration'])):
+                    elif os.path.isfile(os.path.join(module_path, self._conf['dut_configuration'])):
                         dut_configuration = os.path.join(module_path, self._conf['dut_configuration'])
                     else:
                         raise ValueError('dut_configuration parameter not a valid path: %s' % self._conf['dut_configuration'])
