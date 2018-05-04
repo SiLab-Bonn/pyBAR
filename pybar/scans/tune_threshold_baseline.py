@@ -16,7 +16,7 @@ from pybar.analysis.plotting.plotting import plot_occupancy, plot_fancy_occupanc
 
 
 class ThresholdBaselineTuning(Fei4RunBase):
-    '''Threshold Baseline Tuning
+    '''Threshold Baseline Tuning aka Noise Tuning
 
     Tuning the FEI4 to the lowest possible threshold (GDAC and TDAC). Feedback current will not be tuned.
     NOTE: In case of RX errors decrease the trigger frequency (= increase trigger_rate_limit), or reduce the number of triggers
@@ -159,7 +159,8 @@ class ThresholdBaselineTuning(Fei4RunBase):
                 occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
 
                 # use FEI4 interpreter for analysis and histogramming
-#                 raw_data = np.ascontiguousarray(data_array_from_data_iterable(self.fifo_readout.data), dtype=np.uint32)
+#                 from pybar.daq.readout_utils import data_array_from_data_iterable
+#                 raw_data = np.ascontiguousarray(data_array_from_data_iterable(self.read_data()), dtype=np.uint32)
 #                 interpreter.interpret_raw_data(raw_data)
 #                 interpreter.store_event()  # force to create latest event
 #                 histogram.add_hits(interpreter.get_hits())
