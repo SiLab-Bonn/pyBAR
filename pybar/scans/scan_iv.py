@@ -38,7 +38,6 @@ class IVScan(Fei4RunBase):
         progress_bar.start()
         actual_voltage = None
         try:
-            raise Exception("bla")
             for index, voltage in enumerate(self.voltages):
                 if self.stop_run.is_set():
                     break
