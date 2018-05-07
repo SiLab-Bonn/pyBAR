@@ -423,25 +423,22 @@ always@(posedge CLK320)
      CLK40_OUT_SEL <=  CLK_SR[SEL_CLK40];
 
 OBUFDS #(
-  .IOSTANDARD("LVDS_25"),
-  .SLEW("SLOW")
+    .IOSTANDARD("LVDS_25"),
+    .SLEW("SLOW")
 ) OBUFDS_inst_cmd_clk_out (
-  .O(CMD_CLK_P),
-  .OB(CMD_CLK_N),
-  .I(CLK40_OUT_SEL)
-  //.I(CMD_CLK)
+    .O(CMD_CLK_P),
+    .OB(CMD_CLK_N),
+    .I(CLK40_OUT_SEL)
 );
-
 
 OBUFDS #(
-  .IOSTANDARD("LVDS_25"),
-  .SLEW("SLOW")
+    .IOSTANDARD("LVDS_25"),
+    .SLEW("SLOW")
 ) OBUFDS_inst_cmd_data (
-  .O(CMD_DATA_P),
-  .OB(CMD_DATA_N),
-  .I(CMD_DATA)
+    .O(CMD_DATA_P),
+    .OB(CMD_DATA_N),
+    .I(CMD_DATA)
 );
-
 
 wire TRIGGER_ACKNOWLEDGE_FLAG; // to TLU FSM
 reg CMD_READY_FF;

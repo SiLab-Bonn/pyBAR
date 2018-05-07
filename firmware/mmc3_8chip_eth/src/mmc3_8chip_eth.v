@@ -425,28 +425,25 @@ always@(posedge CLK320)
 
 genvar h;
 generate
-  for (h = 0; h < 8; h = h + 1) begin: cmd_gen
+for (h = 0; h < 8; h = h + 1) begin: cmd_gen
     OBUFDS #(
-      .IOSTANDARD("LVDS_25"),
-      .SLEW("SLOW")
+        .IOSTANDARD("LVDS_25"),
+        .SLEW("SLOW")
     ) OBUFDS_inst_cmd_clk_out_h (
-      .O(CMD_CLK_P[h]),
-      .OB(CMD_CLK_N[h]),
-      .I(CLK40_OUT_SEL)
-  //.I(CMD_CLK)
-  );
+        .O(CMD_CLK_P[h]),
+        .OB(CMD_CLK_N[h]),
+        .I(CLK40_OUT_SEL)
+    );
 
     OBUFDS #(
-    .IOSTANDARD("LVDS_25"),
-    .SLEW("SLOW")
-  ) OBUFDS_inst_cmd_data_h (
-    .O(CMD_DATA_P[h]),
-    .OB(CMD_DATA_N[h]),
-    .I(CMD_DATA[h])
-//.I(CMD_CLK)
-
+        .IOSTANDARD("LVDS_25"),
+        .SLEW("SLOW")
+    ) OBUFDS_inst_cmd_data_h (
+        .O(CMD_DATA_P[h]),
+        .OB(CMD_DATA_N[h]),
+        .I(CMD_DATA[h])
     );
-  end
+end
 endgenerate
 
 wire TRIGGER_ACKNOWLEDGE_FLAG; // to TLU FSM

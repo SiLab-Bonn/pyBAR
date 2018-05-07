@@ -403,8 +403,8 @@ always@(posedge CLK320)
 wire BROADCAST_CMD;
 genvar h;
 generate
-  for (h = 0; h < 8; h = h + 1) begin: cmd_gen
-  cmd_seq #(
+for (h = 0; h < 8; h = h + 1) begin: cmd_gen
+    cmd_seq #(
         .BASEADDR(CMD_BASEADDR+32'h8000*h),
         .HIGHADDR(CMD_HIGHADDR+32'h8000*h),
         .ABUSWIDTH(32),
@@ -428,26 +428,23 @@ generate
     );
 
     OBUFDS #(
-      .IOSTANDARD("LVDS_25"),
-      .SLEW("SLOW")
+        .IOSTANDARD("LVDS_25"),
+        .SLEW("SLOW")
     ) OBUFDS_inst_cmd_clk_out_h (
-      .O(CMD_CLK_P[h]),
-      .OB(CMD_CLK_N[h]),
-      .I(CLK40_OUT_SEL)
-  //.I(CMD_CLK)
-  );
+        .O(CMD_CLK_P[h]),
+        .OB(CMD_CLK_N[h]),
+        .I(CLK40_OUT_SEL)
+    );
 
     OBUFDS #(
-    .IOSTANDARD("LVDS_25"),
-    .SLEW("SLOW")
-  ) OBUFDS_inst_cmd_data_h (
-    .O(CMD_DATA_P[h]),
-    .OB(CMD_DATA_N[h]),
-    .I(CMD_DATA[h])
-//.I(CMD_CLK)
-
+        .IOSTANDARD("LVDS_25"),
+        .SLEW("SLOW")
+    ) OBUFDS_inst_cmd_data_h (
+        .O(CMD_DATA_P[h]),
+        .OB(CMD_DATA_N[h]),
+        .I(CMD_DATA[h])
     );
-  end
+end
 endgenerate
 
 wire [7:0] TRIGGER_ACKNOWLEDGE_FLAG; // to TLU FSM
