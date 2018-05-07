@@ -604,22 +604,18 @@ class Fei4RunBase(RunBase):
                     # change bit file path
                     for drv in dut_configuration.iterkeys():
                         if 'bit_file' in dut_configuration[drv] and dut_configuration[drv]['bit_file']:
-                            bit_file = os.path.normpath(dut_configuration[drv]['bit_file'].replace('\\', '/'))
+                            dut_configuration[drv]['bit_file'] = os.path.normpath(dut_configuration[drv]['bit_file'].replace('\\', '/'))
                             # abs path
-                            if os.path.isabs(bit_file):
+                            if os.path.isabs(dut_configuration[drv]['bit_file']):
                                 pass
-                            # working dir
-                            elif os.path.exists(os.path.join(self._conf['working_dir'], bit_file)):
-                                bit_file = os.path.join(self._conf['working_dir'], bit_file)
-                            # path of dut file
-                            elif os.path.exists(os.path.join(os.path.dirname(dut.conf_path), bit_file)):
-                                bit_file = os.path.join(os.path.dirname(dut.conf_path), bit_file)
+                            # working dir, and directorys upwards
+                            elif find_file_dir_up(filename=dut_configuration[drv]['bit_file'], path=self._conf['working_dir']):
+                                dut_configuration[drv]['bit_file'] = find_file_dir_up(filename=dut_configuration[drv]['bit_file'], path=self._conf['working_dir'])
                             # path of this file
-                            elif os.path.exists(os.path.join(module_path, bit_file)):
-                                bit_file = os.path.join(module_path, bit_file)
+                            elif os.path.isfile(os.path.join(module_path, dut_configuration[drv]['bit_file'])):
+                                dut_configuration[drv]['bit_file'] = os.path.join(module_path, dut_configuration[drv]['bit_file'])
                             else:
-                                raise ValueError("Parameter 'bit_file' is not a valid path: %s" % bit_file)
-                            dut_configuration[drv]['bit_file'] = bit_file
+                                raise ValueError("Parameter 'bit_file' is not a valid path: %s" % dut_configuration[drv]['bit_file'])
                 else:
                     dut_configuration = self._conf['dut_configuration']
             else:
