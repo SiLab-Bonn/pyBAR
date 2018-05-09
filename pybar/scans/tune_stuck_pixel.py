@@ -18,6 +18,7 @@ class StuckPixelTuning(DigitalScan):
         "threaded_scan": True,
         "mask_steps": 3,  # mask steps
         "n_injections": 100,  # number of injections
+        "use_enable_mask": False,  # if True, use Enable mask during scan, if False, all pixels will be enabled
         "disable_for_mask": ['Enable'],  # list of masks for which noisy pixels will be disabled
         "enable_for_mask": ['Imon'],  # list of masks for which noisy pixels will be enabled
         "overwrite_mask": False  # if True, overwrite existing masks
