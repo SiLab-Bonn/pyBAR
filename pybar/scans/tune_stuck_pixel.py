@@ -9,7 +9,7 @@ from pybar.run_manager import RunManager
 from pybar.analysis.plotting.plotting import plot_occupancy
 
 
-class StuckPixelScan(DigitalScan):
+class StuckPixelTuning(DigitalScan):
     '''Stuck pixel scan to detect and disable stuck pixels (Hitbus/HitOR always high).
     '''
     _default_run_conf = {
@@ -75,4 +75,4 @@ class StuckPixelScan(DigitalScan):
 
 
 if __name__ == "__main__":
-    RunManager('configuration.yaml').run_run(StuckPixelScan)
+    RunManager('configuration.yaml').run_run(StuckPixelTuning)
