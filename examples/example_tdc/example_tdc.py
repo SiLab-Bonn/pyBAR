@@ -17,7 +17,7 @@ from pybar.scans.test_register import RegisterTest
 from pybar.scans.scan_digital import DigitalScan
 from pybar.scans.scan_analog import AnalogScan
 from pybar.scans.tune_fei4 import Fei4Tuning
-from pybar.scans.tune_stuck_pixel import StuckPixelScan
+from pybar.scans.tune_stuck_pixel import StuckPixelTuning
 from pybar.scans.scan_threshold_fast import FastThresholdScan
 from pybar.scans.tune_noise_occupancy import NoiseOccupancyTuning
 from pybar.scans.calibrate_plsr_dac import PlsrDacScan
@@ -149,7 +149,7 @@ if __name__ == "__main__":
     runmngr.run_run(run=Fei4Tuning, run_conf={'target_threshold': target_threshold, 'target_tot': target_tot, 'target_charge': target_charge}, catch_exception=False)
     runmngr.run_run(run=AnalogScan, run_conf={'scan_parameters': [('PlsrDAC', target_charge)]})
     runmngr.run_run(run=FastThresholdScan)
-    runmngr.run_run(run=StuckPixelScan)
+    runmngr.run_run(run=StuckPixelTuning)
     runmngr.run_run(run=NoiseOccupancyTuning, run_conf={'occupancy_limit': 1000, 'n_triggers': 10000000})  # high occupancy limit to work with strong Sr-90 source
     runmngr.run_run(run=PlsrDacScan, run_conf={"colpr_address": range(25, 39)})
 
