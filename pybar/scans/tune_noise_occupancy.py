@@ -1,7 +1,10 @@
 import logging
 from time import time
 
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 import numpy as np
+from scipy import stats
 
 import progressbar
 
@@ -9,7 +12,7 @@ from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.fei4.register_utils import make_box_pixel_mask_from_col_row, invert_pixel_mask
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.run_manager import RunManager
-from pybar.analysis.plotting.plotting import plot_occupancy, plot_fancy_occupancy
+from pybar.analysis.plotting.plotting import plot_occupancy, plot_fancy_occupancy, hist_quantiles
 
 
 class NoiseOccupancyTuning(Fei4RunBase):
@@ -22,6 +25,7 @@ class NoiseOccupancyTuning(Fei4RunBase):
     '''
     _default_run_conf = {
         "occupancy_limit": 1 * 10 ** (-5),  # the lower the number the higher the constraints on noise occupancy; 0 will mask any pixel with occupancy greater than zero
+        "occupancy_p_val": 0.99,  # mask pixels with occupancy higher than expected occupancy at given p value
         "n_triggers": 10000000,  # total number of triggers which will be sent to the FE. From 1 to 4294967295 (32-bit unsigned int).
         "trig_count": 1,  # FE-I4 trigger count, number of consecutive BCs, 0 means 16, from 0 to 15
         "trigger_rate_limit": 500,  # artificially limiting the trigger rate, in BCs (25ns)
@@ -41,10 +45,8 @@ class NoiseOccupancyTuning(Fei4RunBase):
         else:
             self.consecutive_lvl1 = self.trig_count
         self.abs_occ_limit = int(self.occupancy_limit * self.n_triggers * self.consecutive_lvl1)
-        if self.abs_occ_limit < 1.0:
-            logging.warning('Number of triggers too low for given occupancy limit. Any hit will result in a masked pixel.')
-        else:
-            logging.info('Masking pixels with occupancy >%d (sending %d triggers)', self.abs_occ_limit, self.n_triggers)
+        self.abs_occ_limit = stats.poisson.ppf(self.occupancy_p_val, mu=self.occupancy_limit * self.n_triggers * self.consecutive_lvl1)
+        logging.info('Masking pixels with occupancy >%d (sending %d triggers)', self.abs_occ_limit, self.n_triggers)
 
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))
@@ -109,29 +111,34 @@ class NoiseOccupancyTuning(Fei4RunBase):
             analyze_raw_data.interpret_word_table()
             analyze_raw_data.plot_histograms()
             analyze_raw_data.interpreter.print_summary()
-
+            # get occupancy hist
             occ_hist = analyze_raw_data.out_file_h5.root.HistOcc[:, :, 0].T
             self.occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
             # noisy pixels are set to 1
             self.occ_mask[occ_hist > self.abs_occ_limit] = 1
             # make inverse
             self.inv_occ_mask = invert_pixel_mask(self.occ_mask)
+            # generate masked occupancy hist
+            masked_occ_hist = occ_hist.copy()
+            masked_occ_hist[self.occ_mask == 1] = 0
 
             if self.overwrite_mask:
                 for mask in self.disable_for_mask:
                     self.register.set_pixel_register_value(mask, self.inv_occ_mask)
             else:
                 for mask in self.disable_for_mask:
-                    enable_mask = np.logical_and(self.inv_occ_mask, self.register.get_pixel_register_value(mask))
-                    self.register.set_pixel_register_value(mask, enable_mask)
+                    enable_mask = self.register.get_pixel_register_value(mask)
+                    new_enable_mask = np.logical_and(self.inv_occ_mask, enable_mask)
+                    self.register.set_pixel_register_value(mask, new_enable_mask)
 
             if self.overwrite_mask:
                 for mask in self.enable_for_mask:
                     self.register.set_pixel_register_value(mask, self.occ_mask)
             else:
                 for mask in self.enable_for_mask:
-                    disable_mask = np.logical_or(self.occ_mask, self.register.get_pixel_register_value(mask))
-                    self.register.set_pixel_register_value(mask, disable_mask)
+                    disable_mask = self.register.get_pixel_register_value(mask)
+                    new_disable_mask = np.logical_or(self.occ_mask, disable_mask)
+                    self.register.set_pixel_register_value(mask, new_disable_mask)
             plot_occupancy(self.occ_mask.T, title='Noisy Pixels', z_max=1, filename=analyze_raw_data.output_pdf)
             plot_fancy_occupancy(self.occ_mask.T, z_max=1, filename=analyze_raw_data.output_pdf)
             for mask in self.disable_for_mask:
@@ -140,6 +147,24 @@ class NoiseOccupancyTuning(Fei4RunBase):
             for mask in self.enable_for_mask:
                 mask_name = self.register.pixel_registers[mask]['name']
                 plot_occupancy(self.register.get_pixel_register_value(mask).T, title='%s Mask' % mask_name, z_max=1, filename=analyze_raw_data.output_pdf)
+
+            # adding Poisson statistics plots
+            fig = Figure()
+            FigureCanvas(fig)
+            ax = fig.add_subplot(111)
+            ax.set_title("Hit statistics")
+            hist, bin_edges = np.histogram(occ_hist, bins=np.arange(0.0, np.max(occ_hist) + 1, 1.0))
+            _, idx = hist_quantiles(hist, [0.0, 0.9], return_indices=True)
+            bins = np.arange(0, np.maximum(bin_edges[idx[1]], stats.poisson.ppf(0.9999, mu=self.occupancy_limit * self.n_triggers * self.consecutive_lvl1)) + 1, 1)
+            ax.hist(occ_hist.flatten(), bins=bins, align='left', alpha=0.5, label="Measured occupancy before masking noisy pixels")
+            ax.hist(masked_occ_hist.flatten(), bins=bins, align='left', alpha=0.5, label="Measured occupancy after masking noisy pixels")
+            ax.bar(x=bins[:-1], height=stats.poisson.pmf(k=bins[:-1], mu=self.occupancy_limit * self.n_triggers * self.consecutive_lvl1) * self.register.get_pixel_register_value("Enable").sum(), alpha=0.5, width=1.0, color="r", label="Expected occupancy (Poisson statistics)")
+            # ax.hist(stats.poisson.rvs(mu=self.occupancy_limit * self.n_triggers * self.consecutive_lvl1, size=self.register.get_pixel_register_value("Enable").sum()), bins=bins, align='left', alpha=0.5, label="Expected occupancy (Poisson statistics)")
+            ax.set_xlabel('#Hits')
+            ax.set_ylabel('#Pixels')
+            ax.legend()
+            analyze_raw_data.output_pdf.savefig(fig)
+
 
 if __name__ == "__main__":
     RunManager('configuration.yaml').run_run(NoiseOccupancyTuning)
