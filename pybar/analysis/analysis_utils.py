@@ -1614,7 +1614,7 @@ def consecutive(data, stepsize=1):
     return np.split(data, np.where(np.diff(data) != stepsize)[0] + 1)
 
 
-def print_raw_data_file(input_file, start_index=0, limit=200, flavor='fei4b', select=None, tdc_trig_dist=False, meta_data_v2=True):
+def print_raw_data_file(input_file, start_index=0, limit=200, flavor='fei4b', select=None, tdc_trig_dist=False, trigger_data_mode=0, meta_data_v2=True):
     """Printing FEI4 data from raw data file for debugging.
     """
     with tb.open_file(input_file + '.h5', mode="r") as file_h5:
@@ -1629,19 +1629,19 @@ def print_raw_data_file(input_file, start_index=0, limit=200, flavor='fei4b', se
             if start_index < index_stop:
                 print "\nchunk %d with length %d (from index %d to %d)\n" % (read_out_index, (index_stop - index_start), index_start, index_stop)
                 raw_data = file_h5.root.raw_data.read(index_start, index_stop)
-                total_words += print_raw_data(raw_data=raw_data, start_index=max(start_index - index_start, 0), limit=limit - total_words, flavor=flavor, index_offset=index_start, select=select, tdc_trig_dist=tdc_trig_dist)
+                total_words += print_raw_data(raw_data=raw_data, start_index=max(start_index - index_start, 0), limit=limit - total_words, flavor=flavor, index_offset=index_start, select=select, tdc_trig_dist=tdc_trig_dist, trigger_data_mode=trigger_data_mode)
                 if limit and total_words >= limit:
                     break
 
 
-def print_raw_data(raw_data, start_index=0, limit=200, flavor='fei4b', index_offset=0, select=None, tdc_trig_dist=False):
+def print_raw_data(raw_data, start_index=0, limit=200, flavor='fei4b', index_offset=0, select=None, tdc_trig_dist=False, trigger_data_mode=0):
     """Printing FEI4 raw data array for debugging.
     """
     if not select:
         select = ['DH', 'TW', "AR", "VR", "SR", "DR", 'TDC', 'UNKNOWN FE WORD', 'UNKNOWN WORD']
     total_words = 0
     for index in range(start_index, raw_data.shape[0]):
-        dw = FEI4Record(raw_data[index], chip_flavor=flavor, tdc_trig_dist=tdc_trig_dist)
+        dw = FEI4Record(raw_data[index], chip_flavor=flavor, tdc_trig_dist=tdc_trig_dist, trigger_data_mode=trigger_data_mode)
         if dw in select:
             print index + index_offset, '{0:12d} {1:08b} {2:08b} {3:08b} {4:08b}'.format(raw_data[index], (raw_data[index] & 0xFF000000) >> 24, (raw_data[index] & 0x00FF0000) >> 16, (raw_data[index] & 0x0000FF00) >> 8, (raw_data[index] & 0x000000FF) >> 0), dw
             total_words += 1
