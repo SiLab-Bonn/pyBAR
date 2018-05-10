@@ -11,13 +11,20 @@ class FEI4Record(object):
     """Record Object
 
     """
-    def __init__(self, data_word, chip_flavor, tdc_trig_dist=False):
+    def __init__(self, data_word, chip_flavor, tdc_trig_dist=False, trigger_data_mode=0):
         self.record_rawdata = int(data_word)
         self.record_word = BitLogic.from_value(value=self.record_rawdata, size=32)
         self.record_dict = OrderedDict()
         if self.record_rawdata & 0x80000000:
             self.record_type = "TW"
-            self.record_dict.update([('trigger data', self.record_word[30:0].tovalue())])
+            if trigger_data_mode == 0:
+                self.record_dict.update([('trigger number', self.record_word[30:0].tovalue())])
+            elif trigger_data_mode == 1:
+                self.record_dict.update([('trigger timestamp', self.record_word[30:0].tovalue())])
+            elif trigger_data_mode == 2:
+                self.record_dict.update([('trigger timestamp', self.record_word[30:16].tovalue()), ('trigger number', self.record_word[15:0].tovalue())])
+            else:
+                raise ValueError("Unknown trigger data mode %d" % trigger_data_mode)
         elif self.record_rawdata & 0xF0000000 == 0x40000000:
             self.record_type = "TDC"
             if tdc_trig_dist:
