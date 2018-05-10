@@ -224,7 +224,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
                     self.new_enable_mask.appendleft(new_enable_mask)
                     self.occupancy_hist.appendleft(occ_hist.copy())
                     self.occupancy_mask.appendleft(occ_mask.copy())
-                    if not do_refine_tuning and np.mean(new_tdac_reg[new_enable_mask]) <= tdac_center:
+                    if not do_refine_tuning and np.mean(new_tdac_reg[new_enable_mask]) <= tdac_center + (1 if self.refine_tuning else 0):
                         reached_tdac_center = True
                     if not do_refine_tuning and disabled_pixels > disabled_pixels_limit_cnt:
                         reached_pixels_limit_cnt = True
