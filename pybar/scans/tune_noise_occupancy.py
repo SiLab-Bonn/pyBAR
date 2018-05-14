@@ -153,9 +153,12 @@ class NoiseOccupancyTuning(Fei4RunBase):
             FigureCanvas(fig)
             ax = fig.add_subplot(111)
             ax.set_title("Hit statistics")
-            hist, bin_edges = np.histogram(occ_hist, bins=np.arange(0.0, np.max(occ_hist) + 1, 1.0))
-            _, idx = hist_quantiles(hist, [0.0, 0.9], return_indices=True)
-            bins = np.arange(0, np.maximum(bin_edges[idx[1]], stats.poisson.ppf(0.9999, mu=self.occupancy_limit * self.n_triggers * self.consecutive_lvl1)) + 1, 1)
+            hist, bin_edges = np.histogram(occ_hist, bins=np.arange(0, np.max(occ_hist) + 2, 1))
+            try:
+                _, idx = hist_quantiles(hist, [0.0, 0.9], return_indices=True)
+            except IndexError:
+                idx = [0, 1]
+            bins = np.arange(0, np.maximum(bin_edges[idx[1]], stats.poisson.ppf(0.9999, mu=self.occupancy_limit * self.n_triggers * self.consecutive_lvl1)) + 2, 1)
             ax.hist(occ_hist.flatten(), bins=bins, align='left', alpha=0.5, label="Measured occupancy before masking noisy pixels")
             ax.hist(masked_occ_hist.flatten(), bins=bins, align='left', alpha=0.5, label="Measured occupancy after masking noisy pixels")
             ax.bar(x=bins[:-1], height=stats.poisson.pmf(k=bins[:-1], mu=self.occupancy_limit * self.n_triggers * self.consecutive_lvl1) * self.register.get_pixel_register_value("Enable").sum(), alpha=0.5, width=1.0, color="r", label="Expected occupancy (Poisson statistics)")
