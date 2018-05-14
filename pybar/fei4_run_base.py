@@ -92,7 +92,7 @@ class Fei4RunBase(RunBase):
             return None
 
     def init_dut(self):
-        if self.dut.name == 'mio':
+        if self.dut.name == 'mio':  # MIO2 with Single Chip Adapter Card (SCAC) or QUAD Module Adapter Card
             if self.dut.get_modules('FEI4AdapterCard') and [adapter_card for adapter_card in self.dut.get_modules('FEI4AdapterCard') if adapter_card.name == 'ADAPTER_CARD']:
                 try:
                     self.dut['ADAPTER_CARD'].set_voltage('VDDA1', 1.5)
@@ -145,8 +145,7 @@ class Fei4RunBase(RunBase):
                 self.dut['ENABLE_CHANNEL']['TLU'] = 1
                 self.dut['ENABLE_CHANNEL']['TDC'] = 1
                 self.dut['ENABLE_CHANNEL'].write()
-
-        elif self.dut.name == 'mio_gpac':
+        elif self.dut.name == 'mio_gpac':  # MIO2 with Genaral Purpose Analog Card (GPAC)
             # PWR
             self.dut['V_in'].set_current_limit(0.1, unit='A')  # one for all, max. 1A
             # V_in
@@ -179,15 +178,14 @@ class Fei4RunBase(RunBase):
             self.dut['ENABLE_CHANNEL']['TDC'] = 1
             self.dut['ENABLE_CHANNEL']['CCPD_TDC'] = 1
             self.dut['ENABLE_CHANNEL'].write()
-        elif self.dut.name == 'lx9':
+        elif self.dut.name == 'lx9':  # Avnet LX9
             # enable LVDS RX/TX
             self.dut['I2C'].write(0xe8, [6, 0xf0, 0xff])
             self.dut['I2C'].write(0xe8, [2, 0x01, 0x00])  # select channels here
-        elif self.dut.name == 'nexys4':
+        elif self.dut.name == 'nexys4':  # Digilent Nexys 4
             # enable LVDS RX/TX
             self.dut['I2C'].write(0xe8, [6, 0xf0, 0xff])
             self.dut['I2C'].write(0xe8, [2, 0x0f, 0x00])  # select channels here
-
             self.dut['ENABLE_CHANNEL']['CH1'] = 1
             self.dut['ENABLE_CHANNEL']['CH2'] = 1
             self.dut['ENABLE_CHANNEL']['CH3'] = 1
@@ -195,16 +193,12 @@ class Fei4RunBase(RunBase):
             self.dut['ENABLE_CHANNEL']['TLU'] = 1
             self.dut['ENABLE_CHANNEL']['TDC'] = 1
             self.dut['ENABLE_CHANNEL'].write()
-        elif self.dut.name == 'beast':
-            logging.info('BEAST initialization')
-            self.dut['DLY_CONFIG']['CLK_DLY'] = 0
-            self.dut['DLY_CONFIG'].write()
         else:
             logging.warning('Omitting initialization of DUT %s', self.dut.name)
         # enabling all FEI4 Rx
         rx_names = [rx.name for rx in self.dut.get_modules('fei4_rx')]
         for rx_name in rx_names:
-             self.dut[rx_name].ENABLE_RX = 1
+            self.dut[rx_name].ENABLE_RX = 1
 
     def init_fe(self):
         if 'fe_configuration' in self._conf:
