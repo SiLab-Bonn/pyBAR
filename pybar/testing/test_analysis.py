@@ -241,7 +241,7 @@ class TestAnalysis(unittest.TestCase):
             array_fast = fast_analysis_utils.hist_1d_index(x, shape=shape)
         except IndexError:
             exception_ok = True
-        except:  # other exception that should not occur
+        except Exception:  # other exception that should not occur
             pass
         self.assertTrue(exception_ok & np.all(array == array_fast))
 
@@ -256,7 +256,7 @@ class TestAnalysis(unittest.TestCase):
             array_fast = fast_analysis_utils.hist_2d_index(x, y, shape=shape)
         except IndexError:
             exception_ok = True
-        except:  # other exception that should not occur
+        except Exception:  # other exception that should not occur
             pass
         self.assertTrue(exception_ok & np.all(array == array_fast))
 
@@ -273,7 +273,7 @@ class TestAnalysis(unittest.TestCase):
                 array_fast = fast_analysis_utils.hist_3d_index(x, y, z, shape=shape)
             except IndexError:
                 exception_ok = True
-            except:  # other exception that should not occur
+            except Exception:  # other exception that should not occur
                 pass
             self.assertTrue(exception_ok & np.all(array == array_fast))
 
@@ -294,7 +294,6 @@ class TestAnalysis(unittest.TestCase):
 
     def test_data_aligned_at_events(self):
         def test_gen(generator, table, start, stop=None, size=None, iterations=None):
-
             #for arr, stop_index in generator:
             while True:
                 try:
