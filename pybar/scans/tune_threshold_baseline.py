@@ -284,9 +284,12 @@ class ThresholdBaselineTuning(Fei4RunBase):
                     FigureCanvas(fig)
                     ax = fig.add_subplot(111)
                     ax.set_title("Hit statistics")
-                    hist, bin_edges = np.histogram(self.occupancy_hist[step], bins=np.arange(0.0, np.max(self.occupancy_hist[step]) + 1, 1.0))
-                    _, idx = hist_quantiles(hist, [0.0, 0.9], return_indices=True)
-                    bins = np.arange(0, np.maximum(bin_edges[idx[1]], stats.poisson.ppf(0.9999, mu=self.occupancy_limit * self.n_triggers * self.consecutive_lvl1)) + 1, 1)
+                    hist, bin_edges = np.histogram(self.occupancy_hist[step], bins=np.arange(0.0, np.max(self.occupancy_hist[step]) + 2, 1.0))
+                    try:
+                        _, idx = hist_quantiles(hist, [0.0, 0.9], return_indices=True)
+                    except IndexError:
+                        idx = [0, 1]
+                    bins = np.arange(0, np.maximum(bin_edges[idx[1]], stats.poisson.ppf(0.9999, mu=self.occupancy_limit * self.n_triggers * self.consecutive_lvl1)) + 2, 1)
                     ax.hist(self.occupancy_hist[step].flatten(), bins=bins, align='left', alpha=0.5, label="Measured occupancy")
                     ax.bar(x=bins[:-1], height=stats.poisson.pmf(k=bins[:-1], mu=self.occupancy_limit * self.n_triggers * self.consecutive_lvl1) * self.enable_mask[step].sum(), alpha=0.5, width=1.0, color="r", label="Expected occupancy (Poisson statistics)")
                     # ax.hist(stats.poisson.rvs(mu=self.occupancy_limit * self.n_triggers * self.consecutive_lvl1, size=self.enable_mask[step].sum()), bins=bins, align='left', alpha=0.5, label="Expected occupancy (Poisson statistics)")
