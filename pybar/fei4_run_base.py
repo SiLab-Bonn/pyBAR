@@ -525,7 +525,7 @@ class Fei4RunBase(RunBase):
             body = '\n'.join(item for item in [self._last_traceback, last_status_message] if item)
             try:
                 send_mail(subject=subject, body=body, smtp_server=self._conf['send_message']['smtp_server'], user=self._conf['send_message']['user'], password=self._conf['send_message']['password'], from_addr=self._conf['send_message']['from_addr'], to_addrs=self._conf['send_message']['to_addrs'])
-            except:
+            except Exception:
                 logging.warning("Failed sending pyBAR status report")
 
     @abc.abstractmethod

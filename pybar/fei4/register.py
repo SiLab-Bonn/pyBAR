@@ -446,7 +446,7 @@ class FEI4Register(object):
                         value = int(value, 2)
                     try:
                         command_bitvector += bitarray_from_value(value=int(value), size=command_part_object['bitlength'], fmt='I')
-                    except:
+                    except Exception:
                         raise TypeError("Type of value not supported")
             elif string_is_binary(part):
                 command_bitvector += bitarray(part, endian='little')
