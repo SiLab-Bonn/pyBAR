@@ -192,7 +192,7 @@ class FeedbackTuning(Fei4RunBase):
                     logging.warning('Selected Feedback bits reached minimum value')
             else:
                 if self.fail_on_warning:
-                    raise RuntimeWarning('Global feedback tuning failed. Delta ToT = %.2f > %.2f. PrmpVbpf = %d' %(abs(mean_tot - self.target_tot), self.max_delta_tot, self.register.get_global_register_value("PrmpVbpf")))
+                    raise RuntimeWarning('Global feedback tuning failed. Delta ToT = %.2f > %.2f. PrmpVbpf = %d' % (abs(mean_tot - self.target_tot), self.max_delta_tot, self.register.get_global_register_value("PrmpVbpf")))
                 else:
                     logging.warning('Global feedback tuning failed. Delta ToT = %.2f > %.2f. PrmpVbpf = %d', abs(mean_tot - self.target_tot), self.max_delta_tot, self.register.get_global_register_value("PrmpVbpf"))
         else:

@@ -177,6 +177,7 @@ class PlsrDacCalibration(Fei4RunBase):
 
             output_pdf.close()
 
+
 def plot_pulser_dac(x, y, y_err=None, output_pdf=None, title_suffix="", atol_first_dev=1.0 * 1e-04, atol_second_dev=1.0 * 1e-05):
     # plot result
     fig = Figure()

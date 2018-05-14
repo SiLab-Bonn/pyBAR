@@ -2,9 +2,7 @@ import logging
 import time
 import re
 import struct
-import os
 from ast import literal_eval
-from operator import itemgetter
 import itertools
 
 from bitarray import bitarray

@@ -91,7 +91,6 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
             commands.extend(self.register.get_commands("RunMode"))
             self.register_utils.send_commands(commands)
 
-
     def scan(self):
         '''Metascript that calls other scripts to tune the FE.
 
@@ -186,6 +185,7 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
                 plot_three_way(hist=self.register.get_pixel_register_value("TDAC").transpose(), title="TDAC distribution after complete tuning", x_axis_title='TDAC', filename=self.plots_filename, maximum=32)
 
             self.plots_filename.close()
+
 
 if __name__ == "__main__":
     RunManager('configuration.yaml').run_run(Fei4Tuning)

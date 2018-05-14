@@ -169,5 +169,6 @@ class FastThresholdScan(Fei4RunBase):
             logging.info("Triggering start condition: %d pixel(s) with more than 0 hits >= %d pixel(s)", pixels_with_hits_count, start_pixel_cnt)
             self.start_condition_triggered = True
 
+
 if __name__ == "__main__":
     RunManager('configuration.yaml').run_run(FastThresholdScan)

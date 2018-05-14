@@ -168,5 +168,6 @@ class FdacTuning(Fei4RunBase):
             start_fdac_setting = start_fdac_setting & ~(1 << bit_position)
         self.register.set_pixel_register_value("FDAC", start_fdac_setting)
 
+
 if __name__ == "__main__":
     RunManager('configuration.yaml').run_run(FdacTuning)

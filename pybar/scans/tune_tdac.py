@@ -174,5 +174,6 @@ class TdacTuning(Fei4RunBase):
         commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, name=["TDAC"]))
         self.register_utils.send_commands(commands)
 
+
 if __name__ == "__main__":
     RunManager('configuration.yaml').run_run(TdacTuning)

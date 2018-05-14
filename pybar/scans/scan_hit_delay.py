@@ -29,12 +29,10 @@ import numpy as np
 from scipy.optimize import curve_fit, OptimizeWarning
 from scipy.interpolate import interp1d
 from scipy.special import erf
-warnings.simplefilter("ignore", OptimizeWarning)  # deactivate : Covariance warning
 
 import progressbar
 
 from pybar_fei4_interpreter.analysis_utils import hist_1d_index, hist_3d_index
-
 from pybar.fei4.register_utils import invert_pixel_mask
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.fei4.register_utils import scan_loop
@@ -42,6 +40,9 @@ from pybar.run_manager import RunManager
 from pybar.analysis.analysis_utils import get_hits_of_scan_parameter, get_scan_parameter, get_mean_from_histogram
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.analysis.plotting.plotting import plot_scurves, plot_three_way
+
+
+warnings.simplefilter("ignore", OptimizeWarning)  # deactivate : Covariance warning
 
 
 def scurve(x, offset, mu, sigma):
@@ -404,5 +405,4 @@ class HitDelayScan(Fei4RunBase):
 
 
 if __name__ == "__main__":
-    RunManager('..\configuration.yaml').run_run(HitDelayScan)
-#     analyze_hit_delay(r'L:\hitdelay\2_scc_99_hit_delay_scan')
+    RunManager('../configuration.yaml').run_run(HitDelayScan)

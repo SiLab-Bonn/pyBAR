@@ -185,7 +185,7 @@ class GdacTuning(Fei4RunBase):
                         else:
                             gdac_tune_bits_permutation += 1
                     else:
-                        gdac_tune_bits_permutation_header = map(int,bin(gdac_tune_bits_permutation)[2:].zfill(last_good_gdac_scan_step))
+                        gdac_tune_bits_permutation_header = map(int, bin(gdac_tune_bits_permutation)[2:].zfill(last_good_gdac_scan_step))
                         for gdac_permutation_bit, gdac_permutation_bit_value in enumerate(gdac_tune_bits_permutation_header):
                             self.set_gdac_bit(self.gdac_tune_bits[gdac_permutation_bit], bit_value=gdac_permutation_bit_value, send_command=False)
                         gdac_tune_bits.extend(self.gdac_tune_bits[last_good_gdac_scan_step + 1:])

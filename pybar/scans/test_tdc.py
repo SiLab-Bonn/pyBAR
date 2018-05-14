@@ -115,5 +115,6 @@ class TdcTest(Fei4RunBase):
     def analyze(self):
         pass
 
+
 if __name__ == "__main__":
     RunManager('configuration.yaml').run_run(TdcTest)

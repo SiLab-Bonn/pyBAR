@@ -68,5 +68,6 @@ class MergedPixelsTuning(AnalogScan):
                 mask_name = self.register.pixel_registers[mask]['name']
                 plot_occupancy(self.register.get_pixel_register_value(mask).T, title='%s Mask' % mask_name, z_max=1, filename=analyze_raw_data.output_pdf)
 
+
 if __name__ == "__main__":
     RunManager('configuration.yaml').run_run(MergedPixelsTuning)

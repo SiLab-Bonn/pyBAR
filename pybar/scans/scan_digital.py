@@ -42,5 +42,6 @@ class DigitalScan(Fei4RunBase):
             analyze_raw_data.plot_histograms()
             analyze_raw_data.interpreter.print_summary()
 
+
 if __name__ == "__main__":
     RunManager('configuration.yaml').run_run(DigitalScan)

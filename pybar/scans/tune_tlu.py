@@ -106,5 +106,6 @@ class TluTuning(Fei4RunBase):
                     ax.legend(loc=0)
                     output_pdf.savefig(fig)
 
+
 if __name__ == "__main__":
     RunManager('configuration.yaml').run_run(TluTuning)

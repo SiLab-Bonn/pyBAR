@@ -58,9 +58,6 @@ class AnalogScan(Fei4RunBase):
             else:
                 scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections, use_delay=True, mask_steps=self.mask_steps, enable_mask_steps=self.enable_mask_steps, enable_double_columns=self.enable_double_columns, same_mask_for_all_dc=self.same_mask_for_all_dc, digital_injection=False, enable_shift_masks=self.enable_shift_masks, disable_shift_masks=self.disable_shift_masks, restore_shift_masks=False, mask=invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if self.use_enable_mask else None, double_column_correction=self.pulser_dac_correction)
 
-        # plotting data
-#         plot_occupancy(hist=make_occupancy_hist(*convert_data_array(data_array_from_data_dict_iterable(self.fifo_readout.data), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)), z_max='median', filename=self.scan_data_filename + "_occupancy.pdf")
-
     def analyze(self):
         with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
             analyze_raw_data.create_tot_hist = True
@@ -76,6 +73,7 @@ class AnalogScan(Fei4RunBase):
 
     def deactivate_tdc(self):
         self.dut['TDC']['ENABLE'] = False
+
 
 if __name__ == "__main__":
     RunManager('configuration.yaml').run_run(AnalogScan)

@@ -260,7 +260,6 @@ class AnalyzeRawData(object):
             self.output_pdf.close()
             self.output_pdf = None
 
-
     def set_standard_settings(self):
         '''Set all settings to their standard values.
         '''
@@ -702,10 +701,8 @@ class AnalyzeRawData(object):
         else:
             out_file_h5 = None
 
-        tmp_out_file_h5 = self.out_file_h5
         if not self.is_open(self.out_file_h5) and self.is_open(out_file_h5):
             close_analyzed_data_file = False
-            tmp_out_file_h5 = out_file_h5
         self.out_file_h5 = out_file_h5
         if self.is_open(self.out_file_h5):
             self._analyzed_data_file = self.out_file_h5.filename
@@ -753,7 +750,6 @@ class AnalyzeRawData(object):
                     tw = 2147483648  # trigger word
                     dh = 15269888  # data header
                     is_fe_data_header = logical_and(is_fe_word, is_data_header)
-                    found_first_trigger = False
                     readout_slices = np.column_stack((index_start, index_stop))
                     previous_prepend_data_headers = None
                     prepend_data_headers = None
@@ -768,11 +764,11 @@ class AnalyzeRawData(object):
                             break
                         # previous data chunk had bad data, check for good data
                         if (index_start - 1) in bad_word_index:
-                            bad_data, current_prepend_data_headers, _ , _ = check_bad_data(raw_data, prepend_data_headers=1, trig_count=None)
+                            bad_data, current_prepend_data_headers, _, _ = check_bad_data(raw_data, prepend_data_headers=1, trig_count=None)
                             if bad_data:
                                 bad_word_index = bad_word_index.union(range(index_start, index_stop))
                             else:
-#                                 logging.info("found good data in %s from index %d to %d (chunk %d, length %d)" % (in_file_h5.filename, index_start, index_stop, read_out_index, (index_stop - index_start)))
+                                # logging.info("found good data in %s from index %d to %d (chunk %d, length %d)" % (in_file_h5.filename, index_start, index_stop, read_out_index, (index_stop - index_start)))
                                 if last_good_readout_index + 1 == read_out_index - 1:
                                     logging.warning("found bad data in %s from index %d to %d (chunk %d, length %d)" % (in_file_h5.filename, readout_slices[last_good_readout_index][1], readout_slices[read_out_index - 1][1], last_good_readout_index + 1, (readout_slices[read_out_index - 1][1] - readout_slices[last_good_readout_index][1])))
                                 else:
@@ -787,18 +783,18 @@ class AnalyzeRawData(object):
                                     last_index_with_event_data = read_out_index
                                     last_event_data_prepend_data_headers = prepend_data_headers
                                 fixed_previous_raw_data = np.r_[previous_good_raw_data, fixed_raw_data]
-                                _, previous_prepend_data_headers, _ , _ = check_bad_data(fixed_previous_raw_data, prepend_data_headers=previous_prepend_data_headers, trig_count=self.trig_count)
+                                _, previous_prepend_data_headers, _, _ = check_bad_data(fixed_previous_raw_data, prepend_data_headers=previous_prepend_data_headers, trig_count=self.trig_count)
                         # check for bad data
                         else:
                             # workaround for first data chunk, might have missing trigger in some rare cases (already fixed in firmware)
                             if read_out_index == 0 and (np.any(is_trigger_word(raw_data) >= 1) or np.any(is_fe_data_header(raw_data) >= 1)):
-                                bad_data, current_prepend_data_headers, n_triggers , n_dh = check_bad_data(raw_data, prepend_data_headers=1, trig_count=None)
+                                bad_data, current_prepend_data_headers, n_triggers, n_dh = check_bad_data(raw_data, prepend_data_headers=1, trig_count=None)
                                 # check for full last event in data
                                 if current_prepend_data_headers == self.trig_count:
                                     current_prepend_data_headers = None
                             # usually check for bad data happens here
                             else:
-                                bad_data, current_prepend_data_headers, n_triggers , n_dh = check_bad_data(raw_data, prepend_data_headers=prepend_data_headers, trig_count=self.trig_count)
+                                bad_data, current_prepend_data_headers, n_triggers, n_dh = check_bad_data(raw_data, prepend_data_headers=prepend_data_headers, trig_count=self.trig_count)
 
                             # do additional check with follow up data chunk and decide whether current chunk is defect or not
                             if bad_data:
@@ -814,9 +810,9 @@ class AnalyzeRawData(object):
                                     fixed_raw_data_with_tw = np.r_[previous_raw_data[:-1], tw, fixed_raw_data_chunk]
                                     fixed_raw_data_with_dh = np.r_[previous_raw_data[:-1], dh, fixed_raw_data_chunk]
                                     fixed_raw_data_list = [fixed_raw_data, fixed_raw_data_with_tw, fixed_raw_data_with_dh]
-                                bad_fixed_data, _, _ , _ = check_bad_data(fixed_raw_data_with_dh, prepend_data_headers=previous_prepend_data_headers, trig_count=self.trig_count)
+                                bad_fixed_data, _, _, _ = check_bad_data(fixed_raw_data_with_dh, prepend_data_headers=previous_prepend_data_headers, trig_count=self.trig_count)
                                 bad_fixed_data = map(lambda data: check_bad_data(data, prepend_data_headers=previous_prepend_data_headers, trig_count=self.trig_count)[0], fixed_raw_data_list)
-                                if not all(bad_fixed_data): # good fixed data
+                                if not all(bad_fixed_data):  # good fixed data
                                     # last word in chunk before currrent chunk is also bad
                                     if index_start != 0:
                                         bad_word_index.add(index_start - 1)
@@ -831,7 +827,7 @@ class AnalyzeRawData(object):
                                         fixed_raw_data, _ = fix_raw_data(previous_bad_raw_data, lsb_byte=None)
                                         previous_good_raw_data = in_file_h5.root.raw_data.read(readout_slices[last_index_with_event_data][1], readout_slices[read_out_index - 1][1])
                                         fixed_raw_data = np.r_[before_bad_raw_data, fixed_raw_data, previous_good_raw_data, raw_data]
-                                        bad_fixed_previous_data, current_prepend_data_headers, _ , _ = check_bad_data(fixed_raw_data, prepend_data_headers=last_event_data_prepend_data_headers, trig_count=self.trig_count)
+                                        bad_fixed_previous_data, current_prepend_data_headers, _, _ = check_bad_data(fixed_raw_data, prepend_data_headers=last_event_data_prepend_data_headers, trig_count=self.trig_count)
                                         if not bad_fixed_previous_data:
                                             logging.warning("found bad data in %s from index %d to %d (chunk %d, length %d)" % (in_file_h5.filename, readout_slices[last_index_with_event_data][0], readout_slices[last_index_with_event_data][1], last_index_with_event_data, (readout_slices[last_index_with_event_data][1] - readout_slices[last_index_with_event_data][0])))
                                             bad_word_index = bad_word_index.union(range(readout_slices[last_index_with_event_data][0] - 1, readout_slices[last_index_with_event_data][1]))
@@ -1030,7 +1026,7 @@ class AnalyzeRawData(object):
             _, scan_parameters_idx = np.unique(self.scan_parameters['PlsrDAC'], return_index=True)
             scan_parameters = self.scan_parameters['PlsrDAC'][np.sort(scan_parameters_idx)]
             if scan_parameters[0] >= scan_parameters[-1]:
-                 raise analysis_utils.AnalysisError('Scan parameter PlsrDAC not increasing')
+                raise analysis_utils.AnalysisError('Scan parameter PlsrDAC not increasing')
             threshold, noise = np.zeros(80 * 336, dtype=np.float64), np.zeros(80 * 336, dtype=np.float64)
             # calling fast algorithm function: M. Mertens, PhD thesis, Juelich 2010, note: noise zero if occupancy was zero
             self.histogram.calculate_threshold_scan_arrays(threshold, noise, self._n_injection, np.min(self.scan_parameters['PlsrDAC']), np.max(self.scan_parameters['PlsrDAC']))
@@ -1441,6 +1437,7 @@ class AnalyzeRawData(object):
             charge[np.logical_and(~self.c_low_mask, self.c_high_mask)] = voltage[np.logical_and(self.c_low_mask, ~self.c_high_mask)] * self.c_mid / 0.16022
             charge[np.logical_and(self.c_low_mask, self.c_high_mask)] = voltage[np.logical_and(self.c_low_mask, ~self.c_high_mask)] * self.c_high / 0.16022
         return charge
+
 
 if __name__ == "__main__":
     pass

@@ -41,6 +41,7 @@ def interpret_data_from_tektronix(preamble, data):
     voltage = YZEro + YMUlt * (voltage - YOFf)
     return time, voltage, time_unit, voltage_unit
 
+
 # Select actual interpretation function
 interpret_oscilloscope_data = interpret_data_from_tektronix
 

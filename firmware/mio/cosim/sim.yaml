@@ -29,12 +29,12 @@ hw_drivers:
     type      : fei4_rx
     interface : USB
     base_addr : 0x18400
-    
+
   - name      : CH2
     type      : fei4_rx
     interface : USB
     base_addr : 0x18500
-    
+
   - name      : CH1
     type      : fei4_rx
     interface : USB
@@ -89,7 +89,7 @@ hw_drivers:
     base_addr : 0x18900
 
 user_drivers:
-    
+
 registers:
   - name        : ENABLE_CHANNEL
     type        : StdRegister
