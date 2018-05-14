@@ -166,7 +166,7 @@ class ThresholdCalibration(FastThresholdScan):
         logging.info("Finished!")
 
     def handle_data(self, data):
-        self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), new_file=[self.scan_parameters._fields[1]], flush=True)  # Create new file for each scan parameter change
+        self.raw_data_file.append(data[0], scan_parameters=self.scan_parameters._asdict(), new_file=[self.scan_parameters._fields[1]], flush=True)  # Create new file for each scan parameter change
 
     def analyze(self):
         create_threshold_calibration(self.output_filename, create_plots=self.create_plots)

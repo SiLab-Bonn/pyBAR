@@ -58,7 +58,7 @@ class RegisterTest(Fei4RunBase):
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))
         self.register_utils.send_commands(commands)
-        self.fifo_readout.reset_sram_fifo()
+        self.fifo_readout.reset_fifo(fifos="FIFO")
 
         pixel_register_errors = 0
 

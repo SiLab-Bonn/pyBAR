@@ -90,7 +90,7 @@ hw_drivers:
     interface : USB
     base_addr : 0x10000
 
-  - name      : SRAM
+  - name      : FIFO
     type      : sram_fifo
     interface : USB
     base_addr : 0x18100

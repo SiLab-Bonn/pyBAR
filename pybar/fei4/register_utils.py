@@ -261,7 +261,7 @@ def read_chip_sn(self):
     commands = []
     commands.extend(self.register.get_commands("ConfMode"))
     self.register_utils.send_commands(commands)
-    self.fifo_readout.reset_sram_fifo()
+    self.fifo_readout.reset_fifo(fifos="FIFO")
     if self.register.fei4b:
         commands = []
         self.register.set_global_register_value('Efuse_Sense', 1)
@@ -277,7 +277,7 @@ def read_chip_sn(self):
     commands.extend(self.register.get_commands("RdRegister", addresses=chip_sn_address))
     self.register_utils.send_commands(commands)
 
-    data = self.fifo_readout.read_data()
+    data = self.fifo_readout.read_raw_data_from_fifo(fifo="FIFO")
     if data.shape[0] == 0:
         logging.error('Chip S/N: No data')
         return
@@ -314,13 +314,13 @@ def test_global_register(self):
     self.register.set_global_register_value('Conf_AddrEnable', 1)
     commands.extend(self.register.get_commands("WrRegister", name='Conf_AddrEnable'))
     self.register_utils.send_commands(commands)
-    self.fifo_readout.reset_sram_fifo()
+    self.fifo_readout.reset_fifo(fifos="FIFO")
     commands = []
     read_from_address = self.register.get_global_register_attributes("addresses", readonly=False)
     commands.extend(self.register.get_commands("RdRegister", addresses=read_from_address))
     self.register_utils.send_commands(commands)
     time.sleep(1.0)  # wait for data
-    data = self.fifo_readout.read_data()
+    data = self.fifo_readout.read_raw_data_from_fifo(fifo="FIFO")
     if data.shape[0] == 0:
         logging.error('Global Register Test: No data')
         return 1
@@ -366,7 +366,7 @@ def test_pixel_register(self):
     commands = []
     commands.extend(self.register.get_commands("ConfMode"))
     self.register_utils.send_commands(commands)
-    self.fifo_readout.reset_sram_fifo()
+    self.fifo_readout.reset_fifo(fifos="FIFO")
 
     commands = []
     self.register.set_global_register_value('Conf_AddrEnable', 1)
@@ -441,7 +441,7 @@ def test_pixel_register(self):
                     self.register.set_global_register_value("SR_Read", 0)
                     commands.extend(self.register.get_commands("WrRegister", name=["SR_Read"]))
                 self.register_utils.send_commands(commands)
-                data = self.fifo_readout.read_data()
+                data = self.fifo_readout.read_raw_data_from_fifo(fifo="FIFO")
                 if data.shape[0] == 0:  # no data
                     if do_latch:
                         logging.error('Pixel Register Test: No data from PxStrobes Bit %d at DC %d', pxstrobe + pxstrobe_bit_no, dc_no)
@@ -546,7 +546,7 @@ def read_global_register(self, name, overwrite_config=False):
     commands.extend(self.register.get_commands("RdRegister", name=name))
     self.register_utils.send_commands(commands)
 
-    data = self.fifo_readout.read_data()
+    data = self.fifo_readout.read_raw_data_from_fifo(fifo="FIFO")
 
     register_object = self.register.get_global_register_objects(name=[name])[0]
     value = BitLogic(register_object['addresses'] * 16)
@@ -600,7 +600,7 @@ def read_pixel_register(self, pix_regs=None, dcs=range(40), overwrite_config=Fal
         pixel_data = np.ma.masked_array(np.zeros(shape=(80, 336), dtype=np.uint32), mask=True)  # the result pixel array, only pixel with data are not masked
         for dc in dcs:
             self.register_utils.send_commands(self.register.get_commands("RdFrontEnd", name=[pix_reg], dcs=[dc]))
-            data = self.fifo_readout.read_data()
+            data = self.fifo_readout.read_raw_data_from_fifo(fifo="FIFO")
             interpret_pixel_data(data, dc, pixel_data, invert=False if pix_reg == "EnableDigInj" else True)
         if overwrite_config:
             self.register.set_pixel_register(pix_reg, pixel_data.data)
@@ -623,7 +623,7 @@ def is_fe_ready(self):
     commands.extend(self.register.get_commands("RdRegister", address=[1]))
     commands.extend(self.register.get_commands("RunMode"))
     self.register_utils.send_commands(commands)
-    data = self.fifo_readout.read_data()
+    data = self.fifo_readout.read_raw_data_from_fifo(fifo="FIFO")
     if len(data):
         return True if FEI4Record(data[-1], self.register.chip_flavor) == 'VR' else False
     else:

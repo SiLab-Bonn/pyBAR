@@ -346,7 +346,7 @@ class Fei4RunBase(RunBase):
             # configure for scan
             self.configure()
             self.fifo_readout.reset_rx()
-            self.fifo_readout.reset_sram_fifo()
+            self.fifo_readout.reset_fifo(fifos="FIFO")
             self.fifo_readout.print_readout_status()
             # open raw data file
             with open_raw_data_file(filename=self.output_filename, mode='w', title=self.run_id, scan_parameters=self.scan_parameters._asdict(), context=self._conf['zmq_context'], socket_address=self._conf['send_data']) as self.raw_data_file:
@@ -431,7 +431,7 @@ class Fei4RunBase(RunBase):
         data : list, tuple
             Data tuple of the format (data (np.array), last_time (float), curr_time (float), status (int))
         '''
-        self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=True)
+        self.raw_data_file.append(data[0], scan_parameters=self.scan_parameters._asdict(), flush=True)
 
     def handle_err(self, exc):
         '''Handling of Exceptions.
@@ -505,14 +505,13 @@ class Fei4RunBase(RunBase):
     def start_readout(self, *args, **kwargs):
         # Pop parameters for fifo_readout.start
         callback = kwargs.pop('callback', self.handle_data)
-        clear_buffer = kwargs.pop('clear_buffer', False)
-        fill_buffer = kwargs.pop('fill_buffer', False)
-        reset_sram_fifo = kwargs.pop('reset_sram_fifo', False)
         errback = kwargs.pop('errback', self.handle_err)
+        reset_fifo = kwargs.pop('reset_fifo', False)
+        fill_buffer = kwargs.pop('fill_buffer', False)
         no_data_timeout = kwargs.pop('no_data_timeout', None)
         if args or kwargs:
             self.set_scan_parameters(*args, **kwargs)
-        self.fifo_readout.start(reset_sram_fifo=reset_sram_fifo, fill_buffer=fill_buffer, clear_buffer=clear_buffer, callback=callback, errback=errback, no_data_timeout=no_data_timeout)
+        self.fifo_readout.start(fifos="FIFO", callback=callback, errback=errback, reset_fifo=reset_fifo, fill_buffer=fill_buffer, no_data_timeout=no_data_timeout, enabled_fe_channels=None)
 
     def stop_readout(self, timeout=10.0):
         self.fifo_readout.stop(timeout=timeout)

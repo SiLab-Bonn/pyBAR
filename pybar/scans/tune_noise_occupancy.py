@@ -83,7 +83,7 @@ class NoiseOccupancyTuning(Fei4RunBase):
         self.total_scan_time = int(lvl1_command.length() * 25 * (10 ** -9) * self.n_triggers)
         logging.info('Estimated scan time: %ds', self.total_scan_time)
 
-        with self.readout(reset_sram_fifo=False, clear_buffer=True, callback=self.handle_data, errback=self.handle_err, no_data_timeout=self.no_data_timeout):
+        with self.readout(reset_fifo=False, no_data_timeout=self.no_data_timeout):
             got_data = False
             start = time()
             self.register_utils.send_command(lvl1_command, repeat=self.n_triggers, wait_for_finish=False, set_length=True, clear_memory=False)

@@ -51,12 +51,12 @@ class TdcTest(Fei4RunBase):
                 x, y, y_err = [], [], []
                 tdc_hist = None
 
-                self.fifo_readout.reset_sram_fifo()  # clear fifo data
+                self.fifo_readout.reset_fifo(fifos="FIFO")  # clear fifo data
                 for pulse_width in [i for j in (range(10, 100, 5), range(100, 400, 10)) for i in j]:
                     logging.info('Test TDC for a pulse with of %d', pulse_width)
                     self.start_pulser(pulse_width, self.n_pulses)
                     time.sleep(self.n_pulses * pulse_width * 1e-9 + 0.1)
-                    data = self.fifo_readout.read_data()
+                    data = self.fifo_readout.read_raw_data_from_fifo(fifo="FIFO")
                     if data[is_tdc_word(data)].shape[0] != 0:
                         tdc_values = np.bitwise_and(data[is_tdc_word(data)], 0x00000FFF)
                         tdc_counter = np.bitwise_and(data[is_tdc_word(data)], 0x000FF000)
@@ -86,13 +86,13 @@ class TdcTest(Fei4RunBase):
 
             if self.test_trigger_delay:
                 x, y, y_err, y2, y2_err = [], [], [], [], []
-                self.fifo_readout.reset_sram_fifo()  # clear fifo data
+                self.fifo_readout.reset_fifo(fifos="FIFO")  # clear fifo data
                 for pulse_delay in [i for j in (range(0, 100, 5), range(100, 500, 500)) for i in j]:
                     logging.info('Test TDC for a pulse delay of %d', pulse_delay)
                     for _ in range(10):
                         self.start_pulser(pulse_width=100, n_pulses=1, pulse_delay=pulse_delay)
                         time.sleep(0.1)
-                    data = self.fifo_readout.read_data()
+                    data = self.fifo_readout.read_raw_data_from_fifo(fifo="FIFO")
                     if data[is_tdc_word(data)].shape[0] != 0:
                         if len(is_tdc_word(data)) != 10:
                             logging.warning('%d TDC words instead of %d ', len(is_tdc_word(data)), 10)

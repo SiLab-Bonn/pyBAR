@@ -9,7 +9,7 @@ from scipy import stats
 
 import progressbar
 
-from pybar.daq.readout_utils import get_col_row_array_from_data_record_array, convert_data_array, data_array_from_data_iterable, is_fe_word, is_data_record, logical_and
+from pybar.daq.readout_utils import get_col_row_array_from_data_record_array, is_fe_word, is_data_record, logical_and
 # from pybar.daq.readout_utils import data_array_from_data_iterable
 # from pybar_fei4_interpreter.data_interpreter import PyDataInterpreter
 # from pybar_fei4_interpreter.data_histograming import PyDataHistograming
@@ -140,7 +140,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
                 logging.info('TDAC step %d at Vthin_AltFine %d', tdac_step, reg_val)
 #                 logging.info('Estimated scan time: %ds', total_scan_time)
 
-                with self.readout(Vthin_AltFine=reg_val, TDAC_step=tdac_step, reset_sram_fifo=True, fill_buffer=True, clear_buffer=True, callback=self.handle_data):
+                with self.readout(Vthin_AltFine=reg_val, TDAC_step=tdac_step, reset_fifo=True, fill_buffer=True):
                     got_data = False
                     start = time()
                     self.register_utils.send_command(lvl1_command, repeat=self.n_triggers, wait_for_finish=False, set_length=True, clear_memory=False)
@@ -161,13 +161,13 @@ class ThresholdBaselineTuning(Fei4RunBase):
                             except ValueError:
                                 pass
                 # use Numpy for analysis and histogramming
-                col_arr, row_arr = convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=logical_and(is_fe_word, is_data_record), converter_func=get_col_row_array_from_data_record_array)
+                col_arr, row_arr = self.fifo_readout.get_raw_data_from_buffer(filter_func=logical_and(is_fe_word, is_data_record), converter_func=get_col_row_array_from_data_record_array)[0]
                 occ_hist, _, _ = np.histogram2d(col_arr, row_arr, bins=(80, 336), range=[[1, 80], [1, 336]])
                 occ_mask = np.zeros(shape=occ_hist.shape, dtype=np.dtype('>u1'))
 
                 # use FEI4 interpreter for analysis and histogramming
 #                 from pybar.daq.readout_utils import data_array_from_data_iterable
-#                 raw_data = np.ascontiguousarray(data_array_from_data_iterable(self.read_data()), dtype=np.uint32)
+#                 raw_data = np.ascontiguousarray(data_array_from_data_iterable(self.fifo_readout.read_raw_data_from_fifo(fifo="FIFO")), dtype=np.uint32)
 #                 interpreter.interpret_raw_data(raw_data)
 #                 interpreter.store_event()  # force to create latest event
 #                 histogram.add_hits(interpreter.get_hits())

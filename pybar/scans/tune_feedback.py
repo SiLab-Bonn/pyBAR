@@ -6,7 +6,7 @@ import numpy as np
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.fei4.register_utils import scan_loop, make_pixel_mask
 from pybar.run_manager import RunManager
-from pybar.daq.readout_utils import convert_data_array, is_data_record, is_fe_word, logical_and, data_array_from_data_iterable, get_col_row_tot_array_from_data_record_array
+from pybar.daq.readout_utils import is_data_record, is_fe_word, logical_and, get_col_row_tot_array_from_data_record_array
 from pybar.analysis.plotting.plotting import plot_tot
 
 
@@ -108,7 +108,7 @@ class FeedbackTuning(Fei4RunBase):
 
             scan_parameter_value = self.register.get_global_register_value("PrmpVbpf")
 
-            with self.readout(PrmpVbpf=scan_parameter_value, reset_sram_fifo=True, fill_buffer=True, clear_buffer=True, callback=self.handle_data):
+            with self.readout(PrmpVbpf=scan_parameter_value, reset_fifo=True, fill_buffer=True):
                 scan_loop(self,
                           command=cal_lvl1_command,
                           repeat_command=self.n_injections_feedback,
@@ -124,7 +124,7 @@ class FeedbackTuning(Fei4RunBase):
                           mask=None,
                           double_column_correction=self.pulser_dac_correction)
 
-            col_row_tot_array = np.column_stack(convert_data_array(data_array_from_data_iterable(self.fifo_readout.data), filter_func=logical_and(is_fe_word, is_data_record), converter_func=get_col_row_tot_array_from_data_record_array))
+            col_row_tot_array = np.column_stack(self.fifo_readout.get_raw_data_from_buffer(filter_func=logical_and(is_fe_word, is_data_record), converter_func=get_col_row_tot_array_from_data_record_array)[0])
             occupancy_array, _, _ = np.histogram2d(col_row_tot_array[:, 0], col_row_tot_array[:, 1], bins=(80, 336), range=[[1, 80], [1, 336]])
             occupancy_array = np.ma.array(occupancy_array, mask=np.logical_not(np.ma.make_mask(select_mask_array)))  # take only selected pixel into account by creating a mask
             occupancy_array = np.ma.masked_where(occupancy_array > self.n_injections_feedback, occupancy_array)

@@ -18,7 +18,7 @@ hw_drivers:
     interface : ETH
     base_addr : 0x0000
 
-  - name      : SRAM
+  - name      : FIFO
     type      : sram_fifo
     interface : ETH
     base_addr : 0x200000000

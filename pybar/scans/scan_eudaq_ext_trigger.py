@@ -102,7 +102,7 @@ class EudaqExtTriggerScan(ExtTriggerScan):
             else:
                 self.remaining_data = np.concatenate([self.remaining_data, item])
 
-        self.raw_data_file.append_item(data, scan_parameters=self.scan_parameters._asdict(), flush=True)
+        self.raw_data_file.append(data[0], scan_parameters=self.scan_parameters._asdict(), flush=True)
 
 
 if __name__ == "__main__":
