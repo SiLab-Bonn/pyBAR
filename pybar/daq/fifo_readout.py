@@ -478,7 +478,7 @@ class FifoReadout(object):
             self.dut[fei4_rx_name].RX_RESET
 
     def reset_fifo(self, fifos):
-        if not isinstance(fifos, Iterable):
+        if isinstance(fifos, basestring):
             fifos = [fifos]
         for fifo in fifos:
             fifo_size = self.dut[fifo]['FIFO_SIZE']
