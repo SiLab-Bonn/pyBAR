@@ -197,13 +197,14 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
             return hits
 
         # Column, row array with True for disabled pixels
-        disabled_region = ~enable_mask.astype(np.bool).T.copy()
+        disabled_mask = ~enable_mask.astype(np.bool).T.copy()
+        disabled_region = disabled_mask.copy()
         n_disabled_pixels = np.count_nonzero(disabled_region)
 
         # Extend disabled pixel mask by the neighbouring pixels
         neighbour_pixels = [(-1, 0), (1, 0), (0, -1), (0, 1)]  # Disable direct neighbouring pixels
         for neighbour_pixel in neighbour_pixels:
-            disabled_region = np.logical_or(disabled_region, shift(disabled_region, shift=neighbour_pixel, cval=0))
+            disabled_region = np.logical_or(disabled_region, shift(disabled_mask, shift=neighbour_pixel, cval=0))
 
         logging.info('Masking %d additional pixel neighbouring %d disabled pixels', np.count_nonzero(disabled_region) - n_disabled_pixels, n_disabled_pixels)
 
