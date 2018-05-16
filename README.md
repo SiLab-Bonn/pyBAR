@@ -58,7 +58,7 @@ On Windows, the `pywin32` package is required:
 
 [Basil](https://github.com/SiLab-Bonn/basil) (>=2.4.12,<3.0.0) is required:
   ```
-  pip install git+https://github.com/SiLab-Bonn/basil@development
+  pip install 'basil_daq>=2.4.12,<3.0.0'
   ```
 
 [pyBAR FEI4 Interpreter](https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter) (>=1.3.0) is required:
