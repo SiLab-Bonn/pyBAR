@@ -6,7 +6,6 @@ import logging
 import os
 import time
 import re
-import zlib
 
 import numpy as np
 import tables as tb

@@ -1,16 +1,16 @@
 /**
  * This file is part of pyBAR.
- * 
+ *
  * pyBAR is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * pyBAR is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU Lesser General Public License
  * along with pyBAR.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -31,40 +31,40 @@ module top (
 
     input wire ETH_COL,
     input wire ETH_CRS,
-    
+
     output wire ETH_MDC,
     inout wire ETH_MDIO,
     output wire ETH_RESET_n,
-    
+
     input wire ETH_RX_CLK,
     input wire [3:0] ETH_RX_D,
     input wire ETH_RX_DV,
     input wire ETH_RX_ER,
-   
-    input wire ETH_TX_CLK, 
+
+    input wire ETH_TX_CLK,
     output wire [3:0] ETH_TX_D,
     output wire ETH_TX_EN,
-    
+
     output wire [3:0] GPIO_LED,
     input wire [3:0] GPIO_DIP,
     inout wire SDA, SCL,
-    
+
     output wire CMD_CLK, CMD_DATA,
     input wire [3:0] DOBOUT
-    
+
 );
 
     wire CLKFBOUT, CLKOUT0, CLKOUT1, CLKOUT2, CLKOUT3, CLKOUT4, CLKOUT5, CLKFBIN, LOCKED;
     wire RST, BUS_CLK, BUS_RST, SPI_CLK;
-    
+
    PLL_BASE #(
-      .BANDWIDTH("OPTIMIZED"),             // "HIGH", "LOW" or "OPTIMIZED" 
+      .BANDWIDTH("OPTIMIZED"),             // "HIGH", "LOW" or "OPTIMIZED"
       .CLKFBOUT_MULT(16),                   // Multiply value for all CLKOUT clock outputs (1-64)
       .CLKFBOUT_PHASE(0.0),                // Phase offset in degrees of the clock feedback output (0.0-360.0).
       .CLKIN_PERIOD(25.0),                  // Input clock period in ns to ps resolution (i.e. 33.333 is 30
                                            // MHz).
       // CLKOUT0_DIVIDE - CLKOUT5_DIVIDE: Divide amount for CLKOUT# clock output (1-128)
-      .CLKOUT0_DIVIDE(1), //640 - 320MHz 
+      .CLKOUT0_DIVIDE(1), //640 - 320MHz
       .CLKOUT1_DIVIDE(32), //25
       .CLKOUT2_DIVIDE(64), //10HHz
       .CLKOUT3_DIVIDE(16), //40MHz
@@ -85,7 +85,7 @@ module top (
       .CLKOUT4_PHASE(0.0),
       .CLKOUT5_PHASE(0.0),
       .CLK_FEEDBACK("CLKFBOUT"),           // Clock source to drive CLKFBIN ("CLKFBOUT" or "CLKOUT0")
-      .COMPENSATION("SYSTEM_SYNCHRONOUS"), // "SYSTEM_SYNCHRONOUS", "SOURCE_SYNCHRONOUS", "EXTERNAL" 
+      .COMPENSATION("SYSTEM_SYNCHRONOUS"), // "SYSTEM_SYNCHRONOUS", "SOURCE_SYNCHRONOUS", "EXTERNAL"
       .DIVCLK_DIVIDE(1),                   // Division value for all output clocks (1-52)
       .REF_JITTER(0.1),                    // Reference Clock Jitter in UI (0.000-0.999).
       .RESET_ON_LOSS_OF_LOCK("FALSE")      // Must be set to FALSE
@@ -104,7 +104,7 @@ module top (
       .CLKIN(USER_CLOCK),       // 1-bit input: Clock input
       .RST(USER_RESET)            // 1-bit input: Reset input
    );
-   
+
     wire RX_CLK, TX_CLK;
     assign RST = USER_RESET | !LOCKED;
     assign CLKFBIN = CLKFBOUT; //BUFG BUFG_FB (  .O(CLKFBIN),  .I(CLKFBOUT) );
@@ -112,19 +112,19 @@ module top (
     BUFG BUFG_ETH_RX_CLK (  .O(RX_CLK),  .I(ETH_RX_CLK) );
     //BUFG BUFG_SPI(  .O(SPI_CLK),  .I(CLKOUT2) );
     BUFG BUFG_ETH_TX_CLK (  .O(TX_CLK),  .I(ETH_TX_CLK) );
-    
+
     wire RX_320_CLK, RX_160_CLK, RX_16_CLK;
     //BUFG BUFG_RX_320 (  .O(RX_320_CLK),  .I(CLKOUT0) );
     //assign RX_320_CLK = CLKOUT0;
     BUFG BUFG_RX_160 (  .O(RX_160_CLK),  .I(CLKOUT4) );
     BUFG BUFG_RX_16 (  .O(RX_16_CLK),  .I(CLKOUT5) );
-    
+
     //wire CLKOUT0_BUF;
     //BUFG BUFG_RX_320 (  .O(CLKOUT0_BUF),  .I(CLKOUT0) );
-    
-    wire CLK_40;
-    assign CLK_40 = BUS_CLK;
-        
+
+    wire CLK40;
+    assign CLK40 = BUS_CLK;
+
     wire IOCLK, DIVCLK, DIVCLK_BUF, RX_320_IOCE;
     /*
     BUFIO2 #(
@@ -142,7 +142,7 @@ module top (
 
     BUFG BUFG_DIV (  .O(RX_160_CLK),  .I(DIVCLK_BUF) );
     */
-    
+
    BUFPLL #(
       .DIVIDE(4),           // DIVCLK divider (1-8)
       .ENABLE_SYNC("TRUE")  // Enable synchrnonization between PLL and GCLK (TRUE/FALSE)
@@ -155,7 +155,7 @@ module top (
       .LOCKED(LOCKED),             // 1-bit input: LOCKED input from PLL
       .PLLIN(CLKOUT0)                // 1-bit input: Clock input from PLL
    );
-   
+
     wire EEPROM_CS, EEPROM_SK, EEPROM_DI;
     wire TCP_CLOSE_REQ;
     wire RBCP_ACT, RBCP_WE, RBCP_RE;
@@ -167,7 +167,7 @@ module top (
     wire TCP_TX_FULL;
     wire TCP_TX_WR;
     wire [7:0] TCP_TX_DATA;
-     
+
     wire   mdio_gem_i;
     wire   mdio_gem_o;
     wire   mdio_gem_t;
@@ -195,7 +195,7 @@ module top (
     // MII interface
       .GMII_RSTn(ETH_RESET_n)            ,    // out    : PHY reset
       .GMII_1000M(1'b0)            ,    // in    : GMII mode (0:MII, 1:GMII)
-      // TX 
+      // TX
       .GMII_TX_CLK(TX_CLK)            ,    // in    : Tx clock
       .GMII_TX_EN(ETH_TX_EN)            ,    // out    : Tx enable
       .GMII_TXD({ETH_TX_D_NO,ETH_TX_D})            ,    // out    : Tx data[7:0]
@@ -246,12 +246,12 @@ module top (
     wire BUS_WR, BUS_RD;
     wire [31:0] BUS_ADD;
     wire [7:0] BUS_DATA;
-    
+
     rbcp_to_bus irbcp_to_bus(
-    
+
     .BUS_RST(BUS_RST),
     .BUS_CLK(BUS_CLK),
-    
+
     .RBCP_ACT(RBCP_ACT),
     .RBCP_ADDR(RBCP_ADDR),
     .RBCP_WD(RBCP_WD),
@@ -259,13 +259,13 @@ module top (
     .RBCP_RE(RBCP_RE),
     .RBCP_ACK(RBCP_ACK),
     .RBCP_RD(RBCP_RD),
-    
+
     .BUS_WR(BUS_WR),
     .BUS_RD(BUS_RD),
     .BUS_ADD(BUS_ADD),
     .BUS_DATA(BUS_DATA)
   );
-    
+
     //MODULE ADDRESSES
 
     localparam CMD_BASEADDR = 32'h0000;
@@ -282,16 +282,16 @@ module top (
 
     localparam RX1_BASEADDR = 32'h8600;
     localparam RX1_HIGHADDR = 32'h8700-1;
-    
+
     localparam GPIO_BASEADDR = 32'h8700;
     localparam GPIO_HIGHADDR = 32'h8800-1;
 
     localparam I2C_BASEADDR = 32'h8800;
-    localparam I2C_HIGHADDR = 32'h8900-1; 
-        
-     
+    localparam I2C_HIGHADDR = 32'h8900-1;
+
+
     // MODULES //
-    
+
     cmd_seq #(
         .BASEADDR(CMD_BASEADDR),
         .HIGHADDR(CMD_HIGHADDR),
@@ -305,14 +305,14 @@ module top (
         .BUS_WR(BUS_WR),
 
         .CMD_CLK_OUT(CMD_CLK),
-        .CMD_CLK_IN(CLK_40),
+        .CMD_CLK_IN(CLK40),
         .CMD_EXT_START_FLAG(1'b0),
         .CMD_EXT_START_ENABLE(),
         .CMD_DATA(CMD_DATA),
         .CMD_READY(),
         .CMD_START_FLAG()
     );
-        
+
     wire [3:0] RX_READY, RX_8B10B_DECODER_ERR, RX_FIFO_OVERFLOW_ERR, RX_FIFO_FULL;
     wire [3:0] FE_FIFO_READ;
     wire [3:0] FE_FIFO_EMPTY;
@@ -339,6 +339,7 @@ module top (
             .RX_8B10B_DECODER_ERR(RX_8B10B_DECODER_ERR[i]),
             .RX_FIFO_OVERFLOW_ERR(RX_FIFO_OVERFLOW_ERR[i]),
 
+            .FIFO_CLK(1'b0),
             .FIFO_READ(FE_FIFO_READ[i]),
             .FIFO_EMPTY(FE_FIFO_EMPTY[i]),
             .FIFO_DATA(FE_FIFO_DATA[i]),
@@ -355,11 +356,11 @@ module top (
         );
     end
     endgenerate
-    
+
     /*
-    gpio 
-    #( 
-        .BASEADDR(GPIO_BASEADDR), 
+    gpio
+    #(
+        .BASEADDR(GPIO_BASEADDR),
         .HIGHADDR(GPIO_HIGHADDR),
         .ABUSWIDTH(32),
         .IO_WIDTH(8),
@@ -375,17 +376,17 @@ module top (
         .IO({GPIO_DIP, GPIO_LED})
     );
     */
-    
+
     wire I2C_CLK, I2C_CLK_PRE;
     clock_divider  #( .DIVISOR(4000) ) i2c_clkdev ( .CLK(BUS_CLK), .RESET(BUS_RST), .CE(), .CLOCK(I2C_CLK_PRE) );
     BUFG BUFG_I2C (  .O(I2C_CLK),  .I(I2C_CLK_PRE) );
-    
-    i2c 
-    #( 
-        .BASEADDR(I2C_BASEADDR), 
+
+    i2c
+    #(
+        .BASEADDR(I2C_BASEADDR),
         .HIGHADDR(I2C_HIGHADDR),
         .ABUSWIDTH(32),
-        .MEM_BYTES(8) 
+        .MEM_BYTES(8)
     )  i_i2c
     (
         .BUS_CLK(BUS_CLK),
@@ -394,22 +395,22 @@ module top (
         .BUS_DATA(BUS_DATA),
         .BUS_RD(BUS_RD),
         .BUS_WR(BUS_WR),
-    
+
         .I2C_CLK(I2C_CLK),
         .I2C_SDA(SDA),
         .I2C_SCL(SCL)
     );
-    
-    
+
+
     //assign FE_FIFO_EMPTY[0] = 1;
     //assign FE_FIFO_EMPTY[1] = 1;
     //assign FE_FIFO_EMPTY[2] = 1;
     //assign FE_FIFO_EMPTY[3] = 1;
-    
+
     wire ARB_READY_OUT, ARB_WRITE_OUT;
     wire [31:0] ARB_DATA_OUT;
     wire [3:0] READ_GRANT;
-    
+
     /*
 
     rrp_arbiter #(
@@ -430,17 +431,17 @@ module top (
 
     assign FE_FIFO_READ = READ_GRANT[3:0];
     */
-    
-    
+
+
     assign ARB_DATA_OUT = FE_FIFO_DATA[0];
     assign FE_FIFO_READ[0] = ARB_READY_OUT;
     assign ARB_WRITE_OUT = ~FE_FIFO_EMPTY[0];
-        
+
     wire FIFO_EMPTY, FIFO_FULL;
     fifo_32_to_8 #(.DEPTH(1*256)) i_data_fifo (
         .RST(BUS_RST),
         .CLK(BUS_CLK),
-        
+
         .WRITE(ARB_WRITE_OUT),
         .READ(TCP_TX_WR),
         .DATA_IN(ARB_DATA_OUT),
@@ -452,5 +453,5 @@ module top (
     assign TCP_TX_WR = !TCP_TX_FULL && !FIFO_EMPTY;
 
     assign GPIO_LED = RX_READY;
-    
+
 endmodule

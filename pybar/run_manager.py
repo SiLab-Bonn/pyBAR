@@ -4,7 +4,6 @@ import os
 import re
 from collections import namedtuple
 from threading import Lock, Thread, Event
-# from multiprocessing import dummy as multiprocessing
 import sys
 import functools
 import traceback
@@ -20,6 +19,9 @@ from threading import current_thread
 from functools import wraps
 
 from yaml import safe_load
+
+from pybar.utils.utils import find_file_dir_up
+
 
 punctuation = '!,.:;?'
 
@@ -70,21 +72,13 @@ class RunBase(object):
         self._last_traceback = None
         self._cancel_functions = None
         self.connect_cancel(["abort"])
-        self._initialized = False
-
-    @property
-    def is_initialized(self):
-        if "_initialized" in self.__dict__ and self._initialized:
-            return True
-        else:
-            return False
 
     def __getattr__(self, name):
         ''' This is called in a last attempt to receive the value for an attribute that was not found in the usual places.
         '''
         try:
             return self._run_conf[name]  # Accessing run conf parameters
-        except KeyError:
+        except (KeyError, TypeError):  # If key is not existing or run conf is not a dict
             raise AttributeError("'%s' has no attribute '%s'" % (self.__class__.__name__, name))
 
     @property
@@ -143,7 +137,6 @@ class RunBase(object):
 
     def run(self, run_conf, run_number=None, signal_handler=None):
         self._init(run_conf, run_number)
-        self._initialized = True
         logging.info('Starting run %d (%s) in %s', self.run_number, self.__class__.__name__, self.working_dir)
         # set up signal handler
         if current_thread().name == 'MainThread':
@@ -167,7 +160,7 @@ class RunBase(object):
             self._last_traceback = None
             self._last_error_message = None
         finally:
-            self._initialized = False
+            pass
         # revert signal handler to default
         if current_thread().name == 'MainThread':
             signal.signal(signal.SIGINT, signal.SIG_DFL)
@@ -295,6 +288,13 @@ class RunBase(object):
                 logging.error('Aborting run...')
         self.abort_run.set()
         self.stop_run.set()  # set stop_run in case abort_run event is not used
+
+    def close(self):
+        '''Close properly and releasing hardware resources.
+
+        This should be called before Python garbage collector takes action.
+        '''
+        pass
 
     def _get_run_numbers(self, status=None):
         run_numbers = {}
@@ -427,9 +427,9 @@ class RunManager(object):
             import win32api
             win32api.SetConsoleCtrlHandler(handler, 1)
 
-        self._conf = None
-        self.current_run = None
-        self._conf_path = None
+        self._conf = None  # configuration dictionary
+        self.current_run = None  # current run number
+        self._conf_path = None  # absolute path of the configuation file
         self.init(conf)
 
     @property
@@ -440,16 +440,18 @@ class RunManager(object):
         return conf(**self._conf)  # prevent changing dict
 
     def init(self, conf):
-        if isinstance(conf, basestring):
+        # current working directory
+        if isinstance(conf, basestring) and os.path.isfile(os.path.abspath(conf)):
+            conf = os.path.abspath(conf)
+            self._conf_path = conf
+        # search directory upwards form current working directory
+        elif isinstance(conf, basestring) and find_file_dir_up(conf):
+            conf = find_file_dir_up(conf)
             self._conf_path = conf
         elif isinstance(conf, file):
-            self._conf_path = conf.name
+            self._conf_path = os.path.abspath(conf.name)
         else:
             self._conf_path = None
-        if isinstance(conf, basestring) and os.path.isfile(conf):
-            logging.info('Loading configuration from file %s', os.path.abspath(conf))
-        else:
-            logging.info('Loading configuration')
         self._conf = self.open_conf(conf)
         if 'working_dir' in self._conf and self._conf['working_dir']:
             # dirty fix for Windows pathes
@@ -460,11 +462,22 @@ class RunManager(object):
             else:
                 # working_dir is absolute path, keep that
                 pass
+        # use path of configuration file
         elif self._conf_path:
             self._conf['working_dir'] = os.path.dirname(self._conf_path)
         else:
             raise ValueError('Cannot deduce working directory from configuration')
-        logging.info('Using working directory %s', os.path.abspath(self._conf['working_dir']))
+        logging.info('Using working directory %s', self._conf['working_dir'])
+
+    def close(self):
+        if self.current_run is not None:
+            self.current_run.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc_info):
+        self.close()
 
     @staticmethod
     def open_conf(conf):
@@ -472,14 +485,17 @@ class RunManager(object):
         if not conf:
             pass
         elif isinstance(conf, basestring):  # parse the first YAML document in a stream
-            if os.path.isfile(conf):
-                with open(conf, 'r') as f:
+            if os.path.isfile(os.path.abspath(conf)):
+                logging.info('Loading configuration from file %s', os.path.abspath(conf))
+                with open(os.path.abspath(conf), 'r') as f:
                     conf_dict.update(safe_load(f))
             else:  # YAML string
                 try:
                     conf_dict.update(safe_load(conf))
                 except ValueError:  # invalid path/filename
                     raise IOError("File not found: %s" % os.path.abspath(conf))
+                else:
+                    logging.info('Loading configuration from file %s', os.path.abspath(conf.name))
         elif isinstance(conf, file):  # parse the first YAML document in a stream
             conf_dict.update(safe_load(conf))
         else:  # conf is already a dict

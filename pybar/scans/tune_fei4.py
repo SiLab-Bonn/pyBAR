@@ -1,7 +1,9 @@
 import logging
 
 from pybar.run_manager import RunManager
-from pybar.scans.tune_gdac import GdacTuning
+from pybar.scans.tune_gdac import GdacTuning  # fast GDAC tuning
+# uncomment the following line to use the standard GDAC tuning:
+# from pybar.scans.tune_gdac_standard import GdacTuningStandard as GdacTuning  # standard GDAC tuning
 from pybar.scans.tune_feedback import FeedbackTuning
 from pybar.scans.tune_tdac import TdacTuning
 from pybar.scans.tune_fdac import FdacTuning
@@ -34,15 +36,17 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
         "target_threshold": 30,  # target threshold
         "target_charge": 280,  # target charge
         "target_tot": 5,  # target ToT
-        "global_iterations": 4,  # the number of iterations to do for the global tuning, 0: only global threshold (GDAC) is tuned, -1 or None: no global tuning
-        "local_iterations": 3,  # the number of iterations to do for the local tuning, 0: only local threshold (TDAC) is tuned, -1 or None: no local tuning
+        "global_iterations": 4,  # the number of iterations to do for the global tuning, 0: only global threshold (GDAC) is tuned, -1: no global tuning
+        "local_iterations": 3,  # the number of iterations to do for the local tuning, 0: only local threshold (TDAC) is tuned, -1: no local tuning
         "reset_local_dacs": True,  # if True, reset pixels registers to the middle of the DAC range before the global tuning starts
         "fail_on_warning": True,  # do not continue tuning if a global tuning fails
         # GDAC
         "gdac_tune_bits": range(7, -1, -1),  # GDAC bits to change during tuning
+        "start_gdac": 150,  # start value of standard GDAC tuning, not used for fast GDAC tuning
+        "step_size": -1,  # step size of the GDAC during scan, not used for fast GDAC tuning
         "gdac_lower_limit": 30,  # set GDAC lower limit to prevent FEI4 from becoming noisy, set to 0 or None to disable
         "n_injections_gdac": 50,  # number of injections per GDAC bit setting
-        "max_delta_threshold": 5,  # minimum difference to the target_threshold to abort the tuning
+        "max_delta_threshold": 20,  # minimum difference to the target_threshold to abort the tuning, in percent of n_injections_gdac
         "enable_mask_steps_gdac": [0],  # mask steps to do per GDAC setting, 1 step is sufficient and saves time
         # Feedback
         "feedback_tune_bits": range(7, -1, -1),
@@ -115,11 +119,6 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
             2: TDAC -> FDAC -> TDAC -> FDAC -> TDAC
             ...
         '''
-        if self.global_iterations is None:
-            self.global_iterations = -1
-        if self.local_iterations is None:
-            self.local_iterations = -1
-
         for iteration in range(0, self.global_iterations):  # tune iteratively with decreasing range to save time
             if self.stop_run.is_set():
                 break
@@ -178,4 +177,5 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
 
 
 if __name__ == "__main__":
-    RunManager('configuration.yaml').run_run(Fei4Tuning)
+    with RunManager('configuration.yaml') as runmngr:
+        runmngr.run_run(Fei4Tuning)

@@ -173,4 +173,5 @@ class FastThresholdScan(Fei4RunBase):
 
 
 if __name__ == "__main__":
-    RunManager('configuration.yaml').run_run(FastThresholdScan)
+    with RunManager('configuration.yaml') as runmngr:
+        runmngr.run_run(FastThresholdScan)

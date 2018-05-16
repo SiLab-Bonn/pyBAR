@@ -3,7 +3,6 @@ The TDC method gives higher precision charge information than the TOT method. Th
 """
 import logging
 import os.path
-import zlib
 
 import numpy as np
 import tables as tb
@@ -244,4 +243,5 @@ class HitOrCalibration(Fei4RunBase):
 
 
 if __name__ == "__main__":
-    RunManager('configuration.yaml').run_run(HitOrCalibration)
+    with RunManager('configuration.yaml') as runmngr:
+        runmngr.run_run(HitOrCalibration)

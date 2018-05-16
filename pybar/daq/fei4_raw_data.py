@@ -3,9 +3,7 @@ import glob
 from threading import RLock
 import os.path
 from os import remove
-from docutils.transforms.misc import ClassAttribute
 
-from docutils.transforms.misc import ClassAttribute
 import tables as tb
 import zmq
 
@@ -104,7 +102,6 @@ class RawDataFile(object):
         self.curr_filename = self.base_filename
         self.filenames = {self.curr_filename: 0}
         self.open(self.curr_filename, mode, title)
-
 
     def __enter__(self):
         return self
@@ -211,10 +208,10 @@ class RawDataFile(object):
             if self.socket:
                 send_data(self.socket, data_tuple, self.scan_parameters)
 
-    def append(self, data_iterable, scan_parameters=None, flush=True):
+    def append(self, data_iterable, scan_parameters=None, new_file=False, flush=True):
         with self.lock:
             for data_tuple in data_iterable:
-                self.append_item(data_tuple, scan_parameters, flush=False)
+                self.append_item(data_tuple=data_tuple, scan_parameters=scan_parameters, new_file=new_file, flush=False)
             if flush:
                 self.flush()
 

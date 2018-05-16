@@ -7,7 +7,7 @@ transfer_layer:
     type     : SiUsb
 
 hw_drivers:
-  - name      : ADAPTER_CARD
+  - name      : GPAC_ADAPTER_CARD
     type      : GPAC
     interface : USB
     base_addr : 0x0
@@ -107,24 +107,24 @@ registers:
 
   - name        : CCPD_Vdd
     type        : FunctionalRegister
-    hw_driver   : ADAPTER_CARD
+    hw_driver   : GPAC_ADAPTER_CARD
     arg_names   : [value]
     arg_add     : {'channel': 'PWR0'}
 
   - name        : V_in
     type        : FunctionalRegister
-    hw_driver   : ADAPTER_CARD
+    hw_driver   : GPAC_ADAPTER_CARD
     arg_names   : [value]
     arg_add     : {'channel': 'PWR1'}
 
   - name        : CCPD_Vssa
     type        : FunctionalRegister
-    hw_driver   : ADAPTER_CARD
+    hw_driver   : GPAC_ADAPTER_CARD
     arg_names   : [value]
     arg_add     : {'channel': 'PWR2'}
 
   - name        : CCPD_VGate
     type        : FunctionalRegister
-    hw_driver   : ADAPTER_CARD
+    hw_driver   : GPAC_ADAPTER_CARD
     arg_names   : [value]
     arg_add     : {'channel': 'PWR3'}

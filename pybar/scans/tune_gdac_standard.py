@@ -22,7 +22,9 @@ class GdacTuningStandard(Fei4RunBase):
     _default_run_conf = {
         "broadcast_commands": False,
         "threaded_scan": True,
-        "scan_parameters": [('GDAC', [255, 40])],
+        "scan_parameters": [('GDAC', None)],
+        "start_gdac": 150,  # start value of GDAC tuning
+        "gdac_lower_limit": 30,  # set GDAC lower limit to prevent FEI4 from becoming noisy, set to 0 or None to disable
         "step_size": -1,  # step size of the GDAC during scan
         "target_threshold": 30,  # target threshold in PlsrDAC to tune to
         "n_injections_gdac": 50,  # number of injections per GDAC bit setting
@@ -66,11 +68,13 @@ class GdacTuningStandard(Fei4RunBase):
         self.write_target_threshold()
 
         scan_parameter_range = [(2 ** self.register.global_registers['Vthin_AltFine']['bitlength']), 0]  # high to low
-        if self.scan_parameters.GDAC[0]:
-            scan_parameter_range[0] = self.scan_parameters.GDAC[0]
-        if self.scan_parameters.GDAC[1]:
-            scan_parameter_range[1] = self.scan_parameters.GDAC[1]
-        scan_parameter_range = range(scan_parameter_range[0], scan_parameter_range[1] - 1, self.step_size)
+        if self.start_gdac:
+            scan_parameter_range[0] = self.start_gdac
+        if self.gdac_lower_limit:
+            scan_parameter_range[1] = self.gdac_lower_limit
+
+        scan_parameter_range = np.arange(scan_parameter_range[0], scan_parameter_range[1] - 1, self.step_size)
+
         logging.info("Scanning %s from %d to %d", 'GDAC', scan_parameter_range[0], scan_parameter_range[-1])
 
         def bits_set(int_type):
@@ -196,4 +200,5 @@ class GdacTuningStandard(Fei4RunBase):
 
 
 if __name__ == "__main__":
-    RunManager('configuration.yaml').run_run(GdacTuningStandard)
+    with RunManager('configuration.yaml') as runmngr:
+        runmngr.run_run(GdacTuningStandard)

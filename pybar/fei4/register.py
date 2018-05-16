@@ -255,7 +255,7 @@ class FEI4Register(object):
                 # Broadcasting ConfMode not necessary, writing registers is also possible in RunMode
 #                 commands.extend(self.get_commands("ConfMode", ChipID=8))  # set all chips to conf mode to receive commands#
                 # set all other chips to invalid addresses, to make broadcasting of WrRegister command possible
-                commands.extend(self.get_commands("WrRegister", name=["Colpr_Mode", "Colpr_Addr"], ChipID=8)) # braodcast
+                commands.extend(self.get_commands("WrRegister", name=["Colpr_Mode", "Colpr_Addr"], ChipID=8))  # braodcast
             self.set_global_register_value("S0", 0)
             self.set_global_register_value("S1", 0)
             self.set_global_register_value("SR_Clr", 0)
@@ -450,7 +450,7 @@ class FEI4Register(object):
                         value = int(value, 2)
                     try:
                         command_bitvector += bitarray_from_value(value=int(value), size=command_part_object['bitlength'], fmt='I')
-                    except:
+                    except Exception:
                         raise TypeError("Type of value not supported")
             elif string_is_binary(part):
                 command_bitvector += bitarray(part, endian='little')

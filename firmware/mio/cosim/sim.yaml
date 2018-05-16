@@ -14,8 +14,8 @@ transfer_layer:
 #        backend : "@py"
 
 hw_drivers:
-#  - name      : ADAPTER_CARD
-#    type      : FEI4AdapterCard # FEI4QuadModuleAdapterCard
+#  - name      : SINGLE_CHIP_ADAPTER_CARD
+#    type      : FEI4AdapterCard
 #    interface : USB
 #    base_addr : 0x0
 

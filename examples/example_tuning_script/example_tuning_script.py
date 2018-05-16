@@ -34,7 +34,7 @@ if __name__ == "__main__":
     print 'Status:', status
 
     # masking noisy and hot pixels
-    status = runmngr.run_run(run=StuckPixelScan, run_conf=run_conf)
+    status = runmngr.run_run(run=StuckPixelTuning, run_conf=run_conf)
     print 'Status:', status
 
     status = runmngr.run_run(run=NoiseOccupancyTuning, run_conf=run_conf)

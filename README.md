@@ -1,5 +1,5 @@
 
-# pyBAR [![Code Status](https://landscape.io/github/SiLab-Bonn/pyBAR/master/landscape.svg?style=flat)](https://landscape.io/github/SiLab-Bonn/pyBAR/master) [![Build Status](https://travis-ci.org/SiLab-Bonn/pyBAR.svg?branch=master)](https://travis-ci.org/SiLab-Bonn/pyBAR) [![Build Status](https://ci.appveyor.com/api/projects/status/github/SiLab-Bonn/pyBAR?svg=true)](https://ci.appveyor.com/project/DavidLP/pybar-71xwl)
+# pyBAR [![Code Status](https://landscape.io/github/SiLab-Bonn/pyBAR/development/landscape.svg?style=flat)](https://landscape.io/github/SiLab-Bonn/pyBAR/development) [![Build Status](https://travis-ci.org/SiLab-Bonn/pyBAR.svg?branch=development)](https://travis-ci.org/SiLab-Bonn/pyBAR/branches) [![Build Status](https://ci.appveyor.com/api/projects/status/github/SiLab-Bonn/pyBAR?branch=development&svg=true)](https://ci.appveyor.com/project/laborleben/pybar-71xwl?branch=development)
 
 pyBAR - Bonn ATLAS Readout in Python
 
@@ -41,12 +41,12 @@ The following packages are required for pyBAR's core functionality:
 
 For full functionality, the following additional packages are required:
   ```
-  ipython mock nose pyqtgraph pyserial pyvisa pyvisa-py pyzmq sphinx vitables
+  ipython mock nose pyqtgraph pyserial pyvisa pyvisa-py pyzmq vitables
   ```
 
 Run the **following commands** to install the packages:
   ```
-  conda install python=2.7 bitarray contextlib2 cython ipython matplotlib mock nose numba numpy pyserial pytables pyyaml pyzmq scipy sphinx
+  conda install python=2.7 bitarray contextlib2 cython ipython matplotlib mock nose numba numpy pyqt pyserial pytables pyyaml pyzmq qtpy scipy
 
   pip install progressbar-latest pyvisa pyvisa-py git+https://github.com/pyqtgraph/pyqtgraph.git@pyqtgraph-0.10.0
   ```
@@ -56,9 +56,9 @@ On Windows, the `pywin32` package is required:
   conda install pywin32
   ```
 
-[Basil](https://github.com/SiLab-Bonn/basil) (>=2.4.9,<3.0.0) is required:
+[Basil](https://github.com/SiLab-Bonn/basil) (>=2.4.12,<3.0.0) is required:
   ```
-  pip install 'basil_daq>=2.4.9,<3.0.0'
+  pip install 'basil_daq>=2.4.12,<3.0.0'
   ```
 
 [pyBAR FEI4 Interpreter](https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter) (>=1.3.0) is required:

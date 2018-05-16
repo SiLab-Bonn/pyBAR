@@ -10,10 +10,8 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.patches as mpatches
-import matplotlib.pyplot as plt
 import numpy as np
 import tables as tb
-from pylab import polyfit, poly1d
 
 import progressbar
 
@@ -56,11 +54,10 @@ class PlsrDacTransientCalibration(AnalogScan):
         "broadcast_commands": False,
         "threaded_scan": False,
         "scan_parameters": [('PlsrDAC', range(0, 1024, 25))],  # plsr dac settings, be aware: too low plsDAC settings are difficult to trigger
-        "enable_double_columns": [20],  # double columns which will be enabled during scan
+        "enable_double_columns": [20],  # double columns which will be enabled during scan, default: use column 20
         "enable_mask_steps": [0],  # Scan only one mask step to save time
         "n_injections": 512,  # number of injections, has to be > 260 to allow for averaging 256 injection signals
         "channel": 1,  # oscilloscope channel
-        "show_debug_plots": False,
         "trigger_level_offset": 25,  # offset of the PlsrDAC baseline in mV, usually the offset voltage at PlsrDAC=0
         "data_points": 10000,
         "max_data_index": None,  # maximum data index to be read out; e.g. 2000 reads date from 1 to 2000, if None, use max record length
@@ -178,17 +175,7 @@ class PlsrDacTransientCalibration(AnalogScan):
                 trigger_level = trigger_levels[-1]
             self.dut['Oscilloscope'].set_trigger_level(trigger_level)
             self.dut['Oscilloscope'].set_vertical_scale(min(self.vertical_scale, (np.mean(voltages) + 0.2 * np.mean(voltages)) / 10), channel=self.channel)
-            #self.dut['Oscilloscope'].set_vertical_scale(0.05, channel=self.channel)
-
-            if self.show_debug_plots:
-                plt.clf()
-                plt.grid()
-                plt.plot(times * 1e9, voltages * 1e3, label='PlsrDAC Pulse')
-                plt.axhline(y=trigger_level * 1e3, linewidth=2, linestyle="--", color='r', label='Trigger (%0.1f mV)' % (trigger_level * 1e3))
-                plt.xlabel('Time [ns]')
-                plt.ylabel('Voltage [mV]')
-                plt.legend(loc=0)
-                plt.show()
+#             self.dut['Oscilloscope'].set_vertical_scale(0.05, channel=self.channel)
 
             # Setup data aquisition and start scan loop
             self.dut['Oscilloscope'].set_trigger_mode("NORMal")
@@ -208,18 +195,6 @@ class PlsrDacTransientCalibration(AnalogScan):
             trigger_level = float(self.dut['Oscilloscope'].get_trigger_level())
             trigger_levels.append(trigger_level)
             progress_bar.update(index)
-
-            if self.show_debug_plots:
-                plt.clf()
-                plt.ylim(0, 1500)
-                plt.grid()
-                plt.plot(times * 1e9, voltages * 1e3, label='PlsrDAC Pulse')
-                plt.axhline(y=trigger_level * 1e3, linewidth=2, linestyle="--", color='r', label='Trigger (%0.1f mV)' % (trigger_level * 1e3))
-                plt.xlabel('Time [ns]')
-                plt.ylabel('Voltage [mV]')
-                plt.legend(loc=0)
-                plt.show()
-
             self.dut['Oscilloscope'].set_vertical_scale(self.vertical_scale, channel=self.channel)
 
         time_out[:] = times
@@ -232,7 +207,7 @@ class PlsrDacTransientCalibration(AnalogScan):
             data = in_file_h5.root.PlsrDACwaveforms[:]
             try:
                 times = in_file_h5.root.Times[:]
-            except NoSuchNodeError:  # for backward compatibility
+            except tb.NoSuchNodeError:  # for backward compatibility
                 times = np.array(in_file_h5.root.PlsrDACwaveforms._v_attrs.times)
             scan_parameter_values = in_file_h5.root.PlsrDACwaveforms._v_attrs.scan_parameter_values
             enable_double_columns = in_file_h5.root.PlsrDACwaveforms._v_attrs.enable_double_columns
@@ -254,7 +229,7 @@ class PlsrDacTransientCalibration(AnalogScan):
                         plsr_dac = scan_parameter_values[index]
 
                         # index of first value below trigger level
-                        step_index = np.argmin(voltages>trigger_level)
+                        step_index = np.argmin(voltages > trigger_level)
                         step_time = times[step_index]
                         start_index_baseline = np.argmin(np.abs(times * 1e9 - fit_ranges[0][0] - step_time * 1e9))
                         stop_index_baseline = np.argmin(np.abs(times * 1e9 - fit_ranges[0][1] - step_time * 1e9))
@@ -292,7 +267,7 @@ class PlsrDacTransientCalibration(AnalogScan):
                         ax.set_title('PulserDAC=%d Waveform' % plsr_dac)
                         ax.set_xlabel('Time [ns]')
                         ax.set_ylabel('Voltage [mV]')
-                        delta_string = '$\Delta=$%.3fmv' % (median_baseline * 1e3 - median_peak * 1e3)
+                        delta_string = '$\Delta=$%.3fmV' % (median_baseline * 1e3 - median_peak * 1e3)
                         handles, labels = ax.get_legend_handles_labels()
                         handles.append(mpatches.Patch(color='none', label=delta_string))
                         ax.legend(handles=handles, loc=4)  # lower right
@@ -311,5 +286,7 @@ class PlsrDacTransientCalibration(AnalogScan):
                     self.register.calibration_parameters['Vcal_Coeff_1'] = np.nan_to_num(slope_fit[1] * 1000.0)  # store in mV/DAC
             progress_bar.finish()
 
+
 if __name__ == "__main__":
-    RunManager('configuration.yaml').run_run(PlsrDacTransientCalibration)
+    with RunManager('configuration.yaml') as runmngr:
+        runmngr.run_run(PlsrDacTransientCalibration)

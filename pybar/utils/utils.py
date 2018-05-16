@@ -4,10 +4,11 @@ import datetime
 import Queue
 import collections
 import itertools
+import os
+import os.path
 # import array
 
 import numpy as np
-# from bitarray import bitarray
 
 
 class Timer(object):
@@ -229,7 +230,7 @@ def try_int(s):
     "Convert to integer if possible."
     try:
         return int(s)
-    except:
+    except Exception:
         return s
 
 
@@ -325,7 +326,7 @@ def dict_compare(d1, d2):
     intersect_keys = d1_keys.intersection(d2_keys)
     added = d1_keys - d2_keys
     removed = d2_keys - d1_keys
-    modified = {o : (d1[o], d2[o]) for o in intersect_keys if d1[o] != d2[o]}
+    modified = {o: (d1[o], d2[o]) for o in intersect_keys if d1[o] != d2[o]}
     same = set(o for o in intersect_keys if d1[o] == d2[o])
     return added, removed, modified, same
 
@@ -336,3 +337,24 @@ def zip_nofill(*iterables):
     Note: https://stackoverflow.com/questions/38054593/zip-longest-without-fillvalue
     '''
     return (tuple([entry for entry in iterable if entry is not None]) for iterable in itertools.izip_longest(*iterables, fillvalue=None))
+
+
+def find_file_dir_up(filename, path=None, n=None):
+    '''Finding file in directory upwards.
+    '''
+    if path is None:
+        path = os.getcwd()
+    i = 0
+    while True:
+        current_path = path
+        for _ in range(i):
+            current_path = os.path.split(current_path)[0]
+        if os.path.isfile(os.path.join(current_path, filename)):  # found file and return
+            return os.path.join(current_path, filename)
+        elif os.path.dirname(current_path) == current_path:  # root of filesystem
+            return
+        elif n is not None and i == n:
+            return
+        else:  # file not found
+            i += 1
+            continue

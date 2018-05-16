@@ -105,7 +105,7 @@ class Fei4SelfTriggerScan(Fei4RunBase):
         finally:
             try:
                 self.stop_trigger()
-            except:
+            except Exception:
                 # in case something fails, call this on last resort
                 self.scan_timeout_timer.cancel()
                 self.connect_cancel(["abort"])
@@ -134,4 +134,5 @@ class Fei4SelfTriggerScan(Fei4RunBase):
 
 
 if __name__ == "__main__":
-    RunManager('configuration.yaml').run_run(Fei4SelfTriggerScan)
+    with RunManager('configuration.yaml') as runmngr:
+        runmngr.run_run(Fei4SelfTriggerScan)

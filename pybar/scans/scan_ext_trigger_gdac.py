@@ -1,5 +1,4 @@
 import logging
-import zlib
 
 import numpy as np
 import tables as tb
@@ -65,4 +64,5 @@ class ExtTriggerGdacScan(ExtTriggerScan):
 
 
 if __name__ == "__main__":
-    RunManager('configuration.yaml').run_run(ExtTriggerGdacScan)
+    with RunManager('configuration.yaml') as runmngr:
+        runmngr.run_run(ExtTriggerGdacScan)

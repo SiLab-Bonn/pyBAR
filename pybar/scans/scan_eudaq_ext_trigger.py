@@ -135,7 +135,7 @@ if __name__ == "__main__":
     #         for item in run_conf:
     #             try:
     #                 run_conf[item] = pp.GetConfigParameter(item)
-    #             except:
+    #             except Exception:
     #                 pass
             rmngr = RunManager('../configuration.yaml')  # TODO: get conf from EUDAQ
             pp.Configuring = True

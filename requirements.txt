@@ -1,23 +1,21 @@
 # Core functionality
-basil_daq>=2.4.9,<3.0.0  # readout framework pyBAR is built on
+basil_daq>=2.4.12,<3.0.0  # readout framework pyBAR is built on
 pyBAR_fei4_interpreter>=1.3,<1.4  # to interpret the raw data
 pixel_clusterizer>=3.1,<3.2  # to cluster pixel hits
 bitarray>=0.8.1
+contextlib2  # for context manager
 matplotlib
 numpy
 progressbar-latest>=2.4
 tables
 pyyaml
 scipy
-contextlib2  # for multi with context manager
 
-# Additional functionality (lab devices, unit tests, Online Monitor)
+# Additional functionality (support for lab devices, unit tests, online monitor)
+mock # unit tests
+nose # unit tests
+pyqtgraph>=0.10 # online monitor
+pyserial # serial port
 pyvisa # interface to lab devices
 pyvisa-py # interface to lab devices
-pyserial # serial port
-pyqtgraph>=0.10 # monitor
-mock # unit tests
-sphinx # for vitables
-#vitables # data viewer
-nose # unit tests
-pyzmq # monitor
+pyzmq # online monitor

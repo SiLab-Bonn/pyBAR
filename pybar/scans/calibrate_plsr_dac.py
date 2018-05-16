@@ -29,7 +29,7 @@ class PlsrDacCalibration(Fei4RunBase):
     _default_run_conf = {
         "broadcast_commands": False,
         "threaded_scan": False,
-        "scan_parameters": [('PlsrDAC', range(0, 1024, 25)), ('Colpr_Addr', range(0, 40))],  # the PlsrDAC and Colpr_Addr range
+        "scan_parameters": [('PlsrDAC', range(0, 1024, 25)), ('Colpr_Addr', [20])],  # the PlsrDAC and Colpr_Addr range, default: use column 20, for full scan use range(0, 40)
         "mask_steps": 3,
         "repeat_measurements": 10,
         "enable_shift_masks": ["Enable", "C_High", "C_Low"]
@@ -41,7 +41,7 @@ class PlsrDacCalibration(Fei4RunBase):
         enable_mask = make_pixel_mask(steps=self.mask_steps, shift=0, default=0, value=1)  # Activate pixels for injection, although they are not read out
         map(lambda mask_name: self.register.set_pixel_register_value(mask_name, enable_mask), self.enable_shift_masks)
         commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name=self.enable_shift_masks, joint_write=True))
-        self.register.set_global_register_value('Colpr_Mode', 0)
+        self.register.set_global_register_value('Colpr_Mode', 0)  # one DC only
         self.register.set_global_register_value('ExtDigCalSW', 0)
         self.register.set_global_register_value('ExtAnaCalSW', 1)  # Route Vcal to external pin
         commands.extend(self.register.get_commands("WrRegister", name=['Colpr_Mode', 'ExtDigCalSW', 'ExtAnaCalSW']))
@@ -323,4 +323,5 @@ def plot_pulser_dac(x, y, y_err=None, output_pdf=None, title_suffix="", atol_fir
 
 
 if __name__ == "__main__":
-    RunManager('configuration.yaml').run_run(PlsrDacCalibration)
+    with RunManager('configuration.yaml') as runmngr:
+        runmngr.run_run(PlsrDacCalibration)

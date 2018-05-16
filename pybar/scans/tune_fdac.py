@@ -23,7 +23,7 @@ class FdacTuning(Fei4RunBase):
     '''
     _default_run_conf = {
         "broadcast_commands": False,
-        "threaded_scan": False,
+        "threaded_scan": True,
         "scan_parameters": [('FDAC', None)],
         "target_charge": 280,
         "target_tot": 5,
@@ -169,4 +169,5 @@ class FdacTuning(Fei4RunBase):
 
 
 if __name__ == "__main__":
-    RunManager('configuration.yaml').run_run(FdacTuning)
+    with RunManager('configuration.yaml') as runmngr:
+        runmngr.run_run(FdacTuning)

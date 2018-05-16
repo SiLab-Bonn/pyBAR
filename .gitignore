@@ -108,6 +108,10 @@ firmware/mmc3_8chip_eth/vivado/*
 firmware/mmc3_8chip_multi_tx_eth/vivado/*
 !firmware/mmc3_8chip_multi_tx_eth/vivado/*.xpr
 
+# MMC3 8chip with multi TX SHIP firmware
+firmware/mmc3_8_chip_multi_tx_eth_SHIP/vivado/*
+!firmware/mmc3_8_chip_multi_tx_eth_SHIP/vivado/*.xpr
+
 # Simulation output
 firmware/mio/cosim/sim_build
 firmware/mio/cosim/sim_build.zip
