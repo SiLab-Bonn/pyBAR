@@ -42,7 +42,5 @@ setup(
     install_requires=install_requires,
     packages=find_packages(),
     include_package_data=True,  # accept all data files and directories matched by MANIFEST.in or found in source control
-    package_data={'pybar': ['*.yaml',
-                            '*.bit']},
     platforms='any'
 )
