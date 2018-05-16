@@ -1,5 +1,6 @@
 include README.* VERSION LICENSE.txt requirements.txt
-include pybar/*.yaml pybar/*.bit
+include pybar/*.yaml
 recursive-include examples *
 recursive-include firmware *
 recursive-include pybar/config *
+recursive-include pybar/firmware *
