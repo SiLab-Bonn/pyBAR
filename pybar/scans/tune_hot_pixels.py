@@ -2,6 +2,7 @@ import logging
 
 import numpy as np
 
+from pybar.daq.fifo_readout import FifoError
 from pybar.scans.scan_fei4_self_trigger import Fei4SelfTriggerScan
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.fei4.register_utils import invert_pixel_mask
@@ -72,6 +73,12 @@ class HotPixelTuning(Fei4SelfTriggerScan):
             for mask in self.enable_for_mask:
                 mask_name = self.register.pixel_registers[mask]['name']
                 plot_occupancy(self.register.get_pixel_register_value(mask).T, title='%s Mask' % mask_name, z_max=1, filename=analyze_raw_data.output_pdf)
+
+    def handle_err(self, exc):
+        if isinstance(exc[1], FifoError):
+            logging.warning(str(exc[1]))
+            return
+        super(HotPixelTuning, self).handle_err(exc=exc)
 
 
 if __name__ == "__main__":
