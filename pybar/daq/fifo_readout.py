@@ -410,12 +410,15 @@ class FifoReadout(object):
         while not self.stop_readout.wait(time_wait if time_wait >= 0.0 else 0.0):
             time_read = time()
             try:
-                if not all(self.get_rx_sync_status(channels=self.enabled_fe_channels)):
-                    raise RxSyncError('FEI4 RX sync error')
-                if any(self.get_rx_8b10b_error_count(channels=self.enabled_fe_channels)):
-                    raise EightbTenbError('FEI4 RX 8b10b error(s) detected')
-                if any(self.get_rx_fifo_discard_count(channels=self.enabled_fe_channels)):
-                    raise FifoError('FEI4 RX FIFO discard error(s) detected')
+                sync_status = self.get_rx_sync_status(channels=self.enabled_fe_channels)
+                if not all(sync_status):
+                    raise RxSyncError('FEI4 RX sync error in RX: %s' % ', '.join([self.enabled_fe_channels[index] for (index, status) in enumerate(sync_status) if not status]))
+                error_count = self.get_rx_8b10b_error_count(channels=self.enabled_fe_channels)
+                if any(error_count):
+                    raise EightbTenbError('FEI4 RX 8b10b error(s) detected in RX: %s' % ', '.join([self.enabled_fe_channels[index] for (index, status) in enumerate(error_count) if status]))
+                discard_count = self.get_rx_fifo_discard_count(channels=self.enabled_fe_channels)
+                if any(discard_count):
+                    raise FifoError('FEI4 RX FIFO discard error(s) detected in RX: %s' % ', '.join([self.enabled_fe_channels[index] for (index, status) in enumerate(discard_count) if status]))
             except Exception:
                 self.errback(sys.exc_info())
             time_wait = self.watchdog_interval - (time() - time_read)
