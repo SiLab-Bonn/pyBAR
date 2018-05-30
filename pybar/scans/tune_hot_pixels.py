@@ -34,6 +34,10 @@ class HotPixelTuning(Fei4SelfTriggerScan):
         "low_value": 1  # only pixels with occupancy greater than low_value can be masked
     }
 
+    def scan(self):
+        self.suppress_warning = False
+        super(HotPixelTuning, self).scan()
+
     def analyze(self):
         with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
             analyze_raw_data.create_cluster_size_hist = False
@@ -79,7 +83,9 @@ class HotPixelTuning(Fei4SelfTriggerScan):
 
     def handle_err(self, exc):
         if isinstance(exc[1], FifoError):
-            logging.warning(str(exc[1]))
+            if not self.suppress_warning:
+                logging.warning(str(exc[1]))
+                self.suppress_warning = True
             return
         super(HotPixelTuning, self).handle_err(exc=exc)
 
