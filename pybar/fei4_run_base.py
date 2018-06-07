@@ -423,7 +423,7 @@ class Fei4RunBase(RunBase):
                         pass
 #                         logging.error('Closed USB device')
 
-    def handle_data(self, data):
+    def handle_data(self, data, new_file=False, flush=True):
         '''Handling of the data.
 
         Parameters
@@ -431,7 +431,7 @@ class Fei4RunBase(RunBase):
         data : list, tuple
             Data tuple of the format (data (np.array), last_time (float), curr_time (float), status (int))
         '''
-        self.raw_data_file.append(data[0], scan_parameters=self.scan_parameters._asdict(), flush=True)
+        self.raw_data_file.append(data[0], scan_parameters=self.scan_parameters._asdict(), new_file=new_file, flush=flush)
 
     def handle_err(self, exc):
         '''Handling of Exceptions.
