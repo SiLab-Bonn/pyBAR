@@ -63,7 +63,7 @@ class TluTuning(Fei4RunBase):
                         word_index_start = meta_data[index_low]['index_start']
                         word_index_stop = meta_data[index_high]['index_start'] if index_high is not None else meta_data[-1]['index_stop']
                         actual_raw_data = data_words[word_index_start:word_index_stop]
-                        selection = np.logical_and(actual_raw_data, 0x80000000)  # Select the trigger words in the data stream
+                        selection = np.bitwise_and(actual_raw_data, 0x80000000) == 0x80000000
                         trigger_words = np.bitwise_and(actual_raw_data[selection], 0x7FFFFFFF)  # Get the trigger values
                         if selection.shape[0] != word_index_stop - word_index_start:
                             logging.warning('There are not only trigger words in the data stream')
@@ -83,7 +83,7 @@ class TluTuning(Fei4RunBase):
                         output_pdf.savefig(fig)
 
                     data_table.append(data_array)  # Store valid data
-                    if not np.any(data_array['error_rate'] != 0):
+                    if np.all(data_array['error_rate'] != 0.0):
                         logging.warning('There is no delay setting without errors')
                     logging.info('ERRORS: %s', str(data_array['error_rate']))
 
