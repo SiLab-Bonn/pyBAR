@@ -165,6 +165,9 @@ def plot_fancy_occupancy(hist, z_max=None, filename=None):
     axHistx.set_xlim((0.5, 80.5))
     if hist.all() is np.ma.masked:
         axHistx.set_ylim((0, 1))
+    else:
+        x_c_max = np.ceil(np.percentile(hight, 99))
+        axHistx.set_ylim(0, x_c_max)
     axHistx.locator_params(axis='y', nbins=3)
     axHistx.ticklabel_format(style='sci', scilimits=(0, 4), axis='y')
     axHistx.set_ylabel('#')
@@ -174,6 +177,9 @@ def plot_fancy_occupancy(hist, z_max=None, filename=None):
     axHisty.set_ylim((336.5, 0.5))
     if hist.all() is np.ma.masked:
         axHisty.set_xlim((0, 1))
+    else:
+        y_c_max = np.ceil(np.percentile(width, 99))
+        axHisty.set_xlim(0, y_c_max)
     axHisty.locator_params(axis='x', nbins=3)
     axHisty.ticklabel_format(style='sci', scilimits=(0, 4), axis='x')
     axHisty.set_xlabel('#')
