@@ -24,7 +24,7 @@ from basil.dut import Dut
 from pybar.run_manager import RunManager, RunBase, RunAborted, RunStopped
 from pybar.utils.utils import find_file_dir_up
 from pybar.fei4.register import FEI4Register
-from pybar.fei4.register_utils import FEI4RegisterUtils, is_fe_ready, CmdTimeoutError
+from pybar.fei4.register_utils import FEI4RegisterUtils, is_fe_ready
 from pybar.daq.fifo_readout import FifoReadout, RxSyncError, EightbTenbError, FifoError, NoDataTimeout, StopTimeout
 from pybar.daq.readout_utils import save_configuration_dict
 from pybar.daq.fei4_raw_data import open_raw_data_file, send_meta_data
