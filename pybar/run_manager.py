@@ -1,10 +1,9 @@
 import logging
-from yaml import safe_load
 import datetime
 import os
 import re
 from collections import namedtuple
-from threading import Lock, Thread, Event
+from threading import Lock, Thread, Event, current_thread, _MainThread
 # from multiprocessing import dummy as multiprocessing
 import sys
 import functools
@@ -17,8 +16,9 @@ from inspect import getmembers, isclass
 from functools import partial
 from ast import literal_eval
 from time import time
-from threading import current_thread
 from functools import wraps
+
+from yaml import safe_load
 
 from pybar.utils.utils import find_file_dir_up
 
@@ -130,7 +130,7 @@ class RunBase():
         self._init(run_conf, run_number)
         logging.info('Starting run %d (%s) in %s', self.run_number, self.__class__.__name__, self.working_dir)
         # set up signal handler
-        if current_thread().name == 'MainThread':
+        if isinstance(current_thread(), _MainThread):
             logging.info('Press Ctrl-C to stop run')
             if not signal_handler:
                 signal_handler = self._signal_handler
@@ -154,8 +154,10 @@ class RunBase():
             self._run_status = run_status.finished
             self._last_traceback = None
             self._last_error_message = None
+        finally:
+            pass
         # revert signal handler to default
-        if current_thread().name == 'MainThread':
+        if isinstance(current_thread(), _MainThread):
             signal.signal(signal.SIGINT, signal.SIG_DFL)
         self._cleanup()
         # log message
@@ -351,7 +353,6 @@ def thunkify(thread_name):
 #                 wait_event.wait()
                 if worker_thread.is_alive():
                     return
-                signal.signal(signal.SIGINT, signal.SIG_DFL)
                 if exc[0]:
                     raise exc[1][0], exc[1][1], exc[1][2]
                 return result[0]
