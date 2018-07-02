@@ -3,7 +3,7 @@ import datetime
 import os
 import re
 from collections import namedtuple
-from threading import Lock, Thread, Event
+from threading import Lock, Thread, Event, current_thread, _MainThread
 import sys
 import functools
 import traceback
@@ -15,7 +15,6 @@ from inspect import getmembers, isclass, getargspec
 from functools import partial
 from ast import literal_eval
 from time import time
-from threading import current_thread
 from functools import wraps
 
 from yaml import safe_load
@@ -139,7 +138,7 @@ class RunBase(object):
         self._init(run_conf, run_number)
         logging.info('Starting run %d (%s) in %s', self.run_number, self.__class__.__name__, self.working_dir)
         # set up signal handler
-        if current_thread().name == 'MainThread':
+        if isinstance(current_thread(), _MainThread):
             logging.info('Press Ctrl-C to stop run')
             if not signal_handler:
                 signal_handler = self._signal_handler
@@ -162,7 +161,7 @@ class RunBase(object):
         finally:
             pass
         # revert signal handler to default
-        if current_thread().name == 'MainThread':
+        if isinstance(current_thread(), _MainThread):
             signal.signal(signal.SIGINT, signal.SIG_DFL)
         self._cleanup()
         # log message
@@ -395,7 +394,6 @@ def thunkify(thread_name):
 #                 wait_event.wait()
                 if worker_thread.is_alive():
                     return
-                signal.signal(signal.SIGINT, signal.SIG_DFL)
                 if exc[0]:
                     raise exc[1][0], exc[1][1], exc[1][2]
                 return result[0]
