@@ -26,8 +26,8 @@ from pybar.utils.utils import find_file_dir_up
 punctuation = '!,.:;?'
 
 
-_RunStatus = namedtuple('RunStatus', ['running', 'finished', 'stopped', 'aborted', 'crashed'])
-run_status = _RunStatus(running='RUNNING', finished='FINISHED', stopped='STOPPED', aborted='ABORTED', crashed='CRASHED')
+_RunStatus = namedtuple('RunStatus', ['init', 'running', 'finished', 'stopped', 'aborted', 'crashed'])
+run_status = _RunStatus(init='INIT', running='RUNNING', finished='FINISHED', stopped='STOPPED', aborted='ABORTED', crashed='CRASHED')
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
@@ -60,7 +60,7 @@ class RunBase():
         self._conf = conf
         self._init_run_conf(run_conf)
         self._run_number = None
-        self._run_status = None
+        self._run_status = run_status.init
         self.file_lock = Lock()
         self.stop_run = Event()  # abort condition for loops
         self.abort_run = Event()
@@ -316,11 +316,11 @@ class RunBase():
         self.stop('Pressed Ctrl-C')
 
 
-def thunkify(thread_name):
-    """Make a function immediately return a function of no args which, when called,
+def thunkify(thread_name=None, daemon=True, default=None):
+    '''Make a function immediately return a function of no args which, when called,
     waits for the result, which will start being processed in another thread.
     Taken from https://wiki.python.org/moin/PythonDecoratorLibrary.
-    """
+    '''
     def actual_decorator(f):
         @functools.wraps(f)
         def thunked(*args, **kwargs):
@@ -340,7 +340,7 @@ def thunkify(thread_name):
 #                     wait_event.set()
 
             worker_thread = Thread(target=worker_func, name=thread_name if thread_name else None)
-            worker_thread.daemon = True
+            worker_thread.daemon = daemon
 
             def thunk(timeout=None):
                 # avoid blocking MainThread
@@ -352,7 +352,7 @@ def thunkify(thread_name):
 #                 worker_thread.join(timeout=timeout)
 #                 wait_event.wait()
                 if worker_thread.is_alive():
-                    return
+                    return default
                 if exc[0]:
                     raise exc[1][0], exc[1][1], exc[1][2]
                 return result[0]
@@ -509,11 +509,11 @@ class RunManager(object):
         local_run_conf.update(run_conf)
 
         if use_thread:
-            @thunkify('RunThread')
+            self.current_run = run
+
+            @thunkify(thread_name='RunThread', daemon=True, default=self.current_run.run_status)
             def run_run_in_thread():
                 return run.run(run_conf=local_run_conf)
-
-            self.current_run = run
 
             signal.signal(signal.SIGINT, self._signal_handler)
             logging.info('Press Ctrl-C to stop run')
