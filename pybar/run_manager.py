@@ -126,6 +126,9 @@ class RunBase():
     def run_status(self, value):
         raise AttributeError
 
+    def get_run_status(self):
+        return self._run_status
+
     def run(self, run_conf, run_number=None, signal_handler=None):
         self._init(run_conf, run_number)
         logging.info('Starting run %d (%s) in %s', self.run_number, self.__class__.__name__, self.working_dir)
@@ -316,7 +319,7 @@ class RunBase():
         self.stop('Pressed Ctrl-C')
 
 
-def thunkify(thread_name=None, daemon=True, default=None):
+def thunkify(thread_name=None, daemon=True, default_func=None):
     '''Make a function immediately return a function of no args which, when called,
     waits for the result, which will start being processed in another thread.
     Taken from https://wiki.python.org/moin/PythonDecoratorLibrary.
@@ -352,7 +355,10 @@ def thunkify(thread_name=None, daemon=True, default=None):
 #                 worker_thread.join(timeout=timeout)
 #                 wait_event.wait()
                 if worker_thread.is_alive():
-                    return default
+                    if default_func is None:
+                        return
+                    else:
+                        return default_func()
                 if exc[0]:
                     raise exc[1][0], exc[1][1], exc[1][2]
                 return result[0]
@@ -511,7 +517,7 @@ class RunManager(object):
         if use_thread:
             self.current_run = run
 
-            @thunkify(thread_name='RunThread', daemon=True, default=self.current_run.run_status)
+            @thunkify(thread_name='RunThread', daemon=True, default_func=self.current_run.get_run_status)
             def run_run_in_thread():
                 return run.run(run_conf=local_run_conf)
 
