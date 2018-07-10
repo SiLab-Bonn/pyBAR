@@ -390,7 +390,7 @@ def thunkify(thread_name=None, daemon=True, default_func=None):
                 # avoid blocking MainThread
                 start_time = time()
                 while True:
-                    worker_thread.join(timeout=1.0)
+                    worker_thread.join(timeout=0.1)
                     if (timeout and timeout < time() - start_time) or not worker_thread.is_alive():
                         break
 #                 worker_thread.join(timeout=timeout)
