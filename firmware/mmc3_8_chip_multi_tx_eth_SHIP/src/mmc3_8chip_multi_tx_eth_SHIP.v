@@ -447,6 +447,127 @@ for (h = 0; h < 8; h = h + 1) begin: cmd_gen
 end
 endgenerate
 
+// external trigger and reset on LEMO RX0
+wire EXT_TRG_CLK;
+wire PLL_FEEDBACK3, LOCKED3;
+PLLE2_BASE #(
+    .BANDWIDTH("OPTIMIZED"),  // OPTIMIZED, HIGH, LOW
+    .CLKFBOUT_MULT(30),       // Multiply value for all CLKOUT, (2-64)
+    .CLKFBOUT_PHASE(0.0),     // Phase offset in degrees of CLKFB, (-360.000-360.000).
+    .CLKIN1_PERIOD(25.000),      // Input clock period in ns to ps resolution (i.e. 33.333 is 30 MHz).
+
+    .CLKOUT0_DIVIDE(30),     // Divide amount for CLKOUT0 (1-128)
+    .CLKOUT0_DUTY_CYCLE(0.5), // Duty cycle for CLKOUT0 (0.001-0.999).
+    .CLKOUT0_PHASE(0.0),      // Phase offset for CLKOUT0 (-360.000-360.000).
+
+    .DIVCLK_DIVIDE(1),        // Master division value, (1-56)
+    .REF_JITTER1(0.0),        // Reference input jitter in UI, (0.000-0.999).
+    .STARTUP_WAIT("FALSE")     // Delay DONE until PLL Locks, ("TRUE"/"FALSE")
+) PLLE2_BASE_inst_3 (
+    .CLKOUT0(EXT_TRG_CLK),
+    .CLKOUT1(),
+    .CLKOUT2(),
+    .CLKOUT3(),
+    .CLKOUT4(),
+    .CLKOUT5(),
+
+    .CLKFBOUT(PLL_FEEDBACK3),
+    .LOCKED(LOCKED3),     // 1-bit output: LOCK
+
+    // Input 40 MHz clock
+    .CLKIN1(LEMO_RX[1]),
+
+    // Control Ports
+    .PWRDWN(0),
+    .RST(!RESET_N),
+
+    // Feedback
+    .CLKFBIN(PLL_FEEDBACK3)
+);
+
+
+wire TIMESTAMP_RESET_SYNC;
+three_stage_synchronizer three_stage_trigger_ts_reset_synchronizer (
+    .CLK(EXT_TRG_CLK),
+    .IN(LEMO_RX[2]),
+    .OUT(TIMESTAMP_RESET_SYNC)
+);
+
+//reg TIMESTAMP_RESET_SYNC_FF;
+//always @ (posedge EXT_TRG_CLK)
+//    TIMESTAMP_RESET_SYNC_FF <= TIMESTAMP_RESET_SYNC;
+
+//wire TIMESTAMP_RESET_FLAG;
+//assign TIMESTAMP_RESET_FLAG = ~TIMESTAMP_RESET_SYNC_FF & TIMESTAMP_RESET_SYNC;
+
+reg RST_FF, RST_FF2, BUS_RST_FF, BUS_RST_FF2;
+always @(posedge BUS_CLK) begin
+    BUS_RST_FF <= BUS_RST;
+    BUS_RST_FF2 <= BUS_RST_FF;
+end
+
+wire BUS_RST_FLAG;
+assign BUS_RST_FLAG = BUS_RST_FF2 & ~BUS_RST_FF; // trailing edge
+
+wire BUS_RST_FLAG_SYNC;
+flag_domain_crossing bus_reset_te_flag_domain_crossing (
+    .CLK_A(BUS_CLK),
+    .CLK_B(EXT_TRG_CLK),
+    .FLAG_IN_CLK_A(BUS_RST_FLAG),
+    .FLAG_OUT_CLK_B(BUS_RST_FLAG_SYNC)
+);
+
+always @ (posedge EXT_TRG_CLK)
+begin
+    if (BUS_RST_FLAG_SYNC || TIMESTAMP_RESET_SYNC)
+        EXT_TRG_TIMESTAMP <= 32'b0;
+    else
+        EXT_TRG_TIMESTAMP <= EXT_TRG_TIMESTAMP + 1;
+end
+
+wire LEMO_RX0_SYNC;
+three_stage_synchronizer #(
+    .WIDTH(1)
+) three_stage_ext_trigger_synchronizer (
+    .CLK(EXT_TRG_CLK),
+    .IN(LEMO_RX[0]),
+    .OUT(LEMO_RX0_SYNC)
+);
+
+reg LEMO_RX0_SYNC_FF;
+always @ (posedge EXT_TRG_CLK)
+begin
+    LEMO_RX0_SYNC_FF <= LEMO_RX0_SYNC;
+end
+wire LEMO_RX0_SYNC_LE;
+assign LEMO_RX0_SYNC_LE = ~LEMO_RX0_SYNC_FF & LEMO_RX0_SYNC; // leading edge
+
+reg [31:0] EXT_TRG_TIMESTAMP_BUF;
+always @ (posedge EXT_TRG_CLK)
+begin
+    if (LEMO_RX0_SYNC_LE==1'b1)
+        EXT_TRG_TIMESTAMP_BUF <= EXT_TRG_TIMESTAMP;
+    else
+        EXT_TRG_TIMESTAMP_BUF <= EXT_TRG_TIMESTAMP_BUF;
+end
+
+wire LEMO_RX0_LE_CLK40;
+flag_domain_crossing ext_trigger_le_flag_domain_crossing (
+    .CLK_A(EXT_TRG_CLK),
+    .CLK_B(CLK40),
+    .FLAG_IN_CLK_A(LEMO_RX0_SYNC_LE),
+    .FLAG_OUT_CLK_B(LEMO_RX0_LE_CLK40)
+);
+
+reg [31:0] EXT_TRG_TIMESTAMP_BUF_CLK40;
+always @ (posedge CLK40)
+begin
+    if (LEMO_RX0_LE_CLK40==1'b1)
+        EXT_TRG_TIMESTAMP_BUF_CLK40 <= EXT_TRG_TIMESTAMP_BUF;
+    else
+        EXT_TRG_TIMESTAMP_BUF_CLK40 <= EXT_TRG_TIMESTAMP_BUF_CLK40;
+end
+
 wire [7:0] TRIGGER_ACKNOWLEDGE_FLAG; // to TLU FSM
 reg [7:0] CMD_READY_FF;
 always @ (posedge CLK40)
@@ -549,15 +670,11 @@ wire [7:0] RX_READY, RX_8B10B_DECODER_ERR, RX_FIFO_OVERFLOW_ERR, RX_FIFO_FULL;
 wire FIFO_FULL;
 wire TLU_BUSY, TLU_CLOCK;
 wire [7:0] TRIGGER_ENABLED, TLU_ENABLED;
-wire [8:0] TRIGGER_SELECTED [7:0];
+wire [9:0] TRIGGER_SELECTED [7:0];
 reg [31:0] EXT_TRG_TIMESTAMP;
-wire EXT_TRG_CLK;
-wire TRIGGER;
 
-assign TRIGGER = LEMO_RX[0];
 assign RJ45_BUSY_LEMO_TX1 = BROADCAST_CMD ? TLU_BUSY : 1'b1;
 assign RJ45_CLK_LEMO_TX0 = TLU_CLOCK;
-assign EXT_TRG_CLK = LEMO_RX[1];
 
 genvar k;
 generate
@@ -606,7 +723,7 @@ generate
         .HIGHADDR(TLU_HIGHADDR+32'h0100*k),
         .DIVISOR(8),
         .ABUSWIDTH(32),
-        .WIDTH(9),
+        .WIDTH(10),
         .TLU_TRIGGER_MAX_CLOCK_CYCLES(32)
     ) i_tlu_controller (
         .BUS_CLK(BUS_CLK),
@@ -628,8 +745,8 @@ generate
         .TRIGGER_SELECTED(TRIGGER_SELECTED[k]),
         .TLU_ENABLED(TLU_ENABLED[k]),
 
-        .TRIGGER({TDC_OUT, LEMO_RX[0]}),
-        .TRIGGER_VETO({RX_FIFO_FULL, FIFO_FULL}),
+        .TRIGGER({LEMO_RX0_LE_CLK40, TDC_OUT, LEMO_RX[0]}),
+        .TRIGGER_VETO({1'b0, RX_FIFO_FULL, FIFO_FULL}),
         .TIMESTAMP_RESET(1'b0),
 
         .EXT_TRIGGER_ENABLE(BROADCAST_CMD ? 1'b0 : EXT_TRIGGER_ENABLE[k]),
@@ -640,8 +757,8 @@ generate
         .TLU_RESET(1'b0),
         .TLU_BUSY(),
         .TLU_CLOCK(),
-        .EXT_TRG_TIMESTAMP(EXT_TRG_TIMESTAMP_SYNC),
 
+        .EXT_TIMESTAMP(EXT_TRG_TIMESTAMP_BUF_CLK40),
         .TIMESTAMP(TIMESTAMP[k])
     );
   end
@@ -691,7 +808,7 @@ tlu_controller #(
     .HIGHADDR(TLU_HIGHADDR),
     .DIVISOR(8),
     .ABUSWIDTH(32),
-    .WIDTH(9),
+    .WIDTH(10),
     .TLU_TRIGGER_MAX_CLOCK_CYCLES(32)
 ) i_tlu_controller_0 (
     .BUS_CLK(BUS_CLK),
@@ -713,8 +830,8 @@ tlu_controller #(
     .TRIGGER_SELECTED(TRIGGER_SELECTED[0]),
     .TLU_ENABLED(TLU_ENABLED[0]),
 
-    .TRIGGER({TDC_OUT, TRIGGER}),
-    .TRIGGER_VETO({RX_FIFO_FULL, FIFO_FULL}),
+    .TRIGGER({LEMO_RX0_LE_CLK40, TDC_OUT, LEMO_RX[0]}),
+    .TRIGGER_VETO({1'b0, RX_FIFO_FULL, FIFO_FULL}),
     .TIMESTAMP_RESET(LEMO_RX[2]),
 
     .EXT_TRIGGER_ENABLE(BROADCAST_CMD ? |EXT_TRIGGER_ENABLE : EXT_TRIGGER_ENABLE[0]),
@@ -725,69 +842,11 @@ tlu_controller #(
     .TLU_RESET(RJ45_RESET),
     .TLU_BUSY(TLU_BUSY),
     .TLU_CLOCK(TLU_CLOCK),
-    .EXT_TRG_TIMESTAMP(EXT_TRG_TIMESTAMP_SYNC),
 
+    .EXT_TIMESTAMP(EXT_TRG_TIMESTAMP_BUF_CLK40),
     .TIMESTAMP(TIMESTAMP[0])
 );
 assign BROADCAST_CMD = (TRIGGER_ENABLED == 1);
-
-
-// external Trigger on Lemo 
-reg TRIGGER_FF;
-always @ (posedge CLK40)
-    TRIGGER_FF <= TRIGGER;
-
-wire TRIGGER_FLAG;
-assign TRIGGER_FLAG = ~TRIGGER_FF & TRIGGER;
-
-// external Trigger on Lemo 
-reg TRIGGER_EXT_FF;
-always @ (posedge EXT_TRG_CLK)
-    TRIGGER_EXT_FF <= TRIGGER;
-
-wire TRIGGER_EXT_FLAG;
-assign TRIGGER_EXT_FLAG = ~TRIGGER_EXT_FF & TRIGGER;
-
-wire TIMESTAMP_RESET_SYNC;
-three_stage_synchronizer three_stage_trigger_ts_reset_synchronizer (
-    .CLK(CLK40),
-    .IN(LEMO_RX[2]),
-    .OUT(TIMESTAMP_RESET_SYNC)
-);
-
-reg TIMESTAMP_RESET_SYNC_FF;
-always @ (posedge CLK40)
-    TIMESTAMP_RESET_SYNC_FF <= TIMESTAMP_RESET_SYNC;
-
-wire TIMESTAMP_RESET_FLAG;
-assign TIMESTAMP_RESET_FLAG = ~TIMESTAMP_RESET_SYNC_FF & TIMESTAMP_RESET_SYNC;
-
-reg RST_FF, RST_FF2, BUS_RST_FF, BUS_RST_FF2;
-always @(posedge BUS_CLK) begin
-    BUS_RST_FF <= BUS_RST;
-    BUS_RST_FF2 <= BUS_RST_FF;
-end
-
-wire BUS_RST_FLAG;
-assign BUS_RST_FLAG = BUS_RST_FF2 & ~BUS_RST_FF; // trailing edge
-
-
-always @ (posedge EXT_TRG_CLK)
-begin
-    if (BUS_RST_FLAG || TIMESTAMP_RESET_FLAG) // TLU reset needs to reset ext_timestamp as well. make output wire with RESET from TLU?
-        EXT_TRG_TIMESTAMP <= 0;
-    else
-        EXT_TRG_TIMESTAMP <= EXT_TRG_TIMESTAMP + 1;
-end
-
-wire [31:0] EXT_TRG_TIMESTAMP_SYNC;
-three_stage_synchronizer #(
-    .WIDTH(32)
-) three_stage_ext_tr_ts_synchronizer (
-    .CLK(CLK40),
-    .IN(EXT_TRG_TIMESTAMP),
-    .OUT(EXT_TRG_TIMESTAMP_SYNC)
-);
 
 //reg [31:0] timestamp_gray;
 //always@(posedge BUS_CLK)
@@ -1080,7 +1139,7 @@ end
 assign LED[7:4] = 4'hf;
 assign LED[0] = ~((CLK_1HZ | FIFO_FULL) & LOCKED & LOCKED2);
 assign LED[1] = ~(((|(~RX_READY & RX_ENABLED_CLK40_BUF) || |(RX_8B10B_DECODER_ERR & RX_ENABLED_CLK40_BUF))? CLK_3HZ : CLK_1HZ) | (|(RX_FIFO_OVERFLOW_ERR & RX_ENABLED_CLK40_BUF)) | (|(RX_FIFO_FULL & RX_ENABLED_CLK40_BUF)));
-assign LED[2] = 1'b1;
+assign LED[2] = ~ LEMO_RX[1];
 assign LED[3] = 1'b1;
 
 endmodule

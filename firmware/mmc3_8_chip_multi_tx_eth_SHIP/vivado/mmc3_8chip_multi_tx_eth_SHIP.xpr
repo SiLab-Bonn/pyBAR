@@ -3,7 +3,7 @@
 <!--                                                         -->
 <!-- Copyright 1986-2018 Xilinx, Inc. All Rights Reserved.   -->
 
-<Project Version="7" Minor="36" Path="Z:/dev/pyBAR/firmware/mmc3_8_chip_multi_tx_eth_SHIP/vivado/mmc3_8chip_multi_tx_eth_SHIP.xpr">
+<Project Version="7" Minor="36" Path="/home/silab/git/pybar/firmware/mmc3_8_chip_multi_tx_eth_SHIP/vivado/mmc3_8chip_multi_tx_eth_SHIP.xpr">
   <DefaultLaunch Dir="$PRUNDIR"/>
   <Configuration>
     <Option Name="Id" Val="bcfce6db9e8b493e8cb5b2b6871ddf7d"/>
@@ -53,7 +53,7 @@
   <FileSets Version="1" Minor="31">
     <FileSet Name="sources_1" Type="DesignSrcs" RelSrcDir="$PSRCDIR/sources_1">
       <Filter Type="Srcs"/>
-      <File Path="$PPRDIR/../src/XC7KSiTCPlib32k_V11/SiTCP_XC7K_32K_BBT_V110.ngc">
+      <File Path="$PPRDIR/../src/SiTCP/XC7KSiTCPlib32k_V11/SiTCP_XC7K_32K_BBT_V110.ngc">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
@@ -66,21 +66,21 @@
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../src/XC7KSiTCPlib32k_V11/SiTCP_XC7K_32K_BBT_V110.V">
+      <File Path="$PPRDIR/../src/SiTCP/XC7KSiTCPlib32k_V11/SiTCP_XC7K_32K_BBT_V110.V">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../src/XC7KSiTCPlib32k_V11/TIMER.v">
+      <File Path="$PPRDIR/../src/SiTCP/XC7KSiTCPlib32k_V11/TIMER.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../src/XC7KSiTCPlib32k_V11/WRAP_SiTCP_GMII_XC7K_32K.V">
+      <File Path="$PPRDIR/../src/SiTCP/XC7KSiTCPlib32k_V11/WRAP_SiTCP_GMII_XC7K_32K.V">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
@@ -313,32 +313,43 @@
     <Simulator Name="Questa">
       <Option Name="Description" Val="Questa Advanced Simulator"/>
     </Simulator>
+    <Simulator Name="IES">
+      <Option Name="Description" Val="Incisive Enterprise Simulator (IES)"/>
+    </Simulator>
+    <Simulator Name="Xcelium">
+      <Option Name="Description" Val="Xcelium Parallel Simulator"/>
+    </Simulator>
+    <Simulator Name="VCS">
+      <Option Name="Description" Val="Verilog Compiler Simulator (VCS)"/>
+    </Simulator>
     <Simulator Name="Riviera">
       <Option Name="Description" Val="Riviera-PRO Simulator"/>
     </Simulator>
-    <Simulator Name="ActiveHDL">
-      <Option Name="Description" Val="Active-HDL Simulator"/>
-    </Simulator>
   </Simulators>
   <Runs Version="1" Minor="10">
-    <Run Id="synth_1" Type="Ft3:Synth" SrcSet="sources_1" Part="xc7k160tfbg676-1" ConstrsSet="constrs_1" Description="Higher performance designs, resource sharing is turned off, the global fanout guide is set to a lower number, FSM extraction forced to one-hot, LUT combining is disabled, equivalent registers are preserved, SRL are inferred  with a larger threshold" WriteIncrSynthDcp="false" State="current" IncludeInArchive="true">
+    <Run Id="synth_1" Type="Ft3:Synth" SrcSet="sources_1" Part="xc7k160tfbg676-1" ConstrsSet="constrs_1" Description="Higher performance designs, resource sharing is turned off, the global fanout guide is set to a lower number, FSM extraction forced to one-hot, LUT combining is disabled, equivalent registers are preserved, SRL are inferred  with a larger threshold" WriteIncrSynthDcp="false" State="current" Dir="$PRUNDIR/synth_1" IncludeInArchive="true">
       <Strategy Version="1" Minor="2">
-        <StratHandle Name="Flow_PerfOptimized_high" Flow="Vivado Synthesis 2017"/>
+        <StratHandle Name="Flow_PerfOptimized_high" Flow="Vivado Synthesis 2017">
+          <Desc>Higher performance designs, resource sharing is turned off, the global fanout guide is set to a lower number, FSM extraction forced to one-hot, LUT combining is disabled, equivalent registers are preserved, SRL are inferred  with a larger threshold</Desc>
+        </StratHandle>
         <Step Id="synth_design">
-          <Option Id="RepFanoutThreshold">400</Option>
           <Option Id="KeepEquivalentRegisters">1</Option>
+          <Option Id="RepFanoutThreshold">400</Option>
           <Option Id="NoCombineLuts">1</Option>
-          <Option Id="FsmExtraction">1</Option>
           <Option Id="ResourceSharing">2</Option>
+          <Option Id="FsmExtraction">1</Option>
           <Option Id="ShregMinSize">5</Option>
         </Step>
       </Strategy>
+      <GeneratedRun Dir="$PRUNDIR" File="gen_run.xml"/>
       <ReportStrategy Name="Vivado Synthesis Default Reports" Flow="Vivado Synthesis 2017"/>
       <Report Name="ROUTE_DESIGN.REPORT_METHODOLOGY" Enabled="1"/>
     </Run>
-    <Run Id="impl_1" Type="Ft2:EntireDesign" Part="xc7k160tfbg676-1" ConstrsSet="constrs_1" Description="Vivado Implementation Defaults" WriteIncrSynthDcp="false" State="current" SynthRun="synth_1" IncludeInArchive="true">
+    <Run Id="impl_1" Type="Ft2:EntireDesign" Part="xc7k160tfbg676-1" ConstrsSet="constrs_1" Description="Vivado Implementation Defaults" WriteIncrSynthDcp="false" State="current" Dir="$PRUNDIR/impl_1" SynthRun="synth_1" IncludeInArchive="true">
       <Strategy Version="1" Minor="2">
-        <StratHandle Name="Vivado Implementation Defaults" Flow="Vivado Implementation 2015"/>
+        <StratHandle Name="Vivado Implementation Defaults" Flow="Vivado Implementation 2015">
+          <Desc>Vivado Implementation Defaults</Desc>
+        </StratHandle>
         <Step Id="init_design"/>
         <Step Id="opt_design"/>
         <Step Id="power_opt_design"/>
@@ -349,6 +360,7 @@
         <Step Id="post_route_phys_opt_design"/>
         <Step Id="write_bitstream"/>
       </Strategy>
+      <GeneratedRun Dir="$PRUNDIR" File="gen_run.xml"/>
       <ReportStrategy Name="Vivado Implementation Default Reports" Flow="Vivado Implementation 2017"/>
       <Report Name="ROUTE_DESIGN.REPORT_METHODOLOGY" Enabled="1"/>
     </Run>
