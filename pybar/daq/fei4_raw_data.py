@@ -87,8 +87,8 @@ class RawDataFile(object):
 
         if socket_address and context:
             logging.info('Creating socket connection to server %s', socket_address)
-            self.socket = context.socket(zmq.PUB)  # publisher socket
-            self.socket.bind(socket_address)
+            self.socket = context.socket(zmq.PUSH)  # publisher socket
+            self.socket.connect(socket_address)# change to socket.connect() in case of PUSH/PULL
         else:
             self.socket = None
 
