@@ -54,7 +54,7 @@ class FifoReadout(object):
         self.fifo_select = [None]
         self.enabled_fe_channels = None
         self.readout_interval = 0.05  # in seconds
-        self.write_interval = 1.0  # in seconds
+        self.write_interval = 0.05 #0.01  # in seconds
         self.watchdog_interval = 1.0  # in seconds
         self._moving_average_time_period = 10.0  # in seconds
         self._n_empty_reads = 3  # number of empty reads before stopping FIFO readout
@@ -361,6 +361,7 @@ class FifoReadout(object):
         time_write = time()
         converted_data_tuple_list = [None] * len(self.filter_func)  # callback function gets a list of lists of tuples
         while True:
+#             self.print_fifo_status() TODO: remove
             try:
                 if no_data_timeout and time_last_data + no_data_timeout < time():
                     raise NoDataTimeout('Received no data for %0.1f second(s) for writer thread with index %d' % (no_data_timeout, index))
