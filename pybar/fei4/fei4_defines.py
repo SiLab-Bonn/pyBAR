@@ -132,8 +132,8 @@ fei4a = {
         'Cref': {'value': 13, 'address': 34, 'bitlength': 4, 'offset': 12, 'littleendian': True, 'register_littleendian': True, 'description': ''},
         'Chip_SN': {'value': 0, 'address': 35, 'bitlength': 16, 'description': ''},
         '0_64': {'value': 0, 'address': 36, 'bitlength': 64, 'readonly': True, 'description': ''},
-        '0010101010101010': {'value': 10922, 'address': 40, 'bitlength': 16, 'readonly': True, 'value': 10922, 'description': ''},
-        '10101010': {'value': 170, 'address': 41, 'bitlength': 8, 'readonly': True, 'value': 170, 'description': ''},
+        '0010101010101010': {'value': 10922, 'address': 40, 'bitlength': 16, 'readonly': True, 'description': ''},
+        '10101010': {'value': 170, 'address': 41, 'bitlength': 8, 'readonly': True, 'description': ''},
         'EOCHLSkipped': {'value': 0, 'address': 41, 'bitlength': 8, 'offset': 8, 'readonly': True, 'description': ''},
         'CMDErrReg': {'value': 0, 'address': 42, 'bitlength': 16, 'readonly': True, 'description': ''},
         '0_336': {'value': 0, 'address': 43, 'bitlength': 336, 'readonly': True, 'description': ''}
@@ -264,7 +264,7 @@ d.update({
         'GADCStatus': {'value': 0, 'address': 40, 'bitlength': 1, 'offset': 3, 'readonly': True, 'description': ''},
         'GADCout': {'value': 0, 'address': 40, 'bitlength': 10, 'offset': 4, 'readonly': True, 'description': ''},
         '00': {'value': 0, 'address': 40, 'bitlength': 2, 'offset': 14, 'readonly': True, 'description': ''},
-        '10101010': {'value': 170, 'address': 41, 'bitlength': 8, 'readonly': True, 'value': 170, 'description': ''},
+        '10101010': {'value': 170, 'address': 41, 'bitlength': 8, 'readonly': True, 'description': ''},
         'EOCHLSkipped': {'value': 0, 'address': 41, 'bitlength': 8, 'offset': 8, 'readonly': True, 'description': 'FE-I4B manual: EventLimit'},
         'CMDErrReg': {'value': 0, 'address': 42, 'bitlength': 16, 'readonly': True, 'description': ''},
         '0_336': {'value': 0, 'address': 43, 'bitlength': 336, 'readonly': True, 'description': ''}
