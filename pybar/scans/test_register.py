@@ -25,6 +25,8 @@ class RegisterTest(Fei4RunBase):
     Register at address 40 will always fail (ADC output value).
     '''
     _default_run_conf = {
+        "configure_fe": True,
+        "reset_fe": True,
         "read_sn": True,
         "test_global": True,
         "test_pixel": True

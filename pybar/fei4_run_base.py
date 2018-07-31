@@ -40,10 +40,12 @@ class Fei4RunBase(RunBase):
 
     def __init__(self, conf, run_conf=None):
         # default run conf parameters added for all scans
-        if 'comment' not in self._default_run_conf:
-            self._default_run_conf.update({'comment': ''})
-        if 'reset_rx_on_error' not in self._default_run_conf:
-            self._default_run_conf.update({'reset_rx_on_error': False})
+        self._default_run_conf.setdefault('comment', '')
+        self._default_run_conf.setdefault('reset_rx_on_error', False)
+        # If True, send full configuration to the FE-I4 before the configuration step.
+        self._default_run_conf.setdefault('configure_fe', True)
+        # If True, perform a FE-I4 reset (ECR and BCR).
+        self._default_run_conf.setdefault('reset_fe', True)
 
         super(Fei4RunBase, self).__init__(conf=conf, run_conf=run_conf)
 
@@ -234,14 +236,16 @@ class Fei4RunBase(RunBase):
             # init register utils
             self.register_utils = FEI4RegisterUtils(self.dut, self.register)
             # reset and configuration
-            self.register_utils.global_reset()
-            self.register_utils.configure_all()
+            if self._run_conf['configure_fe']:
+                self.register_utils.global_reset()
+                self.register_utils.configure_all()
             if is_fe_ready(self):
                 reset_service_records = False
             else:
                 reset_service_records = True
-            self.register_utils.reset_bunch_counter()
-            self.register_utils.reset_event_counter()
+            if self._run_conf['reset_fe']:
+                self.register_utils.reset_bunch_counter()
+                self.register_utils.reset_event_counter()
             if reset_service_records:
                 # resetting service records must be done once after power up
                 self.register_utils.reset_service_records()
