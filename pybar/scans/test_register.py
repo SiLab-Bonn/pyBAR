@@ -27,6 +27,8 @@ class RegisterTest(Fei4RunBase):
     _default_run_conf = {
         "broadcast_commands": False,
         "threaded_scan": False,
+        "configure_fe": True,
+        "reset_fe": True,
         "read_sn": True,
         "test_global": True,
         "test_pixel": True,

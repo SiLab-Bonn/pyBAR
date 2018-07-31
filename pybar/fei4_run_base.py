@@ -230,6 +230,10 @@ class Fei4RunBase(RunBase):
         # and require multiple TX for sending commands.
         # If only a single TX is available, no speed improvement is gained.
         self._default_run_conf.setdefault('threaded_scan', False)
+        # If True, send full configuration to the FE-I4 before the configuration step.
+        self._default_run_conf.setdefault('configure_fe', True)
+        # If True, perform a FE-I4 reset (ECR and BCR).
+        self._default_run_conf.setdefault('reset_fe', True)
 
     def _init_run_conf(self, run_conf):
         # same implementation as in base class, but ignore "scan_parameters" property
@@ -536,16 +540,18 @@ class Fei4RunBase(RunBase):
         for module_id in self._modules:
             logging.info("Configuring %s..." % module_id)
             with self.access_module(module_id=module_id):
-                self.register_utils.global_reset()
-                self.register_utils.configure_all()
+                if self._run_conf['configure_fe']:
+                    self.register_utils.global_reset()
+                    self.register_utils.configure_all()
                 if is_fe_ready(self):
                     fe_not_ready = False
                 else:
                     fe_not_ready = True
                 # BCR and ECR might result in RX errors
                 # a reset of the RX and FIFO will happen just before scan()
-                self.register_utils.reset_bunch_counter()
-                self.register_utils.reset_event_counter()
+                if self._run_conf['reset_fe']:
+                    self.register_utils.reset_bunch_counter()
+                    self.register_utils.reset_event_counter()
                 if fe_not_ready:
                     # resetting service records must be done once after power up
                     self.register_utils.reset_service_records()
