@@ -543,6 +543,8 @@ class Fei4RunBase(RunBase):
                 if self._run_conf['configure_fe']:
                     self.register_utils.global_reset()
                     self.register_utils.configure_all()
+                else:
+                    self.register_utils.set_conf_mode()
                 if is_fe_ready(self):
                     fe_not_ready = False
                 else:
