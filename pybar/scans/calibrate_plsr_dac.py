@@ -172,7 +172,6 @@ class PlsrDacCalibration(Fei4RunBase):
             ax2.set_xlabel("Colpr_Addr")
             ax2.set_xlim(-0.5, 39.5)
 
-            fig.tight_layout()
             output_pdf.savefig(fig)
 
             output_pdf.close()
@@ -283,7 +282,6 @@ def plot_pulser_dac(x, y, y_err=None, output_pdf=None, title_suffix="", atol_fir
     ax3.set_xlabel("PlsrDAC")
     ax3.set_xlim((0, max(x)))
     ax3.legend(loc='best')
-    fig.tight_layout()
     if isinstance(output_pdf, PdfPages):
         output_pdf.savefig(fig)
     else:
