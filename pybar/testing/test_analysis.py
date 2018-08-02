@@ -179,7 +179,6 @@ class TestAnalysis(unittest.TestCase):
                                                             node_names=["HistThreshold", "HistNoise", "HistTotPixel", "HistOcc", "HistRelBcid", "HistTot"])
         self.assertTrue(data_equal, msg=error_msg)
 
-
     def test_analysis_utils_get_n_cluster_in_events(self):  # check compiled get_n_cluster_in_events function
         event_numbers = np.array([[0, 0, 1, 2, 2, 2, 4, 4000000000, 4000000000, 40000000000, 40000000000], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=np.int64)  # use data format with non linear memory alignment
         result = fast_analysis_utils.get_n_cluster_in_events(event_numbers[0])
@@ -295,7 +294,7 @@ class TestAnalysis(unittest.TestCase):
 
     def test_data_aligned_at_events(self):
         def test_gen(generator, table, start, stop=None, size=None, iterations=None):
-            #for arr, stop_index in generator:
+            # for arr, stop_index in generator:
             while True:
                 try:
                     arr, stop_index = generator.next()
@@ -639,7 +638,7 @@ class TestAnalysis(unittest.TestCase):
         def analyze_raw_data_tlu(input_file, align_at_trg=False):  # FE-I4 raw data analysis
             with AnalyzeRawData(raw_data_file=input_file, create_pdf=True) as analyze_raw_data:
                 analyze_raw_data.align_at_trigger_number = align_at_trg  # if trigger number is at the beginning of each event activate this for event alignment
-                analyze_raw_data.use_trigger_time_stamp = False  # the trigger number is a time stamp
+                analyze_raw_data.trigger_data_format = 0  # Trigger number
                 analyze_raw_data.use_tdc_word = False
                 analyze_raw_data.create_hit_table = True
                 analyze_raw_data.create_meta_event_index = True
@@ -668,6 +667,7 @@ class TestAnalysis(unittest.TestCase):
         data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'ext_trigger_scan_tlu_interpreted_result.h5'),
                                                             os.path.join(tests_data_folder, 'ext_trigger_scan_tlu_interpreted.h5'))
         self.assertTrue(data_equal, msg=error_msg)
+
 
 if __name__ == '__main__':
     tests_data_folder = 'test_analysis_data//'
