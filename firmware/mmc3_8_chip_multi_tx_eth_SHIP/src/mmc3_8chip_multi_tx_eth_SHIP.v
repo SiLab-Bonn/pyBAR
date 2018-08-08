@@ -43,6 +43,7 @@ module mmc3_8_chip_multi_tx_eth_SHIP(
     input wire [7:0] RJ45_HITOR_N, RJ45_HITOR_P,
     input wire [7:0] DOBOUT_N, DOBOUT_P,
     output wire RJ45_BUSY_LEMO_TX1, RJ45_CLK_LEMO_TX0,
+    output wire [1:0] LEMO_TX, // individual LEMO TX only available on MMC3 revision 1.2
     input wire RJ45_TRIGGER, RJ45_RESET,
     input wire [2:0] LEMO_RX
 );
@@ -674,7 +675,9 @@ wire [9:0] TRIGGER_SELECTED [7:0];
 reg [31:0] EXT_TRG_TIMESTAMP;
 
 assign RJ45_BUSY_LEMO_TX1 = BROADCAST_CMD ? TLU_BUSY : 1'b1;
+assign LEMO_TX[1] = RJ45_BUSY_LEMO_TX1; // add LEMO TX0 and TX1 for MMC3 revision 1.2; LEMO TX0 and TX1 are not connected to RJ45_CLK_LEMO_TX0 and RJ45_BUSY_LEMO_TX1 anymore
 assign RJ45_CLK_LEMO_TX0 = TLU_CLOCK;
+assign LEMO_TX[0] = RJ45_CLK_LEMO_TX0; // add LEMO TX0 and TX1 for MMC3 revision 1.2; LEMO TX0 and TX1 are not connected to RJ45_CLK_LEMO_TX0 and RJ45_BUSY_LEMO_TX1 anymore
 
 genvar k;
 generate

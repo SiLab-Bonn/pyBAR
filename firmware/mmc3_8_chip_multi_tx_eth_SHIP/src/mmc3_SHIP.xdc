@@ -191,6 +191,10 @@ set_property PACKAGE_PIN U22 [get_ports {LEMO_RX[0]}]
 # add pin pmod7
 set_property PACKAGE_PIN W26 [get_ports {LEMO_RX[2]}]
 set_property IOSTANDARD LVCMOS25 [get_ports LEMO_RX*]
+# add LEMO TX0 and TX1 for MMC3 revision 1.2; LEMO TX0 and TX1 are not connected to RJ45_CLK_LEMO_TX0 and RJ45_BUSY_LEMO_TX1 anymore
+set_property PACKAGE_PIN V22 [get_ports {LEMO_TX[0]}]
+set_property PACKAGE_PIN W21 [get_ports {LEMO_TX[1]}]
+set_property IOSTANDARD LVCMOS25 [get_ports LEMO_TX*]
 
 
 
