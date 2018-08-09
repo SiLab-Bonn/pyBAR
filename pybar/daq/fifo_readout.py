@@ -493,7 +493,7 @@ class FifoReadout(object):
         if channels:
             return map(lambda channel: True if (self.dut[channel].ENABLE_RX or channel in self.enabled_fe_channels) else False, channels)
         else:
-            return map(lambda channel: True if (channel.ENABLE_RX or channel.name in self.enabled_fe_channels) else False, self.dut.get_modules('fei4_rx'))
+            return map(lambda channel: True if (channel.ENABLE_RX or (self.enabled_fe_channels is not None and channel.name in self.enabled_fe_channels)) else False, self.dut.get_modules('fei4_rx'))
 
     def get_rx_sync_status(self, channels=None):
         if channels is None:
