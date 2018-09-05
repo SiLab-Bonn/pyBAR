@@ -24,7 +24,7 @@ class NoiseOccupancyTuning(Fei4RunBase):
     To achieve a broader TDAC distribution it is necessary to decrease TdacVbp.
     '''
     _default_run_conf = {
-        "broadcast_commands": False,  # use False to limit data rate
+        "broadcast_commands": True,  # use False to limit data rate
         "threaded_scan": True,
         "occupancy_limit": 1 * 10 ** (-5),  # the lower the number the higher the constraints on noise occupancy; 0 will mask any pixel with occupancy greater than zero
         "occupancy_p_val": 0.99,  # mask pixels with occupancy higher than expected occupancy at given p value
