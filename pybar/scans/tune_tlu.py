@@ -66,7 +66,7 @@ class TluTuning(Fei4RunBase):
                         word_index_stop = meta_data[index_high]['index_start'] if index_high is not None else meta_data[-1]['index_stop']
                         actual_raw_data = data_words[word_index_start:word_index_stop]
                         selection = np.bitwise_and(actual_raw_data, 0x80000000) == 0x80000000
-                        trigger_words = np.bitwise_and(actual_raw_data[selection], 0x7FFFFFFF)  # Get the trigger values
+                        trigger_numbers = np.bitwise_and(actual_raw_data[selection], 0x7FFFFFFF)  # Get the trigger values
                         if selection.shape[0] != word_index_stop - word_index_start:
                             logging.warning('There are not only trigger words in the data stream')
                         # the counter can wrap arount at any power of 2
@@ -79,7 +79,7 @@ class TluTuning(Fei4RunBase):
                         fig = Figure()
                         FigureCanvas(fig)
                         ax = fig.add_subplot(111)
-                        ax.plot(range(trigger_words.shape[0]), trigger_words, '-', label='data')
+                        ax.plot(range(trigger_numbers.shape[0]), trigger_numbers, '-', label='data')
                         ax.set_title('Trigger words for delay setting index %d' % index)
                         ax.set_xlabel('Trigger word index')
                         ax.set_ylabel('Trigger word')
