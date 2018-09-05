@@ -69,7 +69,10 @@ class TluTuning(Fei4RunBase):
                         trigger_words = np.bitwise_and(actual_raw_data[selection], 0x7FFFFFFF)  # Get the trigger values
                         if selection.shape[0] != word_index_stop - word_index_start:
                             logging.warning('There are not only trigger words in the data stream')
-                        actual_errors = np.count_nonzero(np.diff(trigger_words[trigger_words != 0x7FFFFFFF]) != 1)
+                        # the counter can wrap arount at any power of 2
+                        diff = np.diff(trigger_numbers)
+                        where = np.where(diff != 1)[0]
+                        actual_errors = np.count_nonzero((trigger_numbers[where] + diff[diff != 1]) != 0 | ~((trigger_numbers[where] & (trigger_numbers[where] + 1)) == 0))
                         data_array['error_rate'][index] = float(actual_errors) / selection.shape[0]
 
                         # Plot trigger number
@@ -86,7 +89,7 @@ class TluTuning(Fei4RunBase):
 
                     data_table.append(data_array)  # Store valid data
                     if np.all(data_array['error_rate'] != 0.0):
-                        logging.warning('There is no delay setting without errors')
+                        logging.warning('There is no delay setting without errors. Errors: %s' % str(data_array['error_rate']))
                     logging.info('ERRORS: %s', str(data_array['error_rate']))
 
                     # Determine best delay setting (center of working delay settings)
