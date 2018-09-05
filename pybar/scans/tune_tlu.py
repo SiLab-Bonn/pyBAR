@@ -32,6 +32,8 @@ class TluTuning(Fei4RunBase):
         self.dut['TLU']['TRIGGER_COUNTER'] = 0
 
     def scan(self):
+        curr_data_format = self.dut['TLU']['DATA_FORMAT']
+        self.dut['TLU']['DATA_FORMAT'] = 0
         for value in self.scan_parameters.TRIGGER_DATA_DELAY:
             if self.abort_run.is_set():
                 break
@@ -44,6 +46,7 @@ class TluTuning(Fei4RunBase):
                 self.dut['TLU']['TRIGGER_ENABLE'] = False
                 if self.dut['TLU']['TRIGGER_COUNTER'] == 0:
                     raise RuntimeError('No triggers collected. Check if TLU is on and the IO is set correctly.')
+        self.dut['TLU']['DATA_FORMAT'] = curr_data_format
 
     def analyze(self):
         with tb.open_file(self.output_filename + '.h5', 'r') as in_file_h5:
