@@ -22,7 +22,7 @@ class TluTuning(Fei4RunBase):
     The TLU has to be started with internal trigger generation (TLUControl -t 1).
     '''
     _default_run_conf = {
-        "scan_parameters": [('TRIGGER_DATA_DELAY', range(0, 2**4))],  # TRIGGER_DATA_DELAY has 4-bit
+        "scan_parameters": [('TRIGGER_DATA_DELAY', range(0, 2**4))],  # TRIGGER_DATA_DELAY is a 8-bit value
         "sleep": 2  # Time to record the trigger words per delay setting in seconds
     }
 
