@@ -281,6 +281,13 @@ class RunBase(object):
         self.abort_run.set()
         self.stop_run.set()  # set stop_run in case abort_run event is not used
 
+    def close(self):
+        '''Close properly and releasing hardware resources.
+
+        This should be called before Python garbage collector takes action.
+        '''
+        pass
+
     def _get_run_numbers(self, status=None):
         run_numbers = {}
         with self.file_lock:
@@ -455,6 +462,16 @@ class RunManager(object):
         else:
             raise ValueError('Cannot deduce working directory from configuration')
         logging.info('Using working directory %s', self._conf['working_dir'])
+
+    def close(self):
+        if self.current_run is not None:
+            self.current_run.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc_info):
+        self.close()
 
     @staticmethod
     def open_conf(conf):

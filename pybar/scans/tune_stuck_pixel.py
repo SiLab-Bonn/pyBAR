@@ -75,4 +75,5 @@ class StuckPixelTuning(DigitalScan):
 
 
 if __name__ == "__main__":
-    RunManager('configuration.yaml').run_run(StuckPixelTuning)
+    with RunManager('configuration.yaml') as runmngr:
+        runmngr.run_run(StuckPixelTuning)
