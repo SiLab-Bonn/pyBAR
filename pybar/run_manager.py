@@ -70,12 +70,6 @@ class RunBase():
         self._last_error_message = None
         self._last_traceback = None
 
-#     @abc.abstractproperty
-#     def _run_id(self):
-#         '''Defining run name
-#         '''
-#         pass
-
     @property
     def run_id(self):
         '''Run name without whitespace
