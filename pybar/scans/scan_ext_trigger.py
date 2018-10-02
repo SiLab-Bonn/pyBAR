@@ -111,6 +111,7 @@ class ExtTriggerScan(Fei4RunBase):
             analyze_raw_data.plot_histograms()
 
     def start_readout(self, *args, **kwargs):
+        self.connect_cancel(["stop"])
         super(ExtTriggerScan, self).start_readout(*args, **kwargs)
         self.dut['TDC']['ENABLE'] = self.enable_tdc
         self.dut['TLU']['TRIGGER_COUNTER'] = 0
@@ -137,6 +138,7 @@ class ExtTriggerScan(Fei4RunBase):
         self.dut['TLU']['TRIGGER_ENABLE'] = False
         self.dut['CMD']['EN_EXT_TRIGGER'] = False
         self.dut['TDC']['ENABLE'] = False
+        self.connect_cancel(["abort"])
         super(ExtTriggerScan, self).stop_readout(timeout=timeout)
 
 

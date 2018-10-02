@@ -167,6 +167,7 @@ class StopModeExtTriggerScan(Fei4RunBase):
             analyze_raw_data.plot_histograms()
 
     def start_readout(self, *args, **kwargs):
+        self.connect_cancel(["stop"])
         super(StopModeExtTriggerScan, self).start_readout(*args, **kwargs)
         self.dut['TLU']['TRIGGER_COUNTER'] = 0
         self.dut['TLU']['MAX_TRIGGERS'] = self.max_triggers
@@ -188,6 +189,7 @@ class StopModeExtTriggerScan(Fei4RunBase):
         self.scan_timeout_timer.cancel()
         self.dut['TLU']['TRIGGER_ENABLE'] = False
         self.dut['CMD']['EN_EXT_TRIGGER'] = False
+        self.connect_cancel(["abort"])
         super(StopModeExtTriggerScan, self).stop_readout(timeout=timeout)
 
 
