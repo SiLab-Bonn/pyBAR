@@ -1030,7 +1030,7 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, additional_dela
     self.register_utils.send_commands(commands, concatenate=True)
 
     for mask_step in enable_mask_steps:
-        if self.stop_run.is_set():
+        if self.abort_run.is_set():
             break
         commands = []
         commands.append(conf_mode_command)
@@ -1073,7 +1073,7 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, additional_dela
                 self.register_utils.set_command(command=self.register_utils.concatenate_commands((dc_address_command, scan_loop_command), byte_padding=False))
 
                 for index, dc in enumerate(enable_double_columns):
-                    if self.stop_run.is_set():
+                    if self.abort_run.is_set():
                         break
                     if index != 0:  # full command is already set before loop
                         # get DC command before wait to save some time
@@ -1098,7 +1098,7 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, additional_dela
 
             else:  # the slow DC loop allows writing commands inside bol and eol functions
                 for index, dc in enumerate(enable_double_columns):
-                    if self.stop_run.is_set():
+                    if self.abort_run.is_set():
                         break
                     dc_address_command = get_dc_address_command(dc)
                     self.register_utils.send_command(dc_address_command)
@@ -1137,7 +1137,7 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, additional_dela
                 self.register_utils.set_command(command=self.register_utils.concatenate_commands((dc_address_command, scan_loop_command), byte_padding=False))
 
                 for index, dc in enumerate(enable_double_columns):
-                    if self.stop_run.is_set():
+                    if self.abort_run.is_set():
                         break
                     if index != 0:  # full command is already set before loop
                         ec = enable_columns(dc)
@@ -1179,7 +1179,7 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, additional_dela
 
             else:
                 for index, dc in enumerate(enable_double_columns):
-                    if self.stop_run.is_set():
+                    if self.abort_run.is_set():
                         break
                     ec = enable_columns(dc)
                     dcs = write_double_columns(dc)

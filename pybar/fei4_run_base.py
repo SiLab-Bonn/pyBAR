@@ -395,17 +395,13 @@ class Fei4RunBase(RunBase):
             # some other error via handle_err(), print traceback
             else:
                 raise exc[0], exc[1], exc[2]
-        elif self.abort_run.is_set():
-            raise RunAborted()
-        elif self.stop_run.is_set():
-            raise RunStopped()
-        # if ending up here, succcess!
 
     def cleanup_run(self):
         pass
 
     def close(self):
-        # all exceptions should be catched here
+        '''Releasing hardware resources.
+        '''
         try:
             self.dut.close()
         except Exception:

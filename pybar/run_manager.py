@@ -12,7 +12,7 @@ import signal
 import abc
 from contextlib import contextmanager
 from importlib import import_module
-from inspect import getmembers, isclass
+from inspect import getmembers, isclass, getargspec
 from functools import partial
 from ast import literal_eval
 from time import time
@@ -69,6 +69,8 @@ class RunBase():
         self._total_run_time = None
         self._last_error_message = None
         self._last_traceback = None
+        self._cancel_functions = None
+        self.connect_cancel(["abort"])
 
     @property
     def run_id(self):
@@ -143,10 +145,6 @@ class RunBase():
             self._run_status = run_status.aborted
             self._last_traceback = None
             self._last_error_message = e.__class__.__name__ + ": " + str(e)
-        except RunStopped as e:
-            self._run_status = run_status.finished
-            self._last_traceback = None
-            self._last_error_message = e.__class__.__name__ + ": " + str(e)
         except Exception as e:
             self._run_status = run_status.crashed
             self._last_traceback = traceback.format_exc()
@@ -206,37 +204,65 @@ class RunBase():
             self.pre_run()
             yield
             self.post_run()
+            if self.abort_run.is_set():
+                raise RunAborted()
         finally:
             self.cleanup_run()
 
     @abc.abstractmethod
     def pre_run(self):
-        """Before run."""
+        '''Before run.
+        '''
         pass
 
     @abc.abstractmethod
     def do_run(self):
-        """The run."""
+        '''The run.
+        '''
         pass
 
     @abc.abstractmethod
     def post_run(self):
-        """After run."""
+        '''After run.
+        '''
         pass
 
     @abc.abstractmethod
     def cleanup_run(self):
-        """Cleanup after run, will be executed always, even after exception. Avoid throwing exceptions here.
-        """
+        '''Cleanup after run, will be executed always, even after exception. Avoid throwing exceptions here.
+        '''
         pass
 
     def _cleanup(self):
-        """Cleanup after a new run."""
+        '''Cleanup after a new run.
+        '''
         self._write_run_status(self.run_status)
 
+    def connect_cancel(self, functions):
+        '''Run given functions when a run is cancelled.
+        '''
+        self._cancel_functions = []
+        for func in functions:
+            if isinstance(func, basestring) and hasattr(self, func) and callable(getattr(self, func)):
+                self._cancel_functions.append(getattr(self, func))
+            elif callable(func):
+                self._cancel_functions.append(func)
+            else:
+                raise ValueError("Unknown function %s" % str(func))
+
+    def handle_cancel(self, **kwargs):
+        '''Cancelling a run.
+        '''
+        for func in self._cancel_functions:
+            f_args = getargspec(func)[0]
+            f_kwargs = {key: kwargs[key] for key in f_args if key in kwargs}
+            func(**f_kwargs)
+
     def stop(self, msg=None):
-        """Stopping a run. Control for loops.
-        """
+        '''Stopping a run. Control for loops. Gentle stop/abort.
+
+        This event should provide a more gentle abort. The run should stop ASAP but the run is still considered complete.
+        '''
         if not self.stop_run.is_set():
             if msg:
                 logging.info('%s%s Stopping run...', msg, ('' if msg[-1] in punctuation else '.'))
@@ -245,8 +271,10 @@ class RunBase():
         self.stop_run.set()
 
     def abort(self, msg=None):
-        """Aborting a run. Control for loops. Immediate abort.
-        """
+        '''Aborting a run. Control for loops. Immediate stop/abort.
+
+        The implementation should stop a run ASAP when this event is set. The run is considered incomplete.
+        '''
         if not self.abort_run.is_set():
             if msg:
                 logging.error('%s%s Aborting run...', msg, ('' if msg[-1] in punctuation else '.'))
@@ -314,7 +342,7 @@ class RunBase():
 
     def _signal_handler(self, signum, frame):
         signal.signal(signal.SIGINT, signal.SIG_DFL)  # setting default handler... pressing Ctrl-C a second time will kill application
-        self.stop('Pressed Ctrl-C')
+        self.handle_cancel(msg='Pressed Ctrl-C')
 
 
 def thunkify(thread_name=None, daemon=True, default_func=None):
@@ -453,15 +481,10 @@ class RunManager(object):
             conf_dict.update(conf)
         return conf_dict
 
-    def stop_current_run(self, msg=None):
+    def cancel_current_run(self, msg=None):
         '''Control for runs.
         '''
-        self.current_run.stop(msg)
-
-    def abort_current_run(self, msg=None):
-        '''Control for runs. Immediate abort.
-        '''
-        self.current_run.abort(msg)
+        self.current_run.handle_cancel(msg=msg)
 
     def run_run(self, run, conf=None, run_conf=None, use_thread=False, catch_exception=True):
         '''Runs a run in another thread. Non-blocking.
@@ -602,7 +625,7 @@ class RunManager(object):
 
     def _signal_handler(self, signum, frame):
         signal.signal(signal.SIGINT, signal.SIG_DFL)  # setting default handler... pressing Ctrl-C a second time will kill application
-        self.stop_current_run('Pressed Ctrl-C')
+        self.cancel_current_run(msg='Pressed Ctrl-C')
 
 
 def set_event_when_keyboard_interrupt(_lambda):
