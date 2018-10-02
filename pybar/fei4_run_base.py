@@ -38,7 +38,7 @@ class Fei4RunBase(RunBase):
     '''
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, conf, run_conf=None):
+    def __init__(self, conf):
         # default run conf parameters added for all scans
         self._default_run_conf.setdefault('comment', '')
         self._default_run_conf.setdefault('reset_rx_on_error', False)
@@ -47,7 +47,7 @@ class Fei4RunBase(RunBase):
         # If True, perform a FE-I4 reset (ECR and BCR).
         self._default_run_conf.setdefault('reset_fe', True)
 
-        super(Fei4RunBase, self).__init__(conf=conf, run_conf=run_conf)
+        super(Fei4RunBase, self).__init__(conf=conf)
 
         # default conf parameters
         if 'working_dir' not in conf:

@@ -40,15 +40,15 @@ class RunStopped(Exception):
     pass
 
 
-class RunBase():
+class RunBase(object):
     '''Basic run meta class
 
     Base class for run class.
     '''
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, conf, run_conf=None):
-        """Initialize object.
+    def __init__(self, conf):
+        '''Initialize object.
 
         Parameters
         ----------
@@ -56,9 +56,9 @@ class RunBase():
             Persistant configuration for all runs.
         run_conf : dict
             Run configuration for single run.
-        """
+        '''
         self._conf = conf
-        self._init_run_conf(run_conf)
+        self._run_conf = None
         self._run_number = None
         self._run_status = run_status.init
         self.file_lock = Lock()
@@ -179,19 +179,17 @@ class RunBase():
         return self.run_status
 
     def _init(self, run_conf, run_number=None):
-        """Initialization before a new run."""
+        '''Initialization before a new run.
+        '''
         self.stop_run.clear()
         self.abort_run.clear()
         self._run_status = run_status.running
         self._write_run_number(run_number)
-        self._init_run_conf(run_conf, update=True)
+        self._init_run_conf(run_conf)
 
-    def _init_run_conf(self, run_conf, update=False):
+    def _init_run_conf(self, run_conf):
         sc = namedtuple('run_configuration', field_names=self._default_run_conf.keys())
-        if update:
-            default_run_conf = sc(**self._run_conf)
-        else:
-            default_run_conf = sc(**self._default_run_conf)
+        default_run_conf = sc(**self._default_run_conf)
         if run_conf:
             self._run_conf = default_run_conf._replace(**run_conf)._asdict()
         else:
