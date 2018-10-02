@@ -598,6 +598,7 @@ tlu_controller #(
     .TLU_BUSY(TLU_BUSY),
     .TLU_CLOCK(TLU_CLOCK),
 
+    .EXT_TIMESTAMP(),
     .TIMESTAMP(TIMESTAMP)
 );
 `else
