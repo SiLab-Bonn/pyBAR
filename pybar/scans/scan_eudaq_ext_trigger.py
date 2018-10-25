@@ -2,20 +2,20 @@
 
 import logging
 from optparse import OptionParser
+from time import time, strftime, gmtime
+
 import numpy as np
-from time import time, strftime, gmtime, sleep
 
 from pybar.run_manager import RunManager, run_status
 from pybar.scans.scan_ext_trigger import ExtTriggerScan
 from pybar.daq.readout_utils import build_events_from_raw_data, is_trigger_word
 
-import sys
-sys.path.append('/home/telescope/eudaq/python/')
+# set path to PyEUDAQWrapper
+sys.path.append('/home/patrick/git/eudaq/python/')
 from PyEUDAQWrapper import PyProducer
 
-
 class EudaqExtTriggerScan(ExtTriggerScan):
-    '''External trigger scan that connects to EUDAQ producer (EUDAQ 1.4 and higher).
+    '''External trigger scan that connects to EUDAQ producer (EUDAQ 1.7 and higher).
     '''
     _default_run_conf = {
         "trig_count": 0,  # FE-I4 trigger count, number of consecutive BCs, 0 means 16, from 0 to 15
@@ -35,11 +35,8 @@ class EudaqExtTriggerScan(ExtTriggerScan):
     def scan(self):
         self.data_error_occurred = False
         self.last_trigger_number = None
-        clock_cycles = self.dut['TLU']['TRIGGER_CLOCK_CYCLES']
-        if clock_cycles:
-            self.max_trigger_counter = 2 ** (clock_cycles - 1)
-        else:
-            self.max_trigger_counter = 2 ** 31
+        # set TLU max trigger counter
+        self.max_trigger_counter = 2 ** 15
         start = time()
         lvl1_command = self.register.get_commands("zeros", length=self.trigger_delay)[0] + self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", length=self.trigger_rate_limit)[0]
         self.register_utils.set_command(lvl1_command)
@@ -47,6 +44,7 @@ class EudaqExtTriggerScan(ExtTriggerScan):
         self.remaining_data = np.ndarray((0,), dtype=np.uint32)
 
         with self.readout(**self.scan_parameters._asdict()):
+            pp.StartingRun = True  # set status and send BORE
             got_data = False
             while not self.stop_run.wait(1.0):
                 if not got_data:
@@ -60,7 +58,8 @@ class EudaqExtTriggerScan(ExtTriggerScan):
                     if self.max_triggers and triggers >= self.max_triggers:
                         self.stop(msg='Trigger limit was reached: %i' % self.max_triggers)
 
-        pp.SendEvent(self.remaining_data)
+        if self.remaining_data.shape[0] > 0:
+            pp.SendEvent(self.remaining_data)
 
         logging.info('Total amount of triggers collected: %d', self.dut['TLU']['TRIGGER_COUNTER'])
 
@@ -120,44 +119,37 @@ if __name__ == "__main__":
     run_conf = vars(options)
     # create PyProducer instance
     pp = PyProducer("PyBAR", rcaddr)
+    rmngr = None
     while not pp.Error and not pp.Terminating:
-        # wait for configure cmd from RunControl
-        while not pp.Configuring and not pp.Terminating:
-            if pp.StartingRun:
-                break
-            sleep(1)
         # check if configuration received
         if pp.Configuring:
-            print "Configuring..."
-    #         for item in run_conf:
-    #             try:
-    #                 run_conf[item] = pp.GetConfigParameter(item)
-    #             except Exception:
-    #                 pass
-            rmngr = RunManager('../configuration.yaml')  # TODO: get conf from EUDAQ
+            logging.info("Configuring...")
+#             for item in run_conf:
+#                 try:
+#                     run_conf[item] = pp.GetConfigParameter(item)
+#                 except Exception:
+#                     pass
+            if rmngr:
+                rmngr.close()
+                rmngr = None
+            rmngr = RunManager('configuration.yaml')  # TODO: get conf from EUDAQ
             pp.Configuring = True
-        # check for start of run cmd from RunControl
-        while not pp.StartingRun and not pp.Terminating:
-            if pp.Configuring:
-                break
-            sleep(1)
+
         # check if we are starting:
         if pp.StartingRun:
-            print "Starting run..."
+            logging.info("Starting run...")
 #             join = rmngr.run_run(EudaqExtTriggerScan, run_conf=run_conf, use_thread=True)
             join = rmngr.run_run(EudaqExtTriggerScan, use_thread=True)
-            sleep(5)
-            pp.StartingRun = True  # set status and send BORE
-            # starting to run
-            while join(timeout=1) is None:
-                if pp.Error or pp.Terminating:
-                    rmngr.abort_current_run()
-                if pp.StoppingRun:
-                    rmngr.stop_current_run()
+#             sleep(5)
+#             pp.StartingRun = True  # set status and send BORE
+            # starting run
+            while join(timeout=1) == run_status.running:
+                if pp.Error or pp.Terminating or pp.StoppingRun:
+                    rmngr.cancel_current_run(msg="Run stopped by RunControl")
             status = join()
+            logging.info("Run status: %s" % status)
             # abort conditions
-            if status is not run_status.finished or pp.Error or pp.Terminating:
-                pp.StoppingRun = False  # set status and send EORE
-            # check if the run is stopping regularly
             if pp.StoppingRun:
                 pp.StoppingRun = True  # set status and send EORE
+    if rmngr is not None:
+        rmngr.close()
