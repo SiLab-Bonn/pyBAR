@@ -1,7 +1,8 @@
 #!/usr/bin/env python2
 
 import logging
-from optparse import OptionParser
+import sys
+import argparse
 from time import time, strftime, gmtime
 
 import numpy as np
@@ -11,11 +12,13 @@ from pybar.scans.scan_ext_trigger import ExtTriggerScan
 from pybar.daq.readout_utils import build_events_from_raw_data, is_trigger_word
 
 # set path to PyEUDAQWrapper
-sys.path.append('/home/patrick/git/eudaq/python/')
+sys.path.append('/path/to/eudaq/python/')
 from PyEUDAQWrapper import PyProducer
+default_address = 'localhost:44000'
+
 
 class EudaqExtTriggerScan(ExtTriggerScan):
-    '''External trigger scan that connects to EUDAQ producer (EUDAQ 1.7 and higher).
+    '''External trigger scan that connects to EUDAQ producer for EUDAQ 1.7 and higher (1.x-dev).
     '''
     _default_run_conf = {
         "trig_count": 0,  # FE-I4 trigger count, number of consecutive BCs, 0 means 16, from 0 to 15
@@ -105,21 +108,18 @@ class EudaqExtTriggerScan(ExtTriggerScan):
 
 
 if __name__ == "__main__":
-    usage = "Usage: %prog [options] ADDRESS"
-    description = "Optional: Start EUDAQ Producer with destination ADDRESS (e.g. 'tcp://localhost:44000')."
-    parser = OptionParser(usage, description=description)
-#     parser.add_option("-c", "--column", dest="col_span", type="int", nargs=2, help="2-tuple of columns (from and to)", default=(1, 80))
-#     parser.add_option("-r", "--row", dest="row_span", type="int", nargs=2, help="2-tuple of rows (from and to)", default=(1, 336))
-    options, args = parser.parse_args()
-    if len(args) == 1:
-        rcaddr = args[0]
+    default_address = "localhost:44000"
+    parser = argparse.ArgumentParser(description='pyBAR with EUDAQ support')
+    parser.add_argument('address', type=str, metavar='address:port', action='store', help='IP address and port of the RunControl PC (default: %s)' % default_address, nargs='?')
+    args = parser.parse_args()
+    address = args.address
+    if address is None:
+        address = default_address
+    if 'tcp://' not in address:
+        address = 'tcp://' + address
 
-    else:
-        parser.error("incorrect number of arguments")
-    run_conf = vars(options)
-    # create PyProducer instance
-    pp = PyProducer("PyBAR", rcaddr)
-    rmngr = None
+    pp = PyProducer("PyBAR", address)
+    runmngr = None
     while not pp.Error and not pp.Terminating:
         # check if configuration received
         if pp.Configuring:
@@ -129,27 +129,28 @@ if __name__ == "__main__":
 #                     run_conf[item] = pp.GetConfigParameter(item)
 #                 except Exception:
 #                     pass
-            if rmngr:
-                rmngr.close()
-                rmngr = None
-            rmngr = RunManager('configuration.yaml')  # TODO: get conf from EUDAQ
+            if runmngr:
+                runmngr.close()
+                runmngr = None
+            runmngr = RunManager('configuration.yaml')  # TODO: get conf from EUDAQ
             pp.Configuring = True
 
         # check if we are starting:
         if pp.StartingRun:
-            logging.info("Starting run...")
-#             join = rmngr.run_run(EudaqExtTriggerScan, run_conf=run_conf, use_thread=True)
-            join = rmngr.run_run(EudaqExtTriggerScan, use_thread=True)
+            run_number = pp.GetRunNumber()
+            logging.info("Starting run EUDAQ run %d..." % run_number)
+#             join = runmngr.run_run(EudaqExtTriggerScan, run_conf=run_conf, use_thread=True)
+            join = runmngr.run_run(EudaqExtTriggerScan, use_thread=True, run_conf={"comment": "EUDAQ run %d" % run_number})
 #             sleep(5)
 #             pp.StartingRun = True  # set status and send BORE
             # starting run
             while join(timeout=1) == run_status.running:
                 if pp.Error or pp.Terminating or pp.StoppingRun:
-                    rmngr.cancel_current_run(msg="Run stopped by RunControl")
+                    runmngr.cancel_current_run(msg="Run stopped by RunControl")
             status = join()
             logging.info("Run status: %s" % status)
             # abort conditions
             if pp.StoppingRun:
                 pp.StoppingRun = True  # set status and send EORE
-    if rmngr is not None:
-        rmngr.close()
+    if runmngr is not None:
+        runmngr.close()
