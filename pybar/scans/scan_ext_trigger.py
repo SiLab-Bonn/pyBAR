@@ -152,7 +152,7 @@ class ExtTriggerScan(Fei4RunBase):
         if self.scan_timeout:
             self.scan_timeout_timer.start()
 
-    def stop_trigger(self, timeout=10.0):
+    def stop_trigger(self):
         self.scan_timeout_timer.cancel()
         with self.synchronized():
             self.dut['TLU']['TRIGGER_ENABLE'] = False
