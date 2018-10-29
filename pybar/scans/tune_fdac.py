@@ -28,7 +28,6 @@ class FdacTuning(Fei4RunBase):
         "fdac_tune_bits": range(3, -1, -1),
         "n_injections_fdac": 30,
         "plot_intermediate_steps": False,
-        "plots_filename": None,
         "enable_shift_masks": ["Enable", "C_High", "C_Low"],  # enable masks shifted during scan
         "disable_shift_masks": [],  # disable masks shifted during scan
         "pulser_dac_correction": False,  # PlsrDAC correction for each double column
@@ -56,13 +55,10 @@ class FdacTuning(Fei4RunBase):
         commands.extend(self.register.get_commands("RunMode"))
         self.register_utils.send_commands(commands)
 
-    def scan(self):
-        if not self.plots_filename:
-            self.plots_filename = PdfPages(self.output_filename + '.pdf')
-            self.close_plots = True
-        else:
-            self.close_plots = False
+        self.plots_filename = PdfPages(self.output_filename + '.pdf')
+        self.close_plots = True
 
+    def scan(self):
         enable_mask_steps = []
 
         cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0]
@@ -88,7 +84,7 @@ class FdacTuning(Fei4RunBase):
 
             self.write_fdac_config()
 
-            with self.readout(FDAC=scan_parameter_value, reset_fifo=True, fill_buffer=True):
+            with self.readout(FDAC=scan_parameter_value, fill_buffer=True):
                 scan_loop(self,
                           command=cal_lvl1_command,
                           repeat_command=self.n_injections_fdac,

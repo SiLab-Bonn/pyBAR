@@ -28,7 +28,6 @@ class FeedbackTuning(Fei4RunBase):
         "max_delta_tot": 0.1,
         "enable_mask_steps_feedback": [0],  # mask steps to do per PrmpVbpf setting
         "plot_intermediate_steps": False,
-        "plots_filename": None,
         "enable_shift_masks": ["Enable", "C_High", "C_Low"],  # enable masks shifted during scan
         "disable_shift_masks": [],  # disable masks shifted during scan
         "pulser_dac_correction": False,  # PlsrDAC correction for each double column
@@ -57,13 +56,10 @@ class FeedbackTuning(Fei4RunBase):
         commands.extend(self.register.get_commands("RunMode"))
         self.register_utils.send_commands(commands)
 
-    def scan(self):
-        if not self.plots_filename:
-            self.plots_filename = PdfPages(self.output_filename + '.pdf')
-            self.close_plots = True
-        else:
-            self.close_plots = False
+        self.plots_filename = PdfPages(self.output_filename + '.pdf')
+        self.close_plots = True
 
+    def scan(self):
         def bits_set(int_type):
             int_type = int(int_type)
             position = 0
@@ -108,7 +104,7 @@ class FeedbackTuning(Fei4RunBase):
 
             scan_parameter_value = self.register.get_global_register_value("PrmpVbpf")
 
-            with self.readout(PrmpVbpf=scan_parameter_value, reset_fifo=True, fill_buffer=True):
+            with self.readout(PrmpVbpf=scan_parameter_value, fill_buffer=True):
                 scan_loop(self,
                           command=cal_lvl1_command,
                           repeat_command=self.n_injections_feedback,
@@ -202,7 +198,7 @@ class FeedbackTuning(Fei4RunBase):
         # set here because original value is restored after scan()
         self.register.set_global_register_value("PrmpVbpf", self.feedback_best)
 
-        plot_tot(hist=self.tot_hist, title='ToT distribution after feedback tuning (PrmpVbpf %d)' % self.scan_parameters.PrmpVbpf, filename=self.plots_filename)
+        plot_tot(hist=self.tot_hist, title='ToT distribution after feedback tuning (PrmpVbpf %d)' % self.feedback_best, filename=self.plots_filename)
         if self.close_plots:
             self.plots_filename.close()
 

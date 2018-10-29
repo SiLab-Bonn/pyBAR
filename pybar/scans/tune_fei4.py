@@ -1,7 +1,5 @@
 import logging
 
-from matplotlib.backends.backend_pdf import PdfPages
-
 from pybar.run_manager import RunManager
 from pybar.scans.tune_gdac import GdacTuning  # fast GDAC tuning
 # uncomment the following line to use the standard GDAC tuning:
@@ -36,8 +34,8 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
         "target_threshold": 30,  # target threshold
         "target_charge": 280,  # target charge
         "target_tot": 5,  # target ToT
-        "global_iterations": 4,  # the number of iterations to do for the global tuning, 0: only global threshold (GDAC) is tuned, -1 or None: no global tuning
-        "local_iterations": 3,  # the number of iterations to do for the local tuning, 0: only local threshold (TDAC) is tuned, -1 or None: no local tuning
+        "global_iterations": 4,  # the number of iterations to do for the global tuning, 0: only global threshold (GDAC) is tuned, -1: no global tuning
+        "local_iterations": 3,  # the number of iterations to do for the local tuning, 0: only local threshold (TDAC) is tuned, -1: no local tuning
         "reset_local_dacs": True,  # if True, reset pixels registers to the middle of the DAC range before the global tuning starts
         "fail_on_warning": True,  # do not continue tuning if a global tuning fails
         # GDAC
@@ -65,9 +63,7 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
         "pulser_dac_correction": False,  # PlsrDAC correction for each double column
         "scan_parameters": [('GDAC', -1), ('TDAC', -1), ('PrmpVbpf', -1), ('FDAC', -1), ('global_step', 0), ('local_step', 0)],
         # plotting
-        "make_plots": True,  # plots for all scan steps are created
         "plot_intermediate_steps": False,  # plot intermediate steps (takes time)
-        "plots_filename": None,  # file name to store the plot to, if None show on screen
         # other
         "mask_steps": 3,  # mask steps, be carefull PlsrDAC injects different charge for different mask steps
         "same_mask_for_all_dc": True  # Increases scan speed, should be deactivated for very noisy FE
@@ -90,6 +86,8 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
             commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='FDAC'))
             commands.extend(self.register.get_commands("RunMode"))
             self.register_utils.send_commands(commands)
+
+        self.close_plots = False
 
     def scan(self):
         '''Metascript that calls other scripts to tune the FE.
@@ -119,16 +117,6 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
             2: TDAC -> FDAC -> TDAC -> FDAC -> TDAC
             ...
         '''
-        if self.global_iterations is None:
-            self.global_iterations = -1
-        if self.local_iterations is None:
-            self.local_iterations = -1
-
-        if self.make_plots:
-            self.plots_filename = PdfPages(self.output_filename + '.pdf')
-        else:
-            self.plots_filename = None
-
         for iteration in range(0, self.global_iterations):  # tune iteratively with decreasing range to save time
             if self.stop_run.is_set():
                 break
@@ -176,15 +164,14 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
         if self.local_iterations >= 0:
             TdacTuning.analyze(self)
 
-        if self.make_plots:
-            if self.local_iterations > 0:
-                plot_three_way(hist=self.tot_mean_best.transpose(), title="Mean ToT after last FDAC tuning", x_axis_title='Mean ToT', filename=self.plots_filename)
-                plot_three_way(hist=self.register.get_pixel_register_value("FDAC").transpose(), title="FDAC distribution after last FDAC tuning", x_axis_title='FDAC', filename=self.plots_filename, maximum=16)
-            if self.local_iterations >= 0:
-                plot_three_way(hist=self.occupancy_best.transpose(), title="Occupancy after tuning", x_axis_title='Occupancy', filename=self.plots_filename, maximum=100)
-                plot_three_way(hist=self.register.get_pixel_register_value("TDAC").transpose(), title="TDAC distribution after complete tuning", x_axis_title='TDAC', filename=self.plots_filename, maximum=32)
+        if self.local_iterations > 0:
+            plot_three_way(hist=self.tot_mean_best.transpose(), title="Mean ToT after last FDAC tuning", x_axis_title='Mean ToT', filename=self.plots_filename)
+            plot_three_way(hist=self.register.get_pixel_register_value("FDAC").transpose(), title="FDAC distribution after last FDAC tuning", x_axis_title='FDAC', filename=self.plots_filename, maximum=16)
+        if self.local_iterations >= 0:
+            plot_three_way(hist=self.occupancy_best.transpose(), title="Occupancy after tuning", x_axis_title='Occupancy', filename=self.plots_filename, maximum=100)
+            plot_three_way(hist=self.register.get_pixel_register_value("TDAC").transpose(), title="TDAC distribution after complete tuning", x_axis_title='TDAC', filename=self.plots_filename, maximum=32)
 
-            self.plots_filename.close()
+        self.plots_filename.close()
 
 
 if __name__ == "__main__":
