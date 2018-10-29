@@ -28,7 +28,7 @@ class GdacTuningStandard(Fei4RunBase):
         "step_size": -1,  # step size of the GDAC during scan
         "target_threshold": 30,  # target threshold in PlsrDAC to tune to
         "n_injections_gdac": 50,  # number of injections per GDAC bit setting
-        "max_delta_threshold": 5,  # minimum difference to the target_threshold to abort the tuning
+        "max_delta_threshold": 10,  # minimum difference to the target_threshold to abort the tuning
         "enable_mask_steps_gdac": [0],  # mask steps to do per GDAC setting
         "plot_intermediate_steps": False,  # plot intermediate steps (takes time)
         "enable_shift_masks": ["Enable", "C_High", "C_Low"],  # enable masks shifted during scan
@@ -101,7 +101,7 @@ class GdacTuningStandard(Fei4RunBase):
             select_mask_array[column, :] = 0
 
         gdac_values = []
-        gdac_occupancy = []
+        gdac_occupancies = []
         gdac_occ_array_sel_pixels = []
         gdac_occ_array_desel_pixels = []
         median_occupancy_last_step = None
@@ -128,11 +128,11 @@ class GdacTuningStandard(Fei4RunBase):
             occ_array_sel_pixels = np.ma.array(occupancy_array, mask=np.logical_not(np.ma.make_mask(select_mask_array)))  # take only selected pixel into account by using the mask
             occ_array_desel_pixels = np.ma.array(occupancy_array, mask=np.ma.make_mask(select_mask_array))  # take only de-selected pixel into account by using the inverted mask
             median_occupancy = np.ma.median(occ_array_sel_pixels)
-            noise_occupancy = np.ma.median(occ_array_desel_pixels)
+            percentile_noise_occupancy = np.percentile(occ_array_desel_pixels.compressed(), 99.0)
             occupancy_almost_zero = np.allclose(median_occupancy, 0)
-            no_noise = np.allclose(noise_occupancy, 0)
+            no_noise = np.allclose(percentile_noise_occupancy, 0)
             gdac_values.append(self.register_utils.get_gdac())
-            gdac_occupancy.append(median_occupancy)
+            gdac_occupancies.append(median_occupancy)
             gdac_occ_array_sel_pixels.append(occ_array_sel_pixels.copy())
             gdac_occ_array_desel_pixels.append(occ_array_desel_pixels.copy())
             self.occ_array_sel_pixels_best = occ_array_sel_pixels.copy()
@@ -151,7 +151,7 @@ class GdacTuningStandard(Fei4RunBase):
                 median_occupancy_last_step = 0.0
 
         # select best GDAC value
-        occupancy_sorted = np.array(gdac_occupancy)[np.argsort(np.array(gdac_values))]
+        occupancy_sorted = np.array(gdac_occupancies)[np.argsort(np.array(gdac_values))]
         gdac_sorted = np.sort(gdac_values)
         gdac_min_idx = np.where(occupancy_sorted >= self.n_injections_gdac / 2)[0][-1]
         occupancy_sorted_sel = occupancy_sorted[gdac_min_idx:]
