@@ -53,9 +53,9 @@ On Windows, the `pywin32` package is required:
   conda install pywin32
   ```
 
-[Basil](https://github.com/SiLab-Bonn/basil) (>=2.4.12) is required:
+[Basil](https://github.com/SiLab-Bonn/basil) (>=2.4.12,<3.0.0) is required:
   ```
-  pip install 'basil_daq>=2.4.12'
+  pip install "basil_daq>=2.4.12,<3.0.0"
   ```
 
 [pyBAR FEI4 Interpreter](https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter) (>=1.3.0) is required:
@@ -65,7 +65,7 @@ On Windows, the `pywin32` package is required:
 
 [Pixel Clusterizer](https://github.com/SiLab-Bonn/pixel_clusterizer) (>=3.1,<3.2) is required:
   ```
-  pip install 'pixel_clusterizer>=3.1,<3.2'
+  pip install "pixel_clusterizer>=3.1,<3.2"
   ```
 
 To enable support for USB devices (MIO, MIO3 and MMC3), the following additional packages are required:

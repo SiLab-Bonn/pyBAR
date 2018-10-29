@@ -26,9 +26,10 @@ install:
   - pip install pyusb
   - pip install pySiLibUSB
   # pyBAR installation including additional specific packages
-  - pip install 'basil_daq>=2.4.12'
+  - pip install "basil_daq>=2.4.12,<3.0.0"
+  #- pip install git+https://github.com/SiLab-Bonn/basil@development
   - pip install git+https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter@development
-  - pip install 'pixel_clusterizer>=3.1,<3.2'
+  - pip install "pixel_clusterizer>=3.1,<3.2"
   - python.exe setup.py develop
   - conda list
   - pip list
