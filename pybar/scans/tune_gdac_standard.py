@@ -104,6 +104,8 @@ class GdacTuningStandard(Fei4RunBase):
         gdac_occ_array_desel_pixels = []
         median_occupancy_last_step = None
         for scan_parameter_value in scan_parameter_range:
+            if self.stop_run.is_set():
+                break
             self.register_utils.set_gdac(scan_parameter_value)
             with self.readout(GDAC=scan_parameter_value, fill_buffer=True):
                 scan_loop(self,
