@@ -6,7 +6,8 @@ dut_configuration : dut_configuration_mio.yaml  # DUT init configuration (.yaml)
 fe_configuration :  # FE configuration file, text (.cfg) or HDF5 (.h5) file. If not given, latest valid configuration (run status FINISHED) will be taken. If a number is given, configuration from run with specified number will be taken.
 fe_flavor : fei4a  # FEI4 flavor/type for initial configuration. Valid values: 'fei4a' or 'fei4b'
 chip_address :  # Chip Address for initial configuration, if not given, broadcast bit will be set
-module_id : module_test  # module identifier / name, sub-folder with given name will be created inside working_dir
+module_id : module_0  # module identifier / name, sub-folder with given name will be created inside working_dir
+working_dir : data # The name of the output data folder.
 
 # *** configuration ***
 #send_data : 'tcp://127.0.0.1:5678'  # to allow incoming connections on all interfaces use 0.0.0.0
