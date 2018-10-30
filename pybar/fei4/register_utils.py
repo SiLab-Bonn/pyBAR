@@ -243,7 +243,7 @@ class FEI4RegisterUtils(object):
             self.send_commands(commands)
             logging.info("Writing GDAC %d (VthinAltCoarse / VthinAltFine = %d / %d)", value, altc, altf)
         else:
-            logging.info("Setting GDAC to %d (VthinAltCoarse / VthinAltFine = %d / %d)", value, altc, altf)
+            logging.debug("Setting GDAC to %d (VthinAltCoarse / VthinAltFine = %d / %d)", value, altc, altf)
 
     def get_gdac(self, altc=None, altf=None):
         if altc is None:
