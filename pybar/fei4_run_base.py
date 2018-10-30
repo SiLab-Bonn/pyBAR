@@ -492,12 +492,13 @@ class Fei4RunBase(RunBase):
         # Pop parameters for fifo_readout.start
         callback = kwargs.pop('callback', self.handle_data)
         errback = kwargs.pop('errback', self.handle_err)
-        reset_fifo = kwargs.pop('reset_fifo', False)
+        reset_rx = kwargs.pop('reset_rx', True)
+        reset_fifo = kwargs.pop('reset_fifo', True)
         fill_buffer = kwargs.pop('fill_buffer', False)
         no_data_timeout = kwargs.pop('no_data_timeout', None)
         if args or kwargs:
             self.set_scan_parameters(*args, **kwargs)
-        self.fifo_readout.start(fifos="FIFO", callback=callback, errback=errback, reset_fifo=reset_fifo, fill_buffer=fill_buffer, no_data_timeout=no_data_timeout, enabled_fe_channels=None)
+        self.fifo_readout.start(fifos="FIFO", callback=callback, errback=errback, reset_rx=reset_rx, reset_fifo=reset_fifo, fill_buffer=fill_buffer, no_data_timeout=no_data_timeout, enabled_fe_channels=None)
 
     def stop_readout(self, timeout=10.0):
         self.fifo_readout.stop(timeout=timeout)
