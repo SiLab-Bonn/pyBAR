@@ -154,22 +154,23 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
             TdacTuning.scan(self)
 
     def analyze(self):
-        if self.global_iterations > 0:
-            FeedbackTuning.analyze(self)
-        if self.global_iterations >= 0:
-            GdacTuning.analyze(self)
+        if not self.stop_run.is_set():
+            if self.global_iterations > 0:
+                FeedbackTuning.analyze(self)
+            if self.global_iterations >= 0:
+                GdacTuning.analyze(self)
 
-        if self.local_iterations > 0:
-            FdacTuning.analyze(self)
-        if self.local_iterations >= 0:
-            TdacTuning.analyze(self)
+            if self.local_iterations > 0:
+                FdacTuning.analyze(self)
+            if self.local_iterations >= 0:
+                TdacTuning.analyze(self)
 
-        if self.local_iterations > 0:
-            plot_three_way(hist=self.tot_mean_best.transpose(), title="Mean ToT after last FDAC tuning", x_axis_title='Mean ToT', filename=self.plots_filename)
-            plot_three_way(hist=self.register.get_pixel_register_value("FDAC").transpose(), title="FDAC distribution after last FDAC tuning", x_axis_title='FDAC', filename=self.plots_filename, maximum=16)
-        if self.local_iterations >= 0:
-            plot_three_way(hist=self.occupancy_best.transpose(), title="Occupancy after tuning", x_axis_title='Occupancy', filename=self.plots_filename, maximum=100)
-            plot_three_way(hist=self.register.get_pixel_register_value("TDAC").transpose(), title="TDAC distribution after complete tuning", x_axis_title='TDAC', filename=self.plots_filename, maximum=32)
+            if self.local_iterations > 0:
+                plot_three_way(hist=self.tot_mean_best.transpose(), title="Mean ToT after last FDAC tuning", x_axis_title='Mean ToT', filename=self.plots_filename)
+                plot_three_way(hist=self.register.get_pixel_register_value("FDAC").transpose(), title="FDAC distribution after last FDAC tuning", x_axis_title='FDAC', filename=self.plots_filename, maximum=16)
+            if self.local_iterations >= 0:
+                plot_three_way(hist=self.occupancy_best.transpose(), title="Occupancy after tuning", x_axis_title='Occupancy', filename=self.plots_filename, maximum=100)
+                plot_three_way(hist=self.register.get_pixel_register_value("TDAC").transpose(), title="TDAC distribution after complete tuning", x_axis_title='TDAC', filename=self.plots_filename, maximum=32)
 
         self.plots_filename.close()
 
