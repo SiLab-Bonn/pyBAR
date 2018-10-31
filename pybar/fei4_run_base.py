@@ -380,12 +380,13 @@ class Fei4RunBase(RunBase):
             pass
 
         # analyzing data
-        try:
-            self.analyze()
-        except Exception:  # analysis errors
-            self.handle_err(sys.exc_info())
-        else:  # analyzed data, save config
-            self.register.save_configuration(self.output_filename)
+        if not self.abort_run.is_set():
+            try:
+                self.analyze()
+            except Exception:  # analysis errors
+                self.handle_err(sys.exc_info())
+            else:  # analyzed data, save config
+                self.register.save_configuration(self.output_filename)
 
         if not self.err_queue.empty():
             exc = self.err_queue.get()
