@@ -64,8 +64,6 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
         "disable_shift_masks": [],  # disable masks shifted during scan
         "pulser_dac_correction": False,  # PlsrDAC correction for each double column
         "scan_parameters": [('GDAC', -1), ('TDAC', -1), ('PrmpVbpf', -1), ('FDAC', -1), ('global_step', 0), ('local_step', 0)],
-        # plotting
-        "plot_intermediate_steps": False,  # plot intermediate steps (takes time)
         # other
         "mask_steps": 3,  # mask steps, be carefull PlsrDAC injects different charge for different mask steps
         "same_mask_for_all_dc": True  # Increases scan speed, should be deactivated for very noisy FE
@@ -125,14 +123,29 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
             logging.info("Global tuning step %d / %d", iteration + 1, self.global_iterations)
             self.set_scan_parameters(global_step=self.scan_parameters.global_step + 1)
             GdacTuning.scan(self)
+            commands = []
+            commands.extend(self.register.get_commands("ConfMode"))
+            commands.extend(self.register.get_commands("WrRegister", name=["Vthin_AltCoarse", "Vthin_AltFine"]))
+            commands.extend(self.register.get_commands("RunMode"))
+            self.register_utils.send_commands(commands)
             if self.stop_run.is_set():
                 break
             self.set_scan_parameters(global_step=self.scan_parameters.global_step + 1)
             FeedbackTuning.scan(self)
+            commands = []
+            commands.extend(self.register.get_commands("ConfMode"))
+            commands.extend(self.register.get_commands("WrRegister", name=["PrmpVbpf"]))
+            commands.extend(self.register.get_commands("RunMode"))
+            self.register_utils.send_commands(commands)
 
         if self.global_iterations >= 0 and not self.stop_run.is_set():
             self.set_scan_parameters(global_step=self.scan_parameters.global_step + 1)
             GdacTuning.scan(self)
+            commands = []
+            commands.extend(self.register.get_commands("ConfMode"))
+            commands.extend(self.register.get_commands("WrRegister", name=["Vthin_AltCoarse", "Vthin_AltFine"]))
+            commands.extend(self.register.get_commands("RunMode"))
+            self.register_utils.send_commands(commands)
 
             Vthin_AC = self.register.get_global_register_value("Vthin_AltCoarse")
             Vthin_AF = self.register.get_global_register_value("Vthin_AltFine")
@@ -146,33 +159,55 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
             logging.info("Local tuning step %d / %d", iteration + 1, self.local_iterations)
             self.set_scan_parameters(local_step=self.scan_parameters.local_step + 1)
             TdacTuning.scan(self)
+            commands = []
+            commands.extend(self.register.get_commands("ConfMode"))
+            commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, name="TDAC"))
+            commands.extend(self.register.get_commands("RunMode"))
+            self.register_utils.send_commands(commands)
             if self.stop_run.is_set():
                 break
             self.set_scan_parameters(local_step=self.scan_parameters.local_step + 1)
             FdacTuning.scan(self)
+            commands = []
+            commands.extend(self.register.get_commands("ConfMode"))
+            commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, name="FDAC"))
+            commands.extend(self.register.get_commands("RunMode"))
+            self.register_utils.send_commands(commands)
 
         if self.local_iterations >= 0 and not self.stop_run.is_set():
             self.set_scan_parameters(local_step=self.scan_parameters.local_step + 1)
             TdacTuning.scan(self)
+            commands = []
+            commands.extend(self.register.get_commands("ConfMode"))
+            commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, name="TDAC"))
+            commands.extend(self.register.get_commands("RunMode"))
+            self.register_utils.send_commands(commands)
 
     def analyze(self):
-        if not self.stop_run.is_set():
-            if self.global_iterations > 0:
-                FeedbackTuning.analyze(self)
-            if self.global_iterations >= 0:
-                GdacTuning.analyze(self)
+        if self.global_iterations > 0:
+            FeedbackTuning.analyze(self)
+        if self.global_iterations >= 0:
+            GdacTuning.analyze(self)
 
-            if self.local_iterations > 0:
-                FdacTuning.analyze(self)
-            if self.local_iterations >= 0:
-                TdacTuning.analyze(self)
+        if self.local_iterations > 0:
+            FdacTuning.analyze(self)
+        if self.local_iterations >= 0:
+            TdacTuning.analyze(self)
 
-            if self.local_iterations > 0:
-                plot_three_way(hist=self.tot_mean_best.transpose(), title="Mean ToT after last FDAC tuning", x_axis_title='Mean ToT', filename=self.plots_filename)
-                plot_three_way(hist=self.register.get_pixel_register_value("FDAC").transpose(), title="FDAC distribution after last FDAC tuning", x_axis_title='FDAC', filename=self.plots_filename, maximum=16)
-            if self.local_iterations >= 0:
-                plot_three_way(hist=self.occupancy_best.transpose(), title="Occupancy after tuning", x_axis_title='Occupancy', filename=self.plots_filename, maximum=100)
-                plot_three_way(hist=self.register.get_pixel_register_value("TDAC").transpose(), title="TDAC distribution after complete tuning", x_axis_title='TDAC', filename=self.plots_filename, maximum=32)
+        # write configuration to avoid high current states
+        commands = []
+        commands.extend(self.register.get_commands("ConfMode"))
+        commands.extend(self.register.get_commands("WrRegister", name=["Vthin_AltCoarse", "Vthin_AltFine", "PrmpVbpf"]))
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, name="TDAC"))
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, name="FDAC"))
+        self.register_utils.send_commands(commands)
+
+        if self.local_iterations > 0:
+            plot_three_way(hist=self.tot_mean_best.transpose(), title="Mean ToT after last FDAC tuning", x_axis_title='Mean ToT', filename=self.plots_filename, maximum=15)
+            plot_three_way(hist=self.register.get_pixel_register_value("FDAC").transpose(), title="FDAC distribution after last FDAC tuning", x_axis_title='FDAC', filename=self.plots_filename, maximum=15)
+        if self.local_iterations >= 0:
+            plot_three_way(hist=self.occupancy_best.transpose(), title="Occupancy after last TDAC tuning", x_axis_title='Occupancy', filename=self.plots_filename, maximum=self.n_injections_tdac)
+            plot_three_way(hist=self.register.get_pixel_register_value("TDAC").transpose(), title="TDAC distribution after last TDAC tuning", x_axis_title='TDAC', filename=self.plots_filename, maximum=31)
 
         self.plots_filename.close()
 
