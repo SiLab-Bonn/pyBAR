@@ -27,7 +27,6 @@ class FdacTuning(Fei4RunBase):
         "target_tot": 5,
         "fdac_tune_bits": range(3, -1, -1),
         "n_injections_fdac": 30,
-        "plot_intermediate_steps": False,
         "enable_shift_masks": ["Enable", "C_High", "C_Low"],  # enable masks shifted during scan
         "disable_shift_masks": [],  # disable masks shifted during scan
         "pulser_dac_correction": False,  # PlsrDAC correction for each double column
@@ -65,7 +64,7 @@ class FdacTuning(Fei4RunBase):
 
         self.write_target_charge()
         additional_scan = True
-        lastBitResult = np.zeros(shape=self.register.get_pixel_register_value("FDAC").shape, dtype=self.register.get_pixel_register_value("FDAC").dtype)
+        last_tot_mean_array = np.zeros(shape=self.register.get_pixel_register_value("FDAC").shape, dtype=self.register.get_pixel_register_value("FDAC").dtype)
 
         self.set_start_fdac()
 
@@ -76,7 +75,7 @@ class FdacTuning(Fei4RunBase):
             if self.stop_run.is_set():
                 break
             if additional_scan:
-                self.set_fdac_bit(fdac_bit)
+                self.set_fdac_bit(fdac_bit, bit_value=1)
                 logging.info('FDAC setting: bit %d = 1', fdac_bit)
             else:
                 self.set_fdac_bit(fdac_bit, bit_value=0)
@@ -104,35 +103,33 @@ class FdacTuning(Fei4RunBase):
             tot_array = np.histogramdd(col_row_tot_array, bins=(80, 336, 16), range=[[1, 80], [1, 336], [0, 15]])[0]
             tot_mean_array = np.average(tot_array, axis=2, weights=range(0, 16)) * sum(range(0, 16)) / self.n_injections_fdac
             select_better_pixel_mask = abs(tot_mean_array - self.target_tot) <= abs(self.tot_mean_best - self.target_tot)
-            pixel_with_too_small_mean_tot_mask = tot_mean_array < self.target_tot
             self.tot_mean_best[select_better_pixel_mask] = tot_mean_array[select_better_pixel_mask]
-
-            if self.plot_intermediate_steps:
-                plot_three_way(hist=tot_mean_array.transpose().transpose(), title="Mean ToT (FDAC tuning bit " + str(fdac_bit) + ")", x_axis_title='mean ToT', filename=self.plots_filename, minimum=0, maximum=15)
-
             fdac_mask = self.register.get_pixel_register_value("FDAC")
             self.fdac_mask_best[select_better_pixel_mask] = fdac_mask[select_better_pixel_mask]
-            if fdac_bit > 0:
-                fdac_mask[pixel_with_too_small_mean_tot_mask] = fdac_mask[pixel_with_too_small_mean_tot_mask] & ~(1 << fdac_bit)
-                self.register.set_pixel_register_value("FDAC", fdac_mask)
 
-            if fdac_bit == 0:
+            if fdac_bit > 0:
+                pixel_with_too_small_mean_tot_mask = tot_mean_array < self.target_tot
+                fdac_mask[pixel_with_too_small_mean_tot_mask] = fdac_mask[pixel_with_too_small_mean_tot_mask] & ~(1 << fdac_bit)  # unset FDAC bit, increase ToT
+                self.register.set_pixel_register_value("FDAC", fdac_mask)
+            elif fdac_bit == 0:
                 if additional_scan:  # scan bit = 0 with the correct value again
                     additional_scan = False
-                    lastBitResult = tot_mean_array.copy()
                     fdac_tune_bits.append(0)  # bit 0 has to be scanned twice
                 else:
-                    fdac_mask[abs(tot_mean_array - self.target_tot) > abs(lastBitResult - self.target_tot)] = fdac_mask[abs(tot_mean_array - self.target_tot) > abs(lastBitResult - self.target_tot)] | (1 << fdac_bit)
-                    tot_mean_array[abs(tot_mean_array - self.target_tot) > abs(lastBitResult - self.target_tot)] = lastBitResult[abs(tot_mean_array - self.target_tot) > abs(lastBitResult - self.target_tot)]
-                    self.tot_mean_best[abs(tot_mean_array - self.target_tot) <= abs(self.tot_mean_best - self.n_injections_fdac / 2)] = tot_mean_array[abs(tot_mean_array - self.target_tot) <= abs(self.tot_mean_best - self.n_injections_fdac / 2)]
-                    self.fdac_mask_best[abs(tot_mean_array - self.target_tot) <= abs(self.tot_mean_best - self.n_injections_fdac / 2)] = fdac_mask[abs(tot_mean_array - self.target_tot) <= abs(self.tot_mean_best - self.n_injections_fdac / 2)]
+                    pass
 
-        self.register.set_pixel_register_value("FDAC", self.fdac_mask_best)  # set value for meta scan
-        self.write_fdac_config()
+        if not self.stop_run.is_set():
+            self.register.set_pixel_register_value("FDAC", self.fdac_mask_best)  # set value for meta scan
+            self.write_fdac_config()
 
     def analyze(self):
         # set here because original value is restored after scan()
         self.register.set_pixel_register_value("FDAC", self.fdac_mask_best)
+        # write configuration to avoid high current states
+        commands = []
+        commands.extend(self.register.get_commands("ConfMode"))
+        commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, name="FDAC"))
+        self.register_utils.send_commands(commands)
 
         plot_three_way(hist=self.tot_mean_best.transpose(), title="Mean ToT after FDAC tuning", x_axis_title="Mean ToT", filename=self.plots_filename, minimum=0, maximum=15)
         plot_three_way(hist=self.fdac_mask_best.transpose(), title="FDAC distribution after tuning", x_axis_title="FDAC", filename=self.plots_filename, minimum=0, maximum=15)
@@ -146,7 +143,7 @@ class FdacTuning(Fei4RunBase):
         commands.extend(self.register.get_commands("WrRegister", name="PlsrDAC"))
         self.register_utils.send_commands(commands)
 
-    def set_fdac_bit(self, bit_position, bit_value=1):
+    def set_fdac_bit(self, bit_position, bit_value):
         if bit_value == 1:
             self.register.set_pixel_register_value("FDAC", self.register.get_pixel_register_value("FDAC") | (1 << bit_position))
         else:

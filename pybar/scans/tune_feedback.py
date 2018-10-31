@@ -27,7 +27,6 @@ class FeedbackTuning(Fei4RunBase):
         "n_injections_feedback": 50,
         "max_delta_tot": 0.1,
         "enable_mask_steps_feedback": [0],  # mask steps to do per PrmpVbpf setting
-        "plot_intermediate_steps": False,
         "enable_shift_masks": ["Enable", "C_High", "C_Low"],  # enable masks shifted during scan
         "disable_shift_masks": [],  # disable masks shifted during scan
         "pulser_dac_correction": False,  # PlsrDAC correction for each double column
@@ -129,20 +128,14 @@ class FeedbackTuning(Fei4RunBase):
             tot_mean_array = np.ma.array(tot_mean_array, mask=occupancy_array.mask)
             # keep noisy pixels out
             mean_tot = np.ma.mean(tot_mean_array)
+            logging.info('Mean ToT = %.2f', mean_tot)
+            tot_array = col_row_tot_array[:, 2]
+            tot_hist, _ = np.histogram(a=tot_array, range=(0, 16), bins=16)
 
             if abs(mean_tot - self.target_tot) < abs(tot_mean_best - self.target_tot):
                 tot_mean_best = mean_tot
+                tot_hist_best = tot_hist
                 feedback_best = self.register.get_global_register_value("PrmpVbpf")
-
-            logging.info('Mean ToT = %.2f', mean_tot)
-            tot_array = col_row_tot_array[:, 2]
-            self.tot_hist, _ = np.histogram(a=tot_array, range=(0, 16), bins=16)
-            if self.plot_intermediate_steps:
-                plot_tot(hist=self.tot_hist, title='ToT distribution (PrmpVbpf ' + str(scan_parameter_value) + ')', filename=self.plots_filename)
-
-#             if abs(mean_tot - self.target_tot) < self.max_delta_tot and feedback_bit > 0:  # abort if good value already found to save time
-#                 logging.info('Good result already achieved, skipping missing bits')
-#                 break
 
             if feedback_bit > 0:
                 # TODO: if feedback is to high, no hits
@@ -154,49 +147,57 @@ class FeedbackTuning(Fei4RunBase):
             elif feedback_bit == 0:
                 if additional_scan:  # scan bit = 0 with the correct value again
                     additional_scan = False
+                    last_tot_hist = tot_hist.copy()
                     last_mean_tot = mean_tot
-                    last_tot_hist = self.tot_hist.copy()
                     feedback_tune_bits.append(0)  # bit 0 has to be scanned twice
                 else:
                     logging.info('Measured %.2f with bit 0 = 0 and %.2f with bit 0 = 1', mean_tot, last_mean_tot)
-                    if(abs(mean_tot - self.target_tot) > abs(last_mean_tot - self.target_tot)):  # if bit 0 = 0 is worse than bit 0 = 1, so go back
+                    if (abs(mean_tot - self.target_tot) > abs(last_mean_tot - self.target_tot)):  # if bit 0 = 0 is worse than bit 0 = 1, so go back
                         logging.info('Set bit 0 = 1')
                         self.set_prmp_vbpf_bit(0, bit_value=1)
-                        self.tot_hist = last_tot_hist.copy()
+                        tot_hist = last_tot_hist.copy()
                         mean_tot = last_mean_tot
                     else:
                         logging.info('Keep bit 0 = 0')
 
-        # select best Feedback value
-        if abs(mean_tot - self.target_tot) > abs(tot_mean_best - self.target_tot):
-            logging.info("Binary search converged to non-optimal value, apply best Feedback value, change PrmpVbpf from %d to %d", self.register.get_global_register_value("PrmpVbpf"), feedback_best)
-            mean_tot = tot_mean_best
-            self.register.set_global_register_value("PrmpVbpf", feedback_best)
+        if not self.stop_run.is_set():
+            # select best Feedback value
+            if abs(mean_tot - self.target_tot) > abs(tot_mean_best - self.target_tot):
+                if self.register.get_global_register_value("PrmpVbpf") != feedback_best:
+                    logging.info("Binary search converged to non-optimal value, apply best Feedback value, change PrmpVbpf from %d to %d", self.register.get_global_register_value("PrmpVbpf"), feedback_best)
+                    self.register.set_global_register_value("PrmpVbpf", feedback_best)
+                mean_tot = tot_mean_best
+                tot_hist = tot_hist_best
+            self.tot_hist = tot_hist
+            self.feedback_best = self.register.get_global_register_value("PrmpVbpf")
 
-        self.feedback_best = self.register.get_global_register_value("PrmpVbpf")
-
-        if abs(mean_tot - self.target_tot) > 2 * self.max_delta_tot and not self.stop_run.is_set():
-            if np.all((((self.feedback_best & (1 << np.arange(self.register.global_registers['PrmpVbpf']['bitlength'])))) > 0).astype(int)[self.feedback_tune_bits] == 1):
-                if self.fail_on_warning:
-                    raise RuntimeWarning('Selected Feedback bits reached maximum value')
+            if abs(mean_tot - self.target_tot) > 2 * self.max_delta_tot and not self.stop_run.is_set():
+                if np.all((((self.feedback_best & (1 << np.arange(self.register.global_registers['PrmpVbpf']['bitlength'])))) > 0).astype(int)[self.feedback_tune_bits] == 1):
+                    if self.fail_on_warning:
+                        raise RuntimeWarning('Selected Feedback bits reached maximum value')
+                    else:
+                        logging.warning('Selected Feedback bits reached maximum value')
+                elif np.all((((self.feedback_best & (1 << np.arange(self.register.global_registers['PrmpVbpf']['bitlength'])))) > 0).astype(int)[self.feedback_tune_bits] == 0):
+                    if self.fail_on_warning:
+                        raise RuntimeWarning('Selected Feedback bits reached minimum value')
+                    else:
+                        logging.warning('Selected Feedback bits reached minimum value')
                 else:
-                    logging.warning('Selected Feedback bits reached maximum value')
-            elif np.all((((self.feedback_best & (1 << np.arange(self.register.global_registers['PrmpVbpf']['bitlength'])))) > 0).astype(int)[self.feedback_tune_bits] == 0):
-                if self.fail_on_warning:
-                    raise RuntimeWarning('Selected Feedback bits reached minimum value')
-                else:
-                    logging.warning('Selected Feedback bits reached minimum value')
+                    if self.fail_on_warning:
+                        raise RuntimeWarning('Global feedback tuning failed. Delta ToT = %.2f > %.2f. PrmpVbpf = %d' % (abs(mean_tot - self.target_tot), self.max_delta_tot, self.register.get_global_register_value("PrmpVbpf")))
+                    else:
+                        logging.warning('Global feedback tuning failed. Delta ToT = %.2f > %.2f. PrmpVbpf = %d', abs(mean_tot - self.target_tot), self.max_delta_tot, self.register.get_global_register_value("PrmpVbpf"))
             else:
-                if self.fail_on_warning:
-                    raise RuntimeWarning('Global feedback tuning failed. Delta ToT = %.2f > %.2f. PrmpVbpf = %d' % (abs(mean_tot - self.target_tot), self.max_delta_tot, self.register.get_global_register_value("PrmpVbpf")))
-                else:
-                    logging.warning('Global feedback tuning failed. Delta ToT = %.2f > %.2f. PrmpVbpf = %d', abs(mean_tot - self.target_tot), self.max_delta_tot, self.register.get_global_register_value("PrmpVbpf"))
-        else:
-            logging.info('Tuned PrmpVbpf to %d', self.register.get_global_register_value("PrmpVbpf"))
+                logging.info('Tuned PrmpVbpf to %d', self.register.get_global_register_value("PrmpVbpf"))
 
     def analyze(self):
         # set here because original value is restored after scan()
         self.register.set_global_register_value("PrmpVbpf", self.feedback_best)
+        # write configuration to avoid high current states
+        commands = []
+        commands.extend(self.register.get_commands("ConfMode"))
+        commands.extend(self.register.get_commands("WrRegister", name=["PrmpVbpf"]))
+        self.register_utils.send_commands(commands)
 
         plot_tot(hist=self.tot_hist, title='ToT distribution after feedback tuning (PrmpVbpf %d)' % self.feedback_best, filename=self.plots_filename)
         if self.close_plots:
@@ -209,7 +210,7 @@ class FeedbackTuning(Fei4RunBase):
         commands.extend(self.register.get_commands("WrRegister", name="PlsrDAC"))
         self.register_utils.send_commands(commands)
 
-    def set_prmp_vbpf_bit(self, bit_position, bit_value=1):
+    def set_prmp_vbpf_bit(self, bit_position, bit_value):
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))
         if bit_value == 1:

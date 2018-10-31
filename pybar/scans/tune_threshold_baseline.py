@@ -253,7 +253,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
         self.register.set_global_register_value("Vthin_AltFine", self.threshold[0])
         self.register.set_pixel_register_value('TDAC', self.new_tdac[0])
         self.register.set_pixel_register_value('Enable', self.new_enable_mask[0])  # use enable mask from the lowest point to mask bad pixels
-        # write configuration to avaoid high current states
+        # write configuration to avoid high current states
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))
         commands.extend(self.register.get_commands("WrRegister", name=["Vthin_AltFine"]))
