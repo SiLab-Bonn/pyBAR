@@ -111,7 +111,6 @@ class EudaqExtTriggerScan(ExtTriggerScan):
 
 
 if __name__ == "__main__":
-    default_address = "localhost:44000"
     parser = argparse.ArgumentParser(description='pyBAR with EUDAQ support')
     parser.add_argument('address', type=str, metavar='address:port', action='store', help='IP address and port of the RunControl PC (default: %s)' % default_address, nargs='?')
     args = parser.parse_args()
