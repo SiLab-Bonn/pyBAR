@@ -43,8 +43,10 @@ module mmc3_8_chip_multi_tx_eth_SHIP(
     input wire [7:0] RJ45_HITOR_N, RJ45_HITOR_P,
     input wire [7:0] DOBOUT_N, DOBOUT_P,
     output wire RJ45_BUSY_LEMO_TX1, RJ45_CLK_LEMO_TX0,
+    output wire [1:0] LEMO_TX, // individual LEMO TX only available on MMC3 revision 1.2
     input wire RJ45_TRIGGER, RJ45_RESET,
-    input wire [2:0] LEMO_RX
+    input wire [1:0] LEMO_RX,
+    inout wire [7:0] PMOD // 2-row PMOD header for general purpose IOs
 );
 
 wire RST;
@@ -224,6 +226,7 @@ wire [7:0] RBCP_WD, RBCP_RD;
 wire [31:0] RBCP_ADDR;
 wire TCP_RX_WR;
 wire [7:0] TCP_RX_DATA;
+wire [15:0] TCP_RX_WC;
 wire RBCP_ACK;
 wire SiTCP_RST;
 
@@ -231,68 +234,77 @@ wire TCP_TX_FULL;
 wire TCP_TX_WR;
 wire [7:0] TCP_TX_DATA;
 
+wire [7:0] PMOD_O;
+IOBUF iobuf_pmod [7:0] (
+    .O(PMOD_O),
+    .IO(PMOD),
+    .I({8'b1111_0000}),
+    .T({8'b0000_1111})
+);
+wire [7:0] IP_ADDR_SEL;
+assign IP_ADDR_SEL = {4'b0, PMOD_O[3], PMOD_O[2], PMOD_O[1], PMOD_O[0]}; // MSB: PMOD[3]; LSB: PMOD[0]
 
 WRAP_SiTCP_GMII_XC7K_32K sitcp(
-    .CLK(BUS_CLK)                    ,    // in    : System Clock >129MHz
-    .RST(RST)                    ,    // in    : System reset
+    .CLK(BUS_CLK),    // in    : System Clock >129MHz
+    .RST(RST),    // in    : System reset
     // Configuration parameters
-    .FORCE_DEFAULTn(1'b0)        ,    // in    : Load default parameters
-    .EXT_IP_ADDR(32'hc0a80a10)            ,    // in    : IP address[31:0] //192.168.10.16
-    .EXT_TCP_PORT(16'd24)        ,    // in    : TCP port #[15:0]
-    .EXT_RBCP_PORT(16'd4660)        ,    // in    : RBCP port #[15:0]
-    .PHY_ADDR(5'd3)            ,    // in    : PHY-device MIF address[4:0]
+    .FORCE_DEFAULTn(1'b0),    // in    : Load default parameters
+    .EXT_IP_ADDR({8'd192, 8'd168, 8'd10 + IP_ADDR_SEL, 8'd11}),    // in    : IP address[31:0] //192.168.10.11
+    .EXT_TCP_PORT(16'd24),    // in    : TCP port #[15:0]
+    .EXT_RBCP_PORT(16'd4660),    // in    : RBCP port #[15:0]
+    .PHY_ADDR(5'd3),    // in    : PHY-device MIF address[4:0]
     // EEPROM
-    .EEPROM_CS(EEPROM_CS)            ,    // out    : Chip select
-    .EEPROM_SK(EEPROM_SK)            ,    // out    : Serial data clock
-    .EEPROM_DI(EEPROM_DI)            ,    // out    : Serial write data
-    .EEPROM_DO(1'b0)            ,    // in    : Serial read data
+    .EEPROM_CS(EEPROM_CS),    // out    : Chip select
+    .EEPROM_SK(EEPROM_SK),    // out    : Serial data clock
+    .EEPROM_DI(EEPROM_DI),    // out    : Serial write data
+    .EEPROM_DO(1'b0),    // in    : Serial read data
     // user data, intialial values are stored in the EEPROM, 0xFFFF_FC3C-3F
-    .USR_REG_X3C()            ,    // out    : Stored at 0xFFFF_FF3C
-    .USR_REG_X3D()            ,    // out    : Stored at 0xFFFF_FF3D
-    .USR_REG_X3E()            ,    // out    : Stored at 0xFFFF_FF3E
-    .USR_REG_X3F()            ,    // out    : Stored at 0xFFFF_FF3F
+    .USR_REG_X3C(),    // out    : Stored at 0xFFFF_FF3C
+    .USR_REG_X3D(),    // out    : Stored at 0xFFFF_FF3D
+    .USR_REG_X3E(),    // out    : Stored at 0xFFFF_FF3E
+    .USR_REG_X3F(),    // out    : Stored at 0xFFFF_FF3F
     // MII interface
-    .GMII_RSTn(phy_rst_n)            ,    // out    : PHY reset
-    .GMII_1000M(1'b1)            ,    // in    : GMII mode (0:MII, 1:GMII)
+    .GMII_RSTn(phy_rst_n),    // out    : PHY reset
+    .GMII_1000M(1'b1),    // in    : GMII mode (0:MII, 1:GMII)
     // TX
-    .GMII_TX_CLK(CLK125TX)            ,    // in    : Tx clock
-    .GMII_TX_EN(gmii_tx_en)            ,    // out    : Tx enable
-    .GMII_TXD(gmii_txd)            ,    // out    : Tx data[7:0]
-    .GMII_TX_ER(gmii_tx_er)            ,    // out    : TX error
+    .GMII_TX_CLK(CLK125TX),    // in    : Tx clock
+    .GMII_TX_EN(gmii_tx_en),    // out    : Tx enable
+    .GMII_TXD(gmii_txd),    // out    : Tx data[7:0]
+    .GMII_TX_ER(gmii_tx_er),    // out    : TX error
     // RX
-    .GMII_RX_CLK(CLK125RX)           ,    // in    : Rx clock
-    .GMII_RX_DV(gmii_rx_dv)            ,    // in    : Rx data valid
-    .GMII_RXD(gmii_rxd)            ,    // in    : Rx data[7:0]
-    .GMII_RX_ER(gmii_rx_er)            ,    // in    : Rx error
-    .GMII_CRS(gmii_crs)            ,    // in    : Carrier sense
-    .GMII_COL(gmii_col)            ,    // in    : Collision detected
+    .GMII_RX_CLK(CLK125RX),    // in    : Rx clock
+    .GMII_RX_DV(gmii_rx_dv),    // in    : Rx data valid
+    .GMII_RXD(gmii_rxd),    // in    : Rx data[7:0]
+    .GMII_RX_ER(gmii_rx_er),    // in    : Rx error
+    .GMII_CRS(gmii_crs),    // in    : Carrier sense
+    .GMII_COL(gmii_col),    // in    : Collision detected
     // Management IF
-    .GMII_MDC(mdio_phy_mdc)            ,    // out    : Clock for MDIO
-    .GMII_MDIO_IN(mdio_gem_i)        ,    // in    : Data
-    .GMII_MDIO_OUT(mdio_gem_o)        ,    // out    : Data
-    .GMII_MDIO_OE(mdio_gem_t)        ,    // out    : MDIO output enable
+    .GMII_MDC(mdio_phy_mdc),    // out    : Clock for MDIO
+    .GMII_MDIO_IN(mdio_gem_i),    // in    : Data
+    .GMII_MDIO_OUT(mdio_gem_o),    // out    : Data
+    .GMII_MDIO_OE(mdio_gem_t),    // out    : MDIO output enable
     // User I/F
-    .SiTCP_RST(SiTCP_RST)            ,    // out    : Reset for SiTCP and related circuits
+    .SiTCP_RST(SiTCP_RST),    // out    : Reset for SiTCP and related circuits
     // TCP connection control
-    .TCP_OPEN_REQ(1'b0)        ,    // in    : Reserved input, shoud be 0
-    .TCP_OPEN_ACK()        ,    // out    : Acknowledge for open (=Socket busy)
-    .TCP_ERROR()            ,    // out    : TCP error, its active period is equal to MSL
-    .TCP_CLOSE_REQ(TCP_CLOSE_REQ)        ,    // out    : Connection close request
-    .TCP_CLOSE_ACK(TCP_CLOSE_REQ)        ,    // in    : Acknowledge for closing
+    .TCP_OPEN_REQ(1'b0),    // in    : Reserved input, shoud be 0
+    .TCP_OPEN_ACK(),    // out    : Acknowledge for open (=Socket busy)
+    .TCP_ERROR(),    // out    : TCP error, its active period is equal to MSL
+    .TCP_CLOSE_REQ(TCP_CLOSE_REQ),    // out    : Connection close request
+    .TCP_CLOSE_ACK(TCP_CLOSE_REQ),    // in    : Acknowledge for closing
     // FIFO I/F
-    .TCP_RX_WC(1'b1)            ,    // in    : Rx FIFO write count[15:0] (Unused bits should be set 1)
-    .TCP_RX_WR(TCP_RX_WR)            ,    // out    : Write enable
-    .TCP_RX_DATA(TCP_RX_DATA)            ,    // out    : Write data[7:0]
-    .TCP_TX_FULL(TCP_TX_FULL)            ,    // out    : Almost full flag
-    .TCP_TX_WR(TCP_TX_WR)            ,    // in    : Write enable
-    .TCP_TX_DATA(TCP_TX_DATA)            ,    // in    : Write data[7:0]
+    .TCP_RX_WC(TCP_RX_WC),    // in    : Rx FIFO write count[15:0] (Unused bits should be set 1)
+    .TCP_RX_WR(TCP_RX_WR),    // out    : Write enable
+    .TCP_RX_DATA(TCP_RX_DATA),    // out    : Write data[7:0]
+    .TCP_TX_FULL(TCP_TX_FULL),    // out    : Almost full flag
+    .TCP_TX_WR(TCP_TX_WR),    // in    : Write enable
+    .TCP_TX_DATA(TCP_TX_DATA),    // in    : Write data[7:0]
     // RBCP
-    .RBCP_ACT(RBCP_ACT)            ,    // out    : RBCP active
-    .RBCP_ADDR(RBCP_ADDR)            ,    // out    : Address[31:0]
-    .RBCP_WD(RBCP_WD)                ,    // out    : Data[7:0]
-    .RBCP_WE(RBCP_WE)                ,    // out    : Write enable
-    .RBCP_RE(RBCP_RE)                ,    // out    : Read enable
-    .RBCP_ACK(RBCP_ACK)            ,    // in    : Access acknowledge
+    .RBCP_ACT(RBCP_ACT),    // out    : RBCP active
+    .RBCP_ADDR(RBCP_ADDR),    // out    : Address[31:0]
+    .RBCP_WD(RBCP_WD),    // out    : Data[7:0]
+    .RBCP_WE(RBCP_WE),    // out    : Write enable
+    .RBCP_RE(RBCP_RE),    // out    : Read enable
+    .RBCP_ACK(RBCP_ACK),    // in    : Access acknowledge
     .RBCP_RD(RBCP_RD)                    // in    : Read data[7:0]
 );
 
@@ -301,11 +313,16 @@ WRAP_SiTCP_GMII_XC7K_32K sitcp(
 wire BUS_WR, BUS_RD, BUS_RST;
 wire [31:0] BUS_ADD;
 wire [7:0] BUS_DATA;
+wire INVALID;
 assign BUS_RST = SiTCP_RST;
 
-rbcp_to_bus irbcp_to_bus(
+tcp_to_bus itcp_to_bus(
     .BUS_RST(BUS_RST),
     .BUS_CLK(BUS_CLK),
+
+    .TCP_RX_WC(TCP_RX_WC),
+    .TCP_RX_WR(TCP_RX_WR),
+    .TCP_RX_DATA(TCP_RX_DATA),
 
     .RBCP_ACT(RBCP_ACT),
     .RBCP_ADDR(RBCP_ADDR),
@@ -318,7 +335,9 @@ rbcp_to_bus irbcp_to_bus(
     .BUS_WR(BUS_WR),
     .BUS_RD(BUS_RD),
     .BUS_ADD(BUS_ADD),
-    .BUS_DATA(BUS_DATA)
+    .BUS_DATA(BUS_DATA),
+
+    .INVALID(INVALID)
 );
 
 // -------  MODULE ADDRESSES  ------- //
@@ -489,7 +508,7 @@ PLLE2_BASE #(
 wire TIMESTAMP_RESET_SYNC;
 three_stage_synchronizer three_stage_trigger_ts_reset_synchronizer (
     .CLK(EXT_TRG_CLK),
-    .IN(LEMO_RX[2]),
+    .IN(PMOD[4]),
     .OUT(TIMESTAMP_RESET_SYNC)
 );
 
@@ -674,17 +693,15 @@ wire [9:0] TRIGGER_SELECTED [7:0];
 reg [31:0] EXT_TRG_TIMESTAMP;
 
 assign RJ45_BUSY_LEMO_TX1 = BROADCAST_CMD ? TLU_BUSY : 1'b1;
+assign LEMO_TX[1] = RJ45_BUSY_LEMO_TX1; // add LEMO TX0 and TX1 for MMC3 revision 1.2; LEMO TX0 and TX1 are not connected to RJ45_CLK_LEMO_TX0 and RJ45_BUSY_LEMO_TX1 anymore
 assign RJ45_CLK_LEMO_TX0 = TLU_CLOCK;
+assign LEMO_TX[0] = RJ45_CLK_LEMO_TX0; // add LEMO TX0 and TX1 for MMC3 revision 1.2; LEMO TX0 and TX1 are not connected to RJ45_CLK_LEMO_TX0 and RJ45_BUSY_LEMO_TX1 anymore
 
 genvar k;
 generate
   for (k = 1; k < 8; k = k + 1) begin: tlu_gen
     always @(posedge CLK40)
     begin
-        STARTED_READY_COUNTER[k] <= STARTED_READY_COUNTER[k];
-        CMD_FIFO_READY[k] <= CMD_FIFO_READY[k];
-        fifo_empty_counter[k] <= fifo_empty_counter[k];
-
         if (~EXT_TRIGGER_ENABLE[k] || ~TRIGGER_ENABLED[k])
         begin
             STARTED_READY_COUNTER[k] <= 1'b0;
@@ -766,10 +783,6 @@ endgenerate
 
 always @(posedge CLK40)
 begin
-    STARTED_READY_COUNTER[0] <= STARTED_READY_COUNTER[0];
-    CMD_FIFO_READY[0] <= CMD_FIFO_READY[0];
-    fifo_empty_counter[0] <= fifo_empty_counter[0];
-
     if (~EXT_TRIGGER_ENABLE[0] || ~TRIGGER_ENABLED[0])
     begin
         STARTED_READY_COUNTER[0] <= 1'b0;
@@ -832,7 +845,7 @@ tlu_controller #(
 
     .TRIGGER({LEMO_RX0_LE_CLK40, TDC_OUT, LEMO_RX[0]}),
     .TRIGGER_VETO({1'b0, RX_FIFO_FULL, FIFO_FULL}),
-    .TIMESTAMP_RESET(LEMO_RX[2]),
+    .TIMESTAMP_RESET(PMOD[4]),
 
     .EXT_TRIGGER_ENABLE(BROADCAST_CMD ? |EXT_TRIGGER_ENABLE : EXT_TRIGGER_ENABLE[0]),
     .TRIGGER_ACKNOWLEDGE(BROADCAST_CMD ? CMD_FIFO_READY_BROADCAST_FLAG : CMD_FIFO_READY_FLAG[0]),
@@ -973,6 +986,9 @@ generate
         .TRIG_IN(1'b0),
         .TRIG_OUT(),
 
+        .FAST_TRIGGER_IN(),
+        .FAST_TRIGGER_OUT(),
+
         .FIFO_READ(TDC_FIFO_READ[j]),
         .FIFO_EMPTY(TDC_FIFO_EMPTY[j]),
         .FIFO_DATA(TDC_FIFO_DATA[j]),
@@ -1019,6 +1035,9 @@ tdc_s3 #(
     .TDC_OUT(TDC_OUT[7]),
     .TRIG_IN(1'b0),
     .TRIG_OUT(),
+
+    .FAST_TRIGGER_IN(),
+    .FAST_TRIGGER_OUT(),
 
     .FIFO_READ(TDC_FIFO_READ[7]),
     .FIFO_EMPTY(TDC_FIFO_EMPTY[7]),

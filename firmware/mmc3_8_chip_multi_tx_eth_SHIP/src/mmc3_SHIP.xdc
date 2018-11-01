@@ -188,11 +188,36 @@ set_property IOSTANDARD LVCMOS25 [get_ports RJ45_TRIGGER]
 
 set_property PACKAGE_PIN U26 [get_ports {LEMO_RX[1]}]
 set_property PACKAGE_PIN U22 [get_ports {LEMO_RX[0]}]
-# add pin pmod7
-set_property PACKAGE_PIN W26 [get_ports {LEMO_RX[2]}]
 set_property IOSTANDARD LVCMOS25 [get_ports LEMO_RX*]
+# add LEMO TX0 and TX1 for MMC3 revision 1.2; LEMO TX0 and TX1 are not connected to RJ45_CLK_LEMO_TX0 and RJ45_BUSY_LEMO_TX1 anymore
+set_property PACKAGE_PIN V22 [get_ports {LEMO_TX[0]}]
+set_property PACKAGE_PIN W21 [get_ports {LEMO_TX[1]}]
+set_property IOSTANDARD LVCMOS25 [get_ports LEMO_TX*]
 
-
+# PMOD
+# +-------------------------+
+# | 6(VCC)  5(GND)  4 3 2 1 |*
+# |12(VCC) 11(GND) 10 9 8 7 |
+# +-------------------------+
+#
+# PMOD connector pin 1-->PMOD[0]; pin 2-->PMOD[1]; pin 3-->PMOD[2]; pin 4-->PMOD[3];
+set_property PACKAGE_PIN V26 [get_ports {PMOD[0]}]
+set_property PACKAGE_PIN V24 [get_ports {PMOD[1]}]
+set_property PACKAGE_PIN AB25 [get_ports {PMOD[2]}]
+set_property PACKAGE_PIN AA25 [get_ports {PMOD[3]}]
+# PMOD connector pin 7-->PMOD[4]; pin 8-->PMOD[5]; pin 9-->PMOD[6]; pin 10-->PMOD[7];
+set_property PACKAGE_PIN W26 [get_ports {PMOD[4]}]
+set_property PACKAGE_PIN W25 [get_ports {PMOD[5]}]
+set_property PACKAGE_PIN AC24 [get_ports {PMOD[6]}]
+set_property PACKAGE_PIN AC23 [get_ports {PMOD[7]}]
+set_property IOSTANDARD LVCMOS25 [get_ports PMOD*]
+set_property DRIVE 16 [get_ports PMOD*]
+# pull down the PMOD pins which are used as inputs
+set_property PULLDOWN true [get_ports {PMOD[0]}]
+set_property PULLDOWN true [get_ports {PMOD[1]}]
+set_property PULLDOWN true [get_ports {PMOD[2]}]
+set_property PULLDOWN true [get_ports {PMOD[3]}]
+set_property PULLDOWN true [get_ports {PMOD[4]}]
 
 set_property ASYNC_REG true [get_cells sitcp/SiTCP/GMII/GMII_TXCNT/irMacPauseExe_0]
 set_property ASYNC_REG true [get_cells sitcp/SiTCP/GMII/GMII_TXCNT/irMacPauseExe_1]

@@ -1,9 +1,10 @@
 # MMC3 board with max. 8 FEI4s with multiple TX
 ETH:
-    ip : "192.168.10.16"
+    ip : "192.168.10.11"
     udp_port : 4660
     tcp_port : 24
     tcp_connection : True
+    tcp_to_bus : False
 
 # Trigger
 TRIGGER_CH0:
