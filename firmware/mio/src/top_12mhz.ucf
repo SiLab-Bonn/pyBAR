@@ -1,15 +1,15 @@
 # This file is part of pyBAR.
-# 
+#
 # pyBAR is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # pyBAR is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Lesser General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU Lesser General Public License
 # along with pyBAR.  If not, see <http://www.gnu.org/licenses/>.
 
@@ -31,10 +31,10 @@ TIMESPEC TS_FCLK_IN = PERIOD "TNM_FCLK_IN" 20.830 ns HIGH 50 %;
 
 NET "BUS_CLK" TNM_NET = "tn_BUS_CLK";
 
-NET "CLK_40" TNM_NET = "tn_CLK_40";
-#TIMESPEC TS_CLK_40 = PERIOD "tn_CLK_40" 25.000 ns HIGH 50 %;
-TIMESPEC TS_FALSE_CLK_40_BUS_CLK = FROM "tn_CLK_40" TO "tn_BUS_CLK" TIG;
-TIMESPEC TS_FALSE_BUS_CLK_CLK_40 = FROM "tn_BUS_CLK" TO "tn_CLK_40" TIG;
+NET "CLK40" TNM_NET = "tn_CLK40";
+#TIMESPEC TS_CLK40 = PERIOD "tn_CLK40" 25.000 ns HIGH 50 %;
+TIMESPEC TS_FALSE_CLK40_BUS_CLK = FROM "tn_CLK40" TO "tn_BUS_CLK" TIG;
+TIMESPEC TS_FALSE_BUS_CLK_CLK40 = FROM "tn_BUS_CLK" TO "tn_CLK40" TIG;
 
 NET "DATA_CLK" TNM_NET = "tn_DATA_CLK";
 #TIMESPEC TS_DATA_CLK = PERIOD "tn_DATA_CLK" 62.500 ns HIGH 50 %;

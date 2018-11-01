@@ -163,7 +163,7 @@ assign INJ_STRB = INJECT_PULSE;
 // Assignments
 wire BUS_RST;
 (* KEEP = "{TRUE}" *) wire BUS_CLK;
-(* KEEP = "{TRUE}" *) wire CLK_40;
+(* KEEP = "{TRUE}" *) wire CLK40;
 wire RX_CLK;
 wire RX_CLK2X;
 wire DATA_CLK;
@@ -193,7 +193,7 @@ wire CMD_READY; // from CMD FSM
 wire TRIGGER_ACKNOWLEDGE_FLAG; // to TLU FSM
 
 reg CMD_READY_FF;
-always @ (posedge CLK_40)
+always @ (posedge CLK40)
 begin
     CMD_READY_FF <= CMD_READY;
 end
@@ -211,7 +211,7 @@ assign TX[2] = RJ45_TRIGGER;
 reset_gen ireset_gen(.CLK(BUS_CLK), .RST(BUS_RST));
 
 `ifdef SLOW_CLK
-assign RX_CLK = CLK_40; // 12MHz
+assign RX_CLK = CLK40; // 12MHz
 
 clk_gen_12mhz iclkgen(
     .U1_CLKIN_IN(FCLK_IN),
@@ -219,7 +219,7 @@ clk_gen_12mhz iclkgen(
     .U1_CLKIN_IBUFG_OUT(),
     .U1_CLK0_OUT(BUS_CLK), // DCM1: 48MHz USB/SRAM clock
     .U1_STATUS_OUT(),
-    .U2_CLKFX_OUT(CLK_40), // DCM2: 40MHz command clock
+    .U2_CLKFX_OUT(CLK40), // DCM2: 40MHz command clock
     .U2_CLKDV_OUT(DATA_CLK), // DCM2: 16MHz SERDES clock
     .U2_CLK0_OUT(),
     .U2_CLK2X_OUT(RX_CLK2X), // DCM2: 24MHz data recovery clock
@@ -233,7 +233,7 @@ clk_gen iclkgen(
     .U1_CLKIN_IBUFG_OUT(),
     .U1_CLK0_OUT(BUS_CLK), // DCM1: 48MHz USB/SRAM clock
     .U1_STATUS_OUT(),
-    .U2_CLKFX_OUT(CLK_40), // DCM2: 40MHz command clock
+    .U2_CLKFX_OUT(CLK40), // DCM2: 40MHz command clock
     .U2_CLKDV_OUT(DATA_CLK), // DCM2: 16MHz SERDES clock
     .U2_CLK0_OUT(RX_CLK), // DCM2: 160MHz data clock
     .U2_CLK2X_OUT(RX_CLK2X), // DCM2: 320MHz data recovery clock
@@ -248,7 +248,7 @@ wire CLK_10MHZ;
 clock_divider #(
     .DIVISOR(4)
 ) i_clock_divisor_40MHz_to_10MHz (
-    .CLK(CLK_40),
+    .CLK(CLK40),
     .RESET(1'b0),
     .CE(CE_10MHZ),
     .CLOCK(CLK_10MHZ)
@@ -258,7 +258,7 @@ assign AUX_CLK = CLK_10MHZ;
 /*
 ODDR AUX_CLK_FORWARDING_INST (
     .Q(AUX_CLK),
-    .C(CLK_40),
+    .C(CLK40),
     .CE(CE_10MHZ),
     .D1(1'b1),
     .D2(1'b0),
@@ -287,7 +287,7 @@ clock_divider #(
     .DIVISOR(40000000)
 `endif
 ) i_clock_divisor_40MHz_to_1Hz (
-    .CLK(CLK_40),
+    .CLK(CLK40),
     .RESET(1'b0),
     .CE(CE_1HZ),
     .CLOCK(CLK_1HZ)
@@ -301,13 +301,13 @@ clock_divider #(
     .DIVISOR(13333333)
 `endif
 ) i_clock_divisor_40MHz_to_3Hz (
-    .CLK(CLK_40),
+    .CLK(CLK40),
     .RESET(1'b0),
     .CE(),
     .CLOCK(CLK_3HZ)
 );
 
-// -------  MODULE ADREESSES  ------- //
+// -------  MODULE ADDRESSES  ------- //
 localparam CMD_BASEADDR = 16'h0000;
 localparam CMD_HIGHADDR = 16'h8000-1;
 
@@ -384,6 +384,7 @@ fx2_to_bus i_fx2_to_bus (
     .CS_FPGA()
 );
 
+
 // -------  USER MODULES  ------- //
 wire FIFO_NOT_EMPTY; // raised, when SRAM FIFO is not empty
 wire FIFO_FULL, FIFO_NEAR_FULL; // raised, when SRAM FIFO is full / near full
@@ -401,7 +402,7 @@ cmd_seq #(
     .BUS_WR(BUS_WR),
 
     .CMD_CLK_OUT(REF_CLK),
-    .CMD_CLK_IN(CLK_40),
+    .CMD_CLK_IN(CLK40),
     .CMD_EXT_START_FLAG(CMD_EXT_START_FLAG),
     .CMD_EXT_START_ENABLE(EXT_TRIGGER_ENABLE),
     .CMD_DATA(CMD_DATA),
@@ -442,7 +443,7 @@ fei4_rx #(
     .RX_8B10B_DECODER_ERR(RX_8B10B_DECODER_ERR),
     .RX_FIFO_OVERFLOW_ERR(RX_FIFO_OVERFLOW_ERR),
 
-    .FIFO_CLK(),
+    .FIFO_CLK(1'b0),
     .FIFO_READ(FE_FIFO_READ),
     .FIFO_EMPTY(FE_FIFO_EMPTY),
     .FIFO_DATA(FE_FIFO_DATA),
@@ -482,6 +483,7 @@ for (i = 0; i < 4; i = i + 1) begin: rx_gen
         .RX_8B10B_DECODER_ERR(RX_8B10B_DECODER_ERR[i]),
         .RX_FIFO_OVERFLOW_ERR(RX_FIFO_OVERFLOW_ERR[i]),
 
+        .FIFO_CLK(1'b0),
         .FIFO_READ(FE_FIFO_READ[i]),
         .FIFO_EMPTY(FE_FIFO_EMPTY[i]),
         .FIFO_DATA(FE_FIFO_DATA[i]),
@@ -511,17 +513,20 @@ tdc_s3 #(
     .BASEADDR(TDC_BASEADDR),
     .HIGHADDR(TDC_HIGHADDR),
     .CLKDV(4),
-    .DATA_IDENTIFIER(4'b0100), // one-hot
+    .DATA_IDENTIFIER(4'b0100),
     .FAST_TDC(1),
     .FAST_TRIGGER(1)
 ) i_tdc (
     .CLK320(RX_CLK2X),
     .CLK160(RX_CLK),
-    .DV_CLK(CLK_40),
+    .DV_CLK(CLK40),
     .TDC_IN(TDC_IN),
     .TDC_OUT(TDC_IN_FROM_TDC),
     .TRIG_IN(LEMO_TRIGGER),
     .TRIG_OUT(LEMO_TRIGGER_FROM_TDC),
+
+    .FAST_TRIGGER_IN(),
+    .FAST_TRIGGER_OUT(),
 
     .FIFO_READ(TDC_FIFO_READ),
     .FIFO_EMPTY(TDC_FIFO_EMPTY),
@@ -547,7 +552,9 @@ gpio #(
     .BASEADDR(GPIO_RX_BASEADDR),
     .HIGHADDR(GPIO_RX_HIGHADDR),
     .IO_WIDTH(8),
-    .IO_DIRECTION(8'hff)
+    .IO_DIRECTION(8'hff),
+    .IO_TRI(8'h00),
+    .ABUSWIDTH(16)
 ) i_gpio_rx (
     .BUS_CLK(BUS_CLK),
     .BUS_RST(BUS_RST),
@@ -568,8 +575,8 @@ tlu_controller #(
     .BASEADDR(TLU_BASEADDR),
     .HIGHADDR(TLU_HIGHADDR),
     .DIVISOR(32),
-    .TLU_TRIGGER_MAX_CLOCK_CYCLES(17),
-    .WIDTH(8)
+    .WIDTH(8),
+    .TLU_TRIGGER_MAX_CLOCK_CYCLES(32)
 ) i_tlu_controller (
     .BUS_CLK(BUS_CLK),
     .BUS_RST(BUS_RST),
@@ -578,7 +585,7 @@ tlu_controller #(
     .BUS_RD(BUS_RD),
     .BUS_WR(BUS_WR),
 
-    .TRIGGER_CLK(CLK_40),
+    .TRIGGER_CLK(CLK40),
 
     .FIFO_READ(TRIGGER_FIFO_READ),
     .FIFO_EMPTY(TRIGGER_FIFO_EMPTY),
@@ -586,8 +593,13 @@ tlu_controller #(
 
     .FIFO_PREEMPT_REQ(TRIGGER_FIFO_PEEMPT_REQ),
 
+    .TRIGGER_ENABLED(),
+    .TRIGGER_SELECTED(),
+    .TLU_ENABLED(),
+
     .TRIGGER({3'b0, CCPD_TDC_FROM_TDC, TDC_IN_FROM_TDC, MULTI_PURPOSE, LEMO_TRIGGER_FROM_TDC, MONHIT}),
     .TRIGGER_VETO({6'b0, MULTI_PURPOSE, FIFO_FULL}),
+    .TIMESTAMP_RESET(1'b0),
 
     .EXT_TRIGGER_ENABLE(EXT_TRIGGER_ENABLE),
     .TRIGGER_ACKNOWLEDGE(EXT_TRIGGER_ENABLE == 1'b0 ? TRIGGER_ACCEPTED_FLAG : TRIGGER_ACKNOWLEDGE_FLAG),
@@ -647,7 +659,7 @@ tlu_controller #(
     .BASEADDR(TLU_BASEADDR),
     .HIGHADDR(TLU_HIGHADDR),
     .DIVISOR(32),
-    .TLU_TRIGGER_MAX_CLOCK_CYCLES(17)
+    .TLU_TRIGGER_MAX_CLOCK_CYCLES(32)
 ) i_tlu_controller (
     .BUS_CLK(BUS_CLK),
     .BUS_RST(BUS_RST),
@@ -656,7 +668,7 @@ tlu_controller #(
     .BUS_RD(BUS_RD),
     .BUS_WR(BUS_WR),
 
-    .TRIGGER_CLK(CLK_40),
+    .TRIGGER_CLK(CLK40),
 
     .FIFO_READ(TRIGGER_FIFO_READ),
     .FIFO_EMPTY(TRIGGER_FIFO_EMPTY),
@@ -664,8 +676,13 @@ tlu_controller #(
 
     .FIFO_PREEMPT_REQ(TRIGGER_FIFO_PEEMPT_REQ),
 
+    .TRIGGER_ENABLED(),
+    .TRIGGER_SELECTED(),
+    .TLU_ENABLED(),
+
     .TRIGGER({4'b0, TDC_IN_FROM_TDC, MULTI_PURPOSE, LEMO_TRIGGER_FROM_TDC, MONHIT}),
     .TRIGGER_VETO({6'b0, MULTI_PURPOSE, FIFO_FULL}),
+    .TIMESTAMP_RESET(1'b0),
 
     .EXT_TRIGGER_ENABLE(EXT_TRIGGER_ENABLE),
     .TRIGGER_ACKNOWLEDGE(EXT_TRIGGER_ENABLE == 1'b0 ? TRIGGER_ACCEPTED_FLAG : TRIGGER_ACKNOWLEDGE_FLAG),
@@ -676,6 +693,7 @@ tlu_controller #(
     .TLU_BUSY(TLU_BUSY),
     .TLU_CLOCK(TLU_CLOCK),
 
+    .EXT_TIMESTAMP(),
     .TIMESTAMP(TIMESTAMP)
 );
 `endif
@@ -700,11 +718,14 @@ tdc_s3 #(
 ) i_ccpd_tdc (
     .CLK320(RX_CLK2X),
     .CLK160(RX_CLK),
-    .DV_CLK(CLK_40),
+    .DV_CLK(CLK40),
     .TDC_IN(CCPD_TDC),
     .TDC_OUT(CCPD_TDC_FROM_TDC),
     .TRIG_IN(1'b0),
     .TRIG_OUT(),
+
+    .FAST_TRIGGER_IN(),
+    .FAST_TRIGGER_OUT(),
 
     .FIFO_READ(CCPD_TDC_FIFO_READ),
     .FIFO_EMPTY(CCPD_TDC_FIFO_EMPTY),
@@ -718,10 +739,10 @@ tdc_s3 #(
     .BUS_WR(BUS_WR),
 
     .ARM_TDC(CMD_START_FLAG), // arm TDC by sending commands
+    .EXT_EN(CCPD_TDCGATE),
 
-    .TIMESTAMP(INJ_CNT),
-    //.TIMESTAMP(TIMESTAMP[15:0]),
-    .EXT_EN(CCPD_TDCGATE)
+    .TIMESTAMP(INJ_CNT)
+    //.TIMESTAMP(TIMESTAMP[15:0])
 );
 
 /*
@@ -850,7 +871,7 @@ gpac_adc_rx #(
 clock_divider #(
     .DIVISOR(40) // 1MHz
 ) i_clock_divisor_40MHz_to_1kHz (
-    .CLK(CLK_40),
+    .CLK(CLK40),
     .RESET(1'b0),
     .CE(SPI_CLK_CE),
     .CLOCK(SPI_CLK)
@@ -921,7 +942,7 @@ pulse_gen #(
 // inject pulse flag
 wire INJECT_FLAG;
 reg INJECT_PULSE_FF;
-always @ (posedge CLK_40)
+always @ (posedge CLK40)
 begin
     if (SPI_CLK_CE)
     begin
@@ -931,9 +952,9 @@ end
 assign INJECT_FLAG = INJECT_PULSE & ~INJECT_PULSE_FF;
 
 flag_domain_crossing_ce inject_flag_domain_crossing (
-    .CLK_A(CLK_40),
+    .CLK_A(CLK40),
     .CLK_A_CE(SPI_CLK_CE),
-    .CLK_B(CLK_40),
+    .CLK_B(CLK40),
     .CLK_B_CE(1'b1),
     .FLAG_IN_CLK_A(INJECT_FLAG),
     .FLAG_OUT_CLK_B(INJ_CMD_EXT_START_FLAG)
