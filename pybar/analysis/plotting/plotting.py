@@ -159,14 +159,14 @@ def plot_fancy_occupancy(hist, z_max=None, filename=None):
     cb.set_label("#")
     # make some labels invisible
     setp(axHistx.get_xticklabels() + axHisty.get_yticklabels(), visible=False)
-    hight = np.ma.sum(hist, axis=0)
+    height = np.ma.sum(hist, axis=0)
 
-    axHistx.bar(x=range(1, 81), height=hight, align='center', linewidth=0)
+    axHistx.bar(range(1, 81), height, align='center', linewidth=0)
     axHistx.set_xlim((0.5, 80.5))
     if hist.all() is np.ma.masked or np.allclose(0, hist):
         axHistx.set_ylim((0, 1))
     else:
-        x_c_max = np.ceil(np.percentile(hight, 99))
+        x_c_max = np.ceil(np.percentile(height, 99))
         axHistx.set_ylim(0, max(1, x_c_max))
     axHistx.locator_params(axis='y', nbins=3)
     axHistx.ticklabel_format(style='sci', scilimits=(0, 4), axis='y')
@@ -578,9 +578,9 @@ def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=No
     plot_range = np.array(plot_range)
     plot_range = plot_range[plot_range < len(hist)]
     if yerr is not None:
-        ax.bar(x=plot_range, height=hist[plot_range], color=color, align='center', yerr=yerr)
+        ax.bar(plot_range, hist[plot_range], color=color, align='center', yerr=yerr)
     else:
-        ax.bar(x=plot_range, height=hist[plot_range], color=color, align='center')
+        ax.bar(plot_range, hist[plot_range], color=color, align='center')
     ax.set_xlim((min(plot_range) - 0.5, max(plot_range) + 0.5))
     ax.set_title(title)
     if x_axis_title is not None:
