@@ -36,9 +36,9 @@ def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=No
     plot_range = np.array(plot_range)
     plot_range = plot_range[plot_range < len(hist)]
     if yerr is not None:
-        plt.bar(x=plot_range, height=hist[plot_range], color=color, align='center', yerr=yerr)
+        plt.bar(plot_range, hist[plot_range], color=color, align='center', yerr=yerr)
     else:
-        plt.bar(x=plot_range, height=hist[plot_range], color=color, align='center')
+        plt.bar(plot_range, hist[plot_range], color=color, align='center')
     plt.xlim((min(plot_range) - 0.5, max(plot_range) + 0.5))
     plt.title(title)
     if x_axis_title is not None:

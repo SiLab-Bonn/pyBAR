@@ -293,7 +293,7 @@ class ThresholdBaselineTuning(Fei4RunBase):
                     _, bin_edges, _ = ax.hist(self.occupancy_hist[step].flatten(), bins=350 if len(bins) > 351 else bins, range=(0.0, bins[-1]), align='left', alpha=0.5, label="Measured occupancy")
                     # re-binning
                     statistic, _, _ = stats.binned_statistic(bins[:-1], stats.poisson.pmf(k=bins[:-1], mu=self.occupancy_limit * self.n_triggers * self.consecutive_lvl1) * self.register.get_pixel_register_value("Enable").sum(), statistic='sum', bins=bin_edges)
-                    ax.bar(x=bin_edges[:-1], height=statistic, alpha=0.5, width=bin_edges[1] - bin_edges[0], color="r", label="Expected occupancy (Poisson statistics)")
+                    ax.bar(bin_edges[:-1], statistic, alpha=0.5, width=bin_edges[1] - bin_edges[0], color="r", label="Expected occupancy (Poisson statistics)")
                     # ax.hist(stats.poisson.rvs(mu=self.occupancy_limit * self.n_triggers * self.consecutive_lvl1, size=self.enable_mask[step].sum()), bins=bins, align='left', alpha=0.5, label="Expected occupancy (Poisson statistics)")
                     ax.set_xlabel('#Hits')
                     ax.set_ylabel('#Pixels')
