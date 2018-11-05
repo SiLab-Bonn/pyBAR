@@ -2,22 +2,23 @@
 
 import logging
 import sys
-from optparse import OptionParser
-from time import time, strftime, gmtime, sleep
+import argparse
+from time import time, strftime, gmtime
 
 import numpy as np
-from PyEUDAQWrapper import PyProducer
 
 from pybar.run_manager import RunManager, run_status
 from pybar.scans.scan_ext_trigger import ExtTriggerScan
 from pybar.daq.readout_utils import build_events_from_raw_data, is_trigger_word
 
-
-sys.path.append('/home/telescope/eudaq/python/')
+# set path to PyEUDAQWrapper
+sys.path.append('/path/to/eudaq/python/')
+from PyEUDAQWrapper import PyProducer
+default_address = 'localhost:44000'
 
 
 class EudaqExtTriggerScan(ExtTriggerScan):
-    '''External trigger scan that connects to EUDAQ producer (EUDAQ 1.4 and higher).
+    '''External trigger scan that connects to EUDAQ producer for EUDAQ 1.7 and higher (1.x-dev).
     '''
     _default_run_conf = {
         "broadcast_commands": True,
@@ -39,32 +40,32 @@ class EudaqExtTriggerScan(ExtTriggerScan):
     def scan(self):
         self.data_error_occurred = False
         self.last_trigger_number = None
-        clock_cycles = self.dut['TLU']['TRIGGER_CLOCK_CYCLES']
-        if clock_cycles:
-            self.max_trigger_counter = 2 ** (clock_cycles - 1)
-        else:
-            self.max_trigger_counter = 2 ** 31
+        # set TLU max trigger counter
+        self.max_trigger_counter = 2 ** 15
         start = time()
         lvl1_command = self.register.get_commands("zeros", length=self.trigger_delay)[0] + self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", length=self.trigger_rate_limit)[0]
         self.register_utils.set_command(lvl1_command)
 
         self.remaining_data = np.ndarray((0,), dtype=np.uint32)
 
-        with self.readout(**self.scan_parameters._asdict()):
-            got_data = False
-            while not self.stop_run.wait(1.0):
-                if not got_data:
-                    if self.data_words_per_second() > 0:
-                        got_data = True
-                        logging.info('Taking data...')
-                else:
-                    triggers = self.dut['TLU']['TRIGGER_COUNTER']
-                    data_words = self.data_words_per_second()
-                    logging.info('Runtime: %s\nTriggers: %d\nData words/s: %s\n' % (strftime('%H:%M:%S', gmtime(time() - start)), triggers, str(data_words)))
-                    if self.max_triggers and triggers >= self.max_triggers:
-                        self.stop(msg='Trigger limit was reached: %i' % self.max_triggers)
+        with self.readout(no_data_timeout=self.no_data_timeout, **self.scan_parameters._asdict()):
+            with self.trigger():
+                pp.StartingRun = True  # set status and send BORE
+                got_data = False
+                while not self.stop_run.wait(1.0):
+                    if not got_data:
+                        if self.data_words_per_second() > 0:
+                            got_data = True
+                            logging.info('Taking data...')
+                    else:
+                        triggers = self.dut['TLU']['TRIGGER_COUNTER']
+                        data_words = self.data_words_per_second()
+                        logging.info('Runtime: %s\nTriggers: %d\nData words/s: %s\n' % (strftime('%H:%M:%S', gmtime(time() - start)), triggers, str(data_words)))
+                        if self.max_triggers and triggers >= self.max_triggers:
+                            self.stop(msg='Trigger limit was reached: %i' % self.max_triggers)
 
-        pp.SendEvent(self.remaining_data)
+        if self.remaining_data.shape[0] > 0:
+            pp.SendEvent(self.remaining_data)
 
         logging.info('Total amount of triggers collected: %d', self.dut['TLU']['TRIGGER_COUNTER'])
 
@@ -76,91 +77,82 @@ class EudaqExtTriggerScan(ExtTriggerScan):
         self.data_error_occurred = True
 
     def handle_data(self, data, new_file=False, flush=True):
-        events = build_events_from_raw_data(data[0])
-        for item in events:
-            if item.shape[0] == 0:
-                continue
-            if is_trigger_word(item[0]):
-                if self.remaining_data.shape[0] > 0:
-                    # check trigger number
-                    if is_trigger_word(self.remaining_data[0]):
-                        trigger_number = self.remaining_data[0] & (self.max_trigger_counter - 1)
-                        if self.last_trigger_number is not None and ((self.last_trigger_number + 1 != trigger_number and self.last_trigger_number + 1 != self.max_trigger_counter) or (self.last_trigger_number + 1 == self.max_trigger_counter and trigger_number != 0)):
-                            if self.data_error_occurred:
-                                if trigger_number > self.last_trigger_number:
-                                    missing_trigger_numbers = trigger_number - self.last_trigger_number - 1
+        for data_tuple in data[0]:  # only use data from first module
+            events = build_events_from_raw_data(data_tuple[0])  # build events from raw data array
+            for item in events:
+                if item.shape[0] == 0:
+                    continue
+                if is_trigger_word(item[0]):
+                    if self.remaining_data.shape[0] > 0:
+                        # check trigger number
+                        if is_trigger_word(self.remaining_data[0]):
+                            trigger_number = self.remaining_data[0] & (self.max_trigger_counter - 1)
+                            if self.last_trigger_number is not None and ((self.last_trigger_number + 1 != trigger_number and self.last_trigger_number + 1 != self.max_trigger_counter) or (self.last_trigger_number + 1 == self.max_trigger_counter and trigger_number != 0)):
+                                if self.data_error_occurred:
+                                    if trigger_number > self.last_trigger_number:
+                                        missing_trigger_numbers = trigger_number - self.last_trigger_number - 1
+                                    else:
+                                        missing_trigger_numbers = self.max_trigger_counter - (self.last_trigger_number - trigger_number) - 1
+                                    logging.warning('Data errors detected: trigger number read: %d, expected: %d, sending %d empty events', trigger_number, 0 if (self.last_trigger_number + 1 == self.max_trigger_counter) else (self.last_trigger_number + 1), missing_trigger_numbers)
+                                    for missing_trigger_number in range(self.last_trigger_number + 1, self.last_trigger_number + missing_trigger_numbers + 1):
+                                        pp.SendEvent(np.asarray([missing_trigger_number & (self.max_trigger_counter - 1)], np.uint32))
+                                    self.data_error_occurred = False
+                                    self.last_trigger_number = trigger_number
                                 else:
-                                    missing_trigger_numbers = self.max_trigger_counter - (self.last_trigger_number - trigger_number) - 1
-                                logging.warning('Data errors detected: trigger number read: %d, expected: %d, sending %d empty events', trigger_number, 0 if (self.last_trigger_number + 1 == self.max_trigger_counter) else (self.last_trigger_number + 1), missing_trigger_numbers)
-                                for missing_trigger_number in range(self.last_trigger_number + 1, self.last_trigger_number + missing_trigger_numbers + 1):
-                                    pp.SendEvent(np.asarray([missing_trigger_number & (self.max_trigger_counter - 1)], np.uint32))
-                                self.data_error_occurred = False
-                                self.last_trigger_number = trigger_number
+                                    logging.warning('Trigger number not increasing: read: %d, expected: %d', trigger_number, 0 if (self.last_trigger_number + 1 == self.max_trigger_counter) else (self.last_trigger_number + 1))
+                                    self.last_trigger_number = (self.last_trigger_number + 1) & (self.max_trigger_counter - 1)
                             else:
-                                logging.warning('Trigger number not increasing: read: %d, expected: %d', trigger_number, 0 if (self.last_trigger_number + 1 == self.max_trigger_counter) else (self.last_trigger_number + 1))
-                                self.last_trigger_number = (self.last_trigger_number + 1) & (self.max_trigger_counter - 1)
-                        else:
-                            self.last_trigger_number = trigger_number
-                    pp.SendEvent(self.remaining_data)
-                self.remaining_data = item
-            else:
-                self.remaining_data = np.concatenate([self.remaining_data, item])
+                                self.last_trigger_number = trigger_number
+                        pp.SendEvent(self.remaining_data)
+                    self.remaining_data = item
+                else:
+                    self.remaining_data = np.concatenate([self.remaining_data, item])
         super(EudaqExtTriggerScan, self).handle_data(data=data, new_file=new_file, flush=flush)
 
 
 if __name__ == "__main__":
-    usage = "Usage: %prog [options] ADDRESS"
-    description = "Optional: Start EUDAQ Producer with destination ADDRESS (e.g. 'tcp://localhost:44000')."
-    parser = OptionParser(usage, description=description)
-#     parser.add_option("-c", "--column", dest="col_span", type="int", nargs=2, help="2-tuple of columns (from and to)", default=(1, 80))
-#     parser.add_option("-r", "--row", dest="row_span", type="int", nargs=2, help="2-tuple of rows (from and to)", default=(1, 336))
-    options, args = parser.parse_args()
-    if len(args) == 1:
-        rcaddr = args[0]
+    parser = argparse.ArgumentParser(description='pyBAR with EUDAQ support')
+    parser.add_argument('address', type=str, metavar='address:port', action='store', help='IP address and port of the RunControl PC (default: %s)' % default_address, nargs='?')
+    args = parser.parse_args()
+    address = args.address
+    if address is None:
+        address = default_address
+    if 'tcp://' not in address:
+        address = 'tcp://' + address
 
-    else:
-        parser.error("incorrect number of arguments")
-    run_conf = vars(options)
-    # create PyProducer instance
-    pp = PyProducer("PyBAR", rcaddr)
+    pp = PyProducer("PyBAR", address)
+    runmngr = None
     while not pp.Error and not pp.Terminating:
-        # wait for configure cmd from RunControl
-        while not pp.Configuring and not pp.Terminating:
-            if pp.StartingRun:
-                break
-            sleep(1)
         # check if configuration received
         if pp.Configuring:
-            print "Configuring..."
-    #         for item in run_conf:
-    #             try:
-    #                 run_conf[item] = pp.GetConfigParameter(item)
-    #             except Exception:
-    #                 pass
-            rmngr = RunManager('../configuration.yaml')  # TODO: get conf from EUDAQ
+            logging.info("Configuring...")
+#             for item in run_conf:
+#                 try:
+#                     run_conf[item] = pp.GetConfigParameter(item)
+#                 except Exception:
+#                     pass
+            if runmngr:
+                runmngr.close()
+                runmngr = None
+            runmngr = RunManager('configuration.yaml')  # TODO: get conf from EUDAQ
             pp.Configuring = True
-        # check for start of run cmd from RunControl
-        while not pp.StartingRun and not pp.Terminating:
-            if pp.Configuring:
-                break
-            sleep(1)
+
         # check if we are starting:
         if pp.StartingRun:
-            print "Starting run..."
-#             join = rmngr.run_run(EudaqExtTriggerScan, run_conf=run_conf, use_thread=True)
-            join = rmngr.run_run(EudaqExtTriggerScan, use_thread=True)
-            sleep(5)
-            pp.StartingRun = True  # set status and send BORE
-            # starting to run
-            while join(timeout=1) is None:
-                if pp.Error or pp.Terminating:
-                    rmngr.abort_current_run()
-                if pp.StoppingRun:
-                    rmngr.stop_current_run()
+            run_number = pp.GetRunNumber()
+            logging.info("Starting run EUDAQ run %d..." % run_number)
+#             join = runmngr.run_run(EudaqExtTriggerScan, run_conf=run_conf, use_thread=True)
+            join = runmngr.run_run(EudaqExtTriggerScan, use_thread=True, run_conf={"comment": "EUDAQ run %d" % run_number})
+#             sleep(5)
+#             pp.StartingRun = True  # set status and send BORE
+            # starting run
+            while join(timeout=1) == run_status.running:
+                if pp.Error or pp.Terminating or pp.StoppingRun:
+                    runmngr.cancel_current_run(msg="Run stopped by RunControl")
             status = join()
+            logging.info("Run status: %s" % status)
             # abort conditions
-            if status is not run_status.finished or pp.Error or pp.Terminating:
-                pp.StoppingRun = False  # set status and send EORE
-            # check if the run is stopping regularly
             if pp.StoppingRun:
                 pp.StoppingRun = True  # set status and send EORE
+    if runmngr is not None:
+        runmngr.close()

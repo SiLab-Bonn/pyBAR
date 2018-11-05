@@ -552,6 +552,9 @@ tdc_s3 #(
     .TRIG_IN(LEMO_TRIGGER),
     .TRIG_OUT(LEMO_TRIGGER_FROM_TDC),
 
+    .FAST_TRIGGER_IN(),
+    .FAST_TRIGGER_OUT(),
+
     .FIFO_READ(TDC_FIFO_READ),
     .FIFO_EMPTY(TDC_FIFO_EMPTY),
     .FIFO_DATA(TDC_FIFO_DATA),
@@ -598,10 +601,6 @@ reg CMD_FIFO_READY_FF;
 
 always @(posedge CLK40)
 begin
-    STARTED_READY_COUNTER <= STARTED_READY_COUNTER;
-    CMD_FIFO_READY <= CMD_FIFO_READY;
-    fifo_empty_counter <= fifo_empty_counter;
-
     if (~EXT_TRIGGER_ENABLE || ~TRIGGER_ENABLED)
     begin
         STARTED_READY_COUNTER <= 1'b0;
@@ -680,6 +679,7 @@ tlu_controller #(
     .TLU_BUSY(TLU_BUSY),
     .TLU_CLOCK(TLU_CLOCK),
 
+    .EXT_TIMESTAMP(),
     .TIMESTAMP(TIMESTAMP)
 );
 `else
@@ -728,10 +728,6 @@ reg CMD_FIFO_READY_FF;
 
 always @(posedge CLK40)
 begin
-    STARTED_READY_COUNTER <= STARTED_READY_COUNTER;
-    CMD_FIFO_READY <= CMD_FIFO_READY;
-    fifo_empty_counter <= fifo_empty_counter;
-
     if (~EXT_TRIGGER_ENABLE || ~TRIGGER_ENABLED)
     begin
         STARTED_READY_COUNTER <= 1'b0;
@@ -808,6 +804,7 @@ tlu_controller #(
     .TLU_BUSY(TLU_BUSY),
     .TLU_CLOCK(TLU_CLOCK),
 
+    .EXT_TIMESTAMP(),
     .TIMESTAMP(TIMESTAMP)
 );
 `endif
@@ -838,6 +835,9 @@ tdc_s3 #(
     .TRIG_IN(1'b0),
     .TRIG_OUT(),
 
+    .FAST_TRIGGER_IN(),
+    .FAST_TRIGGER_OUT(),
+
     .FIFO_READ(CCPD_TDC_FIFO_READ),
     .FIFO_EMPTY(CCPD_TDC_FIFO_EMPTY),
     .FIFO_DATA(CCPD_TDC_FIFO_DATA),
@@ -850,10 +850,10 @@ tdc_s3 #(
     .BUS_WR(BUS_WR),
 
     .ARM_TDC(CMD_START_FLAG), // arm TDC by sending commands
+    .EXT_EN(CCPD_TDCGATE),
 
-    .TIMESTAMP(INJ_CNT),
-    //.TIMESTAMP(TIMESTAMP[15:0]),
-    .EXT_EN(CCPD_TDCGATE)
+    .TIMESTAMP(INJ_CNT)
+    //.TIMESTAMP(TIMESTAMP[15:0])
 );
 
 /*

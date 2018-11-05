@@ -32,6 +32,16 @@ The features of the host software in Python:
 - ultra fast raw data analysis, event and cluster building, and raw data validity checks
 - real-time online monitor with GUI
 
+## Experiments
+
+The pyBAR readout system was extensively used for various high-energy particle physics experiments as well as detector R&D.
+- Stave 0 demonstrator for the ATLAS High-Luminosity LHC (HL-LHC) upgrade at CERN (28 FEI4 chips): documentation in preparation
+- SHiP experiment at the CERN Super Proton Synchrotron (SPS) facility (24 FEI4 chips): documentation in preparation
+- BEAST/FANGS experiment at the SuperKEKB facility (15 FEI4 chips): documentation in preparation
+- BEAST/TPC experiment at the SuperKEKB facility (8 FEI4 chips): documentation in preparation
+- Detector tests for the ATLAS Diamond Beam Monitor (DBM): DOI: [10.1088/1748-0221/12/03/C03072](https://dx.doi.org/10.1088/1748-0221/12/03/C03072)
+- Various other detector tests at [CERN SPS](http://sba.web.cern.ch) (Geneva, Switzerland), [DESY II](https://testbeam.desy.de) (Hamburg, Germany), and [ELSA](https://www-elsa.physik.uni-bonn.de) (Bonn, Germany)
+
 ## Installation
 
 The following packages are required for pyBAR's core functionality:
@@ -58,7 +68,7 @@ On Windows, the `pywin32` package is required:
 
 [Basil](https://github.com/SiLab-Bonn/basil) (>=2.4.12,<3.0.0) is required:
   ```
-  pip install 'basil_daq>=2.4.12,<3.0.0'
+  pip install "basil_daq>=2.4.12,<3.0.0"
   ```
 
 [pyBAR FEI4 Interpreter](https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter) (>=1.3.0) is required:
@@ -68,7 +78,7 @@ On Windows, the `pywin32` package is required:
 
 [Pixel Clusterizer](https://github.com/SiLab-Bonn/pixel_clusterizer) (>=3.1,<3.2) is required:
   ```
-  pip install 'pixel_clusterizer>=3.1,<3.2'
+  pip install "pixel_clusterizer>=3.1,<3.2"
   ```
 
 To enable support for USB devices (MIO2), the following additional packages are required:

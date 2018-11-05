@@ -243,7 +243,7 @@ class FEI4RegisterUtils(object):
             self.send_commands(commands)
             logging.info("Writing GDAC %d (VthinAltCoarse / VthinAltFine = %d / %d)", value, altc, altf)
         else:
-            logging.info("Setting GDAC to %d (VthinAltCoarse / VthinAltFine = %d / %d)", value, altc, altf)
+            logging.debug("Setting GDAC to %d (VthinAltCoarse / VthinAltFine = %d / %d)", value, altc, altf)
 
     def get_gdac(self, altc=None, altf=None):
         if altc is None:
@@ -759,7 +759,7 @@ def make_pixel_mask_from_col_row(column, row, default=0, value=1):
     # FE columns and rows start from 1
     col_array = np.array(column) - 1
     row_array = np.array(row) - 1
-    if np.any(col_array >= 80) or np.any(col_array < 0) or np.any(row_array >= 336) or np.any(col_array < 0):
+    if np.any(col_array >= 80) or np.any(col_array < 0) or np.any(row_array >= 336) or np.any(row_array < 0):
         raise ValueError('Column and/or row out of range')
     shape = (80, 336)
     mask = np.full(shape, default, dtype=np.uint8)
@@ -788,7 +788,7 @@ def make_box_pixel_mask_from_col_row(column, row, default=0, value=1):
     # FE columns and rows start from 1
     col_array = np.array(column) - 1
     row_array = np.array(row) - 1
-    if np.any(col_array >= 80) or np.any(col_array < 0) or np.any(row_array >= 336) or np.any(col_array < 0):
+    if np.any(col_array >= 80) or np.any(col_array < 0) or np.any(row_array >= 336) or np.any(row_array < 0):
         raise ValueError('Column and/or row out of range')
     shape = (80, 336)
     mask = np.full(shape, default, dtype=np.uint8)

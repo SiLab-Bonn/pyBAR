@@ -7,7 +7,7 @@ import struct
 import smtplib
 from socket import gethostname
 from functools import wraps
-from threading import Event, Thread, current_thread, Lock, RLock
+from threading import Event, Thread, current_thread, Lock, RLock, _MainThread
 from Queue import Queue
 from collections import namedtuple, Mapping, Iterable
 from contextlib import contextmanager
@@ -230,6 +230,10 @@ class Fei4RunBase(RunBase):
         # and require multiple TX for sending commands.
         # If only a single TX is available, no speed improvement is gained.
         self._default_run_conf.setdefault('threaded_scan', False)
+        # If True, send full configuration to the FE-I4 before the configuration step.
+        self._default_run_conf.setdefault('configure_fe', True)
+        # If True, perform a FE-I4 reset (ECR and BCR).
+        self._default_run_conf.setdefault('reset_fe', True)
 
     def _init_run_conf(self, run_conf):
         # same implementation as in base class, but ignore "scan_parameters" property
@@ -536,16 +540,20 @@ class Fei4RunBase(RunBase):
         for module_id in self._modules:
             logging.info("Configuring %s..." % module_id)
             with self.access_module(module_id=module_id):
-                self.register_utils.global_reset()
-                self.register_utils.configure_all()
+                if self._run_conf['configure_fe']:
+                    self.register_utils.global_reset()
+                    self.register_utils.configure_all()
+                else:
+                    self.register_utils.set_conf_mode()
                 if is_fe_ready(self):
                     fe_not_ready = False
                 else:
                     fe_not_ready = True
                 # BCR and ECR might result in RX errors
                 # a reset of the RX and FIFO will happen just before scan()
-                self.register_utils.reset_bunch_counter()
-                self.register_utils.reset_event_counter()
+                if self._run_conf['reset_fe']:
+                    self.register_utils.reset_bunch_counter()
+                    self.register_utils.reset_event_counter()
                 if fe_not_ready:
                     # resetting service records must be done once after power up
                     self.register_utils.reset_service_records()
@@ -868,7 +876,7 @@ class Fei4RunBase(RunBase):
         for i, module_id in enumerate(self._selected_modules):
             if data[i] is None:
                 continue
-            self._raw_data_files[module_id].append(data_iterable=data[i], scan_parameters=self._scan_parameters[module_id]._asdict(), new_file=new_file, flush=True)
+            self._raw_data_files[module_id].append(data_iterable=data[i], scan_parameters=self._scan_parameters[module_id]._asdict(), new_file=new_file, flush=flush)
 
     def handle_err(self, exc):
         '''Handling of Exceptions.
@@ -1000,7 +1008,8 @@ class Fei4RunBase(RunBase):
             except Exception:
                 # in case something fails, call this on last resort
                 self._current_module_handle = None
-                current_thread().name = "MainThread"
+                if isinstance(current_thread(), _MainThread):
+                    current_thread().name = "MainThread"
 
     def select_module(self, module_id):
         ''' Select module and give access to the module.
@@ -1076,7 +1085,8 @@ class Fei4RunBase(RunBase):
         self._converter = []
         self.dut['TX']['OUTPUT_ENABLE'] = 0
         self._current_module_handle = None
-        current_thread().name = "MainThread"
+        if isinstance(current_thread(), _MainThread):
+            current_thread().name = "MainThread"
 
     @contextmanager
     def access_files(self):

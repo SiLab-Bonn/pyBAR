@@ -3,7 +3,7 @@ import datetime
 import os
 import re
 from collections import namedtuple
-from threading import Lock, Thread, Event
+from threading import Lock, Thread, Event, current_thread, _MainThread
 import sys
 import functools
 import traceback
@@ -15,7 +15,6 @@ from inspect import getmembers, isclass, getargspec
 from functools import partial
 from ast import literal_eval
 from time import time
-from threading import current_thread
 from functools import wraps
 
 from yaml import safe_load
@@ -26,8 +25,8 @@ from pybar.utils.utils import find_file_dir_up
 punctuation = '!,.:;?'
 
 
-_RunStatus = namedtuple('RunStatus', ['running', 'finished', 'stopped', 'aborted', 'crashed'])
-run_status = _RunStatus(running='RUNNING', finished='FINISHED', stopped='STOPPED', aborted='ABORTED', crashed='CRASHED')
+_RunStatus = namedtuple('RunStatus', ['init', 'running', 'finished', 'stopped', 'aborted', 'crashed'])
+run_status = _RunStatus(init='INIT', running='RUNNING', finished='FINISHED', stopped='STOPPED', aborted='ABORTED', crashed='CRASHED')
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - [%(levelname)-8s] (%(threadName)-10s) %(message)s")
 
@@ -60,11 +59,10 @@ class RunBase(object):
         self._conf = conf
         self._run_conf = None
         self._run_number = None
-        self._run_status = None
+        self._run_status = run_status.init
         self.file_lock = Lock()
         self.stop_run = Event()  # abort condition for loops
         self.abort_run = Event()
-        self._last_traceback = None
         self._run_start_time = None
         self._run_stop_time = None
         self._total_run_time = None
@@ -135,11 +133,14 @@ class RunBase(object):
     def run_status(self, value):
         raise AttributeError
 
+    def get_run_status(self):
+        return self._run_status
+
     def run(self, run_conf, run_number=None, signal_handler=None):
         self._init(run_conf, run_number)
         logging.info('Starting run %d (%s) in %s', self.run_number, self.__class__.__name__, self.working_dir)
         # set up signal handler
-        if current_thread().name == 'MainThread':
+        if isinstance(current_thread(), _MainThread):
             logging.info('Press Ctrl-C to stop run')
             if not signal_handler:
                 signal_handler = self._signal_handler
@@ -162,7 +163,7 @@ class RunBase(object):
         finally:
             pass
         # revert signal handler to default
-        if current_thread().name == 'MainThread':
+        if isinstance(current_thread(), _MainThread):
             signal.signal(signal.SIGINT, signal.SIG_DFL)
         self._cleanup()
         # log message
@@ -358,7 +359,7 @@ class RunBase(object):
         self.handle_cancel(msg='Pressed Ctrl-C')
 
 
-def thunkify(thread_name):
+def thunkify(thread_name=None, daemon=True, default_func=None):
     '''Make a function immediately return a function of no args which, when called,
     waits for the result, which will start being processed in another thread.
     Taken from https://wiki.python.org/moin/PythonDecoratorLibrary.
@@ -382,20 +383,22 @@ def thunkify(thread_name):
 #                     wait_event.set()
 
             worker_thread = Thread(target=worker_func, name=thread_name if thread_name else None)
-            worker_thread.daemon = True
+            worker_thread.daemon = daemon
 
             def thunk(timeout=None):
                 # avoid blocking MainThread
                 start_time = time()
                 while True:
-                    worker_thread.join(timeout=1.0)
+                    worker_thread.join(timeout=0.1)
                     if (timeout and timeout < time() - start_time) or not worker_thread.is_alive():
                         break
 #                 worker_thread.join(timeout=timeout)
 #                 wait_event.wait()
                 if worker_thread.is_alive():
-                    return
-                signal.signal(signal.SIGINT, signal.SIG_DFL)
+                    if default_func is None:
+                        return
+                    else:
+                        return default_func()
                 if exc[0]:
                     raise exc[1][0], exc[1][1], exc[1][2]
                 return result[0]
@@ -557,11 +560,11 @@ class RunManager(object):
         local_run_conf.update(run_conf)
 
         if use_thread:
-            @thunkify('RunThread')
+            self.current_run = run
+
+            @thunkify(thread_name='RunThread', daemon=True, default_func=self.current_run.get_run_status)
             def run_run_in_thread():
                 return run.run(run_conf=local_run_conf)
-
-            self.current_run = run
 
             signal.signal(signal.SIGINT, self._signal_handler)
             logging.info('Press Ctrl-C to stop run')

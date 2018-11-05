@@ -53,9 +53,9 @@ class FifoReadout(object):
         self.converter_func = [None]
         self.fifo_select = [None]
         self.enabled_fe_channels = None
-        self.readout_interval = 0.05
-        self.write_interval = 1.0
-        self.watchdog_interval = 1.0
+        self.readout_interval = 0.05  # in seconds
+        self.write_interval = 1.0  # in seconds
+        self.watchdog_interval = 1.0  # in seconds
         self._moving_average_time_period = 10.0  # in seconds
         self._n_empty_reads = 3  # number of empty reads before stopping FIFO readout
         self._fifo_data_deque = None
@@ -365,13 +365,13 @@ class FifoReadout(object):
                 if no_data_timeout and time_last_data + no_data_timeout < time():
                     raise NoDataTimeout('Received no data for %0.1f second(s) for writer thread with index %d' % (no_data_timeout, index))
                 converted_data_tuple = self._data_deque[index].popleft()
-            except NoDataTimeout:
+            except NoDataTimeout:  # no data timeout
                 no_data_timeout = None  # raise exception only once
                 if self.errback:
                     self.errback(sys.exc_info())
                 else:
                     raise
-            except IndexError:
+            except IndexError:  # no data in queue
                 self._data_conditions[index].wait(self.readout_interval)  # sleep a little bit, reducing CPU usage
             else:
                 if converted_data_tuple is None:  # if None then write and exit
@@ -390,17 +390,15 @@ class FifoReadout(object):
                         converted_data_tuple_list[index] = [converted_data_tuple]  # adding iterable
                     if self.fill_buffer:
                         self._data_buffer[index].append(converted_data_tuple)
-                if self.callback and ((self.write_interval and time() - time_write >= self.write_interval) or not self.write_interval):
-                    if any(converted_data_tuple_list):
-                        try:
-                            self.callback(converted_data_tuple_list)  # callback function gets a list of lists of tuples
-                        except Exception:
-                            self.errback(sys.exc_info())
-                        else:
-                            converted_data_tuple_list = [None] * len(self.filter_func)
-                            time_write = time()
-                    else:
-                        time_write = time()
+            # check if calling the callback function is about time
+            if self.callback and any(converted_data_tuple_list) and ((self.write_interval and time() - time_write >= self.write_interval) or not self.write_interval):
+                try:
+                    self.callback(converted_data_tuple_list)  # callback function gets a list of lists of tuples
+                except Exception:
+                    self.errback(sys.exc_info())
+                else:
+                    converted_data_tuple_list = [None] * len(self.filter_func)
+                    time_write = time()  # update last write timestamp
         self._data_conditions[index].release()
         logging.debug('Stopping writer thread with index %d', index)
 
@@ -410,12 +408,15 @@ class FifoReadout(object):
         while not self.stop_readout.wait(time_wait if time_wait >= 0.0 else 0.0):
             time_read = time()
             try:
-                if not all(self.get_rx_sync_status(channels=self.enabled_fe_channels)):
-                    raise RxSyncError('FEI4 RX sync error')
-                if any(self.get_rx_8b10b_error_count(channels=self.enabled_fe_channels)):
-                    raise EightbTenbError('FEI4 RX 8b10b error(s) detected')
-                if any(self.get_rx_fifo_discard_count(channels=self.enabled_fe_channels)):
-                    raise FifoError('FEI4 RX FIFO discard error(s) detected')
+                sync_status = self.get_rx_sync_status(channels=self.enabled_fe_channels)
+                if not all(sync_status):
+                    raise RxSyncError('FEI4 RX sync error in RX: %s' % ', '.join([self.enabled_fe_channels[index] for (index, status) in enumerate(sync_status) if not status]))
+                error_count = self.get_rx_8b10b_error_count(channels=self.enabled_fe_channels)
+                if any(error_count):
+                    raise EightbTenbError('FEI4 RX 8b10b error(s) detected in RX: %s' % ', '.join([self.enabled_fe_channels[index] for (index, status) in enumerate(error_count) if status]))
+                discard_count = self.get_rx_fifo_discard_count(channels=self.enabled_fe_channels)
+                if any(discard_count):
+                    raise FifoError('FEI4 RX FIFO discard error(s) detected in RX: %s' % ', '.join([self.enabled_fe_channels[index] for (index, status) in enumerate(discard_count) if status]))
             except Exception:
                 self.errback(sys.exc_info())
             time_wait = self.watchdog_interval - (time() - time_read)
@@ -493,9 +494,9 @@ class FifoReadout(object):
 
     def get_rx_enable_status(self, channels=None):
         if channels:
-            return map(lambda channel: True if self.dut[channel].ENABLE_RX else False, channels)
+            return map(lambda channel: True if (self.dut[channel].ENABLE_RX or channel in self.enabled_fe_channels) else False, channels)
         else:
-            return map(lambda channel: True if channel.ENABLE_RX else False, self.dut.get_modules('fei4_rx'))
+            return map(lambda channel: True if (channel.ENABLE_RX or channel.name in self.enabled_fe_channels) else False, self.dut.get_modules('fei4_rx'))
 
     def get_rx_sync_status(self, channels=None):
         if channels is None:
