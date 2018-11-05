@@ -10,7 +10,7 @@ ADAPTER_CARD:
 # Trigger
 TLU:
     TRIGGER_MODE                         : 0  # Selecting trigger mode: Use trigger inputs/trigger select (0), TLU no handshake (1), TLU simple handshake (2), TLU data handshake (3)
-    TRIGGER_SELECT                       : 0  # Selecting trigger input: RX2 (TDC loop-through) (8), RX1 (4), RX0 (2), MonHit/HitOR from Adapter Card (1), disabled (0)
+    TRIGGER_SELECT                       : 2  # Selecting trigger input: RX2 (TDC loop-through) (8), RX1 (4), RX0 (2), MonHit/HitOR from Adapter Card (1), disabled (0)
     TRIGGER_INVERT                       : 0  # Inverting trigger input: RX2 (TDC loop-through) (8), RX1 (4), RX0 (2), MonHit/HitOR from Adapter Card (1), disabled (0)
     TRIGGER_VETO_SELECT                  : 1  # Selecting trigger veto: RX1 (2), RX FIFO full (1), disabled (0)
     TRIGGER_HANDSHAKE_ACCEPT_WAIT_CYCLES : 3  # increase minimum trigger length
