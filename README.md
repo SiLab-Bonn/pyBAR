@@ -40,7 +40,7 @@ The pyBAR readout system was extensively used for various high-energy particle p
 - BEAST/FANGS experiment at the SuperKEKB facility (15 FEI4 chips): documentation in preparation
 - BEAST/TPC experiment at the SuperKEKB facility (8 FEI4 chips): documentation in preparation
 - Detector tests for the ATLAS Diamond Beam Monitor (DBM): DOI: [10.1088/1748-0221/12/03/C03072](https://dx.doi.org/10.1088/1748-0221/12/03/C03072)
-- Various other detector tests at CERN SPS (Geneva, Switzerland), DESY II (Hamburg, Germany), and ELSA (Bonn, Germany)
+- Various other detector tests at [CERN SPS](http://sba.web.cern.ch) (Geneva, Switzerland), [DESY II](https://testbeam.desy.de) (Hamburg, Germany), and [ELSA](https://www-elsa.physik.uni-bonn.de) (Bonn, Germany)
 
 ## Installation
 
