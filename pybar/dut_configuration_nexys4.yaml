@@ -11,9 +11,9 @@ TLU:
     TRIGGER_SELECT                       : 0  # Selecting trigger input: IO_L1P_T0_AD0P_15 (TDC loop-through) (2), IO_L14N_T2_SRCC_15 (1), disabled (0)
     TRIGGER_INVERT                       : 0  # Inverting trigger input: IO_L1P_T0_AD0P_15 (TDC loop-through) (2), IO_L14N_T2_SRCC_15 (1), disabled (0)
     TRIGGER_VETO_SELECT                  : 1  # Selecting trigger veto: RX FIFO full (1), disabled (0)
-    TRIGGER_HANDSHAKE_ACCEPT_WAIT_CYCLES : 3  # increase minimum trigger length
+    TRIGGER_HANDSHAKE_ACCEPT_WAIT_CYCLES : 3  # Minimum TLU trigger length (TLU data handshale mode) required for accepting the trigger (preventing certain EUDAQ TLU firmware flaws)
     TRIGGER_DATA_DELAY                   : 8  # Depends on the cable length and should be adjusted (run scan/tune_tlu.py)
-    TRIGGER_THRESHOLD                    : 0  # Standard trigger minimum length
+    TRIGGER_THRESHOLD                    : 0  # Minimum trigger length (standard trigger and TLU no handshake mode) required for accepting the trigger
     DATA_FORMAT                          : 0  # trigger number according to TRIGGER_MODE (0), time stamp only (1), combined, 15bit time stamp + 16bit trigger number (2)
 
 # FE-I4 command ouput

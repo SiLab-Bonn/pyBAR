@@ -13,9 +13,9 @@ TLU:
     TRIGGER_SELECT                       : 2  # Selecting trigger input: RX2 (TDC loop-through) (8), RX1 (4), RX0 (2), MonHit/HitOR from Adapter Card (1), disabled (0)
     TRIGGER_INVERT                       : 0  # Inverting trigger input: RX2 (TDC loop-through) (8), RX1 (4), RX0 (2), MonHit/HitOR from Adapter Card (1), disabled (0)
     TRIGGER_VETO_SELECT                  : 1  # Selecting trigger veto: RX1 (2), RX FIFO full (1), disabled (0)
-    TRIGGER_HANDSHAKE_ACCEPT_WAIT_CYCLES : 3  # increase minimum trigger length
+    TRIGGER_HANDSHAKE_ACCEPT_WAIT_CYCLES : 3  # Minimum TLU trigger length (TLU data handshale mode) required for accepting the trigger (preventing certain EUDAQ TLU firmware flaws)
     TRIGGER_DATA_DELAY                   : 8  # Depends on the cable length and should be adjusted (run scan/tune_tlu.py)
-    TRIGGER_THRESHOLD                    : 0  # Standard trigger minimum length
+    TRIGGER_THRESHOLD                    : 0  # Minimum trigger length (standard trigger and TLU no handshake mode) required for accepting the trigger
     DATA_FORMAT                          : 0  # trigger number according to TRIGGER_MODE (0), time stamp only (1), combined, 15bit time stamp + 16bit trigger number (2)
 
 # TDC for high precision charge measurements
