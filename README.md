@@ -48,11 +48,6 @@ Run the **following commands** to install the packages:
   pip install progressbar-latest pyvisa pyvisa-py git+https://github.com/pyqtgraph/pyqtgraph.git@pyqtgraph-0.10.0
   ```
 
-On Windows, the `pywin32` package is required:
-  ```
-  conda install pywin32
-  ```
-
 [Basil](https://github.com/SiLab-Bonn/basil) (>=2.4.12,<3.0.0) is required:
   ```
   pip install "basil_daq>=2.4.12,<3.0.0"
