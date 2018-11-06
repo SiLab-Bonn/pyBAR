@@ -15,7 +15,7 @@ TRIGGER_CH0:
     TRIGGER_HANDSHAKE_ACCEPT_WAIT_CYCLES : 3  # Minimum TLU trigger length (TLU data handshale mode) required for accepting the trigger (preventing certain EUDAQ TLU firmware flaws)
     TRIGGER_DATA_DELAY                   : 8  # TLU data handshake data delay depends on the cable length and should be adjusted with a delay scan (run scan/tune_tlu.py)
     TRIGGER_THRESHOLD                    : 0  # Minimum trigger length (standard trigger and TLU no handshake mode) required for accepting the trigger
-    DATA_FORMAT                          : 0  # 31bit trigger number according to TRIGGER_MODE (0), 31bit time stamp (1), 15bit time stamp + 16bit trigger number (2)
+    DATA_FORMAT                          : 0  # 31bit trigger number (0), 31bit time stamp (1), combined (15bit time stamp + 16bit trigger number) (2)
 
 TRIGGER_CH1:
     TRIGGER_MODE                         : 0  # Selecting trigger mode: Use trigger inputs/trigger select (0), TLU no handshake (1), TLU simple handshake (2), TLU data handshake (3)
@@ -25,7 +25,7 @@ TRIGGER_CH1:
     TRIGGER_HANDSHAKE_ACCEPT_WAIT_CYCLES : 3  # Minimum TLU trigger length (TLU data handshale mode) required for accepting the trigger (preventing certain EUDAQ TLU firmware flaws)
     TRIGGER_DATA_DELAY                   : 8  # TLU data handshake data delay depends on the cable length and should be adjusted with a delay scan (run scan/tune_tlu.py)
     TRIGGER_THRESHOLD                    : 0  # Minimum trigger length (standard trigger and TLU no handshake mode) required for accepting the trigger
-    DATA_FORMAT                          : 0  # 31bit trigger number according to TRIGGER_MODE (0), 31bit time stamp (1), 15bit time stamp + 16bit trigger number (2)
+    DATA_FORMAT                          : 0  # 31bit trigger number (0), 31bit time stamp (1), combined (15bit time stamp + 16bit trigger number) (2)
 
 TRIGGER_CH2:
     TRIGGER_MODE                         : 0  # Selecting trigger mode: Use trigger inputs/trigger select (0), TLU no handshake (1), TLU simple handshake (2), TLU data handshake (3)
@@ -35,7 +35,7 @@ TRIGGER_CH2:
     TRIGGER_HANDSHAKE_ACCEPT_WAIT_CYCLES : 3  # Minimum TLU trigger length (TLU data handshale mode) required for accepting the trigger (preventing certain EUDAQ TLU firmware flaws)
     TRIGGER_DATA_DELAY                   : 8  # TLU data handshake data delay depends on the cable length and should be adjusted with a delay scan (run scan/tune_tlu.py)
     TRIGGER_THRESHOLD                    : 0  # Minimum trigger length (standard trigger and TLU no handshake mode) required for accepting the trigger
-    DATA_FORMAT                          : 0  # 31bit trigger number according to TRIGGER_MODE (0), 31bit time stamp (1), 15bit time stamp + 16bit trigger number (2)
+    DATA_FORMAT                          : 0  # 31bit trigger number (0), 31bit time stamp (1), combined (15bit time stamp + 16bit trigger number) (2)
 
 TRIGGER_CH3:
     TRIGGER_MODE                         : 0  # Selecting trigger mode: Use trigger inputs/trigger select (0), TLU no handshake (1), TLU simple handshake (2), TLU data handshake (3)
@@ -45,7 +45,7 @@ TRIGGER_CH3:
     TRIGGER_HANDSHAKE_ACCEPT_WAIT_CYCLES : 3  # Minimum TLU trigger length (TLU data handshale mode) required for accepting the trigger (preventing certain EUDAQ TLU firmware flaws)
     TRIGGER_DATA_DELAY                   : 8  # TLU data handshake data delay depends on the cable length and should be adjusted with a delay scan (run scan/tune_tlu.py)
     TRIGGER_THRESHOLD                    : 0  # Minimum trigger length (standard trigger and TLU no handshake mode) required for accepting the trigger
-    DATA_FORMAT                          : 0  # 31bit trigger number according to TRIGGER_MODE (0), 31bit time stamp (1), 15bit time stamp + 16bit trigger number (2)
+    DATA_FORMAT                          : 0  # 31bit trigger number (0), 31bit time stamp (1), combined (15bit time stamp + 16bit trigger number) (2)
 
 TRIGGER_CH4:
     TRIGGER_MODE                         : 0  # Selecting trigger mode: Use trigger inputs/trigger select (0), TLU no handshake (1), TLU simple handshake (2), TLU data handshake (3)
@@ -55,7 +55,7 @@ TRIGGER_CH4:
     TRIGGER_HANDSHAKE_ACCEPT_WAIT_CYCLES : 3  # Minimum TLU trigger length (TLU data handshale mode) required for accepting the trigger (preventing certain EUDAQ TLU firmware flaws)
     TRIGGER_DATA_DELAY                   : 8  # TLU data handshake data delay depends on the cable length and should be adjusted with a delay scan (run scan/tune_tlu.py)
     TRIGGER_THRESHOLD                    : 0  # Minimum trigger length (standard trigger and TLU no handshake mode) required for accepting the trigger
-    DATA_FORMAT                          : 0  # 31bit trigger number according to TRIGGER_MODE (0), 31bit time stamp (1), 15bit time stamp + 16bit trigger number (2)
+    DATA_FORMAT                          : 0  # 31bit trigger number (0), 31bit time stamp (1), combined (15bit time stamp + 16bit trigger number) (2)
 
 TRIGGER_CH5:
     TRIGGER_MODE                         : 0  # Selecting trigger mode: Use trigger inputs/trigger select (0), TLU no handshake (1), TLU simple handshake (2), TLU data handshake (3)
@@ -65,7 +65,7 @@ TRIGGER_CH5:
     TRIGGER_HANDSHAKE_ACCEPT_WAIT_CYCLES : 3  # Minimum TLU trigger length (TLU data handshale mode) required for accepting the trigger (preventing certain EUDAQ TLU firmware flaws)
     TRIGGER_DATA_DELAY                   : 8  # TLU data handshake data delay depends on the cable length and should be adjusted with a delay scan (run scan/tune_tlu.py)
     TRIGGER_THRESHOLD                    : 0  # Minimum trigger length (standard trigger and TLU no handshake mode) required for accepting the trigger
-    DATA_FORMAT                          : 0  # 31bit trigger number according to TRIGGER_MODE (0), 31bit time stamp (1), 15bit time stamp + 16bit trigger number (2)
+    DATA_FORMAT                          : 0  # 31bit trigger number (0), 31bit time stamp (1), combined (15bit time stamp + 16bit trigger number) (2)
 
 TRIGGER_CH6:
     TRIGGER_MODE                         : 0  # Selecting trigger mode: Use trigger inputs/trigger select (0), TLU no handshake (1), TLU simple handshake (2), TLU data handshake (3)
@@ -75,7 +75,7 @@ TRIGGER_CH6:
     TRIGGER_HANDSHAKE_ACCEPT_WAIT_CYCLES : 3  # Minimum TLU trigger length (TLU data handshale mode) required for accepting the trigger (preventing certain EUDAQ TLU firmware flaws)
     TRIGGER_DATA_DELAY                   : 8  # TLU data handshake data delay depends on the cable length and should be adjusted with a delay scan (run scan/tune_tlu.py)
     TRIGGER_THRESHOLD                    : 0  # Minimum trigger length (standard trigger and TLU no handshake mode) required for accepting the trigger
-    DATA_FORMAT                          : 0  # 31bit trigger number according to TRIGGER_MODE (0), 31bit time stamp (1), 15bit time stamp + 16bit trigger number (2)
+    DATA_FORMAT                          : 0  # 31bit trigger number (0), 31bit time stamp (1), combined (15bit time stamp + 16bit trigger number) (2)
 
 TRIGGER_CH7:
     TRIGGER_MODE                         : 0  # Selecting trigger mode: Use trigger inputs/trigger select (0), TLU no handshake (1), TLU simple handshake (2), TLU data handshake (3)
@@ -85,7 +85,7 @@ TRIGGER_CH7:
     TRIGGER_HANDSHAKE_ACCEPT_WAIT_CYCLES : 3  # Minimum TLU trigger length (TLU data handshale mode) required for accepting the trigger (preventing certain EUDAQ TLU firmware flaws)
     TRIGGER_DATA_DELAY                   : 8  # TLU data handshake data delay depends on the cable length and should be adjusted with a delay scan (run scan/tune_tlu.py)
     TRIGGER_THRESHOLD                    : 0  # Minimum trigger length (standard trigger and TLU no handshake mode) required for accepting the trigger
-    DATA_FORMAT                          : 0  # 31bit trigger number according to TRIGGER_MODE (0), 31bit time stamp (1), 15bit time stamp + 16bit trigger number (2)
+    DATA_FORMAT                          : 0  # 31bit trigger number (0), 31bit time stamp (1), combined (15bit time stamp + 16bit trigger number) (2)
 
 # TDC for high precision charge measurements
 TDC_CH0:
