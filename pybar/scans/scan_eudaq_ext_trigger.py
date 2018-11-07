@@ -92,10 +92,10 @@ class EudaqExtTriggerScan(ExtTriggerScan):
         bad_event = False
         for data_tuple in data[0]:  # only use data from first module
             events = build_events_from_raw_data(data_tuple[0])  # build events from raw data array
-            for item in events:
-                if item.shape[0] == 0:
+            for event in events:
+                if event.shape[0] == 0:
                     continue
-                if is_trigger_word(item[0]):
+                if is_trigger_word(event[0]):
                     if self.remaining_data.shape[0] > 0:
                         # check trigger number
                         if is_trigger_word(self.remaining_data[0]):
@@ -136,9 +136,9 @@ class EudaqExtTriggerScan(ExtTriggerScan):
                                 pp.SendEvent(self.remaining_data)
                         # outside if statement so that any data before first trigger becomes an event
                         # pp.SendEvent(self.remaining_data)
-                    self.remaining_data = item
+                    self.remaining_data = event
                 else:
-                    self.remaining_data = np.concatenate([self.remaining_data, item])
+                    self.remaining_data = np.concatenate([self.remaining_data, event])
         super(EudaqExtTriggerScan, self).handle_data(data=data, new_file=new_file, flush=flush)
 
 
