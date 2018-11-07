@@ -9,7 +9,7 @@ import numpy as np
 
 from pybar.run_manager import RunManager, run_status
 from pybar.scans.scan_ext_trigger import ExtTriggerScan
-from pybar.daq.readout_utils import build_events_from_raw_data, is_trigger_word
+from pybar.daq.readout_utils import build_events_from_raw_data, is_trigger_word, get_trigger_data
 
 # set path to PyEUDAQWrapper
 sys.path.append('/path/to/eudaq/python/')
@@ -34,19 +34,23 @@ class EudaqExtTriggerScan(ExtTriggerScan):
         "no_data_timeout": None,  # no data timeout after which the scan will be aborted, in seconds
         "scan_timeout": None,  # timeout for scan after which the scan will be stopped, in seconds
         "max_triggers": 0,  # maximum triggers after which the scan will be stopped, if 0, no maximum triggers are set
-        "enable_tdc": False  # if True, enables TDC
+        "enable_tdc": False,  # if True, enables TDC
+        "reset_rx_on_error": True,  # if True, ignore RxSyncError, EightbTenbError from FEI4 receivers; if False, scan stops if any error is occurring
+        "send_bad_events": False  # if True, send bad events where the trigger number has not increased by 1; if False, do not send these events
     }
 
     def scan(self):
         self.data_error_occurred = False
         self.last_trigger_number = None
-        # set TLU max trigger counter
+        # set TLU max trigger counter; EUDAQ TLU: 15bit trigger number
         self.max_trigger_counter = 2 ** 15
+        self.max_trigger_counter_bits = 2 ** np.int(np.ceil(np.log2(self.max_trigger_counter))) - 1
         start = time()
         lvl1_command = self.register.get_commands("zeros", length=self.trigger_delay)[0] + self.register.get_commands("LV1")[0] + self.register.get_commands("zeros", length=self.trigger_rate_limit)[0]
         self.register_utils.set_command(lvl1_command)
-
-        self.remaining_data = np.ndarray((0,), dtype=np.uint32)
+        last_number_of_triggers = None
+        self.remaining_data = np.zeros((0,), dtype=np.uint32)  # initialize array of zero length
+        self.trigger_mode = self.dut['TLU']['TRIGGER_MODE']
 
         with self.readout(no_data_timeout=self.no_data_timeout, **self.scan_parameters._asdict()):
             with self.trigger():
@@ -63,9 +67,14 @@ class EudaqExtTriggerScan(ExtTriggerScan):
                         logging.info('Runtime: %s\nTriggers: %d\nData words/s: %s\n' % (strftime('%H:%M:%S', gmtime(time() - start)), triggers, str(data_words)))
                         if self.max_triggers and triggers >= self.max_triggers:
                             self.stop(msg='Trigger limit was reached: %i' % self.max_triggers)
+                    if last_number_of_triggers is not None and last_number_of_triggers == self.dut['TLU']['TRIGGER_COUNTER']:  # trigger number not increased, TLU has stopped
+                        break  # leave scan loop
+                    if last_number_of_triggers is not None or pp.StoppingRun:  # stopping EUDAQ run
+                        last_number_of_triggers = self.dut['TLU']['TRIGGER_COUNTER']
 
         if self.remaining_data.shape[0] > 0:
-            pp.SendEvent(self.remaining_data)
+            pp.SendEvent(self.remaining_data)  # send remaining event
+            self.remaining_data = self.remaining_data[:0]  # make remaining data array empty
 
         logging.info('Total amount of triggers collected: %d', self.dut['TLU']['TRIGGER_COUNTER'])
 
@@ -74,39 +83,62 @@ class EudaqExtTriggerScan(ExtTriggerScan):
 
     def handle_err(self, exc):
         super(EudaqExtTriggerScan, self).handle_err(exc=exc)
-        self.data_error_occurred = True
+        # This is for debugging.
+        # Usually all trigger words are written and read out
+        # and events can be reconstructed and are sent to DataCollector
+        # self.data_error_occurred = True
 
     def handle_data(self, data, new_file=False, flush=True):
+        bad_event = False
         for data_tuple in data[0]:  # only use data from first module
             events = build_events_from_raw_data(data_tuple[0])  # build events from raw data array
-            for item in events:
-                if item.shape[0] == 0:
+            for event in events:
+                if event.shape[0] == 0:
                     continue
-                if is_trigger_word(item[0]):
+                if is_trigger_word(event[0]):
                     if self.remaining_data.shape[0] > 0:
                         # check trigger number
                         if is_trigger_word(self.remaining_data[0]):
-                            trigger_number = self.remaining_data[0] & (self.max_trigger_counter - 1)
+                            trigger_number = get_trigger_data(self.remaining_data[0], mode=self.trigger_mode)
+                            if trigger_number >= self.max_trigger_counter:
+                                logging.warning('Trigger number larger than expected - read %d, maximum: %d' % (trigger_number, self.max_trigger_counter - 1))
                             if self.last_trigger_number is not None and ((self.last_trigger_number + 1 != trigger_number and self.last_trigger_number + 1 != self.max_trigger_counter) or (self.last_trigger_number + 1 == self.max_trigger_counter and trigger_number != 0)):
                                 if self.data_error_occurred:
-                                    if trigger_number > self.last_trigger_number:
-                                        missing_trigger_numbers = trigger_number - self.last_trigger_number - 1
-                                    else:
-                                        missing_trigger_numbers = self.max_trigger_counter - (self.last_trigger_number - trigger_number) - 1
-                                    logging.warning('Data errors detected: trigger number read: %d, expected: %d, sending %d empty events', trigger_number, 0 if (self.last_trigger_number + 1 == self.max_trigger_counter) else (self.last_trigger_number + 1), missing_trigger_numbers)
-                                    for missing_trigger_number in range(self.last_trigger_number + 1, self.last_trigger_number + missing_trigger_numbers + 1):
-                                        pp.SendEvent(np.asarray([missing_trigger_number & (self.max_trigger_counter - 1)], np.uint32))
+                                    missing_trigger_numbers = []
+                                    curr_missing_trigger_number = self.last_trigger_number + 1
+                                    while True:
+                                        if curr_missing_trigger_number == self.max_trigger_counter:
+                                            curr_missing_trigger_number = 0
+                                        if trigger_number == curr_missing_trigger_number:
+                                            break
+                                        missing_trigger_numbers.append(curr_missing_trigger_number)
+                                        curr_missing_trigger_number += 1
+                                    logging.warning('Data errors detected - trigger number read: %d, expected: %d, sending %d empty events', trigger_number, self.last_trigger_number + 1, len(missing_trigger_numbers))
+                                    for missing_trigger_number in missing_trigger_numbers:
+                                        pp.SendEvent(np.asarray([missing_trigger_number], dtype=np.uint32))
                                     self.data_error_occurred = False
                                     self.last_trigger_number = trigger_number
                                 else:
-                                    logging.warning('Trigger number not increasing: read: %d, expected: %d', trigger_number, 0 if (self.last_trigger_number + 1 == self.max_trigger_counter) else (self.last_trigger_number + 1))
-                                    self.last_trigger_number = (self.last_trigger_number + 1) & (self.max_trigger_counter - 1)
+                                    logging.warning('Trigger number not increasing - read: %d, expected: %d', trigger_number, self.last_trigger_number)
+                                    if self.send_bad_events:
+                                        self.last_trigger_number += 1
+                                        if self.last_trigger_number == self.max_trigger_counter:
+                                            self.last_trigger_number = 0
+                                    else:
+                                        bad_event = True
                             else:
                                 self.last_trigger_number = trigger_number
-                        pp.SendEvent(self.remaining_data)
-                    self.remaining_data = item
+                            # inside if statement to ignore any data before first trigger
+                            if bad_event:
+                                logging.warning('Skipping event with trigger number %d', trigger_number)
+                                bad_event = False
+                            else:
+                                pp.SendEvent(self.remaining_data)
+                        # outside if statement so that any data before first trigger becomes an event
+                        # pp.SendEvent(self.remaining_data)
+                    self.remaining_data = event
                 else:
-                    self.remaining_data = np.concatenate([self.remaining_data, item])
+                    self.remaining_data = np.concatenate([self.remaining_data, event])
         super(EudaqExtTriggerScan, self).handle_data(data=data, new_file=new_file, flush=flush)
 
 
@@ -147,7 +179,8 @@ if __name__ == "__main__":
 #             pp.StartingRun = True  # set status and send BORE
             # starting run
             while join(timeout=1) == run_status.running:
-                if pp.Error or pp.Terminating or pp.StoppingRun:
+                if pp.Error or pp.Terminating:
+                    logging.error("EUDAQ run %d forcibly stopped" % run_number)
                     runmngr.cancel_current_run(msg="Run stopped by RunControl")
             status = join()
             logging.info("Run status: %s" % status)
