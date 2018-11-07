@@ -312,6 +312,15 @@ def is_data_record(value):
     return np.logical_and(np.logical_and(np.less_equal(np.bitwise_and(value, 0x00FE0000), 0x00A00000), np.less_equal(np.bitwise_and(value, 0x0001FF00), 0x00015000)), np.logical_and(np.not_equal(np.bitwise_and(value, 0x00FE0000), 0x00000000), np.not_equal(np.bitwise_and(value, 0x0001FF00), 0x00000000)))
 
 
+def get_trigger_counter(value, mode=0):
+    '''Returns 31bit trigger counter (mode=0), 31bit timestamp (mode=1), 15bit timestamp and 16bit trigger counter (mode=2)
+    '''
+    if mode == 2:
+        return np.right_shift(np.bitwise_and(value, 0x7FFF0000), 16), np.bitwise_and(value, 0x0000FFFF)
+    else:
+        return np.bitwise_and(value, 0x7FFFFFFF)
+
+
 def get_address_record_address(value):
     '''Returns the address in the address record.
     '''
