@@ -9,7 +9,7 @@ import numpy as np
 
 from pybar.run_manager import RunManager, run_status
 from pybar.scans.scan_ext_trigger import ExtTriggerScan
-from pybar.daq.readout_utils import build_events_from_raw_data, is_trigger_word, get_trigger_counter
+from pybar.daq.readout_utils import build_events_from_raw_data, is_trigger_word, get_trigger_data
 
 # set path to PyEUDAQWrapper
 sys.path.append('/path/to/eudaq/python/')
@@ -93,7 +93,7 @@ class EudaqExtTriggerScan(ExtTriggerScan):
                     if self.remaining_data.shape[0] > 0:
                         # check trigger number
                         if is_trigger_word(self.remaining_data[0]):
-                            trigger_number = get_trigger_counter(self.remaining_data[0], mode=self.trigger_mode)
+                            trigger_number = get_trigger_data(self.remaining_data[0], mode=self.trigger_mode)
                             if trigger_number >= self.max_trigger_counter:
                                 logging.warning('Trigger number larger than expected - read %d, maximum: %d' % (trigger_number, self.max_trigger_counter - 1))
                             if self.last_trigger_number is not None and ((self.last_trigger_number + 1 != trigger_number and self.last_trigger_number + 1 != self.max_trigger_counter) or (self.last_trigger_number + 1 == self.max_trigger_counter and trigger_number != 0)):
