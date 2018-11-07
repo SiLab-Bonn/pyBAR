@@ -35,6 +35,7 @@ class EudaqExtTriggerScan(ExtTriggerScan):
         "scan_timeout": None,  # timeout for scan after which the scan will be stopped, in seconds
         "max_triggers": 0,  # maximum triggers after which the scan will be stopped, if 0, no maximum triggers are set
         "enable_tdc": False,  # if True, enables TDC
+        "reset_rx_on_error": True,  # if True, ignore RxSyncError, EightbTenbError from FEI4 receivers; if False, scan stops if any error is occurring
         "send_bad_events": False  # if True, send bad events where the trigger number has not increased by 1; if False, do not send these events
     }
 
@@ -83,7 +84,10 @@ class EudaqExtTriggerScan(ExtTriggerScan):
 
     def handle_err(self, exc):
         super(EudaqExtTriggerScan, self).handle_err(exc=exc)
-        self.data_error_occurred = True
+        # This is for debugging.
+        # Usually all trigger words are written and read out
+        # and events can be reconstructed and are sent to DataCollector
+        # self.data_error_occurred = True
 
     def handle_data(self, data, new_file=False, flush=True):
         bad_event = False
