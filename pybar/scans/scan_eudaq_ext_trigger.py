@@ -64,11 +64,10 @@ class EudaqExtTriggerScan(ExtTriggerScan):
                     logging.info('Runtime: %s\nTriggers: %d\nData words/s: %s\n' % (strftime('%H:%M:%S', gmtime(time() - start)), triggers, str(data_words)))
                     if self.max_triggers and triggers >= self.max_triggers:
                         self.stop(msg='Trigger limit was reached: %i' % self.max_triggers)
+                if last_number_of_triggers is not None and last_number_of_triggers == self.dut['TLU']['TRIGGER_COUNTER']:  # trigger number not increased, TLU has stopped
+                    break  # leave scan loop
                 if last_number_of_triggers is not None or pp.StoppingRun:  # stopping EUDAQ run
-                    if last_number_of_triggers is None:
-                        last_number_of_triggers = self.dut['TLU']['TRIGGER_COUNTER']
-                    elif last_number_of_triggers == self.dut['TLU']['TRIGGER_COUNTER']:  # trigger number not increased, TLU has stopped
-                        break  # leave scan loop
+                    last_number_of_triggers = self.dut['TLU']['TRIGGER_COUNTER']
 
         if self.remaining_data.shape[0] > 0:
             pp.SendEvent(self.remaining_data)  # send remaining event
