@@ -36,7 +36,7 @@ The features of the host software in Python:
 
 The pyBAR readout system was extensively used for various high-energy particle physics experiments as well as detector R&D.
 - Stave 0 demonstrator for the ATLAS High-Luminosity LHC (HL-LHC) upgrade at CERN (28 FEI4 chips): documentation in preparation
-- SHiP experiment at the CERN Super Proton Synchrotron (SPS) facility (24 FEI4 chips): documentation in preparation
+- SHiP experiment at the CERN Super Proton Synchrotron (SPS) facility (24 FEI4 chips): [CERN-SPSC-2017-033](https://cds.cern.ch/record/2286844)
 - BEAST/FANGS experiment at the SuperKEKB facility (15 FEI4 chips): DOI:[10.1016/j.nima.2018.05.071](https://doi.org/10.1016/j.nima.2018.05.071)
 - BEAST/TPC experiment at the SuperKEKB facility (8 FEI4 chips): documentation in preparation
 - Detector tests for the ATLAS Diamond Beam Monitor (DBM): DOI:[10.1088/1748-0221/12/03/C03072](https://dx.doi.org/10.1088/1748-0221/12/03/C03072)
