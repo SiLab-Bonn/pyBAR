@@ -1488,7 +1488,7 @@ def get_n_cluster_per_event_hist(cluster_table):
 def get_data_statistics(interpreted_files):
     '''Quick and dirty function to give as redmine compatible iverview table
     '''
-    print '| *File Name* | *File Size* | *Times Stamp* | *Events* | *Bad Events* | *Measurement time* | *# SR* | *Hits* |'  # Mean Tot | Mean rel. BCID'
+    print '| *File Name* | *File Size* | *Times Stamp* | *Events* | *Bad Events* | *Measurement time* | *# SR* | *Hits* |'  # Mean ToT | Mean rel. BCID'
     for interpreted_file in interpreted_files:
         with tb.open_file(interpreted_file, mode="r") as in_file_h5:  # open the actual hit file
             n_hits = np.sum(in_file_h5.root.HistOcc[:])
@@ -1496,7 +1496,7 @@ def get_data_statistics(interpreted_files):
 #             mean_tot = np.average(in_file_h5.root.HistTot[:], weights=range(0,16) * np.sum(range(0,16)))# / in_file_h5.root.HistTot[:].shape[0]
 #             mean_bcid = np.average(in_file_h5.root.HistRelBcid[:], weights=range(0,16))
             n_sr = np.sum(in_file_h5.root.HistServiceRecord[:])
-            n_bad_events = int(np.sum(in_file_h5.root.HistErrorCounter[2:]))
+            n_bad_events = int(np.sum(in_file_h5.root.HistEventStatusCounter[2:]))
             try:
                 n_events = str(in_file_h5.root.Hits[-1]['event_number'] + 1)
             except tb.NoSuchNodeError:

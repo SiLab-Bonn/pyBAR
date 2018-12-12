@@ -120,7 +120,7 @@ def analyze_hit_delay(raw_data_file):
             out_2.attrs.dimensions = 'column, row, injection delay, relative bcid'
             out_2.attrs.injection_delay_values = injection_delay
             out_2[:] = bcid_result
-            out_3 = out_file_h5.create_carray(hists_folder_3, name='HistPixelTotPerDelayPlsrDac_%03d' % old_plsr_dac, title='Tot hist per pixel and different PlsrDAC delays for PlsrDAC ' + str(old_plsr_dac), atom=tb.Atom.from_dtype(tot_pixel_result.dtype), shape=tot_pixel_result.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+            out_3 = out_file_h5.create_carray(hists_folder_3, name='HistPixelTotPerDelayPlsrDac_%03d' % old_plsr_dac, title='ToT hist per pixel and different PlsrDAC delays for PlsrDAC ' + str(old_plsr_dac), atom=tb.Atom.from_dtype(tot_pixel_result.dtype), shape=tot_pixel_result.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
             out_3.attrs.dimensions = 'column, row, injection delay'
             out_3.attrs.injection_delay_values = injection_delay
             out_3[:] = tot_pixel_result
@@ -128,7 +128,7 @@ def analyze_hit_delay(raw_data_file):
             out_4.attrs.dimensions = 'column, row, injection delay'
             out_4.attrs.injection_delay_values = injection_delay
             out_4[:] = tot_mean_pixel_result
-            out_5 = out_file_h5.create_carray(hists_folder_5, name='HistTotPlsrDac_%03d' % old_plsr_dac, title='Tot histogram for PlsrDAC ' + str(old_plsr_dac), atom=tb.Atom.from_dtype(tot_array.dtype), shape=tot_array.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+            out_5 = out_file_h5.create_carray(hists_folder_5, name='HistTotPlsrDac_%03d' % old_plsr_dac, title='ToT histogram for PlsrDAC ' + str(old_plsr_dac), atom=tb.Atom.from_dtype(tot_array.dtype), shape=tot_array.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
             out_5.attrs.injection_delay_values = injection_delay
             out_5[:] = tot_array
 
@@ -255,7 +255,7 @@ def analyze_hit_delay(raw_data_file):
         # Store the data
         out = out_file_h5.create_carray(out_file_h5.root, name='HistPixelTimewalkPerPlsrDac', title='Time walk per pixel and PlsrDAC', atom=tb.Atom.from_dtype(timewalk.dtype), shape=timewalk.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
         out_2 = out_file_h5.create_carray(out_file_h5.root, name='HistPixelHitDelayPerPlsrDac', title='Hit delay per pixel and PlsrDAC', atom=tb.Atom.from_dtype(hit_delay.dtype), shape=hit_delay.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
-        out_3 = out_file_h5.create_carray(out_file_h5.root, name='HistTotPerPlsrDac', title='Tot per PlsrDAC', atom=tb.Atom.from_dtype(tot.dtype), shape=tot.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+        out_3 = out_file_h5.create_carray(out_file_h5.root, name='HistTotPerPlsrDac', title='ToT per PlsrDAC', atom=tb.Atom.from_dtype(tot.dtype), shape=tot.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
         out.attrs.dimensions = 'column, row, PlsrDAC'
         out.attrs.delay_calibration = step_size
         out.attrs.delay_calibration_error = step_size_error

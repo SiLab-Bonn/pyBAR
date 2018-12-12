@@ -36,8 +36,8 @@ analysis_configuration = {
     'scan_name': [r'H:\SCC112\irrad_2\scc_112_-50\141_scc_112_ext_trigger_scan'],  # the base file name(s) of the raw data file, no file suffix
     'align_at_trigger': True,  # align events to the trigger words, first event word has to be trigger word
     'align_at_tdc': False,  # align events to the tdc words, first event word has to be tdc word; not needed anymore for new pyBAR data
-    'use_tdc_trigger_time_stamp': False,  # TDC + external trigger are used, thus fill the hit table with delay value between trigger and TDC (usefull for time walk measurements)
-    'max_tdc_delay': 80,  # maximum TDC to trigger delay to consider the TDC word as a valid in-time event word; otherwise TDC word is neglected
+    'tdc_trigger_distance': False,  # TDC + external trigger are used, thus fill the hit table with delay value between trigger and TDC (useful for time walk measurements)
+    'max_tdc_delay': 253,  # maximum TDC to trigger delay to consider the TDC word as a valid in-time event word; otherwise TDC word is neglected
     'ignore_disabled_regions': True,  # Use only pixel that have enabled neighbouring pixels to allow proper cluster size cuts, a  neigbeuring pixel is +-1 in column XOR row direction
     'input_file_calibration': r'H:\SCC112\irrad_2\scc_112_-50\18_scc_112_hit_or_calibration_calibration.h5',  # the Plsr<->TDC calibration file
     'correct_calibration': None,  # file name of another more actual calibration to be used to correct the calibration; changes are expected due to tempretature drifts and irradiation
@@ -56,18 +56,17 @@ analysis_configuration = {
 }
 
 
-def analyze_raw_data(input_files, output_file_hits, interpreter_plots, overwrite_output_files, align_at_trigger=True, align_at_tdc=False, use_tdc_trigger_time_stamp=False, max_tdc_delay=80, interpreter_warnings=False):
+def analyze_raw_data(input_files, output_file_hits, interpreter_plots, overwrite_output_files, align_at_trigger=True, align_at_tdc=False, tdc_trigger_distance=False, max_tdc_delay=253, interpreter_warnings=False):
     logging.info('Analyze the raw FE data given in ' + str(len(input_files)) + ' files and store the needed data')
     if os.path.isfile(output_file_hits) and not overwrite_output_files:  # skip analysis if already done
         logging.info('Analyzed data file ' + output_file_hits + ' already exists. Skip analysis for this file.')
     else:
         with AnalyzeRawData(raw_data_file=input_files, analyzed_data_file=output_file_hits) as analyze_raw_data:
-            analyze_raw_data.max_tdc_delay = max_tdc_delay  # max TDC delay to consider a valid in-time TDC word
-            analyze_raw_data.use_tdc_trigger_time_stamp = use_tdc_trigger_time_stamp  # if you want to also measure the delay between trigger / hit-bus
+            analyze_raw_data.tdc_trigger_distance = tdc_trigger_distance  # if you want to also measure the delay between trigger and HitOr leading edge
+            analyze_raw_data.max_tdc_delay = max_tdc_delay  # max TDC delay to consider a valid in-time TDC word; 254: overflow; 255: invalid
             analyze_raw_data.align_at_trigger = align_at_trigger  # align events at TDC words, first word of event has to be a tdc word
             analyze_raw_data.align_at_tdc = align_at_tdc  # align events at TDC words, first word of event has to be a tdc word
-            analyze_raw_data.create_tdc_counter_hist = True  # create a histogram for all TDC words
-            analyze_raw_data.create_tdc_hist = True  # histogram the hit TDC information
+            analyze_raw_data.create_tdc_hist = True  # histogram TDC data
             analyze_raw_data.create_tdc_pixel_hist = True
             analyze_raw_data.create_tot_pixel_hist = True
             analyze_raw_data.create_cluster_hit_table = True  # enables the creation of a table with all cluster hits, std. setting is false
@@ -283,12 +282,12 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
                 tdc_hists_per_condition_result = tdc_hists_per_condition[index]
                 tdc_corr_hist_result = np.swapaxes(tdc_corr_hists_per_condition[index], 0, 1)
                 # Create result hists
-                out_1 = out_file_h5.create_carray(out_file_h5.root, name='HistPixelTdcCondition_%d' % index, title='Hist Pixel Tdc with %s' % condition, atom=tb.Atom.from_dtype(pixel_tdc_hist_result.dtype), shape=pixel_tdc_hist_result.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
-                out_2 = out_file_h5.create_carray(out_file_h5.root, name='HistPixelTdcTimestampCondition_%d' % index, title='Hist Pixel Tdc Timestamp with %s' % condition, atom=tb.Atom.from_dtype(pixel_tdc_timestamp_hist_result.dtype), shape=pixel_tdc_timestamp_hist_result.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
-                out_3 = out_file_h5.create_carray(out_file_h5.root, name='HistMeanPixelTdcCondition_%d' % index, title='Hist Mean Pixel Tdc with %s' % condition, atom=tb.Atom.from_dtype(mean_pixel_tdc_hist_result.dtype), shape=mean_pixel_tdc_hist_result.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
-                out_4 = out_file_h5.create_carray(out_file_h5.root, name='HistMeanPixelTdcTimestampCondition_%d' % index, title='Hist Mean Pixel Tdc Timestamp with %s' % condition, atom=tb.Atom.from_dtype(mean_pixel_tdc_timestamp_hist_result.dtype), shape=mean_pixel_tdc_timestamp_hist_result.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
-                out_5 = out_file_h5.create_carray(out_file_h5.root, name='HistTdcCondition_%d' % index, title='Hist Tdc with %s' % condition, atom=tb.Atom.from_dtype(tdc_hists_per_condition_result.dtype), shape=tdc_hists_per_condition_result.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
-                out_6 = out_file_h5.create_carray(out_file_h5.root, name='HistTdcCorrCondition_%d' % index, title='Hist Correlation Tdc/Tot with %s' % condition, atom=tb.Atom.from_dtype(tdc_corr_hist_result.dtype), shape=tdc_corr_hist_result.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+                out_1 = out_file_h5.create_carray(out_file_h5.root, name='HistPixelTdcCondition_%d' % index, title='Hist Pixel TDC with %s' % condition, atom=tb.Atom.from_dtype(pixel_tdc_hist_result.dtype), shape=pixel_tdc_hist_result.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+                out_2 = out_file_h5.create_carray(out_file_h5.root, name='HistPixelTdcTimestampCondition_%d' % index, title='Hist Pixel TDC Timestamp with %s' % condition, atom=tb.Atom.from_dtype(pixel_tdc_timestamp_hist_result.dtype), shape=pixel_tdc_timestamp_hist_result.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+                out_3 = out_file_h5.create_carray(out_file_h5.root, name='HistMeanPixelTdcCondition_%d' % index, title='Hist Mean Pixel TDC with %s' % condition, atom=tb.Atom.from_dtype(mean_pixel_tdc_hist_result.dtype), shape=mean_pixel_tdc_hist_result.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+                out_4 = out_file_h5.create_carray(out_file_h5.root, name='HistMeanPixelTdcTimestampCondition_%d' % index, title='Hist Mean Pixel TDC Timestamp with %s' % condition, atom=tb.Atom.from_dtype(mean_pixel_tdc_timestamp_hist_result.dtype), shape=mean_pixel_tdc_timestamp_hist_result.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+                out_5 = out_file_h5.create_carray(out_file_h5.root, name='HistTdcCondition_%d' % index, title='Hist TDC with %s' % condition, atom=tb.Atom.from_dtype(tdc_hists_per_condition_result.dtype), shape=tdc_hists_per_condition_result.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+                out_6 = out_file_h5.create_carray(out_file_h5.root, name='HistTdcCorrCondition_%d' % index, title='Hist Correlation TDC/ToT with %s' % condition, atom=tb.Atom.from_dtype(tdc_corr_hist_result.dtype), shape=tdc_corr_hist_result.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
                 # Add result hists information
                 out_1.attrs.dimensions, out_1.attrs.condition, out_1.attrs.tdc_values = 'column, row, TDC value', condition, range(max_tdc)
                 out_2.attrs.dimensions, out_2.attrs.condition, out_2.attrs.tdc_values = 'column, row, TDC time stamp value', condition, range(256)
@@ -305,7 +304,7 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
                     mean_charge_calibration = charge_calibration[valid_pixel][:, :max_tdc].mean(axis=0)
                     mean_tdc_hist = pixel_tdc_hist_result.swapaxes(0, 1)[valid_pixel][:, :max_tdc].mean(axis=0)
                     result_array = np.rec.array(np.column_stack((mean_charge_calibration, mean_tdc_hist)), dtype=[('charge', float), ('count', float)])
-                    out_7 = out_file_h5.create_table(out_file_h5.root, name='HistMeanTdcCalibratedCondition_%d' % index, description=result_array.dtype, title='Hist Tdc with mean charge calibration and %s' % condition, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+                    out_7 = out_file_h5.create_table(out_file_h5.root, name='HistMeanTdcCalibratedCondition_%d' % index, description=result_array.dtype, title='Hist TDC with mean charge calibration and %s' % condition, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
                     out_7.attrs.condition = condition
                     out_7.attrs.n_pixel = valid_pixel[0].shape[0]
                     out_7.attrs.n_hits = pixel_tdc_hist_result.swapaxes(0, 1)[valid_pixel][:, :max_tdc].sum()
@@ -315,7 +314,7 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
                     y_hist, x_hist = y[x > 0], x[x > 0]  # remove the hit tdcs without proper calibration plsrDAC(TDC) calibration
                     x, y, yerr = analysis_utils.get_profile_histogram(x_hist, y_hist, n_bins=n_bins)
                     result_array = np.rec.array(np.column_stack((x, y, yerr)), dtype=[('charge', float), ('count', float), ('count_error', float)])
-                    out_8 = out_file_h5.create_table(out_file_h5.root, name='HistTdcCalibratedCondition_%d' % index, description=result_array.dtype, title='Hist Tdc with per pixel charge calibration and %s' % condition, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+                    out_8 = out_file_h5.create_table(out_file_h5.root, name='HistTdcCalibratedCondition_%d' % index, description=result_array.dtype, title='Hist TDC with per pixel charge calibration and %s' % condition, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
                     out_8.attrs.condition = condition
                     out_8.attrs.n_pixel = valid_pixel[0].shape[0]
                     out_8.attrs.n_hits = y_hist.sum()
@@ -376,7 +375,7 @@ if __name__ == "__main__":
                          overwrite_output_files=analysis_configuration['overwrite_output_files'],
                          align_at_trigger=analysis_configuration['align_at_trigger'],
                          align_at_tdc=analysis_configuration['align_at_tdc'],
-                         use_tdc_trigger_time_stamp=analysis_configuration['use_tdc_trigger_time_stamp'],
+                         tdc_trigger_distance=analysis_configuration['tdc_trigger_distance'],
                          max_tdc_delay=analysis_configuration['max_tdc_delay'],
                          interpreter_warnings=analysis_configuration['interpreter_warnings'])
     if 2 in analysis_configuration['analysis_steps']:

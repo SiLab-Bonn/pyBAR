@@ -49,7 +49,7 @@ class TdcTest(Fei4RunBase):
         with PdfPages(self.output_filename + '.pdf') as output_pdf:
             if self.test_tdc_values:
                 x, y, y_err = [], [], []
-                tdc_hist = None
+                tdc_value_hist = None
 
                 self.fifo_readout.reset_fifo(fifos="FIFO")  # clear fifo data
                 for pulse_width in [i for j in (range(10, 100, 5), range(100, 400, 10)) for i in j]:
@@ -72,17 +72,17 @@ class TdcTest(Fei4RunBase):
                         x.append(pulse_width)
                         y.append(np.mean(tdc_values))
                         y_err.append(np.std(tdc_values))
-                        if tdc_hist is None:
-                            tdc_hist = np.histogram(tdc_values, range=(0, 1023), bins=1024)[0]
+                        if tdc_value_hist is None:
+                            tdc_value_hist = np.histogram(tdc_values, range=(0, 1023), bins=1024)[0]
                         else:
-                            tdc_hist += np.histogram(tdc_values, range=(0, 1023), bins=1024)[0]
+                            tdc_value_hist += np.histogram(tdc_values, range=(0, 1023), bins=1024)[0]
                     else:
                         logging.warning('No TDC words, check connection!')
 
                 plotting.plot_scatter(x, y, y_err, title='FPGA TDC linearity, ' + str(self.n_pulses) + ' each', x_label='Pulse width [ns]', y_label='TDC value', filename=output_pdf)
                 plotting.plot_scatter(x, y_err, title='FPGA TDC RMS, ' + str(self.n_pulses) + ' each', x_label='Pulse width [ns]', y_label='TDC RMS', filename=output_pdf)
-                if tdc_hist is not None:
-                    plotting.plot_tdc_counter(tdc_hist, title='All TDC values', filename=output_pdf)
+                if tdc_value_hist is not None:
+                    plotting.plot_tdc_trigger_distance(tdc_value_hist, title='All TDC values', filename=output_pdf)
 
             if self.test_trigger_delay:
                 x, y, y_err, y2, y2_err = [], [], [], [], []

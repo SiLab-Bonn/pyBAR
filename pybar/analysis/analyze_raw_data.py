@@ -181,6 +181,7 @@ class AnalyzeRawData(object):
                       'BCID': 'BCID',
                       'TDC': 'TDC',
                       'TDC_time_stamp': 'TDC_time_stamp',
+                      'TDC_trigger_distance': 'TDC_trigger_distance',
                       'trigger_status': 'trigger_status',
                       'service_record': 'service_record',
                       'event_status': 'event_status'
@@ -196,7 +197,8 @@ class AnalyzeRawData(object):
                               ('tot', '<u1'),
                               ('BCID', '<u2'),
                               ('TDC', '<u2'),
-                              ('TDC_time_stamp', '<u1'),
+                              ('TDC_time_stamp', '<u2'),
+                              ('TDC_trigger_distance', '<u1'),
                               ('trigger_status', '<u1'),
                               ('service_record', '<u4'),
                               ('event_status', '<u2')])
@@ -291,9 +293,11 @@ class AnalyzeRawData(object):
         self.create_occupancy_hist = True
         self.create_meta_word_index = False
         self.create_source_scan_hist = False
-        self.create_tdc_hist = False
-        self.create_tdc_counter_hist = False
-        self.create_tdc_pixel_hist = False
+        self.create_tdc_hist = False  # histogram and plot TDC data
+        self.create_tdc_pixel_hist = False  # histogram and plot per pixel TDC data
+        self.tdc_trigger_time_stamp = False  # TDC word has trigger timestamp field (8-bit or 16-bit value)
+        self.tdc_trigger_distance = False  # TDC word has trigger distance field (8-bit value)
+        self.max_tdc_delay = 255  # works only if tdc_trigger_distance is set to True; any TDC word is ignored, if trigger distance is above value
         self.create_trigger_error_hist = False
         self.create_threshold_hists = False
         self.create_threshold_mask = True  # Threshold/noise histogram mask: masking all pixels out of bounds
@@ -306,8 +310,6 @@ class AnalyzeRawData(object):
         self.align_at_trigger = False  # use the trigger word to align the events
         self.align_at_tdc = False  # use the trigger word to align the events
         self.trigger_data_format = 0  # 0: 31bit trigger number, 1: 31bit trigger time stamp, 2: 15bit trigger time stamp + 16bit trigger number
-        self.use_tdc_trigger_time_stamp = False  # the tdc time stamp is the difference between trigger and tdc rising edge
-        self.max_tdc_delay = 255
         self.max_trigger_number = 2 ** 16 - 1
         self.set_stop_mode = False  # The FE is read out with stop mode, therefore the BCID plot is different
 
@@ -385,7 +387,11 @@ class AnalyzeRawData(object):
     @create_tdc_hist.setter
     def create_tdc_hist(self, value):
         self._create_tdc_hist = value
-        self.histogram.create_tdc_hist(value)
+        self.histogram.create_tdc_value_hist(value)
+        try:
+            self.histogram.create_tdc_trigger_distance_hist(self.tdc_trigger_distance)
+        except AttributeError:
+            pass
 
     @property
     def create_tdc_pixel_hist(self):
@@ -395,6 +401,37 @@ class AnalyzeRawData(object):
     def create_tdc_pixel_hist(self, value):
         self._create_tdc_pixel_hist = value
         self.histogram.create_tdc_pixel_hist(value)
+
+    @property
+    def tdc_trigger_time_stamp(self):
+        return self._tdc_trigger_time_stamp
+
+    @tdc_trigger_time_stamp.setter
+    def tdc_trigger_time_stamp(self, value):
+        self._tdc_trigger_time_stamp = value
+        self.interpreter.set_tdc_trigger_time_stamp(value)
+
+    @property
+    def tdc_trigger_distance(self):
+        return self._tdc_trigger_distance
+
+    @tdc_trigger_distance.setter
+    def tdc_trigger_distance(self, value):
+        self._tdc_trigger_distance = value
+        self.interpreter.set_tdc_trigger_distance(value)
+        try:
+            self.histogram.create_tdc_trigger_distance_hist(self.create_tdc_hist)
+        except AttributeError:
+            pass
+
+    @property
+    def max_tdc_delay(self):
+        return self._max_tdc_delay
+
+    @max_tdc_delay.setter
+    def max_tdc_delay(self, value):
+        self._max_tdc_delay = value
+        self.interpreter.set_max_tdc_delay(value)
 
     @property
     def create_tot_pixel_hist(self):
@@ -477,14 +514,6 @@ class AnalyzeRawData(object):
     @create_service_record_hist.setter
     def create_service_record_hist(self, value):
         self._create_service_record_hist = value
-
-    @property
-    def create_tdc_counter_hist(self):
-        return self._create_tdc_counter_hist
-
-    @create_tdc_counter_hist.setter
-    def create_tdc_counter_hist(self, value):
-        self._create_tdc_counter_hist = value
 
     @property
     def create_meta_event_index(self):
@@ -606,24 +635,6 @@ class AnalyzeRawData(object):
         self.interpreter.set_trigger_data_format(value)
 
     @property
-    def use_tdc_trigger_time_stamp(self):
-        return self._use_tdc_trigger_time_stamp
-
-    @use_tdc_trigger_time_stamp.setter
-    def use_tdc_trigger_time_stamp(self, value):
-        self._use_tdc_trigger_time_stamp = value
-        self.interpreter.use_tdc_trigger_time_stamp(value)
-
-    @property
-    def max_tdc_delay(self):
-        return self._max_tdc_delay
-
-    @max_tdc_delay.setter
-    def max_tdc_delay(self, value):
-        self._max_tdc_delay = value
-        self.interpreter.set_max_tdc_delay(value)
-
-    @property
     def max_trigger_number(self):
         return self._max_trigger_number
 
@@ -697,7 +708,7 @@ class AnalyzeRawData(object):
                 out_file_h5 = tb.open_file(analyzed_data_file, mode="w", title="Interpreted FE-I4 raw data")
                 close_analyzed_data_file = True
         elif self.is_open(self.out_file_h5):
-                out_file_h5 = self.out_file_h5
+            out_file_h5 = self.out_file_h5
         else:
             out_file_h5 = None
 
@@ -956,23 +967,28 @@ class AnalyzeRawData(object):
         if self._create_service_record_hist:
             self.service_record_hist = self.interpreter.get_service_records_counters()
             if self._analyzed_data_file is not None:
-                service_record_hist_table = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistServiceRecord', title='Service Record Histogram', atom=tb.Atom.from_dtype(self.service_record_hist.dtype), shape=self.service_record_hist.shape, filters=self._filter_table)
-                service_record_hist_table[:] = self.service_record_hist
-        if self._create_tdc_counter_hist:
-            self.tdc_counter_hist = self.interpreter.get_tdc_counters()
+                service_record_hist_out = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistServiceRecord', title='Service record histogram', atom=tb.Atom.from_dtype(self.service_record_hist.dtype), shape=self.service_record_hist.shape, filters=self._filter_table)
+                service_record_hist_out[:] = self.service_record_hist
+        if self._create_tdc_hist:
+            self.raw_data_tdc_value_hist = self.interpreter.get_tdc_values()
             if self._analyzed_data_file is not None:
-                tdc_counter_hist = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistTdcCounter', title='All Tdc word counter values', atom=tb.Atom.from_dtype(self.tdc_counter_hist.dtype), shape=self.tdc_counter_hist.shape, filters=self._filter_table)
-                tdc_counter_hist[:] = self.tdc_counter_hist
+                raw_data_tdc_value_hist_out = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistRawDataTdcValue', title='Raw data TDC value histogram', atom=tb.Atom.from_dtype(self.raw_data_tdc_value_hist.dtype), shape=self.raw_data_tdc_value_hist.shape, filters=self._filter_table)
+                raw_data_tdc_value_hist_out[:] = self.raw_data_tdc_value_hist
+            if self._tdc_trigger_distance:
+                self.raw_data_tdc_trigger_distance_hist = self.interpreter.get_tdc_trigger_distances()
+                if self._analyzed_data_file is not None:
+                    raw_data_tdc_trigger_distance_hist_out = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistRawDataTdcTriggerDistance', title='Raw data TDC trigger distance histogram', atom=tb.Atom.from_dtype(self.raw_data_tdc_trigger_distance_hist.dtype), shape=self.raw_data_tdc_trigger_distance_hist.shape, filters=self._filter_table)
+                    raw_data_tdc_trigger_distance_hist_out[:] = self.raw_data_tdc_trigger_distance_hist
         if self._create_error_hist:
-            self.error_counter_hist = self.interpreter.get_error_counters()
+            self.error_counter_hist = self.interpreter.get_event_status_counters()
             if self._analyzed_data_file is not None:
-                error_counter_hist_table = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistErrorCounter', title='Error Counter Histogram', atom=tb.Atom.from_dtype(self.error_counter_hist.dtype), shape=self.error_counter_hist.shape, filters=self._filter_table)
-                error_counter_hist_table[:] = self.error_counter_hist
+                error_counter_hist_out = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistEventStatusCounter', title='Event status counter histogram', atom=tb.Atom.from_dtype(self.error_counter_hist.dtype), shape=self.error_counter_hist.shape, filters=self._filter_table)
+                error_counter_hist_out[:] = self.error_counter_hist
         if self._create_trigger_error_hist:
-            self.trigger_error_counter_hist = self.interpreter.get_trigger_error_counters()
+            self.trigger_error_counter_hist = self.interpreter.get_trigger_status_counters()
             if self._analyzed_data_file is not None:
-                trigger_error_counter_hist_table = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistTriggerErrorCounter', title='Trigger Error Counter Histogram', atom=tb.Atom.from_dtype(self.trigger_error_counter_hist.dtype), shape=self.trigger_error_counter_hist.shape, filters=self._filter_table)
-                trigger_error_counter_hist_table[:] = self.trigger_error_counter_hist
+                trigger_error_counter_hist_out = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistTriggerStatusCounter', title='Trigger status counter histogram', atom=tb.Atom.from_dtype(self.trigger_error_counter_hist.dtype), shape=self.trigger_error_counter_hist.shape, filters=self._filter_table)
+                trigger_error_counter_hist_out[:] = self.trigger_error_counter_hist
 
         self._create_additional_hit_data()
         self._create_additional_cluster_data()
@@ -982,42 +998,47 @@ class AnalyzeRawData(object):
         if self._create_tot_hist:
             self.tot_hist = self.histogram.get_tot_hist()
             if self._analyzed_data_file is not None and safe_to_file:
-                tot_hist_table = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistTot', title='ToT Histogram', atom=tb.Atom.from_dtype(self.tot_hist.dtype), shape=self.tot_hist.shape, filters=self._filter_table)
-                tot_hist_table[:] = self.tot_hist
+                tot_hist_out = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistTot', title='ToT histogram', atom=tb.Atom.from_dtype(self.tot_hist.dtype), shape=self.tot_hist.shape, filters=self._filter_table)
+                tot_hist_out[:] = self.tot_hist
         if self._create_tot_pixel_hist:
             if self._analyzed_data_file is not None and safe_to_file:
                 self.tot_pixel_hist_array = np.swapaxes(self.histogram.get_tot_pixel_hist(), 0, 1)  # swap axis col,row, parameter --> row, col, parameter
-                tot_pixel_hist_out = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistTotPixel', title='Tot Pixel Histogram', atom=tb.Atom.from_dtype(self.tot_pixel_hist_array.dtype), shape=self.tot_pixel_hist_array.shape, filters=self._filter_table)
+                tot_pixel_hist_out = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistTotPixel', title='ToT pixel histogram', atom=tb.Atom.from_dtype(self.tot_pixel_hist_array.dtype), shape=self.tot_pixel_hist_array.shape, filters=self._filter_table)
                 tot_pixel_hist_out[:] = self.tot_pixel_hist_array
         if self._create_tdc_hist:
-            self.tdc_hist = self.histogram.get_tdc_hist()
+            self.tdc_value_hist = self.histogram.get_tdc_value_hist()
             if self._analyzed_data_file is not None and safe_to_file:
-                tdc_hist_table = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistTdc', title='Tdc Histogram', atom=tb.Atom.from_dtype(self.tdc_hist.dtype), shape=self.tdc_hist.shape, filters=self._filter_table)
-                tdc_hist_table[:] = self.tdc_hist
+                tdc_value_hist_out = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistTdcValue', title='Valid TDC value histogram', atom=tb.Atom.from_dtype(self.tdc_value_hist.dtype), shape=self.tdc_value_hist.shape, filters=self._filter_table)
+                tdc_value_hist_out[:] = self.tdc_value_hist
+            if self._tdc_trigger_distance:
+                self.tdc_trigger_distance_hist = self.histogram.get_tdc_trigger_distance_hist()
+                if self._analyzed_data_file is not None:
+                    tdc_trigger_distance_hist_out = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistTdcTriggerDistance', title='Valid TDC trigger distance histogram', atom=tb.Atom.from_dtype(self.tdc_trigger_distance_hist.dtype), shape=self.tdc_trigger_distance_hist.shape, filters=self._filter_table)
+                    tdc_trigger_distance_hist_out[:] = self.tdc_trigger_distance_hist
         if self._create_tdc_pixel_hist:
             if self._analyzed_data_file is not None and safe_to_file:
                 self.tdc_pixel_hist_array = np.swapaxes(self.histogram.get_tdc_pixel_hist(), 0, 1)  # swap axis col,row, parameter --> row, col, parameter
-                tdc_pixel_hist_out = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistTdcPixel', title='Tdc Pixel Histogram', atom=tb.Atom.from_dtype(self.tdc_pixel_hist_array.dtype), shape=self.tdc_pixel_hist_array.shape, filters=self._filter_table)
+                tdc_pixel_hist_out = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistTdcPixel', title='Valid TDC pixel histogram', atom=tb.Atom.from_dtype(self.tdc_pixel_hist_array.dtype), shape=self.tdc_pixel_hist_array.shape, filters=self._filter_table)
                 tdc_pixel_hist_out[:] = self.tdc_pixel_hist_array
         if self._create_rel_bcid_hist:
             self.rel_bcid_hist = self.histogram.get_rel_bcid_hist()
             if self._analyzed_data_file is not None and safe_to_file:
                 if not self.set_stop_mode:
-                    rel_bcid_hist_table = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistRelBcid', title='relative BCID Histogram', atom=tb.Atom.from_dtype(self.rel_bcid_hist.dtype), shape=(16, ), filters=self._filter_table)
-                    rel_bcid_hist_table[:] = self.rel_bcid_hist[0:16]
+                    rel_bcid_hist_out = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistRelBcid', title='relative BCID histogram', atom=tb.Atom.from_dtype(self.rel_bcid_hist.dtype), shape=(16, ), filters=self._filter_table)
+                    rel_bcid_hist_out[:] = self.rel_bcid_hist[0:16]
                 else:
-                    rel_bcid_hist_table = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistRelBcid', title='relative BCID Histogram in stop mode read out', atom=tb.Atom.from_dtype(self.rel_bcid_hist.dtype), shape=self.rel_bcid_hist.shape, filters=self._filter_table)
-                    rel_bcid_hist_table[:] = self.rel_bcid_hist
+                    rel_bcid_hist_out = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistRelBcid', title='relative BCID histogram in stop mode read out', atom=tb.Atom.from_dtype(self.rel_bcid_hist.dtype), shape=self.rel_bcid_hist.shape, filters=self._filter_table)
+                    rel_bcid_hist_out[:] = self.rel_bcid_hist
         if self._create_occupancy_hist:
             self.occupancy_array = np.swapaxes(self.histogram.get_occupancy(), 0, 1)  # swap axis col,row, parameter --> row, col, parameter
             if self._analyzed_data_file is not None and safe_to_file:
-                occupancy_array_table = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistOcc', title='Occupancy Histogram', atom=tb.Atom.from_dtype(self.occupancy_array.dtype), shape=self.occupancy_array.shape, filters=self._filter_table)
-                occupancy_array_table[0:336, 0:80, 0:self.histogram.get_n_parameters()] = self.occupancy_array
+                occupancy_array_out = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistOcc', title='Occupancy histogram', atom=tb.Atom.from_dtype(self.occupancy_array.dtype), shape=self.occupancy_array.shape, filters=self._filter_table)
+                occupancy_array_out[0:336, 0:80, 0:self.histogram.get_n_parameters()] = self.occupancy_array
         if self._create_mean_tot_hist:
             self.mean_tot_array = np.swapaxes(self.histogram.get_mean_tot(), 0, 1)  # swap axis col,row, parameter --> row, col, parameter
             if self._analyzed_data_file is not None and safe_to_file:
-                mean_tot_array_table = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistMeanTot', title='Mean ToT Histogram', atom=tb.Atom.from_dtype(self.mean_tot_array.dtype), shape=self.mean_tot_array.shape, filters=self._filter_table)
-                mean_tot_array_table[0:336, 0:80, 0:self.histogram.get_n_parameters()] = self.mean_tot_array
+                mean_tot_array_out = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistMeanTot', title='Mean ToT histogram', atom=tb.Atom.from_dtype(self.mean_tot_array.dtype), shape=self.mean_tot_array.shape, filters=self._filter_table)
+                mean_tot_array_out[0:336, 0:80, 0:self.histogram.get_n_parameters()] = self.mean_tot_array
         if self._create_threshold_hists:
             _, scan_parameters_idx = np.unique(self.scan_parameters['PlsrDAC'], return_index=True)
             scan_parameters = self.scan_parameters['PlsrDAC'][np.sort(scan_parameters_idx)]
@@ -1029,37 +1050,37 @@ class AnalyzeRawData(object):
             threshold_hist, noise_hist = np.reshape(a=threshold.view(), newshape=(80, 336), order='F'), np.reshape(a=noise.view(), newshape=(80, 336), order='F')
             self.threshold_hist, self.noise_hist = np.swapaxes(threshold_hist, 0, 1), np.swapaxes(noise_hist, 0, 1)
             if self._analyzed_data_file is not None and safe_to_file:
-                threshold_hist_table = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistThreshold', title='Threshold Histogram', atom=tb.Atom.from_dtype(self.threshold_hist.dtype), shape=(336, 80), filters=self._filter_table)
-                threshold_hist_table[:] = self.threshold_hist
-                noise_hist_table = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistNoise', title='Noise Histogram', atom=tb.Atom.from_dtype(self.noise_hist.dtype), shape=(336, 80), filters=self._filter_table)
-                noise_hist_table[:] = self.noise_hist
+                threshold_hist_out = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistThreshold', title='Threshold histogram', atom=tb.Atom.from_dtype(self.threshold_hist.dtype), shape=(336, 80), filters=self._filter_table)
+                threshold_hist_out[:] = self.threshold_hist
+                noise_hist_out = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistNoise', title='Noise histogram', atom=tb.Atom.from_dtype(self.noise_hist.dtype), shape=(336, 80), filters=self._filter_table)
+                noise_hist_out[:] = self.noise_hist
         if self._create_fitted_threshold_hists:
             _, scan_parameters_idx = np.unique(self.scan_parameters['PlsrDAC'], return_index=True)
             scan_parameters = self.scan_parameters['PlsrDAC'][np.sort(scan_parameters_idx)]
             self.scurve_fit_results = self.fit_scurves_multithread(self.out_file_h5, PlsrDAC=scan_parameters)
             if self._analyzed_data_file is not None and safe_to_file:
-                fitted_threshold_hist_table = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistThresholdFitted', title='Threshold Fitted Histogram', atom=tb.Atom.from_dtype(self.scurve_fit_results.dtype), shape=(336, 80), filters=self._filter_table)
-                fitted_noise_hist_table = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistNoiseFitted', title='Noise Fitted Histogram', atom=tb.Atom.from_dtype(self.scurve_fit_results.dtype), shape=(336, 80), filters=self._filter_table)
-                fitted_threshold_hist_table.attrs.dimensions, fitted_noise_hist_table.attrs.dimensions = 'column, row, PlsrDAC', 'column, row, PlsrDAC'
-                fitted_threshold_hist_table[:], fitted_noise_hist_table[:] = self.scurve_fit_results[:, :, 0], self.scurve_fit_results[:, :, 1]
+                fitted_threshold_hist_out = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistThresholdFitted', title='Fitted threshold histogram', atom=tb.Atom.from_dtype(self.scurve_fit_results.dtype), shape=(336, 80), filters=self._filter_table)
+                fitted_noise_hist_out = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistNoiseFitted', title='Fitted noise histogram', atom=tb.Atom.from_dtype(self.scurve_fit_results.dtype), shape=(336, 80), filters=self._filter_table)
+                fitted_threshold_hist_out.attrs.dimensions, fitted_noise_hist_out.attrs.dimensions = 'column, row, PlsrDAC', 'column, row, PlsrDAC'
+                fitted_threshold_hist_out[:], fitted_noise_hist_out[:] = self.scurve_fit_results[:, :, 0], self.scurve_fit_results[:, :, 1]
 
-                fitted_threshold_hist_table = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistThresholdFittedCalib', title='Threshold Fitted Histogram with PlsrDAC clalibration', atom=tb.Atom.from_dtype(self.scurve_fit_results.dtype), shape=(336, 80), filters=self._filter_table)
-                fitted_noise_hist_table = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistNoiseFittedCalib', title='Noise Fitted Histogram with PlsrDAC clalibration', atom=tb.Atom.from_dtype(self.scurve_fit_results.dtype), shape=(336, 80), filters=self._filter_table)
-                fitted_threshold_hist_table.attrs.dimensions, fitted_noise_hist_table.attrs.dimensions = 'column, row, electrons', 'column, row, electrons'
+                fitted_threshold_hist_out = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistThresholdFittedCalib', title='Fitted threshold histogram with PlsrDAC calibration', atom=tb.Atom.from_dtype(self.scurve_fit_results.dtype), shape=(336, 80), filters=self._filter_table)
+                fitted_noise_hist_out = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistNoiseFittedCalib', title='Fitted noise histogram with PlsrDAC calibration', atom=tb.Atom.from_dtype(self.scurve_fit_results.dtype), shape=(336, 80), filters=self._filter_table)
+                fitted_threshold_hist_out.attrs.dimensions, fitted_noise_hist_out.attrs.dimensions = 'column, row, electrons', 'column, row, electrons'
                 self.threshold_hist_calib, self.noise_hist_calib = self._get_plsr_dac_charge(self.scurve_fit_results[:, :, 0]), self._get_plsr_dac_charge(self.scurve_fit_results[:, :, 1], no_offset=True)
-                fitted_threshold_hist_table[:], fitted_noise_hist_table[:] = self.threshold_hist_calib, self.noise_hist_calib
+                fitted_threshold_hist_out[:], fitted_noise_hist_out[:] = self.threshold_hist_calib, self.noise_hist_calib
 
     def _create_additional_cluster_data(self, safe_to_file=True):
         logging.info('Create selected cluster histograms')
         if self._create_cluster_size_hist:
             if self._analyzed_data_file is not None and safe_to_file:
-                cluster_size_hist_table = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistClusterSize', title='Cluster Size Histogram', atom=tb.Atom.from_dtype(self._cluster_size_hist.dtype), shape=self._cluster_size_hist.shape, filters=self._filter_table)
-                cluster_size_hist_table[:] = self._cluster_size_hist
+                cluster_size_hist_out = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistClusterSize', title='Cluster size histogram', atom=tb.Atom.from_dtype(self._cluster_size_hist.dtype), shape=self._cluster_size_hist.shape, filters=self._filter_table)
+                cluster_size_hist_out[:] = self._cluster_size_hist
         if self._create_cluster_tot_hist:
             self._cluster_tot_hist[:, 0] = self._cluster_tot_hist.sum(axis=1)  # First bin is the projection of the others
             if self._analyzed_data_file is not None and safe_to_file:
-                cluster_tot_hist_table = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistClusterTot', title='Cluster Tot Histogram', atom=tb.Atom.from_dtype(self._cluster_tot_hist.dtype), shape=self._cluster_tot_hist.shape, filters=self._filter_table)
-                cluster_tot_hist_table[:] = self._cluster_tot_hist
+                cluster_tot_hist_out = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistClusterTot', title='Cluster ToT histogram', atom=tb.Atom.from_dtype(self._cluster_tot_hist.dtype), shape=self._cluster_tot_hist.shape, filters=self._filter_table)
+                cluster_tot_hist_out[:] = self._cluster_tot_hist
 
     def analyze_hit_table(self, analyzed_data_file=None, analyzed_data_out_file=None):
         '''Analyzes a hit table with the c++ histogrammming/clusterizer.
@@ -1087,7 +1108,7 @@ class AnalyzeRawData(object):
                 in_file_h5 = tb.open_file(analyzed_data_file, mode="r+")
                 close_analyzed_data_file = True
         elif self.is_open(self.out_file_h5):
-                in_file_h5 = self.out_file_h5
+            in_file_h5 = self.out_file_h5
         else:
             raise ValueError('Parameter "analyzed_data_file" not specified.')
 
@@ -1106,7 +1127,7 @@ class AnalyzeRawData(object):
                 out_file_h5 = tb.open_file(analyzed_data_out_file, mode="w", title="Analyzed FE-I4 hits")
                 close_analyzed_data_out_file = True
         elif self.is_open(self.out_file_h5):
-                out_file_h5 = self.out_file_h5
+            out_file_h5 = self.out_file_h5
         else:
             raise ValueError('Parameter "analyzed_data_out_file" not specified.')
 
@@ -1205,8 +1226,8 @@ class AnalyzeRawData(object):
         logging.debug('Analyze %d hits' % n_hits)
 
         if scan_parameter is None:  # if nothing specified keep actual setting
-            logging.debug('Keep scan parameter settings ')
-        elif not scan_parameter:    # set no scan parameter
+            logging.debug('Keep scan parameter settings')
+        elif not scan_parameter:  # set no scan parameter
             logging.debug('No scan parameter used')
             self.histogram.set_no_scan_parameter()
         else:
@@ -1231,9 +1252,6 @@ class AnalyzeRawData(object):
 
     def histogram_hits(self, hits, start_index=None, stop_index=None):
         self.histogram.add_hits(hits[start_index:stop_index])
-
-    def histogram_cluster_seed_hits(self, clusters, start_index=None, stop_index=None):
-        self.histogram.add_hits(clusters[start_index:stop_index])
 
     def plot_histograms(self, pdf_filename=None, analyzed_data_file=None, maximum=None, create_hit_hists_only=False):  # plots the histogram from output file if available otherwise from ram
         logging.info('Creating histograms%s', (' (source: %s)' % analyzed_data_file) if analyzed_data_file is not None else (' (source: %s)' % self._analyzed_data_file) if self._analyzed_data_file is not None else '')
@@ -1323,10 +1341,12 @@ class AnalyzeRawData(object):
             total_hits_masked = np.ma.masked_equal(np.sum(tot_pixel_hist, axis=2), 0)
             mean_pixel_tot = np.average(tot_pixel_hist, axis=2, weights=range(16)) * sum(range(0, 16)) / total_hits_masked
             plotting.plot_three_way(mean_pixel_tot, title='Mean ToT', x_axis_title='mean ToT', filename=output_pdf, minimum=0, maximum=15)
-        if self._create_tdc_counter_hist:
-            plotting.plot_tdc_counter(hist=out_file_h5.root.HistTdcCounter[:] if out_file_h5 is not None else self.tdc_hist_counter, filename=output_pdf)
         if self._create_tdc_hist:
-            plotting.plot_tdc(hist=out_file_h5.root.HistTdc[:] if out_file_h5 is not None else self.tdc_hist, filename=output_pdf)
+            plotting.plot_tdc_value(hist=out_file_h5.root.HistRawDataTdcValue[:] if out_file_h5 is not None else self.raw_data_tdc_value_hist, title='Raw data TDC value distribution', filename=output_pdf)
+            plotting.plot_tdc_value(hist=out_file_h5.root.HistTdcValue[:] if out_file_h5 is not None else self.tdc_value_hist, title='TDC value distribution', filename=output_pdf)
+            if self._tdc_trigger_distance:
+                plotting.plot_tdc_trigger_distance(hist=out_file_h5.root.HistRawDataTdcTriggerDistance[:] if out_file_h5 is not None else self.raw_data_tdc_trigger_distance_hist, title='Raw data TDC trigger distance distribution', filename=output_pdf)
+                plotting.plot_tdc_trigger_distance(hist=out_file_h5.root.HistTdcTriggerDistance[:] if out_file_h5 is not None else self.tdc_trigger_distance_hist, title='TDC trigger distance distribution', filename=output_pdf)
         if self._create_cluster_size_hist:
             plotting.plot_cluster_size(hist=out_file_h5.root.HistClusterSize[:] if out_file_h5 is not None else self.cluster_size_hist, filename=output_pdf)
         if self._create_cluster_tot_hist:
@@ -1345,11 +1365,11 @@ class AnalyzeRawData(object):
             plotting.plot_three_way(mean_pixel_tdc, title='Mean TDC', x_axis_title='mean TDC', maximum=2 * np.ma.median(np.ma.masked_invalid(mean_pixel_tdc)), filename=output_pdf)
         if not create_hit_hists_only:
             if analyzed_data_file is None and self._create_error_hist:
-                plotting.plot_event_errors(hist=out_file_h5.root.HistErrorCounter[:] if out_file_h5 is not None else self.error_counter_hist, filename=output_pdf)
+                plotting.plot_event_status(hist=out_file_h5.root.HistEventStatusCounter[:] if out_file_h5 is not None else self.error_counter_hist, filename=output_pdf)
             if analyzed_data_file is None and self._create_service_record_hist:
                 plotting.plot_service_records(hist=out_file_h5.root.HistServiceRecord[:] if out_file_h5 is not None else self.service_record_hist, filename=output_pdf)
             if analyzed_data_file is None and self._create_trigger_error_hist:
-                plotting.plot_trigger_errors(hist=out_file_h5.root.HistTriggerErrorCounter[:] if out_file_h5 is not None else self.trigger_error_counter_hist, filename=output_pdf)
+                plotting.plot_trigger_errors(hist=out_file_h5.root.HistTriggerStatusCounter[:] if out_file_h5 is not None else self.trigger_error_counter_hist, filename=output_pdf)
 
         if close_analyzed_data_file:
             out_file_h5.close()

@@ -198,7 +198,7 @@ class pyBarPlugin(QtCore.QObject):
 
         data_name = leaf.name
 
-        hists_1d = ['HistRelBcid', 'HistErrorCounter', 'HistTriggerErrorCounter', 'HistServiceRecord', 'HistTot', 'HistTdc', 'HistClusterTot', 'HistClusterSize']
+        hists_1d = ['HistRelBcid', 'HistEventStatusCounter', 'HistTriggerStatusCounter', 'HistServiceRecord', 'HistTot', 'HistTdcValues', 'HistTdcTriggerDistance', 'HistClusterTot', 'HistClusterSize']
         hists_2d = ['HistOcc', 'Enable', 'Imon', 'C_High', 'EnableDigInj', 'C_Low', 'FDAC', 'TDAC', 'HistTdcPixel', 'HistTotPixel', 'HistThreshold', 'HistNoise', 'HistThresholdFitted', 'HistNoiseFitted', 'HistThresholdFittedCalib', 'HistNoiseFittedCalib']
 
         if data_name in hists_1d:
