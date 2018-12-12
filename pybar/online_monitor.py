@@ -46,9 +46,9 @@ class DataWorker(QtCore.QObject):
             self.histogram.create_tdc_value_hist(True)
             self.histogram.create_tdc_trigger_distance_hist(True)
         except AttributeError:
-            self.has_tdc_distance = False
+            self.have_tdc_trigger_distance = False
         else:
-            self.has_tdc_distance = True
+            self.have_tdc_trigger_distance = True
 
     def connect(self, socket_addr):
         self.socket_addr = socket_addr
@@ -98,8 +98,8 @@ class DataWorker(QtCore.QObject):
                             interpreted_data = {
                                 'occupancy': self.histogram.get_occupancy(),
                                 'tot_hist': self.histogram.get_tot_hist(),
-                                'tdc_counters': self.histogram.get_tdc_value_hist(),
-                                'tdc_distance': self.histogram.get_tdc_trigger_distance_hist() if self.has_tdc_distance else np.zeros((256,), dtype=np.uint8),
+                                'tdc_values': self.histogram.get_tdc_value_hist(),
+                                'tdc_trigger_distances': self.histogram.get_tdc_trigger_distance_hist() if self.have_tdc_trigger_distance else np.zeros((256,), dtype=np.uint8),
                                 'event_status_counters': self.interpreter.get_event_status_counters(),
                                 'service_records_counters': self.interpreter.get_service_records_counters(),
                                 'trigger_status_counters': self.interpreter.get_trigger_status_counters(),
@@ -321,11 +321,11 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
     def reset_plots(self):
         self.update_plots(np.zeros((80, 336, 1), dtype=np.uint8), np.zeros((16,), dtype=np.uint8), np.zeros((4096,), dtype=np.uint8), np.zeros((256,), dtype=np.uint8), np.zeros((16,), dtype=np.uint8), np.zeros((32,), dtype=np.uint8), np.zeros((8,), dtype=np.uint8), np.zeros((16,), dtype=np.uint8))
 
-    def update_plots(self, occupancy, tot_hist, tdc_counters, tdc_distance, event_status_counters, service_records_counters, trigger_status_counters, rel_bcid_hist):
+    def update_plots(self, occupancy, tot_hist, tdc_values, tdc_trigger_distances, event_status_counters, service_records_counters, trigger_status_counters, rel_bcid_hist):
         self.occupancy_img.setImage(occupancy[:, ::-1, 0], autoDownsample=True)
         self.tot_plot.setData(x=np.linspace(-0.5, 15.5, 17, endpoint=True), y=tot_hist, fillLevel=0, brush=(0, 0, 255, 150), stepMode=True)
-        self.tdc_plot.setData(x=np.linspace(-0.5, 4095.5, 4097, endpoint=True), y=tdc_counters, fillLevel=0, brush=(0, 0, 255, 150), stepMode=True)
-        self.tdc_distance_plot.setData(x=np.linspace(-0.5, 255.5, 257, endpoint=True), y=tdc_distance, fillLevel=0, brush=(0, 0, 255, 150), stepMode=True)
+        self.tdc_plot.setData(x=np.linspace(-0.5, 4095.5, 4097, endpoint=True), y=tdc_values, fillLevel=0, brush=(0, 0, 255, 150), stepMode=True)
+        self.tdc_distance_plot.setData(x=np.linspace(-0.5, 255.5, 257, endpoint=True), y=tdc_trigger_distances, fillLevel=0, brush=(0, 0, 255, 150), stepMode=True)
         self.event_status_plot.setData(x=np.linspace(-0.5, 15.5, 17, endpoint=True), y=event_status_counters, fillLevel=0, brush=(0, 0, 255, 150), stepMode=True)
         self.service_record_plot.setData(x=np.linspace(-0.5, 31.5, 33, endpoint=True), y=service_records_counters, fillLevel=0, brush=(0, 0, 255, 150), stepMode=True)
         self.trigger_status_plot.setData(x=np.linspace(-0.5, 7.5, 9, endpoint=True), y=trigger_status_counters, fillLevel=0, brush=(0, 0, 255, 150), stepMode=True)
