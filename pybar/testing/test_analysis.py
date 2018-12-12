@@ -609,7 +609,7 @@ class TestAnalysis(unittest.TestCase):
                                           interpreter_plots=True,
                                           overwrite_output_files=True,
                                           align_at_trigger=True,
-                                          use_tdc_trigger_time_stamp=True,
+                                          tdc_trigger_distance=True,
                                           max_tdc_delay=255)
             # Select TDC histograms for different cut criterions and with charge calibrations
             tdc_analysis.histogram_tdc_hits(hit_file,

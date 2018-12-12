@@ -183,7 +183,7 @@ def analyze_data(scan_data_filenames, ignore_columns, fei4b=False):
             if local_configuration['create_plots']:
                 plotting.plot_three_way(hist=thresholds_masked * 55.0, title='Threshold Fitted for delay = ' + str(delay_value), x_axis_title='threshold [e]', filename=output_pdf)
                 plotting.plot_relative_bcid(hist=in_file_h5.root.HistRelBcid[0:16], title='Relative BCID (former LVL1ID) for delay = ' + str(delay_value), filename=output_pdf)
-                plotting.plot_event_errors(hist=in_file_h5.root.HistErrorCounter[:], title='Event status for delay = ' + str(delay_value), filename=output_pdf)
+                plotting.plot_event_status(hist=in_file_h5.root.HistEventStatusCounter[:], title='Event status for delay = ' + str(delay_value), filename=output_pdf)
             meta_data_array = in_file_h5.root.meta_data[:]
             parameter_settings = analysis_utils.get_scan_parameter(meta_data_array=meta_data_array)
             scan_parameters = parameter_settings['PlsrDAC']

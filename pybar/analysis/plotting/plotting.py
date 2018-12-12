@@ -390,22 +390,22 @@ def plot_tot(hist, title=None, filename=None):
     plot_1d_hist(hist=hist, title=('Time-over-Threshold distribution' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, plot_range=range(0, 16), x_axis_title='ToT code [25 ns]', y_axis_title='#', color='b', filename=filename)
 
 
-def plot_tdc(hist, title=None, filename=None):
+def plot_tdc_value(hist, title=None, filename=None):
     masked_hist, indices = hist_quantiles(hist, prob=(0.0, 0.99), return_indices=True)
-    plot_1d_hist(hist=masked_hist, title=('TDC Hit distribution' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, plot_range=range(indices[0], indices[1] + 1), x_axis_title='hit TDC', y_axis_title='#', color='b', filename=filename)
+    plot_1d_hist(hist=masked_hist, title=(('TDC value distribution' if title is None else title) + r' ($\Sigma$ = %d)' % np.sum(hist)), plot_range=range(indices[0], indices[1] + 1), x_axis_title='TDC value', y_axis_title='#', color='b', filename=filename)
 
 
-def plot_tdc_counter(hist, title=None, filename=None):
+def plot_tdc_trigger_distance(hist, title=None, filename=None):
     masked_hist, indices = hist_quantiles(hist, prob=(0.0, 0.99), return_indices=True)
-    plot_1d_hist(hist=masked_hist, title=('TDC counter distribution' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, plot_range=range(indices[0], indices[1] + 1), x_axis_title='TDC value', y_axis_title='#', color='b', filename=filename)
+    plot_1d_hist(hist=masked_hist, title=(('TDC trigger distance distribution' if title is None else title) + r' ($\Sigma$ = %d)' % np.sum(hist)), plot_range=range(indices[0], indices[1] + 1), x_axis_title='TDC trigger distance', y_axis_title='#', color='b', filename=filename)
 
 
-def plot_event_errors(hist, title=None, filename=None):
-    plot_1d_hist(hist=hist, title=('Event status' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, plot_range=range(0, 11), x_ticks=('SR\noccurred', 'No\ntrigger', 'LVL1ID\nnot const.', '#BCID\nwrong', 'Unknown\nword', 'BCID\njump', 'Trigger\nerror', 'Truncated\nevent', 'TDC\nword', '>1 TDC\nwords', 'TDC\noverflow'), color='g', y_axis_title='#', filename=filename)
+def plot_event_status(hist, title=None, filename=None):
+    plot_1d_hist(hist=hist, title=('Event status' + r' ($\Sigma$ = %d)' % (np.sum(hist))) if title is None else title, plot_range=range(0, 15), x_ticks=('SR\noccurred', 'No\ntrigger', 'LVL1ID\nnot const.', '#BCID\nwrong', 'Unknown\nword', 'BCID\njump', 'Trigger\nstatus!=0', 'Truncated\nevent', 'TDC\nword', '>1 TDC\nwords', 'TDC\noverflow', 'No hits', 'Other\nwords', '>1 hits', 'Invalid\nTDC'), color='g', y_axis_title='#', filename=filename)
 
 
 def plot_trigger_errors(hist, filename=None):
-    plot_1d_hist(hist=hist, title='Trigger errors' + r' ($\Sigma$ = %d)' % (np.sum(hist)), plot_range=range(0, 8), x_ticks=('increase\nerror', 'more than\none trg.', 'TLU\naccept', 'TLU\ntime out', 'not\nused', 'not\nused', 'not\nused', 'not\nused'), color='g', y_axis_title='#', filename=filename)
+    plot_1d_hist(hist=hist, title='Trigger status' + r' ($\Sigma$ = %d)' % (np.sum(hist)), plot_range=range(0, 4), x_ticks=('Increase\nerror', '>1\ntrigger words', 'TLU\naccept', 'TLU\ntime out'), color='g', y_axis_title='#', filename=filename)
 
 
 def plot_service_records(hist, filename=None):

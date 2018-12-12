@@ -44,7 +44,7 @@ def analyze_tdc(source_scan_filename, calibration_filename, col_span, row_span):
                                   overwrite_output_files=True,
                                   pdf_filename=raw_data_file,
                                   align_at_trigger=True,
-                                  use_tdc_trigger_time_stamp=True,
+                                  tdc_trigger_distance=True,
                                   max_tdc_delay=253)
     # Select TDC histograms for different cut criterions, use the charge calibrations
     tdc_analysis.histogram_tdc_hits(hit_file,
