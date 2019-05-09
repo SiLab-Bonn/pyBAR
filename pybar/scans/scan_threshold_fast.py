@@ -17,7 +17,7 @@ class FastThresholdScan(Fei4RunBase):
     Implementation of a fast threshold scan checking for start and end of s-curve.
     '''
     _default_run_conf = {
-        "broadcast_commands": True,
+        "broadcast_commands": False,
         "threaded_scan": True,
         "n_injections": 100,  # number of injections per PlsrDAC step
         "scan_parameters": [('PlsrDAC', (None, 100))],  # the PlsrDAC range
@@ -53,6 +53,7 @@ class FastThresholdScan(Fei4RunBase):
             commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_High'))
         commands.extend(self.register.get_commands("RunMode"))
         self.register_utils.send_commands(commands)
+        self.curr_minimum_data_points = self.minimum_data_points
 
     def scan(self):
         self.start_condition_triggered = False  # set to true if the start condition is true once
@@ -70,7 +71,6 @@ class FastThresholdScan(Fei4RunBase):
             scan_parameter_range[1] = self.scan_parameters.PlsrDAC[1]
         logging.info("Scanning %s from %d to %d", 'PlsrDAC', scan_parameter_range[0], scan_parameter_range[1])
         self.scan_parameter_value = scan_parameter_range[0]  # set to start value
-        self.search_distance = self.search_distance
         self.data_points = 0  # counter variable to count the data points already recorded, have to be at least minimum_data_ponts
 
         # calculate DCs to scan from the columns to ignore

@@ -158,7 +158,7 @@ class ThresholdCalibration(FastThresholdScan):
             if index == 0:
                 actual_scan_parameters = {'PlsrDAC': self.scan_parameters.PlsrDAC, self.scan_parameters._fields[1]: parameter_value}
             else:
-                self.minimum_data_points = self.data_points  # Take settings from last fast threshold scan for speed up
+                self.curr_minimum_data_points = self.data_points  # Take settings from last fast threshold scan for speed up
                 actual_scan_parameters = {'PlsrDAC': (self.scan_parameter_start, None), self.scan_parameters._fields[1]: parameter_value}  # Start the PlsrDAC at last start point to save time
             self.set_scan_parameters(**actual_scan_parameters)
             super(ThresholdCalibration, self).scan()
