@@ -23,7 +23,6 @@ from pybar.run_manager import RunManager
 
 
 class TdcTest(Fei4RunBase):
-
     '''Test TDC scan
     '''
     _default_run_conf = {
