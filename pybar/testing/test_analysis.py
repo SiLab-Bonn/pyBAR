@@ -17,7 +17,7 @@ from pybar_fei4_interpreter import data_struct
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.testing.tools import test_tools
 from pybar.scans.calibrate_hit_or import create_hitor_calibration
-from pybar.daq.readout_utils import get_col_row_array_from_data_record_array, convert_data_array, is_data_record
+from pybar.daq.readout_utils import get_col_row_array_from_data_record_array, convert_data_array, is_fe_word, is_data_record, logical_and
 from pybar.analysis.analysis_utils import data_aligned_at_events, InvalidInputError
 import pybar.scans.analyze_source_scan_tdc_data as tdc_analysis
 
@@ -219,7 +219,7 @@ class TestAnalysis(unittest.TestCase):
         interpreter.store_event()
         histogram.add_hits(interpreter.get_hits())
         occ_hist_cpp = histogram.get_occupancy()[:, :, 0]
-        col_arr, row_arr = convert_data_array(raw_data, filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)
+        col_arr, row_arr = convert_data_array(raw_data, filter_func=logical_and(is_fe_word, is_data_record), converter_func=get_col_row_array_from_data_record_array)
         occ_hist_python, _, _ = np.histogram2d(col_arr, row_arr, bins=(80, 336), range=[[1, 80], [1, 336]])
         self.assertTrue(np.all(occ_hist_cpp == occ_hist_python))
 
