@@ -150,6 +150,8 @@ class ThresholdCalibration(FastThresholdScan):
         logging.info('Taking threshold data at following ' + self.scan_parameters._fields[1] + ' values: %s', str(self.scan_parameters[1]))
 
         for index, parameter_value in enumerate(self.scan_parameters[1]):
+            if self.stop_run.is_set():
+                break
             if self.scan_parameters._fields[1] == 'GDAC':  # if scan parameter = GDAC needs special registers set function
                 self.register_utils.set_gdac(parameter_value)
             else:
