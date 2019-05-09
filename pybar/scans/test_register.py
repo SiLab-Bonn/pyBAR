@@ -10,7 +10,6 @@ from pybar.analysis.plotting import plotting
 
 
 class RegisterTest(Fei4RunBase):
-
     '''Testing of FEI4(A/B) global and pixel register and reading of chip S/N.
 
     Note

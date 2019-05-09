@@ -9,7 +9,6 @@ from pybar.run_manager import RunManager
 
 
 class ExtTriggerGdacScan(ExtTriggerScan):
-
     '''External trigger scan with FE-I4 and adjustable GDAC range
 
     For use with external scintillator (user RX0), TLU (use RJ45), USBpix self-trigger (loop back TX2 into RX0.)
