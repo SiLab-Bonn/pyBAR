@@ -135,7 +135,6 @@ def create_threshold_calibration(scan_base_file_name, create_plots=True):  # Cre
 
 
 class ThresholdCalibration(FastThresholdScan):
-
     ''' Threshold calibration scan
     '''
     _default_run_conf = FastThresholdScan._default_run_conf.copy()

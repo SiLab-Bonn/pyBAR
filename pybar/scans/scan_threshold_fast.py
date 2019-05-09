@@ -8,7 +8,7 @@ from pybar.fei4.register_utils import invert_pixel_mask
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.fei4.register_utils import scan_loop
 from pybar.run_manager import RunManager
-from pybar.daq.readout_utils import get_col_row_array_from_data_record_array, convert_data_array, is_data_record, data_array_from_data_iterable, logical_and
+from pybar.daq.readout_utils import get_col_row_array_from_data_record_array, convert_data_array, is_data_record
 
 
 class FastThresholdScan(Fei4RunBase):
