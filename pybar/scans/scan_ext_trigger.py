@@ -129,7 +129,7 @@ class ExtTriggerScan(Fei4RunBase):
                 self.scan_timeout_timer.cancel()
                 self.connect_cancel(["abort"])
 
-    def start_trigger(self, *args, **kwargs):
+    def start_trigger(self):
         self.connect_cancel(["stop"])
         self.dut['TDC']['ENABLE'] = self.enable_tdc
         self.dut['TLU']['TRIGGER_COUNTER'] = 0
